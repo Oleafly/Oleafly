@@ -202,13 +202,15 @@ describe("UsageReport", () => {
     expect(screen.getByRole("img", { name: /token activity by UTC weekday and hour/iu })).toBeVisible();
   });
 
-  it("marks token and cost totals for screenshot mode", () => {
+  it("shows token and cost totals as plain text, with nothing blurred", () => {
     render(<UsageReport report={report()} />);
     const value = (label: string) =>
-      screen.getByText(label, { selector: "dt" }).parentElement?.querySelector("dd [data-private]");
-    expect(value("Input tokens")).not.toBeNull();
+      screen.getByText(label, { selector: "dt" }).parentElement?.querySelector("dd");
+    for (const label of ["Input tokens", "Cost estimate", "Sessions"]) {
+      // The value sits in the cell itself, with no marker element around it.
+      expect(value(label)?.children).toHaveLength(0);
+    }
     expect(value("Cost estimate")).toHaveTextContent("No estimate");
-    expect(value("Sessions")).not.toBeNull();
   });
 
   it("zero-fills the daily trend across the whole range with a date axis", () => {

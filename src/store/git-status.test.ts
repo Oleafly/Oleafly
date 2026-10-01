@@ -8,7 +8,7 @@ import { useGitStatusStore } from "./git-status";
 
 beforeEach(() => {
   mocks.gitStatus.mockReset().mockResolvedValue([{ path: "main.tex" }]);
-  useGitStatusStore.setState({ count: 0 });
+  useGitStatusStore.setState({ count: 0, projectId: null, changes: [] });
   useProjectAvailabilityStore.getState().reset("linked-a");
 });
 
@@ -27,5 +27,28 @@ describe("git status polling", () => {
     );
     await useGitStatusStore.getState().refresh("linked-a");
     expect(useProjectAvailabilityStore.getState().availability).toBe("replaced");
+  });
+
+  it("keeps the changed paths for the Explorer and reuses them when a poll finds nothing new", async () => {
+    const changes = [{ path: "main.tex", status: "M", staged: false, conflict: false }];
+    mocks.gitStatus.mockResolvedValue(changes);
+    await useGitStatusStore.getState().refresh("linked-a");
+    const first = useGitStatusStore.getState().changes;
+    expect(first).toEqual(changes);
+    expect(useGitStatusStore.getState().projectId).toBe("linked-a");
+
+    mocks.gitStatus.mockResolvedValue(changes.map((change) => ({ ...change })));
+    await useGitStatusStore.getState().refresh("linked-a");
+    expect(useGitStatusStore.getState().changes).toBe(first);
+
+    mocks.gitStatus.mockResolvedValue([{ ...changes[0], staged: true }]);
+    await useGitStatusStore.getState().refresh("linked-a");
+    expect(useGitStatusStore.getState().changes).not.toBe(first);
+  });
+
+  it("clears the changed paths when no project is open", async () => {
+    await useGitStatusStore.getState().refresh("linked-a");
+    await useGitStatusStore.getState().refresh(null);
+    expect(useGitStatusStore.getState()).toMatchObject({ count: 0, projectId: null, changes: [] });
   });
 });

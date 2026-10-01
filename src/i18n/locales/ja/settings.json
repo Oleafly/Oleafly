@@ -374,7 +374,9 @@
       "addFolder": "フォルダを追加",
       "addFolderDialogTitle": "スキルのフォルダを追加",
       "catalog": {
+        "allDomains": "すべて",
         "description": "特定の研究分野向けの追加スキルです。インストールすると上の一覧に加わります。",
+        "domainFilterLabel": "分野で棚を絞り込む",
         "empty": "カタログにインストールできる追加スキルはありません。",
         "install": "インストール",
         "loading": "カタログを読み込んでいます...",
@@ -405,8 +407,9 @@
         "uninstall": "アンインストール",
         "update": "更新"
       },
+      "changedForProject": "このプロジェクトで変更済み",
       "createSkill": "スキルを作成",
-      "description": "アシスタントがスキルの完全な指示を読み込むのは、必要だと判断したときだけです。チャットで /skill-id と入力すれば、すぐに読み込ませることもできます。ここで有効にしたスキルは、プロジェクト側で上書きしない限り、すべてのプロジェクトで有効です。",
+      "description": "アシスタントがスキルの完全な指示を読み込むのは、必要なときだけです。チャットで /skill-id と入力すれば、すぐに読み込ませることもできます。ここで有効にしたスキルは、すべてのプロジェクトで有効になります。開いているプロジェクトだけで変えるには、「このプロジェクト」に切り替えてください。",
       "editAria": "{{name}} を編集",
       "editor": {
         "createDescription": "Oleafly のスキルフォルダに SKILL.md の下書きを作ります。",
@@ -423,13 +426,11 @@
         "submitCreate": "作成"
       },
       "empty": "スキルが見つかりません。フォルダを追加するか、新しく作成してください。",
-      "enableAria": "{{name}} を有効にする",
       "fileCount_other": "{{count}} 件のファイル",
       "groups": {
         "shelf": "分野別の棚",
         "user": "自分のスキル"
       },
-      "inheritsDevice": "端末の設定を引き継ぎます",
       "invalidBadge": "不正",
       "loadFailed": "スキルを読み込めませんでした。{{message}}",
       "loading": "スキルを読み込んでいます...",
@@ -442,8 +443,6 @@
         "updated": "{{name}} を更新しました。"
       },
       "missingDescription": "このスキルには説明が必要です。",
-      "offForProject": "このプロジェクトでは無効",
-      "onForProject": "このプロジェクトでは有効",
       "phases": {
         "authoring": "執筆",
         "communication": "発信",
@@ -457,6 +456,18 @@
       "removeDialog": {
         "description": "「{{name}}」とそのフォルダを Oleafly から削除しますか？この操作は取り消せません。",
         "title": "スキルを削除"
+      },
+      "resetProject": "リセット",
+      "resetProjectAria": "{{name}} をすべてのプロジェクトの設定に戻す",
+      "scope": {
+        "device": "すべてのプロジェクト",
+        "label": "設定の適用範囲",
+        "project": "このプロジェクト"
+      },
+      "search": {
+        "ariaLabel": "スキルと分野別の棚を検索",
+        "empty": "一致するスキルはありません",
+        "placeholder": "スキルを検索"
       },
       "share": {
         "description": "このコンピュータのほかのコーディングエージェントがすでに読んでいるフォルダに、自分のスキルをリンクします。スキルを一度書けば、どのエージェントからも使えます。",
@@ -497,9 +508,7 @@
         "description": "「{{name}}」を同梱の最新版で置き換えますか？そのファイルへのローカルの編集は失われます。",
         "title": "スキルを更新"
       },
-      "useDeviceSetting": "端末の設定を使う",
-      "useDeviceSettingAria": "{{name}} に端末の設定を使う",
-      "useInProject": "このプロジェクトで使う",
+      "useInAllProjectsAria": "すべてのプロジェクトで {{name}} を使う",
       "useInProjectAria": "このプロジェクトで {{name}} を使う",
       "validateAria": "{{name}} を検証"
     }

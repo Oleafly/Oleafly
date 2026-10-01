@@ -48,6 +48,13 @@ import { FOLDER_LISTING_LIMIT, useFilesStore } from "@/store/files";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { fileTreePathIsHidden, useSettingsStore } from "@/store/settings";
 import { FileIcon } from "@/components/files/fileIcon";
+import {
+  GitFolderDot,
+  GitStatusBadge,
+  gitDecorations,
+  type GitDecorations,
+} from "@/components/files/gitStatus";
+import { useGitStatusStore } from "@/store/git-status";
 import { NoMainDocumentHint } from "@/components/open-folder/NoMainDocumentHint";
 import { ALL_MAIN_EXTENSIONS, isLinkedHome, mainDocumentMissing } from "@/lib/main-document";
 import { chooseMainDocument } from "@/store/main-document";
@@ -113,6 +120,7 @@ function remapTreePath(path: string, from: string, to: string): string {
 
 const ROOT = "__root__";
 const EMPTY_EXTENSIONS: string[] = [];
+const GIT_REFRESH_AFTER_SAVE_MS = 300;
 
 function buildTree(
   paths: {
@@ -206,6 +214,7 @@ interface TreeCtx {
   dragOver: string | null;
   setDragOver: (p: string | null) => void;
   onMove: (from: string, toDir: string) => void;
+  git: GitDecorations;
 }
 
 export function FileTree({
@@ -298,6 +307,40 @@ export function FileTree({
     [hiddenFilePatterns, tree],
   );
   const directories = useMemo(() => directoryPaths(nodes), [nodes]);
+  const gitProjectId = useGitStatusStore((s) => s.projectId);
+  const gitChanges = useGitStatusStore((s) => s.changes);
+  const git = useMemo(
+    () => gitDecorations(gitProjectId === projectId ? gitChanges : []),
+    [gitChanges, gitProjectId, projectId],
+  );
+  // Git status is otherwise polled only on focus, every minute and from
+  // Source Control. Refresh once after a save of a file Git does not list as
+  // changed yet, so its badge appears on save. Later saves of it cost nothing.
+  useEffect(() => {
+    if (!projectId) return;
+    let timer: number | undefined;
+    const unsubscribe = useFilesStore.subscribe((state, previous) => {
+      if (state.projectId !== projectId || state.files === previous.files) return;
+      const saved = Object.keys(state.files).filter(
+        (path) => previous.files[path]?.dirty && !state.files[path]?.dirty,
+      );
+      if (saved.length === 0) return;
+      const status = useGitStatusStore.getState();
+      const listed = status.projectId === projectId ? status.changes : [];
+      const known = (path: string) =>
+        listed.some((change) => change.path === path && !change.staged);
+      if (saved.every(known)) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(
+        () => void useGitStatusStore.getState().refresh(projectId),
+        GIT_REFRESH_AFTER_SAVE_MS,
+      );
+    });
+    return () => {
+      unsubscribe();
+      window.clearTimeout(timer);
+    };
+  }, [projectId]);
   const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
 
   const previousProjectId = useRef(projectId);
@@ -723,6 +766,7 @@ export function FileTree({
     dragOver,
     setDragOver: updateDragOver,
     onMove: move,
+    git,
   };
 
   const sourceActions = (
@@ -1211,6 +1255,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
   const partial = expandable && node.partial;
   const hintKey = treeRowHintKey(unreadable, readOnlyLink, partial);
   const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : undefined;
+  const gitStatus = (node.isDir ? ctx.git.folders : ctx.git.files).get(node.path);
   const rowRef = useRef<HTMLDivElement>(null);
 
   // Dropping onto a folder targets that folder; onto a file targets its folder.
@@ -1306,7 +1351,15 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       onDrop={onDrop}
     >
       <TreeRowIcon node={node} expanded={ctx.expanded.has(node.path)} isMain={isMain} />
-      <span className={cn("truncate", unreadable && "text-muted-foreground")}>{node.name}</span>
+      <span
+        className={cn(
+          "truncate",
+          !node.isDir && gitStatus?.text,
+          unreadable && "text-muted-foreground",
+        )}
+      >
+        {node.name}
+      </span>
       {readOnlyLink && (
         <Link2 aria-hidden className="size-3 shrink-0 text-muted-foreground" />
       )}
@@ -1324,6 +1377,8 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
         >
           <MoreHorizontal className="size-3.5" />
         </button>
+        {gitStatus &&
+          (node.isDir ? <GitFolderDot meta={gitStatus} /> : <GitStatusBadge meta={gitStatus} />)}
       </span>
     </div>
   );

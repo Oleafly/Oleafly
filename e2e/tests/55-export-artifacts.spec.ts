@@ -276,7 +276,7 @@ test("image project exports real vector PDF and nonblank raster PNG; SVG stays u
   expect(await pdfText(pdf)).toContain(marker);
 
   const pngPath = join(output, `raster-${run}.png`);
-  await exportThroughMenu(tauriPage, "Export as PNG (raster image)", pngPath);
+  await exportThroughMenu(tauriPage, "Export as PNG", pngPath);
   const png = readFileSync(pngPath);
   expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
   expect(png.readUInt32BE(16)).toBeGreaterThan(0);
@@ -312,7 +312,7 @@ test("image project exports real vector PDF and nonblank raster PNG; SVG stays u
   await tauriPage.focus('[aria-label="Export"]');
   await tauriPage.press('[aria-label="Export"]', "Enter");
   await tauriPage.waitForFunction(
-    `document.body.innerText.includes("Export as PNG (raster image)")`,
+    `document.body.innerText.includes("Export as PNG")`,
     10_000,
   );
   expect(await tauriPage.evaluate<boolean>(

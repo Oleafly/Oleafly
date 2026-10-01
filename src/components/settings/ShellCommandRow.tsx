@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { Trans, useTranslation } from "react-i18next";
 import { Check, Copy, SquareTerminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SettingsPathText } from "@/components/settings/SettingsPath";
 import { describeError } from "@/lib/app-error";
 import {
   installShellCommand,
@@ -85,7 +86,7 @@ function StateSummary({
   if (!summary) return null;
   return (
     <p data-testid="shell-command-state" className="mt-1 break-words text-xs text-muted-foreground">
-      {summary}
+      <SettingsPathText text={summary} />
     </p>
   );
 }
@@ -169,13 +170,17 @@ function PathHint({
       className="ml-7 mt-3 space-y-2 rounded-md border bg-muted/30 p-2.5"
     >
       <p className="break-words text-xs text-muted-foreground">
-        {hint.file
-          ? t(($) => $.settings.shellCommand.notOnPath.file, { directory, file: hint.file })
-          : t(($) => $.settings.shellCommand.notOnPath.run, { directory })}
+        <SettingsPathText
+          text={
+            hint.file
+              ? t(($) => $.settings.shellCommand.notOnPath.file, { directory, file: hint.file })
+              : t(($) => $.settings.shellCommand.notOnPath.run, { directory })
+          }
+        />
       </p>
       <div className="flex items-center gap-2">
         <code className="min-w-0 flex-1 overflow-x-auto whitespace-pre rounded border bg-background px-2 py-1 font-mono text-[11px]">
-          {hint.line}
+          <SettingsPathText text={hint.line} />
         </code>
         <Button
           type="button"
@@ -211,12 +216,12 @@ function ShellCommandMessages({
     <>
       {result ? (
         <output aria-live="polite" className="ml-7 mt-2 block break-words text-xs text-foreground">
-          {result}
+          <SettingsPathText text={result} />
         </output>
       ) : null}
       {error ? (
         <p role="alert" className="ml-7 mt-2 break-words text-xs text-destructive">
-          {error}
+          <SettingsPathText text={error} />
         </p>
       ) : null}
       {loadFailed ? (
@@ -374,7 +379,9 @@ export function ShellCommandRow() {
           data-testid="shell-command-sign-in"
           className="ml-7 mt-3 break-words rounded-md border bg-muted/30 p-2.5 text-xs text-muted-foreground"
         >
-          {t(($) => $.settings.shellCommand.afterSignIn, { directory: view.directory })}
+          <SettingsPathText
+            text={t(($) => $.settings.shellCommand.afterSignIn, { directory: view.directory })}
+          />
         </p>
       ) : null}
       {view.hint ? (

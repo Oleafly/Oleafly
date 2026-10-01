@@ -17,6 +17,10 @@ describe("ProjectKindChooser", () => {
         "src",
         expect.stringContaining(".webp"),
       );
+      expect(card.querySelector("img")).toHaveAttribute("alt", "");
+      expect(card).toHaveAccessibleDescription(/.+/);
+      // Focus shows as a border colour change, never a ring or outline.
+      expect(card.outerHTML).not.toMatch(/(^|[\s"])(focus-visible:)?(ring|outline)-/);
     }
 
     fireEvent.click(screen.getByTestId("project-kind-research"));

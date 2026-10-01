@@ -374,7 +374,9 @@
       "addFolder": "添加文件夹",
       "addFolderDialogTitle": "添加技能文件夹",
       "catalog": {
+        "allDomains": "全部",
         "description": "面向特定研究领域的额外技能。安装后即可将其添加到上方列表。",
+        "domainFilterLabel": "按领域筛选技能库",
         "empty": "目录中没有可安装的额外技能。",
         "install": "安装",
         "loading": "正在加载目录…",
@@ -405,8 +407,9 @@
         "uninstall": "卸载",
         "update": "更新"
       },
+      "changedForProject": "已为此项目更改",
       "createSkill": "创建技能",
-      "description": "助手只会在判断需要某项技能时才加载其完整指令，若你在聊天中输入 /skill-id 则会立即加载。在这里开启的技能会在所有项目中生效，除非某个项目单独覆盖。",
+      "description": "助手只会在需要时才加载技能的完整指令，若你在聊天中输入 /skill-id 则会立即加载。在这里开启的技能会在所有项目中生效。如果只想在当前打开的项目中更改，请切换到“此项目”。",
       "editAria": "编辑 {{name}}",
       "editor": {
         "createDescription": "在你的 Oleafly 技能文件夹中创建 SKILL.md 草稿。",
@@ -423,13 +426,11 @@
         "submitCreate": "创建"
       },
       "empty": "未找到技能。可添加文件夹，或新建技能。",
-      "enableAria": "启用 {{name}}",
       "fileCount_other": "{{count}} 个文件",
       "groups": {
         "shelf": "领域技能库",
         "user": "你的技能"
       },
-      "inheritsDevice": "继承设备设置",
       "invalidBadge": "无效",
       "loadFailed": "无法加载技能。{{message}}",
       "loading": "正在加载技能…",
@@ -442,8 +443,6 @@
         "updated": "已更新 {{name}}。"
       },
       "missingDescription": "此技能需要填写描述。",
-      "offForProject": "在此项目中已关闭",
-      "onForProject": "在此项目中已启用",
       "phases": {
         "authoring": "撰写",
         "communication": "沟通",
@@ -457,6 +456,18 @@
       "removeDialog": {
         "description": "要从 Oleafly 中移除“{{name}}”及其文件夹吗？此操作无法撤销。",
         "title": "移除技能"
+      },
+      "resetProject": "重置",
+      "resetProjectAria": "将 {{name}} 恢复为所有项目的设置",
+      "scope": {
+        "device": "所有项目",
+        "label": "设置的适用范围",
+        "project": "此项目"
+      },
+      "search": {
+        "ariaLabel": "搜索技能和领域技能库",
+        "empty": "没有匹配的技能",
+        "placeholder": "搜索技能"
       },
       "share": {
         "description": "将你的技能链接到此计算机上其他编码代理已在读取的文件夹，这样你只需编写一次技能，每个代理都能使用。",
@@ -497,9 +508,7 @@
         "description": "要将“{{name}}”替换为最新内置版本吗？其文件的所有本地修改都将丢失。",
         "title": "更新技能"
       },
-      "useDeviceSetting": "使用设备设置",
-      "useDeviceSettingAria": "为 {{name}} 使用设备设置",
-      "useInProject": "在此项目中使用",
+      "useInAllProjectsAria": "在所有项目中使用 {{name}}",
       "useInProjectAria": "在此项目中使用 {{name}}",
       "validateAria": "验证 {{name}}"
     }

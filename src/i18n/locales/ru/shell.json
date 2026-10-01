@@ -173,9 +173,6 @@
       "online": "Онлайн-режим (разрешить загрузку пакетов)"
     },
     "openTool": "Открыть {{name}}",
-    "personalDetails": {
-      "keywords": "режим скриншота, скриншот, снимок экрана, конфиденциальность, размытие, пути, имя учётной записи"
-    },
     "recompile": {
       "label": "Скомпилировать заново"
     },
@@ -238,6 +235,7 @@
   "community": {
     "discordOnline": "{{online}} в сети",
     "discordOnlineAria": "Сейчас в сети на Discord: {{online}}",
+    "followOnX": "Мы в X",
     "joinDiscord": "Мы в Discord"
   },
   "compile": {
@@ -523,10 +521,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Скрыть личные данные",
-    "show": "Показать личные данные"
-  },
   "projectSearch": {
     "hint": "Поиск по файлам этого проекта.",
     "noResults": "Результатов нет.",
@@ -796,7 +790,7 @@
       "shortcuts": "Сочетания клавиш"
     },
     "search": {
-      "empty": "Нет подходящих настроек.",
+      "empty": "Нет подходящих настроек",
       "keywords": {
         "ai": "ассистент, чат, модели, провайдеры, API-ключи, агенты, промпты, бюджет, MCP-серверы",
         "appearance": "тема, тёмная тема, светлая тема, тёмный режим, цвет, шрифты, размер текста, масштаб, макет",
@@ -937,6 +931,15 @@
     "stagedChangeCount_other": "{{count}} изменения в индексе",
     "stash": "Отложить изменения",
     "stashNeedsAttention": "Разрешите конфликты отложенных изменений",
+    "status": {
+      "modified": "Изменён",
+      "added": "Добавлен",
+      "deleted": "Удалён",
+      "renamed": "Переименован",
+      "untracked": "Не отслеживается",
+      "conflict": "Конфликт",
+      "containsChanges": "Содержит изменения"
+    },
     "sync": "Синхронизировать",
     "title": "Контроль версий",
     "titleRequired": "Заголовок коммита обязателен.",
@@ -994,8 +997,8 @@
     "exportMarkdown": "Экспорт в Markdown (.md)",
     "exportPdf": "Экспорт в PDF",
     "exportPdfVector": "Экспорт в PDF (векторное изображение)",
-    "exportPngRaster": "Экспорт в PNG (растровое изображение)",
-    "exportPagePng": "Экспорт страницы в PNG (растровое изображение)",
+    "exportPngRaster": "Экспорт в PNG",
+    "exportPagePng": "Экспорт страницы в PNG",
     "exportAs": "Экспорт в {{format}}",
     "exportPptx": "Экспорт в PowerPoint (.pptx)",
     "exportSourceZip": "Экспорт исходников (.zip)",

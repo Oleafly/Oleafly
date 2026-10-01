@@ -82,7 +82,7 @@ import { GridPattern } from "@/components/ui/grid-pattern";
 import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
-import { PrivatePath } from "@/components/ui/private";
+import { useDisplayPath } from "@/lib/display-path";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import {
@@ -386,6 +386,7 @@ function FilterSelect({
 
 export function Library() {
   const { t } = useTranslation(["common", "library"]);
+  const displayPath = useDisplayPath();
   const colorLabels = useBookColorLabels();
   // Home-shell pages (deadlines/pdf-import/latex-tools/library) are mutually
   // exclusive siblings gated on the same store, so switching between them
@@ -1304,10 +1305,9 @@ export function Library() {
                       {item.format || t(($) => $.library.projects.exportsDialog.fallbackFormat)}
                     </span>
                   </div>
-                  <PrivatePath
-                    className="break-all font-mono text-xs text-muted-foreground"
-                    path={item.path}
-                  />
+                  <span className="break-all font-mono text-xs text-muted-foreground">
+                    {displayPath(item.path)}
+                  </span>
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Clock3 className="size-3" />
                     {projectDateTime(item.date)}
@@ -1396,7 +1396,6 @@ export function Library() {
         <Input
           type="search"
           aria-label={t(($) => $.library.home.searchLabel)}
-          data-private-placeholder=""
           placeholder={t(($) => $.library.home.searchPlaceholder, {
             count: projects.length,
             total: formatNumber(projects.length),

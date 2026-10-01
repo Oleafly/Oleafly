@@ -167,9 +167,6 @@
       "online": "オンラインモード（パッケージの取得を許可）"
     },
     "openTool": "{{name}} を開く",
-    "personalDetails": {
-      "keywords": "スクリーンショットモード、スクショ、プライバシー、ぼかし、パス、アカウント名"
-    },
     "recompile": {
       "label": "再コンパイル"
     },
@@ -232,6 +229,7 @@
   "community": {
     "discordOnline": "{{online}} 人がオンライン",
     "discordOnlineAria": "Discord で {{online}} 人がオンライン",
+    "followOnX": "X でフォロー",
     "joinDiscord": "Discord に参加"
   },
   "compile": {
@@ -514,10 +512,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "個人情報を隠す",
-    "show": "個人情報を表示"
-  },
   "projectSearch": {
     "hint": "このプロジェクトのファイル全体を検索します。",
     "noResults": "結果がありません。",
@@ -745,7 +739,7 @@
       "shortcuts": "キーボードショートカット"
     },
     "search": {
-      "empty": "一致する設定はありません。",
+      "empty": "一致する設定はありません",
       "keywords": {
         "ai": "アシスタント、チャット、モデル、プロバイダ、API キー、エージェント、プロンプト、予算、MCP サーバー",
         "appearance": "テーマ、ダークモード、ライトモード、色、カラー、フォント、文字サイズ、ズーム、レイアウト",
@@ -877,6 +871,15 @@
     "stagedChangeCount_other": "ステージされた変更 {{count}} 件",
     "stash": "変更をスタッシュ",
     "stashNeedsAttention": "スタッシュの衝突を解決してください",
+    "status": {
+      "modified": "変更済み",
+      "added": "追加済み",
+      "deleted": "削除済み",
+      "renamed": "名前変更済み",
+      "untracked": "未追跡",
+      "conflict": "競合",
+      "containsChanges": "変更あり"
+    },
     "sync": "同期",
     "title": "ソース管理",
     "titleRequired": "コミットのタイトルは必須です。",
@@ -931,8 +934,8 @@
     "exportMarkdown": "Markdown（.md）として書き出す",
     "exportPdf": "PDF として書き出す",
     "exportPdfVector": "PDF（ベクタ画像）として書き出す",
-    "exportPngRaster": "PNG（ラスタ画像）として書き出す",
-    "exportPagePng": "ページを PNG（ラスタ画像）として書き出す",
+    "exportPngRaster": "PNG として書き出す",
+    "exportPagePng": "ページを PNG として書き出す",
     "exportAs": "{{format}} として書き出す",
     "exportPptx": "PowerPoint（.pptx）として書き出す",
     "exportSourceZip": "ソースを書き出す（.zip）",

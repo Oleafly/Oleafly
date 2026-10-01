@@ -218,7 +218,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover } from "@/components/ui/popover";
-import { Private } from "@/components/ui/private";
 import {
   cancelChatRun,
   ChatRunIsolation,
@@ -3285,19 +3284,15 @@ ${sandboxedCustom}`;
                             <dd className="text-right tabular-nums">{runUsage.steps}</dd>
                             <dt>{t(($) => $.ai.usage.input)}</dt>
                             <dd className="text-right tabular-nums">
-                              {runUsage.input === null ? (
-                                t(($) => $.common.state.unknown)
-                              ) : (
-                                <Private>{formatNumber(runUsage.input)}</Private>
-                              )}
+                              {runUsage.input === null
+                                ? t(($) => $.common.state.unknown)
+                                : formatNumber(runUsage.input)}
                             </dd>
                             <dt>{t(($) => $.ai.usage.output)}</dt>
                             <dd className="text-right tabular-nums">
-                              {runUsage.output === null ? (
-                                t(($) => $.common.state.unknown)
-                              ) : (
-                                <Private>{formatNumber(runUsage.output)}</Private>
-                              )}
+                              {runUsage.output === null
+                                ? t(($) => $.common.state.unknown)
+                                : formatNumber(runUsage.output)}
                             </dd>
                           </dl>
                         </section>
@@ -3316,9 +3311,7 @@ ${sandboxedCustom}`;
                             <dt>{t(($) => $.ai.usage.steps)}</dt>
                             <dd className="text-right tabular-nums">{chatUsage.steps}</dd>
                             <dt>{t(($) => $.ai.usage.tokens)}</dt>
-                            <dd className="text-right tabular-nums">
-                              <Private>{formatNumber(chatTotal)}</Private>
-                            </dd>
+                            <dd className="text-right tabular-nums">{formatNumber(chatTotal)}</dd>
                           </dl>
                         </section>
                       )}

@@ -374,7 +374,9 @@
       "addFolder": "폴더 추가",
       "addFolderDialogTitle": "스킬 폴더 추가",
       "catalog": {
+        "allDomains": "전체",
         "description": "특정 연구 분야를 위한 추가 스킬입니다. 설치하면 위 목록에 더해집니다.",
+        "domainFilterLabel": "분야별로 모음 필터링",
         "empty": "카탈로그에 설치할 추가 스킬이 없습니다.",
         "install": "설치",
         "loading": "카탈로그를 불러오는 중...",
@@ -405,8 +407,9 @@
         "uninstall": "제거",
         "update": "업데이트"
       },
+      "changedForProject": "이 프로젝트에서 변경됨",
       "createSkill": "스킬 만들기",
-      "description": "어시스턴트는 필요하다고 판단할 때, 또는 채팅에 /skill-id를 입력하면 바로 스킬의 전체 지침을 불러옵니다. 여기에서 켠 스킬은 프로젝트가 따로 지정하기 전까지 모든 프로젝트에서 켜져 있습니다.",
+      "description": "어시스턴트는 필요할 때만 스킬의 전체 지침을 불러오며, 채팅에 /skill-id를 입력하면 바로 불러옵니다. 여기에서 켠 스킬은 모든 프로젝트에서 켜집니다. 열려 있는 프로젝트에서만 바꾸려면 이 프로젝트로 전환하세요.",
       "editAria": "{{name}} 편집",
       "editor": {
         "createDescription": "Oleafly 스킬 폴더에 SKILL.md 초안을 만듭니다.",
@@ -423,13 +426,11 @@
         "submitCreate": "만들기"
       },
       "empty": "스킬을 찾지 못했습니다. 폴더를 추가하거나 새로 만드세요.",
-      "enableAria": "{{name}} 켜기",
       "fileCount_other": "파일 {{count}}개",
       "groups": {
         "shelf": "분야별 모음",
         "user": "내 스킬"
       },
-      "inheritsDevice": "기기 설정 따름",
       "invalidBadge": "올바르지 않음",
       "loadFailed": "스킬을 불러오지 못했습니다. {{message}}",
       "loading": "스킬을 불러오는 중...",
@@ -442,8 +443,6 @@
         "updated": "{{name}}을(를) 업데이트했습니다."
       },
       "missingDescription": "이 스킬에는 설명이 필요합니다.",
-      "offForProject": "이 프로젝트에서 꺼짐",
-      "onForProject": "이 프로젝트에서 켜짐",
       "phases": {
         "authoring": "집필",
         "communication": "소통",
@@ -457,6 +456,18 @@
       "removeDialog": {
         "description": "\"{{name}}\"과(와) 그 폴더를 Oleafly에서 제거할까요? 되돌릴 수 없습니다.",
         "title": "스킬 제거"
+      },
+      "resetProject": "재설정",
+      "resetProjectAria": "{{name}}을(를) 모든 프로젝트 설정으로 되돌리기",
+      "scope": {
+        "device": "모든 프로젝트",
+        "label": "설정 적용 범위",
+        "project": "이 프로젝트"
+      },
+      "search": {
+        "ariaLabel": "스킬과 분야별 모음 검색",
+        "empty": "일치하는 스킬 없음",
+        "placeholder": "스킬 검색"
       },
       "share": {
         "description": "이 컴퓨터의 다른 코딩 에이전트가 이미 읽는 폴더에 스킬을 연결해, 한 번 만든 스킬을 모든 에이전트가 쓰게 하세요.",
@@ -497,9 +508,7 @@
         "description": "\"{{name}}\"을(를) 최신 내장 버전으로 바꿀까요? 파일에 직접 수정한 내용은 사라집니다.",
         "title": "스킬 업데이트"
       },
-      "useDeviceSetting": "기기 설정 사용",
-      "useDeviceSettingAria": "{{name}}에 기기 설정 사용",
-      "useInProject": "이 프로젝트에서 사용",
+      "useInAllProjectsAria": "모든 프로젝트에서 {{name}} 사용",
       "useInProjectAria": "이 프로젝트에서 {{name}} 사용",
       "validateAria": "{{name}} 검증"
     }

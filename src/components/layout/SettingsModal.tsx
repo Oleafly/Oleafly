@@ -5,7 +5,6 @@ import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18
 import { CiteOleaflyCard } from "@/components/settings/CiteOleaflyCard";
 import {
   DiscordBrandIcon,
-  DiscordJoinButton,
   DiscordOnlineCount,
   XBrandIcon,
 } from "@/components/community/DiscordJoin";
@@ -15,6 +14,7 @@ import {
   BookOpen,
   Check,
   ChevronRight,
+  CircleHelp,
   Cloud,
   Compass,
   Copy,
@@ -44,12 +44,11 @@ import {
 } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { reportCrashToGithub } from "@/lib/crash-report";
-import { useDisplayPath } from "@/lib/display-path";
 import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Private, PrivateText } from "@/components/ui/private";
+import { SettingsPath } from "@/components/settings/SettingsPath";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
@@ -291,7 +290,6 @@ export function SettingsModal() {
   const [developerSettings, setDeveloperSettings] =
     useState<DeveloperSettingsModule | null>(null);
   const [libRoot, setLibRoot] = useState("");
-  const displayPath = useDisplayPath();
   const [storageSummary, setStorageSummary] =
     useState<LibraryStorageSummary | null>(null);
   const [storageLoading, setStorageLoading] = useState(false);
@@ -547,7 +545,6 @@ export function SettingsModal() {
               label: t(($) => $.shell.settings.data.storage.stats.projects),
               value: formatNumber(storageSummary.project_count),
               detail: formatBytes(storageSummary.projects_bytes),
-              personalDetail: true,
             },
             {
               id: "files",
@@ -556,21 +553,18 @@ export function SettingsModal() {
               detail: t(($) => $.shell.settings.data.storage.stats.folders, {
                 count: storageSummary.directory_count,
               }),
-              personalDetail: true,
             },
             {
               id: "images",
               label: t(($) => $.shell.settings.data.storage.stats.images),
               value: formatNumber(storageSummary.image_count),
               detail: formatBytes(storageSummary.image_bytes),
-              personalDetail: true,
             },
             {
               id: "pdfs",
               label: t(($) => $.shell.settings.data.storage.stats.pdfs),
               value: formatNumber(storageSummary.pdf_count),
               detail: formatBytes(storageSummary.pdf_bytes),
-              personalDetail: true,
             },
             {
               id: "sources",
@@ -600,10 +594,10 @@ export function SettingsModal() {
             <div key={item.id} className="min-w-0 bg-card px-3 py-3">
               <dt className="text-muted-foreground">{item.label}</dt>
               <dd className="mt-1 truncate text-sm font-semibold text-foreground">
-                <Private>{item.value}</Private>
+                {item.value}
               </dd>
               <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                {"personalDetail" in item ? <Private>{item.detail}</Private> : item.detail}
+                {item.detail}
               </dd>
             </div>
           ))}
@@ -652,13 +646,10 @@ export function SettingsModal() {
                   {project.name}
                 </p>
                 <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                  <PrivateText
-                    text={t(($) => $.shell.settings.data.recycleBin.deletedAt, {
-                      date: formatDateTime(project.deleted_at * 1000),
-                      size: formatBytes(project.size_bytes),
-                    })}
-                    values={[formatBytes(project.size_bytes)]}
-                  />
+                  {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
+                    date: formatDateTime(project.deleted_at * 1000),
+                    size: formatBytes(project.size_bytes),
+                  })}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
@@ -780,16 +771,11 @@ export function SettingsModal() {
               {t(($) => $.shell.settings.data.storage.title)}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {storageSummary ? (
-                <PrivateText
-                  text={t(($) => $.shell.settings.data.storage.total, {
+              {storageSummary
+                ? t(($) => $.shell.settings.data.storage.total, {
                     size: formatBytes(storageSummary.total_bytes),
-                  })}
-                  values={[formatBytes(storageSummary.total_bytes)]}
-                />
-              ) : (
-                t(($) => $.shell.settings.data.storage.subtitle)
-              )}
+                  })
+                : t(($) => $.shell.settings.data.storage.subtitle)}
             </p>
           </div>
         </div>
@@ -817,26 +803,17 @@ export function SettingsModal() {
       {renderStorageSummary()}
       {storageSummary && storageSummary.linked_folder_count > 0 ? (
         <p className="border-t px-4 py-2 text-xs text-muted-foreground">
-          <PrivateText
-            text={t(($) => $.shell.settings.data.storage.linkedFolders, {
-              count: storageSummary.linked_folder_count,
-              size: formatBytes(storageSummary.linked_folders_bytes),
-            })}
-            values={[
-              formatBytes(storageSummary.linked_folders_bytes),
-              String(storageSummary.linked_folder_count),
-            ]}
-          />
+          {t(($) => $.shell.settings.data.storage.linkedFolders, {
+            count: storageSummary.linked_folder_count,
+            size: formatBytes(storageSummary.linked_folders_bytes),
+          })}
         </p>
       ) : null}
       {storageSummary && storageSummary.unreadable_entries > 0 ? (
         <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
-          <PrivateText
-            text={t(($) => $.shell.settings.data.storage.unreadable, {
-              count: storageSummary.unreadable_entries,
-            })}
-            values={[String(storageSummary.unreadable_entries)]}
-          />
+          {t(($) => $.shell.settings.data.storage.unreadable, {
+            count: storageSummary.unreadable_entries,
+          })}
         </p>
       ) : null}
     </section>
@@ -859,7 +836,7 @@ export function SettingsModal() {
         </p>
         <div className="flex items-center gap-2">
           <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
-            <Private>{libRoot ? displayPath(libRoot) : "~/.oleafly/projects"}</Private>
+            <SettingsPath path={libRoot || "~/.oleafly/projects"} />
           </code>
           {import.meta.env.DEV && isTauri() && libRoot ? (
             <Tooltip label={t(($) => $.shell.settings.data.reveal)}>
@@ -1309,10 +1286,11 @@ export function SettingsModal() {
               data-testid={`settings-section-${id}`}
               onClick={() => setSection(id)}
               className={cn(
-                "flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm transition-colors",
+                // Every row carries a border so the active one can show it without shifting.
+                "flex items-center gap-2.5 whitespace-nowrap rounded-md border px-2.5 py-2 text-sm transition-colors",
                 section === id
-                  ? "bg-background font-medium text-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                  ? "border-border bg-background font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground"
               )}
             >
               <Icon className="size-4 shrink-0" aria-hidden />
@@ -1331,7 +1309,7 @@ export function SettingsModal() {
             )}
           </div>
           <div className="mt-2 shrink-0 border-t pt-3">
-            <DiscordJoinButton />
+            <SettingsFooterLinks />
           </div>
         </nav>
 
@@ -1433,6 +1411,55 @@ const DOCS_URL = "https://oleafly.com/docs/";
 const LEARN_URL = "https://oleafly.com/learn/";
 const X_URL = "https://x.com/OleaflyHQ";
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
+
+/** Community and docs links pinned under the Settings navigation, one icon each. */
+function SettingsFooterLinks() {
+  const { t } = useTranslation(["shell"]);
+  const links = [
+    {
+      id: "discord",
+      // Brand marks fill their whole box, so they draw a size smaller than lucide's to match.
+      icon: <DiscordBrandIcon className="size-3.5" />,
+      label: t(($) => $.shell.community.joinDiscord),
+      url: DISCORD_URL,
+    },
+    {
+      id: "x",
+      icon: <XBrandIcon className="size-3.5" />,
+      label: t(($) => $.shell.community.followOnX),
+      url: X_URL,
+    },
+    {
+      id: "github",
+      icon: <Github className="size-4" />,
+      label: t(($) => $.shell.about.star),
+      url: REPO_URL,
+    },
+    {
+      id: "docs",
+      icon: <CircleHelp className="size-4" />,
+      label: t(($) => $.shell.settings.help.resources.documentation),
+      url: DOCS_URL,
+    },
+  ];
+  return (
+    <div data-testid="settings-footer-links" className="flex items-center gap-1">
+      {links.map((link) => (
+        <Tooltip key={link.id} label={link.label} side="top">
+          <button
+            type="button"
+            data-testid={`settings-footer-${link.id}`}
+            aria-label={link.label}
+            onClick={() => void openExternal(link.url)}
+            className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground"
+          >
+            {link.icon}
+          </button>
+        </Tooltip>
+      ))}
+    </div>
+  );
+}
 
 function HelpSection() {
   const { t } = useTranslation(["common", "shell"]);
@@ -1656,8 +1683,6 @@ function HelpSection() {
         ))}
       </div>
 
-      <CiteOleaflyCard version={version} />
-
       {/* Author row removed for now; will re-add later.
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
@@ -1734,6 +1759,8 @@ function HelpSection() {
           </button>
         ))}
       </div>
+
+      <CiteOleaflyCard version={version} />
       {changelogOpen ? (
         <Suspense fallback={null}>
           <ChangelogDialog open onClose={() => setChangelogOpen(false)} />

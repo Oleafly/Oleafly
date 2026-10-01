@@ -207,7 +207,19 @@ vi.mock("react-resizable-panels", async () => {
   return {
     Group,
     Panel,
-    Separator: ({ children }: { children?: React.ReactNode }) => children ?? null,
+    Separator: ({
+      children,
+      className,
+      id,
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+      id?: string;
+    }) => (
+      <div id={id} className={className}>
+        {children}
+      </div>
+    ),
     useDefaultLayout: () => ({ defaultLayout: undefined, onLayoutChanged: () => {} }),
   };
 });
@@ -564,6 +576,51 @@ describe("project dock layout", () => {
       terminal?.expand?.();
     });
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
+  });
+
+  it("draws the terminal divider as a 1px rule that only tints with opaque colour", async () => {
+    const { act } = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const { useSettingsStore } = await import("@/store/settings");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+    root = createRoot(host);
+
+    await act(async () => {
+      root?.render(<App />);
+    });
+    // Opening a project restores its saved docks, so open the terminal after mount.
+    await act(async () => {
+      useSettingsStore.setState({ terminalOpen: true });
+    });
+
+    const handle = document.getElementById("v-terminal");
+    if (!handle) throw new Error("terminal divider is missing");
+    const classes = Array.from(handle.classList);
+    expect(classes).toEqual(expect.arrayContaining(["h-px", "border-t", "bg-background"]));
+    // A translucent fill on the handle itself shows the window vibrancy through.
+    expect(classes.filter((name) => /(^|:)bg-[^[]*\/\d+$/.test(name))).toEqual([]);
+    expect(classes.filter((name) => /(^|:)(outline|ring)(-|$)/.test(name))).toEqual([]);
+
+    const tint = handle.querySelector("span");
+    expect(Array.from(tint?.classList ?? [])).toEqual(
+      expect.arrayContaining([
+        "opacity-0",
+        "bg-[color-mix(in_srgb,var(--ring)_40%,var(--background))]",
+        "group-hover:opacity-100",
+        "group-data-[separator=active]:opacity-100",
+      ]),
+    );
+
+    await act(async () => {
+      useSettingsStore.setState({ terminalOpen: false });
+    });
+    const closed = document.getElementById("v-terminal");
+    expect(Array.from(closed?.classList ?? [])).toEqual(
+      expect.arrayContaining(["invisible", "h-0", "border-t-0"]),
+    );
+    expect(closed?.classList.contains("border-t")).toBe(false);
   });
 
   it("toggles project docks from their registered keyboard shortcuts", async () => {

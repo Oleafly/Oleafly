@@ -169,9 +169,6 @@
       "online": "Onlinetilstand (tillad hentning af pakker)"
     },
     "openTool": "Åbn {{name}}",
-    "personalDetails": {
-      "keywords": "skærmbilledtilstand, skærmbillede, privatliv, sløring, personlige oplysninger, stier, kontonavn"
-    },
     "recompile": {
       "label": "Kompiler igen"
     },
@@ -234,6 +231,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "{{online}} medlemmer online på Discord",
+    "followOnX": "Følg os på X",
     "joinDiscord": "Kom med på Discord"
   },
   "compile": {
@@ -517,10 +515,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Skjul personlige oplysninger",
-    "show": "Vis personlige oplysninger"
-  },
   "projectSearch": {
     "hint": "Søg på tværs af projektets filer.",
     "noResults": "Ingen resultater.",
@@ -762,7 +756,7 @@
       "shortcuts": "Tastaturgenveje"
     },
     "search": {
-      "empty": "Ingen indstillinger matcher.",
+      "empty": "Ingen indstillinger matcher",
       "keywords": {
         "ai": "assistent, chat, modeller, udbydere, API-nøgler, agenter, prompter, budget, MCP-servere",
         "appearance": "tema, udseende, mørk tilstand, lys tilstand, farve, farver, skrifttyper, tekststørrelse, zoom, layout",
@@ -897,6 +891,15 @@
     "stagedChangeCount_other": "{{count}} ændringer i staging",
     "stash": "Stash ændringerne",
     "stashNeedsAttention": "Løs konflikterne fra stashen",
+    "status": {
+      "modified": "Ændret",
+      "added": "Tilføjet",
+      "deleted": "Slettet",
+      "renamed": "Omdøbt",
+      "untracked": "Ikke sporet",
+      "conflict": "Konflikt",
+      "containsChanges": "Indeholder ændringer"
+    },
     "sync": "Synkroniser",
     "title": "Versionsstyring",
     "titleRequired": "Der skal være en titel på din commit.",
@@ -952,8 +955,8 @@
     "exportMarkdown": "Eksporter som Markdown (.md)",
     "exportPdf": "Eksporter som PDF",
     "exportPdfVector": "Eksporter som PDF (vektorbillede)",
-    "exportPngRaster": "Eksporter som PNG (rasterbillede)",
-    "exportPagePng": "Eksporter siden som PNG (rasterbillede)",
+    "exportPngRaster": "Eksporter som PNG",
+    "exportPagePng": "Eksporter siden som PNG",
     "exportAs": "Eksporter som {{format}}",
     "exportPptx": "Eksporter som PowerPoint (.pptx)",
     "exportSourceZip": "Eksporter kilden (.zip)",

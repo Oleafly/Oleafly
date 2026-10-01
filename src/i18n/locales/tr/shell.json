@@ -169,9 +169,6 @@
       "online": "Çevrimiçi kip (paket indirmeye izin ver)"
     },
     "openTool": "{{name}} aracını aç",
-    "personalDetails": {
-      "keywords": "ekran görüntüsü modu, gizlilik, bulanıklaştır, yollar, hesap adı"
-    },
     "recompile": {
       "label": "Yeniden derle"
     },
@@ -234,6 +231,7 @@
   "community": {
     "discordOnline": "{{online}} çevrimiçi",
     "discordOnlineAria": "Discord'da {{online}} üye çevrimiçi",
+    "followOnX": "X'te bizi takip edin",
     "joinDiscord": "Discord'a katılın"
   },
   "compile": {
@@ -517,10 +515,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Kişisel bilgileri gizle",
-    "show": "Kişisel bilgileri göster"
-  },
   "projectSearch": {
     "hint": "Bu projenin dosyalarında arayın.",
     "noResults": "Sonuç yok.",
@@ -762,7 +756,7 @@
       "shortcuts": "Klavye Kısayolları"
     },
     "search": {
-      "empty": "Eşleşen ayar yok.",
+      "empty": "Eşleşen ayar yok",
       "keywords": {
         "ai": "asistan, sohbet, modeller, sağlayıcılar, API anahtarları, ajanlar, istemler, bütçe, MCP sunucuları",
         "appearance": "tema, koyu kip, karanlık mod, açık kip, aydınlık mod, renk, yazı tipleri, metin boyutu, yakınlaştırma, düzen",
@@ -897,6 +891,15 @@
     "stagedChangeCount_other": "{{count}} hazırlanan değişiklik",
     "stash": "Değişiklikleri zulala",
     "stashNeedsAttention": "Zula çakışmalarını çözün",
+    "status": {
+      "modified": "Değiştirildi",
+      "added": "Eklendi",
+      "deleted": "Silindi",
+      "renamed": "Yeniden adlandırıldı",
+      "untracked": "İzlenmiyor",
+      "conflict": "Çakışma",
+      "containsChanges": "Değişiklik içeriyor"
+    },
     "sync": "Eşitle",
     "title": "Kaynak Denetimi",
     "titleRequired": "İşleme başlığı zorunludur.",
@@ -952,8 +955,8 @@
     "exportMarkdown": "Markdown olarak dışa aktar (.md)",
     "exportPdf": "PDF olarak dışa aktar",
     "exportPdfVector": "PDF olarak dışa aktar (vektör görsel)",
-    "exportPngRaster": "PNG olarak dışa aktar (raster görsel)",
-    "exportPagePng": "Sayfayı PNG olarak dışa aktar (raster görsel)",
+    "exportPngRaster": "PNG olarak dışa aktar",
+    "exportPagePng": "Sayfayı PNG olarak dışa aktar",
     "exportAs": "{{format}} olarak dışa aktar",
     "exportPptx": "PowerPoint olarak dışa aktar (.pptx)",
     "exportSourceZip": "Kaynağı dışa aktar (.zip)",

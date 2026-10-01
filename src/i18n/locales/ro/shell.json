@@ -171,9 +171,6 @@
       "online": "Mod online (permite descărcarea pachetelor)"
     },
     "openTool": "Deschide {{name}}",
-    "personalDetails": {
-      "keywords": "mod captură de ecran, captură de ecran, confidențialitate, estompare, căi, nume de cont"
-    },
     "recompile": {
       "label": "Recompilează"
     },
@@ -236,6 +233,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "Online acum pe Discord: {{online}}",
+    "followOnX": "Urmărește-ne pe X",
     "joinDiscord": "Intră pe Discord"
   },
   "compile": {
@@ -520,10 +518,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Ascunde datele personale",
-    "show": "Arată datele personale"
-  },
   "projectSearch": {
     "hint": "Caută în fișierele acestui proiect.",
     "noResults": "Niciun rezultat.",
@@ -779,7 +773,7 @@
       "shortcuts": "Scurtături de tastatură"
     },
     "search": {
-      "empty": "Nicio setare nu se potrivește.",
+      "empty": "Nicio setare nu se potrivește",
       "keywords": {
         "ai": "asistent, chat, conversație, modele, furnizori, chei API, agenți, prompturi, buget, servere MCP",
         "appearance": "temă, mod întunecat, mod luminos, culoare, fonturi, mărimea textului, zoom, aspect, dispunere",
@@ -917,6 +911,15 @@
     "stagedChangeCount_other": "{{count}} de modificări pregătite",
     "stash": "Stivuiește modificările",
     "stashNeedsAttention": "Rezolvă conflictele de stivuire",
+    "status": {
+      "modified": "Modificat",
+      "added": "Adăugat",
+      "deleted": "Șters",
+      "renamed": "Redenumit",
+      "untracked": "Neurmărit",
+      "conflict": "Conflict",
+      "containsChanges": "Conține modificări"
+    },
     "sync": "Sincronizează",
     "title": "Control al versiunilor",
     "titleRequired": "Titlul comiterii este obligatoriu.",
@@ -973,8 +976,8 @@
     "exportMarkdown": "Exportă ca Markdown (.md)",
     "exportPdf": "Exportă ca PDF",
     "exportPdfVector": "Exportă ca PDF (imagine vectorială)",
-    "exportPngRaster": "Exportă ca PNG (imagine raster)",
-    "exportPagePng": "Exportă pagina ca PNG (imagine raster)",
+    "exportPngRaster": "Exportă ca PNG",
+    "exportPagePng": "Exportă pagina ca PNG",
     "exportAs": "Exportă ca {{format}}",
     "exportPptx": "Exportă ca PowerPoint (.pptx)",
     "exportSourceZip": "Exportă sursa (.zip)",

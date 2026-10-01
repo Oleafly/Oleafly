@@ -25,8 +25,6 @@ import {
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
-import { PersonalDetailsToggle } from "@/components/layout/PersonalDetailsToggle";
-import { useHidePersonalDetails } from "@/components/ui/private";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -100,7 +98,6 @@ export function EquationToolView() {
   const [assetName, setAssetName] = useState("equation.png");
   const [savingProject, setSavingProject] = useState(false);
   const latexCopy = useCopyStatus("equation copy latex");
-  const personalDetailsHidden = useHidePersonalDetails();
 
   if (activePage !== "equation") return null;
 
@@ -280,10 +277,6 @@ export function EquationToolView() {
             : t(($) => $.researchTools.equation.statusRendered)}
         </div>
         <ThemeMenu testId="equation-theme-menu" />
-        <PersonalDetailsToggle
-          testId="equation-personal-details-toggle"
-          className={cn(personalDetailsHidden && "bg-primary/10 text-foreground hover:bg-primary/10")}
-        />
         <Button
           variant="outline"
           size="sm"

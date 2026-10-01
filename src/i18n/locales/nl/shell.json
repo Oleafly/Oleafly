@@ -169,9 +169,6 @@
       "online": "Onlinemodus (pakketten mogen worden opgehaald)"
     },
     "openTool": "{{name}} openen",
-    "personalDetails": {
-      "keywords": "screenshotmodus, schermafbeelding, privacy, vervagen, paden, accountnaam"
-    },
     "recompile": {
       "label": "Opnieuw compileren"
     },
@@ -234,6 +231,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "{{online}} leden online op Discord",
+    "followOnX": "Volg ons op X",
     "joinDiscord": "Doe mee op Discord"
   },
   "compile": {
@@ -517,10 +515,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Persoonlijke gegevens verbergen",
-    "show": "Persoonlijke gegevens tonen"
-  },
   "projectSearch": {
     "hint": "Doorzoek de bestanden van dit project.",
     "noResults": "Geen resultaten.",
@@ -762,7 +756,7 @@
       "shortcuts": "Sneltoetsen"
     },
     "search": {
-      "empty": "Geen instellingen gevonden.",
+      "empty": "Geen instellingen gevonden",
       "keywords": {
         "ai": "assistent, chat, modellen, providers, aanbieders, API-sleutels, agents, prompts, budget, MCP-servers",
         "appearance": "thema, donkere modus, lichte modus, kleur, lettertypen, lettertype, tekstgrootte, zoomen, indeling, lay-out",
@@ -897,6 +891,15 @@
     "stagedChangeCount_other": "{{count}} klaargezette wijzigingen",
     "stash": "Wijzigingen stashen",
     "stashNeedsAttention": "Los stashconflicten op",
+    "status": {
+      "modified": "Gewijzigd",
+      "added": "Toegevoegd",
+      "deleted": "Verwijderd",
+      "renamed": "Hernoemd",
+      "untracked": "Niet bijgehouden",
+      "conflict": "Conflict",
+      "containsChanges": "Bevat wijzigingen"
+    },
     "sync": "Sync",
     "title": "Versiebeheer",
     "titleRequired": "Een committitel is verplicht.",
@@ -952,8 +955,8 @@
     "exportMarkdown": "Exporteren als Markdown (.md)",
     "exportPdf": "Exporteren als PDF",
     "exportPdfVector": "Exporteren als PDF (vectorafbeelding)",
-    "exportPngRaster": "Exporteren als PNG (rasterafbeelding)",
-    "exportPagePng": "Pagina exporteren als PNG (rasterafbeelding)",
+    "exportPngRaster": "Exporteren als PNG",
+    "exportPagePng": "Pagina exporteren als PNG",
     "exportAs": "Exporteren als {{format}}",
     "exportPptx": "Exporteren als PowerPoint (.pptx)",
     "exportSourceZip": "Broncode exporteren (.zip)",

@@ -5,7 +5,7 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Input } from "@/components/ui/input";
-import { PrivatePath, PrivateText } from "@/components/ui/private";
+import { SettingsPath, SettingsPathText } from "@/components/settings/SettingsPath";
 import { fileName, isPowerShellScript } from "@/components/ai/acp/agent-copy";
 import { i18n } from "@/i18n";
 import {
@@ -345,7 +345,7 @@ export function AgentProgramField({
       <div className="min-w-0">
         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className={path ? "mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground" : "mt-1 text-xs leading-relaxed text-muted-foreground"}>
-          {path ? <PrivatePath path={path} /> : valueText}
+          {path ? <SettingsPath path={path} /> : valueText}
         </p>
         {source && <p className="text-[11px] leading-relaxed text-muted-foreground">{source}</p>}
       </div>
@@ -364,7 +364,7 @@ export function AgentProgramField({
           <Input
             id={inputId}
             data-testid={`acp-agent-program-input-${id}`}
-            data-private-field={typed ? "" : undefined}
+            data-settings-path-field={typed ? "" : undefined}
             className="h-8 font-mono text-xs focus-visible:border-ring"
             value={typed}
             maxLength={4096}
@@ -441,7 +441,7 @@ export function AgentProgramField({
             {rejected.map((candidate) => (
               <li key={`${candidate.path}:${candidate.reason}`} className="min-w-0 text-[11px] leading-relaxed">
                 <span className="block break-all font-mono text-foreground">
-                  <PrivatePath path={candidate.path} />
+                  <SettingsPath path={candidate.path} />
                 </span>
                 <span className="block text-muted-foreground">{skippedReasonLabel(candidate.reason)}</span>
               </li>
@@ -484,7 +484,7 @@ function ProgramResult({
   if (phase.kind === "error") {
     return (
       <p role="alert" data-testid={testId} className="whitespace-pre-wrap break-words rounded-md border border-destructive/40 p-2 text-xs text-destructive">
-        <PrivateText text={displayText(phase.message)} />
+        <SettingsPathText text={displayText(phase.message)} />
       </p>
     );
   }
@@ -497,7 +497,7 @@ function ProgramResult({
         <output aria-live="polite" className="flex items-start gap-1.5 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400">
           <Check aria-hidden className="mt-0.5 size-3.5 shrink-0" />
           <span>
-            <PrivateText text={displayText(message)} />
+            <SettingsPathText text={displayText(message)} />
           </span>
         </output>
         {agent.signInHint && (
@@ -513,16 +513,16 @@ function ProgramResult({
   return (
     <div data-testid={testId} className="space-y-2 rounded-md border border-destructive/40 p-2">
       <p role="alert" className="break-words text-xs leading-relaxed text-destructive">
-        <PrivateText text={displayText(message)} />
+        <SettingsPathText text={displayText(message)} />
       </p>
       {showDetail && (
         <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-2 font-mono text-[11px] text-muted-foreground">
-          <PrivateText text={displayText(check.detail ?? "")} />
+          <SettingsPathText text={displayText(check.detail ?? "")} />
         </pre>
       )}
       {code === "bridge_missing" && !onInstallBridge && agent.reason && (
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          <PrivateText text={displayText(agent.reason)} />
+          <SettingsPathText text={displayText(agent.reason)} />
         </p>
       )}
       <div className="flex flex-wrap gap-2">

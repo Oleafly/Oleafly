@@ -375,7 +375,9 @@
       "addFolder": "Legg til mappe",
       "addFolderDialogTitle": "Legg til ferdighetsmappe",
       "catalog": {
+        "allDomains": "Alle",
         "description": "Ekstra ferdigheter for bestemte fagområder. Installer én for å legge den til i listen over.",
+        "domainFilterLabel": "Filtrer fagbiblioteket etter fagområde",
         "empty": "Katalogen har ingen ekstra ferdigheter å installere.",
         "install": "Installer",
         "loading": "Laster katalogen...",
@@ -406,8 +408,9 @@
         "uninstall": "Avinstaller",
         "update": "Oppdater"
       },
+      "changedForProject": "Endret for dette prosjektet",
       "createSkill": "Lag ferdighet",
-      "description": "Assistenten laster hele instruksjonen til en ferdighet først når den selv mener den trenger den, eller med en gang hvis du skriver /ferdighets-id i samtalen. En ferdighet du slår på her, er på i alle prosjekter til et prosjekt overstyrer den.",
+      "description": "Assistenten laster hele instruksjonen til en ferdighet bare når den trenger den, eller med en gang hvis du skriver /ferdighets-id i samtalen. En ferdighet du slår på her, er på i alle prosjekter. Bytt til Dette prosjektet for å endre den bare i det åpne prosjektet.",
       "editAria": "Rediger {{name}}",
       "editor": {
         "createDescription": "Lag et SKILL.md-utkast i ferdighetsmappen din i Oleafly.",
@@ -424,14 +427,12 @@
         "submitCreate": "Lag"
       },
       "empty": "Fant ingen ferdigheter. Legg til en mappe, eller lag en.",
-      "enableAria": "Slå på {{name}}",
       "fileCount_one": "{{count}} fil",
       "fileCount_other": "{{count}} filer",
       "groups": {
         "shelf": "Fagbibliotek",
         "user": "Ferdighetene dine"
       },
-      "inheritsDevice": "Arver enhetsinnstillingen",
       "invalidBadge": "Ugyldig",
       "loadFailed": "Kunne ikke laste ferdighetene. {{message}}",
       "loading": "Laster ferdigheter...",
@@ -444,8 +445,6 @@
         "updated": "Oppdaterte {{name}}."
       },
       "missingDescription": "Denne ferdigheten trenger en beskrivelse.",
-      "offForProject": "Av for dette prosjektet",
-      "onForProject": "På for dette prosjektet",
       "phases": {
         "authoring": "Skriving",
         "communication": "Formidling",
@@ -459,6 +458,18 @@
       "removeDialog": {
         "description": "Fjerne \"{{name}}\" og mappen den ligger i, fra Oleafly? Dette kan ikke angres.",
         "title": "Fjern ferdighet"
+      },
+      "resetProject": "Tilbakestill",
+      "resetProjectAria": "Tilbakestill {{name}} til innstillingen for alle prosjekter",
+      "scope": {
+        "device": "Alle prosjekter",
+        "label": "Hvor innstillingene gjelder",
+        "project": "Dette prosjektet"
+      },
+      "search": {
+        "ariaLabel": "Søk i ferdigheter og i fagbiblioteket",
+        "empty": "Ingen ferdigheter samsvarer",
+        "placeholder": "Søk i ferdigheter"
       },
       "share": {
         "description": "Lenk ferdighetene dine inn i mappene som andre kodeagenter på denne maskinen allerede leser, slik at du skriver en ferdighet én gang og alle agentene kan bruke den.",
@@ -500,9 +511,7 @@
         "description": "Erstatte \"{{name}}\" med den nyeste innebygde versjonen? Lokale endringer i filene går tapt.",
         "title": "Oppdater ferdighet"
       },
-      "useDeviceSetting": "Bruk enhetsinnstillingen",
-      "useDeviceSettingAria": "Bruk enhetsinnstillingen for {{name}}",
-      "useInProject": "Bruk i dette prosjektet",
+      "useInAllProjectsAria": "Bruk {{name}} i alle prosjekter",
       "useInProjectAria": "Bruk {{name}} i dette prosjektet",
       "validateAria": "Valider {{name}}"
     }

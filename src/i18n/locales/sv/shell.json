@@ -169,9 +169,6 @@
       "online": "Onlineläge (tillåt hämtning av paket)"
     },
     "openTool": "Öppna {{name}}",
-    "personalDetails": {
-      "keywords": "skärmbildsläge, skärmdump, integritet, sekretess, oskärpa, sökvägar, kontonamn"
-    },
     "recompile": {
       "label": "Kompilera om"
     },
@@ -234,6 +231,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "{{online}} medlemmar online på Discord",
+    "followOnX": "Följ oss på X",
     "joinDiscord": "Gå med i Discord"
   },
   "compile": {
@@ -517,10 +515,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Dölj personliga uppgifter",
-    "show": "Visa personliga uppgifter"
-  },
   "projectSearch": {
     "hint": "Sök i det här projektets filer.",
     "noResults": "Inga resultat.",
@@ -762,7 +756,7 @@
       "shortcuts": "Kortkommandon"
     },
     "search": {
-      "empty": "Inga inställningar matchar.",
+      "empty": "Inga inställningar matchar",
       "keywords": {
         "ai": "assistent, chatt, modeller, leverantörer, API-nycklar, agenter, prompter, budget, MCP-servrar",
         "appearance": "tema, mörkt läge, ljust läge, färg, typsnitt, textstorlek, zoom, layout",
@@ -897,6 +891,15 @@
     "stagedChangeCount_other": "{{count}} köade ändringar",
     "stash": "Stasha ändringarna",
     "stashNeedsAttention": "Lös konflikter i stashen",
+    "status": {
+      "modified": "Ändrad",
+      "added": "Tillagd",
+      "deleted": "Borttagen",
+      "renamed": "Omdöpt",
+      "untracked": "Ospårad",
+      "conflict": "Konflikt",
+      "containsChanges": "Innehåller ändringar"
+    },
     "sync": "Synka",
     "title": "Versionshantering",
     "titleRequired": "En rubrik för incheckningen krävs.",
@@ -952,8 +955,8 @@
     "exportMarkdown": "Exportera som Markdown (.md)",
     "exportPdf": "Exportera som PDF",
     "exportPdfVector": "Exportera som PDF (vektorbild)",
-    "exportPngRaster": "Exportera som PNG (punktuppbyggd bild)",
-    "exportPagePng": "Exportera sidan som PNG (punktuppbyggd bild)",
+    "exportPngRaster": "Exportera som PNG",
+    "exportPagePng": "Exportera sidan som PNG",
     "exportAs": "Exportera som {{format}}",
     "exportPptx": "Exportera som PowerPoint (.pptx)",
     "exportSourceZip": "Exportera källkoden (.zip)",

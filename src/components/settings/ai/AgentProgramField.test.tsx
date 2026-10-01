@@ -80,6 +80,8 @@ describe("program row", () => {
     );
     const row = found.getByTestId("acp-agent-program-pi");
     expect(row).toHaveTextContent("/usr/local/bin/pi");
+    // Settings keeps program paths blurred until hovered or focused.
+    expect(within(row).getByText("/usr/local/bin/pi")).toHaveAttribute("data-settings-path");
     expect(row).toHaveTextContent(copy.source.auto);
     expect(within(row).getByRole("button", { name: copy.choose })).toBeInTheDocument();
     expect(within(row).getByRole("button", { name: copy.test })).toBeInTheDocument();
@@ -188,14 +190,18 @@ describe("program row", () => {
     const ui = render(<AgentProgramField agent={pi()} placement="main" onStatus={vi.fn()} />);
     const input = ui.getByRole("textbox", { name: fill(copy.inputLabel, { name: "Pi" }) });
     fillInput(input, '  "/opt/pi/bin/pi"  ');
+    expect(input).toHaveAttribute("data-settings-path-field");
     const form = input.closest("form");
     if (!form) throw new Error("The typed location is not in a form.");
     fireEvent.submit(form);
     await waitFor(() => expect(acpCheckAgent).toHaveBeenCalledExactlyOnceWith("pi", "/opt/pi/bin/pi"));
-    expect(await ui.findByRole("alert")).toHaveTextContent("No file at /opt/pi/bin/pi.");
+    const alert = await ui.findByRole("alert");
+    expect(alert).toHaveTextContent("No file at /opt/pi/bin/pi.");
+    expect(within(alert).getByText("/opt/pi/bin/pi")).toHaveAttribute("data-settings-path");
     expect(input).toHaveValue('  "/opt/pi/bin/pi"  ');
 
     fillInput(input, "");
+    expect(input).not.toHaveAttribute("data-settings-path-field");
     fireEvent.click(ui.getByRole("button", { name: copy.test }));
     await waitFor(() => expect(acpCheckAgent).toHaveBeenLastCalledWith("pi", null));
   });

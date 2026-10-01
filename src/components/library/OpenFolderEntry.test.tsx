@@ -72,6 +72,32 @@ describe("LibraryStartChoices", () => {
     expect(container.innerHTML).not.toMatch(/(^|[\s"])(focus-visible:)?(ring|outline)-/);
   });
 
+  it("tops each choice with its illustration, like the new-work chooser", () => {
+    render(<LibraryStartChoices onNewProject={vi.fn()} />);
+    for (const [testId, src] of [
+      ["create-first-project", "/project-kind/new-project-light.webp"],
+      ["open-first-folder", "/project-kind/open-folder-light.webp"],
+    ]) {
+      const image = screen.getByTestId(testId).querySelector("img");
+      expect(image).toHaveAttribute("src", src);
+      expect(image).toHaveAttribute("alt", "");
+      expect(image).toHaveAttribute("width", "720");
+      expect(image).toHaveAttribute("height", "406");
+    }
+    expect(screen.getByTestId("create-first-project")).toHaveAttribute("data-tour", "new-project");
+  });
+
+  it("shows a spinner on the folder choice and holds it while a folder is opening", () => {
+    useOpenFolderFlowStore.setState({ opening: true });
+    render(<LibraryStartChoices onNewProject={vi.fn()} />);
+    const open = screen.getByTestId("open-first-folder");
+    expect(open).toBeDisabled();
+    expect(open).toHaveAttribute("aria-busy", "true");
+    expect(open.querySelector(".animate-spin")).not.toBeNull();
+    expect(screen.getByTestId("create-first-project")).toBeEnabled();
+    expect(screen.getByTestId("create-first-project").querySelector(".animate-spin")).toBeNull();
+  });
+
   it("explains a refusal right under the choices", () => {
     useOpenFolderFlowStore.setState({
       refusal: { title: null, message: "Documents holds too much.", hint: null, browse: null },

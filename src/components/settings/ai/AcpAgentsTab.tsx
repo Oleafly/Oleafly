@@ -31,7 +31,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ReadinessBadge } from "@/components/ai/acp/AgentReadiness";
 import { bridgeSourceLabel, readinessDetail } from "@/components/ai/acp/agent-copy";
-import { PrivatePath, PrivateText } from "@/components/ui/private";
+import { SettingsPath, SettingsPathText } from "@/components/settings/SettingsPath";
 import { useDisplayText } from "@/lib/display-path";
 import {
   acpError,
@@ -340,7 +340,7 @@ function AgentCard({
               <h4 className="text-sm font-medium">{agent.definition.name}</h4>
             </span>
             <span className="mt-0.5 block break-words text-xs leading-relaxed text-muted-foreground">
-              <PrivateText text={readinessDetail(agent, readiness)} focusable={false} />
+              <SettingsPathText text={readinessDetail(agent, readiness)} focusable={false} />
             </span>
           </span>
         </button>
@@ -376,7 +376,7 @@ function AgentCard({
                     </dt>
                     <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
                       {cli.path
-                        ? <PrivatePath path={cli.path} />
+                        ? <SettingsPath path={cli.path} />
                         : t(($) => $.settings.ai.agents.program.notFound)}
                     </dd>
                   </div>
@@ -422,7 +422,7 @@ function AgentCard({
                 </dt>
                 <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
                   {agent.executable
-                    ? <PrivatePath path={agent.executable} />
+                    ? <SettingsPath path={agent.executable} />
                     : t(($) => $.settings.ai.agents.bridgeUnresolved)}
                 </dd>
               </div>
@@ -471,7 +471,7 @@ function AgentCard({
                   id={nextStep === installBlocked ? installReasonId : undefined}
                   className="text-xs leading-relaxed text-foreground/85"
                 >
-                  <PrivateText text={displayText(nextStep)} />
+                  <SettingsPathText text={displayText(nextStep)} />
                 </p>
               )}
               <div className="flex flex-wrap gap-2">
@@ -510,7 +510,7 @@ function AgentCard({
               </div>
               {installBlocked && installBlocked !== nextStep && (
                 <p id={installReasonId} className="text-[11px] leading-relaxed text-muted-foreground">
-                  <PrivateText text={displayText(installBlocked)} />
+                  <SettingsPathText text={displayText(installBlocked)} />
                 </p>
               )}
               {agent.taskUnavailableReason && (

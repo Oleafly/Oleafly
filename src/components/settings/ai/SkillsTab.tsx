@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Search,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,6 @@ import {
   setSkillEnabled,
   setSkillProjectEnabled,
   SKILLS_QUERY_KEY,
-  skillProjectOverride,
   skillsQueryKey,
   updateBuiltinSkill,
   updateSkill,
@@ -52,11 +52,15 @@ import {
   type SkillToggleScope,
   type UpdateSkillInput,
 } from "@/lib/skills";
-import { groupSkills } from "@/lib/skill-groups";
-import { SkillCatalogList } from "./SkillCatalogList";
+import { groupSkills, matchesSkillSearch } from "@/lib/skill-groups";
+import { cn } from "@/lib/utils";
+import { SkillCatalogList, SkillsNoMatch } from "./SkillCatalogList";
 import { SkillShareCard } from "./SkillShareCard";
 
 type EditorTarget = "create" | SkillEntry | null;
+
+/** Which setting the skill toggles show and change while a project is open. */
+type SkillScope = "device" | "project";
 
 interface EditorForm {
   name: string;
@@ -262,6 +266,10 @@ export function SkillsTab() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [scope, setScope] = useState<SkillScope>("device");
+  const [search, setSearch] = useState("");
+  const [shelfMatches, setShelfMatches] = useState<number | null>(null);
+  const projectScope = projectId !== null && scope === "project";
 
   const cacheRecord = (record: SkillEntry) => {
     queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(projectId), (current) => {
@@ -318,6 +326,16 @@ export function SkillsTab() {
       () => setSkillProjectEnabled(projectId, skillId, enabled),
       "project",
     );
+  };
+
+  // In This project, a choice that matches the device setting clears the
+  // override instead of pinning it, so the skill keeps following the device.
+  const toggleSkill = (skill: SkillEntry, enabled: boolean) => {
+    if (projectScope) {
+      applyProjectScope(skill.id, enabled === skill.enabled ? null : enabled);
+      return;
+    }
+    void runRecordMutation(skill.id, () => setSkillEnabled(skill.id, enabled), "device");
   };
 
   const addFolder = async () => {
@@ -425,6 +443,33 @@ export function SkillsTab() {
     user: t(($) => $.settings.ai.skills.groups.user),
     shelf: t(($) => $.settings.ai.skills.groups.shelf),
   };
+  const searching = search.trim().length > 0;
+  const visibleGroups = searching
+    ? groups
+        .map((group) => ({
+          ...group,
+          skills: group.skills.filter((skill) =>
+            matchesSkillSearch(search, [
+              skill.name,
+              skill.id,
+              skill.description,
+              skill.author,
+              skill.phase,
+              skill.phase ? phaseLabels[skill.phase] : null,
+              groupLabels[group.key] ?? group.label,
+              sourceBadge(skill.source),
+            ]),
+          ),
+        }))
+        .filter((group) => group.skills.length > 0)
+    : groups;
+  const installedMatches = visibleGroups.reduce(
+    (count, group) => count + group.skills.length,
+    0,
+  );
+  // One "No skills match" for the whole tab when neither list has a hit.
+  const showNoMatch =
+    searching && skills.length > 0 && installedMatches === 0 && shelfMatches === 0;
 
   return (
     <div className="space-y-3">
@@ -453,6 +498,51 @@ export function SkillsTab() {
 
       <SkillShareCard />
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-48 flex-1">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            data-testid="skills-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            aria-label={t(($) => $.settings.ai.skills.search.ariaLabel)}
+            placeholder={t(($) => $.settings.ai.skills.search.placeholder)}
+            className="h-8 pl-8 text-xs"
+          />
+        </div>
+        {projectId ? (
+          <fieldset
+            aria-label={t(($) => $.settings.ai.skills.scope.label)}
+            data-testid="skills-scope"
+            className="m-0 flex min-w-0 shrink-0 items-center rounded-md border-0 bg-muted p-0.5"
+          >
+            {(["device", "project"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={scope === value}
+                data-testid={`skills-scope-${value}`}
+                onClick={() => setScope(value)}
+                className={cn(
+                  "rounded border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:border-primary/50",
+                  scope === value
+                    ? "border-border bg-background text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground",
+                )}
+              >
+                {value === "device"
+                  ? t(($) => $.settings.ai.skills.scope.device)
+                  : t(($) => $.settings.ai.skills.scope.project)}
+              </button>
+            ))}
+          </fieldset>
+        ) : null}
+      </div>
+
       {query.isPending ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-4 text-xs text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" />
@@ -471,9 +561,10 @@ export function SkillsTab() {
         <div className="rounded-md border px-3 py-4 text-xs text-muted-foreground">
           {t(($) => $.settings.ai.skills.empty)}
         </div>
-      ) : (
+      ) : showNoMatch || visibleGroups.length > 0 ? (
         <div className="space-y-4">
-          {groups.map((group) => (
+          {showNoMatch ? <SkillsNoMatch /> : null}
+          {visibleGroups.map((group) => (
             <div key={group.key} data-testid={`skills-phase-${group.key}`} className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {groupLabels[group.key] ?? group.label}
@@ -491,8 +582,8 @@ export function SkillsTab() {
                     skill.phase ? phaseLabels[skill.phase] ?? skill.phase : null,
                   ].filter((value): value is string => Boolean(value));
                   const isUserSkill = skill.source === "user";
-                  const projectOverride = skillProjectOverride(skill);
                   const projectAvailable = isSkillAvailable(skill);
+                  const changedForProject = projectScope && projectAvailable !== skill.enabled;
                   const renderSkillActions = () => (
                     <div className="mt-2 flex items-center justify-end gap-1">
                       {skill.updateAvailable ? (
@@ -568,54 +659,6 @@ export function SkillsTab() {
                     </div>
                   );
 
-                  const renderSkillProjectScope = () => (
-                    projectId ? (
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-muted-foreground">
-                            {t(($) => $.settings.ai.skills.useInProject)}
-                          </span>
-                          <Switch
-                            data-testid={`skill-project-toggle-${skill.id}`}
-                            checked={projectAvailable}
-                            disabled={invalid || busy}
-                            aria-label={t(($) => $.settings.ai.skills.useInProjectAria, {
-                              name: skill.name,
-                            })}
-                            onCheckedChange={(enabled) =>
-                              applyProjectScope(skill.id, enabled)
-                            }
-                          />
-                        </div>
-                        {projectOverride === null ? (
-                          <span className="text-[10px] text-muted-foreground/80">
-                            {t(($) => $.settings.ai.skills.inheritsDevice)}
-                          </span>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-muted-foreground/80">
-                              {projectOverride
-                                ? t(($) => $.settings.ai.skills.onForProject)
-                                : t(($) => $.settings.ai.skills.offForProject)}
-                            </span>
-                            <button
-                              type="button"
-                              data-testid={`skill-project-reset-${skill.id}`}
-                              disabled={busy}
-                              aria-label={t(($) => $.settings.ai.skills.useDeviceSettingAria, {
-                                name: skill.name,
-                              })}
-                              onClick={() => applyProjectScope(skill.id, null)}
-                              className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
-                            >
-                              {t(($) => $.settings.ai.skills.useDeviceSetting)}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : null
-                  );
-
                   const renderSkillFiles = () => (
                     skill.files.length > 0 ? (
                       <div className="mt-1.5">
@@ -680,22 +723,44 @@ export function SkillsTab() {
                           </p>
                           {renderSkillFiles()}
                         </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <div className="flex shrink-0 flex-col items-end gap-1">
                           <Switch
-                            checked={skill.enabled}
+                            data-testid={`skill-toggle-${skill.id}`}
+                            checked={projectScope ? projectAvailable : skill.enabled}
                             disabled={invalid || busy}
-                            aria-label={t(($) => $.settings.ai.skills.enableAria, {
-                              name: skill.name,
-                            })}
-                            onCheckedChange={(enabled) =>
-                              void runRecordMutation(
-                                skill.id,
-                                () => setSkillEnabled(skill.id, enabled),
-                                "device",
-                              )
+                            aria-label={
+                              projectScope
+                                ? t(($) => $.settings.ai.skills.useInProjectAria, {
+                                    name: skill.name,
+                                  })
+                                : t(($) => $.settings.ai.skills.useInAllProjectsAria, {
+                                    name: skill.name,
+                                  })
                             }
+                            onCheckedChange={(enabled) => toggleSkill(skill, enabled)}
                           />
-                          {renderSkillProjectScope()}
+                          {changedForProject ? (
+                            <div
+                              data-testid={`skill-project-changed-${skill.id}`}
+                              className="flex items-center gap-1"
+                            >
+                              <span className="text-[10px] text-muted-foreground">
+                                {t(($) => $.settings.ai.skills.changedForProject)}
+                              </span>
+                              <button
+                                type="button"
+                                data-testid={`skill-project-reset-${skill.id}`}
+                                disabled={busy}
+                                aria-label={t(($) => $.settings.ai.skills.resetProjectAria, {
+                                  name: skill.name,
+                                })}
+                                onClick={() => applyProjectScope(skill.id, null)}
+                                className="rounded px-1 text-[10px] font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 disabled:opacity-50"
+                              >
+                                {t(($) => $.settings.ai.skills.resetProject)}
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 
@@ -716,9 +781,13 @@ export function SkillsTab() {
             </div>
           ))}
         </div>
-      ))}
+      ) : null)}
 
-      <SkillCatalogList />
+      <SkillCatalogList
+        search={search}
+        hideNoMatch={showNoMatch}
+        onMatchCountChange={setShelfMatches}
+      />
 
       {message ? (
         <div

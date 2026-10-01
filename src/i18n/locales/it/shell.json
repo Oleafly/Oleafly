@@ -171,9 +171,6 @@
       "online": "Modalità online (consenti il download dei pacchetti)"
     },
     "openTool": "Apri {{name}}",
-    "personalDetails": {
-      "keywords": "modalità screenshot, schermata, privacy, riservatezza, sfocatura, percorsi, nome account"
-    },
     "recompile": {
       "label": "Ricompila"
     },
@@ -236,6 +233,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "{{online}} membri online su Discord",
+    "followOnX": "Seguici su X",
     "joinDiscord": "Unisciti a Discord"
   },
   "compile": {
@@ -520,10 +518,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Nascondi i dati personali",
-    "show": "Mostra i dati personali"
-  },
   "projectSearch": {
     "hint": "Cerca in tutti i file di questo progetto.",
     "noResults": "Nessun risultato.",
@@ -779,7 +773,7 @@
       "shortcuts": "Scorciatoie da tastiera"
     },
     "search": {
-      "empty": "Nessuna impostazione corrisponde.",
+      "empty": "Nessuna impostazione corrisponde",
       "keywords": {
         "ai": "assistente, chat, modelli, provider, fornitori, chiavi API, agenti, prompt, budget, server MCP",
         "appearance": "tema, modalità scura, modalità chiara, colore, caratteri, font, dimensione del testo, zoom, layout, disposizione",
@@ -917,6 +911,15 @@
     "stagedChangeCount_other": "{{count}} modifiche nel commit",
     "stash": "Metti le modifiche in stash",
     "stashNeedsAttention": "Risolvi i conflitti dello stash",
+    "status": {
+      "modified": "Modificato",
+      "added": "Aggiunto",
+      "deleted": "Eliminato",
+      "renamed": "Rinominato",
+      "untracked": "Non tracciato",
+      "conflict": "Conflitto",
+      "containsChanges": "Contiene modifiche"
+    },
     "sync": "Sincronizza",
     "title": "Controllo del codice",
     "titleRequired": "Il titolo del commit è obbligatorio.",
@@ -973,8 +976,8 @@
     "exportMarkdown": "Esporta come Markdown (.md)",
     "exportPdf": "Esporta come PDF",
     "exportPdfVector": "Esporta come PDF (immagine vettoriale)",
-    "exportPngRaster": "Esporta come PNG (immagine raster)",
-    "exportPagePng": "Esporta la pagina come PNG (immagine raster)",
+    "exportPngRaster": "Esporta come PNG",
+    "exportPagePng": "Esporta la pagina come PNG",
     "exportAs": "Esporta come {{format}}",
     "exportPptx": "Esporta come PowerPoint (.pptx)",
     "exportSourceZip": "Esporta il sorgente (.zip)",

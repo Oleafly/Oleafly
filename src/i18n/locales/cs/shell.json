@@ -173,9 +173,6 @@
       "online": "Režim online (povolit stahování balíčků)"
     },
     "openTool": "Otevřít {{name}}",
-    "personalDetails": {
-      "keywords": "režim snímků obrazovky, soukromí, rozmazání, osobní údaje, cesty, název účtu"
-    },
     "recompile": {
       "label": "Kompilovat znovu"
     },
@@ -238,6 +235,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "Právě online na Discordu: {{online}}",
+    "followOnX": "Sledujte nás na X",
     "joinDiscord": "Přidat se na Discord"
   },
   "compile": {
@@ -523,10 +521,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Skrýt osobní údaje",
-    "show": "Zobrazit osobní údaje"
-  },
   "projectSearch": {
     "hint": "Hledejte napříč soubory tohoto projektu.",
     "noResults": "Žádné výsledky.",
@@ -796,7 +790,7 @@
       "shortcuts": "Klávesové zkratky"
     },
     "search": {
-      "empty": "Žádné nastavení neodpovídá.",
+      "empty": "Žádné nastavení neodpovídá",
       "keywords": {
         "ai": "asistent, chat, modely, poskytovatelé, klíče API, agenti, prompty, rozpočet, servery MCP",
         "appearance": "motiv, vzhled, tmavý režim, světlý režim, barva, barvy, písma, velikost textu, přiblížení, zoom, rozvržení",
@@ -937,6 +931,15 @@
     "stagedChangeCount_other": "{{count}} připravených změn",
     "stash": "Uschovat změny",
     "stashNeedsAttention": "Vyřešte konflikty úschovy",
+    "status": {
+      "modified": "Upraveno",
+      "added": "Přidáno",
+      "deleted": "Odstraněno",
+      "renamed": "Přejmenováno",
+      "untracked": "Nesledováno",
+      "conflict": "Konflikt",
+      "containsChanges": "Obsahuje změny"
+    },
     "sync": "Synchronizovat",
     "title": "Správa verzí",
     "titleRequired": "Název commitu je povinný.",
@@ -994,8 +997,8 @@
     "exportMarkdown": "Exportovat jako Markdown (.md)",
     "exportPdf": "Exportovat jako PDF",
     "exportPdfVector": "Exportovat jako PDF (vektorový obrázek)",
-    "exportPngRaster": "Exportovat jako PNG (rastrový obrázek)",
-    "exportPagePng": "Exportovat stránku jako PNG (rastrový obrázek)",
+    "exportPngRaster": "Exportovat jako PNG",
+    "exportPagePng": "Exportovat stránku jako PNG",
     "exportAs": "Exportovat jako {{format}}",
     "exportPptx": "Exportovat jako PowerPoint (.pptx)",
     "exportSourceZip": "Exportovat zdroj (.zip)",

@@ -7,8 +7,6 @@ import { WindowControls } from "@/components/layout/WindowControls";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
-import { PersonalDetailsToggle } from "@/components/layout/PersonalDetailsToggle";
-import { useHidePersonalDetails } from "@/components/ui/private";
 
 export function ToolPageShell({
   page,
@@ -35,7 +33,6 @@ export function ToolPageShell({
   const activePage = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
   const fullscreen = useFullscreen();
-  const personalDetailsHidden = useHidePersonalDetails();
   if (activePage !== page) return null;
   return (
     <div data-testid={testId} className="flex h-full min-w-0 flex-col bg-background">
@@ -71,12 +68,6 @@ export function ToolPageShell({
         <div className="flex-1" />
         {status}
         {showTheme && <ThemeMenu testId={`${testId}-theme-menu`} contentClassName="z-[80]" />}
-        {showTheme && (
-          <PersonalDetailsToggle
-            testId={`${testId}-personal-details-toggle`}
-            className={cn(personalDetailsHidden && "bg-primary/10 text-foreground hover:bg-primary/10")}
-          />
-        )}
         {actions}
         <WindowControls />
       </div>

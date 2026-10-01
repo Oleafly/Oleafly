@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Download, Ghost, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import { formatDateTime, formatNumber } from "@/lib/intl";
+import { matchesSkillSearch } from "@/lib/skill-groups";
 import { SKILLS_QUERY_KEY } from "@/lib/skills";
+import { cn } from "@/lib/utils";
 import {
   skillsCatalog,
   skillsInstall,
@@ -79,7 +81,31 @@ function progressText(entry: SkillAssetProgress): string {
     : i18n.t(($) => $.settings.ai.skills.catalog.progress.downloading);
 }
 
-export function SkillCatalogList() {
+export function SkillsNoMatch() {
+  const { t } = useTranslation(["common", "settings"]);
+  return (
+    <div
+      role="status"
+      data-testid="skills-no-match"
+      className="flex flex-col items-center gap-2 py-6 text-center text-xs text-muted-foreground"
+    >
+      <Ghost aria-hidden className="size-5" />
+      <p>{t(($) => $.settings.ai.skills.search.empty)}</p>
+    </div>
+  );
+}
+
+export function SkillCatalogList({
+  search = "",
+  hideNoMatch = false,
+  onMatchCountChange,
+}: Readonly<{
+  search?: string;
+  /** The parent already shows "No skills match" for the whole tab. */
+  hideNoMatch?: boolean;
+  /** Shelf rows left after filtering, or null while the catalog loads. */
+  onMatchCountChange?: (count: number | null) => void;
+}> = {}) {
   const { t } = useTranslation(["common", "settings"]);
   const queryClient = useQueryClient();
   const [catalog, setCatalog] = useState<SkillCatalog | null>(null);
@@ -88,6 +114,7 @@ export function SkillCatalogList() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<string, SkillAssetProgress>>({});
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [domain, setDomain] = useState<string | null>(null);
 
   const load = useCallback(async (refresh: boolean) => {
     if (refresh) setRefreshing(true);
@@ -174,7 +201,25 @@ export function SkillCatalogList() {
   };
 
   const shelfEntries = (catalog?.skills ?? []).filter((entry) => !entry.bundled);
+  const domains = [
+    ...new Set(
+      shelfEntries
+        .map((entry) => entry.domain)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  ].sort((left, right) => left.localeCompare(right));
+  const activeDomain = domain !== null && domains.includes(domain) ? domain : null;
+  const matches = shelfEntries.filter(
+    (entry) =>
+      (activeDomain === null || entry.domain === activeDomain) &&
+      matchesSkillSearch(search, [entry.name, entry.id, entry.description, entry.domain]),
+  );
+  const matchCount = loading ? null : matches.length;
   const sourceLine = catalog ? catalogSourceLine(catalog) : "";
+
+  useEffect(() => {
+    onMatchCountChange?.(matchCount);
+  }, [matchCount, onMatchCountChange]);
 
   return (
     <div className="space-y-2 rounded-md border bg-card p-3" data-testid="skills-catalog-section">
@@ -207,13 +252,46 @@ export function SkillCatalogList() {
           {t(($) => $.settings.ai.skills.catalog.loading)}
         </p>
       ) : null}
-      {!loading && (shelfEntries.length === 0 ? (
+      {!loading && domains.length > 1 ? (
+        <fieldset
+          aria-label={t(($) => $.settings.ai.skills.catalog.domainFilterLabel)}
+          data-testid="skills-catalog-domains"
+          className="m-0 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
+        >
+          {[null, ...domains].map((value) => {
+            const active = activeDomain === value;
+            return (
+              <button
+                key={value ?? "all"}
+                type="button"
+                aria-pressed={active}
+                data-testid={`skills-catalog-domain-${value ?? "all"}`}
+                onClick={() => setDomain(value)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:border-primary/50",
+                  active
+                    ? "border-primary/35 bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground",
+                )}
+              >
+                {value ?? t(($) => $.settings.ai.skills.catalog.allDomains)}
+              </button>
+            );
+          })}
+        </fieldset>
+      ) : null}
+
+      {!loading && shelfEntries.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           {t(($) => $.settings.ai.skills.catalog.empty)}
         </p>
-      ) : (
+      ) : null}
+      {!loading && shelfEntries.length > 0 && matches.length === 0 && !hideNoMatch ? (
+        <SkillsNoMatch />
+      ) : null}
+      {!loading && matches.length > 0 ? (
         <div className="space-y-2">
-          {shelfEntries.map((entry) => {
+          {matches.map((entry) => {
             const busy = busyId === entry.id;
             const entryProgress = progress[entry.id];
             return (
@@ -280,7 +358,7 @@ export function SkillCatalogList() {
             );
           })}
         </div>
-      ))}
+      ) : null}
 
       {catalog ? <p className="text-[11px] text-muted-foreground">{sourceLine}</p> : null}
 

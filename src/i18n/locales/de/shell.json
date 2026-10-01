@@ -169,9 +169,6 @@
       "online": "Online-Modus (Pakete dürfen geladen werden)"
     },
     "openTool": "{{name}} öffnen",
-    "personalDetails": {
-      "keywords": "Screenshot-Modus, Bildschirmfoto, Datenschutz, Privatsphäre, unscharf, persönliche Daten, Pfade, Kontoname"
-    },
     "recompile": {
       "label": "Neu kompilieren"
     },
@@ -234,6 +231,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "{{online}} Mitglieder auf Discord online",
+    "followOnX": "Auf X folgen",
     "joinDiscord": "Discord beitreten"
   },
   "compile": {
@@ -517,10 +515,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Persönliche Daten ausblenden",
-    "show": "Persönliche Daten einblenden"
-  },
   "projectSearch": {
     "hint": "Durchsucht die Dateien dieses Projekts.",
     "noResults": "Keine Treffer.",
@@ -762,7 +756,7 @@
       "shortcuts": "Tastenkürzel"
     },
     "search": {
-      "empty": "Keine passenden Einstellungen.",
+      "empty": "Keine passenden Einstellungen",
       "keywords": {
         "ai": "Assistent, Chat, Modelle, Anbieter, API-Schlüssel, Agenten, Prompts, Budget, MCP-Server",
         "appearance": "Design, Darstellung, Dunkelmodus, dunkler Modus, heller Modus, Farbe, Farben, Schriftarten, Schriftgröße, Zoom, Layout",
@@ -897,6 +891,15 @@
     "stagedChangeCount_other": "{{count}} bereitgestellte Änderungen",
     "stash": "Änderungen stashen",
     "stashNeedsAttention": "Stash-Konflikte lösen",
+    "status": {
+      "modified": "Geändert",
+      "added": "Hinzugefügt",
+      "deleted": "Gelöscht",
+      "renamed": "Umbenannt",
+      "untracked": "Nicht nachverfolgt",
+      "conflict": "Konflikt",
+      "containsChanges": "Enthält Änderungen"
+    },
     "sync": "Abgleichen",
     "title": "Versionsverwaltung",
     "titleRequired": "Ein Commit-Titel ist erforderlich.",
@@ -952,8 +955,8 @@
     "exportMarkdown": "Als Markdown exportieren (.md)",
     "exportPdf": "Als PDF exportieren",
     "exportPdfVector": "Als PDF exportieren (Vektorbild)",
-    "exportPngRaster": "Als PNG exportieren (Rasterbild)",
-    "exportPagePng": "Seite als PNG exportieren (Rasterbild)",
+    "exportPngRaster": "Als PNG exportieren",
+    "exportPagePng": "Seite als PNG exportieren",
     "exportAs": "Als {{format}} exportieren",
     "exportPptx": "Als PowerPoint exportieren (.pptx)",
     "exportSourceZip": "Quelltext exportieren (.zip)",

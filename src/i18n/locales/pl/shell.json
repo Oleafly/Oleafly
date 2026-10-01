@@ -173,9 +173,6 @@
       "online": "Tryb online (pobieranie pakietów dozwolone)"
     },
     "openTool": "Otwórz {{name}}",
-    "personalDetails": {
-      "keywords": "tryb zrzutu ekranu, zrzut ekranu, prywatność, rozmycie, ścieżki, nazwa konta"
-    },
     "recompile": {
       "label": "Kompiluj ponownie"
     },
@@ -238,6 +235,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "Teraz online na Discordzie: {{online}}",
+    "followOnX": "Obserwuj nas na X",
     "joinDiscord": "Dołącz do Discorda"
   },
   "compile": {
@@ -523,10 +521,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Ukryj dane osobowe",
-    "show": "Pokaż dane osobowe"
-  },
   "projectSearch": {
     "hint": "Szukaj we wszystkich plikach tego projektu.",
     "noResults": "Brak wyników.",
@@ -796,7 +790,7 @@
       "shortcuts": "Skróty klawiaturowe"
     },
     "search": {
-      "empty": "Brak pasujących ustawień.",
+      "empty": "Brak pasujących ustawień",
       "keywords": {
         "ai": "asystent, czat, modele, dostawcy, klucze API, agenci, prompty, budżet, serwery MCP",
         "appearance": "motyw, tryb ciemny, tryb jasny, kolor, czcionki, rozmiar tekstu, powiększenie, zoom, układ",
@@ -937,6 +931,15 @@
     "stagedChangeCount_other": "{{count}} zmiany w poczekalni",
     "stash": "Schowaj zmiany",
     "stashNeedsAttention": "Rozwiąż konflikty schowanych zmian",
+    "status": {
+      "modified": "Zmodyfikowany",
+      "added": "Dodany",
+      "deleted": "Usunięty",
+      "renamed": "Zmieniono nazwę",
+      "untracked": "Nieśledzony",
+      "conflict": "Konflikt",
+      "containsChanges": "Zawiera zmiany"
+    },
     "sync": "Synchronizuj",
     "title": "Kontrola wersji",
     "titleRequired": "Tytuł commita jest wymagany.",
@@ -994,8 +997,8 @@
     "exportMarkdown": "Eksportuj jako Markdown (.md)",
     "exportPdf": "Eksportuj jako PDF",
     "exportPdfVector": "Eksportuj jako PDF (obraz wektorowy)",
-    "exportPngRaster": "Eksportuj jako PNG (obraz rastrowy)",
-    "exportPagePng": "Eksportuj stronę jako PNG (obraz rastrowy)",
+    "exportPngRaster": "Eksportuj jako PNG",
+    "exportPagePng": "Eksportuj stronę jako PNG",
     "exportAs": "Eksportuj jako {{format}}",
     "exportPptx": "Eksportuj jako PowerPoint (.pptx)",
     "exportSourceZip": "Eksportuj źródła (.zip)",

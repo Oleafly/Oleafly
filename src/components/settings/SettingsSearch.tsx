@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { Search } from "lucide-react";
+import { Ghost, Search } from "lucide-react";
 import {
   bestSettingsHit,
   buildSettingsIndex,
@@ -382,7 +382,11 @@ export function SettingsSearchStatus({ count }: Readonly<{ count: number | null 
         {announcement}
       </p>
       {count === 0 ? (
-        <p aria-hidden="true" className="px-2.5 py-2 text-xs text-muted-foreground">
+        <p
+          aria-hidden="true"
+          className="flex flex-col items-center gap-2 px-2.5 py-8 text-center text-xs text-muted-foreground"
+        >
+          <Ghost className="size-5" />
           {empty}
         </p>
       ) : null}

@@ -1097,11 +1097,15 @@ describe("McpServersManager", () => {
     try {
       renderManager();
       const shown = "~/.local/bin/uvx notes-mcp --dir ~/notes";
-      const endpoint = await screen.findByText(shown);
-      expect(endpoint).toHaveAttribute("title", shown);
-      expect(
-        await screen.findByText("Could not start ~/.local/bin/uvx: permission denied."),
-      ).toBeInTheDocument();
+      const endpoint = await screen.findByTitle(shown);
+      expect(endpoint).toHaveTextContent(shown);
+      // Settings blurs the paths in the command, and only the paths.
+      const blurred = (element: Element | null) =>
+        [...(element?.querySelectorAll("[data-settings-path]") ?? [])].map((node) => node.textContent);
+      expect(blurred(endpoint)).toEqual(["~/.local/bin/uvx", "~/notes"]);
+      const failure = await screen.findByRole("alert");
+      expect(failure).toHaveTextContent("Could not start ~/.local/bin/uvx: permission denied.");
+      expect(blurred(failure)).toEqual(["~/.local/bin/uvx"]);
       const card = endpoint.closest("article");
       expect(card?.textContent).not.toContain("/Users/ada");
       expect(card?.innerHTML).not.toContain("/Users/ada");

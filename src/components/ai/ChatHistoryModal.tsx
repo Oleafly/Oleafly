@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquareQuote, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -9,7 +10,6 @@ import { formatDate, formatNumber } from "@/lib/intl";
 import { chatsSearch } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
-import { Private, PrivateText } from "@/components/ui/private";
 
 // FTS5 special characters would error inside MATCH; quote each term instead.
 function ftsQuery(raw: string): string {
@@ -84,10 +84,6 @@ export function ChatHistoryModal({
         const stale =
           chat.headOid && currentHead && chat.headOid !== currentHead;
         const isActive = chat.id === activeId;
-        const tokenTotal = chat.usage ? chat.usage.inputTokens + chat.usage.outputTokens : 0;
-        const tokens = tokenTotal > 0 ? formatNumber(tokenTotal) : null;
-        const usd = chat.usage?.estimatedUsd ?? 0;
-        const cost = usd > 0 ? formatUsd(usd) : null;
         return (
           <div
             key={chat.id}
@@ -118,23 +114,15 @@ export function ChatHistoryModal({
               <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
                 {relativeTime(chat.updatedAt)} ·{" "}
                 {t(($) => $.ai.history.messages, { count: chat.messages.length })}
-                {tokens ? (
-                  <>
-                    {" · "}
-                    {/* The row button is the focus stop; focusing it reveals these. */}
-                    <PrivateText
-                      text={t(($) => $.ai.history.tokens, { amount: tokens })}
-                      values={[tokens]}
-                      focusable={false}
-                    />
-                  </>
-                ) : null}
-                {cost ? (
-                  <>
-                    {" · "}
-                    <Private focusable={false}>{cost}</Private>
-                  </>
-                ) : null}
+                {chat.usage &&
+                chat.usage.inputTokens + chat.usage.outputTokens > 0
+                  ? ` · ${t(($) => $.ai.history.tokens, {
+                      amount: formatNumber(chat.usage.inputTokens + chat.usage.outputTokens),
+                    })}`
+                  : ""}
+                {chat.usage && (chat.usage.estimatedUsd ?? 0) > 0
+                  ? ` · ${formatUsd(chat.usage.estimatedUsd ?? 0)}`
+                  : ""}
               </div>
             </button>
             {confirmId === chat.id ? (
@@ -175,7 +163,10 @@ export function ChatHistoryModal({
       })
     );
 
-  return (
+  // Portalled like the other app dialogs. Rendered in place, its z-index only
+  // counted inside the workspace panels' stacking context: the title bar stayed
+  // undimmed and the editor's pinned rows were drawn over the backdrop.
+  return createPortal(
     <div
       className="fixed inset-0 z-[80] flex animate-in fade-in items-center justify-center bg-black/50 p-4 duration-200 backdrop-blur-sm motion-reduce:animate-none"
     >
@@ -210,7 +201,7 @@ export function ChatHistoryModal({
         </div>
 
         <div className="shrink-0 px-4 pb-2">
-          <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+          <div className="flex items-center gap-2 rounded-md border bg-background px-2 transition-colors focus-within:border-ring">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
             <input
               aria-label={t(($) => $.ai.history.searchLabel)}
@@ -230,6 +221,7 @@ export function ChatHistoryModal({
           ) : chatRows()}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

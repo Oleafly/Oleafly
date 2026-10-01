@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
-import { usePersonalDetailsStore } from "@/store/personal-details";
 import { AgentStatusPill, MessageItem, ReasoningBlock } from "./chat-parts";
 
 const REPLY = [
@@ -123,42 +122,5 @@ describe("home paths in chat messages", () => {
     render(<ReasoningBlock text="Reading /Users/ada/.oleafly/projects/p/main.tex" />);
     fireEvent.click(screen.getByRole("button", { expanded: false }));
     expect(screen.getByText("Reading ~/.oleafly/projects/p/main.tex")).toBeInTheDocument();
-  });
-});
-
-describe("chat bubbles in screenshot mode", () => {
-  beforeEach(() => {
-    setDisplayHomes(["/Users/ada"]);
-    act(() => usePersonalDetailsStore.getState().setHidden(true));
-  });
-
-  afterEach(() => {
-    act(() => usePersonalDetailsStore.getState().setHidden(false));
-    resetDisplayHomes();
-  });
-
-  it("adds no focus stop to a bubble with nothing personal in it", async () => {
-    const { container } = render(
-      <MessageItem msg={{ role: "user", content: "Tighten the abstract" }} />,
-    );
-    await waitFor(() => expect(container.textContent).toContain("Tighten the abstract"));
-    expect(container.querySelector("[data-private-group]")).toBeNull();
-    expect(container.querySelector("[tabindex]")).toBeNull();
-  });
-
-  it("makes a bubble with a home path one focus stop that reveals it", async () => {
-    const { container } = render(
-      <MessageItem msg={{ role: "user", content: "Open /Users/ada/notes/draft.tex" }} />,
-    );
-    const path = await waitFor(() => {
-      const marked = container.querySelector("[data-private]");
-      expect(marked).not.toBeNull();
-      return marked as HTMLElement;
-    });
-    const group = container.querySelector("[data-private-group]");
-    expect(group).toHaveAttribute("tabindex", "0");
-    expect(group).toContainElement(path);
-    // The group keeps the bubble's own colours; the focus tint is drawn over them.
-    expect(group).toHaveClass("bg-primary", "rounded-lg");
   });
 });

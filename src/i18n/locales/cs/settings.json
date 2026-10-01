@@ -377,7 +377,9 @@
       "addFolder": "Přidat složku",
       "addFolderDialogTitle": "Přidání složky s dovednostmi",
       "catalog": {
+        "allDomains": "Vše",
         "description": "Další dovednosti pro konkrétní výzkumné obory. Instalací se dovednost přidá do seznamu výše.",
+        "domainFilterLabel": "Filtrovat polici podle oboru",
         "empty": "Katalog nemá žádné další dovednosti k instalaci.",
         "install": "Nainstalovat",
         "loading": "Načítá se katalog...",
@@ -408,8 +410,9 @@
         "uninstall": "Odinstalovat",
         "update": "Aktualizovat"
       },
+      "changedForProject": "Změněno pro tento projekt",
       "createSkill": "Vytvořit dovednost",
-      "description": "Asistent načte úplné instrukce dovednosti až ve chvíli, kdy usoudí, že ji potřebuje, nebo hned, když v chatu napíšete /skill-id. Dovednost, kterou tu zapnete, je zapnutá ve všech projektech, dokud ji projekt nepřebije.",
+      "description": "Asistent načte úplné instrukce dovednosti, jen když je potřebuje, nebo hned, když v chatu napíšete /skill-id. Dovednost, kterou tu zapnete, je zapnutá ve všech projektech. Pokud ji chcete změnit jen pro otevřený projekt, přepněte na Tento projekt.",
       "editAria": "Upravit {{name}}",
       "editor": {
         "createDescription": "Vytvoří koncept SKILL.md ve vaší složce dovedností Oleafly.",
@@ -426,7 +429,6 @@
         "submitCreate": "Vytvořit"
       },
       "empty": "Nebyly nalezeny žádné dovednosti. Přidejte složku nebo nějakou vytvořte.",
-      "enableAria": "Zapnout {{name}}",
       "fileCount_one": "{{count}} soubor",
       "fileCount_few": "{{count}} soubory",
       "fileCount_many": "{{count}} souboru",
@@ -435,7 +437,6 @@
         "shelf": "Oborová police",
         "user": "Vaše dovednosti"
       },
-      "inheritsDevice": "Dědí nastavení zařízení",
       "invalidBadge": "Neplatné",
       "loadFailed": "Dovednosti se nepodařilo načíst. {{message}}",
       "loading": "Načítají se dovednosti...",
@@ -448,8 +449,6 @@
         "updated": "{{name}} aktualizováno."
       },
       "missingDescription": "Této dovednosti chybí popis.",
-      "offForProject": "Vypnuto pro tento projekt",
-      "onForProject": "Zapnuto pro tento projekt",
       "phases": {
         "authoring": "Psaní",
         "communication": "Komunikace",
@@ -463,6 +462,18 @@
       "removeDialog": {
         "description": "Odebrat „{{name}}“ a její složku z Oleafly? Tuto akci nelze vrátit zpět.",
         "title": "Odebrání dovednosti"
+      },
+      "resetProject": "Obnovit",
+      "resetProjectAria": "Vrátit {{name}} na nastavení pro všechny projekty",
+      "scope": {
+        "device": "Všechny projekty",
+        "label": "Kde nastavení platí",
+        "project": "Tento projekt"
+      },
+      "search": {
+        "ariaLabel": "Hledat dovednosti a v oborové polici",
+        "empty": "Žádné dovednosti neodpovídají",
+        "placeholder": "Hledat dovednosti"
       },
       "share": {
         "description": "Propojte své dovednosti do složek, které už jiní programovací agenti v tomto počítači čtou, takže dovednost napíšete jednou a použije ji každý agent.",
@@ -506,9 +517,7 @@
         "description": "Nahradit „{{name}}“ nejnovější dodávanou verzí? Veškeré místní úpravy jejích souborů budou ztraceny.",
         "title": "Aktualizace dovednosti"
       },
-      "useDeviceSetting": "Použít nastavení zařízení",
-      "useDeviceSettingAria": "Použít pro {{name}} nastavení zařízení",
-      "useInProject": "Použít v tomto projektu",
+      "useInAllProjectsAria": "Použít {{name}} ve všech projektech",
       "useInProjectAria": "Použít {{name}} v tomto projektu",
       "validateAria": "Ověřit {{name}}"
     }

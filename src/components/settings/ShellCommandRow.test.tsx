@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
@@ -50,6 +50,15 @@ function fill(template: string, values: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, name: string) => values[name] ?? "");
 }
 
+// Settings blurs the paths in these sentences, which splits each into runs.
+async function expectState(text: string) {
+  await waitFor(() => expect(screen.getByTestId("shell-command-state").textContent).toBe(text));
+}
+
+async function hintSentence() {
+  return (await screen.findByTestId("shell-command-hint")).querySelector("p")?.textContent;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.shellCommandStatus.mockResolvedValue(notInstalled);
@@ -69,7 +78,7 @@ describe("ShellCommandRow", () => {
     mocks.installShellCommand.mockResolvedValue(change);
     render(<ShellCommandRow />);
 
-    expect(await screen.findByText(fill(copy.state.notInstalled, { directory: "~/.local/bin" }))).toBeTruthy();
+    await expectState(fill(copy.state.notInstalled, { directory: "~/.local/bin" }));
     expect(screen.getByText(copy.title)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: copy.install }));
 
@@ -77,7 +86,11 @@ describe("ShellCommandRow", () => {
     expect(
       (await screen.findByRole("status")).textContent,
     ).toBe(fill(copy.result.linked, { path: "~/.local/bin/oleafly" }));
-    expect(screen.getByText(fill(copy.state.installed, { path: "~/.local/bin/oleafly" }))).toBeTruthy();
+    await expectState(fill(copy.state.installed, { path: "~/.local/bin/oleafly" }));
+    // Like every path in Settings, it stays blurred until hovered or focused.
+    const shown = within(screen.getByTestId("shell-command-state")).getByText("~/.local/bin/oleafly");
+    expect(shown).toHaveAttribute("data-settings-path");
+    expect(shown).toHaveAttribute("tabindex", "0");
     await waitFor(() =>
       expect(document.activeElement).toBe(
         screen.getByRole("button", { name: enCommon.actions.remove }),
@@ -94,9 +107,9 @@ describe("ShellCommandRow", () => {
     mocks.shellCommandStatus.mockResolvedValue(offPath);
     render(<ShellCommandRow />);
 
-    expect(
-      await screen.findByText(fill(copy.notOnPath.file, { directory: "~/.local/bin", file: "~/.zshrc" })),
-    ).toBeTruthy();
+    expect(await hintSentence()).toBe(
+      fill(copy.notOnPath.file, { directory: "~/.local/bin", file: "~/.zshrc" }),
+    );
     expect(screen.getByText('export PATH="$HOME/.local/bin:$PATH"')).toBeTruthy();
     const announcement = screen.getByTestId("shell-command-copied");
     expect(announcement.getAttribute("aria-live")).toBe("polite");
@@ -129,8 +142,10 @@ describe("ShellCommandRow", () => {
       hint: { file: null, line: "fish_add_path ~/.local/bin" },
     });
     render(<ShellCommandRow />);
-    expect(await screen.findByText(fill(copy.notOnPath.run, { directory: "~/.local/bin" }))).toBeTruthy();
-    expect(screen.getByText("fish_add_path ~/.local/bin")).toBeTruthy();
+    expect(await hintSentence()).toBe(fill(copy.notOnPath.run, { directory: "~/.local/bin" }));
+    const line = screen.getByTestId("shell-command-hint").querySelector("code");
+    expect(line?.textContent).toBe("fish_add_path ~/.local/bin");
+    expect(within(line as HTMLElement).getByText("~/.local/bin")).toHaveAttribute("data-settings-path");
   });
 
   it("offers an update for an outdated command and removes it on request", async () => {
@@ -139,9 +154,7 @@ describe("ShellCommandRow", () => {
     mocks.removeShellCommand.mockResolvedValue({ action: "removed", status: notInstalled });
     render(<ShellCommandRow />);
 
-    expect(
-      await screen.findByText(fill(copy.state.outdated, { path: "~/.local/bin/oleafly" })),
-    ).toBeTruthy();
+    await expectState(fill(copy.state.outdated, { path: "~/.local/bin/oleafly" }));
     expect(screen.getByRole("button", { name: copy.update })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: enCommon.actions.remove }));
 
@@ -157,9 +170,7 @@ describe("ShellCommandRow", () => {
   it("leaves someone else's command alone and offers no action", async () => {
     mocks.shellCommandStatus.mockResolvedValue({ ...notInstalled, state: "occupied" });
     render(<ShellCommandRow />);
-    expect(
-      await screen.findByText(fill(copy.state.occupied, { path: "~/.local/bin/oleafly" })),
-    ).toBeTruthy();
+    await expectState(fill(copy.state.occupied, { path: "~/.local/bin/oleafly" }));
     expect(screen.queryByRole("button")).toBeNull();
   });
 
@@ -174,9 +185,7 @@ describe("ShellCommandRow", () => {
       hint: null,
     });
     render(<ShellCommandRow />);
-    expect(
-      await screen.findByText(fill(copy.state.packaged, { path: "/usr/bin/oleafly" })),
-    ).toBeTruthy();
+    await expectState(fill(copy.state.packaged, { path: "/usr/bin/oleafly" }));
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByTestId("shell-command-hint")).toBeNull();
   });
@@ -240,9 +249,7 @@ describe("ShellCommandRow", () => {
     render(<ShellCommandRow />);
     expect((await screen.findByRole("alert")).textContent).toBe(copy.loadFailed);
     await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
-    expect(
-      await screen.findByText(fill(copy.state.notInstalled, { directory: "~/.local/bin" })),
-    ).toBeTruthy();
+    await expectState(fill(copy.state.notInstalled, { directory: "~/.local/bin" }));
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });

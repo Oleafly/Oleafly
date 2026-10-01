@@ -37,7 +37,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Private, usePrivateGroup } from "@/components/ui/private";
 import { i18n } from "@/i18n";
 import { getProvider } from "@/lib/ai-providers";
 import {
@@ -387,7 +386,7 @@ function Metric({
     <div className="rounded-lg border bg-card p-3">
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="mt-1 text-xl font-semibold tabular-nums" title={exact}>
-        <Private>{value}</Private>
+        {value}
       </dd>
       <dd className="mt-1 text-[11px] text-muted-foreground">{detail}</dd>
     </div>
@@ -729,9 +728,8 @@ function BreakdownTable({
   icon?: (value: string) => ReactNode;
 }>) {
   const { t } = useTranslation(["usage"]);
-  const privateGroup = usePrivateGroup();
   return (
-    <section {...privateGroup} className="flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card">
+    <section className="flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card">
       <h3 className="border-b px-3 py-2 text-sm font-medium">{title}</h3>
       {rows.length === 0 ? (
         <p className="p-3 text-xs text-muted-foreground">{t(($) => $.usage.breakdown.empty)}</p>
@@ -777,12 +775,10 @@ function BreakdownTable({
                       output: tokenCell(row.outputTotal),
                     })}
                   >
-                    <Private focusable={false}>
-                      {combinedTokens(row.inputTotal, row.outputTotal)}
-                    </Private>
+                    {combinedTokens(row.inputTotal, row.outputTotal)}
                   </TableCell>
                   <TableCell numeric title={cost.note ?? undefined}>
-                    <Private focusable={false}>{cost.text}</Private>
+                    {cost.text}
                     {cost.note && row.estimatedCostUsd !== null && (
                       <span className="text-muted-foreground">*</span>
                     )}
@@ -813,7 +809,6 @@ function SessionsTable({
 }>) {
   const { t } = useTranslation(["usage"]);
   const { items, page, pageSize, total } = report.sessions;
-  const privateGroup = usePrivateGroup();
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const renderSession = (session: UsageSessionDetail) => {
     const cost = costCell(session.estimatedCostUsd, session, session.billingMode);
@@ -862,12 +857,8 @@ function SessionsTable({
         <TableCell className="min-w-[11rem] whitespace-nowrap tabular-nums text-muted-foreground">
           {formatUtcTime(session.occurredAtMs)}
         </TableCell>
-        <TableCell numeric>
-          <Private focusable={false}>{tokenCell(session.inputTotal)}</Private>
-        </TableCell>
-        <TableCell numeric>
-          <Private focusable={false}>{tokenCell(session.outputTotal)}</Private>
-        </TableCell>
+        <TableCell numeric>{tokenCell(session.inputTotal)}</TableCell>
+        <TableCell numeric>{tokenCell(session.outputTotal)}</TableCell>
         <TableCell numeric>
           <Tooltip
             label={[
@@ -882,7 +873,7 @@ function SessionsTable({
             wide
           >
             <span className="tabular-nums">
-              <Private focusable={false}>{cost.text}</Private>
+              {cost.text}
               {cost.note && session.estimatedCostUsd !== null && (
                 <span className="text-muted-foreground">*</span>
               )}
@@ -904,7 +895,7 @@ function SessionsTable({
   };
 
   return (
-    <section {...privateGroup} className="overflow-hidden rounded-lg border bg-card">
+    <section className="overflow-hidden rounded-lg border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <div>
           <h3 className="text-sm font-medium">{t(($) => $.usage.sessions.title)}</h3>

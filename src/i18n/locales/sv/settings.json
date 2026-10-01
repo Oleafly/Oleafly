@@ -375,7 +375,9 @@
       "addFolder": "Lägg till mapp",
       "addFolderDialogTitle": "Lägg till färdighetsmapp",
       "catalog": {
+        "allDomains": "Alla",
         "description": "Extra färdigheter för särskilda forskningsområden. Installera en för att lägga till den i listan ovan.",
+        "domainFilterLabel": "Filtrera hyllan efter domän",
         "empty": "Katalogen har inga extra färdigheter att installera.",
         "install": "Installera",
         "loading": "Läser in katalogen...",
@@ -406,8 +408,9 @@
         "uninstall": "Avinstallera",
         "update": "Uppdatera"
       },
+      "changedForProject": "Ändrad för det här projektet",
       "createSkill": "Skapa färdighet",
-      "description": "Assistenten läser in en färdighets fullständiga instruktioner först när den bedömer att den behöver dem, eller direkt om du skriver /färdighets-id i chatten. En färdighet du slår på här är på i alla projekt tills ett projekt åsidosätter det.",
+      "description": "Assistenten läser in en färdighets fullständiga instruktioner bara när den behöver dem, eller direkt om du skriver /färdighets-id i chatten. En färdighet du slår på här är på i alla projekt. Byt till Det här projektet för att bara ändra den i det öppna projektet.",
       "editAria": "Redigera {{name}}",
       "editor": {
         "createDescription": "Skapa ett utkast till SKILL.md i din Oleafly-mapp för färdigheter.",
@@ -424,14 +427,12 @@
         "submitCreate": "Skapa"
       },
       "empty": "Inga färdigheter hittades. Lägg till en mapp, eller skapa en.",
-      "enableAria": "Aktivera {{name}}",
       "fileCount_one": "{{count}} fil",
       "fileCount_other": "{{count}} filer",
       "groups": {
         "shelf": "Domänhylla",
         "user": "Dina färdigheter"
       },
-      "inheritsDevice": "Ärver enhetens inställning",
       "invalidBadge": "Ogiltig",
       "loadFailed": "Det gick inte att läsa in färdigheterna. {{message}}",
       "loading": "Läser in färdigheter...",
@@ -444,8 +445,6 @@
         "updated": "Uppdaterade {{name}}."
       },
       "missingDescription": "Den här färdigheten behöver en beskrivning.",
-      "offForProject": "Av för det här projektet",
-      "onForProject": "På för det här projektet",
       "phases": {
         "authoring": "Skrivande",
         "communication": "Kommunikation",
@@ -459,6 +458,18 @@
       "removeDialog": {
         "description": "Vill du ta bort \"{{name}}\" och dess mapp från Oleafly? Det går inte att ångra.",
         "title": "Ta bort färdighet"
+      },
+      "resetProject": "Återställ",
+      "resetProjectAria": "Återställ {{name}} till inställningen för alla projekt",
+      "scope": {
+        "device": "Alla projekt",
+        "label": "Var inställningarna gäller",
+        "project": "Det här projektet"
+      },
+      "search": {
+        "ariaLabel": "Sök bland färdigheter och i domänhyllan",
+        "empty": "Inga färdigheter matchar",
+        "placeholder": "Sök färdigheter"
       },
       "share": {
         "description": "Länka in dina färdigheter i de mappar som andra kodagenter på den här datorn redan läser, så att du skriver en färdighet en gång och alla agenter kan använda den.",
@@ -500,9 +511,7 @@
         "description": "Vill du ersätta \"{{name}}\" med den senaste medföljande versionen? Lokala ändringar i dess filer går förlorade.",
         "title": "Uppdatera färdighet"
       },
-      "useDeviceSetting": "Använd enhetens inställning",
-      "useDeviceSettingAria": "Använd enhetens inställning för {{name}}",
-      "useInProject": "Använd i det här projektet",
+      "useInAllProjectsAria": "Använd {{name}} i alla projekt",
       "useInProjectAria": "Använd {{name}} i det här projektet",
       "validateAria": "Validera {{name}}"
     }

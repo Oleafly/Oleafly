@@ -10,7 +10,6 @@ import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { useDisplayText } from "@/lib/display-path";
-import { PrivateText } from "@/components/ui/private";
 import { AgentLogo } from "./AgentLogo";
 import { readinessDetail } from "./agent-copy";
 
@@ -103,7 +102,7 @@ export function BridgeInstallCard({
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-medium leading-snug">{agent.definition.name}</p>
           <p className="break-words text-xs leading-relaxed text-muted-foreground">
-            <PrivateText text={readinessDetail(agent, readiness)} />
+            {readinessDetail(agent, readiness)}
           </p>
         </div>
         <ReadinessBadge readiness={readiness} />
@@ -136,7 +135,7 @@ export function BridgeInstallCard({
       )}
       {readiness === "bridge-missing" && hint && (
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          <PrivateText text={displayText(hint)} />
+          {displayText(hint)}
         </p>
       )}
     </div>

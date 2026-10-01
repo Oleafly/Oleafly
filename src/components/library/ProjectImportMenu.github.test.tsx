@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const githubListRepos = vi.fn(async () => [] as GitHubRepo[]);
 const importGitHubRepository = vi.fn(async () => {});
@@ -52,7 +52,6 @@ import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
 import type { GitHubRepo } from "@/lib/github";
 import { useSettingsStore } from "@/store/settings";
-import { usePersonalDetailsStore } from "@/store/personal-details";
 
 const PUBLIC_REPO: GitHubRepo = {
   full_name: "octocat/hello-world",
@@ -308,21 +307,5 @@ describe("ProjectImportMenu GitHub submenu", () => {
     );
     fireEvent.pointerDown(link, { button: 0, ctrlKey: false });
     await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
-  });
-
-  it("marks each repository name for screenshot mode, inside its menu item", async () => {
-    githubListRepos.mockResolvedValue([PUBLIC_REPO]);
-    usePersonalDetailsStore.getState().setHidden(true);
-    try {
-      renderMenu();
-      await openGithubSubmenu();
-      const name = await screen.findByText(PUBLIC_REPO.full_name);
-      expect(name).toHaveAttribute("data-private");
-      // The menu item is the focus stop; focusing it reveals the name.
-      expect(name).not.toHaveAttribute("tabindex");
-      expect(name.closest('[role="menuitem"]')).not.toBeNull();
-    } finally {
-      act(() => usePersonalDetailsStore.getState().setHidden(false));
-    }
   });
 });

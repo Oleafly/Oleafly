@@ -375,7 +375,9 @@
       "addFolder": "Map toevoegen",
       "addFolderDialogTitle": "Map met vaardigheden toevoegen",
       "catalog": {
+        "allDomains": "Alle",
         "description": "Extra vaardigheden voor specifieke onderzoeksgebieden. Installeer er een om hem aan je lijst hierboven toe te voegen.",
+        "domainFilterLabel": "Filteren op vakgebied",
         "empty": "De catalogus heeft geen extra vaardigheden om te installeren.",
         "install": "Installeren",
         "loading": "De catalogus laden...",
@@ -406,8 +408,9 @@
         "uninstall": "Verwijderen",
         "update": "Bijwerken"
       },
+      "changedForProject": "Gewijzigd voor dit project",
       "createSkill": "Vaardigheid maken",
-      "description": "De assistent laadt de volledige instructies van een vaardigheid pas als hij besluit er een nodig te hebben, of meteen als je /skill-id in de chat typt. Een vaardigheid die je hier aanzet staat in elk project aan, tenzij een project dat overschrijft.",
+      "description": "De assistent laadt de volledige instructies van een vaardigheid alleen als hij ze nodig heeft, of meteen als je /skill-id in de chat typt. Een vaardigheid die je hier aanzet, staat in elk project aan. Wil je hem alleen voor het geopende project wijzigen, kies dan Dit project.",
       "editAria": "{{name}} bewerken",
       "editor": {
         "createDescription": "Maak een concept-SKILL.md in je map met Oleafly-vaardigheden.",
@@ -424,14 +427,12 @@
         "submitCreate": "Maken"
       },
       "empty": "Geen vaardigheden gevonden. Voeg een map toe of maak er zelf een.",
-      "enableAria": "{{name}} inschakelen",
       "fileCount_one": "{{count}} bestand",
       "fileCount_other": "{{count}} bestanden",
       "groups": {
         "shelf": "Vakgebieden",
         "user": "Jouw vaardigheden"
       },
-      "inheritsDevice": "Volgt de apparaatinstelling",
       "invalidBadge": "Ongeldig",
       "loadFailed": "Kon de vaardigheden niet laden. {{message}}",
       "loading": "Vaardigheden laden...",
@@ -444,8 +445,6 @@
         "updated": "{{name}} bijgewerkt."
       },
       "missingDescription": "Deze vaardigheid heeft een beschrijving nodig.",
-      "offForProject": "Uit voor dit project",
-      "onForProject": "Aan voor dit project",
       "phases": {
         "authoring": "Schrijven",
         "communication": "Communicatie",
@@ -459,6 +458,18 @@
       "removeDialog": {
         "description": "\"{{name}}\" en de bijbehorende map uit Oleafly weghalen? Dit kan niet ongedaan worden gemaakt.",
         "title": "Vaardigheid weghalen"
+      },
+      "resetProject": "Herstellen",
+      "resetProjectAria": "{{name}} terugzetten naar de instelling voor alle projecten",
+      "scope": {
+        "device": "Alle projecten",
+        "label": "Waar deze instellingen gelden",
+        "project": "Dit project"
+      },
+      "search": {
+        "ariaLabel": "Vaardigheden en vakgebieden doorzoeken",
+        "empty": "Geen vaardigheden gevonden",
+        "placeholder": "Vaardigheden zoeken"
       },
       "share": {
         "description": "Koppel je vaardigheden aan de mappen die andere codeeragents op deze computer al lezen, zodat je een vaardigheid één keer schrijft en elke agent hem kan gebruiken.",
@@ -500,9 +511,7 @@
         "description": "\"{{name}}\" vervangen door de nieuwste meegeleverde versie? Lokale wijzigingen in de bestanden gaan verloren.",
         "title": "Vaardigheid bijwerken"
       },
-      "useDeviceSetting": "Apparaatinstelling gebruiken",
-      "useDeviceSettingAria": "De apparaatinstelling voor {{name}} gebruiken",
-      "useInProject": "In dit project gebruiken",
+      "useInAllProjectsAria": "{{name}} in alle projecten gebruiken",
       "useInProjectAria": "{{name}} in dit project gebruiken",
       "validateAria": "{{name}} valideren"
     }

@@ -449,6 +449,8 @@ describe("SourceControl", () => {
     );
     expect(changeRow.lastElementChild).toBe(status);
     expect(changeButton).toHaveAttribute("aria-describedby", status.id);
+    expect(changeButton).toHaveAccessibleDescription(enShell.sourceControl.status.modified);
+    expect(status).toHaveTextContent(/^M/);
     expect(within(changeRow).getAllByRole("button")).toHaveLength(4);
     for (const label of [
       "Open paper/main.tex",
@@ -554,21 +556,21 @@ describe("SourceControl", () => {
     expect(within(staged).getByText("No staged changes")).toHaveClass(
       "leading-4",
     );
-    expect(within(staged).getByText("No staged changes").parentElement).toHaveClass(
-      "justify-center",
-      "text-center",
-    );
+    const stagedEmpty = within(staged).getByText("No staged changes").parentElement;
+    // The icon sits above the text, both centered.
+    expect(stagedEmpty).toHaveClass("flex-col", "items-center", "justify-center", "text-center");
+    expect(stagedEmpty?.firstElementChild?.querySelector("svg.lucide-book-plus")).toBeInTheDocument();
     expect(within(staged).getByTestId("source-control-staged-actions")).toHaveClass(
       "hidden",
       "group-hover/section:flex",
     );
     const graph = screen.getByTestId("source-control-graph");
     expect(within(graph).getByText("No commits yet")).toHaveClass("leading-4");
-    expect(within(graph).getByText("No commits yet").parentElement).toHaveClass(
-      "justify-center",
-      "text-center",
-    );
-    expect(graph.querySelector("svg.lucide-git-commit-horizontal")).toBeInTheDocument();
+    const graphEmpty = within(graph).getByText("No commits yet").parentElement;
+    expect(graphEmpty).toHaveClass("flex-col", "items-center", "justify-center", "text-center");
+    expect(
+      graphEmpty?.firstElementChild?.querySelector("svg.lucide-git-commit-horizontal"),
+    ).toBeInTheDocument();
   });
 
   it("keeps both sides of a partly staged file visible", async () => {

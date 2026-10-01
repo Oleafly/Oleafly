@@ -173,9 +173,6 @@
       "online": "Режим онлайн (дозволити завантаження пакунків)"
     },
     "openTool": "Відкрити {{name}}",
-    "personalDetails": {
-      "keywords": "режим знімків екрана, скриншот, конфіденційність, приватність, розмиття, шляхи, ім’я облікового запису"
-    },
     "recompile": {
       "label": "Скомпілювати знову"
     },
@@ -238,6 +235,7 @@
   "community": {
     "discordOnline": "{{online}} у мережі",
     "discordOnlineAria": "Зараз у мережі на Discord: {{online}}",
+    "followOnX": "Ми в X",
     "joinDiscord": "Ми в Discord"
   },
   "compile": {
@@ -523,10 +521,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Приховати особисті дані",
-    "show": "Показати особисті дані"
-  },
   "projectSearch": {
     "hint": "Пошук у файлах цього проєкту.",
     "noResults": "Результатів немає.",
@@ -796,7 +790,7 @@
       "shortcuts": "Комбінації клавіш"
     },
     "search": {
-      "empty": "Немає відповідних налаштувань.",
+      "empty": "Немає відповідних налаштувань",
       "keywords": {
         "ai": "асистент, чат, моделі, постачальники, ключі API, агенти, запити, промпти, бюджет, сервери MCP",
         "appearance": "тема, темний режим, світлий режим, колір, шрифти, розмір тексту, масштаб, макет",
@@ -937,6 +931,15 @@
     "stagedChangeCount_other": "{{count}} підготовленої зміни",
     "stash": "Відкласти зміни",
     "stashNeedsAttention": "Розв’яжіть конфлікти stash",
+    "status": {
+      "modified": "Змінено",
+      "added": "Додано",
+      "deleted": "Видалено",
+      "renamed": "Перейменовано",
+      "untracked": "Не відстежується",
+      "conflict": "Конфлікт",
+      "containsChanges": "Містить зміни"
+    },
     "sync": "Синхронізувати",
     "title": "Контроль версій",
     "titleRequired": "Заголовок коміту обов’язковий.",
@@ -994,8 +997,8 @@
     "exportMarkdown": "Експортувати як Markdown (.md)",
     "exportPdf": "Експортувати як PDF",
     "exportPdfVector": "Експортувати як PDF (векторне зображення)",
-    "exportPngRaster": "Експортувати як PNG (растрове зображення)",
-    "exportPagePng": "Експортувати сторінку як PNG (растрове зображення)",
+    "exportPngRaster": "Експортувати як PNG",
+    "exportPagePng": "Експортувати сторінку як PNG",
     "exportAs": "Експортувати як {{format}}",
     "exportPptx": "Експортувати як PowerPoint (.pptx)",
     "exportSourceZip": "Експортувати код (.zip)",

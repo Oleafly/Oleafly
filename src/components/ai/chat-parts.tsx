@@ -49,7 +49,6 @@ import { tokenizeComposer } from "@/lib/composer-tokens";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import { outsideCodeFences, useDisplayText } from "@/lib/display-path";
-import { PrivateText, usePrivateGroup } from "@/components/ui/private";
 import { formatList, formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
@@ -171,7 +170,7 @@ function AgentTodoList({ todos }: Readonly<{ todos: readonly AgentTodo[] }>) {
               todo.status === "in_progress" && "font-medium text-foreground",
             )}
           >
-            <PrivateText text={displayText(todo.content)} />
+            {displayText(todo.content)}
           </span>
         </li>
       ))}
@@ -892,9 +891,7 @@ export function ReasoningBlock({
               full math/mermaid/highlight renderer would choke on the fragments
               (showing raw source) and block the main thread while parsing the
               whole trace on expand. Plain pre-wrap opens instantly. */}
-          <span className="whitespace-pre-wrap">
-            <PrivateText text={displayText(text)} />
-          </span>
+          <span className="whitespace-pre-wrap">{displayText(text)}</span>
         </div>
       )}
     </div>
@@ -1059,9 +1056,7 @@ export function SubagentCard({
           className="flex items-start gap-1.5 border-t bg-amber-500/5 px-2.5 py-1.5 text-[10px] leading-snug text-muted-foreground"
         >
           <Info aria-hidden="true" className="mt-px size-3 shrink-0 text-amber-500" />
-          <span className="min-w-0">
-            <PrivateText text={notice} />
-          </span>
+          <span className="min-w-0">{notice}</span>
         </p>
       ))}
       {(overflows || openSession) && (
@@ -1264,7 +1259,6 @@ function messageBubble({
   messageTime,
   messageIso,
   shown,
-  privateGroup,
 }: Readonly<{
   msg: ChatMessage;
   live?: boolean;
@@ -1272,8 +1266,6 @@ function messageBubble({
   messageTime?: string;
   messageIso?: string;
   shown: string;
-  /** Screenshot mode: one focus stop that reveals the paths in the bubble. */
-  privateGroup: ReturnType<typeof usePrivateGroup>;
 }>) {
   return (
     <div
@@ -1283,7 +1275,6 @@ function messageBubble({
       )}
     >
       <div
-        {...privateGroup}
         className={cn(
           "overflow-hidden rounded-lg px-3 py-2 text-sm",
           msg.role === "user"
@@ -1324,9 +1315,6 @@ export const MessageItem = memo(function MessageItem({
   const displayText = useDisplayText();
   const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
   const shown = bubbleText(msg, displayText);
-  // Only a bubble that shows a personal run becomes a focus stop. Mention
-  // chips are not marked, so a bubble drawn with them has nothing to reveal.
-  const privateGroup = usePrivateGroup(tokenizedUserText ? "" : shown);
   const tools = msg.toolCalls ?? [];
   const attachmentOccurrences = new Map<string, number>();
   // Fall back to the legacy single-block fields for chats persisted before
@@ -1418,7 +1406,7 @@ export const MessageItem = memo(function MessageItem({
           data-testid="agent-notice"
           className="max-w-[85%] rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground"
         >
-          <PrivateText text={notice} />
+          {notice}
         </p>
       ))}
       {msg.content
@@ -1429,7 +1417,6 @@ export const MessageItem = memo(function MessageItem({
             messageTime: timestamp.label,
             messageIso: timestamp.iso,
             shown,
-            privateGroup,
           })
         : null}
     </div>

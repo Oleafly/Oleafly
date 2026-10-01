@@ -1,0 +1,44 @@
+/*
+ * File and folder paths in Settings (src/components/settings/SettingsPath.tsx)
+ * stay blurred, so a screenshot of Settings does not show where things live on
+ * this computer. Hover shows one clearly, and so does keyboard focus, which
+ * adds a background tint instead of a focus line.
+ */
+[data-settings-path] {
+  filter: blur(4px);
+  transition: filter 120ms ease-out;
+}
+
+[data-settings-path]:hover,
+[data-settings-path]:focus-visible,
+:is(a, button, [role="button"], [role="menuitem"]):focus-visible [data-settings-path] {
+  filter: none;
+}
+
+/*
+ * These rules are not in a Tailwind layer, so they win over its utilities.
+ * The tint is therefore a background image drawn over the element's own
+ * background, never a background colour.
+ */
+[data-settings-path]:focus-visible {
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--primary) 14%, transparent),
+    color-mix(in srgb, var(--primary) 14%, transparent)
+  );
+  border-radius: 0.25rem;
+}
+
+/*
+ * Inside a text field a filter would blur the whole box, so the path is drawn
+ * as a soft shadow of the text instead. Hover or focus shows it.
+ */
+[data-settings-path-field]:not(:hover, :focus) {
+  color: transparent;
+  text-shadow: 0 0 4px var(--foreground);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-settings-path] {
+    transition: none;
+  }
+}

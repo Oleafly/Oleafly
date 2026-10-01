@@ -22,10 +22,14 @@ const stickyTheme = EditorView.theme({
     top: "0",
     left: "0",
     right: "0",
-    // Above the gutter (200), which is otherwise painted over the overlay and
-    // shows the document's own line numbers through the pinned rows. Below the
-    // search and other panels (300).
-    zIndex: "250",
+    // Above the scroller (z-index 0), whose stacking context holds the gutter,
+    // so the document's own line numbers never show through the pinned rows.
+    // Below the search panel (20) and app dialogs (80): the editor is not a
+    // stacking context of its own, so a larger value here drew the pinned rows
+    // over the search widget and over any dialog rendered in the workspace.
+    // The editor stays unisolated because a tooltip mounted inside it has to
+    // reach over the panes beside it.
+    zIndex: "10",
     overflow: "hidden",
     fontFamily: "var(--cm-font-family, var(--font-mono))",
     fontSize: "var(--cm-font-size, 13px)",
@@ -44,7 +48,9 @@ const stickyTheme = EditorView.theme({
     cursor: "pointer",
     background: "none",
     border: "none",
-    padding: "0",
+    // A little more room than a document line, so the pinned rows read as a
+    // header rather than as cramped copies of the lines below them.
+    padding: "0.25em 0",
     textAlign: "left",
     font: "inherit",
     color: "var(--cm-editor-fg, var(--foreground))",
@@ -54,11 +60,11 @@ const stickyTheme = EditorView.theme({
   },
   ".cm-stickyLineNo": {
     flex: "none",
+    boxSizing: "border-box",
     textAlign: "right",
     color: "var(--cm-gutter-fg, var(--muted-foreground))",
     paddingLeft: "var(--cm-gutter-inset, 6px)",
-    // Matches the line-number gutter's own right padding so the digits in a
-    // pinned row sit exactly under the digits in the document.
+    // Only until the gutter has been measured; see `measureColumns`.
     paddingRight: "8px",
   },
   ".cm-stickyCode": {
@@ -91,11 +97,24 @@ function sameRows(a: readonly RenderedRow[], b: readonly RenderedRow[]): boolean
   );
 }
 
+/** Horizontal offsets from the editor's left edge, in CSS pixels. */
+interface Columns {
+  /** Where the line-number digits end. */
+  digitsEnd: number;
+  /** Where a line's text starts. */
+  textStart: number;
+}
+
+function sameColumns(a: Columns | null, b: Columns | null): boolean {
+  return a?.digitsEnd === b?.digitsEnd && a?.textStart === b?.textStart;
+}
+
 class StickyScrollPlugin {
   private readonly container: HTMLDivElement;
   private scopes: StickyScope[] = [];
   private scannedDoc: Text | null = null;
   private rows: RenderedRow[] = [];
+  private columns: Columns | null = null;
   private rescanTimer: ReturnType<typeof setTimeout> | null = null;
   private frame = 0;
   private readonly onScroll: () => void;
@@ -177,19 +196,47 @@ class StickyScrollPlugin {
       view.state.doc,
       scopesAtLine(this.scopes, this.topLine(), MAX_STICKY_ROWS),
     );
-    if (sameRows(next, this.rows)) {
+    const columns = next.length > 0 ? this.measureColumns() : this.columns;
+    if (sameRows(next, this.rows) && sameColumns(columns, this.columns)) {
       this.syncHorizontalScroll();
       return;
     }
     this.rows = next;
+    this.columns = columns;
 
     this.container.textContent = "";
-    const gutter = view.dom.querySelector(".cm-gutters");
-    const gutterWidth = gutter instanceof HTMLElement ? gutter.offsetWidth : 0;
     for (const row of next) {
-      this.container.appendChild(this.renderRow(row, gutterWidth));
+      this.container.appendChild(this.renderRow(row, columns));
     }
     this.syncHorizontalScroll();
+  }
+
+  /**
+   * Reads the document's own columns so a pinned row's number sits under the
+   * line numbers and its text under the text, with the fold and diagnostic
+   * gutters in between. Null until the editor has been laid out.
+   */
+  private measureColumns(): Columns | null {
+    const { view } = this;
+    const gutters = view.dom.querySelector<HTMLElement>(".cm-gutters-before");
+    const number = gutters?.querySelector<HTMLElement>(".cm-lineNumbers .cm-gutterElement");
+    const line = view.contentDOM.querySelector<HTMLElement>(".cm-line");
+    if (!gutters || !number || !line) return null;
+    const numberBox = number.getBoundingClientRect();
+    if (numberBox.width === 0) return null;
+    const left = view.dom.getBoundingClientRect().left;
+    const padding = (element: HTMLElement, side: "paddingLeft" | "paddingRight") =>
+      Number.parseFloat(getComputedStyle(element)[side]) || 0;
+    return {
+      digitsEnd: Math.round((numberBox.right - left) / view.scaleX - padding(number, "paddingRight")),
+      // The text starts where the gutters end. Measured from them, not from a
+      // line, because the text scrolls sideways under the fixed gutters.
+      textStart: Math.round(
+        (gutters.getBoundingClientRect().right - left) / view.scaleX +
+          padding(view.contentDOM, "paddingLeft") +
+          padding(line, "paddingLeft"),
+      ),
+    };
   }
 
   private syncHorizontalScroll() {
@@ -199,7 +246,7 @@ class StickyScrollPlugin {
     }
   }
 
-  private renderRow(row: RenderedRow, gutterWidth: number): HTMLElement {
+  private renderRow(row: RenderedRow, columns: Columns | null): HTMLElement {
     const { view } = this;
     const line = view.state.doc.line(row.line);
 
@@ -216,7 +263,6 @@ class StickyScrollPlugin {
 
     const number = document.createElement("span");
     number.className = "cm-stickyLineNo";
-    if (gutterWidth > 0) number.style.width = `${gutterWidth}px`;
     number.textContent = String(row.line);
     button.appendChild(number);
 
@@ -224,6 +270,12 @@ class StickyScrollPlugin {
     code.className = "cm-stickyCode";
     this.fillHighlighted(code, line.from, line.to, row.text);
     button.appendChild(code);
+
+    if (columns) {
+      number.style.width = `${columns.digitsEnd}px`;
+      number.style.paddingRight = "0";
+      code.style.marginLeft = `${Math.max(0, columns.textStart - columns.digitsEnd)}px`;
+    }
 
     return button;
   }

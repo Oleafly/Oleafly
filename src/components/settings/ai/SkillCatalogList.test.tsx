@@ -56,13 +56,19 @@ const catalog = (over: Partial<SkillCatalog> = {}): SkillCatalog => ({
 
 let emit: ((event: { payload: SkillAssetProgress }) => void) | null = null;
 
-function renderList() {
-  render(
+function renderList(props: Parameters<typeof SkillCatalogList>[0] = {}) {
+  return render(
     <QueryClientProvider client={createAppQueryClient()}>
-      <SkillCatalogList />
+      <SkillCatalogList {...props} />
     </QueryClientProvider>,
   );
 }
+
+const SHELF = [
+  entry(),
+  entry({ id: "scanpy", name: "Scanpy", description: "Single-cell analysis", domain: "bioinformatics" }),
+  entry({ id: "pydicom", name: "Pydicom", description: "Read DICOM scans", domain: "imaging" }),
+];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -288,5 +294,54 @@ describe("SkillCatalogList", () => {
     });
 
     expect(screen.getByTestId("skill-shelf-row-oleafly-latex")).toBeInTheDocument();
+  });
+
+  it("filters the shelf by domain chip", async () => {
+    mocks.skillsCatalog.mockResolvedValue(catalog({ skills: SHELF }));
+    renderList();
+    await screen.findByTestId("skill-shelf-row-scanpy");
+
+    const all = screen.getByRole("button", { name: catalogCopy.allDomains });
+    expect(all).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "imaging" }));
+
+    expect(screen.getByRole("button", { name: "imaging" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("skill-shelf-row-pydicom")).toBeInTheDocument();
+    expect(screen.queryByTestId("skill-shelf-row-scanpy")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("skill-shelf-row-oleafly-latex")).not.toBeInTheDocument();
+
+    await userEvent.click(all);
+    expect(screen.getByTestId("skill-shelf-row-scanpy")).toBeInTheDocument();
+  });
+
+  it("hides the domain chips when the shelf has one domain", async () => {
+    renderList();
+    await screen.findByTestId("skill-shelf-row-oleafly-latex");
+    expect(screen.queryByTestId("skills-catalog-domains")).not.toBeInTheDocument();
+  });
+
+  it("filters the shelf by search and reports how many rows are left", async () => {
+    mocks.skillsCatalog.mockResolvedValue(catalog({ skills: SHELF }));
+    const onMatchCountChange = vi.fn();
+    const view = renderList({ search: "dicom", onMatchCountChange });
+    await screen.findByTestId("skill-shelf-row-pydicom");
+
+    expect(screen.queryByTestId("skill-shelf-row-scanpy")).not.toBeInTheDocument();
+    expect(onMatchCountChange).toHaveBeenLastCalledWith(1);
+
+    view.rerender(
+      <QueryClientProvider client={createAppQueryClient()}>
+        <SkillCatalogList search="nothing like this" onMatchCountChange={onMatchCountChange} />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText(skills.search.empty)).toBeInTheDocument();
+    expect(onMatchCountChange).toHaveBeenLastCalledWith(0);
+  });
+
+  it("leaves the no-match message to the parent when asked", async () => {
+    renderList({ search: "nothing like this", hideNoMatch: true });
+    await waitFor(() => expect(mocks.skillsCatalog).toHaveBeenCalled());
+    await screen.findByText(catalogCopy.source.remote.replace("{{when}}", WHEN_TEXT));
+    expect(screen.queryByTestId("skills-no-match")).not.toBeInTheDocument();
   });
 });

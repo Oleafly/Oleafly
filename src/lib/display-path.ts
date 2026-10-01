@@ -8,7 +8,7 @@ import { displayHomes } from "@/lib/tauri";
  * screenshot does not print the account name. Every place the UI renders a
  * path from the backend goes through `displayPath` (one path) or `displayText`
  * (free text such as agent titles, logs and errors), which makes this module
- * the single switch for anything that later hides more (a screenshot mode).
+ * the single switch for anything that hides more (Settings blurs its paths).
  *
  * Display only: copy, reveal and every IPC call keep the raw path, because
  * neither Rust nor the file system expands `~`.
@@ -213,10 +213,10 @@ export function displayText(text: string): string {
   return textFor(homes, text);
 }
 
-/** A run of display text, marked when screenshot mode should blur it. */
-export interface PersonalPart {
+/** A run of display text, marked when it is a file or folder path. */
+export interface PathPart {
   readonly text: string;
-  readonly personal: boolean;
+  readonly path: boolean;
 }
 
 // A path runs until whitespace, a quote, a backtick or a shell bracket. Spaces
@@ -235,10 +235,6 @@ const PATH_PATTERN = new RegExp(
   "gu",
 );
 const TRAILING_PUNCTUATION = new Set(".,;:!?)]}");
-const EMAIL_PATTERN = new RegExp(
-  String.raw`(^|[^${NAME_CHAR}.+])([${NAME_CHAR}.+]+@[\p{L}\p{N}\-]+(?:\.[\p{L}\p{N}\-]+)+)`,
-  "gu",
-);
 
 /**
  * `value` without the punctuation at its end. A loop, not a `[...]+$`
@@ -251,96 +247,26 @@ function withoutTrailingPunctuation(value: string): string {
   return value.slice(0, end);
 }
 
-function escapeLiteral(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
-}
-
-function accountNames(current: readonly string[]): Array<{ name: string; windows: boolean }> {
-  const seen = new Map<string, boolean>();
-  for (const home of current) {
-    const segments = home.split(/[\\/]+/).filter(Boolean);
-    const name = segments.at(-1);
-    // A home right under the root ("/root") names a system account, and a
-    // name shorter than three letters would blur ordinary words.
-    if (!name || segments.length < 2 || name.length < 3 || name.endsWith(":")) continue;
-    seen.set(name, isWindowsPath(home));
-  }
-  return [...seen].map(([name, windows]) => ({ name, windows }));
-}
-
-type Range = [number, number];
-
-function collect(pattern: RegExp, text: string, ranges: Range[], trim = false): void {
-  for (const match of text.matchAll(pattern)) {
-    const lead = match[1]?.length ?? 0;
-    const body = trim ? withoutTrailingPunctuation(match[2]) : match[2];
-    if (!body) continue;
-    const start = match.index + lead;
-    ranges.push([start, start + body.length]);
-  }
-}
-
-function wordPattern(value: string, flags: string): RegExp {
-  return new RegExp(String.raw`(^|[^\p{L}\p{N}_])(${escapeLiteral(value)})(?![\p{L}\p{N}_])`, flags);
-}
-
-const namePatterns = new Map<readonly string[], RegExp[]>();
-
-// One pattern per account name, built once per set of homes: a raw log runs
-// every line through here.
-function accountPatterns(current: readonly string[]): RegExp[] {
-  const cached = namePatterns.get(current);
-  if (cached) return cached;
-  const patterns = accountNames(current).map(({ name, windows }) =>
-    wordPattern(name, windows ? "giu" : "gu"),
-  );
-  namePatterns.clear();
-  namePatterns.set(current, patterns);
-  return patterns;
-}
-
-function partsFor(current: readonly string[], text: string, values: readonly string[]): PersonalPart[] {
-  if (typeof text !== "string" || text.length === 0) return [];
-  const ranges: Range[] = [];
-  collect(PATH_PATTERN, text, ranges, true);
-  collect(EMAIL_PATTERN, text, ranges);
-  for (const pattern of accountPatterns(current)) collect(pattern, text, ranges);
-  for (const value of values) {
-    if (value.trim()) collect(wordPattern(value, "gu"), text, ranges);
-  }
-  if (ranges.length === 0) return [{ text, personal: false }];
-  ranges.sort((a, b) => a[0] - b[0]);
-  const parts: PersonalPart[] = [];
-  let cursor = 0;
-  let open: Range | null = null;
-  const close = () => {
-    if (!open) return;
-    if (open[0] > cursor) parts.push({ text: text.slice(cursor, open[0]), personal: false });
-    parts.push({ text: text.slice(open[0], open[1]), personal: true });
-    cursor = open[1];
-    open = null;
-  };
-  for (const range of ranges) {
-    if (open && range[0] <= open[1]) {
-      open[1] = Math.max(open[1], range[1]);
-      continue;
-    }
-    close();
-    open = [range[0], range[1]];
-  }
-  close();
-  if (cursor < text.length) parts.push({ text: text.slice(cursor), personal: false });
-  return parts;
-}
-
 /**
- * Splits display text into the runs screenshot mode blurs and the runs it
- * leaves clear. Personal runs are home and absolute paths (as `displayText`
- * leaves them, so `~/…` too), email addresses, the account name from the home
- * folder, and any `values` the caller names (a size or a count in a sentence).
+ * Splits display text into its paths and the text around them, so Settings
+ * can blur the paths in a message (src/components/settings/SettingsPath.tsx).
+ * Paths are home paths (as `displayText` leaves them, so `~/…` too) and
+ * absolute paths.
  */
-export function personalParts(text: string, values: readonly string[] = []): PersonalPart[] {
-  return partsFor(homes, text, values);
+export function pathParts(text: string): PathPart[] {
+  if (typeof text !== "string" || text.length === 0) return [];
+  const parts: PathPart[] = [];
+  let cursor = 0;
+  for (const match of text.matchAll(PATH_PATTERN)) {
+    const path = withoutTrailingPunctuation(match[2]);
+    if (!path) continue;
+    const start = match.index + (match[1]?.length ?? 0);
+    if (start > cursor) parts.push({ text: text.slice(cursor, start), path: false });
+    parts.push({ text: path, path: true });
+    cursor = start + path.length;
+  }
+  if (cursor < text.length) parts.push({ text: text.slice(cursor), path: false });
+  return parts;
 }
 
 function subscribe(listener: () => void): () => void {
@@ -372,13 +298,4 @@ export function useDisplayPath(): (path: string) => string {
 export function useDisplayText(): (text: string) => string {
   const current = useDisplayHomes();
   return useCallback((text: string) => textFor(current, text), [current]);
-}
-
-/** `personalParts` for components: re-renders once the home folder is known. */
-export function usePersonalParts(): (text: string, values?: readonly string[]) => PersonalPart[] {
-  const current = useDisplayHomes();
-  return useCallback(
-    (text: string, values: readonly string[] = []) => partsFor(current, text, values),
-    [current],
-  );
 }

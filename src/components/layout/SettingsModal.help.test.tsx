@@ -88,11 +88,13 @@ describe("Settings Help & About support callout", () => {
     expect(screen.queryByRole("button", { name: /Discussions/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Issues/ })).toBeNull();
     expect(screen.queryByText("@OleaflyHQ")).toBeNull();
-    const communityHeading = screen.getByText("Community");
+    // The citation card closes the page, after Community, Project and Resources.
+    const citeCard = screen.getByTestId("cite-oleafly-card");
     expect(
-      communityHeading.compareDocumentPosition(screen.getByTestId("cite-oleafly-card")) &
+      screen.getByText("Resources").compareDocumentPosition(citeCard) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+    expect(citeCard.parentElement?.lastElementChild).toBe(citeCard);
 
     fireEvent.click(screen.getByRole("button", { name: "star the project on GitHub" }));
 
@@ -106,25 +108,49 @@ describe("Settings Help & About support callout", () => {
     });
   });
 
-  it("offers the Discord community from the navigation footer and the community list", async () => {
+  it("pins community and docs icon links under the navigation, and keeps the Discord row", async () => {
     render(<SettingsModal />);
 
-    const footerButton = await screen.findByTestId("settings-join-discord");
+    const footer = await screen.findByTestId("settings-footer-links");
     const navigation = screen.getByRole("navigation", { name: "Settings sections" });
-    expect(navigation).toContainElement(footerButton);
+    expect(navigation).toContainElement(footer);
     // Pinned under the scrolling list, so it stays visible however long the list grows.
-    expect(screen.getByTestId("settings-section-scroll")).not.toContainElement(footerButton);
-    expect(footerButton).toHaveTextContent(/^Join our Discord$/);
+    expect(screen.getByTestId("settings-section-scroll")).not.toContainElement(footer);
+    // Icons only: the names live in aria-label and the tooltip, never as visible text.
+    expect(footer).toHaveTextContent(/^$/);
+
+    const links: [string, string][] = [
+      ["Join our Discord", DISCORD_URL],
+      ["Follow us on X", "https://x.com/OleaflyHQ"],
+      ["Star on GitHub", "https://github.com/Oleafly/Oleafly"],
+      ["Documentation", "https://oleafly.com/docs/"],
+    ];
+    expect(within(footer).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(
+      links.map(([label]) => label),
+    );
+    for (const [label, url] of links) {
+      mocks.open.mockClear();
+      fireEvent.click(within(footer).getByRole("button", { name: label }));
+      await waitFor(() => expect(mocks.open).toHaveBeenCalledWith(url));
+    }
 
     const communityRow = screen.getByRole("button", { name: /Ask questions, report bugs, and share ideas/ });
     expect(await within(communityRow).findByText("9 online")).toBeInTheDocument();
     expect(mocks.discordCommunityStats).toHaveBeenCalledTimes(1);
 
+    mocks.open.mockClear();
     fireEvent.click(communityRow);
     await waitFor(() => expect(mocks.open).toHaveBeenCalledWith(DISCORD_URL));
-    mocks.open.mockClear();
-    fireEvent.click(footerButton);
-    await waitFor(() => expect(mocks.open).toHaveBeenCalledWith(DISCORD_URL));
+  });
+
+  it("marks the active section with a border, not a shadow", () => {
+    render(<SettingsModal />);
+
+    const active = screen.getByTestId("settings-section-help");
+    expect(active).toHaveAttribute("aria-current", "page");
+    expect(active).toHaveClass("border", "border-border", "bg-background");
+    expect(active.className).not.toMatch(/(^|\s)shadow/);
+    expect(screen.getByTestId("settings-section-appearance")).toHaveClass("border", "border-transparent");
   });
 
   it("keeps the settings section list scrollable at larger app font sizes", () => {

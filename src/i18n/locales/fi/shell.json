@@ -169,9 +169,6 @@
       "online": "Verkkotila (salli pakettien haku)"
     },
     "openTool": "Avaa {{name}}",
-    "personalDetails": {
-      "keywords": "kuvakaappaustila, kuvakaappaus, yksityisyys, sumennus, henkilötiedot, polut, tilin nimi"
-    },
     "recompile": {
       "label": "Käännä uudelleen"
     },
@@ -234,6 +231,7 @@
   "community": {
     "discordOnline": "{{online}} paikalla",
     "discordOnlineAria": "Discordissa paikalla nyt: {{online}}",
+    "followOnX": "Seuraa meitä X:ssä",
     "joinDiscord": "Liity Discordiin"
   },
   "compile": {
@@ -517,10 +515,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Piilota henkilötiedot",
-    "show": "Näytä henkilötiedot"
-  },
   "projectSearch": {
     "hint": "Hae tämän projektin tiedostoista.",
     "noResults": "Ei tuloksia.",
@@ -762,7 +756,7 @@
       "shortcuts": "Pikanäppäimet"
     },
     "search": {
-      "empty": "Ei vastaavia asetuksia.",
+      "empty": "Ei vastaavia asetuksia",
       "keywords": {
         "ai": "avustaja, keskustelu, chat, mallit, palveluntarjoajat, API-avaimet, agentit, kehotteet, budjetti, MCP-palvelimet",
         "appearance": "teema, ulkoasu, tumma tila, vaalea tila, väri, värit, fontit, tekstin koko, zoomaus, asettelu",
@@ -897,6 +891,15 @@
     "stagedChangeCount_other": "{{count}} valmisteltua muutosta",
     "stash": "Varastoi muutokset",
     "stashNeedsAttention": "Ratkaise varaston ristiriidat",
+    "status": {
+      "modified": "Muokattu",
+      "added": "Lisätty",
+      "deleted": "Poistettu",
+      "renamed": "Nimetty uudelleen",
+      "untracked": "Ei seurannassa",
+      "conflict": "Ristiriita",
+      "containsChanges": "Sisältää muutoksia"
+    },
     "sync": "Synkronoi",
     "title": "Versionhallinta",
     "titleRequired": "Commitin otsikko vaaditaan.",
@@ -952,8 +955,8 @@
     "exportMarkdown": "Vie Markdown-muodossa (.md)",
     "exportPdf": "Vie PDF-muodossa",
     "exportPdfVector": "Vie PDF-muodossa (vektorikuva)",
-    "exportPngRaster": "Vie PNG-muodossa (rasterikuva)",
-    "exportPagePng": "Vie sivu PNG-muodossa (rasterikuva)",
+    "exportPngRaster": "Vie PNG-muodossa",
+    "exportPagePng": "Vie sivu PNG-muodossa",
     "exportAs": "Vie muodossa {{format}}",
     "exportPptx": "Vie PowerPoint-muodossa (.pptx)",
     "exportSourceZip": "Vie lähdekoodi (.zip)",

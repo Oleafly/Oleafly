@@ -4,8 +4,6 @@ import { PenTool, Plus, Search, Settings as SettingsIcon, ToolCase } from "lucid
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
-import { PersonalDetailsToggle } from "@/components/layout/PersonalDetailsToggle";
-import { useHidePersonalDetails } from "@/components/ui/private";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useFilesStore } from "@/store/files";
@@ -74,7 +72,6 @@ export function HomeDock() {
   const fullscreen = useFullscreen();
   const page = useHomeViewStore((s) => s.page);
   const goTo = useHomeViewStore((s) => s.goTo);
-  const personalDetailsHidden = useHidePersonalDetails();
   const horizontal = dockPlacement === "bottom";
   const verticalTooltipSide = dockPlacement === "right" ? "left" : "right";
   const tooltipSide = horizontal ? "top" : verticalTooltipSide;
@@ -122,11 +119,6 @@ export function HomeDock() {
         align="center"
         triggerClassName={dockButtonClass(false)}
         testId="home-theme-menu"
-      />
-      <PersonalDetailsToggle
-        side={tooltipSide}
-        className={dockButtonClass(personalDetailsHidden)}
-        testId="home-personal-details-toggle"
       />
       <DockButton
         label={t(($) => $.library.dock.settings)}
