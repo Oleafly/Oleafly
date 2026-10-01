@@ -19,7 +19,16 @@ an SSH key like `id_rsa` or `id_ed25519`, `.npmrc`, or `credentials.json`. A
 secret that lands in a commit stays in the history even after you add it to
 `.gitignore`, so every file is left untracked in the Git panel for you to sort
 out, and the app log names the files that stopped the commit. Files the
-project's own `.gitignore` already covers don't count.
+project's own `.gitignore` already covers don't count. Neither do templates
+like `.env.example`, SSH public keys or Keynote `.key` files.
+
+**Publish to GitHub** uses the same list, in any folder and any mix of upper
+and lower case. It commits everything else, and the dialog names the files it
+left out. Those stay in the project folder and aren't staged. A push uploads
+the whole branch history, so if a file with one of these names was ever
+committed, Oleafly lists it and waits for **Cancel** or **Publish anyway**
+before it creates anything on GitHub. The history check only looks at names,
+so it lists a Keynote `.key` file too.
 
 Opening a project that has no repository yet only runs `git init`. It stages
 nothing and commits nothing. After the first commit, Oleafly commits only when

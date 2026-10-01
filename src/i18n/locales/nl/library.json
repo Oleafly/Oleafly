@@ -380,7 +380,15 @@
     "linked": "Gekoppeld aan {{remote}} en gepusht.",
     "pushNeedsPull": "Gekoppeld aan {{remote}}, maar pushen vereist eerst een pull: {{detail}}",
     "replaceRemotePrompt": "Dit project is gekoppeld aan {{remote}}. Die koppeling vervangen?",
-    "replaceRemote": "Koppeling vervangen"
+    "replaceRemote": "Koppeling vervangen",
+    "trackedSecretsPrompt_one": "Dit bestand kan sleutels of wachtwoorden bevatten en staat al in de Git-geschiedenis van dit project: {{files}}. Publiceren uploadt die geschiedenis, dus GitHub zou het ook krijgen.",
+    "trackedSecretsPrompt_other": "Deze bestanden kunnen sleutels of wachtwoorden bevatten en staan al in de Git-geschiedenis van dit project: {{files}}. Publiceren uploadt die geschiedenis, dus GitHub zou ze ook krijgen.",
+    "publishAnyway": "Toch publiceren",
+    "leftOutSecrets_one": "Weggelaten omdat het sleutels of wachtwoorden kan bevatten: {{files}}. Het staat nog in de projectmap. Om het te publiceren, zet je het klaar in Versiebeheer en commit je het.",
+    "leftOutSecrets_other": "Weggelaten omdat ze sleutels of wachtwoorden kunnen bevatten: {{files}}. Ze staan nog in de projectmap. Om er een te publiceren, zet je het klaar in Versiebeheer en commit je het.",
+    "moreFiles_one": "{{files}} en nog {{more}}",
+    "moreFiles_other": "{{files}} en nog {{more}}",
+    "nothingToPublish": "Er is niets gepusht omdat dit project nog geen commits heeft."
   },
   "deadlines": {
     "title": "Conferentiedeadlines",

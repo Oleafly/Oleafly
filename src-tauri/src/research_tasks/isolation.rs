@@ -719,7 +719,7 @@ fn excluded_path(path: &str) -> bool {
     })
 }
 
-pub(crate) fn is_sensitive_component(component: &str) -> bool {
+fn is_sensitive_component(component: &str) -> bool {
     let lower = component.to_ascii_lowercase();
     lower == ".private"
         || lower == ".env"

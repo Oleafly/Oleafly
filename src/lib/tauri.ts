@@ -75,6 +75,8 @@ import type {
   GitHubRepoStats,
   GitHubUser,
   GitPullResult,
+  GitPublishPreflight,
+  GitPublishPrepared,
   ImportPathsResult,
   InitialState,
   PendingOpenRequest,
@@ -871,11 +873,19 @@ export const gitIsInitialized = (projectId: string) =>
 export const gitInitialize = (projectId: string) =>
   invoke<string>("git_initialize", { projectId });
 
-export const gitPreparePublish = (projectId: string, message: string) =>
-  invoke<boolean>("git_prepare_publish", { projectId, message });
+export const gitPreparePublish = (
+  projectId: string,
+  message: string,
+  options?: { allowTrackedSecrets?: string[] },
+) =>
+  invoke<GitPublishPrepared>("git_prepare_publish", {
+    projectId,
+    message,
+    allowTrackedSecrets: options?.allowTrackedSecrets ?? [],
+  });
 
 export const gitPublishPreflight = (projectId: string) =>
-  invoke<void>("git_publish_preflight", { projectId });
+  invoke<GitPublishPreflight>("git_publish_preflight", { projectId });
 
 export const gitLog = (projectId: string) =>
   invoke<GitCommit[]>("git_log", { projectId });

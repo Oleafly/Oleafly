@@ -380,7 +380,15 @@
     "linked": "Linked and pushed to {{remote}}.",
     "pushNeedsPull": "Linked to {{remote}}, but push needs a pull first: {{detail}}",
     "replaceRemotePrompt": "This project is linked to {{remote}}. Replace that link?",
-    "replaceRemote": "Replace link"
+    "replaceRemote": "Replace link",
+    "trackedSecretsPrompt_one": "This file may hold keys or passwords, and it is already in this project's Git history: {{files}}. Publishing uploads that history, so GitHub would get it too.",
+    "trackedSecretsPrompt_other": "These files may hold keys or passwords, and they are already in this project's Git history: {{files}}. Publishing uploads that history, so GitHub would get them too.",
+    "publishAnyway": "Publish anyway",
+    "leftOutSecrets_one": "Left out because it may hold keys or passwords: {{files}}. It is still in the project folder. To publish it, stage and commit it in Source Control.",
+    "leftOutSecrets_other": "Left out because they may hold keys or passwords: {{files}}. They are still in the project folder. To publish one, stage and commit it in Source Control.",
+    "moreFiles_one": "{{files}} and {{more}} more",
+    "moreFiles_other": "{{files}} and {{more}} more",
+    "nothingToPublish": "Nothing was pushed because this project has no commits yet."
   },
   "deadlines": {
     "title": "Conference Deadlines",

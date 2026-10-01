@@ -65,7 +65,8 @@
   "git": {
     "remote_exists": "Bu proje zaten {{remote}} ile bağlantılı.",
     "nested_repository": "Bu proje başka bir Git deposunun içinde olduğu için Oleafly burada ayrı bir depo oluşturmaz.",
-    "not_installed": "Bu bilgisayarda Git kurulu değil. Git'i kurun, sonra yeniden deneyin."
+    "not_installed": "Bu bilgisayarda Git kurulu değil. Git'i kurun, sonra yeniden deneyin.",
+    "tracked_secret_files": "Bu projenin Git geçmişindeki dosyalar anahtar veya parola içerebileceği için yayımlama durduruldu: {{files}}"
   },
   "approvals": {
     "full_access_declined": "Tam erişim etkinleştirilmedi."

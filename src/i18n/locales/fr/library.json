@@ -387,7 +387,18 @@
     "linked": "Lié et poussé vers {{remote}}.",
     "pushNeedsPull": "Lié à {{remote}}, mais le push exige d'abord un pull : {{detail}}",
     "replaceRemotePrompt": "Ce projet est lié à {{remote}}. Remplacer ce lien ?",
-    "replaceRemote": "Remplacer le lien"
+    "replaceRemote": "Remplacer le lien",
+    "trackedSecretsPrompt_one": "Ce fichier peut contenir des clés ou des mots de passe et se trouve déjà dans l'historique Git de ce projet : {{files}}. La publication envoie cet historique, donc GitHub le recevrait aussi.",
+    "trackedSecretsPrompt_many": "Ces fichiers peuvent contenir des clés ou des mots de passe et se trouvent déjà dans l'historique Git de ce projet : {{files}}. La publication envoie cet historique, donc GitHub les recevrait aussi.",
+    "trackedSecretsPrompt_other": "Ces fichiers peuvent contenir des clés ou des mots de passe et se trouvent déjà dans l'historique Git de ce projet : {{files}}. La publication envoie cet historique, donc GitHub les recevrait aussi.",
+    "publishAnyway": "Publier quand même",
+    "leftOutSecrets_one": "Laissé de côté, car il peut contenir des clés ou des mots de passe : {{files}}. Il reste dans le dossier du projet. Pour le publier, indexez-le et validez-le dans Contrôle de version.",
+    "leftOutSecrets_many": "Laissés de côté, car ils peuvent contenir des clés ou des mots de passe : {{files}}. Ils restent dans le dossier du projet. Pour en publier un, indexez-le et validez-le dans Contrôle de version.",
+    "leftOutSecrets_other": "Laissés de côté, car ils peuvent contenir des clés ou des mots de passe : {{files}}. Ils restent dans le dossier du projet. Pour en publier un, indexez-le et validez-le dans Contrôle de version.",
+    "moreFiles_one": "{{files}} et {{more}} autre",
+    "moreFiles_many": "{{files}} et {{more}} autres",
+    "moreFiles_other": "{{files}} et {{more}} autres",
+    "nothingToPublish": "Rien n'a été poussé, car ce projet n'a encore aucun commit."
   },
   "deadlines": {
     "title": "Échéances de conférences",

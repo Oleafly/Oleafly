@@ -65,7 +65,8 @@
   "git": {
     "remote_exists": "Tento projekt je už propojen s {{remote}}.",
     "nested_repository": "Tento projekt je uvnitř jiného repozitáře Git, proto v něm Oleafly nevytvoří samostatný repozitář.",
-    "not_installed": "Git v tomto počítači není nainstalován. Nainstalujte Git a zkuste to znovu."
+    "not_installed": "Git v tomto počítači není nainstalován. Nainstalujte Git a zkuste to znovu.",
+    "tracked_secret_files": "Publikování se zastavilo, protože soubory v historii Git tohoto projektu mohou obsahovat klíče nebo hesla: {{files}}"
   },
   "approvals": {
     "full_access_declined": "Úplný přístup nebyl povolen."

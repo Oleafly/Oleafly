@@ -65,7 +65,8 @@
   "git": {
     "remote_exists": "Tämä projekti on jo linkitetty kohteeseen {{remote}}.",
     "nested_repository": "Tämä projekti on toisen Git-repositorion sisällä, joten Oleafly ei luo tähän erillistä repositoriota.",
-    "not_installed": "Gitiä ei ole asennettu tälle koneelle. Asenna Git ja yritä uudelleen."
+    "not_installed": "Gitiä ei ole asennettu tälle koneelle. Asenna Git ja yritä uudelleen.",
+    "tracked_secret_files": "Julkaisu keskeytyi, koska projektin Git-historian tiedostot voivat sisältää avaimia tai salasanoja: {{files}}"
   },
   "approvals": {
     "full_access_declined": "Täyttä käyttöoikeutta ei otettu käyttöön."

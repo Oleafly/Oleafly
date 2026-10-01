@@ -394,7 +394,21 @@
     "linked": "Propojeno a odesláno do {{remote}}.",
     "pushNeedsPull": "Propojeno s {{remote}}, ale odeslání vyžaduje nejdřív stažení: {{detail}}",
     "replaceRemotePrompt": "Tento projekt je propojen s {{remote}}. Nahradit toto propojení?",
-    "replaceRemote": "Nahradit propojení"
+    "replaceRemote": "Nahradit propojení",
+    "trackedSecretsPrompt_one": "Tento soubor může obsahovat klíče nebo hesla a už je v historii Git tohoto projektu: {{files}}. Publikování nahraje celou historii, takže by ho dostal i GitHub.",
+    "trackedSecretsPrompt_few": "Tyto soubory mohou obsahovat klíče nebo hesla a už jsou v historii Git tohoto projektu: {{files}}. Publikování nahraje celou historii, takže by je dostal i GitHub.",
+    "trackedSecretsPrompt_many": "Tyto soubory mohou obsahovat klíče nebo hesla a už jsou v historii Git tohoto projektu: {{files}}. Publikování nahraje celou historii, takže by je dostal i GitHub.",
+    "trackedSecretsPrompt_other": "Tyto soubory mohou obsahovat klíče nebo hesla a už jsou v historii Git tohoto projektu: {{files}}. Publikování nahraje celou historii, takže by je dostal i GitHub.",
+    "publishAnyway": "Přesto publikovat",
+    "leftOutSecrets_one": "Vynecháno, protože může obsahovat klíče nebo hesla: {{files}}. Soubor zůstává ve složce projektu. Pokud ho chcete publikovat, připravte ho a commitněte ve Správě verzí.",
+    "leftOutSecrets_few": "Vynecháno, protože mohou obsahovat klíče nebo hesla: {{files}}. Soubory zůstávají ve složce projektu. Pokud chcete některý publikovat, připravte ho a commitněte ve Správě verzí.",
+    "leftOutSecrets_many": "Vynecháno, protože mohou obsahovat klíče nebo hesla: {{files}}. Soubory zůstávají ve složce projektu. Pokud chcete některý publikovat, připravte ho a commitněte ve Správě verzí.",
+    "leftOutSecrets_other": "Vynecháno, protože mohou obsahovat klíče nebo hesla: {{files}}. Soubory zůstávají ve složce projektu. Pokud chcete některý publikovat, připravte ho a commitněte ve Správě verzí.",
+    "moreFiles_one": "{{files}} a {{more}} další",
+    "moreFiles_few": "{{files}} a {{more}} další",
+    "moreFiles_many": "{{files}} a {{more}} dalšího",
+    "moreFiles_other": "{{files}} a {{more}} dalších",
+    "nothingToPublish": "Nic se neodeslalo, protože tento projekt zatím nemá žádné commity."
   },
   "deadlines": {
     "title": "Termíny konferencí",

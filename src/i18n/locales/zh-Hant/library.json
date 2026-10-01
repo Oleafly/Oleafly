@@ -373,7 +373,12 @@
     "linked": "已連結並推送到 {{remote}}。",
     "pushNeedsPull": "已連結到 {{remote}}，但推送前需要先拉取：{{detail}}",
     "replaceRemotePrompt": "此專案目前連結的是 {{remote}}。要取代這個連結嗎？",
-    "replaceRemote": "取代連結"
+    "replaceRemote": "取代連結",
+    "trackedSecretsPrompt_other": "這些檔案可能包含金鑰或密碼，而且已在此專案的 Git 歷史記錄中：{{files}}。發布會上傳這段歷史記錄，因此 GitHub 也會收到它們。",
+    "publishAnyway": "仍要發布",
+    "leftOutSecrets_other": "以下檔案可能包含金鑰或密碼，已被排除：{{files}}。它們仍在專案資料夾中。若要發布其中一個，請在原始檔控制中暫存並提交它。",
+    "moreFiles_other": "{{files}}，另有 {{more}} 個",
+    "nothingToPublish": "此專案還沒有任何提交，因此沒有推送任何內容。"
   },
   "deadlines": {
     "title": "研討會截止日期",

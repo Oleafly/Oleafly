@@ -65,7 +65,8 @@
   "git": {
     "remote_exists": "Este projeto já está vinculado a {{remote}}.",
     "nested_repository": "Este projeto está dentro de outro repositório Git, então o Oleafly não vai criar um repositório separado aqui.",
-    "not_installed": "O Git não está instalado neste computador. Instale o Git e tente de novo."
+    "not_installed": "O Git não está instalado neste computador. Instale o Git e tente de novo.",
+    "tracked_secret_files": "A publicação parou porque arquivos no histórico do Git deste projeto podem conter chaves ou senhas: {{files}}"
   },
   "approvals": {
     "full_access_declined": "O acesso total não foi ativado."

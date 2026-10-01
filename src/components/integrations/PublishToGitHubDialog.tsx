@@ -17,13 +17,20 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { Private, PrivateText } from "@/components/ui/private";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGithubStore } from "@/store/github";
-import { gitPreparePublish, gitPublishPreflight, gitPush, gitSetRemote } from "@/lib/tauri";
+import {
+  gitPreparePublish,
+  gitPublishPreflight,
+  gitPush,
+  gitSetRemote,
+  type GitPublishPreflight,
+} from "@/lib/tauri";
 import {
   githubCreateRepo,
   githubListRepos,
   type GitHubRepo,
 } from "@/lib/github";
 import { describeError } from "@/lib/app-error";
+import { formatNameList, formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { cn } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -41,6 +48,21 @@ type PublishActionToken = {
   session: number;
   request: number;
 };
+
+type PublishTarget = "new" | "existing";
+
+/** Files in the project's Git history that look like secrets, waiting for the
+ * user to cancel or publish them anyway. */
+type SecretsPrompt = {
+  target: PublishTarget;
+  replace: boolean;
+  files: string[];
+};
+
+/** Whether the history holds a secret-looking file the user has not approved. */
+function needsApproval(preflight: GitPublishPreflight, approved: string[]): boolean {
+  return preflight.trackedSecretFiles.some((file) => !approved.includes(file));
+}
 
 function linkRemote(projectId: string, url: string) {
   return gitSetRemote(projectId, url);
@@ -71,7 +93,7 @@ export function PublishToGitHubDialog({
   const login = useGithubStore((s) => s.user?.login);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
-  const [tab, setTab] = useState<"new" | "existing">("new");
+  const [tab, setTab] = useState<PublishTarget>("new");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -82,7 +104,9 @@ export function PublishToGitHubDialog({
   const [query, setQuery] = useState("");
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
-  const [replaceTarget, setReplaceTarget] = useState<"new" | "existing" | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<PublishTarget | null>(null);
+  const [secretsPrompt, setSecretsPrompt] = useState<SecretsPrompt | null>(null);
+  const [leftOut, setLeftOut] = useState<string[]>([]);
   const sessionRequest = useRef(0);
   const actionRequest = useRef(0);
   const reposRequest = useRef(0);
@@ -135,6 +159,8 @@ export function PublishToGitHubDialog({
     setMsg(null);
     setSelected(null);
     setReplaceTarget(null);
+    setSecretsPrompt(null);
+    setLeftOut([]);
     setRepoName(slug(projectName || "oleafly-project"));
     setIsPrivate(true);
     setRepos([]);
@@ -198,7 +224,76 @@ export function PublishToGitHubDialog({
     }, 900);
   };
 
-  const publishNew = async (replace = false) => {
+  const fileList = (files: string[]) =>
+    formatNameList(files, (shown, rest) =>
+      t(($) => $.library.github.moreFiles, {
+        files: shown,
+        more: formatNumber(rest),
+        count: rest,
+      }),
+    );
+
+  /** Show the history question and stop, unless the user already approved
+   * every secret-looking file in the history. */
+  const asksAboutSecrets = (
+    token: PublishActionToken,
+    preflight: GitPublishPreflight,
+    prompt: Omit<SecretsPrompt, "files">,
+    approved: string[],
+  ) => {
+    if (!needsApproval(preflight, approved)) return false;
+    if (isCurrentAction(token)) {
+      setMsg(null);
+      setSecretsPrompt({ ...prompt, files: preflight.trackedSecretFiles });
+    }
+    return true;
+  };
+
+  /** Run the history check; true when publishing has to stop here. */
+  const stopsForSecrets = async (
+    token: PublishActionToken,
+    prompt: Omit<SecretsPrompt, "files">,
+    approved: string[],
+  ) => {
+    const preflight = await gitPublishPreflight(token.projectId);
+    return !isCurrentAction(token) || asksAboutSecrets(token, preflight, prompt, approved);
+  };
+
+  /** Commit, link the remote, and report a project with nothing to push.
+   * Returns the files left out, or null when there is nothing to push. */
+  const commitAndLink = async (
+    token: PublishActionToken,
+    remoteUrl: string,
+    replace: boolean,
+    approved: string[],
+  ) => {
+    const prepared = await gitPreparePublish(token.projectId, "Initial commit", {
+      allowTrackedSecrets: approved,
+    });
+    if (isCurrentAction(token)) setLeftOut(prepared.leftOut);
+    await (replace ? replaceRemote : linkRemote)(token.projectId, remoteUrl);
+    if (prepared.hasCommit) return prepared.leftOut;
+    if (isCurrentAction(token)) {
+      note(token, false, t(($) => $.library.github.nothingToPublish));
+      onPublished(remoteUrl);
+    }
+    return null;
+  };
+
+  /** Report a finished publish. The dialog stays open while it names files it left out. */
+  const finishPublish = (
+    token: PublishActionToken,
+    remoteUrl: string,
+    text: string,
+    skipped: string[],
+  ) => {
+    if (!isCurrentAction(token)) return;
+    note(token, true, text);
+    onPublished(remoteUrl);
+    if (skipped.length === 0) scheduleClose(token);
+  };
+
+  const publishNew = async (replace = false, approved: string[] = []) => {
     if (!projectId) return;
     if (currentRemote && !replace) {
       setMsg(null);
@@ -208,22 +303,26 @@ export function PublishToGitHubDialog({
     setReplaceTarget(null);
     const action = beginAction(projectId);
     if (!action || !isCurrentAction(action)) return;
+    setSecretsPrompt(null);
+    setLeftOut([]);
     const name = slug(repoName.trim() || projectName || "oleafly-project");
     if (!name) return note(action, false, t(($) => $.library.github.nameRequired));
     setBusy(true);
     try {
-      await gitPublishPreflight(action.projectId);
+      if (await stopsForSecrets(action, { target: "new", replace }, approved)) return;
       const repo = await githubCreateRepo(name, isPrivate);
       // A brand-new project may have no commits yet; the remote itself stays
       // clean since auth is handled by gitPush's credential helper, not a
       // token embedded in .git/config.
-      await gitPreparePublish(action.projectId, "Initial commit");
-      await (replace ? replaceRemote : linkRemote)(action.projectId, repo.clone_url);
+      const skipped = await commitAndLink(action, repo.clone_url, replace, approved);
+      if (!skipped) return;
       await gitPush(action.projectId);
-      if (!isCurrentAction(action)) return;
-      note(action, true, t(($) => $.library.github.published, { repository: repo.full_name }));
-      onPublished(repo.clone_url);
-      scheduleClose(action);
+      finishPublish(
+        action,
+        repo.clone_url,
+        t(($) => $.library.github.published, { repository: repo.full_name }),
+        skipped,
+      );
     } catch (e) {
       note(action, false, describeError(e));
     } finally {
@@ -231,7 +330,7 @@ export function PublishToGitHubDialog({
     }
   };
 
-  const publishExisting = async (replace = false) => {
+  const publishExisting = async (replace = false, approved: string[] = []) => {
     if (!projectId || !selected) return;
     const remoteUrl = selected;
     if (currentRemote && currentRemote !== remoteUrl && !replace) {
@@ -242,10 +341,13 @@ export function PublishToGitHubDialog({
     setReplaceTarget(null);
     const action = beginAction(projectId);
     if (!action || !isCurrentAction(action)) return;
+    setSecretsPrompt(null);
+    setLeftOut([]);
     setBusy(true);
     try {
-      await gitPreparePublish(action.projectId, "Initial commit");
-      await (replace ? replaceRemote : linkRemote)(action.projectId, remoteUrl);
+      if (await stopsForSecrets(action, { target: "existing", replace }, approved)) return;
+      const skipped = await commitAndLink(action, remoteUrl, replace, approved);
+      if (!skipped) return;
       // An existing remote may already contain commits. Let the push report
       // when its history must be pulled and reconciled first.
       try {
@@ -263,10 +365,7 @@ export function PublishToGitHubDialog({
         onPublished(remoteUrl);
         return;
       }
-      if (!isCurrentAction(action)) return;
-      note(action, true, t(($) => $.library.github.linked, { remote: remoteUrl }));
-      onPublished(remoteUrl);
-      scheduleClose(action);
+      finishPublish(action, remoteUrl, t(($) => $.library.github.linked, { remote: remoteUrl }), skipped);
     } catch (e) {
       note(action, false, describeError(e));
     } finally {
@@ -276,6 +375,8 @@ export function PublishToGitHubDialog({
 
   const visibleBusy = renderIdentityChanged ? false : busy;
   const visibleMessage = renderIdentityChanged ? null : msg;
+  const visibleSecretsPrompt = renderIdentityChanged ? null : secretsPrompt;
+  const visibleLeftOut = renderIdentityChanged ? [] : leftOut;
 
   const filtered = repos
     .filter((r) => r.full_name.toLowerCase().includes(query.toLowerCase()))
@@ -361,7 +462,9 @@ export function PublishToGitHubDialog({
               value={tab}
               onValueChange={(value) => {
                 setReplaceTarget(null);
-                setTab(value as "new" | "existing");
+                setSecretsPrompt(null);
+                setLeftOut([]);
+                setTab(value as PublishTarget);
               }}
               className="shrink-0"
             >
@@ -476,6 +579,33 @@ export function PublishToGitHubDialog({
                 </div>
               </div>
             ) : null}
+            {visibleSecretsPrompt ? (
+              <div className="shrink-0 border-t p-3 text-xs">
+                <p className="break-words">
+                  {t(($) => $.library.github.trackedSecretsPrompt, {
+                    count: visibleSecretsPrompt.files.length,
+                    files: fileList(visibleSecretsPrompt.files),
+                  })}
+                </p>
+                <div className="mt-2 flex justify-end gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setSecretsPrompt(null)}>
+                    {t(($) => $.common.actions.cancel)}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() =>
+                      void (visibleSecretsPrompt.target === "new" ? publishNew : publishExisting)(
+                        visibleSecretsPrompt.replace,
+                        visibleSecretsPrompt.files,
+                      )
+                    }
+                  >
+                    {t(($) => $.library.github.publishAnyway)}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             {visibleMessage && (
               <div
                 className={cn(
@@ -487,6 +617,14 @@ export function PublishToGitHubDialog({
               >
                 <PrivateText text={visibleMessage.text} values={login ? [login] : []} />
               </div>
+            )}
+            {visibleLeftOut.length > 0 && (
+              <output className="block shrink-0 border-t p-3 text-xs text-muted-foreground break-words">
+                {t(($) => $.library.github.leftOutSecrets, {
+                  count: visibleLeftOut.length,
+                  files: fileList(visibleLeftOut),
+                })}
+              </output>
             )}
           </>
         )}

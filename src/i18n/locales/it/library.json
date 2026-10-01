@@ -387,7 +387,18 @@
     "linked": "Collegato a {{remote}} e push eseguito.",
     "pushNeedsPull": "Collegato a {{remote}}, ma prima del push serve un pull: {{detail}}",
     "replaceRemotePrompt": "Questo progetto è collegato a {{remote}}. Vuoi sostituire il collegamento?",
-    "replaceRemote": "Sostituisci collegamento"
+    "replaceRemote": "Sostituisci collegamento",
+    "trackedSecretsPrompt_one": "Questo file potrebbe contenere chiavi o password ed è già nella cronologia Git di questo progetto: {{files}}. La pubblicazione carica quella cronologia, quindi lo riceverebbe anche GitHub.",
+    "trackedSecretsPrompt_many": "Questi file potrebbero contenere chiavi o password e sono già nella cronologia Git di questo progetto: {{files}}. La pubblicazione carica quella cronologia, quindi li riceverebbe anche GitHub.",
+    "trackedSecretsPrompt_other": "Questi file potrebbero contenere chiavi o password e sono già nella cronologia Git di questo progetto: {{files}}. La pubblicazione carica quella cronologia, quindi li riceverebbe anche GitHub.",
+    "publishAnyway": "Pubblica comunque",
+    "leftOutSecrets_one": "Escluso perché potrebbe contenere chiavi o password: {{files}}. È ancora nella cartella del progetto. Per pubblicarlo, aggiungilo al commit ed esegui il commit in Controllo del codice.",
+    "leftOutSecrets_many": "Esclusi perché potrebbero contenere chiavi o password: {{files}}. Sono ancora nella cartella del progetto. Per pubblicarne uno, aggiungilo al commit ed esegui il commit in Controllo del codice.",
+    "leftOutSecrets_other": "Esclusi perché potrebbero contenere chiavi o password: {{files}}. Sono ancora nella cartella del progetto. Per pubblicarne uno, aggiungilo al commit ed esegui il commit in Controllo del codice.",
+    "moreFiles_one": "{{files}} e {{more}} altro",
+    "moreFiles_many": "{{files}} e altri {{more}}",
+    "moreFiles_other": "{{files}} e altri {{more}}",
+    "nothingToPublish": "Non è stato inviato nulla perché questo progetto non ha ancora commit."
   },
   "deadlines": {
     "title": "Scadenze delle conferenze",

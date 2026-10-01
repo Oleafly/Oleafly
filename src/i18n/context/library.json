@@ -75,7 +75,15 @@
     "unsave": "Removes a saved template from the library again"
   },
   "github": {
-    "private": "Repository visibility, not a person's privacy"
+    "private": "Repository visibility, not a person's privacy",
+    "trackedSecretsPrompt_one": "Shown in the Publish to GitHub dialog before anything is created on GitHub. {{files}} is a list of project file paths such as .env and deploy/server.pem, already joined in the reader's language; the count is how many paths there are. Git history means every earlier commit of the project, which a push uploads as well.",
+    "trackedSecretsPrompt_other": "Shown in the Publish to GitHub dialog before anything is created on GitHub. {{files}} is a list of project file paths such as .env and deploy/server.pem, already joined in the reader's language; the count is how many paths there are. Git history means every earlier commit of the project, which a push uploads as well.",
+    "publishAnyway": "Button that continues publishing with the listed files in the upload. Keep it short.",
+    "leftOutSecrets_one": "Shown after publishing. {{files}} is a list of project file paths, already joined in the reader's language; the count is how many paths there are. Source Control is the name of Oleafly's Git panel.",
+    "leftOutSecrets_other": "Shown after publishing. {{files}} is a list of project file paths, already joined in the reader's language; the count is how many paths there are. Source Control is the name of Oleafly's Git panel.",
+    "moreFiles_one": "Ends a shortened file list. {{files}} is the first five paths, already joined, and {{more}} is how many paths are not shown, already formatted; the count is the same number.",
+    "moreFiles_other": "Ends a shortened file list. {{files}} is the first five paths, already joined, and {{more}} is how many paths are not shown, already formatted; the count is the same number.",
+    "nothingToPublish": "Shown when every file in a project was left out, so the new GitHub repository stays empty."
   },
   "deadlines": {
     "eyebrow": "Small label above the page heading",

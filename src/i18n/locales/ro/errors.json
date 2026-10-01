@@ -65,7 +65,8 @@
   "git": {
     "remote_exists": "Acest proiect este deja legat de {{remote}}.",
     "nested_repository": "Acest proiect se află într-un alt depozit Git, așa că Oleafly nu creează aici un depozit separat.",
-    "not_installed": "Git nu este instalat pe acest computer. Instalează Git, apoi încearcă din nou."
+    "not_installed": "Git nu este instalat pe acest computer. Instalează Git, apoi încearcă din nou.",
+    "tracked_secret_files": "Publicarea s-a oprit pentru că fișiere din istoricul Git al proiectului pot conține chei sau parole: {{files}}"
   },
   "approvals": {
     "full_access_declined": "Accesul complet nu a fost activat."

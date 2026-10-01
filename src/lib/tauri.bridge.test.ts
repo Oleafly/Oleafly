@@ -279,6 +279,14 @@ describe("explicit Git setup bridge", () => {
     expect(mocks.invoke).toHaveBeenLastCalledWith("git_prepare_publish", {
       projectId: "project",
       message: "Initial commit",
+      allowTrackedSecrets: [],
+    });
+
+    await gitPreparePublish("project", "Initial commit", { allowTrackedSecrets: [".env"] });
+    expect(mocks.invoke).toHaveBeenLastCalledWith("git_prepare_publish", {
+      projectId: "project",
+      message: "Initial commit",
+      allowTrackedSecrets: [".env"],
     });
 
     await gitPublishPreflight("project");

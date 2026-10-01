@@ -387,7 +387,18 @@
     "linked": "Vinculado e enviado para {{remote}}.",
     "pushNeedsPull": "Vinculado a {{remote}}, mas o envio precisa de um pull antes: {{detail}}",
     "replaceRemotePrompt": "Este projeto está vinculado a {{remote}}. Substituir esse vínculo?",
-    "replaceRemote": "Substituir vínculo"
+    "replaceRemote": "Substituir vínculo",
+    "trackedSecretsPrompt_one": "Este arquivo pode conter chaves ou senhas e já está no histórico do Git deste projeto: {{files}}. Publicar envia esse histórico, então o GitHub também o receberia.",
+    "trackedSecretsPrompt_many": "Estes arquivos podem conter chaves ou senhas e já estão no histórico do Git deste projeto: {{files}}. Publicar envia esse histórico, então o GitHub também os receberia.",
+    "trackedSecretsPrompt_other": "Estes arquivos podem conter chaves ou senhas e já estão no histórico do Git deste projeto: {{files}}. Publicar envia esse histórico, então o GitHub também os receberia.",
+    "publishAnyway": "Publicar mesmo assim",
+    "leftOutSecrets_one": "Deixado de fora porque pode conter chaves ou senhas: {{files}}. Ele continua na pasta do projeto. Para publicá-lo, prepare-o e faça o commit em Controle de versão.",
+    "leftOutSecrets_many": "Deixados de fora porque podem conter chaves ou senhas: {{files}}. Eles continuam na pasta do projeto. Para publicar um deles, prepare-o e faça o commit em Controle de versão.",
+    "leftOutSecrets_other": "Deixados de fora porque podem conter chaves ou senhas: {{files}}. Eles continuam na pasta do projeto. Para publicar um deles, prepare-o e faça o commit em Controle de versão.",
+    "moreFiles_one": "{{files}} e mais {{more}}",
+    "moreFiles_many": "{{files}} e mais {{more}}",
+    "moreFiles_other": "{{files}} e mais {{more}}",
+    "nothingToPublish": "Nada foi enviado porque este projeto ainda não tem commits."
   },
   "deadlines": {
     "title": "Prazos de conferências",
