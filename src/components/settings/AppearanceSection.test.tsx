@@ -327,6 +327,22 @@ describe("Appearance settings tabs", () => {
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
+  it("marks Reset while the theme is not the system default", () => {
+    useSettingsStore.getState().resetAppearancePreferences();
+    themeMocks.preference = "system";
+    const { unmount } = render(<AppearanceSection />);
+    expect(
+      screen.getByRole("button", { name: "Reset to defaults" }),
+    ).not.toHaveAccessibleDescription();
+    unmount();
+
+    themeMocks.preference = "dark";
+    render(<AppearanceSection />);
+    expect(
+      screen.getByRole("button", { name: "Reset to defaults" }),
+    ).toHaveAccessibleDescription(enSettings.reset.changed);
+  });
+
   it("keeps a reset browser home page from being restored by a stale draft", async () => {
     const user = userEvent.setup();
     useSettingsStore

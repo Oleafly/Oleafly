@@ -1397,6 +1397,7 @@
   },
   "reset": {
     "button": "기본값으로 초기화",
+    "changed": "이곳의 일부 설정이 기본값과 다릅니다.",
     "confirmDescription": "{{sectionName}} 설정을 기본값으로 되돌립니다. 다른 설정은 그대로 유지됩니다.",
     "confirmTitle": "{{sectionName}} 설정을 초기화할까요?",
     "description": "{{sectionName}} 설정을 기본값으로 되돌립니다.",

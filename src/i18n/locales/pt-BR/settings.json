@@ -1429,6 +1429,7 @@
   },
   "reset": {
     "button": "Restaurar os padrões",
+    "changed": "Algumas configurações desta seção estão diferentes dos padrões.",
     "confirmDescription": "Restaura as preferências de {{sectionName}} aos padrões. As outras configurações ficam inalteradas.",
     "confirmTitle": "Redefinir as configurações de {{sectionName}}?",
     "description": "Restaura as preferências de {{sectionName}} aos padrões.",

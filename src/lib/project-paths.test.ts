@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isManagedProjectPath, isReadOnlyProjectPath } from "./project-paths";
+import { isBinaryProjectPath, isManagedProjectPath, isReadOnlyProjectPath } from "./project-paths";
 
 describe("isManagedProjectPath", () => {
   it("matches the files the backend refuses to write as project files", () => {
@@ -43,5 +43,16 @@ describe("isReadOnlyProjectPath", () => {
     expect(isReadOnlyProjectPath("project.json", "library", tree)).toBe(true);
     expect(isReadOnlyProjectPath(".git/HEAD", "device", [])).toBe(true);
     expect(isReadOnlyProjectPath("project.json", "device", tree)).toBe(false);
+  });
+});
+
+describe("isBinaryProjectPath", () => {
+  it("names the files the editor shows in a binary viewer", () => {
+    for (const path of ["figures/fig1.PDF", "a.png", "b.jpeg", "c.svg", "fonts/x.woff2", "out.gz"]) {
+      expect(isBinaryProjectPath(path)).toBe(true);
+    }
+    for (const path of ["main.tex", "notes.md", "plot.py", "pdf", "figures/pdf.tex"]) {
+      expect(isBinaryProjectPath(path)).toBe(false);
+    }
   });
 });

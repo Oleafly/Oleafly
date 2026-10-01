@@ -14,6 +14,17 @@ describe("Dictionary reset", () => {
     useSettingsStore.getState().setDictionaryLocale("fr_FR");
   });
 
+  it("leaves Reset unmarked while there is nothing to clear", () => {
+    useSettingsStore.getState().setHarperDisabledRules([]);
+    useSettingsStore.getState().setHarperEnabledRules([]);
+
+    render(<ProofreadingDictionarySection />);
+
+    expect(
+      screen.getByRole("button", { name: enSettings.reset.button }),
+    ).not.toHaveAccessibleDescription();
+  });
+
   it("clears global and project words after confirmation without changing the dictionary locale", () => {
     useDictionary.getState().ignoreGlobal("Oleafly");
     useDictionary.getState().ignore("project-reset-test", "TeXLab");
@@ -22,9 +33,9 @@ describe("Dictionary reset", () => {
 
     render(<ProofreadingDictionarySection />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: enSettings.reset.button }),
-    );
+    const reset = screen.getByRole("button", { name: enSettings.reset.button });
+    expect(reset).toHaveAccessibleDescription(enSettings.reset.changed);
+    fireEvent.click(reset);
 
     const confirmation = screen.getByRole("alertdialog", {
       name: enSettings.reset.confirmTitle.replace(
@@ -51,6 +62,7 @@ describe("Dictionary reset", () => {
       localStorage.getItem("oleafly.dictionary") ?? "{}",
     ) as { state?: { global?: string[]; ignored?: Record<string, string[]> } };
     expect(persisted.state).toMatchObject({ global: [], ignored: {} });
+    expect(reset).not.toHaveAccessibleDescription();
     expect(useSettingsStore.getState().dictionaryLocale).toBe("fr_FR");
     expect(localStorage.getItem("oleafly.dictionary.locale")).toBe("fr_FR");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();

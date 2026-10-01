@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Conversations also record the Git commit they started from.
 - When Git isn't installed, Source Control says so and explains how to get it
   on your system instead of showing buttons that fail.
+- Each Reset button in Settings shows a small dot when something it would
+  reset is not at its default.
 
 ### Changed
 
@@ -50,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On Linux, the terminal could fail with "Unable to spawn /bin/zsh" when
+  zsh wasn't installed and Oleafly was started without `$SHELL` set, as some
+  desktop launchers do. The terminal and agent commands now use the first
+  shell that exists: `$SHELL`, then your account's shell, then `/bin/sh`.
 - On Windows, installing an agent bridge failed with `EISDIR: illegal
   operation on a directory, lstat 'D:'` on current Node.js versions, and a
   bridge that did install could not start (#84). Oleafly no longer passes
@@ -76,6 +82,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Keynote `.key` files are still published. The first "Create project" commit
   now uses the same list, so a template, public key or Keynote file no longer
   blocks it.
+- Recording a shortcut no longer saves a character typed with AltGr, such
+  as @ from AltGr+Q on a German keyboard, or on macOS with Option. Once
+  saved, such a key made every @ you typed run the command. Shift with a
+  letter or Space is no longer accepted as an editor key either, since it only
+  types text. If you saved one of these keys before, reset that shortcut.
+- Resetting Appearance now turns Math preview back on right away. Before, it
+  stayed off until you restarted Oleafly.
 
 ## [0.4.3] - 2026-09-27
 

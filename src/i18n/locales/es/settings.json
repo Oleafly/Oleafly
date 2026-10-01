@@ -1429,6 +1429,7 @@
   },
   "reset": {
     "button": "Restablecer los valores predeterminados",
+    "changed": "Algunos ajustes de esta sección difieren de sus valores predeterminados.",
     "confirmDescription": "Restaura las preferencias de {{sectionName}} a sus valores predeterminados. Los demás ajustes no cambian.",
     "confirmTitle": "¿Restablecer los ajustes de {{sectionName}}?",
     "description": "Restaura las preferencias de {{sectionName}} a sus valores predeterminados.",

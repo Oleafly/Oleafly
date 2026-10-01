@@ -553,9 +553,6 @@ function saveLs(k: string, v: string) {
     /* ignore */
   }
 }
-function saveFlagLs(k: string, v: boolean) {
-  saveLs(k, v ? "1" : "0");
-}
 function notifyProofreadingSettingsChanged(
   setting: string,
   settings: { spellcheck: boolean; harper: boolean },
@@ -1024,6 +1021,118 @@ const PREF_DEFAULTS = {
   webBrowser: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
+
+type PrefKey = keyof typeof PREF_DEFAULTS;
+
+// What each Settings section's Reset button restores, mapped to the storage key
+// that persists it (null: kept for the session only). The reset and
+// sectionDiffersFromDefaults both read this map, so they cannot drift apart.
+const SECTION_SETTINGS = {
+  general: {
+    uiLocalePreference: "oleafly.locale",
+    spellcheck: "oleafly.spellcheck",
+    harper: "oleafly.harper",
+    grammarDialect: "oleafly.harper.dialect",
+    dictionaryLocale: "oleafly.dictionary.locale",
+    showRegionalism: "oleafly.harper.regionalism",
+    showWordChoice: "oleafly.harper.wordchoice",
+    harperDisabledRules: "oleafly.harper.disabledRules",
+    harperEnabledRules: "oleafly.harper.enabledRules",
+    offline: null,
+  },
+  appearance: {
+    editorKeymap: "oleafly.editor.keymap",
+    vim: "oleafly.vim",
+    editorTabSize: "oleafly.editor.tabSize",
+    editorLineWrap: "oleafly.editor.lineWrap",
+    editorLineHeight: "oleafly.editor.lineHeight",
+    editorAutocomplete: "oleafly.editor.autocomplete",
+    editorAutoCloseBrackets: "oleafly.editor.closeBrackets",
+    editorAutoCloseMath: "oleafly.editor.closeMath",
+    editorAutoCloseEnvironments: "oleafly.editor.closeEnvironments",
+    editorGhostCompletion: "oleafly.editor.ghostCompletion",
+    editorNonBlinkingCursor: "oleafly.editor.solidCursor",
+    editorStickyScroll: "oleafly.editor.stickyScroll",
+    editorMathPreview: "oleafly.editor.mathPreview",
+    terminalFontSize: "oleafly.terminal.fontSize",
+    terminalFontFamily: "oleafly.terminal.fontFamily",
+    terminalFontWeight: "oleafly.terminal.fontWeight",
+    terminalFontWeightBold: "oleafly.terminal.fontWeightBold",
+    terminalCursorStyle: "oleafly.terminal.cursorStyle",
+    terminalCursorBlink: "oleafly.terminal.cursorBlink",
+    terminalStartWithProject: "oleafly.terminal.startWithProject",
+    terminalColorTheme: "oleafly.terminal.colorTheme",
+    terminalBackground: "oleafly.terminal.background",
+    terminalForeground: "oleafly.terminal.foreground",
+    terminalCursorColor: "oleafly.terminal.cursorColor",
+    browserSearchEngine: "oleafly.browser.searchEngine",
+    browserHomePage: "oleafly.browser.homePage",
+    editorFontSize: "oleafly.fontSize",
+    appFontSize: "oleafly.appFontSize",
+    appFontFamily: "oleafly.appFont",
+    editorFontFamily: "oleafly.editorFont",
+    editorTheme: "oleafly.editorTheme",
+    pdfDarkMode: "oleafly.pdf.darkMode",
+    pdfZoomShortcuts: "oleafly.pdf.zoomShortcuts",
+    hiddenFilePatterns: "oleafly.fileTree.hiddenPatterns",
+    defaultView: "oleafly.defaultView",
+    openInTree: "oleafly.openInTree",
+    hoverPreview: "oleafly.hoverPreview",
+    accentColor: "oleafly.accent",
+    dockPlacement: "oleafly.dockPlacement",
+    bgPattern: "oleafly.bgPattern",
+    homeProjectLayout: "oleafly.library.projectLayout",
+  },
+  experimentation: {
+    latexTools: "oleafly.latexTools",
+    webBrowser: "oleafly.webBrowser",
+  },
+  engine: {
+    defaultLatexEngine: "oleafly.defaultLatexEngine",
+  },
+} satisfies Record<string, Partial<Record<PrefKey, string | null>>>;
+
+export type SettingsSection = keyof typeof SECTION_SETTINGS;
+
+function sectionEntries(section: SettingsSection): [PrefKey, string | null][] {
+  return Object.entries(SECTION_SETTINGS[section]) as [PrefKey, string | null][];
+}
+
+// Same encoding the individual setters write: flags as "1"/"0", lists as JSON.
+function storedDefault(value: unknown): string {
+  if (typeof value === "boolean") return value ? "1" : "0";
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+// Persists a section's defaults and returns them for set(). Lists are copied
+// so the store never shares an array with PREF_DEFAULTS.
+function restoreSection(section: SettingsSection): Partial<SettingsState> {
+  const restored: Record<string, unknown> = {};
+  for (const [key, storageKey] of sectionEntries(section)) {
+    const value = PREF_DEFAULTS[key];
+    if (storageKey) saveLs(storageKey, storedDefault(value));
+    restored[key] = Array.isArray(value) ? [...value] : value;
+  }
+  return restored as Partial<SettingsState>;
+}
+
+export function sectionDiffersFromDefaults(
+  section: SettingsSection,
+  state: Readonly<Record<PrefKey, unknown>>,
+): boolean {
+  return sectionEntries(section).some(([key]) => {
+    const value: unknown = PREF_DEFAULTS[key];
+    const current = state[key];
+    if (Array.isArray(value) && Array.isArray(current)) {
+      // Order is ignored: removing a pattern and adding it back is not a change.
+      return (
+        value.length !== current.length ||
+        value.some((item) => !current.includes(item))
+      );
+    }
+    return !Object.is(current, value);
+  });
+}
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   editorKeymap: initialEditorKeymap,
@@ -1528,145 +1637,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     for (const rule of get().harperDisabledRules) {
       forgetRuleSuppressedHere(rule);
     }
-    saveLs("oleafly.spellcheck", PREF_DEFAULTS.spellcheck ? "1" : "0");
-    saveLs("oleafly.harper", PREF_DEFAULTS.harper ? "1" : "0");
-    saveLs("oleafly.harper.dialect", PREF_DEFAULTS.grammarDialect);
-    saveLs("oleafly.dictionary.locale", PREF_DEFAULTS.dictionaryLocale);
-    saveLs(
-      "oleafly.harper.regionalism",
-      PREF_DEFAULTS.showRegionalism ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.harper.wordchoice",
-      PREF_DEFAULTS.showWordChoice ? "1" : "0",
-    );
-    saveLs(
-      "oleafly.harper.disabledRules",
-      JSON.stringify(PREF_DEFAULTS.harperDisabledRules),
-    );
-    saveLs(
-      "oleafly.harper.enabledRules",
-      JSON.stringify(PREF_DEFAULTS.harperEnabledRules),
-    );
-    set({
-      spellcheck: PREF_DEFAULTS.spellcheck,
-      harper: PREF_DEFAULTS.harper,
-      grammarDialect: PREF_DEFAULTS.grammarDialect,
-      dictionaryLocale: PREF_DEFAULTS.dictionaryLocale,
-      showRegionalism: PREF_DEFAULTS.showRegionalism,
-      showWordChoice: PREF_DEFAULTS.showWordChoice,
-      harperDisabledRules: [...PREF_DEFAULTS.harperDisabledRules],
-      harperEnabledRules: [...PREF_DEFAULTS.harperEnabledRules],
-      offline: PREF_DEFAULTS.offline,
-    });
+    set(restoreSection("general"));
     notifyProofreadingSettingsChanged("reset", get());
   },
   resetAppearancePreferences: () => {
-    saveLs("oleafly.editor.keymap", PREF_DEFAULTS.editorKeymap);
-    saveFlagLs("oleafly.vim", PREF_DEFAULTS.vim);
-    saveLs("oleafly.editor.tabSize", String(PREF_DEFAULTS.editorTabSize));
-    saveFlagLs("oleafly.editor.lineWrap", PREF_DEFAULTS.editorLineWrap);
-    saveLs("oleafly.editor.lineHeight", PREF_DEFAULTS.editorLineHeight);
-    saveFlagLs("oleafly.editor.autocomplete", PREF_DEFAULTS.editorAutocomplete);
-    saveFlagLs("oleafly.editor.closeBrackets", PREF_DEFAULTS.editorAutoCloseBrackets);
-    saveFlagLs("oleafly.editor.closeMath", PREF_DEFAULTS.editorAutoCloseMath);
-    saveFlagLs("oleafly.editor.closeEnvironments", PREF_DEFAULTS.editorAutoCloseEnvironments);
-    saveFlagLs("oleafly.editor.ghostCompletion", PREF_DEFAULTS.editorGhostCompletion);
-    saveFlagLs("oleafly.editor.solidCursor", PREF_DEFAULTS.editorNonBlinkingCursor);
-    saveFlagLs("oleafly.editor.stickyScroll", PREF_DEFAULTS.editorStickyScroll);
-    saveFlagLs("oleafly.editor.mathPreview", PREF_DEFAULTS.editorMathPreview);
-    saveLs("oleafly.terminal.fontSize", String(PREF_DEFAULTS.terminalFontSize));
-    saveLs("oleafly.terminal.fontFamily", PREF_DEFAULTS.terminalFontFamily);
-    saveLs(
-      "oleafly.terminal.fontWeight",
-      String(PREF_DEFAULTS.terminalFontWeight),
-    );
-    saveLs(
-      "oleafly.terminal.fontWeightBold",
-      String(PREF_DEFAULTS.terminalFontWeightBold),
-    );
-    saveLs("oleafly.terminal.cursorStyle", PREF_DEFAULTS.terminalCursorStyle);
-    saveFlagLs("oleafly.terminal.cursorBlink", PREF_DEFAULTS.terminalCursorBlink);
-    saveFlagLs("oleafly.terminal.startWithProject", PREF_DEFAULTS.terminalStartWithProject);
-    saveLs("oleafly.terminal.colorTheme", PREF_DEFAULTS.terminalColorTheme);
-    saveLs("oleafly.terminal.background", PREF_DEFAULTS.terminalBackground);
-    saveLs("oleafly.terminal.foreground", PREF_DEFAULTS.terminalForeground);
-    saveLs("oleafly.terminal.cursorColor", PREF_DEFAULTS.terminalCursorColor);
-    saveLs("oleafly.browser.searchEngine", PREF_DEFAULTS.browserSearchEngine);
-    saveLs("oleafly.browser.homePage", PREF_DEFAULTS.browserHomePage);
-    saveLs("oleafly.fontSize", String(PREF_DEFAULTS.editorFontSize));
-    saveLs("oleafly.appFontSize", String(PREF_DEFAULTS.appFontSize));
-    saveLs("oleafly.appFont", PREF_DEFAULTS.appFontFamily);
-    saveLs("oleafly.editorFont", PREF_DEFAULTS.editorFontFamily);
-    saveLs("oleafly.editorTheme", PREF_DEFAULTS.editorTheme);
-    saveFlagLs("oleafly.pdf.darkMode", PREF_DEFAULTS.pdfDarkMode);
-    saveFlagLs("oleafly.pdf.zoomShortcuts", PREF_DEFAULTS.pdfZoomShortcuts);
-    saveLs(
-      "oleafly.fileTree.hiddenPatterns",
-      JSON.stringify(PREF_DEFAULTS.hiddenFilePatterns),
-    );
-    saveLs("oleafly.defaultView", PREF_DEFAULTS.defaultView);
-    saveFlagLs("oleafly.openInTree", PREF_DEFAULTS.openInTree);
-    saveFlagLs("oleafly.hoverPreview", PREF_DEFAULTS.hoverPreview);
-    saveLs("oleafly.accent", PREF_DEFAULTS.accentColor);
-    saveLs("oleafly.dockPlacement", PREF_DEFAULTS.dockPlacement);
-    saveLs("oleafly.bgPattern", PREF_DEFAULTS.bgPattern);
-    saveLs("oleafly.library.projectLayout", PREF_DEFAULTS.homeProjectLayout);
-    set({
-      editorKeymap: PREF_DEFAULTS.editorKeymap,
-      vim: PREF_DEFAULTS.vim,
-      editorTabSize: PREF_DEFAULTS.editorTabSize,
-      editorLineWrap: PREF_DEFAULTS.editorLineWrap,
-      editorLineHeight: PREF_DEFAULTS.editorLineHeight,
-      editorAutocomplete: PREF_DEFAULTS.editorAutocomplete,
-      editorAutoCloseBrackets: PREF_DEFAULTS.editorAutoCloseBrackets,
-      editorAutoCloseMath: PREF_DEFAULTS.editorAutoCloseMath,
-      editorAutoCloseEnvironments: PREF_DEFAULTS.editorAutoCloseEnvironments,
-      editorGhostCompletion: PREF_DEFAULTS.editorGhostCompletion,
-      editorNonBlinkingCursor: PREF_DEFAULTS.editorNonBlinkingCursor,
-      editorStickyScroll: PREF_DEFAULTS.editorStickyScroll,
-      terminalFontSize: PREF_DEFAULTS.terminalFontSize,
-      terminalFontFamily: PREF_DEFAULTS.terminalFontFamily,
-      terminalFontWeight: PREF_DEFAULTS.terminalFontWeight,
-      terminalFontWeightBold: PREF_DEFAULTS.terminalFontWeightBold,
-      terminalCursorStyle: PREF_DEFAULTS.terminalCursorStyle,
-      terminalCursorBlink: PREF_DEFAULTS.terminalCursorBlink,
-      terminalStartWithProject: PREF_DEFAULTS.terminalStartWithProject,
-      terminalColorTheme: PREF_DEFAULTS.terminalColorTheme,
-      terminalBackground: PREF_DEFAULTS.terminalBackground,
-      terminalForeground: PREF_DEFAULTS.terminalForeground,
-      terminalCursorColor: PREF_DEFAULTS.terminalCursorColor,
-      browserSearchEngine: PREF_DEFAULTS.browserSearchEngine,
-      browserHomePage: PREF_DEFAULTS.browserHomePage,
-      editorFontSize: PREF_DEFAULTS.editorFontSize,
-      appFontSize: PREF_DEFAULTS.appFontSize,
-      appFontFamily: PREF_DEFAULTS.appFontFamily,
-      editorFontFamily: PREF_DEFAULTS.editorFontFamily,
-      editorTheme: PREF_DEFAULTS.editorTheme,
-      pdfDarkMode: PREF_DEFAULTS.pdfDarkMode,
-      pdfZoomShortcuts: PREF_DEFAULTS.pdfZoomShortcuts,
-      hiddenFilePatterns: [...PREF_DEFAULTS.hiddenFilePatterns],
-      defaultView: PREF_DEFAULTS.defaultView,
-      openInTree: PREF_DEFAULTS.openInTree,
-      hoverPreview: PREF_DEFAULTS.hoverPreview,
-      accentColor: PREF_DEFAULTS.accentColor,
-      dockPlacement: PREF_DEFAULTS.dockPlacement,
-      bgPattern: PREF_DEFAULTS.bgPattern,
-      homeProjectLayout: PREF_DEFAULTS.homeProjectLayout,
-    });
+    set(restoreSection("appearance"));
   },
   resetExperimentationPreferences: () => {
-    saveLs("oleafly.latexTools", PREF_DEFAULTS.latexTools ? "1" : "0");
-    saveLs("oleafly.webBrowser", PREF_DEFAULTS.webBrowser ? "1" : "0");
-    set({
-      latexTools: PREF_DEFAULTS.latexTools,
-      webBrowser: PREF_DEFAULTS.webBrowser,
-      browserOpen: false,
-    });
+    set({ ...restoreSection("experimentation"), browserOpen: false });
   },
   resetEnginePreferences: () => {
-    saveLs("oleafly.defaultLatexEngine", PREF_DEFAULTS.defaultLatexEngine);
-    set({ defaultLatexEngine: PREF_DEFAULTS.defaultLatexEngine });
+    set(restoreSection("engine"));
   },
   resetToDefaults: () => {
     get().resetGeneralPreferences();

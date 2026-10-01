@@ -190,6 +190,11 @@
       "start": "shell を起動できませんでした"
     },
     "limitReached": "別のターミナルを開くには、どれかを閉じてください",
+    "links": {
+      "openFile": "{{modifier}}+クリックして開く",
+      "openUrl": "{{modifier}}+クリックしてブラウザで開く",
+      "openUrlFailed": "リンクを開けませんでした。"
+    },
     "newTerminal": "新規ターミナル",
     "settings": "ターミナルの設定",
     "starting": "プロジェクトの shell を起動しています…",

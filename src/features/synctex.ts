@@ -23,6 +23,7 @@ import {
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { resolveCompilePath } from "@/lib/compile-file-path";
 import { logError } from "@/lib/log";
+import { openProjectLocation } from "@/lib/open-location";
 
 type SyncTexContext = readonly [
   CompileSuccessCheckpoint,
@@ -183,17 +184,14 @@ function nextFrames(n: number): Promise<void> {
   });
 }
 
+// A log or PDF location with no file refers to the active file.
 export async function openFileAndGotoLine(file: string | null, line: number) {
-  const store = useFilesStore.getState();
-  const target = file
-    ? resolveCompilePath(file, currentProjectSourcePaths())
-    : null;
-  if (file && !target) return;
-  if (target && target !== store.activePath) {
-    await store.openFile(target);
-    await nextFrames(2);
+  if (!file) {
+    gotoLine(line);
+    return;
   }
-  gotoLine(line);
+  const target = resolveCompilePath(file, currentProjectSourcePaths());
+  if (target) await openProjectLocation({ path: target, line });
 }
 
 // In a multi-file project the click may land on content from a different file

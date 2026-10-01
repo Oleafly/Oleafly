@@ -180,6 +180,39 @@ describe("editor controller navigation", () => {
   });
 });
 
+describe("going to a line and column", () => {
+  function mount(doc: string): EditorView {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    view = new EditorView({ parent, state: EditorState.create({ doc }) });
+    setEditorView(view);
+    return view;
+  }
+
+  it("puts the cursor at a 1-based column on the line", () => {
+    const editor = mount("one\ntwo\nthird line\nfour");
+    gotoLine(3, 5);
+    const head = editor.state.selection.main.head;
+    const line = editor.state.doc.lineAt(head);
+    expect(line.number).toBe(3);
+    expect(head - line.from).toBe(4);
+  });
+
+  it("clamps a column past the end of the line to the line end", () => {
+    const editor = mount("one\ntwo\nthird\nfour");
+    gotoLine(3, 99);
+    const head = editor.state.selection.main.head;
+    expect(editor.state.doc.lineAt(head).number).toBe(3);
+    expect(head).toBe(editor.state.doc.line(3).to);
+  });
+
+  it("starts at the beginning of the line without a column", () => {
+    const editor = mount("one\ntwo\nthird");
+    gotoLine(2);
+    expect(editor.state.selection.main.head).toBe(editor.state.doc.line(2).from);
+  });
+});
+
 describe("centering inside the source editor", () => {
   const LINES = Array.from({ length: 120 }, (_, index) => `line ${index + 1}`).join("\n");
 

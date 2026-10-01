@@ -1413,6 +1413,7 @@
   },
   "reset": {
     "button": "Nulstil til standarderne",
+    "changed": "Nogle indstillinger her afviger fra standarderne.",
     "confirmDescription": "Gendan indstillingerne under {{sectionName}} til standarderne. Andre indstillinger ændres ikke.",
     "confirmTitle": "Vil du nulstille indstillingerne under {{sectionName}}?",
     "description": "Gendan indstillingerne under {{sectionName}} til standarderne.",

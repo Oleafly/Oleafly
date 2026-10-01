@@ -16,6 +16,8 @@ function keyboard(
   } as KeyboardEvent;
 }
 
+const altGraph = (key: string) => key === "AltGraph";
+
 describe("shortcut bindings", () => {
   beforeAll(() => {
     vi.stubGlobal("localStorage", {
@@ -89,6 +91,126 @@ describe("shortcut bindings", () => {
         ctrl: true,
         shift: false,
         alt: false,
+      });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("ignores characters typed through AltGr on Windows", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { bindingFromEvent } = await import("@/store/shortcuts");
+      // Engines that report AltGr as Ctrl+Alt.
+      const altGr = { ctrlKey: true, altKey: true, getModifierState: altGraph };
+
+      expect(bindingFromEvent(keyboard("@", altGr))).toBeNull();
+      expect(bindingFromEvent(keyboard("{", altGr))).toBeNull();
+      // WebView2 clears Ctrl and Alt, so Ctrl held with AltGr carries Ctrl only.
+      expect(
+        bindingFromEvent(keyboard("@", { ctrlKey: true, getModifierState: altGraph })),
+      ).toBeNull();
+      // Ctrl with an accent key such as ^ on a French layout.
+      expect(bindingFromEvent(keyboard("Dead", { ctrlKey: true }))).toBeNull();
+      expect(bindingFromEvent(keyboard("q", { ctrlKey: true, altKey: true }))).toEqual({
+        key: "q",
+        mod: true,
+        shift: false,
+        alt: true,
+      });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("ignores AltGr, layout switching and other non-keys held with Ctrl on Linux", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Linux x86_64" });
+    try {
+      const { bindingFromEvent } = await import("@/store/shortcuts");
+
+      expect(bindingFromEvent(keyboard("AltGraph", { ctrlKey: true }))).toBeNull();
+      expect(bindingFromEvent(keyboard("GroupNext", { ctrlKey: true }))).toBeNull();
+      expect(
+        bindingFromEvent(keyboard("GroupNext", { ctrlKey: true, altKey: true })),
+      ).toBeNull();
+      expect(bindingFromEvent(keyboard("Super", { ctrlKey: true }))).toBeNull();
+      expect(bindingFromEvent(keyboard("Compose", { ctrlKey: true }))).toBeNull();
+      expect(bindingFromEvent(keyboard("@", { getModifierState: altGraph }))).toBeNull();
+      expect(bindingFromEvent(keyboard("Dead", { ctrlKey: true }))).toBeNull();
+      expect(bindingFromEvent(keyboard("Unidentified", { ctrlKey: true }))).toBeNull();
+      expect(bindingFromEvent(keyboard("Process", { ctrlKey: true }))).toBeNull();
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("never matches a character typed through AltGr on Windows", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { matchesShortcut } = await import("@/store/shortcuts");
+
+      expect(
+        matchesShortcut(
+          keyboard("@", { ctrlKey: true, altKey: true, getModifierState: altGraph }),
+          { key: "@", mod: true, alt: true },
+        ),
+      ).toBe(false);
+      expect(
+        matchesShortcut(keyboard("@", { ctrlKey: true, getModifierState: altGraph }), {
+          key: "@",
+          mod: true,
+        }),
+      ).toBe(false);
+      expect(
+        matchesShortcut(keyboard("q", { ctrlKey: true, altKey: true }), {
+          key: "q",
+          mod: true,
+          alt: true,
+        }),
+      ).toBe(true);
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("records and matches Ctrl with AltGr on Linux, where it types nothing", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Linux x86_64" });
+    try {
+      const { bindingFromEvent, matchesShortcut } = await import("@/store/shortcuts");
+      // Ctrl+AltGr+9 on a German layout. WebKitGTK reports AltGraph from 2.54
+      // and leaves it out before that.
+      const webKit254 = keyboard("]", { ctrlKey: true, getModifierState: altGraph });
+      const webKit252 = keyboard("]", { ctrlKey: true });
+
+      for (const event of [webKit254, webKit252]) {
+        expect(bindingFromEvent(event)).toEqual({
+          key: "]",
+          mod: true,
+          shift: false,
+          alt: false,
+        });
+        expect(matchesShortcut(event, { key: "]", mod: true })).toBe(true);
+      }
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("still records macOS Option characters with Cmd", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const { bindingFromEvent } = await import("@/store/shortcuts");
+
+      expect(bindingFromEvent(keyboard("@", { metaKey: true, altKey: true }))).toEqual({
+        key: "@",
+        mod: true,
+        shift: false,
+        alt: true,
       });
     } finally {
       vi.stubGlobal("navigator", originalNavigator);
@@ -189,6 +311,18 @@ describe("shortcut bindings", () => {
     });
   });
 
+  it("tells when any binding differs from its default", async () => {
+    const { shortcutsDifferFromDefaults, useShortcutStore } = await import("@/store/shortcuts");
+    const differs = () => shortcutsDifferFromDefaults(useShortcutStore.getState().bindings);
+    expect(differs()).toBe(false);
+
+    useShortcutStore.getState().setBinding("recompile", { key: "r", mod: true });
+    expect(differs()).toBe(true);
+
+    useShortcutStore.getState().resetAll();
+    expect(differs()).toBe(false);
+  });
+
   it("merges stored bindings with defaults and survives malformed storage", async () => {
     localStorage.setItem(
       "oleafly.shortcuts",
@@ -211,6 +345,27 @@ describe("shortcut bindings", () => {
     localStorage.setItem("oleafly.shortcuts", "{");
     const malformed = await import("@/store/shortcuts");
     expect(malformed.useShortcutStore.getState().bindings.commandPalette.key).toBe("k");
+  });
+
+  it("falls back to the default for a stored binding the recorder cannot produce", async () => {
+    localStorage.setItem(
+      "oleafly.shortcuts",
+      JSON.stringify({
+        commandPalette: { key: "AltGraph", mod: true },
+        searchDocuments: { key: "GroupNext", mod: true },
+        recompile: { key: "k" },
+        forwardSync: { key: "y", mod: true, shift: true },
+        toggleTerminal: { key: "t", ctrl: true },
+      }),
+    );
+    const { useShortcutStore } = await import("@/store/shortcuts");
+    const bindings = useShortcutStore.getState().bindings;
+
+    expect(bindings.commandPalette).toEqual({ key: "k", mod: true });
+    expect(bindings.searchDocuments).toEqual({ key: "f", mod: true, shift: true });
+    expect(bindings.recompile).toEqual({ key: "Enter", mod: true });
+    expect(bindings.forwardSync).toEqual({ key: "y", mod: true, shift: true });
+    expect(bindings.toggleTerminal).toEqual({ key: "t", ctrl: true });
   });
 
   it("rejects operating-system chords that would shadow core editing", async () => {

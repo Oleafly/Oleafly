@@ -1429,6 +1429,7 @@
   },
   "reset": {
     "button": "Rétablir les valeurs par défaut",
+    "changed": "Certains réglages de cette section diffèrent de leurs valeurs par défaut.",
     "confirmDescription": "Rétablir les préférences {{sectionName}} à leurs valeurs par défaut. Les autres réglages restent inchangés.",
     "confirmTitle": "Réinitialiser les paramètres {{sectionName}} ?",
     "description": "Rétablir les préférences {{sectionName}} à leurs valeurs par défaut.",

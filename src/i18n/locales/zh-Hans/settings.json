@@ -1397,6 +1397,7 @@
   },
   "reset": {
     "button": "恢复默认设置",
+    "changed": "此处有些设置与默认值不同。",
     "confirmDescription": "将{{sectionName}}偏好设置恢复为默认值。其他设置将保持不变。",
     "confirmTitle": "要重置{{sectionName}}设置吗？",
     "description": "将{{sectionName}}偏好设置恢复为默认值。",
