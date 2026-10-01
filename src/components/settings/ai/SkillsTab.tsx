@@ -54,7 +54,7 @@ import {
 } from "@/lib/skills";
 import { groupSkills, matchesSkillSearch } from "@/lib/skill-groups";
 import { cn } from "@/lib/utils";
-import { SkillCatalogList, SkillsNoMatch } from "./SkillCatalogList";
+import { SkillCatalogList, SkillResultMessage, SkillsNoMatch } from "./SkillCatalogList";
 import { SkillShareCard } from "./SkillShareCard";
 
 type EditorTarget = "create" | SkillEntry | null;
@@ -871,19 +871,7 @@ export function SkillsTab() {
         onMatchCountChange={setShelfMatches}
       />
 
-      {message ? (
-        <div
-          role={message.ok ? "status" : "alert"}
-          aria-live="polite"
-          className={
-            message.ok
-              ? "rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-600 dark:text-emerald-400"
-              : "rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"
-          }
-        >
-          {message.text}
-        </div>
-      ) : null}
+      {message ? <SkillResultMessage ok={message.ok} text={message.text} /> : null}
 
       <SkillEditorDialog
         target={editor}

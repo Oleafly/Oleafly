@@ -248,16 +248,16 @@ function ShelfRow({
   );
 }
 
-/** The result of the last install or uninstall. */
-function CatalogMessage({ ok, text }: Readonly<{ ok: boolean; text: string }>) {
+/** The result of the last action in the Skills tab or on the shelf. */
+export function SkillResultMessage({ ok, text }: Readonly<{ ok: boolean; text: string }>) {
   return (
     <div
       role={ok ? "status" : "alert"}
       aria-live="polite"
       className={
         ok
-          ? "rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-600 dark:text-emerald-400"
-          : "rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive"
+          ? "rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-600 dark:text-emerald-400"
+          : "rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"
       }
     >
       {text}
@@ -443,7 +443,7 @@ export function SkillCatalogList({
 
       {catalog ? <p className="text-[11px] text-muted-foreground">{sourceLine}</p> : null}
 
-      {message ? <CatalogMessage ok={message.ok} text={message.text} /> : null}
+      {message ? <SkillResultMessage ok={message.ok} text={message.text} /> : null}
     </div>
   );
 }
