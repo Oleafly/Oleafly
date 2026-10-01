@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { ChoiceCard } from "@/components/library/ChoiceCard";
+import { CHOICE_ART } from "@/components/library/choice-art";
 import {
   Dialog,
   DialogContent,
@@ -11,9 +12,9 @@ import {
 export type ProjectKind = "research" | "import" | "template";
 
 const KINDS: { id: ProjectKind; thumbnail: string }[] = [
-  { id: "research", thumbnail: "/project-kind/research-project-light.webp" },
-  { id: "import", thumbnail: "/project-kind/import-project-light.webp" },
-  { id: "template", thumbnail: "/project-kind/use-template-light.webp" },
+  { id: "research", thumbnail: CHOICE_ART.research },
+  { id: "import", thumbnail: CHOICE_ART.import },
+  { id: "template", thumbnail: CHOICE_ART.template },
 ];
 
 export function ProjectKindChooser({

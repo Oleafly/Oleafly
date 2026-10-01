@@ -194,6 +194,7 @@
     "arxivCardDescription": "Download a paper's LaTeX source by its arXiv id.",
     "importAction": "Import",
     "tryAgain": "Try again",
+    "github": "GitHub",
     "githubTitle": "Import from GitHub",
     "githubDescription": "Choose a repository to copy into your library.",
     "back": "Back to import sources",
@@ -317,7 +318,7 @@
     }
   },
   "generate": {
-    "title": "Generate a template with AI",
+    "title": "Generate a template",
     "subtitle": "Describe a document and preview it before you use it",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Describe the document, e.g. a two-column workshop paper with an abstract and numbered sections",

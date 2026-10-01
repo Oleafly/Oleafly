@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { warmChoiceArt } from "@/components/library/choice-art";
 import { NewProjectDialog } from "@/components/library/NewProjectDialog";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
@@ -19,6 +20,12 @@ export function GlobalNewProject() {
   const homeTourActive = useTourStore((state) => state.activeTourId === "home");
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [creating, setCreating] = useState(false);
+
+  // The new-project and import dialogs open from anywhere, so their pictures
+  // are read once while the app is idle rather than when a dialog opens.
+  useEffect(() => {
+    warmChoiceArt();
+  }, []);
 
   useEffect(() => {
     if (open && templates.length === 0) {

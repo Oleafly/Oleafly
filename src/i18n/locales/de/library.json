@@ -194,6 +194,7 @@
     "arxivCardDescription": "Den LaTeX-Quelltext eines Aufsatzes über seine arXiv-ID laden.",
     "importAction": "Importieren",
     "tryAgain": "Erneut versuchen",
+    "github": "GitHub",
     "githubTitle": "Aus GitHub importieren",
     "githubDescription": "Wählen Sie ein Repository, das in Ihre Bibliothek kopiert wird.",
     "back": "Zurück zu den Importquellen",
@@ -317,7 +318,7 @@
     }
   },
   "generate": {
-    "title": "Vorlage mit KI erzeugen",
+    "title": "Vorlage erzeugen",
     "subtitle": "Beschreiben Sie ein Dokument und sehen Sie es an, bevor Sie es nutzen",
     "quotedPrompt": "„{{prompt}}“",
     "promptPlaceholder": "Beschreiben Sie das Dokument, z. B. einen zweispaltigen Workshop-Beitrag mit Zusammenfassung und nummerierten Abschnitten",

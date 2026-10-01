@@ -194,6 +194,7 @@
     "arxivCardDescription": "Last ned LaTeX-kildekoden til en artikkel ved hjelp av arXiv-id-en.",
     "importAction": "Importer",
     "tryAgain": "Prøv igjen",
+    "github": "GitHub",
     "githubTitle": "Importer fra GitHub",
     "githubDescription": "Velg et repositorium du vil kopiere til biblioteket ditt.",
     "back": "Tilbake til importkildene",
@@ -317,7 +318,7 @@
     }
   },
   "generate": {
-    "title": "Generer en mal med AI",
+    "title": "Generer en mal",
     "subtitle": "Beskriv et dokument og se det an før du tar det i bruk",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Beskriv dokumentet, for eksempel en tospaltet workshopartikkel med sammendrag og nummererte seksjoner",

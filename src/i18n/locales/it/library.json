@@ -195,6 +195,7 @@
     "arxivCardDescription": "Scarica il sorgente LaTeX di un articolo tramite il suo identificativo arXiv.",
     "importAction": "Importa",
     "tryAgain": "Riprova",
+    "github": "GitHub",
     "githubTitle": "Importa da GitHub",
     "githubDescription": "Scegli un repository da copiare nella tua libreria.",
     "back": "Torna alle origini di importazione",
@@ -324,7 +325,7 @@
     }
   },
   "generate": {
-    "title": "Genera un modello con l'AI",
+    "title": "Genera un modello",
     "subtitle": "Descrivi un documento e guardane l'anteprima prima di usarlo",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Descrivi il documento, ad esempio un articolo da workshop a due colonne con abstract e sezioni numerate",

@@ -254,6 +254,84 @@ function SkillEditorDialog({
   );
 }
 
+type SkillGroup = ReturnType<typeof groupSkills>[number];
+
+/** The groups with only the skills that match the search, empty groups dropped. */
+function filterSkillGroups(
+  groups: SkillGroup[],
+  search: string,
+  phaseLabels: Record<string, string>,
+  groupLabels: Record<string, string>,
+): SkillGroup[] {
+  if (search.trim().length === 0) return groups;
+  return groups
+    .map((group) => ({
+      ...group,
+      skills: group.skills.filter((skill) =>
+        matchesSkillSearch(search, [
+          skill.name,
+          skill.id,
+          skill.description,
+          skill.author,
+          skill.phase,
+          skill.phase ? phaseLabels[skill.phase] : null,
+          groupLabels[group.key] ?? group.label,
+          sourceBadge(skill.source),
+        ]),
+      ),
+    }))
+    .filter((group) => group.skills.length > 0);
+}
+
+/** What the installed list shows once loading and load errors are out of the way. */
+function installedListState(
+  skillCount: number,
+  showNoMatch: boolean,
+  visibleGroupCount: number,
+): "empty" | "list" | null {
+  if (skillCount === 0) return "empty";
+  if (showNoMatch || visibleGroupCount > 0) return "list";
+  return null;
+}
+
+const SCOPE_SEGMENT =
+  "rounded border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:border-primary/50";
+const SCOPE_SEGMENT_ACTIVE = "border-border bg-background text-foreground";
+const SCOPE_SEGMENT_IDLE =
+  "border-transparent text-muted-foreground hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground";
+
+/** All projects or This project: what each skill's switch changes. */
+function SkillScopeControl({
+  scope,
+  onChange,
+}: Readonly<{ scope: SkillScope; onChange: (scope: SkillScope) => void }>) {
+  const { t } = useTranslation(["settings"]);
+  const labels: Record<SkillScope, string> = {
+    device: t(($) => $.settings.ai.skills.scope.device),
+    project: t(($) => $.settings.ai.skills.scope.project),
+  };
+  return (
+    <fieldset
+      aria-label={t(($) => $.settings.ai.skills.scope.label)}
+      data-testid="skills-scope"
+      className="m-0 flex min-w-0 shrink-0 items-center rounded-md border-0 bg-muted p-0.5"
+    >
+      {(["device", "project"] as const).map((value) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={scope === value}
+          data-testid={`skills-scope-${value}`}
+          onClick={() => onChange(value)}
+          className={cn(SCOPE_SEGMENT, scope === value ? SCOPE_SEGMENT_ACTIVE : SCOPE_SEGMENT_IDLE)}
+        >
+          {labels[value]}
+        </button>
+      ))}
+    </fieldset>
+  );
+}
+
 export function SkillsTab() {
   const { t } = useTranslation(["common", "settings"]);
   const projectId = useFilesStore((s) => s.projectId);
@@ -444,25 +522,7 @@ export function SkillsTab() {
     shelf: t(($) => $.settings.ai.skills.groups.shelf),
   };
   const searching = search.trim().length > 0;
-  const visibleGroups = searching
-    ? groups
-        .map((group) => ({
-          ...group,
-          skills: group.skills.filter((skill) =>
-            matchesSkillSearch(search, [
-              skill.name,
-              skill.id,
-              skill.description,
-              skill.author,
-              skill.phase,
-              skill.phase ? phaseLabels[skill.phase] : null,
-              groupLabels[group.key] ?? group.label,
-              sourceBadge(skill.source),
-            ]),
-          ),
-        }))
-        .filter((group) => group.skills.length > 0)
-    : groups;
+  const visibleGroups = filterSkillGroups(groups, search, phaseLabels, groupLabels);
   const installedMatches = visibleGroups.reduce(
     (count, group) => count + group.skills.length,
     0,
@@ -470,6 +530,10 @@ export function SkillsTab() {
   // One "No skills match" for the whole tab when neither list has a hit.
   const showNoMatch =
     searching && skills.length > 0 && installedMatches === 0 && shelfMatches === 0;
+  const listState =
+    query.isPending || (query.isError && skills.length === 0)
+      ? null
+      : installedListState(skills.length, showNoMatch, visibleGroups.length);
 
   return (
     <div className="space-y-3">
@@ -514,33 +578,7 @@ export function SkillsTab() {
             className="h-8 pl-8 text-xs"
           />
         </div>
-        {projectId ? (
-          <fieldset
-            aria-label={t(($) => $.settings.ai.skills.scope.label)}
-            data-testid="skills-scope"
-            className="m-0 flex min-w-0 shrink-0 items-center rounded-md border-0 bg-muted p-0.5"
-          >
-            {(["device", "project"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={scope === value}
-                data-testid={`skills-scope-${value}`}
-                onClick={() => setScope(value)}
-                className={cn(
-                  "rounded border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:border-primary/50",
-                  scope === value
-                    ? "border-border bg-background text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground",
-                )}
-              >
-                {value === "device"
-                  ? t(($) => $.settings.ai.skills.scope.device)
-                  : t(($) => $.settings.ai.skills.scope.project)}
-              </button>
-            ))}
-          </fieldset>
-        ) : null}
+        {projectId ? <SkillScopeControl scope={scope} onChange={setScope} /> : null}
       </div>
 
       {query.isPending ? (
@@ -557,11 +595,12 @@ export function SkillsTab() {
           {t(($) => $.settings.ai.skills.loadFailed, { message: describeError(query.error) })}
         </div>
       ) : null}
-      {!query.isPending && !(query.isError && skills.length === 0) && (skills.length === 0 ? (
+      {listState === "empty" ? (
         <div className="rounded-md border px-3 py-4 text-xs text-muted-foreground">
           {t(($) => $.settings.ai.skills.empty)}
         </div>
-      ) : showNoMatch || visibleGroups.length > 0 ? (
+      ) : null}
+      {listState === "list" ? (
         <div className="space-y-4">
           {showNoMatch ? <SkillsNoMatch /> : null}
           {visibleGroups.map((group) => (
@@ -781,7 +820,7 @@ export function SkillsTab() {
             </div>
           ))}
         </div>
-      ) : null)}
+      ) : null}
 
       <SkillCatalogList
         search={search}

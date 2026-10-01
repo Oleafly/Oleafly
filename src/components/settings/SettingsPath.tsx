@@ -20,7 +20,11 @@ function BlurredPath({
   className?: string;
 }>) {
   return (
-    <span data-settings-path="" tabIndex={focusable ? 0 : undefined} className={className}>
+    <span
+      data-settings-path=""
+      tabIndex={focusable ? 0 : undefined} // NOSONAR - a focus stop so a keyboard user can show the blurred path
+      className={className}
+    >
       {children}
     </span>
   );

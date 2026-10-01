@@ -194,6 +194,7 @@
     "arxivCardDescription": "Download de LaTeX-broncode van een artikel via het arXiv-id.",
     "importAction": "Importeren",
     "tryAgain": "Opnieuw proberen",
+    "github": "GitHub",
     "githubTitle": "Importeren vanaf GitHub",
     "githubDescription": "Kies een repository om naar je bibliotheek te kopiëren.",
     "back": "Terug naar importbronnen",
@@ -317,7 +318,7 @@
     }
   },
   "generate": {
-    "title": "Een sjabloon maken met AI",
+    "title": "Een sjabloon maken",
     "subtitle": "Beschrijf een document en bekijk het voordat je het gebruikt",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Beschrijf het document, bijvoorbeeld een workshopartikel in twee kolommen met een samenvatting en genummerde secties",

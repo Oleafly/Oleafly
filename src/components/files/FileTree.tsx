@@ -1241,6 +1241,18 @@ function TreeRowEditMenuItems({ node, ctx }: Readonly<{ node: TreeNode; ctx: Tre
   );
 }
 
+/** A changed file's status letter, or a dot on a folder that holds changes. */
+function TreeRowGitMark({ node, git }: Readonly<{ node: TreeNode; git: GitDecorations }>) {
+  const meta = (node.isDir ? git.folders : git.files).get(node.path);
+  if (!meta) return null;
+  return node.isDir ? <GitFolderDot meta={meta} /> : <GitStatusBadge meta={meta} />;
+}
+
+/** A changed file's name takes its status colour; folders keep theirs. */
+function gitNameClass(node: TreeNode, git: GitDecorations): string | undefined {
+  return node.isDir ? undefined : git.files.get(node.path)?.text;
+}
+
 function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number; ctx: TreeCtx }>) {
   const { t } = useTranslation(["common", "workspace"]);
   const isOpen = ctx.expanded.has(node.path) || !node.isDir;
@@ -1255,7 +1267,6 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
   const partial = expandable && node.partial;
   const hintKey = treeRowHintKey(unreadable, readOnlyLink, partial);
   const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : undefined;
-  const gitStatus = (node.isDir ? ctx.git.folders : ctx.git.files).get(node.path);
   const rowRef = useRef<HTMLDivElement>(null);
 
   // Dropping onto a folder targets that folder; onto a file targets its folder.
@@ -1354,7 +1365,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       <span
         className={cn(
           "truncate",
-          !node.isDir && gitStatus?.text,
+          gitNameClass(node, ctx.git),
           unreadable && "text-muted-foreground",
         )}
       >
@@ -1377,8 +1388,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
         >
           <MoreHorizontal className="size-3.5" />
         </button>
-        {gitStatus &&
-          (node.isDir ? <GitFolderDot meta={gitStatus} /> : <GitStatusBadge meta={gitStatus} />)}
+        <TreeRowGitMark node={node} git={ctx.git} />
       </span>
     </div>
   );

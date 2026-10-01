@@ -195,6 +195,7 @@
     "arxivCardDescription": "Descarcă sursa LaTeX a unei lucrări după identificatorul ei arXiv.",
     "importAction": "Importă",
     "tryAgain": "Încearcă din nou",
+    "github": "GitHub",
     "githubTitle": "Importă de pe GitHub",
     "githubDescription": "Alege un depozit pe care să îl copiezi în biblioteca ta.",
     "back": "Înapoi la sursele de import",
@@ -324,7 +325,7 @@
     }
   },
   "generate": {
-    "title": "Generează un șablon cu AI",
+    "title": "Generează un șablon",
     "subtitle": "Descrie un document și previzualizează-l înainte să îl folosești",
     "quotedPrompt": "„{{prompt}}”",
     "promptPlaceholder": "Descrie documentul, de exemplu o lucrare de atelier pe două coloane, cu rezumat și secțiuni numerotate",

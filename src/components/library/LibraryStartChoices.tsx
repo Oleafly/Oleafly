@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { ChoiceCard } from "@/components/library/ChoiceCard";
+import { CHOICE_ART } from "@/components/library/choice-art";
 import { OpenFolderNotice } from "@/components/library/OpenFolderNotice";
 import { openFolderWithPicker } from "@/features/open-folder";
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
@@ -13,7 +14,7 @@ export function LibraryStartChoices({ onNewProject }: Readonly<{ onNewProject: (
         <ChoiceCard
           testId="create-first-project"
           tour="new-project"
-          image="/project-kind/new-project-light.webp"
+          image={CHOICE_ART.newProject}
           title={t(($) => $.library.start.newProjectTitle)}
           description={t(($) => $.library.start.newProjectDescription)}
           onClick={onNewProject}
@@ -22,7 +23,7 @@ export function LibraryStartChoices({ onNewProject }: Readonly<{ onNewProject: (
           testId="open-first-folder"
           disabled={opening}
           busy={opening}
-          image="/project-kind/open-folder-light.webp"
+          image={CHOICE_ART.openFolder}
           title={t(($) => $.library.start.openFolderTitle)}
           description={t(($) => $.library.start.openFolderDescription)}
           onClick={() => void openFolderWithPicker()}

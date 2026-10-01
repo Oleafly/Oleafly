@@ -196,6 +196,7 @@
     "arxivCardDescription": "Stáhněte zdrojový kód článku v LaTeXu podle jeho identifikátoru arXiv.",
     "importAction": "Importovat",
     "tryAgain": "Zkusit znovu",
+    "github": "GitHub",
     "githubTitle": "Import z GitHubu",
     "githubDescription": "Vyberte repozitář, který se zkopíruje do vaší knihovny.",
     "back": "Zpět na zdroje importu",
@@ -331,7 +332,7 @@
     }
   },
   "generate": {
-    "title": "Vytvořit šablonu pomocí AI",
+    "title": "Vytvořit šablonu",
     "subtitle": "Popište dokument a před použitím si jej prohlédněte",
     "quotedPrompt": "„{{prompt}}“",
     "promptPlaceholder": "Popište dokument, například dvousloupcový workshopový článek s abstraktem a číslovanými kapitolami",

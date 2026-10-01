@@ -193,6 +193,7 @@
     "arxivCardDescription": "用 arXiv 編號下載論文的 LaTeX 原始碼。",
     "importAction": "匯入",
     "tryAgain": "再試一次",
+    "github": "GitHub",
     "githubTitle": "從 GitHub 匯入",
     "githubDescription": "選擇要複製到專案庫的儲存庫。",
     "back": "返回匯入來源",
@@ -310,7 +311,7 @@
     }
   },
   "generate": {
-    "title": "用 AI 生成範本",
+    "title": "生成範本",
     "subtitle": "描述一份文件，使用前先預覽",
     "quotedPrompt": "「{{prompt}}」",
     "promptPlaceholder": "描述這份文件，例如：附摘要與編號章節的雙欄研討會論文",

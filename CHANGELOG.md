@@ -55,7 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   project at the top of the list choose what the switches change. A skill set
   differently for the project says so and has a Reset.
 - The welcome screen's New project and Open a folder cards have pictures, like
-  the cards in Start a new piece of work.
+  the cards in Start a new piece of work, and so does each source in Import a
+  project. The pictures are ready before a dialog opens instead of popping in.
 - The bottom of the Settings sidebar has Discord, X, GitHub and Docs buttons,
   and Cite Oleafly is now the last section of Help & About.
 - Toasts have their close button inside, on the right.
@@ -63,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   longer looks like Hide.
 - Pinned headings at the top of the code editor are a little taller and line
   up with the line numbers below them.
-- The PNG export items read "Export as PNG" and "Export page as PNG".
+- The PNG export items read "Export as PNG" and "Export page as PNG", and the
+  template button reads "Generate a template".
 - Settings > Dictionary lists every rule the academic profile keeps off,
   instead of scrolling them in a small box.
 - The selected Settings section has a border instead of a shadow, and the

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const githubState = { status: "connected" as string, refresh: vi.fn() };
@@ -52,7 +52,27 @@ import {
   importSelectedFile,
 } from "@/features/project-import";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { CHOICE_ART } from "./choice-art";
 import { ProjectImportDialog } from "./ProjectImportDialog";
+
+const LOCAL_CARDS = [
+  ["project-import-project", CHOICE_ART.importArchive, "Existing project", "A .zip archive of a project folder."],
+  ["project-import-word", CHOICE_ART.importWord, "Word document", "A .docx file, converted on the way in."],
+  ["project-import-markdown", CHOICE_ART.importMarkdown, "Markdown document", "A .md file, kept as Markdown."],
+  ["project-import-html", CHOICE_ART.importHtml, "HTML page", "Convert HTML to LaTeX, Markdown, or Typst."],
+  ["project-import-typst", CHOICE_ART.importTypst, "Typst document", "Convert Typst to LaTeX or Markdown."],
+] as const;
+const CLOUD_CARDS = [
+  ["project-import-arxiv", CHOICE_ART.importArxiv, "arXiv paper", "Download a paper's LaTeX source by its arXiv id."],
+  ["project-import-github", CHOICE_ART.importGithub, "GitHub", "Pick from the repositories you can reach."],
+] as const;
+const ALL_CARDS = [...LOCAL_CARDS, ...CLOUD_CARDS];
+
+function section(heading: string): HTMLElement {
+  const element = screen.getByRole("heading", { name: heading }).closest("section");
+  if (!element) throw new Error(`no section for ${heading}`);
+  return element;
+}
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -140,6 +160,108 @@ describe("ProjectImportDialog", () => {
   });
 });
 
+
+describe("ProjectImportDialog source cards", () => {
+  it("lists the local sources, then the cloud ones, in keyboard order", () => {
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    const testIds = (container: HTMLElement) =>
+      within(container).getAllByRole("button").map((button) => button.dataset.testid);
+    expect(testIds(section("On this computer"))).toEqual(LOCAL_CARDS.map(([testId]) => testId));
+    expect(testIds(section("From the cloud"))).toEqual(CLOUD_CARDS.map(([testId]) => testId));
+    expect(
+      testIds(screen.getByTestId("project-import-dialog")).filter((testId) => testId !== undefined),
+    ).toEqual(ALL_CARDS.map(([testId]) => testId));
+  });
+
+  it("gives every source its own decorative picture", () => {
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    for (const [testId, picture] of ALL_CARDS) {
+      const image = screen.getByTestId(testId).querySelector("img");
+      expect(image).toHaveAttribute("src", picture);
+      expect(image).toHaveAttribute("alt", "");
+      expect(image).toHaveAttribute("aria-hidden", "true");
+    }
+    expect(new Set(ALL_CARDS.map(([, picture]) => picture)).size).toBe(ALL_CARDS.length);
+    // Decorative pictures add nothing to the accessibility tree.
+    expect(screen.queryAllByRole("img")).toHaveLength(0);
+  });
+
+  it("names each card by its title and describes it by its description", () => {
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    for (const [testId, , title, description] of ALL_CARDS) {
+      const card = screen.getByTestId(testId);
+      expect(card).toHaveAccessibleName(expect.stringContaining(title));
+      expect(card).toHaveAccessibleDescription(description);
+    }
+  });
+
+  it("tells a signed-out user that GitHub needs connecting first", () => {
+    githubState.status = "disconnected";
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    const github = screen.getByTestId("project-import-github");
+    expect(github).toBeEnabled();
+    expect(github).toHaveAccessibleDescription("Connect your account to list repositories.");
+  });
+
+  it("disables every card while the file picker is open and spins only on the chosen card", async () => {
+    let answer!: (path: string | null) => void;
+    vi.mocked(pickOpenPath).mockReturnValueOnce(new Promise((resolve) => { answer = resolve; }));
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-word"));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Importing your project");
+    for (const [testId] of ALL_CARDS) {
+      expect(screen.getByTestId(testId)).toBeDisabled();
+      if (testId === "project-import-word") {
+        expect(screen.getByTestId(testId)).toHaveAttribute("aria-busy", "true");
+      } else {
+        expect(screen.getByTestId(testId)).not.toHaveAttribute("aria-busy");
+      }
+    }
+
+    answer(null);
+
+    await waitFor(() => expect(screen.getByTestId("project-import-word")).toBeEnabled());
+    expect(screen.getByTestId("project-import-word")).not.toHaveAttribute("aria-busy");
+    expect(importSelectedFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps the chosen card spinning while its file imports", async () => {
+    let finish!: () => void;
+    vi.mocked(pickOpenPath).mockResolvedValueOnce("/tmp/paper.docx");
+    vi.mocked(importSelectedFile).mockReturnValueOnce(new Promise((resolve) => { finish = () => resolve(true); }));
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+
+    fireEvent.click(screen.getByTestId("project-import-word"));
+
+    await waitFor(() => expect(importSelectedFile).toHaveBeenCalledWith("/tmp/paper.docx"));
+    expect(screen.getByTestId("project-import-word")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByTestId("project-import-github")).not.toHaveAttribute("aria-busy");
+
+    finish();
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(screen.getByTestId("project-import-word")).not.toHaveAttribute("aria-busy");
+  });
+
+  it("opens straight on the arXiv step and goes back to the cards", () => {
+    render(<ProjectImportDialog open initialView="arxiv" onClose={vi.fn()} />);
+
+    expect(screen.getByTestId("project-import-arxiv-id")).toBeInTheDocument();
+    expect(screen.queryByTestId("project-import-project")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("project-import-back"));
+
+    expect(screen.queryByTestId("project-import-arxiv-id")).not.toBeInTheDocument();
+    for (const [testId] of ALL_CARDS) expect(screen.getByTestId(testId)).toBeEnabled();
+  });
+});
 
 describe("import recovery", () => {
   it("keeps an arXiv error and input available for retry", async () => {

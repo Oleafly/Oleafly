@@ -8,8 +8,9 @@ const IMAGE_HEIGHT = 406;
 
 /**
  * A large starting-point card: illustration on top, title with an arrow, and
- * a one-line description. Shared by the "Start a new piece of work" chooser
- * and the empty library's welcome screen so the two can't drift apart.
+ * a one-line description. Shared by the "Start a new piece of work" chooser,
+ * the empty library's welcome screen and the import dialog so they can't
+ * drift apart.
  */
 export function ChoiceCard({
   image,
@@ -20,6 +21,7 @@ export function ChoiceCard({
   tour,
   disabled = false,
   busy = false,
+  compact = false,
 }: Readonly<{
   image: string;
   title: string;
@@ -30,6 +32,12 @@ export function ChoiceCard({
   disabled?: boolean;
   /** Swaps the arrow for a spinner while the choice is being carried out. */
   busy?: boolean;
+  /**
+   * A shorter card for dialogs that show many choices at once: the picture is
+   * cropped to a wider strip (trimming only background above and below the
+   * subject) and the text sits closer together.
+   */
+  compact?: boolean;
 }>) {
   const descriptionId = useId();
   const TrailingIcon = busy ? Loader2 : ArrowRight;
@@ -55,20 +63,28 @@ export function ChoiceCard({
         width={IMAGE_WIDTH}
         height={IMAGE_HEIGHT}
         draggable={false}
-        loading="lazy"
+        // Eager: the card is on screen the moment its dialog opens, and a lazy
+        // image there waits for layout and pops in after the dialog. The
+        // background is the pictures' average glass blue, so a picture still
+        // decoding never shows as an empty patch.
+        loading="eager"
         decoding="async"
-        className="pointer-events-none aspect-[16/9] w-full select-none object-cover"
+        className={cn(
+          "pointer-events-none w-full select-none bg-[#acd2f8] object-cover",
+          compact ? "aspect-[9/4]" : "aspect-[16/9]",
+        )}
       />
-      <span className="flex min-w-0 flex-1 flex-col gap-1.5 p-3.5">
+      <span className={cn("flex min-w-0 flex-1 flex-col", compact ? "gap-1 p-3" : "gap-1.5 p-3.5")}>
         <span className="flex items-center gap-2">
           <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{title}</span>
+          {/* The arrow answers the pointer only on an enabled card, like the lift above. */}
           <TrailingIcon
             aria-hidden="true"
             className={cn(
               "size-3.5 shrink-0",
               busy
                 ? "animate-spin text-muted-foreground"
-                : "text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground",
+                : "text-muted-foreground/50 transition-transform group-enabled:group-hover:translate-x-0.5 group-enabled:group-hover:text-foreground",
             )}
           />
         </span>

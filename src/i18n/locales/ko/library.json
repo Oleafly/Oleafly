@@ -193,6 +193,7 @@
     "arxivCardDescription": "arXiv 아이디로 논문의 LaTeX 소스를 내려받습니다.",
     "importAction": "가져오기",
     "tryAgain": "다시 시도",
+    "github": "GitHub",
     "githubTitle": "GitHub에서 가져오기",
     "githubDescription": "라이브러리로 복사할 저장소를 고르세요.",
     "back": "가져오기 원본으로 돌아가기",
@@ -310,7 +311,7 @@
     }
   },
   "generate": {
-    "title": "AI로 템플릿 생성",
+    "title": "템플릿 생성",
     "subtitle": "문서를 설명하고 쓰기 전에 미리 확인하세요",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "문서를 설명하세요. 예: 초록과 번호가 매겨진 절이 있는 2단 워크숍 논문",

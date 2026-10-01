@@ -84,15 +84,90 @@ function progressText(entry: SkillAssetProgress): string {
 export function SkillsNoMatch() {
   const { t } = useTranslation(["common", "settings"]);
   return (
-    <div
-      role="status"
+    <output
       data-testid="skills-no-match"
       className="flex flex-col items-center gap-2 py-6 text-center text-xs text-muted-foreground"
     >
       <Ghost aria-hidden className="size-5" />
       <p>{t(($) => $.settings.ai.skills.search.empty)}</p>
-    </div>
+    </output>
   );
+}
+
+const DOMAIN_CHIP =
+  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:border-primary/50";
+const DOMAIN_CHIP_ACTIVE = "border-primary/35 bg-primary/10 text-primary";
+const DOMAIN_CHIP_IDLE =
+  "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground";
+
+function DomainChip({
+  label,
+  testId,
+  active,
+  onClick,
+}: Readonly<{ label: string; testId: string; active: boolean; onClick: () => void }>) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      data-testid={testId}
+      onClick={onClick}
+      className={cn(DOMAIN_CHIP, active ? DOMAIN_CHIP_ACTIVE : DOMAIN_CHIP_IDLE)}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** "All" plus one chip per domain on the shelf. */
+function DomainChips({
+  domains,
+  active,
+  onChange,
+}: Readonly<{ domains: readonly string[]; active: string | null; onChange: (domain: string | null) => void }>) {
+  const { t } = useTranslation(["settings"]);
+  return (
+    <fieldset
+      aria-label={t(($) => $.settings.ai.skills.catalog.domainFilterLabel)}
+      data-testid="skills-catalog-domains"
+      className="m-0 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
+    >
+      <DomainChip
+        label={t(($) => $.settings.ai.skills.catalog.allDomains)}
+        testId="skills-catalog-domain-all"
+        active={active === null}
+        onClick={() => onChange(null)}
+      />
+      {domains.map((value) => (
+        <DomainChip
+          key={value}
+          label={value}
+          testId={`skills-catalog-domain-${value}`}
+          active={active === value}
+          onClick={() => onChange(value)}
+        />
+      ))}
+    </fieldset>
+  );
+}
+
+/** The shelf's domains, and the rows left after the domain and search filters. */
+function filterShelf(
+  catalog: SkillCatalog | null,
+  domain: string | null,
+  search: string,
+): { entries: SkillCatalogEntry[]; domains: string[]; active: string | null; matches: SkillCatalogEntry[] } {
+  const entries = (catalog?.skills ?? []).filter((entry) => !entry.bundled);
+  const domains = [
+    ...new Set(entries.map((entry) => entry.domain).filter((value): value is string => Boolean(value))),
+  ].sort((left, right) => left.localeCompare(right));
+  const active = domain !== null && domains.includes(domain) ? domain : null;
+  const matches = entries.filter(
+    (entry) =>
+      (active === null || entry.domain === active) &&
+      matchesSkillSearch(search, [entry.name, entry.id, entry.description, entry.domain]),
+  );
+  return { entries, domains, active, matches };
 }
 
 export function SkillCatalogList({
@@ -200,20 +275,12 @@ export function SkillCatalogList({
     }
   };
 
-  const shelfEntries = (catalog?.skills ?? []).filter((entry) => !entry.bundled);
-  const domains = [
-    ...new Set(
-      shelfEntries
-        .map((entry) => entry.domain)
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ].sort((left, right) => left.localeCompare(right));
-  const activeDomain = domain !== null && domains.includes(domain) ? domain : null;
-  const matches = shelfEntries.filter(
-    (entry) =>
-      (activeDomain === null || entry.domain === activeDomain) &&
-      matchesSkillSearch(search, [entry.name, entry.id, entry.description, entry.domain]),
-  );
+  const {
+    entries: shelfEntries,
+    domains,
+    active: activeDomain,
+    matches,
+  } = filterShelf(catalog, domain, search);
   const matchCount = loading ? null : matches.length;
   const sourceLine = catalog ? catalogSourceLine(catalog) : "";
 
@@ -253,32 +320,7 @@ export function SkillCatalogList({
         </p>
       ) : null}
       {!loading && domains.length > 1 ? (
-        <fieldset
-          aria-label={t(($) => $.settings.ai.skills.catalog.domainFilterLabel)}
-          data-testid="skills-catalog-domains"
-          className="m-0 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
-        >
-          {[null, ...domains].map((value) => {
-            const active = activeDomain === value;
-            return (
-              <button
-                key={value ?? "all"}
-                type="button"
-                aria-pressed={active}
-                data-testid={`skills-catalog-domain-${value ?? "all"}`}
-                onClick={() => setDomain(value)}
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:border-primary/50",
-                  active
-                    ? "border-primary/35 bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground",
-                )}
-              >
-                {value ?? t(($) => $.settings.ai.skills.catalog.allDomains)}
-              </button>
-            );
-          })}
-        </fieldset>
+        <DomainChips domains={domains} active={activeDomain} onChange={setDomain} />
       ) : null}
 
       {!loading && shelfEntries.length === 0 ? (

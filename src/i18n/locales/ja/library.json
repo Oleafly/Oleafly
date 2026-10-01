@@ -193,6 +193,7 @@
     "arxivCardDescription": "arXiv の ID を指定して論文の LaTeX ソースをダウンロードします。",
     "importAction": "読み込む",
     "tryAgain": "再試行",
+    "github": "GitHub",
     "githubTitle": "GitHub から読み込む",
     "githubDescription": "ライブラリにコピーするリポジトリを選んでください。",
     "back": "読み込み元の一覧に戻る",
@@ -310,7 +311,7 @@
     }
   },
   "generate": {
-    "title": "AI でテンプレートを生成",
+    "title": "テンプレートを生成",
     "subtitle": "文書の内容を説明し、使う前にプレビューで確認できます",
     "quotedPrompt": "「{{prompt}}」",
     "promptPlaceholder": "文書の内容を書いてください。例: 概要と番号付きセクションのある 2 段組のワークショップ論文",
