@@ -1,10 +1,9 @@
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { TOAST_DURATION_MS, TOAST_LIMIT, useToastStore, type Toast } from "@/store/toast";
-import { displayText, personalParts } from "@/lib/display-path";
-import { PrivateText } from "@/components/ui/private";
+import { displayText } from "@/lib/display-path";
 
 function sonnerFor(kind: Toast["kind"]) {
   if (kind === "error") return sonnerToast.error;
@@ -12,7 +11,7 @@ function sonnerFor(kind: Toast["kind"]) {
   return sonnerToast.info;
 }
 
-function RepeatedTitle({ message, count }: Readonly<{ message: ReactNode; count: number }>) {
+function RepeatedTitle({ message, count }: Readonly<{ message: string; count: number }>) {
   const { t } = useTranslation(["common"]);
   return (
     <span>
@@ -25,15 +24,9 @@ function RepeatedTitle({ message, count }: Readonly<{ message: ReactNode; count:
 }
 
 // Toasts often carry a saved file or an error that names a folder, so home
-// paths in the message are shortened like every other displayed path. A
-// message that names a path stays live, so screenshot mode can blur it.
+// paths in the message are shortened like every other displayed path.
 function titleFor(toast: Toast) {
-  const text = displayText(toast.message);
-  const message = personalParts(text).some((part) => part.personal) ? (
-    <PrivateText text={text} focusable={false} />
-  ) : (
-    text
-  );
+  const message = displayText(toast.message);
   return toast.count > 1 ? <RepeatedTitle message={message} count={toast.count} /> : message;
 }
 
@@ -101,12 +94,20 @@ export function Toaster() {
       }}
       toastOptions={{
         classNames: {
+          // Sonner draws focus as a ring of box-shadow. Show it as a border
+          // colour change on the toast and a dimmed action instead.
           toast:
-            "group toast group-[.toaster]:bg-popover group-[.toaster]:text-popover-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
+            "group toast group-[.toaster]:bg-popover group-[.toaster]:text-popover-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg group-[.toaster]:focus-visible:!border-ring group-[.toaster]:focus-visible:!shadow-lg",
           description: "group-[.toast]:text-muted-foreground",
           actionButton:
-            "group-[.toast]:!bg-transparent group-[.toast]:!text-primary group-[.toast]:!p-0 group-[.toast]:font-medium group-[.toast]:underline group-[.toast]:underline-offset-4 group-[.toast]:hover:opacity-80",
+            "group-[.toast]:!bg-transparent group-[.toast]:!text-primary group-[.toast]:!p-0 group-[.toast]:font-medium group-[.toast]:underline group-[.toast]:underline-offset-4 group-[.toast]:hover:opacity-80 group-[.toast]:focus-visible:!shadow-none group-[.toast]:focus-visible:opacity-80",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+          // Sonner pins the close button over the top start corner. Make it the
+          // last flex item instead, so it sits inside the toast at the inline
+          // end (left in RTL), centred by the toast's align-items, and the
+          // message wraps before it rather than running under it.
+          closeButton:
+            "group-[.toast]:!static group-[.toast]:!order-last group-[.toast]:!shrink-0 group-[.toast]:!-me-1 group-[.toast]:!transform-none group-[.toast]:!rounded-md group-[.toast]:!border-transparent group-[.toast]:!bg-transparent group-[.toast]:!text-muted-foreground group-[.toast]:hover:!bg-accent group-[.toast]:hover:!text-foreground group-[.toast]:focus-visible:!bg-accent group-[.toast]:focus-visible:!text-foreground group-[.toast]:focus-visible:!shadow-none",
         },
       }}
     />

@@ -194,6 +194,7 @@
     "arxivCardDescription": "Lataa artikkelin LaTeX-lähdekoodi sen arXiv-tunnuksella.",
     "importAction": "Tuo",
     "tryAgain": "Yritä uudelleen",
+    "github": "GitHub",
     "githubTitle": "Tuo GitHubista",
     "githubDescription": "Valitse repositorio, joka kopioidaan kirjastoon.",
     "back": "Takaisin tuontilähteisiin",
@@ -317,7 +318,7 @@
     }
   },
   "generate": {
-    "title": "Luo mallipohja tekoälyllä",
+    "title": "Luo mallipohja",
     "subtitle": "Kuvaile dokumentti ja esikatsele se ennen käyttöä",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Kuvaile dokumentti, esimerkiksi kaksipalstainen työpaja-artikkeli, jossa on tiivistelmä ja numeroidut luvut",

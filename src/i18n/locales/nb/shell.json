@@ -169,9 +169,6 @@
       "online": "Tilkoblet modus (tillat henting av pakker)"
     },
     "openTool": "Åpne {{name}}",
-    "personalDetails": {
-      "keywords": "skjermbildemodus, skjermbilde, personvern, uskarphet, sløring, stier, kontonavn"
-    },
     "recompile": {
       "label": "Kompiler på nytt"
     },
@@ -234,6 +231,7 @@
   "community": {
     "discordOnline": "{{online}} pålogget",
     "discordOnlineAria": "{{online}} medlemmer pålogget på Discord",
+    "followOnX": "Følg oss på X",
     "joinDiscord": "Bli med på Discord"
   },
   "compile": {
@@ -517,10 +515,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Skjul personlige opplysninger",
-    "show": "Vis personlige opplysninger"
-  },
   "projectSearch": {
     "hint": "Søk på tvers av filene i dette prosjektet.",
     "noResults": "Ingen treff.",
@@ -762,7 +756,7 @@
       "shortcuts": "Hurtigtaster"
     },
     "search": {
-      "empty": "Ingen innstillinger passer.",
+      "empty": "Ingen innstillinger passer",
       "keywords": {
         "ai": "assistent, chat, modeller, leverandører, API-nøkler, agenter, ledetekster, prompter, budsjett, MCP-servere",
         "appearance": "tema, mørk modus, lys modus, farge, skrift, skrifttyper, tekststørrelse, zoom, oppsett",
@@ -897,6 +891,15 @@
     "stagedChangeCount_other": "{{count}} klargjorte endringer",
     "stash": "Stash endringene",
     "stashNeedsAttention": "Løs konflikter i stashen",
+    "status": {
+      "modified": "Endret",
+      "added": "Lagt til",
+      "deleted": "Slettet",
+      "renamed": "Gitt nytt navn",
+      "untracked": "Ikke sporet",
+      "conflict": "Konflikt",
+      "containsChanges": "Inneholder endringer"
+    },
     "sync": "Synkroniser",
     "title": "Versjonskontroll",
     "titleRequired": "Det kreves en commit-tittel.",
@@ -952,8 +955,8 @@
     "exportMarkdown": "Eksporter som Markdown (.md)",
     "exportPdf": "Eksporter som PDF",
     "exportPdfVector": "Eksporter som PDF (vektorbilde)",
-    "exportPngRaster": "Eksporter som PNG (punktbilde)",
-    "exportPagePng": "Eksporter siden som PNG (punktbilde)",
+    "exportPngRaster": "Eksporter som PNG",
+    "exportPagePng": "Eksporter siden som PNG",
     "exportAs": "Eksporter som {{format}}",
     "exportPptx": "Eksporter som PowerPoint (.pptx)",
     "exportSourceZip": "Eksporter kildekoden (.zip)",

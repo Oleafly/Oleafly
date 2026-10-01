@@ -169,9 +169,6 @@
       "online": "Online mode (allow package fetch)"
     },
     "openTool": "Open {{name}}",
-    "personalDetails": {
-      "keywords": "screenshot mode, privacy, blur, paths, account name"
-    },
     "recompile": {
       "label": "Recompile"
     },
@@ -234,6 +231,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "{{online}} members online on Discord",
+    "followOnX": "Follow us on X",
     "joinDiscord": "Join our Discord"
   },
   "compile": {
@@ -517,10 +515,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Hide personal details",
-    "show": "Show personal details"
-  },
   "projectSearch": {
     "hint": "Search across this project's files.",
     "noResults": "No results.",
@@ -762,7 +756,7 @@
       "shortcuts": "Keyboard Shortcuts"
     },
     "search": {
-      "empty": "No settings match.",
+      "empty": "No settings match",
       "keywords": {
         "ai": "assistant, chat, models, providers, API keys, agents, prompts, budget, MCP servers",
         "appearance": "theme, dark mode, light mode, colour, color, fonts, text size, zoom, layout",
@@ -897,6 +891,15 @@
     "stagedChangeCount_other": "{{count}} staged changes",
     "stash": "Stash changes",
     "stashNeedsAttention": "Resolve stash conflicts",
+    "status": {
+      "modified": "Modified",
+      "added": "Added",
+      "deleted": "Deleted",
+      "renamed": "Renamed",
+      "untracked": "Untracked",
+      "conflict": "Conflict",
+      "containsChanges": "Contains changes"
+    },
     "sync": "Sync",
     "title": "Source Control",
     "titleRequired": "A commit title is required.",
@@ -952,8 +955,8 @@
     "exportMarkdown": "Export as Markdown (.md)",
     "exportPdf": "Export as PDF",
     "exportPdfVector": "Export as PDF (vector image)",
-    "exportPngRaster": "Export as PNG (raster image)",
-    "exportPagePng": "Export page as PNG (raster image)",
+    "exportPngRaster": "Export as PNG",
+    "exportPagePng": "Export page as PNG",
     "exportAs": "Export as {{format}}",
     "exportPptx": "Export as PowerPoint (.pptx)",
     "exportSourceZip": "Export source (.zip)",

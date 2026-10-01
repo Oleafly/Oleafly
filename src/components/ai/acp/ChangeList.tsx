@@ -2,7 +2,6 @@ import { useId, useState } from "react";
 import { FileDiff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DiffPreview } from "@/components/ai/turns/DiffPreview";
-import { Private, PrivateText } from "@/components/ui/private";
 import { useDisplayPath } from "@/lib/display-path";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +26,7 @@ function ChangeRow({
   if (change.truncated) {
     return (
       <li className="px-1 py-0.5 text-[11px] text-muted-foreground">
-        <PrivateText text={t(($) => $.ai.acp.permission.diff.large, { path: shown })} />
+        {t(($) => $.ai.acp.permission.diff.large, { path: shown })}
       </li>
     );
   }
@@ -36,7 +35,7 @@ function ChangeRow({
       <div className="flex min-w-0 items-center gap-2">
         <FileDiff aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
         <span id={pathId} className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground">
-          <Private>{shown}</Private>
+          {shown}
         </span>
         <button
           type="button"
@@ -105,7 +104,7 @@ export function ChangeList({
         <li key={path} className="flex min-w-0 items-center gap-2 py-0.5">
           <FileDiff aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
           <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground">
-            <Private>{displayPath(path)}</Private>
+            {displayPath(path)}
           </span>
         </li>
       ))}

@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type HTMLAttributes, type ReactNode } from "react";
-import { PanelRightOpen, PanelRightClose } from "lucide-react";
+import { PanelRightClose, PictureInPicture2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useSettingsStore } from "@/store/settings";
@@ -74,7 +74,7 @@ export function AssistantFloatButton({ disabled }: Readonly<{ disabled?: boolean
         onClick={() => setChatFloating(true)}
         className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
       >
-        <PanelRightOpen className="size-3.5" />
+        <PictureInPicture2 className="size-3.5" />
       </button>
     </Tooltip>
   );

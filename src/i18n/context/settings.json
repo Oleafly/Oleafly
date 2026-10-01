@@ -111,11 +111,13 @@
     },
     "skills": {
       "catalog": {
+        "allDomains": "Filter chip that shows shelf skills from every domain.",
         "install": "Button that downloads and installs a catalog skill.",
         "refresh": "Button that re-fetches the skill catalog from the network.",
         "uninstall": "Button that deletes an installed catalog skill.",
         "update": "Button that installs a newer version of an installed catalog skill."
       },
+      "changedForProject": "Small note under a skill toggle when this project uses a different on or off state than the All projects setting.",
       "editor": {
         "instructions": "Field label for the body of SKILL.md, the steps the assistant follows.",
         "submitCreate": "Button that creates the new skill."
@@ -134,13 +136,20 @@
         "submission": "Submission phase of a writing project, a group heading for skills.",
         "tooling": "Tooling and utility skills, a group heading."
       },
+      "resetProject": "Short button next to the Changed for this project note. It clears the project change so the skill follows the All projects setting again.",
+      "scope": {
+        "device": "Segmented control option. Toggles show and change the setting used by every project on this device.",
+        "project": "Segmented control option. Toggles show and change the setting for the open project only."
+      },
+      "search": {
+        "empty": "Shown when the search finds no installed skill and no shelf skill. No full stop."
+      },
       "source": {
         "added": "Badge on a skill the user added from a folder on their computer.",
         "bundled": "Badge on a skill that ships inside the app.",
         "catalog": "Badge on a skill downloaded from the domain catalog."
       },
-      "updateAction": "Button that replaces an installed skill with a newer bundled version.",
-      "useDeviceSetting": "Button that clears a per-project override so the skill follows the device-wide setting."
+      "updateAction": "Button that replaces an installed skill with a newer bundled version."
     }
   },
   "appearance": {

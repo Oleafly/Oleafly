@@ -171,9 +171,6 @@
       "online": "Modo con conexión (permite descargar paquetes)"
     },
     "openTool": "Abrir {{name}}",
-    "personalDetails": {
-      "keywords": "modo captura de pantalla, captura, privacidad, desenfocar, datos personales, rutas, nombre de cuenta"
-    },
     "recompile": {
       "label": "Recompilar"
     },
@@ -236,6 +233,7 @@
   "community": {
     "discordOnline": "{{online}} en línea",
     "discordOnlineAria": "{{online}} miembros en línea en Discord",
+    "followOnX": "Síguenos en X",
     "joinDiscord": "Únete a Discord"
   },
   "compile": {
@@ -520,10 +518,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Ocultar datos personales",
-    "show": "Mostrar datos personales"
-  },
   "projectSearch": {
     "hint": "Busca en todos los archivos de este proyecto.",
     "noResults": "Sin resultados.",
@@ -779,7 +773,7 @@
       "shortcuts": "Atajos de teclado"
     },
     "search": {
-      "empty": "Ningún ajuste coincide.",
+      "empty": "Ningún ajuste coincide",
       "keywords": {
         "ai": "asistente, chat, modelos, proveedores, claves de API, agentes, prompts, instrucciones, presupuesto, servidores MCP",
         "appearance": "tema, apariencia, modo oscuro, modo claro, color, colores, fuentes, tamaño de texto, zoom, diseño",
@@ -917,6 +911,15 @@
     "stagedChangeCount_other": "{{count}} cambios preparados",
     "stash": "Guardar los cambios temporalmente",
     "stashNeedsAttention": "Resuelve los conflictos del guardado temporal",
+    "status": {
+      "modified": "Modificado",
+      "added": "Añadido",
+      "deleted": "Eliminado",
+      "renamed": "Renombrado",
+      "untracked": "Sin seguimiento",
+      "conflict": "Conflicto",
+      "containsChanges": "Contiene cambios"
+    },
     "sync": "Sincronizar",
     "title": "Control de versiones",
     "titleRequired": "Hace falta un título de confirmación.",
@@ -973,8 +976,8 @@
     "exportMarkdown": "Exportar como Markdown (.md)",
     "exportPdf": "Exportar como PDF",
     "exportPdfVector": "Exportar como PDF (imagen vectorial)",
-    "exportPngRaster": "Exportar como PNG (imagen de mapa de bits)",
-    "exportPagePng": "Exportar la página como PNG (imagen de mapa de bits)",
+    "exportPngRaster": "Exportar como PNG",
+    "exportPagePng": "Exportar la página como PNG",
     "exportAs": "Exportar como {{format}}",
     "exportPptx": "Exportar como PowerPoint (.pptx)",
     "exportSourceZip": "Exportar el código (.zip)",

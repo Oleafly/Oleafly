@@ -171,9 +171,6 @@
       "online": "Mode en ligne (récupération des paquets autorisée)"
     },
     "openTool": "Ouvrir {{name}}",
-    "personalDetails": {
-      "keywords": "mode capture d'écran, capture, confidentialité, vie privée, flou, chemins, nom du compte"
-    },
     "recompile": {
       "label": "Recompiler"
     },
@@ -236,6 +233,7 @@
   "community": {
     "discordOnline": "{{online}} en ligne",
     "discordOnlineAria": "{{online}} membres en ligne sur Discord",
+    "followOnX": "Nous suivre sur X",
     "joinDiscord": "Rejoindre Discord"
   },
   "compile": {
@@ -520,10 +518,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Masquer les informations personnelles",
-    "show": "Afficher les informations personnelles"
-  },
   "projectSearch": {
     "hint": "Recherchez dans les fichiers de ce projet.",
     "noResults": "Aucun résultat.",
@@ -779,7 +773,7 @@
       "shortcuts": "Raccourcis clavier"
     },
     "search": {
-      "empty": "Aucun paramètre ne correspond.",
+      "empty": "Aucun paramètre ne correspond",
       "keywords": {
         "ai": "assistant, chat, discussion, modèles, fournisseurs, clés API, agents, prompts, invites, budget, serveurs MCP",
         "appearance": "thème, mode sombre, mode clair, couleur, polices, taille du texte, zoom, disposition, mise en page",
@@ -917,6 +911,15 @@
     "stagedChangeCount_other": "{{count}} modifications indexées",
     "stash": "Remiser les modifications",
     "stashNeedsAttention": "Résoudre les conflits de remisage",
+    "status": {
+      "modified": "Modifié",
+      "added": "Ajouté",
+      "deleted": "Supprimé",
+      "renamed": "Renommé",
+      "untracked": "Non suivi",
+      "conflict": "Conflit",
+      "containsChanges": "Contient des modifications"
+    },
     "sync": "Synchroniser",
     "title": "Contrôle de version",
     "titleRequired": "Un titre de commit est obligatoire.",
@@ -973,8 +976,8 @@
     "exportMarkdown": "Exporter en Markdown (.md)",
     "exportPdf": "Exporter en PDF",
     "exportPdfVector": "Exporter en PDF (image vectorielle)",
-    "exportPngRaster": "Exporter en PNG (image matricielle)",
-    "exportPagePng": "Exporter la page en PNG (image matricielle)",
+    "exportPngRaster": "Exporter en PNG",
+    "exportPagePng": "Exporter la page en PNG",
     "exportAs": "Exporter en {{format}}",
     "exportPptx": "Exporter en PowerPoint (.pptx)",
     "exportSourceZip": "Exporter le source (.zip)",

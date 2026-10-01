@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { AiChrome } from "@/components/ai/AiChrome";
 import type { AcpPermission } from "@/lib/acp";
 import { useDisplayText } from "@/lib/display-path";
-import { PrivateText } from "@/components/ui/private";
 import { ChangeList } from "./ChangeList";
 
 function optionIcon(kind: string) {
@@ -56,7 +55,7 @@ export function PermissionCard({
                 : t(($) => $.ai.acp.permission.headline)}
             </p>
             <p className="text-[13px] leading-snug text-muted-foreground">
-              <PrivateText text={displayText(request.title)} />
+              {displayText(request.title)}
             </p>
           </div>
         </div>

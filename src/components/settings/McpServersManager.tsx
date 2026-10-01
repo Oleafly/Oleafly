@@ -36,7 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
 import { useDisplayText } from "@/lib/display-path";
-import { PrivateText } from "@/components/ui/private";
+import { SettingsPathText } from "@/components/settings/SettingsPath";
 import { i18n } from "@/i18n";
 import { notifyMcpAgentToolsChanged } from "@/lib/mcp-agent-tools";
 import {
@@ -997,7 +997,7 @@ export function McpServersManager() {
                     <StatusBadge record={record} />
                   </div>
                   <p className="truncate font-mono text-[11px] text-muted-foreground" title={endpoint}>
-                    <PrivateText text={endpoint} />
+                    <SettingsPathText text={endpoint} />
                   </p>
                 </div>
                 <Switch
@@ -1010,7 +1010,7 @@ export function McpServersManager() {
 
               {record.validation.error ? (
                 <p role="alert" className="rounded-md bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
-                  <PrivateText text={displayText(record.validation.error)} />
+                  <SettingsPathText text={displayText(record.validation.error)} />
                 </p>
               ) : null}
 

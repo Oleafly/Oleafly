@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   RefreshCw,
+  Search,
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,6 @@ import {
   setSkillEnabled,
   setSkillProjectEnabled,
   SKILLS_QUERY_KEY,
-  skillProjectOverride,
   skillsQueryKey,
   updateBuiltinSkill,
   updateSkill,
@@ -52,11 +52,15 @@ import {
   type SkillToggleScope,
   type UpdateSkillInput,
 } from "@/lib/skills";
-import { groupSkills } from "@/lib/skill-groups";
-import { SkillCatalogList } from "./SkillCatalogList";
+import { groupSkills, matchesSkillSearch } from "@/lib/skill-groups";
+import { cn } from "@/lib/utils";
+import { SkillCatalogList, SkillResultMessage, SkillsNoMatch } from "./SkillCatalogList";
 import { SkillShareCard } from "./SkillShareCard";
 
 type EditorTarget = "create" | SkillEntry | null;
+
+/** Which setting the skill toggles show and change while a project is open. */
+type SkillScope = "device" | "project";
 
 interface EditorForm {
   name: string;
@@ -250,6 +254,317 @@ function SkillEditorDialog({
   );
 }
 
+type SkillGroup = ReturnType<typeof groupSkills>[number];
+
+/** The groups with only the skills that match the search, empty groups dropped. */
+function filterSkillGroups(
+  groups: SkillGroup[],
+  search: string,
+  phaseLabels: Record<string, string>,
+  groupLabels: Record<string, string>,
+): SkillGroup[] {
+  if (search.trim().length === 0) return groups;
+  return groups
+    .map((group) => ({
+      ...group,
+      skills: group.skills.filter((skill) =>
+        matchesSkillSearch(search, [
+          skill.name,
+          skill.id,
+          skill.description,
+          skill.author,
+          skill.phase,
+          skill.phase ? phaseLabels[skill.phase] : null,
+          groupLabels[group.key] ?? group.label,
+          sourceBadge(skill.source),
+        ]),
+      ),
+    }))
+    .filter((group) => group.skills.length > 0);
+}
+
+/** What the installed list shows once loading and load errors are out of the way. */
+function installedListState(
+  skillCount: number,
+  showNoMatch: boolean,
+  visibleGroupCount: number,
+): "empty" | "list" | null {
+  if (skillCount === 0) return "empty";
+  if (showNoMatch || visibleGroupCount > 0) return "list";
+  return null;
+}
+
+const SCOPE_SEGMENT =
+  "rounded border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:border-primary/50";
+const SCOPE_SEGMENT_ACTIVE = "border-border bg-background text-foreground";
+const SCOPE_SEGMENT_IDLE =
+  "border-transparent text-muted-foreground hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground";
+
+/** All projects or This project: what each skill's switch changes. */
+function SkillScopeControl({
+  scope,
+  onChange,
+}: Readonly<{ scope: SkillScope; onChange: (scope: SkillScope) => void }>) {
+  const { t } = useTranslation(["settings"]);
+  const labels: Record<SkillScope, string> = {
+    device: t(($) => $.settings.ai.skills.scope.device),
+    project: t(($) => $.settings.ai.skills.scope.project),
+  };
+  return (
+    <fieldset
+      aria-label={t(($) => $.settings.ai.skills.scope.label)}
+      data-testid="skills-scope"
+      className="m-0 flex min-w-0 shrink-0 items-center rounded-md border-0 bg-muted p-0.5"
+    >
+      {(["device", "project"] as const).map((value) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={scope === value}
+          data-testid={`skills-scope-${value}`}
+          onClick={() => onChange(value)}
+          className={cn(SCOPE_SEGMENT, scope === value ? SCOPE_SEGMENT_ACTIVE : SCOPE_SEGMENT_IDLE)}
+        >
+          {labels[value]}
+        </button>
+      ))}
+    </fieldset>
+  );
+}
+
+/** One installed skill: its switch, the project marker, files and actions. */
+function SkillCard({
+  skill,
+  busy,
+  filesExpanded,
+  projectScope,
+  phaseLabels,
+  onToggle,
+  onResetProject,
+  onToggleFiles,
+  onUpdate,
+  onValidate,
+  onEdit,
+  onRemove,
+}: Readonly<{
+  skill: SkillEntry;
+  busy: boolean;
+  filesExpanded: boolean;
+  projectScope: boolean;
+  phaseLabels: Record<string, string>;
+  onToggle: (skill: SkillEntry, enabled: boolean) => void;
+  onResetProject: (skillId: string) => void;
+  onToggleFiles: (skillId: string) => void;
+  onUpdate: (skill: SkillEntry) => void;
+  onValidate: (skillId: string) => void;
+  onEdit: (skill: SkillEntry) => void;
+  onRemove: (skill: SkillEntry) => void;
+}>) {
+  const { t } = useTranslation(["common", "settings"]);
+  const validationMessage =
+    skill.validation.status === "invalid" ? skill.validation.message : null;
+  const invalid = validationMessage !== null;
+  const metaBits = [
+    tierLine(skill),
+    skill.version ? `v${skill.version}` : null,
+    skill.phase ? phaseLabels[skill.phase] ?? skill.phase : null,
+  ].filter((value): value is string => Boolean(value));
+  const isUserSkill = skill.source === "user";
+  const projectAvailable = isSkillAvailable(skill);
+  const changedForProject = projectScope && projectAvailable !== skill.enabled;
+  const renderSkillActions = () => (
+    <div className="mt-2 flex items-center justify-end gap-1">
+      {skill.updateAvailable ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-testid={`skill-update-${skill.id}`}
+          disabled={busy}
+          onClick={() => onUpdate(skill)}
+        >
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          {t(($) => $.settings.ai.skills.updateAction)}
+        </Button>
+      ) : null}
+      {isUserSkill ? (
+        <>
+          <Tooltip
+            label={t(($) => $.settings.ai.skills.validateAria, {
+              name: skill.name,
+            })}
+          >
+            <button
+              type="button"
+              aria-label={t(($) => $.settings.ai.skills.validateAria, {
+                name: skill.name,
+              })}
+              disabled={busy}
+              onClick={() => onValidate(skill.id)}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+            >
+              {busy ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+            </button>
+          </Tooltip>
+          <Tooltip
+            label={t(($) => $.settings.ai.skills.editAria, { name: skill.name })}
+          >
+            <button
+              type="button"
+              aria-label={t(($) => $.settings.ai.skills.editAria, {
+                name: skill.name,
+              })}
+              disabled={busy}
+              onClick={() => onEdit(skill)}
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          </Tooltip>
+        </>
+      ) : null}
+      {skill.removable ? (
+        <Tooltip
+          label={t(($) => $.settings.ai.skills.removeAria, { name: skill.name })}
+        >
+          <button
+            type="button"
+            aria-label={t(($) => $.settings.ai.skills.removeAria, {
+              name: skill.name,
+            })}
+            disabled={busy}
+            onClick={() => onRemove(skill)}
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </Tooltip>
+      ) : null}
+    </div>
+  );
+
+  const renderSkillFiles = () => (
+    skill.files.length > 0 ? (
+      <div className="mt-1.5">
+        <button
+          type="button"
+          data-testid={`skill-files-toggle-${skill.id}`}
+          onClick={() => onToggleFiles(skill.id)}
+          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+        >
+          {filesExpanded ? (
+            <ChevronDown className="size-3" />
+          ) : (
+            <ChevronRight className="size-3" />
+          )}
+          {t(($) => $.settings.ai.skills.fileCount, {
+            count: skill.files.length,
+          })}
+        </button>
+        {filesExpanded ? (
+          <ul className="mt-1 space-y-0.5 rounded-md border bg-background p-2">
+            {skill.files.map((file) => (
+              <li
+                key={file.path}
+                className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
+              >
+                <code className="min-w-0 truncate">{file.path}</code>
+                <span className="shrink-0">{formatBytes(file.bytes)}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    ) : null
+  );
+
+  return (
+    <div
+      className="rounded-md border bg-card px-3 py-3"
+      data-testid={`skill-row-${skill.id}`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium text-foreground">{skill.name}</p>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {sourceBadge(skill.source)}
+            </span>
+            {invalid ? (
+              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                {t(($) => $.settings.ai.skills.invalidBadge)}
+              </span>
+            ) : null}
+          </div>
+          {metaBits.length > 0 ? (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {metaBits.join(" · ")}
+            </p>
+          ) : null}
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {skill.description || t(($) => $.settings.ai.skills.missingDescription)}
+          </p>
+          {renderSkillFiles()}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <Switch
+            data-testid={`skill-toggle-${skill.id}`}
+            checked={projectScope ? projectAvailable : skill.enabled}
+            disabled={invalid || busy}
+            aria-label={
+              projectScope
+                ? t(($) => $.settings.ai.skills.useInProjectAria, {
+                    name: skill.name,
+                  })
+                : t(($) => $.settings.ai.skills.useInAllProjectsAria, {
+                    name: skill.name,
+                  })
+            }
+            onCheckedChange={(enabled) => onToggle(skill, enabled)}
+          />
+          {changedForProject ? (
+            <div
+              data-testid={`skill-project-changed-${skill.id}`}
+              className="flex items-center gap-1"
+            >
+              <span className="text-[10px] text-muted-foreground">
+                {t(($) => $.settings.ai.skills.changedForProject)}
+              </span>
+              <button
+                type="button"
+                data-testid={`skill-project-reset-${skill.id}`}
+                disabled={busy}
+                aria-label={t(($) => $.settings.ai.skills.resetProjectAria, {
+                  name: skill.name,
+                })}
+                onClick={() => onResetProject(skill.id)}
+                className="rounded px-1 text-[10px] font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 disabled:opacity-50"
+              >
+                {t(($) => $.settings.ai.skills.resetProject)}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      {invalid ? (
+        <p
+          aria-live="polite"
+          className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-destructive"
+        >
+          {validationMessage}
+        </p>
+      ) : null}
+
+      {renderSkillActions()}
+    </div>
+  );
+}
+
 export function SkillsTab() {
   const { t } = useTranslation(["common", "settings"]);
   const projectId = useFilesStore((s) => s.projectId);
@@ -262,6 +577,10 @@ export function SkillsTab() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [scope, setScope] = useState<SkillScope>("device");
+  const [search, setSearch] = useState("");
+  const [shelfMatches, setShelfMatches] = useState<number | null>(null);
+  const projectScope = projectId !== null && scope === "project";
 
   const cacheRecord = (record: SkillEntry) => {
     queryClient.setQueryData<SkillEntry[]>(skillsQueryKey(projectId), (current) => {
@@ -318,6 +637,16 @@ export function SkillsTab() {
       () => setSkillProjectEnabled(projectId, skillId, enabled),
       "project",
     );
+  };
+
+  // In This project, a choice that matches the device setting clears the
+  // override instead of pinning it, so the skill keeps following the device.
+  const toggleSkill = (skill: SkillEntry, enabled: boolean) => {
+    if (projectScope) {
+      applyProjectScope(skill.id, enabled === skill.enabled ? null : enabled);
+      return;
+    }
+    void runRecordMutation(skill.id, () => setSkillEnabled(skill.id, enabled), "device");
   };
 
   const addFolder = async () => {
@@ -425,6 +754,19 @@ export function SkillsTab() {
     user: t(($) => $.settings.ai.skills.groups.user),
     shelf: t(($) => $.settings.ai.skills.groups.shelf),
   };
+  const searching = search.trim().length > 0;
+  const visibleGroups = filterSkillGroups(groups, search, phaseLabels, groupLabels);
+  const installedMatches = visibleGroups.reduce(
+    (count, group) => count + group.skills.length,
+    0,
+  );
+  // One "No skills match" for the whole tab when neither list has a hit.
+  const showNoMatch =
+    searching && skills.length > 0 && installedMatches === 0 && shelfMatches === 0;
+  const listState =
+    query.isPending || (query.isError && skills.length === 0)
+      ? null
+      : installedListState(skills.length, showNoMatch, visibleGroups.length);
 
   return (
     <div className="space-y-3">
@@ -453,6 +795,25 @@ export function SkillsTab() {
 
       <SkillShareCard />
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-48 flex-1">
+          <Search
+            aria-hidden
+            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+          />
+          <Input
+            type="search"
+            data-testid="skills-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            aria-label={t(($) => $.settings.ai.skills.search.ariaLabel)}
+            placeholder={t(($) => $.settings.ai.skills.search.placeholder)}
+            className="h-8 pl-8 text-xs"
+          />
+        </div>
+        {projectId ? <SkillScopeControl scope={scope} onChange={setScope} /> : null}
+      </div>
+
       {query.isPending ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-4 text-xs text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" />
@@ -467,272 +828,50 @@ export function SkillsTab() {
           {t(($) => $.settings.ai.skills.loadFailed, { message: describeError(query.error) })}
         </div>
       ) : null}
-      {!query.isPending && !(query.isError && skills.length === 0) && (skills.length === 0 ? (
+      {listState === "empty" ? (
         <div className="rounded-md border px-3 py-4 text-xs text-muted-foreground">
           {t(($) => $.settings.ai.skills.empty)}
         </div>
-      ) : (
+      ) : null}
+      {listState === "list" ? (
         <div className="space-y-4">
-          {groups.map((group) => (
+          {showNoMatch ? <SkillsNoMatch /> : null}
+          {visibleGroups.map((group) => (
             <div key={group.key} data-testid={`skills-phase-${group.key}`} className="space-y-2">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 {groupLabels[group.key] ?? group.label}
               </h3>
               <div className="space-y-2">
-                {group.skills.map((skill) => {
-                  const validationMessage =
-                    skill.validation.status === "invalid" ? skill.validation.message : null;
-                  const invalid = validationMessage !== null;
-                  const busy = busyId === skill.id;
-                  const filesExpanded = expandedFiles.has(skill.id);
-                  const metaBits = [
-                    tierLine(skill),
-                    skill.version ? `v${skill.version}` : null,
-                    skill.phase ? phaseLabels[skill.phase] ?? skill.phase : null,
-                  ].filter((value): value is string => Boolean(value));
-                  const isUserSkill = skill.source === "user";
-                  const projectOverride = skillProjectOverride(skill);
-                  const projectAvailable = isSkillAvailable(skill);
-                  const renderSkillActions = () => (
-                    <div className="mt-2 flex items-center justify-end gap-1">
-                      {skill.updateAvailable ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          data-testid={`skill-update-${skill.id}`}
-                          disabled={busy}
-                          onClick={() => setUpdateTarget(skill)}
-                        >
-                          {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                          {t(($) => $.settings.ai.skills.updateAction)}
-                        </Button>
-                      ) : null}
-                      {isUserSkill ? (
-                        <>
-                          <Tooltip
-                            label={t(($) => $.settings.ai.skills.validateAria, {
-                              name: skill.name,
-                            })}
-                          >
-                            <button
-                              type="button"
-                              aria-label={t(($) => $.settings.ai.skills.validateAria, {
-                                name: skill.name,
-                              })}
-                              disabled={busy}
-                              onClick={() => runSkillValidation(skill.id)}
-                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                            >
-                              {busy ? (
-                                <Loader2 className="size-3.5 animate-spin" />
-                              ) : (
-                                <RefreshCw className="size-3.5" />
-                              )}
-                            </button>
-                          </Tooltip>
-                          <Tooltip
-                            label={t(($) => $.settings.ai.skills.editAria, { name: skill.name })}
-                          >
-                            <button
-                              type="button"
-                              aria-label={t(($) => $.settings.ai.skills.editAria, {
-                                name: skill.name,
-                              })}
-                              disabled={busy}
-                              onClick={() => setEditor(skill)}
-                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                            >
-                              <Pencil className="size-3.5" />
-                            </button>
-                          </Tooltip>
-                        </>
-                      ) : null}
-                      {skill.removable ? (
-                        <Tooltip
-                          label={t(($) => $.settings.ai.skills.removeAria, { name: skill.name })}
-                        >
-                          <button
-                            type="button"
-                            aria-label={t(($) => $.settings.ai.skills.removeAria, {
-                              name: skill.name,
-                            })}
-                            disabled={busy}
-                            onClick={() => setRemoveTarget(skill)}
-                            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </Tooltip>
-                      ) : null}
-                    </div>
-                  );
-
-                  const renderSkillProjectScope = () => (
-                    projectId ? (
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] text-muted-foreground">
-                            {t(($) => $.settings.ai.skills.useInProject)}
-                          </span>
-                          <Switch
-                            data-testid={`skill-project-toggle-${skill.id}`}
-                            checked={projectAvailable}
-                            disabled={invalid || busy}
-                            aria-label={t(($) => $.settings.ai.skills.useInProjectAria, {
-                              name: skill.name,
-                            })}
-                            onCheckedChange={(enabled) =>
-                              applyProjectScope(skill.id, enabled)
-                            }
-                          />
-                        </div>
-                        {projectOverride === null ? (
-                          <span className="text-[10px] text-muted-foreground/80">
-                            {t(($) => $.settings.ai.skills.inheritsDevice)}
-                          </span>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] text-muted-foreground/80">
-                              {projectOverride
-                                ? t(($) => $.settings.ai.skills.onForProject)
-                                : t(($) => $.settings.ai.skills.offForProject)}
-                            </span>
-                            <button
-                              type="button"
-                              data-testid={`skill-project-reset-${skill.id}`}
-                              disabled={busy}
-                              aria-label={t(($) => $.settings.ai.skills.useDeviceSettingAria, {
-                                name: skill.name,
-                              })}
-                              onClick={() => applyProjectScope(skill.id, null)}
-                              className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
-                            >
-                              {t(($) => $.settings.ai.skills.useDeviceSetting)}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ) : null
-                  );
-
-                  const renderSkillFiles = () => (
-                    skill.files.length > 0 ? (
-                      <div className="mt-1.5">
-                        <button
-                          type="button"
-                          data-testid={`skill-files-toggle-${skill.id}`}
-                          onClick={() => toggleFiles(skill.id)}
-                          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                        >
-                          {filesExpanded ? (
-                            <ChevronDown className="size-3" />
-                          ) : (
-                            <ChevronRight className="size-3" />
-                          )}
-                          {t(($) => $.settings.ai.skills.fileCount, {
-                            count: skill.files.length,
-                          })}
-                        </button>
-                        {filesExpanded ? (
-                          <ul className="mt-1 space-y-0.5 rounded-md border bg-background p-2">
-                            {skill.files.map((file) => (
-                              <li
-                                key={file.path}
-                                className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
-                              >
-                                <code className="min-w-0 truncate">{file.path}</code>
-                                <span className="shrink-0">{formatBytes(file.bytes)}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : null}
-                      </div>
-                    ) : null
-                  );
-
-                  return (
-                    <div
-                      key={skill.id}
-                      className="rounded-md border bg-card px-3 py-3"
-                      data-testid={`skill-row-${skill.id}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-medium text-foreground">{skill.name}</p>
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                              {sourceBadge(skill.source)}
-                            </span>
-                            {invalid ? (
-                              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
-                                {t(($) => $.settings.ai.skills.invalidBadge)}
-                              </span>
-                            ) : null}
-                          </div>
-                          {metaBits.length > 0 ? (
-                            <p className="mt-0.5 text-[11px] text-muted-foreground">
-                              {metaBits.join(" · ")}
-                            </p>
-                          ) : null}
-                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                            {skill.description || t(($) => $.settings.ai.skills.missingDescription)}
-                          </p>
-                          {renderSkillFiles()}
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1.5">
-                          <Switch
-                            checked={skill.enabled}
-                            disabled={invalid || busy}
-                            aria-label={t(($) => $.settings.ai.skills.enableAria, {
-                              name: skill.name,
-                            })}
-                            onCheckedChange={(enabled) =>
-                              void runRecordMutation(
-                                skill.id,
-                                () => setSkillEnabled(skill.id, enabled),
-                                "device",
-                              )
-                            }
-                          />
-                          {renderSkillProjectScope()}
-                        </div>
-                      </div>
-
-                      {invalid ? (
-                        <p
-                          aria-live="polite"
-                          className="mt-2 rounded-md border border-destructive/30 bg-destructive/5 px-2.5 py-2 text-xs text-destructive"
-                        >
-                          {validationMessage}
-                        </p>
-                      ) : null}
-
-                      {renderSkillActions()}
-                    </div>
-                  );
-                })}
+                {group.skills.map((skill) => (
+                  <SkillCard
+                    key={skill.id}
+                    skill={skill}
+                    busy={busyId === skill.id}
+                    filesExpanded={expandedFiles.has(skill.id)}
+                    projectScope={projectScope}
+                    phaseLabels={phaseLabels}
+                    onToggle={toggleSkill}
+                    onResetProject={(skillId) => applyProjectScope(skillId, null)}
+                    onToggleFiles={toggleFiles}
+                    onUpdate={setUpdateTarget}
+                    onValidate={runSkillValidation}
+                    onEdit={setEditor}
+                    onRemove={setRemoveTarget}
+                  />
+                ))}
               </div>
             </div>
           ))}
         </div>
-      ))}
-
-      <SkillCatalogList />
-
-      {message ? (
-        <div
-          role={message.ok ? "status" : "alert"}
-          aria-live="polite"
-          className={
-            message.ok
-              ? "rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-600 dark:text-emerald-400"
-              : "rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"
-          }
-        >
-          {message.text}
-        </div>
       ) : null}
+
+      <SkillCatalogList
+        search={search}
+        hideNoMatch={showNoMatch}
+        onMatchCountChange={setShelfMatches}
+      />
+
+      {message ? <SkillResultMessage ok={message.ok} text={message.text} /> : null}
 
       <SkillEditorDialog
         target={editor}

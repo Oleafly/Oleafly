@@ -376,7 +376,9 @@
       "addFolder": "Añadir una carpeta",
       "addFolderDialogTitle": "Añadir una carpeta de habilidades",
       "catalog": {
+        "allDomains": "Todas",
         "description": "Habilidades adicionales para áreas de investigación concretas. Instala una para añadirla a tu lista de arriba.",
+        "domainFilterLabel": "Filtrar el estante por área",
         "empty": "El catálogo no tiene habilidades adicionales que instalar.",
         "install": "Instalar",
         "loading": "Cargando el catálogo...",
@@ -407,8 +409,9 @@
         "uninstall": "Desinstalar",
         "update": "Actualizar"
       },
+      "changedForProject": "Cambiada en este proyecto",
       "createSkill": "Crear una habilidad",
-      "description": "El asistente carga las instrucciones completas de una habilidad solo cuando decide que la necesita, o al momento si escribes /id-de-habilidad en el chat. Una habilidad que actives aquí queda activa en todos los proyectos hasta que un proyecto la anule.",
+      "description": "El asistente carga las instrucciones completas de una habilidad solo cuando las necesita, o al momento si escribes /id-de-habilidad en el chat. Una habilidad que actives aquí queda activa en todos los proyectos. Para cambiarla solo en el proyecto abierto, pasa a Este proyecto.",
       "editAria": "Editar {{name}}",
       "editor": {
         "createDescription": "Crea un borrador de SKILL.md en tu carpeta de habilidades de Oleafly.",
@@ -425,7 +428,6 @@
         "submitCreate": "Crear"
       },
       "empty": "No se encontró ninguna habilidad. Añade una carpeta o crea una.",
-      "enableAria": "Activar {{name}}",
       "fileCount_one": "{{count}} archivo",
       "fileCount_many": "{{count}} archivos",
       "fileCount_other": "{{count}} archivos",
@@ -433,7 +435,6 @@
         "shelf": "Estante temático",
         "user": "Tus habilidades"
       },
-      "inheritsDevice": "Hereda el ajuste del dispositivo",
       "invalidBadge": "No válida",
       "loadFailed": "No se pudieron cargar las habilidades. {{message}}",
       "loading": "Cargando las habilidades...",
@@ -446,8 +447,6 @@
         "updated": "Se actualizó {{name}}."
       },
       "missingDescription": "Esta habilidad necesita una descripción.",
-      "offForProject": "Desactivada en este proyecto",
-      "onForProject": "Activada en este proyecto",
       "phases": {
         "authoring": "Redacción",
         "communication": "Comunicación",
@@ -461,6 +460,18 @@
       "removeDialog": {
         "description": "¿Quitar \"{{name}}\" y su carpeta de Oleafly? Esta acción no se puede deshacer.",
         "title": "Quitar la habilidad"
+      },
+      "resetProject": "Restablecer",
+      "resetProjectAria": "Restablecer {{name}} al ajuste de todos los proyectos",
+      "scope": {
+        "device": "Todos los proyectos",
+        "label": "Dónde se aplican estos ajustes",
+        "project": "Este proyecto"
+      },
+      "search": {
+        "ariaLabel": "Buscar en las habilidades y el estante temático",
+        "empty": "Ninguna habilidad coincide",
+        "placeholder": "Buscar habilidades"
       },
       "share": {
         "description": "Enlaza tus habilidades en las carpetas que ya leen otros agentes de programación de este equipo, para que escribas una habilidad una vez y la pueda usar cualquier agente.",
@@ -503,9 +514,7 @@
         "description": "¿Sustituir \"{{name}}\" por la última versión incluida? Se perderán los cambios locales en sus archivos.",
         "title": "Actualizar la habilidad"
       },
-      "useDeviceSetting": "Usar el ajuste del dispositivo",
-      "useDeviceSettingAria": "Usar el ajuste del dispositivo para {{name}}",
-      "useInProject": "Usar en este proyecto",
+      "useInAllProjectsAria": "Usar {{name}} en todos los proyectos",
       "useInProjectAria": "Usar {{name}} en este proyecto",
       "validateAria": "Validar {{name}}"
     }

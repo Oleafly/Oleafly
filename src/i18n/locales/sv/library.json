@@ -194,6 +194,7 @@
     "arxivCardDescription": "Ladda ner en artikels LaTeX-källa med hjälp av dess arXiv-id.",
     "importAction": "Importera",
     "tryAgain": "Försök igen",
+    "github": "GitHub",
     "githubTitle": "Importera från GitHub",
     "githubDescription": "Välj ett repositorium att kopiera till ditt bibliotek.",
     "back": "Tillbaka till importkällorna",
@@ -317,7 +318,7 @@
     }
   },
   "generate": {
-    "title": "Generera en mall med AI",
+    "title": "Generera en mall",
     "subtitle": "Beskriv ett dokument och förhandsvisa det innan du använder det",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Beskriv dokumentet, t.ex. en tvåspaltig workshopartikel med sammanfattning och numrerade avsnitt",

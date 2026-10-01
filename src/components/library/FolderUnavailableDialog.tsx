@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Private } from "@/components/ui/private";
 import {
   Dialog,
   DialogContent,
@@ -26,18 +25,11 @@ type FolderCopyValues = { name: string; path: string };
 
 type FolderCopy = { title: string; body: ReactNode };
 
-// Screenshot mode blurs the folder path (the sentence stays readable).
-function PathBadge({ children }: Readonly<{ children?: ReactNode }>) {
-  return (
-    <Private className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground break-all box-decoration-clone">
-      {children}
-    </Private>
-  );
-}
-
 const PATH_BADGE = {
   components: {
-    path: <PathBadge />,
+    path: (
+      <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground break-all box-decoration-clone" />
+    ),
   },
   tOptions: { interpolation: { escapeValue: true } },
   shouldUnescape: true,

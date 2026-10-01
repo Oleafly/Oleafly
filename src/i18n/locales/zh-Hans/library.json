@@ -193,6 +193,7 @@
     "arxivCardDescription": "通过 arXiv 编号下载论文的 LaTeX 源码。",
     "importAction": "导入",
     "tryAgain": "重试",
+    "github": "GitHub",
     "githubTitle": "从 GitHub 导入",
     "githubDescription": "选择一个仓库复制到你的库中。",
     "back": "返回导入来源",
@@ -310,7 +311,7 @@
     }
   },
   "generate": {
-    "title": "使用 AI 生成模板",
+    "title": "生成模板",
     "subtitle": "描述一份文档，使用前先预览",
     "quotedPrompt": "“{{prompt}}”",
     "promptPlaceholder": "描述文档，例如一篇包含摘要和编号章节的双栏研讨会论文",

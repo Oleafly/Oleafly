@@ -303,6 +303,19 @@ describe("FilesPanel section expansion", () => {
     expect(filler).toHaveClass("invisible", "h-0");
   });
 
+  it("lets section handles straddle the divider without taking layout space", () => {
+    render(<FilesPanel />);
+    for (const id of ["source-outline-resize", "outline-structure-resize"]) {
+      const handle = document.getElementById(id);
+      if (!handle) throw new Error(`missing ${id}`);
+      // Negative margins cancel the 10px band, so the next header sits flush
+      // with the divider and its hover tint reaches the line. The band keeps a
+      // real box so it stays visible and focusable, above both panels.
+      expect(handle).toHaveClass("h-2.5", "-my-[5px]", "relative", "z-10");
+      expect(handle).toHaveAttribute("tabindex", "0");
+    }
+  });
+
   it("collapses and reopens Explorer from its separator with Enter", async () => {
     localStorage.removeItem(panelLayoutKey("sidebar-explorer-sections-v3", explorerPanels));
     localStorage.removeItem(panelExpandSizesKey("sidebar-explorer-sections-v3"));

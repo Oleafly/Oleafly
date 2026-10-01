@@ -167,9 +167,6 @@
       "online": "在线模式（允许获取宏包）"
     },
     "openTool": "打开 {{name}}",
-    "personalDetails": {
-      "keywords": "截图模式，隐私，模糊，路径，账户名"
-    },
     "recompile": {
       "label": "重新编译"
     },
@@ -232,6 +229,7 @@
   "community": {
     "discordOnline": "{{online}} 人在线",
     "discordOnlineAria": "Discord 上有 {{online}} 人在线",
+    "followOnX": "在 X 上关注我们",
     "joinDiscord": "加入 Discord"
   },
   "compile": {
@@ -514,10 +512,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "隐藏个人信息",
-    "show": "显示个人信息"
-  },
   "projectSearch": {
     "hint": "在本项目的所有文件中搜索。",
     "noResults": "无结果。",
@@ -745,7 +739,7 @@
       "shortcuts": "键盘快捷键"
     },
     "search": {
-      "empty": "没有匹配的设置。",
+      "empty": "没有匹配的设置",
       "keywords": {
         "ai": "助手，聊天，模型，提供商，API 密钥，代理，智能体，提示词，预算，MCP 服务器",
         "appearance": "主题，深色模式，暗色模式，浅色模式，颜色，字体，文字大小，缩放，布局",
@@ -877,6 +871,15 @@
     "stagedChangeCount_other": "{{count}} 个已暂存的更改",
     "stash": "储藏更改",
     "stashNeedsAttention": "解决储藏冲突",
+    "status": {
+      "modified": "已修改",
+      "added": "已添加",
+      "deleted": "已删除",
+      "renamed": "已重命名",
+      "untracked": "未跟踪",
+      "conflict": "冲突",
+      "containsChanges": "包含更改"
+    },
     "sync": "同步",
     "title": "源代码管理",
     "titleRequired": "必须填写提交标题。",
@@ -931,8 +934,8 @@
     "exportMarkdown": "导出为 Markdown (.md)",
     "exportPdf": "导出为 PDF",
     "exportPdfVector": "导出为 PDF（矢量图）",
-    "exportPngRaster": "导出为 PNG（位图）",
-    "exportPagePng": "将页面导出为 PNG（位图）",
+    "exportPngRaster": "导出为 PNG",
+    "exportPagePng": "将页面导出为 PNG",
     "exportAs": "导出为 {{format}}",
     "exportPptx": "导出为 PowerPoint (.pptx)",
     "exportSourceZip": "导出源码 (.zip)",

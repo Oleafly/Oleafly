@@ -167,9 +167,6 @@
       "online": "線上模式（允許取得套件）"
     },
     "openTool": "開啟 {{name}}",
-    "personalDetails": {
-      "keywords": "截圖模式，隱私，模糊，路徑，帳戶名稱"
-    },
     "recompile": {
       "label": "重新編譯"
     },
@@ -232,6 +229,7 @@
   "community": {
     "discordOnline": "{{online}} 人在線上",
     "discordOnlineAria": "Discord 上有 {{online}} 人在線上",
+    "followOnX": "在 X 上追蹤我們",
     "joinDiscord": "加入 Discord"
   },
   "compile": {
@@ -514,10 +512,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "隱藏個人資料",
-    "show": "顯示個人資料"
-  },
   "projectSearch": {
     "hint": "搜尋這個專案的所有檔案。",
     "noResults": "沒有結果。",
@@ -745,7 +739,7 @@
       "shortcuts": "鍵盤快捷鍵"
     },
     "search": {
-      "empty": "沒有相符的設定。",
+      "empty": "沒有相符的設定",
       "keywords": {
         "ai": "助理，聊天，模型，供應商，API 金鑰，代理程式，提示詞，預算，MCP 伺服器",
         "appearance": "主題，深色模式，淺色模式，顏色，色彩，字型，文字大小，縮放，版面配置",
@@ -877,6 +871,15 @@
     "stagedChangeCount_other": "{{count}} 項已暫存的變更",
     "stash": "擱置變更",
     "stashNeedsAttention": "解決擱置衝突",
+    "status": {
+      "modified": "已修改",
+      "added": "已新增",
+      "deleted": "已刪除",
+      "renamed": "已重新命名",
+      "untracked": "未追蹤",
+      "conflict": "衝突",
+      "containsChanges": "包含變更"
+    },
     "sync": "同步",
     "title": "原始檔控制",
     "titleRequired": "必須填寫提交標題。",
@@ -931,8 +934,8 @@
     "exportMarkdown": "匯出為 Markdown（.md）",
     "exportPdf": "匯出為 PDF",
     "exportPdfVector": "匯出為 PDF（向量圖）",
-    "exportPngRaster": "匯出為 PNG（點陣圖）",
-    "exportPagePng": "將頁面匯出為 PNG（點陣圖）",
+    "exportPngRaster": "匯出為 PNG",
+    "exportPagePng": "將頁面匯出為 PNG",
     "exportAs": "匯出為 {{format}}",
     "exportPptx": "匯出為 PowerPoint（.pptx）",
     "exportSourceZip": "匯出原始碼（.zip）",

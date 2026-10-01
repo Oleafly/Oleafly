@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false, invoke: vi.fn() }));
 
 import type { ToolApprovalRequest } from "@/lib/ai-tools";
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
-import { usePersonalDetailsStore } from "@/store/personal-details";
 import { ToolConfirm } from "./ToolConfirm";
 
 const COMMAND = "cd /Users/ada/paper && latexmk -pdf main.tex";
@@ -34,15 +33,10 @@ function renderCard(req: ToolApprovalRequest) {
   return render(<ToolConfirm req={req} onApprove={vi.fn()} onReject={vi.fn()} />);
 }
 
-function marked(container: HTMLElement): string[] {
-  return [...container.querySelectorAll("[data-private]")].map((node) => node.textContent ?? "");
-}
-
 beforeEach(() => setDisplayHomes(["/Users/ada"]));
 
 afterEach(() => {
   cleanup();
-  act(() => usePersonalDetailsStore.getState().setHidden(false));
   resetDisplayHomes();
 });
 
@@ -53,24 +47,12 @@ describe("ToolConfirm home paths", () => {
     expect(container.textContent).not.toContain("/Users/ada");
   });
 
-  it("marks the path in the command for screenshot mode, and keyboard focus reveals it", () => {
-    act(() => usePersonalDetailsStore.getState().setHidden(true));
-    const { container } = renderCard(commandRequest);
-    const command = container.querySelector("pre") as HTMLElement;
-    expect(command).toHaveTextContent("cd ~/paper && latexmk -pdf main.tex");
-    const group = command.querySelector("[data-private-group]");
-    expect(group).toHaveAttribute("tabindex", "0");
-    expect(marked(command)).toEqual(["~/paper"]);
-    // The working directory is marked as well.
-    expect(marked(container)).toEqual(["~/paper", "~/paper"]);
-  });
-
-  it("marks a home path in MCP arguments for screenshot mode", () => {
-    act(() => usePersonalDetailsStore.getState().setHidden(true));
+  it("shows a home path in MCP arguments as ~, with no blur", () => {
     const { container } = renderCard(mcpRequest);
     const args = container.querySelector("pre") as HTMLElement;
     expect(args).toHaveTextContent('"path": "~/paper/refs.bib"');
-    expect(marked(args)).toEqual(["~/paper/refs.bib"]);
     expect(container.textContent).not.toContain("/Users/ada");
+    // Only Settings blurs paths.
+    expect(container.querySelector("[data-settings-path]")).toBeNull();
   });
 });

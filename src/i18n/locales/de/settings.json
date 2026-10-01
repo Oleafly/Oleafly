@@ -375,7 +375,9 @@
       "addFolder": "Ordner hinzufügen",
       "addFolderDialogTitle": "Skill-Ordner hinzufügen",
       "catalog": {
+        "allDomains": "Alle",
         "description": "Zusätzliche Skills für bestimmte Forschungsgebiete. Installieren Sie einen, um ihn Ihrer Liste oben hinzuzufügen.",
+        "domainFilterLabel": "Regal nach Fachgebiet filtern",
         "empty": "Der Katalog hat keine zusätzlichen Skills zum Installieren.",
         "install": "Installieren",
         "loading": "Der Katalog wird geladen...",
@@ -406,8 +408,9 @@
         "uninstall": "Deinstallieren",
         "update": "Aktualisieren"
       },
+      "changedForProject": "Für dieses Projekt geändert",
       "createSkill": "Skill anlegen",
-      "description": "Der Assistent lädt die vollständige Anleitung eines Skills erst, wenn er sie braucht, oder sofort, wenn Sie /skill-id in den Chat tippen. Ein hier eingeschalteter Skill ist in jedem Projekt an, bis ein Projekt ihn überschreibt.",
+      "description": "Der Assistent lädt die vollständige Anleitung eines Skills nur, wenn er sie braucht, oder sofort, wenn Sie /skill-id in den Chat tippen. Ein hier eingeschalteter Skill ist in jedem Projekt an. Um ihn nur für das geöffnete Projekt zu ändern, wechseln Sie zu Dieses Projekt.",
       "editAria": "{{name}} bearbeiten",
       "editor": {
         "createDescription": "Legt einen SKILL.md-Entwurf in Ihrem Oleafly-Skills-Ordner an.",
@@ -424,14 +427,12 @@
         "submitCreate": "Anlegen"
       },
       "empty": "Keine Skills gefunden. Fügen Sie einen Ordner hinzu oder legen Sie einen an.",
-      "enableAria": "{{name}} aktivieren",
       "fileCount_one": "{{count}} Datei",
       "fileCount_other": "{{count}} Dateien",
       "groups": {
         "shelf": "Fachregal",
         "user": "Ihre Skills"
       },
-      "inheritsDevice": "Übernimmt die Geräteeinstellung",
       "invalidBadge": "Ungültig",
       "loadFailed": "Die Skills konnten nicht geladen werden. {{message}}",
       "loading": "Skills werden geladen...",
@@ -444,8 +445,6 @@
         "updated": "{{name}} aktualisiert."
       },
       "missingDescription": "Diesem Skill fehlt eine Beschreibung.",
-      "offForProject": "Für dieses Projekt aus",
-      "onForProject": "Für dieses Projekt an",
       "phases": {
         "authoring": "Schreiben",
         "communication": "Kommunikation",
@@ -459,6 +458,18 @@
       "removeDialog": {
         "description": "„{{name}}“ und seinen Ordner aus Oleafly entfernen? Das lässt sich nicht rückgängig machen.",
         "title": "Skill entfernen"
+      },
+      "resetProject": "Zurücksetzen",
+      "resetProjectAria": "{{name}} auf die Einstellung für alle Projekte zurücksetzen",
+      "scope": {
+        "device": "Alle Projekte",
+        "label": "Wofür die Einstellungen gelten",
+        "project": "Dieses Projekt"
+      },
+      "search": {
+        "ariaLabel": "Skills und das Fachregal durchsuchen",
+        "empty": "Keine passenden Skills",
+        "placeholder": "Skills durchsuchen"
       },
       "share": {
         "description": "Verknüpfen Sie Ihre Skills mit den Ordnern, die andere Coding-Agenten auf diesem Computer ohnehin lesen, damit Sie einen Skill einmal schreiben und jeder Agent ihn nutzen kann.",
@@ -500,9 +511,7 @@
         "description": "„{{name}}“ durch die neueste mitgelieferte Fassung ersetzen? Lokale Änderungen an seinen Dateien gehen verloren.",
         "title": "Skill aktualisieren"
       },
-      "useDeviceSetting": "Geräteeinstellung verwenden",
-      "useDeviceSettingAria": "Für {{name}} die Geräteeinstellung verwenden",
-      "useInProject": "In diesem Projekt verwenden",
+      "useInAllProjectsAria": "{{name}} in allen Projekten verwenden",
       "useInProjectAria": "{{name}} in diesem Projekt verwenden",
       "validateAria": "{{name}} prüfen"
     }

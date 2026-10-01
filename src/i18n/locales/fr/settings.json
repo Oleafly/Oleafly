@@ -376,7 +376,9 @@
       "addFolder": "Ajouter un dossier",
       "addFolderDialogTitle": "Ajouter un dossier de compétences",
       "catalog": {
+        "allDomains": "Toutes",
         "description": "Des compétences supplémentaires pour des domaines de recherche précis. Installez-en une pour l'ajouter à votre liste ci-dessus.",
+        "domainFilterLabel": "Filtrer l'étagère par domaine",
         "empty": "Le catalogue n'a aucune compétence supplémentaire à installer.",
         "install": "Installer",
         "loading": "Chargement du catalogue...",
@@ -407,8 +409,9 @@
         "uninstall": "Désinstaller",
         "update": "Mettre à jour"
       },
+      "changedForProject": "Modifiée pour ce projet",
       "createSkill": "Créer une compétence",
-      "description": "L'assistant ne charge les instructions complètes d'une compétence que lorsqu'il juge en avoir besoin, ou immédiatement si vous tapez /identifiant-competence dans la discussion. Une compétence activée ici l'est dans tous les projets, jusqu'à ce qu'un projet la surcharge.",
+      "description": "L'assistant ne charge les instructions complètes d'une compétence que lorsqu'il en a besoin, ou immédiatement si vous tapez /identifiant-competence dans la discussion. Une compétence activée ici l'est dans tous les projets. Pour la modifier uniquement dans le projet ouvert, passez à Ce projet.",
       "editAria": "Modifier {{name}}",
       "editor": {
         "createDescription": "Créez un brouillon SKILL.md dans votre dossier de compétences Oleafly.",
@@ -425,7 +428,6 @@
         "submitCreate": "Créer"
       },
       "empty": "Aucune compétence trouvée. Ajoutez un dossier ou créez-en une.",
-      "enableAria": "Activer {{name}}",
       "fileCount_one": "{{count}} fichier",
       "fileCount_many": "{{count}} fichiers",
       "fileCount_other": "{{count}} fichiers",
@@ -433,7 +435,6 @@
         "shelf": "Étagère thématique",
         "user": "Vos compétences"
       },
-      "inheritsDevice": "Hérite du réglage de l'appareil",
       "invalidBadge": "Invalide",
       "loadFailed": "Impossible de charger les compétences. {{message}}",
       "loading": "Chargement des compétences...",
@@ -446,8 +447,6 @@
         "updated": "{{name}} mis à jour."
       },
       "missingDescription": "Cette compétence a besoin d'une description.",
-      "offForProject": "Désactivée pour ce projet",
-      "onForProject": "Activée pour ce projet",
       "phases": {
         "authoring": "Rédaction",
         "communication": "Communication",
@@ -461,6 +460,18 @@
       "removeDialog": {
         "description": "Retirer « {{name}} » et son dossier d'Oleafly ? Cette action est irréversible.",
         "title": "Retirer la compétence"
+      },
+      "resetProject": "Réinitialiser",
+      "resetProjectAria": "Rétablir pour {{name}} le réglage de tous les projets",
+      "scope": {
+        "device": "Tous les projets",
+        "label": "Portée de ces réglages",
+        "project": "Ce projet"
+      },
+      "search": {
+        "ariaLabel": "Rechercher dans les compétences et l'étagère thématique",
+        "empty": "Aucune compétence ne correspond",
+        "placeholder": "Rechercher des compétences"
       },
       "share": {
         "description": "Reliez vos compétences aux dossiers que les autres agents de développement de cet ordinateur lisent déjà : vous écrivez une compétence une fois et tous les agents peuvent l'utiliser.",
@@ -503,9 +514,7 @@
         "description": "Remplacer « {{name}} » par la dernière version fournie ? Toutes les modifications locales de ses fichiers seront perdues.",
         "title": "Mettre à jour la compétence"
       },
-      "useDeviceSetting": "Utiliser le réglage de l'appareil",
-      "useDeviceSettingAria": "Utiliser le réglage de l'appareil pour {{name}}",
-      "useInProject": "Utiliser dans ce projet",
+      "useInAllProjectsAria": "Utiliser {{name}} dans tous les projets",
       "useInProjectAria": "Utiliser {{name}} dans ce projet",
       "validateAria": "Valider {{name}}"
     }

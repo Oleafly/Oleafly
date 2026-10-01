@@ -12,10 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings has a search box. Type a word such as "theme", "Zotero" or
   "spelling" and the list narrows to the sections and settings that match;
   pick one to jump to it.
-- A small eye button in the toolbar, also in the command palette and the View
-  menu, blurs personal details for screenshots: your home folder in paths,
-  account names, commit authors, and sizes and totals. Hover or focus a
-  blurred item to read it. It lasts until you quit.
+- The Explorer shows Git status next to changed files, with the same letters
+  as Source Control (M, U, D and so on). Changed file names take the status
+  colour, and a folder that holds changes gets a dot.
+- Settings > AI > Skills has a search box. It filters your skills and the
+  Domain shelf together, and the shelf can be narrowed to one domain.
 - When a model in Plan mode answers without a plan, a note says so.
 - Each CLI agent in Settings > AI > Agents has a Program row. It shows the
   program Oleafly found and where, and you can choose another file or type
@@ -47,6 +48,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Paths inside your home folder show as `~/…` in Settings, version history,
   engine and agent details, and in chat.
+- File paths in Settings, such as CLI agent programs, Storage and engine
+  locations, are blurred until you hover over them or tab to them, so a
+  screenshot of Settings doesn't show where your files live.
+- Each skill has one switch. With a project open, All projects and This
+  project at the top of the list choose what the switches change. A skill set
+  differently for the project says so and has a Reset.
+- The welcome screen's New project and Open a folder cards have pictures, like
+  the cards in Start a new piece of work, and so does each source in Import a
+  project. The pictures are ready before a dialog opens instead of popping in.
+- The bottom of the Settings sidebar has Discord, X, GitHub and Docs buttons,
+  and Cite Oleafly is now the last section of Help & About.
+- Toasts have their close button inside, on the right.
+- The Float the assistant button has a picture-in-picture icon, so it no
+  longer looks like Hide.
+- Pinned headings at the top of the code editor are a little taller and line
+  up with the line numbers below them.
+- The PNG export items read "Export as PNG" and "Export page as PNG", and the
+  template button reads "Generate a template".
+- Settings > Dictionary lists every rule the academic profile keeps off,
+  instead of scrolling them in a small box.
+- The selected Settings section has a border instead of a shadow, and the
+  empty states in Source Control and Settings search show their icon above
+  the text.
 - What's new folds long release notes: older releases start closed, and big
   sections of the newest show a count you can open.
 - A project Oleafly creates or imports now starts with one Git commit of its
@@ -64,6 +88,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Opening Chat history left the editor's pinned headings bright on top of the
+  dimmed window. The dialog now covers the whole window, and the Find widget
+  no longer hides behind pinned headings either.
+- The math preview showed a scrollbar under equations that fit. It now sizes
+  to the equation, and shrinks one that is too big for the space.
+- The divider above the terminal turned into a thick dark bar on hover,
+  because the window backdrop showed through it. It is a thin line with a
+  light tint.
+- Hovering the Outline or Structure header in the sidebar left a strip at the
+  top unhighlighted, where the resize handle sat.
 - Cmd+Enter (Ctrl+Enter on Windows and Linux) compiles without also inserting
   a blank line or a line break in the editor.
 - Word, HTML, EPUB and PowerPoint exports keep citations and list the

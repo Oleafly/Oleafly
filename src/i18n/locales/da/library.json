@@ -194,6 +194,7 @@
     "arxivCardDescription": "Download en artikels LaTeX-kilde ud fra dens arXiv-id.",
     "importAction": "Importer",
     "tryAgain": "Prøv igen",
+    "github": "GitHub",
     "githubTitle": "Importer fra GitHub",
     "githubDescription": "Vælg et repository, der skal kopieres til dit bibliotek.",
     "back": "Tilbage til importkilder",
@@ -317,7 +318,7 @@
     }
   },
   "generate": {
-    "title": "Generer en skabelon med AI",
+    "title": "Generer en skabelon",
     "subtitle": "Beskriv et dokument, og se det, før du bruger det",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Beskriv dokumentet, f.eks. en tospaltet workshopartikel med resumé og nummererede afsnit",

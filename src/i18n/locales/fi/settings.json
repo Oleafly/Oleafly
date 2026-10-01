@@ -375,7 +375,9 @@
       "addFolder": "Lisää kansio",
       "addFolderDialogTitle": "Lisää taitokansio",
       "catalog": {
+        "allDomains": "Kaikki",
         "description": "Lisätaitoja tietyille tutkimusaloille. Asenna yksi, niin se lisätään yllä olevaan luetteloosi.",
+        "domainFilterLabel": "Suodata hylly aihealueen mukaan",
         "empty": "Luettelossa ei ole asennettavia lisätaitoja.",
         "install": "Asenna",
         "loading": "Ladataan luetteloa...",
@@ -406,8 +408,9 @@
         "uninstall": "Poista asennus",
         "update": "Päivitä"
       },
+      "changedForProject": "Muutettu tässä projektissa",
       "createSkill": "Luo taito",
-      "description": "Avustaja lataa taidon täydet ohjeet vasta, kun se päättää tarvitsevansa sitä, tai heti, jos kirjoitat keskusteluun /taidon-tunnus. Täällä käyttöön otettu taito on käytössä jokaisessa projektissa, kunnes projekti ohittaa asetuksen.",
+      "description": "Avustaja lataa taidon täydet ohjeet vain, kun se tarvitsee niitä, tai heti, jos kirjoitat keskusteluun /taidon-tunnus. Täällä käyttöön otettu taito on käytössä jokaisessa projektissa. Jos haluat muuttaa sitä vain avoimessa projektissa, valitse Tämä projekti.",
       "editAria": "Muokkaa {{name}}",
       "editor": {
         "createDescription": "Luo SKILL.md-luonnos Oleaflyn taitokansioosi.",
@@ -424,14 +427,12 @@
         "submitCreate": "Luo"
       },
       "empty": "Taitoja ei löytynyt. Lisää kansio tai luo taito.",
-      "enableAria": "Ota käyttöön {{name}}",
       "fileCount_one": "{{count}} tiedosto",
       "fileCount_other": "{{count}} tiedostoa",
       "groups": {
         "shelf": "Aihealueen hylly",
         "user": "Omat taidot"
       },
-      "inheritsDevice": "Perii laitteen asetuksen",
       "invalidBadge": "Virheellinen",
       "loadFailed": "Taitoja ei voitu ladata. {{message}}",
       "loading": "Ladataan taitoja...",
@@ -444,8 +445,6 @@
         "updated": "{{name}} päivitettiin."
       },
       "missingDescription": "Tämä taito tarvitsee kuvauksen.",
-      "offForProject": "Pois tässä projektissa",
-      "onForProject": "Käytössä tässä projektissa",
       "phases": {
         "authoring": "Kirjoittaminen",
         "communication": "Viestintä",
@@ -459,6 +458,18 @@
       "removeDialog": {
         "description": "Poistetaanko \"{{name}}\" ja sen kansio Oleaflystä? Tätä ei voi kumota.",
         "title": "Poista taito"
+      },
+      "resetProject": "Palauta",
+      "resetProjectAria": "Palauta taidolle {{name}} kaikkien projektien asetus",
+      "scope": {
+        "device": "Kaikki projektit",
+        "label": "Missä asetukset ovat voimassa",
+        "project": "Tämä projekti"
+      },
+      "search": {
+        "ariaLabel": "Hae taidoista ja aihealueen hyllystä",
+        "empty": "Ei vastaavia taitoja",
+        "placeholder": "Hae taitoja"
       },
       "share": {
         "description": "Linkitä taitosi niihin kansioihin, joita muut tämän koneen koodiagentit jo lukevat, niin kirjoitat taidon kerran ja jokainen agentti voi käyttää sitä.",
@@ -500,9 +511,7 @@
         "description": "Korvataanko \"{{name}}\" uusimmalla mukana tulevalla versiolla? Sen tiedostoihin tehdyt paikalliset muokkaukset menetetään.",
         "title": "Päivitä taito"
       },
-      "useDeviceSetting": "Käytä laitteen asetusta",
-      "useDeviceSettingAria": "Käytä laitteen asetusta taidolle {{name}}",
-      "useInProject": "Käytä tässä projektissa",
+      "useInAllProjectsAria": "Käytä taitoa {{name}} kaikissa projekteissa",
       "useInProjectAria": "Käytä taitoa {{name}} tässä projektissa",
       "validateAria": "Tarkista {{name}}"
     }

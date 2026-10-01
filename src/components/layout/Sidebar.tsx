@@ -197,7 +197,9 @@ export function FilesPanel() {
     EXPLORER_PANELS,
   );
   const trackCollapse = useCollapseTransitions();
-  const hitArea = useSeparatorHitArea(0.625);
+  // The section handles take no layout space; their 10px band straddling the
+  // divider line is the whole hit area (see SidebarSectionHandle).
+  const hitArea = useSeparatorHitArea(0);
 
   const reclaimCurrentExplorerFiller = useCallback(() => {
     if (!stackRef.current?.isConnected) return;
@@ -232,7 +234,10 @@ export function FilesPanel() {
         (Number.parseFloat(style.paddingTop) || 0) -
         (Number.parseFloat(style.paddingBottom) || 0);
       if (height <= 0) return;
-      const next = Math.max(1.5, Math.min(28, (32 / height) * 100));
+      // A collapsed section is its 32px header plus the 1px divider under it.
+      // The handles take no space, so that divider is all that separates two
+      // collapsed headers.
+      const next = Math.max(1.5, Math.min(28, (33 / height) * 100));
       setCollapsedSize((current) =>
         Math.abs(current - next) < 0.05 ? current : next,
       );
@@ -447,6 +452,10 @@ function SidebarSectionHandle({
   ariaLabel: string;
   onKeyDownCapture: KeyboardEventHandler<HTMLElement>;
 }>) {
+  // The 10px band's negative margins cancel its height, so it takes no layout
+  // space: the next section's header sits right under the divider line and its
+  // hover tint reaches that line. The band straddles the line, above both
+  // panels, and keeps a real box so it stays visible and focusable.
   return (
     <Separator
       id={id}
@@ -454,10 +463,7 @@ function SidebarSectionHandle({
       aria-label={ariaLabel}
       onKeyDownCapture={onKeyDownCapture}
       style={{ cursor: "row-resize" }}
-      className={cn(
-        "resize-handle-row group flex h-2.5 select-none items-center justify-center",
-        "transition-colors hover:bg-accent/40",
-      )}
+      className="resize-handle-row group relative z-10 -my-[5px] flex h-2.5 select-none items-center justify-center"
     >
       <span className="h-0.5 w-8 rounded-full bg-transparent opacity-0 transition-[background-color,opacity] group-hover:bg-ring group-hover:opacity-100 group-focus-visible:bg-ring group-focus-visible:opacity-100 group-data-[separator=active]:bg-ring group-data-[separator=active]:opacity-100" />
     </Separator>

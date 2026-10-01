@@ -43,7 +43,6 @@ import {
 } from "@/components/ui/select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useDisplayPath } from "@/lib/display-path";
-import { PrivatePath } from "@/components/ui/private";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { revealInDir } from "@/lib/tauri";
 import { isMac } from "@/lib/utils";
@@ -175,7 +174,6 @@ function LinkFolderDialog({
                 id="new-research-root-path"
                 value={displayPath(path)}
                 readOnly
-                data-private-field=""
                 placeholder={t(($) => $.researchTools.roots.dialog.folderPlaceholder)}
                 className="font-mono text-xs"
               />
@@ -354,7 +352,7 @@ function RootCard({
           </div>
           <Tooltip label={displayPath(root.canonicalPath)} wide className="mt-2 block min-w-0 max-w-full">
             <code className="block w-full truncate text-xs text-muted-foreground">
-              <PrivatePath path={root.canonicalPath} />
+              {displayPath(root.canonicalPath)}
             </code>
           </Tooltip>
           <div className="mt-2">

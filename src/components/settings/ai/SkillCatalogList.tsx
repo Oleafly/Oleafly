@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Download, Ghost, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import { formatDateTime, formatNumber } from "@/lib/intl";
+import { matchesSkillSearch } from "@/lib/skill-groups";
 import { SKILLS_QUERY_KEY } from "@/lib/skills";
+import { cn } from "@/lib/utils";
 import {
   skillsCatalog,
   skillsInstall,
@@ -79,7 +81,201 @@ function progressText(entry: SkillAssetProgress): string {
     : i18n.t(($) => $.settings.ai.skills.catalog.progress.downloading);
 }
 
-export function SkillCatalogList() {
+export function SkillsNoMatch() {
+  const { t } = useTranslation(["common", "settings"]);
+  return (
+    <output
+      data-testid="skills-no-match"
+      className="flex flex-col items-center gap-2 py-6 text-center text-xs text-muted-foreground"
+    >
+      <Ghost aria-hidden className="size-5" />
+      <p>{t(($) => $.settings.ai.skills.search.empty)}</p>
+    </output>
+  );
+}
+
+const DOMAIN_CHIP =
+  "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:border-primary/50";
+const DOMAIN_CHIP_ACTIVE = "border-primary/35 bg-primary/10 text-primary";
+const DOMAIN_CHIP_IDLE =
+  "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground";
+
+function DomainChip({
+  label,
+  testId,
+  active,
+  onClick,
+}: Readonly<{ label: string; testId: string; active: boolean; onClick: () => void }>) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      data-testid={testId}
+      onClick={onClick}
+      className={cn(DOMAIN_CHIP, active ? DOMAIN_CHIP_ACTIVE : DOMAIN_CHIP_IDLE)}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** "All" plus one chip per domain on the shelf. */
+function DomainChips({
+  domains,
+  active,
+  onChange,
+}: Readonly<{ domains: readonly string[]; active: string | null; onChange: (domain: string | null) => void }>) {
+  const { t } = useTranslation(["settings"]);
+  return (
+    <fieldset
+      aria-label={t(($) => $.settings.ai.skills.catalog.domainFilterLabel)}
+      data-testid="skills-catalog-domains"
+      className="m-0 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
+    >
+      <DomainChip
+        label={t(($) => $.settings.ai.skills.catalog.allDomains)}
+        testId="skills-catalog-domain-all"
+        active={active === null}
+        onClick={() => onChange(null)}
+      />
+      {domains.map((value) => (
+        <DomainChip
+          key={value}
+          label={value}
+          testId={`skills-catalog-domain-${value}`}
+          active={active === value}
+          onClick={() => onChange(value)}
+        />
+      ))}
+    </fieldset>
+  );
+}
+
+/** The shelf's domains, and the rows left after the domain and search filters. */
+function filterShelf(
+  catalog: SkillCatalog | null,
+  domain: string | null,
+  search: string,
+): { entries: SkillCatalogEntry[]; domains: string[]; active: string | null; matches: SkillCatalogEntry[] } {
+  const entries = (catalog?.skills ?? []).filter((entry) => !entry.bundled);
+  const domains = [
+    ...new Set(entries.map((entry) => entry.domain).filter((value): value is string => Boolean(value))),
+  ].sort((left, right) => left.localeCompare(right));
+  const active = domain !== null && domains.includes(domain) ? domain : null;
+  const matches = entries.filter(
+    (entry) =>
+      (active === null || entry.domain === active) &&
+      matchesSkillSearch(search, [entry.name, entry.id, entry.description, entry.domain]),
+  );
+  return { entries, domains, active, matches };
+}
+
+/** One shelf skill with its install, update or uninstall buttons. */
+function ShelfRow({
+  entry,
+  busy,
+  progress,
+  onInstall,
+  onUninstall,
+}: Readonly<{
+  entry: SkillCatalogEntry;
+  busy: boolean;
+  progress: SkillAssetProgress | undefined;
+  onInstall: (entry: SkillCatalogEntry) => void;
+  onUninstall: (entry: SkillCatalogEntry) => void;
+}>) {
+  const { t } = useTranslation(["common", "settings"]);
+  return (
+    <div
+      data-testid={`skill-shelf-row-${entry.id}`}
+      className="flex items-center gap-3 rounded-md border px-3 py-2.5"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium">{entry.name}</span>
+          {entry.domain ? (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {entry.domain}
+            </span>
+          ) : null}
+        </div>
+        <p className="truncate text-[11px] text-muted-foreground">
+          {busy && progress
+            ? progressText(progress)
+            : `${entry.description} · ${entry.license} · ${formatBytes(entry.bytes)}`}
+        </p>
+      </div>
+      {entry.installed ? (
+        <div className="flex shrink-0 items-center gap-1.5">
+          {entry.updateAvailable ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              data-testid={`skill-shelf-update-${entry.id}`}
+              onClick={() => onInstall(entry)}
+              disabled={busy}
+            >
+              {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {t(($) => $.settings.ai.skills.catalog.update)}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            data-testid={`skill-shelf-uninstall-${entry.id}`}
+            onClick={() => onUninstall(entry)}
+            disabled={busy}
+          >
+            <Trash2 className="size-3.5" />
+            {t(($) => $.settings.ai.skills.catalog.uninstall)}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          data-testid={`skill-shelf-install-${entry.id}`}
+          onClick={() => onInstall(entry)}
+          disabled={busy}
+        >
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+          {t(($) => $.settings.ai.skills.catalog.install)}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/** The result of the last action in the Skills tab or on the shelf. */
+export function SkillResultMessage({ ok, text }: Readonly<{ ok: boolean; text: string }>) {
+  return (
+    <div
+      role={ok ? "status" : "alert"}
+      aria-live="polite"
+      className={
+        ok
+          ? "rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2.5 text-xs text-emerald-600 dark:text-emerald-400"
+          : "rounded-md border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"
+      }
+    >
+      {text}
+    </div>
+  );
+}
+
+export function SkillCatalogList({
+  search = "",
+  hideNoMatch = false,
+  onMatchCountChange,
+}: Readonly<{
+  search?: string;
+  /** The parent already shows "No skills match" for the whole tab. */
+  hideNoMatch?: boolean;
+  /** Shelf rows left after filtering, or null while the catalog loads. */
+  onMatchCountChange?: (count: number | null) => void;
+}> = {}) {
   const { t } = useTranslation(["common", "settings"]);
   const queryClient = useQueryClient();
   const [catalog, setCatalog] = useState<SkillCatalog | null>(null);
@@ -88,6 +284,7 @@ export function SkillCatalogList() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<string, SkillAssetProgress>>({});
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [domain, setDomain] = useState<string | null>(null);
 
   const load = useCallback(async (refresh: boolean) => {
     if (refresh) setRefreshing(true);
@@ -173,8 +370,18 @@ export function SkillCatalogList() {
     }
   };
 
-  const shelfEntries = (catalog?.skills ?? []).filter((entry) => !entry.bundled);
+  const {
+    entries: shelfEntries,
+    domains,
+    active: activeDomain,
+    matches,
+  } = filterShelf(catalog, domain, search);
+  const matchCount = loading ? null : matches.length;
   const sourceLine = catalog ? catalogSourceLine(catalog) : "";
+
+  useEffect(() => {
+    onMatchCountChange?.(matchCount);
+  }, [matchCount, onMatchCountChange]);
 
   return (
     <div className="space-y-2 rounded-md border bg-card p-3" data-testid="skills-catalog-section">
@@ -207,96 +414,36 @@ export function SkillCatalogList() {
           {t(($) => $.settings.ai.skills.catalog.loading)}
         </p>
       ) : null}
-      {!loading && (shelfEntries.length === 0 ? (
+      {!loading && domains.length > 1 ? (
+        <DomainChips domains={domains} active={activeDomain} onChange={setDomain} />
+      ) : null}
+
+      {!loading && shelfEntries.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           {t(($) => $.settings.ai.skills.catalog.empty)}
         </p>
-      ) : (
+      ) : null}
+      {!loading && shelfEntries.length > 0 && matches.length === 0 && !hideNoMatch ? (
+        <SkillsNoMatch />
+      ) : null}
+      {!loading && matches.length > 0 ? (
         <div className="space-y-2">
-          {shelfEntries.map((entry) => {
-            const busy = busyId === entry.id;
-            const entryProgress = progress[entry.id];
-            return (
-              <div
-                key={entry.id}
-                data-testid={`skill-shelf-row-${entry.id}`}
-                className="flex items-center gap-3 rounded-md border px-3 py-2.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">{entry.name}</span>
-                    {entry.domain ? (
-                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {entry.domain}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {busy && entryProgress
-                      ? progressText(entryProgress)
-                      : `${entry.description} · ${entry.license} · ${formatBytes(entry.bytes)}`}
-                  </p>
-                </div>
-                {entry.installed ? (
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {entry.updateAvailable ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        data-testid={`skill-shelf-update-${entry.id}`}
-                        onClick={() => void install(entry)}
-                        disabled={busy}
-                      >
-                        {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                        {t(($) => $.settings.ai.skills.catalog.update)}
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      data-testid={`skill-shelf-uninstall-${entry.id}`}
-                      onClick={() => void uninstall(entry)}
-                      disabled={busy}
-                    >
-                      <Trash2 className="size-3.5" />
-                      {t(($) => $.settings.ai.skills.catalog.uninstall)}
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    data-testid={`skill-shelf-install-${entry.id}`}
-                    onClick={() => void install(entry)}
-                    disabled={busy}
-                  >
-                    {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
-                    {t(($) => $.settings.ai.skills.catalog.install)}
-                  </Button>
-                )}
-              </div>
-            );
-          })}
+          {matches.map((entry) => (
+            <ShelfRow
+              key={entry.id}
+              entry={entry}
+              busy={busyId === entry.id}
+              progress={progress[entry.id]}
+              onInstall={(target) => void install(target)}
+              onUninstall={(target) => void uninstall(target)}
+            />
+          ))}
         </div>
-      ))}
+      ) : null}
 
       {catalog ? <p className="text-[11px] text-muted-foreground">{sourceLine}</p> : null}
 
-      {message ? (
-        <div
-          role={message.ok ? "status" : "alert"}
-          aria-live="polite"
-          className={
-            message.ok
-              ? "rounded-md border border-emerald-500/30 bg-emerald-500/10 p-2 text-xs text-emerald-600 dark:text-emerald-400"
-              : "rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive"
-          }
-        >
-          {message.text}
-        </div>
-      ) : null}
+      {message ? <SkillResultMessage ok={message.ok} text={message.text} /> : null}
     </div>
   );
 }

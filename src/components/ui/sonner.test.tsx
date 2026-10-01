@@ -20,7 +20,6 @@ import { Toaster } from "./sonner";
 import { toast } from "@/lib/toast";
 import { useToastStore } from "@/store/toast";
 import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
-import { usePersonalDetailsStore } from "@/store/personal-details";
 
 const KEEP_MESSAGE = "Keep me";
 const CHOOSE_MESSAGE = "Choose a compatible engine";
@@ -61,25 +60,6 @@ describe("Toaster display", () => {
       const { container } = render(<span>{lastShown(mocks.success)[0]}</span>);
       expect(container.textContent).toBe("Saved usage report to ~/Downloads/usage.json");
     } finally {
-      resetDisplayHomes();
-    }
-  });
-
-  it("blurs the path in a message while personal details are hidden", () => {
-    setDisplayHomes(["/Users/ada"]);
-    try {
-      render(<Toaster />);
-      act(() => {
-        toast.success(SAVED_UNDER_HOME);
-      });
-      const { container } = render(<span>{lastShown(mocks.success)[0]}</span>);
-      expect(container.querySelector("[data-private]")).toBeNull();
-
-      act(() => usePersonalDetailsStore.getState().setHidden(true));
-      expect(container.querySelector("[data-private]")?.textContent).toBe("~/Downloads/usage.json");
-      expect(container.textContent).toBe("Saved usage report to ~/Downloads/usage.json");
-    } finally {
-      act(() => usePersonalDetailsStore.getState().setHidden(false));
       resetDisplayHomes();
     }
   });

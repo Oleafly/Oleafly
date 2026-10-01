@@ -10,7 +10,7 @@ import {
 import { TexPackagesSection } from "./TexPackagesSection";
 import { hasPandoc, texDistributions, type TexDistribution } from "@/lib/tauri";
 import { useDisplayPath } from "@/lib/display-path";
-import { PrivatePath } from "@/components/ui/private";
+import { SettingsPath } from "@/components/settings/SettingsPath";
 import { ensurePandoc } from "@/features/pandoc";
 import { Button } from "@/components/ui/button";
 import { isTauri } from "@tauri-apps/api/core";
@@ -250,7 +250,7 @@ export function EngineSection() {
                 {t(($) => $.settings.engine.choices[choiceId].detail)}
               </p>
               {choiceId === "latexmk" && info?.latexmk && (
-                <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70"><PrivatePath focusable={false} path={info.latexmk} /></p>
+                <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70"><SettingsPath focusable={false} path={info.latexmk} /></p>
               )}
             </button>
           );
@@ -304,7 +304,7 @@ export function EngineSection() {
                 </button>
               )}
             </div>
-            <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70"><PrivatePath path={distro.bin_dir} /></p>
+            <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70"><SettingsPath path={distro.bin_dir} /></p>
           </div>
         ))}
         {!distros.some((d) => d.kind === "oleafly-tinytex") && (

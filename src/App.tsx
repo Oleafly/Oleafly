@@ -128,7 +128,6 @@ import {
   startNativeDockShortcutBridge,
   usesNativeDockMenu,
 } from "@/lib/native-dock-shortcuts";
-import { startPersonalDetailsMenuBridge } from "@/lib/personal-details-menu";
 import type { ProjectStateChanged } from "@/lib/tauri";
 import {
   assistantMinimumWidth,
@@ -469,19 +468,6 @@ function AppContent() {
     let disposed = false;
     let stop: (() => void) | undefined;
     void startNativeDockShortcutBridge().then((cleanup) => {
-      if (disposed) cleanup();
-      else stop = cleanup;
-    });
-    return () => {
-      disposed = true;
-      stop?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    let disposed = false;
-    let stop: (() => void) | undefined;
-    void startPersonalDetailsMenuBridge().then((cleanup) => {
       if (disposed) cleanup();
       else stop = cleanup;
     });
@@ -1111,12 +1097,22 @@ function AppContent() {
                 onKeyDownCapture={onVerticalSeparatorKeyDown}
                 style={{ cursor: "row-resize" }}
                 className={cn(
-                  "resize-handle-row group flex h-1.5 select-none items-center justify-center bg-background",
-                  "transition-colors hover:bg-accent/40",
-                  !terminalOpen && "invisible h-0 overflow-hidden",
+                  // A border-coloured rule on an opaque base. A translucent hover
+                  // fill here let the window's vibrancy show through as a dark strip.
+                  "resize-handle-row group relative z-10 h-px select-none border-t bg-background",
+                  // Hover target a little wider than the rule; the drag target is
+                  // the group's resizeTargetMinimumSize.
+                  "before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
+                  !terminalOpen && "invisible h-0 overflow-hidden border-t-0",
                 )}
               >
-                <span className="h-0.5 w-8 rounded-full bg-border transition-colors group-hover:bg-ring" />
+                <span
+                  className={cn(
+                    "pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 opacity-0 transition-opacity",
+                    "bg-[color-mix(in_srgb,var(--ring)_40%,var(--background))]",
+                    "group-hover:opacity-100 group-data-[separator=hover]:opacity-100 group-data-[separator=active]:opacity-100",
+                  )}
+                />
               </Separator>
               <Panel
                 panelRef={terminalPanelRef}

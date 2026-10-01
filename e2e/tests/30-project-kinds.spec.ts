@@ -117,7 +117,7 @@ test("image project exports an image, not document formats", async ({ tauriPage 
   await createFromTemplate(tauriPage, "diagram", `E2E X image ${RUN}`);
   await compileClean(tauriPage);
   const items = await exportMenuItems(tauriPage);
-  expect(items).toContain("Export as PNG (raster image)");
+  expect(items).toContain("Export as PNG");
   expect(items).toContain("(vector image)");
   expect(items).not.toContain("Export as Word");
   expect(items).not.toContain("Export as PowerPoint");

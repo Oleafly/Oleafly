@@ -375,7 +375,9 @@
       "addFolder": "Add folder",
       "addFolderDialogTitle": "Add skill folder",
       "catalog": {
+        "allDomains": "All",
         "description": "Extra skills for specific research domains. Install one to add it to your list above.",
+        "domainFilterLabel": "Filter the shelf by domain",
         "empty": "The catalog has no extra skills to install.",
         "install": "Install",
         "loading": "Loading the catalog...",
@@ -406,8 +408,9 @@
         "uninstall": "Uninstall",
         "update": "Update"
       },
+      "changedForProject": "Changed for this project",
       "createSkill": "Create skill",
-      "description": "The assistant loads a skill's full instructions only when it decides it needs one, or right away if you type /skill-id in the chat. A skill you turn on here is on in every project until a project overrides it.",
+      "description": "The assistant loads a skill's full instructions only when it needs them, or right away if you type /skill-id in the chat. A skill you turn on here is on in every project. To change one for the open project only, switch to This project.",
       "editAria": "Edit {{name}}",
       "editor": {
         "createDescription": "Create a SKILL.md draft in your Oleafly skills folder.",
@@ -424,14 +427,12 @@
         "submitCreate": "Create"
       },
       "empty": "No skills found. Add a folder, or create one.",
-      "enableAria": "Enable {{name}}",
       "fileCount_one": "{{count}} file",
       "fileCount_other": "{{count}} files",
       "groups": {
         "shelf": "Domain shelf",
         "user": "Your skills"
       },
-      "inheritsDevice": "Inherits device setting",
       "invalidBadge": "Invalid",
       "loadFailed": "Could not load skills. {{message}}",
       "loading": "Loading skills...",
@@ -444,8 +445,6 @@
         "updated": "Updated {{name}}."
       },
       "missingDescription": "This skill needs a description.",
-      "offForProject": "Off for this project",
-      "onForProject": "On for this project",
       "phases": {
         "authoring": "Authoring",
         "communication": "Communication",
@@ -459,6 +458,18 @@
       "removeDialog": {
         "description": "Remove \"{{name}}\" and its folder from Oleafly? This cannot be undone.",
         "title": "Remove skill"
+      },
+      "resetProject": "Reset",
+      "resetProjectAria": "Reset {{name}} to the All projects setting",
+      "scope": {
+        "device": "All projects",
+        "label": "Where these settings apply",
+        "project": "This project"
+      },
+      "search": {
+        "ariaLabel": "Search skills and the domain shelf",
+        "empty": "No skills match",
+        "placeholder": "Search skills"
       },
       "share": {
         "description": "Link your skills into the folders other coding agents on this computer already read, so you write a skill once and every agent can use it.",
@@ -500,9 +511,7 @@
         "description": "Replace \"{{name}}\" with the latest bundled version? Any local edits to its files will be lost.",
         "title": "Update skill"
       },
-      "useDeviceSetting": "Use device setting",
-      "useDeviceSettingAria": "Use the device setting for {{name}}",
-      "useInProject": "Use in this project",
+      "useInAllProjectsAria": "Use {{name}} in all projects",
       "useInProjectAria": "Use {{name}} in this project",
       "validateAria": "Validate {{name}}"
     }

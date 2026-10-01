@@ -1,6 +1,4 @@
 import { useTranslation } from "react-i18next";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { DISCORD_URL } from "@/lib/community";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
@@ -38,28 +36,5 @@ export function DiscordOnlineCount({
       <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-[#23A55A]" />
       {t(($) => $.shell.community.discordOnline, { online: count })}
     </span>
-  );
-}
-
-/**
- * The community link pinned under the Settings navigation. It rests as one
- * more navigation row and takes Discord's blurple on hover and keyboard focus.
- */
-export function DiscordJoinButton({ className }: Readonly<{ className?: string }>) {
-  const { t } = useTranslation(["shell"]);
-  return (
-    <button
-      type="button"
-      data-testid="settings-join-discord"
-      onClick={() => void openExternal(DISCORD_URL)}
-      className={cn(
-        // Wraps instead of truncating: the column is narrow and some locales run long.
-        "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm leading-tight text-muted-foreground transition-colors hover:bg-[#5865F2] hover:text-white focus-visible:bg-[#5865F2] focus-visible:text-white",
-        className,
-      )}
-    >
-      <DiscordBrandIcon className="size-4 shrink-0" />
-      {t(($) => $.shell.community.joinDiscord)}
-    </button>
   );
 }

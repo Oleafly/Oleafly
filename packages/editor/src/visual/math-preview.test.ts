@@ -211,6 +211,64 @@ describe("math preview tooltip view", () => {
     expect(preview(view.state).tooltip).toBeNull();
   });
 
+  it("never scrolls the formula inside the tooltip", () => {
+    const view = mount(stateFor(INLINE, INLINE_CURSOR));
+    const output = view.dom.ownerDocument.querySelector(".ofl-visual-math-tooltip-output");
+    expect(output).not.toBeNull();
+    expect(getComputedStyle(output as HTMLElement).overflowX).toBe("visible");
+    expect(getComputedStyle(output as HTMLElement).overflowY).toBe("visible");
+  });
+
+  describe("fitting the formula", () => {
+    const DISPLAY = [String.raw`\begin{equation}`, "a = b", String.raw`\end{equation}`].join("\n");
+
+    // jsdom has no layout. The formula is `natural` px wide at full size and
+    // the tooltip leaves `room` px for it; KaTeX's 2px spacer comes on top.
+    function mountTooltip(natural: number, room: number) {
+      const view = mount(stateFor(DISPLAY, DISPLAY.indexOf("a = b")));
+      const created = preview(view.state).tooltip?.create(view);
+      const dom = created?.dom as HTMLElement;
+      // CodeMirror's tooltip host carries the editor's theme classes.
+      const host = document.createElement("div");
+      host.className = view.themeClasses;
+      host.append(dom);
+      document.body.append(host);
+      const output = dom.querySelector(".ofl-visual-math-tooltip-output") as HTMLElement;
+      const scaled = (size: number) =>
+        Math.round((size * (Number.parseFloat(output.style.fontSize) || 100)) / 100);
+      Object.defineProperty(output, "clientWidth", { get: () => room });
+      Object.defineProperty(output, "scrollWidth", { get: () => scaled(natural) + 2 });
+      // 120px tall at full size.
+      Object.defineProperty(output, "scrollHeight", { get: () => scaled(120) });
+      created?.mount?.(view);
+      return { dom, output, tooltip: created };
+    }
+
+    it("scales a formula wider than the tooltip down until it fits", () => {
+      expect(mountTooltip(600, 300).output.style.fontSize).toBe("50%");
+    });
+
+    it("leaves a formula that fits at full size", () => {
+      expect(mountTooltip(300, 300).output.style.fontSize).toBe("");
+    });
+
+    it("scales a formula taller than the room above the line down until it fits", () => {
+      const { dom, output, tooltip } = mountTooltip(300, 300);
+      const space = { left: 0, top: 0, right: 800, bottom: 600 };
+
+      // CodeMirror caps the height when the line is near the top of the
+      // window: 72px inside the border, less 6px of padding above and below.
+      Object.defineProperty(dom, "clientHeight", { get: () => 72 });
+      dom.style.height = "74px";
+      tooltip?.positioned?.(space);
+      expect(output.style.fontSize).toBe("50%");
+
+      dom.style.height = "";
+      tooltip?.positioned?.(space);
+      expect(output.style.fontSize).toBe("");
+    });
+  });
+
   it("disables the preview from the menu", () => {
     const view = mount(stateFor(INLINE, INLINE_CURSOR));
     const items = tooltipDom(view).querySelectorAll<HTMLButtonElement>(

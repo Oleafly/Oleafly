@@ -54,8 +54,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Private } from "@/components/ui/private";
 import { FileIcon } from "@/components/files/fileIcon";
+import { GitStatusBadge, gitStatusMeta } from "@/components/files/gitStatus";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
@@ -81,22 +81,6 @@ type CommitSubmissionResult = {
   conflicts?: boolean;
 };
 const COMMIT_TITLE_LIMIT = 72;
-const STATUS_META: Record<string, { label: string; cls: string }> = {
-  M: { label: "M", cls: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  A: {
-    label: "A",
-    cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  },
-  D: { label: "D", cls: "bg-destructive/15 text-destructive" },
-  R: { label: "R", cls: "bg-primary/15 text-primary" },
-  "?": { label: "U", cls: "bg-primary/15 text-primary" },
-  U: { label: "!", cls: "bg-destructive/15 text-destructive" },
-};
-const statusMeta = (status: string) =>
-  STATUS_META[status] ?? {
-    label: status.slice(0, 1),
-    cls: "bg-muted text-muted-foreground",
-  };
 const commitMessage = (title: string, description: string) =>
   description.trim()
     ? `${title.trim()}\n\n${description.trim()}`
@@ -580,7 +564,6 @@ export function SourceControl() {
     if (current(token)) await refreshTree();
   };
   const row = (change: GitFileChange) => {
-    const info = statusMeta(change.status);
     const name = change.path.split("/").pop() ?? change.path;
     const openLabel = t(($) => $.shell.sourceControl.openFileFor, {
       path: change.path,
@@ -668,16 +651,12 @@ export function SourceControl() {
             )}
           </button>
         </Tooltip>
-        <span
+        <GitStatusBadge
+          meta={gitStatusMeta(change.status)}
           id={statusId}
-          data-testid={`git-status-${change.staged ? "staged" : "working"}-${change.path}`}
-          className={cn(
-            "ml-1 flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-semibold",
-            info.cls,
-          )}
-        >
-          {info.label}
-        </span>
+          testId={`git-status-${change.staged ? "staged" : "working"}-${change.path}`}
+          className="ml-1"
+        />
       </div>
     );
   };
@@ -1058,7 +1037,7 @@ export function SourceControl() {
           {staged.length ? (
             staged.map(row)
           ) : (
-            <div className="flex min-h-20 items-center justify-center gap-2.5 px-3 py-4 text-center text-muted-foreground/75">
+            <div className="flex min-h-20 flex-col items-center justify-center gap-2 px-3 py-4 text-center text-muted-foreground/75">
               <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
                 <BookPlus aria-hidden className="size-3.5" />
               </span>
@@ -1139,7 +1118,7 @@ export function SourceControl() {
                       ))}
                     </div>
                     <span className="text-[10px] text-muted-foreground">
-                      {commit.author ? <Private>{commit.author}</Private> : commit.short}
+                      {commit.author ?? commit.short}
                     </span>
                   </div>
                   <button
@@ -1167,7 +1146,7 @@ export function SourceControl() {
               ))}
             </ol>
           ) : (
-            <div className="flex min-h-20 items-center justify-center gap-2.5 px-3 py-4 text-center text-muted-foreground/75">
+            <div className="flex min-h-20 flex-col items-center justify-center gap-2 px-3 py-4 text-center text-muted-foreground/75">
               <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
                 <GitCommitHorizontal aria-hidden className="size-3.5" />
               </span>

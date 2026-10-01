@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorState, type Extension } from "@codemirror/state";
+import { EditorView, lineNumbers } from "@codemirror/view";
+import { openSearchPanel } from "@codemirror/search";
+import { vscodeSearch } from "./search-panel";
 import { stickyScroll } from "./sticky-scroll";
+import { englishEditorMessage } from "./test-messages";
 import { EDITOR_LINE_HEIGHT_CSS } from "./theme";
 
 let view: EditorView | null = null;
@@ -27,12 +30,12 @@ const DOC = [
  * jsdom reports zero for every measurement, so the plugin has to be told where
  * the viewport is. These stubs stand in for the two geometry reads it makes.
  */
-function mount(topLine: number) {
+function mount(topLine: number, extensions: Extension[] = []) {
   const parent = document.createElement("div");
   document.body.append(parent);
   view = new EditorView({
     parent,
-    state: EditorState.create({ doc: DOC, extensions: [stickyScroll()] }),
+    state: EditorState.create({ doc: DOC, extensions: [...extensions, stickyScroll()] }),
   });
   vi.spyOn(view.scrollDOM, "getBoundingClientRect").mockReturnValue({
     top: 0,
@@ -92,5 +95,62 @@ describe("stickyScroll", () => {
       "1",
       "2",
     ]);
+  });
+
+  it("stacks the pinned rows over the text but under the search panel and dialogs", () => {
+    const mounted = mount(1, [vscodeSearch(englishEditorMessage)]);
+    expect(openSearchPanel(mounted)).toBe(true);
+    const zIndex = (selector: string) =>
+      Number(getComputedStyle(mounted.dom.querySelector(selector) as HTMLElement).zIndex);
+
+    const pinned = zIndex(".cm-stickyScroll");
+    // The scroller's stacking context holds the gutter and the text.
+    expect(pinned).toBeGreaterThan(zIndex(".cm-scroller"));
+    expect(pinned).toBeLessThan(zIndex(".cm-panels-top"));
+    // App dialogs sit at z-index 80 and up, in the same stacking context.
+    expect(pinned).toBeLessThan(80);
+    // Not isolated: a tooltip mounted inside the editor has to reach over the
+    // panes beside it.
+    expect(getComputedStyle(mounted.dom).isolation).not.toBe("isolate");
+  });
+
+  it("gives pinned rows more room than a document line", async () => {
+    const mounted = mount(3);
+    await new Promise(requestAnimationFrame);
+
+    const row = mounted.dom.querySelector(".cm-stickyRow") as HTMLElement;
+    expect(getComputedStyle(row).paddingTop).toBe("0.25em");
+    expect(getComputedStyle(row).paddingBottom).toBe("0.25em");
+  });
+
+  it("lines a pinned row up with the line numbers and the text", async () => {
+    // The number column ends 40px from the editor's left edge and the gutters
+    // at 60px: the fold and diagnostic gutters sit in between, and a pinned
+    // row has to skip them.
+    const mounted = mount(3, [lineNumbers()]);
+    // After mount, which stubs the scroller's own box on the instance.
+    const measure = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      const box = (right: number) =>
+        ({ left: 0, right, width: right, top: 0, bottom: 20, height: 20, x: 0, y: 0 }) as DOMRect;
+      if (this.classList.contains("cm-gutterElement")) return box(40);
+      if (this.classList.contains("cm-gutters")) return box(60);
+      return measure.call(this);
+    });
+    await new Promise(requestAnimationFrame);
+
+    const padding = (selector: string, side: "paddingLeft" | "paddingRight") =>
+      Number.parseFloat(getComputedStyle(mounted.dom.querySelector(selector) as HTMLElement)[side]) || 0;
+    const digitsEnd = 40 - padding(".cm-lineNumbers .cm-gutterElement", "paddingRight");
+    const textStart = 60 + padding(".cm-content", "paddingLeft") + padding(".cm-line", "paddingLeft");
+
+    const number = mounted.dom.querySelector(".cm-stickyLineNo") as HTMLElement;
+    const code = mounted.dom.querySelector(".cm-stickyCode") as HTMLElement;
+    expect(number.style.width).toBe(`${digitsEnd}px`);
+    expect(number.style.paddingRight).toBe("0px");
+    expect(code.style.marginLeft).toBe(`${textStart - digitsEnd}px`);
+    expect(textStart - digitsEnd).toBeGreaterThan(20);
   });
 });

@@ -153,6 +153,39 @@ function paintMath(output: HTMLElement, target: MathPreviewTarget) {
   output.replaceChildren(...nodes);
 }
 
+// KaTeX ends each vertical list (scripts, limits, fractions, environments)
+// with a 2px spacer cell that it pulls back with a -2px margin, so a formula
+// can poke 2px past its own edge. In a scrolling container that alone showed
+// a scrollbar under a formula that fits.
+const KATEX_OVERHANG_PX = 2;
+
+/**
+ * Shows the whole formula without scrolling: one wider than the tooltip can
+ * grow, or taller than the room above the line, is set smaller until it fits.
+ * KaTeX sizes everything in em, so the font size scales the formula evenly.
+ */
+function fitMathToTooltip(tooltip: HTMLElement, output: HTMLElement): void {
+  output.style.fontSize = "";
+  for (let pass = 0; pass < 3; pass++) {
+    const available = output.clientWidth;
+    if (available <= 0) return;
+    let ratio = available / (output.scrollWidth - KATEX_OVERHANG_PX);
+    // CodeMirror caps the tooltip's height when there is less room above the
+    // line than it asks for. The formula would then spill out of the box.
+    if (tooltip.style.height) {
+      const style = getComputedStyle(tooltip);
+      const room =
+        tooltip.clientHeight -
+        (Number.parseFloat(style.paddingTop) || 0) -
+        (Number.parseFloat(style.paddingBottom) || 0);
+      ratio = Math.min(ratio, room / output.scrollHeight);
+    }
+    if (ratio >= 1 || ratio <= 0) return;
+    const percent = Number.parseFloat(output.style.fontSize) || 100;
+    output.style.fontSize = `${Math.floor(percent * ratio)}%`;
+  }
+}
+
 function menuItem(label: string, description: string, shortcut: string | null): HTMLButtonElement {
   const item = document.createElement("button");
   item.type = "button";
@@ -276,10 +309,26 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
     else closeMenu();
   });
 
+  // The height cap CodeMirror applied when the formula was last fitted.
+  let fittedHeight = "";
+  const fit = () => {
+    fittedHeight = dom.style.height;
+    fitMathToTooltip(dom, output);
+  };
+
   return {
     dom,
     overlap: true,
     offset: { x: 0, y: 8 },
+    mount: () => {
+      fit();
+      // KaTeX's fonts load on first use and change the formula's width.
+      void document.fonts?.ready.then(fit);
+    },
+    // Placing the tooltip is when CodeMirror caps its height.
+    positioned: () => {
+      if (dom.style.height !== fittedHeight) fit();
+    },
     destroy: closeMenu,
   };
 }
@@ -395,7 +444,8 @@ const mathPreviewTooltipTheme = EditorView.baseTheme({
     display: "flex",
     alignItems: "flex-start",
     gap: "6px",
-    maxWidth: "min(40rem, 90vw)",
+    // Wide enough that only an unusually long formula has to be scaled down.
+    maxWidth: "min(60rem, 90vw)",
     padding: "6px 6px 6px 10px",
     borderRadius: "8px",
     border: "1px solid var(--border)",
@@ -403,11 +453,11 @@ const mathPreviewTooltipTheme = EditorView.baseTheme({
     color: "var(--popover-foreground, var(--foreground))",
     boxShadow: "0 2px 10px rgba(0, 0, 0, 0.14)",
   },
+  // Never a scroll container: the formula is shown whole, and one too wide
+  // for the tooltip is scaled down by `fitMathToTooltip`.
   ".ofl-visual-math-tooltip-output": {
     flex: "1 1 auto",
     minWidth: "0",
-    overflowX: "auto",
-    overflowY: "hidden",
     padding: "2px 0",
   },
   ".ofl-visual-math-tooltip-output .katex-display": {

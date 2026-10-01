@@ -195,6 +195,7 @@
     "arxivCardDescription": "Baixe o código-fonte LaTeX de um artigo pelo ID do arXiv.",
     "importAction": "Importar",
     "tryAgain": "Tentar de novo",
+    "github": "GitHub",
     "githubTitle": "Importar do GitHub",
     "githubDescription": "Escolha um repositório para copiar para a sua biblioteca.",
     "back": "Voltar para as origens de importação",
@@ -324,7 +325,7 @@
     }
   },
   "generate": {
-    "title": "Gerar um modelo com IA",
+    "title": "Gerar um modelo",
     "subtitle": "Descreva um documento e veja a prévia antes de usá-lo",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Descreva o documento, por exemplo: um artigo de workshop em duas colunas com resumo e seções numeradas",

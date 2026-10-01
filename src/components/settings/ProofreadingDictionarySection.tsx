@@ -229,7 +229,7 @@ function ProfileRules() {
         </p>
       </div>
       <ul
-        className="m-0 max-h-64 list-none space-y-1 overflow-y-auto p-0"
+        className="m-0 list-none space-y-1 p-0"
         aria-labelledby="proofreading-profile-rules"
       >
         {ACADEMIC_PROFILE_RULES.map(({ rule, example }) => (

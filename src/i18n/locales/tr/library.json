@@ -194,6 +194,7 @@
     "arxivCardDescription": "Bir makalenin LaTeX kaynağını arXiv kimliğiyle indirin.",
     "importAction": "İçe aktar",
     "tryAgain": "Yeniden dene",
+    "github": "GitHub",
     "githubTitle": "GitHub'dan içe aktar",
     "githubDescription": "Kitaplığınıza kopyalanacak bir depo seçin.",
     "back": "İçe aktarma kaynaklarına dön",
@@ -317,7 +318,7 @@
     }
   },
   "generate": {
-    "title": "Yapay zeka ile şablon oluştur",
+    "title": "Şablon oluştur",
     "subtitle": "Bir belgeyi tarif edin ve kullanmadan önce önizleyin",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Belgeyi tarif edin, örneğin özeti ve numaralı bölümleri olan iki sütunlu bir çalıştay bildirisi",

@@ -374,7 +374,9 @@
       "addFolder": "新增資料夾",
       "addFolderDialogTitle": "新增技能資料夾",
       "catalog": {
+        "allDomains": "全部",
         "description": "針對特定研究領域的額外技能。安裝後就會加入上方的清單。",
+        "domainFilterLabel": "依領域篩選技能庫",
         "empty": "目錄中沒有可安裝的額外技能。",
         "install": "安裝",
         "loading": "正在載入目錄…",
@@ -405,8 +407,9 @@
         "uninstall": "解除安裝",
         "update": "更新"
       },
+      "changedForProject": "已為此專案變更",
       "createSkill": "建立技能",
-      "description": "助理只有在判斷需要時才會載入技能的完整指示，若你在對話中輸入 /skill-id 則會立刻載入。在這裡開啟的技能會在每個專案中生效，除非某個專案另行覆寫。",
+      "description": "助理只有在需要時才會載入技能的完整指示，若你在對話中輸入 /skill-id 則會立刻載入。在這裡開啟的技能會在所有專案中生效。若只想在目前開啟的專案中變更，請切換到「此專案」。",
       "editAria": "編輯 {{name}}",
       "editor": {
         "createDescription": "在你的 Oleafly 技能資料夾中建立 SKILL.md 草稿。",
@@ -423,13 +426,11 @@
         "submitCreate": "建立"
       },
       "empty": "找不到技能。請新增資料夾，或建立一個。",
-      "enableAria": "啟用 {{name}}",
       "fileCount_other": "{{count}} 個檔案",
       "groups": {
         "shelf": "領域技能庫",
         "user": "你的技能"
       },
-      "inheritsDevice": "繼承裝置設定",
       "invalidBadge": "無效",
       "loadFailed": "無法載入技能。{{message}}",
       "loading": "正在載入技能…",
@@ -442,8 +443,6 @@
         "updated": "已更新 {{name}}。"
       },
       "missingDescription": "這項技能需要填寫說明。",
-      "offForProject": "在此專案中已關閉",
-      "onForProject": "在此專案中已開啟",
       "phases": {
         "authoring": "撰寫",
         "communication": "溝通",
@@ -457,6 +456,18 @@
       "removeDialog": {
         "description": "要從 Oleafly 移除「{{name}}」及其資料夾嗎？此操作無法復原。",
         "title": "移除技能"
+      },
+      "resetProject": "重設",
+      "resetProjectAria": "將 {{name}} 恢復為所有專案的設定",
+      "scope": {
+        "device": "所有專案",
+        "label": "設定的適用範圍",
+        "project": "此專案"
+      },
+      "search": {
+        "ariaLabel": "搜尋技能與領域技能庫",
+        "empty": "沒有符合的技能",
+        "placeholder": "搜尋技能"
       },
       "share": {
         "description": "把你的技能連結到這台電腦上其他程式設計代理程式已經在讀取的資料夾，技能只要寫一次，每個代理程式都能使用。",
@@ -497,9 +508,7 @@
         "description": "要把「{{name}}」換成最新的內建版本嗎？它的檔案中所有本機修改都會遺失。",
         "title": "更新技能"
       },
-      "useDeviceSetting": "使用裝置設定",
-      "useDeviceSettingAria": "為 {{name}} 使用裝置設定",
-      "useInProject": "在此專案中使用",
+      "useInAllProjectsAria": "在所有專案中使用 {{name}}",
       "useInProjectAria": "在此專案中使用 {{name}}",
       "validateAria": "驗證 {{name}}"
     }

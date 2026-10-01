@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
-import { act, render, screen, fireEvent } from "@testing-library/react";
-import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { useHomeViewStore } from "@/store/home-view";
-import { usePersonalDetailsStore } from "@/store/personal-details";
 import { useSettingsStore } from "@/store/settings";
 
 const themeMocks = vi.hoisted(() => ({
@@ -31,10 +29,6 @@ beforeEach(() => {
   themeMocks.setPreference.mockClear();
   useHomeViewStore.setState({ page: "library", activeConverter: null });
   useSettingsStore.setState({ dockPlacement: "left", latexTools: true });
-});
-
-afterEach(() => {
-  act(() => usePersonalDetailsStore.getState().setHidden(false));
 });
 
 function openThemeMenu(trigger: HTMLElement) {
@@ -111,29 +105,5 @@ describe("HomeDock", () => {
     fireEvent.click(screen.getByTestId("theme-option-dark"));
     expect(themeMocks.setPreference).toHaveBeenCalledWith("dark");
     expect(screen.getByTestId("home-theme-menu")).toHaveAttribute("aria-expanded", "false");
-  });
-
-  it("puts the personal details eye right after the theme menu and flips it on click", () => {
-    render(<HomeDock />);
-    const theme = screen.getByTestId("home-theme-menu");
-    const eye = screen.getByTestId("home-personal-details-toggle");
-    const dockButtons = [...screen.getByTestId("home-dock").querySelectorAll("button[data-testid]")];
-    expect(dockButtons.indexOf(eye)).toBe(dockButtons.indexOf(theme) + 1);
-    expect(eye).toHaveAccessibleName(enShell.personalDetails.hide);
-    expect(eye.className).toContain("rounded-full");
-    expect(eye.className).not.toContain("bg-white/20");
-
-    fireEvent.click(eye);
-
-    expect(usePersonalDetailsStore.getState().hidden).toBe(true);
-    const active = screen.getByTestId("home-personal-details-toggle");
-    expect(active).toHaveAccessibleName(enShell.personalDetails.show);
-    expect(active.querySelector("svg")).toHaveClass("lucide-eye-off");
-    // The on state is a tint like the other active dock buttons, never a ring.
-    expect(active.className).toContain("bg-white/20");
-    expect(active.className).not.toMatch(/(^|\s)(ring|outline)[-\w/]*/);
-
-    fireEvent.click(active);
-    expect(usePersonalDetailsStore.getState().hidden).toBe(false);
   });
 });

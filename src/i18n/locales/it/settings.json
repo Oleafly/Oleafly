@@ -376,7 +376,9 @@
       "addFolder": "Aggiungi una cartella",
       "addFolderDialogTitle": "Aggiungi una cartella di skill",
       "catalog": {
+        "allDomains": "Tutte",
         "description": "Skill aggiuntive per ambiti di ricerca specifici. Installane una per aggiungerla all'elenco qui sopra.",
+        "domainFilterLabel": "Filtra lo scaffale per ambito",
         "empty": "Il catalogo non ha skill aggiuntive da installare.",
         "install": "Installa",
         "loading": "Caricamento del catalogo...",
@@ -407,8 +409,9 @@
         "uninstall": "Disinstalla",
         "update": "Aggiorna"
       },
+      "changedForProject": "Modificata per questo progetto",
       "createSkill": "Crea una skill",
-      "description": "L'assistente carica le istruzioni complete di una skill solo quando decide che gli serve, oppure subito se scrivi /skill-id nella chat. Una skill che attivi qui resta attiva in ogni progetto, finché un progetto non la sovrascrive.",
+      "description": "L'assistente carica le istruzioni complete di una skill solo quando gli servono, oppure subito se scrivi /skill-id nella chat. Una skill che attivi qui è attiva in ogni progetto. Per cambiarla solo nel progetto aperto, passa a Questo progetto.",
       "editAria": "Modifica {{name}}",
       "editor": {
         "createDescription": "Crea una bozza SKILL.md nella tua cartella delle skill di Oleafly.",
@@ -425,7 +428,6 @@
         "submitCreate": "Crea"
       },
       "empty": "Nessuna skill trovata. Aggiungi una cartella oppure creane una.",
-      "enableAria": "Abilita {{name}}",
       "fileCount_one": "{{count}} file",
       "fileCount_many": "{{count}} file",
       "fileCount_other": "{{count}} file",
@@ -433,7 +435,6 @@
         "shelf": "Scaffale tematico",
         "user": "Le tue skill"
       },
-      "inheritsDevice": "Eredita l'impostazione del dispositivo",
       "invalidBadge": "Non valida",
       "loadFailed": "Non è stato possibile caricare le skill. {{message}}",
       "loading": "Caricamento delle skill...",
@@ -446,8 +447,6 @@
         "updated": "{{name}} aggiornata."
       },
       "missingDescription": "Questa skill ha bisogno di una descrizione.",
-      "offForProject": "Disattivata per questo progetto",
-      "onForProject": "Attiva per questo progetto",
       "phases": {
         "authoring": "Stesura",
         "communication": "Comunicazione",
@@ -461,6 +460,18 @@
       "removeDialog": {
         "description": "Vuoi rimuovere \"{{name}}\" e la sua cartella da Oleafly? L'operazione non può essere annullata.",
         "title": "Rimuovi la skill"
+      },
+      "resetProject": "Ripristina",
+      "resetProjectAria": "Ripristina per {{name}} l'impostazione di tutti i progetti",
+      "scope": {
+        "device": "Tutti i progetti",
+        "label": "Dove valgono queste impostazioni",
+        "project": "Questo progetto"
+      },
+      "search": {
+        "ariaLabel": "Cerca tra le skill e nello scaffale tematico",
+        "empty": "Nessuna skill corrisponde",
+        "placeholder": "Cerca skill"
       },
       "share": {
         "description": "Collega le tue skill alle cartelle che gli altri agenti di programmazione su questo computer già leggono, così scrivi una skill una volta sola e la possono usare tutti.",
@@ -503,9 +514,7 @@
         "description": "Vuoi sostituire \"{{name}}\" con l'ultima versione inclusa? Ogni modifica locale ai suoi file andrà persa.",
         "title": "Aggiorna la skill"
       },
-      "useDeviceSetting": "Usa l'impostazione del dispositivo",
-      "useDeviceSettingAria": "Usa l'impostazione del dispositivo per {{name}}",
-      "useInProject": "Usa in questo progetto",
+      "useInAllProjectsAria": "Usa {{name}} in tutti i progetti",
       "useInProjectAria": "Usa {{name}} in questo progetto",
       "validateAria": "Convalida {{name}}"
     }

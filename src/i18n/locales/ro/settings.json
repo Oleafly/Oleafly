@@ -376,7 +376,9 @@
       "addFolder": "Adaugă un folder",
       "addFolderDialogTitle": "Adaugă un folder de abilități",
       "catalog": {
+        "allDomains": "Toate",
         "description": "Abilități suplimentare pentru domenii de cercetare specifice. Instalează una ca să o adaugi în lista de mai sus.",
+        "domainFilterLabel": "Filtrează raftul după domeniu",
         "empty": "Catalogul nu are abilități suplimentare de instalat.",
         "install": "Instalează",
         "loading": "Se încarcă catalogul...",
@@ -407,8 +409,9 @@
         "uninstall": "Dezinstalează",
         "update": "Actualizează"
       },
+      "changedForProject": "Modificată pentru acest proiect",
       "createSkill": "Creează o abilitate",
-      "description": "Asistentul încarcă instrucțiunile complete ale unei abilități doar când decide că are nevoie de ea sau imediat, dacă scrii /identificator-abilitate în conversație. O abilitate pe care o activezi aici este activă în orice proiect, până când un proiect o suprascrie.",
+      "description": "Asistentul încarcă instrucțiunile complete ale unei abilități doar când are nevoie de ele sau imediat, dacă scrii /identificator-abilitate în conversație. O abilitate pe care o activezi aici este activă în toate proiectele. Ca s-o schimbi doar în proiectul deschis, comută la Acest proiect.",
       "editAria": "Editează {{name}}",
       "editor": {
         "createDescription": "Creează o ciornă SKILL.md în folderul tău de abilități Oleafly.",
@@ -425,7 +428,6 @@
         "submitCreate": "Creează"
       },
       "empty": "Nu s-a găsit nicio abilitate. Adaugă un folder sau creează una.",
-      "enableAria": "Activează {{name}}",
       "fileCount_one": "{{count}} fișier",
       "fileCount_few": "{{count}} fișiere",
       "fileCount_other": "{{count}} de fișiere",
@@ -433,7 +435,6 @@
         "shelf": "Raftul pe domenii",
         "user": "Abilitățile tale"
       },
-      "inheritsDevice": "Moștenește setarea dispozitivului",
       "invalidBadge": "Nevalidă",
       "loadFailed": "Abilitățile nu au putut fi încărcate. {{message}}",
       "loading": "Se încarcă abilitățile...",
@@ -446,8 +447,6 @@
         "updated": "{{name}} a fost actualizată."
       },
       "missingDescription": "Această abilitate are nevoie de o descriere.",
-      "offForProject": "Dezactivată pentru acest proiect",
-      "onForProject": "Activată pentru acest proiect",
       "phases": {
         "authoring": "Redactare",
         "communication": "Comunicare",
@@ -461,6 +460,18 @@
       "removeDialog": {
         "description": "Elimini „{{name}}” și folderul ei din Oleafly? Această acțiune nu poate fi anulată.",
         "title": "Elimină abilitatea"
+      },
+      "resetProject": "Resetează",
+      "resetProjectAria": "Readu {{name}} la setarea pentru toate proiectele",
+      "scope": {
+        "device": "Toate proiectele",
+        "label": "Unde se aplică aceste setări",
+        "project": "Acest proiect"
+      },
+      "search": {
+        "ariaLabel": "Caută în abilități și în raftul pe domenii",
+        "empty": "Nicio abilitate nu se potrivește",
+        "placeholder": "Caută abilități"
       },
       "share": {
         "description": "Leagă-ți abilitățile în folderele pe care ceilalți agenți de programare de pe acest computer le citesc deja, ca să scrii o abilitate o singură dată și să o poată folosi orice agent.",
@@ -503,9 +514,7 @@
         "description": "Înlocuiești „{{name}}” cu cea mai recentă versiune inclusă? Modificările locale asupra fișierelor ei se vor pierde.",
         "title": "Actualizează abilitatea"
       },
-      "useDeviceSetting": "Folosește setarea dispozitivului",
-      "useDeviceSettingAria": "Folosește setarea dispozitivului pentru {{name}}",
-      "useInProject": "Folosește în acest proiect",
+      "useInAllProjectsAria": "Folosește {{name}} în toate proiectele",
       "useInProjectAria": "Folosește {{name}} în acest proiect",
       "validateAria": "Validează {{name}}"
     }

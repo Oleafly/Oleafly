@@ -98,6 +98,17 @@ describe("ResearchAssistant shell", () => {
     expect(screen.queryByTestId("ai-chat-float")).toBeNull();
   });
 
+  it("draws float as picture in picture so it does not mirror the hide icon", () => {
+    useAssistantRuntimeStore.getState().setRuntime("acp");
+    useSettingsStore.setState({ assistantOpen: true });
+    render(<ResearchAssistant />);
+
+    const floatIcon = screen.getByTestId("ai-chat-float").querySelector("svg");
+    const hideIcon = screen.getByTestId("assistant-hide").querySelector("svg");
+    expect(floatIcon?.classList.contains("lucide-picture-in-picture-2")).toBe(true);
+    expect(hideIcon?.classList.contains("lucide-picture-in-picture-2")).toBe(false);
+  });
+
   it("switches to the built-in chat when a handoff arrives while CLI agents are selected", async () => {
     useAssistantRuntimeStore.getState().setRuntime("acp");
     render(<ResearchAssistant />);

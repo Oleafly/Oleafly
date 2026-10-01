@@ -167,9 +167,6 @@
       "online": "온라인 모드(패키지 내려받기 허용)"
     },
     "openTool": "{{name}} 열기",
-    "personalDetails": {
-      "keywords": "스크린샷 모드, 화면 캡처, 개인정보, 프라이버시, 흐림, 블러, 경로, 계정 이름"
-    },
     "recompile": {
       "label": "다시 컴파일"
     },
@@ -232,6 +229,7 @@
   "community": {
     "discordOnline": "{{online}}명 접속 중",
     "discordOnlineAria": "Discord에 {{online}}명 접속 중",
+    "followOnX": "X에서 팔로우하기",
     "joinDiscord": "Discord 참여하기"
   },
   "compile": {
@@ -514,10 +512,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "개인정보 숨기기",
-    "show": "개인정보 표시"
-  },
   "projectSearch": {
     "hint": "이 프로젝트의 파일 전체에서 검색합니다.",
     "noResults": "결과가 없습니다.",
@@ -745,7 +739,7 @@
       "shortcuts": "키보드 단축키"
     },
     "search": {
-      "empty": "일치하는 설정이 없습니다.",
+      "empty": "일치하는 설정이 없습니다",
       "keywords": {
         "ai": "어시스턴트, 채팅, 모델, 제공자, API 키, 에이전트, 프롬프트, 예산, MCP 서버",
         "appearance": "테마, 다크 모드, 라이트 모드, 어두운 모드, 밝은 모드, 색상, 글꼴, 폰트, 글자 크기, 확대, 레이아웃",
@@ -877,6 +871,15 @@
     "stagedChangeCount_other": "스테이지된 변경 {{count}}건",
     "stash": "변경 사항 스태시",
     "stashNeedsAttention": "스태시 충돌 해결",
+    "status": {
+      "modified": "수정됨",
+      "added": "추가됨",
+      "deleted": "삭제됨",
+      "renamed": "이름 바뀜",
+      "untracked": "추적되지 않음",
+      "conflict": "충돌",
+      "containsChanges": "변경 사항 있음"
+    },
     "sync": "동기화",
     "title": "소스 관리",
     "titleRequired": "커밋 제목이 필요합니다.",
@@ -931,8 +934,8 @@
     "exportMarkdown": "Markdown으로 내보내기(.md)",
     "exportPdf": "PDF로 내보내기",
     "exportPdfVector": "PDF로 내보내기(벡터 이미지)",
-    "exportPngRaster": "PNG로 내보내기(래스터 이미지)",
-    "exportPagePng": "페이지를 PNG로 내보내기(래스터 이미지)",
+    "exportPngRaster": "PNG로 내보내기",
+    "exportPagePng": "페이지를 PNG로 내보내기",
     "exportAs": "{{format}}(으)로 내보내기",
     "exportPptx": "PowerPoint로 내보내기(.pptx)",
     "exportSourceZip": "소스 내보내기(.zip)",

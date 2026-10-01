@@ -5,7 +5,6 @@ import { budgetGet, budgetSet, usageSummary } from "@/lib/tauri";
 import { formatNumber } from "@/lib/intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PrivateText } from "@/components/ui/private";
 import { useFilesStore } from "@/store/files";
 
 // Per-project AI spend controls: shows the ledger total and edits the budget
@@ -60,11 +59,9 @@ export function ProjectBudget() {
     <div className="rounded-lg border bg-card p-3" data-testid="project-budget">
       <div className="text-sm font-medium">{t(($) => $.settings.ai.budget.title)}</div>
       <div className="mb-2 text-xs text-muted-foreground">
-        {spent ? (
-          <PrivateText text={t(($) => $.settings.ai.budget.spent, { amount: spent })} values={[spent]} />
-        ) : (
-          t(($) => $.settings.ai.budget.limit)
-        )}
+        {spent
+          ? t(($) => $.settings.ai.budget.spent, { amount: spent })
+          : t(($) => $.settings.ai.budget.limit)}
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">{"$"}</span>
@@ -72,8 +69,6 @@ export function ProjectBudget() {
           aria-label={t(($) => $.settings.ai.budget.inputLabel)}
           inputMode="decimal"
           value={value}
-          // Screenshot mode blurs a saved or typed amount, not the placeholder.
-          data-private-field={value ? "" : undefined}
           placeholder={t(($) => $.settings.ai.budget.inputPlaceholder)}
           onChange={(event) => setDraft(event.target.value)}
           className="h-8 w-28"

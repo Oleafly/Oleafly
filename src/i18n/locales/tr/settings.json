@@ -375,7 +375,9 @@
       "addFolder": "Klasör ekle",
       "addFolderDialogTitle": "Beceri klasörü ekle",
       "catalog": {
+        "allDomains": "Tümü",
         "description": "Belirli araştırma alanları için ek beceriler. Yukarıdaki listenize eklemek için birini kurun.",
+        "domainFilterLabel": "Rafı alana göre filtrele",
         "empty": "Katalogda kurulacak ek beceri yok.",
         "install": "Kur",
         "loading": "Katalog yükleniyor...",
@@ -406,8 +408,9 @@
         "uninstall": "Kaldır",
         "update": "Güncelle"
       },
+      "changedForProject": "Bu proje için değiştirildi",
       "createSkill": "Beceri oluştur",
-      "description": "Asistan, bir becerinin tüm yönergelerini yalnızca gerektiğine karar verdiğinde yükler; sohbete /beceri-kimliği yazarsanız hemen yükler. Burada açtığınız bir beceri, bir proje onu geçersiz kılana kadar her projede açıktır.",
+      "description": "Asistan, bir becerinin tüm yönergelerini yalnızca ihtiyaç duyduğunda yükler; sohbete /beceri-kimliği yazarsanız hemen yükler. Burada açtığınız bir beceri her projede açık olur. Yalnızca açık olan projede değiştirmek için Bu proje seçeneğine geçin.",
       "editAria": "{{name}} becerisini düzenle",
       "editor": {
         "createDescription": "Oleafly beceriler klasörünüzde bir SKILL.md taslağı oluşturun.",
@@ -424,14 +427,12 @@
         "submitCreate": "Oluştur"
       },
       "empty": "Beceri bulunamadı. Bir klasör ekleyin ya da yeni bir tane oluşturun.",
-      "enableAria": "{{name}} becerisini aç",
       "fileCount_one": "{{count}} dosya",
       "fileCount_other": "{{count}} dosya",
       "groups": {
         "shelf": "Alan rafı",
         "user": "Becerileriniz"
       },
-      "inheritsDevice": "Cihaz ayarını devralır",
       "invalidBadge": "Geçersiz",
       "loadFailed": "Beceriler yüklenemedi. {{message}}",
       "loading": "Beceriler yükleniyor...",
@@ -444,8 +445,6 @@
         "updated": "{{name}} güncellendi."
       },
       "missingDescription": "Bu becerinin bir açıklamaya ihtiyacı var.",
-      "offForProject": "Bu proje için kapalı",
-      "onForProject": "Bu proje için açık",
       "phases": {
         "authoring": "Yazım",
         "communication": "İletişim",
@@ -459,6 +458,18 @@
       "removeDialog": {
         "description": "\"{{name}}\" ve klasörü Oleafly'den kaldırılsın mı? Bu işlem geri alınamaz.",
         "title": "Beceriyi kaldır"
+      },
+      "resetProject": "Sıfırla",
+      "resetProjectAria": "{{name}} becerisini tüm projelerin ayarına sıfırla",
+      "scope": {
+        "device": "Tüm projeler",
+        "label": "Bu ayarların geçerli olduğu yer",
+        "project": "Bu proje"
+      },
+      "search": {
+        "ariaLabel": "Becerilerde ve alan rafında ara",
+        "empty": "Eşleşen beceri yok",
+        "placeholder": "Becerilerde ara"
       },
       "share": {
         "description": "Becerilerinizi, bu bilgisayardaki diğer kodlama ajanlarının zaten okuduğu klasörlere bağlayın; böylece bir beceriyi bir kez yazın ve her ajan kullanabilsin.",
@@ -500,9 +511,7 @@
         "description": "\"{{name}}\" en son yerleşik sürümle değiştirilsin mi? Dosyalarında yaptığınız yerel düzenlemeler kaybolur.",
         "title": "Beceriyi güncelle"
       },
-      "useDeviceSetting": "Cihaz ayarını kullan",
-      "useDeviceSettingAria": "{{name}} için cihaz ayarını kullan",
-      "useInProject": "Bu projede kullan",
+      "useInAllProjectsAria": "{{name}} becerisini tüm projelerde kullan",
       "useInProjectAria": "{{name}} becerisini bu projede kullan",
       "validateAria": "{{name}} becerisini doğrula"
     }

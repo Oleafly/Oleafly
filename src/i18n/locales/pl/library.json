@@ -196,6 +196,7 @@
     "arxivCardDescription": "Pobierz źródło LaTeX artykułu na podstawie jego identyfikatora arXiv.",
     "importAction": "Importuj",
     "tryAgain": "Spróbuj ponownie",
+    "github": "GitHub",
     "githubTitle": "Importuj z GitHub",
     "githubDescription": "Wybierz repozytorium do skopiowania do biblioteki.",
     "back": "Powrót do źródeł importu",
@@ -331,7 +332,7 @@
     }
   },
   "generate": {
-    "title": "Wygeneruj szablon z pomocą AI",
+    "title": "Wygeneruj szablon",
     "subtitle": "Opisz dokument i zobacz podgląd, zanim go użyjesz",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Opisz dokument, na przykład dwukolumnowy artykuł warsztatowy ze streszczeniem i numerowanymi sekcjami",

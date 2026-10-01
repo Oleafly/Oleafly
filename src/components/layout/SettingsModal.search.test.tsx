@@ -134,6 +134,10 @@ describe("Settings search", () => {
     expect(shown).toHaveLength(1);
     expect(shown[0]).not.toHaveAttribute("role");
     expect(shown[0]).toHaveAttribute("aria-hidden", "true");
+    // Centred under a ghost, and a label rather than a sentence, so no full stop.
+    expect(shown[0]).toHaveClass("flex-col", "items-center", "text-center");
+    expect(shown[0].querySelector("svg")).toHaveClass("lucide-ghost");
+    expect(search.empty).not.toMatch(/[.。]$/);
   });
 
   it("opens the sub-tab a row lives on when its keys do not name it, and tints the row", async () => {

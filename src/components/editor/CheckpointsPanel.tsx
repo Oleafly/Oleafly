@@ -49,7 +49,7 @@ import {
   type CheckpointStoreStats,
   type CheckpointSummary,
 } from "@/lib/checkpoints";
-import { PrivatePath } from "@/components/ui/private";
+import { useDisplayPath } from "@/lib/display-path";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
@@ -217,8 +217,9 @@ function StoreSummary({ stats }: Readonly<{ stats: CheckpointStoreStats }>) {
 
 function CatalogFacts({ inspection }: Readonly<{ inspection: CheckpointStoreInspection }>) {
   const { t } = useTranslation(["common", "editor"]);
+  const displayPath = useDisplayPath();
   const counts = inspection.table_counts;
-  const facts: [string, ReactNode][] = [
+  const facts: [string, string][] = [
     [t(($) => $.editor.checkpoints.catalog.formatVersion), formatNumber(inspection.format_version)],
     [
       t(($) => $.editor.checkpoints.catalog.lineage),
@@ -226,11 +227,9 @@ function CatalogFacts({ inspection }: Readonly<{ inspection: CheckpointStoreInsp
     ],
     [
       t(($) => $.editor.checkpoints.catalog.catalogFile),
-      inspection.catalog_path ? (
-        <PrivatePath key="catalog-file" path={inspection.catalog_path} />
-      ) : (
-        t(($) => $.editor.checkpoints.catalog.catalogFileMissing)
-      ),
+      inspection.catalog_path
+        ? displayPath(inspection.catalog_path)
+        : t(($) => $.editor.checkpoints.catalog.catalogFileMissing),
     ],
     [t(($) => $.editor.checkpoints.catalog.checkpoints), formatNumber(counts.checkpoints)],
     [t(($) => $.editor.checkpoints.catalog.manifests), formatNumber(counts.manifests)],
@@ -730,6 +729,7 @@ function TimelineEntry({
 
 export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (busy: boolean) => void }>) {
   const { t } = useTranslation(["common", "editor"]);
+  const displayPath = useDisplayPath();
   const open = useSettingsStore((state) => state.versioningOpen);
   const closeVersioning = useSettingsStore((state) => state.closeVersioning);
   const checkpointsRevision = useSettingsStore((state) => state.checkpointsRevision);
@@ -1383,7 +1383,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
       <>
         <div className="flex items-start gap-2">
           <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
-            <PrivatePath path={storePath} />
+            {displayPath(storePath)}
           </code>
           <Button
             type="button"

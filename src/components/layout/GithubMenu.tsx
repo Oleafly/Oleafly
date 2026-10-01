@@ -5,7 +5,6 @@ import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Private } from "@/components/ui/private";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,15 +48,13 @@ export function GithubMenu({
               className="flex h-9 items-center gap-1.5 rounded-md pl-1 pr-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
             >
               {user?.avatar_url ? (
-                <img src={user.avatar_url} alt="" data-private="" className="size-5 rounded-full object-cover" />
+                <img src={user.avatar_url} alt="" className="size-5 rounded-full object-cover" />
               ) : (
                 <span className="flex size-5 items-center justify-center rounded-full bg-foreground text-background">
                   <Github className="size-3" />
                 </span>
               )}
-              <Private focusable={false} className="max-w-[110px] truncate">
-                {login}
-              </Private>
+              <span className="max-w-[110px] truncate">{login}</span>
             </button>
           </DropdownMenuTrigger>
         </Tooltip>

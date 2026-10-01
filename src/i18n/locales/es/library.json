@@ -195,6 +195,7 @@
     "arxivCardDescription": "Descarga el código LaTeX de un artículo a partir de su identificador de arXiv.",
     "importAction": "Importar",
     "tryAgain": "Volver a intentarlo",
+    "github": "GitHub",
     "githubTitle": "Importar desde GitHub",
     "githubDescription": "Elige un repositorio para copiarlo en tu biblioteca.",
     "back": "Volver a los orígenes de importación",
@@ -324,7 +325,7 @@
     }
   },
   "generate": {
-    "title": "Generar una plantilla con IA",
+    "title": "Generar una plantilla",
     "subtitle": "Describe un documento y míralo antes de usarlo",
     "quotedPrompt": "\"{{prompt}}\"",
     "promptPlaceholder": "Describe el documento, por ejemplo: un artículo de taller a dos columnas con resumen y secciones numeradas",

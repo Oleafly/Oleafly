@@ -101,14 +101,6 @@ describe("ProjectInfoContent", () => {
     expect(screen.getByText(/findings list is truncated/u)).toBeInTheDocument();
   });
 
-  it("marks the word counts for screenshot mode and leaves other stats clear", () => {
-    render(<ProjectInfoContent snapshot={SNAPSHOT} surface="source" />);
-    const row = (label: string) => screen.getByText(label).parentElement;
-    expect(row(enEditor.projectInfo.words)?.querySelector("[data-private]")).toHaveTextContent("42");
-    expect(row(enEditor.projectInfo.characters)?.querySelector("[data-private]")).not.toBeNull();
-    expect(row(enEditor.projectInfo.lines)?.querySelector("[data-private]")).toBeNull();
-  });
-
   it("covers disabled, checking, and unavailable proofreading states", () => {
     useSettingsStore.setState({ spellcheck: false, harper: false });
     const view = render(

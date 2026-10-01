@@ -90,10 +90,12 @@ const limits = {
   // catalogs to the entry; every other interface language is its own lazy
   // locale-<tag> chunk, counted separately below because at most one of them
   // ever loads. Keep the combined graph below this ceiling.
-  // +33 KB for the writer feedback fixes: home paths shown as ~ and the
-  // screenshot blur (19 KB in the entry), Settings search (11 KB in the lazy
-  // SettingsModal chunk) and folded release notes (4 KB lazy). The combined
-  // graph measures 18.61 MB on Linux and about 18.63 MB on Windows.
+  // +33 KB for the writer feedback fixes: home paths shown as ~ (in the
+  // entry), Settings search (11 KB in the lazy SettingsModal chunk) and folded
+  // release notes (4 KB lazy). The screenshot blur that came with them is gone
+  // again, and Explorer Git badges and skill search took its room. The
+  // combined graph measures 18.62 MB on macOS and Linux and about 18.64 MB on
+  // Windows.
   totalJavaScript: 18_650_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about

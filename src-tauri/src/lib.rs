@@ -596,7 +596,6 @@ pub fn run() {
             terminal::term_kill,
             menu::set_dock_shortcut_accelerators,
             menu::set_recent_projects,
-            menu::set_personal_details_hidden,
             i18n::set_ui_locale,
             i18n::get_ui_locale,
             cua_policy::cua_action_confirm,

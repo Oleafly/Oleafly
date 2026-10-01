@@ -1,18 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import {
-  ChevronLeft,
-  ExternalLink,
-  FileText,
-  FileType2,
-  Github,
-  Globe,
-  Loader2,
-  Lock,
-  Package,
-  Sigma,
-} from "lucide-react";
+import { ChevronLeft, ExternalLink, Github, Loader2, Lock } from "lucide-react";
+import { ChoiceCard } from "@/components/library/ChoiceCard";
+import { CHOICE_ART } from "@/components/library/choice-art";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Private } from "@/components/ui/private";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
@@ -43,7 +33,13 @@ import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
-const SOURCE_ICONS = { project: Package, word: FileType2, markdown: FileText, html: Globe, typst: Sigma };
+const SOURCE_ART: Record<ProjectImportFileKind, string> = {
+  project: CHOICE_ART.importArchive,
+  word: CHOICE_ART.importWord,
+  markdown: CHOICE_ART.importMarkdown,
+  html: CHOICE_ART.importHtml,
+  typst: CHOICE_ART.importTypst,
+};
 
 export function ProjectImportDialog({
   open,
@@ -87,6 +83,8 @@ export function ProjectImportDialog({
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [arxivId, setArxivId] = useState("");
   const [busy, setBusy] = useState(false);
+  // The local source whose picker or import is running, so its card spins.
+  const [busyKind, setBusyKind] = useState<ProjectImportFileKind | null>(null);
   const busyRef = useRef(false);
   const sessionRef = useRef(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -162,6 +160,7 @@ export function ProjectImportDialog({
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
+    setBusyKind(kind);
     setErrorMessage(null);
     const session = sessionRef.current;
     let selection: string | null = null;
@@ -182,8 +181,12 @@ export function ProjectImportDialog({
     } finally {
       busyRef.current = false;
       setBusy(false);
+      if (!selection) setBusyKind(null);
     }
-    if (selection) await runImport(() => importSelectedFile(selection));
+    if (selection) {
+      await runImport(() => importSelectedFile(selection));
+      setBusyKind(null);
+    }
   };
 
   const importWithTarget = async (target: "latex" | "markdown" | "typst") => {
@@ -263,12 +266,10 @@ export function ProjectImportDialog({
             disabled={busy}
             data-testid={`project-import-repository-${repository.full_name}`}
             onClick={() => void importRepository(repository)}
-            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
+            className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-2 text-left transition-colors focus-visible:bg-accent disabled:opacity-60"
           >
             <Github aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <Private focusable={false} className="min-w-0 flex-1 truncate text-sm">
-              {repository.full_name}
-            </Private>
+            <span className="min-w-0 flex-1 truncate text-sm">{repository.full_name}</span>
             {repository.private ? (
               <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
                 <span
@@ -292,7 +293,7 @@ export function ProjectImportDialog({
                   notifyError("open repository", error);
                 });
               }}
-              className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
+              className="shrink-0 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
             >
               <ExternalLink aria-hidden="true" className="size-3.5" />
             </button>
@@ -309,8 +310,19 @@ export function ProjectImportDialog({
         if (!next && !busyRef.current) onClose();
       }}
     >
-      <DialogContent data-testid="project-import-dialog" className="max-w-xl gap-4">
-        <DialogHeader>
+      <DialogContent
+        data-testid="project-import-dialog"
+        className={cn(
+          // A flex column capped at the window height: when the window is too
+          // short for every card (the smallest is 900x600), the body below the
+          // header scrolls and the title and close button stay in view.
+          "flex max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-hidden",
+          // The source cards use the chooser's width so the two dialogs line
+          // up; the single-purpose steps keep their narrower layout.
+          view === "sources" ? "max-w-3xl" : "max-w-xl",
+        )}
+      >
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             {view !== "sources" ? (
               <button
@@ -319,7 +331,7 @@ export function ProjectImportDialog({
                 data-testid="project-import-back"
                 disabled={busy}
                 onClick={() => { setView("sources"); setErrorMessage(null); setPendingPath(null); }}
-                className="rounded-md text-muted-foreground transition-colors hover:text-foreground"
+                className="rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
               >
                 <ChevronLeft aria-hidden="true" className="size-4" />
               </button>
@@ -343,164 +355,128 @@ export function ProjectImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {errorMessage && <p role="alert" className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
-        {busy && <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />{t(($) => $.library.import.importing)}</p>}
-        {view === "target" ? (
-          <div className="grid gap-2">
-            <p className="break-all text-xs text-muted-foreground">{pendingPath?.split(/[/\\]/).pop()}</p>
-            {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
-              (target) => (
-                <button
-                  key={target.target}
-                  type="button"
-                  disabled={busy}
-                  data-testid={`project-import-target-${target.target}`}
-                  onClick={() => void importWithTarget(target.target)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors",
-                    "hover:border-primary/40 hover:bg-accent disabled:opacity-60",
-                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                  )}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-foreground">
-                      {target.label}
-                    </span>
-                    {target.recommended ? (
-                      <span className="block text-xs text-muted-foreground">
-                        {t(($) => $.library.import.recommended)}
-                      </span>
-                    ) : null}
-                  </span>
-                </button>
-              ),
-            )}
-          </div>
-        ) : view === "arxiv" ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Input
-                aria-label={t(($) => $.library.import.arxivInputLabel)}
-                disabled={busy}
-                data-testid="project-import-arxiv-id"
-                value={arxivId}
-                placeholder={t(($) => $.library.import.arxivPlaceholder)}
-                onChange={(event) => setArxivId(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void importFromArxiv();
-                }}
-              />
-              <Button
-                type="button"
-                size="sm"
-                disabled={busy || arxivId.trim() === ""}
-                onClick={() => void importFromArxiv()}
-              >
-                {busy ? (
-                  <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
-                ) : null}
-                {t(($) => $.library.import.importAction)}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t(($) => $.library.import.arxivHint)}
-            </p>
-          </div>
-        ) : view === "sources" ? (
-          <div className="space-y-4">
-            <section className="space-y-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {t(($) => $.library.import.localHeading)}
-              </h3>
-              <div className="grid gap-2">
-                {IMPORT_FILE_SOURCES.map((source) => {
-                  const Icon = SOURCE_ICONS[source.kind];
-                  const copy = sourceCopy[source.kind];
-                  return (
+        {errorMessage && <p role="alert" className="shrink-0 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
+        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />{t(($) => $.library.import.importing)}</output>}
+        <div className="-mx-6 -mb-6 min-h-0 overflow-y-auto px-6 pb-6">
+          {view === "target" ? (
+            <div className="grid gap-2">
+              <p className="break-all text-xs text-muted-foreground">{pendingPath?.split(/[/\\]/).pop()}</p>
+              {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
+                (target) => (
                   <button
-                    key={source.kind}
+                    key={target.target}
                     type="button"
                     disabled={busy}
-                    data-testid={`project-import-${source.kind}`}
-                    onClick={() => void importFile(source.kind)}
+                    data-testid={`project-import-target-${target.target}`}
+                    onClick={() => void importWithTarget(target.target)}
                     className={cn(
                       "flex items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors",
-                      "hover:border-primary/40 hover:bg-accent disabled:opacity-60",
-                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                      "hover:border-primary/40 hover:bg-accent focus-visible:border-primary disabled:opacity-60",
                     )}
                   >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                      <Icon aria-hidden="true" className="size-4" />
-                    </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-foreground">
-                        {copy.title}
+                        {target.label}
                       </span>
-                      <span className="block text-xs text-muted-foreground">
-                        {copy.description}
-                      </span>
+                      {target.recommended ? (
+                        <span className="block text-xs text-muted-foreground">
+                          {t(($) => $.library.import.recommended)}
+                        </span>
+                      ) : null}
                     </span>
                   </button>
-                ); })}
+                ),
+              )}
+            </div>
+          ) : view === "arxiv" ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Input
+                  aria-label={t(($) => $.library.import.arxivInputLabel)}
+                  disabled={busy}
+                  data-testid="project-import-arxiv-id"
+                  value={arxivId}
+                  placeholder={t(($) => $.library.import.arxivPlaceholder)}
+                  onChange={(event) => setArxivId(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") void importFromArxiv();
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={busy || arxivId.trim() === ""}
+                  onClick={() => void importFromArxiv()}
+                >
+                  {busy ? (
+                    <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                  ) : null}
+                  {t(($) => $.library.import.importAction)}
+                </Button>
               </div>
-            </section>
+              <p className="text-xs text-muted-foreground">
+                {t(($) => $.library.import.arxivHint)}
+              </p>
+            </div>
+          ) : view === "sources" ? (
+            <div className="space-y-5">
+              <section className="space-y-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.library.import.localHeading)}
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {IMPORT_FILE_SOURCES.map((source) => (
+                    <ChoiceCard
+                      key={source.kind}
+                      image={SOURCE_ART[source.kind]}
+                      title={sourceCopy[source.kind].title}
+                      description={sourceCopy[source.kind].description}
+                      testId={`project-import-${source.kind}`}
+                      compact
+                      disabled={busy}
+                      busy={busy && busyKind === source.kind}
+                      onClick={() => void importFile(source.kind)}
+                    />
+                  ))}
+                </div>
+              </section>
 
-            <section className="space-y-2">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {t(($) => $.library.import.cloudHeading)}
-              </h3>
-              <button
-                type="button"
-                disabled={busy}
-                data-testid="project-import-arxiv"
-                onClick={() => setView("arxiv")}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors",
-                  "hover:border-primary/40 hover:bg-accent disabled:opacity-60",
-                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                )}
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Sigma aria-hidden="true" className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-foreground">{t(($) => $.library.import.arxivPaper)}</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {t(($) => $.library.import.arxivCardDescription)}
-                  </span>
-                </span>
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                data-testid="project-import-github"
-                onClick={() => setView("github")}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg border bg-card p-3 text-left transition-colors",
-                  "hover:border-primary/40 hover:bg-accent disabled:opacity-60",
-                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                )}
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <Github aria-hidden="true" className="size-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-foreground">GitHub</span>
-                  <span className="block text-xs text-muted-foreground">
-                    {githubStatus === "connected"
-                      ? t(($) => $.library.import.githubConnected)
-                      : t(($) => $.library.import.githubDisconnected)}
-                  </span>
-                </span>
-                {busy ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : null}
-              </button>
-            </section>
-          </div>
-        ) : (
-          <div className="max-h-80 space-y-1 overflow-y-auto">
-            {renderRepositoryList()}
-          </div>
-        )}
+              <section className="space-y-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t(($) => $.library.import.cloudHeading)}
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <ChoiceCard
+                    image={CHOICE_ART.importArxiv}
+                    title={t(($) => $.library.import.arxivPaper)}
+                    description={t(($) => $.library.import.arxivCardDescription)}
+                    testId="project-import-arxiv"
+                    compact
+                    disabled={busy}
+                    onClick={() => setView("arxiv")}
+                  />
+                  <ChoiceCard
+                    image={CHOICE_ART.importGithub}
+                    title={t(($) => $.library.import.github)}
+                    description={
+                      githubStatus === "connected"
+                        ? t(($) => $.library.import.githubConnected)
+                        : t(($) => $.library.import.githubDisconnected)
+                    }
+                    testId="project-import-github"
+                    compact
+                    disabled={busy}
+                    onClick={() => setView("github")}
+                  />
+                </div>
+              </section>
+            </div>
+          ) : (
+            <div className="max-h-80 space-y-1 overflow-y-auto">
+              {renderRepositoryList()}
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

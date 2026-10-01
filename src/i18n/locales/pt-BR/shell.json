@@ -171,9 +171,6 @@
       "online": "Modo online (permitir baixar pacotes)"
     },
     "openTool": "Abrir {{name}}",
-    "personalDetails": {
-      "keywords": "modo de captura de tela, captura de tela, print, privacidade, desfocar, caminhos, nome da conta"
-    },
     "recompile": {
       "label": "Compilar de novo"
     },
@@ -236,6 +233,7 @@
   "community": {
     "discordOnline": "{{online}} online",
     "discordOnlineAria": "{{online}} membros online no Discord",
+    "followOnX": "Siga-nos no X",
     "joinDiscord": "Entre no Discord"
   },
   "compile": {
@@ -520,10 +518,6 @@
       }
     }
   },
-  "personalDetails": {
-    "hide": "Ocultar dados pessoais",
-    "show": "Mostrar dados pessoais"
-  },
   "projectSearch": {
     "hint": "Busque em todos os arquivos deste projeto.",
     "noResults": "Nenhum resultado.",
@@ -779,7 +773,7 @@
       "shortcuts": "Atalhos de teclado"
     },
     "search": {
-      "empty": "Nenhuma configuração encontrada.",
+      "empty": "Nenhuma configuração encontrada",
       "keywords": {
         "ai": "assistente, chat, conversa, modelos, provedores, chaves de API, agentes, prompts, orçamento, servidores MCP",
         "appearance": "tema, modo escuro, modo claro, cor, fontes, tamanho do texto, zoom, layout",
@@ -917,6 +911,15 @@
     "stagedChangeCount_other": "{{count}} alterações preparadas",
     "stash": "Guardar as alterações",
     "stashNeedsAttention": "Resolva os conflitos do stash",
+    "status": {
+      "modified": "Modificado",
+      "added": "Adicionado",
+      "deleted": "Excluído",
+      "renamed": "Renomeado",
+      "untracked": "Não rastreado",
+      "conflict": "Conflito",
+      "containsChanges": "Contém alterações"
+    },
     "sync": "Sincronizar",
     "title": "Controle de versão",
     "titleRequired": "O título do commit é obrigatório.",
@@ -973,8 +976,8 @@
     "exportMarkdown": "Exportar como Markdown (.md)",
     "exportPdf": "Exportar como PDF",
     "exportPdfVector": "Exportar como PDF (imagem vetorial)",
-    "exportPngRaster": "Exportar como PNG (imagem rasterizada)",
-    "exportPagePng": "Exportar a página como PNG (imagem rasterizada)",
+    "exportPngRaster": "Exportar como PNG",
+    "exportPagePng": "Exportar a página como PNG",
     "exportAs": "Exportar como {{format}}",
     "exportPptx": "Exportar como PowerPoint (.pptx)",
     "exportSourceZip": "Exportar o código-fonte (.zip)",

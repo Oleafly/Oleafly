@@ -377,7 +377,9 @@
       "addFolder": "Dodaj folder",
       "addFolderDialogTitle": "Dodaj folder umiejętności",
       "catalog": {
+        "allDomains": "Wszystkie",
         "description": "Dodatkowe umiejętności do konkretnych dziedzin badawczych. Zainstaluj jedną, aby dodać ją do listy powyżej.",
+        "domainFilterLabel": "Filtruj półkę według dziedziny",
         "empty": "Katalog nie ma dodatkowych umiejętności do zainstalowania.",
         "install": "Zainstaluj",
         "loading": "Wczytywanie katalogu...",
@@ -408,8 +410,9 @@
         "uninstall": "Odinstaluj",
         "update": "Zaktualizuj"
       },
+      "changedForProject": "Zmieniono w tym projekcie",
       "createSkill": "Utwórz umiejętność",
-      "description": "Asystent wczytuje pełne instrukcje umiejętności dopiero wtedy, gdy uzna, że jej potrzebuje, albo od razu, gdy wpiszesz /skill-id w czacie. Umiejętność włączona tutaj jest włączona w każdym projekcie, dopóki projekt tego nie zmieni.",
+      "description": "Asystent wczytuje pełne instrukcje umiejętności tylko wtedy, gdy ich potrzebuje, albo od razu, gdy wpiszesz /skill-id w czacie. Umiejętność włączona tutaj jest włączona w każdym projekcie. Aby zmienić ją tylko w otwartym projekcie, przełącz na Ten projekt.",
       "editAria": "Edytuj {{name}}",
       "editor": {
         "createDescription": "Utwórz szkic SKILL.md w swoim folderze umiejętności Oleafly.",
@@ -426,7 +429,6 @@
         "submitCreate": "Utwórz"
       },
       "empty": "Nie znaleziono umiejętności. Dodaj folder albo utwórz nową.",
-      "enableAria": "Włącz {{name}}",
       "fileCount_one": "{{count}} plik",
       "fileCount_few": "{{count}} pliki",
       "fileCount_many": "{{count}} plików",
@@ -435,7 +437,6 @@
         "shelf": "Półka dziedzinowa",
         "user": "Twoje umiejętności"
       },
-      "inheritsDevice": "Dziedziczy ustawienie urządzenia",
       "invalidBadge": "Nieprawidłowa",
       "loadFailed": "Nie udało się wczytać umiejętności. {{message}}",
       "loading": "Wczytywanie umiejętności...",
@@ -448,8 +449,6 @@
         "updated": "Zaktualizowano {{name}}."
       },
       "missingDescription": "Ta umiejętność wymaga opisu.",
-      "offForProject": "Wyłączona w tym projekcie",
-      "onForProject": "Włączona w tym projekcie",
       "phases": {
         "authoring": "Pisanie",
         "communication": "Komunikacja",
@@ -463,6 +462,18 @@
       "removeDialog": {
         "description": "Usunąć \"{{name}}\" i jej folder z Oleafly? Tej operacji nie można cofnąć.",
         "title": "Usuń umiejętność"
+      },
+      "resetProject": "Resetuj",
+      "resetProjectAria": "Przywróć dla {{name}} ustawienie wszystkich projektów",
+      "scope": {
+        "device": "Wszystkie projekty",
+        "label": "Gdzie obowiązują te ustawienia",
+        "project": "Ten projekt"
+      },
+      "search": {
+        "ariaLabel": "Szukaj w umiejętnościach i na półce dziedzinowej",
+        "empty": "Brak pasujących umiejętności",
+        "placeholder": "Szukaj umiejętności"
       },
       "share": {
         "description": "Podłącz swoje umiejętności do folderów, które czytają już inni agenci programistyczni na tym komputerze, aby pisać umiejętność raz i udostępniać ją każdemu agentowi.",
@@ -506,9 +517,7 @@
         "description": "Zastąpić \"{{name}}\" najnowszą wersją dołączoną do aplikacji? Wszystkie lokalne zmiany w jej plikach zostaną utracone.",
         "title": "Zaktualizuj umiejętność"
       },
-      "useDeviceSetting": "Użyj ustawienia urządzenia",
-      "useDeviceSettingAria": "Użyj ustawienia urządzenia dla {{name}}",
-      "useInProject": "Używaj w tym projekcie",
+      "useInAllProjectsAria": "Używaj {{name}} we wszystkich projektach",
       "useInProjectAria": "Używaj {{name}} w tym projekcie",
       "validateAria": "Sprawdź {{name}}"
     }

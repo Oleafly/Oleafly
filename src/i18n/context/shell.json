@@ -15,6 +15,9 @@
   "changelog": {
     "installed": "Marks the release the user has installed in the changelog timeline, next to its version number."
   },
+  "community": {
+    "followOnX": "Label and tooltip of the X (formerly Twitter) icon button under the Settings navigation. Keep X verbatim."
+  },
   "compile": {
     "autoCompile": {
       "off": "Radio option: automatic compiling is turned off",
@@ -138,6 +141,10 @@
     "remote": "Heading over the Git remote repository settings",
     "stage": "Add one file to the next commit",
     "staged": "Heading over files that will go into the next commit",
+    "status": {
+      "containsChanges": "Shown on a folder in the file tree when files inside it have Git changes",
+      "untracked": "Git status of a new file that Git does not track yet"
+    },
     "unstage": "Remove one file from the next commit"
   },
   "theme": {

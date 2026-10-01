@@ -1,11 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import {
-  personalParts,
-  resetDisplayHomes,
-  setDisplayHomes,
-} from "@/lib/display-path";
-
-afterEach(() => resetDisplayHomes());
+import { describe, expect, it } from "vitest";
+import { pathParts } from "@/lib/display-path";
 
 function seededRandom(seed: number): () => number {
   let state = seed >>> 0;
@@ -18,20 +12,20 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function marked(text: string, values?: readonly string[]): string[] {
-  return personalParts(text, values)
-    .filter((part) => part.personal)
+function marked(text: string): string[] {
+  return pathParts(text)
+    .filter((part) => part.path)
     .map((part) => part.text);
 }
 
-describe("personalParts", () => {
-  it("returns the text as one plain part when nothing is personal", () => {
-    expect(personalParts("Compiled in 2 s")).toEqual([{ text: "Compiled in 2 s", personal: false }]);
-    expect(personalParts("")).toEqual([]);
+describe("pathParts", () => {
+  it("returns the text as one plain part when it names no path", () => {
+    expect(pathParts("Compiled in 2 s")).toEqual([{ text: "Compiled in 2 s", path: false }]);
+    expect(pathParts("")).toEqual([]);
   });
 
   it("marks home paths and absolute paths, and keeps the text around them", () => {
-    const parts = personalParts("Wrote ~/paper/main.pdf and /opt/tex/bin/latexmk.");
+    const parts = pathParts("Wrote ~/paper/main.pdf and /opt/tex/bin/latexmk.");
     expect(parts.map((part) => part.text).join("")).toBe(
       "Wrote ~/paper/main.pdf and /opt/tex/bin/latexmk.",
     );
@@ -51,32 +45,12 @@ describe("personalParts", () => {
     expect(marked(String.raw`share \\server\papers\draft`)).toEqual([String.raw`\\server\papers\draft`]);
   });
 
-  it("leaves URLs, fractions, slash commands and LaTeX ties alone", () => {
+  it("leaves URLs, fractions, slash commands, LaTeX ties, emails and names alone", () => {
     expect(marked("See https://example.com/a/b")).toEqual([]);
     expect(marked("Use 1/2 or and/or")).toEqual([]);
     expect(marked("Type /compact to shrink")).toEqual([]);
     expect(marked(String.raw`Fig.~\ref{a}`)).toEqual([]);
-  });
-
-  it("marks the account name from the home folder as a whole word", () => {
-    setDisplayHomes(["/Users/ada"]);
-    expect(marked("Signed in as ada on this Mac")).toEqual(["ada"]);
-    expect(marked("adamant and Ada stay")).toEqual([]);
-  });
-
-  it("ignores case for a Windows account name", () => {
-    setDisplayHomes([String.raw`C:\Users\Ada`]);
-    expect(marked("user ada")).toEqual(["ada"]);
-  });
-
-  it("marks email addresses, such as a commit author's", () => {
-    expect(marked("Author: Ada Lovelace <ada.l+git@example.co.uk>")).toEqual(["ada.l+git@example.co.uk"]);
-    expect(marked("Use @mentions or user@host")).toEqual([]);
-  });
-
-  it("marks the extra values it is given", () => {
-    expect(marked("Uses 1.2 GB in total", ["1.2 GB"])).toEqual(["1.2 GB"]);
-    expect(marked("12 projects", ["2"])).toEqual([]);
+    expect(marked("Signed in as ada <ada@example.com>, 1.2 GB used")).toEqual([]);
   });
 
   it("leaves off the punctuation that ends a path exactly as the pattern it replaced did", () => {

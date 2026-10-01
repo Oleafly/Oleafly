@@ -32,7 +32,8 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const enableName = (name: string) => fill(copy.enableAria, { name });
+const enableName = (name: string) => fill(copy.useInAllProjectsAria, { name });
+const projectName = (name: string) => fill(copy.useInProjectAria, { name });
 
 vi.mock("@/store/files", () => ({
   useFilesStore: (selector: (state: { projectId: string | null }) => unknown) =>
@@ -405,12 +406,43 @@ describe("SkillsTab", () => {
     );
   });
 
-  it("shows a per-project toggle only when a project is open", async () => {
+  it("shows one device-wide toggle per skill and no scope switch without a project", async () => {
+    renderTab();
+    await screen.findByText("Paper Lookup");
+
+    expect(screen.queryByTestId("skills-scope")).not.toBeInTheDocument();
+    expect(within(screen.getByTestId("skill-row-paper-lookup")).getAllByRole("switch")).toHaveLength(1);
+    expect(screen.getByRole("switch", { name: enableName("Paper Lookup") })).toBeChecked();
+  });
+
+  it("changes the device setting from All projects while a project is open", async () => {
     mocks.projectId = "proj-1";
     renderTab();
     await screen.findByText("Methods Coach");
 
-    const toggle = screen.getByTestId("skill-project-toggle-methods-coach");
+    expect(screen.getByTestId("skills-scope-device")).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("switch", { name: enableName("Methods Coach") }));
+
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("skills_set_enabled", {
+        id: "methods-coach",
+        enabled: true,
+      }),
+    );
+    expect(mockInvoke).not.toHaveBeenCalledWith("skills_set_project_enabled", expect.anything());
+  });
+
+  it("switches the toggles to this project and marks a project change", async () => {
+    mocks.projectId = "proj-1";
+    renderTab();
+    await screen.findByText("Methods Coach");
+
+    fireEvent.click(screen.getByTestId("skills-scope-project"));
+    expect(screen.getByTestId("skills-scope-project")).toHaveAttribute("aria-pressed", "true");
+    const toggle = screen.getByRole("switch", { name: projectName("Methods Coach") });
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByTestId("skill-project-changed-methods-coach")).not.toBeInTheDocument();
+
     fireEvent.click(toggle);
 
     await waitFor(() =>
@@ -420,33 +452,31 @@ describe("SkillsTab", () => {
         enabled: true,
       }),
     );
+    await waitFor(() =>
+      expect(screen.getByRole("switch", { name: projectName("Methods Coach") })).toBeChecked(),
+    );
+    expect(
+      within(screen.getByTestId("skill-project-changed-methods-coach")).getByText(
+        copy.changedForProject,
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("skills-scope-device"));
+    expect(screen.getByRole("switch", { name: enableName("Methods Coach") })).not.toBeChecked();
+    expect(screen.queryByTestId("skill-project-changed-methods-coach")).not.toBeInTheDocument();
   });
 
-  it("inherits the device setting until the project overrides it", async () => {
+  it("resets a project change back to the All projects setting", async () => {
     mocks.projectId = "proj-1";
+    records = [{ ...RESEARCH_SKILL, projectDisabled: true }, METHODS_COACH];
     renderTab();
     await screen.findByText("Paper Lookup");
+    fireEvent.click(screen.getByTestId("skills-scope-project"));
 
-    const row = screen.getByTestId("skill-row-paper-lookup");
-    expect(screen.getByTestId("skill-project-toggle-paper-lookup")).toBeChecked();
-    expect(within(row).getByText(copy.inheritsDevice)).toBeInTheDocument();
-    expect(screen.queryByTestId("skill-project-reset-paper-lookup")).toBeNull();
-
-    fireEvent.click(screen.getByTestId("skill-project-toggle-paper-lookup"));
-
-    await waitFor(() =>
-      expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
-        projectId: "proj-1",
-        id: "paper-lookup",
-        enabled: false,
-      }),
+    expect(screen.getByRole("switch", { name: projectName("Paper Lookup") })).not.toBeChecked();
+    fireEvent.click(
+      screen.getByRole("button", { name: fill(copy.resetProjectAria, { name: "Paper Lookup" }) }),
     );
-    await waitFor(() =>
-      expect(screen.getByTestId("skill-project-toggle-paper-lookup")).not.toBeChecked(),
-    );
-    expect(within(row).getByText(copy.offForProject)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId("skill-project-reset-paper-lookup"));
 
     await waitFor(() =>
       expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
@@ -456,7 +486,37 @@ describe("SkillsTab", () => {
       }),
     );
     await waitFor(() =>
-      expect(screen.getByTestId("skill-project-toggle-paper-lookup")).toBeChecked(),
+      expect(screen.getByRole("switch", { name: projectName("Paper Lookup") })).toBeChecked(),
+    );
+    expect(screen.queryByTestId("skill-project-changed-paper-lookup")).not.toBeInTheDocument();
+  });
+
+  it("clears the project override when a project toggle goes back to the device setting", async () => {
+    mocks.projectId = "proj-1";
+    renderTab();
+    await screen.findByText("Paper Lookup");
+    fireEvent.click(screen.getByTestId("skills-scope-project"));
+
+    fireEvent.click(screen.getByRole("switch", { name: projectName("Paper Lookup") }));
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
+        projectId: "proj-1",
+        id: "paper-lookup",
+        enabled: false,
+      }),
+    );
+    await screen.findByTestId("skill-project-changed-paper-lookup");
+
+    fireEvent.click(screen.getByRole("switch", { name: projectName("Paper Lookup") }));
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith("skills_set_project_enabled", {
+        projectId: "proj-1",
+        id: "paper-lookup",
+        enabled: null,
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("skill-project-changed-paper-lookup")).not.toBeInTheDocument(),
     );
   });
 
@@ -473,10 +533,49 @@ describe("SkillsTab", () => {
     await waitFor(() => expect(listCalls()).toBeGreaterThan(before));
   });
 
-  it("hides the per-project toggle when no project is open", async () => {
+  it("searches installed skills by name, phase and source", async () => {
     renderTab();
     await screen.findByText("Paper Lookup");
-    expect(screen.queryByTestId("skill-project-toggle-paper-lookup")).not.toBeInTheDocument();
+    const search = screen.getByRole("searchbox", { name: copy.search.ariaLabel });
+
+    fireEvent.change(search, { target: { value: "methods" } });
+    expect(screen.getByText("Methods Coach")).toBeInTheDocument();
+    expect(screen.queryByText("Paper Lookup")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("skills-phase-research")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: copy.phases.research } });
+    expect(screen.getByText("Paper Lookup")).toBeInTheDocument();
+    expect(screen.queryByText("Methods Coach")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: copy.source.bundled } });
+    expect(screen.getByText("Paper Lookup")).toBeInTheDocument();
+    expect(screen.queryByText("broken")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "" } });
+    expect(screen.getByText("Methods Coach")).toBeInTheDocument();
+    expect(screen.getByText("Paper Lookup")).toBeInTheDocument();
+  });
+
+  it("searches the domain shelf too and shows one no-match message", async () => {
+    catalog = { ...EMPTY_CATALOG, skills: [SHELF_ENTRY] };
+    renderTab();
+    await screen.findByTestId("skill-shelf-row-genomics-toolkit");
+    const search = screen.getByRole("searchbox", { name: copy.search.ariaLabel });
+
+    fireEvent.change(search, { target: { value: "genomics" } });
+    expect(screen.getByTestId("skill-shelf-row-genomics-toolkit")).toBeInTheDocument();
+    expect(screen.queryByText("Paper Lookup")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("skills-no-match")).not.toBeInTheDocument();
+
+    fireEvent.change(search, { target: { value: "paper" } });
+    expect(screen.getByText("Paper Lookup")).toBeInTheDocument();
+    expect(screen.queryByTestId("skill-shelf-row-genomics-toolkit")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("skills-no-match")).toHaveLength(1);
+
+    fireEvent.change(search, { target: { value: "nothing like this" } });
+    await waitFor(() => expect(screen.getAllByTestId("skills-no-match")).toHaveLength(1));
+    expect(screen.getByText(copy.search.empty)).toBeInTheDocument();
+    expect(screen.queryByText("Paper Lookup")).not.toBeInTheDocument();
   });
 
   it("updates a bundled skill after confirmation", async () => {
