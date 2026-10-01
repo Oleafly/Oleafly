@@ -1219,7 +1219,7 @@ fn markdown_compile_spec(
     })
 }
 
-fn discover_bibliographies(project_dir: &Path) -> Result<Vec<String>, String> {
+pub(crate) fn discover_bibliographies(project_dir: &Path) -> Result<Vec<String>, String> {
     if !project_dir.is_dir() {
         return Ok(Vec::new());
     }
@@ -2658,6 +2658,29 @@ pub async fn run_supervised_external(
     run_supervised_process(path, args, working_dir, None, COMPILE_TIMEOUT, None).await
 }
 
+/// `run_supervised_external` with extra environment variables for the child.
+pub(crate) async fn run_supervised_external_with_variables(
+    path: &Path,
+    args: &[String],
+    working_dir: &Path,
+    variables: &[(String, String)],
+) -> Result<(String, Option<i32>), String> {
+    let environment = variables.iter().fold(
+        EngineEnvironment::default(),
+        |environment, (name, value)| environment.with_variable(name, value.clone()),
+    );
+    run_supervised_process_with_environment(
+        path,
+        args,
+        working_dir,
+        None,
+        COMPILE_TIMEOUT,
+        None,
+        &environment,
+    )
+    .await
+}
+
 pub(crate) async fn run_supervised_external_cancellable(
     path: &Path,
     args: &[String],
@@ -2757,6 +2780,23 @@ async fn run_supervised_process(
     .await
 }
 
+/// The Biber choice reads the binary and, for a universal macOS Biber, copies
+/// a slice of about 40 MB, so it runs off the async runtime.
+async fn prepare_child_biber(
+    program: &Path,
+    path_env: &std::ffi::OsStr,
+) -> Option<crate::biber_toolchain::ChildBiber> {
+    let root = crate::paths::oleafly_root().ok()?;
+    let program = program.to_path_buf();
+    let path_env = path_env.to_os_string();
+    tokio::task::spawn_blocking(move || {
+        crate::biber_toolchain::prepare_child_biber(&root, &program, &path_env)
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
 async fn run_supervised_process_with_environment(
     path: &Path,
     args: &[String],
@@ -2772,6 +2812,11 @@ async fn run_supervised_process_with_environment(
         path,
         environment.path_excluded_root(working_dir),
     );
+    let child_biber = prepare_child_biber(path, &path_env).await;
+    let path_env = match &child_biber {
+        Some(child_biber) => child_biber.path_env(&path_env),
+        None => path_env,
+    };
     let mut command = tokio::process::Command::new(path);
     command.no_console();
     command
@@ -2782,11 +2827,8 @@ async fn run_supervised_process_with_environment(
         .env("PATH", &path_env)
         .env("NoDefaultCurrentDirectoryInExePath", "1")
         .env("openout_any", "p");
-    if let Some(dir) = crate::biber_toolchain::biber_for_child(path, &path_env).and_then(|biber| {
-        let root = crate::paths::oleafly_root().ok()?;
-        crate::biber_toolchain::prepare_unpack_dir(&root, &biber)
-    }) {
-        command.env(crate::biber_toolchain::UNPACK_ENV, dir);
+    if let Some(child_biber) = &child_biber {
+        command.env(crate::biber_toolchain::UNPACK_ENV, &child_biber.unpack_dir);
     }
     for (name, value) in &environment.variables {
         command.env(name, value);
@@ -4238,6 +4280,75 @@ mod tests {
                 Some(expected)
             );
         }
+    }
+
+    #[cfg(target_os = "macos")]
+    #[allow(clippy::await_holding_lock)]
+    #[tokio::test]
+    async fn latexmk_children_run_the_host_slice_of_a_universal_biber() {
+        use std::os::unix::fs::PermissionsExt;
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        let tools = tempfile::tempdir().unwrap();
+        let latexmk = tools.path().join("latexmk");
+        std::os::unix::fs::symlink("/bin/sh", &latexmk).unwrap();
+        let intel: &[u8] = b"#!/bin/sh\necho x86_64\n";
+        let apple: &[u8] = b"#!/bin/sh\necho arm64\n";
+        let mut universal = Vec::new();
+        universal.extend_from_slice(&0xcafe_babe_u32.to_be_bytes());
+        universal.extend_from_slice(&2_u32.to_be_bytes());
+        for (cpu_type, subtype, offset, slice) in [
+            (0x0100_0007_u32, 3_u32, 4096_u32, intel),
+            (0x0100_000c, 0, 8192, apple),
+        ] {
+            for word in [cpu_type, subtype, offset, slice.len() as u32, 12] {
+                universal.extend_from_slice(&word.to_be_bytes());
+            }
+        }
+        for (offset, slice) in [(4096, intel), (8192, apple)] {
+            universal.resize(offset, 0);
+            universal.extend_from_slice(slice);
+        }
+        let biber = tools.path().join("biber");
+        std::fs::write(&biber, &universal).unwrap();
+        std::fs::set_permissions(&biber, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let outcome = run_supervised_process(
+            &latexmk,
+            &["-c".to_string(), "command -v biber && biber".to_string()],
+            data.path(),
+            None,
+            std::time::Duration::from_secs(30),
+            None,
+        )
+        .await;
+        match previous {
+            Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+            None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+        }
+        let (log, code) = outcome.unwrap();
+        let thin = crate::biber_toolchain::unpack_dir_for(data.path(), &biber)
+            .unwrap()
+            .join("bin")
+            .join("biber");
+        let (host, arch) = if cfg!(target_arch = "aarch64") {
+            (apple, "arm64")
+        } else {
+            (intel, "x86_64")
+        };
+        assert_eq!(code, Some(0), "{log}");
+        assert_eq!(
+            log.lines().collect::<Vec<_>>(),
+            vec![thin.display().to_string().as_str(), arch],
+            "{log}"
+        );
+        assert_eq!(std::fs::read(&thin).unwrap(), host);
+        assert_eq!(std::fs::read(&biber).unwrap(), universal);
+        assert!(
+            crate::biber_toolchain::bibers_for_programs(std::slice::from_ref(&latexmk))
+                .contains(&biber)
+        );
     }
 
     #[cfg(windows)]

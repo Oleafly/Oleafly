@@ -63,7 +63,10 @@
     "setHomePage": "Instellen als startpagina"
   },
   "changelog": {
-    "installed": "Je hebt deze versie"
+    "installed": "Je hebt deze versie",
+    "sectionItems_one": "{{count}} wijziging",
+    "sectionItems_other": "{{count}} wijzigingen",
+    "showNotes": "Releaseopmerkingen tonen"
   },
   "citeOleafly": {
     "description": "Er is geen bibliografiebestand in dit project gevonden, dus er is niets gewijzigd. Kopieer het item hieronder naar je bibliografie, of vind het later terug bij Instellingen, Help en Over.",
@@ -166,6 +169,9 @@
       "online": "Onlinemodus (pakketten mogen worden opgehaald)"
     },
     "openTool": "{{name}} openen",
+    "personalDetails": {
+      "keywords": "screenshotmodus, schermafbeelding, privacy, vervagen, paden, accountnaam"
+    },
     "recompile": {
       "label": "Opnieuw compileren"
     },
@@ -511,6 +517,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Persoonlijke gegevens verbergen",
+    "show": "Persoonlijke gegevens tonen"
+  },
   "projectSearch": {
     "hint": "Doorzoek de bestanden van dit project.",
     "noResults": "Geen resultaten.",
@@ -750,6 +760,25 @@
       "help": "Help en Over",
       "integrations": "Integraties",
       "shortcuts": "Sneltoetsen"
+    },
+    "search": {
+      "empty": "Geen instellingen gevonden.",
+      "keywords": {
+        "ai": "assistent, chat, modellen, providers, aanbieders, API-sleutels, agents, prompts, budget, MCP-servers",
+        "appearance": "thema, donkere modus, lichte modus, kleur, lettertypen, lettertype, tekstgrootte, zoomen, indeling, lay-out",
+        "data": "back-up, backup, bibliotheekmap, projectenmap, opslag, schijfruimte, prullenbak, projecten verwijderen, checkpoints",
+        "dictionary": "spelling, eigen woorden, genegeerde woorden, proeflezen, grammaticaregels",
+        "downloads": "pakketten, lettertypen, woordenboeken, offline bestanden",
+        "engine": "compiler, LaTeX, TeX, Typst, Markdown, pandoc, build, compileren, PDF",
+        "experimentation": "labs, bèta, beta, vroege functies, experimenteel",
+        "general": "voorkeuren, taal, regio, spellingcontrole, spelling, typfouten, offline, rondleidingen, terminalopdracht",
+        "help": "over, versie, updates, wijzigingen, releaseopmerkingen, wat is er nieuw, documentatie, ondersteuning, community, Discord, licentie, crashrapport",
+        "integrations": "Zotero, GitHub, MCP, citaties, bronvermeldingen, accounts, koppelingen, verbindingen",
+        "shortcuts": "sneltoetsen, toetscombinaties, toetsen, toetsenbord"
+      },
+      "label": "Instellingen doorzoeken",
+      "results_one": "{{count}} sectie komt overeen",
+      "results_other": "{{count}} secties komen overeen"
     },
     "sectionsNav": "Instellingssecties",
     "title": "Instellingen",

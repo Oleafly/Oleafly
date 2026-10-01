@@ -58,7 +58,7 @@ describe("conversion registry invariants", () => {
       engine: "pandoc",
       gapId: "G11",
       surface: "Export menu, Tools page",
-      pandoc: { from: "latex", to: "html5", flags: ["--standalone", "--embed-resources", "--mathml"] },
+      pandoc: { from: "latex", to: "html5", flags: ["--standalone", "--embed-resources", "--mathml", "--citeproc"] },
     });
     expect(route("docx-to-typst")).toMatchObject({
       extensions: ["docx"],

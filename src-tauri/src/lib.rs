@@ -67,6 +67,7 @@ mod ollama;
 mod open_folder;
 mod open_request;
 mod os_trash;
+mod pandoc_citations;
 mod paths;
 mod proc;
 mod process_identity;
@@ -493,6 +494,7 @@ pub fn run() {
             agent_config::agent_multi_agent_config,
             commands::reload_views,
             commands::library_root,
+            commands::display_homes,
             storage::library_storage_summary,
             storage::list_recycled_projects,
             storage::restore_recycled_project,
@@ -594,6 +596,7 @@ pub fn run() {
             terminal::term_kill,
             menu::set_dock_shortcut_accelerators,
             menu::set_recent_projects,
+            menu::set_personal_details_hidden,
             i18n::set_ui_locale,
             i18n::get_ui_locale,
             cua_policy::cua_action_confirm,

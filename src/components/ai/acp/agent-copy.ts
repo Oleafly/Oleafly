@@ -1,5 +1,12 @@
 import { i18n } from "@/i18n";
-import { acpReadiness, type AcpAgentStatus, type AcpCliStatus, type AcpReadiness, type AcpRejectedCandidate } from "@/lib/acp";
+import {
+  acpReadiness,
+  type AcpAgentStatus,
+  type AcpCliStatus,
+  type AcpReadiness,
+  type AcpRejectedCandidate,
+} from "@/lib/acp";
+import { displayPath, displayText } from "@/lib/display-path";
 
 export function cliLabel(agent: AcpAgentStatus): string {
   const cli = agent.cli;
@@ -73,7 +80,7 @@ export function readinessDetail(
       return cli?.path
         ? i18n.t(($) => $.ai.acp.readiness.bridgeMissingWithCli, {
             cli: cliLabel(agent),
-            path: cli.path,
+            path: displayPath(cli.path),
             version: agent.definition.version,
           })
         : i18n.t(($) => $.ai.acp.readiness.bridgeMissing, {
@@ -82,7 +89,9 @@ export function readinessDetail(
     case "cli-missing":
       return cli ? cliMissingDetail(cli) : i18n.t(($) => $.ai.acp.readiness.cliNotFound);
     default:
-      return agent.reason ?? i18n.t(($) => $.ai.acp.readiness.unavailable);
+      return agent.reason
+        ? displayText(agent.reason)
+        : i18n.t(($) => $.ai.acp.readiness.unavailable);
   }
 }
 

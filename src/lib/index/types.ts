@@ -19,7 +19,8 @@ export interface Sym {
   nameTo: number;
   // Only set for `section` symbols.
   level?: number;
-  // Only set for `inputedge` symbols.
+  // Set for `inputedge` symbols (the included path) and for `ref` symbols from
+  // a `file#anchor` link (the file and anchor they point at).
   target?: string;
 }
 

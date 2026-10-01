@@ -31,6 +31,8 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ReadinessBadge } from "@/components/ai/acp/AgentReadiness";
 import { bridgeSourceLabel, readinessDetail } from "@/components/ai/acp/agent-copy";
+import { PrivatePath, PrivateText } from "@/components/ui/private";
+import { useDisplayText } from "@/lib/display-path";
 import {
   acpError,
   acpInstall,
@@ -264,6 +266,8 @@ function AgentCard({
   onStatus: (status: AcpAgentStatus) => void;
 }>) {
   const { t } = useTranslation(["common", "settings", "ai"]);
+  // The agent's own reason can name files; show the home folder as ~.
+  const displayText = useDisplayText();
   const [open, setOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const toggleRef = useRef<HTMLButtonElement | null>(null);
@@ -336,7 +340,7 @@ function AgentCard({
               <h4 className="text-sm font-medium">{agent.definition.name}</h4>
             </span>
             <span className="mt-0.5 block break-words text-xs leading-relaxed text-muted-foreground">
-              {readinessDetail(agent, readiness)}
+              <PrivateText text={readinessDetail(agent, readiness)} focusable={false} />
             </span>
           </span>
         </button>
@@ -371,7 +375,9 @@ function AgentCard({
                       {t(($) => $.settings.ai.agents.cliPathLabel)}
                     </dt>
                     <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
-                      {cli.path ?? t(($) => $.settings.ai.agents.program.notFound)}
+                      {cli.path
+                        ? <PrivatePath path={cli.path} />
+                        : t(($) => $.settings.ai.agents.program.notFound)}
                     </dd>
                   </div>
                   <div className="min-w-24">
@@ -415,8 +421,9 @@ function AgentCard({
                   {t(($) => $.settings.ai.agents.bridgePathLabel)}
                 </dt>
                 <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
-                  {agent.executable ??
-                    t(($) => $.settings.ai.agents.bridgeUnresolved)}
+                  {agent.executable
+                    ? <PrivatePath path={agent.executable} />
+                    : t(($) => $.settings.ai.agents.bridgeUnresolved)}
                 </dd>
               </div>
               <div className="min-w-0">
@@ -464,7 +471,7 @@ function AgentCard({
                   id={nextStep === installBlocked ? installReasonId : undefined}
                   className="text-xs leading-relaxed text-foreground/85"
                 >
-                  {nextStep}
+                  <PrivateText text={displayText(nextStep)} />
                 </p>
               )}
               <div className="flex flex-wrap gap-2">
@@ -503,7 +510,7 @@ function AgentCard({
               </div>
               {installBlocked && installBlocked !== nextStep && (
                 <p id={installReasonId} className="text-[11px] leading-relaxed text-muted-foreground">
-                  {installBlocked}
+                  <PrivateText text={displayText(installBlocked)} />
                 </p>
               )}
               {agent.taskUnavailableReason && (
@@ -642,6 +649,10 @@ export function AcpAgentsTab({
   const [results, setResults] = useState<AcpRegistryEntry[]>([]);
   const [definition, setDefinition] = useState("");
   const [review, setReview] = useState<AcpDefinition | null>(null);
+  // Every review mounts a fresh dialog. Reopened while the last one is still
+  // animating out, Radix would reuse that content: nothing inside takes focus,
+  // and the press that reopened it counts as a press outside and closes it.
+  const [reviewKey, setReviewKey] = useState(0);
   const reviewOpener = useRef<HTMLElement | null>(null);
   const [focus, setFocus] = useState<{ id: string; token: number } | null>(null);
   const focusSeq = useRef(0);
@@ -841,6 +852,7 @@ export function AcpAgentsTab({
                   reviewOpener.current = opener;
                   setError(null);
                   setReview(definition);
+                  setReviewKey((key) => key + 1);
                 }}
                 onOpenTerminal={openTerminal}
                 onRemove={(agentId) =>
@@ -972,6 +984,7 @@ export function AcpAgentsTab({
 
       <Dialog open={reviewing} onOpenChange={(open) => { if (!open && !busy) setReview(null); }}>
         <DialogContent
+          key={reviewKey}
           className="z-[120] max-w-md"
           overlayClassName="z-[120]"
           closeDisabled={!!busy}

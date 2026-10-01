@@ -63,7 +63,10 @@
     "setHomePage": "Ana sayfa olarak ayarla"
   },
   "changelog": {
-    "installed": "Bu sürümü kullanıyorsunuz"
+    "installed": "Bu sürümü kullanıyorsunuz",
+    "sectionItems_one": "{{count}} değişiklik",
+    "sectionItems_other": "{{count}} değişiklik",
+    "showNotes": "Notları göster"
   },
   "citeOleafly": {
     "description": "Bu projede kaynakça dosyası bulunamadı, bu yüzden hiçbir şey değişmedi. Aşağıdaki kaydı kaynakçanıza kopyalayın veya daha sonra Ayarlar'daki Yardım ve hakkında bölümünden yeniden bulun.",
@@ -166,6 +169,9 @@
       "online": "Çevrimiçi kip (paket indirmeye izin ver)"
     },
     "openTool": "{{name}} aracını aç",
+    "personalDetails": {
+      "keywords": "ekran görüntüsü modu, gizlilik, bulanıklaştır, yollar, hesap adı"
+    },
     "recompile": {
       "label": "Yeniden derle"
     },
@@ -511,6 +517,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Kişisel bilgileri gizle",
+    "show": "Kişisel bilgileri göster"
+  },
   "projectSearch": {
     "hint": "Bu projenin dosyalarında arayın.",
     "noResults": "Sonuç yok.",
@@ -750,6 +760,25 @@
       "help": "Yardım ve Hakkında",
       "integrations": "Tümleştirmeler",
       "shortcuts": "Klavye Kısayolları"
+    },
+    "search": {
+      "empty": "Eşleşen ayar yok.",
+      "keywords": {
+        "ai": "asistan, sohbet, modeller, sağlayıcılar, API anahtarları, ajanlar, istemler, bütçe, MCP sunucuları",
+        "appearance": "tema, koyu kip, karanlık mod, açık kip, aydınlık mod, renk, yazı tipleri, metin boyutu, yakınlaştırma, düzen",
+        "data": "yedekleme, kitaplık klasörü, projeler klasörü, depolama, disk alanı, çöp kutusu, geri dönüşüm kutusu, projeleri sil, kontrol noktaları",
+        "dictionary": "yazım, özel sözcükler, yok sayılan sözcükler, redaksiyon, dil bilgisi kuralları",
+        "downloads": "paketler, yazı tipleri, sözlükler, çevrimdışı dosyalar",
+        "engine": "derleyici, LaTeX, TeX, Typst, Markdown, pandoc, derleme, PDF",
+        "experimentation": "laboratuvar, beta, deneysel, erken özellikler",
+        "general": "tercihler, dil, bölge, yazım denetimi, yazım, yazım hataları, çevrimdışı, turlar, terminal komutu",
+        "help": "hakkında, sürüm, güncellemeler, değişiklik günlüğü, yenilikler, belgeler, destek, topluluk, Discord, lisans, çökme raporu",
+        "integrations": "Zotero, GitHub, MCP, atıflar, hesaplar, bağlantılar",
+        "shortcuts": "tuş atamaları, kısayol tuşları, kısayollar, tuşlar, klavye"
+      },
+      "label": "Ayarlarda ara",
+      "results_one": "{{count}} bölüm eşleşiyor",
+      "results_other": "{{count}} bölüm eşleşiyor"
     },
     "sectionsNav": "Ayar bölümleri",
     "title": "Ayarlar",

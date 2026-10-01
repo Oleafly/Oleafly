@@ -5,6 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import { i18n } from "@/i18n";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -1070,5 +1071,47 @@ describe("McpServersManager", () => {
 
     await waitFor(() => expect(screen.getByText("new_search")).toBeInTheDocument());
     expect(screen.queryByText("read_file")).not.toBeInTheDocument();
+  });
+
+  it("shows a local server's command with the home folder as ~ and edits the real one", async () => {
+    setDisplayHomes(["/Users/ada"]);
+    const failure = "Could not start /Users/ada/.local/bin/uvx: permission denied.";
+    records = [
+      {
+        config: {
+          name: "notes",
+          enabled: true,
+          transport: "stdio",
+          command: "/Users/ada/.local/bin/uvx",
+          args: ["notes-mcp", "--dir", "/Users/ada/notes"],
+          env: {},
+        },
+        validation: { name: "notes", status: "error", tool_count: 0, tools: [], error: failure },
+      },
+    ];
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "mcp_servers_list") return records;
+      if (command === "mcp_server_validate") return records[0].validation;
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    try {
+      renderManager();
+      const shown = "~/.local/bin/uvx notes-mcp --dir ~/notes";
+      const endpoint = await screen.findByText(shown);
+      expect(endpoint).toHaveAttribute("title", shown);
+      expect(
+        await screen.findByText("Could not start ~/.local/bin/uvx: permission denied."),
+      ).toBeInTheDocument();
+      const card = endpoint.closest("article");
+      expect(card?.textContent).not.toContain("/Users/ada");
+      expect(card?.innerHTML).not.toContain("/Users/ada");
+
+      fireEvent.click(screen.getByRole("button", { name: editLabel("notes") }));
+      expect(
+        screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.commandLabel }),
+      ).toHaveValue("/Users/ada/.local/bin/uvx");
+    } finally {
+      resetDisplayHomes();
+    }
   });
 });

@@ -93,6 +93,8 @@ const mocks = vi.hoisted(() => ({
       onApprove: () => void;
       onRevise: () => void;
     };
+    panelMaxHeight?: number;
+    onPinnedChange?: (pinned: boolean) => void;
   }>,
   textareaProps: null as null | {
     onChange: (event: { target: { value: string } }) => void;
@@ -2650,7 +2652,19 @@ describe("ChatCore agent turns", () => {
     await waitFor(() => expect(activeChatRun()).toBeNull());
     expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
     expect(rendered.queryByRole("button", { name: "Approve plan" })).toBeNull();
+    expect(lastAssistantContent()).toBe("Planned");
+    expect(await rendered.findByTestId("plan-note")).toHaveTextContent(
+      enAi.conversation.planMissing,
+    );
   });
+
+  function lastAssistantContent() {
+    return useChatsStore
+      .getState()
+      .byId("chat-1")
+      ?.messages.filter((message) => message.role === "assistant")
+      .at(-1)?.content;
+  }
 
   const PLAN_TODOS = [
     { id: "intro", content: "Rename the intro section in main.tex", status: "pending" as const },
@@ -2938,6 +2952,129 @@ describe("ChatCore agent turns", () => {
     expect(rendered.getByPlaceholderText("Describe what to change in the plan")).toBeTruthy();
     expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
     expect(useAgentTodoStore.getState().todos).toEqual(PLAN_TODOS);
+  });
+
+  function recordResizeObservers() {
+    const original = globalThis.ResizeObserver;
+    const records: Array<{ callback: ResizeObserverCallback; targets: Set<Element> }> = [];
+    class RecordingResizeObserver {
+      private readonly record: { callback: ResizeObserverCallback; targets: Set<Element> };
+      constructor(callback: ResizeObserverCallback) {
+        this.record = { callback, targets: new Set() };
+        records.push(this.record);
+      }
+      observe(target: Element) {
+        this.record.targets.add(target);
+      }
+      unobserve(target: Element) {
+        this.record.targets.delete(target);
+      }
+      disconnect() {
+        this.record.targets.clear();
+      }
+    }
+    globalThis.ResizeObserver = RecordingResizeObserver as unknown as typeof ResizeObserver;
+    return {
+      resize(target: Element) {
+        for (const record of records) {
+          if (!record.targets.has(target)) continue;
+          record.callback([{ target } as ResizeObserverEntry], {} as ResizeObserver);
+        }
+      },
+      restore() {
+        globalThis.ResizeObserver = original;
+      },
+    };
+  }
+
+  it("reserves the pinned plan card's height below the reply so the card never covers its end", async () => {
+    const observers = recordResizeObservers();
+    try {
+      const rendered = await renderChat();
+      await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+      act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+      await act(async () => finishRun(0, "Here is the plan."));
+      await waitFor(() =>
+        expect(mocks.planProps.at(-1)?.approval).toMatchObject({ status: "awaiting", busy: false }),
+      );
+      const overlay = rendered.getByTestId("agent-status-pill").parentElement as HTMLElement;
+      const scroller = overlay.parentElement?.querySelector<HTMLElement>(":scope > .overflow-auto");
+      expect(scroller).toBeTruthy();
+      Object.defineProperty(overlay, "offsetHeight", { configurable: true, value: 220 });
+      act(() => observers.resize(overlay));
+      // A card opened by hovering floats over the reply and keeps the pill's usual room.
+      expect(scroller?.style.paddingBottom).toBe("");
+
+      act(() => mocks.planProps.at(-1)?.onPinnedChange?.(true));
+      await waitFor(() =>
+        expect(Number.parseFloat(scroller?.style.paddingBottom ?? "")).toBeGreaterThanOrEqual(228),
+      );
+
+      act(() => mocks.planProps.at(-1)?.onPinnedChange?.(false));
+      await waitFor(() => expect(scroller?.style.paddingBottom).toBe(""));
+    } finally {
+      observers.restore();
+    }
+  });
+
+  it("caps the plan card against a short chat panel so the reply end stays in view", async () => {
+    const observers = recordResizeObservers();
+    try {
+      const rendered = await renderChat();
+      await planFirstTurn(rendered, "Rename the intro and tighten the abstract");
+      act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+      await act(async () => finishRun(0, "Here is the plan."));
+      await waitFor(() =>
+        expect(mocks.planProps.at(-1)?.approval).toMatchObject({ status: "awaiting" }),
+      );
+      const overlay = rendered.getByTestId("agent-status-pill").parentElement as HTMLElement;
+      const scroller = overlay.parentElement?.querySelector<HTMLElement>(":scope > .overflow-auto");
+      if (!scroller) throw new Error("chat scroller not found");
+
+      Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 320 });
+      act(() => observers.resize(scroller));
+      await waitFor(() =>
+        expect(mocks.planProps.at(-1)?.panelMaxHeight).toBeLessThanOrEqual(160),
+      );
+
+      Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 900 });
+      act(() => observers.resize(scroller));
+      await waitFor(() => expect(mocks.planProps.at(-1)?.panelMaxHeight).toBe(288));
+    } finally {
+      observers.restore();
+    }
+  });
+
+  it("leaves a clarifying question without a plan note", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Tidy the paper");
+    await act(async () => finishRun(0, "Which section should I start with?"));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("planning");
+    expect(lastAssistantContent()).toBe("Which section should I start with?");
+    expect(rendered.queryByTestId("plan-note")).toBeNull();
+  });
+
+  it("notes when a revision leaves the plan unchanged", async () => {
+    const rendered = await renderChat();
+    await planFirstTurn(rendered, "Plan a two-step edit");
+    act(() => useAgentTodoStore.getState().setTodos(PLAN_TODOS));
+    await act(async () => finishRun(0, "Here is the plan."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(rendered.queryByTestId("plan-note")).toBeNull();
+
+    changeComposer("Cut the abstract to 100 words");
+    pressComposerKey("Enter");
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    await act(async () => finishRun(1, "I've updated step 2 as you asked."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    expect(usePlanApprovalStore.getState().status("chat-1")).toBe("awaiting");
+    expect(useAgentTodoStore.getState().todosForChat("chat-1")).toEqual(PLAN_TODOS);
+    expect(await rendered.findByTestId("plan-note")).toHaveTextContent(
+      enAi.conversation.planUnchanged,
+    );
   });
 
   it("downgrades a persisted approved plan to planning when no run is live", async () => {

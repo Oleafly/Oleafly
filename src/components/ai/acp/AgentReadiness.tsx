@@ -9,6 +9,8 @@ import { isWindows } from "@/lib/utils";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
+import { useDisplayText } from "@/lib/display-path";
+import { PrivateText } from "@/components/ui/private";
 import { AgentLogo } from "./AgentLogo";
 import { readinessDetail } from "./agent-copy";
 
@@ -83,10 +85,14 @@ export function BridgeInstallCard({
   onError?: (message: string) => void;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
+  // readinessDetail shows the CLI path with ~; this re-renders the card once
+  // the home folder is known, and shortens the hint below the same way.
+  const displayText = useDisplayText();
   const { installing, install } = useBridgeInstall();
   const readiness = acpReadiness(agent);
   const busy = installing === agent.definition.id;
   const canInstall = readiness === "bridge-missing" && agent.canInstall;
+  const hint = agent.canInstall ? agent.signInHint : agent.reason;
   return (
     <div
       data-testid={`acp-bridge-card-${agent.definition.id}`}
@@ -97,7 +103,7 @@ export function BridgeInstallCard({
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-medium leading-snug">{agent.definition.name}</p>
           <p className="break-words text-xs leading-relaxed text-muted-foreground">
-            {readinessDetail(agent, readiness)}
+            <PrivateText text={readinessDetail(agent, readiness)} />
           </p>
         </div>
         <ReadinessBadge readiness={readiness} />
@@ -128,9 +134,9 @@ export function BridgeInstallCard({
           {t(($) => $.ai.acp.setup.setUp, { name: agent.definition.name })}
         </Button>
       )}
-      {readiness === "bridge-missing" && (agent.canInstall ? agent.signInHint : agent.reason) && (
+      {readiness === "bridge-missing" && hint && (
         <p className="text-[11px] leading-relaxed text-muted-foreground">
-          {agent.canInstall ? agent.signInHint : agent.reason}
+          <PrivateText text={displayText(hint)} />
         </p>
       )}
     </div>

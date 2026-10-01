@@ -738,7 +738,9 @@
     "noResponse": "這則訊息沒有收到任何回應，串流已中斷。請重新傳送，或開始新的聊天。",
     "scrollToBottom": "捲動到底部",
     "projectSubtitle": "正在處理「{{project}}」",
-    "noOutput": "模型沒有傳回任何輸出。請檢查設定 → AI 助理。"
+    "noOutput": "模型沒有傳回任何輸出。請檢查設定 → AI 助理。",
+    "planMissing": "還沒有可核准的計畫。請讓助理先提出一個計畫，或關閉「計畫」。",
+    "planUnchanged": "計畫沒有變更。"
   },
   "followUps": {
     "steered": "已介入正在執行的輪次：{{summary}}",

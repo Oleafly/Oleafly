@@ -1,12 +1,14 @@
 import { Children, isValidElement, memo, type ReactNode, useRef } from "react";
 import rehypeKatex from "rehype-katex";
-import ReactMarkdown, { type Components } from "react-markdown";
+import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { type PersonalPart, personalParts } from "@/lib/display-path";
 import { cn } from "@/lib/utils";
 import { HighlightedCode } from "./code-highlighter";
 import { MarkdownBlock } from "./markdown-block";
 import { MermaidDiagram } from "./mermaid-diagram";
+import { useHidePersonalDetails } from "./private";
 import { RenderCache } from "./render-cache";
 import {
   type StreamingMarkdownState,
@@ -31,7 +33,11 @@ function codeLanguage(className?: string) {
   return className?.match(/(?:^|\s)language-([^\s]+)/)?.[1]?.toLowerCase();
 }
 
-function createMarkdownComponents(inverted: boolean): Components {
+function hasPersonalRun(text: string): boolean {
+  return personalParts(text).some((part) => part.personal);
+}
+
+function createMarkdownComponents(inverted: boolean, personal = false): Components {
   return {
   p: ({ children }) => <p className="mb-2 leading-relaxed last:mb-0">{children}</p>,
   ul: ({ children }) => <ul className="mb-2 ml-4 list-disc space-y-1">{children}</ul>,
@@ -77,9 +83,14 @@ function createMarkdownComponents(inverted: boolean): Components {
     const source = isValidElement<{ children?: ReactNode }>(child)
       ? codeText(child.props.children).replace(/\n$/, "")
       : codeText(children).replace(/\n$/, "");
+    // Screenshot mode blurs a whole code block that names a path: the block
+    // keeps the real path so its copy button and the highlighting stay intact.
+    const blurred = personal && hasPersonalRun(source);
     return (
       <MarkdownBlock kind="code" source={source}>
-        <pre className={codeBlockClassName}>{children}</pre>
+        <pre data-private={blurred ? "" : undefined} className={codeBlockClassName}>
+          {children}
+        </pre>
       </MarkdownBlock>
     );
   },
@@ -113,29 +124,99 @@ function createMarkdownComponents(inverted: boolean): Components {
 
 export const markdownComponents = createMarkdownComponents(false);
 const invertedMarkdownComponents = createMarkdownComponents(true);
+const personalMarkdownComponents = createMarkdownComponents(false, true);
+const invertedPersonalMarkdownComponents = createMarkdownComponents(true, true);
 
-const remarkPlugins = [remarkGfm, remarkMath];
-const rehypePlugins = [rehypeKatex];
+interface HastNode {
+  type: string;
+  tagName?: string;
+  value?: string;
+  properties?: Record<string, unknown>;
+  children?: HastNode[];
+}
+
+// Code blocks are handled whole in `pre` above, and KaTeX output is math.
+const UNMARKED_TAGS = new Set(["pre", "math", "svg", "script", "style"]);
+
+function isKatex(node: HastNode): boolean {
+  const className = node.properties?.className;
+  return Array.isArray(className) && className.some((name) => String(name).startsWith("katex"));
+}
+
+function personalRunNode(part: PersonalPart): HastNode {
+  if (!part.personal) return { type: "text", value: part.text };
+  return {
+    type: "element",
+    tagName: "span",
+    properties: { dataPrivate: "" },
+    children: [{ type: "text", value: part.text }],
+  };
+}
+
+/** `child` as it stands in the marked tree: a text node may split into runs. */
+function markedNodes(child: HastNode): HastNode[] {
+  if (child.type === "text" && typeof child.value === "string") {
+    const parts = personalParts(child.value);
+    return parts.some((part) => part.personal) ? parts.map(personalRunNode) : [child];
+  }
+  if (child.type === "element" && !UNMARKED_TAGS.has(child.tagName ?? "") && !isKatex(child)) {
+    markPersonalRuns(child);
+  }
+  return [child];
+}
+
+function markPersonalRuns(node: HastNode): void {
+  if (!node.children) return;
+  node.children = node.children.flatMap(markedNodes);
+}
+
+/** Screenshot mode: wraps each path and account name in the prose for the blur. */
+function rehypePersonalRuns() {
+  return (tree: HastNode) => markPersonalRuns(tree);
+}
+
+// Only `~~text~~` strikes through. A single `~` in chat is a home path (`~/a`,
+// see src/lib/display-path.ts) or a LaTeX tie (`Fig.~\ref{a}`), and two of
+// them in one paragraph would otherwise strike out the text between them.
+const remarkPlugins: Options["remarkPlugins"] = [[remarkGfm, { singleTilde: false }], remarkMath];
+const rehypePlugins: Options["rehypePlugins"] = [rehypeKatex];
+const personalRehypePlugins: Options["rehypePlugins"] = [rehypeKatex, rehypePersonalRuns];
+
+const newCache = () => new RenderCache<ReactNode>(MAX_CACHED_DOCUMENTS, MAX_CACHED_DOCUMENT_CHARS);
 
 const documentCaches = {
-  plain: new RenderCache<ReactNode>(MAX_CACHED_DOCUMENTS, MAX_CACHED_DOCUMENT_CHARS),
-  inverted: new RenderCache<ReactNode>(MAX_CACHED_DOCUMENTS, MAX_CACHED_DOCUMENT_CHARS),
+  plain: newCache(),
+  inverted: newCache(),
+  personal: newCache(),
+  invertedPersonal: newCache(),
 };
 
+function documentCache(inverted: boolean, personal: boolean) {
+  if (personal) return inverted ? documentCaches.invertedPersonal : documentCaches.personal;
+  return inverted ? documentCaches.inverted : documentCaches.plain;
+}
+
+function componentsFor(inverted: boolean, personal: boolean): Components {
+  if (personal) return inverted ? invertedPersonalMarkdownComponents : personalMarkdownComponents;
+  return inverted ? invertedMarkdownComponents : markdownComponents;
+}
+
+/** `personal` renders the screenshot-mode variant, which marks paths for the blur. */
 export function renderMarkdownDocument(
   source: string,
   inverted: boolean,
   cache = true,
+  personal = false,
 ): ReactNode {
-  const documents = inverted ? documentCaches.inverted : documentCaches.plain;
+  const documents = documentCache(inverted, personal);
   if (cache) {
     const cached = documents.get(source);
     if (cached !== undefined) return cached;
   }
   const rendered = ReactMarkdown({
     remarkPlugins,
-    rehypePlugins,
-    components: inverted ? invertedMarkdownComponents : markdownComponents,
+    rehypePlugins: personal ? personalRehypePlugins : rehypePlugins,
+    components: componentsFor(inverted, personal),
     children: source,
   });
   if (cache) documents.set(source, rendered, source.length + 1);
@@ -143,37 +224,40 @@ export function renderMarkdownDocument(
 }
 
 export function isMarkdownDocumentCached(source: string, inverted = false): boolean {
-  return (inverted ? documentCaches.inverted : documentCaches.plain).has(source);
+  return documentCache(inverted, false).has(source);
 }
 
 export function clearMarkdownDocumentCache(): void {
-  documentCaches.plain.clear();
-  documentCaches.inverted.clear();
+  for (const documents of Object.values(documentCaches)) documents.clear();
 }
 
 function MarkdownDocument({
   children,
   inverted,
   cache = true,
+  personal = false,
 }: {
   children: string;
   inverted: boolean;
   cache?: boolean;
+  personal?: boolean;
 }) {
-  return <>{renderMarkdownDocument(children, inverted, cache)}</>;
+  return <>{renderMarkdownDocument(children, inverted, cache, personal)}</>;
 }
 
 const SettledMarkdownBlock = memo(function SettledMarkdownBlock({
   source,
   inverted,
   cache = true,
+  personal = false,
 }: Readonly<{
   source: string;
   inverted: boolean;
   cache?: boolean;
+  personal?: boolean;
 }>) {
   return (
-    <MarkdownDocument inverted={inverted} cache={cache}>
+    <MarkdownDocument inverted={inverted} cache={cache} personal={personal}>
       {source}
     </MarkdownDocument>
   );
@@ -191,6 +275,7 @@ export default function MarkdownRenderer({
   streaming?: boolean;
 }>) {
   const streamingState = useRef<StreamingMarkdownState | null>(null);
+  const personal = useHidePersonalDetails();
   const livePartition = streaming
     ? updateStreamingMarkdown(streamingState.current, children)
     : null;
@@ -207,7 +292,12 @@ export default function MarkdownRenderer({
     : "0";
   const partitionedContent = partition
     ? partition.settled.map((block) => (
-        <SettledMarkdownBlock key={block.key} source={block.source} inverted={inverted} />
+        <SettledMarkdownBlock
+          key={block.key}
+          source={block.source}
+          inverted={inverted}
+          personal={personal}
+        />
       ))
     : [];
   if (partition?.tail.source) {
@@ -227,6 +317,7 @@ export default function MarkdownRenderer({
           source={partition.tail.source}
           inverted={inverted}
           cache={false}
+          personal={personal}
         />
       ),
     );
@@ -242,7 +333,9 @@ export default function MarkdownRenderer({
       {partition ? (
         partitionedContent
       ) : (
-        <MarkdownDocument inverted={inverted}>{children}</MarkdownDocument>
+        <MarkdownDocument inverted={inverted} personal={personal}>
+          {children}
+        </MarkdownDocument>
       )}
     </div>
   );

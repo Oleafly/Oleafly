@@ -141,6 +141,37 @@ describe("math preview tooltip view", () => {
     expect(dom.querySelector(".katex")).not.toBeNull();
   });
 
+  it("renders a labelled display environment through KaTeX", () => {
+    const doc = [String.raw`\begin{equation}`, "a = b", String.raw`\label{eq:ab}`, String.raw`\end{equation}`].join("\n");
+    const view = mount(stateFor(doc, doc.indexOf("a = b")));
+    const dom = tooltipDom(view);
+    expect(dom.querySelector(".ofl-visual-math-tooltip-error")?.textContent ?? null).toBeNull();
+    expect(dom.querySelector(".katex")).not.toBeNull();
+    expect(dom.querySelector(".katex-html")?.textContent).not.toContain("eq:ab");
+  });
+
+  it("shows a placeholder for a reference inside math", () => {
+    const doc = String.raw`\begin{align}a &= b \label{eq:a} \\ c &= d \quad \text{by } \eqref{eq:a}\end{align}`;
+    const view = mount(stateFor(doc, doc.indexOf("c &= d")));
+    const dom = tooltipDom(view);
+    expect(dom.querySelector(".ofl-visual-math-tooltip-error")?.textContent ?? null).toBeNull();
+    expect(dom.querySelector(".katex-html")?.textContent).toContain("(??)");
+  });
+
+  it.each([
+    ["multline", String.raw`a + b \\ + c = d`],
+    ["multline*", String.raw`a + b \\ \shoveleft{+ c} = d`],
+    ["eqnarray", String.raw`a &=& b \\ c &=& d`],
+    ["flalign", String.raw`a &= b & c &= d`],
+    ["displaymath", "a = b"],
+  ])("renders the %s environment, which KaTeX lacks", (environment, body) => {
+    const doc = [String.raw`\begin{${environment}}`, body, String.raw`\label{eq:x}`, String.raw`\end{${environment}}`].join("\n");
+    const view = mount(stateFor(doc, doc.indexOf(body)));
+    const dom = tooltipDom(view);
+    expect(dom.querySelector(".ofl-visual-math-tooltip-error")?.textContent ?? null).toBeNull();
+    expect(dom.querySelector(".katex")).not.toBeNull();
+  });
+
   it("renders the math and a menu with hide and disable", () => {
     const view = mount(stateFor(INLINE, INLINE_CURSOR));
     const dom = tooltipDom(view);

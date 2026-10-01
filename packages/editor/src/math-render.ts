@@ -138,6 +138,72 @@ const SAFE_STYLE_PROPERTIES = new Set([
   "width",
 ]);
 
+/**
+ * The part of KaTeX's macro context (MacroContextInterface) that the preview
+ * macros use. KaTeX types a function macro's argument as a plain object.
+ */
+interface MacroContext {
+  future(): { text: string };
+  popToken(): { text: string };
+  consumeArg(delimiters?: string[]): unknown;
+}
+
+type PreviewMacro = string | ((context: object) => string);
+
+// \label{key}, or cleveref's \label[type]{key}. Labels belong to the LaTeX
+// build, so the preview reads past the label and renders nothing for it.
+function dropLabel(context: object): string {
+  const macro = context as MacroContext;
+  if (macro.future().text === "[") {
+    macro.popToken();
+    macro.consumeArg(["]"]);
+  }
+  macro.consumeArg();
+  return "";
+}
+
+// \ref{key}, \eqref{key} and the like. The preview cannot know the number, so
+// it shows the placeholder LaTeX itself prints for an unresolved reference.
+function unresolvedReference(placeholder: string): PreviewMacro {
+  return (context) => {
+    const macro = context as MacroContext;
+    if (macro.future().text === "*") macro.popToken();
+    macro.consumeArg();
+    return String.raw`\text{${placeholder}}`;
+  };
+}
+
+/**
+ * Macros for LaTeX commands KaTeX lacks. Build a new map for every render:
+ * KaTeX writes \gdef definitions (including the ones behind \tag and
+ * \nonumber) into the map it gets, so a shared map would leak them from one
+ * preview into the next.
+ */
+function previewMacros(): Record<string, PreviewMacro> {
+  const reference = unresolvedReference("??");
+  return {
+    "\\label": dropLabel,
+    "\\ref": reference,
+    "\\pageref": reference,
+    "\\autoref": reference,
+    "\\nameref": reference,
+    "\\cref": reference,
+    "\\Cref": reference,
+    "\\eqref": unresolvedReference("(??)"),
+    // Only valid inside multline, which renders as gather below.
+    "\\shoveleft": "#1",
+    "\\shoveright": "#1",
+  };
+}
+
+// KaTeX has no multline. gather gives each of its lines a centred row, which
+// is close enough for a preview.
+const MULTLINE = /\\(begin|end)\{multline(\*?)\}/gu;
+
+function katexSource(body: string): string {
+  return body.replace(MULTLINE, String.raw`\$1{gather$2}`);
+}
+
 const renderCache = new Map<
   string,
   { result: MathRenderResult; bytes: number }
@@ -272,7 +338,7 @@ export function renderMathExpression(
 
   let result: MathRenderResult;
   try {
-    const rendered = katex.renderToString(body, {
+    const rendered = katex.renderToString(katexSource(body), {
       displayMode: display,
       output: "htmlAndMathml",
       throwOnError: true,
@@ -281,6 +347,7 @@ export function renderMathExpression(
       maxExpand: 200,
       maxSize: 10,
       globalGroup: false,
+      macros: previewMacros(),
     });
     if (rendered.length > MAX_RENDERED_OUTPUT) {
       result = {
@@ -308,6 +375,34 @@ export function renderMathExpression(
 
   writeCached(key, result);
   return result;
+}
+
+const ENVIRONMENT_SOURCE = /^\\begin\{([^{}]+)\}([\s\S]*)\\end\{\1\}$/u;
+const NEEDS_ALIGNMENT = /(?:^|[^\\])(?:&|\\\\)/u;
+const NUMBERED_ENVIRONMENTS = new Set(["equation", "align", "gather", "alignat", "flalign", "multline", "eqnarray"]);
+
+function unnumbered(source: string): string {
+  const environment = ENVIRONMENT_SOURCE.exec(source);
+  if (!environment || !NUMBERED_ENVIRONMENTS.has(environment[1])) return source;
+  return String.raw`\begin{${environment[1]}*}${environment[2]}\end{${environment[1]}*}`;
+}
+
+/**
+ * Renders LaTeX math source for a preview: a whole environment block such as
+ * `\begin{align}...\end{align}`, or a bare body. The preview cannot know the
+ * real equation numbers, so numbered environments render without them. An
+ * environment KaTeX lacks (eqnarray, flalign, displaymath, math) falls back to
+ * its body, wrapped in `aligned` when the body has rows or columns.
+ */
+export function renderMathSource(source: string, display: boolean): MathRenderResult {
+  const direct = renderMathExpression(unnumbered(source), display);
+  if (direct.status === "ready") return direct;
+  const environment = ENVIRONMENT_SOURCE.exec(source);
+  const body = environment?.[2].trim();
+  if (!body) return direct;
+  const wrapped = NEEDS_ALIGNMENT.test(body) ? String.raw`\begin{aligned}${body}\end{aligned}` : body;
+  const fallback = renderMathExpression(wrapped, display);
+  return fallback.status === "ready" ? fallback : direct;
 }
 
 function closingDelimiter(delimiter: MathExpression["delimiter"]): string {

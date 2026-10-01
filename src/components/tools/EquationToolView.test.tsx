@@ -145,6 +145,7 @@ describe("EquationToolView", () => {
       screen.getByText(enResearchTools.equation.statusRendered),
     ).toBeInTheDocument();
     expect(screen.getByTestId("equation-theme-menu")).toBeInTheDocument();
+    expect(screen.getByTestId("equation-personal-details-toggle")).toBeInTheDocument();
   });
 
   it("goes back to the tools gallery", () => {

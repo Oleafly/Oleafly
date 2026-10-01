@@ -1,8 +1,11 @@
 #![cfg_attr(target_os = "windows", allow(dead_code))]
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
-use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, Submenu, SubmenuBuilder};
+use tauri::menu::{
+    CheckMenuItemBuilder, Menu, MenuBuilder, MenuItemBuilder, Submenu, SubmenuBuilder,
+};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 
 use crate::i18n::t;
@@ -15,6 +18,12 @@ const FILE_MENU: &str = "file_menu";
 const OPEN_FOLDER_ITEM: &str = "open_folder";
 const OPEN_FOLDER_ACCELERATOR: &str = "CmdOrCtrl+Shift+O";
 const RECENT_LIMIT: usize = 10;
+const VIEW_MENU: &str = "view_menu";
+const PERSONAL_DETAILS_ITEM: &str = "toggle_personal_details";
+
+/// Screenshot mode lives in the webview for the session. The menu keeps its
+/// own copy so a rebuild (a locale change) keeps the check mark.
+static PERSONAL_DETAILS_HIDDEN: AtomicBool = AtomicBool::new(false);
 
 static RECENT_PROJECTS: Mutex<Vec<RecentProject>> = Mutex::new(Vec::new());
 
@@ -119,9 +128,15 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let toggle_browser = MenuItemBuilder::with_id("toggle_browser", t("menu.toggleBrowser"))
         .accelerator("Ctrl+Shift+B")
         .build(handle)?;
-    let view_menu = SubmenuBuilder::with_id(handle, "view_menu", t("menu.view"))
+    let personal_details =
+        CheckMenuItemBuilder::with_id(PERSONAL_DETAILS_ITEM, t("menu.hidePersonalDetails"))
+            .checked(PERSONAL_DETAILS_HIDDEN.load(Ordering::Relaxed))
+            .build(handle)?;
+    let view_menu = SubmenuBuilder::with_id(handle, VIEW_MENU, t("menu.view"))
         .item(&toggle_terminal)
         .item(&toggle_browser)
+        .separator()
+        .item(&personal_details)
         .build()?;
 
     MenuBuilder::new(handle)
@@ -219,6 +234,7 @@ fn frontend_event(id: &str) -> Option<&'static str> {
     match id {
         "toggle_terminal" => Some("menu://toggle-terminal"),
         "toggle_browser" => Some("menu://toggle-browser"),
+        PERSONAL_DETAILS_ITEM => Some("menu://toggle-personal-details"),
         "edit_undo" => Some("menu://undo"),
         "edit_redo" => Some("menu://redo"),
         OPEN_FOLDER_ITEM => Some("menu://open-folder"),
@@ -261,7 +277,7 @@ pub fn set_dock_shortcut_accelerators(
     {
         let menu = app.menu().ok_or_else(|| t("errors.menuUnavailable"))?;
         let view_menu = menu
-            .get("view_menu")
+            .get(VIEW_MENU)
             .and_then(|item| item.as_submenu().cloned())
             .ok_or_else(|| t("errors.viewMenuUnavailable"))?;
         for (id, accelerator) in
@@ -285,6 +301,35 @@ pub fn set_dock_shortcut_accelerators(
                 .map_err(|error| error.to_string())?;
         }
         Ok(())
+    }
+}
+
+/// Keeps the View menu's "Hide Personal Details" check mark in step with the
+/// webview, which owns the mode and may have turned it on from the toolbar.
+#[tauri::command]
+pub fn set_personal_details_hidden(app: AppHandle, hidden: bool) -> Result<(), String> {
+    PERSONAL_DETAILS_HIDDEN.store(hidden, Ordering::Relaxed);
+    #[cfg(target_os = "windows")]
+    {
+        let _ = app;
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let handle = app.clone();
+        app.run_on_main_thread(move || {
+            let Some(item) = handle
+                .menu()
+                .and_then(|menu| menu.get(VIEW_MENU))
+                .and_then(|item| item.as_submenu().cloned())
+                .and_then(|view| view.get(PERSONAL_DETAILS_ITEM))
+                .and_then(|item| item.as_check_menuitem().cloned())
+            else {
+                return;
+            };
+            let _ = item.set_checked(hidden);
+        })
+        .map_err(|error| error.to_string())
     }
 }
 
@@ -367,6 +412,10 @@ mod tests {
         assert_eq!(
             frontend_event("toggle_browser"),
             Some("menu://toggle-browser")
+        );
+        assert_eq!(
+            frontend_event("toggle_personal_details"),
+            Some("menu://toggle-personal-details")
         );
         assert_eq!(frontend_event("edit_undo"), Some("menu://undo"));
         assert_eq!(frontend_event("edit_redo"), Some("menu://redo"));

@@ -64,7 +64,11 @@
     "setHomePage": "Imposta come pagina iniziale"
   },
   "changelog": {
-    "installed": "Hai questa versione"
+    "installed": "Hai questa versione",
+    "sectionItems_one": "{{count}} modifica",
+    "sectionItems_many": "{{count}} modifiche",
+    "sectionItems_other": "{{count}} modifiche",
+    "showNotes": "Mostra le note"
   },
   "citeOleafly": {
     "description": "In questo progetto non è stato trovato nessun file bibliografico, quindi non è stato modificato niente. Copia la voce qui sotto nella tua bibliografia, oppure ritrovala più tardi nelle impostazioni, in Aiuto e informazioni.",
@@ -167,6 +171,9 @@
       "online": "Modalità online (consenti il download dei pacchetti)"
     },
     "openTool": "Apri {{name}}",
+    "personalDetails": {
+      "keywords": "modalità screenshot, schermata, privacy, riservatezza, sfocatura, percorsi, nome account"
+    },
     "recompile": {
       "label": "Ricompila"
     },
@@ -513,6 +520,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Nascondi i dati personali",
+    "show": "Mostra i dati personali"
+  },
   "projectSearch": {
     "hint": "Cerca in tutti i file di questo progetto.",
     "noResults": "Nessun risultato.",
@@ -766,6 +777,26 @@
       "help": "Aiuto e informazioni",
       "integrations": "Integrazioni",
       "shortcuts": "Scorciatoie da tastiera"
+    },
+    "search": {
+      "empty": "Nessuna impostazione corrisponde.",
+      "keywords": {
+        "ai": "assistente, chat, modelli, provider, fornitori, chiavi API, agenti, prompt, budget, server MCP",
+        "appearance": "tema, modalità scura, modalità chiara, colore, caratteri, font, dimensione del testo, zoom, layout, disposizione",
+        "data": "backup, cartella della libreria, cartella dei progetti, archiviazione, spazio su disco, cestino, eliminare progetti, checkpoint",
+        "dictionary": "ortografia, parole personalizzate, parole ignorate, correzione di bozze, regole grammaticali",
+        "downloads": "pacchetti, font, caratteri, dizionari, file offline",
+        "engine": "compilatore, LaTeX, TeX, Typst, Markdown, pandoc, compilazione, build, PDF",
+        "experimentation": "laboratorio, beta, funzionalità in anteprima",
+        "general": "preferenze, lingua, controllo ortografico, ortografia, refusi, offline, tour, comando del terminale",
+        "help": "informazioni, versione, aggiornamenti, registro delle modifiche, novità, documentazione, assistenza, supporto, comunità, Discord, licenza, segnalazione di crash",
+        "integrations": "Zotero, GitHub, MCP, citazioni, account, connessioni",
+        "shortcuts": "scorciatoie da tastiera, tasti di scelta rapida, tasti, tastiera"
+      },
+      "label": "Cerca nelle impostazioni",
+      "results_one": "{{count}} sezione corrisponde",
+      "results_many": "{{count}} sezioni corrispondono",
+      "results_other": "{{count}} sezioni corrispondono"
     },
     "sectionsNav": "Sezioni delle impostazioni",
     "title": "Impostazioni",

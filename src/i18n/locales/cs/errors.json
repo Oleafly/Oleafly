@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk nemůže na tomto počítači použít složku sestavení Oleafly, protože její cesta obsahuje znaky, které latexmk nepřijímá. Chcete-li projekt zkompilovat, přepněte ho na Tectonic.",
     "latexmk_network_folder": "latexmk nemůže kompilovat složku ve sdíleném síťovém umístění. Přepněte tento projekt na Tectonic, nebo složku zkopírujte do tohoto počítače."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly nedokázal přečíst soubor bibliografie {{name}}. Zkontrolujte, zda neobsahuje poškozený záznam, a pak exportujte znovu."
+  },
   "github": {
     "sign_in_expired": "Přihlašovací kód vypršel. Zkuste to znovu.",
     "sign_in_cancelled": "Autorizace na GitHubu byla zrušena.",

@@ -3,6 +3,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AcpPermission } from "@/lib/acp";
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 
 vi.mock("@/components/editor/diff/InlineDiffPreview", () => ({
   InlineDiffPreview: ({ path, oldText, newText, ariaLabel }: { path: string; oldText: string; newText: string; ariaLabel?: string }) => (
@@ -17,7 +18,12 @@ import { ToolBadge } from "@/components/ai/chat-parts";
 beforeAll(async () => {
   await initTestI18n();
 });
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  resetDisplayHomes();
+});
+
+const MAIN = "/Users/ada/.oleafly/projects/p/main.tex";
 
 function permission(overrides: Partial<AcpPermission> = {}): AcpPermission {
   return {
@@ -88,6 +94,36 @@ describe("PermissionCard", () => {
     );
     expect(screen.getByText("Large change to thesis.tex. Review it after the turn.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Show change" })).toBeNull();
+  });
+
+  it("shows a home path in the agent's request as ~ and still answers by id", () => {
+    setDisplayHomes(["/Users/ada"]);
+    const onChoose = vi.fn(async () => {});
+    const { container } = render(
+      <PermissionCard request={permission({ id: "request-1", title: `Edit ${MAIN}` })} onChoose={onChoose} />,
+    );
+
+    expect(screen.getByText("Edit ~/.oleafly/projects/p/main.tex")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("/Users/ada");
+
+    fireEvent.click(screen.getByRole("button", { name: /Allow once/ }));
+    expect(onChoose).toHaveBeenCalledWith("request-1", "allow-once");
+  });
+
+  it("shows a proposed change outside the project with the home folder as ~", () => {
+    setDisplayHomes(["/Users/ada"]);
+    const { container } = render(
+      <PermissionCard
+        request={permission({
+          locations: ["/Users/ada/notes.md"],
+          diffs: [{ path: "/Users/ada/refs.bib", oldText: null, newText: "@article{a}", truncated: false }],
+        })}
+        onChoose={vi.fn(async () => {})}
+      />,
+    );
+    expect(screen.getByText("~/refs.bib")).toBeInTheDocument();
+    expect(screen.getByText("~/notes.md")).toBeInTheDocument();
+    expect(container.textContent).not.toContain("/Users/ada");
   });
 
   it("still works for requests without targets", () => {

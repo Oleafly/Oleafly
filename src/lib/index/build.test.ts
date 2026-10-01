@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildIndex } from "./build";
+import { buildIndex, indexFromSymbols } from "./build";
+import type { Sym } from "./types";
 import { required } from "../test-utils";
 
 describe("buildIndex: macrouse second pass", () => {
@@ -119,5 +120,122 @@ describe("buildIndex: renamePlan", () => {
     const use = required(idx.uses.find((u) => u.kind === "ref" && u.name === "a"));
     const plan = idx.renamePlan(use, "z");
     expect(plan.edits).toHaveLength(2); // def + the ref
+  });
+});
+
+describe("indexFromSymbols: Markdown links and anchors", () => {
+  const sym = (
+    kind: Sym["kind"],
+    name: string,
+    file: string,
+    from: number,
+    target?: string,
+  ): Sym => ({
+    kind,
+    name,
+    file,
+    line: 1,
+    from,
+    to: from + name.length,
+    nameFrom: from,
+    nameTo: from + name.length,
+    ...(target ? { target } : {}),
+  });
+  const idx = indexFromSymbols(
+    [
+      // A second LaTeX file defines the same label first; the link names
+      // paper.tex, so it must still land there.
+      sym("label", "sec:results", "chapter.tex", 0),
+      sym("label", "sec:results", "paper.tex", 10),
+      sym("label", "sec:results", "other.md", 0),
+      sym("label", "sec:results", "third.md", 0),
+    ],
+    [
+      sym("ref", "sec:results", "paper.tex", 40),
+      sym("ref", "sec:results", "notes.md", 20, "paper.tex#sec:results"),
+      sym("ref", "sec:results", "other.md", 30),
+      sym("ref", "sec:results", "notes.md", 60, "other.md#sec:results"),
+    ],
+  );
+  const def = (file: string) =>
+    required(idx.defs.find((d) => d.kind === "label" && d.file === file));
+  const use = (file: string, from: number) =>
+    required(idx.uses.find((u) => u.file === file && u.from === from));
+
+  it("resolves a file#anchor link to the label in that file", () => {
+    expect(idx.definitionFor(use("notes.md", 20))).toBe(def("paper.tex"));
+    expect(idx.definitionFor(use("notes.md", 60))).toBe(def("other.md"));
+  });
+
+  it("renames a LaTeX label together with a Markdown link to it", () => {
+    const plan = idx.renamePlan(def("paper.tex"), "sec:new");
+    expect(plan.edits.map((edit) => `${edit.file}@${edit.from}`)).toEqual([
+      "notes.md@20",
+      "paper.tex@40",
+      "paper.tex@10",
+    ]);
+    expect(idx.allReferences(def("paper.tex")).map((s) => s.file)).toEqual([
+      "paper.tex",
+      "paper.tex",
+      "notes.md",
+    ]);
+  });
+
+  it("keeps a Markdown anchor to its own file", () => {
+    const plan = idx.renamePlan(def("other.md"), "sec:new");
+    expect(plan.edits.map((edit) => `${edit.file}@${edit.from}`)).toEqual([
+      "notes.md@60",
+      "other.md@30",
+      "other.md@0",
+    ]);
+    expect(idx.definitionFor(use("other.md", 30))).toBe(def("other.md"));
+    // third.md has its own anchor of that name, which is not a clash.
+    expect(idx.renamePlan(def("other.md"), "sec:results").collision).toBe(false);
+  });
+});
+
+describe("buildIndex: LaTeX and Typst labels stay apart", () => {
+  // A LaTeX and a Typst document that reuse label names, plus one citation
+  // key that both of them read from the same .bib file.
+  const idx = buildIndex({
+    "paper.tex": "\\label{eq:mae}\nSee \\eqref{eq:mae} and \\cite{alpha}.",
+    "paper.typ": "$ x $ <eq:mae>\n= Other <eq:rmse>\nSee @eq:mae and @alpha.",
+    "refs.bib": "@misc{alpha, title={Alpha}}",
+  });
+  const latexLabel = required(
+    idx.defs.find((d) => d.kind === "label" && d.name === "eq:mae" && d.file === "paper.tex"),
+  );
+
+  it("renames a LaTeX label without touching the Typst label or reference", () => {
+    const plan = idx.renamePlan(latexLabel, "eq:new");
+    expect(plan.edits.map((edit) => edit.file)).toEqual(["paper.tex", "paper.tex"]);
+    expect(plan.fileCount).toBe(1);
+  });
+
+  it("does not call a name only Typst uses a collision for a LaTeX label", () => {
+    expect(idx.renamePlan(latexLabel, "eq:rmse").collision).toBe(false);
+  });
+
+  it("resolves and renames a Typst reference against the Typst label", () => {
+    const use = required(idx.uses.find((u) => u.kind === "atuse" && u.name === "eq:mae"));
+    expect(idx.definitionFor(use)?.file).toBe("paper.typ");
+    const plan = idx.renamePlan(use, "eq:new");
+    expect(new Set(plan.edits.map((edit) => edit.file))).toEqual(new Set(["paper.typ"]));
+    expect(plan.edits).toHaveLength(2);
+  });
+
+  it("lists only same-engine references for a label", () => {
+    expect(idx.allReferences(latexLabel).map((sym) => sym.file)).toEqual([
+      "paper.tex",
+      "paper.tex",
+    ]);
+  });
+
+  it("still renames a citation key everywhere it is cited", () => {
+    const entry = required(idx.defs.find((d) => d.kind === "bibentry" && d.name === "alpha"));
+    const plan = idx.renamePlan(entry, "beta");
+    expect(new Set(plan.edits.map((edit) => edit.file))).toEqual(
+      new Set(["refs.bib", "paper.tex", "paper.typ"]),
+    );
   });
 });

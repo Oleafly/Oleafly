@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const recycleProject = vi.fn(async () => {});
 const duplicateProject = vi.fn(async () => "fork-1");
@@ -57,6 +57,7 @@ import { useFavoritesStore } from "@/store/favorites";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 
 const openProject = vi.fn(async () => {});
 const refreshProjects = vi.fn(async () => {});
@@ -339,6 +340,29 @@ describe("Library project dialogs", () => {
     expect(dialog).toHaveTextContent(enLibrary.projects.exportsDialog.title);
     expect(dialog).toHaveTextContent("paper.pdf");
     expect(dialog).toHaveTextContent("/tmp/paper.pdf");
+  });
+
+  it("opens the export history without revealing a path in screenshot mode", async () => {
+    usePersonalDetailsStore.getState().setHidden(true);
+    try {
+      render(<Library />);
+      await openListActions(PAPER.name);
+      fireEvent.click(
+        await screen.findByRole("menuitem", {
+          name: enLibrary.projects.exportHistory,
+        }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      const path = within(dialog).getByText("/tmp/paper.pdf");
+      // Tab still reaches the path, which reveals it, but opening does not.
+      expect(path).toHaveAttribute("tabindex", "0");
+      await waitFor(() =>
+        expect(dialog).toContainElement(document.activeElement as HTMLElement),
+      );
+      expect(document.activeElement).not.toBe(path);
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+    }
   });
 
   it("reports a project with no exports", async () => {

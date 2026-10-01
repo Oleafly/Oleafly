@@ -62,7 +62,9 @@
     "setHomePage": "設為首頁"
   },
   "changelog": {
-    "installed": "你目前使用的版本"
+    "installed": "你目前使用的版本",
+    "sectionItems_other": "{{count}} 項變更",
+    "showNotes": "顯示說明"
   },
   "citeOleafly": {
     "description": "這個專案中找不到參考文獻檔案，因此未做任何變更。請將下方條目複製到你的參考文獻中，或稍後在設定的「說明與關於」中再次找到它。",
@@ -165,6 +167,9 @@
       "online": "線上模式（允許取得套件）"
     },
     "openTool": "開啟 {{name}}",
+    "personalDetails": {
+      "keywords": "截圖模式，隱私，模糊，路徑，帳戶名稱"
+    },
     "recompile": {
       "label": "重新編譯"
     },
@@ -509,6 +514,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "隱藏個人資料",
+    "show": "顯示個人資料"
+  },
   "projectSearch": {
     "hint": "搜尋這個專案的所有檔案。",
     "noResults": "沒有結果。",
@@ -734,6 +743,24 @@
       "help": "說明與關於",
       "integrations": "整合",
       "shortcuts": "鍵盤快捷鍵"
+    },
+    "search": {
+      "empty": "沒有相符的設定。",
+      "keywords": {
+        "ai": "助理，聊天，模型，供應商，API 金鑰，代理程式，提示詞，預算，MCP 伺服器",
+        "appearance": "主題，深色模式，淺色模式，顏色，色彩，字型，文字大小，縮放，版面配置",
+        "data": "備份，專案庫資料夾，專案資料夾，儲存空間，磁碟空間，垃圾桶，資源回收筒，刪除專案，檢查點",
+        "dictionary": "拼字，自訂字詞，忽略的字詞，校對，文法規則",
+        "downloads": "套件，字型，字典，離線檔案",
+        "engine": "編譯器，LaTeX，TeX，Typst，Markdown，pandoc，建置，編譯，PDF",
+        "experimentation": "實驗室，測試版，beta，搶先體驗功能",
+        "general": "偏好設定，語言，地區，拼字檢查，拼字，錯字，離線，導覽，終端機指令",
+        "help": "關於，版本，更新，更新記錄，新功能，說明文件，支援，社群，Discord，授權條款，當機報告",
+        "integrations": "Zotero，GitHub，MCP，引用，帳戶，帳號，連線",
+        "shortcuts": "按鍵綁定，快捷鍵，熱鍵，按鍵，鍵盤"
+      },
+      "label": "搜尋設定",
+      "results_other": "{{count}} 個分區相符"
     },
     "sectionsNav": "設定分區",
     "title": "設定",

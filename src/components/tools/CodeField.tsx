@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers, placeholder as cmPlaceholder } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { recompileShortcutBinding } from "@/components/editor/cm/recompile-shortcut";
 import { editorTheme } from "@/components/editor/cm/theme";
 
 interface CodeFieldProps {
@@ -42,7 +43,10 @@ export function CodeField({
           EditorView.lineWrapping,
           ...(readOnly
             ? [EditorState.readOnly.of(true), EditorView.editable.of(false)]
-            : [history(), keymap.of([...defaultKeymap, ...historyKeymap])]),
+            : [
+                history(),
+                keymap.of([recompileShortcutBinding, ...defaultKeymap, ...historyKeymap]),
+              ]),
           language(),
           editorTheme(),
           ...(placeholder ? [cmPlaceholder(placeholder)] : []),

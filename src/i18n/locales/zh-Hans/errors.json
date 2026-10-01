@@ -52,6 +52,9 @@
     "latexmk_build_path": "Oleafly 在这台电脑上的构建文件夹路径包含 latexmk 不接受的字符，因此 latexmk 无法使用它。请将此项目切换到 Tectonic 进行编译。",
     "latexmk_network_folder": "latexmk 无法编译网络共享上的文件夹。请将此项目切换到 Tectonic，或将文件夹复制到这台电脑。"
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly 无法读取参考文献 {{name}}。请检查其中是否有损坏的条目，然后重新导出。"
+  },
   "github": {
     "sign_in_expired": "登录代码已过期，请重试。",
     "sign_in_cancelled": "GitHub 授权已取消。",

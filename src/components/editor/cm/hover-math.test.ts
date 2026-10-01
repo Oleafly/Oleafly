@@ -1,6 +1,9 @@
+// @vitest-environment jsdom
+import { renderMathSource } from "@oleafly/editor/math-render";
 import { describe, expect, it } from "vitest";
 import {
   enclosingMathEnvironment,
+  enclosingMathSource,
   MATH_ENVIRONMENTS,
 } from "./hover-math";
 
@@ -135,5 +138,32 @@ describe("enclosingMathEnvironment", () => {
     }
     expect(() => enclosingMathEnvironment("", 0)).not.toThrow();
     expect(enclosingMathEnvironment("", 0)).toBeNull();
+  });
+});
+
+describe("enclosingMathSource", () => {
+  it("puts the environment back around its body", () => {
+    expect(enclosingMathSource({ body: "a &= b \\\\ c &= d", environment: "align*" })).toBe(
+      "\\begin{align*}a &= b \\\\ c &= d\\end{align*}",
+    );
+  });
+
+  it("keeps a \\[ ... \\] body as it is", () => {
+    expect(enclosingMathSource({ body: " x^2 ", environment: "display" })).toBe(" x^2 ");
+  });
+
+  it.each([
+    ["equation", "a = b \\label{eq:target}"],
+    ["align", "a &= b \\label{eq:target} \\\\ c &= d \\label{eq:other}"],
+    ["gather", "a = b \\label{eq:target} \\\\ c = d"],
+    ["multline", "a + b \\\\ = c \\label{eq:target}"],
+    ["eqnarray", "a &=& b \\label{eq:target} \\\\ c &=& d"],
+  ])("gives a labelled %s that the preview renders", (environment, body) => {
+    const text = `Before.\n\\begin{${environment}}\n${body}\n\\end{${environment}}\nAfter.`;
+    const math = enclosingMathEnvironment(text, text.indexOf("\\label{eq:target}"));
+    if (!math) throw new Error(`no ${environment} found`);
+    const result = renderMathSource(enclosingMathSource(math), true);
+    expect(result.message ?? null).toBeNull();
+    expect(result.status).toBe("ready");
   });
 });

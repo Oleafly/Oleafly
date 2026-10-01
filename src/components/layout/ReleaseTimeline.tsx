@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { ExternalLink, RotateCcw } from "lucide-react";
+import { ChevronRight, ExternalLink, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PRIMARY_TEXT, ReleaseNotes } from "@/components/layout/ReleaseNotes";
+import {
+  inAppReleaseNotes,
+  leadStaysVisible,
+  outlineReleaseNotes,
+  releaseSectionFolds,
+  withoutClosingHashes,
+  type ReleaseNotesOutline,
+  type ReleaseNotesSection,
+} from "@/components/layout/release-notes-outline";
 import type { ReleaseEntry, ReleaseHistoryStatus } from "@/lib/release-history";
 import { cn } from "@/lib/utils";
 
@@ -16,27 +25,20 @@ export interface ReleaseHistoryView {
   onRetry: () => void;
 }
 
-function isBlank(char: string | undefined): boolean {
-  return char === " " || char === "\t";
-}
-
-function withoutClosingHashes(text: string): string {
-  let end = text.length;
-  while (end > 0 && isBlank(text[end - 1])) end -= 1;
-  let start = end;
-  while (start > 0 && text[start - 1] === "#") start -= 1;
-  if (start < end && (start === 0 || isBlank(text[start - 1]))) end = start;
-  return text.slice(0, end).trim();
+function leadingTitle(text: string): { title: string; rest: string } {
+  const lineEnd = text.indexOf("\n");
+  const firstLine = lineEnd === -1 ? text : text.slice(0, lineEnd);
+  const marker = /^#{1,2}[ \t]/.exec(firstLine);
+  const title = marker ? withoutClosingHashes(firstLine.slice(marker[0].length)) : "";
+  return { title, rest: lineEnd === -1 ? "" : text.slice(lineEnd + 1).trim() };
 }
 
 export function splitNotesTitle(notes: string | undefined): { title: string | null; body: string } {
-  const source = notes?.trim() ?? "";
-  const lineEnd = source.indexOf("\n");
-  const firstLine = (lineEnd === -1 ? source : source.slice(0, lineEnd)).replace(/\r$/, "");
-  const marker = /^#{1,2}[ \t]/.exec(firstLine);
-  const title = marker ? withoutClosingHashes(firstLine.slice(marker[0].length)) : "";
+  const source = inAppReleaseNotes(notes);
+  const { title, rest } = leadingTitle(source);
   if (!title) return { title: null, body: source };
-  return { title, body: lineEnd === -1 ? "" : source.slice(lineEnd + 1).trim() };
+  const repeated = leadingTitle(rest);
+  return { title, body: repeated.title === title ? repeated.rest : rest };
 }
 
 export function parseReleaseDate(value: string | null | undefined): Date | null {
@@ -155,10 +157,133 @@ function TimelineNode({ emphasis, hollow }: Readonly<{ emphasis?: boolean; hollo
   );
 }
 
+const DISCLOSURE =
+  "-mx-1.5 flex max-w-[calc(100%+0.75rem)] items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground";
+
+function DisclosureChevron({ open }: Readonly<{ open: boolean }>) {
+  return (
+    <ChevronRight
+      aria-hidden="true"
+      className={cn("size-3.5 shrink-0 text-muted-foreground motion-safe:transition-transform", open && "rotate-90")}
+    />
+  );
+}
+
+function ReleaseSection({
+  section,
+  onOpenLink,
+}: Readonly<{ section: ReleaseNotesSection; onOpenLink: (url: string) => void }>) {
+  const { t } = useTranslation(["shell"]);
+  const folds = releaseSectionFolds(section);
+  const [open, setOpen] = useState(!folds);
+  const contentId = useId();
+  const headingClass = "mb-1.5 text-sm font-semibold text-foreground";
+  return (
+    <section data-release-notes-section={section.heading} className="mt-4 first:mt-0">
+      {folds ? (
+        <h3 className={headingClass}>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls={contentId}
+            onClick={() => setOpen((value) => !value)}
+            className={DISCLOSURE}
+          >
+            <DisclosureChevron open={open} />
+            <span>{section.heading}</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {t(($) => $.shell.changelog.sectionItems, { count: section.items })}
+            </span>
+          </button>
+        </h3>
+      ) : (
+        <h3 className={headingClass}>{section.heading}</h3>
+      )}
+      <div id={contentId} hidden={!open}>
+        {open && section.body ? <ReleaseNotes source={section.body} onOpenLink={onOpenLink} /> : null}
+      </div>
+    </section>
+  );
+}
+
+function keyedSections(sections: readonly ReleaseNotesSection[]) {
+  const seen = new Map<string, number>();
+  return sections.map((section) => {
+    const occurrence = (seen.get(section.heading) ?? 0) + 1;
+    seen.set(section.heading, occurrence);
+    return { key: `${section.heading}#${occurrence}`, section };
+  });
+}
+
+function OutlinedReleaseNotes({
+  outline,
+  showLead = true,
+  onOpenLink,
+}: Readonly<{ outline: ReleaseNotesOutline; showLead?: boolean; onOpenLink: (url: string) => void }>) {
+  return (
+    <>
+      {showLead && outline.lead ? (
+        <ReleaseNotes source={outline.lead} onOpenLink={onOpenLink} className={outline.sections.length ? "mb-3" : undefined} />
+      ) : null}
+      {keyedSections(outline.sections).map(({ key, section }) => (
+        <ReleaseSection key={key} section={section} onOpenLink={onOpenLink} />
+      ))}
+    </>
+  );
+}
+
+export function ReleaseNotesBody({
+  source,
+  onOpenLink,
+}: Readonly<{ source: string; onOpenLink: (url: string) => void }>) {
+  const outline = useMemo(() => outlineReleaseNotes(source), [source]);
+  return <OutlinedReleaseNotes outline={outline} onOpenLink={onOpenLink} />;
+}
+
+function releaseSummary(outline: ReleaseNotesOutline): string {
+  return outline.sections
+    .map((section) => (section.items > 0 ? `${section.heading} ${section.items}` : section.heading))
+    .join(" · ");
+}
+
+function FoldableReleaseNotes({
+  body,
+  defaultExpanded,
+  onOpenLink,
+}: Readonly<{ body: string; defaultExpanded: boolean; onOpenLink: (url: string) => void }>) {
+  const { t } = useTranslation(["shell"]);
+  const outline = useMemo(() => outlineReleaseNotes(body), [body]);
+  const [toggled, setToggled] = useState<boolean | null>(null);
+  const contentId = useId();
+  const leadVisible = leadStaysVisible(outline.lead);
+  const foldable = outline.sections.length > 0 || Boolean(outline.lead && !leadVisible);
+  if (defaultExpanded || !foldable) return <OutlinedReleaseNotes outline={outline} onOpenLink={onOpenLink} />;
+  const expanded = toggled ?? false;
+  return (
+    <>
+      {leadVisible ? <ReleaseNotes source={outline.lead} onOpenLink={onOpenLink} className="mb-1.5" /> : null}
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={contentId}
+        onClick={() => setToggled(!expanded)}
+        className={cn(DISCLOSURE, "text-xs text-muted-foreground")}
+      >
+        <DisclosureChevron open={expanded} />
+        <span className="min-w-0 truncate">{releaseSummary(outline) || t(($) => $.shell.changelog.showNotes)}</span>
+      </button>
+      <div id={contentId} hidden={!expanded} className="mt-2">
+        {expanded ? <OutlinedReleaseNotes outline={outline} showLead={!leadVisible} onOpenLink={onOpenLink} /> : null}
+      </div>
+    </>
+  );
+}
+
 function TimelineItem({
   sectionKey,
   entry,
   installed,
+  defaultExpanded,
   locale,
   now,
   onOpenLink,
@@ -166,6 +291,7 @@ function TimelineItem({
   sectionKey: string;
   entry: ReleaseEntry;
   installed: boolean;
+  defaultExpanded: boolean;
   locale: string;
   now: () => number;
   onOpenLink: (url: string) => void;
@@ -200,16 +326,19 @@ function TimelineItem({
           <ExternalLink aria-hidden="true" className="size-3" />
         </button>
       </div>
-      {body ? <ReleaseNotes source={body} onOpenLink={onOpenLink} /> : null}
+      {body ? <FoldableReleaseNotes body={body} defaultExpanded={defaultExpanded} onOpenLink={onOpenLink} /> : null}
     </li>
   );
 }
+
+const EXPAND_EVERY_RELEASE = () => true;
 
 export function ReleaseTimeline({
   scrollRef,
   history,
   lead,
   installedVersion,
+  expandRelease = EXPAND_EVERY_RELEASE,
   endLabel,
   locale,
   now = Date.now,
@@ -219,6 +348,7 @@ export function ReleaseTimeline({
   history?: ReleaseHistoryView;
   lead?: { version: string; content: ReactNode };
   installedVersion?: string;
+  expandRelease?: (entry: ReleaseEntry, index: number) => boolean;
   endLabel?: string | null;
   locale: string;
   now?: () => number;
@@ -272,12 +402,13 @@ export function ReleaseTimeline({
           {lead.content}
         </li>
       )}
-      {history?.entries.map((entry) => (
+      {history?.entries.map((entry, index) => (
         <TimelineItem
           key={entry.version}
           sectionKey={entry.version}
           entry={entry}
           installed={Boolean(installedVersion) && entry.version === installedVersion}
+          defaultExpanded={expandRelease(entry, index)}
           locale={locale}
           now={now}
           onOpenLink={onOpenLink}

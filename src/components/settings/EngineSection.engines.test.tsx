@@ -32,6 +32,7 @@ import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { useEngineStore } from "@/store/engine";
 import { useSettingsStore } from "@/store/settings";
+import { resetDisplayHomes } from "@/lib/display-path";
 import { EngineSection } from "@/components/settings/EngineSection";
 
 const engineCopy = enSettings.engine;
@@ -66,6 +67,7 @@ function backend(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetDisplayHomes();
   backend();
   mocks.ensurePandoc.mockResolvedValue(true);
   useEngineStore.setState({
@@ -139,6 +141,41 @@ describe("EngineSection LaTeX tab", () => {
     expect(await screen.findByText("Bare TeX")).toBeInTheDocument();
     expect(screen.getByText("/opt/tex")).toBeInTheDocument();
     expect(screen.queryByText("tlmgr")).not.toBeInTheDocument();
+  });
+
+  it("shows paths under the home folder with ~", async () => {
+    const user = userEvent.setup();
+    const tinytex = "/Users/ada/.oleafly/tinytex/bin/universal-darwin";
+    const managed = { ...systemEngine, kind: "tinytex" as const, latexmk: `${tinytex}/latexmk` };
+    backend({
+      display_homes: ["/Users/ada"],
+      latex_engine_info: managed,
+      tex_distributions: [
+        distro({
+          kind: "oleafly-tinytex",
+          label: "TinyTeX (managed)",
+          bin_dir: tinytex,
+          latexmk: `${tinytex}/latexmk`,
+          tlmgr: `${tinytex}/tlmgr`,
+        }),
+      ],
+    });
+    useEngineStore.setState({ info: managed });
+    render(<EngineSection />);
+
+    expect(
+      await screen.findByText("~/.oleafly/tinytex/bin/universal-darwin"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("~/.oleafly/tinytex/bin/universal-darwin/latexmk"),
+    ).toBeInTheDocument();
+    await user.hover(screen.getByText("TinyTeX (managed)").nextElementSibling as HTMLElement);
+    expect(
+      await screen.findByText(/~\/\.oleafly\/tinytex\/bin\/universal-darwin/, {
+        selector: "[role=tooltip]",
+      }),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("/Users/ada");
   });
 
   it("removes a managed TinyTeX install", async () => {

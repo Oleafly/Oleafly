@@ -749,7 +749,9 @@
     "noResponse": "Inget svar kom på det här meddelandet. Strömmen avbröts. Skicka det igen, eller starta en ny chatt.",
     "scrollToBottom": "Rulla längst ner",
     "projectSubtitle": "Arbetar med \"{{project}}\"",
-    "noOutput": "Modellen gav ingen utdata. Kontrollera Inställningar → AI-assistent."
+    "noOutput": "Modellen gav ingen utdata. Kontrollera Inställningar → AI-assistent.",
+    "planMissing": "Det finns ingen plan att godkänna än. Be assistenten om en, eller stäng av Plan.",
+    "planUnchanged": "Planen är oförändrad."
   },
   "followUps": {
     "steered": "Styrd in i den pågående turen: {{summary}}",

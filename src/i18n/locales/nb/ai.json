@@ -749,7 +749,9 @@
     "noResponse": "Det kom ikke noe svar på denne meldingen. Strømmen ble avbrutt. Send den på nytt, eller start en ny samtale.",
     "scrollToBottom": "Rull til bunnen",
     "projectSubtitle": "Jobber med \"{{project}}\"",
-    "noOutput": "Modellen ga ingenting tilbake. Se Innstillinger → AI-assistent."
+    "noOutput": "Modellen ga ingenting tilbake. Se Innstillinger → AI-assistent.",
+    "planMissing": "Det finnes ingen plan å godkjenne ennå. Be assistenten om en, eller slå av Plan.",
+    "planUnchanged": "Planen er uendret."
   },
   "followUps": {
     "steered": "Styrt inn i innlegget som kjører: {{summary}}",

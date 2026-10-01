@@ -21,6 +21,8 @@ import { BetaBadge } from "@/components/ui/beta-badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu, THEME_PREFERENCES, themePreferenceLabel, themeMenuLabel } from "@/components/layout/ThemeControls";
+import { PersonalDetailsMenuItem, PersonalDetailsToggle } from "@/components/layout/PersonalDetailsToggle";
+import { useHidePersonalDetails } from "@/components/ui/private";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
 import { TOOLBAR_OVERFLOW } from "@/lib/use-toolbar-layout";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -174,6 +176,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const setAssistantOpen = useSettingsStore((s) => s.setAssistantOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const personalDetailsHidden = useHidePersonalDetails();
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
   const terminalLabel = terminalOpen
@@ -235,6 +238,9 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
       <ToolbarAction name="theme" order={TOOLBAR_OVERFLOW.theme} hidden={hideTheme}>
         <ThemeMenu key={hideTheme ? "hidden" : "visible"} triggerClassName={dockBtn(false)} />
       </ToolbarAction>
+      <ToolbarAction name="personal-details" order={TOOLBAR_OVERFLOW.theme} hidden={hideTheme}>
+        <PersonalDetailsToggle className={dockBtn(personalDetailsHidden)} />
+      </ToolbarAction>
       <ToolbarAction name="settings" order={TOOLBAR_OVERFLOW.settings} hidden={hideSettings}>
         <Tooltip label={t(($) => $.shell.dock.settings)} side="bottom">
           <Button type="button" variant="ghost" size="icon" className={dockBtn(false)}
@@ -275,6 +281,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
               </DropdownMenuRadioGroup>
             </DropdownMenuSubContent></DropdownMenuPortal>
           </DropdownMenuSub>}
+          {hideTheme && <PersonalDetailsMenuItem />}
           {hideSettings && <DropdownMenuItem data-testid="open-settings" onSelect={() => setSettingsOpen(true)}>
             <SettingsIcon className="size-4" />{t(($) => $.shell.dock.settings)}
           </DropdownMenuItem>}

@@ -749,7 +749,9 @@
     "noResponse": "Bu ileti için yanıt gelmedi. Akış kesildi. Yeniden gönderin veya yeni bir sohbet başlatın.",
     "scrollToBottom": "En alta kaydır",
     "projectSubtitle": "\"{{project}}\" üzerinde çalışılıyor",
-    "noOutput": "Model hiçbir çıktı döndürmedi. Ayarlar → Yapay zeka asistanı bölümüne bakın."
+    "noOutput": "Model hiçbir çıktı döndürmedi. Ayarlar → Yapay zeka asistanı bölümüne bakın.",
+    "planMissing": "Henüz onaylanacak bir plan yok. Asistandan bir plan isteyin veya Plan'ı kapatın.",
+    "planUnchanged": "Plan değişmedi."
   },
   "followUps": {
     "steered": "Çalışan tura yönlendirildi: {{summary}}",

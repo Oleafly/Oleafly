@@ -57,6 +57,16 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   `~/.oleafly/tinytex` and user TinyTeX installations follow. Symlinks into
   TinyTeX remain in the TinyTeX tier. The same ordered list feeds tool lookup,
   Settings, and the compile child's `PATH`.
+- On macOS, TeX Live's Biber and the one in managed TinyTeX are universal
+  binaries. Their PAR::Packer loader calls `lipo -extract_family` every time
+  Biber starts. Recent Xcode's lipo rejects that flag, and a Mac without
+  developer tools has no lipo at all, so Biber exits before it reads anything.
+  Before a `latexmk` compile, Oleafly copies the slice for the Mac's CPU out of
+  the universal file into `~/.oleafly/assets/biber/<fingerprint>/bin` (the same
+  bytes `lipo -thin` would write) and puts that folder first on the child's
+  `PATH`. The copy sits in that Biber's unpack folder, so pruning deletes it
+  once TeX Live replaces the Biber. The `oleaflyc` CLI and `latexmk` runs from
+  the in-app terminal don't get this yet.
 - The underlying TeX engine is chosen from the source: a
   `% !TeX program = xelatex|lualatex|pdflatex` magic comment wins. fontspec /
   polyglossia / unicode-math force XeLaTeX. Everything else uses pdfLaTeX

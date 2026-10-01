@@ -56,6 +56,12 @@ pub fn library_root() -> Result<std::path::PathBuf, String> {
     paths::projects_root()
 }
 
+/// The home folder spellings the UI shows as `~` when it prints a path.
+#[tauri::command]
+pub fn display_homes() -> Vec<String> {
+    crate::project_availability::display_homes()
+}
+
 /// Returns the compiled-in app version (from Cargo.toml).
 #[tauri::command]
 pub fn app_version() -> &'static str {

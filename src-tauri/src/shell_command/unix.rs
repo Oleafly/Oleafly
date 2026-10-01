@@ -437,11 +437,7 @@ pub(crate) fn path_hint(
 }
 
 pub(crate) fn tilde(path: &Path, home: &Path) -> String {
-    match path.strip_prefix(home) {
-        Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
-        Ok(rest) => format!("~/{}", rest.display()),
-        Err(_) => path.display().to_string(),
-    }
+    crate::project_availability::abbreviated_display_path(path, Some(home))
 }
 
 pub(crate) fn shell_path(shell: Option<&Path>, start: ShellStart) -> Vec<PathBuf> {

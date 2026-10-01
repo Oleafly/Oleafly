@@ -9,8 +9,13 @@ import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
 import { latexCommandKeyTokens } from "@/lib/project-intelligence/analyze-file";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import {
+  definitionCandidatesForUse,
+  definitionsByKey,
+} from "@/lib/project-intelligence/resolution";
+import {
   referencesFor,
 } from "@/lib/project-intelligence/selectors";
+import { engineForPath } from "@/lib/project-intelligence/source";
 import type {
   ProjectDefinition,
   ProjectIntelligenceSnapshot,
@@ -44,7 +49,7 @@ interface VisualPluginState {
 
 interface VisualLookup {
   definitionsById: ReadonlyMap<string, ProjectDefinition>;
-  definitionsByName: ReadonlyMap<string, readonly ProjectDefinition[]>;
+  definitionsByKey: ReadonlyMap<string, readonly ProjectDefinition[]>;
   usesById: ReadonlyMap<string, ProjectUse>;
   usesByFileAndName: ReadonlyMap<string, readonly ProjectUse[]>;
 }
@@ -64,13 +69,9 @@ function lookupFor(snapshot: ProjectIntelligenceSnapshot): VisualLookup {
   const cached = visualLookupCache.get(snapshot);
   if (cached) return cached;
 
-  const definitionsByName = new Map<string, ProjectDefinition[]>();
   const definitionsById = new Map<string, ProjectDefinition>();
   for (const definition of snapshot.definitions) {
     definitionsById.set(definition.id, definition);
-    const sameName = definitionsByName.get(definition.name) ?? [];
-    sameName.push(definition);
-    definitionsByName.set(definition.name, sameName);
   }
   const usesByFileAndName = new Map<string, ProjectUse[]>();
   const usesById = new Map<string, ProjectUse>();
@@ -83,7 +84,7 @@ function lookupFor(snapshot: ProjectIntelligenceSnapshot): VisualLookup {
   }
   const lookup: VisualLookup = {
     definitionsById,
-    definitionsByName,
+    definitionsByKey: definitionsByKey(snapshot.definitions),
     usesById,
     usesByFileAndName,
   };
@@ -138,25 +139,59 @@ function resolvedToken(
   return use ? { ...token, useId: use.id } : token;
 }
 
-function acceptedDefinitionKinds(
+const EMPTY_RANGE = {
+  from: 0,
+  to: 0,
+  startLine: 1,
+  startColumn: 0,
+  endLine: 1,
+  endColumn: 0,
+} as const;
+
+function tokenUseKinds(
   kind: VisualToken["kind"],
-): Set<ProjectDefinition["kind"]> {
-  if (kind === "citation") {
-    return new Set<ProjectDefinition["kind"]>(["bibentry"]);
+): readonly ("citation" | "reference")[] {
+  if (kind === "citation") return ["citation"];
+  if (kind === "reference") return ["reference"];
+  return ["citation", "reference"];
+}
+
+/**
+ * Definitions a token with no resolved use can mean, found the way the worker
+ * resolves a use of that kind in this file. A Markdown reference therefore
+ * only sees anchors in its own file, and a LaTeX or Typst label of the same
+ * name elsewhere cannot make it look ambiguous.
+ */
+function candidateDefinitions(
+  lookup: VisualLookup,
+  path: string,
+  token: VisualToken,
+): readonly ProjectDefinition[] {
+  const engine = engineForPath(path);
+  if (!engine) return [];
+  const seen = new Set<string>();
+  const candidates: ProjectDefinition[] = [];
+  for (const kind of tokenUseKinds(token.kind)) {
+    const use: ProjectUse = {
+      id: "",
+      source: "local",
+      engine,
+      kind,
+      name: token.key,
+      location: { file: path, range: EMPTY_RANGE },
+      resolution: "unresolved",
+      definitionIds: [],
+    };
+    for (const definition of definitionCandidatesForUse(
+      use,
+      lookup.definitionsByKey,
+    )) {
+      if (seen.has(definition.id)) continue;
+      seen.add(definition.id);
+      candidates.push(definition);
+    }
   }
-  if (kind === "reference") {
-    return new Set<ProjectDefinition["kind"]>([
-      "label",
-      "anchor",
-      "section",
-    ]);
-  }
-  return new Set<ProjectDefinition["kind"]>([
-    "bibentry",
-    "label",
-    "anchor",
-    "section",
-  ]);
+  return candidates;
 }
 
 function definitionsForToken(
@@ -174,10 +209,7 @@ function definitionsForToken(
       }) ?? [];
     if (definitions.length > 0) return definitions;
   }
-  const kinds = acceptedDefinitionKinds(token.kind);
-  const candidates = (
-    lookup.definitionsByName.get(token.key) ?? []
-  ).filter((definition) => kinds.has(definition.kind));
+  const candidates = candidateDefinitions(lookup, path, token);
   if (candidates.length > 0) return candidates;
 
   const fallbackUse = usesForToken(snapshot, path, token)[0];

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { Private } from "@/components/ui/private";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { asUnavailable, type UnavailableFolder } from "@/components/library/folder-state";
+import { useDisplayPath } from "@/lib/display-path";
 import { folderDisplayPath, folderUnavailable } from "@/lib/library-projects";
 import { adoptReplacedFolder, locateProjectFolder, type ProjectInfo } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
@@ -24,11 +26,18 @@ type FolderCopyValues = { name: string; path: string };
 
 type FolderCopy = { title: string; body: ReactNode };
 
+// Screenshot mode blurs the folder path (the sentence stays readable).
+function PathBadge({ children }: Readonly<{ children?: ReactNode }>) {
+  return (
+    <Private className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground break-all box-decoration-clone">
+      {children}
+    </Private>
+  );
+}
+
 const PATH_BADGE = {
   components: {
-    path: (
-      <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground break-all box-decoration-clone" />
-    ),
+    path: <PathBadge />,
   },
   tOptions: { interpolation: { escapeValue: true } },
   shouldUnescape: true,
@@ -215,6 +224,7 @@ export function FolderUnavailableDialog({
 }>) {
   const { t } = useTranslation(["common", "library"]);
   const check = useLibraryAvailabilityStore((state) => state.check);
+  const displayPath = useDisplayPath();
   const [busy, setBusy] = useState<Busy>(null);
   const [still, setStill] = useState(false);
   const [state, setState] = useState<UnavailableFolder>(availability);
@@ -236,7 +246,9 @@ export function FolderUnavailableDialog({
   }, [state, reachable, busy]);
 
   if (!project) return null;
-  const values = { name: project.name, path: folderDisplayPath(project) ?? "" };
+  // The backend shortens a linked folder with one home only, so run its path
+  // through every home the UI knows (Windows with HOME set elsewhere).
+  const values = { name: project.name, path: displayPath(folderDisplayPath(project) ?? "") };
   const copy = folderDialogCopy(t, state, reachable, values);
 
   const run = (action: Exclude<Busy, null>, scope: string, work: () => Promise<void>) => {

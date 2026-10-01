@@ -4,6 +4,7 @@ import type { ChatMessage, ToolDiff, ToolEntry } from "@/store/chats";
 import type { RenderedMessage } from "@/components/ai/MessageList";
 import { i18n } from "@/i18n";
 import { splitAgentNotices } from "@/lib/chat-activity";
+import { displayPath, displayText } from "@/lib/display-path";
 import { formatBytes } from "@/lib/format-bytes";
 
 type Data = Record<string, unknown>;
@@ -25,8 +26,9 @@ function noticed(
   };
 }
 
+// Compared after display formatting: shown error rows hold `~` paths.
 function bareFailure(value: string): string {
-  return value.replace(/^\s*(?:internal error|error)\s*:\s*/i, "").trim().toLowerCase();
+  return displayText(value).replace(/^\s*(?:internal error|error)\s*:\s*/i, "").trim().toLowerCase();
 }
 
 function alreadySaid(rows: readonly Row[], turn: string | null, failure: string): boolean {
@@ -45,7 +47,8 @@ function toolOutput(data: Data): string {
   if (!Array.isArray(data.content)) return "";
   return data.content.map((entry: unknown) => {
     const value = object(entry);
-    if (value.type === "content") return text(object(value.content).text);
+    // Command and read results name files too (`pwd`, `ls`, a Read of a path).
+    if (value.type === "content") return displayText(text(object(value.content).text));
     if (value.type === "terminal") return i18n.t(($) => $.ai.acp.terminalCommand);
     return "";
   }).filter(Boolean).join("\n");
@@ -62,8 +65,9 @@ function toolDiffs(data: Data): ToolDiff[] | undefined {
     const value = object(entry);
     if (value.type !== "diff" || !text(value.path)) return [];
     const truncated = value.truncated === true;
+    // The card shows the path, so a file outside the project reads `~/…`.
     return [{
-      path: text(value.path),
+      path: displayPath(text(value.path)),
       oldText: truncated ? null : optionalText(value.oldText),
       newText: truncated ? null : optionalText(value.newText),
       truncated,
@@ -154,7 +158,8 @@ function applyToolCall(state: ProjectionState, event: AcpEvent): boolean {
   const previous = index === undefined ? undefined : state.rows[index].msg.toolCalls?.[0];
   const tool: ToolEntry = {
     id: toolId,
-    name: text(data.title) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback),
+    // Agents title tool calls with absolute paths ("Read /Users/…/main.tex").
+    name: displayText(text(data.title)) || previous?.name || i18n.t(($) => $.ai.acp.agentToolFallback),
     status: toolStatus(data.status, previous?.status),
     output: data.content ? toolOutput(data) : previous?.output,
     diffs: data.content ? toolDiffs(data) : previous?.diffs,
@@ -180,7 +185,7 @@ function planContent(entries: readonly unknown[]): string {
 
 /** Adds the row a diagnostics event explains itself with; false when it shows nothing. */
 function applyDiagnostics(state: ProjectionState, event: AcpEvent): boolean {
-  const detail = text(event.data.stderr);
+  const detail = displayText(text(event.data.stderr));
   if (detail) {
     appendRow(
       state,
@@ -233,7 +238,7 @@ function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
   if (!terminal) return;
   closeTurn(state, event.turnId);
   if (data.error && !alreadySaid(state.rows, event.turnId, text(data.error))) {
-    appendRow(state, event, "error", noticed({ role: "assistant", content: "" }, text(data.error)));
+    appendRow(state, event, "error", noticed({ role: "assistant", content: "" }, displayText(text(data.error))));
   }
 }
 

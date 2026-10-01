@@ -7,6 +7,7 @@ import { toml } from "@codemirror/legacy-modes/mode/toml";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { recompileShortcutBinding } from "@/components/editor/cm/recompile-shortcut";
 import { editorTheme } from "@/components/editor/cm/theme";
 import { cn } from "@/lib/utils";
 import { describeError } from "@/lib/app-error";
@@ -81,7 +82,7 @@ export function ApprovalsFileEditor() {
         extensions: [
           lineNumbers(),
           history(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          keymap.of([recompileShortcutBinding, ...defaultKeymap, ...historyKeymap]),
           StreamLanguage.define(toml),
           editorTheme(),
           EditorView.updateListener.of((update) => {

@@ -5,6 +5,7 @@ import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Input } from "@/components/ui/input";
+import { PrivatePath, PrivateText } from "@/components/ui/private";
 import { fileName, isPowerShellScript } from "@/components/ai/acp/agent-copy";
 import { i18n } from "@/i18n";
 import {
@@ -18,6 +19,7 @@ import {
   type AcpRejectReason,
 } from "@/lib/acp";
 import { decodeAppError, describeError } from "@/lib/app-error";
+import { useDisplayText } from "@/lib/display-path";
 import { isWindows } from "@/lib/utils";
 
 export const NODE_DOWNLOAD_URL = "https://nodejs.org/en/download";
@@ -343,7 +345,7 @@ export function AgentProgramField({
       <div className="min-w-0">
         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
         <p className={path ? "mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground" : "mt-1 text-xs leading-relaxed text-muted-foreground"}>
-          {valueText}
+          {path ? <PrivatePath path={path} /> : valueText}
         </p>
         {source && <p className="text-[11px] leading-relaxed text-muted-foreground">{source}</p>}
       </div>
@@ -362,6 +364,7 @@ export function AgentProgramField({
           <Input
             id={inputId}
             data-testid={`acp-agent-program-input-${id}`}
+            data-private-field={typed ? "" : undefined}
             className="h-8 font-mono text-xs focus-visible:border-ring"
             value={typed}
             maxLength={4096}
@@ -437,7 +440,9 @@ export function AgentProgramField({
           <ul aria-label={t(($) => $.settings.ai.agents.program.skippedTitle)} className="space-y-1.5">
             {rejected.map((candidate) => (
               <li key={`${candidate.path}:${candidate.reason}`} className="min-w-0 text-[11px] leading-relaxed">
-                <span className="block break-all font-mono text-foreground">{candidate.path}</span>
+                <span className="block break-all font-mono text-foreground">
+                  <PrivatePath path={candidate.path} />
+                </span>
                 <span className="block text-muted-foreground">{skippedReasonLabel(candidate.reason)}</span>
               </li>
             ))}
@@ -466,6 +471,8 @@ function ProgramResult({
   onOpenTerminal?: () => void;
 }>) {
   const { t } = useTranslation(["common", "settings"]);
+  // Shown with the home folder as ~; Copy details keeps the real paths.
+  const displayText = useDisplayText();
   const testId = `acp-agent-program-result-${agent.definition.id}`;
   if (phase.kind === "saved") {
     return (
@@ -477,7 +484,7 @@ function ProgramResult({
   if (phase.kind === "error") {
     return (
       <p role="alert" data-testid={testId} className="whitespace-pre-wrap break-words rounded-md border border-destructive/40 p-2 text-xs text-destructive">
-        {phase.message}
+        <PrivateText text={displayText(phase.message)} />
       </p>
     );
   }
@@ -489,7 +496,9 @@ function ProgramResult({
       <div data-testid={testId} className="space-y-1">
         <output aria-live="polite" className="flex items-start gap-1.5 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400">
           <Check aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-          <span>{message}</span>
+          <span>
+            <PrivateText text={displayText(message)} />
+          </span>
         </output>
         {agent.signInHint && (
           <p className="text-[11px] leading-relaxed text-muted-foreground">{agent.signInHint}</p>
@@ -504,15 +513,17 @@ function ProgramResult({
   return (
     <div data-testid={testId} className="space-y-2 rounded-md border border-destructive/40 p-2">
       <p role="alert" className="break-words text-xs leading-relaxed text-destructive">
-        {message}
+        <PrivateText text={displayText(message)} />
       </p>
       {showDetail && (
         <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/50 p-2 font-mono text-[11px] text-muted-foreground">
-          {check.detail}
+          <PrivateText text={displayText(check.detail ?? "")} />
         </pre>
       )}
       {code === "bridge_missing" && !onInstallBridge && agent.reason && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{agent.reason}</p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <PrivateText text={displayText(agent.reason)} />
+        </p>
       )}
       <div className="flex flex-wrap gap-2">
         {(INSPECT_CODES.has(code) || code === "cli_missing") && (

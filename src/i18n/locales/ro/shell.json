@@ -64,7 +64,11 @@
     "setHomePage": "Setează ca pagină de start"
   },
   "changelog": {
-    "installed": "Ai această versiune"
+    "installed": "Ai această versiune",
+    "sectionItems_one": "{{count}} modificare",
+    "sectionItems_few": "{{count}} modificări",
+    "sectionItems_other": "{{count}} de modificări",
+    "showNotes": "Arată notele de lansare"
   },
   "citeOleafly": {
     "description": "Nu s-a găsit niciun fișier de bibliografie în acest proiect, așa că nu s-a schimbat nimic. Copiază intrarea de mai jos în bibliografia ta sau găsește-o din nou mai târziu în Setări, Ajutor și Despre.",
@@ -167,6 +171,9 @@
       "online": "Mod online (permite descărcarea pachetelor)"
     },
     "openTool": "Deschide {{name}}",
+    "personalDetails": {
+      "keywords": "mod captură de ecran, captură de ecran, confidențialitate, estompare, căi, nume de cont"
+    },
     "recompile": {
       "label": "Recompilează"
     },
@@ -513,6 +520,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Ascunde datele personale",
+    "show": "Arată datele personale"
+  },
   "projectSearch": {
     "hint": "Caută în fișierele acestui proiect.",
     "noResults": "Niciun rezultat.",
@@ -766,6 +777,26 @@
       "help": "Ajutor și Despre",
       "integrations": "Integrări",
       "shortcuts": "Scurtături de tastatură"
+    },
+    "search": {
+      "empty": "Nicio setare nu se potrivește.",
+      "keywords": {
+        "ai": "asistent, chat, conversație, modele, furnizori, chei API, agenți, prompturi, buget, servere MCP",
+        "appearance": "temă, mod întunecat, mod luminos, culoare, fonturi, mărimea textului, zoom, aspect, dispunere",
+        "data": "backup, copie de rezervă, folderul bibliotecii, folderul proiectelor, stocare, spațiu pe disc, coș de gunoi, ștergere proiecte, puncte de control",
+        "dictionary": "ortografie, cuvinte proprii, cuvinte ignorate, corectură, reguli gramaticale",
+        "downloads": "pachete, fonturi, dicționare, fișiere offline",
+        "engine": "compilator, LaTeX, TeX, Typst, Markdown, pandoc, compilare, PDF",
+        "experimentation": "laborator, beta, funcții timpurii, experimental",
+        "general": "preferințe, limbă, regiune, verificare ortografică, ortografie, greșeli de scriere, offline, tururi, comandă terminal",
+        "help": "despre, versiune, actualizări, jurnal de modificări, noutăți, documentație, asistență, ajutor, comunitate, Discord, licență, raport de eroare",
+        "integrations": "Zotero, GitHub, MCP, citări, conturi, conexiuni",
+        "shortcuts": "scurtături de tastatură, scurtături, combinații de taste, taste, tastatură"
+      },
+      "label": "Caută în setări",
+      "results_one": "{{count}} secțiune se potrivește",
+      "results_few": "{{count}} secțiuni se potrivesc",
+      "results_other": "{{count}} de secțiuni se potrivesc"
     },
     "sectionsNav": "Secțiunile setărilor",
     "title": "Setări",

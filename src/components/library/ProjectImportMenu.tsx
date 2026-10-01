@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Private } from "@/components/ui/private";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
@@ -185,9 +186,9 @@ export function ProjectImportMenu({
           className="group gap-2"
         >
           <Github className="size-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate">
+          <Private focusable={false} className="min-w-0 flex-1 truncate">
             {repository.full_name}
-          </span>
+          </Private>
           {repository.private ? (
             <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
               <span

@@ -2,6 +2,8 @@ import { useId, useState } from "react";
 import { FileDiff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { DiffPreview } from "@/components/ai/turns/DiffPreview";
+import { Private, PrivateText } from "@/components/ui/private";
+import { useDisplayPath } from "@/lib/display-path";
 import { cn } from "@/lib/utils";
 
 export interface ProposedChange {
@@ -17,12 +19,15 @@ function ChangeRow({
   onToggle,
 }: Readonly<{ change: ProposedChange; open: boolean; onToggle: () => void }>) {
   const { t } = useTranslation(["common", "ai"]);
+  // A file outside the project arrives as an absolute path; show it as `~/…`.
+  const displayPath = useDisplayPath();
+  const shown = displayPath(change.path);
   const pathId = useId();
   const panelId = useId();
   if (change.truncated) {
     return (
       <li className="px-1 py-0.5 text-[11px] text-muted-foreground">
-        {t(($) => $.ai.acp.permission.diff.large, { path: change.path })}
+        <PrivateText text={t(($) => $.ai.acp.permission.diff.large, { path: shown })} />
       </li>
     );
   }
@@ -31,7 +36,7 @@ function ChangeRow({
       <div className="flex min-w-0 items-center gap-2">
         <FileDiff aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
         <span id={pathId} className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground">
-          {change.path}
+          <Private>{shown}</Private>
         </span>
         <button
           type="button"
@@ -50,7 +55,7 @@ function ChangeRow({
             path={change.path}
             oldText={change.oldText ?? ""}
             newText={change.newText ?? ""}
-            label={t(($) => $.ai.acp.permission.diff.label, { path: change.path })}
+            label={t(($) => $.ai.acp.permission.diff.label, { path: shown })}
             loadingLabel={t(($) => $.ai.acp.permission.diff.loading)}
           />
         </div>
@@ -76,6 +81,7 @@ export function ChangeList({
   testId?: string;
 }>) {
   const [open, setOpen] = useState<number | null>(null);
+  const displayPath = useDisplayPath();
   const shown = new Set(changes.map((change) => change.path));
   const seen = new Map<string, number>();
   const keys = changes.map((change) => {
@@ -98,7 +104,9 @@ export function ChangeList({
       {others.map((path) => (
         <li key={path} className="flex min-w-0 items-center gap-2 py-0.5">
           <FileDiff aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground">{path}</span>
+          <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-foreground">
+            <Private>{displayPath(path)}</Private>
+          </span>
         </li>
       ))}
     </ul>

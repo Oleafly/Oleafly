@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { AcpEvent } from "@/lib/acp";
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import { createAcpProjector, projectAcpEvents } from "./projection";
 
 function event(sequence: number, kind: string, data: Record<string, unknown>, turnId = "turn-1"): AcpEvent {
@@ -8,6 +9,48 @@ function event(sequence: number, kind: string, data: Record<string, unknown>, tu
 const chunk = (sequence: number, text: string) => event(sequence, "agent_message_chunk", { content: { type: "text", text } });
 
 describe("ACP conversation projection", () => {
+  afterEach(() => resetDisplayHomes());
+
+  it("shows home paths in agent titles, diffs and stderr as ~", () => {
+    setDisplayHomes(["/Users/ada"]);
+    const main = "/Users/ada/.oleafly/projects/p/main.tex";
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "read", title: `Read ${main}`, status: "in_progress" }),
+      event(2, "tool_call_update", {
+        toolCallId: "read",
+        status: "completed",
+        content: [{ type: "diff", path: main, oldText: "a", newText: "b" }],
+      }),
+      event(3, "diagnostics", { stderr: `warning: could not open ${main}` }),
+    ], false);
+    expect(rows[0].msg.toolCalls?.[0]).toMatchObject({
+      name: "Read ~/.oleafly/projects/p/main.tex",
+      diffs: [{ path: "~/.oleafly/projects/p/main.tex", oldText: "a", newText: "b", truncated: false }],
+    });
+    expect(rows[1].msg.content).toContain("could not open ~/.oleafly/projects/p/main.tex");
+    expect(JSON.stringify(rows)).not.toContain("/Users/ada");
+  });
+
+  it("shows home paths in tool output as ~", () => {
+    setDisplayHomes(["/Users/ada"]);
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "pwd", title: "Run pwd", status: "in_progress" }),
+      event(2, "tool_call_update", {
+        toolCallId: "pwd",
+        status: "completed",
+        content: [{ type: "content", content: { type: "text", text: "/Users/ada/x\n/Users/ada" } }],
+      }),
+    ], false);
+    expect(rows[0].msg.toolCalls?.[0].output).toBe("~/x\n~");
+  });
+
+  it("keeps the agent's reply as written, so copy gets the real path", () => {
+    // The message bubble shows it with ~ (chat-parts); the row keeps the source.
+    setDisplayHomes(["/Users/ada"]);
+    const rows = projectAcpEvents([chunk(1, "I updated /Users/ada/y.")], false);
+    expect(rows[0].msg.content).toBe("I updated /Users/ada/y.");
+  });
+
   it("splits the Codex skills budget warning off the answer", () => {
     const project = createAcpProjector();
     const first = [chunk(1, "Warning: Exceeded skills context budget")];

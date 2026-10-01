@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Private } from "@/components/ui/private";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { githubListRepos, type GitHubRepo } from "@/lib/github";
 import {
@@ -265,7 +266,9 @@ export function ProjectImportDialog({
             className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-60"
           >
             <Github aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1 truncate text-sm">{repository.full_name}</span>
+            <Private focusable={false} className="min-w-0 flex-1 truncate text-sm">
+              {repository.full_name}
+            </Private>
             {repository.private ? (
               <Tooltip label={t(($) => $.library.import.privateRepository)} side="top">
                 <span

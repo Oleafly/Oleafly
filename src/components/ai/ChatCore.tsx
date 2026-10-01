@@ -1,10 +1,11 @@
-import { lazy, Suspense, useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { lazy, Suspense, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import type { AssistantContent, ModelMessage, ToolSet, UserContent } from "@/lib/chat-types";
 import { runAgentHarness, toAgentMessages } from "./agent-turn";
+import { PlanNote } from "./PlanNote";
 import { DeltaQueues, MAX_BATCH, normalizeAgentUsage } from "@oleafly/ai-core";
 import {
   DEFAULT_APPROVAL_MODE,
@@ -217,6 +218,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover } from "@/components/ui/popover";
+import { Private } from "@/components/ui/private";
 import {
   cancelChatRun,
   ChatRunIsolation,
@@ -661,6 +663,29 @@ export async function mentionAttachments(
 }
 
 const EMPTY_FOLLOW_UPS: QueuedFollowUp[] = [];
+
+// The status pill floats over the bottom of the message scroller (bottom-2).
+// The scroller keeps pb-12 for the pill alone; while its card is pinned open
+// it reserves the overlay's measured height plus the offset and a small gap.
+const STATUS_PILL_ROOM_PX = 48;
+const STATUS_OVERLAY_OFFSET_PX = 8;
+const STATUS_CARD_GAP_PX = 12;
+// Card height cap: max-h-72 at most, never below a usable 96px, and in a
+// short chat small enough that the pill, its gaps and ~120px of the reply
+// stay visible above the composer.
+const STATUS_CARD_MAX_PX = 288;
+const STATUS_CARD_MIN_PX = 96;
+const STATUS_CARD_CHROME_PX = 56;
+const REPLY_MIN_VISIBLE_PX = 120;
+const NO_STATUS_OVERLAY_BOX = { overlay: 0, scroller: 0 };
+
+function statusCardMaxHeight(scrollerHeight: number): number | undefined {
+  if (scrollerHeight <= 0) return undefined;
+  return Math.max(
+    STATUS_CARD_MIN_PX,
+    Math.min(STATUS_CARD_MAX_PX, scrollerHeight - REPLY_MIN_VISIBLE_PX - STATUS_CARD_CHROME_PX),
+  );
+}
 
 type ModelNotice = { providerId: string; modelId: string } & (
   | { kind: "checking" }
@@ -2177,6 +2202,7 @@ export function ChatCore() {
     const clientTurnId = crypto.randomUUID();
     let turnThreadId: string | null = null;
     let turnSetupError: unknown = null;
+    let planTodosAtStart: readonly AgentTodo[] | null = null;
     if (runChatId) {
       try {
         turnThreadId = await useAgentTurnsStore
@@ -2196,6 +2222,10 @@ export function ChatCore() {
         useAgentTodoStore.getState().beginTurn(runChatId, {
           keep: planTurn === "revision" || planTurn === "execution",
         });
+        // The checklist this planning turn starts from. update_todos always
+        // stores a new array, so an identical reference at the end means the
+        // model never wrote one.
+        if (planGated) planTodosAtStart = useAgentTodoStore.getState().todosForChat(runChatId);
       } catch (error) {
         turnSetupError = error;
       }
@@ -2372,6 +2402,7 @@ ${sandboxedCustom}`;
     };
 
     let planApproved = false;
+    let runStoppedAtCap = false;
     let activeAssistantId = assistantMsg.id;
     try {
       if (turnSetupError) throw turnSetupError;
@@ -2740,6 +2771,7 @@ ${sandboxedCustom}`;
 
       usageSteps = outcome.steps;
       runEndedCleanly = !outcome.error && !ac.signal.aborted;
+      runStoppedAtCap = outcome.stopped_at_cap;
       if (runChatId) {
         useAgentTurnsStore.getState().finishTurn(runChatId, outcome.stopped_at_cap);
       }
@@ -2792,6 +2824,18 @@ ${sandboxedCustom}`;
       await commitTracking;
       if (runChatId && trackedTurnId) {
         useAgentFileChangesStore.getState().finishTurn(runChatId, trackedTurnId);
+      }
+      // A planning turn that wrote no checklist gets a note under the reply,
+      // unless the reply ends in a question for the user to answer.
+      if (runChatId && planTodosAtStart && runEndedCleanly && !runStoppedAtCap) {
+        const checklist = useAgentTodoStore.getState().todosForChat(runChatId);
+        if (checklist === planTodosAtStart || checklist.length === 0) {
+          const planNote = checklist.length > 0 ? "unchanged" : "missing";
+          // Same tier as the streamed text, so it lands on the finished reply.
+          updateRunLastText((m) =>
+            /\?[*_)"'\s]*$/.test(m.content ?? "") ? m : { ...m, planNote },
+          );
+        }
       }
       const committedByPath: Record<string, string> = {};
       const trackedTurn = runChatId
@@ -2946,6 +2990,54 @@ ${sandboxedCustom}`;
   const agentRunSummaryVisible = !agentStatusActive && agentTodosActive.length > 0;
   const firstUnavailableTurnId =
     messages.find((message) => message.role === "assistant" && message.turnChanges?.unavailable)?.id ?? null;
+
+  // Measure the status overlay (pill plus any open card) and the scroller, so
+  // a pinned card never covers the end of the reply. A callback ref follows
+  // the overlay through remounts, for example when the chat block re-renders.
+  const [statusCardPinned, setStatusCardPinned] = useState(false);
+  const [statusOverlayBox, setStatusOverlayBox] = useState(NO_STATUS_OVERLAY_BOX);
+  const statusOverlayRef = useCallback((overlay: HTMLDivElement | null) => {
+    if (!overlay) return;
+    const measure = () => {
+      const next = {
+        overlay: overlay.offsetHeight,
+        scroller: scrollRef.current?.clientHeight ?? 0,
+      };
+      setStatusOverlayBox((previous) =>
+        previous.overlay === next.overlay && previous.scroller === next.scroller
+          ? previous
+          : next,
+      );
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") {
+      return () => setStatusOverlayBox(NO_STATUS_OVERLAY_BOX);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(overlay);
+    if (scrollRef.current) observer.observe(scrollRef.current);
+    return () => {
+      observer.disconnect();
+      setStatusOverlayBox(NO_STATUS_OVERLAY_BOX);
+    };
+  }, []);
+  // Only a pinned card (auto-pinned when a plan awaits approval, or clicked)
+  // gets reserved room; a hover card floats, so the reply does not jump.
+  const statusCardRoom =
+    agentStatusPillVisible && statusCardPinned && statusOverlayBox.overlay > 0
+      ? Math.max(
+          STATUS_PILL_ROOM_PX,
+          statusOverlayBox.overlay + STATUS_OVERLAY_OFFSET_PX + STATUS_CARD_GAP_PX,
+        )
+      : 0;
+  // The card opens after the message scroll effect has run, so pin the view
+  // to the bottom again once the room is added.
+  useLayoutEffect(() => {
+    if (statusCardRoom === 0 || !nearBottomRef.current) return;
+    const scroller = scrollRef.current;
+    scroller?.scrollTo({ top: scroller.scrollHeight });
+  }, [statusCardRoom]);
+
   let lastUserIndex = -1;
   for (let index = messages.length - 1; index >= 0; index--) {
     if (messages[index].role === "user") {
@@ -3193,15 +3285,19 @@ ${sandboxedCustom}`;
                             <dd className="text-right tabular-nums">{runUsage.steps}</dd>
                             <dt>{t(($) => $.ai.usage.input)}</dt>
                             <dd className="text-right tabular-nums">
-                              {runUsage.input === null
-                                ? t(($) => $.common.state.unknown)
-                                : formatNumber(runUsage.input)}
+                              {runUsage.input === null ? (
+                                t(($) => $.common.state.unknown)
+                              ) : (
+                                <Private>{formatNumber(runUsage.input)}</Private>
+                              )}
                             </dd>
                             <dt>{t(($) => $.ai.usage.output)}</dt>
                             <dd className="text-right tabular-nums">
-                              {runUsage.output === null
-                                ? t(($) => $.common.state.unknown)
-                                : formatNumber(runUsage.output)}
+                              {runUsage.output === null ? (
+                                t(($) => $.common.state.unknown)
+                              ) : (
+                                <Private>{formatNumber(runUsage.output)}</Private>
+                              )}
                             </dd>
                           </dl>
                         </section>
@@ -3220,7 +3316,9 @@ ${sandboxedCustom}`;
                             <dt>{t(($) => $.ai.usage.steps)}</dt>
                             <dd className="text-right tabular-nums">{chatUsage.steps}</dd>
                             <dt>{t(($) => $.ai.usage.tokens)}</dt>
-                            <dd className="text-right tabular-nums">{formatNumber(chatTotal)}</dd>
+                            <dd className="text-right tabular-nums">
+                              <Private>{formatNumber(chatTotal)}</Private>
+                            </dd>
                           </dl>
                         </section>
                       )}
@@ -3326,6 +3424,7 @@ ${sandboxedCustom}`;
               agentStatusPillVisible ? "pb-12" : "pb-3",
               showMinimap ? "pl-10 pr-3" : "px-3",
             )}
+            style={statusCardRoom > 0 ? { paddingBottom: statusCardRoom } : undefined}
           >
             {messages.length === 0 ? (
               <div className="flex min-h-full flex-col items-center justify-center px-1">
@@ -3366,6 +3465,9 @@ ${sandboxedCustom}`;
                     nearBottomRef={nearBottomRef}
                     renderExtras={({ live, isLatestAssistant, msg }) => (
                       <>
+                        {msg.role === "assistant" && msg.planNote && !live && (
+                          <PlanNote note={msg.planNote} />
+                        )}
                         {msg.role === "assistant" &&
                           isLatestAssistant &&
                           !live &&
@@ -3459,7 +3561,10 @@ ${sandboxedCustom}`;
             />
           </div>
             {agentStatusPillVisible && (
-              <div className="pointer-events-none absolute inset-x-3 bottom-2 z-20">
+              <div
+                ref={statusOverlayRef}
+                className="pointer-events-none absolute inset-x-3 bottom-2 z-20"
+              >
                 <AgentStatusPill
                   todos={agentTodos}
                   turn={streaming ? agentFileChangeTurn : null}
@@ -3473,6 +3578,8 @@ ${sandboxedCustom}`;
                           onRevise: revisePlan,
                         }
                   }
+                  panelMaxHeight={statusCardMaxHeight(statusOverlayBox.scroller)}
+                  onPinnedChange={setStatusCardPinned}
                 />
               </div>
             )}

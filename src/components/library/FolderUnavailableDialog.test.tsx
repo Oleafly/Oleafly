@@ -15,6 +15,7 @@ const platform = vi.hoisted(() => ({ mac: true }));
 vi.mock("@/lib/tauri", () => ({
   locateProjectFolder: (projectId: string) => locateProjectFolder(projectId),
   adoptReplacedFolder: (projectId: string) => adoptReplacedFolder(projectId),
+  displayHomes: () => Promise.resolve([]),
 }));
 vi.mock("@/lib/toast", () => ({
   notifyError: (...args: unknown[]) => notifyError(...args),
@@ -33,6 +34,7 @@ vi.mock("@/lib/utils", async (original) => ({
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { buttonVariants } from "@/components/ui/button";
+import { resetDisplayHomes, setDisplayHomes } from "@/lib/display-path";
 import { cn } from "@/lib/utils";
 import { FolderUnavailableDialog } from "./FolderUnavailableDialog";
 
@@ -78,6 +80,7 @@ function show(availability: UnavailableFolder) {
 
 beforeEach(() => {
   platform.mac = true;
+  resetDisplayHomes();
   for (const mock of [locateProjectFolder, adoptReplacedFolder, check, notifyError, onClose, onOpen, onRemove]) {
     mock.mockReset();
   }
@@ -122,6 +125,29 @@ describe("FolderUnavailableDialog", () => {
       />,
     );
     expect(within(screen.getByRole("dialog")).getByText(path)).toHaveClass("font-mono");
+  });
+
+  it("shortens a home path the backend left in full, whichever home it names", () => {
+    setDisplayHomes([String.raw`C:\msys64\home\ada`, String.raw`C:\Users\ada`]);
+    render(
+      <FolderUnavailableDialog
+        project={{
+          ...THESIS,
+          location: {
+            kind: "linked",
+            display_path: String.raw`C:\Users\ada\Documents\thesis`,
+            availability: "unknown",
+          },
+        }}
+        availability="missing"
+        onClose={onClose}
+        onOpen={onOpen}
+        onRemove={onRemove}
+      />,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(String.raw`~\Documents\thesis`)).toHaveClass("font-mono");
+    expect(dialog.textContent).not.toMatch(/Users\\ada/i);
   });
 
   it("offers Locate for a missing folder and opens it once found", async () => {

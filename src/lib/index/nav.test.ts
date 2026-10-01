@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EditorView } from "@codemirror/view";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useFolderAccessStore } from "@/store/folder-access";
+import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
+import { assembleProjectIntelligence } from "@/lib/project-intelligence/assemble";
+import { lazyLegacyIndex } from "@/lib/project-intelligence/legacy-index";
 import type { Sym } from "./types";
 
 const mocks = vi.hoisted(() => ({
@@ -257,6 +260,45 @@ describe("applyRename", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       'Renamed to "fig:new" (2 edits in 1 file)',
     );
+  });
+
+  it("leaves a Typst label of the same name alone when renaming a LaTeX label", async () => {
+    const sources = {
+      "paper.tex": "\\label{eq:mae}\nSee \\eqref{eq:mae}.\n",
+      "paper.typ": "$ x $ <eq:mae>\nSee @eq:mae.\n",
+    };
+    const index = lazyLegacyIndex(
+      assembleProjectIntelligence({
+        identity: { projectId: "project-1", projectRevision: 1, requestGeneration: 1 },
+        files: Object.fromEntries(
+          Object.entries(sources).map(([path, text]) => [path, analyzeProjectFile(path, text, 1)]),
+        ),
+        knownFiles: Object.keys(sources),
+        stats: {
+          fileCount: 2,
+          characterCount: 0,
+          parsedFileCount: 2,
+          reusedFileCount: 0,
+          durationMs: 0,
+        },
+      }),
+    );
+    const previous = indexState.index;
+    indexState.index = index;
+    indexState.texts = { ...sources };
+    try {
+      const label = index.defs.find((symbol) => symbol.kind === "label" && symbol.file === "paper.tex");
+      await applyRename(view, label as Sym, "eq:new");
+
+      expect(mocks.writeProjectFile).toHaveBeenCalledTimes(1);
+      expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+        "project-1",
+        "paper.tex",
+        "\\label{eq:new}\nSee \\eqref{eq:new}.\n",
+      );
+    } finally {
+      indexState.index = previous;
+    }
   });
 });
 

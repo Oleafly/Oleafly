@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk can't use Oleafly's build folder on this computer because its path contains characters latexmk doesn't accept. Switch this project to Tectonic to compile it.",
     "latexmk_network_folder": "latexmk can't compile a folder on a network share. Switch this project to Tectonic, or copy the folder to this computer."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly couldn't read the bibliography {{name}}. Check it for a broken entry, then export again."
+  },
   "github": {
     "sign_in_expired": "The sign-in code expired. Try again.",
     "sign_in_cancelled": "GitHub authorization was cancelled.",

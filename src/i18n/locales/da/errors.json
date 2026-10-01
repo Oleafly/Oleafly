@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk kan ikke bruge Oleaflys byggemappe på denne computer, fordi stien indeholder tegn, som latexmk ikke accepterer. Skift projektet til Tectonic for at kompilere det.",
     "latexmk_network_folder": "latexmk kan ikke kompilere en mappe på et netværksdrev. Skift projektet til Tectonic, eller kopiér mappen til denne computer."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly kunne ikke læse litteraturlistefilen {{name}}. Tjek, om den har en defekt post, og eksporter så igen."
+  },
   "github": {
     "sign_in_expired": "Loginkoden er udløbet. Prøv igen.",
     "sign_in_cancelled": "GitHub-godkendelsen blev annulleret.",

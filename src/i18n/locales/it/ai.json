@@ -760,7 +760,9 @@
     "noResponse": "Per questo messaggio non è arrivata nessuna risposta. Lo stream è stato interrotto. Invialo di nuovo oppure avvia una nuova chat.",
     "scrollToBottom": "Scorri in fondo",
     "projectSubtitle": "Stai lavorando su \"{{project}}\"",
-    "noOutput": "Il modello non ha restituito nessun output. Controlla in Impostazioni → Assistente AI."
+    "noOutput": "Il modello non ha restituito nessun output. Controlla in Impostazioni → Assistente AI.",
+    "planMissing": "Non c'è ancora un piano da approvare. Chiedine uno all'assistente oppure disattiva Piano.",
+    "planUnchanged": "Il piano non è cambiato."
   },
   "followUps": {
     "steered": "Indirizzato nel turno in corso: {{summary}}",

@@ -54,6 +54,12 @@ export interface SubagentEntry {
   agentId?: string;
 }
 
+/**
+ * The note under a plan-mode reply that left no new plan. "missing": there is
+ * no plan yet. "unchanged": a revision kept the plan as it was.
+ */
+export type ChatPlanNote = "missing" | "unchanged";
+
 export interface ChatMessage {
   id?: string;
   role: "user" | "assistant";
@@ -73,6 +79,7 @@ export interface ChatMessage {
   skill?: { id: string; name: string };
   mentions?: string[];
   notices?: string[];
+  planNote?: ChatPlanNote;
   // Legacy single-block chain-of-thought; still read for chats persisted
   // before reasoningBlocks existed.
   reasoning?: string;

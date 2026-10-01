@@ -27,6 +27,7 @@ import {
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
+import { PrivateText, usePrivateGroup } from "@/components/ui/private";
 import { usePersistentExpansion } from "./expansion-state";
 import { ToolPicture } from "./ToolPicture";
 
@@ -144,7 +145,9 @@ function toolCardHeader({
       className={cn("group flex w-full items-center gap-2 py-1 text-left", expandable && "cursor-pointer")}
     >
       <LeadingIcon view={view} expandable={expandable} expanded={expanded} />
-      <span className={cn("min-w-0 truncate text-sm text-foreground/90", view.kind === "command" && "font-mono text-[12px]")}>{view.kind === "command" ? `$ ${view.command || tc.name}` : view.label}</span>
+      <span className={cn("min-w-0 truncate text-sm text-foreground/90", view.kind === "command" && "font-mono text-[12px]")}>
+        <PrivateText text={view.kind === "command" ? `$ ${view.command || tc.name}` : view.label} focusable={false} />
+      </span>
       <StatusIcon status={view.status} />
       <span className="sr-only">{view.statusLabel}</span>
       {tc.approval && (
@@ -153,7 +156,9 @@ function toolCardHeader({
             : i18n.t(($) => $.ai.toolCard.rejected)}</span>
       )}
       {view.summary && (
-        <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", view.verified === false && "text-destructive")}>{view.summary}</span>
+        <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", view.verified === false && "text-destructive")}>
+          <PrivateText text={view.summary} focusable={false} />
+        </span>
       )}
     </button>
   );
@@ -163,7 +168,11 @@ function diagnosticsList(view: ResearchToolView) {
   if (!view.diagnostics?.length) return null;
   return (
     <ul className="space-y-1 py-1 text-[11px] text-destructive">
-      {[...new Set(view.diagnostics)].slice(0, 20).map((diagnostic) => <li key={diagnostic}>{diagnostic}</li>)}
+      {[...new Set(view.diagnostics)].slice(0, 20).map((diagnostic) => (
+        <li key={diagnostic}>
+          <PrivateText text={diagnostic} />
+        </li>
+      ))}
     </ul>
   );
 }
@@ -240,6 +249,7 @@ export function ResearchToolCard({
 }>) {
   const { t } = useTranslation(["common", "ai"]);
   const view = projectToolEntry(tc);
+  const privateGroup = usePrivateGroup();
   const [expanded, setExpanded] = usePersistentExpansion(expansionKey, false);
   const [full, setFull] = usePersistentExpansion(expansionKey ? `${expansionKey}:full` : undefined, false);
   const [artifactPreview, setArtifactPreview] = useState<ResearchArtifactPreview>();
@@ -290,7 +300,9 @@ export function ResearchToolCard({
           <LiteratureResults view={view} actions={actions} />
           {diagnosticsList(view)}
           {preview && (
-            <pre className="max-h-80 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 px-2.5 py-2 font-mono text-[10px] text-muted-foreground">{preview}</pre>
+            <pre {...privateGroup} className="max-h-80 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 px-2.5 py-2 font-mono text-[10px] text-muted-foreground">
+              <PrivateText text={preview} focusable={false} />
+            </pre>
           )}
           {artifactPreview && artifactPreviewBody(artifactPreview)}
           {artifactError && <p className="py-1 text-[10px] text-destructive">{t(($) => $.ai.toolCard.previewFailed)}</p>}

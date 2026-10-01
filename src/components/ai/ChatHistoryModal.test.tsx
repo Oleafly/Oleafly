@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 
 import { QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { chatsSearch } from "@/lib/tauri";
 import { createAppQueryClient } from "@/lib/query";
+import { formatUsd } from "@/lib/ai-pricing";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 import type { StoredChat } from "@/store/chats";
 import { ChatHistoryModal } from "./ChatHistoryModal";
 
@@ -179,6 +181,25 @@ describe("ChatHistoryModal list", () => {
     expect(screen.getByText(history.staleBadge)).toBeInTheDocument();
     const line = screen.getByText(new RegExp(history.tokens.replace("{{amount}}", "140")));
     expect(line).toHaveTextContent(history.messages_one.replace("{{count}}", "1"));
+  });
+
+  it("marks each chat's token count and cost for screenshot mode, inside the row button", () => {
+    usePersonalDetailsStore.getState().setHidden(true);
+    try {
+      renderChats([
+        chat({
+          usage: { inputTokens: 100, outputTokens: 40, steps: 1, runs: 1, estimatedUsd: 0.12 },
+        }),
+      ]);
+      const row = screen.getByText("Bibliography fixes").closest("button") as HTMLElement;
+      const marked = [...row.querySelectorAll("[data-private]")];
+      expect(marked.map((node) => node.textContent)).toEqual(["140", formatUsd(0.12)]);
+      // The row button is the focus stop; focusing it reveals both values.
+      expect(row.querySelector("[tabindex]")).toBeNull();
+      expect(row).toHaveTextContent(history.tokens.replace("{{amount}}", "140"));
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+    }
   });
 
   it("opens a chat and confirms a delete", () => {

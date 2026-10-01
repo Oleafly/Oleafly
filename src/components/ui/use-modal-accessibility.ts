@@ -1,5 +1,6 @@
 import { useEffect, useRef, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import { modalCoordinator, visibleFocusable } from "@oleafly/templates/modal-coordinator";
+import { PERSONAL_VALUE_SELECTOR } from "@/components/ui/private";
 
 export { modalCoordinator as appModalCoordinator } from "@oleafly/templates/modal-coordinator";
 
@@ -32,10 +33,14 @@ export function useModalAccessibility<T extends HTMLElement>(
     const frame = requestAnimationFrame(() => {
       const dialog = dialogRef.current;
       if (!dialog) return;
+      // A personal value in screenshot mode is focusable, and focus reveals
+      // it, so opening never lands on one.
       const initial = dialog.matches("[data-modal-initial-focus]")
         ? dialog
         : dialog.querySelector<HTMLElement>("[data-modal-initial-focus]")
-          ?? dialog.querySelector<HTMLElement>(FOCUSABLE);
+          ?? [...dialog.querySelectorAll<HTMLElement>(FOCUSABLE)].find(
+            (element) => !element.matches(PERSONAL_VALUE_SELECTOR),
+          );
       (initial ?? dialog).focus({ preventScroll: true });
     });
 

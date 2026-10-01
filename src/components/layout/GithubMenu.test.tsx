@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useGithubStore } from "@/store/github";
 import { useSettingsStore } from "@/store/settings";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 import { GithubMenu } from "./GithubMenu";
 
 const copy = enShell.githubMenu;
@@ -90,5 +91,23 @@ describe("GithubMenu", () => {
       await screen.findByRole("menuitem", { name: copy.copyRepositoryLink }),
     );
     expect(onCopyLink).toHaveBeenCalled();
+  });
+
+  it("marks the login and avatar for screenshot mode, inside the menu button", () => {
+    useGithubStore.setState({
+      status: "connected",
+      user: { login: "octocat", avatar_url: "https://example.test/a.png" },
+    } as unknown as ReturnType<typeof useGithubStore.getState>);
+    usePersonalDetailsStore.getState().setHidden(true);
+    try {
+      const { container } = renderMenu();
+      const login = screen.getByText("octocat");
+      expect(login).toHaveAttribute("data-private");
+      // The button is the focus stop; focusing it reveals the login.
+      expect(login).not.toHaveAttribute("tabindex");
+      expect(container.querySelector("img")).toHaveAttribute("data-private");
+    } finally {
+      usePersonalDetailsStore.getState().setHidden(false);
+    }
   });
 });

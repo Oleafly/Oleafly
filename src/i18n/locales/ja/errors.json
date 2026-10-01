@@ -52,6 +52,9 @@
     "latexmk_build_path": "このコンピュータ上の Oleafly のビルドフォルダのパスに latexmk が受け付けない文字が含まれているため、latexmk はこのフォルダを使用できません。コンパイルするには、このプロジェクトを Tectonic に切り替えてください。",
     "latexmk_network_folder": "latexmk はネットワーク共有上のフォルダをコンパイルできません。このプロジェクトを Tectonic に切り替えるか、フォルダをこのコンピュータにコピーしてください。"
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly で参考文献ファイル {{name}} を読み込めませんでした。壊れた項目がないか確認してから、もう一度エクスポートしてください。"
+  },
   "github": {
     "sign_in_expired": "サインインコードの有効期限が切れました。もう一度お試しください。",
     "sign_in_cancelled": "GitHub の認可がキャンセルされました。",

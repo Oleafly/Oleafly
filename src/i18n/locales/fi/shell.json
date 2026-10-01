@@ -63,7 +63,10 @@
     "setHomePage": "Aseta aloitussivuksi"
   },
   "changelog": {
-    "installed": "Käytössä on tämä versio"
+    "installed": "Käytössä on tämä versio",
+    "sectionItems_one": "{{count}} muutos",
+    "sectionItems_other": "{{count}} muutosta",
+    "showNotes": "Näytä julkaisutiedot"
   },
   "citeOleafly": {
     "description": "Tästä projektista ei löytynyt lähdeluettelotiedostoa, joten mitään ei muutettu. Kopioi alla oleva viite lähdeluetteloosi tai etsi se myöhemmin kohdasta Asetukset, Ohje ja tietoja.",
@@ -166,6 +169,9 @@
       "online": "Verkkotila (salli pakettien haku)"
     },
     "openTool": "Avaa {{name}}",
+    "personalDetails": {
+      "keywords": "kuvakaappaustila, kuvakaappaus, yksityisyys, sumennus, henkilötiedot, polut, tilin nimi"
+    },
     "recompile": {
       "label": "Käännä uudelleen"
     },
@@ -511,6 +517,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Piilota henkilötiedot",
+    "show": "Näytä henkilötiedot"
+  },
   "projectSearch": {
     "hint": "Hae tämän projektin tiedostoista.",
     "noResults": "Ei tuloksia.",
@@ -750,6 +760,25 @@
       "help": "Ohje ja tietoja",
       "integrations": "Integraatiot",
       "shortcuts": "Pikanäppäimet"
+    },
+    "search": {
+      "empty": "Ei vastaavia asetuksia.",
+      "keywords": {
+        "ai": "avustaja, keskustelu, chat, mallit, palveluntarjoajat, API-avaimet, agentit, kehotteet, budjetti, MCP-palvelimet",
+        "appearance": "teema, ulkoasu, tumma tila, vaalea tila, väri, värit, fontit, tekstin koko, zoomaus, asettelu",
+        "data": "varmuuskopio, kirjastokansio, projektikansio, tallennustila, levytila, roskakori, poista projekteja, tarkistuspisteet",
+        "dictionary": "oikeinkirjoitus, omat sanat, ohitetut sanat, oikoluku, kielioppisäännöt",
+        "downloads": "paketit, fontit, sanakirjat, offline-tiedostot",
+        "engine": "kääntäjä, kääntäminen, LaTeX, TeX, Typst, Markdown, pandoc, koonti, PDF",
+        "experimentation": "kokeilut, kokeelliset ominaisuudet, beta, varhaiset ominaisuudet",
+        "general": "asetukset, kieli, alue, kielialue, oikoluku, oikeinkirjoitus, kirjoitusvirheet, offline, esittelyt, päätekomento",
+        "help": "tietoja, versio, päivitykset, muutosloki, mitä uutta, dokumentaatio, ohjeet, tuki, yhteisö, Discord, lisenssi, kaatumisraportti",
+        "integrations": "Zotero, GitHub, MCP, viittaukset, viitteet, tilit, yhteydet",
+        "shortcuts": "pikanäppäimet, näppäinyhdistelmät, näppäimet, näppäimistö"
+      },
+      "label": "Hae asetuksista",
+      "results_one": "{{count}} osio vastaa hakua",
+      "results_other": "{{count}} osiota vastaa hakua"
     },
     "sectionsNav": "Asetusten osiot",
     "title": "Asetukset",

@@ -64,7 +64,11 @@
     "setHomePage": "Définir comme page d'accueil"
   },
   "changelog": {
-    "installed": "Vous êtes sur cette version"
+    "installed": "Vous êtes sur cette version",
+    "sectionItems_one": "{{count}} modification",
+    "sectionItems_many": "{{count}} modifications",
+    "sectionItems_other": "{{count}} modifications",
+    "showNotes": "Afficher les notes"
   },
   "citeOleafly": {
     "description": "Aucun fichier bibliographique n'a été trouvé dans ce projet, rien n'a donc été modifié. Copiez l'entrée ci-dessous dans votre bibliographie, ou retrouvez-la plus tard dans Paramètres, Aide et à propos.",
@@ -167,6 +171,9 @@
       "online": "Mode en ligne (récupération des paquets autorisée)"
     },
     "openTool": "Ouvrir {{name}}",
+    "personalDetails": {
+      "keywords": "mode capture d'écran, capture, confidentialité, vie privée, flou, chemins, nom du compte"
+    },
     "recompile": {
       "label": "Recompiler"
     },
@@ -513,6 +520,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Masquer les informations personnelles",
+    "show": "Afficher les informations personnelles"
+  },
   "projectSearch": {
     "hint": "Recherchez dans les fichiers de ce projet.",
     "noResults": "Aucun résultat.",
@@ -766,6 +777,26 @@
       "help": "Aide et à propos",
       "integrations": "Intégrations",
       "shortcuts": "Raccourcis clavier"
+    },
+    "search": {
+      "empty": "Aucun paramètre ne correspond.",
+      "keywords": {
+        "ai": "assistant, chat, discussion, modèles, fournisseurs, clés API, agents, prompts, invites, budget, serveurs MCP",
+        "appearance": "thème, mode sombre, mode clair, couleur, polices, taille du texte, zoom, disposition, mise en page",
+        "data": "sauvegarde, dossier de la bibliothèque, dossier des projets, stockage, espace disque, corbeille, supprimer des projets, points de contrôle",
+        "dictionary": "orthographe, mots personnalisés, mots ignorés, relecture, correction, règles de grammaire",
+        "downloads": "paquets, polices, dictionnaires, fichiers hors ligne",
+        "engine": "compilateur, LaTeX, TeX, Typst, Markdown, pandoc, compilation, PDF",
+        "experimentation": "labo, laboratoire, bêta, fonctionnalités en avant-première",
+        "general": "préférences, langue, région, vérification orthographique, orthographe, fautes de frappe, hors ligne, visites guidées, commande du terminal",
+        "help": "à propos, version, mises à jour, journal des modifications, nouveautés, documentation, assistance, aide, communauté, Discord, licence, rapport de plantage",
+        "integrations": "Zotero, GitHub, MCP, citations, comptes, connexions",
+        "shortcuts": "raccourcis clavier, raccourcis, touches, clavier"
+      },
+      "label": "Rechercher dans les paramètres",
+      "results_one": "{{count}} section correspond",
+      "results_many": "{{count}} sections correspondent",
+      "results_other": "{{count}} sections correspondent"
     },
     "sectionsNav": "Sections des paramètres",
     "title": "Paramètres",

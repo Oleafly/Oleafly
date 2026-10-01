@@ -52,6 +52,9 @@
     "latexmk_build_path": "latexmk kann den Ausgabeordner von Oleafly auf diesem Computer nicht verwenden, weil sein Pfad Zeichen enthält, die latexmk nicht akzeptiert. Stellen Sie dieses Projekt auf Tectonic um, um es zu kompilieren.",
     "latexmk_network_folder": "latexmk kann keinen Ordner auf einer Netzwerkfreigabe kompilieren. Stellen Sie dieses Projekt auf Tectonic um oder kopieren Sie den Ordner auf diesen Computer."
   },
+  "export": {
+    "bibliography_unreadable": "Oleafly konnte die Bibliografiedatei {{name}} nicht lesen. Prüfen Sie sie auf einen fehlerhaften Eintrag und exportieren Sie dann erneut."
+  },
   "github": {
     "sign_in_expired": "Der Anmeldecode ist abgelaufen. Versuchen Sie es erneut.",
     "sign_in_cancelled": "Die Autorisierung bei GitHub wurde abgebrochen.",

@@ -4,6 +4,7 @@ import type {
   Sym,
   SymKind,
 } from "@/lib/index/types";
+import { referenceTargetFile } from "./resolution";
 import type {
   OutlineNode,
   ProjectDefinition,
@@ -98,7 +99,11 @@ function useSymbol(use: ProjectUse): Sym | null {
     to: use.location.range.to,
     nameFrom: use.location.range.from,
     nameTo: use.location.range.to,
-    ...(kind === "inputedge" && use.target
+    // A `file#anchor` link keeps its target so the index can resolve it in
+    // the file it names, as the resolver does.
+    ...(use.target &&
+    (kind === "inputedge" ||
+      (kind === "ref" && referenceTargetFile(use.target) !== null))
       ? { target: use.target }
       : {}),
   };

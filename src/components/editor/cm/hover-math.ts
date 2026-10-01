@@ -129,6 +129,16 @@ function displayMathAt(
   return null;
 }
 
+/**
+ * LaTeX source to preview for an enclosing construct. The environment goes
+ * back around its body because rows and columns (`\\`, `&`) only parse inside
+ * it. A `\[ ... \]` body is already complete.
+ */
+export function enclosingMathSource(math: EnclosingMath): string {
+  if (math.environment === "display") return math.body;
+  return String.raw`\begin{${math.environment}}${math.body}\end{${math.environment}}`;
+}
+
 export function enclosingMathEnvironment(
   text: string,
   offset: number,

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
   close: vi.fn(),
@@ -96,6 +96,7 @@ vi.mock("@/store/compile", () => ({
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { EnginePickerModal } from "./EnginePickerModal";
+import { usePersonalDetailsStore } from "@/store/personal-details";
 
 const copy = enShell.enginePicker;
 
@@ -134,6 +135,19 @@ describe("EnginePickerModal states", () => {
     expect(screen.getByText(copy.systemTex.found)).toBeInTheDocument();
     expect(screen.getByText("/usr/bin/latexmk")).toBeInTheDocument();
     expect(screen.queryByText(copy.tinytex.title)).not.toBeInTheDocument();
+  });
+
+  it("marks the latexmk path for screenshot mode", () => {
+    render(<EnginePickerModal />);
+    const path = screen.getByText("/usr/bin/latexmk");
+    expect(path).toHaveAttribute("data-private");
+    expect(path).not.toHaveAttribute("tabindex");
+    act(() => usePersonalDetailsStore.getState().setHidden(true));
+    try {
+      expect(screen.getByText("/usr/bin/latexmk")).toHaveAttribute("tabindex", "0");
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+    }
   });
 
   it("offers the download when no system TeX is present", async () => {

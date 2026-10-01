@@ -9,6 +9,8 @@ import { gotoLine } from "@/components/editor/cm/controller";
 import { useFilesStore } from "@/store/files";
 import { isAutoApprovable } from "@/store/mcp-approvals";
 import type { McpApprovalDetails } from "@/lib/mcp-agent-tools";
+import { PrivatePath, PrivateText } from "@/components/ui/private";
+import { useDisplayText } from "@/lib/display-path";
 import { toolRisk } from "@oleafly/ai-tools";
 
 export function firstChangedLine(oldText: string, newText: string): number {
@@ -63,6 +65,7 @@ export function ToolConfirm({
   embedded?: boolean;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
+  const displayText = useDisplayText();
   const canSession = isAutoApprovable(req.tool) && !!onApproveSession;
   const commandApproval = req.tool === "run_command";
   const mcpApproval = mcpApprovalDetails(req);
@@ -156,7 +159,8 @@ export function ToolConfirm({
           <div className="space-y-1">
             <p className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.commandLabel)}</p>
             <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
-              {req.command ?? req.summary}
+              {/* A command often starts with `cd` into the same home path as the working directory. */}
+              <PrivateText text={displayText(req.command ?? req.summary)} />
             </pre>
           </div>
           {req.cwd && (
@@ -165,7 +169,7 @@ export function ToolConfirm({
                 {t(($) => $.ai.approval.workingDirectory)}
               </p>
               <code className="block overflow-x-auto whitespace-pre rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
-                {req.cwd}
+                <PrivatePath path={req.cwd} />
               </code>
             </div>
           )}
@@ -187,7 +191,7 @@ export function ToolConfirm({
           <div className="space-y-1 border-t border-border/60 pt-2">
             <p className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.arguments)}</p>
             <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
-              {mcpApproval.argumentsPreview}
+              <PrivateText text={displayText(mcpApproval.argumentsPreview)} />
             </pre>
           </div>
         </div>

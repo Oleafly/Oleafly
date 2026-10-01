@@ -749,7 +749,9 @@
     "noResponse": "Tähän viestiin ei saapunut vastausta. Tietovirta katkesi. Lähetä se uudelleen tai aloita uusi keskustelu.",
     "scrollToBottom": "Vieritä alas",
     "projectSubtitle": "Työn alla \"{{project}}\"",
-    "noOutput": "Malli ei palauttanut tulostetta. Tarkista Asetukset → Tekoälyavustaja."
+    "noOutput": "Malli ei palauttanut tulostetta. Tarkista Asetukset → Tekoälyavustaja.",
+    "planMissing": "Hyväksyttävää suunnitelmaa ei vielä ole. Pyydä avustajalta suunnitelma tai ota suunnittelutila pois päältä.",
+    "planUnchanged": "Suunnitelma ei muuttunut."
   },
   "followUps": {
     "steered": "Ohjattiin käynnissä olevaan vuoroon: {{summary}}",

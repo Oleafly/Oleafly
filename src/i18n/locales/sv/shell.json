@@ -63,7 +63,10 @@
     "setHomePage": "Ange som startsida"
   },
   "changelog": {
-    "installed": "Du kör den här versionen"
+    "installed": "Du kör den här versionen",
+    "sectionItems_one": "{{count}} ändring",
+    "sectionItems_other": "{{count}} ändringar",
+    "showNotes": "Visa anteckningar"
   },
   "citeOleafly": {
     "description": "Ingen bibliografifil hittades i det här projektet, så ingenting ändrades. Kopiera posten nedan till din bibliografi, eller hitta den igen senare under Inställningar, Hjälp och om.",
@@ -166,6 +169,9 @@
       "online": "Onlineläge (tillåt hämtning av paket)"
     },
     "openTool": "Öppna {{name}}",
+    "personalDetails": {
+      "keywords": "skärmbildsläge, skärmdump, integritet, sekretess, oskärpa, sökvägar, kontonamn"
+    },
     "recompile": {
       "label": "Kompilera om"
     },
@@ -511,6 +517,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Dölj personliga uppgifter",
+    "show": "Visa personliga uppgifter"
+  },
   "projectSearch": {
     "hint": "Sök i det här projektets filer.",
     "noResults": "Inga resultat.",
@@ -750,6 +760,25 @@
       "help": "Hjälp och om",
       "integrations": "Integrationer",
       "shortcuts": "Kortkommandon"
+    },
+    "search": {
+      "empty": "Inga inställningar matchar.",
+      "keywords": {
+        "ai": "assistent, chatt, modeller, leverantörer, API-nycklar, agenter, prompter, budget, MCP-servrar",
+        "appearance": "tema, mörkt läge, ljust läge, färg, typsnitt, textstorlek, zoom, layout",
+        "data": "säkerhetskopia, biblioteksmapp, projektmapp, lagring, diskutrymme, papperskorg, radera projekt, kontrollpunkter",
+        "dictionary": "stavning, egna ord, ignorerade ord, korrekturläsning, grammatikregler",
+        "downloads": "paket, typsnitt, ordlistor, offlinefiler",
+        "engine": "kompilator, LaTeX, TeX, Typst, Markdown, pandoc, bygga, kompilera, PDF",
+        "experimentation": "labb, beta, tidiga funktioner",
+        "general": "inställningar, språk, region, stavningskontroll, stavning, stavfel, offline, rundturer, terminalkommando",
+        "help": "om, version, uppdateringar, ändringslogg, nyheter, dokumentation, support, gemenskap, Discord, licens, kraschrapport",
+        "integrations": "Zotero, GitHub, MCP, citeringar, konton, anslutningar",
+        "shortcuts": "kortkommandon, snabbtangenter, tangentbindningar, tangenter, tangentbord"
+      },
+      "label": "Sök i inställningar",
+      "results_one": "{{count}} avsnitt matchar",
+      "results_other": "{{count}} avsnitt matchar"
     },
     "sectionsNav": "Avsnitt i inställningarna",
     "title": "Inställningar",

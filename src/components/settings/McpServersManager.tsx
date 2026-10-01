@@ -35,6 +35,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
+import { useDisplayText } from "@/lib/display-path";
+import { PrivateText } from "@/components/ui/private";
 import { i18n } from "@/i18n";
 import { notifyMcpAgentToolsChanged } from "@/lib/mcp-agent-tools";
 import {
@@ -641,6 +643,7 @@ function ServerEditor({
 
 export function McpServersManager() {
   const { t } = useTranslation(["common", "settings"]);
+  const displayText = useDisplayText();
   const [records, setRecords] = useState<McpManagedServer[]>([]);
   const [loading, setLoading] = useState(true);
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -978,10 +981,13 @@ export function McpServersManager() {
           const name = record.config.name;
           const validating = busy.has(`validate:${name}`);
           const toggling = busy.has(`toggle:${name}`);
-          const endpoint =
+          // Local servers usually run from paths under home. Display only: the
+          // editor and the saved config keep the real command.
+          const endpoint = displayText(
             record.config.transport === "stdio"
               ? [record.config.command, ...record.config.args].join(" ")
-              : record.config.url;
+              : record.config.url,
+          );
           return (
             <article key={name} className="space-y-3 rounded-lg border bg-card p-3">
               <div className="flex items-start justify-between gap-3">
@@ -991,7 +997,7 @@ export function McpServersManager() {
                     <StatusBadge record={record} />
                   </div>
                   <p className="truncate font-mono text-[11px] text-muted-foreground" title={endpoint}>
-                    {endpoint}
+                    <PrivateText text={endpoint} />
                   </p>
                 </div>
                 <Switch
@@ -1004,7 +1010,7 @@ export function McpServersManager() {
 
               {record.validation.error ? (
                 <p role="alert" className="rounded-md bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
-                  {record.validation.error}
+                  <PrivateText text={displayText(record.validation.error)} />
                 </p>
               ) : null}
 

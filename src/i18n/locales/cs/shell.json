@@ -65,7 +65,12 @@
     "setHomePage": "Nastavit jako domovskou stránku"
   },
   "changelog": {
-    "installed": "Máte tuto verzi"
+    "installed": "Máte tuto verzi",
+    "sectionItems_one": "{{count}} změna",
+    "sectionItems_few": "{{count}} změny",
+    "sectionItems_many": "{{count}} změny",
+    "sectionItems_other": "{{count}} změn",
+    "showNotes": "Zobrazit poznámky"
   },
   "citeOleafly": {
     "description": "V tomto projektu nebyl nalezen soubor bibliografie, takže se nic nezměnilo. Zkopírujte si záznam níže do své bibliografie, nebo jej později najdete v Nastavení, Nápověda a informace.",
@@ -168,6 +173,9 @@
       "online": "Režim online (povolit stahování balíčků)"
     },
     "openTool": "Otevřít {{name}}",
+    "personalDetails": {
+      "keywords": "režim snímků obrazovky, soukromí, rozmazání, osobní údaje, cesty, název účtu"
+    },
     "recompile": {
       "label": "Kompilovat znovu"
     },
@@ -515,6 +523,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Skrýt osobní údaje",
+    "show": "Zobrazit osobní údaje"
+  },
   "projectSearch": {
     "hint": "Hledejte napříč soubory tohoto projektu.",
     "noResults": "Žádné výsledky.",
@@ -782,6 +794,27 @@
       "help": "Nápověda a informace",
       "integrations": "Integrace",
       "shortcuts": "Klávesové zkratky"
+    },
+    "search": {
+      "empty": "Žádné nastavení neodpovídá.",
+      "keywords": {
+        "ai": "asistent, chat, modely, poskytovatelé, klíče API, agenti, prompty, rozpočet, servery MCP",
+        "appearance": "motiv, vzhled, tmavý režim, světlý režim, barva, barvy, písma, velikost textu, přiblížení, zoom, rozvržení",
+        "data": "záloha, zálohování, složka knihovny, složka projektů, úložiště, místo na disku, koš, smazat projekty, záchytné body",
+        "dictionary": "pravopis, vlastní slova, ignorovaná slova, korektura, gramatická pravidla",
+        "downloads": "balíčky, písma, slovníky, soubory offline",
+        "engine": "kompilátor, kompilace, LaTeX, TeX, Typst, Markdown, pandoc, sestavení, PDF",
+        "experimentation": "experimenty, laboratoř, beta, experimentální funkce, nové funkce",
+        "general": "předvolby, jazyk, národní prostředí, kontrola pravopisu, pravopis, překlepy, offline, prohlídky, příkaz terminálu",
+        "help": "o aplikaci, verze, aktualizace, seznam změn, co je nového, dokumentace, podpora, nápověda, komunita, Discord, licence, hlášení pádu",
+        "integrations": "Zotero, GitHub, MCP, citace, účty, připojení",
+        "shortcuts": "klávesové zkratky, zkratky, klávesy, klávesnice"
+      },
+      "label": "Hledat v nastavení",
+      "results_one": "{{count}} odpovídající sekce",
+      "results_few": "{{count}} odpovídající sekce",
+      "results_many": "{{count}} odpovídající sekce",
+      "results_other": "{{count}} odpovídajících sekcí"
     },
     "sectionsNav": "Sekce nastavení",
     "title": "Nastavení",

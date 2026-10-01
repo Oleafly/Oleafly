@@ -54,6 +54,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Private } from "@/components/ui/private";
 import { FileIcon } from "@/components/files/fileIcon";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
@@ -1138,7 +1139,7 @@ export function SourceControl() {
                       ))}
                     </div>
                     <span className="text-[10px] text-muted-foreground">
-                      {commit.author ?? commit.short}
+                      {commit.author ? <Private>{commit.author}</Private> : commit.short}
                     </span>
                   </div>
                   <button

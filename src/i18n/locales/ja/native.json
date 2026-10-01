@@ -16,6 +16,7 @@
     "view": "表示",
     "toggleTerminal": "ターミナルの表示を切り替え",
     "toggleBrowser": "ブラウザの表示を切り替え",
+    "hidePersonalDetails": "個人情報を隠す",
     "file": "ファイル",
     "openFolder": "フォルダを開く…",
     "openRecent": "最近使った項目を開く",

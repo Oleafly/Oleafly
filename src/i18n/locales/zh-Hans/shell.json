@@ -62,7 +62,9 @@
     "setHomePage": "设为主页"
   },
   "changelog": {
-    "installed": "当前使用的版本"
+    "installed": "当前使用的版本",
+    "sectionItems_other": "{{count}} 项更改",
+    "showNotes": "显示说明"
   },
   "citeOleafly": {
     "description": "未在此项目中找到参考文献文件，因此未做任何更改。请将下方条目复制到你的参考文献中，或稍后在设置的“帮助与关于”中再次查找。",
@@ -165,6 +167,9 @@
       "online": "在线模式（允许获取宏包）"
     },
     "openTool": "打开 {{name}}",
+    "personalDetails": {
+      "keywords": "截图模式，隐私，模糊，路径，账户名"
+    },
     "recompile": {
       "label": "重新编译"
     },
@@ -509,6 +514,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "隐藏个人信息",
+    "show": "显示个人信息"
+  },
   "projectSearch": {
     "hint": "在本项目的所有文件中搜索。",
     "noResults": "无结果。",
@@ -734,6 +743,24 @@
       "help": "帮助与关于",
       "integrations": "集成",
       "shortcuts": "键盘快捷键"
+    },
+    "search": {
+      "empty": "没有匹配的设置。",
+      "keywords": {
+        "ai": "助手，聊天，模型，提供商，API 密钥，代理，智能体，提示词，预算，MCP 服务器",
+        "appearance": "主题，深色模式，暗色模式，浅色模式，颜色，字体，文字大小，缩放，布局",
+        "data": "备份，库文件夹，项目文件夹，存储，磁盘空间，废纸篓，回收站，删除项目，检查点",
+        "dictionary": "拼写，自定义词语，忽略的词语，校对，语法规则",
+        "downloads": "宏包，软件包，字体，词典，离线文件",
+        "engine": "编译器，LaTeX，TeX，Typst，Markdown，pandoc，构建，编译，PDF",
+        "experimentation": "实验室，测试版，beta，早期功能",
+        "general": "偏好设置，语言，区域，拼写检查，拼写，错别字，离线，导览，终端命令",
+        "help": "关于，版本，更新，更新日志，新功能，文档，支持，社区，Discord，许可证，崩溃报告",
+        "integrations": "Zotero，GitHub，MCP，引用，账户，连接",
+        "shortcuts": "按键绑定，快捷键，热键，按键，键盘"
+      },
+      "label": "搜索设置",
+      "results_other": "{{count}} 个分区匹配"
     },
     "sectionsNav": "设置分区",
     "title": "设置",

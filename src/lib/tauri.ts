@@ -1484,6 +1484,8 @@ export const recycleProject = (projectId: string) =>
   invoke<void>("recycle_project", { projectId });
 
 export const libraryRoot = () => invoke<string>("library_root");
+/** Spellings of the home folder that backend paths start with (see display-path.ts). */
+export const displayHomes = () => invoke<string[]>("display_homes");
 export const appVersion = () => invoke<string>("app_version");
 export const agentExecCwd = (projectId: string) =>
   invoke<string>("agent_exec_cwd", { projectId });

@@ -5,6 +5,10 @@ import {
 } from "@oleafly/latex";
 import { summarizeBibliographyEntry } from "./bibliography-summary";
 import {
+  definitionCandidatesForUse,
+  definitionsByKey,
+} from "./resolution";
+import {
   engineForPath,
   normalizeProjectPath,
   stableId,
@@ -52,31 +56,6 @@ const TARGET_DEFINITION_KINDS: ReadonlySet<string> = new Set([
   "macro",
   "environment",
 ]);
-
-function definitionKey(
-  definition: ProjectDefinition,
-): string | null {
-  if (definition.kind === "label" || definition.kind === "anchor") {
-    if (
-      definition.engine === "markdown" &&
-      definition.kind === "anchor"
-    ) {
-      return `reference:${definition.location.file}:${definition.name}`;
-    }
-    return `reference:${definition.name}`;
-  }
-  if (definition.kind === "bibentry") {
-    return `citation:${definition.name}`;
-  }
-  if (definition.kind === "macro") return `macro:${definition.name}`;
-  if (definition.kind === "environment") {
-    return `environment:${definition.name}`;
-  }
-  if (definition.kind === "glossary") {
-    return `glossary:${definition.name}`;
-  }
-  return null;
-}
 
 function relatedDefinitions(
   definitions: readonly ProjectDefinition[],
@@ -366,64 +345,6 @@ function resolveEdge(
   };
 }
 
-function referenceCandidates(
-  use: ProjectUse,
-  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
-): readonly ProjectDefinition[] {
-  let candidates =
-    use.engine === "markdown"
-      ? byKey.get(
-          `reference:${use.location.file}:${use.name}`,
-        ) ?? []
-      : byKey.get(`reference:${use.name}`) ?? [];
-  if (use.target?.includes("#")) {
-    const [file, anchor] = use.target.split("#", 2);
-    candidates =
-      byKey.get(
-        `reference:${file}:${anchor || use.name}`,
-      ) ??
-      (byKey.get(`reference:${anchor || use.name}`) ?? []).filter(
-        (definition) => definition.location.file === file,
-      );
-  }
-  if (use.syntax === "typst-at") {
-    const citations = byKey.get(`citation:${use.name}`) ?? [];
-    if (candidates.length === 0) return citations;
-    if (citations.length > 0) return [...candidates, ...citations];
-  }
-  return candidates;
-}
-
-function macroCandidates(
-  use: ProjectUse,
-  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
-): readonly ProjectDefinition[] {
-  const candidates = byKey.get(`macro:${use.name}`) ?? [];
-  if (use.syntax !== "candidate") return candidates;
-  return candidates.filter(
-    (definition) =>
-      definition.location.file !== use.location.file ||
-      definition.location.range.from !== use.location.range.from ||
-      definition.location.range.to !== use.location.range.to,
-  );
-}
-
-function definitionCandidatesForUse(
-  use: ProjectUse,
-  byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
-): readonly ProjectDefinition[] {
-  if (use.kind === "reference") return referenceCandidates(use, byKey);
-  if (use.kind === "macro") return macroCandidates(use, byKey);
-  if (
-    use.kind === "citation" ||
-    use.kind === "environment" ||
-    use.kind === "glossary"
-  ) {
-    return byKey.get(`${use.kind}:${use.name}`) ?? [];
-  }
-  return [];
-}
-
 function resolvedUse(
   original: ProjectUse,
   byKey: ReadonlyMap<string, readonly ProjectDefinition[]>,
@@ -584,20 +505,6 @@ function hierarchyFor(
     })
     .map((node) => node.file);
   return { roots, nodes, edges };
-}
-
-function definitionsByKey(
-  definitions: readonly ProjectDefinition[],
-): Map<string, ProjectDefinition[]> {
-  const byKey = new Map<string, ProjectDefinition[]>();
-  for (const definition of definitions) {
-    const key = definitionKey(definition);
-    if (!key) continue;
-    const values = byKey.get(key) ?? [];
-    values.push(definition);
-    byKey.set(key, values);
-  }
-  return byKey;
 }
 
 function knownFileIndex(knownFiles: readonly string[]): {

@@ -4,10 +4,11 @@ import { AlertTriangle, CheckCircle2, Download, ExternalLink, Loader2, RotateCcw
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { LeafLogo } from "@/components/layout/LeafLogo";
-import { PRIMARY_TEXT, ReleaseNotes } from "@/components/layout/ReleaseNotes";
+import { PRIMARY_TEXT } from "@/components/layout/ReleaseNotes";
 import {
   parseReleaseDate,
   RelativeTime,
+  ReleaseNotesBody,
   ReleaseTimeline,
   splitNotesTitle,
   VersionTagButton,
@@ -238,7 +239,7 @@ export function UpdateDialog({
               lead={{
                 version: nextVersion,
                 content: notesBody ? (
-                  <ReleaseNotes source={notesBody} onOpenLink={onOpenLink} />
+                  <ReleaseNotesBody source={notesBody} onOpenLink={onOpenLink} />
                 ) : (
                   <p className="text-[13px] text-muted-foreground">{t(($) => $.shell.updateWindow.ready)}</p>
                 ),

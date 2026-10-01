@@ -579,3 +579,44 @@ describe("project completion for keys with combining marks", () => {
     expect(result?.filter).toBe(false);
   });
 });
+
+describe("project label completion per engine", () => {
+  const latex = String.raw`\begin{equation}\label{eq:mae}x\end{equation}
+See \eqref{eq:`;
+  const typst = "$ x $ <eq:mae>\n= Other <eq:rmse>\nSee @eq:";
+
+  function complete(active: "paper.tex" | "paper.typ"): CompletionResult | null {
+    installProject({ "paper.tex": latex, "paper.typ": typst });
+    useFilesStore.setState({ activePath: active });
+    setEditorDocumentPath(active);
+    const doc = active === "paper.tex" ? latex : typst;
+    const state = EditorState.create({ doc });
+    return synchronousProjectCompletion(
+      new CompletionContext(state, doc.length, false),
+    );
+  }
+
+  it("offers only LaTeX labels inside a LaTeX reference", () => {
+    const result = complete("paper.tex");
+    expect(result?.options.map((candidate) => candidate.label)).toEqual([
+      "eq:mae",
+    ]);
+    expect(option(result, "eq:mae").detail).not.toContain("duplicate");
+    expect(option(result, "eq:mae").detail).toContain("paper.tex");
+  });
+
+  it("offers only Typst labels after a Typst @", () => {
+    const result = complete("paper.typ");
+    const labels = (result?.options ?? []).filter((candidate) =>
+      String(candidate.label).startsWith("eq:"),
+    );
+    expect(labels.map((candidate) => candidate.label)).toEqual([
+      "eq:mae",
+      "eq:rmse",
+    ]);
+    for (const candidate of labels) {
+      expect(candidate.detail).toContain("paper.typ");
+      expect(candidate.detail).not.toContain("duplicate");
+    }
+  });
+});

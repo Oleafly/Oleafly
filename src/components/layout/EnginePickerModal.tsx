@@ -16,6 +16,7 @@ import {
   type ImportCompatFinding,
 } from "@oleafly/latex";
 import { toast } from "@/lib/toast";
+import { PrivatePath } from "@/components/ui/private";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
@@ -246,7 +247,7 @@ export function EnginePickerModal() {
       />
       {info?.latexmk && (
         <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
-          {info.latexmk}
+          <PrivatePath path={info.latexmk} />
         </p>
       )}
       <div className="mt-3 border-t pt-3">

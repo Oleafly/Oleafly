@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
+import { focusPastPersonalDetails } from "@/components/ui/private";
 import { cn } from "@/lib/utils";
 
 interface PopoverProps {
@@ -101,6 +102,8 @@ export function Popover({
             sideOffset={4}
             collisionPadding={12}
             onClick={closeOnClick ? () => setOpen(false) : undefined}
+            // Opening must not land on a personal value, which focus reveals.
+            onOpenAutoFocus={focusPastPersonalDetails}
             onPointerDownOutside={(event) => {
               if (closeOnClick) return;
               const target = event.target;

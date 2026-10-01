@@ -64,7 +64,11 @@
     "setHomePage": "Definir como página inicial"
   },
   "changelog": {
-    "installed": "Você está nesta versão"
+    "installed": "Você está nesta versão",
+    "sectionItems_one": "{{count}} mudança",
+    "sectionItems_many": "{{count}} mudanças",
+    "sectionItems_other": "{{count}} mudanças",
+    "showNotes": "Mostrar notas da versão"
   },
   "citeOleafly": {
     "description": "Nenhum arquivo de bibliografia foi encontrado neste projeto, então nada foi alterado. Copie a entrada abaixo para a sua bibliografia ou encontre-a depois em Configurações, Ajuda e sobre.",
@@ -167,6 +171,9 @@
       "online": "Modo online (permitir baixar pacotes)"
     },
     "openTool": "Abrir {{name}}",
+    "personalDetails": {
+      "keywords": "modo de captura de tela, captura de tela, print, privacidade, desfocar, caminhos, nome da conta"
+    },
     "recompile": {
       "label": "Compilar de novo"
     },
@@ -513,6 +520,10 @@
       }
     }
   },
+  "personalDetails": {
+    "hide": "Ocultar dados pessoais",
+    "show": "Mostrar dados pessoais"
+  },
   "projectSearch": {
     "hint": "Busque em todos os arquivos deste projeto.",
     "noResults": "Nenhum resultado.",
@@ -766,6 +777,26 @@
       "help": "Ajuda e sobre",
       "integrations": "Integrações",
       "shortcuts": "Atalhos de teclado"
+    },
+    "search": {
+      "empty": "Nenhuma configuração encontrada.",
+      "keywords": {
+        "ai": "assistente, chat, conversa, modelos, provedores, chaves de API, agentes, prompts, orçamento, servidores MCP",
+        "appearance": "tema, modo escuro, modo claro, cor, fontes, tamanho do texto, zoom, layout",
+        "data": "backup, pasta da biblioteca, pasta de projetos, armazenamento, espaço em disco, lixeira, excluir projetos, pontos de verificação",
+        "dictionary": "ortografia, palavras personalizadas, palavras ignoradas, revisão, regras gramaticais",
+        "downloads": "pacotes, fontes, dicionários, arquivos offline",
+        "engine": "compilador, LaTeX, TeX, Typst, Markdown, pandoc, compilação, compilar, PDF",
+        "experimentation": "labs, laboratório, beta, recursos antecipados, experimental",
+        "general": "preferências, idioma, região, verificação ortográfica, ortografia, erros de digitação, offline, tour, comando do terminal",
+        "help": "sobre, versão, atualizações, registro de alterações, novidades, documentação, suporte, ajuda, comunidade, Discord, licença, relatório de falha",
+        "integrations": "Zotero, GitHub, MCP, citações, contas, conexões",
+        "shortcuts": "atalhos de teclado, atalhos, teclas, teclado"
+      },
+      "label": "Buscar nas configurações",
+      "results_one": "{{count}} seção corresponde",
+      "results_many": "{{count}} seções correspondem",
+      "results_other": "{{count}} seções correspondem"
     },
     "sectionsNav": "Seções das configurações",
     "title": "Configurações",

@@ -25,7 +25,9 @@ test("lists every skipped release newest first, one more each time the reader ne
   await expect(header.getByText("Released yesterday")).toBeVisible();
 
   const scroll = page.getByTestId("update-notes-scroll");
-  await expect.poll(() => timelineVersions(page)).toEqual(["0.4.3", "0.4.2"]);
+  // Older releases start folded, so a short list can load a few more to fill
+  // the window before anyone scrolls. It still starts with the newest two.
+  await expect.poll(async () => (await timelineVersions(page)).slice(0, 2)).toEqual(["0.4.3", "0.4.2"]);
 
   const counts: number[] = [];
   for (let step = 0; step < 40; step += 1) {

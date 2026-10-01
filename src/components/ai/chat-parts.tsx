@@ -48,6 +48,8 @@ import {
 import { tokenizeComposer } from "@/lib/composer-tokens";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
+import { outsideCodeFences, useDisplayText } from "@/lib/display-path";
+import { PrivateText, usePrivateGroup } from "@/components/ui/private";
 import { formatList, formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
@@ -118,6 +120,10 @@ function todoStatusLabel(status: AgentTodo["status"]): string {
 
 function AgentTodoList({ todos }: Readonly<{ todos: readonly AgentTodo[] }>) {
   const { t } = useTranslation(["common", "ai"]);
+  // A plan read from the reply shows home paths as ~, as the message bubble
+  // does. The stored steps keep the real text, because the approved plan goes
+  // back to the model as written.
+  const displayText = useDisplayText();
   return (
     <ul className="space-y-1">
       {todos.map((todo) => (
@@ -126,7 +132,7 @@ function AgentTodoList({ todos }: Readonly<{ todos: readonly AgentTodo[] }>) {
           data-todo-status={todo.status}
           aria-label={t(($) => $.ai.chat.todos.ariaLabel, {
             status: todoStatusLabel(todo.status),
-            content: todo.content,
+            content: displayText(todo.content),
           })}
           className="flex items-start gap-1.5 text-[11px] leading-snug"
         >
@@ -165,7 +171,7 @@ function AgentTodoList({ todos }: Readonly<{ todos: readonly AgentTodo[] }>) {
               todo.status === "in_progress" && "font-medium text-foreground",
             )}
           >
-            {todo.content}
+            <PrivateText text={displayText(todo.content)} />
           </span>
         </li>
       ))}
@@ -198,14 +204,29 @@ export function AgentStatusPill({
   todos,
   turn,
   approval,
+  panelMaxHeight,
+  onPinnedChange,
 }: Readonly<{
   todos: readonly AgentTodo[];
   turn: AgentFileChangeTurn | null;
   approval?: AgentPlanApproval;
+  /** Caps the panel's height in pixels so a short chat keeps the reply in view. */
+  panelMaxHeight?: number;
+  /** Reports when the panel is pinned open, so the chat can keep room for it. */
+  onPinnedChange?: (pinned: boolean) => void;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
+  const onPinnedChangeRef = useRef(onPinnedChange);
+  useEffect(() => {
+    onPinnedChangeRef.current = onPinnedChange;
+  }, [onPinnedChange]);
+  const pinnedOpen = open && pinned;
+  useEffect(() => {
+    onPinnedChangeRef.current?.(pinnedOpen);
+  }, [pinnedOpen]);
+  useEffect(() => () => onPinnedChangeRef.current?.(false), []);
   const rootRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLButtonElement>(null);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -286,7 +307,13 @@ export function AgentStatusPill({
   };
 
   return (
-    <div ref={rootRef} className="pointer-events-none relative flex w-full justify-center">
+    // flex-col-reverse draws the panel above the pill while keeping the pill
+    // first in DOM and tab order. The panel stays in normal flow, so the
+    // overlay's height includes it and the chat can reserve that room.
+    <div
+      ref={rootRef}
+      className="pointer-events-none relative flex w-full flex-col-reverse items-center"
+    >
       <button
         ref={pillRef}
         type="button"
@@ -347,7 +374,7 @@ export function AgentStatusPill({
       </button>
 
       {open && (
-        <div className="pointer-events-auto absolute inset-x-0 bottom-full mx-auto w-full max-w-[22rem] pb-1.5">
+        <div className="pointer-events-auto w-full max-w-[22rem] pb-1.5">
           <div
             id={panelId}
             role="dialog"
@@ -357,6 +384,7 @@ export function AgentStatusPill({
             onMouseEnter={cancelClose}
             onMouseLeave={scheduleClose}
             onBlur={closeWhenFocusLeaves}
+            style={panelMaxHeight === undefined ? undefined : { maxHeight: panelMaxHeight }}
             className="max-h-72 overflow-y-auto rounded-lg border bg-popover p-2.5 text-left text-popover-foreground shadow-lg"
           >
             <div className="mb-1.5 flex items-center gap-2">
@@ -369,7 +397,8 @@ export function AgentStatusPill({
             </div>
             {todos.length > 0 && <AgentTodoList todos={todos} />}
             {awaiting && approval && (
-              <div className="mt-2 flex items-center gap-1.5">
+              // Sticky so Approve stays reachable when a short chat caps the panel.
+              <div className="sticky bottom-0 mt-2 flex items-center gap-1.5 bg-popover pt-1">
                 <button
                   type="button"
                   aria-label={t(($) => $.ai.chat.plan.approve)}
@@ -805,6 +834,7 @@ export function ReasoningBlock({
   expansionKey?: string;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
+  const displayText = useDisplayText();
   const [open, setOpen] = usePersistentExpansion(expansionKey, false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -862,7 +892,9 @@ export function ReasoningBlock({
               full math/mermaid/highlight renderer would choke on the fragments
               (showing raw source) and block the main thread while parsing the
               whole trace on expand. Plain pre-wrap opens instantly. */}
-          <span className="whitespace-pre-wrap">{text}</span>
+          <span className="whitespace-pre-wrap">
+            <PrivateText text={displayText(text)} />
+          </span>
         </div>
       )}
     </div>
@@ -1027,7 +1059,9 @@ export function SubagentCard({
           className="flex items-start gap-1.5 border-t bg-amber-500/5 px-2.5 py-1.5 text-[10px] leading-snug text-muted-foreground"
         >
           <Info aria-hidden="true" className="mt-px size-3 shrink-0 text-amber-500" />
-          <span className="min-w-0">{notice}</span>
+          <span className="min-w-0">
+            <PrivateText text={notice} />
+          </span>
         </p>
       ))}
       {(overflows || openSession) && (
@@ -1217,18 +1251,29 @@ function messageTimestamp(createdAt: number | undefined): Readonly<{ iso?: strin
   };
 }
 
+// Replies often name files by absolute path; show the home folder as ~.
+// What the user typed and the copy button keep the text as written.
+function bubbleText(msg: ChatMessage, displayText: (text: string) => string): string {
+  return msg.role === "assistant" ? outsideCodeFences(msg.content, displayText) : msg.content;
+}
+
 function messageBubble({
   msg,
   live,
   tokenizedUserText,
   messageTime,
   messageIso,
+  shown,
+  privateGroup,
 }: Readonly<{
   msg: ChatMessage;
   live?: boolean;
   tokenizedUserText: React.ReactNode | null;
   messageTime?: string;
   messageIso?: string;
+  shown: string;
+  /** Screenshot mode: one focus stop that reveals the paths in the bubble. */
+  privateGroup: ReturnType<typeof usePrivateGroup>;
 }>) {
   return (
     <div
@@ -1238,6 +1283,7 @@ function messageBubble({
       )}
     >
       <div
+        {...privateGroup}
         className={cn(
           "overflow-hidden rounded-lg px-3 py-2 text-sm",
           msg.role === "user"
@@ -1247,7 +1293,7 @@ function messageBubble({
       >
         {tokenizedUserText ?? (
           <Markdown className="chat-markdown" inverted={msg.role === "user"} streaming={live}>
-            {msg.content}
+            {shown}
           </Markdown>
         )}
       </div>
@@ -1275,6 +1321,12 @@ export const MessageItem = memo(function MessageItem({
   expansionScope?: string;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
+  const displayText = useDisplayText();
+  const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
+  const shown = bubbleText(msg, displayText);
+  // Only a bubble that shows a personal run becomes a focus stop. Mention
+  // chips are not marked, so a bubble drawn with them has nothing to reveal.
+  const privateGroup = usePrivateGroup(tokenizedUserText ? "" : shown);
   const tools = msg.toolCalls ?? [];
   const attachmentOccurrences = new Map<string, number>();
   // Fall back to the legacy single-block fields for chats persisted before
@@ -1306,7 +1358,6 @@ export const MessageItem = memo(function MessageItem({
     !hasVisibleOutcome &&
     !(msg.subagents?.length);
   const pictures = !live && msg.role === "assistant" ? lastFinishedPicture(msg.toolCalls ?? []) : [];
-  const tokenizedUserText = msg.role === "user" ? userTokenChips(msg) : null;
   const timestamp = messageTimestamp(msg.createdAt);
   return (
     <div className={cn("flex flex-col gap-1.5", msg.role === "user" && "items-end")}>
@@ -1367,7 +1418,7 @@ export const MessageItem = memo(function MessageItem({
           data-testid="agent-notice"
           className="max-w-[85%] rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground"
         >
-          {notice}
+          <PrivateText text={notice} />
         </p>
       ))}
       {msg.content
@@ -1377,6 +1428,8 @@ export const MessageItem = memo(function MessageItem({
             tokenizedUserText,
             messageTime: timestamp.label,
             messageIso: timestamp.iso,
+            shown,
+            privateGroup,
           })
         : null}
     </div>

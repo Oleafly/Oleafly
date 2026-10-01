@@ -46,6 +46,7 @@ vi.mock("@/lib/github", () => ({
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: mocks.open }));
 
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import { usePersonalDetailsStore } from "@/store/personal-details";
 import { GitHubSection } from "./GitHubSection";
 
 const config = {
@@ -293,6 +294,30 @@ describe("GitHubSection personal access token", () => {
     expect(
       screen.queryByPlaceholderText(github.advanced.tokenPlaceholder),
     ).not.toBeInTheDocument();
+  });
+
+  it("marks the account in the connected notice for screenshot mode", async () => {
+    const user = userEvent.setup();
+    mocks.github.connectWithToken.mockImplementation(async () => {
+      mocks.github.user = { login: "octocat" };
+    });
+    usePersonalDetailsStore.getState().setHidden(true);
+    try {
+      render(<GitHubSection />);
+      await user.click(
+        await screen.findByRole("button", { name: github.advanced.toggle }),
+      );
+      await user.type(screen.getByPlaceholderText(github.advanced.tokenPlaceholder), "ghp_token");
+      await user.click(screen.getByRole("button", { name: github.advanced.connect }));
+
+      const login = await screen.findByText("octocat");
+      expect(login).toHaveAttribute("data-private");
+      expect(login.parentElement).toHaveTextContent(
+        github.notice.connected.replace("{{login}}", "octocat"),
+      );
+    } finally {
+      act(() => usePersonalDetailsStore.getState().setHidden(false));
+    }
   });
 
   it("surfaces a rejected token", async () => {

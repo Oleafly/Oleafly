@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Private, PrivateText } from "@/components/ui/private";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGithubStore } from "@/store/github";
 import { gitPreparePublish, gitPublishPreflight, gitPush, gitSetRemote } from "@/lib/tauri";
@@ -66,6 +67,8 @@ export function PublishToGitHubDialog({
 }) {
   const { t } = useTranslation(["common", "library"]);
   const status = useGithubStore((s) => s.status);
+  // The result names the repository, and so the account; screenshot mode blurs it.
+  const login = useGithubStore((s) => s.user?.login);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const [tab, setTab] = useState<"new" | "existing">("new");
@@ -294,9 +297,9 @@ export function PublishToGitHubDialog({
           )}
         >
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-mono">
+            <Private focusable={false} className="block truncate font-mono">
               {r.full_name}
-            </span>
+            </Private>
           </span>
           {r.private && (
             <Lock className="size-3 shrink-0 text-muted-foreground" />
@@ -482,7 +485,7 @@ export function PublishToGitHubDialog({
                     : "border-destructive/30 bg-destructive/10 text-destructive"
                 )}
               >
-                {visibleMessage.text}
+                <PrivateText text={visibleMessage.text} values={login ? [login] : []} />
               </div>
             )}
           </>
