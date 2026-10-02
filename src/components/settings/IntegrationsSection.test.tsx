@@ -81,6 +81,13 @@ describe("IntegrationsSection", () => {
     ).toHaveLength(1);
   });
 
+  it("scrolls the integration tabs inside their own strip", () => {
+    render(<IntegrationsSection />);
+    const strip = screen.getByRole("tablist");
+    expect(strip).toHaveClass("w-fit", "max-w-full", "overflow-x-auto", "no-scrollbar");
+    expect(strip).not.toHaveClass("inline-flex");
+  });
+
   it("honors and clears settings deep links", () => {
     useSettingsStore.setState({ settingsScrollTarget: "citation-search" });
     const { rerender } = render(<IntegrationsSection />);

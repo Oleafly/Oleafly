@@ -678,6 +678,12 @@
         "label": "Webbrowser"
       }
     },
+    "footer": {
+      "followOnX": "Følg på X",
+      "joinDiscord": "Bliv en del af Discord-fællesskabet",
+      "releaseNotes": "Se udgivelsesnoter",
+      "viewSource": "Se kildekoden"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Engelsk dialekt til korrekturlæsning",

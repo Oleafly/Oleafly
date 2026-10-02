@@ -693,6 +693,12 @@
         "label": "Navegador web"
       }
     },
+    "footer": {
+      "followOnX": "Seguir en X",
+      "joinDiscord": "Únete a la comunidad de Discord",
+      "releaseNotes": "Ver notas de la versión",
+      "viewSource": "Ver el código fuente"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Variedad de inglés para la corrección",

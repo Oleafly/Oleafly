@@ -678,6 +678,12 @@
         "label": "Verkkoselain"
       }
     },
+    "footer": {
+      "followOnX": "Seuraa X:ssä",
+      "joinDiscord": "Liity Discord-yhteisöön",
+      "releaseNotes": "Näytä julkaisutiedot",
+      "viewSource": "Näytä lähdekoodi"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Kielentarkistuksen englannin muunnos",

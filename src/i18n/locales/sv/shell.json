@@ -678,6 +678,12 @@
         "label": "Webbläsare"
       }
     },
+    "footer": {
+      "followOnX": "Följ på X",
+      "joinDiscord": "Gå med i Discord-communityn",
+      "releaseNotes": "Visa versionsinformation",
+      "viewSource": "Visa källkoden"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Engelsk dialekt vid korrekturläsning",

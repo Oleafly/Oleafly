@@ -226,6 +226,7 @@
       },
       "noChanges": "Geen wijzigingen",
       "refresh": "Vernieuwen",
+      "refreshThrottled": "Zojuist vernieuwd. Probeer het over {{seconds}} s opnieuw",
       "restore": "Standaardwaarden herstellen",
       "restoreTooltip": "De ingebouwde modellen van deze provider opnieuw toevoegen",
       "title": "Modellen",

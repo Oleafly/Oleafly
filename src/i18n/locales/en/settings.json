@@ -226,6 +226,7 @@
       },
       "noChanges": "No changes",
       "refresh": "Refresh",
+      "refreshThrottled": "Refreshed a moment ago. Try again in {{seconds}} s",
       "restore": "Restore defaults",
       "restoreTooltip": "Re-add this provider's built-in models",
       "title": "Models",

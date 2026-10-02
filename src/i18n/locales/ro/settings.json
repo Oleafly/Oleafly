@@ -226,6 +226,7 @@
       },
       "noChanges": "Nicio modificare",
       "refresh": "Reîmprospătează",
+      "refreshThrottled": "Reîmprospătat acum un moment. Încearcă din nou în {{seconds}} s",
       "restore": "Restabilește valorile implicite",
       "restoreTooltip": "Adaugă la loc modelele incluse ale acestui furnizor",
       "title": "Modele",

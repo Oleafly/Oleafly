@@ -52,7 +52,7 @@ export function IntegrationsSection() {
       }}
       className="space-y-4"
     >
-      <TabsList>
+      <TabsList scrollable>
         <TabsTrigger value="github" data-testid="integrations-tab-github">
           <GitHubBrandIcon className="mr-1.5 size-3.5" /> {"GitHub"}
         </TabsTrigger>

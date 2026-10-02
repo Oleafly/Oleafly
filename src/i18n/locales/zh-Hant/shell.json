@@ -663,6 +663,12 @@
         "label": "網頁瀏覽器"
       }
     },
+    "footer": {
+      "followOnX": "在 X 上追蹤",
+      "joinDiscord": "加入 Discord 社群",
+      "releaseNotes": "檢視版本資訊",
+      "viewSource": "檢視原始碼"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "校對英語變體",

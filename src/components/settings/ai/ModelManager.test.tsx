@@ -174,6 +174,69 @@ describe("ModelManager refresh", () => {
     await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
   });
 
+  it("keeps the icon turning for at least one full turn when the provider answers at once", async () => {
+    vi.useFakeTimers();
+    mockList.mockResolvedValue([{ id: "gpt-alpha", name: "Alpha", trust: "verified" }]);
+    const onChange = renderManager();
+    const button = screen.getByTestId("ai-refresh-models-openai");
+
+    fireEvent.click(button);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(button.querySelector(".animate-spin")).not.toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(999);
+    });
+    expect(button.querySelector(".animate-spin")).not.toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(button.querySelector(".animate-spin")).toBeNull();
+  });
+
+  it("says why Refresh is locked and counts down to when it frees up", async () => {
+    vi.useFakeTimers();
+    mockList.mockResolvedValue([{ id: "gpt-alpha", name: "Alpha", trust: "verified" }]);
+    renderManager();
+    const button = screen.getByTestId("ai-refresh-models-openai");
+    const trigger = button.parentElement as HTMLElement;
+    const lockedTip = (seconds: number) =>
+      enSettings.ai.models.refreshThrottled.replace("{{seconds}}", String(seconds));
+
+    fireEvent.click(button);
+    fireEvent.mouseEnter(trigger);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(screen.queryByRole("tooltip")).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(button).toBeDisabled();
+    fireEvent.mouseLeave(trigger);
+    fireEvent.mouseEnter(trigger);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(screen.getByRole("tooltip")).toHaveTextContent(lockedTip(29));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+    expect(screen.getByRole("tooltip")).toHaveTextContent(lockedTip(24));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(25_000);
+    });
+    expect(button).toBeEnabled();
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
   it("keeps the throttle while the card is closed and opened again", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockList.mockResolvedValue([{ id: "gpt-alpha", name: "Alpha", trust: "verified" }]);

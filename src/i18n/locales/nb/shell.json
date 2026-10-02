@@ -678,6 +678,12 @@
         "label": "Nettleser"
       }
     },
+    "footer": {
+      "followOnX": "Følg på X",
+      "joinDiscord": "Bli med i Discord-fellesskapet",
+      "releaseNotes": "Se versjonsmerknader",
+      "viewSource": "Se kildekoden"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Engelsk dialekt for korrekturlesing",

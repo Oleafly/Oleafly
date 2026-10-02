@@ -1406,98 +1406,68 @@ const LEARN_URL = "https://oleafly.com/learn/";
 const X_URL = "https://x.com/OleaflyHQ";
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
+/** Community, docs and release-notes buttons pinned under the Settings navigation, one icon each. */
 function SettingsFooter() {
   const { t } = useTranslation(["shell"]);
-  const [version, setVersion] = useState("");
   const [changelogOpen, setChangelogOpen] = useState(false);
-  useEffect(() => {
-    let active = true;
-    appVersion()
-      .then((value) => {
-        if (active) setVersion(value);
-      })
-      .catch(() => {
-        if (active) setVersion("");
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  const whatsNew = t(($) => $.shell.settings.help.resources.whatsNew);
-  return (
-    <div data-testid="settings-footer" className="flex items-center">
-      {version ? (
-        <>
-          <Tooltip label={whatsNew} side="top" className="min-w-0">
-            <button
-              type="button"
-              data-testid="settings-footer-version"
-              aria-label={`v${version}. ${whatsNew}`}
-              onClick={() => setChangelogOpen(true)}
-              className="flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1 text-[11px] tabular-nums text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground"
-            >
-              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
-              <span className="truncate">{`v${version}`}</span>
-            </button>
-          </Tooltip>
-          <span aria-hidden className="mx-1 h-4 w-px shrink-0 bg-border" />
-        </>
-      ) : null}
-      <SettingsFooterLinks />
-      {changelogOpen ? (
-        <Suspense fallback={null}>
-          <ChangelogDialog open onClose={() => setChangelogOpen(false)} />
-        </Suspense>
-      ) : null}
-    </div>
-  );
-}
-
-/** Community and docs links pinned under the Settings navigation, one icon each. */
-function SettingsFooterLinks() {
-  const { t } = useTranslation(["shell"]);
   const links = [
     {
       id: "discord",
       // Brand marks fill their whole box, so they draw a size smaller than lucide's to match.
       icon: <DiscordBrandIcon className="size-3.5" />,
-      label: t(($) => $.shell.community.joinDiscord),
-      url: DISCORD_URL,
+      label: t(($) => $.shell.settings.footer.joinDiscord),
+      onClick: () => void openExternal(DISCORD_URL),
     },
     {
       id: "x",
       icon: <XBrandIcon className="size-3.5" />,
-      label: t(($) => $.shell.community.followOnX),
-      url: X_URL,
+      label: t(($) => $.shell.settings.footer.followOnX),
+      onClick: () => void openExternal(X_URL),
     },
     {
       id: "github",
       icon: <Github className="size-4" />,
-      label: t(($) => $.shell.about.star),
-      url: REPO_URL,
+      label: t(($) => $.shell.settings.footer.viewSource),
+      onClick: () => void openExternal(REPO_URL),
     },
     {
       id: "docs",
       icon: <CircleHelp className="size-4" />,
       label: t(($) => $.shell.settings.help.resources.documentation),
-      url: DOCS_URL,
+      onClick: () => void openExternal(DOCS_URL),
+    },
+    {
+      id: "changelog",
+      icon: <ScrollText className="size-4" />,
+      label: t(($) => $.shell.settings.footer.releaseNotes),
+      onClick: () => setChangelogOpen(true),
     },
   ];
   return (
-    <div data-testid="settings-footer-links" className="flex shrink-0 items-center">
-      {links.map((link) => (
-        <Tooltip key={link.id} label={link.label} side="top">
-          <button
-            type="button"
-            data-testid={`settings-footer-${link.id}`}
-            aria-label={link.label}
-            onClick={() => void openExternal(link.url)}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground"
-          >
-            {link.icon}
-          </button>
-        </Tooltip>
-      ))}
+    <div data-testid="settings-footer">
+      <div data-testid="settings-footer-links" className="flex items-center justify-between">
+        {links.map((link, index) => (
+          <Fragment key={link.id}>
+            {index > 0 ? <span aria-hidden className="h-4 w-px shrink-0 bg-border" /> : null}
+            <Tooltip label={link.label} side="top">
+              <button
+                type="button"
+                data-testid={`settings-footer-${link.id}`}
+                aria-label={link.label}
+                onClick={link.onClick}
+                className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground"
+              >
+                {link.icon}
+              </button>
+            </Tooltip>
+          </Fragment>
+        ))}
+      </div>
+      {changelogOpen ? (
+        <Suspense fallback={null}>
+          <ChangelogDialog open onClose={() => setChangelogOpen(false)} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

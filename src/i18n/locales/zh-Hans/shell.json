@@ -663,6 +663,12 @@
         "label": "网页浏览器"
       }
     },
+    "footer": {
+      "followOnX": "在 X 上关注",
+      "joinDiscord": "加入 Discord 社区",
+      "releaseNotes": "查看发行说明",
+      "viewSource": "查看源代码"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "校对英语变体",

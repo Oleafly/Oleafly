@@ -226,6 +226,7 @@
       },
       "noChanges": "無變更",
       "refresh": "重新整理",
+      "refreshThrottled": "剛剛已重新整理。請在 {{seconds}} 秒後重試",
       "restore": "還原預設值",
       "restoreTooltip": "重新加入這個供應商的內建模型",
       "title": "模型",

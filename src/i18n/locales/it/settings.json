@@ -226,6 +226,7 @@
       },
       "noChanges": "Nessuna modifica",
       "refresh": "Aggiorna",
+      "refreshThrottled": "Aggiornato poco fa. Riprova tra {{seconds}} s",
       "restore": "Ripristina i predefiniti",
       "restoreTooltip": "Aggiungi di nuovo i modelli integrati di questo provider",
       "title": "Modelli",

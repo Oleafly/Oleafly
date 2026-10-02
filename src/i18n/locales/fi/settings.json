@@ -226,6 +226,7 @@
       },
       "noChanges": "Ei muutoksia",
       "refresh": "Päivitä",
+      "refreshThrottled": "Päivitetty hetki sitten. Yritä uudelleen {{seconds}} s kuluttua",
       "restore": "Palauta oletukset",
       "restoreTooltip": "Lisää tämän palvelun sisäänrakennetut mallit takaisin",
       "title": "Mallit",

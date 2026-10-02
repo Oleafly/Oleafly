@@ -18,8 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Settings > API Keys and the assistant can search papers, read them and use
   your alphaXiv library, asking you before each call. A key alphaXiv refuses
   is not saved.
-- The app version sits under the Settings sections. Click it to open What's
-  new.
 - Settings has a search box. Type a word such as "theme", "Zotero" or
   "spelling" and the list narrows to the sections and settings that match;
   pick one to jump to it.
@@ -80,8 +78,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The welcome screen's New project and Open a folder cards have pictures, like
   the cards in Start a new piece of work, and so does each source in Import a
   project. The pictures are ready before a dialog opens instead of popping in.
-- The bottom of the Settings sidebar has Discord, X, GitHub and Docs buttons,
-  and Cite Oleafly is now the last section of Help & About.
+- The bottom of the Settings sidebar has Discord, X, GitHub, Docs and Release
+  notes buttons, with a divider between each, and Cite Oleafly is now the last
+  section of Help & About. Release notes opens What's new.
 - Toasts have their close button inside, on the right.
 - The Float the assistant button has a picture-in-picture icon, so it no
   longer looks like Hide.
@@ -111,6 +110,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The tabs in Settings > Integrations made the whole Settings pane scroll
+  sideways when they didn't fit. They now scroll on their own, like the tabs
+  in Appearance, AI and MCP.
+- Refresh in a provider's model list sometimes seemed to do nothing. It stays
+  locked for 30 seconds after each check, and hovering it now says so and
+  counts down. A quick check also shows at least one full turn of the icon.
+- Every item in the model picker and other searchable lists showed a
+  not-allowed cursor. Only items you can't pick show it now.
 - Clicking a colour circle in Theme customization seemed to do nothing,
   because its picker opened behind the Settings window. The circle now opens
   the system colour picker.

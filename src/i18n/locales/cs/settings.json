@@ -226,6 +226,7 @@
       },
       "noChanges": "Žádné změny",
       "refresh": "Obnovit",
+      "refreshThrottled": "Obnoveno před chvílí. Zkuste to znovu za {{seconds}} s",
       "restore": "Obnovit výchozí",
       "restoreTooltip": "Znovu přidat vestavěné modely tohoto poskytovatele",
       "title": "Modely",

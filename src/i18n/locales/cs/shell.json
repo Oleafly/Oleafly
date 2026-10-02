@@ -708,6 +708,12 @@
         "label": "Webový prohlížeč"
       }
     },
+    "footer": {
+      "followOnX": "Sledovat na X",
+      "joinDiscord": "Přidat se ke komunitě na Discordu",
+      "releaseNotes": "Zobrazit poznámky k vydání",
+      "viewSource": "Zobrazit zdrojový kód"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Dialekt angličtiny pro korekturu",

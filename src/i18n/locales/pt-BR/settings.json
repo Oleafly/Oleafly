@@ -226,6 +226,7 @@
       },
       "noChanges": "Nenhuma mudança",
       "refresh": "Atualizar",
+      "refreshThrottled": "Atualizado há pouco. Tente novamente em {{seconds}} s",
       "restore": "Restaurar padrões",
       "restoreTooltip": "Colocar de volta os modelos embutidos deste provedor",
       "title": "Modelos",

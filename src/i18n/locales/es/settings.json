@@ -226,6 +226,7 @@
       },
       "noChanges": "Sin cambios",
       "refresh": "Actualizar",
+      "refreshThrottled": "Actualizado hace un momento. Inténtalo de nuevo en {{seconds}} s",
       "restore": "Restaurar los predeterminados",
       "restoreTooltip": "Volver a añadir los modelos incluidos de este proveedor",
       "title": "Modelos",

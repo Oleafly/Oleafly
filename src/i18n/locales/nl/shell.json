@@ -678,6 +678,12 @@
         "label": "Webbrowser"
       }
     },
+    "footer": {
+      "followOnX": "Volgen op X",
+      "joinDiscord": "Word lid van de Discord-community",
+      "releaseNotes": "Releaseopmerkingen bekijken",
+      "viewSource": "Broncode bekijken"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Engelse variant voor het proeflezen",

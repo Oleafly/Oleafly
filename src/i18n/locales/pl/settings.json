@@ -226,6 +226,7 @@
       },
       "noChanges": "Bez zmian",
       "refresh": "Odśwież",
+      "refreshThrottled": "Odświeżono przed chwilą. Spróbuj ponownie za {{seconds}} s",
       "restore": "Przywróć domyślne",
       "restoreTooltip": "Dodaj ponownie wbudowane modele tego dostawcy",
       "title": "Modele",

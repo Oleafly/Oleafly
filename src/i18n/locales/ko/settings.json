@@ -226,6 +226,7 @@
       },
       "noChanges": "변경 없음",
       "refresh": "새로 고침",
+      "refreshThrottled": "방금 새로 고쳤습니다. {{seconds}}초 후에 다시 시도하세요",
       "restore": "기본값 복원",
       "restoreTooltip": "이 제공자의 기본 제공 모델을 다시 추가합니다",
       "title": "모델",

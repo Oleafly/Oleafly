@@ -226,6 +226,7 @@
       },
       "noChanges": "Keine Änderungen",
       "refresh": "Auffrischen",
+      "refreshThrottled": "Gerade aufgefrischt. In {{seconds}} s erneut versuchen",
       "restore": "Standards wiederherstellen",
       "restoreTooltip": "Die eingebauten Modelle dieses Anbieters erneut hinzufügen",
       "title": "Modelle",

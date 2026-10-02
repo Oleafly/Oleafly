@@ -226,6 +226,7 @@
       },
       "noChanges": "変更なし",
       "refresh": "更新",
+      "refreshThrottled": "少し前に更新しました。{{seconds}} 秒後にもう一度お試しください",
       "restore": "既定に戻す",
       "restoreTooltip": "このプロバイダの組み込みモデルを追加し直します",
       "title": "モデル",

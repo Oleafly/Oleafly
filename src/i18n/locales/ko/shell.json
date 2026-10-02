@@ -663,6 +663,12 @@
         "label": "웹 브라우저"
       }
     },
+    "footer": {
+      "followOnX": "X에서 팔로우하기",
+      "joinDiscord": "Discord 커뮤니티 참여하기",
+      "releaseNotes": "릴리스 노트 보기",
+      "viewSource": "소스 코드 보기"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "교정용 영어 방언",

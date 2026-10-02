@@ -693,6 +693,12 @@
         "label": "Browser web"
       }
     },
+    "footer": {
+      "followOnX": "Urmărește pe X",
+      "joinDiscord": "Intră în comunitatea de pe Discord",
+      "releaseNotes": "Vezi notele de lansare",
+      "viewSource": "Vezi codul sursă"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Varianta de engleză pentru corectură",

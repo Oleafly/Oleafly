@@ -226,6 +226,7 @@
       },
       "noChanges": "Değişiklik yok",
       "refresh": "Yenile",
+      "refreshThrottled": "Az önce yenilendi. {{seconds}} sn sonra tekrar deneyin",
       "restore": "Varsayılanları geri yükle",
       "restoreTooltip": "Bu sağlayıcının yerleşik modellerini yeniden ekle",
       "title": "Modeller",

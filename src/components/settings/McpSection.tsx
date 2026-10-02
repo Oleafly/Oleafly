@@ -262,31 +262,6 @@ export function McpSection() {
   const [revealed, setRevealed] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [clientTab, setClientTab] = useState<McpClientTab>("claude-code");
-  const clientTabRefs = useRef<Partial<Record<McpClientTab, HTMLButtonElement | null>>>({});
-  const clientTabStripRef = useRef<HTMLDivElement | null>(null);
-
-  // React attaches wheel listeners passively, so a horizontal-scroll shim on
-  // onWheel cannot preventDefault and the settings panel scrolls with the
-  // strip. A native non-passive listener owns the gesture.
-  useEffect(() => {
-    const list = clientTabStripRef.current;
-    if (!list) return;
-    const onWheel = (event: globalThis.WheelEvent) => {
-      if (list.scrollWidth <= list.clientWidth) return;
-      if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
-      event.preventDefault();
-      list.scrollLeft += event.deltaY;
-    };
-    list.addEventListener("wheel", onWheel, { passive: false });
-    return () => list.removeEventListener("wheel", onWheel);
-  }, []);
-
-  useEffect(() => {
-    clientTabRefs.current[clientTab]?.scrollIntoView?.({
-      block: "nearest",
-      inline: "nearest",
-    });
-  }, [clientTab]);
 
   const loadToken = useCallback(async (running: boolean) => {
     if (!running) {
@@ -723,58 +698,34 @@ export function McpSection() {
           onValueChange={(value) => setClientTab(value as McpClientTab)}
           className="space-y-3"
         >
-          <TabsList
-            className="flex h-auto w-fit max-w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar"
-            data-testid="mcp-client-tab-strip"
-            ref={clientTabStripRef}
-          >
+          <TabsList scrollable data-testid="mcp-client-tab-strip">
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current["claude-code"] = node;
-              }}
               value="claude-code"
               data-testid="mcp-tab-claude-code"
-              className="shrink-0"
             >
               {CLIENT_NAMES["claude-code"]}
             </TabsTrigger>
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current["claude-desktop"] = node;
-              }}
               value="claude-desktop"
               data-testid="mcp-tab-claude-desktop"
-              className="shrink-0"
             >
               {CLIENT_NAMES["claude-desktop"]}
             </TabsTrigger>
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current.cursor = node;
-              }}
               value="cursor"
               data-testid="mcp-tab-cursor"
-              className="shrink-0"
             >
               {CLIENT_NAMES.cursor}
             </TabsTrigger>
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current.codex = node;
-              }}
               value="codex"
               data-testid="mcp-tab-codex"
-              className="shrink-0"
             >
               {CLIENT_NAMES.codex}
             </TabsTrigger>
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current.grok = node;
-              }}
               value="grok"
               data-testid="mcp-tab-grok"
-              className="shrink-0"
             >
               {CLIENT_NAMES.grok}
             </TabsTrigger>

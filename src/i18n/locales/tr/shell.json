@@ -678,6 +678,12 @@
         "label": "Web tarayıcısı"
       }
     },
+    "footer": {
+      "followOnX": "X'te takip edin",
+      "joinDiscord": "Discord topluluğuna katılın",
+      "releaseNotes": "Sürüm notlarını görüntüleyin",
+      "viewSource": "Kaynak kodu görüntüleyin"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Redaksiyon için İngilizce lehçesi",

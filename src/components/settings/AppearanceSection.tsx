@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type WheelEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Plus } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -1211,28 +1211,6 @@ export function AppearanceSection() {
     sectionDiffersFromDefaults("appearance", state),
   );
   const { preference, setPreference } = useTheme();
-  const tabRefs = useRef<
-    Partial<Record<AppearanceTabId, HTMLButtonElement | null>>
-  >({});
-
-  useEffect(() => {
-    tabRefs.current[activeTab]?.scrollIntoView?.({
-      block: "nearest",
-      inline: "nearest",
-    });
-  }, [activeTab]);
-
-  const scrollTabs = (event: WheelEvent<HTMLDivElement>) => {
-    const list = event.currentTarget;
-    if (
-      list.scrollWidth <= list.clientWidth ||
-      Math.abs(event.deltaX) >= Math.abs(event.deltaY)
-    ) {
-      return;
-    }
-    list.scrollLeft += event.deltaY;
-  };
-
   return (
     <div className="space-y-4">
       <Tabs
@@ -1240,20 +1218,12 @@ export function AppearanceSection() {
         onValueChange={(value) => setActiveTab(value as AppearanceTabId)}
         className="space-y-4"
       >
-        <TabsList
-          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
-          data-testid="appearance-tab-strip"
-          onWheel={scrollTabs}
-        >
+        <TabsList scrollable data-testid="appearance-tab-strip">
           {APPEARANCE_TABS.map((tab) => (
             <TabsTrigger
               key={tab.id}
-              ref={(node) => {
-                tabRefs.current[tab.id] = node;
-              }}
               value={tab.id}
               data-testid={`appearance-tab-${tab.id}`}
-              className="shrink-0"
             >
               {tab.label()}
             </TabsTrigger>

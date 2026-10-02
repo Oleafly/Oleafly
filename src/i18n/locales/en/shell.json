@@ -678,6 +678,12 @@
         "label": "Web browser"
       }
     },
+    "footer": {
+      "followOnX": "Follow on X",
+      "joinDiscord": "Join Discord community",
+      "releaseNotes": "View release notes",
+      "viewSource": "View source"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Proofreading English dialect",

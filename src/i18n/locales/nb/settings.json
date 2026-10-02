@@ -226,6 +226,7 @@
       },
       "noChanges": "Ingen endringer",
       "refresh": "Oppdater",
+      "refreshThrottled": "Oppdatert for et øyeblikk siden. Prøv igjen om {{seconds}} s",
       "restore": "Tilbakestill til standard",
       "restoreTooltip": "Legg de innebygde modellene til denne leverandøren inn igjen",
       "title": "Modeller",

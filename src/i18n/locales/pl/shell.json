@@ -708,6 +708,12 @@
         "label": "Przeglądarka internetowa"
       }
     },
+    "footer": {
+      "followOnX": "Obserwuj na X",
+      "joinDiscord": "Dołącz do społeczności na Discordzie",
+      "releaseNotes": "Zobacz informacje o wydaniu",
+      "viewSource": "Zobacz kod źródłowy"
+    },
     "general": {
       "dialect": {
         "ariaLabel": "Odmiana angielszczyzny w korekcie",

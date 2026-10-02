@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 
 function renderTabs(size?: "default" | "sm") {
@@ -77,5 +77,78 @@ describe("Tabs", () => {
       "true",
     );
     expect(screen.getByText("Second panel")).toBeInTheDocument();
+  });
+
+  it("keeps a scrollable strip to its own width and shows no bar", () => {
+    render(
+      <Tabs defaultValue="one">
+        <TabsList scrollable aria-label={"Scrolling views"}>
+          <TabsTrigger value="one">{"One"}</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist", { name: "Scrolling views" });
+    expect(list).toHaveClass("flex", "flex-nowrap", "w-fit", "max-w-full", "overflow-x-auto", "no-scrollbar", "[&>*]:shrink-0");
+    expect(list).not.toHaveClass("inline-flex");
+    expect(list).not.toHaveClass("w-full");
+  });
+
+  it("turns a vertical wheel into a horizontal scroll of the strip alone", () => {
+    render(
+      <Tabs defaultValue="one">
+        <TabsList scrollable aria-label={"Scrolling views"}>
+          <TabsTrigger value="one">{"One"}</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist", { name: "Scrolling views" });
+    Object.defineProperties(list, {
+      clientWidth: { configurable: true, value: 320 },
+      scrollLeft: { configurable: true, value: 0, writable: true },
+      scrollWidth: { configurable: true, value: 640 },
+    });
+    const wheel = new WheelEvent("wheel", { deltaY: 80, bubbles: true, cancelable: true });
+    fireEvent(list, wheel);
+    expect(list.scrollLeft).toBe(80);
+    expect(wheel.defaultPrevented).toBe(true);
+  });
+
+  it("leaves the wheel alone when the strip fits or the list is not scrollable", () => {
+    render(
+      <Tabs defaultValue="one">
+        <TabsList aria-label={"Plain views"}>
+          <TabsTrigger value="one">{"One"}</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist", { name: "Plain views" });
+    Object.defineProperties(list, {
+      clientWidth: { configurable: true, value: 320 },
+      scrollLeft: { configurable: true, value: 0, writable: true },
+      scrollWidth: { configurable: true, value: 640 },
+    });
+    const wheel = new WheelEvent("wheel", { deltaY: 80, bubbles: true, cancelable: true });
+    fireEvent(list, wheel);
+    expect(list.scrollLeft).toBe(0);
+    expect(wheel.defaultPrevented).toBe(false);
+  });
+
+  it("scrolls the selected tab into view", async () => {
+    const user = userEvent.setup();
+    render(
+      <Tabs defaultValue="one">
+        <TabsList scrollable aria-label={"Scrolling views"}>
+          <TabsTrigger value="one">{"One"}</TabsTrigger>
+          <TabsTrigger value="two">{"Two"}</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const two = screen.getByRole("tab", { name: "Two" });
+    const scrollIntoView = vi.fn();
+    two.scrollIntoView = scrollIntoView;
+    await user.click(two);
+    await waitFor(() =>
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest", inline: "nearest" }),
+    );
   });
 });

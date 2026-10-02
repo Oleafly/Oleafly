@@ -108,7 +108,7 @@ describe("Settings Help & About support callout", () => {
     });
   });
 
-  it("pins community and docs icon links under the navigation, and keeps the Discord row", async () => {
+  it("pins community, docs and release-notes icon buttons under the navigation, and keeps the Discord row", async () => {
     render(<SettingsModal />);
 
     const footer = await screen.findByTestId("settings-footer-links");
@@ -120,14 +120,17 @@ describe("Settings Help & About support callout", () => {
     expect(footer).toHaveTextContent(/^$/);
 
     const links: [string, string][] = [
-      ["Join our Discord", DISCORD_URL],
-      ["Follow us on X", "https://x.com/OleaflyHQ"],
-      ["Star on GitHub", "https://github.com/Oleafly/Oleafly"],
+      ["Join Discord community", DISCORD_URL],
+      ["Follow on X", "https://x.com/OleaflyHQ"],
+      ["View source", "https://github.com/Oleafly/Oleafly"],
       ["Documentation", "https://oleafly.com/docs/"],
     ];
-    expect(within(footer).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(
-      links.map(([label]) => label),
-    );
+    expect(within(footer).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
+      ...links.map(([label]) => label),
+      "View release notes",
+    ]);
+    expect(footer).toHaveClass("flex", "justify-between");
+    expect(footer.querySelectorAll("span[aria-hidden].w-px")).toHaveLength(4);
     for (const [label, url] of links) {
       mocks.open.mockClear();
       fireEvent.click(within(footer).getByRole("button", { name: label }));
@@ -216,27 +219,17 @@ describe("Settings Help & About changelog", () => {
     expect(mocks.open).not.toHaveBeenCalledWith(expect.stringContaining("CHANGELOG"));
   });
 
-  it("opens the changelog from the version under the navigation in any section", async () => {
+  it("opens the changelog from the release-notes button under the navigation in any section", async () => {
     useSettingsStore.setState({ settingsInitialSection: "general" });
     render(<SettingsModal />);
     const footer = screen.getByTestId("settings-footer");
-    const version = await within(footer).findByRole("button", { name: "v0.3.6. What's new" });
-    expect(version).toHaveTextContent(/^v0\.3\.6$/);
-    expect(footer.firstElementChild).toContainElement(version);
-    expect(within(footer).getByTestId("settings-footer-links")).toBeInTheDocument();
-    fireEvent.click(version);
+    expect(footer).not.toHaveTextContent(/v\d/);
+    const buttons = within(footer).getAllByRole("button");
+    const releaseNotes = within(footer).getByRole("button", { name: "View release notes" });
+    expect(buttons.at(-1)).toBe(releaseNotes);
+    fireEvent.click(releaseNotes);
     const dialog = await screen.findByRole("dialog", { name: "What's new" });
     expect(await within(dialog).findByTestId("changelog-status")).toHaveTextContent("You're on v0.3.6");
     expect(mocks.open).not.toHaveBeenCalled();
-  });
-
-  it("leaves the version out of the footer when it cannot be read", async () => {
-    mocks.appVersion.mockRejectedValue(new Error("no version"));
-    useSettingsStore.setState({ settingsInitialSection: "general" });
-    render(<SettingsModal />);
-    const footer = screen.getByTestId("settings-footer");
-    await waitFor(() => expect(mocks.appVersion).toHaveBeenCalled());
-    expect(within(footer).queryByTestId("settings-footer-version")).not.toBeInTheDocument();
-    expect(within(footer).getAllByRole("button")).toHaveLength(4);
   });
 });

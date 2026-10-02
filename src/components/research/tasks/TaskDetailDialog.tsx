@@ -710,14 +710,14 @@ export function TaskDetailDialog({
             onValueChange={setChosenTab}
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
           >
-            <TabsList className="mx-5 mt-3 flex h-auto w-fit max-w-full shrink-0 justify-start gap-1 self-start overflow-x-auto no-scrollbar">
-              <TabsTrigger value="activity" className="shrink-0">
+            <TabsList scrollable className="mx-5 mt-3 shrink-0 self-start">
+              <TabsTrigger value="activity">
                 {t(($) => $.researchTools.tasks.detail.tabActivity)}
               </TabsTrigger>
-              <TabsTrigger value="review" className="shrink-0">
+              <TabsTrigger value="review">
                 {t(($) => $.researchTools.tasks.detail.tabReview)}
               </TabsTrigger>
-              <TabsTrigger value="output" className="shrink-0">
+              <TabsTrigger value="output">
                 {t(($) => $.researchTools.tasks.detail.tabOutput)}
               </TabsTrigger>
             </TabsList>
