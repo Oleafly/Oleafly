@@ -1,4 +1,13 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
@@ -25,7 +34,12 @@ import {
   type SuggestContext,
 } from "@oleafly/search-query";
 import { INLINE_KEYWORD, INLINE_TOKEN_AMBER, INLINE_TOKEN_BLUE } from "@/components/ui/inline-token";
-import { buildSuggestions, type QueryMeta, type QuerySuggestion } from "@/lib/query-suggestions";
+import {
+  buildSuggestions,
+  type QueryMeta,
+  type QuerySuggestion,
+  type QuerySuggestions,
+} from "@/lib/query-suggestions";
 import { cn } from "@/lib/utils";
 
 const MENU_WIDTH = 288;
@@ -95,6 +109,195 @@ function SuggestionIcon({ suggestion }: Readonly<{ suggestion: QuerySuggestion }
   return suggestion.meta?.icon ?? <ListFilter className="size-4" />;
 }
 
+function editFor<T>(
+  suggestion: QuerySuggestion,
+  value: string,
+  context: SuggestContext<T, QueryMeta>,
+  caret: number,
+): { edit: Edit; keepOpen: boolean } | null {
+  if (suggestion.kind === "field" && context.kind === "fields") {
+    return { edit: acceptField(value, context, suggestion.key), keepOpen: true };
+  }
+  if (suggestion.kind === "value" && context.kind === "values") {
+    return { edit: acceptValue(value, context, suggestion.value), keepOpen: false };
+  }
+  if (suggestion.kind === "negate" && context.kind === "values") {
+    return { edit: toggleNegation(value, context, caret), keepOpen: true };
+  }
+  if (suggestion.kind === "operator") {
+    return { edit: insertAtCaret(value, caret, `${suggestion.operator} `), keepOpen: true };
+  }
+  if (suggestion.kind === "exclude") return { edit: insertAtCaret(value, caret, "-"), keepOpen: true };
+  return null;
+}
+
+function optionLabel(t: Translate, suggestion: QuerySuggestion): string {
+  if (suggestion.kind === "exclude") return t(($) => $.common.querySearch.exclude);
+  if (suggestion.kind === "negate") {
+    return t(($) => $.common.querySearch.excludeField, { field: suggestion.meta?.label ?? "" });
+  }
+  if (suggestion.kind === "operator") return suggestion.operator;
+  if (suggestion.meta) return suggestion.meta.label;
+  return suggestion.kind === "field" ? suggestion.key : suggestion.value;
+}
+
+function nextActive(options: readonly QuerySuggestion[], activeIndex: number, direction: 1 | -1): string | null {
+  const slots = options.length + 1;
+  const current = activeIndex < 0 ? options.length : activeIndex;
+  const next = (current + direction + slots) % slots;
+  return next === options.length ? null : options[next].id;
+}
+
+interface HighlightProps {
+  readonly value: string;
+  readonly segments: readonly Segment[];
+  readonly scroll: number;
+  readonly anchorText: string;
+  readonly measureRef: RefObject<HTMLSpanElement | null>;
+}
+
+function QueryHighlight({ value, segments, scroll, anchorText, measureRef }: Readonly<HighlightProps>) {
+  return (
+    <div
+      aria-hidden
+      data-testid="query-search-highlight"
+      className="pointer-events-none absolute inset-0 flex items-center whitespace-pre pl-10 pr-10 text-sm text-foreground"
+    >
+      <div className="relative min-w-0 flex-1 overflow-hidden">
+        <span className="inline-block" style={{ transform: `translateX(${-scroll}px)` }}>
+          {segments.map((segment) => (
+            <span key={segment.start} data-kind={segment.kind} className={segmentClass(segment)}>
+              {value.slice(segment.start, segment.end)}
+            </span>
+          ))}
+        </span>
+        <span ref={measureRef} className="invisible absolute left-0 top-0">
+          {anchorText}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface OptionProps {
+  readonly suggestion: QuerySuggestion;
+  readonly id: string;
+  readonly active: boolean;
+  readonly divided: boolean;
+  readonly onHover: (id: string) => void;
+  readonly onChoose: (suggestion: QuerySuggestion) => void;
+}
+
+function SuggestionOption({ suggestion, id, active, divided, onHover, onChoose }: Readonly<OptionProps>) {
+  const { t } = useTranslation(["common"]);
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView?.({ block: "nearest" });
+  }, [active]);
+  return (
+    <button
+      ref={ref}
+      id={id}
+      type="button"
+      role="option"
+      aria-selected={active}
+      tabIndex={-1}
+      onMouseEnter={() => onHover(suggestion.id)}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => onChoose(suggestion)}
+      className={cn(
+        OPTION_CLASS,
+        active && "bg-accent text-accent-foreground",
+        divided && "mt-1 rounded-t-none border-t pt-2",
+      )}
+    >
+      <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+        <SuggestionIcon suggestion={suggestion} />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{optionLabel(t, suggestion)}</span>
+      {suggestion.kind === "negate" && suggestion.negated ? (
+        <Check aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      ) : null}
+    </button>
+  );
+}
+
+interface MenuProps<T> {
+  readonly idPrefix: string;
+  readonly listId: string;
+  readonly left: number;
+  readonly suggestions: QuerySuggestions;
+  readonly options: readonly QuerySuggestion[];
+  readonly activeIndex: number;
+  readonly issues: readonly Diagnostic[];
+  readonly value: string;
+  readonly schema: SearchSchema<T, QueryMeta>;
+  readonly onHover: (id: string) => void;
+  readonly onChoose: (suggestion: QuerySuggestion) => void;
+}
+
+function SuggestionMenu<T>({
+  idPrefix,
+  listId,
+  left,
+  suggestions,
+  options,
+  activeIndex,
+  issues,
+  value,
+  schema,
+  onHover,
+  onChoose,
+}: Readonly<MenuProps<T>>) {
+  const { t } = useTranslation(["common"]);
+  const firstOperator = suggestions.items.length > 0 ? suggestions.items.length : -1;
+  return (
+    <div
+      data-testid="query-search-menu"
+      style={{ left, width: MENU_WIDTH }}
+      className="absolute top-full z-50 mt-1.5 max-w-full rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
+    >
+      {suggestions.heading === "exclude" && options.length > 0 ? (
+        <p className={HEADING_CLASS}>{t(($) => $.common.querySearch.exclude)}</p>
+      ) : null}
+      {options.length > 0 ? (
+        <div
+          id={listId}
+          role="listbox"
+          aria-label={t(($) => $.common.querySearch.suggestions)}
+          tabIndex={-1}
+          onMouseDown={(event) => event.preventDefault()}
+          className="max-h-80 overflow-y-auto"
+        >
+          {options.map((suggestion, index) => (
+            <SuggestionOption
+              key={suggestion.id}
+              id={`${idPrefix}-${suggestion.id}`}
+              suggestion={suggestion}
+              active={index === activeIndex}
+              divided={index === firstOperator}
+              onHover={onHover}
+              onChoose={onChoose}
+            />
+          ))}
+        </div>
+      ) : null}
+      {suggestions.hint === "date" ? (
+        <p className="px-2.5 py-1.5 text-xs text-muted-foreground">{t(($) => $.common.querySearch.dateHint)}</p>
+      ) : null}
+      {issues.map((issue) => (
+        <p
+          key={`${issue.code}-${issue.span.start}`}
+          className="flex items-start gap-1.5 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400"
+        >
+          <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+          <span className="min-w-0">{queryIssueMessage(t, issue, value, schema)}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export interface QuerySearchProps<T> {
   readonly value: string;
   readonly onChange: (value: string) => void;
@@ -116,7 +319,6 @@ export function QuerySearch<T>({
   clearLabel,
   className,
 }: QuerySearchProps<T>) {
-  const { t } = useTranslation(["common"]);
   const id = useId();
   const listId = `${id}-suggestions`;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -141,8 +343,10 @@ export function QuerySearch<T>({
     [suggestions.items, suggestions.operators],
   );
   const activeIndex = options.findIndex((option) => option.id === activeId);
-  const open = focused && !dismissed && (options.length > 0 || issues.length > 0 || suggestions.hint !== null);
+  const hasContent = options.length > 0 || issues.length > 0 || suggestions.hint !== null;
+  const open = focused && !dismissed && hasContent;
   const anchorText = value.slice(0, anchorOf(context, caret));
+  const activeDescendant = open && activeIndex >= 0 ? `${id}-${options[activeIndex].id}` : undefined;
 
   useLayoutEffect(() => {
     const input = inputRef.current;
@@ -186,25 +390,8 @@ export function QuerySearch<T>({
   };
 
   const choose = (suggestion: QuerySuggestion) => {
-    if (suggestion.kind === "field" && context.kind === "fields") {
-      apply(acceptField(value, context, suggestion.key), true);
-    } else if (suggestion.kind === "value" && context.kind === "values") {
-      apply(acceptValue(value, context, suggestion.value), false);
-    } else if (suggestion.kind === "negate" && context.kind === "values") {
-      apply(toggleNegation(value, context, caret), true);
-    } else if (suggestion.kind === "operator") {
-      apply(insertAtCaret(value, caret, `${suggestion.operator} `), true);
-    } else if (suggestion.kind === "exclude") {
-      apply(insertAtCaret(value, caret, "-"), true);
-    }
-  };
-
-  const move = (direction: 1 | -1) => {
-    if (options.length === 0) return;
-    const slots = options.length + 1;
-    const current = activeIndex < 0 ? options.length : activeIndex;
-    const next = (current + direction + slots) % slots;
-    setActiveId(next === options.length ? null : options[next].id);
+    const chosen = editFor(suggestion, value, context, caret);
+    if (chosen) apply(chosen.edit, chosen.keepOpen);
   };
 
   const close = () => {
@@ -214,8 +401,8 @@ export function QuerySearch<T>({
 
   const onArrow = (event: KeyboardEvent<HTMLInputElement>) => {
     event.preventDefault();
-    if (open) move(event.key === "ArrowDown" ? 1 : -1);
-    else setDismissed(false);
+    if (!open) setDismissed(false);
+    else if (options.length > 0) setActiveId(nextActive(options, activeIndex, event.key === "ArrowDown" ? 1 : -1));
   };
 
   const onEnter = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -239,38 +426,6 @@ export function QuerySearch<T>({
     }
   };
 
-  const optionLabel = (suggestion: QuerySuggestion) => {
-    if (suggestion.kind === "exclude") return t(($) => $.common.querySearch.exclude);
-    if (suggestion.kind === "negate") {
-      return t(($) => $.common.querySearch.excludeField, { field: suggestion.meta?.label ?? "" });
-    }
-    if (suggestion.kind === "operator") return suggestion.operator;
-    return suggestion.meta?.label ?? (suggestion.kind === "field" ? suggestion.key : suggestion.value);
-  };
-
-  const renderOption = (suggestion: QuerySuggestion, index: number) => (
-    <button
-      key={suggestion.id}
-      id={`${id}-${suggestion.id}`}
-      type="button"
-      role="option"
-      aria-selected={index === activeIndex}
-      tabIndex={-1}
-      onMouseEnter={() => setActiveId(suggestion.id)}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => choose(suggestion)}
-      className={cn(OPTION_CLASS, index === activeIndex && "bg-accent text-accent-foreground")}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
-        <SuggestionIcon suggestion={suggestion} />
-      </span>
-      <span className="min-w-0 flex-1 truncate">{optionLabel(suggestion)}</span>
-      {suggestion.kind === "negate" && suggestion.negated ? (
-        <Check aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-      ) : null}
-    </button>
-  );
-
   return (
     <div
       className={cn(
@@ -282,24 +437,13 @@ export function QuerySearch<T>({
         aria-hidden
         className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
       />
-      <div
-        aria-hidden
-        data-testid="query-search-highlight"
-        className="pointer-events-none absolute inset-0 flex items-center whitespace-pre pl-10 pr-10 text-sm text-foreground"
-      >
-        <div className="relative min-w-0 flex-1 overflow-hidden">
-          <span className="inline-block" style={{ transform: `translateX(${-scroll}px)` }}>
-            {segments.map((segment) => (
-              <span key={segment.start} data-kind={segment.kind} className={segmentClass(segment)}>
-                {value.slice(segment.start, segment.end)}
-              </span>
-            ))}
-          </span>
-          <span ref={measureRef} className="invisible absolute left-0 top-0">
-            {anchorText}
-          </span>
-        </div>
-      </div>
+      <QueryHighlight
+        value={value}
+        segments={segments}
+        scroll={scroll}
+        anchorText={anchorText}
+        measureRef={measureRef}
+      />
       <input
         ref={inputRef}
         type="search"
@@ -308,7 +452,7 @@ export function QuerySearch<T>({
         aria-autocomplete="list"
         aria-expanded={open}
         aria-controls={open && options.length > 0 ? listId : undefined}
-        aria-activedescendant={open && activeIndex >= 0 ? `${id}-${options[activeIndex].id}` : undefined}
+        aria-activedescendant={activeDescendant}
         autoComplete="off"
         spellCheck={false}
         placeholder={placeholder}
@@ -347,49 +491,19 @@ export function QuerySearch<T>({
         </button>
       ) : null}
       {open ? (
-        <div
-          data-testid="query-search-menu"
-          style={{ left: menuLeft, width: MENU_WIDTH }}
-          className="absolute top-full z-50 mt-1.5 max-w-full rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
-        >
-          {suggestions.heading === "exclude" && options.length > 0 ? (
-            <p className={HEADING_CLASS}>{t(($) => $.common.querySearch.exclude)}</p>
-          ) : null}
-          {options.length > 0 ? (
-            <div
-              id={listId}
-              role="listbox"
-              aria-label={t(($) => $.common.querySearch.suggestions)}
-              tabIndex={-1}
-              onMouseDown={(event) => event.preventDefault()}
-              className="max-h-80 overflow-y-auto"
-            >
-              {suggestions.items.map((suggestion, index) => renderOption(suggestion, index))}
-              {suggestions.operators.length > 0 ? (
-                <div
-                  role="presentation"
-                  className={cn(suggestions.items.length > 0 && "-mx-1.5 mt-1 border-t px-1.5 pt-1")}
-                >
-                  {suggestions.operators.map((suggestion, index) =>
-                    renderOption(suggestion, suggestions.items.length + index),
-                  )}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {suggestions.hint === "date" ? (
-            <p className="px-2.5 py-1.5 text-xs text-muted-foreground">{t(($) => $.common.querySearch.dateHint)}</p>
-          ) : null}
-          {issues.map((issue) => (
-            <p
-              key={`${issue.code}-${issue.span.start}`}
-              className="flex items-start gap-1.5 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-400"
-            >
-              <TriangleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
-              <span className="min-w-0">{queryIssueMessage(t, issue, value, schema)}</span>
-            </p>
-          ))}
-        </div>
+        <SuggestionMenu
+          idPrefix={id}
+          listId={listId}
+          left={menuLeft}
+          suggestions={suggestions}
+          options={options}
+          activeIndex={activeIndex}
+          issues={issues}
+          value={value}
+          schema={schema}
+          onHover={setActiveId}
+          onChoose={choose}
+        />
       ) : null}
     </div>
   );

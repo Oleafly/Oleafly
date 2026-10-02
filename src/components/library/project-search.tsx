@@ -204,7 +204,7 @@ function valueFields(t: Translate, state: ProjectSearchState): SearchField<Proje
       })),
       test: (project, value) => {
         const hex = BOOK_COLOR_OPTIONS.find((option) => option.name.toLowerCase() === value)?.hex;
-        return hex !== undefined && state.colorOf(project).toLowerCase() === hex.toLowerCase();
+        return hex?.toLowerCase() === state.colorOf(project).toLowerCase();
       },
     },
     {

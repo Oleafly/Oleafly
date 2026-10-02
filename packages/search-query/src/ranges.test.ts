@@ -22,6 +22,10 @@ describe("parseDate", () => {
     });
     expect(parseDate("2026-03-04T10:00+02:00", NOW)?.start).toBe(Date.UTC(2026, 2, 4, 8));
     expect(parseDate("2026-03-04T10:00-0130", NOW)?.start).toBe(Date.UTC(2026, 2, 4, 11, 30));
+    expect(parseDate("2026-03-04 10:00", NOW)).toEqual({
+      start: new Date(2026, 2, 4, 10).getTime(),
+      end: new Date(2026, 2, 4, 10, 1).getTime(),
+    });
   });
 
   it("resolves @today with day, week, month and year offsets", () => {
@@ -33,7 +37,18 @@ describe("parseDate", () => {
   });
 
   it("rejects impossible or malformed dates", () => {
-    for (const text of ["2026-02-30", "2026-13-01", "2026-01-01T24:00", "yesterday", "@today-7", "26-01-01"]) {
+    for (const text of [
+      "2026-02-30",
+      "2026-13-01",
+      "2026-01-01T24:00",
+      "2026-03T10:00",
+      "2026-03-04T10",
+      "2026-03-04T10:00Z1",
+      "2026-03-04T10:00T11:00",
+      "yesterday",
+      "@today-7",
+      "26-01-01",
+    ]) {
       expect(parseDate(text, NOW)).toBeNull();
     }
   });

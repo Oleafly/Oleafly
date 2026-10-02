@@ -101,7 +101,10 @@ function build<T, M>(
 }
 
 function activeSort<T, M>(query: AnalyzedQuery<T, M>, schema: SearchSchema<T, M>): ActiveSort<T, M> | null {
-  const chosen = query.terms.filter((term) => term.role === "sort" && term.valid).at(-1)?.values[0];
+  let chosen: string | undefined;
+  for (const term of query.terms) {
+    if (term.role === "sort" && term.valid) chosen = term.values[0];
+  }
   const value = chosen ?? schema.defaultSort;
   if (!value) return null;
   const resolved = schema.sortOrder(value);

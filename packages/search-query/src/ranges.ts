@@ -16,8 +16,9 @@ interface Interval {
 type Comparator = ">" | ">=" | "<" | "<=" | "=";
 
 const COMPARATOR = /^(>=|<=|>|<)/;
-const ABSOLUTE_DATE =
-  /^(\d{4})(?:-(\d{2})(?:-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?(Z|[+-]\d{2}:?\d{2})?)?)?)?$/i;
+const DATE_PART = /^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/;
+const TIME_PART = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
+const ZONE = /(?:Z|[+-]\d{2}:?\d{2})$/i;
 const RELATIVE_DATE = /^@today(?:([+-])(\d{1,4})([dwmy]))?$/i;
 const NUMBER = /^-?\d+(?:\.\d+)?$/;
 
@@ -73,25 +74,37 @@ function validCalendar(year: number, month: number, day: number): boolean {
   return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day;
 }
 
+interface DateParts {
+  readonly fields: readonly (string | undefined)[];
+  readonly zone: string | undefined;
+}
+
+function splitDate(text: string): DateParts | null {
+  const [datePart, timePart, ...extra] = text.split(/[T ]/i);
+  const date = DATE_PART.exec(datePart);
+  if (!date || extra.length > 0) return null;
+  if (timePart === undefined) return { fields: date.slice(1), zone: undefined };
+  const zone = ZONE.exec(timePart)?.[0];
+  const time = TIME_PART.exec(zone ? timePart.slice(0, -zone.length) : timePart);
+  if (!time || !date[3]) return null;
+  return { fields: [...date.slice(1), ...time.slice(1)], zone };
+}
+
+function fieldValue(field: string | undefined, index: number): number {
+  if (field === undefined) return index === 2 ? 1 : 0;
+  return index === 1 ? Number(field) - 1 : Number(field);
+}
+
 function absoluteDate(text: string): Interval | null {
-  const match = ABSOLUTE_DATE.exec(text);
-  if (!match) return null;
-  const year = Number(match[1]);
-  const month = match[2] ? Number(match[2]) - 1 : 0;
-  const day = match[3] ? Number(match[3]) : 1;
-  const hour = match[4] ? Number(match[4]) : 0;
-  const minute = match[5] ? Number(match[5]) : 0;
-  const second = match[6] ? Number(match[6]) : 0;
+  const parts = splitDate(text);
+  if (!parts) return null;
+  const fields = [0, 1, 2, 3, 4, 5].map((index) => parts.fields[index]);
+  const start = fields.map(fieldValue);
+  const [year, month, day, hour, minute, second] = start;
   if (!validCalendar(year, month, day) || hour > 23 || minute > 59 || second > 59) return null;
-  const zone = match[7];
-  const start = makeTime([year, month, day, hour, minute, second], zone);
-  let next: number[];
-  if (match[6]) next = [year, month, day, hour, minute, second + 1];
-  else if (match[4]) next = [year, month, day, hour, minute + 1, 0];
-  else if (match[3]) next = [year, month, day + 1, 0, 0, 0];
-  else if (match[2]) next = [year, month + 1, 1, 0, 0, 0];
-  else next = [year + 1, 0, 1, 0, 0, 0];
-  return { start, end: makeTime(next, zone) };
+  const end = [...start];
+  end[fields.filter((field) => field !== undefined).length - 1] += 1;
+  return { start: makeTime(start, parts.zone), end: makeTime(end, parts.zone) };
 }
 
 export function parseDate(text: string, now: number): Interval | null {

@@ -96,11 +96,16 @@ describe("QuerySearch", () => {
   });
 
   it("wraps through an empty slot when moving with the arrows", () => {
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
+      scrolled.push(this.id);
+    };
     render(<Harness />);
     fireEvent.focus(input());
     type("is:");
     fireEvent.keyDown(input(), { key: "ArrowUp" });
     expect(input()).toHaveAttribute("aria-activedescendant", expect.stringContaining("value:starred"));
+    expect(scrolled.at(-1)).toContain("value:starred");
     fireEvent.keyDown(input(), { key: "ArrowDown" });
     expect(input()).not.toHaveAttribute("aria-activedescendant");
     fireEvent.keyDown(input(), { key: "Enter" });

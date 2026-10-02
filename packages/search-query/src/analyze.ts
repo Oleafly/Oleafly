@@ -63,7 +63,9 @@ interface Checked {
 
 function sortValue<T, M>(schema: SearchSchema<T, M>, text: string): string | undefined {
   const sort = schema.sortOrder(text);
-  return sort ? `${sort.order.value}-${sort.descending ? "desc" : "asc"}` : undefined;
+  if (!sort) return undefined;
+  const direction = sort.descending ? "desc" : "asc";
+  return `${sort.order.value}-${direction}`;
 }
 
 function checkItem<T, M>(
