@@ -29,11 +29,8 @@ describe("NewEntryInput accessibility", () => {
     });
     expect(input).toHaveAttribute("placeholder", enWorkspace.files.newEntry.filePlaceholder);
     expect(input).toHaveFocus();
-    expect(input).toHaveClass(
-      "focus-visible:ring-2",
-      "focus-visible:ring-ring",
-      "focus-visible:ring-offset-1",
-    );
+    expect(input).toHaveClass("focus-visible:border-ring");
+    expect(input.className).not.toMatch(/ring-[0-9]|ring-offset/);
   });
 
   it("names a nested folder action with its destination", () => {

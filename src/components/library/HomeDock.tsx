@@ -10,6 +10,7 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { openToolsGallery } from "@/features/open-tool";
+import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 
 const DOCK_BUTTON_SHAPE = "rounded-full hover:scale-[1.2]";
 
@@ -17,8 +18,8 @@ const dockButtonClass = (active: boolean) =>
   cn(
     DOCK_BUTTON_SHAPE,
     active
-      ? "bg-white/20 text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] hover:bg-white/25 dark:bg-white/10 dark:hover:bg-white/15"
-      : "text-muted-foreground hover:bg-white/10 hover:text-foreground dark:hover:bg-white/10",
+      ? "bg-accent text-foreground hover:bg-accent"
+      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
   );
 
 function DockButton({
@@ -139,7 +140,7 @@ export function HomeDock() {
           data-placement="bottom"
           className={cn(
             "pointer-events-auto flex items-center gap-2 rounded-2xl p-1.5",
-            HOME_DOCK_GLASS_SURFACE,
+            HOME_CHROME_SURFACE,
           )}
         >
           {items}
@@ -163,7 +164,7 @@ export function HomeDock() {
         data-placement={dockPlacement}
         className={cn(
           "pointer-events-auto flex flex-col items-center gap-2 rounded-2xl p-1.5",
-          HOME_DOCK_GLASS_SURFACE,
+          HOME_CHROME_SURFACE,
         )}
       >
         {items}

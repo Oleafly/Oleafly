@@ -46,6 +46,18 @@
     "query_too_long": "搜索内容过长（最多 {{max}} 个字符）。",
     "unknown_source": "未知文献来源。"
   },
+  "zotero": {
+    "invalid_user_id": "Zotero 用户 ID 是一串数字。请从 Zotero 的 API 密钥页面复制你的用户 ID。",
+    "key_rejected": "Zotero 未接受此 API 密钥。请检查是否复制了完整的密钥，以及该密钥是否仍存在于 zotero.org。",
+    "library_not_readable": "此 API 密钥无法读取你的 Zotero 库。请在 zotero.org 上编辑该密钥，并开启 Allow library access。",
+    "user_mismatch": "此 API 密钥属于 Zotero 用户 ID {{keyUserId}}，而不是 {{userId}}。请检查用户 ID 后重试。",
+    "not_connected": "请先在“设置”的“集成”中连接你的 Zotero 账户。",
+    "rate_limited": "Zotero 目前正在限制请求。请等几分钟后重试。",
+    "unreachable": "Oleafly 无法连接到 Zotero。请检查网络连接后重试。",
+    "http_error": "Zotero 返回了错误（HTTP {{status}}）。请稍后重试。",
+    "invalid_response": "Zotero 发来的回复 Oleafly 无法读取。请稍后重试。",
+    "too_large": "你的 Zotero 库太大，无法一次导入。请改为在 Zotero 中将某个分类导出为 RDF 文件，再导入该文件。"
+  },
   "tex": {
     "no_host_binary": "TinyTeX 没有与主机兼容的 {{name}} 二进制文件。",
     "package_operation_timeout": "宏包操作超出了 {{span}} 的限制并已停止，你可以重新编译。TeX Live 镜像可能正忙。请稍后重试，或自行运行 tlmgr。",

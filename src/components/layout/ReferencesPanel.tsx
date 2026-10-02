@@ -431,7 +431,7 @@ export function ReferencesPanel() {
             type="button"
             aria-label={notice}
             data-testid="references-status-info"
-            className="ml-auto flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="ml-auto flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground focus-visible:bg-accent/60"
           >
             <Info aria-hidden className="size-3.5" />
           </button>
@@ -459,7 +459,7 @@ export function ReferencesPanel() {
               aria-label={t(($) => $.references.panel.cleanLibrary)}
               data-testid="clean-library-button"
               onClick={() => setCleanOpen(true)}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
             >
               <Sparkles aria-hidden className="size-3.5" />
             </button>
@@ -471,7 +471,7 @@ export function ReferencesPanel() {
               type="button"
               aria-label={t(($) => $.references.panel.importAriaLabel)}
               onClick={() => setImportOpen(true)}
-              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
             >
               <Upload aria-hidden className="size-3.5" />
             </button>
@@ -491,7 +491,7 @@ export function ReferencesPanel() {
             aria-label={t(($) => $.references.panel.clearQuery)}
             title={t(($) => $.references.panel.clearQuery)}
             onClick={clearQuery}
-            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
           >
             <X aria-hidden className="size-3.5" />
           </button>
@@ -556,7 +556,7 @@ export function ReferencesPanel() {
               type="button"
               aria-label={t(($) => $.references.filter.clear)}
               onClick={() => setFilter("")}
-              className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+              className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
             >
               <X aria-hidden className="size-3" />
             </button>
@@ -578,7 +578,7 @@ export function ReferencesPanel() {
               type="button"
               data-testid="cite-oleafly-row"
               onClick={() => void runCiteOleaflyAction()}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
             >
               <Quote aria-hidden className="size-3.5 shrink-0" />
               <span className="min-w-0 flex-1 truncate">

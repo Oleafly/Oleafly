@@ -144,7 +144,7 @@ export function CommandPalette() {
           onValueChange={setQuery}
           autoFocus
           placeholder={t(($) => $.shell.commandPalette.placeholder)}
-          className="flex h-12 w-full border-b border-border bg-transparent px-4 text-sm outline-none placeholder:text-muted-foreground"
+          className="flex h-12 w-full border-b border-border bg-transparent px-4 text-sm placeholder:text-muted-foreground"
         />
         <Command.List className="max-h-[min(60vh,360px)] overflow-auto p-1.5">
           <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
@@ -192,7 +192,7 @@ function PaletteItem({
     <Command.Item
       value={searchValue}
       onSelect={onSelect}
-      className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+      className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
     >
       <span className="text-muted-foreground">{icon}</span>
       <span>{label}</span>

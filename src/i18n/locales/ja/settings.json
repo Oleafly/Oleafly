@@ -1069,9 +1069,12 @@
       "disconnect": "接続を解除"
     },
     "alphaxiv": {
-      "apiKeyHint": "キーの取得方法: <siteLink>alphaxiv.org</siteLink> でサインインし、<keyLink>API キーのページ</keyLink>を開いてキーを生成し（<keyPrefix>axv1_</keyPrefix> で始まります）、下に貼り付けます。",
+      "apiKeyHint": "キーの取得方法: <siteLink>alphaxiv.org</siteLink> でサインインし、Settings > API Keys を開いてキーを作成し、ここに貼り付けます。Oleafly はこのキーで alphaXiv の <docsLink>MCP サーバー</docsLink>に接続します。",
       "apiKeyLabel": "alphaXiv の API キー",
-      "description": "アシスタント向けの文献検索と論文分析のツールです。"
+      "connected": "接続しました。アシスタントが alphaXiv を使えるようになりました。使う前に毎回確認します。",
+      "connectFailed": "alphaXiv がこのキーを受け付けなかったか、alphaXiv に接続できませんでした。キーを確認して、もう一度お試しください。",
+      "description": "アシスタント向けの文献検索と論文分析のツールです。",
+      "disconnectFailed": "alphaXiv の接続を解除できませんでした。もう一度お試しください。"
     },
     "cookies": {
       "action": "Cookie を読み込む",
@@ -1110,7 +1113,11 @@
     "zotero": {
       "apiKeyHint": "キーの取得方法: <siteLink>zotero.org</siteLink> でサインインし、<keyLink>API キーのページ</keyLink>を開いてキーを作成し、同じページから数字のユーザー ID をコピーします。",
       "apiKeyLabel": "Zotero の API キー",
+      "connected": "Zotero ライブラリに接続しました。",
+      "connectedAs": "{{username}} として接続しました。",
       "description": "Zotero のライブラリから引用と参考文献を読み込みます。",
+      "disconnectFailed": "Oleafly は保存した Zotero のキーを削除できませんでした。もう一度お試しください。",
+      "importHint": "読み込むには、プロジェクトの「参考文献」パネルを開いて「参考文献ライブラリの読み込み」を選びます。",
       "userIdLabel": "Zotero のユーザー ID",
       "userIdPlaceholder": "ユーザー ID"
     }

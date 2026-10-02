@@ -300,8 +300,6 @@
       "literatureSearch": "Search OpenAlex for papers by keyword, no key needed.",
       "verifyCitation": "Turn a DOI or a title into verified BibTeX through doi.org or Crossref.",
       "projectLibrarySearch": "Search the project's own text and notes by keyword.",
-      "alphaxivSearch": "Search arXiv papers through alphaXiv.",
-      "alphaxivPaperContent": "Fetch the full text of an arXiv paper through alphaXiv.",
       "previewFigure": "Compile a TikZ or PGFPlots figure on its own and show the result in the chat.",
       "insertFigure": "Insert the finished figure at the cursor with a caption and label, and save a PNG under figures/.",
       "loadImage": "Look at an image that is already in the project.",
@@ -346,7 +344,6 @@
     "notes": {
       "latexOnly": "LaTeX projects only",
       "pdfCaptureSetting": "Needs the PDF page capture setting",
-      "alphaxivKey": "Needs an alphaXiv key in Integrations",
       "chatApproval": "Approved in the chat, one command at a time",
       "browserSetting": "Needs the web browser setting"
     },

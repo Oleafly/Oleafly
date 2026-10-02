@@ -224,7 +224,7 @@ export function GitHubSection() {
             value={pat}
             onChange={(e) => setPat(e.target.value)}
             placeholder={t(($) => $.settings.github.advanced.tokenPlaceholder)}
-            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+            className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:border-ring"
           />
           <Button
             size="sm"

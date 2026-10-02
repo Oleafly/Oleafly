@@ -46,6 +46,18 @@
     "query_too_long": "搜尋內容過長（最多 {{max}} 個字元）。",
     "unknown_source": "未知的文獻來源。"
   },
+  "zotero": {
+    "invalid_user_id": "Zotero 使用者 ID 是一串數字。請從 Zotero 的 API 金鑰頁面複製你的使用者 ID。",
+    "key_rejected": "Zotero 不接受這組 API 金鑰。請確認你複製了完整的金鑰，且這組金鑰仍存在於 zotero.org。",
+    "library_not_readable": "這組 API 金鑰無法讀取你的 Zotero 文獻庫。請在 zotero.org 編輯這組金鑰，並開啟 Allow library access。",
+    "user_mismatch": "這組 API 金鑰屬於 Zotero 使用者 ID {{keyUserId}}，而不是 {{userId}}。請確認使用者 ID 後再試一次。",
+    "not_connected": "請先在「設定」的「整合」中連接你的 Zotero 帳號。",
+    "rate_limited": "Zotero 目前正在限制請求。請等幾分鐘後再試一次。",
+    "unreachable": "Oleafly 無法連線到 Zotero。請檢查網路連線後再試一次。",
+    "http_error": "Zotero 傳回錯誤（HTTP {{status}}）。請稍後再試。",
+    "invalid_response": "Zotero 傳來的回應 Oleafly 無法讀取。請稍後再試。",
+    "too_large": "你的 Zotero 文獻庫太大，無法一次匯入。請改為在 Zotero 中把某個收藏匯出成 RDF 檔案，再匯入該檔案。"
+  },
   "tex": {
     "no_host_binary": "TinyTeX 沒有與此主機相容的 {{name}} 執行檔。",
     "package_operation_timeout": "套件作業超過 {{span}} 的時限而停止，你可以重新編譯。TeX Live 鏡像站可能正忙碌。請稍後再試，或自行執行 tlmgr。",

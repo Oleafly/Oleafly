@@ -46,6 +46,18 @@
     "query_too_long": "Vyhledávací dotaz je příliš dlouhý (maximálně {{max}} znaků).",
     "unknown_source": "Neznámý zdroj literatury."
   },
+  "zotero": {
+    "invalid_user_id": "ID uživatele Zotero je číslo. Zkopírujte ho ze stránky klíčů API Zotero.",
+    "key_rejected": "Zotero tento klíč API nepřijal. Zkontrolujte, že jste zkopírovali celý klíč a že na zotero.org stále existuje.",
+    "library_not_readable": "Tento klíč API nemá přístup k vaší knihovně Zotero. Na zotero.org klíč upravte a zapněte Allow library access.",
+    "user_mismatch": "Tento klíč API patří uživateli Zotero s ID {{keyUserId}}, ne {{userId}}. Zkontrolujte ID uživatele a zkuste to znovu.",
+    "not_connected": "Nejdřív připojte svůj účet Zotero v části Nastavení, Integrace, Zotero.",
+    "rate_limited": "Zotero teď omezuje počet požadavků. Počkejte několik minut a zkuste to znovu.",
+    "unreachable": "Oleafly se nemohl spojit se službou Zotero. Zkontrolujte připojení k internetu a zkuste to znovu.",
+    "http_error": "Zotero vrátil chybu (HTTP {{status}}). Zkuste to později.",
+    "invalid_response": "Zotero poslal odpověď, kterou Oleafly nedokázal přečíst. Zkuste to později.",
+    "too_large": "Vaše knihovna Zotero je příliš velká na jeden import. Vyexportujte z aplikace Zotero kolekci jako soubor RDF a importujte ten."
+  },
   "tex": {
     "no_host_binary": "TinyTeX nemá binární soubor {{name}} kompatibilní s tímto systémem.",
     "package_operation_timeout": "Operace s balíčky překročila limit {{span}} a byla zastavena, abyste mohli znovu kompilovat. Zrcadlo TeX Live je nejspíš zaneprázdněné. Zkuste to později, nebo spusťte tlmgr sami.",

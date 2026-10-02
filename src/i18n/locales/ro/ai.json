@@ -307,8 +307,6 @@
       "literatureSearch": "Caută lucrări în OpenAlex după cuvinte-cheie, fără cheie de acces.",
       "verifyCitation": "Transformă un DOI sau un titlu în BibTeX verificat, prin doi.org sau Crossref.",
       "projectLibrarySearch": "Caută după cuvinte-cheie în textul și notele proiectului.",
-      "alphaxivSearch": "Caută lucrări de pe arXiv prin alphaXiv.",
-      "alphaxivPaperContent": "Aduce textul complet al unei lucrări de pe arXiv prin alphaXiv.",
       "previewFigure": "Compilează separat o figură TikZ sau PGFPlots și arată rezultatul în conversație.",
       "insertFigure": "Inserează figura finită la cursor, cu legendă și etichetă, și salvează un PNG în figures/.",
       "loadImage": "Se uită la o imagine care este deja în proiect.",
@@ -353,7 +351,6 @@
     "notes": {
       "latexOnly": "Doar pentru proiecte LaTeX",
       "pdfCaptureSetting": "Necesită setarea de captură a paginilor PDF",
-      "alphaxivKey": "Necesită o cheie alphaXiv în Integrări",
       "chatApproval": "Aprobat în conversație, câte o comandă pe rând",
       "browserSetting": "Necesită setarea pentru browserul web"
     },

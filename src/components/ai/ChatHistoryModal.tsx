@@ -208,7 +208,7 @@ export function ChatHistoryModal({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t(($) => $.ai.history.searchPlaceholder)}
-              className="h-8 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
+              className="h-8 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground/70"
             />
           </div>
         </div>

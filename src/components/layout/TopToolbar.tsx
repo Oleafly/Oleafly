@@ -692,7 +692,7 @@ export function TopToolbar() {
               onChange={(e) => setForkName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !forkBusy) void submitFork(); }}
               placeholder={t(($) => $.shell.toolbar.newProjectName)}
-              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
+              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
             <Button onClick={() => void submitFork()} disabled={forkBusy}>
               {forkBusy ? <Loader2 className="size-4 animate-spin" /> : <GitFork className="size-4" />}

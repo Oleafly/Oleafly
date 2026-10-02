@@ -52,8 +52,6 @@ describe("toolRisk", () => {
   it("classifies remote lookups as network", () => {
     for (const tool of [
       "literature_search",
-      "alphaxiv_search",
-      "alphaxiv_paper_content",
       "verify_citation",
     ]) {
       expect(toolRisk(tool)).toBe("network");
@@ -165,8 +163,6 @@ describe("plan mode tool classification", () => {
       "show_location",
       "list_agents",
       "literature_search",
-      "alphaxiv_search",
-      "alphaxiv_paper_content",
       "verify_citation",
     ]) {
       expect(isReadOnlyTool(tool), tool).toBe(true);

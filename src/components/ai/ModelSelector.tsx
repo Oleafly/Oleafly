@@ -57,7 +57,7 @@ export function ModelTrustBadge({
   const reachable = focusable && trust === "blocked";
   const shell = cn(
     "inline-flex shrink-0 items-center rounded-full border px-1.5 py-px text-[10px] font-medium leading-none",
-    reachable && "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+    reachable && "focus-visible:border-ring",
     TRUST_CLASS[trust],
     className,
   );
@@ -205,7 +205,7 @@ export function ModelSelector({
             aria-expanded={open}
             disabled={disabled}
             className={cn(
-              "ai-model-selector-trigger flex h-9 w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+              "ai-model-selector-trigger flex h-9 w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 focus-visible:border-ring",
               compact
                 ? "h-6 max-w-44 border-0 bg-transparent px-1.5 py-0 text-[10px] leading-none text-muted-foreground shadow-none hover:bg-accent hover:text-foreground"
                 : "w-48",
@@ -234,7 +234,7 @@ export function ModelSelector({
           sideOffset={4}
           collisionPadding={12}
           className={cn(
-            "z-[80] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+            "z-[80] w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
             contentClassName,
           )}
         >
@@ -250,7 +250,7 @@ export function ModelSelector({
                 onValueChange={setQuery}
                 autoFocus
                 placeholder={t(($) => $.ai.models.searchPlaceholder)}
-                className="min-w-0 flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent text-xs placeholder:text-muted-foreground"
               />
             </div>
 
@@ -287,7 +287,7 @@ export function ModelSelector({
                           close();
                         }}
                         className={cn(
-                          "relative flex w-full items-start gap-2 rounded-sm px-2 py-2 pr-8 text-xs font-normal normal-case tracking-normal text-foreground outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
+                          "relative flex w-full items-start gap-2 rounded-sm px-2 py-2 pr-8 text-xs font-normal normal-case tracking-normal text-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground",
                           blocked && "cursor-not-allowed opacity-60",
                         )}
                       >

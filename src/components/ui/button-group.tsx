@@ -19,7 +19,7 @@ export function ButtonGroup({
       className={cn(
         "m-0 flex min-w-0 items-center border-0 p-0",
         "[&>button:not(:first-child)]:rounded-l-none [&>button:not(:last-child)]:rounded-r-none",
-        // A focus ring must not be clipped by the neighbour that follows it.
+        // A focused button's border must not be hidden by the neighbour that follows it.
         "[&>button:focus-visible]:relative [&>button:focus-visible]:z-10",
         className,
       )}

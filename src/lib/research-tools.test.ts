@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getConnectorKey: vi.fn(),
-  setConnectorKey: vi.fn(),
+  literatureSearch: vi.fn(),
   crossrefSearch: vi.fn(),
   fetchDoiBibtex: vi.fn(),
 }));
@@ -29,6 +28,25 @@ describe("app-level research tools wiring", () => {
     const res = await tools.verify_citation.execute({ doi: "10.1/x" });
     expect(mocks.fetchDoiBibtex).toHaveBeenCalledWith("10.1/x");
     expect(res).toMatchObject({ verified: true });
+  });
+
+  it("sends literature_search through the app's OpenAlex search so saved credentials apply", async () => {
+    mocks.literatureSearch.mockResolvedValue(
+      JSON.stringify({ results: [{ id: "W1", title: "A Work" }] }),
+    );
+    const tools = createResearchAiTools();
+    const res = await tools.literature_search.execute({ query: "graph neural networks", limit: 5 });
+    expect(mocks.literatureSearch).toHaveBeenCalledWith("openalex", "graph neural networks", {
+      limit: 5,
+    });
+    expect(res).toEqual({ results: [{ id: "W1", title: "A Work" }] });
+  });
+
+  it("returns the OpenAlex failure as a tool error", async () => {
+    mocks.literatureSearch.mockRejectedValue(new Error("OpenAlex returned HTTP 429"));
+    const tools = createResearchAiTools();
+    const res = await tools.literature_search.execute({ query: "graph neural networks" });
+    expect(res).toEqual({ error: "OpenAlex returned HTTP 429" });
   });
 
   it("forwards internet approval before invoking citation commands", async () => {

@@ -327,7 +327,7 @@ function FiguresStrip() {
             <button
               type="button"
               data-testid={`import-figure-${f.name}`}
-              className="shrink-0 rounded-md border bg-background p-1 hover:ring-2 hover:ring-ring"
+              className="shrink-0 rounded-md border bg-background p-1 transition-colors hover:border-ring focus-visible:border-ring"
               onClick={() => void downloadFigure(f)}
             >
               <img src={f.pngDataUrl} alt={f.name} className="h-20 w-auto" />

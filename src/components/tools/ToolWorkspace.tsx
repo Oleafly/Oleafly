@@ -182,7 +182,7 @@ export function ToolSegmentedControl<Value extends string>({ label, value, optio
           aria-pressed={value === option.value}
           data-testid={option.testId}
           onClick={() => onChange(option.value)}
-          className={cn("shrink-0 rounded-full px-3 py-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", value === option.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+          className={cn("shrink-0 rounded-full px-3 py-1 transition-colors focus-visible:bg-accent/60", value === option.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
         >
           {option.label}
         </button>

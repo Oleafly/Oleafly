@@ -314,8 +314,6 @@
       "literatureSearch": "Vyhledat články v OpenAlex podle klíčových slov, bez potřeby klíče.",
       "verifyCitation": "Převést DOI nebo název na ověřený BibTeX přes doi.org nebo Crossref.",
       "projectLibrarySearch": "Prohledat vlastní text a poznámky projektu podle klíčových slov.",
-      "alphaxivSearch": "Vyhledat články z arXiv přes alphaXiv.",
-      "alphaxivPaperContent": "Načíst plný text článku z arXiv přes alphaXiv.",
       "previewFigure": "Zkompilovat obrázek TikZ nebo PGFPlots samostatně a ukázat výsledek v chatu.",
       "insertFigure": "Vložit hotový obrázek na pozici kurzoru s popiskem a návěštím a uložit PNG do figures/.",
       "loadImage": "Podívat se na obrázek, který už v projektu je.",
@@ -360,7 +358,6 @@
     "notes": {
       "latexOnly": "Jen projekty LaTeX",
       "pdfCaptureSetting": "Vyžaduje nastavení snímání stránek PDF",
-      "alphaxivKey": "Vyžaduje klíč alphaXiv v Integracích",
       "chatApproval": "Schvaluje se v chatu, vždy jeden příkaz",
       "browserSetting": "Vyžaduje nastavení webového prohlížeče"
     },

@@ -1075,9 +1075,12 @@
       "disconnect": "Bağlantıyı kes"
     },
     "alphaxiv": {
-      "apiKeyHint": "Anahtar almak için: <siteLink>alphaxiv.org</siteLink> adresinde oturum açın, <keyLink>API anahtarı sayfanızı</keyLink> açın, bir anahtar üretin (<keyPrefix>axv1_</keyPrefix> ile başlar) ve aşağıya yapıştırın.",
+      "apiKeyHint": "Anahtar almak için: <siteLink>alphaxiv.org</siteLink> adresinde oturum açın, Settings > API Keys bölümünü açın, bir anahtar oluşturun ve buraya yapıştırın. Oleafly bu anahtarla alphaXiv'in <docsLink>MCP sunucusuna</docsLink> bağlanır.",
       "apiKeyLabel": "alphaXiv API anahtarı",
-      "description": "Asistan için literatür arama ve makale çözümleme araçları."
+      "connected": "Bağlandı. Asistan artık alphaXiv'i kullanabilir ve her seferinde önce size sorar.",
+      "connectFailed": "alphaXiv bu anahtarı kabul etmedi veya alphaXiv'e ulaşılamadı. Anahtarı kontrol edip yeniden deneyin.",
+      "description": "Asistan için literatür arama ve makale çözümleme araçları.",
+      "disconnectFailed": "alphaXiv bağlantısı kesilemedi. Yeniden deneyin."
     },
     "cookies": {
       "action": "Cookie'leri içe aktar",
@@ -1120,7 +1123,11 @@
     "zotero": {
       "apiKeyHint": "Anahtar almak için: <siteLink>zotero.org</siteLink> adresinde oturum açın, anahtar oluşturmak için <keyLink>API anahtarı sayfanızı</keyLink> açın ve aynı sayfadaki sayısal kullanıcı kimliğinizi kopyalayın.",
       "apiKeyLabel": "Zotero API anahtarı",
+      "connected": "Zotero kitaplığınıza bağlandı.",
+      "connectedAs": "{{username}} olarak bağlandı.",
       "description": "Zotero kitaplığınızdan atıfları ve kaynakları içe aktarın.",
+      "disconnectFailed": "Oleafly kayıtlı Zotero anahtarını kaldıramadı. Yeniden deneyin.",
+      "importHint": "İçe aktarmak için bir projede Kaynaklar panelini açıp Kaynak kitaplığını içe aktar seçeneğini seçin.",
       "userIdLabel": "Zotero kullanıcı kimliği",
       "userIdPlaceholder": "Kullanıcı kimliği"
     }

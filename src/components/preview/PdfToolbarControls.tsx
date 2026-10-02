@@ -298,7 +298,7 @@ export function PdfToolbarControls({
                   onBlur={jumpToPage}
                   onFocus={(e) => e.target.select()}
                   aria-label={t(($) => $.preview.pages.number)}
-                  className="h-6 w-7 rounded border border-input bg-background px-0.5 py-0 text-center text-[11px] leading-none text-foreground outline-none focus:border-primary"
+                  className="h-6 w-7 rounded border border-input bg-background px-0.5 py-0 text-center text-[11px] leading-none text-foreground focus:border-primary"
                 />
                 <span>{t(($) => $.preview.pages.ofTotal, { total: numPages })}</span>
               </div>

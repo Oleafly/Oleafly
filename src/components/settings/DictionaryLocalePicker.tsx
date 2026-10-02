@@ -105,7 +105,7 @@ export function DictionaryLocalePicker() {
         >
           <SelectValue>{selectedLabel}</SelectValue>
         </SelectTrigger>
-        <SelectContent className="z-[100] max-h-[320px]">
+        <SelectContent align="end" className="z-[100] max-h-[320px]">
           {groups.map((group) => (
             <SelectGroup key={group.language}>
               <SelectLabel>{group.language}</SelectLabel>
@@ -115,18 +115,18 @@ export function DictionaryLocalePicker() {
                   value={entry.id}
                   data-dictionary-id={entry.id}
                   data-label={dictionaryLabel(entry, uiLocale)}
-                >
-                  <span className="flex items-center gap-2">
-                    <span>{dictionaryLabel(entry, uiLocale)}</span>
-                    {entry.state === "available" ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                  trailing={
+                    entry.state === "available" ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
                         <Download className="size-3" />
                         {formatDownloadSize(entry.bytes)}
                       </span>
                     ) : (
                       <Check className="size-3 text-emerald-500" />
-                    )}
-                  </span>
+                    )
+                  }
+                >
+                  {dictionaryLabel(entry, uiLocale)}
                 </SelectItem>
               ))}
             </SelectGroup>

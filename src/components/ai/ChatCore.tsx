@@ -3882,7 +3882,7 @@ ${sandboxedCustom}`;
                 placeholder={inputPlaceholder}
                 disabled={!engineLoaded}
                 rows={1}
-                className="relative max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm text-transparent caret-foreground shadow-none outline-none placeholder:text-muted-foreground/70"
+                className="relative max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm text-transparent caret-foreground shadow-none placeholder:text-muted-foreground/70"
               />
               </div>
               {modelNoticeLine && (
@@ -3919,7 +3919,7 @@ ${sandboxedCustom}`;
               >
                 <div
                   data-testid="ai-composer-controls-left"
-                  className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden [&_button:focus-visible]:outline-offset-[-2px] [&_button:focus-visible]:ring-inset [&_button:focus-visible]:ring-offset-0"
+                  className="ai-composer-controls-left no-scrollbar flex min-w-0 flex-nowrap items-center gap-1 overflow-x-auto overflow-y-hidden"
                 >
                   <ComposerAttachMenu commands={attachCommands} />
                   <ApprovalModeSelector

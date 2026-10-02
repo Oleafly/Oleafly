@@ -47,7 +47,12 @@
     "unrecognized": "Onbekend bestandstype: {{name}}",
     "zotero": {
       "button": "Kies een Zotero RDF-bestand",
+      "connect": "Zotero-account verbinden",
+      "connectedDescription": "Importeer alle referenties uit je Zotero-bibliotheek, of kies een Zotero RDF-bestand dat je hebt geëxporteerd.",
       "description": "Kies in Zotero Bestand → Bibliotheek exporteren → Zotero RDF. Kies daarna het geëxporteerde bestand.",
+      "empty": "Je Zotero-bibliotheek heeft geen referenties om te importeren.",
+      "importLibrary": "Zotero-bibliotheek importeren",
+      "limited": "Oleafly heeft de eerste {{fetched}} van {{total}} items in je Zotero-bibliotheek gelezen.",
       "title": "Zotero"
     }
   },

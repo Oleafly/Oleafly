@@ -47,7 +47,12 @@
     "unrecognized": "Tunnistamaton tiedostotyyppi: {{name}}",
     "zotero": {
       "button": "Valitse Zotero RDF -tiedosto",
+      "connect": "Yhdistä Zotero-tili",
+      "connectedDescription": "Tuo kaikki Zotero-kirjastosi viitteet tai valitse viemäsi Zotero RDF -tiedosto.",
       "description": "Valitse Zoterossa File → Export Library → Zotero RDF. Valitse sitten viety tiedosto.",
+      "empty": "Zotero-kirjastossasi ei ole tuotavia viitteitä.",
+      "importLibrary": "Tuo Zotero-kirjasto",
+      "limited": "Oleafly luki Zotero-kirjastostasi ensimmäiset {{fetched}} kohdetta {{total}} kohteesta.",
       "title": "Zotero"
     }
   },

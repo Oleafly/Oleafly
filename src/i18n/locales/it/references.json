@@ -51,7 +51,12 @@
     "unrecognized": "Tipo di file non riconosciuto: {{name}}",
     "zotero": {
       "button": "Scegli un file Zotero RDF",
+      "connect": "Collega account Zotero",
+      "connectedDescription": "Importa tutti i riferimenti della tua libreria Zotero, oppure scegli un file Zotero RDF che hai esportato.",
       "description": "In Zotero scegli File → Esporta libreria → Zotero RDF. Poi seleziona il file esportato.",
+      "empty": "La tua libreria Zotero non contiene riferimenti da importare.",
+      "importLibrary": "Importa la libreria Zotero",
+      "limited": "Oleafly ha letto i primi {{fetched}} elementi su {{total}} della tua libreria Zotero.",
       "title": "Zotero"
     }
   },

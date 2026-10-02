@@ -1081,9 +1081,12 @@
       "disconnect": "Disconnetti"
     },
     "alphaxiv": {
-      "apiKeyHint": "Per ottenere una chiave: accedi su <siteLink>alphaxiv.org</siteLink>, apri la tua <keyLink>pagina delle chiavi API</keyLink>, genera una chiave (inizia con <keyPrefix>axv1_</keyPrefix>) e incollala qui sotto.",
+      "apiKeyHint": "Per ottenere una chiave: accedi su <siteLink>alphaxiv.org</siteLink>, apri Settings > API Keys, crea una chiave e incollala qui. Oleafly la usa per connettersi al <docsLink>server MCP</docsLink> di alphaXiv.",
       "apiKeyLabel": "Chiave API di alphaXiv",
-      "description": "Strumenti di ricerca bibliografica e analisi degli articoli per l'assistente."
+      "connected": "Connesso. L'assistente ora può usare alphaXiv e ti chiede prima ogni volta.",
+      "connectFailed": "alphaXiv non ha accettato questa chiave oppure non è raggiungibile. Controlla la chiave e riprova.",
+      "description": "Strumenti di ricerca bibliografica e analisi degli articoli per l'assistente.",
+      "disconnectFailed": "Impossibile disconnettere alphaXiv. Riprova."
     },
     "cookies": {
       "action": "Importa i cookie",
@@ -1130,7 +1133,11 @@
     "zotero": {
       "apiKeyHint": "Per ottenere una chiave: accedi su <siteLink>zotero.org</siteLink>, apri la tua <keyLink>pagina delle chiavi API</keyLink> per crearne una e copia il tuo ID utente numerico dalla stessa pagina.",
       "apiKeyLabel": "Chiave API di Zotero",
+      "connected": "Collegato alla tua libreria Zotero.",
+      "connectedAs": "Collegato come {{username}}.",
       "description": "Importa citazioni e riferimenti dalla tua libreria Zotero.",
+      "disconnectFailed": "Oleafly non è riuscito a rimuovere la chiave Zotero salvata. Riprova.",
+      "importHint": "Per importare, apri il pannello Riferimenti di un progetto e scegli Importa una libreria di riferimenti.",
       "userIdLabel": "ID utente Zotero",
       "userIdPlaceholder": "ID utente"
     }

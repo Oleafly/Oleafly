@@ -201,8 +201,8 @@ describe("PublishToGitHubDialog", () => {
     await user.click(screen.getByRole("tab", { name: "Link existing" }));
 
     const search = screen.getByRole("textbox", { name: "Search repositories" });
-    expect(search).toHaveClass("border-0", "focus-visible:ring-0");
-    expect(search.parentElement).toHaveClass("border", "focus-within:ring-1");
+    expect(search).toHaveClass("border-0");
+    expect(search.parentElement).toHaveClass("border", "focus-within:border-ring");
   });
 
   it("prepares Git only after the user chooses Create and push", async () => {

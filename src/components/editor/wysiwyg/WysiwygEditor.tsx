@@ -371,7 +371,7 @@ function VisualProofreadingPopover({
       aria-label={t(($) => $.editor.visual.proofreadingPanel)}
       data-proofreading-panel-issue={issue.id}
       tabIndex={-1}
-      className="fixed z-[70] m-0 w-80 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-xl outline-none"
+      className="fixed z-[70] m-0 w-80 max-w-[calc(100vw-1rem)] rounded-lg border bg-popover p-2.5 text-popover-foreground shadow-xl"
       style={
         position
           ? { left: position.left, top: position.top }
@@ -925,7 +925,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
                     Math.max(preamble.split("\n").length, 3),
                     20,
                   )}
-                  className="w-full resize-none border-t border-border bg-muted/40 px-3 py-2 font-mono text-xs text-foreground outline-none"
+                  className="w-full resize-none border-t border-border bg-muted/40 px-3 py-2 font-mono text-xs text-foreground"
                 />
               )}
             </div>

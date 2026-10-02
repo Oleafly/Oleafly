@@ -17,76 +17,56 @@ async function openAlphaXivTab(page: import("../helpers").Page) {
   await tab.press("Enter");
 }
 
-// The connector key round-trips through a real connector-secrets.json on disk
-// (src-tauri/src/secrets.rs), not a mock, so a reload is the only way to prove
-// persistence rather than just in-memory store state.
+test("a key alphaXiv does not accept is explained and never saved", async ({ tauriPage }) => {
+  const sectionSelector = '[data-testid="alphaxiv-section"]';
+  const keyInputSelector = `${sectionSelector} [aria-label="alphaXiv API key"]`;
 
-test("connect, persist across reload, and disconnect an alphaXiv key", async ({ tauriPage }) => {
-  // Scoped to the alphaXiv section throughout: the GitHub tab (also on this
-  // settings page) has its own "Disconnect" button, and an unscoped
-  // getByText("Disconnect") would be ambiguous if it ever renders alongside.
-  const section = () => tauriPage.locator('[data-testid="alphaxiv-section"]');
-
-  // Each locator below is created fresh right where it's used rather than
-  // hoisted: reload(tauriPage) swaps to an entirely new window handle in this
-  // bridge, so a locator captured before a reload goes stale after one.
   await openSettings(tauriPage, "integrations");
   await openAlphaXivTab(tauriPage);
-  await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
+  await waitLong(tauriPage, `!!document.querySelector(${JSON.stringify(keyInputSelector)})`, 10_000);
 
+  await tauriPage.fill(keyInputSelector, "e2e-not-a-real-alphaxiv-key");
+  await tauriPage.evaluate(
+    `document.querySelector(${JSON.stringify(`${sectionSelector} form`)})?.requestSubmit()`,
+  );
   await waitLong(
     tauriPage,
-    `!!document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]')`,
-    10_000,
+    `!!document.querySelector(${JSON.stringify(`${sectionSelector} [role="alert"]`)})`,
+    60_000,
   );
-  await tauriPage.fill('[aria-label="alphaXiv API key"]', "axv1_e2e_test_key");
-  await section().getByText("Connect", { exact: true }).click();
-  await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(tauriPage.locator('[aria-label="alphaXiv API key"]')).toBeHidden();
+  const alert = await tauriPage.evaluate<string>(
+    `document.querySelector(${JSON.stringify(`${sectionSelector} [role="alert"]`)})?.textContent ?? ""`,
+  );
+  expect(alert).toContain("did not accept this key");
+  expect(
+    await tauriPage.evaluate<boolean>(
+      `!!document.querySelector(${JSON.stringify(`${sectionSelector} [data-testid="alphaxiv-connected"]`)})`,
+    ),
+  ).toBe(false);
 
   await reload(tauriPage);
   await openSettings(tauriPage, "integrations");
   await openAlphaXivTab(tauriPage);
-  await expect(section().getByText("alphaXiv", { exact: true })).toBeVisible();
-  await expect(section().getByText("Disconnect", { exact: true })).toBeVisible({ timeout: 10_000 });
-
-  // Retry the click itself, not just the wait: confirmed via a manual
-  // diagnostic that a single click reliably works within ~2s in isolation,
-  // but immediately after 12-git.spec.ts's real GitHub network activity the
-  // very same click has been observed to not take effect at all (not just
-  // slowly) - consistent with the click landing before the section finished
-  // re-rendering post-reload, rather than the disconnect itself being slow.
-  const keyInputSelector = `[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]`;
-  let disconnected = false;
-  for (let attempt = 0; attempt < 5 && !disconnected; attempt++) {
-    await section().getByText("Disconnect", { exact: true }).click();
-    try {
-      await waitLong(tauriPage, `!!document.querySelector('${keyInputSelector}')`, 5_000);
-      disconnected = true;
-    } catch {
-      disconnected = await tauriPage.evaluate<boolean>(
-        `!!document.querySelector('${keyInputSelector}')`,
-      );
-    }
-  }
-  expect(disconnected).toBe(true);
-
-  await reload(tauriPage);
-  await openSettings(tauriPage, "integrations");
-  await openAlphaXivTab(tauriPage);
-  await waitLong(
-    tauriPage,
-    `!!document.querySelector('[data-testid="alphaxiv-section"] [aria-label="alphaXiv API key"]')`,
-    40_000,
-  );
+  await waitLong(tauriPage, `!!document.querySelector(${JSON.stringify(keyInputSelector)})`, 40_000);
+  expect(
+    await tauriPage.evaluate<boolean>(
+      `!!document.querySelector(${JSON.stringify(`${sectionSelector} [data-testid="alphaxiv-connected"]`)})`,
+    ),
+  ).toBe(false);
 });
 
-test("Get an API key links point at alphaXiv's own site", async ({ tauriPage }) => {
+test("the key hint links to alphaXiv and its MCP server docs", async ({ tauriPage }) => {
   await openSettings(tauriPage, "integrations");
   await openAlphaXivTab(tauriPage);
-  const hrefs = await tauriPage.evaluate<string[]>(
-    `Array.from(document.querySelectorAll('a')).filter(a => (a.textContent || '').includes('API key page') || a.textContent === 'alphaxiv.org').map(a => a.href)`,
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="alphaxiv-section"] a')`,
+    10_000,
   );
-  expect(hrefs.some((h) => h.includes("alphaxiv.org/@api-key"))).toBe(true);
-  expect(hrefs.some((h) => h === "https://www.alphaxiv.org/")).toBe(true);
+  const hrefs = await tauriPage.evaluate<string[]>(
+    `Array.from(document.querySelectorAll('[data-testid="alphaxiv-section"] a')).map(a => a.href)`,
+  );
+  expect(hrefs).toContain("https://www.alphaxiv.org/");
+  expect(hrefs).toContain("https://www.alphaxiv.org/docs/mcp");
+  expect(hrefs.some((h) => h.includes("@api-key"))).toBe(false);
 });

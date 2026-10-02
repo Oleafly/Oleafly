@@ -119,6 +119,7 @@ mod trust;
 #[cfg(any(target_os = "macos", test))]
 mod webview_frame;
 mod worktree_lock;
+mod zotero;
 
 use state::AppState;
 
@@ -698,6 +699,8 @@ pub fn run() {
             literature::literature_arxiv_lookup,
             connectors::get_connector_key,
             connectors::set_connector_key,
+            zotero::zotero_verify,
+            zotero::zotero_library_bibtex,
             project::set_main_doc,
             project::set_project_engine,
             project::set_project_shell_escape,

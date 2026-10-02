@@ -267,7 +267,7 @@ function ReferenceFields({
         <select
           value={form.type}
           onChange={(event) => update("type", event.target.value as ReferenceFormData["type"])}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm font-normal text-foreground shadow-xs focus-visible:border-ring"
         >
           <option value="article">{t(($) => $.researchTools.references.typeArticle)}</option>
           <option value="book">{t(($) => $.researchTools.references.typeBook)}</option>
@@ -285,7 +285,7 @@ function ReferenceFields({
           onChange={(event) => update("authors", event.target.value)}
           placeholder={t(($) => $.researchTools.references.authorsPlaceholder)}
           rows={2}
-          className="min-h-16 resize-y rounded-md border border-input bg-background px-3 py-2 text-sm font-normal text-foreground shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-16 resize-y rounded-md border border-input bg-background px-3 py-2 text-sm font-normal text-foreground shadow-xs focus-visible:border-ring"
         />
       </label>
       {form.type !== "book" && (

@@ -130,7 +130,7 @@ export function createPdfScreenReaderLayer({
   const extracted = extractPdfScreenReaderText(textContent);
   const layer = document.createElement("section");
   layer.className =
-    "pdf-screen-reader-layer relative z-10 min-h-full w-full rounded-[inherit] bg-background/90 text-foreground outline-none backdrop-blur-2xl backdrop-saturate-150 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring supports-[not(backdrop-filter:blur(0))]:bg-background";
+    "pdf-screen-reader-layer relative z-10 min-h-full w-full rounded-[inherit] bg-background/90 text-foreground backdrop-blur-2xl backdrop-saturate-150 supports-[not(backdrop-filter:blur(0))]:bg-background focus-visible:bg-accent/40";
   layer.setAttribute(
     "aria-label",
     t("screenReader.layer", { page: pageNumber, total: totalPages }),

@@ -155,7 +155,7 @@ export function AddCitationDialog() {
                 if (e.key === "Escape") close();
               }}
               placeholder={t(($) => $.shell.addCitation.placeholder)}
-              className="h-9 w-full border-0 bg-transparent text-sm shadow-none outline-none placeholder:text-muted-foreground"
+              className="h-9 w-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground"
             />
             <button type="button"
               onClick={() => void search()}

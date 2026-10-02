@@ -52,7 +52,7 @@ export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: Readon
               <button
                 type="button"
                 onClick={() => onActivate(tab.label)}
-                className="flex min-w-0 flex-1 items-center gap-1.5 text-left outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex min-w-0 flex-1 items-center gap-1.5 text-left focus-visible:bg-accent/60"
                 title={text}
               >
                 {tab.loading ? (

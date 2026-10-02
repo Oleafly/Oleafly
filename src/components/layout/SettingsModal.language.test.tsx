@@ -34,7 +34,9 @@ describe("Settings language picker", () => {
     render(<SettingsModal />);
     expect(screen.getByTestId("settings-language")).toBeInTheDocument();
     expect(screen.getByText(enSettings.language.label)).toBeInTheDocument();
-    expect(screen.getByText(enSettings.language.note)).toBeInTheDocument();
+    const note = screen.getByText(enSettings.language.note);
+    expect(note.previousElementSibling).toHaveClass("lucide-info");
+    expect(note.previousElementSibling).toHaveAttribute("aria-hidden", "true");
   });
 
   it("re-renders in the active language without a reload", async () => {

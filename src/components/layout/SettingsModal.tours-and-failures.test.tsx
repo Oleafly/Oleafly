@@ -24,6 +24,7 @@ vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  appVersion: () => Promise.resolve("0.4.3"),
   libraryRoot: mocks.libraryRoot,
   libraryStorageSummary: mocks.libraryStorageSummary,
   listRecycledProjects: mocks.listRecycledProjects,

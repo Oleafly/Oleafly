@@ -43,7 +43,12 @@
     "unrecognized": "認識できないファイル形式です: {{name}}",
     "zotero": {
       "button": "Zotero RDF ファイルを選択",
+      "connect": "Zotero アカウントを接続",
+      "connectedDescription": "Zotero ライブラリの参考文献をすべて読み込むか、書き出した Zotero RDF ファイルを選びます。",
       "description": "Zotero で「ファイル」→「ライブラリをエクスポート」→「Zotero RDF」を選びます。書き出したファイルを選んでください。",
+      "empty": "Zotero ライブラリに読み込める参考文献がありません。",
+      "importLibrary": "Zotero ライブラリを読み込む",
+      "limited": "Oleafly は Zotero ライブラリの {{total}} 件のうち、最初の {{fetched}} 件を読み込みました。",
       "title": "Zotero"
     }
   },

@@ -488,7 +488,7 @@ export function PublishToGitHubDialog({
                         value={repoName}
                         onChange={(e) => setRepoName(e.target.value)}
                         aria-label={t(($) => $.library.github.repositoryName)}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:border-ring"
                       />
                     </label>
                     <label htmlFor="publish-private-repository" className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3">
@@ -523,14 +523,14 @@ export function PublishToGitHubDialog({
                 </div>
               ) : (
                 <div className="flex h-full flex-col gap-2">
-                  <div className="flex items-center gap-2 rounded-md border px-3 transition-colors focus-within:ring-1 focus-within:ring-ring">
+                  <div className="flex items-center gap-2 rounded-md border px-3 transition-colors focus-within:border-ring">
                     <Search className="size-3.5 shrink-0 text-muted-foreground" />
                     <Input
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder={t(($) => $.library.github.searchPlaceholder)}
                       aria-label={t(($) => $.library.github.searchRepositories)}
-                      className="h-10 flex-1 rounded-none border-0 bg-transparent px-0 text-xs shadow-none outline-none focus-visible:ring-0"
+                      className="h-10 flex-1 rounded-none border-0 bg-transparent px-0 text-xs shadow-none"
                     />
                   </div>
                   <div className="min-h-0 flex-1 overflow-auto rounded-md border">

@@ -56,8 +56,6 @@ const WRITE_TOOLS = new Set([
 
 const NETWORK_TOOLS = new Set([
   "literature_search",
-  "alphaxiv_search",
-  "alphaxiv_paper_content",
   "verify_citation",
 ]);
 
@@ -82,8 +80,6 @@ const READ_ONLY_TOOLS = new Set([
   "show_location",
   "list_agents",
   "literature_search",
-  "alphaxiv_search",
-  "alphaxiv_paper_content",
   "verify_citation",
 ]);
 

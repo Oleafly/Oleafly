@@ -146,7 +146,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => select(command)}
                   className={cn(
-                    "flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left outline-none transition-colors",
+                    "flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
                     selected && "bg-accent text-accent-foreground",
                   )}
                 >

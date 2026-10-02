@@ -19,7 +19,7 @@ import { useAppTheme } from "@/lib/theme";
 import { useResolvedTerminalTheme, useSettingsStore } from "@/store/settings";
 
 const stripButtonClass =
-  "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 focus-visible:bg-accent focus-visible:text-foreground";
 import {
   TERMINAL_LIMIT,
   terminalLimitMessage,
@@ -135,7 +135,7 @@ function TerminalTabItem({
     }
   };
   const controlBase =
-    "inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity hover:bg-foreground/10 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+    "inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity hover:bg-foreground/10 hover:text-foreground focus-visible:opacity-100 focus-visible:bg-foreground/10 focus-visible:text-foreground";
   const hoverOnly = "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
   const closeClass = cn(controlBase, active ? "opacity-100" : hoverOnly);
   const hex = terminalColorHex(tab.color);
@@ -188,7 +188,7 @@ function TerminalTabItem({
               onClick={onActivate}
               onDoubleClick={startEditing}
               onKeyDown={onTabKeyDown}
-              className="max-w-40 truncate focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
+              className="max-w-40 truncate rounded-sm focus-visible:bg-accent/60"
             >
               {tab.title}
             </button>

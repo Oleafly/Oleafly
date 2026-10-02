@@ -178,7 +178,7 @@ export function ProjectCitationPicker({
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t(($) => $.editor.citations.filterPlaceholder)}
           aria-label={t(($) => $.editor.citations.filterLabel)}
-          className="h-7 border-0 bg-transparent px-0 text-xs shadow-none focus-visible:ring-0"
+          className="h-7 border-0 bg-transparent px-0 text-xs shadow-none"
         />
       </div>
 

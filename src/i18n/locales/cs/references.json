@@ -55,7 +55,12 @@
     "unrecognized": "Nerozpoznaný typ souboru: {{name}}",
     "zotero": {
       "button": "Vybrat soubor Zotero RDF",
+      "connect": "Připojit účet Zotero",
+      "connectedDescription": "Importujte všechny reference z knihovny Zotero, nebo vyberte exportovaný soubor Zotero RDF.",
       "description": "V Zoteru zvolte Soubor → Exportovat knihovnu → Zotero RDF. Potom vyberte exportovaný soubor.",
+      "empty": "Ve vaší knihovně Zotero nejsou žádné reference k importu.",
+      "importLibrary": "Importovat knihovnu Zotero",
+      "limited": "Oleafly načetl prvních {{fetched}} z {{total}} položek ve vaší knihovně Zotero.",
       "title": "Zotero"
     }
   },

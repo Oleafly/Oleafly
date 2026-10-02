@@ -591,7 +591,7 @@ export function SourceControl() {
           data-testid={`git-change-${change.path}`}
           aria-describedby={statusId}
           onClick={() => openChange(change)}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded text-left focus-visible:bg-accent/60"
         >
           <FileIcon name={name} className="size-4 shrink-0" />
           <span className="min-w-0">

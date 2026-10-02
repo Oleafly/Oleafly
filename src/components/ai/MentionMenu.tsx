@@ -208,7 +208,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
 
     const optionClass = (selected: boolean) =>
       cn(
-        "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors",
+        "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors",
         selected && "bg-accent text-accent-foreground",
       );
     const showHeadings = agents.length > 0 && entries.length > 0;

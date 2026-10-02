@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Import your whole Zotero library from a project's References panel.
+  Connect Zotero in Settings > Integrations with your user ID and an API key.
+  Oleafly checks the key with Zotero before saving it, then brings in up to
+  5,000 items as BibTeX. References already in the bibliography are skipped,
+  as with file imports.
+- alphaXiv connects as an MCP server. Paste an API key from alphaXiv's
+  Settings > API Keys and the assistant can search papers, read them and use
+  your alphaXiv library, asking you before each call. A key alphaXiv refuses
+  is not saved.
+- The app version sits under the Settings sections. Click it to open What's
+  new.
 - Settings has a search box. Type a word such as "theme", "Zotero" or
   "spelling" and the list narrows to the sections and settings that match;
   pick one to jump to it.
@@ -46,6 +57,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Focus shows as a border colour or a background tint everywhere. No control
+  draws a focus ring any more, and Settings toggle rows, which showed no
+  focus at all, now do.
+- The home toolbar and dock are flat, with a plain border and no shadow.
+- Integration tabs and Citation Search sources show each service's own logo.
+- In the spelling dictionary list, download sizes and the installed check sit
+  at the right edge of each row.
+- Notes in General settings have an info icon.
+- The assistant's literature search uses the OpenAlex API key and contact
+  email saved in Settings.
+- Without a Serper key, Citation Search leaves Google Scholar out instead of
+  listing it as a failed source.
 - Paths inside your home folder show as `~/…` in Settings, version history,
   engine and agent details, and in chat.
 - File paths in Settings, such as CLI agent programs, Storage and engine
@@ -88,6 +111,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Clicking a colour circle in Theme customization seemed to do nothing,
+  because its picker opened behind the Settings window. The circle now opens
+  the system colour picker.
+- The alphaXiv integration could not work. Its key link led to a missing page
+  and its tools called addresses alphaXiv does not serve.
+- Zotero credentials were saved but never used.
+- The OpenAlex card showed Connected only when an email was saved, not a key,
+  and its rate limits link opened the help home page.
 - Opening Chat history left the editor's pinned headings bright on top of the
   dimmed window. The dialog now covers the whole window, and the Find widget
   no longer hides behind pinned headings either.

@@ -234,7 +234,7 @@ export function ProjectImportMenu({
                   notifyError("open repository", error);
                 });
               }}
-              className="shrink-0 text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring group-hover:opacity-100"
+              className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 focus-visible:bg-accent/60"
             >
               <ExternalLink className="size-3.5" />
             </button>

@@ -1069,9 +1069,12 @@
       "disconnect": "연결 해제"
     },
     "alphaxiv": {
-      "apiKeyHint": "키를 받으려면 <siteLink>alphaxiv.org</siteLink>에서 로그인하고 <keyLink>API 키 페이지</keyLink>를 연 다음 키를 생성해(<keyPrefix>axv1_</keyPrefix>로 시작합니다) 아래에 붙여 넣으세요.",
+      "apiKeyHint": "키를 받으려면 <siteLink>alphaxiv.org</siteLink>에서 로그인하고 Settings > API Keys를 연 다음 키를 만들어 여기에 붙여 넣으세요. Oleafly는 이 키로 alphaXiv의 <docsLink>MCP 서버</docsLink>에 연결합니다.",
       "apiKeyLabel": "alphaXiv API 키",
-      "description": "어시스턴트를 위한 문헌 검색 및 논문 분석 도구입니다."
+      "connected": "연결되었습니다. 이제 어시스턴트가 alphaXiv를 사용할 수 있으며, 매번 먼저 확인을 요청합니다.",
+      "connectFailed": "alphaXiv가 이 키를 받지 않았거나 alphaXiv에 연결할 수 없습니다. 키를 확인하고 다시 시도하세요.",
+      "description": "어시스턴트를 위한 문헌 검색 및 논문 분석 도구입니다.",
+      "disconnectFailed": "alphaXiv 연결을 해제하지 못했습니다. 다시 시도하세요."
     },
     "cookies": {
       "action": "Cookie 가져오기",
@@ -1110,7 +1113,11 @@
     "zotero": {
       "apiKeyHint": "키를 받으려면 <siteLink>zotero.org</siteLink>에서 로그인하고 <keyLink>API 키 페이지</keyLink>를 열어 키를 만든 다음, 같은 페이지에서 숫자로 된 사용자 ID를 복사하세요.",
       "apiKeyLabel": "Zotero API 키",
+      "connected": "Zotero 라이브러리에 연결되었습니다.",
+      "connectedAs": "{{username}}(으)로 연결되었습니다.",
       "description": "Zotero 라이브러리에서 인용과 참고문헌을 가져옵니다.",
+      "disconnectFailed": "Oleafly가 저장된 Zotero 키를 삭제하지 못했습니다. 다시 시도하세요.",
+      "importHint": "가져오려면 프로젝트의 참고문헌 패널을 열고 참고문헌 라이브러리 가져오기를 선택하세요.",
       "userIdLabel": "Zotero 사용자 ID",
       "userIdPlaceholder": "사용자 ID"
     }

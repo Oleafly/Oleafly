@@ -46,6 +46,18 @@
     "query_too_long": "Søgeteksten er for lang (højst {{max}} tegn).",
     "unknown_source": "Ukendt litteraturkilde."
   },
+  "zotero": {
+    "invalid_user_id": "Et bruger-id til Zotero er et tal. Kopiér dit fra siden med API-nøgler hos Zotero.",
+    "key_rejected": "Zotero accepterede ikke denne API-nøgle. Tjek, at du har kopieret hele nøglen, og at den stadig findes på zotero.org.",
+    "library_not_readable": "Denne API-nøgle kan ikke læse dit Zotero-bibliotek. Rediger nøglen på zotero.org, og slå Allow library access til.",
+    "user_mismatch": "Denne API-nøgle tilhører Zotero-bruger-id {{keyUserId}}, ikke {{userId}}. Tjek bruger-id'et, og prøv igen.",
+    "not_connected": "Forbind først din Zotero-konto under Indstillinger, Integrationer, Zotero.",
+    "rate_limited": "Zotero begrænser antallet af forespørgsler lige nu. Vent et par minutter, og prøv igen.",
+    "unreachable": "Oleafly kunne ikke få forbindelse til Zotero. Tjek din internetforbindelse, og prøv igen.",
+    "http_error": "Zotero returnerede en fejl (HTTP {{status}}). Prøv igen senere.",
+    "invalid_response": "Zotero sendte et svar, som Oleafly ikke kunne læse. Prøv igen senere.",
+    "too_large": "Dit Zotero-bibliotek er for stort til at blive importeret på én gang. Eksporter i stedet en samling fra Zotero som en RDF-fil, og importer den."
+  },
   "tex": {
     "no_host_binary": "TinyTeX har ingen {{name}}-binærfil, der passer til denne vært.",
     "package_operation_timeout": "Pakkehandlingen overskred grænsen på {{span}} og blev stoppet, så du kan kompilere igen. TeX Live-spejlet er sandsynligvis optaget. Prøv igen senere, eller kør tlmgr selv.",

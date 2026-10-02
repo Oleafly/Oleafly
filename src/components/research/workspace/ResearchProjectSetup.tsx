@@ -352,7 +352,7 @@ export function ResearchProjectSetup({
                 type="button"
                 aria-pressed={selected}
                 className={cn(
-                  "flex w-full cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
+                  "flex w-full cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-left text-sm text-sidebar-foreground hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
                   selected && "bg-sidebar-accent",
                 )}
                 style={indent}

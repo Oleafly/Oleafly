@@ -43,7 +43,12 @@
     "unrecognized": "無法辨識的檔案類型：{{name}}",
     "zotero": {
       "button": "選擇 Zotero RDF 檔案",
+      "connect": "連接 Zotero 帳號",
+      "connectedDescription": "匯入 Zotero 文獻庫中的所有參考文獻，或選擇你匯出的 Zotero RDF 檔案。",
       "description": "在 Zotero 中依序選擇「檔案」→「匯出文獻庫」→「Zotero RDF」，然後選擇匯出的檔案。",
+      "empty": "你的 Zotero 文獻庫沒有可匯入的參考文獻。",
+      "importLibrary": "匯入 Zotero 文獻庫",
+      "limited": "Oleafly 讀取了你的 Zotero 文獻庫 {{total}} 個項目中的前 {{fetched}} 個。",
       "title": "Zotero"
     }
   },

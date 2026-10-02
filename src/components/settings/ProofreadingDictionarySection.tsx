@@ -151,7 +151,7 @@ function WordChips({
               onClick={() => onRemove(word)}
               aria-label={t(($) => $.settings.proofreading.words.removeAriaLabel, { word })}
               title={t(($) => $.settings.proofreading.words.removeTitle, { word })}
-              className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:bg-foreground/10 focus-visible:text-foreground"
             >
               <X className="size-3" aria-hidden />
             </button>
@@ -173,7 +173,7 @@ function HelpTip({ label }: Readonly<{ readonly label: string }>) {
       <button
         type="button"
         aria-label={label}
-        className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:bg-accent/60"
       >
         <CircleHelp aria-hidden className="size-3.5" />
       </button>
@@ -317,7 +317,7 @@ function TurnedOffFindings({
                   onClick={() => enableHarperRule(rule)}
                   aria-label={t(($) => $.settings.proofreading.turnedOff.restoreAriaLabel, { rule })}
                   title={t(($) => $.settings.proofreading.turnedOff.restoreTitle, { rule })}
-                  className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground focus-visible:bg-foreground/10 focus-visible:text-foreground"
                 >
                   <RotateCcw className="size-3" aria-hidden />
                 </button>

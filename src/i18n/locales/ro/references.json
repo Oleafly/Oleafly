@@ -51,7 +51,12 @@
     "unrecognized": "Tip de fișier nerecunoscut: {{name}}",
     "zotero": {
       "button": "Alege un fișier Zotero RDF",
+      "connect": "Conectează contul Zotero",
+      "connectedDescription": "Importă toate referințele din biblioteca ta Zotero sau alege un fișier Zotero RDF exportat.",
       "description": "În Zotero, alege File → Export Library → Zotero RDF. Apoi selectează fișierul exportat.",
+      "empty": "Biblioteca ta Zotero nu are referințe de importat.",
+      "importLibrary": "Importă biblioteca Zotero",
+      "limited": "Oleafly a citit primele {{fetched}} din cele {{total}} elemente din biblioteca ta Zotero.",
       "title": "Zotero"
     }
   },

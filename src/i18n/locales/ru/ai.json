@@ -314,8 +314,6 @@
       "literatureSearch": "Искать статьи в OpenAlex по ключевым словам, ключ не нужен.",
       "verifyCitation": "Превратить DOI или заголовок в проверенный BibTeX через doi.org или Crossref.",
       "projectLibrarySearch": "Искать по собственному тексту и заметкам проекта по ключевым словам.",
-      "alphaxivSearch": "Искать статьи arXiv через alphaXiv.",
-      "alphaxivPaperContent": "Получить полный текст статьи arXiv через alphaXiv.",
       "previewFigure": "Скомпилировать рисунок на TikZ или PGFPlots отдельно и показать результат в чате.",
       "insertFigure": "Вставить готовый рисунок у курсора с подписью и меткой и сохранить PNG в figures/.",
       "loadImage": "Посмотреть изображение, которое уже есть в проекте.",
@@ -360,7 +358,6 @@
     "notes": {
       "latexOnly": "Только для проектов LaTeX",
       "pdfCaptureSetting": "Нужна настройка снимков страниц PDF",
-      "alphaxivKey": "Нужен ключ alphaXiv в интеграциях",
       "chatApproval": "Подтверждается в чате, по одной команде за раз",
       "browserSetting": "Нужна настройка веб-браузера"
     },

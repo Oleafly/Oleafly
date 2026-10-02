@@ -314,8 +314,6 @@
       "literatureSearch": "Szuka artykułów w OpenAlex według słów kluczowych, bez potrzeby klucza.",
       "verifyCitation": "Zamienia DOI lub tytuł w zweryfikowany wpis BibTeX przez doi.org lub Crossref.",
       "projectLibrarySearch": "Przeszukuje własny tekst i notatki projektu według słów kluczowych.",
-      "alphaxivSearch": "Szuka artykułów z arXiv przez alphaXiv.",
-      "alphaxivPaperContent": "Pobiera pełny tekst artykułu z arXiv przez alphaXiv.",
       "previewFigure": "Kompiluje rysunek TikZ lub PGFPlots osobno i pokazuje wynik w czacie.",
       "insertFigure": "Wstawia gotowy rysunek w miejscu kursora wraz z podpisem i etykietą oraz zapisuje plik PNG w katalogu figures/.",
       "loadImage": "Ogląda obraz, który już jest w projekcie.",
@@ -360,7 +358,6 @@
     "notes": {
       "latexOnly": "Tylko projekty LaTeX",
       "pdfCaptureSetting": "Wymaga ustawienia przechwytywania stron PDF",
-      "alphaxivKey": "Wymaga klucza alphaXiv w Integracjach",
       "chatApproval": "Zatwierdzane w czacie, po jednym poleceniu naraz",
       "browserSetting": "Wymaga ustawienia przeglądarki internetowej"
     },

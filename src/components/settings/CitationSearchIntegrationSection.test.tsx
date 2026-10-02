@@ -64,6 +64,29 @@ describe("CitationSearchIntegrationSection", () => {
     ).toHaveAttribute("href");
   });
 
+  it("marks OpenAlex connected when only its API key is stored", async () => {
+    mocks.getConnectorKey.mockImplementation(async (id: string) =>
+      id === "openalex-api-key" ? "stored" : "",
+    );
+    render(<CitationSearchIntegrationSection />);
+
+    await waitFor(() =>
+      expect(screen.getAllByText(citations.connected)).toHaveLength(1),
+    );
+    expect(
+      screen.getByRole("button", { name: citations.actions.removeApiKey }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("openalex-email-input")).toBeInTheDocument();
+  });
+
+  it("points the OpenAlex link at the authentication help page", async () => {
+    render(<CitationSearchIntegrationSection />);
+
+    expect(
+      await screen.findByRole("link", { name: citations.openAlex.docsLink }),
+    ).toHaveAttribute("href", "https://help.openalex.org/api/authentication/");
+  });
+
   it("marks every source connected and offers removal when keys are stored", async () => {
     mocks.getConnectorKey.mockResolvedValue("stored");
     render(<CitationSearchIntegrationSection />);

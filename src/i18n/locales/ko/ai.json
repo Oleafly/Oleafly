@@ -293,8 +293,6 @@
       "literatureSearch": "키워드로 OpenAlex에서 논문을 검색합니다. 키가 필요 없습니다.",
       "verifyCitation": "doi.org나 Crossref를 통해 DOI나 제목을 검증된 BibTeX로 바꿉니다.",
       "projectLibrarySearch": "프로젝트 자체의 텍스트와 메모를 키워드로 검색합니다.",
-      "alphaxivSearch": "alphaXiv를 통해 arXiv 논문을 검색합니다.",
-      "alphaxivPaperContent": "alphaXiv를 통해 arXiv 논문의 전문을 가져옵니다.",
       "previewFigure": "TikZ나 PGFPlots 그림을 따로 컴파일해 결과를 채팅에 보여 줍니다.",
       "insertFigure": "완성한 그림을 캡션과 레이블과 함께 커서 위치에 삽입하고 figures/ 아래에 PNG로 저장합니다.",
       "loadImage": "이미 프로젝트에 있는 이미지를 살펴봅니다.",
@@ -339,7 +337,6 @@
     "notes": {
       "latexOnly": "LaTeX 프로젝트에서만",
       "pdfCaptureSetting": "PDF 페이지 캡처 설정이 필요합니다",
-      "alphaxivKey": "연동에 alphaXiv 키가 필요합니다",
       "chatApproval": "채팅에서 명령을 하나씩 승인합니다",
       "browserSetting": "웹 브라우저 설정이 필요합니다"
     },

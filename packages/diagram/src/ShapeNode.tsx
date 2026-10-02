@@ -206,7 +206,7 @@ export function ShapeNode({ id, data, selected }: NodeProps) {
               }
               e.stopPropagation();
             }}
-            className="nodrag h-full min-h-0 w-full resize-none border-0 bg-transparent p-0 text-center shadow-none focus-visible:ring-0"
+            className="nodrag h-full min-h-0 w-full resize-none border-0 bg-transparent p-0 text-center shadow-none"
             style={{ ...labelStyle, fontSize: "inherit", color: "inherit" }}
           />
         ) : (

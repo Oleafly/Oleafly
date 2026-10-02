@@ -293,8 +293,6 @@
       "literatureSearch": "通过关键词在 OpenAlex 中搜索论文，无需密钥。",
       "verifyCitation": "通过 doi.org 或 Crossref 将 DOI 或标题转换为经过验证的 BibTeX。",
       "projectLibrarySearch": "通过关键词搜索项目自身的文本和笔记。",
-      "alphaxivSearch": "通过 alphaXiv 搜索 arXiv 论文。",
-      "alphaxivPaperContent": "通过 alphaXiv 获取 arXiv 论文的全文。",
       "previewFigure": "单独编译 TikZ 或 PGFPlots 图片，并在聊天中显示结果。",
       "insertFigure": "将完成的图片插入光标处，附带题注和标签，并在 figures/ 下保存一张 PNG。",
       "loadImage": "查看项目中已有的图片。",
@@ -339,7 +337,6 @@
     "notes": {
       "latexOnly": "仅限 LaTeX 项目",
       "pdfCaptureSetting": "需要启用 PDF 页面截图设置。",
-      "alphaxivKey": "需要在“集成”中配置 alphaXiv 密钥。",
       "chatApproval": "在聊天中逐条批准命令。",
       "browserSetting": "需要启用浏览器设置。"
     },

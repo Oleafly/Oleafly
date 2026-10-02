@@ -273,7 +273,7 @@ function EditorKeyRows() {
                   setEditing(definition.id);
                   setError("");
                 }}
-                className="rounded-md outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="rounded-md focus-visible:bg-accent/60"
               >
                 {active && (
                   <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">
@@ -440,7 +440,7 @@ export function ShortcutsSection() {
                     setEditing(definition.id);
                     setError("");
                   }}
-                  className="rounded-md outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  className="rounded-md focus-visible:bg-accent/60"
                 >
                   {active ? (
                     <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">

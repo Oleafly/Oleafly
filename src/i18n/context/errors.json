@@ -5,5 +5,10 @@
   "project": {
     "linked_in_app_data": "Shown when a folder opened in place and Oleafly's own data folder end up one inside the other, usually after one of them was moved. {{folder}} is only the folder's name, never a full path. Either folder can be the one inside.",
     "folder_read_only": "Shown when Oleafly can't save, create, rename, move, copy, import or delete something in a folder opened in place because part of that folder is read-only. {{name}} is a path inside the project, such as figures/plot.png or project.json. It can be a file that doesn't exist yet (a new file, or where a move, copy or import was going), a read-only folder that was being moved, or, when a delete stops partway, the item Oleafly couldn't remove, such as figures/plot.png inside a read-only figures folder. \"Its folder\" is the folder that holds {{name}}. \"The folder you opened\" is the whole folder opened in place, not the subfolder. The second sentence points to Copy into library, which is on the read-only banner and in the folder's menu in the Library. The banner only shows when the whole folder is read-only, so don't mention it."
+  },
+  "zotero": {
+    "library_not_readable": "Shown when a Zotero API key is valid but has no access to the user's personal library. \"Allow library access\" is the checkbox label on the key's page at zotero.org. Keep it in English, because zotero.org shows it in English.",
+    "user_mismatch": "Shown when the Zotero user ID typed in Settings differs from the account the API key belongs to. {{keyUserId}} is the key's numeric user ID and {{userId}} is the number the user typed.",
+    "too_large": "Shown when the Zotero library is bigger than one import allows. The RDF export is Zotero's File, Export Collection, Zotero RDF option."
   }
 }

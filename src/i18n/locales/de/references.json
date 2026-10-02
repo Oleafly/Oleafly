@@ -47,7 +47,12 @@
     "unrecognized": "Unbekannter Dateityp: {{name}}",
     "zotero": {
       "button": "Zotero-RDF-Datei wählen",
+      "connect": "Zotero-Konto verbinden",
+      "connectedDescription": "Importieren Sie alle Literaturangaben aus Ihrer Zotero-Bibliothek oder wählen Sie eine exportierte Zotero-RDF-Datei.",
       "description": "Wählen Sie in Zotero Datei → Bibliothek exportieren → Zotero RDF. Wählen Sie danach die exportierte Datei.",
+      "empty": "Ihre Zotero-Bibliothek enthält keine Literaturangaben zum Importieren.",
+      "importLibrary": "Zotero-Bibliothek importieren",
+      "limited": "Oleafly hat die ersten {{fetched}} von {{total}} Einträgen Ihrer Zotero-Bibliothek gelesen.",
       "title": "Zotero"
     }
   },

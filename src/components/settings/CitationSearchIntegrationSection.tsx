@@ -1,20 +1,31 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { ComponentType } from "react";
+import { Check, ExternalLink, LibraryBig, Loader2 } from "lucide-react";
+import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import {
-  Check,
-  ExternalLink,
-  KeyRound,
-  LibraryBig,
-  Loader2,
-  Mail,
-} from "lucide-react";
+  CrossrefBrandIcon,
+  GoogleScholarBrandIcon,
+  OpenAlexBrandIcon,
+  PubMedBrandIcon,
+  SemanticScholarBrandIcon,
+} from "@/components/settings/IntegrationBrandIcons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getConnectorKey, setConnectorKey } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 
-const KEY_FREE_SOURCES = ["arXiv", "Crossref", "PubMed"] as const;
+const KEY_FREE_SOURCES: readonly {
+  name: string;
+  Icon: ComponentType<{ className?: string }>;
+  tone: string;
+}[] = [
+  { name: "arXiv", Icon: ArxivIcon, tone: "text-[#B31B1B] dark:text-[#E05A5A]" },
+  { name: "Crossref", Icon: CrossrefBrandIcon, tone: "" },
+  { name: "PubMed", Icon: PubMedBrandIcon, tone: "text-[#326599] dark:text-[#6FA0D2]" },
+];
 
 export function CitationSearchIntegrationSection() {
   const { t } = useTranslation(["common", "settings"]);
@@ -225,7 +236,7 @@ export function CitationSearchIntegrationSection() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-md">
             <div className="flex items-center gap-2">
-              <KeyRound className="size-4 text-blue-600 dark:text-blue-300" />
+              <SemanticScholarBrandIcon className="size-4 text-[#1857B6] dark:text-[#5B9BE6]" />
               <h4 className="text-sm font-medium">{"Semantic Scholar"}</h4>
               {connected && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
@@ -288,9 +299,9 @@ export function CitationSearchIntegrationSection() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-md">
             <div className="flex items-center gap-2">
-              <Mail className="size-4 text-blue-600 dark:text-blue-300" />
+              <OpenAlexBrandIcon className="size-4 text-foreground" />
               <h4 className="text-sm font-medium">{"OpenAlex"}</h4>
-              {openAlexConnected && (
+              {(openAlexKeyConnected || openAlexConnected) && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
                   <Check className="size-3" />
                   {t(($) => $.settings.citations.connected)}
@@ -301,7 +312,7 @@ export function CitationSearchIntegrationSection() {
               {t(($) => $.settings.citations.openAlex.hint)}
             </p>
             <a
-              href="https://docs.openalex.org/how-to-use-the-api/rate-limits-and-authentication"
+              href="https://help.openalex.org/api/authentication/"
               target="_blank"
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
@@ -389,7 +400,7 @@ export function CitationSearchIntegrationSection() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-md">
             <div className="flex items-center gap-2">
-              <KeyRound className="size-4 text-emerald-600 dark:text-emerald-300" />
+              <GoogleScholarBrandIcon className="size-4 text-[#4285F4]" />
               <h4 className="text-sm font-medium">{"Google Scholar (Serper)"}</h4>
               {serperConnected && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
@@ -457,13 +468,13 @@ export function CitationSearchIntegrationSection() {
           {t(($) => $.settings.citations.keyFree.description)}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {KEY_FREE_SOURCES.map((source) => (
+          {KEY_FREE_SOURCES.map(({ name, Icon, tone }) => (
             <span
-              key={source}
-              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300"
+              key={name}
+              className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground"
             >
-              <Check className="size-3.5" />
-              {source}
+              <Icon className={cn("size-3.5", tone)} />
+              {name}
             </span>
           ))}
         </div>

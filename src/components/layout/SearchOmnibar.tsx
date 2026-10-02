@@ -413,7 +413,7 @@ export function SearchOmnibar() {
             onValueChange={setQuery}
             autoFocus
             placeholder={placeholder}
-            className="flex h-12 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            className="flex h-12 w-full bg-transparent text-sm placeholder:text-muted-foreground"
           />
           <span className="shrink-0 text-xs text-muted-foreground">
             {loading ? "…" : ""}
@@ -541,7 +541,7 @@ export function SearchOmnibar() {
                   key={itemKey}
                   value={itemKey}
                   onSelect={() => void openHit(hit)}
-                  className="flex cursor-pointer flex-col gap-0.5 rounded-md px-2.5 py-2 text-sm outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+                  className="flex cursor-pointer flex-col gap-0.5 rounded-md px-2.5 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
                 >
                   <div className="flex items-center gap-2">
                     <FileText className="size-3.5 shrink-0 text-muted-foreground" />
@@ -640,7 +640,7 @@ function Row({
     <Command.Item
       value={title}
       onSelect={onSelect}
-      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm outline-none data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
     >
       <span className="text-muted-foreground">{icon}</span>
       <span className="truncate">{title}</span>

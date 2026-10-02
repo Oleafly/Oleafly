@@ -141,7 +141,7 @@ export function Inspector({
           <Input
             value={node.label}
             onChange={(e) => onNodeChange({ label: e.target.value })}
-            className="rounded border border-input bg-background px-1.5 py-1 text-xs outline-none focus:border-primary"
+            className="rounded border border-input bg-background px-1.5 py-1 text-xs focus:border-primary"
           />
         </label>
         <Field label={t("inspector.fill")}>
@@ -209,7 +209,7 @@ export function Inspector({
         <Input
           value={edge!.label || ""}
           onChange={(e) => onEdgeChange({ label: e.target.value })}
-          className="rounded border border-input bg-background px-1.5 py-1 text-xs outline-none focus:border-primary"
+          className="rounded border border-input bg-background px-1.5 py-1 text-xs focus:border-primary"
         />
       </label>
       <Field label={t("inspector.arrowhead")}>

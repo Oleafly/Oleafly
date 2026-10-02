@@ -1087,9 +1087,12 @@
       "disconnect": "Odpojit"
     },
     "alphaxiv": {
-      "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>alphaxiv.org</siteLink>, otevřete svou <keyLink>stránku klíčů API</keyLink>, vygenerujte klíč (začíná na <keyPrefix>axv1_</keyPrefix>) a vložte jej níže.",
+      "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>alphaxiv.org</siteLink>, otevřete Settings > API Keys, vytvořte klíč a vložte jej sem. Oleafly se s ním připojí k <docsLink>serveru MCP</docsLink> služby alphaXiv.",
       "apiKeyLabel": "Klíč API pro alphaXiv",
-      "description": "Nástroje pro hledání literatury a rozbor článků pro asistenta."
+      "connected": "Připojeno. Asistent teď může používat alphaXiv a pokaždé se vás nejdřív zeptá.",
+      "connectFailed": "alphaXiv tento klíč nepřijal, nebo není dostupný. Zkontrolujte klíč a zkuste to znovu.",
+      "description": "Nástroje pro hledání literatury a rozbor článků pro asistenta.",
+      "disconnectFailed": "alphaXiv se nepodařilo odpojit. Zkuste to znovu."
     },
     "cookies": {
       "action": "Importovat cookies",
@@ -1140,7 +1143,11 @@
     "zotero": {
       "apiKeyHint": "Jak získat klíč: přihlaste se na <siteLink>zotero.org</siteLink>, otevřete svou <keyLink>stránku klíčů API</keyLink> a klíč vytvořte, pak ze stejné stránky zkopírujte své číselné ID uživatele.",
       "apiKeyLabel": "Klíč API pro Zotero",
+      "connected": "Připojeno k vaší knihovně Zotero.",
+      "connectedAs": "Připojeno jako {{username}}.",
       "description": "Importujte citace a reference ze své knihovny Zotero.",
+      "disconnectFailed": "Oleafly nemohl odebrat uložený klíč Zotero. Zkuste to znovu.",
+      "importHint": "Pro import otevřete v projektu panel Reference a zvolte Import knihovny referencí.",
       "userIdLabel": "ID uživatele Zotero",
       "userIdPlaceholder": "ID uživatele"
     }

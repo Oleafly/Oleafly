@@ -336,8 +336,8 @@ function setPdfScreenReaderWrapStyle(
   wrap.classList.toggle("rounded-xl", active);
   wrap.classList.toggle("bg-white", !active);
   wrap.classList.toggle("bg-background", active);
-  wrap.classList.toggle("ring-black/5", !active);
-  wrap.classList.toggle("ring-white/10", active);
+  wrap.classList.toggle("after:border-black/5", !active);
+  wrap.classList.toggle("after:border-white/10", active);
   if (active) {
     if (wrap.style.height && wrap.style.height !== "auto") {
       wrap.dataset.pdfVisualHeight = wrap.style.height;
@@ -2091,7 +2091,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         // flush-start (not an unreachable centered overflow) if the page is
         // ever wider than the viewport, so every edge stays scrollable.
         wrap.className =
-          "relative mx-auto shadow-md ring-1 ring-black/5 rounded-sm overflow-hidden bg-white";
+          "relative mx-auto shadow-md rounded-sm overflow-hidden bg-white after:pointer-events-none after:absolute after:inset-0 after:z-[1] after:rounded-[inherit] after:border after:border-black/5 after:content-['']";
         wrap.dataset.page = String(p);
         wrap.setAttribute("role", "group");
         wrap.setAttribute(

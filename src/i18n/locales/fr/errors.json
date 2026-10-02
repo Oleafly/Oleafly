@@ -46,6 +46,18 @@
     "query_too_long": "La requête de recherche est trop longue ({{max}} caractères maximum).",
     "unknown_source": "Source bibliographique inconnue."
   },
+  "zotero": {
+    "invalid_user_id": "Un identifiant utilisateur Zotero est un nombre. Copiez le vôtre depuis la page des clés API de Zotero.",
+    "key_rejected": "Zotero n'a pas accepté cette clé API. Vérifiez que vous avez copié la clé entière et qu'elle existe toujours sur zotero.org.",
+    "library_not_readable": "Cette clé API ne peut pas lire votre bibliothèque Zotero. Sur zotero.org, modifiez la clé et activez Allow library access.",
+    "user_mismatch": "Cette clé API appartient à l'identifiant utilisateur Zotero {{keyUserId}}, pas à {{userId}}. Vérifiez l'identifiant utilisateur et réessayez.",
+    "not_connected": "Connectez d'abord votre compte Zotero dans Paramètres, Intégrations, Zotero.",
+    "rate_limited": "Zotero limite les requêtes en ce moment. Attendez quelques minutes, puis réessayez.",
+    "unreachable": "Oleafly n'a pas pu joindre Zotero. Vérifiez votre connexion Internet, puis réessayez.",
+    "http_error": "Zotero a renvoyé une erreur (HTTP {{status}}). Réessayez plus tard.",
+    "invalid_response": "Zotero a envoyé une réponse qu'Oleafly n'a pas pu lire. Réessayez plus tard.",
+    "too_large": "Votre bibliothèque Zotero est trop volumineuse pour être importée en une fois. Exportez plutôt une collection depuis Zotero au format RDF et importez ce fichier."
+  },
   "tex": {
     "no_host_binary": "TinyTeX ne fournit pas de binaire {{name}} compatible avec cet hôte.",
     "package_operation_timeout": "L'opération sur les paquets a dépassé sa limite de {{span}} et a été interrompue, vous pouvez donc compiler à nouveau. Le miroir TeX Live est sans doute occupé. Réessayez plus tard ou lancez tlmgr vous-même.",

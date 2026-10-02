@@ -300,8 +300,6 @@
       "literatureSearch": "Hae artikkeleita OpenAlexista hakusanoilla, avainta ei tarvita.",
       "verifyCitation": "Muunna DOI tai otsikko varmennetuksi BibTeX-viitteeksi doi.orgin tai Crossrefin kautta.",
       "projectLibrarySearch": "Hae projektin omasta tekstistä ja muistiinpanoista hakusanoilla.",
-      "alphaxivSearch": "Hae arXiv-artikkeleita alphaXivin kautta.",
-      "alphaxivPaperContent": "Nouda arXiv-artikkelin koko teksti alphaXivin kautta.",
       "previewFigure": "Käännä TikZ- tai PGFPlots-kuva erikseen ja näytä tulos keskustelussa.",
       "insertFigure": "Lisää valmis kuva kohdistimen kohdalle kuvatekstin ja nimikkeen kera ja tallenna PNG hakemistoon figures/.",
       "loadImage": "Katso kuvaa, joka on jo projektissa.",
@@ -346,7 +344,6 @@
     "notes": {
       "latexOnly": "Vain LaTeX-projekteissa",
       "pdfCaptureSetting": "Vaatii PDF-sivujen kaappausasetuksen",
-      "alphaxivKey": "Vaatii alphaXiv-avaimen integraatioissa",
       "chatApproval": "Hyväksytään keskustelussa, yksi komento kerrallaan",
       "browserSetting": "Vaatii verkkoselainasetuksen"
     },

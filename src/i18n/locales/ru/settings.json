@@ -1087,9 +1087,12 @@
       "disconnect": "Отключить"
     },
     "alphaxiv": {
-      "apiKeyHint": "Чтобы получить ключ: войдите на <siteLink>alphaxiv.org</siteLink>, откройте <keyLink>страницу ключей API</keyLink>, создайте ключ (он начинается с <keyPrefix>axv1_</keyPrefix>) и вставьте его ниже.",
+      "apiKeyHint": "Чтобы получить ключ: войдите на <siteLink>alphaxiv.org</siteLink>, откройте Settings > API Keys, создайте ключ и вставьте его сюда. Oleafly использует его для подключения к <docsLink>серверу MCP</docsLink> alphaXiv.",
       "apiKeyLabel": "Ключ API alphaXiv",
-      "description": "Инструменты поиска литературы и анализа статей для ассистента."
+      "connected": "Подключено. Теперь ассистент может пользоваться alphaXiv и каждый раз сначала спрашивает вас.",
+      "connectFailed": "alphaXiv не принял этот ключ или недоступен. Проверьте ключ и попробуйте ещё раз.",
+      "description": "Инструменты поиска литературы и анализа статей для ассистента.",
+      "disconnectFailed": "Не удалось отключить alphaXiv. Попробуйте ещё раз."
     },
     "cookies": {
       "action": "Импортировать файлы cookie",
@@ -1140,7 +1143,11 @@
     "zotero": {
       "apiKeyHint": "Чтобы получить ключ: войдите на <siteLink>zotero.org</siteLink>, откройте <keyLink>страницу ключей API</keyLink> и создайте ключ, затем скопируйте оттуда же числовой идентификатор пользователя.",
       "apiKeyLabel": "Ключ API Zotero",
+      "connected": "Подключено к вашей библиотеке Zotero.",
+      "connectedAs": "Подключено как {{username}}.",
       "description": "Импортируйте цитаты и источники из вашей библиотеки Zotero.",
+      "disconnectFailed": "Oleafly не удалось удалить сохранённый ключ Zotero. Попробуйте ещё раз.",
+      "importHint": "Чтобы импортировать, откройте в проекте панель «Источники» и выберите «Импорт библиотеки источников».",
       "userIdLabel": "Идентификатор пользователя Zotero",
       "userIdPlaceholder": "Идентификатор пользователя"
     }

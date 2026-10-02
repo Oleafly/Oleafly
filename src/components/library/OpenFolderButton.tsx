@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { FolderOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { HOME_DOCK_GLASS_SURFACE } from "@/components/library/HomeDock";
+import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 import { openFolderWithPicker } from "@/features/open-folder";
 import { cn } from "@/lib/utils";
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
@@ -24,8 +24,8 @@ export function OpenFolderButton({ className }: Readonly<{ className?: string }>
         disabled={opening}
         aria-label={t(($) => $.library.home.openFolder)}
         className={cn(
-          HOME_DOCK_GLASS_SURFACE,
-          "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground focus-visible:!bg-accent focus-visible:text-foreground dark:!bg-background/65 dark:shadow-sm dark:focus-visible:!bg-accent/60",
+          HOME_CHROME_SURFACE,
+          "size-10 rounded-2xl p-0 text-muted-foreground hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground dark:focus-visible:bg-accent/60",
         )}
         onClick={() => void openFolderWithPicker()}
       >

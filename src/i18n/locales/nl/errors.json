@@ -46,6 +46,18 @@
     "query_too_long": "De zoekopdracht is te lang (maximaal {{max}} tekens).",
     "unknown_source": "Onbekende literatuurbron."
   },
+  "zotero": {
+    "invalid_user_id": "Een Zotero-gebruikers-ID is een getal. Kopieer het jouwe van de pagina met API-sleutels van Zotero.",
+    "key_rejected": "Zotero heeft deze API-sleutel niet geaccepteerd. Controleer of je de hele sleutel hebt gekopieerd en of hij nog bestaat op zotero.org.",
+    "library_not_readable": "Deze API-sleutel kan je Zotero-bibliotheek niet lezen. Bewerk de sleutel op zotero.org en zet Allow library access aan.",
+    "user_mismatch": "Deze API-sleutel hoort bij Zotero-gebruikers-ID {{keyUserId}}, niet bij {{userId}}. Controleer het gebruikers-ID en probeer het opnieuw.",
+    "not_connected": "Verbind eerst je Zotero-account via Instellingen, Integraties, Zotero.",
+    "rate_limited": "Zotero beperkt op dit moment het aantal verzoeken. Wacht een paar minuten en probeer het dan opnieuw.",
+    "unreachable": "Oleafly kon Zotero niet bereiken. Controleer je internetverbinding en probeer het opnieuw.",
+    "http_error": "Zotero gaf een fout terug (HTTP {{status}}). Probeer het later opnieuw.",
+    "invalid_response": "Zotero stuurde een antwoord dat Oleafly niet kon lezen. Probeer het later opnieuw.",
+    "too_large": "Je Zotero-bibliotheek is te groot om in één keer te importeren. Exporteer in plaats daarvan een collectie uit Zotero als RDF-bestand en importeer dat."
+  },
   "tex": {
     "no_host_binary": "TinyTeX heeft geen {{name}}-programma dat op dit systeem werkt.",
     "package_operation_timeout": "De pakketbewerking duurde langer dan {{span}} en is gestopt, zodat je opnieuw kunt compileren. Waarschijnlijk is de TeX Live-mirror druk. Probeer het later opnieuw of voer tlmgr zelf uit.",

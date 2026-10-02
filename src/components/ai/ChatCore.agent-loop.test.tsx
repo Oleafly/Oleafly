@@ -1003,11 +1003,7 @@ describe("ChatCore agent turns", () => {
     expect(left).toHaveClass("min-w-0", "flex-nowrap", "overflow-x-auto");
     expect(left).not.toHaveClass("flex-1");
     expect(left).not.toHaveClass("grow");
-    expect(left).toHaveClass(
-      "[&_button:focus-visible]:outline-offset-[-2px]",
-      "[&_button:focus-visible]:ring-inset",
-      "[&_button:focus-visible]:ring-offset-0",
-    );
+    expect(left.className).not.toMatch(/ring|outline/);
     expect(left).not.toHaveClass("flex-wrap");
     expect(right).toHaveClass("shrink-0", "flex-nowrap");
     const model = rendered.getByRole("button", { name: "AI model" });

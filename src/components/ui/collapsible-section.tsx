@@ -50,7 +50,7 @@ export function CollapsibleSection({
           aria-expanded={open}
           aria-controls={contentId}
           onClick={toggle}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left focus-visible:bg-accent/60"
         >
           {open ? (
             <ChevronDown aria-hidden className="size-4 shrink-0 text-muted-foreground" />
