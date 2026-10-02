@@ -99,7 +99,7 @@ function absoluteDate(text: string): Interval | null {
   const parts = splitDate(text);
   if (!parts) return null;
   const fields = [0, 1, 2, 3, 4, 5].map((index) => parts.fields[index]);
-  const start = fields.map(fieldValue);
+  const start = fields.map((field, index) => fieldValue(field, index));
   const [year, month, day, hour, minute, second] = start;
   if (!validCalendar(year, month, day) || hour > 23 || minute > 59 || second > 59) return null;
   const end = [...start];

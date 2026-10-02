@@ -16,7 +16,7 @@ export interface TermSpec {
 }
 
 export function formatTerm({ key, values, negated }: TermSpec): string {
-  return `${negated ? "-" : ""}${key}:${values.map(formatValue).join(",")}`;
+  return `${negated ? "-" : ""}${key}:${values.map((value) => formatValue(value)).join(",")}`;
 }
 
 function topLevelNodes(root: QueryNode | null): readonly QueryNode[] {
