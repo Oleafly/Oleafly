@@ -505,7 +505,7 @@ export function ReferencesPanel() {
         >
           <TabsList
             aria-label={t(($) => $.references.panel.viewTabs)}
-            className="flex h-auto w-full gap-1"
+            fill
           >
             {tabs.map(({ id, label, icon: Icon, count }) => (
               <TabsTrigger
@@ -517,7 +517,7 @@ export function ReferencesPanel() {
                     : label
                 }
                 onClick={() => setView(id)}
-                className="min-w-0 flex-1 gap-1.5 px-2 [&_svg]:size-3.5 [&_svg]:shrink-0"
+                className="gap-1.5 px-2 [&_svg]:size-3.5 [&_svg]:shrink-0"
               >
                 <Icon aria-hidden />
                 <span className="truncate">{label}</span>

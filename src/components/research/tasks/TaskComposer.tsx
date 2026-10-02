@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Terminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -20,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import type { ResearchTask, ResearchTaskEdit } from "@/lib/research-tasks";
 import { useResearchTasksStore, type ResearchTaskComposerDraft } from "@/store/research-tasks";
@@ -423,7 +423,7 @@ function AgentSummary({
   const icon = (
     <span className="flex size-5 shrink-0 items-center justify-center">
       {agent.runtimeId === "acp" ? (
-        <Terminal className="size-4 text-muted-foreground" />
+        <AgentLogo agentId={agent.agentId} size={16} />
       ) : (
         <ProviderLogo providerId={agent.agentId} size={16} />
       )}

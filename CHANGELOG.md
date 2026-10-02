@@ -67,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   References, Research workspace and MCP activity) uses the same icon and
   title size. A title that doesn't fit ends in an ellipsis, and the icon
   keeps its size.
+- Toasts are wider, so a message has room next to the close button.
+- The agent list in New research task shows each CLI agent's own logo
+  instead of a terminal icon.
 - Integration tabs and Citation Search sources show each service's own logo.
 - In the spelling dictionary list, download sizes and the installed check sit
   at the right edge of each row.
@@ -136,6 +139,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On macOS and Linux, the terminal, browser and Open Folder shortcuts still
   worked during a tour.
 - Files dropped on a page in the browser window were ignored.
+- The Tasks and Linked folders tabs in Research workspace ran past the panel
+  in a narrow sidebar. They now share the width and shorten a long label with
+  an ellipsis, like the References tabs.
 - The tabs in Settings > Integrations made the whole Settings pane scroll
   sideways when they didn't fit. They now scroll on their own, like the tabs
   in Appearance, AI and MCP.

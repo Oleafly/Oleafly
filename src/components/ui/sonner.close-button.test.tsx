@@ -42,6 +42,17 @@ describe("Toaster close button", () => {
     for (const name of PLACEMENT) expect(button).toHaveClass(name);
   });
 
+  it("widens the toast to make room for the close button", async () => {
+    render(<Toaster />);
+    act(() => {
+      toast.success(MOVED);
+    });
+
+    await screen.findAllByRole("button", { name: "Close toast" });
+    const toaster = document.querySelector<HTMLElement>("[data-sonner-toaster]");
+    expect(toaster?.style.getPropertyValue("--width")).toBe("400px");
+  });
+
   it("is styled without an outline, ring or focus shadow", async () => {
     render(<Toaster />);
     act(() => {

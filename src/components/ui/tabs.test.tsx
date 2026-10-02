@@ -93,6 +93,20 @@ describe("Tabs", () => {
     expect(list).not.toHaveClass("w-full");
   });
 
+  it("shares the width of a fill strip between its tabs and lets labels shrink", () => {
+    render(
+      <Tabs defaultValue="one">
+        <TabsList fill aria-label={"Panel views"}>
+          <TabsTrigger value="one">{"One"}</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist", { name: "Panel views" });
+    expect(list).toHaveClass("flex", "h-auto", "[&>*]:min-w-0", "[&>*]:flex-1");
+    expect(list).not.toHaveClass("inline-flex");
+    expect(list).not.toHaveClass("h-9");
+  });
+
   it("turns a vertical wheel into a horizontal scroll of the strip alone", () => {
     render(
       <Tabs defaultValue="one">

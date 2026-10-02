@@ -35,6 +35,8 @@ type TabsSize = NonNullable<VariantProps<typeof tabsListVariants>["size"]>;
 
 const TabsSizeContext = React.createContext<TabsSize>("default");
 
+const FILL_TABS_LIST_CLASS = "flex h-auto gap-1 [&>*]:min-w-0 [&>*]:flex-1";
+
 const SCROLLABLE_TABS_LIST_CLASS =
   "flex h-auto w-fit max-w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar [&>*]:shrink-0";
 
@@ -69,8 +71,8 @@ function useScrollableTabsList(
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> &
-    VariantProps<typeof tabsListVariants> & { scrollable?: boolean }
->(({ className, size, scrollable = false, ...props }, ref) => {
+    VariantProps<typeof tabsListVariants> & { scrollable?: boolean; fill?: boolean }
+>(({ className, size, scrollable = false, fill = false, ...props }, ref) => {
   const [list, setList] = React.useState<HTMLDivElement | null>(null);
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -88,6 +90,7 @@ const TabsList = React.forwardRef<
         className={cn(
           tabsListVariants({ size }),
           scrollable && SCROLLABLE_TABS_LIST_CLASS,
+          fill && FILL_TABS_LIST_CLASS,
           className,
         )}
         {...props}

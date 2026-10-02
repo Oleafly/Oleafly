@@ -91,12 +91,12 @@ export function ResearchWorkspacePanel() {
       </SidebarPanelHeader>
       {configError && <output className="block px-3 pt-2 text-xs text-destructive">{configError}</output>}
       <Tabs defaultValue="tasks" className="flex min-h-0 flex-1 flex-col">
-        <TabsList className="mx-3 mt-2 grid shrink-0 grid-cols-2">
-          <TabsTrigger value="tasks" data-tour="research-tasks">
-            {t(($) => $.researchTools.workspace.tabTasks)}
+        <TabsList fill className="mx-3 mt-2 shrink-0">
+          <TabsTrigger value="tasks" data-tour="research-tasks" className="px-2">
+            <span className="truncate">{t(($) => $.researchTools.workspace.tabTasks)}</span>
           </TabsTrigger>
-          <TabsTrigger value="folders" data-tour="research-folders">
-            {t(($) => $.researchTools.workspace.tabFolders)}
+          <TabsTrigger value="folders" data-tour="research-folders" className="px-2">
+            <span className="truncate">{t(($) => $.researchTools.workspace.tabFolders)}</span>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="tasks" className="min-h-0 flex-1 overflow-auto">
