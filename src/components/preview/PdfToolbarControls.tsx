@@ -1,10 +1,26 @@
 import { Fragment, useState, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Accessibility, ChevronDown, ChevronUp, Columns2, Contrast, Download,
-  FileText, ListTree, Loader2, Maximize, Minimize, MoreHorizontal,
-  PanelTopClose, RectangleVertical, RotateCw, Save, Search, Settings2,
-  SquareArrowOutUpRight, ZoomIn, ZoomOut,
+  Accessibility,
+  ChevronDown,
+  ChevronUp,
+  Columns2,
+  Contrast,
+  Download,
+  FileText,
+  ListTree,
+  Maximize,
+  Minimize,
+  MoreHorizontal,
+  PanelTopClose,
+  RectangleVertical,
+  RotateCw,
+  Save,
+  Search,
+  Settings2,
+  SquareArrowOutUpRight,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +36,7 @@ import type { PdfLayout, PdfRotation, PdfViewerHandle } from "@/components/pdf/P
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { MAX_PREVIEW_SCALE, MIN_PREVIEW_SCALE } from "./preview-zoom";
+import { Spinner } from "@/components/ui/spinner";
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
 export interface PdfToolbarControlsProps {
@@ -121,7 +138,7 @@ export function PdfToolbarControls({
           {...(options.active === undefined ? {} : { "aria-pressed": options.active })}
         >
           {options.busy ? (
-            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+            <Spinner size="sm" />
           ) : (
             <Icon className="size-3.5" />
           )}
@@ -463,7 +480,7 @@ export function PdfToolbarControls({
               aria-label={downloadActionLabel()}
             >
               {exporting ? (
-                <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+                <Spinner size="sm" />
               ) : (
                 <Download className="size-3.5" />
               )}

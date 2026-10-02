@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { isFolderProject } from "@/lib/library-projects";
-import { logError } from "@/lib/log";
 import { onProjectWriteFailure } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { loadFolderAccess, refreshFolderStatus, useFolderAccessStore } from "@/store/folder-access";
@@ -116,23 +115,11 @@ export function OpenFolderKeeper() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!isTauri()) return;
-    let disposed = false;
-    let stop: (() => void) | undefined;
-    void listen<string>("project-trust-changed", (event) => {
-      void useFolderAccessStore.getState().refreshTrust(event.payload);
-    })
-      .then((unlisten) => {
-        if (disposed) unlisten();
-        else stop = unlisten;
-      })
-      .catch((error) => logError("listen for folder trust changes", error));
-    return () => {
-      disposed = true;
-      stop?.();
-    };
-  }, []);
+  useTauriEvent<string>(
+    "project-trust-changed",
+    (projectId) => void useFolderAccessStore.getState().refreshTrust(projectId),
+    isTauri(),
+  );
 
   return null;
 }

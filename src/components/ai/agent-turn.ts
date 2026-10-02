@@ -1,6 +1,7 @@
 import { i18n } from "@/i18n";
 import type { ModelMessage, ToolSet } from "@/lib/chat-types";
 import { packToolOutput, truncateText } from "@/lib/ai-context-pack";
+import { logError } from "@/lib/log";
 
 const ATTACHMENT_MAX_CHARS = 48_000;
 import {
@@ -259,11 +260,13 @@ export async function runAgentHarness(args: {
             // from the loop's own outcome event instead.
             if (locallyExecuted.has(event.id)) break;
             const name = names.get(event.id) ?? "tool";
-            handlers.onToolCall({
-              id: event.id,
-              name,
-              args: callArguments.get(event.id) ?? {},
-            });
+            void Promise.resolve(
+              handlers.onToolCall({
+                id: event.id,
+                name,
+                args: callArguments.get(event.id) ?? {},
+              }),
+            ).catch((error) => void logError("agent tool call", error));
             handlers.onToolResult({
               id: event.id,
               name,

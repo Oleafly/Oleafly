@@ -75,7 +75,42 @@
     },
     "openFolder": "Open folder",
     "openFolderShortcut": "Open folder ({{shortcut}})",
-    "createFirstProject": "Create new project"
+    "createFirstProject": "Create new project",
+    "sortBy": "Sort by",
+    "customFilter": "Custom",
+    "search": {
+      "fields": {
+        "is": "Is",
+        "has": "Has",
+        "no": "Missing",
+        "color": "Cover color",
+        "opened": "Last opened",
+        "in": "Search in",
+        "sort": "Sort"
+      },
+      "values": {
+        "linkedFolder": "Linked folder",
+        "forked": "Forked",
+        "exports": "Exports",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "id": "ID",
+        "mainFile": "Main file",
+        "folderPath": "Folder path"
+      },
+      "sorts": {
+        "activityDesc": "Recent activity",
+        "activityAsc": "Least recent activity",
+        "updatedDesc": "Recently modified",
+        "updatedAsc": "Least recently modified",
+        "createdDesc": "Newest",
+        "createdAsc": "Oldest",
+        "openedDesc": "Recently opened",
+        "openedAsc": "Least recently opened",
+        "nameAsc": "Name, A to Z",
+        "nameDesc": "Name, Z to A"
+      }
+    }
   },
   "projects": {
     "open": "Open {{name}}",

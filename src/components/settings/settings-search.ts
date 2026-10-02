@@ -72,6 +72,7 @@ export const SETTINGS_SEARCH_EXCLUDED: readonly CatalogPath[] = [
   ["settings", "reset"],
   ["shell", "settings", "nav"],
   ["shell", "settings", "close"],
+  ["shell", "settings", "footer"],
   ["shell", "settings", "sectionsNav"],
   ["shell", "settings", "title"],
   ["shell", "settings", "search"],

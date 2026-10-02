@@ -13,13 +13,13 @@ import {
   Check,
   Copy,
   Download,
-  Loader2,
   Plus,
   RotateCcw,
   Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { CodeField } from "@/components/tools/CodeField";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import {
@@ -54,8 +54,12 @@ import { cn } from "@/lib/utils";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
+import { basename } from "@/lib/path-utils";
+import { textToBase64 } from "@/lib/base64";
+import { Spinner } from "@/components/ui/spinner";
+import { LoadingState } from "@/components/ui/empty";
+import { SectionHeading } from "@/components/ui/section-heading";
 
-const COPIED_FEEDBACK_MS = 1500;
 const REFERENCE_COPY_TOAST = "reference-copy";
 
 type OutputMode = "reference" | "in-text" | "bibtex";
@@ -143,15 +147,6 @@ const EXPECTED_KIND: Partial<Record<ReferenceToolId, "doi" | "arxiv" | "isbn" | 
   "pubmed-to-bibtex": "pmid",
 };
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
-  }
-  return btoa(binary);
-}
-
 async function saveBibtex(bibtex: string): Promise<void> {
   try {
     const destination = await pickSavePath({
@@ -159,8 +154,8 @@ async function saveBibtex(bibtex: string): Promise<void> {
       filters: [{ name: i18n.t(($) => $.researchTools.references.bibtexBibliography), extensions: ["bib"] }],
     });
     if (!destination) return;
-    await writeBytesFile(destination, bytesToBase64(new TextEncoder().encode(bibtex)));
-    const name = destination.split(/[\\/]/).pop() || destination;
+    await writeBytesFile(destination, textToBase64(bibtex));
+    const name = basename(destination) || destination;
     toast.success(i18n.t(($) => $.researchTools.references.savedBibliography, { name }));
   } catch (error) {
     void logError("save bibliography", error);
@@ -180,35 +175,25 @@ function CopyButton({
   children: ReactNode;
 }>) {
   const { t } = useTranslation(["common", "researchTools"]);
-  const [copied, setCopied] = useState(false);
-  const resetTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
-    },
-    [],
-  );
-
-  const copy = async () => {
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (error) {
+  const { copied, copy } = useCopyStatus({
+    onError: (error) => {
       void logError("copy reference", error);
       toast.errorUnique(
         REFERENCE_COPY_TOAST,
         i18n.t(($) => $.researchTools.references.copyFailed, { label: subject }),
       );
-      return;
-    }
-    setCopied(true);
-    if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
-    resetTimer.current = window.setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
-  };
+    },
+  });
 
   return (
-    <Button variant={variant} size="sm" disabled={!text} onClick={() => void copy()}>
+    <Button
+      variant={variant}
+      size="sm"
+      disabled={!text}
+      onClick={() => {
+        if (text) void copy(text);
+      }}
+    >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       {copied ? t(($) => $.common.actions.copied) : children}
     </Button>
@@ -340,9 +325,9 @@ function SearchResults({ hits, onSelect }: { hits: CitationHit[]; onSelect: (hit
   if (!hits.length) return null;
   return (
     <div className="border-b p-3" data-testid="reference-search-results">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <SectionHeading as="p" className="mb-2">
         {t(($) => $.researchTools.references.selectMatchingWork)}
-      </p>
+      </SectionHeading>
       <div className="grid max-h-52 gap-2 overflow-y-auto">
         {hits.map((hit) => (
           <button
@@ -520,9 +505,10 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
       ) : (
         <div className="grid gap-3">
           {rendered.pending && (
-            <p className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
-              <Loader2 className="size-3.5 animate-spin" /> {t(($) => $.researchTools.references.formattingStyles)}
-            </p>
+            <LoadingState
+              size="compact"
+              label={t(($) => $.researchTools.references.formattingStyles)}
+            />
           )}
           {rendered.styles.map((style) => (
             <article key={style.id} className="rounded-xl border bg-card p-4 shadow-sm">
@@ -859,7 +845,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
                     data-testid="reference-lookup-input"
                   />
                   <Button onClick={() => void runLookup()} disabled={busy} data-testid="reference-lookup-button">
-                    {busy ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
+                    {busy ? <Spinner /> : <Search className="size-4" />}
                     {id === "url-to-bibtex"
                       ? t(($) => $.researchTools.references.build)
                       : t(($) => $.researchTools.references.lookUp)}

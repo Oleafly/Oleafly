@@ -7,6 +7,8 @@ import {
 } from "@codemirror/view";
 import { renderMathSource } from "@oleafly/editor/math-render";
 import { auxNumberFor, type LabelNumber } from "@/lib/aux-numbers";
+import { basename } from "@/lib/path-utils";
+import { isImagePath } from "@/lib/image-mime";
 import { currentSourceProjectIntelligence } from "@/lib/project-intelligence/current";
 import {
   definitionsForUse,
@@ -23,7 +25,7 @@ import type {
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
-import { loadAssetThumbnail, THUMBNAIL_TARGET_RE } from "./hover-asset";
+import { loadAssetThumbnail } from "./hover-asset";
 import { enclosingMathEnvironment, enclosingMathSource } from "./hover-math";
 
 function isUse(symbol: ProjectSymbol): symbol is ProjectUse {
@@ -141,10 +143,6 @@ const linkHandlers = EditorView.domEventHandlers({
   },
 });
 
-function basename(path: string): string {
-  return path.slice(path.lastIndexOf("/") + 1);
-}
-
 function definitionDetail(
   definition: ProjectDefinition,
   texts: Readonly<Record<string, string>>,
@@ -223,7 +221,7 @@ function describeAsset(symbol: ProjectUse): HoverCard | null {
     symbol.resolution === "resolved" && symbol.target
       ? symbol.target
       : null;
-  if (target && THUMBNAIL_TARGET_RE.test(target)) {
+  if (target && isImagePath(target, { allowPdf: true })) {
     return {
       title: i18n.t(($) => $.intelligence.hover.figure, { name: basename(target) }),
       detail: target,

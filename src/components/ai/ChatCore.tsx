@@ -50,7 +50,6 @@ import {
   History,
   Info,
   Lightbulb,
-  Loader2,
   Plus,
   Presentation,
   RotateCcw,
@@ -241,6 +240,8 @@ import {
   formatError,
   formatToolOutput,
 } from "@/components/ai/chat-parts";
+import { textToBase64 } from "@/lib/base64";
+import { Spinner } from "@/components/ui/spinner";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
@@ -585,12 +586,7 @@ const MENTION_FILE_MAX_BYTES = 200 * 1024;
 const MENTION_LISTING_MAX_ENTRIES = 400;
 
 function textDataUrl(text: string): string {
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-    binary += String.fromCodePoint(...bytes.subarray(offset, offset + 0x8000));
-  }
-  return `data:text/plain;base64,${btoa(binary)}`;
+  return `data:text/plain;base64,${textToBase64(text)}`;
 }
 
 function cappedMentionText(text: string): string {
@@ -3898,7 +3894,7 @@ ${sandboxedCustom}`;
                   )}
                 >
                   {visibleModelNotice?.kind === "checking" && (
-                    <Loader2 className="size-3 shrink-0 animate-spin" />
+                    <Spinner size="xs" />
                   )}
                   <span className="min-w-0">{modelNoticeLine}</span>
                   {canRecheckModel && (

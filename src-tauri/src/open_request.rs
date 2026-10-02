@@ -805,7 +805,7 @@ fn spawn_validation<R: Runtime>(app: AppHandle<R>) {
 fn deliver<R: Runtime>(app: &AppHandle<R>, router: &dyn WindowRouter, arrival: &PendingOpen) {
     let label = router.arrival_window();
     if arrival.source != OpenSource::Launch {
-        if let Some(window) = app.get_webview_window(&label) {
+        if let Some(window) = app.get_window(&label) {
             let _ = window.unminimize();
             let _ = window.show();
             let _ = window.set_focus();
@@ -823,7 +823,7 @@ pub async fn pending_open_requests(
 
 fn caller<R: Runtime>(webview: &tauri::Webview<R>, session: Option<u64>) -> Caller {
     Caller {
-        window: webview.window().label().to_string(),
+        window: crate::caller::own_window_label(webview).unwrap_or_default(),
         session,
     }
 }
@@ -833,7 +833,7 @@ pub async fn begin_open_session(
     webview: tauri::Webview,
     intake: tauri::State<'_, OpenIntake>,
 ) -> Result<u64, String> {
-    Ok(intake.begin_session(webview.window().label()))
+    Ok(intake.begin_session(&crate::caller::own_window_label(&webview).unwrap_or_default()))
 }
 
 #[tauri::command]

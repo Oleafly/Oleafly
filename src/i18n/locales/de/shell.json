@@ -436,7 +436,7 @@
       "references": "Referenzen"
     },
     "label": "Suche",
-    "noMatches": "Keine Treffer gefunden.",
+    "noMatches": "Keine Treffer gefunden",
     "openReferences": "Referenzen dieses Projekts öffnen",
     "placeholder": "Projekte und Dokumente durchsuchen oder / für Befehle tippen…",
     "placeholderDocuments": "In Dokumenten suchen…",
@@ -677,6 +677,12 @@
         "description": "Zeigt den integrierten Webbrowser (seinen Umschalter im Dock und sein Kürzel) und lässt die KI ihn per Computernutzung steuern. Standardmäßig aus, solange es noch Beta ist; ausgeschaltet gibt es keine Browser-Schaltfläche und die KI hat kein Browser-Werkzeug.",
         "label": "Webbrowser"
       }
+    },
+    "footer": {
+      "followOnX": "Auf X folgen",
+      "joinDiscord": "Der Discord-Community beitreten",
+      "releaseNotes": "Versionshinweise ansehen",
+      "viewSource": "Quellcode ansehen"
     },
     "general": {
       "dialect": {

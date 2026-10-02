@@ -433,7 +433,7 @@
       "references": "참고문헌"
     },
     "label": "검색",
-    "noMatches": "일치하는 항목이 없습니다.",
+    "noMatches": "일치하는 항목이 없습니다",
     "openReferences": "이 프로젝트의 참고문헌 열기",
     "placeholder": "프로젝트나 문서를 검색하거나 /를 입력해 명령을 쓰세요…",
     "placeholderDocuments": "문서 안에서 검색…",
@@ -662,6 +662,12 @@
         "description": "앱 내장 웹 브라우저(독 전환과 단축키)를 표시하고 AI가 컴퓨터 사용 기능으로 브라우저를 다룰 수 있게 합니다. 아직 베타라서 기본은 꺼짐이며, 꺼져 있으면 브라우저 버튼도 AI의 브라우저 도구도 없습니다.",
         "label": "웹 브라우저"
       }
+    },
+    "footer": {
+      "followOnX": "X에서 팔로우하기",
+      "joinDiscord": "Discord 커뮤니티 참여하기",
+      "releaseNotes": "릴리스 노트 보기",
+      "viewSource": "소스 코드 보기"
     },
     "general": {
       "dialect": {

@@ -1,6 +1,22 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
+import { provideTestCatalogs } from "@oleafly/i18n-contract/testing";
+import diagram from "./src/i18n/locales/en/diagram.json" with { type: "json" };
+import editor from "./src/i18n/locales/en/editor.json" with { type: "json" };
+import preflight from "./src/i18n/locales/en/preflight.json" with { type: "json" };
+import preview from "./src/i18n/locales/en/preview.json" with { type: "json" };
+import templates from "./src/i18n/locales/en/templates.json" with { type: "json" };
+
+const { wysiwyg, ...editorPackage } = editor.package;
+provideTestCatalogs({
+  diagram: diagram.package,
+  editor: editorPackage,
+  preflight,
+  preview: preview.package,
+  templates: templates.package,
+  wysiwyg,
+});
 
 vi.mock("@lobehub/icons", () => {
   const stub = () => {

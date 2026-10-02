@@ -718,7 +718,7 @@
   }
   button:disabled,
   [aria-disabled="true"],
-  [data-disabled] {
+  [data-disabled]:not([data-disabled="false"]) {
     cursor: not-allowed;
   }
   button:focus-visible,

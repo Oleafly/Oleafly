@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, FlaskConical, Loader2, Paperclip } from "lucide-react";
+import { ChevronRight, FlaskConical, Paperclip } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,8 +25,11 @@ import {
   useResearchTasksStore,
 } from "@/store/research-tasks";
 import { useFilesStore } from "@/store/files";
+import { SIDEBAR_TITLE_CLASS } from "@/components/layout/SidebarSection";
+import { useTauriSubscription } from "@/hooks/use-tauri-event";
 import { cn } from "@/lib/utils";
 import { i18n } from "@/i18n";
+import { LoadingState } from "@/components/ui/empty";
 
 const CHANGE_MARKS: Record<TaskFileChange["kind"], string> = {
   added: "A",
@@ -78,21 +81,10 @@ export function TaskOutputsSection() {
     if (state.projectId !== projectId) void state.bindProject(projectId);
   }, [projectId]);
 
-  useEffect(() => {
-    if (!projectId) return;
-    let unlisten: (() => void) | undefined;
-    let mounted = true;
-    void mountResearchTaskSubscriptions()
-      .then((cleanup) => {
-        if (mounted) unlisten = cleanup;
-        else cleanup();
-      })
-      .catch(() => {});
-    return () => {
-      mounted = false;
-      unlisten?.();
-    };
-  }, [projectId]);
+  useTauriSubscription(
+    projectId ? mountResearchTaskSubscriptions : null,
+    "listen for research tasks",
+  );
 
   const groups = useMemo(
     () =>
@@ -161,9 +153,7 @@ export function TaskOutputsSection() {
   const previewBody = () => {
     if (preview?.loading) {
       return (
-        <output className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-        </output>
+        <LoadingState label={t(($) => $.common.state.loading)} />
       );
     }
     if (preview?.note) return <p className="text-sm text-muted-foreground">{preview.note}</p>;
@@ -199,7 +189,7 @@ export function TaskOutputsSection() {
           )}
         />
         <FlaskConical aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="flex-1 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
+        <span className={cn("flex-1", SIDEBAR_TITLE_CLASS)}>
           {t(($) => $.researchTools.outputs.title)}
         </span>
         <Badge variant="quiet" className="px-1.5 text-[10px] tabular-nums">

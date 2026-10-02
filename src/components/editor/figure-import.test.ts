@@ -33,7 +33,6 @@ import {
   importableImageFiles,
   importImageFiles,
   type ImportedImage,
-  isImportableImagePath,
   latexGraphicsPath,
   pastedImagePath,
   preferredImageName,
@@ -77,12 +76,6 @@ describe("file selection", () => {
     ];
     expect(importableImageFiles(files).map((entry) => entry.name)).toEqual(["a.png", "b.jpg", "c.svg", "d.pdf"]);
     expect(importableImageFiles(null)).toEqual([]);
-  });
-
-  it("recognizes importable project paths", () => {
-    expect(isImportableImagePath("figures/A.PNG")).toBe(true);
-    expect(isImportableImagePath("plot.pdf")).toBe(true);
-    expect(isImportableImagePath("main.tex")).toBe(false);
   });
 });
 

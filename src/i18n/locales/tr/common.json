@@ -51,5 +51,32 @@
   },
   "toast": {
     "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Arama önerileri",
+    "exclude": "Hariç tut",
+    "excludeField": "Hariç tut: {{field}}",
+    "dateHint": "Tarihler 2026-10-02 veya @today-7d biçiminde yazılır. Karşılaştırmak için >, >=, < veya <= ekleyin ya da bir aralığı 2026-01-01..2026-03-31 biçiminde yazın.",
+    "issues": {
+      "unclosedGroup": "Bu ( parantezi hiç kapatılmamış",
+      "unexpectedClose": "Bu ) parantezinin eşleşen ( parantezi yok",
+      "danglingOperator": "{{operator}} için arama terimi eksik",
+      "tooDeep": "Gruplar en fazla 5 düzey iç içe olabilir",
+      "emptyGroup": "Bu parantezlerin içi boş",
+      "unterminatedQuote": "Bu tırnak işareti hiç kapatılmamış",
+      "unknownQualifier": "Bilinmeyen filtre: {{key}}",
+      "missingValue": "{{key}}: sonrasına bir değer ekleyin",
+      "invalidValue": "{{value}}, {{key}} için geçerli bir değer değil",
+      "invalidDate": "{{value}} bir tarih değil. 2026-10-02 veya @today-7d deneyin",
+      "invalidNumber": "{{value}} bir sayı değil",
+      "sortNegated": "{{key}} hariç tutulamaz"
+    }
   }
 }

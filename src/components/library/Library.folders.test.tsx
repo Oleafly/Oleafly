@@ -610,9 +610,9 @@ describe("location filter", () => {
     expect(screen.queryByRole("button", { name: "Open Thesis" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Open Paper" })).toBeNull();
 
-    fireEvent.change(screen.getByRole("searchbox", { name: enLibrary.home.searchLabel }), {
-      target: { value: "paper" },
-    });
+    const search = screen.getByRole("combobox", { name: enLibrary.home.searchLabel });
+    expect(search).toHaveValue("is:folder is:bookmarked");
+    fireEvent.change(search, { target: { value: "is:folder is:bookmarked paper" } });
     expect(screen.getByText(enLibrary.home.noMatchesTitle)).toBeInTheDocument();
   });
 
@@ -680,7 +680,7 @@ describe("project order", () => {
 describe("folder search", () => {
   it("finds folders by their path", async () => {
     await renderLibrary();
-    fireEvent.change(screen.getByRole("searchbox", { name: enLibrary.home.searchLabel }), {
+    fireEvent.change(screen.getByRole("combobox", { name: enLibrary.home.searchLabel }), {
       target: { value: "desktop/slides" },
     });
     expect(screen.getByRole("button", { name: "Open Slides" })).toBeInTheDocument();

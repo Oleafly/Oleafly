@@ -1,21 +1,14 @@
 import { create } from "zustand";
+import { readJson, writeJson } from "@/lib/local-storage";
 
 const KEY = "oleafly.favorites";
 
 function load(): string[] {
-  try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
-  } catch {
-    return [];
-  }
+  return readJson<string[]>(KEY, []);
 }
 
 function save(ids: string[]) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(ids));
-  } catch {
-    /* best effort */
-  }
+  writeJson(KEY, ids);
 }
 
 interface FavoritesState {

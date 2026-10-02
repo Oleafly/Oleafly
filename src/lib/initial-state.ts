@@ -32,10 +32,10 @@ export async function hydrateFromSnapshot(): Promise<void> {
       try {
         snapshotConfig = await seedStarterPersonas(starterPersonasForInstall());
       } catch (error) {
-        logError("starter persona seed", error);
+        void logError("starter persona seed", error);
       }
     }
   } catch (error) {
-    logError("initial-state hydration", error);
+    void logError("initial-state hydration", error);
   }
 }

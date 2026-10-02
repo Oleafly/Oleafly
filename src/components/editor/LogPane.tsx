@@ -9,6 +9,7 @@ import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useDisplayText } from "@/lib/display-path";
 
@@ -138,7 +139,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
   const displayText = useDisplayText();
   const openLocation = useContext(LogNavigation);
   const [expanded, setExpanded] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyStatus();
   const excerpt = extractErrorExcerpt(log, err.message);
   const collapsible = Boolean(excerpt);
   const title = err.explanation ?? err.message;
@@ -152,16 +153,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
     location = t(($) => $.editor.log.locationLine, { line: err.line });
   }
 
-  const copyError = async () => {
-    const text = [title, location, excerpt].filter(Boolean).join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
-    }
-  };
+  const copyError = () => copy([title, location, excerpt].filter(Boolean).join("\n"));
 
   return (
     <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
@@ -328,17 +320,7 @@ function DiagnosticGroup({ label, items }: Readonly<{ label: string; items: LogD
 function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [open, setOpen] = useState(defaultOpen);
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(log);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
-    }
-  };
+  const { copied, copy } = useCopyStatus();
 
   return (
     <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
@@ -353,7 +335,7 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
         </button>
         <button
           type="button"
-          onClick={() => void copy()}
+          onClick={() => void copy(log)}
           className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           {copied ? (

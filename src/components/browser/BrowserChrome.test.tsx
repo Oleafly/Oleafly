@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -98,6 +100,21 @@ describe("BrowserChrome", () => {
       "https://www.example.com/",
     );
     expect(screen.getByTestId("browser-chrome")).toHaveStyle({ height: "88px" });
+  });
+
+  it("lets the whole tab strip drag the window, and the window allows it", async () => {
+    await renderChrome();
+    const strip = screen.getByRole("tablist").parentElement;
+    expect(strip).toHaveAttribute("data-tauri-drag-region", "deep");
+    const capability = JSON.parse(
+      readFileSync(join(process.cwd(), "src-tauri/capabilities/browser.json"), "utf8"),
+    ) as { permissions: string[] };
+    expect(capability.permissions).toEqual(
+      expect.arrayContaining([
+        "core:window:allow-start-dragging",
+        "core:window:allow-internal-toggle-maximize",
+      ]),
+    );
   });
 
   it("navigates the active tab on Enter, turning text into a search", async () => {

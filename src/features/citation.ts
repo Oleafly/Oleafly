@@ -32,11 +32,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
-
-function basename(p: string): string {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? p.slice(i + 1) : p;
-}
+import { basename } from "@/lib/path-utils";
 
 export async function resolveCitation(
   input: string,

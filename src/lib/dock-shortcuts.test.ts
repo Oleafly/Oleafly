@@ -54,6 +54,18 @@ describe("dock shortcuts", () => {
     expect(useSettingsStore.getState().terminalOpen).toBe(false);
   });
 
+  it("leaves Ctrl+Shift+B to the visual editor's blockquote while it has focus", () => {
+    const event = keyboard("b", { ctrlKey: true, shiftKey: true });
+    Object.assign(event, {
+      target: { closest: (selector: string) => (selector === ".ProseMirror" ? {} : null) },
+    });
+    const calls = toggleBrowser.mock.calls.length;
+
+    expect(handleDockShortcut(event)).toBe(false);
+    expect(toggleBrowser).toHaveBeenCalledTimes(calls);
+    expect(event.preventDefault).not.toHaveBeenCalled();
+  });
+
   it("ignores a character typed through AltGr that matches a Ctrl+Alt binding", () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "Win32" });

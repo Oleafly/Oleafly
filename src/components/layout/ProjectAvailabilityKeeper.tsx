@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import { logError } from "@/lib/log";
 import { probeProjectAvailability } from "@/lib/tauri";
@@ -54,23 +54,11 @@ function resume(projectId: string): void {
 }
 
 export function ProjectAvailabilityKeeper() {
-  useEffect(() => {
-    if (!isTauri()) return;
-    let disposed = false;
-    let stop: (() => void) | undefined;
-    void listen<ProjectAvailabilityEvent>("project-availability", (event) => {
-      useProjectAvailabilityStore.getState().apply(event.payload);
-    })
-      .then((unlisten) => {
-        if (disposed) unlisten();
-        else stop = unlisten;
-      })
-      .catch((error) => logError("listen for project folder changes", error));
-    return () => {
-      disposed = true;
-      stop?.();
-    };
-  }, []);
+  useTauriEvent<ProjectAvailabilityEvent>(
+    "project-availability",
+    (payload) => useProjectAvailabilityStore.getState().apply(payload),
+    isTauri(),
+  );
 
   useEffect(
     () =>

@@ -226,6 +226,7 @@
       },
       "noChanges": "Žádné změny",
       "refresh": "Obnovit",
+      "refreshThrottled": "Obnoveno před chvílí. Zkuste to znovu za {{seconds}} s",
       "restore": "Obnovit výchozí",
       "restoreTooltip": "Znovu přidat vestavěné modely tohoto poskytovatele",
       "title": "Modely",
@@ -492,11 +493,6 @@
           "none": "Nebyly nalezeny žádné další složky agentů"
         },
         "title": "Sdílet dovednosti s dalšími agenty v tomto počítači"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Přidáno",
@@ -1569,6 +1565,7 @@
     },
     "error": {
       "conflict": "Už je přiřazeno akci {{action}}.",
+      "nativeKey": "Zkratky v nabídce tuto klávesu nepodporují. Fungují písmena, číslice a funkční klávesy.",
       "reserved": "{{shortcut}} si vyhrazuje operační systém."
     },
     "intro": "Přizpůsobte si zkratky aplikace a projděte si klávesové kombinace vestavěné v editoru.",
@@ -1576,6 +1573,8 @@
       "closeWindow": "Zavřít okno",
       "copy": "Kopírovat",
       "cut": "Vyjmout",
+      "hide": "Skrýt aplikaci",
+      "minimize": "Minimalizovat okno",
       "paste": "Vložit",
       "quit": "Ukončit",
       "save": "Uložit",

@@ -1,9 +1,9 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Cpu, Download, Loader2, ShieldAlert, Zap } from "lucide-react";
+import { Check, Cpu, Download, ShieldAlert, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 import {
   dismissEngineHint,
   useEnginePickerStore,
@@ -23,6 +23,8 @@ import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access"
 import { logError } from "@/lib/log";
 import { formatList } from "@/lib/intl";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 const LEVEL_DOT: Record<ImportCompatFinding["level"], string> = {
   blocker: "bg-red-500",
@@ -61,10 +63,6 @@ export function EnginePickerModal() {
   const [shellEscapeSaving, setShellEscapeSaving] = useState(false);
   const [shellEscapeConsent, setShellEscapeConsent] = useState(allowShellEscape);
   const titleId = useId();
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(
-    open,
-    close,
-  );
 
   useEffect(() => {
     if (open) void ensureLoaded();
@@ -231,9 +229,9 @@ export function EnginePickerModal() {
             : t(($) => $.shell.enginePicker.systemTex.title)}
         </span>
         {hasSystemTex && (
-          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+          <Badge variant="primaryGhost" size="sm">
             {t(($) => $.shell.enginePicker.recommended)}
-          </span>
+          </Badge>
         )}
       </div>
       <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
@@ -268,7 +266,7 @@ export function EnginePickerModal() {
           <span className="min-w-0 text-xs">
             <span className="flex items-center gap-1.5 font-medium">
               {shellEscapeSaving ? (
-                <Loader2 className="size-3.5 animate-spin" />
+                <Spinner size="sm" />
               ) : (
                 <ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-500" />
               )}
@@ -296,7 +294,7 @@ export function EnginePickerModal() {
           onClick={() => void pinLatexmk(false)}
           data-modal-initial-focus={hasSystemTex || undefined}
         >
-          {switching ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          {switching ? <Spinner size="sm" /> : null}
           {!switching && alreadyLatexmk ? <Check className="size-3.5" /> : null}
           {systemTexActionLabel()}
         </Button>
@@ -305,117 +303,110 @@ export function EnginePickerModal() {
   );
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label={t(($) => $.common.actions.close)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        data-testid="engine-picker-modal"
-        className="relative flex w-full max-w-lg flex-col gap-4 rounded-xl border bg-background p-5 shadow-2xl"
-      >
-        <div>
-          <h2 id={titleId} className="text-sm font-semibold">
-            {source === "compile-failure"
-              ? t(($) => $.shell.enginePicker.titleCompileFailure)
-              : t(($) => $.shell.enginePicker.titleImportScan)}
-          </h2>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {source === "compile-failure"
-              ? t(($) => $.shell.enginePicker.descriptionCompileFailure)
-              : t(($) => $.shell.enginePicker.descriptionImportScan)}
-          </p>
-        </div>
+    <ModalShell
+      open
+      onClose={close}
+      closeLabel={t(($) => $.common.actions.close)}
+      layer="nested"
+      width="lg"
+      labelledBy={titleId}
+      testId="engine-picker-modal"
+      className="flex flex-col gap-4 p-5"
+    >
+      <div>
+        <h2 id={titleId} className="text-sm font-semibold">
+          {source === "compile-failure"
+            ? t(($) => $.shell.enginePicker.titleCompileFailure)
+            : t(($) => $.shell.enginePicker.titleImportScan)}
+        </h2>
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+          {source === "compile-failure"
+            ? t(($) => $.shell.enginePicker.descriptionCompileFailure)
+            : t(($) => $.shell.enginePicker.descriptionImportScan)}
+        </p>
+      </div>
 
-        {findings.length > 0 && (
-          <ul className="flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
-            {findings.map((finding) => (
-              <li key={finding.id} className="flex items-start gap-2 text-xs">
-                <span
-                  className={cn(
-                    "mt-1 size-1.5 shrink-0 rounded-full",
-                    LEVEL_DOT[finding.level],
-                  )}
-                />
-                <div className="min-w-0">
-                  <span className="font-medium">{finding.title}</span>
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    {finding.detail}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <div className="flex flex-col gap-2">
-          {/* Option 1: system TeX via latexmk */}
-          {renderSystemTexOption()}
-
-          {/* Option 2: on-demand TinyTeX (hidden when a system TeX already covers it) */}
-          {!hasSystemTex && (
-            <div className="rounded-lg border p-3">
-              <div className="flex items-center gap-2">
-                <Download className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm font-medium">
-                  {t(($) => $.shell.enginePicker.tinytex.title)}
-                </span>
+      {findings.length > 0 && (
+        <ul className="flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
+          {findings.map((finding) => (
+            <li key={finding.id} className="flex items-start gap-2 text-xs">
+              <span
+                className={cn(
+                  "mt-1 size-1.5 shrink-0 rounded-full",
+                  LEVEL_DOT[finding.level],
+                )}
+              />
+              <div className="min-w-0">
+                <span className="font-medium">{finding.title}</span>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  {finding.detail}
+                </p>
               </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                {t(($) => $.shell.enginePicker.tinytex.description)}
-              </p>
-              <div className="mt-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={installing || switching || systemTexLocked}
-                  onClick={() => void installThenPin()}
-                >
-                  {installing ? <Loader2 className="size-3.5 animate-spin" /> : null}
-                  {tinytexActionLabel()}
-                </Button>
-              </div>
-            </div>
-          )}
+            </li>
+          ))}
+        </ul>
+      )}
 
-          {/* Option 3: stay on Tectonic */}
+      <div className="flex flex-col gap-2">
+        {/* Option 1: system TeX via latexmk */}
+        {renderSystemTexOption()}
+
+        {/* Option 2: on-demand TinyTeX (hidden when a system TeX already covers it) */}
+        {!hasSystemTex && (
           <div className="rounded-lg border p-3">
             <div className="flex items-center gap-2">
-              <Zap className="size-4 shrink-0 text-muted-foreground" />
+              <Download className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-sm font-medium">
-                {t(($) => $.shell.enginePicker.tectonic.title)}
+                {t(($) => $.shell.enginePicker.tinytex.title)}
               </span>
             </div>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              {fixable.length > 0
-                ? t(($) => $.shell.enginePicker.tectonic.withFailures, {
-                    count: fixable.length,
-                    features: formatList(fixable.map((f) => f.title)),
-                  })
-                : t(($) => $.shell.enginePicker.tectonic.description)}
+              {t(($) => $.shell.enginePicker.tinytex.description)}
             </p>
             <div className="mt-2">
               <Button
                 size="sm"
-                variant="ghost"
-                data-testid="engine-picker-keep-tectonic"
-                onClick={() => void keepTectonic()}
+                variant="secondary"
+                disabled={installing || switching || systemTexLocked}
+                onClick={() => void installThenPin()}
               >
-                {alreadyLatexmk
-                  ? t(($) => $.shell.enginePicker.tectonic.switchBack)
-                  : t(($) => $.shell.enginePicker.tectonic.keep)}
+                {installing ? <Spinner size="sm" /> : null}
+                {tinytexActionLabel()}
               </Button>
             </div>
           </div>
+        )}
+
+        {/* Option 3: stay on Tectonic */}
+        <div className="rounded-lg border p-3">
+          <div className="flex items-center gap-2">
+            <Zap className="size-4 shrink-0 text-muted-foreground" />
+            <span className="text-sm font-medium">
+              {t(($) => $.shell.enginePicker.tectonic.title)}
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            {fixable.length > 0
+              ? t(($) => $.shell.enginePicker.tectonic.withFailures, {
+                  count: fixable.length,
+                  features: formatList(fixable.map((f) => f.title)),
+                })
+              : t(($) => $.shell.enginePicker.tectonic.description)}
+          </p>
+          <div className="mt-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              data-testid="engine-picker-keep-tectonic"
+              onClick={() => void keepTectonic()}
+            >
+              {alreadyLatexmk
+                ? t(($) => $.shell.enginePicker.tectonic.switchBack)
+                : t(($) => $.shell.enginePicker.tectonic.keep)}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }

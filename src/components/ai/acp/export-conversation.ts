@@ -6,6 +6,7 @@ import { pickSavePath } from "@/lib/native-file-dialog";
 import { writeBytesFile } from "@/lib/tauri";
 import type { ChatMessage, ChatTurnChanges } from "@/store/chats";
 import { projectAcpEvents } from "./projection";
+import { textToBase64 } from "@/lib/base64";
 
 export interface ConversationExportInput {
   session: AcpSession;
@@ -97,15 +98,6 @@ function fileName(title: string): string {
   return safe || i18n.t(($) => $.ai.acp.export.untitled);
 }
 
-function base64(text: string): string {
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  for (let index = 0; index < bytes.length; index += 0x8000) {
-    binary += String.fromCodePoint(...bytes.subarray(index, index + 0x8000));
-  }
-  return btoa(binary);
-}
-
 /**
  * Asks where to save and writes the conversation. The format follows the
  * chosen extension: `.json` is written by the backend straight from the
@@ -131,6 +123,6 @@ export async function exportConversation({
     return true;
   }
   const events = await acpSessionEventsAll(projectId, session.id);
-  await writeBytesFile(path, base64(conversationMarkdown({ session, events, projectName, agentName })));
+  await writeBytesFile(path, textToBase64(conversationMarkdown({ session, events, projectName, agentName })));
   return true;
 }

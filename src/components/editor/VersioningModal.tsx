@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { CheckpointsPanel } from "@/components/editor/CheckpointsPanel";
 import { useSettingsStore } from "@/store/settings";
 
@@ -14,55 +14,46 @@ export function VersioningModal() {
   const close = useCallback(() => {
     if (!checkpointsBusy) closeVersioning();
   }, [checkpointsBusy, closeVersioning]);
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, close);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label={t(($) => $.editor.versioning.dismiss)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        role="dialog"
-        ref={dialogRef}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="versioning-title"
-        className="relative flex h-[min(42rem,88vh)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl"
-      >
-        <header className="flex shrink-0 items-center gap-3 px-4 py-4">
-          <span
-            aria-hidden
-            className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
-          >
-            <History className="size-4" />
-          </span>
-          <h2 id="versioning-title" className="min-w-0 flex-1 text-base font-semibold">
-            {t(($) => $.editor.versioning.title)}
-          </h2>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            aria-label={t(($) => $.editor.versioning.close)}
-            disabled={checkpointsBusy}
-            onClick={close}
-          >
-            <X className="size-4" />
-          </Button>
-        </header>
-
-        <div
-          data-testid="versioning-panel-checkpoints"
-          className="flex min-h-0 flex-1 flex-col"
+    <ModalShell
+      open
+      onClose={close}
+      closeLabel={t(($) => $.editor.versioning.dismiss)}
+      width="2xl"
+      labelledBy="versioning-title"
+      className="flex h-[min(42rem,88vh)] flex-col overflow-hidden"
+    >
+      <header className="flex shrink-0 items-center gap-3 px-4 py-4">
+        <span
+          aria-hidden
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
         >
-          <CheckpointsPanel onBusyChange={setCheckpointsBusy} />
-        </div>
+          <History className="size-4" />
+        </span>
+        <h2 id="versioning-title" className="min-w-0 flex-1 text-base font-semibold">
+          {t(($) => $.editor.versioning.title)}
+        </h2>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          aria-label={t(($) => $.editor.versioning.close)}
+          disabled={checkpointsBusy}
+          onClick={close}
+        >
+          <X className="size-4" />
+        </Button>
+      </header>
+
+      <div
+        data-testid="versioning-panel-checkpoints"
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <CheckpointsPanel onBusyChange={setCheckpointsBusy} />
       </div>
-    </div>
+    </ModalShell>
   );
 }

@@ -226,6 +226,7 @@
       },
       "noChanges": "Ingen endringer",
       "refresh": "Oppdater",
+      "refreshThrottled": "Oppdatert for et øyeblikk siden. Prøv igjen om {{seconds}} s",
       "restore": "Tilbakestill til standard",
       "restoreTooltip": "Legg de innebygde modellene til denne leverandøren inn igjen",
       "title": "Modeller",
@@ -486,11 +487,6 @@
           "none": "Fant ingen andre agentmapper"
         },
         "title": "Del ferdigheter med andre agenter på denne maskinen"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Lagt til",
@@ -1537,6 +1533,7 @@
     },
     "error": {
       "conflict": "Allerede tildelt {{action}}.",
+      "nativeKey": "Menysnarveier kan ikke bruke denne tasten. Bokstaver, tall og funksjonstaster fungerer.",
       "reserved": "{{shortcut}} er reservert av operativsystemet."
     },
     "intro": "Tilpass hurtigtastene i programmet, og se over tastekombinasjonene editoren har selv.",
@@ -1544,6 +1541,8 @@
       "closeWindow": "Lukk vindu",
       "copy": "Kopier",
       "cut": "Klipp ut",
+      "hide": "Skjul appen",
+      "minimize": "Minimer vindu",
       "paste": "Lim inn",
       "quit": "Avslutt",
       "save": "Lagre",

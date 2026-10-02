@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
 import { useQueryClient } from "@tanstack/react-query";
-import { Download, Ghost, Loader2, RefreshCw, Trash2 } from "lucide-react";
+import { Download, Ghost, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTauriSubscription } from "@/hooks/use-tauri-event";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
+import { formatBytes } from "@/lib/format-bytes";
 import { formatDateTime, formatNumber } from "@/lib/intl";
 import { matchesSkillSearch } from "@/lib/skill-groups";
 import { SKILLS_QUERY_KEY } from "@/lib/skills";
 import { cn } from "@/lib/utils";
 import {
+  onAssetProgress,
   skillsCatalog,
   skillsInstall,
   skillsUninstall,
@@ -18,23 +20,13 @@ import {
   type SkillCatalog,
   type SkillCatalogEntry,
 } from "@/lib/tauri";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
-function formatBytes(bytes: number): string {
-  if (!bytes) return "";
-  if (bytes < 1000)
-    return i18n.t(($) => $.settings.ai.skills.size.bytes, { value: formatNumber(bytes) });
-  const kb = bytes / 1000;
-  if (kb < 1000) {
-    const digits = kb >= 10 ? 0 : 1;
-    return i18n.t(($) => $.settings.ai.skills.size.kilobytes, {
-      value: formatNumber(kb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
-    });
-  }
-  const mb = kb / 1000;
-  const digits = mb >= 10 ? 0 : 1;
-  return i18n.t(($) => $.settings.ai.skills.size.megabytes, {
-    value: formatNumber(mb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
-  });
+function entryLine(entry: SkillCatalogEntry): string {
+  const parts = [entry.description, entry.license];
+  if (entry.bytes > 0) parts.push(formatBytes(entry.bytes));
+  return parts.join(" · ");
 }
 
 function formatWhen(value?: string): string | null {
@@ -194,15 +186,15 @@ function ShelfRow({
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium">{entry.name}</span>
           {entry.domain ? (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <Badge variant="muted" size="sm">
               {entry.domain}
-            </span>
+            </Badge>
           ) : null}
         </div>
         <p className="truncate text-[11px] text-muted-foreground">
           {busy && progress
             ? progressText(progress)
-            : `${entry.description} · ${entry.license} · ${formatBytes(entry.bytes)}`}
+            : entryLine(entry)}
         </p>
       </div>
       {entry.installed ? (
@@ -216,7 +208,7 @@ function ShelfRow({
               onClick={() => onInstall(entry)}
               disabled={busy}
             >
-              {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {busy ? <Spinner size="sm" /> : null}
               {t(($) => $.settings.ai.skills.catalog.update)}
             </Button>
           ) : null}
@@ -240,7 +232,7 @@ function ShelfRow({
           onClick={() => onInstall(entry)}
           disabled={busy}
         >
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+          {busy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
           {t(($) => $.settings.ai.skills.catalog.install)}
         </Button>
       )}
@@ -303,22 +295,14 @@ export function SkillCatalogList({
     void load(false);
   }, [load]);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let cancelled = false;
-    void listen<SkillAssetProgress>("asset-progress", (event) => {
-      const payload = event.payload;
-      if (payload.kind !== "skill") return;
-      setProgress((current) => ({ ...current, [payload.id]: payload }));
-    }).then((fn) => {
-      if (cancelled) fn();
-      else unlisten = fn;
-    });
-    return () => {
-      cancelled = true;
-      unlisten?.();
-    };
-  }, []);
+  const subscribeSkillProgress = useCallback(
+    () =>
+      onAssetProgress({
+        skill: (payload) => setProgress((current) => ({ ...current, [payload.id]: payload })),
+      }),
+    [],
+  );
+  useTauriSubscription(subscribeSkillProgress, "listen for skill download progress");
 
   const clearProgress = (id: string) => {
     setProgress((current) => {
@@ -401,7 +385,7 @@ export function SkillCatalogList({
           disabled={loading || refreshing}
         >
           {refreshing ? (
-            <Loader2 className="size-3.5 animate-spin" />
+            <Spinner size="sm" />
           ) : (
             <RefreshCw className="size-3.5" />
           )}

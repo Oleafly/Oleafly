@@ -3,6 +3,16 @@ import { modalCoordinator, visibleFocusable } from "@oleafly/templates/modal-coo
 
 export { modalCoordinator as appModalCoordinator } from "@oleafly/templates/modal-coordinator";
 
+export function useModalLayer(open: boolean): void {
+  useEffect(() => {
+    if (!open) return;
+    const id = modalCoordinator.add(null);
+    return () => {
+      modalCoordinator.remove(id);
+    };
+  }, [open]);
+}
+
 const FOCUSABLE = [
   "button:not([disabled])",
   "a[href]",

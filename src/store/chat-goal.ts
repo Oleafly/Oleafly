@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { readString, removeKey, writeString } from "@/lib/local-storage";
 
 export interface ChatGoalState {
   goalsByProject: Record<string, string>;
@@ -12,25 +13,14 @@ export interface ChatGoalState {
 const storageKey = (projectId: string) => `oleafly.chat-goal.${projectId}`;
 
 function readStored(projectId: string): string {
-  try {
-    return typeof localStorage === "undefined"
-      ? ""
-      : (localStorage.getItem(storageKey(projectId)) ?? "").trim();
-  } catch {
-    return "";
-  }
+  return (readString(storageKey(projectId)) ?? "").trim();
 }
 
 function writeStored(projectId: string, goal: string): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    if (goal) {
-      localStorage.setItem(storageKey(projectId), goal);
-    } else {
-      localStorage.removeItem(storageKey(projectId));
-    }
-  } catch {
-    return;
+  if (goal) {
+    writeString(storageKey(projectId), goal);
+  } else {
+    removeKey(storageKey(projectId));
   }
 }
 

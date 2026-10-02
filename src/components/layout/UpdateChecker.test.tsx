@@ -24,6 +24,7 @@ import { useUpdatesStore } from "@/store/updates";
 import { UpdateChecker } from "./UpdateChecker";
 
 const copy = enShell.updateChecker;
+const THREE_HOURS_AGO = "3 hours ago";
 
 beforeEach(() => {
   mocks.isTauri.mockReturnValue(true);
@@ -132,6 +133,17 @@ describe("UpdateChecker", () => {
       screen.getAllByText(new RegExp(prefix)).length,
     ).toBeGreaterThan(0);
     expect(screen.queryByText(copy.lastCheckFailed)).not.toBeInTheDocument();
+  });
+
+  it("dates a startup failure in whole hours", () => {
+    useUpdatesStore.setState({
+      lastCheckFailed: true,
+      lastCheckAt: Date.now() - 3 * 60 * 60 * 1000,
+    });
+    render(<UpdateChecker />);
+    expect(
+      screen.getByText(copy.lastCheckFailedAt.replace("{{when}}", THREE_HOURS_AGO)),
+    ).toBeInTheDocument();
   });
 
   it("falls back to the undated failure notice", () => {

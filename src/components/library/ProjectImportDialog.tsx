@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ChevronLeft, ExternalLink, Github, Loader2, Lock } from "lucide-react";
+import { ChevronLeft, ExternalLink, Github, Lock } from "lucide-react";
 import { ChoiceCard } from "@/components/library/ChoiceCard";
 import { CHOICE_ART } from "@/components/library/choice-art";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,8 @@ import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { basename } from "@/lib/path-utils";
+import { Spinner } from "@/components/ui/spinner";
 
 const SOURCE_ART: Record<ProjectImportFileKind, string> = {
   project: CHOICE_ART.importArchive,
@@ -226,7 +228,7 @@ export function ProjectImportDialog({
     if (githubStatus === "unknown" || loadingRepositories) {
       return (
         <p className="flex items-center gap-2 p-3 text-sm text-muted-foreground">
-          <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+          <Spinner size="sm" />
           {t(($) => $.library.import.loadingRepositories)}
         </p>
       );
@@ -356,11 +358,11 @@ export function ProjectImportDialog({
         </DialogHeader>
 
         {errorMessage && <p role="alert" className="shrink-0 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
-        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Loader2 aria-hidden="true" className="size-4 animate-spin" />{t(($) => $.library.import.importing)}</output>}
+        {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
         <div className="-mx-6 -mb-6 min-h-0 overflow-y-auto px-6 pb-6">
           {view === "target" ? (
             <div className="grid gap-2">
-              <p className="break-all text-xs text-muted-foreground">{pendingPath?.split(/[/\\]/).pop()}</p>
+              <p className="break-all text-xs text-muted-foreground">{pendingPath && basename(pendingPath)}</p>
               {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
                 (target) => (
                   <button
@@ -409,7 +411,7 @@ export function ProjectImportDialog({
                   onClick={() => void importFromArxiv()}
                 >
                   {busy ? (
-                    <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                    <Spinner size="sm" />
                   ) : null}
                   {t(($) => $.library.import.importAction)}
                 </Button>

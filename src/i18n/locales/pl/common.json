@@ -51,5 +51,32 @@
   },
   "toast": {
     "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Sugestie wyszukiwania",
+    "exclude": "Wyklucz",
+    "excludeField": "Wyklucz: {{field}}",
+    "dateHint": "Daty wpisuj jako 2026-10-02 lub @today-7d. Dodaj >, >=, < lub <=, aby porównać, albo zapisz zakres jako 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Ten nawias ( nie jest nigdzie zamknięty",
+      "unexpectedClose": "Ten nawias ) nie ma pasującego (",
+      "danglingOperator": "Przy operatorze {{operator}} brakuje wyszukiwanej frazy",
+      "tooDeep": "Grupy można zagnieżdżać najwyżej na 5 poziomów",
+      "emptyGroup": "Te nawiasy są puste",
+      "unterminatedQuote": "Ten cudzysłów nie jest nigdzie zamknięty",
+      "unknownQualifier": "Nieznany filtr: {{key}}",
+      "missingValue": "Dodaj wartość po {{key}}:",
+      "invalidValue": "{{value}} nie jest prawidłową wartością dla {{key}}",
+      "invalidDate": "{{value}} nie jest datą. Spróbuj 2026-10-02 lub @today-7d",
+      "invalidNumber": "{{value}} nie jest liczbą",
+      "sortNegated": "Nie można wykluczyć {{key}}"
+    }
   }
 }

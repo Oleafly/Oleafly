@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Download, Loader2 } from "lucide-react";
+import { Check, Download } from "lucide-react";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import {
   Select,
@@ -22,6 +22,7 @@ import {
 import { installDictionaryPack } from "@/lib/proofreading/dictionary-install";
 import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
+import { Spinner } from "@/components/ui/spinner";
 
 export function DictionaryLocalePicker() {
   const { t } = useTranslation(["common", "settings", "shell"]);
@@ -138,7 +139,7 @@ export function DictionaryLocalePicker() {
           data-testid="dictionary-download-progress"
           className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"
         >
-          <Loader2 className="size-3 animate-spin" />
+          <Spinner size="xs" />
           {t(($) => $.shell.settings.general.dictionary.downloading, {
             name: dictionaryLabel(busy, uiLocale),
           })}

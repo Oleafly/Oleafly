@@ -36,6 +36,7 @@ import {
 } from "react";
 import { FileIcon } from "@/components/files/fileIcon";
 import { Tooltip } from "@/components/ui/tooltip";
+import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
 
 export type IntelligenceNodeKind =
@@ -125,7 +126,7 @@ const KIND_ICON: Record<
  *  base name either way. */
 function fileNameOf(node: IntelligenceTreeNode): string {
   const source = node.target?.path ?? node.label;
-  return source.slice(source.lastIndexOf("/") + 1);
+  return basename(source);
 }
 
 function nodeMatches(node: IntelligenceTreeNode, query: string): boolean {

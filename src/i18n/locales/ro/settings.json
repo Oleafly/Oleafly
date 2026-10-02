@@ -226,6 +226,7 @@
       },
       "noChanges": "Nicio modificare",
       "refresh": "Reîmprospătează",
+      "refreshThrottled": "Reîmprospătat acum un moment. Încearcă din nou în {{seconds}} s",
       "restore": "Restabilește valorile implicite",
       "restoreTooltip": "Adaugă la loc modelele incluse ale acestui furnizor",
       "title": "Modele",
@@ -489,11 +490,6 @@
           "none": "Nu s-a găsit niciun alt folder de agent"
         },
         "title": "Împarte abilitățile cu ceilalți agenți de pe acest computer"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Adăugată",
@@ -1553,6 +1549,7 @@
     },
     "error": {
       "conflict": "Este deja atribuită acțiunii {{action}}.",
+      "nativeKey": "Comenzile rapide din meniu nu acceptă această tastă. Funcționează literele, cifrele și tastele funcționale.",
       "reserved": "{{shortcut}} este rezervată de sistemul de operare."
     },
     "intro": "Personalizează scurtăturile aplicației și consultă combinațiile de taste proprii editorului.",
@@ -1560,6 +1557,8 @@
       "closeWindow": "Închide fereastra",
       "copy": "Copiază",
       "cut": "Decupează",
+      "hide": "Ascunde aplicația",
+      "minimize": "Minimizează fereastra",
       "paste": "Lipește",
       "quit": "Ieși",
       "save": "Salvează",

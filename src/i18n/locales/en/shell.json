@@ -436,7 +436,7 @@
       "references": "References"
     },
     "label": "Search",
-    "noMatches": "No matches found.",
+    "noMatches": "No matches found",
     "openReferences": "Open references for this project",
     "placeholder": "Search projects, documents, or type / for commands…",
     "placeholderDocuments": "Search inside documents…",
@@ -677,6 +677,12 @@
         "description": "Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while still in beta; when off, there is no browser button and the AI has no browser tool.",
         "label": "Web browser"
       }
+    },
+    "footer": {
+      "followOnX": "Follow on X",
+      "joinDiscord": "Join the Discord community",
+      "releaseNotes": "View release notes",
+      "viewSource": "View source"
     },
     "general": {
       "dialect": {

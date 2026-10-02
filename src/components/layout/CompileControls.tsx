@@ -4,7 +4,6 @@ import {
   ChevronDown,
   FileText,
   Info,
-  Loader2,
   Play,
   RefreshCw,
   ShieldAlert,
@@ -37,11 +36,8 @@ import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
-
-function basename(path: string): string {
-  const slash = path.lastIndexOf("/");
-  return slash >= 0 ? path.slice(slash + 1) : path;
-}
+import { basename } from "@/lib/path-utils";
+import { Spinner } from "@/components/ui/spinner";
 
 /**
  * Shows which document a compile would actually build when the active file's
@@ -195,7 +191,7 @@ export function CompileControlsView({
     ? t(($) => $.shell.compile.recompile)
     : t(($) => $.shell.compile.compile);
   const renderCompileIcon = () => {
-    if (compiling) return <Loader2 className="size-3.5 animate-spin" />;
+    if (compiling) return <Spinner size="sm" />;
     if (hasCompileResult) return <RefreshCw className="size-3.5" />;
     return <Play className="size-3.5" />;
   };

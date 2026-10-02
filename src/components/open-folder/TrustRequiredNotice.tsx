@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Loader2, RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { RotateCcw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import {
   terminalNeedsReopen,
   useFolderAccessStore,
 } from "@/store/folder-access";
+import { Spinner } from "@/components/ui/spinner";
 
 export function TrustRequiredNotice({
   projectId,
@@ -45,7 +46,7 @@ export function TrustRequiredNotice({
           onClick={() => void grant("folder")}
         >
           {trusting === "folder" ? (
-            <Loader2 aria-hidden className="animate-spin motion-reduce:animate-none" />
+            <Spinner />
           ) : null}
           {t(($) => $.shell.openedFolder.trust.trustFolder)}
         </Button>

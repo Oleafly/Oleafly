@@ -159,6 +159,7 @@ export default defineConfig(async () => ({
       "@oleafly/preflight": path.resolve(__dirname, "./packages/preflight/src"),
       "@oleafly/registry": path.resolve(__dirname, "./packages/registry/src"),
       "@oleafly/i18n-contract": path.resolve(__dirname, "./packages/i18n-contract/src"),
+      "@oleafly/search-query": path.resolve(__dirname, "./packages/search-query/src"),
       "@oleafly/templates": path.resolve(__dirname, "./packages/templates/src"),
       "@oleafly/preview": path.resolve(__dirname, "./packages/preview/src"),
       "@oleafly/pdf-to-latex": path.resolve(__dirname, "./packages/pdf-to-latex/src"),

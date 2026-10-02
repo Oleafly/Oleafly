@@ -15,6 +15,7 @@ import {
   type SpellingWord,
   type SpellingWordSpan,
 } from "./spelling-words";
+import { escapeRegExp } from "./regexp";
 
 export interface Range {
   from: number;
@@ -203,12 +204,8 @@ interface MaskRegion {
   blanks: MaskSpan[];
 }
 
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
-}
-
 function findEnvEnd(text: string, from: number, env: string): number {
-  const re = new RegExp(`\\\\(begin|end)\\s*\\{${escapeRe(env)}\\*?\\}`, "g");
+  const re = new RegExp(String.raw`\\(begin|end)\s*\{${escapeRegExp(env)}\*?\}`, "g");
   re.lastIndex = from;
   let depth = 1;
   let m: RegExpExecArray | null;

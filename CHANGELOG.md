@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The project search on the home screen understands GitHub's search syntax.
+  Type `engine:typst`, `is:bookmarked`, `-kind:image`, `created:>@today-1w`
+  or `sort:name-asc`, combine terms with AND, OR and parentheses, and list
+  alternatives with commas, as in `engine:typst,markdown`. A dropdown
+  suggests qualifiers, values, AND, OR and Exclude as you type, values are
+  highlighted, and a mistake gets an amber tint and a short note. The
+  Advanced filters panel edits the same text, so both always agree, and it
+  gains a Sort by menu.
 - Import your whole Zotero library from a project's References panel.
   Connect Zotero in Settings > Integrations with your user ID and an API key.
   Oleafly checks the key with Zotero before saving it, then brings in up to
@@ -18,13 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Settings > API Keys and the assistant can search papers, read them and use
   your alphaXiv library, asking you before each call. A key alphaXiv refuses
   is not saved.
-- The app version sits under the Settings sections. Click it to open What's
-  new.
 - Settings has a search box. Type a word such as "theme", "Zotero" or
   "spelling" and the list narrows to the sections and settings that match;
   pick one to jump to it.
 - The Explorer shows Git status next to changed files, with the same letters
-  as Source Control (M, U, D and so on). Changed file names take the status
+  as Source Control (M, U, D and so on). File names keep their normal
   colour, and a folder that holds changes gets a dot.
 - Settings > AI > Skills has a search box. It filters your skills and the
   Domain shelf together, and the shelf can be narrowed to one domain.
@@ -57,10 +63,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- When you edit during an automatic compile, Oleafly stops that compile and
+  starts again with your latest text, so the PDF catches up sooner. It never
+  stops a compile you or an agent started, one that is downloading packages or
+  nearly done, or two in a row.
 - Focus shows as a border colour or a background tint everywhere. No control
   draws a focus ring any more, and Settings toggle rows, which showed no
   focus at all, now do.
 - The home toolbar and dock are flat, with a plain border and no shadow.
+- Every side panel header (Explorer, Search, Source Control, Preflight,
+  References, Research workspace and MCP activity) uses the same icon and
+  title size. A title that doesn't fit ends in an ellipsis, and the icon
+  keeps its size.
+- Toasts are wider, so a message has room next to the close button.
+- A new project gets a random cover colour from the palette when you don't
+  pick one, instead of always the same blue.
+- Dialogs share one look: the same backdrop, panel and corners. In light
+  mode a few dialogs that used a grey panel are now white, and every dialog
+  covers the floating assistant and quick-action buttons.
+- Status pills, spinners, settings rows, empty states and section headings
+  come from one set of shared components, so they look the same on every
+  screen. Spinners stop when the system asks for reduced motion.
+- File sizes use one format everywhere, with the unit translated in every
+  language, and times such as "5 minutes ago" are counted the same way in
+  every panel.
+- The figure picker and `\includegraphics` completion no longer offer GIF,
+  WebP or BMP images, which LaTeX can't include.
+- The agent list in New research task shows each CLI agent's own logo
+  instead of a terminal icon.
+- On macOS, the app menu has Hide, Hide Others and Show All, and a new Window
+  menu has Minimize, Toggle Full Screen and Bring All to Front, so Cmd+H,
+  Option+Cmd+H, Cmd+M and Ctrl+Cmd+F work. Cmd+H and Cmd+M can no longer be
+  assigned to app shortcuts on macOS.
+- On Linux, Toggle Browser now defaults to Ctrl+Alt+B, because Ctrl+Shift+B
+  makes a blockquote in the visual editor. If you still had the old default,
+  it moves to the new one; a shortcut you chose yourself stays.
+- On Windows, release builds no longer reload the app on F5 or Ctrl+R, print
+  it on Ctrl+P, or open the built-in find bar. Pages in the browser window
+  keep those keys.
+- Only a window's own page can start or control agents, terminals and
+  language servers for that window. The main, preview and update windows no
+  longer have webview permissions they never used.
 - Integration tabs and Citation Search sources show each service's own logo.
 - In the spelling dictionary list, download sizes and the installed check sit
   at the right edge of each row.
@@ -80,8 +123,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The welcome screen's New project and Open a folder cards have pictures, like
   the cards in Start a new piece of work, and so does each source in Import a
   project. The pictures are ready before a dialog opens instead of popping in.
-- The bottom of the Settings sidebar has Discord, X, GitHub and Docs buttons,
-  and Cite Oleafly is now the last section of Help & About.
+- The bottom of the Settings sidebar has Discord, X, GitHub, Docs and Release
+  notes buttons, with a divider between each, and Cite Oleafly is now the last
+  section of Help & About. Release notes opens What's new.
 - Toasts have their close button inside, on the right.
 - The Float the assistant button has a picture-in-picture icon, so it no
   longer looks like Hide.
@@ -111,6 +155,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Clicking inside the Advanced filters panel while one of its menus is open
+  now closes only that menu, so you can set several filters in a row.
+- On macOS, Cmd+A in the editor selected only the lines on screen, so
+  deleting or copying after it left the rest of the file behind. Cmd+A and
+  Edit > Select All now select the whole file, and in the terminal they
+  select the terminal's text.
+- On macOS, the editor ignored typing and shortcuts after the app opened and
+  after leaving full screen, until you clicked in the window. The same
+  happened in a newly opened preview or browser window.
+- On Windows, typing after switching back to Oleafly with Alt+Tab or the
+  taskbar did nothing until you clicked in the window.
+- On macOS, Cmd+Z and Shift+Cmd+Z did nothing in text fields on the home
+  screen, during a tour, and in the preview and browser windows.
+- Edit > Undo and Redo, clicked while another Oleafly window was in front,
+  undid the last change in the paper.
+- Changing the app language put the terminal, browser and Open Folder
+  shortcuts back to their defaults until the next launch.
+- On macOS and Linux, the terminal, browser and Open Folder shortcuts still
+  worked during a tour.
+- Files dropped on a page in the browser window were ignored.
+- The browser window couldn't be moved: its tab strip was not allowed to
+  drag the window. It now drags from any empty part of the strip.
+- With Settings open, the command palette and search opened behind it.
+- In the browser window on macOS and Linux, Cmd+L, Cmd+T, Cmd+W and Cmd+R
+  (Ctrl on Linux) did nothing while a page had focus. File and View now have
+  New Tab, Open Location, Close Tab and Reload Page, active while a browser
+  window is in front.
+- On macOS and Linux, a terminal, browser or Open Folder shortcut on a key
+  the menu can't use, such as an Option-layer character, was saved but did
+  nothing, and the old shortcut stopped working too. The recorder now says
+  the key can't be used.
+- While recording a shortcut in Settings, pressing the current terminal,
+  browser, Open Folder or Quit shortcut ran it instead of recording it.
+- On Windows, Ctrl+Shift+B in the visual editor opened the browser instead of
+  making a blockquote.
+- On Windows, file names in confirmations and dialogs showed the whole path.
+- Searching the project could show results for an older query, or keep
+  showing results after the search box was cleared.
+- Font and template downloads could show "undefined" as their progress label
+  while a skill was downloading.
+- The Tasks and Linked folders tabs in Research workspace ran past the panel
+  in a narrow sidebar. They now share the width and shorten a long label with
+  an ellipsis, like the References tabs.
+- The tabs in Settings > Integrations made the whole Settings pane scroll
+  sideways when they didn't fit. They now scroll on their own, like the tabs
+  in Appearance, AI and MCP.
+- Refresh in a provider's model list sometimes seemed to do nothing. It stays
+  locked for 30 seconds after each check, and hovering it now says so and
+  counts down. A quick check also shows at least one full turn of the icon.
+- Every item in the model picker and other searchable lists showed a
+  not-allowed cursor. Only items you can't pick show it now.
 - Clicking a colour circle in Theme customization seemed to do nothing,
   because its picker opened behind the Settings window. The circle now opens
   the system colour picker.

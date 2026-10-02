@@ -6,6 +6,9 @@
     "reloadViews": "Läs in vyer på nytt",
     "restartApp": "Starta om appen",
     "quit": "Avsluta Oleafly",
+    "hide": "Göm Oleafly",
+    "hideOthers": "Göm övriga",
+    "showAll": "Visa alla",
     "edit": "Redigera",
     "undo": "Ångra",
     "redo": "Gör om",
@@ -19,7 +22,15 @@
     "file": "Arkiv",
     "openFolder": "Öppna mapp…",
     "openRecent": "Öppna senaste",
-    "noRecent": "Inga senaste projekt"
+    "noRecent": "Inga senaste projekt",
+    "window": "Fönster",
+    "minimize": "Minimera",
+    "fullscreen": "Växla helskärm",
+    "bringAllToFront": "Lägg alla överst",
+    "newTab": "Ny flik",
+    "openLocation": "Öppna adress…",
+    "closeTab": "Stäng flik",
+    "reloadPage": "Läs in sidan på nytt"
   },
   "window": {
     "browser": "Oleafly-webbläsaren",

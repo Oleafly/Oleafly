@@ -76,7 +76,42 @@
     },
     "openFolder": "Deschide un folder",
     "openFolderShortcut": "Deschide un folder ({{shortcut}})",
-    "createFirstProject": "Creează un proiect nou"
+    "createFirstProject": "Creează un proiect nou",
+    "sortBy": "Sortează după",
+    "customFilter": "Personalizat",
+    "search": {
+      "fields": {
+        "is": "Stare",
+        "has": "Cu",
+        "no": "Fără",
+        "color": "Culoarea copertei",
+        "opened": "Ultima deschidere",
+        "in": "Caută în",
+        "sort": "Sortare"
+      },
+      "values": {
+        "linkedFolder": "Folder asociat",
+        "forked": "Bifurcat",
+        "exports": "Exporturi",
+        "today": "Astăzi",
+        "yesterday": "Ieri",
+        "id": "ID",
+        "mainFile": "Fișier principal",
+        "folderPath": "Calea folderului"
+      },
+      "sorts": {
+        "activityDesc": "Cea mai recentă activitate",
+        "activityAsc": "Cea mai veche activitate",
+        "updatedDesc": "Cea mai recentă modificare",
+        "updatedAsc": "Cea mai veche modificare",
+        "createdDesc": "Cele mai noi",
+        "createdAsc": "Cele mai vechi",
+        "openedDesc": "Cea mai recentă deschidere",
+        "openedAsc": "Cea mai veche deschidere",
+        "nameAsc": "Nume, de la A la Z",
+        "nameDesc": "Nume, de la Z la A"
+      }
+    }
   },
   "projects": {
     "open": "Deschide {{name}}",

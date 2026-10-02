@@ -5,7 +5,6 @@ import {
   Folder,
   FolderOpen,
   Link2,
-  Loader2,
   Lock,
   RefreshCw,
 } from "lucide-react";
@@ -23,8 +22,11 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { FileIcon } from "@/components/files/fileIcon";
 import { readResearchRootFile, type ResearchRootFileContent } from "@/lib/research-workspace";
 import { useFilesStore } from "@/store/files";
+import { SIDEBAR_TITLE_CLASS } from "@/components/layout/SidebarSection";
 import { cn } from "@/lib/utils";
 import { linkedNodeKey, useLinkedRootsStore } from "./linked-roots-store";
+import { Spinner } from "@/components/ui/spinner";
+import { LoadingState } from "@/components/ui/empty";
 
 interface OpenPreview {
   rootId: string;
@@ -64,9 +66,7 @@ export function LinkedFoldersSection() {
   const previewBody = () => {
     if (!preview?.content) {
       return (
-        <output className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-        </output>
+        <LoadingState label={t(($) => $.common.state.loading)} />
       );
     }
     if (preview.content.isBinary) {
@@ -137,7 +137,7 @@ export function LinkedFoldersSection() {
           className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
-          <Loader2 className="size-3 animate-spin" /> {t(($) => $.common.state.loading)}
+          <Spinner size="xs" /> {t(($) => $.common.state.loading)}
         </output>
       );
     }
@@ -227,7 +227,7 @@ export function LinkedFoldersSection() {
     >
       <div className="flex h-8 items-center gap-1.5 px-3">
         <Link2 aria-hidden="true" className="size-3.5 text-muted-foreground" />
-        <span className="flex-1 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
+        <span className={cn("flex-1", SIDEBAR_TITLE_CLASS)}>
           {t(($) => $.researchTools.linked.title)}
         </span>
         <Tooltip label={t(($) => $.researchTools.linked.readOnlyTooltip)}>

@@ -439,7 +439,7 @@
       "references": "Referencias"
     },
     "label": "Buscar",
-    "noMatches": "No se encontró ninguna coincidencia.",
+    "noMatches": "No se encontró ninguna coincidencia",
     "openReferences": "Abrir las referencias de este proyecto",
     "placeholder": "Busca proyectos y documentos, o escribe / para ver los comandos…",
     "placeholderDocuments": "Buscar dentro de los documentos…",
@@ -692,6 +692,12 @@
         "description": "Muestra el navegador web integrado (su botón del panel y su atajo) y deja que la IA lo maneje con uso del ordenador. Desactivado por omisión mientras siga en beta; cuando está desactivado no hay botón de navegador y la IA no tiene herramienta de navegador.",
         "label": "Navegador web"
       }
+    },
+    "footer": {
+      "followOnX": "Seguir en X",
+      "joinDiscord": "Únete a la comunidad de Discord",
+      "releaseNotes": "Ver notas de la versión",
+      "viewSource": "Ver el código fuente"
     },
     "general": {
       "dialect": {

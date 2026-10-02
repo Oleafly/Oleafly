@@ -8,7 +8,6 @@ import {
   ExternalLink,
   FileSearch,
   FileText,
-  Loader2,
   ScrollText,
   Terminal,
   Wrench,
@@ -29,6 +28,8 @@ import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { usePersistentExpansion } from "./expansion-state";
 import { ToolPicture } from "./ToolPicture";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 const PREVIEW_LIMIT = 4_000;
 
@@ -54,7 +55,7 @@ function LeadingIcon({ view, expandable, expanded }: Readonly<{ view: ResearchTo
 }
 
 function StatusIcon({ status }: Readonly<{ status: ResearchToolStatus }>) {
-  if (status === "running") return <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none" />;
+  if (status === "running") return <Spinner size="xs" className="text-muted-foreground" />;
   if (status === "completed") return <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />;
   if (status === "cancelled" || status === "interrupted")
     return <CircleStop className="size-3 shrink-0 text-muted-foreground" />;
@@ -148,9 +149,9 @@ function toolCardHeader({
       <StatusIcon status={view.status} />
       <span className="sr-only">{view.statusLabel}</span>
       {tc.approval && (
-        <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium", tc.approval === "approved" ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-destructive/15 text-destructive")}>{tc.approval === "approved"
+        <Badge size="sm" variant={tc.approval === "approved" ? "success" : "destructive"}>{tc.approval === "approved"
             ? i18n.t(($) => $.ai.toolCard.approved)
-            : i18n.t(($) => $.ai.toolCard.rejected)}</span>
+            : i18n.t(($) => $.ai.toolCard.rejected)}</Badge>
       )}
       {view.summary && (
         <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", view.verified === false && "text-destructive")}>{view.summary}</span>

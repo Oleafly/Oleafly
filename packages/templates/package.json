@@ -11,6 +11,7 @@
     "./modal-coordinator": "./src/modal-coordinator.ts"
   },
   "dependencies": {
+    "@oleafly/i18n-contract": "workspace:*",
     "clsx": "*",
     "lucide-react": "*",
     "react": "*",

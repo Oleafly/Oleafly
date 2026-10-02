@@ -21,8 +21,9 @@ oleafly-agent = { path = "../crates/oleafly-agent" }
 oleafly-cli = { path = "../crates/oleafly-cli" }
 oleafly-core = { path = "../crates/oleafly-core" }
 oleafly-history = { path = "../crates/oleafly-history" }
-# `unstable` unlocks the multi-webview APIs (Webview class) that power the
-# composer's embedded browser pane; supported on macOS, Windows, and Linux.
+# `unstable` unlocks the multi-webview APIs (Window::add_child) that the
+# browser window uses for its toolbar and tabs. It also makes every window's
+# webview a child webview; webview_frame.rs and webview_focus.rs cover that.
 tauri = { version = "2", features = ["macos-private-api", "unstable"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util", "fs"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
@@ -77,6 +78,7 @@ biblatex = "0.12.0"
 icu_properties = "2.2"
 statrs = "0.18.0"
 rapidfuzz = "0.5.0"
+muda = { version = "0.19", default-features = false }
 notify = "8.2"
 trash = "5.2.9"
 
@@ -86,10 +88,12 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSGeometry", "objc2-core-foundation"] }
 # Lets AppKit size the WKWebView of Oleafly's own windows (webview_frame.rs).
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow"] }
+dispatch2 = "0.3"
 plist = "1"
 
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.38"
+windows-core = "0.61"
 windows-registry = "0.6"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
@@ -101,6 +105,8 @@ windows-sys = { version = "0.61", features = [
   "Win32_System_JobObjects",
   "Win32_System_Threading",
   "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

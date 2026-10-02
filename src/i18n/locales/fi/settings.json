@@ -226,6 +226,7 @@
       },
       "noChanges": "Ei muutoksia",
       "refresh": "Päivitä",
+      "refreshThrottled": "Päivitetty hetki sitten. Yritä uudelleen {{seconds}} s kuluttua",
       "restore": "Palauta oletukset",
       "restoreTooltip": "Lisää tämän palvelun sisäänrakennetut mallit takaisin",
       "title": "Mallit",
@@ -486,11 +487,6 @@
           "none": "Muiden agenttien kansioita ei löytynyt"
         },
         "title": "Jaa taidot muiden tämän koneen agenttien kanssa"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Lisätty",
@@ -1537,6 +1533,7 @@
     },
     "error": {
       "conflict": "On jo varattu toiminnolle {{action}}.",
+      "nativeKey": "Valikon pikanäppäimet eivät tue tätä näppäintä. Kirjaimet, numerot ja funktionäppäimet toimivat.",
       "reserved": "{{shortcut}} on käyttöjärjestelmän varaama."
     },
     "intro": "Mukauta sovelluksen pikanäppäimiä ja tarkastele editorin omia näppäinyhdistelmiä.",
@@ -1544,6 +1541,8 @@
       "closeWindow": "Sulje ikkuna",
       "copy": "Kopioi",
       "cut": "Leikkaa",
+      "hide": "Kätke ohjelma",
+      "minimize": "Pienennä ikkuna",
       "paste": "Liitä",
       "quit": "Lopeta",
       "save": "Tallenna",

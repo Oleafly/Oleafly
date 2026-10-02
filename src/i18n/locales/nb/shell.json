@@ -436,7 +436,7 @@
       "references": "Referanser"
     },
     "label": "Søk",
-    "noMatches": "Fant ingen treff.",
+    "noMatches": "Fant ingen treff",
     "openReferences": "Åpne referansene for dette prosjektet",
     "placeholder": "Søk i prosjekter og dokumenter, eller skriv / for kommandoer…",
     "placeholderDocuments": "Søk inne i dokumenter…",
@@ -677,6 +677,12 @@
         "description": "Vis nettleseren i appen (bryteren i panelet og hurtigtasten), og la AI-en styre den med datamaskinbruk. Av som standard mens det fortsatt er i beta. Når den er av, finnes det ingen nettleserknapp, og AI-en har ikke noe nettleserverktøy.",
         "label": "Nettleser"
       }
+    },
+    "footer": {
+      "followOnX": "Følg på X",
+      "joinDiscord": "Bli med i Discord-fellesskapet",
+      "releaseNotes": "Se versjonsmerknader",
+      "viewSource": "Se kildekoden"
     },
     "general": {
       "dialect": {

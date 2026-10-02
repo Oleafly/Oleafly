@@ -1,5 +1,4 @@
 import { create, type StoreApi } from "zustand";
-import { listen } from "@tauri-apps/api/event";
 import {
   cancelCompile,
   clearBuildDir,
@@ -7,6 +6,7 @@ import {
   readCompiledPdf,
   readFileContent,
   validateCompileFingerprint,
+  withEventListener,
   type CompileError,
   type CompileResult,
   type LogDiagnostic,
@@ -85,6 +85,19 @@ function queueRerun(origin: CompileOrigin): void {
 }
 
 let activeCompileIntent: number | null = null;
+
+const NEARLY_DONE_SHARE = 0.75;
+let runningOrigin: CompileOrigin | null = null;
+let runningSnapshotAt = 0;
+let runningIsRestart = false;
+let nextIsRestart = false;
+let outdatedStopRequested = false;
+
+function forgetOutdatedStops(): void {
+  runningOrigin = null;
+  nextIsRestart = false;
+  outdatedStopRequested = false;
+}
 
 export interface CompileRequestIdentity {
   projectId: string;
@@ -731,6 +744,19 @@ export function reportCompileSaveFailure(
   } else {
     void logError(scope, error);
   }
+}
+
+export function stopOutdatedAutomaticCompile(editedAt: number, now = Date.now()): boolean {
+  const { status, phase, compileTimeMs } = useCompileStore.getState();
+  if (status !== "compiling" || phase !== "building") return false;
+  if (runningOrigin !== "automatic" || runningIsRestart || outdatedStopRequested) return false;
+  if (runningSnapshotAt >= editedAt) return false;
+  if (compileTimeMs && now - runningSnapshotAt >= compileTimeMs * NEARLY_DONE_SHARE) return false;
+  outdatedStopRequested = true;
+  nextIsRestart = true;
+  clearQueuedRerun();
+  void cancelCompile().catch((error: unknown) => logError("stop compile", error));
+  return true;
 }
 
 export function stopRunningCompileQuietly(): boolean {
@@ -1389,6 +1415,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   reset: () => {
     compileSeq++;
     clearQueuedRerun();
+    forgetOutdatedStops();
     activeCompileIntent = null;
     compileIntentGeneration++;
     set({
@@ -1531,6 +1558,11 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       abortIntent();
       return undefined;
     }
+    runningOrigin = origin;
+    runningSnapshotAt = Date.now();
+    runningIsRestart = nextIsRestart;
+    nextIsRestart = false;
+    outdatedStopRequested = false;
     const offlinePolicy = compileOfflineForEngine(
       files.engine,
       useSettingsStore.getState().offline,
@@ -1562,7 +1594,6 @@ export const useCompileStore = create<CompileState>((set, get) => ({
         }),
       )
       .catch(() => {});
-    let unlisten = () => {};
     const logPump = createCompileLogPump(set, get, {
       identityStale,
       checkpointAdvanced,
@@ -1582,30 +1613,28 @@ export const useCompileStore = create<CompileState>((set, get) => ({
       origin,
     };
     try {
-      unlisten = await listen<string>("compile:log", (e) => {
-        logPump.push(e.payload);
+      return await withEventListener("compile:log", (chunk: string) => logPump.push(chunk), async () => {
+        if (identityStale() || checkpointAdvanced()) return undefined;
+        const result = await compileProject(
+          projectId,
+          mainDoc,
+          offlinePolicy.offline,
+          get().compileMode === "fast",
+          get().stopOnFirstError,
+        );
+        logPump.flush();
+        if (result.stopped) {
+          applyStoppedCompile(set, identityStale);
+          return result;
+        }
+        return await applyCompileResult(applyContext, result);
       });
-      if (identityStale() || checkpointAdvanced()) return undefined;
-      const result = await compileProject(
-        projectId,
-        mainDoc,
-        offlinePolicy.offline,
-        get().compileMode === "fast",
-        get().stopOnFirstError,
-      );
-      logPump.flush();
-      if (result.stopped) {
-        applyStoppedCompile(set, identityStale);
-        return result;
-      }
-      return await applyCompileResult(applyContext, result);
     } catch (e) {
       if (reportLocationError(projectId, e)) pauseCompileForMissingFolder(applyContext, e);
       else handleCompileException(applyContext, e);
       return undefined;
     } finally {
       logPump.dispose();
-      unlisten();
       finishCompileAttempt({
         set,
         get,

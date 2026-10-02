@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { readString, removeKey, writeString } from "@/lib/local-storage";
 
 export type PlanApprovalStatus = "planning" | "awaiting" | "approved";
 
@@ -16,32 +17,17 @@ const STORAGE_PREFIX = "oleafly.plan-approval.";
 const storageKey = (chatId: string) => `${STORAGE_PREFIX}${chatId}`;
 
 function readStored(chatId: string): PlanApprovalStatus {
-  try {
-    if (typeof localStorage === "undefined") return "planning";
-    const raw = localStorage.getItem(storageKey(chatId));
-    return raw === "awaiting" || raw === "approved" ? raw : "planning";
-  } catch {
-    return "planning";
-  }
+  const raw = readString(storageKey(chatId));
+  return raw === "awaiting" || raw === "approved" ? raw : "planning";
 }
 
 function writeStored(chatId: string, status: PlanApprovalStatus): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    if (status === "planning") localStorage.removeItem(storageKey(chatId));
-    else localStorage.setItem(storageKey(chatId), status);
-  } catch {
-    return;
-  }
+  if (status === "planning") removeKey(storageKey(chatId));
+  else writeString(storageKey(chatId), status);
 }
 
 function clearStored(chatIds: readonly string[]): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    for (const chatId of chatIds) localStorage.removeItem(storageKey(chatId));
-  } catch {
-    return;
-  }
+  for (const chatId of chatIds) removeKey(storageKey(chatId));
 }
 
 export function planApprovalForChat(

@@ -16,7 +16,6 @@ import {
   FileText,
   Info,
   KeyRound,
-  Loader2,
   Pause,
   RefreshCw,
   Search,
@@ -70,6 +69,9 @@ import {
   DocumentCitationScanPanel,
 } from "@/components/tools/DocumentCitationScanPanel";
 import { PaperReviewPanel } from "@/components/tools/PaperReviewPanel";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
+import { EmptyIntro } from "@/components/ui/empty";
 
 const SUGGESTIONS = [
   {
@@ -185,13 +187,10 @@ function SourceInformation() {
           <div key={source.id} className="px-4 py-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold">{source.label}</p>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                  source.available
-                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                    : "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-                )}
+              <Badge
+                variant={source.available ? "success" : "warning"}
+                size="sm"
+                className="gap-1 uppercase tracking-wide"
               >
                 {source.available ? (
                   <Check className="size-3" aria-hidden="true" />
@@ -201,7 +200,7 @@ function SourceInformation() {
                 {source.available
                   ? t(($) => $.researchTools.literature.available)
                   : t(($) => $.researchTools.literature.paused)}
-              </span>
+              </Badge>
             </div>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {source.description}
@@ -352,9 +351,9 @@ function ResultRow({
               </span>
             )}
             {record.openAccess === true && (
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+              <Badge variant="success" size="sm">
                 {t(($) => $.researchTools.literature.openAccess)}
-              </span>
+              </Badge>
             )}
           </div>
           {record.url ? (
@@ -486,23 +485,23 @@ function EmptySearch({
     <div className="mx-auto grid min-h-[23rem] max-w-4xl place-items-center px-6 py-10">
       <div className="w-full border-y border-border/70 py-9">
         <div className="grid gap-8 sm:grid-cols-[1fr_1.15fr] sm:items-start">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              {noResults
+          <EmptyIntro
+            eyebrow={
+              noResults
                 ? t(($) => $.researchTools.literature.noResultsEyebrow)
-                : t(($) => $.researchTools.literature.gettingStarted)}
-            </p>
-            <h2 className="mt-2.5 text-2xl font-semibold tracking-tight">
-              {noResults
+                : t(($) => $.researchTools.literature.gettingStarted)
+            }
+            title={
+              noResults
                 ? t(($) => $.researchTools.literature.noResultsHeading)
-                : t(($) => $.researchTools.literature.startHeading)}
-            </h2>
-            <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-              {noResults
+                : t(($) => $.researchTools.literature.startHeading)
+            }
+            description={
+              noResults
                 ? t(($) => $.researchTools.literature.noResultsBody)
-                : t(($) => $.researchTools.literature.startBody)}
-            </p>
-          </div>
+                : t(($) => $.researchTools.literature.startBody)
+            }
+          />
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {t(($) => $.researchTools.literature.topics)}
@@ -547,17 +546,12 @@ function SavedLibrary({
   const { t } = useTranslation(["common", "researchTools"]);
   if (saved.length === 0) {
     return (
-      <div className="mx-auto flex min-h-[23rem] max-w-2xl flex-col justify-center px-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-          {t(($) => $.researchTools.literature.libraryEyebrow)}
-        </p>
-        <h2 className="mt-2.5 text-2xl font-semibold tracking-tight">
-          {t(($) => $.researchTools.literature.libraryHeading)}
-        </h2>
-        <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-          {t(($) => $.researchTools.literature.libraryBody)}
-        </p>
-      </div>
+      <EmptyIntro
+        className="mx-auto flex min-h-[23rem] max-w-2xl flex-col justify-center px-6"
+        eyebrow={t(($) => $.researchTools.literature.libraryEyebrow)}
+        title={t(($) => $.researchTools.literature.libraryHeading)}
+        description={t(($) => $.researchTools.literature.libraryBody)}
+      />
     );
   }
   return (
@@ -763,7 +757,7 @@ export function LiteratureSearchPanel() {
           }
         >
           {loading ? (
-            <Loader2 className="animate-spin" />
+            <Spinner />
           ) : (
             <Search />
           )}
@@ -921,9 +915,9 @@ export function LiteratureSearchPanel() {
               >
                 {t(($) => $.researchTools.literature.tabMyCitations)}
                 {saved.length > 0 && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
+                  <Badge variant="muted" size="sm" className="tabular-nums">
                     {saved.length}
-                  </span>
+                  </Badge>
                 )}
               </TabsTrigger>
             </TabsList>
@@ -960,9 +954,9 @@ export function LiteratureSearchPanel() {
             >
               {t(($) => $.researchTools.literature.tabSearch)}
               {response && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
+                <Badge variant="muted" size="sm" className="tabular-nums">
                   {response.results.length}
-                </span>
+                </Badge>
               )}
             </TabsTrigger>
             <TabsTrigger
@@ -971,9 +965,9 @@ export function LiteratureSearchPanel() {
             >
               {t(($) => $.researchTools.literature.tabMyCitations)}
               {saved.length > 0 && (
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums">
+                <Badge variant="muted" size="sm" className="tabular-nums">
                   {saved.length}
-                </span>
+                </Badge>
               )}
             </TabsTrigger>
           </TabsList>

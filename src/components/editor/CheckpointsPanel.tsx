@@ -17,7 +17,6 @@ import {
   Download,
   FileUp,
   FolderOpen,
-  Loader2,
   Pencil,
   RotateCcw,
   ShieldCheck,
@@ -26,8 +25,10 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { decodeAppError } from "@/lib/app-error";
 import {
   checkpointDelete,
@@ -51,13 +52,14 @@ import {
 } from "@/lib/checkpoints";
 import { useDisplayPath } from "@/lib/display-path";
 import { formatBytes } from "@/lib/format-bytes";
-import { formatNumber } from "@/lib/intl";
+import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { pickOpenPath, pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
 import { cn, isMac, isWindows } from "@/lib/utils";
 import { runWithEditorMutationLease, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { Spinner } from "@/components/ui/spinner";
 
 type Confirmation =
   | { kind: "restore" | "delete"; snapshotRoot: string }
@@ -81,15 +83,6 @@ function revealLabel(): string {
   return i18n.t(($) => $.editor.checkpoints.showInFileManager);
 }
 
-const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ["year", 31_536_000_000],
-  ["month", 2_592_000_000],
-  ["week", 604_800_000],
-  ["day", 86_400_000],
-  ["hour", 3_600_000],
-  ["minute", 60_000],
-];
-
 function checkpointsPanelIsActive(): boolean {
   const settings = useSettingsStore.getState();
   return settings.versioningOpen;
@@ -109,15 +102,9 @@ function formatCompletedAt(value: number): string {
       }).format(date);
 }
 
-function formatRelativeTime(value: number, now: number): string {
+function formatCheckpointAge(value: number, now: number): string {
   if (!Number.isFinite(value)) return i18n.t(($) => $.editor.checkpoints.timeNotRecorded);
-  const elapsed = now - value;
-  if (elapsed < 60_000) return i18n.t(($) => $.editor.checkpoints.justNow);
-  const formatter = new Intl.RelativeTimeFormat(currentLocale(), { numeric: "auto" });
-  for (const [unit, span] of RELATIVE_UNITS) {
-    if (elapsed >= span) return formatter.format(-Math.round(elapsed / span), unit);
-  }
-  return i18n.t(($) => $.editor.checkpoints.justNow);
+  return formatRelativeTimeFrom(value, now, { justNow: i18n.t(($) => $.editor.checkpoints.justNow) });
 }
 
 function isoTimestamp(value: number): string | undefined {
@@ -290,7 +277,7 @@ function CheckpointFileRows({ state }: Readonly<{ state: FileState | undefined }
   if (!state || state.status === "loading") {
     return (
       <output className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground">
-        <Loader2 className="size-3 animate-spin motion-reduce:animate-none" aria-hidden />
+        <Spinner size="xs" />
         {t(($) => $.editor.checkpoints.files.loading)}
       </output>
     );
@@ -337,13 +324,12 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
   const { t } = useTranslation(["common", "editor"]);
   if (!state || state.status === "loading") {
     return (
-      <output
+      <LoadingState
         id={id}
-        className="mt-2 flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2 text-xs text-muted-foreground"
-      >
-        <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
-        {t(($) => $.editor.checkpoints.files.loading)}
-      </output>
+        size="compact"
+        className="mt-2 rounded-md border bg-muted/20 px-3 py-2"
+        label={t(($) => $.editor.checkpoints.files.loading)}
+      />
     );
   }
 
@@ -641,7 +627,7 @@ function TimelineEntry({
           dateTime={isoTimestamp(checkpoint.completed_at_unix_ms)}
           className="text-xs text-muted-foreground"
         >
-          {formatRelativeTime(checkpoint.completed_at_unix_ms, now)}
+          {formatCheckpointAge(checkpoint.completed_at_unix_ms, now)}
         </time>
       </>
     );
@@ -746,7 +732,14 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
   const [passwordTooShort, setPasswordTooShort] = useState(false);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [fileStates, setFileStates] = useState<Record<string, FileState>>({});
-  const [copiedRoot, setCopiedRoot] = useState<string | null>(null);
+  const {
+    copiedText: copiedRoot,
+    copy: copyRoot,
+    reset: resetCopiedRoot,
+  } = useCopyStatus({
+    onError: (error) =>
+      notifyError("copy checkpoint id", error, t(($) => $.editor.checkpoints.toast.copyIdFailed)),
+  });
   const [editingLabelRoot, setEditingLabelRoot] = useState<string | null>(null);
   const [labelDraft, setLabelDraft] = useState("");
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -760,7 +753,6 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
   const sessionRequest = useRef(0);
   const actionRequest = useRef(0);
   const fileRequests = useRef(new Map<string, number>());
-  const copyTimer = useRef<number | null>(null);
   const seenRevision = useRef(checkpointsRevision);
   const renderedIdentity = useRef({ open, projectId });
   const renderIdentityChanged =
@@ -887,17 +879,13 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     loadRequest.current += 1;
     inspectRequest.current += 1;
     fileRequests.current.clear();
-    if (copyTimer.current !== null) {
-      window.clearTimeout(copyTimer.current);
-      copyTimer.current = null;
-    }
+    resetCopiedRoot();
     setBusyAction(null);
     setConfirmation(null);
     setPassword("");
     setPasswordTooShort(false);
     setExpanded([]);
     setFileStates({});
-    setCopiedRoot(null);
     setEditingLabelRoot(null);
     setLabelDraft("");
     setAdvancedOpen(false);
@@ -919,12 +907,8 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
       loadRequest.current += 1;
       inspectRequest.current += 1;
       fileRequests.current.clear();
-      if (copyTimer.current !== null) {
-        window.clearTimeout(copyTimer.current);
-        copyTimer.current = null;
-      }
     };
-  }, [open, projectId, refresh]);
+  }, [open, projectId, refresh, resetCopiedRoot]);
 
   useEffect(() => {
     if (seenRevision.current === checkpointsRevision) return;
@@ -997,20 +981,6 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
   const confirm = (next: Confirmation) => {
     setConfirmation(next);
     if (next?.kind === "restore") ensureFiles(next.snapshotRoot);
-  };
-
-  const copyRoot = async (snapshotRoot: string) => {
-    try {
-      await navigator.clipboard.writeText(snapshotRoot);
-      setCopiedRoot(snapshotRoot);
-      if (copyTimer.current !== null) window.clearTimeout(copyTimer.current);
-      copyTimer.current = window.setTimeout(() => {
-        copyTimer.current = null;
-        setCopiedRoot((current) => (current === snapshotRoot ? null : current));
-      }, 1500);
-    } catch (error) {
-      notifyError("copy checkpoint id", error, t(($) => $.editor.checkpoints.toast.copyIdFailed));
-    }
   };
 
   const startLabelEdit = (checkpoint: CheckpointSummary) => {
@@ -1233,47 +1203,45 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
   const renderTimeline = () => {
     if (!projectId) {
       return (
-        <div className="flex min-h-44 flex-col items-center justify-center text-center">
-          <ArchiveRestore className="size-7 text-muted-foreground" />
-          <p className="mt-3 text-sm font-medium">{t(($) => $.editor.checkpoints.panel.noProject)}</p>
-        </div>
+        <EmptyState
+          className="min-h-44"
+          icon={<ArchiveRestore className="size-7 text-muted-foreground" />}
+          title={t(($) => $.editor.checkpoints.panel.noProject)}
+        />
       );
     }
     if (visibleLoading) {
       return (
-        <output className="flex min-h-44 items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
-          {t(($) => $.editor.checkpoints.panel.loading)}
-        </output>
+        <LoadingState
+          className="min-h-44 justify-center"
+          label={t(($) => $.editor.checkpoints.panel.loading)}
+        />
       );
     }
     if (loadFailed) {
       return (
-        <div
-          className="flex min-h-44 flex-col items-center justify-center text-center"
-          role="alert"
+        <ErrorState
+          className="min-h-44 items-center justify-center text-center"
+          message={t(($) => $.editor.checkpoints.panel.loadFailed)}
         >
-          <p className="text-sm text-destructive">{t(($) => $.editor.checkpoints.panel.loadFailed)}</p>
           <Button
             variant="outline"
             size="sm"
-            className="mt-3"
             onClick={() => void refresh(projectId, true, sessionRequest.current)}
           >
             {t(($) => $.editor.checkpoints.panel.tryAgain)}
           </Button>
-        </div>
+        </ErrorState>
       );
     }
     if (visibleCheckpoints.length === 0 && !publishing) {
       return (
-        <div className="flex min-h-44 flex-col items-center justify-center text-center">
-          <ShieldCheck className="size-7 text-muted-foreground" />
-          <p className="mt-3 text-sm font-medium">{t(($) => $.editor.checkpoints.panel.empty)}</p>
-          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-            {t(($) => $.editor.checkpoints.panel.emptyHint)}
-          </p>
-        </div>
+        <EmptyState
+          className="min-h-44"
+          icon={<ShieldCheck className="size-7 text-muted-foreground" />}
+          title={t(($) => $.editor.checkpoints.panel.empty)}
+          description={t(($) => $.editor.checkpoints.panel.emptyHint)}
+        />
       );
     }
     return (
@@ -1295,13 +1263,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
               aria-hidden
               className="absolute left-[14px] top-[18px] z-10 size-2.5 rounded-full border-2 border-dashed border-primary/60 bg-popover"
             />
-            <output className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2
-                className="size-3.5 animate-spin motion-reduce:animate-none"
-                aria-hidden
-              />
-              {t(($) => $.editor.checkpoints.panel.publishing)}
-            </output>
+            <LoadingState size="compact" label={t(($) => $.editor.checkpoints.panel.publishing)} />
           </li>
         ) : null}
         {visibleCheckpoints.map((checkpoint) => (
@@ -1345,31 +1307,25 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     }
     if (inspectionLoading) {
       return (
-        <output className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2
-            className="size-3.5 animate-spin motion-reduce:animate-none"
-            aria-hidden
-          />
-          {t(($) => $.editor.checkpoints.storage.reading)}
-        </output>
+        <LoadingState size="compact" label={t(($) => $.editor.checkpoints.storage.reading)} />
       );
     }
     if (inspectionFailed) {
       return (
-        <div>
-          <p className="text-xs text-destructive" role="alert">
-            {t(($) => $.editor.checkpoints.storage.readFailed)}
-          </p>
+        <ErrorState
+          size="compact"
+          className="gap-2"
+          message={t(($) => $.editor.checkpoints.storage.readFailed)}
+        >
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="mt-2"
             onClick={() => loadInspection(projectId, sessionRequest.current)}
           >
             {t(($) => $.editor.checkpoints.storage.tryAgain)}
           </Button>
-        </div>
+        </ErrorState>
       );
     }
     if (!storePath) {
@@ -1524,7 +1480,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
           onClick={() => void exportArchive()}
         >
           {busyAction === "export" ? (
-            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+            <Spinner size="sm" />
           ) : (
             <Download className="size-3.5" />
           )}
@@ -1537,7 +1493,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
           onClick={() => void importArchive()}
         >
           {busyAction === "import" ? (
-            <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
+            <Spinner size="sm" />
           ) : (
             <FileUp className="size-3.5" />
           )}
@@ -1689,9 +1645,9 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
         <p className="min-w-0 flex-1 text-xs text-muted-foreground">
           {t(($) => $.editor.checkpoints.panel.summary)}
         </p>
-        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+        <Badge variant="primaryGhost" size="sm">
           {t(($) => $.editor.checkpoints.panel.sourceOnly)}
-        </span>
+        </Badge>
       </div>
       {captureNotice ? (
         <p

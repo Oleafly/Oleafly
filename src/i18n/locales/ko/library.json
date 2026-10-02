@@ -74,7 +74,42 @@
     },
     "openFolder": "폴더 열기",
     "openFolderShortcut": "폴더 열기({{shortcut}})",
-    "createFirstProject": "새 프로젝트 만들기"
+    "createFirstProject": "새 프로젝트 만들기",
+    "sortBy": "정렬 기준",
+    "customFilter": "사용자 지정",
+    "search": {
+      "fields": {
+        "is": "상태",
+        "has": "있음",
+        "no": "없음",
+        "color": "표지 색상",
+        "opened": "마지막으로 연 날짜",
+        "in": "검색 대상",
+        "sort": "정렬"
+      },
+      "values": {
+        "linkedFolder": "연결된 폴더",
+        "forked": "포크됨",
+        "exports": "내보내기",
+        "today": "오늘",
+        "yesterday": "어제",
+        "id": "ID",
+        "mainFile": "주 파일",
+        "folderPath": "폴더 경로"
+      },
+      "sorts": {
+        "activityDesc": "최근 활동순",
+        "activityAsc": "오래된 활동순",
+        "updatedDesc": "최근 수정순",
+        "updatedAsc": "오래된 수정순",
+        "createdDesc": "최신순",
+        "createdAsc": "오래된순",
+        "openedDesc": "최근에 연 순",
+        "openedAsc": "오래전에 연 순",
+        "nameAsc": "이름 오름차순",
+        "nameDesc": "이름 내림차순"
+      }
+    }
   },
   "projects": {
     "open": "{{name}} 열기",

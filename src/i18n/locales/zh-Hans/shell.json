@@ -433,7 +433,7 @@
       "references": "参考文献"
     },
     "label": "搜索",
-    "noMatches": "未找到匹配项。",
+    "noMatches": "未找到匹配项",
     "openReferences": "打开此项目的参考文献。",
     "placeholder": "搜索项目、文档，或输入 / 执行命令…",
     "placeholderDocuments": "在文档中搜索…",
@@ -662,6 +662,12 @@
         "description": "显示应用内浏览器（含侧边栏开关和快捷方式），并允许 AI 通过 computer use 操控浏览器。仍处于测试阶段，默认关闭；关闭时不会显示浏览器按钮，AI 也没有浏览器工具。",
         "label": "网页浏览器"
       }
+    },
+    "footer": {
+      "followOnX": "在 X 上关注",
+      "joinDiscord": "加入 Discord 社区",
+      "releaseNotes": "查看发行说明",
+      "viewSource": "查看源代码"
     },
     "general": {
       "dialect": {

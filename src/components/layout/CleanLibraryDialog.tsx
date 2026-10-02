@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BookOpenCheck, FileDiff, Loader2, Sparkles } from "lucide-react";
+import { BookOpenCheck, FileDiff, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,6 +23,8 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ToolPane, ToolPreviewSurface, ToolSplitView, ToolStatus } from "@/components/tools/ToolWorkspace";
 import { i18n } from "@/i18n";
+import { Spinner } from "@/components/ui/spinner";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 function ActionRow({ action }: { action: CleanAction }) {
   const text = (() => {
@@ -225,7 +227,7 @@ export function CleanLibraryDialog({
                 {outcome ? <div className="space-y-4">
                   <p className="text-sm">{t(($) => $.references.cleanLibrary.entriesKept, { kept: outcome.entriesAfter, total: outcome.entriesBefore })}</p>
                   <div className="space-y-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t(($) => $.references.cleanLibrary.changes)}</h3>
+                    <SectionHeading>{t(($) => $.references.cleanLibrary.changes)}</SectionHeading>
                     <ul className="space-y-3" data-testid="clean-library-actions">
                       {outcome.actions.map((action, index) => (
                         // biome-ignore lint/suspicious/noArrayIndexKey: static preview rows
@@ -257,7 +259,7 @@ export function CleanLibraryDialog({
           <ToolStatus state={error ? "error" : busy ? "busy" : "ready"}>{error ? t(($) => $.references.cleanLibrary.statusAttention) : busy ? t(($) => $.references.cleanLibrary.statusWorking) : outcome ? t(($) => $.references.cleanLibrary.statusPreviewReady) : t(($) => $.references.cleanLibrary.statusReady)}</ToolStatus>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" variant="outline" data-testid="clean-library-dry-run" disabled={busy || !target} onClick={() => void run(false)}>
-              {busy && !outcome && <Loader2 aria-hidden className="size-3.5 animate-spin" />}
+              {busy && !outcome && <Spinner size="sm" />}
               {outcome ? t(($) => $.references.cleanLibrary.refreshPreview) : t(($) => $.references.cleanLibrary.previewChanges)}
             </Button>
             {outcome && <Button type="button" size="sm" data-testid="clean-library-apply" disabled={busy || outcome.changedFiles.length === 0} onClick={() => void run(true)}><Sparkles aria-hidden className="size-3.5" /> {t(($) => $.references.cleanLibrary.apply)}</Button>}

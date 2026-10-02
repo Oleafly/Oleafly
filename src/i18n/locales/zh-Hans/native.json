@@ -6,6 +6,9 @@
     "reloadViews": "重新加载视图",
     "restartApp": "重启应用",
     "quit": "退出 Oleafly",
+    "hide": "隐藏 Oleafly",
+    "hideOthers": "隐藏其他",
+    "showAll": "全部显示",
     "edit": "编辑",
     "undo": "撤销",
     "redo": "重做",
@@ -19,7 +22,15 @@
     "file": "文件",
     "openFolder": "打开文件夹…",
     "openRecent": "最近打开",
-    "noRecent": "没有最近的项目"
+    "noRecent": "没有最近的项目",
+    "window": "窗口",
+    "minimize": "最小化",
+    "fullscreen": "切换全屏",
+    "bringAllToFront": "前置全部窗口",
+    "newTab": "新建标签页",
+    "openLocation": "打开位置…",
+    "closeTab": "关闭标签页",
+    "reloadPage": "重新加载页面"
   },
   "window": {
     "browser": "Oleafly 浏览器",

@@ -1,3 +1,4 @@
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { cn } from "@/lib/utils";
 
 export function SettingsSwitchIndicator({ checked }: Readonly<{ checked: boolean }>) {
@@ -24,18 +25,23 @@ export function SettingsToggleRow({
   description,
   checked,
   onChange,
+  ariaLabel,
+  testId,
 }: Readonly<{
   label: string;
   description?: string;
   checked: boolean;
   onChange: (value: boolean) => void;
+  ariaLabel?: string;
+  testId?: string;
 }>) {
   return (
-    <div
+    <SettingsRow
       role="switch"
       aria-checked={checked}
-      aria-label={label}
+      aria-label={ariaLabel ?? label}
       tabIndex={0}
+      testId={testId}
       onClick={() => onChange(!checked)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -43,15 +49,10 @@ export function SettingsToggleRow({
           onChange(!checked);
         }
       }}
-      className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card p-3 transition-colors hover:bg-accent focus-visible:border-ring focus-visible:bg-accent"
-    >
-      <div>
-        <div className="text-sm font-medium">{label}</div>
-        {description ? (
-          <div className="text-xs text-muted-foreground">{description}</div>
-        ) : null}
-      </div>
-      <SettingsSwitchIndicator checked={checked} />
-    </div>
+      className="cursor-pointer transition-colors hover:bg-accent focus-visible:border-ring focus-visible:bg-accent"
+      label={label}
+      description={description}
+      control={<SettingsSwitchIndicator checked={checked} />}
+    />
   );
 }

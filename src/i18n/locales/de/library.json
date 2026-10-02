@@ -75,7 +75,42 @@
     },
     "openFolder": "Ordner öffnen",
     "openFolderShortcut": "Ordner öffnen ({{shortcut}})",
-    "createFirstProject": "Neues Projekt anlegen"
+    "createFirstProject": "Neues Projekt anlegen",
+    "sortBy": "Sortieren nach",
+    "customFilter": "Benutzerdefiniert",
+    "search": {
+      "fields": {
+        "is": "Status",
+        "has": "Mit",
+        "no": "Ohne",
+        "color": "Farbe des Deckblatts",
+        "opened": "Zuletzt geöffnet",
+        "in": "Suchen in",
+        "sort": "Sortierung"
+      },
+      "values": {
+        "linkedFolder": "Verknüpfter Ordner",
+        "forked": "Geforkt",
+        "exports": "Exporte",
+        "today": "Heute",
+        "yesterday": "Gestern",
+        "id": "ID",
+        "mainFile": "Hauptdatei",
+        "folderPath": "Ordnerpfad"
+      },
+      "sorts": {
+        "activityDesc": "Neueste Aktivität",
+        "activityAsc": "Älteste Aktivität",
+        "updatedDesc": "Zuletzt geändert",
+        "updatedAsc": "Am längsten unverändert",
+        "createdDesc": "Neueste",
+        "createdAsc": "Älteste",
+        "openedDesc": "Zuletzt geöffnet",
+        "openedAsc": "Am längsten nicht geöffnet",
+        "nameAsc": "Name, A bis Z",
+        "nameDesc": "Name, Z bis A"
+      }
+    }
   },
   "projects": {
     "open": "{{name}} öffnen",

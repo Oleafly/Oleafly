@@ -226,6 +226,7 @@
       },
       "noChanges": "Bez zmian",
       "refresh": "Odśwież",
+      "refreshThrottled": "Odświeżono przed chwilą. Spróbuj ponownie za {{seconds}} s",
       "restore": "Przywróć domyślne",
       "restoreTooltip": "Dodaj ponownie wbudowane modele tego dostawcy",
       "title": "Modele",
@@ -492,11 +493,6 @@
           "none": "Nie znaleziono folderów innych agentów"
         },
         "title": "Udostępnij umiejętności innym agentom na tym komputerze"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Dodana",
@@ -1569,6 +1565,7 @@
     },
     "error": {
       "conflict": "Już przypisane do {{action}}.",
+      "nativeKey": "Skróty menu nie obsługują tego klawisza. Działają litery, cyfry i klawisze funkcyjne.",
       "reserved": "{{shortcut}} jest zarezerwowane przez system operacyjny."
     },
     "intro": "Dostosuj skróty aplikacji i przejrzyj kombinacje klawiszy wbudowane w edytor.",
@@ -1576,6 +1573,8 @@
       "closeWindow": "Zamknij okno",
       "copy": "Kopiuj",
       "cut": "Wytnij",
+      "hide": "Ukryj aplikację",
+      "minimize": "Minimalizuj okno",
       "paste": "Wklej",
       "quit": "Zakończ",
       "save": "Zapisz",

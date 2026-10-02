@@ -226,6 +226,7 @@
       },
       "noChanges": "Keine Änderungen",
       "refresh": "Auffrischen",
+      "refreshThrottled": "Gerade aufgefrischt. In {{seconds}} s erneut versuchen",
       "restore": "Standards wiederherstellen",
       "restoreTooltip": "Die eingebauten Modelle dieses Anbieters erneut hinzufügen",
       "title": "Modelle",
@@ -486,11 +487,6 @@
           "none": "Es wurden keine anderen Agentenordner gefunden"
         },
         "title": "Skills mit anderen Agenten auf diesem Computer teilen"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Hinzugefügt",
@@ -1537,6 +1533,7 @@
     },
     "error": {
       "conflict": "Bereits {{action}} zugewiesen.",
+      "nativeKey": "Menükurzbefehle unterstützen diese Taste nicht. Buchstaben, Ziffern und Funktionstasten funktionieren.",
       "reserved": "{{shortcut}} ist vom Betriebssystem belegt."
     },
     "intro": "Passen Sie die Kürzel der Anwendung an und sehen Sie sich die Tastenkombinationen des Editors an.",
@@ -1544,6 +1541,8 @@
       "closeWindow": "Fenster schließen",
       "copy": "Kopieren",
       "cut": "Ausschneiden",
+      "hide": "App ausblenden",
+      "minimize": "Fenster minimieren",
       "paste": "Einfügen",
       "quit": "Beenden",
       "save": "Speichern",

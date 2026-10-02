@@ -18,16 +18,19 @@ import {
   type Layout,
   type PanelImperativeHandle,
 } from "react-resizable-panels";
-import { FileText, Loader2, Search } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import { searchDocs, type SearchHit } from "@/lib/tauri";
+import type { SearchHit } from "@/lib/tauri";
+import { useDocSearch } from "@/hooks/use-doc-search";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { registry } from "@oleafly/registry";
 import { FileTree } from "@/components/files/FileTree";
 import { SidebarViews } from "@/components/layout/WorkspaceControls";
+import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
+import { basename } from "@/lib/path-utils";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,6 +45,7 @@ import {
   useSeparatorKeyboard,
   type PanelLimits,
 } from "@/lib/panel-layout";
+import { Spinner } from "@/components/ui/spinner";
 
 const DocumentOutline = lazy(() =>
   import("@/components/layout/DocumentOutline").then((module) => ({
@@ -61,11 +65,6 @@ const OUTLINE_PANEL = "document-outline-v";
 const STRUCTURE_PANEL = "project-structure-v";
 const FILLER_PANEL = "explorer-filler-v";
 const EXPLORER_PANELS = [SOURCE_PANEL, OUTLINE_PANEL, STRUCTURE_PANEL, FILLER_PANEL];
-
-function basename(p: string) {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? p.slice(i + 1) : p;
-}
 
 export function reclaimExplorerFillerLayout(
   layout: readonly number[],
@@ -95,27 +94,8 @@ export function ProjectSearch() {
   const projectId = useFilesStore((s) => s.projectId);
   const openFile = useFilesStore((s) => s.openFile);
   const [q, setQ] = useState("");
-  const [hits, setHits] = useState<SearchHit[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { hits, loading } = useDocSearch(q, { projectId });
   const searchInputRef = useInitialFocus<HTMLInputElement>();
-
-  useEffect(() => {
-    if (!q.trim()) {
-      setHits([]);
-      return;
-    }
-    setLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        const all = await searchDocs(q);
-        setHits(projectId ? all.filter((h) => h.project_id === projectId) : all);
-      } catch {
-        setHits([]);
-      }
-      setLoading(false);
-    }, 200);
-    return () => clearTimeout(t);
-  }, [q, projectId]);
 
   const open = async (hit: SearchHit) => {
     useSettingsStore.getState().revealEditor();
@@ -125,12 +105,7 @@ export function ProjectSearch() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-9 items-center gap-2 border-b border-sidebar-border px-3">
-        <Search className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          {t(($) => $.shell.projectSearch.title)}
-        </span>
-      </div>
+      <SidebarPanelHeader icon={Search} title={t(($) => $.shell.projectSearch.title)} />
       <div className="border-b border-sidebar-border p-2">
         <Input
           ref={searchInputRef}
@@ -473,7 +448,7 @@ function SidebarSectionHandle({
 function SidebarPanelFallback() {
   return (
     <div className="flex h-full items-center justify-center">
-      <Loader2 className="size-4 animate-spin text-muted-foreground" />
+      <Spinner className="text-muted-foreground" />
     </div>
   );
 }

@@ -226,6 +226,7 @@
       },
       "noChanges": "无更改",
       "refresh": "刷新",
+      "refreshThrottled": "刚刚已刷新。请在 {{seconds}} 秒后重试",
       "restore": "恢复默认",
       "restoreTooltip": "重新添加该提供商的内置模型",
       "title": "模型",
@@ -483,11 +484,6 @@
           "none": "未找到其他代理文件夹"
         },
         "title": "与此计算机上的其他代理共享技能"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "已添加",
@@ -1521,6 +1517,7 @@
     },
     "error": {
       "conflict": "已分配给{{action}}。",
+      "nativeKey": "菜单快捷键不能使用此键。可以使用字母、数字和功能键。",
       "reserved": "{{shortcut}} 已被操作系统保留。"
     },
     "intro": "自定义应用快捷键，并查看编辑器内置的组合键。",
@@ -1528,6 +1525,8 @@
       "closeWindow": "关闭窗口",
       "copy": "复制",
       "cut": "剪切",
+      "hide": "隐藏应用",
+      "minimize": "最小化窗口",
       "paste": "粘贴",
       "quit": "退出",
       "save": "保存",

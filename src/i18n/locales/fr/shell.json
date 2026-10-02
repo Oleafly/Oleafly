@@ -439,7 +439,7 @@
       "references": "Références"
     },
     "label": "Recherche",
-    "noMatches": "Aucun résultat.",
+    "noMatches": "Aucun résultat",
     "openReferences": "Ouvrir les références de ce projet",
     "placeholder": "Cherchez un projet, un document, ou tapez / pour les commandes…",
     "placeholderDocuments": "Rechercher dans les documents…",
@@ -692,6 +692,12 @@
         "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta ; une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
         "label": "Navigateur web"
       }
+    },
+    "footer": {
+      "followOnX": "Suivre sur X",
+      "joinDiscord": "Rejoindre la communauté Discord",
+      "releaseNotes": "Voir les notes de version",
+      "viewSource": "Voir le code source"
     },
     "general": {
       "dialect": {

@@ -3,6 +3,7 @@ import { Command } from "cmdk";
 import {
   Bookmark,
   FileText,
+  Ghost,
   Link2,
   Moon,
   NotebookText,
@@ -26,7 +27,8 @@ import { useFilesStore } from "@/store/files";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useTheme } from "@/lib/theme";
-import { searchDocs, type ProjectInfo, type SearchHit } from "@/lib/tauri";
+import type { ProjectInfo, SearchHit } from "@/lib/tauri";
+import { useDocSearch } from "@/hooks/use-doc-search";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { i18n } from "@/i18n";
 import { gotoLine } from "@/components/editor/cm/controller";
@@ -35,11 +37,9 @@ import { objectKey } from "@/lib/react-key";
 import { Kbd } from "@/components/ui/kbd";
 import { useFavoritesStore } from "@/store/favorites";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
-
-function basename(p: string) {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? p.slice(i + 1) : p;
-}
+import { basename } from "@/lib/path-utils";
+import { useModalLayer } from "@/components/ui/use-modal-accessibility";
+import { EmptyState } from "@/components/ui/empty";
 
 function searchableDate(timestamp: number) {
   if (!timestamp) return "";
@@ -242,6 +242,7 @@ export function parse(
 
 export function SearchOmnibar() {
   const open = useSettingsStore((s) => s.searchOpen);
+  useModalLayer(open);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
@@ -258,8 +259,6 @@ export function SearchOmnibar() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation(["common", "shell"]);
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<SearchHit[]>([]);
-  const [loading, setLoading] = useState(false);
 
   const ctx = useMemo<AppContext>(
     () => ({ projectId, projectKind, theme, latexToolsEnabled: latexTools }),
@@ -281,6 +280,9 @@ export function SearchOmnibar() {
     [query, slashEntries],
   );
   const trimmed = term.trim();
+  const { hits, loading } = useDocSearch(trimmed, {
+    enabled: mode === "all" || mode === "docs",
+  });
   const slashSuggestions = useMemo(
     () =>
       mode === "help"
@@ -294,25 +296,6 @@ export function SearchOmnibar() {
   useEffect(() => {
     if (open) void refreshProjects().catch(() => {});
   }, [open, refreshProjects]);
-
-  useEffect(() => {
-    const wantDocs = mode === "all" || mode === "docs";
-    if (!wantDocs || !trimmed) {
-      setHits([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        setHits(await searchDocs(trimmed));
-      } catch {
-        setHits([]);
-      }
-      setLoading(false);
-    }, 200);
-    return () => clearTimeout(t);
-  }, [trimmed, mode]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -342,7 +325,6 @@ export function SearchOmnibar() {
   const close = () => {
     setSearchOpen(false);
     setQuery("");
-    setHits([]);
   };
 
   const matchedProjects = useMemo(() => {
@@ -402,8 +384,8 @@ export function SearchOmnibar() {
       onOpenChange={(v) => (v ? setSearchOpen(true) : close())}
       label={t(($) => $.shell.omnibar.label)}
       shouldFilter={false}
-      overlayClassName="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
-      className="fixed left-1/2 top-[18%] z-50 w-[min(660px,92vw)] -translate-x-1/2"
+      overlayClassName="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm"
+      className="fixed left-1/2 top-[18%] z-[90] w-[min(660px,92vw)] -translate-x-1/2"
     >
       <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">
         <div className="flex items-center gap-2 border-b border-border px-3">
@@ -594,7 +576,14 @@ export function SearchOmnibar() {
             !loading &&
             hits.length === 0 &&
             matchedProjects.length === 0 &&
-            commands.length === 0 && <Hint>{t(($) => $.shell.omnibar.noMatches)}</Hint>}
+            commands.length === 0 && (
+              <EmptyState
+                className="px-3 py-6"
+                icon={<Ghost aria-hidden className="size-6 text-muted-foreground" />}
+                title={t(($) => $.shell.omnibar.noMatches)}
+                testId="omnibar-no-matches"
+              />
+            )}
         </Command.List>
 
         <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">

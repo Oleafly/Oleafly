@@ -2,6 +2,7 @@ import type { DefKind, Edit, FileSymbols, ProjectIndex, RenamePlan, Sym, UseKind
 import { parseFile, maskComments } from "./parse-file";
 import { labelScope, referenceTargetFile } from "@/lib/project-intelligence/resolution";
 import { engineForPath } from "@/lib/project-intelligence/source";
+import { escapeRegExp } from "@/lib/regexp";
 
 const DEF_KINDS = new Set<string>(["label", "macro", "bibentry", "theorem", "glossary", "environment", "section", "file"]);
 const isDefKind = (k: string): k is DefKind => DEF_KINDS.has(k);
@@ -117,7 +118,7 @@ function collectMacroUses(
   const macroNames = [...new Set(defs.filter((d) => d.kind === "macro").map((d) => d.name))];
   if (macroNames.length === 0) return;
   macroNames.sort((a, b) => b.length - a.length);
-  const alt = macroNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)).join("|");
+  const alt = macroNames.map(escapeRegExp).join("|");
   const macroDefSpans = macroDefinitionSpans(defs);
   for (const [path, rawText] of Object.entries(files)) {
     if (/\.(?:typ|md|markdown)$/i.test(path)) continue;

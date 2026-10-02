@@ -1,12 +1,11 @@
 import { forwardRef, useMemo } from "react";
 import { tokenizeComposer, type ComposerTokenKind } from "@/lib/composer-tokens";
+import { INLINE_TOKEN_BLUE, INLINE_TOKEN_TEAL } from "@/components/ui/inline-token";
 import { cn } from "@/lib/utils";
 
-export const SKILL_TOKEN_CLASS =
-  "rounded-[4px] -mx-0.5 px-0.5 bg-blue-500/15 text-blue-700 dark:bg-blue-400/20 dark:text-blue-300";
+export const SKILL_TOKEN_CLASS = INLINE_TOKEN_BLUE;
 
-export const MENTION_TOKEN_CLASS =
-  "rounded-[4px] -mx-0.5 px-0.5 bg-teal-500/15 text-teal-700 dark:bg-teal-400/20 dark:text-teal-300";
+export const MENTION_TOKEN_CLASS = INLINE_TOKEN_TEAL;
 
 export function composerTokenClass(kind: ComposerTokenKind): string | undefined {
   if (kind === "skill") return SKILL_TOKEN_CLASS;

@@ -51,5 +51,32 @@
   },
   "toast": {
     "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Suggerimenti di ricerca",
+    "exclude": "Escludi",
+    "excludeField": "Escludi {{field}}",
+    "dateHint": "Le date si scrivono come 2026-10-02 o @today-7d. Aggiungi >, >=, < o <= per confrontare, oppure scrivi un intervallo come 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Questa parentesi ( non viene mai chiusa",
+      "unexpectedClose": "Questa parentesi ) non ha una ( corrispondente",
+      "danglingOperator": "Manca un termine di ricerca per {{operator}}",
+      "tooDeep": "I gruppi possono essere annidati al massimo su 5 livelli",
+      "emptyGroup": "Queste parentesi sono vuote",
+      "unterminatedQuote": "Queste virgolette non vengono mai chiuse",
+      "unknownQualifier": "Filtro sconosciuto: {{key}}",
+      "missingValue": "Aggiungi un valore dopo {{key}}:",
+      "invalidValue": "{{value}} non è un valore valido per {{key}}",
+      "invalidDate": "{{value}} non è una data. Prova 2026-10-02 o @today-7d",
+      "invalidNumber": "{{value}} non è un numero",
+      "sortNegated": "{{key}} non può essere escluso"
+    }
   }
 }

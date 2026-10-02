@@ -11,6 +11,8 @@ import {
   type PanelLimits,
 } from "@/lib/panel-layout";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 function useDesktopSplit(): boolean {
   const [desktop, setDesktop] = useState(() =>
@@ -139,8 +141,8 @@ export function ToolPane({ title, badge, actions, footer, children, className }:
     <section aria-label={title} className={cn("flex h-full min-h-80 min-w-0 flex-col border-b last:border-0 md:min-h-0 md:border-b-0", className)}>
       <div className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
-          {badge && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{badge}</span>}
+          <SectionHeading as="h2">{title}</SectionHeading>
+          {badge && <Badge variant="muted" size="sm">{badge}</Badge>}
         </div>
         {actions}
       </div>

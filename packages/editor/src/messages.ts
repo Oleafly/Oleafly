@@ -1,3 +1,5 @@
+import { createTranslatorSlot, type Translator } from "@oleafly/i18n-contract";
+
 export const EDITOR_MESSAGE_KEYS = [
   "search.panel",
   "search.toggleReplace",
@@ -312,22 +314,10 @@ export const EDITOR_MESSAGE_KEYS = [
 
 export type EditorMessageKey = (typeof EDITOR_MESSAGE_KEYS)[number];
 
-export type EditorTranslator = (
-  key: EditorMessageKey,
-  params?: Record<string, string | number>,
-) => string;
+export type EditorTranslator = Translator<EditorMessageKey>;
 
-const echoKey: EditorTranslator = (key) => key;
+const editorTranslator = createTranslatorSlot<EditorMessageKey>();
 
-let installed: EditorTranslator = echoKey;
+export const setEditorTranslator = editorTranslator.install;
 
-export function setEditorTranslator(next: EditorTranslator | null): void {
-  installed = next ?? echoKey;
-}
-
-export function editorMessage(
-  key: EditorMessageKey,
-  params?: Record<string, string | number>,
-): string {
-  return installed(key, params);
-}
+export const editorMessage = editorTranslator.translate;

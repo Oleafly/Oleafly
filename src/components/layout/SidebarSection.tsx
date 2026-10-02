@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,6 +7,44 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+
+export const SIDEBAR_TITLE_CLASS =
+  "text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75";
+
+export function SidebarPanelHeader({
+  icon: Icon,
+  title,
+  adornment,
+  children,
+  className,
+}: Readonly<{
+  icon: LucideIcon;
+  title: string;
+  adornment?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+}>) {
+  return (
+    <header
+      className={cn(
+        "flex h-9 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-2.5",
+        className,
+      )}
+    >
+      <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      <h2 title={title} className={cn("min-w-0 truncate", SIDEBAR_TITLE_CLASS)}>
+        {title}
+      </h2>
+      {adornment}
+      {children ? (
+        <>
+          <span aria-hidden className="flex-1" />
+          {children}
+        </>
+      ) : null}
+    </header>
+  );
+}
 
 /**
  * Shared Explorer and Source Control section chrome. The caller owns the
@@ -71,7 +109,10 @@ export function SidebarSection({
           aria-expanded={open}
           aria-controls={contentId}
           onClick={() => onOpenChange(!open)}
-          className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75"
+          className={cn(
+            "flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left [&_svg]:shrink-0",
+            SIDEBAR_TITLE_CLASS,
+          )}
         >
           {open ? (
             <ChevronDown aria-hidden className="size-3 shrink-0" />
@@ -79,7 +120,7 @@ export function SidebarSection({
             <ChevronRight aria-hidden className="size-3 shrink-0" />
           )}
           {icon}
-          <span className="truncate">{title}</span>
+          <span title={title} className="truncate">{title}</span>
           {typeof count === "number" ? (
             <output
               aria-label={countLabel}

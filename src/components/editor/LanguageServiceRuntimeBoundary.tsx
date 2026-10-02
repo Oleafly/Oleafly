@@ -12,6 +12,7 @@ import {
 } from "react";
 import { logError } from "@/lib/log";
 import { randomFraction } from "@/lib/random";
+import { createEmitter } from "@/lib/emitter";
 
 export interface LanguageServiceRuntimeModule {
   LanguageServiceRuntime: ComponentType;
@@ -115,26 +116,17 @@ export function useSilentRetry({
 
 let runtimeUnavailable = false;
 let setupOffer: (() => void) | null = null;
-const runtimeListeners = new Set<() => void>();
-
-function notifyRuntimeListeners(): void {
-  for (const listener of runtimeListeners) listener();
-}
+const runtimeChanged = createEmitter();
 
 function setRuntimeUnavailable(value: boolean): void {
   if (runtimeUnavailable === value) return;
   runtimeUnavailable = value;
-  notifyRuntimeListeners();
-}
-
-function subscribeRuntimeAvailability(listener: () => void): () => void {
-  runtimeListeners.add(listener);
-  return () => runtimeListeners.delete(listener);
+  runtimeChanged.emit();
 }
 
 export function useLanguageServiceRuntimeUnavailable(): boolean {
   return useSyncExternalStore(
-    subscribeRuntimeAvailability,
+    runtimeChanged.subscribe,
     () => runtimeUnavailable,
     () => false,
   );
@@ -142,17 +134,17 @@ export function useLanguageServiceRuntimeUnavailable(): boolean {
 
 export function offerLanguageServiceSetup(open: () => void): () => void {
   setupOffer = open;
-  notifyRuntimeListeners();
+  runtimeChanged.emit();
   return () => {
     if (setupOffer !== open) return;
     setupOffer = null;
-    notifyRuntimeListeners();
+    runtimeChanged.emit();
   };
 }
 
 export function useLanguageServiceSetupOffer(): (() => void) | null {
   return useSyncExternalStore(
-    subscribeRuntimeAvailability,
+    runtimeChanged.subscribe,
     () => setupOffer,
     () => null,
   );

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
+import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import { cancelQuitFlush, confirmQuitDuringInstall } from "@/lib/tauri";
@@ -26,21 +26,9 @@ export function TinytexGuards() {
   const waitNoticeOpen = useEngineStore((s) => s.installWaitNoticeOpen);
   const closeWaitNotice = useEngineStore((s) => s.closeInstallWaitNotice);
 
-  useEffect(() => {
-    if (!isTauri()) return;
-    const release = claimInstallQuitRequests();
-    let disposed = false;
-    let unlisten: (() => void) | null = null;
-    void listen(INSTALL_QUIT_BLOCKED, () => setQuitAsked(true)).then((stop) => {
-      if (disposed) stop();
-      else unlisten = stop;
-    });
-    return () => {
-      disposed = true;
-      release();
-      unlisten?.();
-    };
-  }, []);
+  const native = isTauri();
+  useEffect(() => (native ? claimInstallQuitRequests() : undefined), [native]);
+  useTauriEvent(INSTALL_QUIT_BLOCKED, () => setQuitAsked(true), native);
 
   // The install finished (or failed) while the dialog was up: quitting is no
   // longer destructive, so stop asking — and re-arm the quit flush gate. The

@@ -6,6 +6,9 @@
     "reloadViews": "Reîncarcă vizualizările",
     "restartApp": "Repornește aplicația",
     "quit": "Ieși din Oleafly",
+    "hide": "Ascunde Oleafly",
+    "hideOthers": "Ascunde celelalte",
+    "showAll": "Afișează tot",
     "edit": "Editare",
     "undo": "Anulează",
     "redo": "Refă",
@@ -19,7 +22,15 @@
     "file": "Fișier",
     "openFolder": "Deschide un folder…",
     "openRecent": "Deschide recente",
-    "noRecent": "Niciun proiect recent"
+    "noRecent": "Niciun proiect recent",
+    "window": "Fereastră",
+    "minimize": "Minimizează",
+    "fullscreen": "Comută ecranul complet",
+    "bringAllToFront": "Adu totul în față",
+    "newTab": "Filă nouă",
+    "openLocation": "Deschide o adresă…",
+    "closeTab": "Închide fila",
+    "reloadPage": "Reîncarcă pagina"
   },
   "window": {
     "browser": "Browser Oleafly",

@@ -436,7 +436,7 @@
       "references": "Kaynaklar"
     },
     "label": "Ara",
-    "noMatches": "Eşleşme bulunamadı.",
+    "noMatches": "Eşleşme bulunamadı",
     "openReferences": "Bu projenin kaynaklarını aç",
     "placeholder": "Projelerde veya belgelerde arayın ya da komutlar için / yazın…",
     "placeholderDocuments": "Belgelerin içinde arayın…",
@@ -677,6 +677,12 @@
         "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır; kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
         "label": "Web tarayıcısı"
       }
+    },
+    "footer": {
+      "followOnX": "X'te takip edin",
+      "joinDiscord": "Discord topluluğuna katılın",
+      "releaseNotes": "Sürüm notlarını görüntüleyin",
+      "viewSource": "Kaynak kodu görüntüleyin"
     },
     "general": {
       "dialect": {

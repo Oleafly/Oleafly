@@ -124,7 +124,11 @@ test("project docks start closed and their toggles are accessible from the top t
     return action.getAttribute('aria-label') || action.textContent.trim();
   })()`);
   expect(terminalLabel).toMatch(/^Show terminal \(Ctrl(?:\+)?`\)$/u);
-  expect(browserLabel).toMatch(/^Open browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u);
+  expect(browserLabel).toMatch(
+    process.platform === "linux"
+      ? /^Open browser \(Ctrl\+Alt\+B\)$/u
+      : /^Open browser \(Ctrl(?:\+Shift\+|⇧)B\)$/u,
+  );
   if (!directBrowser) await tauriPage.press('body', 'Escape');
 });
 

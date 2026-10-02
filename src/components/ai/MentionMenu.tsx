@@ -10,6 +10,7 @@ import { Bot, File, Folder } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { DelegationTarget } from "@/lib/agent-mentions";
 import { mentionInsertText, normalizeMentionPath } from "@/lib/composer-tokens";
+import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
 
 export interface MentionEntry {
@@ -76,11 +77,6 @@ export function buildMentionEntries(
   return entries;
 }
 
-export function mentionBasename(path: string): string {
-  const index = path.lastIndexOf("/");
-  return index < 0 ? path : path.slice(index + 1);
-}
-
 function isSubsequence(haystack: string, needle: string): boolean {
   let cursor = 0;
   for (const character of needle) {
@@ -104,7 +100,7 @@ export function filterMentionEntries(
       if (!isSubsequence(path, needle)) continue;
       ranked.push({
         entry,
-        rank: mentionBasename(path).startsWith(needle) ? 0 : 1,
+        rank: basename(path).startsWith(needle) ? 0 : 1,
       });
       continue;
     }
@@ -256,8 +252,8 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
             );
           }
           const { entry } = item;
-          const basename = mentionBasename(entry.path);
-          const directory = entry.path.slice(0, entry.path.length - basename.length);
+          const name = basename(entry.path);
+          const directory = entry.path.slice(0, entry.path.length - name.length);
           const Icon = entry.isDir ? Folder : File;
           return (
             <div key={item.key}>
@@ -282,7 +278,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
                   {directory && (
                     <span className="text-muted-foreground">{directory}</span>
                   )}
-                  <span className="font-medium">{basename}</span>
+                  <span className="font-medium">{name}</span>
                   {entry.isDir && <span className="text-muted-foreground">/</span>}
                 </span>
               </button>

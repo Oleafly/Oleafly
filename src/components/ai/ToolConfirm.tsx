@@ -10,6 +10,7 @@ import { useFilesStore } from "@/store/files";
 import { isAutoApprovable } from "@/store/mcp-approvals";
 import type { McpApprovalDetails } from "@/lib/mcp-agent-tools";
 import { useDisplayPath, useDisplayText } from "@/lib/display-path";
+import { basename } from "@/lib/path-utils";
 import { toolRisk } from "@oleafly/ai-tools";
 
 export function firstChangedLine(oldText: string, newText: string): number {
@@ -20,11 +21,6 @@ export function firstChangedLine(oldText: string, newText: string): number {
     if ((a[i] ?? "") !== (b[i] ?? "")) return i + 1;
   }
   return 1;
-}
-
-function basename(path: string): string {
-  const i = path.lastIndexOf("/");
-  return i >= 0 ? path.slice(i + 1) : path;
 }
 
 function mcpApprovalDetails(req: ToolApprovalRequest): McpApprovalDetails | null {

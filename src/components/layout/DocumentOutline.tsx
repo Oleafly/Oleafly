@@ -22,11 +22,7 @@ import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { cn } from "@/lib/utils";
-
-function basename(path: string): string {
-  const index = path.lastIndexOf("/");
-  return index >= 0 ? path.slice(index + 1) : path;
-}
+import { basename } from "@/lib/path-utils";
 
 function normalizedHeadingTitle(title: string): string {
   return title.replace(/\s+/gu, " ").trim().toLowerCase();

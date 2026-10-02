@@ -30,7 +30,6 @@ import {
   GitCommitHorizontal,
   GitMerge,
   GitPullRequest,
-  Loader2,
   MoreHorizontal,
   Plus,
   RefreshCw,
@@ -44,6 +43,8 @@ import * as tauri from "@/lib/tauri";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   DropdownMenu,
@@ -63,15 +64,18 @@ import { projectFolderAvailable, reportLocationError } from "@/store/project-ava
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { GithubMenu } from "@/components/layout/GithubMenu";
-import { SidebarSection } from "@/components/layout/SidebarSection";
+import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";
 import {
   consumeSourceControlGraphRequest,
   SOURCE_CONTROL_SHOW_GRAPH_EVENT,
 } from "@/lib/source-control-events";
 import { toGithubWebUrl } from "@/lib/github-url";
 import { describeError } from "@/lib/app-error";
+import { dirname } from "@/lib/path-utils";
 import { cn, isMac, isWindows } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 type GitGraphCommit = GitCommit;
 type ProjectStateResult = { projectState: ProjectStateChanged };
@@ -138,7 +142,11 @@ export function SourceControl() {
   const [restoreCommit, setRestoreCommit] = useState<GitGraphCommit | null>(
     null,
   );
-  const [copiedOid, setCopiedOid] = useState<string | null>(null);
+  const {
+    copiedText: copiedOid,
+    copy: copyCommitOid,
+    reset: resetCopiedOid,
+  } = useCopyStatus({ onError: (error) => setNotice({ ok: false, text: describeError(error) }) });
   const previousProjectId = useRef(projectId);
   const session = useRef(0);
   const refreshRequest = useRef(0);
@@ -163,9 +171,9 @@ export function SourceControl() {
     setBranchFormOpen(false);
     setRestoreCommit(null);
     setAbortMergeOpen(false);
-    setCopiedOid(null);
+    resetCopiedOid();
     setPublishOpen(false);
-  }, [projectId]);
+  }, [projectId, resetCopiedOid]);
   const begin = useCallback(
     (): ActionToken | null =>
       !projectId || useFilesStore.getState().projectId !== projectId
@@ -543,18 +551,6 @@ export function SourceControl() {
       report(token, pushed);
       return pushed;
     });
-  const copyCommitId = async (commit: GitGraphCommit) => {
-    try {
-      await navigator.clipboard.writeText(commit.oid);
-      setCopiedOid(commit.oid);
-      window.setTimeout(
-        () => setCopiedOid((value) => (value === commit.oid ? null : value)),
-        1500,
-      );
-    } catch (error) {
-      setNotice({ ok: false, text: describeError(error) });
-    }
-  };
   const restoreGraphCommit = async () => {
     const commit = restoreCommit;
     const token = begin();
@@ -578,9 +574,7 @@ export function SourceControl() {
       { path: change.path },
     );
     const statusId = `git-status-${change.staged ? "staged" : "working"}-${encodeURIComponent(change.path)}`;
-    const directory = change.path.includes("/")
-      ? change.path.slice(0, change.path.lastIndexOf("/"))
-      : "";
+    const directory = dirname(change.path);
     return (
       <div
         key={`${change.staged ? "staged" : "change"}:${change.path}`}
@@ -748,7 +742,7 @@ export function SourceControl() {
             onClick={() => void grantTrust(lockedRepository === null ? "folder" : "repository")}
           >
             {trusting !== null ? (
-              <Loader2 aria-hidden className="size-3.5 animate-spin motion-reduce:animate-none" />
+              <Spinner size="sm" />
             ) : null}
             {lockedRepository === null
               ? t(($) => $.shell.openedFolder.trust.trustFolder)
@@ -763,7 +757,7 @@ export function SourceControl() {
         <Header branch="" remote={null} busy={busy} onRefresh={refresh} />
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-5 text-center">
           {projectId && !notice ? (
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            <Spinner size="lg" className="text-muted-foreground" />
           ) : (
             <GitBranch className="size-6 text-muted-foreground/60" />
           )}
@@ -799,16 +793,13 @@ export function SourceControl() {
           onRefresh={refresh}
           onPublish={() => setPublishOpen(true)}
         />
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-5 text-center">
-          <GitBranch className="size-8 text-muted-foreground/60" />
-          <div>
-            <p className="text-xs font-medium">
-              {t(($) => $.shell.sourceControl.notInitialized)}
-            </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {t(($) => $.shell.sourceControl.notInitializedHint)}
-            </p>
-          </div>
+        <EmptyState
+          size="compact"
+          className="flex-1 px-5"
+          icon={<GitBranch className="size-8 text-muted-foreground/60" />}
+          title={t(($) => $.shell.sourceControl.notInitialized)}
+          description={t(($) => $.shell.sourceControl.notInitializedHint)}
+        >
           <Button
             size="sm"
             onClick={() =>
@@ -836,7 +827,7 @@ export function SourceControl() {
               {notice.text}
             </p>
           ) : null}
-        </div>
+        </EmptyState>
         <PublishToGitHubDialog
           open={publishOpen}
           onClose={() => setPublishOpen(false)}
@@ -1109,12 +1100,9 @@ export function SourceControl() {
                         {commit.message.split("\n", 1)[0]}
                       </span>
                       {commit.refs?.map((ref) => (
-                        <span
-                          key={ref}
-                          className="shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-1.5 text-[10px] text-primary"
-                        >
+                        <Badge key={ref} variant="primaryGhost" size="sm">
                           {ref.replace(" -> ", " \u2192 ")}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
                     <span className="text-[10px] text-muted-foreground">
@@ -1124,7 +1112,7 @@ export function SourceControl() {
                   <button
                     type="button"
                     aria-label={t(($) => $.shell.sourceControl.copyCommitId)}
-                    onClick={() => void copyCommitId(commit)}
+                    onClick={() => void copyCommitOid(commit.oid)}
                     className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent"
                   >
                     {copiedOid === commit.oid ? (
@@ -1213,7 +1201,7 @@ export function SourceControl() {
                 if (canCommit) void submit("commit");
               }}
             >
-              {busy ? <Loader2 className="animate-spin" /> : <Check />}
+              {busy ? <Spinner /> : <Check />}
               {t(($) => $.shell.sourceControl.commit)}
             </Button>
           </Tooltip>
@@ -1428,12 +1416,7 @@ function Header({
     : "";
   return (
     <>
-      <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-2">
-        <GitBranch className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          {t(($) => $.shell.sourceControl.title)}
-        </span>
-        <span className="ml-auto" />
+      <SidebarPanelHeader icon={GitBranch} title={t(($) => $.shell.sourceControl.title)}>
         {branch ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1567,7 +1550,7 @@ function Header({
             onCopyLink={() => onCopyLink?.(url)}
           />
         ) : null}
-      </div>
+      </SidebarPanelHeader>
       {branchFormOpen ? (
         <div className="flex gap-1.5 border-b border-sidebar-border p-2">
           <Input

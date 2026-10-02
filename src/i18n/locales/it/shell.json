@@ -439,7 +439,7 @@
       "references": "Riferimenti"
     },
     "label": "Cerca",
-    "noMatches": "Nessuna corrispondenza trovata.",
+    "noMatches": "Nessuna corrispondenza trovata",
     "openReferences": "Apri i riferimenti di questo progetto",
     "placeholder": "Cerca progetti, documenti, oppure scrivi / per i comandi…",
     "placeholderDocuments": "Cerca dentro i documenti…",
@@ -692,6 +692,12 @@
         "description": "Mostra il browser web integrato (il suo pulsante e la scorciatoia) e permette all'AI di guidarlo. Disattivato per impostazione predefinita finché è in beta; quando è disattivato non c'è nessun pulsante del browser e l'AI non ha lo strumento del browser.",
         "label": "Browser web"
       }
+    },
+    "footer": {
+      "followOnX": "Segui su X",
+      "joinDiscord": "Unisciti alla community su Discord",
+      "releaseNotes": "Visualizza le note di rilascio",
+      "viewSource": "Visualizza il codice sorgente"
     },
     "general": {
       "dialect": {

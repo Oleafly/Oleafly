@@ -436,7 +436,7 @@
       "references": "Referenser"
     },
     "label": "Sök",
-    "noMatches": "Inga träffar hittades.",
+    "noMatches": "Inga träffar hittades",
     "openReferences": "Öppna referenserna för det här projektet",
     "placeholder": "Sök projekt, dokument, eller skriv / för kommandon…",
     "placeholderDocuments": "Sök inuti dokument…",
@@ -677,6 +677,12 @@
         "description": "Visa den inbyggda webbläsaren (dess knapp i dockan och dess kortkommando) och låt AI:n styra den med datoranvändning. Av som standard medan det fortfarande är i beta. När det är av finns ingen webbläsarknapp och AI:n har inget webbläsarverktyg.",
         "label": "Webbläsare"
       }
+    },
+    "footer": {
+      "followOnX": "Följ på X",
+      "joinDiscord": "Gå med i Discord-communityn",
+      "releaseNotes": "Visa versionsinformation",
+      "viewSource": "Visa källkoden"
     },
     "general": {
       "dialect": {

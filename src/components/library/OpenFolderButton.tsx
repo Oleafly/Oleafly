@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { FolderOpen, Loader2 } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
@@ -7,6 +7,7 @@ import { openFolderWithPicker } from "@/features/open-folder";
 import { cn } from "@/lib/utils";
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { Spinner } from "@/components/ui/spinner";
 
 export function OpenFolderButton({ className }: Readonly<{ className?: string }>) {
   const { t } = useTranslation(["library"]);
@@ -30,7 +31,7 @@ export function OpenFolderButton({ className }: Readonly<{ className?: string }>
         onClick={() => void openFolderWithPicker()}
       >
         {opening ? (
-          <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+          <Spinner />
         ) : (
           <FolderOpen aria-hidden="true" className="size-4" />
         )}

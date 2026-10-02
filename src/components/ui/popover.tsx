@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
+import { useDismiss } from "@/components/ui/use-dismiss";
 import { cn } from "@/lib/utils";
+
+const NESTED_POPUP = '[role="listbox"], [data-radix-popper-content-wrapper]';
 
 interface PopoverProps {
   trigger: ReactNode;
@@ -38,33 +41,15 @@ export function Popover({
     setOpen(false);
   }, [disabled, onOpenChangeProp, open]);
 
-  useEffect(() => {
-    if (!open || closeOnClick) return;
-
-    const dismissOnOutsidePointer = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (
-        triggerRef.current?.contains(target) ||
-        contentRef.current?.contains(target)
-      ) {
-        return;
-      }
-      if (
-        target instanceof Element &&
-        target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
-      ) {
-        return;
-      }
+  useDismiss(
+    open && !closeOnClick,
+    [triggerRef, contentRef],
+    () => {
       onOpenChangeProp?.(false);
       setOpen(false);
-    };
-
-    document.addEventListener("pointerdown", dismissOnOutsidePointer, true);
-    return () => {
-      document.removeEventListener("pointerdown", dismissOnOutsidePointer, true);
-    };
-  }, [closeOnClick, onOpenChangeProp, open]);
+    },
+    { ignore: NESTED_POPUP },
+  );
 
   return (
     <PopoverPrimitive.Root
@@ -106,7 +91,7 @@ export function Popover({
               const target = event.target;
               if (
                 target instanceof Element &&
-                target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
+                target.closest(NESTED_POPUP)
               ) {
                 event.preventDefault();
               }
@@ -115,7 +100,7 @@ export function Popover({
               if (
                 !closeOnClick &&
                 event.target instanceof Element &&
-                event.target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
+                event.target.closest(NESTED_POPUP)
               ) {
                 event.preventDefault();
               }
@@ -124,7 +109,7 @@ export function Popover({
               if (
                 !closeOnClick &&
                 event.target instanceof Element &&
-                event.target.closest('[role="listbox"], [data-radix-popper-content-wrapper]')
+                event.target.closest(NESTED_POPUP)
               ) {
                 event.preventDefault();
               }

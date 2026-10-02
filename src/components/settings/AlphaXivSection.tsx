@@ -1,8 +1,14 @@
 import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { AlertCircle, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  IntegrationCard,
+  IntegrationConnected,
+  IntegrationError,
+  integrationLink,
+} from "@/components/settings/IntegrationCard";
 import { useAlphaXivConnectorStore } from "@/store/alphaxiv-connector";
 
 const ALPHAXIV_SITE_URL = "https://www.alphaxiv.org";
@@ -23,44 +29,23 @@ export function AlphaXivSection() {
   };
 
   return (
-    <div data-testid="alphaxiv-section" className="space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-medium">{"alphaXiv"}</h3>
-          <p className="text-xs text-muted-foreground">
-            {t(($) => $.settings.integrations.alphaxiv.description)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            <Trans
-              t={t}
-              ns="settings"
-              i18nKey={($) => $.settings.integrations.alphaxiv.apiKeyHint}
-              components={{
-                siteLink: (
-                  <a
-                    href={ALPHAXIV_SITE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    <span />
-                  </a>
-                ),
-                docsLink: (
-                  <a
-                    href={ALPHAXIV_MCP_DOCS_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    <span />
-                  </a>
-                ),
-              }}
-            />
-          </p>
-        </div>
-        {connected && (
+    <IntegrationCard
+      testId="alphaxiv-section"
+      title={"alphaXiv"}
+      description={t(($) => $.settings.integrations.alphaxiv.description)}
+      hint={
+        <Trans
+          t={t}
+          ns="settings"
+          i18nKey={($) => $.settings.integrations.alphaxiv.apiKeyHint}
+          components={{
+            siteLink: integrationLink(ALPHAXIV_SITE_URL),
+            docsLink: integrationLink(ALPHAXIV_MCP_DOCS_URL),
+          }}
+        />
+      }
+      actions={
+        connected && (
           <Button
             variant="outline"
             size="sm"
@@ -69,16 +54,13 @@ export function AlphaXivSection() {
           >
             {t(($) => $.settings.integrations.actions.disconnect)}
           </Button>
-        )}
-      </div>
+        )
+      }
+    >
       {connected ? (
-        <p
-          data-testid="alphaxiv-connected"
-          className="flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-300"
-        >
-          <Check aria-hidden className="mt-px size-3.5 shrink-0" />
+        <IntegrationConnected testId="alphaxiv-connected">
           {t(($) => $.settings.integrations.alphaxiv.connected)}
-        </p>
+        </IntegrationConnected>
       ) : (
         <form
           className="flex gap-2"
@@ -96,24 +78,18 @@ export function AlphaXivSection() {
             className="max-w-xs"
           />
           <Button type="submit" size="sm" disabled={loading || !apiKey.trim()}>
-            {loading && <Loader2 className="animate-spin" />}
+            {loading && <Spinner />}
             {t(($) => $.settings.integrations.actions.connect)}
           </Button>
         </form>
       )}
       {failure ? (
-        <div
-          role="alert"
-          className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
-        >
-          <AlertCircle aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-          <span>
-            {failure === "connect"
-              ? t(($) => $.settings.integrations.alphaxiv.connectFailed)
-              : t(($) => $.settings.integrations.alphaxiv.disconnectFailed)}
-          </span>
-        </div>
+        <IntegrationError>
+          {failure === "connect"
+            ? t(($) => $.settings.integrations.alphaxiv.connectFailed)
+            : t(($) => $.settings.integrations.alphaxiv.disconnectFailed)}
+        </IntegrationError>
       ) : null}
-    </div>
+    </IntegrationCard>
   );
 }

@@ -1,10 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy, Download, ExternalLink, FolderOpen, Loader2, Play, RotateCcw, Terminal } from "lucide-react";
+import { Check, Copy, Download, ExternalLink, FolderOpen, Play, RotateCcw, Terminal } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Input } from "@/components/ui/input";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath, SettingsPathText } from "@/components/settings/SettingsPath";
 import { fileName, isPowerShellScript } from "@/components/ai/acp/agent-copy";
 import { i18n } from "@/i18n";
@@ -21,6 +22,7 @@ import {
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { useDisplayText } from "@/lib/display-path";
 import { isWindows } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 export const NODE_DOWNLOAD_URL = "https://nodejs.org/en/download";
 
@@ -160,14 +162,7 @@ function programSource(t: Translate, agent: AcpAgentStatus, override: string | n
 
 export function CopyDetailsButton({ text, className }: Readonly<{ text: string; className?: string }>) {
   const { t } = useTranslation(["common", "settings"]);
-  const [copied, setCopied] = useState(false);
-  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (resetTimer.current) clearTimeout(resetTimer.current);
-    },
-    [],
-  );
+  const { copied, copy } = useCopyStatus();
   return (
     <Button
       type="button"
@@ -175,19 +170,7 @@ export function CopyDetailsButton({ text, className }: Readonly<{ text: string; 
       size="sm"
       className={className}
       data-copied={copied ? "true" : undefined}
-      onClick={() => {
-        void navigator.clipboard
-          ?.writeText(text)
-          .then(() => {
-            if (resetTimer.current) clearTimeout(resetTimer.current);
-            setCopied(true);
-            resetTimer.current = setTimeout(() => {
-              setCopied(false);
-              resetTimer.current = null;
-            }, 1500);
-          })
-          .catch(() => setCopied(false));
-      }}
+      onClick={() => void copy(text)}
     >
       {copied ? <Check aria-hidden className="size-3.5" /> : <Copy aria-hidden className="size-3.5" />}
       {copied ? t(($) => $.common.actions.copied) : t(($) => $.settings.ai.agents.program.copyDetails)}
@@ -396,7 +379,7 @@ export function AgentProgramField({
           disabled={locked}
           onClick={test}
         >
-          {phase.kind === "checking" ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
+          {phase.kind === "checking" ? <Spinner size="sm" /> : <Play className="size-3.5" />}
           {phase.kind === "checking"
             ? t(($) => $.settings.ai.agents.program.testing)
             : t(($) => $.settings.ai.agents.program.test)}
@@ -409,7 +392,7 @@ export function AgentProgramField({
         )}
         {phase.kind === "saving" && (
           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Loader2 aria-hidden className="size-3.5 animate-spin" />
+            <Spinner size="sm" />
             {t(($) => $.settings.ai.agents.program.saving)}
           </span>
         )}

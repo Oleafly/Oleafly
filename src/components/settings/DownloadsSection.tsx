@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
 import { create } from "zustand";
-import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Loader2, Sparkles, Trash2, Type } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Sparkles, Trash2, Type } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -25,11 +24,13 @@ import {
   removeFontComponent,
   removeTemplatePack,
   templatePreview,
-  type AssetProgress,
+  withAssetProgress,
   type ComponentInfo,
   type PackInfo,
   type TemplateInfo,
 } from "@/lib/tauri";
+import { Spinner } from "@/components/ui/spinner";
+import { SECTION_HEADING_CLASS, SectionHeading } from "@/components/ui/section-heading";
 
 const ALL = "__all__";
 
@@ -129,24 +130,24 @@ export function DownloadsSection() {
       if (useDownloadActivity.getState().fontBusyId !== null) return;
       setBusyId(id);
       setProgress("");
-      let unlisten: (() => void) | undefined;
       try {
-        unlisten = await listen<AssetProgress>("asset-progress", (e) => {
-          const p = e.payload;
-          setProgress(
-            t(($) => $.settings.downloads.progress, {
-              label: p.label,
-              index: formatNumber(p.index),
-              total: formatNumber(p.total),
-            }),
-          );
-        });
-        await run();
+        await withAssetProgress(
+          {
+            component: (p) =>
+              setProgress(
+                t(($) => $.settings.downloads.progress, {
+                  label: p.label,
+                  index: formatNumber(p.index),
+                  total: formatNumber(p.total),
+                }),
+              ),
+          },
+          run,
+        );
         await refresh();
       } catch (e) {
         notifyError(verb, e, failure());
       } finally {
-        unlisten?.();
         setBusyId(null);
         setProgress("");
       }
@@ -203,22 +204,23 @@ export function DownloadsSection() {
   }, [packBusyId, refreshPacks]);
 
   const runPackInstall = async (id: string) => {
-    let unlisten: (() => void) | undefined;
     try {
-      unlisten = await listen<AssetProgress>("asset-progress", (e) => {
-        const p = e.payload;
-        if (p.component === id)
-          setPackProgress(
-            t(($) => $.settings.downloads.packProgress, {
-              index: formatNumber(p.index),
-              total: formatNumber(p.total),
-            }),
-          );
-      });
-      await installTemplatePack(id);
+      await withAssetProgress(
+        {
+          component: (p) => {
+            if (p.component !== id) return;
+            setPackProgress(
+              t(($) => $.settings.downloads.packProgress, {
+                index: formatNumber(p.index),
+                total: formatNumber(p.total),
+              }),
+            );
+          },
+        },
+        () => installTemplatePack(id),
+      );
       await refreshPacks();
     } finally {
-      unlisten?.();
       setPackProgress("");
     }
   };
@@ -306,9 +308,9 @@ export function DownloadsSection() {
       <TabsContent value="fonts" className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <SectionHeading>
             {t(($) => $.settings.downloads.fonts.heading)}
-          </h3>
+          </SectionHeading>
           <Tooltip
             wide
             side="right"
@@ -322,7 +324,7 @@ export function DownloadsSection() {
           disabled={anyBusy || allInstalled}
           className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
         >
-          {busyId === ALL ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+          {busyId === ALL ? <Spinner size="sm" /> : <Download className="size-3.5" />}
           {allInstalled
             ? t(($) => $.settings.downloads.actions.allDownloaded)
             : t(($) => $.settings.downloads.actions.downloadAll)}
@@ -383,7 +385,7 @@ export function DownloadsSection() {
                     disabled={anyBusy}
                     className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
                   >
-                    {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                    {busy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
                     {busy ? "" : t(($) => $.settings.downloads.actions.download)}
                   </button>
                 )}
@@ -401,10 +403,7 @@ export function DownloadsSection() {
       <TabsContent value="templates" className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <h3
-            ref={templatesHeadingRef}
-            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-          >
+          <h3 ref={templatesHeadingRef} className={SECTION_HEADING_CLASS}>
             {t(($) => $.settings.downloads.templates.heading)}
           </h3>
           <Tooltip
@@ -420,7 +419,7 @@ export function DownloadsSection() {
           disabled={anyPackBusy || allPacksInstalled}
           className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
         >
-          {packBusyId === ALL ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+          {packBusyId === ALL ? <Spinner size="sm" /> : <Download className="size-3.5" />}
           {allPacksInstalled
             ? t(($) => $.settings.downloads.actions.allDownloaded)
             : t(($) => $.settings.downloads.actions.downloadAll)}
@@ -471,7 +470,7 @@ export function DownloadsSection() {
                     disabled={anyPackBusy}
                     className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
                   >
-                    {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                    {busy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
                     {busy ? "" : t(($) => $.settings.downloads.actions.download)}
                   </button>
                 )}

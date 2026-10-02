@@ -1,9 +1,10 @@
-import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from "react";
+import { Children, isValidElement, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, Copy, ExternalLink } from "lucide-react";
 import { openableReleaseLink, PRIMARY_TEXT } from "@/components/layout/ReleaseNotes";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { cn } from "@/lib/utils";
 
 function textOf(children: ReactNode): string {
@@ -18,20 +19,7 @@ function textOf(children: ReactNode): string {
 
 function CodeBlock({ children }: Readonly<{ children: ReactNode }>) {
   const { t } = useTranslation(["common"]);
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-  const copy = () => {
-    const text = textOf(children).replace(/\n$/, "");
-    void navigator.clipboard?.writeText(text).then(
-      () => {
-        setCopied(true);
-        window.clearTimeout(timer.current);
-        timer.current = window.setTimeout(() => setCopied(false), 1500);
-      },
-      () => setCopied(false),
-    );
-  };
+  const { copied, copy } = useCopyStatus();
   const label = copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy);
   return (
     <div className="group relative mb-2">
@@ -40,7 +28,7 @@ function CodeBlock({ children }: Readonly<{ children: ReactNode }>) {
       </pre>
       <button
         type="button"
-        onClick={copy}
+        onClick={() => void copy(textOf(children).replace(/\n$/, ""))}
         aria-label={label}
         title={label}
         className="absolute right-1.5 top-1.5 rounded-md border bg-popover p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100"

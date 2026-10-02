@@ -645,9 +645,14 @@ pub async fn language_service_start(
     // the native window label avoids trusting a caller-provided owner id and
     // preserves the global cap for genuinely independent windows.
     // Injected as Webview, not WebviewWindow: the latter cannot materialize
-    // once the window hosts a second webview (the browser dock). The owner is
-    // still the host window's label so sessions stay scoped per window.
-    let owner_label = webview.window().label().to_owned();
+    // once a window hosts a second webview. Only the window's own webview may
+    // own sessions, so they stay scoped per window.
+    let owner_label = crate::caller::own_window_label(&webview).ok_or_else(|| {
+        LanguageServiceError::new(
+            LanguageServiceErrorCode::Internal,
+            "The language service is unavailable from this view.",
+        )
+    })?;
     let displaced = {
         let registry = lock_unpoisoned(&state.registry.inner);
         registry

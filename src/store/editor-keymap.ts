@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { EDITOR_COMMAND_IDS, type EditorCommandId } from "@oleafly/editor";
 import { isAltGraphCharacter, isUnbindableKey } from "@/lib/keyboard";
+import { readJson, writeJson } from "@/lib/local-storage";
 
 export type EditorKeyId = EditorCommandId;
 
@@ -200,19 +201,11 @@ export function mergeEditorKeys(raw: unknown): EditorKeyBindings {
 }
 
 function loadBindings(): EditorKeyBindings {
-  try {
-    const value = localStorage.getItem(STORAGE_KEY);
-    if (!value) return { ...defaults };
-    return mergeEditorKeys(JSON.parse(value));
-  } catch {
-    return { ...defaults };
-  }
+  return readJson(STORAGE_KEY, { ...defaults }, mergeEditorKeys);
 }
 
 function saveBindings(bindings: EditorKeyBindings) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bindings));
-  } catch {}
+  writeJson(STORAGE_KEY, bindings);
 }
 
 interface EditorKeymapState {

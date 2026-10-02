@@ -1,3 +1,5 @@
+import { escapeRegExp } from "@/lib/regexp";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 const PREFERRED_SCALE = 2;
 const TARGET_RASTER_SIDE = 2000;
@@ -200,10 +202,6 @@ function inlineTag(content: string): { closing: boolean; name: string } | null {
   const match = TAG.exec(content);
   const name = match?.[2].toLowerCase();
   return match && name && INLINE_TAGS.has(name) ? { closing: match[1] === "/", name } : null;
-}
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
 function sourcePattern(content: string): string {

@@ -44,6 +44,7 @@ import { cancelProofreading, suggestSpelling } from "@/lib/proofreading/client";
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { useSettingsStore } from "@/store/settings";
 import { Button } from "@/components/ui/button";
+import { useDismiss } from "@/components/ui/use-dismiss";
 import { editorRedo, editorUndo } from "@/components/editor/cm/controller";
 import { isRecompileShortcut } from "@/components/editor/cm/recompile-shortcut";
 import {
@@ -296,22 +297,7 @@ function VisualProofreadingPopover({
     return () => cancelAnimationFrame(frame);
   }, [issue.id]);
 
-  useEffect(() => {
-    const pointerDown = (event: PointerEvent) => {
-      const target = event.target;
-      if (
-        panelRef.current?.contains(target as Node) ||
-        (target instanceof Element &&
-          target.closest("[data-proofreading-issue]"))
-      ) {
-        return;
-      }
-      onClose();
-    };
-    document.addEventListener("pointerdown", pointerDown, true);
-    return () =>
-      document.removeEventListener("pointerdown", pointerDown, true);
-  }, [onClose]);
+  useDismiss(true, [panelRef], onClose, { ignore: "[data-proofreading-issue]" });
 
   const closeAndFocus = () => {
     onClose();

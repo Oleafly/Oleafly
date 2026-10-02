@@ -51,5 +51,32 @@
   },
   "toast": {
     "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Search suggestions",
+    "exclude": "Exclude",
+    "excludeField": "Exclude {{field}}",
+    "dateHint": "Dates look like 2026-10-02 or @today-7d. Add >, >=, < or <= to compare, or write a range as 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "This ( is never closed",
+      "unexpectedClose": "This ) has no matching (",
+      "danglingOperator": "{{operator}} is missing a search term",
+      "tooDeep": "Groups can only be nested 5 levels deep",
+      "emptyGroup": "These parentheses are empty",
+      "unterminatedQuote": "This quote is never closed",
+      "unknownQualifier": "Unknown filter: {{key}}",
+      "missingValue": "Add a value after {{key}}:",
+      "invalidValue": "{{value}} is not a valid value for {{key}}",
+      "invalidDate": "{{value}} is not a date. Try 2026-10-02 or @today-7d",
+      "invalidNumber": "{{value}} is not a number",
+      "sortNegated": "{{key}} can't be excluded"
+    }
   }
 }

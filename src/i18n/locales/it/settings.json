@@ -226,6 +226,7 @@
       },
       "noChanges": "Nessuna modifica",
       "refresh": "Aggiorna",
+      "refreshThrottled": "Aggiornato poco fa. Riprova tra {{seconds}} s",
       "restore": "Ripristina i predefiniti",
       "restoreTooltip": "Aggiungi di nuovo i modelli integrati di questo provider",
       "title": "Modelli",
@@ -489,11 +490,6 @@
           "none": "Non è stata trovata nessun'altra cartella di agenti"
         },
         "title": "Condividi le skill con gli altri agenti su questo computer"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Aggiunta",
@@ -1553,6 +1549,7 @@
     },
     "error": {
       "conflict": "Già assegnata a {{action}}.",
+      "nativeKey": "Le scorciatoie del menu non supportano questo tasto. Funzionano lettere, numeri e tasti funzione.",
       "reserved": "{{shortcut}} è riservata dal sistema operativo."
     },
     "intro": "Personalizza le scorciatoie dell'applicazione e consulta le combinazioni di tasti native dell'editor.",
@@ -1560,6 +1557,8 @@
       "closeWindow": "Chiudi la finestra",
       "copy": "Copia",
       "cut": "Taglia",
+      "hide": "Nascondi l'app",
+      "minimize": "Riduci a icona la finestra",
       "paste": "Incolla",
       "quit": "Esci",
       "save": "Salva",

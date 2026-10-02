@@ -1,3 +1,5 @@
+import { basename } from "@/lib/path-utils";
+
 export function normalizeCompilePath(path: string): string {
   return path
     .replaceAll("\\", "/")
@@ -5,10 +7,6 @@ export function normalizeCompilePath(path: string): string {
     .filter((part) => part !== ".")
     .join("/")
     .normalize("NFC");
-}
-
-function basename(path: string): string {
-  return path.split("/").pop() ?? path;
 }
 
 function lookupVariants(path: string, implicitTex: boolean): string[] {

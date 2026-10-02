@@ -1,3 +1,5 @@
+import type { MessageParams } from "@oleafly/i18n-contract";
+
 export const PREFLIGHT_MESSAGE_KEYS = [
   "ats.sections.education",
   "ats.sections.experience",
@@ -377,7 +379,7 @@ export const PREFLIGHT_MESSAGE_KEYS = [
 
 export type PreflightMessageKey = (typeof PREFLIGHT_MESSAGE_KEYS)[number];
 
-export type MessageParams = Record<string, string | number>;
+export type { MessageParams };
 
 export interface MessageRef {
   key: PreflightMessageKey;

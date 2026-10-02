@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowUp, Loader2, Paperclip, Plus, Sparkles, Square, X } from "lucide-react";
+import { ArrowUp, Paperclip, Plus, Sparkles, Square, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import { terminalLimitMessage } from "@/store/terminals";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { PermissionCard } from "./PermissionCard";
 import { createAcpProjector } from "./projection";
+import { Spinner } from "@/components/ui/spinner";
 
 const CleanLibraryDialog = lazy(() =>
   import("@/components/layout/CleanLibraryDialog").then((module) => ({ default: module.CleanLibraryDialog })),
@@ -357,11 +358,11 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
           {agentId ? (
             <AgentLogo agentId={agentId} size={22} />
           ) : (
-            <Loader2 aria-hidden className="size-5 animate-spin text-muted-foreground" />
+            <Spinner size="lg" className="text-muted-foreground" />
           )}
         </span>
         <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <Loader2 aria-hidden className="size-3.5 animate-spin text-muted-foreground" />
+          <Spinner size="sm" className="text-muted-foreground" />
           {t(($) => $.ai.acp.starting, {
             agent: selectedAgent?.definition.name ?? t(($) => $.ai.acp.startingFallback),
           })}
@@ -614,7 +615,7 @@ function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: Acp
       className="inline-flex h-6 max-w-44 shrink-0 items-center gap-1.5 rounded-full border bg-background px-2 text-[10px] text-muted-foreground"
     >
       {busy ? (
-        <Loader2 aria-hidden className="size-2.5 shrink-0 animate-spin" />
+        <Spinner className="size-2.5" />
       ) : (
         <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", STATUS_DOT[session.status])} />
       )}

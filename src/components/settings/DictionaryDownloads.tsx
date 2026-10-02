@@ -18,6 +18,7 @@ import { notifyError } from "@/lib/toast";
 import { removeDictionary, resetProjectDictionaryLocaleOnDeviceCmd } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 async function resetOpenProjectLocale(locale: string): Promise<boolean> {
   const { projectId, projectDictionaryLocale } = useFilesStore.getState();
@@ -105,9 +106,9 @@ export function DictionaryDownloads() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <SectionHeading>
           {t(($) => $.settings.downloads.dictionaries.heading)}
-        </h3>
+        </SectionHeading>
         <Tooltip
           wide
           side="right"

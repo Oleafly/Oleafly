@@ -14,7 +14,8 @@ import {
 } from "@/store/editor-keymap";
 import { i18n } from "@/i18n";
 import { shortcut } from "@/lib/utils";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 // Leaves rows that already spell out both conventions (e.g. "Ctrl-Space") untouched.
 const keyLabel = (keys: string) => (keys.includes("Ctrl") ? keys : shortcut(keys));
@@ -229,7 +230,6 @@ export function HotkeysModal() {
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const [q, setQ] = useState("");
   const editorKeys = useEditorKeymapStore((s) => s.keys);
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, () => setOpen(false));
 
   const rows = useMemo(() => [...SHORTCUTS, ...editorKeyRows(editorKeys)], [editorKeys]);
 
@@ -253,90 +253,80 @@ export function HotkeysModal() {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+    <ModalShell
+      open
+      onClose={() => setOpen(false)}
+      closeLabel={t(($) => $.editor.hotkeys.close)}
+      width="lg"
+      labelledBy="hotkeys-title"
+      className="flex max-h-[80vh] flex-col overflow-hidden"
     >
-      <button
-        type="button"
-        aria-label={t(($) => $.editor.hotkeys.close)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        role="dialog"
-        ref={dialogRef}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="hotkeys-title"
-        className="relative flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
-      >
-        <div className="flex min-h-14 items-center justify-between border-b border-sidebar-border px-5 py-3">
-          <h2 id="hotkeys-title" className="text-sm font-semibold">
-            {t(($) => $.editor.hotkeys.title)}
-          </h2>
-          <div className="flex items-center gap-1">
-            <Tooltip label={t(($) => $.editor.hotkeys.customize)}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                onClick={() => {
-                  setOpen(false);
-                  setSettingsInitialSection("shortcuts");
-                  requestAnimationFrame(() => setSettingsOpen(true));
-                }}
-                aria-label={t(($) => $.editor.hotkeys.openSettings)}
-              >
-                <Wrench />
-              </Button>
-            </Tooltip>
+      <div className="flex min-h-14 items-center justify-between border-b border-sidebar-border px-5 py-3">
+        <h2 id="hotkeys-title" className="text-sm font-semibold">
+          {t(($) => $.editor.hotkeys.title)}
+        </h2>
+        <div className="flex items-center gap-1">
+          <Tooltip label={t(($) => $.editor.hotkeys.customize)}>
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
-              onClick={() => setOpen(false)}
-              aria-label={t(($) => $.editor.hotkeys.close)}
+              onClick={() => {
+                setOpen(false);
+                setSettingsInitialSection("shortcuts");
+                requestAnimationFrame(() => setSettingsOpen(true));
+              }}
+              aria-label={t(($) => $.editor.hotkeys.openSettings)}
             >
-              <X />
+              <Wrench />
             </Button>
-          </div>
-        </div>
-        <div className="border-b border-sidebar-border p-3">
-          <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3">
-            <Search className="size-4 text-muted-foreground" />
-            <Input
-              data-modal-initial-focus
-              aria-label={t(($) => $.editor.hotkeys.searchLabel)}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder={t(($) => $.editor.hotkeys.searchPlaceholder)}
-              className="h-10 w-full rounded-none border-0 bg-transparent px-0 text-sm shadow-none placeholder:text-muted-foreground"
-            />
-          </div>
-        </div>
-        <div className="flex-1 overflow-auto p-4">
-          {categories.map((cat, ci) => (
-            <div key={cat} className={ci > 0 ? "mb-4 border-t border-sidebar-border pt-4" : "mb-4"}>
-              <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {cat}
-              </div>
-              {filtered
-                .filter((s) => s.category() === cat)
-                .map((s) => (
-                  <div key={s.id} className="flex items-center justify-between py-1.5">
-                    <span className="text-sm">{s.desc()}</span>
-                    <ShortcutKeys keys={s.keys} tokens={s.tokens} />
-                  </div>
-                ))}
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              {t(($) => $.editor.hotkeys.empty)}
-            </p>
-          )}
+          </Tooltip>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={() => setOpen(false)}
+            aria-label={t(($) => $.editor.hotkeys.close)}
+          >
+            <X />
+          </Button>
         </div>
       </div>
-    </div>
+      <div className="border-b border-sidebar-border p-3">
+        <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3">
+          <Search className="size-4 text-muted-foreground" />
+          <Input
+            data-modal-initial-focus
+            aria-label={t(($) => $.editor.hotkeys.searchLabel)}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t(($) => $.editor.hotkeys.searchPlaceholder)}
+            className="h-10 w-full rounded-none border-0 bg-transparent px-0 text-sm shadow-none placeholder:text-muted-foreground"
+          />
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto p-4">
+        {categories.map((cat, ci) => (
+          <div key={cat} className={ci > 0 ? "mb-4 border-t border-sidebar-border pt-4" : "mb-4"}>
+            <SectionHeading as="div" className="mb-1.5">
+              {cat}
+            </SectionHeading>
+            {filtered
+              .filter((s) => s.category() === cat)
+              .map((s) => (
+                <div key={s.id} className="flex items-center justify-between py-1.5">
+                  <span className="text-sm">{s.desc()}</span>
+                  <ShortcutKeys keys={s.keys} tokens={s.tokens} />
+                </div>
+              ))}
+          </div>
+        ))}
+        {filtered.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {t(($) => $.editor.hotkeys.empty)}
+          </p>
+        )}
+      </div>
+    </ModalShell>
   );
 }

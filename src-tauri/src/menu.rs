@@ -1,5 +1,6 @@
 #![cfg_attr(target_os = "windows", allow(dead_code))]
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, Submenu, SubmenuBuilder};
@@ -16,8 +17,91 @@ const OPEN_FOLDER_ITEM: &str = "open_folder";
 const OPEN_FOLDER_ACCELERATOR: &str = "CmdOrCtrl+Shift+O";
 const RECENT_LIMIT: usize = 10;
 const VIEW_MENU: &str = "view_menu";
+const TERMINAL_ACCELERATOR: &str = "Ctrl+`";
+#[cfg(target_os = "linux")]
+const BROWSER_ACCELERATOR: &str = "Ctrl+Alt+B";
+#[cfg(not(target_os = "linux"))]
+const BROWSER_ACCELERATOR: &str = "Ctrl+Shift+B";
+const QUIT_ACCELERATOR: &str = "CmdOrCtrl+Q";
+const APP_MENU: &str = "app_menu";
+const QUIT_ITEM: &str = "quit_app";
+const TOGGLE_TERMINAL_ITEM: &str = "toggle_terminal";
+const TOGGLE_BROWSER_ITEM: &str = "toggle_browser";
 
 static RECENT_PROJECTS: Mutex<Vec<RecentProject>> = Mutex::new(Vec::new());
+static SHORTCUT_ACCELERATORS: Mutex<Option<ShortcutAccelerators>> = Mutex::new(None);
+static BROWSER_SHORTCUTS_ENABLED: AtomicBool = AtomicBool::new(false);
+
+struct BrowserShortcut {
+    submenu: &'static str,
+    id: &'static str,
+    label: &'static str,
+    accelerator: &'static str,
+    key: char,
+}
+
+const BROWSER_SHORTCUTS: [BrowserShortcut; 4] = [
+    BrowserShortcut {
+        submenu: FILE_MENU,
+        id: "browser_new_tab",
+        label: "menu.newTab",
+        accelerator: "CmdOrCtrl+T",
+        key: 't',
+    },
+    BrowserShortcut {
+        submenu: FILE_MENU,
+        id: "browser_open_location",
+        label: "menu.openLocation",
+        accelerator: "CmdOrCtrl+L",
+        key: 'l',
+    },
+    BrowserShortcut {
+        submenu: FILE_MENU,
+        id: "browser_close_tab",
+        label: "menu.closeTab",
+        accelerator: "CmdOrCtrl+W",
+        key: 'w',
+    },
+    BrowserShortcut {
+        submenu: VIEW_MENU,
+        id: "browser_reload",
+        label: "menu.reloadPage",
+        accelerator: "CmdOrCtrl+R",
+        key: 'r',
+    },
+];
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ShortcutAccelerators {
+    terminal: String,
+    browser: String,
+    open_folder: String,
+}
+
+fn shortcut_accelerators() -> ShortcutAccelerators {
+    SHORTCUT_ACCELERATORS
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .clone()
+        .unwrap_or_else(|| ShortcutAccelerators {
+            terminal: TERMINAL_ACCELERATOR.to_owned(),
+            browser: BROWSER_ACCELERATOR.to_owned(),
+            open_folder: OPEN_FOLDER_ACCELERATOR.to_owned(),
+        })
+}
+
+fn remember_shortcut_accelerators(terminal: &str, browser: &str, open_folder: Option<&str>) {
+    let open_folder = open_folder
+        .map(str::to_owned)
+        .unwrap_or_else(|| shortcut_accelerators().open_folder);
+    *SHORTCUT_ACCELERATORS
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner) = Some(ShortcutAccelerators {
+        terminal: terminal.to_owned(),
+        browser: browser.to_owned(),
+        open_folder,
+    });
+}
 
 fn recent_projects() -> Vec<RecentProject> {
     RECENT_PROJECTS
@@ -63,6 +147,7 @@ fn menu_label(name: &str) -> String {
 }
 
 pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let accelerators = shortcut_accelerators();
     let about = MenuItemBuilder::with_id("about", t("menu.about")).build(handle)?;
     let check_updates =
         MenuItemBuilder::with_id("check_updates", t("menu.checkUpdates")).build(handle)?;
@@ -70,28 +155,46 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         MenuItemBuilder::with_id("reload_views", t("menu.reloadViews")).build(handle)?;
     let restart_app =
         MenuItemBuilder::with_id("restart_app", t("menu.restartApp")).build(handle)?;
-    let quit = MenuItemBuilder::with_id("quit_app", t("menu.quit"))
-        .accelerator("CmdOrCtrl+Q")
+    let quit = MenuItemBuilder::with_id(QUIT_ITEM, t("menu.quit"))
+        .accelerator(QUIT_ACCELERATOR)
         .build(handle)?;
 
     let open_folder = MenuItemBuilder::with_id(OPEN_FOLDER_ITEM, t("menu.openFolder"))
-        .accelerator(OPEN_FOLDER_ACCELERATOR)
+        .accelerator(&accelerators.open_folder)
         .build(handle)?;
     let open_recent = recent_submenu(handle, &recent_projects())?;
+    let browser_enabled = BROWSER_SHORTCUTS_ENABLED.load(Ordering::Relaxed);
+    let [new_tab, open_location, close_tab, reload_page] = BROWSER_SHORTCUTS.map(|shortcut| {
+        MenuItemBuilder::with_id(shortcut.id, t(shortcut.label))
+            .accelerator(shortcut.accelerator)
+            .enabled(browser_enabled)
+            .build(handle)
+    });
+    let (new_tab, open_location, close_tab, reload_page) =
+        (new_tab?, open_location?, close_tab?, reload_page?);
     let file_menu = SubmenuBuilder::with_id(handle, FILE_MENU, t("menu.file"))
         .item(&open_folder)
         .item(&open_recent)
+        .separator()
+        .item(&new_tab)
+        .item(&open_location)
+        .item(&close_tab)
         .build()?;
 
-    let app_menu = SubmenuBuilder::with_id(handle, "app_menu", t("menu.app"))
+    let app_menu = SubmenuBuilder::with_id(handle, APP_MENU, t("menu.app"))
         .item(&reload_views)
         .item(&restart_app)
         .separator()
         .item(&about)
         .item(&check_updates)
-        .separator()
-        .item(&quit)
-        .build()?;
+        .separator();
+    #[cfg(target_os = "macos")]
+    let app_menu = app_menu
+        .hide_with_text(t("menu.hide"))
+        .hide_others_with_text(t("menu.hideOthers"))
+        .show_all_with_text(t("menu.showAll"))
+        .separator();
+    let app_menu = app_menu.item(&quit).build()?;
 
     // Custom Undo/Redo instead of the predefined items, and deliberately with
     // NO accelerator. The predefined items bind Cmd/Ctrl+Z to the native
@@ -114,23 +217,36 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .select_all_with_text(t("menu.selectAll"))
         .build()?;
 
-    let toggle_terminal = MenuItemBuilder::with_id("toggle_terminal", t("menu.toggleTerminal"))
-        .accelerator("Ctrl+`")
+    let toggle_terminal = MenuItemBuilder::with_id(TOGGLE_TERMINAL_ITEM, t("menu.toggleTerminal"))
+        .accelerator(&accelerators.terminal)
         .build(handle)?;
-    let toggle_browser = MenuItemBuilder::with_id("toggle_browser", t("menu.toggleBrowser"))
-        .accelerator("Ctrl+Shift+B")
+    let toggle_browser = MenuItemBuilder::with_id(TOGGLE_BROWSER_ITEM, t("menu.toggleBrowser"))
+        .accelerator(&accelerators.browser)
         .build(handle)?;
     let view_menu = SubmenuBuilder::with_id(handle, VIEW_MENU, t("menu.view"))
         .item(&toggle_terminal)
         .item(&toggle_browser)
+        .separator()
+        .item(&reload_page)
         .build()?;
 
-    MenuBuilder::new(handle)
+    let menu = MenuBuilder::new(handle)
         .item(&app_menu)
         .item(&file_menu)
         .item(&edit_menu)
-        .item(&view_menu)
-        .build()
+        .item(&view_menu);
+    #[cfg(target_os = "macos")]
+    let menu = {
+        let window_menu = SubmenuBuilder::new(handle, t("menu.window"))
+            .minimize_with_text(t("menu.minimize"))
+            .fullscreen_with_text(t("menu.fullscreen"))
+            .separator()
+            .bring_all_to_front_with_text(t("menu.bringAllToFront"))
+            .build()?;
+        window_menu.set_as_windows_menu_for_nsapp()?;
+        menu.item(&window_menu)
+    };
+    menu.build()
 }
 
 pub fn rebuild<R: Runtime>(app: &AppHandle<R>) {
@@ -218,8 +334,8 @@ pub fn set_recent_projects(app: AppHandle, projects: Vec<RecentProject>) -> Resu
 
 fn frontend_event(id: &str) -> Option<&'static str> {
     match id {
-        "toggle_terminal" => Some("menu://toggle-terminal"),
-        "toggle_browser" => Some("menu://toggle-browser"),
+        TOGGLE_TERMINAL_ITEM => Some("menu://toggle-terminal"),
+        TOGGLE_BROWSER_ITEM => Some("menu://toggle-browser"),
         "edit_undo" => Some("menu://undo"),
         "edit_redo" => Some("menu://redo"),
         OPEN_FOLDER_ITEM => Some("menu://open-folder"),
@@ -227,11 +343,109 @@ fn frontend_event(id: &str) -> Option<&'static str> {
     }
 }
 
+fn edits_main_document(id: &str) -> bool {
+    matches!(id, "edit_undo" | "edit_redo")
+}
+
+fn main_window_focused<R: Runtime>(app: &AppHandle<R>) -> bool {
+    app.get_window("main")
+        .and_then(|window| window.is_focused().ok())
+        .unwrap_or(false)
+}
+
 fn dock_accelerator_updates<'a>(
     terminal: &'a str,
     browser: &'a str,
 ) -> [(&'static str, &'a str); 2] {
-    [("toggle_terminal", terminal), ("toggle_browser", browser)]
+    [
+        (TOGGLE_TERMINAL_ITEM, terminal),
+        (TOGGLE_BROWSER_ITEM, browser),
+    ]
+}
+
+fn unregistrable_accelerator<'a>(accelerators: &[&'a str]) -> Option<&'a str> {
+    accelerators.iter().copied().find(|accelerator| {
+        accelerator
+            .parse::<muda::accelerator::Accelerator>()
+            .is_err()
+    })
+}
+
+fn paused_accelerators(
+    accelerators: &ShortcutAccelerators,
+) -> [(&'static str, &'static str, String); 4] {
+    [
+        (
+            VIEW_MENU,
+            TOGGLE_TERMINAL_ITEM,
+            accelerators.terminal.clone(),
+        ),
+        (VIEW_MENU, TOGGLE_BROWSER_ITEM, accelerators.browser.clone()),
+        (
+            FILE_MENU,
+            OPEN_FOLDER_ITEM,
+            accelerators.open_folder.clone(),
+        ),
+        (APP_MENU, QUIT_ITEM, QUIT_ACCELERATOR.to_owned()),
+    ]
+}
+
+#[cfg(not(target_os = "windows"))]
+fn menu_item<R: Runtime>(
+    menu: &Menu<R>,
+    submenu: &str,
+    id: &str,
+) -> Result<tauri::menu::MenuItem<R>, String> {
+    menu.get(submenu)
+        .and_then(|item| item.as_submenu().cloned())
+        .and_then(|submenu| submenu.get(id))
+        .and_then(|item| item.as_menuitem().cloned())
+        .ok_or_else(|| t_with("errors.menuItemUnavailable", &[("id", id)]))
+}
+
+fn browser_shortcut_key(id: &str) -> Option<char> {
+    BROWSER_SHORTCUTS
+        .iter()
+        .find(|shortcut| shortcut.id == id)
+        .map(|shortcut| shortcut.key)
+}
+
+pub fn set_browser_shortcuts_enabled<R: Runtime>(app: &AppHandle<R>, enabled: bool) {
+    BROWSER_SHORTCUTS_ENABLED.store(enabled, Ordering::Relaxed);
+    #[cfg(target_os = "windows")]
+    {
+        let _ = app;
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let Some(menu) = app.menu() else {
+            return;
+        };
+        for shortcut in BROWSER_SHORTCUTS {
+            if let Ok(item) = menu_item(&menu, shortcut.submenu, shortcut.id) {
+                let _ = item.set_enabled(enabled);
+            }
+        }
+    }
+}
+
+#[tauri::command]
+pub fn set_native_shortcuts_paused(app: AppHandle, paused: bool) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let _ = (app, paused);
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let menu = app.menu().ok_or_else(|| t("errors.menuUnavailable"))?;
+        for (submenu, id, accelerator) in paused_accelerators(&shortcut_accelerators()) {
+            menu_item(&menu, submenu, id)?
+                .set_accelerator((!paused).then_some(accelerator))
+                .map_err(|error| error.to_string())?;
+        }
+        Ok(())
+    }
 }
 
 fn file_accelerator_updates(open_folder: Option<&str>) -> Vec<(&'static str, &str)> {
@@ -260,29 +474,27 @@ pub fn set_dock_shortcut_accelerators(
     }
     #[cfg(not(target_os = "windows"))]
     {
+        let mut requested = vec![terminal_accelerator.as_str(), browser_accelerator.as_str()];
+        requested.extend(open_folder_accelerator.as_deref());
+        if let Some(accelerator) = unregistrable_accelerator(&requested) {
+            return Err(format!("The menu cannot register {accelerator}."));
+        }
+        remember_shortcut_accelerators(
+            &terminal_accelerator,
+            &browser_accelerator,
+            open_folder_accelerator.as_deref(),
+        );
         let menu = app.menu().ok_or_else(|| t("errors.menuUnavailable"))?;
-        let view_menu = menu
-            .get(VIEW_MENU)
-            .and_then(|item| item.as_submenu().cloned())
-            .ok_or_else(|| t("errors.viewMenuUnavailable"))?;
         for (id, accelerator) in
             dock_accelerator_updates(&terminal_accelerator, &browser_accelerator)
         {
-            let item = view_menu
-                .get(id)
-                .and_then(|item| item.as_menuitem().cloned())
-                .ok_or_else(|| t_with("errors.menuItemUnavailable", &[("id", id)]))?;
-            item.set_accelerator(Some(accelerator))
+            menu_item(&menu, VIEW_MENU, id)?
+                .set_accelerator(Some(accelerator))
                 .map_err(|error| error.to_string())?;
         }
         for (id, accelerator) in file_accelerator_updates(open_folder_accelerator.as_deref()) {
-            let item = menu
-                .get(FILE_MENU)
-                .and_then(|item| item.as_submenu().cloned())
-                .and_then(|file| file.get(id))
-                .and_then(|item| item.as_menuitem().cloned())
-                .ok_or_else(|| t_with("errors.menuItemUnavailable", &[("id", id)]))?;
-            item.set_accelerator(Some(accelerator))
+            menu_item(&menu, FILE_MENU, id)?
+                .set_accelerator(Some(accelerator))
                 .map_err(|error| error.to_string())?;
         }
         Ok(())
@@ -291,8 +503,8 @@ pub fn set_dock_shortcut_accelerators(
 
 fn reload_views<R: Runtime>(app: &AppHandle<R>) {
     // Iterate windows and their webviews, not `webview_windows()`:
-    // that map drops a window the moment it hosts a second webview
-    // (the browser dock), which made Reload Views a silent no-op.
+    // that map drops a window the moment it hosts a second webview,
+    // as the browser window does, and Reload Views would skip it.
     for window in app.windows().values() {
         for webview in window.webviews() {
             let _ = webview.eval("window.location.reload()");
@@ -310,7 +522,14 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
         return;
     }
     if let Some(event) = frontend_event(id) {
+        if edits_main_document(id) && !main_window_focused(app) {
+            return;
+        }
         let _ = app.emit(event, ());
+        return;
+    }
+    if let Some(key) = browser_shortcut_key(id) {
+        crate::browser::route_shortcut_to_focused_window(app, key);
         return;
     }
     if let Some(project_id) = recent_target(id) {
@@ -372,6 +591,83 @@ mod tests {
         assert_eq!(frontend_event("edit_undo"), Some("menu://undo"));
         assert_eq!(frontend_event("edit_redo"), Some("menu://redo"));
         assert_eq!(frontend_event("unknown"), None);
+    }
+
+    #[test]
+    fn a_rebuilt_menu_keeps_the_shortcuts_the_user_chose() {
+        assert_eq!(shortcut_accelerators().terminal, TERMINAL_ACCELERATOR);
+        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None);
+        assert_eq!(
+            shortcut_accelerators(),
+            ShortcutAccelerators {
+                terminal: "Cmd+J".to_owned(),
+                browser: "Cmd+Shift+K".to_owned(),
+                open_folder: OPEN_FOLDER_ACCELERATOR.to_owned(),
+            }
+        );
+        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", Some("Cmd+Alt+O"));
+        assert_eq!(shortcut_accelerators().open_folder, "Cmd+Alt+O");
+    }
+
+    #[test]
+    fn keys_the_menu_cannot_register_are_refused_before_anything_changes() {
+        assert_eq!(unregistrable_accelerator(&["Ctrl+`", "Cmd+Shift+O"]), None);
+        assert_eq!(
+            unregistrable_accelerator(&["Ctrl+`", "Ctrl+Alt+\u{2020}", "Cmd+Shift+O"]),
+            Some("Ctrl+Alt+\u{2020}")
+        );
+        assert_eq!(
+            unregistrable_accelerator(&["Cmd+\u{f6}"]),
+            Some("Cmd+\u{f6}")
+        );
+    }
+
+    #[test]
+    fn a_paused_recorder_frees_the_dock_open_folder_and_quit_keys() {
+        let paused = paused_accelerators(&ShortcutAccelerators {
+            terminal: "Cmd+J".to_owned(),
+            browser: "Cmd+Shift+K".to_owned(),
+            open_folder: "Cmd+Alt+O".to_owned(),
+        });
+        let items: Vec<_> = paused
+            .iter()
+            .map(|(menu, id, accelerator)| (*menu, *id, accelerator.as_str()))
+            .collect();
+        assert_eq!(
+            items,
+            [
+                (VIEW_MENU, TOGGLE_TERMINAL_ITEM, "Cmd+J"),
+                (VIEW_MENU, TOGGLE_BROWSER_ITEM, "Cmd+Shift+K"),
+                (FILE_MENU, OPEN_FOLDER_ITEM, "Cmd+Alt+O"),
+                (APP_MENU, QUIT_ITEM, QUIT_ACCELERATOR),
+            ]
+        );
+    }
+
+    #[test]
+    fn browser_shortcut_items_send_the_toolbar_its_own_keys() {
+        assert_eq!(browser_shortcut_key("browser_new_tab"), Some('t'));
+        assert_eq!(browser_shortcut_key("browser_open_location"), Some('l'));
+        assert_eq!(browser_shortcut_key("browser_close_tab"), Some('w'));
+        assert_eq!(browser_shortcut_key("browser_reload"), Some('r'));
+        assert_eq!(browser_shortcut_key("toggle_browser"), None);
+        for shortcut in BROWSER_SHORTCUTS {
+            assert_eq!(
+                unregistrable_accelerator(&[shortcut.accelerator]),
+                None,
+                "{}",
+                shortcut.accelerator
+            );
+        }
+    }
+
+    #[test]
+    fn only_undo_and_redo_wait_for_the_main_window() {
+        assert!(edits_main_document("edit_undo"));
+        assert!(edits_main_document("edit_redo"));
+        for id in ["toggle_terminal", "toggle_browser", "open_folder", "about"] {
+            assert!(!edits_main_document(id), "{id}");
+        }
     }
 
     #[test]

@@ -226,6 +226,7 @@
       },
       "noChanges": "No changes",
       "refresh": "Refresh",
+      "refreshThrottled": "Refreshed a moment ago. Try again in {{seconds}} s",
       "restore": "Restore defaults",
       "restoreTooltip": "Re-add this provider's built-in models",
       "title": "Models",
@@ -486,11 +487,6 @@
           "none": "No other agent folders were found"
         },
         "title": "Share skills with other agents on this computer"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Added",
@@ -1537,6 +1533,7 @@
     },
     "error": {
       "conflict": "Already assigned to {{action}}.",
+      "nativeKey": "Menu shortcuts can't use this key. Letters, numbers and function keys work.",
       "reserved": "{{shortcut}} is reserved by the operating system."
     },
     "intro": "Customize application shortcuts and review editor-native key combinations.",
@@ -1544,6 +1541,8 @@
       "closeWindow": "Close window",
       "copy": "Copy",
       "cut": "Cut",
+      "hide": "Hide app",
+      "minimize": "Minimize window",
       "paste": "Paste",
       "quit": "Quit",
       "save": "Save",

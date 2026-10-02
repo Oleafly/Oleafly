@@ -72,7 +72,9 @@ vi.mock("@/features/synctex", () => ({
 vi.mock("@/features/ask-ai-compile-errors", () => ({
   askAiAboutCompileErrors: vi.fn(),
 }));
-const openPreviewWindow = vi.hoisted(() => vi.fn());
+const openPreviewWindow = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
+const logError = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
+vi.mock("@/lib/log", () => ({ logError }));
 const toolbarMeasurement = vi.hoisted(() => ({ width: Number.POSITIVE_INFINITY }));
 vi.mock("@/lib/preview-window", () => ({ openPreviewWindow }));
 vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
@@ -342,6 +344,17 @@ describe("PreviewPane toolbar", () => {
     const user = userEvent.setup();
     await user.click(screen.getByLabelText(enPreview.actions.openWindow));
     expect(openPreviewWindow).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs a preview window that fails to open", async () => {
+    const failure = new Error("window refused");
+    openPreviewWindow.mockRejectedValueOnce(failure);
+    await renderWithPdf();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(enPreview.actions.openWindow));
+    await waitFor(() =>
+      expect(logError).toHaveBeenCalledWith("open preview window", failure),
+    );
   });
 
   it("steps through the pages from the toolbar", async () => {

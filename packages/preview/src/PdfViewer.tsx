@@ -2243,7 +2243,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     };
     window.addEventListener("beforeunload", destroyLoadingTask);
 
-    (async () => {
+    void (async () => {
       const viewerRuntime = await loadPdfViewerRuntime();
       if (cancelled || loadAbort.signal.aborted) return;
       pdfViewerRuntimeRef.current = viewerRuntime;

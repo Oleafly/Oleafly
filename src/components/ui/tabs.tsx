@@ -35,19 +35,69 @@ type TabsSize = NonNullable<VariantProps<typeof tabsListVariants>["size"]>;
 
 const TabsSizeContext = React.createContext<TabsSize>("default");
 
+const FILL_TABS_LIST_CLASS = "flex h-auto gap-1 [&>*]:min-w-0 [&>*]:flex-1";
+
+const SCROLLABLE_TABS_LIST_CLASS =
+  "flex h-auto w-fit max-w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar [&>*]:shrink-0";
+
+function useScrollableTabsList(
+  list: HTMLDivElement | null,
+  scrollable: boolean,
+) {
+  React.useEffect(() => {
+    if (!scrollable || !list) return;
+    const onWheel = (event: WheelEvent) => {
+      if (list.scrollWidth <= list.clientWidth) return;
+      if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      event.preventDefault();
+      list.scrollLeft += event.deltaY;
+    };
+    const revealActiveTab = () => {
+      list
+        .querySelector<HTMLElement>('[role="tab"][data-state="active"]')
+        ?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
+    };
+    revealActiveTab();
+    const observer = new MutationObserver(revealActiveTab);
+    observer.observe(list, { subtree: true, attributeFilter: ["data-state"] });
+    list.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      observer.disconnect();
+      list.removeEventListener("wheel", onWheel);
+    };
+  }, [list, scrollable]);
+}
+
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> &
-    VariantProps<typeof tabsListVariants>
->(({ className, size, ...props }, ref) => (
-  <TabsSizeContext.Provider value={size ?? "default"}>
-    <TabsPrimitive.List
-      ref={ref}
-      className={cn(tabsListVariants({ size }), className)}
-      {...props}
-    />
-  </TabsSizeContext.Provider>
-));
+    VariantProps<typeof tabsListVariants> & { scrollable?: boolean; fill?: boolean }
+>(({ className, size, scrollable = false, fill = false, ...props }, ref) => {
+  const [list, setList] = React.useState<HTMLDivElement | null>(null);
+  const setRefs = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      setList(node);
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref],
+  );
+  useScrollableTabsList(list, scrollable);
+  return (
+    <TabsSizeContext.Provider value={size ?? "default"}>
+      <TabsPrimitive.List
+        ref={setRefs}
+        className={cn(
+          tabsListVariants({ size }),
+          scrollable && SCROLLABLE_TABS_LIST_CLASS,
+          fill && FILL_TABS_LIST_CLASS,
+          className,
+        )}
+        {...props}
+      />
+    </TabsSizeContext.Provider>
+  );
+});
 TabsList.displayName = TabsPrimitive.List.displayName;
 
 const TabsTrigger = React.forwardRef<

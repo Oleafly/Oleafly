@@ -442,7 +442,7 @@
       "references": "Reference"
     },
     "label": "Hledat",
-    "noMatches": "Nebyly nalezeny žádné shody.",
+    "noMatches": "Nebyly nalezeny žádné shody",
     "openReferences": "Otevřít reference tohoto projektu",
     "placeholder": "Hledejte projekty, dokumenty, nebo napište / pro příkazy…",
     "placeholderDocuments": "Hledat uvnitř dokumentů…",
@@ -707,6 +707,12 @@
         "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi; když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
         "label": "Webový prohlížeč"
       }
+    },
+    "footer": {
+      "followOnX": "Sledovat na X",
+      "joinDiscord": "Přidat se ke komunitě na Discordu",
+      "releaseNotes": "Zobrazit poznámky k vydání",
+      "viewSource": "Zobrazit zdrojový kód"
     },
     "general": {
       "dialect": {

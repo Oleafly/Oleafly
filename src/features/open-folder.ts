@@ -26,6 +26,7 @@ import { onSaveBlockedSettled, useFilesStore, type SaveBlockedState } from "@/st
 import { useHomeViewStore } from "@/store/home-view";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
+import { useTourStore } from "@/store/tours";
 
 export type OpenFolderOutcome =
   | "opened"
@@ -146,7 +147,9 @@ export async function startOpenRequestIntake(): Promise<() => void> {
   await startOpenSession();
   const stops = await Promise.all([
     listen(OPEN_REQUEST_EVENT, () => void drainOpenRequests()),
-    listen(OPEN_FOLDER_MENU_EVENT, () => void openFolderWithPicker()),
+    listen(OPEN_FOLDER_MENU_EVENT, () => {
+      if (!useTourStore.getState().activeTourId) void openFolderWithPicker();
+    }),
     listen<unknown>(OPEN_RECENT_MENU_EVENT, (event) => {
       if (typeof event.payload === "string") void openRecentProject(event.payload);
     }),

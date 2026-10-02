@@ -7,7 +7,6 @@ import { useTranslation } from "react-i18next";
 import {
   Download,
   ExternalLink,
-  LoaderCircle,
 } from "lucide-react";
 import {
   retryActiveLanguageService,
@@ -21,6 +20,7 @@ import { getLanguageServiceSetupDisclosure } from "@/lib/language-service/setup-
 import type { LanguageServiceKind } from "@/lib/language-service/transport";
 import { logError } from "@/lib/log";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Dialog,
   DialogClose,
@@ -300,10 +300,7 @@ function LanguageServiceSetupDialog({
                 type="button"
               >
                 {installPending ? (
-                  <LoaderCircle
-                    aria-hidden="true"
-                    className="animate-spin"
-                  />
+                  <Spinner />
                 ) : (
                   <Download aria-hidden="true" />
                 )}

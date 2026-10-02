@@ -12,6 +12,7 @@ import { pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
+import { bytesToBase64 } from "@/lib/base64";
 
 type Convert = (tex: string, display: boolean) => string;
 
@@ -109,15 +110,6 @@ export async function svgDocumentToPngBytes(
   } finally {
     URL.revokeObjectURL(url);
   }
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
 }
 
 /** The equation to export: the selection when one exists, otherwise the

@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronRight,
   FolderPlus,
-  Loader2,
   Pencil,
   Plus,
   RefreshCw,
@@ -28,7 +27,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
-import { formatList, formatNumber } from "@/lib/intl";
+import { formatBytes } from "@/lib/format-bytes";
+import { formatList } from "@/lib/intl";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { useFilesStore } from "@/store/files";
 import {
@@ -56,6 +56,9 @@ import { groupSkills, matchesSkillSearch } from "@/lib/skill-groups";
 import { cn } from "@/lib/utils";
 import { SkillCatalogList, SkillResultMessage, SkillsNoMatch } from "./SkillCatalogList";
 import { SkillShareCard } from "./SkillShareCard";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 type EditorTarget = "create" | SkillEntry | null;
 
@@ -95,24 +98,6 @@ function tierLine(skill: SkillEntry): string {
       ? i18n.t(($) => $.settings.ai.skills.tier.shelfWithLicense, { license: skill.license })
       : i18n.t(($) => $.settings.ai.skills.tier.shelf);
   return i18n.t(($) => $.settings.ai.skills.tier.user);
-}
-
-function formatBytes(bytes: number): string {
-  if (!bytes) return i18n.t(($) => $.settings.ai.skills.size.bytes, { value: formatNumber(0) });
-  if (bytes < 1000)
-    return i18n.t(($) => $.settings.ai.skills.size.bytes, { value: formatNumber(bytes) });
-  const kb = bytes / 1000;
-  if (kb < 1000) {
-    const digits = kb >= 10 ? 0 : 1;
-    return i18n.t(($) => $.settings.ai.skills.size.kilobytes, {
-      value: formatNumber(kb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
-    });
-  }
-  const mb = kb / 1000;
-  const digits = mb >= 10 ? 0 : 1;
-  return i18n.t(($) => $.settings.ai.skills.size.megabytes, {
-    value: formatNumber(mb, { minimumFractionDigits: digits, maximumFractionDigits: digits }),
-  });
 }
 
 function SkillEditorDialog({
@@ -243,7 +228,7 @@ function SkillEditorDialog({
         </div>
         <DialogFooter>
           <Button disabled={busy} onClick={() => void submit()}>
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            {busy ? <Spinner size="sm" /> : null}
             {editing
               ? t(($) => $.common.actions.save)
               : t(($) => $.settings.ai.skills.editor.submitCreate)}
@@ -383,7 +368,7 @@ function SkillCard({
           disabled={busy}
           onClick={() => onUpdate(skill)}
         >
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          {busy ? <Spinner size="sm" /> : null}
           {t(($) => $.settings.ai.skills.updateAction)}
         </Button>
       ) : null}
@@ -404,7 +389,7 @@ function SkillCard({
               className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
             >
               {busy ? (
-                <Loader2 className="size-3.5 animate-spin" />
+                <Spinner size="sm" />
               ) : (
                 <RefreshCw className="size-3.5" />
               )}
@@ -491,13 +476,13 @@ function SkillCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-medium text-foreground">{skill.name}</p>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <Badge variant="muted" size="sm">
               {sourceBadge(skill.source)}
-            </span>
+            </Badge>
             {invalid ? (
-              <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+              <Badge variant="destructive" size="sm">
                 {t(($) => $.settings.ai.skills.invalidBadge)}
-              </span>
+              </Badge>
             ) : null}
           </div>
           {metaBits.length > 0 ? (
@@ -780,7 +765,7 @@ export function SkillsTab() {
         <div className="flex shrink-0 items-center gap-2">
           <Button type="button" size="sm" variant="outline" onClick={() => void addFolder()}>
             {busyId === "add" ? (
-              <Loader2 className="size-3.5 animate-spin" />
+              <Spinner size="sm" />
             ) : (
               <FolderPlus className="size-3.5" />
             )}
@@ -816,7 +801,7 @@ export function SkillsTab() {
 
       {query.isPending ? (
         <div className="flex items-center gap-2 rounded-md border px-3 py-4 text-xs text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" />
+          <Spinner size="sm" />
           {t(($) => $.settings.ai.skills.loading)}
         </div>
       ) : null}
@@ -838,9 +823,9 @@ export function SkillsTab() {
           {showNoMatch ? <SkillsNoMatch /> : null}
           {visibleGroups.map((group) => (
             <div key={group.key} data-testid={`skills-phase-${group.key}`} className="space-y-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <SectionHeading>
                 {groupLabels[group.key] ?? group.label}
-              </h3>
+              </SectionHeading>
               <div className="space-y-2">
                 {group.skills.map((skill) => (
                   <SkillCard

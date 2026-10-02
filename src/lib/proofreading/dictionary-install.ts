@@ -1,6 +1,5 @@
-import { listen } from "@tauri-apps/api/event";
 import type { AssetProgress } from "@oleafly/backend-port";
-import { installDictionary } from "@/lib/tauri";
+import { installDictionary, withAssetProgress } from "@/lib/tauri";
 import { refreshDictionaryCatalog } from "./dictionary-catalog";
 
 export const DICTIONARY_COMPONENT_PREFIX = "dictionary:";
@@ -14,16 +13,17 @@ export async function installDictionaryPack(
   onProgress?: (progress: AssetProgress) => void,
 ): Promise<void> {
   const component = dictionaryComponentId(locale);
-  let unlisten: (() => void) | undefined;
-  try {
-    if (onProgress) {
-      unlisten = await listen<AssetProgress>("asset-progress", (event) => {
-        if (event.payload.component === component) onProgress(event.payload);
-      });
-    }
+  if (onProgress) {
+    await withAssetProgress(
+      {
+        component: (progress) => {
+          if (progress.component === component) onProgress(progress);
+        },
+      },
+      () => installDictionary(locale),
+    );
+  } else {
     await installDictionary(locale);
-  } finally {
-    unlisten?.();
   }
   await refreshDictionaryCatalog();
 }

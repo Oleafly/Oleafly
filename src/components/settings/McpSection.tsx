@@ -6,13 +6,15 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Check, Copy, Eye, EyeOff, Loader2, RefreshCw } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip } from "@/components/ui/tooltip";
+import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import {
   getConfig,
   mcpConnectionInfo,
@@ -28,10 +30,11 @@ import { describeError } from "@/lib/app-error";
 import { refreshMcpRegistry, revokeMcpBridgeCalls } from "@/lib/mcp-bridge";
 import { useMcpActivityStore } from "@/store/mcp-activity";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 function CopyBtn({ text, testId }: Readonly<{ text: string; testId?: string }>) {
   const { t } = useTranslation(["common", "settings"]);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyStatus();
   return (
     <Button
       type="button"
@@ -39,12 +42,7 @@ function CopyBtn({ text, testId }: Readonly<{ text: string; testId?: string }>) 
       size="sm"
       data-testid={testId}
       disabled={!text}
-      onClick={() => {
-        void navigator.clipboard.writeText(text).then(() => {
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1500);
-        });
-      }}
+      onClick={() => void copy(text)}
     >
       {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
       {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
@@ -262,31 +260,6 @@ export function McpSection() {
   const [revealed, setRevealed] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [clientTab, setClientTab] = useState<McpClientTab>("claude-code");
-  const clientTabRefs = useRef<Partial<Record<McpClientTab, HTMLButtonElement | null>>>({});
-  const clientTabStripRef = useRef<HTMLDivElement | null>(null);
-
-  // React attaches wheel listeners passively, so a horizontal-scroll shim on
-  // onWheel cannot preventDefault and the settings panel scrolls with the
-  // strip. A native non-passive listener owns the gesture.
-  useEffect(() => {
-    const list = clientTabStripRef.current;
-    if (!list) return;
-    const onWheel = (event: globalThis.WheelEvent) => {
-      if (list.scrollWidth <= list.clientWidth) return;
-      if (Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
-      event.preventDefault();
-      list.scrollLeft += event.deltaY;
-    };
-    list.addEventListener("wheel", onWheel, { passive: false });
-    return () => list.removeEventListener("wheel", onWheel);
-  }, []);
-
-  useEffect(() => {
-    clientTabRefs.current[clientTab]?.scrollIntoView?.({
-      block: "nearest",
-      inline: "nearest",
-    });
-  }, [clientTab]);
 
   const loadToken = useCallback(async (running: boolean) => {
     if (!running) {
@@ -452,7 +425,7 @@ export function McpSection() {
   if (!cfg) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="oleafly-mcp-server">
-        <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
+        <Spinner /> {t(($) => $.common.state.loading)}
       </div>
     );
   }
@@ -554,43 +527,16 @@ export function McpSection() {
         </p>
       </div>
 
-      <div
-        role="switch"
-        aria-checked={enabled}
-        aria-label={t(($) => $.settings.mcp.section.enable.ariaLabel)}
-        tabIndex={0}
-        data-testid="mcp-enable-toggle"
-        onClick={() => {
-          if (!busy) void toggleEnabled(!enabled);
+      <SettingsToggleRow
+        testId="mcp-enable-toggle"
+        label={t(($) => $.settings.mcp.section.enable.label)}
+        ariaLabel={t(($) => $.settings.mcp.section.enable.ariaLabel)}
+        description={t(($) => $.settings.mcp.section.enable.description)}
+        checked={enabled}
+        onChange={(value) => {
+          if (!busy) void toggleEnabled(value);
         }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            if (!busy) void toggleEnabled(!enabled);
-          }
-        }}
-        className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card p-3 hover:bg-accent"
-      >
-        <div>
-          <div className="text-sm font-medium">{t(($) => $.settings.mcp.section.enable.label)}</div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.mcp.section.enable.description)}
-          </div>
-        </div>
-        <span
-          className={cn(
-            "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-            enabled ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-600",
-          )}
-        >
-          <span
-            className={cn(
-              "pointer-events-none inline-block size-4 rounded-full bg-white shadow transition-transform",
-              enabled ? "translate-x-4" : "translate-x-1",
-            )}
-          />
-        </span>
-      </div>
+      />
 
       {renderMcpStatus()}
 
@@ -679,40 +625,13 @@ export function McpSection() {
         </RadioGroup>
       </fieldset>
 
-      <div
-        role="switch"
-        aria-checked={!!cfg.mcp_read_only}
-        aria-label={t(($) => $.settings.mcp.section.readOnly.ariaLabel)}
-        tabIndex={0}
-        onClick={() => void persistPolicy({ mcp_read_only: !cfg.mcp_read_only })}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            void persistPolicy({ mcp_read_only: !cfg.mcp_read_only });
-          }
-        }}
-        className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card p-3 hover:bg-accent"
-      >
-        <div>
-          <div className="text-sm font-medium">{t(($) => $.settings.mcp.section.readOnly.label)}</div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.mcp.section.readOnly.description)}
-          </div>
-        </div>
-        <span
-          className={cn(
-            "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
-            cfg.mcp_read_only ? "bg-primary" : "bg-zinc-300 dark:bg-zinc-600",
-          )}
-        >
-          <span
-            className={cn(
-              "pointer-events-none inline-block size-4 rounded-full bg-white shadow transition-transform",
-              cfg.mcp_read_only ? "translate-x-4" : "translate-x-1",
-            )}
-          />
-        </span>
-      </div>
+      <SettingsToggleRow
+        label={t(($) => $.settings.mcp.section.readOnly.label)}
+        ariaLabel={t(($) => $.settings.mcp.section.readOnly.ariaLabel)}
+        description={t(($) => $.settings.mcp.section.readOnly.description)}
+        checked={!!cfg.mcp_read_only}
+        onChange={(value) => void persistPolicy({ mcp_read_only: value })}
+      />
 
       {renderMcpTokenCard()}
 
@@ -723,58 +642,34 @@ export function McpSection() {
           onValueChange={(value) => setClientTab(value as McpClientTab)}
           className="space-y-3"
         >
-          <TabsList
-            className="flex h-auto w-fit max-w-full flex-nowrap justify-start gap-1 overflow-x-auto no-scrollbar"
-            data-testid="mcp-client-tab-strip"
-            ref={clientTabStripRef}
-          >
+          <TabsList scrollable data-testid="mcp-client-tab-strip">
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current["claude-code"] = node;
-              }}
               value="claude-code"
               data-testid="mcp-tab-claude-code"
-              className="shrink-0"
             >
               {CLIENT_NAMES["claude-code"]}
             </TabsTrigger>
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current["claude-desktop"] = node;
-              }}
               value="claude-desktop"
               data-testid="mcp-tab-claude-desktop"
-              className="shrink-0"
             >
               {CLIENT_NAMES["claude-desktop"]}
             </TabsTrigger>
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current.cursor = node;
-              }}
               value="cursor"
               data-testid="mcp-tab-cursor"
-              className="shrink-0"
             >
               {CLIENT_NAMES.cursor}
             </TabsTrigger>
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current.codex = node;
-              }}
               value="codex"
               data-testid="mcp-tab-codex"
-              className="shrink-0"
             >
               {CLIENT_NAMES.codex}
             </TabsTrigger>
             <TabsTrigger
-              ref={(node) => {
-                clientTabRefs.current.grok = node;
-              }}
               value="grok"
               data-testid="mcp-tab-grok"
-              className="shrink-0"
             >
               {CLIENT_NAMES.grok}
             </TabsTrigger>

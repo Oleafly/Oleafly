@@ -10,9 +10,8 @@ const MAX_QUEUED_PROJECTS: usize = 128;
 const MAX_PROJECT_BINARY_READ_BYTES: u64 = 8 * 1024 * 1024;
 
 // Injects Webview, not WebviewWindow: the latter fails to materialize once
-// the main window hosts a second webview (the browser dock), which turned
-// every reload after opening the dock into a silent error. Iterating windows
-// and their webviews keeps multi-webview windows covered too.
+// a window hosts a second webview, as the browser window does. Iterating
+// windows and their webviews keeps multi-webview windows covered too.
 #[tauri::command]
 pub fn reload_views(app: tauri::AppHandle, webview: tauri::Webview) {
     let caller = webview.label().to_string();

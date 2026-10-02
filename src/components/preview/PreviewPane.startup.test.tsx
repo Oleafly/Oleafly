@@ -27,12 +27,12 @@ import {
   checkpointIdentity,
   DocumentStartupProgress,
   documentStartupStages,
-  PdfOutlineItems,
   PdfStateMessage,
   trimEdgeCharacter,
   type DocumentStartupStage,
   type DocumentStartupState,
 } from "./PreviewPane";
+import { PdfOutlineItems } from "./PdfOutlinePanel";
 
 const startup = enPreview.startup;
 

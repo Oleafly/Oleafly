@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { Switch } from "@/components/ui/switch";
 import { describeError } from "@/lib/app-error";
 import { SettingsPath } from "@/components/settings/SettingsPath";
 import { formatNumber } from "@/lib/intl";
 import { skillsShareSync, skillsShareTargets, type SkillShareTarget } from "@/lib/tauri";
+import { Spinner } from "@/components/ui/spinner";
 
 export function SkillShareCard() {
   const { t } = useTranslation(["common", "settings"]);
@@ -85,7 +86,7 @@ export function SkillShareCard() {
             {summary}
           </span>
           {loading ? (
-            <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+            <Spinner size="sm" className="text-muted-foreground" />
           ) : (
             <Switch
               data-testid="skills-share-toggle"

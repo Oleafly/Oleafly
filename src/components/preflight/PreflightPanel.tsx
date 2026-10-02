@@ -34,6 +34,7 @@ import { ReaderViewDialog } from "./ReaderViewDialog";
 import { AtsCard } from "./AtsCard";
 import { PrepExport } from "./PrepExport";
 import { cn } from "@/lib/utils";
+import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Popover } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -159,51 +160,49 @@ export function PreflightPanel() {
       data-report={report ? "true" : "false"}
       data-error={error ?? ""}
     >
-      <div className="relative flex h-9 items-center gap-2 border-b border-sidebar-border px-3">
-        <ShieldCheck className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          {t(($) => $.preflight.panel.title)}
-        </span>
-        <div className="ml-auto flex min-w-0 items-center gap-1">
-          <button
-            type="button"
-            data-testid="preflight-reader-button"
-            onClick={toggleReader}
-            disabled={pageText.length === 0}
-            title={
-              pageText.length === 0
-                ? t(($) => $.preflight.panel.readerDisabled)
-                : t(($) => $.preflight.panel.readerEnabled)
-            }
-            className="flex min-w-0 items-center gap-1.5 rounded px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Eye className="size-3.5 shrink-0" />
-            <span className="truncate">{t(($) => $.preflight.panel.readerButton)}</span>
-          </button>
-          <Popover
-            align="right"
-            ariaLabel={t(($) => $.preflight.panel.aboutLabel)}
-            trigger={<Info className="size-3.5" />}
-            className="w-80 p-3"
-          >
-            <p className="text-xs font-semibold">{t(($) => $.preflight.panel.aboutTitle)}</p>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-              {t(($) => $.preflight.panel.aboutIntro)}
-            </p>
-            <dl className="mt-2 space-y-1.5 text-[11px] leading-relaxed">
-              {CHECKS.map((check) => (
-                <div key={check.id}>
-                  <dt className="inline font-medium text-foreground">{tp(`preflight:checks.${check.id}.label`)}:{" "}</dt>
-                  <dd className="inline text-muted-foreground">{tp(`preflight:checks.${check.id}.info`)}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-2 border-t border-border pt-2 text-[11px] leading-relaxed text-muted-foreground">
-              {t(($) => $.preflight.panel.aboutFooter)}
-            </p>
-          </Popover>
-        </div>
-      </div>
+      <SidebarPanelHeader
+        icon={ShieldCheck}
+        title={t(($) => $.preflight.panel.title)}
+        className="relative"
+      >
+        <button
+          type="button"
+          data-testid="preflight-reader-button"
+          onClick={toggleReader}
+          disabled={pageText.length === 0}
+          title={
+            pageText.length === 0
+              ? t(($) => $.preflight.panel.readerDisabled)
+              : t(($) => $.preflight.panel.readerEnabled)
+          }
+          className="flex min-w-0 shrink-[100] items-center gap-1.5 rounded px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <Eye className="size-3.5 shrink-0" />
+          <span className="truncate">{t(($) => $.preflight.panel.readerButton)}</span>
+        </button>
+        <Popover
+          align="right"
+          ariaLabel={t(($) => $.preflight.panel.aboutLabel)}
+          trigger={<Info className="size-3.5" />}
+          className="w-80 p-3"
+        >
+          <p className="text-xs font-semibold">{t(($) => $.preflight.panel.aboutTitle)}</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            {t(($) => $.preflight.panel.aboutIntro)}
+          </p>
+          <dl className="mt-2 space-y-1.5 text-[11px] leading-relaxed">
+            {CHECKS.map((check) => (
+              <div key={check.id}>
+                <dt className="inline font-medium text-foreground">{tp(`preflight:checks.${check.id}.label`)}:{" "}</dt>
+                <dd className="inline text-muted-foreground">{tp(`preflight:checks.${check.id}.info`)}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-2 border-t border-border pt-2 text-[11px] leading-relaxed text-muted-foreground">
+            {t(($) => $.preflight.panel.aboutFooter)}
+          </p>
+        </Popover>
+      </SidebarPanelHeader>
 
       <div className="flex flex-1 flex-col gap-2 overflow-auto p-3">
         {CHECKS.map((c) => {

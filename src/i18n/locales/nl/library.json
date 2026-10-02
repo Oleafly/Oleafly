@@ -75,7 +75,42 @@
     },
     "openFolder": "Map openen",
     "openFolderShortcut": "Map openen ({{shortcut}})",
-    "createFirstProject": "Nieuw project maken"
+    "createFirstProject": "Nieuw project maken",
+    "sortBy": "Sorteren op",
+    "customFilter": "Aangepast",
+    "search": {
+      "fields": {
+        "is": "Status",
+        "has": "Met",
+        "no": "Zonder",
+        "color": "Omslagkleur",
+        "opened": "Laatst geopend",
+        "in": "Zoeken in",
+        "sort": "Sortering"
+      },
+      "values": {
+        "linkedFolder": "Gekoppelde map",
+        "forked": "Geforkt",
+        "exports": "Exporten",
+        "today": "Vandaag",
+        "yesterday": "Gisteren",
+        "id": "ID",
+        "mainFile": "Hoofdbestand",
+        "folderPath": "Mappad"
+      },
+      "sorts": {
+        "activityDesc": "Recente activiteit",
+        "activityAsc": "Minst recente activiteit",
+        "updatedDesc": "Recent gewijzigd",
+        "updatedAsc": "Minst recent gewijzigd",
+        "createdDesc": "Nieuwste",
+        "createdAsc": "Oudste",
+        "openedDesc": "Recent geopend",
+        "openedAsc": "Minst recent geopend",
+        "nameAsc": "Naam, A tot Z",
+        "nameDesc": "Naam, Z tot A"
+      }
+    }
   },
   "projects": {
     "open": "{{name}} openen",

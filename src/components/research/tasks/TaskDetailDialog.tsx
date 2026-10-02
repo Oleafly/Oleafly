@@ -6,7 +6,6 @@ import {
   ChevronRight,
   ExternalLink,
   FileDiff,
-  Loader2,
   Paperclip,
   Trash2,
 } from "lucide-react";
@@ -43,6 +42,7 @@ import type { ResearchTaskDetailTab } from "@/store/research-tasks";
 import { relativeTime, statusLabel } from "./task-status";
 import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
 import { buildTaskTimeline, type TaskTimelineItem } from "./task-timeline";
+import { LoadingState } from "@/components/ui/empty";
 
 export interface TaskDetailDialogProps {
   open: boolean;
@@ -710,14 +710,14 @@ export function TaskDetailDialog({
             onValueChange={setChosenTab}
             className="flex min-h-0 flex-1 flex-col overflow-hidden"
           >
-            <TabsList className="mx-5 mt-3 flex h-auto w-fit max-w-full shrink-0 justify-start gap-1 self-start overflow-x-auto no-scrollbar">
-              <TabsTrigger value="activity" className="shrink-0">
+            <TabsList scrollable className="mx-5 mt-3 shrink-0 self-start">
+              <TabsTrigger value="activity">
                 {t(($) => $.researchTools.tasks.detail.tabActivity)}
               </TabsTrigger>
-              <TabsTrigger value="review" className="shrink-0">
+              <TabsTrigger value="review">
                 {t(($) => $.researchTools.tasks.detail.tabReview)}
               </TabsTrigger>
-              <TabsTrigger value="output" className="shrink-0">
+              <TabsTrigger value="output">
                 {t(($) => $.researchTools.tasks.detail.tabOutput)}
               </TabsTrigger>
             </TabsList>
@@ -834,10 +834,11 @@ export function TaskDetailDialog({
                   </div>
                 )}
                 {eventsLoading ? (
-                  <output className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="size-3 animate-spin" />{" "}
-                    {t(($) => $.researchTools.tasks.detail.loadingActivity)}
-                  </output>
+                  <LoadingState
+                    size="compact"
+                    className="mt-3"
+                    label={t(($) => $.researchTools.tasks.detail.loadingActivity)}
+                  />
                 ) : null}
               </section>
             </TabsContent>

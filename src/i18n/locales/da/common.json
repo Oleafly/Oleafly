@@ -51,5 +51,32 @@
   },
   "toast": {
     "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Søgeforslag",
+    "exclude": "Udelad",
+    "excludeField": "Udelad {{field}}",
+    "dateHint": "Datoer skrives som 2026-10-02 eller @today-7d. Tilføj >, >=, < eller <= for at sammenligne, eller skriv et interval som 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Denne ( bliver aldrig lukket",
+      "unexpectedClose": "Denne ) har ingen tilhørende (",
+      "danglingOperator": "{{operator}} mangler et søgeord",
+      "tooDeep": "Grupper kan højst indlejres 5 niveauer dybt",
+      "emptyGroup": "Parenteserne er tomme",
+      "unterminatedQuote": "Dette anførselstegn bliver aldrig lukket",
+      "unknownQualifier": "Ukendt filter: {{key}}",
+      "missingValue": "Tilføj en værdi efter {{key}}:",
+      "invalidValue": "{{value}} er ikke en gyldig værdi for {{key}}",
+      "invalidDate": "{{value}} er ikke en dato. Prøv 2026-10-02 eller @today-7d",
+      "invalidNumber": "{{value}} er ikke et tal",
+      "sortNegated": "{{key}} kan ikke udelades"
+    }
   }
 }

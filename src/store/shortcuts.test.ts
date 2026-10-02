@@ -377,6 +377,18 @@ describe("shortcut bindings", () => {
     expect(reservedShortcutAction({ key: "s", mod: true, shift: true })).toBeNull();
   });
 
+  it("leaves Hide and Minimize free where the menu has no such items", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { reservedShortcutAction } = await import("@/store/shortcuts");
+      expect(reservedShortcutAction({ key: "h", mod: true })).toBeNull();
+      expect(reservedShortcutAction({ key: "m", mod: true })).toBeNull();
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
   it("reserves the macOS window switching shortcut", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "MacIntel" });
@@ -384,6 +396,8 @@ describe("shortcut bindings", () => {
       const { reservedShortcutAction } = await import("@/store/shortcuts");
       expect(reservedShortcutAction({ key: "`", mod: true })).toBe("windowSwitching");
       expect(reservedShortcutAction({ key: "`", ctrl: true })).toBeNull();
+      expect(reservedShortcutAction({ key: "h", mod: true })).toBe("hide");
+      expect(reservedShortcutAction({ key: "m", mod: true })).toBe("minimize");
     } finally {
       vi.stubGlobal("navigator", originalNavigator);
     }

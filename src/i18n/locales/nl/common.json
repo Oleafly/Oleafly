@@ -51,5 +51,32 @@
   },
   "toast": {
     "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Zoeksuggesties",
+    "exclude": "Uitsluiten",
+    "excludeField": "{{field}} uitsluiten",
+    "dateHint": "Datums zien eruit als 2026-10-02 of @today-7d. Zet er >, >=, < of <= voor om te vergelijken, of schrijf een periode als 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Deze ( wordt nergens gesloten",
+      "unexpectedClose": "Bij deze ) hoort geen (",
+      "danglingOperator": "Bij {{operator}} ontbreekt een zoekterm",
+      "tooDeep": "Groepen kunnen maximaal 5 niveaus diep genest worden",
+      "emptyGroup": "Deze haakjes zijn leeg",
+      "unterminatedQuote": "Dit aanhalingsteken wordt nergens gesloten",
+      "unknownQualifier": "Onbekend filter: {{key}}",
+      "missingValue": "Voeg een waarde toe na {{key}}:",
+      "invalidValue": "{{value}} is geen geldige waarde voor {{key}}",
+      "invalidDate": "{{value}} is geen datum. Probeer 2026-10-02 of @today-7d",
+      "invalidNumber": "{{value}} is geen getal",
+      "sortNegated": "{{key}} kan niet worden uitgesloten"
+    }
   }
 }

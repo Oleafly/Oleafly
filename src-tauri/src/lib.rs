@@ -20,6 +20,7 @@ mod browser;
 mod browser_cookie_import;
 mod buffer_copy;
 mod build_hygiene;
+mod caller;
 mod chats;
 mod checkpoint_archive;
 mod checkpoint_backup;
@@ -116,6 +117,8 @@ mod tex_distro;
 mod tinytex_archive;
 mod trust;
 // Only macOS sizes webviews itself; the frame logic is unit-tested everywhere.
+#[cfg(windows)]
+mod webview_focus;
 #[cfg(any(target_os = "macos", test))]
 mod webview_frame;
 mod worktree_lock;
@@ -362,6 +365,10 @@ pub fn run() {
     {
         builder = builder.plugin(webview_frame::plugin());
     }
+    #[cfg(windows)]
+    {
+        builder = builder.plugin(webview_focus::plugin());
+    }
 
     #[cfg(not(target_os = "windows"))]
     {
@@ -596,6 +603,7 @@ pub fn run() {
             terminal::term_resize,
             terminal::term_kill,
             menu::set_dock_shortcut_accelerators,
+            menu::set_native_shortcuts_paused,
             menu::set_recent_projects,
             i18n::set_ui_locale,
             i18n::get_ui_locale,

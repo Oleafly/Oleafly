@@ -433,7 +433,7 @@
       "references": "參考文獻"
     },
     "label": "搜尋",
-    "noMatches": "找不到符合項目。",
+    "noMatches": "找不到符合項目",
     "openReferences": "開啟這個專案的參考文獻",
     "placeholder": "搜尋專案、文件，或輸入 / 使用指令…",
     "placeholderDocuments": "在文件中搜尋…",
@@ -662,6 +662,12 @@
         "description": "顯示應用程式內建的網頁瀏覽器（含停駐列切換與快捷鍵），並允許 AI 透過 computer use 操作它。仍在 beta 階段，預設為關閉；關閉時不會有瀏覽器按鈕，AI 也沒有瀏覽器工具。",
         "label": "網頁瀏覽器"
       }
+    },
+    "footer": {
+      "followOnX": "在 X 上追蹤",
+      "joinDiscord": "加入 Discord 社群",
+      "releaseNotes": "檢視版本資訊",
+      "viewSource": "檢視原始碼"
     },
     "general": {
       "dialect": {

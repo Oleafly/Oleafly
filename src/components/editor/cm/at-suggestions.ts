@@ -1,16 +1,13 @@
 import {
-  closeCompletion,
   snippet,
   type Completion,
   type CompletionSource,
 } from "@codemirror/autocomplete";
 import {
-  completionRequestIsCurrent,
   createCompletionRequestGuard,
+  guardCompletionForSource,
   scanMathExpressions,
-  type CompletionRequestGuard,
 } from "@oleafly/editor";
-import type { EditorView } from "@codemirror/view";
 import {
   loadAtSuggestions,
   type AtSuggestion,
@@ -76,29 +73,6 @@ function baseOptions(suggestions: AtSuggestion[]): Completion[] {
   return cachedOptions;
 }
 
-// Mirrors guardCompletionForSource in packages/editor/src/latex.ts (not
-// exported to the app): a completion applied after the document moved on
-// closes the popup instead of splicing text at a stale position.
-function guardOption(
-  guard: CompletionRequestGuard,
-  option: Completion,
-): Completion {
-  const originalApply = option.apply;
-  return {
-    ...option,
-    apply: (view: EditorView, completion: Completion, from: number, to: number) => {
-      if (!completionRequestIsCurrent(guard, view.state)) {
-        closeCompletion(view);
-        return;
-      }
-      // Every base option's apply is snippet(replacement), so it is a function.
-      if (typeof originalApply === "function") {
-        originalApply(view, completion, from, to);
-      }
-    },
-  };
-}
-
 /**
  * Math-only `@` shortcut completions. Applying an option replaces the whole
  * `@`-token with the shortcut's snippet.
@@ -116,7 +90,7 @@ export const atSuggestionCompletion: CompletionSource = (context) => {
   return {
     from: token.from,
     options: baseOptions(suggestions).map((option) =>
-      guardOption(guard, option),
+      guardCompletionForSource(guard, option),
     ),
   };
 };

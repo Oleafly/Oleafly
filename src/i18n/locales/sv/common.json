@@ -51,5 +51,32 @@
   },
   "toast": {
     "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Sökförslag",
+    "exclude": "Uteslut",
+    "excludeField": "Uteslut {{field}}",
+    "dateHint": "Datum skrivs som 2026-10-02 eller @today-7d. Lägg till >, >=, < eller <= för att jämföra, eller skriv ett intervall som 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Den här ( stängs aldrig",
+      "unexpectedClose": "Den här ) saknar en matchande (",
+      "danglingOperator": "{{operator}} saknar en sökterm",
+      "tooDeep": "Grupper kan bara nästlas 5 nivåer djupt",
+      "emptyGroup": "Parenteserna är tomma",
+      "unterminatedQuote": "Det här citattecknet stängs aldrig",
+      "unknownQualifier": "Okänt filter: {{key}}",
+      "missingValue": "Lägg till ett värde efter {{key}}:",
+      "invalidValue": "{{value}} är inte ett giltigt värde för {{key}}",
+      "invalidDate": "{{value}} är inte ett datum. Prova 2026-10-02 eller @today-7d",
+      "invalidNumber": "{{value}} är inte ett tal",
+      "sortNegated": "{{key}} kan inte uteslutas"
+    }
   }
 }

@@ -6,6 +6,9 @@
     "reloadViews": "ビューを再読み込み",
     "restartApp": "アプリケーションを再起動",
     "quit": "Oleafly を終了",
+    "hide": "Oleafly を非表示",
+    "hideOthers": "ほかを非表示",
+    "showAll": "すべてを表示",
     "edit": "編集",
     "undo": "取り消す",
     "redo": "やり直す",
@@ -19,7 +22,15 @@
     "file": "ファイル",
     "openFolder": "フォルダを開く…",
     "openRecent": "最近使った項目を開く",
-    "noRecent": "最近のプロジェクトはありません"
+    "noRecent": "最近のプロジェクトはありません",
+    "window": "ウィンドウ",
+    "minimize": "しまう",
+    "fullscreen": "フルスクリーンを切り替え",
+    "bringAllToFront": "すべてを手前に移動",
+    "newTab": "新規タブ",
+    "openLocation": "場所を開く…",
+    "closeTab": "タブを閉じる",
+    "reloadPage": "ページを再読み込み"
   },
   "window": {
     "browser": "Oleafly ブラウザ",

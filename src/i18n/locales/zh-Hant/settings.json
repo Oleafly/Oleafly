@@ -226,6 +226,7 @@
       },
       "noChanges": "無變更",
       "refresh": "重新整理",
+      "refreshThrottled": "剛剛已重新整理。請在 {{seconds}} 秒後重試",
       "restore": "還原預設值",
       "restoreTooltip": "重新加入這個供應商的內建模型",
       "title": "模型",
@@ -483,11 +484,6 @@
           "none": "找不到其他代理程式資料夾"
         },
         "title": "與這台電腦上的其他代理程式共用技能"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "已新增",
@@ -1521,6 +1517,7 @@
     },
     "error": {
       "conflict": "已指派給 {{action}}。",
+      "nativeKey": "選單快速鍵無法使用此按鍵。可以使用字母、數字和功能鍵。",
       "reserved": "{{shortcut}} 是作業系統保留的。"
     },
     "intro": "自訂應用程式快捷鍵，並檢視編輯器內建的按鍵組合。",
@@ -1528,6 +1525,8 @@
       "closeWindow": "關閉視窗",
       "copy": "複製",
       "cut": "剪下",
+      "hide": "隱藏 App",
+      "minimize": "最小化視窗",
       "paste": "貼上",
       "quit": "結束",
       "save": "儲存",

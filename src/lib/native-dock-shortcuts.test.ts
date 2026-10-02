@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
+import { useTourStore } from "@/store/tours";
 
 const originalNavigator = globalThis.navigator;
 
@@ -38,7 +39,9 @@ vi.mock("@/store/files", () => ({
 }));
 
 import {
+  isNativeAcceleratorKey,
   nativeAccelerator,
+  pauseNativeShortcuts,
   startNativeDockShortcutBridge,
   usesNativeDockMenu,
 } from "./native-dock-shortcuts";
@@ -93,6 +96,37 @@ describe("native dock shortcuts", () => {
     expect(
       nativeAccelerator({ key, ctrl: true, shift: true }, true),
     ).toBe(`Ctrl+Shift+${nativeKey}`);
+  });
+
+  it("refuses keys the menu cannot register", () => {
+    expect(nativeAccelerator({ key: "\u2020", ctrl: true, alt: true }, true)).toBeNull();
+    expect(nativeAccelerator({ key: "\u00f6", mod: true }, true)).toBeNull();
+    expect(nativeAccelerator({ key: "F13", mod: true }, true)).toBe("Cmd+F13");
+    expect(nativeAccelerator({ key: "ArrowUp", mod: true }, false)).toBe("Ctrl+ArrowUp");
+    expect(isNativeAcceleratorKey("PageDown")).toBe(true);
+    expect(isNativeAcceleratorKey("MediaPlayPause")).toBe(false);
+  });
+
+  it("keeps the default menu shortcut when a saved one cannot be registered", async () => {
+    useShortcutStore.setState({
+      bindings: {
+        ...useShortcutStore.getState().bindings,
+        toggleTerminal: { key: "\u2020", ctrl: true, alt: true },
+      },
+    });
+    const stop = await startNativeDockShortcutBridge();
+    expect(native.invoke).toHaveBeenCalledWith(
+      "set_dock_shortcut_accelerators",
+      expect.objectContaining({ terminalAccelerator: "Ctrl+`" }),
+    );
+    stop();
+  });
+
+  it("pauses and resumes the menu shortcuts", async () => {
+    await pauseNativeShortcuts(true);
+    await pauseNativeShortcuts(false);
+    expect(native.invoke).toHaveBeenCalledWith("set_native_shortcuts_paused", { paused: true });
+    expect(native.invoke).toHaveBeenLastCalledWith("set_native_shortcuts_paused", { paused: false });
   });
 
   it("uses only the native menu path on Tauri platforms that install the menu", () => {
@@ -172,5 +206,20 @@ describe("native dock shortcuts", () => {
     stop();
     expect(native.unlisteners).toHaveLength(2);
     expect(native.unlisteners.every((unlisten) => unlisten.mock.calls.length === 1)).toBe(true);
+  });
+
+  it("ignores native dock shortcuts while a tour is running", async () => {
+    const stop = await startNativeDockShortcutBridge();
+    const browserToggles = toggleBrowser.mock.calls.length;
+    useTourStore.setState({ activeTourId: "welcome" } as never);
+    try {
+      native.listeners.get("menu://toggle-terminal")?.({ payload: null });
+      native.listeners.get("menu://toggle-browser")?.({ payload: null });
+      expect(useSettingsStore.getState().terminalOpen).toBe(false);
+      expect(toggleBrowser).toHaveBeenCalledTimes(browserToggles);
+    } finally {
+      useTourStore.setState({ activeTourId: null } as never);
+      stop();
+    }
   });
 });

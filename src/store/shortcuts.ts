@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { isAltGraphCharacter, isUnbindableKey } from "@/lib/keyboard";
+import { readJson, writeJson } from "@/lib/local-storage";
 
 export type ShortcutId =
   | "recompile"
@@ -23,6 +24,14 @@ export interface ShortcutBinding {
 export interface ShortcutDefinition {
   id: ShortcutId;
   defaultBinding: ShortcutBinding;
+}
+
+const BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, shift: true };
+const LINUX_BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, alt: true };
+
+function onLinuxDesktop(): boolean {
+  const tauri = Boolean((globalThis as { isTauri?: unknown }).isTauri);
+  return tauri && typeof navigator !== "undefined" && /Linux/.test(navigator.platform);
 }
 
 export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
@@ -52,7 +61,9 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   },
   {
     id: "toggleBrowser",
-    defaultBinding: { key: "b", ctrl: true, shift: true },
+    get defaultBinding() {
+      return onLinuxDesktop() ? LINUX_BROWSER_BINDING : BROWSER_BINDING;
+    },
   },
   {
     id: "toggleSidebar",
@@ -66,12 +77,19 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
 
 type ShortcutBindings = Record<ShortcutId, ShortcutBinding>;
 
-const defaults = Object.fromEntries(
-  SHORTCUT_DEFINITIONS.map((definition) => [definition.id, definition.defaultBinding]),
-) as ShortcutBindings;
+function defaultBindings(): ShortcutBindings {
+  return Object.fromEntries(
+    SHORTCUT_DEFINITIONS.map((definition) => [definition.id, definition.defaultBinding]),
+  ) as ShortcutBindings;
+}
 
 export function shortcutsDifferFromDefaults(bindings: ShortcutBindings): boolean {
+  const defaults = defaultBindings();
   return SHORTCUT_DEFINITIONS.some(({ id }) => !sameShortcutBinding(bindings[id], defaults[id]));
+}
+
+function isRetiredDefault(id: ShortcutId, binding: ShortcutBinding): boolean {
+  return id === "toggleBrowser" && onLinuxDesktop() && sameShortcutBinding(binding, BROWSER_BINDING);
 }
 
 function isValidBinding(value: unknown): value is ShortcutBinding {
@@ -82,25 +100,23 @@ function isValidBinding(value: unknown): value is ShortcutBinding {
   );
 }
 
-function loadBindings(): ShortcutBindings {
-  try {
-    const value = localStorage.getItem("oleafly.shortcuts");
-    if (!value) return defaults;
-    const parsed = JSON.parse(value) as Record<string, unknown>;
-    const clean: Partial<ShortcutBindings> = {};
-    for (const id of Object.keys(defaults) as ShortcutId[]) {
-      if (isValidBinding(parsed[id])) clean[id] = parsed[id] as ShortcutBinding;
-    }
-    return { ...defaults, ...clean };
-  } catch {
-    return defaults;
+function storedBindings(value: unknown): ShortcutBindings {
+  const defaults = defaultBindings();
+  const parsed = value as Record<string, unknown>;
+  const clean: Partial<ShortcutBindings> = {};
+  for (const id of Object.keys(defaults) as ShortcutId[]) {
+    const binding = parsed[id];
+    if (isValidBinding(binding) && !isRetiredDefault(id, binding)) clean[id] = binding;
   }
+  return { ...defaults, ...clean };
+}
+
+function loadBindings(): ShortcutBindings {
+  return readJson("oleafly.shortcuts", defaultBindings(), storedBindings);
 }
 
 function saveBindings(bindings: ShortcutBindings) {
-  try {
-    localStorage.setItem("oleafly.shortcuts", JSON.stringify(bindings));
-  } catch {}
+  writeJson("oleafly.shortcuts", bindings);
 }
 
 interface ShortcutState {
@@ -120,11 +136,12 @@ export const useShortcutStore = create<ShortcutState>((set) => ({
     }),
   resetBinding: (id) =>
     set((state) => {
-      const bindings = { ...state.bindings, [id]: defaults[id] };
+      const bindings = { ...state.bindings, [id]: defaultBindings()[id] };
       saveBindings(bindings);
       return { bindings };
     }),
   resetAll: () => {
+    const defaults = defaultBindings();
     saveBindings(defaults);
     set({ bindings: defaults });
   },
@@ -170,6 +187,8 @@ export type ReservedShortcutAction =
   | "closeWindow"
   | "copy"
   | "cut"
+  | "hide"
+  | "minimize"
   | "paste"
   | "quit"
   | "save"
@@ -195,6 +214,7 @@ export function reservedShortcutAction(binding: ShortcutBinding): ReservedShortc
     x: "cut",
     " ": "systemSearch",
     space: "systemSearch",
+    ...(apple ? { h: "hide", m: "minimize" } : {}),
   };
   return reserved[binding.key.toLowerCase()] ?? null;
 }

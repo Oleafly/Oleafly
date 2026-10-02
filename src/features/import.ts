@@ -14,6 +14,8 @@ import { ensurePandoc } from "@/features/pandoc";
 import { showConversionNotice } from "@/features/project-import";
 import { i18n } from "@/i18n";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { base64ToBytes, bytesToBase64, textToBase64 } from "@/lib/base64";
+import { basename } from "@/lib/path-utils";
 
 type ZipDownloadSnapshot = Pick<
   ReturnType<typeof useImportStore.getState>,
@@ -40,26 +42,13 @@ export type ZipDownloadOutcome =
   | "failed";
 
 export function baseName(fileName: string): string {
-  const last = fileName.split(/[\\/]/).pop() ?? fileName;
+  const last = basename(fileName);
   const stripped = last.replace(/\.[^.]+$/, "");
   return stripped.length > 0 ? stripped : last;
 }
 
 export function dataUrlToBase64(dataUrl: string): string {
   return dataUrl.slice(dataUrl.indexOf(",") + 1);
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  return Uint8Array.from(atob(b64), (c) => c.codePointAt(0) ?? 0);
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let bin = "";
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    bin += String.fromCodePoint(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(bin);
 }
 
 export function zipEntries(tex: string, figures: ExtractedFigure[]): Record<string, Uint8Array> {
@@ -196,7 +185,7 @@ export async function downloadTex(): Promise<void> {
       filters: [{ name: "LaTeX", extensions: ["tex"] }],
     });
     if (!dest) return;
-    await writeBytesFile(dest, bytesToBase64(new TextEncoder().encode(result.tex)));
+    await writeBytesFile(dest, textToBase64(result.tex));
     toast.success(i18n.t(($) => $.core.import.texSaved));
   } catch (e) {
     notifyError("save converted tex", e, i18n.t(($) => $.researchTools.converter.saveFailed));

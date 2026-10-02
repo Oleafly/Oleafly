@@ -436,7 +436,7 @@
       "references": "Referenties"
     },
     "label": "Zoeken",
-    "noMatches": "Geen resultaten gevonden.",
+    "noMatches": "Geen resultaten gevonden",
     "openReferences": "Referenties van dit project openen",
     "placeholder": "Zoek projecten en documenten, of typ / voor opdrachten…",
     "placeholderDocuments": "Zoek in documenten…",
@@ -677,6 +677,12 @@
         "description": "Toon de ingebouwde webbrowser (de dockknop en de sneltoets) en laat de AI hem besturen met computergebruik. Staat standaard uit zolang dit in bèta is. Als het uitstaat, is er geen browserknop en heeft de AI geen browsertool.",
         "label": "Webbrowser"
       }
+    },
+    "footer": {
+      "followOnX": "Volgen op X",
+      "joinDiscord": "Word lid van de Discord-community",
+      "releaseNotes": "Releaseopmerkingen bekijken",
+      "viewSource": "Broncode bekijken"
     },
     "general": {
       "dialect": {

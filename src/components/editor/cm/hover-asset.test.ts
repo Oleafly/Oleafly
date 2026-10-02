@@ -14,7 +14,6 @@ import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   clearThumbnailCache,
   loadAssetThumbnail,
-  THUMBNAIL_TARGET_RE,
 } from "./hover-asset";
 
 const mockRead = vi.mocked(readFileBase64);
@@ -27,29 +26,6 @@ beforeEach(() => {
   mockRead.mockResolvedValue("QUJD");
   mockToBytes.mockReturnValue(new Uint8Array([1, 2, 3]));
   mockPdfToPng.mockResolvedValue("data:image/png;base64,PDFTHUMB");
-});
-
-describe("THUMBNAIL_TARGET_RE", () => {
-  it("matches raster images, svg, and pdf, case-insensitively", () => {
-    for (const p of [
-      "fig.png",
-      "images/photo.jpg",
-      "a.JPEG",
-      "anim.gif",
-      "modern.webp",
-      "old.BMP",
-      "vector.svg",
-      "plot.pdf",
-    ]) {
-      expect(THUMBNAIL_TARGET_RE.test(p)).toBe(true);
-    }
-  });
-
-  it("rejects non-asset paths", () => {
-    for (const p of ["main.tex", "fig.png.bak", "notes.md", "pngfile", "archive.pdfx"]) {
-      expect(THUMBNAIL_TARGET_RE.test(p)).toBe(false);
-    }
-  });
 });
 
 describe("loadAssetThumbnail", () => {

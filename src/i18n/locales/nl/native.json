@@ -6,6 +6,9 @@
     "reloadViews": "Weergaven opnieuw laden",
     "restartApp": "Applicatie opnieuw starten",
     "quit": "Oleafly afsluiten",
+    "hide": "Verberg Oleafly",
+    "hideOthers": "Verberg andere",
+    "showAll": "Toon alles",
     "edit": "Bewerken",
     "undo": "Ongedaan maken",
     "redo": "Opnieuw",
@@ -19,7 +22,15 @@
     "file": "Archief",
     "openFolder": "Map openen…",
     "openRecent": "Open recent",
-    "noRecent": "Geen recente projecten"
+    "noRecent": "Geen recente projecten",
+    "window": "Venster",
+    "minimize": "Minimaliseer",
+    "fullscreen": "Schermvullend aan of uit",
+    "bringAllToFront": "Breng alles naar voren",
+    "newTab": "Nieuw tabblad",
+    "openLocation": "Locatie openen…",
+    "closeTab": "Tabblad sluiten",
+    "reloadPage": "Pagina opnieuw laden"
   },
   "window": {
     "browser": "Oleafly Browser",

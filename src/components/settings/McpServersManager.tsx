@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   Download,
   Globe2,
-  Loader2,
   Pencil,
   Plus,
   RefreshCw,
@@ -59,6 +58,7 @@ import {
   type McpServerValidation,
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 type PairValue = {
   id: number;
@@ -157,7 +157,7 @@ function StatusBadge({ record }: Readonly<{ record: McpManagedServer }>) {
         status === "checking" && "text-muted-foreground",
       )}
     >
-      {status === "checking" ? <Loader2 className="mr-1 size-3 animate-spin" /> : null}
+      {status === "checking" ? <Spinner size="xs" className="mr-1" /> : null}
       {label}
     </Badge>
   );
@@ -631,7 +631,7 @@ function ServerEditor({
               {t(($) => $.common.actions.cancel)}
             </Button>
             <Button type="submit" disabled={!valid || busy}>
-              {busy ? <Loader2 className="animate-spin" aria-hidden /> : null}
+              {busy ? <Spinner /> : null}
               {submitLabel()}
             </Button>
           </DialogFooter>
@@ -949,7 +949,7 @@ export function McpServersManager() {
 
       {loading ? (
         <div className="flex items-center gap-2 rounded-lg border bg-card p-3 text-xs text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden />
+          <Spinner />
           {t(($) => $.settings.mcp.servers.loading)}
         </div>
       ) : null}

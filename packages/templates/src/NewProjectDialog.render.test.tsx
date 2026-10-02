@@ -298,6 +298,21 @@ describe("NewProjectDialog", () => {
     await waitFor(() => expect(onCreate).toHaveBeenCalledWith("My paper", "blank", "#f59e0b"));
   });
 
+  it("gives an unpicked cover a colour from the host instead of the first swatch", async () => {
+    const pickColor = vi.fn(() => "#a3c4f3");
+    const { onCreate } = open({ pickColor });
+
+    fireEvent.click(screen.getByTestId("template-card-blank"));
+    expect(screen.queryAllByRole("button", { pressed: true })).toEqual([]);
+    fireEvent.change(screen.getByLabelText("dialog.projectName"), {
+      target: { value: "Untitled" },
+    });
+    fireEvent.click(screen.getByTestId("create-project"));
+
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith("Untitled", "blank", "#a3c4f3"));
+    expect(pickColor).toHaveBeenCalledOnce();
+  });
+
   it("downloads the assets a template needs before creating it", async () => {
     const host = makeHost({
       ensureAssets: vi.fn(async (_id, onProgress) => {

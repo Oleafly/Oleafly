@@ -32,7 +32,7 @@ export const useDeadlinesStore = create<DeadlinesState>((set) => ({
       const { venues, generatedAt } = await load();
       set({ venues, generatedAt });
     } catch (e) {
-      logError("deadlines", e);
+      void logError("deadlines", e);
       set({ error: String(e), venues: [] });
     }
   },
@@ -43,7 +43,7 @@ export const useDeadlinesStore = create<DeadlinesState>((set) => ({
       const { venues, generatedAt } = await load();
       set({ venues, generatedAt, busy: false });
     } catch (e) {
-      logError("deadlines", e);
+      void logError("deadlines", e);
       set({ busy: false, error: String(e) });
     }
   },

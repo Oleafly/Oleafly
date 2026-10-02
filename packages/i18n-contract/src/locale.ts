@@ -83,6 +83,3 @@ export function resolvePreference(
 ): SupportedLocale {
   return preference === "system" ? resolveLocale(systemTag) : preference;
 }
-
-export type TranslateParams = Record<string, string | number | boolean | null | undefined>;
-export type Translator = (key: string, params?: TranslateParams) => string;

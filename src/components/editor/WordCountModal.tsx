@@ -8,7 +8,7 @@ import {
   type ProjectInfoSnapshot,
 } from "@/components/editor/project-info-data";
 import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 
 /**
  * The command-palette route into Project info. It renders the same content as
@@ -20,10 +20,6 @@ export function WordCountModal() {
   const open = useSettingsStore((s) => s.wordCountOpen);
   const setOpen = useSettingsStore((s) => s.setWordCountOpen);
   const [snapshot, setSnapshot] = useState<ProjectInfoSnapshot | null>(null);
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(
-    open,
-    () => setOpen(false),
-  );
 
   useEffect(() => {
     if (!open) {
@@ -44,33 +40,25 @@ export function WordCountModal() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label={t(($) => $.editor.wordCount.close)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        role="dialog"
-        ref={dialogRef}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="project-info-title"
-        className="relative w-full max-w-sm rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-      >
-        <div id="project-info-title">
-          <ProjectInfoContent
-            snapshot={snapshot}
-            surface={isWysiwygActive() ? "visual" : "source"}
-          />
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button data-modal-initial-focus size="sm" onClick={() => setOpen(false)}>
-            {t(($) => $.common.actions.close)}
-          </Button>
-        </div>
+    <ModalShell
+      open
+      onClose={() => setOpen(false)}
+      closeLabel={t(($) => $.editor.wordCount.close)}
+      width="sm"
+      labelledBy="project-info-title"
+      className="p-5"
+    >
+      <div id="project-info-title">
+        <ProjectInfoContent
+          snapshot={snapshot}
+          surface={isWysiwygActive() ? "visual" : "source"}
+        />
       </div>
-    </div>
+      <div className="mt-4 flex justify-end">
+        <Button data-modal-initial-focus size="sm" onClick={() => setOpen(false)}>
+          {t(($) => $.common.actions.close)}
+        </Button>
+      </div>
+    </ModalShell>
   );
 }

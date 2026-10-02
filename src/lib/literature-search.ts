@@ -1,4 +1,5 @@
 import { i18n } from "@/i18n";
+import { escapeRegExp } from "@/lib/regexp";
 import { getConnectorKey, literatureSearch as invokeLiteratureSearch } from "@/lib/tauri";
 import {
   cleanField,
@@ -498,7 +499,7 @@ export function parsePubMedLiterature(raw: string): ParsedSource {
 }
 
 function xmlTag(block: string, tag: string): string | null {
-  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+  const escaped = escapeRegExp(tag);
   return text(
     new RegExp(
       String.raw`<${escaped}(?:\s[^>]*)?>([\s\S]*?)<\/${escaped}>`,
@@ -508,7 +509,7 @@ function xmlTag(block: string, tag: string): string | null {
 }
 
 function xmlAttribute(tag: string, name: string): string | null {
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+  const escaped = escapeRegExp(name);
   const match = new RegExp(
     String.raw`\b${escaped}\s*=\s*(?:"([^"]*)"|'([^']*)')`,
     "i",

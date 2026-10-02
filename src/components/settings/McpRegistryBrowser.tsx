@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { ChevronRight, Loader2, Search } from "lucide-react";
+import { ChevronRight, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
   type McpRegistrySearchResult,
   type McpServerConfig,
 } from "@/lib/tauri";
+import { Spinner } from "@/components/ui/spinner";
 
 type McpRegistryBrowserProps = {
   onReview: (config: McpServerConfig) => void;
@@ -79,7 +80,7 @@ export function McpRegistryBrowser({ onReview }: Readonly<McpRegistryBrowserProp
       <form className="flex gap-2" onSubmit={submit}>
         <Input aria-label={t(($) => $.settings.mcp.registry.searchLabel)} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t(($) => $.settings.mcp.registry.searchPlaceholder)} maxLength={256} />
         <Button type="submit" size="sm" disabled={loading}>
-          {loading ? <Loader2 className="animate-spin" aria-hidden /> : <Search aria-hidden />}
+          {loading ? <Spinner /> : <Search aria-hidden />}
           {t(($) => $.common.actions.search)}
         </Button>
       </form>
@@ -101,7 +102,7 @@ export function McpRegistryBrowser({ onReview }: Readonly<McpRegistryBrowserProp
           {server.reviews.length > 0 ? <div className="space-y-2">{server.reviews.map((review) => <ReviewCard key={review.label} review={review} onReview={onReview} />)}</div> : <p className="text-xs text-muted-foreground">{t(($) => $.settings.mcp.registry.unsupportedEntry)}</p>}
         </article>
       ))}
-      {result?.nextCursor ? <Button type="button" size="xs" variant="outline" disabled={loading} onClick={() => void search(result.nextCursor)}>{loading ? <Loader2 className="animate-spin" aria-hidden /> : null}{t(($) => $.settings.mcp.registry.loadMore)}</Button> : null}
+      {result?.nextCursor ? <Button type="button" size="xs" variant="outline" disabled={loading} onClick={() => void search(result.nextCursor)}>{loading ? <Spinner /> : null}{t(($) => $.settings.mcp.registry.loadMore)}</Button> : null}
     </section>
   );
 }

@@ -7,8 +7,6 @@
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { imageMime } from "@/lib/image-mime";
 
-export const THUMBNAIL_TARGET_RE = /\.(png|jpe?g|gif|webp|bmp|svg|pdf)$/i;
-
 // readFileBase64 returns the whole file as one base64 string; refuse anything
 // whose encoded size exceeds 8 MiB rather than jam the webview decoding it.
 const MAX_BASE64_LENGTH = 8 * 1024 * 1024;

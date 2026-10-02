@@ -439,7 +439,7 @@
       "references": "Referințe"
     },
     "label": "Căutare",
-    "noMatches": "Nu s-a găsit nicio potrivire.",
+    "noMatches": "Nu s-a găsit nicio potrivire",
     "openReferences": "Deschide referințele acestui proiect",
     "placeholder": "Caută proiecte, documente sau scrie / pentru comenzi…",
     "placeholderDocuments": "Caută în documente…",
@@ -692,6 +692,12 @@
         "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta; când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
         "label": "Browser web"
       }
+    },
+    "footer": {
+      "followOnX": "Urmărește pe X",
+      "joinDiscord": "Intră în comunitatea de pe Discord",
+      "releaseNotes": "Vezi notele de lansare",
+      "viewSource": "Vezi codul sursă"
     },
     "general": {
       "dialect": {

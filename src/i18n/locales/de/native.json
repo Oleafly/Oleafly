@@ -6,6 +6,9 @@
     "reloadViews": "Ansichten neu laden",
     "restartApp": "Programm neu starten",
     "quit": "Oleafly beenden",
+    "hide": "Oleafly ausblenden",
+    "hideOthers": "Andere ausblenden",
+    "showAll": "Alle einblenden",
     "edit": "Bearbeiten",
     "undo": "Rückgängig",
     "redo": "Wiederholen",
@@ -19,7 +22,15 @@
     "file": "Datei",
     "openFolder": "Ordner öffnen…",
     "openRecent": "Zuletzt geöffnet",
-    "noRecent": "Keine zuletzt geöffneten Projekte"
+    "noRecent": "Keine zuletzt geöffneten Projekte",
+    "window": "Fenster",
+    "minimize": "Im Dock ablegen",
+    "fullscreen": "Vollbild ein- oder ausschalten",
+    "bringAllToFront": "Alle nach vorne bringen",
+    "newTab": "Neuer Tab",
+    "openLocation": "Adresse öffnen…",
+    "closeTab": "Tab schließen",
+    "reloadPage": "Seite neu laden"
   },
   "window": {
     "browser": "Oleafly Browser",

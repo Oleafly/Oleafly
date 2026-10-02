@@ -24,27 +24,21 @@ import {
   type ProofreadingSuggestion,
   type ProofreadingWorkerRequest,
   type ProofreadingWorkerResponse,
-} from "../../../packages/editor/src/proofreading";
-import {
   EMAIL_ADDRESS_PATTERN,
   mapSpellingWords,
   restoreApostrophes,
   spellingLookupForms,
   spellingWordSpans,
   type SpellingWord,
-} from "../../../packages/editor/src/spelling-words";
-import {
   PROSE_PLACEHOLDER,
   intersectsMaskedRegion,
   maskLatexForProseRegions,
   spellcheckRanges,
   type MaskSpan,
-} from "../../../packages/editor/src/latex-mask";
-import {
   markdownSpellcheckRanges,
   markdownToProse,
-} from "../../../packages/editor/src/markdown-mask";
-import { typstSpellcheckRanges } from "../../../packages/editor/src/typst-mask";
+  typstSpellcheckRanges,
+} from "@oleafly/editor/prose";
 import {
   BUILTIN_PROOFREADING_WORDS,
   isSessionIgnoredWord,

@@ -74,7 +74,42 @@
     },
     "openFolder": "打开文件夹",
     "openFolderShortcut": "打开文件夹（{{shortcut}}）",
-    "createFirstProject": "创建新项目"
+    "createFirstProject": "创建新项目",
+    "sortBy": "排序方式",
+    "customFilter": "自定义",
+    "search": {
+      "fields": {
+        "is": "状态",
+        "has": "包含",
+        "no": "不含",
+        "color": "封面颜色",
+        "opened": "上次打开时间",
+        "in": "搜索范围",
+        "sort": "排序"
+      },
+      "values": {
+        "linkedFolder": "已链接文件夹",
+        "forked": "复刻而来",
+        "exports": "导出记录",
+        "today": "今天",
+        "yesterday": "昨天",
+        "id": "ID",
+        "mainFile": "主文件",
+        "folderPath": "文件夹路径"
+      },
+      "sorts": {
+        "activityDesc": "最近活动",
+        "activityAsc": "最早活动",
+        "updatedDesc": "最近修改",
+        "updatedAsc": "最早修改",
+        "createdDesc": "最新创建",
+        "createdAsc": "最早创建",
+        "openedDesc": "最近打开",
+        "openedAsc": "最早打开",
+        "nameAsc": "名称，A 到 Z",
+        "nameDesc": "名称，Z 到 A"
+      }
+    }
   },
   "projects": {
     "open": "打开 {{name}}",

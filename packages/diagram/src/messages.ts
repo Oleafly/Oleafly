@@ -1,3 +1,5 @@
+import type { Translator } from "@oleafly/i18n-contract";
+
 export const DIAGRAM_MESSAGE_KEYS = [
   "composer.title",
   "composer.backToProject",
@@ -121,7 +123,4 @@ export const DIAGRAM_MESSAGE_KEYS = [
 
 export type DiagramMessageKey = (typeof DIAGRAM_MESSAGE_KEYS)[number];
 
-export type DiagramTranslator = (
-  key: DiagramMessageKey,
-  params?: Record<string, string | number>,
-) => string;
+export type DiagramTranslator = Translator<DiagramMessageKey>;

@@ -30,7 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -286,10 +286,6 @@ export function FileTree({
   const closeConflict = () => {
     if (!resolvingConflict) setConflict(null);
   };
-  const {
-    dialogRef: conflictDialogRef,
-    onBackdropMouseDown: onConflictBackdropMouseDown,
-  } = useModalAccessibility<HTMLDivElement>(conflict !== null, closeConflict);
   const replacesFolderInPlace =
     conflict?.op === "rename" &&
     openedInPlace &&
@@ -932,69 +928,63 @@ export function FileTree({
       </SidebarSection>
 
       {conflict && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <button
-            type="button"
-            aria-label={t(($) => $.workspace.files.conflict.cancelAriaLabel)}
-            className="absolute inset-0"
-            onMouseDown={onConflictBackdropMouseDown}
-          />
-          <div
-            ref={conflictDialogRef}
-            role="alertdialog"
-            aria-modal="true"
-            aria-label={t(($) => $.workspace.files.conflict.dialogAriaLabel)}
-            tabIndex={-1}
-            className="relative w-full max-w-md rounded-xl border bg-background p-5 shadow-2xl"
-          >
-            <h2 className="text-sm font-semibold">{t(($) => $.workspace.files.conflict.title)}</h2>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              <Trans
-                ns="workspace"
-                i18nKey={($) =>
-                  $.workspace.files.conflict[conflictBodyKey(conflict.op, replacesFolderInPlace)]
-                }
-                values={{
-                  destination: conflict.to,
-                  suggestion: conflict.suggestedDestination,
-                }}
-                components={{
-                  destination: <span className="font-medium text-foreground" />,
-                  suggestion: <span className="font-medium text-foreground" />,
-                }}
-              />
-            </p>
-            <div className="mt-5 flex flex-wrap justify-end gap-2">
+        <ModalShell
+          open
+          onClose={closeConflict}
+          closeLabel={t(($) => $.workspace.files.conflict.cancelAriaLabel)}
+          layer="nested"
+          width="md"
+          role="alertdialog"
+          label={t(($) => $.workspace.files.conflict.dialogAriaLabel)}
+          className="p-5"
+        >
+          <h2 className="text-sm font-semibold">{t(($) => $.workspace.files.conflict.title)}</h2>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+            <Trans
+              ns="workspace"
+              i18nKey={($) =>
+                $.workspace.files.conflict[conflictBodyKey(conflict.op, replacesFolderInPlace)]
+              }
+              values={{
+                destination: conflict.to,
+                suggestion: conflict.suggestedDestination,
+              }}
+              components={{
+                destination: <span className="font-medium text-foreground" />,
+                suggestion: <span className="font-medium text-foreground" />,
+              }}
+            />
+          </p>
+          <div className="mt-5 flex flex-wrap justify-end gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeConflict}
+              disabled={resolvingConflict}
+              data-modal-initial-focus
+            >
+              {t(($) => $.common.actions.cancel)}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void resolveConflict("keep_both")}
+              disabled={resolvingConflict}
+            >
+              {t(($) => $.workspace.files.conflict.keepBoth)}
+            </Button>
+            {conflict.op === "rename" && !replacesFolderInPlace && (
               <Button
-                variant="ghost"
+                variant="destructive"
                 size="sm"
-                onClick={closeConflict}
-                disabled={resolvingConflict}
-                data-modal-initial-focus
-              >
-                {t(($) => $.common.actions.cancel)}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void resolveConflict("keep_both")}
+                onClick={() => void resolveConflict("replace")}
                 disabled={resolvingConflict}
               >
-                {t(($) => $.workspace.files.conflict.keepBoth)}
+                {t(($) => $.workspace.files.conflict.replace)}
               </Button>
-              {conflict.op === "rename" && !replacesFolderInPlace && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => void resolveConflict("replace")}
-                  disabled={resolvingConflict}
-                >
-                  {t(($) => $.workspace.files.conflict.replace)}
-                </Button>
-              )}
-            </div>
+            )}
           </div>
-        </div>
+        </ModalShell>
       )}
     </>
   );
@@ -1248,11 +1238,6 @@ function TreeRowGitMark({ node, git }: Readonly<{ node: TreeNode; git: GitDecora
   return node.isDir ? <GitFolderDot meta={meta} /> : <GitStatusBadge meta={meta} />;
 }
 
-/** A changed file's name takes its status colour; folders keep theirs. */
-function gitNameClass(node: TreeNode, git: GitDecorations): string | undefined {
-  return node.isDir ? undefined : git.files.get(node.path)?.text;
-}
-
 function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number; ctx: TreeCtx }>) {
   const { t } = useTranslation(["common", "workspace"]);
   const isOpen = ctx.expanded.has(node.path) || !node.isDir;
@@ -1363,11 +1348,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
     >
       <TreeRowIcon node={node} expanded={ctx.expanded.has(node.path)} isMain={isMain} />
       <span
-        className={cn(
-          "truncate",
-          gitNameClass(node, ctx.git),
-          unreadable && "text-muted-foreground",
-        )}
+        className={cn("truncate", unreadable && "text-muted-foreground")}
       >
         {node.name}
       </span>

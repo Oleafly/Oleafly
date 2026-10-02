@@ -115,6 +115,9 @@ importers:
       '@oleafly/latex-intelligence':
         specifier: workspace:*
         version: link:packages/latex-intelligence
+      '@oleafly/pdf-to-latex':
+        specifier: workspace:*
+        version: link:packages/pdf-to-latex
       '@oleafly/preflight':
         specifier: workspace:*
         version: link:packages/preflight
@@ -124,6 +127,9 @@ importers:
       '@oleafly/registry':
         specifier: workspace:*
         version: link:packages/registry
+      '@oleafly/search-query':
+        specifier: workspace:*
+        version: link:packages/search-query
       '@oleafly/templates':
         specifier: workspace:*
         version: link:packages/templates
@@ -431,6 +437,9 @@ importers:
       '@codemirror/view':
         specifier: 6.43.6
         version: 6.43.6
+      '@oleafly/i18n-contract':
+        specifier: workspace:*
+        version: link:../i18n-contract
       '@oleafly/latex':
         specifier: workspace:*
         version: link:../latex
@@ -494,6 +503,12 @@ importers:
       '@lezer/markdown':
         specifier: '*'
         version: 1.7.2
+      '@oleafly/i18n-contract':
+        specifier: workspace:*
+        version: link:../i18n-contract
+      '@oleafly/latex':
+        specifier: workspace:*
+        version: link:../latex
       '@replit/codemirror-emacs':
         specifier: ^6.1.0
         version: 6.1.0(patch_hash=31605a6ee08dd5a1893dc5d9700a882cb5aaf1f6abdd30d7e485c1bc9db94d00)(@codemirror/autocomplete@6.20.3)(@codemirror/commands@6.10.4)(@codemirror/search@6.7.2)(@codemirror/state@6.7.0)(@codemirror/view@6.43.6)
@@ -510,7 +525,11 @@ importers:
         specifier: '*'
         version: 19.3.0
 
-  packages/i18n-contract: {}
+  packages/i18n-contract:
+    devDependencies:
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@22.20.3)(@vitest/coverage-v8@4.1.11)(jsdom@29.1.1)(vite@6.4.3(@types/node@22.20.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2))
 
   packages/latex: {}
 
@@ -518,18 +537,33 @@ importers:
 
   packages/pdf-to-latex:
     dependencies:
+      '@oleafly/preview':
+        specifier: workspace:*
+        version: link:../preview
       pdfjs-dist:
         specifier: 6.3.289
         version: 6.3.289
 
   packages/preflight:
     dependencies:
+      '@oleafly/i18n-contract':
+        specifier: workspace:*
+        version: link:../i18n-contract
+      '@oleafly/latex':
+        specifier: workspace:*
+        version: link:../latex
+      '@oleafly/preview':
+        specifier: workspace:*
+        version: link:../preview
       pdfjs-dist:
         specifier: 6.3.289
         version: 6.3.289
 
   packages/preview:
     dependencies:
+      '@oleafly/i18n-contract':
+        specifier: workspace:*
+        version: link:../i18n-contract
       pdfjs-dist:
         specifier: 6.3.289
         version: 6.3.289
@@ -543,8 +577,17 @@ importers:
         specifier: '*'
         version: 19.3.0
 
+  packages/search-query:
+    devDependencies:
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@22.20.3)(@vitest/coverage-v8@4.1.11)(jsdom@29.1.1)(vite@6.4.3(@types/node@22.20.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2))
+
   packages/templates:
     dependencies:
+      '@oleafly/i18n-contract':
+        specifier: workspace:*
+        version: link:../i18n-contract
       clsx:
         specifier: '*'
         version: 2.1.1
@@ -560,6 +603,12 @@ importers:
 
   packages/wysiwyg:
     dependencies:
+      '@oleafly/i18n-contract':
+        specifier: workspace:*
+        version: link:../i18n-contract
+      '@oleafly/latex':
+        specifier: workspace:*
+        version: link:../latex
       '@tiptap/core':
         specifier: 3.30.5
         version: 3.30.5(@tiptap/pm@3.29.2)

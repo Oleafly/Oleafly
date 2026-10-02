@@ -31,6 +31,7 @@ import {
   Underline,
   Undo2,
 } from "lucide-react";
+import { MenuRow } from "@/components/ui/menu-row";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
@@ -197,27 +198,6 @@ export function WysiwygModeSwitch({
         </DropdownMenuContent>
       </DropdownMenu>}
     </div>
-  );
-}
-
-export function MenuRow({
-  icon,
-  label,
-  onClick,
-}: Readonly<{
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-}>) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent"
-    >
-      <span className="text-muted-foreground">{icon}</span>
-      <span className="flex-1">{label}</span>
-    </button>
   );
 }
 

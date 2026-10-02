@@ -75,7 +75,42 @@
     },
     "openFolder": "Åpne mappe",
     "openFolderShortcut": "Åpne mappe ({{shortcut}})",
-    "createFirstProject": "Opprett nytt prosjekt"
+    "createFirstProject": "Opprett nytt prosjekt",
+    "sortBy": "Sorter etter",
+    "customFilter": "Egendefinert",
+    "search": {
+      "fields": {
+        "is": "Status",
+        "has": "Med",
+        "no": "Uten",
+        "color": "Omslagsfarge",
+        "opened": "Sist åpnet",
+        "in": "Søk i",
+        "sort": "Sortering"
+      },
+      "values": {
+        "linkedFolder": "Lenket mappe",
+        "forked": "Forgrenet",
+        "exports": "Eksporter",
+        "today": "I dag",
+        "yesterday": "I går",
+        "id": "ID",
+        "mainFile": "Hovedfil",
+        "folderPath": "Mappebane"
+      },
+      "sorts": {
+        "activityDesc": "Nyeste aktivitet",
+        "activityAsc": "Eldste aktivitet",
+        "updatedDesc": "Sist endret",
+        "updatedAsc": "Lengst siden endret",
+        "createdDesc": "Nyeste",
+        "createdAsc": "Eldste",
+        "openedDesc": "Sist åpnet",
+        "openedAsc": "Lengst siden åpnet",
+        "nameAsc": "Navn, A til Å",
+        "nameDesc": "Navn, Å til A"
+      }
+    }
   },
   "projects": {
     "open": "Åpne {{name}}",

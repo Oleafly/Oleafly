@@ -9,10 +9,7 @@ import {
 } from "./cm/cursor-signal";
 import { getEditorView, gotoRange } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
-
-function basename(path: string): string {
-  return path.slice(path.lastIndexOf("/") + 1);
-}
+import { basename } from "@/lib/path-utils";
 
 function currentCrumbs(visual: boolean): SectionCrumb[] {
   const view = getEditorView();

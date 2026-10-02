@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { nextTabSeq } from "@/store/tab-order";
+import { readString, writeString } from "@/lib/local-storage";
 
 export type DiffSide = "working" | "staged" | "disk";
 export type DiffMode = "split" | "unified";
@@ -34,11 +35,7 @@ interface DiffState {
 const MODE_KEY = "oleafly.diffMode";
 
 function loadMode(): DiffMode {
-  try {
-    return localStorage.getItem(MODE_KEY) === "unified" ? "unified" : "split";
-  } catch {
-    return "split";
-  }
+  return readString(MODE_KEY) === "unified" ? "unified" : "split";
 }
 
 // Git diffs open in the editor area as tabs (replaces the old modal).
@@ -65,11 +62,7 @@ export const useDiffStore = create<DiffState>((set) => ({
   setActiveDiff: (key) => set({ activeKey: key }),
   clearActiveDiff: () => set({ activeKey: null }),
   setMode: (mode) => {
-    try {
-      localStorage.setItem(MODE_KEY, mode);
-    } catch {
-      /* ignore */
-    }
+    writeString(MODE_KEY, mode);
     set({ mode });
   },
 }));

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeftRight, BookMarked, Check, Maximize2, Sparkles } from "lucide-react";
+import { MenuRow } from "@/components/ui/menu-row";
 import { getEditorView } from "@/components/editor/cm/controller";
 import { openInlineEditWithInstruction } from "@/components/editor/cm/inline-ai/openSession";
 import { handoffToAssistant } from "@/features/assistant-handoff";
@@ -129,15 +130,12 @@ export function SelectionActionMenu() {
       {expanded ? (
         <div className="w-56 rounded-lg border bg-popover p-1 text-popover-foreground shadow-xl">
           {ACTIONS.map((action) => (
-            <button
-              type="button"
+            <MenuRow
               key={action.id}
+              icon={<action.icon className="size-4" />}
+              label={action.label()}
               onClick={() => runAction(action)}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
-            >
-              <action.icon className="size-4 text-muted-foreground" />
-              {action.label()}
-            </button>
+            />
           ))}
         </div>
       ) : (

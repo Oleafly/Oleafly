@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRe
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
-import { FileText, Loader2, Settings2, X } from "lucide-react";
+import { FileText, Settings2, X } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
@@ -23,7 +23,8 @@ import { FileTabStatus } from "./FileTabStatus";
 import { useDiffStore, diffKey, type DiffSide } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
-import { IMAGE_EXTS, imageMime } from "@/lib/image-mime";
+import { imageMime, isImagePath } from "@/lib/image-mime";
+import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
 import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
 import { useVisualModeStore } from "@/store/visual-mode";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/panel-layout";
 import { flushWysiwygPendingEdits, setWysiwygVisibilityController } from "./wysiwyg/controller";
 import { ProofreadingNotifications } from "./ProofreadingNotifications";
+import { LoadingState } from "@/components/ui/empty";
 const WysiwygEditor = lazy(() =>
   import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })),
 );
@@ -49,10 +51,6 @@ const MARKDOWN_SPLIT_LIMITS = {
   [MARKDOWN_SOURCE_PANEL]: MARKDOWN_PANE_LIMITS,
   [MARKDOWN_PREVIEW_PANEL]: MARKDOWN_PANE_LIMITS,
 };
-
-function basename(p: string) {
-  return p.slice(p.lastIndexOf("/") + 1);
-}
 
 const DIFF_TAB_SIDE_LABEL = {
   working: "diffWorkingTree",
@@ -194,8 +192,7 @@ export function Editor() {
   const hasOpenFile = activePath !== null;
   const isTypstFile = activePath?.toLowerCase().endsWith(".typ") ?? false;
   const isPdfFile = activePath?.toLowerCase().endsWith(".pdf");
-  const isImageFile =
-    activePath != null && IMAGE_EXTS.some((e) => activePath.toLowerCase().endsWith(e));
+  const isImageFile = activePath != null && isImagePath(activePath);
   // No in-app preview for these; show a notice instead of an empty text
   // editor a save could clobber them from.
   const isOpaqueFile =
@@ -284,9 +281,10 @@ export function Editor() {
         >
           <Suspense
             fallback={
-              <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-              </div>
+              <LoadingState
+                className="h-full justify-center"
+                label={t(($) => $.common.state.loading)}
+              />
             }
           >
             <WysiwygEditor wysiwyg={markdownVisual} />
@@ -350,9 +348,10 @@ export function Editor() {
         <div className="min-h-0 flex-1 overflow-hidden">
           <Suspense
             fallback={
-              <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-              </div>
+              <LoadingState
+                className="h-full justify-center"
+                label={t(($) => $.common.state.loading)}
+              />
             }
           >
             <DiagramMainFileView projectId={projectId} path={activePath} />

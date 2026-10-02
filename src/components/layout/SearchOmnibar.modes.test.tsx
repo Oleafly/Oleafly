@@ -219,6 +219,7 @@ describe("SearchOmnibar modes", () => {
     await vi.advanceTimersByTimeAsync(250);
     vi.useRealTimers();
     expect(await screen.findByText(omnibar.noMatches)).toBeInTheDocument();
+    expect(screen.getByTestId("omnibar-no-matches").querySelector("svg")).not.toBeNull();
   });
 
   it("filters projects in the projects mode and opens the one chosen", async () => {

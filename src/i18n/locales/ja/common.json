@@ -51,5 +51,32 @@
   },
   "toast": {
     "repeatCount": "×{{count}}"
+  },
+  "byteSize": {
+    "bytes": "{{value}} B",
+    "kilobytes": "{{value}} KB",
+    "megabytes": "{{value}} MB",
+    "gigabytes": "{{value}} GB",
+    "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "検索候補",
+    "exclude": "除外",
+    "excludeField": "{{field}} を除外",
+    "dateHint": "日付は 2026-10-02 や @today-7d のように書きます。>、>=、<、<= を付けると比較でき、範囲は 2026-01-01..2026-03-31 のように書けます。",
+    "issues": {
+      "unclosedGroup": "この ( が閉じられていません",
+      "unexpectedClose": "この ) に対応する ( がありません",
+      "danglingOperator": "{{operator}} の検索語がありません",
+      "tooDeep": "グループの入れ子は 5 階層までです",
+      "emptyGroup": "この括弧の中が空です",
+      "unterminatedQuote": "この引用符が閉じられていません",
+      "unknownQualifier": "不明な絞り込み条件：{{key}}",
+      "missingValue": "{{key}}: の後に値を入力してください",
+      "invalidValue": "{{value}} は {{key}} に使える値ではありません",
+      "invalidDate": "{{value}} は日付ではありません。2026-10-02 や @today-7d のように入力してください",
+      "invalidNumber": "{{value}} は数値ではありません",
+      "sortNegated": "{{key}} は除外できません"
+    }
   }
 }

@@ -7,6 +7,7 @@ import { useCompileStore } from "@/store/compile";
 import { useHomeViewStore } from "@/store/home-view";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
+import { useTourStore } from "@/store/tours";
 import { beginChatRun, endChatRun } from "@/components/ai/chat-run-registry";
 import { bootSplashHeld } from "@/lib/boot-telemetry";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -168,6 +169,24 @@ describe("open requests from the OS", () => {
     expect(mocks.openFolderRequest).toHaveBeenCalledWith("w1", SESSION);
     expect(openProject).toHaveBeenCalledWith(NOTES_ID);
     expect(useOpenFolderStore.getState().opened?.project_id).toBe(NOTES_ID);
+    stop();
+  });
+
+  it("ignores File > Open Folder while a tour is running", async () => {
+    const stop = await startOpenRequestIntake();
+    await settled();
+    useTourStore.setState({ activeTourId: "welcome" } as never);
+    try {
+      mocks.listeners.get("menu://open-folder")?.({ payload: null });
+      await settled();
+      expect(mocks.pickOpenFolder).not.toHaveBeenCalled();
+    } finally {
+      useTourStore.setState({ activeTourId: null } as never);
+    }
+    mocks.pickOpenFolder.mockResolvedValue(null);
+    mocks.listeners.get("menu://open-folder")?.({ payload: null });
+    await settled();
+    expect(mocks.pickOpenFolder).toHaveBeenCalledTimes(1);
     stop();
   });
 

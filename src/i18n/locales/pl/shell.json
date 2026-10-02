@@ -442,7 +442,7 @@
       "references": "Odwołania"
     },
     "label": "Szukaj",
-    "noMatches": "Nie znaleziono dopasowań.",
+    "noMatches": "Nie znaleziono dopasowań",
     "openReferences": "Otwórz odwołania tego projektu",
     "placeholder": "Szukaj projektów, dokumentów lub wpisz / dla poleceń…",
     "placeholderDocuments": "Szukaj wewnątrz dokumentów…",
@@ -707,6 +707,12 @@
         "description": "Pokazuje wbudowaną przeglądarkę internetową (jej przycisk w doku i skrót) oraz pozwala AI sterować nią przez obsługę komputera. Domyślnie wyłączone, bo funkcja jest w wersji beta; po wyłączeniu nie ma przycisku przeglądarki, a AI nie ma narzędzia przeglądarki.",
         "label": "Przeglądarka internetowa"
       }
+    },
+    "footer": {
+      "followOnX": "Obserwuj na X",
+      "joinDiscord": "Dołącz do społeczności na Discordzie",
+      "releaseNotes": "Zobacz informacje o wydaniu",
+      "viewSource": "Zobacz kod źródłowy"
     },
     "general": {
       "dialect": {

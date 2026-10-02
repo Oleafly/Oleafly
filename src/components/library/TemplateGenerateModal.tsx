@@ -5,7 +5,6 @@ import {
   Bookmark,
   BookmarkX,
   Check,
-  Loader2,
   Pencil,
   RefreshCw,
   Sparkles,
@@ -15,6 +14,7 @@ import {
 import { modalCoordinator } from "@oleafly/templates";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { MODAL_PANEL_SURFACE, modalOverlayClassName } from "@/components/ui/modal-shell";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, modKey } from "@/lib/utils";
 import { notifyError } from "@/lib/toast";
@@ -31,6 +31,7 @@ import {
   saveGeneratedTemplate,
   type ParsedTemplate,
 } from "@/features/template-generate";
+import { Spinner } from "@/components/ui/spinner";
 
 type Phase = "prompt" | "loading" | "result";
 type View = "preview" | "code";
@@ -310,12 +311,17 @@ export function TemplateGenerateModal({
       aria-modal="true"
       aria-labelledby="generate-template-title"
       data-testid="template-generate-modal"
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+      className={modalOverlayClassName()}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex h-[min(88vh,820px)] w-full max-w-5xl flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none">
+      <div
+        className={cn(
+          MODAL_PANEL_SURFACE,
+          "flex h-[min(88vh,820px)] w-full max-w-5xl flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none dark:bg-popover",
+        )}
+      >
         {header}
 
         {phase === "prompt" && (
@@ -419,7 +425,7 @@ export function TemplateGenerateModal({
             </div>
             <div className="flex min-w-0 flex-1 flex-col justify-center gap-5 pr-4">
               <p className="flex items-center gap-2.5 text-lg font-medium">
-                <Loader2 className="size-5 animate-spin text-primary" />
+                <Spinner size="lg" className="text-primary" />
                 <span className="ai-shimmer !text-lg">{t(($) => $.library.generate.loading)}</span>
               </p>
               <div className="rounded-xl border px-4 py-3 text-sm italic text-muted-foreground">
@@ -621,7 +627,7 @@ export function TemplateGenerateModal({
                     disabled={saving}
                     onClick={() => void save()}
                   >
-                    {saving ? <Loader2 className="size-4 animate-spin" /> : <Bookmark className="size-4" />}
+                    {saving ? <Spinner /> : <Bookmark className="size-4" />}
                     {t(($) => $.library.generate.save)}
                   </Button>
                 )}

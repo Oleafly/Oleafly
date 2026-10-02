@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { Trans, useTranslation } from "react-i18next";
 import { Check, Copy, SquareTerminal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPathText } from "@/components/settings/SettingsPath";
 import { describeError } from "@/lib/app-error";
 import {
@@ -251,14 +252,13 @@ export function ShellCommandRow() {
   const [busy, setBusy] = useState<Busy>(null);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy: copyLine } = useCopyStatus();
   const [focusNext, setFocusNext] = useState<Change | null>(null);
   const row = useRef<HTMLDivElement>(null);
   const installButton = useRef<HTMLButtonElement>(null);
   const removeButton = useRef<HTMLButtonElement>(null);
   const request = useRef(0);
   const alive = useRef(true);
-  const copiedTimer = useRef<number | null>(null);
 
   const refresh = useCallback(() => {
     const current = ++request.current;
@@ -284,7 +284,6 @@ export function ShellCommandRow() {
     return () => {
       alive.current = false;
       request.current += 1;
-      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
     };
   }, [refresh]);
 
@@ -323,18 +322,6 @@ export function ShellCommandRow() {
       refresh();
     } finally {
       if (alive.current) setBusy(null);
-    }
-  };
-
-  const copyLine = async (line: string) => {
-    try {
-      await navigator.clipboard.writeText(line);
-      if (!alive.current) return;
-      setCopied(true);
-      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
-      copiedTimer.current = window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
     }
   };
 

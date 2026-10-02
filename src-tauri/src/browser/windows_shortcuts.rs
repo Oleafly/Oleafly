@@ -54,18 +54,9 @@ pub(super) fn install<R: Runtime>(pane: &Webview<R>, chrome_label: String) {
             if physical.WasKeyDown.as_bool() {
                 return Ok(());
             }
-            let app = app.clone();
-            let chrome_label = chrome_label.clone();
             // Leave WebView2's synchronous accelerator callback before
             // changing focus or evaluating script in another controller.
-            tauri::async_runtime::spawn(async move {
-                if let Some(chrome) = app.get_webview(&chrome_label) {
-                    let _ = chrome.set_focus();
-                    let _ = chrome.eval(format!(
-                        "window.dispatchEvent(new KeyboardEvent('keydown', {{key:'{key}',ctrlKey:true,bubbles:true,cancelable:true}}));"
-                    ));
-                }
-            });
+            super::route_shortcut(&app, chrome_label.clone(), key);
             Ok(())
         }));
         let mut token = 0;

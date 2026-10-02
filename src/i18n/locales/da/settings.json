@@ -226,6 +226,7 @@
       },
       "noChanges": "Ingen ændringer",
       "refresh": "Opdater",
+      "refreshThrottled": "Opdateret for et øjeblik siden. Prøv igen om {{seconds}} s",
       "restore": "Gendan standarderne",
       "restoreTooltip": "Tilføj denne udbyders indbyggede modeller igen",
       "title": "Modeller",
@@ -486,11 +487,6 @@
           "none": "Der blev ikke fundet mapper til andre agenter"
         },
         "title": "Del færdigheder med andre agenter på denne computer"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Tilføjet",
@@ -1537,6 +1533,7 @@
     },
     "error": {
       "conflict": "Allerede tildelt {{action}}.",
+      "nativeKey": "Menugenveje kan ikke bruge denne tast. Bogstaver, tal og funktionstaster virker.",
       "reserved": "{{shortcut}} er reserveret af styresystemet."
     },
     "intro": "Tilpas appens genveje, og se editorens egne tastekombinationer.",
@@ -1544,6 +1541,8 @@
       "closeWindow": "Luk vinduet",
       "copy": "Kopier",
       "cut": "Klip",
+      "hide": "Skjul appen",
+      "minimize": "Minimer vinduet",
       "paste": "Sæt ind",
       "quit": "Slut",
       "save": "Gem",

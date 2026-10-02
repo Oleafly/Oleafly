@@ -436,7 +436,7 @@
       "references": "Viitteet"
     },
     "label": "Haku",
-    "noMatches": "Osumia ei löytynyt.",
+    "noMatches": "Osumia ei löytynyt",
     "openReferences": "Avaa tämän projektin viitteet",
     "placeholder": "Hae projekteja, dokumentteja tai kirjoita / komentoja varten…",
     "placeholderDocuments": "Hae dokumenttien sisältä…",
@@ -677,6 +677,12 @@
         "description": "Näytä sovelluksen sisäinen selain (sen telakkavalitsin ja pikanäppäin) ja anna tekoälyn ohjata sitä tietokoneen käytöllä. Oletuksena pois, koska tämä on vielä beta-vaiheessa. Kun asetus on pois, selainpainiketta ei ole eikä tekoälyllä ole selaintyökalua.",
         "label": "Verkkoselain"
       }
+    },
+    "footer": {
+      "followOnX": "Seuraa X:ssä",
+      "joinDiscord": "Liity Discord-yhteisöön",
+      "releaseNotes": "Näytä julkaisutiedot",
+      "viewSource": "Näytä lähdekoodi"
     },
     "general": {
       "dialect": {

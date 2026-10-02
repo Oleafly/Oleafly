@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,8 @@ import { agentErrorKind } from "@/lib/agent-backend";
 import { formatDate, formatRelativeTime } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { staleTimes } from "@/lib/query";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 export interface ModelManagerProps {
   providerId: string;
@@ -48,6 +50,7 @@ export interface ModelManagerProps {
 }
 
 const NOTICE_MS = 4000;
+const MIN_SPIN_MS = 1000;
 const METADATA_STATUS_KEY = ["ai-model-metadata-status"] as const;
 
 type Notice =
@@ -89,6 +92,7 @@ export function ModelManager({
     modelListThrottledUntil(providerId, Date.now()),
   );
   const [now, setNow] = useState(() => Date.now());
+  const [clock, setClock] = useState(() => Date.now());
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<RefreshError>("");
   const modelsRef = useRef(models);
@@ -131,6 +135,10 @@ export function ModelManager({
         }
         setRefreshError(agentErrorKind(e) === "auth" ? "invalidKey" : "unreachable");
       } finally {
+        const remaining = MIN_SPIN_MS - (Date.now() - now);
+        if (remaining > 0) {
+          await new Promise((resolve) => window.setTimeout(resolve, remaining));
+        }
         setRefreshing(false);
       }
     },
@@ -151,7 +159,12 @@ export function ModelManager({
     if (!throttledUntil) return;
     const wait = Math.max(0, throttledUntil - Date.now());
     const timer = window.setTimeout(() => setThrottledUntil(0), wait);
-    return () => window.clearTimeout(timer);
+    setClock(Date.now());
+    const tick = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearInterval(tick);
+    };
   }, [throttledUntil]);
 
   useEffect(() => {
@@ -168,6 +181,7 @@ export function ModelManager({
   }, [refreshedAt]);
 
   const throttled = throttledUntil > 0;
+  const throttleSecondsLeft = Math.max(1, Math.ceil((throttledUntil - clock) / 1000));
   const updatedLabel = refreshedAt
     ? t(($) => $.settings.ai.models.updated, { time: relativeUpdated(refreshedAt, now) })
     : "";
@@ -243,21 +257,28 @@ export function ModelManager({
             </Tooltip>
           )}
           {discoverable && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-1.5 text-[11px]"
-              data-testid={`ai-refresh-models-${providerId}`}
-              disabled={refreshing || throttled}
-              onClick={() => void runRefresh("manual")}
+            <Tooltip
+              label={t(($) => $.settings.ai.models.refreshThrottled, {
+                seconds: throttleSecondsLeft,
+              })}
+              suppressed={refreshing || !throttled}
             >
-              {refreshing ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <RefreshCw className="size-3" />
-              )}
-              {t(($) => $.settings.ai.models.refresh)}
-            </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-1.5 text-[11px]"
+                data-testid={`ai-refresh-models-${providerId}`}
+                disabled={refreshing || throttled}
+                onClick={() => void runRefresh("manual")}
+              >
+                {refreshing ? (
+                  <Spinner size="xs" />
+                ) : (
+                  <RefreshCw className="size-3" />
+                )}
+                {t(($) => $.settings.ai.models.refresh)}
+              </Button>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -306,9 +327,9 @@ export function ModelManager({
                 )}
               </span>
               {m.source === "custom" && (
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <Badge variant="muted" size="sm">
                   {t(($) => $.settings.ai.models.custom)}
-                </span>
+                </Badge>
               )}
               <Tooltip label={t(($) => $.settings.ai.models.deleteTooltip)}>
                 <button
@@ -431,7 +452,7 @@ export function ModelMetadataStatusLine() {
         onClick={() => refresh.mutate()}
       >
         {refresh.isPending ? (
-          <Loader2 className="size-3 animate-spin" />
+          <Spinner size="xs" />
         ) : (
           <RefreshCw className="size-3" />
         )}

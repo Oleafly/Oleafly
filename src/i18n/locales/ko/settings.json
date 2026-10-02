@@ -226,6 +226,7 @@
       },
       "noChanges": "변경 없음",
       "refresh": "새로 고침",
+      "refreshThrottled": "방금 새로 고쳤습니다. {{seconds}}초 후에 다시 시도하세요",
       "restore": "기본값 복원",
       "restoreTooltip": "이 제공자의 기본 제공 모델을 다시 추가합니다",
       "title": "모델",
@@ -483,11 +484,6 @@
           "none": "다른 에이전트 폴더를 찾지 못했습니다"
         },
         "title": "이 컴퓨터의 다른 에이전트와 스킬 공유"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "추가함",
@@ -1521,6 +1517,7 @@
     },
     "error": {
       "conflict": "이미 {{action}}에 할당되어 있습니다.",
+      "nativeKey": "메뉴 단축키에는 이 키를 사용할 수 없습니다. 문자, 숫자, 기능 키를 사용할 수 있습니다.",
       "reserved": "{{shortcut}}은(는) 운영체제가 예약한 조합입니다."
     },
     "intro": "앱 단축키를 사용자 지정하고 편집기 자체 키 조합을 확인하세요.",
@@ -1528,6 +1525,8 @@
       "closeWindow": "창 닫기",
       "copy": "복사",
       "cut": "잘라내기",
+      "hide": "앱 가리기",
+      "minimize": "창 최소화",
       "paste": "붙여넣기",
       "quit": "종료",
       "save": "저장",

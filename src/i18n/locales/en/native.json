@@ -6,6 +6,9 @@
     "reloadViews": "Reload Views",
     "restartApp": "Restart Application",
     "quit": "Quit Oleafly",
+    "hide": "Hide Oleafly",
+    "hideOthers": "Hide Others",
+    "showAll": "Show All",
     "edit": "Edit",
     "undo": "Undo",
     "redo": "Redo",
@@ -19,7 +22,15 @@
     "file": "File",
     "openFolder": "Open Folder…",
     "openRecent": "Open Recent",
-    "noRecent": "No Recent Projects"
+    "noRecent": "No Recent Projects",
+    "window": "Window",
+    "minimize": "Minimize",
+    "fullscreen": "Toggle Full Screen",
+    "bringAllToFront": "Bring All to Front",
+    "newTab": "New Tab",
+    "openLocation": "Open Location…",
+    "closeTab": "Close Tab",
+    "reloadPage": "Reload Page"
   },
   "window": {
     "browser": "Oleafly Browser",

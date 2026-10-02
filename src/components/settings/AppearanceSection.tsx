@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type WheelEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Plus } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -35,6 +35,7 @@ import {
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
@@ -209,68 +210,56 @@ function AppAppearanceTab() {
         />
       </div>
 
-      <div
-        data-testid="settings-row-app-font-size"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.app.fontSize.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.app.fontSize.description)}
-          </div>
-        </div>
-        <Select
-          value={String(appFontSize)}
-          onValueChange={(value) => setAppFontSize(Number(value))}
-        >
-          <SelectTrigger className="w-[88px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {[13, 14, 15, 16, 17, 18, 20].map((size) => (
-              <SelectItem key={size} value={String(size)}>
-                {t(($) => $.settings.appearance.fontSizeOption, { size })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        testId="settings-row-app-font-size"
+        label={t(($) => $.settings.appearance.app.fontSize.label)}
+        description={t(($) => $.settings.appearance.app.fontSize.description)}
+        control={
+          <Select
+            value={String(appFontSize)}
+            onValueChange={(value) => setAppFontSize(Number(value))}
+          >
+            <SelectTrigger className="w-[88px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {[13, 14, 15, 16, 17, 18, 20].map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {t(($) => $.settings.appearance.fontSizeOption, { size })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div
-        data-testid="settings-row-app-font"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.app.font.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.app.font.description)}
-          </div>
-        </div>
-        <Select
-          value={appFontFamily || "__default__"}
-          onValueChange={(value) =>
-            setAppFontFamily(value === "__default__" ? "" : value)
-          }
-        >
-          <SelectTrigger className="w-[168px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {APP_FONTS.map((font) => (
-              <SelectItem
-                key={font.name}
-                value={font.value || "__default__"}
-              >
-                {font.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        testId="settings-row-app-font"
+        label={t(($) => $.settings.appearance.app.font.label)}
+        description={t(($) => $.settings.appearance.app.font.description)}
+        control={
+          <Select
+            value={appFontFamily || "__default__"}
+            onValueChange={(value) =>
+              setAppFontFamily(value === "__default__" ? "" : value)
+            }
+          >
+            <SelectTrigger className="w-[168px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {APP_FONTS.map((font) => (
+                <SelectItem
+                  key={font.name}
+                  value={font.value || "__default__"}
+                >
+                  {font.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
       <ThemeCustomization />
     </div>
   );
@@ -335,187 +324,151 @@ function EditorAppearanceTab() {
 
   return (
     <div className="space-y-3">
-      <div
-        data-testid="settings-row-editor-font-size"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.fontSize.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.fontSize.description)}
-          </div>
-        </div>
-        <Select
-          value={String(editorFontSize)}
-          onValueChange={(value) => setEditorFontSize(Number(value))}
-        >
-          <SelectTrigger className="w-[88px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {[11, 12, 13, 14, 15, 16, 18, 20].map((size) => (
-              <SelectItem key={size} value={String(size)}>
-                {t(($) => $.settings.appearance.fontSizeOption, { size })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        testId="settings-row-editor-font-size"
+        label={t(($) => $.settings.appearance.editor.fontSize.label)}
+        description={t(($) => $.settings.appearance.editor.fontSize.description)}
+        control={
+          <Select
+            value={String(editorFontSize)}
+            onValueChange={(value) => setEditorFontSize(Number(value))}
+          >
+            <SelectTrigger className="w-[88px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {[11, 12, 13, 14, 15, 16, 18, 20].map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {t(($) => $.settings.appearance.fontSizeOption, { size })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div
-        data-testid="settings-row-editor-font"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.font.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.font.description)}
-          </div>
-        </div>
-        <Select
-          value={editorFontFamily || "__default__"}
-          onValueChange={(value) =>
-            setEditorFontFamily(value === "__default__" ? "" : value)
-          }
-        >
-          <SelectTrigger className="w-[168px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {EDITOR_FONTS.map((font) => (
-              <SelectItem
-                key={font.name}
-                value={font.value || "__default__"}
-              >
-                {font.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        testId="settings-row-editor-font"
+        label={t(($) => $.settings.appearance.editor.font.label)}
+        description={t(($) => $.settings.appearance.editor.font.description)}
+        control={
+          <Select
+            value={editorFontFamily || "__default__"}
+            onValueChange={(value) =>
+              setEditorFontFamily(value === "__default__" ? "" : value)
+            }
+          >
+            <SelectTrigger className="w-[168px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_FONTS.map((font) => (
+                <SelectItem
+                  key={font.name}
+                  value={font.value || "__default__"}
+                >
+                  {font.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div
-        data-testid="settings-row-editor-theme"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.theme.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.theme.description)}
-          </div>
-        </div>
-        <Select
-          value={editorTheme}
-          onValueChange={(value) => setEditorTheme(value as typeof editorTheme)}
-        >
-          <SelectTrigger className="w-[168px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {EDITOR_THEMES.map((editorThemeOption) => (
-              <SelectItem
-                key={editorThemeOption.id}
-                value={editorThemeOption.id}
-              >
-                {editorThemeOption.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        testId="settings-row-editor-theme"
+        label={t(($) => $.settings.appearance.editor.theme.label)}
+        description={t(($) => $.settings.appearance.editor.theme.description)}
+        control={
+          <Select
+            value={editorTheme}
+            onValueChange={(value) => setEditorTheme(value as typeof editorTheme)}
+          >
+            <SelectTrigger className="w-[168px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_THEMES.map((editorThemeOption) => (
+                <SelectItem
+                  key={editorThemeOption.id}
+                  value={editorThemeOption.id}
+                >
+                  {editorThemeOption.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div
-        data-testid="settings-row-editor-keymap"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.keymap.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.keymap.description)}
-          </div>
-        </div>
-        <Select
-          value={editorKeymap}
-          onValueChange={(value) => setEditorKeymap(value as typeof editorKeymap)}
-        >
-          <SelectTrigger className="w-[168px]" data-testid="settings-editor-keymap-trigger">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {EDITOR_KEYMAP_MODES.map((mode) => (
-              <SelectItem key={mode} value={mode}>
-                {t(($) => $.settings.appearance.editor.keymap.options[mode])}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        testId="settings-row-editor-keymap"
+        label={t(($) => $.settings.appearance.editor.keymap.label)}
+        description={t(($) => $.settings.appearance.editor.keymap.description)}
+        control={
+          <Select
+            value={editorKeymap}
+            onValueChange={(value) => setEditorKeymap(value as typeof editorKeymap)}
+          >
+            <SelectTrigger className="w-[168px]" data-testid="settings-editor-keymap-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_KEYMAP_MODES.map((mode) => (
+                <SelectItem key={mode} value={mode}>
+                  {t(($) => $.settings.appearance.editor.keymap.options[mode])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div
-        data-testid="settings-row-editor-tab-size"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.tabSize.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.tabSize.description)}
-          </div>
-        </div>
-        <Select
-          value={String(editorTabSize)}
-          onValueChange={(value) => setEditorTabSize(Number(value))}
-        >
-          <SelectTrigger className="w-[88px]" data-testid="settings-editor-tab-size-trigger">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {EDITOR_TAB_SIZES.map((size) => (
-              <SelectItem key={size} value={String(size)}>
-                {String(size)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        testId="settings-row-editor-tab-size"
+        label={t(($) => $.settings.appearance.editor.tabSize.label)}
+        description={t(($) => $.settings.appearance.editor.tabSize.description)}
+        control={
+          <Select
+            value={String(editorTabSize)}
+            onValueChange={(value) => setEditorTabSize(Number(value))}
+          >
+            <SelectTrigger className="w-[88px]" data-testid="settings-editor-tab-size-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_TAB_SIZES.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {String(size)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div
-        data-testid="settings-row-editor-line-height"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.editor.lineHeight.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.editor.lineHeight.description)}
-          </div>
-        </div>
-        <Select
-          value={editorLineHeight}
-          onValueChange={(value) => setEditorLineHeight(value as typeof editorLineHeight)}
-        >
-          <SelectTrigger className="w-[168px]" data-testid="settings-editor-line-height-trigger">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {EDITOR_LINE_HEIGHT_OPTIONS.map((option) => (
-              <SelectItem key={option} value={option}>
-                {t(($) => $.settings.appearance.editor.lineHeight.options[option])}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        testId="settings-row-editor-line-height"
+        label={t(($) => $.settings.appearance.editor.lineHeight.label)}
+        description={t(($) => $.settings.appearance.editor.lineHeight.description)}
+        control={
+          <Select
+            value={editorLineHeight}
+            onValueChange={(value) => setEditorLineHeight(value as typeof editorLineHeight)}
+          >
+            <SelectTrigger className="w-[168px]" data-testid="settings-editor-line-height-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_LINE_HEIGHT_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {t(($) => $.settings.appearance.editor.lineHeight.options[option])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.lineWrap.label)}
@@ -656,153 +609,133 @@ function TerminalAppearanceTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.fontSize.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.fontSize.description)}
-          </div>
-        </div>
-        <Select
-          value={String(terminalFontSize)}
-          onValueChange={(value) => setTerminalFontSize(Number(value))}
-        >
-          <SelectTrigger
-            className="w-[88px]"
-            aria-label={t(($) => $.settings.appearance.terminal.fontSize.label)}
+      <SettingsRow
+        label={t(($) => $.settings.appearance.terminal.fontSize.label)}
+        description={t(($) => $.settings.appearance.terminal.fontSize.description)}
+        control={
+          <Select
+            value={String(terminalFontSize)}
+            onValueChange={(value) => setTerminalFontSize(Number(value))}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {[11, 12, 13, 14, 15, 16, 18, 20, 22, 24].map((size) => (
-              <SelectItem key={size} value={String(size)}>
-                {t(($) => $.settings.appearance.fontSizeOption, { size })}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger
+              className="w-[88px]"
+              aria-label={t(($) => $.settings.appearance.terminal.fontSize.label)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {[11, 12, 13, 14, 15, 16, 18, 20, 22, 24].map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {t(($) => $.settings.appearance.fontSizeOption, { size })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.font.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.font.description)}
-          </div>
-        </div>
-        <Select value={terminalFontFamily} onValueChange={setTerminalFontFamily}>
-          <SelectTrigger
-            className="w-[168px]"
-            aria-label={t(($) => $.settings.appearance.terminal.font.ariaLabel)}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {TERMINAL_FONTS.map((font) => (
-              <SelectItem key={font.name} value={font.value}>
-                {font.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <SettingsRow
+        label={t(($) => $.settings.appearance.terminal.font.label)}
+        description={t(($) => $.settings.appearance.terminal.font.description)}
+        control={
+          <Select value={terminalFontFamily} onValueChange={setTerminalFontFamily}>
+            <SelectTrigger
+              className="w-[168px]"
+              aria-label={t(($) => $.settings.appearance.terminal.font.ariaLabel)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {TERMINAL_FONTS.map((font) => (
+                <SelectItem key={font.name} value={font.value}>
+                  {font.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.fontWeight.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.fontWeight.description)}
-          </div>
-        </div>
-        <Select
-          value={String(terminalFontWeight)}
-          onValueChange={(value) => setTerminalFontWeight(Number(value))}
-        >
-          <SelectTrigger
-            className="w-[100px]"
-            aria-label={t(($) => $.settings.appearance.terminal.fontWeight.label)}
+      <SettingsRow
+        label={t(($) => $.settings.appearance.terminal.fontWeight.label)}
+        description={t(($) => $.settings.appearance.terminal.fontWeight.description)}
+        control={
+          <Select
+            value={String(terminalFontWeight)}
+            onValueChange={(value) => setTerminalFontWeight(Number(value))}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {[400, 500, 600, 700].map((weight) => (
-              <SelectItem key={weight} value={String(weight)}>
-                {weight}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger
+              className="w-[100px]"
+              aria-label={t(($) => $.settings.appearance.terminal.fontWeight.label)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {[400, 500, 600, 700].map((weight) => (
+                <SelectItem key={weight} value={String(weight)}>
+                  {weight}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.fontWeightBold.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.fontWeightBold.description)}
-          </div>
-        </div>
-        <Select
-          value={String(terminalFontWeightBold)}
-          onValueChange={(value) => setTerminalFontWeightBold(Number(value))}
-        >
-          <SelectTrigger
-            className="w-[100px]"
-            aria-label={t(($) => $.settings.appearance.terminal.fontWeightBold.label)}
+      <SettingsRow
+        label={t(($) => $.settings.appearance.terminal.fontWeightBold.label)}
+        description={t(($) => $.settings.appearance.terminal.fontWeightBold.description)}
+        control={
+          <Select
+            value={String(terminalFontWeightBold)}
+            onValueChange={(value) => setTerminalFontWeightBold(Number(value))}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {[600, 700, 800, 900].map((weight) => (
-              <SelectItem key={weight} value={String(weight)}>
-                {weight}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger
+              className="w-[100px]"
+              aria-label={t(($) => $.settings.appearance.terminal.fontWeightBold.label)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {[600, 700, 800, 900].map((weight) => (
+                <SelectItem key={weight} value={String(weight)}>
+                  {weight}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.cursorStyle.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.cursorStyle.description)}
-          </div>
-        </div>
-        <Select
-          value={terminalCursorStyle}
-          onValueChange={(value) =>
-            setTerminalCursorStyle(value as TerminalCursorStyle)
-          }
-        >
-          <SelectTrigger
-            className="w-[120px]"
-            aria-label={t(($) => $.settings.appearance.terminal.cursorStyle.ariaLabel)}
+      <SettingsRow
+        label={t(($) => $.settings.appearance.terminal.cursorStyle.label)}
+        description={t(($) => $.settings.appearance.terminal.cursorStyle.description)}
+        control={
+          <Select
+            value={terminalCursorStyle}
+            onValueChange={(value) =>
+              setTerminalCursorStyle(value as TerminalCursorStyle)
+            }
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            <SelectItem value="block">
-              {t(($) => $.settings.appearance.terminal.cursorStyle.block)}
-            </SelectItem>
-            <SelectItem value="underline">
-              {t(($) => $.settings.appearance.terminal.cursorStyle.underline)}
-            </SelectItem>
-            <SelectItem value="bar">
-              {t(($) => $.settings.appearance.terminal.cursorStyle.bar)}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger
+              className="w-[120px]"
+              aria-label={t(($) => $.settings.appearance.terminal.cursorStyle.ariaLabel)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              <SelectItem value="block">
+                {t(($) => $.settings.appearance.terminal.cursorStyle.block)}
+              </SelectItem>
+              <SelectItem value="underline">
+                {t(($) => $.settings.appearance.terminal.cursorStyle.underline)}
+              </SelectItem>
+              <SelectItem value="bar">
+                {t(($) => $.settings.appearance.terminal.cursorStyle.bar)}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        }
+      />
 
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.terminal.cursorBlink.label)}
@@ -818,36 +751,32 @@ function TerminalAppearanceTab() {
         onChange={setTerminalStartWithProject}
       />
 
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.terminal.colorTheme.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.terminal.colorTheme.description)}
-          </div>
-        </div>
-        <Select
-          value={terminalColorTheme}
-          onValueChange={(value) =>
-            setTerminalColorTheme(value as TerminalColorThemeId)
-          }
-        >
-          <SelectTrigger
-            className="w-[180px]"
-            aria-label={t(($) => $.settings.appearance.terminal.colorTheme.ariaLabel)}
+      <SettingsRow
+        label={t(($) => $.settings.appearance.terminal.colorTheme.label)}
+        description={t(($) => $.settings.appearance.terminal.colorTheme.description)}
+        control={
+          <Select
+            value={terminalColorTheme}
+            onValueChange={(value) =>
+              setTerminalColorTheme(value as TerminalColorThemeId)
+            }
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {Object.values(TERMINAL_COLOR_THEMES).map((theme) => (
-              <SelectItem key={theme.id} value={theme.id}>
-                {terminalThemeLabel(theme)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger
+              className="w-[180px]"
+              aria-label={t(($) => $.settings.appearance.terminal.colorTheme.ariaLabel)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {Object.values(TERMINAL_COLOR_THEMES).map((theme) => (
+                <SelectItem key={theme.id} value={theme.id}>
+                  {terminalThemeLabel(theme)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       <div className="rounded-lg border bg-card p-3">
         <div className="text-sm font-medium">
@@ -928,46 +857,42 @@ function BrowserAppearanceTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.browser.searchEngine.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.browser.searchEngine.description)}
-          </div>
-        </div>
-        <Select
-          value={browserSearchEngine}
-          onValueChange={(value) =>
-            setBrowserSearchEngine(value as BrowserSearchEngineId)
-          }
-        >
-          <SelectTrigger
-            className="w-44"
-            aria-label={t(($) => $.settings.appearance.browser.searchEngine.label)}
+      <SettingsRow
+        label={t(($) => $.settings.appearance.browser.searchEngine.label)}
+        description={t(($) => $.settings.appearance.browser.searchEngine.description)}
+        control={
+          <Select
+            value={browserSearchEngine}
+            onValueChange={(value) =>
+              setBrowserSearchEngine(value as BrowserSearchEngineId)
+            }
           >
-            <SelectValue>
-              <span className="flex items-center gap-2">
-                <SearchEngineIcon engine={selectedSearchEngine.id} />
-                <span>{selectedSearchEngine.name}</span>
-              </span>
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {BROWSER_SEARCH_ENGINES.map((engine) => (
-              <SelectItem
-                key={engine.id}
-                value={engine.id}
-                data-testid={`search-engine-option-${engine.id}`}
-                icon={<SearchEngineIcon engine={engine.id} />}
-              >
-                {engine.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger
+              className="w-44"
+              aria-label={t(($) => $.settings.appearance.browser.searchEngine.label)}
+            >
+              <SelectValue>
+                <span className="flex items-center gap-2">
+                  <SearchEngineIcon engine={selectedSearchEngine.id} />
+                  <span>{selectedSearchEngine.name}</span>
+                </span>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {BROWSER_SEARCH_ENGINES.map((engine) => (
+                <SelectItem
+                  key={engine.id}
+                  value={engine.id}
+                  data-testid={`search-engine-option-${engine.id}`}
+                  icon={<SearchEngineIcon engine={engine.id} />}
+                >
+                  {engine.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       <div className="rounded-lg border bg-card p-3">
         <label htmlFor="browser-home-page" className="text-sm font-medium">
@@ -1060,69 +985,57 @@ function FileManagementTab() {
 
   return (
     <div className="space-y-3">
-      <div
-        data-testid="settings-row-default-home-view"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.files.homeView.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.files.homeView.description)}
-          </div>
-        </div>
-        <Select
-          value={homeProjectLayout}
-          onValueChange={(value) =>
-            setHomeProjectLayout(value as typeof homeProjectLayout)
-          }
-        >
-          <SelectTrigger
-            className="w-[140px]"
-            aria-label={t(($) => $.settings.appearance.files.homeView.label)}
+      <SettingsRow
+        testId="settings-row-default-home-view"
+        label={t(($) => $.settings.appearance.files.homeView.label)}
+        description={t(($) => $.settings.appearance.files.homeView.description)}
+        control={
+          <Select
+            value={homeProjectLayout}
+            onValueChange={(value) =>
+              setHomeProjectLayout(value as typeof homeProjectLayout)
+            }
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            <SelectItem value="grid">
-              {t(($) => $.settings.appearance.files.homeView.grid)}
-            </SelectItem>
-            <SelectItem value="list">
-              {t(($) => $.settings.appearance.files.homeView.list)}
-            </SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div
-        data-testid="settings-row-open-projects-in"
-        className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-      >
-        <div>
-          <div className="text-sm font-medium">
-            {t(($) => $.settings.appearance.files.openIn.label)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {t(($) => $.settings.appearance.files.openIn.description)}
-          </div>
-        </div>
-        <Select
-          value={defaultView}
-          onValueChange={(value) => setDefaultView(value as typeof defaultView)}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="z-[100]">
-            {LAYOUT_OPTIONS.map((option) => (
-              <SelectItem key={option.preset} value={option.preset}>
-                {option.label}
+            <SelectTrigger
+              className="w-[140px]"
+              aria-label={t(($) => $.settings.appearance.files.homeView.label)}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              <SelectItem value="grid">
+                {t(($) => $.settings.appearance.files.homeView.grid)}
               </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+              <SelectItem value="list">
+                {t(($) => $.settings.appearance.files.homeView.list)}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        }
+      />
+
+      <SettingsRow
+        testId="settings-row-open-projects-in"
+        label={t(($) => $.settings.appearance.files.openIn.label)}
+        description={t(($) => $.settings.appearance.files.openIn.description)}
+        control={
+          <Select
+            value={defaultView}
+            onValueChange={(value) => setDefaultView(value as typeof defaultView)}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {LAYOUT_OPTIONS.map((option) => (
+                <SelectItem key={option.preset} value={option.preset}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.files.showTree.label)}
@@ -1211,28 +1124,6 @@ export function AppearanceSection() {
     sectionDiffersFromDefaults("appearance", state),
   );
   const { preference, setPreference } = useTheme();
-  const tabRefs = useRef<
-    Partial<Record<AppearanceTabId, HTMLButtonElement | null>>
-  >({});
-
-  useEffect(() => {
-    tabRefs.current[activeTab]?.scrollIntoView?.({
-      block: "nearest",
-      inline: "nearest",
-    });
-  }, [activeTab]);
-
-  const scrollTabs = (event: WheelEvent<HTMLDivElement>) => {
-    const list = event.currentTarget;
-    if (
-      list.scrollWidth <= list.clientWidth ||
-      Math.abs(event.deltaX) >= Math.abs(event.deltaY)
-    ) {
-      return;
-    }
-    list.scrollLeft += event.deltaY;
-  };
-
   return (
     <div className="space-y-4">
       <Tabs
@@ -1240,20 +1131,12 @@ export function AppearanceSection() {
         onValueChange={(value) => setActiveTab(value as AppearanceTabId)}
         className="space-y-4"
       >
-        <TabsList
-          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
-          data-testid="appearance-tab-strip"
-          onWheel={scrollTabs}
-        >
+        <TabsList scrollable data-testid="appearance-tab-strip">
           {APPEARANCE_TABS.map((tab) => (
             <TabsTrigger
               key={tab.id}
-              ref={(node) => {
-                tabRefs.current[tab.id] = node;
-              }}
               value={tab.id}
               data-testid={`appearance-tab-${tab.id}`}
-              className="shrink-0"
             >
               {tab.label()}
             </TabsTrigger>

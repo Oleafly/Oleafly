@@ -696,25 +696,20 @@ export function AISection() {
         }}
         className="space-y-4"
       >
-        <TabsList
-          data-tour="ai-settings-tabs"
-          className="flex h-auto w-fit max-w-full justify-start gap-1 overflow-x-auto no-scrollbar"
-        >
+        <TabsList scrollable data-tour="ai-settings-tabs">
           <TabsTrigger
             value="providers"
             data-testid="ai-settings-tab-providers"
-            className="shrink-0"
           >
             {t(($) => $.settings.ai.section.tabs.providers)}
           </TabsTrigger>
-          <TabsTrigger value="agents" data-testid="ai-settings-tab-agents" className="shrink-0">
+          <TabsTrigger value="agents" data-testid="ai-settings-tab-agents">
             {t(($) => $.settings.ai.section.tabs.agents)}
           </TabsTrigger>
           <TabsTrigger
             value="instructions"
             data-testid="ai-settings-tab-instructions"
             data-tour="ai-settings-tab-instructions"
-            className="shrink-0"
           >
             {t(($) => $.settings.ai.section.tabs.instructions)}
           </TabsTrigger>
@@ -722,14 +717,12 @@ export function AISection() {
             value="personas"
             data-testid="ai-settings-tab-personas"
             data-tour="ai-settings-tab-personas"
-            className="shrink-0"
           >
             {t(($) => $.settings.ai.section.tabs.personas)}
           </TabsTrigger>
           <TabsTrigger
             value="skills"
             data-testid="ai-settings-tab-skills"
-            className="shrink-0"
           >
             {t(($) => $.settings.ai.section.tabs.skills)}
           </TabsTrigger>
@@ -737,7 +730,6 @@ export function AISection() {
             value="mcp"
             data-testid="ai-settings-tab-mcp"
             data-tour="settings-mcp"
-            className="shrink-0"
           >
             {t(($) => $.settings.ai.section.tabs.mcp)}
           </TabsTrigger>

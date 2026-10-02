@@ -1,23 +1,21 @@
 import { EditorView } from "@codemirror/view";
 import { SECTION_LINE_RE } from "@/components/editor/breadcrumbs-source";
+import { createEmitter } from "@/lib/emitter";
 
 let revision = 0;
 let lastLine = -1;
 let lastDocument = "";
-const listeners = new Set<() => void>();
+const cursorMoved = createEmitter();
 
 export function editorCursorRevision(): number {
   return revision;
 }
 
-export function subscribeEditorCursor(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
+export const subscribeEditorCursor = cursorMoved.subscribe;
 
 export function bumpEditorCursorRevision(): void {
   revision++;
-  for (const listener of listeners) listener();
+  cursorMoved.emit();
 }
 
 export function noteEditorDocument(path: string | null, version: number): void {

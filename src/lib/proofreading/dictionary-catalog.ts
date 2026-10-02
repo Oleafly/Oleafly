@@ -1,5 +1,6 @@
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import { listDictionaries } from "@/lib/tauri";
+import { createEmitter } from "@/lib/emitter";
 
 export const BUNDLED_DICTIONARY_LOCALES: ReadonlySet<string> = new Set([
   "de_DE",
@@ -142,21 +143,14 @@ export function loadDictionaryCatalog(): Promise<DictionaryInfo[]> {
   return catalogPromise;
 }
 
-const catalogListeners = new Set<(entries: DictionaryInfo[]) => void>();
+const catalogRefreshed = createEmitter<[entries: DictionaryInfo[]]>();
 
-export function subscribeDictionaryCatalog(
-  listener: (entries: DictionaryInfo[]) => void,
-): () => void {
-  catalogListeners.add(listener);
-  return () => {
-    catalogListeners.delete(listener);
-  };
-}
+export const subscribeDictionaryCatalog = catalogRefreshed.subscribe;
 
 export async function refreshDictionaryCatalog(): Promise<DictionaryInfo[]> {
   catalogPromise = null;
   const entries = await loadDictionaryCatalog();
-  for (const listener of catalogListeners) listener(entries);
+  catalogRefreshed.emit(entries);
   return entries;
 }
 

@@ -5,7 +5,6 @@ import {
   ArrowRight,
   Ellipsis,
   ExternalLink,
-  Loader2,
   RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import type { BrowserTab } from "./browser-state";
 import type { OverlayGate } from "./use-overlay-gate";
+import { Spinner } from "@/components/ui/spinner";
 
 interface AddressBarProps {
   tab: BrowserTab | null;
@@ -110,7 +110,7 @@ export function AddressBar({
       </ToolButton>
       <ToolButton label={t(($) => $.shell.browser.reload)} onClick={onReload} disabled={!hasTab}>
         {loading ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden data-testid="browser-loading" />
+          <Spinner data-testid="browser-loading" />
         ) : (
           <RotateCw className="size-4" aria-hidden />
         )}

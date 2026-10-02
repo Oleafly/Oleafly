@@ -27,7 +27,7 @@ export function useFullscreen(): boolean {
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const win = getCurrentWindow();
         setFullscreen(await win.isFullscreen());

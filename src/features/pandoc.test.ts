@@ -23,7 +23,11 @@ const mocks = vi.hoisted(() => ({
   listener: null as ProgressListener | null,
 }));
 
-vi.mock("@/lib/tauri", () => ({ hasPandoc: mocks.hasPandoc, downloadPandoc: mocks.downloadPandoc }));
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  hasPandoc: mocks.hasPandoc,
+  downloadPandoc: mocks.downloadPandoc,
+  withEventListener: (await importOriginal<typeof import("@/lib/tauri")>()).withEventListener,
+}));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: mocks.open }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));

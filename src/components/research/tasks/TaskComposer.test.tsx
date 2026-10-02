@@ -161,6 +161,19 @@ describe("TaskComposer draft ownership", () => {
     });
   });
 
+  it("shows each CLI agent's own logo instead of a terminal icon", () => {
+    render(
+      <TaskComposer
+        {...props()}
+        agents={[
+          { runtimeId: "acp", agentId: "claude", modelId: "default", label: "Claude Code", modelLabel: "CLI agent" },
+        ]}
+      />,
+    );
+    expect(document.body.querySelector('svg[aria-label="Claude Code"]')).not.toBeNull();
+    expect(document.body.querySelector("svg.lucide-terminal")).toBeNull();
+  });
+
   it("shows a rejected create as an inline alert and keeps the draft", async () => {
     const input = props();
     input.onCreate = vi.fn(async () => {

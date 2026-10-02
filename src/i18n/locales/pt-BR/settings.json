@@ -226,6 +226,7 @@
       },
       "noChanges": "Nenhuma mudança",
       "refresh": "Atualizar",
+      "refreshThrottled": "Atualizado há pouco. Tente novamente em {{seconds}} s",
       "restore": "Restaurar padrões",
       "restoreTooltip": "Colocar de volta os modelos embutidos deste provedor",
       "title": "Modelos",
@@ -489,11 +490,6 @@
           "none": "Nenhuma outra pasta de agente foi encontrada"
         },
         "title": "Compartilhar habilidades com outros agentes deste computador"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Adicionada",
@@ -1553,6 +1549,7 @@
     },
     "error": {
       "conflict": "Já está atribuído a {{action}}.",
+      "nativeKey": "Atalhos de menu não aceitam esta tecla. Letras, números e teclas de função funcionam.",
       "reserved": "{{shortcut}} é reservado pelo sistema operacional."
     },
     "intro": "Personalize os atalhos do aplicativo e confira as combinações de teclas nativas do editor.",
@@ -1560,6 +1557,8 @@
       "closeWindow": "Fechar janela",
       "copy": "Copiar",
       "cut": "Recortar",
+      "hide": "Ocultar app",
+      "minimize": "Minimizar janela",
       "paste": "Colar",
       "quit": "Encerrar",
       "save": "Salvar",

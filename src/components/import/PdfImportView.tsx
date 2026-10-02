@@ -11,7 +11,6 @@ import {
   FolderPlus,
   Heading,
   Image as ImageIcon,
-  Loader2,
   Radical,
   ScanText,
   ScissorsLineDashed,
@@ -42,6 +41,8 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
 import { i18n } from "@/i18n";
+import { Spinner } from "@/components/ui/spinner";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 const HANDLES = [
   { id: "structure", icon: Heading },
@@ -150,9 +151,9 @@ function PdfDropzoneLanding() {
           />
         </div>
         <div className="mt-8">
-          <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <SectionHeading as="div" className="mb-3">
             {t(($) => $.library.pdfImport.handlesTitle)}
-          </div>
+          </SectionHeading>
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             {HANDLES.map(({ icon: Icon, id }) => (
               <div key={id} className="flex items-center gap-3 rounded-xl border p-3">
@@ -451,7 +452,7 @@ export function PdfImportView() {
                 data-testid="import-transcribe-scan"
                 onClick={() => void transcribeScan()}
               >
-                {busy ? <Loader2 className="animate-spin" /> : <ScanText />}
+                {busy ? <Spinner /> : <ScanText />}
                 {t(($) => $.library.pdfImport.transcribeLocal)}
               </Button>
             )}

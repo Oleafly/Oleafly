@@ -6,6 +6,9 @@
     "reloadViews": "Görünümleri Yeniden Yükle",
     "restartApp": "Uygulamayı Yeniden Başlat",
     "quit": "Oleafly'den Çık",
+    "hide": "Oleafly'yi Gizle",
+    "hideOthers": "Diğerlerini Gizle",
+    "showAll": "Tümünü Göster",
     "edit": "Düzen",
     "undo": "Geri Al",
     "redo": "Yinele",
@@ -19,7 +22,15 @@
     "file": "Dosya",
     "openFolder": "Klasör Aç…",
     "openRecent": "Son Kullanılanlar",
-    "noRecent": "Son proje yok"
+    "noRecent": "Son proje yok",
+    "window": "Pencere",
+    "minimize": "Küçült",
+    "fullscreen": "Tam Ekranı Aç/Kapat",
+    "bringAllToFront": "Tümünü Öne Getir",
+    "newTab": "Yeni Sekme",
+    "openLocation": "Adres Aç…",
+    "closeTab": "Sekmeyi Kapat",
+    "reloadPage": "Sayfayı Yeniden Yükle"
   },
   "window": {
     "browser": "Oleafly Tarayıcı",

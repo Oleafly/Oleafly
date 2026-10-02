@@ -4,6 +4,7 @@ import {
   literatureIdentity,
   type LiteratureRecord,
 } from "@/lib/literature-search";
+import { readJson, writeJson } from "@/lib/local-storage";
 
 const STORAGE_KEY = "oleafly.literature-library.v1";
 const MAX_SAVED_CITATIONS = 500;
@@ -15,34 +16,28 @@ export interface SavedLiteratureCitation {
   savedAt: number;
 }
 
+function savedCitations(parsed: unknown): SavedLiteratureCitation[] {
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(
+    (entry): entry is SavedLiteratureCitation =>
+      Boolean(
+        entry &&
+          typeof entry === "object" &&
+          typeof entry.id === "string" &&
+          typeof entry.bibtex === "string" &&
+          typeof entry.savedAt === "number" &&
+          entry.record &&
+          typeof entry.record.title === "string",
+      ),
+  );
+}
+
 function load(): SavedLiteratureCitation[] {
-  try {
-    if (typeof localStorage === "undefined") return [];
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (entry): entry is SavedLiteratureCitation =>
-        Boolean(
-          entry &&
-            typeof entry === "object" &&
-            typeof entry.id === "string" &&
-            typeof entry.bibtex === "string" &&
-            typeof entry.savedAt === "number" &&
-            entry.record &&
-            typeof entry.record.title === "string",
-        ),
-    );
-  } catch {
-    return [];
-  }
+  return readJson(STORAGE_KEY, [], savedCitations);
 }
 
 function persist(saved: SavedLiteratureCitation[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-  } catch {
-    // The library remains usable for this session if storage is unavailable.
-  }
+  writeJson(STORAGE_KEY, saved);
 }
 
 interface LiteratureLibraryState {

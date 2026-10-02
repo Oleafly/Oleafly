@@ -6,6 +6,7 @@ import { notifyError, toast } from "@/lib/toast";
 import { ensurePandoc } from "@/features/pandoc";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { i18n } from "@/i18n";
+import { basename } from "@/lib/path-utils";
 
 export type DocumentExportFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
 
@@ -69,7 +70,7 @@ function revealExportedFile(dest: string): void {
 }
 
 function exportSuccessToast(kind: string, dest: string): void {
-  const fileName = dest.split(/[/\\]/).pop() || kind.toLowerCase();
+  const fileName = basename(dest) || kind.toLowerCase();
   toast.successUnique(
     EXPORT_TOAST_KEY,
     i18n.t(($) => $.core.export.saved, { kind, fileName }),

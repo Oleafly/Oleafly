@@ -10,17 +10,13 @@ import type {
   SourceLocation,
 } from "@/lib/project-intelligence/types";
 import { projectDiagnosticText } from "@/lib/project-intelligence/reason";
+import { basename } from "@/lib/path-utils";
 import type {
   IntelligenceNodeKind,
   IntelligenceNodeTone,
   IntelligenceTreeNode,
 } from "@/components/layout/IntelligenceTree";
 import { i18n } from "@/i18n";
-
-function basename(path: string): string {
-  const slash = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
-  return slash >= 0 ? path.slice(slash + 1) : path;
-}
 
 function locationTarget(location: SourceLocation) {
   return {

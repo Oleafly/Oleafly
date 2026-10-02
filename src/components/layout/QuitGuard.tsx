@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
+import { useTauriEvent, useTauriSubscription } from "@/hooks/use-tauri-event";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { cancelQuitFlush, confirmQuitFlush } from "@/lib/tauri";
 import { logError } from "@/lib/log";
@@ -32,27 +32,23 @@ export function QuitGuard() {
   const [failure, setFailure] = useState<{ message: string; restart: boolean } | null>(null);
   const [installing, setInstalling] = useState(false);
   const installingRef = useRef(false);
-  useEffect(() => {
-    if (!isTauri()) return;
-    let disposed = false;
-    let stop: (() => void) | undefined;
-    void registerUpdateInstallGuard((busy) => {
-      installingRef.current = busy;
-      if (!disposed) setInstalling(busy);
-    }).then((cleanup) => {
-      if (disposed) cleanup();
-      else stop = cleanup;
-    }).catch((error) => logError("prepare updates", error));
-    return () => { disposed = true; stop?.(); };
-  }, []);
+  const native = isTauri();
+  const guardInstalls = useCallback(
+    () =>
+      registerUpdateInstallGuard((busy) => {
+        installingRef.current = busy;
+        setInstalling(busy);
+      }),
+    [],
+  );
+  useTauriSubscription(native ? guardInstalls : null, "prepare updates");
 
-  useEffect(() => {
-    if (!isTauri()) return;
-    const release = claimQuitRequests();
-    let disposed = false;
-    let unlisten: (() => void) | null = null;
-    void listen<boolean>(QUIT_FLUSH_REQUESTED, (event) => {
-      const restart = event.payload === true;
+  useEffect(() => (native ? claimQuitRequests() : undefined), [native]);
+
+  useTauriEvent<boolean>(
+    QUIT_FLUSH_REQUESTED,
+    (payload) => {
+      const restart = payload === true;
       if (installingRef.current) return;
       answerQuitRequest(() =>
         flushForQuitWithDeadline()
@@ -65,16 +61,9 @@ export function QuitGuard() {
             await holdQuitAfterFailedSave();
           }),
       );
-    }).then((stop) => {
-      if (disposed) stop();
-      else unlisten = stop;
-    });
-    return () => {
-      disposed = true;
-      release();
-      unlisten?.();
-    };
-  }, []);
+    },
+    native,
+  );
 
   return (
     <>

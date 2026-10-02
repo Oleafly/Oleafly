@@ -75,7 +75,42 @@
     },
     "openFolder": "Öppna mapp",
     "openFolderShortcut": "Öppna mapp ({{shortcut}})",
-    "createFirstProject": "Skapa nytt projekt"
+    "createFirstProject": "Skapa nytt projekt",
+    "sortBy": "Sortera efter",
+    "customFilter": "Anpassad",
+    "search": {
+      "fields": {
+        "is": "Status",
+        "has": "Med",
+        "no": "Utan",
+        "color": "Omslagsfärg",
+        "opened": "Senast öppnad",
+        "in": "Sök i",
+        "sort": "Sortering"
+      },
+      "values": {
+        "linkedFolder": "Länkad mapp",
+        "forked": "Förgrenat",
+        "exports": "Exporter",
+        "today": "I dag",
+        "yesterday": "I går",
+        "id": "ID",
+        "mainFile": "Huvudfil",
+        "folderPath": "Mappsökväg"
+      },
+      "sorts": {
+        "activityDesc": "Senaste aktivitet",
+        "activityAsc": "Äldsta aktivitet",
+        "updatedDesc": "Senast ändrad",
+        "updatedAsc": "Längst sedan ändrad",
+        "createdDesc": "Nyast",
+        "createdAsc": "Äldst",
+        "openedDesc": "Senast öppnad",
+        "openedAsc": "Längst sedan öppnad",
+        "nameAsc": "Namn, A till Ö",
+        "nameDesc": "Namn, Ö till A"
+      }
+    }
   },
   "projects": {
     "open": "Öppna {{name}}",

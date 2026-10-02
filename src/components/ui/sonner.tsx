@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { Toaster as SonnerToaster, toast as sonnerToast } from "sonner";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { TOAST_DURATION_MS, TOAST_LIMIT, useToastStore, type Toast } from "@/store/toast";
 import { displayText } from "@/lib/display-path";
+
+const TOASTER_STYLE = { "--width": "400px" } as CSSProperties;
 
 function sonnerFor(kind: Toast["kind"]) {
   if (kind === "error") return sonnerToast.error;
@@ -86,6 +88,7 @@ export function Toaster() {
       theme={theme}
       visibleToasts={TOAST_LIMIT}
       className="toaster group"
+      style={TOASTER_STYLE}
       closeButton
       icons={{
         success: <CheckCircle2 className="size-4 text-emerald-500" />,

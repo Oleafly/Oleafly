@@ -226,6 +226,7 @@
       },
       "noChanges": "Inga ändringar",
       "refresh": "Uppdatera",
+      "refreshThrottled": "Uppdaterades nyss. Försök igen om {{seconds}} s",
       "restore": "Återställ standard",
       "restoreTooltip": "Lägg tillbaka leverantörens inbyggda modeller",
       "title": "Modeller",
@@ -486,11 +487,6 @@
           "none": "Inga andra agentmappar hittades"
         },
         "title": "Dela färdigheter med andra agenter på den här datorn"
-      },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
       },
       "source": {
         "added": "Tillagd",
@@ -1537,6 +1533,7 @@
     },
     "error": {
       "conflict": "Redan tilldelat {{action}}.",
+      "nativeKey": "Menykortkommandon kan inte använda den här tangenten. Bokstäver, siffror och funktionstangenter fungerar.",
       "reserved": "{{shortcut}} är reserverat av operativsystemet."
     },
     "intro": "Anpassa appens kortkommandon och gå igenom redigerarens egna tangentkombinationer.",
@@ -1544,6 +1541,8 @@
       "closeWindow": "Stäng fönster",
       "copy": "Kopiera",
       "cut": "Klipp ut",
+      "hide": "Göm appen",
+      "minimize": "Minimera fönster",
       "paste": "Klistra in",
       "quit": "Avsluta",
       "save": "Spara",

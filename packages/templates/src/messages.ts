@@ -1,3 +1,5 @@
+import type { Translator } from "@oleafly/i18n-contract";
+
 export const TEMPLATES_MESSAGE_KEYS = [
   "dialog.chooseTemplate",
   "dialog.nameProject",
@@ -84,7 +86,4 @@ export const TEMPLATES_MESSAGE_KEYS = [
 
 export type TemplatesMessageKey = (typeof TEMPLATES_MESSAGE_KEYS)[number];
 
-export type TemplatesTranslator = (
-  key: TemplatesMessageKey,
-  params?: Record<string, string | number>,
-) => string;
+export type TemplatesTranslator = Translator<TemplatesMessageKey>;

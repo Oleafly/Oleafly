@@ -4,7 +4,7 @@ use super::{
     SessionSnapshot, StartSession,
 };
 use std::sync::Arc;
-use tauri::{AppHandle, Manager, State, WebviewWindow};
+use tauri::{AppHandle, Manager, State, Webview};
 
 fn check_project(
     runtime: &AcpRuntime,
@@ -59,16 +59,22 @@ pub async fn acp_install(
     runtime.install(&agent_id).await
 }
 
+fn caller_label(webview: &Webview) -> Result<String, String> {
+    crate::caller::own_window_label(webview)
+        .ok_or_else(|| "Agents are unavailable from this view.".to_string())
+}
+
 #[tauri::command]
 pub async fn acp_start(
     app: AppHandle,
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     agent_id: String,
 ) -> Result<SessionSnapshot, String> {
+    let owner = caller_label(&webview)?;
     let _startup = runtime.begin_startup()?;
-    let generation = runtime.owner_generation(window.label());
+    let generation = runtime.owner_generation(owner.as_str());
     let project_path = crate::paths::project_dir(&project_id)?;
     super::runtime::note_launch_root(&project_path);
     let bridge = super::admit_agent_bridge(
@@ -82,7 +88,7 @@ pub async fn acp_start(
                 project_id,
                 project_path,
                 agent_id,
-                owner: Some(window.label().into()),
+                owner: Some(owner.as_str().into()),
                 ..StartSession::default()
             },
             vec![bridge.mcp_server()],
@@ -96,13 +102,14 @@ pub async fn acp_start(
 #[tauri::command]
 pub async fn acp_reconnect(
     app: AppHandle,
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
 ) -> Result<SessionSnapshot, String> {
+    let owner = caller_label(&webview)?;
     let _startup = runtime.begin_startup()?;
-    let generation = runtime.owner_generation(window.label());
+    let generation = runtime.owner_generation(owner.as_str());
     let record = check_project(&runtime, &session_id, &project_id)?;
     if record.task_id.is_some() {
         return Err("Resume delegated work from its research task.".into());
@@ -123,7 +130,7 @@ pub async fn acp_reconnect(
     let result = runtime
         .reconnect_with_mcp_at_generation(
             &session_id,
-            Some(window.label().into()),
+            Some(owner.as_str().into()),
             vec![bridge.mcp_server()],
             Some(generation),
         )
@@ -134,7 +141,7 @@ pub async fn acp_reconnect(
 
 #[tauri::command]
 pub async fn acp_prompt(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
@@ -142,11 +149,12 @@ pub async fn acp_prompt(
     images: Option<Vec<ImagePrompt>>,
     skill_id: Option<String>,
 ) -> Result<SessionSnapshot, String> {
+    let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
-    runtime.assert_owner(&session_id, window.label()).await?;
+    runtime.assert_owner(&session_id, owner.as_str()).await?;
     let skill = match skill_id.filter(|id| !id.trim().is_empty()) {
         Some(skill_id) => {
-            let app = window.app_handle().clone();
+            let app = webview.app_handle().clone();
             let project = project_id.clone();
             Some(
                 tauri::async_runtime::spawn_blocking(move || {
@@ -165,65 +173,70 @@ pub async fn acp_prompt(
 
 #[tauri::command]
 pub async fn acp_cancel(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
 ) -> Result<(), String> {
+    let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
-    runtime.assert_owner(&session_id, window.label()).await?;
+    runtime.assert_owner(&session_id, owner.as_str()).await?;
     runtime.cancel(&session_id).await
 }
 
 #[tauri::command]
 pub async fn acp_disconnect(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
 ) -> Result<(), String> {
+    let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
-    runtime.assert_owner(&session_id, window.label()).await?;
+    runtime.assert_owner(&session_id, owner.as_str()).await?;
     runtime.close(&session_id).await
 }
 
 #[tauri::command]
 pub async fn acp_authenticate(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
     method_id: String,
 ) -> Result<SessionSnapshot, String> {
+    let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
-    runtime.assert_owner(&session_id, window.label()).await?;
+    runtime.assert_owner(&session_id, owner.as_str()).await?;
     runtime.authenticate(&session_id, &method_id).await
 }
 
 #[tauri::command]
 pub async fn acp_set_model(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
     model_id: String,
 ) -> Result<SessionSnapshot, String> {
+    let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
-    runtime.assert_owner(&session_id, window.label()).await?;
+    runtime.assert_owner(&session_id, owner.as_str()).await?;
     runtime.set_model(&session_id, &model_id).await
 }
 
 #[tauri::command]
 pub async fn acp_permission(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     project_id: String,
     session_id: String,
     permission_id: String,
     option_id: Option<String>,
 ) -> Result<(), String> {
+    let owner = caller_label(&webview)?;
     check_project(&runtime, &session_id, &project_id)?;
-    runtime.assert_owner(&session_id, window.label()).await?;
+    runtime.assert_owner(&session_id, owner.as_str()).await?;
     runtime
         .resolve_permission(&session_id, &permission_id, option_id)
         .await
@@ -284,12 +297,13 @@ pub fn acp_events(
 /// program Oleafly resolves today when `path` is `None`.
 #[tauri::command]
 pub async fn acp_check_agent(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     agent_id: String,
     path: Option<String>,
 ) -> Result<AgentCheck, String> {
-    super::setup::require_main_window(window.label())?;
+    let owner = caller_label(&webview)?;
+    super::setup::require_main_window(owner.as_str())?;
     runtime
         .agent_definition(&agent_id)
         .map_err(|_| String::from(super::setup::program_error("unknown_agent")))?;
@@ -303,11 +317,12 @@ pub async fn acp_check_agent(
 /// chosen path, or `None` when the dialog was cancelled.
 #[tauri::command]
 pub async fn acp_pick_agent_program(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     agent_id: String,
 ) -> Result<Option<String>, String> {
-    super::setup::require_main_window(window.label())?;
+    let owner = caller_label(&webview)?;
+    super::setup::require_main_window(owner.as_str())?;
     let definition = runtime
         .agent_definition(&agent_id)
         .map_err(|_| String::from(super::setup::program_error("unknown_agent")))?;
@@ -322,7 +337,7 @@ pub async fn acp_pick_agent_program(
                 .parent()
                 .map(std::path::Path::to_path_buf)
         });
-    let picked = super::setup::pick_program(window.app_handle(), &definition, start).await?;
+    let picked = super::setup::pick_program(webview.app_handle(), &definition, start).await?;
     if let Some(path) = &picked {
         super::setup::remember_pick(&agent_id, path);
     }
@@ -332,12 +347,13 @@ pub async fn acp_pick_agent_program(
 /// Saves (or clears with `None`) the program the user chose for an agent.
 #[tauri::command]
 pub async fn acp_set_agent_program(
-    window: WebviewWindow,
+    webview: Webview,
     runtime: State<'_, Arc<AcpRuntime>>,
     agent_id: String,
     path: Option<String>,
 ) -> Result<AgentStatus, String> {
-    super::setup::require_main_window(window.label())?;
+    let owner = caller_label(&webview)?;
+    super::setup::require_main_window(owner.as_str())?;
     let definition = runtime
         .agent_definition(&agent_id)
         .map_err(|_| String::from(super::setup::program_error("unknown_agent")))?;
@@ -353,7 +369,7 @@ pub async fn acp_set_agent_program(
             .map_err(|code| String::from(super::setup::program_error(code)))?
     };
     if !super::setup::was_picked(&agent_id, &located.path)
-        && !super::setup::confirm_program(window.app_handle(), &definition, &located.path).await?
+        && !super::setup::confirm_program(webview.app_handle(), &definition, &located.path).await?
     {
         return Err(super::setup::program_error("declined").into());
     }

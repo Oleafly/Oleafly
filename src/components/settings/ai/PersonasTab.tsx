@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -14,6 +14,7 @@ import {
   type StarterPersonaId,
 } from "@/lib/starter-personas";
 import { CreatePersonaDialog } from "./CreatePersonaDialog";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface PersonasTabProps {
   cfg: AppConfig;
@@ -198,7 +199,7 @@ export function PersonasTab({ cfg, persist, setMsg }: Readonly<PersonasTabProps>
                     disabled={addingStarterId !== null}
                     onClick={() => void addStarterPersona(starter)}
                   >
-                    {isAdding ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                    {isAdding ? <Spinner size="sm" /> : null}
                     {t(($) => $.settings.ai.personas.addStarter)}
                   </Button>
                 </div>

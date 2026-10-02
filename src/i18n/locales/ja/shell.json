@@ -433,7 +433,7 @@
       "references": "参考文献"
     },
     "label": "検索",
-    "noMatches": "一致するものが見つかりません。",
+    "noMatches": "一致するものが見つかりません",
     "openReferences": "このプロジェクトの参考文献を開く",
     "placeholder": "プロジェクトや文書を検索、または / でコマンド…",
     "placeholderDocuments": "文書の中を検索…",
@@ -662,6 +662,12 @@
         "description": "アプリ内のウェブブラウザ（ドックの切り替えとショートカット）を表示し、AI がコンピュータ操作で動かせるようにします。ベータ版のため既定ではオフで、オフのときはブラウザのボタンも AI のブラウザツールもありません。",
         "label": "ウェブブラウザ"
       }
+    },
+    "footer": {
+      "followOnX": "X でフォロー",
+      "joinDiscord": "Discord コミュニティに参加",
+      "releaseNotes": "リリースノートを表示",
+      "viewSource": "ソースコードを表示"
     },
     "general": {
       "dialect": {

@@ -19,9 +19,8 @@ vi.mock("@/lib/toast", () => ({
 
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
+import { COPIED_FEEDBACK_MS, COPY_FAILED_FEEDBACK_MS } from "@/components/ui/use-copy-status";
 import {
-  COPIED_FEEDBACK_MS,
-  COPY_FAILED_FEEDBACK_MS,
   EQUATION_EXAMPLES,
   EquationPreviewPanel,
   renderEquation,

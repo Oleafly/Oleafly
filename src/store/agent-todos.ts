@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { readJson, removeKey, writeJson } from "@/lib/local-storage";
 
 export type AgentTodoStatus = "pending" | "in_progress" | "completed" | "cancelled";
 
@@ -59,25 +60,14 @@ function isAgentTodo(value: unknown): value is AgentTodo {
 }
 
 export function readStoredTodos(chatId: string): AgentTodo[] {
-  try {
-    if (typeof localStorage === "undefined") return [];
-    const raw = localStorage.getItem(storageKey(chatId));
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter(isAgentTodo) : [];
-  } catch {
-    return [];
-  }
+  return readJson<AgentTodo[]>(storageKey(chatId), [], (parsed) =>
+    Array.isArray(parsed) ? parsed.filter(isAgentTodo) : [],
+  );
 }
 
 function writeStoredTodos(chatId: string, todos: readonly AgentTodo[]): void {
-  try {
-    if (typeof localStorage === "undefined") return;
-    if (todos.length === 0) localStorage.removeItem(storageKey(chatId));
-    else localStorage.setItem(storageKey(chatId), JSON.stringify(todos));
-  } catch {
-    return;
-  }
+  if (todos.length === 0) removeKey(storageKey(chatId));
+  else writeJson(storageKey(chatId), todos);
 }
 
 interface AgentTodoState {

@@ -1,11 +1,16 @@
 import { PdfToolbarControls } from "./PdfToolbarControls";
 import { CompileLogControls } from "./CompileLogControls";
 import { SavePreviewDialog } from "./SavePreviewDialog";
+import { PdfOutlinePanel } from "./PdfOutlinePanel";
+import { PdfSearchBar } from "./PdfSearchBar";
+import { PdfViewerOverlay } from "./PdfViewerOverlay";
+import { usePdfKeyboardShortcuts } from "./use-pdf-keyboard-shortcuts";
 import { CompileControlsView } from "@/components/layout/CompileControls";
 import { LogPane } from "@/components/editor/LogPane";
 import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-workspace";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { logError } from "@/lib/log";
+import { downloadBytes } from "@/lib/download-blob";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
 import { usePdfPosition } from "@/lib/use-pdf-position";
@@ -26,14 +31,7 @@ import {
   AlertTriangle,
   PanelTopOpen,
   Sparkles,
-  ChevronLeft,
-  ChevronRight,
   FileText,
-  Loader2,
-  LockKeyhole,
-  Search,
-  TableOfContents,
-  X,
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { i18n, onLocaleApplied } from "@/i18n";
@@ -41,14 +39,12 @@ import {
   PdfViewer,
   type PdfLayout,
   type PdfLoadState,
-  type PdfOutlineItem,
   type PdfOutlineState,
   type PdfRotation,
   type PdfSearchState,
   type PdfViewerHandle,
 } from "@/components/pdf/PdfViewer";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   fingerprintCompileOutput,
@@ -73,6 +69,7 @@ import {
   MAX_PREVIEW_SCALE,
   MIN_PREVIEW_SCALE,
 } from "./preview-zoom";
+import { Spinner } from "@/components/ui/spinner";
 
 const INITIAL_LOAD_STATE: PdfLoadState = {
   status: "idle",
@@ -231,47 +228,6 @@ function projectTitleFromWindowTitle(current: string): string {
     : current;
 }
 
-function OutlineItems({
-  items,
-  onActivate,
-  depth = 0,
-}: Readonly<{
-  items: PdfOutlineItem[];
-  onActivate: (id: string) => void;
-  depth?: number;
-}>) {
-  const { t } = useTranslation(["common", "preview"]);
-  return (
-    <ul className={cn(depth > 0 && "ml-3 border-l pl-1")}>
-      {items.map((item) => (
-        <li key={item.id}>
-          <button
-            type="button"
-            disabled={Boolean(item.disabledReason)}
-            title={item.disabledReason}
-            className="flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-xs hover:bg-accent disabled:cursor-not-allowed disabled:opacity-45"
-            onClick={() => onActivate(item.id)}
-          >
-            <span className="min-w-0 flex-1 truncate">{item.title}</span>
-            {item.external && (
-              <span className="text-[9px] uppercase text-muted-foreground">
-                {t(($) => $.preview.outline.externalBadge)}
-              </span>
-            )}
-          </button>
-          {item.children.length > 0 && (
-            <OutlineItems
-              items={item.children}
-              onActivate={onActivate}
-              depth={depth + 1}
-            />
-          )}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function PreviewMessage({
   title,
   detail,
@@ -291,7 +247,7 @@ function PreviewMessage({
       aria-live="polite"
     >
       {loading ? (
-        <Loader2 className="size-8 animate-spin text-muted-foreground motion-reduce:animate-none" />
+        <Spinner className="size-8 text-muted-foreground" />
       ) : (
         <FileText className="size-9 text-muted-foreground/50" />
       )}
@@ -639,7 +595,7 @@ export function PreviewWindow({
     const expectedStateKey = previewStateKey(compileState);
     setArtifactLoading(true);
     setArtifactFailure(null);
-    (async () => {
+    void (async () => {
       try {
         const bytes = new Uint8Array(
           await readCompiledPdf(checkpoint.projectId),
@@ -766,70 +722,19 @@ export function PreviewWindow({
     return () => cancelAnimationFrame(frame);
   }, [fitPreview, numPages, previewDocument]);
 
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      const modifier = event.metaKey || event.ctrlKey;
-      if (modifier && event.key.toLowerCase() === "f") {
-        event.preventDefault();
-        setSearchOpen(true);
-        requestAnimationFrame(() =>
-          searchInputRef.current?.focus({ preventScroll: true }),
-        );
-        return;
-      }
-      if (event.key === "Escape") {
-        if (searchOpen) {
-          setSearchOpen(false);
-          setSearchInput("");
-        } else if (outlineOpen) {
-          setOutlineOpen(false);
-        }
-        return;
-      }
-      const target = event.target as HTMLElement | null;
-      if (
-        target?.matches("input, textarea, select") ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-      if (
-        pdfZoomShortcuts &&
-        modifier &&
-        (event.key === "+" || event.key === "=")
-      ) {
-        event.preventDefault();
-        userZoom(() =>
-          setScale((current) =>
-            Math.min(MAX_PREVIEW_SCALE, current + 0.2),
-          ),
-        );
-      } else if (pdfZoomShortcuts && modifier && event.key === "-") {
-        event.preventDefault();
-        userZoom(() =>
-          setScale((current) =>
-            Math.max(MIN_PREVIEW_SCALE, current - 0.2),
-          ),
-        );
-      } else if (pdfZoomShortcuts && modifier && event.key === "0") {
-        event.preventDefault();
-        userZoom(() => setScale(1));
-      } else if (
-        modifier &&
-        event.shiftKey &&
-        event.key.toLowerCase() === "r"
-      ) {
-        event.preventDefault();
-        setRotation(
-          (current) => ((current + 90) % 360) as PdfRotation,
-        );
-      }
-    };
-    root.addEventListener("keydown", onKeyDown);
-    return () => root.removeEventListener("keydown", onKeyDown);
-  }, [outlineOpen, pdfZoomShortcuts, searchOpen, userZoom]);
+  usePdfKeyboardShortcuts({
+    rootRef,
+    searchOpen,
+    outlineOpen,
+    zoomShortcuts: pdfZoomShortcuts,
+    searchInputRef,
+    setSearchOpen,
+    setSearchInput,
+    setOutlineOpen,
+    setScale,
+    setRotation,
+    userZoom,
+  });
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -943,20 +848,7 @@ export function PreviewWindow({
     setExportMessage("");
     try {
       if (!isTauri()) {
-        const objectUrl = URL.createObjectURL(
-          new Blob([previewDocument.bytes.slice().buffer], {
-            type: "application/pdf",
-          }),
-        );
-        try {
-          const anchor = document.createElement("a");
-          anchor.href = objectUrl;
-          anchor.download = filename;
-          anchor.rel = "noopener";
-          anchor.click();
-        } finally {
-          window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-        }
+        downloadBytes(previewDocument.bytes, "application/pdf", filename);
         setExportMessage(t(($) => $.preview.window.downloadStarted));
         return;
       }
@@ -986,13 +878,6 @@ export function PreviewWindow({
     previewDocument !== null &&
     !displayedIsCurrent &&
     !disableNativeBridge;
-  const searchCounterLabel = (): string => {
-    if (searchState.status === "searching") {
-      return `${searchState.scannedPages}/${searchState.totalPages}`;
-    }
-    if (searchInput.trim()) return `${searchState.current}/${searchState.total}`;
-    return "0/0";
-  };
   const placeholderTitle = (): string => {
     if (compileState?.status === "compiling") return t(($) => $.preview.window.compilingTitle);
     if (compileState?.status === "error") return t(($) => $.preview.window.compileFailedTitle);
@@ -1116,62 +1001,29 @@ export function PreviewWindow({
       pdfLoadState.documentIdentity === previewDocument.identity &&
       pdfLoadState.status !== "ready" &&
       pdfLoadState.status !== "idle" && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-sidebar/90 p-6 backdrop-blur-[1px]">
-          {pdfLoadState.status === "password_required" ? (
-            <form
-              className="w-full max-w-xs space-y-3 text-center"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submitPassword();
-              }}
-            >
-              <LockKeyhole className="mx-auto size-8 text-muted-foreground" />
-              <div>
-                <h2 className="text-sm font-semibold">
-                  {t(($) => $.preview.password.title)}
-                </h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {pdfLoadState.message}
-                </p>
-              </div>
-              <Input
-                autoFocus
-                type="password"
-                autoComplete="off"
-                value={passwordDraft}
-                onChange={(event) =>
-                  setPasswordDraft(event.target.value)
-                }
-                aria-label={t(($) => $.preview.password.label)}
-                placeholder={t(($) => $.preview.password.placeholder)}
-              />
-              <Button
-                type="submit"
-                size="sm"
-                disabled={!passwordDraft}
-              >
-                {t(($) => $.preview.password.submit)}
-              </Button>
-            </form>
-          ) : (
-            <PreviewMessage
-              loading={pdfLoadState.status === "loading"}
-              title={pdfLoadTitle()}
-              detail={
-                pdfLoadState.status === "loading" &&
-                pdfLoadState.progress !== undefined
-                  ? `${Math.round(pdfLoadState.progress * 100)}%`
-                  : pdfLoadState.message ??
-                    t(($) => $.preview.viewer.loadFailedDetail)
-              }
-              onRetry={
-                pdfLoadState.status === "loading"
-                  ? undefined
-                  : retryViewer
-              }
-            />
-          )}
-        </div>
+        <PdfViewerOverlay
+          loadState={pdfLoadState}
+          passwordDraft={passwordDraft}
+          onPasswordDraftChange={setPasswordDraft}
+          onSubmitPassword={submitPassword}
+        >
+          <PreviewMessage
+            loading={pdfLoadState.status === "loading"}
+            title={pdfLoadTitle()}
+            detail={
+              pdfLoadState.status === "loading" &&
+              pdfLoadState.progress !== undefined
+                ? `${Math.round(pdfLoadState.progress * 100)}%`
+                : pdfLoadState.message ??
+                  t(($) => $.preview.viewer.loadFailedDetail)
+            }
+            onRetry={
+              pdfLoadState.status === "loading"
+                ? undefined
+                : retryViewer
+            }
+          />
+        </PdfViewerOverlay>
       )
   );
 
@@ -1205,77 +1057,18 @@ export function PreviewWindow({
 
   const renderPreviewSearchBar = () => (
     searchOpen && previewDocument && (
-      <search
+      <PdfSearchBar
         id="detached-pdf-search"
-        aria-label={t(($) => $.preview.search.panel)}
-        className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
-      >
-        <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
-        <Input
-          ref={searchInputRef}
-          value={searchInput}
-          onChange={(event) => setSearchInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (
-              event.key === "Enter" &&
-              searchState.status === "success"
-            ) {
-              if (event.shiftKey) {
-                pdfRef.current?.findPrevious();
-              } else {
-                pdfRef.current?.findNext();
-              }
-            }
-          }}
-          placeholder={t(($) => $.preview.search.placeholder)}
-          aria-label={t(($) => $.preview.search.input)}
-          className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none"
-        />
-        <span
-          className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"
-          aria-live="polite"
-        >
-          {searchCounterLabel()}
-        </span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          disabled={
-            searchState.status !== "success" ||
-            searchState.total === 0
-          }
-          onClick={() => pdfRef.current?.findPrevious()}
-          aria-label={t(($) => $.preview.search.previous)}
-        >
-          <ChevronLeft className="size-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          disabled={
-            searchState.status !== "success" ||
-            searchState.total === 0
-          }
-          onClick={() => pdfRef.current?.findNext()}
-          aria-label={t(($) => $.preview.search.next)}
-        >
-          <ChevronRight className="size-3.5" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          onClick={() => {
-            setSearchOpen(false);
-            setSearchInput("");
-          }}
-          aria-label={t(($) => $.preview.search.close)}
-        >
-          <X className="size-3.5" />
-        </Button>
-      </search>
+        inputRef={searchInputRef}
+        query={searchInput}
+        onQueryChange={setSearchInput}
+        state={searchState}
+        pdfRef={pdfRef}
+        onClose={() => {
+          setSearchOpen(false);
+          setSearchInput("");
+        }}
+      />
     )
   );
 
@@ -1354,58 +1147,14 @@ export function PreviewWindow({
       <div className={cn("relative min-h-0 flex-1 overflow-hidden bg-sidebar", logsOpen && "hidden")}>
         {/* Kept mounted while a document is loaded so closing animates too. */}
         {previewDocument && (
-          <aside
+          <PdfOutlinePanel
             id="detached-pdf-outline"
-            aria-label={t(($) => $.preview.outline.panel)}
-            inert={!outlineOpen}
-            className={cn(
-              "absolute inset-y-2 left-2 z-30 flex w-[min(19rem,calc(100%-1rem))] flex-col overflow-hidden rounded-lg border bg-popover/80 text-popover-foreground shadow-xl backdrop-blur-xl supports-[not(backdrop-filter:blur(0))]:bg-popover",
-              "transition-transform duration-200 ease-out motion-reduce:transition-none",
-              outlineOpen ? "translate-x-0" : "-translate-x-[calc(100%_+_1rem)]",
-            )}
-          >
-            <div className="flex min-h-11 items-center justify-between px-3">
-              <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <TableOfContents
-                  aria-hidden
-                  className="size-4 text-muted-foreground"
-                />
-                {t(($) => $.preview.outline.title)}
-              </h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7"
-                onClick={() => setOutlineOpen(false)}
-                aria-label={t(($) => $.preview.outline.close)}
-              >
-                <X className="size-3.5" />
-              </Button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-auto p-2">
-              {outlineState.status === "loading" ? (
-                <output
-                  className="flex items-center gap-2 px-2 py-3 text-xs text-muted-foreground"
-                >
-                  <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" />
-                  {t(($) => $.preview.outline.loading)}
-                </output>
-              ) : null}
-              {outlineState.status !== "loading" && (outlineState.items.length ? (
-                <OutlineItems
-                  items={outlineState.items}
-                  onActivate={(id) => {
-                    pdfRef.current?.activateOutlineItem(id);
-                    setOutlineOpen(false);
-                  }}
-                />
-              ) : (
-                <p className="px-2 py-3 text-xs text-muted-foreground">
-                  {outlineState.message ?? t(($) => $.preview.outline.empty)}
-                </p>
-              ))}
-            </div>
-          </aside>
+            open={outlineOpen}
+            state={outlineState}
+            pdfRef={pdfRef}
+            onClose={() => setOutlineOpen(false)}
+            itemStyle="tree"
+          />
         )}
 
         {renderPreviewSearchBar()}

@@ -8,6 +8,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { chatsSearch } from "@/lib/tauri";
 import { createAppQueryClient } from "@/lib/query";
 import { formatUsd } from "@/lib/ai-pricing";
+import { formatDate } from "@/lib/intl";
 import type { StoredChat } from "@/store/chats";
 import { ChatHistoryModal } from "./ChatHistoryModal";
 
@@ -158,13 +159,16 @@ describe("ChatHistoryModal list", () => {
   });
 
   it("dates each chat by how long ago it was touched", () => {
+    const old = Date.now() - 40 * 24 * 60 * MINUTE;
     renderChats([
       chat({ id: "a", title: "Now", updatedAt: Date.now() }),
       chat({ id: "b", title: "Minutes", updatedAt: Date.now() - 5 * MINUTE }),
       chat({ id: "c", title: "Hours", updatedAt: Date.now() - 3 * 60 * MINUTE }),
       chat({ id: "d", title: "Days", updatedAt: Date.now() - 3 * 24 * 60 * MINUTE }),
-      chat({ id: "e", title: "Old", updatedAt: Date.now() - 40 * 24 * 60 * MINUTE }),
+      chat({ id: "e", title: "Old", updatedAt: old }),
     ]);
+
+    expect(screen.getByText(new RegExp(formatDate(old, { dateStyle: "short" })))).toBeInTheDocument();
 
     expect(screen.getByText(new RegExp(history.relative.justNow))).toBeInTheDocument();
     expect(
