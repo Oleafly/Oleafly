@@ -137,6 +137,7 @@ import {
   installerNotices,
   isCompileCheckpointCurrent,
   saveActiveForCompile,
+  stopOutdatedAutomaticCompile,
   stopRunningCompileQuietly,
   useCompileStore,
 } from "./compile";
@@ -1766,5 +1767,106 @@ describe("automatic compiles and main document detection", () => {
     expect(mocks.errorUnique).not.toHaveBeenCalled();
     expect(mocks.infoUnique).not.toHaveBeenCalled();
     expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+});
+
+describe("stopping an outdated automatic compile", () => {
+  const compileResult = {
+    ok: false,
+    has_pdf: false,
+    log: "",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+  const stoppedResult = { ...compileResult, stopped: true };
+  const later = () => Date.now() + 1_000;
+
+  beforeEach(() => {
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false, compileTimeMs: null });
+  });
+
+  async function startCompile(origin: "automatic" | "explicit" | "agent") {
+    const compile = deferred<typeof stoppedResult>();
+    mocks.compileProject.mockReturnValueOnce(compile.promise);
+    const calls = mocks.compileProject.mock.calls.length;
+    const running = useCompileStore.getState().recompile({ origin });
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(calls + 1));
+    return { compile, running };
+  }
+
+  it("stops an automatic compile that began before the latest edit, once", async () => {
+    const { compile, running } = await startCompile("automatic");
+
+    expect(stopOutdatedAutomaticCompile(later())).toBe(true);
+    expect(stopOutdatedAutomaticCompile(later())).toBe(false);
+    expect(mocks.cancelCompile).toHaveBeenCalledOnce();
+
+    compile.resolve(stoppedResult);
+    await running;
+    expect(useCompileStore.getState().status).not.toBe("compiling");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("never stops the compile that replaced a stopped one", async () => {
+    const first = await startCompile("automatic");
+    expect(stopOutdatedAutomaticCompile(later())).toBe(true);
+    first.compile.resolve(stoppedResult);
+    await first.running;
+
+    const restart = await startCompile("automatic");
+    expect(stopOutdatedAutomaticCompile(later())).toBe(false);
+    expect(mocks.cancelCompile).toHaveBeenCalledOnce();
+    restart.compile.resolve({ ...compileResult, stopped: false });
+    await restart.running;
+
+    const next = await startCompile("automatic");
+    expect(stopOutdatedAutomaticCompile(later())).toBe(true);
+    next.compile.resolve(stoppedResult);
+    await next.running;
+  });
+
+  it.each(["explicit", "agent"] as const)("leaves a compile started by %s running", async (origin) => {
+    const { compile, running } = await startCompile(origin);
+    expect(stopOutdatedAutomaticCompile(later())).toBe(false);
+    expect(mocks.cancelCompile).not.toHaveBeenCalled();
+    compile.resolve({ ...compileResult, stopped: false });
+    await running;
+  });
+
+  it("leaves a compile that already includes the latest edit", async () => {
+    const editedAt = Date.now() - 1_000;
+    const { compile, running } = await startCompile("automatic");
+    expect(stopOutdatedAutomaticCompile(editedAt)).toBe(false);
+    expect(mocks.cancelCompile).not.toHaveBeenCalled();
+    compile.resolve({ ...compileResult, stopped: false });
+    await running;
+  });
+
+  it("lets a compile that is three quarters done finish", async () => {
+    useCompileStore.setState({ compileTimeMs: 10_000 });
+    const { compile, running } = await startCompile("automatic");
+    const now = Date.now();
+    expect(stopOutdatedAutomaticCompile(now + 20_000, now + 7_600)).toBe(false);
+    expect(mocks.cancelCompile).not.toHaveBeenCalled();
+    expect(stopOutdatedAutomaticCompile(now + 20_000, now + 7_000)).toBe(true);
+    compile.resolve(stoppedResult);
+    await running;
+  });
+
+  it("leaves a compile alone while it downloads packages", async () => {
+    const { compile, running } = await startCompile("automatic");
+    useCompileStore.setState({ phase: "downloading" });
+    expect(stopOutdatedAutomaticCompile(later())).toBe(false);
+    expect(mocks.cancelCompile).not.toHaveBeenCalled();
+    compile.resolve({ ...compileResult, stopped: false });
+    await running;
+  });
+
+  it("does nothing when no compile is running", () => {
+    expect(stopOutdatedAutomaticCompile(later())).toBe(false);
+    expect(mocks.cancelCompile).not.toHaveBeenCalled();
   });
 });

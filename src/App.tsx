@@ -66,6 +66,7 @@ import { bootSplashHeld, dismissBootSplash, markBootStage } from "@/lib/boot-tel
 import { useFilesStore, useActiveContent } from "@/store/files";
 import {
   isCompileCheckpointCurrent,
+  stopOutdatedAutomaticCompile,
   useCompileStore,
 } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
@@ -1212,9 +1213,11 @@ function AutoCompileKeeper() {
     }
     let timer: ReturnType<typeof setTimeout>;
     let cancelled = false;
+    const editedAt = Date.now();
     const attempt = () => {
       if (cancelled) return;
       if (useCompileStore.getState().status === "compiling") {
+        stopOutdatedAutomaticCompile(editedAt);
         timer = setTimeout(attempt, 500);
         return;
       }

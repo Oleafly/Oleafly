@@ -55,6 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- When you edit during an automatic compile, Oleafly stops that compile and
+  starts again with your latest text, so the PDF catches up sooner. It never
+  stops a compile you or an agent started, one that is downloading packages or
+  nearly done, or two in a row.
 - Focus shows as a border colour or a background tint everywhere. No control
   draws a focus ring any more, and Settings toggle rows, which showed no
   focus at all, now do.
