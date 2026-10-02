@@ -58,5 +58,25 @@
     "megabytes": "{{value}} MB",
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Sugerencias de búsqueda",
+    "exclude": "Excluir",
+    "excludeField": "Excluir {{field}}",
+    "dateHint": "Las fechas se escriben como 2026-10-02 o @today-7d. Añade >, >=, < o <= para comparar, o escribe un intervalo como 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Este ( nunca se cierra",
+      "unexpectedClose": "Este ) no tiene su ( correspondiente",
+      "danglingOperator": "A {{operator}} le falta un término de búsqueda",
+      "tooDeep": "Los grupos solo se pueden anidar hasta 5 niveles",
+      "emptyGroup": "Estos paréntesis están vacíos",
+      "unterminatedQuote": "Estas comillas nunca se cierran",
+      "unknownQualifier": "Filtro desconocido: {{key}}",
+      "missingValue": "Añade un valor después de {{key}}:",
+      "invalidValue": "{{value}} no es un valor válido para {{key}}",
+      "invalidDate": "{{value}} no es una fecha. Prueba con 2026-10-02 o @today-7d",
+      "invalidNumber": "{{value}} no es un número",
+      "sortNegated": "{{key}} no se puede excluir"
+    }
   }
 }

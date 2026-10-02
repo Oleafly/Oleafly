@@ -58,5 +58,25 @@
     "megabytes": "{{value}} MB",
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Sugestii de căutare",
+    "exclude": "Exclude",
+    "excludeField": "Exclude {{field}}",
+    "dateHint": "Datele se scriu ca 2026-10-02 sau @today-7d. Adaugă >, >=, < sau <= pentru comparație sau scrie un interval ca 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Această paranteză ( nu este închisă nicăieri",
+      "unexpectedClose": "Această paranteză ) nu are o ( pereche",
+      "danglingOperator": "Pentru {{operator}} lipsește un termen de căutare",
+      "tooDeep": "Grupurile pot fi imbricate pe cel mult 5 niveluri",
+      "emptyGroup": "Aceste paranteze sunt goale",
+      "unterminatedQuote": "Aceste ghilimele nu sunt închise nicăieri",
+      "unknownQualifier": "Filtru necunoscut: {{key}}",
+      "missingValue": "Adaugă o valoare după {{key}}:",
+      "invalidValue": "{{value}} nu este o valoare validă pentru {{key}}",
+      "invalidDate": "{{value}} nu este o dată. Încearcă 2026-10-02 sau @today-7d",
+      "invalidNumber": "{{value}} nu este un număr",
+      "sortNegated": "{{key}} nu poate fi exclus"
+    }
   }
 }

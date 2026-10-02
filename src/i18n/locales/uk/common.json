@@ -58,5 +58,25 @@
     "megabytes": "{{value}} МБ",
     "gigabytes": "{{value}} ГБ",
     "terabytes": "{{value}} ТБ"
+  },
+  "querySearch": {
+    "suggestions": "Підказки пошуку",
+    "exclude": "Виключити",
+    "excludeField": "Виключити: {{field}}",
+    "dateHint": "Дати записуються як 2026-10-02 або @today-7d. Для порівняння додайте >, >=, < або <=, а діапазон запишіть як 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Ця дужка ( ніде не закрита",
+      "unexpectedClose": "Ця дужка ) не має парної (",
+      "danglingOperator": "Оператору {{operator}} бракує умови пошуку",
+      "tooDeep": "Групи можна вкладати не глибше ніж на 5 рівнів",
+      "emptyGroup": "Ці дужки порожні",
+      "unterminatedQuote": "Ця лапка ніде не закрита",
+      "unknownQualifier": "Невідомий фільтр: {{key}}",
+      "missingValue": "Додайте значення після {{key}}:",
+      "invalidValue": "Значення {{value}} неприпустиме для {{key}}",
+      "invalidDate": "{{value}} не є датою. Спробуйте 2026-10-02 або @today-7d",
+      "invalidNumber": "{{value}} не є числом",
+      "sortNegated": "{{key}} не можна виключити"
+    }
   }
 }

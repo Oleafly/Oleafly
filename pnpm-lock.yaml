@@ -127,6 +127,9 @@ importers:
       '@oleafly/registry':
         specifier: workspace:*
         version: link:packages/registry
+      '@oleafly/search-query':
+        specifier: workspace:*
+        version: link:packages/search-query
       '@oleafly/templates':
         specifier: workspace:*
         version: link:packages/templates
@@ -573,6 +576,12 @@ importers:
       react:
         specifier: '*'
         version: 19.3.0
+
+  packages/search-query:
+    devDependencies:
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@22.20.3)(@vitest/coverage-v8@4.1.11)(jsdom@29.1.1)(vite@6.4.3(@types/node@22.20.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2))
 
   packages/templates:
     dependencies:

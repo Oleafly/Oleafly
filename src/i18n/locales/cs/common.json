@@ -58,5 +58,25 @@
     "megabytes": "{{value}} MB",
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Návrhy vyhledávání",
+    "exclude": "Vyloučit",
+    "excludeField": "Vyloučit: {{field}}",
+    "dateHint": "Data zadávejte jako 2026-10-02 nebo @today-7d. Pro porovnání přidejte >, >=, < nebo <=, rozsah zapište jako 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Tato závorka ( není nikde uzavřena",
+      "unexpectedClose": "K této závorce ) chybí odpovídající (",
+      "danglingOperator": "Operátoru {{operator}} chybí hledaný výraz",
+      "tooDeep": "Skupiny lze vnořit nejvýše do 5 úrovní",
+      "emptyGroup": "Tyto závorky jsou prázdné",
+      "unterminatedQuote": "Tyto uvozovky nejsou nikde uzavřeny",
+      "unknownQualifier": "Neznámý filtr: {{key}}",
+      "missingValue": "Doplňte hodnotu za {{key}}:",
+      "invalidValue": "{{value}} není platná hodnota pro {{key}}",
+      "invalidDate": "{{value}} není datum. Zkuste 2026-10-02 nebo @today-7d",
+      "invalidNumber": "{{value}} není číslo",
+      "sortNegated": "{{key}} nelze vyloučit"
+    }
   }
 }

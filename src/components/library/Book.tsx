@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Bookmark, BookmarkCheck, GitFork } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -36,7 +36,7 @@ export function randomBookColor(): string {
 
 export function useBookColorLabels(): Record<string, string> {
   const { t } = useTranslation(["library"]);
-  return {
+  return useMemo(() => ({
     Blue: t(($) => $.library.colors.blue),
     Cream: t(($) => $.library.colors.cream),
     Peach: t(($) => $.library.colors.peach),
@@ -48,7 +48,7 @@ export function useBookColorLabels(): Record<string, string> {
     Cyan: t(($) => $.library.colors.cyan),
     Mint: t(($) => $.library.colors.mint),
     Spring: t(($) => $.library.colors.spring),
-  };
+  }), [t]);
 }
 
 function shade(hex: string, amt: number) {

@@ -69,6 +69,13 @@ Tab strips are a `TabsList` from `ui/tabs.tsx`. Pass `scrollable` when the
 triggers can grow wider than the strip, so it scrolls instead of clipping, and
 `fill` when the triggers should split the full width.
 
+A search box that takes qualifiers such as `engine:typst` is a `QuerySearch`
+from `ui/query-search.tsx`. Give it a schema from `@oleafly/search-query` and
+the analysed query; it brings the highlighting, the suggestion dropdown, the
+keyboard handling and the warnings. Highlighted words inside a text field,
+like the skill and mention chips in the assistant composer, take the classes
+in `ui/inline-token.ts`.
+
 Hover help is a `Tooltip` from `ui/tooltip.tsx`, never the native `title`
 attribute. It renders into the body and stays inside the window.
 

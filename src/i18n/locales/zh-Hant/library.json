@@ -74,7 +74,42 @@
     },
     "openFolder": "開啟資料夾",
     "openFolderShortcut": "開啟資料夾（{{shortcut}}）",
-    "createFirstProject": "建立新專案"
+    "createFirstProject": "建立新專案",
+    "sortBy": "排序方式",
+    "customFilter": "自訂",
+    "search": {
+      "fields": {
+        "is": "狀態",
+        "has": "包含",
+        "no": "不含",
+        "color": "封面顏色",
+        "opened": "上次開啟時間",
+        "in": "搜尋範圍",
+        "sort": "排序"
+      },
+      "values": {
+        "linkedFolder": "已連結資料夾",
+        "forked": "分支而來",
+        "exports": "匯出項目",
+        "today": "今天",
+        "yesterday": "昨天",
+        "id": "ID",
+        "mainFile": "主要檔案",
+        "folderPath": "資料夾路徑"
+      },
+      "sorts": {
+        "activityDesc": "最近活動",
+        "activityAsc": "最早活動",
+        "updatedDesc": "最近修改",
+        "updatedAsc": "最早修改",
+        "createdDesc": "最新建立",
+        "createdAsc": "最早建立",
+        "openedDesc": "最近開啟",
+        "openedAsc": "最早開啟",
+        "nameAsc": "名稱，A 到 Z",
+        "nameDesc": "名稱，Z 到 A"
+      }
+    }
   },
   "projects": {
     "open": "開啟 {{name}}",

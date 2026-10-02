@@ -8,6 +8,13 @@ export interface DismissOptions {
   readonly pointerEvent?: "pointerdown" | "mousedown";
 }
 
+function swallowedByStackedLayer(target: EventTarget | null): boolean {
+  return (
+    target === document.documentElement &&
+    getComputedStyle(document.body).pointerEvents === "none"
+  );
+}
+
 export function useDismiss(
   active: boolean,
   inside: readonly RefObject<Element | null>[],
@@ -27,6 +34,7 @@ export function useDismiss(
         return;
       }
       if (ignore && target instanceof Element && target.closest(ignore)) return;
+      if (swallowedByStackedLayer(target)) return;
       dismissRef.current("outside");
     };
     const onKeyDown = (event: KeyboardEvent) => {

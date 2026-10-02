@@ -77,7 +77,42 @@
     },
     "openFolder": "Открыть папку",
     "openFolderShortcut": "Открыть папку ({{shortcut}})",
-    "createFirstProject": "Создать новый проект"
+    "createFirstProject": "Создать новый проект",
+    "sortBy": "Сортировать по",
+    "customFilter": "Пользовательский",
+    "search": {
+      "fields": {
+        "is": "Статус",
+        "has": "Есть",
+        "no": "Нет",
+        "color": "Цвет обложки",
+        "opened": "Последнее открытие",
+        "in": "Искать в",
+        "sort": "Сортировка"
+      },
+      "values": {
+        "linkedFolder": "Связанная папка",
+        "forked": "Ответвление",
+        "exports": "Экспорты",
+        "today": "Сегодня",
+        "yesterday": "Вчера",
+        "id": "ID",
+        "mainFile": "Главный файл",
+        "folderPath": "Путь к папке"
+      },
+      "sorts": {
+        "activityDesc": "Недавняя активность",
+        "activityAsc": "Давняя активность",
+        "updatedDesc": "Недавно изменённые",
+        "updatedAsc": "Давно изменённые",
+        "createdDesc": "Сначала новые",
+        "createdAsc": "Сначала старые",
+        "openedDesc": "Недавно открытые",
+        "openedAsc": "Давно открытые",
+        "nameAsc": "Имя, от А до Я",
+        "nameDesc": "Имя, от Я до А"
+      }
+    }
   },
   "projects": {
     "open": "Открыть {{name}}",

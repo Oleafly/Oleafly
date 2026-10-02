@@ -26,7 +26,7 @@ vi.mock("@/components/library/ProjectImportMenu", () => ({
 }));
 vi.mock("@/components/library/Book", () => ({
   Book: () => <div>{"Project card"}</div>,
-  BOOK_COLOR_OPTIONS: ["#287fd1"],
+  BOOK_COLOR_OPTIONS: [{ name: "Blue", hex: "#287fd1" }],
   DEFAULT_BOOK_COLOR: "#287fd1",
   useBookColorLabels: () => ({}),
 }));
@@ -109,7 +109,7 @@ describe("Library bookmark filters", () => {
   it("filters projects from the library header search", () => {
     render(<Library />);
 
-    const search = screen.getByRole("searchbox", { name: "Search projects" });
+    const search = screen.getByRole("combobox", { name: "Search projects" });
     expect(search).toHaveAttribute(
       "placeholder",
       "Search 1 project by name, ID, main file, color, or export",
@@ -144,6 +144,31 @@ describe("Library bookmark filters", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps the search text and the filter panel in sync", async () => {
+    render(<Library />);
+    const search = screen.getByRole("combobox", { name: "Search projects" });
+
+    fireEvent.change(search, { target: { value: "research engine:typst" } });
+    expect(screen.getByText("No matches")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Advanced project filters" }));
+    expect(screen.getByLabelText("Engine")).toHaveTextContent("Typst");
+
+    fireEvent.pointerDown(screen.getByLabelText("Engine"), { button: 0, ctrlKey: false, pointerType: "mouse" });
+    fireEvent.click(await screen.findByRole("option", { name: "Tectonic" }));
+    expect(search).toHaveValue("research engine:tectonic");
+    expect(screen.getByTestId("project-grid")).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByLabelText("Sort by"), { button: 0, ctrlKey: false, pointerType: "mouse" });
+    fireEvent.click(await screen.findByRole("option", { name: "Name, A to Z" }));
+    expect(search).toHaveValue("research engine:tectonic sort:name-asc");
+
+    fireEvent.change(search, { target: { value: "research engine:tectonic,typst" } });
+    expect(screen.getByLabelText("Engine")).toHaveTextContent("Custom");
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(search).toHaveValue("research");
+  });
+
   it("closes advanced filters on an outside click", async () => {
     render(<Library />);
 
@@ -165,6 +190,29 @@ describe("Library bookmark filters", () => {
         screen.queryByRole("heading", { name: "Advanced filters" }),
       ).not.toBeInTheDocument(),
     );
+  });
+
+  it("keeps advanced filters open when a click only closes one of its dropdowns", async () => {
+    render(<Library />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Advanced project filters" }),
+    );
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    fireEvent.pointerDown(screen.getByLabelText("Engine"), {
+      button: 0,
+      ctrlKey: false,
+      pointerType: "mouse",
+    });
+    expect(await screen.findByRole("option", { name: "Typst" })).toBeInTheDocument();
+    expect(document.body.style.pointerEvents).toBe("none");
+
+    fireEvent.pointerDown(document.documentElement, { button: 0, pointerType: "mouse" });
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(
+      screen.getByRole("heading", { name: "Advanced filters" }),
+    ).toBeInTheDocument();
   });
 
   it("switches between grid and list layouts and remembers the choice", () => {
@@ -283,7 +331,7 @@ describe("Library bookmark filters", () => {
     render(<Library />);
     fireEvent.click(screen.getByRole("button", { name: "List view" }));
 
-    fireEvent.change(screen.getByRole("searchbox", { name: "Search projects" }), {
+    fireEvent.change(screen.getByRole("combobox", { name: "Search projects" }), {
       target: { value: "does not match any project" },
     });
 

@@ -75,7 +75,42 @@
     },
     "openFolder": "Avaa kansio",
     "openFolderShortcut": "Avaa kansio ({{shortcut}})",
-    "createFirstProject": "Luo uusi projekti"
+    "createFirstProject": "Luo uusi projekti",
+    "sortBy": "Järjestä",
+    "customFilter": "Mukautettu",
+    "search": {
+      "fields": {
+        "is": "Tila",
+        "has": "Sisältää",
+        "no": "Puuttuu",
+        "color": "Kansiväri",
+        "opened": "Avattu viimeksi",
+        "in": "Hae kohteesta",
+        "sort": "Järjestys"
+      },
+      "values": {
+        "linkedFolder": "Linkitetty kansio",
+        "forked": "Haaroitettu",
+        "exports": "Viennit",
+        "today": "Tänään",
+        "yesterday": "Eilen",
+        "id": "Tunnus",
+        "mainFile": "Päätiedosto",
+        "folderPath": "Kansion polku"
+      },
+      "sorts": {
+        "activityDesc": "Viimeisin toiminta",
+        "activityAsc": "Vanhin toiminta",
+        "updatedDesc": "Viimeksi muokattu",
+        "updatedAsc": "Pisimpään muokkaamatta",
+        "createdDesc": "Uusimmat",
+        "createdAsc": "Vanhimmat",
+        "openedDesc": "Viimeksi avattu",
+        "openedAsc": "Pisimpään avaamatta",
+        "nameAsc": "Nimi, A:sta Ö:hön",
+        "nameDesc": "Nimi, Ö:stä A:han"
+      }
+    }
   },
   "projects": {
     "open": "Avaa {{name}}",

@@ -15,6 +15,7 @@ making document engines, filesystem policy, and external integrations explicit.
 | `packages/editor/` | Engine-neutral editor and language-service primitives |
 | `packages/latex/` | LaTeX parsing, masking, and source operations |
 | `packages/registry/` | Rail tabs, commands, toolsets, and context providers |
+| `packages/search-query/` | GitHub-style search queries: parsing, matching, suggestions, and edits |
 | `packages/preflight/` | Source, PDF, ATS, accessibility, and reference rules |
 | `packages/diagram/` | Host-independent diagram composer |
 | `packages/templates/` | Template gallery contracts and host integration |
@@ -87,6 +88,8 @@ adding or removing a tool.
   host interfaces for compile, file, UI, and approval services.
 - `@oleafly/registry` owns contribution contracts. It is an internal registry,
   not a dynamic third-party plugin SDK.
+- `@oleafly/search-query` parses and runs GitHub-style search queries over any
+  list. The app supplies the qualifiers, labels and icons.
 
 The app creates the concrete host adapters in `src/`. A package must not import
 Zustand stores, Tauri APIs, or `@/` application modules. This keeps package

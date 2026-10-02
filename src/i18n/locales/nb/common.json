@@ -58,5 +58,25 @@
     "megabytes": "{{value}} MB",
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Søkeforslag",
+    "exclude": "Utelat",
+    "excludeField": "Utelat {{field}}",
+    "dateHint": "Datoer skrives som 2026-10-02 eller @today-7d. Legg til >, >=, < eller <= for å sammenligne, eller skriv et tidsrom som 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Denne ( blir aldri lukket",
+      "unexpectedClose": "Denne ) har ingen tilhørende (",
+      "danglingOperator": "{{operator}} mangler et søkeord",
+      "tooDeep": "Grupper kan bare nestes 5 nivåer dypt",
+      "emptyGroup": "Disse parentesene er tomme",
+      "unterminatedQuote": "Dette anførselstegnet blir aldri lukket",
+      "unknownQualifier": "Ukjent filter: {{key}}",
+      "missingValue": "Legg til en verdi etter {{key}}:",
+      "invalidValue": "{{value}} er ikke en gyldig verdi for {{key}}",
+      "invalidDate": "{{value}} er ikke en dato. Prøv 2026-10-02 eller @today-7d",
+      "invalidNumber": "{{value}} er ikke et tall",
+      "sortNegated": "{{key}} kan ikke utelates"
+    }
   }
 }

@@ -58,5 +58,25 @@
     "megabytes": "{{value}} MB",
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Подсказки поиска",
+    "exclude": "Исключить",
+    "excludeField": "Исключить: {{field}}",
+    "dateHint": "Даты записываются как 2026-10-02 или @today-7d. Для сравнения добавьте >, >=, < или <=, а диапазон запишите как 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Эта скобка ( нигде не закрыта",
+      "unexpectedClose": "У этой скобки ) нет парной (",
+      "danglingOperator": "У оператора {{operator}} нет условия поиска",
+      "tooDeep": "Группы можно вкладывать не глубже 5 уровней",
+      "emptyGroup": "Эти скобки пусты",
+      "unterminatedQuote": "Эта кавычка нигде не закрыта",
+      "unknownQualifier": "Неизвестный фильтр: {{key}}",
+      "missingValue": "Добавьте значение после {{key}}:",
+      "invalidValue": "Значение {{value}} недопустимо для {{key}}",
+      "invalidDate": "{{value}} не является датой. Попробуйте 2026-10-02 или @today-7d",
+      "invalidNumber": "{{value}} не является числом",
+      "sortNegated": "{{key}} нельзя исключить"
+    }
   }
 }

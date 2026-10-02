@@ -82,6 +82,7 @@
     "@oleafly/preflight": "workspace:*",
     "@oleafly/preview": "workspace:*",
     "@oleafly/registry": "workspace:*",
+    "@oleafly/search-query": "workspace:*",
     "@oleafly/templates": "workspace:*",
     "@oleafly/wysiwyg": "workspace:*",
     "@radix-ui/react-checkbox": "^1.3.11",

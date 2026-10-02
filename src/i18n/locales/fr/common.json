@@ -58,5 +58,25 @@
     "megabytes": "{{value}} MB",
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Suggestions de recherche",
+    "exclude": "Exclure",
+    "excludeField": "Exclure {{field}}",
+    "dateHint": "Les dates s'écrivent 2026-10-02 ou @today-7d. Ajoutez >, >=, < ou <= pour comparer, ou écrivez une plage sous la forme 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Cette parenthèse ( n'est jamais fermée",
+      "unexpectedClose": "Cette parenthèse ) n'a pas de ( correspondante",
+      "danglingOperator": "Il manque un terme de recherche à {{operator}}",
+      "tooDeep": "Les groupes ne peuvent pas dépasser 5 niveaux d'imbrication",
+      "emptyGroup": "Ces parenthèses sont vides",
+      "unterminatedQuote": "Ce guillemet n'est jamais fermé",
+      "unknownQualifier": "Filtre inconnu : {{key}}",
+      "missingValue": "Ajoutez une valeur après {{key}}:",
+      "invalidValue": "{{value}} n'est pas une valeur valide pour {{key}}",
+      "invalidDate": "{{value}} n'est pas une date. Essayez 2026-10-02 ou @today-7d",
+      "invalidNumber": "{{value}} n'est pas un nombre",
+      "sortNegated": "{{key}} ne peut pas être exclu"
+    }
   }
 }

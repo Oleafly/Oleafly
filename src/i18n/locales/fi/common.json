@@ -58,5 +58,25 @@
     "megabytes": "{{value}} MB",
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "Hakuehdotukset",
+    "exclude": "Jätä pois",
+    "excludeField": "Jätä pois: {{field}}",
+    "dateHint": "Päivämäärät kirjoitetaan muodossa 2026-10-02 tai @today-7d. Vertaa lisäämällä >, >=, < tai <=, tai kirjoita aikaväli muodossa 2026-01-01..2026-03-31.",
+    "issues": {
+      "unclosedGroup": "Tätä sulkua ( ei suljeta",
+      "unexpectedClose": "Tälle sululle ) ei ole vastaavaa sulkua (",
+      "danglingOperator": "Operaattorin {{operator}} hakusana puuttuu",
+      "tooDeep": "Ryhmiä voi sisäkkäistää enintään 5 tasoa",
+      "emptyGroup": "Nämä sulkeet ovat tyhjät",
+      "unterminatedQuote": "Tätä lainausmerkkiä ei suljeta",
+      "unknownQualifier": "Tuntematon suodatin: {{key}}",
+      "missingValue": "Lisää arvo kohdan {{key}}: jälkeen",
+      "invalidValue": "{{value}} ei kelpaa suodattimen {{key}} arvoksi",
+      "invalidDate": "{{value}} ei ole päivämäärä. Kokeile 2026-10-02 tai @today-7d",
+      "invalidNumber": "{{value}} ei ole luku",
+      "sortNegated": "Suodatinta {{key}} ei voi jättää pois"
+    }
   }
 }

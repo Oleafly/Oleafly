@@ -39,6 +39,7 @@
       "@oleafly/i18n-contract": ["./packages/i18n-contract/src/index.ts"],
       "@oleafly/i18n-contract/testing": ["./packages/i18n-contract/src/testing.ts"],
       "@oleafly/preflight/pdf-extract": ["./packages/preflight/src/pdf-extract.ts"],
+      "@oleafly/search-query": ["./packages/search-query/src/index.ts"],
       "@oleafly/templates": ["./packages/templates/src/index.ts"],
       "@oleafly/preview": ["./packages/preview/src/index.ts"],
       "@oleafly/preview/controller": ["./packages/preview/src/controller.ts"],

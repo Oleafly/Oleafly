@@ -77,7 +77,42 @@
     },
     "openFolder": "Otevřít složku",
     "openFolderShortcut": "Otevřít složku ({{shortcut}})",
-    "createFirstProject": "Vytvořit nový projekt"
+    "createFirstProject": "Vytvořit nový projekt",
+    "sortBy": "Řadit podle",
+    "customFilter": "Vlastní",
+    "search": {
+      "fields": {
+        "is": "Stav",
+        "has": "Obsahuje",
+        "no": "Chybí",
+        "color": "Barva obálky",
+        "opened": "Naposledy otevřeno",
+        "in": "Hledat v",
+        "sort": "Řazení"
+      },
+      "values": {
+        "linkedFolder": "Propojená složka",
+        "forked": "Rozvětvený",
+        "exports": "Exporty",
+        "today": "Dnes",
+        "yesterday": "Včera",
+        "id": "ID",
+        "mainFile": "Hlavní soubor",
+        "folderPath": "Cesta ke složce"
+      },
+      "sorts": {
+        "activityDesc": "Nedávná aktivita",
+        "activityAsc": "Nejstarší aktivita",
+        "updatedDesc": "Naposledy změněné",
+        "updatedAsc": "Nejdéle neměněné",
+        "createdDesc": "Nejnovější",
+        "createdAsc": "Nejstarší",
+        "openedDesc": "Naposledy otevřené",
+        "openedAsc": "Nejdéle neotevřené",
+        "nameAsc": "Název, A až Z",
+        "nameDesc": "Název, Z až A"
+      }
+    }
   },
   "projects": {
     "open": "Otevřít {{name}}",

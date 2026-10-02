@@ -58,5 +58,25 @@
     "megabytes": "{{value}} MB",
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
+  },
+  "querySearch": {
+    "suggestions": "搜尋建議",
+    "exclude": "排除",
+    "excludeField": "排除 {{field}}",
+    "dateHint": "日期格式如 2026-10-02 或 @today-7d。加上 >、>=、< 或 <= 即可比較，範圍可寫成 2026-01-01..2026-03-31。",
+    "issues": {
+      "unclosedGroup": "此處的 ( 沒有閉合",
+      "unexpectedClose": "此處的 ) 沒有對應的 (",
+      "danglingOperator": "{{operator}} 缺少搜尋字詞",
+      "tooDeep": "群組最多只能巢狀 5 層",
+      "emptyGroup": "這對括號是空的",
+      "unterminatedQuote": "此處的引號沒有閉合",
+      "unknownQualifier": "未知的篩選條件：{{key}}",
+      "missingValue": "請在 {{key}}: 後加入值",
+      "invalidValue": "{{value}} 不是 {{key}} 的有效值",
+      "invalidDate": "{{value}} 不是日期。請試試 2026-10-02 或 @today-7d",
+      "invalidNumber": "{{value}} 不是數字",
+      "sortNegated": "{{key}} 無法排除"
+    }
   }
 }

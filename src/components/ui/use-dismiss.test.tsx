@@ -80,6 +80,20 @@ describe("useDismiss", () => {
     expect(onDismiss).toHaveBeenCalledExactlyOnceWith("outside");
   });
 
+  it("leaves a press alone while a stacked layer blocks pointer events", () => {
+    const onDismiss = vi.fn();
+    render(<Harness active onDismiss={onDismiss} />);
+    document.body.style.pointerEvents = "none";
+    try {
+      fireEvent.pointerDown(document.documentElement);
+      expect(onDismiss).not.toHaveBeenCalled();
+    } finally {
+      document.body.style.pointerEvents = "";
+    }
+    fireEvent.pointerDown(document.documentElement);
+    expect(onDismiss).toHaveBeenCalledExactlyOnceWith("outside");
+  });
+
   it("calls the latest handler and stops after unmount", () => {
     const first = vi.fn();
     const second = vi.fn();

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   Bookmark,
@@ -18,7 +18,6 @@ import {
   LayoutGrid,
   List,
   Palette,
-  Search,
   SearchX,
   SlidersHorizontal,
   Trash2,
@@ -29,6 +28,22 @@ import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
+import { QuerySearch, queryIssueMessage } from "@/components/ui/query-search";
+import {
+  analyze,
+  clearQualifiers,
+  compile,
+  readFacet,
+  sortItems,
+  writeFacet,
+} from "@oleafly/search-query";
+import {
+  buildProjectSearchSchema,
+  DEFAULT_PROJECT_SORT,
+  PROJECT_FACETS,
+  projectEngineLabel,
+  type ProjectFacet,
+} from "@/components/library/project-search";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,13 +124,9 @@ import {
 } from "@/lib/tauri";
 import {
   folderAvailability,
-  folderDisplayPath,
   folderUnavailable,
   isFolderProject,
-  projectInScope,
   projectUpdatedAt,
-  sortByActivity,
-  type LibraryScope,
 } from "@/lib/library-projects";
 import {
   FolderStateLine,
@@ -139,43 +150,8 @@ const MAX_THUMBNAILS = 64;
 // In-flight keys so a second hover during a load does not start a parallel job.
 const thumbInflight = new Set<string>();
 
-type ProjectFilters = {
-  metadata: string;
-  location: LibraryScope;
-  engine: "all" | "tectonic" | "typst" | "markdown";
-  kind: "all" | "document" | "image" | "diagram";
-  bookmark: "all" | "yes" | "no";
-  preview: "all" | "yes" | "no";
-  created: "all" | "7" | "30" | "365";
-  modified: "all" | "7" | "30" | "365";
-};
-
-const DEFAULT_PROJECT_FILTERS: ProjectFilters = {
-  metadata: "",
-  location: "all",
-  engine: "all",
-  kind: "all",
-  bookmark: "all",
-  preview: "all",
-  created: "all",
-  modified: "all",
-};
-
-function projectEngineLabel(engine: string | undefined, mainDoc: string) {
-  const value = engine?.trim().toLowerCase();
-  const path = mainDoc.toLowerCase();
-  if (value === "typst" || value === "typ" || path.endsWith(".typ")) return "Typst";
-  if (
-    value === "markdown" ||
-    value === "md" ||
-    value === "pandoc" ||
-    path.endsWith(".md") ||
-    path.endsWith(".markdown")
-  ) {
-    return "Markdown";
-  }
-  return "Tectonic";
-}
+const ALL_FILTER = "all";
+const CUSTOM_FILTER = "custom";
 
 function keyedExports(exports: ProjectInfo["exports"]) {
   const occurrences = new Map<string, number>();
@@ -194,68 +170,6 @@ function cacheThumbnail(key: string, png: string) {
     const oldest = thumbCache.keys().next().value;
     if (oldest) thumbCache.delete(oldest);
   }
-}
-
-function isWithinDays(timestamp: number, days: ProjectFilters["created"]) {
-  if (days === "all") return true;
-  if (!timestamp) return true;
-  return timestamp * 1000 >= Date.now() - Number(days) * 24 * 60 * 60 * 1000;
-}
-
-function projectMetadataText(project: ProjectInfo) {
-  return [
-    project.id,
-    project.name,
-    folderDisplayPath(project) ?? "",
-    project.engine,
-    projectEngineLabel(project.engine, project.main_doc),
-    project.kind,
-    project.main_doc,
-    project.color,
-    project.created_at,
-    project.updated_at,
-    project.has_preview ? "preview available" : "preview missing",
-    ...(project.exports ?? []).flatMap((item) => [
-      item.filename,
-      item.format,
-      item.path,
-      item.date,
-    ]),
-  ]
-    .join(" ")
-    .toLowerCase();
-}
-
-function projectMatchesText(project: ProjectInfo, metadata: string) {
-  const needle = metadata.trim().toLowerCase();
-  if (!needle) return true;
-  return projectMetadataText(project).includes(needle);
-}
-
-function projectMatchesEngine(project: ProjectInfo, engine: ProjectFilters["engine"]) {
-  if (engine === "all") return true;
-  return projectEngineLabel(project.engine, project.main_doc).toLowerCase() === engine;
-}
-
-function projectPassesFilters(
-  project: ProjectInfo,
-  filters: ProjectFilters,
-  favs: readonly string[],
-  updatedAt: number,
-) {
-  if (!projectInScope(project, filters.location)) return false;
-  if (project.recovery_pending) return true;
-  const bookmarked = favs.includes(project.id);
-  if (!projectMatchesText(project, filters.metadata)) return false;
-  if (!projectMatchesEngine(project, filters.engine)) return false;
-  const kind = project.kind || "document";
-  if (filters.kind !== "all" && kind !== filters.kind) return false;
-  if (filters.bookmark === "yes" && !bookmarked) return false;
-  if (filters.bookmark === "no" && bookmarked) return false;
-  if (filters.preview === "yes" && !project.has_preview) return false;
-  if (filters.preview === "no" && project.has_preview) return false;
-  if (!isWithinDays(project.created_at, filters.created)) return false;
-  return isWithinDays(updatedAt, filters.modified);
 }
 
 type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
@@ -289,7 +203,7 @@ function projectCardLabels(t: Translate, project: ProjectInfo, updatedAt: number
   }
   return {
     date: projectModifiedLabel(updatedAt),
-    engine: projectEngineLabel(project.engine, project.main_doc),
+    engine: projectEngineLabel(project),
     kind: projectTypeLabel(t, project),
     openLabel: undefined,
   };
@@ -305,7 +219,7 @@ function projectRowColumns(t: Translate, project: ProjectInfo, updatedAt: number
   }
   return {
     kind: projectTypeLabel(t, project),
-    engine: projectEngineLabel(project.engine, project.main_doc),
+    engine: projectEngineLabel(project),
     activity: projectModifiedLabel(updatedAt),
   };
 }
@@ -325,7 +239,7 @@ function ProjectRowCaption({
       </span>
     );
   }
-  const caption = `${projectEngineLabel(project.engine, project.main_doc)} · ${projectTypeLabel(t, project)}`;
+  const caption = `${projectEngineLabel(project)} · ${projectTypeLabel(t, project)}`;
   if (folderState) {
     return (
       <span className="mt-1 block min-w-0 text-xs lg:hidden">
@@ -349,6 +263,7 @@ function FilterSelect({
   value,
   options,
   onChange,
+  customLabel,
   className,
 }: Readonly<{
   name: string;
@@ -356,6 +271,7 @@ function FilterSelect({
   value: string;
   options: { value: string; label: string }[];
   onChange: (value: string) => void;
+  customLabel: string;
   className?: string;
 }>) {
   const id = `project-filter-${name}`;
@@ -379,6 +295,11 @@ function FilterSelect({
                 {option.label}
               </SelectItem>
             ))}
+            {value === CUSTOM_FILTER ? (
+              <SelectItem value={CUSTOM_FILTER} disabled>
+                {customLabel}
+              </SelectItem>
+            ) : null}
           </SelectGroup>
         </SelectContent>
       </Select>
@@ -411,7 +332,7 @@ export function Library() {
   const [forkName, setForkName] = useState("");
   const [forkBusy, setForkBusy] = useState(false);
   const forkBusyRef = useRef(false);
-  const [filters, setFilters] = useState<ProjectFilters>(DEFAULT_PROJECT_FILTERS);
+  const [query, setQuery] = useState("");
   const [previewProjectId, setPreviewProjectId] = useState<string | null>(null);
   const [detailsProject, setDetailsProject] = useState<ProjectInfo | null>(null);
   const [historyProject, setHistoryProject] = useState<ProjectInfo | null>(null);
@@ -436,14 +357,41 @@ export function Library() {
     [projects],
   );
   const hasFolders = folderKey.length > 0;
-  if (!hasFolders && filters.location !== "all") {
-    setFilters((current) => ({ ...current, location: "all" }));
-  }
   const availabilityOf = (project: ProjectInfo): ProjectAvailability =>
     folderAvailability(project, checkedFolders);
   const updatedAtOf = (project: ProjectInfo) => projectUpdatedAt(project, modifiedFolders);
-  const coverColor = (project: ProjectInfo) =>
-    projectColors[project.id] ?? (project.color || DEFAULT_BOOK_COLOR);
+  const coverColor = useCallback(
+    (project: ProjectInfo) => projectColors[project.id] ?? (project.color || DEFAULT_BOOK_COLOR),
+    [projectColors],
+  );
+  const searchSchema = useMemo(
+    () =>
+      buildProjectSearchSchema(t, {
+        favorites: favs,
+        modified: modifiedFolders,
+        colorOf: coverColor,
+        colorLabels,
+      }),
+    [t, favs, modifiedFolders, coverColor, colorLabels],
+  );
+  const analyzedQuery = useMemo(
+    () => analyze(query, searchSchema, { now: Date.now() }),
+    [query, searchSchema],
+  );
+  const facetValue = (facet: ProjectFacet, fallback = ALL_FILTER) => {
+    const state = readFacet(analyzedQuery, PROJECT_FACETS[facet]);
+    if (state.kind === "option") return state.id;
+    return state.kind === "custom" ? CUSTOM_FILTER : fallback;
+  };
+  const [hadFolders, setHadFolders] = useState(hasFolders);
+  if (hadFolders !== hasFolders) {
+    setHadFolders(hasFolders);
+    if (!hasFolders) setQuery(writeFacet(query, analyzedQuery, PROJECT_FACETS.location, null));
+  }
+  const setFacet = (facet: ProjectFacet, id: string, fallback = ALL_FILTER) => {
+    if (id === CUSTOM_FILTER) return;
+    setQuery(writeFacet(query, analyzedQuery, PROJECT_FACETS[facet], id === fallback ? null : id));
+  };
   const revealLabel = () => {
     if (isMac) return t(($) => $.library.folder.menu.showInFinder);
     if (isWindows) return t(($) => $.library.folder.menu.showInExplorer);
@@ -701,32 +649,22 @@ export function Library() {
       });
   };
 
-  const activeFilterCount = useMemo(
-    () =>
-      Object.entries(filters).filter(([key, value]) => {
-        if (key === "metadata") return false;
-        return value !== DEFAULT_PROJECT_FILTERS[key as keyof ProjectFilters];
-      }).length,
-    [filters],
-  );
-  const bookmarkedOnly = filters.bookmark === "yes";
+  const sortOptions = (searchSchema.field("sort")?.options ?? []).map((option) => ({
+    value: option.value,
+    label: option.meta?.label ?? option.value,
+  }));
+  const hasQualifiers = analyzedQuery.terms.some((term) => term.role !== "text");
+  const hasActiveFilters = analyzedQuery.terms.some((term) => term.role !== "text" && term.valid);
   const bookmarkIsOnlyActiveFilter =
-    bookmarkedOnly && activeFilterCount === 1 && !filters.metadata.trim();
-  const visibleProjects = useMemo(
-    () =>
-      sortByActivity(
-        projects.filter((project) =>
-          projectPassesFilters(
-            project,
-            filters,
-            favs,
-            projectUpdatedAt(project, modifiedFolders),
-          ),
-        ),
-        modifiedFolders,
-      ),
-    [projects, favs, filters, modifiedFolders],
-  );
+    analyzedQuery.terms.length === 1 && facetValue("bookmark") === "yes";
+  const visibleProjects = useMemo(() => {
+    const compiled = compile(analyzedQuery, searchSchema, { now: Date.now() });
+    const ordered = [...projects].sort((a, b) => a.id.localeCompare(b.id));
+    return sortItems(
+      ordered.filter((project) => project.recovery_pending || compiled.test(project)),
+      compiled.sort,
+    );
+  }, [projects, analyzedQuery, searchSchema]);
 
   // Returning to the library refetches, so externally created or edited
   // projects (and their dates) show up. The store single-flights this with
@@ -1188,7 +1126,7 @@ export function Library() {
             <dt className="text-muted-foreground">
               {t(($) => $.library.projects.detailsDialog.engine)}
             </dt>
-            <dd>{projectEngineLabel(currentDetailsProject.engine, currentDetailsProject.main_doc)}</dd>
+            <dd>{projectEngineLabel(currentDetailsProject)}</dd>
             <dt className="text-muted-foreground">
               {t(($) => $.library.projects.detailsDialog.kind)}
             </dt>
@@ -1378,6 +1316,14 @@ export function Library() {
               ? t(($) => $.library.home.noBookmarksDescription)
               : t(($) => $.library.home.noMatchesDescription)}
           </EmptyDescription>
+          {analyzedQuery.diagnostics.map((issue) => (
+            <p
+              key={`${issue.code}-${issue.span.start}`}
+              className="text-xs text-amber-700 dark:text-amber-400"
+            >
+              {queryIssueMessage(t, issue, query, searchSchema)}
+            </p>
+          ))}
         </EmptyHeader>
       </Empty>
     ) : null
@@ -1386,43 +1332,19 @@ export function Library() {
   const renderLibraryToolbar = () => (
     <div className="flex w-full min-w-0 max-w-[42rem] items-center gap-1.5 justify-self-center">
     {projects.length > 0 ? (
-      <div className="relative min-w-0 flex-1">
-        <Search
-          aria-hidden
-          className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
-        />
-        <Input
-          type="search"
-          aria-label={t(($) => $.library.home.searchLabel)}
-          placeholder={t(($) => $.library.home.searchPlaceholder, {
-            count: projects.length,
-            total: formatNumber(projects.length),
-          })}
-          value={filters.metadata}
-          onChange={(event) =>
-            setFilters((current) => ({
-              ...current,
-              metadata: event.target.value,
-            }))
-          }
-          className={cn(
-            HOME_CHROME_SURFACE,
-            "h-11 rounded-2xl py-0 pl-10 pr-10 focus-visible:border-ring [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
-          )}
-        />
-        {filters.metadata ? (
-          <button
-            type="button"
-            aria-label={t(($) => $.library.home.clearSearch)}
-            onClick={() =>
-              setFilters((current) => ({ ...current, metadata: "" }))
-            }
-            className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
-          >
-            <X aria-hidden className="size-3.5" />
-          </button>
-        ) : null}
-      </div>
+      <QuerySearch
+        value={query}
+        onChange={setQuery}
+        query={analyzedQuery}
+        schema={searchSchema}
+        ariaLabel={t(($) => $.library.home.searchLabel)}
+        placeholder={t(($) => $.library.home.searchPlaceholder, {
+          count: projects.length,
+          total: formatNumber(projects.length),
+        })}
+        clearLabel={t(($) => $.library.home.clearSearch)}
+        className={cn(HOME_CHROME_SURFACE, "h-11 flex-1 rounded-2xl")}
+      />
     ) : (
       <span />
     )}
@@ -1475,7 +1397,7 @@ export function Library() {
             trigger={
               <span className="relative inline-flex">
                 <SlidersHorizontal className="size-4" />
-                {activeFilterCount > 0 && (
+                {hasActiveFilters && (
                   <span className="absolute -right-1 -top-1 size-1.5 rounded-full bg-primary" />
                 )}
               </span>
@@ -1494,13 +1416,8 @@ export function Library() {
               type="button"
               variant="ghost"
               size="sm"
-              disabled={activeFilterCount === 0}
-              onClick={() =>
-                setFilters((current) => ({
-                  ...DEFAULT_PROJECT_FILTERS,
-                  metadata: current.metadata,
-                }))
-              }
+              disabled={!hasQualifiers}
+              onClick={() => setQuery(clearQualifiers(query, analyzedQuery))}
             >
               {t(($) => $.library.home.resetFilters)}
             </Button>
@@ -1511,13 +1428,7 @@ export function Library() {
                 name="location"
                 className="col-span-2"
                 label={t(($) => $.library.home.filters.location)}
-                value={filters.location}
-                onChange={(location) =>
-                  setFilters((current) => ({
-                    ...current,
-                    location: location as ProjectFilters["location"],
-                  }))
-                }
+                value={facetValue("location")}                onChange={(value) => setFacet("location", value)}                customLabel={t(($) => $.library.home.customFilter)}
                 options={[
                   { value: "all", label: t(($) => $.library.home.filters.locationAll) },
                   { value: "library", label: t(($) => $.library.home.filters.locationLibrary) },
@@ -1528,13 +1439,7 @@ export function Library() {
             <FilterSelect
               name="engine"
               label={t(($) => $.library.home.filters.engine)}
-              value={filters.engine}
-              onChange={(engine) =>
-                setFilters((current) => ({
-                  ...current,
-                  engine: engine as ProjectFilters["engine"],
-                }))
-              }
+              value={facetValue("engine")}              onChange={(value) => setFacet("engine", value)}              customLabel={t(($) => $.library.home.customFilter)}
               options={[
                 { value: "all", label: t(($) => $.library.home.filters.engineAll) },
                 { value: "tectonic", label: "Tectonic" },
@@ -1545,13 +1450,7 @@ export function Library() {
             <FilterSelect
               name="kind"
               label={t(($) => $.library.home.filters.kind)}
-              value={filters.kind}
-              onChange={(kind) =>
-                setFilters((current) => ({
-                  ...current,
-                  kind: kind as ProjectFilters["kind"],
-                }))
-              }
+              value={facetValue("kind")}              onChange={(value) => setFacet("kind", value)}              customLabel={t(($) => $.library.home.customFilter)}
               options={[
                 { value: "all", label: t(($) => $.library.home.filters.kindAll) },
                 { value: "document", label: t(($) => $.library.home.filters.kindDocument) },
@@ -1562,13 +1461,7 @@ export function Library() {
             <FilterSelect
               name="bookmark"
               label={t(($) => $.library.home.filters.bookmark)}
-              value={filters.bookmark}
-              onChange={(bookmark) =>
-                setFilters((current) => ({
-                  ...current,
-                  bookmark: bookmark as ProjectFilters["bookmark"],
-                }))
-              }
+              value={facetValue("bookmark")}              onChange={(value) => setFacet("bookmark", value)}              customLabel={t(($) => $.library.home.customFilter)}
               options={[
                 { value: "all", label: t(($) => $.library.home.filters.bookmarkAll) },
                 { value: "yes", label: t(($) => $.library.home.filters.bookmarkYes) },
@@ -1578,13 +1471,7 @@ export function Library() {
             <FilterSelect
               name="preview"
               label={t(($) => $.library.home.filters.preview)}
-              value={filters.preview}
-              onChange={(preview) =>
-                setFilters((current) => ({
-                  ...current,
-                  preview: preview as ProjectFilters["preview"],
-                }))
-              }
+              value={facetValue("preview")}              onChange={(value) => setFacet("preview", value)}              customLabel={t(($) => $.library.home.customFilter)}
               options={[
                 { value: "all", label: t(($) => $.library.home.filters.previewAll) },
                 { value: "yes", label: t(($) => $.library.home.filters.previewYes) },
@@ -1594,13 +1481,7 @@ export function Library() {
             <FilterSelect
               name="created"
               label={t(($) => $.library.home.filters.created)}
-              value={filters.created}
-              onChange={(created) =>
-                setFilters((current) => ({
-                  ...current,
-                  created: created as ProjectFilters["created"],
-                }))
-              }
+              value={facetValue("created")}              onChange={(value) => setFacet("created", value)}              customLabel={t(($) => $.library.home.customFilter)}
               options={[
                 { value: "all", label: t(($) => $.library.home.filters.anyTime) },
                 { value: "7", label: t(($) => $.library.home.filters.last7Days) },
@@ -1611,19 +1492,22 @@ export function Library() {
             <FilterSelect
               name="modified"
               label={t(($) => $.library.home.filters.modified)}
-              value={filters.modified}
-              onChange={(modified) =>
-                setFilters((current) => ({
-                  ...current,
-                  modified: modified as ProjectFilters["modified"],
-                }))
-              }
+              value={facetValue("modified")}              onChange={(value) => setFacet("modified", value)}              customLabel={t(($) => $.library.home.customFilter)}
               options={[
                 { value: "all", label: t(($) => $.library.home.filters.anyTime) },
                 { value: "7", label: t(($) => $.library.home.filters.last7Days) },
                 { value: "30", label: t(($) => $.library.home.filters.last30Days) },
                 { value: "365", label: t(($) => $.library.home.filters.lastYear) },
               ]}
+            />
+            <FilterSelect
+              name="sort"
+              className="col-span-2"
+              label={t(($) => $.library.home.sortBy)}
+              value={facetValue("sort", DEFAULT_PROJECT_SORT)}
+              onChange={(value) => setFacet("sort", value, DEFAULT_PROJECT_SORT)}
+              customLabel={t(($) => $.library.home.customFilter)}
+              options={sortOptions}
             />
           </div>
           </Popover>

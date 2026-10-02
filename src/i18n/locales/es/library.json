@@ -76,7 +76,42 @@
     },
     "openFolder": "Abrir carpeta",
     "openFolderShortcut": "Abrir carpeta ({{shortcut}})",
-    "createFirstProject": "Crear un proyecto nuevo"
+    "createFirstProject": "Crear un proyecto nuevo",
+    "sortBy": "Ordenar por",
+    "customFilter": "Personalizado",
+    "search": {
+      "fields": {
+        "is": "Estado",
+        "has": "Con",
+        "no": "Sin",
+        "color": "Color de portada",
+        "opened": "Última apertura",
+        "in": "Buscar en",
+        "sort": "Orden"
+      },
+      "values": {
+        "linkedFolder": "Carpeta enlazada",
+        "forked": "Duplicado",
+        "exports": "Exportaciones",
+        "today": "Hoy",
+        "yesterday": "Ayer",
+        "id": "ID",
+        "mainFile": "Archivo principal",
+        "folderPath": "Ruta de la carpeta"
+      },
+      "sorts": {
+        "activityDesc": "Actividad más reciente",
+        "activityAsc": "Actividad más antigua",
+        "updatedDesc": "Modificación más reciente",
+        "updatedAsc": "Modificación más antigua",
+        "createdDesc": "Más recientes",
+        "createdAsc": "Más antiguos",
+        "openedDesc": "Apertura más reciente",
+        "openedAsc": "Apertura más antigua",
+        "nameAsc": "Nombre, de la A a la Z",
+        "nameDesc": "Nombre, de la Z a la A"
+      }
+    }
   },
   "projects": {
     "open": "Abrir {{name}}",

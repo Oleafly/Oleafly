@@ -77,7 +77,42 @@
     },
     "openFolder": "Відкрити теку",
     "openFolderShortcut": "Відкрити теку ({{shortcut}})",
-    "createFirstProject": "Створити новий проєкт"
+    "createFirstProject": "Створити новий проєкт",
+    "sortBy": "Сортувати за",
+    "customFilter": "Власний",
+    "search": {
+      "fields": {
+        "is": "Статус",
+        "has": "Є",
+        "no": "Немає",
+        "color": "Колір обкладинки",
+        "opened": "Останнє відкриття",
+        "in": "Шукати в",
+        "sort": "Сортування"
+      },
+      "values": {
+        "linkedFolder": "Пов’язана тека",
+        "forked": "Відгалуження",
+        "exports": "Експорти",
+        "today": "Сьогодні",
+        "yesterday": "Вчора",
+        "id": "ID",
+        "mainFile": "Головний файл",
+        "folderPath": "Шлях до теки"
+      },
+      "sorts": {
+        "activityDesc": "Нещодавня активність",
+        "activityAsc": "Давня активність",
+        "updatedDesc": "Нещодавно змінені",
+        "updatedAsc": "Давно змінені",
+        "createdDesc": "Спочатку нові",
+        "createdAsc": "Спочатку старі",
+        "openedDesc": "Нещодавно відкриті",
+        "openedAsc": "Давно відкриті",
+        "nameAsc": "Назва, від А до Я",
+        "nameDesc": "Назва, від Я до А"
+      }
+    }
   },
   "projects": {
     "open": "Відкрити {{name}}",

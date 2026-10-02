@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The project search on the home screen understands GitHub's search syntax.
+  Type `engine:typst`, `is:bookmarked`, `-kind:image`, `created:>@today-1w`
+  or `sort:name-asc`, combine terms with AND, OR and parentheses, and list
+  alternatives with commas, as in `engine:typst,markdown`. A dropdown
+  suggests qualifiers, values, AND, OR and Exclude as you type, values are
+  highlighted, and a mistake gets an amber tint and a short note. The
+  Advanced filters panel edits the same text, so both always agree, and it
+  gains a Sort by menu.
 - Import your whole Zotero library from a project's References panel.
   Connect Zotero in Settings > Integrations with your user ID and an API key.
   Oleafly checks the key with Zotero before saving it, then brings in up to
@@ -147,6 +155,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Clicking inside the Advanced filters panel while one of its menus is open
+  now closes only that menu, so you can set several filters in a row.
 - On macOS, Cmd+A in the editor selected only the lines on screen, so
   deleting or copying after it left the rest of the file behind. Cmd+A and
   Edit > Select All now select the whole file, and in the terminal they

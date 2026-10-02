@@ -74,7 +74,42 @@
     },
     "openFolder": "フォルダを開く",
     "openFolderShortcut": "フォルダを開く（{{shortcut}}）",
-    "createFirstProject": "新規プロジェクトを作成"
+    "createFirstProject": "新規プロジェクトを作成",
+    "sortBy": "並べ替え",
+    "customFilter": "カスタム",
+    "search": {
+      "fields": {
+        "is": "状態",
+        "has": "あり",
+        "no": "なし",
+        "color": "カバーの色",
+        "opened": "最後に開いた日",
+        "in": "検索対象",
+        "sort": "並べ替え"
+      },
+      "values": {
+        "linkedFolder": "リンクしたフォルダ",
+        "forked": "フォーク済み",
+        "exports": "書き出し",
+        "today": "今日",
+        "yesterday": "昨日",
+        "id": "ID",
+        "mainFile": "メインファイル",
+        "folderPath": "フォルダのパス"
+      },
+      "sorts": {
+        "activityDesc": "アクティビティが新しい順",
+        "activityAsc": "アクティビティが古い順",
+        "updatedDesc": "更新日が新しい順",
+        "updatedAsc": "更新日が古い順",
+        "createdDesc": "作成日が新しい順",
+        "createdAsc": "作成日が古い順",
+        "openedDesc": "最近開いた順",
+        "openedAsc": "開いた日が古い順",
+        "nameAsc": "名前の昇順",
+        "nameDesc": "名前の降順"
+      }
+    }
   },
   "projects": {
     "open": "{{name}} を開く",

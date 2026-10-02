@@ -75,7 +75,42 @@
     },
     "openFolder": "Klasör aç",
     "openFolderShortcut": "Klasör aç ({{shortcut}})",
-    "createFirstProject": "Yeni proje oluştur"
+    "createFirstProject": "Yeni proje oluştur",
+    "sortBy": "Sıralama ölçütü",
+    "customFilter": "Özel",
+    "search": {
+      "fields": {
+        "is": "Durum",
+        "has": "Var",
+        "no": "Yok",
+        "color": "Kapak rengi",
+        "opened": "Son açılma",
+        "in": "Arama alanı",
+        "sort": "Sıralama"
+      },
+      "values": {
+        "linkedFolder": "Bağlı klasör",
+        "forked": "Çatallanmış",
+        "exports": "Dışa aktarmalar",
+        "today": "Bugün",
+        "yesterday": "Dün",
+        "id": "Kimlik",
+        "mainFile": "Ana dosya",
+        "folderPath": "Klasör yolu"
+      },
+      "sorts": {
+        "activityDesc": "Son etkinlik",
+        "activityAsc": "En eski etkinlik",
+        "updatedDesc": "Son değişiklik",
+        "updatedAsc": "En eski değişiklik",
+        "createdDesc": "En yeni",
+        "createdAsc": "En eski",
+        "openedDesc": "Son açılma",
+        "openedAsc": "En eski açılma",
+        "nameAsc": "Ad, A'dan Z'ye",
+        "nameDesc": "Ad, Z'den A'ya"
+      }
+    }
   },
   "projects": {
     "open": "{{name}} projesini aç",
