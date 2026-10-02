@@ -12,7 +12,7 @@ import { query, schema, type Doc } from "./testing";
 
 function at(source: string) {
   const caret = source.indexOf("|");
-  const text = source.replace("|", "");
+  const text = source.slice(0, caret) + source.slice(caret + 1);
   return { text, caret, context: suggestAt(query(text), schema, caret) };
 }
 

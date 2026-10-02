@@ -38,7 +38,7 @@ const schema = defineSchema<Item, QueryMeta>({
 
 function suggest(source: string) {
   const caret = source.indexOf("|");
-  const text = source.replace("|", "");
+  const text = source.slice(0, caret) + source.slice(caret + 1);
   return buildSuggestions(suggestAt(analyze(text, schema, { now: 0 }), schema, caret), schema);
 }
 

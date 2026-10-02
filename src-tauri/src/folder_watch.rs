@@ -163,6 +163,16 @@ fn is_replace_file_scratch(name: &str) -> bool {
         && hex.chars().all(|character| character.is_ascii_hexdigit())
 }
 
+fn vanished_during_scan(root: &Path, error: &notify::Error) -> bool {
+    let not_found = matches!(&error.kind, notify::ErrorKind::Io(io) if io.kind() == std::io::ErrorKind::NotFound);
+    not_found
+        && !error.paths.is_empty()
+        && error
+            .paths
+            .iter()
+            .all(|path| path != root && path.starts_with(root))
+}
+
 #[derive(Default)]
 pub(crate) struct Batch {
     paths: BTreeMap<String, bool>,
@@ -203,7 +213,10 @@ impl Batch {
         }
     }
 
-    pub(crate) fn note_error(&mut self, now: Instant) {
+    pub(crate) fn note_error(&mut self, root: &Path, error: &notify::Error, now: Instant) {
+        if vanished_during_scan(root, error) {
+            return;
+        }
         self.rescan = true;
         self.first.get_or_insert(now);
         self.last = Some(now);
@@ -318,7 +331,7 @@ fn run(
         };
         match message {
             Ok(Ok(event)) => batch.absorb(&root, &event, Instant::now()),
-            Ok(Err(_)) => batch.note_error(Instant::now()),
+            Ok(Err(error)) => batch.note_error(&root, &error, Instant::now()),
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => return,
         }
@@ -606,6 +619,37 @@ mod tests {
         assert!(!change.rescan);
         assert_eq!(batch.wait(later), None);
         assert!(batch.take("linked-a", &|_| false).is_none());
+    }
+
+    #[test]
+    fn a_file_that_vanishes_mid_scan_is_not_a_rescan() {
+        let root = Path::new("/folders/thesis");
+        let now = Instant::now();
+        let missing = || std::io::Error::from(std::io::ErrorKind::NotFound);
+        let mut batch = Batch::default();
+        batch.note_error(
+            root,
+            &notify::Error::io(missing()).add_path(root.join(".notes.tex.tmp")),
+            now,
+        );
+        assert_eq!(batch.wait(now), None);
+        assert!(batch.take("linked-a", &|_| false).is_none());
+
+        for error in [
+            notify::Error::io(missing()).add_path(root.to_path_buf()),
+            notify::Error::io(missing()),
+            notify::Error::io(missing()).add_path(PathBuf::from("/elsewhere/a.tex")),
+            notify::Error::io(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+                .add_path(root.join("notes.tex")),
+            notify::Error::generic("walk failed"),
+        ] {
+            let mut batch = Batch::default();
+            batch.note_error(root, &error, now);
+            assert!(
+                batch.take("linked-a", &|_| false).unwrap().rescan,
+                "{error:?}"
+            );
+        }
     }
 
     #[test]
