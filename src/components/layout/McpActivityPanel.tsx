@@ -1,18 +1,20 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Activity, CheckCircle2, CircleAlert, Info, Loader2, Radio, Trash2 } from "lucide-react";
+import { Activity, CheckCircle2, CircleAlert, Info, Radio, Trash2 } from "lucide-react";
 import {
   formatMcpArgs,
   useMcpActivityStore,
   type McpLogEntry,
 } from "@/store/mcp-activity";
 import { useSettingsStore } from "@/store/settings";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { AiToolsGrid } from "@/components/ai/AiToolsList";
 import { formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
+import { Spinner } from "@/components/ui/spinner";
 
 function timeLabel(ts: number): string {
   try {
@@ -24,7 +26,7 @@ function timeLabel(ts: number): string {
 
 function StatusIcon({ status }: Readonly<{ status: McpLogEntry["status"] }>) {
   if (status === "running") {
-    return <Loader2 className="size-3.5 shrink-0 animate-spin text-primary" aria-hidden />;
+    return <Spinner size="sm" className="text-primary" />;
   }
   if (status === "error") {
     return <CircleAlert className="size-3.5 shrink-0 text-destructive" aria-hidden />;
@@ -101,19 +103,12 @@ export function McpActivityPanel() {
         icon={Activity}
         title={t(($) => $.shell.rail.mcp)}
         adornment={
-          <span
-            className={cn(
-              "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
-              serverRunning
-                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
+          <Badge variant={serverRunning ? "success" : "muted"} size="sm" className="gap-1">
             <Radio className={cn("size-2.5", serverRunning && "animate-pulse")} />
             {serverRunning
               ? t(($) => $.shell.mcpActivity.live)
               : t(($) => $.shell.mcpActivity.off)}
-          </span>
+          </Badge>
         }
       >
         <Tooltip

@@ -3,7 +3,8 @@ import { foldLatinDiacritics } from "@oleafly/latex";
 import { i18n } from "@/i18n";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
-import { dirname } from "@/lib/project-intelligence/source";
+import { dirname } from "@/lib/path-utils";
+import { insertableImageExtension } from "@/lib/image-mime";
 import { logError } from "@/lib/log";
 import { uint8ToBase64, writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -14,13 +15,6 @@ export const FIGURE_DIRECTORY = "figures";
 export const IMAGE_IMPORT_TOAST_KEY = "image-import";
 export const PASTED_FIGURE_WIDTH = String.raw`0.8\linewidth`;
 
-const EXTENSION_BY_TYPE: Record<string, string> = {
-  "image/png": "png",
-  "image/jpeg": "jpg",
-  "image/svg+xml": "svg",
-  "application/pdf": "pdf",
-};
-
 const GENERIC_NAME = /^(?:image|blob|clipboard|pasted)?(?:\.[a-z0-9]+)?$/iu;
 
 export interface ImportedImage {
@@ -29,7 +23,7 @@ export interface ImportedImage {
 }
 
 export function importableImageFiles(files: ArrayLike<File> | null | undefined): File[] {
-  return Array.from(files ?? []).filter((file) => Object.hasOwn(EXTENSION_BY_TYPE, file.type));
+  return Array.from(files ?? []).filter((file) => insertableImageExtension(file.type) !== undefined);
 }
 
 function joinPath(directory: string, name: string): string {
@@ -72,11 +66,12 @@ export function preferredImageName(file: File, now: Date): string {
   const dot = name.lastIndexOf(".");
   const ownExtension = dot >= 0 && /^[A-Za-z0-9]+$/u.test(name.slice(dot + 1)) ? name.slice(dot + 1) : "";
   const stem = ownExtension === "" ? name : name.slice(0, dot);
-  const extension = ownExtension || (EXTENSION_BY_TYPE[file.type] ?? "png");
+  const typeExtension = insertableImageExtension(file.type) ?? "png";
+  const extension = ownExtension || typeExtension;
   const base = sanitizedStem(stem);
   const lostEveryLetter = !/[A-Za-z]/u.test(base) && /\p{L}/u.test(stem);
   if (base === "" || GENERIC_NAME.test(base) || lostEveryLetter) {
-    return timestampedImageName(now, EXTENSION_BY_TYPE[file.type] ?? "png");
+    return timestampedImageName(now, typeExtension);
   }
   return `${base}.${extension}`;
 }
@@ -114,10 +109,6 @@ export function suggestedFigureLabel(path: string): string {
     "-",
   );
   return `fig:${stem === "" ? "figure" : stem}`;
-}
-
-export function isImportableImagePath(path: string): boolean {
-  return /\.(?:png|jpe?g|gif|webp|bmp|svg|pdf)$/iu.test(path);
 }
 
 type ImageImportResult = ImportedImage | "failed" | null;

@@ -488,11 +488,6 @@
         },
         "title": "Share skills with other agents on this computer"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Added",
         "bundled": "Built in",

@@ -5,6 +5,7 @@ import { i18n } from "@/i18n";
 import type { ToolEntry } from "@/store/chats";
 import { TikzSourceView } from "@/components/ai/TikzSourceView";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { logError } from "@/lib/log";
 import { writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -61,7 +62,7 @@ async function saveToolPicture(tc: ToolEntry): Promise<string | null> {
 export function ToolPicture({ tc }: Readonly<{ tc: ToolEntry }>) {
   const { t } = useTranslation(["common", "ai"]);
   const [view, setView] = useState<"image" | "code">("image");
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyStatus();
   const [saving, setSaving] = useState(false);
   const hasCode = Boolean(tc.code);
   const label =
@@ -69,14 +70,7 @@ export function ToolPicture({ tc }: Readonly<{ tc: ToolEntry }>) {
       ? t(($) => $.ai.toolPicture.figurePreviewAlt)
       : t(($) => $.ai.toolPicture.toolImageAlt);
   const copyCode = async () => {
-    if (!tc.code) return;
-    try {
-      await navigator.clipboard.writeText(tc.code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
+    if (tc.code) await copy(tc.code);
   };
   const saveToProject = async () => {
     if (saving) return;

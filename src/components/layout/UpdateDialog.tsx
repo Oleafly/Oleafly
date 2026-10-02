@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, CheckCircle2, Download, ExternalLink, Loader2, RotateCcw, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, ExternalLink, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { LeafLogo } from "@/components/layout/LeafLogo";
@@ -15,6 +15,7 @@ import {
   type ReleaseHistoryView,
 } from "@/components/layout/ReleaseTimeline";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 export type UpdateHistoryView = ReleaseHistoryView;
 
@@ -99,7 +100,7 @@ export function UpdateDialog({
         <div className="space-y-2" aria-live="polite">
           <div className="flex items-center justify-between gap-3 text-xs">
             <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-              <Loader2 aria-hidden="true" className="size-3.5 motion-safe:animate-spin" />
+              <Spinner size="sm" />
               {installing
                 ? t(($) => $.shell.updateChecker.installing)
                 : t(($) => $.shell.updateChecker.downloading, { percent })}
@@ -254,7 +255,7 @@ export function UpdateDialog({
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
             {phase === "checking" && (
               <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
+                <Spinner />
                 {t(($) => $.shell.updateWindow.looking)}
               </p>
             )}

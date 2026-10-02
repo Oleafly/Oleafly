@@ -488,11 +488,6 @@
         },
         "title": "Del ferdigheter med andre agenter på denne maskinen"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Lagt til",
         "bundled": "Innebygd",

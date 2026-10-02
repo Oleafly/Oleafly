@@ -494,11 +494,6 @@
         },
         "title": "Sdílet dovednosti s dalšími agenty v tomto počítači"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Přidáno",
         "bundled": "Vestavěné",

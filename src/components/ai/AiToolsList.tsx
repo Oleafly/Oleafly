@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { toolRisk, type ToolRisk } from "@oleafly/ai-tools";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 
@@ -142,11 +143,11 @@ export function approvalLabel(risk: ToolRisk): string {
   }
 }
 
-const RISK_CLASS: Record<ToolRisk, string> = {
-  read: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  write: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-  shell: "bg-destructive/10 text-destructive",
-  network: "bg-sky-500/10 text-sky-700 dark:text-sky-400",
+const RISK_VARIANT: Record<ToolRisk, BadgeVariant> = {
+  read: "success",
+  write: "warning",
+  shell: "destructive",
+  network: "info",
 };
 
 export function AiToolsTable({ className }: Readonly<{ className?: string }>) {
@@ -197,9 +198,9 @@ export function AiToolsTable({ className }: Readonly<{ className?: string }>) {
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2">
-                      <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", RISK_CLASS[risk])}>
+                      <Badge variant={RISK_VARIANT[risk]} size="sm">
                         {approvalLabel(risk)}
-                      </span>
+                      </Badge>
                     </td>
                   </tr>
                 );

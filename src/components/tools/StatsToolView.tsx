@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Calculator, Copy } from "lucide-react";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
@@ -11,6 +11,7 @@ import {
 } from "@/components/tools/ToolWorkspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAsyncTask } from "@/hooks/use-async-task";
 import { useHomeViewStore } from "@/store/home-view";
 import {
   statsConfidenceInterval,
@@ -24,6 +25,7 @@ import { notifyError, toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 type Tab = "p-value" | "sample-size" | "confidence-interval";
 
@@ -70,37 +72,11 @@ function calculationError(caught: unknown, fallback: string): string {
 
 function useCalculation<Result>(name: string) {
   const { t } = useTranslation(["researchTools"]);
-  const [result, setResult] = useState<Result | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const request = useRef(0);
-
-  const invalidate = () => {
-    request.current += 1;
-    setResult(null);
-    setError(null);
-    setBusy(false);
-  };
-
-  const run = async (calculate: () => Promise<Result>) => {
-    const id = ++request.current;
-    setBusy(true);
-    setError(null);
-    try {
-      const next = await calculate();
-      if (id === request.current) setResult(next);
-    } catch (caught) {
-      if (id === request.current) {
-        void logError(name, caught);
-        setResult(null);
-        setError(calculationError(caught, t(($) => $.researchTools.stats.checkValues)));
-      }
-    } finally {
-      if (id === request.current) setBusy(false);
-    }
-  };
-
-  return { result, busy, error, invalidate, run };
+  const { result, busy, error, reset, run } = useAsyncTask<Result>((caught) => {
+    void logError(name, caught);
+    return calculationError(caught, t(($) => $.researchTools.stats.checkValues));
+  });
+  return { result, busy, error, invalidate: reset, run };
 }
 
 function CalculatorControls({ tab, onTabChange, onCompute, busy, testId }: {
@@ -150,7 +126,7 @@ function ResultSurface({ testId, busy, error, empty, children }: {
 
 function Examples({ children }: { children: ReactNode }) {
   const { t } = useTranslation(["researchTools"]);
-  return <div><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t(($) => $.researchTools.stats.examples)}</div><div className="flex flex-wrap gap-2">{children}</div></div>;
+  return <div><SectionHeading as="div" className="mb-2">{t(($) => $.researchTools.stats.examples)}</SectionHeading><div className="flex flex-wrap gap-2">{children}</div></div>;
 }
 
 async function copyResult(lines: string[]) {
@@ -268,7 +244,7 @@ function PValueCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (tab: T
         <ResultSurface testId="stats-p-result" busy={busy} error={error} empty={t(($) => $.researchTools.stats.pValueEmpty)}>
           {result ? (
             <div className="space-y-5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{resultTestLabel}</p>
+              <SectionHeading as="p">{resultTestLabel}</SectionHeading>
               <p className="font-mono text-4xl tracking-tight text-foreground">{t(($) => $.researchTools.stats.pValueDisplay, { value: result.p.toPrecision(4) })}</p>
               <p className="text-sm text-muted-foreground">{verdict}</p>
             </div>
@@ -336,7 +312,7 @@ function SampleSizeCalculator({ tab, onTabChange }: { tab: Tab; onTabChange: (ta
         <ResultSurface testId="stats-n-result" busy={busy} error={error} empty={t(($) => $.researchTools.stats.sampleSizeEmpty)}>
           {result ? (
             <div className="w-full text-left">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t(($) => $.researchTools.stats.recommendedSample)}</p>
+              <SectionHeading as="p" className="mb-1">{t(($) => $.researchTools.stats.recommendedSample)}</SectionHeading>
               <p className="mb-6 font-mono text-4xl tracking-tight text-foreground">{result.finitePopulation ?? result.infinitePopulation}</p>
               <ResultLine label={t(($) => $.researchTools.stats.criticalZ)} value={result.z.toFixed(3)} />
               <ResultLine label={t(($) => $.researchTools.stats.openPopulation)} value={String(result.infinitePopulation)} />
@@ -444,7 +420,7 @@ function ConfidenceIntervalCalculator({ tab, onTabChange }: { tab: Tab; onTabCha
         <ResultSurface testId="stats-ci-result" busy={busy} error={error} empty={t(($) => $.researchTools.stats.intervalEmpty)}>
           {result ? (
             <div className="w-full text-left">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{intervalMethod}</p>
+              <SectionHeading as="p" className="mb-1">{intervalMethod}</SectionHeading>
               <p className="mb-6 font-mono text-2xl tracking-tight text-foreground">{t(($) => $.researchTools.stats.intervalDisplay, { lower: result.lower.toPrecision(4), upper: result.upper.toPrecision(4) })}</p>
               <ResultLine label={t(($) => $.researchTools.stats.pointEstimate)} value={result.pointEstimate.toPrecision(4)} />
               <ResultLine label={t(($) => $.researchTools.stats.standardError)} value={result.standardError.toPrecision(4)} />

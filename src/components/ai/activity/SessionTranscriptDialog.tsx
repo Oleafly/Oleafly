@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+
 import { useTranslation } from "react-i18next";
 import type { TurnRecord } from "@oleafly/ai-core";
 import { agentThreadRead } from "@/lib/agent-backend";
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { LoadingState } from "@/components/ui/empty";
 
 type TranscriptState =
   | { status: "loading" }
@@ -59,10 +60,7 @@ export function SessionTranscriptDialog({
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
           {state.status === "loading" && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              {t(($) => $.ai.transcript.loading)}
-            </p>
+            <LoadingState label={t(($) => $.ai.transcript.loading)} />
           )}
           {state.status === "error" && (
             <p className="text-sm text-muted-foreground">{t(($) => $.ai.transcript.failed)}</p>

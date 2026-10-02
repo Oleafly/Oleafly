@@ -48,6 +48,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { platform as osPlatform, arch as osArch, version as osVersion } from "@tauri-apps/plugin-os";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath } from "@/components/settings/SettingsPath";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -103,7 +104,7 @@ import {
 import { isLibraryProject } from "@/lib/project-location";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { startTour } from "@/lib/tour";
 import {
   AVAILABLE_TOUR_IDS,
@@ -116,6 +117,7 @@ import { DictionaryLocalePicker } from "@/components/settings/DictionaryLocalePi
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
 import { CheckpointToggles } from "@/components/settings/CheckpointToggles";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import {
   SettingsSwitchIndicator,
   SettingsToggleRow,
@@ -133,6 +135,7 @@ import {
   githubGetPublicRepoStats,
   type GitHubRepoStats,
 } from "@/lib/github";
+import { Badge } from "@/components/ui/badge";
 
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
@@ -329,10 +332,6 @@ export function SettingsModal() {
     setOpen(false);
     useSettingsStore.getState().setSettingsInitialSection("general");
   };
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(
-    open,
-    closeSettings,
-  );
   const settingsBodyRef = useRef<HTMLDivElement>(null);
   const sectionListId = useId();
   const settingsTourActive = useTourStore((s) => s.activeTourId === "settings");
@@ -353,9 +352,11 @@ export function SettingsModal() {
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     let active = true;
-    import("@/developer/DeveloperSettings").then((module) => {
-      if (active) setDeveloperSettings(module);
-    });
+    void import("@/developer/DeveloperSettings")
+      .then((module) => {
+        if (active) setDeveloperSettings(module);
+      })
+      .catch((error) => void logError("load developer settings", error));
     return () => {
       active = false;
     };
@@ -882,9 +883,9 @@ export function SettingsModal() {
             </div>
             {recycledProjects.length > 0 ? (
               <div className="flex shrink-0 items-center gap-2">
-                <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <Badge variant="muted" size="sm">
                   {formatNumber(recycledProjects.length)}
-                </span>
+                </Badge>
                 <Button
                   type="button"
                   variant="ghost"
@@ -973,9 +974,9 @@ export function SettingsModal() {
               <h3 className="font-semibold text-foreground">
                 {t(($) => $.shell.settings.data.cloud.title)}
               </h3>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <Badge variant="muted" size="sm" className="uppercase tracking-wide">
                 {t(($) => $.shell.settings.data.cloud.comingSoon)}
-              </span>
+              </Badge>
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
               {t(($) => $.shell.settings.data.cloud.description)}
@@ -990,36 +991,34 @@ export function SettingsModal() {
   const renderGeneralSection = () => (
     section === "general" && (
       <div className="space-y-2 [&>[role=switch]]:bg-card">
-        <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-          <div>
-            <div className="text-sm font-medium">{t(($) => $.settings.language.label)}</div>
-            <div className="text-xs text-muted-foreground">
-              {t(($) => $.settings.language.description)}
-            </div>
-          </div>
-          <Select
-            value={uiLocalePreference}
-            onValueChange={(value) => {
-              if (isLocalePreference(value)) setUiLocalePreference(value);
-            }}
-          >
-            <SelectTrigger
-              aria-label={t(($) => $.settings.language.ariaLabel)}
-              className="w-[176px]"
-              data-testid="settings-language"
+        <SettingsRow
+          label={t(($) => $.settings.language.label)}
+          description={t(($) => $.settings.language.description)}
+          control={
+            <Select
+              value={uiLocalePreference}
+              onValueChange={(value) => {
+                if (isLocalePreference(value)) setUiLocalePreference(value);
+              }}
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              <SelectItem value="system">{t(($) => $.settings.language.system)}</SelectItem>
-              {SUPPORTED_LOCALES.map((locale) => (
-                <SelectItem key={locale} value={locale}>
-                  {LOCALE_INFO[locale].nativeName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+              <SelectTrigger
+                aria-label={t(($) => $.settings.language.ariaLabel)}
+                className="w-[176px]"
+                data-testid="settings-language"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                <SelectItem value="system">{t(($) => $.settings.language.system)}</SelectItem>
+                {SUPPORTED_LOCALES.map((locale) => (
+                  <SelectItem key={locale} value={locale}>
+                    {LOCALE_INFO[locale].nativeName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
         <SettingsNote>{t(($) => $.settings.language.note)}</SettingsNote>
         <SettingsToggleRow
           label={t(($) => $.shell.settings.general.spellcheck.label)}
@@ -1045,39 +1044,33 @@ export function SettingsModal() {
         )}
         {harper && (
           <>
-            <div
-              data-testid="settings-row-grammar-dialect"
-              className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-            >
-              <div>
-                <div className="text-sm font-medium">
-                  {t(($) => $.shell.settings.general.dialect.label)}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  {t(($) => $.shell.settings.general.dialect.description)}
-                </div>
-              </div>
-              <Select
-                value={grammarDialect}
-                onValueChange={(value) =>
-                  setGrammarDialect(value as GrammarDialect)
-                }
-              >
-                <SelectTrigger
-                  aria-label={t(($) => $.shell.settings.general.dialect.ariaLabel)}
-                  className="w-[176px]"
+            <SettingsRow
+              testId="settings-row-grammar-dialect"
+              label={t(($) => $.shell.settings.general.dialect.label)}
+              description={t(($) => $.shell.settings.general.dialect.description)}
+              control={
+                <Select
+                  value={grammarDialect}
+                  onValueChange={(value) =>
+                    setGrammarDialect(value as GrammarDialect)
+                  }
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="z-[100]">
-                  {GRAMMAR_DIALECTS.map((dialect) => (
-                    <SelectItem key={dialect.id} value={dialect.id}>
-                      {dialect.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                  <SelectTrigger
+                    aria-label={t(($) => $.shell.settings.general.dialect.ariaLabel)}
+                    className="w-[176px]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100]">
+                    {GRAMMAR_DIALECTS.map((dialect) => (
+                      <SelectItem key={dialect.id} value={dialect.id}>
+                        {dialect.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              }
+            />
             <SettingsToggleRow
               label={t(($) => $.shell.settings.general.regionalism.label)}
               description={t(($) => $.shell.settings.general.regionalism.description)}
@@ -1093,17 +1086,11 @@ export function SettingsModal() {
           </>
         )}
         {spellcheck && (
-          <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-            <div>
-              <div className="text-sm font-medium">
-                {t(($) => $.shell.settings.general.dictionary.label)}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {t(($) => $.shell.settings.general.dictionary.description)}
-              </div>
-            </div>
-            <DictionaryLocalePicker />
-          </div>
+          <SettingsRow
+            label={t(($) => $.shell.settings.general.dictionary.label)}
+            description={t(($) => $.shell.settings.general.dictionary.description)}
+            control={<DictionaryLocalePicker />}
+          />
         )}
         <SettingsNote>{t(($) => $.shell.settings.general.proofreadingNote)}</SettingsNote>
         <SettingsToggleRow
@@ -1234,22 +1221,13 @@ export function SettingsModal() {
   );
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
-    >
-      <button
-        type="button"
-        aria-label={t(($) => $.shell.settings.close)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        role="dialog"
-        ref={dialogRef}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-label={t(($) => $.shell.settings.title)}
-        className="relative flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl"
+    <>
+      <ModalShell
+        open
+        onClose={closeSettings}
+        closeLabel={t(($) => $.shell.settings.close)}
+        label={t(($) => $.shell.settings.title)}
+        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden"
       >
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
@@ -1335,7 +1313,7 @@ export function SettingsModal() {
           </div>
           {renderSettingsBody()}
         </div>
-      </div>
+      </ModalShell>
       <ConfirmationDialog
         open={tourConfirmation !== null}
         title={
@@ -1389,7 +1367,7 @@ export function SettingsModal() {
         onCancel={() => setConfirmDeleteAllProjects(false)}
         onConfirm={() => void deleteAllProjects()}
       />
-    </div>
+    </>
   );
 }
 
@@ -1475,7 +1453,7 @@ function SettingsFooter() {
 function HelpSection() {
   const { t } = useTranslation(["common", "shell"]);
   const [version, setVersion] = useState("");
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyStatus();
   const [changelogOpen, setChangelogOpen] = useState(false);
   const [repoStats, setRepoStats] = useState<GitHubRepoStats | null>(null);
   useEffect(() => {
@@ -1513,13 +1491,7 @@ function HelpSection() {
         /* os plugin unavailable */
       }
     }
-    try {
-      await navigator.clipboard.writeText(parts.join(" · "));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* clipboard blocked */
-    }
+    await copy(parts.join(" · "));
   };
 
   const resources: {

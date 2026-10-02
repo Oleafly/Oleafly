@@ -11,6 +11,9 @@
     "./pdf-extract": "./src/pdf-extract.ts"
   },
   "dependencies": {
+    "@oleafly/i18n-contract": "workspace:*",
+    "@oleafly/latex": "workspace:*",
+    "@oleafly/preview": "workspace:*",
     "pdfjs-dist": "6.3.289"
   }
 }

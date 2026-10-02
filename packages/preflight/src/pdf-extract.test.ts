@@ -6,7 +6,6 @@ vi.mock("pdfjs-dist", () => ({
   GlobalWorkerOptions: {},
   getDocument: mocks.getDocument,
 }));
-vi.mock("@oleafly/preview/pdf.worker?worker&url", () => ({ default: "worker.js" }));
 vi.mock("./pdf-text", () => ({
   reconstructPdfPageText: (items: Array<{ str?: string; x?: number; y?: number; width?: number }>) => ({
     items: items

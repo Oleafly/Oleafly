@@ -12,9 +12,12 @@ import {
   type SettingsSearchPlatform,
   type SettingsSearchRowHit,
 } from "@/components/settings/settings-search";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn, isMac, isWindows } from "@/lib/utils";
 
 const SEARCH_DELAY_MS = 150;
+
+const isBlank = (query: string) => query === "";
 /**
  * How long to keep looking for a row after a click. Counted in time, not
  * frames: WebView2 runs frames at the display rate, so 90 frames is 0.6 s on
@@ -193,7 +196,7 @@ export function useSettingsSearch<Id extends string>({
   const { i18n } = useTranslation();
   const locale = i18n.language || "en";
   const [query, setQuery] = useState("");
-  const [applied, setApplied] = useState("");
+  const applied = useDebouncedValue(query.trim() === "" ? "" : query, SEARCH_DELAY_MS, isBlank);
   const [pendingRow, setPendingRow] = useState<PendingRow<Id> | null>(null);
   const indexRef = useRef<{ locale: string; index: SettingsSearchIndex } | null>(null);
   const selectRef = useRef(onSelectSection);
@@ -201,7 +204,6 @@ export function useSettingsSearch<Id extends string>({
 
   const reset = useCallback(() => {
     setQuery("");
-    setApplied("");
     setPendingRow(null);
     clearHits(containerRef.current);
   }, [containerRef]);
@@ -222,15 +224,6 @@ export function useSettingsSearch<Id extends string>({
   useEffect(() => {
     if (suspended) reset();
   }, [suspended, reset]);
-
-  useEffect(() => {
-    if (query.trim() === "") {
-      setApplied("");
-      return;
-    }
-    const timer = window.setTimeout(() => setApplied(query), SEARCH_DELAY_MS);
-    return () => window.clearTimeout(timer);
-  }, [query]);
 
   const index = () => {
     if (indexRef.current?.locale !== locale) {

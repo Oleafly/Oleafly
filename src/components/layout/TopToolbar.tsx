@@ -16,7 +16,6 @@ import {
   History,
   Presentation,
   LayoutGrid,
-  Loader2,
   ImagePlay,
   Maximize,
   Sparkles,
@@ -37,7 +36,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
+import { useDismiss } from "@/components/ui/use-dismiss";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { CompileControls } from "@/components/layout/CompileControls";
 import {
@@ -67,6 +67,7 @@ import { cn, isMac } from "@/lib/utils";
 import { TOOLBAR_OVERFLOW, useToolbarLayout } from "@/lib/use-toolbar-layout";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { i18n } from "@/i18n";
+import { Spinner } from "@/components/ui/spinner";
 
 type DocFormat = DocumentExportFormat;
 
@@ -281,19 +282,10 @@ export function TopToolbar() {
   const titleEditRef = useRef<HTMLSpanElement>(null);
   const titleInputRef = useInitialFocus<HTMLInputElement>(editingTitle);
   const closeFork = () => setForkOpen(false);
-  const { dialogRef: forkDialogRef, onBackdropMouseDown: onForkBackdropMouseDown } =
-    useModalAccessibility<HTMLDivElement>(forkOpen, closeFork);
 
-  useEffect(() => {
-    if (!editingTitle) return;
-    const onDown = (e: MouseEvent) => {
-      if (titleEditRef.current && !titleEditRef.current.contains(e.target as Node)) {
-        setEditingTitle(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [editingTitle]);
+  useDismiss(editingTitle, [titleEditRef], () => setEditingTitle(false), {
+    pointerEvent: "mousedown",
+  });
 
   const startEditTitle = () => {
     setTitleDraft(projectName || "");
@@ -653,55 +645,45 @@ export function TopToolbar() {
       </div>
     </header>
 
-    {forkOpen && (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-        <button
-          type="button"
-          aria-label={t(($) => $.shell.toolbar.closeForkDialog)}
-          className="absolute inset-0"
-          onMouseDown={onForkBackdropMouseDown}
-        />
-        <div
-          ref={forkDialogRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="toolbar-fork-title"
-          tabIndex={-1}
-          className="relative w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <h2 id="toolbar-fork-title" className="text-base font-semibold">
-              {t(($) => $.shell.toolbar.forkProject)}
-            </h2>
-            <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
-              <X className="size-4" />
-            </Button>
-          </div>
-          <p className="mb-3 text-xs text-muted-foreground">
-            <Trans
-              ns="shell"
-              i18nKey={($) => $.shell.toolbar.forkDescription}
-              values={{ name: projectName }}
-              components={{ name: <span className="font-medium text-foreground" /> }}
-            />
-          </p>
-          <div className="flex items-center gap-2">
-            <Input
-              data-modal-initial-focus
-              value={forkName}
-              onChange={(e) => setForkName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !forkBusy) void submitFork(); }}
-              placeholder={t(($) => $.shell.toolbar.newProjectName)}
-              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-            <Button onClick={() => void submitFork()} disabled={forkBusy}>
-              {forkBusy ? <Loader2 className="size-4 animate-spin" /> : <GitFork className="size-4" />}
-              {t(($) => $.shell.toolbar.fork)}
-            </Button>
-          </div>
-        </div>
+    <ModalShell
+      open={forkOpen}
+      onClose={closeFork}
+      closeLabel={t(($) => $.shell.toolbar.closeForkDialog)}
+      width="md"
+      labelledBy="toolbar-fork-title"
+      className="p-5"
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <h2 id="toolbar-fork-title" className="text-base font-semibold">
+          {t(($) => $.shell.toolbar.forkProject)}
+        </h2>
+        <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
+          <X className="size-4" />
+        </Button>
       </div>
-    )}
+      <p className="mb-3 text-xs text-muted-foreground">
+        <Trans
+          ns="shell"
+          i18nKey={($) => $.shell.toolbar.forkDescription}
+          values={{ name: projectName }}
+          components={{ name: <span className="font-medium text-foreground" /> }}
+        />
+      </p>
+      <div className="flex items-center gap-2">
+        <Input
+          data-modal-initial-focus
+          value={forkName}
+          onChange={(e) => setForkName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !forkBusy) void submitFork(); }}
+          placeholder={t(($) => $.shell.toolbar.newProjectName)}
+          className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <Button onClick={() => void submitFork()} disabled={forkBusy}>
+          {forkBusy ? <Spinner /> : <GitFork className="size-4" />}
+          {t(($) => $.shell.toolbar.fork)}
+        </Button>
+      </div>
+    </ModalShell>
     </>
   );
 }

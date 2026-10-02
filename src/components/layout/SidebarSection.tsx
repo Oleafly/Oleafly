@@ -8,7 +8,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-const TITLE_TEXT = "text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75";
+export const SIDEBAR_TITLE_CLASS =
+  "text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75";
 
 export function SidebarPanelHeader({
   icon: Icon,
@@ -31,7 +32,7 @@ export function SidebarPanelHeader({
       )}
     >
       <Icon aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-      <h2 title={title} className={cn("min-w-0 truncate", TITLE_TEXT)}>
+      <h2 title={title} className={cn("min-w-0 truncate", SIDEBAR_TITLE_CLASS)}>
         {title}
       </h2>
       {adornment}
@@ -110,7 +111,7 @@ export function SidebarSection({
           onClick={() => onOpenChange(!open)}
           className={cn(
             "flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left [&_svg]:shrink-0",
-            TITLE_TEXT,
+            SIDEBAR_TITLE_CLASS,
           )}
         >
           {open ? (

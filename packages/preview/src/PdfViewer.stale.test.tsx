@@ -79,7 +79,6 @@ const controllerMock = vi.hoisted(() => ({
   pageClickToBp: vi.fn<() => { page: number; x: number; y: number } | null>(() => null),
 }));
 
-vi.mock("./pdf.worker?worker&url", () => ({ default: "mock-worker.js" }));
 vi.mock("./mainThreadWorker", () => ({ installMainThreadPdfWorker: vi.fn() }));
 vi.mock("./pdfController", () => ({
   registerPdfView: vi.fn(),

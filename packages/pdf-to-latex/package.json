@@ -11,6 +11,7 @@
     "./pdf-adapter": "./src/pdf-adapter.ts"
   },
   "dependencies": {
+    "@oleafly/preview": "workspace:*",
     "pdfjs-dist": "6.3.289"
   }
 }

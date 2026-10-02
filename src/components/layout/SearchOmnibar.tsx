@@ -26,7 +26,8 @@ import { useFilesStore } from "@/store/files";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useTheme } from "@/lib/theme";
-import { searchDocs, type ProjectInfo, type SearchHit } from "@/lib/tauri";
+import type { ProjectInfo, SearchHit } from "@/lib/tauri";
+import { useDocSearch } from "@/hooks/use-doc-search";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { i18n } from "@/i18n";
 import { gotoLine } from "@/components/editor/cm/controller";
@@ -35,11 +36,7 @@ import { objectKey } from "@/lib/react-key";
 import { Kbd } from "@/components/ui/kbd";
 import { useFavoritesStore } from "@/store/favorites";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
-
-function basename(p: string) {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? p.slice(i + 1) : p;
-}
+import { basename } from "@/lib/path-utils";
 
 function searchableDate(timestamp: number) {
   if (!timestamp) return "";
@@ -258,8 +255,6 @@ export function SearchOmnibar() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation(["common", "shell"]);
   const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<SearchHit[]>([]);
-  const [loading, setLoading] = useState(false);
 
   const ctx = useMemo<AppContext>(
     () => ({ projectId, projectKind, theme, latexToolsEnabled: latexTools }),
@@ -281,6 +276,9 @@ export function SearchOmnibar() {
     [query, slashEntries],
   );
   const trimmed = term.trim();
+  const { hits, loading } = useDocSearch(trimmed, {
+    enabled: mode === "all" || mode === "docs",
+  });
   const slashSuggestions = useMemo(
     () =>
       mode === "help"
@@ -294,25 +292,6 @@ export function SearchOmnibar() {
   useEffect(() => {
     if (open) void refreshProjects().catch(() => {});
   }, [open, refreshProjects]);
-
-  useEffect(() => {
-    const wantDocs = mode === "all" || mode === "docs";
-    if (!wantDocs || !trimmed) {
-      setHits([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const t = setTimeout(async () => {
-      try {
-        setHits(await searchDocs(trimmed));
-      } catch {
-        setHits([]);
-      }
-      setLoading(false);
-    }, 200);
-    return () => clearTimeout(t);
-  }, [trimmed, mode]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -342,7 +321,6 @@ export function SearchOmnibar() {
   const close = () => {
     setSearchOpen(false);
     setQuery("");
-    setHits([]);
   };
 
   const matchedProjects = useMemo(() => {

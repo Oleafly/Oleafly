@@ -485,11 +485,6 @@
         },
         "title": "このコンピュータのほかのエージェントとスキルを共有"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "追加",
         "bundled": "組み込み",

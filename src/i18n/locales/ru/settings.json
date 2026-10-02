@@ -494,11 +494,6 @@
         },
         "title": "Поделиться навыками с другими агентами на этом компьютере"
       },
-      "size": {
-        "bytes": "{{value}} Б",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Добавлен",
         "bundled": "Встроенный",

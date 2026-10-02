@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FolderOpen, ImageOff, Loader2 } from "lucide-react";
+import { FolderOpen, ImageOff } from "lucide-react";
 import type { FileEntry } from "@oleafly/backend-port";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,17 +15,18 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { logError } from "@/lib/log";
+import { INSERTABLE_IMAGE_EXTENSIONS, isInsertableImagePath } from "@/lib/image-mime";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useFigureDialogStore } from "@/store/figure-dialog";
 import {
   figureDirectory,
-  isImportableImagePath,
   suggestedFigureLabel,
 } from "@/components/editor/figure-import";
 import { insertFigureFromDialog, insertFigurePlaceholder } from "@/components/editor/latex-commands";
 import { applyFigureEdit } from "@/components/editor/figure-edit";
 import { resolveVisualAssetUrl } from "@/components/editor/wysiwyg/asset-url";
+import { Spinner } from "@/components/ui/spinner";
 
 type WidthChoice = "quarter" | "half" | "threeQuarters" | "full" | "custom";
 
@@ -36,7 +37,6 @@ const WIDTH_VALUES: Record<Exclude<WidthChoice, "custom">, string> = {
   threeQuarters: String.raw`0.75\linewidth`,
   full: String.raw`\linewidth`,
 };
-const IMPORT_EXTENSIONS = ["png", "jpg", "jpeg", "svg", "pdf"];
 
 interface FigureForm {
   width: WidthChoice;
@@ -60,7 +60,7 @@ const INITIAL_FORM: FigureForm = {
 
 export function projectImagePaths(tree: readonly FileEntry[]): string[] {
   return tree
-    .filter((entry) => !entry.is_dir && isImportableImagePath(entry.path))
+    .filter((entry) => !entry.is_dir && isInsertableImagePath(entry.path))
     .map((entry) => entry.path)
     .sort((left, right) => left.localeCompare(right));
 }
@@ -246,7 +246,7 @@ function FigureOptions({
 async function pickImageSource(filterName: string): Promise<string | null> {
   const picked = await pickOpenPath({
     multiple: false,
-    filters: [{ name: filterName, extensions: IMPORT_EXTENSIONS }],
+    filters: [{ name: filterName, extensions: INSERTABLE_IMAGE_EXTENSIONS }],
   });
   const source = Array.isArray(picked) ? picked[0] : picked;
   return typeof source === "string" && source !== "" ? source : null;
@@ -361,7 +361,7 @@ export function FigureDialog() {
                 onClick={() => void importFromDisk()}
               >
                 {importing ? (
-                  <Loader2 aria-hidden className="size-3.5 animate-spin" />
+                  <Spinner size="sm" />
                 ) : (
                   <FolderOpen aria-hidden className="size-3.5" />
                 )}

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { listen } from "@tauri-apps/api/event";
 import {
   NewProjectDialog as NewProjectDialogCore,
   type TemplatesHost,
@@ -30,7 +29,7 @@ import { logError } from "@/lib/log";
 import {
   ensureTemplateAssets,
   templatePreview,
-  type AssetProgress,
+  withAssetProgress,
   type TemplateInfo,
 } from "@/lib/tauri";
 
@@ -71,18 +70,11 @@ const KIT: Omit<TemplatesKit, "t"> = { Button, Input, Tooltip, Select: KitSelect
 
 const HOST: TemplatesHost = {
   loadPreview: templatePreview,
-  ensureAssets: async (templateId, onProgress) => {
-    let unlisten: (() => void) | undefined;
-    try {
-      unlisten = await listen<AssetProgress>("asset-progress", (e) => {
-        const p = e.payload;
-        onProgress(p.label, p.index, p.total);
-      });
-      await ensureTemplateAssets(templateId);
-    } finally {
-      unlisten?.();
-    }
-  },
+  ensureAssets: (templateId, onProgress) =>
+    withAssetProgress(
+      { component: (p) => onProgress(p.label, p.index, p.total) },
+      () => ensureTemplateAssets(templateId),
+    ),
   logError: (scope, e) => void logError(scope, e),
 };
 

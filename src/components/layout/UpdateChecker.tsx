@@ -10,20 +10,10 @@ import { installUpdate, runUpdateCheck } from "@/lib/updater";
 import { logError } from "@/lib/log";
 import { useUpdatesStore } from "@/store/updates";
 import { Progress } from "@/components/ui/progress";
-import { formatRelativeTime } from "@/lib/intl";
+import { formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 
 const RELEASES_URL = "https://github.com/Oleafly/Oleafly/releases";
-
-function relativeTime(t: number): string {
-  const s = Math.max(0, Math.round((Date.now() - t) / 1000));
-  if (s < 60) return formatRelativeTime(-s, "second");
-  const m = Math.floor(s / 60);
-  if (m < 60) return formatRelativeTime(-m, "minute");
-  const h = Math.floor(m / 60);
-  if (h < 24) return formatRelativeTime(-h, "hour");
-  return formatRelativeTime(-Math.floor(h / 24), "day");
-}
 
 type State =
   | { kind: "idle" }
@@ -84,7 +74,7 @@ export function UpdateChecker({ className }: Readonly<{ className?: string }>) {
               <AlertTriangle className="size-3.5" />
               {lastCheckAt
                 ? t(($) => $.shell.updateChecker.lastCheckFailedAt, {
-                    when: relativeTime(lastCheckAt),
+                    when: formatRelativeTimeFrom(lastCheckAt, Date.now(), { largestUnit: "day" }),
                   })
                 : t(($) => $.shell.updateChecker.lastCheckFailed)}
             </p>

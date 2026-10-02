@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Copy,
   Download,
-  Loader2,
   Plus,
   RefreshCw,
   Search,
@@ -28,6 +27,7 @@ import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ReadinessBadge } from "@/components/ai/acp/AgentReadiness";
 import { bridgeSourceLabel, readinessDetail } from "@/components/ai/acp/agent-copy";
@@ -50,6 +50,7 @@ import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { i18n } from "@/i18n";
+import { Spinner } from "@/components/ui/spinner";
 
 const example = JSON.stringify(
   {
@@ -65,16 +66,8 @@ const example = JSON.stringify(
 
 function CopyValue({ value, label }: Readonly<{ value: string; label: string }>) {
   const { t } = useTranslation(["common"]);
-  const [copied, setCopied] = useState(false);
-  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { copied, copy } = useCopyStatus();
   const copiedLabel = t(($) => $.common.actions.copied);
-
-  useEffect(
-    () => () => {
-      if (resetTimer.current) clearTimeout(resetTimer.current);
-    },
-    [],
-  );
 
   return (
     <Tooltip label={copied ? copiedLabel : label}>
@@ -89,19 +82,7 @@ function CopyValue({ value, label }: Readonly<{ value: string; label: string }>)
         }
         aria-label={copied ? copiedLabel : label}
         data-copied={copied ? "true" : undefined}
-        onClick={() => {
-          void navigator.clipboard
-            ?.writeText(value)
-            .then(() => {
-              if (resetTimer.current) clearTimeout(resetTimer.current);
-              setCopied(true);
-              resetTimer.current = setTimeout(() => {
-                setCopied(false);
-                resetTimer.current = null;
-              }, 1500);
-            })
-            .catch(() => setCopied(false));
-        }}
+        onClick={() => void copy(value)}
       >
         {copied ? (
           <Check aria-hidden="true" className="size-3.5" />
@@ -487,7 +468,7 @@ function AgentCard({
                     }
                   >
                     {installing ? (
-                      <Loader2 className="size-3.5 animate-spin" />
+                      <Spinner size="sm" />
                     ) : (
                       <Download className="size-3.5" />
                     )}
@@ -556,7 +537,7 @@ function AgentCatalogEmptyState({
     return (
       <Empty className="max-w-sm gap-3">
         <EmptyMedia>
-          <Loader2 aria-hidden="true" className="size-5 animate-spin" />
+          <Spinner size="lg" />
         </EmptyMedia>
         <div className="space-y-1.5">
           <EmptyTitle className="text-base">
@@ -778,7 +759,7 @@ export function AcpAgentsTab({
           >
             {catalogCheckState === "checking" ? (
               <>
-                <Loader2 aria-hidden="true" className="size-3.5 animate-spin" />
+                <Spinner size="sm" />
                 {t(($) => $.settings.ai.agents.checkingAction)}
               </>
             ) : (
@@ -832,10 +813,7 @@ export function AcpAgentsTab({
                 aria-atomic="true"
                 className="flex min-h-8 items-center gap-2 px-1 text-xs text-muted-foreground"
               >
-                <Loader2
-                  aria-hidden="true"
-                  className="size-3.5 shrink-0 animate-spin"
-                />
+                <Spinner size="sm" />
                 <span>{t(($) => $.settings.ai.agents.refreshingStatus)}</span>
               </div>
             )}
@@ -1063,7 +1041,7 @@ export function AcpAgentsTab({
                 })
               }
             >
-              {busy === "install" ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              {busy === "install" ? <Spinner size="sm" /> : null}
               {busy === "install"
                 ? t(($) => $.settings.ai.agents.install.installing)
                 : t(($) => $.settings.ai.agents.install.confirm)}

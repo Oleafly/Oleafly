@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Download, Loader2, Settings2, TriangleAlert } from "lucide-react";
+import { Check, Download, Settings2, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,25 +12,26 @@ import { useTerminalsStore } from "@/store/terminals";
 import { useDisplayText } from "@/lib/display-path";
 import { AgentLogo } from "./AgentLogo";
 import { readinessDetail } from "./agent-copy";
+import { Spinner } from "@/components/ui/spinner";
 
 export function ReadinessBadge({ readiness }: Readonly<{ readiness: AcpReadiness }>) {
   const label = acpReadinessLabel(readiness);
   if (readiness === "ready") {
     return (
-      <Badge className="gap-1 border-transparent bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+      <Badge variant="success" className="gap-1">
         <Check className="size-3 shrink-0" aria-hidden /> {label}
       </Badge>
     );
   }
   if (readiness === "unavailable") {
     return (
-      <Badge className="gap-1 border-transparent bg-destructive/10 text-destructive">
+      <Badge variant="destructive" className="gap-1">
         <TriangleAlert className="size-3 shrink-0" aria-hidden /> {label}
       </Badge>
     );
   }
   return (
-    <Badge className="border-transparent bg-amber-500/15 text-amber-600 dark:text-amber-500">{label}</Badge>
+    <Badge variant="warning">{label}</Badge>
   );
 }
 
@@ -119,7 +120,7 @@ export function BridgeInstallCard({
               .catch((error: unknown) => onError?.(acpError(error)));
           }}
         >
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+          {busy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
           {busy ? t(($) => $.ai.acp.installing) : t(($) => $.ai.acp.installBridge)}
         </Button>
       ) : (

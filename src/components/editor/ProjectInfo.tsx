@@ -41,17 +41,13 @@ import {
   type ProofreadingSurfaceState,
 } from "@/store/proofreading";
 import { useSettingsStore } from "@/store/settings";
+import { basename } from "@/lib/path-utils";
 import {
   useLanguageServiceRuntimeUnavailable,
   useLanguageServiceSetupOffer,
 } from "./LanguageServiceRuntimeBoundary";
 
 const APP_SETTING = "__app__";
-
-function basename(path: string): string {
-  const index = path.lastIndexOf("/");
-  return index >= 0 ? path.slice(index + 1) : path;
-}
 
 function SectionLabel({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

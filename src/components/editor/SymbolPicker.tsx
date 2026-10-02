@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Omega } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Popover } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -443,9 +444,9 @@ export function SymbolPicker({ menuRow }: Readonly<{ menuRow?: boolean }>) {
               )}
             >
               <span className="truncate">{c.label()}</span>
-              <span className="shrink-0 rounded-full bg-muted px-1.5 py-px text-[10px] tabular-nums">
+              <Badge variant="muted" size="sm" className="tabular-nums">
                 {c.items.length}
-              </span>
+              </Badge>
             </button>
           ))}
         </div>

@@ -13,7 +13,6 @@ import {
   ExternalLink,
   Globe2,
   Landmark,
-  Loader2,
   MapPin,
   Search,
 } from "lucide-react";
@@ -29,6 +28,8 @@ import {
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import { useSettingsStore } from "@/store/settings";
+import { Spinner } from "@/components/ui/spinner";
+import { EmptyIntro } from "@/components/ui/empty";
 
 interface Institution {
   id: string;
@@ -437,23 +438,23 @@ function EmptyLabSearch({
     <div className="mx-auto grid min-h-[24rem] max-w-4xl place-items-center px-6 py-10">
       <div className="w-full border-y border-border/70 py-9">
         <div className="grid gap-8 sm:grid-cols-[1fr_1.15fr] sm:items-start">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              {noResults
+          <EmptyIntro
+            eyebrow={
+              noResults
                 ? t(($) => $.researchTools.labSearch.noResultsEyebrow)
-                : t(($) => $.researchTools.labSearch.gettingStarted)}
-            </p>
-            <h2 className="mt-2.5 text-2xl font-semibold tracking-tight">
-              {noResults
+                : t(($) => $.researchTools.labSearch.gettingStarted)
+            }
+            title={
+              noResults
                 ? t(($) => $.researchTools.labSearch.noResultsHeading)
-                : t(($) => $.researchTools.labSearch.startHeading)}
-            </h2>
-            <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-              {noResults
+                : t(($) => $.researchTools.labSearch.startHeading)
+            }
+            description={
+              noResults
                 ? t(($) => $.researchTools.labSearch.noResultsBody)
-                : t(($) => $.researchTools.labSearch.startBody)}
-            </p>
-          </div>
+                : t(($) => $.researchTools.labSearch.startBody)
+            }
+          />
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {t(($) => $.researchTools.labSearch.examples)}
@@ -607,7 +608,7 @@ export function LabSearchPanel() {
               disabled={busy || !query.trim() || offline}
             >
               {busy ? (
-                <Loader2 className="animate-spin" />
+                <Spinner />
               ) : (
                 <Search />
               )}

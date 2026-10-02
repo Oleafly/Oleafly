@@ -9,7 +9,6 @@ import {
   FolderOpen,
   FolderPlus,
   Link2Off,
-  Loader2,
   Lock,
   MoreHorizontal,
   Pencil,
@@ -63,6 +62,7 @@ import {
   type ResearchRootRole,
   type ResearchWorkspace,
 } from "@/lib/research-workspace";
+import { Spinner } from "@/components/ui/spinner";
 
 const ROLE_LABELS: Record<ResearchRootRole, () => string> = {
   references: () => i18n.t(($) => $.researchTools.roots.role.references),
@@ -250,7 +250,7 @@ function LinkFolderDialog({
             onClick={() => onSubmit({ path, label, role })}
             data-testid="research-root-submit"
           >
-            {busy ? <Loader2 className="animate-spin" /> : <FolderPlus />}
+            {busy ? <Spinner /> : <FolderPlus />}
             {editing
               ? t(($) => $.researchTools.roots.dialog.save)
               : t(($) => $.researchTools.roots.dialog.link)}
@@ -357,7 +357,7 @@ function RootCard({
           </Tooltip>
           <div className="mt-2">
             <Button variant="outline" size="xs" disabled={busy} onClick={browse}>
-              {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />}{" "}
+              {busy ? <Spinner /> : <RefreshCw />}{" "}
               {t(($) => $.researchTools.roots.card.browse)}
             </Button>
           </div>
@@ -581,7 +581,7 @@ export function ResearchRootsPanel({ projectId }: Readonly<{ projectId: string }
           {error}
         </p>
       )}
-      {busy && !workspace ? <Loader2 className="animate-spin text-muted-foreground" /> : null}
+      {busy && !workspace ? <Spinner size="xl" className="text-muted-foreground" /> : null}
 
       {workspace && roots.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">

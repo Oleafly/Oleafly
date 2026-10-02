@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import {
   Check,
   GitBranch,
   Github,
-  Loader2,
   Lock,
   Search,
   X,
@@ -32,8 +30,9 @@ import { describeError } from "@/lib/app-error";
 import { formatNameList, formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { cn } from "@/lib/utils";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { useSettingsStore } from "@/store/settings";
+import { Spinner } from "@/components/ui/spinner";
 
 function slug(name: string): string {
   return name
@@ -112,8 +111,6 @@ export function PublishToGitHubDialog({
   const renderIdentityChanged =
     renderedIdentity.current.open !== open ||
     renderedIdentity.current.projectId !== projectId;
-  const { dialogRef, onBackdropMouseDown } =
-    useModalAccessibility<HTMLDivElement>(open, onClose);
 
   const isCurrentSession = useCallback(
     (targetProjectId: string, session: number) =>
@@ -409,224 +406,215 @@ export function PublishToGitHubDialog({
       ))
     );
 
-  return createPortal(
-    <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label={t(($) => $.library.github.closeDialog)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="publish-github-title"
-        tabIndex={-1}
-        className="relative flex h-[min(560px,88vh)] w-[min(620px,94vw)] flex-col overflow-hidden rounded-xl border bg-sidebar text-sidebar-foreground shadow-2xl"
-      >
-        <div className="flex h-12 shrink-0 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+  return (
+    <ModalShell
+      open
+      onClose={onClose}
+      closeLabel={t(($) => $.library.github.closeDialog)}
+      portal
+      labelledBy="publish-github-title"
+      className="flex h-[min(560px,88vh)] w-[min(620px,94vw)] flex-col overflow-hidden"
+    >
+      <div className="flex h-12 shrink-0 items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <Github className="size-4" />
+          <h2 id="publish-github-title" className="text-sm font-semibold">
+            {t(($) => $.library.github.title)}
+          </h2>
+        </div>
+        <Button variant="ghost" size="icon" className="size-7" onClick={onClose}>
+          <X className="size-4" />
+        </Button>
+      </div>
+
+      {status !== "connected" ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            {t(($) => $.library.github.connectPrompt)}
+          </p>
+          <Button
+            onClick={() => {
+              onClose();
+              setSettingsInitialSection("integrations");
+              setSettingsOpen(true);
+            }}
+          >
             <Github className="size-4" />
-            <h2 id="publish-github-title" className="text-sm font-semibold">
-              {t(($) => $.library.github.title)}
-            </h2>
-          </div>
-          <Button variant="ghost" size="icon" className="size-7" onClick={onClose}>
-            <X className="size-4" />
+            {t(($) => $.library.github.connect)}
           </Button>
         </div>
+      ) : (
+        <>
+          <Tabs
+            value={tab}
+            onValueChange={(value) => {
+              setReplaceTarget(null);
+              setSecretsPrompt(null);
+              setLeftOut([]);
+              setTab(value as PublishTarget);
+            }}
+            className="shrink-0"
+          >
+            <div className="flex justify-center px-4 py-2">
+              <TabsList>
+                <TabsTrigger value="new">{t(($) => $.library.github.tabNew)}</TabsTrigger>
+                <TabsTrigger value="existing">
+                  {t(($) => $.library.github.tabExisting)}
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </Tabs>
 
-        {status !== "connected" ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              {t(($) => $.library.github.connectPrompt)}
-            </p>
-            <Button
-              onClick={() => {
-                onClose();
-                setSettingsInitialSection("integrations");
-                setSettingsOpen(true);
-              }}
-            >
-              <Github className="size-4" />
-              {t(($) => $.library.github.connect)}
-            </Button>
-          </div>
-        ) : (
-          <>
-            <Tabs
-              value={tab}
-              onValueChange={(value) => {
-                setReplaceTarget(null);
-                setSecretsPrompt(null);
-                setLeftOut([]);
-                setTab(value as PublishTarget);
-              }}
-              className="shrink-0"
-            >
-              <div className="flex justify-center px-4 py-2">
-                <TabsList>
-                  <TabsTrigger value="new">{t(($) => $.library.github.tabNew)}</TabsTrigger>
-                  <TabsTrigger value="existing">
-                    {t(($) => $.library.github.tabExisting)}
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </Tabs>
-
-            <div className="min-h-0 flex-1 overflow-auto px-4 pt-1 pb-4 text-sm">
-              {tab === "new" ? (
-                <div className="flex h-full flex-col">
-                  <div className="space-y-3">
-                    <label htmlFor="publish-repository-name" className="block space-y-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {t(($) => $.library.github.repositoryName)}
-                      </span>
-                      <Input
-                        id="publish-repository-name"
-                        value={repoName}
-                        onChange={(e) => setRepoName(e.target.value)}
-                        aria-label={t(($) => $.library.github.repositoryName)}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:border-ring"
-                      />
-                    </label>
-                    <label htmlFor="publish-private-repository" className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3">
-                      <span className="flex items-center gap-2">
-                        <Lock className="size-4 text-muted-foreground" />
-                        <span className="text-xs">
-                          {t(($) => $.library.github.private)}
-                          <span className="ml-1 text-muted-foreground">
-                            {t(($) => $.library.github.privateHint)}
-                          </span>
+          <div className="min-h-0 flex-1 overflow-auto px-4 pt-1 pb-4 text-sm">
+            {tab === "new" ? (
+              <div className="flex h-full flex-col">
+                <div className="space-y-3">
+                  <label htmlFor="publish-repository-name" className="block space-y-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t(($) => $.library.github.repositoryName)}
+                    </span>
+                    <Input
+                      id="publish-repository-name"
+                      value={repoName}
+                      onChange={(e) => setRepoName(e.target.value)}
+                      aria-label={t(($) => $.library.github.repositoryName)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:border-ring"
+                    />
+                  </label>
+                  <label htmlFor="publish-private-repository" className="flex cursor-pointer items-center justify-between rounded-md border bg-card p-3">
+                    <span className="flex items-center gap-2">
+                      <Lock className="size-4 text-muted-foreground" />
+                      <span className="text-xs">
+                        {t(($) => $.library.github.private)}
+                        <span className="ml-1 text-muted-foreground">
+                          {t(($) => $.library.github.privateHint)}
                         </span>
                       </span>
-                      <Checkbox
-                        id="publish-private-repository"
-                        checked={isPrivate}
-                        onCheckedChange={(checked) => setIsPrivate(checked === true)}
-                      />
-                    </label>
-                  </div>
+                    </span>
+                    <Checkbox
+                      id="publish-private-repository"
+                      checked={isPrivate}
+                      onCheckedChange={(checked) => setIsPrivate(checked === true)}
+                    />
+                  </label>
+                </div>
+                <Button
+                  className="mt-auto ml-auto px-5"
+                  disabled={visibleBusy || !repoName.trim()}
+                  onClick={() => void publishNew()}
+                >
+                  {visibleBusy ? (
+                    <Spinner />
+                  ) : (
+                    <Github className="size-4" />
+                  )}
+                  {t(($) => $.library.github.createAndPush)}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex h-full flex-col gap-2">
+                <div className="flex items-center gap-2 rounded-md border px-3 transition-colors focus-within:border-ring">
+                  <Search className="size-3.5 shrink-0 text-muted-foreground" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={t(($) => $.library.github.searchPlaceholder)}
+                    aria-label={t(($) => $.library.github.searchRepositories)}
+                    className="h-10 flex-1 rounded-none border-0 bg-transparent px-0 text-xs shadow-none"
+                  />
+                </div>
+                <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                  {loadingRepos ? (
+                    <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
+                      <Spinner /> {t(($) => $.common.state.loading)}
+                    </div>
+                  ) : repoList()}
+                </div>
+                <Tooltip label={t(($) => $.library.github.linkHint)}>
                   <Button
-                    className="mt-auto ml-auto px-5"
-                    disabled={visibleBusy || !repoName.trim()}
-                    onClick={() => void publishNew()}
+                    className="w-full"
+                    disabled={visibleBusy || !selected}
+                    onClick={() => void publishExisting()}
                   >
                     {visibleBusy ? (
-                      <Loader2 className="size-4 animate-spin" />
+                      <Spinner />
                     ) : (
-                      <Github className="size-4" />
+                      <GitBranch className="size-4" />
                     )}
-                    {t(($) => $.library.github.createAndPush)}
+                    {t(($) => $.library.github.linkAndPush)}
                   </Button>
-                </div>
-              ) : (
-                <div className="flex h-full flex-col gap-2">
-                  <div className="flex items-center gap-2 rounded-md border px-3 transition-colors focus-within:border-ring">
-                    <Search className="size-3.5 shrink-0 text-muted-foreground" />
-                    <Input
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder={t(($) => $.library.github.searchPlaceholder)}
-                      aria-label={t(($) => $.library.github.searchRepositories)}
-                      className="h-10 flex-1 rounded-none border-0 bg-transparent px-0 text-xs shadow-none"
-                    />
-                  </div>
-                  <div className="min-h-0 flex-1 overflow-auto rounded-md border">
-                    {loadingRepos ? (
-                      <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
-                        <Loader2 className="size-4 animate-spin" /> {t(($) => $.common.state.loading)}
-                      </div>
-                    ) : repoList()}
-                  </div>
-                  <Tooltip label={t(($) => $.library.github.linkHint)}>
-                    <Button
-                      className="w-full"
-                      disabled={visibleBusy || !selected}
-                      onClick={() => void publishExisting()}
-                    >
-                      {visibleBusy ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <GitBranch className="size-4" />
-                      )}
-                      {t(($) => $.library.github.linkAndPush)}
-                    </Button>
-                  </Tooltip>
-                </div>
-              )}
-            </div>
+                </Tooltip>
+              </div>
+            )}
+          </div>
 
-            {replaceTarget && currentRemote && !renderIdentityChanged ? (
-              <div className="shrink-0 border-t p-3 text-xs">
-                <p>{t(($) => $.library.github.replaceRemotePrompt, { remote: currentRemote })}</p>
-                <div className="mt-2 flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setReplaceTarget(null)}>
-                    {t(($) => $.common.actions.cancel)}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      void (replaceTarget === "new" ? publishNew(true) : publishExisting(true))
-                    }
-                  >
-                    {t(($) => $.library.github.replaceRemote)}
-                  </Button>
-                </div>
+          {replaceTarget && currentRemote && !renderIdentityChanged ? (
+            <div className="shrink-0 border-t p-3 text-xs">
+              <p>{t(($) => $.library.github.replaceRemotePrompt, { remote: currentRemote })}</p>
+              <div className="mt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setReplaceTarget(null)}>
+                  {t(($) => $.common.actions.cancel)}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    void (replaceTarget === "new" ? publishNew(true) : publishExisting(true))
+                  }
+                >
+                  {t(($) => $.library.github.replaceRemote)}
+                </Button>
               </div>
-            ) : null}
-            {visibleSecretsPrompt ? (
-              <div className="shrink-0 border-t p-3 text-xs">
-                <p className="break-words">
-                  {t(($) => $.library.github.trackedSecretsPrompt, {
-                    count: visibleSecretsPrompt.files.length,
-                    files: fileList(visibleSecretsPrompt.files),
-                  })}
-                </p>
-                <div className="mt-2 flex justify-end gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setSecretsPrompt(null)}>
-                    {t(($) => $.common.actions.cancel)}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() =>
-                      void (visibleSecretsPrompt.target === "new" ? publishNew : publishExisting)(
-                        visibleSecretsPrompt.replace,
-                        visibleSecretsPrompt.files,
-                      )
-                    }
-                  >
-                    {t(($) => $.library.github.publishAnyway)}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-            {visibleMessage && (
-              <div
-                className={cn(
-                  "shrink-0 border-t p-3 text-xs",
-                  visibleMessage.ok
-                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "border-destructive/30 bg-destructive/10 text-destructive"
-                )}
-              >
-                {visibleMessage.text}
-              </div>
-            )}
-            {visibleLeftOut.length > 0 && (
-              <output className="block shrink-0 border-t p-3 text-xs text-muted-foreground break-words">
-                {t(($) => $.library.github.leftOutSecrets, {
-                  count: visibleLeftOut.length,
-                  files: fileList(visibleLeftOut),
+            </div>
+          ) : null}
+          {visibleSecretsPrompt ? (
+            <div className="shrink-0 border-t p-3 text-xs">
+              <p className="break-words">
+                {t(($) => $.library.github.trackedSecretsPrompt, {
+                  count: visibleSecretsPrompt.files.length,
+                  files: fileList(visibleSecretsPrompt.files),
                 })}
-              </output>
-            )}
-          </>
-        )}
-      </div>
-    </div>,
-    document.body,
+              </p>
+              <div className="mt-2 flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setSecretsPrompt(null)}>
+                  {t(($) => $.common.actions.cancel)}
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() =>
+                    void (visibleSecretsPrompt.target === "new" ? publishNew : publishExisting)(
+                      visibleSecretsPrompt.replace,
+                      visibleSecretsPrompt.files,
+                    )
+                  }
+                >
+                  {t(($) => $.library.github.publishAnyway)}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {visibleMessage && (
+            <div
+              className={cn(
+                "shrink-0 border-t p-3 text-xs",
+                visibleMessage.ok
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "border-destructive/30 bg-destructive/10 text-destructive"
+              )}
+            >
+              {visibleMessage.text}
+            </div>
+          )}
+          {visibleLeftOut.length > 0 && (
+            <output className="block shrink-0 border-t p-3 text-xs text-muted-foreground break-words">
+              {t(($) => $.library.github.leftOutSecrets, {
+                count: visibleLeftOut.length,
+                files: fileList(visibleLeftOut),
+              })}
+            </output>
+          )}
+        </>
+      )}
+    </ModalShell>
   );
 }

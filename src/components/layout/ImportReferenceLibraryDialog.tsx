@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, Download, Loader2, Settings2, Upload } from "lucide-react";
+import { AlertCircle, Download, Settings2, Upload } from "lucide-react";
 import { ZoteroBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useZoteroConnectorStore } from "@/store/zotero-connector";
+import { Spinner } from "@/components/ui/spinner";
 
 const ZOTERO_LIBRARY_FILE = "zotero-library.bib";
 
@@ -303,7 +304,7 @@ export function ImportReferenceLibraryDialog({
             {zoteroConnected ? (
               <Button size="sm" disabled={busy} onClick={() => void handleZoteroLibrary()}>
                 {zoteroBusy ? (
-                  <Loader2 aria-hidden className="size-3.5 animate-spin" />
+                  <Spinner size="sm" />
                 ) : (
                   <Download aria-hidden className="size-3.5" />
                 )}

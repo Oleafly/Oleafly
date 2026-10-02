@@ -1,3 +1,5 @@
+import { createTranslatorSlot, type Translator } from "@oleafly/i18n-contract";
+
 export const WYSIWYG_MESSAGE_KEYS = [
   "block.abstract",
   "block.author",
@@ -71,22 +73,10 @@ export const WYSIWYG_MESSAGE_KEYS = [
 
 export type WysiwygMessageKey = (typeof WYSIWYG_MESSAGE_KEYS)[number];
 
-export type WysiwygTranslator = (
-  key: WysiwygMessageKey,
-  params?: Record<string, string | number>,
-) => string;
+export type WysiwygTranslator = Translator<WysiwygMessageKey>;
 
-const echoKey: WysiwygTranslator = (key) => key;
+const wysiwygTranslator = createTranslatorSlot<WysiwygMessageKey>();
 
-let installed: WysiwygTranslator = echoKey;
+export const setWysiwygTranslator = wysiwygTranslator.install;
 
-export function setWysiwygTranslator(next: WysiwygTranslator | null): void {
-  installed = next ?? echoKey;
-}
-
-export function wysiwygMessage(
-  key: WysiwygMessageKey,
-  params?: Record<string, string | number>,
-): string {
-  return installed(key, params);
-}
+export const wysiwygMessage = wysiwygTranslator.translate;

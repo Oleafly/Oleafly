@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { render, screen } from "@testing-library/react";
 import { FlaskConical } from "lucide-react";
@@ -112,5 +112,37 @@ describe("SidebarPanelHeader", () => {
     const source = readFileSync(join(process.cwd(), path), "utf8");
     expect(source).toContain("<SidebarPanelHeader");
     expect(source).not.toContain("text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70");
+  });
+
+  it("covers every panel registered on the rail", () => {
+    const tabs = readFileSync(join(process.cwd(), "src/contributions/tabs.tsx"), "utf8");
+    const modules = [...tabs.matchAll(/panel:\s*(\w+)/g)].map(([, name]) => {
+      const direct = new RegExp(String.raw`import \{[^}]*\b${name}\b[^}]*\} from "@/([^"]+)"`).exec(tabs);
+      const lazy = new RegExp(String.raw`const ${name} = lazy\(\(\) =>\s*import\("@/([^"]+)"\)`).exec(tabs);
+      return `src/${(direct ?? lazy)?.[1]}.tsx`;
+    });
+    expect(modules.length).toBeGreaterThanOrEqual(7);
+    expect(new Set(modules)).toEqual(new Set(RAIL_PANELS));
+  });
+
+  it("is the only source of the sidebar title style", () => {
+    const sidebarTitle = (classString: string) => {
+      const tokens = classString.split(/[\s"'`]+/);
+      return tokens.includes("uppercase") && tokens.some((token) => token.startsWith("text-sidebar-foreground"));
+    };
+    expect(sidebarTitle(`"text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70"`)).toBe(true);
+    expect(sidebarTitle(`"text-xs uppercase text-muted-foreground"`)).toBe(false);
+
+    const root = join(process.cwd(), "src");
+    const offenders = readdirSync(root, { recursive: true, encoding: "utf8" })
+      .filter((path) => /\.(ts|tsx)$/.test(path) && !/\.(test|spec)\.(ts|tsx)$/.test(path))
+      .filter((path) => !path.endsWith(join("layout", "SidebarSection.tsx")))
+      .flatMap((path) => {
+        const source = readFileSync(join(root, path), "utf8");
+        return [...source.matchAll(/"[^"\n]*"|`[^`]*`/g)]
+          .filter(([value]) => sidebarTitle(value))
+          .map(([value]) => `${path}: ${value}`);
+      });
+    expect(offenders).toEqual([]);
   });
 });

@@ -66,7 +66,8 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  withEventListener: (await importOriginal<typeof import("@/lib/tauri")>()).withEventListener,
   latexEngineInfo: mocks.latexEngineInfo,
   tlmgrInstallMissing: mocks.tlmgrInstallMissing,
   compileProject: mocks.compileProject,

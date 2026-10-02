@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { listen } from "@tauri-apps/api/event";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   latexEngineInfo,
@@ -9,6 +8,7 @@ import {
   tlmgrInstalled,
   tlmgrInstall,
   tlmgrRemove,
+  withEventListener,
   type EngineInfo,
 } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -183,23 +183,20 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
     } catch (error) {
       void logError("pause compile for install", error);
     }
-    let unlisten: (() => void) | null = null;
     try {
-      unlisten = await listen<{
-        phase: InstallPhase;
-        received: number;
-        total: number | null;
-      }>("tinytex-install-progress", (e) => {
-        const { phase, received, total } = e.payload;
-        set({
-          installPhase: phase,
-          progress:
-            phase === "download" && total
-              ? Math.round((received / total) * 100)
-              : null,
-        });
-      });
-      const info = await installTinytex();
+      const info = await withEventListener(
+        "tinytex-install-progress",
+        ({ phase, received, total }: { phase: InstallPhase; received: number; total: number | null }) => {
+          set({
+            installPhase: phase,
+            progress:
+              phase === "download" && total
+                ? Math.round((received / total) * 100)
+                : null,
+          });
+        },
+        installTinytex,
+      );
       set({ info, partialDownloadBytes: 0 });
       toast.successUnique(TINYTEX_INSTALL_TOAST_KEY, i18n.t(($) => $.core.tinytex.installed));
       void get().refreshPackages();
@@ -232,7 +229,6 @@ export const useEngineStore = create<EngineStore>((set, get) => ({
         },
       );
     } finally {
-      unlisten?.();
       set({ installing: false, installPhase: null, progress: null });
     }
   },

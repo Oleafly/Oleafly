@@ -21,6 +21,7 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   skillsUninstall: mocks.skillsUninstall,
 }));
 
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { formatDateTime } from "@/lib/intl";
 import { createAppQueryClient } from "@/lib/query";
@@ -137,7 +138,7 @@ describe("SkillCatalogList", () => {
     expect(screen.getByText(catalogCopy.title)).toBeInTheDocument();
     expect(screen.getByText(catalogCopy.description)).toBeInTheDocument();
     expect(
-      screen.getByText(new RegExp(skills.size.kilobytes.replace("{{value}}", "2.4"))),
+      screen.getByText(new RegExp(enCommon.byteSize.kilobytes.replace("{{value}}", "2.34"))),
     ).toBeInTheDocument();
     expect(
       screen.getByText(catalogCopy.source.remote.replace("{{when}}", WHEN_TEXT)),

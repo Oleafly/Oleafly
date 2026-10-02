@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Trash2 } from "lucide-react";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import {
   sectionDiffersFromDefaults,
@@ -12,6 +12,7 @@ import { hasPandoc, texDistributions, type TexDistribution } from "@/lib/tauri";
 import { useDisplayPath } from "@/lib/display-path";
 import { SettingsPath } from "@/components/settings/SettingsPath";
 import { ensurePandoc } from "@/features/pandoc";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { isTauri } from "@tauri-apps/api/core";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -20,6 +21,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n } from "@/i18n";
 import { formatList, formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 // Kept in step with scripts/fetch-typst.sh, which pins the bundled sidecar.
 const BUNDLED_TYPST_VERSION = "0.15.0";
@@ -66,9 +69,9 @@ function MarkdownEngineTab() {
   return (
     <>
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <SectionHeading>
           {t(($) => $.settings.engine.markdown.heading)}
-        </h3>
+        </SectionHeading>
         <Tooltip
           wide
           side="right"
@@ -181,9 +184,9 @@ export function EngineSection() {
 
       <TabsContent value="typst" className="flex flex-col gap-5">
           <div className="flex items-center gap-1.5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <SectionHeading>
               {t(($) => $.settings.engine.typst.heading)}
-            </h3>
+            </SectionHeading>
             <Tooltip
               wide
               side="right"
@@ -210,9 +213,9 @@ export function EngineSection() {
 
       <TabsContent value="latex" className="flex flex-col gap-5">
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <SectionHeading>
           {t(($) => $.settings.engine.defaultEngine.heading)}
-        </h3>
+        </SectionHeading>
         <Tooltip
           wide
           side="right"
@@ -241,9 +244,9 @@ export function EngineSection() {
                 <span className="text-sm">{t(($) => $.settings.engine.choices[choiceId].name)}</span>
                 {selected && <Check className="size-3.5 text-primary" />}
                 {missing && (
-                  <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-600 dark:text-amber-400">
+                  <Badge variant="warning" size="sm" className="ml-auto gap-1">
                     <AlertTriangle className="size-2.5" /> {t(($) => $.settings.engine.latexmkMissing)}
-                  </span>
+                  </Badge>
                 )}
               </div>
               <p className="mt-1 text-[11px] text-muted-foreground">
@@ -258,9 +261,9 @@ export function EngineSection() {
       </div>
 
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <SectionHeading>
           {t(($) => $.settings.engine.distributions.heading)}
-        </h3>
+        </SectionHeading>
         <Tooltip
           wide
           side="right"
@@ -285,14 +288,14 @@ export function EngineSection() {
                 <Info className="size-3.5 shrink-0 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
               </Tooltip>
               {distro.latexmk && (
-                <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                <Badge variant="success" size="sm">
                   {"latexmk"}
-                </span>
+                </Badge>
               )}
               {distro.tlmgr && (
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <Badge variant="muted" size="sm">
                   {"tlmgr"}
-                </span>
+                </Badge>
               )}
               {distro.kind === "oleafly-tinytex" && (
                 <button
@@ -323,7 +326,7 @@ export function EngineSection() {
                 disabled={installing}
                 className="inline-flex items-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
               >
-                {installing ? <Loader2 className="size-3.5 animate-spin" /> : <Download className="size-3.5" />}
+                {installing ? <Spinner size="sm" /> : <Download className="size-3.5" />}
                 {tinytexActionLabel()}
               </button>
             </div>
@@ -332,9 +335,9 @@ export function EngineSection() {
       </div>
 
       <div className="flex items-center gap-1.5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <SectionHeading>
           {t(($) => $.settings.engine.tagging.heading)}
-        </h3>
+        </SectionHeading>
         <Tooltip
           wide
           side="right"

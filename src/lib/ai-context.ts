@@ -6,16 +6,12 @@ import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
 import { useIndexStore } from "@/store/project-index";
 import { useAgentMemoryStore } from "@/store/agent-memory";
+import { basename } from "@/lib/path-utils";
 import { getCurrentLine } from "@/components/editor/cm/controller";
 
 const SNIPPET_CHARS = 2500;
 const MAX_SECTIONS = 40;
 const MAX_ERRORS = 12;
-
-function basename(path: string): string {
-  const i = path.lastIndexOf("/");
-  return i >= 0 ? path.slice(i + 1) : path;
-}
 
 function clip(s: string, n: number): string {
   if (s.length <= n) return s;

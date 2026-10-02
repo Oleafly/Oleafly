@@ -485,11 +485,6 @@
         },
         "title": "与此计算机上的其他代理共享技能"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "已添加",
         "bundled": "内置",

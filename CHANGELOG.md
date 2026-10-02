@@ -68,6 +68,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   title size. A title that doesn't fit ends in an ellipsis, and the icon
   keeps its size.
 - Toasts are wider, so a message has room next to the close button.
+- Dialogs share one look: the same backdrop, panel and corners. In light
+  mode a few dialogs that used a grey panel are now white, and every dialog
+  covers the floating assistant and quick-action buttons.
+- Status pills, spinners, settings rows, empty states and section headings
+  come from one set of shared components, so they look the same on every
+  screen. Spinners stop when the system asks for reduced motion.
+- File sizes use one format everywhere, with the unit translated in every
+  language, and times such as "5 minutes ago" are counted the same way in
+  every panel.
+- The figure picker and `\includegraphics` completion no longer offer GIF,
+  WebP or BMP images, which LaTeX can't include.
 - The agent list in New research task shows each CLI agent's own logo
   instead of a terminal icon.
 - On macOS, the app menu has Hide, Hide Others and Show All, and a new Window
@@ -164,6 +175,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   browser, Open Folder or Quit shortcut ran it instead of recording it.
 - On Windows, Ctrl+Shift+B in the visual editor opened the browser instead of
   making a blockquote.
+- On Windows, file names in confirmations and dialogs showed the whole path.
+- Searching the project could show results for an older query, or keep
+  showing results after the search box was cleared.
+- Font and template downloads could show "undefined" as their progress label
+  while a skill was downloading.
 - The Tasks and Linked folders tabs in Research workspace ran past the panel
   in a narrow sidebar. They now share the width and shorten a long label with
   an ellipsis, like the References tabs.

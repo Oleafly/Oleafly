@@ -1,6 +1,9 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { scanFences } from "@/lib/code-fences";
+import { isSeparator } from "@/lib/path-utils";
+import { escapeRegExp } from "@/lib/regexp";
+import { createEmitter } from "@/lib/emitter";
 import { displayHomes } from "@/lib/tauri";
 
 /**
@@ -16,10 +19,6 @@ import { displayHomes } from "@/lib/tauri";
  * `homeRelativePath` mirrors `project_availability::abbreviated_display_path`
  * in src-tauri, which the backend uses for linked folders and the CLI row.
  */
-
-function isSeparator(char: string | undefined): boolean {
-  return char === "/" || char === "\\";
-}
 
 const VERBATIM_UNC = "\\\\?\\UNC\\";
 const VERBATIM = "\\\\?\\";
@@ -75,7 +74,7 @@ const NAME_CHAR = String.raw`\p{L}\p{N}_\-`;
 // `{path:?}` writes `C:\\Users\\…`.
 function escapeForPattern(char: string): string {
   if (isSeparator(char)) return String.raw`[\\/]+`;
-  return char.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+  return escapeRegExp(char);
 }
 
 const textPatterns = new Map<string, RegExp>();
@@ -125,11 +124,7 @@ export function outsideCodeFences(markdown: string, format: (prose: string) => s
 let homes: readonly string[] = [];
 let loaded = false;
 let loading: Promise<void> | null = null;
-const listeners = new Set<() => void>();
-
-function notify(): void {
-  for (const listener of listeners) listener();
-}
+const homesChanged = createEmitter();
 
 /**
  * Records the spellings of the home folder the backend builds paths from. The
@@ -143,7 +138,7 @@ export function setDisplayHomes(next: readonly string[]): void {
   }
   homes = [...unique].sort((a, b) => b.length - a.length);
   loaded = true;
-  notify();
+  homesChanged.emit();
 }
 
 /** Forgets the loaded home folders (tests start from a clean slate). */
@@ -151,7 +146,7 @@ export function resetDisplayHomes(): void {
   homes = [];
   loaded = false;
   loading = null;
-  notify();
+  homesChanged.emit();
 }
 
 function insideDesktopApp(): boolean {
@@ -269,19 +264,12 @@ export function pathParts(text: string): PathPart[] {
   return parts;
 }
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
-}
-
 function snapshot(): readonly string[] {
   return homes;
 }
 
 function useDisplayHomes(): readonly string[] {
-  const current = useSyncExternalStore(subscribe, snapshot, snapshot);
+  const current = useSyncExternalStore(homesChanged.subscribe, snapshot, snapshot);
   useEffect(() => {
     void loadDisplayHomes();
   }, []);

@@ -1,3 +1,4 @@
+import { dirname } from "@/lib/path-utils";
 import type { FileSymbols, Sym, SymKind } from "./types";
 import { parseTypstFile } from "./parse-typst";
 import { parseMarkdownFile } from "./parse-markdown";
@@ -60,11 +61,6 @@ function matchBrace(text: string, openIdx: number): number {
     }
   }
   return -1;
-}
-
-function dirname(p: string): string {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? p.slice(0, i) : "";
 }
 
 function lastSegmentHasExtension(

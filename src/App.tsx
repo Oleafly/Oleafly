@@ -88,8 +88,8 @@ import { useGithubStore } from "@/store/github";
 import { forwardFromCursor } from "@/features/synctex";
 import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
 import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useTauriEvent, useTauriSubscription } from "@/hooks/use-tauri-event";
 import { cn } from "@/lib/utils";
 import {
   PANEL_STYLE,
@@ -271,6 +271,53 @@ const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 // Deactivated for 0.3.7 — see the comment at its use in the on-open effect.
 const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
+// The document editors are contenteditable surfaces (.cm-content,
+// .ProseMirror), so classify them BEFORE the plain-field check; a plain
+// field also includes the inputs CodeMirror mounts inside its own panels
+// (find/replace), which must undo their own text, not the document. Plain
+// fields get an explicit execCommand undo so the behavior is identical on
+// every platform's webview.
+function sourceEditorOwns(active: HTMLElement | null): boolean {
+  const source = getEditorView();
+  return !!active && !!source && source.contentDOM.contains(active);
+}
+
+function secondaryCodeEditorOwns(active: HTMLElement | null): boolean {
+  return !!active?.closest(".cm-content") && !sourceEditorOwns(active);
+}
+
+function runMenuHistory(redo: boolean): void {
+  if (!useFilesStore.getState().projectId) return;
+  const active = document.activeElement as HTMLElement | null;
+  if (inPlainField(active)) {
+    document.execCommand(redo ? "redo" : "undo");
+    return;
+  }
+  // A secondary CodeMirror surface owns its own history; never redirect
+  // its menu click into the paper's source buffer.
+  if (secondaryCodeEditorOwns(active)) {
+    const host = active?.closest(".cm-editor") ?? active?.closest(".cm-content");
+    const view = host ? EditorView.findFromDOM(host as HTMLElement) : null;
+    if (!view) return;
+    if (redo) cmRedo(view);
+    else cmUndo(view);
+    return;
+  }
+  // Native menu events have no key event for Vim to intercept. Use its
+  // history adapter directly so menu Undo/Redo preserves modal cursor and
+  // selection semantics just like the keyboard route.
+  if (!active?.closest(".ProseMirror") && useSettingsStore.getState().vim) {
+    const handled = redo ? editorVimRedo() : editorVimUndo();
+    if (handled) return;
+  }
+  if (redo) editorRedo();
+  else editorUndo();
+}
+
+function loadMcpBridge(): Promise<() => void> {
+  return import("@/lib/mcp-bridge").then((m) => m.startMcpBridge());
+}
+
 function AppContent() {
   const { t } = useTranslation(["workspace"]);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -451,50 +498,19 @@ function AppContent() {
     return () => window.clearTimeout(id);
   }, []);
 
+  const native = isTauri();
+
   // Manual mode so it reports "up to date" rather than closing silently.
-  useEffect(() => {
-    if (!isTauri()) return;
-    const unlisten = listen("menu://check-updates", () => {
-      void openUpdateWindow({ manual: true });
-    });
-    return () => void unlisten.then((off) => off());
-  }, []);
+  useTauriEvent("menu://check-updates", () => void openUpdateWindow({ manual: true }), native);
+  useTauriEvent("menu://about", () => setAboutOpen(true), native);
+  useTauriSubscription(startNativeDockShortcutBridge, "start the dock shortcut bridge");
 
   useEffect(() => {
-    if (!isTauri()) return;
-    const unlisten = listen("menu://about", () => setAboutOpen(true));
-    return () => void unlisten.then((off) => off());
-  }, []);
-
-  useEffect(() => {
-    let disposed = false;
-    let stop: (() => void) | undefined;
-    void startNativeDockShortcutBridge().then((cleanup) => {
-      if (disposed) cleanup();
-      else stop = cleanup;
-    });
-    return () => {
-      disposed = true;
-      stop?.();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isTauri()) return;
+    if (!native) return;
     // Done here, not at module load, so it never fires IPC at import time.
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
-    let cancelled = false;
-    let cleanup: (() => void) | undefined;
-    void import("@/lib/mcp-bridge").then(async (m) => {
-      const un = await m.startMcpBridge();
-      if (cancelled) un();
-      else cleanup = un;
-    });
-    return () => {
-      cancelled = true;
-      cleanup?.();
-    };
-  }, []);
+  }, [native]);
+  useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
 
   useEffect(() => {
     const root = document.documentElement;
@@ -559,46 +575,43 @@ function AppContent() {
     void import("@/lib/preview-window").then((m) => m.restorePreviewWindow(projectId, useFilesStore.getState().projectName ?? ""));
   }, [projectId]);
 
-  useEffect(() => {
-    const cleanup = startPreviewWorkspaceBridge();
-    return () => { void cleanup.then((off) => off()); };
-  }, []);
+  useTauriSubscription(startPreviewWorkspaceBridge, "start the preview workspace bridge");
 
   // Detached AI chat / preview windows can mutate disk; reload open buffers
   // and the compiled PDF when they report changes.
-  useEffect(() => {
-    if (!isTauri()) return;
-    const selfLabel = getCurrentWindow().label;
-    const unFiles = listen<ExternalFileChangePayload>("project:files-changed", (event) => {
-      if (event.payload) applyExternalFileChange(event.payload, selfLabel);
-    });
-    const unCompile = listen<unknown>(COMPILE_SUCCEEDED_EVENT, (event) => {
-      void applyRemoteCompileSuccess(event.payload, selfLabel);
-    });
-    const unCheckpointPublication = listen<unknown>(CHECKPOINT_PUBLICATION_EVENT, (event) => {
-      applyCheckpointPublicationEvent(event.payload);
-    });
-    const unProjectState = listen<ProjectStateChanged>("project-state-changed", (event) => {
+  useTauriEvent<ExternalFileChangePayload>(
+    "project:files-changed",
+    (payload) => {
+      if (payload) applyExternalFileChange(payload, getCurrentWindow().label);
+    },
+    native,
+  );
+  useTauriEvent<unknown>(
+    COMPILE_SUCCEEDED_EVENT,
+    (payload) => void applyRemoteCompileSuccess(payload, getCurrentWindow().label),
+    native,
+  );
+  useTauriEvent<unknown>(CHECKPOINT_PUBLICATION_EVENT, applyCheckpointPublicationEvent, native);
+  useTauriEvent<ProjectStateChanged>(
+    "project-state-changed",
+    (payload) => {
       const files = useFilesStore.getState();
-      if (!event.payload || event.payload.projectId !== files.projectId) return;
-      void files.applyProjectStateChanged(event.payload).then((applied) => {
+      if (!payload || payload.projectId !== files.projectId) return;
+      void files.applyProjectStateChanged(payload).then((applied) => {
         if (applied) usePreflightStore.getState().reset();
       });
-    });
-    const unSettings = listen<{ section?: string }>("settings:open", (e) => {
+    },
+    native,
+  );
+  useTauriEvent<{ section?: string }>(
+    "settings:open",
+    (payload) => {
       const s = useSettingsStore.getState();
-      if (e.payload?.section) s.setSettingsInitialSection(e.payload.section);
+      if (payload?.section) s.setSettingsInitialSection(payload.section);
       s.setSettingsOpen(true);
-    });
-    return () => {
-      void unFiles.then((f) => f());
-      void unCompile.then((f) => f());
-      void unCheckpointPublication.then((f) => f());
-      void unProjectState.then((f) => f());
-
-      void unSettings.then((f) => f());
-    };
-  }, []);
+    },
+    native,
+  );
 
   // Manual recompile: Cmd/Ctrl + Enter. Forward SyncTeX: Cmd/Ctrl + Shift + J.
   useEffect(() => {
@@ -650,18 +663,6 @@ function AppContent() {
   // anywhere else drive the document's history. The menu items still work as
   // clicks, routed through the same logic.
   useEffect(() => {
-    // The document editors are contenteditable surfaces (.cm-content,
-    // .ProseMirror), so classify them BEFORE the plain-field check; a plain
-    // field also includes the inputs CodeMirror mounts inside its own panels
-    // (find/replace), which must undo their own text, not the document. Plain
-    // fields get an explicit execCommand undo so the behavior is identical on
-    // every platform's webview.
-    const sourceEditorOwns = (active: HTMLElement | null): boolean => {
-      const source = getEditorView();
-      return !!active && !!source && source.contentDOM.contains(active);
-    };
-    const secondaryCodeEditorOwns = (active: HTMLElement | null): boolean =>
-      !!active?.closest(".cm-content") && !sourceEditorOwns(active);
     const onKey = (e: KeyboardEvent) => {
       const command = historyCommand(e);
       if (!command) return;
@@ -692,45 +693,10 @@ function AppContent() {
       else editorUndo();
     };
     window.addEventListener("keydown", onKey, true);
-
-    const menuRun = (redo: boolean) => {
-      if (!useFilesStore.getState().projectId) return;
-      const active = document.activeElement as HTMLElement | null;
-      if (inPlainField(active)) {
-        document.execCommand(redo ? "redo" : "undo");
-        return;
-      }
-      // A secondary CodeMirror surface owns its own history; never redirect
-      // its menu click into the paper's source buffer.
-      if (secondaryCodeEditorOwns(active)) {
-        const host = active?.closest(".cm-editor") ?? active?.closest(".cm-content");
-        const view = host ? EditorView.findFromDOM(host as HTMLElement) : null;
-        if (!view) return;
-        if (redo) cmRedo(view);
-        else cmUndo(view);
-        return;
-      }
-      // Native menu events have no key event for Vim to intercept. Use its
-      // history adapter directly so menu Undo/Redo preserves modal cursor and
-      // selection semantics just like the keyboard route above.
-      if (!active?.closest(".ProseMirror") && useSettingsStore.getState().vim) {
-        const handled = redo ? editorVimRedo() : editorVimUndo();
-        if (handled) return;
-      }
-      if (redo) editorRedo();
-      else editorUndo();
-    };
-    const unlisten: Promise<() => void>[] = isTauri()
-      ? [listen("menu://undo", () => menuRun(false)), listen("menu://redo", () => menuRun(true))]
-      : [];
-
-    return () => {
-      window.removeEventListener("keydown", onKey, true);
-      void Promise.all(unlisten).then((fns) => {
-        for (const fn of fns) fn();
-      });
-    };
+    return () => window.removeEventListener("keydown", onKey, true);
   }, []);
+  useTauriEvent("menu://undo", () => runMenuHistory(false), native);
+  useTauriEvent("menu://redo", () => runMenuHistory(true), native);
 
   useEffect(() => {
     if (!projectId || usesNativeDockMenu()) return;

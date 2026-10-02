@@ -491,11 +491,6 @@
         },
         "title": "Partager les compétences avec les autres agents de cet ordinateur"
       },
-      "size": {
-        "bytes": "{{value}} o",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Ajoutée",
         "bundled": "Intégrée",

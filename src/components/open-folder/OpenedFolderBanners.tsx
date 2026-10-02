@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Loader2, Lock, ShieldAlert, X } from "lucide-react";
+import { Lock, ShieldAlert, X } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { copyIntoLibrary, useCopyIntoLibraryStore } from "@/store/copy-into-library";
 import { useFilesStore } from "@/store/files";
 import { folderIsReadOnly, folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { folderReachable, useProjectAvailabilityStore } from "@/store/project-availability";
+import { Spinner } from "@/components/ui/spinner";
 
 const TRUST_BUTTON =
   "flex items-center gap-1 rounded border border-transparent px-2 py-0.5 font-medium transition-colors hover:bg-primary/10 focus-visible:border-primary/40 focus-visible:bg-primary/15 disabled:opacity-50";
@@ -42,7 +43,7 @@ function TrustBanner({ projectId }: Readonly<{ projectId: string }>) {
           onClick={() => void grant("folder")}
         >
           {trusting === "folder" ? (
-            <Loader2 aria-hidden className="size-3 animate-spin motion-reduce:animate-none" />
+            <Spinner size="xs" />
           ) : null}
           {t(($) => $.shell.openedFolder.trust.trustFolder)}
         </button>
@@ -54,7 +55,7 @@ function TrustBanner({ projectId }: Readonly<{ projectId: string }>) {
             onClick={() => void grant("parent")}
           >
             {trusting === "parent" ? (
-              <Loader2 aria-hidden className="size-3 animate-spin motion-reduce:animate-none" />
+              <Spinner size="xs" />
             ) : null}
             {t(($) => $.shell.openedFolder.trust.trustParent)}
           </button>
@@ -100,7 +101,7 @@ function ReadOnlyBanner({ projectId }: Readonly<{ projectId: string }>) {
         onClick={copy}
       >
         {copying ? (
-          <Loader2 aria-hidden className="size-3 animate-spin motion-reduce:animate-none" />
+          <Spinner size="xs" />
         ) : null}
         {t(($) => $.shell.openedFolder.readOnly.copy)}
       </button>

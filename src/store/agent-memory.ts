@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { readJson, writeJson } from "@/lib/local-storage";
 
 const MAX_NOTES = 40;
 const MAX_NOTE_CHARS = 400;
@@ -25,22 +26,13 @@ function key(pid: string) {
 }
 
 function read(pid: string): AgentMemoryNote[] {
-  try {
-    const raw = localStorage.getItem(key(pid));
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
+  return readJson<AgentMemoryNote[]>(key(pid), [], (arr) =>
+    Array.isArray(arr) ? arr : [],
+  );
 }
 
 function write(pid: string, notes: AgentMemoryNote[]) {
-  try {
-    localStorage.setItem(key(pid), JSON.stringify(notes.slice(0, MAX_NOTES)));
-  } catch {
-    /* quota */
-  }
+  writeJson(key(pid), notes.slice(0, MAX_NOTES));
 }
 
 let seq = 1;

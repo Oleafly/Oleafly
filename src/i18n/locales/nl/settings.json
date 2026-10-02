@@ -488,11 +488,6 @@
         },
         "title": "Vaardigheden delen met andere agents op deze computer"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Toegevoegd",
         "bundled": "Ingebouwd",

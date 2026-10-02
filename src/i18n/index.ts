@@ -10,6 +10,7 @@ import {
   type SupportedLocale,
 } from "@oleafly/i18n-contract";
 import { englishResources, loadLocaleResources, NAMESPACES, type Catalog } from "./resources";
+import { createEmitter } from "@/lib/emitter";
 
 export const LOCALE_STORAGE_KEY = "oleafly.locale";
 export const LOCALE_CHANGED_EVENT = "i18n:locale-changed";
@@ -20,17 +21,14 @@ export const i18n = createInstance();
 i18n.use(initReactI18next);
 
 let current: SupportedLocale = DEFAULT_LOCALE;
-const listeners = new Set<(locale: SupportedLocale) => void>();
+const localeApplied = createEmitter<[locale: SupportedLocale]>();
 const warned = new Set<string>();
 
 export function currentLocale(): SupportedLocale {
   return current;
 }
 
-export function onLocaleApplied(listener: (locale: SupportedLocale) => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
+export const onLocaleApplied = localeApplied.subscribe;
 
 export function readCachedPreference(): LocalePreference {
   try {
@@ -121,5 +119,5 @@ export async function applyLocale(locale: SupportedLocale): Promise<void> {
   await i18n.changeLanguage(locale);
   current = locale;
   setDocumentLocale(locale);
-  for (const listener of listeners) listener(locale);
+  localeApplied.emit(locale);
 }

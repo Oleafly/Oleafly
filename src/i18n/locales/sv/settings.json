@@ -488,11 +488,6 @@
         },
         "title": "Dela färdigheter med andra agenter på den här datorn"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Tillagd",
         "bundled": "Inbyggd",

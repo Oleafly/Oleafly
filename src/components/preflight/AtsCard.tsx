@@ -2,7 +2,7 @@ import { memo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Mail, MapPin, Minus, Phone, User, X } from "lucide-react";
 import type { AtsParse } from "@oleafly/preflight";
-import { cn } from "@/lib/utils";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import type { PreflightTranslate } from "./message";
 
 export const AtsCard = memo(function AtsCard({ parse }: { parse: AtsParse }) {
@@ -38,42 +38,41 @@ export const AtsCard = memo(function AtsCard({ parse }: { parse: AtsParse }) {
           const section = tp(`preflight:ats.sections.${s.id}`);
           let ariaLabel: string;
           let sectionTitle: string;
-          let tone: string;
+          let tone: BadgeVariant;
           let icon: ReactNode;
           if (s.present) {
             ariaLabel = tp("preflight:atsCard.detected", { section });
             sectionTitle = tp("preflight:atsCard.detectedTitle", { section });
-            tone = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
+            tone = "success";
             icon = <Check className="size-3" />;
           } else if (s.required) {
             ariaLabel = tp("preflight:atsCard.requiredMissing", { section });
             sectionTitle = tp("preflight:atsCard.requiredMissingTitle", { section });
-            tone = "bg-red-500/10 text-red-600 dark:text-red-400";
+            tone = "destructive";
             icon = <X className="size-3" />;
           } else {
             ariaLabel = tp("preflight:atsCard.optionalMissing", { section });
             sectionTitle = tp("preflight:atsCard.optionalMissingTitle", { section });
-            tone = "bg-muted text-muted-foreground";
+            tone = "muted";
             icon = <Minus className="size-3" />;
           }
           return (
-            <span
+            <Badge
               key={s.name}
+              variant={tone}
+              size="sm"
               role="img"
               data-testid={`ats-section-${s.name.toLocaleLowerCase("en-US")}`}
               data-present={s.present ? "true" : "false"}
               data-required={s.required ? "true" : "false"}
               aria-label={ariaLabel}
               title={sectionTitle}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]",
-                tone,
-              )}
+              className="gap-1"
             >
               {icon}
               {section}
               {!s.required && <span className="sr-only">{t(($) => $.preflight.atsCard.optionalSuffix)}</span>}
-            </span>
+            </Badge>
           );
         })}
       </div>

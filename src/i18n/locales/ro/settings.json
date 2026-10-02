@@ -491,11 +491,6 @@
         },
         "title": "Împarte abilitățile cu ceilalți agenți de pe acest computer"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Adăugată",
         "bundled": "Inclusă",

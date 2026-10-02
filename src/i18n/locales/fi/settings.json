@@ -488,11 +488,6 @@
         },
         "title": "Jaa taidot muiden tämän koneen agenttien kanssa"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Lisätty",
         "bundled": "Sisäänrakennettu",

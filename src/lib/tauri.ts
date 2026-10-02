@@ -1,6 +1,8 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
+import { createEmitter } from "@/lib/emitter";
 import type { OpenedFolder } from "@/lib/folder-detection";
 
 export interface McpRegistrySearchRequest {
@@ -44,6 +46,7 @@ import type {
   AgentRequestDecision,
   AgentServerInfo,
   AppConfig,
+  AssetProgress,
   BackendProtocolInfo,
   ChatSearchHit,
   CheckpointFileSummary,
@@ -316,22 +319,15 @@ export const readProjectBytes = (projectId: string, relPath: string) =>
 export const projectMutationGeneration = (projectId: string) =>
   invoke<number>("project_mutation_generation", { projectId });
 
-type ProjectWriteFailureListener = (projectId: string) => void;
+const projectWriteFailed = createEmitter<[projectId: string]>();
 
-const projectWriteFailureListeners = new Set<ProjectWriteFailureListener>();
-
-export function onProjectWriteFailure(listener: ProjectWriteFailureListener): () => void {
-  projectWriteFailureListeners.add(listener);
-  return () => {
-    projectWriteFailureListeners.delete(listener);
-  };
-}
+export const onProjectWriteFailure = projectWriteFailed.subscribe;
 
 async function projectWrite<T>(projectId: string, request: Promise<T>): Promise<T> {
   try {
     return await request;
   } catch (error) {
-    for (const listener of projectWriteFailureListeners) listener(projectId);
+    projectWriteFailed.emit(projectId);
     throw error;
   }
 }
@@ -848,6 +844,53 @@ export interface SkillAssetProgress {
   received: number;
   total: number;
   message?: string;
+}
+
+export const ASSET_PROGRESS_EVENT = "asset-progress";
+
+export interface AssetProgressHandlers {
+  readonly component?: (progress: AssetProgress) => void;
+  readonly skill?: (progress: SkillAssetProgress) => void;
+}
+
+export function isSkillAssetProgress(
+  payload: AssetProgress | SkillAssetProgress,
+): payload is SkillAssetProgress {
+  return typeof payload === "object" && payload !== null && "kind" in payload && payload.kind === "skill";
+}
+
+export function onAssetProgress(handlers: AssetProgressHandlers): Promise<UnlistenFn> {
+  return listen<AssetProgress | SkillAssetProgress>(ASSET_PROGRESS_EVENT, ({ payload }) => {
+    if (isSkillAssetProgress(payload)) handlers.skill?.(payload);
+    else handlers.component?.(payload);
+  });
+}
+
+async function withSubscription<R>(
+  subscribe: () => Promise<UnlistenFn>,
+  run: () => Promise<R>,
+): Promise<R> {
+  const unlisten = await subscribe();
+  try {
+    return await run();
+  } finally {
+    unlisten();
+  }
+}
+
+export function withEventListener<T, R>(
+  event: string,
+  handler: (payload: T) => void,
+  run: () => Promise<R>,
+): Promise<R> {
+  return withSubscription(() => listen<T>(event, ({ payload }) => handler(payload)), run);
+}
+
+export function withAssetProgress<R>(
+  handlers: AssetProgressHandlers,
+  run: () => Promise<R>,
+): Promise<R> {
+  return withSubscription(() => onAssetProgress(handlers), run);
 }
 
 export const skillsCatalog = (refresh: boolean) =>
@@ -1578,24 +1621,7 @@ export type FolderStatus = {
 export const projectFolderStatus = (projectId: string) =>
   invoke<FolderStatus | null>("project_folder_status", { projectId });
 
-export function base64ToUint8Array(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.codePointAt(i) ?? 0;
-  return bytes;
-}
-
-export function uint8ToBase64(bytes: Uint8Array): string {
-  // Build the binary string in chunks: a per-byte string concat freezes the UI
-  // on multi-MB buffers (large PDFs). fromCharCode.apply over 32KB subarrays is
-  // well under the argument-count limit and avoids the O(n^2) concat.
-  const CHUNK = 0x8000;
-  let s = "";
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    s += String.fromCodePoint.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
-  }
-  return btoa(s);
-}
+export { base64ToBytes as base64ToUint8Array, bytesToBase64 as uint8ToBase64 } from "@/lib/base64";
 
 
 

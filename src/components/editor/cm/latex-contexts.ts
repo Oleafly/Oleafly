@@ -1,4 +1,5 @@
 import type { PackageCatalog } from "@oleafly/latex-intelligence";
+import { isLatexGraphicsPath } from "@/lib/image-mime";
 
 // Pure completion-context recognizers over the text before (and, for
 // package options, after) the cursor. Kept free of CodeMirror imports so
@@ -123,7 +124,6 @@ export function recognizeFileTarget(
     : null;
 }
 
-const IMAGE_TARGET_RE = /\.(?:png|jpe?g|pdf|svg|eps|gif|webp)$/iu;
 const BIB_TARGET_RE = /\.bib$/iu;
 const SOURCE_TARGET_RE = /\.(?:tex|latex|ltx)$/iu;
 
@@ -133,7 +133,7 @@ export function fileTargetAccepts(
   path: string,
 ): boolean {
   if (command === "includegraphics" || command === "includesvg") {
-    return IMAGE_TARGET_RE.test(path);
+    return isLatexGraphicsPath(path);
   }
   if (command === "includepdf") return /\.pdf$/iu.test(path);
   if (

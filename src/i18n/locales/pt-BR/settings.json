@@ -491,11 +491,6 @@
         },
         "title": "Compartilhar habilidades com outros agentes deste computador"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Adicionada",
         "bundled": "Embutida",

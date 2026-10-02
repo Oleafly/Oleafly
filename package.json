@@ -78,6 +78,7 @@
     "@oleafly/i18n-contract": "workspace:*",
     "@oleafly/latex": "workspace:*",
     "@oleafly/latex-intelligence": "workspace:*",
+    "@oleafly/pdf-to-latex": "workspace:*",
     "@oleafly/preflight": "workspace:*",
     "@oleafly/preview": "workspace:*",
     "@oleafly/registry": "workspace:*",

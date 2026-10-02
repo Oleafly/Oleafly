@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { useDismiss } from "@/components/ui/use-dismiss";
+import { useInitialFocus } from "@/components/ui/use-initial-focus";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import {
   NATIVE_MENU_SHORTCUTS,
   nativeAccelerator,
@@ -140,25 +143,6 @@ function appShortcutKey(binding: ShortcutBinding): string {
   return parts.join("-");
 }
 
-function useDismissOnPointerDown(
-  active: boolean,
-  ref: React.RefObject<HTMLButtonElement | null>,
-  dismiss: () => void,
-) {
-  const dismissRef = useRef(dismiss);
-  dismissRef.current = dismiss;
-  useEffect(() => {
-    if (!active) return;
-    ref.current?.focus({ preventScroll: true });
-    const onPointerDown = (event: PointerEvent) => {
-      if (ref.current?.contains(event.target as Node)) return;
-      dismissRef.current();
-    };
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
-  }, [active, ref]);
-}
-
 function EditorKeyRows() {
   const { t } = useTranslation(["common", "settings"]);
   const keys = useEditorKeymapStore((state) => state.keys);
@@ -168,9 +152,9 @@ function EditorKeyRows() {
   const [editing, setEditing] = useState<EditorKeyId | null>(null);
   useNativeShortcutsPaused(editing !== null);
   const [error, setError] = useState("");
-  const captureRef = useRef<HTMLButtonElement>(null);
+  const captureRef = useInitialFocus<HTMLButtonElement>(editing !== null);
 
-  useDismissOnPointerDown(editing !== null, captureRef, () => {
+  useDismiss(editing !== null, [captureRef], () => {
     setEditing(null);
     setError("");
   });
@@ -242,70 +226,72 @@ function EditorKeyRows() {
         const current = keys[definition.id];
         const tokens = editorKeyTokens(current);
         return (
-          <div
+          <SettingsRow
             key={definition.id}
-            data-testid={`editor-key-row-${definition.id}`}
-            className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium">{label}</p>
-              {active && error && <p className="mt-1 text-xs text-destructive">{error}</p>}
-              {active && !error && (
-                <p className="mt-1 text-xs text-primary">
-                  {`${t(($) => $.settings.shortcuts.application.prompt)} ${t(
-                    ($) => $.settings.shortcuts.editorKeys.clearHint,
-                  )}`}
-                </p>
-              )}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                ref={active ? captureRef : undefined}
-                onKeyDown={active ? capture : undefined}
-                aria-label={
-                  active
-                    ? t(($) => $.settings.shortcuts.application.recordAriaLabel, {
-                        action: label,
-                      })
-                    : t(($) => $.settings.shortcuts.application.editAriaLabel, {
-                        action: label,
-                        shortcut:
-                          tokens.length > 0
-                            ? tokens.join(" ")
-                            : t(($) => $.settings.shortcuts.editorKeys.unbound),
-                      })
-                }
-                onClick={() => {
-                  setEditing(definition.id);
-                  setError("");
-                }}
-                className="rounded-md focus-visible:bg-accent/60"
-              >
-                {active && (
-                  <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">
-                    {t(($) => $.settings.shortcuts.application.recording)}
-                  </Kbd>
+            testId={`editor-key-row-${definition.id}`}
+            label={label}
+            details={
+              <>
+                {active && error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+                {active && !error && (
+                  <p className="mt-1 text-xs text-primary">
+                    {`${t(($) => $.settings.shortcuts.application.prompt)} ${t(
+                      ($) => $.settings.shortcuts.editorKeys.clearHint,
+                    )}`}
+                  </p>
                 )}
-                {!active && tokens.length > 0 && <KeyTokens tokens={tokens} />}
-                {!active && tokens.length === 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    {t(($) => $.settings.shortcuts.editorKeys.unbound)}
-                  </span>
-                )}
-              </button>
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
-                  action: label,
-                })}
-                onClick={() => resetKey(definition.id)}
-              >
-                <RotateCcw data-icon="inline-start" />
-              </Button>
-            </div>
-          </div>
+              </>
+            }
+            control={
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  ref={active ? captureRef : undefined}
+                  onKeyDown={active ? capture : undefined}
+                  aria-label={
+                    active
+                      ? t(($) => $.settings.shortcuts.application.recordAriaLabel, {
+                          action: label,
+                        })
+                      : t(($) => $.settings.shortcuts.application.editAriaLabel, {
+                          action: label,
+                          shortcut:
+                            tokens.length > 0
+                              ? tokens.join(" ")
+                              : t(($) => $.settings.shortcuts.editorKeys.unbound),
+                        })
+                  }
+                  onClick={() => {
+                    setEditing(definition.id);
+                    setError("");
+                  }}
+                  className="rounded-md focus-visible:bg-accent/60"
+                >
+                  {active && (
+                    <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">
+                      {t(($) => $.settings.shortcuts.application.recording)}
+                    </Kbd>
+                  )}
+                  {!active && tokens.length > 0 && <KeyTokens tokens={tokens} />}
+                  {!active && tokens.length === 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {t(($) => $.settings.shortcuts.editorKeys.unbound)}
+                    </span>
+                  )}
+                </button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
+                    action: label,
+                  })}
+                  onClick={() => resetKey(definition.id)}
+                >
+                  <RotateCcw data-icon="inline-start" />
+                </Button>
+              </div>
+            }
+          />
         );
       })}
     </section>
@@ -328,9 +314,9 @@ export function ShortcutsSection() {
   const [editing, setEditing] = useState<ShortcutId | null>(null);
   useNativeShortcutsPaused(editing !== null);
   const [error, setError] = useState("");
-  const captureRef = useRef<HTMLButtonElement>(null);
+  const captureRef = useInitialFocus<HTMLButtonElement>(editing !== null);
 
-  useDismissOnPointerDown(editing !== null, captureRef, () => {
+  useDismiss(editing !== null, [captureRef], () => {
     setEditing(null);
     setError("");
   });
@@ -417,63 +403,63 @@ export function ShortcutsSection() {
           const active = editing === definition.id;
           const label = actionLabel(definition.id);
           return (
-            <div
+            <SettingsRow
               key={definition.id}
-              className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium">{label}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t(($) => $.settings.shortcuts.actions[definition.id].description)}
-                </p>
-                {active && error && <p className="mt-1 text-xs text-destructive">{error}</p>}
-                {active && !error && (
-                  <p className="mt-1 text-xs text-primary">
-                    {t(($) => $.settings.shortcuts.application.prompt)}
-                  </p>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  ref={active ? captureRef : undefined}
-                  onKeyDown={active ? capture : undefined}
-                  aria-label={
-                    active
-                      ? t(($) => $.settings.shortcuts.application.recordAriaLabel, {
-                          action: label,
-                        })
-                      : t(($) => $.settings.shortcuts.application.editAriaLabel, {
-                          action: label,
-                          shortcut: shortcutLabel(bindings[definition.id]),
-                        })
-                  }
-                  onClick={() => {
-                    setEditing(definition.id);
-                    setError("");
-                  }}
-                  className="rounded-md focus-visible:bg-accent/60"
-                >
-                  {active ? (
-                    <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">
-                      {t(($) => $.settings.shortcuts.application.recording)}
-                    </Kbd>
-                  ) : (
-                    <ShortcutKeys binding={bindings[definition.id]} />
+              label={label}
+              description={t(($) => $.settings.shortcuts.actions[definition.id].description)}
+              details={
+                <>
+                  {active && error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+                  {active && !error && (
+                    <p className="mt-1 text-xs text-primary">
+                      {t(($) => $.settings.shortcuts.application.prompt)}
+                    </p>
                   )}
-                </button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
-                    action: label,
-                  })}
-                  onClick={() => resetBinding(definition.id)}
-                >
-                  <RotateCcw data-icon="inline-start" />
-                </Button>
-              </div>
-            </div>
+                </>
+              }
+              control={
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    ref={active ? captureRef : undefined}
+                    onKeyDown={active ? capture : undefined}
+                    aria-label={
+                      active
+                        ? t(($) => $.settings.shortcuts.application.recordAriaLabel, {
+                            action: label,
+                          })
+                        : t(($) => $.settings.shortcuts.application.editAriaLabel, {
+                            action: label,
+                            shortcut: shortcutLabel(bindings[definition.id]),
+                          })
+                    }
+                    onClick={() => {
+                      setEditing(definition.id);
+                      setError("");
+                    }}
+                    className="rounded-md focus-visible:bg-accent/60"
+                  >
+                    {active ? (
+                      <Kbd className="h-8 min-w-32 rounded-md border border-primary bg-primary/10 px-3 text-sm text-primary">
+                        {t(($) => $.settings.shortcuts.application.recording)}
+                      </Kbd>
+                    ) : (
+                      <ShortcutKeys binding={bindings[definition.id]} />
+                    )}
+                  </button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label={t(($) => $.settings.shortcuts.application.resetAriaLabel, {
+                      action: label,
+                    })}
+                    onClick={() => resetBinding(definition.id)}
+                  >
+                    <RotateCcw data-icon="inline-start" />
+                  </Button>
+                </div>
+              }
+            />
           );
         })}
       </section>
@@ -495,15 +481,11 @@ export function ShortcutsSection() {
           </div>
           {BUILT_IN_SHORTCUTS.filter((shortcut) => shortcut.category === category).map(
             (shortcut) => (
-              <div
+              <SettingsRow
                 key={shortcut.id}
-                className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-              >
-                <p className="text-sm font-medium">
-                  {t(($) => $.settings.shortcuts.builtIn.labels[shortcut.id])}
-                </p>
-                <BuiltInKeys keys={shortcut.keys} />
-              </div>
+                label={t(($) => $.settings.shortcuts.builtIn.labels[shortcut.id])}
+                control={<BuiltInKeys keys={shortcut.keys} />}
+              />
             ),
           )}
         </section>

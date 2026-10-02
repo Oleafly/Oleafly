@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -6,56 +6,14 @@ import "katex/dist/katex.min.css";
 import "katex/contrib/mhchem";
 import { AlertCircle, Check, Copy, Maximize, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCopyStatus, type CopyStatus } from "@/components/ui/use-copy-status";
 import { CodeField } from "@/components/tools/CodeField";
 import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 import { latexMathLanguage } from "@/components/editor/cm/latex";
 import { cn } from "@/lib/utils";
 import { logError } from "@/lib/log";
 import { i18n } from "@/i18n";
-
-export type CopyStatus = "idle" | "copied" | "failed";
-
-export const COPIED_FEEDBACK_MS = 1500;
-export const COPY_FAILED_FEEDBACK_MS = 4000;
-
-export function useCopyStatus(scope: string): {
-  status: CopyStatus;
-  copy: (text: string) => Promise<void>;
-} {
-  const [status, setStatus] = useState<CopyStatus>("idle");
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const mounted = useRef(true);
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, []);
-
-  const copy = useCallback(
-    async (text: string) => {
-      let next: CopyStatus = "copied";
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (error) {
-        next = "failed";
-        void logError(scope, error);
-      }
-      if (!mounted.current) return;
-      if (timer.current) clearTimeout(timer.current);
-      setStatus(next);
-      timer.current = setTimeout(
-        () => setStatus("idle"),
-        next === "copied" ? COPIED_FEEDBACK_MS : COPY_FAILED_FEEDBACK_MS,
-      );
-    },
-    [scope],
-  );
-
-  return { status, copy };
-}
+import { Badge } from "@/components/ui/badge";
 
 export function CopyLatexLabel({
   status,
@@ -188,7 +146,9 @@ export function EquationPreviewPanel({
 }: Readonly<EquationPreviewPanelProps>) {
   const { t } = useTranslation(["common", "researchTools"]);
   const previewCardRef = useRef<HTMLDivElement>(null);
-  const latexCopy = useCopyStatus("equation copy latex from preview");
+  const latexCopy = useCopyStatus({
+    onError: (error) => void logError("equation copy latex from preview", error),
+  });
 
   const toggleFullscreen = () => {
     const card = previewCardRef.current;
@@ -262,11 +222,11 @@ export function EquationPreviewPanel({
             <span className="text-xs font-semibold tracking-wide text-muted-foreground">
               {t(($) => $.researchTools.equation.previewHeading)}
             </span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <Badge variant="muted" size="sm">
               {display
                 ? t(($) => $.researchTools.equation.display)
                 : t(($) => $.researchTools.equation.inline)}
-            </span>
+            </Badge>
           </div>
           <div className="flex items-center gap-3">
             <button

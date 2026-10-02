@@ -15,7 +15,6 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { computeScores } from "./score";
 import type { StructNode } from "./structure";
 
-vi.mock("@oleafly/preview/pdf.worker?worker&url", () => ({ default: "pdf.worker.js" }));
 vi.mock("pdfjs-dist", async () => await import("pdfjs-dist/legacy/build/pdf.mjs"));
 
 type Extract = typeof import("./pdf-extract");

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Copy, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,6 +26,8 @@ import {
 } from "@/features/table-import";
 
 import { ToolPane, ToolPreviewSurface, ToolSplitView } from "@/components/tools/ToolWorkspace";
+import { basename } from "@/lib/path-utils";
+import { Spinner } from "@/components/ui/spinner";
 
 const PREVIEW_ROWS = 6;
 const PREVIEW_COLUMNS = 6;
@@ -109,7 +111,7 @@ export function TableImportDialog() {
       }
       if (request === selectionRequest.current && contextMatches(context)) {
         setRows(parsed);
-        setFileName(selection.split(/[/\\]/).pop() ?? selection);
+        setFileName(basename(selection));
         setTableContext(context);
       } else if (request === selectionRequest.current) {
         throw new Error(t(($) => $.editor.tableImport.activeChangedLoading));
@@ -190,7 +192,7 @@ export function TableImportDialog() {
             <div className="space-y-5 p-5">
               <div className="space-y-2">
                 <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void chooseFile()}>
-                  {busy ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : <FileSpreadsheet aria-hidden className="size-3.5" />}
+                  {busy ? <Spinner size="sm" /> : <FileSpreadsheet aria-hidden className="size-3.5" />}
                   {fileName ? t(($) => $.editor.tableImport.chooseAnother) : t(($) => $.editor.tableImport.chooseFile)}
                 </Button>
                 {fileName && <p className="break-all text-xs text-muted-foreground" data-testid="table-import-file">{t(($) => $.editor.tableImport.selectedSummary, { file: fileName, rows: rows.length, columns: columnCount })}</p>}

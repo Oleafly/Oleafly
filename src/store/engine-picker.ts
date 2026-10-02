@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ImportCompatFinding } from "@oleafly/latex";
+import { readString, writeString } from "@/lib/local-storage";
 
 export type EnginePickerSource = "compile-failure" | "manual";
 
@@ -32,26 +33,18 @@ export function engineHintDismissed(
   projectId: string,
   findings: ImportCompatFinding[],
 ): boolean {
-  try {
-    const stored = localStorage.getItem(dismissKey(projectId));
-    if (stored === null) return false;
-    const seen = new Set(stored.split(","));
-    return findings.every((finding) => seen.has(finding.id));
-  } catch {
-    return false;
-  }
+  const stored = readString(dismissKey(projectId));
+  if (stored === null) return false;
+  const seen = new Set(stored.split(","));
+  return findings.every((finding) => seen.has(finding.id));
 }
 
 export function dismissEngineHint(
   projectId: string,
   findings: ImportCompatFinding[],
 ): void {
-  try {
-    const previous = localStorage.getItem(dismissKey(projectId));
-    const merged = new Set(previous ? previous.split(",").filter(Boolean) : []);
-    for (const finding of findings) merged.add(finding.id);
-    localStorage.setItem(dismissKey(projectId), [...merged].sort((a, b) => Number(a > b) - Number(a < b)).join(","));
-  } catch {
-    /* best-effort memory */
-  }
+  const previous = readString(dismissKey(projectId));
+  const merged = new Set(previous ? previous.split(",").filter(Boolean) : []);
+  for (const finding of findings) merged.add(finding.id);
+  writeString(dismissKey(projectId), [...merged].sort((a, b) => Number(a > b) - Number(a < b)).join(","));
 }

@@ -7,7 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   CheckCircle2,
-  Loader2,
   MessageSquareText,
   ShieldAlert,
   Square,
@@ -25,6 +24,7 @@ import { splitAgentNotices } from "@/lib/chat-activity";
 import { MessageItem } from "@/components/ai/chat-parts";
 import type { RenderedMessage } from "@/components/ai/MessageList";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 const EMPTY_RECORDS: TurnRecord[] = [];
 
@@ -94,7 +94,7 @@ function avatarHue(id: string): number {
 }
 
 function StatusIcon({ status }: Readonly<{ status: AgentDisplayStatus }>) {
-  if (status === "active") return <Loader2 className="size-3 shrink-0 animate-spin" />;
+  if (status === "active") return <Spinner size="xs" />;
   if (status === "awaiting")
     return <ShieldAlert className="size-3 shrink-0 text-amber-500" />;
   if (status === "completed") return <CheckCircle2 className="size-3 shrink-0 text-emerald-500" />;

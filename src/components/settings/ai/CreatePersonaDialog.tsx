@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
@@ -16,6 +16,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PERSONA_COLORS, personaGradient, type PersonaColorKey } from "@/lib/persona-colors";
 import type { Persona } from "@/lib/tauri";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface CreatePersonaDialogProps {
   open: boolean;
@@ -163,7 +164,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: R
         </div>
         <DialogFooter>
           <Button data-testid="persona-submit" disabled={busy} onClick={() => void submit()}>
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            {busy ? <Spinner size="sm" /> : null}
             {editing
               ? t(($) => $.common.actions.save)
               : t(($) => $.settings.ai.personas.form.create)}

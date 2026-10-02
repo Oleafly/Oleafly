@@ -16,7 +16,8 @@
     "./CodeMirrorEditor": "./src/CodeMirrorEditor.tsx",
     "./visual": "./src/visual/index.ts",
     "./latex-tree": "./src/latex-tree.ts",
-    "./typst-syntax": "./src/typst-syntax.ts"
+    "./typst-syntax": "./src/typst-syntax.ts",
+    "./prose": "./src/prose.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "*",
@@ -33,6 +34,8 @@
     "@lezer/common": "*",
     "@lezer/highlight": "*",
     "@lezer/markdown": "*",
+    "@oleafly/i18n-contract": "workspace:*",
+    "@oleafly/latex": "workspace:*",
     "@replit/codemirror-emacs": "^6.1.0",
     "@replit/codemirror-vim": "^6.4.0",
     "codemirror-lang-latex": "*",

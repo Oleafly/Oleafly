@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
-  Loader2,
   Pencil,
   Plus,
   RefreshCw,
@@ -29,17 +28,12 @@ import { enabledModels, seedProviderModels } from "@/lib/ai-model-state";
 import { DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { ModelManager, ModelMetadataStatusLine } from "./ModelManager";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 export type ProviderStatus = "idle" | "validating" | "valid" | "error";
 
 type OllamaStatus = "idle" | "loading" | "ok" | "down";
-
-const STATUS_BADGE =
-  "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium leading-none";
-
-const RUNNING_BADGE = `${STATUS_BADGE} bg-emerald-500/15 text-emerald-600 dark:text-emerald-400`;
-
-const STOPPED_BADGE = `${STATUS_BADGE} bg-amber-500/15 text-amber-600 dark:text-amber-500`;
 
 function ProviderStatusBadge({
   isHost,
@@ -54,23 +48,23 @@ function ProviderStatusBadge({
   if (isHost) {
     if (ollamaStatus === "ok") {
       return (
-        <span className={RUNNING_BADGE}>
+        <Badge variant="success" size="sm" className="gap-1">
           <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.badge.running)}
-        </span>
+        </Badge>
       );
     }
     if (ollamaStatus === "down") {
       return (
-        <span className={STOPPED_BADGE}>{t(($) => $.settings.ai.providers.badge.notRunning)}</span>
+        <Badge variant="warning" size="sm">{t(($) => $.settings.ai.providers.badge.notRunning)}</Badge>
       );
     }
     return null;
   }
   if (!isConfigured) return null;
   return (
-    <span className={RUNNING_BADGE}>
+    <Badge variant="success" size="sm" className="gap-1">
       <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.badge.connected)}
-    </span>
+    </Badge>
   );
 }
 
@@ -231,7 +225,7 @@ function OllamaSetup({
           onClick={onDetect}
         >
           {status === "loading" ? (
-            <Loader2 className="size-3.5 animate-spin" />
+            <Spinner size="sm" />
           ) : (
             <RefreshCw className="size-3.5" />
           )}
@@ -261,7 +255,7 @@ function OllamaSetup({
                 disabled={starting}
                 onClick={onStart}
               >
-                {starting ? <Loader2 className="size-3.5 animate-spin" /> : null}
+                {starting ? <Spinner size="sm" /> : null}
                 {t(($) => $.settings.ai.providers.ollama.start)}
               </Button>
               <span>{t(($) => $.settings.ai.providers.ollama.installedHint)}</span>
@@ -457,7 +451,7 @@ export function ProvidersTab({
                   onClick={() => void validateAndSave(p.id)}
                 >
                   {saving === p.id ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Spinner size="sm" />
                   ) : null}
                   {t(($) => $.common.actions.save)}
                 </Button>

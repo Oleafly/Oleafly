@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { FolderOpen, Loader2, X } from "lucide-react";
+import { FolderOpen, X } from "lucide-react";
 import { addQuickAction, dismissQuickActionOffer } from "@/features/quick-action-offer";
 import { useQuickActionOfferStore } from "@/store/quick-action-offer";
+import { Spinner } from "@/components/ui/spinner";
 
 const SECONDARY =
   "inline-flex items-center rounded-md border border-input px-2.5 py-1.5 text-xs transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50";
@@ -47,7 +48,7 @@ export function QuickActionOffer() {
               disabled={adding}
               onClick={() => void addQuickAction()}
             >
-              {adding ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : null}
+              {adding ? <Spinner size="sm" /> : null}
               {t(($) => $.shell.quickActionOffer.add)}
             </button>
             <button

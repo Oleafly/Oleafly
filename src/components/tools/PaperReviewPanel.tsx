@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Flame,
   HandHeart,
-  Loader2,
   Square,
   Trash2,
 } from "lucide-react";
@@ -20,6 +19,7 @@ import { useSettingsStore } from "@/store/settings";
 import { getConfig } from "@/lib/tauri";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { Spinner } from "@/components/ui/spinner";
 
 function isLatexPath(path: string): boolean {
   return path.toLowerCase().endsWith(".tex");
@@ -271,7 +271,7 @@ export function PaperReviewPanel() {
               onClick={() => void runReview()}
             >
               {reviewing ? (
-                <Loader2 className="size-3.5 animate-spin" />
+                <Spinner size="sm" />
               ) : null}
               {reviewing
                 ? t(($) => $.researchTools.review.reviewing)

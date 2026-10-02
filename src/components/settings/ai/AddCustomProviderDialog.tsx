@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+
 import { i18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 
 export interface AddCustomProviderInput {
   id: string;
@@ -281,7 +282,7 @@ export function AddCustomProviderDialog({
             disabled={busy}
             onClick={() => void submit()}
           >
-            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            {busy ? <Spinner size="sm" /> : null}
             {editing
               ? t(($) => $.common.actions.save)
               : t(($) => $.settings.ai.customProvider.submitAdd)}

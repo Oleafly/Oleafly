@@ -493,7 +493,7 @@ describe("PublishToGitHubDialog", () => {
     );
 
     const overlay = screen.getByRole("dialog").parentElement as HTMLElement;
-    expect(overlay).toHaveClass("fixed", "inset-0", "z-[85]");
+    expect(overlay).toHaveClass("fixed", "inset-0", "z-[80]");
     expect(overlay.parentElement).toBe(document.body);
     expect(view.container.contains(overlay)).toBe(false);
   });

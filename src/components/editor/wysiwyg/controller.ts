@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import type { EditorView } from "@tiptap/pm/view";
+import { createEmitter } from "@/lib/emitter";
 
 export interface VisualFigureOptions {
   path: string;
@@ -28,7 +29,7 @@ let projectNavigation: {
   findReferences: () => boolean;
 } | null = null;
 let projectIntelligenceCurrent = false;
-const projectIntelligenceListeners = new Set<() => void>();
+const projectIntelligenceChanged = createEmitter();
 
 export interface WysiwygDocumentContext {
   theoremEnvironments: readonly string[];
@@ -121,16 +122,11 @@ export function findWysiwygReferences(): boolean {
 export function setWysiwygProjectIntelligenceCurrent(current: boolean) {
   if (projectIntelligenceCurrent === current) return;
   projectIntelligenceCurrent = current;
-  for (const listener of projectIntelligenceListeners) listener();
+  projectIntelligenceChanged.emit();
 }
 
 export function getWysiwygProjectIntelligenceCurrent(): boolean {
   return projectIntelligenceCurrent;
 }
 
-export function subscribeWysiwygProjectIntelligence(
-  listener: () => void,
-): () => void {
-  projectIntelligenceListeners.add(listener);
-  return () => projectIntelligenceListeners.delete(listener);
-}
+export const subscribeWysiwygProjectIntelligence = projectIntelligenceChanged.subscribe;

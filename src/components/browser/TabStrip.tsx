@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { Globe, Loader2, Plus, X } from "lucide-react";
+import { Globe, Plus, X } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn, isMac } from "@/lib/utils";
 import { tabText } from "./address";
 import type { BrowserTab } from "./browser-state";
+import { Spinner } from "@/components/ui/spinner";
 
 interface TabStripProps {
   tabs: BrowserTab[];
@@ -56,7 +57,7 @@ export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: Readon
                 title={text}
               >
                 {tab.loading ? (
-                  <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                  <Spinner size="sm" />
                 ) : (
                   <Globe className="size-3.5 shrink-0" aria-hidden />
                 )}

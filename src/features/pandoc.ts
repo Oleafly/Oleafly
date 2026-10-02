@@ -1,6 +1,5 @@
-import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-shell";
-import { hasPandoc, downloadPandoc } from "@/lib/tauri";
+import { hasPandoc, downloadPandoc, withEventListener } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { i18n } from "@/i18n";
@@ -74,13 +73,15 @@ async function pandocInstalled(): Promise<boolean> {
 async function download(state: PandocAttempt): Promise<boolean> {
   state.downloading = true;
   if (state.notify) showProgress(state);
-  let unlisten: (() => void) | null = null;
   try {
-    unlisten = await listen<PandocDownloadProgress>("pandoc-download-progress", (event) => {
-      state.label = progressLabel(event.payload);
-      if (state.toastId !== null) toast.update(state.toastId, state.label);
-    });
-    await downloadPandoc();
+    await withEventListener(
+      "pandoc-download-progress",
+      (progress: PandocDownloadProgress) => {
+        state.label = progressLabel(progress);
+        if (state.toastId !== null) toast.update(state.toastId, state.label);
+      },
+      downloadPandoc,
+    );
     resetBackoff();
     if (state.toastId !== null) toast.dismiss(state.toastId);
     return true;
@@ -89,8 +90,6 @@ async function download(state: PandocAttempt): Promise<boolean> {
     recordFailure();
     if (state.notify) showFailure();
     return false;
-  } finally {
-    unlisten?.();
   }
 }
 

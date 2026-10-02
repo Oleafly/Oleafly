@@ -7,7 +7,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { PDFDocument, PDFName, StandardFonts } from "pdf-lib";
 
-vi.mock("@oleafly/preview/pdf.worker?worker&url", () => ({ default: "pdf.worker.js" }));
 vi.mock("pdfjs-dist", async () => await import("pdfjs-dist/legacy/build/pdf.mjs"));
 
 const fixtures = path.join(path.dirname(fileURLToPath(import.meta.url)), "__fixtures__");

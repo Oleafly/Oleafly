@@ -75,6 +75,7 @@ import {
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
 import { diskHash } from "@/lib/disk-hash";
+import { createEmitter } from "@/lib/emitter";
 
 export { SaveFlushError, type SaveFailure };
 
@@ -1061,20 +1062,9 @@ function rememberCompatibilityFindings(
 type FilesSet = StoreApi<FilesStore>["setState"];
 type FilesGet = StoreApi<FilesStore>["getState"];
 
-type SaveBlockedListener = (blocked: SaveBlockedState, left: boolean) => void;
+const saveBlockedSettled = createEmitter<[blocked: SaveBlockedState, left: boolean]>();
 
-const saveBlockedListeners = new Set<SaveBlockedListener>();
-
-export function onSaveBlockedSettled(listener: SaveBlockedListener): () => void {
-  saveBlockedListeners.add(listener);
-  return () => {
-    saveBlockedListeners.delete(listener);
-  };
-}
-
-function settleSaveBlocked(blocked: SaveBlockedState, left: boolean): void {
-  for (const listener of saveBlockedListeners) listener(blocked, left);
-}
+export const onSaveBlockedSettled = saveBlockedSettled.subscribe;
 
 function reportSaveBlocked(
   error: unknown,
@@ -1631,7 +1621,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   dismissSaveBlocked: () => {
     const blocked = get().saveBlocked;
     set({ saveBlocked: null });
-    if (blocked) settleSaveBlocked(blocked, false);
+    if (blocked) saveBlockedSettled.emit(blocked, false);
   },
 
   discardUnsavedAndLeave: async () => {
@@ -1653,7 +1643,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         await get().closeProject();
       }
     } finally {
-      settleSaveBlocked(blocked, true);
+      saveBlockedSettled.emit(blocked, true);
     }
   },
 

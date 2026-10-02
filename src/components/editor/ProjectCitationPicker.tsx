@@ -1,7 +1,6 @@
 import {
   AtSign,
   BookOpenText,
-  Loader2,
   Plus,
   Search,
   TriangleAlert,
@@ -28,6 +27,7 @@ import {
   subscribeWysiwygProjectIntelligence,
 } from "@/components/editor/wysiwyg/controller";
 import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reason";
+import { LoadingState } from "@/components/ui/empty";
 
 function citationSource(key: string, format: string): string {
   return format === "markdown" ? `[@${key}]` : String.raw`\cite{${key}}`;
@@ -191,10 +191,11 @@ export function ProjectCitationPicker({
 
       <div className="max-h-72 overflow-y-auto p-1">
         {status === "pending" && (
-          <output className="flex items-center gap-2 px-2 py-4 text-xs text-muted-foreground">
-            <Loader2 className="size-3.5 animate-spin" />
-            {t(($) => $.editor.citations.updatingList)}
-          </output>
+          <LoadingState
+            size="compact"
+            className="px-2 py-4"
+            label={t(($) => $.editor.citations.updatingList)}
+          />
         )}
         {status === "error" && (
           <div

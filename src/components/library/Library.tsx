@@ -17,7 +17,6 @@ import {
   Info,
   LayoutGrid,
   List,
-  Loader2,
   Palette,
   Search,
   SearchX,
@@ -63,7 +62,7 @@ import { LeafLogo } from "@/components/layout/LeafLogo";
 import { markBootStage } from "@/lib/boot-telemetry";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 import {
   Book,
   BOOK_COLOR_OPTIONS,
@@ -132,6 +131,8 @@ import { ProjectImportMenu } from "@/components/library/ProjectImportMenu";
 import { LibraryStartChoices } from "@/components/library/LibraryStartChoices";
 import { OpenFolderButton } from "@/components/library/OpenFolderButton";
 import { OpenFolderNotice } from "@/components/library/OpenFolderNotice";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 const thumbCache = new Map<string, string | null>();
 const MAX_THUMBNAILS = 64;
@@ -662,8 +663,6 @@ export function Library() {
     }
     toast.success(t(($) => $.library.folder.remove.done, { name: target.name }));
   };
-  const { dialogRef: forkDialogRef, onBackdropMouseDown: onForkBackdropMouseDown } =
-    useModalAccessibility<HTMLDivElement>(!!forkTarget, closeFork);
 
   // Successful PNGs are cached; failures are NOT permanently cached so a
   // later compile can still produce a preview.
@@ -955,9 +954,9 @@ export function Library() {
         const renderProjectRowActions = () => (
           <span className="flex items-center justify-end gap-0.5">
             {recoveryPending ? (
-              <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+              <Badge variant="warning" size="sm">
                 {t(($) => $.library.projects.recoveryRequired)}
-              </span>
+              </Badge>
             ) : null}
             {!recoveryPending && forkSource ? (
               <Tooltip
@@ -1149,10 +1148,7 @@ export function Library() {
                 aria-live="polite"
                 className="flex h-full items-center justify-center gap-2 p-8 text-sm text-muted-foreground"
               >
-                <Loader2
-                  aria-hidden
-                  className="size-4 animate-spin motion-reduce:animate-none"
-                />
+                <Spinner />
                 {t(($) => $.library.projects.preview.loading)}
               </output>
             ))}
@@ -1453,7 +1449,7 @@ export function Library() {
               )}
             >
               {busy ? (
-                <Loader2 className="size-4 animate-spin" />
+                <Spinner />
               ) : (
                 <FolderInput className="size-4" />
               )}
@@ -1713,52 +1709,44 @@ export function Library() {
       {renderHistoryDialog()}
 
       {forkTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <button
-            type="button"
-            aria-label={t(($) => $.library.projects.forkDialog.close)}
-            className="absolute inset-0"
-            onMouseDown={onForkBackdropMouseDown}
-          />
-          <div
-            ref={forkDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="library-fork-title"
-            tabIndex={-1}
-            className="relative w-full max-w-md rounded-xl border bg-popover p-5 text-popover-foreground shadow-2xl"
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 id="library-fork-title" className="text-base font-semibold">
-                {t(($) => $.library.projects.forkDialog.title)}
-              </h2>
-              <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
-                <X className="size-4" />
-              </Button>
-            </div>
-            <p className="mb-3 text-xs text-muted-foreground">
-              <Trans
-                ns="library"
-                i18nKey={($) => $.library.projects.forkDialog.description}
-                values={{ name: forkTarget.name }}
-                components={{ name: <span className="font-medium text-foreground" /> }}
-              />
-            </p>
-            <div className="flex items-center gap-2">
-              <Input
-                data-modal-initial-focus
-                value={forkName}
-                onChange={(e) => setForkName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) void submitFork(); }}
-                placeholder={t(($) => $.library.projects.forkDialog.namePlaceholder)}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-              <Button onClick={() => void submitFork()} disabled={forkBusy}>
-                {t(($) => $.library.projects.forkDialog.confirm)}
-              </Button>
-            </div>
+        <ModalShell
+          open
+          onClose={closeFork}
+          closeLabel={t(($) => $.library.projects.forkDialog.close)}
+          width="md"
+          labelledBy="library-fork-title"
+          className="p-5"
+        >
+          <div className="mb-4 flex items-center justify-between">
+            <h2 id="library-fork-title" className="text-base font-semibold">
+              {t(($) => $.library.projects.forkDialog.title)}
+            </h2>
+            <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
+              <X className="size-4" />
+            </Button>
           </div>
-        </div>
+          <p className="mb-3 text-xs text-muted-foreground">
+            <Trans
+              ns="library"
+              i18nKey={($) => $.library.projects.forkDialog.description}
+              values={{ name: forkTarget.name }}
+              components={{ name: <span className="font-medium text-foreground" /> }}
+            />
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              data-modal-initial-focus
+              value={forkName}
+              onChange={(e) => setForkName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) void submitFork(); }}
+              placeholder={t(($) => $.library.projects.forkDialog.namePlaceholder)}
+              className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <Button onClick={() => void submitFork()} disabled={forkBusy}>
+              {t(($) => $.library.projects.forkDialog.confirm)}
+            </Button>
+          </div>
+        </ModalShell>
       )}
       <ConfirmationDialog
         open={deleteTarget !== null}

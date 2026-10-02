@@ -485,11 +485,6 @@
         },
         "title": "與這台電腦上的其他代理程式共用技能"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "已新增",
         "bundled": "內建",

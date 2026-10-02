@@ -339,8 +339,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 vi.mock("@tauri-apps/api/event", () => ({
   emit: vi.fn(async () => {}),
-  listen: vi.fn(async (event: string, handler: () => void) => {
-    appState.menuListeners.set(event, handler);
+  listen: vi.fn(async (event: string, handler: (message: { payload: unknown }) => void) => {
+    appState.menuListeners.set(event, () => handler({ payload: null }));
     return () => appState.menuListeners.delete(event);
   }),
 }));

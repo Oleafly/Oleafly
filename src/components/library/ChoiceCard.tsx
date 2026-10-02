@@ -1,5 +1,6 @@
 import { useId } from "react";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 /** The illustrations under public/project-kind/ are all 720x406. */
@@ -40,7 +41,6 @@ export function ChoiceCard({
   compact?: boolean;
 }>) {
   const descriptionId = useId();
-  const TrailingIcon = busy ? Loader2 : ArrowRight;
   return (
     <button
       type="button"
@@ -78,15 +78,14 @@ export function ChoiceCard({
         <span className="flex items-center gap-2">
           <span className="min-w-0 flex-1 text-sm font-semibold text-foreground">{title}</span>
           {/* The arrow answers the pointer only on an enabled card, like the lift above. */}
-          <TrailingIcon
-            aria-hidden="true"
-            className={cn(
-              "size-3.5 shrink-0",
-              busy
-                ? "animate-spin text-muted-foreground"
-                : "text-muted-foreground/50 transition-transform group-enabled:group-hover:translate-x-0.5 group-enabled:group-hover:text-foreground",
-            )}
-          />
+          {busy ? (
+            <Spinner size="sm" className="text-muted-foreground" />
+          ) : (
+            <ArrowRight
+              aria-hidden="true"
+              className="size-3.5 shrink-0 text-muted-foreground/50 transition-transform group-enabled:group-hover:translate-x-0.5 group-enabled:group-hover:text-foreground"
+            />
+          )}
         </span>
         <span id={descriptionId} className="text-xs leading-relaxed text-muted-foreground">
           {description}

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsSwitchIndicator } from "@/components/settings/SettingsToggleRow";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { logError } from "@/lib/log";
-import { cn } from "@/lib/utils";
 import {
   setSystemIntegration,
   systemIntegrationStatus,
@@ -13,6 +15,7 @@ import {
   type SystemIntegrationState,
   type SystemIntegrationStatus,
 } from "@/lib/tauri";
+import { Spinner } from "@/components/ui/spinner";
 
 type Change = "install" | "remove";
 
@@ -38,10 +41,10 @@ const STATE = {
   needs_attention: "needsAttention",
 } as const satisfies Record<SystemIntegrationState, string>;
 
-const STATE_TONE: Record<SystemIntegrationState, string> = {
-  installed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  not_installed: "bg-muted text-muted-foreground",
-  needs_attention: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+const STATE_TONE: Record<SystemIntegrationState, BadgeVariant> = {
+  installed: "success",
+  not_installed: "muted",
+  needs_attention: "warning",
 };
 
 const ACTION =
@@ -50,14 +53,9 @@ const ACTION =
 function StateBadge({ state }: Readonly<{ state: SystemIntegrationState }>) {
   const { t } = useTranslation(["settings"]);
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-        STATE_TONE[state],
-      )}
-    >
+    <Badge variant={STATE_TONE[state]} size="sm">
       {t(($) => $.settings.systemIntegration.state[STATE[state]])}
-    </span>
+    </Badge>
   );
 }
 
@@ -69,7 +67,7 @@ function ActionButton({
 }: Readonly<{ busy: boolean; disabled: boolean; label: string; onClick: () => void }>) {
   return (
     <button type="button" className={ACTION} disabled={disabled} onClick={onClick}>
-      {busy ? <Loader2 aria-hidden className="size-3.5 animate-spin" /> : null}
+      {busy ? <Spinner size="sm" /> : null}
       {label}
     </button>
   );
@@ -173,42 +171,36 @@ function IntegrationRow({
   const copy = COPY[item.id];
   const attention = item.attention;
   return (
-    <div
-      data-testid={`system-integration-${item.id}`}
+    <SettingsRow
+      testId={`system-integration-${item.id}`}
       aria-busy={busy !== null}
-      className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3"
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">
-            {t(($) => $.settings.systemIntegration[copy].label)}
-          </span>
-          <StateBadge state={item.state} />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {t(($) => $.settings.systemIntegration[copy].description)}
-        </p>
-        {item.packaged ? (
-          <p className="text-xs text-muted-foreground">
-            {t(($) => $.settings.systemIntegration.packaged)}
-          </p>
-        ) : null}
-        {showsQuickActionsHint(item) ? <QuickActionsMenuHint title={item.menu_title} /> : null}
-        {attention ? (
-          <p className="text-xs text-amber-700 dark:text-amber-300">
-            {t(($) => $.settings.systemIntegration.attention[ATTENTION[attention]])}
-          </p>
-        ) : null}
-        {failure ? (
-          <p role="alert" className="text-xs text-destructive">
-            {failure === "install"
-              ? t(($) => $.settings.systemIntegration.failed.install)
-              : t(($) => $.settings.systemIntegration.failed.remove)}
-          </p>
-        ) : null}
-      </div>
-      <RowControls item={item} busy={busy} onChange={onChange} />
-    </div>
+      label={t(($) => $.settings.systemIntegration[copy].label)}
+      adornment={<StateBadge state={item.state} />}
+      description={t(($) => $.settings.systemIntegration[copy].description)}
+      details={
+        <>
+          {item.packaged ? (
+            <p className="text-xs text-muted-foreground">
+              {t(($) => $.settings.systemIntegration.packaged)}
+            </p>
+          ) : null}
+          {showsQuickActionsHint(item) ? <QuickActionsMenuHint title={item.menu_title} /> : null}
+          {attention ? (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              {t(($) => $.settings.systemIntegration.attention[ATTENTION[attention]])}
+            </p>
+          ) : null}
+          {failure ? (
+            <p role="alert" className="text-xs text-destructive">
+              {failure === "install"
+                ? t(($) => $.settings.systemIntegration.failed.install)
+                : t(($) => $.settings.systemIntegration.failed.remove)}
+            </p>
+          ) : null}
+        </>
+      }
+      control={<RowControls item={item} busy={busy} onChange={onChange} />}
+    />
   );
 }
 
@@ -306,12 +298,9 @@ export function SystemIntegrationSection({
       className="space-y-2 pt-3"
     >
       <div>
-        <h3
-          id="settings-system-integration-title"
-          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-        >
+        <SectionHeading id="settings-system-integration-title">
           {t(($) => $.settings.systemIntegration.title)}
-        </h3>
+        </SectionHeading>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {t(($) => $.settings.systemIntegration.description)}
         </p>
@@ -321,7 +310,7 @@ export function SystemIntegrationSection({
           aria-live="polite"
           className="flex items-center gap-2 rounded-lg border bg-card p-3 text-xs text-muted-foreground"
         >
-          <Loader2 aria-hidden className="size-3.5 animate-spin" />
+          <Spinner size="sm" />
           {t(($) => $.settings.systemIntegration.checking)}
         </output>
       ) : null}

@@ -6,7 +6,6 @@ import {
   ChevronRight,
   ExternalLink,
   FileDiff,
-  Loader2,
   Paperclip,
   Trash2,
 } from "lucide-react";
@@ -43,6 +42,7 @@ import type { ResearchTaskDetailTab } from "@/store/research-tasks";
 import { relativeTime, statusLabel } from "./task-status";
 import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
 import { buildTaskTimeline, type TaskTimelineItem } from "./task-timeline";
+import { LoadingState } from "@/components/ui/empty";
 
 export interface TaskDetailDialogProps {
   open: boolean;
@@ -834,10 +834,11 @@ export function TaskDetailDialog({
                   </div>
                 )}
                 {eventsLoading ? (
-                  <output className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Loader2 className="size-3 animate-spin" />{" "}
-                    {t(($) => $.researchTools.tasks.detail.loadingActivity)}
-                  </output>
+                  <LoadingState
+                    size="compact"
+                    className="mt-3"
+                    label={t(($) => $.researchTools.tasks.detail.loadingActivity)}
+                  />
                 ) : null}
               </section>
             </TabsContent>

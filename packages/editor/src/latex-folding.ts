@@ -1,5 +1,6 @@
 import { codeFolding, foldService } from "@codemirror/language";
 import type { EditorState } from "@codemirror/state";
+import { escapeRegExp } from "./regexp";
 
 // Since LaTeX is a StreamLanguage (no syntax tree), we provide fold ranges
 // directly: `\begin{env}` ... `\end{env}` blocks (nesting-aware), and
@@ -19,10 +20,6 @@ const SECTION_RE = /^\s*\\(part|chapter|section|subsection|subsubsection|paragra
 // Bound the forward scan so folding stays cheap on very large documents.
 const WINDOW = 200_000;
 
-function escapeRe(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
-}
-
 function environmentFoldRange(
   state: EditorState,
   lineStart: number,
@@ -30,7 +27,7 @@ function environmentFoldRange(
   env: string,
 ): { from: number; to: number } | null {
   const rest = state.doc.sliceString(lineEnd, Math.min(state.doc.length, lineEnd + WINDOW));
-  const re = new RegExp(`\\\\(begin|end)\\{${escapeRe(env)}\\}`, "g");
+  const re = new RegExp(`\\\\(begin|end)\\{${escapeRegExp(env)}\\}`, "g");
   let depth = 1;
   let m: RegExpExecArray | null;
   while ((m = re.exec(rest))) {

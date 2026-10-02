@@ -38,10 +38,7 @@ vi.mock("@/lib/project-intelligence/current", () => intelligence);
 vi.mock("@/lib/project-intelligence/selectors", () => selectors);
 vi.mock("@/lib/aux-numbers", () => aux);
 vi.mock("@oleafly/editor/math-render", () => math);
-vi.mock("./hover-asset", () => ({
-  ...asset,
-  THUMBNAIL_TARGET_RE: /\.(png|jpe?g|gif|webp|bmp|svg|pdf)$/i,
-}));
+vi.mock("./hover-asset", () => asset);
 vi.mock("./hover-math", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./hover-math")>()),
   ...enclosing,

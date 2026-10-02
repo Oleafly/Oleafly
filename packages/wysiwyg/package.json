@@ -9,6 +9,8 @@
   "exports": { ".": "./src/index.ts" },
   "sideEffects": false,
   "dependencies": {
+    "@oleafly/i18n-contract": "workspace:*",
+    "@oleafly/latex": "workspace:*",
     "@tiptap/core": "*",
     "@tiptap/extension-image": "*",
     "@tiptap/extension-table": "*",

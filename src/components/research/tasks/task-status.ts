@@ -7,6 +7,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { i18n } from "@/i18n";
+import { formatRelativeTimeFrom } from "@/lib/intl";
 import type { ResearchTaskStatus } from "@/lib/research-tasks";
 
 export function statusLabel(status: ResearchTaskStatus): string {
@@ -62,11 +63,13 @@ export function statusDotClass(status: ResearchTaskStatus): string {
 }
 
 export function relativeTime(value: number): string {
-  const seconds = Math.max(0, Math.round((Date.now() - value) / 1000));
-  if (seconds < 60) return i18n.t(($) => $.researchTools.tasks.relative.justNow);
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return i18n.t(($) => $.researchTools.tasks.relative.minutes, { minutes });
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return i18n.t(($) => $.researchTools.tasks.relative.hours, { hours });
-  return i18n.t(($) => $.researchTools.tasks.relative.days, { days: Math.round(hours / 24) });
+  return formatRelativeTimeFrom(value, Date.now(), {
+    largestUnit: "day",
+    justNow: i18n.t(($) => $.researchTools.tasks.relative.justNow),
+    format: ({ unit, value: count }) => {
+      if (unit === "minute") return i18n.t(($) => $.researchTools.tasks.relative.minutes, { minutes: count });
+      if (unit === "hour") return i18n.t(($) => $.researchTools.tasks.relative.hours, { hours: count });
+      return i18n.t(($) => $.researchTools.tasks.relative.days, { days: count });
+    },
+  });
 }

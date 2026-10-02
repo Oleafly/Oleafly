@@ -22,6 +22,7 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { auxNumberFor } from "@/lib/aux-numbers";
+import { basename } from "@/lib/path-utils";
 import {
   atSuggestionCompletion,
   warmAtSuggestions,
@@ -198,10 +199,6 @@ function guardedApply(
     }
     view.dispatch(insertCompletionText(view.state, insert, from, targetTo));
   };
-}
-
-function basename(path: string): string {
-  return path.slice(path.lastIndexOf("/") + 1);
 }
 
 function definitionCompletionType(

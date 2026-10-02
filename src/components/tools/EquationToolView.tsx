@@ -9,7 +9,6 @@ import {
   FileCode2,
   FolderPlus,
   Image as ImageIcon,
-  Loader2,
   Sigma,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,11 +19,12 @@ import {
   EQUATION_EXAMPLES,
   EquationPreviewPanel,
   renderEquation,
-  useCopyStatus,
 } from "@/components/tools/EquationPreviewPanel";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
+import { downloadBlob, downloadBytes } from "@/lib/download-blob";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -43,15 +43,8 @@ import {
   svgDocumentToPngBytes,
 } from "@/features/equation-export";
 import { toolName } from "@/lib/tool-catalog";
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
-  }
-  return btoa(binary);
-}
+import { bytesToBase64 } from "@/lib/base64";
+import { Spinner } from "@/components/ui/spinner";
 
 function pngFileName(value: string): string | null {
   const name = value.trim().replace(/\.png$/i, "");
@@ -97,22 +90,14 @@ export function EquationToolView() {
   const refreshProjects = useFilesStore((state) => state.refreshProjects);
   const [assetName, setAssetName] = useState("equation.png");
   const [savingProject, setSavingProject] = useState(false);
-  const latexCopy = useCopyStatus("equation copy latex");
+  const latexCopy = useCopyStatus({
+    onError: (error) => void logError("equation copy latex", error),
+  });
 
   if (activePage !== "equation") return null;
 
   const rendered = renderEquation(input, display);
   const wrapped = display ? String.raw`\[ ${input} \]` : `$${input}$`;
-
-  const downloadBlob = (content: string | Blob, type: string, filename: string) => {
-    const blob = content instanceof Blob ? content : new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 0);
-  };
 
   // True vector export: MathJax renders the equation to an SVG document with
   // glyph paths, rather than rasterizing the KaTeX preview.
@@ -124,11 +109,7 @@ export function EquationToolView() {
         3,
         previewTheme === "dark" ? "#111111" : "#ffffff",
       );
-      downloadBlob(
-        new Blob([bytes.slice().buffer], { type: "image/png" }),
-        "image/png",
-        "equation.png",
-      );
+      downloadBytes(bytes, "image/png", "equation.png");
     } catch (e) {
       notifyError("equation export png", e, t(($) => $.researchTools.equation.exportImageFailed));
     }
@@ -137,7 +118,7 @@ export function EquationToolView() {
   const exportSvg = async () => {
     try {
       const svg = await equationToSvgDocument(input, display);
-      downloadBlob(svg, "image/svg+xml", "equation.svg");
+      downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "equation.svg");
     } catch (e) {
       notifyError("equation export svg", e, t(($) => $.researchTools.equation.exportSvgFailed));
     }
@@ -299,7 +280,7 @@ export function EquationToolView() {
             }}
             trigger={
               <>
-                {savingProject ? <Loader2 className="size-4 animate-spin" /> : <FolderPlus className="size-4" />}
+                {savingProject ? <Spinner /> : <FolderPlus className="size-4" />}
                 {t(($) => $.researchTools.equation.project)}
               </>
             }

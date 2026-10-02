@@ -8,6 +8,7 @@ import {
   Trash2,
   Wrench,
 } from "lucide-react";
+import { SettingsRow } from "@/components/settings/SettingsRow";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
@@ -69,27 +70,27 @@ function SettingAction({
   destructive?: boolean;
 }>) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border bg-card p-3">
-      <div className="flex min-w-0 items-start gap-3">
+    <SettingsRow
+      icon={
         <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon aria-hidden className="size-4" />
         </span>
-        <div className="min-w-0">
-          <p className="text-sm font-medium">{title}</p>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
-        </div>
-      </div>
-      <Button
-        type="button"
-        variant={destructive ? "destructive" : "secondary"}
-        size="sm"
-        className="shrink-0"
-        disabled={disabled}
-        onClick={action}
-      >
-        {buttonLabel ?? title}
-      </Button>
-    </div>
+      }
+      label={title}
+      description={description}
+      control={
+        <Button
+          type="button"
+          variant={destructive ? "destructive" : "secondary"}
+          size="sm"
+          className="shrink-0"
+          disabled={disabled}
+          onClick={action}
+        >
+          {buttonLabel ?? title}
+        </Button>
+      }
+    />
   );
 }
 

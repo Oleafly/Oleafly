@@ -76,7 +76,6 @@ const harness = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("./pdf.worker?worker&url", () => ({ default: "mock-worker.js" }));
 vi.mock("./mainThreadWorker", () => ({ installMainThreadPdfWorker: vi.fn() }));
 vi.mock("./pdfController", () => ({
   registerPdfView: (state: { ensurePageRendered?: (pageNumber: number) => void }) => {

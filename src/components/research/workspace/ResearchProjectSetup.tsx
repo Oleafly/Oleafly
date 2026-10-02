@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, FolderOpen, FolderTree, Loader2, Star } from "lucide-react";
+import { ChevronRight, FolderOpen, FolderTree, Star } from "lucide-react";
 import { FileIcon } from "@/components/files/fileIcon";
 import { HighlightedCode } from "@/components/ui/code-highlighter";
 import { Button } from "@/components/ui/button";
+import { SIDEBAR_TITLE_CLASS } from "@/components/layout/SidebarSection";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -32,6 +33,7 @@ import {
   ResearchProjectSetupStageError,
   type ResearchStarter,
 } from "@/lib/research-workspace";
+import { Spinner } from "@/components/ui/spinner";
 
 const ENGINES: { value: ResearchDocumentEngine; label: string }[] = [
   { value: "latex", label: "LaTeX" },
@@ -106,7 +108,7 @@ function previewPanel({
       <div className="flex h-9 items-center justify-between border-b bg-sidebar px-3">
         <div className="flex items-center gap-1.5">
           <FolderTree aria-hidden="true" className="size-3.5 text-muted-foreground" />
-          <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
+          <span className={SIDEBAR_TITLE_CLASS}>
             {i18n.t(($) => $.researchTools.setup.previewTitle)}
           </span>
         </div>
@@ -117,9 +119,10 @@ function previewPanel({
               : "\u00a0"}
           </span>
           {previewing ? (
-            <Loader2
+            <Spinner
+              size="sm"
+              className="text-muted-foreground"
               aria-label={i18n.t(($) => $.researchTools.setup.buildingPreview)}
-              className="size-3.5 animate-spin text-muted-foreground"
             />
           ) : null}
         </div>
@@ -461,7 +464,7 @@ export function ResearchProjectSetup({
             {t(($) => $.common.actions.cancel)}
           </Button>
           <Button disabled={creating || previewing || !preview} onClick={create}>
-            {creating && <Loader2 className="animate-spin" />}{" "}
+            {creating && <Spinner />}{" "}
             {createdProjectId
               ? t(($) => $.researchTools.setup.retry)
               : t(($) => $.researchTools.setup.create)}

@@ -491,11 +491,6 @@
         },
         "title": "Condividi le skill con gli altri agenti su questo computer"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Aggiunta",
         "bundled": "Integrata",

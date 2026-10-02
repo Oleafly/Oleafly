@@ -29,14 +29,14 @@ export function createAppQueryClient(): QueryClient {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
-        logError("query", error);
+        void logError("query", error);
         if (query.meta?.notify !== true) return;
         toast.errorUnique(`query:${query.queryHash}`, describeError(error));
       },
     }),
     mutationCache: new MutationCache({
       onError: (error, _variables, _context, mutation) => {
-        logError("mutation", error);
+        void logError("mutation", error);
         if (mutation.meta?.silent) return;
         toast.error(describeError(error));
       },

@@ -27,14 +27,10 @@ export {
   setLatexCorpusProvider,
   type LatexCorpusProvider,
   bibKeysFromSources,
+  guardCompletionForSource,
 } from "./latex";
 export { bibtexLanguage } from "./bibtex";
-export {
-  maskTypstToProse,
-  typstSpellcheckRanges,
-  typstToProse,
-  type TypstWordRange,
-} from "./typst-mask";
+export * from "./prose";
 export { latexFolding } from "./latex-folding";
 export {
   closeEnvironmentOnEnter,
@@ -74,8 +70,6 @@ export {
   type BibliographyStyle,
   type BibliographyStyleFamily,
 } from "./bibliography-styles";
-export * from "./latex-mask";
-export * from "./spelling-words";
 // math-preview / math-render are deliberately NOT exported here: they import
 // KaTeX (plus its CSS), which would ride in every chunk that touches this
 // index. Import them via the "@oleafly/editor/math-preview" or
@@ -97,37 +91,6 @@ export {
   stickyScopes,
   type StickyScope,
 } from "./sticky-structure";
-export {
-  PROOFREADING_LIMITS,
-  PROOFREADING_PROTOCOL_VERSION,
-  PROOFREADING_RENDER_LIMITS,
-  createGrammarSuppressionKeyer,
-  grammarSuppressionKey,
-  guardProofreadingDiagnostics,
-  isProofreadingSuggestResult,
-  isProofreadingWorkerResponse,
-  isSpellingDiagnosticKind,
-  proofreadingContextSentence,
-  proofreadingSuppressionDigest,
-  sameProofreadingIdentity,
-  type ProofreadingDiagnostic,
-  type ProofreadingDialect,
-  type ProofreadingError,
-  type ProofreadingFormat,
-  type ProofreadingIdentity,
-  type ProofreadingInput,
-  type ProofreadingMode,
-  type ProofreadingRequest,
-  type ProofreadingResult,
-  type ProofreadingResultStatus,
-  type ProofreadingSuggestion,
-  type ProofreadingSuggestRequest,
-  type ProofreadingSuggestResult,
-  type ProofreadingSurface,
-  type ProofreadingWorkerRequest,
-  type ProofreadingWorkerResponse,
-  type GrammarSuppressionKeyer,
-} from "./proofreading";
 export { diagnosticCardSource } from "./diagnostic-card";
 export { vscodeSearch } from "./search-panel";
 export {

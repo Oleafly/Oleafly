@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { isTauri } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { applyFolderChange, type FolderChangePayload } from "@/lib/external-file-changes";
 import { logError } from "@/lib/log";
 import { unwatchProjectFolder, watchProjectFolder } from "@/lib/tauri";
@@ -36,23 +36,13 @@ export function FolderWatchKeeper() {
   );
   const relocations = useProjectAvailabilityStore((state) => state.relocations);
 
-  useEffect(() => {
-    if (!isTauri()) return;
-    let disposed = false;
-    let stop: (() => void) | undefined;
-    void listen<FolderChangePayload>(FOLDER_CHANGED_EVENT, (event) => {
-      if (event.payload) applyFolderChange(event.payload);
-    })
-      .then((unlisten) => {
-        if (disposed) unlisten();
-        else stop = unlisten;
-      })
-      .catch((error) => logError("listen for folder changes", error));
-    return () => {
-      disposed = true;
-      stop?.();
-    };
-  }, []);
+  useTauriEvent<FolderChangePayload>(
+    FOLDER_CHANGED_EVENT,
+    (payload) => {
+      if (payload) applyFolderChange(payload);
+    },
+    isTauri(),
+  );
 
   if (!isTauri() || !projectId || !openedInPlace || !reachable) return null;
   return <FolderWatch key={`${projectId}:${relocations}`} projectId={projectId} />;

@@ -1,3 +1,4 @@
+import { basename } from "@/lib/path-utils";
 import type { ProjectIndex, Sym } from "./types";
 
 export interface OutlineItem {
@@ -10,11 +11,6 @@ export interface OutlineItem {
   // path instead of opening the file and guessing at a delay before jumping.
   from: number;
   to: number;
-}
-
-function basename(p: string): string {
-  const i = p.lastIndexOf("/");
-  return i >= 0 ? p.slice(i + 1) : p;
 }
 
 export function outlineFromIndex(index: ProjectIndex, activeFile: string): OutlineItem[] {

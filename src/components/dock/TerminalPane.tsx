@@ -8,7 +8,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebglAddon } from "@xterm/addon-webgl";
-import { Loader2 } from "lucide-react";
+
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useAppTheme } from "@/lib/theme";
 import { createTerminalResizer } from "@/lib/terminal-resize";
@@ -21,6 +21,7 @@ import {
 import { createTerminalLinkActions } from "./terminal-link-actions";
 import { createTerminalLinkHandler, createTerminalLinkProvider } from "./terminal-link-provider";
 import { TerminalLinkTooltip, type TerminalLinkTip } from "./TerminalLinkTooltip";
+import { Spinner } from "@/components/ui/spinner";
 import "@xterm/xterm/css/xterm.css";
 
 type TerminalChannelMessage =
@@ -538,7 +539,7 @@ export function TerminalPane({
           data-testid={active ? "dock-terminal-loading" : "dock-terminal-loading-inactive"}
           style={{ backgroundColor: paneBackground }}
         >
-          <Loader2 className="size-6 animate-spin motion-reduce:animate-none" />
+          <Spinner size="xl" />
           <p className="text-xs">{t(($) => $.workspace.terminal.starting)}</p>
         </div>
       )}

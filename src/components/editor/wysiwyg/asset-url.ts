@@ -1,6 +1,7 @@
 import type { FileEntry } from "@oleafly/backend-port";
-import { loadAssetThumbnail, THUMBNAIL_TARGET_RE } from "@/components/editor/cm/hover-asset";
-import { dirname } from "@/lib/project-intelligence/source";
+import { loadAssetThumbnail } from "@/components/editor/cm/hover-asset";
+import { isImagePath } from "@/lib/image-mime";
+import { dirname } from "@/lib/path-utils";
 import { useFilesStore } from "@/store/files";
 
 const IMPLICIT_EXTENSIONS = [".png", ".jpg", ".jpeg", ".svg", ".pdf"];
@@ -41,7 +42,7 @@ export function candidateAssetPaths(rawPath: string, context: AssetLookupContext
   const path = rawPath.trim().replace(/^["']|["']$/gu, "").replaceAll("\\", "/");
   if (path === "") return [];
   const bases = [...new Set(["", dirname(context.mainDoc), context.activePath ? dirname(context.activePath) : ""])];
-  const extensions = THUMBNAIL_TARGET_RE.test(path) ? [""] : ["", ...IMPLICIT_EXTENSIONS];
+  const extensions = isImagePath(path, { allowPdf: true }) ? [""] : ["", ...IMPLICIT_EXTENSIONS];
   const candidates: string[] = [];
   for (const base of bases) {
     for (const extension of extensions) {

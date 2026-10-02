@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { isAltGraphCharacter, isUnbindableKey } from "@/lib/keyboard";
+import { readJson, writeJson } from "@/lib/local-storage";
 
 export type ShortcutId =
   | "recompile"
@@ -99,27 +100,23 @@ function isValidBinding(value: unknown): value is ShortcutBinding {
   );
 }
 
-function loadBindings(): ShortcutBindings {
+function storedBindings(value: unknown): ShortcutBindings {
   const defaults = defaultBindings();
-  try {
-    const value = localStorage.getItem("oleafly.shortcuts");
-    if (!value) return defaults;
-    const parsed = JSON.parse(value) as Record<string, unknown>;
-    const clean: Partial<ShortcutBindings> = {};
-    for (const id of Object.keys(defaults) as ShortcutId[]) {
-      const binding = parsed[id];
-      if (isValidBinding(binding) && !isRetiredDefault(id, binding)) clean[id] = binding;
-    }
-    return { ...defaults, ...clean };
-  } catch {
-    return defaults;
+  const parsed = value as Record<string, unknown>;
+  const clean: Partial<ShortcutBindings> = {};
+  for (const id of Object.keys(defaults) as ShortcutId[]) {
+    const binding = parsed[id];
+    if (isValidBinding(binding) && !isRetiredDefault(id, binding)) clean[id] = binding;
   }
+  return { ...defaults, ...clean };
+}
+
+function loadBindings(): ShortcutBindings {
+  return readJson("oleafly.shortcuts", defaultBindings(), storedBindings);
 }
 
 function saveBindings(bindings: ShortcutBindings) {
-  try {
-    localStorage.setItem("oleafly.shortcuts", JSON.stringify(bindings));
-  } catch {}
+  writeJson("oleafly.shortcuts", bindings);
 }
 
 interface ShortcutState {

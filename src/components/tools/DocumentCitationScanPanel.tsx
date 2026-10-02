@@ -10,7 +10,6 @@ import {
   Copy,
   ExternalLink,
   Info,
-  Loader2,
   Plus,
   ScanSearch,
   Square,
@@ -19,6 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { cn } from "@/lib/utils";
 import {
   clearDocumentScanCache,
@@ -49,6 +49,9 @@ import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { EmptyIntro } from "@/components/ui/empty";
 
 const SOURCE_DOT: Record<LiteratureSource, string> = {
   arxiv: "bg-red-500",
@@ -85,7 +88,6 @@ function formatAuthors(authors: string[]): string {
   });
 }
 
-const COPIED_FEEDBACK_MS = 1500;
 const COPY_BIBTEX_TOAST = "copy-bibtex";
 const ADD_TO_BIB_TOAST = "citation-scan-add-bib";
 
@@ -105,48 +107,25 @@ export function CopyBibtexButton({
   failedMessage: string;
 }>) {
   const { t } = useTranslation(["common"]);
-  const [copied, setCopied] = useState(false);
-  const resetTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
-    },
-    [],
-  );
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(bibtex());
-    } catch (error) {
+  const { copied, copy } = useCopyStatus({
+    onError: (error) => {
       void logError("copy BibTeX", error);
       toast.errorUnique(COPY_BIBTEX_TOAST, failedMessage);
-      return;
-    }
-    setCopied(true);
-    if (resetTimer.current !== null) window.clearTimeout(resetTimer.current);
-    resetTimer.current = window.setTimeout(
-      () => setCopied(false),
-      COPIED_FEEDBACK_MS,
-    );
-  };
+    },
+  });
 
   return (
-    <Button type="button" variant="ghost" size="sm" onClick={() => void copy()}>
+    <Button type="button" variant="ghost" size="sm" onClick={() => void copy(bibtex())}>
       {copied ? <Check /> : <Copy />}
       {copied ? t(($) => $.common.actions.copied) : label}
     </Button>
   );
 }
 
-function scoreBadgeClass(score: number): string {
-  if (score >= 80) {
-    return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400";
-  }
-  if (score >= 60) {
-    return "bg-amber-500/15 text-amber-800 dark:text-amber-300";
-  }
-  return "bg-muted text-muted-foreground";
+function scoreBadgeVariant(score: number): BadgeVariant {
+  if (score >= 80) return "success";
+  if (score >= 60) return "warning";
+  return "muted";
 }
 
 function isLatexPath(path: string | null | undefined): boolean {
@@ -231,15 +210,14 @@ function SuggestionCard({
             </span>
           )}
         </div>
-        <span
-          className={cn(
-            "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums",
-            scoreBadgeClass(score),
-          )}
+        <Badge
+          variant={scoreBadgeVariant(score)}
+          size="sm"
+          className="tabular-nums"
           title={t(($) => $.researchTools.citationScan.relevanceScore)}
         >
           {Math.round(score)}
-        </span>
+        </Badge>
       </div>
 
       {primaryUrl ? (
@@ -325,7 +303,7 @@ function SuggestionCard({
             onClick={() => void handleAddToBib()}
             title={t(($) => $.researchTools.citationScan.addToBibTooltip)}
           >
-            {adding ? <Loader2 className="animate-spin" /> : <Plus />}
+            {adding ? <Spinner /> : <Plus />}
             {t(($) => $.researchTools.citationScan.addToBib)}
           </Button>
         ) : null}
@@ -358,11 +336,11 @@ function ParagraphGroup({ result }: Readonly<{ result: ParagraphCitationResult }
                 index: result.paragraphIndex + 1,
               })}
             </span>
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+            <Badge variant="muted" size="sm" className="tabular-nums">
               {t(($) => $.researchTools.citationScan.suggestions, {
                 count: suggestionCount,
               })}
-            </span>
+            </Badge>
             {result.query && (
               <span className="truncate text-[11px] text-muted-foreground/80">
                 {t(($) => $.researchTools.citationScan.query, { query: result.query })}
@@ -702,7 +680,7 @@ export function DocumentCitationScanPanel() {
                 onClick={() => void runScan()}
               >
                 {scanning ? (
-                  <Loader2 className="animate-spin" />
+                  <Spinner />
                 ) : (
                   <ScanSearch />
                 )}
@@ -825,7 +803,7 @@ export function DocumentCitationScanPanel() {
           )}
           {(scanning || progress) && progress && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              {scanning && <Loader2 className="size-4 animate-spin shrink-0" />}
+              {scanning && <Spinner />}
               <span>
                 {progress.message ??
                   (progress.totalParagraphs > 0
@@ -842,17 +820,12 @@ export function DocumentCitationScanPanel() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {paragraphs.length === 0 && !scanning ? (
-          <div className="mx-auto flex min-h-[18rem] max-w-2xl flex-col justify-center px-6 py-10">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
-              {t(($) => $.researchTools.citationScan.emptyEyebrow)}
-            </p>
-            <h2 className="mt-2.5 text-2xl font-semibold tracking-tight">
-              {t(($) => $.researchTools.citationScan.emptyHeading)}
-            </h2>
-            <p className="mt-3 text-base leading-relaxed text-muted-foreground">
-              {t(($) => $.researchTools.citationScan.emptyBody)}
-            </p>
-          </div>
+          <EmptyIntro
+            className="mx-auto flex min-h-[18rem] max-w-2xl flex-col justify-center px-6 py-10"
+            eyebrow={t(($) => $.researchTools.citationScan.emptyEyebrow)}
+            title={t(($) => $.researchTools.citationScan.emptyHeading)}
+            description={t(($) => $.researchTools.citationScan.emptyBody)}
+          />
         ) : (
           <div className="mx-auto w-full max-w-6xl px-4 py-2 sm:px-6">
             <div className="flex items-center justify-between border-b border-border/70 px-2 py-3">

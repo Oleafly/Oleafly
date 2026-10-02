@@ -2,7 +2,7 @@ import { useEffect, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 
 interface ConfirmationDialogProps {
   open: boolean;
@@ -28,11 +28,6 @@ export function ConfirmationDialog({
   const { t } = useTranslation(["common", "shell"]);
   const titleId = useId();
   const descriptionId = useId();
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(
-    open,
-    onCancel,
-  );
-
   // Enter-to-confirm is a document-level capture handler, so it fires whatever
   // is focused - including Cancel, which takes the initial focus. On a
   // destructive dialog that turns "press Enter to back out" into the
@@ -56,49 +51,43 @@ export function ConfirmationDialog({
   if (!open) return null;
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label={t(($) => $.common.actions.cancel)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        ref={dialogRef}
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        aria-describedby={descriptionId}
-        tabIndex={-1}
-        className="relative w-full max-w-sm rounded-xl border bg-background p-5 shadow-2xl"
+    <ModalShell
+      open
+      onClose={onCancel}
+      closeLabel={t(($) => $.common.actions.cancel)}
+      layer="nested"
+      width="sm"
+      role="alertdialog"
+      labelledBy={titleId}
+      describedBy={descriptionId}
+      className="p-5"
+    >
+      <h2 id={titleId} className="text-sm font-semibold">
+        {title}
+      </h2>
+      <p
+        id={descriptionId}
+        className="mt-2 text-xs leading-relaxed text-muted-foreground"
       >
-        <h2 id={titleId} className="text-sm font-semibold">
-          {title}
-        </h2>
-        <p
-          id={descriptionId}
-          className="mt-2 text-xs leading-relaxed text-muted-foreground"
+        {description}
+      </p>
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
+          {cancelLabel ?? t(($) => $.common.actions.cancel)}
+          <Kbd className="h-4 min-w-4 px-1 text-[10px]">{t(($) => $.shell.keys.esc)}</Kbd>
+        </Button>
+        <Button
+          variant={destructive ? "destructive" : "default"}
+          size="sm"
+          onClick={onConfirm}
         >
-          {description}
-        </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
-            {cancelLabel ?? t(($) => $.common.actions.cancel)}
-            <Kbd className="h-4 min-w-4 px-1 text-[10px]">{t(($) => $.shell.keys.esc)}</Kbd>
-          </Button>
-          <Button
-            variant={destructive ? "destructive" : "default"}
-            size="sm"
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-            {/* Only advertise the shortcut where it actually exists. */}
-            {destructive ? null : (
-              <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
-            )}
-          </Button>
-        </div>
+          {confirmLabel}
+          {/* Only advertise the shortcut where it actually exists. */}
+          {destructive ? null : (
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
+          )}
+        </Button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

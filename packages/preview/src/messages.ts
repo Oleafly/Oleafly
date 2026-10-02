@@ -1,3 +1,5 @@
+import { echoKey, type Translator } from "@oleafly/i18n-contract";
+
 export const PREVIEW_MESSAGE_KEYS = [
   "error.passwordIncorrect",
   "error.passwordRequired",
@@ -26,9 +28,6 @@ export const PREVIEW_MESSAGE_KEYS = [
 
 export type PreviewMessageKey = (typeof PREVIEW_MESSAGE_KEYS)[number];
 
-export type PreviewTranslator = (
-  key: PreviewMessageKey,
-  params?: Record<string, string | number>,
-) => string;
+export type PreviewTranslator = Translator<PreviewMessageKey>;
 
-export const keyEchoTranslator: PreviewTranslator = (key) => key;
+export const keyEchoTranslator: PreviewTranslator = echoKey;

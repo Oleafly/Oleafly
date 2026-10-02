@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Download, X } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { loadReleaseNotesRenderer, openableReleaseLink } from "@/components/layout/ReleaseNotes";
 import { ReleaseTimeline, VersionTag, type ReleaseHistoryView } from "@/components/layout/ReleaseTimeline";
@@ -107,7 +107,6 @@ export function ChangelogDialog({ open, onClose }: Readonly<{ open: boolean; onC
   const titleId = useId();
   const [version, setVersion] = useState("");
   const history = useReleaseHistory({ fetchPage: tauriReleasePageFetcher, enabled: open });
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDialogElement>(open, onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -133,35 +132,29 @@ export function ChangelogDialog({ open, onClose }: Readonly<{ open: boolean; onC
   if (!open) return null;
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label={t(($) => $.common.actions.close)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
+    <ModalShell
+      open
+      onClose={onClose}
+      closeLabel={t(($) => $.common.actions.close)}
+      layer="nested"
+      as="dialog"
+      surface={false}
+      labelledBy={titleId}
+      className="m-0 h-[min(80vh,720px)] w-full max-w-2xl border-0 bg-transparent p-0 text-foreground shadow-2xl"
+    >
+      <ChangelogView
+        titleId={titleId}
+        installedVersion={version}
+        history={{
+          entries: history.entries,
+          status: history.status,
+          onLoadMore: history.loadMore,
+          onRetry: history.retry,
+        }}
+        onOpenLink={openLink}
+        onUpdate={() => void openUpdateWindow({ manual: true })}
+        onClose={onClose}
       />
-      <dialog
-        ref={dialogRef}
-        open
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-        className="relative m-0 h-[min(80vh,720px)] w-full max-w-2xl border-0 bg-transparent p-0 text-foreground shadow-2xl"
-      >
-        <ChangelogView
-          titleId={titleId}
-          installedVersion={version}
-          history={{
-            entries: history.entries,
-            status: history.status,
-            onLoadMore: history.loadMore,
-            onRetry: history.retry,
-          }}
-          onOpenLink={openLink}
-          onUpdate={() => void openUpdateWindow({ manual: true })}
-          onClose={onClose}
-        />
-      </dialog>
-    </div>
+    </ModalShell>
   );
 }

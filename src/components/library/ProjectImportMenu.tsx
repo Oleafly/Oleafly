@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ExternalLink, Github, Lock, Loader2 } from "lucide-react";
+import { ExternalLink, Github, Lock } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +28,7 @@ import { useSettingsStore } from "@/store/settings";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
 import { ProjectImportDialog } from "./ProjectImportDialog";
+import { Spinner } from "@/components/ui/spinner";
 
 export function ProjectImportMenu({
   align = "end",
@@ -146,7 +147,7 @@ export function ProjectImportMenu({
     if (githubStatus === "unknown" || loadingRepositories) {
       return (
         <DropdownMenuItem disabled>
-          <Loader2 className="size-3.5 animate-spin" />{" "}
+          <Spinner size="sm" />{" "}
           {t(($) => $.library.import.loadingRepositories)}
         </DropdownMenuItem>
       );

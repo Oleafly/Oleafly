@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, Link2, Loader2, Plus, RefreshCw } from "lucide-react";
+import { AlertCircle, Link2, Plus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useTauriSubscription } from "@/hooks/use-tauri-event";
 import { getProvider } from "@/lib/ai-providers";
 import type { ResearchTask } from "@/lib/research-tasks";
 import {
@@ -18,6 +19,7 @@ import { composerDraftKey, TaskComposer } from "./TaskComposer";
 import { relativeTime } from "./task-status";
 import { TaskAgentChip, TaskStatusBadge } from "./TaskChips";
 import { TaskDetailDialog } from "./TaskDetailDialog";
+import { LoadingState } from "@/components/ui/empty";
 
 export interface ResearchTaskAgentOption {
   runtimeId: string;
@@ -117,18 +119,7 @@ export function ResearchTasksPanel({
     void bindProject(projectId);
   }, [bindProject, projectId]);
 
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    let mounted = true;
-    void mountResearchTaskSubscriptions().then((cleanup) => {
-      if (mounted) unlisten = cleanup;
-      else cleanup();
-    });
-    return () => {
-      mounted = false;
-      unlisten?.();
-    };
-  }, []);
+  useTauriSubscription(mountResearchTaskSubscriptions, "listen for research tasks");
 
   useEffect(() => {
     if (selectedTaskId || tasks.length === 0) return;
@@ -427,10 +418,10 @@ export function ResearchTasksPanel({
       ) : null}
 
       {loading && tasks.length === 0 ? (
-        <output className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />{" "}
-          {t(($) => $.researchTools.tasks.panel.loading)}
-        </output>
+        <LoadingState
+          className="flex-1 justify-center"
+          label={t(($) => $.researchTools.tasks.panel.loading)}
+        />
       ) : taskListBody()}
 
       {selectedTask ? (

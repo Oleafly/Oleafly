@@ -14,6 +14,7 @@ import { emitTable, readTableRowsFromBytes } from "@/features/table-import";
 import { mermaidToTikz } from "@/features/mermaid-to-tikz";
 import type { ConverterToolId } from "@/lib/converter-types";
 import { i18n } from "@/i18n";
+import { bytesToBase64 } from "@/lib/base64";
 
 export type ConverterInputKind = "text" | "file" | "image-or-text" | "arxiv";
 export type ProjectTarget = "latex" | "markdown" | "typst";
@@ -387,15 +388,6 @@ export function projectReadySource(target: ProjectTarget, source: string): strin
     source,
     "\\end{document}",
   ].join("\n");
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
-  }
-  return btoa(binary);
 }
 
 function dataUrlBase64(dataUrl: string): string {

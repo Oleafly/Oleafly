@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { MessageSquareQuote, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { StoredChat } from "@/store/chats";
 import { i18n } from "@/i18n";
 import { formatUsd } from "@/lib/ai-pricing";
-import { formatDate, formatNumber } from "@/lib/intl";
+import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { chatsSearch } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
-import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
+import { ModalShell } from "@/components/ui/modal-shell";
+import { Badge } from "@/components/ui/badge";
 
 // FTS5 special characters would error inside MATCH; quote each term instead.
 function ftsQuery(raw: string): string {
@@ -21,15 +21,16 @@ function ftsQuery(raw: string): string {
 }
 
 function relativeTime(at: number) {
-  const diff = Date.now() - at;
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return i18n.t(($) => $.ai.history.relative.justNow);
-  if (m < 60) return i18n.t(($) => $.ai.history.relative.minutes, { count: m });
-  const h = Math.floor(m / 60);
-  if (h < 24) return i18n.t(($) => $.ai.history.relative.hours, { count: h });
-  const d = Math.floor(h / 24);
-  if (d < 7) return i18n.t(($) => $.ai.history.relative.days, { count: d });
-  return formatDate(at, { dateStyle: "short" });
+  return formatRelativeTimeFrom(at, Date.now(), {
+    largestUnit: "day",
+    dateAfterDays: 7,
+    justNow: i18n.t(($) => $.ai.history.relative.justNow),
+    format: ({ unit, value: count }) => {
+      if (unit === "minute") return i18n.t(($) => $.ai.history.relative.minutes, { count });
+      if (unit === "hour") return i18n.t(($) => $.ai.history.relative.hours, { count });
+      return i18n.t(($) => $.ai.history.relative.days, { count });
+    },
+  });
 }
 
 export function ChatHistoryModal({
@@ -52,7 +53,6 @@ export function ChatHistoryModal({
   const { t } = useTranslation(["common", "ai"]);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLDivElement>(open, onClose);
   const trimmed = query.trim();
   // Titles filter locally; message content matches come from the library.db
   // session index ("find the chat where…").
@@ -103,12 +103,13 @@ export function ChatHistoryModal({
                   {chat.title || t(($) => $.ai.history.untitled)}
                 </span>
                 {stale && (
-                  <span
+                  <Badge
+                    variant="warning"
+                    size="sm"
                     title={t(($) => $.ai.history.staleTitle)}
-                    className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
                   >
                     {t(($) => $.ai.history.staleBadge)}
-                  </span>
+                  </Badge>
                 )}
               </div>
               <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
@@ -166,62 +167,53 @@ export function ChatHistoryModal({
   // Portalled like the other app dialogs. Rendered in place, its z-index only
   // counted inside the workspace panels' stacking context: the title bar stayed
   // undimmed and the editor's pinned rows were drawn over the backdrop.
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[80] flex animate-in fade-in items-center justify-center bg-black/50 p-4 duration-200 backdrop-blur-sm motion-reduce:animate-none"
+  return (
+    <ModalShell
+      open
+      onClose={onClose}
+      closeLabel={t(($) => $.ai.history.closeBackdrop)}
+      portal
+      animated
+      width="lg"
+      labelledBy="chat-history-title"
+      className="flex h-[min(30rem,80vh)] flex-col"
     >
-      <button
-        type="button"
-        aria-label={t(($) => $.ai.history.closeBackdrop)}
-        className="absolute inset-0"
-        onMouseDown={onBackdropMouseDown}
-      />
-      <div
-        role="dialog"
-        ref={dialogRef}
-        tabIndex={-1}
-        aria-modal="true"
-        aria-labelledby="chat-history-title"
-        className="relative flex h-[min(30rem,80vh)] w-full max-w-lg animate-in flex-col rounded-xl border bg-popover text-popover-foreground shadow-2xl zoom-in-95 fade-in duration-200 motion-reduce:animate-none"
-      >
-        <div className="flex shrink-0 items-center gap-2 p-4">
-          <MessageSquareQuote className="size-4" />
-          <h2 id="chat-history-title" className="text-base font-semibold">
-            {t(($) => $.ai.history.title)}
-          </h2>
-          <button
-            type="button"
-            data-modal-initial-focus
-            onClick={onClose}
-            className="ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            aria-label={t(($) => $.common.actions.close)}
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+      <div className="flex shrink-0 items-center gap-2 p-4">
+        <MessageSquareQuote className="size-4" />
+        <h2 id="chat-history-title" className="text-base font-semibold">
+          {t(($) => $.ai.history.title)}
+        </h2>
+        <button
+          type="button"
+          data-modal-initial-focus
+          onClick={onClose}
+          className="ml-auto flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          aria-label={t(($) => $.common.actions.close)}
+        >
+          <X className="size-4" />
+        </button>
+      </div>
 
-        <div className="shrink-0 px-4 pb-2">
-          <div className="flex items-center gap-2 rounded-md border bg-background px-2 transition-colors focus-within:border-ring">
-            <Search className="size-3.5 shrink-0 text-muted-foreground" />
-            <input
-              aria-label={t(($) => $.ai.history.searchLabel)}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t(($) => $.ai.history.searchPlaceholder)}
-              className="h-8 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground/70"
-            />
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-auto p-2">
-          {chats.length === 0 ? (
-            <p className="px-3 py-10 text-center text-sm text-muted-foreground">
-              {t(($) => $.ai.history.emptyProject)}
-            </p>
-          ) : chatRows()}
+      <div className="shrink-0 px-4 pb-2">
+        <div className="flex items-center gap-2 rounded-md border bg-background px-2 transition-colors focus-within:border-ring">
+          <Search className="size-3.5 shrink-0 text-muted-foreground" />
+          <input
+            aria-label={t(($) => $.ai.history.searchLabel)}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t(($) => $.ai.history.searchPlaceholder)}
+            className="h-8 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground/70"
+          />
         </div>
       </div>
-    </div>,
-    document.body,
+
+      <div className="min-h-0 flex-1 overflow-auto p-2">
+        {chats.length === 0 ? (
+          <p className="px-3 py-10 text-center text-sm text-muted-foreground">
+            {t(($) => $.ai.history.emptyProject)}
+          </p>
+        ) : chatRows()}
+      </div>
+    </ModalShell>
   );
 }

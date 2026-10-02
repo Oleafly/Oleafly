@@ -488,11 +488,6 @@
         },
         "title": "Skills mit anderen Agenten auf diesem Computer teilen"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Hinzugefügt",
         "bundled": "Eingebaut",

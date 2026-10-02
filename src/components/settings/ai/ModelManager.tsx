@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,8 @@ import { agentErrorKind } from "@/lib/agent-backend";
 import { formatDate, formatRelativeTime } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { staleTimes } from "@/lib/query";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 export interface ModelManagerProps {
   providerId: string;
@@ -270,7 +272,7 @@ export function ModelManager({
                 onClick={() => void runRefresh("manual")}
               >
                 {refreshing ? (
-                  <Loader2 className="size-3 animate-spin" />
+                  <Spinner size="xs" />
                 ) : (
                   <RefreshCw className="size-3" />
                 )}
@@ -325,9 +327,9 @@ export function ModelManager({
                 )}
               </span>
               {m.source === "custom" && (
-                <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <Badge variant="muted" size="sm">
                   {t(($) => $.settings.ai.models.custom)}
-                </span>
+                </Badge>
               )}
               <Tooltip label={t(($) => $.settings.ai.models.deleteTooltip)}>
                 <button
@@ -450,7 +452,7 @@ export function ModelMetadataStatusLine() {
         onClick={() => refresh.mutate()}
       >
         {refresh.isPending ? (
-          <Loader2 className="size-3 animate-spin" />
+          <Spinner size="xs" />
         ) : (
           <RefreshCw className="size-3" />
         )}

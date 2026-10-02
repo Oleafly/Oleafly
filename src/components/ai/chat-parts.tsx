@@ -19,7 +19,6 @@ import {
   CircleSlash,
   Copy,
   Info,
-  Loader2,
   Paperclip,
   Sparkles,
   XCircle,
@@ -34,6 +33,8 @@ import {
 } from "@/store/agent-file-changes";
 import { Markdown } from "@/components/ui/markdown";
 import { Popover } from "@/components/ui/popover";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
+import { useDismiss } from "@/components/ui/use-dismiss";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ChangeList } from "@/components/ai/acp/ChangeList";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
@@ -51,6 +52,7 @@ import { describeError } from "@/lib/app-error";
 import { outsideCodeFences, useDisplayText } from "@/lib/display-path";
 import { formatList, formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 const USER_SKILL_CHIP_CLASS =
   "rounded bg-blue-300/35 px-1 py-px font-medium text-white";
@@ -143,10 +145,10 @@ function AgentTodoList({ todos }: Readonly<{ todos: readonly AgentTodo[] }>) {
             />
           )}
           {todo.status === "in_progress" && (
-            <Loader2
-              aria-hidden="true"
+            <Spinner
+              size="sm"
+              className="mt-px text-primary"
               data-todo-icon="in_progress"
-              className="mt-px size-3.5 shrink-0 animate-spin text-primary motion-reduce:animate-none"
             />
           )}
           {todo.status === "pending" && (
@@ -268,29 +270,20 @@ export function AgentStatusPill({
     setPinned(true);
   }, [awaitingReady, cancelClose]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+  useDismiss(
+    open,
+    [rootRef],
+    (reason) => {
       const active = document.activeElement;
       const focusInside = rootRef.current?.contains(active) ?? false;
       close();
-      if (focusInside && active !== pillRef.current) {
+      if (reason === "escape" && focusInside && active !== pillRef.current) {
         skipFocusOpenRef.current = true;
         pillRef.current?.focus({ preventScroll: true });
       }
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
-      close();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.removeEventListener("pointerdown", onPointerDown, true);
-    };
-  }, [open, close]);
+    },
+    { closeOnEscape: true },
+  );
 
   const progress = agentTodoProgress(todos);
   const totals = agentFileChangeTotals(turn);
@@ -549,26 +542,13 @@ export function AgentRunSummary({
 
 export function CopyMessageButton({ text }: Readonly<{ text: string }>) {
   const { t } = useTranslation(["common", "ai"]);
-  const [copied, setCopied] = useState(false);
-  const resetTimerRef = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
-    },
-    [],
-  );
+  const { copied, copy } = useCopyStatus();
   return (
     <button
       type="button"
       aria-label={t(($) => $.ai.chat.copyMessage)}
       title={t(($) => $.ai.chat.copyMessage)}
-      onClick={() => {
-        void navigator.clipboard.writeText(text).then(() => {
-          setCopied(true);
-          if (resetTimerRef.current !== null) window.clearTimeout(resetTimerRef.current);
-          resetTimerRef.current = window.setTimeout(() => setCopied(false), 1500);
-        });
-      }}
+      onClick={() => void copy(text)}
       className="shrink-0 self-center rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
     >
       {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
@@ -914,7 +894,7 @@ function SubagentStatusIcon({ state }: Readonly<{ state: string }>) {
   if (state === "interrupted") {
     return <CircleSlash className="size-3.5 shrink-0 text-muted-foreground" />;
   }
-  return <Loader2 className="size-3.5 shrink-0 animate-spin text-muted-foreground" />;
+  return <Spinner size="sm" className="text-muted-foreground" />;
 }
 
 // Delegated child run, in the multi-agent-action card shape: what it was

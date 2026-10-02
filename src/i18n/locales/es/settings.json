@@ -491,11 +491,6 @@
         },
         "title": "Compartir las habilidades con otros agentes de este equipo"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Añadida",
         "bundled": "Incluida",

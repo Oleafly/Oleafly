@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Check, Copy, ExternalLink, Quote } from "lucide-react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
@@ -8,6 +7,7 @@ import {
   oleaflyBibtexTokens,
   type BibtexTokenKind,
 } from "@/lib/cite-oleafly";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { cn } from "@/lib/utils";
 
 const TOKEN_CLASS: Record<BibtexTokenKind, string> = {
@@ -20,17 +20,8 @@ const TOKEN_CLASS: Record<BibtexTokenKind, string> = {
 
 export function CiteOleaflyCard({ version }: { readonly version: string }) {
   const { t } = useTranslation(["common", "settings"]);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopyStatus();
   const bibtex = oleaflyBibtex(version);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(bibtex);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  };
   return (
     <section
       aria-labelledby="cite-oleafly-heading"
@@ -70,7 +61,7 @@ export function CiteOleaflyCard({ version }: { readonly version: string }) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <button
           type="button"
-          onClick={() => void copy()}
+          onClick={() => void copy(bibtex)}
           className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-accent"
         >
           {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}

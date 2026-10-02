@@ -24,7 +24,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  withAssetProgress: (await importOriginal<typeof import("@/lib/tauri")>()).withAssetProgress,
   listFontComponents: mocks.listFontComponents,
   listTemplatePacks: mocks.listTemplatePacks,
   listTemplates: mocks.listTemplates,

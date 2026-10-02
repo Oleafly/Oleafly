@@ -1,10 +1,11 @@
 import { describeError } from "@/lib/app-error";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Check, ChevronDown, ChevronRight, Copy, Github, Loader2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Copy, Github } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { gitAutoInitEnabled } from "@/components/settings/gitAutoInit";
 import { getConfig, setConfig, type AppConfig } from "@/lib/tauri";
@@ -15,6 +16,7 @@ import {
   requestDeviceCode,
   type DeviceCode,
 } from "@/lib/github";
+import { Spinner } from "@/components/ui/spinner";
 
 export function GitHubSection() {
   const { t } = useTranslation(["common", "settings"]);
@@ -64,7 +66,7 @@ export function GitHubSection() {
 
   const [flow, setFlow] = useState<DeviceCode | null>(null);
   const [flowError, setFlowError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy: copyCode } = useCopyStatus();
 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [pat, setPat] = useState("");
@@ -160,13 +162,6 @@ export function GitHubSection() {
     setBusy(false);
   };
 
-  const copyCode = (code: string) => {
-    void navigator.clipboard?.writeText(code).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    }).catch(() => {});
-  };
-
   const connectPat = async () => {
     if (!pat.trim()) return;
     setBusy(true);
@@ -195,7 +190,7 @@ export function GitHubSection() {
         onClick={() => void connectDeviceFlow()}
       >
         {busy || ghLoading ? (
-          <Loader2 className="size-4 animate-spin" />
+          <Spinner />
         ) : (
           <Github className="size-4" />
         )}
@@ -275,7 +270,7 @@ export function GitHubSection() {
           size="sm"
           variant="ghost"
           className="ml-1"
-          onClick={() => copyCode(flow.user_code)}
+          onClick={() => void copyCode(flow.user_code)}
         >
           {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           {copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy)}
@@ -289,7 +284,7 @@ export function GitHubSection() {
           {t(($) => $.common.actions.cancel)}
         </Button>
         <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" />
+          <Spinner size="sm" />
           {t(($) => $.settings.github.device.waiting)}
         </span>
       </div>

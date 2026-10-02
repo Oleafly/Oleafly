@@ -4,6 +4,7 @@ import { Check, Copy, Github, RefreshCw } from "lucide-react";
 import { appendAppLog } from "@/lib/tauri";
 import { reportCrashToGithub } from "@/lib/crash-report";
 import { SpecimenIllustration } from "@/components/SpecimenIllustration";
+import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { i18n } from "@/i18n";
 
 const APP_LOG_PATH = "~/.oleafly/app.log";
@@ -47,17 +48,52 @@ interface Props {
 interface State {
   error: Error | null;
   componentStack: string | null;
-  copied: boolean;
+}
+
+function CopyDiagnosticsButton({ text }: Readonly<{ text: string }>) {
+  const { copied, copy } = useCopyStatus();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (text) void copy(text);
+      }}
+      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+    >
+      {copied ? (
+        <Check className="size-3.5 text-emerald-500" />
+      ) : (
+        <Copy className="size-3.5" />
+      )}
+      {i18n.t(($) => $.shell.errorBoundary.copyDiagnostics)}
+    </button>
+  );
+}
+
+function CopyStackButton({ text }: Readonly<{ text: string }>) {
+  const { copied, copy } = useCopyStatus();
+  return (
+    <button
+      type="button"
+      onClick={() => void copy(text)}
+      className="flex items-center gap-1.5 text-xs text-white/60 transition-colors hover:text-white"
+    >
+      {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+      {copied
+        ? i18n.t(($) => $.common.actions.copied)
+        : i18n.t(($) => $.common.actions.copy)}
+    </button>
+  );
 }
 
 // Without this, any render-time exception unmounts the whole React tree and
 // leaves a blank window. This catches it, logs details to `~/.oleafly/app.log`
 // (so users can share it), and offers a reload.
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, componentStack: null, copied: false };
+  state: State = { error: null, componentStack: null };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    return { error, copied: false };
+    return { error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -79,7 +115,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   reset = () => {
-    this.setState({ error: null, componentStack: null, copied: false });
+    this.setState({ error: null, componentStack: null });
   };
 
   diagnostics = () => {
@@ -88,32 +124,8 @@ export class ErrorBoundary extends Component<Props, State> {
     return `${error.name}: ${error.message}\n${error.stack ?? ""}\ncomponentStack:${componentStack ?? ""}`;
   };
 
-  copyDiagnostics = async () => {
-    const text = this.diagnostics();
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-      this.setState({ copied: true });
-      setTimeout(() => this.setState({ copied: false }), 1500);
-    } catch {
-      /* ignore */
-    }
-  };
-
-  copyStack = async () => {
-    const { error } = this.state;
-    if (!error) return;
-    try {
-      await navigator.clipboard.writeText(`${error.name}: ${error.message}`);
-      this.setState({ copied: true });
-      setTimeout(() => this.setState({ copied: false }), 1500);
-    } catch {
-      /* ignore */
-    }
-  };
-
   render() {
-    const { error, copied } = this.state;
+    const { error } = this.state;
     if (!error) return this.props.children;
 
     // Scoped boundaries render their own compact fallback and leave the rest of
@@ -141,18 +153,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <RefreshCw className="size-3.5" />
               {i18n.t(($) => $.common.actions.retry)}
             </button>
-            <button
-              type="button"
-              onClick={() => void this.copyDiagnostics()}
-              className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              {copied ? (
-                <Check className="size-3.5 text-emerald-500" />
-              ) : (
-                <Copy className="size-3.5" />
-              )}
-              {i18n.t(($) => $.shell.errorBoundary.copyDiagnostics)}
-            </button>
+            <CopyDiagnosticsButton text={this.diagnostics()} />
           </div>
         </div>
       );
@@ -179,16 +180,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
                 {i18n.t(($) => $.shell.errorBoundary.stackTrace)}
               </span>
-              <button
-                type="button"
-                onClick={() => void this.copyStack()}
-                className="flex items-center gap-1.5 text-xs text-white/60 transition-colors hover:text-white"
-              >
-                {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
-                {copied
-                  ? i18n.t(($) => $.common.actions.copied)
-                  : i18n.t(($) => $.common.actions.copy)}
-              </button>
+              <CopyStackButton text={`${error.name}: ${error.message}`} />
             </div>
             <pre className="max-h-40 overflow-auto px-4 py-3 text-left font-mono text-xs text-white/80">
               {`${error.name}: ${error.message}`}

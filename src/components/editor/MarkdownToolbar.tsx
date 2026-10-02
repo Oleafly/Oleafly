@@ -28,12 +28,12 @@ import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 import {
   Divider,
   IconBtn,
-  MenuRow,
   WysiwygModeSwitch,
   type EditorMode,
   btnControl,
   dividerControl,
 } from "@/components/editor/EditorToolbar";
+import { MenuRow } from "@/components/ui/menu-row";
 import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import {
   DROPDOWN_TRIGGER_WIDTH,

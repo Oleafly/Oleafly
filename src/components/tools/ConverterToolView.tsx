@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { languageForPath } from "@oleafly/editor";
 import {
@@ -10,7 +10,6 @@ import {
   FileText,
   FolderPlus,
   Image as ImageIcon,
-  Loader2,
   RotateCcw,
   Settings,
   ShieldCheck,
@@ -43,10 +42,14 @@ import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
+import { useAsyncTask } from "@/hooks/use-async-task";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
+import { base64ToBytes, bytesToBase64, textToBase64 } from "@/lib/base64";
+import { basename } from "@/lib/path-utils";
+import { Spinner } from "@/components/ui/spinner";
 
 type InputMode = "text" | "file";
 
@@ -59,22 +62,8 @@ interface ConverterFailure {
   localModel: boolean;
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const chunk = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(value: string): Uint8Array {
-  const binary = atob(value);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
-}
-
 function stem(fileName: string): string {
-  return fileName.replace(/^.*[\\/]/, "").replace(/\.[^.]+$/, "").trim();
+  return basename(fileName).replace(/\.[^.]+$/, "").trim();
 }
 
 function FileDrop({
@@ -181,7 +170,7 @@ async function saveOutput(output: ConverterOutput): Promise<void> {
   } else if (output.kind === "binary" && output.dataBase64) {
     dataBase64 = output.dataBase64;
   } else {
-    dataBase64 = bytesToBase64(new TextEncoder().encode(output.text ?? ""));
+    dataBase64 = textToBase64(output.text ?? "");
   }
   await writeBytesFile(destination, dataBase64);
   toast.success(i18n.t(($) => $.researchTools.converter.saved, { fileName }));
@@ -207,13 +196,19 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const [mode, setMode] = useState<InputMode>(initialMode);
   const [text, setText] = useState(definition.example ?? "");
   const [file, setFile] = useState<File | null>(null);
-  const [output, setOutput] = useState<ConverterOutput | null>(null);
-  const [busy, setBusy] = useState(false);
+  const conversion = useAsyncTask<ConverterOutput, ConverterFailure>((caught) => {
+    if (caught instanceof DOMException && caught.name === "AbortError") return null;
+    const message = caught instanceof Error ? caught.message : String(caught);
+    void logError(`converter ${id}`, caught);
+    return {
+      message,
+      localModel: caught instanceof LocalModelError
+        || /ollama|local model|vision model/i.test(message),
+    };
+  });
+  const { result: output, busy, error, setResult: setOutput } = conversion;
   const [projectBusy, setProjectBusy] = useState(false);
   const [status, setStatus] = useState<ConverterStatus>({ step: "ready" });
-  const [error, setError] = useState<ConverterFailure | null>(null);
-  const request = useRef(0);
-  const abortController = useRef<AbortController | null>(null);
   const allowsModes = definition.inputKind === "image-or-text" || definition.inputKind === "arxiv";
   const useFile = definition.inputKind === "file" || (allowsModes && mode === "file");
   const sourceName = definition.sourceFileName ?? (id === "equation-to-latex" ? "equation.tex" : "source.txt");
@@ -264,21 +259,8 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     }
   })();
 
-  useEffect(
-    () => () => {
-      request.current += 1;
-      abortController.current?.abort();
-    },
-    [],
-  );
-
   const resetConversion = () => {
-    request.current += 1;
-    abortController.current?.abort();
-    abortController.current = null;
-    setOutput(null);
-    setError(null);
-    setBusy(false);
+    conversion.reset();
     setStatus({ step: "ready" });
   };
 
@@ -290,49 +272,21 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
 
   const convert = async () => {
     if (!canConvert || busy) return;
-    const current = request.current + 1;
-    request.current = current;
-    abortController.current?.abort();
-    const controller = new AbortController();
-    abortController.current = controller;
-    setBusy(true);
-    setError(null);
-    setOutput(null);
     setStatus({ step: "converting" });
-    try {
-      const result = await runAdHocConverter(
+    const outcome = await conversion.run((signal) =>
+      runAdHocConverter(
         id,
         { text: useFile ? "" : text, file: useFile ? file : null },
         (progress) => setStatus(progress),
-        controller.signal,
-      );
-      if (request.current !== current) return;
-      setOutput(result);
-      setStatus({ step: "converted" });
-    } catch (caught) {
-      if (request.current !== current) return;
-      if (caught instanceof DOMException && caught.name === "AbortError") return;
-      const message = caught instanceof Error ? caught.message : String(caught);
-      setError({
-        message,
-        localModel: caught instanceof LocalModelError
-          || /ollama|local model|vision model/i.test(message),
-      });
-      setStatus({ step: "needsAttention" });
-      void logError(`converter ${id}`, caught);
-    } finally {
-      if (request.current === current) {
-        abortController.current = null;
-        setBusy(false);
-      }
-    }
+        signal,
+      ),
+    );
+    if (outcome.status === "done") setStatus({ step: "converted" });
+    else if (outcome.status === "failed") setStatus({ step: "needsAttention" });
   };
 
   const cancel = () => {
-    request.current += 1;
-    abortController.current?.abort();
-    abortController.current = null;
-    setBusy(false);
+    conversion.cancel();
     setStatus({ step: "cancelled" });
   };
 
@@ -552,7 +506,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                 </Button>
                 {definition.projectTarget && output.text && (
                   <Button size="xs" disabled={projectBusy} onClick={() => void createProject()}>
-                    {projectBusy ? <Loader2 className="animate-spin" /> : <FolderPlus />} {t(($) => $.researchTools.converter.createProject)}
+                    {projectBusy ? <Spinner /> : <FolderPlus />} {t(($) => $.researchTools.converter.createProject)}
                   </Button>
                 )}
               </div>

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { approvalsList, approvalsSet } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { Badge } from "@/components/ui/badge";
 
 // Editor for the per-project decisions saved from the tool-approval prompt
 // ("Always in this project"). Removing a rule makes that tool prompt again.
@@ -51,17 +52,11 @@ export function ProjectApprovals() {
               className="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-xs"
             >
               <code className="font-mono">{tool}</code>
-              <span
-                className={
-                  decision === "allow"
-                    ? "rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
-                    : "rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
-                }
-              >
+              <Badge size="sm" variant={decision === "allow" ? "success" : "destructive"}>
                 {decision === "allow"
                   ? t(($) => $.settings.ai.approvals.project.allowed)
                   : t(($) => $.settings.ai.approvals.project.denied)}
-              </span>
+              </Badge>
               <button
                 type="button"
                 aria-label={t(($) => $.settings.ai.approvals.project.removeRule, { tool })}

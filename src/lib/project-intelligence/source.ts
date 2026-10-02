@@ -1,4 +1,5 @@
 import { typstAutolinkEnd } from "@oleafly/editor/typst-syntax";
+import { dirname } from "@/lib/path-utils";
 import type {
   ProjectIntelligenceEngine,
   SourceLocation,
@@ -52,11 +53,6 @@ export function normalizeProjectPath(path: string): string | null {
     parts.push(part);
   }
   return parts.length > 0 ? parts.join("/") : null;
-}
-
-export function dirname(path: string): string {
-  const index = path.lastIndexOf("/");
-  return index < 0 ? "" : path.slice(0, index);
 }
 
 export function resolveProjectPath(

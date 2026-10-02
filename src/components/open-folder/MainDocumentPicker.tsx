@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { chooseMainDocument } from "@/store/main-document";
 import { useOpenFolderStore } from "@/store/open-folder";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 const EMPTY: DetectionCandidate[] = [];
 
@@ -79,9 +81,9 @@ function CandidateRow({
             {candidate.path}
           </span>
           {badge ? (
-            <span className="shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+            <Badge variant="primaryGhost" size="sm">
               {badge}
-            </span>
+            </Badge>
           ) : null}
           <span className="ml-auto shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
             {documentKindLabel(candidate.kind)}
@@ -279,7 +281,7 @@ export function MainDocumentPicker() {
             onClick={() => void open(selected)}
             disabled={busy || selected === null || selectedIndex < 0}
           >
-            {busy ? <Loader2 aria-hidden className="size-3.5 animate-spin motion-reduce:animate-none" /> : null}
+            {busy ? <Spinner size="sm" /> : null}
             {t(($) => $.shell.openedFolder.picker.open)}
           </Button>
         </DialogFooter>

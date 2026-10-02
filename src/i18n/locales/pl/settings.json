@@ -494,11 +494,6 @@
         },
         "title": "Udostępnij umiejętności innym agentom na tym komputerze"
       },
-      "size": {
-        "bytes": "{{value}} B",
-        "kilobytes": "{{value}} KB",
-        "megabytes": "{{value}} MB"
-      },
       "source": {
         "added": "Dodana",
         "bundled": "Wbudowana",
