@@ -8,6 +8,9 @@ import {
   saveEquationAsPng,
   saveEquationAsSvg,
   svgDocumentToPngBytes,
+  TypstEquationError,
+  typstEquationAt,
+  typstEquationAtCursor,
 } from "./equation-export";
 
 const mocks = vi.hoisted(() => ({
@@ -23,11 +26,20 @@ const mocks = vi.hoisted(() => ({
   info: vi.fn(),
   dismiss: vi.fn(),
   notifyError: vi.fn(),
+  renderTypst: vi.fn(),
+  activePath: vi.fn<() => string | null>(() => "main.tex"),
 }));
 vi.mock("@oleafly/editor", () => ({ getEditorView: mocks.editor }));
 vi.mock("@/components/editor/selection-text", () => ({ activeSelectionText: mocks.selection }));
 vi.mock("@/components/editor/cm/hover-math", () => ({ enclosingMathEnvironment: mocks.enclosing }));
-vi.mock("@/lib/tauri", () => ({ writeBytesFile: mocks.writeBytes, revealInDir: mocks.reveal }));
+vi.mock("@/lib/tauri", () => ({
+  writeBytesFile: mocks.writeBytes,
+  revealInDir: mocks.reveal,
+  renderTypstSnippet: mocks.renderTypst,
+}));
+vi.mock("@/store/files", () => ({
+  useFilesStore: { getState: () => ({ activePath: mocks.activePath() }) },
+}));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
@@ -57,6 +69,7 @@ beforeEach(() => {
   mocks.pickSavePath.mockResolvedValue("/exports/equation.svg");
   mocks.writeBytes.mockResolvedValue(undefined);
   mocks.reveal.mockResolvedValue(undefined);
+  mocks.activePath.mockReturnValue("main.tex");
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -384,5 +397,125 @@ describe("equationFailureMessage", () => {
     expect(
       equationFailureMessage('@oleafly/error:{"code":"project.name_conflict","params":{"name":"x"}}', "Fallback."),
     ).toBe("A project named x already exists.");
+  });
+});
+
+function typstEditor(doc: string, head: number) {
+  mocks.activePath.mockReturnValue("chapters/intro.typ");
+  mocks.selection.mockReturnValue(null);
+  mocks.editor.mockReturnValue({ state: { doc: { toString: () => doc }, selection: { main: { head } } } });
+}
+
+const TYPST_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 24"><path d="M0 0"/></svg>';
+
+describe("Typst equations", () => {
+  it.each([
+    ["Let $x$ and $ frac(a, b) $ hold.", 5, "$x$", false],
+    ["Let $x$ and $ frac(a, b) $ hold.", 17, "$ frac(a, b) $", true],
+    ["$\n  sum_(i=1)^n i\n$", 6, "$\n  sum_(i=1)^n i\n$", true],
+    ["Only $x $ here", 7, "$x $", false],
+  ])("finds the math around the caret in %j", (text, offset, math, display) => {
+    expect(typstEquationAt(text, offset)).toEqual({ math, display });
+  });
+
+  it("skips dollars that are escaped, commented, raw, quoted, or part of a link", () => {
+    const text = [
+      "Price \\$5 // $nope$",
+      "/* $no$ /* $nested$ */ $still$ */ `$raw$` #let s = \"$str$\"",
+      "See https://example.org/$ and $ \"if $\" x $",
+    ].join("\n");
+    const caret = text.indexOf(" x $") + 1;
+    expect(typstEquationAt(text, caret)).toEqual({ math: '$ "if $" x $', display: true });
+    expect(typstEquationAt(text, text.indexOf("nope"))).toBeNull();
+    expect(typstEquationAt(text, text.indexOf("raw"))).toBeNull();
+    expect(typstEquationAt(text, text.indexOf("str"))).toBeNull();
+  });
+
+  it("has no Typst source outside math", () => {
+    expect(typstEquationAt("Plain words", 3)).toBeNull();
+  });
+
+  it.each([
+    ["  $ alpha $ ", "$ alpha $", true],
+    ["frac(a, b)", "$frac(a, b)$", false],
+    ["where $x$ holds", "$x$", false],
+  ])("keeps the selected Typst math %j as written", (selection, math, display) => {
+    mocks.activePath.mockReturnValue("main.typ");
+    mocks.selection.mockReturnValue(selection);
+    expect(typstEquationAtCursor()).toEqual({ math, display });
+  });
+
+  it("renders Typst math through the Typst sidecar instead of MathJax", async () => {
+    typstEditor("Area $ pi r^2 $.", 8);
+    mocks.renderTypst.mockResolvedValue({
+      status: "rendered",
+      image: { format: "svg", svg: TYPST_SVG },
+      diagnostics: [],
+    });
+    await saveEquationAsSvg();
+    expect(mocks.renderTypst).toHaveBeenCalledExactlyOnceWith({ source: "$ pi r^2 $", format: "svg" });
+    const [, encoded] = mocks.writeBytes.mock.calls[0];
+    expect(Buffer.from(encoded, "base64").toString("utf8")).toBe(TYPST_SVG);
+    expect(mocks.successUnique).toHaveBeenCalledWith(expect.any(String), "Equation SVG saved", expect.anything());
+  });
+
+  it("asks Typst for a PNG at the export scale with the requested background", async () => {
+    typstEditor("Area $x^2$.", 7);
+    mocks.pickSavePath.mockResolvedValue("/exports/equation.png");
+    mocks.renderTypst.mockResolvedValue({
+      status: "rendered",
+      image: { format: "png", pngBase64: Buffer.from(PNG_BYTES).toString("base64") },
+      diagnostics: [],
+    });
+    await saveEquationAsPng();
+    expect(mocks.renderTypst).toHaveBeenLastCalledWith({
+      source: '#set page(fill: rgb("#ffffff"))\n$x^2$',
+      format: "png",
+      ppi: 288,
+    });
+    expect(mocks.writeBytes).toHaveBeenCalledExactlyOnceWith(
+      "/exports/equation.png",
+      Buffer.from(PNG_BYTES).toString("base64"),
+    );
+
+    await saveEquationAsPng(2, null);
+    expect(mocks.renderTypst).toHaveBeenLastCalledWith({ source: "$x^2$", format: "png", ppi: 192 });
+  });
+
+  it("explains a Typst error with the compiler's own message", async () => {
+    typstEditor("Broken $ frac(a, $ here", 9);
+    mocks.renderTypst.mockResolvedValue({
+      status: "failed",
+      diagnostics: [
+        { severity: "warning", message: "unused", line: 1, column: 1 },
+        { severity: "error", message: "unclosed delimiter", line: 1, column: 6 },
+      ],
+    });
+    await saveEquationAsSvg();
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+      "export equation svg",
+      expect.any(TypstEquationError),
+      "Typst couldn't render this equation (unclosed delimiter)",
+    );
+    expect(mocks.pickSavePath).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the generic message when the Typst sidecar cannot run", async () => {
+    typstEditor("Area $x$.", 7);
+    mocks.renderTypst.mockRejectedValue("bundled sidecar not found: /app/typst");
+    await saveEquationAsPng();
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith(
+      "export equation png",
+      "bundled sidecar not found: /app/typst",
+      PNG_FAILED,
+    );
+    expect(mocks.writeBytes).not.toHaveBeenCalled();
+  });
+
+  it("keeps LaTeX files on the MathJax path", async () => {
+    mocks.selection.mockReturnValue("$$x^2$$");
+    await saveEquationAsSvg();
+    expect(mocks.renderTypst).not.toHaveBeenCalled();
+    expect(mocks.writeBytes).toHaveBeenCalledOnce();
   });
 });

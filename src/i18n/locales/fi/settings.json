@@ -1021,7 +1021,7 @@
       "resume": "Jatka latausta ({{size}} MB valmiina)"
     },
     "typst": {
-      "detail": "Tulee Oleaflyn mukana. Nopea, toimii ilman verkkoa, ei vaadi asennusta. Kääntää Typst-dokumentit PDF-muotoon.",
+      "detail": "Tulee Oleaflyn mukana, joten mitään ei tarvitse asentaa. Verkkoyhteyttä tarvitaan vain, kun dokumentti tuo @preview-paketin ensimmäistä kertaa.",
       "heading": "Typst-kääntäjä",
       "name": "Typst (sisäänrakennettu)",
       "note": "Typst-projektit käyttävät aina mukana tulevaa kääntäjää. Kääntäjän version valinta ja järjestelmän Typst eivät ole vielä käytettävissä.",

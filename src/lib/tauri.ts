@@ -558,6 +558,32 @@ export interface AdHocConversionResult {
 export const convertAdHoc = (request: AdHocConversionRequest) =>
   invoke<AdHocConversionResult>("convert_ad_hoc", { request });
 
+export type TypstSnippetFormat = "svg" | "png";
+
+export interface TypstSnippetRequest {
+  source: string;
+  format: TypstSnippetFormat;
+  ppi?: number;
+}
+
+export interface TypstSnippetDiagnostic {
+  severity: "error" | "warning";
+  message: string;
+  line: number | null;
+  column: number | null;
+}
+
+export type TypstSnippetImage =
+  | { format: "svg"; svg: string }
+  | { format: "png"; pngBase64: string };
+
+export type TypstSnippetRender =
+  | { status: "rendered"; image: TypstSnippetImage; diagnostics: TypstSnippetDiagnostic[] }
+  | { status: "failed"; diagnostics: TypstSnippetDiagnostic[] };
+
+export const renderTypstSnippet = (request: TypstSnippetRequest) =>
+  invoke<TypstSnippetRender>("render_typst_snippet", { request });
+
 export interface ArxivSourceRequest {
   arxivId?: string;
   dataBase64?: string;

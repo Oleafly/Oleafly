@@ -54,6 +54,16 @@ fn auth_requires_exact_bearer_token() {
 }
 
 #[test]
+fn instructions_describe_every_document_engine() {
+    let instructions = super::INSTRUCTIONS;
+    for engine in ["LaTeX", "Typst", "Markdown"] {
+        assert!(instructions.contains(engine), "{engine}: {instructions}");
+    }
+    assert!(!instructions.contains("LaTeX editor"), "{instructions}");
+    assert!(instructions.contains("get_status"), "{instructions}");
+}
+
+#[test]
 fn constant_time_eq_basics() {
     assert!(constant_time_eq(b"abc", b"abc"));
     assert!(!constant_time_eq(b"abc", b"abd"));

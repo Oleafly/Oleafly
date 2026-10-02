@@ -1,5 +1,6 @@
+import { toggleBlockComment, toggleComment } from "@codemirror/commands";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
-import { EditorState } from "@codemirror/state";
+import { EditorSelection, EditorState, type Transaction } from "@codemirror/state";
 import { classHighlighter, highlightTree } from "@lezer/highlight";
 import { describe, expect, it } from "vitest";
 import { typstLanguage } from "./typst";
@@ -75,5 +76,34 @@ describe("Typst highlighting outside ASCII", () => {
       "\\u{41",
       "\\u{1F600}",
     ]);
+  });
+});
+
+describe("Typst comments", () => {
+  const run = (
+    command: (target: { state: EditorState; dispatch: (tr: Transaction) => void }) => boolean,
+    doc: string,
+    anchor: number,
+    head: number,
+  ) => {
+    let state = EditorState.create({
+      doc,
+      selection: EditorSelection.single(anchor, head),
+      extensions: [typstLanguage()],
+    });
+    const handled = command({ state, dispatch: (tr) => { state = tr.state; } });
+    return { handled, text: state.doc.toString() };
+  };
+
+  it("toggles a line comment with //", () => {
+    const added = run(toggleComment, "= Title\nBody text", 9, 9);
+    expect(added).toEqual({ handled: true, text: "= Title\n// Body text" });
+    const removed = run(toggleComment, added.text, 12, 12);
+    expect(removed.text).toBe("= Title\nBody text");
+  });
+
+  it("toggles a block comment with /* and */", () => {
+    const added = run(toggleBlockComment, "Some words here", 5, 10);
+    expect(added).toEqual({ handled: true, text: "Some /* words */ here" });
   });
 });

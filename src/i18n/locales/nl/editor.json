@@ -266,7 +266,8 @@
     "svgImage": "SVG-afbeelding",
     "pngImage": "PNG-afbeelding",
     "svgKind": "Vergelijking als SVG",
-    "pngKind": "Vergelijking als PNG"
+    "pngKind": "Vergelijking als PNG",
+    "typstFailed": "Typst kon deze vergelijking niet weergeven ({{detail}})"
   },
   "selectionActions": {
     "askAi": "AI vragen",

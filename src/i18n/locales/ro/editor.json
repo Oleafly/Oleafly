@@ -269,7 +269,8 @@
     "svgImage": "Imagine SVG",
     "pngImage": "Imagine PNG",
     "svgKind": "Ecuație SVG",
-    "pngKind": "Ecuație PNG"
+    "pngKind": "Ecuație PNG",
+    "typstFailed": "Typst nu a putut afișa această ecuație ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Întreabă AI",

@@ -190,7 +190,6 @@ export function Editor() {
   }, []);
 
   const hasOpenFile = activePath !== null;
-  const isTypstFile = activePath?.toLowerCase().endsWith(".typ") ?? false;
   const isPdfFile = activePath?.toLowerCase().endsWith(".pdf");
   const isImageFile = activePath != null && isImagePath(activePath);
   // No in-app preview for these; show a notice instead of an empty text
@@ -392,16 +391,6 @@ export function Editor() {
           <FileText className="mb-3 size-10 opacity-30" />
           <p className="text-sm">{basename(activePath)}</p>
           <p className="text-xs">{t(($) => $.editor.shell.binaryFile)}</p>
-        </div>
-      );
-    }
-    if (isTypstFile) {
-      return (
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <EditorContextMenu>
-            <CodeMirrorEditor />
-          </EditorContextMenu>
-          <SelectionActionMenu />
         </div>
       );
     }

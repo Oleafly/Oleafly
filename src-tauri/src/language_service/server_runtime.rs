@@ -1858,7 +1858,7 @@ mod tests {
         assert_eq!(texlab.args, ["run"]);
         assert_eq!(tinymist.args, ["lsp"]);
         assert_eq!(texlab.version, "5.26.0");
-        assert_eq!(tinymist.version, "0.15.2");
+        assert_eq!(tinymist.version, "0.15.8");
     }
 
     #[test]

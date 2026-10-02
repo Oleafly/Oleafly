@@ -1021,7 +1021,7 @@
       "resume": "Resume download ({{size}} MB done)"
     },
     "typst": {
-      "detail": "Ships with Oleafly. Fast, offline, zero setup. Compiles Typst documents to PDF.",
+      "detail": "Ships with Oleafly, so there is nothing to set up. It needs a network connection only the first time a document imports an @preview package.",
       "heading": "Typst compiler",
       "name": "Typst (built in)",
       "note": "Typst projects always use the bundled compiler. Choosing a compiler version, and system Typst, are not available yet.",

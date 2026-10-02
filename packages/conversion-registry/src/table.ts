@@ -242,26 +242,40 @@ export function escapeLatexCell(value: string): string {
   return out;
 }
 
+const TYPST_ESCAPED_CHARACTERS = new Set(["\\", "[", "]", "#", "$", "@", "*", "_", "`", "<", ">", '"', "~"]);
+
+function isTypstSpace(character: string | undefined): boolean {
+  return character !== undefined && character.trim() === "";
+}
+
+function typstLeadingMarkerIndex(text: string): number {
+  let start = 0;
+  while (isTypstSpace(text[start])) start += 1;
+  const first = text[start];
+  if (first === "-" || first === "+" || first === "/") {
+    return isTypstSpace(text[start + 1]) ? start : -1;
+  }
+  let end = start;
+  if (first === "=") {
+    while (text[end] === "=") end += 1;
+    return isTypstSpace(text[end]) ? start : -1;
+  }
+  while (text[end] >= "0" && text[end] <= "9") end += 1;
+  return end > start && text[end] === "." && isTypstSpace(text[end + 1]) ? end : -1;
+}
+
 /** Escape Typst markup content: backslash, brackets, and meaning-changers. */
 export function escapeTypstCell(value: string): string {
+  const text = flattenCell(value);
+  const marker = typstLeadingMarkerIndex(text);
   let out = "";
-  for (const ch of flattenCell(value)) {
-    switch (ch) {
-      case "\\":
-        out += "\\\\";
-        break;
-      case "[":
-      case "]":
-      case "#":
-      case "$":
-      case "@":
-      case "*":
-      case "_":
-      case "`":
-        out += `\\${ch}`;
-        break;
-      default:
-        out += ch;
+  for (let index = 0; index < text.length; index++) {
+    const ch = text[index];
+    const opensComment = ch === "/" && (text[index + 1] === "/" || text[index + 1] === "*");
+    if (index === marker || opensComment || TYPST_ESCAPED_CHARACTERS.has(ch)) {
+      out += `\\${ch}`;
+    } else {
+      out += ch;
     }
   }
   return out;
@@ -310,31 +324,37 @@ export function emitTypstTable(rowsInput: string[][], options: TableOptions): st
   const bold = options.boldHeader ?? true;
   const alignment = explicitAlignment(options.alignment, rows[0].length)
     ?? inferAlignment(rowsInput, options.header);
-  const alignArg = alignment
-    .split("")
-    .map((letter) =>
-      letter === "r" ? "right" : letter === "c" ? "center" : "left",
-    )
-    .join(", ");
-  const lines: string[] = [];
-  if (options.caption) {
-    lines.push(`#figure(`);
-  }
-  lines.push(`#table(`);
-  lines.push(`  columns: (${alignArg}),`);
+  const alignments = [...alignment].map((letter) =>
+    letter === "r" ? "right" : letter === "c" ? "center" : "left",
+  );
+  const alignArg = alignments.length === 1 ? alignments[0] : `(${alignments.join(", ")})`;
+  const body: string[] = [
+    `columns: ${alignments.length},`,
+    `align: ${alignArg},`,
+    "stroke: none,",
+    "table.hline(),",
+  ];
   rows.forEach((row, index) => {
     const cells = row.map(escapeTypstCell);
     if (options.header && index === 0) {
-      const headerCells = cells.map((cell) => (bold ? `[*${cell}*]` : `[${cell}]`));
-      lines.push(`  table.header(${headerCells.join(", ")}),`);
+      const headerCells = cells.map((cell) => (bold && cell ? `[*${cell}*]` : `[${cell}]`));
+      body.push(`table.header(${headerCells.join(", ")}),`, "table.hline(stroke: 0.5pt),");
     } else {
-      lines.push(`  ${cells.map((cell) => `[${cell}]`).join(", ")},`);
+      body.push(`${cells.map((cell) => `[${cell}]`).join(", ")},`);
     }
   });
-  lines.push(")");
-  if (options.caption) {
-    lines.push(`  caption: [${escapeTypstCell(options.caption)}],`);
-    lines.push(")");
+  body.push("table.hline(),");
+
+  const caption = options.caption?.trim();
+  const label = options.label?.trim();
+  const validLabel = label && isValidLatexLabel(label) ? label : undefined;
+  if (!caption && !validLabel) {
+    return ["#table(", ...body.map((line) => `  ${line}`), ")"].join("\n");
   }
+  const lines = ["#figure(", "  table(", ...body.map((line) => `    ${line}`), "  ),"];
+  if (caption) {
+    lines.push(`  caption: [${escapeTypstCell(caption)}],`);
+  }
+  lines.push(validLabel ? `) <${validLabel}>` : ")");
   return lines.join("\n");
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   supportsFigureTools,
   compileOfflineForEngine,
+  compileSettingsForEngine,
   formattingForEngine,
   LATEX_ENGINE,
   pathUsesEngineSource,
@@ -13,6 +14,40 @@ describe("pathUsesEngineSource", () => {
     expect(pathUsesEngineSource(LATEX_ENGINE, "chapters/main.tex")).toBe(true);
     expect(pathUsesEngineSource(LATEX_ENGINE, "README.md")).toBe(false);
     expect(pathUsesEngineSource(LATEX_ENGINE, "notes.typ")).toBe(false);
+  });
+});
+
+describe("compileSettingsForEngine", () => {
+  const withProfile = (
+    id: "latexmk" | "typst" | "markdown",
+    profile: "latex" | "typst" | "markdown",
+  ) => ({
+    ...LATEX_ENGINE,
+    id,
+    capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: profile },
+  });
+
+  it("offers every LaTeX compile setting on the bundled Tectonic engine", () => {
+    expect(compileSettingsForEngine(LATEX_ENGINE)).toEqual({
+      syntaxCheck: true,
+      draftMode: true,
+      stopOnFirstError: true,
+    });
+  });
+
+  it("drops the draft mode for latexmk", () => {
+    expect(compileSettingsForEngine(withProfile("latexmk", "latex"))).toEqual({
+      syntaxCheck: true,
+      draftMode: false,
+      stopOnFirstError: true,
+    });
+  });
+
+  it("offers none of them for Typst, Markdown or an unknown engine", () => {
+    const none = { syntaxCheck: false, draftMode: false, stopOnFirstError: false };
+    expect(compileSettingsForEngine(withProfile("typst", "typst"))).toEqual(none);
+    expect(compileSettingsForEngine(withProfile("markdown", "markdown"))).toEqual(none);
+    expect(compileSettingsForEngine(UNKNOWN_ENGINE)).toEqual(none);
   });
 });
 

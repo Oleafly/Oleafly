@@ -266,7 +266,8 @@
     "svgImage": "SVG görseli",
     "pngImage": "PNG görseli",
     "svgKind": "Denklem SVG'si",
-    "pngKind": "Denklem PNG'si"
+    "pngKind": "Denklem PNG'si",
+    "typstFailed": "Typst bu denklemi işleyemedi ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Yapay zekaya sor",

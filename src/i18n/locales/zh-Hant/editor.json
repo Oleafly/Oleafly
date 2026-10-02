@@ -263,7 +263,8 @@
     "svgImage": "SVG 影像",
     "pngImage": "PNG 影像",
     "svgKind": "方程式 SVG",
-    "pngKind": "方程式 PNG"
+    "pngKind": "方程式 PNG",
+    "typstFailed": "Typst 無法算繪此方程式（{{detail}}）"
   },
   "selectionActions": {
     "askAi": "詢問 AI",

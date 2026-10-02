@@ -272,7 +272,8 @@
     "svgImage": "Изображение SVG",
     "pngImage": "Изображение PNG",
     "svgKind": "Формула в SVG",
-    "pngKind": "Формула в PNG"
+    "pngKind": "Формула в PNG",
+    "typstFailed": "Typst не смог отрисовать эту формулу ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Спросить ИИ",

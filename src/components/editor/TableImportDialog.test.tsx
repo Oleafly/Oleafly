@@ -138,11 +138,11 @@ describe("TableImportDialog", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("uses Typst syntax and omits the LaTeX label field", async () => {
+  it("uses Typst syntax and writes the label after the figure", async () => {
     mocks.files = { ...mocks.files, activePath: "main.typ", engine: { id: "typst" } };
     mocks.pick.mockResolvedValue("C:\\tables\\results.xlsx");
     render(<TableImportDialog />);
-    expect(screen.queryByLabelText("Label (optional)")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Label (optional)")).toHaveValue("tab:imported");
     await choose();
     expect(screen.getByTestId("table-import-file")).toHaveTextContent(
       enEditor.tableImport.selectedSummary
@@ -150,10 +150,34 @@ describe("TableImportDialog", () => {
         .replace("{{rows}}", "2")
         .replace("{{columns}}", "2"),
     );
+    fireEvent.change(screen.getByLabelText("Label (optional)"), { target: { value: "  tab:typst  " } });
     fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
-    expect(mocks.insert.mock.calls[0][0]).toContain("#table(");
-    expect(mocks.insert.mock.calls[0][0]).not.toContain("\\begin{tabular}");
+    const inserted = mocks.insert.mock.calls[0][0];
+    expect(inserted).toContain("#figure(\n  table(\n");
+    expect(inserted).toContain(") <tab:typst>");
+    expect(inserted).not.toContain("\\begin{tabular}");
     expect(mocks.success).toHaveBeenCalledWith("Typst table inserted at the cursor.");
+  });
+
+  it("emits a bare Typst table when the label and caption are empty", async () => {
+    mocks.files = { ...mocks.files, activePath: "main.typ", engine: { id: "typst" } };
+    render(<TableImportDialog />);
+    await choose();
+    fireEvent.change(screen.getByLabelText("Label (optional)"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
+    const inserted = mocks.insert.mock.calls[0][0];
+    expect(inserted).toContain("\n#table(\n");
+    expect(inserted).not.toContain("#figure(");
+  });
+
+  it("blocks a Typst label that would break the label syntax", async () => {
+    mocks.files = { ...mocks.files, activePath: "main.typ", engine: { id: "typst" } };
+    render(<TableImportDialog />);
+    await choose();
+    fireEvent.change(screen.getByLabelText("Label (optional)"), { target: { value: "tab:x> #panic()" } });
+    fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(enEditor.tableImport.invalidLabel);
+    expect(mocks.insert).not.toHaveBeenCalled();
   });
 
   it.each(["picker", "reader", "empty"])("explains a %s failure and allows another file", async (failure) => {

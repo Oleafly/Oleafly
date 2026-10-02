@@ -269,7 +269,8 @@
     "svgImage": "Immagine SVG",
     "pngImage": "Immagine PNG",
     "svgKind": "SVG dell'equazione",
-    "pngKind": "PNG dell'equazione"
+    "pngKind": "PNG dell'equazione",
+    "typstFailed": "Typst non è riuscito a visualizzare questa equazione ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Chiedi all'AI",

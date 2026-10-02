@@ -272,7 +272,8 @@
     "svgImage": "Зображення SVG",
     "pngImage": "Зображення PNG",
     "svgKind": "Рівняння SVG",
-    "pngKind": "Рівняння PNG"
+    "pngKind": "Рівняння PNG",
+    "typstFailed": "Typst не зміг відобразити це рівняння ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Запитати ШІ",

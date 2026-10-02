@@ -124,6 +124,9 @@ function typstPatternToken(stream: StringStream): string | null {
 }
 
 const typstMode: StreamParser<TypstState> = {
+  languageData: {
+    commentTokens: { line: "//", block: { open: "/*", close: "*/" } },
+  },
   startState: () => ({
     blockCommentDepth: 0,
     rawFence: 0,

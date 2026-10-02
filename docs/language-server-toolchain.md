@@ -12,7 +12,12 @@ same `servers.*.lsp` object instead of reconstructing server-specific values.
 | Server | Version | License | Default policy | LSP command |
 | --- | --- | --- | --- | --- |
 | [TexLab](https://github.com/latex-lsp/texlab) | 5.26.0 | GPL-3.0-only | Consent-gated app-data download | `texlab run` |
-| [Tinymist](https://github.com/Myriad-Dreamin/tinymist) | 0.15.2 | Apache-2.0 | Bundled archive, verified app-data install | `tinymist lsp` |
+| [Tinymist](https://github.com/Myriad-Dreamin/tinymist) | 0.15.8 | Apache-2.0 | Bundled archive, verified app-data install | `tinymist lsp` |
+
+The bundled Tinymist matches the bundled Typst minor. Tinymist releases for the
+other Typst versions Oleafly offers are pinned in the
+[Typst toolchain catalog](typst-toolchain.md), whose bundled Tinymist entry
+must equal this manifest's.
 
 The target allowlist matches Oleafly's existing sidecar tooling:
 
@@ -88,7 +93,7 @@ Within that directory, each executable path is versioned and target-specific:
 
 ```text
 texlab/5.26.0/<target>/texlab[.exe]
-tinymist/0.15.2/<target>/tinymist[.exe]
+tinymist/0.15.8/<target>/tinymist[.exe]
 ```
 
 For example, the Apple Silicon path ends in
@@ -111,7 +116,7 @@ pnpm language-servers:check
 
 Running the developer fetch command is itself an explicit setup action. The
 default stages Tinymist's exact upstream archive at its manifest-declared
-`src-tauri/resources/language-servers/tinymist/0.15.2/<asset>` path and puts
+`src-tauri/resources/language-servers/tinymist/0.15.8/<asset>` path and puts
 TexLab in the current user's app-data directory described above. The Tinymist
 archive, not its extracted executable, is the Tauri resource.
 
@@ -272,12 +277,12 @@ bundle. Changing that policy requires a separate, explicit maintainer decision
 plus implemented and reviewed source, license, and notice conveyance. Merely
 changing the manifest boolean is insufficient.
 
-### Tinymist 0.15.2
+### Tinymist 0.15.8
 
 Tinymist's pinned
-[`Cargo.toml`](https://github.com/Myriad-Dreamin/tinymist/blob/v0.15.2/Cargo.toml)
+[`Cargo.toml`](https://github.com/Myriad-Dreamin/tinymist/blob/v0.15.8/Cargo.toml)
 declares `Apache-2.0`. Its pinned
-[`LICENSE`](https://github.com/Myriad-Dreamin/tinymist/blob/v0.15.2/LICENSE)
+[`LICENSE`](https://github.com/Myriad-Dreamin/tinymist/blob/v0.15.8/LICENSE)
 includes the Apache License 2.0 and the copyright statement “Copyright
 2023-2025 Myriad Dreamin, Nathan Varner.”
 
@@ -286,15 +291,15 @@ copyright, patent, trademark, and attribution notices, and identify modified
 upstream files if Oleafly ever distributes any. The upstream repository has no
 `NOTICE` file at the pinned tag. The pinned source is:
 
-- <https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.2>
-- <https://github.com/Myriad-Dreamin/tinymist/archive/refs/tags/v0.15.2.tar.gz>
+- <https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.8>
+- <https://github.com/Myriad-Dreamin/tinymist/archive/refs/tags/v0.15.8.tar.gz>
 
 Oleafly distributes the official unmodified release executable inside its
 exact checksum-pinned upstream archive. The manifest marks archive bundling as
 allowed only with these license notices preserved. Every application bundle
 includes both the target-specific archive resource and the pinned upstream
 license as
-`resources/licenses/tinymist-0.15.2-LICENSE` (SHA-256
+`resources/licenses/tinymist-0.15.8-LICENSE` (SHA-256
 `a9f29769fd3a7ee2976e6e161a93e16461fa305c088c4806242e50ec8ef86bce`).
 The pinned upstream tag has no `NOTICE` file, so Oleafly does not invent one.
 
@@ -317,8 +322,11 @@ Do not edit only the version string. A pin update requires:
 5. checking `--version`, CLI help, EOF behavior, and rapid-change final
    diagnostics on a supported host;
 6. rechecking the pinned license, source tag, and upstream `NOTICE` status;
-7. running `pnpm language-servers:test`; and
-8. fetching, checking, and smoking the current host before release.
+7. running `pnpm language-servers:test`;
+8. for Tinymist, moving `BUNDLED_TINYMIST_VERSION` in the
+   [Typst toolchain catalog](typst-toolchain.md) to the same release,
+   regenerating it, and running `pnpm typst-toolchain:test`; and
+9. fetching, checking, and smoking the current host before release.
 
 ## Known gap: the bundled macOS Tinymist is pinned to ourselves
 

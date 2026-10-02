@@ -6,13 +6,20 @@
 import { enclosingMathEnvironment } from "@/components/editor/cm/hover-math";
 import { activeSelectionText } from "@/components/editor/selection-text";
 import { getEditorView } from "@oleafly/editor";
-import { writeBytesFile } from "@/lib/tauri";
+import { typstAutolinkEnd } from "@oleafly/editor/typst-syntax";
+import {
+  renderTypstSnippet,
+  writeBytesFile,
+  type TypstSnippetDiagnostic,
+  type TypstSnippetRequest,
+} from "@/lib/tauri";
+import { useFilesStore } from "@/store/files";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { pickSavePath } from "@/lib/native-file-dialog";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
-import { bytesToBase64 } from "@/lib/base64";
+import { base64ToBytes, bytesToBase64 } from "@/lib/base64";
 
 type Convert = (tex: string, display: boolean) => string;
 
@@ -136,9 +143,201 @@ export function equationAtCursor(): { tex: string; display: boolean } | null {
   return null;
 }
 
+export interface TypstEquation {
+  math: string;
+  display: boolean;
+}
+
+interface TypstMathSpan {
+  from: number;
+  to: number;
+}
+
+const TYPST_CODE_STRING_OPENERS = new Set(["(", ",", "=", ":", "+", "{"]);
+
+function previousNonBlank(text: string, index: number): string {
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    if (text[cursor] !== " " && text[cursor] !== "\t") return text[cursor];
+  }
+  return "";
+}
+
+function typstStringEnd(text: string, from: number): number {
+  for (let cursor = from + 1; cursor < text.length; cursor += 1) {
+    if (text[cursor] === "\\") cursor += 1;
+    else if (text[cursor] === '"') return cursor + 1;
+  }
+  return text.length;
+}
+
+function typstBlockCommentEnd(text: string, from: number): number {
+  let depth = 0;
+  let cursor = from;
+  while (cursor < text.length) {
+    if (text.startsWith("/*", cursor)) {
+      depth += 1;
+      cursor += 2;
+    } else if (text.startsWith("*/", cursor)) {
+      depth -= 1;
+      cursor += 2;
+      if (depth === 0) return cursor;
+    } else {
+      cursor += 1;
+    }
+  }
+  return text.length;
+}
+
+function typstRawEnd(text: string, from: number): number {
+  let width = 1;
+  while (text[from + width] === "`") width += 1;
+  const close = text.indexOf("`".repeat(width), from + width);
+  return close < 0 ? text.length : close + width;
+}
+
+function typstLineEnd(text: string, from: number): number {
+  const newline = text.indexOf("\n", from);
+  return newline < 0 ? text.length : newline;
+}
+
+function typstOpaqueEnd(text: string, cursor: number, inMath: boolean): number | null {
+  const character = text[cursor];
+  if (character === "\\") return cursor + 2;
+  if (!inMath) {
+    const link = typstAutolinkEnd(text, cursor);
+    if (link !== null) return link;
+    if (character === "`") return typstRawEnd(text, cursor);
+  }
+  if (text.startsWith("//", cursor)) return typstLineEnd(text, cursor);
+  if (text.startsWith("/*", cursor)) return typstBlockCommentEnd(text, cursor);
+  if (character === '"' && (inMath || TYPST_CODE_STRING_OPENERS.has(previousNonBlank(text, cursor)))) {
+    return typstStringEnd(text, cursor);
+  }
+  return null;
+}
+
+function typstMathSpans(text: string): TypstMathSpan[] {
+  const spans: TypstMathSpan[] = [];
+  let open = -1;
+  let cursor = 0;
+  while (cursor < text.length) {
+    const opaque = typstOpaqueEnd(text, cursor, open >= 0);
+    if (opaque !== null) {
+      cursor = opaque;
+      continue;
+    }
+    if (text[cursor] === "$") {
+      if (open < 0) open = cursor;
+      else {
+        spans.push({ from: open, to: cursor + 1 });
+        open = -1;
+      }
+    }
+    cursor += 1;
+  }
+  return spans;
+}
+
+function isTypstDisplayMath(math: string): boolean {
+  return math.length >= 3 && /^\$\s/u.test(math) && /\s\$$/u.test(math);
+}
+
+function typstEquation(math: string): TypstEquation {
+  return { math, display: isTypstDisplayMath(math) };
+}
+
+export function typstEquationAt(text: string, offset: number): TypstEquation | null {
+  const span = typstMathSpans(text).find(({ from, to }) => from <= offset && offset <= to);
+  return span ? typstEquation(text.slice(span.from, span.to)) : null;
+}
+
+function typstEquationFromSelection(selection: string): TypstEquation {
+  const trimmed = selection.trim();
+  const [span] = typstMathSpans(trimmed);
+  return typstEquation(span ? trimmed.slice(span.from, span.to) : `$${trimmed}$`);
+}
+
+export function typstEquationAtCursor(): TypstEquation | null {
+  const view = getEditorView();
+  if (!view) return null;
+  const selection = activeSelectionText();
+  if (selection?.trim()) return typstEquationFromSelection(selection);
+  return typstEquationAt(view.state.doc.toString(), view.state.selection.main.head);
+}
+
+export class TypstEquationError extends Error {
+  readonly diagnostics: TypstSnippetDiagnostic[];
+  readonly detail: string;
+
+  constructor(diagnostics: TypstSnippetDiagnostic[]) {
+    const detail = diagnostics.find((diagnostic) => diagnostic.severity === "error")?.message ?? "";
+    super(`Typst could not render this equation: ${detail}`);
+    this.name = "TypstEquationError";
+    this.diagnostics = diagnostics;
+    this.detail = detail;
+  }
+}
+
+async function renderTypstEquation(request: TypstSnippetRequest) {
+  const result = await renderTypstSnippet(request);
+  if (result.status === "failed") throw new TypstEquationError(result.diagnostics);
+  return result.image;
+}
+
+export async function typstEquationToSvgDocument(math: string): Promise<string> {
+  const image = await renderTypstEquation({ source: math, format: "svg" });
+  if (image.format !== "svg") throw new Error("Typst returned a PNG for an SVG request.");
+  return image.svg;
+}
+
+const TYPST_FILL_COLOR = /^#(?:[\da-f]{3,4}|[\da-f]{6}|[\da-f]{8})$/iu;
+const CSS_PIXELS_PER_INCH = 96;
+
+export async function typstEquationToPngBytes(
+  math: string,
+  scale = 3,
+  background: string | null = null,
+): Promise<Uint8Array> {
+  const fill = background && TYPST_FILL_COLOR.test(background) ? `#set page(fill: rgb("${background}"))\n` : "";
+  const image = await renderTypstEquation({
+    source: `${fill}${math}`,
+    format: "png",
+    ppi: Math.max(1, Math.round(CSS_PIXELS_PER_INCH * scale)),
+  });
+  if (image.format !== "png") throw new Error("Typst returned an SVG for a PNG request.");
+  return base64ToBytes(image.pngBase64);
+}
+
+type ExportEquation =
+  | ({ language: "typst" } & TypstEquation)
+  | { language: "latex"; tex: string; display: boolean };
+
+function exportEquationAtCursor(): ExportEquation | null {
+  if (/\.typ$/iu.test(useFilesStore.getState().activePath ?? "")) {
+    const equation = typstEquationAtCursor();
+    return equation && { language: "typst", ...equation };
+  }
+  const equation = equationAtCursor();
+  return equation && { language: "latex", ...equation };
+}
+
+function exportSvg(equation: ExportEquation): Promise<string> {
+  return equation.language === "typst"
+    ? typstEquationToSvgDocument(equation.math)
+    : equationToSvgDocument(equation.tex, equation.display);
+}
+
+async function exportPng(equation: ExportEquation, scale: number, background: string | null): Promise<Uint8Array> {
+  if (equation.language === "typst") return typstEquationToPngBytes(equation.math, scale, background);
+  return svgDocumentToPngBytes(await equationToSvgDocument(equation.tex, equation.display), scale, background);
+}
+
 const EQUATION_EXPORT_TOAST_KEY = "equation-export";
 
 export function equationFailureMessage(error: unknown, fallback: string): string {
+  if (error instanceof TypstEquationError && error.detail) {
+    return i18n.t(($) => $.editor.equationExport.typstFailed, { detail: error.detail });
+  }
   return decodeAppError(error) ? describeError(error) : fallback;
 }
 
@@ -154,13 +353,13 @@ async function saveBytes(defaultName: string, filters: { name: string; extension
 
 /** Save the equation under the cursor (or selection) as an SVG file. */
 export async function saveEquationAsSvg(): Promise<void> {
-  const equation = equationAtCursor();
+  const equation = exportEquationAtCursor();
   if (!equation) {
     toast.info(i18n.t(($) => $.editor.equationExport.noEquation));
     return;
   }
   try {
-    const svg = await equationToSvgDocument(equation.tex, equation.display);
+    const svg = await exportSvg(equation);
     await saveBytes(
       "equation.svg",
       [{ name: i18n.t(($) => $.editor.equationExport.svgImage), extensions: ["svg"] }],
@@ -178,14 +377,13 @@ export async function saveEquationAsSvg(): Promise<void> {
 
 /** Save the equation under the cursor (or selection) as a PNG file. */
 export async function saveEquationAsPng(scale = 3, background: string | null = "#ffffff"): Promise<void> {
-  const equation = equationAtCursor();
+  const equation = exportEquationAtCursor();
   if (!equation) {
     toast.info(i18n.t(($) => $.editor.equationExport.noEquation));
     return;
   }
   try {
-    const svg = await equationToSvgDocument(equation.tex, equation.display);
-    const bytes = await svgDocumentToPngBytes(svg, scale, background);
+    const bytes = await exportPng(equation, scale, background);
     await saveBytes(
       "equation.png",
       [{ name: i18n.t(($) => $.editor.equationExport.pngImage), extensions: ["png"] }],

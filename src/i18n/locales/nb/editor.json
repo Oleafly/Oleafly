@@ -266,7 +266,8 @@
     "svgImage": "SVG-bilde",
     "pngImage": "PNG-bilde",
     "svgKind": "Ligning som SVG",
-    "pngKind": "Ligning som PNG"
+    "pngKind": "Ligning som PNG",
+    "typstFailed": "Typst klarte ikke å gjengi denne ligningen ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Spør AI",

@@ -266,7 +266,8 @@
     "svgImage": "SVG-bild",
     "pngImage": "PNG-bild",
     "svgKind": "Ekvation som SVG",
-    "pngKind": "Ekvation som PNG"
+    "pngKind": "Ekvation som PNG",
+    "typstFailed": "Typst kunde inte rendera den här ekvationen ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Fråga AI",

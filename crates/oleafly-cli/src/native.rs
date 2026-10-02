@@ -31,6 +31,24 @@ pub struct BuildOptions {
     pub halt_on_error: bool,
 }
 
+impl BuildOptions {
+    pub fn ignored_by(self, engine: Engine) -> Vec<&'static str> {
+        let (offline, fast, halt_on_error) = match engine {
+            Engine::Tectonic => (false, false, false),
+            Engine::Latexmk => (false, true, false),
+            Engine::Typst | Engine::Markdown => (true, true, true),
+        };
+        [
+            (offline && self.offline, "--offline"),
+            (fast && self.fast, "--fast"),
+            (halt_on_error && self.halt_on_error, "--halt-on-error"),
+        ]
+        .into_iter()
+        .filter_map(|(ignored, flag)| ignored.then_some(flag))
+        .collect()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct BuildError {
     pub line: Option<u32>,
@@ -743,8 +761,7 @@ fn detect_latexmk_flavor(source: &Path) -> Result<&'static str> {
 
 fn typst_arguments(build: &PreparedBuild, output: &Path) -> Vec<OsString> {
     vec![
-        "--color".into(),
-        "never".into(),
+        "--color=never".into(),
         "compile".into(),
         build.source_path().as_os_str().to_owned(),
         output.as_os_str().to_owned(),
@@ -1133,6 +1150,35 @@ mod tests {
     }
 
     #[test]
+    fn build_options_name_the_flags_each_engine_ignores() {
+        let none = BuildOptions::default();
+        let all = BuildOptions {
+            offline: true,
+            fast: true,
+            halt_on_error: true,
+        };
+        let every_flag = vec!["--offline", "--fast", "--halt-on-error"];
+        for engine in [
+            Engine::Tectonic,
+            Engine::Latexmk,
+            Engine::Typst,
+            Engine::Markdown,
+        ] {
+            assert!(none.ignored_by(engine).is_empty());
+        }
+        assert!(all.ignored_by(Engine::Tectonic).is_empty());
+        assert_eq!(all.ignored_by(Engine::Latexmk), vec!["--fast"]);
+        assert_eq!(all.ignored_by(Engine::Typst), every_flag);
+        assert_eq!(all.ignored_by(Engine::Markdown), every_flag);
+        let offline_only = BuildOptions {
+            offline: true,
+            ..BuildOptions::default()
+        };
+        assert_eq!(offline_only.ignored_by(Engine::Typst), vec!["--offline"]);
+        assert!(offline_only.ignored_by(Engine::Latexmk).is_empty());
+    }
+
+    #[test]
     fn debug_build_records_the_compilation_target() {
         assert!(option_env!("OLEAFLY_BUILD_TARGET").is_some_and(|target| !target.is_empty()));
     }
@@ -1290,7 +1336,7 @@ mod tests {
         let typst_command = compiler.command(&typst_build, options).unwrap();
         let typst_arguments = arguments(&typst_command);
         assert_eq!(typst_command.executable, typst);
-        assert_eq!(&typst_arguments[..3], ["--color", "never", "compile"]);
+        assert_eq!(&typst_arguments[..2], ["--color=never", "compile"]);
         assert!(typst_arguments
             .windows(2)
             .any(|pair| pair == ["--diagnostic-format", "short"]));

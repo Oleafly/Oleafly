@@ -266,7 +266,8 @@
     "svgImage": "SVG-kuva",
     "pngImage": "PNG-kuva",
     "svgKind": "Kaavan SVG",
-    "pngKind": "Kaavan PNG"
+    "pngKind": "Kaavan PNG",
+    "typstFailed": "Typst ei pystynyt piirtämään tätä kaavaa ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Kysy tekoälyltä",

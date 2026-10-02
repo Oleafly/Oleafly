@@ -249,7 +249,7 @@ test("manifest has a closed schema and the pinned production releases", () => {
     ),
     {
       texlab: "5.26.0",
-      tinymist: "0.15.2",
+      tinymist: "0.15.8",
     },
   );
   for (const [serverId, server] of Object.entries(manifest.servers)) {
@@ -332,7 +332,7 @@ test("only Tinymist declares exact target-specific Tauri resource archives", () 
   )) {
     assert.equal(
       entry.resourceRelativePath,
-      `resources/language-servers/tinymist/0.15.2/${entry.asset}`,
+      `resources/language-servers/tinymist/0.15.8/${entry.asset}`,
       target,
     );
     assert.equal(
@@ -342,7 +342,7 @@ test("only Tinymist declares exact target-specific Tauri resource archives", () 
           "resources",
           "language-servers",
           "tinymist",
-          "0.15.2",
+          "0.15.8",
           entry.asset,
         ),
       ),
@@ -687,7 +687,7 @@ test("license and redistribution metadata is explicit and pinned", async () => {
     "src-tauri",
     "resources",
     "licenses",
-    "tinymist-0.15.2-LICENSE",
+    "tinymist-0.15.8-LICENSE",
   );
   const tinymistLicense = await readFile(tinymistLicensePath);
   const tauriConfig = JSON.parse(
@@ -758,16 +758,16 @@ test("license and redistribution metadata is explicit and pinned", async () => {
       requiredPolicyText,
     );
   }
-  assert.ok(thirdPartyLicenses.includes("Tinymist 0.15.2"));
+  assert.ok(thirdPartyLicenses.includes("Tinymist 0.15.8"));
   assert.ok(
     thirdPartyLicenses.includes(
-      "https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.2",
+      "https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.8",
     ),
   );
   assert.ok(thirdPartyLicenses.includes("Apache-2.0"));
   assert.equal(
     manifest.servers.tinymist.license.licenseUrl,
-    "https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/v0.15.2/LICENSE",
+    "https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/v0.15.8/LICENSE",
   );
   assert.equal(
     createHash("sha256").update(tinymistLicense).digest("hex"),

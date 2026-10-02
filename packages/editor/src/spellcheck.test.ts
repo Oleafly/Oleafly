@@ -11,12 +11,14 @@ import { EditorView } from "@codemirror/view";
 import { diagnosticCardSource } from "./diagnostic-card";
 import {
   createHarperLinter,
+  createSpellLinter,
   diagnosticPresentationExtensions,
   refreshEditorLints,
   refreshEditorProofreadingPresentation,
   setProofreadingActionHost,
   setSpellHost,
   type ProofreadingActionHost,
+  type SpellHost,
 } from "./spellcheck";
 import {
   PROOFREADING_PROTOCOL_VERSION,
@@ -1203,5 +1205,118 @@ describe("local grammar fallback", () => {
       { path: "main.typ", locale: "cs_CZ" },
     );
     expect(found).toEqual(["Text text", "tady tady"]);
+  });
+});
+
+describe("Typst proofreading without the worker", () => {
+  const source = [
+    '#set text(lang: "cs")',
+    '#let label = "strng"',
+    "#figure(rect(), caption: [Shown captoin])",
+    "Some txet #emph[here] and caf\\u{e9}.",
+  ].join("\n");
+
+  function typstHost(overrides: Partial<SpellHost>): void {
+    setSpellHost({
+      t: englishEditorMessage,
+      getProjectId: () => "project",
+      getActivePath: () => "main.typ",
+      getLintPrefs: () => ({
+        showRegionalism: true,
+        showWordChoice: true,
+        dialect: "american",
+      }),
+      isSessionIgnored: () => false,
+      isWordIgnored: () => false,
+      ignoreWordForProject: () => undefined,
+      ignoreWordGlobally: () => undefined,
+      ...overrides,
+    });
+  }
+
+  async function lintedSlices(extension: ReturnType<typeof createSpellLinter>) {
+    view = new EditorView({
+      state: EditorState.create({ doc: source, extensions: [extension] }),
+      parent: document.body,
+    });
+    forceLinting(view);
+    const found: string[] = [];
+    await vi.waitFor(
+      () => {
+        found.length = 0;
+        forEachDiagnostic(view!.state, (_diagnostic, from, to) => {
+          found.push(source.slice(from, to));
+        });
+        expect(found.length).toBeGreaterThan(0);
+      },
+      { timeout: 2_000 },
+    );
+    return found;
+  }
+
+  it("spells only the Typst prose", async () => {
+    const spelled: string[] = [];
+    typstHost({
+      getSpellchecker: async () => ({
+        spell: (word: string) => {
+          spelled.push(word);
+          return false;
+        },
+      }),
+    });
+    const found = await lintedSlices(createSpellLinter());
+
+    expect(found).toEqual([
+      "Shown",
+      "captoin",
+      "Some",
+      "txet",
+      "here",
+      "and",
+      "caf\\u{e9}",
+    ]);
+    expect(spelled).toContain("café");
+    expect(spelled).not.toContain("strng");
+    expect(spelled).not.toContain("lang");
+  });
+
+  it("hands the grammar engine Typst prose without code", async () => {
+    const proses: string[] = [];
+    const lintGrammar = vi.fn(async (prose: string) => {
+      proses.push(prose);
+      const at = prose.indexOf("txet");
+      return [
+        { from: at, to: at + 4, message: "Typo", kind: "Spelling", suggestions: [] },
+      ];
+    });
+    typstHost({ lintGrammar });
+    const found = await lintedSlices(createHarperLinter(false));
+
+    expect(found).toEqual(["txet"]);
+    expect(proses.at(-1)).toContain("Shown captoin");
+    expect(proses.at(-1)).toContain("café");
+    expect(proses.at(-1)).not.toMatch(/strng|lang|figure|emph/u);
+  });
+
+  it("finds a repeat that spans a Typst escape", async () => {
+    typstHost({ getDictionaryLocale: () => "fr_FR" });
+    view = new EditorView({
+      state: EditorState.create({
+        doc: "Le caf\\u{e9} caf\\u{e9} noir.",
+        extensions: [createHarperLinter(true)],
+      }),
+      parent: document.body,
+    });
+    forceLinting(view);
+    await vi.waitFor(
+      () => {
+        const found: string[] = [];
+        forEachDiagnostic(view!.state, (_diagnostic, from, to) => {
+          found.push(view!.state.doc.sliceString(from, to));
+        });
+        expect(found).toEqual(["caf\\u{e9} caf\\u{e9}"]);
+      },
+      { timeout: 2_000 },
+    );
   });
 });

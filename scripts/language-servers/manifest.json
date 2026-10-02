@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-07-27",
+  "verifiedAt": "2026-10-02",
   "supportedTargets": [
     "aarch64-apple-darwin",
     "aarch64-unknown-linux-gnu",
@@ -134,17 +134,17 @@
     },
     "tinymist": {
       "displayName": "Tinymist",
-      "version": "0.15.2",
-      "tag": "v0.15.2",
+      "version": "0.15.8",
+      "tag": "v0.15.8",
       "repository": "https://github.com/Myriad-Dreamin/tinymist",
-      "releaseApi": "https://api.github.com/repos/Myriad-Dreamin/tinymist/releases/tags/v0.15.2",
+      "releaseApi": "https://api.github.com/repos/Myriad-Dreamin/tinymist/releases/tags/v0.15.8",
       "binaryBaseName": "tinymist",
       "tauriExternalBin": null,
       "versionProbe": {
         "args": [
           "--version"
         ],
-        "pattern": "Build Git Describe:\\s+v0\\.15\\.2(?:\\s|$)"
+        "pattern": "Build Git Describe:\\s+v0\\.15\\.8(?:\\s|$)"
       },
       "lsp": {
         "args": [
@@ -163,9 +163,9 @@
       "license": {
         "spdx": "Apache-2.0",
         "upstreamDeclaration": "Apache-2.0",
-        "licenseUrl": "https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/v0.15.2/LICENSE",
-        "sourceUrl": "https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.2",
-        "sourceArchiveUrl": "https://github.com/Myriad-Dreamin/tinymist/archive/refs/tags/v0.15.2.tar.gz",
+        "licenseUrl": "https://raw.githubusercontent.com/Myriad-Dreamin/tinymist/v0.15.8/LICENSE",
+        "sourceUrl": "https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.8",
+        "sourceArchiveUrl": "https://github.com/Myriad-Dreamin/tinymist/archive/refs/tags/v0.15.8.tar.gz",
         "copyrightNotice": "Copyright 2023-2025 Myriad Dreamin and Nathan Varner.",
         "upstreamNotice": {
           "presentAtPinnedTag": false,
@@ -192,53 +192,53 @@
           "asset": "tinymist-aarch64-apple-darwin.tar.gz",
           "archiveType": "tar.gz",
           "archiveMember": "tinymist-aarch64-apple-darwin/tinymist",
-          "archiveSha256": "16241868c6752aa5e8f9c162562293c7cdf69e82f54687d7886336daf2c51915",
-          "archiveSize": 30068260,
-          "binarySha256": "37fe82e44a2e0bb213132449eb24fe119b918b8a4e4c86fa4faea3b09b9e23f2",
-          "binarySize": 63312448,
+          "archiveSha256": "c3e8673fe4b7d8d21ad6d90e3c0684317191e1350758f7eaa02b5bde84339885",
+          "archiveSize": 30849883,
+          "binarySha256": "e736c3d045a588648561ab8419f9bbce4841636a0080c0ce6fa77c557c8d47c9",
+          "binarySize": 64987632,
           "outputFilename": "tinymist-aarch64-apple-darwin",
-          "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-aarch64-apple-darwin.tar.gz",
-          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.2/tinymist-aarch64-apple-darwin.tar.gz",
-          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-apple-darwin.tar.gz.sha256"
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.8/tinymist-aarch64-apple-darwin.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-aarch64-apple-darwin.tar.gz",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-aarch64-apple-darwin.tar.gz.sha256"
         },
         "aarch64-unknown-linux-gnu": {
           "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
           "archiveType": "tar.gz",
           "archiveMember": "tinymist-aarch64-unknown-linux-gnu/tinymist",
-          "archiveSha256": "eba8e14338cf211906d77be6b18102736222da6721e98161133fa0d8ff5ab599",
-          "archiveSize": 29549962,
-          "binarySha256": "b358ed82e9102c9271e9be4be8cd1f25d3ab08276b73238b3c1106e9e28e9f68",
-          "binarySize": 62351256,
+          "archiveSha256": "ec78300e89b34e0958b615b1d42c275fd11bf91d2d27401bbef07150e477f199",
+          "archiveSize": 30317386,
+          "binarySha256": "0cb1896364ff6efaefd18b73c40276f00515d2388cb6746a8e5c14a940f9aae3",
+          "binarySize": 63963704,
           "outputFilename": "tinymist-aarch64-unknown-linux-gnu",
-          "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz",
-          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz",
-          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-aarch64-unknown-linux-gnu.tar.gz.sha256"
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.8/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-aarch64-unknown-linux-gnu.tar.gz.sha256"
         },
         "x86_64-unknown-linux-gnu": {
           "asset": "tinymist-x86_64-unknown-linux-gnu.tar.gz",
           "archiveType": "tar.gz",
           "archiveMember": "tinymist-x86_64-unknown-linux-gnu/tinymist",
-          "archiveSha256": "9b8a1aea6bb3fc9c39cb70496f0082bd518cfede555757bc3cb5225b05abc99b",
-          "archiveSize": 32171441,
-          "binarySha256": "f5e275c6289a5c4b45ca211abde329dd662b03f2c4aca2299d6c154b81135684",
-          "binarySize": 75682584,
+          "archiveSha256": "2428932e8d8b593ebc1ac4eed41fb9d3584166e1044bbcdef740b7296c348295",
+          "archiveSize": 32978419,
+          "binarySha256": "781fcd7ccfa099d886f0a227def422595979febe77cbaf4b42f7c66cb746be1d",
+          "binarySize": 77561160,
           "outputFilename": "tinymist-x86_64-unknown-linux-gnu",
-          "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz",
-          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz",
-          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-unknown-linux-gnu.tar.gz.sha256"
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.8/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-x86_64-unknown-linux-gnu.tar.gz.sha256"
         },
         "x86_64-pc-windows-msvc": {
           "asset": "tinymist-x86_64-pc-windows-msvc.zip",
           "archiveType": "zip",
           "archiveMember": "tinymist.exe",
-          "archiveSha256": "91edb0d21edca5841b896d702d8086622792d52b71a9b444d8befb0e937969ae",
-          "archiveSize": 29322850,
-          "binarySha256": "8780ed5076135f5afb11a03e6215d43659c193bc649634aff9b9dc91d77200a8",
-          "binarySize": 62377984,
+          "archiveSha256": "b36c3e2926b2fe870e377b27aeebcb6265dd6a19fdca148a9a3ac4fdf57ee8a5",
+          "archiveSize": 30077336,
+          "binarySha256": "7098ea4c056b56ea5d865996b9d048e3a956b72ba22c31789a0422ee4634fe10",
+          "binarySize": 64074240,
           "outputFilename": "tinymist-x86_64-pc-windows-msvc.exe",
-          "resourceRelativePath": "resources/language-servers/tinymist/0.15.2/tinymist-x86_64-pc-windows-msvc.zip",
-          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.2/tinymist-x86_64-pc-windows-msvc.zip",
-          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.2/tinymist-x86_64-pc-windows-msvc.zip.sha256"
+          "resourceRelativePath": "resources/language-servers/tinymist/0.15.8/tinymist-x86_64-pc-windows-msvc.zip",
+          "url": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-x86_64-pc-windows-msvc.zip",
+          "upstreamChecksumUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-x86_64-pc-windows-msvc.zip.sha256"
         }
       }
     }

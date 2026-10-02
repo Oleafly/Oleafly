@@ -585,6 +585,10 @@ fn is_url_body(code_point: u32) -> bool {
 }
 
 fn url_spans(text: &[u16]) -> Vec<Span> {
+    url_spans_with(text, is_url_body)
+}
+
+fn url_spans_with(text: &[u16], is_body: fn(u32) -> bool) -> Vec<Span> {
     let mut spans = Vec::new();
     let mut at = 0;
     while at < text.len() {
@@ -592,7 +596,7 @@ fn url_spans(text: &[u16]) -> Vec<Span> {
             let mut end = at + prefix;
             while end < text.len() {
                 let (code_point, width) = code_point_at(text, end);
-                if !is_url_body(code_point) {
+                if !is_body(code_point) {
                     break;
                 }
                 end += width;
@@ -2010,6 +2014,1259 @@ pub(crate) fn document_stats_for_text(text: &str) -> DocumentStats {
     document_stats_for_units(&to_units(text))
 }
 
+pub(crate) fn document_stats_for_path(path: &str, text: &str) -> DocumentStats {
+    if engine_for_path(path) == Some(Engine::Typst) {
+        typst_document_stats(&to_units(text))
+    } else {
+        document_stats_for_text(text)
+    }
+}
+
+const SLASH: u16 = b'/' as u16;
+const COLON: u16 = b':' as u16;
+const SEMICOLON: u16 = b';' as u16;
+const PLUS: u16 = b'+' as u16;
+const MINUS: u16 = b'-' as u16;
+const LINE_SEPARATOR: u16 = 0x2028;
+const PARAGRAPH_SEPARATOR: u16 = 0x2029;
+const ZERO_WIDTH_NON_JOINER: u32 = 0x200c;
+const ZERO_WIDTH_JOINER: u32 = 0x200d;
+
+const TYPST_TEXT: u8 = 0;
+const TYPST_HEADER: u8 = 1;
+const TYPST_OUTSIDE: u8 = 2;
+const TYPST_UNCOUNTED: u8 = 3;
+const TYPST_MAX_HEADING_LEVEL: usize = 6;
+const TYPST_MAX_LEVEL_DIGITS: usize = 3;
+const TYPST_DEFINITION_KEYWORDS: &[&str] = &["let", "set", "import", "include"];
+const TYPST_BLOCK_KEYWORDS: &[&str] = &["if", "for", "while"];
+const TYPST_AUTOLINK_TRAILING: &[u8] = b"!,.:;?'";
+const TYPST_AUTOLINK_SYMBOLS: &[u8] = b"!#$%&*+,-./:;=?@_~'";
+
+fn is_inline_space(unit: u16) -> bool {
+    unit == SPACE || unit == TAB
+}
+
+fn is_ascii_digit_unit(unit: u16) -> bool {
+    (0x30..=0x39).contains(&unit)
+}
+
+fn is_hex_digit_unit(unit: u16) -> bool {
+    is_ascii_digit_unit(unit) || (0x41..=0x46).contains(&unit) || (0x61..=0x66).contains(&unit)
+}
+
+fn is_closer(unit: u16) -> bool {
+    matches!(unit, CLOSE_PAREN | CLOSE_BRACKET | CLOSE_BRACE)
+}
+
+fn is_line_terminator(unit: u16) -> bool {
+    matches!(
+        unit,
+        NEWLINE | CARRIAGE_RETURN | LINE_SEPARATOR | PARAGRAPH_SEPARATOR
+    )
+}
+
+fn units_are(units: &[u16], word: &str) -> bool {
+    units.len() == word.len() && starts_with_ascii(units, 0, word)
+}
+
+fn units_are_any(units: &[u16], words: &[&str]) -> bool {
+    words.iter().any(|word| units_are(units, word))
+}
+
+fn is_typst_identifier_start(code_point: u32) -> bool {
+    if let Some(byte) = ascii_byte(code_point) {
+        return byte.is_ascii_alphabetic() || byte == b'_';
+    }
+    let category = general_category(code_point);
+    GeneralCategoryGroup::Letter.contains(category) || category == GeneralCategory::LetterNumber
+}
+
+fn is_typst_name_character(code_point: u32) -> bool {
+    if let Some(byte) = ascii_byte(code_point) {
+        return byte.is_ascii_alphanumeric() || byte == b'_';
+    }
+    let category = general_category(code_point);
+    GeneralCategoryGroup::Letter.contains(category)
+        || GeneralCategoryGroup::Mark.contains(category)
+        || GeneralCategoryGroup::Number.contains(category)
+        || category == GeneralCategory::ConnectorPunctuation
+}
+
+fn is_typst_identifier_continue(code_point: u32) -> bool {
+    code_point == u32::from(MINUS)
+        || code_point == ZERO_WIDTH_NON_JOINER
+        || code_point == ZERO_WIDTH_JOINER
+        || is_typst_name_character(code_point)
+}
+
+fn is_typst_label_continue(code_point: u32) -> bool {
+    matches!(code_point, 0x2e | 0x3a | 0x2d)
+        || code_point == ZERO_WIDTH_NON_JOINER
+        || code_point == ZERO_WIDTH_JOINER
+        || is_typst_name_character(code_point)
+}
+
+fn typst_run_end(
+    text: &[u16],
+    from: usize,
+    start: fn(u32) -> bool,
+    rest: fn(u32) -> bool,
+) -> usize {
+    if from >= text.len() {
+        return from;
+    }
+    let (code_point, width) = code_point_at(text, from);
+    if !start(code_point) {
+        return from;
+    }
+    let mut end = from + width;
+    while end < text.len() {
+        let (code_point, width) = code_point_at(text, end);
+        if !rest(code_point) {
+            break;
+        }
+        end += width;
+    }
+    end
+}
+
+fn typst_identifier_end(text: &[u16], from: usize) -> usize {
+    typst_run_end(
+        text,
+        from,
+        is_typst_identifier_start,
+        is_typst_identifier_continue,
+    )
+}
+
+fn is_typst_identifier_continue_at(text: &[u16], index: usize) -> bool {
+    index < text.len() && is_typst_identifier_continue(code_point_at(text, index).0)
+}
+
+fn typst_label_run_end(text: &[u16], from: usize) -> usize {
+    typst_run_end(text, from, is_typst_name_character, is_typst_label_continue)
+}
+
+fn typst_reference_end(text: &[u16], from: usize) -> usize {
+    let mut end = typst_label_run_end(text, from);
+    while end > from && matches!(text[end - 1], DOT | COLON) {
+        end -= 1;
+    }
+    end
+}
+
+fn typst_label_end(text: &[u16], at: usize) -> Option<usize> {
+    let mut end = typst_reference_end(text, at + 1);
+    if end == at + 1 {
+        return None;
+    }
+    while text
+        .get(end)
+        .is_some_and(|&unit| unit == DOT || unit == COLON)
+    {
+        end += 1;
+    }
+    (text.get(end) == Some(&GREATER)).then_some(end + 1)
+}
+
+fn is_typst_autolink_unit(unit: u16) -> bool {
+    u8::try_from(unit)
+        .is_ok_and(|byte| byte.is_ascii_alphanumeric() || TYPST_AUTOLINK_SYMBOLS.contains(&byte))
+}
+
+fn typst_autolink_end(text: &[u16], from: usize) -> Option<usize> {
+    if text.get(from) != Some(&u16::from(b'h'))
+        || !(starts_with_ascii(text, from, "http://") || starts_with_ascii(text, from, "https://"))
+    {
+        return None;
+    }
+    let mut brackets: Vec<u16> = Vec::new();
+    let mut end = from;
+    while end < text.len() {
+        let unit = text[end];
+        if unit == OPEN_BRACKET || unit == OPEN_PAREN {
+            brackets.push(unit);
+        } else if unit == CLOSE_BRACKET || unit == CLOSE_PAREN {
+            let opener = if unit == CLOSE_BRACKET {
+                OPEN_BRACKET
+            } else {
+                OPEN_PAREN
+            };
+            if brackets.pop() != Some(opener) {
+                break;
+            }
+        } else if !is_typst_autolink_unit(unit) {
+            break;
+        }
+        end += 1;
+    }
+    while end > from
+        && u8::try_from(text[end - 1]).is_ok_and(|byte| TYPST_AUTOLINK_TRAILING.contains(&byte))
+    {
+        end -= 1;
+    }
+    Some(end)
+}
+
+fn typst_escape_end(text: &[u16], at: usize) -> usize {
+    if at + 1 >= text.len() {
+        return at + 1;
+    }
+    if starts_with_ascii(text, at + 1, "u{") {
+        let mut end = at + 3;
+        while end < text.len() && is_hex_digit_unit(text[end]) {
+            end += 1;
+        }
+        if text.get(end) == Some(&CLOSE_BRACE) {
+            end += 1;
+        }
+        return end;
+    }
+    let (code_point, width) = code_point_at(text, at + 1);
+    let keeps_next = code_point == u32::from(AT)
+        || is_letter(code_point)
+        || is_number(code_point)
+        || (code_point <= 0xffff && is_js_space(code_point as u16));
+    if keeps_next {
+        at + 1
+    } else {
+        at + 1 + width
+    }
+}
+
+fn typst_line_end(text: &[u16], from: usize) -> usize {
+    index_of_unit(text, NEWLINE, from).unwrap_or(text.len())
+}
+
+fn typst_block_comment_end(text: &[u16], at: usize) -> usize {
+    let mut depth = 1usize;
+    let mut end = at + 2;
+    while end < text.len() && depth > 0 {
+        if starts_with_ascii(text, end, "/*") {
+            depth += 1;
+            end += 2;
+        } else if starts_with_ascii(text, end, "*/") {
+            depth -= 1;
+            end += 2;
+        } else {
+            end += 1;
+        }
+    }
+    end.min(text.len())
+}
+
+fn typst_raw_end(text: &[u16], at: usize) -> usize {
+    let mut width = 1;
+    while text.get(at + width) == Some(&BACKTICK) {
+        width += 1;
+    }
+    let mut run = 0;
+    let mut index = at + width;
+    while index < text.len() {
+        if text[index] == BACKTICK {
+            run += 1;
+            if run == width {
+                return index + 1;
+            }
+        } else {
+            run = 0;
+        }
+        index += 1;
+    }
+    text.len()
+}
+
+fn typst_quote_end(text: &[u16], from: usize) -> usize {
+    let mut index = from;
+    while index < text.len() {
+        if text[index] == BACKSLASH {
+            index += 2;
+            continue;
+        }
+        if text[index] == QUOTE {
+            return index + 1;
+        }
+        index += 1;
+    }
+    text.len()
+}
+
+fn typst_number_end(text: &[u16], at: usize) -> usize {
+    let mut end = at;
+    while end < text.len() && is_ascii_digit_unit(text[end]) {
+        end += 1;
+    }
+    if text.get(end) == Some(&DOT)
+        && text
+            .get(end + 1)
+            .is_some_and(|&unit| is_ascii_digit_unit(unit))
+    {
+        end += 1;
+        while end < text.len() && is_ascii_digit_unit(text[end]) {
+            end += 1;
+        }
+    }
+    while end < text.len() && is_ascii_letter(text[end]) {
+        end += 1;
+    }
+    if text.get(end) == Some(&PERCENT) {
+        end += 1;
+    }
+    end
+}
+
+struct TypstMathSpan {
+    end: usize,
+    display: bool,
+}
+
+fn typst_math_span(text: &[u16], at: usize) -> TypstMathSpan {
+    let mut end = at + 1;
+    while end < text.len() {
+        if text[end] == BACKSLASH {
+            end += 2;
+            continue;
+        }
+        if text[end] == DOLLAR {
+            let display = end > at + 1 && is_js_space(text[at + 1]) && is_js_space(text[end - 1]);
+            return TypstMathSpan {
+                end: end + 1,
+                display,
+            };
+        }
+        end += 1;
+    }
+    TypstMathSpan {
+        end: text.len(),
+        display: false,
+    }
+}
+
+fn typst_blank(chars: &mut [u16], from: usize, to: usize) {
+    let end = to.min(chars.len());
+    if from >= end {
+        return;
+    }
+    for unit in chars[from..end].iter_mut() {
+        if *unit != NEWLINE && *unit != CARRIAGE_RETURN {
+            *unit = SPACE;
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TypstCallee {
+    NoCall,
+    Other,
+    Figure,
+    Table,
+    Footnote,
+    Cite,
+    Heading,
+}
+
+fn typst_callee_of(name: &[u16]) -> TypstCallee {
+    if units_are(name, "figure") {
+        TypstCallee::Figure
+    } else if units_are(name, "table") {
+        TypstCallee::Table
+    } else if units_are(name, "footnote") {
+        TypstCallee::Footnote
+    } else if units_are(name, "cite") {
+        TypstCallee::Cite
+    } else if units_are(name, "heading") {
+        TypstCallee::Heading
+    } else {
+        TypstCallee::Other
+    }
+}
+
+fn typst_callee_class(class: u8, callee: TypstCallee) -> u8 {
+    if class == TYPST_UNCOUNTED {
+        return TYPST_UNCOUNTED;
+    }
+    match callee {
+        TypstCallee::Footnote => TYPST_OUTSIDE,
+        TypstCallee::Heading => TYPST_HEADER,
+        _ => class,
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TypstFrameKind {
+    Markup,
+    Paren,
+    Brace,
+    Statement,
+    Chain,
+    Cond,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum TypstCondState {
+    Condition,
+    AfterBody,
+    ElseBody,
+    Done,
+}
+
+#[derive(Clone, Copy)]
+struct TypstFrame {
+    kind: TypstFrameKind,
+    class: u8,
+    top: bool,
+    depth: usize,
+    heading: bool,
+    at_line_start: bool,
+    callee: TypstCallee,
+    heading_index: Option<usize>,
+    state: TypstCondState,
+}
+
+impl TypstFrame {
+    fn new(kind: TypstFrameKind, class: u8, callee: TypstCallee) -> Self {
+        Self {
+            kind,
+            class,
+            top: false,
+            depth: 0,
+            heading: false,
+            at_line_start: true,
+            callee,
+            heading_index: None,
+            state: TypstCondState::Condition,
+        }
+    }
+}
+
+struct TypstScan {
+    prose: Vec<u16>,
+    classes: Vec<u8>,
+    heading_levels: Vec<usize>,
+    figures: u64,
+    tables: u64,
+    footnotes: u64,
+    cites: u64,
+    references: Vec<Vec<u16>>,
+    labels: HashSet<Vec<u16>>,
+    label_count: u64,
+    math_inline: u64,
+    math_displayed: u64,
+}
+
+struct TypstScanner<'a> {
+    text: &'a [u16],
+    stack: Vec<TypstFrame>,
+    last_ident_end: Option<usize>,
+    last_ident_callee: TypstCallee,
+    last_call_end: Option<usize>,
+    last_call_callee: TypstCallee,
+    scan: TypstScan,
+}
+
+impl<'a> TypstScanner<'a> {
+    fn new(text: &'a [u16]) -> Self {
+        Self {
+            text,
+            stack: Vec::new(),
+            last_ident_end: None,
+            last_ident_callee: TypstCallee::NoCall,
+            last_call_end: None,
+            last_call_callee: TypstCallee::NoCall,
+            scan: TypstScan {
+                prose: text.to_vec(),
+                classes: vec![TYPST_TEXT; text.len()],
+                heading_levels: Vec::new(),
+                figures: 0,
+                tables: 0,
+                footnotes: 0,
+                cites: 0,
+                references: Vec::new(),
+                labels: HashSet::new(),
+                label_count: 0,
+                math_inline: 0,
+                math_displayed: 0,
+            },
+        }
+    }
+
+    fn run(mut self) -> TypstScan {
+        let mut top = TypstFrame::new(TypstFrameKind::Markup, TYPST_TEXT, TypstCallee::NoCall);
+        top.top = true;
+        self.stack.push(top);
+        let mut index = 0;
+        while index < self.text.len() {
+            let current = self.stack.len() - 1;
+            index = match self.stack[current].kind {
+                TypstFrameKind::Markup => self.markup_step(current, index),
+                TypstFrameKind::Chain => self.chain_step(current, index),
+                TypstFrameKind::Cond => self.cond_step(current, index),
+                _ => self.code_step(current, index),
+            };
+        }
+        self.scan
+    }
+
+    fn emit(&mut self, from: usize, to: usize, kept: bool, class: u8) {
+        let end = to.min(self.text.len());
+        if from >= end {
+            return;
+        }
+        if !kept {
+            typst_blank(&mut self.scan.prose, from, end);
+        } else if class != TYPST_TEXT {
+            self.scan.classes[from..end].fill(class);
+        }
+    }
+
+    fn code(&mut self, from: usize, to: usize) {
+        self.emit(from, to, false, TYPST_UNCOUNTED);
+    }
+
+    fn push(&mut self, kind: TypstFrameKind, class: u8, callee: TypstCallee) {
+        self.stack.push(TypstFrame::new(kind, class, callee));
+    }
+
+    fn replace_top(&mut self, kind: TypstFrameKind, class: u8) {
+        let top = self.stack.len() - 1;
+        self.stack[top] = TypstFrame::new(kind, class, TypstCallee::NoCall);
+    }
+
+    fn register_call(&mut self, callee: TypstCallee, class: u8) -> Option<usize> {
+        if class == TYPST_UNCOUNTED {
+            return None;
+        }
+        match callee {
+            TypstCallee::Figure => self.scan.figures += 1,
+            TypstCallee::Table => self.scan.tables += 1,
+            TypstCallee::Footnote => self.scan.footnotes += 1,
+            TypstCallee::Cite => self.scan.cites += 1,
+            TypstCallee::Heading => {
+                self.scan.heading_levels.push(1);
+                return Some(self.scan.heading_levels.len() - 1);
+            }
+            TypstCallee::NoCall | TypstCallee::Other => {}
+        }
+        None
+    }
+
+    fn trailing_callee(&mut self, index: usize, class: u8) -> TypstCallee {
+        if self.last_ident_end == Some(index) {
+            self.register_call(self.last_ident_callee, class);
+            return self.last_ident_callee;
+        }
+        if self.last_call_end == Some(index) {
+            return self.last_call_callee;
+        }
+        TypstCallee::NoCall
+    }
+
+    fn open_paren(&mut self, index: usize, class: u8) -> usize {
+        let direct = self.last_ident_end == Some(index);
+        let callee = if direct {
+            self.last_ident_callee
+        } else {
+            TypstCallee::NoCall
+        };
+        let mut paren = TypstFrame::new(
+            TypstFrameKind::Paren,
+            typst_callee_class(class, callee),
+            callee,
+        );
+        if direct {
+            paren.heading_index = self.register_call(callee, class);
+        }
+        self.code(index, index + 1);
+        self.stack.push(paren);
+        index + 1
+    }
+
+    fn open_content(&mut self, index: usize, class: u8, callee: TypstCallee) -> usize {
+        self.code(index, index + 1);
+        self.push(TypstFrameKind::Markup, class, callee);
+        index + 1
+    }
+
+    fn count_math(&mut self, span: &TypstMathSpan) {
+        if span.display {
+            self.scan.math_displayed += 1;
+        } else {
+            self.scan.math_inline += 1;
+        }
+    }
+
+    fn show_class(&self, from: usize, class: u8) -> u8 {
+        let mut index = from;
+        while index < self.text.len() && is_inline_space(self.text[index]) {
+            index += 1;
+        }
+        if self.text.get(index) == Some(&COLON) {
+            class
+        } else {
+            TYPST_UNCOUNTED
+        }
+    }
+
+    fn is_caption_argument(&self, index: usize) -> bool {
+        let text = self.text;
+        let mut cursor = index;
+        while cursor > 0 && is_js_space(text[cursor - 1]) {
+            cursor -= 1;
+        }
+        if cursor == 0 || text[cursor - 1] != COLON {
+            return false;
+        }
+        cursor -= 1;
+        while cursor > 0 && is_js_space(text[cursor - 1]) {
+            cursor -= 1;
+        }
+        if cursor < 7 {
+            return false;
+        }
+        let start = cursor - 7;
+        starts_with_ascii(text, start, "caption")
+            && (start == 0 || !is_typst_identifier_continue_at(text, start - 1))
+    }
+
+    fn heading_level(&mut self, heading: usize, from: usize) {
+        let text = self.text;
+        let mut index = from;
+        while index < text.len() && is_inline_space(text[index]) {
+            index += 1;
+        }
+        if text.get(index) != Some(&COLON) {
+            return;
+        }
+        index += 1;
+        while index < text.len() && is_inline_space(text[index]) {
+            index += 1;
+        }
+        let mut value = 0usize;
+        let mut digits = 0;
+        while digits < TYPST_MAX_LEVEL_DIGITS
+            && index < text.len()
+            && is_ascii_digit_unit(text[index])
+        {
+            value = value * 10 + usize::from(text[index] - 0x30);
+            index += 1;
+            digits += 1;
+        }
+        if digits > 0 {
+            self.scan.heading_levels[heading] = value.clamp(1, TYPST_MAX_HEADING_LEVEL);
+        }
+    }
+
+    fn markup_step(&mut self, current: usize, index: usize) -> usize {
+        let text = self.text;
+        let frame = self.stack[current];
+        let class = if frame.class != TYPST_UNCOUNTED && frame.heading {
+            TYPST_HEADER
+        } else {
+            frame.class
+        };
+        let kept = class != TYPST_UNCOUNTED;
+        let unit = text[index];
+        if unit == NEWLINE || unit == CARRIAGE_RETURN {
+            self.stack[current].heading = false;
+            self.stack[current].at_line_start = true;
+            self.emit(index, index + 1, kept, class);
+            return index + 1;
+        }
+        if is_inline_space(unit) {
+            self.emit(index, index + 1, kept, class);
+            return index + 1;
+        }
+        if unit == EQUALS && frame.at_line_start {
+            self.stack[current].at_line_start = false;
+            let mut end = index;
+            while end < text.len() && text[end] == EQUALS {
+                end += 1;
+            }
+            self.emit(index, end, kept, class);
+            if kept && end < text.len() && is_inline_space(text[end]) {
+                self.scan
+                    .heading_levels
+                    .push((end - index).min(TYPST_MAX_HEADING_LEVEL));
+                self.stack[current].heading = true;
+            }
+            return end;
+        }
+        self.stack[current].at_line_start = false;
+        let end = self.markup_token_end(index, unit, kept);
+        if end > index {
+            self.emit(index, end, kept, class);
+            return end;
+        }
+        if unit == HASH {
+            self.code(index, index + 1);
+            return self.embedded(index + 1, class);
+        }
+        if !frame.top && unit == OPEN_BRACKET {
+            self.stack[current].depth += 1;
+        }
+        if !frame.top && unit == CLOSE_BRACKET {
+            if self.stack[current].depth == 0 {
+                self.stack.pop();
+                self.code(index, index + 1);
+                if frame.callee != TypstCallee::NoCall {
+                    self.last_call_end = Some(index + 1);
+                    self.last_call_callee = frame.callee;
+                }
+                return index + 1;
+            }
+            self.stack[current].depth -= 1;
+        }
+        self.emit(index, index + 1, kept, class);
+        index + 1
+    }
+
+    fn markup_token_end(&mut self, index: usize, unit: u16, counted: bool) -> usize {
+        let text = self.text;
+        if unit == BACKSLASH {
+            return typst_escape_end(text, index);
+        }
+        if let Some(link) = typst_autolink_end(text, index) {
+            return link;
+        }
+        let next = text.get(index + 1).copied();
+        if unit == SLASH && next == Some(SLASH) {
+            return typst_line_end(text, index + 2);
+        }
+        if unit == SLASH && next == Some(STAR) {
+            return typst_block_comment_end(text, index);
+        }
+        if unit == BACKTICK {
+            return typst_raw_end(text, index);
+        }
+        if unit == DOLLAR {
+            let span = typst_math_span(text, index);
+            if counted {
+                self.count_math(&span);
+            }
+            return span.end;
+        }
+        if unit == LESS {
+            let Some(end) = typst_label_end(text, index) else {
+                return index;
+            };
+            if counted {
+                self.scan.label_count += 1;
+                self.scan.labels.insert(text[index + 1..end - 1].to_vec());
+            }
+            return end;
+        }
+        if unit == AT {
+            let end = typst_reference_end(text, index + 1);
+            if end <= index + 1 {
+                return index;
+            }
+            let glued = index > 0 && is_letter_mark_or_number(code_point_before(text, index).0);
+            if counted && !glued {
+                self.scan.references.push(text[index + 1..end].to_vec());
+            }
+            return end;
+        }
+        index
+    }
+
+    fn embedded(&mut self, start: usize, class: u8) -> usize {
+        let text = self.text;
+        self.push(TypstFrameKind::Chain, class, TypstCallee::NoCall);
+        let mut index = start;
+        loop {
+            if index >= text.len() {
+                self.stack.pop();
+                return index;
+            }
+            let unit = text[index];
+            if unit == OPEN_BRACE {
+                self.code(index, index + 1);
+                self.push(TypstFrameKind::Brace, class, TypstCallee::NoCall);
+                return index + 1;
+            }
+            if unit == OPEN_PAREN {
+                self.code(index, index + 1);
+                self.push(TypstFrameKind::Paren, class, TypstCallee::NoCall);
+                return index + 1;
+            }
+            if unit == OPEN_BRACKET {
+                return self.open_content(index, class, TypstCallee::NoCall);
+            }
+            if unit == QUOTE {
+                let end = typst_quote_end(text, index + 1);
+                self.code(index, end);
+                return end;
+            }
+            let end = typst_identifier_end(text, index);
+            if end > index {
+                let name = &text[index..end];
+                self.code(index, end);
+                if units_are_any(name, TYPST_DEFINITION_KEYWORDS) {
+                    self.replace_top(TypstFrameKind::Statement, TYPST_UNCOUNTED);
+                    return end;
+                }
+                if units_are(name, "show") {
+                    let show = self.show_class(end, class);
+                    self.replace_top(TypstFrameKind::Statement, show);
+                    return end;
+                }
+                if units_are(name, "return") {
+                    self.replace_top(TypstFrameKind::Statement, class);
+                    return end;
+                }
+                if units_are_any(name, TYPST_BLOCK_KEYWORDS) {
+                    self.replace_top(TypstFrameKind::Cond, class);
+                    return end;
+                }
+                if units_are(name, "context") {
+                    let mut after = end;
+                    while after < text.len() && is_inline_space(text[after]) {
+                        after += 1;
+                    }
+                    self.code(end, after);
+                    index = after;
+                    continue;
+                }
+                self.last_ident_end = Some(end);
+                self.last_ident_callee = typst_callee_of(name);
+                return end;
+            }
+            self.stack.pop();
+            if !is_ascii_digit_unit(unit) {
+                return index;
+            }
+            let number = typst_number_end(text, index);
+            self.code(index, number);
+            return number;
+        }
+    }
+
+    fn chain_step(&mut self, current: usize, index: usize) -> usize {
+        let text = self.text;
+        let class = self.stack[current].class;
+        let unit = text[index];
+        if unit == OPEN_PAREN {
+            return self.open_paren(index, class);
+        }
+        if unit == OPEN_BRACKET {
+            let callee = self.trailing_callee(index, class);
+            return self.open_content(index, typst_callee_class(class, callee), callee);
+        }
+        if unit == DOT {
+            let end = typst_identifier_end(text, index + 1);
+            if end > index + 1 {
+                self.code(index, end);
+                self.last_ident_end = Some(end);
+                self.last_ident_callee = typst_callee_of(&text[index + 1..end]);
+                return end;
+            }
+        }
+        self.stack.pop();
+        index
+    }
+
+    fn cond_step(&mut self, current: usize, index: usize) -> usize {
+        let text = self.text;
+        let cond = self.stack[current];
+        let unit = text[index];
+        match cond.state {
+            TypstCondState::Condition => {
+                if unit == NEWLINE || unit == CARRIAGE_RETURN || is_closer(unit) {
+                    self.stack.pop();
+                    return index;
+                }
+                if unit == OPEN_BRACE {
+                    self.stack[current].state = TypstCondState::AfterBody;
+                    self.code(index, index + 1);
+                    self.push(TypstFrameKind::Brace, cond.class, TypstCallee::NoCall);
+                    return index + 1;
+                }
+                if unit == OPEN_BRACKET && index > 0 && is_js_space(text[index - 1]) {
+                    self.stack[current].state = TypstCondState::AfterBody;
+                    return self.open_content(index, cond.class, TypstCallee::NoCall);
+                }
+                self.code_token(current, index, unit)
+            }
+            TypstCondState::AfterBody => self.after_body(current, index),
+            TypstCondState::ElseBody if unit == OPEN_BRACE => {
+                self.stack[current].state = TypstCondState::Done;
+                self.code(index, index + 1);
+                self.push(TypstFrameKind::Brace, cond.class, TypstCallee::NoCall);
+                index + 1
+            }
+            TypstCondState::ElseBody if unit == OPEN_BRACKET => {
+                self.stack[current].state = TypstCondState::Done;
+                self.open_content(index, cond.class, TypstCallee::NoCall)
+            }
+            TypstCondState::ElseBody | TypstCondState::Done => {
+                self.stack.pop();
+                index
+            }
+        }
+    }
+
+    fn after_body(&mut self, current: usize, index: usize) -> usize {
+        let text = self.text;
+        let mut cursor = index;
+        while cursor < text.len() && is_inline_space(text[cursor]) {
+            cursor += 1;
+        }
+        if !starts_with_ascii(text, cursor, "else")
+            || is_typst_identifier_continue_at(text, cursor + 4)
+        {
+            self.stack.pop();
+            return index;
+        }
+        let mut after = cursor + 4;
+        while after < text.len() && is_inline_space(text[after]) {
+            after += 1;
+        }
+        if starts_with_ascii(text, after, "if") && !is_typst_identifier_continue_at(text, after + 2)
+        {
+            self.code(index, after + 2);
+            self.stack[current].state = TypstCondState::Condition;
+            return after + 2;
+        }
+        self.code(index, after);
+        self.stack[current].state = TypstCondState::ElseBody;
+        after
+    }
+
+    fn code_step(&mut self, current: usize, index: usize) -> usize {
+        let frame = self.stack[current];
+        let unit = self.text[index];
+        match frame.kind {
+            TypstFrameKind::Statement => {
+                if unit == NEWLINE || unit == CARRIAGE_RETURN || is_closer(unit) {
+                    self.stack.pop();
+                    return index;
+                }
+                if unit == SEMICOLON {
+                    self.code(index, index + 1);
+                    self.stack.pop();
+                    return index + 1;
+                }
+            }
+            TypstFrameKind::Paren if unit == CLOSE_PAREN => {
+                self.code(index, index + 1);
+                self.stack.pop();
+                self.last_call_end = Some(index + 1);
+                self.last_call_callee = frame.callee;
+                return index + 1;
+            }
+            TypstFrameKind::Brace if unit == CLOSE_BRACE => {
+                self.code(index, index + 1);
+                self.stack.pop();
+                return index + 1;
+            }
+            _ => {}
+        }
+        self.code_token(current, index, unit)
+    }
+
+    fn code_token(&mut self, current: usize, index: usize, unit: u16) -> usize {
+        let text = self.text;
+        let frame = self.stack[current];
+        let class = if frame.kind == TypstFrameKind::Cond {
+            TYPST_UNCOUNTED
+        } else {
+            frame.class
+        };
+        let end = self.code_opaque_end(index, unit, class);
+        if end > index {
+            self.code(index, end);
+            return end;
+        }
+        if unit == OPEN_PAREN {
+            return self.open_paren(index, class);
+        }
+        if unit == OPEN_BRACE {
+            self.code(index, index + 1);
+            self.push(TypstFrameKind::Brace, class, TypstCallee::NoCall);
+            return index + 1;
+        }
+        if unit == OPEN_BRACKET {
+            let callee = self.trailing_callee(index, class);
+            let mut content = typst_callee_class(class, callee);
+            if content != TYPST_UNCOUNTED && self.is_caption_argument(index) {
+                content = TYPST_OUTSIDE;
+            }
+            return self.open_content(index, content, callee);
+        }
+        let identifier_end = typst_identifier_end(text, index);
+        if identifier_end == index {
+            self.code(index, index + 1);
+            return index + 1;
+        }
+        let name = &text[index..identifier_end];
+        self.code(index, identifier_end);
+        if units_are_any(name, TYPST_DEFINITION_KEYWORDS) {
+            self.push(
+                TypstFrameKind::Statement,
+                TYPST_UNCOUNTED,
+                TypstCallee::NoCall,
+            );
+            return identifier_end;
+        }
+        if units_are(name, "show") {
+            let show = self.show_class(identifier_end, class);
+            self.push(TypstFrameKind::Statement, show, TypstCallee::NoCall);
+            return identifier_end;
+        }
+        if units_are(name, "level")
+            && frame.kind == TypstFrameKind::Paren
+            && frame.callee == TypstCallee::Heading
+        {
+            if let Some(heading) = frame.heading_index {
+                self.heading_level(heading, identifier_end);
+            }
+        }
+        self.last_ident_end = Some(identifier_end);
+        self.last_ident_callee = typst_callee_of(name);
+        identifier_end
+    }
+
+    fn code_opaque_end(&mut self, index: usize, unit: u16, class: u8) -> usize {
+        let text = self.text;
+        if unit == QUOTE {
+            return typst_quote_end(text, index + 1);
+        }
+        if let Some(link) = typst_autolink_end(text, index) {
+            return link;
+        }
+        let next = text.get(index + 1).copied();
+        if unit == SLASH && next == Some(SLASH) {
+            return typst_line_end(text, index + 2);
+        }
+        if unit == SLASH && next == Some(STAR) {
+            return typst_block_comment_end(text, index);
+        }
+        if unit == BACKTICK {
+            return typst_raw_end(text, index);
+        }
+        if unit == BACKSLASH {
+            return (index + 2).min(text.len());
+        }
+        if unit == DOLLAR {
+            let span = typst_math_span(text, index);
+            if class != TYPST_UNCOUNTED {
+                self.count_math(&span);
+            }
+            return span.end;
+        }
+        index
+    }
+}
+
+fn is_typst_url_body(code_point: u32) -> bool {
+    if code_point <= 0xffff && is_js_space(code_point as u16) {
+        return false;
+    }
+    !matches!(
+        code_point,
+        0x3c | 0x3e | 0x28 | 0x29 | 0x5b | 0x5d | 0x7b | 0x7d
+    )
+}
+
+fn mask_typst_markers(chars: &mut [u16]) {
+    let snapshot = chars.to_vec();
+    let length = snapshot.len();
+    let mut line_start = 0;
+    loop {
+        let mut marker = line_start;
+        while marker < length && is_inline_space(snapshot[marker]) {
+            marker += 1;
+        }
+        if marker < length {
+            let unit = snapshot[marker];
+            let mut end = marker;
+            if unit == EQUALS {
+                while end < length && snapshot[end] == EQUALS {
+                    end += 1;
+                }
+            } else if matches!(unit, PLUS | MINUS | SLASH) {
+                end = marker + 1;
+            }
+            if end > marker && end < length && is_inline_space(snapshot[end]) {
+                typst_blank(chars, marker, end);
+            }
+        }
+        let mut next = marker;
+        while next < length && !is_line_terminator(snapshot[next]) {
+            next += 1;
+        }
+        if next >= length {
+            break;
+        }
+        line_start = next + 1;
+    }
+}
+
+fn mask_typst_delimiters(chars: &mut [u16]) {
+    for index in 0..chars.len() {
+        let delimiter = matches!(
+            chars[index],
+            OPEN_BRACKET | CLOSE_BRACKET | STAR | UNDERSCORE
+        );
+        if delimiter && (index == 0 || chars[index - 1] != BACKSLASH) {
+            chars[index] = SPACE;
+        }
+    }
+}
+
+fn mask_typst_prose(source: &[u16]) -> Vec<u16> {
+    let mut chars = source.to_vec();
+    let mut cursor = 0;
+    while cursor < source.len() {
+        let unit = source[cursor];
+        let next = source.get(cursor + 1).copied();
+        let end = if unit == BACKSLASH {
+            Some(typst_escape_end(source, cursor))
+        } else if let Some(link) = typst_autolink_end(source, cursor) {
+            Some(link)
+        } else if unit == SLASH && next == Some(SLASH) {
+            Some(typst_line_end(source, cursor + 2))
+        } else if unit == SLASH && next == Some(STAR) {
+            Some(typst_block_comment_end(source, cursor))
+        } else if unit == BACKTICK {
+            Some(typst_raw_end(source, cursor))
+        } else if unit == DOLLAR {
+            Some(typst_math_span(source, cursor).end)
+        } else if unit == LESS {
+            typst_label_end(source, cursor)
+        } else if unit == AT {
+            Some(typst_reference_end(source, cursor + 1)).filter(|&end| end > cursor + 1)
+        } else {
+            None
+        };
+        match end {
+            Some(end) => {
+                typst_blank(&mut chars, cursor, end);
+                cursor = end;
+            }
+            None => cursor += 1,
+        }
+    }
+    for span in url_spans_with(&chars, is_typst_url_body) {
+        typst_blank(&mut chars, span.from, span.to);
+    }
+    for span in email_spans(source) {
+        typst_blank(&mut chars, span.from, span.to);
+    }
+    mask_typst_markers(&mut chars);
+    mask_typst_delimiters(&mut chars);
+    chars
+}
+
+fn typst_prose_length(masked: &[u16]) -> u64 {
+    let mut count = 0u64;
+    let mut pending = false;
+    for &unit in masked {
+        if is_js_space(unit) {
+            if count > 0 {
+                pending = true;
+            }
+            continue;
+        }
+        if pending {
+            count += 1;
+            pending = false;
+        }
+        count += 1;
+    }
+    count
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TypstSummary {
+    words: u64,
+    words_in_text: u64,
+    words_in_headers: u64,
+    words_outside_text: u64,
+    headings_by_level: Vec<u64>,
+    figures: u64,
+    tables: u64,
+    math_inline: u64,
+    math_displayed: u64,
+    citations: u64,
+    footnotes: u64,
+    labels: u64,
+}
+
+struct TypstCounts {
+    summary: TypstSummary,
+    characters: u64,
+    lines: u64,
+}
+
+fn typst_counts(text: &[u16]) -> TypstCounts {
+    let scan = TypstScanner::new(text).run();
+    let masked = mask_typst_prose(&scan.prose);
+    let starts = word_starts(&masked);
+    let mut words_in_headers = 0u64;
+    let mut words_outside_text = 0u64;
+    for &start in &starts {
+        match scan.classes[start] {
+            TYPST_HEADER => words_in_headers += 1,
+            TYPST_OUTSIDE => words_outside_text += 1,
+            _ => {}
+        }
+    }
+    let mut headings_by_level: Vec<u64> = Vec::new();
+    for &level in &scan.heading_levels {
+        if headings_by_level.len() < level {
+            headings_by_level.resize(level, 0);
+        }
+        headings_by_level[level - 1] += 1;
+    }
+    let references = scan
+        .references
+        .iter()
+        .filter(|key| !scan.labels.contains(*key))
+        .count() as u64;
+    let words = starts.len() as u64;
+    TypstCounts {
+        summary: TypstSummary {
+            words,
+            words_in_text: words - words_in_headers - words_outside_text,
+            words_in_headers,
+            words_outside_text,
+            headings_by_level,
+            figures: scan.figures,
+            tables: scan.tables,
+            math_inline: scan.math_inline,
+            math_displayed: scan.math_displayed,
+            citations: references + scan.cites,
+            footnotes: scan.footnotes,
+            labels: scan.label_count,
+        },
+        characters: typst_prose_length(&masked),
+        lines: non_blank_lines(&masked),
+    }
+}
+
+fn typst_document_stats(text: &[u16]) -> DocumentStats {
+    let TypstCounts {
+        summary,
+        characters,
+        lines,
+    } = typst_counts(text);
+    DocumentStats {
+        words: summary.words,
+        words_in_text: summary.words_in_text,
+        words_in_headers: summary.words_in_headers,
+        words_outside_text: summary.words_outside_text,
+        headers: summary.headings_by_level.iter().sum(),
+        figures: summary.figures,
+        math_inline: summary.math_inline,
+        math_displayed: summary.math_displayed,
+        characters,
+        lines,
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Engine {
     Latex,
@@ -2925,7 +4182,7 @@ pub(crate) fn document_stats_with_limits(
     for path in ordered {
         match texts.get(&path) {
             Some(text) => {
-                let stats = document_stats_for_text(text);
+                let stats = document_stats_for_path(&path, text);
                 total.add(&stats);
                 files.push(FileDocumentStats { path, stats });
             }
@@ -3072,6 +4329,120 @@ mod tests {
             let result = document_stats_sync(&project.id, request(&root, &[])).unwrap();
             let actual = serde_json::to_string(&result).unwrap();
             assert_eq!(actual, expected.trim_end(), "fixture {name}");
+        }
+    }
+
+    fn typst_summary_value(source: &str) -> serde_json::Value {
+        serde_json::to_value(typst_counts(&to_units(source)).summary).unwrap()
+    }
+
+    #[test]
+    fn typst_cases_match_the_shared_fixture_table() {
+        let raw = std::fs::read_to_string(fixture_root().join("typst-cases.json")).unwrap();
+        let cases: Vec<serde_json::Value> = serde_json::from_str(&raw).unwrap();
+        assert!(cases.len() >= 10, "only {} Typst cases found", cases.len());
+        for case in cases {
+            let name = case["name"].as_str().unwrap();
+            let source = case["source"].as_str().unwrap();
+            assert_eq!(typst_summary_value(source), case["expected"], "case {name}");
+        }
+    }
+
+    #[test]
+    fn typst_paths_count_with_the_typst_rules() {
+        let text = "Growth of 50% hidden words\n";
+        assert_eq!(document_stats_for_path("main.tex", text).words, 2);
+        assert_eq!(document_stats_for_path("main.typ", text).words, 4);
+        assert_eq!(
+            document_stats_for_path("MAIN.TYP", text),
+            document_stats_for_path("main.typ", text)
+        );
+        assert_eq!(
+            document_stats_for_path("main.typ", ""),
+            DocumentStats::default()
+        );
+
+        let source = [
+            "#set text(font: \"Libertinus Serif\")",
+            "#let accent = rgb(\"#1f77b4\")",
+            "= Results",
+            "Growth reached 50% in the first year. // reviewer note",
+            "#figure(table(columns: 2, [Load], [Rate]), caption: [Measured rates]) <tab:rates>",
+            "The fit $ y = a x + b $ matches @smith2020.#footnote[Full data online.]",
+        ]
+        .join("\n");
+        let stats = document_stats_for_path("chapters/results.typ", &source);
+        assert_eq!(stats.words, 17);
+        assert_eq!(stats.words_in_headers, 1);
+        assert_eq!(stats.words_outside_text, 5);
+        assert_eq!(stats.words_in_text, 11);
+        assert_eq!(stats.headers, 1);
+        assert_eq!(stats.figures, 1);
+        assert_eq!(stats.math_inline, 0);
+        assert_eq!(stats.math_displayed, 1);
+    }
+
+    #[test]
+    fn typst_code_free_text_keeps_offsets_and_line_breaks() {
+        let source = "#let x = 1\nBody #emph[shown] text.\r\n#set page(width: 5cm)\n";
+        let units = to_units(source);
+        let prose = String::from_utf16_lossy(&TypstScanner::new(&units).run().prose);
+        assert_eq!(prose.encode_utf16().count(), units.len());
+        assert_eq!(prose.split('\n').count(), source.split('\n').count());
+        assert!(prose.contains("shown"));
+        assert!(!prose.contains("let"));
+        assert!(!prose.contains("width"));
+
+        let summary = typst_counts(&to_units(
+            "#table(columns: 2, [5\" wide], [b])\nLater paragraph text here.\n",
+        ))
+        .summary;
+        assert_eq!(summary.words, 6);
+        assert_eq!(summary.tables, 1);
+
+        let summary = typst_counts(&to_units(
+            "#set figure(gap: 1em)\n#let fig(body) = figure(body, caption: [Hidden])\n#show table: set text(size: 9pt)\n",
+        ))
+        .summary;
+        assert_eq!(summary.figures, 0);
+        assert_eq!(summary.tables, 0);
+        assert_eq!(summary.words, 0);
+    }
+
+    #[test]
+    fn typst_counting_stays_linear_on_adversarial_input() {
+        let cases = [
+            ("label openers", "<".repeat(200_000)),
+            ("label names", "<a".repeat(100_000)),
+            ("unclosed calls", "#f(".repeat(70_000)),
+            ("unclosed content", "#f[".repeat(70_000)),
+            ("nested content", "#f([".repeat(50_000)),
+            ("nested brackets", "[".repeat(200_000)),
+            ("quotes in content", format!("#f[{}]", "\"".repeat(200_000))),
+            ("context chains", "#context ".repeat(25_000)),
+            ("if chains", "#if a [b] else ".repeat(15_000)),
+            ("escapes", "\\u{".repeat(70_000)),
+            ("hash runs", "#".repeat(200_000)),
+            (
+                "raw fences",
+                format!("{}x{}y", "`".repeat(1_000), "`".repeat(999)).repeat(100),
+            ),
+            (
+                "caption lookbacks",
+                format!("#f({})", "caption:     [a] ".repeat(10_000)),
+            ),
+            ("autolink tails", format!("http://a{}", ".".repeat(200_000))),
+        ];
+        for (name, source) in cases {
+            let units = to_units(&source);
+            let started = Instant::now();
+            let stats = typst_document_stats(&units);
+            assert!(stats.words <= units.len() as u64, "{name}");
+            assert!(
+                started.elapsed().as_secs_f64() < 10.0,
+                "{name} took {:?}",
+                started.elapsed()
+            );
         }
     }
 
@@ -3538,6 +4909,9 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["main.typ", "lib.typ", "sections/intro.typ"]
         );
+        assert_eq!(result.stats.words, 6);
+        assert_eq!(result.stats.words_in_headers, 1);
+        assert_eq!(result.stats.headers, 1);
 
         write(
             &project,

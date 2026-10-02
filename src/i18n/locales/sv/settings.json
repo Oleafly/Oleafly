@@ -1021,7 +1021,7 @@
       "resume": "Återuppta nedladdningen ({{size}} MB klart)"
     },
     "typst": {
-      "detail": "Följer med Oleafly. Snabb, offline, ingen konfiguration. Kompilerar Typst-dokument till PDF.",
+      "detail": "Följer med Oleafly, så det finns inget att konfigurera. Den behöver bara en nätverksanslutning första gången ett dokument importerar ett @preview-paket.",
       "heading": "Typst-kompilator",
       "name": "Typst (inbyggd)",
       "note": "Typst-projekt använder alltid den medföljande kompilatorn. Att välja kompilatorversion, och att använda systemets Typst, är inte möjligt än.",

@@ -220,6 +220,58 @@ describe("CompileControls options menu", () => {
     expect(screen.queryByText(copy.compiler.title)).not.toBeInTheDocument();
   });
 
+  it("hides the LaTeX-only options for a Typst project", async () => {
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: "typst",
+        label: "Typst",
+        source_format: "typst",
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "typst", supports_offline: false },
+      },
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    await openOptions();
+    expect(screen.getByText(copy.autoCompile.title)).toBeInTheDocument();
+    expect(screen.queryByText(copy.mode.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.syntax.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.errors.title)).not.toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: copy.fromScratch })).toBeInTheDocument();
+  });
+
+  it("hides the LaTeX-only options for a Markdown project", async () => {
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: "markdown",
+        label: "Markdown / Pandoc",
+        source_format: "markdown",
+        capabilities: {
+          ...LATEX_ENGINE.capabilities,
+          formatting_profile: "markdown",
+          supports_offline: false,
+          compiler_prerequisite: "pandoc",
+        },
+      },
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    await openOptions();
+    expect(screen.queryByText(copy.mode.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.syntax.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(copy.errors.title)).not.toBeInTheDocument();
+  });
+
+  it("drops only the draft mode for latexmk, which picks its own passes", async () => {
+    useFilesStore.setState({
+      engine: { ...LATEX_ENGINE, id: "latexmk", tex_flavor: null },
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    await openOptions();
+    expect(screen.queryByText(copy.mode.title)).not.toBeInTheDocument();
+    expect(screen.getByText(copy.syntax.title)).toBeInTheDocument();
+    expect(screen.getByText(copy.errors.title)).toBeInTheDocument();
+  });
+
   it("stops a running compile from the menu", async () => {
     useCompileStore.setState({ status: "compiling" });
     render(<CompileControls />);

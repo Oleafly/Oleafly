@@ -36,7 +36,11 @@ import { projectFolderAvailable, reportLocationError } from "@/store/project-ava
 import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
 
-import { compileOfflineForEngine } from "@/lib/document-engine";
+import {
+  compileOfflineForEngine,
+  compileSettingsForEngine,
+  pathUsesEngineSource,
+} from "@/lib/document-engine";
 import { agentCompileAllowed, automaticCompileAllowed } from "@/lib/open-compile";
 import { ensurePandoc } from "@/features/pandoc";
 import {
@@ -934,6 +938,10 @@ function syntaxCheckLog(mainDoc: string, syntaxErrors: readonly CompileError[]):
 
 async function syntaxCheckGate(ctx: CompileGateContext, projectId: string): Promise<boolean> {
   if (!ctx.get().checkSyntaxBeforeCompile) return true;
+  const { engine } = ctx.files;
+  if (!compileSettingsForEngine(engine).syntaxCheck || !pathUsesEngineSource(engine, ctx.mainDoc)) {
+    return true;
+  }
   // Runs after the save so it reads exactly the source the compiler would.
   let syntaxErrors: CompileError[] = [];
   try {

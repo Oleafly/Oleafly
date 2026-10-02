@@ -272,7 +272,8 @@
     "svgImage": "Obraz SVG",
     "pngImage": "Obraz PNG",
     "svgKind": "Wzór SVG",
-    "pngKind": "Wzór PNG"
+    "pngKind": "Wzór PNG",
+    "typstFailed": "Typst nie zdołał wyrenderować tego wzoru ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Zapytaj AI",

@@ -1,6 +1,7 @@
 import { activeSelectionText } from "@/components/editor/selection-text";
 import {
   documentStats,
+  isTypstPath,
   sumDocumentStats,
   type DocumentStats,
 } from "@/lib/document-stats";
@@ -91,7 +92,12 @@ export async function collectProjectInfo(): Promise<ProjectInfoSnapshot> {
   // a scratch file still reports something truthful.
   const root = files.projectId ? mainDoc : (files.activePath ?? mainDoc);
   const selected = activeSelectionText();
-  const selectionWords = selected === null ? null : countWords(selected).words;
+  let selectionWords: number | null = null;
+  if (selected !== null) {
+    selectionWords = isTypstPath(files.activePath)
+      ? documentStats(selected, files.activePath).words
+      : countWords(selected).words;
+  }
 
   if (!files.projectId) {
     const content = files.activePath
@@ -101,7 +107,7 @@ export async function collectProjectInfo(): Promise<ProjectInfoSnapshot> {
       root,
       fileCount: 1,
       unreadable: [],
-      stats: documentStats(content),
+      stats: documentStats(content, files.activePath),
       selectionWords,
     };
   }
@@ -118,7 +124,9 @@ export async function collectProjectInfo(): Promise<ProjectInfoSnapshot> {
     root,
     fileCount: sources.paths.length,
     unreadable: sources.unreadable,
-    stats: sumDocumentStats(sources.texts.map(documentStats)),
+    stats: sumDocumentStats(
+      sources.texts.map((text, index) => documentStats(text, sources.paths[index])),
+    ),
     selectionWords,
   };
 }

@@ -59,6 +59,20 @@ export function compileOfflineForEngine(
 export const isLatexEngine = (engine: DocumentEngineDescriptor) =>
   engine.capabilities.formatting_profile === "latex";
 
+export interface EngineCompileSettings {
+  readonly syntaxCheck: boolean;
+  readonly draftMode: boolean;
+  readonly stopOnFirstError: boolean;
+}
+
+export const compileSettingsForEngine = (
+  engine: DocumentEngineDescriptor,
+): EngineCompileSettings => ({
+  syntaxCheck: isLatexEngine(engine),
+  draftMode: engine.id === "latex",
+  stopOnFirstError: isLatexEngine(engine),
+});
+
 export const pathUsesEngineSource = (
   engine: DocumentEngineDescriptor,
   path: string | null,

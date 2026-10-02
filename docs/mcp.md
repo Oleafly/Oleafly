@@ -103,7 +103,7 @@ window.
 
 | Tool | What it does |
 |---|---|
-| `get_status` | Oleafly version, open project, main document, last compile status |
+| `get_status` | Oleafly version, open project, its document engine (LaTeX, Typst or Markdown), main document, last compile status |
 | `list_projects` | Projects in your library (id and name) |
 | `open_project` | Open a project by id so other tools target it |
 | `list_files` | Project file tree |
@@ -137,6 +137,8 @@ window.
 | `preview_figure` | Compile a figure in isolation and return a PNG image |
 | `insert_figure` | Insert the last previewed figure into the document |
 | `load_image` | Load an image from the project for figure work |
+
+The three figure tools work only in LaTeX projects. In a Typst or Markdown project they return an error and change nothing.
 
 ### App
 

@@ -1015,7 +1015,7 @@
       "resume": "繼續下載（已完成 {{size}} MB）"
     },
     "typst": {
-      "detail": "隨 Oleafly 提供。快速、離線、免設定。可將 Typst 文件編譯成 PDF。",
+      "detail": "隨 Oleafly 提供，無需任何設定。只有在文件首次匯入 @preview 套件時才需要連網。",
       "heading": "Typst 編譯器",
       "name": "Typst（內建）",
       "note": "Typst 專案一律使用內建的編譯器。目前還無法選擇編譯器版本，也無法使用系統的 Typst。",

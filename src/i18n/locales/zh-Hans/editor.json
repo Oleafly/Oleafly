@@ -263,7 +263,8 @@
     "svgImage": "SVG 图片",
     "pngImage": "PNG 图片",
     "svgKind": "公式 SVG",
-    "pngKind": "公式 PNG"
+    "pngKind": "公式 PNG",
+    "typstFailed": "Typst 无法渲染此公式（{{detail}}）"
   },
   "selectionActions": {
     "askAi": "询问 AI",

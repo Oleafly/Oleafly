@@ -32,6 +32,7 @@ import { mainDocumentMissing } from "@/lib/main-document";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import type { TexFlavor } from "@/lib/tauri";
 import { cn, shortcut } from "@/lib/utils";
+import { compileSettingsForEngine } from "@/lib/document-engine";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
@@ -185,6 +186,7 @@ export function CompileControlsView({
 }: Readonly<CompileControlsViewProps>) {
   const { t } = useTranslation(["shell", "errors"]);
   const blocked = blockedReason !== null;
+  const settings = compileSettingsForEngine(engine);
   const compiling = status === "compiling";
   const hasCompileResult = status === "success" || status === "error";
   const compileLabel = hasCompileResult
@@ -275,41 +277,49 @@ export function CompileControlsView({
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
 
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>{t(($) => $.shell.compile.mode.title)}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={compileMode}
-          onValueChange={(value) =>
-            setCompileMode(value === "fast" ? "fast" : "normal")
-          }
-        >
-          <DropdownMenuRadioItem value="normal">
-            {t(($) => $.shell.compile.mode.normal)}
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="fast">
-            <Trans
-              ns="shell"
-              i18nKey={($) => $.shell.compile.mode.fast}
-              components={{ note: <span className="ml-1 text-muted-foreground" /> }}
-            />
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+        {settings.draftMode && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t(($) => $.shell.compile.mode.title)}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={compileMode}
+              onValueChange={(value) =>
+                setCompileMode(value === "fast" ? "fast" : "normal")
+              }
+            >
+              <DropdownMenuRadioItem value="normal">
+                {t(($) => $.shell.compile.mode.normal)}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="fast">
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.mode.fast}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </>
+        )}
 
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>{t(($) => $.shell.compile.syntax.title)}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={checkSyntaxBeforeCompile ? "check" : "skip"}
-          onValueChange={(value) =>
-            setCheckSyntaxBeforeCompile(value === "check")
-          }
-        >
-          <DropdownMenuRadioItem value="check">
-            {t(($) => $.shell.compile.syntax.check)}
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="skip">
-            {t(($) => $.shell.compile.syntax.skip)}
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+        {settings.syntaxCheck && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t(($) => $.shell.compile.syntax.title)}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={checkSyntaxBeforeCompile ? "check" : "skip"}
+              onValueChange={(value) =>
+                setCheckSyntaxBeforeCompile(value === "check")
+              }
+            >
+              <DropdownMenuRadioItem value="check">
+                {t(($) => $.shell.compile.syntax.check)}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="skip">
+                {t(($) => $.shell.compile.syntax.skip)}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </>
+        )}
 
         {engine.source_format === "latex" && (
           <>
@@ -407,21 +417,25 @@ export function CompileControlsView({
           </>
         )}
 
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>{t(($) => $.shell.compile.errors.title)}</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={stopOnFirstError ? "stop" : "continue"}
-          onValueChange={(value) =>
-            setStopOnFirstError(value === "stop")
-          }
-        >
-          <DropdownMenuRadioItem value="stop">
-            {t(($) => $.shell.compile.errors.stop)}
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="continue">
-            {t(($) => $.shell.compile.errors.continue)}
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
+        {settings.stopOnFirstError && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t(($) => $.shell.compile.errors.title)}</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={stopOnFirstError ? "stop" : "continue"}
+              onValueChange={(value) =>
+                setStopOnFirstError(value === "stop")
+              }
+            >
+              <DropdownMenuRadioItem value="stop">
+                {t(($) => $.shell.compile.errors.stop)}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="continue">
+                {t(($) => $.shell.compile.errors.continue)}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </>
+        )}
 
         <DropdownMenuSeparator />
         <DropdownMenuItem

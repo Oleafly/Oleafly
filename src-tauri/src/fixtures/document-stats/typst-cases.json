@@ -1,0 +1,236 @@
+[
+  {
+    "name": "a percent sign is prose, not a comment",
+    "source": "Growth of 50% overall, a strong year.\nThe second line has five words.\n",
+    "expected": {
+      "words": 12,
+      "wordsInText": 12,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 0
+    }
+  },
+  {
+    "name": "line and nested block comments are skipped",
+    "source": "Visible words here. // hidden comment words\n/* block /* nested */ still hidden */ After the comment.\n",
+    "expected": {
+      "words": 6,
+      "wordsInText": 6,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 0
+    }
+  },
+  {
+    "name": "let, set, show and import statements are code",
+    "source": "#let title = \"Hidden string\"\n#set text(font: \"Libertinus Serif\", size: 11pt)\n#show heading: set text(weight: \"bold\")\n#show figure: it => block[Template words]\n#import \"lib.typ\": template\nOnly this line counts.\n",
+    "expected": {
+      "words": 4,
+      "wordsInText": 4,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 0
+    }
+  },
+  {
+    "name": "headings are counted by level",
+    "source": "= Introduction\nBody text one.\n== Background and context\nMore body.\n=== Deep dive\n#heading(level: 2)[Called heading]\n",
+    "expected": {
+      "words": 13,
+      "wordsInText": 5,
+      "wordsInHeaders": 8,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [1, 2, 1],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 0
+    }
+  },
+  {
+    "name": "figures, tables and captions",
+    "source": "#figure(\n  image(\"plot.png\", width: 80%),\n  caption: [Measured response of the sample],\n) <fig:plot>\n#figure(\n  table(\n    columns: 2,\n    [Name], [Value],\n    [Alpha], [One],\n  ),\n  caption: [Summary table],\n) <tab:summary>\n#table(columns: 2, [Loose], [cells])\nSee @fig:plot and @tab:summary for details.\n",
+    "expected": {
+      "words": 17,
+      "wordsInText": 10,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 7,
+      "headingsByLevel": [],
+      "figures": 2,
+      "tables": 2,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 2
+    }
+  },
+  {
+    "name": "inline and display equations",
+    "source": "Inline $x^2$ and $a + b$ here.\n$ E = m c^2 $\n$\nsum_(i=1)^n i\n$\nPrice of 5 dollars.\n",
+    "expected": {
+      "words": 6,
+      "wordsInText": 6,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 2,
+      "mathDisplayed": 2,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 0
+    }
+  },
+  {
+    "name": "citations and footnotes",
+    "source": "Prior work @smith2020 and @doe2021 agrees.#footnote[See the appendix for proofs.] Also #cite(<knuth1984>) helps.\n",
+    "expected": {
+      "words": 11,
+      "wordsInText": 6,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 5,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 3,
+      "footnotes": 1,
+      "labels": 0
+    }
+  },
+  {
+    "name": "raw text and fenced raw blocks",
+    "source": "Use `let x = 1` inline.\n```rust\nfn main() { println!(\"hidden\"); }\n```\nAfter the block.\n",
+    "expected": {
+      "words": 5,
+      "wordsInText": 5,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 0
+    }
+  },
+  {
+    "name": "content arguments, code blocks and conditionals",
+    "source": "#show: report.with(\n  title: [A study of drift],\n  abstract: [We measure drift.],\n)\n#let note(body) = block[Note text #body]\n#block(width: 100%, {\n  set par(justify: true)\n  text(weight: \"bold\")[Bold title words]\n  [Plain content words]\n})\n#if true [Shown branch] else [Other branch]\n#context [Context words]\nTail.\n",
+    "expected": {
+      "words": 20,
+      "wordsInText": 20,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 0
+    }
+  },
+  {
+    "name": "links, email addresses and labels",
+    "source": "Visit https://typst.app/docs or mail team@example.org today. <intro>\n",
+    "expected": {
+      "words": 4,
+      "wordsInText": 4,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 1
+    }
+  },
+  {
+    "name": "emphasis, escapes and lists",
+    "source": "This is *strong* and _emphasis_ with a \\# hash and 50\\% more.\n- first item\n+ numbered item\n/ Term: description\n",
+    "expected": {
+      "words": 16,
+      "wordsInText": 16,
+      "wordsInHeaders": 0,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 0
+    }
+  },
+  {
+    "name": "a reference to a label in the same file is not a citation",
+    "source": "= Results <sec:results>\nAs @sec:results shows, the effect holds.\n",
+    "expected": {
+      "words": 6,
+      "wordsInText": 5,
+      "wordsInHeaders": 1,
+      "wordsOutsideText": 0,
+      "headingsByLevel": [1],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 0,
+      "labels": 1
+    }
+  },
+  {
+    "name": "lengths, loops and a footnote inside a heading",
+    "source": "Gap #h(1em) wide and #12pt tall.\n#for name in (\"a\", \"b\") [Item for #name. ]\n== Method#footnote[Detailed in the appendix.]\n",
+    "expected": {
+      "words": 11,
+      "wordsInText": 6,
+      "wordsInHeaders": 1,
+      "wordsOutsideText": 4,
+      "headingsByLevel": [0, 1],
+      "figures": 0,
+      "tables": 0,
+      "mathInline": 0,
+      "mathDisplayed": 0,
+      "citations": 0,
+      "footnotes": 1,
+      "labels": 0
+    }
+  }
+]

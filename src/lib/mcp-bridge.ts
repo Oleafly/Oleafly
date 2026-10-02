@@ -36,6 +36,7 @@ import {
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
+import { supportsFigureTools } from "@/lib/document-engine";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
 export type McpContent =
@@ -350,7 +351,7 @@ function createMcpOnlyTools(
   return {
     get_status: {
       description:
-        "Get the app status: Oleafly version, the currently open project, its main document, and the last compile outcome. Call this first to orient yourself.",
+        "Get the app status: Oleafly version, the currently open project, its main document, its document engine (latex, latexmk, typst or markdown), and the last compile outcome. Call this first to orient yourself.",
       inputSchema: { type: "object", properties: {}, required: [], additionalProperties: false },
       execute: async () => {
         const files = useFilesStore.getState();
@@ -359,6 +360,7 @@ function createMcpOnlyTools(
           app_version: await appVersion().catch(() => "unknown"),
           project_id: files.projectId,
           main_doc: files.mainDoc ?? null,
+          engine: files.engineLoaded ? files.engine.id : null,
           compile_status: compile.status,
         };
       },
@@ -411,6 +413,31 @@ function createMcpOnlyTools(
   };
 }
 
+function figureToolsRefusal(): string | null {
+  const { engine, engineLoaded } = useFilesStore.getState();
+  if (supportsFigureTools(engine, engineLoaded)) return null;
+  if (!engineLoaded) {
+    return "Figure tools are not available until the project's document engine loads.";
+  }
+  return `Figure tools work only in LaTeX projects. This project uses ${engine.label}.`;
+}
+
+function gateFigureTools(tools: Record<string, McpToolEntry>): Record<string, McpToolEntry> {
+  return Object.fromEntries(
+    Object.entries(tools).map(([name, tool]) => [
+      name,
+      {
+        ...tool,
+        description: `${tool.description} Works only in LaTeX projects.`,
+        execute: async (input: Record<string, unknown>) => {
+          const refusal = figureToolsRefusal();
+          return refusal ? { error: refusal } : tool.execute(input);
+        },
+      },
+    ]),
+  );
+}
+
 export function buildMcpToolRegistry(opts: {
   confirm: ConfirmFn;
   readOnly: boolean;
@@ -423,14 +450,13 @@ export function buildMcpToolRegistry(opts: {
       mutationAllowed: opts.mutationAllowed,
       alwaysConfirmComputerUse: true,
     }) as Record<string, McpToolEntry>),
-    ...(createFigureTools({
-      confirm: opts.confirm,
-      onImage: opts.onImage,
-      mutationAllowed: opts.mutationAllowed,
-    }) as Record<
-      string,
-      McpToolEntry
-    >),
+    ...gateFigureTools(
+      createFigureTools({
+        confirm: opts.confirm,
+        onImage: opts.onImage,
+        mutationAllowed: opts.mutationAllowed,
+      }) as Record<string, McpToolEntry>,
+    ),
     ...createSkillTools(),
     ...createMcpOnlyTools(opts.confirm, opts.mutationAllowed ?? (() => true)),
   };

@@ -146,6 +146,18 @@ describe("emitTable", () => {
     expect(source).toContain("[50%]"); // % is not special in Typst markup
   });
 
+  it("passes a caption and label through to the typst figure", () => {
+    const source = emitTable(
+      [
+        ["A", "B"],
+        ["x", "1"],
+      ],
+      { header: true, target: "typst", caption: "Scores", label: "tab:scores" },
+    );
+    expect(source.startsWith("#figure(\n  table(\n    columns: 2,\n    align: (left, right),")).toBe(true);
+    expect(source).toContain("  caption: [Scores],\n) <tab:scores>");
+  });
+
   it("routes to the latex emitter with escaping", () => {
     const source = emitTable(
       [

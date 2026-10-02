@@ -1015,7 +1015,7 @@
       "resume": "继续下载（已完成 {{size}} MB）"
     },
     "typst": {
-      "detail": "Oleafly 内置。快速、离线、无需配置。可将 Typst 文档编译为 PDF。",
+      "detail": "Oleafly 内置，无需任何配置。只有当文档首次导入 @preview 包时才需要联网。",
       "heading": "Typst 编译器",
       "name": "Typst（内置）",
       "note": "Typst 项目始终使用内置编译器。目前尚不支持选择编译器版本或使用系统 Typst。",

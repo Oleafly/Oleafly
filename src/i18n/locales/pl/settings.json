@@ -1033,7 +1033,7 @@
       "resume": "Wznów pobieranie (pobrano {{size}} MB)"
     },
     "typst": {
-      "detail": "Dołączony do Oleafly. Szybki, działa bez internetu, bez konfiguracji. Kompiluje dokumenty Typst do PDF.",
+      "detail": "Dołączony do Oleafly, więc nie trzeba niczego konfigurować. Połączenie z siecią jest potrzebne tylko wtedy, gdy dokument po raz pierwszy importuje pakiet @preview.",
       "heading": "Kompilator Typst",
       "name": "Typst (wbudowany)",
       "note": "Projekty Typst zawsze korzystają z wbudowanego kompilatora. Wybór wersji kompilatora ani systemowego Typst nie jest jeszcze dostępny.",

@@ -131,8 +131,11 @@ export function EditorContextMenu({ children }: Readonly<EditorContextMenuProps>
           <ContextMenuItem onClick={() => setTableImportOpen(true)}>
             <Table className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.tableFromFile)}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => void saveEquationAsSvg()}>
+          <ContextMenuItem onClick={() => void saveEquationAsSvg()} data-testid="context-export-equation-svg">
             <FileDown className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.equationAsSvg)}
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => void saveEquationAsPng()} data-testid="context-export-equation-png">
+            <FileDown className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.equationAsPng)}
           </ContextMenuItem>
         </ContextMenuContent>
       </ContextMenu>

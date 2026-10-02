@@ -272,7 +272,8 @@
     "svgImage": "Obrázek SVG",
     "pngImage": "Obrázek PNG",
     "svgKind": "Rovnice SVG",
-    "pngKind": "Rovnice PNG"
+    "pngKind": "Rovnice PNG",
+    "typstFailed": "Typst tuto rovnici nedokázal vykreslit ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Zeptat se AI",

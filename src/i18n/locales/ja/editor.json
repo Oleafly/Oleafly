@@ -263,7 +263,8 @@
     "svgImage": "SVG 画像",
     "pngImage": "PNG 画像",
     "svgKind": "数式の SVG",
-    "pngKind": "数式の PNG"
+    "pngKind": "数式の PNG",
+    "typstFailed": "Typst でこの数式を描画できませんでした（{{detail}}）"
   },
   "selectionActions": {
     "askAi": "AI に聞く",

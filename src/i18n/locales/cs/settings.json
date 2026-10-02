@@ -1033,7 +1033,7 @@
       "resume": "Pokračovat ve stahování (hotovo {{size}} MB)"
     },
     "typst": {
-      "detail": "Dodává se s Oleafly. Rychlý, offline, bez nastavování. Kompiluje dokumenty Typst do PDF.",
+      "detail": "Dodává se s Oleafly, takže není co nastavovat. Připojení k internetu potřebuje jen poprvé, když dokument importuje balíček @preview.",
       "heading": "Překladač Typst",
       "name": "Typst (vestavěný)",
       "note": "Projekty Typst vždy používají vestavěný překladač. Volba verze překladače ani systémového Typstu zatím není k dispozici.",

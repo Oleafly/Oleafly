@@ -263,7 +263,8 @@
     "svgImage": "SVG 이미지",
     "pngImage": "PNG 이미지",
     "svgKind": "수식 SVG",
-    "pngKind": "수식 PNG"
+    "pngKind": "수식 PNG",
+    "typstFailed": "Typst에서 이 수식을 렌더링하지 못했습니다({{detail}})"
   },
   "selectionActions": {
     "askAi": "AI에게 묻기",

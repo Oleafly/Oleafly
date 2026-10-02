@@ -1021,7 +1021,7 @@
       "resume": "Download hervatten ({{size}} MB klaar)"
     },
     "typst": {
-      "detail": "Komt met Oleafly mee. Snel, offline, geen installatie. Compileert Typst-documenten naar PDF.",
+      "detail": "Komt met Oleafly mee, dus er valt niets in te stellen. Een netwerkverbinding is alleen nodig wanneer een document voor het eerst een @preview-pakket importeert.",
       "heading": "Typst-compiler",
       "name": "Typst (ingebouwd)",
       "note": "Typst-projecten gebruiken altijd de meegeleverde compiler. Een compilerversie kiezen, of de Typst van je systeem gebruiken, kan nog niet.",

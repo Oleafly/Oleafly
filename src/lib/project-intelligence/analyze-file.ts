@@ -17,8 +17,11 @@ import { type BibliographyEngine, bibliographyCandidatePaths } from "@oleafly/la
 import { astAugmentLatexFile } from "./latex-ast";
 import { bibliographyEntrySummary } from "./bibliography-summary";
 import { parseBibtexIntelligence } from "./parse-bibtex";
+import { parseHayagrivaIntelligence } from "./parse-hayagriva";
+import { isHayagrivaPath } from "@/lib/citation/hayagriva";
+import { typstBibliographyCalls } from "@/lib/citation/typst-bibliography";
 import {
-  engineForPath,
+  analysisEngineForPath,
   lineStarts,
   location,
   maskTypstComments,
@@ -2715,24 +2718,20 @@ function addTypstBibliographyEdges(
   uses: ProjectUse[],
   edges: ProjectEdge[],
 ): void {
-  const bibliography = /#bibliography\s*\(([^)]*)\)/g;
-  for (const match of masked.matchAll(bibliography)) {
-    if (!codeMask.startsWith("#bibliography", match.index)) continue;
-    const argumentsOffset = match.index + match[0].indexOf(match[1]);
-    for (const pathMatch of match[1].matchAll(/"([^"]+)"/g)) {
-      const raw = pathMatch[1];
-      const nameOffset =
-        argumentsOffset + pathMatch.index + pathMatch[0].indexOf(raw);
-      const target = bibliographyCandidatePaths(raw, file, "typst")[0] ?? null;
+  for (const call of typstBibliographyCalls(masked)) {
+    if (!codeMask.startsWith("bibliography", masked[call.from] === "#" ? call.from + 1 : call.from)) continue;
+    for (const item of call.sources) {
+      if (!item.path) continue;
+      const target = bibliographyCandidatePaths(item.path, file, "typst")[0] ?? null;
       const use = addUse(
         uses,
         "typst",
         file,
         starts,
         "bibliography",
-        raw,
-        nameOffset,
-        nameOffset + raw.length,
+        item.path,
+        item.from,
+        item.to,
         target ?? undefined,
       );
       edges.push(edgeForUse(use, target));
@@ -3141,12 +3140,14 @@ export function analyzeProjectFile(
   source: string,
   sourceRevision: number,
 ): FileAnalysis {
-  const engine = engineForPath(file);
+  const engine = analysisEngineForPath(file);
   if (!engine) {
     throw new Error(`Unsupported project-intelligence file: ${file}`);
   }
   if (engine === "bibtex") {
-    return parseBibtexIntelligence(file, source, sourceRevision);
+    return isHayagrivaPath(file)
+      ? parseHayagrivaIntelligence(file, source, sourceRevision)
+      : parseBibtexIntelligence(file, source, sourceRevision);
   }
 
   const starts = lineStarts(source);

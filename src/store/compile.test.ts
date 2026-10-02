@@ -1029,6 +1029,81 @@ describe("compile options", () => {
     expect(state.log).toContain("the compiler was not run");
   });
 
+  it("compiles a Typst main document without running the LaTeX syntax check", async () => {
+    mocks.files.mainDoc = "main.typ";
+    mocks.files.activePath = "main.typ";
+    mocks.files.tree = [{ path: "main.typ", is_dir: false }];
+    mocks.files.engine = {
+      ...LATEX_ENGINE,
+      id: "typst",
+      label: "Typst",
+      source_format: "typst",
+      main_document: "main.typ",
+      source_extensions: ["typ"],
+      capabilities: {
+        ...LATEX_ENGINE.capabilities,
+        supports_offline: false,
+        supports_synctex: false,
+        supports_isolated_compile: false,
+        formatting_profile: "typst",
+        source_preflight_profile: "none",
+      },
+    };
+    mocks.readFileContent.mockResolvedValue(
+      "#figure(table(columns: 2, [a], [b]), caption: [x])\n#let f = (x) => {(x)}\n})\n",
+    );
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+    expect(mocks.compileProject).toHaveBeenCalledWith("project", "main.typ", false, false, false);
+    expect(useCompileStore.getState().log).not.toContain("the compiler was not run");
+  });
+
+  it("compiles a Markdown main document without running the LaTeX syntax check", async () => {
+    mocks.files.mainDoc = "main.md";
+    mocks.files.activePath = "main.md";
+    mocks.files.tree = [{ path: "main.md", is_dir: false }];
+    mocks.files.engine = {
+      ...LATEX_ENGINE,
+      id: "markdown",
+      label: "Markdown / Pandoc",
+      source_format: "markdown",
+      main_document: "main.md",
+      source_extensions: ["md", "markdown"],
+      capabilities: {
+        ...LATEX_ENGINE.capabilities,
+        compiler_prerequisite: "pandoc",
+        supports_offline: false,
+        supports_synctex: false,
+        supports_isolated_compile: false,
+        formatting_profile: "markdown",
+        source_preflight_profile: "none",
+      },
+    };
+    mocks.readFileContent.mockResolvedValue("# Title\n\nA closing brace } on its own.\n");
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+    expect(mocks.compileProject).toHaveBeenCalledWith("project", "main.md", false, false, false);
+  });
+
+  it("still checks LaTeX source that has a stray closing brace", async () => {
+    mocks.readFileContent.mockResolvedValue(
+      "\\documentclass{article}\n\\begin{document}\nx})\n\\end{document}\n",
+    );
+    mocks.compileProject.mockResolvedValue(failedResult);
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.readFileContent).toHaveBeenCalledWith("project", "main.tex");
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().log).toContain("the compiler was not run");
+  });
+
   it("compiles unchecked source when the syntax check is off", async () => {
     mocks.readFileContent.mockResolvedValue(
       "\\begin{document}\nunclosed\n",

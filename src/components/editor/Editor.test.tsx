@@ -214,6 +214,52 @@ describe("Editor shell", () => {
     expect(screen.getByTestId("markdown-toolbar")).toBeInTheDocument();
   });
 
+  it("shows the changed-on-disk banner above a Typst file", () => {
+    openFile("main.typ", {
+      engine: engineWithProfile("typst", ["typ"]),
+      changedOnDisk: ["main.typ"],
+      tree: [],
+      manifestHome: "library",
+    });
+    render(<Editor />);
+
+    expect(screen.getByTestId("changed-on-disk-banner")).toHaveTextContent(
+      en.changedOnDisk.message.replace("{{file}}", "main.typ"),
+    );
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+    expect(screen.queryByTestId("editor-breadcrumbs")).not.toBeInTheDocument();
+  });
+
+  it("marks a managed Typst file as read-only", () => {
+    openFile(".oleafly/notes.typ", {
+      engine: engineWithProfile("typst", ["typ"]),
+      changedOnDisk: [],
+      tree: [],
+      manifestHome: "library",
+    });
+    render(<Editor />);
+
+    expect(screen.getByTestId("managed-file-notice")).toHaveTextContent(
+      shell.managedFileReadOnly.replace("{{file}}", ".oleafly/notes.typ"),
+    );
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+  });
+
+  it("marks a linked Typst file as read-only", () => {
+    openFile("shared/chapter.typ", {
+      engine: engineWithProfile("typst", ["typ"]),
+      changedOnDisk: [],
+      tree: [{ path: "shared/chapter.typ", is_dir: false, read_only: true }],
+      manifestHome: "library",
+    });
+    render(<Editor />);
+
+    expect(screen.getByTestId("linked-file-notice")).toHaveTextContent(
+      shell.linkedFileReadOnly.replace("{{file}}", "shared/chapter.typ"),
+    );
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+  });
+
   it("refuses to edit a file it cannot preview", () => {
     openFile("assets/fonts/body.woff2");
     render(<Editor />);

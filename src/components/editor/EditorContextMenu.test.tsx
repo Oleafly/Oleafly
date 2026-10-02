@@ -34,6 +34,11 @@ const inlineAi = vi.hoisted(() => ({ openInlineEdit: vi.fn() }));
 const synctex = vi.hoisted(() => ({ goToSyncTex: vi.fn() }));
 const toasts = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn(), success: vi.fn() }));
 
+const equationExport = vi.hoisted(() => ({
+  saveEquationAsSvg: vi.fn(async () => {}),
+  saveEquationAsPng: vi.fn(async () => {}),
+}));
+
 const latexCommands = vi.hoisted(() => ({
   insertAlign: vi.fn(),
   insertBlockquote: vi.fn(),
@@ -58,6 +63,7 @@ vi.mock("@/components/editor/cm/controller", () => controller);
 vi.mock("./cm/inline-ai/openSession", () => inlineAi);
 vi.mock("@/lib/index/nav", () => nav);
 vi.mock("@/features/synctex", () => synctex);
+vi.mock("@/features/equation-export", () => equationExport);
 vi.mock("@/lib/toast", () => ({ toast: toasts }));
 vi.mock("@/store/project-index", () => ({
   useIndexStore: { getState: () => projectIndex.state },
@@ -139,6 +145,17 @@ describe("EditorContextMenu", () => {
     openMenu(engineWithProfile("typst"), true);
     fireEvent.click(screen.getByText(toolbar.bulletedList));
     expect(controller.insertAtCursor).toHaveBeenLastCalledWith("- Item\n");
+  });
+
+  it("exports the equation under the caret as SVG or PNG from the Typst menu", () => {
+    openMenu(engineWithProfile("typst"), true);
+    fireEvent.click(screen.getByText(menu.equationAsSvg));
+    expect(equationExport.saveEquationAsSvg).toHaveBeenCalledOnce();
+
+    openMenu(engineWithProfile("typst"), true);
+    fireEvent.click(screen.getByText(menu.equationAsPng));
+    expect(equationExport.saveEquationAsPng).toHaveBeenCalledOnce();
+    expect(equationExport.saveEquationAsSvg).toHaveBeenCalledOnce();
   });
 
   it("writes Markdown markup from the Markdown menu", () => {

@@ -1021,7 +1021,7 @@
       "resume": "İndirmeyi sürdür ({{size}} MB tamam)"
     },
     "typst": {
-      "detail": "Oleafly ile birlikte gelir. Hızlı, çevrimdışı, kurulum gerektirmez. Typst belgelerini PDF'e derler.",
+      "detail": "Oleafly ile birlikte gelir, kurulacak bir şey yoktur. Ağ bağlantısı yalnızca bir belge bir @preview paketini ilk kez içe aktardığında gerekir.",
       "heading": "Typst derleyicisi",
       "name": "Typst (yerleşik)",
       "note": "Typst projeleri her zaman paketlenmiş derleyiciyi kullanır. Derleyici sürümü seçmek ve sistem Typst'i kullanmak henüz mümkün değil.",

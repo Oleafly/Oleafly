@@ -1027,7 +1027,7 @@
       "resume": "Retomar o download ({{size}} MB prontos)"
     },
     "typst": {
-      "detail": "Vem com o Oleafly. Rápido, offline, sem instalação. Compila documentos Typst em PDF.",
+      "detail": "Vem com o Oleafly, então não há nada para configurar. Só precisa de conexão com a internet na primeira vez que um documento importa um pacote @preview.",
       "heading": "Compilador Typst",
       "name": "Typst (embutido)",
       "note": "Os projetos Typst usam sempre o compilador embutido. Escolher a versão do compilador, ou um Typst do sistema, ainda não está disponível.",

@@ -407,6 +407,7 @@ fn run_init(path: &Path, command: InitCommand, reporter: Reporter) -> Result<u8,
 
 async fn run_build(path: &Path, request: BuildRequest) -> Result<u8, Error> {
     let workspace = open_or_detect(path, request.reporter)?;
+    note_ignored_options(&workspace, request);
     let result = compile(&workspace, request).await?;
     report_build(&result, request.reporter, "build")?;
     Ok(if result.ok { EXIT_SUCCESS } else { EXIT_BUILD })
@@ -421,6 +422,21 @@ fn open_or_detect(path: &Path, reporter: Reporter) -> Result<Workspace, Error> {
         );
     }
     Ok(workspace)
+}
+
+fn note_ignored_options(workspace: &Workspace, request: BuildRequest) {
+    if request.reporter.json {
+        return;
+    }
+    let Ok(engine) = workspace.manifest().engine() else {
+        return;
+    };
+    for flag in request.options.ignored_by(engine) {
+        eprintln!(
+            "note: {flag} is ignored for {} projects",
+            engine.canonical_name()
+        );
+    }
 }
 
 fn detected_workspace(path: &Path) -> Result<(Workspace, bool), Error> {
@@ -627,6 +643,7 @@ fn run_project_info(path: &Path, reporter: Reporter) -> Result<u8, Error> {
 async fn run_watch(path: &Path, request: BuildRequest) -> Result<u8, Error> {
     let reporter = request.reporter;
     let workspace = open_or_detect(path, reporter)?;
+    note_ignored_options(&workspace, request);
     let workspace_root = workspace.root().to_path_buf();
     let (sender, mut receiver) = mpsc::unbounded_channel();
     let mut watcher = create_watcher(sender)?;

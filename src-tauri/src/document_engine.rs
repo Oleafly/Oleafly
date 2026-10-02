@@ -3202,8 +3202,7 @@ pub(crate) fn search_compile_directory_first(
 
 fn typst_args(input: &Path, output: &Path, project_dir: &Path) -> Vec<String> {
     vec![
-        "--color".into(),
-        "never".into(),
+        "--color=never".into(),
         "compile".into(),
         input.to_string_lossy().into_owned(),
         output.to_string_lossy().into_owned(),
@@ -4932,8 +4931,7 @@ mod tests {
         assert_eq!(
             spec.args,
             [
-                "--color",
-                "never",
+                "--color=never",
                 "compile",
                 joined("/project", "chapters/main.typ").as_str(),
                 joined("/build", "_oleafly_entry.pdf").as_str(),

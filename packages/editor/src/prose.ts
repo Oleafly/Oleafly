@@ -1,9 +1,12 @@
 export * from "./latex-mask";
 export * from "./spelling-words";
 export {
+  decodeTypstProse,
+  maskTypstForProseRegions,
   maskTypstToProse,
   typstSpellcheckRanges,
   typstToProse,
+  type DecodedTypstProse,
   type TypstWordRange,
 } from "./typst-mask";
 export { markdownSpellcheckRanges, markdownToProse } from "./markdown-mask";

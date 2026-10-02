@@ -352,14 +352,26 @@ describe("harper lint configuration", () => {
     expect(mocks.importWords.mock.calls.at(-1)?.[0]).toContain("Dummy");
   });
 
-  it("sends a Typst document through Harper's own Typst parser", async () => {
+  it("sends Typst grammar through the same masked prose as spelling", async () => {
     mocks.lintLanguage.mockClear();
+    let seen = "";
+    mocks.lints = (text) => {
+      seen = text;
+      return [];
+    };
     const typst = request(912, "grammar");
     typst.format = "typst";
     typst.identity.path = "main.typ";
-    typst.text = "The the results.";
+    typst.text =
+      '#let s = "strng"\n#context text.lang\n#figure(rect(), caption: [A captoin])';
     await analyze(typst);
-    expect(mocks.lintLanguage).toHaveBeenCalledWith("typst");
+    mocks.lints = null;
+
+    expect(mocks.lintLanguage).toHaveBeenCalledWith("plaintext");
+    expect(mocks.lintLanguage).not.toHaveBeenCalledWith("typst");
+    expect(seen).toHaveLength(typst.text.length);
+    expect(seen).toContain("A captoin");
+    expect(seen).not.toMatch(/strng|lang|figure|rect/u);
   });
 
   it("keeps a disabled rule off after the writer changes dialect", async () => {
@@ -572,6 +584,213 @@ describe("latex findings land on the document", () => {
     const dismissed = request(925, "grammar");
     dismissed.format = "latex";
     dismissed.text = text;
+    dismissed.suppressions = [
+      grammarSuppressionKey("RepeatedWords", text, 11),
+    ];
+    const after = await analyze(dismissed);
+    mocks.lints = null;
+
+    expect(after.type).toBe("result");
+    if (after.type !== "result") return;
+    expect(after.diagnostics).toEqual([]);
+  });
+});
+
+describe("typst findings land on the document", () => {
+  const typstSource = (tag: string) =>
+    `We compare $a$ and $b$ in @smith2020 here, ${tag}.`;
+
+  function typstRequest(
+    requestId: number,
+    mode: ProofreadingRequest["mode"],
+    text: string,
+  ): ProofreadingRequest {
+    const value = request(requestId, mode);
+    value.format = "typst";
+    value.identity.path = "main.typ";
+    value.text = text;
+    return value;
+  }
+
+  it("maps a lint span straight onto the source text", async () => {
+    mocks.lints = (text) => {
+      const at = text.indexOf("compare");
+      return [
+        fakeLint("Repetition", "Did you mean to repeat this word?", at, at + 7, "RepeatedWords"),
+      ];
+    };
+    const text = typstSource("first");
+    const response = await analyze(typstRequest(940, "grammar", text));
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toHaveLength(1);
+    const diagnostic = response.diagnostics[0];
+    expect(text.slice(diagnostic.from, diagnostic.to)).toBe("compare");
+    expect(diagnostic.rule).toBe("RepeatedWords");
+  });
+
+  it("maps a finding inside a caption onto the caption text", async () => {
+    const text =
+      '#figure(image("plot.png", width: 80%), caption: [We compare the the runs.])';
+    mocks.lints = (prose) => {
+      const at = prose.indexOf("the the");
+      return [
+        fakeLint("Repetition", "Did you mean to repeat this word?", at, at + 7, "RepeatedWords"),
+      ];
+    };
+    const response = await analyze(typstRequest(941, "grammar", text));
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toHaveLength(1);
+    expect(
+      text.slice(response.diagnostics[0].from, response.diagnostics[0].to),
+    ).toBe("the the");
+  });
+
+  it("drops a finding that is only about masked markup", async () => {
+    mocks.lints = (text) => {
+      const at = text.indexOf("Dummy");
+      return [fakeLint("Miscellaneous", "About a placeholder", at, at + 5, "AnA")];
+    };
+    const response = await analyze(
+      typstRequest(942, "grammar", typstSource("second")),
+    );
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it("drops a finding that reaches across an inline equation", async () => {
+    const text = "We add and $c+d$ and then stop.";
+    mocks.lints = () => [
+      fakeLint(
+        "Repetition",
+        "Did you mean to repeat this word?",
+        7,
+        text.indexOf("and then") + 3,
+        "RepeatedWords",
+      ),
+    ];
+    const response = await analyze(typstRequest(943, "grammar", text));
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it("drops a finding that reaches across a code line", async () => {
+    const text = 'We add and\n#let x = "and"\nand then stop.';
+    const at = text.indexOf("and");
+    mocks.lints = () => [
+      fakeLint(
+        "Repetition",
+        "Did you mean to repeat this word?",
+        at,
+        text.lastIndexOf("and then") + 3,
+        "RepeatedWords",
+      ),
+    ];
+    const response = await analyze(typstRequest(944, "grammar", text));
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it("marks a Hunspell finding with a null rule", async () => {
+    mocks.dictionaryAvailable = true;
+    mocks.spell.mockImplementation((word: string) => word !== "Qwertzuiopz");
+    mocks.suggest.mockReturnValue([]);
+    const response = await analyze(
+      typstRequest(945, "spelling", "A Qwertzuiopz remains #emph[here]."),
+    );
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toHaveLength(1);
+    expect(response.diagnostics[0].rule).toBeNull();
+  });
+
+  it("spells the same words that grammar reads", async () => {
+    mocks.dictionaryAvailable = true;
+    mocks.spell.mockClear();
+    mocks.spell.mockImplementation(() => true);
+    let seen = "";
+    mocks.lints = (text) => {
+      seen = text;
+      return [];
+    };
+    const text = [
+      '#show: ieee.with(title: [Titel wordz], abstract: [Abstrct wordz])',
+      '#let s = "strng"',
+      "#context text.lang",
+      "#table(columns: 2, [Cell twoo], [Cell three])",
+      "#figure(rect(), caption: [Captoin #footnote[Notte]])",
+      "Un caf\\u{e9} noir.",
+    ].join("\n");
+    await analyze(typstRequest(946, "combined", text));
+    mocks.lints = null;
+
+    const spelled = new Set(mocks.spell.mock.calls.map(([word]) => word));
+    const read = new Set(
+      [...seen.matchAll(/\p{L}{2,}/gu)]
+        .map((match) => match[0])
+        .filter((word) => word !== "Dummy"),
+    );
+    expect(spelled).toEqual(read);
+    expect(spelled).toContain("café");
+    expect(spelled).not.toContain("strng");
+    expect(spelled).not.toContain("lang");
+  });
+
+  it("drops a wide finding rather than painting a pasted block", async () => {
+    const pasted = `#table(columns: 3,\n${"[Model], [Accuracy], [Latency],\n".repeat(40)})`;
+    mocks.lints = () => [
+      fakeLint("Spelling", "Did you mean to spell this way?", 0, 300, "SpellCheck"),
+    ];
+    const response = await analyze(typstRequest(947, "grammar", pasted));
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toEqual([]);
+  });
+
+  it("clamps a grammar finding to its own sentence", async () => {
+    const text = "First sentence here. Second sentence follows it.";
+    mocks.lints = () => [
+      fakeLint("Readability", "This sentence is long.", 0, text.length, "LongSentences"),
+    ];
+    const response = await analyze(typstRequest(948, "grammar", text));
+    mocks.lints = null;
+
+    expect(response.type).toBe("result");
+    if (response.type !== "result") return;
+    expect(response.diagnostics).toHaveLength(1);
+    expect(
+      text.slice(response.diagnostics[0].from, response.diagnostics[0].to),
+    ).toBe("First sentence here.");
+  });
+
+  it("drops a finding the writer already dismissed in this project", async () => {
+    const text = "We compare the the results #emph[here].";
+    mocks.lints = () => [
+      fakeLint("Repetition", "Did you mean to repeat this word?", 11, 18, "RepeatedWords"),
+    ];
+    const before = await analyze(typstRequest(949, "grammar", text));
+    expect(before.type).toBe("result");
+    if (before.type !== "result") return;
+    expect(before.diagnostics).toHaveLength(1);
+
+    const dismissed = typstRequest(950, "grammar", text);
     dismissed.suppressions = [
       grammarSuppressionKey("RepeatedWords", text, 11),
     ];

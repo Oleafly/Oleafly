@@ -266,6 +266,100 @@ fn successful_builds_preserve_human_and_json_output_contracts() {
         .is_some_and(|id| id.starts_with("pdf-sha256:")));
 }
 
+const BUILD_FLAGS: [&str; 3] = ["--offline", "--fast", "--halt-on-error"];
+
+fn build_with_tools(
+    project: &std::path::Path,
+    data: &std::path::Path,
+    tools: &[(&str, &std::path::Path)],
+    arguments: &[&str],
+) -> Output {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_oleaflyc"));
+    command
+        .args(arguments)
+        .current_dir(project)
+        .env("PATH", "")
+        .env("OLEAFLY_DATA_DIR", data);
+    for (variable, path) in tools {
+        command.env(variable, path);
+    }
+    command.output().unwrap()
+}
+
+#[test]
+fn build_notes_each_flag_the_engine_ignores_and_keeps_the_exit_code() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let data = TempDir::new().unwrap();
+    for (engine, variables, ignored) in [
+        ("tectonic", &["OLEAFLY_TECTONIC"][..], &[][..]),
+        ("latexmk", &["OLEAFLY_LATEXMK"][..], &["--fast"][..]),
+        ("typst", &["OLEAFLY_TYPST"][..], &BUILD_FLAGS[..]),
+        (
+            "markdown",
+            &["OLEAFLY_PANDOC", "OLEAFLY_TECTONIC"][..],
+            &BUILD_FLAGS[..],
+        ),
+    ] {
+        let project = TempDir::new().unwrap();
+        assert!(run(&["init", "--engine", engine], Some(project.path()))
+            .status
+            .success());
+        let environment: Vec<_> = variables
+            .iter()
+            .map(|variable| (*variable, compiler.as_path()))
+            .collect();
+        let plain = build_with_tools(project.path(), data.path(), &environment, &["build"]);
+        let mut flagged_arguments = vec!["build"];
+        flagged_arguments.extend(BUILD_FLAGS);
+        let flagged = build_with_tools(
+            project.path(),
+            data.path(),
+            &environment,
+            &flagged_arguments,
+        );
+        assert_eq!(flagged.status.code(), plain.status.code(), "{engine}");
+        let plain_stderr = String::from_utf8_lossy(&plain.stderr);
+        assert!(
+            !plain_stderr.contains("is ignored for"),
+            "{engine}: {plain_stderr}"
+        );
+        let stderr = String::from_utf8_lossy(&flagged.stderr);
+        for flag in BUILD_FLAGS {
+            let note = format!("note: {flag} is ignored for {engine} projects");
+            assert_eq!(
+                stderr.matches(&note).count(),
+                usize::from(ignored.contains(&flag)),
+                "{engine} {flag}: {stderr}"
+            );
+        }
+    }
+}
+
+#[test]
+fn json_builds_keep_stderr_empty_when_a_flag_is_ignored() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let data = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    assert!(run(&["init", "--engine", "latexmk"], Some(project.path()))
+        .status
+        .success());
+    let output = build_with_tools(
+        project.path(),
+        data.path(),
+        &[("OLEAFLY_LATEXMK", compiler.as_path())],
+        &["--json", "build", "--fast"],
+    );
+    assert!(output.status.success());
+    assert!(
+        output.stderr.is_empty(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(json(&output)["build"]["engine"], "latexmk");
+}
+
 #[test]
 fn watch_recovers_from_environment_errors_and_reloads_the_manifest() {
     let project = TempDir::new().unwrap();

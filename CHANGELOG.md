@@ -63,6 +63,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Oleafly now ships Typst 0.15.1 and the Tinymist 0.15.8 language server.
+- The compile menu shows only the options that do something for the project's
+  engine. Typst and Markdown projects no longer list the syntax check, the
+  fast compile mode or "stop on first error", and latexmk projects no longer
+  list the fast mode.
+- External agents connected over MCP see the project's engine in
+  `get_status`. The figure tools now refuse to run outside LaTeX projects
+  instead of writing LaTeX into a Typst file.
+- `oleaflyc build` and `oleaflyc watch` print a note when a flag such as
+  `--fast` or `--offline` has no effect for the project's engine.
+
 - When you edit during an automatic compile, Oleafly stops that compile and
   starts again with your latest text, so the PDF catches up sooner. It never
   stops a compile you or an agent started, one that is downloading packages or
@@ -154,6 +165,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   script where a `.cmd` or `.exe` is needed.
 
 ### Fixed
+
+- Typst projects could refuse to compile with "Syntax check found errors"
+  because the check before compiling ran the LaTeX checker on Typst source.
+  The check now runs only for LaTeX.
+- A table imported from CSV or Excel into a Typst document did not compile.
+  The table now compiles, keeps its caption, takes a label you can cite with
+  `@`, and uses the same top, middle and bottom rules as the LaTeX version.
+  Cell text that Typst would read as markup is escaped.
+- Cmd+/ (Ctrl+/) did nothing in Typst files. It now comments and uncomments
+  lines with `//`.
+- Typst files never showed the banner for changes made on disk, or the notice
+  that a file is read-only.
+- Exporting a Typst equation as SVG came out wrong, because the math went
+  through a TeX renderer that cannot read Typst. Typst now draws the equation
+  itself, and PNG export is available too.
+- Spell check in Typst files gave up at a stray `"` inside a caption or table
+  cell and skipped the rest of the file. It also never looked at captions,
+  table cells or template fields such as `abstract:`, and it flagged code
+  written after `#context`. All of that is fixed, `\u{e9}` now reads as é,
+  and grammar checks the same text that spelling does.
+- Word counts for Typst files counted code and comments, cut lines at `%`
+  and found no headings, figures or equations. They now follow Typst's rules.
+- Adding a citation to a Typst project whose bibliography is a Hayagriva
+  `.yml` file, or a list of files, wrote it to a different `.bib` file. It
+  now goes into the bibliography the document declares, converted to
+  Hayagriva when needed, and keys in Hayagriva files complete and resolve.
 
 - Clicking inside the Advanced filters panel while one of its menus is open
   now closes only that menu, so you can set several filters in a row.

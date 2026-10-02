@@ -76,14 +76,14 @@ export function TableImportDialog() {
   const source = (): string | null => {
     const tableTarget = tableContext?.target ?? target;
     const trimmedLabel = label.trim();
-    if (tableTarget === "latex" && trimmedLabel && !hasValidTableLabel(trimmedLabel)) {
+    if (trimmedLabel && !hasValidTableLabel(trimmedLabel)) {
       setError(t(($) => $.editor.tableImport.invalidLabel));
       return null;
     }
     return emitTable(rows, {
       header,
       caption: caption.trim() || undefined,
-      label: tableTarget === "latex" ? trimmedLabel || undefined : undefined,
+      label: trimmedLabel || undefined,
       target: tableTarget,
     });
   };
@@ -205,10 +205,10 @@ export function TableImportDialog() {
                 <label htmlFor="table-import-caption" className="text-xs text-muted-foreground">{t(($) => $.editor.tableImport.captionLabel)}</label>
                 <Input id="table-import-caption" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder={t(($) => $.editor.tableImport.captionPlaceholder)} />
               </div>
-              {target === "latex" && <div className="grid gap-2">
+              <div className="grid gap-2">
                 <label htmlFor="table-import-label" className="text-xs text-muted-foreground">{t(($) => $.editor.tableImport.labelLabel)}</label>
                 <Input id="table-import-label" value={label} onChange={(event) => { setLabel(event.target.value); setError(null); }} placeholder={t(($) => $.editor.tableImport.labelPlaceholder)} />
-              </div>}
+              </div>
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
             </div>
           </ToolPane>

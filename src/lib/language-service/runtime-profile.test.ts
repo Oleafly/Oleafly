@@ -35,7 +35,7 @@ describe("language-service runtime profile", () => {
     });
     expect(getLanguageServiceRuntimeProfile("tinymist")).toEqual({
       kind: "tinymist",
-      version: "0.15.2",
+      version: "0.15.8",
       args: ["lsp"],
       initializationOptions: {
         exportPdf: "never",

@@ -116,6 +116,7 @@ mod test_wait;
 mod tex_distro;
 mod tinytex_archive;
 mod trust;
+mod typst_render;
 // Only macOS sizes webviews itself; the frame logic is unit-tested everywhere.
 #[cfg(windows)]
 mod webview_focus;
@@ -435,6 +436,7 @@ pub fn run() {
         .setup(setup_app)
         .invoke_handler(traced_commands(tauri::generate_handler![
             ad_hoc_conversion::convert_ad_hoc,
+            typst_render::render_typst_snippet,
             arxiv_import::extract_arxiv_source,
             research_tasks::research_task_list,
             research_tasks::research_task_create,

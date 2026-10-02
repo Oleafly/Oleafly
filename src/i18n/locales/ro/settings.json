@@ -1027,7 +1027,7 @@
       "resume": "Reia descărcarea ({{size}} MB descărcați)"
     },
     "typst": {
-      "detail": "Vine cu Oleafly. Rapid, offline, fără configurare. Compilează documente Typst în PDF.",
+      "detail": "Vine cu Oleafly, deci nu ai nimic de configurat. Are nevoie de conexiune la rețea doar prima dată când un document importă un pachet @preview.",
       "heading": "Compilator Typst",
       "name": "Typst (inclus)",
       "note": "Proiectele Typst folosesc întotdeauna compilatorul inclus. Alegerea unei versiuni de compilator sau a unui Typst din sistem nu este încă disponibilă.",

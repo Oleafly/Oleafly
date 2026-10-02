@@ -216,7 +216,7 @@ recognizes a compatible system or previously managed Pandoc as a development
 fallback, but release builds use the bundled copy and do not download a runtime
 when a conversion starts.
 
-TexLab 5.26.0 and Tinymist 0.15.2 have a separate machine-readable manifest,
+TexLab 5.26.0 and Tinymist 0.15.8 have a separate machine-readable manifest,
 secure Node fetcher, and distribution policy. Neither language server is a
 Tauri `externalBin`. TexLab resolves from its consent-gated, checksum-pinned
 app-local-data installation. Tinymist's target-specific upstream archive is a

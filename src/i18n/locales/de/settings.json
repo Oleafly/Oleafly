@@ -1021,7 +1021,7 @@
       "resume": "Download fortsetzen ({{size}} MB erledigt)"
     },
     "typst": {
-      "detail": "Liegt Oleafly bei. Schnell, offline, keine Einrichtung. Kompiliert Typst-Dokumente zu PDF.",
+      "detail": "Liegt Oleafly bei, Sie müssen also nichts einrichten. Eine Netzwerkverbindung braucht es nur, wenn ein Dokument zum ersten Mal ein @preview-Paket importiert.",
       "heading": "Typst-Compiler",
       "name": "Typst (eingebaut)",
       "note": "Typst-Projekte nutzen immer den mitgelieferten Compiler. Eine Compilerversion zu wählen oder ein systemeigenes Typst zu nutzen, ist noch nicht möglich.",

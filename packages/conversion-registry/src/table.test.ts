@@ -87,6 +87,34 @@ describe("escapeTypstCell", () => {
       "a\\[b\\]\\#d\\$e\\*f\\_g\\`h\\@i\\\\j",
     );
   });
+
+  it("escapes labels, smart quotes and non-breaking spaces", () => {
+    expect(escapeTypstCell('a<b> "q" x~y')).toBe('a\\<b\\> \\"q\\" x\\~y');
+  });
+
+  it("escapes comment openers without touching single slashes", () => {
+    expect(escapeTypstCell("1/2 a // b /* c */")).toBe("1/2 a \\// b \\/\\* c \\*/");
+    expect(escapeTypstCell("https://example.com/a_b")).toBe("https:\\//example.com/a\\_b");
+  });
+
+  it.each([
+    ["- item", "\\- item"],
+    ["+ item", "\\+ item"],
+    ["/ term: text", "\\/ term: text"],
+    ["= Heading", "\\= Heading"],
+    ["== Heading", "\\== Heading"],
+    ["1. First", "1\\. First"],
+    ["  - indented", "  \\- indented"],
+  ])("escapes the leading marker in %j", (input, expected) => {
+    expect(escapeTypstCell(input)).toBe(expected);
+  });
+
+  it.each(["-", "-5", "+1", "=", "1.", "1.5", "a - b", "x = 1", "10%"])(
+    "leaves %j alone because Typst reads it as text",
+    (input) => {
+      expect(escapeTypstCell(input)).toBe(input);
+    },
+  );
 });
 
 describe("inferAlignment", () => {
@@ -164,20 +192,99 @@ describe("emitLatexTable", () => {
   });
 });
 
+const RESULTS = [
+  ["Model", "Accuracy", "Params"],
+  ["Base", "91.2", "110M"],
+  ["Large", "93.4", "340M"],
+];
+
 describe("emitTypstTable", () => {
-  it("emits a table with a strong header and alignment", () => {
-    const typst = emitTypstTable(
+  it("wraps a captioned, labelled table in a figure with booktabs rules", () => {
+    expect(
+      emitTypstTable(RESULTS, { header: true, caption: "Results", label: "tab:results" }),
+    ).toBe(
       [
-        ["Method", "Score"],
-        ["ours", "0.94"],
-      ],
-      { header: true, caption: "Results" },
+        "#figure(",
+        "  table(",
+        "    columns: 3,",
+        "    align: (left, right, left),",
+        "    stroke: none,",
+        "    table.hline(),",
+        "    table.header([*Model*], [*Accuracy*], [*Params*]),",
+        "    table.hline(stroke: 0.5pt),",
+        "    [Base], [91.2], [110M],",
+        "    [Large], [93.4], [340M],",
+        "    table.hline(),",
+        "  ),",
+        "  caption: [Results],",
+        ") <tab:results>",
+      ].join("\n"),
     );
-    expect(typst).toContain("#table(");
-    expect(typst).toContain("columns: (left, right),");
-    expect(typst).toContain("table.header([*Method*], [*Score*]),");
-    expect(typst).toContain("[ours], [0.94],");
-    expect(typst).toContain("caption: [Results],");
+  });
+
+  it("emits a bare table without a caption or label", () => {
+    expect(emitTypstTable(RESULTS, { header: true })).toBe(
+      [
+        "#table(",
+        "  columns: 3,",
+        "  align: (left, right, left),",
+        "  stroke: none,",
+        "  table.hline(),",
+        "  table.header([*Model*], [*Accuracy*], [*Params*]),",
+        "  table.hline(stroke: 0.5pt),",
+        "  [Base], [91.2], [110M],",
+        "  [Large], [93.4], [340M],",
+        "  table.hline(),",
+        ")",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps a figure for a label without a caption so @label resolves", () => {
+    const typst = emitTypstTable(RESULTS, { header: true, label: "tab:plain" });
+    expect(typst.startsWith("#figure(\n  table(\n")).toBe(true);
+    expect(typst).not.toContain("caption:");
+    expect(typst.endsWith("  ),\n) <tab:plain>")).toBe(true);
+  });
+
+  it("uses a figure without a label when only a caption is given", () => {
+    const typst = emitTypstTable(RESULTS, { header: true, caption: "Results" });
+    expect(typst.endsWith("  caption: [Results],\n)")).toBe(true);
+    expect(typst).not.toContain("<");
+  });
+
+  it("drops a label Typst cannot parse", () => {
+    const typst = emitTypstTable(RESULTS, { header: true, label: "tab:x> #panic()" });
+    expect(typst.startsWith("#table(")).toBe(true);
+    expect(typst).not.toContain("panic");
+  });
+
+  it("omits the header and its rule when the first row is data", () => {
+    const typst = emitTypstTable(RESULTS, { header: false });
+    expect(typst).not.toContain("table.header");
+    expect(typst).not.toContain("0.5pt");
+    expect(typst).toContain("  table.hline(),\n  [Model], [Accuracy], [Params],");
+  });
+
+  it("writes a plain header when bold is off and an empty header cell as []", () => {
+    expect(emitTypstTable([["A", ""], ["1", "2"]], { header: true, boldHeader: false })).toContain(
+      "table.header([A], []),",
+    );
+    expect(emitTypstTable([["A", ""], ["1", "2"]], { header: true })).toContain(
+      "table.header([*A*], []),",
+    );
+  });
+
+  it("uses a single alignment for a one-column table", () => {
+    expect(emitTypstTable([["Value"], ["1"]], { header: true })).toContain(
+      "  columns: 1,\n  align: right,\n",
+    );
+  });
+
+  it("honours explicit alignment and pads ragged rows", () => {
+    const typst = emitTypstTable([["a", "b", "c"], ["only-one"]], { header: true, alignment: "lcr" });
+    expect(typst).toContain("align: (left, center, right),");
+    expect(typst).toContain("[only-one], [], [],");
   });
 
   it("escapes Typst markup in cells", () => {

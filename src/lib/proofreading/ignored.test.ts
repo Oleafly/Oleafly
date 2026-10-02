@@ -134,6 +134,19 @@ describe("isSessionIgnoredWord", () => {
     expect(isSessionIgnoredWord("H100")).toBe(true);
     expect(isSessionIgnoredWord("Qwertzuiopz")).toBe(false);
   });
+
+  it("passes over Typst tooling names", () => {
+    for (const word of [
+      "Typst",
+      "Tinymist",
+      "typstyle",
+      "typstfmt",
+      "Hayagriva",
+      "typlite",
+    ]) {
+      expect(isSessionIgnoredWord(word), word).toBe(true);
+    }
+  });
 });
 
 describe("forgetting a session decision", () => {

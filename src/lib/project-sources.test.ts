@@ -590,3 +590,50 @@ describe("cache eviction under memory pressure", () => {
     expect(projectSourcesCacheSize()).toBe(2);
   });
 });
+
+describe("readProjectSourcesBatch with skipOversized", () => {
+  function limitedCommand(disk: FakeDisk, fileLimit: number, batchLimit: number): BatchBinding {
+    const simulated = simulateCommand(disk);
+    return async (projectId, request) => {
+      const result = await simulated(projectId, request);
+      const oversized: string[] = [];
+      let consumed = 0;
+      result.files = result.files.filter((file) => {
+        const size = disk.files.get(file.path)?.length ?? 0;
+        if (size > Math.min(fileLimit, batchLimit - consumed)) {
+          oversized.push(file.path);
+          return false;
+        }
+        consumed += size;
+        return true;
+      });
+      result.oversized = oversized;
+      result.truncated = oversized.length > 0;
+      return result;
+    };
+  }
+
+  it("drops files over the per-file limit and retries files the batch budget pushed out", async () => {
+    const disk = fakeDisk({ "a.yml": "a".repeat(60), "b.yml": "b".repeat(60), "huge.yml": "h".repeat(200) });
+    mountFallback(disk);
+    bridge.batch = limitedCommand(disk, 100, 100);
+
+    const result = await readProjectSourcesBatch("p", ["a.yml", "b.yml", "huge.yml"], { skipOversized: true });
+
+    expect(result.texts).toEqual({ "a.yml": "a".repeat(60), "b.yml": "b".repeat(60) });
+    expect(result.unreadable.size).toBe(0);
+    expect(bridge.readFileContent).not.toHaveBeenCalled();
+    expect(disk.calls.map((call) => call.paths)).toEqual([["a.yml", "b.yml", "huge.yml"], ["b.yml"], ["huge.yml"]]);
+  });
+
+  it("still reads oversized files one by one without the option", async () => {
+    const disk = fakeDisk({ "huge.tex": "h".repeat(200) });
+    mountFallback(disk);
+    bridge.batch = limitedCommand(disk, 100, 100);
+
+    const result = await readProjectSourcesBatch("p", ["huge.tex"]);
+
+    expect(result.texts).toEqual({ "huge.tex": "h".repeat(200) });
+    expect(bridge.readFileContent).toHaveBeenCalledWith("p", "huge.tex");
+  });
+});

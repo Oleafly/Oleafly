@@ -266,7 +266,8 @@
     "svgImage": "SVG-Bild",
     "pngImage": "PNG-Bild",
     "svgKind": "Formel-SVG",
-    "pngKind": "Formel-PNG"
+    "pngKind": "Formel-PNG",
+    "typstFailed": "Typst konnte diese Formel nicht darstellen ({{detail}})"
   },
   "selectionActions": {
     "askAi": "KI fragen",

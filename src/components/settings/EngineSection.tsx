@@ -25,7 +25,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 // Kept in step with scripts/fetch-typst.sh, which pins the bundled sidecar.
-const BUNDLED_TYPST_VERSION = "0.15.0";
+const BUNDLED_TYPST_VERSION = "0.15.1";
 
 const ENGINE_CHOICES: DefaultLatexEngine[] = ["tectonic", "latexmk"];
 

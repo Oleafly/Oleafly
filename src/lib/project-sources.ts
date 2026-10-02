@@ -18,6 +18,10 @@ export interface ProjectSourcesBatch {
   unreadable: Set<string>;
 }
 
+export interface ProjectSourcesReadOptions {
+  readonly skipOversized?: boolean;
+}
+
 export interface ProjectSourcesBatchStats {
   invokes: number;
   fallbackReads: number;
@@ -208,11 +212,34 @@ function skipPlaceholderFiles(
   }
 }
 
+async function readOversizedAlone(
+  binding: BatchBinding,
+  projectId: string,
+  paths: readonly string[],
+  into: ProjectSourcesBatch,
+): Promise<void> {
+  for (const path of paths) {
+    const entry = cache.get(path);
+    stats.invokes += 1;
+    const result = await binding(projectId, {
+      paths: [path],
+      known: entry ? [{ path, hash: entry.hash }] : [],
+    });
+    const requested = new Set([path]);
+    const seen = new Set<string>();
+    applyFreshFiles(result.files, requested, seen, into);
+    applyUnchangedFiles(result.unchanged, requested, seen, into, []);
+    applyUnreadableFiles(result.unreadable, requested, seen, into);
+    if (!seen.has(path)) forget(path);
+  }
+}
+
 async function readThroughBatch(
   binding: BatchBinding,
   projectId: string,
   paths: readonly string[],
   into: ProjectSourcesBatch,
+  options: ProjectSourcesReadOptions,
 ): Promise<void> {
   const request: ProjectSourcesRequest = {
     paths: [...paths],
@@ -227,14 +254,18 @@ async function readThroughBatch(
   const seen = new Set<string>();
   applyFreshFiles(result.files, requested, seen, into);
   const missing: string[] = [];
+  const oversized: string[] = [];
   applyUnchangedFiles(result.unchanged, requested, seen, into, missing);
   applyUnreadableFiles(result.unreadable, requested, seen, into);
-  applyOversizedFiles(result.oversized ?? [], requested, seen, missing);
+  applyOversizedFiles(result.oversized ?? [], requested, seen, options.skipOversized ? oversized : missing);
   skipPlaceholderFiles(result.placeholders ?? [], requested, seen);
   for (const path of paths) {
     if (!seen.has(path) && !into.unreadable.has(path)) missing.push(path);
   }
   evictOutside(requested);
+  if (oversized.length > 0) {
+    await readOversizedAlone(binding, projectId, oversized, into);
+  }
   if (missing.length > 0) {
     await readIndividually(projectId, [...new Set(missing)], into);
   }
@@ -243,6 +274,7 @@ async function readThroughBatch(
 export async function readProjectSourcesBatch(
   projectId: string,
   paths: readonly string[],
+  options: ProjectSourcesReadOptions = {},
 ): Promise<ProjectSourcesBatch> {
   const into: ProjectSourcesBatch = { texts: {}, unreadable: new Set() };
   const unique = [...new Set(paths)];
@@ -254,7 +286,7 @@ export async function readProjectSourcesBatch(
     return into;
   }
   try {
-    await readThroughBatch(binding, projectId, unique, into);
+    await readThroughBatch(binding, projectId, unique, into, options);
   } catch {
     resetProjectSourcesCache(projectId);
     into.texts = {};

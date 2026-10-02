@@ -819,7 +819,7 @@ export function decodeLatexProse(text: string): DecodedLatexProse {
   return decodeScan(text, collectLatexRegions(text, { preamble: true }));
 }
 
-function decodedWords(
+export function decodedWords(
   prose: DecodedLatexProse,
   source: string,
 ): SpellingWord[] {
@@ -855,7 +855,7 @@ function blankRegionSpans(
   }
 }
 
-function writeProsePlaceholder(
+export function writeProsePlaceholder(
   out: string[],
   text: string,
   from: number,
@@ -901,7 +901,7 @@ function writeDecodedUnits(
   return written;
 }
 
-function writeDecodedWords(
+export function writeDecodedWords(
   out: string[],
   masked: MaskSpan[],
   text: string,
