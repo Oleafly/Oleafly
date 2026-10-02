@@ -37,12 +37,18 @@ function alphaXivServerConfig(apiKey: string, name = ALPHAXIV_SERVER_NAME): McpS
   };
 }
 
+function withoutTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url[end - 1] === "/") end -= 1;
+  return url.slice(0, end);
+}
+
 function findAlphaXivServer(servers: readonly McpManagedServer[]): McpManagedServer | undefined {
   return (
     servers.find(
       (server) =>
         server.config.transport === "remote" &&
-        server.config.url.replace(/\/+$/u, "") === ALPHAXIV_MCP_URL,
+        withoutTrailingSlashes(server.config.url) === ALPHAXIV_MCP_URL,
     ) ?? servers.find((server) => server.config.name === ALPHAXIV_SERVER_NAME)
   );
 }

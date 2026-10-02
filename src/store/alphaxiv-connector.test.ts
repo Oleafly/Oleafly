@@ -69,7 +69,7 @@ beforeEach(() => {
 
 describe("alphaXiv connector store", () => {
   it("reports connected when alphaXiv's MCP server is registered", async () => {
-    mocks.mcpServersList.mockResolvedValue([alphaXivServer("my-alphaxiv", `${ALPHAXIV_MCP_URL}/`)]);
+    mocks.mcpServersList.mockResolvedValue([alphaXivServer("my-alphaxiv", `${ALPHAXIV_MCP_URL}//`)]);
     await useAlphaXivConnectorStore.getState().refresh();
     expect(useAlphaXivConnectorStore.getState()).toMatchObject({
       connected: true,
