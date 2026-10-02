@@ -1,7 +1,8 @@
 use tauri::{Runtime, Webview};
 use webview2_com::Microsoft::Web::WebView2::Win32::{
-    ICoreWebView2Controller, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC,
+    ICoreWebView2Controller, ICoreWebView2Settings3, COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC,
 };
+use windows_core::Interface;
 use windows_sys::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows_sys::Win32::UI::Shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass};
 use windows_sys::Win32::UI::WindowsAndMessaging::{WM_NCDESTROY, WM_SETFOCUS};
@@ -24,6 +25,9 @@ fn forward_window_focus<R: Runtime>(webview: &Webview<R>) {
     };
     let hwnd = hwnd.0 as usize;
     let _ = webview.with_webview(move |platform| {
+        if !cfg!(debug_assertions) {
+            let _ = disable_browser_keys(&platform.controller());
+        }
         let controller = Box::into_raw(Box::new(platform.controller()));
         let installed = unsafe {
             SetWindowSubclass(
@@ -37,6 +41,16 @@ fn forward_window_focus<R: Runtime>(webview: &Webview<R>) {
             drop(unsafe { Box::from_raw(controller) });
         }
     });
+}
+
+fn disable_browser_keys(controller: &ICoreWebView2Controller) -> windows_core::Result<()> {
+    unsafe {
+        controller
+            .CoreWebView2()?
+            .Settings()?
+            .cast::<ICoreWebView2Settings3>()?
+            .SetAreBrowserAcceleratorKeysEnabled(false)
+    }
 }
 
 unsafe extern "system" fn forward_focus(

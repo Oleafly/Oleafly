@@ -6,6 +6,9 @@
     "reloadViews": "Last inn visningene på nytt",
     "restartApp": "Start programmet på nytt",
     "quit": "Avslutt Oleafly",
+    "hide": "Skjul Oleafly",
+    "hideOthers": "Skjul andre",
+    "showAll": "Vis alle",
     "edit": "Rediger",
     "undo": "Angre",
     "redo": "Gjør om",
@@ -19,7 +22,15 @@
     "file": "Arkiv",
     "openFolder": "Åpne mappe…",
     "openRecent": "Åpne nylig brukt",
-    "noRecent": "Ingen nylige prosjekter"
+    "noRecent": "Ingen nylige prosjekter",
+    "window": "Vindu",
+    "minimize": "Minimer",
+    "fullscreen": "Slå fullskjerm av eller på",
+    "bringAllToFront": "Legg alle øverst",
+    "newTab": "Ny fane",
+    "openLocation": "Åpne adresse…",
+    "closeTab": "Lukk fane",
+    "reloadPage": "Last inn siden på nytt"
   },
   "window": {
     "browser": "Oleafly-nettleser",

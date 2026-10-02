@@ -6,6 +6,9 @@
     "reloadViews": "뷰 다시 불러오기",
     "restartApp": "응용 프로그램 다시 시작",
     "quit": "Oleafly 종료",
+    "hide": "Oleafly 가리기",
+    "hideOthers": "기타 가리기",
+    "showAll": "모두 보기",
     "edit": "편집",
     "undo": "실행 취소",
     "redo": "다시 실행",
@@ -19,7 +22,15 @@
     "file": "파일",
     "openFolder": "폴더 열기…",
     "openRecent": "최근 항목 열기",
-    "noRecent": "최근 프로젝트 없음"
+    "noRecent": "최근 프로젝트 없음",
+    "window": "창",
+    "minimize": "최소화",
+    "fullscreen": "전체 화면 전환",
+    "bringAllToFront": "모두 앞으로 가져오기",
+    "newTab": "새 탭",
+    "openLocation": "위치 열기…",
+    "closeTab": "탭 닫기",
+    "reloadPage": "페이지 다시 불러오기"
   },
   "window": {
     "browser": "Oleafly 브라우저",

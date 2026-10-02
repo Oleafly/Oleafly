@@ -6,6 +6,9 @@
     "reloadViews": "Znovu načíst zobrazení",
     "restartApp": "Restartovat aplikaci",
     "quit": "Ukončit Oleafly",
+    "hide": "Skrýt Oleafly",
+    "hideOthers": "Skrýt ostatní",
+    "showAll": "Zobrazit vše",
     "edit": "Upravit",
     "undo": "Zpět",
     "redo": "Znovu",
@@ -19,7 +22,15 @@
     "file": "Soubor",
     "openFolder": "Otevřít složku…",
     "openRecent": "Otevřít nedávné",
-    "noRecent": "Žádné nedávné projekty"
+    "noRecent": "Žádné nedávné projekty",
+    "window": "Okno",
+    "minimize": "Minimalizovat",
+    "fullscreen": "Přepnout celou obrazovku",
+    "bringAllToFront": "Přenést vše do popředí",
+    "newTab": "Nový panel",
+    "openLocation": "Otevřít adresu…",
+    "closeTab": "Zavřít panel",
+    "reloadPage": "Znovu načíst stránku"
   },
   "window": {
     "browser": "Prohlížeč Oleafly",

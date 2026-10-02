@@ -70,6 +70,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Toasts are wider, so a message has room next to the close button.
 - The agent list in New research task shows each CLI agent's own logo
   instead of a terminal icon.
+- On macOS, the app menu has Hide, Hide Others and Show All, and a new Window
+  menu has Minimize, Toggle Full Screen and Bring All to Front, so Cmd+H,
+  Option+Cmd+H, Cmd+M and Ctrl+Cmd+F work. Cmd+H and Cmd+M can no longer be
+  assigned to app shortcuts on macOS.
+- On Windows, release builds no longer reload the app on F5 or Ctrl+R, print
+  it on Ctrl+P, or open the built-in find bar. Pages in the browser window
+  keep those keys.
+- Only a window's own page can start or control agents, terminals and
+  language servers for that window. The main, preview and update windows no
+  longer have webview permissions they never used.
 - Integration tabs and Citation Search sources show each service's own logo.
 - In the spelling dictionary list, download sizes and the installed check sit
   at the right edge of each row.
@@ -139,6 +149,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On macOS and Linux, the terminal, browser and Open Folder shortcuts still
   worked during a tour.
 - Files dropped on a page in the browser window were ignored.
+- In the browser window on macOS and Linux, Cmd+L, Cmd+T, Cmd+W and Cmd+R
+  (Ctrl on Linux) did nothing while a page had focus. File and View now have
+  New Tab, Open Location, Close Tab and Reload Page, active while a browser
+  window is in front.
+- On macOS and Linux, a terminal, browser or Open Folder shortcut on a key
+  the menu can't use, such as an Option-layer character, was saved but did
+  nothing, and the old shortcut stopped working too. The recorder now says
+  the key can't be used.
+- While recording a shortcut in Settings, pressing the current terminal,
+  browser, Open Folder or Quit shortcut ran it instead of recording it.
+- On Windows, Ctrl+Shift+B in the visual editor opened the browser instead of
+  making a blockquote.
 - The Tasks and Linked folders tabs in Research workspace ran past the panel
   in a narrow sidebar. They now share the width and shorten a long label with
   an ellipsis, like the References tabs.

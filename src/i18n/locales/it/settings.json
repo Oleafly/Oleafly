@@ -1554,6 +1554,7 @@
     },
     "error": {
       "conflict": "Già assegnata a {{action}}.",
+      "nativeKey": "Le scorciatoie del menu non supportano questo tasto. Funzionano lettere, numeri e tasti funzione.",
       "reserved": "{{shortcut}} è riservata dal sistema operativo."
     },
     "intro": "Personalizza le scorciatoie dell'applicazione e consulta le combinazioni di tasti native dell'editor.",
@@ -1561,6 +1562,8 @@
       "closeWindow": "Chiudi la finestra",
       "copy": "Copia",
       "cut": "Taglia",
+      "hide": "Nascondi l'app",
+      "minimize": "Riduci a icona la finestra",
       "paste": "Incolla",
       "quit": "Esci",
       "save": "Salva",

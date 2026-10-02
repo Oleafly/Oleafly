@@ -341,7 +341,9 @@ fn kill_all_sessions() {
 }
 
 pub fn on_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
-    if webview.window().label() != "main" || !matches!(payload.event(), PageLoadEvent::Started) {
+    if crate::caller::own_window_label(webview).as_deref() != Some("main")
+        || !matches!(payload.event(), PageLoadEvent::Started)
+    {
         return;
     }
     kill_window_sessions("main");
@@ -380,7 +382,12 @@ fn webview_command_owner<R: Runtime>(
     webview: &Webview<R>,
     project_id: &str,
 ) -> Result<SessionOwner, String> {
-    command_owner(webview.window().label(), project_id)
+    command_owner(
+        crate::caller::own_window_label(webview)
+            .as_deref()
+            .unwrap_or_default(),
+        project_id,
+    )
 }
 
 /// Decode as much valid UTF-8 as `pending` holds, keeping an incomplete

@@ -1538,6 +1538,7 @@
     },
     "error": {
       "conflict": "Zaten {{action}} eylemine atanmış.",
+      "nativeKey": "Menü kısayolları bu tuşu kullanamaz. Harfler, rakamlar ve işlev tuşları çalışır.",
       "reserved": "{{shortcut}} işletim sistemi tarafından ayrılmış."
     },
     "intro": "Uygulama kısayollarını özelleştirin ve düzenleyiciye özgü tuş birleşimlerini gözden geçirin.",
@@ -1545,6 +1546,8 @@
       "closeWindow": "Pencereyi kapat",
       "copy": "Kopyala",
       "cut": "Kes",
+      "hide": "Uygulamayı gizle",
+      "minimize": "Pencereyi küçült",
       "paste": "Yapıştır",
       "quit": "Çık",
       "save": "Kaydet",

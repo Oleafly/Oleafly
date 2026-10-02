@@ -6,6 +6,9 @@
     "reloadViews": "Recarregar visualizações",
     "restartApp": "Reiniciar aplicativo",
     "quit": "Encerrar o Oleafly",
+    "hide": "Ocultar o Oleafly",
+    "hideOthers": "Ocultar outros",
+    "showAll": "Mostrar tudo",
     "edit": "Editar",
     "undo": "Desfazer",
     "redo": "Refazer",
@@ -19,7 +22,15 @@
     "file": "Arquivo",
     "openFolder": "Abrir pasta…",
     "openRecent": "Abrir recentes",
-    "noRecent": "Nenhum projeto recente"
+    "noRecent": "Nenhum projeto recente",
+    "window": "Janela",
+    "minimize": "Minimizar",
+    "fullscreen": "Alternar tela cheia",
+    "bringAllToFront": "Trazer tudo para a frente",
+    "newTab": "Nova aba",
+    "openLocation": "Abrir endereço…",
+    "closeTab": "Fechar aba",
+    "reloadPage": "Recarregar página"
   },
   "window": {
     "browser": "Navegador do Oleafly",

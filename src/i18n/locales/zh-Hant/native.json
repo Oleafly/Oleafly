@@ -6,6 +6,9 @@
     "reloadViews": "重新載入檢視",
     "restartApp": "重新啟動應用程式",
     "quit": "結束 Oleafly",
+    "hide": "隱藏 Oleafly",
+    "hideOthers": "隱藏其他",
+    "showAll": "顯示全部",
     "edit": "編輯",
     "undo": "復原",
     "redo": "重做",
@@ -19,7 +22,15 @@
     "file": "檔案",
     "openFolder": "開啟資料夾…",
     "openRecent": "最近開啟",
-    "noRecent": "沒有最近的專案"
+    "noRecent": "沒有最近的專案",
+    "window": "視窗",
+    "minimize": "縮到最小",
+    "fullscreen": "切換全螢幕",
+    "bringAllToFront": "將全部視窗移至最前",
+    "newTab": "新增分頁",
+    "openLocation": "開啟位置…",
+    "closeTab": "關閉分頁",
+    "reloadPage": "重新載入頁面"
   },
   "window": {
     "browser": "Oleafly 瀏覽器",

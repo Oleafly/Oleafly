@@ -1538,6 +1538,7 @@
     },
     "error": {
       "conflict": "Already assigned to {{action}}.",
+      "nativeKey": "Menu shortcuts can't use this key. Letters, numbers and function keys work.",
       "reserved": "{{shortcut}} is reserved by the operating system."
     },
     "intro": "Customize application shortcuts and review editor-native key combinations.",
@@ -1545,6 +1546,8 @@
       "closeWindow": "Close window",
       "copy": "Copy",
       "cut": "Cut",
+      "hide": "Hide app",
+      "minimize": "Minimize window",
       "paste": "Paste",
       "quit": "Quit",
       "save": "Save",

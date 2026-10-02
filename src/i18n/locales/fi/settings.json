@@ -1538,6 +1538,7 @@
     },
     "error": {
       "conflict": "On jo varattu toiminnolle {{action}}.",
+      "nativeKey": "Valikon pikanäppäimet eivät tue tätä näppäintä. Kirjaimet, numerot ja funktionäppäimet toimivat.",
       "reserved": "{{shortcut}} on käyttöjärjestelmän varaama."
     },
     "intro": "Mukauta sovelluksen pikanäppäimiä ja tarkastele editorin omia näppäinyhdistelmiä.",
@@ -1545,6 +1546,8 @@
       "closeWindow": "Sulje ikkuna",
       "copy": "Kopioi",
       "cut": "Leikkaa",
+      "hide": "Kätke ohjelma",
+      "minimize": "Pienennä ikkuna",
       "paste": "Liitä",
       "quit": "Lopeta",
       "save": "Tallenna",

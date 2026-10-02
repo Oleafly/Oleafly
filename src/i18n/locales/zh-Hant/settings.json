@@ -1522,6 +1522,7 @@
     },
     "error": {
       "conflict": "已指派給 {{action}}。",
+      "nativeKey": "選單快速鍵無法使用此按鍵。可以使用字母、數字和功能鍵。",
       "reserved": "{{shortcut}} 是作業系統保留的。"
     },
     "intro": "自訂應用程式快捷鍵，並檢視編輯器內建的按鍵組合。",
@@ -1529,6 +1530,8 @@
       "closeWindow": "關閉視窗",
       "copy": "複製",
       "cut": "剪下",
+      "hide": "隱藏 App",
+      "minimize": "最小化視窗",
       "paste": "貼上",
       "quit": "結束",
       "save": "儲存",

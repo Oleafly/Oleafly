@@ -1570,6 +1570,7 @@
     },
     "error": {
       "conflict": "Już przypisane do {{action}}.",
+      "nativeKey": "Skróty menu nie obsługują tego klawisza. Działają litery, cyfry i klawisze funkcyjne.",
       "reserved": "{{shortcut}} jest zarezerwowane przez system operacyjny."
     },
     "intro": "Dostosuj skróty aplikacji i przejrzyj kombinacje klawiszy wbudowane w edytor.",
@@ -1577,6 +1578,8 @@
       "closeWindow": "Zamknij okno",
       "copy": "Kopiuj",
       "cut": "Wytnij",
+      "hide": "Ukryj aplikację",
+      "minimize": "Minimalizuj okno",
       "paste": "Wklej",
       "quit": "Zakończ",
       "save": "Zapisz",

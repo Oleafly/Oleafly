@@ -170,6 +170,8 @@ export type ReservedShortcutAction =
   | "closeWindow"
   | "copy"
   | "cut"
+  | "hide"
+  | "minimize"
   | "paste"
   | "quit"
   | "save"
@@ -195,6 +197,7 @@ export function reservedShortcutAction(binding: ShortcutBinding): ReservedShortc
     x: "cut",
     " ": "systemSearch",
     space: "systemSearch",
+    ...(apple ? { h: "hide", m: "minimize" } : {}),
   };
   return reserved[binding.key.toLowerCase()] ?? null;
 }

@@ -6,6 +6,12 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import {
+  NATIVE_MENU_SHORTCUTS,
+  nativeAccelerator,
+  useNativeShortcutsPaused,
+  usesNativeDockMenu,
+} from "@/lib/native-dock-shortcuts";
+import {
   bindingFromEvent,
   reservedShortcutAction,
   sameShortcutBinding,
@@ -160,6 +166,7 @@ function EditorKeyRows() {
   const resetKey = useEditorKeymapStore((state) => state.resetKey);
   const appBindings = useShortcutStore((state) => state.bindings);
   const [editing, setEditing] = useState<EditorKeyId | null>(null);
+  useNativeShortcutsPaused(editing !== null);
   const [error, setError] = useState("");
   const captureRef = useRef<HTMLButtonElement>(null);
 
@@ -319,6 +326,7 @@ export function ShortcutsSection() {
     editorKeysDifferFromDefaults(state.keys),
   );
   const [editing, setEditing] = useState<ShortcutId | null>(null);
+  useNativeShortcutsPaused(editing !== null);
   const [error, setError] = useState("");
   const captureRef = useRef<HTMLButtonElement>(null);
 
@@ -347,6 +355,10 @@ export function ShortcutsSection() {
           shortcut: t(($) => $.settings.shortcuts.reserved[reserved]),
         }),
       );
+      return;
+    }
+    if (usesNativeDockMenu() && NATIVE_MENU_SHORTCUTS.has(editing) && !nativeAccelerator(next)) {
+      setError(t(($) => $.settings.shortcuts.error.nativeKey));
       return;
     }
     const appConflict = SHORTCUT_DEFINITIONS.find(

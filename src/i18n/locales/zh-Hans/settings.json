@@ -1522,6 +1522,7 @@
     },
     "error": {
       "conflict": "已分配给{{action}}。",
+      "nativeKey": "菜单快捷键不能使用此键。可以使用字母、数字和功能键。",
       "reserved": "{{shortcut}} 已被操作系统保留。"
     },
     "intro": "自定义应用快捷键，并查看编辑器内置的组合键。",
@@ -1529,6 +1530,8 @@
       "closeWindow": "关闭窗口",
       "copy": "复制",
       "cut": "剪切",
+      "hide": "隐藏应用",
+      "minimize": "最小化窗口",
       "paste": "粘贴",
       "quit": "退出",
       "save": "保存",

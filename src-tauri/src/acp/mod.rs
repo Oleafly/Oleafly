@@ -71,9 +71,11 @@ pub fn lifecycle_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         })
         .on_page_load(|webview, payload| {
             if matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
-                if let Some(runtime) = webview.try_state::<Arc<AcpRuntime>>() {
+                if let (Some(runtime), Some(owner)) = (
+                    webview.try_state::<Arc<AcpRuntime>>(),
+                    crate::caller::own_window_label(webview),
+                ) {
                     let runtime = runtime.inner().clone();
-                    let owner = webview.window().label().to_owned();
                     tauri::async_runtime::spawn(async move {
                         runtime.close_owner(&owner).await;
                     });

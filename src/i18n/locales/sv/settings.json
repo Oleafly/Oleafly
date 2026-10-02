@@ -1538,6 +1538,7 @@
     },
     "error": {
       "conflict": "Redan tilldelat {{action}}.",
+      "nativeKey": "Menykortkommandon kan inte använda den här tangenten. Bokstäver, siffror och funktionstangenter fungerar.",
       "reserved": "{{shortcut}} är reserverat av operativsystemet."
     },
     "intro": "Anpassa appens kortkommandon och gå igenom redigerarens egna tangentkombinationer.",
@@ -1545,6 +1546,8 @@
       "closeWindow": "Stäng fönster",
       "copy": "Kopiera",
       "cut": "Klipp ut",
+      "hide": "Göm appen",
+      "minimize": "Minimera fönster",
       "paste": "Klistra in",
       "quit": "Avsluta",
       "save": "Spara",

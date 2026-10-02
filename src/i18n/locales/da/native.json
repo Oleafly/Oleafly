@@ -6,6 +6,9 @@
     "reloadViews": "Genindlæs visninger",
     "restartApp": "Genstart programmet",
     "quit": "Slut Oleafly",
+    "hide": "Skjul Oleafly",
+    "hideOthers": "Skjul andre",
+    "showAll": "Vis alle",
     "edit": "Rediger",
     "undo": "Fortryd",
     "redo": "Gentag",
@@ -19,7 +22,15 @@
     "file": "Arkiv",
     "openFolder": "Åbn mappe…",
     "openRecent": "Åbn seneste",
-    "noRecent": "Ingen seneste projekter"
+    "noRecent": "Ingen seneste projekter",
+    "window": "Vindue",
+    "minimize": "Minimer",
+    "fullscreen": "Slå fuld skærm til eller fra",
+    "bringAllToFront": "Anbring alle forrest",
+    "newTab": "Ny fane",
+    "openLocation": "Åbn adresse…",
+    "closeTab": "Luk fane",
+    "reloadPage": "Genindlæs side"
   },
   "window": {
     "browser": "Oleafly-browser",

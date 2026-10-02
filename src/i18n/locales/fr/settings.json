@@ -1554,6 +1554,7 @@
     },
     "error": {
       "conflict": "Déjà attribué à {{action}}.",
+      "nativeKey": "Les raccourcis de menu ne prennent pas en charge cette touche. Les lettres, les chiffres et les touches de fonction fonctionnent.",
       "reserved": "{{shortcut}} est réservé par le système d'exploitation."
     },
     "intro": "Personnalisez les raccourcis de l'application et consultez les combinaisons de touches propres à l'éditeur.",
@@ -1561,6 +1562,8 @@
       "closeWindow": "Fermer la fenêtre",
       "copy": "Copier",
       "cut": "Couper",
+      "hide": "Masquer l'app",
+      "minimize": "Réduire la fenêtre",
       "paste": "Coller",
       "quit": "Quitter",
       "save": "Enregistrer",

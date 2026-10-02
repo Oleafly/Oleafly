@@ -1554,6 +1554,7 @@
     },
     "error": {
       "conflict": "Ya está asignado a {{action}}.",
+      "nativeKey": "Los atajos del menú no admiten esta tecla. Funcionan las letras, los números y las teclas de función.",
       "reserved": "{{shortcut}} está reservado por el sistema operativo."
     },
     "intro": "Personaliza los atajos de la aplicación y consulta las combinaciones propias del editor.",
@@ -1561,6 +1562,8 @@
       "closeWindow": "Cerrar la ventana",
       "copy": "Copiar",
       "cut": "Cortar",
+      "hide": "Ocultar la app",
+      "minimize": "Minimizar la ventana",
       "paste": "Pegar",
       "quit": "Salir",
       "save": "Guardar",

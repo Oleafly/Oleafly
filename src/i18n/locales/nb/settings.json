@@ -1538,6 +1538,7 @@
     },
     "error": {
       "conflict": "Allerede tildelt {{action}}.",
+      "nativeKey": "Menysnarveier kan ikke bruke denne tasten. Bokstaver, tall og funksjonstaster fungerer.",
       "reserved": "{{shortcut}} er reservert av operativsystemet."
     },
     "intro": "Tilpass hurtigtastene i programmet, og se over tastekombinasjonene editoren har selv.",
@@ -1545,6 +1546,8 @@
       "closeWindow": "Lukk vindu",
       "copy": "Kopier",
       "cut": "Klipp ut",
+      "hide": "Skjul appen",
+      "minimize": "Minimer vindu",
       "paste": "Lim inn",
       "quit": "Avslutt",
       "save": "Lagre",

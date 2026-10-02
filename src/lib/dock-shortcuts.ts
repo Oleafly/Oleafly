@@ -12,6 +12,8 @@ export function handleDockShortcut(event: KeyboardEvent): boolean {
     return true;
   }
   if (matchesShortcut(event, bindings.toggleBrowser)) {
+    const target = event.target as Partial<Pick<Element, "closest">> | null;
+    if (target?.closest?.(".ProseMirror")) return false;
     event.preventDefault();
     event.stopPropagation();
     toggleBrowser();

@@ -1538,6 +1538,7 @@
     },
     "error": {
       "conflict": "Al toegewezen aan {{action}}.",
+      "nativeKey": "Menusneltoetsen kunnen deze toets niet gebruiken. Letters, cijfers en functietoetsen werken wel.",
       "reserved": "{{shortcut}} is gereserveerd door het besturingssysteem."
     },
     "intro": "Pas de sneltoetsen van de applicatie aan en bekijk de toetsencombinaties van de editor zelf.",
@@ -1545,6 +1546,8 @@
       "closeWindow": "Venster sluiten",
       "copy": "Kopiëren",
       "cut": "Knippen",
+      "hide": "App verbergen",
+      "minimize": "Venster minimaliseren",
       "paste": "Plakken",
       "quit": "Afsluiten",
       "save": "Opslaan",

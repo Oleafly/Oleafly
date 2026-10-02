@@ -6,6 +6,9 @@
     "reloadViews": "Lataa näkymät uudelleen",
     "restartApp": "Käynnistä sovellus uudelleen",
     "quit": "Lopeta Oleafly",
+    "hide": "Kätke Oleafly",
+    "hideOthers": "Kätke muut",
+    "showAll": "Näytä kaikki",
     "edit": "Muokkaa",
     "undo": "Kumoa",
     "redo": "Tee uudelleen",
@@ -19,7 +22,15 @@
     "file": "Arkisto",
     "openFolder": "Avaa kansio…",
     "openRecent": "Avaa viimeaikainen",
-    "noRecent": "Ei viimeaikaisia projekteja"
+    "noRecent": "Ei viimeaikaisia projekteja",
+    "window": "Ikkuna",
+    "minimize": "Pienennä",
+    "fullscreen": "Koko näyttö päälle tai pois",
+    "bringAllToFront": "Tuo kaikki eteen",
+    "newTab": "Uusi välilehti",
+    "openLocation": "Avaa osoite…",
+    "closeTab": "Sulje välilehti",
+    "reloadPage": "Lataa sivu uudelleen"
   },
   "window": {
     "browser": "Oleafly-selain",

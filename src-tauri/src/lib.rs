@@ -20,6 +20,7 @@ mod browser;
 mod browser_cookie_import;
 mod buffer_copy;
 mod build_hygiene;
+mod caller;
 mod chats;
 mod checkpoint_archive;
 mod checkpoint_backup;
@@ -602,6 +603,7 @@ pub fn run() {
             terminal::term_resize,
             terminal::term_kill,
             menu::set_dock_shortcut_accelerators,
+            menu::set_native_shortcuts_paused,
             menu::set_recent_projects,
             i18n::set_ui_locale,
             i18n::get_ui_locale,

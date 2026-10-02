@@ -376,9 +376,41 @@ fn install_window_events<R: Runtime>(app: &AppHandle<R>, window: &Window<R>) {
                 apply_layout(&window, *new_inner_size, *scale_factor);
             }
         }
+        WindowEvent::Focused(focused) => crate::menu::set_browser_shortcuts_enabled(&app, *focused),
         WindowEvent::Destroyed => on_window_destroyed(&app, &label),
         _ => {}
     });
+}
+
+pub(crate) fn route_shortcut<R: Runtime>(app: &AppHandle<R>, chrome_label: String, key: char) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        if let Some(chrome) = app.get_webview(&chrome_label) {
+            let _ = chrome.set_focus();
+            let _ = chrome.eval(format!(
+                "window.dispatchEvent(new KeyboardEvent('keydown', {{key:'{key}',ctrlKey:true,bubbles:true,cancelable:true}}));"
+            ));
+        }
+    });
+}
+
+#[cfg_attr(target_os = "windows", allow(dead_code))]
+pub fn route_shortcut_to_focused_window<R: Runtime>(app: &AppHandle<R>, key: char) {
+    let windows = with_windows(|windows| {
+        windows
+            .iter()
+            .map(|state| (state.window.clone(), state.chrome.clone()))
+            .collect::<Vec<_>>()
+    });
+    let focused = windows.into_iter().find(|(window, _)| {
+        find_window(app, window)
+            .ok()
+            .and_then(|window| window.is_focused().ok())
+            .unwrap_or(false)
+    });
+    if let Some((_, chrome)) = focused {
+        route_shortcut(app, chrome, key);
+    }
 }
 
 fn set_pane_visible<R: Runtime>(window: &Window<R>, pane: &str, visible: bool) {

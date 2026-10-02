@@ -1538,6 +1538,7 @@
     },
     "error": {
       "conflict": "Allerede tildelt {{action}}.",
+      "nativeKey": "Menugenveje kan ikke bruge denne tast. Bogstaver, tal og funktionstaster virker.",
       "reserved": "{{shortcut}} er reserveret af styresystemet."
     },
     "intro": "Tilpas appens genveje, og se editorens egne tastekombinationer.",
@@ -1545,6 +1546,8 @@
       "closeWindow": "Luk vinduet",
       "copy": "Kopier",
       "cut": "Klip",
+      "hide": "Skjul appen",
+      "minimize": "Minimer vinduet",
       "paste": "Sæt ind",
       "quit": "Slut",
       "save": "Gem",

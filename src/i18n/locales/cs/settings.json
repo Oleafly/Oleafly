@@ -1570,6 +1570,7 @@
     },
     "error": {
       "conflict": "Už je přiřazeno akci {{action}}.",
+      "nativeKey": "Zkratky v nabídce tuto klávesu nepodporují. Fungují písmena, číslice a funkční klávesy.",
       "reserved": "{{shortcut}} si vyhrazuje operační systém."
     },
     "intro": "Přizpůsobte si zkratky aplikace a projděte si klávesové kombinace vestavěné v editoru.",
@@ -1577,6 +1578,8 @@
       "closeWindow": "Zavřít okno",
       "copy": "Kopírovat",
       "cut": "Vyjmout",
+      "hide": "Skrýt aplikaci",
+      "minimize": "Minimalizovat okno",
       "paste": "Vložit",
       "quit": "Ukončit",
       "save": "Uložit",

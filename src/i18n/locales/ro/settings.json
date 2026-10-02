@@ -1554,6 +1554,7 @@
     },
     "error": {
       "conflict": "Este deja atribuită acțiunii {{action}}.",
+      "nativeKey": "Comenzile rapide din meniu nu acceptă această tastă. Funcționează literele, cifrele și tastele funcționale.",
       "reserved": "{{shortcut}} este rezervată de sistemul de operare."
     },
     "intro": "Personalizează scurtăturile aplicației și consultă combinațiile de taste proprii editorului.",
@@ -1561,6 +1562,8 @@
       "closeWindow": "Închide fereastra",
       "copy": "Copiază",
       "cut": "Decupează",
+      "hide": "Ascunde aplicația",
+      "minimize": "Minimizează fereastra",
       "paste": "Lipește",
       "quit": "Ieși",
       "save": "Salvează",

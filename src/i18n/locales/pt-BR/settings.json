@@ -1554,6 +1554,7 @@
     },
     "error": {
       "conflict": "Já está atribuído a {{action}}.",
+      "nativeKey": "Atalhos de menu não aceitam esta tecla. Letras, números e teclas de função funcionam.",
       "reserved": "{{shortcut}} é reservado pelo sistema operacional."
     },
     "intro": "Personalize os atalhos do aplicativo e confira as combinações de teclas nativas do editor.",
@@ -1561,6 +1562,8 @@
       "closeWindow": "Fechar janela",
       "copy": "Copiar",
       "cut": "Recortar",
+      "hide": "Ocultar app",
+      "minimize": "Minimizar janela",
       "paste": "Colar",
       "quit": "Encerrar",
       "save": "Salvar",
