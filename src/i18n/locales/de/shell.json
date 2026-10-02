@@ -436,7 +436,7 @@
       "references": "Referenzen"
     },
     "label": "Suche",
-    "noMatches": "Keine Treffer gefunden.",
+    "noMatches": "Keine Treffer gefunden",
     "openReferences": "Referenzen dieses Projekts öffnen",
     "placeholder": "Projekte und Dokumente durchsuchen oder / für Befehle tippen…",
     "placeholderDocuments": "In Dokumenten suchen…",

@@ -18,7 +18,7 @@ export function TabStrip({ tabs, active, onActivate, onClose, onNewTab }: Readon
   const { t } = useTranslation(["shell"]);
   return (
     <div
-      data-tauri-drag-region
+      data-tauri-drag-region="deep"
       className={cn(
         "flex h-9 shrink-0 items-end gap-1 overflow-hidden bg-muted/40 px-2 pt-1",
         isMac && "pl-[78px]",

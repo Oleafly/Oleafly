@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Bookmark, BookmarkCheck, GitFork } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { randomFraction } from "@/lib/random";
 
 type Variant = "book" | "simple" | "stripe";
 
@@ -28,6 +29,10 @@ export const BOOK_COLOR_OPTIONS: { name: string; hex: string }[] = [
   { name: "Mint", hex: "#98f5e1" },
   { name: "Spring", hex: "#b9fbc0" },
 ];
+
+export function randomBookColor(): string {
+  return BOOK_COLOR_OPTIONS[Math.floor(randomFraction() * BOOK_COLOR_OPTIONS.length)].hex;
+}
 
 export function useBookColorLabels(): Record<string, string> {
   const { t } = useTranslation(["library"]);

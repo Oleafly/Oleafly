@@ -436,7 +436,7 @@
       "references": "Referenties"
     },
     "label": "Zoeken",
-    "noMatches": "Geen resultaten gevonden.",
+    "noMatches": "Geen resultaten gevonden",
     "openReferences": "Referenties van dit project openen",
     "placeholder": "Zoek projecten en documenten, of typ / voor opdrachten…",
     "placeholderDocuments": "Zoek in documenten…",

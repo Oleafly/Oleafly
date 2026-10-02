@@ -433,7 +433,7 @@
       "references": "参考文献"
     },
     "label": "搜索",
-    "noMatches": "未找到匹配项。",
+    "noMatches": "未找到匹配项",
     "openReferences": "打开此项目的参考文献。",
     "placeholder": "搜索项目、文档，或输入 / 执行命令…",
     "placeholderDocuments": "在文档中搜索…",

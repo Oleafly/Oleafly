@@ -439,7 +439,7 @@
       "references": "Riferimenti"
     },
     "label": "Cerca",
-    "noMatches": "Nessuna corrispondenza trovata.",
+    "noMatches": "Nessuna corrispondenza trovata",
     "openReferences": "Apri i riferimenti di questo progetto",
     "placeholder": "Cerca progetti, documenti, oppure scrivi / per i comandi…",
     "placeholderDocuments": "Cerca dentro i documenti…",

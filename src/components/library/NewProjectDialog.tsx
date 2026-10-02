@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR } from "@/components/library/Book";
+import { BOOK_COLOR_OPTIONS, DEFAULT_BOOK_COLOR, randomBookColor } from "@/components/library/Book";
 import { logError } from "@/lib/log";
 import {
   ensureTemplateAssets,
@@ -180,6 +180,7 @@ export function NewProjectDialog(props: Readonly<{
         kit={kit}
         colorOptions={BOOK_COLOR_OPTIONS}
         defaultColor={DEFAULT_BOOK_COLOR}
+        pickColor={randomBookColor}
       />
       <ProjectImportDialog
         open={flowOpen && kind === "import"}

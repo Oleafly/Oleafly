@@ -17,9 +17,11 @@ import { commandAliasSearchText } from "@/lib/command-search";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { useModalLayer } from "@/components/ui/use-modal-accessibility";
 
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
+  useModalLayer(open);
   const setPaletteOpen = useSettingsStore((s) => s.setPaletteOpen);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const [query, setQuery] = useState("");
@@ -135,8 +137,8 @@ export function CommandPalette() {
       shouldFilter={false}
       value={selectedValue}
       onValueChange={setSelectedValue}
-      overlayClassName="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
-      className={cn("fixed left-1/2 top-[20%] z-50 w-[min(560px,92vw)] -translate-x-1/2")}
+      overlayClassName="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm"
+      className={cn("fixed left-1/2 top-[20%] z-[90] w-[min(560px,92vw)] -translate-x-1/2")}
     >
       <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">
         <Command.Input

@@ -442,7 +442,7 @@
       "references": "Reference"
     },
     "label": "Hledat",
-    "noMatches": "Nebyly nalezeny žádné shody.",
+    "noMatches": "Nebyly nalezeny žádné shody",
     "openReferences": "Otevřít reference tohoto projektu",
     "placeholder": "Hledejte projekty, dokumenty, nebo napište / pro příkazy…",
     "placeholderDocuments": "Hledat uvnitř dokumentů…",

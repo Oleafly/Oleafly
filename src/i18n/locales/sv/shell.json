@@ -436,7 +436,7 @@
       "references": "Referenser"
     },
     "label": "Sök",
-    "noMatches": "Inga träffar hittades.",
+    "noMatches": "Inga träffar hittades",
     "openReferences": "Öppna referenserna för det här projektet",
     "placeholder": "Sök projekt, dokument, eller skriv / för kommandon…",
     "placeholderDocuments": "Sök inuti dokument…",

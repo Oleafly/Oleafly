@@ -436,7 +436,7 @@
       "references": "Kaynaklar"
     },
     "label": "Ara",
-    "noMatches": "Eşleşme bulunamadı.",
+    "noMatches": "Eşleşme bulunamadı",
     "openReferences": "Bu projenin kaynaklarını aç",
     "placeholder": "Projelerde veya belgelerde arayın ya da komutlar için / yazın…",
     "placeholderDocuments": "Belgelerin içinde arayın…",

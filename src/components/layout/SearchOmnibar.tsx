@@ -3,6 +3,7 @@ import { Command } from "cmdk";
 import {
   Bookmark,
   FileText,
+  Ghost,
   Link2,
   Moon,
   NotebookText,
@@ -37,6 +38,8 @@ import { Kbd } from "@/components/ui/kbd";
 import { useFavoritesStore } from "@/store/favorites";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { basename } from "@/lib/path-utils";
+import { useModalLayer } from "@/components/ui/use-modal-accessibility";
+import { EmptyState } from "@/components/ui/empty";
 
 function searchableDate(timestamp: number) {
   if (!timestamp) return "";
@@ -239,6 +242,7 @@ export function parse(
 
 export function SearchOmnibar() {
   const open = useSettingsStore((s) => s.searchOpen);
+  useModalLayer(open);
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
@@ -380,8 +384,8 @@ export function SearchOmnibar() {
       onOpenChange={(v) => (v ? setSearchOpen(true) : close())}
       label={t(($) => $.shell.omnibar.label)}
       shouldFilter={false}
-      overlayClassName="fixed inset-0 z-50 bg-black/55 backdrop-blur-sm"
-      className="fixed left-1/2 top-[18%] z-50 w-[min(660px,92vw)] -translate-x-1/2"
+      overlayClassName="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm"
+      className="fixed left-1/2 top-[18%] z-[90] w-[min(660px,92vw)] -translate-x-1/2"
     >
       <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">
         <div className="flex items-center gap-2 border-b border-border px-3">
@@ -572,7 +576,14 @@ export function SearchOmnibar() {
             !loading &&
             hits.length === 0 &&
             matchedProjects.length === 0 &&
-            commands.length === 0 && <Hint>{t(($) => $.shell.omnibar.noMatches)}</Hint>}
+            commands.length === 0 && (
+              <EmptyState
+                className="px-3 py-6"
+                icon={<Ghost aria-hidden className="size-6 text-muted-foreground" />}
+                title={t(($) => $.shell.omnibar.noMatches)}
+                testId="omnibar-no-matches"
+              />
+            )}
         </Command.List>
 
         <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">

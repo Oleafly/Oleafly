@@ -433,7 +433,7 @@
       "references": "참고문헌"
     },
     "label": "검색",
-    "noMatches": "일치하는 항목이 없습니다.",
+    "noMatches": "일치하는 항목이 없습니다",
     "openReferences": "이 프로젝트의 참고문헌 열기",
     "placeholder": "프로젝트나 문서를 검색하거나 /를 입력해 명령을 쓰세요…",
     "placeholderDocuments": "문서 안에서 검색…",

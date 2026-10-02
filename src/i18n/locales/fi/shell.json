@@ -436,7 +436,7 @@
       "references": "Viitteet"
     },
     "label": "Haku",
-    "noMatches": "Osumia ei löytynyt.",
+    "noMatches": "Osumia ei löytynyt",
     "openReferences": "Avaa tämän projektin viitteet",
     "placeholder": "Hae projekteja, dokumentteja tai kirjoita / komentoja varten…",
     "placeholderDocuments": "Hae dokumenttien sisältä…",

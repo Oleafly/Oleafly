@@ -433,7 +433,7 @@
       "references": "參考文獻"
     },
     "label": "搜尋",
-    "noMatches": "找不到符合項目。",
+    "noMatches": "找不到符合項目",
     "openReferences": "開啟這個專案的參考文獻",
     "placeholder": "搜尋專案、文件，或輸入 / 使用指令…",
     "placeholderDocuments": "在文件中搜尋…",

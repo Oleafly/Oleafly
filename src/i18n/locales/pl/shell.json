@@ -442,7 +442,7 @@
       "references": "Odwołania"
     },
     "label": "Szukaj",
-    "noMatches": "Nie znaleziono dopasowań.",
+    "noMatches": "Nie znaleziono dopasowań",
     "openReferences": "Otwórz odwołania tego projektu",
     "placeholder": "Szukaj projektów, dokumentów lub wpisz / dla poleceń…",
     "placeholderDocuments": "Szukaj wewnątrz dokumentów…",

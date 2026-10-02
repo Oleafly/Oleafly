@@ -436,7 +436,7 @@
       "references": "Referencer"
     },
     "label": "Søg",
-    "noMatches": "Der blev ikke fundet nogen træf.",
+    "noMatches": "Der blev ikke fundet nogen træf",
     "openReferences": "Åbn referencerne for dette projekt",
     "placeholder": "Søg i projekter og dokumenter, eller skriv / for kommandoer…",
     "placeholderDocuments": "Søg inde i dokumenterne…",

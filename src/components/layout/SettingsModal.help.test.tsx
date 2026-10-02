@@ -120,7 +120,7 @@ describe("Settings Help & About support callout", () => {
     expect(footer).toHaveTextContent(/^$/);
 
     const links: [string, string][] = [
-      ["Join Discord community", DISCORD_URL],
+      ["Join the Discord community", DISCORD_URL],
       ["Follow on X", "https://x.com/OleaflyHQ"],
       ["View source", "https://github.com/Oleafly/Oleafly"],
       ["Documentation", "https://oleafly.com/docs/"],

@@ -436,7 +436,7 @@
       "references": "Referanser"
     },
     "label": "Søk",
-    "noMatches": "Fant ingen treff.",
+    "noMatches": "Fant ingen treff",
     "openReferences": "Åpne referansene for dette prosjektet",
     "placeholder": "Søk i prosjekter og dokumenter, eller skriv / for kommandoer…",
     "placeholderDocuments": "Søk inne i dokumenter…",

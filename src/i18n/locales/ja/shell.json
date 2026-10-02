@@ -433,7 +433,7 @@
       "references": "参考文献"
     },
     "label": "検索",
-    "noMatches": "一致するものが見つかりません。",
+    "noMatches": "一致するものが見つかりません",
     "openReferences": "このプロジェクトの参考文献を開く",
     "placeholder": "プロジェクトや文書を検索、または / でコマンド…",
     "placeholderDocuments": "文書の中を検索…",

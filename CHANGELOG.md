@@ -68,6 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   title size. A title that doesn't fit ends in an ellipsis, and the icon
   keeps its size.
 - Toasts are wider, so a message has room next to the close button.
+- A new project gets a random cover colour from the palette when you don't
+  pick one, instead of always the same blue.
 - Dialogs share one look: the same backdrop, panel and corners. In light
   mode a few dialogs that used a grey panel are now white, and every dialog
   covers the floating assistant and quick-action buttons.
@@ -163,6 +165,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On macOS and Linux, the terminal, browser and Open Folder shortcuts still
   worked during a tour.
 - Files dropped on a page in the browser window were ignored.
+- The browser window couldn't be moved: its tab strip was not allowed to
+  drag the window. It now drags from any empty part of the strip.
+- With Settings open, the command palette and search opened behind it.
 - In the browser window on macOS and Linux, Cmd+L, Cmd+T, Cmd+W and Cmd+R
   (Ctrl on Linux) did nothing while a page had focus. File and View now have
   New Tab, Open Location, Close Tab and Reload Page, active while a browser

@@ -439,7 +439,7 @@
       "references": "Referencias"
     },
     "label": "Buscar",
-    "noMatches": "No se encontró ninguna coincidencia.",
+    "noMatches": "No se encontró ninguna coincidencia",
     "openReferences": "Abrir las referencias de este proyecto",
     "placeholder": "Busca proyectos y documentos, o escribe / para ver los comandos…",
     "placeholderDocuments": "Buscar dentro de los documentos…",

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -304,6 +304,7 @@ export function NewProjectDialog({
   kit,
   colorOptions,
   defaultColor,
+  pickColor,
   allowEnterSubmit = true,
   allowClose = true,
 }: Readonly<{
@@ -322,6 +323,7 @@ export function NewProjectDialog({
   kit: TemplatesKit;
   colorOptions: { name: string; hex: string }[];
   defaultColor: string;
+  pickColor?: () => string;
   allowEnterSubmit?: boolean;
   allowClose?: boolean;
 }>) {
@@ -343,14 +345,19 @@ export function NewProjectDialog({
   }, []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [color, setColor] = useState(defaultColor);
+  const [color, setColor] = useState<string | null>(null);
+  const swatchFor = useCallback(
+    (accent: string | null | undefined) =>
+      colorOptions.find((option) => option.hex.toLowerCase() === accent?.toLowerCase())?.hex ?? null,
+    [colorOptions],
+  );
   const pendingUseRef = useRef<string | null>(null);
   useEffect(() => {
     const chooseById = (id: string): boolean => {
       const match = templates.find((t) => t.id === id);
       if (!match) return false;
       setSelectedId(match.id);
-      setColor(match.default_color || defaultColor);
+      setColor(swatchFor(match.default_color));
       setStep(2);
       return true;
     };
@@ -363,7 +370,7 @@ export function NewProjectDialog({
     };
     window.addEventListener("oleafly:use-template", onUse);
     return () => window.removeEventListener("oleafly:use-template", onUse);
-  }, [templates, defaultColor]);
+  }, [templates, swatchFor]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("All");
   const [atsOnly, setAtsOnly] = useState(false);
@@ -388,7 +395,7 @@ export function NewProjectDialog({
       setStep(1);
       setSelectedId(null);
       setName("");
-      setColor(defaultColor);
+      setColor(null);
       setSearch("");
       setCategory("All");
       setAtsOnly(false);
@@ -469,7 +476,7 @@ export function NewProjectDialog({
 
   const choose = (t: TemplateInfo) => {
     setSelectedId(t.id);
-    setColor(t.default_color || defaultColor);
+    setColor(swatchFor(t.default_color));
     setStep(2);
   };
 
@@ -490,7 +497,7 @@ export function NewProjectDialog({
       }
       setSetup({ active: false, label: "" });
     }
-    await onCreate(name, selected.id, color);
+    await onCreate(name, selected.id, color ?? pickColor?.() ?? defaultColor);
   };
 
   const working = busy || setup.active;
