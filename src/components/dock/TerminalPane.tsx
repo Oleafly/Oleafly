@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useAppTheme } from "@/lib/theme";
 import { createTerminalResizer } from "@/lib/terminal-resize";
+import { ownSelectAll } from "@/lib/select-all";
 import {
   resolveTerminalTheme,
   useSettingsStore,
@@ -263,6 +264,7 @@ export function TerminalPane({
       createTerminalLinkProvider(terminal, linkActions),
     );
     const scrollSub = terminal.onScroll(hideLinkTip);
+    const releaseSelectAll = ownSelectAll(host, () => terminal.selectAll());
 
     let sessionId: string | null = null;
     let sessionLive = false;
@@ -418,6 +420,7 @@ export function TerminalPane({
       observer.disconnect();
       dataSub.dispose();
       scrollSub.dispose();
+      releaseSelectAll();
       linkProvider.dispose();
       hideLinkTip();
       if (sessionId) void invoke("term_kill", { id: sessionId, projectId }).catch(() => {});

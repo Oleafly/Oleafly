@@ -86,6 +86,7 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSGeometry", "objc2-core-foundation"] }
 # Lets AppKit size the WKWebView of Oleafly's own windows (webview_frame.rs).
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow"] }
+dispatch2 = "0.3"
 plist = "1"
 
 [target.'cfg(windows)'.dependencies]
@@ -101,6 +102,8 @@ windows-sys = { version = "0.61", features = [
   "Win32_System_JobObjects",
   "Win32_System_Threading",
   "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
 ] }
 
 [target.'cfg(target_os = "linux")'.dependencies]

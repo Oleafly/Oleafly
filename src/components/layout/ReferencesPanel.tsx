@@ -33,6 +33,7 @@ import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CleanLibraryDialog } from "@/components/layout/CleanLibraryDialog";
+import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import {
   buildCitationNodes,
   buildReferenceResultNodes,
@@ -447,11 +448,7 @@ export function ReferencesPanel() {
         aria-busy={intelligenceState.status === "running"}
         className="flex h-full min-h-0 flex-col"
       >
-        <header className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-2.5">
-        <SearchCode aria-hidden className="size-3.5 text-muted-foreground" />
-        <span className="min-w-0 flex-1 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75">
-          {t(($) => $.references.panel.title)}
-        </span>
+        <SidebarPanelHeader icon={SearchCode} title={t(($) => $.references.panel.title)}>
         {view === "citations" && projectId ? (
           <Tooltip label={t(($) => $.references.panel.cleanLibrary)} side="bottom">
             <button
@@ -496,7 +493,7 @@ export function ReferencesPanel() {
             <X aria-hidden className="size-3.5" />
           </button>
         ) : null}
-      </header>
+        </SidebarPanelHeader>
 
       <div className="shrink-0 border-b border-sidebar-border/65 px-2 py-1.5">
         <Tabs

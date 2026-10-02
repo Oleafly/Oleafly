@@ -26,6 +26,7 @@ import { gotoLine } from "@/components/editor/cm/controller";
 import { registry } from "@oleafly/registry";
 import { FileTree } from "@/components/files/FileTree";
 import { SidebarViews } from "@/components/layout/WorkspaceControls";
+import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
@@ -125,12 +126,7 @@ export function ProjectSearch() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-9 items-center gap-2 border-b border-sidebar-border px-3">
-        <Search className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          {t(($) => $.shell.projectSearch.title)}
-        </span>
-      </div>
+      <SidebarPanelHeader icon={Search} title={t(($) => $.shell.projectSearch.title)} />
       <div className="border-b border-sidebar-border p-2">
         <Input
           ref={searchInputRef}

@@ -2,6 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { useTourStore } from "@/store/tours";
 import { toggleBrowser } from "@/lib/browser-window";
 import {
   type ShortcutBinding,
@@ -62,7 +63,7 @@ export function nativeAccelerator(
 }
 
 function toggleDock(dock: "terminal" | "browser"): void {
-  if (!useFilesStore.getState().projectId) return;
+  if (!useFilesStore.getState().projectId || useTourStore.getState().activeTourId) return;
   if (dock === "terminal") {
     const settings = useSettingsStore.getState();
     settings.setTerminalOpen(!settings.terminalOpen);

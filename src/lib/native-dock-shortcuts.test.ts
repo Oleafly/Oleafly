@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 import { useShortcutStore } from "@/store/shortcuts";
+import { useTourStore } from "@/store/tours";
 
 const originalNavigator = globalThis.navigator;
 
@@ -172,5 +173,20 @@ describe("native dock shortcuts", () => {
     stop();
     expect(native.unlisteners).toHaveLength(2);
     expect(native.unlisteners.every((unlisten) => unlisten.mock.calls.length === 1)).toBe(true);
+  });
+
+  it("ignores native dock shortcuts while a tour is running", async () => {
+    const stop = await startNativeDockShortcutBridge();
+    const browserToggles = toggleBrowser.mock.calls.length;
+    useTourStore.setState({ activeTourId: "welcome" } as never);
+    try {
+      native.listeners.get("menu://toggle-terminal")?.({ payload: null });
+      native.listeners.get("menu://toggle-browser")?.({ payload: null });
+      expect(useSettingsStore.getState().terminalOpen).toBe(false);
+      expect(toggleBrowser).toHaveBeenCalledTimes(browserToggles);
+    } finally {
+      useTourStore.setState({ activeTourId: null } as never);
+      stop();
+    }
   });
 });

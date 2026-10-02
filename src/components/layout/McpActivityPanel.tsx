@@ -12,6 +12,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { AiToolsGrid } from "@/components/ai/AiToolsList";
 import { formatTime } from "@/lib/intl";
 import { cn } from "@/lib/utils";
+import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 
 function timeLabel(ts: number): string {
   try {
@@ -96,58 +97,57 @@ export function McpActivityPanel() {
 
   return (
     <div className="flex h-full flex-col" data-testid="mcp-activity-panel">
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
-        <Activity className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          {t(($) => $.shell.rail.mcp)}
-        </span>
-        <span
-          className={cn(
-            "ml-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
-            serverRunning
-              ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
-              : "bg-muted text-muted-foreground",
-          )}
-        >
-          <Radio className={cn("size-2.5", serverRunning && "animate-pulse")} />
-          {serverRunning
-            ? t(($) => $.shell.mcpActivity.live)
-            : t(($) => $.shell.mcpActivity.off)}
-        </span>
-        <div className="ml-auto flex items-center gap-0.5">
-          <Tooltip
-            side="bottom"
-            wide
-            label={
-              <div>
-                <p className="mb-1.5 font-medium text-foreground">
-                  {t(($) => $.shell.mcpActivity.toolsTitle)}
-                </p>
-                <AiToolsGrid columns={1} />
-              </div>
-            }
+      <SidebarPanelHeader
+        icon={Activity}
+        title={t(($) => $.shell.rail.mcp)}
+        adornment={
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+              serverRunning
+                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                : "bg-muted text-muted-foreground",
+            )}
           >
-            <button
-              type="button"
-              aria-label={t(($) => $.shell.mcpActivity.toolsTitle)}
-              className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
-            >
-              <Info className="size-3.5" />
-            </button>
-          </Tooltip>
-          <Tooltip label={t(($) => $.shell.mcpActivity.clearLog)}>
-            <button
-              type="button"
-              aria-label={t(($) => $.shell.mcpActivity.clearLogAriaLabel)}
-              disabled={logs.length === 0}
-              onClick={clearLogs}
-              className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
+            <Radio className={cn("size-2.5", serverRunning && "animate-pulse")} />
+            {serverRunning
+              ? t(($) => $.shell.mcpActivity.live)
+              : t(($) => $.shell.mcpActivity.off)}
+          </span>
+        }
+      >
+        <Tooltip
+          side="bottom"
+          wide
+          label={
+            <div>
+              <p className="mb-1.5 font-medium text-foreground">
+                {t(($) => $.shell.mcpActivity.toolsTitle)}
+              </p>
+              <AiToolsGrid columns={1} />
+            </div>
+          }
+        >
+          <button
+            type="button"
+            aria-label={t(($) => $.shell.mcpActivity.toolsTitle)}
+            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <Info className="size-3.5" />
+          </button>
+        </Tooltip>
+        <Tooltip label={t(($) => $.shell.mcpActivity.clearLog)}>
+          <button
+            type="button"
+            aria-label={t(($) => $.shell.mcpActivity.clearLogAriaLabel)}
+            disabled={logs.length === 0}
+            onClick={clearLogs}
+            className="flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </Tooltip>
+      </SidebarPanelHeader>
 
       <div className="min-h-0 flex-1 overflow-auto p-1.5">
         {logs.length === 0 ? (

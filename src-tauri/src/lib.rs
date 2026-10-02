@@ -116,6 +116,8 @@ mod tex_distro;
 mod tinytex_archive;
 mod trust;
 // Only macOS sizes webviews itself; the frame logic is unit-tested everywhere.
+#[cfg(windows)]
+mod webview_focus;
 #[cfg(any(target_os = "macos", test))]
 mod webview_frame;
 mod worktree_lock;
@@ -361,6 +363,10 @@ pub fn run() {
     #[cfg(target_os = "macos")]
     {
         builder = builder.plugin(webview_frame::plugin());
+    }
+    #[cfg(windows)]
+    {
+        builder = builder.plugin(webview_focus::plugin());
     }
 
     #[cfg(not(target_os = "windows"))]

@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "spelling" and the list narrows to the sections and settings that match;
   pick one to jump to it.
 - The Explorer shows Git status next to changed files, with the same letters
-  as Source Control (M, U, D and so on). Changed file names take the status
+  as Source Control (M, U, D and so on). File names keep their normal
   colour, and a folder that holds changes gets a dot.
 - Settings > AI > Skills has a search box. It filters your skills and the
   Domain shelf together, and the shelf can be narrowed to one domain.
@@ -63,6 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   draws a focus ring any more, and Settings toggle rows, which showed no
   focus at all, now do.
 - The home toolbar and dock are flat, with a plain border and no shadow.
+- Every side panel header (Explorer, Search, Source Control, Preflight,
+  References, Research workspace and MCP activity) uses the same icon and
+  title size. A title that doesn't fit ends in an ellipsis, and the icon
+  keeps its size.
 - Integration tabs and Citation Search sources show each service's own logo.
 - In the spelling dictionary list, download sizes and the installed check sit
   at the right edge of each row.
@@ -114,6 +118,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- On macOS, Cmd+A in the editor selected only the lines on screen, so
+  deleting or copying after it left the rest of the file behind. Cmd+A and
+  Edit > Select All now select the whole file, and in the terminal they
+  select the terminal's text.
+- On macOS, the editor ignored typing and shortcuts after the app opened and
+  after leaving full screen, until you clicked in the window. The same
+  happened in a newly opened preview or browser window.
+- On Windows, typing after switching back to Oleafly with Alt+Tab or the
+  taskbar did nothing until you clicked in the window.
+- On macOS, Cmd+Z and Shift+Cmd+Z did nothing in text fields on the home
+  screen, during a tour, and in the preview and browser windows.
+- Edit > Undo and Redo, clicked while another Oleafly window was in front,
+  undid the last change in the paper.
+- Changing the app language put the terminal, browser and Open Folder
+  shortcuts back to their defaults until the next launch.
+- On macOS and Linux, the terminal, browser and Open Folder shortcuts still
+  worked during a tour.
+- Files dropped on a page in the browser window were ignored.
 - The tabs in Settings > Integrations made the whole Settings pane scroll
   sideways when they didn't fit. They now scroll on their own, like the tabs
   in Appearance, AI and MCP.

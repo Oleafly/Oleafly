@@ -72,14 +72,14 @@ beforeEach(async () => {
 });
 
 describe("FileTree Git status", () => {
-  it("shows the Source Control badge on changed files and tints their names", () => {
+  it("shows the Source Control badge on changed files and keeps their names in the normal colour", () => {
     render(<FileTree />);
 
     const main = row(/^main\.tex/);
     expect(within(main).getByText("U")).toBeInTheDocument();
     expect(within(main).getByTitle(status.untracked)).toHaveClass("bg-primary/15");
     expect(main).toHaveAccessibleName(expect.stringContaining(status.untracked));
-    expect(within(main).getByText("main.tex")).toHaveClass("text-primary");
+    expect(within(main).getByText("main.tex")).not.toHaveClass("text-primary");
 
     const refs = row(/^refs\.bib/);
     expect(within(refs).queryByTitle(status.untracked)).not.toBeInTheDocument();
@@ -96,7 +96,7 @@ describe("FileTree Git status", () => {
     fireEvent.click(folder);
     const intro = row(/^intro\.tex/);
     expect(within(intro).getByTitle(status.modified)).toHaveTextContent("M");
-    expect(within(intro).getByText("intro.tex")).toHaveClass("text-amber-600");
+    expect(within(intro).getByText("intro.tex")).not.toHaveClass("text-amber-600");
   });
 
   it("refreshes Git status after a save makes a clean file changed, and only then", async () => {

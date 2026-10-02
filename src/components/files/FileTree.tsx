@@ -1248,11 +1248,6 @@ function TreeRowGitMark({ node, git }: Readonly<{ node: TreeNode; git: GitDecora
   return node.isDir ? <GitFolderDot meta={meta} /> : <GitStatusBadge meta={meta} />;
 }
 
-/** A changed file's name takes its status colour; folders keep theirs. */
-function gitNameClass(node: TreeNode, git: GitDecorations): string | undefined {
-  return node.isDir ? undefined : git.files.get(node.path)?.text;
-}
-
 function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number; ctx: TreeCtx }>) {
   const { t } = useTranslation(["common", "workspace"]);
   const isOpen = ctx.expanded.has(node.path) || !node.isDir;
@@ -1363,11 +1358,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
     >
       <TreeRowIcon node={node} expanded={ctx.expanded.has(node.path)} isMain={isMain} />
       <span
-        className={cn(
-          "truncate",
-          gitNameClass(node, ctx.git),
-          unreadable && "text-muted-foreground",
-        )}
+        className={cn("truncate", unreadable && "text-muted-foreground")}
       >
         {node.name}
       </span>

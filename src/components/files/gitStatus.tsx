@@ -14,7 +14,7 @@ export type GitStatusMeta = Readonly<{
   /** Letter shown in the badge. */
   label: string;
   name: GitStatusName;
-  /** Text colour of the badge, also used to tint a changed file's name. */
+  /** Text colour of the badge. */
   text: string;
   fill: string;
 }>;

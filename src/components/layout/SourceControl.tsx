@@ -63,7 +63,7 @@ import { projectFolderAvailable, reportLocationError } from "@/store/project-ava
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
 import { GithubMenu } from "@/components/layout/GithubMenu";
-import { SidebarSection } from "@/components/layout/SidebarSection";
+import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";
 import {
   consumeSourceControlGraphRequest,
   SOURCE_CONTROL_SHOW_GRAPH_EVENT,
@@ -1428,12 +1428,7 @@ function Header({
     : "";
   return (
     <>
-      <div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-sidebar-border px-2">
-        <GitBranch className="size-3.5 text-muted-foreground" />
-        <span className="text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70">
-          {t(($) => $.shell.sourceControl.title)}
-        </span>
-        <span className="ml-auto" />
+      <SidebarPanelHeader icon={GitBranch} title={t(($) => $.shell.sourceControl.title)}>
         {branch ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1567,7 +1562,7 @@ function Header({
             onCopyLink={() => onCopyLink?.(url)}
           />
         ) : null}
-      </div>
+      </SidebarPanelHeader>
       {branchFormOpen ? (
         <div className="flex gap-1.5 border-b border-sidebar-border p-2">
           <Input

@@ -96,9 +96,10 @@ fn describe(frame: Frame) -> String {
 #[cfg(target_os = "macos")]
 mod mac {
     use super::{corrected_frame, correction_log_line, fills_window, Frame};
+    use dispatch2::DispatchQueue;
     use objc2::rc::Retained;
     use objc2::MainThreadMarker;
-    use objc2_app_kit::{NSAutoresizingMaskOptions, NSView, NSWindow};
+    use objc2_app_kit::{NSAutoresizingMaskOptions, NSResponder, NSView, NSWindow};
     use objc2_foundation::{NSPoint, NSRect, NSSize};
     use tauri::webview::PlatformWebview;
     use tauri::{Manager, Webview, Window, WindowEvent};
@@ -171,6 +172,34 @@ mod mac {
         ));
     }
 
+    fn claim_keyboard(hosted: &Hosted<'_>) {
+        let lost = hosted.window.firstResponder().is_none_or(|responder| {
+            let responder: *const NSResponder = &*responder;
+            let container: *const NSView = &*hosted.container;
+            let window: *const NSWindow = &*hosted.window;
+            responder.cast::<()>() == container.cast::<()>()
+                || responder.cast::<()>() == window.cast::<()>()
+        });
+        if lost {
+            hosted.window.makeFirstResponder(Some(hosted.view));
+        }
+    }
+
+    fn claim_keyboard_later(window: &Window) {
+        let app = window.app_handle().clone();
+        let label = window.label().to_owned();
+        DispatchQueue::main().exec_async(move || {
+            let Some(webview) = app.get_webview(&label) else {
+                return;
+            };
+            let _ = webview.with_webview(|platform| {
+                if let Some(hosted) = hosted(&platform) {
+                    claim_keyboard(&hosted);
+                }
+            });
+        });
+    }
+
     /// Appends to app.log without doing file I/O on the main thread.
     fn log(line: String) {
         tauri::async_runtime::spawn_blocking(move || {
@@ -200,6 +229,8 @@ mod mac {
             // Autoresizing applies size changes as deltas, so start from an
             // exact fit.
             correct(&hosted, &closure_label, "setup");
+            hosted.window.setInitialFirstResponder(Some(hosted.view));
+            claim_keyboard(&hosted);
             let _ = sender.send(true);
         });
         // Only now stop Tauri resizing it from `Resized` events (see the
@@ -256,6 +287,9 @@ mod mac {
         }
         if let Some(webview) = window.get_webview(window.label()) {
             resync(&webview, trigger);
+        }
+        if !matches!(event, WindowEvent::ScaleFactorChanged { .. }) {
+            claim_keyboard_later(window);
         }
     }
 }

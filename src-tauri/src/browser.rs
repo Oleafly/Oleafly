@@ -482,6 +482,7 @@ fn open_tab<R: Runtime>(
     let new_tab_app = app.clone();
     let new_tab_window = window_label.clone();
     let builder = WebviewBuilder::new(&label, WebviewUrl::External(url.clone()))
+        .disable_drag_drop_handler()
         .on_navigation(navigation_allowed)
         .on_new_window(move |url, _features| {
             if navigation_allowed(&url) && url.as_str() != "about:blank" {
@@ -564,7 +565,24 @@ fn create_window<R: Runtime>(app: &AppHandle<R>, url: Url) -> Result<String, Str
         .map_err(|e| format!("could not open the browser window: {e}"))?;
     open_tab(app, &window, url)?;
     let _ = window.set_focus();
+    focus_active_tab(&window);
     Ok(window_label)
+}
+
+fn focus_active_tab<R: Runtime>(window: &Window<R>) {
+    let Some(active) = with_window_state(window.label(), |state| state.active.clone())
+        .ok()
+        .flatten()
+    else {
+        return;
+    };
+    if let Some(tab) = window
+        .webviews()
+        .into_iter()
+        .find(|webview| webview.label() == active)
+    {
+        let _ = tab.set_focus();
+    }
 }
 
 pub fn on_page_load<R: Runtime>(webview: &Webview<R>, payload: &PageLoadPayload<'_>) {
@@ -603,6 +621,7 @@ pub async fn browser_window_open<R: Runtime>(
             Ok(window) => {
                 open_tab(&app, &window, url)?;
                 let _ = window.set_focus();
+                focus_active_tab(&window);
                 return Ok(existing);
             }
             Err(_) => {
@@ -621,9 +640,12 @@ pub async fn browser_window_focus<R: Runtime>(
 ) -> Result<(), String> {
     require_main(&webview)?;
     with_window_state(&label, |_| ())?;
-    find_window(&app, &label)?
+    let window = find_window(&app, &label)?;
+    window
         .set_focus()
-        .map_err(|e| format!("could not focus the browser window: {e}"))
+        .map_err(|e| format!("could not focus the browser window: {e}"))?;
+    focus_active_tab(&window);
+    Ok(())
 }
 
 #[tauri::command]

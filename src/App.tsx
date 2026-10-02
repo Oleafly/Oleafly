@@ -125,6 +125,7 @@ import {
 
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import { handleDockShortcut } from "@/lib/dock-shortcuts";
+import { historyCommand, inPlainField } from "@/lib/field-history";
 import {
   startNativeDockShortcutBridge,
   usesNativeDockMenu,
@@ -655,25 +656,16 @@ function AppContent() {
     // (find/replace), which must undo their own text, not the document. Plain
     // fields get an explicit execCommand undo so the behavior is identical on
     // every platform's webview.
-    const inEditor = (active: HTMLElement | null): boolean =>
-      !!(active?.closest(".cm-content") || active?.closest(".ProseMirror"));
     const sourceEditorOwns = (active: HTMLElement | null): boolean => {
       const source = getEditorView();
       return !!active && !!source && source.contentDOM.contains(active);
     };
     const secondaryCodeEditorOwns = (active: HTMLElement | null): boolean =>
       !!active?.closest(".cm-content") && !sourceEditorOwns(active);
-    const inPlainField = (active: HTMLElement | null): boolean => {
-      if (!active || inEditor(active)) return false;
-      const tag = active.tagName;
-      return tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable;
-    };
     const onKey = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      const isUndo = key === "z" && !e.shiftKey;
-      const isRedo = (key === "z" && e.shiftKey) || key === "y";
-      if (!isUndo && !isRedo) return;
-      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const command = historyCommand(e);
+      if (!command) return;
+      const isRedo = command === "redo";
       if (useTourStore.getState().activeTourId) return;
       if (!useFilesStore.getState().projectId) return;
       const active = document.activeElement as HTMLElement | null;

@@ -3202,6 +3202,7 @@ dependencies = [
  "cap-std",
  "cbc",
  "dirs",
+ "dispatch2",
  "flate2",
  "fs4",
  "futures-util",

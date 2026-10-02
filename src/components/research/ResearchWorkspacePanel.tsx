@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlaskConical, Settings2 } from "lucide-react";
 import { BetaBadge } from "@/components/ui/beta-badge";
+import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResearchRootsPanel } from "@/components/research/workspace/ResearchRootsPanel";
@@ -73,21 +74,21 @@ export function ResearchWorkspacePanel() {
   };
   return (
     <div className="flex h-full min-h-0 flex-col" data-tour="research-workspace" data-testid="research-workspace-panel">
-      <div className="flex h-10 shrink-0 items-center gap-2 border-b px-3">
-        <FlaskConical className="size-4 text-muted-foreground" />
-        <h2 className="text-sm font-medium">{t(($) => $.researchTools.workspace.title)}</h2>
-        <BetaBadge />
-        <span className="flex-1" />
+      <SidebarPanelHeader
+        icon={FlaskConical}
+        title={t(($) => $.researchTools.workspace.title)}
+        adornment={<BetaBadge />}
+      >
         <Button
           variant="ghost"
           size="icon"
-          className="size-7"
+          className="size-6"
           aria-label={t(($) => $.researchTools.workspace.configureAgents)}
           onClick={openSettings}
         >
-          <Settings2 className="size-4" />
+          <Settings2 className="size-3.5" />
         </Button>
-      </div>
+      </SidebarPanelHeader>
       {configError && <output className="block px-3 pt-2 text-xs text-destructive">{configError}</output>}
       <Tabs defaultValue="tasks" className="flex min-h-0 flex-1 flex-col">
         <TabsList className="mx-3 mt-2 grid shrink-0 grid-cols-2">
