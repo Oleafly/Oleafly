@@ -1075,9 +1075,12 @@
       "disconnect": "Koppla från"
     },
     "alphaxiv": {
-      "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>alphaxiv.org</siteLink>, öppna din <keyLink>sida för API-nycklar</keyLink>, generera en nyckel (den börjar med <keyPrefix>axv1_</keyPrefix>) och klistra in den nedan.",
+      "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>alphaxiv.org</siteLink>, öppna Settings > API Keys, skapa en nyckel och klistra in den här. Oleafly använder den för att ansluta till alphaXivs <docsLink>MCP-server</docsLink>.",
       "apiKeyLabel": "API-nyckel för alphaXiv",
-      "description": "Verktyg för litteratursökning och artikelanalys åt assistenten."
+      "connected": "Ansluten. Assistenten kan nu använda alphaXiv och frågar dig först varje gång.",
+      "connectFailed": "alphaXiv godtog inte nyckeln, eller så gick tjänsten inte att nå. Kontrollera nyckeln och försök igen.",
+      "description": "Verktyg för litteratursökning och artikelanalys åt assistenten.",
+      "disconnectFailed": "Det gick inte att koppla från alphaXiv. Försök igen."
     },
     "cookies": {
       "action": "Importera cookies",
@@ -1120,7 +1123,11 @@
     "zotero": {
       "apiKeyHint": "Så här får du en nyckel: logga in på <siteLink>zotero.org</siteLink>, öppna din <keyLink>sida för API-nycklar</keyLink> för att skapa en nyckel, och kopiera ditt numeriska användar-ID från samma sida.",
       "apiKeyLabel": "API-nyckel för Zotero",
+      "connected": "Anslutet till ditt Zotero-bibliotek.",
+      "connectedAs": "Ansluten som {{username}}.",
       "description": "Importera citeringar och referenser från ditt Zotero-bibliotek.",
+      "disconnectFailed": "Oleafly kunde inte ta bort den sparade Zotero-nyckeln. Försök igen.",
+      "importHint": "Om du vill importera öppnar du panelen Referenser i ett projekt och väljer Importera referensbibliotek.",
       "userIdLabel": "Användar-ID i Zotero",
       "userIdPlaceholder": "Användar-ID"
     }

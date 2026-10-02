@@ -47,7 +47,12 @@
     "unrecognized": "Okänd filtyp: {{name}}",
     "zotero": {
       "button": "Välj Zotero RDF-fil",
+      "connect": "Anslut Zotero-konto",
+      "connectedDescription": "Importera alla referenser i ditt Zotero-bibliotek, eller välj en Zotero RDF-fil som du har exporterat.",
       "description": "I Zotero väljer du File → Export Library → Zotero RDF. Välj sedan den exporterade filen.",
+      "empty": "Ditt Zotero-bibliotek har inga referenser att importera.",
+      "importLibrary": "Importera Zotero-bibliotek",
+      "limited": "Oleafly läste de första {{fetched}} av {{total}} objekt i ditt Zotero-bibliotek.",
       "title": "Zotero"
     }
   },

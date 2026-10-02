@@ -1,5 +1,5 @@
 import { i18n } from "@/i18n";
-import { literatureSearch as invokeLiteratureSearch } from "@/lib/tauri";
+import { getConnectorKey, literatureSearch as invokeLiteratureSearch } from "@/lib/tauri";
 import {
   cleanField,
   decodeXmlEntities,
@@ -779,10 +779,41 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
+type ConnectorKeyCheck = (connectorId: string) => Promise<boolean>;
+
+const SOURCE_CONNECTOR_KEYS: Partial<Record<LiteratureSource, string>> = {
+  "google-scholar": "serper",
+};
+
+async function savedConnectorKey(connectorId: string): Promise<boolean> {
+  try {
+    return Boolean((await getConnectorKey(connectorId))?.trim());
+  } catch {
+    return true;
+  }
+}
+
+async function searchableSources(
+  sources: readonly LiteratureSource[],
+  hasKey: ConnectorKeyCheck,
+): Promise<LiteratureSource[]> {
+  const usable = await Promise.all(
+    sources.map(async (source) => {
+      const connectorId = SOURCE_CONNECTOR_KEYS[source];
+      return !connectorId || (await hasKey(connectorId));
+    }),
+  );
+  return sources.filter((_, index) => usable[index]);
+}
+
 export async function searchLiterature(
-  options: LiteratureSearchOptions,
+  requested: LiteratureSearchOptions,
   transport: SearchTransport = invokeLiteratureSearch,
+  hasKey: ConnectorKeyCheck = savedConnectorKey,
 ): Promise<LiteratureSearchResponse> {
+  const sources = await searchableSources(requested.sources, hasKey);
+  const options =
+    sources.length === requested.sources.length ? requested : { ...requested, sources };
   if (!options.ignoreCache) {
     const cached = cachedResponse(options);
     if (cached) return cached;

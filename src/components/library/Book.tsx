@@ -137,7 +137,7 @@ export function Book({
         onClick={onClick}
         onMouseOver={onPreviewRequest}
         onFocus={onPreviewRequest}
-        className="block w-full cursor-pointer rounded-md text-left focus-visible:ring-1 focus-visible:ring-ring"
+        className="block w-full cursor-pointer rounded-md border border-transparent text-left focus-visible:border-ring"
       >
         <div
           style={{ perspective: "1600px" }}

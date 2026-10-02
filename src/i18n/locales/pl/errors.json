@@ -46,6 +46,18 @@
     "query_too_long": "Zapytanie wyszukiwania jest za długie (maksymalnie {{max}} znaków).",
     "unknown_source": "Nieznane źródło literatury."
   },
+  "zotero": {
+    "invalid_user_id": "Identyfikator użytkownika Zotero to liczba. Skopiuj swój ze strony kluczy API Zotero.",
+    "key_rejected": "Zotero nie zaakceptował tego klucza API. Sprawdź, czy skopiowano cały klucz i czy nadal istnieje na zotero.org.",
+    "library_not_readable": "Ten klucz API nie ma dostępu do odczytu Twojej biblioteki Zotero. Na zotero.org edytuj klucz i włącz Allow library access.",
+    "user_mismatch": "Ten klucz API należy do użytkownika Zotero o identyfikatorze {{keyUserId}}, a nie {{userId}}. Sprawdź identyfikator użytkownika i spróbuj ponownie.",
+    "not_connected": "Najpierw połącz konto Zotero w sekcji Ustawienia, Integracje, Zotero.",
+    "rate_limited": "Zotero ogranicza teraz liczbę żądań. Odczekaj kilka minut i spróbuj ponownie.",
+    "unreachable": "Oleafly nie może połączyć się z Zotero. Sprawdź połączenie z internetem i spróbuj ponownie.",
+    "http_error": "Zotero zwrócił błąd (HTTP {{status}}). Spróbuj ponownie później.",
+    "invalid_response": "Zotero wysłał odpowiedź, której Oleafly nie mógł odczytać. Spróbuj ponownie później.",
+    "too_large": "Twoja biblioteka Zotero jest za duża, by zaimportować ją za jednym razem. Zamiast tego wyeksportuj z Zotero kolekcję jako plik RDF i zaimportuj go."
+  },
   "tex": {
     "no_host_binary": "TinyTeX nie ma pliku wykonywalnego {{name}} zgodnego z tym systemem.",
     "package_operation_timeout": "Operacja na pakietach przekroczyła limit {{span}} i została zatrzymana, więc można ponownie skompilować dokument. Serwer lustrzany TeX Live jest prawdopodobnie zajęty. Spróbuj ponownie później albo uruchom tlmgr samodzielnie.",

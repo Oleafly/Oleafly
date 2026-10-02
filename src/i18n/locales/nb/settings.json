@@ -1075,9 +1075,12 @@
       "disconnect": "Koble fra"
     },
     "alphaxiv": {
-      "apiKeyHint": "Slik får du en nøkkel: logg inn på <siteLink>alphaxiv.org</siteLink>, åpne <keyLink>siden for API-nøkler</keyLink>, lag en nøkkel (den begynner med <keyPrefix>axv1_</keyPrefix>), og lim den inn nedenfor.",
+      "apiKeyHint": "Slik får du en nøkkel: logg inn på <siteLink>alphaxiv.org</siteLink>, åpne Settings > API Keys, lag en nøkkel, og lim den inn her. Oleafly bruker den til å koble til alphaXivs <docsLink>MCP-server</docsLink>.",
       "apiKeyLabel": "API-nøkkel for alphaXiv",
-      "description": "Verktøy for litteratursøk og artikkelanalyse til assistenten."
+      "connected": "Tilkoblet. Assistenten kan nå bruke alphaXiv og spør deg først hver gang.",
+      "connectFailed": "alphaXiv godtok ikke denne nøkkelen, eller tjenesten kunne ikke nås. Sjekk nøkkelen og prøv igjen.",
+      "description": "Verktøy for litteratursøk og artikkelanalyse til assistenten.",
+      "disconnectFailed": "Kunne ikke koble fra alphaXiv. Prøv igjen."
     },
     "cookies": {
       "action": "Importer cookies",
@@ -1120,7 +1123,11 @@
     "zotero": {
       "apiKeyHint": "Slik får du en nøkkel: logg inn på <siteLink>zotero.org</siteLink>, åpne <keyLink>siden for API-nøkler</keyLink> for å lage en nøkkel, og kopier den numeriske bruker-ID-en din fra samme side.",
       "apiKeyLabel": "API-nøkkel for Zotero",
+      "connected": "Koblet til Zotero-biblioteket ditt.",
+      "connectedAs": "Koblet til som {{username}}.",
       "description": "Importer siteringer og referanser fra Zotero-biblioteket ditt.",
+      "disconnectFailed": "Oleafly kunne ikke fjerne den lagrede Zotero-nøkkelen. Prøv igjen.",
+      "importHint": "For å importere åpner du Referanser-panelet i et prosjekt og velger Importer referansebibliotek.",
       "userIdLabel": "Bruker-ID i Zotero",
       "userIdPlaceholder": "Bruker-ID"
     }

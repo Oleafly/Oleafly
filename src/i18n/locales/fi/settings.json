@@ -1075,9 +1075,12 @@
       "disconnect": "Katkaise yhteys"
     },
     "alphaxiv": {
-      "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>alphaxiv.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink>, luo avain (se alkaa merkeillä <keyPrefix>axv1_</keyPrefix>) ja liitä se alle.",
+      "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>alphaxiv.org</siteLink>, avaa Settings > API Keys, luo avain ja liitä se tähän. Oleafly yhdistää sillä alphaXivin <docsLink>MCP-palvelimeen</docsLink>.",
       "apiKeyLabel": "alphaXivin API-avain",
-      "description": "Kirjallisuushaun ja artikkelien analyysin työkalut avustajalle."
+      "connected": "Yhdistetty. Avustaja voi nyt käyttää alphaXivia ja kysyy sinulta ensin joka kerta.",
+      "connectFailed": "alphaXiv ei hyväksynyt tätä avainta, tai siihen ei saatu yhteyttä. Tarkista avain ja yritä uudelleen.",
+      "description": "Kirjallisuushaun ja artikkelien analyysin työkalut avustajalle.",
+      "disconnectFailed": "Yhteyttä alphaXiviin ei voitu katkaista. Yritä uudelleen."
     },
     "cookies": {
       "action": "Tuo cookiet",
@@ -1120,7 +1123,11 @@
     "zotero": {
       "apiKeyHint": "Avaimen hankkiminen: kirjaudu osoitteeseen <siteLink>zotero.org</siteLink>, avaa <keyLink>API-avainsivusi</keyLink> ja luo avain, ja kopioi numeerinen käyttäjätunnuksesi samalta sivulta.",
       "apiKeyLabel": "Zoteron API-avain",
+      "connected": "Yhdistetty Zotero-kirjastoosi.",
+      "connectedAs": "Yhdistetty käyttäjänä {{username}}.",
       "description": "Tuo viittauksia ja viitteitä Zotero-kirjastostasi.",
+      "disconnectFailed": "Oleafly ei voinut poistaa tallennettua Zotero-avainta. Yritä uudelleen.",
+      "importHint": "Tuo kirjasto avaamalla projektin Viitteet-paneeli ja valitsemalla Tuo lähdekirjasto.",
       "userIdLabel": "Zoteron käyttäjätunnus",
       "userIdPlaceholder": "Käyttäjätunnus"
     }

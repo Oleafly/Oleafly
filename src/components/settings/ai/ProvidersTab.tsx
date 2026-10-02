@@ -185,7 +185,7 @@ function OllamaHostControls({
           value={host}
           onChange={(e) => onHostChange(e.target.value)}
           placeholder={DEFAULT_OLLAMA_HOST}
-          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:border-ring"
         />
       )}
     </>
@@ -435,7 +435,7 @@ export function ProvidersTab({
                   placeholder={t(($) => $.settings.ai.providers.keyPlaceholder)}
                   data-testid={`ai-provider-key-${p.id}`}
                   autoFocus={hasSaved}
-                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
+                  className="flex-1 rounded-md border border-input bg-background px-3 py-2 font-mono text-xs focus:border-ring"
                 />
               ) : (
                 <Button

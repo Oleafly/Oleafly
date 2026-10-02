@@ -5,10 +5,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   addCitations: vi.fn(),
+  getConnectorKey: vi.fn(),
   logError: vi.fn(),
   parseCitationFile: vi.fn(),
+  setConnectorKey: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
+  zoteroLibraryBibtex: vi.fn(),
+  zoteroVerify: vi.fn(),
+}));
+
+vi.mock("@/lib/tauri", () => ({
+  getConnectorKey: mocks.getConnectorKey,
+  setConnectorKey: mocks.setConnectorKey,
+  zoteroLibraryBibtex: mocks.zoteroLibraryBibtex,
+  zoteroVerify: mocks.zoteroVerify,
 }));
 
 vi.mock("@/features/citation", () => ({
@@ -25,8 +36,19 @@ vi.mock("@/lib/toast", () => ({
 
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enReferences from "@/i18n/locales/en/references.json" with { type: "json" };
+import { useSettingsStore } from "@/store/settings";
+import { useZoteroConnectorStore } from "@/store/zotero-connector";
 import { ImportReferenceLibraryDialog } from "./ImportReferenceLibraryDialog";
+
+const zoteroText = enReferences.import.zotero;
+
+function connectZotero() {
+  mocks.getConnectorKey.mockImplementation(async (id: string) =>
+    id === "zotero-api-key" ? "zk-key" : null,
+  );
+}
 
 async function expectInlineError(message: string) {
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(message));
@@ -35,6 +57,23 @@ async function expectInlineError(message: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.getConnectorKey.mockResolvedValue(null);
+  mocks.zoteroLibraryBibtex.mockResolvedValue({
+    bibtex: "@article{smith_2023,\n\ttitle = {A paper},\n}",
+    count: 1,
+    total: 1,
+  });
+  useZoteroConnectorStore.setState({
+    connected: false,
+    loading: false,
+    username: null,
+    error: null,
+  });
+  useSettingsStore.setState({
+    settingsOpen: false,
+    settingsInitialSection: "general",
+    settingsScrollTarget: null,
+  });
   mocks.parseCitationFile.mockReturnValue([
     {
       type: "article",
@@ -349,6 +388,151 @@ describe("ImportReferenceLibraryDialog", () => {
     const input = document.querySelector<HTMLInputElement>('input[accept=".rdf"]');
     fireEvent.change(input as HTMLInputElement, { target: { files: [] } });
     expect(mocks.parseCitationFile).not.toHaveBeenCalled();
+  });
+
+  it("offers to connect Zotero in Settings when no account is saved", async () => {
+    const onOpenChange = vi.fn();
+    render(<ImportReferenceLibraryDialog open onOpenChange={onOpenChange} />);
+
+    await waitFor(() =>
+      expect(mocks.getConnectorKey).toHaveBeenCalledWith("zotero-api-key"),
+    );
+    expect(
+      screen.queryByRole("button", { name: zoteroText.importLibrary }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: zoteroText.connect }));
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsOpen: true,
+      settingsInitialSection: "integrations",
+      settingsScrollTarget: "zotero",
+    });
+    expect(mocks.zoteroLibraryBibtex).not.toHaveBeenCalled();
+  });
+
+  it("imports the whole connected Zotero library through the shared import path", async () => {
+    connectZotero();
+    const onOpenChange = vi.fn();
+    const onImported = vi.fn();
+    render(
+      <ImportReferenceLibraryDialog
+        open
+        onOpenChange={onOpenChange}
+        onImported={onImported}
+      />,
+    );
+
+    expect(await screen.findByText(zoteroText.connectedDescription)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: zoteroText.connect }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: zoteroText.button })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: zoteroText.importLibrary }));
+
+    await waitFor(() => expect(onImported).toHaveBeenCalledOnce());
+    expect(mocks.zoteroLibraryBibtex).toHaveBeenCalledOnce();
+    expect(mocks.parseCitationFile).toHaveBeenCalledWith(
+      "zotero-library.bib",
+      "@article{smith_2023,\n\ttitle = {A paper},\n}",
+    );
+    expect(mocks.addCitations).toHaveBeenCalledWith([
+      expect.objectContaining({ key: "smith2023paper" }),
+    ]);
+    expect(mocks.toastSuccess).toHaveBeenCalledOnce();
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("1 reference added to references.bib.");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("reports duplicates from a Zotero import like a file import", async () => {
+    connectZotero();
+    mocks.addCitations.mockResolvedValue({
+      imported: 2,
+      duplicates: 3,
+      errors: [],
+      bibPath: "references.bib",
+    });
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: zoteroText.importLibrary }));
+
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        "2 references added to references.bib, 3 already there.",
+      ),
+    );
+  });
+
+  it("says when only part of a very large Zotero library was read", async () => {
+    connectZotero();
+    mocks.zoteroLibraryBibtex.mockResolvedValue({
+      bibtex: "@article{a,\n}",
+      count: 5000,
+      total: 7200,
+    });
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: zoteroText.importLibrary }));
+
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        `1 reference added to references.bib. ${zoteroText.limited
+          .replace("{{fetched}}", "5000")
+          .replace("{{total}}", "7200")}`,
+      ),
+    );
+  });
+
+  it("shows why the Zotero library could not be fetched", async () => {
+    connectZotero();
+    const onOpenChange = vi.fn();
+    mocks.zoteroLibraryBibtex.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "zotero.rate_limited" })}`,
+    );
+    render(<ImportReferenceLibraryDialog open onOpenChange={onOpenChange} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: zoteroText.importLibrary }));
+
+    await expectInlineError(enErrors.zotero.rate_limited);
+    expect(mocks.logError).toHaveBeenCalledWith(
+      "import Zotero library",
+      expect.stringContaining("zotero.rate_limited"),
+    );
+    expect(mocks.addCitations).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getByRole("button", { name: zoteroText.importLibrary })).toBeEnabled();
+  });
+
+  it("explains an empty Zotero library", async () => {
+    connectZotero();
+    mocks.zoteroLibraryBibtex.mockResolvedValue({ bibtex: "", count: 0, total: 0 });
+    mocks.parseCitationFile.mockReturnValue([]);
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: zoteroText.importLibrary }));
+
+    await expectInlineError(zoteroText.empty);
+    expect(mocks.addCitations).not.toHaveBeenCalled();
+  });
+
+  it("disables both Zotero buttons while the library downloads", async () => {
+    connectZotero();
+    let finish: (value: { bibtex: string; count: number; total: number }) => void = () => {};
+    mocks.zoteroLibraryBibtex.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    render(<ImportReferenceLibraryDialog open onOpenChange={vi.fn()} />);
+
+    const importButton = await screen.findByRole("button", { name: zoteroText.importLibrary });
+    fireEvent.click(importButton);
+
+    await waitFor(() => expect(importButton).toBeDisabled());
+    expect(screen.getByRole("button", { name: zoteroText.button })).toBeDisabled();
+    finish({ bibtex: "@article{a,\n}", count: 1, total: 1 });
+    await waitFor(() => expect(mocks.addCitations).toHaveBeenCalledOnce());
   });
 
   it("opens the file picker from the visible button", async () => {

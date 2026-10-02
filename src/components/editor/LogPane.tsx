@@ -171,7 +171,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
           aria-expanded={collapsible ? expanded : undefined}
           disabled={!collapsible}
           onClick={() => setExpanded((value) => !value)}
-          className="flex min-w-0 flex-1 items-start gap-2 rounded px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default"
+          className="flex min-w-0 flex-1 items-start gap-2 rounded px-1 text-left disabled:cursor-default focus-visible:bg-accent/60"
         >
           {/* Only offer a chevron when there is an excerpt to reveal. */}
           {collapsible &&
@@ -206,7 +206,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
             type="button"
             aria-label={t(($) => $.editor.log.copyError)}
             onClick={() => void copyError()}
-            className="flex shrink-0 items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex shrink-0 items-center rounded p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
           >
             {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
           </button>
@@ -217,7 +217,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
               type="button"
               aria-label={t(($) => $.editor.log.goToLocation)}
               onClick={() => void openLocation(err.file, err.line as number)}
-              className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
             >
               {t(($) => $.editor.log.open)}
               <ArrowUpRight className="size-3" />
@@ -271,7 +271,7 @@ function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
               <button
                 type="button"
                 onClick={() => void openLocation(d.file, d.line as number)}
-                className="mt-0.5 flex items-center gap-0.5 rounded font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="mt-0.5 flex items-center gap-0.5 rounded font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent/60"
               >
                 {displayText(location)}
                 <ArrowUpRight className="size-3" />

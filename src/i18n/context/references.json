@@ -5,6 +5,8 @@
       "title": "Card heading listing the three supported bibliography formats. Keep the format names verbatim."
     },
     "zotero": {
+      "connect": "Small button in the Zotero card, shown when no Zotero account is saved. It closes this dialog and opens Settings at Integrations, Zotero.",
+      "limited": "Appended after the import summary when the Zotero library is larger than Oleafly reads in one import. {{fetched}} and {{total}} are item counts.",
       "title": "Card heading for the Zotero import path. Keep the product name verbatim."
     }
   },

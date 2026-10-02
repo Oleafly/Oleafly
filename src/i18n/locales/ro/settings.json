@@ -1081,9 +1081,12 @@
       "disconnect": "Deconectează"
     },
     "alphaxiv": {
-      "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>alphaxiv.org</siteLink>, deschide <keyLink>pagina cheilor API</keyLink>, generează o cheie (începe cu <keyPrefix>axv1_</keyPrefix>) și lipește-o mai jos.",
+      "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>alphaxiv.org</siteLink>, deschide Settings > API Keys, creează o cheie și lipește-o aici. Oleafly o folosește ca să se conecteze la <docsLink>serverul MCP</docsLink> al alphaXiv.",
       "apiKeyLabel": "Cheie API alphaXiv",
-      "description": "Instrumente de căutare în literatură și de analiză a lucrărilor, pentru asistent."
+      "connected": "Conectat. Asistentul poate folosi acum alphaXiv și te întreabă de fiecare dată înainte.",
+      "connectFailed": "alphaXiv nu a acceptat această cheie sau nu poate fi accesat. Verifică cheia și încearcă din nou.",
+      "description": "Instrumente de căutare în literatură și de analiză a lucrărilor, pentru asistent.",
+      "disconnectFailed": "alphaXiv nu a putut fi deconectat. Încearcă din nou."
     },
     "cookies": {
       "action": "Importă cookie-uri",
@@ -1130,7 +1133,11 @@
     "zotero": {
       "apiKeyHint": "Ca să obții o cheie: autentifică-te la <siteLink>zotero.org</siteLink>, deschide <keyLink>pagina cheilor API</keyLink> ca să creezi o cheie și copiază-ți identificatorul numeric de utilizator din aceeași pagină.",
       "apiKeyLabel": "Cheie API Zotero",
+      "connected": "Conectat la biblioteca ta Zotero.",
+      "connectedAs": "Conectat ca {{username}}.",
       "description": "Importă citări și referințe din biblioteca ta Zotero.",
+      "disconnectFailed": "Oleafly nu a putut elimina cheia Zotero salvată. Încearcă din nou.",
+      "importHint": "Pentru import, deschide panoul Referințe dintr-un proiect și alege Importă bibliotecă de referințe.",
       "userIdLabel": "Identificator de utilizator Zotero",
       "userIdPlaceholder": "Identificator de utilizator"
     }

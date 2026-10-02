@@ -88,7 +88,7 @@ export function DatePicker({
           align={align}
           sideOffset={6}
           className={cn(
-            "z-[70] w-auto rounded-lg border bg-popover p-0 text-popover-foreground shadow-md outline-none",
+            "z-[70] w-auto rounded-lg border bg-popover p-0 text-popover-foreground shadow-md",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
             className,
           )}

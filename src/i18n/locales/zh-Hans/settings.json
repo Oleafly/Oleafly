@@ -1069,9 +1069,12 @@
       "disconnect": "断开连接"
     },
     "alphaxiv": {
-      "apiKeyHint": "获取密钥：登录 <siteLink>alphaxiv.org</siteLink>，打开你的 <keyLink>API 密钥页面</keyLink>，生成一个密钥（以 <keyPrefix>axv1_</keyPrefix> 开头），然后粘贴到下方。",
+      "apiKeyHint": "获取密钥：登录 <siteLink>alphaxiv.org</siteLink>，打开 Settings > API Keys，创建一个密钥，然后粘贴到这里。Oleafly 会用它连接 alphaXiv 的 <docsLink>MCP 服务器</docsLink>。",
       "apiKeyLabel": "alphaXiv API 密钥",
-      "description": "为助手提供文献检索与论文分析工具。"
+      "connected": "已连接。助手现在可以使用 alphaXiv，每次使用前都会先征求你的同意。",
+      "connectFailed": "alphaXiv 未接受此密钥，或无法连接到 alphaXiv。请检查密钥后重试。",
+      "description": "为助手提供文献检索与论文分析工具。",
+      "disconnectFailed": "无法断开 alphaXiv。请重试。"
     },
     "cookies": {
       "action": "导入 Cookie",
@@ -1110,7 +1113,11 @@
     "zotero": {
       "apiKeyHint": "获取密钥的方法：登录 <siteLink>zotero.org</siteLink>，打开 <keyLink>API 密钥页面</keyLink> 创建密钥，并在同一页面复制你的数字用户 ID。",
       "apiKeyLabel": "Zotero API 密钥",
+      "connected": "已连接到你的 Zotero 库。",
+      "connectedAs": "已以 {{username}} 的身份连接。",
       "description": "从你的 Zotero 库导入引用和参考文献。",
+      "disconnectFailed": "Oleafly 无法移除已保存的 Zotero 密钥。请重试。",
+      "importHint": "要导入，请在项目中打开“参考文献”面板，然后选择“导入参考文献库”。",
       "userIdLabel": "Zotero 用户 ID",
       "userIdPlaceholder": "用户 ID"
     }

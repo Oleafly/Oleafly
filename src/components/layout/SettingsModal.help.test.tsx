@@ -67,7 +67,7 @@ describe("Settings Help & About support callout", () => {
     );
     expect(aboutSection).toContainElement(aboutHeading);
     // The version arrives from an async call after the heading renders.
-    expect(await screen.findByText("v0.3.6")).toBeInTheDocument();
+    expect(await within(aboutSection).findByText("v0.3.6")).toBeInTheDocument();
     expect(
       screen.getByText(/Write, compile, proofread, manage citations/),
     ).toBeInTheDocument();
@@ -214,5 +214,29 @@ describe("Settings Help & About changelog", () => {
     fireEvent.click(entries[entries.length - 1]);
     expect(await screen.findByRole("dialog", { name: "What's new" })).toBeInTheDocument();
     expect(mocks.open).not.toHaveBeenCalledWith(expect.stringContaining("CHANGELOG"));
+  });
+
+  it("opens the changelog from the version under the navigation in any section", async () => {
+    useSettingsStore.setState({ settingsInitialSection: "general" });
+    render(<SettingsModal />);
+    const footer = screen.getByTestId("settings-footer");
+    const version = await within(footer).findByRole("button", { name: "v0.3.6. What's new" });
+    expect(version).toHaveTextContent(/^v0\.3\.6$/);
+    expect(footer.firstElementChild).toContainElement(version);
+    expect(within(footer).getByTestId("settings-footer-links")).toBeInTheDocument();
+    fireEvent.click(version);
+    const dialog = await screen.findByRole("dialog", { name: "What's new" });
+    expect(await within(dialog).findByTestId("changelog-status")).toHaveTextContent("You're on v0.3.6");
+    expect(mocks.open).not.toHaveBeenCalled();
+  });
+
+  it("leaves the version out of the footer when it cannot be read", async () => {
+    mocks.appVersion.mockRejectedValue(new Error("no version"));
+    useSettingsStore.setState({ settingsInitialSection: "general" });
+    render(<SettingsModal />);
+    const footer = screen.getByTestId("settings-footer");
+    await waitFor(() => expect(mocks.appVersion).toHaveBeenCalled());
+    expect(within(footer).queryByTestId("settings-footer-version")).not.toBeInTheDocument();
+    expect(within(footer).getAllByRole("button")).toHaveLength(4);
   });
 });

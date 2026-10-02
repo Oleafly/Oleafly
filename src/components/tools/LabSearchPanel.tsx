@@ -591,7 +591,7 @@ export function LabSearchPanel() {
 
           <form
             onSubmit={submit}
-            className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm focus-within:ring-1 focus-within:ring-ring"
+            className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm focus-within:border-ring"
           >
             <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
             <Input
@@ -599,7 +599,7 @@ export function LabSearchPanel() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t(($) => $.researchTools.labSearch.searchPlaceholder)}
               aria-label={t(($) => $.researchTools.labSearch.searchAria)}
-              className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
+              className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none"
             />
             <Button
               type="submit"

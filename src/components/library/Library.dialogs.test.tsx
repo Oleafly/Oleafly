@@ -184,8 +184,8 @@ describe("Library states", () => {
     const importProject = screen.getByTestId("import-project-button");
     for (const button of [openFolder, importProject]) {
       expect(button).toHaveClass(
-        "focus-visible:!bg-accent",
-        "dark:focus-visible:!bg-accent/60",
+        "focus-visible:bg-accent",
+        "dark:focus-visible:bg-accent/60",
         "focus-visible:text-foreground",
       );
     }

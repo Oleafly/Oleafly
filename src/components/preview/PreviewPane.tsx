@@ -1394,7 +1394,7 @@ export function PreviewPane() {
       ref={scrollBoxRef}
       data-pdf-scroll-root
       aria-label={t(($) => $.preview.viewer.scrollArea)}
-      className="h-full overflow-auto bg-sidebar focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      className="h-full overflow-auto bg-sidebar focus-visible:bg-sidebar-accent/40"
       style={
         inverted && !screenReaderMode
           ? { filter: "invert(1) hue-rotate(180deg)" }
@@ -1591,7 +1591,7 @@ export function PreviewPane() {
                 }}
                 placeholder={t(($) => $.preview.search.placeholder)}
                 aria-label={t(($) => $.preview.search.input)}
-                className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-0"
+                className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none"
               />
               <span
                 className="min-w-14 text-center text-[11px] tabular-nums text-muted-foreground"

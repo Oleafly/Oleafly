@@ -302,6 +302,10 @@
       "connect": "Button that stores the API key the user pasted and links the account.",
       "disconnect": "Button that deletes the stored API key and unlinks the account."
     },
+    "alphaxiv": {
+      "apiKeyHint": "\"Settings > API Keys\" is the menu path inside alphaXiv's website, which is English only. Keep that path in English exactly.",
+      "connected": "Shown once alphaXiv's MCP server accepted the key. Each alphaXiv tool call still asks the user first."
+    },
     "cookies": {
       "action": "Button label. Starts the browser cookie import.",
       "hostnamePlaceholder": "A literal example hostname. Keep example.com unchanged.",
@@ -313,6 +317,11 @@
         "notInstalled": "The browser is not installed on this machine."
       },
       "tryAgain": "Button that repeats the failed browser detection."
+    },
+    "zotero": {
+      "connected": "Shown once Zotero accepted the key when Oleafly has no saved account name, for example after an update.",
+      "connectedAs": "Shown once Zotero accepted the key. {{username}} is the user's Zotero account name, not a person's full name.",
+      "importHint": "Shown under the connected status. \"References\" is the project panel title and \"Import reference library\" is its import button. Use the same wording your locale uses for those two labels."
     }
   },
   "mcp": {

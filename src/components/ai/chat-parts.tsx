@@ -1279,7 +1279,7 @@ function messageBubble({
           "overflow-hidden rounded-lg px-3 py-2 text-sm",
           msg.role === "user"
             ? "max-w-[85%] bg-primary text-white"
-            : "w-full bg-background text-foreground ring-1 ring-border/60 dark:bg-muted dark:ring-0",
+            : "w-full border border-border/60 bg-background text-foreground dark:border-transparent dark:bg-muted",
         )}
       >
         {tokenizedUserText ?? (

@@ -1,64 +1,32 @@
-import * as PopoverPrimitive from "@radix-ui/react-popover";
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import { ColorInput } from "@/components/ui/color-input";
 import { cn } from "@/lib/utils";
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 export function ColorPicker({
   value,
   onChange,
-  allowTransparent,
   ariaLabel,
 }: Readonly<{
   value: string;
   onChange: (value: string) => void;
-  allowTransparent?: boolean;
   ariaLabel: string;
 }>) {
-  const { t } = useTranslation(["core"]);
-  const [open, setOpen] = useState(false);
   return (
-    <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
-      <PopoverPrimitive.Trigger asChild>
-        <button
-          type="button"
-          aria-label={ariaLabel}
-          className={cn(
-            "size-7 cursor-pointer overflow-hidden rounded-full border border-input focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-            !value &&
-              "bg-[length:8px_8px] bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%,#ccc),linear-gradient(45deg,#ccc_25%,#fff_25%,#fff_75%,#ccc_75%,#ccc)] bg-[position:0_0,4px_4px]",
-          )}
-          style={value ? { backgroundColor: value } : undefined}
-        />
-      </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Content
-          align="start"
-          sideOffset={4}
-          className="z-50 flex min-w-40 flex-col gap-2 rounded-md border bg-popover p-2 text-popover-foreground shadow-xl outline-none"
-        >
-          <ColorInput
-            value={value || "#ffffff"}
-            onChange={(event) => onChange(event.target.value)}
-            aria-label={ariaLabel}
-            className="size-8"
-          />
-          {allowTransparent && (
-            <PopoverPrimitive.Close asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onChange("")}
-                className="justify-start"
-              >
-                {t(($) => $.core.ui.transparent)}
-              </Button>
-            </PopoverPrimitive.Close>
-          )}
-        </PopoverPrimitive.Content>
-      </PopoverPrimitive.Portal>
-    </PopoverPrimitive.Root>
+    <span
+      className={cn(
+        "relative block size-7 shrink-0 overflow-hidden rounded-full border border-input transition-colors focus-within:border-ring hover:border-ring",
+        !value &&
+          "bg-[length:8px_8px] bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%,#ccc),linear-gradient(45deg,#ccc_25%,#fff_25%,#fff_75%,#ccc_75%,#ccc)] bg-[position:0_0,4px_4px]",
+      )}
+      style={value ? { backgroundColor: value } : undefined}
+    >
+      <input
+        type="color"
+        aria-label={ariaLabel}
+        value={HEX_COLOR.test(value) ? value : "#ffffff"}
+        onChange={(event) => onChange(event.target.value)}
+        className="absolute inset-0 size-full cursor-pointer opacity-0"
+      />
+    </span>
   );
 }

@@ -590,6 +590,15 @@ export interface SearchHit {
     line: number;
     preview: string;
 }
+export interface ZoteroAccount {
+    userId: string;
+    username: string;
+}
+export interface ZoteroLibraryExport {
+    bibtex: string;
+    count: number;
+    total: number;
+}
 export type ModelTrust = "verified" | "untested" | "blocked";
 export type ModelStatus = "active" | "deprecated" | "alpha" | "beta";
 export interface ModelCost {
@@ -986,6 +995,8 @@ export interface BackendPort {
 }) => Promise<string>;
   getConnectorKey: (connectorId: string) => Promise<string | null>;
   setConnectorKey: (connectorId: string, value: string) => Promise<void>;
+  zoteroVerify: (userId: string, apiKey: string) => Promise<ZoteroAccount>;
+  zoteroLibraryBibtex: () => Promise<ZoteroLibraryExport>;
   searchDocs: (query: string) => Promise<SearchHit[]>;
   searchProject: (projectId: string, query: string) => Promise<SearchHit[]>;
   getConfig: () => Promise<AppConfig>;

@@ -46,6 +46,18 @@
     "query_too_long": "O termo de busca é longo demais ({{max}} caracteres no máximo).",
     "unknown_source": "Fonte de literatura desconhecida."
   },
+  "zotero": {
+    "invalid_user_id": "Um ID de usuário do Zotero é um número. Copie o seu da página de chaves de API do Zotero.",
+    "key_rejected": "O Zotero não aceitou esta chave de API. Confira se você copiou a chave inteira e se ela ainda existe em zotero.org.",
+    "library_not_readable": "Esta chave de API não consegue ler sua biblioteca do Zotero. Em zotero.org, edite a chave e ative Allow library access.",
+    "user_mismatch": "Esta chave de API pertence ao ID de usuário do Zotero {{keyUserId}}, não a {{userId}}. Confira o ID de usuário e tente de novo.",
+    "not_connected": "Conecte primeiro sua conta do Zotero em Configurações, Integrações, Zotero.",
+    "rate_limited": "O Zotero está limitando as solicitações agora. Espere alguns minutos e tente de novo.",
+    "unreachable": "O Oleafly não conseguiu acessar o Zotero. Confira sua conexão com a internet e tente de novo.",
+    "http_error": "O Zotero retornou um erro (HTTP {{status}}). Tente de novo mais tarde.",
+    "invalid_response": "O Zotero enviou uma resposta que o Oleafly não conseguiu ler. Tente de novo mais tarde.",
+    "too_large": "Sua biblioteca do Zotero é grande demais para importar de uma vez. Exporte uma coleção do Zotero como arquivo RDF e importe esse arquivo."
+  },
   "tex": {
     "no_host_binary": "O TinyTeX não tem um binário {{name}} compatível com este sistema.",
     "package_operation_timeout": "A operação com pacotes passou do limite de {{span}} e foi interrompida, para que você possa compilar de novo. O espelho do TeX Live provavelmente está sobrecarregado. Tente mais tarde ou execute o tlmgr você mesmo.",

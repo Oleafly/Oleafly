@@ -334,7 +334,7 @@ export function TemplateGenerateModal({
                 }}
                 placeholder={t(($) => $.library.generate.promptPlaceholder)}
                 rows={6}
-                className="min-h-32 w-full resize-none border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
+                className="min-h-32 w-full resize-none border-0 bg-transparent p-0 text-base shadow-none"
               />
               <div className="mt-3 flex items-center justify-end gap-2">
                 {modelGroups.length > 0 && (

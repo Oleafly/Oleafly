@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DictionaryInfo } from "@oleafly/backend-port";
@@ -106,6 +106,21 @@ describe("spelling dictionary picker", () => {
     expect(
       screen.getByRole("option", { name: /German \(Germany\)/u }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the download size at the end of the row, after the name", async () => {
+    const user = userEvent.setup();
+    render(<DictionaryLocalePicker />);
+
+    await user.click(
+      await screen.findByRole("combobox", { name: copy.ariaLabel }),
+    );
+    const option = await screen.findByRole("option", {
+      name: /Spanish \(Spain\)/u,
+    });
+    const size = within(option).getByText("2.5 MB");
+    expect(size.closest("span.ml-auto")).toBe(option.lastElementChild);
+    expect(option.lastElementChild).not.toHaveTextContent("Spanish");
   });
 
   it("switches straight to a language that is already present", async () => {

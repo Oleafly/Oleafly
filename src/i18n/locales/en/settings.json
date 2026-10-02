@@ -1075,9 +1075,12 @@
       "disconnect": "Disconnect"
     },
     "alphaxiv": {
-      "apiKeyHint": "To get a key: sign in at <siteLink>alphaxiv.org</siteLink>, open your <keyLink>API key page</keyLink>, generate a key (it starts with <keyPrefix>axv1_</keyPrefix>), and paste it below.",
+      "apiKeyHint": "To get a key, sign in at <siteLink>alphaxiv.org</siteLink>, open Settings > API Keys, create a key, and paste it here. Oleafly uses it to connect to alphaXiv's <docsLink>MCP server</docsLink>.",
       "apiKeyLabel": "alphaXiv API key",
-      "description": "Literature search and paper analysis tools for the assistant."
+      "connected": "Connected. The assistant can now use alphaXiv, and it asks you first every time.",
+      "connectFailed": "alphaXiv did not accept this key, or could not be reached. Check the key and try again.",
+      "description": "Literature search and paper analysis tools for the assistant.",
+      "disconnectFailed": "Could not disconnect alphaXiv. Try again."
     },
     "cookies": {
       "action": "Import cookies",
@@ -1120,7 +1123,11 @@
     "zotero": {
       "apiKeyHint": "To get a key: sign in at <siteLink>zotero.org</siteLink>, open your <keyLink>API key page</keyLink> to create a key, and copy your numeric user ID from the same page.",
       "apiKeyLabel": "Zotero API key",
+      "connected": "Connected to your Zotero library.",
+      "connectedAs": "Connected as {{username}}.",
       "description": "Import citations and references from your Zotero library.",
+      "disconnectFailed": "Oleafly couldn't remove the saved Zotero key. Try again.",
+      "importHint": "To import, open a project's References panel and choose Import reference library.",
       "userIdLabel": "Zotero user ID",
       "userIdPlaceholder": "User ID"
     }

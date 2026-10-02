@@ -46,6 +46,18 @@
     "query_too_long": "Interogarea de căutare este prea lungă (maximum {{max}} de caractere).",
     "unknown_source": "Sursă de literatură necunoscută."
   },
+  "zotero": {
+    "invalid_user_id": "Un identificator de utilizator Zotero este un număr. Copiază-l pe al tău din pagina cheilor API Zotero.",
+    "key_rejected": "Zotero nu a acceptat această cheie API. Verifică dacă ai copiat toată cheia și dacă mai există pe zotero.org.",
+    "library_not_readable": "Această cheie API nu poate citi biblioteca ta Zotero. Pe zotero.org, editează cheia și activează Allow library access.",
+    "user_mismatch": "Această cheie API aparține identificatorului de utilizator Zotero {{keyUserId}}, nu {{userId}}. Verifică identificatorul și încearcă din nou.",
+    "not_connected": "Conectează mai întâi contul Zotero din Setări, Integrări, Zotero.",
+    "rate_limited": "Zotero limitează acum cererile. Așteaptă câteva minute, apoi încearcă din nou.",
+    "unreachable": "Oleafly nu a putut contacta Zotero. Verifică conexiunea la internet, apoi încearcă din nou.",
+    "http_error": "Zotero a returnat o eroare (HTTP {{status}}). Încearcă din nou mai târziu.",
+    "invalid_response": "Zotero a trimis un răspuns pe care Oleafly nu l-a putut citi. Încearcă din nou mai târziu.",
+    "too_large": "Biblioteca ta Zotero este prea mare ca să fie importată dintr-odată. Exportă în schimb o colecție din Zotero ca fișier RDF și importă-l pe acela."
+  },
   "tex": {
     "no_host_binary": "TinyTeX nu are un binar {{name}} compatibil cu acest sistem.",
     "package_operation_timeout": "Operațiunea cu pachete a depășit limita de {{span}} și a fost oprită, ca să poți compila din nou. Probabil serverul TeX Live este ocupat. Încearcă mai târziu sau rulează tu tlmgr.",

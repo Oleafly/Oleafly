@@ -55,6 +55,25 @@ describe("ThemeCustomization", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens the system color picker straight from the swatch and stores the pick", async () => {
+    open();
+
+    const swatch = screen.getByLabelText(
+      customTheme.pickColorLight.replace("{{token}}", customTheme.tokens.primary),
+    );
+    expect(swatch).toHaveAttribute("type", "color");
+    expect(swatch.parentElement).toHaveClass("rounded-full");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.input(swatch, { target: { value: "#ff0000" } });
+
+    await waitFor(() =>
+      expect(readThemeCustomization().light.primary).toBe("#ff0000"),
+    );
+    expect(tokenInput(customTheme.tokens.primary)).toHaveValue("#ff0000");
+    expect(swatch.parentElement).toHaveStyle({ backgroundColor: "#ff0000" });
+  });
+
   it("stores a token for the mode being edited and restores it", async () => {
     open();
 

@@ -65,7 +65,7 @@ export function PromptPopover({
           placeholder={t(($) => $.editor.inlineAi.promptPlaceholder)}
           disabled={streaming}
           rows={2}
-          className="min-h-[2.75rem] min-w-0 flex-1 resize-none border-0 bg-transparent text-sm leading-snug shadow-none outline-none placeholder:text-muted-foreground disabled:opacity-60"
+          className="min-h-[2.75rem] min-w-0 flex-1 resize-none border-0 bg-transparent text-sm leading-snug shadow-none placeholder:text-muted-foreground disabled:opacity-60"
         />
         <button
           type="button"

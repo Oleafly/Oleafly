@@ -1069,9 +1069,12 @@
       "disconnect": "中斷連線"
     },
     "alphaxiv": {
-      "apiKeyHint": "取得金鑰的方式：在 <siteLink>alphaxiv.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink>，產生一組金鑰（開頭是 <keyPrefix>axv1_</keyPrefix>），然後貼到下方。",
+      "apiKeyHint": "取得金鑰的方式：在 <siteLink>alphaxiv.org</siteLink> 登入，開啟 Settings > API Keys，建立一組金鑰，然後貼到這裡。Oleafly 會用它連線到 alphaXiv 的 <docsLink>MCP 伺服器</docsLink>。",
       "apiKeyLabel": "alphaXiv API 金鑰",
-      "description": "提供給助理使用的文獻搜尋與論文分析工具。"
+      "connected": "已連線。助理現在可以使用 alphaXiv，每次使用前都會先徵求你的同意。",
+      "connectFailed": "alphaXiv 不接受這組金鑰，或無法連線到 alphaXiv。請檢查金鑰後再試一次。",
+      "description": "提供給助理使用的文獻搜尋與論文分析工具。",
+      "disconnectFailed": "無法中斷與 alphaXiv 的連線。請再試一次。"
     },
     "cookies": {
       "action": "匯入 Cookie",
@@ -1110,7 +1113,11 @@
     "zotero": {
       "apiKeyHint": "取得金鑰的方式：在 <siteLink>zotero.org</siteLink> 登入，開啟你的 <keyLink>API 金鑰頁面</keyLink> 建立金鑰，並從同一頁複製你的數字使用者 ID。",
       "apiKeyLabel": "Zotero API 金鑰",
+      "connected": "已連線到你的 Zotero 文獻庫。",
+      "connectedAs": "已以 {{username}} 的身分連線。",
       "description": "從你的 Zotero 文獻庫匯入引用與參考文獻。",
+      "disconnectFailed": "Oleafly 無法移除已儲存的 Zotero 金鑰。請再試一次。",
+      "importHint": "若要匯入，請在專案中開啟「參考文獻」面板，然後選擇「匯入參考文獻庫」。",
       "userIdLabel": "Zotero 使用者 ID",
       "userIdPlaceholder": "使用者 ID"
     }

@@ -1070,7 +1070,7 @@ export function NewEntryInput({
             ? t(($) => $.workspace.files.newEntry.folderPlaceholder)
             : t(($) => $.workspace.files.newEntry.filePlaceholder)
         }
-        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm focus-visible:border-ring"
       />
     </div>
   );
@@ -1109,7 +1109,7 @@ export function RenameEntryInput({
           if (e.key === "Escape") cancelOnce();
         }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none"
+        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
       />
     </div>
   );
@@ -1348,7 +1348,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       aria-disabled={unreadable ? true : undefined}
       title={hint}
       className={cn(
-        "group flex cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground outline-none hover:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
+        "group flex cursor-pointer items-center gap-1.5 rounded-md py-1.5 pr-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
         isActive && "bg-sidebar-accent",
         isSelected && !isActive && "bg-sidebar-accent/60",
         isDropTarget && "bg-primary/15"
@@ -1384,7 +1384,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
           type="button"
           aria-label={t(($) => $.workspace.files.moreActions, { name: node.name })}
           onClick={openRowMenu}
-          className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-sidebar-accent-foreground/10 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-sidebar-accent-foreground/10 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:bg-sidebar-accent-foreground/10"
         >
           <MoreHorizontal className="size-3.5" />
         </button>

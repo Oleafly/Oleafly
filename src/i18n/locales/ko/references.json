@@ -43,7 +43,12 @@
     "unrecognized": "인식할 수 없는 파일 형식: {{name}}",
     "zotero": {
       "button": "Zotero RDF 파일 선택",
+      "connect": "Zotero 계정 연결",
+      "connectedDescription": "Zotero 라이브러리의 참고문헌을 모두 가져오거나, 내보낸 Zotero RDF 파일을 선택하세요.",
       "description": "Zotero에서 파일 → 라이브러리 내보내기 → Zotero RDF를 선택한 다음, 내보낸 파일을 고르세요.",
+      "empty": "Zotero 라이브러리에 가져올 참고문헌이 없습니다.",
+      "importLibrary": "Zotero 라이브러리 가져오기",
+      "limited": "Oleafly가 Zotero 라이브러리의 항목 {{total}}개 중 처음 {{fetched}}개를 읽었습니다.",
       "title": "Zotero"
     }
   },

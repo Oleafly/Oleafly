@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertCircle, Upload } from "lucide-react";
+import { AlertCircle, Download, Loader2, Settings2, Upload } from "lucide-react";
+import { ZoteroBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,23 +16,21 @@ import {
   type BatchImportResult,
 } from "@/features/citation";
 import type { ParsedBib } from "@/lib/citation/types";
+import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
+import { zoteroLibraryBibtex, type ZoteroLibraryExport } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
+import { useSettingsStore } from "@/store/settings";
+import { useZoteroConnectorStore } from "@/store/zotero-connector";
+
+const ZOTERO_LIBRARY_FILE = "zotero-library.bib";
 
 function ZoteroLogo() {
   return (
-    <svg
-      data-testid="zotero-logo"
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-5"
-    >
-      <path
-        fill="#cc2936"
-        d="M4 3.75h16v3.1L9.15 17H20v3.25H4v-3.1L14.85 7H4z"
-      />
-    </svg>
+    <span data-testid="zotero-logo" className="flex">
+      <ZoteroBrandIcon className="size-4 text-[#CC2936]" />
+    </span>
   );
 }
 
@@ -83,19 +82,30 @@ function summarize(result: BatchImportResult): string {
 
 type ReadOutcome = { entries: ParsedBib[] } | { error: string };
 
-async function readEntries(file: File): Promise<ReadOutcome> {
+function parseEntries(name: string, text: string, emptyMessage: string): ReadOutcome {
   let entries: ParsedBib[] | null;
   try {
-    entries = parseCitationFile(file.name, await file.text());
+    entries = parseCitationFile(name, text);
   } catch (error) {
     void logError("import references", error);
     return { error: i18n.t(($) => $.references.import.readFailed) };
   }
   if (!entries) {
-    return { error: i18n.t(($) => $.references.import.unrecognized, { name: file.name }) };
+    return { error: i18n.t(($) => $.references.import.unrecognized, { name }) };
   }
-  if (!entries.length) return { error: i18n.t(($) => $.references.import.empty) };
+  if (!entries.length) return { error: emptyMessage };
   return { entries };
+}
+
+async function readEntries(file: File): Promise<ReadOutcome> {
+  let text: string;
+  try {
+    text = await file.text();
+  } catch (error) {
+    void logError("import references", error);
+    return { error: i18n.t(($) => $.references.import.readFailed) };
+  }
+  return parseEntries(file.name, text, i18n.t(($) => $.references.import.empty));
 }
 
 function describeErrors(errors: readonly string[]): string {
@@ -112,28 +122,52 @@ function describeErrors(errors: readonly string[]): string {
   });
 }
 
-interface UploadCardProps {
-  icon: React.ReactNode;
-  title: string;
-  description: React.ReactNode;
+interface FilePickerButtonProps {
   accept: string;
-  buttonLabel: string;
+  label: string;
   onFile: (file: File) => Promise<void>;
   busy: boolean;
 }
 
-function UploadCard({
-  icon,
-  title,
-  description,
-  accept,
-  buttonLabel,
-  onFile,
-  busy,
-}: Readonly<UploadCardProps>) {
+function FilePickerButton({ accept, label, onFile, busy }: Readonly<FilePickerButtonProps>) {
   const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className="rounded-lg border p-4">
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        onClick={() => inputRef.current?.click()}
+      >
+        <Upload className="size-3.5" />
+        {label}
+      </Button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) void onFile(file);
+        }}
+      />
+    </>
+  );
+}
+
+interface SourceCardProps {
+  icon: ReactNode;
+  title: string;
+  description: ReactNode;
+  children: ReactNode;
+  testId?: string;
+}
+
+function SourceCard({ icon, title, description, children, testId }: Readonly<SourceCardProps>) {
+  return (
+    <div data-testid={testId} className="rounded-lg border p-4">
       <div className="flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent">
           {icon}
@@ -141,27 +175,7 @@ function UploadCard({
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold">{title}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            className="mt-3"
-            disabled={busy}
-            onClick={() => inputRef.current?.click()}
-          >
-            <Upload className="size-3.5" />
-            {buttonLabel}
-          </Button>
-          <input
-            ref={inputRef}
-            type="file"
-            accept={accept}
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              event.target.value = "";
-              if (file) void onFile(file);
-            }}
-          />
+          <div className="mt-3 flex flex-wrap items-center gap-2">{children}</div>
         </div>
       </div>
     </div>
@@ -179,20 +193,28 @@ export function ImportReferenceLibraryDialog({
 }>) {
   const { t } = useTranslation(["references"]);
   const [busy, setBusy] = useState(false);
+  const [zoteroBusy, setZoteroBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const zoteroConnected = useZoteroConnectorStore((state) => state.connected);
+  const refreshZotero = useZoteroConnectorStore((state) => state.refresh);
 
   useEffect(() => {
     if (!open) setError(null);
   }, [open]);
 
-  const importEntries = async (entries: ParsedBib[]) => {
+  useEffect(() => {
+    if (open) void refreshZotero();
+  }, [open, refreshZotero]);
+
+  const importEntries = async (entries: ParsedBib[], note?: string) => {
     try {
       const result = await addCitations(entries);
       if (result.errors.length) {
         setError(describeErrors(result.errors));
         return;
       }
-      toast.success(summarize(result));
+      const summary = summarize(result);
+      toast.success(note ? `${summary} ${note}` : summary);
       onImported?.();
       onOpenChange(false);
     } catch (error_) {
@@ -216,6 +238,50 @@ export function ImportReferenceLibraryDialog({
     }
   };
 
+  const handleZoteroLibrary = async () => {
+    setBusy(true);
+    setZoteroBusy(true);
+    setError(null);
+    try {
+      let library: ZoteroLibraryExport;
+      try {
+        library = await zoteroLibraryBibtex();
+      } catch (error_) {
+        void logError("import Zotero library", error_);
+        setError(describeError(error_));
+        return;
+      }
+      const outcome = parseEntries(
+        ZOTERO_LIBRARY_FILE,
+        library.bibtex,
+        i18n.t(($) => $.references.import.zotero.empty),
+      );
+      if ("error" in outcome) {
+        setError(outcome.error);
+        return;
+      }
+      const note =
+        library.total > library.count
+          ? i18n.t(($) => $.references.import.zotero.limited, {
+              fetched: library.count,
+              total: library.total,
+            })
+          : undefined;
+      await importEntries(outcome.entries, note);
+    } finally {
+      setZoteroBusy(false);
+      setBusy(false);
+    }
+  };
+
+  const openZoteroSettings = () => {
+    const settings = useSettingsStore.getState();
+    settings.setSettingsInitialSection("integrations");
+    settings.setSettingsScrollTarget("zotero");
+    onOpenChange(false);
+    settings.setSettingsOpen(true);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -224,24 +290,51 @@ export function ImportReferenceLibraryDialog({
           <DialogDescription>{t(($) => $.references.import.description)}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
-          <UploadCard
+          <SourceCard
+            testId="zotero-import-card"
             icon={<ZoteroLogo />}
             title={t(($) => $.references.import.zotero.title)}
-            description={t(($) => $.references.import.zotero.description)}
-            accept=".rdf"
-            buttonLabel={t(($) => $.references.import.zotero.button)}
-            onFile={handleUpload}
-            busy={busy}
-          />
-          <UploadCard
+            description={
+              zoteroConnected
+                ? t(($) => $.references.import.zotero.connectedDescription)
+                : t(($) => $.references.import.zotero.description)
+            }
+          >
+            {zoteroConnected ? (
+              <Button size="sm" disabled={busy} onClick={() => void handleZoteroLibrary()}>
+                {zoteroBusy ? (
+                  <Loader2 aria-hidden className="size-3.5 animate-spin" />
+                ) : (
+                  <Download aria-hidden className="size-3.5" />
+                )}
+                {t(($) => $.references.import.zotero.importLibrary)}
+              </Button>
+            ) : null}
+            <FilePickerButton
+              accept=".rdf"
+              label={t(($) => $.references.import.zotero.button)}
+              onFile={handleUpload}
+              busy={busy}
+            />
+            {zoteroConnected ? null : (
+              <Button size="sm" variant="ghostPrimary" disabled={busy} onClick={openZoteroSettings}>
+                <Settings2 aria-hidden className="size-3.5" />
+                {t(($) => $.references.import.zotero.connect)}
+              </Button>
+            )}
+          </SourceCard>
+          <SourceCard
             icon={<EndNoteLogo />}
             title={t(($) => $.references.import.endnote.title)}
             description={t(($) => $.references.import.endnote.description)}
-            accept=".xml,.ris,.bib"
-            buttonLabel={t(($) => $.references.import.endnote.button)}
-            onFile={handleUpload}
-            busy={busy}
-          />
+          >
+            <FilePickerButton
+              accept=".xml,.ris,.bib"
+              label={t(($) => $.references.import.endnote.button)}
+              onFile={handleUpload}
+              busy={busy}
+            />
+          </SourceCard>
         </div>
         {error ? (
           <div

@@ -53,7 +53,6 @@ export function aiToolGroupLabel(group: AiToolGroup): string {
 }
 
 const latexOnly = () => i18n.t(($) => $.ai.tools.notes.latexOnly);
-const alphaxivKey = () => i18n.t(($) => $.ai.tools.notes.alphaxivKey);
 
 export const AI_TOOLS: AiToolInfo[] = [
   { name: "read_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.readFile) },
@@ -87,18 +86,6 @@ export const AI_TOOLS: AiToolInfo[] = [
     name: "project_library_search",
     group: "Research",
     desc: () => i18n.t(($) => $.ai.tools.catalog.projectLibrarySearch),
-  },
-  {
-    name: "alphaxiv_search",
-    group: "Research",
-    desc: () => i18n.t(($) => $.ai.tools.catalog.alphaxivSearch),
-    note: alphaxivKey,
-  },
-  {
-    name: "alphaxiv_paper_content",
-    group: "Research",
-    desc: () => i18n.t(($) => $.ai.tools.catalog.alphaxivPaperContent),
-    note: alphaxivKey,
   },
   {
     name: "preview_figure",

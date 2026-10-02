@@ -43,7 +43,7 @@ export function SettingsToggleRow({
           onChange(!checked);
         }
       }}
-      className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card p-3 hover:bg-accent"
+      className="flex cursor-pointer items-center justify-between gap-4 rounded-lg border bg-card p-3 transition-colors hover:bg-accent focus-visible:border-ring focus-visible:bg-accent"
     >
       <div>
         <div className="text-sm font-medium">{label}</div>

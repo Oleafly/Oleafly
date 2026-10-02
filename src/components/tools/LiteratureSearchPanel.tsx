@@ -262,7 +262,7 @@ function SourceSelector({
               aria-pressed={active}
               onClick={() => onToggle(source.id)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-medium transition-colors focus-visible:border-ring",
                 active
                   ? "border-primary/35 bg-primary/10 text-primary"
                   : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -742,7 +742,7 @@ export function LiteratureSearchPanel() {
     <>
       <form
         onSubmit={submit}
-        className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm focus-within:ring-1 focus-within:ring-ring"
+        className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm transition-colors focus-within:border-ring"
       >
         <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
         <Input
@@ -750,7 +750,7 @@ export function LiteratureSearchPanel() {
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t(($) => $.researchTools.literature.queryPlaceholder)}
           aria-label={t(($) => $.researchTools.literature.queryAria)}
-          className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
+          className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-base shadow-none"
         />
         <Button
           type="submit"

@@ -58,6 +58,7 @@ import {
   HomeDock,
   HOME_DOCK_GLASS_SURFACE,
 } from "@/components/library/HomeDock";
+import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { markBootStage } from "@/lib/boot-telemetry";
 import { WindowControls } from "@/components/layout/WindowControls";
@@ -787,7 +788,8 @@ export function Library() {
         <fieldset
           aria-label={t(($) => $.library.home.layoutGroup)}
           className={cn(
-            "flex items-center rounded-xl border border-white/20 bg-background/75 p-1 shadow-sm backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-background/65",
+            HOME_CHROME_SURFACE,
+            "flex items-center rounded-xl p-1",
             isWindows && "mr-3",
           )}
         >
@@ -802,9 +804,9 @@ export function Library() {
                 aria-label={label}
                 aria-pressed={projectLayout === mode}
                 className={cn(
-                  "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors focus-visible:ring-1 focus-visible:ring-ring",
+                  "flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors focus-visible:bg-accent/60 focus-visible:text-foreground",
                   projectLayout === mode
-                    ? "bg-white/15 text-foreground shadow-sm dark:bg-white/10"
+                    ? "bg-accent text-foreground"
                     : "hover:text-foreground",
                 )}
               >
@@ -852,7 +854,7 @@ export function Library() {
                         type="button"
                         aria-label={t(($) => $.library.projects.actions, { name: p.name })}
                         onClick={(event) => event.stopPropagation()}
-                        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 outline-none transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+                        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
                       >
                         <Info className="size-4" />
                       </button>
@@ -933,7 +935,7 @@ export function Library() {
                   : t(($) => $.library.projects.favoriteAdd)
               }
               className={cn(
-                "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring",
+                "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground",
                 starred && "text-amber-500 hover:text-amber-500",
               )}
               style={starred ? { color: "#f59e0b" } : undefined}
@@ -984,7 +986,7 @@ export function Library() {
                 disabled={!p.has_preview || folderState !== null}
                 onClick={() => void openProjectPreview(p)}
                 aria-label={t(($) => $.library.projects.previewNamed, { name: p.name })}
-                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-35"
+                className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-35 focus-visible:bg-accent focus-visible:text-foreground"
               >
                 <Eye aria-hidden className="size-4" />
               </button>
@@ -995,7 +997,7 @@ export function Library() {
                 <button
                   type="button"
                   aria-label={t(($) => $.library.projects.actions, { name: p.name })}
-                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100"
+                  className="flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-70 transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100"
                 >
                   <Info aria-hidden className="size-4" />
                 </button>
@@ -1044,7 +1046,7 @@ export function Library() {
                       current === p.id ? null : current,
                     )
                   }
-                  className="flex min-w-0 items-center gap-3 rounded-md py-3 text-left focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex min-w-0 items-center gap-3 rounded-md py-3 text-left focus-visible:bg-accent/60"
                 >
                   <span
                     aria-hidden="true"
@@ -1133,7 +1135,7 @@ export function Library() {
                 aria-label={t(($) => $.library.projects.preview.region, {
                   name: previewProject.name,
                 })}
-                className="h-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                className="h-full overflow-auto focus-visible:bg-accent/20"
               >
                 <PdfViewer
                   data={previewBytes}
@@ -1408,8 +1410,8 @@ export function Library() {
             }))
           }
           className={cn(
-            HOME_DOCK_GLASS_SURFACE,
-            "h-11 rounded-2xl !bg-background/75 py-0 pl-10 pr-10 shadow-sm dark:!bg-background/65 dark:shadow-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
+            HOME_CHROME_SURFACE,
+            "h-11 rounded-2xl py-0 pl-10 pr-10 focus-visible:border-ring [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
           )}
         />
         {filters.metadata ? (
@@ -1419,7 +1421,7 @@ export function Library() {
             onClick={() =>
               setFilters((current) => ({ ...current, metadata: "" }))
             }
-            className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
           >
             <X aria-hidden className="size-3.5" />
           </button>
@@ -1446,8 +1448,8 @@ export function Library() {
               disabled={busy}
               aria-label={t(($) => $.library.home.import)}
               className={cn(
-                HOME_DOCK_GLASS_SURFACE,
-                "size-10 rounded-2xl !bg-background/75 p-0 text-muted-foreground shadow-sm hover:text-foreground focus-visible:!bg-accent focus-visible:text-foreground dark:!bg-background/65 dark:shadow-sm dark:focus-visible:!bg-accent/60",
+                HOME_CHROME_SURFACE,
+                "size-10 rounded-2xl p-0 text-muted-foreground hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground dark:focus-visible:bg-accent/60",
               )}
             >
               {busy ? (
@@ -1471,8 +1473,8 @@ export function Library() {
               "relative flex w-96 flex-col gap-3 overflow-hidden rounded-2xl !border-white/25 !bg-background/70 p-4 backdrop-blur-2xl backdrop-saturate-150 before:pointer-events-none before:absolute before:inset-0 before:bg-[linear-gradient(145deg,rgba(255,255,255,0.09),transparent_42%,rgba(255,255,255,0.025))] dark:!border-white/15 dark:!bg-background/65 [&>*]:relative [&>*]:z-[1]",
             )}
             triggerClassName={cn(
-              HOME_DOCK_GLASS_SURFACE,
-              "size-10 rounded-2xl !bg-background/75 p-0 shadow-sm dark:!bg-background/65 dark:shadow-sm",
+              HOME_CHROME_SURFACE,
+              "size-10 rounded-2xl p-0",
             )}
             trigger={
               <span className="relative inline-flex">
@@ -1749,7 +1751,7 @@ export function Library() {
                 onChange={(e) => setForkName(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.repeat) void submitFork(); }}
                 placeholder={t(($) => $.library.projects.forkDialog.namePlaceholder)}
-                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm outline-none"
+                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
               />
               <Button onClick={() => void submitFork()} disabled={forkBusy}>
                 {t(($) => $.library.projects.forkDialog.confirm)}

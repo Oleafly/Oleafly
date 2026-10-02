@@ -95,7 +95,7 @@ describe("ReferencesPanel controls", () => {
     ).toHaveAttribute("aria-selected", "true");
     for (const tab of tabs) {
       expect(tab.className).toContain("text-sm");
-      expect(tab.className).toContain("focus-visible:ring-ring");
+      expect(tab.className).toContain("focus-visible:bg-accent/60");
     }
     const citations = screen.getByRole("tab", { name: "Citations, 1" });
     expect(citations.querySelector("[aria-hidden]:last-child")?.textContent).toBe("1");
@@ -134,7 +134,7 @@ describe("ReferencesPanel controls", () => {
     expect(filter.className).toContain("border-input");
     expect(filter.className).toContain("bg-background");
     expect(filter.className).toContain("rounded-md");
-    expect(filter.className).toContain("focus-visible:ring-ring");
+    expect(filter.className).toContain("focus-visible:border-ring");
     expect(filter.className).toContain("h-8");
     expect(filter.parentElement).toHaveClass("mt-2");
   });

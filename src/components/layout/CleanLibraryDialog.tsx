@@ -219,7 +219,7 @@ export function CleanLibraryDialog({
             <div className="space-y-5 p-5">
               {bibFiles.length === 0 ? <p className="text-sm text-muted-foreground">{t(($) => $.references.cleanLibrary.noBib)}</p> : <>
                 {bibFiles.length > 1 && <div className="flex flex-wrap gap-1.5">{bibFiles.map((path) => (
-                  <button key={path} type="button" disabled={busy} aria-pressed={path === target} onClick={() => setBibPath(path)} className={cn("max-w-full truncate rounded-full border px-3 py-1.5 font-mono text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", path === target ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}>{path}</button>
+                  <button key={path} type="button" disabled={busy} aria-pressed={path === target} onClick={() => setBibPath(path)} className={cn("max-w-full truncate rounded-full border px-3 py-1.5 font-mono text-xs transition-colors focus-visible:border-ring", path === target ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}>{path}</button>
                 ))}</div>}
                 <p className="break-all font-mono text-xs text-muted-foreground" data-testid="clean-library-target">{target}</p>
                 {outcome ? <div className="space-y-4">

@@ -300,8 +300,6 @@
       "literatureSearch": "Søg efter artikler i OpenAlex på nøgleord, uden at der kræves en nøgle.",
       "verifyCitation": "Lav en DOI eller en titel om til bekræftet BibTeX via doi.org eller Crossref.",
       "projectLibrarySearch": "Søg på nøgleord i projektets egen tekst og noter.",
-      "alphaxivSearch": "Søg i arXiv-artikler via alphaXiv.",
-      "alphaxivPaperContent": "Hent hele teksten til en arXiv-artikel via alphaXiv.",
       "previewFigure": "Kompiler en figur i TikZ eller PGFPlots for sig, og vis resultatet i chatten.",
       "insertFigure": "Indsæt den færdige figur ved markøren med figurtekst og etiket, og gem en PNG under figures/.",
       "loadImage": "Se på et billede, der allerede ligger i projektet.",
@@ -346,7 +344,6 @@
     "notes": {
       "latexOnly": "Kun i LaTeX-projekter",
       "pdfCaptureSetting": "Kræver indstillingen for optagelse af PDF-sider",
-      "alphaxivKey": "Kræver en alphaXiv-nøgle under Integrationer",
       "chatApproval": "Godkendes i chatten, én kommando ad gangen",
       "browserSetting": "Kræver indstillingen for webbrowseren"
     },

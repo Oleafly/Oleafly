@@ -42,14 +42,15 @@ describe("Tabs", () => {
     expect(trigger.className).not.toContain("text-sm");
   });
 
-  it("keeps the shared radius, focus ring and active colours at every size", () => {
+  it("keeps the shared radius, focus tint and active colours at every size", () => {
     renderTabs("sm");
     const list = screen.getByRole("tablist", { name: "Example views" });
     expect(list.className).toContain("rounded-lg");
     expect(list.className).toContain("bg-muted");
     const trigger = screen.getByRole("tab", { name: "One" });
     expect(trigger.className).toContain("rounded-md");
-    expect(trigger.className).toContain("focus-visible:ring-ring");
+    expect(trigger.className).toContain("focus-visible:bg-accent/60");
+    expect(trigger.className).not.toMatch(/(^|\s)\S*ring-/);
     expect(trigger.className).toContain("data-[state=active]:bg-background");
   });
 

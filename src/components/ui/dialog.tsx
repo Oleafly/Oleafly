@@ -50,7 +50,7 @@ const DialogContent = React.forwardRef<
         {children}
         <DialogPrimitive.Close
           disabled={closeDisabled}
-          className="absolute right-4 top-4 rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+          className="absolute right-4 top-4 rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 focus-visible:bg-accent focus-visible:text-foreground"
         >
           <X aria-hidden="true" className="size-4" />
           <span className="sr-only">{i18n.t(($) => $.common.actions.close)}</span>

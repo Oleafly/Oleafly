@@ -1,114 +1,50 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createResearchTools, type ResearchToolsHost } from "./research-tools";
 
-describe("alphaXiv connector tools", () => {
-  let host: ResearchToolsHost;
-  const fetchJson = vi.fn();
-  const getConnectorKey = vi.fn();
-
-  beforeEach(() => {
-    fetchJson.mockReset();
-    getConnectorKey.mockReset();
-    host = {
-      fetchJson,
-      getConnectorKey,
-      crossrefSearch: vi.fn(),
-      fetchDoiBibtex: vi.fn(),
-      retrieveProjectChunks: vi.fn(),
-    };
-  });
-
-  it("alphaxiv_search returns a friendly error when no key is configured", async () => {
-    getConnectorKey.mockResolvedValue(null);
-    const tools = createResearchTools(host);
-    const res = await tools.alphaxiv_search.execute({ query: "diffusion models" });
-    expect(res).toMatchObject({ error: expect.stringContaining("Connect alphaXiv") });
-    expect(fetchJson).not.toHaveBeenCalled();
-  });
-
-  it("alphaxiv_search calls the MCP search endpoint with the stored key", async () => {
-    getConnectorKey.mockResolvedValue("test-key-123");
-    fetchJson.mockResolvedValue({ results: [{ id: "1234.5678", title: "A Paper" }] });
-    const tools = createResearchTools(host);
-    const res = await tools.alphaxiv_search.execute({ query: "diffusion models" });
-    expect(fetchJson).toHaveBeenCalledWith(
-      expect.stringContaining("api.alphaxiv.org"),
-      expect.objectContaining({ headers: expect.objectContaining({ Authorization: "Bearer test-key-123" }) }),
-    );
-    expect(res).toMatchObject({ results: [{ id: "1234.5678", title: "A Paper" }] });
-  });
-
-  it("does not search alphaXiv before approval", async () => {
-    getConnectorKey.mockResolvedValue("test-key-123");
-    const confirm = vi.fn().mockResolvedValue(false);
-    const tools = createResearchTools(host, { confirm });
-
-    const res = await tools.alphaxiv_search.execute({ query: "diffusion models" });
-
-    expect(confirm).toHaveBeenCalledWith({
-      tool: "alphaxiv_search",
-      summary: "Search alphaXiv for diffusion models",
-    });
-    expect(fetchJson).not.toHaveBeenCalled();
-    expect(res).toMatchObject({ declined: true, tool: "alphaxiv_search" });
-  });
-
-  it("alphaxiv_paper_content requires a paper id", async () => {
-    getConnectorKey.mockResolvedValue("test-key-123");
-    const tools = createResearchTools(host);
-    const res = await tools.alphaxiv_paper_content.execute({});
-    expect(res).toMatchObject({ error: expect.any(String) });
-    expect(fetchJson).not.toHaveBeenCalled();
-  });
-
-  it("does not fetch alphaXiv paper content before approval", async () => {
-    getConnectorKey.mockResolvedValue("test-key-123");
-    const confirm = vi.fn().mockResolvedValue(false);
-    const tools = createResearchTools(host, { confirm });
-
-    const res = await tools.alphaxiv_paper_content.execute({ paper_id: "2410.16464" });
-
-    expect(confirm).toHaveBeenCalledWith({
-      tool: "alphaxiv_paper_content",
-      summary: "Fetch paper 2410.16464 from alphaXiv",
-    });
-    expect(fetchJson).not.toHaveBeenCalled();
-    expect(res).toMatchObject({ declined: true, tool: "alphaxiv_paper_content" });
-  });
-});
-
 describe("OpenAlex + citation verification tools", () => {
-  const fetchJson = vi.fn();
-  const getConnectorKey = vi.fn();
+  const searchOpenAlex = vi.fn();
   const crossrefSearch = vi.fn();
   const fetchDoiBibtex = vi.fn();
   let host: ResearchToolsHost;
 
   beforeEach(() => {
-    fetchJson.mockReset();
-    getConnectorKey.mockReset();
+    searchOpenAlex.mockReset();
     crossrefSearch.mockReset();
     fetchDoiBibtex.mockReset();
     host = {
-      fetchJson,
-      getConnectorKey,
+      searchOpenAlex,
       crossrefSearch,
       fetchDoiBibtex,
       retrieveProjectChunks: vi.fn(),
     };
   });
 
-  it("literature_search needs no connector key (OpenAlex is keyless)", async () => {
-    fetchJson.mockResolvedValue({ results: [{ id: "W123", display_name: "A Work" }] });
+  it("literature_search asks the host's OpenAlex search with a clamped limit", async () => {
+    searchOpenAlex.mockResolvedValue({ results: [{ id: "W123", display_name: "A Work" }] });
     const tools = createResearchTools(host);
-    const res = await tools.literature_search.execute({ query: "graph neural networks" });
-    expect(getConnectorKey).not.toHaveBeenCalled();
-    expect(fetchJson).toHaveBeenCalledWith(expect.stringContaining("api.openalex.org/works"));
+    const res = await tools.literature_search.execute({ query: "graph neural networks", limit: 99 });
+    expect(searchOpenAlex).toHaveBeenCalledWith("graph neural networks", 25);
     expect(res).toMatchObject({ results: [{ id: "W123" }] });
   });
 
+  it("literature_search defaults to ten results", async () => {
+    searchOpenAlex.mockResolvedValue({ results: [] });
+    const tools = createResearchTools(host);
+    await tools.literature_search.execute({ query: "graph neural networks" });
+    expect(searchOpenAlex).toHaveBeenCalledWith("graph neural networks", 10);
+  });
+
+  it("offers no alphaXiv tools of its own", () => {
+    const tools = createResearchTools(host);
+    expect(Object.keys(tools).sort()).toEqual([
+      "literature_search",
+      "project_library_search",
+      "verify_citation",
+    ]);
+  });
+
   it("does not start an internet request before approval", async () => {
-    fetchJson.mockResolvedValue({ results: [] });
+    searchOpenAlex.mockResolvedValue({ results: [] });
     const confirm = vi.fn().mockResolvedValue(false);
     const tools = createResearchTools(host, { confirm });
 
@@ -118,7 +54,7 @@ describe("OpenAlex + citation verification tools", () => {
       tool: "literature_search",
       summary: "Search OpenAlex for graph neural networks",
     });
-    expect(fetchJson).not.toHaveBeenCalled();
+    expect(searchOpenAlex).not.toHaveBeenCalled();
     expect(res).toMatchObject({ declined: true, tool: "literature_search" });
   });
 
@@ -168,8 +104,7 @@ describe("project library search", () => {
   beforeEach(() => {
     retrieveProjectChunks.mockReset();
     host = {
-      fetchJson: vi.fn(),
-      getConnectorKey: vi.fn(),
+      searchOpenAlex: vi.fn(),
       crossrefSearch: vi.fn(),
       fetchDoiBibtex: vi.fn(),
       retrieveProjectChunks,

@@ -300,8 +300,6 @@
       "literatureSearch": "Durchsucht OpenAlex nach Aufsätzen per Stichwort, ohne Schlüssel.",
       "verifyCitation": "Macht aus einer DOI oder einem Titel geprüftes BibTeX über doi.org oder Crossref.",
       "projectLibrarySearch": "Durchsucht Text und Notizen des Projekts per Stichwort.",
-      "alphaxivSearch": "Durchsucht arXiv-Aufsätze über alphaXiv.",
-      "alphaxivPaperContent": "Holt den Volltext eines arXiv-Aufsatzes über alphaXiv.",
       "previewFigure": "Kompiliert eine TikZ- oder PGFPlots-Abbildung für sich und zeigt das Ergebnis im Chat.",
       "insertFigure": "Fügt die fertige Abbildung mit Bildunterschrift und Label an der Cursorstelle ein und sichert ein PNG unter figures/.",
       "loadImage": "Sieht sich ein Bild an, das bereits im Projekt liegt.",
@@ -346,7 +344,6 @@
     "notes": {
       "latexOnly": "Nur für LaTeX-Projekte",
       "pdfCaptureSetting": "Braucht die Einstellung zum Erfassen von PDF-Seiten",
-      "alphaxivKey": "Braucht einen alphaXiv-Schlüssel unter Integrationen",
       "chatApproval": "Im Chat freigegeben, ein Befehl nach dem anderen",
       "browserSetting": "Braucht die Einstellung für den Webbrowser"
     },

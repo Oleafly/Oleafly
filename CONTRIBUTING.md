@@ -194,4 +194,4 @@ project's [GNU Affero General Public License v3.0 or later](LICENSE).
 
 ## UI rules
 
-No outlines on any element. Never add a CSS `outline`, a focus ring (Tailwind `ring-*`, `focus-visible:ring-*`, `outline-*` utilities) or a selection outline on editor nodes. Show focus and selection with a background tint or a border colour change only. The global rule at the end of `src/styles/globals.css` enforces this; keep it.
+No outlines on any element. Never add a CSS `outline`, a focus ring (Tailwind `ring-*`, `focus-visible:ring-*`, `outline-*` utilities) or a selection outline on editor nodes. Show focus and selection with a background tint or a border colour change only. The global rule at the end of `src/styles/globals.css` enforces this; keep it. A unit test, `src/styles/no-outline-utilities.test.ts`, fails if any `ring-*` or `outline-*` utility shows up in `src/` or `packages/`.

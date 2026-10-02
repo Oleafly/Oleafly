@@ -46,6 +46,18 @@
     "query_too_long": "La consulta de búsqueda es demasiado larga (máximo {{max}} caracteres).",
     "unknown_source": "Fuente bibliográfica desconocida."
   },
+  "zotero": {
+    "invalid_user_id": "Un ID de usuario de Zotero es un número. Copia el tuyo de la página de claves de API de Zotero.",
+    "key_rejected": "Zotero no aceptó esta clave de API. Comprueba que copiaste la clave completa y que sigue existiendo en zotero.org.",
+    "library_not_readable": "Esta clave de API no puede leer tu biblioteca de Zotero. En zotero.org, edita la clave y activa Allow library access.",
+    "user_mismatch": "Esta clave de API pertenece al ID de usuario de Zotero {{keyUserId}}, no a {{userId}}. Revisa el ID de usuario y vuelve a intentarlo.",
+    "not_connected": "Primero conecta tu cuenta de Zotero en Ajustes, Integraciones, Zotero.",
+    "rate_limited": "Zotero está limitando las solicitudes en este momento. Espera unos minutos y vuelve a intentarlo.",
+    "unreachable": "Oleafly no pudo conectar con Zotero. Comprueba tu conexión a internet y vuelve a intentarlo.",
+    "http_error": "Zotero devolvió un error (HTTP {{status}}). Vuelve a intentarlo más tarde.",
+    "invalid_response": "Zotero envió una respuesta que Oleafly no pudo leer. Vuelve a intentarlo más tarde.",
+    "too_large": "Tu biblioteca de Zotero es demasiado grande para importarla de una vez. Exporta una colección de Zotero como archivo RDF e impórtala en su lugar."
+  },
   "tex": {
     "no_host_binary": "TinyTeX no tiene un binario {{name}} compatible con este sistema.",
     "package_operation_timeout": "La operación con paquetes superó su límite de {{span}} y se detuvo, para que puedas volver a compilar. Lo más probable es que el servidor de TeX Live esté saturado. Inténtalo más tarde o ejecuta tlmgr por tu cuenta.",

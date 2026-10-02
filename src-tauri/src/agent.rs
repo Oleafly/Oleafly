@@ -917,12 +917,7 @@ const READ_RISK_TOOLS: [&str; 30] = [
 
 const SERIAL_READ_TOOLS: [&str; 1] = ["show_location"];
 
-const NETWORK_TOOLS: [&str; 4] = [
-    "literature_search",
-    "alphaxiv_search",
-    "alphaxiv_paper_content",
-    "verify_citation",
-];
+const NETWORK_TOOLS: [&str; 2] = ["literature_search", "verify_citation"];
 
 fn tool_risk(name: &str) -> oleafly_agent::ToolRisk {
     if name == "run_command" {

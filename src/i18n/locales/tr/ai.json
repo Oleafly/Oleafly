@@ -300,8 +300,6 @@
       "literatureSearch": "OpenAlex'te anahtar sözcükle makale arar, anahtar gerekmez.",
       "verifyCitation": "Bir DOI'yi veya başlığı doi.org ya da Crossref üzerinden doğrulanmış BibTeX'e dönüştürür.",
       "projectLibrarySearch": "Projenin kendi metninde ve notlarında anahtar sözcükle arar.",
-      "alphaxivSearch": "alphaXiv üzerinden arXiv makalelerinde arar.",
-      "alphaxivPaperContent": "Bir arXiv makalesinin tam metnini alphaXiv üzerinden getirir.",
       "previewFigure": "Bir TikZ veya PGFPlots şeklini tek başına derler ve sonucu sohbette gösterir.",
       "insertFigure": "Bitmiş şekli imlecin olduğu yere başlık ve etiketle ekler, figures/ altına bir PNG kaydeder.",
       "loadImage": "Projede zaten bulunan bir görsele bakar.",
@@ -346,7 +344,6 @@
     "notes": {
       "latexOnly": "Yalnızca LaTeX projeleri",
       "pdfCaptureSetting": "PDF sayfa yakalama ayarı gerekir",
-      "alphaxivKey": "Tümleştirmeler bölümünde bir alphaXiv anahtarı gerekir",
       "chatApproval": "Sohbette, her seferinde tek komut olarak onaylanır",
       "browserSetting": "Web tarayıcısı ayarı gerekir"
     },

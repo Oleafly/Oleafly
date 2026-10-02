@@ -1075,9 +1075,12 @@
       "disconnect": "Verbinding verbreken"
     },
     "alphaxiv": {
-      "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>alphaxiv.org</siteLink>, open je <keyLink>pagina met API-sleutels</keyLink>, maak een sleutel aan (die begint met <keyPrefix>axv1_</keyPrefix>) en plak hem hieronder.",
+      "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>alphaxiv.org</siteLink>, open Settings > API Keys, maak een sleutel aan en plak hem hier. Oleafly gebruikt hem om verbinding te maken met de <docsLink>MCP-server</docsLink> van alphaXiv.",
       "apiKeyLabel": "alphaXiv API-sleutel",
-      "description": "Tools voor literatuuronderzoek en artikelanalyse voor de assistent."
+      "connected": "Verbonden. De assistent kan nu alphaXiv gebruiken en vraagt je elke keer eerst om toestemming.",
+      "connectFailed": "alphaXiv heeft deze sleutel niet geaccepteerd of is niet bereikbaar. Controleer de sleutel en probeer het opnieuw.",
+      "description": "Tools voor literatuuronderzoek en artikelanalyse voor de assistent.",
+      "disconnectFailed": "De verbinding met alphaXiv kon niet worden verbroken. Probeer het opnieuw."
     },
     "cookies": {
       "action": "Cookies importeren",
@@ -1120,7 +1123,11 @@
     "zotero": {
       "apiKeyHint": "Zo krijg je een sleutel: meld je aan bij <siteLink>zotero.org</siteLink>, open je <keyLink>pagina met API-sleutels</keyLink> om een sleutel aan te maken en kopieer je numerieke gebruikers-ID van diezelfde pagina.",
       "apiKeyLabel": "Zotero API-sleutel",
+      "connected": "Verbonden met je Zotero-bibliotheek.",
+      "connectedAs": "Verbonden als {{username}}.",
       "description": "Importeer citaties en referenties uit je Zotero-bibliotheek.",
+      "disconnectFailed": "Oleafly kon de opgeslagen Zotero-sleutel niet verwijderen. Probeer het opnieuw.",
+      "importHint": "Om te importeren open je het paneel Referenties in een project en kies je Referentiebibliotheek importeren.",
       "userIdLabel": "Zotero-gebruikers-ID",
       "userIdPlaceholder": "Gebruikers-ID"
     }

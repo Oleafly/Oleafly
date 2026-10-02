@@ -293,8 +293,6 @@
       "literatureSearch": "以關鍵字在 OpenAlex 搜尋論文，不需要金鑰。",
       "verifyCitation": "透過 doi.org 或 Crossref 把 DOI 或標題轉成已驗證的 BibTeX。",
       "projectLibrarySearch": "以關鍵字搜尋專案本身的文字與筆記。",
-      "alphaxivSearch": "透過 alphaXiv 搜尋 arXiv 論文。",
-      "alphaxivPaperContent": "透過 alphaXiv 取得 arXiv 論文的全文。",
       "previewFigure": "單獨編譯 TikZ 或 PGFPlots 圖片，並在聊天中顯示結果。",
       "insertFigure": "在游標處插入完成的圖片，附上圖說與標籤，並在 figures/ 下儲存一張 PNG。",
       "loadImage": "檢視專案中已有的影像。",
@@ -339,7 +337,6 @@
     "notes": {
       "latexOnly": "僅限 LaTeX 專案",
       "pdfCaptureSetting": "需要啟用 PDF 頁面擷取設定",
-      "alphaxivKey": "需要在「整合」中設定 alphaXiv 金鑰",
       "chatApproval": "在聊天中逐一核准指令",
       "browserSetting": "需要啟用網頁瀏覽器設定"
     },

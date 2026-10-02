@@ -420,8 +420,8 @@ const TreeRow = memo(function TreeRow({
       }
       data-intelligence-row={row.node.id}
       className={cn(
-        "group flex min-h-7 w-full cursor-pointer items-center gap-1.5 rounded-[5px] py-1 pr-2 text-left text-[13px] leading-5 outline-none",
-        "hover:bg-sidebar-accent focus-visible:bg-sidebar-accent focus-visible:ring-1 focus-visible:ring-ring",
+        "group flex min-h-7 w-full cursor-pointer items-center gap-1.5 rounded-[5px] py-1 pr-2 text-left text-[13px] leading-5",
+        "hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
         "aria-selected:bg-sidebar-accent aria-selected:text-sidebar-accent-foreground",
         "[content-visibility:auto] [contain-intrinsic-size:auto_28px]",
         isGroup && "mt-1 font-medium",
@@ -727,7 +727,7 @@ export function IntelligenceFilter({
   const { t } = useTranslation(["workspace"]);
   const inputId = useId();
   return (
-    <div className="relative block rounded-md focus-within:ring-1 focus-within:ring-ring">
+    <div className="relative block rounded-md">
       <label htmlFor={inputId} className="sr-only">
         {label}
       </label>
@@ -742,14 +742,14 @@ export function IntelligenceFilter({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder ?? t(($) => $.workspace.tree.filterPlaceholder)}
-        className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75 focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring"
+        className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75 focus-visible:border-ring"
       />
       {value ? (
         <button
           type="button"
           aria-label={t(($) => $.workspace.tree.clearFilter)}
           onClick={() => onChange("")}
-          className="absolute right-0 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+          className="absolute right-0 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
         >
           <X aria-hidden className="size-3" />
         </button>

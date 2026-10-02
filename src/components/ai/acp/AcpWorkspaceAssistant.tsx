@@ -463,7 +463,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
             useAcpSessionsStore.getState().setSnapshot(await acpSetModel(projectId, session.id, modelId));
           })}
         >
-          <SelectTrigger aria-label={t(($) => $.ai.acp.agentModel)} data-testid="acp-model-picker" className="h-7 w-auto min-w-0 max-w-44 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus:ring-0">
+          <SelectTrigger aria-label={t(($) => $.ai.acp.agentModel)} data-testid="acp-model-picker" className="h-7 w-auto min-w-0 max-w-44 gap-1 border-0 bg-transparent px-2 text-xs font-medium shadow-none hover:bg-accent focus-visible:bg-accent">
             <SelectValue placeholder={t(($) => $.ai.acp.agentModel)} />
           </SelectTrigger>
           <SelectContent className="z-[100]" align="end">
@@ -557,7 +557,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
             if (event.nativeEvent.isComposing) return;
             if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); }
           }}
-          className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none outline-none placeholder:text-muted-foreground/70 focus-visible:ring-0"
+          className="max-h-56 min-h-[32px] w-full resize-none overflow-y-auto rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none placeholder:text-muted-foreground/70"
         />
         <div data-testid="acp-composer-controls" className="ai-composer-controls mt-2 flex min-h-7 min-w-0 flex-nowrap items-center justify-between gap-0.5">
           {composerLeftControls()}

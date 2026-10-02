@@ -555,7 +555,7 @@ export function Editor() {
               type="button"
               aria-label={t(($) => $.editor.shell.editorSettings)}
               onClick={() => useSettingsStore.getState().openSettingsAt("appearance", "editor")}
-              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
             >
               <Settings2 className="size-4" aria-hidden />
             </button>

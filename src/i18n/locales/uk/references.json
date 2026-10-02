@@ -55,7 +55,12 @@
     "unrecognized": "Нерозпізнаний тип файлу: {{name}}",
     "zotero": {
       "button": "Вибрати файл Zotero RDF",
+      "connect": "Підключити обліковий запис Zotero",
+      "connectedDescription": "Імпортуйте всі джерела з бібліотеки Zotero або виберіть експортований файл Zotero RDF.",
       "description": "У Zotero виберіть File → Export Library → Zotero RDF. Потім виберіть експортований файл.",
+      "empty": "У вашій бібліотеці Zotero немає джерел для імпорту.",
+      "importLibrary": "Імпортувати бібліотеку Zotero",
+      "limited": "Oleafly прочитав перші {{fetched}} із {{total}} елементів вашої бібліотеки Zotero.",
       "title": "Zotero"
     }
   },

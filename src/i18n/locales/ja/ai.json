@@ -293,8 +293,6 @@
       "literatureSearch": "OpenAlex をキーワードで検索して論文を探します。キーは不要です。",
       "verifyCitation": "DOI やタイトルから、doi.org または Crossref を通して検証済みの BibTeX を取得します。",
       "projectLibrarySearch": "プロジェクト自身の本文とメモをキーワードで検索します。",
-      "alphaxivSearch": "alphaXiv を通して arXiv の論文を検索します。",
-      "alphaxivPaperContent": "alphaXiv を通して arXiv 論文の全文を取得します。",
       "previewFigure": "TikZ や PGFPlots の図を単独でコンパイルし、結果をチャットに表示します。",
       "insertFigure": "仕上がった図をキャプションとラベル付きでカーソル位置に挿入し、PNG を figures/ 以下に保存します。",
       "loadImage": "すでにプロジェクトにある画像を見ます。",
@@ -339,7 +337,6 @@
     "notes": {
       "latexOnly": "LaTeX プロジェクトのみ",
       "pdfCaptureSetting": "PDF のページ取り込み設定が必要",
-      "alphaxivKey": "連携で alphaXiv のキーが必要",
       "chatApproval": "チャットで 1 コマンドずつ承認",
       "browserSetting": "ウェブブラウザの設定が必要"
     },

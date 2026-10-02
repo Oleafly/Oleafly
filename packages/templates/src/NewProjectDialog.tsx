@@ -555,7 +555,7 @@ export function NewProjectDialog({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("dialog.searchPlaceholder")}
-              className="h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm outline-none focus:ring-1 focus:ring-ring"
+              className="h-10 w-full rounded-md border border-input bg-background pl-8 pr-3 text-sm focus:border-ring"
             />
           </div>
           <Select
@@ -638,9 +638,9 @@ export function NewProjectDialog({
                   data-testid={`template-card-${entry.id}`}
                   onClick={() => choose(entry)}
                   title={entry.description}
-                  className="group flex flex-col text-left focus:outline-none"
+                  className="group flex flex-col text-left"
                 >
-                  <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm ring-1 ring-transparent transition-all duration-150 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:ring-primary/50 group-focus-visible:ring-primary">
+                  <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-md group-focus-visible:border-primary">
                     <Preview template={entry} host={host} t={t} />
                     {(entry.category || "") === "AI Generated" && (
                       <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
@@ -727,7 +727,7 @@ export function NewProjectDialog({
               }
             }}
             placeholder={nameHint(selected, t)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:border-ring"
           />
 
           <p className="mb-1.5 mt-5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -747,8 +747,8 @@ export function NewProjectDialog({
                     aria-label={c.name}
                     aria-pressed={active}
                     className={cn(
-                      "flex size-7 items-center justify-center rounded-full transition-transform hover:scale-110",
-                      active && "scale-110 ring-1 ring-primary ring-offset-2 ring-offset-background",
+                      "flex size-7 items-center justify-center rounded-full border-2 border-transparent transition-transform hover:scale-110 focus-visible:border-foreground/50",
+                      active && "scale-110 border-background",
                     )}
                     style={{ background: c.hex }}
                   >

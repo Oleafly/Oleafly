@@ -15,7 +15,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-9 w-full cursor-pointer items-center justify-between whitespace-nowrap rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 focus-visible:border-ring",
       className
     )}
     {...props}
@@ -107,15 +107,16 @@ const SelectItem = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
     icon?: React.ReactNode;
     indicator?: "left" | "right-circle";
+    trailing?: React.ReactNode;
   }
->(({ className, children, icon, indicator = "left", ...props }, ref) => (
+>(({ className, children, icon, indicator = "left", trailing, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
     data-label={React.Children.toArray(children)
       .filter((child): child is string | number => typeof child === "string" || typeof child === "number")
       .join("")}
     className={cn(
-      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 text-sm focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       indicator === "left" ? "pl-8 pr-2" : "pl-2 pr-8",
       className
     )}
@@ -136,6 +137,9 @@ const SelectItem = React.forwardRef<
     )}
     {icon && <span className="mr-1.5 inline-flex shrink-0 items-center">{icon}</span>}
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+    {trailing ? (
+      <span className="ml-auto inline-flex shrink-0 items-center pl-6">{trailing}</span>
+    ) : null}
   </SelectPrimitive.Item>
 ));
 SelectItem.displayName = SelectPrimitive.Item.displayName;

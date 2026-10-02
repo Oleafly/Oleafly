@@ -1075,9 +1075,12 @@
       "disconnect": "Trennen"
     },
     "alphaxiv": {
-      "apiKeyHint": "So bekommen Sie einen Schlüssel: Melden Sie sich bei <siteLink>alphaxiv.org</siteLink> an, öffnen Sie Ihre <keyLink>Seite für API-Schlüssel</keyLink>, erzeugen Sie einen Schlüssel (er beginnt mit <keyPrefix>axv1_</keyPrefix>) und fügen Sie ihn unten ein.",
+      "apiKeyHint": "So bekommen Sie einen Schlüssel: Melden Sie sich bei <siteLink>alphaxiv.org</siteLink> an, öffnen Sie Settings > API Keys, erstellen Sie einen Schlüssel und fügen Sie ihn hier ein. Oleafly verbindet sich damit mit dem <docsLink>MCP-Server</docsLink> von alphaXiv.",
       "apiKeyLabel": "API-Schlüssel für alphaXiv",
-      "description": "Werkzeuge für Literatursuche und Aufsatzanalyse für den Assistenten."
+      "connected": "Verbunden. Der Assistent kann jetzt alphaXiv verwenden und fragt Sie jedes Mal vorher.",
+      "connectFailed": "alphaXiv hat diesen Schlüssel nicht akzeptiert oder ist nicht erreichbar. Prüfen Sie den Schlüssel und versuchen Sie es erneut.",
+      "description": "Werkzeuge für Literatursuche und Aufsatzanalyse für den Assistenten.",
+      "disconnectFailed": "Die Verbindung zu alphaXiv konnte nicht getrennt werden. Versuchen Sie es erneut."
     },
     "cookies": {
       "action": "Cookies importieren",
@@ -1120,7 +1123,11 @@
     "zotero": {
       "apiKeyHint": "So bekommen Sie einen Schlüssel: Melden Sie sich bei <siteLink>zotero.org</siteLink> an, öffnen Sie Ihre <keyLink>Seite für API-Schlüssel</keyLink>, um einen Schlüssel zu erstellen, und kopieren Sie Ihre numerische Benutzer-ID von derselben Seite.",
       "apiKeyLabel": "API-Schlüssel für Zotero",
+      "connected": "Mit Ihrer Zotero-Bibliothek verbunden.",
+      "connectedAs": "Verbunden als {{username}}.",
       "description": "Zitationen und Literaturangaben aus Ihrer Zotero-Bibliothek importieren.",
+      "disconnectFailed": "Oleafly konnte den gespeicherten Zotero-Schlüssel nicht entfernen. Versuchen Sie es erneut.",
+      "importHint": "Zum Importieren öffnen Sie in einem Projekt den Bereich Referenzen und wählen Literaturbibliothek importieren.",
       "userIdLabel": "Benutzer-ID bei Zotero",
       "userIdPlaceholder": "Benutzer-ID"
     }

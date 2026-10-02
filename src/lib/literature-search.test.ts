@@ -225,6 +225,41 @@ describe("literature result processing", () => {
     expect(bibtex).toContain("journal = {Journal of Useful Models}");
   });
 
+  it("skips Google Scholar without a Serper key instead of reporting it as failed", async () => {
+    const transport = vi.fn(async (): Promise<string> => CROSSREF_FIXTURE);
+    const hasKey = vi.fn(async () => false);
+    const response = await searchLiterature(
+      {
+        query: "useful models",
+        sources: ["crossref", "google-scholar"],
+        ignoreCache: true,
+      },
+      transport,
+      hasKey,
+    );
+    expect(hasKey).toHaveBeenCalledWith("serper");
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(transport).toHaveBeenCalledWith("crossref", "useful models", expect.anything());
+    expect(response.runs).toMatchObject([{ source: "crossref", status: "ok" }]);
+  });
+
+  it("searches Google Scholar once a Serper key is saved", async () => {
+    const transport = vi.fn(async (source: string): Promise<string> =>
+      source === "google-scholar" ? JSON.stringify({ organic: [] }) : CROSSREF_FIXTURE,
+    );
+    const response = await searchLiterature(
+      {
+        query: "useful models",
+        sources: ["crossref", "google-scholar"],
+        ignoreCache: true,
+      },
+      transport,
+      async () => true,
+    );
+    expect(transport).toHaveBeenCalledWith("google-scholar", "useful models", expect.anything());
+    expect(response.runs.map((run) => run.source)).toEqual(["crossref", "google-scholar"]);
+  });
+
   it("keeps successful sources when another source is rate-limited", async () => {
     const transport = vi.fn(
       async (source: string): Promise<string> => {

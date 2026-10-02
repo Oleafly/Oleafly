@@ -49,6 +49,7 @@ import { platform as osPlatform, arch as osArch, version as osVersion } from "@t
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { SettingsPath } from "@/components/settings/SettingsPath";
+import { SettingsNote } from "@/components/settings/SettingsNote";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { UpdateChecker } from "@/components/layout/UpdateChecker";
 import { EngineSection } from "@/components/settings/EngineSection";
@@ -1019,9 +1020,7 @@ export function SettingsModal() {
             </SelectContent>
           </Select>
         </div>
-        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.language.note)}
-        </div>
+        <SettingsNote>{t(($) => $.settings.language.note)}</SettingsNote>
         <SettingsToggleRow
           label={t(($) => $.shell.settings.general.spellcheck.label)}
           description={t(($) => $.shell.settings.general.spellcheck.description)}
@@ -1035,17 +1034,14 @@ export function SettingsModal() {
           onChange={setHarper}
         />
         {harper && !isEnglishDictionaryLocale(dictionaryLocale) && (
-          <div
-            data-testid="settings-grammar-english-only"
-            className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground"
-          >
+          <SettingsNote testId="settings-grammar-english-only">
             {t(($) => $.shell.settings.general.harper.englishOnly, {
               name: dictionaryLabel(
                 { id: dictionaryLocale, language: dictionaryLocale, region: null },
                 currentLocale(),
               ),
             })}
-          </div>
+          </SettingsNote>
         )}
         {harper && (
           <>
@@ -1109,9 +1105,7 @@ export function SettingsModal() {
             <DictionaryLocalePicker />
           </div>
         )}
-        <div className="rounded-lg border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          {t(($) => $.shell.settings.general.proofreadingNote)}
-        </div>
+        <SettingsNote>{t(($) => $.shell.settings.general.proofreadingNote)}</SettingsNote>
         <SettingsToggleRow
           label={t(($) => $.shell.settings.general.offline.label)}
           description={t(($) => $.shell.settings.general.offline.description)}
@@ -1163,7 +1157,7 @@ export function SettingsModal() {
                   startTour(projectId ? "workspace" : "home"),
                 );
               }}
-              className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="-m-1 rounded-full p-1 transition-colors hover:bg-accent focus-visible:bg-accent"
             >
               <SettingsSwitchIndicator checked={toursEnabled} />
             </button>
@@ -1196,7 +1190,7 @@ export function SettingsModal() {
                       onClick={() =>
                         useTourStore.getState().setTourEnabled(id, !checked)
                       }
-                      className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="-m-1 rounded-full p-1 transition-colors hover:bg-accent focus-visible:bg-accent"
                     >
                       <SettingsSwitchIndicator checked={checked} />
                     </button>
@@ -1255,7 +1249,7 @@ export function SettingsModal() {
         tabIndex={-1}
         aria-modal="true"
         aria-label={t(($) => $.shell.settings.title)}
-        className="relative flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl outline-none"
+        className="relative flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden rounded-xl border bg-background shadow-2xl"
       >
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
@@ -1309,7 +1303,7 @@ export function SettingsModal() {
             )}
           </div>
           <div className="mt-2 shrink-0 border-t pt-3">
-            <SettingsFooterLinks />
+            <SettingsFooter />
           </div>
         </nav>
 
@@ -1412,6 +1406,53 @@ const LEARN_URL = "https://oleafly.com/learn/";
 const X_URL = "https://x.com/OleaflyHQ";
 const LICENSE_URL = `${REPO_URL}/blob/main/LICENSE`;
 
+function SettingsFooter() {
+  const { t } = useTranslation(["shell"]);
+  const [version, setVersion] = useState("");
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  useEffect(() => {
+    let active = true;
+    appVersion()
+      .then((value) => {
+        if (active) setVersion(value);
+      })
+      .catch(() => {
+        if (active) setVersion("");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const whatsNew = t(($) => $.shell.settings.help.resources.whatsNew);
+  return (
+    <div data-testid="settings-footer" className="flex items-center">
+      {version ? (
+        <>
+          <Tooltip label={whatsNew} side="top" className="min-w-0">
+            <button
+              type="button"
+              data-testid="settings-footer-version"
+              aria-label={`v${version}. ${whatsNew}`}
+              onClick={() => setChangelogOpen(true)}
+              className="flex h-7 min-w-0 items-center gap-1.5 rounded-md px-1 text-[11px] tabular-nums text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground"
+            >
+              <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-emerald-500" />
+              <span className="truncate">{`v${version}`}</span>
+            </button>
+          </Tooltip>
+          <span aria-hidden className="mx-1 h-4 w-px shrink-0 bg-border" />
+        </>
+      ) : null}
+      <SettingsFooterLinks />
+      {changelogOpen ? (
+        <Suspense fallback={null}>
+          <ChangelogDialog open onClose={() => setChangelogOpen(false)} />
+        </Suspense>
+      ) : null}
+    </div>
+  );
+}
+
 /** Community and docs links pinned under the Settings navigation, one icon each. */
 function SettingsFooterLinks() {
   const { t } = useTranslation(["shell"]);
@@ -1443,7 +1484,7 @@ function SettingsFooterLinks() {
     },
   ];
   return (
-    <div data-testid="settings-footer-links" className="flex items-center gap-1">
+    <div data-testid="settings-footer-links" className="flex shrink-0 items-center">
       {links.map((link) => (
         <Tooltip key={link.id} label={link.label} side="top">
           <button
@@ -1451,7 +1492,7 @@ function SettingsFooterLinks() {
             data-testid={`settings-footer-${link.id}`}
             aria-label={link.label}
             onClick={() => void openExternal(link.url)}
-            className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground"
+            className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground focus-visible:bg-background/60 focus-visible:text-foreground"
           >
             {link.icon}
           </button>

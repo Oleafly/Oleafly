@@ -46,6 +46,18 @@
     "query_too_long": "検索キーワードが長すぎます（最大 {{max}} 文字）。",
     "unknown_source": "不明な文献ソースです。"
   },
+  "zotero": {
+    "invalid_user_id": "Zotero のユーザー ID は数字です。Zotero の API キーのページからコピーしてください。",
+    "key_rejected": "Zotero はこの API キーを受け付けませんでした。キー全体をコピーしたか、zotero.org にまだキーがあるかを確認してください。",
+    "library_not_readable": "この API キーでは Zotero ライブラリを読み取れません。zotero.org でキーを編集し、Allow library access をオンにしてください。",
+    "user_mismatch": "この API キーは Zotero のユーザー ID {{keyUserId}} のもので、{{userId}} のものではありません。ユーザー ID を確認して、もう一度お試しください。",
+    "not_connected": "先に設定の連携で Zotero アカウントを接続してください。",
+    "rate_limited": "Zotero が現在リクエストを制限しています。数分待ってから、もう一度お試しください。",
+    "unreachable": "Oleafly から Zotero に接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
+    "http_error": "Zotero からエラーが返されました (HTTP {{status}})。しばらくしてから、もう一度お試しください。",
+    "invalid_response": "Zotero から Oleafly が読み取れない応答が返されました。しばらくしてから、もう一度お試しください。",
+    "too_large": "Zotero ライブラリが大きすぎて一度に読み込めません。代わりに Zotero でコレクションを RDF ファイルとして書き出し、そのファイルを読み込んでください。"
+  },
   "tex": {
     "no_host_binary": "TinyTeX にこのホストで動作する {{name}} のバイナリがありません。",
     "package_operation_timeout": "パッケージ操作が {{span}} の上限を超えたため停止しました。再度コンパイルできます。TeX Live のミラーが混雑している可能性があります。しばらくしてから再試行するか、tlmgr を自分で実行してください。",

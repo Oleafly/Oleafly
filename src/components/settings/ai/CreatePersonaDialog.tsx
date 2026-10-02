@@ -156,7 +156,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: R
               onChange={(e) => setForm((f) => ({ ...f, prompt: e.target.value }))}
               rows={5}
               placeholder={t(($) => $.settings.ai.personas.form.instructionsPlaceholder)}
-              className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:outline-none focus:ring-1 focus:ring-ring"
+              className="w-full resize-y rounded-md border bg-background px-2.5 py-2 text-xs leading-relaxed focus:border-ring"
             />
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}

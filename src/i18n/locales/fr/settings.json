@@ -1081,9 +1081,12 @@
       "disconnect": "Déconnecter"
     },
     "alphaxiv": {
-      "apiKeyHint": "Pour obtenir une clé : connectez-vous sur <siteLink>alphaxiv.org</siteLink>, ouvrez votre <keyLink>page de clés API</keyLink>, générez une clé (elle commence par <keyPrefix>axv1_</keyPrefix>) et collez-la ci-dessous.",
+      "apiKeyHint": "Pour obtenir une clé : connectez-vous sur <siteLink>alphaxiv.org</siteLink>, ouvrez Settings > API Keys, créez une clé et collez-la ici. Oleafly l'utilise pour se connecter au <docsLink>serveur MCP</docsLink> d'alphaXiv.",
       "apiKeyLabel": "Clé API alphaXiv",
-      "description": "Outils de recherche bibliographique et d'analyse d'articles pour l'assistant."
+      "connected": "Connecté. L'assistant peut maintenant utiliser alphaXiv et vous demande votre accord à chaque fois.",
+      "connectFailed": "alphaXiv n'a pas accepté cette clé ou est injoignable. Vérifiez la clé et réessayez.",
+      "description": "Outils de recherche bibliographique et d'analyse d'articles pour l'assistant.",
+      "disconnectFailed": "Impossible de déconnecter alphaXiv. Réessayez."
     },
     "cookies": {
       "action": "Importer les cookies",
@@ -1130,7 +1133,11 @@
     "zotero": {
       "apiKeyHint": "Pour obtenir une clé : connectez-vous sur <siteLink>zotero.org</siteLink>, ouvrez votre <keyLink>page de clés API</keyLink> pour créer une clé, et copiez votre identifiant utilisateur numérique sur la même page.",
       "apiKeyLabel": "Clé API Zotero",
+      "connected": "Connecté à votre bibliothèque Zotero.",
+      "connectedAs": "Connecté en tant que {{username}}.",
       "description": "Importez des citations et des références depuis votre bibliothèque Zotero.",
+      "disconnectFailed": "Oleafly n'a pas pu supprimer la clé Zotero enregistrée. Réessayez.",
+      "importHint": "Pour importer, ouvrez le panneau Références d'un projet et choisissez Importer une bibliothèque de références.",
       "userIdLabel": "Identifiant utilisateur Zotero",
       "userIdPlaceholder": "Identifiant utilisateur"
     }

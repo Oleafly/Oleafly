@@ -118,6 +118,8 @@ import type {
   ToolDecision,
   UsageTotals,
   ValidatedCompileFingerprint,
+  ZoteroAccount,
+  ZoteroLibraryExport,
 } from "@oleafly/backend-port";
 export type * from "@oleafly/backend-port";
 
@@ -1183,6 +1185,10 @@ export const getConnectorKey = (connectorId: string) =>
   invoke<string | null>("get_connector_key", { connectorId });
 export const setConnectorKey = (connectorId: string, value: string) =>
   invoke<void>("set_connector_key", { connectorId, value });
+export const zoteroVerify = (userId: string, apiKey: string) =>
+  invoke<ZoteroAccount>("zotero_verify", { userId, apiKey });
+export const zoteroLibraryBibtex = () =>
+  invoke<ZoteroLibraryExport>("zotero_library_bibtex");
 
 
 export const searchDocs = (query: string) =>

@@ -43,7 +43,12 @@
     "unrecognized": "无法识别的文件类型：{{name}}",
     "zotero": {
       "button": "选择 Zotero RDF 文件",
+      "connect": "连接 Zotero 账户",
+      "connectedDescription": "导入 Zotero 库中的全部参考文献，或选择你导出的 Zotero RDF 文件。",
       "description": "在 Zotero 中，依次选择 文件 → 导出文献库 → Zotero RDF，然后选择导出的文件。",
+      "empty": "你的 Zotero 库中没有可导入的参考文献。",
+      "importLibrary": "导入 Zotero 库",
+      "limited": "Oleafly 读取了你的 Zotero 库中 {{total}} 个条目里的前 {{fetched}} 个。",
       "title": "Zotero"
     }
   },

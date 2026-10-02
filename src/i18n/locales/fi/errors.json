@@ -46,6 +46,18 @@
     "query_too_long": "Hakulauseke on liian pitkä (enintään {{max}} merkkiä).",
     "unknown_source": "Tuntematon kirjallisuuslähde."
   },
+  "zotero": {
+    "invalid_user_id": "Zoteron käyttäjätunnus on numero. Kopioi omasi Zoteron API-avainsivulta.",
+    "key_rejected": "Zotero ei hyväksynyt tätä API-avainta. Tarkista, että kopioit koko avaimen ja että se on yhä olemassa sivustolla zotero.org.",
+    "library_not_readable": "Tällä API-avaimella ei voi lukea Zotero-kirjastoasi. Muokkaa avainta sivustolla zotero.org ja ota käyttöön Allow library access.",
+    "user_mismatch": "Tämä API-avain kuuluu Zoteron käyttäjätunnukselle {{keyUserId}}, ei tunnukselle {{userId}}. Tarkista käyttäjätunnus ja yritä uudelleen.",
+    "not_connected": "Yhdistä ensin Zotero-tilisi kohdassa Asetukset, Integraatiot, Zotero.",
+    "rate_limited": "Zotero rajoittaa pyyntöjä juuri nyt. Odota muutama minuutti ja yritä sitten uudelleen.",
+    "unreachable": "Oleafly ei saanut yhteyttä Zoteroon. Tarkista internetyhteys ja yritä uudelleen.",
+    "http_error": "Zotero palautti virheen (HTTP {{status}}). Yritä myöhemmin uudelleen.",
+    "invalid_response": "Zotero lähetti vastauksen, jota Oleafly ei pystynyt lukemaan. Yritä myöhemmin uudelleen.",
+    "too_large": "Zotero-kirjastosi on liian suuri tuotavaksi kerralla. Vie Zoterosta yksi kokoelma RDF-tiedostona ja tuo se sen sijaan."
+  },
   "tex": {
     "no_host_binary": "TinyTeX ei sisällä tälle järjestelmälle sopivaa {{name}}-ohjelmaa.",
     "package_operation_timeout": "Pakettitoiminto ylitti {{span}} rajan ja pysäytettiin, jotta kääntäminen onnistuu taas. TeX Live -peilipalvelin on todennäköisesti ruuhkainen. Yritä myöhemmin uudelleen tai aja tlmgr itse.",

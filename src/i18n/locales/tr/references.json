@@ -47,7 +47,12 @@
     "unrecognized": "Tanınmayan dosya türü: {{name}}",
     "zotero": {
       "button": "Zotero RDF dosyası seçin",
+      "connect": "Zotero hesabını bağla",
+      "connectedDescription": "Zotero kitaplığınızdaki tüm kaynakları içe aktarın veya dışa aktardığınız bir Zotero RDF dosyasını seçin.",
       "description": "Zotero'da Dosya → Kitaplığı Dışa Aktar → Zotero RDF yolunu izleyin. Ardından dışa aktarılan dosyayı seçin.",
+      "empty": "Zotero kitaplığınızda içe aktarılacak kaynak yok.",
+      "importLibrary": "Zotero kitaplığını içe aktar",
+      "limited": "Oleafly, Zotero kitaplığınızdaki {{total}} öğeden ilk {{fetched}} öğeyi okudu.",
       "title": "Zotero"
     }
   },

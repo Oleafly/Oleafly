@@ -30,7 +30,7 @@ function DiffAction({
         aria-keyshortcuts={keyShortcut}
         className={cn(
           "inline-flex size-7 items-center justify-center text-primary transition-colors",
-          "hover:bg-primary/15 focus-visible:bg-primary/15 focus-visible:outline-none",
+          "hover:bg-primary/15 focus-visible:bg-primary/15",
         )}
       >
         <Icon className="size-4" />
@@ -82,7 +82,7 @@ export function DiffActionBar({
             type="button"
             onClick={onOpenInAgent}
             aria-label={t(($) => $.editor.inlineAi.openInAgent)}
-            className="inline-flex size-7 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/15 focus-visible:bg-primary/15 focus-visible:outline-none"
+            className="inline-flex size-7 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/15 focus-visible:bg-primary/15"
           >
             <MessageSquareShare className="size-4" />
           </button>

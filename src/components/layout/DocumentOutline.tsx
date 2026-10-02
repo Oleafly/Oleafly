@@ -374,7 +374,7 @@ export function DocumentOutline({
                       )}
                       aria-expanded={!headingCollapsed}
                       onClick={() => toggleHeading(id)}
-                      className="flex size-3.5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex size-3.5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground focus-visible:bg-accent/60"
                     >
                       {headingCollapsed ? (
                         <ChevronRight aria-hidden className="size-3" />
@@ -388,7 +388,7 @@ export function DocumentOutline({
                     ref={active ? activeRef : undefined}
                     onClick={() => jump(item)}
                     aria-current={active ? "location" : undefined}
-                    className="min-w-0 flex-1 truncate text-left text-[13px] leading-5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="min-w-0 flex-1 truncate text-left text-[13px] leading-5 focus-visible:bg-accent/60"
                     title={`${displayTitle} — ${item.file}:${item.line}`}
                   >
                     <span

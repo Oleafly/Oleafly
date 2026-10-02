@@ -300,8 +300,6 @@
       "literatureSearch": "Söker artiklar i OpenAlex på nyckelord, ingen nyckel behövs.",
       "verifyCitation": "Gör om en DOI eller en titel till verifierad BibTeX via doi.org eller Crossref.",
       "projectLibrarySearch": "Söker i projektets egen text och egna anteckningar på nyckelord.",
-      "alphaxivSearch": "Söker arXiv-artiklar via alphaXiv.",
-      "alphaxivPaperContent": "Hämtar hela texten i en arXiv-artikel via alphaXiv.",
       "previewFigure": "Kompilerar en TikZ- eller PGFPlots-figur för sig och visar resultatet i chatten.",
       "insertFigure": "Infogar den färdiga figuren vid markören med bildtext och etikett, och sparar en PNG under figures/.",
       "loadImage": "Tittar på en bild som redan finns i projektet.",
@@ -346,7 +344,6 @@
     "notes": {
       "latexOnly": "Bara LaTeX-projekt",
       "pdfCaptureSetting": "Kräver inställningen för att fånga PDF-sidor",
-      "alphaxivKey": "Kräver en alphaXiv-nyckel under Integrationer",
       "chatApproval": "Godkänns i chatten, ett kommando i taget",
       "browserSetting": "Kräver inställningen för webbläsare"
     },

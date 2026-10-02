@@ -17,8 +17,7 @@ type RawToolDef = {
 // The app builds one adapter over its Tauri client; this package stays free
 // of Tauri/store imports, matching the AiToolsHost split in tools.ts.
 export interface ResearchToolsHost {
-  getConnectorKey(connectorId: string): Promise<string | null>;
-  fetchJson(url: string, init?: { headers?: Record<string, string> }): Promise<unknown>;
+  searchOpenAlex(query: string, limit: number): Promise<unknown>;
   crossrefSearch(query: string): Promise<string>;
   fetchDoiBibtex(doi: string): Promise<string>;
   retrieveProjectChunks(
@@ -26,17 +25,6 @@ export interface ResearchToolsHost {
     opts?: { topK?: number },
   ): Promise<Array<{ path: string; startLine: number; endLine: number; text: string; score: number }>>;
 }
-
-const ALPHAXIV_API_BASE = "https://api.alphaxiv.org/mcp/v1";
-
-registerConnector({
-  id: "alphaxiv",
-  name: "alphaXiv",
-  capability: "read",
-  auth: "api-key",
-  docsUrl: "https://www.alphaxiv.org/assistant",
-  toolNames: ["alphaxiv_search", "alphaxiv_paper_content"],
-});
 
 registerConnector({
   id: "openalex",
@@ -54,18 +42,6 @@ registerConnector({
   toolNames: ["project_library_search"],
 });
 
-async function requireKey(
-  host: ResearchToolsHost,
-  connectorId: string,
-  displayName: string,
-): Promise<string | { error: string }> {
-  const key = await host.getConnectorKey(connectorId);
-  if (!key) {
-    return { error: `Connect ${displayName} in Settings before using this tool.` };
-  }
-  return key;
-}
-
 export function createResearchTools(
   host: ResearchToolsHost,
   opts?: { confirm?: ConfirmFn },
@@ -78,83 +54,9 @@ export function createResearchTools(
   });
   const confirm = opts?.confirm;
   const tools: Record<string, RawToolDef> = {
-    alphaxiv_search: {
-      description:
-        "Search alphaXiv's paper index by natural-language query. Returns paper ids, titles, and short summaries. Use this to find literature relevant to a topic.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Natural-language search query" },
-        },
-        required: ["query"],
-        additionalProperties: false,
-      },
-      execute: async (input) => {
-        const keyOrError = await requireKey(host, "alphaxiv", "alphaXiv");
-        if (typeof keyOrError !== "string") return keyOrError;
-        const query = String((input.query as string | undefined) ?? "");
-        if (!query.trim()) return { error: "query must not be empty" };
-        if (
-          confirm &&
-          !(await confirm({
-            tool: "alphaxiv_search",
-            summary: `Search alphaXiv for ${query}`,
-          }))
-        ) {
-          return declined("alphaxiv_search");
-        }
-        try {
-          return await host.fetchJson(
-            `${ALPHAXIV_API_BASE}/search?q=${encodeURIComponent(query)}`,
-            { headers: { Authorization: `Bearer ${keyOrError}` } },
-          );
-        } catch (e) {
-          return { error: String(e instanceof Error ? e.message : e) };
-        }
-      },
-    },
-
-    alphaxiv_paper_content: {
-      description:
-        "Fetch the full text/content of a specific paper from alphaXiv by its paper id (as returned by alphaxiv_search).",
-      inputSchema: {
-        type: "object",
-        properties: {
-          paper_id: { type: "string", description: "alphaXiv/arXiv paper id, e.g. '2410.16464'" },
-        },
-        required: ["paper_id"],
-        additionalProperties: false,
-      },
-      execute: async (input) => {
-        const paperId = input.paper_id;
-        if (typeof paperId !== "string" || !paperId.trim()) {
-          return { error: "paper_id is required" };
-        }
-        const keyOrError = await requireKey(host, "alphaxiv", "alphaXiv");
-        if (typeof keyOrError !== "string") return keyOrError;
-        if (
-          confirm &&
-          !(await confirm({
-            tool: "alphaxiv_paper_content",
-            summary: `Fetch paper ${paperId} from alphaXiv`,
-          }))
-        ) {
-          return declined("alphaxiv_paper_content");
-        }
-        try {
-          return await host.fetchJson(
-            `${ALPHAXIV_API_BASE}/papers/${encodeURIComponent(paperId)}`,
-            { headers: { Authorization: `Bearer ${keyOrError}` } },
-          );
-        } catch (e) {
-          return { error: String(e instanceof Error ? e.message : e) };
-        }
-      },
-    },
-
     literature_search: {
       description:
-        "Search OpenAlex's scholarly-works index by natural-language query. It is keyless and free. Results include titles, authors, publication year, and OpenAlex or DOI ids. Use for general literature discovery.",
+        "Search OpenAlex's scholarly-works index by natural-language query, using the OpenAlex API key and contact email saved in Settings when there are any. Results include titles, authors, publication year, and OpenAlex or DOI ids. Use for general literature discovery.",
       inputSchema: {
         type: "object",
         properties: {
@@ -178,9 +80,7 @@ export function createResearchTools(
           return declined("literature_search");
         }
         try {
-          return await host.fetchJson(
-            `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=${limit}`,
-          );
+          return await host.searchOpenAlex(query, limit);
         } catch (e) {
           return { error: String(e instanceof Error ? e.message : e) };
         }

@@ -19,13 +19,7 @@ const MAX_NESTED_SCAN_DEPTH: usize = 5;
 const MAX_GIT_CONFIG_BYTES: u64 = 256 * 1024;
 const RUN_COMMAND_REFUSAL: &str =
     "Commands are turned off in this folder until the user trusts it in Oleafly.";
-const NETWORK_TOOLS: &[&str] = &[
-    "literature_search",
-    "alphaxiv_search",
-    "alphaxiv_paper_content",
-    "verify_citation",
-    "computer_use",
-];
+const NETWORK_TOOLS: &[&str] = &["literature_search", "verify_citation", "computer_use"];
 const DOCUMENT_EXTENSIONS: &[&str] = &[
     "bbl", "bbx", "bib", "bst", "cbx", "cfg", "cls", "csv", "dat", "def", "dtx", "eps", "gif",
     "ins", "ist", "jpeg", "jpg", "json", "latex", "lbx", "ltx", "markdown", "md", "pdf", "pgf",

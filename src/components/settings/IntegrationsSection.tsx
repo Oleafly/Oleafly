@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Github, LibraryBig } from "lucide-react";
+import { LibraryBig } from "lucide-react";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GitHubSection } from "@/components/settings/GitHubSection";
@@ -10,6 +10,7 @@ import { CitationSearchIntegrationSection } from "@/components/settings/Citation
 import { McpSection } from "@/components/settings/McpSection";
 import {
   AlphaXivBrandIcon,
+  GitHubBrandIcon,
   ZoteroBrandIcon,
 } from "@/components/settings/IntegrationBrandIcons";
 import { useSettingsStore } from "@/store/settings";
@@ -28,6 +29,9 @@ export function IntegrationsSection() {
   useEffect(() => {
     if (scrollTarget === "github") {
       setTab("github");
+      setScrollTarget(null);
+    } else if (scrollTarget === "zotero") {
+      setTab("zotero");
       setScrollTarget(null);
     } else if (scrollTarget === "citation-search") {
       setTab("citation-search");
@@ -50,17 +54,17 @@ export function IntegrationsSection() {
     >
       <TabsList>
         <TabsTrigger value="github" data-testid="integrations-tab-github">
-          <Github className="mr-1.5 size-3.5" /> {"GitHub"}
+          <GitHubBrandIcon className="mr-1.5 size-3.5" /> {"GitHub"}
         </TabsTrigger>
         <TabsTrigger
           value="alphaxiv"
           data-testid="integrations-tab-alphaxiv"
         >
-          <AlphaXivBrandIcon className="mr-1.5 size-3.5 rounded-sm" />
+          <AlphaXivBrandIcon className="mr-1.5 size-3.5 text-[oklch(45.36%_0.1566_16.66)] dark:text-[oklch(83.7%_0.0898_24.2)]" />
           {"alphaXiv"}
         </TabsTrigger>
         <TabsTrigger value="zotero" data-testid="integrations-tab-zotero">
-          <ZoteroBrandIcon className="mr-1.5 size-3.5 text-[#cc2936]" />
+          <ZoteroBrandIcon className="mr-1.5 size-3.5 text-[#CC2936]" />
           {"Zotero"}
         </TabsTrigger>
         <TabsTrigger

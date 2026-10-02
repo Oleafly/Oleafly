@@ -46,6 +46,18 @@
     "query_too_long": "Search query is too long ({{max}} characters maximum).",
     "unknown_source": "Unknown literature source."
   },
+  "zotero": {
+    "invalid_user_id": "A Zotero user ID is a number. Copy yours from the Zotero API key page.",
+    "key_rejected": "Zotero didn't accept this API key. Check that you copied the whole key and that it still exists on zotero.org.",
+    "library_not_readable": "This API key can't read your Zotero library. On zotero.org, edit the key and turn on Allow library access.",
+    "user_mismatch": "This API key belongs to Zotero user ID {{keyUserId}}, not {{userId}}. Check the user ID and try again.",
+    "not_connected": "Connect your Zotero account in Settings, Integrations, Zotero first.",
+    "rate_limited": "Zotero is limiting requests right now. Wait a few minutes, then try again.",
+    "unreachable": "Oleafly couldn't reach Zotero. Check your internet connection, then try again.",
+    "http_error": "Zotero returned an error (HTTP {{status}}). Try again later.",
+    "invalid_response": "Zotero sent a reply Oleafly couldn't read. Try again later.",
+    "too_large": "Your Zotero library is too large to import in one go. Export a collection from Zotero as an RDF file and import that instead."
+  },
   "tex": {
     "no_host_binary": "TinyTeX has no host-compatible {{name}} binary.",
     "package_operation_timeout": "The package operation passed its {{span}} limit and was stopped, so you can compile again. The TeX Live mirror is probably busy. Try again later, or run tlmgr yourself.",
