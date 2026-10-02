@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   catalogEntry,
   catalogTranslator,
-  describeMessageCatalog,
+  catalogProblems,
   missingCatalogKeys,
   provideTestCatalogs,
   testCatalog,
@@ -22,7 +22,23 @@ const partial = { ...catalog, group: { nested: "Nested", half_one: "only one for
 
 provideTestCatalogs({ sample: catalog });
 
-describeMessageCatalog("sample", ["save", "deleted", "files", "group.nested"]);
+describe("catalogProblems", () => {
+  it("finds nothing wrong with a matching catalog", () => {
+    expect(catalogProblems("sample", ["save", "deleted", "files", "group.nested"])).toEqual({
+      missing: [],
+      undeclared: [],
+      duplicated: [],
+    });
+  });
+
+  it("reports missing, undeclared and repeated keys", () => {
+    expect(catalogProblems("sample", ["save", "save", "absent", "files", "group.nested"])).toEqual({
+      missing: ["absent"],
+      undeclared: ["deleted"],
+      duplicated: ["save"],
+    });
+  });
+});
 
 describe("catalogEntry", () => {
   it("reads strings at a dotted path and ignores everything else", () => {

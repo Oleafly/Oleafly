@@ -125,7 +125,7 @@ import {
 
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import { handleDockShortcut } from "@/lib/dock-shortcuts";
-import { historyCommand, inPlainField } from "@/lib/field-history";
+import { historyCommand, inPlainField, runFieldHistory } from "@/lib/field-history";
 import {
   startNativeDockShortcutBridge,
   usesNativeDockMenu,
@@ -286,23 +286,15 @@ function secondaryCodeEditorOwns(active: HTMLElement | null): boolean {
   return !!active?.closest(".cm-content") && !sourceEditorOwns(active);
 }
 
-function runMenuHistory(redo: boolean): void {
-  if (!useFilesStore.getState().projectId) return;
-  const active = document.activeElement as HTMLElement | null;
-  if (inPlainField(active)) {
-    document.execCommand(redo ? "redo" : "undo");
-    return;
-  }
-  // A secondary CodeMirror surface owns its own history; never redirect
-  // its menu click into the paper's source buffer.
-  if (secondaryCodeEditorOwns(active)) {
-    const host = active?.closest(".cm-editor") ?? active?.closest(".cm-content");
-    const view = host ? EditorView.findFromDOM(host as HTMLElement) : null;
-    if (!view) return;
-    if (redo) cmRedo(view);
-    else cmUndo(view);
-    return;
-  }
+function runSecondaryEditorHistory(active: HTMLElement | null, redo: boolean): void {
+  const host = active?.closest(".cm-editor") ?? active?.closest(".cm-content");
+  const view = host ? EditorView.findFromDOM(host as HTMLElement) : null;
+  if (!view) return;
+  if (redo) cmRedo(view);
+  else cmUndo(view);
+}
+
+function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void {
   // Native menu events have no key event for Vim to intercept. Use its
   // history adapter directly so menu Undo/Redo preserves modal cursor and
   // selection semantics just like the keyboard route.
@@ -312,6 +304,22 @@ function runMenuHistory(redo: boolean): void {
   }
   if (redo) editorRedo();
   else editorUndo();
+}
+
+function runMenuHistory(redo: boolean): void {
+  if (!useFilesStore.getState().projectId) return;
+  const active = document.activeElement as HTMLElement | null;
+  if (inPlainField(active)) {
+    runFieldHistory(document, redo ? "redo" : "undo");
+    return;
+  }
+  // A secondary CodeMirror surface owns its own history; never redirect
+  // its menu click into the paper's source buffer.
+  if (secondaryCodeEditorOwns(active)) {
+    runSecondaryEditorHistory(active, redo);
+    return;
+  }
+  runDocumentMenuHistory(active, redo);
 }
 
 function loadMcpBridge(): Promise<() => void> {
@@ -679,7 +687,7 @@ function AppContent() {
       e.preventDefault();
       e.stopPropagation();
       if (inPlainField(active)) {
-        document.execCommand(isRedo ? "redo" : "undo");
+        runFieldHistory(document, isRedo ? "redo" : "undo");
         return;
       }
       // Toolbar and other document chrome still target the source editor. In

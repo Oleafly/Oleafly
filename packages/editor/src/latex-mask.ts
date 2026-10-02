@@ -205,7 +205,7 @@ interface MaskRegion {
 }
 
 function findEnvEnd(text: string, from: number, env: string): number {
-  const re = new RegExp(`\\\\(begin|end)\\s*\\{${escapeRegExp(env)}\\*?\\}`, "g");
+  const re = new RegExp(String.raw`\\(begin|end)\s*\{${escapeRegExp(env)}\*?\}`, "g");
   re.lastIndex = from;
   let depth = 1;
   let m: RegExpExecArray | null;

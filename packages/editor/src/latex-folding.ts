@@ -27,7 +27,7 @@ function environmentFoldRange(
   env: string,
 ): { from: number; to: number } | null {
   const rest = state.doc.sliceString(lineEnd, Math.min(state.doc.length, lineEnd + WINDOW));
-  const re = new RegExp(`\\\\(begin|end)\\{${escapeRegExp(env)}\\}`, "g");
+  const re = new RegExp(String.raw`\\(begin|end)\{${escapeRegExp(env)}\}`, "g");
   let depth = 1;
   let m: RegExpExecArray | null;
   while ((m = re.exec(rest))) {

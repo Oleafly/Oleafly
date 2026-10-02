@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { flattenCatalog, pluralSuffix } from "./catalog";
 import type { MessageParams, Translator } from "./translator";
 
@@ -68,18 +67,17 @@ export function testCatalogTranslator<K extends string>(name: string): Translato
   return (key, params) => catalogTranslator<K>(testCatalog(name))(key, params);
 }
 
-export function describeMessageCatalog(name: string, keys: readonly string[]): void {
-  describe(`${name} package messages`, () => {
-    it("has an English string or plural family for every declared key", () => {
-      expect(missingCatalogKeys(testCatalog(name), keys)).toEqual([]);
-    });
+export interface CatalogProblems {
+  missing: string[];
+  undeclared: string[];
+  duplicated: string[];
+}
 
-    it("declares every key the English catalog carries", () => {
-      expect(undeclaredCatalogKeys(testCatalog(name), keys)).toEqual([]);
-    });
-
-    it("declares each key once", () => {
-      expect(keys.filter((key, index) => keys.indexOf(key) !== index)).toEqual([]);
-    });
-  });
+export function catalogProblems(name: string, keys: readonly string[]): CatalogProblems {
+  const catalog = testCatalog(name);
+  return {
+    missing: missingCatalogKeys(catalog, keys),
+    undeclared: undeclaredCatalogKeys(catalog, keys),
+    duplicated: keys.filter((key, index) => keys.indexOf(key) !== index),
+  };
 }

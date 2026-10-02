@@ -69,10 +69,10 @@ export function useAsyncTask<Result, Failure = string>(
         controller.current = null;
         setState({ result, busy: false, error: null });
         return { status: "done", result };
-      } catch (caught) {
+      } catch (error_) {
         if (id !== request.current) return DROPPED;
         controller.current = null;
-        const error = toFailureRef.current(caught);
+        const error = toFailureRef.current(error_);
         setState({ result: null, busy: false, error });
         return error === null ? DROPPED : FAILED;
       }

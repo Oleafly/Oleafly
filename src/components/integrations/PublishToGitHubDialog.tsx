@@ -77,14 +77,14 @@ export function PublishToGitHubDialog({
   projectName,
   currentRemote = null,
   onPublished,
-}: {
+}: Readonly<{
   open: boolean;
   onClose: () => void;
   projectId: string | null;
   projectName: string;
   currentRemote?: string | null;
   onPublished: (remoteUrl: string) => void;
-}) {
+}>) {
   const { t } = useTranslation(["common", "library"]);
   const status = useGithubStore((s) => s.status);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);

@@ -17,13 +17,19 @@ export function inPlainField(active: Element | null): boolean {
   return active.tagName === "INPUT" || active.tagName === "TEXTAREA" || active.isContentEditable;
 }
 
+type EditingDocument = { execCommand(commandId: string): boolean };
+
+export function runFieldHistory(documentObject: Document, command: HistoryCommand): void {
+  (documentObject as unknown as EditingDocument).execCommand(command);
+}
+
 export function installPlainFieldHistory(windowObject: Window = window): () => void {
   const onKey = (event: KeyboardEvent) => {
     if (event.defaultPrevented) return;
     const command = historyCommand(event);
     if (!command || !inPlainField(windowObject.document.activeElement)) return;
     event.preventDefault();
-    windowObject.document.execCommand(command);
+    runFieldHistory(windowObject.document, command);
   };
   windowObject.addEventListener("keydown", onKey);
   return () => windowObject.removeEventListener("keydown", onKey);
