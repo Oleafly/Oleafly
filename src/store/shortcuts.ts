@@ -25,6 +25,14 @@ export interface ShortcutDefinition {
   defaultBinding: ShortcutBinding;
 }
 
+const BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, shift: true };
+const LINUX_BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, alt: true };
+
+function onLinuxDesktop(): boolean {
+  const tauri = Boolean((globalThis as { isTauri?: unknown }).isTauri);
+  return tauri && typeof navigator !== "undefined" && /Linux/.test(navigator.platform);
+}
+
 export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: "recompile",
@@ -52,7 +60,9 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   },
   {
     id: "toggleBrowser",
-    defaultBinding: { key: "b", ctrl: true, shift: true },
+    get defaultBinding() {
+      return onLinuxDesktop() ? LINUX_BROWSER_BINDING : BROWSER_BINDING;
+    },
   },
   {
     id: "toggleSidebar",
@@ -66,12 +76,19 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
 
 type ShortcutBindings = Record<ShortcutId, ShortcutBinding>;
 
-const defaults = Object.fromEntries(
-  SHORTCUT_DEFINITIONS.map((definition) => [definition.id, definition.defaultBinding]),
-) as ShortcutBindings;
+function defaultBindings(): ShortcutBindings {
+  return Object.fromEntries(
+    SHORTCUT_DEFINITIONS.map((definition) => [definition.id, definition.defaultBinding]),
+  ) as ShortcutBindings;
+}
 
 export function shortcutsDifferFromDefaults(bindings: ShortcutBindings): boolean {
+  const defaults = defaultBindings();
   return SHORTCUT_DEFINITIONS.some(({ id }) => !sameShortcutBinding(bindings[id], defaults[id]));
+}
+
+function isRetiredDefault(id: ShortcutId, binding: ShortcutBinding): boolean {
+  return id === "toggleBrowser" && onLinuxDesktop() && sameShortcutBinding(binding, BROWSER_BINDING);
 }
 
 function isValidBinding(value: unknown): value is ShortcutBinding {
@@ -83,13 +100,15 @@ function isValidBinding(value: unknown): value is ShortcutBinding {
 }
 
 function loadBindings(): ShortcutBindings {
+  const defaults = defaultBindings();
   try {
     const value = localStorage.getItem("oleafly.shortcuts");
     if (!value) return defaults;
     const parsed = JSON.parse(value) as Record<string, unknown>;
     const clean: Partial<ShortcutBindings> = {};
     for (const id of Object.keys(defaults) as ShortcutId[]) {
-      if (isValidBinding(parsed[id])) clean[id] = parsed[id] as ShortcutBinding;
+      const binding = parsed[id];
+      if (isValidBinding(binding) && !isRetiredDefault(id, binding)) clean[id] = binding;
     }
     return { ...defaults, ...clean };
   } catch {
@@ -120,11 +139,12 @@ export const useShortcutStore = create<ShortcutState>((set) => ({
     }),
   resetBinding: (id) =>
     set((state) => {
-      const bindings = { ...state.bindings, [id]: defaults[id] };
+      const bindings = { ...state.bindings, [id]: defaultBindings()[id] };
       saveBindings(bindings);
       return { bindings };
     }),
   resetAll: () => {
+    const defaults = defaultBindings();
     saveBindings(defaults);
     set({ bindings: defaults });
   },

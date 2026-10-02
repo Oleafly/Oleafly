@@ -74,6 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   menu has Minimize, Toggle Full Screen and Bring All to Front, so Cmd+H,
   Option+Cmd+H, Cmd+M and Ctrl+Cmd+F work. Cmd+H and Cmd+M can no longer be
   assigned to app shortcuts on macOS.
+- On Linux, Toggle Browser now defaults to Ctrl+Alt+B, because Ctrl+Shift+B
+  makes a blockquote in the visual editor. If you still had the old default,
+  it moves to the new one; a shortcut you chose yourself stays.
 - On Windows, release builds no longer reload the app on F5 or Ctrl+R, print
   it on Ctrl+P, or open the built-in find bar. Pages in the browser window
   keep those keys.
