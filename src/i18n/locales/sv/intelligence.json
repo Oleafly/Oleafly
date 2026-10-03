@@ -59,6 +59,8 @@
       "startingAndInitializing": "Startar och initierar projektets språktjänst.",
       "stopTimeout": "Den tidigare processen för språktjänsten stoppade inte i tid. Försök igen för att återställa den.",
       "synchronizedAndReady": "Språktjänsten är synkroniserad och klar.",
+      "tinymistDownloadFailed": "Det gick inte att ladda ner Tinymist {{version}}. Oleafly försöker igen.",
+      "tinymistDownloading": "Laddar ner Tinymist {{version}} som passar projektets Typst-version.",
       "transportClosed": "Anslutningen till språktjänsten stängdes oväntat. Försök igen för att återansluta.",
       "versionMismatch": "Förväntade {{kind}} {{expected}}, men konfigurationen rapporterade {{reported}}."
     }
@@ -137,7 +139,8 @@
     "packageOption": "alternativ till {{name}}",
     "keyvalKey": "nyckel till \\{{command}}",
     "duplicateCount": "dubblett ({{count}})",
-    "duplicateIndex": "dubblett {{index}}/{{total}}"
+    "duplicateIndex": "dubblett {{index}}/{{total}}",
+    "typstBinding": "Typst-bindning"
   },
   "token": {
     "citation": "Citering",

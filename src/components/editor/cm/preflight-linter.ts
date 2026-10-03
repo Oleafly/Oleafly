@@ -1,31 +1,45 @@
 import { linter, type Diagnostic } from "@codemirror/lint";
-import { runSourceRules } from "@oleafly/preflight";
+import { runSourceRules, type Finding } from "@oleafly/preflight";
 import { preflightDetail, preflightMessage } from "@/components/preflight/message";
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 
+export type PreflightSourceLanguage = "latex" | "typst";
+
 // Only findings that map to a source range are shown here; whole-document and
 // PDF findings live in the Preflight panel instead.
-export function createPreflightLinter() {
+function toDiagnostics(findings: readonly Finding[]): Diagnostic[] {
+  const diags: Diagnostic[] = [];
+  for (const f of findings) {
+    if (typeof f.from !== "number" || typeof f.to !== "number") continue;
+    diags.push({
+      from: f.from,
+      to: f.to,
+      severity: f.severity,
+      message: i18n.t(($) => $.intelligence.diagnostics.finding, {
+        title: preflightMessage(f.title),
+        detail: preflightDetail(f),
+      }),
+      source: "preflight",
+    });
+  }
+  return diags;
+}
+
+export function preflightDiagnostics(
+  text: string,
+  language: PreflightSourceLanguage,
+): Diagnostic[] | Promise<Diagnostic[]> {
+  if (useFilesStore.getState().engine.capabilities.source_preflight_profile !== language) return [];
+  if (language === "latex") return toDiagnostics(runSourceRules(text));
+  return import("@/store/preflight-typst").then(({ typstEditorFindings }) =>
+    toDiagnostics(typstEditorFindings(text, useFilesStore.getState().engine)),
+  );
+}
+
+export function createPreflightLinter(language: PreflightSourceLanguage = "latex") {
   return linter(
-    (view): Diagnostic[] => {
-      if (useFilesStore.getState().engine.capabilities.source_preflight_profile !== "latex") return [];
-      const diags: Diagnostic[] = [];
-      for (const f of runSourceRules(view.state.doc.toString())) {
-        if (typeof f.from !== "number" || typeof f.to !== "number") continue;
-        diags.push({
-          from: f.from,
-          to: f.to,
-          severity: f.severity,
-          message: i18n.t(($) => $.intelligence.diagnostics.finding, {
-            title: preflightMessage(f.title),
-            detail: preflightDetail(f),
-          }),
-          source: "preflight",
-        });
-      }
-      return diags;
-    },
+    (view) => preflightDiagnostics(view.state.doc.toString(), language),
     {
       delay: 900,
       // Diagnostics render through the shared hover card, so the stock lint

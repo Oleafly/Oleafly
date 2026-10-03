@@ -60,8 +60,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on your system instead of showing buttons that fail.
 - Each Reset button in Settings shows a small dot when something it would
   reset is not at its default.
+- Settings > Engines > Typst lists Typst 0.11 to 0.15. Oleafly downloads the
+  version you pick and checks it against a published checksum, and a Typst
+  already installed on your computer shows up there too. Each project can pin
+  its own version from the Compile menu. When a project pins a version this
+  computer doesn't have, the compile area offers to download it instead of
+  compiling with a different one. The language server follows the project's
+  version, and `oleaflyc` respects the pin. Settings can also build a project
+  with a newer Typst and list the errors and warnings that would change before
+  you switch.
+- Browse Typst Universe from the Typst toolbar, insert an import, and see a
+  hint when a package has a newer release. A project can keep its packages in
+  a `typst-packages` folder so it compiles offline and on other computers.
+  Offline mode now covers Typst.
+- A project's `fonts` folder reaches Typst and the language server, and system
+  fonts can be turned off. The font picker in Document settings lists every
+  font Typst can find and where it comes from. Build variants set `sys.inputs`
+  values from the Compile menu, and a reproducible build gives the same PDF
+  every time.
+- With Auto compile on, a Typst project keeps one Typst process running and
+  refreshes the PDF as you type.
+- Typst projects can export pages as PNG or SVG and the document as HTML, and
+  export preparation offers PDF/A and PDF/UA. Word, HTML, Markdown and EPUB
+  exports of Typst projects now go through Typst's own HTML output, so
+  equations and references survive.
+- Go to PDF and clicking in the PDF jump between Typst source and the page, as
+  they do for LaTeX.
+- Visual mode works in Typst files: headings, emphasis, lists, rendered math,
+  images, editable tables, reference chips and footnotes, with the source
+  shown where the cursor is.
+- Typst files get folding, sticky headings and breadcrumbs. Math pairs with
+  `$`, lists continue on Enter, and `/` opens snippets. Completion covers
+  functions, file paths, labels, packages and bibliography styles. Rename, Go
+  to definition, signature help and Format document (typstyle, optionally on
+  save) come from the language server.
+- Typst has the insertion tools LaTeX has: a figure dialog that also edits
+  existing figures, pasting or dropping images, tables, citations, labels and
+  cross-references, equations of every kind, and symbols with their Typst
+  names. Tables imported from CSV, TSV, Excel or JSON can stay linked to their
+  data file.
+- Typst math previews while you type, the Equation tool has a Typst mode, and
+  LaTeX math pasted into a Typst file can be converted with "Paste as Typst
+  math".
+- Typst compile errors show in the editor with the exact span, the source line
+  and Typst's hints. Common errors come with a plain explanation.
+- Preflight checks Typst sources too: unresolved references and citations,
+  missing alt text, document metadata, missing images, privacy and blind
+  review.
+- The editor toolbar has Packages, Document insights and Document settings for
+  each engine where they make sense. For LaTeX, Packages searches CTAN, shows
+  whether a package is already loaded or installed, and adds the `\usepackage`
+  line to the preamble. Document insights lists the figures, tables,
+  equations, labels, citations and TODOs of a LaTeX, Typst or Markdown
+  document and copies its submission metadata. Document settings changes
+  paper size, margins, font, language, line spacing and numbering by editing
+  the LaTeX preamble, the Typst `#set` rules or the Markdown front matter.
+- Present slides from any compiled PDF, with an optional presenter view that
+  shows the next slide, a timer and speaker notes.
+- Convert a LaTeX project into a new Typst project. A report lists what needs
+  attention and how the first compile went.
+- The diagram composer starts by asking what the diagram is for: TikZ for
+  LaTeX, a fletcher diagram for Typst, or a Mermaid flowchart for Markdown.
+  All three share the canvas, and the code panel and the drawing stay in step
+  in both directions. Code the canvas can't draw is kept as written, and a
+  notes button says what it is. Typst diagrams preview with the project's own
+  Typst, and Mermaid with the app's Mermaid renderer. "Draw a diagram" on a
+  document's toolbar skips the question and uses the document's language, and
+  Markdown documents now have that button too. Diagram projects come in all
+  three languages, and the composer imports `.tikz`, `.tex`, `.typ`, `.mmd`
+  and `.md` files. Mermaid diagrams inserted into Markdown also show up in the
+  compiled PDF.
+- Ten Typst converters on the Tools page, five new Typst templates, a
+  bibliography style picker and Hayagriva support for Cite Oleafly.
+- The assistant can preview and insert CeTZ figures in Typst projects, and
+  several bundled skills now cover Typst.
+- `oleaflyc` follows a project's Typst settings: the pinned version, vendored
+  packages, font folders, system fonts, inputs, variants (with `--variant`)
+  and reproducible builds. `oleaflyc doctor` lists them, and Typst errors in
+  the terminal now include Typst's hints.
 
 ### Changed
+
+- Oleafly now ships Typst 0.15.1 and the Tinymist 0.15.8 language server.
+- The compile menu shows only the options that do something for the project's
+  engine. Typst and Markdown projects no longer list the syntax check, the
+  fast compile mode or "stop on first error", and latexmk projects no longer
+  list the fast mode.
+- External agents connected over MCP see the project's engine in
+  `get_status`. The figure tools now refuse to run outside LaTeX projects
+  instead of writing LaTeX into a Typst file.
+- `oleaflyc build` and `oleaflyc watch` print a note when a flag such as
+  `--fast` or `--offline` has no effect for the project's engine.
 
 - When you edit during an automatic compile, Oleafly stops that compile and
   starts again with your latest text, so the PDF catches up sooner. It never
@@ -152,8 +241,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent setup no longer tells you a program is missing from your PATH. It
   says what Oleafly found and why it can't use it, such as a PowerShell
   script where a `.cmd` or `.exe` is needed.
+- Project cards show what the project is (Document, for example) on the
+  cover and its engine under the card, and they say LaTeX instead of naming
+  the LaTeX engine. The engine filter does the same: `engine:latex` finds
+  LaTeX projects, and `engine:tectonic` still works.
+- Undo and Redo on the editor toolbar are greyed out when there is nothing to
+  undo or redo.
 
 ### Fixed
+
+- On a narrow window, the LaTeX toolbar hid buttons without offering the More
+  menu, and the Typst toolbar cut its buttons off. Every editor toolbar now
+  moves the buttons that do not fit into More, at any width.
+- Typst projects could refuse to compile with "Syntax check found errors"
+  because the check before compiling ran the LaTeX checker on Typst source.
+  The check now runs only for LaTeX.
+- A table imported from CSV or Excel into a Typst document did not compile.
+  The table now compiles, keeps its caption, takes a label you can cite with
+  `@`, and uses the same top, middle and bottom rules as the LaTeX version.
+  Cell text that Typst would read as markup is escaped.
+- Cmd+/ (Ctrl+/) did nothing in Typst files. It now comments and uncomments
+  lines with `//`.
+- Typst files never showed the banner for changes made on disk, or the notice
+  that a file is read-only.
+- Exporting a Typst equation as SVG came out wrong, because the math went
+  through a TeX renderer that cannot read Typst. Typst now draws the equation
+  itself, and PNG export is available too.
+- Spell check in Typst files gave up at a stray `"` inside a caption or table
+  cell and skipped the rest of the file. It also never looked at captions,
+  table cells or template fields such as `abstract:`, and it flagged code
+  written after `#context`. All of that is fixed, `\u{e9}` now reads as é,
+  and grammar checks the same text that spelling does.
+- Word counts for Typst files counted code and comments, cut lines at `%`
+  and found no headings, figures or equations. They now follow Typst's rules.
+- Adding a citation to a Typst project whose bibliography is a Hayagriva
+  `.yml` file, or a list of files, wrote it to a different `.bib` file. It
+  now goes into the bibliography the document declares, converted to
+  Hayagriva when needed, and keys in Hayagriva files complete and resolve.
 
 - Clicking inside the Advanced filters panel while one of its menus is open
   now closes only that menu, so you can set several filters in a row.

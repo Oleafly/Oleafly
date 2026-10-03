@@ -3,6 +3,22 @@
     "aiProviderRequired": "Conecte um provedor de IA em Configurações para usar Corrigir com IA.",
     "fixFailed": "A correção falhou: {{detail}}"
   },
+  "chooser": {
+    "title": "Escolher um compositor de diagramas",
+    "description": "Escolha o tipo de documento a que o diagrama se destina.",
+    "tikz": {
+      "title": "Diagrama TikZ",
+      "description": "Nós e setas em TikZ, para documentos LaTeX."
+    },
+    "typst": {
+      "title": "Diagrama Typst",
+      "description": "Um diagrama fletcher para documentos Typst."
+    },
+    "mermaid": {
+      "title": "Diagrama Mermaid",
+      "description": "Um fluxograma Mermaid para documentos Markdown."
+    }
+  },
   "package": {
     "composer": {
       "title": "Inserir diagrama",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Cancelar (Esc)",
       "cancelRename": "Cancelar renomeação",
       "renameTooltip": "Renomear diagrama",
-      "importTooltip": "Importar um arquivo .tikz ou .tex, substituindo este rascunho",
-      "importLabel": "Importar arquivo TikZ",
+      "importTooltip": "Importar um arquivo .tikz, .tex, .typ, .mmd ou .md, substituindo este rascunho",
+      "importLabel": "Importar arquivo de diagrama",
       "modeDraw": "Desenhar",
       "modeCode": "Código",
       "fixWithAiTooltip": "Pedir à IA para corrigir o erro de compilação",
@@ -28,20 +44,29 @@
       "newProject": "Novo projeto",
       "noOtherProjects": "Ainda não há outros projetos.",
       "saveFigure": "Salvar figura",
+      "insertTypst": "Inserir como Typst",
+      "insertLatex": "Inserir como TikZ",
       "downloadTooltip": "Baixar este diagrama",
       "download": "Baixar",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (em breve)",
       "svgTooltip": "A exportação em SVG precisa de um renderizador vetorial, ainda indisponível",
       "snippets": "Trechos",
-      "untitledName": "Diagrama sem título"
+      "untitledName": "Diagrama sem título",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Inserir como Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Linguagem do diagrama: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Nó retangular",
       "circleNode": "Nó circular",
       "arrowEdge": "Aresta com seta",
       "lineEdge": "Aresta simples",
-      "scope": "Escopo"
+      "scope": "Escopo",
+      "group": "Grupo"
     },
     "preview": {
       "label": "Prévia",
@@ -53,7 +78,8 @@
       "pngScale": "Escala do PNG",
       "scaleFactor": "{{factor}}x",
       "background": "Fundo",
-      "backgroundLabel": "Cor de fundo da figura"
+      "backgroundLabel": "Cor de fundo da figura",
+      "diagnosticAt": "Linha {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "O diagrama não compilou. Confira o log abaixo.",
@@ -68,16 +94,25 @@
       "figureCached": "Já está em cache, reutilizando a figura existente.",
       "figureSaved": "Salvo no seu cache de figuras.",
       "saveFigureFailed": "Não foi possível salvar a figura: {{detail}}",
+      "insertedTypst": "Inserido como código Typst.",
+      "insertedLatex": "Inserido como código TikZ.",
       "downloaded": "Baixado.",
       "imported": "{{name}} importado para edição.",
       "importedCodeOnly": "{{name}} importado (só o código, não é possível desenhar).",
       "importFailed": "Não foi possível importar esse arquivo: {{detail}}",
       "noAiFix": "A IA não devolveu nenhuma correção.",
       "fixFailed": "A correção falhou: {{detail}}",
-      "notDrawable": "Nada neste código pôde ser desenhado. O código continua intacto."
+      "notDrawable": "Nada neste código pôde ser desenhado. O código continua intacto.",
+      "savedTypstToProject": "{{path}} salvo. Adicione-o a um documento com #include.",
+      "insertedMermaid": "Inserido como bloco de código Mermaid.",
+      "savedMermaidToProject": "{{path}} salvo. Adicione-o a um documento Markdown em um bloco de código mermaid.",
+      "typstPackageMissing": "O Typst não conseguiu obter o pacote fletcher. Conecte-se à internet uma vez para que o Typst possa baixá-lo e guardá-lo.",
+      "previewUnavailable": "Esta prévia não está disponível aqui.",
+      "readerUnavailable": "Não foi possível carregar o leitor de código. Tente de novo."
     },
     "confirm": {
-      "overwrite": "{{files}} já existe. Substituir? (Escolha outro nome para manter os dois.)"
+      "overwrite": "{{files}} já existe. Substituir? (Escolha outro nome para manter os dois.)",
+      "switchLanguage": "Mudar este diagrama de {{from}} para {{to}}? O código que a tela não consegue mostrar não será mantido."
     },
     "canvas": {
       "shapeTools": "Ferramentas de forma",
@@ -136,7 +171,58 @@
       "routingStraight": "Reto",
       "routingOrthogonal": "Ortogonal",
       "routingCurved": "Curvo",
-      "line": "Linha"
+      "line": "Linha",
+      "nodeLabelTypst": "Rótulo (Typst)"
+    },
+    "notes": {
+      "tooltip": "O que a tela não mostra por completo",
+      "count_one": "{{count}} nota",
+      "count_many": "{{count}} notas",
+      "count_other": "{{count}} notas",
+      "keptHeading": "Mantido no código",
+      "approximatedHeading": "Mostrado de forma aproximada",
+      "droppedHeading": "Não desenhado na tela",
+      "notDiagram": "Não há nada neste código que a tela consiga desenhar.",
+      "outsideCode": "O código antes ou depois do diagrama é mantido como está.",
+      "wrapper": "O código em volta do diagrama, como uma figura, é mantido como está.",
+      "diagramSetting": "A configuração de diagrama {{detail}} é mantida no código.",
+      "edgeOption": "A opção de aresta {{detail}} é mantida no código.",
+      "scripted": "O conteúdo gerado por script, como laços, é mantido no código.",
+      "mathMode": "O conteúdo em modo matemático é mantido no código.",
+      "unplacedNode": "Os nós sem posição fixa são mantidos no código.",
+      "unreadEdge": "As arestas que a tela não consegue ler são mantidas no código.",
+      "danglingEdge": "As arestas que não ligam dois nós são mantidas no código.",
+      "gridCoordinates": "As coordenadas de grade aparecem em posições fixas.",
+      "formattedLabels": "Os rótulos formatados aparecem como texto simples.",
+      "unknownShapes": "As formas que a tela não tem aparecem como retângulos.",
+      "estimatedSize": "Os nós sem largura e altura aparecem com um tamanho estimado.",
+      "colorAdjustments": "As cores ajustadas, como lighten, aparecem com a cor base.",
+      "colorExpressions": "As cores definidas por variáveis ou expressões não aparecem na tela.",
+      "strokeStyles": "Alguns estilos de linha aparecem com o estilo mais próximo da tela.",
+      "arrowMarks": "As pontas de seta que a tela não tem aparecem como setas simples.",
+      "freePoints": "As arestas que passam por pontos livres são desenhadas retas na tela.",
+      "tikzCommand": "O comando {{detail}} não é desenhado. Uma edição na tela reescreve o código sem ele.",
+      "truncated": "O código é longo demais, então só a primeira parte é desenhada.",
+      "mermaidNotFlowchart": "Só fluxogramas podem ser desenhados na tela. Este código é um diagrama {{detail}}.",
+      "mermaidFrontmatter": "O bloco frontmatter é mantido no código.",
+      "mermaidDirective": "As diretivas de configuração são mantidas no código.",
+      "mermaidComment": "Os comentários são mantidos no código.",
+      "mermaidAccessibility": "Os títulos e as descrições de acessibilidade são mantidos no código.",
+      "mermaidClick": "Os manipuladores de clique são mantidos no código.",
+      "mermaidStyleProperty": "A propriedade de estilo {{detail}} é mantida no código.",
+      "mermaidClassProperty": "A propriedade de classe {{detail}} é mantida no código.",
+      "mermaidLinkStyleProperty": "A propriedade de estilo de ligação {{detail}} é mantida no código.",
+      "mermaidNodeSetting": "A configuração de nó {{detail}} é mantida no código.",
+      "mermaidEdgeSetting": "A configuração de aresta {{detail}} é mantida no código.",
+      "mermaidInvisibleLink": "As ligações invisíveis são mantidas no código.",
+      "mermaidLinkLength": "Os comprimentos das ligações são mantidos no código.",
+      "mermaidSubgraphDirection": "As direções dos subgrafos são mantidas no código.",
+      "mermaidUnknownStatement": "As instruções que a tela não consegue ler são mantidas no código.",
+      "mermaidShape": "A forma {{detail}} aparece como a forma mais próxima da tela.",
+      "mermaidThickLink": "As ligações grossas aparecem como linhas normais.",
+      "mermaidArrowHead": "As pontas de seta em círculo e em cruz aparecem como setas.",
+      "mermaidMarkdownLabel": "Os rótulos Markdown aparecem como texto simples.",
+      "mermaidNoFlowchartHeader": "Só fluxogramas podem ser desenhados na tela. Comece o código com flowchart ou graph."
     }
   }
 }

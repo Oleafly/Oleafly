@@ -42,7 +42,18 @@
     "selectImage": "Selecciona una imagen para insertarla.",
     "editTitle": "Editar la imagen",
     "editDescription": "Cambia la imagen o su ancho. El pie y la etiqueta se quedan como están.",
-    "save": "Guardar la imagen"
+    "save": "Guardar la imagen",
+    "customWidthPlaceholderTypst": "8cm o 60%",
+    "altLabel": "Texto alternativo",
+    "altPlaceholder": "Describe la imagen para los lectores de pantalla",
+    "placement": "Posición",
+    "placementNone": "En su sitio",
+    "placementAuto": "Automática",
+    "placementTop": "Arriba",
+    "placementBottom": "Abajo",
+    "editFigureTitle": "Editar la figura",
+    "editFigureDescription": "Cambia la imagen, su tamaño, su pie, su etiqueta, su texto alternativo o su posición.",
+    "saveFigure": "Guardar la figura"
   },
   "tableToolbar": {
     "label": "Herramientas de tabla",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Insertar una cita en bloque",
     "insertFigure": "Insertar una figura",
     "insertImage": "Insertar una imagen",
+    "drawDiagram": "Dibujar un diagrama",
     "insertTable": "Insertar una tabla",
     "imageToLatexTooltip": "Imagen a LaTeX (transcribir con IA)",
     "imageToLatex": "Imagen a LaTeX",
@@ -130,6 +142,7 @@
     "redo": "Rehacer ({{shortcut}})",
     "find": "Buscar ({{shortcut}})",
     "goToPdf": "Ir al PDF (SyncTeX)",
+    "goToPdfTypst": "Ir al PDF",
     "linkUrl": "URL del enlace",
     "removeLink": "Quitar el enlace",
     "imageFile": "Archivo de imagen",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "Dividir",
     "both": "Ambos",
-    "stacked": "Apilado"
+    "stacked": "Apilado",
+    "displayMath": "Ecuación en bloque",
+    "numberedEquation": "Ecuación numerada",
+    "alignedEquations": "Ecuaciones alineadas",
+    "addLabel": "Añadir etiqueta",
+    "imageToTypst": "Imagen a Typst",
+    "imageToTypstTooltip": "Imagen a Typst (transcribir con IA)",
+    "typstPackages": "Paquetes de Typst",
+    "latexPackages": "Paquetes de LaTeX"
   },
   "contextMenu": {
     "engineUnavailable": "Acciones del motor de documentos no disponibles",
     "askAi": "Preguntar a la IA…",
     "noIndexedSymbol": "No hay ningún símbolo indexado en esta posición.",
     "noRenamableSymbol": "No hay ningún símbolo renombrable en esta posición.",
+    "formatDocument": "Formatear el documento",
+    "formatSelection": "Formatear la selección",
     "itemize": "Lista itemize",
     "enumerate": "Lista enumerate",
     "figure": "Figura",
@@ -156,7 +179,16 @@
     "equationAsPng": "Ecuación como PNG",
     "crossReference": "Referencia cruzada",
     "label": "Etiqueta",
-    "footnote": "Nota al pie"
+    "footnote": "Nota al pie",
+    "toggleComment": "Comentar o descomentar",
+    "inlineMath": "Fórmula en línea",
+    "displayMath": "Ecuación en bloque",
+    "numberedEquation": "Ecuación numerada",
+    "alignedEquations": "Ecuaciones alineadas",
+    "quote": "Cita en bloque",
+    "addLabel": "Añadir etiqueta",
+    "convertLatexMath": "Convertir fórmulas de LaTeX a Typst",
+    "noLatexMath": "Selecciona antes alguna fórmula de LaTeX."
   },
   "shell": {
     "noFileOpenTab": "Ningún archivo abierto",
@@ -235,9 +267,15 @@
     "footerTypst": "Los caracteres especiales se escapan en el código de la tabla.",
     "footerLatex": "La tabla de LaTeX generada usa booktabs para sus filetes horizontales.",
     "chooseAnother": "Elegir otro archivo",
-    "chooseFile": "Elegir un CSV, TSV o XLSX",
+    "chooseFile": "Elegir un CSV, TSV, XLSX o JSON",
     "selectedSummary": "{{file}} · Filas: {{rows}} · Columnas: {{columns}}",
     "firstRowHeader": "La primera fila es el encabezado",
+    "keepLinked": "Mantener vinculada al archivo de datos",
+    "keepLinkedHint": "Copia los datos en la carpeta de datos. Edita ese archivo y la tabla cambia en la siguiente compilación.",
+    "footerLinked": "La tabla lee {{path}} cada vez que se compila el documento.",
+    "jsonNotTable": "Este archivo JSON no es una lista de registros ni de filas.",
+    "insertedLinked": "Tabla vinculada insertada. Edita {{path}} para cambiarla.",
+    "linkFailed": "No se pudieron copiar los datos al proyecto.",
     "captionLabel": "Pie (opcional)",
     "captionPlaceholder": "Resultados de todas las ejecuciones",
     "labelLabel": "Etiqueta (opcional)",
@@ -269,7 +307,8 @@
     "svgImage": "Imagen SVG",
     "pngImage": "Imagen PNG",
     "svgKind": "SVG de la ecuación",
-    "pngKind": "PNG de la ecuación"
+    "pngKind": "PNG de la ecuación",
+    "typstFailed": "Typst no pudo representar esta ecuación ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Preguntar a la IA",
@@ -310,7 +349,20 @@
     "info": "Información",
     "empty": "Aquí aparecerá la salida de la compilación.",
     "scrollToTop": "Ir arriba",
-    "scrollToBottom": "Ir abajo"
+    "scrollToBottom": "Ir abajo",
+    "locationFileLineColumn": "{{file}} · línea {{line}}, columna {{column}}",
+    "locationLineColumn": "línea {{line}}, columna {{column}}",
+    "hint": "Sugerencia",
+    "sourceExcerpt": "Línea {{line}} del código",
+    "summaryErrors_one": "{{count}} error",
+    "summaryErrors_many": "{{count}} errores",
+    "summaryErrors_other": "{{count}} errores",
+    "summaryWarnings_one": "{{count}} advertencia",
+    "summaryWarnings_many": "{{count}} advertencias",
+    "summaryWarnings_other": "{{count}} advertencias",
+    "summaryReferences_one": "{{count}} referencia sin resolver",
+    "summaryReferences_many": "{{count}} referencias sin resolver",
+    "summaryReferences_other": "{{count}} referencias sin resolver"
   },
   "history": {
     "untitledCommit": "Commit sin título",
@@ -355,7 +407,8 @@
       "navigation": "Navegación",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Ajustes"
+      "settings": "Ajustes",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Recompilar",
@@ -372,12 +425,20 @@
       "goToDefinition": "Ir a la definición",
       "findReferences": "Buscar referencias",
       "renameSymbol": "Renombrar el símbolo (en todo el proyecto)",
+      "formatDocument": "Formatear el documento Typst",
       "commandPalette": "Paleta de comandos",
       "searchAllDocuments": "Buscar en todos los documentos",
       "goToPdf": "Ir al PDF (SyncTeX hacia delante)",
       "jumpToSource": "Saltar del PDF al código",
       "commitAndPush": "Hacer commit y subir",
-      "openSettings": "Abrir los ajustes"
+      "openSettings": "Abrir los ajustes",
+      "typstContinueList": "Continuar la lista con un elemento nuevo",
+      "typstItemNewLine": "Empezar una línea nueva dentro del elemento de la lista",
+      "typstRemoveMarker": "Quitar el marcador de lista antes del cursor",
+      "typstIndentItem": "Anidar el elemento de la lista un nivel más",
+      "typstOutdentItem": "Subir el elemento de la lista un nivel",
+      "typstMathPair": "Cerrar $ automáticamente, Space lo convierte en fórmula en bloque",
+      "typstWrapSelection": "Envolver la selección en negrita, énfasis, código literal o fórmula"
     }
   },
   "citations": {
@@ -653,6 +714,7 @@
       "unsupported": "Esta expresión está incompleta o no es compatible.",
       "missingClosing": "Falta el {{delimiter}} de cierre.",
       "notRendered": "No se pudo representar esta expresión.",
+      "typstUnavailable": "La vista previa de Typst no está disponible.",
       "preview": {
         "moreOptions": "Más opciones",
         "hide": "Ocultar",
@@ -660,6 +722,10 @@
         "disable": "Desactivar",
         "disableDescription": "Apaga la vista previa de las ecuaciones. Puedes volver a activarla en Ajustes."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Pegar como fórmula de Typst",
+      "pasteOffer": "Fórmula de LaTeX pegada"
     },
     "latex": {
       "command": {
@@ -844,6 +910,45 @@
         "revtex": "estilo de REVTeX"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Título",
+        "figure": "Figura con imagen",
+        "tableFigure": "Figura con tabla",
+        "table": "Tabla",
+        "equation": "Ecuación en bloque",
+        "numberedEquation": "Ecuación numerada con etiqueta",
+        "footnote": "Nota al pie",
+        "quote": "Cita en bloque",
+        "code": "Bloque de código",
+        "outline": "Índice",
+        "bibliography": "Bibliografía",
+        "pagebreak": "Salto de página",
+        "columns": "Columnas",
+        "grid": "Cuadrícula",
+        "link": "Enlace",
+        "list": "Lista con viñetas",
+        "enum": "Lista numerada",
+        "terms": "Lista de términos",
+        "partBibliography": "Bibliografía de una parte etiquetada"
+      },
+      "bibliographyStyle": {
+        "builtin": "estilo CSL incluido",
+        "citation": "solo estilo de cita",
+        "project": "archivo CSL de este proyecto"
+      },
+      "bibliographyParameter": {
+        "target": "qué citas incluye",
+        "group": "cómo comparte sus números",
+        "targetAuto": "la bibliografía más cercana que tiene la clave",
+        "targetWithin": "citas dentro de una parte etiquetada",
+        "targetAfter": "citas después de una etiqueta",
+        "targetBefore": "citas antes de una etiqueta",
+        "groupAuto": "numerar con las demás bibliografías",
+        "groupNone": "numerar por separado",
+        "groupNamed": "numerar con las bibliografías del mismo nombre"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Resumen",
@@ -970,6 +1075,12 @@
       "reference": "Referencia",
       "label": "Etiqueta",
       "includedFile": "Archivo incluido",
+      "typst": {
+        "settings": {
+          "show": "Mostrar los ajustes del documento",
+          "hide": "Ocultar los ajustes del documento"
+        }
+      },
       "table": {
         "captionPlacement": "Pie",
         "captionAbove": "Pie encima",
@@ -1044,6 +1155,11 @@
     "goTo": "Ir a {{title}}",
     "untitled": "Sin título"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Abrir en Typst Universe",
+    "formatUnavailable": "El formateador de Typst aún no está listo. Inténtalo de nuevo en un momento.",
+    "formatFailed": "No se pudo formatear este archivo."
+  },
   "changedOnDisk": {
     "message": "{{file}} cambió en el disco mientras tenías cambios sin guardar.",
     "compare": "Comparar",
@@ -1051,5 +1167,337 @@
     "reload": "Recargar",
     "failed": "Oleafly no pudo actualizar {{file}}. Inténtalo de nuevo.",
     "tabMark": "Cambió en el disco. Abre esta pestaña para elegir qué versión conservar."
+  },
+  "labels": {
+    "filterPlaceholder": "Nombre de la etiqueta",
+    "filterLabel": "Filtrar las etiquetas del proyecto",
+    "noMatches": "No hay etiquetas que coincidan.",
+    "empty": "Aún no hay etiquetas en este proyecto.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Añadir una etiqueta aquí"
+  },
+  "typst": {
+    "numberingNote": "Los números de ecuación necesitan una regla de numeración.",
+    "addNumberingRule": "Añadir regla",
+    "bibliographyAdded": "Se añadió la bibliografía a {{file}}."
+  },
+  "typstInsights": {
+    "title": "Análisis del documento",
+    "description": "Lo que contiene el documento compilado, con enlaces al código.",
+    "refresh": "Actualizar",
+    "copyMetadata": "Copiar los metadatos del envío",
+    "metadataCopied": "Metadatos del envío copiados al portapapeles.",
+    "copyFailed": "Los metadatos no se copiaron. Revisa el acceso al portapapeles e inténtalo de nuevo.",
+    "loading": "Leyendo el documento con Typst",
+    "compileFailed": "Typst no pudo compilar el documento. Corrige estos errores para ver las figuras, las tablas y las ecuaciones.",
+    "noProject": "Abre antes un proyecto de Typst.",
+    "tabs": {
+      "overview": "Resumen",
+      "headings": "Títulos",
+      "figures": "Figuras",
+      "tables": "Tablas",
+      "equations": "Ecuaciones",
+      "labels": "Etiquetas",
+      "citations": "Citas",
+      "todos": "Pendientes"
+    },
+    "metadata": {
+      "heading": "Metadatos del envío",
+      "title": "Título",
+      "authors": "Autores",
+      "keywords": "Palabras clave",
+      "abstract": "Resumen",
+      "date": "Fecha",
+      "missing": "Sin definir"
+    },
+    "empty": {
+      "headings": "No hay títulos en el documento compilado.",
+      "figures": "No hay figuras en el documento compilado.",
+      "tables": "No hay tablas en el documento compilado.",
+      "equations": "No hay ecuaciones en bloque en el documento compilado.",
+      "labels": "No hay etiquetas en el documento.",
+      "citations": "No hay citas en el documento compilado.",
+      "todos": "No hay notas TODO ni FIXME."
+    },
+    "labelKinds": {
+      "heading": "Título",
+      "figure": "Figura",
+      "table": "Tabla",
+      "equation": "Ecuación",
+      "other": "Otra"
+    },
+    "page": "Página {{page}}",
+    "unnumbered": "Sin numerar",
+    "untitled": "Sin pie",
+    "cited_one": "Citado {{count}} vez",
+    "cited_many": "Citado {{count}} veces",
+    "cited_other": "Citado {{count}} veces",
+    "notInSource": "No se encontró en el código",
+    "openSource": "Abrir {{file}} en la línea {{line}}",
+    "versionNote": "Typst {{version}} con typst {{method}}",
+    "truncated": "Solo se muestran los primeros 5000 elementos."
+  },
+  "documentInsights": {
+    "description": "Lo que contiene el documento, con enlaces al código.",
+    "loading": "Leyendo el documento",
+    "noProject": "Abre antes un proyecto.",
+    "unresolved": "No está en la bibliografía",
+    "unresolvedCount_one": "Falta {{count}} clave citada en la bibliografía.",
+    "unresolvedCount_many": "Faltan {{count}} claves citadas en la bibliografía.",
+    "unresolvedCount_other": "Faltan {{count}} claves citadas en la bibliografía.",
+    "numbersCurrent": "Los números y las páginas son de la última compilación.",
+    "numbersStale": "El código cambió después de la última compilación. Vuelve a compilar para ver los números y las páginas.",
+    "numbersMissing": "Compila el documento para ver los números y las páginas.",
+    "sourceOrder": "En el orden del código.",
+    "empty": {
+      "headings": "No hay títulos en el documento.",
+      "figures": "No hay figuras en el documento.",
+      "tables": "No hay tablas en el documento.",
+      "equations": "No hay ecuaciones en bloque en el documento.",
+      "citations": "No hay citas en el documento."
+    }
+  },
+  "typstSettings": {
+    "title": "Ajustes del documento",
+    "description": "Reglas de página, texto y numeración en {{file}}.",
+    "templateNotice": "Este documento usa una plantilla. Los valores definidos dentro de la plantilla no se muestran aquí. Un valor que definas aquí sustituye al de la plantilla.",
+    "loading": "Leyendo el archivo principal",
+    "readFailed": "No se pudo leer el archivo principal.",
+    "saveFailed": "No se pudo actualizar el archivo principal.",
+    "noMainFile": "Este proyecto no tiene un archivo principal de Typst.",
+    "applied": "Se actualizaron los ajustes del documento.",
+    "apply": "Aplicar",
+    "cancel": "Cancelar",
+    "sections": {
+      "page": "Página",
+      "text": "Texto",
+      "paragraph": "Párrafo",
+      "numbering": "Numeración"
+    },
+    "fields": {
+      "paper": "Tamaño de página",
+      "margin": "Márgenes",
+      "columns": "Columnas",
+      "font": "Tipografía del texto",
+      "fontSize": "Tamaño de letra",
+      "lang": "Idioma",
+      "region": "Región",
+      "justify": "Justificación",
+      "leading": "Interlineado",
+      "headingNumbering": "Numeración de títulos",
+      "equationNumbering": "Numeración de ecuaciones"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Predeterminado",
+      "justified": "Justificado",
+      "ragged": "Alineado a la izquierda",
+      "off": "Desactivado"
+    },
+    "locked": {
+      "template": "Lo define la plantilla",
+      "expression": "Lo define una expresión en el código"
+    },
+    "invalid": {
+      "length": "Usa una longitud como 11pt, 2.5cm o 0.65em.",
+      "margin": "Usa una longitud como 2.5cm, o auto.",
+      "columns": "Usa un número entero del 1 al 99.",
+      "lang": "Usa un código de idioma de dos o tres letras, como en.",
+      "region": "Usa un código de región de dos letras, como GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Opciones de clase y ajustes del preámbulo en {{file}}.",
+    "markdownDescription": "Campos del front matter en {{file}}.",
+    "noLatexMainFile": "Este proyecto no tiene un archivo principal de LaTeX.",
+    "noMarkdownMainFile": "Este proyecto no tiene un archivo principal de Markdown.",
+    "noDocumentClass": "El archivo principal no tiene una línea \\documentclass.",
+    "unclosedFrontMatter": "El front matter al principio del archivo principal no está cerrado. Añade antes una línea --- de cierre.",
+    "noFrontMatter": "Este archivo aún no tiene front matter. Aplicar añade uno al principio.",
+    "externalPreamble": "Parte del preámbulo está en otros archivos. Los valores definidos allí no se muestran aquí.",
+    "classNotice": "La clase {{name}} controla algunos de estos ajustes. Aquí son de solo lectura.",
+    "styleNotice": "El estilo {{name}} define el diseño de la página. El tamaño de página y los márgenes son de solo lectura aquí.",
+    "availableFonts": "Tipografías disponibles",
+    "fontsLoading": "Buscando tipografías",
+    "fields": {
+      "secnumdepth": "Niveles numerados",
+      "numberSections": "Números de sección",
+      "documentClass": "Clase de documento"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "Una columna",
+      "twocolumn": "Dos columnas",
+      "single": "Sencillo",
+      "onehalf": "Uno y medio",
+      "double": "Doble",
+      "bySection": "Por sección",
+      "byChapter": "Por capítulo",
+      "bySubsection": "Por subsección",
+      "numbered": "Numeradas",
+      "unnumbered": "Sin numerar",
+      "depthNone": "Ninguno",
+      "depthChapters": "Solo capítulos",
+      "depthSections": "Hasta las secciones",
+      "depthSubsections": "Hasta las subsecciones",
+      "depthSubsubsections": "Hasta las subsubsecciones",
+      "depthParagraphs": "Hasta los párrafos",
+      "depthSubparagraphs": "Hasta los subpárrafos"
+    },
+    "locked": {
+      "class": "Lo define la clase {{name}}",
+      "package": "Lo define el estilo {{name}}",
+      "engine": "Necesita el compilador XeLaTeX o LuaLaTeX. Elige uno en el menú de compilación.",
+      "sides": "El código define cada margen por separado",
+      "conditional": "Se define dentro de un bloque condicional"
+    },
+    "invalid": {
+      "length": "Usa una longitud como 2.5cm, 1in o 12pt.",
+      "fontName": "Usa un nombre de tipografía simple, sin llaves ni barras invertidas.",
+      "latexLang": "Usa un nombre de idioma de babel como english.",
+      "markdownLang": "Usa una etiqueta de idioma como en-US.",
+      "lineStretch": "Usa un número como 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Paquetes de Typst",
+    "close": "Cerrar los paquetes de Typst",
+    "searchLabel": "Buscar paquetes por nombre, palabra clave o categoría",
+    "searchPlaceholder": "Buscar en Typst Universe",
+    "categories": "Categorías",
+    "allCategories": "Todas",
+    "loading": "Cargando la lista de paquetes",
+    "results_one": "{{count}} paquete",
+    "results_many": "{{count}} paquetes",
+    "results_other": "{{count}} paquetes",
+    "resultsCapped": "Se muestran {{shown}} de {{count}} paquetes. Busca para acotar la lista.",
+    "empty": "Ningún paquete coincide con tu búsqueda.",
+    "staleOffline": "No tienes conexión. Esta lista es del {{date}}.",
+    "stale": "Esta lista es del {{date}}. No se pudo actualizar.",
+    "latest": "Última versión {{version}}",
+    "template": "Plantilla",
+    "needsTypst": "Necesita Typst {{version}}. Este proyecto usa Typst {{current}}.",
+    "insert": "Insertar importación",
+    "insertAria": "Insertar la importación de {{name}} al principio del archivo",
+    "insertNeedsFile": "Abre un archivo de Typst para insertar una importación.",
+    "copy": "Copiar importación",
+    "copyAria": "Copiar la importación de {{name}}",
+    "vendor": {
+      "heading": "Paquetes del proyecto",
+      "toggle": "Usar paquetes de la carpeta del proyecto",
+      "detail": "Typst busca primero en la carpeta typst-packages del proyecto. Los proyectos con paquetes incorporados compilan sin conexión y en otros equipos.",
+      "action": "Incorporar los paquetes al proyecto",
+      "running": "Copiando paquetes",
+      "copied_one": "Se copió {{count}} paquete en typst-packages.",
+      "copied_many": "Se copiaron {{count}} paquetes en typst-packages.",
+      "copied_other": "Se copiaron {{count}} paquetes en typst-packages.",
+      "upToDate": "Todos los paquetes que importa este proyecto ya están en typst-packages.",
+      "missing": "Estos paquetes no están en la caché de paquetes: {{names}}. Compila una vez con conexión y vuelve a incorporarlos.",
+      "count_one": "{{count}} paquete en este proyecto",
+      "count_many": "{{count}} paquetes en este proyecto",
+      "count_other": "{{count}} paquetes en este proyecto",
+      "none": "Aún no hay paquetes en este proyecto."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} está disponible. Esta importación usa {{version}}.",
+      "update": "Actualizar a {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "Paquetes de LaTeX",
+    "close": "Cerrar los paquetes de LaTeX",
+    "searchLabel": "Buscar paquetes por nombre o descripción",
+    "searchPlaceholder": "Buscar en CTAN",
+    "loading": "Cargando la lista de paquetes",
+    "results_one": "{{count}} paquete",
+    "results_many": "{{count}} paquetes",
+    "results_other": "{{count}} paquetes",
+    "resultsCapped": "Se muestran {{shown}} de {{count}} paquetes. Busca para acotar la lista.",
+    "empty": "Ningún paquete coincide con tu búsqueda.",
+    "stale": "Esta lista es del {{date}}. No se pudo actualizar.",
+    "staleOffline": "No tienes conexión. Esta lista es del {{date}}.",
+    "partial": "No se pudo conectar con CTAN. Se muestra la lista incluida en Oleafly.",
+    "partialOffline": "No tienes conexión. Se muestra la lista incluida en Oleafly.",
+    "loaded": "En el documento",
+    "documentClass": "Clase de documento",
+    "installed": "Instalado",
+    "install": "Instalar",
+    "installing": "Instalando",
+    "installAria": "Instalar {{name}} con tlmgr",
+    "insert": "Añadir al preámbulo",
+    "insertAria": "Añadir {{name}} al preámbulo de {{file}}",
+    "copy": "Copiar la línea",
+    "copyAria": "Copiar la línea que carga {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Abrir {{name}} en CTAN",
+    "options": "Opciones",
+    "optionsAria": "Opciones de {{name}}",
+    "optionsInvalid": "Revisa las opciones. Las llaves deben estar emparejadas y no se puede usar ] ni %.",
+    "classNote": "Esto es una clase de documento. Defínela con \\documentclass.",
+    "onDemand": "Tectonic descarga los paquetes la primera vez que tu documento los usa. No hay nada que instalar.",
+    "checking": "Comprobando qué paquetes están instalados",
+    "unknownInstall": "Oleafly no puede saber qué paquetes tiene tu instalación de TeX.",
+    "noProject": "Abre un proyecto de LaTeX para añadir paquetes.",
+    "added": "Se añadió {{name}} a {{file}}.",
+    "noPreamble": "{{file}} no tiene un preámbulo al que añadir un paquete.",
+    "alreadyLoaded": "{{file}} ya carga {{name}}.",
+    "insertFailed": "No se pudo añadir el paquete. Inténtalo de nuevo."
+  },
+  "typstFonts": {
+    "title": "Tipografías",
+    "close": "Cerrar la lista de tipografías",
+    "searchLabel": "Buscar familias tipográficas",
+    "searchPlaceholder": "Buscar tipografías",
+    "loading": "Pidiendo a Typst sus tipografías",
+    "summary_one": "{{count}} familia tipográfica de Typst {{version}}",
+    "summary_many": "{{count}} familias tipográficas de Typst {{version}}",
+    "summary_other": "{{count}} familias tipográficas de Typst {{version}}",
+    "systemOff": "Las tipografías del sistema están desactivadas en este proyecto, así que solo se muestran las del proyecto y las incluidas.",
+    "noSources": "Esta versión de Typst no indica de dónde viene cada tipografía.",
+    "empty": "Ninguna familia tipográfica coincide con tu búsqueda.",
+    "copy": "Copiar el nombre",
+    "copyAria": "Copiar el nombre de la familia tipográfica {{name}}",
+    "sources": {
+      "project": "Proyecto",
+      "system": "Sistema",
+      "embedded": "Incluida"
+    },
+    "fontsFolder": "Para usar una tipografía en este proyecto, añade su archivo a la carpeta fonts del proyecto."
+  },
+  "typstVariants": {
+    "title": "Variantes de compilación",
+    "close": "Cerrar las variantes de compilación",
+    "intro": "Cada variante define valores que el documento lee con sys.inputs. Elige una variante en el menú de compilación.",
+    "empty": "Aún no hay variantes.",
+    "add": "Añadir variante",
+    "name": "Nombre de la variante",
+    "defaultName": "variante {{number}}",
+    "remove": "Quitar la variante",
+    "removeAria": "Quitar la variante {{name}}",
+    "key": "Nombre",
+    "value": "Valor",
+    "addInput": "Añadir valor",
+    "removeInput": "Quitar el valor",
+    "noInputs": "Esta variante no define ningún valor.",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "loading": "Cargando las variantes",
+    "nameRequired": "Ponle un nombre a cada variante.",
+    "nameTaken": "Dos variantes no pueden tener el mismo nombre.",
+    "keyInvalid": "Los nombres de valor no pueden estar vacíos ni contener un signo igual.",
+    "keyTaken": "Una variante no puede definir el mismo nombre dos veces.",
+    "saveFailed": "No se pudieron guardar las variantes."
   }
 }

@@ -24,6 +24,13 @@ describe("AI tool catalog", () => {
     }
   });
 
+  it("marks the figure preview and insert tools for LaTeX and Typst, and load_image for any project", () => {
+    const note = (name: string) => AI_TOOLS.find((tool) => tool.name === name)?.note?.();
+    expect(note("preview_figure")).toBe(enAi.tools.notes.latexAndTypstOnly);
+    expect(note("insert_figure")).toBe(enAi.tools.notes.latexAndTypstOnly);
+    expect(note("load_image")).toBeUndefined();
+  });
+
   it("names every group", () => {
     const labels = AI_TOOL_GROUPS.map(aiToolGroupLabel);
     expect(labels).toEqual([

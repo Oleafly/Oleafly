@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} 未提供离线编译模式，将正常编译。",
     "retry": "重新编译",
-    "bundleFetchFailed": "Oleafly 无法下载此文档所需的 TeX 宏包。请检查网络连接，然后重新编译。"
+    "bundleFetchFailed": "Oleafly 无法下载此文档所需的 TeX 宏包。请检查网络连接，然后重新编译。",
+    "typstMissing": "Typst {{version}} 未安装。请下载该版本，或将此项目切换到其他版本。",
+    "typstPackage": {
+      "downloadFailed": "Typst 无法下载 {{spec}}。请检查网络连接，然后重新编译。",
+      "downloadFailedUnnamed": "Typst 无法下载此文档导入的某个包。请检查网络连接，然后重新编译。",
+      "offlineNotCached": "你当前处于离线状态，且 {{spec}} 尚不在包缓存中。请在联网时编译一次，或将包复制到项目中。",
+      "offlineNotCachedUnnamed": "你当前处于离线状态，且此文档导入的某个包尚不在包缓存中。请在联网时编译一次。",
+      "notFound": "Typst Universe 中没有 {{spec}} 包。请检查 import 中的名称。",
+      "localNotFound": "本地包 {{spec}} 未安装。请将其放入 Oleafly 的 Typst 包文件夹或项目的 typst-packages 文件夹。",
+      "versionMissing": "此包没有 {{version}} 版本。最新版本为 {{latest}}。",
+      "versionMissingNoLatest": "此包没有 {{version}} 版本。请检查 import 中的版本号。"
+    }
   },
   "developer": {
     "actions": {
@@ -337,6 +348,7 @@
     "notRenamable": "无法重命名此符号。",
     "nothingToRename": "没有可重命名的对象",
     "referencesFor": "对 {{name}} 的引用",
+    "renameFailed": "无法重命名为“{{name}}”。",
     "renamePartial": "已在 {{total}} 个文件中的 {{edited}} 个文件里重命名为“{{name}}”。未能写入 {{files}}。",
     "renamed": "已重命名为“{{name}}”（$t(core:navigation.edits, {\"count\": {{edits}} })，$t(core:navigation.files, {\"count\": {{files}} })）。"
   },
@@ -565,5 +577,8 @@
   "folderUnavailable": {
     "compile": "编译已暂停，直到项目文件夹恢复。",
     "saveReason": "项目文件夹不可用"
+  },
+  "imageToTypst": {
+    "failed": "图片转 Typst 失败：{{detail}}"
   }
 }

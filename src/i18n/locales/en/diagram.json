@@ -3,6 +3,22 @@
     "aiProviderRequired": "Connect an AI provider in Settings to use Fix with AI.",
     "fixFailed": "Fix failed: {{detail}}"
   },
+  "chooser": {
+    "title": "Choose a diagram composer",
+    "description": "Pick the kind of document the diagram is for.",
+    "tikz": {
+      "title": "TikZ diagram",
+      "description": "Nodes and arrows in TikZ, for LaTeX documents."
+    },
+    "typst": {
+      "title": "Typst diagram",
+      "description": "A fletcher diagram for Typst documents."
+    },
+    "mermaid": {
+      "title": "Mermaid diagram",
+      "description": "A Mermaid flowchart for Markdown documents."
+    }
+  },
   "package": {
     "composer": {
       "title": "Insert diagram",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Cancel (Esc)",
       "cancelRename": "Cancel rename",
       "renameTooltip": "Rename diagram",
-      "importTooltip": "Import a .tikz or .tex file, replacing this draft",
-      "importLabel": "Import TikZ file",
+      "importTooltip": "Import a .tikz, .tex, .typ, .mmd or .md file, replacing this draft",
+      "importLabel": "Import diagram file",
       "modeDraw": "Draw",
       "modeCode": "Code",
       "fixWithAiTooltip": "Ask AI to fix the compile error",
@@ -28,20 +44,29 @@
       "newProject": "New project",
       "noOtherProjects": "No other projects yet.",
       "saveFigure": "Save Figure",
+      "insertTypst": "Insert as Typst",
+      "insertLatex": "Insert as TikZ",
       "downloadTooltip": "Download this diagram",
       "download": "Download",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (coming soon)",
       "svgTooltip": "SVG export needs a vector renderer, not available yet",
       "snippets": "Snippets",
-      "untitledName": "Untitled Diagram"
+      "untitledName": "Untitled Diagram",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Insert as Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Diagram language: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Rectangle node",
       "circleNode": "Circle node",
       "arrowEdge": "Arrow edge",
       "lineEdge": "Line edge",
-      "scope": "Scope"
+      "scope": "Scope",
+      "group": "Group"
     },
     "preview": {
       "label": "Preview",
@@ -53,7 +78,8 @@
       "pngScale": "PNG scale",
       "scaleFactor": "{{factor}}x",
       "background": "Background",
-      "backgroundLabel": "Figure background color"
+      "backgroundLabel": "Figure background color",
+      "diagnosticAt": "Line {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Diagram did not compile. Check the log below.",
@@ -68,16 +94,25 @@
       "figureCached": "Already cached, reusing the existing figure.",
       "figureSaved": "Saved to your figures cache.",
       "saveFigureFailed": "Could not save the figure: {{detail}}",
+      "insertedTypst": "Inserted as Typst code.",
+      "insertedLatex": "Inserted as TikZ code.",
       "downloaded": "Downloaded.",
       "imported": "Imported {{name}} for editing.",
       "importedCodeOnly": "Imported {{name}} (code only, not drawable).",
       "importFailed": "Could not import that file: {{detail}}",
       "noAiFix": "The AI did not return a fix.",
       "fixFailed": "Fix failed: {{detail}}",
-      "notDrawable": "Nothing in this code could be drawn. The code is untouched."
+      "notDrawable": "Nothing in this code could be drawn. The code is untouched.",
+      "savedTypstToProject": "Saved {{path}}. Add it to a document with #include.",
+      "insertedMermaid": "Inserted as a Mermaid code block.",
+      "savedMermaidToProject": "Saved {{path}}. Add it to a Markdown document in a mermaid code block.",
+      "typstPackageMissing": "Typst could not get the fletcher package. Connect to the internet once so Typst can download and keep it.",
+      "previewUnavailable": "This preview is not available here.",
+      "readerUnavailable": "The code reader could not load. Try again."
     },
     "confirm": {
-      "overwrite": "{{files}} already exists. Overwrite? (Choose a different name to keep both.)"
+      "overwrite": "{{files}} already exists. Overwrite? (Choose a different name to keep both.)",
+      "switchLanguage": "Switch this diagram from {{from}} to {{to}}? Code the canvas cannot show will not carry over."
     },
     "canvas": {
       "shapeTools": "Shape tools",
@@ -136,7 +171,57 @@
       "routingStraight": "Straight",
       "routingOrthogonal": "Orthogonal",
       "routingCurved": "Curved",
-      "line": "Line"
+      "line": "Line",
+      "nodeLabelTypst": "Label (Typst)"
+    },
+    "notes": {
+      "tooltip": "What the canvas does not fully show",
+      "count_one": "{{count}} note",
+      "count_other": "{{count}} notes",
+      "keptHeading": "Kept in the code",
+      "approximatedHeading": "Shown approximately",
+      "droppedHeading": "Not drawn on the canvas",
+      "notDiagram": "There is nothing in this code the canvas can draw.",
+      "outsideCode": "Code before or after the diagram is kept as written.",
+      "wrapper": "The code around the diagram, such as a figure, is kept as written.",
+      "diagramSetting": "The diagram setting {{detail}} is kept in the code.",
+      "edgeOption": "The {{detail}} edge option is kept in the code.",
+      "scripted": "Scripted diagram content, such as loops, is kept in the code.",
+      "mathMode": "Math-mode diagram content is kept in the code.",
+      "unplacedNode": "Nodes without a fixed position are kept in the code.",
+      "unreadEdge": "Edges the canvas cannot read are kept in the code.",
+      "danglingEdge": "Edges that do not connect two nodes are kept in the code.",
+      "gridCoordinates": "Grid coordinates are shown at fixed positions.",
+      "formattedLabels": "Formatted labels are shown as plain text.",
+      "unknownShapes": "Shapes the canvas does not have are shown as rectangles.",
+      "estimatedSize": "Nodes without a width and height are shown at an estimated size.",
+      "colorAdjustments": "Adjusted colors, such as lighten, are shown with their base color.",
+      "colorExpressions": "Colors set by variables or expressions are not shown on the canvas.",
+      "strokeStyles": "Some line styles are shown with the nearest canvas style.",
+      "arrowMarks": "Arrow marks the canvas does not have are shown as plain arrows.",
+      "freePoints": "Edges through free points are drawn straight on the canvas.",
+      "tikzCommand": "The {{detail}} command is not drawn. A canvas edit rewrites the code without it.",
+      "truncated": "The code is too long, so only its first part is drawn.",
+      "mermaidNotFlowchart": "Only flowcharts can be drawn on the canvas. This code is a {{detail}} diagram.",
+      "mermaidFrontmatter": "The frontmatter block is kept in the code.",
+      "mermaidDirective": "Config directives are kept in the code.",
+      "mermaidComment": "Comments are kept in the code.",
+      "mermaidAccessibility": "Accessibility titles and descriptions are kept in the code.",
+      "mermaidClick": "Click handlers are kept in the code.",
+      "mermaidStyleProperty": "The {{detail}} style property is kept in the code.",
+      "mermaidClassProperty": "The {{detail}} class property is kept in the code.",
+      "mermaidLinkStyleProperty": "The {{detail}} link style property is kept in the code.",
+      "mermaidNodeSetting": "The {{detail}} node setting is kept in the code.",
+      "mermaidEdgeSetting": "The {{detail}} edge setting is kept in the code.",
+      "mermaidInvisibleLink": "Invisible links are kept in the code.",
+      "mermaidLinkLength": "Link lengths are kept in the code.",
+      "mermaidSubgraphDirection": "Subgraph directions are kept in the code.",
+      "mermaidUnknownStatement": "Statements the canvas cannot read are kept in the code.",
+      "mermaidShape": "The {{detail}} shape is shown as the closest canvas shape.",
+      "mermaidThickLink": "Thick links are shown as normal lines.",
+      "mermaidArrowHead": "Circle and cross arrow heads are shown as arrows.",
+      "mermaidMarkdownLabel": "Markdown labels are shown as plain text.",
+      "mermaidNoFlowchartHeader": "Only flowcharts can be drawn on the canvas. Start the code with flowchart or graph."
     }
   }
 }

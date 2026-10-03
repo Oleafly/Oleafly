@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => ({
     hasPdf: false,
   },
   runPreflight: vi.fn(),
+  projectFileSizes: vi.fn(),
 }));
 
 vi.mock("@oleafly/preflight", async (importOriginal) => {
@@ -57,6 +58,11 @@ vi.mock("@/store/compile", async (importOriginal) => {
 });
 
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+
+vi.mock("@/lib/tauri", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/tauri")>();
+  return { ...actual, projectFileSizes: mocks.projectFileSizes };
+});
 
 import { preflightEngineFor, usePreflightStore } from "./preflight";
 
@@ -147,7 +153,42 @@ beforeEach(() => {
   mocks.isCompileCheckpointCurrent.mockReset().mockReturnValue(false);
   mocks.logError.mockClear();
   mocks.runPreflight.mockReset().mockReturnValue(mocks.report);
+  mocks.projectFileSizes.mockReset().mockResolvedValue({});
 });
+
+const TYPST_ENGINE = {
+  ...LATEX_ENGINE,
+  id: "typst" as const,
+  label: "Typst",
+  source_format: "typst" as const,
+  main_document: "main.typ",
+  source_extensions: ["typ"],
+  capabilities: {
+    ...LATEX_ENGINE.capabilities,
+    formatting_profile: "typst" as const,
+    source_preflight_profile: "typst" as const,
+  },
+};
+
+function seedTypstProject(engine = TYPST_ENGINE) {
+  useFilesStore.setState({
+    projectId: "typst-paper",
+    mainDoc: "main.typ",
+    activePath: "main.typ",
+    engine,
+    engineLoaded: true,
+    engineError: null,
+    tree: [
+      { path: "main.typ", is_dir: false },
+      { path: "figures/plot.png", is_dir: false },
+      { path: "unused.png", is_dir: false },
+    ],
+    files: {
+      "main.typ": { content: '= Intro\n#image("figures/plot.png")', dirty: false },
+    },
+  });
+  useIndexStore.setState({ index: null, texts: {} });
+}
 
 describe("preflightEngineFor", () => {
   it("maps the bundled Tectonic engine to \"bundled\"", () => {
@@ -163,10 +204,58 @@ describe("preflightEngineFor", () => {
     expect(preflightEngineFor("latexmk", null)).toBe("unknown");
   });
 
-  it("falls back to \"unknown\" for a non-LaTeX engine", () => {
-    expect(preflightEngineFor("typst", undefined)).toBe("unknown");
+  it("maps the Typst engine to \"typst\"", () => {
+    expect(preflightEngineFor("typst", undefined)).toBe("typst");
+  });
+
+  it("falls back to \"unknown\" for an engine without source checks", () => {
     expect(preflightEngineFor("markdown", undefined)).toBe("unknown");
     expect(preflightEngineFor("unknown", undefined)).toBe("unknown");
+  });
+});
+
+describe("preflight store for Typst", () => {
+  it("loads the Typst rules and the project's Typst version", async () => {
+    const { TYPST_SOURCE_RULES } = await import("@oleafly/preflight/typst");
+    seedTypstProject({ ...TYPST_ENGINE, typst_resolved: { version: "0.13.1", source: "downloaded" } });
+
+    await usePreflightStore.getState().run();
+
+    const input = mocks.runPreflight.mock.calls[0][0];
+    expect(input).toMatchObject({
+      sourceProfile: "typst",
+      sourceRules: TYPST_SOURCE_RULES,
+      typstVersion: "0.13.1",
+      engine: "typst",
+    });
+  });
+
+  it("falls back to the bundled Typst version", async () => {
+    seedTypstProject();
+    await usePreflightStore.getState().run();
+    expect(mocks.runPreflight.mock.calls[0][0].typstVersion).toBe("0.15.1");
+  });
+
+  it("measures only the images the Typst sources use", async () => {
+    seedTypstProject();
+    mocks.projectFileSizes.mockResolvedValue({ "figures/plot.png": 12 });
+
+    await usePreflightStore.getState().run();
+
+    expect(mocks.projectFileSizes).toHaveBeenCalledTimes(1);
+    expect(mocks.projectFileSizes).toHaveBeenCalledWith("typst-paper", ["figures/plot.png"]);
+    const files = mocks.runPreflight.mock.calls[0][0].project.files;
+    expect(files.find((file: { path: string }) => file.path === "figures/plot.png")).toMatchObject({ size: 12 });
+    expect(files.find((file: { path: string }) => file.path === "unused.png")?.size).toBeUndefined();
+  });
+
+  it("does not load Typst rules for a LaTeX project", async () => {
+    seedProject();
+    await usePreflightStore.getState().run();
+    const input = mocks.runPreflight.mock.calls[0][0];
+    expect(input.sourceRules).toBeUndefined();
+    expect(input.typstVersion).toBeUndefined();
+    expect(mocks.projectFileSizes).not.toHaveBeenCalled();
   });
 });
 

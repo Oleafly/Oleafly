@@ -214,6 +214,52 @@ describe("Editor shell", () => {
     expect(screen.getByTestId("markdown-toolbar")).toBeInTheDocument();
   });
 
+  it("shows the changed-on-disk banner above a Typst file", () => {
+    openFile("main.typ", {
+      engine: engineWithProfile("typst", ["typ"]),
+      changedOnDisk: ["main.typ"],
+      tree: [],
+      manifestHome: "library",
+    });
+    render(<Editor />);
+
+    expect(screen.getByTestId("changed-on-disk-banner")).toHaveTextContent(
+      en.changedOnDisk.message.replace("{{file}}", "main.typ"),
+    );
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+    expect(screen.getByTestId("editor-breadcrumbs")).toBeInTheDocument();
+  });
+
+  it("marks a managed Typst file as read-only", () => {
+    openFile(".oleafly/notes.typ", {
+      engine: engineWithProfile("typst", ["typ"]),
+      changedOnDisk: [],
+      tree: [],
+      manifestHome: "library",
+    });
+    render(<Editor />);
+
+    expect(screen.getByTestId("managed-file-notice")).toHaveTextContent(
+      shell.managedFileReadOnly.replace("{{file}}", ".oleafly/notes.typ"),
+    );
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+  });
+
+  it("marks a linked Typst file as read-only", () => {
+    openFile("shared/chapter.typ", {
+      engine: engineWithProfile("typst", ["typ"]),
+      changedOnDisk: [],
+      tree: [{ path: "shared/chapter.typ", is_dir: false, read_only: true }],
+      manifestHome: "library",
+    });
+    render(<Editor />);
+
+    expect(screen.getByTestId("linked-file-notice")).toHaveTextContent(
+      shell.linkedFileReadOnly.replace("{{file}}", "shared/chapter.typ"),
+    );
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+  });
+
   it("refuses to edit a file it cannot preview", () => {
     openFile("assets/fonts/body.woff2");
     render(<Editor />);
@@ -415,6 +461,57 @@ describe("Editor shell", () => {
     expect(wrapSelection).toHaveBeenCalledTimes(2);
 
     fireEvent.keyDown(window, { key: "b" });
+    expect(wrapSelection).toHaveBeenCalledTimes(2);
+  });
+
+  it("picks the toolbar from the file language when it differs from the engine", () => {
+    openFile("notes.typ");
+    const typstInLatex = render(<Editor />);
+    expect(screen.getByTestId("typst-toolbar")).toBeInTheDocument();
+    expect(screen.queryByTestId("latex-toolbar")).not.toBeInTheDocument();
+    typstInLatex.unmount();
+
+    openFile("appendix.tex", { engine: engineWithProfile("typst", ["typ"]) });
+    const latexInTypst = render(<Editor />);
+    expect(screen.getByTestId("latex-toolbar")).toBeInTheDocument();
+    expect(screen.queryByTestId("typst-toolbar")).not.toBeInTheDocument();
+    latexInTypst.unmount();
+
+    openFile("README.md", { engine: engineWithProfile("typst", ["typ"]) });
+    const markdownInTypst = render(<Editor />);
+    expect(screen.getByTestId("markdown-toolbar")).toBeInTheDocument();
+    expect(screen.queryByTestId("typst-toolbar")).not.toBeInTheDocument();
+    markdownInTypst.unmount();
+
+    openFile("refs.bib");
+    render(<Editor />);
+    expect(screen.queryByTestId("latex-toolbar")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("typst-toolbar")).not.toBeInTheDocument();
+  });
+
+  it("formats in the file's own language when it differs from the engine", () => {
+    openFile("notes.typ");
+    const { container } = render(<Editor />);
+    const surface = document.createElement("div");
+    surface.className = "cm-editor";
+    const focusable = document.createElement("input");
+    surface.appendChild(focusable);
+    container.appendChild(surface);
+    focusable.focus();
+
+    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    expect(wrapSelection).toHaveBeenLastCalledWith("*", "*");
+
+    act(() => {
+      useFilesStore.setState({ activePath: "README.md", engine: engineWithProfile("typst", ["typ"]) });
+    });
+    fireEvent.keyDown(window, { key: "i", metaKey: true });
+    expect(wrapSelection).toHaveBeenLastCalledWith("*", "*");
+
+    act(() => {
+      useFilesStore.setState({ activePath: "refs.bib", engine: LATEX_ENGINE });
+    });
+    fireEvent.keyDown(window, { key: "b", metaKey: true });
     expect(wrapSelection).toHaveBeenCalledTimes(2);
   });
 });

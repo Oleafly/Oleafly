@@ -90,6 +90,16 @@ Verdicts are `pass`, `fail`, or `needs decision`. Nothing passes on an assumptio
 | Metadata abstract within the character limit | | |
 | Licence chosen deliberately | | |
 
+## Typst source (Typst only)
+
+| Item | Verdict | Evidence |
+| --- | --- | --- |
+| Typst version recorded from `project.json` | | |
+| Every `@preview` import names an exact version | | |
+| No `unknown font family` warning in the log | | |
+| `#set document` title matches, author absent for double-blind | | |
+| Upload is PDF only, or the source bundle is complete | | |
+
 ## Bundle
 
 | Item | Verdict | Evidence |

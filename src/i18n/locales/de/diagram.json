@@ -3,6 +3,22 @@
     "aiProviderRequired": "Verbinden Sie in den Einstellungen einen KI-Anbieter, um Mit KI beheben zu nutzen.",
     "fixFailed": "Behebung fehlgeschlagen: {{detail}}"
   },
+  "chooser": {
+    "title": "Diagramm-Editor wählen",
+    "description": "Wählen Sie, für welche Art von Dokument das Diagramm gedacht ist.",
+    "tikz": {
+      "title": "TikZ-Diagramm",
+      "description": "Knoten und Pfeile in TikZ, für LaTeX-Dokumente."
+    },
+    "typst": {
+      "title": "Typst-Diagramm",
+      "description": "Ein fletcher-Diagramm für Typst-Dokumente."
+    },
+    "mermaid": {
+      "title": "Mermaid-Diagramm",
+      "description": "Ein Mermaid-Flussdiagramm für Markdown-Dokumente."
+    }
+  },
   "package": {
     "composer": {
       "title": "Diagramm einfügen",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Abbrechen (Esc)",
       "cancelRename": "Umbenennen abbrechen",
       "renameTooltip": "Diagramm umbenennen",
-      "importTooltip": "Eine .tikz- oder .tex-Datei importieren und diesen Entwurf ersetzen",
-      "importLabel": "TikZ-Datei importieren",
+      "importTooltip": "Eine .tikz-, .tex-, .typ-, .mmd- oder .md-Datei importieren und diesen Entwurf ersetzen",
+      "importLabel": "Diagrammdatei importieren",
       "modeDraw": "Zeichnen",
       "modeCode": "Code",
       "fixWithAiTooltip": "Die KI bitten, den Kompilierfehler zu beheben",
@@ -28,20 +44,29 @@
       "newProject": "Neues Projekt",
       "noOtherProjects": "Bisher keine weiteren Projekte.",
       "saveFigure": "Abbildung speichern",
+      "insertTypst": "Als Typst einfügen",
+      "insertLatex": "Als TikZ einfügen",
       "downloadTooltip": "Dieses Diagramm herunterladen",
       "download": "Herunterladen",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (in Kürze)",
       "svgTooltip": "Der SVG-Export braucht einen Vektor-Renderer, der noch nicht verfügbar ist",
       "snippets": "Bausteine",
-      "untitledName": "Diagramm ohne Titel"
+      "untitledName": "Diagramm ohne Titel",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Als Mermaid einfügen",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Diagrammsprache: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Rechteckiger Knoten",
       "circleNode": "Runder Knoten",
       "arrowEdge": "Kante mit Pfeil",
       "lineEdge": "Kante als Linie",
-      "scope": "Bereich"
+      "scope": "Bereich",
+      "group": "Gruppe"
     },
     "preview": {
       "label": "Vorschau",
@@ -53,7 +78,8 @@
       "pngScale": "PNG-Skalierung",
       "scaleFactor": "{{factor}}x",
       "background": "Hintergrund",
-      "backgroundLabel": "Hintergrundfarbe der Abbildung"
+      "backgroundLabel": "Hintergrundfarbe der Abbildung",
+      "diagnosticAt": "Zeile {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Das Diagramm ließ sich nicht kompilieren. Sehen Sie im Protokoll unten nach.",
@@ -68,16 +94,25 @@
       "figureCached": "Bereits zwischengespeichert, die vorhandene Abbildung wird wiederverwendet.",
       "figureSaved": "Im Zwischenspeicher für Abbildungen gesichert.",
       "saveFigureFailed": "Die Abbildung konnte nicht gespeichert werden: {{detail}}",
+      "insertedTypst": "Als Typst-Code eingefügt.",
+      "insertedLatex": "Als TikZ-Code eingefügt.",
       "downloaded": "Heruntergeladen.",
       "imported": "{{name}} zum Bearbeiten importiert.",
       "importedCodeOnly": "{{name}} importiert (nur Code, nicht zeichenbar).",
       "importFailed": "Diese Datei konnte nicht importiert werden: {{detail}}",
       "noAiFix": "Die KI hat keine Behebung geliefert.",
       "fixFailed": "Behebung fehlgeschlagen: {{detail}}",
-      "notDrawable": "Aus diesem Code ließ sich nichts zeichnen. Der Code bleibt unverändert."
+      "notDrawable": "Aus diesem Code ließ sich nichts zeichnen. Der Code bleibt unverändert.",
+      "savedTypstToProject": "{{path}} gespeichert. Binden Sie es mit #include in ein Dokument ein.",
+      "insertedMermaid": "Als Mermaid-Codeblock eingefügt.",
+      "savedMermaidToProject": "{{path}} gespeichert. Fügen Sie es in einem mermaid-Codeblock in ein Markdown-Dokument ein.",
+      "typstPackageMissing": "Typst konnte das Paket fletcher nicht laden. Verbinden Sie sich einmal mit dem Internet, damit Typst es herunterladen und behalten kann.",
+      "previewUnavailable": "Diese Vorschau ist hier nicht verfügbar.",
+      "readerUnavailable": "Der Code-Leser konnte nicht geladen werden. Versuchen Sie es erneut."
     },
     "confirm": {
-      "overwrite": "{{files}} gibt es bereits. Überschreiben? (Wählen Sie einen anderen Namen, um beides zu behalten.)"
+      "overwrite": "{{files}} gibt es bereits. Überschreiben? (Wählen Sie einen anderen Namen, um beides zu behalten.)",
+      "switchLanguage": "Dieses Diagramm von {{from}} auf {{to}} umstellen? Code, den die Zeichenfläche nicht darstellen kann, wird nicht übernommen."
     },
     "canvas": {
       "shapeTools": "Formwerkzeuge",
@@ -136,7 +171,57 @@
       "routingStraight": "Gerade",
       "routingOrthogonal": "Orthogonal",
       "routingCurved": "Gebogen",
-      "line": "Linie"
+      "line": "Linie",
+      "nodeLabelTypst": "Beschriftung (Typst)"
+    },
+    "notes": {
+      "tooltip": "Was die Zeichenfläche nicht vollständig zeigt",
+      "count_one": "{{count}} Hinweis",
+      "count_other": "{{count}} Hinweise",
+      "keptHeading": "Im Code erhalten",
+      "approximatedHeading": "Ungefähr dargestellt",
+      "droppedHeading": "Nicht auf der Zeichenfläche gezeichnet",
+      "notDiagram": "In diesem Code gibt es nichts, was die Zeichenfläche zeichnen kann.",
+      "outsideCode": "Code vor oder nach dem Diagramm bleibt unverändert erhalten.",
+      "wrapper": "Der Code um das Diagramm, etwa eine Abbildung, bleibt unverändert erhalten.",
+      "diagramSetting": "Die Diagrammeinstellung {{detail}} bleibt im Code erhalten.",
+      "edgeOption": "Die Kantenoption {{detail}} bleibt im Code erhalten.",
+      "scripted": "Per Skript erzeugter Diagramminhalt, etwa Schleifen, bleibt im Code erhalten.",
+      "mathMode": "Diagramminhalt im Mathematikmodus bleibt im Code erhalten.",
+      "unplacedNode": "Knoten ohne feste Position bleiben im Code erhalten.",
+      "unreadEdge": "Kanten, die die Zeichenfläche nicht lesen kann, bleiben im Code erhalten.",
+      "danglingEdge": "Kanten, die nicht zwei Knoten verbinden, bleiben im Code erhalten.",
+      "gridCoordinates": "Rasterkoordinaten werden an festen Positionen gezeigt.",
+      "formattedLabels": "Formatierte Beschriftungen werden als einfacher Text gezeigt.",
+      "unknownShapes": "Formen, die die Zeichenfläche nicht kennt, werden als Rechtecke gezeigt.",
+      "estimatedSize": "Knoten ohne Breite und Höhe werden in geschätzter Größe gezeigt.",
+      "colorAdjustments": "Angepasste Farben, etwa lighten, werden in ihrer Grundfarbe gezeigt.",
+      "colorExpressions": "Farben aus Variablen oder Ausdrücken werden auf der Zeichenfläche nicht gezeigt.",
+      "strokeStyles": "Manche Linienstile werden im nächstliegenden Stil der Zeichenfläche gezeigt.",
+      "arrowMarks": "Pfeilspitzen, die die Zeichenfläche nicht kennt, werden als einfache Pfeile gezeigt.",
+      "freePoints": "Kanten durch freie Punkte werden auf der Zeichenfläche gerade gezeichnet.",
+      "tikzCommand": "Der Befehl {{detail}} wird nicht gezeichnet. Eine Änderung auf der Zeichenfläche schreibt den Code ohne ihn neu.",
+      "truncated": "Der Code ist zu lang, daher wird nur sein erster Teil gezeichnet.",
+      "mermaidNotFlowchart": "Auf der Zeichenfläche lassen sich nur Flussdiagramme zeichnen. Dieser Code ist ein Diagramm vom Typ {{detail}}.",
+      "mermaidFrontmatter": "Der YAML-Kopf bleibt im Code erhalten.",
+      "mermaidDirective": "Konfigurationsanweisungen bleiben im Code erhalten.",
+      "mermaidComment": "Kommentare bleiben im Code erhalten.",
+      "mermaidAccessibility": "Titel und Beschreibungen für Barrierefreiheit bleiben im Code erhalten.",
+      "mermaidClick": "Handler für click bleiben im Code erhalten.",
+      "mermaidStyleProperty": "Die Stileigenschaft {{detail}} bleibt im Code erhalten.",
+      "mermaidClassProperty": "Die Eigenschaft {{detail}} in classDef bleibt im Code erhalten.",
+      "mermaidLinkStyleProperty": "Die Eigenschaft {{detail}} in linkStyle bleibt im Code erhalten.",
+      "mermaidNodeSetting": "Die Knoteneinstellung {{detail}} bleibt im Code erhalten.",
+      "mermaidEdgeSetting": "Die Kanteneinstellung {{detail}} bleibt im Code erhalten.",
+      "mermaidInvisibleLink": "Unsichtbare Verbindungen bleiben im Code erhalten.",
+      "mermaidLinkLength": "Verbindungslängen bleiben im Code erhalten.",
+      "mermaidSubgraphDirection": "Richtungen in subgraph-Blöcken bleiben im Code erhalten.",
+      "mermaidUnknownStatement": "Anweisungen, die die Zeichenfläche nicht lesen kann, bleiben im Code erhalten.",
+      "mermaidShape": "Die Form {{detail}} wird als nächstliegende Form der Zeichenfläche gezeigt.",
+      "mermaidThickLink": "Dicke Verbindungen werden als normale Linien gezeigt.",
+      "mermaidArrowHead": "Kreis- und Kreuzpfeilspitzen werden als Pfeile gezeigt.",
+      "mermaidMarkdownLabel": "Markdown-Beschriftungen werden als einfacher Text gezeigt.",
+      "mermaidNoFlowchartHeader": "Auf der Zeichenfläche lassen sich nur Flussdiagramme zeichnen. Beginnen Sie den Code mit flowchart oder graph."
     }
   }
 }

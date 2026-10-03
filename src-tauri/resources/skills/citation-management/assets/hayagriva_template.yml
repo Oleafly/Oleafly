@@ -1,0 +1,71 @@
+Watson1953:
+  type: article
+  title: "Molecular Structure of Nucleic Acids: A Structure for Deoxyribose Nucleic Acid"
+  author:
+    - Watson, James D.
+    - Crick, Francis H. C.
+  date: 1953
+  page-range: 737-738
+  serial-number:
+    doi: "10.1038/171737a0"
+  parent:
+    type: periodical
+    title: Nature
+    volume: 171
+    issue: 4356
+
+He2016:
+  type: article
+  title: Deep Residual Learning for Image Recognition
+  author:
+    - He, Kaiming
+    - Zhang, Xiangyu
+    - Ren, Shaoqing
+    - Sun, Jian
+  date: 2016
+  page-range: 770-778
+  serial-number:
+    doi: "10.1109/CVPR.2016.90"
+  parent:
+    type: proceedings
+    title: Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)
+    location: Las Vegas, NV
+
+Alberts2014:
+  type: book
+  title: Molecular Biology of the Cell
+  author:
+    - Alberts, Bruce
+    - Johnson, Alexander
+    - Lewis, Julian
+    - Morgan, David
+    - Raff, Martin
+    - Roberts, Keith
+    - Walter, Peter
+  date: 2014
+  edition: 6
+  publisher:
+    name: Garland Science
+    location: New York, NY
+  serial-number:
+    isbn: "978-0-815-34432-2"
+
+Vaswani2017:
+  type: article
+  title: Attention Is All You Need
+  author:
+    - Vaswani, Ashish
+    - Shazeer, Noam
+    - Parmar, Niki
+    - Uszkoreit, Jakob
+    - Jones, Llion
+    - Gomez, Aidan N.
+    - Kaiser, Łukasz
+    - Polosukhin, Illia
+  date: 2017
+  page-range: 5998-6008
+  parent:
+    type: proceedings
+    title: Advances in Neural Information Processing Systems 30 (NeurIPS 2017)
+    location: Long Beach, CA
+  url: https://proceedings.neurips.cc/paper/2017/hash/3f5ee243547dee91fbd053c1c4a845aa-Abstract.html

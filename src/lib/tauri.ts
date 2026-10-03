@@ -119,6 +119,7 @@ import type {
   TexStatus,
   TinytexInstallState,
   ToolDecision,
+  TypstSource,
   UsageTotals,
   ValidatedCompileFingerprint,
   ZoteroAccount,
@@ -241,6 +242,7 @@ export const compileProject = (
   offline = false,
   fast = false,
   haltOnError = false,
+  typstVariant: string | null = null,
 ) =>
   invoke<CompileResult>("compile_project", {
     projectId,
@@ -248,6 +250,7 @@ export const compileProject = (
     offline,
     fast,
     haltOnError,
+    typstVariant,
   });
 
 export const checkpointList = (projectId: string) =>
@@ -314,6 +317,9 @@ export const readIsolatedPdf = (projectId: string) =>
 
 export const readProjectBytes = (projectId: string, relPath: string) =>
   invoke<ArrayBuffer>("read_project_bytes", { projectId, relPath });
+
+export const projectFileSizes = (projectId: string, paths: readonly string[]) =>
+  invoke<Record<string, number>>("project_file_sizes", { projectId, paths });
 
 
 export const projectMutationGeneration = (projectId: string) =>
@@ -540,10 +546,24 @@ export interface AdHocArtifact {
 }
 
 export interface AdHocConversionRequest {
-  source: "latex" | "markdown" | "typst" | "html" | "docx";
+  source: "latex" | "markdown" | "typst" | "html" | "docx" | "equation";
   target: "latex" | "markdown" | "typst" | "html" | "docx";
   text?: string;
   dataBase64?: string;
+  report?: boolean;
+  check?: boolean;
+  files?: AdHocArtifact[];
+}
+
+export interface AdHocCheckDiagnostic {
+  severity: "error" | "warning";
+  message: string;
+  line: number | null;
+}
+
+export interface AdHocCheck {
+  ok: boolean;
+  diagnostics: AdHocCheckDiagnostic[];
 }
 
 export interface AdHocConversionResult {
@@ -553,10 +573,41 @@ export interface AdHocConversionResult {
   fileName: string;
   mediaType: string;
   files: AdHocArtifact[];
+  report?: string[];
+  check?: AdHocCheck;
 }
 
 export const convertAdHoc = (request: AdHocConversionRequest) =>
   invoke<AdHocConversionResult>("convert_ad_hoc", { request });
+
+export type TypstSnippetFormat = "svg" | "png";
+
+export interface TypstSnippetRequest {
+  source: string;
+  format: TypstSnippetFormat;
+  ppi?: number;
+  projectId?: string;
+  document?: boolean;
+  offline?: boolean;
+}
+
+export interface TypstSnippetDiagnostic {
+  severity: "error" | "warning";
+  message: string;
+  line: number | null;
+  column: number | null;
+}
+
+export type TypstSnippetImage =
+  | { format: "svg"; svg: string }
+  | { format: "png"; pngBase64: string };
+
+export type TypstSnippetRender =
+  | { status: "rendered"; image: TypstSnippetImage; diagnostics: TypstSnippetDiagnostic[] }
+  | { status: "failed"; diagnostics: TypstSnippetDiagnostic[] };
+
+export const renderTypstSnippet = (request: TypstSnippetRequest) =>
+  invoke<TypstSnippetRender>("render_typst_snippet", { request });
 
 export interface ArxivSourceRequest {
   arxivId?: string;
@@ -612,6 +663,70 @@ export const setProjectEngineCmd = (
   engine: string,
   flavor: TexFlavor | null = null,
 ) => invoke<ProjectMeta>("set_project_engine", { projectId, engine, flavor });
+
+export interface TypstSystemInstall {
+  version: string;
+  path: string;
+}
+
+export interface TypstVersionEntry {
+  version: string;
+  releasedAt: string | null;
+  inCatalog: boolean;
+  sources: TypstSource[];
+  downloadBytes: number | null;
+  tinymistVersion?: string | null;
+}
+
+export interface TypstToolchainStatus {
+  bundledVersion: string;
+  defaultVersion: string;
+  defaultChoice: string | null;
+  system: TypstSystemInstall | null;
+  installing: string | null;
+  versions: TypstVersionEntry[];
+  unusedTinymist?: string[];
+}
+
+export type TypstInstallPhase = "downloading" | "verifying" | "extracting" | "done";
+
+export interface TypstInstallProgress {
+  version: string;
+  phase: TypstInstallPhase;
+  receivedBytes: number;
+  totalBytes: number;
+}
+
+export const typstToolchainStatus = () =>
+  invoke<TypstToolchainStatus>("typst_toolchain_status");
+
+export async function installTypstVersion(
+  version: string,
+  onProgress: (progress: TypstInstallProgress) => void,
+): Promise<TypstToolchainStatus> {
+  const channel = new Channel<TypstInstallProgress>();
+  channel.onmessage = onProgress;
+  try {
+    return await invoke<TypstToolchainStatus>("install_typst_version", {
+      version,
+      onProgress: channel,
+    });
+  } finally {
+    channel.onmessage = () => {};
+  }
+}
+
+export const removeTypstVersion = (version: string) =>
+  invoke<TypstToolchainStatus>("remove_typst_version", { version });
+
+export const removeUnusedTinymistDownloads = () =>
+  invoke<TypstToolchainStatus>("remove_unused_tinymist_downloads");
+
+export const setDefaultTypstVersion = (version: string | null) =>
+  invoke<TypstToolchainStatus>("set_default_typst_version", { version });
+
+export const setProjectTypstVersion = (projectId: string, version: string | null) =>
+  invoke<ProjectMeta>("set_project_typst_version", { projectId, version });
 
 export const setProjectDictionaryLocaleCmd = (
   projectId: string,
@@ -682,8 +797,8 @@ export const createMarkdownProject = (name: string) =>
 export const createImageProject = (name: string, source: string, color?: string) =>
   invoke<string>("create_image_project", { name, source, color });
 
-export const createDiagramProject = (name: string, source: string) =>
-  invoke<string>("create_diagram_project", { name, source });
+export const createDiagramProject = (name: string, source: string, language?: "tikz" | "typst" | "mermaid") =>
+  invoke<string>("create_diagram_project", { name, source, language: language ?? null });
 
 export const getOrCreateScratchProject = () =>
   invoke<string>("get_or_create_scratch_project");
@@ -1063,8 +1178,13 @@ export interface RecentProjectEntry {
 export const setRecentProjects = (projects: RecentProjectEntry[]) =>
   invoke<void>("set_recent_projects", { projects });
 
-export const exportDocument = (projectId: string, mainDoc: string, format: string, dest: string) =>
-  invoke<void>("export_document", { projectId, mainDoc, format, dest });
+export const exportDocument = (
+  projectId: string,
+  mainDoc: string,
+  format: string,
+  dest: string,
+  typstVariant: string | null = null,
+) => invoke<void>("export_document", { projectId, mainDoc, format, dest, typstVariant });
 
 export const hasPandoc = () => invoke<boolean>("has_pandoc");
 

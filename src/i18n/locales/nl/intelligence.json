@@ -59,6 +59,8 @@
       "startingAndInitializing": "De taalservice van het project wordt gestart en geïnitialiseerd.",
       "stopTimeout": "Het vorige proces van de taalservice is niet op tijd gestopt. Probeer het opnieuw om het te herstellen.",
       "synchronizedAndReady": "De taalservice is gesynchroniseerd en klaar.",
+      "tinymistDownloadFailed": "Tinymist {{version}} kon niet worden gedownload. Oleafly probeert het opnieuw.",
+      "tinymistDownloading": "Tinymist {{version}} downloaden, passend bij de Typst-versie van dit project.",
       "transportClosed": "De verbinding met de taalservice is onverwacht gesloten. Probeer het opnieuw om opnieuw te verbinden.",
       "versionMismatch": "{{kind}} {{expected}} werd verwacht, maar de installatie meldde {{reported}}."
     }
@@ -137,7 +139,8 @@
     "packageOption": "optie van {{name}}",
     "keyvalKey": "sleutel van \\{{command}}",
     "duplicateCount": "duplicaat ({{count}})",
-    "duplicateIndex": "duplicaat {{index}}/{{total}}"
+    "duplicateIndex": "duplicaat {{index}}/{{total}}",
+    "typstBinding": "Typst-binding"
   },
   "token": {
     "citation": "Citatie",

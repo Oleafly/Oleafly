@@ -573,6 +573,76 @@
       "tag2": "화살표",
       "tag3": "요약표",
       "tag4": "커서 위치에 삽입"
+    },
+    "arxivToTypst": {
+      "name": "arXiv를 Typst로",
+      "description": "arXiv 소스 묶음을 Typst로 변환합니다. 변환되지 않은 부분은 컴파일 검사로 보여 줍니다.",
+      "tag1": "소스 압축 파일",
+      "tag2": "컴파일 검사",
+      "tag3": "아이디 입력은 네트워크 필요"
+    },
+    "csvToTypst": {
+      "name": "CSV를 Typst로",
+      "description": "CSV나 TSV 행을 붙여 넣으면 이스케이프 처리된 Typst 표를 만듭니다.",
+      "tag1": "CSV와 TSV",
+      "tag2": "표",
+      "tag3": "로컬"
+    },
+    "equationToTypst": {
+      "name": "수식을 Typst로",
+      "description": "입력한 LaTeX 수식이나 수식 이미지를 Typst 수식으로 변환합니다.",
+      "tag1": "텍스트 또는 이미지",
+      "tag2": "수식",
+      "tag3": "내장"
+    },
+    "excelToTypst": {
+      "name": "Excel을 Typst로",
+      "description": "Excel, CSV, TSV 시트를 이스케이프 처리된 Typst 표로 변환합니다.",
+      "tag1": "XLSX",
+      "tag2": "CSV와 TSV",
+      "tag3": "로컬"
+    },
+    "htmlToTypst": {
+      "name": "HTML을 Typst로",
+      "description": "붙여 넣은 HTML을 단독 Typst 문서로 변환합니다.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "로컬"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid를 Typst로",
+      "description": "Mermaid 순서도를 편집 가능한 fletcher 코드로 변환합니다.",
+      "tag1": "순서도",
+      "tag2": "Fletcher",
+      "tag3": "로컬"
+    },
+    "typstToHtml": {
+      "name": "Typst를 HTML로",
+      "description": "Typst 마크업을 MathML 수식이 들어간 단독 HTML로 변환합니다.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst를 Markdown으로",
+      "description": "Typst 마크업을 어디서나 쓸 수 있는 Markdown으로 변환합니다.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "프로젝트 선택 사항"
+    },
+    "typstToWord": {
+      "name": "Typst를 Word로",
+      "description": "수식을 Word 자체 수식으로 담은 Word 문서를 만듭니다.",
+      "tag1": "DOCX",
+      "tag2": "자체 수식",
+      "tag3": "로컬"
+    },
+    "wordToTypst": {
+      "name": "Word를 Typst로",
+      "description": "Word 문서를 Typst로 변환하고 추출된 미디어도 함께 보관합니다.",
+      "tag1": "DOCX",
+      "tag2": "미디어",
+      "tag3": "프로젝트 선택 사항"
     }
   },
   "generators": {
@@ -652,7 +722,9 @@
     "insertInEditor": "편집기에 삽입",
     "noDescription": "이 명령에는 설명이 없습니다.",
     "loadingPreview": "미리 볼 기호를 불러오는 중입니다.",
-    "chooseSymbol": "라이브러리에서 기호를 고르세요."
+    "chooseSymbol": "라이브러리에서 기호를 고르세요.",
+    "insertHintTypst": "열려 있는 Typst 문서에 Typst 코드를 넣습니다.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · 클릭하면 바꿉니다",
@@ -708,7 +780,8 @@
     "openAiSettings": "AI 설정 열기",
     "fileReady": "{{fileName}}이(가) 준비되었습니다",
     "saveWordHint": "준비되면 Word 문서를 저장하세요.",
-    "resultPlaceholder": "변환 결과가 여기에 나타납니다."
+    "resultPlaceholder": "변환 결과가 여기에 나타납니다.",
+    "progressConvertingSource": "소스를 Typst로 변환하는 중"
   },
   "converters": {
     "imageToLatex": {
@@ -829,6 +902,76 @@
       "inputLabel": "Word 문서",
       "inputHint": ".docx 파일을 고르세요. 수식과 이미지는 이 컴퓨터에서 읽습니다.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv를 Typst로",
+      "subtitle": "e-print의 LaTeX 소스를 Typst로 변환하고 직접 고쳐야 할 부분을 확인합니다",
+      "inputLabel": "arXiv 소스",
+      "inputHint": "arXiv 아이디를 입력하거나 저장해 둔 .tar.gz 또는 .gz 소스 압축 파일을 고르세요.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV를 Typst로",
+      "subtitle": "스프레드시트 데이터를 붙여 넣으면 이스케이프 처리된 Typst 표를 만듭니다",
+      "inputLabel": "CSV 또는 TSV",
+      "inputHint": "쉼표나 탭으로 구분된 행을 붙여 넣으세요. 첫 행이 머리글이 됩니다.",
+      "outputLabel": "Typst 표"
+    },
+    "equationToTypst": {
+      "title": "수식을 Typst로",
+      "subtitle": "입력하거나 사진으로 찍은 수식을 Typst 수식으로 바꿉니다",
+      "inputLabel": "수식",
+      "inputHint": "LaTeX 수식을 입력하거나 말로 설명하거나 이미지를 고르세요.",
+      "outputLabel": "Typst 수식"
+    },
+    "excelToTypst": {
+      "title": "Excel을 Typst로",
+      "subtitle": "첫 시트를 Typst 표로 변환합니다",
+      "inputLabel": "스프레드시트",
+      "inputHint": "XLSX, XLS, CSV 또는 TSV. 수식은 저장된 계산값을 씁니다.",
+      "outputLabel": "Typst 표"
+    },
+    "htmlToTypst": {
+      "title": "HTML을 Typst로",
+      "subtitle": "시맨틱 HTML을 단독 Typst 문서로 변환합니다",
+      "inputLabel": "HTML",
+      "inputHint": "HTML 조각이나 완전한 문서를 붙여 넣으세요.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid를 Typst로",
+      "subtitle": "Mermaid 순서도를 편집 가능한 fletcher 다이어그램으로 바꿉니다",
+      "inputLabel": "Mermaid 순서도",
+      "inputHint": "순서도는 TD, LR, BT, RL 레이아웃과 레이블, 흔히 쓰는 노드 모양을 지원합니다.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst를 HTML로",
+      "subtitle": "MathML 수식이 들어간 단독 HTML을 만듭니다",
+      "inputLabel": "Typst",
+      "inputHint": "Typst 조각이나 완전한 Typst 문서를 붙여 넣으세요.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst를 Markdown으로",
+      "subtitle": "프로젝트를 먼저 만들지 않고 어디서나 쓸 수 있는 Markdown을 만듭니다",
+      "inputLabel": "Typst",
+      "inputHint": "Typst 조각이나 완전한 Typst 문서를 붙여 넣으세요.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst를 Word로",
+      "subtitle": "수식을 편집 가능한 Word 수식으로 담은 DOCX를 만듭니다",
+      "inputLabel": "Typst",
+      "inputHint": "Typst 조각이나 완전한 Typst 문서를 붙여 넣으세요.",
+      "outputLabel": "Word 문서"
+    },
+    "wordToTypst": {
+      "title": "Word를 Typst로",
+      "subtitle": "DOCX를 변환하고 추출된 미디어를 결과와 함께 보관합니다",
+      "inputLabel": "Word 문서",
+      "inputHint": ".docx 파일을 고르세요. 수식과 이미지는 이 컴퓨터에서 읽습니다.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -844,7 +987,8 @@
     "chooseFile": "변환하기 전에 파일을 고르세요.",
     "fileTooLarge": "128 MB보다 작은 파일을 고르세요.",
     "emptySheet": "선택한 시트가 비어 있습니다.",
-    "arxivInputRequired": "arXiv 아이디를 입력하거나 소스 압축 파일을 고르세요."
+    "arxivInputRequired": "arXiv 아이디를 입력하거나 소스 압축 파일을 고르세요.",
+    "equationToTypst": "Pandoc이 이 수식을 Typst로 변환하지 못했습니다. LaTeX 수식을 확인하고 다시 시도하세요."
   },
   "converterNotes": {
     "scannedPages": "로컬 모델로 스캔한 {{pages}}쪽을 옮겨 적었습니다. 결과를 쓰기 전에 수식과 표를 확인하세요.",
@@ -852,7 +996,14 @@
     "mermaidTikz": "이 순서도를 편집 가능한 TikZ로 변환했습니다.",
     "mermaidRendered": "이 다이어그램의 Mermaid 문법은 편집 가능한 TikZ로 깔끔하게 옮겨지지 않아 이 컴퓨터에서 렌더링했습니다.",
     "tableConverted": "{{rows}}개 행과 {{columns}}개 열을 변환했습니다.",
-    "arxivBundle": "소스 파일 {{files}}개. 주 문서: {{mainFile}}."
+    "arxivBundle": "소스 파일 {{files}}개. 주 문서: {{mainFile}}.",
+    "mermaidFletcher": "이 순서도를 Typst용 편집 가능한 fletcher 코드로 변환했습니다.",
+    "mermaidRenderedTypst": "이 다이어그램의 Mermaid 문법은 편집 가능한 fletcher 코드로 깔끔하게 옮겨지지 않아 이 컴퓨터에서 렌더링했습니다.",
+    "arxivTypstConverted": "{{mainFile}}을(를) 변환했습니다.",
+    "typstCheckPassed": "Typst가 결과를 오류 없이 컴파일했습니다.",
+    "typstCheckFailed_other": "Typst가 오류 {{count}}개를 찾았습니다.",
+    "notConverted_other": "항목 {{count}}개를 변환하지 못했습니다.",
+    "checkLine": "{{line}}번째 줄: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "이 Mermaid 다이어그램이 50,000자 제한을 넘습니다.",
@@ -1102,9 +1253,15 @@
   },
   "equation": {
     "subtitle": "실시간 LaTeX 작업 공간",
+    "subtitleTypst": "실시간 Typst 작업 공간",
+    "mathLanguage": "수식 언어",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "오류",
     "statusRendered": "렌더링됨",
+    "statusRendering": "렌더링하는 중",
     "copyLatex": "LaTeX 복사",
+    "copyTypst": "Typst 복사",
     "exportOptions": "내보내기 옵션",
     "export": "내보내기",
     "downloadPng": "PNG 내려받기",
@@ -1117,6 +1274,7 @@
     "exportSvgFailed": "이 조각을 SVG로 내보내지 못했습니다",
     "copyKatexFailed": "KaTeX HTML을 복사하지 못했습니다",
     "copyLatexFailed": "LaTeX 소스를 복사하지 못했습니다",
+    "copyTypstFailed": "Typst 소스를 복사하지 못했습니다",
     "invalidPngName": "슬래시나 특수 문자가 없는 짧은 PNG 파일 이름을 쓰세요.",
     "replaceConfirm": "{{project}}에 {{path}}이(가) 이미 있습니다. 바꿀까요?",
     "savedToProject": "{{path}}을(를) {{project}}에 저장했습니다.",
@@ -1130,6 +1288,7 @@
     "newImageProject": "새 이미지 프로젝트",
     "mathmlFailed": "이 조각을 MathML로 변환하지 못했습니다",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "본문 수식",
     "display": "별행 수식",
     "examples": "예시",
@@ -1138,6 +1297,8 @@
     "previewLight": "밝은 배경에서 미리보기",
     "inlineSample": "문장 안에 <formula></formula>처럼 들어가 앞뒤 글과 자연스럽게 이어집니다.",
     "empty": "왼쪽에 LaTeX 수식을 입력하세요.",
+    "emptyTypst": "왼쪽에 Typst 수식을 입력하세요.",
+    "typstFailed": "Typst가 이 수식을 렌더링하지 못했습니다.",
     "zoomOut": "축소",
     "zoomIn": "확대",
     "resetZoom": "확대 비율 초기화",

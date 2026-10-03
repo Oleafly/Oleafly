@@ -32,6 +32,7 @@ import {
   LocalModelError,
   projectReadySource,
   runAdHocConverter,
+  type ConverterInput,
   type ConverterOutput,
   type ConverterProgress,
 } from "@/features/ad-hoc-converters";
@@ -176,6 +177,27 @@ async function saveOutput(output: ConverterOutput): Promise<void> {
   toast.success(i18n.t(($) => $.researchTools.converter.saved, { fileName }));
 }
 
+function converterInput(text: string, file: File | null): ConverterInput {
+  const { engine } = useFilesStore.getState();
+  const typstVersion = engine.id === "typst" ? engine.typst_resolved?.version : undefined;
+  return typstVersion ? { text, file, typstVersion } : { text, file };
+}
+
+function ConversionNote({ note, details }: Readonly<{ note: string; details: readonly string[] }>) {
+  return (
+    <div className="space-y-1.5 text-xs text-muted-foreground">
+      <p>{note}</p>
+      {details.length > 0 && (
+        <ul data-testid="converter-details" className="max-h-32 space-y-0.5 overflow-auto font-mono text-[11px] leading-relaxed">
+          {[...new Set(details)].map((detail) => (
+            <li key={detail} className="break-words">{detail}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function failureMessage(error: unknown, fallback: string): string {
   return decodeAppError(error) ? describeError(error) : fallback;
 }
@@ -211,7 +233,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const [status, setStatus] = useState<ConverterStatus>({ step: "ready" });
   const allowsModes = definition.inputKind === "image-or-text" || definition.inputKind === "arxiv";
   const useFile = definition.inputKind === "file" || (allowsModes && mode === "file");
-  const sourceName = definition.sourceFileName ?? (id === "equation-to-latex" ? "equation.tex" : "source.txt");
+  const sourceName = definition.sourceFileName ?? (definition.inputKind === "image-or-text" ? "equation.tex" : "source.txt");
   const sourceLanguage = useMemo(() => () => languageForPath(sourceName) ?? [], [sourceName]);
   const outputSourceName = output?.kind === "bundle"
     ? output.mainFile ?? definition.outputFileName
@@ -251,6 +273,8 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
         return t(($) => $.researchTools.converter.progressUnpackingSource);
       case "downloadingSource":
         return t(($) => $.researchTools.converter.progressDownloadingSource);
+      case "convertingSource":
+        return t(($) => $.researchTools.converter.progressConvertingSource);
       case "transcribingPage":
         return t(($) => $.researchTools.converter.progressTranscribingPage, {
           page: status.page ?? 0,
@@ -276,7 +300,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     const outcome = await conversion.run((signal) =>
       runAdHocConverter(
         id,
-        { text: useFile ? "" : text, file: useFile ? file : null },
+        converterInput(useFile ? "" : text, useFile ? file : null),
         (progress) => setStatus(progress),
         signal,
       ),
@@ -318,7 +342,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
     setProjectBusy(true);
     try {
       const projectName = stem(file?.name ?? "")
-        || (id === "arxiv-to-latex" && text.trim()
+        || (definition.inputKind === "arxiv" && text.trim()
           ? `arXiv ${text.trim()}`
           : t(($) => $.researchTools.converter.resultName, { title: labels.title }));
       const projectId = await createProjectFromAdHoc({
@@ -399,7 +423,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
           footer={
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
               <span>{labels.inputHint}</span>
-              {id === "arxiv-to-latex" && !useFile ? (
+              {definition.inputKind === "arxiv" && !useFile ? (
                 <span className="flex items-center gap-1.5 whitespace-nowrap font-medium text-amber-600 dark:text-amber-400">
                   <CloudDownload className="size-3.5" /> {t(($) => $.researchTools.converter.downloadsFromArxiv)}
                 </span>
@@ -513,7 +537,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
             ) : null
           }
           footer={
-            output?.note ? <p className="text-xs text-muted-foreground">{output.note}</p> : undefined
+            output?.note ? <ConversionNote note={output.note} details={output.details ?? []} /> : undefined
           }
         >
           {error ? (

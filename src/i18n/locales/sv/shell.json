@@ -41,7 +41,9 @@
     "noResults": "Inga resultat hittades. Kontrollera identifieraren, eller prova andra ord ur titeln.",
     "placeholder": "DOI, arXiv-id, URL eller en artikeltitel…",
     "privacyNote": "Bara identifieraren eller titeln skickas, till doi.org, arXiv eller Crossref.",
-    "title": "Lägg till citering"
+    "title": "Lägg till citering",
+    "bibliography": "Bibliografi",
+    "bibliographyHint": "Projektet har mer än en bibliografi. Posten hamnar i den fil du väljer här."
   },
   "backendProtocol": {
     "mismatch": "Det här fönstret och dess bakänd byggdes för olika Oleafly-versioner, så vissa funktioner kanske inte fungerar. Installera om appen för att lösa det."
@@ -120,6 +122,14 @@
       "keywords": "stäng avsluta miljö begin latex",
       "label": "Stäng LaTeX-miljön"
     },
+    "formatDocument": {
+      "keywords": "formatera snygga till indrag typstyle typst format",
+      "label": "Formatera dokumentet"
+    },
+    "formatSelection": {
+      "keywords": "formatera markering snygga till indrag typstyle typst format",
+      "label": "Formatera markeringen"
+    },
     "createProject": {
       "keywords": "nytt projekt skapa mall galleri",
       "label": "Skapa ett nytt projekt"
@@ -127,6 +137,14 @@
     "diagramComposer": {
       "keywords": "diagram figur tikz rita arbetsyta",
       "label": "Öppna diagramverktyget"
+    },
+    "typstPackages": {
+      "keywords": "typst universe paket import bibliotek bläddra kopiera",
+      "label": "Bläddra bland Typst-paket"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan paket usepackage ingress installera tlmgr bläddra",
+      "label": "Bläddra bland LaTeX-paket"
     },
     "documentCitationScan": {
       "keywords": "citeringar litteratur genomsökning dokument stycke referenser hitta",
@@ -193,7 +211,8 @@
       "label": "Omslut med en miljö"
     },
     "synctex": {
-      "label": "Gå till PDF (SyncTeX)"
+      "label": "Gå till PDF (SyncTeX)",
+      "typstLabel": "Gå till PDF"
     },
     "table": {
       "label": "Tabell"
@@ -226,6 +245,79 @@
     "openFolder": {
       "label": "Öppna mapp…",
       "keywords": "öppna mapp katalog befintlig lokala filer disk"
+    },
+    "underline": {
+      "label": "Understruken"
+    },
+    "strikethrough": {
+      "label": "Genomstruken"
+    },
+    "inlineCode": {
+      "label": "Kod i löptext"
+    },
+    "link": {
+      "label": "Länk"
+    },
+    "footnote": {
+      "label": "Fotnot"
+    },
+    "quote": {
+      "label": "Citat"
+    },
+    "inlineMath": {
+      "label": "Matematik i löptext"
+    },
+    "numberedEquation": {
+      "label": "Numrerad ekvation"
+    },
+    "alignedEquations": {
+      "label": "Justerade ekvationer"
+    },
+    "fraction": {
+      "label": "Bråk"
+    },
+    "crossReference": {
+      "label": "Korsreferens"
+    },
+    "typstInsights": {
+      "label": "Dokumentinsikter",
+      "keywords": "figurer tabeller ekvationer rubriker etiketter citeringar todo fixme metadata sammanfattning inlämning"
+    },
+    "typstDocumentSettings": {
+      "label": "Dokumentinställningar",
+      "keywords": "sidstorlek marginaler spalter typsnitt teckenstorlek språk region justering radavstånd numrering"
+    },
+    "toggleComment": {
+      "label": "Kommentera eller avkommentera",
+      "keywords": "kommentar avkommentera rad block"
+    },
+    "goToDefinition": {
+      "label": "Gå till definitionen",
+      "keywords": "definition hoppa symbol navigera"
+    },
+    "findReferences": {
+      "label": "Hitta referenser",
+      "keywords": "referenser användningar symbol"
+    },
+    "renameSymbol": {
+      "label": "Byt namn på symbolen",
+      "keywords": "byt namn symbol refaktorisera"
+    },
+    "migrateToTypst": {
+      "label": "Konvertera till ett Typst-projekt",
+      "keywords": "typst konvertera migrera latex projekt nytt"
+    },
+    "typstMigrationReport": {
+      "label": "Visa rapporten för Typst-konverteringen",
+      "keywords": "typst konvertera migrera rapport latex"
+    },
+    "present": {
+      "label": "Presentera bilder",
+      "keywords": "presentera bilder presentation helskärm beamer touying polylux talaranteckningar pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "Presentera bilder med presentatörsvy",
+      "keywords": "presentera bilder presentatörsvy talaranteckningar timer nästa bild"
     }
   },
   "community": {
@@ -238,7 +330,12 @@
     "autoCompile": {
       "off": "Av",
       "on": "På",
-      "title": "Kompilera automatiskt"
+      "title": "Kompilera automatiskt",
+      "help": "Kompilerar några sekunder efter att du slutat skriva. Den öppna filen sparas först.",
+      "typstHelp": "Typst körs hela tiden och uppdaterar PDF-filen en stund efter att du slutat skriva. Den öppna filen sparas automatiskt medan detta är på.",
+      "typstStarting": "Startar Typst",
+      "typstRestarting": "Typst startar om",
+      "typstFailed": "Typst stoppades efter upprepade fel. Redigera filen för att starta den igen."
     },
     "compile": "Kompilera",
     "compiler": {
@@ -274,7 +371,37 @@
     "texRootLabel": "TEX root",
     "texRootName": "rot: {{name}}",
     "texRootNotTex": "% !TEX root i {{file}} pekar på {{target}}, som inte är en LaTeX-fil",
-    "texRootOverride": "rot: {{path}} (angiven av % !TEX root i {{file}})"
+    "texRootOverride": "rot: {{path}} (angiven av % !TEX root i {{file}})",
+    "typstVersion": {
+      "title": "Typst-version (det här projektet)",
+      "help": "Nåla fast en version så att projektets utdata förblir oförändrade när Oleafly uppdaterar Typst. Standard följer versionen som valts i Inställningar. Gå till Inställningar → Motorer → Typst för att installera versioner eller testa projektet med en nyare.",
+      "default": "Standard ({{version}})",
+      "defaultPlain": "Standard",
+      "builtIn": "[inbyggd]",
+      "system": "[system]",
+      "missing": "[inte installerad]",
+      "switchFailed": "Det gick inte att ändra Typst-versionen."
+    },
+    "typstFonts": {
+      "title": "Typsnitt (det här projektet)",
+      "help": "Typst läser typsnitt från projektets mapp fonts och från mapparna som anges under font_paths i project.json. Med endast projektets typsnitt beror PDF:en inte på typsnitten som är installerade på den här datorn. Under Dokumentinställningar ser du vilka typsnitt Typst kan hitta.",
+      "systemFonts": "Använd systemtypsnitt",
+      "projectOnly": "Endast projektets typsnitt",
+      "unsupported": "Kräver en nyare Typst",
+      "saveFailed": "Det gick inte att spara typsnittsinställningen."
+    },
+    "typstBuild": {
+      "title": "Bygge (det här projektet)",
+      "help": "Ett reproducerbart bygge använder bara projektets typsnitt och sätter datumet i PDF-filen till den senaste committen. Samma källkod ger då samma PDF på alla datorer.",
+      "standard": "Standardbygge",
+      "reproducible": "Reproducerbart bygge",
+      "saveFailed": "Det gick inte att spara bygginställningen."
+    },
+    "typstVariant": {
+      "title": "Variant (det här projektet)",
+      "help": "En variant skickar egna värden till sys.inputs, till exempel för ett utkast eller en tryckfärdig version. Den valda varianten stannar på den här datorn. Lägg till eller redigera varianter under Dokumentinställningar.",
+      "none": "Ingen variant"
+    }
   },
   "datePicker": {
     "placeholder": "Välj ett datum"
@@ -946,6 +1073,10 @@
     "wait": {
       "description": "{{phase}} Din kompilering står i kö och startar automatiskt så snart motorn är klar.",
       "title": "TinyTeX laddas fortfarande ner"
+    },
+    "typstQuit": {
+      "title": "Typst installeras fortfarande",
+      "description": "Typst {{version}} laddas ner. Om du avslutar nu stoppas nedladdningen och du måste starta den igen från Inställningar."
     }
   },
   "toolbar": {
@@ -1085,5 +1216,132 @@
     "added": "Tillagd. Den finns nu i menyn Tjänster i Finder. Om du vill använda den från Snabbåtgärder också högerklickar du på en mapp och slår på den under Snabbåtgärder › Anpassa.",
     "addedInQuickActions": "Tillagd. Högerklicka på en mapp så hittar du den under Snabbåtgärder.",
     "failed": "Det gick inte att lägga till. Du kan försöka igen under Inställningar › Allmänt."
+  },
+  "typstMigration": {
+    "title": "Konvertera till ett Typst-projekt",
+    "closeLabel": "Stäng Typst-konverteringen",
+    "intro": "Oleafly skapar ett nytt Typst-projekt från det här LaTeX-projektet. Det här projektet ändras inte.",
+    "points": {
+      "text": "Pandoc konverterar text, matematik, figurer och tabeller.",
+      "files": "Varje input- och include-fil blir en egen Typst-fil.",
+      "bibliography": "BibTeX-filer kopieras som de är.",
+      "compile": "Typst kompilerar det nya projektet för att kontrollera det."
+    },
+    "nameLabel": "Namn på det nya projektet",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Öppna ett LaTeX-projekt för att konvertera det.",
+    "convert": "Konvertera",
+    "retry": "Försök igen",
+    "progress": {
+      "reading": "Läser LaTeX-projektet",
+      "converting": "Konverterar med Pandoc",
+      "creating": "Skapar Typst-projektet",
+      "compiling": "Kompilerar med Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc är inte klart. Installera det i Verktyg och försök sedan igen.",
+      "noMain": "Det gick inte att läsa LaTeX-huvudfilen.",
+      "emptyOutput": "Pandoc returnerade ett tomt dokument.",
+      "failed": "Konverteringen avbröts: {{detail}}"
+    },
+    "report": {
+      "created": "Skapade {{name}}.",
+      "compiled": "Det kompileras med Typst.",
+      "compileFailed_one": "Det kompileras inte än. {{count}} fel behöver åtgärdas.",
+      "compileFailed_other": "Det kompileras inte än. {{count}} fel behöver åtgärdas.",
+      "compileUnavailable": "Oleafly kunde inte kompilera det: {{detail}}",
+      "converted": "Konverterat",
+      "sources_one": "{{count}} källfil",
+      "sources_other": "{{count}} källfiler",
+      "figures_one": "{{count}} figur",
+      "figures_other": "{{count}} figurer",
+      "tables_one": "{{count}} tabell",
+      "tables_other": "{{count}} tabeller",
+      "equations_one": "{{count}} ekvation på egen rad",
+      "equations_other": "{{count}} ekvationer på egen rad",
+      "references_one": "{{count}} korsreferens",
+      "references_other": "{{count}} korsreferenser",
+      "mathFixed_one": "{{count}} formel rättad av matematikkonverteraren",
+      "mathFixed_other": "{{count}} formler rättade av matematikkonverteraren",
+      "copied_one": "{{count}} fil kopierad",
+      "copied_other": "{{count}} filer kopierade",
+      "style": "Bibliografistil {{style}}",
+      "mapping": "{{source}} till {{target}}",
+      "attention": "Kräver åtgärd",
+      "noAttention": "Inget kräver åtgärd.",
+      "problems": "Kompileringsfel och varningar",
+      "location": "{{file}}, rad {{line}}",
+      "noLocation": "Ingen plats i en fil",
+      "openAt": "Öppna {{file}} på rad {{line}}",
+      "open": "Öppna Typst-projektet"
+    },
+    "notes": {
+      "missingInclude": "Filen {{detail}} hittades inte, så den utelämnades.",
+      "lostInclude": "{{detail}} kunde inte få en egen fil. Texten stannar i filen som inkluderade den.",
+      "missingImage": "Bilden {{detail}} hittades inte.",
+      "unsupportedImage": "Typst kan inte visa {{detail}}. Konvertera den till PDF, PNG eller SVG.",
+      "math": "Den här matematiken behöver rättas för hand: {{detail}}",
+      "bibliographyStyle": "BibTeX-stilen {{detail}} har ingen motsvarighet i Typst. Standardstilen används.",
+      "skippedFile": "{{detail}} kopierades inte eftersom projektet är för stort.",
+      "unreadableFile": "Det gick inte att läsa {{detail}}.",
+      "equationLabel": "Typst numrerar hela ekvationer, så referenser till {{detail}} pekar nu på ekvationen som den fanns i."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Bilder och HTML",
+    "title": "Exportera med Typst",
+    "close": "Stäng Typst-exporten",
+    "format": "Format",
+    "png": "PNG-bilder",
+    "svg": "SVG-bilder",
+    "html": "HTML",
+    "experimental": "Experimentell",
+    "htmlNote": "HTML-exporten i Typst är fortfarande experimentell. Sidinställningar och placerade element tas inte med.",
+    "ppi": "Upplösning",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Sidor",
+    "pagesPlaceholder": "Alla sidor",
+    "pagesHelp": "Använd sidnummer och intervall, som 1, 3-5 eller 8-.",
+    "pagesInvalid": "Kontrollera sidintervallet. Använd sidnummer och intervall, som 1, 3-5 eller 8-.",
+    "pagesUnsupported": "Den här Typst-versionen exporterar alltid alla sidor.",
+    "multiPage": "Varje sida sparas som en egen fil, numrerad efter namnet du väljer.",
+    "export": "Exportera",
+    "cancel": "Avbryt"
+  },
+  "typstUpgrade": {
+    "title": "Testa en nyare Typst-version",
+    "description": "Oleafly bygger projektet med båda versionerna i tillfälliga mappar. Inget i projektet ändras om du inte byter.",
+    "compareWith": "Nyare version",
+    "running": "Bygger med Typst {{current}} och {{candidate}}",
+    "current": "Typst {{version}} (nuvarande)",
+    "candidate": "Typst {{version}}",
+    "built": "Byggt",
+    "failed": "Misslyckades",
+    "pages_one": "{{count}} sida",
+    "pages_other": "{{count}} sidor",
+    "pagesUnknown": "Okänt antal sidor",
+    "errors_one": "{{count}} fel",
+    "errors_other": "{{count}} fel",
+    "warnings_one": "{{count}} varning",
+    "warnings_other": "{{count}} varningar",
+    "pageChange": "Sidantalet ändras från {{from}} till {{to}}.",
+    "pageSame": "Sidantalet är fortfarande {{pages}}.",
+    "added": "Nytt i Typst {{version}}",
+    "removed": "Rapporteras inte längre av Typst {{version}}",
+    "noChanges": "Båda versionerna rapporterar samma fel och varningar.",
+    "unchanged_one": "{{count}} meddelande är detsamma i båda versionerna.",
+    "unchanged_other": "{{count}} meddelanden är desamma i båda versionerna.",
+    "buildFailed": "Typst {{version}} kunde inte bygga projektet.",
+    "switch": "Byt till Typst {{version}}",
+    "switched": "Projektet använder nu Typst {{version}}.",
+    "switchFailed": "Det gick inte att byta Typst-version.",
+    "runAgain": "Kontrollera igen",
+    "close": "Stäng",
+    "checkFailed": "Kontrollen kunde inte slutföras.",
+    "noNewer": "Ingen nyare Typst-version är installerad. Du kan installera en i Inställningar.",
+    "openSettings": "Öppna Typst-inställningarna",
+    "location": "{{file}}, rad {{line}}",
+    "error": "Fel",
+    "warning": "Varning"
   }
 }

@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Bild ohne Alternativtext",
-      "detail": "Dieses Bild hat keinen beschreibenden Alternativtext, ein Screenreader kann es also nicht vermitteln. Ergänzen Sie eine Beschreibung, zum Beispiel \\includegraphics[alt={Ein Porträt der Autorin}]{...}. Rein dekorative Bilder markieren Sie stattdessen als Artefakt."
+      "detail": "Dieses Bild hat keinen beschreibenden Alternativtext, ein Screenreader kann es also nicht vermitteln. Ergänzen Sie eine Beschreibung, zum Beispiel \\includegraphics[alt={Ein Porträt der Autorin}]{...}. Rein dekorative Bilder markieren Sie stattdessen als Artefakt.",
+      "detailTypst": "Dieses Bild hat keinen Alternativtext, ein Screenreader kann es also nicht vermitteln. Ergänzen Sie eine Beschreibung, zum Beispiel #image(\"chart.png\", alt: \"Bar chart of yearly sales\").",
+      "detailTypstFigure": "Dieses Bild hat keinen Alternativtext, ein Screenreader kann es also nicht vermitteln. Beschreiben Sie es am Bild oder an der Abbildung, die es enthält, zum Beispiel #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")."
     },
     "link-text": {
       "title": "Nicht aussagekräftiger Verweistext",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "Kein PDF-Titel",
-      "detail": "Das PDF hat keinen Titel in seinen Metadaten, den Hilfstechnik und Browser zur Ansage des Dokuments nutzen. Setzen Sie einen mit hyperref, zum Beispiel \\hypersetup{pdftitle={Ihr Name, Lebenslauf}}."
+      "detail": "Das PDF hat keinen Titel in seinen Metadaten, den Hilfstechnik und Browser zur Ansage des Dokuments nutzen. Setzen Sie einen mit hyperref, zum Beispiel \\hypersetup{pdftitle={Ihr Name, Lebenslauf}}.",
+      "detailTypst": "Das PDF hat keinen Titel in seinen Metadaten, den Hilfstechnik und Browser zur Ansage des Dokuments nutzen. Setzen Sie einen mit #set document(title: \"Your title\") oder übergeben Sie Ihrer Vorlage einen Titel."
     },
     "heading-skip": {
       "title": "Überschriftenebene übersprungen",
@@ -284,11 +287,16 @@
     },
     "refs-undefined-cite": {
       "title": "Die Zitation „{{key}}“ steht in keiner .bib",
-      "detail": "Dieser Zitierschlüssel wurde im geladenen Literaturverzeichnis nicht gefunden, deshalb erscheint er im PDF als [?]. Prüfen Sie den Schlüssel oder ergänzen Sie den Eintrag in Ihrer .bib (Zitation hinzufügen kann ihn holen)."
+      "detail": "Dieser Zitierschlüssel wurde im geladenen Literaturverzeichnis nicht gefunden, deshalb erscheint er im PDF als [?]. Prüfen Sie den Schlüssel oder ergänzen Sie den Eintrag in Ihrer .bib (Zitation hinzufügen kann ihn holen).",
+      "titleTypst": "Die Zitation „{{key}}“ steht nicht im Literaturverzeichnis",
+      "detailTypst": "Dieser Schlüssel steht in keiner Literaturdatei, die das Projekt lädt, deshalb schlägt das Kompilieren fehl. Prüfen Sie den Schlüssel oder ergänzen Sie den Eintrag in Ihrer .bib- oder Hayagriva-.yml-Datei."
     },
     "refs-undefined-ref": {
       "title": "Der Verweis auf „{{label}}“ hat kein passendes \\label",
-      "detail": "Dieser Querverweis zeigt auf ein Label, das nicht definiert ist, deshalb erscheint er im PDF als ??. Prüfen Sie den Labelnamen oder ergänzen Sie das fehlende \\label."
+      "detail": "Dieser Querverweis zeigt auf ein Label, das nicht definiert ist, deshalb erscheint er im PDF als ??. Prüfen Sie den Labelnamen oder ergänzen Sie das fehlende \\label.",
+      "titleTypst": "Kein Label und kein Eintrag namens „{{label}}“",
+      "detailTypst": "Typst bricht das Kompilieren hier ab. Prüfen Sie die Schreibweise oder ergänzen Sie das fehlende <label> oder den Literatureintrag.",
+      "detailTypstPackage": "Kein Label und kein Literatureintrag im Projekt hat diesen Namen. Ein Paket kann beim Kompilieren Labels erzeugen, etwa Glossareinträge. Wenn das Kompilierprotokoll ihn meldet, prüfen Sie die Schreibweise."
     },
     "refs-duplicate-label": {
       "title": "Doppeltes Label „{{label}}“",
@@ -298,11 +306,14 @@
       "titleImage": "Bild nicht gefunden: {{file}}",
       "detailImage": "Dieses \\includegraphics zeigt auf eine Datei, die nicht im Projekt liegt, die Abbildung wird also fehlen. Prüfen Sie Dateinamen und Pfad.",
       "titleInclude": "Eingebundene Datei nicht gefunden: {{file}}",
-      "detailInclude": "Dieses \\input oder \\include zeigt auf eine Datei, die nicht im Projekt liegt. Prüfen Sie Dateinamen und Pfad."
+      "detailInclude": "Dieses \\input oder \\include zeigt auf eine Datei, die nicht im Projekt liegt. Prüfen Sie Dateinamen und Pfad.",
+      "detailImageTypst": "Keine Projektdatei passt zu diesem Bildpfad, deshalb schlägt das Kompilieren fehl. Typst liest einen Pfad relativ zur Datei oder ab dem Projektstamm, wenn er mit / beginnt.",
+      "detailIncludeTypst": "Keine Projektdatei passt zu diesem #include- oder #import-Pfad, deshalb schlägt das Kompilieren fehl. Prüfen Sie Dateinamen und Pfad."
     },
     "refs-bib-missing": {
       "title": "Bibliografiedatei nicht gefunden: {{file}}",
-      "detail": "Dieses \\bibliography oder \\addbibresource zeigt auf eine Datei, die nicht im Projekt liegt, deshalb erscheint jede Zitation als [?]. Prüfen Sie den Dateinamen oder importieren Sie eine Literaturbibliothek, um sie anzulegen."
+      "detail": "Dieses \\bibliography oder \\addbibresource zeigt auf eine Datei, die nicht im Projekt liegt, deshalb erscheint jede Zitation als [?]. Prüfen Sie den Dateinamen oder importieren Sie eine Literaturbibliothek, um sie anzulegen.",
+      "detailTypst": "Dieser #bibliography-Aufruf zeigt auf eine Datei, die nicht im Projekt liegt, deshalb schlägt das Kompilieren fehl. Prüfen Sie den Dateinamen oder importieren Sie eine Literaturbibliothek, um sie anzulegen."
     },
     "refs-duplicate-bib": {
       "title": "Doppelte Literatureinträge: {{keys}}",
@@ -345,7 +356,8 @@
     },
     "privacy-blind-author": {
       "title": "Die Identität der Autorinnen und Autoren steht noch im Quelltext für die anonyme Begutachtung",
-      "detail": "Der Quelltext enthält einen nicht anonymisierten Autor, eine Zugehörigkeit, eine E-Mail-Adresse, eine Anschrift oder ein Danksagungsfeld. Ersetzen Sie identifizierende Inhalte über den Anonymmodus des Publikationsortes."
+      "detail": "Der Quelltext enthält einen nicht anonymisierten Autor, eine Zugehörigkeit, eine E-Mail-Adresse, eine Anschrift oder ein Danksagungsfeld. Ersetzen Sie identifizierende Inhalte über den Anonymmodus des Publikationsortes.",
+      "detailTypst": "Der Quelltext gibt dem Dokument oder seiner Vorlage einen Autorennamen, eine E-Mail-Adresse oder eine Zugehörigkeit. Entfernen Sie diese Angaben oder schalten Sie die Vorlage in ihren anonymen Modus."
     },
     "privacy-blind-acknowledgements": {
       "title": "Die Danksagung kann die Autorschaft verraten",
@@ -374,15 +386,20 @@
     "submission-document-class": {
       "title": "Die Dokumentklasse für {{profile}} ist nicht aktiv",
       "detail": "Dieses Profil erwartet {{expected}}, das Projekt nutzt aber {{actual}}. Beginnen Sie mit der aktuellen offiziellen Vorlage des Publikationsortes.",
-      "detailNoClass": "Dieses Profil erwartet {{expected}}, es wurde aber keine Dokumentklasse erkannt. Beginnen Sie mit der aktuellen offiziellen Vorlage des Publikationsortes."
+      "detailNoClass": "Dieses Profil erwartet {{expected}}, es wurde aber keine Dokumentklasse erkannt. Beginnen Sie mit der aktuellen offiziellen Vorlage des Publikationsortes.",
+      "titleTypst": "Die Vorlage für {{profile}} ist nicht aktiv",
+      "detailTypst": "Dieses Profil erwartet eine Typst-Vorlage wie {{expected}}, das Projekt importiert aber {{actual}}. Beginnen Sie mit einer dieser Vorlagen.",
+      "detailNoTemplateTypst": "Dieses Profil erwartet eine Typst-Vorlage wie {{expected}}, das Projekt importiert aber keine. Beginnen Sie mit einer dieser Vorlagen."
     },
     "submission-no-abstract": {
       "title": "Keine Zusammenfassung erkannt",
-      "detail": "Dieses Publikationsprofil erwartet eine Zusammenfassung in einer üblichen abstract-Umgebung. Ergänzen Sie sie oder bestätigen Sie, dass der konkrete Publikationsort keine verlangt."
+      "detail": "Dieses Publikationsprofil erwartet eine Zusammenfassung in einer üblichen abstract-Umgebung. Ergänzen Sie sie oder bestätigen Sie, dass der konkrete Publikationsort keine verlangt.",
+      "detailTypst": "Dieses Publikationsprofil erwartet eine Zusammenfassung. Übergeben Sie eine an Ihre Vorlage, zum Beispiel abstract: [Your abstract], oder fügen Sie eine Überschrift „Abstract“ hinzu."
     },
     "submission-no-keywords": {
       "title": "Keine Schlagwörter für die Publikation erkannt",
-      "detail": "Das Profil {{profile}} erwartet Schlagwörter über seinen üblichen Vorlagenbefehl oder seine Umgebung."
+      "detail": "Das Profil {{profile}} erwartet Schlagwörter über seinen üblichen Vorlagenbefehl oder seine Umgebung.",
+      "detailTypst": "Das Profil {{profile}} erwartet Schlagwörter. Übergeben Sie sie an Ihre Vorlage, zum Beispiel keywords: (\"one\", \"two\") oder index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Nicht unterstütztes Abbildungsformat: {{file}}",
@@ -390,7 +407,8 @@
     },
     "submission-placeholder": {
       "title": "Im Manuskript stehen noch Platzhalter aus dem Entwurf",
-      "detail": "Der Quelltext enthält TODO, TBD, FIXME, Platzhaltertext oder Fragezeichenmarken. Prüfen Sie jede Stelle, bevor Sie die endgültige Einreichung erzeugen."
+      "detail": "Der Quelltext enthält TODO, TBD, FIXME, Platzhaltertext oder Fragezeichenmarken. Prüfen Sie jede Stelle, bevor Sie die endgültige Einreichung erzeugen.",
+      "detailTypst": "Das Dokument ruft noch #lorem auf oder enthält Platzhaltertext. Ersetzen Sie ihn vor der endgültigen Einreichung."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} liegt unter der geforderten Version",
@@ -420,6 +438,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Die Einbettung mancher Schriften ließ sich nicht bestätigen",
       "detail": "Preflight konnte den Einbettungsstatus von {{fonts}} nicht belegen. Prüfen Sie ihn mit dem offiziellen PDF-Prüfwerkzeug des Publikationsortes."
+    },
+    "empty-heading": {
+      "title": "Leere Überschrift",
+      "detail": "Diese Überschrift hat keinen Text. Screenreader kündigen sie als leeren Eintrag in der Gliederung an. Ergänzen Sie einen Titel oder entfernen Sie die Überschrift."
+    },
+    "todo-in-text": {
+      "title": "Entwurfsnotiz im Text",
+      "detail": "Diese Notiz ist Teil des Textes und erscheint deshalb im PDF. Erledigen Sie sie oder machen Sie daraus einen //-Kommentar."
+    },
+    "no-author": {
+      "title": "Kein Dokumentautor",
+      "detail": "Die PDF-Metadaten enthalten keinen Autor. Ergänzen Sie einen mit #set document(author: \"Your Name\") oder übergeben Sie die Autoren an Ihre Vorlage. Für eine anonyme Begutachtung lassen Sie ihn weg."
+    },
+    "privacy-local-path": {
+      "title": "Pfad auf Ihrem Rechner: {{path}}",
+      "detail": "Dieser Pfad zeigt auf einen Ordner außerhalb des Projekts. Er kann Ihren Benutzernamen verraten, und auf jedem anderen Rechner schlägt das Kompilieren fehl. Verschieben Sie die Datei ins Projekt und nutzen Sie einen relativen Pfad."
+    },
+    "privacy-blind-email": {
+      "title": "E-Mail-Adresse in {{file}}",
+      "detail": "Eine E-Mail-Adresse kann die Autoren bei einer anonymen Begutachtung erkennbar machen. Entfernen Sie sie oder ersetzen Sie sie durch einen anonymen Platzhalter."
+    },
+    "refs-no-bibliography": {
+      "title": "Zitationen ohne Literaturverzeichnis",
+      "detail": "Das Dokument zitiert Quellen, ruft aber nie #bibliography auf, daher kann Typst sie nicht auflösen. Fügen Sie #bibliography(\"refs.bib\") dort ein, wo das Literaturverzeichnis erscheinen soll."
+    },
+    "submission-large-image": {
+      "title": "Sehr großes Bild: {{file}}",
+      "detail": "Dieses Bild ist größer als {{limit}}. Große Bilder verlangsamen das Kompilieren und blähen das PDF auf. Manche Publikationsorte begrenzen auch die Uploadgröße. Komprimieren Sie es oder exportieren Sie es in der Größe, in der es gedruckt wird."
     }
   },
   "lens": {
@@ -643,5 +689,15 @@
     "compileTagged": "Getaggt kompilieren und prüfen",
     "compileTaggedWarning": "Das System-LuaLaTeX kann lokale Dateien lesen. Führen Sie es nur für ein Projekt aus, dem Sie vertrauen.",
     "noEngine": "Um das getaggte PDF in der App zu erzeugen, aktivieren Sie unter Einstellungen, LaTeX-Engine eine Engine. Oder kompilieren Sie den vorbereiteten Quelltext mit Ihrem eigenen pdfLaTeX oder LuaLaTeX aus TeX Live 2025 oder neuer."
+  },
+  "typstStandards": {
+    "title": "PDF-Standards",
+    "intro": "Typst schreibt archivfähige und barrierefreie PDFs selbst. Wählen Sie einen Standard und exportieren Sie dann das PDF.",
+    "standard": "Standard",
+    "export": "PDF exportieren",
+    "tagged": "Typst {{version}} versieht jedes PDF mit Tags für Screenreader, daher gibt es kein eigenes Kompilieren mit Tags.",
+    "untagged": "Typst {{version}} versieht PDFs nicht mit Tags für Screenreader. Ab Typst 0.14 geschieht das.",
+    "none": "Typst {{version}} kann keine PDF-Standards schreiben. Wählen Sie im Kompiliermenü Typst 0.12 oder neuer.",
+    "uaNote": "PDF/UA-1 braucht einen Dokumenttitel und einen Alternativtext für jedes Bild."
   }
 }

@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const target = vi.fn();
-vi.mock("@/features/citation", () => ({ bibliographyTargetForProject: () => target() }));
+vi.mock("@/features/citation", () => ({
+  bibliographyTargetForProject: (...args: unknown[]) => target(...args),
+}));
 vi.mock("@/lib/tauri", () => ({ appVersion: async () => "0.4.0" }));
 const toasts = { success: vi.fn(), info: vi.fn(), error: vi.fn() };
 vi.mock("@/lib/toast", () => ({
@@ -15,6 +17,7 @@ vi.mock("@/lib/toast", () => ({
 
 import { citeOleafly, runCiteOleaflyAction } from "./cite-oleafly";
 import { oleaflyBibtex } from "@/lib/cite-oleafly";
+import { hayagrivaEntries, hayagrivaKeys } from "@/lib/citation/hayagriva";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
 import { useFolderAccessStore } from "@/store/folder-access";
@@ -35,6 +38,76 @@ beforeEach(() => {
     setContent,
     saveFile,
   } as never);
+});
+
+function typstProject() {
+  useFilesStore.setState({
+    engine: {
+      ...useFilesStore.getState().engine,
+      id: "typst",
+      capabilities: { ...useFilesStore.getState().engine.capabilities, formatting_profile: "typst" },
+    },
+  });
+}
+
+function latexProject() {
+  useFilesStore.setState({
+    engine: {
+      ...useFilesStore.getState().engine,
+      id: "latex",
+      capabilities: { ...useFilesStore.getState().engine.capabilities, formatting_profile: "latex" },
+    },
+  });
+}
+
+describe("citeOleafly with a Hayagriva bibliography", () => {
+  afterEach(() => latexProject());
+
+  it("asks for a Hayagriva target in a Typst project and writes a Hayagriva entry", async () => {
+    typstProject();
+    const content = "knuth1984:\n  type: book\n  title: The TeXbook\n";
+    target.mockResolvedValue({ path: "refs.yml", exists: true, content });
+    const outcome = await citeOleafly();
+    expect(target).toHaveBeenCalledWith({ acceptHayagriva: true });
+    expect(outcome.kind).toBe("added");
+    const expected = `${content}
+oleafly:
+  type: repository
+  title: "Oleafly: a local-first desktop workspace for research writing"
+  author:
+    - "Venkateshmurthy, Prajwal S."
+    - name: "The Oleafly contributors"
+  date: 2026
+  url: "https://github.com/Oleafly/Oleafly"
+  note: "Version 0.4.0"
+`;
+    expect(writeProjectFile).toHaveBeenCalledWith("paper", "refs.yml", expected);
+    expect(hayagrivaKeys(expected)).toEqual(new Set(["knuth1984", "oleafly"]));
+    expect(hayagrivaEntries(expected).find((entry) => entry.key === "oleafly")?.title?.value).toBe(
+      "Oleafly: a local-first desktop workspace for research writing",
+    );
+    if (outcome.kind !== "added") throw new Error("unreachable");
+    await outcome.undo();
+    expect(writeProjectFile).toHaveBeenLastCalledWith("paper", "refs.yml", content);
+  });
+
+  it("recognizes an Oleafly entry that is already in the Hayagriva file", async () => {
+    typstProject();
+    target.mockResolvedValue({
+      path: "refs.yaml",
+      exists: true,
+      content: "oleafly:\n  type: software\n  title: Oleafly\n",
+    });
+    expect((await citeOleafly()).kind).toBe("present");
+    expect(writeProjectFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps LaTeX projects on BibTeX targets", async () => {
+    latexProject();
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
+    await citeOleafly();
+    expect(target).toHaveBeenCalledWith({ acceptHayagriva: false });
+  });
 });
 
 describe("citeOleafly", () => {

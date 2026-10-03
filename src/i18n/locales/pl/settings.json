@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Znajduj słabe punkty w argumentach, metodach, dowodach i prezentacji.",
-        "documentEditor": "Poprawiaj prozę, strukturę, cytowania i LaTeX niewielkimi, bezpiecznymi zmianami.",
-        "figure": "Twórz rysunki i diagramy o jakości publikacyjnej w LaTeX TikZ albo PGFPlots.",
+        "documentEditor": "Poprawiaj prozę, strukturę, cytowania oraz źródło LaTeX lub Typst niewielkimi, bezpiecznymi zmianami.",
+        "figure": "Twórz rysunki i diagramy o jakości publikacyjnej w TikZ dla LaTeX albo w CeTZ dla Typst.",
         "researchWriter": "Pisz i porządkuj tekst naukowy bez wymyślania dowodów ani cytowań."
       },
       "suggestedDescription": "Zacznij od jednej z nich, a potem dopasuj jej instrukcje do swojego sposobu pracy.",
@@ -695,6 +695,29 @@
       "mathPreview": {
         "description": "Pokazuj wyrenderowany wzór nad tym, w którym stoi kursor.",
         "label": "Podgląd wzoru"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Porządkuje pliki Typst narzędziem typstyle po naciśnięciu ⌘S lub Ctrl+S. Autozapis ich nie zmienia.",
+          "label": "Formatuj przy zapisie"
+        },
+        "lineWidth": {
+          "description": "typstyle zawija wiersze dłuższe niż ta wartość.",
+          "label": "Szerokość wiersza formatera"
+        },
+        "indent": {
+          "description": "Liczba spacji na poziom wcięcia w sformatowanym kodzie Typst.",
+          "label": "Wcięcie formatera"
+        },
+        "inlayHints": {
+          "description": "Pokazuj nazwy parametrów przed argumentami w wywołaniach funkcji Typst.",
+          "label": "Podpowiedzi nazw parametrów"
+        },
+        "lint": {
+          "description": "Sprawdza pliki Typst pod kątem prawdopodobnych błędów przy każdym zapisie. Włączenie lub wyłączenie uruchamia ponownie serwer językowy Typst.",
+          "label": "Kontrole lint dla Typst"
+        }
       }
     },
     "files": {
@@ -1033,11 +1056,63 @@
       "resume": "Wznów pobieranie (pobrano {{size}} MB)"
     },
     "typst": {
-      "detail": "Dołączony do Oleafly. Szybki, działa bez internetu, bez konfiguracji. Kompiluje dokumenty Typst do PDF.",
+      "detail": "Dołączony do Oleafly, więc nie trzeba niczego konfigurować. Połączenie z siecią jest potrzebne tylko wtedy, gdy dokument po raz pierwszy importuje pakiet @preview.",
       "heading": "Kompilator Typst",
       "name": "Typst (wbudowany)",
-      "note": "Projekty Typst zawsze korzystają z wbudowanego kompilatora. Wybór wersji kompilatora ani systemowego Typst nie jest jeszcze dostępny.",
-      "tooltip": "Typst jest częścią Oleafly, więc nie ma czego instalować ani konfigurować. Każdy projekt Typst kompiluje się wbudowanym kompilatorem."
+      "note": "Wersję używaną przez projekt wybierz w menu kompilacji. Projekt zachowuje tę wersję, dopóki jej nie zmienisz.",
+      "tooltip": "Oleafly zawiera jedną wersję Typst i może pobrać inne. Każdy projekt kompiluje się przypiętą wersją albo wersją domyślną, jeśli nie ma przypięcia.",
+      "system": {
+        "name": "Typst na tym komputerze",
+        "detail": "Projekty, które przypinają wersję {{version}}, mogą go używać do kompilacji."
+      },
+      "versions": {
+        "heading": "Wersje",
+        "tooltip": "Nowe projekty zaczynają od wersji domyślnej, podobnie jak projekty bez przypiętej wersji.",
+        "loading": "Sprawdzanie wersji Typst",
+        "default": "Domyślna",
+        "setDefault": "Używaj domyślnie Typst {{version}}",
+        "released": "Wydano {{date}}",
+        "install": "Zainstaluj",
+        "installAria": "Zainstaluj Typst {{version}}",
+        "removeAria": "Usuń Typst {{version}}",
+        "removeDefault": "To jest wersja domyślna. Przed usunięciem wybierz inną wersję domyślną.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Wbudowana",
+          "downloaded": "Pobrana",
+          "system": "Systemowa"
+        }
+      },
+      "progress": {
+        "starting": "Uruchamianie",
+        "downloading": "Pobieranie {{percent}}%",
+        "verifying": "Sprawdzanie",
+        "extracting": "Rozpakowywanie",
+        "done": "Kończenie"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} pobrany serwer językowy nie jest używany przez żadną zainstalowaną wersję Typst.",
+        "unused_few": "{{count}} pobrane serwery językowe nie są używane przez żadną zainstalowaną wersję Typst.",
+        "unused_many": "{{count}} pobranych serwerów językowych nie jest używanych przez żadną zainstalowaną wersję Typst.",
+        "unused_other": "{{count}} pobranego serwera językowego nie używa żadna zainstalowana wersja Typst.",
+        "remove": "Usuń nieużywane pobrane serwery językowe",
+        "removed_one": "Usunięto {{count}} pobrany serwer językowy.",
+        "removed_few": "Usunięto {{count}} pobrane serwery językowe.",
+        "removed_many": "Usunięto {{count}} pobranych serwerów językowych.",
+        "removed_other": "Usunięto {{count}} pobranego serwera językowego."
+      },
+      "error": {
+        "load": "Nie udało się odczytać wersji Typst.",
+        "install": "Nie udało się zainstalować Typst {{version}}.",
+        "remove": "Nie udało się usunąć Typst {{version}}.",
+        "default": "Nie udało się zmienić domyślnej wersji Typst.",
+        "removeTinymist": "Nie udało się usunąć nieużywanych pobranych serwerów językowych."
+      },
+      "upgrade": {
+        "heading": "Wypróbuj nowszą wersję",
+        "detail": "Skompiluj otwarty projekt nowszą zainstalowaną wersją i porównaj wyniki przed przełączeniem.",
+        "check": "Sprawdź z Typst {{version}}"
+      }
     }
   },
   "github": {

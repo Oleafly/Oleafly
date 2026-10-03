@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Finn svakheter i argumenter, metode, belegg og presentasjon.",
-        "documentEditor": "Rett prosa, struktur, siteringer og LaTeX med målrettede, trygge endringer.",
-        "figure": "Lag figurer og diagrammer i publiseringskvalitet som LaTeX TikZ eller PGFPlots.",
+        "documentEditor": "Rett prosa, struktur, siteringer og LaTeX- eller Typst-kilde med målrettede, trygge endringer.",
+        "figure": "Lag figurer og diagrammer i publiseringskvalitet med TikZ i LaTeX eller CeTZ i Typst.",
         "researchWriter": "Skisser og strukturer vitenskapelig tekst uten å finne på belegg eller siteringer."
       },
       "suggestedDescription": "Start med en av disse, og tilpass instruksjonene til måten du jobber på.",
@@ -685,6 +685,29 @@
       "mathPreview": {
         "description": "Vis den gjengitte ligningen over den som markøren står i.",
         "label": "Forhåndsvisning av matematikk"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Rydd Typst-filer med typstyle når du trykker ⌘S eller Ctrl+S. Automatisk lagring lar dem være i fred.",
+          "label": "Formater ved lagring"
+        },
+        "lineWidth": {
+          "description": "typstyle bryter linjer som er lengre enn dette.",
+          "label": "Linjebredde for formatering"
+        },
+        "indent": {
+          "description": "Mellomrom per innrykksnivå i formatert Typst-kode.",
+          "label": "Innrykk for formatering"
+        },
+        "inlayHints": {
+          "description": "Vis parameternavn foran argumentene i Typst-funksjonskall.",
+          "label": "Hint om parameternavn"
+        },
+        "lint": {
+          "description": "Sjekk Typst-filer for sannsynlige feil hver gang de lagres. Når du slår dette av eller på, starter Typst-språkserveren på nytt.",
+          "label": "Typst-lintsjekker"
+        }
       }
     },
     "files": {
@@ -1021,11 +1044,59 @@
       "resume": "Fortsett nedlastingen ({{size}} MB ferdig)"
     },
     "typst": {
-      "detail": "Følger med Oleafly. Rask, virker uten nett, null oppsett. Kompilerer Typst-dokumenter til PDF.",
+      "detail": "Følger med Oleafly, så det er ingenting å sette opp. Den trenger bare nettverkstilkobling første gang et dokument importerer en @preview-pakke.",
       "heading": "Typst-kompilator",
       "name": "Typst (følger med)",
-      "note": "Typst-prosjekter bruker alltid kompilatoren som følger med. Å velge kompilatorversjon, og å bruke Typst fra systemet, er ikke mulig ennå.",
-      "tooltip": "Typst ligger inne i Oleafly, så det er ingenting å installere eller sette opp. Alle Typst-prosjekter kompileres med kompilatoren som følger med."
+      "note": "Velg hvilken versjon et prosjekt bruker, i kompileringsmenyen. Prosjektet beholder den versjonen til du endrer den.",
+      "tooltip": "Oleafly kommer med én Typst-versjon og kan laste ned andre. Hvert prosjekt kompileres med versjonen det har låst, eller med standardversjonen hvis det ikke har låst noen.",
+      "system": {
+        "name": "Typst på denne datamaskinen",
+        "detail": "Prosjekter som låser versjon {{version}}, kan kompilere med den."
+      },
+      "versions": {
+        "heading": "Versjoner",
+        "tooltip": "Nye prosjekter starter med standardversjonen, og det samme gjør prosjekter uten låst versjon.",
+        "loading": "Sjekker Typst-versjoner",
+        "default": "Standard",
+        "setDefault": "Bruk Typst {{version}} som standard",
+        "released": "Utgitt {{date}}",
+        "install": "Installer",
+        "installAria": "Installer Typst {{version}}",
+        "removeAria": "Fjern Typst {{version}}",
+        "removeDefault": "Dette er standardversjonen. Velg en annen standard før du fjerner den.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Innebygd",
+          "downloaded": "Lastet ned",
+          "system": "System"
+        }
+      },
+      "progress": {
+        "starting": "Starter",
+        "downloading": "Laster ned {{percent}} %",
+        "verifying": "Sjekker",
+        "extracting": "Pakker ut",
+        "done": "Fullfører"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} nedlasting av språkserveren brukes ikke av noen installert Typst-versjon.",
+        "unused_other": "{{count}} nedlastinger av språkserveren brukes ikke av noen installert Typst-versjon.",
+        "remove": "Fjern ubrukte nedlastinger av språkserveren",
+        "removed_one": "Fjernet {{count}} nedlasting av språkserveren.",
+        "removed_other": "Fjernet {{count}} nedlastinger av språkserveren."
+      },
+      "error": {
+        "load": "Kunne ikke lese Typst-versjonene.",
+        "install": "Kunne ikke installere Typst {{version}}.",
+        "remove": "Kunne ikke fjerne Typst {{version}}.",
+        "default": "Kunne ikke endre standardversjonen av Typst.",
+        "removeTinymist": "Kunne ikke fjerne de ubrukte nedlastingene av språkserveren."
+      },
+      "upgrade": {
+        "heading": "Prøv en nyere versjon",
+        "detail": "Bygg det åpne prosjektet med en nyere installert versjon og sammenlign resultatene før du bytter.",
+        "check": "Sjekk med Typst {{version}}"
+      }
     }
   },
   "github": {

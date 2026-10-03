@@ -95,7 +95,9 @@
     "retryCompile": "Erneut kompilieren",
     "chooseEngine": "Engine wählen…",
     "installPackages_one": "{{name}} finden und installieren",
-    "installPackages_other": "{{count}} Dateien finden und installieren"
+    "installPackages_other": "{{count}} Dateien finden und installieren",
+    "downloadTypst": "Typst {{version}} herunterladen",
+    "useTypst": "Typst {{version}} verwenden"
   },
   "stale": {
     "badge": "Veraltet",
@@ -104,8 +106,8 @@
     "explanation": "Dieses PDF gibt nicht die aktive Projektfassung wieder.",
     "revisionExplanation": "Gezeigt wird Projektfassung {{displayed}}. Das aktive Projekt steht bei Fassung {{active}}.",
     "noIdentity": "Für das angezeigte PDF gibt es keine geprüfte Kompilierkennung der aktiven Fassung.",
-    "syncTexAvailable": "SyncTeX nutzt für Änderungen die nächstgelegene unveränderte Zeile.",
-    "syncTexUnavailable": "SyncTeX braucht eine aktuelle Kompilierung."
+    "syncTexAvailable": "Die Quellsynchronisierung nutzt für Änderungen die nächstgelegene unveränderte Zeile.",
+    "syncTexUnavailable": "Die Quellsynchronisierung braucht eine aktuelle Kompilierung."
   },
   "save": {
     "title": "PDF im Projekt speichern",
@@ -273,5 +275,33 @@
       "pageLabel": "Seite {{page}} von {{total}}",
       "empty": "Auf dieser Seite wurde kein lesbarer Text gefunden."
     }
+  },
+  "presentation": {
+    "windowTitle": "Präsentation",
+    "presenterTitle": "Referentenansicht",
+    "present": "Präsentieren",
+    "presentFromStart": "Von Anfang an präsentieren",
+    "presentFromPage": "Ab dieser Seite präsentieren",
+    "presentWithPresenter": "Mit Referentenansicht präsentieren",
+    "loading": "Folien werden geöffnet",
+    "failed": "Die Folien konnten nicht geöffnet werden. Kompilieren Sie das Projekt und versuchen Sie es dann erneut.",
+    "close": "Schließen",
+    "slideLabel": "Folie {{page}} von {{total}}",
+    "current": "Aktuelle Folie",
+    "next": "Nächste Folie",
+    "lastSlide": "Das ist die letzte Folie.",
+    "notes": "Sprechernotizen",
+    "notesLoading": "Sprechernotizen werden gelesen",
+    "noNotes": "Keine Sprechernotizen für diese Folie.",
+    "elapsed": "Verstrichene Zeit",
+    "clock": "Uhrzeit",
+    "pause": "Timer anhalten",
+    "resume": "Timer fortsetzen",
+    "reset": "Timer zurücksetzen",
+    "previousAction": "Vorherige Folie",
+    "nextAction": "Nächste Folie",
+    "end": "Präsentation beenden",
+    "blank": "Der Bildschirm für das Publikum ist leer. Drücken Sie B, um die Folien zu zeigen.",
+    "toggleBlank": "Bildschirm für das Publikum leeren"
   }
 }

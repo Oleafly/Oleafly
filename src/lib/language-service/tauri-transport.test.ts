@@ -917,3 +917,18 @@ describe("TauriLanguageServiceTransport", () => {
     });
   });
 });
+
+describe("matched Tinymist provisioning", () => {
+  it("names the project so the backend can match Tinymist to its Typst version", async () => {
+    const harness = createHarness();
+    const transport = new TauriLanguageServiceTransport(harness.options);
+    await transport.installStatus("tinymist", "paper");
+    await transport.install("tinymist", "paper");
+    await transport.installStatus("texlab");
+    expect(harness.invocations.map(({ args }) => args)).toEqual([
+      { request: { kind: "tinymist", projectId: "paper" } },
+      { request: { kind: "tinymist", projectId: "paper" } },
+      { request: { kind: "texlab" } },
+    ]);
+  });
+});

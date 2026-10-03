@@ -42,7 +42,18 @@
     "selectImage": "画像を選ぶと挿入できます。",
     "editTitle": "画像を編集",
     "editDescription": "画像を差し替えるか、幅を変更します。キャプションとラベルはそのままです。",
-    "save": "画像を保存"
+    "save": "画像を保存",
+    "customWidthPlaceholderTypst": "8cm または 60%",
+    "altLabel": "代替テキスト",
+    "altPlaceholder": "スクリーンリーダー向けに画像を説明",
+    "placement": "配置",
+    "placementNone": "その位置",
+    "placementAuto": "自動",
+    "placementTop": "上",
+    "placementBottom": "下",
+    "editFigureTitle": "図を編集",
+    "editFigureDescription": "画像、サイズ、キャプション、ラベル、代替テキスト、配置を変更します。",
+    "saveFigure": "図を保存"
   },
   "tableToolbar": {
     "label": "表のツール",
@@ -112,6 +123,7 @@
     "insertBlockquote": "引用ブロックを挿入",
     "insertFigure": "図を挿入",
     "insertImage": "画像を挿入",
+    "drawDiagram": "図を描く",
     "insertTable": "表を挿入",
     "imageToLatexTooltip": "画像から LaTeX へ（AI で文字起こし）",
     "imageToLatex": "画像から LaTeX へ",
@@ -130,6 +142,7 @@
     "redo": "やり直す（{{shortcut}}）",
     "find": "検索（{{shortcut}}）",
     "goToPdf": "PDF へ移動（SyncTeX）",
+    "goToPdfTypst": "PDF へ移動",
     "linkUrl": "リンクの URL",
     "removeLink": "リンクを削除",
     "imageFile": "画像ファイル",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "分割",
     "both": "両方",
-    "stacked": "上下に配置"
+    "stacked": "上下に配置",
+    "displayMath": "ディスプレイ数式",
+    "numberedEquation": "番号付き数式",
+    "alignedEquations": "揃えた数式",
+    "addLabel": "ラベルを追加",
+    "imageToTypst": "画像から Typst へ",
+    "imageToTypstTooltip": "画像から Typst へ（AI で文字起こし）",
+    "typstPackages": "Typst パッケージ",
+    "latexPackages": "LaTeX パッケージ"
   },
   "contextMenu": {
     "engineUnavailable": "ドキュメントエンジンの操作を利用できません",
     "askAi": "AI に聞く…",
     "noIndexedSymbol": "この位置に索引済みのシンボルはありません。",
     "noRenamableSymbol": "この位置に名前を変更できるシンボルはありません。",
+    "formatDocument": "文書を整形",
+    "formatSelection": "選択範囲を整形",
     "itemize": "itemize",
     "enumerate": "enumerate",
     "figure": "figure",
@@ -156,7 +179,16 @@
     "equationAsPng": "数式を PNG として保存",
     "crossReference": "相互参照",
     "label": "ラベル",
-    "footnote": "脚注"
+    "footnote": "脚注",
+    "toggleComment": "コメントの切り替え",
+    "inlineMath": "行内数式",
+    "displayMath": "ディスプレイ数式",
+    "numberedEquation": "番号付き数式",
+    "alignedEquations": "揃えた数式",
+    "quote": "引用文",
+    "addLabel": "ラベルを追加",
+    "convertLatexMath": "LaTeX の数式を Typst に変換",
+    "noLatexMath": "先に LaTeX の数式を選択してください。"
   },
   "shell": {
     "noFileOpenTab": "ファイルが開かれていません",
@@ -231,9 +263,15 @@
     "footerTypst": "表のソースでは特殊文字がエスケープされます。",
     "footerLatex": "生成される LaTeX の表は、横罫線に booktabs を使います。",
     "chooseAnother": "別のファイルを選ぶ",
-    "chooseFile": "CSV、TSV、XLSX を選択",
+    "chooseFile": "CSV、TSV、XLSX、JSON を選択",
     "selectedSummary": "{{file}} · 行: {{rows}} · 列: {{columns}}",
     "firstRowHeader": "1 行目を見出しにする",
+    "keepLinked": "データファイルとのリンクを保つ",
+    "keepLinkedHint": "データを data フォルダにコピーします。そのファイルを編集すると、次のコンパイルで表が変わります。",
+    "footerLinked": "文書をコンパイルするたびに、表は {{path}} を読み込みます。",
+    "jsonNotTable": "この JSON ファイルは、レコードや行のリストではありません。",
+    "insertedLinked": "リンクされた表を挿入しました。変更するには {{path}} を編集してください。",
+    "linkFailed": "データをプロジェクトにコピーできませんでした。",
     "captionLabel": "キャプション（任意）",
     "captionPlaceholder": "全試行の結果",
     "labelLabel": "ラベル（任意）",
@@ -263,7 +301,8 @@
     "svgImage": "SVG 画像",
     "pngImage": "PNG 画像",
     "svgKind": "数式の SVG",
-    "pngKind": "数式の PNG"
+    "pngKind": "数式の PNG",
+    "typstFailed": "Typst でこの数式を描画できませんでした（{{detail}}）"
   },
   "selectionActions": {
     "askAi": "AI に聞く",
@@ -304,7 +343,14 @@
     "info": "情報",
     "empty": "コンパイルの出力がここに表示されます。",
     "scrollToTop": "いちばん上へ",
-    "scrollToBottom": "いちばん下へ"
+    "scrollToBottom": "いちばん下へ",
+    "locationFileLineColumn": "{{file}} · {{line}} 行目、{{column}} 列目",
+    "locationLineColumn": "{{line}} 行目、{{column}} 列目",
+    "hint": "ヒント",
+    "sourceExcerpt": "ソースの {{line}} 行目",
+    "summaryErrors_other": "{{count}} 件のエラー",
+    "summaryWarnings_other": "{{count}} 件の警告",
+    "summaryReferences_other": "{{count}} 件の未解決の参照"
   },
   "history": {
     "untitledCommit": "無題のコミット",
@@ -349,7 +395,8 @@
       "navigation": "移動",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "設定"
+      "settings": "設定",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "再コンパイル",
@@ -366,12 +413,20 @@
       "goToDefinition": "定義へ移動",
       "findReferences": "参照を検索",
       "renameSymbol": "シンボルの名前を変更（プロジェクト全体）",
+      "formatDocument": "Typst の文書を整形",
       "commandPalette": "コマンドパレット",
       "searchAllDocuments": "すべての文書を検索",
       "goToPdf": "PDF へ移動（SyncTeX 順方向）",
       "jumpToSource": "PDF からソースへ移動",
       "commitAndPush": "コミットしてプッシュ",
-      "openSettings": "設定を開く"
+      "openSettings": "設定を開く",
+      "typstContinueList": "新しい項目でリストを続ける",
+      "typstItemNewLine": "リスト項目内で改行する",
+      "typstRemoveMarker": "カーソルの前のリスト記号を削除",
+      "typstIndentItem": "リスト項目を 1 段深くする",
+      "typstOutdentItem": "リスト項目を 1 段上げる",
+      "typstMathPair": "$ の数式を自動で閉じ、Space でディスプレイ数式に切り替え",
+      "typstWrapSelection": "選択範囲を太字、強調、コード、数式で囲む"
     }
   },
   "citations": {
@@ -637,6 +692,7 @@
       "unsupported": "この式は不完全か、対応していません。",
       "missingClosing": "閉じる {{delimiter}} がありません。",
       "notRendered": "この式は描画できませんでした。",
+      "typstUnavailable": "Typst のプレビューを利用できません。",
       "preview": {
         "moreOptions": "その他の操作",
         "hide": "隠す",
@@ -644,6 +700,10 @@
         "disable": "無効にする",
         "disableDescription": "数式のプレビューをオフにします。設定から再びオンにできます。"
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Typst の数式として貼り付け",
+      "pasteOffer": "LaTeX の数式を貼り付けました"
     },
     "latex": {
       "command": {
@@ -824,6 +884,45 @@
         "revtex": "REVTeX のスタイル"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "見出し",
+        "figure": "画像付きの図",
+        "tableFigure": "表付きの図",
+        "table": "表",
+        "equation": "ディスプレイ数式",
+        "numberedEquation": "ラベル付きの番号付き数式",
+        "footnote": "脚注",
+        "quote": "引用ブロック",
+        "code": "コードブロック",
+        "outline": "目次",
+        "bibliography": "参考文献",
+        "pagebreak": "改ページ",
+        "columns": "段組み",
+        "grid": "グリッド",
+        "link": "リンク",
+        "list": "箇条書き",
+        "enum": "番号付きリスト",
+        "terms": "用語リスト",
+        "partBibliography": "ラベル付きの部分の参考文献"
+      },
+      "bibliographyStyle": {
+        "builtin": "組み込みの CSL スタイル",
+        "citation": "引用スタイルのみ",
+        "project": "このプロジェクトの CSL ファイル"
+      },
+      "bibliographyParameter": {
+        "target": "どの引用を一覧にするか",
+        "group": "番号の共有方法",
+        "targetAuto": "キーを含む最も近い参考文献",
+        "targetWithin": "ラベル付きの部分内の引用",
+        "targetAfter": "ラベルより後の引用",
+        "targetBefore": "ラベルより前の引用",
+        "groupAuto": "ほかの参考文献と通し番号にする",
+        "groupNone": "単独で番号を付ける",
+        "groupNamed": "同じ名前の参考文献と通し番号にする"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "概要",
@@ -950,6 +1049,12 @@
       "reference": "参照",
       "label": "ラベル",
       "includedFile": "取り込んだファイル",
+      "typst": {
+        "settings": {
+          "show": "文書の設定を表示",
+          "hide": "文書の設定を隠す"
+        }
+      },
       "table": {
         "captionPlacement": "キャプション",
         "captionAbove": "キャプションを上に",
@@ -1024,6 +1129,11 @@
     "goTo": "{{title}} へ移動",
     "untitled": "無題"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Typst Universe で開く",
+    "formatUnavailable": "Typst のフォーマッターはまだ準備できていません。少し待ってから、もう一度お試しください。",
+    "formatFailed": "このファイルを整形できませんでした。"
+  },
   "changedOnDisk": {
     "message": "未保存の編集がある間に {{file}} がディスク上で変更されました。",
     "compare": "比較",
@@ -1031,5 +1141,323 @@
     "reload": "再読み込み",
     "failed": "Oleafly は {{file}} を更新できませんでした。もう一度お試しください。",
     "tabMark": "ディスク上で変更されました。このタブを開いて、残す版を選んでください。"
+  },
+  "labels": {
+    "filterPlaceholder": "ラベル名",
+    "filterLabel": "プロジェクトのラベルを絞り込む",
+    "noMatches": "一致するラベルはありません。",
+    "empty": "このプロジェクトにはまだラベルがありません。",
+    "location": "{{file}}:{{line}}",
+    "addHere": "ここにラベルを追加"
+  },
+  "typst": {
+    "numberingNote": "数式に番号を付けるには、番号付けのルールが必要です。",
+    "addNumberingRule": "ルールを追加",
+    "bibliographyAdded": "{{file}} に参考文献を追加しました。"
+  },
+  "typstInsights": {
+    "title": "文書の分析",
+    "description": "コンパイルされた文書の内容を、ソースへのリンク付きで示します。",
+    "refresh": "更新",
+    "copyMetadata": "投稿用メタデータをコピー",
+    "metadataCopied": "投稿用メタデータをクリップボードにコピーしました。",
+    "copyFailed": "メタデータはコピーされませんでした。クリップボードへのアクセスを確認して、もう一度お試しください。",
+    "loading": "Typst で文書を読み込んでいます",
+    "compileFailed": "Typst が文書をコンパイルできませんでした。図、表、数式を一覧にするには、これらのエラーを修正してください。",
+    "noProject": "先に Typst のプロジェクトを開いてください。",
+    "tabs": {
+      "overview": "概要",
+      "headings": "見出し",
+      "figures": "図",
+      "tables": "表",
+      "equations": "数式",
+      "labels": "ラベル",
+      "citations": "引用",
+      "todos": "ToDo"
+    },
+    "metadata": {
+      "heading": "投稿用メタデータ",
+      "title": "タイトル",
+      "authors": "著者",
+      "keywords": "キーワード",
+      "abstract": "要旨",
+      "date": "日付",
+      "missing": "未設定"
+    },
+    "empty": {
+      "headings": "コンパイルされた文書に見出しはありません。",
+      "figures": "コンパイルされた文書に図はありません。",
+      "tables": "コンパイルされた文書に表はありません。",
+      "equations": "コンパイルされた文書にディスプレイ数式はありません。",
+      "labels": "文書にラベルはありません。",
+      "citations": "コンパイルされた文書に引用はありません。",
+      "todos": "TODO や FIXME のメモはありません。"
+    },
+    "labelKinds": {
+      "heading": "見出し",
+      "figure": "図",
+      "table": "表",
+      "equation": "数式",
+      "other": "その他"
+    },
+    "page": "{{page}} ページ",
+    "unnumbered": "番号なし",
+    "untitled": "キャプションなし",
+    "cited_other": "{{count}} 回引用",
+    "notInSource": "ソースに見つかりません",
+    "openSource": "{{file}} の {{line}} 行目を開く",
+    "versionNote": "Typst {{version}}（typst {{method}}）",
+    "truncated": "最初の 5,000 個の要素だけを表示しています。"
+  },
+  "documentInsights": {
+    "description": "文書の内容を、ソースへのリンク付きで示します。",
+    "loading": "文書を読み込んでいます",
+    "noProject": "先にプロジェクトを開いてください。",
+    "unresolved": "参考文献にありません",
+    "unresolvedCount_other": "引用されたキーのうち {{count}} 件が参考文献にありません。",
+    "numbersCurrent": "番号とページは前回のコンパイル結果に基づきます。",
+    "numbersStale": "前回のコンパイル後にソースが変更されました。番号とページを見るには、もう一度コンパイルしてください。",
+    "numbersMissing": "番号とページを見るには、文書をコンパイルしてください。",
+    "sourceOrder": "ソース内の順に並んでいます。",
+    "empty": {
+      "headings": "文書に見出しはありません。",
+      "figures": "文書に図はありません。",
+      "tables": "文書に表はありません。",
+      "equations": "文書にディスプレイ数式はありません。",
+      "citations": "文書に引用はありません。"
+    }
+  },
+  "typstSettings": {
+    "title": "文書の設定",
+    "description": "{{file}} のページ、テキスト、番号付けのルールです。",
+    "templateNotice": "この文書はテンプレートを使っています。テンプレート内で設定された値はここに表示されません。ここで設定した値はテンプレートより優先されます。",
+    "loading": "メインファイルを読み込んでいます",
+    "readFailed": "メインファイルを読み込めませんでした。",
+    "saveFailed": "メインファイルを更新できませんでした。",
+    "noMainFile": "このプロジェクトには Typst のメインファイルがありません。",
+    "applied": "文書の設定を更新しました。",
+    "apply": "適用",
+    "cancel": "キャンセル",
+    "sections": {
+      "page": "ページ",
+      "text": "テキスト",
+      "paragraph": "段落",
+      "numbering": "番号付け"
+    },
+    "fields": {
+      "paper": "用紙サイズ",
+      "margin": "余白",
+      "columns": "段数",
+      "font": "本文フォント",
+      "fontSize": "フォントサイズ",
+      "lang": "言語",
+      "region": "地域",
+      "justify": "行揃え",
+      "leading": "行間",
+      "headingNumbering": "見出しの番号付け",
+      "equationNumbering": "数式の番号付け"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "既定",
+      "justified": "両端揃え",
+      "ragged": "左揃え",
+      "off": "オフ"
+    },
+    "locked": {
+      "template": "テンプレートで設定",
+      "expression": "ソース内の式で設定"
+    },
+    "invalid": {
+      "length": "11pt、2.5cm、0.65em のような長さを指定してください。",
+      "margin": "2.5cm のような長さか、auto を指定してください。",
+      "columns": "1 から 99 までの整数を指定してください。",
+      "lang": "en のような 2 文字か 3 文字の言語コードを指定してください。",
+      "region": "GB のような 2 文字の地域コードを指定してください。"
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "{{file}} のクラスオプションとプリアンブルの設定です。",
+    "markdownDescription": "{{file}} のフロントマターの項目です。",
+    "noLatexMainFile": "このプロジェクトには LaTeX のメインファイルがありません。",
+    "noMarkdownMainFile": "このプロジェクトには Markdown のメインファイルがありません。",
+    "noDocumentClass": "メインファイルに \\documentclass の行がありません。",
+    "unclosedFrontMatter": "メインファイル先頭のフロントマターが閉じられていません。先に閉じる --- の行を追加してください。",
+    "noFrontMatter": "このファイルにはまだフロントマターがありません。「適用」を押すと先頭に追加されます。",
+    "externalPreamble": "プリアンブルの一部はほかのファイルにあります。そこで設定された値はここに表示されません。",
+    "classNotice": "これらの設定の一部は {{name}} クラスが管理しています。ここでは読み取り専用です。",
+    "styleNotice": "ページレイアウトは {{name}} スタイルで設定されています。用紙サイズと余白はここでは読み取り専用です。",
+    "availableFonts": "使用できるフォント",
+    "fontsLoading": "フォントを探しています",
+    "fields": {
+      "secnumdepth": "番号を付ける階層",
+      "numberSections": "節番号",
+      "documentClass": "ドキュメントクラス"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "1 段",
+      "twocolumn": "2 段",
+      "single": "1 行",
+      "onehalf": "1.5 行",
+      "double": "2 行",
+      "bySection": "節ごと",
+      "byChapter": "章ごと",
+      "bySubsection": "小節ごと",
+      "numbered": "番号あり",
+      "unnumbered": "番号なし",
+      "depthNone": "なし",
+      "depthChapters": "章のみ",
+      "depthSections": "節まで",
+      "depthSubsections": "小節まで",
+      "depthSubsubsections": "小々節まで",
+      "depthParagraphs": "段落見出しまで",
+      "depthSubparagraphs": "小段落見出しまで"
+    },
+    "locked": {
+      "class": "{{name}} クラスで設定",
+      "package": "{{name}} スタイルで設定",
+      "engine": "XeLaTeX か LuaLaTeX のコンパイラが必要です。コンパイルメニューで選んでください。",
+      "sides": "ソースで余白が辺ごとに設定されています",
+      "conditional": "条件分岐のブロック内で設定"
+    },
+    "invalid": {
+      "length": "2.5cm、1in、12pt のような長さを指定してください。",
+      "fontName": "波かっこやバックスラッシュを含まないフォント名を指定してください。",
+      "latexLang": "english のような babel の言語名を指定してください。",
+      "markdownLang": "en-US のような言語タグを指定してください。",
+      "lineStretch": "1.5 のような数値を指定してください。"
+    }
+  },
+  "typstPackages": {
+    "title": "Typst パッケージ",
+    "close": "Typst パッケージを閉じる",
+    "searchLabel": "名前、キーワード、カテゴリでパッケージを検索",
+    "searchPlaceholder": "Typst Universe を検索",
+    "categories": "カテゴリ",
+    "allCategories": "すべて",
+    "loading": "パッケージの一覧を読み込んでいます",
+    "results_other": "{{count}} 件のパッケージ",
+    "resultsCapped": "{{count}} 件中 {{shown}} 件のパッケージを表示しています。検索して絞り込んでください。",
+    "empty": "検索に一致するパッケージはありません。",
+    "staleOffline": "オフラインです。この一覧は {{date}} 時点のものです。",
+    "stale": "この一覧は {{date}} 時点のものです。更新できませんでした。",
+    "latest": "最新 {{version}}",
+    "template": "テンプレート",
+    "needsTypst": "Typst {{version}} が必要です。このプロジェクトは Typst {{current}} を使っています。",
+    "insert": "import を挿入",
+    "insertAria": "{{name}} の import をファイルの先頭に挿入",
+    "insertNeedsFile": "import を挿入するには Typst ファイルを開いてください。",
+    "copy": "import をコピー",
+    "copyAria": "{{name}} の import をコピー",
+    "vendor": {
+      "heading": "プロジェクトのパッケージ",
+      "toggle": "プロジェクトフォルダのパッケージを使う",
+      "detail": "Typst は最初にプロジェクトの typst-packages フォルダを探します。パッケージを取り込んだプロジェクトは、オフラインでもほかのコンピュータでもコンパイルできます。",
+      "action": "パッケージをプロジェクトに取り込む",
+      "running": "パッケージをコピーしています",
+      "copied_other": "{{count}} 件のパッケージを typst-packages にコピーしました。",
+      "upToDate": "このプロジェクトが読み込むパッケージは、すべて typst-packages にあります。",
+      "missing": "次のパッケージはパッケージキャッシュにありません: {{names}}。オンライン時に一度コンパイルしてから、もう一度取り込んでください。",
+      "count_other": "このプロジェクトのパッケージ {{count}} 件",
+      "none": "このプロジェクトにはまだパッケージがありません。"
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} が利用できます。この import は {{version}} を使っています。",
+      "update": "{{version}} に更新"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX パッケージ",
+    "close": "LaTeX パッケージを閉じる",
+    "searchLabel": "名前や説明でパッケージを検索",
+    "searchPlaceholder": "CTAN を検索",
+    "loading": "パッケージの一覧を読み込んでいます",
+    "results_other": "{{count}} 件のパッケージ",
+    "resultsCapped": "{{count}} 件中 {{shown}} 件のパッケージを表示しています。検索して絞り込んでください。",
+    "empty": "検索に一致するパッケージはありません。",
+    "stale": "この一覧は {{date}} 時点のものです。更新できませんでした。",
+    "staleOffline": "オフラインです。この一覧は {{date}} 時点のものです。",
+    "partial": "CTAN に接続できませんでした。Oleafly の組み込みの一覧を表示しています。",
+    "partialOffline": "オフラインです。Oleafly の組み込みの一覧を表示しています。",
+    "loaded": "文書で使用中",
+    "documentClass": "ドキュメントクラス",
+    "installed": "インストール済み",
+    "install": "インストール",
+    "installing": "インストール中",
+    "installAria": "tlmgr で {{name}} をインストール",
+    "insert": "プリアンブルに追加",
+    "insertAria": "{{name}} を {{file}} のプリアンブルに追加",
+    "copy": "行をコピー",
+    "copyAria": "{{name}} を読み込む行をコピー",
+    "ctan": "CTAN",
+    "ctanAria": "CTAN で {{name}} を開く",
+    "options": "オプション",
+    "optionsAria": "{{name}} のオプション",
+    "optionsInvalid": "オプションを確認してください。波かっこは対応させる必要があり、] と % は使えません。",
+    "classNote": "これはドキュメントクラスです。代わりに \\documentclass で設定してください。",
+    "onDemand": "Tectonic は、文書で初めて使われたときにパッケージをダウンロードします。インストールするものはありません。",
+    "checking": "インストール済みのパッケージを確認しています",
+    "unknownInstall": "Oleafly では、お使いの TeX 環境にどのパッケージがあるか判別できません。",
+    "noProject": "パッケージを追加するには LaTeX のプロジェクトを開いてください。",
+    "added": "{{name}} を {{file}} に追加しました。",
+    "noPreamble": "{{file}} には、パッケージを追加できるプリアンブルがありません。",
+    "alreadyLoaded": "{{file}} はすでに {{name}} を読み込んでいます。",
+    "insertFailed": "パッケージを追加できませんでした。もう一度お試しください。"
+  },
+  "typstFonts": {
+    "title": "フォント",
+    "close": "フォント一覧を閉じる",
+    "searchLabel": "フォントファミリーを検索",
+    "searchPlaceholder": "フォントを検索",
+    "loading": "Typst にフォントを問い合わせています",
+    "summary_other": "Typst {{version}} のフォントファミリー {{count}} 件",
+    "systemOff": "このプロジェクトではシステムフォントがオフのため、プロジェクトと組み込みのフォントだけを表示しています。",
+    "noSources": "この Typst のバージョンは、各フォントの出どころを示しません。",
+    "empty": "検索に一致するフォントファミリーはありません。",
+    "copy": "名前をコピー",
+    "copyAria": "フォントファミリー名 {{name}} をコピー",
+    "sources": {
+      "project": "プロジェクト",
+      "system": "システム",
+      "embedded": "組み込み"
+    },
+    "fontsFolder": "このプロジェクトでフォントを使うには、そのファイルをプロジェクトの fonts フォルダに追加してください。"
+  },
+  "typstVariants": {
+    "title": "ビルドバリアント",
+    "close": "ビルドバリアントを閉じる",
+    "intro": "各バリアントは、文書が sys.inputs で読み取る値を設定します。コンパイルメニューからバリアントを選んでください。",
+    "empty": "バリアントはまだありません。",
+    "add": "バリアントを追加",
+    "name": "バリアント名",
+    "defaultName": "バリアント {{number}}",
+    "remove": "バリアントを削除",
+    "removeAria": "バリアント {{name}} を削除",
+    "key": "名前",
+    "value": "値",
+    "addInput": "値を追加",
+    "removeInput": "値を削除",
+    "noInputs": "このバリアントは値を設定していません。",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "loading": "バリアントを読み込んでいます",
+    "nameRequired": "すべてのバリアントに名前を付けてください。",
+    "nameTaken": "2 つのバリアントに同じ名前は使えません。",
+    "keyInvalid": "値の名前は空にできず、等号を含めることもできません。",
+    "keyTaken": "1 つのバリアントで同じ名前を 2 回設定することはできません。",
+    "saveFailed": "バリアントを保存できませんでした。"
   }
 }

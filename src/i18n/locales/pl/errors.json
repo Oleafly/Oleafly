@@ -146,5 +146,37 @@
       "check_running": "Test tego agenta już trwa.",
       "main_window": "Zmieniaj programy agentów w oknie głównym."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly nie oferuje Typst {{version}} i żaden Typst na tym komputerze nie ma tej wersji.",
+    "busy": "Typst {{version}} wciąż się instaluje. Spróbuj ponownie po zakończeniu.",
+    "remove_default": "Typst {{version}} to Twoja wersja domyślna. Przed usunięciem wybierz inną wersję domyślną.",
+    "remove_not_downloaded": "Oleafly może usuwać tylko pobrane przez siebie wersje Typst, a Typst {{version}} nie został przez niego pobrany.",
+    "not_offered": "Typst {{version}} nie jest dostępny do pobrania na ten komputer.",
+    "install_unverified": "Typst {{version}} został pobrany, ale nie przeszedł kontroli integralności. Spróbuj zainstalować go ponownie.",
+    "not_typst_project": "Wersję Typst mają tylko projekty Typst.",
+    "update_waits": "Zanim zaktualizujesz Oleafly, poczekaj na zakończenie instalacji Typst."
+  },
+  "typst_packages": {
+    "index_offline": "Pracujesz offline, a lista pakietów Typst Universe nie została jeszcze pobrana.",
+    "index_unavailable": "Nie udało się wczytać listy pakietów Typst Universe. Sprawdź połączenie z internetem i spróbuj ponownie.",
+    "vendor_failed": "Oleafly nie mógł skopiować pakietów do projektu."
+  },
+  "typst_query": {
+    "timeout": "Typst zbyt długo odczytywał ten dokument.",
+    "failed": "Typst nie mógł odczytać tego dokumentu."
+  },
+  "typst_version_missing": "Typst {{version}} nie jest zainstalowany.",
+  "typst_options": {
+    "invalid_input_key": "Nazwy wartości nie mogą być puste ani zawierać znaku równości.",
+    "invalid_variant_name": "Każdy wariant potrzebuje krótkiej nazwy, której nie używa żaden inny wariant.",
+    "invalid_font_path": "Foldery z krojami pisma muszą znajdować się w projekcie.",
+    "fonts_failed": "Typst nie mógł wyświetlić listy krojów.",
+    "fonts_timeout": "Typst zbyt długo tworzył listę krojów."
+  },
+  "typst_export": {
+    "failed": "Typst nie mógł wyeksportować dokumentu.",
+    "unsupported": "Ta wersja Typst nie potrafi eksportować z tymi ustawieniami.",
+    "invalid_ppi": "Wybierz rozdzielczość od 1 do {{max}} PPI."
   }
 }

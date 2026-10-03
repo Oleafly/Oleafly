@@ -51,6 +51,12 @@ function Install-Sidecar($name, $version, $asset, $sha256, $member, $url) {
   if (-not (Test-Version $out "$name $version")) { throw "$name $version verification failed" }
 }
 
-Install-Sidecar "typst" "0.15.0" "typst-x86_64-pc-windows-msvc.zip" "66ae7f0907b4b9afed5c7d6cb9b21e07f0f3c3d4e293ba3e0026a54d88202fe9" "typst-x86_64-pc-windows-msvc\typst.exe" "https://github.com/typst/typst/releases/download/v0.15.0/typst-x86_64-pc-windows-msvc.zip"
+$typstCatalog = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root "src-tauri\resources\typst-toolchain.json") | ConvertFrom-Json
+$typstVersion = [string]$typstCatalog.typst.bundled
+$typstRelease = @($typstCatalog.typst.versions | Where-Object { $_.version -eq $typstVersion })
+if ($typstRelease.Count -ne 1) { throw "bundled Typst $typstVersion is missing from the toolchain catalog" }
+$typstTarget = $typstRelease[0].targets.$hostTriple
+if (-not $typstTarget) { throw "the toolchain catalog has no Typst $typstVersion build for $hostTriple" }
+Install-Sidecar "typst" $typstVersion $typstTarget.asset $typstTarget.archiveSha256 $typstTarget.archiveMember $typstTarget.githubUrl
 Install-Sidecar "tectonic" "0.16.9" "tectonic-0.16.9-x86_64-pc-windows-msvc.zip" "131a24604785a9600989a3d91225f597df52ac06f00aeffe86fd529f99ee5cdd" "tectonic.exe" "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.16.9/tectonic-0.16.9-x86_64-pc-windows-msvc.zip"
 Install-Sidecar "pandoc" "3.9.0.2" "pandoc-3.9.0.2-windows-x86_64.zip" "c97542f2800f446e788d9f74237856d995421ad1bb3cc8324286840c5f272d3a" "pandoc-3.9.0.2\pandoc.exe" "https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-windows-x86_64.zip"

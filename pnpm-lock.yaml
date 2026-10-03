@@ -437,6 +437,12 @@ importers:
       '@codemirror/view':
         specifier: 6.43.6
         version: 6.43.6
+      '@lezer/common':
+        specifier: '*'
+        version: 1.5.2
+      '@oleafly/editor':
+        specifier: workspace:*
+        version: link:../editor
       '@oleafly/i18n-contract':
         specifier: workspace:*
         version: link:../i18n-contract

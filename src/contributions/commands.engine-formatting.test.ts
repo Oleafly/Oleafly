@@ -85,4 +85,25 @@ describe("palette engine formatting", () => {
     runEngineFormatting("bold");
     expect(mocks.wrapSelection).not.toHaveBeenCalled();
   });
+
+  it("follows the language of the open file rather than the project engine", () => {
+    mocks.state.engine = LATEX_ENGINE;
+    mocks.state.engineLoaded = true;
+    mocks.state.activePath = "notes/draft.typ";
+    expect(engineFormattingAvailable()).toBe(true);
+    runEngineFormatting("bold");
+    runEngineFormatting("section");
+    expect(mocks.wrapSelection).toHaveBeenLastCalledWith("*", "*");
+    expect(mocks.insertAtCursor).toHaveBeenLastCalledWith("= Heading\n");
+
+    mocks.state.engine = {
+      ...LATEX_ENGINE,
+      id: "typst",
+      source_extensions: ["typ"],
+      capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "typst" },
+    };
+    mocks.state.activePath = "appendix.tex";
+    runEngineFormatting("italic");
+    expect(mocks.wrapSelection).toHaveBeenLastCalledWith("\\textit{", "}");
+  });
 });

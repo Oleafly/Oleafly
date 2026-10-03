@@ -1,7 +1,13 @@
 import { bibliographyTargetForProject } from "@/features/citation";
 import { isReadOnlyLink } from "@/lib/project-paths";
 import { appVersion } from "@/lib/tauri";
-import { bibtexHasOleaflyEntry, OLEAFLY_CITATION_KEY, oleaflyBibtex } from "@/lib/cite-oleafly";
+import {
+  bibtexHasOleaflyEntry,
+  OLEAFLY_CITATION_KEY,
+  oleaflyBibtex,
+  oleaflyHayagriva,
+} from "@/lib/cite-oleafly";
+import { appendHayagrivaEntries, hayagrivaKeys, isHayagrivaPath } from "@/lib/citation/hayagriva";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
@@ -32,6 +38,19 @@ async function writeBibliography(projectId: string, path: string, content: strin
   await files.writeProjectFile(projectId, path, content);
 }
 
+function hasOleaflyEntry(path: string, content: string): boolean {
+  return isHayagrivaPath(path)
+    ? hayagrivaKeys(content).has(OLEAFLY_CITATION_KEY)
+    : bibtexHasOleaflyEntry(content);
+}
+
+function withOleaflyEntry(path: string, content: string, version: string): string {
+  if (isHayagrivaPath(path)) return appendHayagrivaEntries(content, [oleaflyHayagriva(version)]);
+  const bibtex = oleaflyBibtex(version);
+  const trimmed = content.trimEnd();
+  return trimmed ? `${trimmed}\n\n${bibtex}\n` : `${bibtex}\n`;
+}
+
 function citationMarkup(): string {
   const profile = useFilesStore.getState().engine.capabilities.formatting_profile;
   if (profile === "typst") return `@${OLEAFLY_CITATION_KEY}`;
@@ -43,27 +62,26 @@ export async function citeOleafly(options: { path?: string } = {}): Promise<Cite
   const files = useFilesStore.getState();
   const projectId = files.projectId;
   if (!projectId) return { kind: "no-project" };
+  const acceptHayagriva = files.engine.capabilities.formatting_profile === "typst";
   let path: string;
   let content: string;
   let readOnly: boolean;
   if (options.path) {
     path = options.path;
-    content = files.files[path]?.content ?? (await bibliographyTargetForProject())?.content ?? "";
+    content = files.files[path]?.content ?? (await bibliographyTargetForProject({ acceptHayagriva }))?.content ?? "";
     readOnly = isReadOnlyLink(path, files.tree);
   } else {
-    const target = await bibliographyTargetForProject();
+    const target = await bibliographyTargetForProject({ acceptHayagriva });
     if (!target?.exists) return { kind: "no-bibliography" };
     path = target.path;
     content = target.content;
     readOnly = target.readOnly;
   }
-  if (bibtexHasOleaflyEntry(content)) return { kind: "present", path };
+  if (hasOleaflyEntry(path, content)) return { kind: "present", path };
   if (projectFolderIsReadOnly(projectId)) return { kind: "read-only-folder" };
   if (readOnly) return { kind: "read-only", path };
   const version = await appVersion().catch(() => "");
-  const entry = oleaflyBibtex(version);
-  const trimmed = content.trimEnd();
-  const next = trimmed ? `${trimmed}\n\n${entry}\n` : `${entry}\n`;
+  const next = withOleaflyEntry(path, content, version);
   await writeBibliography(projectId, path, next);
   return {
     kind: "added",

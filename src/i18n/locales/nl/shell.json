@@ -41,7 +41,9 @@
     "noResults": "Geen resultaten gevonden. Controleer de identificatie of probeer andere woorden uit de titel.",
     "placeholder": "DOI, arXiv-id, URL of de titel van een artikel…",
     "privacyNote": "Alleen de identificatie of de titel wordt verstuurd, naar doi.org, arXiv of Crossref.",
-    "title": "Citatie toevoegen"
+    "title": "Citatie toevoegen",
+    "bibliography": "Bibliografie",
+    "bibliographyHint": "Dit project heeft meer dan één bibliografie. Het item komt in het bestand dat je hier kiest."
   },
   "backendProtocol": {
     "mismatch": "Dit venster en de bijbehorende backend zijn voor verschillende Oleafly-versies gebouwd, dus sommige functies werken mogelijk niet. Opnieuw installeren lost dit op."
@@ -120,6 +122,14 @@
       "keywords": "sluiten end omgeving begin latex",
       "label": "LaTeX-omgeving sluiten"
     },
+    "formatDocument": {
+      "keywords": "opmaken netjes inspringen typstyle typst format",
+      "label": "Document opmaken"
+    },
+    "formatSelection": {
+      "keywords": "opmaken selectie netjes inspringen typstyle typst format",
+      "label": "Selectie opmaken"
+    },
     "createProject": {
       "keywords": "nieuw project maken sjabloon galerij",
       "label": "Een nieuw project maken"
@@ -127,6 +137,14 @@
     "diagramComposer": {
       "keywords": "diagram figuur tikz editor tekenen canvas",
       "label": "Diagrameditor openen"
+    },
+    "typstPackages": {
+      "keywords": "typst universe pakketten import bibliotheek bladeren kopiëren",
+      "label": "Typst-pakketten bekijken"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan pakketten usepackage preambule installeren tlmgr bladeren",
+      "label": "LaTeX-pakketten bekijken"
     },
     "documentCitationScan": {
       "keywords": "citaties literatuur scan document alinea referenties zoeken",
@@ -193,7 +211,8 @@
       "label": "Omsluiten met een omgeving"
     },
     "synctex": {
-      "label": "Naar de PDF (SyncTeX)"
+      "label": "Naar de PDF (SyncTeX)",
+      "typstLabel": "Naar de PDF"
     },
     "table": {
       "label": "Tabel"
@@ -226,6 +245,79 @@
     "openFolder": {
       "label": "Map openen…",
       "keywords": "openen map directory bestaand lokaal bestanden schijf"
+    },
+    "underline": {
+      "label": "Onderstrepen"
+    },
+    "strikethrough": {
+      "label": "Doorhalen"
+    },
+    "inlineCode": {
+      "label": "Code in de tekst"
+    },
+    "link": {
+      "label": "Link"
+    },
+    "footnote": {
+      "label": "Voetnoot"
+    },
+    "quote": {
+      "label": "Citaat"
+    },
+    "inlineMath": {
+      "label": "Wiskunde in de tekst"
+    },
+    "numberedEquation": {
+      "label": "Genummerde vergelijking"
+    },
+    "alignedEquations": {
+      "label": "Uitgelijnde vergelijkingen"
+    },
+    "fraction": {
+      "label": "Breuk"
+    },
+    "crossReference": {
+      "label": "Kruisverwijzing"
+    },
+    "typstInsights": {
+      "label": "Documentinzichten",
+      "keywords": "figuren tabellen vergelijkingen koppen labels citaties todo fixme metagegevens samenvatting inzending"
+    },
+    "typstDocumentSettings": {
+      "label": "Documentinstellingen",
+      "keywords": "paginaformaat marges kolommen lettertype lettergrootte taal regio uitvullen regelafstand nummering"
+    },
+    "toggleComment": {
+      "label": "Commentaar aan- of uitzetten",
+      "keywords": "commentaar uitcommentariëren regel blok"
+    },
+    "goToDefinition": {
+      "label": "Naar de definitie",
+      "keywords": "definitie springen symbool navigeren"
+    },
+    "findReferences": {
+      "label": "Referenties zoeken",
+      "keywords": "referenties gebruik symbool"
+    },
+    "renameSymbol": {
+      "label": "Symbool hernoemen",
+      "keywords": "hernoemen symbool refactoren"
+    },
+    "migrateToTypst": {
+      "label": "Omzetten naar een Typst-project",
+      "keywords": "typst omzetten migreren latex project nieuw"
+    },
+    "typstMigrationReport": {
+      "label": "Het Typst-conversierapport tonen",
+      "keywords": "typst omzetten migreren rapport latex"
+    },
+    "present": {
+      "label": "Dia's presenteren",
+      "keywords": "presenteren dia's presentatie volledig scherm beamer touying polylux sprekersnotities pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "Dia's presenteren met presentatorweergave",
+      "keywords": "presenteren dia's presentatorweergave sprekersnotities timer volgende dia"
     }
   },
   "community": {
@@ -238,7 +330,12 @@
     "autoCompile": {
       "off": "Uit",
       "on": "Aan",
-      "title": "Automatisch compileren"
+      "title": "Automatisch compileren",
+      "help": "Compileert een paar seconden nadat je stopt met typen. Het geopende bestand wordt eerst opgeslagen.",
+      "typstHelp": "Typst blijft draaien en werkt de PDF bij kort nadat je stopt met typen. Zolang dit aanstaat, wordt het geopende bestand vanzelf opgeslagen.",
+      "typstStarting": "Typst starten",
+      "typstRestarting": "Typst start opnieuw",
+      "typstFailed": "Typst is gestopt na herhaalde fouten. Bewerk het bestand om het opnieuw te starten."
     },
     "compile": "Compileren",
     "compiler": {
@@ -274,7 +371,37 @@
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
     "texRootNotTex": "% !TEX root in {{file}} wijst naar {{target}}, dat geen LaTeX-bestand is",
-    "texRootOverride": "root: {{path}} (ingesteld door % !TEX root in {{file}})"
+    "texRootOverride": "root: {{path}} (ingesteld door % !TEX root in {{file}})",
+    "typstVersion": {
+      "title": "Typst-versie (dit project)",
+      "help": "Zet een versie vast om de uitvoer van dit project gelijk te houden als Oleafly Typst bijwerkt. De optie Standaard volgt de versie die bij Instellingen is gekozen. Om versies te installeren of dit project met een nieuwere te testen, ga je naar Instellingen → Engines → Typst.",
+      "default": "Standaard ({{version}})",
+      "defaultPlain": "Standaard",
+      "builtIn": "[ingebouwd]",
+      "system": "[systeem]",
+      "missing": "[niet geïnstalleerd]",
+      "switchFailed": "Kon de Typst-versie niet wijzigen."
+    },
+    "typstFonts": {
+      "title": "Lettertypen (dit project)",
+      "help": "Typst leest lettertypen uit de map fonts van het project en uit de mappen die onder font_paths in project.json staan. Met alleen projectlettertypen hangt de PDF niet af van de lettertypen op deze computer. In Documentinstellingen zie je welke lettertypen Typst kan vinden.",
+      "systemFonts": "Systeemlettertypen gebruiken",
+      "projectOnly": "Alleen projectlettertypen",
+      "unsupported": "Vereist een nieuwere Typst",
+      "saveFailed": "Kon de lettertype-instelling niet opslaan."
+    },
+    "typstBuild": {
+      "title": "Build (dit project)",
+      "help": "Een reproduceerbare build gebruikt alleen projectlettertypen en dateert de PDF op de laatste commit. Dezelfde bronbestanden geven dan op elke computer dezelfde PDF.",
+      "standard": "Standaardbuild",
+      "reproducible": "Reproduceerbare build",
+      "saveFailed": "Kon de build-instelling niet opslaan."
+    },
+    "typstVariant": {
+      "title": "Variant (dit project)",
+      "help": "Een variant geeft eigen waarden door aan sys.inputs, bijvoorbeeld voor een concept of een drukklare versie. De gekozen variant blijft op deze computer. Varianten voeg je toe of bewerk je in Documentinstellingen.",
+      "none": "Geen variant"
+    }
   },
   "datePicker": {
     "placeholder": "Kies een datum"
@@ -946,6 +1073,10 @@
     "wait": {
       "description": "{{phase}} Je compilatie staat in de wachtrij en start automatisch zodra de engine klaar is.",
       "title": "TinyTeX wordt nog gedownload"
+    },
+    "typstQuit": {
+      "title": "Typst wordt nog geïnstalleerd",
+      "description": "Typst {{version}} wordt gedownload. Als je nu afsluit, stopt de download en moet je hem opnieuw starten bij Instellingen."
     }
   },
   "toolbar": {
@@ -1085,5 +1216,132 @@
     "added": "Toegevoegd. Hij staat nu in het menu Voorzieningen in Finder. Wil je hem ook via Snelle taken gebruiken, klik dan met de rechtermuisknop op een map en schakel hem in bij Snelle taken › Pas aan.",
     "addedInQuickActions": "Toegevoegd. Klik met de rechtermuisknop op een map, dan vind je hem onder Snelle taken.",
     "failed": "Toevoegen is mislukt. Je kunt het opnieuw proberen via Instellingen › Algemeen."
+  },
+  "typstMigration": {
+    "title": "Omzetten naar een Typst-project",
+    "closeLabel": "De Typst-conversie sluiten",
+    "intro": "Oleafly maakt een nieuw Typst-project van dit LaTeX-project. Dit project verandert niet.",
+    "points": {
+      "text": "Pandoc zet de tekst, wiskunde, figuren en tabellen om.",
+      "files": "Elk input- en include-bestand wordt een eigen Typst-bestand.",
+      "bibliography": "BibTeX-bestanden worden ongewijzigd gekopieerd.",
+      "compile": "Typst compileert het nieuwe project als controle."
+    },
+    "nameLabel": "Naam van het nieuwe project",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Open een LaTeX-project om het om te zetten.",
+    "convert": "Omzetten",
+    "retry": "Opnieuw proberen",
+    "progress": {
+      "reading": "Het LaTeX-project lezen",
+      "converting": "Omzetten met Pandoc",
+      "creating": "Het Typst-project maken",
+      "compiling": "Compileren met Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc is niet klaar. Installeer het bij Tools en probeer het opnieuw.",
+      "noMain": "Het LaTeX-hoofdbestand kon niet worden gelezen.",
+      "emptyOutput": "Pandoc gaf een leeg document terug.",
+      "failed": "De conversie is gestopt: {{detail}}"
+    },
+    "report": {
+      "created": "{{name}} gemaakt.",
+      "compiled": "Het compileert met Typst.",
+      "compileFailed_one": "Het compileert nog niet. {{count}} fout moet worden opgelost.",
+      "compileFailed_other": "Het compileert nog niet. {{count}} fouten moeten worden opgelost.",
+      "compileUnavailable": "Oleafly kon het niet compileren: {{detail}}",
+      "converted": "Omgezet",
+      "sources_one": "{{count}} bronbestand",
+      "sources_other": "{{count}} bronbestanden",
+      "figures_one": "{{count}} figuur",
+      "figures_other": "{{count}} figuren",
+      "tables_one": "{{count}} tabel",
+      "tables_other": "{{count}} tabellen",
+      "equations_one": "{{count}} vergelijking op een eigen regel",
+      "equations_other": "{{count}} vergelijkingen op een eigen regel",
+      "references_one": "{{count}} kruisverwijzing",
+      "references_other": "{{count}} kruisverwijzingen",
+      "mathFixed_one": "{{count}} formule hersteld door de wiskundeconverter",
+      "mathFixed_other": "{{count}} formules hersteld door de wiskundeconverter",
+      "copied_one": "{{count}} bestand gekopieerd",
+      "copied_other": "{{count}} bestanden gekopieerd",
+      "style": "Bibliografiestijl {{style}}",
+      "mapping": "{{source}} naar {{target}}",
+      "attention": "Vraagt aandacht",
+      "noAttention": "Niets vraagt aandacht.",
+      "problems": "Compileerfouten en waarschuwingen",
+      "location": "{{file}}, regel {{line}}",
+      "noLocation": "Geen bestandslocatie",
+      "openAt": "{{file}} openen op regel {{line}}",
+      "open": "Het Typst-project openen"
+    },
+    "notes": {
+      "missingInclude": "Het bestand {{detail}} is niet gevonden en is daarom weggelaten.",
+      "lostInclude": "{{detail}} kon geen eigen bestand krijgen. De tekst blijft in het bestand dat het insloot.",
+      "missingImage": "De afbeelding {{detail}} is niet gevonden.",
+      "unsupportedImage": "Typst kan {{detail}} niet tonen. Zet het om naar PDF, PNG of SVG.",
+      "math": "Deze wiskunde moet met de hand worden hersteld: {{detail}}",
+      "bibliographyStyle": "De BibTeX-stijl {{detail}} heeft geen tegenhanger in Typst. De standaardstijl wordt gebruikt.",
+      "skippedFile": "{{detail}} is niet gekopieerd omdat het project te groot is.",
+      "unreadableFile": "{{detail}} kon niet worden gelezen.",
+      "equationLabel": "Typst nummert hele vergelijkingen, dus verwijzingen naar {{detail}} wijzen nu naar de vergelijking waarin het stond."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Afbeeldingen en HTML",
+    "title": "Exporteren met Typst",
+    "close": "Typst-export sluiten",
+    "format": "Formaat",
+    "png": "PNG-afbeeldingen",
+    "svg": "SVG-afbeeldingen",
+    "html": "HTML",
+    "experimental": "Experimenteel",
+    "htmlNote": "De HTML-export van Typst is nog experimenteel. Pagina-instellingen en geplaatste elementen vallen weg.",
+    "ppi": "Resolutie",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Pagina's",
+    "pagesPlaceholder": "Alle pagina's",
+    "pagesHelp": "Gebruik paginanummers en bereiken, zoals 1, 3-5 of 8-.",
+    "pagesInvalid": "Controleer het paginabereik. Gebruik paginanummers en bereiken, zoals 1, 3-5 of 8-.",
+    "pagesUnsupported": "Deze Typst-versie exporteert altijd alle pagina's.",
+    "multiPage": "Elke pagina wordt als apart bestand opgeslagen, genummerd naar de naam die je kiest.",
+    "export": "Exporteren",
+    "cancel": "Annuleren"
+  },
+  "typstUpgrade": {
+    "title": "Een nieuwere Typst-versie proberen",
+    "description": "Oleafly bouwt dit project met beide versies in tijdelijke mappen. Er verandert niets in je project, tenzij je overstapt.",
+    "compareWith": "Nieuwere versie",
+    "running": "Bouwen met Typst {{current}} en {{candidate}}",
+    "current": "Typst {{version}} (huidig)",
+    "candidate": "Typst {{version}}",
+    "built": "Gebouwd",
+    "failed": "Mislukt",
+    "pages_one": "{{count}} pagina",
+    "pages_other": "{{count}} pagina's",
+    "pagesUnknown": "Aantal pagina's onbekend",
+    "errors_one": "{{count}} fout",
+    "errors_other": "{{count}} fouten",
+    "warnings_one": "{{count}} waarschuwing",
+    "warnings_other": "{{count}} waarschuwingen",
+    "pageChange": "Het aantal pagina's verandert van {{from}} naar {{to}}.",
+    "pageSame": "Het aantal pagina's blijft {{pages}}.",
+    "added": "Nieuw in Typst {{version}}",
+    "removed": "Niet meer gemeld door Typst {{version}}",
+    "noChanges": "Beide versies melden dezelfde fouten en waarschuwingen.",
+    "unchanged_one": "{{count}} melding is in beide versies hetzelfde.",
+    "unchanged_other": "{{count}} meldingen zijn in beide versies hetzelfde.",
+    "buildFailed": "Typst {{version}} kon het project niet bouwen.",
+    "switch": "Overstappen naar Typst {{version}}",
+    "switched": "Dit project gebruikt nu Typst {{version}}.",
+    "switchFailed": "Kon de Typst-versie niet wisselen.",
+    "runAgain": "Opnieuw controleren",
+    "close": "Sluiten",
+    "checkFailed": "De controle kon niet worden afgerond.",
+    "noNewer": "Er is geen nieuwere Typst geïnstalleerd. Je kunt er een installeren bij Instellingen.",
+    "openSettings": "Typst-instellingen openen",
+    "location": "{{file}}, regel {{line}}",
+    "error": "Fout",
+    "warning": "Waarschuwing"
   }
 }

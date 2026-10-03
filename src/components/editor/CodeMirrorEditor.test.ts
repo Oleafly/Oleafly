@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   reportFileSaveFailure: vi.fn(),
@@ -27,8 +27,16 @@ vi.mock("@oleafly/latex-intelligence", async (importOriginal) => ({
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: mocks.notifyError }));
+const formatting = vi.hoisted(() => ({ saveTypstDocument: vi.fn(async () => {}) }));
+vi.mock("./cm/language-service-format", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./cm/language-service-format")>()),
+  saveTypstDocument: formatting.saveTypstDocument,
+}));
 
+import { EditorView } from "@codemirror/view";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
+import { setEditorView } from "./cm/controller";
 import { saveActiveFromKeymap } from "./CodeMirrorEditor";
 
 async function settle(): Promise<void> {
@@ -96,5 +104,46 @@ describe("saveActiveFromKeymap", () => {
     expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
     expect(mocks.logError).not.toHaveBeenCalled();
     expectNoDirectNotice();
+  });
+});
+
+describe("saveActiveFromKeymap with Typst format on save", () => {
+  let view: EditorView | null = null;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    view = new EditorView({ doc: "#let a=1\n", parent: document.body });
+    setEditorView(view);
+    useSettingsStore.getState().setTypstFormatOnSave(true);
+  });
+
+  afterEach(() => {
+    setEditorView(null);
+    view?.destroy();
+    view = null;
+    useSettingsStore.getState().setTypstFormatOnSave(false);
+  });
+
+  it("formats a Typst file before a Vim or Emacs save", () => {
+    const saveActive = vi.fn().mockResolvedValue(undefined);
+    useFilesStore.setState({ projectId: "p1", activePath: "main.typ", saveActive } as never);
+
+    saveActiveFromKeymap();
+
+    expect(formatting.saveTypstDocument).toHaveBeenCalledWith(view);
+    expect(saveActive).not.toHaveBeenCalled();
+  });
+
+  it("saves directly when the setting is off or the file is not Typst", async () => {
+    const saveActive = vi.fn().mockResolvedValue(undefined);
+    useFilesStore.setState({ projectId: "p1", activePath: "main.tex", saveActive } as never);
+    saveActiveFromKeymap();
+    useSettingsStore.getState().setTypstFormatOnSave(false);
+    useFilesStore.setState({ activePath: "main.typ" } as never);
+    saveActiveFromKeymap();
+    await settle();
+
+    expect(formatting.saveTypstDocument).not.toHaveBeenCalled();
+    expect(saveActive).toHaveBeenCalledTimes(2);
   });
 });

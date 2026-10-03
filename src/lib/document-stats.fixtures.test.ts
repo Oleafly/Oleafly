@@ -21,7 +21,7 @@ describe("document stats golden fixtures shared with the Rust counter", () => {
     ) as { files: ExpectedFile[] };
     for (const file of expected.files) {
       const text = readFileSync(path.join(root, name, "project", file.path), "utf8");
-      expect({ path: file.path, stats: documentStats(text) }).toEqual(file);
+      expect({ path: file.path, stats: documentStats(text, file.path) }).toEqual(file);
     }
   });
 });

@@ -175,6 +175,8 @@ pub struct AppConfig {
     pub skills_share_with_agents: bool,
     #[serde(default = "default_ui_locale")]
     pub ui_locale: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub typst_default_version: Option<String>,
 }
 
 fn default_ui_locale() -> String {
@@ -224,6 +226,7 @@ impl Default for AppConfig {
             mcp_servers: Vec::new(),
             skills_share_with_agents: true,
             ui_locale: default_ui_locale(),
+            typst_default_version: None,
         }
     }
 }
@@ -427,6 +430,26 @@ where
     let mut config = read_config_unlocked()?;
     update(&mut config)?;
     write_config_unlocked(&config)
+}
+
+pub(crate) fn typst_default_choice() -> Option<String> {
+    let text = std::fs::read_to_string(config_path().ok()?).ok()?;
+    serde_json::from_str::<serde_json::Value>(&text)
+        .ok()?
+        .get("typst_default_version")?
+        .as_str()
+        .map(str::trim)
+        .filter(|version| !version.is_empty())
+        .map(str::to_owned)
+}
+
+pub(crate) fn set_typst_default_choice(version: Option<String>) -> Result<(), String> {
+    update_config(|config| {
+        config.typst_default_version = version
+            .map(|version| version.trim().to_owned())
+            .filter(|version| !version.is_empty());
+        Ok(())
+    })
 }
 
 fn read_disk_config_unlocked() -> Result<Option<AppConfig>, String> {
@@ -933,6 +956,7 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     keep_newer_model_trust_records(&mut config, &stored);
     drop_probes_for_moved_endpoints(&mut config, &stored);
     config.mcp_servers = stored.mcp_servers;
+    config.typst_default_version = stored.typst_default_version;
     config.github_connected = false;
     write_config_unlocked(&config)
 }
@@ -2092,6 +2116,33 @@ mod tests {
             probe(ProbeVerdict::Verified, 40)
         );
         assert_eq!(persisted.ai_model_lists_refreshed_at["groq"], 41);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn the_typst_default_persists_and_settings_writes_from_the_webview_keep_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        assert_eq!(typst_default_choice(), None);
+        write_config(&AppConfig::default()).unwrap();
+        assert_eq!(typst_default_choice(), None);
+        assert!(!std::fs::read_to_string(config_path().unwrap())
+            .unwrap()
+            .contains("typst_default_version"));
+
+        set_typst_default_choice(Some(" 0.13.1 ".into())).unwrap();
+        assert_eq!(typst_default_choice().as_deref(), Some("0.13.1"));
+
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.typst_default_version = None;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert_eq!(typst_default_choice().as_deref(), Some("0.13.1"));
+
+        set_typst_default_choice(Some("  ".into())).unwrap();
+        assert_eq!(typst_default_choice(), None);
+        assert_eq!(read_config().unwrap().typst_default_version, None);
         std::fs::remove_dir_all(dir).ok();
     }
 

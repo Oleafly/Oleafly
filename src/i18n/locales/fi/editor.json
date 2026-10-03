@@ -42,7 +42,18 @@
     "selectImage": "Valitse lisättävä kuva.",
     "editTitle": "Muokkaa kuvaa",
     "editDescription": "Vaihda kuva tai muuta sen leveyttä. Kuvateksti ja nimike säilyvät ennallaan.",
-    "save": "Tallenna kuva"
+    "save": "Tallenna kuva",
+    "customWidthPlaceholderTypst": "8cm tai 60%",
+    "altLabel": "Vaihtoehtoinen teksti",
+    "altPlaceholder": "Kuvaile kuva ruudunlukijoita varten",
+    "placement": "Sijoittelu",
+    "placementNone": "Tässä kohdassa",
+    "placementAuto": "Automaattinen",
+    "placementTop": "Ylhäällä",
+    "placementBottom": "Alhaalla",
+    "editFigureTitle": "Muokkaa kuvaa",
+    "editFigureDescription": "Muuta kuvaa, sen kokoa, kuvatekstiä, nimikettä, vaihtoehtoista tekstiä tai sijoittelua.",
+    "saveFigure": "Tallenna kuva"
   },
   "tableToolbar": {
     "label": "Taulukkotyökalut",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Lisää lainauslohko",
     "insertFigure": "Lisää kuva",
     "insertImage": "Lisää kuvatiedosto",
+    "drawDiagram": "Piirrä kaavio",
     "insertTable": "Lisää taulukko",
     "imageToLatexTooltip": "Kuvasta LaTeXiin (litteroi tekoälyllä)",
     "imageToLatex": "Kuvasta LaTeXiin",
@@ -130,6 +142,7 @@
     "redo": "Tee uudelleen ({{shortcut}})",
     "find": "Etsi ({{shortcut}})",
     "goToPdf": "Siirry PDF:ään (SyncTeX)",
+    "goToPdfTypst": "Siirry PDF-tiedostoon",
     "linkUrl": "Linkin URL",
     "removeLink": "Poista linkki",
     "imageFile": "Kuvatiedosto",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "Jaettu",
     "both": "Molemmat",
-    "stacked": "Päällekkäin"
+    "stacked": "Päällekkäin",
+    "displayMath": "Erillinen kaava",
+    "numberedEquation": "Numeroitu kaava",
+    "alignedEquations": "Kohdistetut kaavat",
+    "addLabel": "Lisää nimike",
+    "imageToTypst": "Kuva Typst-muotoon",
+    "imageToTypstTooltip": "Kuva Typst-muotoon (litteroi tekoälyllä)",
+    "typstPackages": "Typst-paketit",
+    "latexPackages": "LaTeX-paketit"
   },
   "contextMenu": {
     "engineUnavailable": "Dokumenttimoottorin toiminnot eivät ole käytettävissä",
     "askAi": "Kysy tekoälyltä…",
     "noIndexedSymbol": "Tässä kohdassa ei ole indeksoitua symbolia.",
     "noRenamableSymbol": "Tässä kohdassa ei ole uudelleennimettävää symbolia.",
+    "formatDocument": "Muotoile dokumentti",
+    "formatSelection": "Muotoile valinta",
     "itemize": "Merkitty luettelo (itemize)",
     "enumerate": "Numeroitu luettelo (enumerate)",
     "figure": "Kuva (figure)",
@@ -156,7 +179,16 @@
     "equationAsPng": "Kaava PNG-muodossa",
     "crossReference": "Ristiviittaus",
     "label": "Nimike",
-    "footnote": "Alaviite"
+    "footnote": "Alaviite",
+    "toggleComment": "Kommentoi tai poista kommentointi",
+    "inlineMath": "Tekstin sisäinen matematiikka",
+    "displayMath": "Erillinen kaava",
+    "numberedEquation": "Numeroitu kaava",
+    "alignedEquations": "Kohdistetut kaavat",
+    "quote": "Lainaus",
+    "addLabel": "Lisää nimike",
+    "convertLatexMath": "Muunna LaTeX-matematiikka Typst-muotoon",
+    "noLatexMath": "Valitse ensin LaTeX-matematiikkaa."
   },
   "shell": {
     "noFileOpenTab": "Ei avointa tiedostoa",
@@ -233,9 +265,15 @@
     "footerTypst": "Erikoismerkit suojataan taulukon lähdekoodissa.",
     "footerLatex": "Muodostettu LaTeX-taulukko käyttää vaakaviivoissaan booktabs-pakettia.",
     "chooseAnother": "Valitse toinen tiedosto",
-    "chooseFile": "Valitse CSV, TSV tai XLSX",
+    "chooseFile": "Valitse CSV, TSV, XLSX tai JSON",
     "selectedSummary": "{{file}} · Rivejä: {{rows}} · Sarakkeita: {{columns}}",
     "firstRowHeader": "Ensimmäinen rivi on otsikkorivi",
+    "keepLinked": "Pidä linkitettynä datatiedostoon",
+    "keepLinkedHint": "Kopioi datan datakansioon. Muokkaa sitä tiedostoa, niin taulukko muuttuu seuraavassa käännöksessä.",
+    "footerLinked": "Taulukko lukee tiedoston {{path}} aina, kun dokumentti käännetään.",
+    "jsonNotTable": "Tämä JSON-tiedosto ei ole tietueiden tai rivien luettelo.",
+    "insertedLinked": "Linkitetty taulukko lisättiin. Muokkaa tiedostoa {{path}}, jos haluat muuttaa sitä.",
+    "linkFailed": "Dataa ei voitu kopioida projektiin.",
     "captionLabel": "Taulukkoteksti (valinnainen)",
     "captionPlaceholder": "Tulokset kaikista ajoista",
     "labelLabel": "Nimike (valinnainen)",
@@ -266,7 +304,8 @@
     "svgImage": "SVG-kuva",
     "pngImage": "PNG-kuva",
     "svgKind": "Kaavan SVG",
-    "pngKind": "Kaavan PNG"
+    "pngKind": "Kaavan PNG",
+    "typstFailed": "Typst ei pystynyt piirtämään tätä kaavaa ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Kysy tekoälyltä",
@@ -307,7 +346,17 @@
     "info": "Tiedot",
     "empty": "Käännöksen tuloste näkyy tässä.",
     "scrollToTop": "Vieritä ylös",
-    "scrollToBottom": "Vieritä alas"
+    "scrollToBottom": "Vieritä alas",
+    "locationFileLineColumn": "{{file}} · rivi {{line}}, sarake {{column}}",
+    "locationLineColumn": "rivi {{line}}, sarake {{column}}",
+    "hint": "Vihje",
+    "sourceExcerpt": "Lähderivi {{line}}",
+    "summaryErrors_one": "{{count}} virhe",
+    "summaryErrors_other": "{{count}} virhettä",
+    "summaryWarnings_one": "{{count}} varoitus",
+    "summaryWarnings_other": "{{count}} varoitusta",
+    "summaryReferences_one": "{{count}} ratkaisematon viittaus",
+    "summaryReferences_other": "{{count}} ratkaisematonta viittausta"
   },
   "history": {
     "untitledCommit": "Nimetön commit",
@@ -352,7 +401,8 @@
       "navigation": "Navigointi",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Asetukset"
+      "settings": "Asetukset",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Käännä uudelleen",
@@ -369,12 +419,20 @@
       "goToDefinition": "Siirry määritelmään",
       "findReferences": "Etsi viitteet",
       "renameSymbol": "Nimeä symboli uudelleen (koko projektissa)",
+      "formatDocument": "Muotoile Typst-dokumentti",
       "commandPalette": "Komentopaletti",
       "searchAllDocuments": "Hae kaikista dokumenteista",
       "goToPdf": "Siirry PDF:ään (SyncTeX eteenpäin)",
       "jumpToSource": "Hyppää PDF:stä lähdekoodiin",
       "commitAndPush": "Commit ja työntö",
-      "openSettings": "Avaa asetukset"
+      "openSettings": "Avaa asetukset",
+      "typstContinueList": "Jatka luetteloa uudella kohdalla",
+      "typstItemNewLine": "Aloita uusi rivi luettelokohdan sisällä",
+      "typstRemoveMarker": "Poista luettelomerkki kohdistimen edestä",
+      "typstIndentItem": "Sisennä luettelokohtaa yksi taso syvemmälle",
+      "typstOutdentItem": "Siirrä luettelokohtaa yksi taso ylemmäs",
+      "typstMathPair": "Sulje $-matematiikka automaattisesti, välilyönti muuttaa sen erilliseksi kaavaksi",
+      "typstWrapSelection": "Ympäröi valinta lihavoinnilla, korostuksella, raakatekstillä tai matematiikalla"
     }
   },
   "citations": {
@@ -645,6 +703,7 @@
       "unsupported": "Tämä lauseke on puutteellinen tai sitä ei tueta.",
       "missingClosing": "Sulkeva {{delimiter}} puuttuu.",
       "notRendered": "Tätä lauseketta ei voitu piirtää.",
+      "typstUnavailable": "Typst-esikatselu ei ole käytettävissä.",
       "preview": {
         "moreOptions": "Lisää vaihtoehtoja",
         "hide": "Piilota",
@@ -652,6 +711,10 @@
         "disable": "Poista käytöstä",
         "disableDescription": "Poistaa kaavojen esikatselun käytöstä. Voit ottaa sen takaisin käyttöön asetuksissa."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Liitä Typst-matematiikkana",
+      "pasteOffer": "Liitettiin LaTeX-matematiikkaa"
     },
     "latex": {
       "command": {
@@ -834,6 +897,45 @@
         "revtex": "REVTeX-tyyli"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Otsikko",
+        "figure": "Kuva ja kuvatiedosto",
+        "tableFigure": "Kuva ja taulukko",
+        "table": "Taulukko",
+        "equation": "Erillinen kaava",
+        "numberedEquation": "Numeroitu kaava ja nimike",
+        "footnote": "Alaviite",
+        "quote": "Lohkolainaus",
+        "code": "Koodilohko",
+        "outline": "Sisällysluettelo",
+        "bibliography": "Lähdeluettelo",
+        "pagebreak": "Sivunvaihto",
+        "columns": "Palstat",
+        "grid": "Ruudukko",
+        "link": "Linkki",
+        "list": "Merkitty luettelo",
+        "enum": "Numeroitu luettelo",
+        "terms": "Termiluettelo",
+        "partBibliography": "Lähdeluettelo yhdelle nimikkeellä merkitylle osalle"
+      },
+      "bibliographyStyle": {
+        "builtin": "sisäänrakennettu CSL-tyyli",
+        "citation": "vain viittaustyyli",
+        "project": "tämän projektin CSL-tiedosto"
+      },
+      "bibliographyParameter": {
+        "target": "mitkä viittaukset siinä luetellaan",
+        "group": "miten sen numerot jaetaan",
+        "targetAuto": "lähin lähdeluettelo, jossa avain on",
+        "targetWithin": "nimikkeellä merkityn osan sisäiset viittaukset",
+        "targetAfter": "nimikkeen jälkeiset viittaukset",
+        "targetBefore": "nimikettä edeltävät viittaukset",
+        "groupAuto": "numerointi yhdessä muiden lähdeluetteloiden kanssa",
+        "groupNone": "oma numerointi",
+        "groupNamed": "numerointi samannimisten lähdeluetteloiden kanssa"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Tiivistelmä",
@@ -960,6 +1062,12 @@
       "reference": "Viite",
       "label": "Nimike",
       "includedFile": "Sisällytetty tiedosto",
+      "typst": {
+        "settings": {
+          "show": "Näytä dokumentin asetukset",
+          "hide": "Piilota dokumentin asetukset"
+        }
+      },
       "table": {
         "captionPlacement": "Taulukkoteksti",
         "captionAbove": "Taulukkoteksti yläpuolella",
@@ -1034,6 +1142,11 @@
     "goTo": "Siirry kohteeseen {{title}}",
     "untitled": "Nimetön"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Avaa Typst Universe -palvelussa",
+    "formatUnavailable": "Typst-muotoilija ei ole vielä valmis. Yritä hetken päästä uudelleen.",
+    "formatFailed": "Tätä tiedostoa ei voitu muotoilla."
+  },
   "changedOnDisk": {
     "message": "{{file}} muuttui levyllä, kun sinulla oli tallentamattomia muutoksia.",
     "compare": "Vertaa",
@@ -1041,5 +1154,330 @@
     "reload": "Lataa uudelleen",
     "failed": "Oleafly ei voinut päivittää tiedostoa {{file}}. Yritä uudelleen.",
     "tabMark": "Muuttui levyllä. Avaa tämä välilehti ja valitse, kumman version pidät."
+  },
+  "labels": {
+    "filterPlaceholder": "Nimikkeen nimi",
+    "filterLabel": "Suodata projektin nimikkeitä",
+    "noMatches": "Ei vastaavia nimikkeitä.",
+    "empty": "Tässä projektissa ei ole vielä nimikkeitä.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Lisää nimike tähän"
+  },
+  "typst": {
+    "numberingNote": "Kaavanumerot tarvitsevat numerointisäännön.",
+    "addNumberingRule": "Lisää sääntö",
+    "bibliographyAdded": "Lähdeluettelo lisättiin tiedostoon {{file}}."
+  },
+  "typstInsights": {
+    "title": "Dokumentin tiedot",
+    "description": "Mitä käännetty dokumentti sisältää, ja linkit takaisin lähdekoodiin.",
+    "refresh": "Päivitä",
+    "copyMetadata": "Kopioi lähetyksen metatiedot",
+    "metadataCopied": "Lähetyksen metatiedot kopioitiin leikepöydälle.",
+    "copyFailed": "Metatietoja ei kopioitu. Tarkista leikepöydän käyttöoikeus ja yritä uudelleen.",
+    "loading": "Luetaan dokumenttia Typst-kääntäjällä",
+    "compileFailed": "Typst ei voinut kääntää dokumenttia. Korjaa nämä virheet, niin kuvat, taulukot ja kaavat voidaan luetella.",
+    "noProject": "Avaa ensin Typst-projekti.",
+    "tabs": {
+      "overview": "Yleiskatsaus",
+      "headings": "Otsikot",
+      "figures": "Kuvat",
+      "tables": "Taulukot",
+      "equations": "Kaavat",
+      "labels": "Nimikkeet",
+      "citations": "Viittaukset",
+      "todos": "Tehtävät"
+    },
+    "metadata": {
+      "heading": "Lähetyksen metatiedot",
+      "title": "Otsikko",
+      "authors": "Tekijät",
+      "keywords": "Avainsanat",
+      "abstract": "Tiivistelmä",
+      "date": "Päivämäärä",
+      "missing": "Ei asetettu"
+    },
+    "empty": {
+      "headings": "Käännetyssä dokumentissa ei ole otsikoita.",
+      "figures": "Käännetyssä dokumentissa ei ole kuvia.",
+      "tables": "Käännetyssä dokumentissa ei ole taulukoita.",
+      "equations": "Käännetyssä dokumentissa ei ole erillisiä kaavoja.",
+      "labels": "Dokumentissa ei ole nimikkeitä.",
+      "citations": "Käännetyssä dokumentissa ei ole viittauksia.",
+      "todos": "Ei TODO- tai FIXME-merkintöjä."
+    },
+    "labelKinds": {
+      "heading": "Otsikko",
+      "figure": "Kuva",
+      "table": "Taulukko",
+      "equation": "Kaava",
+      "other": "Muu"
+    },
+    "page": "Sivu {{page}}",
+    "unnumbered": "Numeroimaton",
+    "untitled": "Ei kuvatekstiä",
+    "cited_one": "Viitattu {{count}} kerran",
+    "cited_other": "Viitattu {{count}} kertaa",
+    "notInSource": "Ei löydy lähdekoodista",
+    "openSource": "Avaa {{file}} riviltä {{line}}",
+    "versionNote": "Typst {{version}}, typst {{method}}",
+    "truncated": "Vain ensimmäiset 5000 elementtiä luetellaan."
+  },
+  "documentInsights": {
+    "description": "Mitä dokumentti sisältää, ja linkit takaisin lähdekoodiin.",
+    "loading": "Luetaan dokumenttia",
+    "noProject": "Avaa ensin projekti.",
+    "unresolved": "Ei lähdeluettelossa",
+    "unresolvedCount_one": "{{count}} viiteavain puuttuu lähdeluettelosta.",
+    "unresolvedCount_other": "{{count}} viiteavainta puuttuu lähdeluettelosta.",
+    "numbersCurrent": "Numerot ja sivut ovat viimeisimmästä käännöksestä.",
+    "numbersStale": "Lähdekoodi on muuttunut viimeisimmän käännöksen jälkeen. Käännä uudelleen, niin näet numerot ja sivut.",
+    "numbersMissing": "Käännä dokumentti, niin näet numerot ja sivut.",
+    "sourceOrder": "Lueteltu lähdekoodin järjestyksessä.",
+    "empty": {
+      "headings": "Dokumentissa ei ole otsikoita.",
+      "figures": "Dokumentissa ei ole kuvia.",
+      "tables": "Dokumentissa ei ole taulukoita.",
+      "equations": "Dokumentissa ei ole erillisiä kaavoja.",
+      "citations": "Dokumentissa ei ole viittauksia."
+    }
+  },
+  "typstSettings": {
+    "title": "Dokumentin asetukset",
+    "description": "Sivun, tekstin ja numeroinnin säännöt tiedostossa {{file}}.",
+    "templateNotice": "Tämä dokumentti käyttää mallipohjaa. Mallipohjassa asetettuja arvoja ei näytetä tässä. Tässä asettamasi arvo ohittaa mallipohjan.",
+    "loading": "Luetaan päätiedostoa",
+    "readFailed": "Päätiedostoa ei voitu lukea.",
+    "saveFailed": "Päätiedostoa ei voitu päivittää.",
+    "noMainFile": "Tässä projektissa ei ole Typst-päätiedostoa.",
+    "applied": "Dokumentin asetukset päivitettiin.",
+    "apply": "Käytä",
+    "cancel": "Peruuta",
+    "sections": {
+      "page": "Sivu",
+      "text": "Teksti",
+      "paragraph": "Kappale",
+      "numbering": "Numerointi"
+    },
+    "fields": {
+      "paper": "Sivukoko",
+      "margin": "Marginaalit",
+      "columns": "Palstat",
+      "font": "Leipätekstin fontti",
+      "fontSize": "Fonttikoko",
+      "lang": "Kieli",
+      "region": "Alue",
+      "justify": "Tasaus",
+      "leading": "Riviväli",
+      "headingNumbering": "Otsikoiden numerointi",
+      "equationNumbering": "Kaavojen numerointi"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Oletus",
+      "justified": "Molemmat reunat tasattu",
+      "ragged": "Vasen reuna tasattu",
+      "off": "Pois"
+    },
+    "locked": {
+      "template": "Mallipohjan asettama",
+      "expression": "Lähdekoodin lausekkeen asettama"
+    },
+    "invalid": {
+      "length": "Käytä pituutta, kuten 11pt, 2.5cm tai 0.65em.",
+      "margin": "Käytä pituutta, kuten 2.5cm, tai arvoa auto.",
+      "columns": "Käytä kokonaislukua, joka on vähintään 1 ja enintään 99.",
+      "lang": "Käytä kaksi- tai kolmekirjaimista kielikoodia, kuten en.",
+      "region": "Käytä kaksikirjaimista aluekoodia, kuten GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Luokka-asetukset ja esittelyosan asetukset tiedostossa {{file}}.",
+    "markdownDescription": "YAML-alkulohkon kentät tiedostossa {{file}}.",
+    "noLatexMainFile": "Tässä projektissa ei ole LaTeX-päätiedostoa.",
+    "noMarkdownMainFile": "Tässä projektissa ei ole Markdown-päätiedostoa.",
+    "noDocumentClass": "Päätiedostossa ei ole \\documentclass-riviä.",
+    "unclosedFrontMatter": "Päätiedoston alussa olevaa YAML-alkulohkoa ei ole suljettu. Lisää ensin sulkeva rivi ---.",
+    "noFrontMatter": "Tiedostossa ei ole vielä YAML-alkulohkoa. Käytä-painike lisää sen tiedoston alkuun.",
+    "externalPreamble": "Osa esittelyosasta on muissa tiedostoissa. Niissä asetettuja arvoja ei näytetä tässä.",
+    "classNotice": "Luokka {{name}} määrää osan näistä asetuksista. Ne ovat tässä vain luku -tilassa.",
+    "styleNotice": "Tyyli {{name}} määrää sivun asettelun. Sivukoko ja marginaalit ovat tässä vain luku -tilassa.",
+    "availableFonts": "Käytettävissä olevat fontit",
+    "fontsLoading": "Etsitään fontteja",
+    "fields": {
+      "secnumdepth": "Numeroidut tasot",
+      "numberSections": "Lukujen numerot",
+      "documentClass": "Dokumenttiluokka"
+    },
+    "placeholders": {
+      "latexLang": "finnish",
+      "markdownLang": "fi-FI",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "Yksi palsta",
+      "twocolumn": "Kaksi palstaa",
+      "single": "Yksinkertainen",
+      "onehalf": "Puolitoistakertainen",
+      "double": "Kaksinkertainen",
+      "bySection": "Luvuittain",
+      "byChapter": "Pääluvuittain",
+      "bySubsection": "Alaluvuittain",
+      "numbered": "Numeroitu",
+      "unnumbered": "Ei numeroitu",
+      "depthNone": "Ei mitään",
+      "depthChapters": "Vain pääluvut",
+      "depthSections": "Lukuihin asti",
+      "depthSubsections": "Alalukuihin asti",
+      "depthSubsubsections": "Alialalukuihin asti",
+      "depthParagraphs": "Kappaleisiin asti",
+      "depthSubparagraphs": "Alikappaleisiin asti"
+    },
+    "locked": {
+      "class": "Luokan {{name}} asettama",
+      "package": "Tyylin {{name}} asettama",
+      "engine": "Vaatii XeLaTeX- tai LuaLaTeX-kääntäjän. Valitse jompikumpi käännösvalikosta.",
+      "sides": "Lähdekoodi asettaa jokaisen marginaalin erikseen",
+      "conditional": "Asetettu ehtolohkossa"
+    },
+    "invalid": {
+      "length": "Käytä pituutta, kuten 2.5cm, 1in tai 12pt.",
+      "fontName": "Käytä pelkkää fontin nimeä ilman aaltosulkeita tai kenoviivoja.",
+      "latexLang": "Käytä babel-kielen nimeä, kuten finnish.",
+      "markdownLang": "Käytä kielitunnistetta, kuten fi-FI.",
+      "lineStretch": "Käytä lukua, kuten 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Typst-paketit",
+    "close": "Sulje Typst-paketit",
+    "searchLabel": "Hae paketteja nimen, avainsanan tai luokan mukaan",
+    "searchPlaceholder": "Hae Typst Universe -palvelusta",
+    "categories": "Luokat",
+    "allCategories": "Kaikki",
+    "loading": "Ladataan pakettiluetteloa",
+    "results_one": "{{count}} paketti",
+    "results_other": "{{count}} pakettia",
+    "resultsCapped": "Näytetään {{shown}}/{{count}} pakettia. Rajaa luetteloa hakemalla.",
+    "empty": "Hakuasi vastaavia paketteja ei ole.",
+    "staleOffline": "Olet offline-tilassa. Tämä luettelo on haettu {{date}}.",
+    "stale": "Tämä luettelo on haettu {{date}}. Sitä ei voitu päivittää.",
+    "latest": "Uusin {{version}}",
+    "template": "Mallipohja",
+    "needsTypst": "Vaatii Typst-version {{version}}. Tämä projekti käyttää Typst-versiota {{current}}.",
+    "insert": "Lisää tuonti",
+    "insertAria": "Lisää paketin {{name}} tuonti tiedoston alkuun",
+    "insertNeedsFile": "Avaa Typst-tiedosto, niin voit lisätä tuonnin.",
+    "copy": "Kopioi tuonti",
+    "copyAria": "Kopioi paketin {{name}} tuonti",
+    "vendor": {
+      "heading": "Projektin paketit",
+      "toggle": "Käytä projektikansion paketteja",
+      "detail": "Typst etsii ensin projektin typst-packages-kansiosta. Kun paketit ovat projektissa, se kääntyy ilman verkkoyhteyttä ja muilla tietokoneilla.",
+      "action": "Kopioi paketit projektiin",
+      "running": "Kopioidaan paketteja",
+      "copied_one": "{{count}} paketti kopioitiin typst-packages-kansioon.",
+      "copied_other": "{{count}} pakettia kopioitiin typst-packages-kansioon.",
+      "upToDate": "Kaikki tämän projektin tuomat paketit ovat jo typst-packages-kansiossa.",
+      "missing": "Nämä paketit puuttuvat pakettivälimuistista: {{names}}. Käännä kerran verkkoyhteyden ollessa päällä ja kopioi sitten uudelleen.",
+      "count_one": "{{count}} paketti tässä projektissa",
+      "count_other": "{{count}} pakettia tässä projektissa",
+      "none": "Tässä projektissa ei ole vielä paketteja."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} on saatavilla. Tämä tuonti käyttää versiota {{version}}.",
+      "update": "Päivitä versioon {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX-paketit",
+    "close": "Sulje LaTeX-paketit",
+    "searchLabel": "Hae paketteja nimen tai kuvauksen mukaan",
+    "searchPlaceholder": "Hae CTAN-palvelusta",
+    "loading": "Ladataan pakettiluetteloa",
+    "results_one": "{{count}} paketti",
+    "results_other": "{{count}} pakettia",
+    "resultsCapped": "Näytetään {{shown}}/{{count}} pakettia. Rajaa luetteloa hakemalla.",
+    "empty": "Hakuasi vastaavia paketteja ei ole.",
+    "stale": "Tämä luettelo on haettu {{date}}. Sitä ei voitu päivittää.",
+    "staleOffline": "Olet offline-tilassa. Tämä luettelo on haettu {{date}}.",
+    "partial": "CTAN-palveluun ei saatu yhteyttä. Näytetään Oleafly-sovelluksen sisäinen luettelo.",
+    "partialOffline": "Olet offline-tilassa. Näytetään Oleafly-sovelluksen sisäinen luettelo.",
+    "loaded": "Dokumentissa",
+    "documentClass": "Dokumenttiluokka",
+    "installed": "Asennettu",
+    "install": "Asenna",
+    "installing": "Asennetaan",
+    "installAria": "Asenna {{name}} tlmgr-työkalulla",
+    "insert": "Lisää esittelyosaan",
+    "insertAria": "Lisää {{name}} tiedoston {{file}} esittelyosaan",
+    "copy": "Kopioi rivi",
+    "copyAria": "Kopioi rivi, joka lataa paketin {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Avaa {{name}} CTAN-palvelussa",
+    "options": "Asetukset",
+    "optionsAria": "Paketin {{name}} asetukset",
+    "optionsInvalid": "Tarkista asetukset. Aaltosulkeiden on oltava pareittain, eikä merkkejä ] tai % voi käyttää.",
+    "classNote": "Tämä on dokumenttiluokka. Aseta se sen sijaan komennolla \\documentclass.",
+    "onDemand": "Tectonic lataa paketit, kun dokumenttisi käyttää niitä ensimmäistä kertaa. Mitään ei tarvitse asentaa.",
+    "checking": "Tarkistetaan, mitkä paketit on asennettu",
+    "unknownInstall": "Oleafly ei pysty selvittämään, mitä paketteja TeX-asennuksessasi on.",
+    "noProject": "Avaa LaTeX-projekti, niin voit lisätä paketteja.",
+    "added": "{{name}} lisättiin tiedostoon {{file}}.",
+    "noPreamble": "Tiedostossa {{file}} ei ole esittelyosaa, johon paketin voisi lisätä.",
+    "alreadyLoaded": "Tiedosto {{file}} lataa jo paketin {{name}}.",
+    "insertFailed": "Pakettia ei voitu lisätä. Yritä uudelleen."
+  },
+  "typstFonts": {
+    "title": "Fontit",
+    "close": "Sulje fonttiluettelo",
+    "searchLabel": "Hae fonttiperheitä",
+    "searchPlaceholder": "Hae fontteja",
+    "loading": "Haetaan fontteja Typst-kääntäjältä",
+    "summary_one": "{{count}} fonttiperhe, Typst {{version}}",
+    "summary_other": "{{count}} fonttiperhettä, Typst {{version}}",
+    "systemOff": "Järjestelmän fontit ovat pois käytöstä tässä projektissa, joten vain projektin ja sisäänrakennetut fontit luetellaan.",
+    "noSources": "Tämä Typst-versio ei kerro, mistä kukin fontti tulee.",
+    "empty": "Hakuasi vastaavia fonttiperheitä ei ole.",
+    "copy": "Kopioi nimi",
+    "copyAria": "Kopioi fonttiperheen nimi {{name}}",
+    "sources": {
+      "project": "Projekti",
+      "system": "Järjestelmä",
+      "embedded": "Sisäänrakennettu"
+    },
+    "fontsFolder": "Jos haluat käyttää fonttia tässä projektissa, lisää sen tiedosto projektin fonts-kansioon."
+  },
+  "typstVariants": {
+    "title": "Käännösmuunnelmat",
+    "close": "Sulje käännösmuunnelmat",
+    "intro": "Jokainen muunnelma asettaa arvoja, jotka dokumentti lukee kohteesta sys.inputs. Valitse muunnelma käännösvalikosta.",
+    "empty": "Ei vielä muunnelmia.",
+    "add": "Lisää muunnelma",
+    "name": "Muunnelman nimi",
+    "defaultName": "muunnelma {{number}}",
+    "remove": "Poista muunnelma",
+    "removeAria": "Poista muunnelma {{name}}",
+    "key": "Nimi",
+    "value": "Arvo",
+    "addInput": "Lisää arvo",
+    "removeInput": "Poista arvo",
+    "noInputs": "Tämä muunnelma ei aseta arvoja.",
+    "save": "Tallenna",
+    "cancel": "Peruuta",
+    "loading": "Ladataan muunnelmia",
+    "nameRequired": "Anna jokaiselle muunnelmalle nimi.",
+    "nameTaken": "Kahdella muunnelmalla ei voi olla samaa nimeä.",
+    "keyInvalid": "Arvon nimi ei voi olla tyhjä eikä sisältää yhtäsuuruusmerkkiä.",
+    "keyTaken": "Muunnelma ei voi asettaa samaa nimeä kahdesti.",
+    "saveFailed": "Muunnelmia ei voitu tallentaa."
   }
 }

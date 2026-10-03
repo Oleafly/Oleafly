@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Repérer les faiblesses des arguments, des méthodes, des preuves et de la présentation.",
-        "documentEditor": "Corriger le style, la structure, les citations et le LaTeX par des changements ciblés et sûrs.",
-        "figure": "Produire des figures et des diagrammes de qualité publication en TikZ ou PGFPlots LaTeX.",
+        "documentEditor": "Corriger le style, la structure, les citations et le source LaTeX ou Typst par des changements ciblés et sûrs.",
+        "figure": "Produire des figures et des diagrammes de qualité publication avec TikZ en LaTeX ou CeTZ en Typst.",
         "researchWriter": "Rédiger et structurer un texte scientifique sans inventer de preuves ni de citations."
       },
       "suggestedDescription": "Partez de l'un de ceux-ci, puis adaptez ses instructions à votre façon de travailler.",
@@ -690,6 +690,29 @@
       "mathPreview": {
         "description": "Afficher l'équation composée au-dessus de celle où se trouve le curseur.",
         "label": "Aperçu des maths"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Mettre en forme les fichiers Typst avec typstyle quand vous appuyez sur ⌘S ou Ctrl+S. L'enregistrement automatique ne les modifie pas.",
+          "label": "Formater à l'enregistrement"
+        },
+        "lineWidth": {
+          "description": "typstyle renvoie à la ligne les lignes plus longues que cette valeur.",
+          "label": "Largeur de ligne du formateur"
+        },
+        "indent": {
+          "description": "Espaces par niveau d'indentation dans le code Typst formaté.",
+          "label": "Indentation du formateur"
+        },
+        "inlayHints": {
+          "description": "Afficher les noms des paramètres devant les arguments dans les appels de fonction Typst.",
+          "label": "Indications des noms de paramètres"
+        },
+        "lint": {
+          "description": "Vérifier les fichiers Typst à chaque enregistrement pour repérer les erreurs probables. Activer ou désactiver cette option redémarre le serveur de langage Typst.",
+          "label": "Vérifications lint Typst"
+        }
       }
     },
     "files": {
@@ -1027,11 +1050,61 @@
       "resume": "Reprendre le téléchargement ({{size}} Mo effectués)"
     },
     "typst": {
-      "detail": "Fourni avec Oleafly. Rapide, hors ligne, sans installation. Compile les documents Typst en PDF.",
+      "detail": "Fourni avec Oleafly, il n'y a donc rien à installer. Une connexion réseau n'est nécessaire que la première fois qu'un document importe un paquet @preview.",
       "heading": "Compilateur Typst",
       "name": "Typst (intégré)",
-      "note": "Les projets Typst utilisent toujours le compilateur intégré. Choisir une version de compilateur, ou un Typst du système, n'est pas encore possible.",
-      "tooltip": "Typst est intégré à Oleafly, il n'y a donc rien à installer ni à configurer. Chaque projet Typst compile avec le compilateur intégré."
+      "note": "Choisissez la version d'un projet dans le menu de compilation. Un projet garde cette version jusqu'à ce que vous la changiez.",
+      "tooltip": "Oleafly est fourni avec une version de Typst et peut en télécharger d'autres. Chaque projet compile avec la version qu'il épingle, ou avec la version par défaut s'il n'en épingle aucune.",
+      "system": {
+        "name": "Typst sur cet ordinateur",
+        "detail": "Les projets qui épinglent la version {{version}} peuvent l'utiliser pour compiler."
+      },
+      "versions": {
+        "heading": "Versions",
+        "tooltip": "Les nouveaux projets démarrent sur la version par défaut, tout comme les projets sans version épinglée.",
+        "loading": "Vérification des versions de Typst",
+        "default": "Par défaut",
+        "setDefault": "Utiliser Typst {{version}} par défaut",
+        "released": "Publiée le {{date}}",
+        "install": "Installer",
+        "installAria": "Installer Typst {{version}}",
+        "removeAria": "Supprimer Typst {{version}}",
+        "removeDefault": "C'est la version par défaut. Choisissez une autre version par défaut avant de la supprimer.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Intégrée",
+          "downloaded": "Téléchargée",
+          "system": "Système"
+        }
+      },
+      "progress": {
+        "starting": "Démarrage",
+        "downloading": "Téléchargement {{percent}} %",
+        "verifying": "Vérification",
+        "extracting": "Décompression",
+        "done": "Finalisation"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} téléchargement de serveur de langage n'est utilisé par aucune version de Typst installée.",
+        "unused_many": "{{count}} téléchargements de serveur de langage ne sont utilisés par aucune version de Typst installée.",
+        "unused_other": "{{count}} téléchargements de serveur de langage ne sont utilisés par aucune version de Typst installée.",
+        "remove": "Supprimer les téléchargements de serveur de langage inutilisés",
+        "removed_one": "{{count}} téléchargement de serveur de langage supprimé.",
+        "removed_many": "{{count}} téléchargements de serveur de langage supprimés.",
+        "removed_other": "{{count}} téléchargements de serveur de langage supprimés."
+      },
+      "error": {
+        "load": "Impossible de lire les versions de Typst.",
+        "install": "Impossible d'installer Typst {{version}}.",
+        "remove": "Impossible de supprimer Typst {{version}}.",
+        "default": "Impossible de changer la version de Typst par défaut.",
+        "removeTinymist": "Impossible de supprimer les téléchargements de serveur de langage inutilisés."
+      },
+      "upgrade": {
+        "heading": "Essayer une version plus récente",
+        "detail": "Compilez le projet ouvert avec une version installée plus récente et comparez les résultats avant de changer.",
+        "check": "Vérifier avec Typst {{version}}"
+      }
     }
   },
   "github": {

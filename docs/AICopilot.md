@@ -83,15 +83,17 @@ that changed files without a plan gets the same summary minus the Plan label.
 
 ## Figures
 
-Ask for a figure in the ordinary chat. The assistant writes it as TikZ or
-PGFPlots, compiles the picture on its own with `preview_figure`, and looks at
-what came out. It keeps fixing and previewing again until the labels stop
-overlapping and the spacing looks right. `insert_figure` puts the finished
+Ask for a figure in the ordinary chat. In a LaTeX project the assistant writes
+it as TikZ or PGFPlots. In a Typst project it writes CeTZ, fletcher, or plain
+Typst. Either way it renders the picture on its own with `preview_figure` and
+looks at what came out. It keeps fixing and previewing again until the labels
+stop overlapping and the spacing looks right. `insert_figure` puts the finished
 picture at your cursor with a caption and a label, and `load_image` opens a
 sketch you already have in the project so it can redraw it.
 
-Those three tools only show up in a LaTeX project whose engine can compile a
-figure by itself. They sit in the Tools popover under Figure, so you can turn
+`preview_figure` and `insert_figure` show up in Typst projects and in LaTeX
+projects whose engine can compile a figure by itself. `load_image` is there in
+every project. All three sit in the Tools popover under Figure, so you can turn
 them off.
 
 ## Skills

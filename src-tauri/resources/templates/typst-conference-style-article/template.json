@@ -1,0 +1,14 @@
+{
+  "id": "typst-conference-style-article",
+  "name": "Typst Conference-style Paper",
+  "category": "Journals & Conferences",
+  "description": "A two-column conference-style paper in Typst with authors, an abstract, a figure, a table, an equation and references.",
+  "main_doc": "main.typ",
+  "engine": "typst",
+  "layout": "two-column",
+  "pages": "multi",
+  "default_color": "#1f4e79",
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
+  "requires": { "packages": [], "fonts": [], "engine": "typst" },
+  "order": 34
+}

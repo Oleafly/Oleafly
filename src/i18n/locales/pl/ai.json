@@ -314,7 +314,7 @@
       "literatureSearch": "Szuka artykułów w OpenAlex według słów kluczowych, bez potrzeby klucza.",
       "verifyCitation": "Zamienia DOI lub tytuł w zweryfikowany wpis BibTeX przez doi.org lub Crossref.",
       "projectLibrarySearch": "Przeszukuje własny tekst i notatki projektu według słów kluczowych.",
-      "previewFigure": "Kompiluje rysunek TikZ lub PGFPlots osobno i pokazuje wynik w czacie.",
+      "previewFigure": "Renderuje rysunek TikZ lub CeTZ osobno i pokazuje wynik w czacie.",
       "insertFigure": "Wstawia gotowy rysunek w miejscu kursora wraz z podpisem i etykietą oraz zapisuje plik PNG w katalogu figures/.",
       "loadImage": "Ogląda obraz, który już jest w projekcie.",
       "updateTodos": "Zapisuje lub aktualizuje plan krok po kroku pokazywany w czacie.",
@@ -357,6 +357,7 @@
     "noDescription": "Nie podano opisu.",
     "notes": {
       "latexOnly": "Tylko projekty LaTeX",
+      "latexAndTypstOnly": "Tylko projekty LaTeX i Typst",
       "pdfCaptureSetting": "Wymaga ustawienia przechwytywania stron PDF",
       "chatApproval": "Zatwierdzane w czacie, po jednym poleceniu naraz",
       "browserSetting": "Wymaga ustawienia przeglądarki internetowej"
@@ -694,6 +695,24 @@
     "tikzFigure": {
       "label": "Rysunek TikZ",
       "description": "Naszkicuj kod TikZ w czacie"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Napraw błędy Typst"
+      },
+      "writeEquation": {
+        "description": "Z języka naturalnego na wzór Typst"
+      },
+      "academicPresentation": {
+        "description": "Prezentacja Typst na podstawie artykułu"
+      },
+      "generateTable": {
+        "description": "Naszkicuj tabelę Typst w czacie"
+      },
+      "figure": {
+        "label": "Rysunek CeTZ",
+        "description": "Naszkicuj kod CeTZ w czacie"
+      }
     }
   },
   "turn": {

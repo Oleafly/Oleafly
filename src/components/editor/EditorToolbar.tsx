@@ -17,15 +17,19 @@ import {
   List,
   ListOrdered,
   MoreHorizontal,
+  Package,
   Pencil,
+  PenTool,
   Quote,
   Redo2,
   Rows3,
+  ScanSearch,
   Search,
   SearchCode,
   SeparatorHorizontal,
   SeparatorVertical,
   Sigma,
+  SlidersHorizontal,
   Tag,
   Type,
   Underline,
@@ -37,13 +41,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenu
 import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 import { Tooltip } from "@/components/ui/tooltip";
 import { editorFind, editorRedo, editorUndo, getEditorView } from "./cm/controller";
+import { useEditorHistory } from "./history-signal";
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
+import { engineSyncsPath } from "@/lib/document-engine";
+import { openDiagramComposer } from "@/features/open-tool";
 import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import { useFilesStore } from "@/store/files";
 import { useActiveFileReadOnly } from "@/lib/read-only-files";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
+import { openLatexPackages } from "@/components/packages/open";
+import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -70,9 +79,8 @@ import {
   DIVIDER_WIDTH,
   DROPDOWN_TRIGGER_WIDTH,
   ICON_BUTTON_WIDTH,
-  fitCount,
-  useAvailableWidth,
   type ToolbarControl,
+  useFittedCount,
 } from "@/components/ui/toolbar-overflow";
 
 function withProjectSymbol(
@@ -91,12 +99,14 @@ export function IconBtn({
   title,
   children,
   wide,
+  disabled,
   "data-tour": dataTour,
 }: Readonly<{
   onClick: () => void;
   title: string;
   children: ReactNode;
   wide?: boolean;
+  disabled?: boolean;
   "data-tour"?: string;
 }>) {
   return (
@@ -106,9 +116,10 @@ export function IconBtn({
         onMouseDown={(e) => e.preventDefault()}
         onClick={onClick}
         aria-label={title}
+        disabled={disabled}
         data-tour={dataTour}
         className={cn(
-          "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+          "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
           wide ? "w-auto px-1.5" : "w-7"
         )}
       >
@@ -349,7 +360,9 @@ export function EditorToolbar({
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const syncTexSupported =
-    projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engine.capabilities.supports_synctex;
+    projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engineSyncsPath(engine, activePath);
+  const latexProject = engineLoaded && engine.source_format === "latex";
+  const latexDocument = latexProject && projectKind !== "diagram" && projectKind !== "image";
   useEffect(() => {
     void imageToLatexAvailable().then(setVisionReady);
   }, []);
@@ -400,6 +413,7 @@ export function EditorToolbar({
         render: () => <TableSizePicker />,
         renderMenu: () => <TableSizePicker key="table" menuRow />,
       },
+      btnControl("diagram", PenTool, t(($) => $.editor.toolbar.drawDiagram), () => void openDiagramComposer("tikz")),
     ];
 
     if (visionReady) {
@@ -472,8 +486,8 @@ export function EditorToolbar({
     return list;
   }, [t, visionReady]);
 
-  const { containerRef, availableWidth } = useAvailableWidth();
-  const visibleCount = fitCount(controls, availableWidth);
+  const { containerRef, visibleCount } = useFittedCount(controls);
+  const history = useEditorHistory();
   const visibleControls = controls.slice(0, visibleCount);
   const overflowControls = controls.slice(visibleCount);
 
@@ -491,10 +505,10 @@ export function EditorToolbar({
       />
       <Divider />
 
-      <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
+      <IconBtn onClick={editorUndo} disabled={!history.canUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
         <Undo2 className="size-4" />
       </IconBtn>
-      <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
+      <IconBtn onClick={editorRedo} disabled={!history.canRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
         <Redo2 className="size-4" />
       </IconBtn>
 
@@ -538,6 +552,27 @@ export function EditorToolbar({
             title={t(($) => $.editor.toolbar.citeOleafly)}
           >
             <Quote className="size-4" />
+          </IconBtn>
+        )}
+        {latexProject && (
+          <IconBtn onClick={openLatexPackages} title={t(($) => $.editor.toolbar.latexPackages)}>
+            <Package className="size-4" />
+          </IconBtn>
+        )}
+        {latexDocument && (
+          <IconBtn
+            onClick={() => useTypstDocumentPanelStore.getState().openPanel("insights")}
+            title={t(($) => $.editor.typstInsights.title)}
+          >
+            <ScanSearch data-testid="document-insights-button" className="size-4" />
+          </IconBtn>
+        )}
+        {latexDocument && (
+          <IconBtn
+            onClick={() => useTypstDocumentPanelStore.getState().openPanel("settings")}
+            title={t(($) => $.editor.typstSettings.title)}
+          >
+            <SlidersHorizontal data-testid="document-settings-button" className="size-4" />
           </IconBtn>
         )}
         <ProjectInfoButton surface="source" />

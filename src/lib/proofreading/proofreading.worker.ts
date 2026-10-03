@@ -33,6 +33,7 @@ import {
   PROSE_PLACEHOLDER,
   intersectsMaskedRegion,
   maskLatexForProseRegions,
+  maskTypstForProseRegions,
   spellcheckRanges,
   type MaskSpan,
   markdownSpellcheckRanges,
@@ -323,28 +324,23 @@ function plaintextToProse(text: string): {
 interface GrammarInput {
   prose: string;
   map: number[] | null;
-  language: "plaintext" | "markdown" | "typst";
+  language: "plaintext";
   masked: readonly MaskSpan[];
 }
 
 const NO_MASKED_REGIONS: readonly MaskSpan[] = [];
 
 function grammarInput(request: ProofreadingRequest): GrammarInput {
-  if (request.format === "latex") {
-    const { prose, masked } = maskLatexForProseRegions(request.text);
+  if (request.format === "latex" || request.format === "typst") {
+    const { prose, masked } =
+      request.format === "latex"
+        ? maskLatexForProseRegions(request.text)
+        : maskTypstForProseRegions(request.text);
     return {
       prose,
       map: null,
       language: "plaintext",
       masked,
-    };
-  }
-  if (request.format === "typst") {
-    return {
-      prose: request.text,
-      map: null,
-      language: "typst",
-      masked: NO_MASKED_REGIONS,
     };
   }
   if (request.format === "markdown") {

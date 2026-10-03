@@ -41,7 +41,9 @@
     "noResults": "Der blev ikke fundet nogen resultater. Tjek identifikatoren, eller prøv andre ord i titlen.",
     "placeholder": "DOI, arXiv-id, URL eller en artikeltitel…",
     "privacyNote": "Kun identifikatoren eller titlen bliver sendt, til doi.org, arXiv eller Crossref.",
-    "title": "Tilføj citation"
+    "title": "Tilføj citation",
+    "bibliography": "Litteraturliste",
+    "bibliographyHint": "Projektet har mere end én litteraturliste. Posten kommer i den fil, du vælger her."
   },
   "backendProtocol": {
     "mismatch": "Dette vindue og dets backend er bygget til forskellige versioner af Oleafly, så nogle funktioner virker måske ikke. En geninstallation af appen løser det."
@@ -120,6 +122,14 @@
       "keywords": "luk afslut miljø begynd latex close end environment begin",
       "label": "Luk LaTeX-miljøet"
     },
+    "formatDocument": {
+      "keywords": "formater ryd op indryk typstyle typst format tidy indent",
+      "label": "Formater dokumentet"
+    },
+    "formatSelection": {
+      "keywords": "formater markering ryd op indryk typstyle typst format selection tidy indent",
+      "label": "Formater markeringen"
+    },
     "createProject": {
       "keywords": "nyt projekt opret skabelon galleri new project create template gallery",
       "label": "Opret et nyt projekt"
@@ -127,6 +137,14 @@
     "diagramComposer": {
       "keywords": "diagram figur tikz editor tegn lærred figure composer draw canvas",
       "label": "Åbn diagrameditoren"
+    },
+    "typstPackages": {
+      "keywords": "typst universe pakker import bibliotek gennemse kopier packages library browse vendor",
+      "label": "Gennemse Typst-pakker"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan pakker usepackage præambel installer tlmgr gennemse packages preamble install browse",
+      "label": "Gennemse LaTeX-pakker"
     },
     "documentCitationScan": {
       "keywords": "citationer litteratur skan dokument afsnit referencer find citations literature scan document paragraph references",
@@ -193,7 +211,8 @@
       "label": "Omslut med et miljø"
     },
     "synctex": {
-      "label": "Gå til PDF (SyncTeX)"
+      "label": "Gå til PDF (SyncTeX)",
+      "typstLabel": "Gå til PDF"
     },
     "table": {
       "label": "Tabel"
@@ -226,6 +245,79 @@
     "openFolder": {
       "label": "Åbn mappe…",
       "keywords": "åbn mappe katalog eksisterende lokale filer disk open folder directory existing local files"
+    },
+    "underline": {
+      "label": "Understreget"
+    },
+    "strikethrough": {
+      "label": "Gennemstreget"
+    },
+    "inlineCode": {
+      "label": "Kode i linjen"
+    },
+    "link": {
+      "label": "Link"
+    },
+    "footnote": {
+      "label": "Fodnote"
+    },
+    "quote": {
+      "label": "Citat"
+    },
+    "inlineMath": {
+      "label": "Matematik i linjen"
+    },
+    "numberedEquation": {
+      "label": "Nummereret ligning"
+    },
+    "alignedEquations": {
+      "label": "Opstillede ligninger"
+    },
+    "fraction": {
+      "label": "Brøk"
+    },
+    "crossReference": {
+      "label": "Krydsreference"
+    },
+    "typstInsights": {
+      "label": "Indsigt i dokumentet",
+      "keywords": "figurer tabeller ligninger overskrifter etiketter citationer todo fixme metadata resumé indsendelse figures tables equations headings labels citations abstract submission"
+    },
+    "typstDocumentSettings": {
+      "label": "Dokumentindstillinger",
+      "keywords": "sidestørrelse margener spalter skrifttype skriftstørrelse sprog område justering linjeafstand nummerering page size margins columns font language region justify leading line spacing numbering"
+    },
+    "toggleComment": {
+      "label": "Slå kommentar til eller fra",
+      "keywords": "kommentar fjern kommentar linje blok comment uncomment line block"
+    },
+    "goToDefinition": {
+      "label": "Gå til definitionen",
+      "keywords": "definition hop symbol naviger jump navigate"
+    },
+    "findReferences": {
+      "label": "Find referencer",
+      "keywords": "referencer forekomster symbol references usages"
+    },
+    "renameSymbol": {
+      "label": "Omdøb symbolet",
+      "keywords": "omdøb symbol refaktorer rename refactor"
+    },
+    "migrateToTypst": {
+      "label": "Konverter til et Typst-projekt",
+      "keywords": "typst konverter migrer latex projekt nyt convert migrate project new"
+    },
+    "typstMigrationReport": {
+      "label": "Vis rapporten over Typst-konverteringen",
+      "keywords": "typst konverter migrer rapport latex convert migrate report"
+    },
+    "present": {
+      "label": "Præsenter slides",
+      "keywords": "præsenter slides præsentation fuld skærm beamer touying polylux talernoter pdfpc present presentation fullscreen speaker notes"
+    },
+    "presentWithPresenter": {
+      "label": "Præsenter slides med præsentationsvisning",
+      "keywords": "præsenter slides præsentationsvisning talernoter timer næste slide present presenter view speaker notes next slide"
     }
   },
   "community": {
@@ -238,7 +330,12 @@
     "autoCompile": {
       "off": "Fra",
       "on": "Til",
-      "title": "Automatisk kompilering"
+      "title": "Automatisk kompilering",
+      "help": "Kompilerer et par sekunder, efter du holder op med at skrive. Den åbne fil gemmes først.",
+      "typstHelp": "Typst kører videre og opdaterer PDF-filen kort efter, du holder op med at skrive. Den åbne fil gemmes automatisk, mens dette er slået til.",
+      "typstStarting": "Starter Typst",
+      "typstRestarting": "Typst genstarter",
+      "typstFailed": "Typst stoppede efter gentagne fejl. Rediger filen for at starte det igen."
     },
     "compile": "Kompiler",
     "compiler": {
@@ -274,7 +371,37 @@
     "texRootLabel": "TEX-rod",
     "texRootName": "rod: {{name}}",
     "texRootNotTex": "% !TEX root i {{file}} peger på {{target}}, som ikke er en LaTeX-fil",
-    "texRootOverride": "rod: {{path}} (sat af % !TEX root i {{file}})"
+    "texRootOverride": "rod: {{path}} (sat af % !TEX root i {{file}})",
+    "typstVersion": {
+      "title": "Typst-version (dette projekt)",
+      "help": "Fastlås en version, så projektets output forbliver det samme, når Oleafly opdaterer Typst. Standard følger den version, der er valgt under Indstillinger. Gå til Indstillinger → Motorer → Typst for at installere versioner eller teste projektet med en nyere.",
+      "default": "Standard ({{version}})",
+      "defaultPlain": "Standard",
+      "builtIn": "[indbygget]",
+      "system": "[system]",
+      "missing": "[ikke installeret]",
+      "switchFailed": "Typst-versionen kunne ikke ændres."
+    },
+    "typstFonts": {
+      "title": "Skrifttyper (dette projekt)",
+      "help": "Typst læser skrifttyper fra projektets fonts-mappe og fra de mapper, der står under font_paths i project.json. Med kun projektets skrifttyper afhænger PDF'en ikke af de skrifttyper, der er installeret på denne computer. Under Dokumentindstillinger kan du se de skrifttyper, Typst kan finde.",
+      "systemFonts": "Brug systemskrifttyper",
+      "projectOnly": "Kun projektets skrifttyper",
+      "unsupported": "Kræver en nyere Typst",
+      "saveFailed": "Indstillingen for skrifttyper kunne ikke gemmes."
+    },
+    "typstBuild": {
+      "title": "Build (dette projekt)",
+      "help": "En reproducerbar build bruger kun projektets skrifttyper og daterer PDF-filen til det seneste commit. De samme kilder giver så den samme PDF på enhver computer.",
+      "standard": "Standardbuild",
+      "reproducible": "Reproducerbar build",
+      "saveFailed": "Indstillingen for build kunne ikke gemmes."
+    },
+    "typstVariant": {
+      "title": "Variant (dette projekt)",
+      "help": "En variant sender sine egne værdier til sys.inputs, for eksempel til et udkast eller en trykklar udgave. Den valgte variant bliver på denne computer. Tilføj eller rediger varianter under Dokumentindstillinger.",
+      "none": "Ingen variant"
+    }
   },
   "datePicker": {
     "placeholder": "Vælg en dato"
@@ -946,6 +1073,10 @@
     "wait": {
       "description": "{{phase}} Din kompilering står i kø og starter automatisk, så snart motoren er klar.",
       "title": "TinyTeX downloader stadig"
+    },
+    "typstQuit": {
+      "title": "Typst installerer stadig",
+      "description": "Typst {{version}} downloades. Hvis du afslutter nu, stopper downloadet, og du skal starte det igen fra Indstillinger."
     }
   },
   "toolbar": {
@@ -1085,5 +1216,132 @@
     "added": "Tilføjet. Den ligger nu i menuen Tjenester i Finder. Hvis du også vil bruge den fra Hurtige kommandoer, skal du højreklikke på en mappe og slå den til under Hurtige kommandoer › Tilpas.",
     "addedInQuickActions": "Tilføjet. Højreklik på en mappe, så finder du den under Hurtige kommandoer.",
     "failed": "Kunne ikke tilføje den. Du kan prøve igen under Indstillinger › Generelt."
+  },
+  "typstMigration": {
+    "title": "Konverter til et Typst-projekt",
+    "closeLabel": "Luk Typst-konverteringen",
+    "intro": "Oleafly laver et nyt Typst-projekt ud fra dette LaTeX-projekt. Dette projekt ændres ikke.",
+    "points": {
+      "text": "Pandoc konverterer tekst, matematik, figurer og tabeller.",
+      "files": "Hver input- og include-fil bliver sin egen Typst-fil.",
+      "bibliography": "BibTeX-filer kopieres, som de er.",
+      "compile": "Typst kompilerer det nye projekt for at tjekke det."
+    },
+    "nameLabel": "Navn på det nye projekt",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Åbn et LaTeX-projekt for at konvertere det.",
+    "convert": "Konverter",
+    "retry": "Prøv igen",
+    "progress": {
+      "reading": "Læser LaTeX-projektet",
+      "converting": "Konverterer med Pandoc",
+      "creating": "Opretter Typst-projektet",
+      "compiling": "Kompilerer med Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc er ikke klar. Installer det under Værktøjer, og prøv igen.",
+      "noMain": "LaTeX-hovedfilen kunne ikke læses.",
+      "emptyOutput": "Pandoc returnerede et tomt dokument.",
+      "failed": "Konverteringen stoppede: {{detail}}"
+    },
+    "report": {
+      "created": "Oprettede {{name}}.",
+      "compiled": "Det kan kompileres med Typst.",
+      "compileFailed_one": "Det kan ikke kompileres endnu. {{count}} fejl skal rettes.",
+      "compileFailed_other": "Det kan ikke kompileres endnu. {{count}} fejl skal rettes.",
+      "compileUnavailable": "Oleafly kunne ikke kompilere det: {{detail}}",
+      "converted": "Konverteret",
+      "sources_one": "{{count}} kildefil",
+      "sources_other": "{{count}} kildefiler",
+      "figures_one": "{{count}} figur",
+      "figures_other": "{{count}} figurer",
+      "tables_one": "{{count}} tabel",
+      "tables_other": "{{count}} tabeller",
+      "equations_one": "{{count}} ligning på egen linje",
+      "equations_other": "{{count}} ligninger på egen linje",
+      "references_one": "{{count}} krydsreference",
+      "references_other": "{{count}} krydsreferencer",
+      "mathFixed_one": "{{count}} formel rettet af matematikkonverteren",
+      "mathFixed_other": "{{count}} formler rettet af matematikkonverteren",
+      "copied_one": "{{count}} fil kopieret",
+      "copied_other": "{{count}} filer kopieret",
+      "style": "Litteraturstil {{style}}",
+      "mapping": "{{source}} til {{target}}",
+      "attention": "Kræver opmærksomhed",
+      "noAttention": "Intet kræver opmærksomhed.",
+      "problems": "Kompileringsfejl og advarsler",
+      "location": "{{file}}, linje {{line}}",
+      "noLocation": "Ingen placering i en fil",
+      "openAt": "Åbn {{file}} på linje {{line}}",
+      "open": "Åbn Typst-projektet"
+    },
+    "notes": {
+      "missingInclude": "Filen {{detail}} blev ikke fundet, så den blev udeladt.",
+      "lostInclude": "{{detail}} kunne ikke få sin egen fil. Teksten bliver i den fil, der inkluderede den.",
+      "missingImage": "Billedet {{detail}} blev ikke fundet.",
+      "unsupportedImage": "Typst kan ikke vise {{detail}}. Konverter det til PDF, PNG eller SVG.",
+      "math": "Denne matematik skal rettes i hånden: {{detail}}",
+      "bibliographyStyle": "BibTeX-stilen {{detail}} har ikke noget modstykke i Typst. Standardstilen bruges.",
+      "skippedFile": "{{detail}} blev ikke kopieret, fordi projektet er for stort.",
+      "unreadableFile": "{{detail}} kunne ikke læses.",
+      "equationLabel": "Typst nummererer hele ligninger, så referencer til {{detail}} peger nu på den ligning, det stod i."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Billeder og HTML",
+    "title": "Eksporter med Typst",
+    "close": "Luk Typst-eksport",
+    "format": "Format",
+    "png": "PNG-billeder",
+    "svg": "SVG-billeder",
+    "html": "HTML",
+    "experimental": "Eksperimentel",
+    "htmlNote": "HTML-eksporten i Typst er stadig eksperimentel. Sideopsætning og placerede elementer kommer ikke med.",
+    "ppi": "Opløsning",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Sider",
+    "pagesPlaceholder": "Alle sider",
+    "pagesHelp": "Brug sidetal og intervaller som 1, 3-5 eller 8-.",
+    "pagesInvalid": "Tjek sideintervallet. Brug sidetal og intervaller som 1, 3-5 eller 8-.",
+    "pagesUnsupported": "Denne Typst-version eksporterer altid alle sider.",
+    "multiPage": "Hver side gemmes som sin egen fil, nummereret efter det navn, du vælger.",
+    "export": "Eksporter",
+    "cancel": "Annuller"
+  },
+  "typstUpgrade": {
+    "title": "Prøv en nyere Typst-version",
+    "description": "Oleafly bygger projektet med begge versioner i midlertidige mapper. Intet i dit projekt ændres, medmindre du skifter.",
+    "compareWith": "Nyere version",
+    "running": "Bygger med Typst {{current}} og {{candidate}}",
+    "current": "Typst {{version}} (nuværende)",
+    "candidate": "Typst {{version}}",
+    "built": "Bygget",
+    "failed": "Mislykkedes",
+    "pages_one": "{{count}} side",
+    "pages_other": "{{count}} sider",
+    "pagesUnknown": "Ukendt antal sider",
+    "errors_one": "{{count}} fejl",
+    "errors_other": "{{count}} fejl",
+    "warnings_one": "{{count}} advarsel",
+    "warnings_other": "{{count}} advarsler",
+    "pageChange": "Antallet af sider ændres fra {{from}} til {{to}}.",
+    "pageSame": "Antallet af sider forbliver {{pages}}.",
+    "added": "Nyt i Typst {{version}}",
+    "removed": "Rapporteres ikke længere af Typst {{version}}",
+    "noChanges": "Begge versioner rapporterer de samme fejl og advarsler.",
+    "unchanged_one": "{{count}} meddelelse er den samme i begge versioner.",
+    "unchanged_other": "{{count}} meddelelser er de samme i begge versioner.",
+    "buildFailed": "Typst {{version}} kunne ikke bygge projektet.",
+    "switch": "Skift til Typst {{version}}",
+    "switched": "Projektet bruger nu Typst {{version}}.",
+    "switchFailed": "Typst-versionen kunne ikke skiftes.",
+    "runAgain": "Tjek igen",
+    "close": "Luk",
+    "checkFailed": "Tjekket kunne ikke gøres færdigt.",
+    "noNewer": "Der er ikke installeret en nyere Typst. Du kan installere en under Indstillinger.",
+    "openSettings": "Åbn Typst-indstillingerne",
+    "location": "{{file}}, linje {{line}}",
+    "error": "Fejl",
+    "warning": "Advarsel"
   }
 }

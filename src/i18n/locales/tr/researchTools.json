@@ -574,6 +574,76 @@
       "tag2": "Oklar",
       "tag3": "Kopya kâğıdı",
       "tag4": "İmlece ekle"
+    },
+    "arxivToTypst": {
+      "name": "arXiv'den Typst'e",
+      "description": "Bir arXiv kaynak paketini Typst'e dönüştürün. Bir derleme denetimi neyin dönüştürülemediğini listeler.",
+      "tag1": "Kaynak arşivi",
+      "tag2": "Derleme denetimi",
+      "tag3": "Kimlik için ağ gerekir"
+    },
+    "csvToTypst": {
+      "name": "CSV'den Typst'e",
+      "description": "CSV veya TSV satırlarını yapıştırın ve kaçışlanmış bir Typst tablosu alın.",
+      "tag1": "CSV ve TSV",
+      "tag2": "Tablolar",
+      "tag3": "Yerel"
+    },
+    "equationToTypst": {
+      "name": "Denklemden Typst'e",
+      "description": "Yazılmış LaTeX matematiğini veya bir denklem görselini Typst matematiğine dönüştürün.",
+      "tag1": "Metin veya görsel",
+      "tag2": "Matematik",
+      "tag3": "Yerleşik"
+    },
+    "excelToTypst": {
+      "name": "Excel'den Typst'e",
+      "description": "Bir Excel, CSV veya TSV sayfasını kaçışlanmış bir Typst tablosuna dönüştürün.",
+      "tag1": "XLSX",
+      "tag2": "CSV ve TSV",
+      "tag3": "Yerel"
+    },
+    "htmlToTypst": {
+      "name": "HTML'den Typst'e",
+      "description": "Yapıştırılan HTML'i bağımsız bir Typst belgesine dönüştürün.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Yerel"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid'den Typst'e",
+      "description": "Bir Mermaid akış şemasını düzenlenebilir fletcher koduna dönüştürün.",
+      "tag1": "Akış şemaları",
+      "tag2": "Fletcher",
+      "tag3": "Yerel"
+    },
+    "typstToHtml": {
+      "name": "Typst'ten HTML'e",
+      "description": "Typst işaretlemesini MathML denklemleri olan bağımsız HTML'e dönüştürün.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst'ten Markdown'a",
+      "description": "Typst işaretlemesini taşınabilir Markdown'a dönüştürün.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Proje isteğe bağlı"
+    },
+    "typstToWord": {
+      "name": "Typst'ten Word'e",
+      "description": "Denklemleri yerel Word matematiği olarak saklayan bir Word belgesi oluşturun.",
+      "tag1": "DOCX",
+      "tag2": "Yerel matematik",
+      "tag3": "Yerel"
+    },
+    "wordToTypst": {
+      "name": "Word'den Typst'e",
+      "description": "Bir Word belgesini Typst'e dönüştürün ve çıkarılan ortam dosyalarını birlikte tutun.",
+      "tag1": "DOCX",
+      "tag2": "Ortam dosyaları",
+      "tag3": "Proje isteğe bağlı"
     }
   },
   "generators": {
@@ -655,7 +725,9 @@
     "insertInEditor": "Düzenleyiciye ekle",
     "noDescription": "Bu komut için açıklama yok.",
     "loadingPreview": "Önizlenecek bir sembol yükleniyor.",
-    "chooseSymbol": "Kitaplıktan bir sembol seçin."
+    "chooseSymbol": "Kitaplıktan bir sembol seçin.",
+    "insertHintTypst": "Typst kodunu açık Typst belgesine ekleyin.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · Değiştirmek için tıklayın",
@@ -711,7 +783,8 @@
     "openAiSettings": "Yapay zeka ayarlarını aç",
     "fileReady": "{{fileName}} hazır",
     "saveWordHint": "Hazır olduğunuzda Word belgesini kaydedin.",
-    "resultPlaceholder": "Dönüştürülen sonucunuz burada görünecek."
+    "resultPlaceholder": "Dönüştürülen sonucunuz burada görünecek.",
+    "progressConvertingSource": "Kaynak Typst'e dönüştürülüyor"
   },
   "converters": {
     "imageToLatex": {
@@ -832,6 +905,76 @@
       "inputLabel": "Word belgesi",
       "inputHint": "Bir .docx dosyası seçin. Denklemler ve görseller yerel olarak okunur.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv'den Typst'e",
+      "subtitle": "Bir ön baskının LaTeX kaynağını Typst'e dönüştürün ve neyin elle düzeltilmesi gerektiğini görün",
+      "inputLabel": "arXiv kaynağı",
+      "inputHint": "Bir arXiv kimliği girin ya da kayıtlı bir .tar.gz veya .gz kaynak arşivi seçin.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV'den Typst'e",
+      "subtitle": "Elektronik tablo verilerini yapıştırın ve kaçışlanmış bir Typst tablosu alın",
+      "inputLabel": "CSV veya TSV",
+      "inputHint": "Virgülle veya sekmeyle ayrılmış satırları yapıştırın. İlk satır başlık olur.",
+      "outputLabel": "Typst tablosu"
+    },
+    "equationToTypst": {
+      "title": "Denklemden Typst'e",
+      "subtitle": "Yazılmış veya fotoğraflanmış matematiği Typst matematiğine çevirin",
+      "inputLabel": "Denklem",
+      "inputHint": "LaTeX matematiği yazın, sözcüklerle anlatın veya bir görsel seçin.",
+      "outputLabel": "Typst denklemi"
+    },
+    "excelToTypst": {
+      "title": "Excel'den Typst'e",
+      "subtitle": "İlk sayfayı bir Typst tablosuna dönüştürün",
+      "inputLabel": "Elektronik tablo",
+      "inputHint": "XLSX, XLS, CSV veya TSV. Formüller önbellekteki değerlerini kullanır.",
+      "outputLabel": "Typst tablosu"
+    },
+    "htmlToTypst": {
+      "title": "HTML'den Typst'e",
+      "subtitle": "Anlamsal HTML'i bağımsız bir Typst belgesine dönüştürün",
+      "inputLabel": "HTML",
+      "inputHint": "Bir HTML parçası veya tam bir belge yapıştırın.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid'den Typst'e",
+      "subtitle": "Bir Mermaid akış şemasını düzenlenebilir bir fletcher diyagramına çevirin",
+      "inputLabel": "Mermaid akış şeması",
+      "inputHint": "Akış şemaları TD, LR, BT ve RL düzenlerini, etiketleri ve yaygın düğüm şekillerini destekler.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst'ten HTML'e",
+      "subtitle": "MathML denklemleri olan bağımsız HTML oluşturun",
+      "inputLabel": "Typst",
+      "inputHint": "Bir parça veya tam bir Typst belgesi yapıştırın.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst'ten Markdown'a",
+      "subtitle": "Önce proje oluşturmadan taşınabilir Markdown üretin",
+      "inputLabel": "Typst",
+      "inputHint": "Bir parça veya tam bir Typst belgesi yapıştırın.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst'ten Word'e",
+      "subtitle": "Denklemleri düzenlenebilir Word matematiği olarak saklayan bir DOCX oluşturun",
+      "inputLabel": "Typst",
+      "inputHint": "Bir parça veya tam bir Typst belgesi yapıştırın.",
+      "outputLabel": "Word belgesi"
+    },
+    "wordToTypst": {
+      "title": "Word'den Typst'e",
+      "subtitle": "Bir DOCX dönüştürün ve çıkarılan ortam dosyalarını sonuçla birlikte tutun",
+      "inputLabel": "Word belgesi",
+      "inputHint": "Bir .docx dosyası seçin. Denklemler ve görseller yerel olarak okunur.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -847,7 +990,8 @@
     "chooseFile": "Dönüştürmeden önce bir dosya seçin.",
     "fileTooLarge": "128 MB'tan küçük bir dosya seçin.",
     "emptySheet": "Seçili sayfa boş.",
-    "arxivInputRequired": "Bir arXiv kimliği girin veya bir kaynak arşivi seçin."
+    "arxivInputRequired": "Bir arXiv kimliği girin veya bir kaynak arşivi seçin.",
+    "equationToTypst": "Pandoc bu denklemi Typst'e dönüştüremedi. LaTeX matematiğini denetleyip yeniden deneyin."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} taranmış sayfa yerel bir modelle metne döküldü. Sonucu kullanmadan önce denklemleri ve tabloları gözden geçirin.",
@@ -855,7 +999,16 @@
     "mermaidTikz": "Bu akış şeması düzenlenebilir TikZ koduna dönüştürüldü.",
     "mermaidRendered": "Mermaid sözdizimi düzenlenebilir TikZ koduna düzgün eşlenmediği için bu diyagram yerel olarak işlendi.",
     "tableConverted": "{{rows}} satır ve {{columns}} sütun dönüştürüldü.",
-    "arxivBundle": "{{files}} kaynak dosyası. Ana belge: {{mainFile}}."
+    "arxivBundle": "{{files}} kaynak dosyası. Ana belge: {{mainFile}}.",
+    "mermaidFletcher": "Bu akış şeması Typst için düzenlenebilir fletcher koduna dönüştürüldü.",
+    "mermaidRenderedTypst": "Mermaid sözdizimi düzenlenebilir fletcher koduna düzgün eşlenmediği için bu diyagram yerel olarak işlendi.",
+    "arxivTypstConverted": "{{mainFile}} dönüştürüldü.",
+    "typstCheckPassed": "Typst sonucu hatasız derledi.",
+    "typstCheckFailed_one": "Typst {{count}} hata buldu.",
+    "typstCheckFailed_other": "Typst {{count}} hata buldu.",
+    "notConverted_one": "{{count}} öğe dönüştürülemedi.",
+    "notConverted_other": "{{count}} öğe dönüştürülemedi.",
+    "checkLine": "Satır {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Bu Mermaid diyagramı 50.000 karakterlik sınırdan büyük.",
@@ -1110,9 +1263,15 @@
   },
   "equation": {
     "subtitle": "Canlı LaTeX çalışma alanı",
+    "subtitleTypst": "Canlı Typst çalışma alanı",
+    "mathLanguage": "Matematik dili",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Hata",
     "statusRendered": "İşlendi",
+    "statusRendering": "İşleniyor",
     "copyLatex": "LaTeX'i kopyala",
+    "copyTypst": "Typst'i kopyala",
     "exportOptions": "Dışa aktarma seçenekleri",
     "export": "Dışa aktar",
     "downloadPng": "PNG indir",
@@ -1125,6 +1284,7 @@
     "exportSvgFailed": "Bu parça SVG olarak dışa aktarılamadı",
     "copyKatexFailed": "KaTeX HTML kopyalanamadı",
     "copyLatexFailed": "LaTeX kaynağı kopyalanamadı",
+    "copyTypstFailed": "Typst kaynağı kopyalanamadı",
     "invalidPngName": "Eğik çizgi veya özel karakter içermeyen kısa bir PNG dosya adı seçin.",
     "replaceConfirm": "{{path}} zaten {{project}} içinde var. Değiştirilsin mi?",
     "savedToProject": "{{path}}, {{project}} projesine kaydedildi.",
@@ -1138,6 +1298,7 @@
     "newImageProject": "Yeni görsel projesi",
     "mathmlFailed": "Bu parça MathML'e dönüştürülemedi",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "Satır içi",
     "display": "Blok",
     "examples": "ÖRNEKLER",
@@ -1146,6 +1307,8 @@
     "previewLight": "Açık zeminde önizleme",
     "inlineSample": "Bir cümlenin içinde <formula></formula> gibi, çevresindeki metinle akarak böyle durur.",
     "empty": "Soldaki alana LaTeX matematiği yazın.",
+    "emptyTypst": "Soldaki alana Typst matematiği yazın.",
+    "typstFailed": "Typst bu denklemi işleyemedi.",
     "zoomOut": "Uzaklaştır",
     "zoomIn": "Yakınlaştır",
     "resetZoom": "Yakınlaştırmayı sıfırla",

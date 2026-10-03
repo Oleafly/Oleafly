@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { EDITOR_KEY_DEFAULTS, useEditorKeymapStore } from "@/store/editor-keymap";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
 const platform = vi.hoisted(() => ({ mac: false }));
@@ -41,6 +42,7 @@ describe("HotkeysModal", () => {
       settingsOpen: false,
       settingsInitialSection: "general",
     });
+    useFilesStore.setState({ activePath: null });
   });
 
   afterEach(() => {
@@ -165,6 +167,61 @@ describe("HotkeysModal", () => {
       `${editorKeyLabels.titleCase}CtrlAltT`,
     );
     useEditorKeymapStore.setState({ keys: { ...EDITOR_KEY_DEFAULTS } });
+  });
+
+  it("lists the Typst keys and the slash menu while a Typst file is open", () => {
+    useFilesStore.setState({ activePath: "chapters/intro.typ" });
+    useSettingsStore.setState({ hotkeysOpen: true });
+    render(<HotkeysModal />);
+
+    expect(screen.getByText(hotkeys.categories.typst)).toBeInTheDocument();
+    expect(rowFor(hotkeys.actions.slashCommandMenu).textContent).toBe(
+      `${hotkeys.actions.slashCommandMenu}/`,
+    );
+    expect(rowFor(hotkeys.actions.typstContinueList).textContent).toBe(
+      `${hotkeys.actions.typstContinueList}Enter`,
+    );
+    expect(rowFor(hotkeys.actions.typstItemNewLine).textContent).toBe(
+      `${hotkeys.actions.typstItemNewLine}ShiftEnter`,
+    );
+    expect(rowFor(hotkeys.actions.typstRemoveMarker).textContent).toBe(
+      `${hotkeys.actions.typstRemoveMarker}Backspace`,
+    );
+    expect(rowFor(hotkeys.actions.typstIndentItem).textContent).toBe(
+      `${hotkeys.actions.typstIndentItem}Tab`,
+    );
+    expect(rowFor(hotkeys.actions.typstOutdentItem).textContent).toBe(
+      `${hotkeys.actions.typstOutdentItem}ShiftTab`,
+    );
+    expect(rowFor(hotkeys.actions.typstMathPair).textContent).toBe(
+      `${hotkeys.actions.typstMathPair}$Space`,
+    );
+    expect(rowFor(hotkeys.actions.formatDocument).textContent).toBe(
+      `${hotkeys.actions.formatDocument}ShiftAltF`,
+    );
+    expect(rowFor(hotkeys.actions.typstWrapSelection).textContent).toBe(
+      `${hotkeys.actions.typstWrapSelection}*_\`$`,
+    );
+  });
+
+  it("keeps the slash menu for LaTeX and drops the Typst keys", () => {
+    useFilesStore.setState({ activePath: "main.tex" });
+    useSettingsStore.setState({ hotkeysOpen: true });
+    render(<HotkeysModal />);
+
+    expect(screen.getByText(hotkeys.actions.slashCommandMenu)).toBeInTheDocument();
+    expect(screen.queryByText(hotkeys.categories.typst)).not.toBeInTheDocument();
+    expect(screen.queryByText(hotkeys.actions.typstContinueList)).not.toBeInTheDocument();
+  });
+
+  it("hides the slash menu for a language without snippets", () => {
+    useFilesStore.setState({ activePath: "README.md" });
+    useSettingsStore.setState({ hotkeysOpen: true });
+    render(<HotkeysModal />);
+
+    expect(screen.queryByText(hotkeys.actions.slashCommandMenu)).not.toBeInTheDocument();
+    expect(screen.queryByText(hotkeys.actions.typstMathPair)).not.toBeInTheDocument();
+    expect(screen.getByText(hotkeys.actions.undo)).toBeInTheDocument();
   });
 
   it("closes from the backdrop", () => {

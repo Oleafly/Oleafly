@@ -4,6 +4,7 @@ import {
   appendHandoffPrompt,
   buildAiToolInventory,
   buildToolContinuation,
+  citationRule,
   drainPendingImages,
   excludedToolNames,
   figureGuidance,
@@ -36,12 +37,15 @@ describe("AI capability inventory", () => {
 });
 
 describe("run tool exclusions", () => {
-  it("drops the figure tools when the engine cannot compile one in isolation", () => {
+  it("drops the figure preview and insert tools when the engine has no figure renderer", () => {
     expect(excludedToolNames(["document_index"], false)).toEqual([
       "preview_figure",
       "insert_figure",
-      "load_image",
     ]);
+  });
+
+  it("keeps load_image for every engine", () => {
+    expect(excludedToolNames([], false)).not.toContain("load_image");
   });
 
   it("keeps the figure tools for an engine that supports them", () => {
@@ -64,6 +68,57 @@ describe("figure guidance", () => {
     expect(block).toContain("load_image");
     expect(block).toContain("Never invent data.");
     expect(block).not.toContain("\u2014");
+  });
+
+  it("asks for TikZ in a LaTeX project", () => {
+    const block = figureGuidance(["preview_figure", "insert_figure"], "latex");
+
+    expect(block).toContain("TikZ or PGFPlots");
+    expect(block).not.toContain("CeTZ");
+  });
+
+  it("asks for CeTZ, fletcher, or plain Typst in a Typst project", () => {
+    const block = figureGuidance(["preview_figure", "insert_figure", "load_image"], "typst");
+
+    expect(block).toContain("CeTZ");
+    expect(block).toContain("fletcher");
+    expect(block).toContain('#import "@preview/cetz:0.4.2"');
+    expect(block).toContain("#figure");
+    expect(block).not.toContain("TikZ");
+    expect(block).not.toContain("\u2014");
+  });
+});
+
+describe("citation rule", () => {
+  it("keeps the LaTeX rule about \\cite keys and the .bib file", () => {
+    expect(citationRule("latex")).toBe(
+      String.raw`Every \cite key must resolve to an entry in the project bibliography. Check unresolvedCites in project_map, or search the .bib file with search_project, before you add a citation.`,
+    );
+  });
+
+  it("tells a Typst project about @key, #cite, and Hayagriva files", () => {
+    const rule = citationRule("typst");
+
+    expect(rule).toContain("@key");
+    expect(rule).toContain("#cite(<key>)");
+    expect(rule).toContain("Hayagriva");
+    expect(rule).toContain("bibKeys in project_map");
+    expect(rule).not.toContain(String.raw`\cite`);
+  });
+
+  it("uses Pandoc citations in a Markdown project", () => {
+    const rule = citationRule("markdown");
+
+    expect(rule).toContain("[@key]");
+    expect(rule).not.toContain(String.raw`\cite`);
+  });
+
+  it("stays engine neutral when the engine is unknown", () => {
+    const rule = citationRule("none");
+
+    expect(rule).toContain("project bibliography");
+    expect(rule).not.toContain(String.raw`\cite`);
+    expect(rule).not.toContain("@key");
   });
 });
 

@@ -42,7 +42,18 @@
     "selectImage": "Eklemek için bir görsel seçin.",
     "editTitle": "Görseli düzenle",
     "editDescription": "Görseli değiştirin ya da genişliğini ayarlayın. Başlık ve etiket olduğu gibi kalır.",
-    "save": "Görseli kaydet"
+    "save": "Görseli kaydet",
+    "customWidthPlaceholderTypst": "8cm veya 60%",
+    "altLabel": "Alternatif metin",
+    "altPlaceholder": "Görseli ekran okuyucular için betimleyin",
+    "placement": "Yerleşim",
+    "placementNone": "Yerinde",
+    "placementAuto": "Otomatik",
+    "placementTop": "Üst",
+    "placementBottom": "Alt",
+    "editFigureTitle": "Şekli düzenle",
+    "editFigureDescription": "Görseli, boyutunu, başlığını, etiketini, alternatif metnini veya yerleşimini değiştirin.",
+    "saveFigure": "Şekli kaydet"
   },
   "tableToolbar": {
     "label": "Tablo araçları",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Alıntı bloğu ekle",
     "insertFigure": "Şekil ekle",
     "insertImage": "Görsel ekle",
+    "drawDiagram": "Diyagram çiz",
     "insertTable": "Tablo ekle",
     "imageToLatexTooltip": "Görselden LaTeX'e (yapay zeka ile metne dök)",
     "imageToLatex": "Görselden LaTeX'e",
@@ -130,6 +142,7 @@
     "redo": "Yinele ({{shortcut}})",
     "find": "Bul ({{shortcut}})",
     "goToPdf": "PDF'e git (SyncTeX)",
+    "goToPdfTypst": "PDF'e git",
     "linkUrl": "Bağlantı URL'si",
     "removeLink": "Bağlantıyı kaldır",
     "imageFile": "Görsel dosyası",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/grafik.png",
     "split": "Böl",
     "both": "İkisi de",
-    "stacked": "Üst üste"
+    "stacked": "Üst üste",
+    "displayMath": "Blok denklem",
+    "numberedEquation": "Numaralı denklem",
+    "alignedEquations": "Hizalanmış denklemler",
+    "addLabel": "Etiket ekle",
+    "imageToTypst": "Görselden Typst'e",
+    "imageToTypstTooltip": "Görselden Typst'e (yapay zeka ile metne dök)",
+    "typstPackages": "Typst paketleri",
+    "latexPackages": "LaTeX paketleri"
   },
   "contextMenu": {
     "engineUnavailable": "Belge motoru eylemleri kullanılamıyor",
     "askAi": "Yapay zekaya sor…",
     "noIndexedSymbol": "Bu konumda dizinlenmiş sembol yok.",
     "noRenamableSymbol": "Bu konumda yeniden adlandırılabilir sembol yok.",
+    "formatDocument": "Belgeyi biçimlendir",
+    "formatSelection": "Seçimi biçimlendir",
     "itemize": "itemize listesi",
     "enumerate": "enumerate listesi",
     "figure": "figure ortamı",
@@ -156,7 +179,16 @@
     "equationAsPng": "Denklemi PNG olarak",
     "crossReference": "Çapraz başvuru",
     "label": "Etiket (\\label)",
-    "footnote": "Dipnot"
+    "footnote": "Dipnot",
+    "toggleComment": "Açıklama satırı yap/kaldır",
+    "inlineMath": "Satır içi matematik",
+    "displayMath": "Blok denklem",
+    "numberedEquation": "Numaralı denklem",
+    "alignedEquations": "Hizalanmış denklemler",
+    "quote": "Alıntı",
+    "addLabel": "Etiket ekle",
+    "convertLatexMath": "LaTeX matematiğini Typst'e dönüştür",
+    "noLatexMath": "Önce bir LaTeX matematik ifadesi seçin."
   },
   "shell": {
     "noFileOpenTab": "Açık dosya yok",
@@ -233,9 +265,15 @@
     "footerTypst": "Tablo kaynağında özel karakterler kaçışlanır.",
     "footerLatex": "Üretilen LaTeX tablosu yatay çizgileri için booktabs kullanır.",
     "chooseAnother": "Başka bir dosya seç",
-    "chooseFile": "CSV, TSV veya XLSX seçin",
+    "chooseFile": "CSV, TSV, XLSX veya JSON seçin",
     "selectedSummary": "{{file}} · Satır: {{rows}} · Sütun: {{columns}}",
     "firstRowHeader": "İlk satır başlıktır",
+    "keepLinked": "Veri dosyasına bağlı tut",
+    "keepLinkedHint": "Verileri veri klasörüne kopyalar. O dosyayı düzenlediğinizde tablo bir sonraki derlemede değişir.",
+    "footerLinked": "Tablo, belge her derlendiğinde {{path}} dosyasını okur.",
+    "jsonNotTable": "Bu JSON dosyası bir kayıt veya satır listesi değil.",
+    "insertedLinked": "Bağlı tablo eklendi. Değiştirmek için {{path}} dosyasını düzenleyin.",
+    "linkFailed": "Veriler projeye kopyalanamadı.",
     "captionLabel": "Başlık (isteğe bağlı)",
     "captionPlaceholder": "Tüm çalıştırmalardaki sonuçlar",
     "labelLabel": "Etiket (isteğe bağlı)",
@@ -266,7 +304,8 @@
     "svgImage": "SVG görseli",
     "pngImage": "PNG görseli",
     "svgKind": "Denklem SVG'si",
-    "pngKind": "Denklem PNG'si"
+    "pngKind": "Denklem PNG'si",
+    "typstFailed": "Typst bu denklemi işleyemedi ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Yapay zekaya sor",
@@ -307,7 +346,17 @@
     "info": "Bilgi",
     "empty": "Derleme çıktısı burada görünecek.",
     "scrollToTop": "En üste kaydır",
-    "scrollToBottom": "En alta kaydır"
+    "scrollToBottom": "En alta kaydır",
+    "locationFileLineColumn": "{{file}} · satır {{line}}, sütun {{column}}",
+    "locationLineColumn": "satır {{line}}, sütun {{column}}",
+    "hint": "İpucu",
+    "sourceExcerpt": "Kaynak satırı {{line}}",
+    "summaryErrors_one": "{{count}} hata",
+    "summaryErrors_other": "{{count}} hata",
+    "summaryWarnings_one": "{{count}} uyarı",
+    "summaryWarnings_other": "{{count}} uyarı",
+    "summaryReferences_one": "{{count}} çözümlenmemiş başvuru",
+    "summaryReferences_other": "{{count}} çözümlenmemiş başvuru"
   },
   "history": {
     "untitledCommit": "Adsız işleme",
@@ -352,7 +401,8 @@
       "navigation": "Gezinme",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Ayarlar"
+      "settings": "Ayarlar",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Yeniden derle",
@@ -369,12 +419,20 @@
       "goToDefinition": "Tanıma git",
       "findReferences": "Kaynakları bul",
       "renameSymbol": "Sembolü yeniden adlandır (proje genelinde)",
+      "formatDocument": "Typst belgesini biçimlendir",
       "commandPalette": "Komut paleti",
       "searchAllDocuments": "Tüm belgelerde ara",
       "goToPdf": "PDF'e git (SyncTeX ileri)",
       "jumpToSource": "PDF'ten kaynağa atla",
       "commitAndPush": "İşle ve gönder",
-      "openSettings": "Ayarları aç"
+      "openSettings": "Ayarları aç",
+      "typstContinueList": "Listeye yeni bir öğeyle devam et",
+      "typstItemNewLine": "Liste öğesi içinde yeni bir satır başlat",
+      "typstRemoveMarker": "İmleçten önceki liste imini kaldır",
+      "typstIndentItem": "Liste öğesini bir düzey içeri al",
+      "typstOutdentItem": "Liste öğesini bir düzey dışarı al",
+      "typstMathPair": "$ matematiğini otomatik kapat, Space onu blok denkleme çevirir",
+      "typstWrapSelection": "Seçimi kalın, vurgu, kod veya matematikle sar"
     }
   },
   "citations": {
@@ -645,6 +703,7 @@
       "unsupported": "Bu ifade eksik veya desteklenmiyor.",
       "missingClosing": "Kapanış {{delimiter}} eksik.",
       "notRendered": "Bu ifade işlenemedi.",
+      "typstUnavailable": "Typst önizlemesi kullanılamıyor.",
       "preview": {
         "moreOptions": "Diğer seçenekler",
         "hide": "Gizle",
@@ -652,6 +711,10 @@
         "disable": "Devre dışı bırak",
         "disableDescription": "Denklem önizlemesini kapatır. Ayarlar bölümünden yeniden açabilirsiniz."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Typst matematiği olarak yapıştır",
+      "pasteOffer": "LaTeX matematiği yapıştırıldı"
     },
     "latex": {
       "command": {
@@ -834,6 +897,45 @@
         "revtex": "REVTeX stili"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Başlık",
+        "figure": "Görselli şekil",
+        "tableFigure": "Tablolu şekil",
+        "table": "Tablo",
+        "equation": "Blok denklem",
+        "numberedEquation": "Etiketli numaralı denklem",
+        "footnote": "Dipnot",
+        "quote": "Alıntı bloğu",
+        "code": "Kod bloğu",
+        "outline": "İçindekiler",
+        "bibliography": "Kaynakça",
+        "pagebreak": "Sayfa sonu",
+        "columns": "Sütunlar",
+        "grid": "Izgara",
+        "link": "Bağlantı",
+        "list": "Madde imli liste",
+        "enum": "Numaralı liste",
+        "terms": "Terim listesi",
+        "partBibliography": "Etiketli tek bir bölüm için kaynakça"
+      },
+      "bibliographyStyle": {
+        "builtin": "yerleşik CSL stili",
+        "citation": "yalnızca atıf stili",
+        "project": "bu projedeki CSL dosyası"
+      },
+      "bibliographyParameter": {
+        "target": "hangi atıfları listelediği",
+        "group": "numaralarının nasıl paylaşıldığı",
+        "targetAuto": "anahtarı içeren en yakın kaynakça",
+        "targetWithin": "etiketli bir bölümün içindeki atıflar",
+        "targetAfter": "bir etiketten sonraki atıflar",
+        "targetBefore": "bir etiketten önceki atıflar",
+        "groupAuto": "diğer kaynakçalarla birlikte numaralandır",
+        "groupNone": "kendi başına numaralandır",
+        "groupNamed": "aynı adlı kaynakçalarla birlikte numaralandır"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Özet",
@@ -960,6 +1062,12 @@
       "reference": "Başvuru",
       "label": "Etiket",
       "includedFile": "Dahil edilen dosya",
+      "typst": {
+        "settings": {
+          "show": "Belge ayarlarını göster",
+          "hide": "Belge ayarlarını gizle"
+        }
+      },
       "table": {
         "captionPlacement": "Başlık",
         "captionAbove": "Başlık üstte",
@@ -1034,6 +1142,11 @@
     "goTo": "{{title}} bölümüne git",
     "untitled": "Adsız"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Typst Universe'te aç",
+    "formatUnavailable": "Typst biçimlendiricisi henüz hazır değil. Birazdan yeniden deneyin.",
+    "formatFailed": "Bu dosya biçimlendirilemedi."
+  },
   "changedOnDisk": {
     "message": "Kaydedilmemiş düzenlemeleriniz varken {{file}} diskte değişti.",
     "compare": "Karşılaştır",
@@ -1041,5 +1154,330 @@
     "reload": "Yeniden yükle",
     "failed": "Oleafly {{file}} dosyasını güncelleyemedi. Yeniden deneyin.",
     "tabMark": "Diskte değişti. Hangi sürümü tutacağınızı seçmek için bu sekmeyi açın."
+  },
+  "labels": {
+    "filterPlaceholder": "Etiket adı",
+    "filterLabel": "Proje etiketlerini filtrele",
+    "noMatches": "Eşleşen etiket yok.",
+    "empty": "Bu projede henüz etiket yok.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Buraya etiket ekle"
+  },
+  "typst": {
+    "numberingNote": "Denklem numaraları için bir numaralandırma kuralı gerekir.",
+    "addNumberingRule": "Kural ekle",
+    "bibliographyAdded": "Kaynakça {{file}} dosyasına eklendi."
+  },
+  "typstInsights": {
+    "title": "Belge içgörüleri",
+    "description": "Derlenen belgenin içeriği, kaynağa geri bağlantılarla.",
+    "refresh": "Yenile",
+    "copyMetadata": "Gönderim üst verisini kopyala",
+    "metadataCopied": "Gönderim üst verisi panoya kopyalandı.",
+    "copyFailed": "Üst veri kopyalanmadı. Pano erişimini denetleyip yeniden deneyin.",
+    "loading": "Belge Typst ile okunuyor",
+    "compileFailed": "Typst belgeyi derleyemedi. Şekilleri, tabloları ve denklemleri listelemek için bu hataları düzeltin.",
+    "noProject": "Önce bir Typst projesi açın.",
+    "tabs": {
+      "overview": "Genel bakış",
+      "headings": "Başlıklar",
+      "figures": "Şekiller",
+      "tables": "Tablolar",
+      "equations": "Denklemler",
+      "labels": "Etiketler",
+      "citations": "Atıflar",
+      "todos": "Yapılacaklar"
+    },
+    "metadata": {
+      "heading": "Gönderim üst verisi",
+      "title": "Başlık",
+      "authors": "Yazarlar",
+      "keywords": "Anahtar sözcükler",
+      "abstract": "Özet",
+      "date": "Tarih",
+      "missing": "Ayarlanmadı"
+    },
+    "empty": {
+      "headings": "Derlenen belgede başlık yok.",
+      "figures": "Derlenen belgede şekil yok.",
+      "tables": "Derlenen belgede tablo yok.",
+      "equations": "Derlenen belgede blok denklem yok.",
+      "labels": "Belgede etiket yok.",
+      "citations": "Derlenen belgede atıf yok.",
+      "todos": "TODO veya FIXME notu yok."
+    },
+    "labelKinds": {
+      "heading": "Başlık",
+      "figure": "Şekil",
+      "table": "Tablo",
+      "equation": "Denklem",
+      "other": "Diğer"
+    },
+    "page": "Sayfa {{page}}",
+    "unnumbered": "Numarasız",
+    "untitled": "Başlık yok",
+    "cited_one": "{{count}} kez atıf yapıldı",
+    "cited_other": "{{count}} kez atıf yapıldı",
+    "notInSource": "Kaynakta bulunamadı",
+    "openSource": "{{file}} dosyasını {{line}}. satırda aç",
+    "versionNote": "Typst {{version}}, typst {{method}} ile",
+    "truncated": "Yalnızca ilk 5.000 öğe listelenir."
+  },
+  "documentInsights": {
+    "description": "Belgenin içeriği, kaynağa geri bağlantılarla.",
+    "loading": "Belge okunuyor",
+    "noProject": "Önce bir proje açın.",
+    "unresolved": "Kaynakçada yok",
+    "unresolvedCount_one": "Kaynakçada {{count}} atıf anahtarı eksik.",
+    "unresolvedCount_other": "Kaynakçada {{count}} atıf anahtarı eksik.",
+    "numbersCurrent": "Numaralar ve sayfalar son derlemeden alınmıştır.",
+    "numbersStale": "Kaynak son derlemeden sonra değişti. Numaraları ve sayfaları görmek için yeniden derleyin.",
+    "numbersMissing": "Numaraları ve sayfaları görmek için belgeyi derleyin.",
+    "sourceOrder": "Kaynaktaki sırayla listelenir.",
+    "empty": {
+      "headings": "Belgede başlık yok.",
+      "figures": "Belgede şekil yok.",
+      "tables": "Belgede tablo yok.",
+      "equations": "Belgede blok denklem yok.",
+      "citations": "Belgede atıf yok."
+    }
+  },
+  "typstSettings": {
+    "title": "Belge ayarları",
+    "description": "{{file}} içindeki sayfa, metin ve numaralandırma kuralları.",
+    "templateNotice": "Bu belge bir şablon kullanıyor. Şablonun içinde ayarlanan değerler burada gösterilmez. Burada ayarladığınız bir değer şablonu geçersiz kılar.",
+    "loading": "Ana dosya okunuyor",
+    "readFailed": "Ana dosya okunamadı.",
+    "saveFailed": "Ana dosya güncellenemedi.",
+    "noMainFile": "Bu projenin Typst ana dosyası yok.",
+    "applied": "Belge ayarları güncellendi.",
+    "apply": "Uygula",
+    "cancel": "İptal",
+    "sections": {
+      "page": "Sayfa",
+      "text": "Metin",
+      "paragraph": "Paragraf",
+      "numbering": "Numaralandırma"
+    },
+    "fields": {
+      "paper": "Sayfa boyutu",
+      "margin": "Kenar boşlukları",
+      "columns": "Sütunlar",
+      "font": "Gövde yazı tipi",
+      "fontSize": "Yazı tipi boyutu",
+      "lang": "Dil",
+      "region": "Bölge",
+      "justify": "Hizalama",
+      "leading": "Satır aralığı",
+      "headingNumbering": "Başlık numaralandırması",
+      "equationNumbering": "Denklem numaralandırması"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Varsayılan",
+      "justified": "İki yana yaslı",
+      "ragged": "Sola yaslı",
+      "off": "Kapalı"
+    },
+    "locked": {
+      "template": "Şablon tarafından ayarlandı",
+      "expression": "Kaynaktaki bir ifade tarafından ayarlandı"
+    },
+    "invalid": {
+      "length": "11pt, 2.5cm veya 0.65em gibi bir uzunluk kullanın.",
+      "margin": "2.5cm gibi bir uzunluk veya auto kullanın.",
+      "columns": "1 ile 99 arasında bir tam sayı kullanın.",
+      "lang": "en gibi iki veya üç harfli bir dil kodu kullanın.",
+      "region": "GB gibi iki harfli bir bölge kodu kullanın."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "{{file}} içindeki sınıf seçenekleri ve ön bölüm ayarları.",
+    "markdownDescription": "{{file}} içindeki ön bilgi alanları.",
+    "noLatexMainFile": "Bu projenin LaTeX ana dosyası yok.",
+    "noMarkdownMainFile": "Bu projenin Markdown ana dosyası yok.",
+    "noDocumentClass": "Ana dosyada \\documentclass satırı yok.",
+    "unclosedFrontMatter": "Ana dosyanın başındaki ön bilgi kapatılmamış. Önce kapanış için bir --- satırı ekleyin.",
+    "noFrontMatter": "Bu dosyada henüz ön bilgi yok. Uygula düğmesi dosyanın başına bir tane ekler.",
+    "externalPreamble": "Ön bölümün bir kısmı başka dosyalarda. Orada ayarlanan değerler burada gösterilmez.",
+    "classNotice": "Bu ayarların bazılarını {{name}} sınıfı denetler. Burada salt okunurdur.",
+    "styleNotice": "{{name}} stili sayfa düzenini belirler. Sayfa boyutu ve kenar boşlukları burada salt okunurdur.",
+    "availableFonts": "Kullanılabilir yazı tipleri",
+    "fontsLoading": "Yazı tipleri aranıyor",
+    "fields": {
+      "secnumdepth": "Numaralı düzeyler",
+      "numberSections": "Bölüm numaraları",
+      "documentClass": "Belge sınıfı"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "Tek sütun",
+      "twocolumn": "İki sütun",
+      "single": "Tek",
+      "onehalf": "Bir buçuk",
+      "double": "Çift",
+      "bySection": "Alt bölüme göre",
+      "byChapter": "Bölüme göre",
+      "bySubsection": "İkinci düzey alt bölüme göre",
+      "numbered": "Numaralı",
+      "unnumbered": "Numarasız",
+      "depthNone": "Yok",
+      "depthChapters": "Yalnızca bölümler",
+      "depthSections": "Alt bölümlere kadar",
+      "depthSubsections": "İkinci düzey alt bölümlere kadar",
+      "depthSubsubsections": "Üçüncü düzey alt bölümlere kadar",
+      "depthParagraphs": "Paragraf başlıklarına kadar",
+      "depthSubparagraphs": "İkinci düzey paragraf başlıklarına kadar"
+    },
+    "locked": {
+      "class": "{{name}} sınıfı tarafından ayarlandı",
+      "package": "{{name}} stili tarafından ayarlandı",
+      "engine": "XeLaTeX veya LuaLaTeX derleyicisi gerekir. Derleme menüsünden birini seçin.",
+      "sides": "Kaynak her kenar boşluğunu ayrı ayarlıyor",
+      "conditional": "Koşullu bir blok içinde ayarlandı"
+    },
+    "invalid": {
+      "length": "2.5cm, 1in veya 12pt gibi bir uzunluk kullanın.",
+      "fontName": "Süslü parantez veya ters eğik çizgi içermeyen düz bir yazı tipi adı kullanın.",
+      "latexLang": "english gibi bir babel dil adı kullanın.",
+      "markdownLang": "en-US gibi bir dil etiketi kullanın.",
+      "lineStretch": "1.5 gibi bir sayı kullanın."
+    }
+  },
+  "typstPackages": {
+    "title": "Typst paketleri",
+    "close": "Typst paketlerini kapat",
+    "searchLabel": "Paketleri ada, anahtar sözcüğe veya kategoriye göre arayın",
+    "searchPlaceholder": "Typst Universe içinde ara",
+    "categories": "Kategoriler",
+    "allCategories": "Tümü",
+    "loading": "Paket listesi yükleniyor",
+    "results_one": "{{count}} paket",
+    "results_other": "{{count}} paket",
+    "resultsCapped": "{{count}} paketten {{shown}} tanesi gösteriliyor. Listeyi daraltmak için arama yapın.",
+    "empty": "Aramanızla eşleşen paket yok.",
+    "staleOffline": "Çevrimdışısınız. Bu liste {{date}} tarihli.",
+    "stale": "Bu liste {{date}} tarihli. Yenilenemedi.",
+    "latest": "En yeni {{version}}",
+    "template": "Şablon",
+    "needsTypst": "Typst {{version}} gerekir. Bu proje Typst {{current}} kullanıyor.",
+    "insert": "İçe aktarma ekle",
+    "insertAria": "{{name}} için içe aktarmayı dosyanın başına ekle",
+    "insertNeedsFile": "İçe aktarma eklemek için bir Typst dosyası açın.",
+    "copy": "İçe aktarmayı kopyala",
+    "copyAria": "{{name}} için içe aktarmayı kopyala",
+    "vendor": {
+      "heading": "Proje paketleri",
+      "toggle": "Proje klasöründeki paketleri kullan",
+      "detail": "Typst önce projenin typst-packages klasörüne bakar. Paketleri içine kopyalanmış projeler çevrimdışı ve başka bilgisayarlarda da derlenir.",
+      "action": "Paketleri projeye kopyala",
+      "running": "Paketler kopyalanıyor",
+      "copied_one": "{{count}} paket typst-packages klasörüne kopyalandı.",
+      "copied_other": "{{count}} paket typst-packages klasörüne kopyalandı.",
+      "upToDate": "Bu projenin içe aktardığı tüm paketler zaten typst-packages içinde.",
+      "missing": "Şu paketler paket önbelleğinde yok: {{names}}. Çevrimiçiyken bir kez derleyin, sonra paketleri yeniden kopyalayın.",
+      "count_one": "Bu projede {{count}} paket",
+      "count_other": "Bu projede {{count}} paket",
+      "none": "Bu projede henüz paket yok."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} kullanılabilir. Bu içe aktarma {{version}} sürümünü kullanıyor.",
+      "update": "{{version}} sürümüne güncelle"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX paketleri",
+    "close": "LaTeX paketlerini kapat",
+    "searchLabel": "Paketleri ada veya açıklamaya göre arayın",
+    "searchPlaceholder": "CTAN içinde ara",
+    "loading": "Paket listesi yükleniyor",
+    "results_one": "{{count}} paket",
+    "results_other": "{{count}} paket",
+    "resultsCapped": "{{count}} paketten {{shown}} tanesi gösteriliyor. Listeyi daraltmak için arama yapın.",
+    "empty": "Aramanızla eşleşen paket yok.",
+    "stale": "Bu liste {{date}} tarihli. Yenilenemedi.",
+    "staleOffline": "Çevrimdışısınız. Bu liste {{date}} tarihli.",
+    "partial": "CTAN sitesine ulaşılamadı. Oleafly'nin yerleşik listesi gösteriliyor.",
+    "partialOffline": "Çevrimdışısınız. Oleafly'nin yerleşik listesi gösteriliyor.",
+    "loaded": "Belgede",
+    "documentClass": "Belge sınıfı",
+    "installed": "Kurulu",
+    "install": "Kur",
+    "installing": "Kuruluyor",
+    "installAria": "{{name}} paketini tlmgr ile kur",
+    "insert": "Ön bölüme ekle",
+    "insertAria": "{{name}} paketini {{file}} dosyasının ön bölümüne ekle",
+    "copy": "Satırı kopyala",
+    "copyAria": "{{name}} paketini yükleyen satırı kopyala",
+    "ctan": "CTAN",
+    "ctanAria": "{{name}} paketini CTAN sitesinde aç",
+    "options": "Seçenekler",
+    "optionsAria": "{{name}} seçenekleri",
+    "optionsInvalid": "Seçenekleri denetleyin. Süslü parantezler eşleşmeli, ] veya % kullanılamaz.",
+    "classNote": "Bu bir belge sınıfı. Bunun yerine \\documentclass ile ayarlayın.",
+    "onDemand": "Tectonic, paketleri belgeniz onları ilk kez kullandığında indirir. Kurulacak bir şey yok.",
+    "checking": "Hangi paketlerin kurulu olduğu denetleniyor",
+    "unknownInstall": "Oleafly, TeX kurulumunuzda hangi paketlerin olduğunu belirleyemiyor.",
+    "noProject": "Paket eklemek için bir LaTeX projesi açın.",
+    "added": "{{name}} paketi {{file}} dosyasına eklendi.",
+    "noPreamble": "{{file}} dosyasında paket eklenecek bir ön bölüm yok.",
+    "alreadyLoaded": "{{file}} dosyası {{name}} paketini zaten yüklüyor.",
+    "insertFailed": "Paket eklenemedi. Yeniden deneyin."
+  },
+  "typstFonts": {
+    "title": "Yazı tipleri",
+    "close": "Yazı tipi listesini kapat",
+    "searchLabel": "Yazı tipi ailelerinde ara",
+    "searchPlaceholder": "Yazı tiplerinde ara",
+    "loading": "Yazı tipleri Typst'ten alınıyor",
+    "summary_one": "Typst {{version}} sürümünden {{count}} yazı tipi ailesi",
+    "summary_other": "Typst {{version}} sürümünden {{count}} yazı tipi ailesi",
+    "systemOff": "Bu projede sistem yazı tipleri kapalı, bu yüzden yalnızca proje ve yerleşik yazı tipleri listelenir.",
+    "noSources": "Bu Typst sürümü her yazı tipinin nereden geldiğini belirtmiyor.",
+    "empty": "Aramanızla eşleşen yazı tipi ailesi yok.",
+    "copy": "Adı kopyala",
+    "copyAria": "{{name}} yazı tipi ailesi adını kopyala",
+    "sources": {
+      "project": "Proje",
+      "system": "Sistem",
+      "embedded": "Yerleşik"
+    },
+    "fontsFolder": "Bu projede bir yazı tipi kullanmak için dosyasını projenin fonts klasörüne ekleyin."
+  },
+  "typstVariants": {
+    "title": "Derleme varyantları",
+    "close": "Derleme varyantlarını kapat",
+    "intro": "Her varyant, belgenin sys.inputs ile okuduğu değerleri ayarlar. Derleme menüsünden bir varyant seçin.",
+    "empty": "Henüz varyant yok.",
+    "add": "Varyant ekle",
+    "name": "Varyant adı",
+    "defaultName": "varyant {{number}}",
+    "remove": "Varyantı kaldır",
+    "removeAria": "{{name}} varyantını kaldır",
+    "key": "Ad",
+    "value": "Değer",
+    "addInput": "Değer ekle",
+    "removeInput": "Değeri kaldır",
+    "noInputs": "Bu varyant hiçbir değer ayarlamıyor.",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "loading": "Varyantlar yükleniyor",
+    "nameRequired": "Her varyanta bir ad verin.",
+    "nameTaken": "İki varyant aynı adı paylaşamaz.",
+    "keyInvalid": "Değer adları boş olamaz veya eşittir işareti içeremez.",
+    "keyTaken": "Bir varyant aynı adı iki kez ayarlayamaz.",
+    "saveFailed": "Varyantlar kaydedilemedi."
   }
 }

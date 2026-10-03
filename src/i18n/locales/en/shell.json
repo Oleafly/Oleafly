@@ -41,7 +41,9 @@
     "noResults": "No results found. Check the identifier, or try different title words.",
     "placeholder": "DOI, arXiv id, URL, or a paper title…",
     "privacyNote": "Only the identifier or title is sent, to doi.org, arXiv, or Crossref.",
-    "title": "Add citation"
+    "title": "Add citation",
+    "bibliography": "Bibliography",
+    "bibliographyHint": "This project has more than one bibliography. The entry goes into the file you pick here."
   },
   "backendProtocol": {
     "mismatch": "This window and its backend were built for different Oleafly versions, so some features may not work. Reinstalling the app fixes this."
@@ -120,6 +122,14 @@
       "keywords": "close end environment begin latex",
       "label": "Close LaTeX environment"
     },
+    "formatDocument": {
+      "keywords": "format tidy indent typstyle typst",
+      "label": "Format document"
+    },
+    "formatSelection": {
+      "keywords": "format selection tidy indent typstyle typst",
+      "label": "Format selection"
+    },
     "createProject": {
       "keywords": "new project create template gallery",
       "label": "Create a new project"
@@ -127,6 +137,14 @@
     "diagramComposer": {
       "keywords": "diagram figure tikz composer draw canvas",
       "label": "Open Diagram Composer"
+    },
+    "typstPackages": {
+      "keywords": "typst universe packages import library browse vendor",
+      "label": "Browse Typst packages"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan packages usepackage preamble install tlmgr browse",
+      "label": "Browse LaTeX packages"
     },
     "documentCitationScan": {
       "keywords": "citations literature scan document paragraph references find",
@@ -193,7 +211,8 @@
       "label": "Surround with environment"
     },
     "synctex": {
-      "label": "Go to PDF (SyncTeX)"
+      "label": "Go to PDF (SyncTeX)",
+      "typstLabel": "Go to PDF"
     },
     "table": {
       "label": "Table"
@@ -226,6 +245,79 @@
     "openFolder": {
       "label": "Open folder…",
       "keywords": "open folder directory existing local files disk"
+    },
+    "underline": {
+      "label": "Underline"
+    },
+    "strikethrough": {
+      "label": "Strikethrough"
+    },
+    "inlineCode": {
+      "label": "Inline code"
+    },
+    "link": {
+      "label": "Link"
+    },
+    "footnote": {
+      "label": "Footnote"
+    },
+    "quote": {
+      "label": "Quote"
+    },
+    "inlineMath": {
+      "label": "Inline math"
+    },
+    "numberedEquation": {
+      "label": "Numbered equation"
+    },
+    "alignedEquations": {
+      "label": "Aligned equations"
+    },
+    "fraction": {
+      "label": "Fraction"
+    },
+    "crossReference": {
+      "label": "Cross-reference"
+    },
+    "typstInsights": {
+      "label": "Document insights",
+      "keywords": "figures tables equations headings labels citations todo fixme metadata abstract submission"
+    },
+    "typstDocumentSettings": {
+      "label": "Document settings",
+      "keywords": "page size margins columns font size language region justify leading line spacing numbering"
+    },
+    "toggleComment": {
+      "label": "Toggle comment",
+      "keywords": "comment uncomment line block"
+    },
+    "goToDefinition": {
+      "label": "Go to definition",
+      "keywords": "definition jump symbol navigate"
+    },
+    "findReferences": {
+      "label": "Find references",
+      "keywords": "references usages symbol"
+    },
+    "renameSymbol": {
+      "label": "Rename symbol",
+      "keywords": "rename symbol refactor"
+    },
+    "migrateToTypst": {
+      "label": "Convert to a Typst project",
+      "keywords": "typst convert migrate latex project new"
+    },
+    "typstMigrationReport": {
+      "label": "Show the Typst conversion report",
+      "keywords": "typst convert migrate report latex"
+    },
+    "present": {
+      "label": "Present slides",
+      "keywords": "present slides presentation fullscreen beamer touying polylux speaker notes pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "Present slides with presenter view",
+      "keywords": "present slides presenter view speaker notes timer next slide"
     }
   },
   "community": {
@@ -238,7 +330,12 @@
     "autoCompile": {
       "off": "Off",
       "on": "On",
-      "title": "Auto compile"
+      "title": "Auto compile",
+      "help": "Compiles a few seconds after you stop typing. The open file is saved first.",
+      "typstHelp": "Typst keeps running and updates the PDF a moment after you stop typing. The open file saves on its own while this is on.",
+      "typstStarting": "Starting Typst",
+      "typstRestarting": "Typst is restarting",
+      "typstFailed": "Typst stopped after repeated errors. Edit the file to start it again."
     },
     "compile": "Compile",
     "compiler": {
@@ -274,7 +371,37 @@
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
     "texRootNotTex": "% !TEX root in {{file}} points to {{target}}, which isn't a LaTeX file",
-    "texRootOverride": "root: {{path}} (set by % !TEX root in {{file}})"
+    "texRootOverride": "root: {{path}} (set by % !TEX root in {{file}})",
+    "typstVersion": {
+      "title": "Typst version (this project)",
+      "help": "Pin a version to keep this project's output the same when Oleafly updates Typst. Default follows the version chosen in Settings. To install versions or test this project on a newer one, go to Settings → Engines → Typst.",
+      "default": "Default ({{version}})",
+      "defaultPlain": "Default",
+      "builtIn": "[built in]",
+      "system": "[system]",
+      "missing": "[not installed]",
+      "switchFailed": "Could not change the Typst version."
+    },
+    "typstFonts": {
+      "title": "Fonts (this project)",
+      "help": "Typst reads fonts from the project's fonts folder and the folders listed under font_paths in project.json. With project fonts only, the PDF does not depend on the fonts installed on this computer. Document settings lists the fonts Typst can find.",
+      "systemFonts": "Use system fonts",
+      "projectOnly": "Project fonts only",
+      "unsupported": "Needs a newer Typst",
+      "saveFailed": "Could not save the font setting."
+    },
+    "typstBuild": {
+      "title": "Build (this project)",
+      "help": "A reproducible build uses only project fonts and dates the PDF to the last commit. The same sources then give the same PDF on any computer.",
+      "standard": "Standard build",
+      "reproducible": "Reproducible build",
+      "saveFailed": "Could not save the build setting."
+    },
+    "typstVariant": {
+      "title": "Variant (this project)",
+      "help": "A variant passes its own values to sys.inputs, such as a draft or a camera-ready build. The variant you pick stays on this computer. Add or edit variants in Document settings.",
+      "none": "No variant"
+    }
   },
   "datePicker": {
     "placeholder": "Pick a date"
@@ -946,6 +1073,10 @@
     "wait": {
       "description": "{{phase}} Your compile is queued and starts automatically as soon as the engine is ready.",
       "title": "TinyTeX is still downloading"
+    },
+    "typstQuit": {
+      "title": "Typst is still installing",
+      "description": "Typst {{version}} is downloading. If you quit now, the download stops and you'll need to start it again from Settings."
     }
   },
   "toolbar": {
@@ -1085,5 +1216,132 @@
     "added": "Added. It's in Finder's Services menu now. To use it from Quick Actions too, right-click a folder and turn it on in Quick Actions › Customize.",
     "addedInQuickActions": "Added. Right-click a folder and you'll find it under Quick Actions.",
     "failed": "Couldn't add it. You can try again in Settings › General."
+  },
+  "typstMigration": {
+    "title": "Convert to a Typst project",
+    "closeLabel": "Close the Typst conversion",
+    "intro": "Oleafly makes a new Typst project from this LaTeX project. This project is not changed.",
+    "points": {
+      "text": "Pandoc converts the text, math, figures and tables.",
+      "files": "Each input and include file becomes its own Typst file.",
+      "bibliography": "BibTeX files are copied as they are.",
+      "compile": "Typst compiles the new project to check it."
+    },
+    "nameLabel": "New project name",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Open a LaTeX project to convert it.",
+    "convert": "Convert",
+    "retry": "Try again",
+    "progress": {
+      "reading": "Reading the LaTeX project",
+      "converting": "Converting with Pandoc",
+      "creating": "Creating the Typst project",
+      "compiling": "Compiling with Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc is not ready. Install it from Tools, then try again.",
+      "noMain": "The main LaTeX file could not be read.",
+      "emptyOutput": "Pandoc returned an empty document.",
+      "failed": "The conversion stopped: {{detail}}"
+    },
+    "report": {
+      "created": "Created {{name}}.",
+      "compiled": "It compiles with Typst.",
+      "compileFailed_one": "It does not compile yet. {{count}} error needs a fix.",
+      "compileFailed_other": "It does not compile yet. {{count}} errors need a fix.",
+      "compileUnavailable": "Oleafly could not compile it: {{detail}}",
+      "converted": "Converted",
+      "sources_one": "{{count}} source file",
+      "sources_other": "{{count}} source files",
+      "figures_one": "{{count}} figure",
+      "figures_other": "{{count}} figures",
+      "tables_one": "{{count}} table",
+      "tables_other": "{{count}} tables",
+      "equations_one": "{{count}} display equation",
+      "equations_other": "{{count}} display equations",
+      "references_one": "{{count}} cross-reference",
+      "references_other": "{{count}} cross-references",
+      "mathFixed_one": "{{count}} formula fixed by the math converter",
+      "mathFixed_other": "{{count}} formulas fixed by the math converter",
+      "copied_one": "{{count}} file copied",
+      "copied_other": "{{count}} files copied",
+      "style": "Bibliography style {{style}}",
+      "mapping": "{{source}} to {{target}}",
+      "attention": "Needs attention",
+      "noAttention": "Nothing needs attention.",
+      "problems": "Compile errors and warnings",
+      "location": "{{file}}, line {{line}}",
+      "noLocation": "No file location",
+      "openAt": "Open {{file}} at line {{line}}",
+      "open": "Open the Typst project"
+    },
+    "notes": {
+      "missingInclude": "The file {{detail}} was not found, so it was left out.",
+      "lostInclude": "{{detail}} could not get its own file. Its text stays in the file that included it.",
+      "missingImage": "The image {{detail}} was not found.",
+      "unsupportedImage": "Typst cannot show {{detail}}. Convert it to PDF, PNG or SVG.",
+      "math": "This math needs a manual fix: {{detail}}",
+      "bibliographyStyle": "The BibTeX style {{detail}} has no Typst match. The default style is used.",
+      "skippedFile": "{{detail}} was not copied because the project is too large.",
+      "unreadableFile": "{{detail}} could not be read.",
+      "equationLabel": "Typst numbers whole equations, so references to {{detail}} now point at the equation it was in."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Images and HTML",
+    "title": "Export with Typst",
+    "close": "Close Typst export",
+    "format": "Format",
+    "png": "PNG images",
+    "svg": "SVG images",
+    "html": "HTML",
+    "experimental": "Experimental",
+    "htmlNote": "Typst HTML export is still experimental. It leaves out page setup and placed elements.",
+    "ppi": "Resolution",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Pages",
+    "pagesPlaceholder": "All pages",
+    "pagesHelp": "Use page numbers and ranges, such as 1, 3-5 or 8-.",
+    "pagesInvalid": "Check the page range. Use page numbers and ranges, such as 1, 3-5 or 8-.",
+    "pagesUnsupported": "This Typst version always exports every page.",
+    "multiPage": "Each page is saved as its own file, numbered after the name you pick.",
+    "export": "Export",
+    "cancel": "Cancel"
+  },
+  "typstUpgrade": {
+    "title": "Try a newer Typst version",
+    "description": "Oleafly builds this project with both versions in temporary folders. Nothing in your project changes unless you switch.",
+    "compareWith": "Newer version",
+    "running": "Building with Typst {{current}} and {{candidate}}",
+    "current": "Typst {{version}} (current)",
+    "candidate": "Typst {{version}}",
+    "built": "Built",
+    "failed": "Failed",
+    "pages_one": "{{count}} page",
+    "pages_other": "{{count}} pages",
+    "pagesUnknown": "Page count unknown",
+    "errors_one": "{{count}} error",
+    "errors_other": "{{count}} errors",
+    "warnings_one": "{{count}} warning",
+    "warnings_other": "{{count}} warnings",
+    "pageChange": "The page count changes from {{from}} to {{to}}.",
+    "pageSame": "The page count stays at {{pages}}.",
+    "added": "New in Typst {{version}}",
+    "removed": "No longer reported by Typst {{version}}",
+    "noChanges": "Both versions report the same errors and warnings.",
+    "unchanged_one": "{{count}} message is the same in both versions.",
+    "unchanged_other": "{{count}} messages are the same in both versions.",
+    "buildFailed": "Typst {{version}} could not build the project.",
+    "switch": "Switch to Typst {{version}}",
+    "switched": "This project now uses Typst {{version}}.",
+    "switchFailed": "Could not switch the Typst version.",
+    "runAgain": "Check again",
+    "close": "Close",
+    "checkFailed": "The check could not finish.",
+    "noNewer": "No newer Typst is installed. You can install one in Settings.",
+    "openSettings": "Open Typst settings",
+    "location": "{{file}}, line {{line}}",
+    "error": "Error",
+    "warning": "Warning"
   }
 }

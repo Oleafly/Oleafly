@@ -300,7 +300,7 @@
       "literatureSearch": "Hae artikkeleita OpenAlexista hakusanoilla, avainta ei tarvita.",
       "verifyCitation": "Muunna DOI tai otsikko varmennetuksi BibTeX-viitteeksi doi.orgin tai Crossrefin kautta.",
       "projectLibrarySearch": "Hae projektin omasta tekstistä ja muistiinpanoista hakusanoilla.",
-      "previewFigure": "Käännä TikZ- tai PGFPlots-kuva erikseen ja näytä tulos keskustelussa.",
+      "previewFigure": "Piirrä TikZ- tai CeTZ-kuva erikseen ja näytä tulos keskustelussa.",
       "insertFigure": "Lisää valmis kuva kohdistimen kohdalle kuvatekstin ja nimikkeen kera ja tallenna PNG hakemistoon figures/.",
       "loadImage": "Katso kuvaa, joka on jo projektissa.",
       "updateTodos": "Kirjoita tai päivitä keskustelussa näkyvä vaiheittainen suunnitelma.",
@@ -343,6 +343,7 @@
     "noDescription": "Kuvausta ei ole annettu.",
     "notes": {
       "latexOnly": "Vain LaTeX-projekteissa",
+      "latexAndTypstOnly": "Vain LaTeX- ja Typst-projekteissa",
       "pdfCaptureSetting": "Vaatii PDF-sivujen kaappausasetuksen",
       "chatApproval": "Hyväksytään keskustelussa, yksi komento kerrallaan",
       "browserSetting": "Vaatii verkkoselainasetuksen"
@@ -676,6 +677,24 @@
     "tikzFigure": {
       "label": "TikZ-kuva",
       "description": "Luonnostele TikZ-koodi keskustelussa"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Korjaa Typst-virheet"
+      },
+      "writeEquation": {
+        "description": "Luonnollisesta kielestä Typst-matematiikaksi"
+      },
+      "academicPresentation": {
+        "description": "Typst-kalvosarja artikkelista"
+      },
+      "generateTable": {
+        "description": "Luonnostele Typst-taulukko keskustelussa"
+      },
+      "figure": {
+        "label": "CeTZ-kuva",
+        "description": "Luonnostele CeTZ-koodia keskustelussa"
+      }
     }
   },
   "turn": {

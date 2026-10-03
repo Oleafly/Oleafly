@@ -96,6 +96,13 @@ describe("sourceToCompile", () => {
     expect(sourceToCompile(sync, "code", drawn, "typed")).toBe("typed");
   });
 
+  it("writes the drawing in the composer's language", () => {
+    const write = (model: DiagramModel) => `typst ${model.nodes.length}`;
+    expect(sourceToCompile(emptySync(), "draw", drawn, "stale", write)).toBe("typst 1");
+    expect(sourceToCompile(drawnSync(readSync("hand", drawn)), "code", drawn, "hand", write)).toBe("typst 1");
+    expect(sourceToCompile(readSync("hand", drawn), "code", drawn, "hand", write)).toBe("hand");
+  });
+
   it("compiles the buffer when there is no drawing", () => {
     expect(sourceToCompile(emptySync(), "draw", blank, "only code")).toBe("only code");
   });

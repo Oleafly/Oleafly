@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ArxivIcon } from "@/components/icons/ArxivIcon";
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
+import { AD_HOC_CONVERTERS } from "@/features/ad-hoc-converters";
 import {
   TOOL_CATEGORY_ORDER,
   TOOL_DEFINITIONS,
@@ -33,16 +34,21 @@ describe("tool catalog identity", () => {
     ).toContain("pdf-to-latex");
   });
 
-  it("keeps the agreed 22 tools in the converter section", () => {
+  it("keeps the agreed 32 tools in the converter section", () => {
     const converters = TOOL_DEFINITIONS.filter((tool) => tool.category === "converters");
     expect(converters.map((tool) => tool.id)).toEqual([
       "image-to-latex",
       "pdf-to-latex",
       "visual-typst-editor",
       "arxiv-to-latex",
+      "arxiv-to-typst",
+      "csv-to-typst",
       "equation-to-latex",
+      "equation-to-typst",
       "excel-to-latex",
+      "excel-to-typst",
       "html-to-latex",
+      "html-to-typst",
       "image-to-typst",
       "latex-to-html",
       "latex-to-image",
@@ -52,13 +58,30 @@ describe("tool catalog identity", () => {
       "markdown-to-latex",
       "markdown-to-typst",
       "mermaid-to-latex",
+      "mermaid-to-typst",
       "pdf-to-markdown",
       "pdf-to-typst",
       "table-to-latex",
       "typst-editor",
+      "typst-to-html",
       "typst-to-latex",
+      "typst-to-markdown",
+      "typst-to-word",
       "word-to-latex",
+      "word-to-typst",
     ]);
+  });
+
+  it("opens every ad hoc converter from exactly one converter card", () => {
+    const cards = TOOL_DEFINITIONS.flatMap((tool) =>
+      tool.destination.kind === "converter" ? [tool.destination.converter] : [],
+    );
+    expect(new Set(cards).size).toBe(cards.length);
+    expect([...cards].sort()).toEqual(Object.keys(AD_HOC_CONVERTERS).sort());
+  });
+
+  it("uses the arXiv mark for both arXiv converters", () => {
+    expect(TOOL_DEFINITIONS.find((tool) => tool.id === "arxiv-to-typst")?.icon).toBe(ArxivIcon);
   });
 
   it("keeps all eight ad hoc reference tools together", () => {

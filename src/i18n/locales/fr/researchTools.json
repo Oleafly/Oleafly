@@ -575,6 +575,76 @@
       "tag2": "Flèches",
       "tag3": "Aide-mémoire",
       "tag4": "Insérer au curseur"
+    },
+    "arxivToTypst": {
+      "name": "arXiv vers Typst",
+      "description": "Convertissez une archive source arXiv en Typst. Une vérification par compilation liste ce qui n'a pas été converti.",
+      "tag1": "Archive source",
+      "tag2": "Vérification par compilation",
+      "tag3": "Identifiant : réseau requis"
+    },
+    "csvToTypst": {
+      "name": "CSV vers Typst",
+      "description": "Collez des lignes CSV ou TSV et obtenez un tableau Typst échappé.",
+      "tag1": "CSV et TSV",
+      "tag2": "Tableaux",
+      "tag3": "Local"
+    },
+    "equationToTypst": {
+      "name": "Équation vers Typst",
+      "description": "Convertissez des maths LaTeX saisies ou une image d'équation en maths Typst.",
+      "tag1": "Texte ou image",
+      "tag2": "Maths",
+      "tag3": "Intégré"
+    },
+    "excelToTypst": {
+      "name": "Excel vers Typst",
+      "description": "Convertissez une feuille Excel, CSV ou TSV en tableau Typst échappé.",
+      "tag1": "XLSX",
+      "tag2": "CSV et TSV",
+      "tag3": "Local"
+    },
+    "htmlToTypst": {
+      "name": "HTML vers Typst",
+      "description": "Convertissez du HTML collé en document Typst autonome.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Local"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid vers Typst",
+      "description": "Convertissez un organigramme Mermaid en code fletcher modifiable.",
+      "tag1": "Organigrammes",
+      "tag2": "Fletcher",
+      "tag3": "Local"
+    },
+    "typstToHtml": {
+      "name": "Typst vers HTML",
+      "description": "Convertissez du balisage Typst en HTML autonome avec des équations MathML.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst vers Markdown",
+      "description": "Convertissez du balisage Typst en Markdown portable.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Projet facultatif"
+    },
+    "typstToWord": {
+      "name": "Typst vers Word",
+      "description": "Créez un document Word dont les équations sont stockées en maths Word natives.",
+      "tag1": "DOCX",
+      "tag2": "Maths natives",
+      "tag3": "Local"
+    },
+    "wordToTypst": {
+      "name": "Word vers Typst",
+      "description": "Convertissez un document Word en Typst en gardant les médias extraits avec lui.",
+      "tag1": "DOCX",
+      "tag2": "Médias",
+      "tag3": "Projet facultatif"
     }
   },
   "generators": {
@@ -658,7 +728,9 @@
     "insertInEditor": "Insérer dans l'éditeur",
     "noDescription": "Aucune description n'est disponible pour cette commande.",
     "loadingPreview": "Chargement d'un symbole à prévisualiser.",
-    "chooseSymbol": "Choisissez un symbole dans la bibliothèque."
+    "chooseSymbol": "Choisissez un symbole dans la bibliothèque.",
+    "insertHintTypst": "Insérer le code Typst dans le document Typst ouvert.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} Ko · Cliquez pour remplacer",
@@ -714,7 +786,8 @@
     "openAiSettings": "Ouvrir les paramètres de l'IA",
     "fileReady": "{{fileName}} est prêt",
     "saveWordHint": "Enregistrez le document Word quand vous êtes prêt.",
-    "resultPlaceholder": "Votre résultat converti apparaîtra ici."
+    "resultPlaceholder": "Votre résultat converti apparaîtra ici.",
+    "progressConvertingSource": "Conversion du source en Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -835,6 +908,76 @@
       "inputLabel": "Document Word",
       "inputHint": "Choisissez un fichier .docx. Les équations et les images sont lues en local.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv vers Typst",
+      "subtitle": "Convertissez le source LaTeX d'une prépublication en Typst et voyez ce qui demande une correction manuelle",
+      "inputLabel": "Source arXiv",
+      "inputHint": "Saisissez un identifiant arXiv, ou choisissez une archive source .tar.gz ou .gz enregistrée.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV vers Typst",
+      "subtitle": "Collez des données de tableur et obtenez un tableau Typst échappé",
+      "inputLabel": "CSV ou TSV",
+      "inputHint": "Collez des lignes séparées par des virgules ou des tabulations. La première ligne devient l'en-tête.",
+      "outputLabel": "Tableau Typst"
+    },
+    "equationToTypst": {
+      "title": "Équation vers Typst",
+      "subtitle": "Transformez des maths saisies ou photographiées en maths Typst",
+      "inputLabel": "Équation",
+      "inputHint": "Saisissez des maths LaTeX, décrivez-les en mots, ou choisissez une image.",
+      "outputLabel": "Équation Typst"
+    },
+    "excelToTypst": {
+      "title": "Excel vers Typst",
+      "subtitle": "Convertissez la première feuille en tableau Typst",
+      "inputLabel": "Tableur",
+      "inputHint": "XLSX, XLS, CSV ou TSV. Les formules utilisent leurs valeurs en cache.",
+      "outputLabel": "Tableau Typst"
+    },
+    "htmlToTypst": {
+      "title": "HTML vers Typst",
+      "subtitle": "Convertissez du HTML sémantique en document Typst autonome",
+      "inputLabel": "HTML",
+      "inputHint": "Collez un fragment HTML ou un document complet.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid vers Typst",
+      "subtitle": "Transformez un organigramme Mermaid en diagramme fletcher modifiable",
+      "inputLabel": "Organigramme Mermaid",
+      "inputHint": "Les organigrammes prennent en charge les dispositions TD, LR, BT et RL, les étiquettes et les formes de nœuds courantes.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst vers HTML",
+      "subtitle": "Créez du HTML autonome avec des équations MathML",
+      "inputLabel": "Typst",
+      "inputHint": "Collez un fragment ou un document Typst complet.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst vers Markdown",
+      "subtitle": "Créez du Markdown portable sans créer de projet au préalable",
+      "inputLabel": "Typst",
+      "inputHint": "Collez un fragment ou un document Typst complet.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst vers Word",
+      "subtitle": "Créez un DOCX dont les équations sont des maths Word modifiables",
+      "inputLabel": "Typst",
+      "inputHint": "Collez un fragment ou un document Typst complet.",
+      "outputLabel": "Document Word"
+    },
+    "wordToTypst": {
+      "title": "Word vers Typst",
+      "subtitle": "Convertissez un DOCX en gardant ses médias extraits avec le résultat",
+      "inputLabel": "Document Word",
+      "inputHint": "Choisissez un fichier .docx. Les équations et les images sont lues en local.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -850,7 +993,8 @@
     "chooseFile": "Choisissez un fichier avant de convertir.",
     "fileTooLarge": "Choisissez un fichier de moins de 128 Mo.",
     "emptySheet": "La feuille sélectionnée est vide.",
-    "arxivInputRequired": "Saisissez un identifiant arXiv ou choisissez une archive source."
+    "arxivInputRequired": "Saisissez un identifiant arXiv ou choisissez une archive source.",
+    "equationToTypst": "Pandoc n'a pas pu convertir cette équation en Typst. Vérifiez les maths LaTeX et réessayez."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} pages numérisées transcrites avec un modèle local. Vérifiez les équations et les tableaux avant d'utiliser le résultat.",
@@ -858,7 +1002,18 @@
     "mermaidTikz": "Cet organigramme a été converti en TikZ modifiable.",
     "mermaidRendered": "Ce diagramme a été rendu en local car sa syntaxe Mermaid ne se traduit pas proprement en TikZ modifiable.",
     "tableConverted": "{{rows}} lignes et {{columns}} colonnes converties.",
-    "arxivBundle": "{{files}} fichiers source. Document principal : {{mainFile}}."
+    "arxivBundle": "{{files}} fichiers source. Document principal : {{mainFile}}.",
+    "mermaidFletcher": "Cet organigramme a été converti en code fletcher modifiable pour Typst.",
+    "mermaidRenderedTypst": "Ce diagramme a été rendu en local car sa syntaxe Mermaid ne se traduit pas proprement en code fletcher modifiable.",
+    "arxivTypstConverted": "{{mainFile}} converti.",
+    "typstCheckPassed": "Typst a compilé le résultat sans erreur.",
+    "typstCheckFailed_one": "Typst a trouvé {{count}} erreur.",
+    "typstCheckFailed_many": "Typst a trouvé {{count}} erreurs.",
+    "typstCheckFailed_other": "Typst a trouvé {{count}} erreurs.",
+    "notConverted_one": "{{count}} élément n'a pas été converti.",
+    "notConverted_many": "{{count}} éléments n'ont pas été convertis.",
+    "notConverted_other": "{{count}} éléments n'ont pas été convertis.",
+    "checkLine": "Ligne {{line}} : {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Ce diagramme Mermaid dépasse la limite de 50 000 caractères.",
@@ -1118,9 +1273,15 @@
   },
   "equation": {
     "subtitle": "Espace de travail LaTeX en direct",
+    "subtitleTypst": "Espace de travail Typst en direct",
+    "mathLanguage": "Langage mathématique",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Erreur",
     "statusRendered": "Rendu",
+    "statusRendering": "Rendu en cours",
     "copyLatex": "Copier le LaTeX",
+    "copyTypst": "Copier le Typst",
     "exportOptions": "Options d'export",
     "export": "Exporter",
     "downloadPng": "Télécharger le PNG",
@@ -1133,6 +1294,7 @@
     "exportSvgFailed": "Impossible d'exporter cet extrait en SVG",
     "copyKatexFailed": "Impossible de copier le HTML KaTeX",
     "copyLatexFailed": "Impossible de copier le source LaTeX",
+    "copyTypstFailed": "Impossible de copier le source Typst",
     "invalidPngName": "Choisissez un nom de fichier PNG court, sans barres obliques ni caractères spéciaux.",
     "replaceConfirm": "{{path}} existe déjà dans {{project}}. Le remplacer ?",
     "savedToProject": "{{path}} enregistré dans {{project}}.",
@@ -1146,6 +1308,7 @@
     "newImageProject": "Nouveau projet d'image",
     "mathmlFailed": "Impossible de convertir cet extrait en MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "En ligne",
     "display": "Hors ligne",
     "examples": "EXEMPLES",
@@ -1154,6 +1317,8 @@
     "previewLight": "Aperçu sur fond clair",
     "inlineSample": "Voici comment cela se place dans une phrase, comme <formula></formula>, au fil du texte qui l'entoure.",
     "empty": "Saisissez des maths LaTeX à gauche.",
+    "emptyTypst": "Saisissez des maths Typst à gauche.",
+    "typstFailed": "Typst n'a pas pu rendre cette équation.",
     "zoomOut": "Zoom arrière",
     "zoomIn": "Zoom avant",
     "resetZoom": "Réinitialiser le zoom",

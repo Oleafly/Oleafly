@@ -1,0 +1,790 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-02",
+  "supportedTargets": [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-pc-windows-msvc"
+  ],
+  "allowedDownloadHosts": [
+    "mirrors.oleafly.com",
+    "github.com",
+    "release-assets.githubusercontent.com",
+    "objects.githubusercontent.com"
+  ],
+  "typst": {
+    "repository": "https://github.com/typst/typst",
+    "bundled": "0.15.1",
+    "versions": [
+      {
+        "version": "0.11.1",
+        "tag": "v0.11.1",
+        "minor": "0.11",
+        "releasedAt": "2024-05-17",
+        "capabilities": {
+          "flags": [
+            "--font-path",
+            "--format",
+            "--input",
+            "--ppi"
+          ],
+          "outputFormats": [
+            "pdf",
+            "png",
+            "svg"
+          ],
+          "pdfStandards": []
+        },
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "typst-aarch64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-apple-darwin/typst",
+            "archiveSha256": "80af70250cd48644df36c84ced8f3e66c10903ee40cf98fe42368b42bcdc8bba",
+            "archiveSize": 9848584,
+            "binarySha256": "01e8e1fc846859d565662bc15fefebe8fe47c65e4cc6624ca7f5faca29b6e96a",
+            "binarySize": 29891480,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.11.1/typst-aarch64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.11.1/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-unknown-linux-musl/typst",
+            "archiveSha256": "7f14f7fb37b26febffd13e683f90cdacddfde420d5fdc7f809228a78545c4b26",
+            "archiveSize": 11731932,
+            "binarySha256": "7af041467b13af7a28800e1597917fdf08741c0152d688b5b67cc112e870bcdc",
+            "binarySize": 33455976,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.11.1/typst-aarch64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.11.1/typst-aarch64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-unknown-linux-musl/typst",
+            "archiveSha256": "bb637d1d65634b2ee4b4e101d0b2d541bf3f1e03ac5f51f9619941e48dd28bd0",
+            "archiveSize": 12223528,
+            "binarySha256": "2bae01a96b18f76c3339ec8f7b21e4497d11833313fd6e9539d95fe78489b582",
+            "binarySize": 37751904,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.11.1/typst-x86_64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.11.1/typst-x86_64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "typst-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "typst-x86_64-pc-windows-msvc/typst.exe",
+            "archiveSha256": "6f6896f199649717f0e1ff4aff0d5f62531e140796c1891304168fd546be2516",
+            "archiveSize": 14597698,
+            "binarySha256": "b11f4994a24c8bd18b374031974b7ba8c086241b028a659db2e009eb5c0826e3",
+            "binarySize": 33745920,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.11.1/typst-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.11.1/typst-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      },
+      {
+        "version": "0.12.0",
+        "tag": "v0.12.0",
+        "minor": "0.12",
+        "releasedAt": "2024-10-18",
+        "capabilities": {
+          "flags": [
+            "--creation-timestamp",
+            "--font-path",
+            "--format",
+            "--ignore-system-fonts",
+            "--input",
+            "--package-cache-path",
+            "--package-path",
+            "--pages",
+            "--pdf-standard",
+            "--ppi"
+          ],
+          "outputFormats": [
+            "pdf",
+            "png",
+            "svg"
+          ],
+          "pdfStandards": [
+            "1.7",
+            "a-2b"
+          ]
+        },
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "typst-aarch64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-apple-darwin/typst",
+            "archiveSha256": "0e7e7b370b240dab104654bad1ceffdbbcb17b1c98ee8b7778360ddad479fb5d",
+            "archiveSize": 10744600,
+            "binarySha256": "f97510b868e1ed27c38bc022f724e001298d2bc930890b3d13785c8153cb15bd",
+            "binarySize": 31639368,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.12.0/typst-aarch64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.12.0/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-unknown-linux-musl/typst",
+            "archiveSha256": "e81ae98e6b12db5a36c2276e5a9890da48f7a339b92476dd22daf90de3699e11",
+            "archiveSize": 12608220,
+            "binarySha256": "cdde4cc53906a2e2ed0e91af1a7a3342500c1f2bb3de715ee0d790926fbbc5f0",
+            "binarySize": 35149792,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.12.0/typst-aarch64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.12.0/typst-aarch64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-unknown-linux-musl/typst",
+            "archiveSha256": "605130a770ebd59a4a579673079cb913a13e75985231657a71d6239a57539ec3",
+            "archiveSize": 13212456,
+            "binarySha256": "71013695dfcfef0a92c7df42f63fdea3e8f12fd72220a55a03c9a6729b322b78",
+            "binarySize": 39744608,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.12.0/typst-x86_64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.12.0/typst-x86_64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "typst-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "typst-x86_64-pc-windows-msvc/typst.exe",
+            "archiveSha256": "07dceb7666b8418d5f7a0b7ebacdf0ca4a4372c0588926374e60976d55b415ff",
+            "archiveSize": 16262626,
+            "binarySha256": "1eaceee01d6e057fe00f6f30895a157a739b152fd4c144bbed00e7e187ebaea2",
+            "binarySize": 35985408,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.12.0/typst-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.12.0/typst-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      },
+      {
+        "version": "0.13.1",
+        "tag": "v0.13.1",
+        "minor": "0.13",
+        "releasedAt": "2025-03-07",
+        "capabilities": {
+          "flags": [
+            "--color",
+            "--creation-timestamp",
+            "--features",
+            "--font-path",
+            "--format",
+            "--ignore-system-fonts",
+            "--input",
+            "--package-cache-path",
+            "--package-path",
+            "--pages",
+            "--pdf-standard",
+            "--ppi"
+          ],
+          "outputFormats": [
+            "html",
+            "pdf",
+            "png",
+            "svg"
+          ],
+          "pdfStandards": [
+            "1.7",
+            "a-2b",
+            "a-3b"
+          ]
+        },
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "typst-aarch64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-apple-darwin/typst",
+            "archiveSha256": "541e4f9eaca3f34ee865f81fc663e4839cb84d6253f71a372cd855b0a7283213",
+            "archiveSize": 11034064,
+            "binarySha256": "34fc7d640227c420a4a5de9c45eba0e82e6573b9e292bdeab1d04ab1800e3dd7",
+            "binarySize": 33631720,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.13.1/typst-aarch64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.13.1/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-unknown-linux-musl/typst",
+            "archiveSha256": "4f5b7ee6e57fb639019ee0f6bffcf940edad228ede6ff5269a9f05a1544ceed4",
+            "archiveSize": 12888772,
+            "binarySha256": "ce3c5ddac1e47bd75d9a8cc0c7620158873e70719fdfc1673beb1da474ab2e95",
+            "binarySize": 36996360,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.13.1/typst-aarch64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.13.1/typst-aarch64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-unknown-linux-musl/typst",
+            "archiveSha256": "7d214bfeffc2e585dc422d1a09d2b144969421281e8c7f5d784b65fc69b5673f",
+            "archiveSize": 13608296,
+            "binarySha256": "61f743dccaaf7d763072ae046ad71f2303752e78d499d319043248f894602f45",
+            "binarySize": 42134240,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.13.1/typst-x86_64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.13.1/typst-x86_64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "typst-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "typst-x86_64-pc-windows-msvc/typst.exe",
+            "archiveSha256": "44170d0632298ba68cbabc43dbfb6908b17ca9236859e0767b0e5d54b2d19f48",
+            "archiveSize": 17259573,
+            "binarySha256": "d5ecace036685dcfd95f586f8f4fb4f24afd06e04d1c0b1e12b92e49c3d4d59a",
+            "binarySize": 38361088,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.13.1/typst-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.13.1/typst-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      },
+      {
+        "version": "0.14.2",
+        "tag": "v0.14.2",
+        "minor": "0.14",
+        "releasedAt": "2025-12-12",
+        "capabilities": {
+          "flags": [
+            "--color",
+            "--creation-timestamp",
+            "--deps",
+            "--features",
+            "--font-path",
+            "--format",
+            "--ignore-system-fonts",
+            "--input",
+            "--package-cache-path",
+            "--package-path",
+            "--pages",
+            "--pdf-standard",
+            "--ppi"
+          ],
+          "outputFormats": [
+            "html",
+            "pdf",
+            "png",
+            "svg"
+          ],
+          "pdfStandards": [
+            "1.4",
+            "1.5",
+            "1.6",
+            "1.7",
+            "2.0",
+            "a-1b",
+            "a-1a",
+            "a-2b",
+            "a-2u",
+            "a-2a",
+            "a-3b",
+            "a-3u",
+            "a-3a",
+            "a-4",
+            "a-4f",
+            "a-4e",
+            "ua-1"
+          ]
+        },
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "typst-aarch64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-apple-darwin/typst",
+            "archiveSha256": "470aa49a2298d20b65c119a10e4ff8808550453e0cb4d85625b89caf0cedf048",
+            "archiveSize": 13097856,
+            "binarySha256": "6ea59cf02d3cdfcc0e6fecb856fee3242807b6869a691d823d3ca213c6a941da",
+            "binarySize": 40693952,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.14.2/typst-aarch64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.14.2/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-unknown-linux-musl/typst",
+            "archiveSha256": "491b101aa40a3a7ea82a3f8a6232cabb4e6a7e233810082e5ac812d43fdcd47a",
+            "archiveSize": 14792812,
+            "binarySha256": "e96d316a5301b98104ddd2fdc3c5555ff402a786e9174c6a2596769f784ea50f",
+            "binarySize": 44322072,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.14.2/typst-aarch64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.14.2/typst-aarch64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-unknown-linux-musl/typst",
+            "archiveSha256": "a6044cbad2a954deb921167e257e120ac0a16b20339ec01121194ff9d394996d",
+            "archiveSize": 15877252,
+            "binarySha256": "3ac6b84150c50a694d44134dc201624fbdc44f705b9992124a13474ddf8c6413",
+            "binarySize": 50889504,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.14.2/typst-x86_64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.14.2/typst-x86_64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "typst-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "typst-x86_64-pc-windows-msvc/typst.exe",
+            "archiveSha256": "51353994ac83218c3497052e89b2c432c53b9d4439cdc1b361e2ea4798ebfc13",
+            "archiveSize": 20542725,
+            "binarySha256": "1bfcabe2756657587c5f879041b55265c2a954c2ba8125ada842d2a33b371695",
+            "binarySize": 47280640,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.14.2/typst-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.14.2/typst-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      },
+      {
+        "version": "0.15.0",
+        "tag": "v0.15.0",
+        "minor": "0.15",
+        "releasedAt": "2026-06-15",
+        "capabilities": {
+          "flags": [
+            "--color",
+            "--creation-timestamp",
+            "--deps",
+            "--features",
+            "--font-path",
+            "--format",
+            "--ignore-system-fonts",
+            "--input",
+            "--package-cache-path",
+            "--package-path",
+            "--pages",
+            "--pdf-standard",
+            "--ppi"
+          ],
+          "outputFormats": [
+            "html",
+            "pdf",
+            "png",
+            "svg"
+          ],
+          "pdfStandards": [
+            "1.4",
+            "1.5",
+            "1.6",
+            "1.7",
+            "2.0",
+            "a-1b",
+            "a-1a",
+            "a-2b",
+            "a-2u",
+            "a-2a",
+            "a-3b",
+            "a-3u",
+            "a-3a",
+            "a-4",
+            "a-4f",
+            "a-4e",
+            "ua-1"
+          ]
+        },
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "typst-aarch64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-apple-darwin/typst",
+            "archiveSha256": "fe53838737abf93a774495952a1a797b4686e9c4a21c2d99b9fdf77f46cc3572",
+            "archiveSize": 14434976,
+            "binarySha256": "3719b5ca1324cfc38e57d45c2379dfee14f3c6a6117a173b91a22a9e9cf90e2f",
+            "binarySize": 45012832,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.0/typst-aarch64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.0/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-unknown-linux-musl/typst",
+            "archiveSha256": "cdf50ffc7b8ba759ed02200632eda3d78eb8b99aacb6611f4f75684990647620",
+            "archiveSize": 16214248,
+            "binarySha256": "db8d716a137db9e9771f2d60339c3a46995cc3141fffb10ae4cca5b807c55b11",
+            "binarySize": 48647744,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.0/typst-aarch64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.0/typst-aarch64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-unknown-linux-musl/typst",
+            "archiveSha256": "59b207df01be2dab9f13e80f73d04d7ff8273ffd46b3dd1b9eef5c60f3eeabea",
+            "archiveSize": 17461256,
+            "binarySha256": "79b0bc3d6e965ad67c6aa9aea0fb7c45a386d43b03b2680c07bf9b5c4e31db23",
+            "binarySize": 55735392,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.0/typst-x86_64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.0/typst-x86_64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "typst-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "typst-x86_64-pc-windows-msvc/typst.exe",
+            "archiveSha256": "66ae7f0907b4b9afed5c7d6cb9b21e07f0f3c3d4e293ba3e0026a54d88202fe9",
+            "archiveSize": 22465201,
+            "binarySha256": "b561e8bbcccb0caaa665831d9fe08136eb47761b8ea5c2d8209ad64e76db5963",
+            "binarySize": 52485632,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.0/typst-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.0/typst-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      },
+      {
+        "version": "0.15.1",
+        "tag": "v0.15.1",
+        "minor": "0.15",
+        "releasedAt": "2026-07-17",
+        "capabilities": {
+          "flags": [
+            "--color",
+            "--creation-timestamp",
+            "--deps",
+            "--features",
+            "--font-path",
+            "--format",
+            "--ignore-system-fonts",
+            "--input",
+            "--package-cache-path",
+            "--package-path",
+            "--pages",
+            "--pdf-standard",
+            "--ppi"
+          ],
+          "outputFormats": [
+            "html",
+            "pdf",
+            "png",
+            "svg"
+          ],
+          "pdfStandards": [
+            "1.4",
+            "1.5",
+            "1.6",
+            "1.7",
+            "2.0",
+            "a-1b",
+            "a-1a",
+            "a-2b",
+            "a-2u",
+            "a-2a",
+            "a-3b",
+            "a-3u",
+            "a-3a",
+            "a-4",
+            "a-4f",
+            "a-4e",
+            "ua-1"
+          ]
+        },
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "typst-aarch64-apple-darwin.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-apple-darwin/typst",
+            "archiveSha256": "48f62ed034aa3a7978309579ac6ca00045e2ef0da73114e8af27cfd8e74dc05a",
+            "archiveSize": 14438168,
+            "binarySha256": "7c4a136b377f3689400afe37b4f0fe3528d50faaa55cbb1106ac8a128f86ba1a",
+            "binarySize": 45029488,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.1/typst-aarch64-apple-darwin.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.1/typst-aarch64-apple-darwin.tar.xz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "typst-aarch64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-aarch64-unknown-linux-musl/typst",
+            "archiveSha256": "5aa8d74a3d906e60ea12a66ac2f37f8eef1b14cbad7182a745e393a10c23dcee",
+            "archiveSize": 16216812,
+            "binarySha256": "3088dd985a891d804a98c69db24dfca77a35878e45d40e38c79cf36d72bcd4c1",
+            "binarySize": 48655936,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.1/typst-aarch64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.1/typst-aarch64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "typst-x86_64-unknown-linux-musl.tar.xz",
+            "archiveType": "tar.xz",
+            "archiveMember": "typst-x86_64-unknown-linux-musl/typst",
+            "archiveSha256": "a6d077d0a95eed5a2eba715b2dae06be954f624ccbf85758a03f389ded33118c",
+            "archiveSize": 17462992,
+            "binarySha256": "29273eaa04f6d00edd0c2bec578f565fc9c65be856bfbffc894567c68ed0b237",
+            "binarySize": 55739488,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.1/typst-x86_64-unknown-linux-musl.tar.xz",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-unknown-linux-musl.tar.xz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "typst-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "typst-x86_64-pc-windows-msvc/typst.exe",
+            "archiveSha256": "19ce3551153c2fe7ee9fa2f95208310c8f4d3209fedb699e0333faf8913f6736",
+            "archiveSize": 22463684,
+            "binarySha256": "081217a463adb006f8894b44227fe4b9c9e91fc85f5463d5948e8370db9bb31e",
+            "binarySize": 52487680,
+            "mirrorUrl": "https://mirrors.oleafly.com/binaries/typst/0.15.1/typst-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/typst/typst/releases/download/v0.15.1/typst-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      }
+    ]
+  },
+  "tinymist": {
+    "repository": "https://github.com/Myriad-Dreamin/tinymist",
+    "bundled": "0.15.8",
+    "versions": [
+      {
+        "typstMinor": "0.11",
+        "version": "0.11.32",
+        "tag": "v0.11.32",
+        "releasedAt": "2024-10-09",
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "tinymist-darwin-arm64",
+            "archiveType": "binary",
+            "archiveMember": null,
+            "archiveSha256": "ae9a6102e0b97cfd1a5c884c63c4ad2dbb06910a69c473715d403f75f3a00737",
+            "archiveSize": 45393912,
+            "binarySha256": "ae9a6102e0b97cfd1a5c884c63c4ad2dbb06910a69c473715d403f75f3a00737",
+            "binarySize": 45393912,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.11.32/tinymist-darwin-arm64",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.11.32/tinymist-darwin-arm64"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "tinymist-linux-arm64",
+            "archiveType": "binary",
+            "archiveMember": null,
+            "archiveSha256": "c5471acee7d4b781eb3ab915e4a47507723d5d3c5865f0f3476d8b78fdda5140",
+            "archiveSize": 48347240,
+            "binarySha256": "c5471acee7d4b781eb3ab915e4a47507723d5d3c5865f0f3476d8b78fdda5140",
+            "binarySize": 48347240,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.11.32/tinymist-linux-arm64",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.11.32/tinymist-linux-arm64"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "tinymist-linux-x64",
+            "archiveType": "binary",
+            "archiveMember": null,
+            "archiveSha256": "1dd84e38604fa7e8a5d8af813b2010a20048021b4bf2d481fd3d3e8d600c10c6",
+            "archiveSize": 50144512,
+            "binarySha256": "1dd84e38604fa7e8a5d8af813b2010a20048021b4bf2d481fd3d3e8d600c10c6",
+            "binarySize": 50144512,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.11.32/tinymist-linux-x64",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.11.32/tinymist-linux-x64"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "tinymist-win32-x64.exe",
+            "archiveType": "binary",
+            "archiveMember": null,
+            "archiveSha256": "d312d411df23df3f70a806048118445c122cb65b20245f810c624eb26bee2a73",
+            "archiveSize": 41273856,
+            "binarySha256": "d312d411df23df3f70a806048118445c122cb65b20245f810c624eb26bee2a73",
+            "binarySize": 41273856,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.11.32/tinymist-win32-x64.exe",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.11.32/tinymist-win32-x64.exe"
+          }
+        }
+      },
+      {
+        "typstMinor": "0.12",
+        "version": "0.12.22",
+        "tag": "v0.12.22",
+        "releasedAt": "2025-02-23",
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "tinymist-aarch64-apple-darwin.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-aarch64-apple-darwin/tinymist",
+            "archiveSha256": "d8f3eadfa15f063eacb072946bb994b4b7222e55ad1effaa43fb1c602bbf0765",
+            "archiveSize": 22768793,
+            "binarySha256": "95af050c8290bd7b67485846a452685dc19e2e7160bbf17baa27d7ad87356ad6",
+            "binarySize": 48220352,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.12.22/tinymist-aarch64-apple-darwin.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.12.22/tinymist-aarch64-apple-darwin.tar.gz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-aarch64-unknown-linux-gnu/tinymist",
+            "archiveSha256": "5b45ea46b8339859de2e6f48a2d7cfef947e87da84f883c31ae7c82931ac5d90",
+            "archiveSize": 22095867,
+            "binarySha256": "e643d5294cd1dd933e83be878b16a093663fff97618bef907b1f0c234903edc7",
+            "binarySize": 46219384,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.12.22/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.12.22/tinymist-aarch64-unknown-linux-gnu.tar.gz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "tinymist-x86_64-unknown-linux-gnu.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-x86_64-unknown-linux-gnu/tinymist",
+            "archiveSha256": "fe5bdf14412c00ec4b76f863c804eb2cb7818d829f167170397081510435e302",
+            "archiveSize": 24505301,
+            "binarySha256": "3af985b491f18f9865fa113fd3c1129401bb4b639dbefc236b6955b3b6f957b7",
+            "binarySize": 55984344,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.12.22/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.12.22/tinymist-x86_64-unknown-linux-gnu.tar.gz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "tinymist-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "tinymist.exe",
+            "archiveSha256": "e24466347a5c459d71b85367da2f5fe1ed72f5cea33fb71aa4ae19e71259193f",
+            "archiveSize": 47362170,
+            "binarySha256": "ef8a6035cb8ef19c9bdc597bc87c5e65e10821a57c6458d908d2adec3409b3ec",
+            "binarySize": 47362048,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.12.22/tinymist-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.12.22/tinymist-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      },
+      {
+        "typstMinor": "0.13",
+        "version": "0.13.30",
+        "tag": "v0.13.30",
+        "releasedAt": "2025-10-27",
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "tinymist-aarch64-apple-darwin.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-aarch64-apple-darwin/tinymist",
+            "archiveSha256": "9600428018b2d6867883b3eaf00250eed08e094bc8c15f278ff32e36e481512d",
+            "archiveSize": 24359786,
+            "binarySha256": "ec07607ab770436c30e2e4adc5248956b4827fed4f85b1194954c26a27f1105b",
+            "binarySize": 51202800,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.13.30/tinymist-aarch64-apple-darwin.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.13.30/tinymist-aarch64-apple-darwin.tar.gz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-aarch64-unknown-linux-gnu/tinymist",
+            "archiveSha256": "97df9e968939c8d78c6ea14418a028a521efd1fc16de7c5304864bc9d168bbef",
+            "archiveSize": 23597836,
+            "binarySha256": "e75363475fb725c1c209c410b3468b68a13f8cfdb642b02dce0e8eaa1b1ae1ab",
+            "binarySize": 49125168,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.13.30/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.13.30/tinymist-aarch64-unknown-linux-gnu.tar.gz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "tinymist-x86_64-unknown-linux-gnu.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-x86_64-unknown-linux-gnu/tinymist",
+            "archiveSha256": "18bc258994f3b60e70791fc86f5d6931779dbd9ef82cb837eec3c18cd2848ee4",
+            "archiveSize": 26181737,
+            "binarySha256": "92bacc5245945463ad12487ad367900e839674d30229996749e236e1b9891870",
+            "binarySize": 59831552,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.13.30/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.13.30/tinymist-x86_64-unknown-linux-gnu.tar.gz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "tinymist-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "tinymist.exe",
+            "archiveSha256": "7dbd2021689c67cbea7491d68fae94f76f799e84d2c44d2e92cf4a2cb4add022",
+            "archiveSize": 50411642,
+            "binarySha256": "58355a9c2d715245a77bb9217b7aff05a91ce93d58c0e2f3bf2665119e571331",
+            "binarySize": 50411520,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.13.30/tinymist-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.13.30/tinymist-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      },
+      {
+        "typstMinor": "0.14",
+        "version": "0.14.20",
+        "tag": "v0.14.20",
+        "releasedAt": "2026-06-15",
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "tinymist-aarch64-apple-darwin.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-aarch64-apple-darwin/tinymist",
+            "archiveSha256": "332154c8a7705ffa36e65671b1c44ebf27d9fa0db5d37ba6602d9d33432fe5f7",
+            "archiveSize": 27831786,
+            "binarySha256": "3cd751c828addf31ba47c24f554768b061519c1ba3ecae44d25d8d474bcc44cd",
+            "binarySize": 59241152,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.14.20/tinymist-aarch64-apple-darwin.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.14.20/tinymist-aarch64-apple-darwin.tar.gz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-aarch64-unknown-linux-gnu/tinymist",
+            "archiveSha256": "dd27e59984b430f6c134a45f84e317c9142f46565405fa983f1585843eb096d7",
+            "archiveSize": 26969929,
+            "binarySha256": "04c8aa7657917607483716267c122e218c584dc70b22e4eb0f594d4f1e999298",
+            "binarySize": 57217392,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.14.20/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.14.20/tinymist-aarch64-unknown-linux-gnu.tar.gz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "tinymist-x86_64-unknown-linux-gnu.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-x86_64-unknown-linux-gnu/tinymist",
+            "archiveSha256": "7c2d975834be4965f2cf61354612a64dc847bc232a56d01ec7c459c3c2ed8c7c",
+            "archiveSize": 29715997,
+            "binarySha256": "0761abc7fc35589279378acac972e123d2006f8a3a276fe5cccd10cb7df354c3",
+            "binarySize": 70477744,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.14.20/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.14.20/tinymist-x86_64-unknown-linux-gnu.tar.gz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "tinymist-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "tinymist.exe",
+            "archiveSha256": "fdceeaf07bb18523a6b721d0133742220ed4c968289a5352ef97f186eb593518",
+            "archiveSize": 58111098,
+            "binarySha256": "45ca50a789a992c4e2dce71b3096c97c781f3fc787b272544e61a91b39631799",
+            "binarySize": 58110976,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.14.20/tinymist-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.14.20/tinymist-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      },
+      {
+        "typstMinor": "0.15",
+        "version": "0.15.8",
+        "tag": "v0.15.8",
+        "releasedAt": "2026-09-08",
+        "targets": {
+          "aarch64-apple-darwin": {
+            "asset": "tinymist-aarch64-apple-darwin.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-aarch64-apple-darwin/tinymist",
+            "archiveSha256": "c3e8673fe4b7d8d21ad6d90e3c0684317191e1350758f7eaa02b5bde84339885",
+            "archiveSize": 30849883,
+            "binarySha256": "e736c3d045a588648561ab8419f9bbce4841636a0080c0ce6fa77c557c8d47c9",
+            "binarySize": 64987632,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-aarch64-apple-darwin.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-aarch64-apple-darwin.tar.gz"
+          },
+          "aarch64-unknown-linux-gnu": {
+            "asset": "tinymist-aarch64-unknown-linux-gnu.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-aarch64-unknown-linux-gnu/tinymist",
+            "archiveSha256": "ec78300e89b34e0958b615b1d42c275fd11bf91d2d27401bbef07150e477f199",
+            "archiveSize": 30317386,
+            "binarySha256": "0cb1896364ff6efaefd18b73c40276f00515d2388cb6746a8e5c14a940f9aae3",
+            "binarySize": 63963704,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-aarch64-unknown-linux-gnu.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-aarch64-unknown-linux-gnu.tar.gz"
+          },
+          "x86_64-unknown-linux-gnu": {
+            "asset": "tinymist-x86_64-unknown-linux-gnu.tar.gz",
+            "archiveType": "tar.gz",
+            "archiveMember": "tinymist-x86_64-unknown-linux-gnu/tinymist",
+            "archiveSha256": "2428932e8d8b593ebc1ac4eed41fb9d3584166e1044bbcdef740b7296c348295",
+            "archiveSize": 32978419,
+            "binarySha256": "781fcd7ccfa099d886f0a227def422595979febe77cbaf4b42f7c66cb746be1d",
+            "binarySize": 77561160,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-x86_64-unknown-linux-gnu.tar.gz",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-x86_64-unknown-linux-gnu.tar.gz"
+          },
+          "x86_64-pc-windows-msvc": {
+            "asset": "tinymist-x86_64-pc-windows-msvc.zip",
+            "archiveType": "zip",
+            "archiveMember": "tinymist.exe",
+            "archiveSha256": "b36c3e2926b2fe870e377b27aeebcb6265dd6a19fdca148a9a3ac4fdf57ee8a5",
+            "archiveSize": 30077336,
+            "binarySha256": "7098ea4c056b56ea5d865996b9d048e3a956b72ba22c31789a0422ee4634fe10",
+            "binarySize": 64074240,
+            "mirrorUrl": "https://mirrors.oleafly.com/language-servers/tinymist/0.15.8/tinymist-x86_64-pc-windows-msvc.zip",
+            "githubUrl": "https://github.com/Myriad-Dreamin/tinymist/releases/download/v0.15.8/tinymist-x86_64-pc-windows-msvc.zip"
+          }
+        }
+      }
+    ]
+  }
+}

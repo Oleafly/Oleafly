@@ -94,7 +94,9 @@
     "exitFullscreen": "전체 화면 종료",
     "retryCompile": "컴파일 다시 시도",
     "chooseEngine": "엔진 선택…",
-    "installPackages_other": "파일 {{count}}개 찾아서 설치"
+    "installPackages_other": "파일 {{count}}개 찾아서 설치",
+    "downloadTypst": "Typst {{version}} 다운로드",
+    "useTypst": "Typst {{version}} 사용"
   },
   "stale": {
     "badge": "최신 아님",
@@ -103,8 +105,8 @@
     "explanation": "이 PDF는 현재 프로젝트 리비전을 반영하지 않습니다.",
     "revisionExplanation": "프로젝트 리비전 {{displayed}}을(를) 표시하고 있습니다. 현재 프로젝트는 리비전 {{active}}입니다.",
     "noIdentity": "표시된 PDF에는 현재 리비전에 대해 검증된 컴파일 식별자가 없습니다.",
-    "syncTexAvailable": "SyncTeX는 편집한 부분에 대해 가장 가까운 변경되지 않은 줄을 사용합니다.",
-    "syncTexUnavailable": "SyncTeX를 쓰려면 최신 컴파일이 필요합니다."
+    "syncTexAvailable": "소스 동기화는 편집한 부분에 대해 가장 가까운 변경되지 않은 줄을 사용합니다.",
+    "syncTexUnavailable": "소스 동기화를 쓰려면 최신 컴파일이 필요합니다."
   },
   "save": {
     "title": "PDF를 프로젝트에 저장",
@@ -272,5 +274,33 @@
       "pageLabel": "{{total}}쪽 중 {{page}}쪽",
       "empty": "이 페이지에서 읽을 수 있는 텍스트를 찾지 못했습니다."
     }
+  },
+  "presentation": {
+    "windowTitle": "프레젠테이션",
+    "presenterTitle": "발표자 보기",
+    "present": "발표",
+    "presentFromStart": "처음부터 발표",
+    "presentFromPage": "이 페이지부터 발표",
+    "presentWithPresenter": "발표자 보기로 발표",
+    "loading": "슬라이드를 여는 중",
+    "failed": "슬라이드를 열지 못했습니다. 프로젝트를 컴파일한 다음 다시 시도하세요.",
+    "close": "닫기",
+    "slideLabel": "슬라이드 {{page}}/{{total}}",
+    "current": "현재 슬라이드",
+    "next": "다음 슬라이드",
+    "lastSlide": "마지막 슬라이드입니다.",
+    "notes": "발표자 노트",
+    "notesLoading": "발표자 노트를 읽는 중",
+    "noNotes": "이 슬라이드에는 발표자 노트가 없습니다.",
+    "elapsed": "경과 시간",
+    "clock": "현재 시각",
+    "pause": "타이머 일시 정지",
+    "resume": "타이머 재개",
+    "reset": "타이머 초기화",
+    "previousAction": "이전 슬라이드",
+    "nextAction": "다음 슬라이드",
+    "end": "발표 종료",
+    "blank": "청중 화면을 비웠습니다. 슬라이드를 다시 보이려면 B를 누르세요.",
+    "toggleBlank": "청중 화면 비우기"
   }
 }

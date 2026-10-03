@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   readTableRowsFromBytes: vi.fn(),
   renderDiagram: vi.fn(),
   svgDocumentToPngBytes: vi.fn(),
+  mermaidToFletcher: vi.fn(),
+  fletcherVersionFor: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -41,6 +43,11 @@ vi.mock("@/components/ui/mermaid-diagram", () => ({ renderDiagram: mocks.renderD
 vi.mock("@/features/equation-export", () => ({
   svgDocumentToPngBytes: mocks.svgDocumentToPngBytes,
 }));
+vi.mock("@/features/mermaid-to-tikz", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./mermaid-to-tikz")>()),
+  mermaidToFletcher: mocks.mermaidToFletcher,
+}));
+vi.mock("@oleafly/diagram/fletcher", () => ({ fletcherVersionFor: mocks.fletcherVersionFor }));
 
 import {
   AD_HOC_CONVERTERS,
@@ -101,6 +108,12 @@ beforeEach(() => {
   mocks.pdfPageToPng.mockResolvedValue("data:image/png;base64,iVBORw0KGgo=");
   mocks.renderDiagram.mockImplementation(async () => renderedMermaidSvg());
   mocks.svgDocumentToPngBytes.mockResolvedValue(new Uint8Array([137, 80, 78, 71]));
+  mocks.fletcherVersionFor.mockImplementation((version: string | null | undefined) =>
+    version?.startsWith("0.12") ? "0.5.5" : "0.5.8",
+  );
+  mocks.mermaidToFletcher.mockImplementation(
+    (_source: string, version: string) => `#import "@preview/fletcher:${version}": diagram, node, edge, shapes`,
+  );
 });
 
 describe("ad-hoc converter registry", () => {
@@ -563,3 +576,207 @@ describe("ad-hoc converter registry", () => {
     expect(mocks.svgDocumentToPngBytes).not.toHaveBeenCalled();
   });
 });
+
+describe("Typst converters", () => {
+  it.each([
+    ["typst-to-html", "typst", "html"],
+    ["typst-to-markdown", "typst", "markdown"],
+    ["typst-to-word", "typst", "docx"],
+    ["html-to-typst", "html", "typst"],
+  ] as const)("routes %s through the native Pandoc boundary", async (id, source, target) => {
+    await expect(runAdHocConverter(id, { text: "source", file: null })).resolves.toEqual(converted);
+    expect(mocks.convertAdHoc).toHaveBeenCalledWith({ source, target, text: "source" });
+  });
+
+  it("gives every Typst converter a Typst-facing output and project target", () => {
+    expect(AD_HOC_CONVERTERS["word-to-typst"]).toMatchObject({
+      inputKind: "file",
+      outputFileName: "converted.typ",
+      projectTarget: "typst",
+    });
+    expect(AD_HOC_CONVERTERS["html-to-typst"].projectTarget).toBe("typst");
+    expect(AD_HOC_CONVERTERS["arxiv-to-typst"]).toMatchObject({ inputKind: "arxiv", projectTarget: "typst" });
+    expect(AD_HOC_CONVERTERS["typst-to-word"].outputFileName).toBe("converted.docx");
+    expect(AD_HOC_CONVERTERS["typst-to-markdown"].projectTarget).toBe("markdown");
+    expect(AD_HOC_CONVERTERS["equation-to-typst"].inputKind).toBe("image-or-text");
+    expect(AD_HOC_CONVERTERS["csv-to-typst"]).toMatchObject({ inputKind: "text", outputFileName: "table.typ" });
+    expect(AD_HOC_CONVERTERS["excel-to-typst"]).toMatchObject({ inputKind: "file", outputFileName: "table.typ" });
+    expect(AD_HOC_CONVERTERS["mermaid-to-typst"].outputFileName).toBe("diagram.typ");
+  });
+
+  it("converts Word bytes into Typst", async () => {
+    const docx = new File([new Uint8Array([0x50, 0x4b, 3, 4])], "paper.docx");
+    await runAdHocConverter("word-to-typst", { text: "", file: docx });
+    expect(mocks.convertAdHoc).toHaveBeenCalledWith({
+      source: "docx",
+      target: "typst",
+      dataBase64: "UEsDBA==",
+    });
+  });
+
+  it("emits Typst tables from a spreadsheet file and from pasted CSV", async () => {
+    mocks.readTableRowsFromBytes.mockResolvedValue([
+      ["Method", "Score"],
+      ["Oleafly", "0.95"],
+    ]);
+    mocks.emitTable.mockReturnValue("#table(");
+    const sheet = new File(["Method,Score"], "results.xlsx");
+    const fromFile = await runAdHocConverter("excel-to-typst", { text: "", file: sheet });
+    expect(fromFile.text).toBe("#table(");
+    expect(mocks.readTableRowsFromBytes).toHaveBeenLastCalledWith("results.xlsx", expect.any(Uint8Array));
+    expect(mocks.emitTable).toHaveBeenLastCalledWith(expect.any(Array), {
+      target: "typst",
+      header: true,
+      boldHeader: true,
+    });
+
+    const pasted = await runAdHocConverter("csv-to-typst", { text: "Method,Score\nOleafly,0.95", file: null });
+    expect(pasted.note).toBe("Converted 2 rows and 2 columns.");
+    const [name, bytes] = mocks.readTableRowsFromBytes.mock.calls.at(-1) ?? [];
+    expect(name).toBe("table.csv");
+    expect(new TextDecoder().decode(bytes)).toBe("Method,Score\nOleafly,0.95");
+    mocks.readTableRowsFromBytes.mockResolvedValueOnce([]);
+    await expect(runAdHocConverter("csv-to-typst", { text: "", file: null })).rejects.toThrow("empty");
+  });
+
+  it("normalizes typed math, then converts it with the built-in translator", async () => {
+    const result = await runAdHocConverter("equation-to-typst", { text: "e^(iπ) + 1 = 0", file: null });
+    expect(result.text).toBe("e^(i pi) + 1 = 0");
+    expect(result.fileName).toBe("equation.typ");
+    expect(mocks.convertAdHoc).not.toHaveBeenCalled();
+    expect(mocks.completeViaBackend).not.toHaveBeenCalled();
+  });
+
+  it("reads an equation image as LaTeX first, then converts that to Typst", async () => {
+    mocks.completeViaBackend.mockResolvedValue({ text: "\\frac{a}{b}" });
+    const image = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])], "eq.png");
+    const progress = vi.fn();
+    const result = await runAdHocConverter("equation-to-typst", { text: "", file: image }, progress);
+    expect(progress).toHaveBeenCalledWith({ step: "readingEquation" });
+    expect(mocks.completeViaBackend).toHaveBeenCalledWith(
+      expect.objectContaining({ system: expect.stringContaining("one LaTeX math expression") }),
+      undefined,
+      expect.any(Object),
+    );
+    expect(mocks.convertAdHoc).not.toHaveBeenCalled();
+    expect(result.text).toBe("frac(a, b)");
+  });
+
+  it("falls back to the Pandoc equation route when the translator meets an unknown command", async () => {
+    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: "$ x star.filled y $\n" });
+    const result = await runAdHocConverter("equation-to-typst", { text: "x \\bigstar y", file: null });
+    expect(mocks.convertAdHoc).toHaveBeenCalledWith({
+      source: "equation",
+      target: "typst",
+      text: "\\[ x \\bigstar y \\]",
+    });
+    expect(result.text).toBe("x star.filled y");
+  });
+
+  it("fails clearly when Pandoc cannot read the equation either", async () => {
+    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: "\\$\\$\\\\frac\\$\\$" });
+    await expect(
+      runAdHocConverter("equation-to-typst", { text: "\\foo{a", file: null }),
+    ).rejects.toThrow("couldn't convert this equation to Typst");
+  });
+
+  it("writes Mermaid flowcharts as fletcher code pinned for the project's Typst version", async () => {
+    const result = await runAdHocConverter("mermaid-to-typst", {
+      text: "flowchart TD\n  A --> B",
+      file: null,
+      typstVersion: "0.12.0",
+    });
+    expect(mocks.fletcherVersionFor).toHaveBeenCalledWith("0.12.0");
+    expect(mocks.mermaidToFletcher).toHaveBeenCalledWith("flowchart TD\n  A --> B", "0.5.5");
+    expect(result.text).toContain("@preview/fletcher:0.5.5");
+    expect(result.note).toBe("Converted this flowchart into editable fletcher code for Typst.");
+  });
+
+  it("renders other Mermaid diagrams to an image figure for Typst", async () => {
+    mocks.mermaidToFletcher.mockImplementation(() => {
+      throw new Error("unsupported");
+    });
+    const result = await runAdHocConverter("mermaid-to-typst", {
+      text: "sequenceDiagram\nAlice->>Bob: Hello",
+      file: null,
+    });
+    expect(result.text).toContain('image("assets/diagram.png"');
+    expect(result.text).toContain("#figure(");
+    expect(result.files).toEqual([expect.objectContaining({ path: "assets/diagram.png" })]);
+  });
+
+  it("converts an arXiv source to Typst, checks it, and lists what did not convert", async () => {
+    const text = (value: string) => btoa(value);
+    mocks.extractArxivSource.mockResolvedValue({
+      archiveName: "arxiv-2301.01234",
+      mainFile: "paper/main.tex",
+      mainSource: "\\documentclass{article}\\begin{document}\\input{intro}\\end{document}",
+      files: [
+        { path: "paper/main.tex", dataBase64: text("main") },
+        { path: "paper/intro.tex", dataBase64: text("Intro \\weird{x}") },
+        { path: "paper/figs/plot.png", dataBase64: "iVBO" },
+        { path: "paper/refs.bib", dataBase64: text("@misc{a}") },
+      ],
+    });
+    mocks.convertAdHoc.mockResolvedValue({
+      ...converted,
+      text: "= Intro\n",
+      fileName: "converted.typ",
+      files: [{ path: "assets/media.png", dataBase64: "AQID" }],
+      report: ["Skipped '\\weird{x}' at line 1 column 7"],
+      check: {
+        ok: false,
+        diagnostics: [
+          { severity: "error", message: "file not found", line: 4 },
+          { severity: "warning", message: "unknown font", line: null },
+        ],
+      },
+    });
+    const progress = vi.fn();
+    const result = await runAdHocConverter("arxiv-to-typst", { text: "2301.01234", file: null }, progress);
+    expect(mocks.convertAdHoc).toHaveBeenCalledWith({
+      source: "latex",
+      target: "typst",
+      text: "\\documentclass{article}\\begin{document}Intro \\weird{x}\\end{document}",
+      report: true,
+      check: true,
+      files: [
+        { path: "figs/plot.png", dataBase64: "iVBO" },
+        { path: "refs.bib", dataBase64: text("@misc{a}") },
+      ],
+    });
+    expect(progress.mock.calls.flat()).toEqual(
+      expect.arrayContaining([
+        { step: "downloadingSource" },
+        { step: "convertingSource" },
+      ]),
+    );
+    expect(result).toMatchObject({
+      kind: "text",
+      text: "= Intro\n",
+      fileName: "main.typ",
+      mainFile: "main.typ",
+    });
+    expect(result.files.map((file) => file.path)).toEqual(["figs/plot.png", "refs.bib", "assets/media.png"]);
+    expect(result.note).toBe("Converted paper/main.tex. Typst found 1 error. 1 item did not convert.");
+    expect(result.details).toEqual([
+      "Line 4: file not found",
+      "unknown font",
+      "Skipped '\\weird{x}' at line 1 column 7",
+    ]);
+  });
+
+  it("reports a clean Typst check for an arXiv conversion", async () => {
+    mocks.extractArxivSource.mockResolvedValue({
+      archiveName: "arxiv-1",
+      mainFile: "main.tex",
+      mainSource: "x",
+      files: [],
+    });
+    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: "x", report: [], check: { ok: true, diagnostics: [] } });
+    const result = await runAdHocConverter("arxiv-to-typst", { text: "1", file: null });
+    expect(result.note).toBe("Converted main.tex. Typst compiled the result without errors.");
+    expect(result.details).toEqual([]);
+  });
+});
+

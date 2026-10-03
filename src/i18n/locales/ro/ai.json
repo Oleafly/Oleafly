@@ -307,7 +307,7 @@
       "literatureSearch": "Caută lucrări în OpenAlex după cuvinte-cheie, fără cheie de acces.",
       "verifyCitation": "Transformă un DOI sau un titlu în BibTeX verificat, prin doi.org sau Crossref.",
       "projectLibrarySearch": "Caută după cuvinte-cheie în textul și notele proiectului.",
-      "previewFigure": "Compilează separat o figură TikZ sau PGFPlots și arată rezultatul în conversație.",
+      "previewFigure": "Randează separat o figură TikZ sau CeTZ și arată rezultatul în conversație.",
       "insertFigure": "Inserează figura finită la cursor, cu legendă și etichetă, și salvează un PNG în figures/.",
       "loadImage": "Se uită la o imagine care este deja în proiect.",
       "updateTodos": "Scrie sau actualizează planul pas cu pas afișat în conversație.",
@@ -350,6 +350,7 @@
     "noDescription": "Nu s-a oferit nicio descriere.",
     "notes": {
       "latexOnly": "Doar pentru proiecte LaTeX",
+      "latexAndTypstOnly": "Doar pentru proiecte LaTeX și Typst",
       "pdfCaptureSetting": "Necesită setarea de captură a paginilor PDF",
       "chatApproval": "Aprobat în conversație, câte o comandă pe rând",
       "browserSetting": "Necesită setarea pentru browserul web"
@@ -685,6 +686,24 @@
     "tikzFigure": {
       "label": "Figură TikZ",
       "description": "Schițează cod TikZ în conversație"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Repară erorile Typst"
+      },
+      "writeEquation": {
+        "description": "Din limbaj natural în formule Typst"
+      },
+      "academicPresentation": {
+        "description": "O prezentare Typst pornind de la lucrarea ta"
+      },
+      "generateTable": {
+        "description": "Schițează un tabel Typst în conversație"
+      },
+      "figure": {
+        "label": "Figură CeTZ",
+        "description": "Schițează cod CeTZ în conversație"
+      }
     }
   },
   "turn": {

@@ -5,6 +5,7 @@ import { Plugin } from "@tiptap/pm/state";
 import { StarterKit } from "@tiptap/starter-kit";
 import type { ProofreadingResult } from "@oleafly/editor";
 import { setDictionaryNotice, useDictionary } from "@/lib/dictionary";
+import { proofreadDocument } from "@/lib/proofreading/client";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
@@ -158,5 +159,38 @@ describe("applying a Visual proofreading suggestion", () => {
 
     expect(applyVisualProofreadingSuggestion(editor as Editor, issue, fix)).toBe(false);
     expect(editor?.getText()).toBe(text);
+  });
+});
+
+describe("Visual proofreading of vendored Typst packages", () => {
+  beforeEach(() => {
+    useDictionary.setState({ ignored: {}, global: [], suppressed: {}, revision: 0 });
+    useSettingsStore.setState({ spellcheck: true, harper: false });
+    client.words = ["Straßee"];
+    vi.mocked(proofreadDocument).mockClear();
+  });
+
+  afterEach(() => {
+    editor?.destroy();
+    editor = null;
+  });
+
+  function open(path: string) {
+    useFilesStore.setState({ activePath: path, projectId: "project", docVersion: 1 });
+    editor = new Editor({
+      element: document.createElement("div"),
+      extensions: [StarterKit, VisualProofreading],
+      content: "<p>Das Wort Straßee bleibt.</p>",
+    });
+  }
+
+  it("checks a project file but never a file inside typst-packages", async () => {
+    open("typst-packages/preview/cetz/0.5.2/README.md");
+    await new Promise((resolve) => setTimeout(resolve, 1_200));
+    expect(proofreadDocument).not.toHaveBeenCalled();
+    editor?.destroy();
+
+    open("notes/README.md");
+    await vi.waitFor(() => expect(proofreadDocument).toHaveBeenCalled(), { timeout: 3_000 });
   });
 });

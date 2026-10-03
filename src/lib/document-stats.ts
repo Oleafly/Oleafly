@@ -4,6 +4,7 @@ import {
   maskToProse,
   scanMathExpressions,
 } from "@oleafly/editor";
+import { typstDocumentCounts } from "@/lib/document-stats-typst";
 
 /**
  * The document summary shown in Project info.
@@ -266,7 +267,32 @@ function scanStructure(text: string): StructureScan {
  * keys, and dimension arguments never inflate it. When masking throws, every
  * count degrades to zero rather than reporting a number nobody can trust.
  */
-export function documentStats(text: string): DocumentStats {
+export function isTypstPath(path: string | null | undefined): boolean {
+  return typeof path === "string" && /\.typ$/i.test(path);
+}
+
+function typstDocumentStats(text: string): DocumentStats {
+  try {
+    const { summary, characters, lines } = typstDocumentCounts(text);
+    return {
+      words: summary.words,
+      wordsInText: summary.wordsInText,
+      wordsInHeaders: summary.wordsInHeaders,
+      wordsOutsideText: summary.wordsOutsideText,
+      headers: summary.headingsByLevel.reduce((total, count) => total + count, 0),
+      figures: summary.figures,
+      mathInline: summary.mathInline,
+      mathDisplayed: summary.mathDisplayed,
+      characters,
+      lines,
+    };
+  } catch {
+    return { ...EMPTY_DOCUMENT_STATS };
+  }
+}
+
+export function documentStats(text: string, path?: string | null): DocumentStats {
+  if (isTypstPath(path)) return typstDocumentStats(text);
   let starts: number[];
   let characters: number;
   let lines: number;

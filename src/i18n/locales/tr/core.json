@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} çevrimdışı derleyici kipi sunmuyor. Normal biçimde derleniyor.",
     "retry": "Yeniden derle",
-    "bundleFetchFailed": "Oleafly, bu belgenin ihtiyaç duyduğu TeX paketlerini indiremedi. Bağlantınızı denetleyip yeniden derleyin."
+    "bundleFetchFailed": "Oleafly, bu belgenin ihtiyaç duyduğu TeX paketlerini indiremedi. Bağlantınızı denetleyip yeniden derleyin.",
+    "typstMissing": "Typst {{version}} kurulu değil. İndirin veya bu projeyi başka bir sürüme geçirin.",
+    "typstPackage": {
+      "downloadFailed": "Typst {{spec}} paketini indiremedi. İnternet bağlantınızı denetleyip yeniden derleyin.",
+      "downloadFailedUnnamed": "Typst bu belgenin içe aktardığı bir paketi indiremedi. İnternet bağlantınızı denetleyip yeniden derleyin.",
+      "offlineNotCached": "Çevrimdışısınız ve {{spec}} henüz paket önbelleğinde yok. Çevrimiçiyken bir kez derleyin veya paketleri projeye kopyalayın.",
+      "offlineNotCachedUnnamed": "Çevrimdışısınız ve bu belgenin içe aktardığı bir paket henüz paket önbelleğinde yok. Çevrimiçiyken bir kez derleyin.",
+      "notFound": "Typst Universe içinde {{spec}} adlı paket yok. İçe aktarmadaki adı denetleyin.",
+      "localNotFound": "Yerel {{spec}} paketi kurulu değil. Paketi Oleafly'nin Typst paketleri klasörüne veya projenin typst-packages klasörüne koyun.",
+      "versionMissing": "Bu paketin {{version}} sürümü yok. En yeni sürüm {{latest}}.",
+      "versionMissingNoLatest": "Bu paketin {{version}} sürümü yok. İçe aktarmadaki sürümü denetleyin."
+    }
   },
   "developer": {
     "actions": {
@@ -345,6 +356,7 @@
     "notRenamable": "Bu sembol yeniden adlandırılamaz.",
     "nothingToRename": "Yeniden adlandırılacak bir şey yok.",
     "referencesFor": "{{name}} kaynakları",
+    "renameFailed": "\"{{name}}\" olarak yeniden adlandırılamadı.",
     "renamePartial": "{{total}} dosyanın {{edited}} tanesinde \"{{name}}\" olarak yeniden adlandırıldı. {{files}} yazılamadı.",
     "renamed": "\"{{name}}\" olarak yeniden adlandırıldı ($t(core:navigation.files, {\"count\": {{files}} }) içinde $t(core:navigation.edits, {\"count\": {{edits}} }))"
   },
@@ -581,5 +593,8 @@
   "folderUnavailable": {
     "compile": "Proje klasörü geri gelene kadar derleme duraklatıldı.",
     "saveReason": "proje klasörü kullanılamıyor"
+  },
+  "imageToTypst": {
+    "failed": "Görselden Typst'e dönüştürme başarısız oldu: {{detail}}"
   }
 }

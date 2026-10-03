@@ -1,10 +1,14 @@
+import { ensureSyntaxTree } from "@codemirror/language";
 import { EditorState, Text } from "@codemirror/state";
-import { describe, expect, it } from "vitest";
+import type { ViewUpdate } from "@codemirror/view";
+import { loadTypstParser, typstLanguage } from "@oleafly/editor/typst";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   ancestorsAtLine,
   readableTitle,
   scanSectionHeadings,
   sectionCrumbsForState,
+  typstOutlineChanged,
 } from "./breadcrumbs-source";
 
 const DOC = [
@@ -111,5 +115,101 @@ describe("readableTitle", () => {
     expect(readableTitle(String.raw`\"Uber die L\"osung`)).toBe("Über die Lösung");
     expect(readableTitle(String.raw`Costs \& Benefits: 50\% off\,now`)).toBe("Costs & Benefits: 50% off now");
     expect(readableTitle("\\vy\u0301sledek je")).toBe("je");
+  });
+});
+
+describe("Typst breadcrumbs", () => {
+  const TYPST = [
+    '#set text(lang: "en")',
+    "= Intro *bold* <intro>",
+    "Text.",
+    "== Methods",
+    "=== Inner _part_ with $x^2$",
+    "Body.",
+    "```",
+    "= not a heading",
+    "```",
+    "= Results \\#1",
+    "Tail.",
+  ].join("\n");
+
+  beforeAll(async () => {
+    await loadTypstParser();
+  });
+
+  function typstState(head: number): EditorState {
+    const state = EditorState.create({
+      doc: TYPST,
+      selection: { anchor: head },
+      extensions: [typstLanguage()],
+    });
+    ensureSyntaxTree(state, state.doc.length, 5_000);
+    return state.update({}).state;
+  }
+
+  it("lists the enclosing headings with their markup rendered away", () => {
+    const crumbs = sectionCrumbsForState(typstState(offsetOf(TYPST, "Body.")), false);
+    expect(crumbs.map((crumb) => crumb.title)).toEqual(["Intro bold", "Methods", "Inner part with x^2"]);
+    expect(crumbs.map((crumb) => crumb.level)).toEqual([1, 2, 3]);
+  });
+
+  it("points each crumb at the first character of its title", () => {
+    const [intro] = sectionCrumbsForState(typstState(offsetOf(TYPST, "Text.")), false);
+    expect(intro.pos).toBe(offsetOf(TYPST, "Intro"));
+    expect(intro.line).toBe(2);
+  });
+
+  it("skips heading markers inside raw blocks", () => {
+    const crumbs = sectionCrumbsForState(typstState(offsetOf(TYPST, "Tail.")), false);
+    expect(crumbs.map((crumb) => crumb.title)).toEqual(["Results #1"]);
+  });
+
+  it("reports nothing before the first heading", () => {
+    expect(sectionCrumbsForState(typstState(3), true)).toEqual([]);
+  });
+});
+
+describe("typstOutlineChanged", () => {
+  beforeAll(async () => {
+    await loadTypstParser();
+  });
+
+  const update = (startState: EditorState, state: EditorState, docChanged: boolean) =>
+    ({ startState, state, docChanged }) as unknown as ViewUpdate;
+
+  function starved(doc: string): EditorState {
+    const realNow = Date.now;
+    let calls = 0;
+    Date.now = () => realNow() + calls++ * 1_000;
+    try {
+      return EditorState.create({ doc, extensions: [typstLanguage()] });
+    } finally {
+      Date.now = realNow;
+    }
+  }
+
+  it("asks for a refresh when a Typst parse finishes without an edit", () => {
+    const doc = Array.from({ length: 400 }, (_, index) => `= Section ${index}\ntext`).join("\n");
+    const partial = starved(doc);
+    ensureSyntaxTree(partial, partial.doc.length, 5_000);
+    const finished = partial.update({}).state;
+    expect(typstOutlineChanged(update(partial, finished, false))).toBe(true);
+    expect(typstOutlineChanged(update(finished, finished, false))).toBe(false);
+  });
+
+  it("asks for a refresh when an edit lands on a Typst heading line", () => {
+    const state = EditorState.create({
+      doc: "= Title\nbody",
+      selection: { anchor: 3 },
+      extensions: [typstLanguage()],
+    });
+    expect(typstOutlineChanged(update(state, state, true))).toBe(true);
+    const body = state.update({ selection: { anchor: 10 } }).state;
+    expect(typstOutlineChanged(update(body, body, true))).toBe(false);
+  });
+
+  it("leaves other languages to the line-based signal", () => {
+    const state = stateFor(DOC, 3);
+    expect(typstOutlineChanged(update(state, state.update({}).state, false))).toBe(false);
   });
 });

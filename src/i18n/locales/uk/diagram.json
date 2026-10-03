@@ -3,6 +3,22 @@
     "aiProviderRequired": "Підключіть постачальника ШІ в налаштуваннях, щоб скористатися виправленням за допомогою ШІ.",
     "fixFailed": "Не вдалося виправити: {{detail}}"
   },
+  "chooser": {
+    "title": "Виберіть редактор діаграм",
+    "description": "Виберіть, для якого типу документа потрібна діаграма.",
+    "tikz": {
+      "title": "Діаграма TikZ",
+      "description": "Вузли та стрілки на TikZ для документів LaTeX."
+    },
+    "typst": {
+      "title": "Діаграма Typst",
+      "description": "Діаграма fletcher для документів Typst."
+    },
+    "mermaid": {
+      "title": "Діаграма Mermaid",
+      "description": "Блок-схема Mermaid для документів Markdown."
+    }
+  },
   "package": {
     "composer": {
       "title": "Вставити діаграму",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Скасувати (Esc)",
       "cancelRename": "Скасувати перейменування",
       "renameTooltip": "Перейменувати діаграму",
-      "importTooltip": "Імпортувати файл .tikz або .tex, замінивши цей чернетковий варіант",
-      "importLabel": "Імпортувати файл TikZ",
+      "importTooltip": "Імпортувати файл .tikz, .tex, .typ, .mmd або .md, замінивши цю чернетку",
+      "importLabel": "Імпортувати файл діаграми",
       "modeDraw": "Малювання",
       "modeCode": "Код",
       "fixWithAiTooltip": "Попросити ШІ виправити помилку компіляції",
@@ -28,20 +44,29 @@
       "newProject": "Новий проєкт",
       "noOtherProjects": "Інших проєктів поки немає.",
       "saveFigure": "Зберегти рисунок",
+      "insertTypst": "Вставити як Typst",
+      "insertLatex": "Вставити як TikZ",
       "downloadTooltip": "Завантажити цю діаграму",
       "download": "Завантажити",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (незабаром)",
       "svgTooltip": "Експорт у SVG потребує векторного рушія, який поки недоступний",
       "snippets": "Фрагменти",
-      "untitledName": "Діаграма без назви"
+      "untitledName": "Діаграма без назви",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Вставити як Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Мова діаграми: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Прямокутний вузол",
       "circleNode": "Круглий вузол",
       "arrowEdge": "Ребро зі стрілкою",
       "lineEdge": "Ребро лінією",
-      "scope": "Область"
+      "scope": "Область",
+      "group": "Група"
     },
     "preview": {
       "label": "Перегляд",
@@ -53,7 +78,8 @@
       "pngScale": "Масштаб PNG",
       "scaleFactor": "{{factor}}x",
       "background": "Тло",
-      "backgroundLabel": "Колір тла рисунка"
+      "backgroundLabel": "Колір тла рисунка",
+      "diagnosticAt": "Рядок {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Діаграма не скомпілювалася. Перегляньте журнал нижче.",
@@ -68,16 +94,25 @@
       "figureCached": "Уже в кеші, використовуємо наявний рисунок.",
       "figureSaved": "Збережено у ваш кеш рисунків.",
       "saveFigureFailed": "Не вдалося зберегти рисунок: {{detail}}",
+      "insertedTypst": "Вставлено як код Typst.",
+      "insertedLatex": "Вставлено як код TikZ.",
       "downloaded": "Завантажено.",
       "imported": "Імпортовано {{name}} для редагування.",
       "importedCodeOnly": "Імпортовано {{name}} (лише код, малювання недоступне).",
       "importFailed": "Не вдалося імпортувати цей файл: {{detail}}",
       "noAiFix": "ШІ не повернув виправлення.",
       "fixFailed": "Не вдалося виправити: {{detail}}",
-      "notDrawable": "У цьому коді немає нічого, що можна намалювати. Код залишився без змін."
+      "notDrawable": "У цьому коді немає нічого, що можна намалювати. Код залишився без змін.",
+      "savedTypstToProject": "Збережено {{path}}. Додайте його в документ через #include.",
+      "insertedMermaid": "Вставлено як блок коду Mermaid.",
+      "savedMermaidToProject": "Збережено {{path}}. Додайте його в документ Markdown у блоці коду mermaid.",
+      "typstPackageMissing": "Typst не вдалося отримати пакет fletcher. Підключіться до інтернету один раз, щоб Typst завантажив і зберіг його.",
+      "previewUnavailable": "Цей перегляд тут недоступний.",
+      "readerUnavailable": "Не вдалося завантажити модуль читання коду. Спробуйте ще раз."
     },
     "confirm": {
-      "overwrite": "{{files}} вже існує. Перезаписати? (Виберіть іншу назву, щоб зберегти обидва.)"
+      "overwrite": "{{files}} вже існує. Перезаписати? (Виберіть іншу назву, щоб зберегти обидва.)",
+      "switchLanguage": "Перевести цю діаграму з {{from}} на {{to}}? Код, який полотно не може показати, не перенесеться."
     },
     "canvas": {
       "shapeTools": "Інструменти фігур",
@@ -136,7 +171,59 @@
       "routingStraight": "Прямий",
       "routingOrthogonal": "Ортогональний",
       "routingCurved": "Кривий",
-      "line": "Лінія"
+      "line": "Лінія",
+      "nodeLabelTypst": "Підпис (Typst)"
+    },
+    "notes": {
+      "tooltip": "Що полотно показує не повністю",
+      "count_one": "{{count}} примітка",
+      "count_few": "{{count}} примітки",
+      "count_many": "{{count}} приміток",
+      "count_other": "{{count}} примітки",
+      "keptHeading": "Залишається в коді",
+      "approximatedHeading": "Показано приблизно",
+      "droppedHeading": "Не малюється на полотні",
+      "notDiagram": "У цьому коді немає нічого, що полотно може намалювати.",
+      "outsideCode": "Код до та після діаграми зберігається як є.",
+      "wrapper": "Код навколо діаграми, наприклад рисунок, зберігається як є.",
+      "diagramSetting": "Налаштування діаграми {{detail}} зберігається в коді.",
+      "edgeOption": "Параметр ребра {{detail}} зберігається в коді.",
+      "scripted": "Вміст діаграми, заданий програмно, наприклад цикли, зберігається в коді.",
+      "mathMode": "Вміст діаграми в математичному режимі зберігається в коді.",
+      "unplacedNode": "Вузли без фіксованого положення зберігаються в коді.",
+      "unreadEdge": "Ребра, які полотно не може прочитати, зберігаються в коді.",
+      "danglingEdge": "Ребра, які не з’єднують два вузли, зберігаються в коді.",
+      "gridCoordinates": "Координати сітки показано у фіксованих позиціях.",
+      "formattedLabels": "Відформатовані підписи показано як звичайний текст.",
+      "unknownShapes": "Фігури, яких немає на полотні, показано як прямокутники.",
+      "estimatedSize": "Вузли без ширини та висоти показано з приблизним розміром.",
+      "colorAdjustments": "Змінені кольори, наприклад через lighten, показано базовим кольором.",
+      "colorExpressions": "Кольори, задані змінними чи виразами, не показано на полотні.",
+      "strokeStyles": "Деякі стилі ліній показано найближчим стилем полотна.",
+      "arrowMarks": "Наконечники стрілок, яких немає на полотні, показано як звичайні стрілки.",
+      "freePoints": "Ребра через вільні точки малюються на полотні прямими.",
+      "tikzCommand": "Команда {{detail}} не малюється. Редагування на полотні перепише код без неї.",
+      "truncated": "Код задовгий, тому малюється лише його початок.",
+      "mermaidNotFlowchart": "На полотні можна малювати лише блок-схеми. Цей код описує діаграму типу {{detail}}.",
+      "mermaidFrontmatter": "Заголовок YAML зберігається в коді.",
+      "mermaidDirective": "Директиви конфігурації зберігаються в коді.",
+      "mermaidComment": "Коментарі зберігаються в коді.",
+      "mermaidAccessibility": "Заголовки й описи для доступності зберігаються в коді.",
+      "mermaidClick": "Обробники click зберігаються в коді.",
+      "mermaidStyleProperty": "Властивість стилю {{detail}} зберігається в коді.",
+      "mermaidClassProperty": "Властивість класу {{detail}} зберігається в коді.",
+      "mermaidLinkStyleProperty": "Властивість стилю зв’язку {{detail}} зберігається в коді.",
+      "mermaidNodeSetting": "Налаштування вузла {{detail}} зберігається в коді.",
+      "mermaidEdgeSetting": "Налаштування ребра {{detail}} зберігається в коді.",
+      "mermaidInvisibleLink": "Невидимі зв’язки зберігаються в коді.",
+      "mermaidLinkLength": "Довжини зв’язків зберігаються в коді.",
+      "mermaidSubgraphDirection": "Напрямки в блоках subgraph зберігаються в коді.",
+      "mermaidUnknownStatement": "Інструкції, які полотно не може прочитати, зберігаються в коді.",
+      "mermaidShape": "Фігуру {{detail}} показано найближчою фігурою полотна.",
+      "mermaidThickLink": "Товсті зв’язки показано звичайними лініями.",
+      "mermaidArrowHead": "Наконечники у вигляді кола й хрестика показано як стрілки.",
+      "mermaidMarkdownLabel": "Підписи з Markdown показано як звичайний текст.",
+      "mermaidNoFlowchartHeader": "На полотні можна малювати лише блок-схеми. Почніть код із flowchart або graph."
     }
   }
 }

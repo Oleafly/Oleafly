@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Hledá slabiny v argumentech, metodách, důkazech a podání.",
-        "documentEditor": "Opravuje text, strukturu, citace a LaTeX cílenými, bezpečnými zásahy.",
-        "figure": "Vytváří obrázky a diagramy v publikační kvalitě jako LaTeX TikZ nebo PGFPlots.",
+        "documentEditor": "Opravuje text, strukturu, citace a zdroj LaTeX nebo Typst cílenými, bezpečnými zásahy.",
+        "figure": "Vytváří obrázky a diagramy v publikační kvalitě pomocí TikZ pro LaTeX nebo CeTZ pro Typst.",
         "researchWriter": "Píše a strukturuje odborný text, aniž by si vymýšlel důkazy nebo citace."
       },
       "suggestedDescription": "Začněte s některou z nich a pak si její instrukce upravte podle svého postupu.",
@@ -695,6 +695,29 @@
       "mathPreview": {
         "description": "Zobrazovat vykreslenou rovnici nad tou, ve které je kurzor.",
         "label": "Náhled matematiky"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Uklidí soubory Typst nástrojem typstyle, když stisknete ⌘S nebo Ctrl+S. Automatické ukládání je nechá být.",
+          "label": "Formátovat při uložení"
+        },
+        "lineWidth": {
+          "description": "typstyle zalamuje řádky delší než tato hodnota.",
+          "label": "Šířka řádku formátovače"
+        },
+        "indent": {
+          "description": "Počet mezer na úroveň odsazení ve formátovaném kódu Typst.",
+          "label": "Odsazení formátovače"
+        },
+        "inlayHints": {
+          "description": "Zobrazovat názvy parametrů před argumenty ve voláních funkcí Typst.",
+          "label": "Nápovědy názvů parametrů"
+        },
+        "lint": {
+          "description": "Kontroluje soubory Typst na pravděpodobné chyby při každém uložení. Zapnutí nebo vypnutí restartuje jazykový server Typst.",
+          "label": "Kontroly lint pro Typst"
+        }
       }
     },
     "files": {
@@ -1033,11 +1056,63 @@
       "resume": "Pokračovat ve stahování (hotovo {{size}} MB)"
     },
     "typst": {
-      "detail": "Dodává se s Oleafly. Rychlý, offline, bez nastavování. Kompiluje dokumenty Typst do PDF.",
+      "detail": "Dodává se s Oleafly, takže není co nastavovat. Připojení k internetu potřebuje jen poprvé, když dokument importuje balíček @preview.",
       "heading": "Překladač Typst",
       "name": "Typst (vestavěný)",
-      "note": "Projekty Typst vždy používají vestavěný překladač. Volba verze překladače ani systémového Typstu zatím není k dispozici.",
-      "tooltip": "Typst je součástí Oleafly, takže není co instalovat ani nastavovat. Každý projekt Typst se kompiluje vestavěným překladačem."
+      "note": "Verzi, kterou projekt používá, vyberte v nabídce kompilace. Projekt si tuto verzi ponechá, dokud ji nezměníte.",
+      "tooltip": "Oleafly obsahuje jednu verzi Typst a umí stáhnout další. Každý projekt se kompiluje verzí, kterou má připnutou, nebo výchozí verzí, pokud žádnou připnutou nemá.",
+      "system": {
+        "name": "Typst v tomto počítači",
+        "detail": "Projekty, které mají připnutou verzi {{version}}, s ním mohou kompilovat."
+      },
+      "versions": {
+        "heading": "Verze",
+        "tooltip": "Nové projekty začínají na výchozí verzi, stejně jako projekty bez připnuté verze.",
+        "loading": "Kontrolují se verze Typst",
+        "default": "Výchozí",
+        "setDefault": "Používat Typst {{version}} jako výchozí",
+        "released": "Vydáno {{date}}",
+        "install": "Nainstalovat",
+        "installAria": "Nainstalovat Typst {{version}}",
+        "removeAria": "Odebrat Typst {{version}}",
+        "removeDefault": "Toto je výchozí verze. Před odebráním zvolte jinou výchozí.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Vestavěná",
+          "downloaded": "Stažená",
+          "system": "Systémová"
+        }
+      },
+      "progress": {
+        "starting": "Spouští se",
+        "downloading": "Stahuje se {{percent}} %",
+        "verifying": "Kontroluje se",
+        "extracting": "Rozbaluje se",
+        "done": "Dokončuje se"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} stažený jazykový server nepoužívá žádná nainstalovaná verze Typst.",
+        "unused_few": "{{count}} stažené jazykové servery nepoužívá žádná nainstalovaná verze Typst.",
+        "unused_many": "{{count}} staženého jazykového serveru nepoužívá žádná nainstalovaná verze Typst.",
+        "unused_other": "{{count}} stažených jazykových serverů nepoužívá žádná nainstalovaná verze Typst.",
+        "remove": "Odebrat nepoužívané stažené jazykové servery",
+        "removed_one": "Odebrán {{count}} stažený jazykový server.",
+        "removed_few": "Odebrány {{count}} stažené jazykové servery.",
+        "removed_many": "Odebráno {{count}} staženého jazykového serveru.",
+        "removed_other": "Odebráno {{count}} stažených jazykových serverů."
+      },
+      "error": {
+        "load": "Verze Typst se nepodařilo načíst.",
+        "install": "Typst {{version}} se nepodařilo nainstalovat.",
+        "remove": "Typst {{version}} se nepodařilo odebrat.",
+        "default": "Výchozí verzi Typst se nepodařilo změnit.",
+        "removeTinymist": "Nepoužívané stažené jazykové servery se nepodařilo odebrat."
+      },
+      "upgrade": {
+        "heading": "Vyzkoušet novější verzi",
+        "detail": "Sestavte otevřený projekt novější nainstalovanou verzí a před přepnutím porovnejte výsledky.",
+        "check": "Zkontrolovat s Typst {{version}}"
+      }
     }
   },
   "github": {

@@ -1,4 +1,5 @@
-import type { Text } from "@codemirror/state";
+import type { EditorState, Text } from "@codemirror/state";
+import { typstTools } from "./typst";
 
 /**
  * A nesting level that sticky scroll can pin: one `\begin{env}`…`\end{env}`
@@ -160,3 +161,17 @@ export function scopesAtLine(
   }
   return containing.slice(0, max);
 }
+
+export interface StickySource {
+  scopes(state: EditorState): StickyScope[];
+  followsTree?: boolean;
+}
+
+export const latexStickySource: StickySource = {
+  scopes: (state) => stickyScopes(state.doc),
+};
+
+export const typstStickySource: StickySource = {
+  scopes: (state) => typstTools()?.typstStickyScopes(state) ?? [],
+  followsTree: true,
+};

@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  delimiterOf,
   emitLatexTable,
+  emitTypstLinkedTable,
   emitTypstTable,
   escapeLatexCell,
   escapeTypstCell,
   inferAlignment,
   parseDelimited,
+  parseJsonTable,
+  serializeCsv,
+  typstDataName,
 } from "./table.ts";
 
 describe("parseDelimited", () => {
@@ -87,6 +92,34 @@ describe("escapeTypstCell", () => {
       "a\\[b\\]\\#d\\$e\\*f\\_g\\`h\\@i\\\\j",
     );
   });
+
+  it("escapes labels, smart quotes and non-breaking spaces", () => {
+    expect(escapeTypstCell('a<b> "q" x~y')).toBe('a\\<b\\> \\"q\\" x\\~y');
+  });
+
+  it("escapes comment openers without touching single slashes", () => {
+    expect(escapeTypstCell("1/2 a // b /* c */")).toBe("1/2 a \\// b \\/\\* c \\*/");
+    expect(escapeTypstCell("https://example.com/a_b")).toBe("https:\\//example.com/a\\_b");
+  });
+
+  it.each([
+    ["- item", "\\- item"],
+    ["+ item", "\\+ item"],
+    ["/ term: text", "\\/ term: text"],
+    ["= Heading", "\\= Heading"],
+    ["== Heading", "\\== Heading"],
+    ["1. First", "1\\. First"],
+    ["  - indented", "  \\- indented"],
+  ])("escapes the leading marker in %j", (input, expected) => {
+    expect(escapeTypstCell(input)).toBe(expected);
+  });
+
+  it.each(["-", "-5", "+1", "=", "1.", "1.5", "a - b", "x = 1", "10%"])(
+    "leaves %j alone because Typst reads it as text",
+    (input) => {
+      expect(escapeTypstCell(input)).toBe(input);
+    },
+  );
 });
 
 describe("inferAlignment", () => {
@@ -164,20 +197,99 @@ describe("emitLatexTable", () => {
   });
 });
 
+const RESULTS = [
+  ["Model", "Accuracy", "Params"],
+  ["Base", "91.2", "110M"],
+  ["Large", "93.4", "340M"],
+];
+
 describe("emitTypstTable", () => {
-  it("emits a table with a strong header and alignment", () => {
-    const typst = emitTypstTable(
+  it("wraps a captioned, labelled table in a figure with booktabs rules", () => {
+    expect(
+      emitTypstTable(RESULTS, { header: true, caption: "Results", label: "tab:results" }),
+    ).toBe(
       [
-        ["Method", "Score"],
-        ["ours", "0.94"],
-      ],
-      { header: true, caption: "Results" },
+        "#figure(",
+        "  table(",
+        "    columns: 3,",
+        "    align: (left, right, left),",
+        "    stroke: none,",
+        "    table.hline(),",
+        "    table.header([*Model*], [*Accuracy*], [*Params*]),",
+        "    table.hline(stroke: 0.5pt),",
+        "    [Base], [91.2], [110M],",
+        "    [Large], [93.4], [340M],",
+        "    table.hline(),",
+        "  ),",
+        "  caption: [Results],",
+        ") <tab:results>",
+      ].join("\n"),
     );
-    expect(typst).toContain("#table(");
-    expect(typst).toContain("columns: (left, right),");
-    expect(typst).toContain("table.header([*Method*], [*Score*]),");
-    expect(typst).toContain("[ours], [0.94],");
-    expect(typst).toContain("caption: [Results],");
+  });
+
+  it("emits a bare table without a caption or label", () => {
+    expect(emitTypstTable(RESULTS, { header: true })).toBe(
+      [
+        "#table(",
+        "  columns: 3,",
+        "  align: (left, right, left),",
+        "  stroke: none,",
+        "  table.hline(),",
+        "  table.header([*Model*], [*Accuracy*], [*Params*]),",
+        "  table.hline(stroke: 0.5pt),",
+        "  [Base], [91.2], [110M],",
+        "  [Large], [93.4], [340M],",
+        "  table.hline(),",
+        ")",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps a figure for a label without a caption so @label resolves", () => {
+    const typst = emitTypstTable(RESULTS, { header: true, label: "tab:plain" });
+    expect(typst.startsWith("#figure(\n  table(\n")).toBe(true);
+    expect(typst).not.toContain("caption:");
+    expect(typst.endsWith("  ),\n) <tab:plain>")).toBe(true);
+  });
+
+  it("uses a figure without a label when only a caption is given", () => {
+    const typst = emitTypstTable(RESULTS, { header: true, caption: "Results" });
+    expect(typst.endsWith("  caption: [Results],\n)")).toBe(true);
+    expect(typst).not.toContain("<");
+  });
+
+  it("drops a label Typst cannot parse", () => {
+    const typst = emitTypstTable(RESULTS, { header: true, label: "tab:x> #panic()" });
+    expect(typst.startsWith("#table(")).toBe(true);
+    expect(typst).not.toContain("panic");
+  });
+
+  it("omits the header and its rule when the first row is data", () => {
+    const typst = emitTypstTable(RESULTS, { header: false });
+    expect(typst).not.toContain("table.header");
+    expect(typst).not.toContain("0.5pt");
+    expect(typst).toContain("  table.hline(),\n  [Model], [Accuracy], [Params],");
+  });
+
+  it("writes a plain header when bold is off and an empty header cell as []", () => {
+    expect(emitTypstTable([["A", ""], ["1", "2"]], { header: true, boldHeader: false })).toContain(
+      "table.header([A], []),",
+    );
+    expect(emitTypstTable([["A", ""], ["1", "2"]], { header: true })).toContain(
+      "table.header([*A*], []),",
+    );
+  });
+
+  it("uses a single alignment for a one-column table", () => {
+    expect(emitTypstTable([["Value"], ["1"]], { header: true })).toContain(
+      "  columns: 1,\n  align: right,\n",
+    );
+  });
+
+  it("honours explicit alignment and pads ragged rows", () => {
+    const typst = emitTypstTable([["a", "b", "c"], ["only-one"]], { header: true, alignment: "lcr" });
+    expect(typst).toContain("align: (left, center, right),");
+    expect(typst).toContain("[only-one], [], [],");
   });
 
   it("escapes Typst markup in cells", () => {
@@ -188,5 +300,157 @@ describe("emitTypstTable", () => {
   it("escapes Typst captions", () => {
     const typst = emitTypstTable([["a"]], { header: false, caption: "A [#]" });
     expect(typst).toContain("caption: [A \\[\\#\\]],");
+  });
+});
+
+describe("serializeCsv", () => {
+  it("quotes only the cells that need it and pads ragged rows", () => {
+    expect(serializeCsv([["Model", "Notes"], ["A", 'says "hi", twice'], ["B"], [" padded ", "line\nbreak"]])).toBe(
+      ['Model,Notes', 'A,"says ""hi"", twice"', "B,", '" padded ","line\nbreak"'].join("\n") + "\n",
+    );
+  });
+
+  it("round-trips through parseDelimited", () => {
+    const rows = [["a,b", 'q"q'], ["1", "2"]];
+    expect(parseDelimited(serializeCsv(rows))).toEqual(rows);
+  });
+});
+
+describe("delimiterOf", () => {
+  it("reports tabs only when the first record has an unquoted one", () => {
+    expect(delimiterOf("a\tb\n1\t2")).toBe("\t");
+    expect(delimiterOf('"a\tb",c\n1,2')).toBe(",");
+  });
+});
+
+describe("parseJsonTable", () => {
+  it("turns an array of records into a header of every key and one row per record", () => {
+    expect(
+      parseJsonTable('[{"model":"A","score":1.5,"ok":true},{"model":"B","score":2,"extra":null,"nested":{"a":1}}]'),
+    ).toEqual({
+      shape: "records",
+      rows: [
+        ["model", "score", "ok", "extra", "nested"],
+        ["A", "1.5", "true", "", ""],
+        ["B", "2", "", "", '{"a":1}'],
+      ],
+    });
+  });
+
+  it("keeps an array of arrays as rows", () => {
+    expect(parseJsonTable('[["a","b"],[1,null]]')).toEqual({ shape: "rows", rows: [["a", "b"], ["1", ""]] });
+  });
+
+  it("returns null for JSON that is not a table", () => {
+    expect(parseJsonTable('{"a":1}')).toBeNull();
+    expect(parseJsonTable("[1, 2]")).toBeNull();
+    expect(parseJsonTable("not json")).toBeNull();
+  });
+});
+
+describe("typstDataName", () => {
+  it("derives a Typst identifier from the data file name", () => {
+    expect(typstDataName("data/Results 2024.csv")).toBe("results-2024");
+    expect(typstDataName("2024.csv")).toBe("data-2024");
+    expect(typstDataName("données.json")).toBe("donn-es");
+    expect(typstDataName("___.csv")).toBe("data");
+  });
+});
+
+describe("emitTypstLinkedTable", () => {
+  const csv = { format: "csv" as const, path: "data/results.csv" };
+
+  it("reads a CSV at compile time with the same booktabs look as the static table", () => {
+    expect(
+      emitTypstLinkedTable(RESULTS, { header: true, caption: "Results", label: "tab:results", source: csv }),
+    ).toBe(
+      [
+        '#let results-data = csv("data/results.csv")',
+        "#figure(",
+        "  table(",
+        "    columns: results-data.first().len(),",
+        "    align: (left, right, left),",
+        "    stroke: none,",
+        "    table.hline(),",
+        "    table.header(..results-data.first().map(strong)),",
+        "    table.hline(stroke: 0.5pt),",
+        "    ..results-data.slice(1).flatten(),",
+        "    table.hline(),",
+        "  ),",
+        "  caption: [Results],",
+        ") <tab:results>",
+      ].join("\n"),
+    );
+  });
+
+  it("emits a bare table without a header and passes the tab delimiter", () => {
+    expect(
+      emitTypstLinkedTable(RESULTS, {
+        header: false,
+        source: { format: "csv", path: "../data/runs.tsv", delimiter: "\t" },
+      }),
+    ).toBe(
+      [
+        '#let runs-data = csv("../data/runs.tsv", delimiter: "\\t")',
+        "#table(",
+        "  columns: runs-data.first().len(),",
+        "  align: (left, left, left),",
+        "  stroke: none,",
+        "  table.hline(),",
+        "  ..runs-data.flatten(),",
+        "  table.hline(),",
+        ")",
+      ].join("\n"),
+    );
+  });
+
+  it("writes a plain header when bold is off and escapes the path string", () => {
+    const typst = emitTypstLinkedTable(RESULTS, {
+      header: true,
+      boldHeader: false,
+      source: { format: "csv", path: 'data/a"b.csv' },
+    });
+    expect(typst).toContain('#let a-b-data = csv("data/a\\"b.csv")');
+    expect(typst).toContain("table.header(..a-b-data.first()),");
+  });
+
+  it("reads JSON records with every key as a column", () => {
+    const records = [["model", "score"], ["A", "1.5"]];
+    expect(
+      emitTypstLinkedTable(records, { header: true, label: "tab:runs", source: { format: "json", path: "data/runs.json" } }),
+    ).toBe(
+      [
+        '#let runs-data = json("data/runs.json")',
+        "#let runs-columns = runs-data.fold((), (keys, row) => keys + row.keys().filter(key => key not in keys))",
+        "#let runs-cell(value) = if value == none { \"\" } else if type(value) == str { value } else { repr(value) }",
+        "#figure(",
+        "  table(",
+        "    columns: runs-columns.len(),",
+        "    align: (left, right),",
+        "    stroke: none,",
+        "    table.hline(),",
+        "    table.header(..runs-columns.map(strong)),",
+        "    table.hline(stroke: 0.5pt),",
+        "    ..runs-data.map(row => runs-columns.map(key => runs-cell(row.at(key, default: none)))).flatten(),",
+        "    table.hline(),",
+        "  ),",
+        ") <tab:runs>",
+      ].join("\n"),
+    );
+  });
+
+  it("reads JSON rows like a CSV and converts every value to text", () => {
+    const typst = emitTypstLinkedTable([["a", "b"], ["1", "2"]], {
+      header: true,
+      source: { format: "json", path: "data/grid.json", shape: "rows" },
+    });
+    expect(typst).toContain('#let grid-data = json("data/grid.json")');
+    expect(typst).toContain("columns: grid-data.first().len(),");
+    expect(typst).toContain("table.header(..grid-data.first().map(grid-cell).map(strong)),");
+    expect(typst).toContain("..grid-data.slice(1).flatten().map(grid-cell),");
+  });
+
+  it("returns nothing for an empty table", () => {
+    expect(emitTypstLinkedTable([], { header: true, source: csv })).toBe("");
   });
 });

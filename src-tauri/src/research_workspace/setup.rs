@@ -331,7 +331,7 @@ fn create_at(
     let reservation = ProjectReservation::reserve(root)?;
     initialize_template(template_id(preview.engine), &reservation.path)?;
     write_preview_tree(&reservation.path, &preview)?;
-    let project = serde_json::json!({
+    let mut project = serde_json::json!({
         "name": preview.name,
         "main_doc": preview.main_document,
         "engine": engine_id(preview.engine),
@@ -347,6 +347,10 @@ fn create_at(
             "initialTask": preview.initial_task
         }
     });
+    if let Some(pin) = crate::typst_toolchain::creation_pin(engine_id(preview.engine)) {
+        project["typst"] = serde_json::to_value(pin)
+            .map_err(|error| format!("could not encode project metadata: {error}"))?;
+    }
     let metadata = serde_json::to_vec_pretty(&project)
         .map_err(|error| format!("could not encode project metadata: {error}"))?;
     crate::sandbox::atomic_write(&reservation.path.join("project.json"), &metadata)?;

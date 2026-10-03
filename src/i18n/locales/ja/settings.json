@@ -154,8 +154,8 @@
       "inputLabel": "AI の予算（米ドル）",
       "inputPlaceholder": "予算なし",
       "limit": "予算に達すると実行が一時停止します。",
-      "spent": "これまでの推定利用額: {{amount}}。予算に達すると実行が一時停止します。",
       "save": "予算を保存",
+      "spent": "これまでの推定利用額: {{amount}}。予算に達すると実行が一時停止します。",
       "title": "AI の予算"
     },
     "customProvider": {
@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "主張、手法、根拠、見せ方の弱点を見つけます。",
-        "documentEditor": "文章、構成、引用、LaTeX を、要点を絞った安全な変更で直します。",
-        "figure": "出版に耐える図やダイアグラムを、LaTeX の TikZ や PGFPlots で作ります。",
+        "documentEditor": "文章、構成、引用、LaTeX や Typst のソースを、要点を絞った安全な変更で直します。",
+        "figure": "出版に耐える図やダイアグラムを、LaTeX の TikZ や Typst の CeTZ で作ります。",
         "researchWriter": "根拠や引用を捏造せずに、学術的な文章を書いて構成します。"
       },
       "suggestedDescription": "まずはこの中から 1 つ選び、指示を自分の進め方に合わせて編集してください。",
@@ -680,6 +680,29 @@
       "mathPreview": {
         "description": "カーソルのある数式の上に、描画した数式を表示します。",
         "label": "数式のプレビュー"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "⌘S または Ctrl+S を押したときに、typstyle で Typst ファイルを整形します。自動保存では整形しません。",
+          "label": "保存時に整形"
+        },
+        "lineWidth": {
+          "description": "typstyle はこれより長い行を折り返します。",
+          "label": "フォーマッターの行幅"
+        },
+        "indent": {
+          "description": "整形した Typst コードで、インデント 1 段階あたりの空白の数です。",
+          "label": "フォーマッターのインデント"
+        },
+        "inlayHints": {
+          "description": "Typst の関数呼び出しで、引数の前にパラメーター名を表示します。",
+          "label": "パラメーター名のヒント"
+        },
+        "lint": {
+          "description": "Typst ファイルを保存するたびに、ありがちな間違いをチェックします。オンとオフを切り替えると、Typst の言語サーバーが再起動します。",
+          "label": "Typst の lint チェック"
+        }
       }
     },
     "files": {
@@ -1015,11 +1038,57 @@
       "resume": "ダウンロードを再開（{{size}} MB 完了）"
     },
     "typst": {
-      "detail": "Oleafly に同梱されています。高速でオフラインでも動き、設定は不要です。Typst の文書を PDF にコンパイルします。",
+      "detail": "Oleafly に同梱されているため、設定は不要です。ネットワーク接続が必要になるのは、文書が @preview パッケージを初めて読み込むときだけです。",
       "heading": "Typst のコンパイラ",
       "name": "Typst（組み込み）",
-      "note": "Typst のプロジェクトは常に同梱のコンパイラを使います。コンパイラのバージョンの選択と、システムの Typst の利用は、まだできません。",
-      "tooltip": "Typst は Oleafly の中に同梱されているため、インストールも設定も不要です。Typst のプロジェクトはすべて同梱のコンパイラでコンパイルします。"
+      "note": "プロジェクトが使うバージョンは、コンパイルメニューから選びます。変更するまで、プロジェクトはそのバージョンを使い続けます。",
+      "tooltip": "Oleafly には Typst のバージョンが 1 つ同梱されており、ほかのバージョンもダウンロードできます。各プロジェクトは固定したバージョンでコンパイルし、固定していなければ既定のバージョンを使います。",
+      "system": {
+        "name": "このコンピュータの Typst",
+        "detail": "バージョン {{version}} を固定したプロジェクトは、これでコンパイルできます。"
+      },
+      "versions": {
+        "heading": "バージョン",
+        "tooltip": "新しいプロジェクトと、バージョンを固定していないプロジェクトは、既定のバージョンを使います。",
+        "loading": "Typst のバージョンを確認しています",
+        "default": "既定",
+        "setDefault": "Typst {{version}} を既定にする",
+        "released": "{{date}} にリリース",
+        "install": "インストール",
+        "installAria": "Typst {{version}} をインストール",
+        "removeAria": "Typst {{version}} を削除",
+        "removeDefault": "これは既定のバージョンです。削除する前に、別のバージョンを既定にしてください。",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "組み込み",
+          "downloaded": "ダウンロード済み",
+          "system": "システム"
+        }
+      },
+      "progress": {
+        "starting": "開始しています",
+        "downloading": "ダウンロード中 {{percent}}%",
+        "verifying": "確認しています",
+        "extracting": "展開しています",
+        "done": "仕上げています"
+      },
+      "languageServer": {
+        "unused_other": "{{count}} 件の言語サーバーのダウンロードは、インストール済みのどの Typst バージョンでも使われていません。",
+        "remove": "使われていない言語サーバーのダウンロードを削除",
+        "removed_other": "{{count}} 件の言語サーバーのダウンロードを削除しました。"
+      },
+      "error": {
+        "load": "Typst のバージョンを読み込めませんでした。",
+        "install": "Typst {{version}} をインストールできませんでした。",
+        "remove": "Typst {{version}} を削除できませんでした。",
+        "default": "既定の Typst バージョンを変更できませんでした。",
+        "removeTinymist": "使われていない言語サーバーのダウンロードを削除できませんでした。"
+      },
+      "upgrade": {
+        "heading": "新しいバージョンを試す",
+        "detail": "切り替える前に、インストール済みの新しいバージョンで開いているプロジェクトをビルドし、結果を比べます。",
+        "check": "Typst {{version}} で確認"
+      }
     }
   },
   "github": {

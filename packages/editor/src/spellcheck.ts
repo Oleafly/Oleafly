@@ -30,7 +30,11 @@ import {
   maskMarkdown,
 } from "./markdown-mask";
 import { spellingWordSpans, type SpellingWord } from "./spelling-words";
-import { maskTypstToProse } from "./typst-mask";
+import {
+  decodeTypstProse,
+  typstSpellcheckRanges,
+  typstToProse,
+} from "./typst-mask";
 import type { EditorTranslator } from "./messages";
 import {
   createGrammarSuppressionKeyer,
@@ -1018,9 +1022,7 @@ export function createSpellLinter() {
           const projectId = h.getProjectId();
           const path = h.getActivePath() ?? "";
           const text = view.state.doc.toString();
-          const ranges = /\.(?:md|markdown)$/i.test(path)
-            ? markdownSpellcheckRanges(text)
-            : spellcheckRanges(text);
+          const ranges = fallbackSpellingRanges(text, path);
           const diags: Diagnostic[] = [];
           for (const r of ranges) {
             if (r.word.length < 2 || h.isSessionIgnored(r.word)) continue;
@@ -1094,15 +1096,28 @@ const LOCAL_TYPO_CORRECTIONS = new Map<string, string>([
   ["hasnt", "hasn't"],
 ]);
 
+function fallbackSpellingRanges(text: string, path: string): SpellingWord[] {
+  if (/\.(?:md|markdown)$/i.test(path)) return markdownSpellcheckRanges(text);
+  if (/\.typ$/i.test(path)) return typstSpellcheckRanges(text);
+  return spellcheckRanges(text);
+}
+
 function fallbackProse(text: string, path: string) {
-  if (/\.(?:md|markdown|typ)$/i.test(path)) {
+  if (/\.typ$/i.test(path)) return decodeTypstProse(text);
+  if (/\.(?:md|markdown)$/i.test(path)) {
     return {
-      text: /\.typ$/i.test(path) ? maskTypstToProse(text) : maskMarkdown(text),
+      text: maskMarkdown(text),
       start: (index: number) => index,
       end: (index: number) => index + 1,
     };
   }
   return decodeLatexProse(text);
+}
+
+function fallbackGrammarProse(text: string, path: string) {
+  if (/\.(?:md|markdown)$/i.test(path)) return markdownToProse(text);
+  if (/\.typ$/i.test(path)) return typstToProse(text);
+  return maskToProse(text);
 }
 
 function foldWord(word: string): string {
@@ -1253,9 +1268,7 @@ async function mainThreadGrammarDiagnostics(
   }
   // Lint compacted prose (no masking gaps), then map spans back to the
   // document.
-  const { prose, map } = /\.(?:md|markdown)$/i.test(path)
-    ? markdownToProse(text)
-    : maskToProse(text);
+  const { prose, map } = fallbackGrammarProse(text, path);
   const diags = await h.lintGrammar(prose, prose.length);
   return proseGrammarDiagnostics(h, projectId, path, text, map, diags, {
     showRegionalism,

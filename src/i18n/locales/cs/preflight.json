@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Obrázek bez alternativního textu",
-      "detail": "Tento obrázek nemá popisný alternativní text, takže jej čtečka obrazovky nedokáže zprostředkovat. Přidejte popis, například \\includegraphics[alt={Portrétní fotografie autora}]{...}. Čistě dekorativní obrázky místo toho označte jako artefakty."
+      "detail": "Tento obrázek nemá popisný alternativní text, takže jej čtečka obrazovky nedokáže zprostředkovat. Přidejte popis, například \\includegraphics[alt={Portrétní fotografie autora}]{...}. Čistě dekorativní obrázky místo toho označte jako artefakty.",
+      "detailTypst": "Tento obrázek nemá alternativní text, takže jej čtečka obrazovky nedokáže zprostředkovat. Přidejte popis, například #image(\"chart.png\", alt: \"Sloupcový graf ročních tržeb\").",
+      "detailTypstFigure": "Tento obrázek nemá alternativní text, takže jej čtečka obrazovky nedokáže zprostředkovat. Popište jej u obrázku nebo u prvku figure, který jej obsahuje, například #figure(image(\"chart.png\"), alt: \"Sloupcový graf ročních tržeb\")."
     },
     "link-text": {
       "title": "Nepopisný text odkazu",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "PDF nemá název",
-      "detail": "PDF nemá v metadatech název, který asistivní technologie a prohlížeče používají k ohlášení dokumentu. Nastavte jej přes hyperref, například \\hypersetup{pdftitle={Vaše jméno, životopis}}."
+      "detail": "PDF nemá v metadatech název, který asistivní technologie a prohlížeče používají k ohlášení dokumentu. Nastavte jej přes hyperref, například \\hypersetup{pdftitle={Vaše jméno, životopis}}.",
+      "detailTypst": "PDF nemá v metadatech název, který asistivní technologie a prohlížeče používají k ohlášení dokumentu. Nastavte jej pomocí #set document(title: \"Váš název\"), nebo předejte název šabloně."
     },
     "heading-skip": {
       "title": "Přeskočená úroveň nadpisu",
@@ -314,11 +317,16 @@
     },
     "refs-undefined-cite": {
       "title": "Citace „{{key}}“ není v žádném souboru .bib",
-      "detail": "Tento klíč citace nebyl v načtené bibliografii nalezen, takže se v PDF vykreslí jako [?]. Zkontrolujte klíč, nebo záznam doplňte do svého .bib (funkce Přidat citaci jej umí stáhnout)."
+      "detail": "Tento klíč citace nebyl v načtené bibliografii nalezen, takže se v PDF vykreslí jako [?]. Zkontrolujte klíč, nebo záznam doplňte do svého .bib (funkce Přidat citaci jej umí stáhnout).",
+      "titleTypst": "Citace „{{key}}“ není v bibliografii",
+      "detailTypst": "Tento klíč není v žádném souboru bibliografie, který projekt načítá, takže kompilace selže. Zkontrolujte klíč, nebo záznam doplňte do svého souboru .bib nebo Hayagriva .yml."
     },
     "refs-undefined-ref": {
       "title": "Odkaz na „{{label}}“ nemá odpovídající \\label",
-      "detail": "Tento křížový odkaz míří na návěští, které není definováno, takže se v PDF vykreslí jako ??. Zkontrolujte název návěští, nebo chybějící \\label doplňte."
+      "detail": "Tento křížový odkaz míří na návěští, které není definováno, takže se v PDF vykreslí jako ??. Zkontrolujte název návěští, nebo chybějící \\label doplňte.",
+      "titleTypst": "Žádné návěští ani záznam s názvem „{{label}}“",
+      "detailTypst": "Typst zde kompilaci zastaví. Zkontrolujte pravopis, nebo doplňte chybějící <label> či záznam bibliografie.",
+      "detailTypstPackage": "Žádné návěští ani záznam bibliografie v projektu nemá tento název. Balíček může vytvářet návěští během kompilace dokumentu, například položky glosáře. Pokud to hlásí protokol kompilace, zkontrolujte pravopis."
     },
     "refs-duplicate-label": {
       "title": "Duplicitní návěští „{{label}}“",
@@ -328,11 +336,14 @@
       "titleImage": "Obrázek nebyl nalezen: {{file}}",
       "detailImage": "Toto \\includegraphics míří na soubor, který v projektu není, takže obrázek bude chybět. Zkontrolujte název souboru a cestu.",
       "titleInclude": "Vložený soubor nebyl nalezen: {{file}}",
-      "detailInclude": "Toto \\input nebo \\include míří na soubor, který v projektu není. Zkontrolujte název souboru a cestu."
+      "detailInclude": "Toto \\input nebo \\include míří na soubor, který v projektu není. Zkontrolujte název souboru a cestu.",
+      "detailImageTypst": "Této cestě k obrázku neodpovídá žádný soubor projektu, takže kompilace selže. Typst čte cestu relativně k souboru, nebo od kořene projektu, když začíná znakem /.",
+      "detailIncludeTypst": "Této cestě v #include nebo #import neodpovídá žádný soubor projektu, takže kompilace selže. Zkontrolujte název souboru a cestu."
     },
     "refs-bib-missing": {
       "title": "Soubor bibliografie nebyl nalezen: {{file}}",
-      "detail": "Toto \\bibliography nebo \\addbibresource míří na soubor, který v projektu není, takže se každá citace vykreslí jako [?]. Zkontrolujte název souboru, nebo jej vytvořte importem knihovny referencí."
+      "detail": "Toto \\bibliography nebo \\addbibresource míří na soubor, který v projektu není, takže se každá citace vykreslí jako [?]. Zkontrolujte název souboru, nebo jej vytvořte importem knihovny referencí.",
+      "detailTypst": "Toto volání #bibliography míří na soubor, který v projektu není, takže kompilace selže. Zkontrolujte název souboru, nebo jej vytvořte importem knihovny referencí."
     },
     "refs-duplicate-bib": {
       "title": "Duplicitní záznamy bibliografie: {{keys}}",
@@ -375,7 +386,8 @@
     },
     "privacy-blind-author": {
       "title": "Ve zdroji pro anonymní recenzi zůstala identita autora",
-      "detail": "Zdroj obsahuje neanonymního autora, pracoviště, e-mail, adresu nebo poděkování. Nahraďte identifikující obsah pomocí anonymního režimu dané konference či časopisu."
+      "detail": "Zdroj obsahuje neanonymního autora, pracoviště, e-mail, adresu nebo poděkování. Nahraďte identifikující obsah pomocí anonymního režimu dané konference či časopisu.",
+      "detailTypst": "Zdroj dává dokumentu nebo jeho šabloně jméno autora, e-mail nebo pracoviště. Odstraňte je, nebo přepněte šablonu do anonymního režimu."
     },
     "privacy-blind-acknowledgements": {
       "title": "Poděkování může prozradit autory",
@@ -404,15 +416,20 @@
     "submission-document-class": {
       "title": "Třída dokumentu {{profile}} není aktivní",
       "detail": "Tento profil očekává {{expected}}, ale projekt používá {{actual}}. Vyjděte z aktuální oficiální šablony dané konference či časopisu.",
-      "detailNoClass": "Tento profil očekává {{expected}}, ale nebyla rozpoznána žádná třída dokumentu. Vyjděte z aktuální oficiální šablony dané konference či časopisu."
+      "detailNoClass": "Tento profil očekává {{expected}}, ale nebyla rozpoznána žádná třída dokumentu. Vyjděte z aktuální oficiální šablony dané konference či časopisu.",
+      "titleTypst": "Šablona {{profile}} není aktivní",
+      "detailTypst": "Tento profil očekává šablonu Typst, například {{expected}}, ale projekt importuje {{actual}}. Vyjděte z některé z těchto šablon.",
+      "detailNoTemplateTypst": "Tento profil očekává šablonu Typst, například {{expected}}, ale projekt žádnou neimportuje. Vyjděte z některé z těchto šablon."
     },
     "submission-no-abstract": {
       "title": "Nebyl rozpoznán abstrakt",
-      "detail": "Tento publikační profil očekává abstrakt ve standardním prostředí abstract. Doplňte jej, nebo ověřte, že jej konkrétní konference či časopis nevyžaduje."
+      "detail": "Tento publikační profil očekává abstrakt ve standardním prostředí abstract. Doplňte jej, nebo ověřte, že jej konkrétní konference či časopis nevyžaduje.",
+      "detailTypst": "Tento publikační profil očekává abstrakt. Předejte jej šabloně, například abstract: [Váš abstrakt], nebo přidejte nadpis Abstract."
     },
     "submission-no-keywords": {
       "title": "Nebyla rozpoznána publikační klíčová slova",
-      "detail": "Profil {{profile}} očekává klíčová slova zapsaná standardním příkazem nebo prostředím své šablony."
+      "detail": "Profil {{profile}} očekává klíčová slova zapsaná standardním příkazem nebo prostředím své šablony.",
+      "detailTypst": "Profil {{profile}} očekává klíčová slova. Předejte je šabloně, například keywords: (\"one\", \"two\") nebo index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Nepodporovaný formát obrázku: {{file}}",
@@ -420,7 +437,8 @@
     },
     "submission-placeholder": {
       "title": "V rukopisu zůstal konceptový zástupný text",
-      "detail": "Zdroj obsahuje TODO, TBD, FIXME, zástupný text nebo otazníkové značky. Než vytvoříte finální podobu k odeslání, projděte každý výskyt."
+      "detail": "Zdroj obsahuje TODO, TBD, FIXME, zástupný text nebo otazníkové značky. Než vytvoříte finální podobu k odeslání, projděte každý výskyt.",
+      "detailTypst": "Dokument stále volá #lorem nebo obsahuje zástupný text. Před finálním odesláním jej nahraďte."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} je pod požadovanou verzí",
@@ -452,6 +470,34 @@
     "submission-font-inspection-incomplete": {
       "title": "U některých písem se vložení nepodařilo ověřit",
       "detail": "Předletová kontrola nedokázala prokázat stav vložení u {{fonts}}. Ověřte je oficiálním nástrojem dané konference či časopisu pro kontrolu PDF."
+    },
+    "empty-heading": {
+      "title": "Prázdný nadpis",
+      "detail": "Tento nadpis nemá žádný text. Čtečky obrazovky jej v osnově ohlásí jako prázdnou položku. Doplňte název, nebo nadpis odstraňte."
+    },
+    "todo-in-text": {
+      "title": "Pracovní poznámka v textu",
+      "detail": "Tato poznámka je součástí textu, takže se vytiskne do PDF. Vyřešte ji, nebo ji převeďte na komentář //."
+    },
+    "no-author": {
+      "title": "Dokument nemá autora",
+      "detail": "Metadata PDF neobsahují autora. Doplňte jej pomocí #set document(author: \"Vaše jméno\"), nebo předejte autory šabloně. Pro anonymní recenzi jej vynechte."
+    },
+    "privacy-local-path": {
+      "title": "Cesta ve vašem počítači: {{path}}",
+      "detail": "Tato cesta míří do složky mimo projekt. Může prozradit vaše uživatelské jméno a na jakémkoli jiném počítači sestavení selže. Přesuňte soubor do projektu a použijte relativní cestu."
+    },
+    "privacy-blind-email": {
+      "title": "E-mailová adresa v {{file}}",
+      "detail": "E-mailová adresa může během anonymní recenze prozradit autory. Odstraňte ji, nebo ji nahraďte anonymním zástupným textem."
+    },
+    "refs-no-bibliography": {
+      "title": "Citace bez bibliografie",
+      "detail": "Dokument cituje zdroje, ale nikdy nevolá #bibliography, takže je Typst nedokáže vyřešit. Přidejte #bibliography(\"refs.bib\") tam, kde se má objevit seznam literatury."
+    },
+    "submission-large-image": {
+      "title": "Velmi velký obrázek: {{file}}",
+      "detail": "Tento obrázek má přes {{limit}}. Velké obrázky zpomalují kompilaci a zvětšují PDF. Některé konference a časopisy navíc omezují velikost nahrávaného souboru. Obrázek zkomprimujte, nebo jej exportujte ve velikosti, v jaké se vytiskne."
     }
   },
   "lens": {
@@ -689,5 +735,15 @@
     "compileTagged": "Zkompilovat s tagy a ověřit",
     "compileTaggedWarning": "Systémový LuaLaTeX umí číst místní soubory. Spouštějte jej jen u projektu, kterému věříte.",
     "noEngine": "Chcete-li tagované PDF vytvořit přímo v aplikaci, zapněte engine v Nastavení, Engine LaTeX. Nebo připravený zdroj zkompilujte vlastním pdfLaTeX či LuaLaTeX z TeX Live 2025 nebo novějšího."
+  },
+  "typstStandards": {
+    "title": "Standardy PDF",
+    "intro": "Typst sám vytváří archivní a přístupná PDF. Vyberte standard a pak PDF exportujte.",
+    "standard": "Standard",
+    "export": "Exportovat PDF",
+    "tagged": "Typst {{version}} taguje každé PDF pro čtečky obrazovky, takže samostatná tagovaná kompilace neexistuje.",
+    "untagged": "Typst {{version}} netaguje PDF pro čtečky obrazovky. Typst 0.14 a novější to umí.",
+    "none": "Typst {{version}} neumí vytvářet standardy PDF. V nabídce kompilace vyberte Typst 0.12 nebo novější.",
+    "uaNote": "PDF/UA-1 vyžaduje název dokumentu a alternativní text u každého obrázku."
   }
 }

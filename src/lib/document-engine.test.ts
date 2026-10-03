@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  figureToolEngine,
   supportsFigureTools,
   compileOfflineForEngine,
+  compileSettingsForEngine,
   formattingForEngine,
   LATEX_ENGINE,
   pathUsesEngineSource,
@@ -13,6 +15,40 @@ describe("pathUsesEngineSource", () => {
     expect(pathUsesEngineSource(LATEX_ENGINE, "chapters/main.tex")).toBe(true);
     expect(pathUsesEngineSource(LATEX_ENGINE, "README.md")).toBe(false);
     expect(pathUsesEngineSource(LATEX_ENGINE, "notes.typ")).toBe(false);
+  });
+});
+
+describe("compileSettingsForEngine", () => {
+  const withProfile = (
+    id: "latexmk" | "typst" | "markdown",
+    profile: "latex" | "typst" | "markdown",
+  ) => ({
+    ...LATEX_ENGINE,
+    id,
+    capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: profile },
+  });
+
+  it("offers every LaTeX compile setting on the bundled Tectonic engine", () => {
+    expect(compileSettingsForEngine(LATEX_ENGINE)).toEqual({
+      syntaxCheck: true,
+      draftMode: true,
+      stopOnFirstError: true,
+    });
+  });
+
+  it("drops the draft mode for latexmk", () => {
+    expect(compileSettingsForEngine(withProfile("latexmk", "latex"))).toEqual({
+      syntaxCheck: true,
+      draftMode: false,
+      stopOnFirstError: true,
+    });
+  });
+
+  it("offers none of them for Typst, Markdown or an unknown engine", () => {
+    const none = { syntaxCheck: false, draftMode: false, stopOnFirstError: false };
+    expect(compileSettingsForEngine(withProfile("typst", "typst"))).toEqual(none);
+    expect(compileSettingsForEngine(withProfile("markdown", "markdown"))).toEqual(none);
+    expect(compileSettingsForEngine(UNKNOWN_ENGINE)).toEqual(none);
   });
 });
 
@@ -107,20 +143,43 @@ describe("formattingForEngine", () => {
 });
 
 describe("supportsFigureTools", () => {
-  it("requires both LaTeX formatting and isolated compilation", () => {
+  const typst = {
+    ...LATEX_ENGINE,
+    id: "typst" as const,
+    capabilities: {
+      ...LATEX_ENGINE.capabilities,
+      formatting_profile: "typst" as const,
+      supports_isolated_compile: false,
+    },
+  };
+  const markdown = {
+    ...LATEX_ENGINE,
+    id: "markdown" as const,
+    capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "markdown" as const },
+  };
+  const latexWithoutIsolation = {
+    ...LATEX_ENGINE,
+    capabilities: { ...LATEX_ENGINE.capabilities, supports_isolated_compile: false },
+  };
+
+  it("needs isolated compilation for LaTeX figures", () => {
     expect(supportsFigureTools(LATEX_ENGINE)).toBe(true);
     expect(supportsFigureTools(LATEX_ENGINE, false)).toBe(false);
-    expect(
-      supportsFigureTools({
-        ...LATEX_ENGINE,
-        id: "typst",
-        capabilities: {
-          ...LATEX_ENGINE.capabilities,
-          formatting_profile: "typst",
-          supports_isolated_compile: true,
-        },
-      }),
-    ).toBe(false);
+    expect(supportsFigureTools(latexWithoutIsolation)).toBe(false);
+    expect(figureToolEngine(LATEX_ENGINE)).toBe("latex");
+  });
+
+  it("renders Typst figures through the snippet renderer instead of an isolated compile", () => {
+    expect(supportsFigureTools(typst)).toBe(true);
+    expect(supportsFigureTools(typst, false)).toBe(false);
+    expect(figureToolEngine(typst)).toBe("typst");
+  });
+
+  it("offers no figure engine for Markdown or an unknown engine", () => {
+    expect(supportsFigureTools(markdown)).toBe(false);
+    expect(supportsFigureTools(UNKNOWN_ENGINE)).toBe(false);
+    expect(figureToolEngine(markdown)).toBeNull();
+    expect(figureToolEngine(UNKNOWN_ENGINE)).toBeNull();
   });
 });
 

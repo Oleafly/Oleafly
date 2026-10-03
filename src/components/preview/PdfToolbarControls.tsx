@@ -13,6 +13,7 @@ import {
   Minimize,
   MoreHorizontal,
   PanelTopClose,
+  Presentation,
   RectangleVertical,
   RotateCw,
   Save,
@@ -78,7 +79,16 @@ export interface PdfToolbarControlsProps {
   detached?: boolean;
   onWindow: () => void;
   onSettings: () => void;
+  onPresent?: (mode: PresentMode) => void;
 }
+
+export type PresentMode = "start" | "page" | "presenter";
+
+const PRESENT_MODES: readonly { mode: PresentMode; label: () => string }[] = [
+  { mode: "start", label: () => i18n.t(($) => $.preview.presentation.presentFromStart) },
+  { mode: "page", label: () => i18n.t(($) => $.preview.presentation.presentFromPage) },
+  { mode: "presenter", label: () => i18n.t(($) => $.preview.presentation.presentWithPresenter) },
+];
 
 const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.5, 2, 4];
 
@@ -100,7 +110,7 @@ const PAGE_LAYOUTS: readonly {
 ];
 
 export function PdfToolbarControls({
-  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting, exportDisplayedPreview, downloadActionLabel, onSave, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings
+  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting, exportDisplayedPreview, downloadActionLabel, onSave, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent
 }: Readonly<PdfToolbarControlsProps>) {
   const { t } = useTranslation(["preview", "ai"]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
@@ -598,6 +608,52 @@ export function PdfToolbarControls({
         { disabled: !hasDocument },
       ),
     );
+    if (onPresent && hasDocument && !isImage && numPages > 0) {
+      viewGroup.push({
+        id: "present",
+        width: ICON_BUTTON_WIDTH,
+        render: () => (
+          <DropdownMenu>
+            <Tooltip label={t(($) => $.preview.presentation.present)}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label={t(($) => $.preview.presentation.present)}
+                >
+                  <Presentation className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+            </Tooltip>
+            <DropdownMenuContent align="end" className="min-w-52">
+              {PRESENT_MODES.map(({ mode, label }) => (
+                <DropdownMenuItem key={mode} onSelect={() => onPresent(mode)}>
+                  {label()}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+        renderMenu: () => (
+          <DropdownMenuSub key="present">
+            <DropdownMenuSubTrigger>
+              <Presentation className="size-4" />
+              {t(($) => $.preview.presentation.present)}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent className="min-w-52">
+                {PRESENT_MODES.map(({ mode, label }) => (
+                  <DropdownMenuItem key={mode} onSelect={() => onPresent(mode)}>
+                    {label()}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        ),
+      });
+    }
     return { layoutGroup, pageGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup };
   };
   const { layoutGroup, pageGroup, viewGroup, zoomGroup, inkGroup, fileGroup, windowGroup } = buildPreviewToolbarGroups();

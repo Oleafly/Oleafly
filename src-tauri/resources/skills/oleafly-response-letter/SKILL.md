@@ -1,11 +1,11 @@
 ---
 name: oleafly-response-letter
-description: Turn reviewer comments and the changes already made into a point-by-point response letter, in LaTeX and in plain text. Use when preparing a rebuttal, an author response, or a revision cover letter for a journal or conference, when mapping each reviewer point to the passage that changed, when a resubmission needs every comment answered, or when a response letter has to compile alongside the paper.
+description: Turn reviewer comments and the changes already made into a point-by-point response letter, in LaTeX or Typst and in plain text. Use when preparing a rebuttal, an author response, or a revision cover letter for a journal or conference, when mapping each reviewer point to the passage that changed, when a resubmission needs every comment answered, or when a response letter has to compile alongside the paper.
 license: MIT
-compatibility: Any LaTeX project. Finding what changed works best when the project is a git repository, which Oleafly projects are by default. The bundled template compiles on the app engine with no extra packages.
+compatibility: Any LaTeX or Typst project. Finding what changed works best when the project is a git repository, which Oleafly projects are by default. The bundled templates compile on the app engines with no extra packages.
 allowed-tools: read_file list_files search_project create_file write_file replace_in_file compile get_log set_main_doc run_command read_skill_file show_location update_todos
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -87,9 +87,9 @@ Track the mapping with `update_todos` so a point cannot fall out of the list.
 Write two files:
 
 - `review/response.md`, plain text, for pasting into a submission form or an email
-- `response.tex`, from `assets/response-template.tex`, for the venues that want a PDF
+- the typeset letter for the venues that want a PDF, in the paper's own language: `response.typ` from `assets/response-template.typ` in a Typst project, and `response.tex` from `assets/response-template.tex` otherwise
 
-The template gives you four macros and nothing else to learn:
+The LaTeX template gives you five macros and nothing else to learn:
 
 ```latex
 \reviewer{1}
@@ -98,7 +98,18 @@ The template gives you four macros and nothing else to learn:
 \changed{sections/methods.tex, line 84}{With 80\% power at alpha = 0.05 to detect a difference of 0.4 SD, each arm required 99 participants.}
 ```
 
-`\reviewer` opens a reviewer block, `\point` prints the comment in italics, `\reply` prints your answer, and `\changed` shows where the manuscript changed and quotes the new text. Read `references/tone-and-structure.md` before writing the prose.
+`\reviewer` opens a reviewer block, `\point` prints the comment in italics, `\reply` prints your answer, and `\changed` shows where the manuscript changed and quotes the new text. `\notchanged` marks a point you did not act on.
+
+The Typst template defines the same five functions under the same names:
+
+```typst
+#reviewer(1)
+#point[R1.1][The sample size justification is missing.]
+#reply[We have added the power calculation that determined the group size.]
+#changed("sections/methods.typ, line 84")[With 80% power at alpha = 0.05 to detect a difference of 0.4 SD, each arm required 99 participants.]
+```
+
+The location in `#changed` is a plain string, and everything else is content in square brackets. Read `references/tone-and-structure.md` before writing the prose.
 
 ### 5. Compile the letter
 
@@ -106,7 +117,7 @@ The letter is a second document in the same project, and a project has one main 
 
 **Compile it in place.** Note the current main document first, because you have to put it back.
 
-1. `set_main_doc` to `response.tex`
+1. `set_main_doc` to `response.tex` or `response.typ`
 2. `compile`, and `get_log` if it fails
 3. `set_main_doc` back to the paper's main file, whether the compile succeeded or not
 
@@ -139,15 +150,16 @@ Then call `show_location` on two or three of the largest changes so the user can
 ## When something goes wrong
 
 - `git diff` output is enormous: narrow it with a path (`git diff <rev> -- sections/`) or use `--stat` first to find which files moved.
-- `search_project` cannot find the new sentence: LaTeX wraps lines, so search a short fragment with no punctuation or macros in it.
-- The template does not compile: the macros need nothing beyond `article`, `geometry`, `xcolor`, and `parskip`. If it still fails, `get_log` and look for a stray `%` or an unescaped `&`, `_`, or `#` copied out of a reviewer comment. Reviewer text is the usual culprit, because it was written in a plain-text editor.
+- `search_project` cannot find the new sentence: the source wraps lines, so search a short fragment with no punctuation or markup in it.
+- The LaTeX template does not compile: the macros need nothing beyond `article`, `geometry`, `xcolor`, and `parskip`. If it still fails, `get_log` and look for a stray `%` or an unescaped `&`, `_`, or `#` copied out of a reviewer comment. Reviewer text is the usual culprit, because it was written in a plain-text editor.
+- The Typst template does not compile: it uses no packages, so the cause is almost always reviewer text inside the square brackets. Escape `#`, `$`, `*`, `_`, `@`, `<` and backticks with a backslash, and keep brackets balanced.
 - You set the main document and then the run ended: tell the user in your reply exactly which file to set back.
 
 ## Artifacts
 
 - `review/comments.md`, the reviewer comments verbatim and numbered
 - `review/response.md`, the plain-text response
-- `response.tex`, the LaTeX response letter
+- `response.tex` or `response.typ`, the typeset response letter
 
 ## Done when
 

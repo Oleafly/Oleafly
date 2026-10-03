@@ -574,6 +574,76 @@
       "tag2": "Nuolet",
       "tag3": "Muistilista",
       "tag4": "Lisää kohdistimeen"
+    },
+    "arxivToTypst": {
+      "name": "arXiv Typst-muotoon",
+      "description": "Muunna arXiv-lähdepaketti Typst-muotoon. Käännöstarkistus luettelee, mikä jäi muuntamatta.",
+      "tag1": "Lähdearkisto",
+      "tag2": "Käännöstarkistus",
+      "tag3": "Tunnus vaatii verkon"
+    },
+    "csvToTypst": {
+      "name": "CSV Typst-muotoon",
+      "description": "Liitä CSV- tai TSV-rivejä ja saat suojatun Typst-taulukon.",
+      "tag1": "CSV ja TSV",
+      "tag2": "Taulukot",
+      "tag3": "Paikallinen"
+    },
+    "equationToTypst": {
+      "name": "Kaava Typst-muotoon",
+      "description": "Muunna kirjoitettu LaTeX-matematiikka tai kaavan kuva Typst-matematiikaksi.",
+      "tag1": "Teksti tai kuva",
+      "tag2": "Matematiikka",
+      "tag3": "Sisäänrakennettu"
+    },
+    "excelToTypst": {
+      "name": "Excel Typst-muotoon",
+      "description": "Muunna Excel-, CSV- tai TSV-taulukko suojatuksi Typst-taulukoksi.",
+      "tag1": "XLSX",
+      "tag2": "CSV ja TSV",
+      "tag3": "Paikallinen"
+    },
+    "htmlToTypst": {
+      "name": "HTML Typst-muotoon",
+      "description": "Muunna liitetty HTML itsenäiseksi Typst-dokumentiksi.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Paikallinen"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid Typst-muotoon",
+      "description": "Muunna Mermaid-vuokaavio muokattavaksi fletcher-koodiksi.",
+      "tag1": "Vuokaaviot",
+      "tag2": "Fletcher",
+      "tag3": "Paikallinen"
+    },
+    "typstToHtml": {
+      "name": "Typst HTML-muotoon",
+      "description": "Muunna Typst-merkintäkieli itsenäiseksi HTML:ksi, jossa on MathML-kaavat.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst Markdown-muotoon",
+      "description": "Muunna Typst-merkintäkieli siirrettäväksi Markdown-tekstiksi.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Projekti valinnainen"
+    },
+    "typstToWord": {
+      "name": "Typst Word-muotoon",
+      "description": "Luo Word-dokumentti, jossa kaavat tallennetaan Wordin omana matematiikkana.",
+      "tag1": "DOCX",
+      "tag2": "Natiivimatematiikka",
+      "tag3": "Paikallinen"
+    },
+    "wordToTypst": {
+      "name": "Word Typst-muotoon",
+      "description": "Muunna Word-dokumentti Typst-muotoon ja pidä poimitut mediatiedostot mukana.",
+      "tag1": "DOCX",
+      "tag2": "Media",
+      "tag3": "Projekti valinnainen"
     }
   },
   "generators": {
@@ -655,7 +725,9 @@
     "insertInEditor": "Lisää editoriin",
     "noDescription": "Tälle komennolle ei ole kuvausta.",
     "loadingPreview": "Ladataan symbolia esikatseluun.",
-    "chooseSymbol": "Valitse symboli kirjastosta."
+    "chooseSymbol": "Valitse symboli kirjastosta.",
+    "insertHintTypst": "Lisää Typst-koodi avoimeen Typst-dokumenttiin.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · Korvaa napsauttamalla",
@@ -711,7 +783,8 @@
     "openAiSettings": "Avaa tekoälyasetukset",
     "fileReady": "{{fileName}} on valmis",
     "saveWordHint": "Tallenna Word-dokumentti, kun olet valmis.",
-    "resultPlaceholder": "Muunnettu tulos ilmestyy tähän."
+    "resultPlaceholder": "Muunnettu tulos ilmestyy tähän.",
+    "progressConvertingSource": "Muunnetaan lähdekoodia Typst-muotoon"
   },
   "converters": {
     "imageToLatex": {
@@ -832,6 +905,76 @@
       "inputLabel": "Word-dokumentti",
       "inputHint": "Valitse .docx-tiedosto. Kaavat ja kuvat luetaan paikallisesti.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv Typst-muotoon",
+      "subtitle": "Muunna e-printin LaTeX-lähdekoodi Typst-muotoon ja katso, mikä vaatii käsin korjausta",
+      "inputLabel": "arXiv-lähde",
+      "inputHint": "Anna arXiv-tunnus tai valitse tallennettu .tar.gz- tai .gz-lähdearkisto.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV Typst-muotoon",
+      "subtitle": "Liitä taulukkolaskennan dataa ja saat suojatun Typst-taulukon",
+      "inputLabel": "CSV tai TSV",
+      "inputHint": "Liitä pilkuilla tai sarkaimilla erotettuja rivejä. Ensimmäisestä rivistä tulee otsikkorivi.",
+      "outputLabel": "Typst-taulukko"
+    },
+    "equationToTypst": {
+      "title": "Kaava Typst-muotoon",
+      "subtitle": "Muunna kirjoitettu tai valokuvattu matematiikka Typst-matematiikaksi",
+      "inputLabel": "Kaava",
+      "inputHint": "Kirjoita LaTeX-matematiikkaa, kuvaile kaava sanoin tai valitse kuva.",
+      "outputLabel": "Typst-kaava"
+    },
+    "excelToTypst": {
+      "title": "Excel Typst-muotoon",
+      "subtitle": "Muunna ensimmäinen taulukko Typst-taulukoksi",
+      "inputLabel": "Taulukkolaskentatiedosto",
+      "inputHint": "XLSX, XLS, CSV tai TSV. Kaavat käyttävät välimuistiin tallennettuja arvojaan.",
+      "outputLabel": "Typst-taulukko"
+    },
+    "htmlToTypst": {
+      "title": "HTML Typst-muotoon",
+      "subtitle": "Muunna semanttinen HTML itsenäiseksi Typst-dokumentiksi",
+      "inputLabel": "HTML",
+      "inputHint": "Liitä HTML-katkelma tai kokonainen dokumentti.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid Typst-muotoon",
+      "subtitle": "Muunna Mermaid-vuokaavio muokattavaksi fletcher-kaavioksi",
+      "inputLabel": "Mermaid-vuokaavio",
+      "inputHint": "Vuokaaviot tukevat taittoja TD, LR, BT ja RL sekä nimikkeitä ja yleisiä solmumuotoja.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst HTML-muotoon",
+      "subtitle": "Luo itsenäinen HTML, jossa on MathML-kaavat",
+      "inputLabel": "Typst",
+      "inputHint": "Liitä katkelma tai kokonainen Typst-dokumentti.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst Markdown-muotoon",
+      "subtitle": "Luo siirrettävää Markdown-tekstiä luomatta ensin projektia",
+      "inputLabel": "Typst",
+      "inputHint": "Liitä katkelma tai kokonainen Typst-dokumentti.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst Word-muotoon",
+      "subtitle": "Luo DOCX, jossa kaavat on tallennettu muokattavana Wordin matematiikkana",
+      "inputLabel": "Typst",
+      "inputHint": "Liitä katkelma tai kokonainen Typst-dokumentti.",
+      "outputLabel": "Word-dokumentti"
+    },
+    "wordToTypst": {
+      "title": "Word Typst-muotoon",
+      "subtitle": "Muunna DOCX ja pidä siitä poimitut mediatiedostot tuloksen mukana",
+      "inputLabel": "Word-dokumentti",
+      "inputHint": "Valitse .docx-tiedosto. Kaavat ja kuvat luetaan paikallisesti.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -847,7 +990,8 @@
     "chooseFile": "Valitse tiedosto ennen muuntamista.",
     "fileTooLarge": "Valitse tiedosto, joka on pienempi kuin 128 MB.",
     "emptySheet": "Valittu taulukko on tyhjä.",
-    "arxivInputRequired": "Anna arXiv-tunnus tai valitse lähdearkisto."
+    "arxivInputRequired": "Anna arXiv-tunnus tai valitse lähdearkisto.",
+    "equationToTypst": "Pandoc ei voinut muuntaa tätä kaavaa Typst-muotoon. Tarkista LaTeX-matematiikka ja yritä uudelleen."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} skannattua sivua litteroitiin paikallisella mallilla. Tarkista kaavat ja taulukot ennen tuloksen käyttöä.",
@@ -855,7 +999,16 @@
     "mermaidTikz": "Tämä vuokaavio muunnettiin muokattavaksi TikZ-koodiksi.",
     "mermaidRendered": "Tämä kaavio piirrettiin paikallisesti, koska sen Mermaid-syntaksi ei kartoitu siististi muokattavaan TikZ-koodiin.",
     "tableConverted": "{{rows}} riviä ja {{columns}} saraketta muunnettiin.",
-    "arxivBundle": "{{files}} lähdetiedostoa. Päädokumentti: {{mainFile}}."
+    "arxivBundle": "{{files}} lähdetiedostoa. Päädokumentti: {{mainFile}}.",
+    "mermaidFletcher": "Tämä vuokaavio muunnettiin muokattavaksi fletcher-koodiksi Typst-käyttöön.",
+    "mermaidRenderedTypst": "Tämä kaavio piirrettiin paikallisesti, koska sen Mermaid-syntaksi ei kartoitu siististi muokattavaan fletcher-koodiin.",
+    "arxivTypstConverted": "{{mainFile}} muunnettiin.",
+    "typstCheckPassed": "Typst käänsi tuloksen ilman virheitä.",
+    "typstCheckFailed_one": "Typst löysi {{count}} virheen.",
+    "typstCheckFailed_other": "Typst löysi {{count}} virhettä.",
+    "notConverted_one": "{{count}} kohde jäi muuntamatta.",
+    "notConverted_other": "{{count}} kohdetta jäi muuntamatta.",
+    "checkLine": "Rivi {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Tämä Mermaid-kaavio on suurempi kuin 50 000 merkin raja.",
@@ -1110,9 +1263,15 @@
   },
   "equation": {
     "subtitle": "Elävä LaTeX-työtila",
+    "subtitleTypst": "Elävä Typst-työtila",
+    "mathLanguage": "Matematiikan kieli",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Virhe",
     "statusRendered": "Piirretty",
+    "statusRendering": "Piirretään",
     "copyLatex": "Kopioi LaTeX",
+    "copyTypst": "Kopioi Typst",
     "exportOptions": "Vientivaihtoehdot",
     "export": "Vie",
     "downloadPng": "Lataa PNG",
@@ -1125,6 +1284,7 @@
     "exportSvgFailed": "Tätä katkelmaa ei voitu viedä SVG-muodossa",
     "copyKatexFailed": "KaTeX-HTML:ää ei voitu kopioida",
     "copyLatexFailed": "LaTeX-lähdekoodia ei voitu kopioida",
+    "copyTypstFailed": "Typst-lähdekoodia ei voitu kopioida",
     "invalidPngName": "Valitse lyhyt PNG-tiedostonimi ilman kauttaviivoja ja erikoismerkkejä.",
     "replaceConfirm": "{{path}} on jo projektissa {{project}}. Korvataanko se?",
     "savedToProject": "{{path}} tallennettiin projektiin {{project}}.",
@@ -1138,6 +1298,7 @@
     "newImageProject": "Uusi kuvaprojekti",
     "mathmlFailed": "Tätä katkelmaa ei voitu muuntaa MathML-muotoon",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "Tekstin sisäinen",
     "display": "Erillinen",
     "examples": "ESIMERKIT",
@@ -1146,6 +1307,8 @@
     "previewLight": "Esikatselu vaalealla",
     "inlineSample": "Näin se istuu virkkeen sisällä, kuten <formula></formula>, ympäröivän tekstin mukana.",
     "empty": "Kirjoita LaTeX-matematiikkaa vasemmalle.",
+    "emptyTypst": "Kirjoita Typst-matematiikkaa vasemmalle.",
+    "typstFailed": "Typst ei voinut piirtää tätä kaavaa.",
     "zoomOut": "Loitonna",
     "zoomIn": "Lähennä",
     "resetZoom": "Palauta zoomaus",

@@ -1,4 +1,8 @@
-import { typstAutolinkEnd } from "@oleafly/editor/typst-syntax";
+import {
+  isVendoredTypstPackagePath,
+  typstAutolinkEnd,
+} from "@oleafly/editor/typst-syntax";
+import { isHayagrivaPath } from "@/lib/citation/hayagriva";
 import { dirname } from "@/lib/path-utils";
 import type {
   ProjectIntelligenceEngine,
@@ -8,6 +12,15 @@ import type {
 
 export const INDEXABLE_PROJECT_FILE =
   /\.(?:tex|ltx|latex|sty|cls|typ|md|markdown|bib)$/i;
+
+const LOCKFILE_YAML = /(?:^|[-_.])lock\.ya?ml$/;
+
+export function isBibliographyYamlCandidate(path: string): boolean {
+  if (!isHayagrivaPath(path)) return false;
+  const parts = path.replaceAll("\\", "/").split("/");
+  if (parts.some((part) => part.startsWith("."))) return false;
+  return !LOCKFILE_YAML.test((parts.at(-1) ?? "").toLowerCase());
+}
 
 export function engineForPath(
   path: string,
@@ -22,8 +35,15 @@ export function engineForPath(
   return null;
 }
 
+export function analysisEngineForPath(
+  path: string,
+): ProjectIntelligenceEngine | null {
+  return engineForPath(path) ?? (isHayagrivaPath(path) ? "bibtex" : null);
+}
+
 export function isProjectIntelligencePath(path: string): boolean {
-  return INDEXABLE_PROJECT_FILE.test(path);
+  if (isVendoredTypstPackagePath(path)) return false;
+  return INDEXABLE_PROJECT_FILE.test(path) || isBibliographyYamlCandidate(path);
 }
 
 export function normalizeProjectPath(path: string): string | null {

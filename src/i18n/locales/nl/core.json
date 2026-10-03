@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} heeft geen offline compileermodus. Er wordt normaal gecompileerd.",
     "retry": "Opnieuw compileren",
-    "bundleFetchFailed": "Oleafly kon de TeX-pakketten die dit document nodig heeft niet downloaden. Controleer je verbinding en compileer opnieuw."
+    "bundleFetchFailed": "Oleafly kon de TeX-pakketten die dit document nodig heeft niet downloaden. Controleer je verbinding en compileer opnieuw.",
+    "typstMissing": "Typst {{version}} is niet geïnstalleerd. Download het, of zet dit project over op een andere versie.",
+    "typstPackage": {
+      "downloadFailed": "Typst kon {{spec}} niet downloaden. Controleer je internetverbinding en compileer opnieuw.",
+      "downloadFailedUnnamed": "Typst kon een pakket dat dit document importeert niet downloaden. Controleer je internetverbinding en compileer opnieuw.",
+      "offlineNotCached": "Je bent offline en {{spec}} staat nog niet in de pakketcache. Compileer één keer terwijl je online bent, of kopieer de pakketten naar het project.",
+      "offlineNotCachedUnnamed": "Je bent offline en een pakket dat dit document importeert staat nog niet in de pakketcache. Compileer één keer terwijl je online bent.",
+      "notFound": "Typst Universe heeft geen pakket {{spec}}. Controleer de naam in de import.",
+      "localNotFound": "Het lokale pakket {{spec}} is niet geïnstalleerd. Zet het in de Typst-pakkettenmap van Oleafly of in de map typst-packages van het project.",
+      "versionMissing": "Dit pakket heeft geen versie {{version}}. De nieuwste versie is {{latest}}.",
+      "versionMissingNoLatest": "Dit pakket heeft geen versie {{version}}. Controleer de versie in de import."
+    }
   },
   "developer": {
     "actions": {
@@ -345,6 +356,7 @@
     "notRenamable": "Dit symbool kan niet worden hernoemd.",
     "nothingToRename": "Niets om te hernoemen.",
     "referencesFor": "Referenties naar {{name}}",
+    "renameFailed": "Kon niet hernoemen naar \"{{name}}\".",
     "renamePartial": "Hernoemd naar \"{{name}}\" in {{edited}} van {{total}} bestanden. Kon {{files}} niet schrijven.",
     "renamed": "Hernoemd naar \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -581,5 +593,8 @@
   "folderUnavailable": {
     "compile": "Compileren is gepauzeerd totdat de projectmap terug is.",
     "saveReason": "de projectmap is niet beschikbaar"
+  },
+  "imageToTypst": {
+    "failed": "Afbeelding naar Typst is mislukt: {{detail}}"
   }
 }

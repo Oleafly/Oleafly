@@ -48,7 +48,7 @@ Say so early in the reply, not at the end. Give the real reason: the data does n
 
 Then offer the largest thing you can do instead: a sensitivity analysis, a limitation, a narrowed claim, a clarifying sentence. An unmet request with a concrete substitute reads as good faith. An unmet request with silence reads as evasion.
 
-Mark it visibly. In the LaTeX template that is `\notchanged`. In the plain-text version it is a **No change.** line. And list it again in the open points table at the end.
+Mark it visibly. In the LaTeX template that is `\notchanged`, and in the Typst template `#notchanged`. In the plain-text version it is a **No change.** line. And list it again in the open points table at the end.
 
 ## Quoting the manuscript
 

@@ -32,6 +32,7 @@ import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { useEngineStore } from "@/store/engine";
 import { useSettingsStore } from "@/store/settings";
+import { useTypstToolchainStore } from "@/store/typst-toolchain";
 import { resetDisplayHomes } from "@/lib/display-path";
 import { EngineSection } from "@/components/settings/EngineSection";
 
@@ -84,6 +85,7 @@ beforeEach(() => {
     partialDownloadBytes: 0,
   });
   useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
+  useTypstToolchainStore.setState({ status: null, loading: false, loadFailed: false, install: null, busy: false });
 });
 
 describe("EngineSection LaTeX tab", () => {
@@ -232,8 +234,20 @@ describe("EngineSection LaTeX tab", () => {
 });
 
 describe("EngineSection Typst tab", () => {
-  it("describes the bundled compiler", async () => {
+  it("describes the bundled compiler with the version the backend reports", async () => {
     const user = userEvent.setup();
+    backend({
+      typst_toolchain_status: {
+        bundledVersion: "0.15.1",
+        defaultVersion: "0.15.1",
+        defaultChoice: null,
+        system: null,
+        installing: null,
+        versions: [
+          { version: "0.15.1", releasedAt: "2026-08-01", inCatalog: true, sources: ["bundled"], downloadBytes: 1 },
+        ],
+      },
+    });
     render(<EngineSection />);
 
     await user.click(screen.getByTestId("engines-tab-typst"));
@@ -241,6 +255,7 @@ describe("EngineSection Typst tab", () => {
     expect(screen.getByText(engineCopy.typst.name)).toBeInTheDocument();
     expect(screen.getByText(engineCopy.typst.detail)).toBeInTheDocument();
     expect(screen.getByText(engineCopy.typst.note)).toBeInTheDocument();
+    expect(await screen.findByText("Typst 0.15.1")).toBeInTheDocument();
   });
 });
 

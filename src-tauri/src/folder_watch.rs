@@ -135,6 +135,7 @@ pub(crate) fn relevant_path(root: &Path, path: &Path) -> Option<String> {
     if folders
         .iter()
         .any(|folder| oleafly_core::is_skipped_scan_directory(std::ffi::OsStr::new(folder)))
+        || folders.first() == Some(&crate::typst_packages::VENDOR_DIR)
     {
         return None;
     }
@@ -568,6 +569,43 @@ mod tests {
             );
         }
         assert_eq!(relevant_path(root, Path::new("/elsewhere/main.tex")), None);
+    }
+
+    #[test]
+    fn writes_inside_the_vendored_typst_packages_are_not_changes() {
+        let root = Path::new("/folders/thesis");
+        for (path, expected) in [
+            ("typst-packages", Some("typst-packages")),
+            ("typst-packages/preview/cetz/0.5.2/lib.typ", None),
+            (
+                "typst-packages/preview/cetz/.0.5.2.vendoring-42/typst.toml",
+                None,
+            ),
+            ("typst-packages/local/mine/0.1.0", None),
+            (
+                "chapters/typst-packages/notes.typ",
+                Some("chapters/typst-packages/notes.typ"),
+            ),
+            ("typst-packages.typ", Some("typst-packages.typ")),
+        ] {
+            assert_eq!(
+                relevant_path(root, &root.join(path)).as_deref(),
+                expected,
+                "{path}"
+            );
+        }
+        let mut batch = Batch::default();
+        let start = Instant::now();
+        batch.absorb(
+            root,
+            &event(
+                EventKind::Create(CreateKind::File),
+                &[&root.join("typst-packages/preview/cetz/0.5.2/lib.typ")],
+            ),
+            start,
+        );
+        assert_eq!(batch.wait(start), None);
+        assert_eq!(batch.take("linked-thesis", &|_| false), None);
     }
 
     #[test]

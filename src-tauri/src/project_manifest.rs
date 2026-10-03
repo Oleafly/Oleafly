@@ -30,6 +30,7 @@ pub(crate) struct FolderFields {
     pub(crate) tex_flavor: Option<String>,
     pub(crate) dictionary_locale: Option<String>,
     pub(crate) compile_dir: Option<String>,
+    pub(crate) typst: Option<Value>,
 }
 
 impl FolderFields {
@@ -49,6 +50,10 @@ impl FolderFields {
                 .get("compile_dir")
                 .and_then(Value::as_str)
                 .and_then(folder_directory),
+            typst: object
+                .get("typst")
+                .filter(|value| value.is_object())
+                .cloned(),
         })
     }
 }
@@ -203,13 +208,22 @@ pub(crate) fn location_root_file_is_managed(location: &ProjectLocation, normaliz
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum FieldChange {
     Set(&'static str, String),
+    SetValue(&'static str, Value),
     Remove(&'static str),
 }
 
 impl FieldChange {
     fn key(&self) -> &'static str {
         match self {
-            Self::Set(key, _) | Self::Remove(key) => key,
+            Self::Set(key, _) | Self::SetValue(key, _) | Self::Remove(key) => key,
+        }
+    }
+
+    fn value(&self) -> Option<Value> {
+        match self {
+            Self::Set(_, value) => Some(Value::String(value.clone())),
+            Self::SetValue(_, value) => Some(value.clone()),
+            Self::Remove(_) => None,
         }
     }
 }
@@ -285,13 +299,14 @@ fn apply_change(text: &str, change: &FieldChange) -> Option<String> {
     let entries = entries(text)?;
     let position = entries.iter().rposition(|entry| entry.key == change.key());
     let mut next = text.to_owned();
-    match (change, position) {
-        (FieldChange::Set(_, value), Some(index)) => {
+    match (change.value(), position) {
+        (Some(value), Some(index)) => {
             let entry = &entries[index];
-            let rendered = serde_json::to_string(value).ok()?;
+            let rendered = serde_json::to_string(&value).ok()?;
             next.replace_range(entry.value_start..entry.value_end, &rendered);
         }
-        (FieldChange::Set(key, value), None) => {
+        (Some(value), None) => {
+            let key = change.key();
             let last = entries.last()?;
             let indent = text[..last.key_start]
                 .rsplit_once('\n')
@@ -301,7 +316,7 @@ fn apply_change(text: &str, change: &FieldChange) -> Option<String> {
                         .all(|character| character == ' ' || character == '\t')
                 });
             let key_text = serde_json::to_string(key).ok()?;
-            let rendered = serde_json::to_string(value).ok()?;
+            let rendered = serde_json::to_string(&value).ok()?;
             let newline = line_break(text);
             let inserted = match indent {
                 Some(indent) => format!(",{newline}{indent}{key_text}: {rendered}"),
@@ -309,7 +324,7 @@ fn apply_change(text: &str, change: &FieldChange) -> Option<String> {
             };
             next.insert_str(last.value_end, &inserted);
         }
-        (FieldChange::Remove(_), Some(index)) => {
+        (None, Some(index)) => {
             let entry = &entries[index];
             let range = match (index.checked_sub(1), entries.get(index + 1)) {
                 (_, Some(following)) => entry.key_start..following.key_start,
@@ -319,7 +334,7 @@ fn apply_change(text: &str, change: &FieldChange) -> Option<String> {
             next.replace_range(range, "");
             return apply_change(&next, change);
         }
-        (FieldChange::Remove(_), None) => {}
+        (None, None) => {}
     }
     Some(next)
 }
@@ -331,12 +346,9 @@ pub(crate) fn splice_manifest(text: &str, changes: &[FieldChange]) -> Option<Str
     }
     let value: Value = serde_json::from_str(&next).ok()?;
     let object = value.as_object()?;
-    let applied = changes.iter().all(|change| match change {
-        FieldChange::Set(key, expected) => {
-            object.get(*key).and_then(Value::as_str) == Some(expected.as_str())
-        }
-        FieldChange::Remove(key) => !object.contains_key(*key),
-    });
+    let applied = changes
+        .iter()
+        .all(|change| object.get(change.key()) == change.value().as_ref());
     (applied && oleafly_core::is_oleafly_manifest(&value)).then_some(next)
 }
 
@@ -344,12 +356,12 @@ fn rewrite_manifest(text: &str, changes: &[FieldChange]) -> Option<String> {
     let mut value: Value = serde_json::from_str(text).ok()?;
     let object = value.as_object_mut()?;
     for change in changes {
-        match change {
-            FieldChange::Set(key, next) => {
-                object.insert((*key).to_owned(), Value::String(next.clone()));
+        match change.value() {
+            Some(next) => {
+                object.insert(change.key().to_owned(), next);
             }
-            FieldChange::Remove(key) => {
-                object.remove(*key);
+            None => {
+                object.remove(change.key());
             }
         }
     }
@@ -380,12 +392,7 @@ pub(crate) fn write_folder_fields(
         serde_json::from_str(&text).map_err(|error| format!("invalid project.json: {error}"))?;
     let pending: Vec<FieldChange> = changes
         .iter()
-        .filter(|change| match change {
-            FieldChange::Set(key, value) => {
-                current.get(*key).and_then(Value::as_str) != Some(value.as_str())
-            }
-            FieldChange::Remove(key) => current.get(*key).is_some(),
-        })
+        .filter(|change| current.get(change.key()) != change.value().as_ref())
         .cloned()
         .collect();
     if pending.is_empty() {
@@ -406,6 +413,8 @@ pub(crate) struct FolderSettings<'a> {
     pub(crate) engine: &'a str,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) tex_flavor: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) typst: Option<&'a oleafly_core::TypstSpec>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) dictionary_locale: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -525,6 +534,7 @@ mod tests {
                 tex_flavor: Some("xelatex".into()),
                 dictionary_locale: None,
                 compile_dir: None,
+                typst: None,
             })
         );
     }
@@ -639,6 +649,58 @@ mod tests {
     }
 
     #[test]
+    fn a_typst_pin_is_spliced_as_an_object_and_read_back_from_the_folder() {
+        let pin = serde_json::json!({"version": "0.13.1"});
+        let pinned =
+            splice_manifest(CLI_MANIFEST, &[FieldChange::SetValue("typst", pin.clone())]).unwrap();
+        assert_eq!(
+            pinned,
+            CLI_MANIFEST.replace(
+                "\n  }\n}\n",
+                "\n  },\n  \"typst\": {\"version\":\"0.13.1\"}\n}\n"
+            )
+        );
+        let repinned = splice_manifest(
+            &pinned,
+            &[FieldChange::SetValue(
+                "typst",
+                serde_json::json!({"version": "0.15.1"}),
+            )],
+        )
+        .unwrap();
+        assert!(repinned.contains("\"typst\": {\"version\":\"0.15.1\"}"));
+        assert_eq!(
+            splice_manifest(&pinned, &[FieldChange::Remove("typst")]).unwrap(),
+            CLI_MANIFEST
+        );
+        let rewritten =
+            rewrite_manifest(CLI_MANIFEST, &[FieldChange::SetValue("typst", pin.clone())]).unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&rewritten).unwrap()["typst"],
+            pin
+        );
+
+        let folder = tempfile::tempdir().unwrap();
+        std::fs::write(folder.path().join("project.json"), &pinned).unwrap();
+        let FolderManifest::Oleafly(fields) = inspect_folder_manifest(folder.path()) else {
+            panic!("the pinned manifest is an Oleafly manifest");
+        };
+        assert_eq!(fields.typst, Some(pin.clone()));
+        assert!(
+            !write_folder_fields(folder.path(), &[FieldChange::SetValue("typst", pin)]).unwrap()
+        );
+        std::fs::write(
+            folder.path().join("project.json"),
+            r#"{"main_doc":"main.typ","typst":"0.13.1"}"#,
+        )
+        .unwrap();
+        let FolderManifest::Oleafly(fields) = inspect_folder_manifest(folder.path()) else {
+            panic!("a malformed pin does not hide the manifest");
+        };
+        assert_eq!(fields.typst, None);
+    }
+
+    #[test]
     fn a_manifest_that_cannot_be_spliced_is_rewritten_and_a_broken_result_is_refused() {
         let escaped = "{\"main_doc\":\"main.tex\",\"na\\u006de\":\"A\"}\n";
         assert_eq!(
@@ -702,6 +764,7 @@ mod tests {
             main_doc: "thesis.tex",
             engine: "xetex",
             tex_flavor: None,
+            typst: None,
             dictionary_locale: Some("en-GB"),
             compile_dir: None,
         };
@@ -744,6 +807,7 @@ mod tests {
                 main_doc: "thesis.tex",
                 engine: "xetex",
                 tex_flavor: None,
+                typst: None,
                 dictionary_locale: None,
                 compile_dir: None,
             },

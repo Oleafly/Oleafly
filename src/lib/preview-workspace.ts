@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { emitTo, listen } from "@tauri-apps/api/event";
-import { useCompileStore, type CompileState } from "@/store/compile";
+import { useCompileStore, type CompileState, type LivePreviewState } from "@/store/compile";
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
@@ -14,6 +14,9 @@ import { currentProjectStateRevision } from "@/lib/project-state-revision";
 import type { PreviewWindowState } from "@/lib/preview-window";
 import { mainDocumentMissing } from "@/lib/main-document";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
+import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
+import { applyTypstCompileOptions, chooseTypstVariant } from "@/lib/typst-compile-actions";
+import type { TypstOptionsUpdate } from "@/lib/typst-options";
 
 type FileState = ReturnType<typeof useFilesStore.getState>;
 export interface PreviewWorkspaceSnapshot extends
@@ -24,6 +27,8 @@ export interface PreviewWorkspaceSnapshot extends
   compileRevision: number;
   noMainDocument: boolean;
   systemTexLocked: boolean;
+  typstVariant?: string | null;
+  livePreview?: LivePreviewState;
   previewState?: PreviewWindowState;
 }
 
@@ -33,7 +38,16 @@ export type PreviewWorkspaceCommand =
   | { action: "auto-compile" | "syntax-check" | "stop-on-error"; value: boolean }
   | { action: "compile-mode"; value: "normal" | "fast" }
   | { action: "engine"; engine: string; flavor?: TexFlavor | null }
-  | { action: "source-location"; file: string | null; line: number };
+  | { action: "typst-version"; version: string | null }
+  | ({ action: "typst-options" } & Pick<TypstOptionsUpdate, "systemFonts" | "reproducible">)
+  | { action: "typst-variant"; variant: string | null }
+  | { action: "source-location"; file: string | null; line: number; column?: number };
+
+function typstOptionsUpdate(payload: { systemFonts?: unknown; reproducible?: unknown }): TypstOptionsUpdate | null {
+  if (typeof payload.systemFonts === "boolean") return { systemFonts: payload.systemFonts };
+  if (typeof payload.reproducible === "boolean") return { reproducible: payload.reproducible };
+  return null;
+}
 
 export function sendPreviewCommand(projectId: string, command: PreviewWorkspaceCommand): Promise<void> {
   return emitTo("main", "preview:command", { projectId, ...command });
@@ -56,6 +70,8 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
       checkSyntaxBeforeCompile: compile.checkSyntaxBeforeCompile, stopOnFirstError: compile.stopOnFirstError,
       noMainDocument: mainDocumentMissing(files),
       systemTexLocked: folderIsRestricted(useFolderAccessStore.getState(), projectId),
+      typstVariant: activeTypstVariant(projectId, files.engine),
+      livePreview: compile.livePreview,
       previewState: previewState?.identity.projectId === projectId
         ? { ...previewState, projectStateRevision: currentProjectStateRevision() } : undefined,
     } satisfies PreviewWorkspaceSnapshot).catch(() => {});
@@ -91,6 +107,22 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
             await files.setEngine(payload.engine, payload.flavor);
           }
           break;
+        case "typst-version":
+          if (payload.version === null || typeof payload.version === "string") {
+            await files.setTypstVersion(payload.version);
+          }
+          break;
+        case "typst-options": {
+          const update = typstOptionsUpdate(payload);
+          if (update) await applyTypstCompileOptions(update);
+          break;
+        }
+        case "typst-variant":
+          if (payload.variant === null ||
+            (typeof payload.variant === "string" && files.engine.typst_options?.variants.includes(payload.variant))) {
+            chooseTypstVariant(payload.variant);
+          }
+          break;
         case "refresh-files": await files.refreshTree(); break;
         case "trust-folder": await useFolderAccessStore.getState().grant("folder"); break;
         case "pdf-settings": {
@@ -102,7 +134,8 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
         case "source-location": {
           if ((payload.file !== null && typeof payload.file !== "string") || !Number.isInteger(payload.line) || payload.line < 1) break;
           const { openFileAndGotoLine } = await import("@/features/synctex");
-          await openFileAndGotoLine(payload.file, payload.line);
+          const column = Number.isInteger(payload.column) && (payload.column ?? 0) >= 1 ? payload.column : undefined;
+          await openFileAndGotoLine(payload.file, payload.line, column);
           const { getCurrentWindow } = await import("@tauri-apps/api/window");
           await getCurrentWindow().setFocus();
           break;
@@ -118,12 +151,13 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     };
     void run().catch((error) => {
       void logError(`preview command ${payload.action}`, error);
-      if (payload.action !== "engine") return;
+      if (payload.action !== "engine" && payload.action !== "typst-version") return;
+      const fallback = payload.action === "engine"
+        ? i18n.t(($) => $.shell.enginePicker.switchFailed)
+        : i18n.t(($) => $.shell.compile.typstVersion.switchFailed);
       toast.errorUnique(
         engineSwitchToastKey(projectId),
-        decodeAppError(error)
-          ? describeError(error)
-          : i18n.t(($) => $.shell.enginePicker.switchFailed),
+        decodeAppError(error) ? describeError(error) : fallback,
       );
     });
   });
@@ -143,5 +177,6 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
     const projectId = useFilesStore.getState().projectId;
     if (folderIsRestricted(next, projectId) !== folderIsRestricted(previous, projectId)) schedule();
   });
-  return () => { offRequest(); offCompile(); offDetached(); offFiles(); offAccess(); clearTimeout(timer); };
+  const offVariant = useTypstVariantStore.subscribe(schedule);
+  return () => { offRequest(); offCompile(); offDetached(); offFiles(); offAccess(); offVariant(); clearTimeout(timer); };
 }

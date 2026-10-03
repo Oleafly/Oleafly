@@ -1,0 +1,14 @@
+{
+  "id": "typst-technical-report",
+  "name": "Typst Technical Report",
+  "category": "Theses & Reports",
+  "description": "A full technical report in Typst with a title page, executive summary, contents, figures, tables and references.",
+  "main_doc": "main.typ",
+  "engine": "typst",
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#1c4e80",
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
+  "requires": { "packages": [], "fonts": [], "engine": "typst" },
+  "order": 43
+}

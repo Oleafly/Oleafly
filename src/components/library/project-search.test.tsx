@@ -66,7 +66,7 @@ describe("projectEngine", () => {
     expect(projectEngine({ engine: "Typst", main_doc: "a.tex" })).toBe("typst");
     expect(projectEngine({ engine: undefined, main_doc: "notes.MARKDOWN" })).toBe("markdown");
     expect(projectEngine({ engine: "pandoc", main_doc: "x" })).toBe("markdown");
-    expect(projectEngineLabel({ engine: "", main_doc: "main.tex" })).toBe("Tectonic");
+    expect(projectEngineLabel({ engine: "", main_doc: "main.tex" })).toBe("LaTeX");
   });
 });
 
@@ -75,6 +75,7 @@ describe("project search schema", () => {
     expect(ids("engine:typst")).toEqual(["poster"]);
     expect(ids("engine:latex")).toEqual(["linked", "thesis"]);
     expect(ids("engine:typst,md")).toEqual(["notes", "poster"]);
+    expect(ids("-engine:latex")).toEqual(["notes", "poster"]);
     expect(ids("-engine:tectonic")).toEqual(["notes", "poster"]);
     expect(ids("type:image")).toEqual(["poster"]);
   });

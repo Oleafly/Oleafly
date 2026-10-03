@@ -87,6 +87,8 @@ pub struct ProjectMeta {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub typst: Option<oleafly_core::TypstSpec>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dictionary_locale: Option<String>,
     #[serde(default)]
     pub allow_shell_escape: bool,
@@ -110,6 +112,38 @@ pub struct ProjectMeta {
     /// updates metadata it understands.
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
+}
+
+impl ProjectMeta {
+    pub(crate) fn typst_version_pin(&self) -> Option<&str> {
+        self.typst
+            .as_ref()?
+            .version
+            .as_deref()
+            .map(str::trim)
+            .filter(|version| !version.is_empty())
+    }
+
+    pub(crate) fn set_typst_version_pin(&mut self, version: Option<String>) {
+        let version = version
+            .map(|version| version.trim().to_owned())
+            .filter(|version| !version.is_empty());
+        match (self.typst.as_mut(), version) {
+            (Some(spec), version) => {
+                spec.version = version;
+                if spec.is_empty() {
+                    self.typst = None;
+                }
+            }
+            (None, Some(version)) => {
+                self.typst = Some(oleafly_core::TypstSpec {
+                    version: Some(version),
+                    ..oleafly_core::TypstSpec::default()
+                });
+            }
+            (None, None) => {}
+        }
+    }
 }
 
 #[derive(Serialize, Clone)]
@@ -161,6 +195,8 @@ pub(crate) fn project_state_engine(
         .unwrap_or_else(|_| untrusted_view(project));
     let mut engine =
         crate::document_engine::descriptor_for(&effective.engine, &effective.main_doc)?;
+    crate::typst_toolchain::describe_project(&mut engine, &effective);
+    crate::typst_options::describe(&mut engine, project_id, &effective);
     engine.tex_flavor = effective.tex_flavor;
     engine.allow_shell_escape = effective.allow_shell_escape;
     Ok(engine)
@@ -661,6 +697,7 @@ fn missing_project_meta(project_id: &str, location: &ProjectLocation) -> Project
         forked_from: None,
         tex: None,
         tex_flavor: None,
+        typst: None,
         allow_shell_escape: false,
         checkpoints: oleafly_core::CheckpointPolicy::default(),
         extra: HashMap::new(),
@@ -716,7 +753,17 @@ fn merge_folder_fields(
     meta.tex_flavor = validate_tex_flavor(&meta.engine, folder.tex_flavor.as_deref())
         .ok()
         .flatten();
+    meta.typst = declared_typst(folder);
     meta.dictionary_locale.clone_from(&folder.dictionary_locale);
+}
+
+fn declared_typst(
+    folder: &crate::project_manifest::FolderFields,
+) -> Option<oleafly_core::TypstSpec> {
+    folder
+        .typst
+        .clone()
+        .and_then(|value| serde_json::from_value(value).ok())
 }
 
 /// Decode and normalize portable project metadata exactly as `read_meta`
@@ -753,7 +800,7 @@ enum MetaWrite<'a> {
 }
 
 const MAIN_DOCUMENT_FIELDS: &[&str] = &["main_doc", "engine"];
-const ENGINE_FIELDS: &[&str] = &["engine", "tex_flavor"];
+const ENGINE_FIELDS: &[&str] = &["engine", "tex_flavor", "typst"];
 const DICTIONARY_FIELDS: &[&str] = &["dictionary_locale"];
 
 pub fn write_meta(project_id: &str, meta: &ProjectMeta) -> Result<(), String> {
@@ -862,6 +909,9 @@ fn library_meta_to_write<'a>(
         FieldChange::Set(key, directory) => {
             next.extra.insert(key.to_owned(), directory.into());
         }
+        FieldChange::SetValue(key, value) => {
+            next.extra.insert(key.to_owned(), value);
+        }
         FieldChange::Remove(key) => {
             next.extra.remove(key);
         }
@@ -930,6 +980,18 @@ fn shared_field_changes(
         .tex_flavor
         .as_deref()
         .filter(|flavor| *flavor != "auto");
+    let typst = differs(
+        "typst",
+        effective.typst != next.typst,
+        declared_typst(declared) != next.typst,
+    )
+    .then(|| match &next.typst {
+        Some(spec) => serde_json::to_value(spec)
+            .ok()
+            .map(|value| FieldChange::SetValue("typst", value)),
+        None => Some(FieldChange::Remove("typst")),
+    })
+    .flatten();
     [
         text("name", effective.name != next.name, &next.name),
         text(
@@ -960,6 +1022,7 @@ fn shared_field_changes(
             ),
             &next.tex_flavor,
         ),
+        typst,
         optional(
             "dictionary_locale",
             effective.dictionary_locale != next.dictionary_locale,
@@ -3283,7 +3346,7 @@ pub async fn pick_table_import_file(
         .set_title(crate::i18n::t("dialog.tableImport.title"))
         .add_filter(
             crate::i18n::t("dialog.tableImport.filter"),
-            &["csv", "tsv", "xlsx", "xls"],
+            &["csv", "tsv", "xlsx", "xls", "json"],
         )
         .pick_file(move |selection| {
             let _ = sender.send(selection);
@@ -3351,7 +3414,7 @@ fn canonical_table_import_path(path: &Path) -> Result<PathBuf, String> {
         .and_then(|value| value.to_str())
         .map(|value| value.to_ascii_lowercase());
     if !is_table_import_extension(extension.as_deref()) {
-        return Err("Choose a CSV, TSV, XLS, or XLSX spreadsheet.".into());
+        return Err("Choose a CSV, TSV, XLS, XLSX, or JSON file.".into());
     }
     Ok(canonical)
 }
@@ -3381,7 +3444,7 @@ fn assert_table_import_allowed(
 }
 
 fn is_table_import_extension(extension: Option<&str>) -> bool {
-    matches!(extension, Some("csv" | "tsv" | "xls" | "xlsx"))
+    matches!(extension, Some("csv" | "tsv" | "xls" | "xlsx" | "json"))
 }
 
 fn read_picked_file_bytes(path: &Path, max_bytes: usize) -> Result<Vec<u8>, String> {
@@ -3529,9 +3592,21 @@ pub(crate) fn remember_detected_main(project_id: &str, main_doc: &str) -> Result
             meta.allow_shell_escape = false;
         }
         meta.engine = engine;
+        if matches!(route, Route::Sidecar { .. }) {
+            pin_typst_if_unpinned(&mut meta);
+        }
         write_routed_meta(project_id, &route, &meta, MetaWrite::Device)?;
         Ok(true)
     })
+}
+
+fn pin_typst_if_unpinned(meta: &mut ProjectMeta) {
+    if meta.typst_version_pin().is_some() {
+        return;
+    }
+    if let Some(pin) = crate::typst_toolchain::creation_pin(&meta.engine) {
+        meta.set_typst_version_pin(pin.version);
+    }
 }
 
 fn remember_main_on_open(project_id: &str) {
@@ -3627,6 +3702,59 @@ fn set_project_engine_unlocked(
         }
         write_chosen_meta(project_id, &meta, ENGINE_FIELDS)?;
         Ok(meta)
+    })
+}
+
+pub(crate) fn set_project_typst_version_unlocked(
+    project_id: &str,
+    version: Option<String>,
+) -> Result<ProjectMeta, String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        if !crate::typst_toolchain::is_typst_project(&meta) {
+            return Err(
+                crate::app_error::AppError::new("typst_toolchain.not_typst_project").into(),
+            );
+        }
+        meta.set_typst_version_pin(version);
+        write_chosen_meta(project_id, &meta, ENGINE_FIELDS)?;
+        read_meta(project_id)
+    })
+}
+
+pub(crate) fn set_project_typst_vendor_packages_unlocked(
+    project_id: &str,
+    enabled: bool,
+) -> Result<ProjectMeta, String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        if !crate::typst_toolchain::is_typst_project(&meta) {
+            return Err(
+                crate::app_error::AppError::new("typst_toolchain.not_typst_project").into(),
+            );
+        }
+        crate::typst_packages::set_vendor_flag(&mut meta, enabled);
+        write_chosen_meta(project_id, &meta, ENGINE_FIELDS)?;
+        read_meta(project_id)
+    })
+}
+
+pub(crate) fn update_project_typst_spec_unlocked(
+    project_id: &str,
+    update: impl FnOnce(&mut oleafly_core::TypstSpec) -> Result<(), String>,
+) -> Result<ProjectMeta, String> {
+    with_project_metadata(project_id, || {
+        let mut meta = read_meta(project_id)?;
+        if !crate::typst_toolchain::is_typst_project(&meta) {
+            return Err(
+                crate::app_error::AppError::new("typst_toolchain.not_typst_project").into(),
+            );
+        }
+        let mut spec = meta.typst.take().unwrap_or_default();
+        update(&mut spec)?;
+        meta.typst = (!spec.is_empty()).then_some(spec);
+        write_chosen_meta(project_id, &meta, ENGINE_FIELDS)?;
+        read_meta(project_id)
     })
 }
 
@@ -4053,6 +4181,7 @@ fn create_markdown_project_in(
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                typst: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
@@ -4176,6 +4305,7 @@ fn save_project_settings_to_folder_blocking(
                     main_doc: &meta.main_doc,
                     engine: &meta.engine,
                     tex_flavor: meta.tex_flavor.as_deref(),
+                    typst: meta.typst.as_ref(),
                     dictionary_locale: meta.dictionary_locale.as_deref(),
                     compile_dir: compile_dir.as_deref(),
                 },
@@ -4673,6 +4803,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                typst: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
@@ -4880,6 +5011,7 @@ fn create_project_from_ad_hoc_blocking(
                 dictionary_locale: None,
                 name: project_name,
                 main_doc,
+                typst: crate::typst_toolchain::creation_pin(&engine),
                 engine,
                 color: String::new(),
                 kind: String::new(),
@@ -4983,6 +5115,7 @@ fn create_project_from_pdf_conversion_blocking(
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                typst: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
@@ -5031,6 +5164,7 @@ fn create_typst_project_in(
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                typst: crate::typst_toolchain::creation_pin("typst"),
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
@@ -5135,6 +5269,7 @@ fn import_overleaf_project_blocking_with(
             engine_for_untrusted_project(&meta.main_doc).unwrap_or_else(|_| default_engine());
         meta.tex_flavor = None;
         meta.allow_shell_escape = false;
+        pin_typst_if_unpinned(&mut meta);
         write_meta_at(&dir.join("project.json"), &meta)?;
         finalize(&project_id)
     })?;
@@ -5467,6 +5602,7 @@ fn create_image_project_in(
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                typst: None,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
@@ -5499,21 +5635,62 @@ fn ensure_diagram_document(source: String) -> String {
     )
 }
 
+const TYPST_DIAGRAM_PAGE: &str = "#set page(width: auto, height: auto, margin: 4pt)\n";
+
+struct DiagramDocument {
+    main_doc: &'static str,
+    engine: String,
+    typst: Option<oleafly_core::TypstSpec>,
+    source: String,
+}
+
+fn diagram_document(language: Option<&str>, source: String) -> Result<DiagramDocument, String> {
+    match language.unwrap_or("tikz") {
+        "tikz" => Ok(DiagramDocument {
+            main_doc: "main.tex",
+            engine: default_engine(),
+            typst: None,
+            source: ensure_diagram_document(source),
+        }),
+        "typst" => Ok(DiagramDocument {
+            main_doc: "main.typ",
+            engine: "typst".into(),
+            typst: crate::typst_toolchain::creation_pin("typst"),
+            source: if source.contains("set page(") {
+                source
+            } else {
+                format!("{TYPST_DIAGRAM_PAGE}{source}")
+            },
+        }),
+        "mermaid" => Ok(DiagramDocument {
+            main_doc: "main.md",
+            engine: "markdown".into(),
+            typst: None,
+            source,
+        }),
+        other => Err(format!("Unknown diagram language \"{other}\".")),
+    }
+}
+
 #[tauri::command(async)]
-pub fn create_diagram_project(name: String, source: String) -> Result<String, String> {
+pub fn create_diagram_project(
+    name: String,
+    source: String,
+    language: Option<String>,
+) -> Result<String, String> {
+    let document = diagram_document(language.as_deref(), source)?;
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let dir = reservation.path().to_path_buf();
-    let source = ensure_diagram_document(source);
     let project_id = create_project_transaction(reservation, || {
-        std::fs::write(dir.join("main.tex"), &source).map_err(|e| e.to_string())?;
+        std::fs::write(dir.join(document.main_doc), &document.source).map_err(|e| e.to_string())?;
         write_meta_at(
             &dir.join("project.json"),
             &ProjectMeta {
                 dictionary_locale: None,
                 name,
-                main_doc: default_main_doc(),
-                engine: default_engine(),
+                main_doc: document.main_doc.into(),
+                engine: document.engine,
                 color: String::new(),
                 kind: "diagram".into(),
                 exports: Vec::new(),
@@ -5521,6 +5698,7 @@ pub fn create_diagram_project(name: String, source: String) -> Result<String, St
                 forked_from: None,
                 tex: None,
                 tex_flavor: None,
+                typst: document.typst,
                 allow_shell_escape: false,
                 checkpoints: oleafly_core::CheckpointPolicy::default(),
                 extra: HashMap::new(),
@@ -5560,6 +5738,7 @@ pub(crate) fn get_or_create_scratch_project_blocking() -> Result<String, String>
                     forked_from: None,
                     tex: None,
                     tex_flavor: None,
+                    typst: None,
                     allow_shell_escape: false,
                     checkpoints: oleafly_core::CheckpointPolicy::default(),
                     extra: HashMap::new(),
@@ -5876,7 +6055,7 @@ fn stage_exported_pdf(project_id: &str, dest: &str) -> Result<(), String> {
     transaction.commit()
 }
 
-fn record_pdf_export(project_id: String, dest: String) -> Result<(), String> {
+pub(crate) fn record_pdf_export(project_id: String, dest: String) -> Result<(), String> {
     // The artifact is already durably published. Export-history bookkeeping is
     // best-effort so a metadata failure never reports a false export failure.
     let _ = with_project_metadata(&project_id, || {
@@ -6013,6 +6192,7 @@ pub async fn export_document(
     format: String,
     dest: String,
     state: tauri::State<'_, crate::state::AppState>,
+    typst_variant: Option<String>,
 ) -> Result<(), String> {
     let reveal_dest = dest.clone();
     guard_export_dest(&dest)?;
@@ -6039,19 +6219,32 @@ pub async fn export_document(
     let staging_dir = crate::conversion::export_renders_citations(&format)
         .then(|| export_staging_dir(&location))
         .flatten();
-    run_export_pandoc(
+    let through_html = crate::typst_export::convert_through_html(
+        &project_id,
+        &root,
+        &main_doc,
+        &format,
         Path::new(&pandoc),
-        ExportJob {
-            root: &root,
-            build_dir,
-            main_doc: &main_doc,
-            format: &format,
-            output: &staged_dest,
-            staging_dir,
-            temp_dir: None,
-        },
+        &staged_dest,
+        typst_variant,
     )
-    .await?;
+    .await;
+    if !matches!(through_html, Ok(true)) {
+        run_export_pandoc(
+            Path::new(&pandoc),
+            ExportJob {
+                root: &root,
+                build_dir,
+                main_doc: &main_doc,
+                format: &format,
+                output: &staged_dest,
+                staging_dir,
+                temp_dir: None,
+            },
+        )
+        .await
+        .map_err(|error| through_html.err().unwrap_or(error))?;
+    }
     transaction.commit()?;
     drop(worktree);
     if let Ok(canon) = Path::new(&reveal_dest).canonicalize() {
@@ -6387,6 +6580,7 @@ async fn create_project_from_pandoc_source(
                 dictionary_locale: None,
                 name,
                 main_doc,
+                typst: crate::typst_toolchain::creation_pin(&engine),
                 engine,
                 color: String::new(),
                 kind: String::new(),
@@ -6801,6 +6995,7 @@ pub fn create_project_from_template(
                 dictionary_locale: None,
                 name,
                 main_doc: manifest.main_doc,
+                typst: crate::typst_toolchain::creation_pin(&engine),
                 engine,
                 color,
                 kind: manifest.kind.unwrap_or_default(),
@@ -10264,6 +10459,7 @@ mod tests {
         assert!(is_table_import_extension(Some("tsv")));
         assert!(is_table_import_extension(Some("xls")));
         assert!(is_table_import_extension(Some("xlsx")));
+        assert!(is_table_import_extension(Some("json")));
         assert!(!is_table_import_extension(Some("ods")));
         assert!(!is_table_import_extension(None));
 
@@ -10294,7 +10490,7 @@ mod tests {
         std::fs::write(&notes, b"secret").unwrap();
         assert!(canonical_table_import_path(&notes)
             .unwrap_err()
-            .contains("CSV, TSV, XLS, or XLSX"));
+            .contains("CSV, TSV, XLS, XLSX, or JSON"));
         assert!(canonical_table_import_path(&directory.path().join("missing.csv")).is_err());
     }
 
@@ -10573,7 +10769,8 @@ mod tests {
         let imported = import_project_zip_bytes("Imported".into(), &bytes).unwrap();
         let markdown = super::create_markdown_project("Notes".into()).unwrap();
         let typst = super::create_typst_project("Typst".into()).unwrap();
-        let diagram = create_diagram_project("Figure".into(), "\\draw (0,0);".into()).unwrap();
+        let diagram =
+            create_diagram_project("Figure".into(), "\\draw (0,0);".into(), None).unwrap();
 
         for project_id in [&latex, &converted, &imported, &markdown, &typst, &diagram] {
             let root = crate::paths::project_dir(project_id).unwrap();
@@ -13220,6 +13417,7 @@ mod tests {
             forked_from: None,
             tex: None,
             tex_flavor: None,
+            typst: None,
             allow_shell_escape: false,
             checkpoints: oleafly_core::CheckpointPolicy::default(),
             extra: HashMap::new(),
@@ -14880,6 +15078,7 @@ mod tests {
             forked_from: None,
             tex: None,
             tex_flavor: None,
+            typst: None,
             allow_shell_escape: false,
             checkpoints: oleafly_core::CheckpointPolicy::default(),
             extra: HashMap::new(),
@@ -14932,6 +15131,7 @@ mod tests {
                         forked_from: None,
                         tex: None,
                         tex_flavor: None,
+                        typst: None,
                         allow_shell_escape: false,
                         checkpoints: oleafly_core::CheckpointPolicy::default(),
                         extra: HashMap::new(),
@@ -14987,6 +15187,7 @@ mod tests {
         let id = create_diagram_project(
             "My Diagram".to_string(),
             "\\documentclass{standalone}".to_string(),
+            None,
         )
         .unwrap();
         let meta = read_meta(&id).unwrap();
@@ -15006,6 +15207,7 @@ mod tests {
             "Bare Body".to_string(),
             "\\definecolor{c000000}{HTML}{000000}\n\\begin{tikzpicture}\n\\end{tikzpicture}"
                 .to_string(),
+            None,
         )
         .unwrap();
         let dir = crate::paths::project_dir(&id).unwrap();
@@ -15024,10 +15226,125 @@ mod tests {
         let root = test_dir("diagram-project-already-wrapped");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let source = "\\documentclass[tikz,border=4pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}\n\\end{tikzpicture}\n\\end{document}\n";
-        let id = create_diagram_project("Already Wrapped".to_string(), source.to_string()).unwrap();
+        let id = create_diagram_project("Already Wrapped".to_string(), source.to_string(), None)
+            .unwrap();
         let dir = crate::paths::project_dir(&id).unwrap();
         let main_tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
         assert_eq!(main_tex, source);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn diagram_project_without_a_language_or_with_tikz_stays_a_latex_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("diagram-project-tikz");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        for language in [None, Some("tikz".to_string())] {
+            let id =
+                create_diagram_project("TikZ".to_string(), "\\draw (0,0);".to_string(), language)
+                    .unwrap();
+            let dir = crate::paths::project_dir(&id).unwrap();
+            let main_tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
+            assert!(main_tex.contains("\\begin{document}"));
+            assert!(!dir.join("main.typ").exists());
+            assert!(!dir.join("main.md").exists());
+            let meta = read_meta(&id).unwrap();
+            assert_eq!(meta.main_doc, "main.tex");
+            assert_eq!(meta.engine, "xetex");
+            assert_eq!(meta.kind, "diagram");
+            assert!(meta.typst.is_none());
+        }
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn typst_diagram_project_compiles_main_typ_with_a_pinned_typst() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("diagram-project-typst");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let body = "#import \"@preview/fletcher:0.5.8\" as fletcher: diagram, node, edge\n#diagram(node((0, 0), [A]), edge(\"->\"), node((1, 0), [B]))\n";
+        let id = create_diagram_project("Flow".to_string(), body.to_string(), Some("typst".into()))
+            .unwrap();
+        let dir = crate::paths::project_dir(&id).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.join("main.typ")).unwrap(),
+            format!("#set page(width: auto, height: auto, margin: 4pt)\n{body}")
+        );
+        assert!(!dir.join("main.tex").exists());
+        let meta = read_meta(&id).unwrap();
+        assert_eq!(meta.main_doc, "main.typ");
+        assert_eq!(meta.engine, "typst");
+        assert_eq!(meta.kind, "diagram");
+        assert_eq!(meta.typst, crate::typst_toolchain::creation_pin("typst"));
+        assert_eq!(
+            meta.typst.as_ref().and_then(|spec| spec.version.clone()),
+            Some(crate::typst_toolchain::default_version())
+        );
+        assert!(crate::document_engine::engine_for(&meta.engine, &meta.main_doc).is_ok());
+
+        let paged = "#set page(width: 120pt, height: 80pt)\n#rect()\n";
+        let id =
+            create_diagram_project("Paged".to_string(), paged.to_string(), Some("typst".into()))
+                .unwrap();
+        let dir = crate::paths::project_dir(&id).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.join("main.typ")).unwrap(),
+            paged
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn mermaid_diagram_project_is_a_markdown_project_holding_the_source_as_given() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("diagram-project-mermaid");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let source = "```mermaid\nflowchart TD\n    A --> B\n```\n";
+        let id = create_diagram_project(
+            "Chart".to_string(),
+            source.to_string(),
+            Some("mermaid".into()),
+        )
+        .unwrap();
+        let dir = crate::paths::project_dir(&id).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(dir.join("main.md")).unwrap(),
+            source
+        );
+        assert!(!dir.join("main.tex").exists());
+        let meta = read_meta(&id).unwrap();
+        assert_eq!(meta.main_doc, "main.md");
+        assert_eq!(meta.engine, "markdown");
+        assert_eq!(meta.kind, "diagram");
+        assert!(meta.typst.is_none());
+        assert!(crate::document_engine::engine_for(&meta.engine, &meta.main_doc).is_ok());
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn diagram_project_rejects_an_unknown_language_without_creating_a_project() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("diagram-project-unknown-language");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let projects = crate::paths::projects_root().unwrap();
+        let count = || {
+            std::fs::read_dir(&projects)
+                .map(|entries| entries.count())
+                .unwrap_or(0)
+        };
+        let before = count();
+        let error = create_diagram_project(
+            "Graph".to_string(),
+            "digraph { a -> b }".to_string(),
+            Some("graphviz".into()),
+        )
+        .unwrap_err();
+        assert!(error.contains("graphviz"), "{error}");
+        assert_eq!(count(), before);
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -16152,5 +16469,330 @@ mod tests {
             })
             .collect();
         assert!(request("latex", Some("x"), None, too_many).is_err());
+    }
+
+    #[test]
+    fn the_typst_pin_round_trips_through_project_json_and_the_core_manifest() {
+        let meta: ProjectMeta = serde_json::from_str(
+            r#"{"name":"Paper","main_doc":"main.typ","engine":"typst","typst":{"version":"0.13.1","font_paths":["fonts"]}}"#,
+        )
+        .unwrap();
+        assert_eq!(meta.typst_version_pin(), Some("0.13.1"));
+        let value = serde_json::to_value(&meta).unwrap();
+        assert_eq!(
+            value["typst"],
+            serde_json::json!({"version": "0.13.1", "font_paths": ["fonts"]})
+        );
+        assert!(value.get("font_paths").is_none());
+        let reparsed = super::parse_project_meta(value.to_string().as_bytes()).unwrap();
+        assert_eq!(reparsed.typst, meta.typst);
+
+        let manifest: oleafly_core::ProjectManifest = serde_json::from_value(value).unwrap();
+        assert_eq!(manifest.typst, meta.typst);
+        assert_eq!(manifest.typst_version_pin(), Some("0.13.1"));
+        let back: ProjectMeta =
+            serde_json::from_value(serde_json::to_value(&manifest).unwrap()).unwrap();
+        assert_eq!(back.typst, meta.typst);
+
+        let mut unpinned = ProjectMeta {
+            main_doc: "main.typ".into(),
+            engine: "typst".into(),
+            ..ProjectMeta::default()
+        };
+        assert!(serde_json::to_value(&unpinned)
+            .unwrap()
+            .get("typst")
+            .is_none());
+        unpinned.set_typst_version_pin(Some(" 0.15.1 ".into()));
+        assert_eq!(
+            serde_json::to_value(&unpinned).unwrap()["typst"],
+            serde_json::json!({"version": "0.15.1"})
+        );
+        unpinned.set_typst_version_pin(Some(" ".into()));
+        assert!(unpinned.typst.is_none());
+
+        let mut cleared = meta.clone();
+        cleared.set_typst_version_pin(None);
+        assert_eq!(cleared.typst_version_pin(), None);
+        assert_eq!(
+            serde_json::to_value(&cleared).unwrap()["typst"],
+            serde_json::json!({"font_paths": ["fonts"]})
+        );
+    }
+
+    #[test]
+    fn new_typst_projects_record_the_default_typst_version_at_creation() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("typst-creation-pins");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let projects = crate::paths::projects_root().unwrap();
+        let pin = |id: &str| {
+            read_meta(id)
+                .unwrap()
+                .typst_version_pin()
+                .map(str::to_owned)
+        };
+
+        let blank = create_typst_project_in(&projects, "Blank".into(), false).unwrap();
+        assert_eq!(pin(&blank).as_deref(), Some("0.15.1"));
+        crate::config::set_typst_default_choice(Some("0.13.1".into())).unwrap();
+        let later = create_typst_project_in(&projects, "Later".into(), false).unwrap();
+        assert_eq!(pin(&later).as_deref(), Some("0.13.1"));
+        assert_eq!(pin(&blank).as_deref(), Some("0.15.1"));
+        let notes = create_markdown_project_in(&projects, "Notes".into(), false).unwrap();
+        assert_eq!(pin(&notes), None);
+
+        for (target, source, expected) in [
+            ("typst", "= Converted", Some("0.13.1")),
+            ("latex", "\\documentclass{article}", None),
+            ("markdown", "# Converted", None),
+        ] {
+            let id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
+                name: "Converted".into(),
+                target: target.into(),
+                text: Some(source.into()),
+                main_file: None,
+                files: Vec::new(),
+            })
+            .unwrap();
+            assert_eq!(pin(&id).as_deref(), expected, "{target}");
+        }
+
+        let plain = root.join("plain-typst-folder");
+        std::fs::create_dir_all(&plain).unwrap();
+        std::fs::write(plain.join("main.typ"), "= Imported").unwrap();
+        let imported =
+            super::import_overleaf_project_blocking(None, &plain.to_string_lossy()).unwrap();
+        assert_eq!(pin(&imported).as_deref(), Some("0.13.1"));
+
+        let pinned = root.join("pinned-typst-folder");
+        std::fs::create_dir_all(&pinned).unwrap();
+        std::fs::write(pinned.join("main.typ"), "= Imported").unwrap();
+        std::fs::write(
+            pinned.join("project.json"),
+            r#"{"name":"Pinned","main_doc":"main.typ","engine":"typst","typst":{"version":"0.12.0"}}"#,
+        )
+        .unwrap();
+        let kept =
+            super::import_overleaf_project_blocking(None, &pinned.to_string_lossy()).unwrap();
+        assert_eq!(pin(&kept).as_deref(), Some("0.12.0"));
+
+        let tex = root.join("tex-folder");
+        std::fs::create_dir_all(&tex).unwrap();
+        std::fs::write(tex.join("main.tex"), "\\documentclass{article}").unwrap();
+        let latex = super::import_overleaf_project_blocking(None, &tex.to_string_lossy()).unwrap();
+        assert_eq!(pin(&latex), None);
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn an_opened_typst_folder_without_its_own_settings_records_the_default_version() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("typst-paper");
+        std::fs::write(folder.join("main.typ"), "= Paper").unwrap();
+        let package = "[package]\nname = \"paper\"\nversion = \"0.1.0\"\n";
+        std::fs::write(folder.join("typst.toml"), package).unwrap();
+        assert!(super::remember_detected_main(&project_id, "main.typ").unwrap());
+        let meta = read_meta(&project_id).unwrap();
+        assert_eq!(meta.engine, "typst");
+        assert_eq!(meta.typst_version_pin(), Some("0.15.1"));
+        assert!(!folder.join("project.json").exists());
+        assert_eq!(
+            std::fs::read_to_string(folder.join("typst.toml")).unwrap(),
+            package
+        );
+
+        let (shared_id, shared) = fixture.link("shared-paper");
+        std::fs::write(shared.join("main.typ"), "= Shared").unwrap();
+        let manifest = "{\n  \"name\": \"Shared\",\n  \"main_doc\": \"main.typ\",\n  \"engine\": \"typst\"\n}\n";
+        std::fs::write(shared.join("project.json"), manifest).unwrap();
+        let _ = super::remember_detected_main(&shared_id, "main.typ").unwrap();
+        assert_eq!(read_meta(&shared_id).unwrap().typst_version_pin(), None);
+        assert_eq!(
+            std::fs::read_to_string(shared.join("project.json")).unwrap(),
+            manifest
+        );
+    }
+
+    #[test]
+    fn a_project_pin_is_set_and_cleared_in_the_library_and_in_a_folders_own_settings() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let projects = crate::paths::projects_root().unwrap();
+        let id = create_typst_project_in(&projects, "Paper".into(), false).unwrap();
+        let stored = |id: &str| -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(projects.join(id).join("project.json")).unwrap())
+                .unwrap()
+        };
+
+        let meta = super::set_project_typst_version_unlocked(&id, Some("0.13.1".into())).unwrap();
+        assert_eq!(meta.typst_version_pin(), Some("0.13.1"));
+        assert_eq!(
+            stored(&id)["typst"],
+            serde_json::json!({"version": "0.13.1"})
+        );
+        let cleared = super::set_project_typst_version_unlocked(&id, None).unwrap();
+        assert!(cleared.typst.is_none());
+        assert!(stored(&id).get("typst").is_none());
+
+        let notes = create_markdown_project_in(&projects, "Notes".into(), false).unwrap();
+        let refused = super::set_project_typst_version_unlocked(&notes, Some("0.13.1".into()))
+            .err()
+            .unwrap();
+        assert!(
+            refused.contains("typst_toolchain.not_typst_project"),
+            "{refused}"
+        );
+
+        let (shared_id, shared) = fixture.link("shared");
+        std::fs::write(shared.join("main.typ"), "= Shared").unwrap();
+        let manifest = "{\n  \"name\": \"Shared\",\n  \"main_doc\": \"main.typ\",\n  \"engine\": \"typst\",\n  \"color\": \"#123456\"\n}\n";
+        std::fs::write(shared.join("project.json"), manifest).unwrap();
+        let folder_settings = || -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(shared.join("project.json")).unwrap()).unwrap()
+        };
+        super::set_project_typst_version_unlocked(&shared_id, Some("0.13.1".into())).unwrap();
+        assert_eq!(
+            folder_settings()["typst"],
+            serde_json::json!({"version": "0.13.1"})
+        );
+        assert_eq!(folder_settings()["color"], "#123456");
+        assert_eq!(
+            read_meta(&shared_id).unwrap().typst_version_pin(),
+            Some("0.13.1")
+        );
+        super::set_project_typst_version_unlocked(&shared_id, None).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(shared.join("project.json")).unwrap(),
+            manifest
+        );
+        assert_eq!(read_meta(&shared_id).unwrap().typst_version_pin(), None);
+
+        std::fs::write(
+            shared.join("project.json"),
+            r#"{"name":"Shared","main_doc":"main.typ","engine":"typst","typst":{"version":"0.12.0"}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            read_meta(&shared_id).unwrap().typst_version_pin(),
+            Some("0.12.0")
+        );
+
+        let (sidecar_id, sidecar) = fixture.link("sidecar");
+        std::fs::write(sidecar.join("main.typ"), "= Sidecar").unwrap();
+        assert!(super::remember_detected_main(&sidecar_id, "main.typ").unwrap());
+        super::save_project_settings_to_folder_blocking(&sidecar_id).unwrap();
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(sidecar.join("project.json")).unwrap()).unwrap();
+        assert_eq!(saved["typst"], serde_json::json!({"version": "0.15.1"}));
+        assert_eq!(
+            read_meta(&sidecar_id).unwrap().typst_version_pin(),
+            Some("0.15.1")
+        );
+    }
+
+    #[test]
+    fn project_state_descriptors_carry_the_typst_version_details() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("typst-state-descriptor");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let projects = crate::paths::projects_root().unwrap();
+        let id = create_typst_project_in(&projects, "Paper".into(), false).unwrap();
+        let meta = super::set_project_typst_version_unlocked(&id, Some("0.12.0".into())).unwrap();
+        let descriptor = super::project_state_engine(&id, &meta).unwrap();
+        assert_eq!(descriptor.typst_version.as_deref(), Some("0.12.0"));
+        assert_eq!(descriptor.typst_missing.as_deref(), Some("0.12.0"));
+        assert_eq!(descriptor.typst_resolved, None);
+        assert!(!descriptor.typst_vendor_packages);
+        let vendored = super::set_project_typst_vendor_packages_unlocked(&id, true).unwrap();
+        let descriptor = super::project_state_engine(&id, &vendored).unwrap();
+        assert!(descriptor.typst_vendor_packages);
+        assert_eq!(
+            serde_json::to_value(&descriptor).unwrap()["typst_vendor_packages"],
+            true
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    fn typst_settings_with_every_kind_of_field(version: Option<&str>) -> serde_json::Value {
+        let mut typst = serde_json::json!({
+            "vendor_packages": true,
+            "font_paths": ["fonts"],
+            "system_fonts": false,
+            "inputs": {"draft": "true"},
+            "future": {"enabled": true}
+        });
+        if let Some(version) = version {
+            typst["version"] = version.into();
+        }
+        typst
+    }
+
+    fn assert_typst_writers_keep_other_fields(
+        project_id: &str,
+        stored: &dyn Fn() -> serde_json::Value,
+    ) {
+        let expected = |version: Option<&str>, vendored: bool| {
+            let mut typst = typst_settings_with_every_kind_of_field(version);
+            if !vendored {
+                typst.as_object_mut().unwrap().remove("vendor_packages");
+            }
+            typst
+        };
+        let meta =
+            super::set_project_typst_version_unlocked(project_id, Some("0.13.1".into())).unwrap();
+        assert_eq!(stored()["typst"], expected(Some("0.13.1"), true));
+        assert_eq!(
+            serde_json::to_value(&meta.typst).unwrap(),
+            expected(Some("0.13.1"), true)
+        );
+        super::set_project_typst_vendor_packages_unlocked(project_id, false).unwrap();
+        assert_eq!(stored()["typst"], expected(Some("0.13.1"), false));
+        super::set_project_typst_version_unlocked(project_id, None).unwrap();
+        assert_eq!(stored()["typst"], expected(None, false));
+        let meta = super::set_project_typst_vendor_packages_unlocked(project_id, true).unwrap();
+        assert_eq!(stored()["typst"], expected(None, true));
+        assert_eq!(
+            serde_json::to_value(&meta.typst).unwrap(),
+            expected(None, true)
+        );
+    }
+
+    #[test]
+    fn typst_setters_change_only_their_own_field_in_the_library_and_in_a_folders_own_settings() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let projects = crate::paths::projects_root().unwrap();
+        let id = create_typst_project_in(&projects, "Paper".into(), false).unwrap();
+        let manifest = projects.join(&id).join("project.json");
+        let stored = || -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap()
+        };
+        let mut seeded = stored();
+        seeded["typst"] = typst_settings_with_every_kind_of_field(Some("0.15.1"));
+        std::fs::write(&manifest, seeded.to_string()).unwrap();
+        assert_typst_writers_keep_other_fields(&id, &stored);
+
+        let (shared_id, shared) = fixture.link("shared-typst-settings");
+        std::fs::write(shared.join("main.typ"), "= Shared").unwrap();
+        let settings = shared.join("project.json");
+        std::fs::write(
+            &settings,
+            serde_json::json!({
+                "name": "Shared",
+                "main_doc": "main.typ",
+                "engine": "typst",
+                "color": "#123456",
+                "typst": typst_settings_with_every_kind_of_field(Some("0.15.1"))
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let folder_settings = || -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(&settings).unwrap()).unwrap()
+        };
+        assert_typst_writers_keep_other_fields(&shared_id, &folder_settings);
+        assert_eq!(folder_settings()["color"], "#123456");
     }
 }

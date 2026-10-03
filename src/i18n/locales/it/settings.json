@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Trova i punti deboli di argomentazioni, metodi, prove e presentazione.",
-        "documentEditor": "Sistema prosa, struttura, citazioni e LaTeX con modifiche mirate e sicure.",
-        "figure": "Genera figure e diagrammi di qualità editoriale come TikZ o PGFPlots in LaTeX.",
+        "documentEditor": "Sistema prosa, struttura, citazioni e sorgente LaTeX o Typst con modifiche mirate e sicure.",
+        "figure": "Genera figure e diagrammi di qualità editoriale con TikZ in LaTeX o CeTZ in Typst.",
         "researchWriter": "Scrive e struttura testi accademici senza inventare prove o citazioni."
       },
       "suggestedDescription": "Parti da una di queste, poi modificane le istruzioni per adattarle al tuo modo di lavorare.",
@@ -690,6 +690,29 @@
       "mathPreview": {
         "description": "Mostra l'equazione composta sopra a quella in cui si trova il cursore.",
         "label": "Anteprima della matematica"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Riordina i file Typst con typstyle quando premi ⌘S o Ctrl+S. Il salvataggio automatico li lascia invariati.",
+          "label": "Formatta al salvataggio"
+        },
+        "lineWidth": {
+          "description": "typstyle manda a capo le righe più lunghe di questo valore.",
+          "label": "Larghezza di riga del formattatore"
+        },
+        "indent": {
+          "description": "Spazi per livello di rientro nel codice Typst formattato.",
+          "label": "Rientro del formattatore"
+        },
+        "inlayHints": {
+          "description": "Mostra i nomi dei parametri prima degli argomenti nelle chiamate di funzione Typst.",
+          "label": "Suggerimenti sui nomi dei parametri"
+        },
+        "lint": {
+          "description": "Controlla i file Typst per individuare probabili errori a ogni salvataggio. Attivarlo o disattivarlo riavvia il server di linguaggio Typst.",
+          "label": "Controlli lint di Typst"
+        }
       }
     },
     "files": {
@@ -1027,11 +1050,61 @@
       "resume": "Riprendi il download ({{size}} MB completati)"
     },
     "typst": {
-      "detail": "Incluso in Oleafly. Veloce, offline, senza configurazione. Compila i documenti Typst in PDF.",
+      "detail": "Incluso in Oleafly, quindi non c'è nulla da configurare. Serve una connessione di rete solo la prima volta che un documento importa un pacchetto @preview.",
       "heading": "Compilatore Typst",
       "name": "Typst (integrato)",
-      "note": "I progetti Typst usano sempre il compilatore incluso. Non è ancora possibile scegliere una versione del compilatore né un Typst di sistema.",
-      "tooltip": "Typst è incluso dentro Oleafly, quindi non c'è niente da installare o configurare. Ogni progetto Typst si compila con il compilatore incluso."
+      "note": "Scegli dal menu di compilazione la versione usata da un progetto. Il progetto mantiene quella versione finché non la cambi.",
+      "tooltip": "Oleafly include una versione di Typst e può scaricarne altre. Ogni progetto si compila con la versione che ha fissato, oppure con quella predefinita se non ne ha fissata nessuna.",
+      "system": {
+        "name": "Typst su questo computer",
+        "detail": "I progetti che fissano la versione {{version}} possono usarlo per compilare."
+      },
+      "versions": {
+        "heading": "Versioni",
+        "tooltip": "I nuovi progetti partono dalla versione predefinita, così come i progetti senza una versione fissata.",
+        "loading": "Controllo delle versioni di Typst",
+        "default": "Predefinita",
+        "setDefault": "Usa Typst {{version}} come predefinito",
+        "released": "Rilasciata il {{date}}",
+        "install": "Installa",
+        "installAria": "Installa Typst {{version}}",
+        "removeAria": "Rimuovi Typst {{version}}",
+        "removeDefault": "Questa è la versione predefinita. Scegline un'altra come predefinita prima di rimuoverla.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Integrata",
+          "downloaded": "Scaricata",
+          "system": "Sistema"
+        }
+      },
+      "progress": {
+        "starting": "Avvio",
+        "downloading": "Download {{percent}}%",
+        "verifying": "Verifica",
+        "extracting": "Estrazione",
+        "done": "Completamento"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} download del server di linguaggio non è usato da nessuna versione di Typst installata.",
+        "unused_many": "{{count}} download del server di linguaggio non sono usati da nessuna versione di Typst installata.",
+        "unused_other": "{{count}} download del server di linguaggio non sono usati da nessuna versione di Typst installata.",
+        "remove": "Rimuovi i download del server di linguaggio non usati",
+        "removed_one": "{{count}} download del server di linguaggio rimosso.",
+        "removed_many": "{{count}} download del server di linguaggio rimossi.",
+        "removed_other": "{{count}} download del server di linguaggio rimossi."
+      },
+      "error": {
+        "load": "Impossibile leggere le versioni di Typst.",
+        "install": "Impossibile installare Typst {{version}}.",
+        "remove": "Impossibile rimuovere Typst {{version}}.",
+        "default": "Impossibile cambiare la versione predefinita di Typst.",
+        "removeTinymist": "Impossibile rimuovere i download del server di linguaggio non usati."
+      },
+      "upgrade": {
+        "heading": "Prova una versione più recente",
+        "detail": "Compila il progetto aperto con una versione installata più recente e confronta i risultati prima di passare.",
+        "check": "Verifica con Typst {{version}}"
+      }
     }
   },
   "github": {

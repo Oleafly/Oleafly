@@ -1,8 +1,15 @@
+import { toggleComment } from "@codemirror/commands";
+import { typstContextAt } from "@oleafly/editor";
 import {
+  getEditorView,
   insertTemplate,
   wrapSelectionOrPlaceholder,
 } from "@/components/editor/cm/controller";
 import { i18n } from "@/i18n";
+import { currentInteractiveLanguageService } from "@/lib/analysis/interactive-language-service";
+import type { LanguageServiceFeature } from "@/lib/language-service";
+import { useFigureDialogStore } from "@/store/figure-dialog";
+import { useFilesStore } from "@/store/files";
 
 export interface TypstHeadingLevel {
   label: () => string;
@@ -75,4 +82,102 @@ export function insertTypstImage() {
 
 export function insertTypstCodeBlock() {
   wrapSelectionOrPlaceholder("```\n", "\n```\n", "code");
+}
+
+export function insertTypstFootnote() {
+  wrapSelectionOrPlaceholder("#footnote[", "]", "note text");
+}
+
+export function insertTypstQuote() {
+  wrapSelectionOrPlaceholder("#quote(block: true)[", "]", "quote");
+}
+
+export function insertTypstDisplayMath() {
+  wrapSelectionOrPlaceholder("$ ", " $", "x");
+}
+
+export function insertTypstAlignedMath() {
+  wrapSelectionOrPlaceholder("$ ", " $", String.raw`a &= b \ c &= d`);
+}
+
+export function insertTypstFraction() {
+  const view = getEditorView();
+  if (!view) return;
+  const selection = view.state.selection.main;
+  const numerator = selection.empty ? "a" : view.state.sliceDoc(selection.from, selection.to);
+  const inMath = typstContextAt(view.state, selection.from) === "math";
+  const before = view.state.sliceDoc(Math.max(0, selection.from - 1), selection.from);
+  const lead = inMath && /\p{ID_Continue}$/u.test(before) ? " " : "";
+  const call = `frac(${numerator}, b)`;
+  const template = inMath ? `${lead}${call}` : `$${call}$`;
+  const callStart = template.indexOf(call);
+  const start = callStart + (selection.empty ? "frac(".length : `frac(${numerator}, `.length);
+  insertTemplate(template, start, start + 1);
+}
+
+export function toggleTypstComment() {
+  const view = getEditorView();
+  if (!view) return;
+  toggleComment(view);
+  view.focus();
+}
+
+const typstInsertions = () => import("@/components/editor/typst-insertions");
+const typstFigures = () => import("@/components/editor/typst-figure");
+
+export async function insertTypstNumberedEquation(): Promise<void> {
+  (await typstInsertions()).insertTypstNumberedEquation();
+}
+
+export async function addTypstLabel(): Promise<void> {
+  (await typstInsertions()).addTypstLabel();
+}
+
+export async function insertTypstTable(rows: number, cols: number): Promise<void> {
+  (await typstInsertions()).insertTypstTableAt(rows, cols);
+}
+
+export async function insertTypstReferenceTo(label: string): Promise<void> {
+  (await typstInsertions()).insertTypstReferenceTo(label);
+}
+
+export async function insertTypstCitation(key: string, bibliography: string | null): Promise<void> {
+  await (await typstInsertions()).insertTypstCitation(key, bibliography);
+}
+
+export async function insertTypstSymbol(latex: string, glyph: string): Promise<void> {
+  (await typstInsertions()).insertTypstSymbolFor(latex, glyph);
+}
+
+export async function insertTypstFigure(): Promise<void> {
+  const view = getEditorView();
+  if (view) {
+    const { typstFigureAt } = await typstFigures();
+    const match = typstFigureAt(view.state.doc.toString(), view.state.selection.main.head);
+    if (match?.fields) {
+      useFigureDialogStore.getState().openForEdit({
+        from: match.from,
+        to: match.to,
+        path: match.fields.path,
+        width: match.fields.width,
+        typst: match.fields,
+      });
+      return;
+    }
+  }
+  useFigureDialogStore.getState().setOpen(true);
+}
+
+export function typstLanguageServiceOffers(feature: LanguageServiceFeature): boolean {
+  const files = useFilesStore.getState();
+  const path = files.activePath;
+  const session = currentInteractiveLanguageService();
+  return Boolean(
+    path &&
+      /\.typ$/iu.test(path) &&
+      session &&
+      session.projectId === files.projectId &&
+      session.client.supports(feature) &&
+      session.documentForPath(path),
+  );
 }

@@ -154,5 +154,10 @@
       "detail": "De nieuwste projectrevisie is nog niet geïndexeerd.",
       "title": "Wachten op projectanalyse"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Citatiestijl",
+    "ariaLabel": "Citatiestijl voor de bibliografie in {{path}}",
+    "failed": "Oleafly kon de citatiestijl niet wijzigen."
   }
 }

@@ -745,6 +745,10 @@ export const EDITOR_LINE_HEIGHT_OPTIONS: readonly EditorLineHeight[] = [
 
 export const EDITOR_TAB_SIZES: readonly number[] = [2, 4, 8];
 
+export const TYPST_FORMATTER_LINE_WIDTHS: readonly number[] = [60, 80, 100, 120, 160];
+
+export const TYPST_FORMATTER_INDENT_SIZES: readonly number[] = [2, 4, 8];
+
 interface SettingsState {
   editorKeymap: EditorKeymapMode;
   setEditorKeymap: (v: EditorKeymapMode) => void;
@@ -778,6 +782,16 @@ interface SettingsState {
   /** Show the rendered result of the equation the cursor is in. */
   editorMathPreview: boolean;
   setEditorMathPreview: (v: boolean) => void;
+  typstFormatOnSave: boolean;
+  setTypstFormatOnSave: (v: boolean) => void;
+  typstFormatterLineWidth: number;
+  setTypstFormatterLineWidth: (v: number) => void;
+  typstFormatterIndent: number;
+  setTypstFormatterIndent: (v: number) => void;
+  typstInlayHints: boolean;
+  setTypstInlayHints: (v: boolean) => void;
+  typstLint: boolean;
+  setTypstLint: (v: boolean) => void;
   spellcheck: boolean;
   toggleSpellcheck: () => void;
   harper: boolean;
@@ -961,6 +975,11 @@ function readEditorLineHeight(): EditorLineHeight {
     : "normal";
 }
 
+function readChoice(key: string, choices: readonly number[], fallback: number): number {
+  const stored = Number(ls(key, ""));
+  return choices.includes(stored) ? stored : fallback;
+}
+
 const initialEditorKeymap = readEditorKeymap();
 
 const PREF_DEFAULTS = {
@@ -977,6 +996,11 @@ const PREF_DEFAULTS = {
   editorNonBlinkingCursor: false,
   editorStickyScroll: true,
   editorMathPreview: true,
+  typstFormatOnSave: false,
+  typstFormatterLineWidth: 120,
+  typstFormatterIndent: 2,
+  typstInlayHints: false,
+  typstLint: false,
   spellcheck: true,
   harper: true,
   grammarDialect: "american" as GrammarDialect,
@@ -1054,6 +1078,11 @@ const SECTION_SETTINGS = {
     editorNonBlinkingCursor: "oleafly.editor.solidCursor",
     editorStickyScroll: "oleafly.editor.stickyScroll",
     editorMathPreview: "oleafly.editor.mathPreview",
+    typstFormatOnSave: "oleafly.typst.formatOnSave",
+    typstFormatterLineWidth: "oleafly.typst.formatterLineWidth",
+    typstFormatterIndent: "oleafly.typst.formatterIndent",
+    typstInlayHints: "oleafly.typst.inlayHints",
+    typstLint: "oleafly.typst.lint",
     terminalFontSize: "oleafly.terminal.fontSize",
     terminalFontFamily: "oleafly.terminal.fontFamily",
     terminalFontWeight: "oleafly.terminal.fontWeight",
@@ -1199,6 +1228,45 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorMathPreview: (v) => {
     saveLs("oleafly.editor.mathPreview", v ? "1" : "0");
     set({ editorMathPreview: v });
+  },
+  typstFormatOnSave: ls("oleafly.typst.formatOnSave", "0") === "1",
+  setTypstFormatOnSave: (v) => {
+    saveLs("oleafly.typst.formatOnSave", v ? "1" : "0");
+    set({ typstFormatOnSave: v });
+  },
+  typstFormatterLineWidth: readChoice(
+    "oleafly.typst.formatterLineWidth",
+    TYPST_FORMATTER_LINE_WIDTHS,
+    PREF_DEFAULTS.typstFormatterLineWidth,
+  ),
+  setTypstFormatterLineWidth: (v) => {
+    const width = TYPST_FORMATTER_LINE_WIDTHS.includes(v)
+      ? v
+      : PREF_DEFAULTS.typstFormatterLineWidth;
+    saveLs("oleafly.typst.formatterLineWidth", String(width));
+    set({ typstFormatterLineWidth: width });
+  },
+  typstFormatterIndent: readChoice(
+    "oleafly.typst.formatterIndent",
+    TYPST_FORMATTER_INDENT_SIZES,
+    PREF_DEFAULTS.typstFormatterIndent,
+  ),
+  setTypstFormatterIndent: (v) => {
+    const indent = TYPST_FORMATTER_INDENT_SIZES.includes(v)
+      ? v
+      : PREF_DEFAULTS.typstFormatterIndent;
+    saveLs("oleafly.typst.formatterIndent", String(indent));
+    set({ typstFormatterIndent: indent });
+  },
+  typstInlayHints: ls("oleafly.typst.inlayHints", "0") === "1",
+  setTypstInlayHints: (v) => {
+    saveLs("oleafly.typst.inlayHints", v ? "1" : "0");
+    set({ typstInlayHints: v });
+  },
+  typstLint: ls("oleafly.typst.lint", "0") === "1",
+  setTypstLint: (v) => {
+    saveLs("oleafly.typst.lint", v ? "1" : "0");
+    set({ typstLint: v });
   },
   spellcheck: ls("oleafly.spellcheck", "1") !== "0",
   toggleSpellcheck: () => {

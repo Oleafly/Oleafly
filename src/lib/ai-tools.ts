@@ -17,6 +17,7 @@ import {
   readProjectBytes,
   writeProjectBytes,
   projectMutationGeneration,
+  renderTypstSnippet,
 } from "@/lib/tauri";
 import {
   createOleaflyTools as createOleaflyToolsCore,
@@ -24,7 +25,9 @@ import {
   type AiToolsHost,
   type ProjectIndexView,
   type ConfirmFn,
+  type TypstFigureRender,
 } from "@oleafly/ai-tools";
+import { figureToolEngine } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
 import { codedSaveFailure } from "@/store/save-flush-error";
 import { projectFolderIsReadOnly, readOnlyFolderMessageInEnglish } from "@/store/folder-access";
@@ -86,7 +89,27 @@ function currentDiskContent(projectId: string, path: string): Promise<string> {
 
 /** The document insertAtCursor and replaceRange edit: the file open in the editor. */
 function insertTargetPathFor(files: ReturnType<typeof useFilesStore.getState>): string {
-  return files.activePath || files.mainDoc || "main.tex";
+  return files.activePath || files.mainDoc || files.engine?.main_document || "main.tex";
+}
+
+const TYPST_FIGURE_PPI = 192;
+
+async function renderTypstFigure(projectId: string, source: string): Promise<TypstFigureRender> {
+  const render = await renderTypstSnippet({
+    source,
+    format: "png",
+    ppi: TYPST_FIGURE_PPI,
+    projectId,
+  });
+  if (render.status === "rendered" && render.image.format === "png") {
+    return { ok: true, pngBase64: render.image.pngBase64, diagnostics: render.diagnostics };
+  }
+  return { ok: false, diagnostics: render.diagnostics };
+}
+
+function currentFigureEngine() {
+  const { engine, engineLoaded } = useFilesStore.getState();
+  return figureToolEngine(engine, engineLoaded);
 }
 
 const insertTargetPathHost: NonNullable<AiToolsHost["insertTargetPath"]> = (projectId) => {
@@ -369,6 +392,8 @@ const HOST: AiToolsHost = {
   setLastFigurePreview,
   getLastFigurePreview,
   getFigureInsertTarget,
+  getFigureEngine: currentFigureEngine,
+  renderTypstFigure,
   insertAtCursor: insertAtCursorHost,
   replaceRange: replaceRangeHost,
   insertTargetPath: insertTargetPathHost,

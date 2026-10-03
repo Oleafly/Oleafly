@@ -40,7 +40,9 @@
     "noResults": "未找到结果。请检查标识符，或尝试其他标题关键词。",
     "placeholder": "DOI、arXiv 编号、URL 或论文标题…",
     "privacyNote": "仅会将标识符或标题发送至 doi.org、arXiv 或 Crossref。",
-    "title": "添加引用"
+    "title": "添加引用",
+    "bibliography": "参考文献",
+    "bibliographyHint": "此项目有多个参考文献文件。条目会添加到你在此处选择的文件中。"
   },
   "backendProtocol": {
     "mismatch": "此窗口与后端基于不同的 Oleafly 版本构建，部分功能可能无法正常使用。重新安装应用即可解决。"
@@ -118,6 +120,14 @@
       "keywords": "关闭 结束 环境 begin latex",
       "label": "关闭 LaTeX 环境"
     },
+    "formatDocument": {
+      "keywords": "格式化 整理 缩进 typstyle typst",
+      "label": "格式化文档"
+    },
+    "formatSelection": {
+      "keywords": "格式化 所选内容 整理 缩进 typstyle typst",
+      "label": "格式化所选内容"
+    },
     "createProject": {
       "keywords": "新建 项目 创建 模板 图库",
       "label": "新建项目"
@@ -125,6 +135,14 @@
     "diagramComposer": {
       "keywords": "图表 图片 tikz 编辑器 绘制 画布",
       "label": "打开图表编排器"
+    },
+    "typstPackages": {
+      "keywords": "typst universe 包 导入 库 浏览 复制到项目",
+      "label": "浏览 Typst 包"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan 宏包 usepackage 导言区 安装 tlmgr 浏览",
+      "label": "浏览 LaTeX 宏包"
     },
     "documentCitationScan": {
       "keywords": "引用 文献 扫描 文档 段落 参考文献 查找",
@@ -191,7 +209,8 @@
       "label": "用环境包围"
     },
     "synctex": {
-      "label": "跳转到 PDF（SyncTeX）"
+      "label": "跳转到 PDF（SyncTeX）",
+      "typstLabel": "跳转到 PDF"
     },
     "table": {
       "label": "表格"
@@ -224,6 +243,79 @@
     "openFolder": {
       "label": "打开文件夹…",
       "keywords": "打开 文件夹 目录 现有 本地 文件 磁盘"
+    },
+    "underline": {
+      "label": "下划线"
+    },
+    "strikethrough": {
+      "label": "删除线"
+    },
+    "inlineCode": {
+      "label": "行内代码"
+    },
+    "link": {
+      "label": "链接"
+    },
+    "footnote": {
+      "label": "脚注"
+    },
+    "quote": {
+      "label": "引文"
+    },
+    "inlineMath": {
+      "label": "行内公式"
+    },
+    "numberedEquation": {
+      "label": "编号公式"
+    },
+    "alignedEquations": {
+      "label": "多行对齐公式"
+    },
+    "fraction": {
+      "label": "分式"
+    },
+    "crossReference": {
+      "label": "交叉引用"
+    },
+    "typstInsights": {
+      "label": "文档分析",
+      "keywords": "图片 表格 公式 标题 标签 引用 todo fixme 元数据 摘要 投稿"
+    },
+    "typstDocumentSettings": {
+      "label": "文档设置",
+      "keywords": "纸张大小 页边距 分栏 字体 字号 语言 地区 两端对齐 行距 编号"
+    },
+    "toggleComment": {
+      "label": "切换注释",
+      "keywords": "注释 取消注释 行 块"
+    },
+    "goToDefinition": {
+      "label": "转到定义",
+      "keywords": "定义 跳转 符号 导航"
+    },
+    "findReferences": {
+      "label": "查找引用",
+      "keywords": "引用 用法 符号"
+    },
+    "renameSymbol": {
+      "label": "重命名符号",
+      "keywords": "重命名 符号 重构"
+    },
+    "migrateToTypst": {
+      "label": "转换为 Typst 项目",
+      "keywords": "typst 转换 迁移 latex 项目 新建"
+    },
+    "typstMigrationReport": {
+      "label": "显示 Typst 转换报告",
+      "keywords": "typst 转换 迁移 报告 latex"
+    },
+    "present": {
+      "label": "放映幻灯片",
+      "keywords": "放映 幻灯片 演示 全屏 beamer touying polylux 演讲者备注 pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "使用演示者视图放映幻灯片",
+      "keywords": "放映 幻灯片 演示者视图 演讲者备注 计时器 下一张幻灯片"
     }
   },
   "community": {
@@ -236,7 +328,12 @@
     "autoCompile": {
       "off": "关闭",
       "on": "开启",
-      "title": "自动编译"
+      "title": "自动编译",
+      "help": "停止输入几秒后自动编译。会先保存当前打开的文件。",
+      "typstHelp": "Typst 会持续运行，在你停止输入片刻后更新 PDF。开启期间，打开的文件会自动保存。",
+      "typstStarting": "正在启动 Typst",
+      "typstRestarting": "Typst 正在重新启动",
+      "typstFailed": "Typst 因反复出错已停止。编辑文件即可重新启动。"
     },
     "compile": "编译",
     "compiler": {
@@ -272,7 +369,37 @@
     "texRootLabel": "TEX 根文件",
     "texRootName": "根文件：{{name}}",
     "texRootNotTex": "{{file}} 中的 % !TEX root 指向 {{target}}，它不是 LaTeX 文件。",
-    "texRootOverride": "根文件：{{path}}（由 {{file}} 中的 % !TEX root 设置）。"
+    "texRootOverride": "根文件：{{path}}（由 {{file}} 中的 % !TEX root 设置）。",
+    "typstVersion": {
+      "title": "Typst 版本（本项目）",
+      "help": "固定版本后，即使 Oleafly 更新了 Typst，此项目的输出也保持不变。“默认”跟随设置中选择的版本。如需安装版本或在更新的版本上测试此项目，请前往设置 → 引擎 → Typst。",
+      "default": "默认（{{version}}）",
+      "defaultPlain": "默认",
+      "builtIn": "[内置]",
+      "system": "[系统]",
+      "missing": "[未安装]",
+      "switchFailed": "无法更改 Typst 版本。"
+    },
+    "typstFonts": {
+      "title": "字体（本项目）",
+      "help": "Typst 从项目的 fonts 文件夹以及 project.json 中 font_paths 列出的文件夹读取字体。仅使用项目字体时，PDF 不依赖这台电脑上安装的字体。文档设置中列出了 Typst 能找到的字体。",
+      "systemFonts": "使用系统字体",
+      "projectOnly": "仅项目字体",
+      "unsupported": "需要更新版本的 Typst",
+      "saveFailed": "无法保存字体设置。"
+    },
+    "typstBuild": {
+      "title": "构建（本项目）",
+      "help": "可复现构建只使用项目字体，并将 PDF 日期设为最后一次提交的日期。这样，相同的源码在任何电脑上都会生成相同的 PDF。",
+      "standard": "标准构建",
+      "reproducible": "可复现构建",
+      "saveFailed": "无法保存构建设置。"
+    },
+    "typstVariant": {
+      "title": "变体（本项目）",
+      "help": "变体会将自己的值传给 sys.inputs，例如草稿版或终稿版构建。你选择的变体只保存在这台电脑上。可在文档设置中添加或编辑变体。",
+      "none": "无变体"
+    }
   },
   "datePicker": {
     "placeholder": "选择日期"
@@ -925,6 +1052,10 @@
     "wait": {
       "description": "{{phase}}编译已加入队列，引擎就绪后将自动开始。",
       "title": "TinyTeX 仍在下载中"
+    },
+    "typstQuit": {
+      "title": "Typst 仍在安装中",
+      "description": "正在下载 Typst {{version}}。如果现在退出，下载会停止，你需要在设置中重新开始。"
     }
   },
   "toolbar": {
@@ -1064,5 +1195,120 @@
     "added": "已添加。现在可以从 Finder 的“服务”菜单使用它。如需在“快速操作”中使用，请右键点按文件夹，然后在“快速操作” › “自定义”中将其打开。",
     "addedInQuickActions": "已添加。右键点按文件夹，即可在“快速操作”中找到它。",
     "failed": "无法添加。你可以在“设置” › “通用”中重试。"
+  },
+  "typstMigration": {
+    "title": "转换为 Typst 项目",
+    "closeLabel": "关闭 Typst 转换",
+    "intro": "Oleafly 会根据此 LaTeX 项目创建一个新的 Typst 项目。此项目不会被更改。",
+    "points": {
+      "text": "Pandoc 会转换文本、公式、图片和表格。",
+      "files": "每个 input 和 include 文件都会成为单独的 Typst 文件。",
+      "bibliography": "BibTeX 文件会原样复制。",
+      "compile": "Typst 会编译新项目以进行检查。"
+    },
+    "nameLabel": "新项目名称",
+    "defaultName": "{{name}}（Typst）",
+    "notLatex": "请打开一个 LaTeX 项目以进行转换。",
+    "convert": "转换",
+    "retry": "重试",
+    "progress": {
+      "reading": "正在读取 LaTeX 项目",
+      "converting": "正在用 Pandoc 转换",
+      "creating": "正在创建 Typst 项目",
+      "compiling": "正在用 Typst 编译"
+    },
+    "errors": {
+      "pandoc": "Pandoc 尚未就绪。请从工具中安装，然后重试。",
+      "noMain": "无法读取 LaTeX 主文件。",
+      "emptyOutput": "Pandoc 返回了空文档。",
+      "failed": "转换已停止：{{detail}}"
+    },
+    "report": {
+      "created": "已创建 {{name}}。",
+      "compiled": "可以用 Typst 编译。",
+      "compileFailed_other": "暂时无法编译。有 {{count}} 个错误需要修复。",
+      "compileUnavailable": "Oleafly 无法编译：{{detail}}",
+      "converted": "已转换",
+      "sources_other": "{{count}} 个源文件",
+      "figures_other": "{{count}} 张图片",
+      "tables_other": "{{count}} 个表格",
+      "equations_other": "{{count}} 个行间公式",
+      "references_other": "{{count}} 处交叉引用",
+      "mathFixed_other": "公式转换器修复了 {{count}} 个公式",
+      "copied_other": "已复制 {{count}} 个文件",
+      "style": "参考文献样式 {{style}}",
+      "mapping": "{{source}} → {{target}}",
+      "attention": "需要处理",
+      "noAttention": "没有需要处理的内容。",
+      "problems": "编译错误和警告",
+      "location": "{{file}}，第 {{line}} 行",
+      "noLocation": "无文件位置",
+      "openAt": "在第 {{line}} 行打开 {{file}}",
+      "open": "打开 Typst 项目"
+    },
+    "notes": {
+      "missingInclude": "未找到文件 {{detail}}，因此已跳过。",
+      "lostInclude": "{{detail}} 无法成为单独的文件。其文本保留在引入它的文件中。",
+      "missingImage": "未找到图片 {{detail}}。",
+      "unsupportedImage": "Typst 无法显示 {{detail}}。请将其转换为 PDF、PNG 或 SVG。",
+      "math": "此公式需要手动修复：{{detail}}",
+      "bibliographyStyle": "BibTeX 样式 {{detail}} 没有对应的 Typst 样式，将使用默认样式。",
+      "skippedFile": "项目过大，因此未复制 {{detail}}。",
+      "unreadableFile": "无法读取 {{detail}}。",
+      "equationLabel": "Typst 对整个公式编号，因此指向 {{detail}} 的引用现在指向它所在的公式。"
+    }
+  },
+  "typstExport": {
+    "menuItem": "图片和 HTML",
+    "title": "用 Typst 导出",
+    "close": "关闭 Typst 导出",
+    "format": "格式",
+    "png": "PNG 图片",
+    "svg": "SVG 图片",
+    "html": "HTML",
+    "experimental": "实验性",
+    "htmlNote": "Typst 的 HTML 导出仍处于实验阶段。它不包含页面设置和定位元素。",
+    "ppi": "分辨率",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "页面",
+    "pagesPlaceholder": "所有页面",
+    "pagesHelp": "使用页码和范围，例如 1、3-5 或 8-。",
+    "pagesInvalid": "请检查页面范围。使用页码和范围，例如 1、3-5 或 8-。",
+    "pagesUnsupported": "此 Typst 版本总是导出所有页面。",
+    "multiPage": "每一页都会保存为单独的文件，并在你选择的名称后加上编号。",
+    "export": "导出",
+    "cancel": "取消"
+  },
+  "typstUpgrade": {
+    "title": "试用较新的 Typst 版本",
+    "description": "Oleafly 会在临时文件夹中用两个版本分别构建此项目。除非你切换版本，否则项目不会有任何变化。",
+    "compareWith": "较新版本",
+    "running": "正在用 Typst {{current}} 和 {{candidate}} 构建",
+    "current": "Typst {{version}}（当前）",
+    "candidate": "Typst {{version}}",
+    "built": "已构建",
+    "failed": "失败",
+    "pages_other": "{{count}} 页",
+    "pagesUnknown": "页数未知",
+    "errors_other": "{{count}} 个错误",
+    "warnings_other": "{{count}} 个警告",
+    "pageChange": "页数从 {{from}} 变为 {{to}}。",
+    "pageSame": "页数保持为 {{pages}}。",
+    "added": "Typst {{version}} 新增",
+    "removed": "Typst {{version}} 不再报告",
+    "noChanges": "两个版本报告的错误和警告相同。",
+    "unchanged_other": "有 {{count}} 条消息在两个版本中相同。",
+    "buildFailed": "Typst {{version}} 无法构建此项目。",
+    "switch": "切换到 Typst {{version}}",
+    "switched": "此项目现在使用 Typst {{version}}。",
+    "switchFailed": "无法切换 Typst 版本。",
+    "runAgain": "重新检查",
+    "close": "关闭",
+    "checkFailed": "检查未能完成。",
+    "noNewer": "未安装较新版本的 Typst。你可以在设置中安装。",
+    "openSettings": "打开 Typst 设置",
+    "location": "{{file}}，第 {{line}} 行",
+    "error": "错误",
+    "warning": "警告"
   }
 }

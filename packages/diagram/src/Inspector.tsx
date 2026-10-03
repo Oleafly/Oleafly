@@ -100,12 +100,14 @@ export function Inspector({
   onNodeChange,
   onEdgeChange,
   onReorder,
+  labelKey = "inspector.nodeLabel",
 }: Readonly<{
   node: DiagNode | null;
   edge: DiagEdge | null;
   onNodeChange: (patch: Partial<DiagNode>) => void;
   onEdgeChange: (patch: Partial<DiagEdge>) => void;
   onReorder?: (dir: ReorderDir) => void;
+  labelKey?: DiagramMessageKey;
 }>) {
   const { Input, Tooltip, t } = useDiagramKit();
   if (!node && !edge) return null;
@@ -137,7 +139,7 @@ export function Inspector({
           )}
         </div>
         <label className="flex flex-col gap-1 text-xs">
-          <span className="text-muted-foreground">{t("inspector.nodeLabel")}</span>
+          <span className="text-muted-foreground">{t(labelKey)}</span>
           <Input
             value={node.label}
             onChange={(e) => onNodeChange({ label: e.target.value })}

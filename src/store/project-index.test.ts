@@ -88,6 +88,25 @@ describe("currentProjectSourcePaths", () => {
     expect(currentProjectSourcePaths()).toEqual(["main.tex"]);
   });
 
+  it("leaves the vendored Typst packages out", () => {
+    seedTree([
+      { path: "typst-packages", is_dir: true },
+      { path: "typst-packages/preview/cetz/0.5.2/lib.typ" },
+      { path: "typst-packages/preview/cetz/0.5.2/refs.bib" },
+      { path: "typst-packages/preview/cetz/0.5.2/refs.yml" },
+      { path: "chapters/typst-packages/notes.typ" },
+      { path: "main.typ" },
+    ]);
+    expect(currentProjectSourcePaths()).toEqual([
+      "chapters/typst-packages/notes.typ",
+      "main.typ",
+    ]);
+    expect(currentProjectSourcePaths("typst-packages/preview/cetz/0.5.2/lib.typ")).toEqual([
+      "chapters/typst-packages/notes.typ",
+      "main.typ",
+    ]);
+  });
+
   it("folds an extra path in without duplicating one already in the tree", () => {
     seedTree([{ path: "main.tex" }]);
     expect(currentProjectSourcePaths("main.tex")).toEqual(["main.tex"]);
@@ -267,5 +286,33 @@ describe("snapshot install", () => {
       ["author", "title", "year", "note"],
     ]);
     await expect(bibliographyEntryDetails(snapshot, [])).resolves.toEqual([]);
+  });
+
+  it("never reads or lists the vendored Typst packages", async () => {
+    useFilesStore.setState({
+      tree: [
+        { path: "main.tex", is_dir: false },
+        { path: "refs.bib", is_dir: false },
+        { path: "typst-packages", is_dir: true },
+        { path: "typst-packages/preview/cetz/0.5.2/lib.typ", is_dir: false },
+        { path: "typst-packages/preview/cetz/0.5.2/refs.bib", is_dir: false },
+      ],
+    });
+    await useIndexStore.getState().rebuildFromDisk();
+    await vi.waitFor(() => {
+      expect(useIndexStore.getState().intelligenceState.status).toBe("success");
+    });
+    const requested = bridge.readProjectSourcesBatch.mock.calls.flatMap(
+      ([, request]) => request.paths,
+    );
+    expect(requested.some((path) => path.startsWith("typst-packages/"))).toBe(false);
+    const snapshot = useIndexStore.getState().intelligenceState.data;
+    expect(Object.keys(snapshot?.fileStates ?? {})).toEqual(["main.tex", "refs.bib"]);
+
+    const texts = useIndexStore.getState().texts;
+    useIndexStore
+      .getState()
+      .updateFile("typst-packages/preview/cetz/0.5.2/lib.typ", "#let x = 1");
+    expect(useIndexStore.getState().texts).toBe(texts);
   });
 });

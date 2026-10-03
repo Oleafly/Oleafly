@@ -290,11 +290,20 @@ test("Typst context menu activates every profile-appropriate action", async ({
     `E2E Context Typst ${RUN}`,
   );
   await exerciseSimpleProfile(tauriPage, [
-    ["Bold", "CONTEXTTARGET**"],
-    ["Italic", "CONTEXTTARGET__"],
-    ["Heading", "= Heading\n"],
-    ["Bulleted list", "- Item\n"],
+    ["Bold", "CONTEXTTARGET*text*"],
+    ["Italic", "CONTEXTTARGET_text_"],
   ]);
+  for (const [submenu, label, expected] of [
+    ["Heading", "Title", "= Title\n"],
+    ["Heading", "Section", "== Section\n"],
+    ["List", "Bulleted list", "- Item\n"],
+    ["List", "Numbered list", "+ Item\n"],
+  ] as const) {
+    await replaceEditorSource(tauriPage, "CONTEXTTARGET");
+    await setEditorCaretAfter(tauriPage, "CONTEXTTARGET");
+    await clickContextSubAction(tauriPage, submenu, label);
+    expect(await editorSource(tauriPage)).toContain(expected);
+  }
 });
 
 test("Markdown context menu activates every profile-appropriate action", async ({

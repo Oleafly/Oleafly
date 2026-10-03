@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} har inget offlineläge för kompilering. Kompilerar som vanligt.",
     "retry": "Kompilera igen",
-    "bundleFetchFailed": "Oleafly kunde inte ladda ner de TeX-paket som dokumentet behöver. Kontrollera anslutningen och kompilera igen."
+    "bundleFetchFailed": "Oleafly kunde inte ladda ner de TeX-paket som dokumentet behöver. Kontrollera anslutningen och kompilera igen.",
+    "typstMissing": "Typst {{version}} är inte installerat. Ladda ner det eller byt det här projektet till en annan version.",
+    "typstPackage": {
+      "downloadFailed": "Typst kunde inte ladda ner {{spec}}. Kontrollera internetanslutningen och kompilera igen.",
+      "downloadFailedUnnamed": "Typst kunde inte ladda ner ett paket som dokumentet importerar. Kontrollera internetanslutningen och kompilera igen.",
+      "offlineNotCached": "Du är offline och {{spec}} finns inte i paketcachen än. Kompilera en gång när du är online, eller kopiera in paketen i projektet.",
+      "offlineNotCachedUnnamed": "Du är offline och ett paket som dokumentet importerar finns inte i paketcachen än. Kompilera en gång när du är online.",
+      "notFound": "Typst Universe har inget paket som heter {{spec}}. Kontrollera namnet i importen.",
+      "localNotFound": "Det lokala paketet {{spec}} är inte installerat. Lägg det i Oleaflys mapp för Typst-paket eller i projektets mapp typst-packages.",
+      "versionMissing": "Det här paketet har ingen version {{version}}. Den senaste versionen är {{latest}}.",
+      "versionMissingNoLatest": "Det här paketet har ingen version {{version}}. Kontrollera versionen i importen."
+    }
   },
   "developer": {
     "actions": {
@@ -345,6 +356,7 @@
     "notRenamable": "Den här symbolen går inte att byta namn på.",
     "nothingToRename": "Inget att byta namn på.",
     "referencesFor": "Referenser till {{name}}",
+    "renameFailed": "Det gick inte att byta namn till \"{{name}}\".",
     "renamePartial": "Bytte namn till \"{{name}}\" i {{edited}} av {{total}} filer. Det gick inte att skriva {{files}}.",
     "renamed": "Bytte namn till \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -581,5 +593,8 @@
   "folderUnavailable": {
     "compile": "Kompileringen är pausad tills projektmappen är tillbaka.",
     "saveReason": "projektmappen är inte tillgänglig"
+  },
+  "imageToTypst": {
+    "failed": "Bild till Typst misslyckades: {{detail}}"
   }
 }

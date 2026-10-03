@@ -146,5 +146,37 @@
       "check_running": "Un test de cet agent est déjà en cours.",
       "main_window": "Modifiez les programmes des agents depuis la fenêtre principale."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly ne propose pas Typst {{version}}, et aucun Typst de cet ordinateur n'a cette version.",
+    "busy": "Typst {{version}} est encore en cours d'installation. Réessayez quand ce sera terminé.",
+    "remove_default": "Typst {{version}} est votre version par défaut. Choisissez une autre version par défaut avant de le supprimer.",
+    "remove_not_downloaded": "Oleafly ne peut supprimer que les versions de Typst qu'il a téléchargées, et il n'a pas téléchargé Typst {{version}}.",
+    "not_offered": "Typst {{version}} ne peut pas être téléchargé pour cet ordinateur.",
+    "install_unverified": "Typst {{version}} a été téléchargé mais a échoué à la vérification d'intégrité. Réessayez de l'installer.",
+    "not_typst_project": "Seuls les projets Typst ont une version de Typst.",
+    "update_waits": "Attendez la fin de l'installation de Typst avant de mettre à jour Oleafly."
+  },
+  "typst_packages": {
+    "index_offline": "Vous êtes hors ligne et la liste des paquets de Typst Universe n'a pas encore été téléchargée.",
+    "index_unavailable": "La liste des paquets de Typst Universe n'a pas pu être chargée. Vérifiez votre connexion Internet et réessayez.",
+    "vendor_failed": "Oleafly n'a pas pu copier les paquets dans le projet."
+  },
+  "typst_query": {
+    "timeout": "Typst a mis trop de temps à lire ce document.",
+    "failed": "Typst n'a pas pu lire ce document."
+  },
+  "typst_version_missing": "Typst {{version}} n'est pas installé.",
+  "typst_options": {
+    "invalid_input_key": "Les noms de valeur ne peuvent pas être vides ni contenir de signe égal.",
+    "invalid_variant_name": "Chaque variante a besoin d'un nom court qu'aucune autre variante n'utilise.",
+    "invalid_font_path": "Les dossiers de polices doivent se trouver dans le projet.",
+    "fonts_failed": "Typst n'a pas pu lister les polices.",
+    "fonts_timeout": "Typst a mis trop de temps à lister les polices."
+  },
+  "typst_export": {
+    "failed": "Typst n'a pas pu exporter le document.",
+    "unsupported": "Cette version de Typst ne peut pas exporter avec ces réglages.",
+    "invalid_ppi": "Choisissez une résolution de 1 à {{max}} PPI."
   }
 }

@@ -146,5 +146,37 @@
       "check_running": "이 에이전트의 테스트가 이미 실행 중입니다.",
       "main_window": "에이전트 프로그램은 주 창에서 변경하세요."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly는 Typst {{version}}을(를) 제공하지 않으며, 이 컴퓨터에도 그 버전의 Typst가 없습니다.",
+    "busy": "Typst {{version}}을(를) 아직 설치하는 중입니다. 설치가 끝나면 다시 시도하세요.",
+    "remove_default": "Typst {{version}}은(는) 기본 버전입니다. 제거하기 전에 다른 기본 버전을 고르세요.",
+    "remove_not_downloaded": "Oleafly는 직접 내려받은 Typst 버전만 제거할 수 있으며, Typst {{version}}은(는) Oleafly가 내려받은 것이 아닙니다.",
+    "not_offered": "Typst {{version}}은(는) 이 컴퓨터용으로 내려받을 수 없습니다.",
+    "install_unverified": "Typst {{version}}을(를) 내려받았지만 무결성 검사에 실패했습니다. 다시 설치해 보세요.",
+    "not_typst_project": "Typst 버전은 Typst 프로젝트에만 있습니다.",
+    "update_waits": "Oleafly를 업데이트하기 전에 Typst 설치가 끝날 때까지 기다리세요."
+  },
+  "typst_packages": {
+    "index_offline": "오프라인 상태이고 Typst Universe 패키지 목록을 아직 내려받지 않았습니다.",
+    "index_unavailable": "Typst Universe 패키지 목록을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도하세요.",
+    "vendor_failed": "Oleafly가 패키지를 프로젝트에 복사하지 못했습니다."
+  },
+  "typst_query": {
+    "timeout": "Typst가 이 문서를 읽는 데 시간이 너무 오래 걸렸습니다.",
+    "failed": "Typst가 이 문서를 읽지 못했습니다."
+  },
+  "typst_version_missing": "Typst {{version}}이(가) 설치되어 있지 않습니다.",
+  "typst_options": {
+    "invalid_input_key": "값 이름은 비워 둘 수 없고 등호를 포함할 수 없습니다.",
+    "invalid_variant_name": "각 변형에는 다른 변형이 쓰지 않는 짧은 이름이 필요합니다.",
+    "invalid_font_path": "글꼴 폴더는 프로젝트 안에 있어야 합니다.",
+    "fonts_failed": "Typst가 글꼴 목록을 만들지 못했습니다.",
+    "fonts_timeout": "Typst가 글꼴 목록을 만드는 데 시간이 너무 오래 걸렸습니다."
+  },
+  "typst_export": {
+    "failed": "Typst가 문서를 내보내지 못했습니다.",
+    "unsupported": "이 Typst 버전으로는 이 설정으로 내보낼 수 없습니다.",
+    "invalid_ppi": "1에서 {{max}} PPI 사이의 해상도를 고르세요."
   }
 }

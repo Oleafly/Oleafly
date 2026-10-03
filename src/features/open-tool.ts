@@ -1,12 +1,13 @@
 import type { ToolDefinition } from "@/lib/tool-catalog";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
+import { useDiagramComposerStore, type DiagramComposerLanguage } from "@/store/diagram-composer";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 
-const OVERLAY_PAGES: ReadonlySet<HomePage> = new Set(["generators", "symbols"]);
+const OVERLAY_PAGES: ReadonlySet<HomePage> = new Set(["generators", "symbols", "diagram-composer"]);
 
 export async function openHomePage(page: HomePage): Promise<void> {
   const files = useFilesStore.getState();
@@ -25,6 +26,17 @@ export async function openHomePage(page: HomePage): Promise<void> {
 
 export function openToolsGallery(): Promise<void> {
   return openHomePage("tools");
+}
+
+export function openDiagramComposerChooser(): void {
+  useDiagramComposerStore.getState().setChooserOpen(true);
+}
+
+export function openDiagramComposer(language: DiagramComposerLanguage): Promise<void> {
+  const composer = useDiagramComposerStore.getState();
+  composer.setChooserOpen(false);
+  composer.requestLanguage(language);
+  return openHomePage("diagram-composer");
 }
 
 type TypstMode = Extract<ToolDefinition["destination"], { kind: "typst-project" }>["mode"];

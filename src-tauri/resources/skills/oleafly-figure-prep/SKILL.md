@@ -1,11 +1,11 @@
 ---
 name: Figure prep
-description: Build and place publication-quality figures in an Oleafly manuscript. Use when the user wants a TikZ or pgfplots figure, a diagram, an architecture or pipeline drawing, a matplotlib or seaborn plot, a chart from a CSV, a multi-panel figure, subfigures, a colorblind-safe palette, correct figure sizing for a journal column, or help with captions, labels, includegraphics and cross-references.
+description: Build and place publication-quality figures in an Oleafly manuscript. Use when the user wants a TikZ or pgfplots figure, a CeTZ or fletcher figure in Typst, a diagram, an architecture or pipeline drawing, a matplotlib or seaborn plot, a chart from a CSV, a multi-panel figure, subfigures, a colorblind-safe palette, correct figure sizing for a journal column, or help with captions, labels, includegraphics and cross-references.
 license: MIT
-compatibility: TikZ preview needs a LaTeX project (Tectonic or latexmk), since those are the engines with isolated compile. Matplotlib work needs Python 3.11 or newer on PATH and runs through approval-gated shell commands.
+compatibility: Figure preview works in LaTeX projects on Tectonic or latexmk and in Typst projects. Markdown projects have no figure preview. Matplotlib work needs Python 3.11 or newer on PATH and runs through approval-gated shell commands.
 allowed-tools: read_file write_file create_file replace_in_file list_files search_project project_map compile get_log get_pdf_text verify_pdf_pages run_command preview_figure insert_figure load_image update_todos load_skill read_skill_file
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -36,32 +36,29 @@ Figures carry the result. Get the encoding honest first, the layout second, and 
 | The figure shows | Build it with | Route |
 |---|---|---|
 | Data: measurements, distributions, curves, comparisons | matplotlib or seaborn, exported to PDF | Section 4 |
-| Structure: an architecture, a pipeline, a state machine, a proof sketch | TikZ, or pgfplots for data drawn in LaTeX | Section 3 |
-| A concept with no underlying data | TikZ if it can be drawn precisely, otherwise hand off to **scientific-schematics** | Section 6 |
+| Structure: an architecture, a pipeline, a state machine, a proof sketch | TikZ, or pgfplots for data drawn in LaTeX. CeTZ or fletcher in Typst | Section 3 |
+| A concept with no underlying data | TikZ or CeTZ if it can be drawn precisely, otherwise hand off to **scientific-schematics** | Section 6 |
 | Something the user sketched or screenshotted | `load_image` to look at it, then redraw it | Section 3 |
 
 Before drawing anything, `load_skill` with id `scientific-visualization` and read `references/publication_guidelines.md`. Its non-negotiables apply here in full: never alter or hide data to improve a figure, keep bar baselines at zero, name what an error bar actually is, distinguish missing from zero, and never claim a palette or a DPI number makes a figure accessible.
 
-## 2. Pick the mode, because the tools differ
+## 2. Check which figure tools the run has
 
-Oleafly's assistant has two tool sets and only one is active per run.
+The figure tools come with the ordinary chat run, next to the file and compile tools. Which ones are there depends on the engine.
 
-| | Chat mode (default) | Figure mode |
-|---|---|---|
-| Turned on by | nothing, it is the default | the "Draw a figure" toggle in the composer |
-| Available when | always | the project is LaTeX with isolated compile, which means the Tectonic and latexmk engines. Not Typst, not Markdown |
-| Tools | `read_file`, `write_file`, `replace_in_file`, `compile`, `get_log`, `get_pdf_text`, `verify_pdf_pages`, `run_command`, `project_map`, everything else | `preview_figure`, `insert_figure`, `load_image`, and nothing else |
-| Good for | writing figure files, running Python, wiring figures into sections, checking the whole document | iterating one TikZ figure fast and dropping it at the cursor |
+| Engine | `preview_figure` renders | `insert_figure` wraps the code in | `load_image` |
+|---|---|---|---|
+| Tectonic, latexmk | a TikZ picture in a small standalone LaTeX document | `\begin{figure}[htbp] ... \end{figure}` | yes |
+| Typst | Typst markup, such as a CeTZ canvas or a fletcher diagram | `#figure(caption: [...])[ ... ] <label>` | yes |
+| Markdown | not available | not available | yes |
 
-Figure mode has no file access at all. It cannot read the manuscript, cannot compile the project, cannot run a command. If the user is in figure mode and asks for something outside those three tools, say which mode the request needs.
-
-If figure mode is unavailable, say why in one line (the engine does not support isolated compile) and use the chat-mode route.
+When `preview_figure` is missing, say why in one line (a Markdown project, or an engine that has not loaded yet) and build the figure as a file instead.
 
 ## 3. TikZ
 
 `references/tikz-recipes.md` in this skill has Tectonic-safe starting points for boxes and arrows, grouping, pgfplots, colors, and sizing, plus what the isolated preview does and does not share with the manuscript.
 
-### In figure mode
+### With preview_figure
 
 1. `preview_figure` with `code` (the `\begin{tikzpicture}...\end{tikzpicture}` body), plus `packages` and `libraries` it needs. `tikz` is always included; name libraries explicitly, for example `arrows.meta`, `positioning`, `fit`, `calc`, `backgrounds`, `patterns`.
 2. Read `success`, `errors` and `log_tail`. On failure, fix and call again.
@@ -71,15 +68,38 @@ If figure mode is unavailable, say why in one line (the engine does not support 
 Two things to know about `insert_figure`:
 
 - The document ends up holding the TikZ source inline, not an `\includegraphics`. The PNG under `figures/` is a reference copy, not what the PDF uses.
-- It inserts `[htbp]`. Papers usually want `[t]`. Fix that afterwards in chat mode.
+- It inserts `[htbp]`. Papers usually want `[t]`. Fix that afterwards with `replace_in_file`.
 
-### In chat mode
+### As a file
 
 1. `write_file` the figure to `figures/<name>.tex` containing just the `tikzpicture`.
 2. `\input{figures/<name>}` inside a `figure` environment in the section that discusses it.
 3. `compile`, then `verify_pdf_pages` on the page that holds it to see the result.
 
-This is the only route on Typst or Markdown projects. Typst has no isolated figure compile, so draw with Typst's own `cetz` style primitives or place an exported image.
+This is the only drawing route on Markdown projects.
+
+### In a Typst project
+
+Draw with CeTZ for diagrams and plots (`cetz-plot` for data plots), fletcher for node and arrow diagrams, or plain Typst (`rect`, `grid`, `stack`) for simple layouts.
+
+1. `preview_figure` with `code` as Typst markup. Put the imports it needs at the top, each with an exact version:
+
+   ```typst
+   #import "@preview/cetz:0.4.2"
+   #cetz.canvas({
+     import cetz.draw: *
+     rect((0, 0), (2, 1), name: "enc")
+     content("enc", [Encoder])
+     rect((3, 0), (5, 1), name: "dec")
+     content("dec", [Decoder])
+     line("enc.east", "dec.west", mark: (end: ">"))
+   })
+   ```
+
+   `packages` and `libraries` are for LaTeX and are ignored here. The figure renders alone on a white page, so it cannot read project files such as images or data. Put small data inline, or place a finished image with `image(...)` in the manuscript instead.
+2. Read `success`, `errors` and `warnings`. Line numbers count from the first line of your code. The first use of a package version downloads it, so that preview needs network.
+3. Iterate on the rendered image the same way as for TikZ.
+4. `insert_figure` with the final `code`, a `caption` and a `label` such as `fig:pipeline`. It moves the leading `#import` lines above the figure and skips any the document already has, wraps the rest in `#figure(caption: [...])[ ... ]`, puts `<fig:pipeline>` after it, and saves a PNG copy under `figures/`. Refer to it with `@fig:pipeline`.
 
 ## 4. Matplotlib
 
@@ -88,7 +108,7 @@ Scripts live in the project so the figure is reproducible.
 1. `create_file` a `scripts/` folder and `figures/` if they do not exist.
 2. `write_file` `scripts/figure_<name>.py`. Keep the data path, the transformations and the seed inside the script.
 3. `run_command` with `python3 scripts/figure_<name>.py`. This asks the user for approval, runs in the project directory, has a 120 second budget, and inherits the login shell environment. There is no sandbox, so keep the script to reading its input and writing its output.
-4. Export **PDF** into `figures/`. Vector text stays sharp and searchable at any size.
+4. Export **PDF** into `figures/`. Vector text stays sharp and searchable at any size. In a Typst project, SVG works on every version and PDF works from Typst 0.14 on, so check `typst.version` in `project.json` before you pick PDF.
 5. `read_skill_file` `scientific-visualization` for depth: `references/journal_requirements.md` for sizes and formats, `references/color_palettes.md` for palettes, `assets/publication.mplstyle` and `assets/presentation.mplstyle` for style sheets, `assets/color_palettes.py` and `scripts/style_presets.py` for the presets, `scripts/figure_export.py` for an exporter that refuses silent overwrites and records provenance.
 
 Those scripts sit in the skill directory, not the project. `load_skill` returns the absolute directory, so run one as `python3 "<skill dir>/scripts/style_presets.py"`, or copy the parts you need into the project script. They need Python 3.11 or newer.
@@ -116,6 +136,22 @@ Rules that are not negotiable:
 - Full-width figure in a two-column layout: `figure*`.
 - Subfigures come from `subcaption`. Never load `subfigure` or `subfig`.
 
+In a Typst project the same figure looks like this:
+
+```typst
+#figure(
+  image("figures/architecture.svg", width: 100%),
+  caption: [System architecture. The encoder on the left feeds the fusion module.],
+  placement: top,
+) <fig:architecture>
+```
+
+- Refer with `@fig:architecture`, which prints the supplement and number for you.
+- The label goes after the closing parenthesis, outside the call.
+- `placement: top` floats the figure like `[t]` does. Leave it out to keep the figure where it is in the text.
+- Typst puts every caption below by default. For tables above, add `#show figure.where(kind: table): set figure.caption(position: top)` once near the top of the document.
+- Full width in a two-column layout: `placement: top` with `scope: "parent"`.
+
 Captions carry the claim. First sentence says what the figure shows, the rest says what to notice. A caption that only names the axes is wasted.
 
 ## 6. Hand off
@@ -142,10 +178,11 @@ Captions carry the claim. First sentence says what the figure shows, the rest sa
 
 | Problem | What to do |
 |---|---|
-| `preview_figure` is not available | The project is not a LaTeX project, or figure mode is off. Use the chat-mode route |
+| `preview_figure` is not available | The project is Markdown, or the engine has not loaded yet. Build the figure as a file |
+| A Typst preview fails inside a package file | The package version does not match the project's Typst version. Pick a package version made for it, and do not change the pin yourself |
 | `insert_figure` returns declined | The user rejected the approval card. Ask what to change rather than re-sending the same figure |
 | A TikZ library is missing from the bundle | Name it. Tectonic cannot install packages; offer the closest bundled alternative |
-| `python3` is not found | Say so and offer the TikZ or pgfplots route instead. Do not install anything |
+| `python3` is not found | Say so and offer the TikZ, pgfplots, or CeTZ route instead. Do not install anything |
 | The script needs a package that is not installed | Ask before installing. `run_command` inherits the user's environment and has no sandbox |
 | The figure looks right in preview but wrong in the document | Column width. Re-check with the real `\linewidth` and `verify_pdf_pages` |
 | `run_command` times out | The 120 second budget was exceeded. Split the work or cache the intermediate data |
@@ -160,4 +197,4 @@ Captions carry the claim. First sentence says what the figure shows, the rest sa
 - [ ] It is referenced from the text and the cross-reference resolves
 - [ ] The caption and label are present, in the right order
 - [ ] The checklist above was worked through, and anything skipped was named
-- [ ] The source that produces it (TikZ code or Python script) is in the project
+- [ ] The source that produces it (TikZ or Typst code, or a Python script) is in the project

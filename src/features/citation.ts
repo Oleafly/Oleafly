@@ -13,9 +13,18 @@ import type { CitationHit, ParsedBib } from "@/lib/citation/types";
 import { parseCrossrefSearch } from "@/lib/citation/crossref";
 import { arxivXmlToBibtex } from "@/lib/citation/arxiv";
 import { findKeyByDoi } from "@/lib/citation/dedup";
+import {
+  appendHayagrivaEntries,
+  bibtexToHayagriva,
+  findHayagrivaKeyByDoi,
+  hayagrivaKeys,
+  isHayagrivaPath,
+} from "@/lib/citation/hayagriva";
+import { hasTypstBibliography, typstBibliographySources } from "@/lib/citation/typst-bibliography";
 import { parseBib } from "@/lib/latex-tools";
 import {
   type BibliographyEngine,
+  bibliographyCandidatePaths,
   bibliographyDeclarations,
   bibliographyEngineForCommand,
   resolveBibliographyPath,
@@ -32,6 +41,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { logError } from "@/lib/log";
 import { basename } from "@/lib/path-utils";
 
 export async function resolveCitation(
@@ -78,7 +88,7 @@ export async function bibtexForHit(hit: CitationHit): Promise<string> {
 }
 
 export function ensureTypstBibliography(source: string, path: string): string {
-  if (/#bibliography\s*\(/.test(source)) return source;
+  if (hasTypstBibliography(source)) return source;
   const safePath = path.replaceAll("\\", "/").replaceAll('"', String.raw`\"`);
   return `${source.trimEnd()}\n\n#bibliography("${safePath}")\n`;
 }
@@ -173,13 +183,29 @@ function citationBibliographyDeclarations(
     }));
   }
   if (profile === "typst") {
-    const match = /#bibliography\s*\(\s*["']([^"']+)["']/.exec(mainContent);
-    return match ? [{ raw: match[1], engine: "typst" as const }] : [];
+    return typstBibliographySources(mainContent).map((raw) => ({ raw, engine: "typst" as const }));
   }
   if (profile === "markdown") {
     return markdownBibliographyPaths(mainContent).map((raw) => ({ raw, engine: "markdown" as const }));
   }
   return [];
+}
+
+function declaredHayagrivaTarget(
+  declarations: readonly { raw: string; engine: BibliographyEngine }[],
+  declaringFile: string,
+  hayagrivaPaths: readonly string[],
+): string | null {
+  const yaml = declarations.filter((declaration) => isHayagrivaPath(declaration.raw));
+  for (const declaration of yaml) {
+    const existing = resolveBibliographyPath(declaration.raw, declaringFile, hayagrivaPaths, "typst");
+    if (existing) return existing;
+  }
+  for (const declaration of yaml) {
+    const planned = bibliographyCandidatePaths(declaration.raw, declaringFile, "typst")[0];
+    if (planned) return planned;
+  }
+  return null;
 }
 
 export function selectCitationBibliography(
@@ -188,8 +214,12 @@ export function selectCitationBibliography(
   bibPaths: string[],
   declaringFile = "",
   fallback = "references.bib",
+  hayagrivaPaths?: readonly string[],
 ): string {
-  const declarations = citationBibliographyDeclarations(profile, mainContent);
+  const allDeclarations = citationBibliographyDeclarations(profile, mainContent);
+  const declarations = profile === "typst"
+    ? allDeclarations.filter((declaration) => !isHayagrivaPath(declaration.raw))
+    : allDeclarations;
   for (const declaration of declarations) {
     const shared = resolveBibliographyPath(
       declaration.raw,
@@ -203,6 +233,10 @@ export function selectCitationBibliography(
     const resolved = resolveDeclaredBib(declaration.raw, bibPaths, declaration.engine === "latex");
     if (resolved) return resolved;
   }
+  if (profile === "typst" && hayagrivaPaths) {
+    const yaml = declaredHayagrivaTarget(allDeclarations, declaringFile, hayagrivaPaths);
+    if (yaml) return yaml;
+  }
   return bibPaths[0] ?? fallback;
 }
 
@@ -212,7 +246,9 @@ function linkedBibliographyMessage(path: string): string {
 
 function pickTargetBib(
   files: ReturnType<typeof useFilesStore.getState>,
-  source?: string,
+  source: string | undefined,
+  acceptHayagriva: boolean,
+  preferred?: string,
 ): { path: string; content: string; readOnly: boolean } {
   // Look for \bibliography in the document that actually compiles, which a
   // `% !TEX root` comment in the active file may redirect.
@@ -222,13 +258,18 @@ function pickTargetBib(
   const bibFiles = files.tree.filter((f) => !f.is_dir && f.path.endsWith(".bib"));
   const writable = bibFiles.filter((f) => !f.read_only).map((f) => f.path);
   const linked = bibFiles.find((f) => f.read_only)?.path;
+  const hayagriva = acceptHayagriva
+    ? files.tree.filter((f) => !f.is_dir && !f.read_only && isHayagrivaPath(f.path)).map((f) => f.path)
+    : undefined;
 
-  const path = selectCitationBibliography(
+  const preferredWritable = preferred !== undefined && (writable.includes(preferred) || hayagriva?.includes(preferred));
+  const path = preferredWritable ? preferred : selectCitationBibliography(
     files.engine.capabilities.formatting_profile,
     mainContent,
     writable,
     declaringFile,
     linked,
+    hayagriva,
   );
   return {
     path,
@@ -253,7 +294,11 @@ function validateCitationFiles(files: ReturnType<typeof useFilesStore.getState>,
   }
 }
 
-async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState>) {
+async function loadCitationFiles(
+  files: ReturnType<typeof useFilesStore.getState>,
+  acceptHayagriva = false,
+  preferred?: string,
+) {
   const id = files.projectId;
   const profile = files.engine.capabilities.formatting_profile;
   const read = async (path: string, allowMissing = false) => {
@@ -266,18 +311,20 @@ async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState
   const main = id && (profile === "typst" || profile === "markdown")
     ? await read(files.mainDoc)
     : undefined;
-  const target = pickTargetBib(files, main);
+  const target = pickTargetBib(files, main, acceptHayagriva, preferred);
   const content = await read(target.path, true);
 
   return { target, content, main };
 }
 
-export async function bibliographyTargetForProject(): Promise<
+export async function bibliographyTargetForProject(
+  options: { acceptHayagriva?: boolean } = {},
+): Promise<
   { path: string; exists: boolean; content: string; readOnly: boolean } | null
 > {
   const files = useFilesStore.getState();
   if (!files.projectId) return null;
-  const loaded = await loadCitationFiles(files);
+  const loaded = await loadCitationFiles(files, options.acceptHayagriva === true);
   const exists = files.tree.some(
     (entry) => !entry.is_dir && entry.path === loaded.target.path,
   );
@@ -294,9 +341,10 @@ type LoadedCitationFiles = Awaited<ReturnType<typeof loadCitationFiles>>;
 
 async function loadCitationTarget(
   files: CitationFiles,
+  preferred?: string,
 ): Promise<{ loaded: LoadedCitationFiles } | { error: string }> {
   try {
-    const loaded = await loadCitationFiles(files);
+    const loaded = await loadCitationFiles(files, true, preferred);
     validateCitationFiles(files, loaded.target.path);
     return { loaded };
   } catch (error) {
@@ -304,13 +352,31 @@ async function loadCitationTarget(
   }
 }
 
-function existingBibKeys(content: string): Set<string> {
+type BibliographyFormat = "bibtex" | "hayagriva";
+
+function bibliographyFormat(path: string): BibliographyFormat {
+  return isHayagrivaPath(path) ? "hayagriva" : "bibtex";
+}
+
+function existingBibKeys(content: string, format: BibliographyFormat): Set<string> {
   const idx = useIndexStore.getState().index;
   const keys = new Set<string>(
     idx ? idx.defs.filter((d) => d.kind === "bibentry").map((d) => d.name) : [],
   );
+  if (format === "hayagriva") {
+    for (const key of hayagrivaKeys(content)) keys.add(key);
+    return keys;
+  }
   for (const km of content.matchAll(/@\w+\s*\{\s*([^,\s}]+)/g)) keys.add(km[1]);
   return keys;
+}
+
+function keyForDoi(content: string, doi: string, format: BibliographyFormat): string | null {
+  return format === "hayagriva" ? findHayagrivaKeyByDoi(content, doi) : findKeyByDoi(content, doi);
+}
+
+function formatEntry(entry: ParsedBib, format: BibliographyFormat): string {
+  return format === "hayagriva" ? bibtexToHayagriva(entry) : stringifyBibEntry(entry);
 }
 
 async function writeCitationTarget(
@@ -382,7 +448,8 @@ async function ensureBibliographyDeclared(
   await writeBibliographyDeclaration(files, id, mainPath, next, currentMain !== undefined);
 }
 
-function appendBibEntries(content: string, blocks: readonly string[]): string {
+function appendBibEntries(content: string, blocks: readonly string[], format: BibliographyFormat = "bibtex"): string {
+  if (format === "hayagriva") return appendHayagrivaEntries(content, blocks);
   const body = blocks.join("\n\n");
   return content.trim() ? `${content.trimEnd()}\n\n${body}\n` : `${body}\n`;
 }
@@ -391,25 +458,29 @@ function dedupeImportedEntries(
   entries: readonly ParsedBib[],
   content: string,
   existingKeys: Set<string>,
+  format: BibliographyFormat,
 ): { newBlocks: string[]; duplicates: number } {
   const seenDois = new Set<string>();
   const newBlocks: string[] = [];
   let duplicates = 0;
   for (const entry of entries) {
     const doi = entry.fields.doi?.trim().toLowerCase();
-    if (doi && (findKeyByDoi(content, doi) || seenDois.has(doi))) {
+    if (doi && (keyForDoi(content, doi, format) || seenDois.has(doi))) {
       duplicates++;
       continue;
     }
     if (doi) seenDois.add(doi);
     const key = generateCiteKey(entry.fields, existingKeys);
     existingKeys.add(key);
-    newBlocks.push(stringifyBibEntry({ ...entry, key }));
+    newBlocks.push(formatEntry({ ...entry, key }, format));
   }
   return { newBlocks, duplicates };
 }
 
-export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
+export async function addCitation(
+  bibtex: string,
+  options: { bibliography?: string } = {},
+): Promise<{ key: string } | { error: string }> {
   if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
     return { error: readOnlyFolderMessage() };
   }
@@ -418,13 +489,14 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
 
   const files = useFilesStore.getState();
   const id = files.projectId;
-  const outcome = await loadCitationTarget(files);
+  const outcome = await loadCitationTarget(files, options.bibliography);
   if ("error" in outcome) return { error: outcome.error };
   const loaded = outcome.loaded;
   const { target, content } = loaded;
+  const format = bibliographyFormat(target.path);
 
   const doi = parsed.fields.doi;
-  const existing = doi ? findKeyByDoi(content, doi) : null;
+  const existing = doi ? keyForDoi(content, doi, format) : null;
   if (existing) {
     insertCite(existing);
     return { key: existing };
@@ -432,9 +504,11 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
 
   if (target.readOnly) return { error: linkedBibliographyMessage(target.path) };
 
-  const key = generateCiteKey(parsed.fields, existingBibKeys(content));
-  const entry = setKey(bibtex.trim(), key);
-  const newContent = appendBibEntries(content, [entry]);
+  const key = generateCiteKey(parsed.fields, existingBibKeys(content, format));
+  const entry = format === "hayagriva"
+    ? bibtexToHayagriva({ ...parsed, key })
+    : setKey(bibtex.trim(), key);
+  const newContent = appendBibEntries(content, [entry], format);
 
   const writeError = await writeCitationTarget(files, id, target.path, newContent);
   if (writeError) return { error: writeError };
@@ -456,6 +530,16 @@ export interface BatchImportResult {
   bibPath?: string;
 }
 
+async function bulkImportBibliography(): Promise<string | undefined> {
+  try {
+    const { preferredCitationBibliography } = await import("./citation-bibliographies");
+    return (await preferredCitationBibliography()) ?? undefined;
+  } catch (error) {
+    void logError("choose citation bibliography", error);
+    return undefined;
+  }
+}
+
 // Imports a whole reference library (from Zotero/EndNote/RIS/BibTeX) into the
 // project's bib file in one write, deduping by DOI against both the existing
 // file and the rest of the batch. Unlike addCitation, this never inserts a
@@ -466,17 +550,20 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     return { imported: 0, duplicates: 0, errors: [readOnlyFolderMessage()] };
   }
 
+  const preferred = await bulkImportBibliography();
   const files = useFilesStore.getState();
   const id = files.projectId;
-  const outcome = await loadCitationTarget(files);
+  const outcome = await loadCitationTarget(files, preferred);
   if ("error" in outcome) return { imported: 0, duplicates: 0, errors: [outcome.error] };
   const loaded = outcome.loaded;
   const { target, content } = loaded;
+  const format = bibliographyFormat(target.path);
 
   const { newBlocks, duplicates } = dedupeImportedEntries(
     entries,
     content,
-    existingBibKeys(content),
+    existingBibKeys(content, format),
+    format,
   );
 
   if (!newBlocks.length) return { imported: 0, duplicates, errors: [], bibPath: target.path };
@@ -489,7 +576,7 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     };
   }
 
-  const newContent = appendBibEntries(content, newBlocks);
+  const newContent = appendBibEntries(content, newBlocks, format);
 
   const errors: string[] = [];
   const writeError = await writeCitationTarget(files, id, target.path, newContent);

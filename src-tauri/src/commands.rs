@@ -110,6 +110,8 @@ fn project_engine_sync(
     let meta =
         crate::trust::restrict_compile_meta(&project_id, crate::project::read_meta(&project_id)?)?;
     let mut descriptor = crate::document_engine::descriptor_for(&meta.engine, &meta.main_doc)?;
+    crate::typst_toolchain::describe_project(&mut descriptor, &meta);
+    crate::typst_options::describe(&mut descriptor, &project_id, &meta);
     descriptor.tex_flavor = meta.tex_flavor;
     descriptor.allow_shell_escape = meta.allow_shell_escape;
     Ok(descriptor)
@@ -279,6 +281,7 @@ pub async fn clear_build_dir(project_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn compile_project(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
@@ -287,20 +290,9 @@ pub async fn compile_project(
     offline: Option<bool>,
     fast: Option<bool>,
     halt_on_error: Option<bool>,
+    typst_variant: Option<String>,
 ) -> Result<CompileResult, String> {
-    let source_date_epoch = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| duration.as_secs())
-        .unwrap_or(0);
-    let options = crate::document_engine::CompileOptions {
-        offline: offline.unwrap_or(false),
-        fast: fast.unwrap_or(false),
-        halt_on_error: halt_on_error.unwrap_or(false),
-        latex_flavor: None,
-        allow_shell_escape: false,
-        source_date_epoch: Some(source_date_epoch),
-        external_build: false,
-    };
+    let options = requested_compile_options(offline, fast, halt_on_error);
     let ticket = state
         .compile_ticket
         .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -346,45 +338,21 @@ pub async fn compile_project(
     }
     let cancel_scope = crate::document_engine::CompileCancelScope::new(Some(&state.compile_cancel));
 
-    let location = crate::project_location::locate(&project_id)?;
-    let meta = crate::project::read_compile_meta(&project_id, &main_doc)?;
-    let workspace = desktop_workspace(&location, &meta, &main_doc)?;
-    let prepared = workspace
-        .prepare_build()
-        .map_err(|error| error.to_string())?;
-    let project_dir = prepared.project_root().to_path_buf();
-    let build_dir = prepared.build_directory().to_path_buf();
-    let options = crate::document_engine::CompileOptions {
-        latex_flavor: meta
-            .tex_flavor
-            .as_deref()
-            .and_then(crate::document_engine::LatexmkFlavor::parse),
-        allow_shell_escape: meta.allow_shell_escape,
-        external_build: location.kind == crate::project_location::ProjectKind::Linked,
-        ..options
-    };
-    let engine = crate::document_engine::engine_for(prepared.engine().manifest_name(), &main_doc)?;
-    let prepared_spec = crate::document_engine::prepare_compile_spec(
-        engine.id(),
-        build_dir.clone(),
-        project_dir.clone(),
-        CompileTarget::Main {
-            main_document: &main_doc,
-        },
-        options,
-    )
-    .await?;
-    let prepared_spec = match location.compile_search_dir(&main_doc) {
-        Some(compile_dir) => crate::document_engine::place_in_compile_directory(
-            engine.id(),
-            prepared_spec,
-            &project_dir,
-            &compile_dir,
-        )?,
-        None => prepared_spec,
-    };
-    crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &meta)?;
+    let main = MainCompile::prepare(&project_id, &main_doc, typst_variant, options).await?;
+    let toolchain_identity = main.toolchain_identity();
+    let prepared_spec = main
+        .spec(&main_doc, &main.build_dir, main.options.clone())
+        .await?;
+    crate::project::ensure_compile_meta_unchanged(&project_id, &main_doc, &main.meta)?;
     drop(worktree);
+    let MainCompile {
+        meta,
+        engine,
+        project_dir,
+        build_dir,
+        options,
+        ..
+    } = main;
 
     let mut result = crate::document_engine::compile(CompileRequest {
         app: &app,
@@ -496,6 +464,7 @@ pub async fn compile_project(
             &project_dir,
             &meta.engine,
             &meta.main_doc,
+            &toolchain_identity,
         );
     }
     #[cfg(debug_assertions)]
@@ -577,6 +546,7 @@ fn desktop_workspace(
         main_doc: main_doc.to_owned(),
         engine: meta.engine.clone(),
         tex_flavor: meta.tex_flavor.clone(),
+        typst: meta.typst.clone(),
         checkpoints: meta.checkpoints.clone(),
         ..oleafly_core::ProjectManifest::default()
     };
@@ -588,6 +558,126 @@ fn desktop_workspace(
     };
     oleafly_core::Workspace::from_manifest_with_build(&location.root, manifest, build)
         .map_err(|error| error.to_string())
+}
+
+pub(crate) fn requested_compile_options(
+    offline: Option<bool>,
+    fast: Option<bool>,
+    halt_on_error: Option<bool>,
+) -> crate::document_engine::CompileOptions {
+    let source_date_epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(0);
+    crate::document_engine::CompileOptions {
+        offline: offline.unwrap_or(false),
+        fast: fast.unwrap_or(false),
+        halt_on_error: halt_on_error.unwrap_or(false),
+        latex_flavor: None,
+        allow_shell_escape: false,
+        source_date_epoch: Some(source_date_epoch),
+        external_build: false,
+        typst: None,
+        typst_packages: None,
+        typst_settings: None,
+    }
+}
+
+pub(crate) struct MainCompile {
+    pub(crate) location: crate::project_location::ProjectLocation,
+    pub(crate) meta: crate::project::ProjectMeta,
+    pub(crate) engine: &'static dyn crate::document_engine::DocumentEngine,
+    pub(crate) project_dir: std::path::PathBuf,
+    pub(crate) build_dir: std::path::PathBuf,
+    pub(crate) options: crate::document_engine::CompileOptions,
+}
+
+impl MainCompile {
+    pub(crate) async fn prepare(
+        project_id: &str,
+        main_doc: &str,
+        typst_variant: Option<String>,
+        options: crate::document_engine::CompileOptions,
+    ) -> Result<Self, String> {
+        let location = crate::project_location::locate(project_id)?;
+        let meta = crate::project::read_compile_meta(project_id, main_doc)?;
+        let typst = {
+            let meta = meta.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                crate::typst_toolchain::resolve_for_compile(&meta)
+            })
+            .await
+            .map_err(|error| format!("failed to resolve the Typst version: {error}"))??
+        };
+        let workspace = desktop_workspace(&location, &meta, main_doc)?;
+        let prepared = workspace
+            .prepare_build()
+            .map_err(|error| error.to_string())?;
+        let project_dir = prepared.project_root().to_path_buf();
+        let build_dir = prepared.build_directory().to_path_buf();
+        let typst_settings = {
+            let meta = meta.clone();
+            let project_dir = project_dir.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                crate::typst_options::for_compile(&meta, &project_dir, typst_variant.as_deref())
+            })
+            .await
+            .map_err(|error| format!("failed to read the Typst options: {error}"))?
+        };
+        let options = crate::document_engine::CompileOptions {
+            latex_flavor: meta
+                .tex_flavor
+                .as_deref()
+                .and_then(crate::document_engine::LatexmkFlavor::parse),
+            allow_shell_escape: meta.allow_shell_escape,
+            external_build: location.kind == crate::project_location::ProjectKind::Linked,
+            typst_packages: crate::typst_packages::for_compile(&meta, &project_dir)?,
+            typst_settings,
+            typst,
+            ..options
+        };
+        let engine =
+            crate::document_engine::engine_for(prepared.engine().manifest_name(), main_doc)?;
+        Ok(Self {
+            location,
+            meta,
+            engine,
+            project_dir,
+            build_dir,
+            options,
+        })
+    }
+
+    pub(crate) fn toolchain_identity(&self) -> String {
+        crate::typst_toolchain::compile_identity(&self.meta, self.options.typst.as_deref())
+    }
+
+    pub(crate) async fn spec(
+        &self,
+        main_doc: &str,
+        out_dir: &std::path::Path,
+        options: crate::document_engine::CompileOptions,
+    ) -> Result<crate::document_engine::EngineCompileSpec, String> {
+        let spec = crate::document_engine::prepare_compile_spec(
+            self.engine.id(),
+            out_dir.to_path_buf(),
+            self.project_dir.clone(),
+            CompileTarget::Main {
+                main_document: main_doc,
+            },
+            options,
+        )
+        .await?;
+        match self.location.compile_search_dir(main_doc) {
+            Some(compile_dir) => crate::document_engine::place_in_compile_directory(
+                self.engine.id(),
+                spec,
+                &self.project_dir,
+                &compile_dir,
+            ),
+            None => Ok(spec),
+        }
+    }
 }
 
 /// Write base64-decoded bytes to an absolute path chosen by the user (e.g. a
@@ -1306,13 +1396,14 @@ mod tests {
                 "legacy_always_include": ["research/notes"]
             }))
             .unwrap();
-        let meta = crate::project::ProjectMeta {
+        let mut meta = crate::project::ProjectMeta {
             name: "Paper".into(),
             main_doc: "paper.typ".into(),
             engine: "typst".into(),
             checkpoints,
             ..crate::project::ProjectMeta::default()
         };
+        meta.set_typst_version_pin(Some("0.13.1".into()));
         let workspace = desktop_workspace(
             &crate::project_location::ProjectLocation::library_at(
                 "paper",
@@ -1331,6 +1422,8 @@ mod tests {
             workspace.manifest().checkpoints.extra["legacy_always_include"],
             serde_json::json!(["research/notes"])
         );
+        assert_eq!(workspace.manifest().typst_version_pin(), Some("0.13.1"));
+        assert_eq!(workspace.manifest().typst, meta.typst);
     }
 
     #[test]

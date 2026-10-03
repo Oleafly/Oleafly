@@ -11,6 +11,7 @@ esac
 EXT=""
 [[ "$HOST" == *windows* ]] && EXT=".exe"
 TYPST="$ROOT/src-tauri/binaries/typst-$HOST$EXT"
+TYPST_PIN="$(cd "$ROOT" && node scripts/typst/bundled-typst.mjs version)"
 TECTONIC="$ROOT/src-tauri/binaries/tectonic-$HOST$EXT"
 BIBER="$ROOT/src-tauri/binaries/tectonic-biber-$HOST$EXT"
 PANDOC="$ROOT/src-tauri/binaries/pandoc-$HOST$EXT"
@@ -23,7 +24,7 @@ bash "$ROOT/scripts/fetch-pandoc.sh" "$HOST"
 TYPST_VERSION="$("$TYPST" --version)"
 TECTONIC_VERSION="$("$TECTONIC" --version)"
 PANDOC_VERSION="$("$PANDOC" --version)"
-grep -Fi "typst 0.15.0" <<<"$TYPST_VERSION" >/dev/null
+grep -Fi "typst $TYPST_PIN" <<<"$TYPST_VERSION" >/dev/null
 grep -Fi "tectonic 0.16.9" <<<"$TECTONIC_VERSION" >/dev/null
 grep -Fi "pandoc 3.9.0.2" <<<"$PANDOC_VERSION" >/dev/null
 # Biber is optional on aarch64 Linux (no upstream 2.17 binary).

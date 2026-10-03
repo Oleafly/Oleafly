@@ -314,7 +314,7 @@
       "literatureSearch": "Искать статьи в OpenAlex по ключевым словам, ключ не нужен.",
       "verifyCitation": "Превратить DOI или заголовок в проверенный BibTeX через doi.org или Crossref.",
       "projectLibrarySearch": "Искать по собственному тексту и заметкам проекта по ключевым словам.",
-      "previewFigure": "Скомпилировать рисунок на TikZ или PGFPlots отдельно и показать результат в чате.",
+      "previewFigure": "Отрисовать рисунок TikZ или CeTZ отдельно и показать результат в чате.",
       "insertFigure": "Вставить готовый рисунок у курсора с подписью и меткой и сохранить PNG в figures/.",
       "loadImage": "Посмотреть изображение, которое уже есть в проекте.",
       "updateTodos": "Записать или обновить пошаговый план, показанный в чате.",
@@ -357,6 +357,7 @@
     "noDescription": "Описание не указано.",
     "notes": {
       "latexOnly": "Только для проектов LaTeX",
+      "latexAndTypstOnly": "Только для проектов LaTeX и Typst",
       "pdfCaptureSetting": "Нужна настройка снимков страниц PDF",
       "chatApproval": "Подтверждается в чате, по одной команде за раз",
       "browserSetting": "Нужна настройка веб-браузера"
@@ -694,6 +695,24 @@
     "tikzFigure": {
       "label": "Рисунок TikZ",
       "description": "Набросать код TikZ в чате"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Исправить ошибки Typst"
+      },
+      "writeEquation": {
+        "description": "Из обычного языка в формулы Typst"
+      },
+      "academicPresentation": {
+        "description": "Слайды Typst по вашей статье"
+      },
+      "generateTable": {
+        "description": "Набросать таблицу Typst в чате"
+      },
+      "figure": {
+        "label": "Рисунок CeTZ",
+        "description": "Набросать код CeTZ в чате"
+      }
     }
   },
   "turn": {

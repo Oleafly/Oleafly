@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "缺少替代文本的图片",
-      "detail": "这张图片没有描述性的替代文本，屏幕阅读器无法传达其内容。请添加描述，例如 \\includegraphics[alt={A headshot of the author}]{...}。纯装饰性的图片请改为标记为工件。"
+      "detail": "这张图片没有描述性的替代文本，屏幕阅读器无法传达其内容。请添加描述，例如 \\includegraphics[alt={A headshot of the author}]{...}。纯装饰性的图片请改为标记为工件。",
+      "detailTypst": "这张图片没有替代文本，屏幕阅读器无法传达其内容。请添加描述，例如 #image(\"chart.png\", alt: \"Bar chart of yearly sales\")。",
+      "detailTypstFigure": "这张图片没有替代文本，屏幕阅读器无法传达其内容。请为图像或包含它的插图添加描述，例如 #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")。"
     },
     "link-text": {
       "title": "非描述性链接文本",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "缺少 PDF 标题",
-      "detail": "此 PDF 的元数据中没有标题，而辅助技术和浏览器会用标题来播报文档。请使用 hyperref 设置标题，例如 \\hypersetup{pdftitle={Your Name, CV}}。"
+      "detail": "此 PDF 的元数据中没有标题，而辅助技术和浏览器会用标题来播报文档。请使用 hyperref 设置标题，例如 \\hypersetup{pdftitle={Your Name, CV}}。",
+      "detailTypst": "此 PDF 的元数据中没有标题，而辅助技术和浏览器会用标题来播报文档。请使用 #set document(title: \"Your title\") 设置标题，或将标题传给模板。"
     },
     "heading-skip": {
       "title": "跳过了标题层级",
@@ -269,11 +272,16 @@
     },
     "refs-undefined-cite": {
       "title": "引用“{{key}}”不在任何 .bib 文件中",
-      "detail": "在已加载的参考文献库中未找到此引用键，因此它会在 PDF 中渲染为 [?]。请检查键名，或将该条目添加到你的 .bib 文件（“添加引用”功能可以帮你获取）。"
+      "detail": "在已加载的参考文献库中未找到此引用键，因此它会在 PDF 中渲染为 [?]。请检查键名，或将该条目添加到你的 .bib 文件（“添加引用”功能可以帮你获取）。",
+      "titleTypst": "引用“{{key}}”不在参考文献中",
+      "detailTypst": "项目加载的所有参考文献文件中都没有此键，因此编译会失败。请检查键名，或将该条目添加到你的 .bib 或 Hayagriva .yml 文件。"
     },
     "refs-undefined-ref": {
       "title": "指向“{{label}}”的交叉引用没有匹配的 \\label",
-      "detail": "此交叉引用指向的标签未定义，因此会在 PDF 中渲染为 ??。请检查标签名，或补上缺失的 \\label。"
+      "detail": "此交叉引用指向的标签未定义，因此会在 PDF 中渲染为 ??。请检查标签名，或补上缺失的 \\label。",
+      "titleTypst": "没有名为“{{label}}”的标签或条目",
+      "detailTypst": "Typst 会在这里停止编译。请检查拼写，或补上缺失的 <label> 或参考文献条目。",
+      "detailTypstPackage": "项目中没有使用此名称的标签或参考文献条目。某些包会在文档编译时创建标签，例如术语表条目。如果编译日志报告了此问题，请检查拼写。"
     },
     "refs-duplicate-label": {
       "title": "标签“{{label}}”重复",
@@ -283,11 +291,14 @@
       "titleImage": "未找到图片：{{file}}",
       "detailImage": "此 \\includegraphics 指向的文件不在项目中，因此该图片会缺失。请检查文件名和路径。",
       "titleInclude": "未找到被引入的文件：{{file}}",
-      "detailInclude": "此 \\input 或 \\include 指向的文件不在项目中。请检查文件名和路径。"
+      "detailInclude": "此 \\input 或 \\include 指向的文件不在项目中。请检查文件名和路径。",
+      "detailImageTypst": "没有与此图片路径匹配的项目文件，因此编译会失败。Typst 按相对于当前文件的路径读取，路径以 / 开头时则从项目根目录读取。",
+      "detailIncludeTypst": "没有与此 #include 或 #import 路径匹配的项目文件，因此编译会失败。请检查文件名和路径。"
     },
     "refs-bib-missing": {
       "title": "未找到参考文献文件：{{file}}",
-      "detail": "此 \\bibliography 或 \\addbibresource 指向的文件不在项目中，因此所有引用都会渲染为 [?]。请检查文件名，或导入参考文献库以创建它。"
+      "detail": "此 \\bibliography 或 \\addbibresource 指向的文件不在项目中，因此所有引用都会渲染为 [?]。请检查文件名，或导入参考文献库以创建它。",
+      "detailTypst": "此 #bibliography 调用指向的文件不在项目中，因此编译会失败。请检查文件名，或导入参考文献库以创建它。"
     },
     "refs-duplicate-bib": {
       "title": "重复的参考文献条目：{{keys}}",
@@ -330,7 +341,8 @@
     },
     "privacy-blind-author": {
       "title": "盲审源码中仍留有作者身份信息",
-      "detail": "源码中包含非匿名的作者、所属机构、电子邮箱、地址或致谢字段。请使用该会议或期刊的匿名评审模式替换可识别身份的内容。"
+      "detail": "源码中包含非匿名的作者、所属机构、电子邮箱、地址或致谢字段。请使用该会议或期刊的匿名评审模式替换可识别身份的内容。",
+      "detailTypst": "源码为文档或其模板提供了作者姓名、电子邮箱或所属机构。请将其删除，或将模板切换到匿名模式。"
     },
     "privacy-blind-acknowledgements": {
       "title": "致谢可能暴露作者身份",
@@ -359,15 +371,20 @@
     "submission-document-class": {
       "title": "{{profile}} 文档类未启用",
       "detail": "此配置需要 {{expected}}，但项目使用的是 {{actual}}。请从该会议或期刊当前的官方模板开始。",
-      "detailNoClass": "此配置方案要求使用 {{expected}}，但未检测到任何文档类。请从目标期刊或会议的当前官方模板开始。"
+      "detailNoClass": "此配置方案要求使用 {{expected}}，但未检测到任何文档类。请从目标期刊或会议的当前官方模板开始。",
+      "titleTypst": "{{profile}} 模板未启用",
+      "detailTypst": "此配置方案要求使用 {{expected}} 等 Typst 模板，但项目导入的是 {{actual}}。请从其中一个模板开始。",
+      "detailNoTemplateTypst": "此配置方案要求使用 {{expected}} 等 Typst 模板，但项目未导入任何模板。请从其中一个模板开始。"
     },
     "submission-no-abstract": {
       "title": "未检测到摘要",
-      "detail": "此出版配置方案要求在标准 abstract 环境中提供摘要。请添加摘要，或确认目标期刊或会议不需要摘要。"
+      "detail": "此出版配置方案要求在标准 abstract 环境中提供摘要。请添加摘要，或确认目标期刊或会议不需要摘要。",
+      "detailTypst": "此出版配置方案要求提供摘要。请将摘要传给模板，例如 abstract: [Your abstract]，或添加 Abstract 标题。"
     },
     "submission-no-keywords": {
       "title": "未检测到投稿关键词",
-      "detail": "{{profile}} 配置方案要求通过其标准模板命令或环境提供关键词。"
+      "detail": "{{profile}} 配置方案要求通过其标准模板命令或环境提供关键词。",
+      "detailTypst": "{{profile}} 配置方案要求提供关键词。请将关键词传给模板，例如 keywords: (\"one\", \"two\") 或 index-terms: (\"one\", \"two\")。"
     },
     "submission-figure-format": {
       "title": "不支持的图片格式：{{file}}",
@@ -375,7 +392,8 @@
     },
     "submission-placeholder": {
       "title": "稿件中仍存在草稿占位内容",
-      "detail": "源码中包含 TODO、TBD、FIXME、占位文本或问号标记。请在生成最终投稿文件前逐一检查。"
+      "detail": "源码中包含 TODO、TBD、FIXME、占位文本或问号标记。请在生成最终投稿文件前逐一检查。",
+      "detailTypst": "文档仍在调用 #lorem 或包含占位文本。请在最终投稿前替换。"
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} 低于要求的版本",
@@ -404,6 +422,34 @@
     "submission-font-inspection-incomplete": {
       "title": "部分字体的嵌入状态无法验证",
       "detail": "预检无法确认 {{fonts}} 的嵌入状态。请使用目标期刊或会议的官方 PDF 检查工具进行确认。"
+    },
+    "empty-heading": {
+      "title": "空标题",
+      "detail": "此标题没有文本。屏幕阅读器会在大纲中将其读作空白条目。请添加标题文字或删除该标题。"
+    },
+    "todo-in-text": {
+      "title": "正文中的草稿备注",
+      "detail": "此备注是正文的一部分，因此会打印到 PDF 中。请处理它，或将其改为 // 注释。"
+    },
+    "no-author": {
+      "title": "缺少文档作者",
+      "detail": "PDF 元数据中没有作者。请使用 #set document(author: \"Your Name\") 添加，或将作者传给模板。匿名评审时请省略。"
+    },
+    "privacy-local-path": {
+      "title": "你电脑上的路径：{{path}}",
+      "detail": "此路径指向项目外的文件夹。它可能暴露你的用户名，并且在其他电脑上构建会失败。请将文件移入项目并使用相对路径。"
+    },
+    "privacy-blind-email": {
+      "title": "{{file}} 中的电子邮箱地址",
+      "detail": "在盲审期间，电子邮箱地址可能暴露作者身份。请将其删除或替换为匿名占位符。"
+    },
+    "refs-no-bibliography": {
+      "title": "有引用但无参考文献",
+      "detail": "文档引用了文献，但从未调用 #bibliography，因此 Typst 无法解析这些引用。请在参考文献列表应出现的位置添加 #bibliography(\"refs.bib\")。"
+    },
+    "submission-large-image": {
+      "title": "图片过大：{{file}}",
+      "detail": "此图片超过 {{limit}}。大图片会拖慢编译并使 PDF 臃肿。有些期刊或会议还会限制上传大小。请压缩图片，或按打印尺寸导出。"
     }
   },
   "lens": {
@@ -620,5 +666,15 @@
     "compileTagged": "编译带标签版本并验证",
     "compileTaggedWarning": "系统 LuaLaTeX 可以读取本地文件。请仅对可信项目运行。",
     "noEngine": "要在应用内生成带标签的 PDF，请在设置的“LaTeX 引擎”中启用一个引擎。也可以使用你自己的 TeX Live 2025 或更新版本中的 pdfLaTeX 或 LuaLaTeX 编译准备好的源码。"
+  },
+  "typstStandards": {
+    "title": "PDF 标准",
+    "intro": "Typst 可直接生成归档用和无障碍的 PDF。请选择一个标准，然后导出 PDF。",
+    "standard": "标准",
+    "export": "导出 PDF",
+    "tagged": "Typst {{version}} 会为每个 PDF 添加供屏幕阅读器使用的标签，因此无需单独进行带标签的编译。",
+    "untagged": "Typst {{version}} 不会为 PDF 添加供屏幕阅读器使用的标签。Typst 0.14 及更高版本会添加。",
+    "none": "Typst {{version}} 无法生成符合 PDF 标准的文件。请在编译菜单中选择 Typst 0.12 或更高版本。",
+    "uaNote": "PDF/UA-1 要求提供文档标题，并为每张图片提供替代文本。"
   }
 }

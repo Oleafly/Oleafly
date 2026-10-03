@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Image without alt text",
-      "detail": "This image has no descriptive alt text, so a screen reader cannot convey it. Add a description, for example \\includegraphics[alt={A headshot of the author}]{...}. Mark purely decorative images as artifacts instead."
+      "detail": "This image has no descriptive alt text, so a screen reader cannot convey it. Add a description, for example \\includegraphics[alt={A headshot of the author}]{...}. Mark purely decorative images as artifacts instead.",
+      "detailTypst": "This image has no alt text, so a screen reader cannot convey it. Add a description, for example #image(\"chart.png\", alt: \"Bar chart of yearly sales\").",
+      "detailTypstFigure": "This image has no alt text, so a screen reader cannot convey it. Describe it on the image or on the figure that holds it, for example #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")."
     },
     "link-text": {
       "title": "Non-descriptive link text",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "No PDF title",
-      "detail": "The PDF has no title in its metadata, which assistive tech and browsers use to announce the document. Set one with hyperref, for example \\hypersetup{pdftitle={Your Name, CV}}."
+      "detail": "The PDF has no title in its metadata, which assistive tech and browsers use to announce the document. Set one with hyperref, for example \\hypersetup{pdftitle={Your Name, CV}}.",
+      "detailTypst": "The PDF has no title in its metadata, which assistive tech and browsers use to announce the document. Set one with #set document(title: \"Your title\") or pass a title to your template."
     },
     "heading-skip": {
       "title": "Heading level skipped",
@@ -284,11 +287,16 @@
     },
     "refs-undefined-cite": {
       "title": "Citation \"{{key}}\" is not in any .bib",
-      "detail": "This citation key was not found in the loaded bibliography, so it will render as [?] in the PDF. Check the key, or add the entry to your .bib (Add citation can fetch it)."
+      "detail": "This citation key was not found in the loaded bibliography, so it will render as [?] in the PDF. Check the key, or add the entry to your .bib (Add citation can fetch it).",
+      "titleTypst": "Citation \"{{key}}\" is not in the bibliography",
+      "detailTypst": "This key is not in any bibliography file the project loads, so the compile fails. Check the key, or add the entry to your .bib or Hayagriva .yml file."
     },
     "refs-undefined-ref": {
       "title": "Reference to \"{{label}}\" has no matching \\label",
-      "detail": "This cross-reference points to a label that is not defined, so it will render as ?? in the PDF. Check the label name, or add the missing \\label."
+      "detail": "This cross-reference points to a label that is not defined, so it will render as ?? in the PDF. Check the label name, or add the missing \\label.",
+      "titleTypst": "No label or entry named \"{{label}}\"",
+      "detailTypst": "Typst stops the compile here. Check the spelling, or add the missing <label> or bibliography entry.",
+      "detailTypstPackage": "No label or bibliography entry in the project has this name. A package can create labels while the document compiles, such as glossary entries. If the compile log reports it, check the spelling."
     },
     "refs-duplicate-label": {
       "title": "Duplicate label \"{{label}}\"",
@@ -298,11 +306,14 @@
       "titleImage": "Image not found: {{file}}",
       "detailImage": "This \\includegraphics points to a file that is not in the project, so the figure will be missing. Check the filename and path.",
       "titleInclude": "Included file not found: {{file}}",
-      "detailInclude": "This \\input or \\include points to a file that is not in the project. Check the filename and path."
+      "detailInclude": "This \\input or \\include points to a file that is not in the project. Check the filename and path.",
+      "detailImageTypst": "No project file matches this image path, so the compile fails. Typst reads a path relative to the file, or from the project root when it starts with /.",
+      "detailIncludeTypst": "No project file matches this #include or #import path, so the compile fails. Check the filename and path."
     },
     "refs-bib-missing": {
       "title": "Bibliography file not found: {{file}}",
-      "detail": "This \\bibliography or \\addbibresource points to a file that is not in the project, so every citation will render as [?]. Check the filename, or import a reference library to create it."
+      "detail": "This \\bibliography or \\addbibresource points to a file that is not in the project, so every citation will render as [?]. Check the filename, or import a reference library to create it.",
+      "detailTypst": "This #bibliography call points to a file that is not in the project, so the compile fails. Check the filename, or import a reference library to create it."
     },
     "refs-duplicate-bib": {
       "title": "Duplicate bibliography entries: {{keys}}",
@@ -345,7 +356,8 @@
     },
     "privacy-blind-author": {
       "title": "Author identity remains in blind-review source",
-      "detail": "The source contains a non-anonymous author, affiliation, email, address, or thanks field. Replace identifying content using the venue's anonymous-review mode."
+      "detail": "The source contains a non-anonymous author, affiliation, email, address, or thanks field. Replace identifying content using the venue's anonymous-review mode.",
+      "detailTypst": "The source gives the document or its template an author name, email or affiliation. Remove it, or switch the template to its anonymous mode."
     },
     "privacy-blind-acknowledgements": {
       "title": "Acknowledgements may reveal the authors",
@@ -374,15 +386,20 @@
     "submission-document-class": {
       "title": "{{profile}} document class is not active",
       "detail": "This profile expects {{expected}}, but the project uses {{actual}}. Start from the venue's current official template.",
-      "detailNoClass": "This profile expects {{expected}}, but no document class was detected. Start from the venue's current official template."
+      "detailNoClass": "This profile expects {{expected}}, but no document class was detected. Start from the venue's current official template.",
+      "titleTypst": "{{profile}} template is not active",
+      "detailTypst": "This profile expects a Typst template such as {{expected}}, but the project imports {{actual}}. Start from one of those templates.",
+      "detailNoTemplateTypst": "This profile expects a Typst template such as {{expected}}, but the project imports none. Start from one of those templates."
     },
     "submission-no-abstract": {
       "title": "No abstract detected",
-      "detail": "This publication profile expects an abstract in a standard abstract environment. Add it or confirm that the specific venue does not require one."
+      "detail": "This publication profile expects an abstract in a standard abstract environment. Add it or confirm that the specific venue does not require one.",
+      "detailTypst": "This publication profile expects an abstract. Pass one to your template, for example abstract: [Your abstract], or add an Abstract heading."
     },
     "submission-no-keywords": {
       "title": "No publication keywords detected",
-      "detail": "The {{profile}} profile expects keywords using its standard template command or environment."
+      "detail": "The {{profile}} profile expects keywords using its standard template command or environment.",
+      "detailTypst": "The {{profile}} profile expects keywords. Pass them to your template, for example keywords: (\"one\", \"two\") or index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Unsupported figure format: {{file}}",
@@ -390,7 +407,8 @@
     },
     "submission-placeholder": {
       "title": "Draft placeholder remains in the manuscript",
-      "detail": "The source contains TODO, TBD, FIXME, placeholder copy, or question-mark markers. Review each occurrence before producing the final submission."
+      "detail": "The source contains TODO, TBD, FIXME, placeholder copy, or question-mark markers. Review each occurrence before producing the final submission.",
+      "detailTypst": "The document still calls #lorem or contains placeholder text. Replace it before the final submission."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} is below the required version",
@@ -420,6 +438,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Some font embedding could not be verified",
       "detail": "Preflight could not prove the embedding status of {{fonts}}. Confirm them with the venue's official PDF checker."
+    },
+    "empty-heading": {
+      "title": "Empty heading",
+      "detail": "This heading has no text. Screen readers announce it as a blank entry in the outline. Add a title or remove the heading."
+    },
+    "todo-in-text": {
+      "title": "Draft note in the text",
+      "detail": "This note is part of the text, so it prints in the PDF. Resolve it, or turn it into a // comment."
+    },
+    "no-author": {
+      "title": "No document author",
+      "detail": "The PDF metadata has no author. Add one with #set document(author: \"Your Name\") or pass the authors to your template. Leave it out for anonymous review."
+    },
+    "privacy-local-path": {
+      "title": "Path on your computer: {{path}}",
+      "detail": "This path points to a folder outside the project. It can reveal your user name, and the build fails on any other machine. Move the file into the project and use a relative path."
+    },
+    "privacy-blind-email": {
+      "title": "Email address in {{file}}",
+      "detail": "An email address can identify the authors during blind review. Remove it or replace it with an anonymous placeholder."
+    },
+    "refs-no-bibliography": {
+      "title": "Citations without a bibliography",
+      "detail": "The document cites sources but never calls #bibliography, so Typst cannot resolve them. Add #bibliography(\"refs.bib\") where the reference list should appear."
+    },
+    "submission-large-image": {
+      "title": "Very large image: {{file}}",
+      "detail": "This image is over {{limit}}. Large images slow the compile and bloat the PDF. Some venues also cap the upload size. Compress it, or export it at the size it prints."
     }
   },
   "lens": {
@@ -643,5 +689,15 @@
     "compileTagged": "Compile tagged and verify",
     "compileTaggedWarning": "System LuaLaTeX can read local files. Run it only for a project you trust.",
     "noEngine": "To produce the tagged PDF in the app, enable an engine in Settings, LaTeX Engine. Or compile the prepared source with your own pdfLaTeX or LuaLaTeX from TeX Live 2025 or newer."
+  },
+  "typstStandards": {
+    "title": "PDF standards",
+    "intro": "Typst writes archival and accessible PDFs itself. Pick a standard, then export the PDF.",
+    "standard": "Standard",
+    "export": "Export PDF",
+    "tagged": "Typst {{version}} tags every PDF for screen readers, so there is no separate tagged compile.",
+    "untagged": "Typst {{version}} does not tag PDFs for screen readers. Typst 0.14 and later do.",
+    "none": "Typst {{version}} can't write PDF standards. Pick Typst 0.12 or later in the compile menu.",
+    "uaNote": "PDF/UA-1 needs a document title and alternative text for every image."
   }
 }

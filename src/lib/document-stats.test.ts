@@ -128,6 +128,43 @@ describe("documentStats", () => {
   });
 });
 
+describe("documentStats for Typst sources", () => {
+  const source = [
+    "#set text(font: \"Libertinus Serif\")",
+    "#let accent = rgb(\"#1f77b4\")",
+    "= Results",
+    "Growth reached 50% in the first year. // reviewer note",
+    "#figure(table(columns: 2, [Load], [Rate]), caption: [Measured rates]) <tab:rates>",
+    "The fit $ y = a x + b $ matches @smith2020.#footnote[Full data online.]",
+  ].join("\n");
+
+  it("counts with the Typst rules when the path ends in .typ", () => {
+    const stats = documentStats(source, "chapters/results.typ");
+
+    expect(stats.words).toBe(17);
+    expect(stats.wordsInHeaders).toBe(1);
+    expect(stats.wordsOutsideText).toBe(5);
+    expect(stats.wordsInText).toBe(11);
+    expect(stats.headers).toBe(1);
+    expect(stats.figures).toBe(1);
+    expect(stats.mathInline).toBe(0);
+    expect(stats.mathDisplayed).toBe(1);
+  });
+
+  it("matches the extension without regard to case", () => {
+    expect(documentStats(source, "MAIN.TYP")).toEqual(documentStats(source, "main.typ"));
+  });
+
+  it("keeps the LaTeX rules for other paths", () => {
+    expect(documentStats("Growth of 50% hidden words\n", "main.tex").words).toBe(2);
+    expect(documentStats("Growth of 50% hidden words\n", "main.typ").words).toBe(4);
+  });
+
+  it("reports zeroes for an empty Typst file", () => {
+    expect(documentStats("", "main.typ")).toEqual(EMPTY_DOCUMENT_STATS);
+  });
+});
+
 describe("sumDocumentStats", () => {
   it("adds every field across files", () => {
     const total = sumDocumentStats([

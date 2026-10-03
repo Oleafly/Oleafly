@@ -841,6 +841,7 @@ export class TauriLanguageServiceTransport
 
   async install(
     kind: LanguageServiceKind,
+    projectId?: string,
   ): Promise<LanguageServiceInstallResult> {
     if (!isLanguageServiceKind(kind)) {
       throw new Error("Unsupported language-service kind");
@@ -848,7 +849,7 @@ export class TauriLanguageServiceTransport
     try {
       return parseInstallResult(
         await this.invokeCommand<unknown>(COMMANDS.install, {
-          request: { kind },
+          request: projectId === undefined ? { kind } : { kind, projectId },
         }),
         kind,
       );
@@ -859,6 +860,7 @@ export class TauriLanguageServiceTransport
 
   async installStatus(
     kind: LanguageServiceKind,
+    projectId?: string,
   ): Promise<LanguageServiceInstallStatus> {
     if (!isLanguageServiceKind(kind)) {
       throw new Error("Unsupported language-service kind");
@@ -866,7 +868,7 @@ export class TauriLanguageServiceTransport
     try {
       return parseInstallStatus(
         await this.invokeCommand<unknown>(COMMANDS.installStatus, {
-          request: { kind },
+          request: projectId === undefined ? { kind } : { kind, projectId },
         }),
         kind,
       );

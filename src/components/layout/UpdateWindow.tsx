@@ -7,6 +7,7 @@ import { UpdateDialog, type UpdatePhase } from "@/components/layout/UpdateDialog
 import { loadReleaseNotesRenderer, openableReleaseLink } from "@/components/layout/ReleaseNotes";
 import { findUpdate, installUpdate } from "@/lib/updater";
 import { tauriReleasePageFetcher, useReleaseHistory } from "@/lib/release-history";
+import { decodeAppError, describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { appVersion } from "@/lib/tauri";
 import { celebrate } from "@/lib/confetti";
@@ -110,7 +111,7 @@ export function UpdateWindow() {
       // installUpdate relaunches the app on success; unreachable afterward.
     } catch (e) {
       await logError("updater", e);
-      setErrorMessage(String(e));
+      setErrorMessage(decodeAppError(e) ? describeError(e) : String(e));
       setPhase("error");
       installingRef.current = false;
     }

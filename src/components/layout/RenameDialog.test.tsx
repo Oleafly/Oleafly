@@ -12,7 +12,14 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/components/editor/cm/controller", () => ({
   getEditorView: mocks.getEditorView,
 }));
-vi.mock("@/lib/index/nav", () => ({ applyRename: mocks.applyRename }));
+vi.mock("@/lib/index/nav", () => ({
+  applyRename: mocks.applyRename,
+  renamePreview: (
+    index: { renamePlan: (sym: unknown, name: string) => unknown } | null,
+    sym: { name: string },
+    name: string,
+  ) => (index && name && name !== sym.name ? index.renamePlan(sym, name) : null),
+}));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };

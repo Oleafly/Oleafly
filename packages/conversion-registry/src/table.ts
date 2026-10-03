@@ -56,6 +56,10 @@ function splitRecord(line: string, delimiter: string): string[] {
   return cells;
 }
 
+export function delimiterOf(text: string): string {
+  return detectDelimiter(text.replace(/\r\n?/g, "\n"));
+}
+
 function detectDelimiter(text: string): string {
   let quoted = false;
   let tabs = 0;
@@ -242,26 +246,40 @@ export function escapeLatexCell(value: string): string {
   return out;
 }
 
+const TYPST_ESCAPED_CHARACTERS = new Set(["\\", "[", "]", "#", "$", "@", "*", "_", "`", "<", ">", '"', "~"]);
+
+function isTypstSpace(character: string | undefined): boolean {
+  return character !== undefined && character.trim() === "";
+}
+
+function typstLeadingMarkerIndex(text: string): number {
+  let start = 0;
+  while (isTypstSpace(text[start])) start += 1;
+  const first = text[start];
+  if (first === "-" || first === "+" || first === "/") {
+    return isTypstSpace(text[start + 1]) ? start : -1;
+  }
+  let end = start;
+  if (first === "=") {
+    while (text[end] === "=") end += 1;
+    return isTypstSpace(text[end]) ? start : -1;
+  }
+  while (text[end] >= "0" && text[end] <= "9") end += 1;
+  return end > start && text[end] === "." && isTypstSpace(text[end + 1]) ? end : -1;
+}
+
 /** Escape Typst markup content: backslash, brackets, and meaning-changers. */
 export function escapeTypstCell(value: string): string {
+  const text = flattenCell(value);
+  const marker = typstLeadingMarkerIndex(text);
   let out = "";
-  for (const ch of flattenCell(value)) {
-    switch (ch) {
-      case "\\":
-        out += "\\\\";
-        break;
-      case "[":
-      case "]":
-      case "#":
-      case "$":
-      case "@":
-      case "*":
-      case "_":
-      case "`":
-        out += `\\${ch}`;
-        break;
-      default:
-        out += ch;
+  for (let index = 0; index < text.length; index++) {
+    const ch = text[index];
+    const opensComment = ch === "/" && (text[index + 1] === "/" || text[index + 1] === "*");
+    if (index === marker || opensComment || TYPST_ESCAPED_CHARACTERS.has(ch)) {
+      out += `\\${ch}`;
+    } else {
+      out += ch;
     }
   }
   return out;
@@ -310,31 +328,202 @@ export function emitTypstTable(rowsInput: string[][], options: TableOptions): st
   const bold = options.boldHeader ?? true;
   const alignment = explicitAlignment(options.alignment, rows[0].length)
     ?? inferAlignment(rowsInput, options.header);
-  const alignArg = alignment
-    .split("")
-    .map((letter) =>
-      letter === "r" ? "right" : letter === "c" ? "center" : "left",
-    )
-    .join(", ");
-  const lines: string[] = [];
-  if (options.caption) {
-    lines.push(`#figure(`);
-  }
-  lines.push(`#table(`);
-  lines.push(`  columns: (${alignArg}),`);
+  const alignments = [...alignment].map((letter) =>
+    letter === "r" ? "right" : letter === "c" ? "center" : "left",
+  );
+  const alignArg = alignments.length === 1 ? alignments[0] : `(${alignments.join(", ")})`;
+  const body: string[] = [
+    `columns: ${alignments.length},`,
+    `align: ${alignArg},`,
+    "stroke: none,",
+    "table.hline(),",
+  ];
   rows.forEach((row, index) => {
     const cells = row.map(escapeTypstCell);
     if (options.header && index === 0) {
-      const headerCells = cells.map((cell) => (bold ? `[*${cell}*]` : `[${cell}]`));
-      lines.push(`  table.header(${headerCells.join(", ")}),`);
+      const headerCells = cells.map((cell) => (bold && cell ? `[*${cell}*]` : `[${cell}]`));
+      body.push(`table.header(${headerCells.join(", ")}),`, "table.hline(stroke: 0.5pt),");
     } else {
-      lines.push(`  ${cells.map((cell) => `[${cell}]`).join(", ")},`);
+      body.push(`${cells.map((cell) => `[${cell}]`).join(", ")},`);
     }
   });
-  lines.push(")");
-  if (options.caption) {
-    lines.push(`  caption: [${escapeTypstCell(options.caption)}],`);
-    lines.push(")");
+  body.push("table.hline(),");
+
+  const caption = options.caption?.trim();
+  const label = options.label?.trim();
+  const validLabel = label && isValidLatexLabel(label) ? label : undefined;
+  if (!caption && !validLabel) {
+    return ["#table(", ...body.map((line) => `  ${line}`), ")"].join("\n");
   }
+  const lines = ["#figure(", "  table(", ...body.map((line) => `    ${line}`), "  ),"];
+  if (caption) {
+    lines.push(`  caption: [${escapeTypstCell(caption)}],`);
+  }
+  lines.push(validLabel ? `) <${validLabel}>` : ")");
+  return lines.join("\n");
+}
+
+function csvCell(value: string): string {
+  const needsQuotes = /[",\r\n]/u.test(value) || value !== value.trim();
+  return needsQuotes ? `"${value.replaceAll('"', '""')}"` : value;
+}
+
+export function serializeCsv(rowsInput: string[][]): string {
+  const { rows } = padRows(rowsInput);
+  return rows.map((row) => row.map(csvCell).join(",")).join("\n") + (rows.length > 0 ? "\n" : "");
+}
+
+export interface JsonTable {
+  shape: "records" | "rows";
+  rows: string[][];
+}
+
+function jsonCell(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function parseJsonTable(text: string): JsonTable | null {
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(data) || data.length === 0) return null;
+  if (data.every(isRecord)) {
+    const keys: string[] = [];
+    const seen = new Set<string>();
+    for (const record of data) {
+      for (const key of Object.keys(record)) {
+        if (!seen.has(key)) {
+          seen.add(key);
+          keys.push(key);
+        }
+      }
+    }
+    return { shape: "records", rows: [keys, ...data.map((record) => keys.map((key) => jsonCell(record[key])))] };
+  }
+  if (data.every(Array.isArray)) {
+    return { shape: "rows", rows: data.map((row: unknown[]) => row.map(jsonCell)) };
+  }
+  return null;
+}
+
+export interface LinkedTableSource {
+  format: "csv" | "json";
+  path: string;
+  delimiter?: string;
+  shape?: JsonTable["shape"];
+}
+
+export interface LinkedTableOptions extends TableOptions {
+  source: LinkedTableSource;
+}
+
+export function typstDataName(path: string): string {
+  const file = path.slice(path.lastIndexOf("/") + 1);
+  const dot = file.lastIndexOf(".");
+  const stem = (dot > 0 ? file.slice(0, dot) : file).toLowerCase();
+  let name = "";
+  for (const character of stem) {
+    const plain = (character >= "a" && character <= "z") || (character >= "0" && character <= "9");
+    if (plain) name += character;
+    else if (!name.endsWith("-")) name += "-";
+  }
+  while (name.startsWith("-")) name = name.slice(1);
+  while (name.endsWith("-")) name = name.slice(0, -1);
+  if (!name) return "data";
+  return name[0] >= "0" && name[0] <= "9" ? `data-${name}` : name;
+}
+
+function typstStringLiteral(value: string): string {
+  let out = "";
+  for (const character of value) {
+    if (character === "\\" || character === '"') out += `\\${character}`;
+    else if (character === "\n") out += "\\n";
+    else if (character === "\r") out += "\\r";
+    else if (character === "\t") out += "\\t";
+    else out += character;
+  }
+  return `"${out}"`;
+}
+
+function linkedTableLines(name: string, options: LinkedTableOptions): { prelude: string[]; columns: string; header: string; body: string } {
+  const { source } = options;
+  const data = `${name}-data`;
+  const cell = `${name}-cell`;
+  const bold = options.boldHeader ?? true;
+  const strong = (cells: string) => (bold ? `${cells}.map(strong)` : cells);
+  const delimiter = source.format === "csv" && source.delimiter && source.delimiter !== ","
+    ? `, delimiter: ${typstStringLiteral(source.delimiter)}`
+    : "";
+  const prelude = [`#let ${data} = ${source.format}(${typstStringLiteral(source.path)}${delimiter})`];
+  const cellHelper = `#let ${cell}(value) = if value == none { "" } else if type(value) == str { value } else { repr(value) }`;
+  if (source.format === "json" && (source.shape ?? "records") === "records") {
+    const columns = `${name}-columns`;
+    prelude.push(
+      `#let ${columns} = ${data}.fold((), (keys, row) => keys + row.keys().filter(key => key not in keys))`,
+      cellHelper,
+    );
+    return {
+      prelude,
+      columns: `${columns}.len()`,
+      header: `table.header(..${strong(columns)}),`,
+      body: `..${data}.map(row => ${columns}.map(key => ${cell}(row.at(key, default: none)))).flatten(),`,
+    };
+  }
+  if (source.format === "json") {
+    prelude.push(cellHelper);
+    return {
+      prelude,
+      columns: `${data}.first().len()`,
+      header: `table.header(..${strong(`${data}.first().map(${cell})`)}),`,
+      body: options.header ? `..${data}.slice(1).flatten().map(${cell}),` : `..${data}.flatten().map(${cell}),`,
+    };
+  }
+  return {
+    prelude,
+    columns: `${data}.first().len()`,
+    header: `table.header(..${strong(`${data}.first()`)}),`,
+    body: options.header ? `..${data}.slice(1).flatten(),` : `..${data}.flatten(),`,
+  };
+}
+
+export function emitTypstLinkedTable(rowsInput: string[][], options: LinkedTableOptions): string {
+  const { rows } = padRows(rowsInput);
+  if (rows.length === 0) {
+    return "";
+  }
+  const alignment = explicitAlignment(options.alignment, rows[0].length)
+    ?? inferAlignment(rowsInput, options.header);
+  const alignments = [...alignment].map((letter) =>
+    letter === "r" ? "right" : letter === "c" ? "center" : "left",
+  );
+  const alignArg = alignments.length === 1 ? alignments[0] : `(${alignments.join(", ")})`;
+  const parts = linkedTableLines(typstDataName(options.source.path), options);
+  const body = [`columns: ${parts.columns},`, `align: ${alignArg},`, "stroke: none,", "table.hline(),"];
+  if (options.header) {
+    body.push(parts.header, "table.hline(stroke: 0.5pt),");
+  }
+  body.push(parts.body, "table.hline(),");
+
+  const caption = options.caption?.trim();
+  const label = options.label?.trim();
+  const validLabel = label && isValidLatexLabel(label) ? label : undefined;
+  if (!caption && !validLabel) {
+    return [...parts.prelude, "#table(", ...body.map((line) => `  ${line}`), ")"].join("\n");
+  }
+  const lines = [...parts.prelude, "#figure(", "  table(", ...body.map((line) => `    ${line}`), "  ),"];
+  if (caption) {
+    lines.push(`  caption: [${escapeTypstCell(caption)}],`);
+  }
+  lines.push(validLabel ? `) <${validLabel}>` : ")");
   return lines.join("\n");
 }

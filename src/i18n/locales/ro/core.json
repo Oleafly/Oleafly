@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} nu oferă un mod de compilare offline. Se compilează normal.",
     "retry": "Compilează din nou",
-    "bundleFetchFailed": "Oleafly nu a putut descărca pachetele TeX de care are nevoie acest document. Verifică conexiunea și compilează din nou."
+    "bundleFetchFailed": "Oleafly nu a putut descărca pachetele TeX de care are nevoie acest document. Verifică conexiunea și compilează din nou.",
+    "typstMissing": "Typst {{version}} nu este instalat. Descarcă-l sau comută acest proiect pe altă versiune.",
+    "typstPackage": {
+      "downloadFailed": "Typst nu a putut descărca {{spec}}. Verifică conexiunea la internet și compilează din nou.",
+      "downloadFailedUnnamed": "Typst nu a putut descărca un pachet importat de acest document. Verifică conexiunea la internet și compilează din nou.",
+      "offlineNotCached": "Ești offline, iar {{spec}} nu se află încă în cache-ul de pachete. Compilează o dată când ești online sau copiază pachetele în proiect.",
+      "offlineNotCachedUnnamed": "Ești offline, iar un pachet importat de acest document nu se află încă în cache-ul de pachete. Compilează o dată când ești online.",
+      "notFound": "Typst Universe nu are pachetul {{spec}}. Verifică numele din import.",
+      "localNotFound": "Pachetul local {{spec}} nu este instalat. Pune-l în folderul de pachete Typst al Oleafly sau în folderul typst-packages al proiectului.",
+      "versionMissing": "Acest pachet nu are versiunea {{version}}. Cea mai nouă versiune este {{latest}}.",
+      "versionMissingNoLatest": "Acest pachet nu are versiunea {{version}}. Verifică versiunea din import."
+    }
   },
   "developer": {
     "actions": {
@@ -353,6 +364,7 @@
     "notRenamable": "Acest simbol nu poate fi redenumit.",
     "nothingToRename": "Nu este nimic de redenumit.",
     "referencesFor": "Referințe la {{name}}",
+    "renameFailed": "Nu s-a putut redenumi în „{{name}}”.",
     "renamePartial": "Redenumit în „{{name}}” în {{edited}} din {{total}} fișiere. Nu s-a putut scrie {{files}}.",
     "renamed": "Redenumit în „{{name}}” ($t(core:navigation.edits, {\"count\": {{edits}} }) în $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -597,5 +609,8 @@
   "folderUnavailable": {
     "compile": "Compilarea este în pauză până revine folderul proiectului.",
     "saveReason": "folderul proiectului nu este disponibil"
+  },
+  "imageToTypst": {
+    "failed": "Conversia din imagine în Typst a eșuat: {{detail}}"
   }
 }

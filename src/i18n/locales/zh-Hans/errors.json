@@ -146,5 +146,37 @@
       "check_running": "该代理的测试已在运行。",
       "main_window": "请在主窗口中更改代理使用的程序。"
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly 不提供 Typst {{version}}，这台电脑上也没有该版本的 Typst。",
+    "busy": "Typst {{version}} 仍在安装中。请在安装完成后重试。",
+    "remove_default": "Typst {{version}} 是你的默认版本。请先选择其他默认版本，再将其移除。",
+    "remove_not_downloaded": "Oleafly 只能移除由它下载的 Typst 版本，而 Typst {{version}} 不是由它下载的。",
+    "not_offered": "无法为这台电脑下载 Typst {{version}}。",
+    "install_unverified": "Typst {{version}} 已下载，但未通过完整性校验。请重新安装。",
+    "not_typst_project": "只有 Typst 项目才有 Typst 版本。",
+    "update_waits": "请等待 Typst 安装完成后再更新 Oleafly。"
+  },
+  "typst_packages": {
+    "index_offline": "你当前处于离线状态，且尚未下载 Typst Universe 包列表。",
+    "index_unavailable": "无法加载 Typst Universe 包列表。请检查网络连接后重试。",
+    "vendor_failed": "Oleafly 无法将包复制到项目中。"
+  },
+  "typst_query": {
+    "timeout": "Typst 读取此文档的时间过长。",
+    "failed": "Typst 无法读取此文档。"
+  },
+  "typst_version_missing": "Typst {{version}} 未安装。",
+  "typst_options": {
+    "invalid_input_key": "值名称不能为空，也不能包含等号。",
+    "invalid_variant_name": "每个变体都需要一个其他变体未使用的简短名称。",
+    "invalid_font_path": "字体文件夹必须位于项目内。",
+    "fonts_failed": "Typst 无法列出字体。",
+    "fonts_timeout": "Typst 列出字体的时间过长。"
+  },
+  "typst_export": {
+    "failed": "Typst 无法导出该文档。",
+    "unsupported": "此 Typst 版本无法使用这些设置导出。",
+    "invalid_ppi": "请选择 1 到 {{max}} PPI 之间的分辨率。"
   }
 }

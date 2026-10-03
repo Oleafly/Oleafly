@@ -1,4 +1,4 @@
-use oleafly_core::MAX_MANIFEST_BYTES;
+use oleafly_core::{TypstSpec, MAX_MANIFEST_BYTES};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -25,6 +25,14 @@ struct Link {
 #[derive(Deserialize)]
 struct Sidecar {
     main_doc: Option<String>,
+    #[serde(default)]
+    typst: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub(crate) struct SavedProject {
+    pub main_doc: Option<String>,
+    pub typst: Option<TypstSpec>,
 }
 
 #[cfg(any(not(any(target_os = "macos", windows)), all(test, unix)))]
@@ -45,12 +53,21 @@ fn recorded_app_in(root: &Path) -> Option<PathBuf> {
         .filter(|app| app.is_absolute())
 }
 
-pub(crate) fn saved_main_document(folder: &Path) -> Option<String> {
-    let folder = folder.canonicalize().ok()?;
-    saved_main_in(&data_root()?.join("linked"), &folder)
+pub(crate) fn saved_project(folder: &Path) -> SavedProject {
+    folder
+        .canonicalize()
+        .ok()
+        .zip(data_root())
+        .and_then(|(folder, root)| saved_project_in(&root.join("linked"), &folder))
+        .unwrap_or_default()
 }
 
+#[cfg(test)]
 fn saved_main_in(linked: &Path, folder: &Path) -> Option<String> {
+    saved_project_in(linked, folder)?.main_doc
+}
+
+fn saved_project_in(linked: &Path, folder: &Path) -> Option<SavedProject> {
     let mut entries: Vec<std::fs::DirEntry> = std::fs::read_dir(linked)
         .ok()?
         .filter_map(Result::ok)
@@ -66,7 +83,13 @@ fn saved_main_in(linked: &Path, folder: &Path) -> Option<String> {
         if !current {
             return None;
         }
-        read_json::<Sidecar>(&directory.join(SIDECAR_FILE), MAX_MANIFEST_BYTES)?.main_doc
+        let sidecar = read_json::<Sidecar>(&directory.join(SIDECAR_FILE), MAX_MANIFEST_BYTES)?;
+        Some(SavedProject {
+            typst: sidecar
+                .typst
+                .and_then(|typst| serde_json::from_value(typst).ok()),
+            main_doc: sidecar.main_doc,
+        })
     })
 }
 
@@ -109,6 +132,78 @@ mod tests {
             )
             .unwrap();
         }
+    }
+
+    #[test]
+    fn the_typst_version_the_desktop_app_pinned_for_this_folder_is_read() {
+        let data = TempDir::new().unwrap();
+        let folders = TempDir::new().unwrap();
+        let linked = data.path().join("linked");
+        let mut cases = Vec::new();
+        for (index, sidecar) in [
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{"version":"0.13.1","font_paths":["fonts"]}}"#,
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{"version":"  "}}"#,
+            r#"{"main_doc":"main.typ","engine":"typst","typst":"0.13.1"}"#,
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{"version":13}}"#,
+            r#"{"main_doc":"main.typ","engine":"typst"}"#,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let folder = folders.path().join(format!("paper-{index}"));
+            std::fs::create_dir_all(&folder).unwrap();
+            let folder = folder.canonicalize().unwrap();
+            let id = format!("linked-{index:032}");
+            link(&linked, &id, &folder, "", None);
+            std::fs::write(linked.join(&id).join(SIDECAR_FILE), sidecar).unwrap();
+            cases.push(folder);
+        }
+        let saved = |index: usize| saved_project_in(&linked, &cases[index]).unwrap();
+        let pinned = saved(0);
+        assert_eq!(pinned.main_doc.as_deref(), Some("main.typ"));
+        assert_eq!(
+            serde_json::to_value(pinned.typst).unwrap(),
+            serde_json::json!({"version": "0.13.1", "font_paths": ["fonts"]})
+        );
+        let version = |index: usize| {
+            saved(index)
+                .typst
+                .and_then(|typst| typst.version)
+                .filter(|version| !version.trim().is_empty())
+        };
+        for index in 1..cases.len() {
+            assert_eq!(version(index), None, "case {index}");
+            assert_eq!(saved(index).main_doc.as_deref(), Some("main.typ"));
+        }
+    }
+
+    #[test]
+    fn every_typst_setting_the_desktop_app_saved_for_this_folder_is_read() {
+        let data = TempDir::new().unwrap();
+        let folders = TempDir::new().unwrap();
+        let linked = data.path().join("linked");
+        let folder = folders.path().join("vendored");
+        std::fs::create_dir_all(&folder).unwrap();
+        let folder = folder.canonicalize().unwrap();
+        let id = format!("linked-{}", "v".repeat(32));
+        link(&linked, &id, &folder, "", None);
+        let typst = serde_json::json!({
+            "version": "0.15.1",
+            "vendor_packages": true,
+            "inputs": {"draft": "true"},
+            "future": {"enabled": true}
+        });
+        std::fs::write(
+            linked.join(&id).join(SIDECAR_FILE),
+            serde_json::json!({"main_doc": "main.typ", "engine": "typst", "typst": typst})
+                .to_string(),
+        )
+        .unwrap();
+        let saved = saved_project_in(&linked, &folder).unwrap();
+        let spec = saved.typst.unwrap();
+        assert!(spec.vendor_packages);
+        assert_eq!(spec.version.as_deref(), Some("0.15.1"));
+        assert_eq!(serde_json::to_value(&spec).unwrap(), typst);
     }
 
     #[cfg(unix)]

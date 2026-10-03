@@ -34,21 +34,23 @@ describe("Book project metadata", () => {
     expect(screen.queryByLabelText(/Forked from/u)).toBeNull();
   });
 
-  it("shows an inline fork marker beside the project type only for a fork", () => {
+  it("shows the kind on the cover and an inline fork marker beside the engine only for a fork", () => {
     render(
       <Book
         title={"Paper copy"}
-        engine="Tectonic"
-        kind="document"
+        engine="LaTeX"
+        kind="Document"
         forkedFrom="Original paper"
       />,
     );
 
-    const kind = screen.getByText("document");
+    expect(screen.getByTestId("project-card-kind")).toHaveTextContent("Document");
+    const engine = screen.getByTestId("project-card-engine");
     const fork = screen.getByLabelText("Forked from Original paper");
-    expect(kind.parentElement).toContainElement(fork);
-    expect(kind.parentElement).toHaveClass("gap-1.5");
-    expect(kind.parentElement).toHaveTextContent("document•");
+    expect(engine).toHaveTextContent("LaTeX");
+    expect(engine.parentElement).toContainElement(fork);
+    expect(engine.parentElement).toHaveClass("gap-1.5");
+    expect(engine.parentElement).toHaveTextContent("LaTeX•");
     expect(fork.querySelector("svg")).toBeInTheDocument();
   });
 });

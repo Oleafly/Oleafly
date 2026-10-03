@@ -574,6 +574,76 @@
       "tag2": "Pfeile",
       "tag3": "Spickzettel",
       "tag4": "An der Cursorstelle einfügen"
+    },
+    "arxivToTypst": {
+      "name": "arXiv zu Typst",
+      "description": "Ein arXiv-Quellpaket in Typst umwandeln. Eine Kompilierprüfung zeigt, was nicht umgewandelt wurde.",
+      "tag1": "Quellarchiv",
+      "tag2": "Kompilierprüfung",
+      "tag3": "ID braucht Netz"
+    },
+    "csvToTypst": {
+      "name": "CSV zu Typst",
+      "description": "CSV- oder TSV-Zeilen einfügen und eine maskierte Typst-Tabelle erhalten.",
+      "tag1": "CSV und TSV",
+      "tag2": "Tabellen",
+      "tag3": "Lokal"
+    },
+    "equationToTypst": {
+      "name": "Formel zu Typst",
+      "description": "Getippte LaTeX-Formeln oder ein Formelbild in Typst-Mathematik umwandeln.",
+      "tag1": "Text oder Bild",
+      "tag2": "Mathematik",
+      "tag3": "Eingebaut"
+    },
+    "excelToTypst": {
+      "name": "Excel zu Typst",
+      "description": "Ein Excel-, CSV- oder TSV-Blatt in eine maskierte Typst-Tabelle umwandeln.",
+      "tag1": "XLSX",
+      "tag2": "CSV und TSV",
+      "tag3": "Lokal"
+    },
+    "htmlToTypst": {
+      "name": "HTML zu Typst",
+      "description": "Eingefügtes HTML in ein eigenständiges Typst-Dokument umwandeln.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Lokal"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid zu Typst",
+      "description": "Ein Mermaid-Flussdiagramm in bearbeitbaren fletcher-Code umwandeln.",
+      "tag1": "Flussdiagramme",
+      "tag2": "Fletcher",
+      "tag3": "Lokal"
+    },
+    "typstToHtml": {
+      "name": "Typst zu HTML",
+      "description": "Typst-Markup in eigenständiges HTML mit MathML-Formeln umwandeln.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst zu Markdown",
+      "description": "Typst-Markup in portables Markdown umwandeln.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Projekt optional"
+    },
+    "typstToWord": {
+      "name": "Typst zu Word",
+      "description": "Ein Word-Dokument erzeugen, dessen Formeln als native Word-Mathematik vorliegen.",
+      "tag1": "DOCX",
+      "tag2": "Native Formeln",
+      "tag3": "Lokal"
+    },
+    "wordToTypst": {
+      "name": "Word zu Typst",
+      "description": "Ein Word-Dokument in Typst umwandeln und die entnommenen Medien beisammenhalten.",
+      "tag1": "DOCX",
+      "tag2": "Medien",
+      "tag3": "Projekt optional"
     }
   },
   "generators": {
@@ -655,7 +725,9 @@
     "insertInEditor": "Im Editor einfügen",
     "noDescription": "Für diesen Befehl gibt es keine Beschreibung.",
     "loadingPreview": "Ein Symbol für die Vorschau wird geladen.",
-    "chooseSymbol": "Wählen Sie ein Symbol aus der Bibliothek."
+    "chooseSymbol": "Wählen Sie ein Symbol aus der Bibliothek.",
+    "insertHintTypst": "Den Typst-Code in das geöffnete Typst-Dokument einfügen.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · Zum Ersetzen klicken",
@@ -711,7 +783,8 @@
     "openAiSettings": "KI-Einstellungen öffnen",
     "fileReady": "{{fileName}} ist bereit",
     "saveWordHint": "Speichern Sie das Word-Dokument, wenn Sie so weit sind.",
-    "resultPlaceholder": "Hier erscheint Ihr umgewandeltes Ergebnis."
+    "resultPlaceholder": "Hier erscheint Ihr umgewandeltes Ergebnis.",
+    "progressConvertingSource": "Der Quelltext wird in Typst umgewandelt"
   },
   "converters": {
     "imageToLatex": {
@@ -832,6 +905,76 @@
       "inputLabel": "Word-Dokument",
       "inputHint": "Wählen Sie eine .docx-Datei. Formeln und Bilder werden lokal gelesen.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv zu Typst",
+      "subtitle": "Den LaTeX-Quelltext eines E-Prints in Typst umwandeln und sehen, was von Hand korrigiert werden muss",
+      "inputLabel": "arXiv-Quelltext",
+      "inputHint": "Geben Sie eine arXiv-ID ein oder wählen Sie ein gespeichertes .tar.gz- oder .gz-Quellarchiv.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV zu Typst",
+      "subtitle": "Tabellendaten einfügen und eine maskierte Typst-Tabelle erhalten",
+      "inputLabel": "CSV oder TSV",
+      "inputHint": "Fügen Sie durch Kommas oder Tabulatoren getrennte Zeilen ein. Die erste Zeile wird zur Kopfzeile.",
+      "outputLabel": "Typst-Tabelle"
+    },
+    "equationToTypst": {
+      "title": "Formel zu Typst",
+      "subtitle": "Getippte oder fotografierte Mathematik in Typst-Mathematik verwandeln",
+      "inputLabel": "Formel",
+      "inputHint": "Tippen Sie LaTeX-Formeln, beschreiben Sie sie in Worten oder wählen Sie ein Bild.",
+      "outputLabel": "Typst-Formel"
+    },
+    "excelToTypst": {
+      "title": "Excel zu Typst",
+      "subtitle": "Das erste Blatt in eine Typst-Tabelle umwandeln",
+      "inputLabel": "Tabellendatei",
+      "inputHint": "XLSX, XLS, CSV oder TSV. Formeln nutzen ihre zwischengespeicherten Werte.",
+      "outputLabel": "Typst-Tabelle"
+    },
+    "htmlToTypst": {
+      "title": "HTML zu Typst",
+      "subtitle": "Semantisches HTML in ein eigenständiges Typst-Dokument umwandeln",
+      "inputLabel": "HTML",
+      "inputHint": "Fügen Sie ein HTML-Fragment oder ein vollständiges Dokument ein.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid zu Typst",
+      "subtitle": "Ein Mermaid-Flussdiagramm in ein bearbeitbares fletcher-Diagramm verwandeln",
+      "inputLabel": "Mermaid-Flussdiagramm",
+      "inputHint": "Flussdiagramme unterstützen die Layouts TD, LR, BT und RL, Beschriftungen und gängige Knotenformen.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst zu HTML",
+      "subtitle": "Eigenständiges HTML mit MathML-Formeln erzeugen",
+      "inputLabel": "Typst",
+      "inputHint": "Fügen Sie ein Fragment oder ein vollständiges Typst-Dokument ein.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst zu Markdown",
+      "subtitle": "Portables Markdown erzeugen, ohne zuerst ein Projekt anzulegen",
+      "inputLabel": "Typst",
+      "inputHint": "Fügen Sie ein Fragment oder ein vollständiges Typst-Dokument ein.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst zu Word",
+      "subtitle": "Ein DOCX erzeugen, dessen Formeln als bearbeitbare Word-Mathematik vorliegen",
+      "inputLabel": "Typst",
+      "inputHint": "Fügen Sie ein Fragment oder ein vollständiges Typst-Dokument ein.",
+      "outputLabel": "Word-Dokument"
+    },
+    "wordToTypst": {
+      "title": "Word zu Typst",
+      "subtitle": "Ein DOCX umwandeln und die entnommenen Medien beim Ergebnis behalten",
+      "inputLabel": "Word-Dokument",
+      "inputHint": "Wählen Sie eine .docx-Datei. Formeln und Bilder werden lokal gelesen.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -847,7 +990,8 @@
     "chooseFile": "Wählen Sie vor dem Umwandeln eine Datei.",
     "fileTooLarge": "Wählen Sie eine Datei kleiner als 128 MB.",
     "emptySheet": "Das gewählte Blatt ist leer.",
-    "arxivInputRequired": "Geben Sie eine arXiv-ID ein oder wählen Sie ein Quellarchiv."
+    "arxivInputRequired": "Geben Sie eine arXiv-ID ein oder wählen Sie ein Quellarchiv.",
+    "equationToTypst": "Pandoc konnte diese Formel nicht in Typst umwandeln. Prüfen Sie die LaTeX-Formel und versuchen Sie es erneut."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} gescannte Seiten wurden mit einem lokalen Modell transkribiert. Prüfen Sie Formeln und Tabellen, bevor Sie das Ergebnis verwenden.",
@@ -855,7 +999,16 @@
     "mermaidTikz": "Dieses Flussdiagramm wurde in bearbeitbares TikZ umgewandelt.",
     "mermaidRendered": "Dieses Diagramm wurde lokal dargestellt, weil sich seine Mermaid-Syntax nicht sauber auf bearbeitbares TikZ abbilden lässt.",
     "tableConverted": "{{rows}} Zeilen und {{columns}} Spalten umgewandelt.",
-    "arxivBundle": "{{files}} Quelldateien. Hauptdokument: {{mainFile}}."
+    "arxivBundle": "{{files}} Quelldateien. Hauptdokument: {{mainFile}}.",
+    "mermaidFletcher": "Dieses Flussdiagramm wurde in bearbeitbaren fletcher-Code für Typst umgewandelt.",
+    "mermaidRenderedTypst": "Dieses Diagramm wurde lokal dargestellt, weil sich seine Mermaid-Syntax nicht sauber auf bearbeitbaren fletcher-Code abbilden lässt.",
+    "arxivTypstConverted": "{{mainFile}} wurde umgewandelt.",
+    "typstCheckPassed": "Typst hat das Ergebnis ohne Fehler kompiliert.",
+    "typstCheckFailed_one": "Typst hat {{count}} Fehler gefunden.",
+    "typstCheckFailed_other": "Typst hat {{count}} Fehler gefunden.",
+    "notConverted_one": "{{count}} Element wurde nicht umgewandelt.",
+    "notConverted_other": "{{count}} Elemente wurden nicht umgewandelt.",
+    "checkLine": "Zeile {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Dieses Mermaid-Diagramm ist größer als die Grenze von 50.000 Zeichen.",
@@ -1110,9 +1263,15 @@
   },
   "equation": {
     "subtitle": "Lebendiger LaTeX-Arbeitsbereich",
+    "subtitleTypst": "Lebendiger Typst-Arbeitsbereich",
+    "mathLanguage": "Formelsprache",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Fehler",
     "statusRendered": "Dargestellt",
+    "statusRendering": "Wird dargestellt",
     "copyLatex": "LaTeX kopieren",
+    "copyTypst": "Typst kopieren",
     "exportOptions": "Exportoptionen",
     "export": "Exportieren",
     "downloadPng": "PNG herunterladen",
@@ -1125,6 +1284,7 @@
     "exportSvgFailed": "Dieser Ausschnitt ließ sich nicht als SVG exportieren",
     "copyKatexFailed": "Das KaTeX-HTML ließ sich nicht kopieren",
     "copyLatexFailed": "Der LaTeX-Quelltext ließ sich nicht kopieren",
+    "copyTypstFailed": "Typst-Quelltext konnte nicht kopiert werden",
     "invalidPngName": "Wählen Sie einen kurzen PNG-Dateinamen ohne Schrägstriche oder Sonderzeichen.",
     "replaceConfirm": "{{path}} gibt es in {{project}} bereits. Ersetzen?",
     "savedToProject": "{{path}} in {{project}} gespeichert.",
@@ -1138,6 +1298,7 @@
     "newImageProject": "Neues Bildprojekt",
     "mathmlFailed": "Dieser Ausschnitt ließ sich nicht in MathML umwandeln",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "Im Text",
     "display": "Abgesetzt",
     "examples": "BEISPIELE",
@@ -1146,6 +1307,8 @@
     "previewLight": "Vorschau auf Hell",
     "inlineSample": "So sitzt es mitten im Satz, etwa <formula></formula>, und fließt mit dem umgebenden Text.",
     "empty": "Tippen Sie links LaTeX-Formeln.",
+    "emptyTypst": "Tippen Sie links Typst-Mathematik ein.",
+    "typstFailed": "Typst konnte diese Formel nicht darstellen.",
     "zoomOut": "Verkleinern",
     "zoomIn": "Vergrößern",
     "resetZoom": "Zoom zurücksetzen",

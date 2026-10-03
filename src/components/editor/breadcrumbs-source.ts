@@ -1,7 +1,9 @@
-import { syntaxTree } from "@codemirror/language";
+import { language, syntaxTree } from "@codemirror/language";
 import type { EditorState, Text } from "@codemirror/state";
+import type { ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
 import { decodeLatexAccents } from "@oleafly/latex";
+import { typstTools } from "@oleafly/editor/typst";
 
 export interface SectionCrumb {
   line: number;
@@ -131,10 +133,40 @@ export function treeSectionCrumbs(state: EditorState): SectionCrumb[] {
   return crumbs.reverse();
 }
 
+const TYPST_HEADING_LINE_RE = /^[ \t]*=+[ \t]/u;
+
+export function typstOutlineChanged(update: ViewUpdate): boolean {
+  if (update.state.facet(language)?.name !== "typst") return false;
+  if (!update.docChanged) return syntaxTree(update.state) !== syntaxTree(update.startState);
+  const line = update.state.doc.lineAt(update.state.selection.main.head);
+  return TYPST_HEADING_LINE_RE.test(line.text);
+}
+
+export function typstSectionCrumbs(state: EditorState): SectionCrumb[] {
+  const tools = typstTools();
+  if (!tools) return [];
+  const cursor = state.doc.lineAt(state.selection.main.head);
+  const headings = tools.typstHeadings(syntaxTree(state));
+  const candidates: SectionCrumb[] = [];
+  const nodes = new Map<number, SyntaxNode>();
+  for (const heading of headings) {
+    if (heading.from > cursor.to) break;
+    const line = state.doc.lineAt(heading.from).number;
+    nodes.set(line, heading.node);
+    candidates.push({ line, level: heading.level, pos: heading.titleFrom, title: "" });
+  }
+  const read = (from: number, to: number) => state.sliceDoc(from, to);
+  return ancestorsAtLine(candidates, cursor.number).map((crumb) => {
+    const node = nodes.get(crumb.line);
+    return { ...crumb, title: node ? tools.typstPlainText(node, read) : "" };
+  });
+}
+
 export function sectionCrumbsForState(
   state: EditorState,
   visual: boolean,
 ): SectionCrumb[] {
+  if (state.facet(language)?.name === "typst") return typstSectionCrumbs(state);
   if (visual) {
     const fromTree = treeSectionCrumbs(state);
     if (fromTree.length > 0) return fromTree;

@@ -48,6 +48,7 @@ export { typesetNodeInto } from "./typeset";
 export { collapsePreambleEffect, type Preamble, type PreambleEntry, PreambleWidget } from "./widgets/preamble";
 export { MathWidget, paintMath, renderVisualMath } from "./widgets/math";
 export { pasteHtml } from "./paste-html";
+export { typstVisualMode } from "./typst";
 export {
   hideMathPreview,
   isMathPreviewEnabled,

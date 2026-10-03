@@ -42,7 +42,18 @@
     "selectImage": "請選擇要插入的影像。",
     "editTitle": "編輯影像",
     "editDescription": "更換影像或調整寬度。圖說與標籤維持不變。",
-    "save": "儲存影像"
+    "save": "儲存影像",
+    "customWidthPlaceholderTypst": "8cm 或 60%",
+    "altLabel": "替代文字",
+    "altPlaceholder": "為螢幕閱讀器描述這張影像",
+    "placement": "位置",
+    "placementNone": "原位",
+    "placementAuto": "自動",
+    "placementTop": "頂端",
+    "placementBottom": "底端",
+    "editFigureTitle": "編輯圖片",
+    "editFigureDescription": "變更影像及其大小、圖說、標籤、替代文字或位置。",
+    "saveFigure": "儲存圖片"
   },
   "tableToolbar": {
     "label": "表格工具",
@@ -112,6 +123,7 @@
     "insertBlockquote": "插入引述區塊",
     "insertFigure": "插入圖片",
     "insertImage": "插入影像",
+    "drawDiagram": "繪製圖表",
     "insertTable": "插入表格",
     "imageToLatexTooltip": "影像轉 LaTeX（以 AI 轉寫）",
     "imageToLatex": "影像轉 LaTeX",
@@ -130,6 +142,7 @@
     "redo": "重做（{{shortcut}}）",
     "find": "尋找（{{shortcut}}）",
     "goToPdf": "前往 PDF（SyncTeX）",
+    "goToPdfTypst": "前往 PDF",
     "linkUrl": "連結 URL",
     "removeLink": "移除連結",
     "imageFile": "影像檔案",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "分割",
     "both": "兩者",
-    "stacked": "上下"
+    "stacked": "上下",
+    "displayMath": "行間公式",
+    "numberedEquation": "編號公式",
+    "alignedEquations": "多行對齊公式",
+    "addLabel": "加入標籤",
+    "imageToTypst": "影像轉 Typst",
+    "imageToTypstTooltip": "影像轉 Typst（以 AI 轉寫）",
+    "typstPackages": "Typst 套件",
+    "latexPackages": "LaTeX 套件"
   },
   "contextMenu": {
     "engineUnavailable": "文件引擎操作無法使用",
     "askAi": "詢問 AI…",
     "noIndexedSymbol": "此位置沒有已建立索引的符號。",
     "noRenamableSymbol": "此位置沒有可重新命名的符號。",
+    "formatDocument": "格式化文件",
+    "formatSelection": "格式化選取範圍",
     "itemize": "itemize 清單",
     "enumerate": "enumerate 清單",
     "figure": "圖片",
@@ -156,7 +179,16 @@
     "equationAsPng": "將方程式匯出為 PNG",
     "crossReference": "交互參照",
     "label": "標籤",
-    "footnote": "註腳"
+    "footnote": "註腳",
+    "toggleComment": "切換註解",
+    "inlineMath": "行內公式",
+    "displayMath": "行間公式",
+    "numberedEquation": "編號公式",
+    "alignedEquations": "多行對齊公式",
+    "quote": "引文",
+    "addLabel": "加入標籤",
+    "convertLatexMath": "將 LaTeX 數學式轉換為 Typst",
+    "noLatexMath": "請先選取一些 LaTeX 數學式。"
   },
   "shell": {
     "noFileOpenTab": "未開啟檔案",
@@ -231,9 +263,15 @@
     "footerTypst": "表格原始碼中的特殊字元會自動跳脫。",
     "footerLatex": "產生的 LaTeX 表格會使用 booktabs 繪製橫線。",
     "chooseAnother": "選擇其他檔案",
-    "chooseFile": "選擇 CSV、TSV 或 XLSX",
+    "chooseFile": "選擇 CSV、TSV、XLSX 或 JSON",
     "selectedSummary": "{{file}} · 列：{{rows}} · 欄：{{columns}}",
     "firstRowHeader": "第一列是標題列",
+    "keepLinked": "保持與資料檔案的連結",
+    "keepLinkedHint": "將資料複製到 data 資料夾。編輯該檔案後，表格會在下次編譯時更新。",
+    "footerLinked": "每次編譯文件時，表格都會讀取 {{path}}。",
+    "jsonNotTable": "這個 JSON 檔案不是記錄或列的清單。",
+    "insertedLinked": "已插入連結的表格。編輯 {{path}} 即可變更。",
+    "linkFailed": "無法將資料複製到專案中。",
     "captionLabel": "表格說明（選填）",
     "captionPlaceholder": "所有執行結果",
     "labelLabel": "標籤（選填）",
@@ -263,7 +301,8 @@
     "svgImage": "SVG 影像",
     "pngImage": "PNG 影像",
     "svgKind": "方程式 SVG",
-    "pngKind": "方程式 PNG"
+    "pngKind": "方程式 PNG",
+    "typstFailed": "Typst 無法算繪此方程式（{{detail}}）"
   },
   "selectionActions": {
     "askAi": "詢問 AI",
@@ -304,7 +343,14 @@
     "info": "資訊",
     "empty": "編譯輸出會顯示在這裡。",
     "scrollToTop": "捲動至頂端",
-    "scrollToBottom": "捲動至底端"
+    "scrollToBottom": "捲動至底端",
+    "locationFileLineColumn": "{{file}} · 第 {{line}} 行，第 {{column}} 欄",
+    "locationLineColumn": "第 {{line}} 行，第 {{column}} 欄",
+    "hint": "提示",
+    "sourceExcerpt": "原始碼第 {{line}} 行",
+    "summaryErrors_other": "{{count}} 個錯誤",
+    "summaryWarnings_other": "{{count}} 個警告",
+    "summaryReferences_other": "{{count}} 個未解析的參照"
   },
   "history": {
     "untitledCommit": "未命名的提交",
@@ -349,7 +395,8 @@
       "navigation": "導覽",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "設定"
+      "settings": "設定",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "重新編譯",
@@ -366,12 +413,20 @@
       "goToDefinition": "前往定義",
       "findReferences": "尋找參考",
       "renameSymbol": "重新命名符號（整個專案）",
+      "formatDocument": "格式化 Typst 文件",
       "commandPalette": "指令面板",
       "searchAllDocuments": "搜尋所有文件",
       "goToPdf": "前往 PDF（SyncTeX 正向）",
       "jumpToSource": "從 PDF 跳到原始碼",
       "commitAndPush": "提交並推送",
-      "openSettings": "開啟設定"
+      "openSettings": "開啟設定",
+      "typstContinueList": "以新項目延續清單",
+      "typstItemNewLine": "在清單項目內另起一行",
+      "typstRemoveMarker": "移除游標前的清單標記",
+      "typstIndentItem": "將清單項目往內縮一層",
+      "typstOutdentItem": "將清單項目往上移一層",
+      "typstMathPair": "自動閉合 $ 數學式，按 Space 轉為行間公式",
+      "typstWrapSelection": "以粗體、強調、程式碼或數學式包住選取範圍"
     }
   },
   "citations": {
@@ -637,6 +692,7 @@
       "unsupported": "這個運算式不完整或不受支援。",
       "missingClosing": "缺少結尾的 {{delimiter}}。",
       "notRendered": "無法顯示這個運算式。",
+      "typstUnavailable": "無法使用 Typst 預覽。",
       "preview": {
         "moreOptions": "更多選項",
         "hide": "隱藏",
@@ -644,6 +700,10 @@
         "disable": "停用",
         "disableDescription": "關閉公式預覽。可以在設定中重新開啟。"
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "貼上為 Typst 數學式",
+      "pasteOffer": "已貼上 LaTeX 數學式"
     },
     "latex": {
       "command": {
@@ -824,6 +884,45 @@
         "revtex": "REVTeX 樣式"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "標題",
+        "figure": "插圖（影像）",
+        "tableFigure": "插圖（表格）",
+        "table": "表格",
+        "equation": "行間公式",
+        "numberedEquation": "附標籤的編號公式",
+        "footnote": "註腳",
+        "quote": "引述區塊",
+        "code": "程式碼區塊",
+        "outline": "目錄",
+        "bibliography": "參考文獻",
+        "pagebreak": "換頁",
+        "columns": "分欄",
+        "grid": "格線",
+        "link": "連結",
+        "list": "項目符號清單",
+        "enum": "編號清單",
+        "terms": "術語清單",
+        "partBibliography": "附標籤部分的參考文獻"
+      },
+      "bibliographyStyle": {
+        "builtin": "內建 CSL 樣式",
+        "citation": "僅引用樣式",
+        "project": "此專案中的 CSL 檔案"
+      },
+      "bibliographyParameter": {
+        "target": "列出哪些引用",
+        "group": "編號的共用方式",
+        "targetAuto": "含有該鍵的最近參考文獻",
+        "targetWithin": "附標籤部分內的引用",
+        "targetAfter": "標籤之後的引用",
+        "targetBefore": "標籤之前的引用",
+        "groupAuto": "與其他參考文獻連續編號",
+        "groupNone": "單獨編號",
+        "groupNamed": "與同名參考文獻連續編號"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "摘要",
@@ -950,6 +1049,12 @@
       "reference": "參照",
       "label": "標籤",
       "includedFile": "引入的檔案",
+      "typst": {
+        "settings": {
+          "show": "顯示文件設定",
+          "hide": "隱藏文件設定"
+        }
+      },
       "table": {
         "captionPlacement": "表格說明",
         "captionAbove": "表格說明在上方",
@@ -1024,6 +1129,11 @@
     "goTo": "前往 {{title}}",
     "untitled": "未命名"
   },
+  "languageService": {
+    "openOnTypstUniverse": "在 Typst Universe 開啟",
+    "formatUnavailable": "Typst 格式化工具尚未就緒。請稍後再試。",
+    "formatFailed": "無法格式化這個檔案。"
+  },
   "changedOnDisk": {
     "message": "{{file}} 已在磁碟上變更，而你還有尚未儲存的編輯。",
     "compare": "比較",
@@ -1031,5 +1141,323 @@
     "reload": "重新載入",
     "failed": "Oleafly 無法更新 {{file}}。請再試一次。",
     "tabMark": "已在磁碟上變更。開啟此分頁以選擇要保留的版本。"
+  },
+  "labels": {
+    "filterPlaceholder": "標籤名稱",
+    "filterLabel": "篩選專案標籤",
+    "noMatches": "沒有符合的標籤。",
+    "empty": "這個專案還沒有標籤。",
+    "location": "{{file}}:{{line}}",
+    "addHere": "在此加入標籤"
+  },
+  "typst": {
+    "numberingNote": "公式編號需要編號規則。",
+    "addNumberingRule": "加入規則",
+    "bibliographyAdded": "已將參考文獻加入 {{file}}。"
+  },
+  "typstInsights": {
+    "title": "文件分析",
+    "description": "編譯後的文件包含哪些內容，並附上連回原始碼的連結。",
+    "refresh": "重新整理",
+    "copyMetadata": "複製投稿中繼資料",
+    "metadataCopied": "已將投稿中繼資料複製到剪貼簿。",
+    "copyFailed": "中繼資料未複製。請檢查剪貼簿存取權後再試一次。",
+    "loading": "正在用 Typst 讀取文件",
+    "compileFailed": "Typst 無法編譯這份文件。請修正這些錯誤，以列出圖片、表格與方程式。",
+    "noProject": "請先開啟 Typst 專案。",
+    "tabs": {
+      "overview": "總覽",
+      "headings": "標題",
+      "figures": "圖片",
+      "tables": "表格",
+      "equations": "方程式",
+      "labels": "標籤",
+      "citations": "引用",
+      "todos": "待辦事項"
+    },
+    "metadata": {
+      "heading": "投稿中繼資料",
+      "title": "標題",
+      "authors": "作者",
+      "keywords": "關鍵字",
+      "abstract": "摘要",
+      "date": "日期",
+      "missing": "未設定"
+    },
+    "empty": {
+      "headings": "編譯後的文件中沒有標題。",
+      "figures": "編譯後的文件中沒有圖片。",
+      "tables": "編譯後的文件中沒有表格。",
+      "equations": "編譯後的文件中沒有行間公式。",
+      "labels": "文件中沒有標籤。",
+      "citations": "編譯後的文件中沒有引用。",
+      "todos": "沒有 TODO 或 FIXME 註記。"
+    },
+    "labelKinds": {
+      "heading": "標題",
+      "figure": "圖片",
+      "table": "表格",
+      "equation": "方程式",
+      "other": "其他"
+    },
+    "page": "第 {{page}} 頁",
+    "unnumbered": "未編號",
+    "untitled": "無圖說",
+    "cited_other": "被引用 {{count}} 次",
+    "notInSource": "在原始碼中找不到",
+    "openSource": "在第 {{line}} 行開啟 {{file}}",
+    "versionNote": "Typst {{version}}，使用 typst {{method}}",
+    "truncated": "只列出前 5,000 個元素。"
+  },
+  "documentInsights": {
+    "description": "文件包含哪些內容，並附上連回原始碼的連結。",
+    "loading": "正在讀取文件",
+    "noProject": "請先開啟專案。",
+    "unresolved": "不在參考文獻中",
+    "unresolvedCount_other": "有 {{count}} 個引用鍵不在參考文獻中。",
+    "numbersCurrent": "編號與頁碼來自上次編譯。",
+    "numbersStale": "上次編譯後原始碼已變更。請重新編譯以查看編號與頁碼。",
+    "numbersMissing": "編譯文件即可查看編號與頁碼。",
+    "sourceOrder": "依原始碼順序列出。",
+    "empty": {
+      "headings": "文件中沒有標題。",
+      "figures": "文件中沒有圖片。",
+      "tables": "文件中沒有表格。",
+      "equations": "文件中沒有行間公式。",
+      "citations": "文件中沒有引用。"
+    }
+  },
+  "typstSettings": {
+    "title": "文件設定",
+    "description": "{{file}} 中的頁面、文字與編號規則。",
+    "templateNotice": "這份文件使用範本。範本內設定的值不會顯示在這裡。你在這裡設定的值會覆寫範本。",
+    "loading": "正在讀取主檔案",
+    "readFailed": "無法讀取主檔案。",
+    "saveFailed": "無法更新主檔案。",
+    "noMainFile": "這個專案沒有 Typst 主檔案。",
+    "applied": "已更新文件設定。",
+    "apply": "套用",
+    "cancel": "取消",
+    "sections": {
+      "page": "頁面",
+      "text": "文字",
+      "paragraph": "段落",
+      "numbering": "編號"
+    },
+    "fields": {
+      "paper": "紙張大小",
+      "margin": "邊界",
+      "columns": "欄數",
+      "font": "內文字型",
+      "fontSize": "字型大小",
+      "lang": "語言",
+      "region": "地區",
+      "justify": "對齊方式",
+      "leading": "行距",
+      "headingNumbering": "標題編號",
+      "equationNumbering": "公式編號"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "預設",
+      "justified": "左右對齊",
+      "ragged": "靠左對齊",
+      "off": "關閉"
+    },
+    "locked": {
+      "template": "由範本設定",
+      "expression": "由原始碼中的運算式設定"
+    },
+    "invalid": {
+      "length": "請使用長度，例如 11pt、2.5cm 或 0.65em。",
+      "margin": "請使用長度（例如 2.5cm）或 auto。",
+      "columns": "請使用 1 到 99 之間的整數。",
+      "lang": "請使用兩個或三個字母的語言代碼，例如 en。",
+      "region": "請使用兩個字母的地區代碼，例如 GB。"
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "{{file}} 中的文件類別選項與序言區設定。",
+    "markdownDescription": "{{file}} 中的 front matter 欄位。",
+    "noLatexMainFile": "這個專案沒有 LaTeX 主檔案。",
+    "noMarkdownMainFile": "這個專案沒有 Markdown 主檔案。",
+    "noDocumentClass": "主檔案中沒有 \\documentclass 行。",
+    "unclosedFrontMatter": "主檔案頂端的 front matter 未結束。請先加入結尾的 --- 行。",
+    "noFrontMatter": "這個檔案還沒有 front matter。按「套用」會在頂端加入。",
+    "externalPreamble": "部分序言區位於其他檔案中。在那裡設定的值不會顯示在這裡。",
+    "classNotice": "其中部分設定由 {{name}} 類別控制，在這裡為唯讀。",
+    "styleNotice": "{{name}} 樣式設定了版面配置。紙張大小與邊界在這裡為唯讀。",
+    "availableFonts": "可用字型",
+    "fontsLoading": "正在尋找字型",
+    "fields": {
+      "secnumdepth": "編號層級",
+      "numberSections": "章節編號",
+      "documentClass": "文件類別"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "單欄",
+      "twocolumn": "雙欄",
+      "single": "單倍",
+      "onehalf": "1.5 倍",
+      "double": "雙倍",
+      "bySection": "依節",
+      "byChapter": "依章",
+      "bySubsection": "依小節",
+      "numbered": "編號",
+      "unnumbered": "不編號",
+      "depthNone": "無",
+      "depthChapters": "僅限章",
+      "depthSections": "至節",
+      "depthSubsections": "至小節",
+      "depthSubsubsections": "至次小節",
+      "depthParagraphs": "至段落",
+      "depthSubparagraphs": "至子段落"
+    },
+    "locked": {
+      "class": "由 {{name}} 類別設定",
+      "package": "由 {{name}} 樣式設定",
+      "engine": "需要 XeLaTeX 或 LuaLaTeX 編譯器。請在編譯選單中選擇。",
+      "sides": "原始碼中分別設定了各邊的邊界",
+      "conditional": "在條件區塊中設定"
+    },
+    "invalid": {
+      "length": "請使用長度，例如 2.5cm、1in 或 12pt。",
+      "fontName": "請只填寫字型名稱，不要包含大括號或反斜線。",
+      "latexLang": "請使用 babel 語言名稱，例如 english。",
+      "markdownLang": "請使用語言標籤，例如 en-US。",
+      "lineStretch": "請使用數字，例如 1.5。"
+    }
+  },
+  "typstPackages": {
+    "title": "Typst 套件",
+    "close": "關閉 Typst 套件",
+    "searchLabel": "依名稱、關鍵字或類別搜尋套件",
+    "searchPlaceholder": "搜尋 Typst Universe",
+    "categories": "類別",
+    "allCategories": "全部",
+    "loading": "正在載入套件清單",
+    "results_other": "{{count}} 個套件",
+    "resultsCapped": "顯示 {{count}} 個套件中的 {{shown}} 個。用搜尋縮小清單範圍。",
+    "empty": "沒有符合搜尋的套件。",
+    "staleOffline": "你目前離線。這份清單來自 {{date}}。",
+    "stale": "這份清單來自 {{date}}，無法重新整理。",
+    "latest": "最新 {{version}}",
+    "template": "範本",
+    "needsTypst": "需要 Typst {{version}}。此專案使用 Typst {{current}}。",
+    "insert": "插入 import",
+    "insertAria": "在檔案頂端插入 {{name}} 的 import",
+    "insertNeedsFile": "請開啟 Typst 檔案以插入 import。",
+    "copy": "複製 import",
+    "copyAria": "複製 {{name}} 的 import",
+    "vendor": {
+      "heading": "專案套件",
+      "toggle": "使用專案資料夾中的套件",
+      "detail": "Typst 會先在專案的 typst-packages 資料夾中尋找。內含這些套件的專案可以離線編譯，也能在其他電腦上編譯。",
+      "action": "將套件複製到專案",
+      "running": "正在複製套件",
+      "copied_other": "已將 {{count}} 個套件複製到 typst-packages。",
+      "upToDate": "此專案匯入的所有套件都已在 typst-packages 中。",
+      "missing": "這些套件不在套件快取中：{{names}}。請在連網時編譯一次，然後再複製一次。",
+      "count_other": "此專案中有 {{count}} 個套件",
+      "none": "這個專案還沒有套件。"
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} 已推出。這個 import 使用的是 {{version}}。",
+      "update": "更新到 {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX 套件",
+    "close": "關閉 LaTeX 套件",
+    "searchLabel": "依名稱或說明搜尋套件",
+    "searchPlaceholder": "搜尋 CTAN",
+    "loading": "正在載入套件清單",
+    "results_other": "{{count}} 個套件",
+    "resultsCapped": "顯示 {{count}} 個套件中的 {{shown}} 個。用搜尋縮小清單範圍。",
+    "empty": "沒有符合搜尋的套件。",
+    "stale": "這份清單來自 {{date}}，無法重新整理。",
+    "staleOffline": "你目前離線。這份清單來自 {{date}}。",
+    "partial": "無法連線到 CTAN。正在顯示 Oleafly 內建的清單。",
+    "partialOffline": "你目前離線。正在顯示 Oleafly 內建的清單。",
+    "loaded": "已在文件中",
+    "documentClass": "文件類別",
+    "installed": "已安裝",
+    "install": "安裝",
+    "installing": "正在安裝",
+    "installAria": "以 tlmgr 安裝 {{name}}",
+    "insert": "加入序言區",
+    "insertAria": "將 {{name}} 加入 {{file}} 的序言區",
+    "copy": "複製這一行",
+    "copyAria": "複製載入 {{name}} 的那一行",
+    "ctan": "CTAN",
+    "ctanAria": "在 CTAN 上開啟 {{name}}",
+    "options": "選項",
+    "optionsAria": "{{name}} 的選項",
+    "optionsInvalid": "請檢查選項。大括號必須成對，且不能使用 ] 或 %。",
+    "classNote": "這是文件類別。請改用 \\documentclass 設定。",
+    "onDemand": "Tectonic 會在文件第一次用到套件時下載它們。不需要安裝任何東西。",
+    "checking": "正在檢查已安裝的套件",
+    "unknownInstall": "Oleafly 無法判斷你的 TeX 環境中有哪些套件。",
+    "noProject": "請開啟 LaTeX 專案以加入套件。",
+    "added": "已將 {{name}} 加入 {{file}}。",
+    "noPreamble": "{{file}} 沒有可加入套件的序言區。",
+    "alreadyLoaded": "{{file}} 已載入 {{name}}。",
+    "insertFailed": "無法加入這個套件。請再試一次。"
+  },
+  "typstFonts": {
+    "title": "字型",
+    "close": "關閉字型清單",
+    "searchLabel": "搜尋字型家族",
+    "searchPlaceholder": "搜尋字型",
+    "loading": "正在向 Typst 取得字型",
+    "summary_other": "來自 Typst {{version}} 的 {{count}} 個字型家族",
+    "systemOff": "此專案已關閉系統字型，因此只列出專案字型與內建字型。",
+    "noSources": "這個 Typst 版本不會說明每個字型的來源。",
+    "empty": "沒有符合搜尋的字型家族。",
+    "copy": "複製名稱",
+    "copyAria": "複製字型家族名稱 {{name}}",
+    "sources": {
+      "project": "專案",
+      "system": "系統",
+      "embedded": "內建"
+    },
+    "fontsFolder": "若要在此專案中使用某個字型，請將它的檔案加入專案的 fonts 資料夾。"
+  },
+  "typstVariants": {
+    "title": "建置變體",
+    "close": "關閉建置變體",
+    "intro": "每個變體會設定文件透過 sys.inputs 讀取的值。請從編譯選單中選擇變體。",
+    "empty": "還沒有變體。",
+    "add": "新增變體",
+    "name": "變體名稱",
+    "defaultName": "變體 {{number}}",
+    "remove": "移除變體",
+    "removeAria": "移除變體 {{name}}",
+    "key": "名稱",
+    "value": "值",
+    "addInput": "新增值",
+    "removeInput": "移除值",
+    "noInputs": "這個變體沒有設定任何值。",
+    "save": "儲存",
+    "cancel": "取消",
+    "loading": "正在載入變體",
+    "nameRequired": "請為每個變體命名。",
+    "nameTaken": "兩個變體不能同名。",
+    "keyInvalid": "值名稱不可空白，也不可包含等號。",
+    "keyTaken": "同一個變體不能設定同一個名稱兩次。",
+    "saveFailed": "無法儲存變體。"
   }
 }

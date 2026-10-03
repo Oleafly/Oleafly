@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Omega } from "lucide-react";
@@ -9,6 +9,11 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { insertAtCursor } from "@/components/editor/cm/controller";
+import { insertTypstSymbol } from "@/components/editor/typst-commands";
+import { useFilesStore } from "@/store/files";
+
+export type SymbolLanguage = "latex" | "typst";
+type TypstSymbolsModule = typeof import("@/components/editor/typst-symbols");
 
 export interface ToolbarSymbol {
   char: string;
@@ -341,11 +346,31 @@ export const SYMBOL_CATEGORIES: SymbolCategory[] = [
   },
 ];
 
-export function insertToolbarSymbol(symbol: ToolbarSymbol): void {
-  insertAtCursor(symbol.latex);
+export function insertToolbarSymbol(symbol: ToolbarSymbol, language: SymbolLanguage = "latex"): void {
+  if (language === "typst") void insertTypstSymbol(symbol.latex, symbol.char);
+  else insertAtCursor(symbol.latex);
 }
 
-function SymbolButton({ symbol }: Readonly<{ symbol: ToolbarSymbol }>) {
+function useTypstSymbols(language: SymbolLanguage): TypstSymbolsModule | null {
+  const [module, setModule] = useState<TypstSymbolsModule | null>(null);
+  useEffect(() => {
+    if (language !== "typst") return;
+    let active = true;
+    void import("@/components/editor/typst-symbols").then((loaded) => {
+      if (active) setModule(loaded);
+    });
+    return () => {
+      active = false;
+    };
+  }, [language]);
+  return language === "typst" ? module : null;
+}
+
+function SymbolButton({
+  symbol,
+  language,
+  code,
+}: Readonly<{ symbol: ToolbarSymbol; language: SymbolLanguage; code: string }>) {
   const { t } = useTranslation(["common", "symbols"]);
   const name = symbol.name();
   return (
@@ -354,7 +379,7 @@ function SymbolButton({ symbol }: Readonly<{ symbol: ToolbarSymbol }>) {
         <Trans
           ns="symbols"
           i18nKey={($) => $.symbols.picker.tooltip}
-          values={{ name, latex: symbol.latex }}
+          values={{ name, latex: code }}
           components={{ macro: <span className="font-mono opacity-70" /> }}
         />
       }
@@ -363,8 +388,8 @@ function SymbolButton({ symbol }: Readonly<{ symbol: ToolbarSymbol }>) {
       <PopoverPrimitive.Close asChild>
         <button
           type="button"
-          onClick={() => insertToolbarSymbol(symbol)}
-          aria-label={t(($) => $.symbols.picker.insert, { name, latex: symbol.latex })}
+          onClick={() => insertToolbarSymbol(symbol, language)}
+          aria-label={t(($) => $.symbols.picker.insert, { name, latex: code })}
           className={cn(
             "flex h-9 min-w-9 items-center justify-center rounded-md bg-muted px-1.5 text-foreground transition-colors hover:bg-accent",
             symbol.char.length > 2 ? "text-xs" : "text-base",
@@ -385,11 +410,18 @@ const dedupeByLatex = (items: ToolbarSymbol[]) => [
 
 const ALL_SYMBOLS = dedupeByLatex(SYMBOL_CATEGORIES.flatMap((c) => c.items));
 
-export function SymbolPicker({ menuRow }: Readonly<{ menuRow?: boolean }>) {
+export function SymbolPicker({
+  menuRow,
+  language = "latex",
+}: Readonly<{ menuRow?: boolean; language?: SymbolLanguage }>) {
   const { t } = useTranslation(["common", "symbols"]);
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const q = query.trim().toLowerCase();
+  const typstSymbols = useTypstSymbols(language);
+  const typstVersion = useFilesStore((state) => state.engine.typst_resolved?.version ?? null);
+  const codeFor = (symbol: ToolbarSymbol) =>
+    typstSymbols?.typstSymbolLabel(symbol.latex, typstVersion) ?? symbol.latex;
 
   const tabItems =
     activeTab === "all"
@@ -399,7 +431,10 @@ export function SymbolPicker({ menuRow }: Readonly<{ menuRow?: boolean }>) {
   const visibleItems = q
     ? dedupeByLatex(
         SYMBOL_CATEGORIES.flatMap((c) => c.items).filter(
-          (s) => s.name().toLowerCase().includes(q) || s.latex.toLowerCase().includes(q),
+          (s) =>
+            s.name().toLowerCase().includes(q) ||
+            s.latex.toLowerCase().includes(q) ||
+            codeFor(s).toLowerCase().includes(q),
         ),
       )
     : tabItems;
@@ -466,7 +501,9 @@ export function SymbolPicker({ menuRow }: Readonly<{ menuRow?: boolean }>) {
                 {t(($) => $.symbols.picker.empty)}
               </p>
             ) : (
-              visibleItems.map((s) => <SymbolButton key={s.latex} symbol={s} />)
+              visibleItems.map((s) => (
+                <SymbolButton key={s.latex} symbol={s} language={language} code={codeFor(s)} />
+              ))
             )}
           </div>
         </div>

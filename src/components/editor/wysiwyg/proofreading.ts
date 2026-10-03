@@ -3,6 +3,7 @@ import {
   maskToProse,
   scanMathExpressions,
 } from "@oleafly/editor";
+import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
 import { Extension, type Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import {
@@ -116,6 +117,7 @@ function proofreadingMode(
 }
 
 function formatForPath(path: string): ProofreadingFormat | null {
+  if (isVendoredTypstPackagePath(path)) return null;
   if (/\.(?:tex|latex|ltx)$/iu.test(path)) return "latex";
   if (/\.(?:md|markdown)$/iu.test(path)) return "markdown";
   return null;

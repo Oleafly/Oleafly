@@ -12,6 +12,42 @@ describe("Typst bibliography wiring", () => {
     expect(once).toContain('#bibliography("references.bib")');
     expect(ensureTypstBibliography(once, "other.bib")).toBe(once);
   });
+
+  it.each([
+    '#bibliography(("a.bib", "b.yml"))\n',
+    '#bibliography(\n  "refs.yml",\n  title: [References],\n  style: "apa",\n)\n',
+    '#bibliography("refs.bib", full: true)\n',
+    '#show: paper.with(bibliography: bibliography("refs.bib"))\n',
+  ])("does not add a second call next to %j", (source) => {
+    expect(ensureTypstBibliography(`= Paper\n\n${source}`, "other.bib")).toBe(`= Paper\n\n${source}`);
+  });
+
+  it("adds a declaration when the only call is commented out or a set rule", () => {
+    for (const source of ['// #bibliography("old.bib")\n', '#set bibliography(style: "apa")\n']) {
+      expect(ensureTypstBibliography(source, "refs.yml")).toBe(`${source.trimEnd()}\n\n#bibliography("refs.yml")\n`);
+    }
+  });
+
+  it.each([
+    ['#bibliography(("a.yml", "b.bib"))', ["c.bib", "b.bib"], "b.bib"],
+    ['#bibliography(title: "References", "refs.bib", style: "ieee")', ["References.bib", "refs.bib"], "refs.bib"],
+    ['#bibliography(\n  (\n    "lib/a.bib",\n    "lib/b.bib",\n  ),\n)', ["lib/b.bib", "lib/a.bib"], "lib/a.bib"],
+  ])("writes BibTeX to the first declared .bib in %j", (source, bibs, expected) => {
+    expect(selectCitationBibliography("typst", source, bibs, "main.typ", "references.bib", ["a.yml"])).toBe(expected);
+  });
+
+  it("targets the first declared Hayagriva file when no .bib is declared", () => {
+    const source = '#bibliography(("one.yaml", "two.yml"), style: "apa")';
+    expect(selectCitationBibliography("typst", source, ["other.bib"], "main.typ", "references.bib", ["two.yml", "one.yaml"]))
+      .toBe("one.yaml");
+    expect(selectCitationBibliography("typst", '#bibliography("refs.yml")', ["other.bib"], "chapters/main.typ", "references.bib", []))
+      .toBe("chapters/refs.yml");
+  });
+
+  it("keeps BibTeX-only callers on .bib files", () => {
+    expect(selectCitationBibliography("typst", '#bibliography("refs.yml")', ["other.bib"])).toBe("other.bib");
+    expect(selectCitationBibliography("typst", '#bibliography("refs.yml")', [])).toBe("references.bib");
+  });
 });
 
 describe("Markdown bibliography wiring", () => {

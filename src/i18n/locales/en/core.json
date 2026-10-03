@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} does not expose an offline compiler mode. Compiling normally.",
     "retry": "Compile again",
-    "bundleFetchFailed": "Oleafly could not download the TeX packages this document needs. Check your connection and compile again."
+    "bundleFetchFailed": "Oleafly could not download the TeX packages this document needs. Check your connection and compile again.",
+    "typstMissing": "Typst {{version}} is not installed. Download it, or switch this project to another version.",
+    "typstPackage": {
+      "downloadFailed": "Typst couldn't download {{spec}}. Check your internet connection and compile again.",
+      "downloadFailedUnnamed": "Typst couldn't download a package this document imports. Check your internet connection and compile again.",
+      "offlineNotCached": "You're offline, and {{spec}} isn't in the package cache yet. Compile once while online, or vendor the project's packages.",
+      "offlineNotCachedUnnamed": "You're offline, and a package this document imports isn't in the package cache yet. Compile once while online.",
+      "notFound": "Typst Universe has no package {{spec}}. Check the name in the import.",
+      "localNotFound": "The local package {{spec}} isn't installed. Put it in Oleafly's Typst packages folder or in the project's typst-packages folder.",
+      "versionMissing": "This package has no version {{version}}. The newest version is {{latest}}.",
+      "versionMissingNoLatest": "This package has no version {{version}}. Check the version in the import."
+    }
   },
   "developer": {
     "actions": {
@@ -345,6 +356,7 @@
     "notRenamable": "This symbol cannot be renamed.",
     "nothingToRename": "Nothing to rename.",
     "referencesFor": "References to {{name}}",
+    "renameFailed": "Could not rename to \"{{name}}\".",
     "renamePartial": "Renamed to \"{{name}}\" in {{edited}} of {{total}} files. Could not write {{files}}.",
     "renamed": "Renamed to \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -581,5 +593,8 @@
   "folderUnavailable": {
     "compile": "Compiling is paused until the project folder is back.",
     "saveReason": "the project folder isn't available"
+  },
+  "imageToTypst": {
+    "failed": "Image to Typst failed: {{detail}}"
   }
 }

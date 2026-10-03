@@ -91,6 +91,33 @@ fn preview_matches_the_created_research_tree() {
 }
 
 #[test]
+fn a_typst_research_project_records_the_default_typst_version() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let temp = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
+    crate::config::set_typst_default_choice(Some("0.13.1".into())).unwrap();
+    let projects = crate::paths::projects_root().unwrap();
+    let mut pins = Vec::new();
+    for engine in [ResearchDocumentEngine::Typst, ResearchDocumentEngine::Latex] {
+        let project_id = setup::create_at_for_test(
+            &projects,
+            request(engine, ResearchStarter::Article),
+            |_, _| Ok(()),
+        )
+        .unwrap();
+        let bytes = std::fs::read(projects.join(&project_id).join("project.json")).unwrap();
+        let meta = crate::project::parse_project_meta(&bytes).unwrap();
+        pins.push(meta.typst_version_pin().map(str::to_owned));
+    }
+    assert_eq!(pins, [Some("0.13.1".to_string()), None]);
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}
+
+#[test]
 fn invalid_names_do_not_create_a_destination() {
     let temp = tempfile::tempdir().unwrap();
     let result = setup::create_at_for_test(

@@ -42,7 +42,18 @@
     "selectImage": "Выберите изображение, чтобы вставить его.",
     "editTitle": "Изменить изображение",
     "editDescription": "Замените изображение или измените его ширину. Подпись и метка останутся прежними.",
-    "save": "Сохранить изображение"
+    "save": "Сохранить изображение",
+    "customWidthPlaceholderTypst": "8cm или 60%",
+    "altLabel": "Альтернативный текст",
+    "altPlaceholder": "Опишите изображение для программ чтения с экрана",
+    "placement": "Размещение",
+    "placementNone": "На месте",
+    "placementAuto": "Авто",
+    "placementTop": "Сверху",
+    "placementBottom": "Снизу",
+    "editFigureTitle": "Изменить рисунок",
+    "editFigureDescription": "Измените изображение, его размер, подпись, метку, альтернативный текст или размещение.",
+    "saveFigure": "Сохранить рисунок"
   },
   "tableToolbar": {
     "label": "Инструменты таблицы",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Вставить цитату блоком",
     "insertFigure": "Вставить рисунок",
     "insertImage": "Вставить изображение",
+    "drawDiagram": "Нарисовать диаграмму",
     "insertTable": "Вставить таблицу",
     "imageToLatexTooltip": "Изображение в LaTeX (распознать с помощью ИИ)",
     "imageToLatex": "Изображение в LaTeX",
@@ -130,6 +142,7 @@
     "redo": "Повторить ({{shortcut}})",
     "find": "Найти ({{shortcut}})",
     "goToPdf": "Перейти к PDF (SyncTeX)",
+    "goToPdfTypst": "Перейти к PDF",
     "linkUrl": "Адрес URL ссылки",
     "removeLink": "Убрать ссылку",
     "imageFile": "Файл изображения",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "Разделить",
     "both": "Оба",
-    "stacked": "Друг под другом"
+    "stacked": "Друг под другом",
+    "displayMath": "Выключная формула",
+    "numberedEquation": "Нумерованная формула",
+    "alignedEquations": "Выровненные формулы",
+    "addLabel": "Добавить метку",
+    "imageToTypst": "Изображение в Typst",
+    "imageToTypstTooltip": "Изображение в Typst (распознать с помощью ИИ)",
+    "typstPackages": "Пакеты Typst",
+    "latexPackages": "Пакеты LaTeX"
   },
   "contextMenu": {
     "engineUnavailable": "Действия движка документа недоступны",
     "askAi": "Спросить ИИ…",
     "noIndexedSymbol": "В этом месте нет проиндексированного символа.",
     "noRenamableSymbol": "В этом месте нет символа, который можно переименовать.",
+    "formatDocument": "Форматировать документ",
+    "formatSelection": "Форматировать выделенное",
     "itemize": "Список itemize",
     "enumerate": "Список enumerate",
     "figure": "Рисунок",
@@ -156,7 +179,16 @@
     "equationAsPng": "Формула как PNG",
     "crossReference": "Перекрёстная ссылка",
     "label": "Метка",
-    "footnote": "Сноска"
+    "footnote": "Сноска",
+    "toggleComment": "Закомментировать или раскомментировать",
+    "inlineMath": "Формула в строке",
+    "displayMath": "Выключная формула",
+    "numberedEquation": "Нумерованная формула",
+    "alignedEquations": "Выровненные формулы",
+    "quote": "Цитата",
+    "addLabel": "Добавить метку",
+    "convertLatexMath": "Преобразовать формулу LaTeX в Typst",
+    "noLatexMath": "Сначала выделите формулу LaTeX."
   },
   "shell": {
     "noFileOpenTab": "Нет открытых файлов",
@@ -237,9 +269,15 @@
     "footerTypst": "Специальные символы экранированы в исходнике таблицы.",
     "footerLatex": "Созданная таблица LaTeX использует booktabs для горизонтальных линеек.",
     "chooseAnother": "Выбрать другой файл",
-    "chooseFile": "Выберите CSV, TSV или XLSX",
+    "chooseFile": "Выберите CSV, TSV, XLSX или JSON",
     "selectedSummary": "{{file}} · строк: {{rows}} · колонок: {{columns}}",
     "firstRowHeader": "Первая строка является заголовком",
+    "keepLinked": "Сохранять связь с файлом данных",
+    "keepLinkedHint": "Копирует данные в папку данных. Измените этот файл, и таблица обновится при следующей компиляции.",
+    "footerLinked": "Таблица читает {{path}} при каждой компиляции документа.",
+    "jsonNotTable": "Этот файл JSON не является списком записей или строк.",
+    "insertedLinked": "Связанная таблица вставлена. Чтобы изменить её, отредактируйте {{path}}.",
+    "linkFailed": "Не удалось скопировать данные в проект.",
     "captionLabel": "Подпись (необязательно)",
     "captionPlaceholder": "Результаты по всем запускам",
     "labelLabel": "Метка (необязательно)",
@@ -272,7 +310,8 @@
     "svgImage": "Изображение SVG",
     "pngImage": "Изображение PNG",
     "svgKind": "Формула в SVG",
-    "pngKind": "Формула в PNG"
+    "pngKind": "Формула в PNG",
+    "typstFailed": "Typst не смог отрисовать эту формулу ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Спросить ИИ",
@@ -313,7 +352,23 @@
     "info": "Сведения",
     "empty": "Здесь появится вывод компиляции.",
     "scrollToTop": "Прокрутить вверх",
-    "scrollToBottom": "Прокрутить вниз"
+    "scrollToBottom": "Прокрутить вниз",
+    "locationFileLineColumn": "{{file}} · строка {{line}}, столбец {{column}}",
+    "locationLineColumn": "строка {{line}}, столбец {{column}}",
+    "hint": "Подсказка",
+    "sourceExcerpt": "Строка исходника {{line}}",
+    "summaryErrors_one": "{{count}} ошибка",
+    "summaryErrors_few": "{{count}} ошибки",
+    "summaryErrors_many": "{{count}} ошибок",
+    "summaryErrors_other": "{{count}} ошибки",
+    "summaryWarnings_one": "{{count}} предупреждение",
+    "summaryWarnings_few": "{{count}} предупреждения",
+    "summaryWarnings_many": "{{count}} предупреждений",
+    "summaryWarnings_other": "{{count}} предупреждения",
+    "summaryReferences_one": "{{count}} неразрешённая ссылка",
+    "summaryReferences_few": "{{count}} неразрешённые ссылки",
+    "summaryReferences_many": "{{count}} неразрешённых ссылок",
+    "summaryReferences_other": "{{count}} неразрешённой ссылки"
   },
   "history": {
     "untitledCommit": "Коммит без заголовка",
@@ -358,7 +413,8 @@
       "navigation": "Навигация",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Настройки"
+      "settings": "Настройки",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Скомпилировать заново",
@@ -375,12 +431,20 @@
       "goToDefinition": "Перейти к определению",
       "findReferences": "Найти ссылки",
       "renameSymbol": "Переименовать символ (по всему проекту)",
+      "formatDocument": "Форматировать документ Typst",
       "commandPalette": "Палитра команд",
       "searchAllDocuments": "Поиск по всем документам",
       "goToPdf": "Перейти к PDF (прямой SyncTeX)",
       "jumpToSource": "Перейти из PDF к исходнику",
       "commitAndPush": "Коммит и отправка",
-      "openSettings": "Открыть настройки"
+      "openSettings": "Открыть настройки",
+      "typstContinueList": "Продолжить список новым пунктом",
+      "typstItemNewLine": "Начать новую строку внутри пункта списка",
+      "typstRemoveMarker": "Удалить маркер списка перед курсором",
+      "typstIndentItem": "Вложить пункт списка на уровень глубже",
+      "typstOutdentItem": "Поднять пункт списка на уровень выше",
+      "typstMathPair": "Автозакрытие $ для формул, пробел делает формулу выключной",
+      "typstWrapSelection": "Обернуть выделенное в полужирный, курсив, код или формулу"
     }
   },
   "citations": {
@@ -661,6 +725,7 @@
       "unsupported": "Это выражение неполное или не поддерживается.",
       "missingClosing": "Не хватает закрывающего {{delimiter}}.",
       "notRendered": "Это выражение не удалось отрисовать.",
+      "typstUnavailable": "Просмотр Typst недоступен.",
       "preview": {
         "moreOptions": "Другие параметры",
         "hide": "Скрыть",
@@ -668,6 +733,10 @@
         "disable": "Отключить",
         "disableDescription": "Выключает просмотр формул. Снова включить его можно в Настройках."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Вставить как формулу Typst",
+      "pasteOffer": "Вставлена формула LaTeX"
     },
     "latex": {
       "command": {
@@ -854,6 +923,45 @@
         "revtex": "стиль REVTeX"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Заголовок",
+        "figure": "Рисунок с изображением",
+        "tableFigure": "Рисунок с таблицей",
+        "table": "Таблица",
+        "equation": "Выключная формула",
+        "numberedEquation": "Нумерованная формула с меткой",
+        "footnote": "Сноска",
+        "quote": "Цитата блоком",
+        "code": "Блок кода",
+        "outline": "Оглавление",
+        "bibliography": "Библиография",
+        "pagebreak": "Разрыв страницы",
+        "columns": "Колонки",
+        "grid": "Сетка",
+        "link": "Ссылка",
+        "list": "Маркированный список",
+        "enum": "Нумерованный список",
+        "terms": "Список терминов",
+        "partBibliography": "Библиография для одной части с меткой"
+      },
+      "bibliographyStyle": {
+        "builtin": "встроенный стиль CSL",
+        "citation": "только стиль цитирования",
+        "project": "файл CSL в этом проекте"
+      },
+      "bibliographyParameter": {
+        "target": "какие цитаты она перечисляет",
+        "group": "как она делит нумерацию",
+        "targetAuto": "ближайшая библиография с этим ключом",
+        "targetWithin": "цитаты внутри части с меткой",
+        "targetAfter": "цитаты после метки",
+        "targetBefore": "цитаты перед меткой",
+        "groupAuto": "общая нумерация с другими библиографиями",
+        "groupNone": "собственная нумерация",
+        "groupNamed": "общая нумерация с одноимёнными библиографиями"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Аннотация",
@@ -980,6 +1088,12 @@
       "reference": "Ссылка",
       "label": "Метка",
       "includedFile": "Включённый файл",
+      "typst": {
+        "settings": {
+          "show": "Показать настройки документа",
+          "hide": "Скрыть настройки документа"
+        }
+      },
       "table": {
         "captionPlacement": "Подпись",
         "captionAbove": "Подпись сверху",
@@ -1054,6 +1168,11 @@
     "goTo": "Перейти к {{title}}",
     "untitled": "Без названия"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Открыть в Typst Universe",
+    "formatUnavailable": "Форматировщик Typst ещё не готов. Попробуйте ещё раз через мгновение.",
+    "formatFailed": "Не удалось отформатировать этот файл."
+  },
   "changedOnDisk": {
     "message": "Файл {{file}} изменился на диске, пока у вас были несохранённые правки.",
     "compare": "Сравнить",
@@ -1061,5 +1180,344 @@
     "reload": "Перезагрузить",
     "failed": "Oleafly не удалось обновить {{file}}. Попробуйте ещё раз.",
     "tabMark": "Изменён на диске. Откройте эту вкладку, чтобы выбрать, какую версию оставить."
+  },
+  "labels": {
+    "filterPlaceholder": "Имя метки",
+    "filterLabel": "Фильтр меток проекта",
+    "noMatches": "Нет подходящих меток.",
+    "empty": "В этом проекте пока нет меток.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Добавить метку здесь"
+  },
+  "typst": {
+    "numberingNote": "Для номеров формул нужно правило нумерации.",
+    "addNumberingRule": "Добавить правило",
+    "bibliographyAdded": "Библиография добавлена в {{file}}."
+  },
+  "typstInsights": {
+    "title": "Сведения о документе",
+    "description": "Что содержит скомпилированный документ, со ссылками на исходник.",
+    "refresh": "Обновить",
+    "copyMetadata": "Копировать метаданные для подачи",
+    "metadataCopied": "Метаданные для подачи скопированы в буфер обмена.",
+    "copyFailed": "Метаданные не скопированы. Проверьте доступ к буферу обмена и попробуйте снова.",
+    "loading": "Читаем документ с помощью Typst",
+    "compileFailed": "Typst не удалось скомпилировать документ. Исправьте эти ошибки, чтобы увидеть список рисунков, таблиц и формул.",
+    "noProject": "Сначала откройте проект Typst.",
+    "tabs": {
+      "overview": "Обзор",
+      "headings": "Заголовки",
+      "figures": "Рисунки",
+      "tables": "Таблицы",
+      "equations": "Формулы",
+      "labels": "Метки",
+      "citations": "Цитаты",
+      "todos": "Задачи"
+    },
+    "metadata": {
+      "heading": "Метаданные для подачи",
+      "title": "Заголовок",
+      "authors": "Авторы",
+      "keywords": "Ключевые слова",
+      "abstract": "Аннотация",
+      "date": "Дата",
+      "missing": "Не задано"
+    },
+    "empty": {
+      "headings": "В скомпилированном документе нет заголовков.",
+      "figures": "В скомпилированном документе нет рисунков.",
+      "tables": "В скомпилированном документе нет таблиц.",
+      "equations": "В скомпилированном документе нет выключных формул.",
+      "labels": "В документе нет меток.",
+      "citations": "В скомпилированном документе нет цитат.",
+      "todos": "Нет заметок TODO или FIXME."
+    },
+    "labelKinds": {
+      "heading": "Заголовок",
+      "figure": "Рисунок",
+      "table": "Таблица",
+      "equation": "Формула",
+      "other": "Другое"
+    },
+    "page": "Страница {{page}}",
+    "unnumbered": "Без номера",
+    "untitled": "Без подписи",
+    "cited_one": "Цитируется {{count}} раз",
+    "cited_few": "Цитируется {{count}} раза",
+    "cited_many": "Цитируется {{count}} раз",
+    "cited_other": "Цитируется {{count}} раза",
+    "notInSource": "Не найдено в исходнике",
+    "openSource": "Открыть {{file}} на строке {{line}}",
+    "versionNote": "Typst {{version}}, команда typst {{method}}",
+    "truncated": "Показаны только первые 5000 элементов."
+  },
+  "documentInsights": {
+    "description": "Что содержит документ, со ссылками на исходник.",
+    "loading": "Читаем документ",
+    "noProject": "Сначала откройте проект.",
+    "unresolved": "Нет в библиографии",
+    "unresolvedCount_one": "{{count}} ключ цитирования отсутствует в библиографии.",
+    "unresolvedCount_few": "{{count}} ключа цитирования отсутствуют в библиографии.",
+    "unresolvedCount_many": "{{count}} ключей цитирования отсутствуют в библиографии.",
+    "unresolvedCount_other": "{{count}} ключа цитирования отсутствуют в библиографии.",
+    "numbersCurrent": "Номера и страницы взяты из последней компиляции.",
+    "numbersStale": "Исходник изменился после последней компиляции. Скомпилируйте снова, чтобы увидеть номера и страницы.",
+    "numbersMissing": "Скомпилируйте документ, чтобы увидеть номера и страницы.",
+    "sourceOrder": "Перечислено в порядке исходника.",
+    "empty": {
+      "headings": "В документе нет заголовков.",
+      "figures": "В документе нет рисунков.",
+      "tables": "В документе нет таблиц.",
+      "equations": "В документе нет выключных формул.",
+      "citations": "В документе нет цитат."
+    }
+  },
+  "typstSettings": {
+    "title": "Настройки документа",
+    "description": "Правила страницы, текста и нумерации в {{file}}.",
+    "templateNotice": "Этот документ использует шаблон. Значения, заданные внутри шаблона, здесь не показаны. Значение, заданное здесь, переопределяет шаблон.",
+    "loading": "Читаем главный файл",
+    "readFailed": "Не удалось прочитать главный файл.",
+    "saveFailed": "Не удалось обновить главный файл.",
+    "noMainFile": "В этом проекте нет главного файла Typst.",
+    "applied": "Настройки документа обновлены.",
+    "apply": "Применить",
+    "cancel": "Отмена",
+    "sections": {
+      "page": "Страница",
+      "text": "Текст",
+      "paragraph": "Абзац",
+      "numbering": "Нумерация"
+    },
+    "fields": {
+      "paper": "Размер страницы",
+      "margin": "Поля",
+      "columns": "Колонки",
+      "font": "Шрифт текста",
+      "fontSize": "Размер шрифта",
+      "lang": "Язык",
+      "region": "Регион",
+      "justify": "Выравнивание",
+      "leading": "Межстрочный интервал",
+      "headingNumbering": "Нумерация заголовков",
+      "equationNumbering": "Нумерация формул"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "По умолчанию",
+      "justified": "По ширине",
+      "ragged": "По левому краю",
+      "off": "Выкл."
+    },
+    "locked": {
+      "template": "Задано шаблоном",
+      "expression": "Задано выражением в исходнике"
+    },
+    "invalid": {
+      "length": "Укажите длину, например 11pt, 2.5cm или 0.65em.",
+      "margin": "Укажите длину, например 2.5cm, или auto.",
+      "columns": "Укажите целое число от 1 до 99.",
+      "lang": "Укажите двух- или трёхбуквенный код языка, например en.",
+      "region": "Укажите двухбуквенный код региона, например GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Параметры класса и настройки преамбулы в {{file}}.",
+    "markdownDescription": "Поля заголовочного блока YAML в {{file}}.",
+    "noLatexMainFile": "В этом проекте нет главного файла LaTeX.",
+    "noMarkdownMainFile": "В этом проекте нет главного файла Markdown.",
+    "noDocumentClass": "В главном файле нет строки \\documentclass.",
+    "unclosedFrontMatter": "Заголовочный блок YAML в начале главного файла не закрыт. Сначала добавьте закрывающую строку ---.",
+    "noFrontMatter": "В этом файле пока нет заголовочного блока YAML. Кнопка «Применить» добавит его в начало.",
+    "externalPreamble": "Часть преамбулы находится в других файлах. Заданные там значения здесь не показаны.",
+    "classNotice": "Некоторыми из этих настроек управляет класс {{name}}. Здесь они доступны только для чтения.",
+    "styleNotice": "Стиль {{name}} задаёт макет страницы. Размер страницы и поля здесь доступны только для чтения.",
+    "availableFonts": "Доступные шрифты",
+    "fontsLoading": "Ищем шрифты",
+    "fields": {
+      "secnumdepth": "Нумеруемые уровни",
+      "numberSections": "Номера разделов",
+      "documentClass": "Класс документа"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "Одна колонка",
+      "twocolumn": "Две колонки",
+      "single": "Одинарный",
+      "onehalf": "Полуторный",
+      "double": "Двойной",
+      "bySection": "По разделам",
+      "byChapter": "По главам",
+      "bySubsection": "По подразделам",
+      "numbered": "С номерами",
+      "unnumbered": "Без номеров",
+      "depthNone": "Нет",
+      "depthChapters": "Только главы",
+      "depthSections": "До разделов",
+      "depthSubsections": "До подразделов",
+      "depthSubsubsections": "До подподразделов",
+      "depthParagraphs": "До параграфов",
+      "depthSubparagraphs": "До подпараграфов"
+    },
+    "locked": {
+      "class": "Задано классом {{name}}",
+      "package": "Задано стилем {{name}}",
+      "engine": "Нужен компилятор XeLaTeX или LuaLaTeX. Выберите его в меню компиляции.",
+      "sides": "В исходнике каждое поле задано отдельно",
+      "conditional": "Задано внутри условного блока"
+    },
+    "invalid": {
+      "length": "Укажите длину, например 2.5cm, 1in или 12pt.",
+      "fontName": "Укажите простое имя шрифта без фигурных скобок и обратных косых черт.",
+      "latexLang": "Укажите название языка babel, например english.",
+      "markdownLang": "Укажите тег языка, например en-US.",
+      "lineStretch": "Укажите число, например 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Пакеты Typst",
+    "close": "Закрыть пакеты Typst",
+    "searchLabel": "Поиск пакетов по имени, ключевому слову или категории",
+    "searchPlaceholder": "Поиск в Typst Universe",
+    "categories": "Категории",
+    "allCategories": "Все",
+    "loading": "Загрузка списка пакетов",
+    "results_one": "{{count}} пакет",
+    "results_few": "{{count}} пакета",
+    "results_many": "{{count}} пакетов",
+    "results_other": "{{count}} пакета",
+    "resultsCapped": "Показано пакетов: {{shown}} из {{count}}. Воспользуйтесь поиском, чтобы сузить список.",
+    "empty": "Нет пакетов, подходящих под запрос.",
+    "staleOffline": "Вы офлайн. Этот список от {{date}}.",
+    "stale": "Этот список от {{date}}. Обновить его не удалось.",
+    "latest": "Последняя {{version}}",
+    "template": "Шаблон",
+    "needsTypst": "Нужен Typst {{version}}. Этот проект использует Typst {{current}}.",
+    "insert": "Вставить импорт",
+    "insertAria": "Вставить импорт {{name}} в начало файла",
+    "insertNeedsFile": "Откройте файл Typst, чтобы вставить импорт.",
+    "copy": "Копировать импорт",
+    "copyAria": "Копировать импорт {{name}}",
+    "vendor": {
+      "heading": "Пакеты проекта",
+      "toggle": "Использовать пакеты из папки проекта",
+      "detail": "Typst сначала ищет в папке typst-packages проекта. Проекты со скопированными пакетами компилируются офлайн и на других компьютерах.",
+      "action": "Скопировать пакеты в проект",
+      "running": "Копируем пакеты",
+      "copied_one": "Скопирован {{count}} пакет в typst-packages.",
+      "copied_few": "Скопировано {{count}} пакета в typst-packages.",
+      "copied_many": "Скопировано {{count}} пакетов в typst-packages.",
+      "copied_other": "Скопировано {{count}} пакета в typst-packages.",
+      "upToDate": "Все пакеты, которые импортирует этот проект, уже есть в typst-packages.",
+      "missing": "Этих пакетов нет в кэше пакетов: {{names}}. Скомпилируйте один раз при подключении к сети, затем скопируйте пакеты снова.",
+      "count_one": "{{count}} пакет в этом проекте",
+      "count_few": "{{count}} пакета в этом проекте",
+      "count_many": "{{count}} пакетов в этом проекте",
+      "count_other": "{{count}} пакета в этом проекте",
+      "none": "В этом проекте пока нет пакетов."
+    },
+    "hints": {
+      "updateAvailable": "Доступен {{name}} {{latest}}. Этот импорт использует {{version}}.",
+      "update": "Обновить до {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "Пакеты LaTeX",
+    "close": "Закрыть пакеты LaTeX",
+    "searchLabel": "Поиск пакетов по имени или описанию",
+    "searchPlaceholder": "Поиск в CTAN",
+    "loading": "Загрузка списка пакетов",
+    "results_one": "{{count}} пакет",
+    "results_few": "{{count}} пакета",
+    "results_many": "{{count}} пакетов",
+    "results_other": "{{count}} пакета",
+    "resultsCapped": "Показано пакетов: {{shown}} из {{count}}. Воспользуйтесь поиском, чтобы сузить список.",
+    "empty": "Нет пакетов, подходящих под запрос.",
+    "stale": "Этот список от {{date}}. Обновить его не удалось.",
+    "staleOffline": "Вы офлайн. Этот список от {{date}}.",
+    "partial": "Не удалось связаться с CTAN. Показан встроенный список Oleafly.",
+    "partialOffline": "Вы офлайн. Показан встроенный список Oleafly.",
+    "loaded": "В документе",
+    "documentClass": "Класс документа",
+    "installed": "Установлен",
+    "install": "Установить",
+    "installing": "Устанавливаем",
+    "installAria": "Установить {{name}} через tlmgr",
+    "insert": "Добавить в преамбулу",
+    "insertAria": "Добавить {{name}} в преамбулу {{file}}",
+    "copy": "Копировать строку",
+    "copyAria": "Копировать строку, которая подключает {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Открыть {{name}} на CTAN",
+    "options": "Параметры",
+    "optionsAria": "Параметры {{name}}",
+    "optionsInvalid": "Проверьте параметры. Фигурные скобки должны быть парными, а ] и % использовать нельзя.",
+    "classNote": "Это класс документа. Задайте его через \\documentclass.",
+    "onDemand": "Tectonic скачивает пакеты, когда документ впервые их использует. Устанавливать ничего не нужно.",
+    "checking": "Проверяем, какие пакеты установлены",
+    "unknownInstall": "Oleafly не может определить, какие пакеты есть в вашей установке TeX.",
+    "noProject": "Откройте проект LaTeX, чтобы добавлять пакеты.",
+    "added": "Пакет {{name}} добавлен в {{file}}.",
+    "noPreamble": "В {{file}} нет преамбулы, куда можно добавить пакет.",
+    "alreadyLoaded": "{{file}} уже подключает {{name}}.",
+    "insertFailed": "Не удалось добавить пакет. Попробуйте снова."
+  },
+  "typstFonts": {
+    "title": "Шрифты",
+    "close": "Закрыть список шрифтов",
+    "searchLabel": "Поиск семейств шрифтов",
+    "searchPlaceholder": "Поиск шрифтов",
+    "loading": "Запрашиваем шрифты у Typst",
+    "summary_one": "{{count}} семейство шрифтов из Typst {{version}}",
+    "summary_few": "{{count}} семейства шрифтов из Typst {{version}}",
+    "summary_many": "{{count}} семейств шрифтов из Typst {{version}}",
+    "summary_other": "{{count}} семейства шрифтов из Typst {{version}}",
+    "systemOff": "Системные шрифты для этого проекта выключены, поэтому показаны только шрифты проекта и встроенные.",
+    "noSources": "Эта версия Typst не сообщает, откуда берётся каждый шрифт.",
+    "empty": "Нет семейств шрифтов, подходящих под запрос.",
+    "copy": "Копировать имя",
+    "copyAria": "Копировать имя семейства шрифтов {{name}}",
+    "sources": {
+      "project": "Проект",
+      "system": "Система",
+      "embedded": "Встроенный"
+    },
+    "fontsFolder": "Чтобы использовать шрифт в этом проекте, добавьте его файл в папку fonts проекта."
+  },
+  "typstVariants": {
+    "title": "Варианты сборки",
+    "close": "Закрыть варианты сборки",
+    "intro": "Каждый вариант задаёт значения, которые документ читает через sys.inputs. Выберите вариант в меню компиляции.",
+    "empty": "Вариантов пока нет.",
+    "add": "Добавить вариант",
+    "name": "Имя варианта",
+    "defaultName": "вариант {{number}}",
+    "remove": "Удалить вариант",
+    "removeAria": "Удалить вариант {{name}}",
+    "key": "Имя",
+    "value": "Значение",
+    "addInput": "Добавить значение",
+    "removeInput": "Удалить значение",
+    "noInputs": "Этот вариант не задаёт значений.",
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "loading": "Загрузка вариантов",
+    "nameRequired": "Дайте имя каждому варианту.",
+    "nameTaken": "У двух вариантов не может быть одинакового имени.",
+    "keyInvalid": "Имена значений не могут быть пустыми или содержать знак равенства.",
+    "keyTaken": "Вариант не может задавать одно и то же имя дважды.",
+    "saveFailed": "Не удалось сохранить варианты."
   }
 }

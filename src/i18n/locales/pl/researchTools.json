@@ -576,6 +576,76 @@
       "tag2": "Strzałki",
       "tag3": "Ściąga",
       "tag4": "Wstaw w miejscu kursora"
+    },
+    "arxivToTypst": {
+      "name": "arXiv na Typst",
+      "description": "Przekonwertuj pakiet źródeł z arXiv na Typst. Kontrola kompilacji wymienia, czego nie udało się przekonwertować.",
+      "tag1": "Archiwum źródeł",
+      "tag2": "Kontrola kompilacji",
+      "tag3": "Identyfikator wymaga sieci"
+    },
+    "csvToTypst": {
+      "name": "CSV na Typst",
+      "description": "Wklej wiersze CSV lub TSV i otrzymaj bezpieczną tabelę Typst.",
+      "tag1": "CSV i TSV",
+      "tag2": "Tabele",
+      "tag3": "Lokalnie"
+    },
+    "equationToTypst": {
+      "name": "Równanie na Typst",
+      "description": "Przekształć wpisany wzór LaTeX albo obraz równania we wzór Typst.",
+      "tag1": "Tekst lub obraz",
+      "tag2": "Wzory",
+      "tag3": "Wbudowany"
+    },
+    "excelToTypst": {
+      "name": "Excel na Typst",
+      "description": "Przekonwertuj arkusz Excel, CSV albo TSV na bezpieczną tabelę Typst.",
+      "tag1": "XLSX",
+      "tag2": "CSV i TSV",
+      "tag3": "Lokalnie"
+    },
+    "htmlToTypst": {
+      "name": "HTML na Typst",
+      "description": "Przekonwertuj wklejony HTML na samodzielny dokument Typst.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Lokalnie"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid na Typst",
+      "description": "Przekonwertuj schemat blokowy Mermaid na edytowalny kod fletcher.",
+      "tag1": "Schematy blokowe",
+      "tag2": "Fletcher",
+      "tag3": "Lokalnie"
+    },
+    "typstToHtml": {
+      "name": "Typst na HTML",
+      "description": "Przekonwertuj znaczniki Typst na samodzielny HTML z równaniami MathML.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst na Markdown",
+      "description": "Przekonwertuj znaczniki Typst na przenośny Markdown.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Projekt opcjonalny"
+    },
+    "typstToWord": {
+      "name": "Typst na Word",
+      "description": "Utwórz dokument Word z równaniami zapisanymi jako natywne wzory Word.",
+      "tag1": "DOCX",
+      "tag2": "Natywne wzory",
+      "tag3": "Lokalnie"
+    },
+    "wordToTypst": {
+      "name": "Word na Typst",
+      "description": "Przekonwertuj dokument Word na Typst i zachowaj wyodrębnione multimedia razem z nim.",
+      "tag1": "DOCX",
+      "tag2": "Multimedia",
+      "tag3": "Projekt opcjonalny"
     }
   },
   "generators": {
@@ -661,7 +731,9 @@
     "insertInEditor": "Wstaw w edytorze",
     "noDescription": "Dla tego polecenia nie ma opisu.",
     "loadingPreview": "Wczytywanie symbolu do podglądu.",
-    "chooseSymbol": "Wybierz symbol z biblioteki."
+    "chooseSymbol": "Wybierz symbol z biblioteki.",
+    "insertHintTypst": "Wstaw kod Typst do otwartego dokumentu Typst.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · kliknij, aby zastąpić",
@@ -717,7 +789,8 @@
     "openAiSettings": "Otwórz ustawienia AI",
     "fileReady": "Plik {{fileName}} jest gotowy",
     "saveWordHint": "Zapisz dokument Word, gdy będziesz gotowy.",
-    "resultPlaceholder": "Tutaj pojawi się przekonwertowany wynik."
+    "resultPlaceholder": "Tutaj pojawi się przekonwertowany wynik.",
+    "progressConvertingSource": "Konwertowanie źródła na Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -838,6 +911,76 @@
       "inputLabel": "Dokument Word",
       "inputHint": "Wybierz plik .docx. Równania i obrazy są odczytywane lokalnie.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv na Typst",
+      "subtitle": "Przekonwertuj źródło LaTeX e-printu na Typst i zobacz, co wymaga ręcznej poprawki",
+      "inputLabel": "Źródło arXiv",
+      "inputHint": "Podaj identyfikator arXiv albo wybierz zapisane archiwum .tar.gz lub .gz.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV na Typst",
+      "subtitle": "Wklej dane z arkusza i otrzymaj bezpieczną tabelę Typst",
+      "inputLabel": "CSV lub TSV",
+      "inputHint": "Wklej wiersze rozdzielone przecinkami lub tabulatorami. Pierwszy wiersz staje się nagłówkiem.",
+      "outputLabel": "Tabela Typst"
+    },
+    "equationToTypst": {
+      "title": "Równanie na Typst",
+      "subtitle": "Zamień wpisane albo sfotografowane wzory we wzór Typst",
+      "inputLabel": "Równanie",
+      "inputHint": "Wpisz wzór LaTeX, opisz go słowami albo wybierz obraz.",
+      "outputLabel": "Równanie Typst"
+    },
+    "excelToTypst": {
+      "title": "Excel na Typst",
+      "subtitle": "Przekonwertuj pierwszy arkusz na tabelę Typst",
+      "inputLabel": "Arkusz kalkulacyjny",
+      "inputHint": "XLSX, XLS, CSV albo TSV. Formuły korzystają z zapisanych wartości.",
+      "outputLabel": "Tabela Typst"
+    },
+    "htmlToTypst": {
+      "title": "HTML na Typst",
+      "subtitle": "Przekonwertuj semantyczny HTML na samodzielny dokument Typst",
+      "inputLabel": "HTML",
+      "inputHint": "Wklej fragment HTML albo cały dokument.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid na Typst",
+      "subtitle": "Zamień schemat blokowy Mermaid w edytowalny diagram fletcher",
+      "inputLabel": "Schemat blokowy Mermaid",
+      "inputHint": "Schematy obsługują układy TD, LR, BT i RL, etykiety oraz popularne kształty węzłów.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst na HTML",
+      "subtitle": "Utwórz samodzielny HTML z równaniami MathML",
+      "inputLabel": "Typst",
+      "inputHint": "Wklej fragment albo cały dokument Typst.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst na Markdown",
+      "subtitle": "Utwórz przenośny Markdown bez zakładania projektu",
+      "inputLabel": "Typst",
+      "inputHint": "Wklej fragment albo cały dokument Typst.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst na Word",
+      "subtitle": "Utwórz plik DOCX z równaniami zapisanymi jako edytowalne wzory Word",
+      "inputLabel": "Typst",
+      "inputHint": "Wklej fragment albo cały dokument Typst.",
+      "outputLabel": "Dokument Word"
+    },
+    "wordToTypst": {
+      "title": "Word na Typst",
+      "subtitle": "Przekonwertuj plik DOCX i zachowaj wyodrębnione multimedia razem z wynikiem",
+      "inputLabel": "Dokument Word",
+      "inputHint": "Wybierz plik .docx. Równania i obrazy są odczytywane lokalnie.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -853,7 +996,8 @@
     "chooseFile": "Wybierz plik przed konwersją.",
     "fileTooLarge": "Wybierz plik mniejszy niż 128 MB.",
     "emptySheet": "Wybrany arkusz jest pusty.",
-    "arxivInputRequired": "Podaj identyfikator arXiv albo wybierz archiwum źródeł."
+    "arxivInputRequired": "Podaj identyfikator arXiv albo wybierz archiwum źródeł.",
+    "equationToTypst": "Pandoc nie mógł przekonwertować tego równania na Typst. Sprawdź wzór LaTeX i spróbuj ponownie."
   },
   "converterNotes": {
     "scannedPages": "Przepisano {{pages}} zeskanowanych stron modelem lokalnym. Sprawdź równania i tabele przed użyciem wyniku.",
@@ -861,7 +1005,20 @@
     "mermaidTikz": "Przekonwertowano ten schemat blokowy na edytowalny kod TikZ.",
     "mermaidRendered": "Ten diagram wyrenderowano lokalnie, ponieważ jego składnia Mermaid nie przekłada się czysto na edytowalny kod TikZ.",
     "tableConverted": "Przekonwertowano {{rows}} wierszy i {{columns}} kolumn.",
-    "arxivBundle": "Plików źródłowych: {{files}}. Dokument główny: {{mainFile}}."
+    "arxivBundle": "Plików źródłowych: {{files}}. Dokument główny: {{mainFile}}.",
+    "mermaidFletcher": "Przekonwertowano ten schemat blokowy na edytowalny kod fletcher dla Typst.",
+    "mermaidRenderedTypst": "Ten diagram wyrenderowano lokalnie, ponieważ jego składnia Mermaid nie przekłada się czysto na edytowalny kod fletcher.",
+    "arxivTypstConverted": "Przekonwertowano {{mainFile}}.",
+    "typstCheckPassed": "Typst skompilował wynik bez błędów.",
+    "typstCheckFailed_one": "Typst znalazł {{count}} błąd.",
+    "typstCheckFailed_few": "Typst znalazł {{count}} błędy.",
+    "typstCheckFailed_many": "Typst znalazł {{count}} błędów.",
+    "typstCheckFailed_other": "Typst znalazł {{count}} błędu.",
+    "notConverted_one": "{{count}} element nie został przekonwertowany.",
+    "notConverted_few": "{{count}} elementy nie zostały przekonwertowane.",
+    "notConverted_many": "{{count}} elementów nie zostało przekonwertowanych.",
+    "notConverted_other": "{{count}} elementu nie przekonwertowano.",
+    "checkLine": "Wiersz {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Ten diagram Mermaid jest większy niż limit 50 000 znaków.",
@@ -1126,9 +1283,15 @@
   },
   "equation": {
     "subtitle": "Obszar roboczy LaTeX na żywo",
+    "subtitleTypst": "Obszar roboczy Typst na żywo",
+    "mathLanguage": "Język wzorów",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Błąd",
     "statusRendered": "Wyrenderowano",
+    "statusRendering": "Renderowanie",
     "copyLatex": "Kopiuj LaTeX",
+    "copyTypst": "Kopiuj Typst",
     "exportOptions": "Opcje eksportu",
     "export": "Eksportuj",
     "downloadPng": "Pobierz PNG",
@@ -1141,6 +1304,7 @@
     "exportSvgFailed": "Nie udało się wyeksportować tego fragmentu jako SVG",
     "copyKatexFailed": "Nie udało się skopiować HTML z KaTeX",
     "copyLatexFailed": "Nie udało się skopiować kodu LaTeX",
+    "copyTypstFailed": "Nie udało się skopiować kodu Typst",
     "invalidPngName": "Wybierz krótką nazwę pliku PNG bez ukośników i znaków specjalnych.",
     "replaceConfirm": "Plik {{path}} już istnieje w projekcie {{project}}. Zastąpić go?",
     "savedToProject": "Zapisano {{path}} w projekcie {{project}}.",
@@ -1154,6 +1318,7 @@
     "newImageProject": "Nowy projekt graficzny",
     "mathmlFailed": "Nie udało się przekonwertować tego fragmentu na MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "W wierszu",
     "display": "Wyeksponowane",
     "examples": "PRZYKŁADY",
@@ -1162,6 +1327,8 @@
     "previewLight": "Podgląd na jasnym tle",
     "inlineSample": "Tak wygląda wzór wpleciony w zdanie, na przykład <formula></formula>, płynący razem z otaczającym tekstem.",
     "empty": "Wpisz wzór LaTeX po lewej stronie.",
+    "emptyTypst": "Wpisz wzór Typst po lewej stronie.",
+    "typstFailed": "Typst nie mógł wyrenderować tego równania.",
     "zoomOut": "Pomniejsz",
     "zoomIn": "Powiększ",
     "resetZoom": "Przywróć powiększenie",

@@ -42,7 +42,18 @@
     "selectImage": "삽입할 이미지를 고르세요.",
     "editTitle": "이미지 편집",
     "editDescription": "이미지를 바꾸거나 너비를 조정하세요. 캡션과 레이블은 그대로 유지됩니다.",
-    "save": "이미지 저장"
+    "save": "이미지 저장",
+    "customWidthPlaceholderTypst": "8cm 또는 60%",
+    "altLabel": "대체 텍스트",
+    "altPlaceholder": "화면 낭독기를 위해 이미지를 설명하세요",
+    "placement": "배치",
+    "placementNone": "제자리",
+    "placementAuto": "자동",
+    "placementTop": "위",
+    "placementBottom": "아래",
+    "editFigureTitle": "그림 편집",
+    "editFigureDescription": "이미지, 크기, 캡션, 레이블, 대체 텍스트, 배치를 바꿉니다.",
+    "saveFigure": "그림 저장"
   },
   "tableToolbar": {
     "label": "표 도구",
@@ -112,6 +123,7 @@
     "insertBlockquote": "인용 블록 삽입",
     "insertFigure": "그림 삽입",
     "insertImage": "이미지 삽입",
+    "drawDiagram": "다이어그램 그리기",
     "insertTable": "표 삽입",
     "imageToLatexTooltip": "이미지를 LaTeX로(AI로 옮겨 적기)",
     "imageToLatex": "이미지를 LaTeX로",
@@ -130,6 +142,7 @@
     "redo": "다시 실행({{shortcut}})",
     "find": "찾기({{shortcut}})",
     "goToPdf": "PDF로 이동(SyncTeX)",
+    "goToPdfTypst": "PDF로 이동",
     "linkUrl": "링크 URL",
     "removeLink": "링크 제거",
     "imageFile": "이미지 파일",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "분할",
     "both": "둘 다",
-    "stacked": "위아래"
+    "stacked": "위아래",
+    "displayMath": "별행 수식",
+    "numberedEquation": "번호 붙은 수식",
+    "alignedEquations": "정렬된 수식",
+    "addLabel": "레이블 추가",
+    "imageToTypst": "이미지를 Typst로",
+    "imageToTypstTooltip": "이미지를 Typst로(AI로 옮겨 적기)",
+    "typstPackages": "Typst 패키지",
+    "latexPackages": "LaTeX 패키지"
   },
   "contextMenu": {
     "engineUnavailable": "문서 엔진 작업을 사용할 수 없음",
     "askAi": "AI에게 묻기…",
     "noIndexedSymbol": "이 위치에 색인된 심볼이 없습니다.",
     "noRenamableSymbol": "이 위치에 이름을 바꿀 수 있는 심볼이 없습니다.",
+    "formatDocument": "문서 서식 정리",
+    "formatSelection": "선택 영역 서식 정리",
     "itemize": "itemize 목록",
     "enumerate": "enumerate 목록",
     "figure": "그림",
@@ -156,7 +179,16 @@
     "equationAsPng": "수식을 PNG로",
     "crossReference": "상호 참조",
     "label": "레이블",
-    "footnote": "각주"
+    "footnote": "각주",
+    "toggleComment": "주석 전환",
+    "inlineMath": "인라인 수식",
+    "displayMath": "별행 수식",
+    "numberedEquation": "번호 붙은 수식",
+    "alignedEquations": "정렬된 수식",
+    "quote": "인용문",
+    "addLabel": "레이블 추가",
+    "convertLatexMath": "LaTeX 수식을 Typst로 변환",
+    "noLatexMath": "먼저 LaTeX 수식을 선택하세요."
   },
   "shell": {
     "noFileOpenTab": "열린 파일 없음",
@@ -231,9 +263,15 @@
     "footerTypst": "표 소스에서 특수 문자를 이스케이프합니다.",
     "footerLatex": "생성된 LaTeX 표는 가로 괘선에 booktabs를 씁니다.",
     "chooseAnother": "다른 파일 고르기",
-    "chooseFile": "CSV, TSV 또는 XLSX 고르기",
+    "chooseFile": "CSV, TSV, XLSX 또는 JSON 고르기",
     "selectedSummary": "{{file}} · 행: {{rows}} · 열: {{columns}}",
     "firstRowHeader": "첫 행이 머리글",
+    "keepLinked": "데이터 파일과 연결 유지",
+    "keepLinkedHint": "데이터를 data 폴더에 복사합니다. 그 파일을 편집하면 다음 컴파일 때 표가 바뀝니다.",
+    "footerLinked": "문서를 컴파일할 때마다 표가 {{path}}을(를) 읽습니다.",
+    "jsonNotTable": "이 JSON 파일은 레코드나 행의 목록이 아닙니다.",
+    "insertedLinked": "연결된 표를 삽입했습니다. 바꾸려면 {{path}}을(를) 편집하세요.",
+    "linkFailed": "데이터를 프로젝트에 복사하지 못했습니다.",
     "captionLabel": "캡션(선택 사항)",
     "captionPlaceholder": "전체 실행 결과",
     "labelLabel": "레이블(선택 사항)",
@@ -263,7 +301,8 @@
     "svgImage": "SVG 이미지",
     "pngImage": "PNG 이미지",
     "svgKind": "수식 SVG",
-    "pngKind": "수식 PNG"
+    "pngKind": "수식 PNG",
+    "typstFailed": "Typst에서 이 수식을 렌더링하지 못했습니다({{detail}})"
   },
   "selectionActions": {
     "askAi": "AI에게 묻기",
@@ -304,7 +343,14 @@
     "info": "정보",
     "empty": "컴파일 결과가 여기에 표시됩니다.",
     "scrollToTop": "맨 위로 이동",
-    "scrollToBottom": "맨 아래로 이동"
+    "scrollToBottom": "맨 아래로 이동",
+    "locationFileLineColumn": "{{file}} · {{line}}번째 줄, {{column}}번째 열",
+    "locationLineColumn": "{{line}}번째 줄, {{column}}번째 열",
+    "hint": "힌트",
+    "sourceExcerpt": "소스 {{line}}번째 줄",
+    "summaryErrors_other": "오류 {{count}}개",
+    "summaryWarnings_other": "경고 {{count}}개",
+    "summaryReferences_other": "해결되지 않은 참조 {{count}}개"
   },
   "history": {
     "untitledCommit": "제목 없는 커밋",
@@ -349,7 +395,8 @@
       "navigation": "이동",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "설정"
+      "settings": "설정",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "다시 컴파일",
@@ -366,12 +413,20 @@
       "goToDefinition": "정의로 이동",
       "findReferences": "참조 찾기",
       "renameSymbol": "심볼 이름 바꾸기(프로젝트 전체)",
+      "formatDocument": "Typst 문서 서식 정리",
       "commandPalette": "명령 팔레트",
       "searchAllDocuments": "모든 문서 검색",
       "goToPdf": "PDF로 이동(SyncTeX 정방향)",
       "jumpToSource": "PDF에서 소스로 이동",
       "commitAndPush": "커밋 및 푸시",
-      "openSettings": "설정 열기"
+      "openSettings": "설정 열기",
+      "typstContinueList": "새 항목으로 목록 이어가기",
+      "typstItemNewLine": "목록 항목 안에서 새 줄 시작",
+      "typstRemoveMarker": "커서 앞의 목록 기호 제거",
+      "typstIndentItem": "목록 항목을 한 단계 안으로 들여쓰기",
+      "typstOutdentItem": "목록 항목을 한 단계 위로 내어쓰기",
+      "typstMathPair": "$ 수식을 자동으로 닫고 Space로 별행 수식으로 바꾸기",
+      "typstWrapSelection": "선택 영역을 굵게, 강조, 코드, 수식으로 감싸기"
     }
   },
   "citations": {
@@ -637,6 +692,7 @@
       "unsupported": "이 식은 완전하지 않거나 지원되지 않습니다.",
       "missingClosing": "닫는 {{delimiter}}이(가) 없습니다.",
       "notRendered": "이 식을 렌더링하지 못했습니다.",
+      "typstUnavailable": "Typst 미리보기를 사용할 수 없습니다.",
       "preview": {
         "moreOptions": "추가 옵션",
         "hide": "숨기기",
@@ -644,6 +700,10 @@
         "disable": "사용 안 함",
         "disableDescription": "수식 미리보기를 끕니다. 설정에서 다시 켤 수 있습니다."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Typst 수식으로 붙여 넣기",
+      "pasteOffer": "LaTeX 수식을 붙여 넣었습니다"
     },
     "latex": {
       "command": {
@@ -824,6 +884,45 @@
         "revtex": "REVTeX 스타일"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "제목",
+        "figure": "이미지가 있는 그림",
+        "tableFigure": "표가 있는 그림",
+        "table": "표",
+        "equation": "별행 수식",
+        "numberedEquation": "레이블이 있는 번호 붙은 수식",
+        "footnote": "각주",
+        "quote": "인용 블록",
+        "code": "코드 블록",
+        "outline": "목차",
+        "bibliography": "참고문헌",
+        "pagebreak": "쪽 나눔",
+        "columns": "단",
+        "grid": "그리드",
+        "link": "링크",
+        "list": "글머리 기호 목록",
+        "enum": "번호 목록",
+        "terms": "용어 목록",
+        "partBibliography": "레이블이 있는 부분의 참고문헌"
+      },
+      "bibliographyStyle": {
+        "builtin": "내장 CSL 스타일",
+        "citation": "인용 스타일만",
+        "project": "이 프로젝트의 CSL 파일"
+      },
+      "bibliographyParameter": {
+        "target": "나열할 인용",
+        "group": "번호 공유 방식",
+        "targetAuto": "키가 있는 가장 가까운 참고문헌",
+        "targetWithin": "레이블이 있는 부분 안의 인용",
+        "targetAfter": "레이블 뒤의 인용",
+        "targetBefore": "레이블 앞의 인용",
+        "groupAuto": "다른 참고문헌과 이어서 번호 매기기",
+        "groupNone": "따로 번호 매기기",
+        "groupNamed": "이름이 같은 참고문헌과 이어서 번호 매기기"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "초록",
@@ -950,6 +1049,12 @@
       "reference": "참조",
       "label": "레이블",
       "includedFile": "포함된 파일",
+      "typst": {
+        "settings": {
+          "show": "문서 설정 표시",
+          "hide": "문서 설정 숨기기"
+        }
+      },
       "table": {
         "captionPlacement": "캡션",
         "captionAbove": "캡션 위",
@@ -1024,6 +1129,11 @@
     "goTo": "{{title}}(으)로 이동",
     "untitled": "제목 없음"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Typst Universe에서 열기",
+    "formatUnavailable": "Typst 포매터가 아직 준비되지 않았습니다. 잠시 후 다시 시도하세요.",
+    "formatFailed": "이 파일의 서식을 정리하지 못했습니다."
+  },
   "changedOnDisk": {
     "message": "저장하지 않은 편집이 있는 동안 {{file}}이(가) 디스크에서 바뀌었습니다.",
     "compare": "비교",
@@ -1031,5 +1141,323 @@
     "reload": "다시 불러오기",
     "failed": "Oleafly가 {{file}}을(를) 업데이트하지 못했습니다. 다시 시도하세요.",
     "tabMark": "디스크에서 바뀌었습니다. 이 탭을 열어 남길 버전을 고르세요."
+  },
+  "labels": {
+    "filterPlaceholder": "레이블 이름",
+    "filterLabel": "프로젝트 레이블 필터",
+    "noMatches": "일치하는 레이블이 없습니다.",
+    "empty": "이 프로젝트에는 아직 레이블이 없습니다.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "여기에 레이블 추가"
+  },
+  "typst": {
+    "numberingNote": "수식 번호를 매기려면 번호 규칙이 필요합니다.",
+    "addNumberingRule": "규칙 추가",
+    "bibliographyAdded": "{{file}}에 참고문헌을 추가했습니다."
+  },
+  "typstInsights": {
+    "title": "문서 분석",
+    "description": "컴파일된 문서의 내용을 소스 링크와 함께 보여 줍니다.",
+    "refresh": "새로 고침",
+    "copyMetadata": "제출용 메타데이터 복사",
+    "metadataCopied": "제출용 메타데이터를 클립보드에 복사했습니다.",
+    "copyFailed": "메타데이터를 복사하지 못했습니다. 클립보드 접근 권한을 확인하고 다시 시도하세요.",
+    "loading": "Typst로 문서를 읽는 중",
+    "compileFailed": "Typst가 문서를 컴파일하지 못했습니다. 그림, 표, 수식을 나열하려면 이 오류를 고치세요.",
+    "noProject": "먼저 Typst 프로젝트를 여세요.",
+    "tabs": {
+      "overview": "개요",
+      "headings": "제목",
+      "figures": "그림",
+      "tables": "표",
+      "equations": "수식",
+      "labels": "레이블",
+      "citations": "인용",
+      "todos": "할 일"
+    },
+    "metadata": {
+      "heading": "제출용 메타데이터",
+      "title": "제목",
+      "authors": "저자",
+      "keywords": "키워드",
+      "abstract": "초록",
+      "date": "날짜",
+      "missing": "설정 안 됨"
+    },
+    "empty": {
+      "headings": "컴파일된 문서에 제목이 없습니다.",
+      "figures": "컴파일된 문서에 그림이 없습니다.",
+      "tables": "컴파일된 문서에 표가 없습니다.",
+      "equations": "컴파일된 문서에 별행 수식이 없습니다.",
+      "labels": "문서에 레이블이 없습니다.",
+      "citations": "컴파일된 문서에 인용이 없습니다.",
+      "todos": "TODO나 FIXME 메모가 없습니다."
+    },
+    "labelKinds": {
+      "heading": "제목",
+      "figure": "그림",
+      "table": "표",
+      "equation": "수식",
+      "other": "기타"
+    },
+    "page": "{{page}}쪽",
+    "unnumbered": "번호 없음",
+    "untitled": "캡션 없음",
+    "cited_other": "{{count}}회 인용됨",
+    "notInSource": "소스에서 찾을 수 없음",
+    "openSource": "{{file}}의 {{line}}번째 줄 열기",
+    "versionNote": "Typst {{version}}(typst {{method}})",
+    "truncated": "처음 5,000개 요소만 표시합니다."
+  },
+  "documentInsights": {
+    "description": "문서의 내용을 소스 링크와 함께 보여 줍니다.",
+    "loading": "문서를 읽는 중",
+    "noProject": "먼저 프로젝트를 여세요.",
+    "unresolved": "참고문헌에 없음",
+    "unresolvedCount_other": "인용한 키 {{count}}개가 참고문헌에 없습니다.",
+    "numbersCurrent": "번호와 쪽은 마지막 컴파일 기준입니다.",
+    "numbersStale": "마지막 컴파일 후 소스가 바뀌었습니다. 번호와 쪽을 보려면 다시 컴파일하세요.",
+    "numbersMissing": "번호와 쪽을 보려면 문서를 컴파일하세요.",
+    "sourceOrder": "소스 순서대로 나열합니다.",
+    "empty": {
+      "headings": "문서에 제목이 없습니다.",
+      "figures": "문서에 그림이 없습니다.",
+      "tables": "문서에 표가 없습니다.",
+      "equations": "문서에 별행 수식이 없습니다.",
+      "citations": "문서에 인용이 없습니다."
+    }
+  },
+  "typstSettings": {
+    "title": "문서 설정",
+    "description": "{{file}}의 페이지, 텍스트, 번호 규칙입니다.",
+    "templateNotice": "이 문서는 템플릿을 씁니다. 템플릿 안에서 설정한 값은 여기에 표시되지 않습니다. 여기에서 설정한 값은 템플릿보다 우선합니다.",
+    "loading": "주 파일을 읽는 중",
+    "readFailed": "주 파일을 읽지 못했습니다.",
+    "saveFailed": "주 파일을 업데이트하지 못했습니다.",
+    "noMainFile": "이 프로젝트에는 Typst 주 파일이 없습니다.",
+    "applied": "문서 설정을 업데이트했습니다.",
+    "apply": "적용",
+    "cancel": "취소",
+    "sections": {
+      "page": "페이지",
+      "text": "텍스트",
+      "paragraph": "문단",
+      "numbering": "번호 매기기"
+    },
+    "fields": {
+      "paper": "용지 크기",
+      "margin": "여백",
+      "columns": "단 수",
+      "font": "본문 글꼴",
+      "fontSize": "글꼴 크기",
+      "lang": "언어",
+      "region": "지역",
+      "justify": "정렬",
+      "leading": "줄 간격",
+      "headingNumbering": "제목 번호",
+      "equationNumbering": "수식 번호"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "기본값",
+      "justified": "양쪽 정렬",
+      "ragged": "왼쪽 정렬",
+      "off": "끄기"
+    },
+    "locked": {
+      "template": "템플릿에서 설정됨",
+      "expression": "소스의 식으로 설정됨"
+    },
+    "invalid": {
+      "length": "11pt, 2.5cm, 0.65em 같은 길이를 쓰세요.",
+      "margin": "2.5cm 같은 길이나 auto를 쓰세요.",
+      "columns": "1에서 99 사이의 정수를 쓰세요.",
+      "lang": "en 같은 두 글자 또는 세 글자 언어 코드를 쓰세요.",
+      "region": "GB 같은 두 글자 지역 코드를 쓰세요."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "{{file}}의 클래스 옵션과 프리앰블 설정입니다.",
+    "markdownDescription": "{{file}}의 프런트매터 필드입니다.",
+    "noLatexMainFile": "이 프로젝트에는 LaTeX 주 파일이 없습니다.",
+    "noMarkdownMainFile": "이 프로젝트에는 Markdown 주 파일이 없습니다.",
+    "noDocumentClass": "주 파일에 \\documentclass 줄이 없습니다.",
+    "unclosedFrontMatter": "주 파일 맨 위의 프런트매터가 닫히지 않았습니다. 먼저 닫는 --- 줄을 추가하세요.",
+    "noFrontMatter": "이 파일에는 아직 프런트매터가 없습니다. 적용을 누르면 맨 위에 추가됩니다.",
+    "externalPreamble": "프리앰블의 일부가 다른 파일에 있습니다. 그곳에서 설정한 값은 여기에 표시되지 않습니다.",
+    "classNotice": "이 설정 중 일부는 {{name}} 클래스가 관리합니다. 여기서는 읽기 전용입니다.",
+    "styleNotice": "{{name}} 스타일이 페이지 레이아웃을 정합니다. 용지 크기와 여백은 여기서 읽기 전용입니다.",
+    "availableFonts": "사용 가능한 글꼴",
+    "fontsLoading": "글꼴을 찾는 중",
+    "fields": {
+      "secnumdepth": "번호를 매길 수준",
+      "numberSections": "절 번호",
+      "documentClass": "문서 클래스"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "1단",
+      "twocolumn": "2단",
+      "single": "1줄",
+      "onehalf": "1.5줄",
+      "double": "2줄",
+      "bySection": "절별",
+      "byChapter": "장별",
+      "bySubsection": "소절별",
+      "numbered": "번호 있음",
+      "unnumbered": "번호 없음",
+      "depthNone": "없음",
+      "depthChapters": "장만",
+      "depthSections": "절까지",
+      "depthSubsections": "소절까지",
+      "depthSubsubsections": "소소절까지",
+      "depthParagraphs": "단락까지",
+      "depthSubparagraphs": "소단락까지"
+    },
+    "locked": {
+      "class": "{{name}} 클래스에서 설정됨",
+      "package": "{{name}} 스타일에서 설정됨",
+      "engine": "XeLaTeX 또는 LuaLaTeX 컴파일러가 필요합니다. 컴파일 메뉴에서 고르세요.",
+      "sides": "소스에서 여백을 면마다 따로 설정합니다",
+      "conditional": "조건 블록 안에서 설정됨"
+    },
+    "invalid": {
+      "length": "2.5cm, 1in, 12pt 같은 길이를 쓰세요.",
+      "fontName": "중괄호나 백슬래시 없이 글꼴 이름만 쓰세요.",
+      "latexLang": "english 같은 babel 언어 이름을 쓰세요.",
+      "markdownLang": "en-US 같은 언어 태그를 쓰세요.",
+      "lineStretch": "1.5 같은 숫자를 쓰세요."
+    }
+  },
+  "typstPackages": {
+    "title": "Typst 패키지",
+    "close": "Typst 패키지 닫기",
+    "searchLabel": "이름, 키워드, 분류로 패키지 검색",
+    "searchPlaceholder": "Typst Universe 검색",
+    "categories": "분류",
+    "allCategories": "전체",
+    "loading": "패키지 목록을 불러오는 중",
+    "results_other": "패키지 {{count}}개",
+    "resultsCapped": "패키지 {{count}}개 중 {{shown}}개를 표시합니다. 검색해서 목록을 좁히세요.",
+    "empty": "검색과 일치하는 패키지가 없습니다.",
+    "staleOffline": "오프라인 상태입니다. 이 목록은 {{date}} 기준입니다.",
+    "stale": "이 목록은 {{date}} 기준입니다. 새로 고치지 못했습니다.",
+    "latest": "최신 {{version}}",
+    "template": "템플릿",
+    "needsTypst": "Typst {{version}}이(가) 필요합니다. 이 프로젝트는 Typst {{current}}을(를) 씁니다.",
+    "insert": "import 문 삽입",
+    "insertAria": "{{name}}의 import 문을 파일 맨 위에 삽입",
+    "insertNeedsFile": "import 문을 삽입하려면 Typst 파일을 여세요.",
+    "copy": "import 문 복사",
+    "copyAria": "{{name}}의 import 문 복사",
+    "vendor": {
+      "heading": "프로젝트 패키지",
+      "toggle": "프로젝트 폴더의 패키지 사용",
+      "detail": "Typst는 프로젝트의 typst-packages 폴더를 먼저 찾습니다. 패키지를 포함한 프로젝트는 오프라인에서도, 다른 컴퓨터에서도 컴파일됩니다.",
+      "action": "패키지를 프로젝트에 포함",
+      "running": "패키지를 복사하는 중",
+      "copied_other": "패키지 {{count}}개를 typst-packages에 복사했습니다.",
+      "upToDate": "이 프로젝트가 가져오는 패키지는 모두 typst-packages에 있습니다.",
+      "missing": "다음 패키지가 패키지 캐시에 없습니다: {{names}}. 온라인일 때 한 번 컴파일한 다음 다시 포함하세요.",
+      "count_other": "이 프로젝트의 패키지 {{count}}개",
+      "none": "이 프로젝트에는 아직 패키지가 없습니다."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}}을(를) 쓸 수 있습니다. 이 import 문은 {{version}}을(를) 씁니다.",
+      "update": "{{version}}(으)로 업데이트"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX 패키지",
+    "close": "LaTeX 패키지 닫기",
+    "searchLabel": "이름이나 설명으로 패키지 검색",
+    "searchPlaceholder": "CTAN 검색",
+    "loading": "패키지 목록을 불러오는 중",
+    "results_other": "패키지 {{count}}개",
+    "resultsCapped": "패키지 {{count}}개 중 {{shown}}개를 표시합니다. 검색해서 목록을 좁히세요.",
+    "empty": "검색과 일치하는 패키지가 없습니다.",
+    "stale": "이 목록은 {{date}} 기준입니다. 새로 고치지 못했습니다.",
+    "staleOffline": "오프라인 상태입니다. 이 목록은 {{date}} 기준입니다.",
+    "partial": "CTAN에 연결하지 못했습니다. Oleafly 내장 목록을 표시합니다.",
+    "partialOffline": "오프라인 상태입니다. Oleafly 내장 목록을 표시합니다.",
+    "loaded": "문서에서 사용 중",
+    "documentClass": "문서 클래스",
+    "installed": "설치됨",
+    "install": "설치",
+    "installing": "설치하는 중",
+    "installAria": "tlmgr로 {{name}} 설치",
+    "insert": "프리앰블에 추가",
+    "insertAria": "{{name}}을(를) {{file}}의 프리앰블에 추가",
+    "copy": "줄 복사",
+    "copyAria": "{{name}}을(를) 불러오는 줄 복사",
+    "ctan": "CTAN",
+    "ctanAria": "CTAN에서 {{name}} 열기",
+    "options": "옵션",
+    "optionsAria": "{{name}} 옵션",
+    "optionsInvalid": "옵션을 확인하세요. 중괄호는 짝이 맞아야 하며 ] 또는 %는 쓸 수 없습니다.",
+    "classNote": "이것은 문서 클래스입니다. 대신 \\documentclass로 설정하세요.",
+    "onDemand": "Tectonic은 문서에서 패키지를 처음 쓸 때 내려받습니다. 따로 설치할 것이 없습니다.",
+    "checking": "설치된 패키지를 확인하는 중",
+    "unknownInstall": "Oleafly가 TeX 환경에 어떤 패키지가 있는지 알 수 없습니다.",
+    "noProject": "패키지를 추가하려면 LaTeX 프로젝트를 여세요.",
+    "added": "{{name}}을(를) {{file}}에 추가했습니다.",
+    "noPreamble": "{{file}}에는 패키지를 추가할 프리앰블이 없습니다.",
+    "alreadyLoaded": "{{file}}은(는) 이미 {{name}}을(를) 불러옵니다.",
+    "insertFailed": "패키지를 추가하지 못했습니다. 다시 시도하세요."
+  },
+  "typstFonts": {
+    "title": "글꼴",
+    "close": "글꼴 목록 닫기",
+    "searchLabel": "글꼴 패밀리 검색",
+    "searchPlaceholder": "글꼴 검색",
+    "loading": "Typst에서 글꼴 목록을 가져오는 중",
+    "summary_other": "Typst {{version}}의 글꼴 패밀리 {{count}}개",
+    "systemOff": "이 프로젝트는 시스템 글꼴이 꺼져 있어 프로젝트 글꼴과 내장 글꼴만 표시합니다.",
+    "noSources": "이 Typst 버전은 각 글꼴의 출처를 알려 주지 않습니다.",
+    "empty": "검색과 일치하는 글꼴 패밀리가 없습니다.",
+    "copy": "이름 복사",
+    "copyAria": "글꼴 패밀리 이름 {{name}} 복사",
+    "sources": {
+      "project": "프로젝트",
+      "system": "시스템",
+      "embedded": "내장"
+    },
+    "fontsFolder": "이 프로젝트에서 글꼴을 쓰려면 글꼴 파일을 프로젝트의 fonts 폴더에 추가하세요."
+  },
+  "typstVariants": {
+    "title": "빌드 변형",
+    "close": "빌드 변형 닫기",
+    "intro": "각 변형은 문서가 sys.inputs로 읽는 값을 설정합니다. 컴파일 메뉴에서 변형을 고르세요.",
+    "empty": "아직 변형이 없습니다.",
+    "add": "변형 추가",
+    "name": "변형 이름",
+    "defaultName": "변형 {{number}}",
+    "remove": "변형 제거",
+    "removeAria": "변형 {{name}} 제거",
+    "key": "이름",
+    "value": "값",
+    "addInput": "값 추가",
+    "removeInput": "값 제거",
+    "noInputs": "이 변형은 값을 설정하지 않습니다.",
+    "save": "저장",
+    "cancel": "취소",
+    "loading": "변형을 불러오는 중",
+    "nameRequired": "모든 변형에 이름을 붙이세요.",
+    "nameTaken": "두 변형이 같은 이름을 쓸 수 없습니다.",
+    "keyInvalid": "값 이름은 비워 둘 수 없고 등호를 포함할 수 없습니다.",
+    "keyTaken": "한 변형에서 같은 이름을 두 번 설정할 수 없습니다.",
+    "saveFailed": "변형을 저장하지 못했습니다."
   }
 }

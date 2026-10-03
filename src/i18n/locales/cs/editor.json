@@ -42,7 +42,18 @@
     "selectImage": "Vyberte obrázek, který chcete vložit.",
     "editTitle": "Upravit obrázek",
     "editDescription": "Vyměňte obrázek nebo změňte jeho šířku. Popisek a návěští zůstanou beze změny.",
-    "save": "Uložit obrázek"
+    "save": "Uložit obrázek",
+    "customWidthPlaceholderTypst": "8cm nebo 60%",
+    "altLabel": "Alternativní text",
+    "altPlaceholder": "Popište obrázek pro čtečky obrazovky",
+    "placement": "Umístění",
+    "placementNone": "Na místě",
+    "placementAuto": "Automaticky",
+    "placementTop": "Nahoře",
+    "placementBottom": "Dole",
+    "editFigureTitle": "Upravit obrázek",
+    "editFigureDescription": "Změňte obrázek, jeho velikost, popisek, návěští, alternativní text nebo umístění.",
+    "saveFigure": "Uložit obrázek"
   },
   "tableToolbar": {
     "label": "Nástroje tabulky",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Vložit citovaný blok",
     "insertFigure": "Vložit obrázek",
     "insertImage": "Vložit obrázek ze souboru",
+    "drawDiagram": "Nakreslit diagram",
     "insertTable": "Vložit tabulku",
     "imageToLatexTooltip": "Obrázek do LaTeXu (přepis pomocí AI)",
     "imageToLatex": "Obrázek do LaTeXu",
@@ -130,6 +142,7 @@
     "redo": "Znovu ({{shortcut}})",
     "find": "Najít ({{shortcut}})",
     "goToPdf": "Přejít do PDF (SyncTeX)",
+    "goToPdfTypst": "Přejít do PDF",
     "linkUrl": "Adresa URL odkazu",
     "removeLink": "Odebrat odkaz",
     "imageFile": "Soubor obrázku",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "obrazky/graf.png",
     "split": "Rozdělit",
     "both": "Obojí",
-    "stacked": "Nad sebou"
+    "stacked": "Nad sebou",
+    "displayMath": "Rovnice na samostatném řádku",
+    "numberedEquation": "Číslovaná rovnice",
+    "alignedEquations": "Zarovnané rovnice",
+    "addLabel": "Přidat návěští",
+    "imageToTypst": "Obrázek do formátu Typst",
+    "imageToTypstTooltip": "Obrázek do formátu Typst (přepis pomocí AI)",
+    "typstPackages": "Balíčky Typst",
+    "latexPackages": "Balíčky LaTeX"
   },
   "contextMenu": {
     "engineUnavailable": "Akce dokumentového enginu nejsou k dispozici",
     "askAi": "Zeptat se AI…",
     "noIndexedSymbol": "Na tomto místě není žádný indexovaný symbol.",
     "noRenamableSymbol": "Na tomto místě není žádný přejmenovatelný symbol.",
+    "formatDocument": "Formátovat dokument",
+    "formatSelection": "Formátovat výběr",
     "itemize": "Seznam itemize",
     "enumerate": "Seznam enumerate",
     "figure": "Prostředí figure",
@@ -156,7 +179,16 @@
     "equationAsPng": "Rovnice jako PNG",
     "crossReference": "Křížový odkaz",
     "label": "Návěští",
-    "footnote": "Poznámka pod čarou"
+    "footnote": "Poznámka pod čarou",
+    "toggleComment": "Přepnout komentář",
+    "inlineMath": "Matematika v řádku",
+    "displayMath": "Rovnice na samostatném řádku",
+    "numberedEquation": "Číslovaná rovnice",
+    "alignedEquations": "Zarovnané rovnice",
+    "quote": "Citát",
+    "addLabel": "Přidat návěští",
+    "convertLatexMath": "Převést matematiku LaTeX do formátu Typst",
+    "noLatexMath": "Nejprve vyberte matematiku LaTeX."
   },
   "shell": {
     "noFileOpenTab": "Není otevřený soubor",
@@ -237,9 +269,15 @@
     "footerTypst": "Speciální znaky jsou ve zdroji tabulky ošetřené.",
     "footerLatex": "Vygenerovaná tabulka v LaTeXu používá pro vodorovné linky booktabs.",
     "chooseAnother": "Vybrat jiný soubor",
-    "chooseFile": "Vyberte CSV, TSV nebo XLSX",
+    "chooseFile": "Vyberte CSV, TSV, XLSX nebo JSON",
     "selectedSummary": "{{file}} · Řádky: {{rows}} · Sloupce: {{columns}}",
     "firstRowHeader": "První řádek je záhlaví",
+    "keepLinked": "Ponechat propojené s datovým souborem",
+    "keepLinkedHint": "Zkopíruje data do datové složky. Když tento soubor upravíte, tabulka se při další kompilaci změní.",
+    "footerLinked": "Tabulka čte {{path}} při každé kompilaci dokumentu.",
+    "jsonNotTable": "Tento soubor JSON není seznam záznamů ani řádků.",
+    "insertedLinked": "Propojená tabulka byla vložena. Změníte ji úpravou {{path}}.",
+    "linkFailed": "Data se nepodařilo zkopírovat do projektu.",
     "captionLabel": "Popisek (volitelné)",
     "captionPlaceholder": "Výsledky všech běhů",
     "labelLabel": "Návěští (volitelné)",
@@ -272,7 +310,8 @@
     "svgImage": "Obrázek SVG",
     "pngImage": "Obrázek PNG",
     "svgKind": "Rovnice SVG",
-    "pngKind": "Rovnice PNG"
+    "pngKind": "Rovnice PNG",
+    "typstFailed": "Typst tuto rovnici nedokázal vykreslit ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Zeptat se AI",
@@ -313,7 +352,23 @@
     "info": "Informace",
     "empty": "Tady se objeví výstup kompilace.",
     "scrollToTop": "Přejít nahoru",
-    "scrollToBottom": "Přejít dolů"
+    "scrollToBottom": "Přejít dolů",
+    "locationFileLineColumn": "{{file}} · řádek {{line}}, sloupec {{column}}",
+    "locationLineColumn": "řádek {{line}}, sloupec {{column}}",
+    "hint": "Tip",
+    "sourceExcerpt": "Zdrojový řádek {{line}}",
+    "summaryErrors_one": "{{count}} chyba",
+    "summaryErrors_few": "{{count}} chyby",
+    "summaryErrors_many": "{{count}} chyby",
+    "summaryErrors_other": "{{count}} chyb",
+    "summaryWarnings_one": "{{count}} varování",
+    "summaryWarnings_few": "{{count}} varování",
+    "summaryWarnings_many": "{{count}} varování",
+    "summaryWarnings_other": "{{count}} varování",
+    "summaryReferences_one": "{{count}} nevyřešený odkaz",
+    "summaryReferences_few": "{{count}} nevyřešené odkazy",
+    "summaryReferences_many": "{{count}} nevyřešeného odkazu",
+    "summaryReferences_other": "{{count}} nevyřešených odkazů"
   },
   "history": {
     "untitledCommit": "Commit bez názvu",
@@ -358,7 +413,8 @@
       "navigation": "Navigace",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Nastavení"
+      "settings": "Nastavení",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Kompilovat znovu",
@@ -375,12 +431,20 @@
       "goToDefinition": "Přejít na definici",
       "findReferences": "Najít reference",
       "renameSymbol": "Přejmenovat symbol (v celém projektu)",
+      "formatDocument": "Formátovat dokument Typst",
       "commandPalette": "Paleta příkazů",
       "searchAllDocuments": "Hledat ve všech dokumentech",
       "goToPdf": "Přejít do PDF (SyncTeX vpřed)",
       "jumpToSource": "Skok z PDF do zdroje",
       "commitAndPush": "Commitnout a odeslat",
-      "openSettings": "Otevřít nastavení"
+      "openSettings": "Otevřít nastavení",
+      "typstContinueList": "Pokračovat v seznamu novou položkou",
+      "typstItemNewLine": "Začít nový řádek uvnitř položky seznamu",
+      "typstRemoveMarker": "Odstranit značku seznamu před kurzorem",
+      "typstIndentItem": "Zanořit položku seznamu o úroveň hlouběji",
+      "typstOutdentItem": "Posunout položku seznamu o úroveň výš",
+      "typstMathPair": "Automaticky uzavřít matematiku $, mezerník z ní udělá rovnici na samostatném řádku",
+      "typstWrapSelection": "Obalit výběr tučným písmem, zdůrazněním, surovým textem nebo matematikou"
     }
   },
   "citations": {
@@ -661,6 +725,7 @@
       "unsupported": "Tento výraz je neúplný nebo nepodporovaný.",
       "missingClosing": "Chybí uzavírací {{delimiter}}.",
       "notRendered": "Tento výraz se nepodařilo vykreslit.",
+      "typstUnavailable": "Náhled Typst není k dispozici.",
       "preview": {
         "moreOptions": "Další možnosti",
         "hide": "Skrýt",
@@ -668,6 +733,10 @@
         "disable": "Vypnout",
         "disableDescription": "Vypne náhled rovnic. Znovu jej zapnete v Nastavení."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Vložit jako matematiku Typst",
+      "pasteOffer": "Vložena matematika LaTeX"
     },
     "latex": {
       "command": {
@@ -854,6 +923,45 @@
         "revtex": "styl REVTeX"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Nadpis",
+        "figure": "Figure s obrázkem",
+        "tableFigure": "Figure s tabulkou",
+        "table": "Tabulka",
+        "equation": "Rovnice na samostatném řádku",
+        "numberedEquation": "Číslovaná rovnice s návěštím",
+        "footnote": "Poznámka pod čarou",
+        "quote": "Blokový citát",
+        "code": "Blok kódu",
+        "outline": "Obsah",
+        "bibliography": "Bibliografie",
+        "pagebreak": "Zalomení stránky",
+        "columns": "Sloupce",
+        "grid": "Mřížka",
+        "link": "Odkaz",
+        "list": "Odrážkový seznam",
+        "enum": "Číslovaný seznam",
+        "terms": "Seznam pojmů",
+        "partBibliography": "Bibliografie pro jednu část s návěštím"
+      },
+      "bibliographyStyle": {
+        "builtin": "vestavěný styl CSL",
+        "citation": "jen styl citací",
+        "project": "soubor CSL v tomto projektu"
+      },
+      "bibliographyParameter": {
+        "target": "které citace vypisuje",
+        "group": "jak sdílí čísla",
+        "targetAuto": "nejbližší bibliografie s daným klíčem",
+        "targetWithin": "citace uvnitř části s návěštím",
+        "targetAfter": "citace za návěštím",
+        "targetBefore": "citace před návěštím",
+        "groupAuto": "číslovat spolu s ostatními bibliografiemi",
+        "groupNone": "číslovat samostatně",
+        "groupNamed": "číslovat spolu s bibliografiemi stejného názvu"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Abstrakt",
@@ -980,6 +1088,12 @@
       "reference": "Reference",
       "label": "Návěští",
       "includedFile": "Vložený soubor",
+      "typst": {
+        "settings": {
+          "show": "Zobrazit nastavení dokumentu",
+          "hide": "Skrýt nastavení dokumentu"
+        }
+      },
       "table": {
         "captionPlacement": "Popisek",
         "captionAbove": "Popisek nahoře",
@@ -1054,6 +1168,11 @@
     "goTo": "Přejít na {{title}}",
     "untitled": "Bez názvu"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Otevřít na Typst Universe",
+    "formatUnavailable": "Formátovač Typst ještě není připraven. Zkuste to za chvíli znovu.",
+    "formatFailed": "Tento soubor se nepodařilo naformátovat."
+  },
   "changedOnDisk": {
     "message": "Soubor {{file}} se na disku změnil, zatímco jste měli neuložené úpravy.",
     "compare": "Porovnat",
@@ -1061,5 +1180,344 @@
     "reload": "Načíst znovu",
     "failed": "Oleafly nedokázal aktualizovat {{file}}. Zkuste to znovu.",
     "tabMark": "Změněno na disku. Otevřete tuto kartu a vyberte, kterou verzi ponechat."
+  },
+  "labels": {
+    "filterPlaceholder": "Název návěští",
+    "filterLabel": "Filtrovat návěští projektu",
+    "noMatches": "Žádná odpovídající návěští.",
+    "empty": "V tomto projektu zatím nejsou žádná návěští.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Přidat sem návěští"
+  },
+  "typst": {
+    "numberingNote": "Čísla rovnic vyžadují pravidlo číslování.",
+    "addNumberingRule": "Přidat pravidlo",
+    "bibliographyAdded": "Bibliografie byla přidána do {{file}}."
+  },
+  "typstInsights": {
+    "title": "Přehled dokumentu",
+    "description": "Co zkompilovaný dokument obsahuje, s odkazy zpět do zdroje.",
+    "refresh": "Obnovit",
+    "copyMetadata": "Kopírovat metadata pro odeslání",
+    "metadataCopied": "Metadata pro odeslání byla zkopírována do schránky.",
+    "copyFailed": "Metadata se nezkopírovala. Zkontrolujte přístup ke schránce a zkuste to znovu.",
+    "loading": "Dokument se čte nástrojem Typst",
+    "compileFailed": "Typst nedokázal dokument zkompilovat. Opravte tyto chyby, aby bylo možné vypsat obrázky, tabulky a rovnice.",
+    "noProject": "Nejprve otevřete projekt Typst.",
+    "tabs": {
+      "overview": "Přehled",
+      "headings": "Nadpisy",
+      "figures": "Obrázky",
+      "tables": "Tabulky",
+      "equations": "Rovnice",
+      "labels": "Návěští",
+      "citations": "Citace",
+      "todos": "Úkoly"
+    },
+    "metadata": {
+      "heading": "Metadata pro odeslání",
+      "title": "Název",
+      "authors": "Autoři",
+      "keywords": "Klíčová slova",
+      "abstract": "Abstrakt",
+      "date": "Datum",
+      "missing": "Nenastaveno"
+    },
+    "empty": {
+      "headings": "Zkompilovaný dokument neobsahuje žádné nadpisy.",
+      "figures": "Zkompilovaný dokument neobsahuje žádné obrázky.",
+      "tables": "Zkompilovaný dokument neobsahuje žádné tabulky.",
+      "equations": "Zkompilovaný dokument neobsahuje žádné rovnice na samostatném řádku.",
+      "labels": "Dokument neobsahuje žádná návěští.",
+      "citations": "Zkompilovaný dokument neobsahuje žádné citace.",
+      "todos": "Žádné poznámky TODO ani FIXME."
+    },
+    "labelKinds": {
+      "heading": "Nadpis",
+      "figure": "Obrázek",
+      "table": "Tabulka",
+      "equation": "Rovnice",
+      "other": "Jiné"
+    },
+    "page": "Stránka {{page}}",
+    "unnumbered": "Nečíslováno",
+    "untitled": "Bez popisku",
+    "cited_one": "Citováno {{count}}krát",
+    "cited_few": "Citováno {{count}}krát",
+    "cited_many": "Citováno {{count}}krát",
+    "cited_other": "Citováno {{count}}krát",
+    "notInSource": "Ve zdroji nenalezeno",
+    "openSource": "Otevřít {{file}} na řádku {{line}}",
+    "versionNote": "Typst {{version}} s typst {{method}}",
+    "truncated": "Vypisuje se jen prvních 5000 prvků."
+  },
+  "documentInsights": {
+    "description": "Co dokument obsahuje, s odkazy zpět do zdroje.",
+    "loading": "Dokument se čte",
+    "noProject": "Nejprve otevřete projekt.",
+    "unresolved": "Není v bibliografii",
+    "unresolvedCount_one": "{{count}} klíč citace chybí v bibliografii.",
+    "unresolvedCount_few": "{{count}} klíče citací chybí v bibliografii.",
+    "unresolvedCount_many": "{{count}} klíče citací chybí v bibliografii.",
+    "unresolvedCount_other": "{{count}} klíčů citací chybí v bibliografii.",
+    "numbersCurrent": "Čísla a stránky pocházejí z poslední kompilace.",
+    "numbersStale": "Zdroj se od poslední kompilace změnil. Zkompilujte znovu a uvidíte čísla a stránky.",
+    "numbersMissing": "Zkompilujte dokument a uvidíte čísla a stránky.",
+    "sourceOrder": "Seřazeno podle pořadí ve zdroji.",
+    "empty": {
+      "headings": "Dokument neobsahuje žádné nadpisy.",
+      "figures": "Dokument neobsahuje žádné obrázky.",
+      "tables": "Dokument neobsahuje žádné tabulky.",
+      "equations": "Dokument neobsahuje žádné rovnice na samostatném řádku.",
+      "citations": "Dokument neobsahuje žádné citace."
+    }
+  },
+  "typstSettings": {
+    "title": "Nastavení dokumentu",
+    "description": "Pravidla stránky, textu a číslování v {{file}}.",
+    "templateNotice": "Tento dokument používá šablonu. Hodnoty nastavené uvnitř šablony se zde nezobrazují. Hodnota, kterou nastavíte zde, má před šablonou přednost.",
+    "loading": "Čte se hlavní soubor",
+    "readFailed": "Hlavní soubor se nepodařilo přečíst.",
+    "saveFailed": "Hlavní soubor se nepodařilo aktualizovat.",
+    "noMainFile": "Tento projekt nemá hlavní soubor Typst.",
+    "applied": "Nastavení dokumentu bylo aktualizováno.",
+    "apply": "Použít",
+    "cancel": "Zrušit",
+    "sections": {
+      "page": "Stránka",
+      "text": "Text",
+      "paragraph": "Odstavec",
+      "numbering": "Číslování"
+    },
+    "fields": {
+      "paper": "Velikost stránky",
+      "margin": "Okraje",
+      "columns": "Sloupce",
+      "font": "Písmo textu",
+      "fontSize": "Velikost písma",
+      "lang": "Jazyk",
+      "region": "Oblast",
+      "justify": "Zarovnání",
+      "leading": "Řádkování",
+      "headingNumbering": "Číslování nadpisů",
+      "equationNumbering": "Číslování rovnic"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Výchozí",
+      "justified": "Do bloku",
+      "ragged": "Zarovnáno vlevo",
+      "off": "Vypnuto"
+    },
+    "locked": {
+      "template": "Nastaveno šablonou",
+      "expression": "Nastaveno výrazem ve zdroji"
+    },
+    "invalid": {
+      "length": "Použijte délku jako 11pt, 2.5cm nebo 0.65em.",
+      "margin": "Použijte délku jako 2.5cm, nebo auto.",
+      "columns": "Použijte celé číslo od 1 do 99.",
+      "lang": "Použijte dvou- nebo třípísmenný kód jazyka, například en.",
+      "region": "Použijte dvoupísmenný kód oblasti, například GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Volby třídy a nastavení preambule v {{file}}.",
+    "markdownDescription": "Pole hlavičky YAML v {{file}}.",
+    "noLatexMainFile": "Tento projekt nemá hlavní soubor LaTeX.",
+    "noMarkdownMainFile": "Tento projekt nemá hlavní soubor Markdown.",
+    "noDocumentClass": "Hlavní soubor nemá řádek \\documentclass.",
+    "unclosedFrontMatter": "Hlavička YAML na začátku hlavního souboru není uzavřená. Nejprve přidejte uzavírací řádek ---.",
+    "noFrontMatter": "Tento soubor zatím nemá hlavičku YAML. Tlačítko Použít ji přidá na začátek.",
+    "externalPreamble": "Část preambule je v jiných souborech. Hodnoty nastavené tam se zde nezobrazují.",
+    "classNotice": "Třída {{name}} řídí některá z těchto nastavení. Zde jsou jen pro čtení.",
+    "styleNotice": "Styl {{name}} určuje rozvržení stránky. Velikost stránky a okraje jsou zde jen pro čtení.",
+    "availableFonts": "Dostupná písma",
+    "fontsLoading": "Hledají se písma",
+    "fields": {
+      "secnumdepth": "Číslované úrovně",
+      "numberSections": "Čísla sekcí",
+      "documentClass": "Třída dokumentu"
+    },
+    "placeholders": {
+      "latexLang": "czech",
+      "markdownLang": "cs-CZ",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "Jeden sloupec",
+      "twocolumn": "Dva sloupce",
+      "single": "Jednoduché",
+      "onehalf": "1,5 řádku",
+      "double": "Dvojité",
+      "bySection": "Podle sekcí",
+      "byChapter": "Podle kapitol",
+      "bySubsection": "Podle podsekcí",
+      "numbered": "Číslované",
+      "unnumbered": "Nečíslované",
+      "depthNone": "Žádné",
+      "depthChapters": "Jen kapitoly",
+      "depthSections": "Až po sekce",
+      "depthSubsections": "Až po podsekce",
+      "depthSubsubsections": "Až po podpodsekce",
+      "depthParagraphs": "Až po odstavce",
+      "depthSubparagraphs": "Až po pododstavce"
+    },
+    "locked": {
+      "class": "Nastaveno třídou {{name}}",
+      "package": "Nastaveno stylem {{name}}",
+      "engine": "Vyžaduje překladač XeLaTeX nebo LuaLaTeX. Vyberte jeden v nabídce kompilace.",
+      "sides": "Zdroj nastavuje každý okraj zvlášť",
+      "conditional": "Nastaveno uvnitř podmíněného bloku"
+    },
+    "invalid": {
+      "length": "Použijte délku jako 2.5cm, 1in nebo 12pt.",
+      "fontName": "Použijte prostý název písma bez složených závorek a zpětných lomítek.",
+      "latexLang": "Použijte název jazyka pro babel, například czech.",
+      "markdownLang": "Použijte jazykový kód, například cs-CZ.",
+      "lineStretch": "Použijte číslo, například 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Balíčky Typst",
+    "close": "Zavřít balíčky Typst",
+    "searchLabel": "Hledat balíčky podle názvu, klíčového slova nebo kategorie",
+    "searchPlaceholder": "Hledat v Typst Universe",
+    "categories": "Kategorie",
+    "allCategories": "Vše",
+    "loading": "Načítá se seznam balíčků",
+    "results_one": "{{count}} balíček",
+    "results_few": "{{count}} balíčky",
+    "results_many": "{{count}} balíčku",
+    "results_other": "{{count}} balíčků",
+    "resultsCapped": "Zobrazeno {{shown}} z {{count}} balíčků. Seznam zúžíte hledáním.",
+    "empty": "Hledání neodpovídají žádné balíčky.",
+    "staleOffline": "Jste offline. Tento seznam je ze dne {{date}}.",
+    "stale": "Tento seznam je ze dne {{date}}. Nepodařilo se jej obnovit.",
+    "latest": "Nejnovější {{version}}",
+    "template": "Šablona",
+    "needsTypst": "Vyžaduje Typst {{version}}. Tento projekt používá Typst {{current}}.",
+    "insert": "Vložit import",
+    "insertAria": "Vložit import balíčku {{name}} na začátek souboru",
+    "insertNeedsFile": "Chcete-li vložit import, otevřete soubor Typst.",
+    "copy": "Kopírovat import",
+    "copyAria": "Kopírovat import balíčku {{name}}",
+    "vendor": {
+      "heading": "Balíčky projektu",
+      "toggle": "Používat balíčky ze složky projektu",
+      "detail": "Typst hledá nejdřív ve složce typst-packages v projektu. Projekty s vlastními balíčky se zkompilují offline i na jiných počítačích.",
+      "action": "Zkopírovat balíčky do projektu",
+      "running": "Kopírují se balíčky",
+      "copied_one": "Do typst-packages byl zkopírován {{count}} balíček.",
+      "copied_few": "Do typst-packages byly zkopírovány {{count}} balíčky.",
+      "copied_many": "Do typst-packages bylo zkopírováno {{count}} balíčku.",
+      "copied_other": "Do typst-packages bylo zkopírováno {{count}} balíčků.",
+      "upToDate": "Všechny balíčky, které tento projekt importuje, už jsou v typst-packages.",
+      "missing": "Tyto balíčky nejsou v mezipaměti balíčků: {{names}}. Jednou zkompilujte s připojením k internetu a pak je zkopírujte znovu.",
+      "count_one": "{{count}} balíček v tomto projektu",
+      "count_few": "{{count}} balíčky v tomto projektu",
+      "count_many": "{{count}} balíčku v tomto projektu",
+      "count_other": "{{count}} balíčků v tomto projektu",
+      "none": "V tomto projektu zatím nejsou žádné balíčky."
+    },
+    "hints": {
+      "updateAvailable": "Je k dispozici {{name}} {{latest}}. Tento import používá {{version}}.",
+      "update": "Aktualizovat na {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "Balíčky LaTeX",
+    "close": "Zavřít balíčky LaTeX",
+    "searchLabel": "Hledat balíčky podle názvu nebo popisu",
+    "searchPlaceholder": "Hledat v CTAN",
+    "loading": "Načítá se seznam balíčků",
+    "results_one": "{{count}} balíček",
+    "results_few": "{{count}} balíčky",
+    "results_many": "{{count}} balíčku",
+    "results_other": "{{count}} balíčků",
+    "resultsCapped": "Zobrazeno {{shown}} z {{count}} balíčků. Seznam zúžíte hledáním.",
+    "empty": "Hledání neodpovídají žádné balíčky.",
+    "stale": "Tento seznam je ze dne {{date}}. Nepodařilo se jej obnovit.",
+    "staleOffline": "Jste offline. Tento seznam je ze dne {{date}}.",
+    "partial": "Nepodařilo se spojit s CTAN. Zobrazuje se vestavěný seznam Oleafly.",
+    "partialOffline": "Jste offline. Zobrazuje se vestavěný seznam Oleafly.",
+    "loaded": "V dokumentu",
+    "documentClass": "Třída dokumentu",
+    "installed": "Nainstalováno",
+    "install": "Nainstalovat",
+    "installing": "Instaluje se",
+    "installAria": "Nainstalovat {{name}} pomocí tlmgr",
+    "insert": "Přidat do preambule",
+    "insertAria": "Přidat {{name}} do preambule souboru {{file}}",
+    "copy": "Kopírovat řádek",
+    "copyAria": "Kopírovat řádek, který načítá {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Otevřít {{name}} na CTAN",
+    "options": "Volby",
+    "optionsAria": "Volby pro {{name}}",
+    "optionsInvalid": "Zkontrolujte volby. Složené závorky musí být spárované a nelze použít ] ani %.",
+    "classNote": "Toto je třída dokumentu. Nastavte ji raději pomocí \\documentclass.",
+    "onDemand": "Tectonic stahuje balíčky, když je dokument poprvé použije. Není co instalovat.",
+    "checking": "Zjišťuje se, které balíčky jsou nainstalované",
+    "unknownInstall": "Oleafly nedokáže zjistit, které balíčky vaše instalace TeX obsahuje.",
+    "noProject": "Chcete-li přidávat balíčky, otevřete projekt LaTeX.",
+    "added": "Balíček {{name}} byl přidán do {{file}}.",
+    "noPreamble": "{{file}} nemá preambuli, do které by šlo přidat balíček.",
+    "alreadyLoaded": "Soubor {{file}} už načítá {{name}}.",
+    "insertFailed": "Balíček se nepodařilo přidat. Zkuste to znovu."
+  },
+  "typstFonts": {
+    "title": "Písma",
+    "close": "Zavřít seznam písem",
+    "searchLabel": "Hledat rodiny písem",
+    "searchPlaceholder": "Hledat písma",
+    "loading": "Zjišťují se písma z nástroje Typst",
+    "summary_one": "{{count}} rodina písem, Typst {{version}}",
+    "summary_few": "{{count}} rodiny písem, Typst {{version}}",
+    "summary_many": "{{count}} rodiny písem, Typst {{version}}",
+    "summary_other": "{{count}} rodin písem, Typst {{version}}",
+    "systemOff": "Systémová písma jsou pro tento projekt vypnutá, proto se vypisují jen písma projektu a vestavěná písma.",
+    "noSources": "Tato verze Typst neuvádí, odkud jednotlivá písma pocházejí.",
+    "empty": "Hledání neodpovídají žádné rodiny písem.",
+    "copy": "Kopírovat název",
+    "copyAria": "Kopírovat název rodiny písem {{name}}",
+    "sources": {
+      "project": "Projekt",
+      "system": "Systém",
+      "embedded": "Vestavěné"
+    },
+    "fontsFolder": "Chcete-li v tomto projektu použít písmo, přidejte jeho soubor do složky fonts v projektu."
+  },
+  "typstVariants": {
+    "title": "Varianty sestavení",
+    "close": "Zavřít varianty sestavení",
+    "intro": "Každá varianta nastavuje hodnoty, které dokument čte přes sys.inputs. Variantu vyberte v nabídce kompilace.",
+    "empty": "Zatím žádné varianty.",
+    "add": "Přidat variantu",
+    "name": "Název varianty",
+    "defaultName": "varianta {{number}}",
+    "remove": "Odebrat variantu",
+    "removeAria": "Odebrat variantu {{name}}",
+    "key": "Název",
+    "value": "Hodnota",
+    "addInput": "Přidat hodnotu",
+    "removeInput": "Odebrat hodnotu",
+    "noInputs": "Tato varianta nenastavuje žádné hodnoty.",
+    "save": "Uložit",
+    "cancel": "Zrušit",
+    "loading": "Načítají se varianty",
+    "nameRequired": "Pojmenujte každou variantu.",
+    "nameTaken": "Dvě varianty nemohou mít stejný název.",
+    "keyInvalid": "Názvy hodnot nesmějí být prázdné ani obsahovat rovnítko.",
+    "keyTaken": "Varianta nemůže nastavit stejný název dvakrát.",
+    "saveFailed": "Varianty se nepodařilo uložit."
   }
 }

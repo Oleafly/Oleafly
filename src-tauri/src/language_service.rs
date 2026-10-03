@@ -19,6 +19,10 @@ use crate::paths;
 use crate::proc::{
     contain_process_tree, isolate_process_tree, terminate_process_tree, NoConsole, ProcessTreeGuard,
 };
+use crate::typst_toolchain::tinymist::{
+    CatalogTinymist, TinymistChoice, TinymistEnsured, TinymistFailureKind, TinymistInstallFailure,
+    TinymistInstallState,
+};
 use server_runtime::{InstallOutcome, InstallStatus, InstallerState};
 
 const MAX_MESSAGE_BYTES: usize = 16 * 1024 * 1024;
@@ -185,6 +189,8 @@ impl LanguageServiceError {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct InstallLanguageServiceRequest {
     pub kind: LanguageServiceKind,
+    #[serde(default)]
+    pub project_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -631,11 +637,29 @@ pub async fn language_service_start(
     let resource = bundled_resource_paths(&app, request.kind)?;
     let installer = state.installer.clone();
     let kind = request.kind;
+    let project_id = request.project_id.clone();
     let launch = tauri::async_runtime::spawn_blocking(move || {
-        server_runtime::resolve_for_launch(&app_local_data, &installer, kind, resource.as_ref())
+        launch_for(
+            &app_local_data,
+            &installer,
+            kind,
+            &project_id,
+            resource.as_ref(),
+        )
     })
     .await
     .map_err(language_service_worker_error)??;
+    let package_environment = match request.kind {
+        LanguageServiceKind::Tinymist => {
+            let project_id = request.project_id.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                crate::typst_packages::language_server_environment(&project_id)
+            })
+            .await
+            .unwrap_or_default()
+        }
+        LanguageServiceKind::TexLab => Vec::new(),
+    };
 
     // A WebView reload, failed deferred-module load, renderer crash, or
     // development HMR can destroy the only holder of the opaque session id
@@ -708,7 +732,7 @@ pub async fn language_service_start(
         kind: request.kind,
         generation: registry.generation,
     };
-    let spawned = spawn_sidecar(&launch)?;
+    let spawned = spawn_sidecar_with(&launch, &package_environment)?;
     let (outbound, outbound_rx) = mpsc::channel(OUTBOUND_QUEUE_DEPTH);
     let (stop, stop_rx) = watch::channel(false);
     let (status, _) = watch::channel(LanguageServiceStatus::Running);
@@ -897,6 +921,21 @@ pub async fn language_service_install(
     state: State<'_, LanguageServiceState>,
     request: InstallLanguageServiceRequest,
 ) -> Result<InstallLanguageServiceResponse, LanguageServiceError> {
+    if let Some(choice) = catalog_tinymist_off_thread(&request).await? {
+        let ensured = crate::typst_toolchain::tinymist::ensure_downloaded(&choice)
+            .await
+            .map_err(tinymist_install_error)?;
+        return Ok(InstallLanguageServiceResponse {
+            kind: request.kind,
+            version: choice.version.to_string(),
+            state: match ensured {
+                TinymistEnsured::Installed(_) => InstallLanguageServiceState::Installed,
+                TinymistEnsured::AlreadyInstalled(_) => {
+                    InstallLanguageServiceState::AlreadyInstalled
+                }
+            },
+        });
+    }
     let app_local_data = app.path().app_local_data_dir().map_err(|_| {
         LanguageServiceError::new(
             LanguageServiceErrorCode::InstallFailed,
@@ -939,6 +978,11 @@ pub async fn language_service_install_status(
     state: State<'_, LanguageServiceState>,
     request: InstallLanguageServiceRequest,
 ) -> Result<LanguageServiceInstallStatusResponse, LanguageServiceError> {
+    if let Some(choice) = catalog_tinymist_off_thread(&request).await? {
+        return tauri::async_runtime::spawn_blocking(move || catalog_install_status(&choice))
+            .await
+            .map_err(language_service_worker_error);
+    }
     let app_local_data = app.path().app_local_data_dir().map_err(|_| {
         LanguageServiceError::new(
             LanguageServiceErrorCode::InstallFailed,
@@ -965,6 +1009,125 @@ pub async fn language_service_install_status(
         state: status,
         message,
     })
+}
+
+fn catalog_tinymist(
+    kind: LanguageServiceKind,
+    project_id: Option<&str>,
+) -> Result<Option<CatalogTinymist>, LanguageServiceError> {
+    let (LanguageServiceKind::Tinymist, Some(project_id)) = (kind, project_id) else {
+        return Ok(None);
+    };
+    let invalid = |message: &str| {
+        LanguageServiceError::new(LanguageServiceErrorCode::InvalidWorkspace, message)
+    };
+    if project_id.len() > 128 || paths::validate_project_id(project_id).is_err() {
+        return Err(invalid("invalid project id"));
+    }
+    match crate::typst_toolchain::tinymist::choice_for_project(project_id)
+        .map_err(|_| invalid("project metadata is invalid or unreadable"))?
+    {
+        TinymistChoice::Catalog(choice) => Ok(Some(*choice)),
+        TinymistChoice::Bundled => Ok(None),
+    }
+}
+
+async fn catalog_tinymist_off_thread(
+    request: &InstallLanguageServiceRequest,
+) -> Result<Option<CatalogTinymist>, LanguageServiceError> {
+    let kind = request.kind;
+    let project_id = request.project_id.clone();
+    tauri::async_runtime::spawn_blocking(move || catalog_tinymist(kind, project_id.as_deref()))
+        .await
+        .map_err(language_service_worker_error)?
+}
+
+fn catalog_install_status(choice: &CatalogTinymist) -> LanguageServiceInstallStatusResponse {
+    let (state, message) = match choice.state() {
+        TinymistInstallState::Installed => (LanguageServiceInstallState::Installed, None),
+        TinymistInstallState::Installing => (LanguageServiceInstallState::Installing, None),
+        TinymistInstallState::Missing => (LanguageServiceInstallState::Missing, None),
+        TinymistInstallState::Failed(message) => (
+            LanguageServiceInstallState::Failed,
+            Some(bounded_message(message)),
+        ),
+    };
+    LanguageServiceInstallStatusResponse {
+        kind: LanguageServiceKind::Tinymist,
+        version: choice.version.to_string(),
+        state,
+        message,
+    }
+}
+
+fn tinymist_install_error(failure: TinymistInstallFailure) -> LanguageServiceError {
+    let code = match failure.kind {
+        TinymistFailureKind::Download => LanguageServiceErrorCode::DownloadFailed,
+        TinymistFailureKind::Integrity => LanguageServiceErrorCode::IntegrityFailure,
+        TinymistFailureKind::Install => LanguageServiceErrorCode::InstallFailed,
+    };
+    let mut error = LanguageServiceError::new(code, bounded_message(failure.message));
+    error.kind = Some(LanguageServiceKind::Tinymist);
+    error
+}
+
+fn launch_for(
+    app_local_data: &Path,
+    installer: &InstallerState,
+    kind: LanguageServiceKind,
+    project_id: &str,
+    resource: Option<&server_runtime::BundledResourcePaths>,
+) -> Result<server_runtime::ServerLaunch, LanguageServiceError> {
+    match catalog_tinymist(kind, Some(project_id))? {
+        Some(choice) => server_runtime::resolve_downloaded_tinymist_for_launch(
+            app_local_data,
+            server_runtime::DownloadedTinymist {
+                binary: &choice.binary,
+                version: &choice.version.to_string(),
+                size: choice.artifact.binary_size,
+                sha256: &choice.artifact.binary_sha256,
+            },
+        ),
+        None => server_runtime::resolve_for_launch(app_local_data, installer, kind, resource),
+    }
+}
+
+pub(crate) async fn tinymist_executable(
+    app: &AppHandle,
+    project_id: &str,
+) -> Result<PathBuf, LanguageServiceError> {
+    let kind = LanguageServiceKind::Tinymist;
+    let app_local_data = app.path().app_local_data_dir().map_err(|_| {
+        LanguageServiceError::new(
+            LanguageServiceErrorCode::SidecarUnavailable,
+            "Oleafly app-local-data directory is unavailable",
+        )
+    })?;
+    let resource = bundled_resource_paths(app, kind)?;
+    let installer = app.state::<LanguageServiceState>().installer.clone();
+    let lookup = project_id.to_owned();
+    let catalog =
+        tauri::async_runtime::spawn_blocking(move || catalog_tinymist(kind, Some(&lookup)))
+            .await
+            .map_err(language_service_worker_error)??;
+    if let Some(choice) = catalog {
+        crate::typst_toolchain::tinymist::ensure_downloaded(&choice)
+            .await
+            .map_err(tinymist_install_error)?;
+    }
+    let project_id = project_id.to_owned();
+    tauri::async_runtime::spawn_blocking(move || {
+        launch_for(
+            &app_local_data,
+            &installer,
+            kind,
+            &project_id,
+            resource.as_ref(),
+        )
+    })
+    .await
+    .map_err(language_service_worker_error)?
+    .map(|launch| launch.executable)
 }
 
 fn bundled_resource_paths(
@@ -1271,8 +1434,16 @@ fn resolve_linked_workspace(project_id: &str) -> Result<PathBuf, LanguageService
     Ok(location.root)
 }
 
+#[cfg(test)]
 fn spawn_sidecar(
     launch: &server_runtime::ServerLaunch,
+) -> Result<SpawnedSession, LanguageServiceError> {
+    spawn_sidecar_with(launch, &[])
+}
+
+fn spawn_sidecar_with(
+    launch: &server_runtime::ServerLaunch,
+    environment: &[(&str, std::ffi::OsString)],
 ) -> Result<SpawnedSession, LanguageServiceError> {
     let mut command = tokio::process::Command::new(&launch.executable);
     command
@@ -1285,6 +1456,9 @@ fn spawn_sidecar(
         .stderr(Stdio::piped());
     if let Some(search_path) = &launch.search_path {
         command.env("PATH", search_path);
+    }
+    for (name, value) in environment {
+        command.env(name, value);
     }
     isolate_process_tree(&mut command);
     let mut child = command.spawn().map_err(|error| {
@@ -2348,6 +2522,187 @@ mod tests {
             }))
             .is_err()
         );
+    }
+
+    struct TypstProjects {
+        _directory: tempfile::TempDir,
+        root: PathBuf,
+        _env: std::sync::MutexGuard<'static, ()>,
+    }
+
+    impl TypstProjects {
+        fn new() -> Self {
+            let env = crate::paths::data_dir_env_lock();
+            let directory = tempfile::tempdir().unwrap();
+            std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+            Self {
+                root: crate::paths::oleafly_root().unwrap(),
+                _directory: directory,
+                _env: env,
+            }
+        }
+
+        fn project(&self, id: &str, pin: Option<&str>) {
+            let root = crate::paths::create_project_dir(id).unwrap();
+            std::fs::write(root.join("main.typ"), "= Hello\n").unwrap();
+            let mut meta = crate::project::ProjectMeta {
+                name: "Paper".into(),
+                main_doc: "main.typ".into(),
+                engine: "typst".into(),
+                ..crate::project::ProjectMeta::default()
+            };
+            meta.set_typst_version_pin(pin.map(str::to_owned));
+            crate::project::write_meta_at(&root.join("project.json"), &meta).unwrap();
+        }
+    }
+
+    impl Drop for TypstProjects {
+        fn drop(&mut self) {
+            std::env::remove_var("OLEAFLY_DATA_DIR");
+        }
+    }
+
+    fn mark_verified(choice: &crate::typst_toolchain::tinymist::CatalogTinymist) {
+        std::fs::create_dir_all(choice.binary.parent().unwrap()).unwrap();
+        std::fs::write(&choice.binary, b"fake tinymist").unwrap();
+        let metadata = std::fs::metadata(&choice.binary).unwrap();
+        let modified = metadata
+            .modified()
+            .unwrap()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap();
+        std::fs::write(
+            choice
+                .binary
+                .with_file_name(oleafly_core::typst_toolchain::INSTALLED_CACHE_FILE),
+            serde_json::to_vec(&json!({
+                "binary": choice.binary.file_name().unwrap().to_string_lossy(),
+                "binarySha256": choice.artifact.binary_sha256,
+                "size": metadata.len(),
+                "modifiedSecs": modified.as_secs(),
+                "modifiedNanos": modified.subsec_nanos(),
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn install_requests_may_name_the_project_whose_typst_picks_tinymist() {
+        let request = serde_json::from_value::<InstallLanguageServiceRequest>(json!({
+            "kind": "tinymist",
+            "projectId": "paper"
+        }))
+        .unwrap();
+        assert_eq!(request.project_id.as_deref(), Some("paper"));
+        assert_eq!(
+            serde_json::from_value::<InstallLanguageServiceRequest>(json!({ "kind": "texlab" }))
+                .unwrap()
+                .project_id,
+            None
+        );
+    }
+
+    #[test]
+    fn only_tinymist_for_a_project_off_the_bundled_minor_uses_a_catalog_build() {
+        let projects = TypstProjects::new();
+        projects.project("typst-bundled", Some("0.15.0"));
+        projects.project("typst-older", Some("0.13.1"));
+        projects.project("typst-default", None);
+
+        assert!(
+            catalog_tinymist(LanguageServiceKind::TexLab, Some("typst-older"))
+                .unwrap()
+                .is_none()
+        );
+        assert!(catalog_tinymist(LanguageServiceKind::Tinymist, None)
+            .unwrap()
+            .is_none());
+        assert!(
+            catalog_tinymist(LanguageServiceKind::Tinymist, Some("typst-bundled"))
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            catalog_tinymist(LanguageServiceKind::Tinymist, Some("typst-default"))
+                .unwrap()
+                .is_none()
+        );
+        let older = catalog_tinymist(LanguageServiceKind::Tinymist, Some("typst-older"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(older.version.to_string(), "0.13.30");
+        assert!(older.binary.starts_with(projects.root.join("toolchains")));
+        assert_eq!(
+            catalog_tinymist(LanguageServiceKind::Tinymist, Some("../escape"))
+                .unwrap_err()
+                .code,
+            LanguageServiceErrorCode::InvalidWorkspace
+        );
+    }
+
+    #[test]
+    fn the_install_status_reports_the_matched_tinymist_version_and_state() {
+        let projects = TypstProjects::new();
+        projects.project("typst-twelve", Some("0.12.0"));
+        let choice = catalog_tinymist(LanguageServiceKind::Tinymist, Some("typst-twelve"))
+            .unwrap()
+            .unwrap();
+        let missing = catalog_install_status(&choice);
+        assert_eq!(missing.kind, LanguageServiceKind::Tinymist);
+        assert_eq!(missing.version, "0.12.22");
+        assert_eq!(missing.state, LanguageServiceInstallState::Missing);
+
+        mark_verified(&choice);
+        let installed = catalog_install_status(&choice);
+        assert_eq!(installed.state, LanguageServiceInstallState::Installed);
+        assert_eq!(installed.message, None);
+    }
+
+    #[test]
+    fn starting_tinymist_for_an_older_typst_needs_the_matched_build() {
+        let projects = TypstProjects::new();
+        projects.project("typst-eleven", Some("0.11.1"));
+        let app_data = projects.root.join("app-data");
+        std::fs::create_dir_all(&app_data).unwrap();
+        let error = launch_for(
+            &app_data,
+            &InstallerState::default(),
+            LanguageServiceKind::Tinymist,
+            "typst-eleven",
+            None,
+        )
+        .unwrap_err();
+        assert_eq!(error.code, LanguageServiceErrorCode::SidecarSetupRequired);
+        assert_eq!(error.kind, Some(LanguageServiceKind::Tinymist));
+        assert_eq!(error.version.as_deref(), Some("0.11.32"));
+    }
+
+    #[test]
+    fn install_failures_keep_a_language_service_error_code() {
+        use crate::typst_toolchain::tinymist::{TinymistFailureKind, TinymistInstallFailure};
+        let cases = [
+            (
+                TinymistFailureKind::Download,
+                LanguageServiceErrorCode::DownloadFailed,
+            ),
+            (
+                TinymistFailureKind::Integrity,
+                LanguageServiceErrorCode::IntegrityFailure,
+            ),
+            (
+                TinymistFailureKind::Install,
+                LanguageServiceErrorCode::InstallFailed,
+            ),
+        ];
+        for (kind, code) in cases {
+            let error = tinymist_install_error(TinymistInstallFailure {
+                kind,
+                message: "offline".into(),
+            });
+            assert_eq!(error.code, code);
+            assert_eq!(error.kind, Some(LanguageServiceKind::Tinymist));
+        }
     }
 
     #[test]

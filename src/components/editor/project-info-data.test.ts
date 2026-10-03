@@ -142,6 +142,34 @@ describe("collectProjectInfo", () => {
     expect(snapshot.stats.words).toBe(3);
   });
 
+  it("counts Typst sources with the Typst rules in the TypeScript fallback", async () => {
+    openProject();
+    bridge.readDocumentSources.mockResolvedValue({
+      paths: ["main.typ", "chapters/one.tex"],
+      texts: ["= Root\nGrowth of 50% overall.\n", "Hidden 50% comment words"],
+      unreadable: [],
+    });
+
+    const snapshot = await collectProjectInfo();
+
+    expect(snapshot.stats.words).toBe(5);
+    expect(snapshot.stats.headers).toBe(1);
+  });
+
+  it("counts a Typst scratch buffer and selection with the Typst rules", async () => {
+    useFilesStore.setState({
+      projectId: null,
+      activePath: "scratch.typ",
+      files: { "scratch.typ": { content: "#set page(width: 5cm)\nUp 50% today.", dirty: true } },
+    });
+    bridge.selection = "#let x = 1\nUp 50% today";
+
+    const snapshot = await collectProjectInfo();
+
+    expect(snapshot.stats.words).toBe(2);
+    expect(snapshot.selectionWords).toBe(2);
+  });
+
   it("reports the selection word count alongside either path", async () => {
     openProject();
     bridge.selection = "one two three";

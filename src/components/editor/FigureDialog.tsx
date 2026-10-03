@@ -25,10 +25,21 @@ import {
 } from "@/components/editor/figure-import";
 import { insertFigureFromDialog, insertFigurePlaceholder } from "@/components/editor/latex-commands";
 import { applyFigureEdit } from "@/components/editor/figure-edit";
+import {
+  applyTypstFigureEdit,
+  insertTypstFigureFromDialog,
+  insertTypstFigurePlaceholder,
+  projectPathForTypstReference,
+  TYPST_FIGURE_PLACEMENTS,
+  typstImageReference,
+  type TypstFigurePlacement,
+} from "@/components/editor/typst-figure";
+import { sourceLanguageForPath } from "@/lib/document-engine";
 import { resolveVisualAssetUrl } from "@/components/editor/wysiwyg/asset-url";
 import { Spinner } from "@/components/ui/spinner";
 
 type WidthChoice = "quarter" | "half" | "threeQuarters" | "full" | "custom";
+type FigureLanguage = "latex" | "typst";
 
 const WIDTH_CHOICES: readonly WidthChoice[] = ["quarter", "half", "threeQuarters", "full", "custom"];
 const WIDTH_VALUES: Record<Exclude<WidthChoice, "custom">, string> = {
@@ -37,6 +48,16 @@ const WIDTH_VALUES: Record<Exclude<WidthChoice, "custom">, string> = {
   threeQuarters: String.raw`0.75\linewidth`,
   full: String.raw`\linewidth`,
 };
+const TYPST_WIDTH_VALUES: Record<Exclude<WidthChoice, "custom">, string> = {
+  quarter: "25%",
+  half: "50%",
+  threeQuarters: "75%",
+  full: "100%",
+};
+
+function widthValues(language: FigureLanguage) {
+  return language === "typst" ? TYPST_WIDTH_VALUES : WIDTH_VALUES;
+}
 
 interface FigureForm {
   width: WidthChoice;
@@ -46,6 +67,8 @@ interface FigureForm {
   labelEnabled: boolean;
   label: string;
   labelTouched: boolean;
+  alt: string;
+  placement: TypstFigurePlacement;
 }
 
 const INITIAL_FORM: FigureForm = {
@@ -56,6 +79,8 @@ const INITIAL_FORM: FigureForm = {
   labelEnabled: true,
   label: "",
   labelTouched: false,
+  alt: "",
+  placement: "none",
 };
 
 export function projectImagePaths(tree: readonly FileEntry[]): string[] {
@@ -65,15 +90,21 @@ export function projectImagePaths(tree: readonly FileEntry[]): string[] {
     .sort((left, right) => left.localeCompare(right));
 }
 
-export function figureWidthValue(form: Pick<FigureForm, "width" | "customWidth">): string | null {
-  if (form.width !== "custom") return WIDTH_VALUES[form.width];
+export function figureWidthValue(
+  form: Pick<FigureForm, "width" | "customWidth">,
+  language: FigureLanguage = "latex",
+): string | null {
+  if (form.width !== "custom") return widthValues(language)[form.width];
   const custom = form.customWidth.trim();
   return custom === "" ? null : custom;
 }
 
-export function widthChoiceFor(width: string | null): Pick<FigureForm, "width" | "customWidth"> {
+export function widthChoiceFor(
+  width: string | null,
+  language: FigureLanguage = "latex",
+): Pick<FigureForm, "width" | "customWidth"> {
   if (width === null) return { width: "custom", customWidth: "" };
-  for (const [choice, value] of Object.entries(WIDTH_VALUES)) {
+  for (const [choice, value] of Object.entries(widthValues(language))) {
     if (value === width) return { width: choice as WidthChoice, customWidth: "" };
   }
   return { width: "custom", customWidth: width };
@@ -144,16 +175,54 @@ function ImageGrid({
   );
 }
 
+function PlacementOptions({
+  form,
+  onChange,
+}: Readonly<{ form: FigureForm; onChange: (patch: Partial<FigureForm>) => void }>) {
+  const { t } = useTranslation(["common", "editor"]);
+  const labels: Record<TypstFigurePlacement, string> = {
+    none: t(($) => $.editor.figureDialog.placementNone),
+    auto: t(($) => $.editor.figureDialog.placementAuto),
+    top: t(($) => $.editor.figureDialog.placementTop),
+    bottom: t(($) => $.editor.figureDialog.placementBottom),
+  };
+  return (
+    <fieldset>
+      <legend className="mb-1.5 text-xs font-medium text-muted-foreground">
+        {t(($) => $.editor.figureDialog.placement)}
+      </legend>
+      <div className="flex flex-wrap gap-1">
+        {TYPST_FIGURE_PLACEMENTS.map((placement) => (
+          <Button
+            key={placement}
+            type="button"
+            size="xs"
+            variant={form.placement === placement ? "default" : "outline"}
+            aria-pressed={form.placement === placement}
+            data-testid={`figure-dialog-placement-${placement}`}
+            onClick={() => onChange({ placement })}
+          >
+            {labels[placement]}
+          </Button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function FigureOptions({
   form,
   onChange,
   imageOnly = false,
+  language = "latex",
 }: Readonly<{
   form: FigureForm;
   onChange: (patch: Partial<FigureForm>) => void;
   imageOnly?: boolean;
+  language?: FigureLanguage;
 }>) {
   const { t } = useTranslation(["common", "editor"]);
+  const typst = language === "typst";
   const widthLabels: Record<WidthChoice, string> = {
     quarter: t(($) => $.editor.figureDialog.widthQuarter),
     half: t(($) => $.editor.figureDialog.widthHalf),
@@ -185,7 +254,11 @@ function FigureOptions({
             className="mt-2 font-mono"
             value={form.customWidth}
             aria-label={t(($) => $.editor.figureDialog.customWidthLabel)}
-            placeholder={t(($) => $.editor.figureDialog.customWidthPlaceholder)}
+            placeholder={
+              typst
+                ? t(($) => $.editor.figureDialog.customWidthPlaceholderTypst)
+                : t(($) => $.editor.figureDialog.customWidthPlaceholder)
+            }
             onChange={(event) => onChange({ customWidth: event.target.value })}
           />
         )}
@@ -239,6 +312,21 @@ function FigureOptions({
         )}
       </div>
       )}
+      {typst && (
+        <div className="space-y-2">
+          <label htmlFor="figure-dialog-alt" className="text-sm">
+            {t(($) => $.editor.figureDialog.altLabel)}
+          </label>
+          <Input
+            id="figure-dialog-alt"
+            value={form.alt}
+            data-testid="figure-dialog-alt"
+            placeholder={t(($) => $.editor.figureDialog.altPlaceholder)}
+            onChange={(event) => onChange({ alt: event.target.value })}
+          />
+        </div>
+      )}
+      {typst && <PlacementOptions form={form} onChange={onChange} />}
     </div>
   );
 }
@@ -265,12 +353,34 @@ export function FigureDialog() {
   const [form, setForm] = useState<FigureForm>(INITIAL_FORM);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<FigureLanguage>("latex");
+  const [filePath, setFilePath] = useState<string | null>(null);
   const insertedRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
-    setSelected(edit?.path ?? null);
-    setForm(edit ? { ...INITIAL_FORM, ...widthChoiceFor(edit.width) } : INITIAL_FORM);
+    const activePath = useFilesStore.getState().activePath;
+    const typst = edit ? Boolean(edit.typst) : sourceLanguageForPath(activePath) === "typst";
+    setLanguage(typst ? "typst" : "latex");
+    setFilePath(activePath);
+    if (edit?.typst) {
+      const fields = edit.typst;
+      setSelected(projectPathForTypstReference(fields.path, activePath));
+      setForm({
+        ...INITIAL_FORM,
+        ...widthChoiceFor(fields.width, "typst"),
+        captionEnabled: fields.caption !== null,
+        caption: fields.caption ?? "",
+        labelEnabled: fields.label !== null,
+        label: fields.label ?? "",
+        labelTouched: true,
+        alt: fields.alt ?? "",
+        placement: fields.placement,
+      });
+    } else {
+      setSelected(edit?.path ?? null);
+      setForm(edit ? { ...INITIAL_FORM, ...widthChoiceFor(edit.width) } : INITIAL_FORM);
+    }
     setImporting(false);
     setError(null);
     insertedRef.current = false;
@@ -304,9 +414,42 @@ export function FigureDialog() {
     }
   };
 
+  const typstVersion = () => useFilesStore.getState().engine.typst_resolved?.version ?? null;
+
+  const insertTypst = (path: string) => {
+    const caption = form.captionEnabled ? form.caption : null;
+    const label = form.labelEnabled && form.label.trim() !== "" ? form.label.trim() : null;
+    const alt = form.alt.trim() === "" ? null : form.alt.trim();
+    const width = figureWidthValue(form, "typst");
+    setOpen(false);
+    const fields = edit?.typst;
+    if (edit && fields) {
+      const unchanged = projectPathForTypstReference(fields.path, filePath) === path;
+      applyTypstFigureEdit(
+        edit,
+        {
+          ...fields,
+          path: unchanged ? fields.path : typstImageReference(path, filePath),
+          width,
+          caption,
+          label,
+          alt,
+          placement: form.placement,
+        },
+        typstVersion(),
+      );
+      return;
+    }
+    insertTypstFigureFromDialog({ path, width, caption, label, alt, placement: form.placement }, filePath, typstVersion());
+  };
+
   const insert = () => {
     if (!selected) return;
     insertedRef.current = true;
+    if (language === "typst") {
+      insertTypst(selected);
+      return;
+    }
     if (edit) {
       setOpen(false);
       applyFigureEdit(edit, { path: selected, width: figureWidthValue(form) });
@@ -324,8 +467,23 @@ export function FigureDialog() {
   const placeholder = () => {
     insertedRef.current = true;
     setOpen(false);
-    insertFigurePlaceholder();
+    if (language === "typst") insertTypstFigurePlaceholder();
+    else insertFigurePlaceholder();
   };
+
+  const typstEdit = edit !== null && language === "typst";
+  let title = t(($) => $.editor.figureDialog.title);
+  let description = t(($) => $.editor.figureDialog.description);
+  let saveLabel = t(($) => $.editor.figureDialog.insert);
+  if (typstEdit) {
+    title = t(($) => $.editor.figureDialog.editFigureTitle);
+    description = t(($) => $.editor.figureDialog.editFigureDescription);
+    saveLabel = t(($) => $.editor.figureDialog.saveFigure);
+  } else if (edit) {
+    title = t(($) => $.editor.figureDialog.editTitle);
+    description = t(($) => $.editor.figureDialog.editDescription);
+    saveLabel = t(($) => $.editor.figureDialog.save);
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -337,14 +495,8 @@ export function FigureDialog() {
         }}
       >
         <DialogHeader className="border-b px-5 py-4 pr-12">
-          <DialogTitle className="text-sm leading-tight">
-            {edit ? t(($) => $.editor.figureDialog.editTitle) : t(($) => $.editor.figureDialog.title)}
-          </DialogTitle>
-          <DialogDescription className="text-xs">
-            {edit
-              ? t(($) => $.editor.figureDialog.editDescription)
-              : t(($) => $.editor.figureDialog.description)}
-          </DialogDescription>
+          <DialogTitle className="text-sm leading-tight">{title}</DialogTitle>
+          <DialogDescription className="text-xs">{description}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-5 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_15rem]">
           <section className="min-w-0">
@@ -375,7 +527,12 @@ export function FigureDialog() {
               </p>
             )}
           </section>
-          <FigureOptions form={form} onChange={patch} imageOnly={edit !== null} />
+          <FigureOptions
+            form={form}
+            onChange={patch}
+            imageOnly={edit !== null && language !== "typst"}
+            language={language}
+          />
         </div>
         <DialogFooter className="border-t px-5 py-3 sm:justify-between">
           {edit ? (
@@ -399,7 +556,7 @@ export function FigureDialog() {
               {t(($) => $.editor.figureDialog.cancel)}
             </Button>
             <Button type="button" size="sm" disabled={!selected} data-testid="figure-dialog-insert" onClick={insert}>
-              {edit ? t(($) => $.editor.figureDialog.save) : t(($) => $.editor.figureDialog.insert)}
+              {saveLabel}
             </Button>
           </div>
         </DialogFooter>

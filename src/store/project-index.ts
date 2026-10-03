@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { i18n } from "@/i18n";
 import type { ProjectIndex } from "@/lib/index/types";
+import { isHayagrivaPath } from "@/lib/citation/hayagriva";
+import {
+  acceptsBibliographyYaml,
+  referencedBibliographyYaml,
+} from "@/lib/project-intelligence/bibliography-yaml";
 import { lazyLegacyIndex } from "@/lib/project-intelligence/legacy-index";
 import { mergeLanguageServiceIntelligence } from "@/lib/project-intelligence/merge-language-service";
 import {
@@ -29,6 +34,7 @@ import {
   resetProjectSourcesCache,
 } from "@/lib/project-sources";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
 import { useFilesStore } from "@/store/files";
 
 const PROJECT_ANALYSIS_IDLE_MS = 300;
@@ -148,7 +154,7 @@ function treePaths(): string[] {
     .getState()
     .tree.filter((entry) => !entry.is_dir)
     .map((entry) => normalizeProjectPath(entry.path))
-    .filter((path): path is string => path !== null)
+    .filter((path): path is string => path !== null && !isVendoredTypstPackagePath(path))
     .sort();
 }
 
@@ -157,20 +163,61 @@ function currentKnownFiles(extraPath?: string): string[] {
   const normalizedExtra = extraPath
     ? normalizeProjectPath(extraPath)
     : null;
-  if (normalizedExtra) paths.add(normalizedExtra);
+  if (normalizedExtra && !isVendoredTypstPackagePath(normalizedExtra)) {
+    paths.add(normalizedExtra);
+  }
   return [...paths].sort((a, b) => Number(a > b) - Number(a < b));
 }
 
-function sourcePathsFromKnown(
+function candidatePathsFromKnown(
   knownFiles: readonly string[],
 ): string[] {
   return knownFiles.filter(isProjectIntelligencePath);
 }
 
+function sourcePathsFromKnown(
+  knownFiles: readonly string[],
+  texts: Readonly<Record<string, string>>,
+): string[] {
+  return candidatePathsFromKnown(knownFiles).filter(
+    (path) => !isHayagrivaPath(path) || texts[path] !== undefined,
+  );
+}
+
+function acceptsSourceText(
+  path: string,
+  text: string,
+  texts: Readonly<Record<string, string>>,
+): boolean {
+  return (
+    !isHayagrivaPath(path) ||
+    acceptsBibliographyYaml(text, () => referencedBibliographyYaml(texts).has(path))
+  );
+}
+
+function withBibliographyYaml(
+  texts: Readonly<Record<string, string>>,
+  yamlTexts: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const merged = { ...texts };
+  let referenced: Set<string> | null = null;
+  for (const [path, text] of Object.entries(yamlTexts)) {
+    const isReferenced = () => {
+      referenced ??= referencedBibliographyYaml(texts);
+      return referenced.has(path);
+    };
+    if (acceptsBibliographyYaml(text, isReferenced)) merged[path] = text;
+  }
+  return merged;
+}
+
 export function currentProjectSourcePaths(
   extraPath?: string,
 ): string[] {
-  return sourcePathsFromKnown(currentKnownFiles(extraPath));
+  return sourcePathsFromKnown(
+    currentKnownFiles(extraPath),
+    useIndexStore.getState().texts,
+  );
 }
 
 export function projectFilesystemEpoch(): number {
@@ -261,7 +308,7 @@ function upsertsForReset(
 ): ProjectFileUpsert[] {
   const readableByPath = new Map(explicitUpserts.map((file) => [file.file, file]));
   const resolved: ProjectFileUpsert[] = [];
-  for (const file of sourcePathsFromKnown(knownFiles)) {
+  for (const file of candidatePathsFromKnown(knownFiles)) {
     const explicit = readableByPath.get(file);
     if (explicit) {
       resolved.push(explicit);
@@ -364,7 +411,7 @@ function normalizedKnownSignature(paths: readonly string[]): string {
 export async function readProjectSources(
   projectId: string,
   paths: readonly string[],
-  options: { readonly diskForDirty?: boolean } = {},
+  options: { readonly diskForDirty?: boolean; readonly skipOversized?: boolean } = {},
 ): Promise<{
   texts: Record<string, string>;
   unreadable: Set<string>;
@@ -380,9 +427,30 @@ export async function readProjectSources(
       diskPaths.push(path);
     }
   }
-  const loaded = await readProjectSourcesBatch(projectId, diskPaths);
+  const loaded = await readProjectSourcesBatch(projectId, diskPaths, {
+    skipOversized: options.skipOversized ?? false,
+  });
   Object.assign(texts, loaded.texts);
   return { texts, unreadable: loaded.unreadable };
+}
+
+async function readIndexSources(
+  projectId: string,
+  paths: readonly string[],
+): Promise<{ texts: Record<string, string>; unreadable: Set<string> }> {
+  const loaded = await readProjectSources(
+    projectId,
+    paths.filter((path) => !isHayagrivaPath(path)),
+  );
+  const yaml = await readProjectSources(
+    projectId,
+    paths.filter(isHayagrivaPath),
+    { skipOversized: true },
+  );
+  return {
+    texts: withBibliographyYaml(loaded.texts, yaml.texts),
+    unreadable: loaded.unreadable,
+  };
 }
 
 export const useIndexStore = create<IndexStore>((set, get) => {
@@ -504,7 +572,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       },
     };
     workerKnownSourceFiles = new Set(
-      sourcePathsFromKnown(options.knownFiles),
+      sourcePathsFromKnown(options.knownFiles, analysisTexts),
     );
     stopAnalysisTimer();
     scheduledAnalysis = scheduled;
@@ -552,7 +620,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
     ]
       .filter((path) => !removedPaths.has(path))
       .sort((a, b) => Number(a > b) - Number(a < b));
-    const sourcePaths = new Set(sourcePathsFromKnown(knownFiles));
+    const sourcePaths = new Set(sourcePathsFromKnown(knownFiles, analysisTexts));
     const removals = [...workerKnownSourceFiles].filter(
       (path) => !sourcePaths.has(path),
     );
@@ -643,11 +711,10 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       }));
 
       const knownFiles = currentKnownFiles();
-      const sourcePaths = sourcePathsFromKnown(knownFiles);
       try {
-        const loaded = await readProjectSources(
+        const loaded = await readIndexSources(
           projectId,
-          sourcePaths,
+          candidatePathsFromKnown(knownFiles),
         );
         if (rebuildSuperseded(sequence, projectId, knownFiles)) {
           return;
@@ -682,8 +749,9 @@ export const useIndexStore = create<IndexStore>((set, get) => {
         const pathsToSend = reset
           ? Object.keys(loaded.texts)
           : changedPaths;
+        const sourcePaths = new Set(sourcePathsFromKnown(knownFiles, loaded.texts));
         const workerRemovals = [...workerKnownSourceFiles].filter(
-          (path) => !new Set(sourcePaths).has(path),
+          (path) => !sourcePaths.has(path),
         );
         scheduleAnalysis(projectId, {
           knownFiles,
@@ -737,6 +805,8 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       ensureProject(projectId);
       const current = get();
       if (current.texts[path] === text) return;
+      const accepted = acceptsSourceText(path, text, current.texts);
+      if (!accepted && current.texts[path] === undefined) return;
       const currentFileFallbackAllowed =
         current.intelligenceState.currentFileFallbackAllowed === true ||
         (!current.intelligenceState.stale &&
@@ -748,7 +818,8 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       externalContribution = null;
       unreadableFiles.delete(path);
       const texts = { ...current.texts, [path]: text };
-      scheduleCurrentTexts(projectId, [path], {
+      if (!accepted) delete texts[path];
+      scheduleCurrentTexts(projectId, accepted ? [path] : [], {
         texts,
         currentFileFallbackAllowed,
       });
@@ -785,13 +856,17 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       const texts = { ...current.texts };
       const content = texts[from];
       delete texts[from];
-      if (content !== undefined && isProjectIntelligencePath(to)) {
+      const moved =
+        content !== undefined &&
+        isProjectIntelligencePath(to) &&
+        acceptsSourceText(to, content, texts);
+      if (moved) {
         texts[to] = content;
       }
       const priorRevision = sourceRevisions.get(from);
       const targetRevision = sourceRevisions.get(to);
       nextSourceRevision(from);
-      if (content !== undefined && isProjectIntelligencePath(to)) {
+      if (moved) {
         sourceRevisions.set(
           to,
           Math.max(priorRevision ?? 0, targetRevision ?? 0) + 1,
@@ -804,9 +879,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       rebuildSequence++;
       scheduleCurrentTexts(
         projectId,
-        content !== undefined && isProjectIntelligencePath(to)
-          ? [to]
-          : [],
+        moved ? [to] : [],
         { removedPaths: [from], texts },
       );
     },

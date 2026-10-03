@@ -46,14 +46,14 @@ import type { ProjectInfo } from "@/lib/tauri";
 
 type Translate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
 type ProjectFlag = SearchFlag<ProjectInfo, QueryMeta>;
-type ProjectEngine = "tectonic" | "typst" | "markdown";
+type ProjectEngine = "latex" | "typst" | "markdown";
 
-export const PROJECT_ENGINES: readonly ProjectEngine[] = ["tectonic", "typst", "markdown"];
+export const PROJECT_ENGINES: readonly ProjectEngine[] = ["latex", "typst", "markdown"];
 export const PROJECT_KINDS = ["document", "image", "diagram"] as const;
 export const DEFAULT_PROJECT_SORT = "activity-desc";
 
 const ENGINE_LABELS: Readonly<Record<ProjectEngine, string>> = {
-  tectonic: "Tectonic",
+  latex: "LaTeX",
   typst: "Typst",
   markdown: "Markdown",
 };
@@ -71,7 +71,7 @@ export function projectEngine(project: Pick<ProjectInfo, "engine" | "main_doc">)
   ) {
     return "markdown";
   }
-  return "tectonic";
+  return "latex";
 }
 
 export function projectEngineLabel(project: Pick<ProjectInfo, "engine" | "main_doc">): string {
@@ -179,7 +179,7 @@ function valueFields(t: Translate, state: ProjectSearchState): SearchField<Proje
       meta: { label: t(($) => $.library.home.filters.engine), icon: icon(FileCode2) },
       type: "enum",
       options: [
-        { value: "tectonic", aliases: ["latex", "tex"], meta: { label: ENGINE_LABELS.tectonic, icon: icon(FileCode2) } },
+        { value: "latex", aliases: ["tectonic", "tex", "latexmk"], meta: { label: ENGINE_LABELS.latex, icon: icon(FileCode2) } },
         { value: "typst", aliases: ["typ"], meta: { label: ENGINE_LABELS.typst, icon: icon(FileCode2) } },
         { value: "markdown", aliases: ["md", "pandoc"], meta: { label: ENGINE_LABELS.markdown, icon: icon(FileCode2) } },
       ],

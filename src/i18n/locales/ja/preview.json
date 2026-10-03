@@ -94,7 +94,9 @@
     "exitFullscreen": "全画面を終了",
     "retryCompile": "コンパイルを再試行",
     "chooseEngine": "エンジンを選択…",
-    "installPackages_other": "{{count}} 件のファイルを探してインストール"
+    "installPackages_other": "{{count}} 件のファイルを探してインストール",
+    "downloadTypst": "Typst {{version}} をダウンロード",
+    "useTypst": "Typst {{version}} を使う"
   },
   "stale": {
     "badge": "古い",
@@ -103,8 +105,8 @@
     "explanation": "この PDF は現在のプロジェクトリビジョンを反映していません。",
     "revisionExplanation": "プロジェクトのリビジョン {{displayed}} を表示しています。現在のプロジェクトはリビジョン {{active}} です。",
     "noIdentity": "表示中の PDF には、現在のリビジョンに対する検証済みのコンパイル識別子がありません。",
-    "syncTexAvailable": "SyncTeX は、編集した箇所については最も近い未変更の行を使います。",
-    "syncTexUnavailable": "SyncTeX には最新のコンパイルが必要です。"
+    "syncTexAvailable": "ソース同期では、編集した箇所について最も近い未変更の行を使います。",
+    "syncTexUnavailable": "ソース同期には最新のコンパイルが必要です。"
   },
   "save": {
     "title": "PDF をプロジェクトに保存",
@@ -272,5 +274,33 @@
       "pageLabel": "{{total}} ページ中 {{page}} ページ目",
       "empty": "このページに読み取れるテキストは見つかりませんでした。"
     }
+  },
+  "presentation": {
+    "windowTitle": "プレゼンテーション",
+    "presenterTitle": "発表者ビュー",
+    "present": "発表",
+    "presentFromStart": "最初から発表",
+    "presentFromPage": "このページから発表",
+    "presentWithPresenter": "発表者ビューで発表",
+    "loading": "スライドを開いています",
+    "failed": "スライドを開けませんでした。プロジェクトをコンパイルしてから、もう一度お試しください。",
+    "close": "閉じる",
+    "slideLabel": "スライド {{page}} / {{total}}",
+    "current": "現在のスライド",
+    "next": "次のスライド",
+    "lastSlide": "これが最後のスライドです。",
+    "notes": "発表者ノート",
+    "notesLoading": "発表者ノートを読み込んでいます",
+    "noNotes": "このスライドに発表者ノートはありません。",
+    "elapsed": "経過時間",
+    "clock": "現在時刻",
+    "pause": "タイマーを一時停止",
+    "resume": "タイマーを再開",
+    "reset": "タイマーをリセット",
+    "previousAction": "前のスライド",
+    "nextAction": "次のスライド",
+    "end": "発表を終了",
+    "blank": "聴衆用の画面を非表示にしています。B を押すとスライドを表示します。",
+    "toggleBlank": "聴衆用の画面を非表示にする"
   }
 }

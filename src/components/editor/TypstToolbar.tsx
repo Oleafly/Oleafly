@@ -1,56 +1,101 @@
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  AtSign,
+  ArrowRight,
+  ArrowRightToLine,
+  Asterisk,
   Bold,
+  BookmarkPlus,
+  Braces,
   ChevronDown,
   Code,
+  Divide,
+  Hash,
   Image as ImageIcon,
+  ImagePlus,
+  Images,
   Italic,
   Link as LinkIcon,
   List,
   MoreHorizontal,
+  Package,
+  Pencil,
+  PenTool,
+  Quote,
   Redo2,
+  Rows3,
+  ScanSearch,
   Search,
+  SearchCode,
   Sigma,
+  SlidersHorizontal,
   SquareCode,
+  SquareSigma,
   Strikethrough,
   Type,
   Underline,
   Undo2,
 } from "lucide-react";
+import type { EditorView } from "@codemirror/view";
+import { MenuRow } from "@/components/ui/menu-row";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import {
   Divider,
   IconBtn,
+  WysiwygModeSwitch,
   btnControl,
   dividerControl,
 } from "@/components/editor/EditorToolbar";
 import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
+import { ProjectCitationPicker } from "@/components/editor/ProjectCitationPicker";
+import { SymbolPicker } from "@/components/editor/SymbolPicker";
+import { TableSizePicker } from "@/components/editor/TableSizePicker";
+import { TypstLabelPicker } from "@/components/editor/TypstLabelPicker";
 import {
   DROPDOWN_TRIGGER_WIDTH,
-  fitCount,
-  useAvailableWidth,
+  ICON_BUTTON_WIDTH,
   type ToolbarControl,
+  useFittedCount,
 } from "@/components/ui/toolbar-overflow";
-import { editorFind, editorRedo, editorUndo } from "@/components/editor/cm/controller";
+import { editorFind, editorRedo, editorUndo, getEditorView } from "@/components/editor/cm/controller";
+import { useEditorHistory } from "@/components/editor/history-signal";
 import {
   TYPST_HEADING_LEVELS,
+  addTypstLabel,
+  insertTypstAlignedMath,
   insertTypstBold,
   insertTypstBulletList,
   insertTypstCodeBlock,
+  insertTypstDisplayMath,
+  insertTypstFigure,
+  insertTypstFootnote,
+  insertTypstFraction,
   insertTypstHeading,
   insertTypstImage,
   insertTypstItalic,
   insertTypstLink,
   insertTypstMath,
+  insertTypstNumberedEquation,
   insertTypstNumberedList,
+  insertTypstQuote,
   insertTypstRawInline,
-  insertTypstReference,
   insertTypstStrikethrough,
+  insertTypstTable,
   insertTypstUnderline,
 } from "@/components/editor/typst-commands";
+import { imageToLatexAvailable, imageToTypst } from "@/features/image-to-latex";
+import { findReferences, goToDefinition, startRename } from "@/lib/index/nav";
 import { shortcut } from "@/lib/utils";
+import { openTypstPackages } from "@/components/typst-packages/open";
+import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
+import { goToSyncTex } from "@/features/synctex";
+import { openDiagramComposer } from "@/features/open-tool";
+import { useFilesStore } from "@/store/files";
+
+function withView(action: (view: EditorView) => void) {
+  const view = getEditorView();
+  if (view) action(view);
+}
 
 function TypstHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
@@ -119,26 +164,89 @@ function TypstListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   );
 }
 
+function TypstCodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
+  const { t } = useTranslation(["common", "editor"]);
+  return (
+    <Popover
+      ariaLabel={t(($) => $.editor.toolbar.codeIntelligence)}
+      triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
+      trigger={
+        variant === "bar" ? (
+          <>
+            <Braces className="size-4" />
+            <ChevronDown className="size-3" />
+          </>
+        ) : (
+          <>
+            <Braces className="size-4" />
+            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.code)}</span>
+            <ChevronDown className="size-3" />
+          </>
+        )
+      }
+    >
+      <PopoverItem onClick={() => withView(goToDefinition)}>
+        <ArrowRightToLine className="size-4" /> {t(($) => $.editor.toolbar.goToDefinition)}
+        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("F12")}</span>
+      </PopoverItem>
+      <PopoverItem onClick={() => withView(findReferences)}>
+        <SearchCode className="size-4" /> {t(($) => $.editor.toolbar.findReferences)}
+        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("⇧F12")}</span>
+      </PopoverItem>
+      <PopoverItem onClick={() => withView(startRename)}>
+        <Pencil className="size-4" /> {t(($) => $.editor.toolbar.renameSymbol)}
+        <span className="ml-auto text-[10px] text-muted-foreground">{shortcut("F2")}</span>
+      </PopoverItem>
+    </Popover>
+  );
+}
+
+function dropdownControl(
+  id: string,
+  render: (variant: "bar" | "menu") => ReactNode,
+  width = DROPDOWN_TRIGGER_WIDTH,
+): ToolbarControl {
+  return {
+    id,
+    width,
+    render: () => render("bar"),
+    renderMenu: () => <Fragment key={id}>{render("menu")}</Fragment>,
+  };
+}
+
 /**
  * Formatting bar for Typst documents. Typst has no visual editing surface, so
  * this is source-only: every control writes Typst markup at the cursor.
  */
-export function TypstToolbar() {
+export function TypstToolbar({
+  wysiwyg,
+  onToggleWysiwyg,
+}: Readonly<{ wysiwyg?: boolean; onToggleWysiwyg?: () => void }> = {}) {
   const { t } = useTranslation(["common", "editor"]);
+  const pdfSyncSupported = useFilesStore(
+    (s) =>
+      s.projectKind !== "image" &&
+      s.projectKind !== "diagram" &&
+      s.engineLoaded &&
+      s.engine.id === "typst" &&
+      s.engine.capabilities.supports_synctex,
+  );
+  const [visionReady, setVisionReady] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    void imageToLatexAvailable().then((ready) => {
+      if (active) setVisionReady(ready);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const controls = useMemo<ToolbarControl[]>(() => {
-    return [
-      {
-        id: "heading",
-        width: DROPDOWN_TRIGGER_WIDTH,
-        render: () => <TypstHeadingDropdown variant="bar" />,
-        renderMenu: () => <TypstHeadingDropdown key="heading" variant="menu" />,
-      },
-      {
-        id: "list",
-        width: DROPDOWN_TRIGGER_WIDTH,
-        render: () => <TypstListDropdown variant="bar" />,
-        renderMenu: () => <TypstListDropdown key="list" variant="menu" />,
-      },
+    const list: ToolbarControl[] = [
+      dropdownControl("heading", (variant) => <TypstHeadingDropdown variant={variant} />),
       dividerControl("divider-1"),
       btnControl(
         "bold",
@@ -161,32 +269,124 @@ export function TypstToolbar() {
         t(($) => $.editor.toolbar.strikethrough),
         insertTypstStrikethrough,
       ),
-      btnControl("code", Code, t(($) => $.editor.toolbar.inlineCode), insertTypstRawInline),
       dividerControl("divider-2"),
-      btnControl("math", Sigma, t(($) => $.editor.toolbar.math), insertTypstMath),
+      btnControl("code", Code, t(($) => $.editor.toolbar.inlineCode), insertTypstRawInline),
       btnControl("link", LinkIcon, t(($) => $.editor.toolbar.insertLink), insertTypstLink),
-      btnControl("reference", AtSign, t(($) => $.editor.toolbar.referenceALabel), insertTypstReference),
+      dropdownControl("cite", (variant) => <ProjectCitationPicker variant={variant} />, ICON_BUTTON_WIDTH),
+      dropdownControl("reference", (variant) => <TypstLabelPicker variant={variant} />, ICON_BUTTON_WIDTH),
+      btnControl("add-label", BookmarkPlus, t(($) => $.editor.toolbar.addLabel), () => void addTypstLabel()),
+      btnControl("footnote", Asterisk, t(($) => $.editor.toolbar.insertFootnote), insertTypstFootnote),
+      btnControl("quote", Quote, t(($) => $.editor.toolbar.insertBlockquote), insertTypstQuote),
       dividerControl("divider-3"),
-      btnControl("image", ImageIcon, t(($) => $.editor.toolbar.insertImage), insertTypstImage),
-      btnControl("code-block", SquareCode, t(($) => $.editor.toolbar.codeBlock), insertTypstCodeBlock),
+      btnControl("figure", ImageIcon, t(($) => $.editor.toolbar.insertFigure), () => void insertTypstFigure()),
+      {
+        id: "table",
+        width: ICON_BUTTON_WIDTH,
+        render: () => <TableSizePicker onPick={(rows, cols) => void insertTypstTable(rows, cols)} />,
+        renderMenu: () => (
+          <TableSizePicker key="table" menuRow onPick={(rows, cols) => void insertTypstTable(rows, cols)} />
+        ),
+      },
+      btnControl("image", Images, t(($) => $.editor.toolbar.insertImage), insertTypstImage),
+      btnControl("diagram", PenTool, t(($) => $.editor.toolbar.drawDiagram), () => void openDiagramComposer("typst")),
     ];
-  }, [t]);
 
-  const { containerRef, availableWidth } = useAvailableWidth();
-  const visibleCount = fitCount(controls, availableWidth);
+    if (visionReady) {
+      list.push({
+        id: "image-to-typst",
+        width: ICON_BUTTON_WIDTH,
+        render: () => (
+          <IconBtn
+            onClick={() => imageInputRef.current?.click()}
+            title={t(($) => $.editor.toolbar.imageToTypstTooltip)}
+          >
+            <ImagePlus data-testid="image-to-typst" className="size-4" />
+          </IconBtn>
+        ),
+        renderMenu: () => (
+          <MenuRow
+            key="image-to-typst"
+            icon={<ImagePlus className="size-4" />}
+            label={t(($) => $.editor.toolbar.imageToTypst)}
+            onClick={() => imageInputRef.current?.click()}
+          />
+        ),
+      });
+    }
+
+    list.push(
+      dividerControl("divider-4"),
+      dropdownControl("list", (variant) => <TypstListDropdown variant={variant} />),
+      btnControl("math", Sigma, t(($) => $.editor.toolbar.math), insertTypstMath),
+      btnControl("display-math", SquareSigma, t(($) => $.editor.toolbar.displayMath), insertTypstDisplayMath),
+      btnControl(
+        "numbered-equation",
+        Hash,
+        t(($) => $.editor.toolbar.numberedEquation),
+        () => void insertTypstNumberedEquation(),
+      ),
+      btnControl("aligned-equations", Rows3, t(($) => $.editor.toolbar.alignedEquations), insertTypstAlignedMath),
+      btnControl(
+        "fraction",
+        Divide,
+        t(($) => $.editor.toolbar.fraction),
+        insertTypstFraction,
+        t(($) => $.editor.toolbar.insertFraction),
+      ),
+      dividerControl("divider-5"),
+      {
+        id: "symbols",
+        width: ICON_BUTTON_WIDTH,
+        render: () => <SymbolPicker language="typst" />,
+        renderMenu: () => <SymbolPicker key="symbols" menuRow language="typst" />,
+      },
+      btnControl("code-block", SquareCode, t(($) => $.editor.toolbar.codeBlock), insertTypstCodeBlock),
+      dropdownControl("code-intel", (variant) => <TypstCodeIntelDropdown variant={variant} />),
+    );
+    return list;
+  }, [t, visionReady]);
+
+  const { containerRef, visibleCount } = useFittedCount(controls);
+  const history = useEditorHistory();
   const visibleControls = controls.slice(0, visibleCount);
   const overflowControls = controls.slice(visibleCount);
 
   return (
-    <div className="flex h-9 items-center gap-0.5 border-b px-2">
-      <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
+    <div data-testid="typst-toolbar" className="flex h-9 items-center gap-0.5 border-b px-2">
+      {onToggleWysiwyg ? (
+        <>
+          <WysiwygModeSwitch
+            wysiwyg={wysiwyg ?? false}
+            onToggle={onToggleWysiwyg}
+            secondLabel={t(($) => $.editor.toolbar.visual)}
+            data-tour="wysiwyg-toggle"
+          />
+          <Divider />
+        </>
+      ) : null}
+      <IconBtn onClick={editorUndo} disabled={!history.canUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
         <Undo2 className="size-4" />
       </IconBtn>
-      <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
+      <IconBtn onClick={editorRedo} disabled={!history.canRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
         <Redo2 className="size-4" />
       </IconBtn>
 
       <Divider />
+
+      {visionReady && (
+        <input
+          ref={imageInputRef}
+          data-testid="image-to-typst-input"
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) void imageToTypst(file);
+          }}
+        />
+      )}
 
       <div ref={containerRef} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden">
         {visibleControls.map((control) => (
@@ -205,10 +405,33 @@ export function TypstToolbar() {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        <IconBtn onClick={openTypstPackages} title={t(($) => $.editor.toolbar.typstPackages)}>
+          <Package className="size-4" />
+        </IconBtn>
+        <IconBtn
+          onClick={() => useTypstDocumentPanelStore.getState().openPanel("insights")}
+          title={t(($) => $.editor.typstInsights.title)}
+        >
+          <ScanSearch data-testid="typst-insights-button" className="size-4" />
+        </IconBtn>
+        <IconBtn
+          onClick={() => useTypstDocumentPanelStore.getState().openPanel("settings")}
+          title={t(($) => $.editor.typstSettings.title)}
+        >
+          <SlidersHorizontal data-testid="typst-settings-button" className="size-4" />
+        </IconBtn>
         <ProjectInfoButton surface="source" />
         <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>
           <Search className="size-4" />
         </IconBtn>
+        {pdfSyncSupported && (
+          <>
+            <Divider />
+            <IconBtn onClick={goToSyncTex} title={t(($) => $.editor.toolbar.goToPdfTypst)}>
+              <ArrowRight className="size-4" />
+            </IconBtn>
+          </>
+        )}
       </div>
     </div>
   );

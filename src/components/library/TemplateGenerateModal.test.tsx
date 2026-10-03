@@ -261,9 +261,43 @@ describe("TemplateGenerateModal result phase", () => {
     ).toBeInTheDocument();
   });
 
-  it("explains that a non-LaTeX engine has no preview", async () => {
+  it("renders the compiled preview of a Typst draft", async () => {
+    await runGeneration({ engine: "typst", mainDoc: "main.typ", source: "= Title" });
+    expect(compileGeneratedTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({ engine: "typst" }),
+    );
+    expect(
+      screen.getByAltText(enLibrary.generate.previewAlt),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(enLibrary.generate.compileWarning),
+    ).not.toBeInTheDocument();
+  });
+
+  it("warns when a Typst draft failed to compile", async () => {
+    compileGeneratedTemplate.mockResolvedValue({
+      png: null,
+      log: "main.typ:2:9: error: unclosed delimiter",
+    });
+    await runGeneration({ engine: "typst", mainDoc: "main.typ", source: "= Title" });
+    expect(
+      screen.getByText(enLibrary.generate.compileWarning),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("template-generate-view-preview"));
+    expect(
+      screen.getByText(enLibrary.generate.compileFailed),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(enLibrary.generate.previewUnsupported),
+    ).not.toBeInTheDocument();
+  });
+
+  it("explains that a Markdown draft has no preview", async () => {
     compileGeneratedTemplate.mockResolvedValue({ png: null, log: "" });
-    await runGeneration({ engine: "typst" });
+    await runGeneration({ engine: "markdown", mainDoc: "main.md", source: "# Title" });
+    expect(
+      screen.queryByText(enLibrary.generate.compileWarning),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId("template-generate-view-preview"));
     expect(
       screen.getByText(enLibrary.generate.previewUnsupported),

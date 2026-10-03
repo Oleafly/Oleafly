@@ -59,6 +59,8 @@
       "startingAndInitializing": "Démarrage et initialisation du service de langage du projet.",
       "stopTimeout": "Le processus précédent du service de langage ne s'est pas arrêté à temps. Réessayez pour le rétablir.",
       "synchronizedAndReady": "Le service de langage est synchronisé et prêt.",
+      "tinymistDownloadFailed": "Tinymist {{version}} n'a pas pu être téléchargé. Oleafly va réessayer.",
+      "tinymistDownloading": "Téléchargement de Tinymist {{version}} pour correspondre à la version de Typst de ce projet.",
       "transportClosed": "La connexion au service de langage s'est fermée de façon inattendue. Réessayez pour vous reconnecter.",
       "versionMismatch": "{{kind}} {{expected}} était attendu, mais l'installation a signalé {{reported}}."
     }
@@ -139,7 +141,8 @@
     "packageOption": "option de {{name}}",
     "keyvalKey": "clé \\{{command}}",
     "duplicateCount": "doublon ({{count}})",
-    "duplicateIndex": "doublon {{index}}/{{total}}"
+    "duplicateIndex": "doublon {{index}}/{{total}}",
+    "typstBinding": "liaison Typst"
   },
   "token": {
     "citation": "Citation",

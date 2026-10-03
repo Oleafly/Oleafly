@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Default capabilities for the Oleafly main, update, and preview windows.",
-  "windows": ["main", "update", "preview"],
+  "description": "Default capabilities for the Oleafly main, update, preview, and presentation windows.",
+  "windows": ["main", "update", "preview", "presentation", "presenter"],
   "permissions": [
     "core:default",
     "core:webview:allow-create-webview-window",

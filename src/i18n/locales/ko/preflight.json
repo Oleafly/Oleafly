@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "대체 텍스트가 없는 이미지",
-      "detail": "이 이미지에는 설명이 담긴 대체 텍스트가 없어 화면 낭독기가 내용을 전달할 수 없습니다. 예를 들어 \\includegraphics[alt={A headshot of the author}]{...}처럼 설명을 넣으세요. 순전히 장식용 이미지는 아티팩트로 표시하세요."
+      "detail": "이 이미지에는 설명이 담긴 대체 텍스트가 없어 화면 낭독기가 내용을 전달할 수 없습니다. 예를 들어 \\includegraphics[alt={A headshot of the author}]{...}처럼 설명을 넣으세요. 순전히 장식용 이미지는 아티팩트로 표시하세요.",
+      "detailTypst": "이 이미지에는 대체 텍스트가 없어 화면 낭독기가 내용을 전달할 수 없습니다. 예를 들어 #image(\"chart.png\", alt: \"Bar chart of yearly sales\")처럼 설명을 넣으세요.",
+      "detailTypstFigure": "이 이미지에는 대체 텍스트가 없어 화면 낭독기가 내용을 전달할 수 없습니다. 예를 들어 #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")처럼 이미지나 이미지를 담은 그림에 설명을 넣으세요."
     },
     "link-text": {
       "title": "내용을 알 수 없는 링크 텍스트",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "PDF 제목이 없습니다",
-      "detail": "PDF 메타데이터에 제목이 없습니다. 보조 기술과 브라우저는 이 제목으로 문서를 안내합니다. 예를 들어 hyperref로 \\hypersetup{pdftitle={Your Name, CV}}처럼 지정하세요."
+      "detail": "PDF 메타데이터에 제목이 없습니다. 보조 기술과 브라우저는 이 제목으로 문서를 안내합니다. 예를 들어 hyperref로 \\hypersetup{pdftitle={Your Name, CV}}처럼 지정하세요.",
+      "detailTypst": "PDF 메타데이터에 제목이 없습니다. 보조 기술과 브라우저는 이 제목으로 문서를 안내합니다. #set document(title: \"Your title\")로 지정하거나 템플릿에 제목을 넘기세요."
     },
     "heading-skip": {
       "title": "제목 단계를 건너뛰었습니다",
@@ -269,11 +272,16 @@
     },
     "refs-undefined-cite": {
       "title": "인용 \"{{key}}\"이(가) 어떤 .bib에도 없습니다",
-      "detail": "이 인용 키를 불러온 참고문헌에서 찾지 못해 PDF에 [?]로 표시됩니다. 키를 확인하거나 .bib에 항목을 추가하세요(인용 추가 기능으로 가져올 수 있습니다)."
+      "detail": "이 인용 키를 불러온 참고문헌에서 찾지 못해 PDF에 [?]로 표시됩니다. 키를 확인하거나 .bib에 항목을 추가하세요(인용 추가 기능으로 가져올 수 있습니다).",
+      "titleTypst": "인용 \"{{key}}\"이(가) 참고문헌에 없습니다",
+      "detailTypst": "이 키가 프로젝트에서 불러오는 어떤 참고문헌 파일에도 없어 컴파일이 실패합니다. 키를 확인하거나 .bib 또는 Hayagriva .yml 파일에 항목을 추가하세요."
     },
     "refs-undefined-ref": {
       "title": "\"{{label}}\" 참조에 대응하는 \\label이 없습니다",
-      "detail": "이 상호 참조가 정의되지 않은 레이블을 가리켜 PDF에 ??로 표시됩니다. 레이블 이름을 확인하거나 빠진 \\label을 추가하세요."
+      "detail": "이 상호 참조가 정의되지 않은 레이블을 가리켜 PDF에 ??로 표시됩니다. 레이블 이름을 확인하거나 빠진 \\label을 추가하세요.",
+      "titleTypst": "\"{{label}}\"(이)라는 이름의 레이블이나 항목이 없습니다",
+      "detailTypst": "Typst는 여기서 컴파일을 멈춥니다. 철자를 확인하거나 빠진 <label> 또는 참고문헌 항목을 추가하세요.",
+      "detailTypstPackage": "프로젝트에 이 이름을 가진 레이블이나 참고문헌 항목이 없습니다. 용어집 항목처럼 패키지가 문서를 컴파일하는 동안 레이블을 만들 수도 있습니다. 컴파일 로그에 이 문제가 보고되면 철자를 확인하세요."
     },
     "refs-duplicate-label": {
       "title": "중복된 레이블 \"{{label}}\"",
@@ -283,11 +291,14 @@
       "titleImage": "이미지를 찾을 수 없음: {{file}}",
       "detailImage": "이 \\includegraphics가 프로젝트에 없는 파일을 가리켜 그림이 빠지게 됩니다. 파일 이름과 경로를 확인하세요.",
       "titleInclude": "포함한 파일을 찾을 수 없음: {{file}}",
-      "detailInclude": "이 \\input 또는 \\include가 프로젝트에 없는 파일을 가리킵니다. 파일 이름과 경로를 확인하세요."
+      "detailInclude": "이 \\input 또는 \\include가 프로젝트에 없는 파일을 가리킵니다. 파일 이름과 경로를 확인하세요.",
+      "detailImageTypst": "이 이미지 경로와 일치하는 프로젝트 파일이 없어 컴파일이 실패합니다. Typst는 경로를 파일 기준 상대 경로로 읽고, /로 시작하면 프로젝트 루트 기준으로 읽습니다.",
+      "detailIncludeTypst": "이 #include 또는 #import 경로와 일치하는 프로젝트 파일이 없어 컴파일이 실패합니다. 파일 이름과 경로를 확인하세요."
     },
     "refs-bib-missing": {
       "title": "참고문헌 파일을 찾을 수 없음: {{file}}",
-      "detail": "이 \\bibliography 또는 \\addbibresource가 프로젝트에 없는 파일을 가리켜 모든 인용이 [?]로 표시됩니다. 파일 이름을 확인하거나 참고문헌 라이브러리를 가져와 파일을 만드세요."
+      "detail": "이 \\bibliography 또는 \\addbibresource가 프로젝트에 없는 파일을 가리켜 모든 인용이 [?]로 표시됩니다. 파일 이름을 확인하거나 참고문헌 라이브러리를 가져와 파일을 만드세요.",
+      "detailTypst": "이 #bibliography 호출이 프로젝트에 없는 파일을 가리켜 컴파일이 실패합니다. 파일 이름을 확인하거나 참고문헌 라이브러리를 가져와 파일을 만드세요."
     },
     "refs-duplicate-bib": {
       "title": "중복된 참고문헌 항목: {{keys}}",
@@ -330,7 +341,8 @@
     },
     "privacy-blind-author": {
       "title": "블라인드 심사 소스에 저자 신원이 남아 있습니다",
-      "detail": "소스에 익명 처리되지 않은 저자, 소속, 이메일, 주소 또는 감사의 글 필드가 있습니다. 발표처의 익명 심사 모드를 써서 신원이 드러나는 내용을 바꾸세요."
+      "detail": "소스에 익명 처리되지 않은 저자, 소속, 이메일, 주소 또는 감사의 글 필드가 있습니다. 발표처의 익명 심사 모드를 써서 신원이 드러나는 내용을 바꾸세요.",
+      "detailTypst": "소스에서 문서나 템플릿에 저자 이름, 이메일, 소속을 지정하고 있습니다. 이를 제거하거나 템플릿을 익명 모드로 바꾸세요."
     },
     "privacy-blind-acknowledgements": {
       "title": "감사의 글에서 저자가 드러날 수 있습니다",
@@ -359,15 +371,20 @@
     "submission-document-class": {
       "title": "{{profile}} 문서 클래스가 쓰이지 않았습니다",
       "detail": "이 프로필은 {{expected}}을(를) 기대하지만 프로젝트는 {{actual}}을(를) 씁니다. 발표처의 최신 공식 템플릿에서 시작하세요.",
-      "detailNoClass": "이 프로필은 {{expected}}을(를) 기대하지만 문서 클래스를 찾지 못했습니다. 발표처의 최신 공식 템플릿에서 시작하세요."
+      "detailNoClass": "이 프로필은 {{expected}}을(를) 기대하지만 문서 클래스를 찾지 못했습니다. 발표처의 최신 공식 템플릿에서 시작하세요.",
+      "titleTypst": "{{profile}} 템플릿이 쓰이지 않았습니다",
+      "detailTypst": "이 프로필은 {{expected}} 같은 Typst 템플릿을 기대하지만 프로젝트는 {{actual}}을(를) 가져옵니다. 그 템플릿 중 하나에서 시작하세요.",
+      "detailNoTemplateTypst": "이 프로필은 {{expected}} 같은 Typst 템플릿을 기대하지만 프로젝트가 가져오는 템플릿이 없습니다. 그 템플릿 중 하나에서 시작하세요."
     },
     "submission-no-abstract": {
       "title": "초록을 찾지 못했습니다",
-      "detail": "이 출판 프로필은 표준 abstract 환경에 초록이 있기를 기대합니다. 초록을 추가하거나 해당 발표처가 요구하지 않는지 확인하세요."
+      "detail": "이 출판 프로필은 표준 abstract 환경에 초록이 있기를 기대합니다. 초록을 추가하거나 해당 발표처가 요구하지 않는지 확인하세요.",
+      "detailTypst": "이 출판 프로필은 초록을 기대합니다. abstract: [Your abstract]처럼 템플릿에 넘기거나 Abstract 제목을 추가하세요."
     },
     "submission-no-keywords": {
       "title": "출판용 키워드를 찾지 못했습니다",
-      "detail": "{{profile}} 프로필은 표준 템플릿 명령이나 환경으로 작성한 키워드를 기대합니다."
+      "detail": "{{profile}} 프로필은 표준 템플릿 명령이나 환경으로 작성한 키워드를 기대합니다.",
+      "detailTypst": "{{profile}} 프로필은 키워드를 기대합니다. keywords: (\"one\", \"two\")나 index-terms: (\"one\", \"two\")처럼 템플릿에 넘기세요."
     },
     "submission-figure-format": {
       "title": "지원되지 않는 그림 형식: {{file}}",
@@ -375,7 +392,8 @@
     },
     "submission-placeholder": {
       "title": "원고에 초안 자리 표시자가 남아 있습니다",
-      "detail": "소스에 TODO, TBD, FIXME, 임시 문구 또는 물음표 표시가 있습니다. 최종 제출본을 만들기 전에 각 위치를 확인하세요."
+      "detail": "소스에 TODO, TBD, FIXME, 임시 문구 또는 물음표 표시가 있습니다. 최종 제출본을 만들기 전에 각 위치를 확인하세요.",
+      "detailTypst": "문서에서 아직 #lorem을 호출하거나 임시 문구가 남아 있습니다. 최종 제출 전에 바꾸세요."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}}은(는) 요구 버전보다 낮습니다",
@@ -404,6 +422,34 @@
     "submission-font-inspection-incomplete": {
       "title": "일부 글꼴 포함 여부를 확인하지 못했습니다",
       "detail": "프리플라이트가 {{fonts}}의 포함 상태를 확인하지 못했습니다. 발표처의 공식 PDF 검사 도구로 확인하세요."
+    },
+    "empty-heading": {
+      "title": "빈 제목",
+      "detail": "이 제목에는 텍스트가 없습니다. 화면 낭독기는 이를 목차의 빈 항목으로 읽습니다. 제목 텍스트를 넣거나 이 제목을 제거하세요."
+    },
+    "todo-in-text": {
+      "title": "본문에 남은 초안 메모",
+      "detail": "이 메모는 본문의 일부라서 PDF에 인쇄됩니다. 해결하거나 // 주석으로 바꾸세요."
+    },
+    "no-author": {
+      "title": "문서 저자 없음",
+      "detail": "PDF 메타데이터에 저자가 없습니다. #set document(author: \"Your Name\")로 추가하거나 템플릿에 저자를 넘기세요. 익명 심사용이라면 비워 두세요."
+    },
+    "privacy-local-path": {
+      "title": "이 컴퓨터의 경로: {{path}}",
+      "detail": "이 경로는 프로젝트 밖의 폴더를 가리킵니다. 사용자 이름이 드러날 수 있고, 다른 컴퓨터에서는 빌드가 실패합니다. 파일을 프로젝트 안으로 옮기고 상대 경로를 쓰세요."
+    },
+    "privacy-blind-email": {
+      "title": "{{file}}에 있는 이메일 주소",
+      "detail": "블라인드 심사 중에 이메일 주소로 저자가 드러날 수 있습니다. 제거하거나 익명 자리 표시자로 바꾸세요."
+    },
+    "refs-no-bibliography": {
+      "title": "참고문헌 없는 인용",
+      "detail": "문서가 자료를 인용하지만 #bibliography를 호출하지 않아 Typst가 인용을 처리할 수 없습니다. 참고문헌 목록이 들어갈 자리에 #bibliography(\"refs.bib\")를 추가하세요."
+    },
+    "submission-large-image": {
+      "title": "매우 큰 이미지: {{file}}",
+      "detail": "이 이미지는 {{limit}}을(를) 넘습니다. 큰 이미지는 컴파일을 느리게 하고 PDF를 키웁니다. 업로드 크기를 제한하는 발표처도 있습니다. 압축하거나 인쇄되는 크기로 내보내세요."
     }
   },
   "lens": {
@@ -620,5 +666,15 @@
     "compileTagged": "태그를 켜고 컴파일해 확인",
     "compileTaggedWarning": "시스템 LuaLaTeX는 로컬 파일을 읽을 수 있습니다. 신뢰하는 프로젝트에서만 실행하세요.",
     "noEngine": "앱에서 태그된 PDF를 만들려면 설정의 LaTeX 엔진에서 엔진을 켜세요. 아니면 준비된 소스를 TeX Live 2025 이상의 pdfLaTeX나 LuaLaTeX로 직접 컴파일하세요."
+  },
+  "typstStandards": {
+    "title": "PDF 표준",
+    "intro": "Typst는 보존용 PDF와 접근성 있는 PDF를 직접 만듭니다. 표준을 고른 다음 PDF를 내보내세요.",
+    "standard": "표준",
+    "export": "PDF 내보내기",
+    "tagged": "Typst {{version}}은(는) 모든 PDF에 화면 낭독기용 태그를 넣으므로 태그용 컴파일을 따로 할 필요가 없습니다.",
+    "untagged": "Typst {{version}}은(는) PDF에 화면 낭독기용 태그를 넣지 않습니다. Typst 0.14 이상은 태그를 넣습니다.",
+    "none": "Typst {{version}}은(는) PDF 표준을 지원하지 않습니다. 컴파일 메뉴에서 Typst 0.12 이상을 고르세요.",
+    "uaNote": "PDF/UA-1에는 문서 제목과 모든 이미지의 대체 텍스트가 필요합니다."
   }
 }

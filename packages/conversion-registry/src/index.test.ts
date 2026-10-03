@@ -114,6 +114,52 @@ describe("conversion registry invariants", () => {
   });
 });
 
+describe("Typst routes match what the Tools page and exports ship", () => {
+  it("lists every Typst converter the Tools page offers", () => {
+    for (const [id, source, target, direction] of [
+      ["csv-to-typst", "csv", "typst", "tool"],
+      ["html-to-typst", "html", "typst", "import"],
+      ["docx-to-typst", "docx", "typst", "import"],
+      ["equation-to-typst", "equation", "typst", "tool"],
+      ["mermaid-to-typst", "mermaid", "typst", "tool"],
+      ["arxiv-to-typst", "arxiv", "typst", "tool"],
+      ["image-to-typst", "image", "typst", "tool"],
+      ["pdf-to-typst", "pdf", "typst", "tool"],
+      ["typst-to-docx", "typst", "docx", "export"],
+      ["typst-to-html", "typst", "html", "export"],
+      ["typst-to-markdown", "typst", "markdown", "import"],
+      ["typst-to-latex", "typst", "latex", "import"],
+    ] as const) {
+      expect(route(id), id).toMatchObject({ source, target, direction, status: "available" });
+      expect(route(id).surface, id).toContain("Tools page");
+    }
+  });
+
+  it("describes the engines that actually run each Typst converter", () => {
+    expect(route("equation-to-typst").engine).toBe("internal");
+    expect(route("mermaid-to-typst").engine).toBe("internal");
+    expect(route("arxiv-to-typst").engine).toBe("pandoc");
+    expect(route("csv-to-typst").engine).toBe("internal");
+    expect(route("csv-to-typst").extensions).toEqual(["csv", "tsv", "xlsx", "xls"]);
+    expect(route("arxiv-to-typst").pandoc).toEqual({
+      from: "latex",
+      to: "typst",
+      flags: ["--standalone", "--number-sections", "--verbose"],
+    });
+  });
+
+  it("keeps Typst exports to the formats the backend allows", () => {
+    const typst = exportRoutesFor("typst", ["pdf", "tex", "docx", "html", "md", "txt", "pptx", "epub"]);
+    expect(typst.map((candidate) => candidate.id)).toEqual([
+      "typst-to-pdf",
+      "typst-to-latex",
+      "typst-to-docx",
+      "typst-to-html",
+      "typst-to-markdown",
+    ]);
+  });
+});
+
 describe("docs/conversion-matrix.md stays generated", () => {
   it("matches the committed file", () => {
     const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");

@@ -622,6 +622,7 @@ fn project_text_files(root: &Path) -> Result<Vec<PathBuf>, String> {
             if kind.is_dir() {
                 if name.starts_with('.')
                     || matches!(name.as_ref(), "build" | "node_modules" | "target")
+                    || (dir == root && name == crate::typst_packages::VENDOR_DIR)
                 {
                     continue;
                 }
@@ -1449,6 +1450,24 @@ mod tests {
         )
         .unwrap();
         assert!(plan_project(dir.path(), "refs.bib").is_err());
+    }
+    #[test]
+    fn vendored_typst_packages_are_never_read_or_rewritten() {
+        let dir = tempfile::tempdir().unwrap();
+        let package = dir.path().join("typst-packages/preview/cetz/0.5.2");
+        std::fs::create_dir_all(&package).unwrap();
+        std::fs::write(package.join("lib.typ"), "@old").unwrap();
+        std::fs::write(package.join("refs.bib"), article("old", "")).unwrap();
+        std::fs::create_dir_all(dir.path().join("chapters/typst-packages")).unwrap();
+        std::fs::write(dir.path().join("chapters/typst-packages/notes.typ"), "@old").unwrap();
+        std::fs::write(dir.path().join("main.typ"), "@old").unwrap();
+        let mut files: Vec<String> = project_text_files(dir.path())
+            .unwrap()
+            .iter()
+            .map(|path| crate::project::rel_slash(dir.path(), path))
+            .collect();
+        files.sort();
+        assert_eq!(files, ["chapters/typst-packages/notes.typ", "main.typ"]);
     }
     #[cfg(unix)]
     #[test]

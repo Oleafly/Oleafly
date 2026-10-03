@@ -54,6 +54,33 @@ fn auth_requires_exact_bearer_token() {
 }
 
 #[test]
+fn instructions_describe_every_document_engine() {
+    let instructions = super::INSTRUCTIONS;
+    for engine in ["LaTeX", "Typst", "Markdown"] {
+        assert!(instructions.contains(engine), "{engine}: {instructions}");
+    }
+    assert!(!instructions.contains("LaTeX editor"), "{instructions}");
+    assert!(instructions.contains("get_status"), "{instructions}");
+}
+
+#[test]
+fn instructions_offer_figure_tools_to_latex_and_typst() {
+    let instructions = super::INSTRUCTIONS;
+    assert!(
+        instructions.contains("preview_figure and insert_figure work in LaTeX and Typst projects"),
+        "{instructions}"
+    );
+    assert!(
+        instructions.contains("load_image works in any project"),
+        "{instructions}"
+    );
+    assert!(
+        !instructions.contains("work only in LaTeX projects"),
+        "{instructions}"
+    );
+}
+
+#[test]
 fn constant_time_eq_basics() {
     assert!(constant_time_eq(b"abc", b"abc"));
     assert!(!constant_time_eq(b"abc", b"abd"));

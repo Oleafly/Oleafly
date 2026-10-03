@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Etsii heikkouksia argumenteista, menetelmistä, näytöstä ja esitystavasta.",
-        "documentEditor": "Korjaa proosaa, rakennetta, viitteitä ja LaTeXia täsmällisin ja turvallisin muutoksin.",
-        "figure": "Luo julkaisulaatuisia kuvia ja kaavioita LaTeX TikZ- tai PGFPlots-muodossa.",
+        "documentEditor": "Korjaa proosaa, rakennetta, viitteitä ja LaTeX- tai Typst-lähdekoodia täsmällisin ja turvallisin muutoksin.",
+        "figure": "Luo julkaisulaatuisia kuvia ja kaavioita TikZ-koodilla LaTeX-dokumenttiin tai CeTZ-koodilla Typst-dokumenttiin.",
         "researchWriter": "Luonnostelee ja jäsentää tieteellistä tekstiä keksimättä näyttöä tai viitteitä."
       },
       "suggestedDescription": "Aloita jostakin näistä ja muokkaa sitten sen ohjeita työtapaasi sopiviksi.",
@@ -685,6 +685,29 @@
       "mathPreview": {
         "description": "Näytä piirretty kaava sen kaavan yläpuolella, jossa kohdistin on.",
         "label": "Matematiikan esikatselu"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Siistii Typst-tiedostot typstyle-työkalulla, kun painat ⌘S tai Ctrl+S. Automaattinen tallennus jättää ne ennalleen.",
+          "label": "Muotoile tallennettaessa"
+        },
+        "lineWidth": {
+          "description": "typstyle rivittää tätä pidemmät rivit.",
+          "label": "Muotoilijan rivinleveys"
+        },
+        "indent": {
+          "description": "Välilyöntejä sisennystasoa kohden muotoillussa Typst-koodissa.",
+          "label": "Muotoilijan sisennys"
+        },
+        "inlayHints": {
+          "description": "Näytä parametrien nimet argumenttien edessä Typst-funktiokutsuissa.",
+          "label": "Parametrien nimivihjeet"
+        },
+        "lint": {
+          "description": "Tarkistaa Typst-tiedostot todennäköisten virheiden varalta aina tallennettaessa. Asetuksen vaihtaminen käynnistää Typst-kielipalvelimen uudelleen.",
+          "label": "Typst-lint-tarkistukset"
+        }
       }
     },
     "files": {
@@ -1021,11 +1044,59 @@
       "resume": "Jatka latausta ({{size}} MB valmiina)"
     },
     "typst": {
-      "detail": "Tulee Oleaflyn mukana. Nopea, toimii ilman verkkoa, ei vaadi asennusta. Kääntää Typst-dokumentit PDF-muotoon.",
+      "detail": "Tulee Oleaflyn mukana, joten mitään ei tarvitse asentaa. Verkkoyhteyttä tarvitaan vain, kun dokumentti tuo @preview-paketin ensimmäistä kertaa.",
       "heading": "Typst-kääntäjä",
       "name": "Typst (sisäänrakennettu)",
-      "note": "Typst-projektit käyttävät aina mukana tulevaa kääntäjää. Kääntäjän version valinta ja järjestelmän Typst eivät ole vielä käytettävissä.",
-      "tooltip": "Typst tulee Oleaflyn sisällä, joten mitään ei tarvitse asentaa tai määrittää. Jokainen Typst-projekti kääntyy mukana tulevalla kääntäjällä."
+      "note": "Valitse projektin käyttämä versio käännösvalikosta. Projekti pitää sen version, kunnes vaihdat sen.",
+      "tooltip": "Oleafly sisältää yhden Typst-version ja voi ladata muita. Jokainen projekti käännetään kiinnittämällään versiolla tai oletusversiolla, jos kiinnitystä ei ole.",
+      "system": {
+        "name": "Tämän tietokoneen Typst",
+        "detail": "Projektit, jotka kiinnittävät version {{version}}, voivat kääntyä sillä."
+      },
+      "versions": {
+        "heading": "Versiot",
+        "tooltip": "Uudet projektit käyttävät aluksi oletusversiota, samoin projektit, joilla ei ole kiinnitettyä versiota.",
+        "loading": "Tarkistetaan Typst-versioita",
+        "default": "Oletus",
+        "setDefault": "Käytä oletuksena versiota Typst {{version}}",
+        "released": "Julkaistu {{date}}",
+        "install": "Asenna",
+        "installAria": "Asenna Typst {{version}}",
+        "removeAria": "Poista Typst {{version}}",
+        "removeDefault": "Tämä on oletusversio. Valitse toinen oletus ennen kuin poistat sen.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Sisäänrakennettu",
+          "downloaded": "Ladattu",
+          "system": "Järjestelmä"
+        }
+      },
+      "progress": {
+        "starting": "Aloitetaan",
+        "downloading": "Ladataan {{percent}} %",
+        "verifying": "Tarkistetaan",
+        "extracting": "Puretaan",
+        "done": "Viimeistellään"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} kielipalvelimen lataus ei ole minkään asennetun Typst-version käytössä.",
+        "unused_other": "{{count}} kielipalvelimen latausta ei ole minkään asennetun Typst-version käytössä.",
+        "remove": "Poista käyttämättömät kielipalvelinlataukset",
+        "removed_one": "{{count}} kielipalvelinlataus poistettiin.",
+        "removed_other": "{{count}} kielipalvelinlatausta poistettiin."
+      },
+      "error": {
+        "load": "Typst-versioita ei voitu lukea.",
+        "install": "Version Typst {{version}} asennus epäonnistui.",
+        "remove": "Version Typst {{version}} poisto epäonnistui.",
+        "default": "Oletusarvoista Typst-versiota ei voitu vaihtaa.",
+        "removeTinymist": "Käyttämättömiä kielipalvelinlatauksia ei voitu poistaa."
+      },
+      "upgrade": {
+        "heading": "Kokeile uudempaa versiota",
+        "detail": "Käännä avoin projekti uudemmalla asennetulla versiolla ja vertaa tuloksia ennen vaihtamista.",
+        "check": "Tarkista versiolla Typst {{version}}"
+      }
     }
   },
   "github": {

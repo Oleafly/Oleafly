@@ -50,6 +50,23 @@ export {
   type LatexPairOptions,
 } from "./latex-pairs";
 export {
+  shouldRunCompletionSource,
+  type CompletionSyntax,
+} from "./completion-trigger";
+export {
+  typstContextAt,
+  typstContextInText,
+  typstEditing,
+  typstInputChange,
+  type TypstContext,
+  type TypstEditingOptions,
+} from "./typst-editing";
+export {
+  TYPST_SNIPPETS,
+  typstSlashCompletions,
+  type TypstSnippet,
+} from "./typst-snippets";
+export {
   continueListOnEnter,
   closeEnvironmentAtCursor,
   surroundSelectionWithEnvironment,
@@ -67,9 +84,20 @@ export {
   BIBLIOGRAPHY_STYLES,
   bibliographyStyles,
   setBibStyleProvider,
+  setTypstCslStyleProvider,
+  setTypstStyleVersionProvider,
+  typstBibliographyStyles,
+  typstStyleArgumentAt,
   type BibliographyStyle,
   type BibliographyStyleFamily,
+  type TypstBibliographyStyle,
+  type TypstStyleUsage,
 } from "./bibliography-styles";
+export { typstBibliographyStyleCompletions } from "./typst-bibliography-style-completions";
+export {
+  typstBibliographyParameterCompletions,
+  typstSupportsMultipleBibliographies,
+} from "./typst-bibliography-parameters";
 // math-preview / math-render are deliberately NOT exported here: they import
 // KaTeX (plus its CSS), which would ride in every chunk that touches this
 // index. Import them via the "@oleafly/editor/math-preview" or

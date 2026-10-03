@@ -12,7 +12,10 @@ import {
   ToolStatus,
 } from "@/components/tools/ToolWorkspace";
 import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
+import { insertTypstSymbol } from "@/components/editor/typst-commands";
+import { typstSymbolLabel } from "@/components/editor/typst-symbols";
 import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import { sourceLanguageForPath } from "@/lib/document-engine";
 import { useHomeViewStore } from "@/store/home-view";
 import { useFilesStore } from "@/store/files";
 import { toast } from "@/lib/toast";
@@ -125,6 +128,15 @@ function canInsertInOpenLatexEditor(): boolean {
   return Boolean(files.projectId && latexSource && (getEditorView() || isWysiwygActive()));
 }
 
+function canInsertInOpenTypstEditor(): boolean {
+  const files = useFilesStore.getState();
+  return Boolean(files.projectId && sourceLanguageForPath(files.activePath) === "typst" && getEditorView());
+}
+
+export function typstFormForSymbol(command: string, glyph: string, version: string | null): string {
+  return typstSymbolLabel(command, version) ?? glyph;
+}
+
 export function SymbolsToolView() {
   const { t } = useTranslation(["researchTools"]);
   const activePage = useHomeViewStore((state) => state.page);
@@ -132,6 +144,8 @@ export function SymbolsToolView() {
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
   const formattingProfile = useFilesStore((state) => state.engine.capabilities.formatting_profile);
+  const typstVersion = useFilesStore((state) => state.engine.typst_resolved?.version ?? null);
+  const typstActive = sourceLanguageForPath(activePath) === "typst";
   const [entries, setEntries] = useState<SymbolEntry[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [query, setQuery] = useState("");
@@ -162,12 +176,17 @@ export function SymbolsToolView() {
   }, [category, entries, query]);
   const visible = useMemo(() => filtered?.slice(0, MAX_VISIBLE_SYMBOLS) ?? [], [filtered]);
   const selected = visible.find((entry) => entry.command === selectedCommand) ?? visible[0] ?? null;
-  const insertionAvailable = Boolean(
+  const latexInsertionAvailable = Boolean(
     projectId
     && activePath?.toLowerCase().endsWith(".tex")
     && formattingProfile === "latex"
     && (getEditorView() || isWysiwygActive()),
   );
+  const typstInsertionAvailable = Boolean(projectId && typstActive && getEditorView());
+  const insertionAvailable = latexInsertionAvailable || typstInsertionAvailable;
+  const selectedTypst = selected && typstActive
+    ? typstFormForSymbol(selected.command, selected.glyph, typstVersion)
+    : null;
   const categoryLabels: Record<SymbolFilter, string> = {
     All: t(($) => $.researchTools.symbols.categoryAll),
     Greek: t(($) => $.researchTools.symbols.categoryGreek),
@@ -203,6 +222,14 @@ export function SymbolsToolView() {
 
   const insertCommand = () => {
     if (!selected) return;
+    if (canInsertInOpenTypstEditor()) {
+      const inserted = typstFormForSymbol(selected.command, selected.glyph, typstVersion);
+      void insertTypstSymbol(selected.command, selected.glyph).then(() => {
+        toast.success(t(($) => $.researchTools.symbols.inserted, { command: inserted }));
+        goTo("library");
+      });
+      return;
+    }
     if (!canInsertInOpenLatexEditor()) return;
     insertAtCursor(selected.command.endsWith("{}") ? selected.command : `${selected.command} `);
     toast.success(t(($) => $.researchTools.symbols.inserted, { command: selected.command }));
@@ -341,9 +368,9 @@ export function SymbolsToolView() {
           footer={selected ? (
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">
-                {insertionAvailable
-                  ? t(($) => $.researchTools.symbols.insertHint)
-                  : t(($) => $.researchTools.symbols.copyHint)}
+                {typstInsertionAvailable && t(($) => $.researchTools.symbols.insertHintTypst)}
+                {latexInsertionAvailable && !typstInsertionAvailable && t(($) => $.researchTools.symbols.insertHint)}
+                {!insertionAvailable && t(($) => $.researchTools.symbols.copyHint)}
               </p>
               <Button size="sm" onClick={insertCommand} disabled={!insertionAvailable}>{t(($) => $.researchTools.symbols.insertInEditor)}</Button>
             </div>
@@ -354,6 +381,14 @@ export function SymbolsToolView() {
               <div className="flex max-w-lg flex-col items-center gap-4">
                 <span className="font-serif text-7xl leading-none" aria-hidden="true">{selected.glyph}</span>
                 <code data-testid="symbols-command" className="rounded-md border bg-background px-3 py-2 font-mono text-sm">{selected.command}</code>
+                {selectedTypst !== null && (
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{t(($) => $.researchTools.symbols.typstLabel)}</span>
+                    <code data-testid="symbols-typst" className="rounded-md border bg-background px-2 py-1 font-mono text-sm text-foreground">
+                      {selectedTypst}
+                    </code>
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground">{selected.note || t(($) => $.researchTools.symbols.noDescription)}</p>
               </div>
             ) : entries === null ? (

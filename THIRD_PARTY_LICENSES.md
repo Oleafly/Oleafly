@@ -26,8 +26,8 @@ cargo install cargo-about && cargo about generate about.hbs   # Rust / backend
 | [Tectonic](https://tectonic-typesetting.github.io/) | LaTeX compiler (sidecar) | MIT |
 | [Biber 2.17](https://sourceforge.net/projects/biblatex-biber/) | Bibliography backend for biblatex (`tectonic-biber` sidecar, version-pinned to Tectonic’s biblatex) | Artistic-2.0 / GPL-1.0-or-later |
 | [Pandoc 3.9.0.2](https://github.com/jgm/pandoc/releases/tag/3.9.0.2) | Document converter (separate sidecar process) | GPL-2.0-or-later |
-| [Typst](https://github.com/typst/typst) | Typst compiler 0.15.0 (sidecar) | Apache-2.0 |
-| [Tinymist 0.15.2](https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.2) | Typst language server (checksum-pinned upstream archive resource), © 2023–2025 Myriad Dreamin and Nathan Varner | Apache-2.0 |
+| [Typst](https://github.com/typst/typst) | Typst compiler 0.15.1 (sidecar) | Apache-2.0 |
+| [Tinymist 0.15.8](https://github.com/Myriad-Dreamin/tinymist/tree/v0.15.8) | Typst language server (checksum-pinned upstream archive resource), © 2023–2025 Myriad Dreamin and Nathan Varner | Apache-2.0 |
 
 Pandoc is an unmodified program that Oleafly starts as a separate process. Its
 complete license is included at
@@ -46,10 +46,10 @@ checks it against these SHA-256 digests before extracting the executable:
 | `pandoc-3.9.0.2-windows-x86_64.zip` | `c97542f2800f446e788d9f74237856d995421ad1bb3cc8324286840c5f272d3a` |
 | `COPYING.md` (license text) | `9d56cac92294e206af026a5502bee0fed77200b08b51ec28aa63c9efda4dcfdd` |
 
-The exact Tinymist 0.15.2 license is shipped in every application bundle at
-`resources/licenses/tinymist-0.15.2-LICENSE`, alongside exactly one
+The exact Tinymist 0.15.8 license is shipped in every application bundle at
+`resources/licenses/tinymist-0.15.8-LICENSE`, alongside exactly one
 target-specific unmodified release archive under
-`resources/language-servers/tinymist/0.15.2/`. Upstream has no `NOTICE` file
+`resources/language-servers/tinymist/0.15.8/`. Upstream has no `NOTICE` file
 at the pinned tag.
 
 ## Backend (Rust crates)

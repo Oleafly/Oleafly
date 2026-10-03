@@ -1,0 +1,14 @@
+{
+  "id": "typst-letter",
+  "name": "Typst Formal Letter",
+  "category": "Letters",
+  "description": "A formal letter in Typst with sender and recipient blocks, a date, a subject line, the body and a signature.",
+  "main_doc": "main.typ",
+  "engine": "typst",
+  "layout": "single-column",
+  "pages": "single",
+  "default_color": "#3d4f63",
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
+  "requires": { "packages": [], "fonts": [], "engine": "typst" },
+  "order": 91
+}

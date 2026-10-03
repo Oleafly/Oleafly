@@ -42,7 +42,9 @@
     "noResults": "Nu s-a găsit niciun rezultat. Verifică identificatorul sau încearcă alte cuvinte din titlu.",
     "placeholder": "DOI, identificator arXiv, URL sau titlul unei lucrări…",
     "privacyNote": "Se trimite doar identificatorul sau titlul, către doi.org, arXiv ori Crossref.",
-    "title": "Adaugă citare"
+    "title": "Adaugă citare",
+    "bibliography": "Bibliografie",
+    "bibliographyHint": "Acest proiect are mai multe bibliografii. Intrarea ajunge în fișierul pe care îl alegi aici."
   },
   "backendProtocol": {
     "mismatch": "Această fereastră și partea ei de fundal au fost construite pentru versiuni Oleafly diferite, așa că unele funcții s-ar putea să nu meargă. Reinstalarea aplicației rezolvă problema."
@@ -122,6 +124,14 @@
       "keywords": "închide încheie mediu begin latex",
       "label": "Închide mediul LaTeX"
     },
+    "formatDocument": {
+      "keywords": "formatează aranjează indentare typstyle typst",
+      "label": "Formatează documentul"
+    },
+    "formatSelection": {
+      "keywords": "formatează selecție aranjează indentare typstyle typst",
+      "label": "Formatează selecția"
+    },
     "createProject": {
       "keywords": "proiect nou creează șablon galerie",
       "label": "Creează un proiect nou"
@@ -129,6 +139,14 @@
     "diagramComposer": {
       "keywords": "diagramă figură tikz compozitor desenare pânză",
       "label": "Deschide Compozitorul de diagrame"
+    },
+    "typstPackages": {
+      "keywords": "typst universe pachete import bibliotecă răsfoiește copiază",
+      "label": "Răsfoiește pachetele Typst"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan pachete usepackage preambul instalează tlmgr răsfoiește",
+      "label": "Răsfoiește pachetele LaTeX"
     },
     "documentCitationScan": {
       "keywords": "citări literatură scanare document paragraf referințe găsește",
@@ -195,7 +213,8 @@
       "label": "Încadrează într-un mediu"
     },
     "synctex": {
-      "label": "Mergi la PDF (SyncTeX)"
+      "label": "Mergi la PDF (SyncTeX)",
+      "typstLabel": "Mergi la PDF"
     },
     "table": {
       "label": "Tabel"
@@ -228,6 +247,79 @@
     "openFolder": {
       "label": "Deschide un folder…",
       "keywords": "deschide folder director existent local fișiere disc"
+    },
+    "underline": {
+      "label": "Subliniat"
+    },
+    "strikethrough": {
+      "label": "Tăiat"
+    },
+    "inlineCode": {
+      "label": "Cod în text"
+    },
+    "link": {
+      "label": "Legătură"
+    },
+    "footnote": {
+      "label": "Notă de subsol"
+    },
+    "quote": {
+      "label": "Citat"
+    },
+    "inlineMath": {
+      "label": "Formulă în text"
+    },
+    "numberedEquation": {
+      "label": "Ecuație numerotată"
+    },
+    "alignedEquations": {
+      "label": "Ecuații aliniate"
+    },
+    "fraction": {
+      "label": "Fracție"
+    },
+    "crossReference": {
+      "label": "Referință încrucișată"
+    },
+    "typstInsights": {
+      "label": "Informații despre document",
+      "keywords": "figuri tabele ecuații titluri etichete citări todo fixme metadate rezumat trimitere"
+    },
+    "typstDocumentSettings": {
+      "label": "Setările documentului",
+      "keywords": "dimensiune pagină margini coloane dimensiune font limbă regiune aliniere spațiere rânduri numerotare"
+    },
+    "toggleComment": {
+      "label": "Comentează sau decomentează",
+      "keywords": "comentariu comentează decomentează linie bloc"
+    },
+    "goToDefinition": {
+      "label": "Mergi la definiție",
+      "keywords": "definiție salt simbol navigare"
+    },
+    "findReferences": {
+      "label": "Găsește referințele",
+      "keywords": "referințe utilizări simbol"
+    },
+    "renameSymbol": {
+      "label": "Redenumește simbolul",
+      "keywords": "redenumește simbol refactorizare"
+    },
+    "migrateToTypst": {
+      "label": "Convertește într-un proiect Typst",
+      "keywords": "typst convertește migrează latex proiect nou"
+    },
+    "typstMigrationReport": {
+      "label": "Arată raportul conversiei în Typst",
+      "keywords": "typst conversie migrare raport latex"
+    },
+    "present": {
+      "label": "Prezintă diapozitivele",
+      "keywords": "prezintă diapozitive prezentare ecran complet beamer touying polylux note prezentator pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "Prezintă diapozitivele cu vizualizarea prezentatorului",
+      "keywords": "prezintă diapozitive vizualizare prezentator note cronometru diapozitiv următor"
     }
   },
   "community": {
@@ -240,7 +332,12 @@
     "autoCompile": {
       "off": "Oprită",
       "on": "Pornită",
-      "title": "Compilare automată"
+      "title": "Compilare automată",
+      "help": "Compilează la câteva secunde după ce te oprești din scris. Fișierul deschis este salvat întâi.",
+      "typstHelp": "Typst rămâne pornit și actualizează PDF-ul la scurt timp după ce te oprești din scris. Cât timp opțiunea este activă, fișierul deschis se salvează singur.",
+      "typstStarting": "Se pornește Typst",
+      "typstRestarting": "Typst repornește",
+      "typstFailed": "Typst s-a oprit după erori repetate. Editează fișierul ca să îl pornești din nou."
     },
     "compile": "Compilează",
     "compiler": {
@@ -276,7 +373,37 @@
     "texRootLabel": "rădăcină TEX",
     "texRootName": "rădăcină: {{name}}",
     "texRootNotTex": "% !TEX root din {{file}} trimite la {{target}}, care nu este un fișier LaTeX",
-    "texRootOverride": "rădăcină: {{path}} (setată de % !TEX root din {{file}})"
+    "texRootOverride": "rădăcină: {{path}} (setată de % !TEX root din {{file}})",
+    "typstVersion": {
+      "title": "Versiunea Typst (acest proiect)",
+      "help": "Fixează o versiune ca rezultatul acestui proiect să rămână neschimbat când Oleafly actualizează Typst. Opțiunea Implicită urmează versiunea aleasă în Setări. Ca să instalezi versiuni sau să testezi acest proiect pe una mai nouă, mergi la Setări → Motoare → Typst.",
+      "default": "Implicită ({{version}})",
+      "defaultPlain": "Implicită",
+      "builtIn": "[inclusă]",
+      "system": "[din sistem]",
+      "missing": "[neinstalată]",
+      "switchFailed": "Versiunea Typst nu a putut fi schimbată."
+    },
+    "typstFonts": {
+      "title": "Fonturi (acest proiect)",
+      "help": "Typst citește fonturile din folderul fonts al proiectului și din folderele listate la font_paths în project.json. Dacă folosești doar fonturile proiectului, PDF-ul nu depinde de fonturile instalate pe acest computer. Setările documentului arată fonturile pe care Typst le poate găsi.",
+      "systemFonts": "Folosește fonturile sistemului",
+      "projectOnly": "Doar fonturile proiectului",
+      "unsupported": "Necesită un Typst mai nou",
+      "saveFailed": "Setarea fonturilor nu a putut fi salvată."
+    },
+    "typstBuild": {
+      "title": "Compilare (acest proiect)",
+      "help": "O compilare reproductibilă folosește doar fonturile proiectului și datează PDF-ul la ultimul commit. Astfel, aceleași surse dau același PDF pe orice computer.",
+      "standard": "Compilare standard",
+      "reproducible": "Compilare reproductibilă",
+      "saveFailed": "Setarea de compilare nu a putut fi salvată."
+    },
+    "typstVariant": {
+      "title": "Variantă (acest proiect)",
+      "help": "O variantă transmite propriile valori către sys.inputs, de exemplu pentru o versiune de ciornă sau una finală. Varianta aleasă rămâne pe acest computer. Adaugă sau editează variante în Setările documentului.",
+      "none": "Fără variantă"
+    }
   },
   "datePicker": {
     "placeholder": "Alege o dată"
@@ -967,6 +1094,10 @@
     "wait": {
       "description": "{{phase}} Compilarea ta este la coadă și pornește automat de îndată ce motorul este pregătit.",
       "title": "TinyTeX încă se descarcă"
+    },
+    "typstQuit": {
+      "title": "Typst încă se instalează",
+      "description": "Typst {{version}} se descarcă. Dacă ieși acum, descărcarea se oprește și va trebui să o pornești din nou din Setări."
     }
   },
   "toolbar": {
@@ -1106,5 +1237,144 @@
     "added": "Gata. Acum apare în meniul Servicii din Finder. Ca s-o folosești și din Acțiuni rapide, fă clic dreapta pe un folder și activeaz-o în Acțiuni rapide › Personalizare.",
     "addedInQuickActions": "Gata. Fă clic dreapta pe un folder și o găsești în Acțiuni rapide.",
     "failed": "Nu s-a putut adăuga. Poți încerca din nou din Setări › General."
+  },
+  "typstMigration": {
+    "title": "Convertește într-un proiect Typst",
+    "closeLabel": "Închide conversia în Typst",
+    "intro": "Oleafly face un proiect Typst nou din acest proiect LaTeX. Acest proiect nu se schimbă.",
+    "points": {
+      "text": "Pandoc convertește textul, formulele, figurile și tabelele.",
+      "files": "Fiecare fișier input și include devine un fișier Typst separat.",
+      "bibliography": "Fișierele BibTeX sunt copiate așa cum sunt.",
+      "compile": "Typst compilează proiectul nou ca să-l verifice."
+    },
+    "nameLabel": "Numele proiectului nou",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Deschide un proiect LaTeX ca să-l convertești.",
+    "convert": "Convertește",
+    "retry": "Încearcă din nou",
+    "progress": {
+      "reading": "Se citește proiectul LaTeX",
+      "converting": "Se convertește cu Pandoc",
+      "creating": "Se creează proiectul Typst",
+      "compiling": "Se compilează cu Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc nu este pregătit. Instalează-l din Instrumente, apoi încearcă din nou.",
+      "noMain": "Fișierul LaTeX principal nu a putut fi citit.",
+      "emptyOutput": "Pandoc a returnat un document gol.",
+      "failed": "Conversia s-a oprit: {{detail}}"
+    },
+    "report": {
+      "created": "S-a creat {{name}}.",
+      "compiled": "Proiectul se compilează cu Typst.",
+      "compileFailed_one": "Proiectul nu se compilează încă. {{count}} eroare trebuie reparată.",
+      "compileFailed_few": "Proiectul nu se compilează încă. {{count}} erori trebuie reparate.",
+      "compileFailed_other": "Proiectul nu se compilează încă. {{count}} de erori trebuie reparate.",
+      "compileUnavailable": "Oleafly nu l-a putut compila: {{detail}}",
+      "converted": "Convertit",
+      "sources_one": "{{count}} fișier sursă",
+      "sources_few": "{{count}} fișiere sursă",
+      "sources_other": "{{count}} de fișiere sursă",
+      "figures_one": "{{count}} figură",
+      "figures_few": "{{count}} figuri",
+      "figures_other": "{{count}} de figuri",
+      "tables_one": "{{count}} tabel",
+      "tables_few": "{{count}} tabele",
+      "tables_other": "{{count}} de tabele",
+      "equations_one": "{{count}} ecuație pe rând separat",
+      "equations_few": "{{count}} ecuații pe rând separat",
+      "equations_other": "{{count}} de ecuații pe rând separat",
+      "references_one": "{{count}} referință încrucișată",
+      "references_few": "{{count}} referințe încrucișate",
+      "references_other": "{{count}} de referințe încrucișate",
+      "mathFixed_one": "{{count}} formulă reparată de convertorul de formule",
+      "mathFixed_few": "{{count}} formule reparate de convertorul de formule",
+      "mathFixed_other": "{{count}} de formule reparate de convertorul de formule",
+      "copied_one": "{{count}} fișier copiat",
+      "copied_few": "{{count}} fișiere copiate",
+      "copied_other": "{{count}} de fișiere copiate",
+      "style": "Stilul bibliografiei {{style}}",
+      "mapping": "{{source}} în {{target}}",
+      "attention": "Necesită atenție",
+      "noAttention": "Nimic nu necesită atenție.",
+      "problems": "Erori și avertismente de compilare",
+      "location": "{{file}}, linia {{line}}",
+      "noLocation": "Fără locație în fișier",
+      "openAt": "Deschide {{file}} la linia {{line}}",
+      "open": "Deschide proiectul Typst"
+    },
+    "notes": {
+      "missingInclude": "Fișierul {{detail}} nu a fost găsit, așa că a fost omis.",
+      "lostInclude": "{{detail}} nu a putut primi un fișier propriu. Textul lui rămâne în fișierul care l-a inclus.",
+      "missingImage": "Imaginea {{detail}} nu a fost găsită.",
+      "unsupportedImage": "Typst nu poate afișa {{detail}}. Convertește-l în PDF, PNG sau SVG.",
+      "math": "Această formulă trebuie reparată manual: {{detail}}",
+      "bibliographyStyle": "Stilul BibTeX {{detail}} nu are corespondent în Typst. Se folosește stilul implicit.",
+      "skippedFile": "{{detail}} nu a fost copiat, fiindcă proiectul este prea mare.",
+      "unreadableFile": "{{detail}} nu a putut fi citit.",
+      "equationLabel": "Typst numerotează ecuațiile întregi, așa că referințele la {{detail}} trimit acum la ecuația în care se afla."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Imagini și HTML",
+    "title": "Exportă cu Typst",
+    "close": "Închide exportul Typst",
+    "format": "Format",
+    "png": "Imagini PNG",
+    "svg": "Imagini SVG",
+    "html": "HTML",
+    "experimental": "Experimental",
+    "htmlNote": "Exportul HTML din Typst este încă experimental. Omite configurarea paginii și elementele plasate.",
+    "ppi": "Rezoluție",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Pagini",
+    "pagesPlaceholder": "Toate paginile",
+    "pagesHelp": "Folosește numere și intervale de pagini, precum 1, 3-5 sau 8-.",
+    "pagesInvalid": "Verifică intervalul de pagini. Folosește numere și intervale de pagini, precum 1, 3-5 sau 8-.",
+    "pagesUnsupported": "Această versiune Typst exportă întotdeauna toate paginile.",
+    "multiPage": "Fiecare pagină se salvează ca fișier separat, numerotat după numele ales.",
+    "export": "Exportă",
+    "cancel": "Anulează"
+  },
+  "typstUpgrade": {
+    "title": "Încearcă o versiune Typst mai nouă",
+    "description": "Oleafly compilează acest proiect cu ambele versiuni în foldere temporare. Nimic din proiectul tău nu se schimbă dacă nu treci la noua versiune.",
+    "compareWith": "Versiunea mai nouă",
+    "running": "Se compilează cu Typst {{current}} și {{candidate}}",
+    "current": "Typst {{version}} (actuală)",
+    "candidate": "Typst {{version}}",
+    "built": "Compilat",
+    "failed": "Eșuat",
+    "pages_one": "{{count}} pagină",
+    "pages_few": "{{count}} pagini",
+    "pages_other": "{{count}} de pagini",
+    "pagesUnknown": "Număr de pagini necunoscut",
+    "errors_one": "{{count}} eroare",
+    "errors_few": "{{count}} erori",
+    "errors_other": "{{count}} de erori",
+    "warnings_one": "{{count}} avertisment",
+    "warnings_few": "{{count}} avertismente",
+    "warnings_other": "{{count}} de avertismente",
+    "pageChange": "Numărul de pagini se schimbă de la {{from}} la {{to}}.",
+    "pageSame": "Numărul de pagini rămâne {{pages}}.",
+    "added": "Nou în Typst {{version}}",
+    "removed": "Nu mai sunt raportate de Typst {{version}}",
+    "noChanges": "Ambele versiuni raportează aceleași erori și avertismente.",
+    "unchanged_one": "{{count}} mesaj este la fel în ambele versiuni.",
+    "unchanged_few": "{{count}} mesaje sunt la fel în ambele versiuni.",
+    "unchanged_other": "{{count}} de mesaje sunt la fel în ambele versiuni.",
+    "buildFailed": "Typst {{version}} nu a putut compila proiectul.",
+    "switch": "Treci la Typst {{version}}",
+    "switched": "Acest proiect folosește acum Typst {{version}}.",
+    "switchFailed": "Versiunea Typst nu a putut fi schimbată.",
+    "runAgain": "Verifică din nou",
+    "close": "Închide",
+    "checkFailed": "Verificarea nu s-a putut încheia.",
+    "noNewer": "Nu este instalată nicio versiune Typst mai nouă. Poți instala una din Setări.",
+    "openSettings": "Deschide setările Typst",
+    "location": "{{file}}, linia {{line}}",
+    "error": "Eroare",
+    "warning": "Avertisment"
   }
 }

@@ -42,7 +42,18 @@
     "selectImage": "请选择要插入的图片。",
     "editTitle": "编辑图片",
     "editDescription": "更换图片或调整宽度。图注和标签保持不变。",
-    "save": "保存图片"
+    "save": "保存图片",
+    "customWidthPlaceholderTypst": "8cm 或 60%",
+    "altLabel": "替代文本",
+    "altPlaceholder": "为屏幕阅读器描述这张图片",
+    "placement": "位置",
+    "placementNone": "原位",
+    "placementAuto": "自动",
+    "placementTop": "顶部",
+    "placementBottom": "底部",
+    "editFigureTitle": "编辑图片",
+    "editFigureDescription": "更改图像及其尺寸、图注、标签、替代文本或位置。",
+    "saveFigure": "保存图片"
   },
   "tableToolbar": {
     "label": "表格工具",
@@ -112,6 +123,7 @@
     "insertBlockquote": "插入引用块",
     "insertFigure": "插入图片",
     "insertImage": "插入图像",
+    "drawDiagram": "绘制图表",
     "insertTable": "插入表格",
     "imageToLatexTooltip": "图片转 LaTeX（用 AI 转写）。",
     "imageToLatex": "图片转 LaTeX",
@@ -130,6 +142,7 @@
     "redo": "重做（{{shortcut}}）",
     "find": "查找（{{shortcut}}）",
     "goToPdf": "跳转到 PDF（SyncTeX）",
+    "goToPdfTypst": "跳转到 PDF",
     "linkUrl": "链接 URL",
     "removeLink": "移除链接",
     "imageFile": "图片文件",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "分屏",
     "both": "两者",
-    "stacked": "上下"
+    "stacked": "上下",
+    "displayMath": "行间公式",
+    "numberedEquation": "编号公式",
+    "alignedEquations": "多行对齐公式",
+    "addLabel": "添加标签",
+    "imageToTypst": "图片转 Typst",
+    "imageToTypstTooltip": "图片转 Typst（用 AI 转写）",
+    "typstPackages": "Typst 包",
+    "latexPackages": "LaTeX 宏包"
   },
   "contextMenu": {
     "engineUnavailable": "文档引擎操作不可用。",
     "askAi": "询问 AI…",
     "noIndexedSymbol": "此位置没有已索引的符号。",
     "noRenamableSymbol": "此位置没有可重命名的符号。",
+    "formatDocument": "格式化文档",
+    "formatSelection": "格式化所选内容",
     "itemize": "Itemize 列表",
     "enumerate": "Enumerate 列表",
     "figure": "图片",
@@ -156,7 +179,16 @@
     "equationAsPng": "将公式导出为 PNG",
     "crossReference": "交叉引用",
     "label": "标签",
-    "footnote": "脚注"
+    "footnote": "脚注",
+    "toggleComment": "切换注释",
+    "inlineMath": "行内公式",
+    "displayMath": "行间公式",
+    "numberedEquation": "编号公式",
+    "alignedEquations": "多行对齐公式",
+    "quote": "引文",
+    "addLabel": "添加标签",
+    "convertLatexMath": "将 LaTeX 公式转换为 Typst",
+    "noLatexMath": "请先选择一些 LaTeX 公式。"
   },
   "shell": {
     "noFileOpenTab": "未打开文件",
@@ -231,9 +263,15 @@
     "footerTypst": "表格源码中的特殊字符会自动转义。",
     "footerLatex": "生成的 LaTeX 表格使用 booktabs 绘制横线。",
     "chooseAnother": "选择其他文件",
-    "chooseFile": "选择 CSV、TSV 或 XLSX",
+    "chooseFile": "选择 CSV、TSV、XLSX 或 JSON",
     "selectedSummary": "{{file}} · 行：{{rows}} · 列：{{columns}}",
     "firstRowHeader": "首行为表头",
+    "keepLinked": "保持与数据文件的链接",
+    "keepLinkedHint": "将数据复制到 data 文件夹。编辑该文件后，表格会在下次编译时更新。",
+    "footerLinked": "每次编译文档时，表格都会读取 {{path}}。",
+    "jsonNotTable": "此 JSON 文件不是记录或行的列表。",
+    "insertedLinked": "已插入链接表格。编辑 {{path}} 即可修改。",
+    "linkFailed": "无法将数据复制到项目中。",
     "captionLabel": "题注（可选）",
     "captionPlaceholder": "所有运行的结果",
     "labelLabel": "标签（可选）",
@@ -263,7 +301,8 @@
     "svgImage": "SVG 图片",
     "pngImage": "PNG 图片",
     "svgKind": "公式 SVG",
-    "pngKind": "公式 PNG"
+    "pngKind": "公式 PNG",
+    "typstFailed": "Typst 无法渲染此公式（{{detail}}）"
   },
   "selectionActions": {
     "askAi": "询问 AI",
@@ -304,7 +343,14 @@
     "info": "信息",
     "empty": "编译输出将显示在这里。",
     "scrollToTop": "滚动到顶部",
-    "scrollToBottom": "滚动到底部"
+    "scrollToBottom": "滚动到底部",
+    "locationFileLineColumn": "{{file}} · 第 {{line}} 行，第 {{column}} 列",
+    "locationLineColumn": "第 {{line}} 行，第 {{column}} 列",
+    "hint": "提示",
+    "sourceExcerpt": "源码第 {{line}} 行",
+    "summaryErrors_other": "{{count}} 个错误",
+    "summaryWarnings_other": "{{count}} 个警告",
+    "summaryReferences_other": "{{count}} 个未解析的引用"
   },
   "history": {
     "untitledCommit": "未命名提交",
@@ -349,7 +395,8 @@
       "navigation": "导航",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "设置"
+      "settings": "设置",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "重新编译",
@@ -366,12 +413,20 @@
       "goToDefinition": "转到定义",
       "findReferences": "查找引用",
       "renameSymbol": "重命名符号（全项目）",
+      "formatDocument": "格式化 Typst 文档",
       "commandPalette": "命令面板",
       "searchAllDocuments": "搜索所有文档",
       "goToPdf": "跳转到 PDF（SyncTeX 正向搜索）。",
       "jumpToSource": "从 PDF 跳转到源码",
       "commitAndPush": "提交并推送",
-      "openSettings": "打开设置"
+      "openSettings": "打开设置",
+      "typstContinueList": "用新的列表项继续列表",
+      "typstItemNewLine": "在列表项内另起一行",
+      "typstRemoveMarker": "删除光标前的列表标记",
+      "typstIndentItem": "将列表项缩进一级",
+      "typstOutdentItem": "将列表项上移一级",
+      "typstMathPair": "自动闭合 $ 公式，按 Space 转为行间公式",
+      "typstWrapSelection": "用粗体、强调、代码或公式包裹所选内容"
     }
   },
   "citations": {
@@ -637,6 +692,7 @@
       "unsupported": "该表达式不完整或不受支持。",
       "missingClosing": "缺少闭合定界符 {{delimiter}}",
       "notRendered": "无法渲染该表达式。",
+      "typstUnavailable": "Typst 预览不可用。",
       "preview": {
         "moreOptions": "更多选项",
         "hide": "隐藏",
@@ -644,6 +700,10 @@
         "disable": "禁用",
         "disableDescription": "关闭公式预览。可以在设置中重新开启。"
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "粘贴为 Typst 公式",
+      "pasteOffer": "已粘贴 LaTeX 公式"
     },
     "latex": {
       "command": {
@@ -824,6 +884,45 @@
         "revtex": "REVTeX 样式"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "标题",
+        "figure": "插图（图像）",
+        "tableFigure": "插图（表格）",
+        "table": "表格",
+        "equation": "行间公式",
+        "numberedEquation": "带标签的编号公式",
+        "footnote": "脚注",
+        "quote": "引用块",
+        "code": "代码块",
+        "outline": "目录",
+        "bibliography": "参考文献",
+        "pagebreak": "分页",
+        "columns": "分栏",
+        "grid": "网格",
+        "link": "链接",
+        "list": "无序列表",
+        "enum": "有序列表",
+        "terms": "术语列表",
+        "partBibliography": "带标签部分的参考文献"
+      },
+      "bibliographyStyle": {
+        "builtin": "内置 CSL 样式",
+        "citation": "仅引用样式",
+        "project": "此项目中的 CSL 文件"
+      },
+      "bibliographyParameter": {
+        "target": "列出哪些引用",
+        "group": "编号的共享方式",
+        "targetAuto": "包含该键的最近参考文献",
+        "targetWithin": "带标签部分中的引用",
+        "targetAfter": "标签之后的引用",
+        "targetBefore": "标签之前的引用",
+        "groupAuto": "与其他参考文献连续编号",
+        "groupNone": "单独编号",
+        "groupNamed": "与同名参考文献连续编号"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "摘要",
@@ -950,6 +1049,12 @@
       "reference": "交叉引用",
       "label": "标签",
       "includedFile": "引入的文件",
+      "typst": {
+        "settings": {
+          "show": "显示文档设置",
+          "hide": "隐藏文档设置"
+        }
+      },
       "table": {
         "captionPlacement": "表注",
         "captionAbove": "表注在上",
@@ -1024,6 +1129,11 @@
     "goTo": "跳转到 {{title}}",
     "untitled": "未命名"
   },
+  "languageService": {
+    "openOnTypstUniverse": "在 Typst Universe 中打开",
+    "formatUnavailable": "Typst 格式化工具尚未就绪。请稍后重试。",
+    "formatFailed": "无法格式化此文件。"
+  },
   "changedOnDisk": {
     "message": "{{file}} 已在磁盘上更改，而你还有未保存的编辑。",
     "compare": "比较",
@@ -1031,5 +1141,323 @@
     "reload": "重新加载",
     "failed": "Oleafly 无法更新 {{file}}。请重试。",
     "tabMark": "已在磁盘上更改。打开此标签页以选择要保留的版本。"
+  },
+  "labels": {
+    "filterPlaceholder": "标签名称",
+    "filterLabel": "筛选项目标签",
+    "noMatches": "没有匹配的标签。",
+    "empty": "此项目中还没有标签。",
+    "location": "{{file}}:{{line}}",
+    "addHere": "在此处添加标签"
+  },
+  "typst": {
+    "numberingNote": "公式编号需要编号规则。",
+    "addNumberingRule": "添加规则",
+    "bibliographyAdded": "已将参考文献添加到 {{file}}。"
+  },
+  "typstInsights": {
+    "title": "文档分析",
+    "description": "编译后的文档包含哪些内容，并附有指向源码的链接。",
+    "refresh": "刷新",
+    "copyMetadata": "复制投稿元数据",
+    "metadataCopied": "投稿元数据已复制到剪贴板。",
+    "copyFailed": "未能复制元数据。请检查剪贴板权限后重试。",
+    "loading": "正在用 Typst 读取文档",
+    "compileFailed": "Typst 无法编译该文档。请修复这些错误，以便列出图片、表格和公式。",
+    "noProject": "请先打开一个 Typst 项目。",
+    "tabs": {
+      "overview": "概览",
+      "headings": "标题",
+      "figures": "图片",
+      "tables": "表格",
+      "equations": "公式",
+      "labels": "标签",
+      "citations": "引用",
+      "todos": "待办"
+    },
+    "metadata": {
+      "heading": "投稿元数据",
+      "title": "标题",
+      "authors": "作者",
+      "keywords": "关键词",
+      "abstract": "摘要",
+      "date": "日期",
+      "missing": "未设置"
+    },
+    "empty": {
+      "headings": "编译后的文档中没有标题。",
+      "figures": "编译后的文档中没有图片。",
+      "tables": "编译后的文档中没有表格。",
+      "equations": "编译后的文档中没有行间公式。",
+      "labels": "文档中没有标签。",
+      "citations": "编译后的文档中没有引用。",
+      "todos": "没有 TODO 或 FIXME 备注。"
+    },
+    "labelKinds": {
+      "heading": "标题",
+      "figure": "图片",
+      "table": "表格",
+      "equation": "公式",
+      "other": "其他"
+    },
+    "page": "第 {{page}} 页",
+    "unnumbered": "无编号",
+    "untitled": "无图注",
+    "cited_other": "被引用 {{count}} 次",
+    "notInSource": "未在源码中找到",
+    "openSource": "在第 {{line}} 行打开 {{file}}",
+    "versionNote": "Typst {{version}}，使用 typst {{method}}",
+    "truncated": "仅列出前 5,000 个元素。"
+  },
+  "documentInsights": {
+    "description": "文档包含哪些内容，并附有指向源码的链接。",
+    "loading": "正在读取文档",
+    "noProject": "请先打开一个项目。",
+    "unresolved": "不在参考文献中",
+    "unresolvedCount_other": "有 {{count}} 个引用键不在参考文献中。",
+    "numbersCurrent": "编号和页码来自上次编译。",
+    "numbersStale": "上次编译后源码已更改。请重新编译以查看编号和页码。",
+    "numbersMissing": "编译文档即可查看编号和页码。",
+    "sourceOrder": "按源码顺序列出。",
+    "empty": {
+      "headings": "文档中没有标题。",
+      "figures": "文档中没有图片。",
+      "tables": "文档中没有表格。",
+      "equations": "文档中没有行间公式。",
+      "citations": "文档中没有引用。"
+    }
+  },
+  "typstSettings": {
+    "title": "文档设置",
+    "description": "{{file}} 中的页面、文本和编号规则。",
+    "templateNotice": "此文档使用了模板。模板内设置的值不会显示在这里。你在这里设置的值会覆盖模板。",
+    "loading": "正在读取主文件",
+    "readFailed": "无法读取主文件。",
+    "saveFailed": "无法更新主文件。",
+    "noMainFile": "此项目没有 Typst 主文件。",
+    "applied": "文档设置已更新。",
+    "apply": "应用",
+    "cancel": "取消",
+    "sections": {
+      "page": "页面",
+      "text": "文本",
+      "paragraph": "段落",
+      "numbering": "编号"
+    },
+    "fields": {
+      "paper": "纸张大小",
+      "margin": "页边距",
+      "columns": "栏数",
+      "font": "正文字体",
+      "fontSize": "字号",
+      "lang": "语言",
+      "region": "地区",
+      "justify": "对齐方式",
+      "leading": "行距",
+      "headingNumbering": "标题编号",
+      "equationNumbering": "公式编号"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "默认",
+      "justified": "两端对齐",
+      "ragged": "左对齐",
+      "off": "关闭"
+    },
+    "locked": {
+      "template": "由模板设置",
+      "expression": "由源码中的表达式设置"
+    },
+    "invalid": {
+      "length": "请使用长度，例如 11pt、2.5cm 或 0.65em。",
+      "margin": "请使用长度（例如 2.5cm）或 auto。",
+      "columns": "请使用 1 到 99 之间的整数。",
+      "lang": "请使用两个或三个字母的语言代码，例如 en。",
+      "region": "请使用两个字母的地区代码，例如 GB。"
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "{{file}} 中的文档类选项和导言区设置。",
+    "markdownDescription": "{{file}} 中的 front matter 字段。",
+    "noLatexMainFile": "此项目没有 LaTeX 主文件。",
+    "noMarkdownMainFile": "此项目没有 Markdown 主文件。",
+    "noDocumentClass": "主文件中没有 \\documentclass 行。",
+    "unclosedFrontMatter": "主文件顶部的 front matter 未闭合。请先添加结尾的 --- 行。",
+    "noFrontMatter": "此文件还没有 front matter。点击“应用”会在顶部添加。",
+    "externalPreamble": "部分导言区位于其他文件中。在那里设置的值不会显示在这里。",
+    "classNotice": "其中部分设置由 {{name}} 文档类控制，在此处为只读。",
+    "styleNotice": "{{name}} 样式设定了页面布局。纸张大小和页边距在此处为只读。",
+    "availableFonts": "可用字体",
+    "fontsLoading": "正在查找字体",
+    "fields": {
+      "secnumdepth": "编号层级",
+      "numberSections": "章节编号",
+      "documentClass": "文档类"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "单栏",
+      "twocolumn": "双栏",
+      "single": "单倍",
+      "onehalf": "1.5 倍",
+      "double": "双倍",
+      "bySection": "按节",
+      "byChapter": "按章",
+      "bySubsection": "按小节",
+      "numbered": "编号",
+      "unnumbered": "不编号",
+      "depthNone": "无",
+      "depthChapters": "仅章",
+      "depthSections": "至节",
+      "depthSubsections": "至小节",
+      "depthSubsubsections": "至子小节",
+      "depthParagraphs": "至段落",
+      "depthSubparagraphs": "至子段落"
+    },
+    "locked": {
+      "class": "由 {{name}} 文档类设置",
+      "package": "由 {{name}} 样式设置",
+      "engine": "需要 XeLaTeX 或 LuaLaTeX 编译器。请在编译菜单中选择。",
+      "sides": "源码中分别设置了各边的页边距",
+      "conditional": "在条件块中设置"
+    },
+    "invalid": {
+      "length": "请使用长度，例如 2.5cm、1in 或 12pt。",
+      "fontName": "请只填写字体名称，不要包含花括号或反斜杠。",
+      "latexLang": "请使用 babel 语言名称，例如 english。",
+      "markdownLang": "请使用语言标签，例如 en-US。",
+      "lineStretch": "请使用数字，例如 1.5。"
+    }
+  },
+  "typstPackages": {
+    "title": "Typst 包",
+    "close": "关闭 Typst 包",
+    "searchLabel": "按名称、关键词或类别搜索包",
+    "searchPlaceholder": "搜索 Typst Universe",
+    "categories": "类别",
+    "allCategories": "全部",
+    "loading": "正在加载包列表",
+    "results_other": "{{count}} 个包",
+    "resultsCapped": "显示 {{count}} 个包中的 {{shown}} 个。搜索可缩小列表范围。",
+    "empty": "没有与搜索匹配的包。",
+    "staleOffline": "你当前处于离线状态。此列表来自 {{date}}。",
+    "stale": "此列表来自 {{date}}，未能刷新。",
+    "latest": "最新 {{version}}",
+    "template": "模板",
+    "needsTypst": "需要 Typst {{version}}。此项目使用 Typst {{current}}。",
+    "insert": "插入 import",
+    "insertAria": "在文件顶部插入 {{name}} 的 import",
+    "insertNeedsFile": "请打开一个 Typst 文件以插入 import。",
+    "copy": "复制 import",
+    "copyAria": "复制 {{name}} 的 import",
+    "vendor": {
+      "heading": "项目包",
+      "toggle": "使用项目文件夹中的包",
+      "detail": "Typst 会先在项目的 typst-packages 文件夹中查找。包含这些包的项目可以离线编译，也能在其他电脑上编译。",
+      "action": "将包复制到项目",
+      "running": "正在复制包",
+      "copied_other": "已将 {{count}} 个包复制到 typst-packages。",
+      "upToDate": "此项目导入的所有包都已在 typst-packages 中。",
+      "missing": "这些包不在包缓存中：{{names}}。请在联网时编译一次，然后再次复制。",
+      "count_other": "此项目中有 {{count}} 个包",
+      "none": "此项目中还没有包。"
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} 已发布。此 import 使用的是 {{version}}。",
+      "update": "更新到 {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX 宏包",
+    "close": "关闭 LaTeX 宏包",
+    "searchLabel": "按名称或描述搜索宏包",
+    "searchPlaceholder": "搜索 CTAN",
+    "loading": "正在加载宏包列表",
+    "results_other": "{{count}} 个宏包",
+    "resultsCapped": "显示 {{count}} 个宏包中的 {{shown}} 个。搜索可缩小列表范围。",
+    "empty": "没有与搜索匹配的宏包。",
+    "stale": "此列表来自 {{date}}，未能刷新。",
+    "staleOffline": "你当前处于离线状态。此列表来自 {{date}}。",
+    "partial": "无法连接 CTAN。正在显示 Oleafly 内置的列表。",
+    "partialOffline": "你当前处于离线状态。正在显示 Oleafly 内置的列表。",
+    "loaded": "已在文档中",
+    "documentClass": "文档类",
+    "installed": "已安装",
+    "install": "安装",
+    "installing": "正在安装",
+    "installAria": "用 tlmgr 安装 {{name}}",
+    "insert": "添加到导言区",
+    "insertAria": "将 {{name}} 添加到 {{file}} 的导言区",
+    "copy": "复制此行",
+    "copyAria": "复制加载 {{name}} 的那一行",
+    "ctan": "CTAN",
+    "ctanAria": "在 CTAN 上打开 {{name}}",
+    "options": "选项",
+    "optionsAria": "{{name}} 的选项",
+    "optionsInvalid": "请检查选项。花括号必须成对，且不能使用 ] 或 %。",
+    "classNote": "这是一个文档类。请改用 \\documentclass 设置。",
+    "onDemand": "Tectonic 会在文档首次用到宏包时下载它们。无需安装任何内容。",
+    "checking": "正在检查已安装的宏包",
+    "unknownInstall": "Oleafly 无法判断你的 TeX 环境中有哪些宏包。",
+    "noProject": "请打开一个 LaTeX 项目以添加宏包。",
+    "added": "已将 {{name}} 添加到 {{file}}。",
+    "noPreamble": "{{file}} 没有可添加宏包的导言区。",
+    "alreadyLoaded": "{{file}} 已加载 {{name}}。",
+    "insertFailed": "无法添加该宏包。请重试。"
+  },
+  "typstFonts": {
+    "title": "字体",
+    "close": "关闭字体列表",
+    "searchLabel": "搜索字体族",
+    "searchPlaceholder": "搜索字体",
+    "loading": "正在向 Typst 获取字体",
+    "summary_other": "来自 Typst {{version}} 的 {{count}} 个字体族",
+    "systemOff": "此项目已关闭系统字体，因此仅列出项目字体和内置字体。",
+    "noSources": "此 Typst 版本不会说明每种字体的来源。",
+    "empty": "没有与搜索匹配的字体族。",
+    "copy": "复制名称",
+    "copyAria": "复制字体族名称 {{name}}",
+    "sources": {
+      "project": "项目",
+      "system": "系统",
+      "embedded": "内置"
+    },
+    "fontsFolder": "要在此项目中使用某种字体，请将其文件添加到项目的 fonts 文件夹。"
+  },
+  "typstVariants": {
+    "title": "构建变体",
+    "close": "关闭构建变体",
+    "intro": "每个变体都会设置文档通过 sys.inputs 读取的值。请从编译菜单中选择变体。",
+    "empty": "还没有变体。",
+    "add": "添加变体",
+    "name": "变体名称",
+    "defaultName": "变体 {{number}}",
+    "remove": "删除变体",
+    "removeAria": "删除变体 {{name}}",
+    "key": "名称",
+    "value": "值",
+    "addInput": "添加值",
+    "removeInput": "删除值",
+    "noInputs": "此变体未设置任何值。",
+    "save": "保存",
+    "cancel": "取消",
+    "loading": "正在加载变体",
+    "nameRequired": "请为每个变体命名。",
+    "nameTaken": "两个变体不能同名。",
+    "keyInvalid": "值名称不能为空，也不能包含等号。",
+    "keyTaken": "同一变体不能两次设置同一名称。",
+    "saveFailed": "无法保存变体。"
   }
 }

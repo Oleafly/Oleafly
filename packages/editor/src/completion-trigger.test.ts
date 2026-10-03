@@ -30,6 +30,13 @@ describe("completion lexical triggers", () => {
     ["typst", "\u0E14\u0E39 @\u0E23\u0E39\u0E1B"],
     ["typst", "Viz @kap:u\u0301v"],
     ["typst", "#ref(<u\u0301vod"],
+    ["typst", "#{ ref(<intro"],
+    ["typst", "/fig"],
+    ["typst", "Text /"],
+    ["typst", "#myfu"],
+    ["typst", '#image("figures/a'],
+    ["typst", '#include "chap'],
+    ["typst", '#bibliography(("a.bib", "re'],
     ["markdown", "[Viz](#u\u0301vod"],
     ["markdown", "\u05E8\u05D0\u05D4 @\u05E9\u05B8\u05C1\u05DC"],
     ["bibtex", "crossref = {\u092A\u0930\u093F"],
@@ -43,6 +50,13 @@ describe("completion lexical triggers", () => {
   ])("leaves %s without a BibTeX trigger", (source) => {
     expect(triggered(source, "bibtex")).toBe(false);
   });
+
+  it.each(["a/b", "// note", "https://example.com/x", '#myimage("x', "#"])(
+    "leaves %j without a Typst trigger",
+    (source) => {
+      expect(triggered(source, "typst")).toBe(false);
+    },
+  );
 
   it.each(["latex", "markdown", "typst", "bibtex"] as const)(
     "rejects an ordinary prose token in %s",

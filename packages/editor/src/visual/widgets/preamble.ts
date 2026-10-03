@@ -1,7 +1,7 @@
 import { EditorSelection, StateEffect } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
-import { editorMessage } from "../../messages";
+import { type EditorMessageKey, editorMessage } from "../../messages";
 import { BlockWidget } from "./base";
 import { createIcon } from "./icons";
 
@@ -19,8 +19,18 @@ export interface Preamble {
 
 export const collapsePreambleEffect = StateEffect.define<boolean>();
 
+export interface PreambleLabels {
+  show: EditorMessageKey;
+  hide: EditorMessageKey;
+}
+
+const LATEX_PREAMBLE_LABELS: PreambleLabels = { show: "visual.preamble.show", hide: "visual.preamble.hide" };
+
 export class PreambleWidget extends BlockWidget {
-  constructor(readonly expanded: boolean) {
+  constructor(
+    readonly expanded: boolean,
+    readonly labels: PreambleLabels = LATEX_PREAMBLE_LABELS,
+  ) {
     super();
   }
 
@@ -36,7 +46,7 @@ export class PreambleWidget extends BlockWidget {
 
     const text = document.createElement("span");
     text.className = "ofl-visual-preamble-text";
-    text.textContent = editorMessage(this.expanded ? "visual.preamble.hide" : "visual.preamble.show");
+    text.textContent = editorMessage(this.expanded ? this.labels.hide : this.labels.show);
 
     bar.append(text, createIcon("chevron", "ofl-visual-preamble-chevron"));
     wrapper.append(bar);
@@ -55,7 +65,11 @@ export class PreambleWidget extends BlockWidget {
   }
 
   eq(other: PreambleWidget): boolean {
-    return other.expanded === this.expanded;
+    return (
+      other.expanded === this.expanded &&
+      other.labels.show === this.labels.show &&
+      other.labels.hide === this.labels.hide
+    );
   }
 
   get estimatedHeight(): number {

@@ -25,6 +25,29 @@ const TRANSCRIBE_SYSTEM =
 
 const TRANSCRIBE_PROMPT = "Transcribe this image to LaTeX.";
 
+const TYPST_TRANSCRIBE_SYSTEM =
+  "You transcribe images into Typst markup. Return ONLY a Typst snippet: a math equation in $ $, a #table or #figure, or plain markup matching the image. No #set or #import lines, no markdown fences, no explanation. Transcribe exactly what is visible, never invent content. Never use em dashes.";
+
+const TYPST_TRANSCRIBE_PROMPT = "Transcribe this image to Typst.";
+
+interface TranscriptionTarget {
+  readonly system: string;
+  readonly prompt: string;
+  readonly failed: (detail: string) => string;
+}
+
+const LATEX_TARGET: TranscriptionTarget = {
+  system: TRANSCRIBE_SYSTEM,
+  prompt: TRANSCRIBE_PROMPT,
+  failed: (detail) => i18n.t(($) => $.core.imageToLatex.failed, { detail }),
+};
+
+const TYPST_TARGET: TranscriptionTarget = {
+  system: TYPST_TRANSCRIBE_SYSTEM,
+  prompt: TYPST_TRANSCRIBE_PROMPT,
+  failed: (detail) => i18n.t(($) => $.core.imageToTypst.failed, { detail }),
+};
+
 const IMAGE_TO_LATEX_TOAST_KEY = "image-to-latex";
 
 let latestRun = 0;
@@ -43,9 +66,17 @@ function editorTarget(): string {
   return JSON.stringify([projectId, activePath]);
 }
 
-export async function imageToLatex(file: File): Promise<void> {
+export function imageToLatex(file: File): Promise<void> {
+  return transcribeImage(file, LATEX_TARGET);
+}
+
+export function imageToTypst(file: File): Promise<void> {
+  return transcribeImage(file, TYPST_TARGET);
+}
+
+async function transcribeImage(file: File, target: TranscriptionTarget): Promise<void> {
   const run = ++latestRun;
-  const target = editorTarget();
+  const editor = editorTarget();
   const progress = toast.infoUnique(
     IMAGE_TO_LATEX_TOAST_KEY,
     i18n.t(($) => $.core.imageToLatex.transcribing),
@@ -55,12 +86,12 @@ export async function imageToLatex(file: File): Promise<void> {
   try {
     const dataUrl = await readImage(file);
     const { text } = await completeViaBackend({
-      system: TRANSCRIBE_SYSTEM,
+      system: target.system,
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: TRANSCRIBE_PROMPT },
+            { type: "text", text: target.prompt },
             { type: "image", image: dataUrl },
           ],
         },
@@ -71,7 +102,7 @@ export async function imageToLatex(file: File): Promise<void> {
       .replace(/```$/gm, "")
       .trim();
     if (!snippet) throw new Error(i18n.t(($) => $.ai.conversation.noOutput));
-    if (editorTarget() === target) {
+    if (editorTarget() === editor) {
       insertAtCursor(snippet);
       if (run === latestRun) toast.dismiss(progress);
       return;
@@ -82,7 +113,7 @@ export async function imageToLatex(file: File): Promise<void> {
     void logError("image-to-latex", e);
     toast.errorUnique(
       IMAGE_TO_LATEX_TOAST_KEY,
-      i18n.t(($) => $.core.imageToLatex.failed, { detail: describeError(e) }),
+      target.failed(describeError(e)),
     );
   }
 }

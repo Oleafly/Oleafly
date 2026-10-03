@@ -147,6 +147,19 @@ describe("DocumentOutline", () => {
     ).toHaveClass("text-[13px]");
   });
 
+  it("renders Typst heading titles without their markup", async () => {
+    mount(
+      indexWith([
+        { name: "Results *with* _emphasis_ and `code`", line: 3, from: 10, level: 1, file: "main.typ" },
+        { name: "#emph[Deep] learning \\#1 -- $x^2$", line: 6, from: 60, level: 2, file: "main.typ" },
+      ]),
+      "main.typ",
+    );
+
+    expect(await screen.findByText("Results with emphasis and code")).toBeInTheDocument();
+    expect(screen.getByText("Deep learning #1 \u2013 x^2")).toBeInTheDocument();
+  });
+
   it("indents by heading depth so the shape reads without the titles", () => {
     mount(
       indexWith([

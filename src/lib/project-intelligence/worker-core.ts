@@ -4,6 +4,7 @@ import {
   unreadableFileIntelligence,
 } from "./assemble";
 import {
+  analysisEngineForPath,
   engineForPath,
   normalizeProjectPath,
   sourceHash,
@@ -118,7 +119,7 @@ function validateAnalyzeRequest(
     return "A file cannot be updated, removed, and unreadable in the same request.";
   }
   for (const upsert of request.upserts) {
-    if (!engineForPath(upsert.file)) {
+    if (!analysisEngineForPath(upsert.file)) {
       return `Unsupported source file in worker request: ${upsert.file}`;
     }
     if (

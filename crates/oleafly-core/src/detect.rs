@@ -34,6 +34,7 @@ const HEAD_BYTES: u64 = 64 * 1024;
 const TAIL_BYTES: u64 = 4 * 1024;
 const UTF8_BOM: [u8; 3] = [0xEF, 0xBB, 0xBF];
 const MANIFEST_FILE: &str = "project.json";
+const TYPST_VENDOR_DIRECTORY: &str = "typst-packages";
 const SOURCE_SUFFIXES: [&str; 6] = [".tex", ".ltx", ".latex", ".typ", ".md", ".markdown"];
 const LATEX_SUFFIXES: [&str; 3] = [".tex", ".ltx", ".latex"];
 const GRAPHIC_SUFFIXES: [&str; 6] = [".pdf", ".png", ".jpg", ".jpeg", ".eps", ".svg"];
@@ -704,6 +705,7 @@ impl Scan {
         if file_type.is_dir() {
             if depth < limits.max_depth
                 && !is_skipped_scan_directory(OsStr::new(name))
+                && !(depth == 0 && name == TYPST_VENDOR_DIRECTORY)
                 && oleafly_manifest_in(&entry.path(), options).is_none()
             {
                 queue.push_back((entry.path(), relative, depth + 1));

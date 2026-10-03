@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { type Extension, EditorState } from "@codemirror/state";
 import {
   type DecorationSet,
@@ -9,6 +9,8 @@ import {
   type WidgetType,
 } from "@codemirror/view";
 import { liveMathPreview } from "./math-preview";
+import { setTypstMathHost } from "./math-render";
+import { loadTypstParser, typstLanguage } from "./typst";
 import { installEnglishEditorMessages } from "./test-messages";
 
 installEnglishEditorMessages();
@@ -195,5 +197,53 @@ describe("live math preview", () => {
     expect(
       editor.dom.querySelectorAll(".math-preview"),
     ).toHaveLength(96);
+  });
+});
+
+describe("live Typst math preview", () => {
+  beforeAll(async () => {
+    await loadTypstParser();
+  });
+
+  afterEach(() => {
+    setTypstMathHost(null);
+  });
+
+  function mountTypst(doc: string) {
+    const render = vi.fn(async (source: string) => ({ status: "rendered" as const, svg: `<svg>${source.length}</svg>` }));
+    setTypstMathHost({ render, typstVersion: () => "0.15.1" });
+    const editor = new EditorView({
+      state: EditorState.create({ doc, extensions: [typstLanguage(), liveMathPreview("typst")] }),
+      parent: document.body,
+    });
+    view = editor;
+    return { editor, render };
+  }
+
+  it("previews real equations only, never raw text or strings", async () => {
+    const { editor, render } = mountTypst('Area $pi r^2$ and `raw $r$` and #f("$s$") and $ a + b $.\n');
+    settle();
+    await vi.advanceTimersByTimeAsync(400);
+    const sources = [...editor.dom.querySelectorAll(".cm-math-source")].map((node) => node.textContent);
+    expect(sources).toEqual(["$pi r^2$", "$ a + b $"]);
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(editor.dom.querySelectorAll(".math-preview img.ofl-typst-math")).toHaveLength(2);
+    expect(editor.dom.querySelector(".math-preview.is-display")).not.toBeNull();
+  });
+
+  it("hides a preview whose equation Typst rejects", async () => {
+    setTypstMathHost(null);
+    const editor = new EditorView({
+      state: EditorState.create({ doc: "Bad $foo$ here.\n", extensions: [typstLanguage(), liveMathPreview("typst")] }),
+      parent: document.body,
+    });
+    view = editor;
+    setTypstMathHost({
+      render: async () => ({ status: "failed", message: "unknown variable: foo" }),
+      typstVersion: () => "0.15.1",
+    });
+    settle();
+    await vi.advanceTimersByTimeAsync(400);
+    expect((editor.dom.querySelector(".math-preview") as HTMLElement | null)?.hidden).toBe(true);
   });
 });

@@ -87,7 +87,7 @@ function pencilIcon(): SVGSVGElement {
   return svg;
 }
 
-interface GraphicsOptions {
+export interface GraphicsOptions {
   path: string;
   centered: boolean;
   block: boolean;
@@ -95,7 +95,7 @@ interface GraphicsOptions {
   ports: VisualPorts | null;
 }
 
-class GraphicsWidget extends WidgetType {
+export class GraphicsWidget extends WidgetType {
   private readonly editable: boolean;
 
   constructor(private readonly options: GraphicsOptions) {

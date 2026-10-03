@@ -11,6 +11,10 @@ import {
   type CuaActionType,
   type CuaSurface,
 } from "./cua";
+import type { TypstFigureRender } from "./typst-figure";
+
+export type FigureEngine = "latex" | "typst";
+export type FigurePreview = { pdfBytes: Uint8Array } | { pngDataUrl: string };
 
 export interface IndexDefView {
   kind: string;
@@ -100,9 +104,11 @@ export interface AiToolsHost {
   readIsolatedPdf(projectId: string): Promise<ArrayBuffer | ArrayLike<number>>;
   pdfToPng(bytes: Uint8Array, page: number, scale: number): Promise<string>;
   // Figure session state (last preview, insert target from a selection).
-  setLastFigurePreview(v: { pdfBytes: Uint8Array } | null): void;
-  getLastFigurePreview(): { pdfBytes: Uint8Array } | null;
+  setLastFigurePreview(v: FigurePreview | null): void;
+  getLastFigurePreview(): FigurePreview | null;
   getFigureInsertTarget(): { from: number; to: number } | null;
+  getFigureEngine?(): FigureEngine | null;
+  renderTypstFigure?(projectId: string, source: string): Promise<TypstFigureRender>;
   insertAtCursor(
     projectId: string,
     text: string,
@@ -1265,6 +1271,22 @@ function pngDataUrlToBase64(dataUrl: string): string {
   return comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
 }
 
+const NO_FIGURE_ENGINE = "Figure tools work only in LaTeX and Typst projects.";
+const TYPST_RENDERER_MISSING = "Typst figure previews are not available in this app.";
+
+async function previewImage(
+  preview: FigurePreview | null,
+  pdfToPng: AiToolsHost["pdfToPng"],
+): Promise<string | null> {
+  if (!preview) return null;
+  if ("pngDataUrl" in preview) return preview.pngDataUrl;
+  try {
+    return await pdfToPng(preview.pdfBytes, 1, 2);
+  } catch {
+    return null;
+  }
+}
+
 function figureLatex(code: string, caption?: string, label?: string, raw?: boolean): string {
   const normalizedCode = normalizeFigureCode(code);
   const captionLine = caption ? `\\caption{${caption}}\n` : "";
@@ -1368,27 +1390,60 @@ export function createFigureTools(
   } = host;
   const insertTargetPath = (projectId: string) => host.insertTargetPath?.(projectId) ?? null;
   const { pid, mutationAllowed, prepareMutation } = mutationGuards(host, opts?.mutationAllowed);
+  const figureEngine = (): FigureEngine | null =>
+    host.getFigureEngine ? host.getFigureEngine() : "latex";
+
+  const previewTypst = async (id: string, code: string) => {
+    if (!host.renderTypstFigure) return { error: TYPST_RENDERER_MISSING };
+    try {
+      const { typstPreviewOutcome, typstPreviewSource } = await import("./typst-figure");
+      const render = await host.renderTypstFigure(id, typstPreviewSource(code));
+      const { pngDataUrl, result } = typstPreviewOutcome(render);
+      setLastFigurePreview(pngDataUrl ? { pngDataUrl } : null);
+      if (pngDataUrl && onImage) onImage(pngDataUrl);
+      return result;
+    } catch (e) {
+      return { error: String(e) };
+    }
+  };
+
+  const typstFigureText = async (
+    id: string,
+    input: { code: string; caption?: string; label?: string; raw?: boolean },
+  ) => {
+    const { typstFigureMarkup } = await import("./typst-figure");
+    const path = insertTargetPath(id);
+    let existingSource = "";
+    if (path) {
+      try {
+        existingSource = await host.readFileContent(id, path);
+      } catch {
+        existingSource = "";
+      }
+    }
+    return typstFigureMarkup(input.code, { ...input, existingSource });
+  };
 
   const tools: Record<string, RawToolDef> = {
     preview_figure: {
       description:
-        "Compile a figure in isolation and return the outcome. Pass `code` (a TikZ picture or other figure body), plus optional `packages` and `libraries` it needs. Returns { success, errors, log_tail }. Iterate: fix errors and call again until success is true.",
+        "Render a figure on its own and return the outcome. In a LaTeX project pass `code` as a TikZ picture or other figure body, plus optional `packages` and `libraries` it needs. Returns { success, errors, log_tail }. In a Typst project pass `code` as Typst markup, such as a CeTZ canvas, a fletcher diagram, or plain content, with any #import lines it needs at the top. `packages` and `libraries` are ignored there. Returns { success, errors, warnings }. The figure is rendered alone, so it cannot read other project files. Iterate: fix errors and call again until success is true.",
       inputSchema: {
         type: "object",
         properties: {
           code: {
             type: "string",
-            description: String.raw`The figure body, e.g. a \begin{tikzpicture}...\end{tikzpicture}`,
+            description: String.raw`The figure body, e.g. \begin{tikzpicture}...\end{tikzpicture} in LaTeX, or #import "@preview/cetz:0.4.2" followed by #cetz.canvas({ ... }) in Typst`,
           },
           packages: {
             type: "array",
             items: { type: "string" },
-            description: "Extra LaTeX packages (tikz is always included)",
+            description: "Extra LaTeX packages (tikz is always included). LaTeX only.",
           },
           libraries: {
             type: "array",
             items: { type: "string" },
-            description: "TikZ libraries, e.g. arrows.meta, positioning",
+            description: "TikZ libraries, e.g. arrows.meta, positioning. LaTeX only.",
           },
         },
         required: ["code"],
@@ -1402,6 +1457,9 @@ export function createFigureTools(
         };
         const id = pid();
         if (!id) return { error: "No project open" };
+        const engine = figureEngine();
+        if (!engine) return { error: NO_FIGURE_ENGINE };
+        if (engine === "typst") return previewTypst(id, code);
         try {
           const source = buildStandaloneDoc({ code, packages, libraries });
           const result = await compileIsolated(id, source);
@@ -1434,7 +1492,7 @@ export function createFigureTools(
 
     insert_figure: {
       description:
-        "Insert the finished figure into the document at the user's cursor (or the selected paragraph it was generated from), and save a PNG copy to figures/. Provide the final `code`, and optionally a `caption` and `label`. Set raw=true to insert the bare code without a figure environment.",
+        "Insert the finished figure into the document at the user's cursor (or the selected paragraph it was generated from), and save a PNG copy to figures/. Provide the final `code`, and optionally a `caption` and `label`. In LaTeX the code goes inside a figure environment. In Typst it goes inside #figure, the label follows it as <label>, and leading #import lines are placed above it. Set raw=true to insert the bare code without the figure wrapper.",
       inputSchema: {
         type: "object",
         properties: {
@@ -1443,7 +1501,7 @@ export function createFigureTools(
           label: { type: "string", description: "Figure label, e.g. fig:transformer" },
           raw: {
             type: "boolean",
-            description: "Insert the bare code without a figure environment",
+            description: "Insert the bare code without the figure wrapper",
             default: false,
           },
         },
@@ -1459,17 +1517,14 @@ export function createFigureTools(
         };
         const id = pid();
         if (!id) return { error: "No project open" };
-        const latex = figureLatex(code, caption, label, raw);
+        const engine = figureEngine();
+        if (!engine) return { error: NO_FIGURE_ENGINE };
+        const figureSource =
+          engine === "typst"
+            ? await typstFigureText(id, { code, caption, label, raw })
+            : figureLatex(code, caption, label, raw);
         // Render the compiled figure so the user sees what they are approving.
-        const preview = getLastFigurePreview();
-        let png: string | null = null;
-        if (preview) {
-          try {
-            png = await pdfPageToPng(preview.pdfBytes, 1, 2);
-          } catch {
-            /* preview render is best-effort */
-          }
-        }
+        const png = await previewImage(getLastFigurePreview(), pdfPageToPng);
         if (
           confirm &&
           !(await confirm({
@@ -1488,8 +1543,8 @@ export function createFigureTools(
         const target = getFigureInsertTarget();
         const documentPath = insertTargetPath(id);
         const inserted = target
-          ? await replaceRange(id, target.from, target.to, latex, mutationAllowed)
-          : await insertAtCursor(id, latex, mutationAllowed);
+          ? await replaceRange(id, target.from, target.to, figureSource, mutationAllowed)
+          : await insertAtCursor(id, figureSource, mutationAllowed);
         if (!inserted) return { error: "No editable document is open" };
         let figure: string | null = null;
         try {

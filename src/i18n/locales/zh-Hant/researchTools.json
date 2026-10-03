@@ -573,6 +573,76 @@
       "tag2": "箭號",
       "tag3": "速查表",
       "tag4": "游標處插入"
+    },
+    "arxivToTypst": {
+      "name": "arXiv 轉 Typst",
+      "description": "將 arXiv 原始碼封存包轉換為 Typst。編譯檢查會列出未轉換的內容。",
+      "tag1": "原始碼壓縮檔",
+      "tag2": "編譯檢查",
+      "tag3": "用 ID 查詢需連網"
+    },
+    "csvToTypst": {
+      "name": "CSV 轉 Typst",
+      "description": "貼上 CSV 或 TSV 列，產生已跳脫的 Typst 表格。",
+      "tag1": "CSV 與 TSV",
+      "tag2": "表格",
+      "tag3": "本機"
+    },
+    "equationToTypst": {
+      "name": "方程式轉 Typst",
+      "description": "把輸入的 LaTeX 數學式或方程式圖片轉換成 Typst 數學式。",
+      "tag1": "文字或圖片",
+      "tag2": "數學式",
+      "tag3": "內建"
+    },
+    "excelToTypst": {
+      "name": "Excel 轉 Typst",
+      "description": "把 Excel、CSV 或 TSV 工作表轉換成已跳脫的 Typst 表格。",
+      "tag1": "XLSX",
+      "tag2": "CSV 與 TSV",
+      "tag3": "本機"
+    },
+    "htmlToTypst": {
+      "name": "HTML 轉 Typst",
+      "description": "把貼上的 HTML 轉換成獨立的 Typst 文件。",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "本機"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid 轉 Typst",
+      "description": "把 Mermaid 流程圖轉換成可編輯的 fletcher 程式碼。",
+      "tag1": "流程圖",
+      "tag2": "Fletcher",
+      "tag3": "本機"
+    },
+    "typstToHtml": {
+      "name": "Typst 轉 HTML",
+      "description": "把 Typst 標記轉換成含 MathML 方程式的獨立 HTML。",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst 轉 Markdown",
+      "description": "把 Typst 標記轉換成可攜的 Markdown。",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "專案選用"
+    },
+    "typstToWord": {
+      "name": "Typst 轉 Word",
+      "description": "建立 Word 文件，方程式會存成 Word 原生數學物件。",
+      "tag1": "DOCX",
+      "tag2": "原生數學物件",
+      "tag3": "本機"
+    },
+    "wordToTypst": {
+      "name": "Word 轉 Typst",
+      "description": "把 Word 文件轉換成 Typst，並一併保留擷取出的媒體檔案。",
+      "tag1": "DOCX",
+      "tag2": "媒體檔案",
+      "tag3": "專案選用"
     }
   },
   "generators": {
@@ -652,7 +722,9 @@
     "insertInEditor": "插入編輯器",
     "noDescription": "這個指令沒有可用的說明。",
     "loadingPreview": "正在載入要預覽的符號。",
-    "chooseSymbol": "請從符號庫中選擇一個符號。"
+    "chooseSymbol": "請從符號庫中選擇一個符號。",
+    "insertHintTypst": "把 Typst 程式碼插入開啟的 Typst 文件。",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · 按一下即可更換",
@@ -708,7 +780,8 @@
     "openAiSettings": "開啟 AI 設定",
     "fileReady": "{{fileName}} 已就緒",
     "saveWordHint": "準備好之後再儲存 Word 文件。",
-    "resultPlaceholder": "轉換結果會顯示在這裡。"
+    "resultPlaceholder": "轉換結果會顯示在這裡。",
+    "progressConvertingSource": "正在將原始碼轉換為 Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -829,6 +902,76 @@
       "inputLabel": "Word 文件",
       "inputHint": "選擇一個 .docx 檔案。方程式與圖片會在本機讀取。",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv 轉 Typst",
+      "subtitle": "將電子預印本的 LaTeX 原始碼轉換為 Typst，並查看哪些內容需要手動修正",
+      "inputLabel": "arXiv 原始碼",
+      "inputHint": "輸入 arXiv ID，或選擇已儲存的 .tar.gz 或 .gz 原始碼壓縮檔。",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV 轉 Typst",
+      "subtitle": "貼上試算表資料，產生已跳脫的 Typst 表格",
+      "inputLabel": "CSV 或 TSV",
+      "inputHint": "貼上以逗號或 Tab 分隔的列。第一列會成為標題列。",
+      "outputLabel": "Typst 表格"
+    },
+    "equationToTypst": {
+      "title": "方程式轉 Typst",
+      "subtitle": "把輸入或拍攝的數學式變成 Typst 數學式",
+      "inputLabel": "方程式",
+      "inputHint": "輸入 LaTeX 數學式、用文字描述，或選擇一張圖片。",
+      "outputLabel": "Typst 方程式"
+    },
+    "excelToTypst": {
+      "title": "Excel 轉 Typst",
+      "subtitle": "把第一個工作表轉換成 Typst 表格",
+      "inputLabel": "試算表",
+      "inputHint": "支援 XLSX、XLS、CSV 或 TSV。公式會使用快取的值。",
+      "outputLabel": "Typst 表格"
+    },
+    "htmlToTypst": {
+      "title": "HTML 轉 Typst",
+      "subtitle": "把語意化 HTML 轉換成獨立的 Typst 文件",
+      "inputLabel": "HTML",
+      "inputHint": "貼上 HTML 片段或完整文件。",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid 轉 Typst",
+      "subtitle": "把 Mermaid 流程圖變成可編輯的 fletcher 圖表",
+      "inputLabel": "Mermaid 流程圖",
+      "inputHint": "流程圖支援 TD、LR、BT 與 RL 版面配置、標籤與常見的節點形狀。",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst 轉 HTML",
+      "subtitle": "建立含 MathML 方程式的獨立 HTML",
+      "inputLabel": "Typst",
+      "inputHint": "貼上片段或完整的 Typst 文件。",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst 轉 Markdown",
+      "subtitle": "不必先建立專案，就能產生可攜的 Markdown",
+      "inputLabel": "Typst",
+      "inputHint": "貼上片段或完整的 Typst 文件。",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst 轉 Word",
+      "subtitle": "建立 DOCX，方程式會存成可編輯的 Word 數學式",
+      "inputLabel": "Typst",
+      "inputHint": "貼上片段或完整的 Typst 文件。",
+      "outputLabel": "Word 文件"
+    },
+    "wordToTypst": {
+      "title": "Word 轉 Typst",
+      "subtitle": "轉換 DOCX，並把擷取出的媒體檔案與結果一併保留",
+      "inputLabel": "Word 文件",
+      "inputHint": "選擇一個 .docx 檔案。方程式與圖片會在本機讀取。",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -844,7 +987,8 @@
     "chooseFile": "請先選擇檔案再轉換。",
     "fileTooLarge": "請選擇小於 128 MB 的檔案。",
     "emptySheet": "選取的工作表是空的。",
-    "arxivInputRequired": "請輸入 arXiv ID 或選擇原始碼壓縮檔。"
+    "arxivInputRequired": "請輸入 arXiv ID 或選擇原始碼壓縮檔。",
+    "equationToTypst": "Pandoc 無法將這個方程式轉換為 Typst。請檢查 LaTeX 數學式後再試一次。"
   },
   "converterNotes": {
     "scannedPages": "已用本機模型轉錄 {{pages}} 個掃描頁面。使用結果前請檢查方程式與表格。",
@@ -852,7 +996,14 @@
     "mermaidTikz": "已把這張流程圖轉換成可編輯的 TikZ。",
     "mermaidRendered": "這張圖表的 Mermaid 語法無法乾淨對應到可編輯的 TikZ，因此已在本機算繪。",
     "tableConverted": "已轉換 {{rows}} 列與 {{columns}} 欄。",
-    "arxivBundle": "共 {{files}} 個原始碼檔案。主文件：{{mainFile}}。"
+    "arxivBundle": "共 {{files}} 個原始碼檔案。主文件：{{mainFile}}。",
+    "mermaidFletcher": "已把這張流程圖轉換成 Typst 可編輯的 fletcher 程式碼。",
+    "mermaidRenderedTypst": "這張圖表的 Mermaid 語法無法乾淨對應到可編輯的 fletcher 程式碼，因此已在本機算繪。",
+    "arxivTypstConverted": "已轉換 {{mainFile}}。",
+    "typstCheckPassed": "Typst 編譯結果時沒有錯誤。",
+    "typstCheckFailed_other": "Typst 找到 {{count}} 個錯誤。",
+    "notConverted_other": "有 {{count}} 個項目未轉換。",
+    "checkLine": "第 {{line}} 行：{{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "這張 Mermaid 圖表超過 50,000 個字元的上限。",
@@ -1102,9 +1253,15 @@
   },
   "equation": {
     "subtitle": "即時 LaTeX 工作區",
+    "subtitleTypst": "即時 Typst 工作區",
+    "mathLanguage": "數學語言",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "錯誤",
     "statusRendered": "已算繪",
+    "statusRendering": "算繪中",
     "copyLatex": "複製 LaTeX",
+    "copyTypst": "複製 Typst",
     "exportOptions": "匯出選項",
     "export": "匯出",
     "downloadPng": "下載 PNG",
@@ -1117,6 +1274,7 @@
     "exportSvgFailed": "無法把這段內容匯出成 SVG",
     "copyKatexFailed": "無法複製 KaTeX HTML",
     "copyLatexFailed": "無法複製 LaTeX 原始碼",
+    "copyTypstFailed": "無法複製 Typst 原始碼",
     "invalidPngName": "請選擇不含斜線或特殊字元的簡短 PNG 檔名。",
     "replaceConfirm": "{{project}} 中已有 {{path}}。要取代嗎？",
     "savedToProject": "已將 {{path}} 儲存到 {{project}}。",
@@ -1130,6 +1288,7 @@
     "newImageProject": "新增圖片專案",
     "mathmlFailed": "無法把這段內容轉換成 MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "行內",
     "display": "獨立顯示",
     "examples": "範例",
@@ -1138,6 +1297,8 @@
     "previewLight": "淺色背景預覽",
     "inlineSample": "這就是它在句子中行內呈現的樣子，例如 <formula></formula>，會跟著周圍的文字一起排列。",
     "empty": "請在左側輸入 LaTeX 數學式。",
+    "emptyTypst": "請在左側輸入 Typst 數學式。",
+    "typstFailed": "Typst 無法算繪這個方程式。",
     "zoomOut": "縮小",
     "zoomIn": "放大",
     "resetZoom": "重設縮放",

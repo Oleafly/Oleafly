@@ -5,7 +5,10 @@ import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { openSearchPanel } from "@codemirror/search";
 import { vscodeSearch } from "./search-panel";
+import { syntaxTree } from "@codemirror/language";
 import { stickyScroll } from "./sticky-scroll";
+import { typstStickySource } from "./sticky-structure";
+import { typstLanguage } from "./typst";
 import { englishEditorMessage } from "./test-messages";
 import { EDITOR_LINE_HEIGHT_CSS } from "./theme";
 
@@ -152,5 +155,41 @@ describe("stickyScroll", () => {
     expect(number.style.paddingRight).toBe("0px");
     expect(code.style.marginLeft).toBe(`${textStart - digitsEnd}px`);
     expect(textStart - digitsEnd).toBeGreaterThan(20);
+  });
+
+  it("pins Typst headings once the lazily loaded parser has produced a tree", async () => {
+    const parent = document.createElement("div");
+    document.body.append(parent);
+    view = new EditorView({
+      parent,
+      state: EditorState.create({
+        doc: ["= Results", "== Details", "body line", "body line"].join("\n"),
+        extensions: [typstLanguage(), stickyScroll(typstStickySource)],
+      }),
+    });
+    const mounted = view;
+    vi.spyOn(mounted.scrollDOM, "getBoundingClientRect").mockReturnValue({
+      top: 0,
+      left: 0,
+      width: 800,
+      height: 400,
+      bottom: 400,
+      right: 800,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(mounted, "lineBlockAtHeight").mockReturnValue({
+      from: mounted.state.doc.line(3).from,
+    } as ReturnType<EditorView["lineBlockAtHeight"]>);
+
+    await vi.waitFor(() => expect(syntaxTree(mounted.state).type.name).toBe("Source"), {
+      timeout: 5_000,
+    });
+    await vi.waitFor(() => {
+      const rows = [...mounted.dom.querySelectorAll(".cm-stickyRow")];
+      expect(rows.map((row) => row.querySelector(".cm-stickyLineNo")?.textContent)).toEqual(["1", "2"]);
+    });
+    expect(mounted.dom.querySelector(".cm-stickyRow")?.textContent).toContain("= Results");
   });
 });

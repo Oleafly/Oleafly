@@ -188,6 +188,51 @@ describe("DocumentCitationScanPanel", () => {
     );
   });
 
+  it("scans the active Typst file as Typst and filters with its Hayagriva library", async () => {
+    useFilesStore.setState({
+      projectId: "proj-1",
+      activePath: "chapters/intro.typ",
+      mainDoc: "main.typ",
+      tree: [
+        { path: "main.typ", is_dir: false, name: "main.typ" } as never,
+        { path: "chapters/intro.typ", is_dir: false, name: "intro.typ" } as never,
+        { path: "refs.yml", is_dir: false, name: "refs.yml" } as never,
+      ],
+      files: {
+        "main.typ": { content: "#include \"chapters/intro.typ\"", dirty: false },
+        "chapters/intro.typ": {
+          content: "= Intro\n\nGraph neural networks enable molecule generation with high fidelity.",
+          dirty: false,
+        },
+        "refs.yml": {
+          content: "kipf2017:\n  type: article\n  title: Graph Convolutional Networks\n",
+          dirty: false,
+        },
+      },
+    });
+    render(<DocumentCitationScanPanel />);
+    const button = screen.getByTestId("document-citation-scan");
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+    await waitFor(() => expect(scanDocumentForCitations).toHaveBeenCalledTimes(1));
+    expect(scanDocumentForCitations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        format: "typst",
+        sourceText: expect.stringContaining("Graph neural networks"),
+        bibText: expect.stringContaining("title = {Graph Convolutional Networks}"),
+      }),
+    );
+  });
+
+  it("keeps LaTeX documents on the LaTeX splitter", async () => {
+    render(<DocumentCitationScanPanel />);
+    const button = screen.getByTestId("document-citation-scan");
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+    await waitFor(() => expect(scanDocumentForCitations).toHaveBeenCalledTimes(1));
+    expect(scanDocumentForCitations).toHaveBeenCalledWith(expect.objectContaining({ format: "latex" }));
+  });
+
   it("calls scanDocumentForCitations with rankMode llm when provider is ready", async () => {
     hasConfiguredProvider.mockReturnValue(true);
     render(<DocumentCitationScanPanel />);

@@ -154,5 +154,10 @@
       "detail": "En son proje sürümü henüz dizinlenmedi.",
       "title": "Proje çözümlemesi bekleniyor"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Atıf stili",
+    "ariaLabel": "{{path}} içindeki kaynakça için atıf stili",
+    "failed": "Oleafly atıf stilini değiştiremedi."
   }
 }

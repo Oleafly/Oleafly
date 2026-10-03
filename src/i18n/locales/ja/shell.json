@@ -40,7 +40,9 @@
     "noResults": "結果が見つかりません。識別子を確認するか、別のタイトルの語で試してください。",
     "placeholder": "DOI、arXiv の ID、URL、論文タイトル…",
     "privacyNote": "送信されるのは識別子またはタイトルだけで、送信先は doi.org、arXiv、Crossref です。",
-    "title": "引用を追加"
+    "title": "引用を追加",
+    "bibliography": "参考文献",
+    "bibliographyHint": "このプロジェクトには参考文献が複数あります。項目はここで選んだファイルに追加されます。"
   },
   "backendProtocol": {
     "mismatch": "このウィンドウとバックエンドは異なるバージョンの Oleafly 向けにビルドされているため、一部の機能が動かないことがあります。アプリを再インストールすると解決します。"
@@ -118,6 +120,14 @@
       "keywords": "閉じる 終了 環境 begin latex",
       "label": "LaTeX の環境を閉じる"
     },
+    "formatDocument": {
+      "keywords": "整形 フォーマット インデント typstyle typst",
+      "label": "文書を整形"
+    },
+    "formatSelection": {
+      "keywords": "整形 選択範囲 フォーマット インデント typstyle typst",
+      "label": "選択範囲を整形"
+    },
     "createProject": {
       "keywords": "新規 プロジェクト 作成 テンプレート ギャラリー",
       "label": "新しいプロジェクトを作成"
@@ -125,6 +135,14 @@
     "diagramComposer": {
       "keywords": "ダイアグラム 図 tikz コンポーザー 描画 キャンバス",
       "label": "ダイアグラムコンポーザーを開く"
+    },
+    "typstPackages": {
+      "keywords": "typst universe パッケージ インポート ライブラリ 一覧 取り込み",
+      "label": "Typst パッケージを見る"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan パッケージ usepackage プリアンブル インストール tlmgr 一覧",
+      "label": "LaTeX パッケージを見る"
     },
     "documentCitationScan": {
       "keywords": "引用 文献 スキャン 文書 段落 参考文献 検索",
@@ -191,7 +209,8 @@
       "label": "環境で囲む"
     },
     "synctex": {
-      "label": "PDF へ移動（SyncTeX）"
+      "label": "PDF へ移動（SyncTeX）",
+      "typstLabel": "PDF へ移動"
     },
     "table": {
       "label": "表"
@@ -224,6 +243,79 @@
     "openFolder": {
       "label": "フォルダを開く…",
       "keywords": "開く フォルダ ディレクトリ 既存 ローカル ファイル ディスク"
+    },
+    "underline": {
+      "label": "下線"
+    },
+    "strikethrough": {
+      "label": "取り消し線"
+    },
+    "inlineCode": {
+      "label": "インラインコード"
+    },
+    "link": {
+      "label": "リンク"
+    },
+    "footnote": {
+      "label": "脚注"
+    },
+    "quote": {
+      "label": "引用文"
+    },
+    "inlineMath": {
+      "label": "行内数式"
+    },
+    "numberedEquation": {
+      "label": "番号付き数式"
+    },
+    "alignedEquations": {
+      "label": "揃えた数式"
+    },
+    "fraction": {
+      "label": "分数"
+    },
+    "crossReference": {
+      "label": "相互参照"
+    },
+    "typstInsights": {
+      "label": "文書の分析",
+      "keywords": "図 表 数式 見出し ラベル 引用 todo fixme メタデータ 要旨 投稿"
+    },
+    "typstDocumentSettings": {
+      "label": "文書の設定",
+      "keywords": "用紙サイズ 余白 段組み フォント サイズ 言語 地域 両端揃え 行間 行送り 番号付け"
+    },
+    "toggleComment": {
+      "label": "コメントの切り替え",
+      "keywords": "コメント コメント解除 行 ブロック"
+    },
+    "goToDefinition": {
+      "label": "定義へ移動",
+      "keywords": "定義 ジャンプ シンボル 移動"
+    },
+    "findReferences": {
+      "label": "参照を検索",
+      "keywords": "参照 使用箇所 シンボル"
+    },
+    "renameSymbol": {
+      "label": "シンボルの名前を変更",
+      "keywords": "名前変更 シンボル リファクタリング"
+    },
+    "migrateToTypst": {
+      "label": "Typst のプロジェクトに変換",
+      "keywords": "typst 変換 移行 latex プロジェクト 新規"
+    },
+    "typstMigrationReport": {
+      "label": "Typst への変換レポートを表示",
+      "keywords": "typst 変換 移行 レポート latex"
+    },
+    "present": {
+      "label": "スライドを発表",
+      "keywords": "発表 スライド プレゼンテーション 全画面 beamer touying polylux 発表者ノート pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "発表者ビューでスライドを発表",
+      "keywords": "発表 スライド 発表者ビュー 発表者ノート タイマー 次のスライド"
     }
   },
   "community": {
@@ -236,7 +328,12 @@
     "autoCompile": {
       "off": "オフ",
       "on": "オン",
-      "title": "自動コンパイル"
+      "title": "自動コンパイル",
+      "help": "入力を止めて数秒後にコンパイルします。開いているファイルは先に保存されます。",
+      "typstHelp": "Typst は動作し続け、入力を止めた少し後に PDF を更新します。オンの間、開いているファイルは自動で保存されます。",
+      "typstStarting": "Typst を起動しています",
+      "typstRestarting": "Typst を再起動しています",
+      "typstFailed": "エラーが繰り返されたため Typst は停止しました。ファイルを編集すると再び起動します。"
     },
     "compile": "コンパイル",
     "compiler": {
@@ -272,7 +369,37 @@
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
     "texRootNotTex": "{{file}} の % !TEX root が、LaTeX ファイルではない {{target}} を指しています",
-    "texRootOverride": "root: {{path}}（{{file}} の % !TEX root による指定）"
+    "texRootOverride": "root: {{path}}（{{file}} の % !TEX root による指定）",
+    "typstVersion": {
+      "title": "Typst のバージョン（このプロジェクト）",
+      "help": "バージョンを固定すると、Oleafly が Typst を更新しても、このプロジェクトの出力は変わりません。「既定」は設定で選んだバージョンに従います。バージョンをインストールしたり、新しいバージョンでこのプロジェクトを試したりするには、設定 → エンジン → Typst を開いてください。",
+      "default": "既定（{{version}}）",
+      "defaultPlain": "既定",
+      "builtIn": "[組み込み]",
+      "system": "[システム]",
+      "missing": "[未インストール]",
+      "switchFailed": "Typst のバージョンを変更できませんでした。"
+    },
+    "typstFonts": {
+      "title": "フォント（このプロジェクト）",
+      "help": "Typst は、プロジェクトの fonts フォルダと、project.json の font_paths に書かれたフォルダからフォントを読み込みます。プロジェクトのフォントのみを使うと、PDF がこのコンピュータにインストールされたフォントに左右されなくなります。Typst が見つけられるフォントは「文書の設定」で確認できます。",
+      "systemFonts": "システムフォントを使う",
+      "projectOnly": "プロジェクトのフォントのみ",
+      "unsupported": "新しい Typst が必要",
+      "saveFailed": "フォントの設定を保存できませんでした。"
+    },
+    "typstBuild": {
+      "title": "ビルド（このプロジェクト）",
+      "help": "再現可能なビルドでは、プロジェクトのフォントだけを使い、PDF の日付を最後のコミットに合わせます。同じソースなら、どのコンピュータでも同じ PDF になります。",
+      "standard": "標準ビルド",
+      "reproducible": "再現可能なビルド",
+      "saveFailed": "ビルドの設定を保存できませんでした。"
+    },
+    "typstVariant": {
+      "title": "バリアント（このプロジェクト）",
+      "help": "バリアントは、下書き用や最終版用のビルドなど、独自の値を sys.inputs に渡します。選んだバリアントはこのコンピュータに保存されます。バリアントの追加や編集は「文書の設定」で行えます。",
+      "none": "バリアントなし"
+    }
   },
   "datePicker": {
     "placeholder": "日付を選択"
@@ -925,6 +1052,10 @@
     "wait": {
       "description": "{{phase}} コンパイルは順番待ちに入っており、エンジンの準備ができ次第、自動的に始まります。",
       "title": "TinyTeX をダウンロード中です"
+    },
+    "typstQuit": {
+      "title": "Typst はまだインストール中です",
+      "description": "Typst {{version}} をダウンロードしています。今終了するとダウンロードが止まり、設定からやり直す必要があります。"
     }
   },
   "toolbar": {
@@ -1064,5 +1195,120 @@
     "added": "追加しました。Finder の「サービス」メニューから使えます。「クイックアクション」でも使うには、フォルダを右クリックし、「クイックアクション」›「カスタマイズ」でオンにしてください。",
     "addedInQuickActions": "追加しました。フォルダを右クリックすると「クイックアクション」に表示されます。",
     "failed": "追加できませんでした。「設定」›「一般」からもう一度お試しください。"
+  },
+  "typstMigration": {
+    "title": "Typst のプロジェクトに変換",
+    "closeLabel": "Typst への変換を閉じる",
+    "intro": "Oleafly はこの LaTeX プロジェクトから新しい Typst プロジェクトを作ります。このプロジェクトは変更されません。",
+    "points": {
+      "text": "Pandoc が本文、数式、図、表を変換します。",
+      "files": "input や include の各ファイルは、それぞれ独立した Typst ファイルになります。",
+      "bibliography": "BibTeX ファイルはそのままコピーされます。",
+      "compile": "Typst が新しいプロジェクトをコンパイルして確認します。"
+    },
+    "nameLabel": "新しいプロジェクトの名前",
+    "defaultName": "{{name}}（Typst）",
+    "notLatex": "変換するには LaTeX のプロジェクトを開いてください。",
+    "convert": "変換",
+    "retry": "再試行",
+    "progress": {
+      "reading": "LaTeX のプロジェクトを読み込んでいます",
+      "converting": "Pandoc で変換しています",
+      "creating": "Typst のプロジェクトを作成しています",
+      "compiling": "Typst でコンパイルしています"
+    },
+    "errors": {
+      "pandoc": "Pandoc の準備ができていません。ツールからインストールしてから、もう一度お試しください。",
+      "noMain": "メインの LaTeX ファイルを読み込めませんでした。",
+      "emptyOutput": "Pandoc が空の文書を返しました。",
+      "failed": "変換が止まりました: {{detail}}"
+    },
+    "report": {
+      "created": "{{name}} を作成しました。",
+      "compiled": "Typst でコンパイルできます。",
+      "compileFailed_other": "まだコンパイルできません。{{count}} 件のエラーを修正する必要があります。",
+      "compileUnavailable": "Oleafly はコンパイルできませんでした: {{detail}}",
+      "converted": "変換済み",
+      "sources_other": "{{count}} 件のソースファイル",
+      "figures_other": "{{count}} 件の図",
+      "tables_other": "{{count}} 件の表",
+      "equations_other": "{{count}} 件のディスプレイ数式",
+      "references_other": "{{count}} 件の相互参照",
+      "mathFixed_other": "数式変換で修正した式 {{count}} 件",
+      "copied_other": "{{count}} 件のファイルをコピー",
+      "style": "参考文献スタイル {{style}}",
+      "mapping": "{{source}} → {{target}}",
+      "attention": "要確認",
+      "noAttention": "確認が必要な項目はありません。",
+      "problems": "コンパイルのエラーと警告",
+      "location": "{{file}}、{{line}} 行目",
+      "noLocation": "ファイルの位置なし",
+      "openAt": "{{file}} の {{line}} 行目を開く",
+      "open": "Typst のプロジェクトを開く"
+    },
+    "notes": {
+      "missingInclude": "ファイル {{detail}} が見つからなかったため、除外しました。",
+      "lostInclude": "{{detail}} は独立したファイルにできませんでした。その内容は、読み込み元のファイルに残っています。",
+      "missingImage": "画像 {{detail}} が見つかりませんでした。",
+      "unsupportedImage": "Typst は {{detail}} を表示できません。PDF、PNG、SVG に変換してください。",
+      "math": "この数式は手作業での修正が必要です: {{detail}}",
+      "bibliographyStyle": "BibTeX スタイル {{detail}} に対応する Typst のスタイルがありません。既定のスタイルを使います。",
+      "skippedFile": "プロジェクトが大きすぎるため、{{detail}} はコピーされませんでした。",
+      "unreadableFile": "{{detail}} を読み込めませんでした。",
+      "equationLabel": "Typst は数式全体に番号を付けるため、{{detail}} への参照は、それを含む数式を指すようになりました。"
+    }
+  },
+  "typstExport": {
+    "menuItem": "画像と HTML",
+    "title": "Typst で書き出す",
+    "close": "Typst の書き出しを閉じる",
+    "format": "形式",
+    "png": "PNG 画像",
+    "svg": "SVG 画像",
+    "html": "HTML",
+    "experimental": "試験的",
+    "htmlNote": "Typst の HTML 書き出しはまだ試験的です。ページ設定と配置された要素は含まれません。",
+    "ppi": "解像度",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "ページ",
+    "pagesPlaceholder": "すべてのページ",
+    "pagesHelp": "1、3-5、8- のように、ページ番号と範囲を指定してください。",
+    "pagesInvalid": "ページ範囲を確認してください。1、3-5、8- のように、ページ番号と範囲を指定してください。",
+    "pagesUnsupported": "この Typst のバージョンでは、常にすべてのページを書き出します。",
+    "multiPage": "各ページは別々のファイルとして保存され、選んだ名前のあとに番号が付きます。",
+    "export": "書き出す",
+    "cancel": "キャンセル"
+  },
+  "typstUpgrade": {
+    "title": "新しい Typst のバージョンを試す",
+    "description": "Oleafly は一時フォルダで、両方のバージョンを使ってこのプロジェクトをビルドします。切り替えない限り、プロジェクトは何も変わりません。",
+    "compareWith": "新しいバージョン",
+    "running": "Typst {{current}} と {{candidate}} でビルドしています",
+    "current": "Typst {{version}}（現在）",
+    "candidate": "Typst {{version}}",
+    "built": "ビルド完了",
+    "failed": "失敗",
+    "pages_other": "{{count}} ページ",
+    "pagesUnknown": "ページ数不明",
+    "errors_other": "エラー {{count}} 件",
+    "warnings_other": "警告 {{count}} 件",
+    "pageChange": "ページ数が {{from}} から {{to}} に変わります。",
+    "pageSame": "ページ数は {{pages}} のままです。",
+    "added": "Typst {{version}} で新たに報告",
+    "removed": "Typst {{version}} では報告されない",
+    "noChanges": "どちらのバージョンも同じエラーと警告を報告します。",
+    "unchanged_other": "{{count}} 件のメッセージは両方のバージョンで同じです。",
+    "buildFailed": "Typst {{version}} ではプロジェクトをビルドできませんでした。",
+    "switch": "Typst {{version}} に切り替える",
+    "switched": "このプロジェクトは Typst {{version}} を使うようになりました。",
+    "switchFailed": "Typst のバージョンを切り替えられませんでした。",
+    "runAgain": "もう一度確認",
+    "close": "閉じる",
+    "checkFailed": "確認を完了できませんでした。",
+    "noNewer": "新しい Typst はインストールされていません。設定からインストールできます。",
+    "openSettings": "Typst の設定を開く",
+    "location": "{{file}}、{{line}} 行目",
+    "error": "エラー",
+    "warning": "警告"
   }
 }

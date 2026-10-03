@@ -96,7 +96,9 @@
     "chooseEngine": "Choisir un moteur…",
     "installPackages_one": "Trouver et installer {{name}}",
     "installPackages_many": "Trouver et installer {{count}} fichiers",
-    "installPackages_other": "Trouver et installer {{count}} fichiers"
+    "installPackages_other": "Trouver et installer {{count}} fichiers",
+    "downloadTypst": "Télécharger Typst {{version}}",
+    "useTypst": "Utiliser Typst {{version}}"
   },
   "stale": {
     "badge": "Obsolète",
@@ -105,8 +107,8 @@
     "explanation": "Ce PDF ne représente pas la révision active du projet.",
     "revisionExplanation": "Révision {{displayed}} du projet affichée. Le projet actif est à la révision {{active}}.",
     "noIdentity": "Le PDF affiché n'a aucune identité de compilation vérifiée pour la révision active.",
-    "syncTexAvailable": "SyncTeX utilise la ligne inchangée la plus proche pour les modifications.",
-    "syncTexUnavailable": "SyncTeX exige une compilation à jour."
+    "syncTexAvailable": "La synchronisation avec le source utilise la ligne inchangée la plus proche pour les modifications.",
+    "syncTexUnavailable": "La synchronisation avec le source exige une compilation à jour."
   },
   "save": {
     "title": "Enregistrer le PDF dans le projet",
@@ -274,5 +276,33 @@
       "pageLabel": "Page {{page}} sur {{total}}",
       "empty": "Aucun texte lisible n'a été trouvé sur cette page."
     }
+  },
+  "presentation": {
+    "windowTitle": "Présentation",
+    "presenterTitle": "Mode présentateur",
+    "present": "Présenter",
+    "presentFromStart": "Présenter depuis le début",
+    "presentFromPage": "Présenter depuis cette page",
+    "presentWithPresenter": "Présenter avec le mode présentateur",
+    "loading": "Ouverture des diapositives",
+    "failed": "Impossible d'ouvrir les diapositives. Compilez le projet, puis réessayez.",
+    "close": "Fermer",
+    "slideLabel": "Diapositive {{page}} sur {{total}}",
+    "current": "Diapositive actuelle",
+    "next": "Diapositive suivante",
+    "lastSlide": "C'est la dernière diapositive.",
+    "notes": "Notes de l'orateur",
+    "notesLoading": "Lecture des notes de l'orateur",
+    "noNotes": "Aucune note de l'orateur pour cette diapositive.",
+    "elapsed": "Temps écoulé",
+    "clock": "Heure actuelle",
+    "pause": "Mettre le minuteur en pause",
+    "resume": "Reprendre le minuteur",
+    "reset": "Réinitialiser le minuteur",
+    "previousAction": "Diapositive précédente",
+    "nextAction": "Diapositive suivante",
+    "end": "Terminer la présentation",
+    "blank": "L'écran du public est noir. Appuyez sur B pour afficher les diapositives.",
+    "toggleBlank": "Noircir l'écran du public"
   }
 }

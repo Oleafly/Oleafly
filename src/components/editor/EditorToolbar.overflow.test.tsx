@@ -4,7 +4,9 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
+import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useFilesStore } from "@/store/files";
+import { useHomeViewStore } from "@/store/home-view";
 
 const controller = vi.hoisted(() => ({
   editorFind: vi.fn(),
@@ -89,6 +91,39 @@ describe("EditorToolbar overflow menu", () => {
 
     expect(nav.goToDefinition).toHaveBeenCalledWith({ id: "view" });
     expect(toasts.info).not.toHaveBeenCalled();
+  });
+
+  it("opens the TikZ composer over the open project without asking", async () => {
+    const closeProject = vi.fn(async () => undefined);
+    useFilesStore.setState({ projectId: "paper", closeProject });
+    useHomeViewStore.setState({ page: "library", queuedPageAfterProjectClose: null });
+    useDiagramComposerStore.setState({ language: "mermaid", requestId: 0, chooserOpen: false });
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
+
+    fireEvent.click(screen.getByText(toolbar.drawDiagram));
+
+    await vi.waitFor(() => expect(useHomeViewStore.getState().page).toBe("diagram-composer"));
+    expect(useDiagramComposerStore.getState()).toMatchObject({
+      language: "tikz",
+      requestId: 1,
+      chooserOpen: false,
+    });
+    expect(closeProject).not.toHaveBeenCalled();
+  });
+
+  it("offers no PDF jump for a LaTeX file the Typst project does not compile", () => {
+    useFilesStore.setState({
+      activePath: "notes.tex",
+      engine: { ...LATEX_ENGINE, id: "typst", source_extensions: ["typ"] },
+    });
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    expect(screen.queryByLabelText(toolbar.goToPdf)).not.toBeInTheDocument();
+    cleanup();
+
+    useFilesStore.setState({ activePath: "main.tex", engine: LATEX_ENGINE });
+    render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
+    expect(screen.getByLabelText(toolbar.goToPdf)).toBeInTheDocument();
   });
 
   it("names the second mode segment after the surface a diagram project edits", () => {

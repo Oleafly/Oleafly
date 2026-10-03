@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Zoekt zwakke plekken in argumenten, methoden, bewijs en presentatie.",
-        "documentEditor": "Verbetert tekst, structuur, citaties en LaTeX met gerichte, veilige wijzigingen.",
-        "figure": "Maakt publicatieklare figuren en diagrammen als LaTeX TikZ of PGFPlots.",
+        "documentEditor": "Verbetert tekst, structuur, citaties en LaTeX- of Typst-broncode met gerichte, veilige wijzigingen.",
+        "figure": "Maakt publicatieklare figuren en diagrammen met TikZ in LaTeX of CeTZ in Typst.",
         "researchWriter": "Schrijft en structureert wetenschappelijke tekst zonder bewijs of citaties te verzinnen."
       },
       "suggestedDescription": "Begin met een van deze en pas de instructies daarna aan je manier van werken aan.",
@@ -685,6 +685,29 @@
       "mathPreview": {
         "description": "Toon de opgemaakte vergelijking boven de vergelijking waarin de cursor staat.",
         "label": "Wiskundevoorbeeld"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Maakt Typst-bestanden netjes op met typstyle als je op ⌘S of Ctrl+S drukt. Automatisch opslaan laat ze ongemoeid.",
+          "label": "Opmaken bij opslaan"
+        },
+        "lineWidth": {
+          "description": "typstyle breekt regels af die langer zijn dan dit.",
+          "label": "Regelbreedte van de opmaker"
+        },
+        "indent": {
+          "description": "Spaties per inspringniveau in opgemaakte Typst-code.",
+          "label": "Inspringing van de opmaker"
+        },
+        "inlayHints": {
+          "description": "Toont parameternamen voor de argumenten in Typst-functieaanroepen.",
+          "label": "Hints voor parameternamen"
+        },
+        "lint": {
+          "description": "Controleert Typst-bestanden op waarschijnlijke fouten zodra ze worden opgeslagen. Aan- of uitzetten start de Typst-taalserver opnieuw.",
+          "label": "Typst-lintcontroles"
+        }
       }
     },
     "files": {
@@ -1021,11 +1044,59 @@
       "resume": "Download hervatten ({{size}} MB klaar)"
     },
     "typst": {
-      "detail": "Komt met Oleafly mee. Snel, offline, geen installatie. Compileert Typst-documenten naar PDF.",
+      "detail": "Komt met Oleafly mee, dus er valt niets in te stellen. Een netwerkverbinding is alleen nodig wanneer een document voor het eerst een @preview-pakket importeert.",
       "heading": "Typst-compiler",
       "name": "Typst (ingebouwd)",
-      "note": "Typst-projecten gebruiken altijd de meegeleverde compiler. Een compilerversie kiezen, of de Typst van je systeem gebruiken, kan nog niet.",
-      "tooltip": "Typst zit in Oleafly zelf, dus er valt niets te installeren of in te stellen. Elk Typst-project compileert met de meegeleverde compiler."
+      "note": "Kies in het compileermenu welke versie een project gebruikt. Een project houdt die versie tot je hem wijzigt.",
+      "tooltip": "Oleafly heeft één Typst-versie ingebouwd en kan andere downloaden. Elk project compileert met de versie die het vastzet, of met de standaardversie als het niets vastzet.",
+      "system": {
+        "name": "Typst op deze computer",
+        "detail": "Projecten die versie {{version}} vastzetten, kunnen ermee compileren."
+      },
+      "versions": {
+        "heading": "Versies",
+        "tooltip": "Nieuwe projecten beginnen met de standaardversie, net als projecten zonder vastgezette versie.",
+        "loading": "Typst-versies controleren",
+        "default": "Standaard",
+        "setDefault": "Typst {{version}} als standaard gebruiken",
+        "released": "Uitgebracht op {{date}}",
+        "install": "Installeren",
+        "installAria": "Typst {{version}} installeren",
+        "removeAria": "Typst {{version}} verwijderen",
+        "removeDefault": "Dit is de standaardversie. Kies een andere standaard voordat je hem verwijdert.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Ingebouwd",
+          "downloaded": "Gedownload",
+          "system": "Systeem"
+        }
+      },
+      "progress": {
+        "starting": "Starten",
+        "downloading": "Downloaden {{percent}}%",
+        "verifying": "Controleren",
+        "extracting": "Uitpakken",
+        "done": "Afronden"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} gedownloade taalserver wordt door geen enkele geïnstalleerde Typst-versie gebruikt.",
+        "unused_other": "{{count}} gedownloade taalservers worden door geen enkele geïnstalleerde Typst-versie gebruikt.",
+        "remove": "Ongebruikte taalservers verwijderen",
+        "removed_one": "{{count}} gedownloade taalserver verwijderd.",
+        "removed_other": "{{count}} gedownloade taalservers verwijderd."
+      },
+      "error": {
+        "load": "Kon de Typst-versies niet lezen.",
+        "install": "Kon Typst {{version}} niet installeren.",
+        "remove": "Kon Typst {{version}} niet verwijderen.",
+        "default": "Kon de standaardversie van Typst niet wijzigen.",
+        "removeTinymist": "Kon de ongebruikte taalservers niet verwijderen."
+      },
+      "upgrade": {
+        "heading": "Een nieuwere versie proberen",
+        "detail": "Bouw het geopende project met een nieuwere geïnstalleerde versie en vergelijk de resultaten voordat je overstapt.",
+        "check": "Controleren met Typst {{version}}"
+      }
     }
   },
   "github": {

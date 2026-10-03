@@ -95,7 +95,9 @@
     "retryCompile": "Derlemeyi yeniden dene",
     "chooseEngine": "Motor seç…",
     "installPackages_one": "{{name}} paketini bul ve kur",
-    "installPackages_other": "{{count}} dosyayı bul ve kur"
+    "installPackages_other": "{{count}} dosyayı bul ve kur",
+    "downloadTypst": "Typst {{version}} sürümünü indir",
+    "useTypst": "Typst {{version}} kullan"
   },
   "stale": {
     "badge": "Eski",
@@ -104,8 +106,8 @@
     "explanation": "Bu PDF, etkin proje sürümünü temsil etmiyor.",
     "revisionExplanation": "Proje sürümü {{displayed}} gösteriliyor. Etkin proje sürümü {{active}}.",
     "noIdentity": "Görüntülenen PDF'in etkin sürüm için doğrulanmış bir derleme kimliği yok.",
-    "syncTexAvailable": "SyncTeX, düzenlemeler için en yakın değişmemiş satırı kullanır.",
-    "syncTexUnavailable": "SyncTeX için güncel bir derleme gerekir."
+    "syncTexAvailable": "Kaynak eşitleme, düzenlemeler için en yakın değişmemiş satırı kullanır.",
+    "syncTexUnavailable": "Kaynak eşitleme için güncel bir derleme gerekir."
   },
   "save": {
     "title": "PDF'i projeye kaydet",
@@ -273,5 +275,33 @@
       "pageLabel": "Sayfa {{page}} / {{total}}",
       "empty": "Bu sayfada okunabilir metin bulunamadı."
     }
+  },
+  "presentation": {
+    "windowTitle": "Sunum",
+    "presenterTitle": "Sunucu görünümü",
+    "present": "Sunumu başlat",
+    "presentFromStart": "Baştan sun",
+    "presentFromPage": "Bu sayfadan sun",
+    "presentWithPresenter": "Sunucu görünümüyle sun",
+    "loading": "Slaytlar açılıyor",
+    "failed": "Slaytlar açılamadı. Projeyi derleyin, sonra yeniden deneyin.",
+    "close": "Kapat",
+    "slideLabel": "Slayt {{page}} / {{total}}",
+    "current": "Geçerli slayt",
+    "next": "Sonraki slayt",
+    "lastSlide": "Bu son slayt.",
+    "notes": "Konuşmacı notları",
+    "notesLoading": "Konuşmacı notları okunuyor",
+    "noNotes": "Bu slayt için konuşmacı notu yok.",
+    "elapsed": "Geçen süre",
+    "clock": "Şu anki saat",
+    "pause": "Zamanlayıcıyı duraklat",
+    "resume": "Zamanlayıcıyı sürdür",
+    "reset": "Zamanlayıcıyı sıfırla",
+    "previousAction": "Önceki slayt",
+    "nextAction": "Sonraki slayt",
+    "end": "Sunumu bitir",
+    "blank": "İzleyici ekranı karartıldı. Slaytları göstermek için B tuşuna basın.",
+    "toggleBlank": "İzleyici ekranını karart"
   }
 }

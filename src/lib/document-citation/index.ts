@@ -10,6 +10,13 @@ export {
   type SplitParagraphOptions,
 } from "./latex-paragraphs";
 export {
+  detectScanFormat,
+  extractTypstKeywords,
+  hayagrivaIdentityText,
+  splitTypstParagraphs,
+  type ScanFormat,
+} from "./typst-paragraphs";
+export {
   filterNewLiteratureRecords,
   isRecordInBibliography,
   normalizeTitleKey,

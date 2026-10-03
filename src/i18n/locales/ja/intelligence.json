@@ -59,6 +59,8 @@
       "startingAndInitializing": "プロジェクトの言語サービスを起動して初期化しています。",
       "stopTimeout": "前回の言語サービスのプロセスが時間内に停止しませんでした。再試行して復旧してください。",
       "synchronizedAndReady": "言語サービスは同期済みで、利用できます。",
+      "tinymistDownloadFailed": "Tinymist {{version}} をダウンロードできませんでした。Oleafly がもう一度試します。",
+      "tinymistDownloading": "このプロジェクトの Typst のバージョンに合わせて、Tinymist {{version}} をダウンロードしています。",
       "transportClosed": "言語サービスの接続が予期せず閉じました。再試行して接続し直してください。",
       "versionMismatch": "{{kind}} {{expected}} を想定していましたが、セットアップは {{reported}} を報告しました。"
     }
@@ -135,7 +137,8 @@
     "packageOption": "{{name}} のオプション",
     "keyvalKey": "\\{{command}} のキー",
     "duplicateCount": "重複（{{count}}）",
-    "duplicateIndex": "重複 {{index}}/{{total}}"
+    "duplicateIndex": "重複 {{index}}/{{total}}",
+    "typstBinding": "Typst のバインディング"
   },
   "token": {
     "citation": "引用",

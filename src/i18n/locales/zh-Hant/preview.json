@@ -94,7 +94,9 @@
     "exitFullscreen": "結束全螢幕",
     "retryCompile": "重試編譯",
     "chooseEngine": "選擇引擎…",
-    "installPackages_other": "尋找並安裝 {{count}} 個檔案"
+    "installPackages_other": "尋找並安裝 {{count}} 個檔案",
+    "downloadTypst": "下載 Typst {{version}}",
+    "useTypst": "使用 Typst {{version}}"
   },
   "stale": {
     "badge": "已過期",
@@ -103,8 +105,8 @@
     "explanation": "這份 PDF 不是使用中的專案修訂版本。",
     "revisionExplanation": "目前顯示專案修訂版本 {{displayed}}，使用中的專案為修訂版本 {{active}}。",
     "noIdentity": "顯示中的 PDF 沒有對應使用中修訂版本的已驗證編譯識別。",
-    "syncTexAvailable": "對編輯過的內容，SyncTeX 會使用最接近的未變更行。",
-    "syncTexUnavailable": "SyncTeX 需要目前版本的編譯結果。"
+    "syncTexAvailable": "對編輯過的內容，原始碼同步會使用最接近的未變更行。",
+    "syncTexUnavailable": "原始碼同步需要目前版本的編譯結果。"
   },
   "save": {
     "title": "將 PDF 儲存到專案",
@@ -272,5 +274,33 @@
       "pageLabel": "第 {{page}} 頁，共 {{total}} 頁",
       "empty": "這一頁找不到可讀取的文字。"
     }
+  },
+  "presentation": {
+    "windowTitle": "簡報",
+    "presenterTitle": "簡報者檢視",
+    "present": "放映",
+    "presentFromStart": "從頭放映",
+    "presentFromPage": "從這一頁放映",
+    "presentWithPresenter": "以簡報者檢視放映",
+    "loading": "正在開啟投影片",
+    "failed": "無法開啟投影片。請編譯專案後再試一次。",
+    "close": "關閉",
+    "slideLabel": "第 {{page}} 張投影片，共 {{total}} 張",
+    "current": "目前投影片",
+    "next": "下一張投影片",
+    "lastSlide": "這是最後一張投影片。",
+    "notes": "講者備忘稿",
+    "notesLoading": "正在讀取講者備忘稿",
+    "noNotes": "這張投影片沒有講者備忘稿。",
+    "elapsed": "經過時間",
+    "clock": "目前時間",
+    "pause": "暫停計時",
+    "resume": "繼續計時",
+    "reset": "重設計時",
+    "previousAction": "上一張投影片",
+    "nextAction": "下一張投影片",
+    "end": "結束放映",
+    "blank": "觀眾畫面已清空。按 B 顯示投影片。",
+    "toggleBlank": "清空觀眾畫面"
   }
 }

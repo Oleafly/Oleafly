@@ -154,5 +154,10 @@
       "detail": "Projektin uusinta versiota ei ole vielä indeksoitu.",
       "title": "Odotetaan projektin analyysiä"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Viitetyyli",
+    "ariaLabel": "Lähdeluettelon viitetyyli tiedostossa {{path}}",
+    "failed": "Oleafly ei voinut vaihtaa viitetyyliä."
   }
 }

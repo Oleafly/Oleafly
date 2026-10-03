@@ -3,6 +3,22 @@
     "aiProviderRequired": "Anslut en AI-leverantör i Inställningar för att kunna använda Åtgärda med AI.",
     "fixFailed": "Åtgärden misslyckades: {{detail}}"
   },
+  "chooser": {
+    "title": "Välj diagramverktyg",
+    "description": "Välj vilken sorts dokument diagrammet är till för.",
+    "tikz": {
+      "title": "TikZ-diagram",
+      "description": "Noder och pilar i TikZ, för LaTeX-dokument."
+    },
+    "typst": {
+      "title": "Typst-diagram",
+      "description": "Ett fletcher-diagram för Typst-dokument."
+    },
+    "mermaid": {
+      "title": "Mermaid-diagram",
+      "description": "Ett flödesschema i Mermaid för Markdown-dokument."
+    }
+  },
   "package": {
     "composer": {
       "title": "Infoga diagram",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Avbryt (Esc)",
       "cancelRename": "Avbryt namnbytet",
       "renameTooltip": "Byt namn på diagrammet",
-      "importTooltip": "Importera en .tikz- eller .tex-fil och ersätt det här utkastet",
-      "importLabel": "Importera TikZ-fil",
+      "importTooltip": "Importera en .tikz-, .tex-, .typ-, .mmd- eller .md-fil och ersätt det här utkastet",
+      "importLabel": "Importera diagramfil",
       "modeDraw": "Rita",
       "modeCode": "Kod",
       "fixWithAiTooltip": "Be AI:n åtgärda kompileringsfelet",
@@ -28,20 +44,29 @@
       "newProject": "Nytt projekt",
       "noOtherProjects": "Det finns inga andra projekt än.",
       "saveFigure": "Spara figur",
+      "insertTypst": "Infoga som Typst",
+      "insertLatex": "Infoga som TikZ",
       "downloadTooltip": "Ladda ner det här diagrammet",
       "download": "Ladda ner",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (kommer snart)",
       "svgTooltip": "Export till SVG kräver en vektorrenderare, som inte finns än",
       "snippets": "Kodsnuttar",
-      "untitledName": "Namnlöst diagram"
+      "untitledName": "Namnlöst diagram",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Infoga som Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Diagramspråk: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Rektangelnod",
       "circleNode": "Cirkelnod",
       "arrowEdge": "Kant med pil",
       "lineEdge": "Kant med linje",
-      "scope": "Scope"
+      "scope": "Scope",
+      "group": "Grupp"
     },
     "preview": {
       "label": "Förhandsvisning",
@@ -53,7 +78,8 @@
       "pngScale": "PNG-skala",
       "scaleFactor": "{{factor}}x",
       "background": "Bakgrund",
-      "backgroundLabel": "Bakgrundsfärg för figuren"
+      "backgroundLabel": "Bakgrundsfärg för figuren",
+      "diagnosticAt": "Rad {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Diagrammet kompilerade inte. Kontrollera loggen nedan.",
@@ -68,16 +94,25 @@
       "figureCached": "Redan cachad, den befintliga figuren återanvänds.",
       "figureSaved": "Sparad i din figurcache.",
       "saveFigureFailed": "Det gick inte att spara figuren: {{detail}}",
+      "insertedTypst": "Infogat som Typst-kod.",
+      "insertedLatex": "Infogat som TikZ-kod.",
       "downloaded": "Nedladdat.",
       "imported": "Importerade {{name}} för redigering.",
       "importedCodeOnly": "Importerade {{name}} (bara kod, går inte att rita).",
       "importFailed": "Det gick inte att importera filen: {{detail}}",
       "noAiFix": "AI:n lämnade ingen åtgärd.",
       "fixFailed": "Åtgärden misslyckades: {{detail}}",
-      "notDrawable": "Inget i den här koden gick att rita. Koden är orörd."
+      "notDrawable": "Inget i den här koden gick att rita. Koden är orörd.",
+      "savedTypstToProject": "{{path}} har sparats. Lägg till den i ett dokument med #include.",
+      "insertedMermaid": "Infogat som ett Mermaid-kodblock.",
+      "savedMermaidToProject": "{{path}} har sparats. Lägg till den i ett Markdown-dokument i ett mermaid-kodblock.",
+      "typstPackageMissing": "Typst kunde inte hämta paketet fletcher. Anslut till internet en gång så att Typst kan ladda ner och spara det.",
+      "previewUnavailable": "Den här förhandsvisningen är inte tillgänglig här.",
+      "readerUnavailable": "Kodläsaren kunde inte läsas in. Försök igen."
     },
     "confirm": {
-      "overwrite": "{{files}} finns redan. Vill du skriva över? (Välj ett annat namn om du vill behålla båda.)"
+      "overwrite": "{{files}} finns redan. Vill du skriva över? (Välj ett annat namn om du vill behålla båda.)",
+      "switchLanguage": "Vill du byta det här diagrammet från {{from}} till {{to}}? Kod som arbetsytan inte kan visa följer inte med."
     },
     "canvas": {
       "shapeTools": "Formverktyg",
@@ -136,7 +171,57 @@
       "routingStraight": "Rak",
       "routingOrthogonal": "Ortogonal",
       "routingCurved": "Böjd",
-      "line": "Linje"
+      "line": "Linje",
+      "nodeLabelTypst": "Etikett (Typst)"
+    },
+    "notes": {
+      "tooltip": "Det som arbetsytan inte visar fullt ut",
+      "count_one": "{{count}} anteckning",
+      "count_other": "{{count}} anteckningar",
+      "keptHeading": "Behålls i koden",
+      "approximatedHeading": "Visas ungefärligt",
+      "droppedHeading": "Ritas inte på arbetsytan",
+      "notDiagram": "Det finns inget i den här koden som arbetsytan kan rita.",
+      "outsideCode": "Kod före eller efter diagrammet behålls som den är skriven.",
+      "wrapper": "Koden runt diagrammet, till exempel en figur, behålls som den är skriven.",
+      "diagramSetting": "Diagraminställningen {{detail}} behålls i koden.",
+      "edgeOption": "Kantalternativet {{detail}} behålls i koden.",
+      "scripted": "Skriptat diagraminnehåll, till exempel loopar, behålls i koden.",
+      "mathMode": "Diagraminnehåll i matematikläge behålls i koden.",
+      "unplacedNode": "Noder utan fast position behålls i koden.",
+      "unreadEdge": "Kanter som arbetsytan inte kan läsa behålls i koden.",
+      "danglingEdge": "Kanter som inte förbinder två noder behålls i koden.",
+      "gridCoordinates": "Rutnätskoordinater visas på fasta positioner.",
+      "formattedLabels": "Formaterade etiketter visas som oformaterad text.",
+      "unknownShapes": "Former som arbetsytan saknar visas som rektanglar.",
+      "estimatedSize": "Noder utan bredd och höjd visas i en uppskattad storlek.",
+      "colorAdjustments": "Justerade färger, till exempel lighten, visas med sin grundfärg.",
+      "colorExpressions": "Färger som anges med variabler eller uttryck visas inte på arbetsytan.",
+      "strokeStyles": "Vissa linjestilar visas med närmaste stil på arbetsytan.",
+      "arrowMarks": "Pilspetsar som arbetsytan saknar visas som vanliga pilar.",
+      "freePoints": "Kanter genom fria punkter ritas raka på arbetsytan.",
+      "tikzCommand": "Kommandot {{detail}} ritas inte. En ändring på arbetsytan skriver om koden utan det.",
+      "truncated": "Koden är för lång, så bara den första delen ritas.",
+      "mermaidNotFlowchart": "Bara flödesscheman kan ritas på arbetsytan. Den här koden är ett diagram av typen {{detail}}.",
+      "mermaidFrontmatter": "Frontmatter-blocket behålls i koden.",
+      "mermaidDirective": "Konfigurationsdirektiv behålls i koden.",
+      "mermaidComment": "Kommentarer behålls i koden.",
+      "mermaidAccessibility": "Titlar och beskrivningar för tillgänglighet behålls i koden.",
+      "mermaidClick": "Klickhanterare behålls i koden.",
+      "mermaidStyleProperty": "Stilegenskapen {{detail}} behålls i koden.",
+      "mermaidClassProperty": "Klassegenskapen {{detail}} behålls i koden.",
+      "mermaidLinkStyleProperty": "Länkstilsegenskapen {{detail}} behålls i koden.",
+      "mermaidNodeSetting": "Nodinställningen {{detail}} behålls i koden.",
+      "mermaidEdgeSetting": "Kantinställningen {{detail}} behålls i koden.",
+      "mermaidInvisibleLink": "Osynliga länkar behålls i koden.",
+      "mermaidLinkLength": "Länklängder behålls i koden.",
+      "mermaidSubgraphDirection": "Riktningar för subgrafer behålls i koden.",
+      "mermaidUnknownStatement": "Satser som arbetsytan inte kan läsa behålls i koden.",
+      "mermaidShape": "Formen {{detail}} visas som närmaste form på arbetsytan.",
+      "mermaidThickLink": "Tjocka länkar visas som vanliga linjer.",
+      "mermaidArrowHead": "Pilspetsar med cirkel eller kryss visas som pilar.",
+      "mermaidMarkdownLabel": "Markdown-etiketter visas som oformaterad text.",
+      "mermaidNoFlowchartHeader": "Bara flödesscheman kan ritas på arbetsytan. Inled koden med flowchart eller graph."
     }
   }
 }

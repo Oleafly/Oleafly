@@ -95,7 +95,9 @@
     "retryCompile": "Kompilera igen",
     "chooseEngine": "Välj motor…",
     "installPackages_one": "Hitta och installera {{name}}",
-    "installPackages_other": "Hitta och installera {{count}} filer"
+    "installPackages_other": "Hitta och installera {{count}} filer",
+    "downloadTypst": "Ladda ner Typst {{version}}",
+    "useTypst": "Använd Typst {{version}}"
   },
   "stale": {
     "badge": "Inaktuell",
@@ -104,8 +106,8 @@
     "explanation": "Den här PDF:en motsvarar inte den aktiva projektrevisionen.",
     "revisionExplanation": "Visar projektrevision {{displayed}}. Det aktiva projektet är revision {{active}}.",
     "noIdentity": "Den visade PDF:en har ingen verifierad kompileringsidentitet för den aktiva revisionen.",
-    "syncTexAvailable": "SyncTeX använder närmaste oförändrade rad vid ändringar.",
-    "syncTexUnavailable": "SyncTeX kräver en aktuell kompilering."
+    "syncTexAvailable": "Källsynkroniseringen använder närmaste oförändrade rad vid ändringar.",
+    "syncTexUnavailable": "Källsynkroniseringen kräver en aktuell kompilering."
   },
   "save": {
     "title": "Spara PDF:en i projektet",
@@ -273,5 +275,33 @@
       "pageLabel": "Sida {{page}} av {{total}}",
       "empty": "Ingen läsbar text hittades på den här sidan."
     }
+  },
+  "presentation": {
+    "windowTitle": "Presentation",
+    "presenterTitle": "Presentatörsvy",
+    "present": "Presentera",
+    "presentFromStart": "Presentera från början",
+    "presentFromPage": "Presentera från den här sidan",
+    "presentWithPresenter": "Presentera med presentatörsvy",
+    "loading": "Öppnar presentationsbilderna",
+    "failed": "Det gick inte att öppna presentationsbilderna. Kompilera projektet och försök igen.",
+    "close": "Stäng",
+    "slideLabel": "Bild {{page}} av {{total}}",
+    "current": "Aktuell bild",
+    "next": "Nästa bild",
+    "lastSlide": "Det här är den sista bilden.",
+    "notes": "Talaranteckningar",
+    "notesLoading": "Läser talaranteckningar",
+    "noNotes": "Inga talaranteckningar för den här bilden.",
+    "elapsed": "Förfluten tid",
+    "clock": "Aktuell tid",
+    "pause": "Pausa timern",
+    "resume": "Återuppta timern",
+    "reset": "Nollställ timern",
+    "previousAction": "Föregående bild",
+    "nextAction": "Nästa bild",
+    "end": "Avsluta presentationen",
+    "blank": "Publikens skärm är tom. Tryck på B för att visa bilderna.",
+    "toggleBlank": "Töm publikens skärm"
   }
 }

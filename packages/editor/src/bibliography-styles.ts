@@ -115,3 +115,268 @@ export function bibliographyStyleDetailKey(
 ): EditorMessageKey {
   return DETAIL_KEYS[family];
 }
+
+export type TypstStyleUsage = "bibliography" | "cite";
+
+export interface TypstBibliographyStyle {
+  readonly name: string;
+  readonly project: boolean;
+  readonly citationOnly: boolean;
+}
+
+interface TypstStyleEntry {
+  readonly name: string;
+  readonly since?: readonly [number, number];
+  readonly citationOnly?: boolean;
+}
+
+const TYPST_BASE_STYLES: readonly string[] = [
+  "american-anthropological-association",
+  "american-chemical-society",
+  "american-geophysical-union",
+  "american-institute-of-aeronautics-and-astronautics",
+  "american-institute-of-physics",
+  "american-medical-association",
+  "american-meteorological-society",
+  "american-physics-society",
+  "american-physiological-society",
+  "american-political-science-association",
+  "american-psychological-association",
+  "apa",
+  "american-society-for-microbiology",
+  "american-society-of-civil-engineers",
+  "american-society-of-mechanical-engineers",
+  "american-sociological-association",
+  "angewandte-chemie",
+  "annual-reviews",
+  "annual-reviews-author-date",
+  "associacao-brasileira-de-normas-tecnicas",
+  "association-for-computing-machinery",
+  "biomed-central",
+  "bristol-university-press",
+  "british-medical-journal",
+  "bmj",
+  "cell",
+  "chicago-author-date",
+  "chicago-notes",
+  "chicago-fullnotes",
+  "copernicus",
+  "council-of-science-editors",
+  "council-of-science-editors-author-date",
+  "current-opinion",
+  "deutsche-gesellschaft-für-psychologie",
+  "deutsche-sprache",
+  "elsevier-harvard",
+  "elsevier-vancouver",
+  "elsevier-with-titles",
+  "frontiers",
+  "future-medicine",
+  "future-science",
+  "gb-7714-2005-numeric",
+  "gb-7714-2015-author-date",
+  "gb-7714-2015-note",
+  "gb-7714-2015-numeric",
+  "gost-r-705-2008-numeric",
+  "harvard-cite-them-right",
+  "institute-of-electrical-and-electronics-engineers",
+  "ieee",
+  "institute-of-physics-numeric",
+  "iso-690-author-date",
+  "iso-690-numeric",
+  "karger",
+  "mary-ann-liebert-vancouver",
+  "modern-humanities-research-association",
+  "modern-language-association",
+  "mla",
+  "modern-language-association-8",
+  "mla-8",
+  "multidisciplinary-digital-publishing-institute",
+  "nature",
+  "vancouver",
+  "vancouver-superscript",
+  "pensoft",
+  "public-library-of-science",
+  "plos",
+  "royal-society-of-chemistry",
+  "sage-vancouver",
+  "sist02",
+  "spie",
+  "springer-basic",
+  "springer-basic-author-date",
+  "springer-fachzeitschriften-medizin-psychologie",
+  "springer-humanities-author-date",
+  "springer-lecture-notes-in-computer-science",
+  "springer-mathphys",
+  "springer-socpsych-author-date",
+  "springer-vancouver",
+  "taylor-and-francis-chicago-author-date",
+  "taylor-and-francis-national-library-of-medicine",
+  "the-institution-of-engineering-and-technology",
+  "the-lancet",
+  "thieme",
+  "trends",
+  "turabian-author-date",
+  "turabian-fullnote-8",
+];
+
+const TYPST_STYLE_ENTRIES: readonly TypstStyleEntry[] = [
+  ...TYPST_BASE_STYLES.map((name) => ({ name })),
+  { name: "chicago-shortened-notes", since: [0, 14] },
+  { name: "modern-humanities-research-association-notes", since: [0, 14] },
+  { name: "cse-citation-sequence-brackets-8th-edition", since: [0, 15] },
+  { name: "cse-name-year", since: [0, 15] },
+  { name: "nlm-citation-sequence", since: [0, 15] },
+  { name: "nlm-citation-sequence-superscript", since: [0, 15] },
+  { name: "alphanumeric", citationOnly: true },
+];
+
+export function typstBibliographyStyleDetailKey(style: TypstBibliographyStyle): EditorMessageKey {
+  if (style.project) return "typst.bibliographyStyle.project";
+  return style.citationOnly ? "typst.bibliographyStyle.citation" : "typst.bibliographyStyle.builtin";
+}
+
+let typstCslStyleProvider: () => string[] = () => [];
+let typstStyleVersionProvider: () => string | null = () => null;
+
+export function typstStyleVersion(): string | null {
+  return typstStyleVersionProvider();
+}
+
+export function setTypstCslStyleProvider(fn: () => string[]): void {
+  typstCslStyleProvider = fn;
+}
+
+export function setTypstStyleVersionProvider(fn: () => string | null): void {
+  typstStyleVersionProvider = fn;
+}
+
+function typstMinor(version: string | null): readonly [number, number] | null {
+  const match = version ? /^(\d+)\.(\d+)/.exec(version.trim()) : null;
+  return match ? [Number(match[1]), Number(match[2])] : null;
+}
+
+function supports(version: readonly [number, number] | null, since?: readonly [number, number]): boolean {
+  if (!since || !version) return true;
+  return version[0] > since[0] || (version[0] === since[0] && version[1] >= since[1]);
+}
+
+export function typstBibliographyStyles(
+  version: string | null,
+  usage: TypstStyleUsage,
+): readonly TypstBibliographyStyle[] {
+  const minor = typstMinor(version);
+  const seen = new Set<string>();
+  const styles: TypstBibliographyStyle[] = [];
+  for (const raw of typstCslStyleProvider()) {
+    const name = raw.trim();
+    if (!/\.csl$/iu.test(name) || seen.has(name)) continue;
+    seen.add(name);
+    styles.push({ name, project: true, citationOnly: false });
+  }
+  for (const entry of TYPST_STYLE_ENTRIES) {
+    if (!supports(minor, entry.since)) continue;
+    if (entry.citationOnly && usage !== "cite") continue;
+    styles.push({ name: entry.name, project: false, citationOnly: entry.citationOnly === true });
+  }
+  return styles;
+}
+
+export interface StyleFrame {
+  readonly close: string;
+  readonly code: boolean;
+  readonly callee: string;
+}
+
+const STYLE_STRING = /\bstyle\s*:\s*"([^"\\\n]*)$/u;
+const IDENTIFIER_BEFORE = /([A-Za-z_][\w-]*)\s*$/u;
+const STYLE_CALLEES = new Set(["bibliography", "cite"]);
+
+function skipQuoted(text: string, start: number): number {
+  let index = start + 1;
+  while (index < text.length && text[index] !== '"') index += text[index] === "\\" ? 2 : 1;
+  return index + 1;
+}
+
+function skipRaw(text: string, start: number): number {
+  let ticks = 0;
+  while (text[start + ticks] === "`") ticks += 1;
+  const close = text.indexOf("`".repeat(ticks), start + ticks);
+  return close < 0 ? text.length : close + ticks;
+}
+
+function skipComment(text: string, index: number): number | null {
+  if (text[index] !== "/") return null;
+  if (text[index + 1] === "/" && text[index - 1] !== ":") {
+    const newline = text.indexOf("\n", index);
+    return newline < 0 ? text.length : newline;
+  }
+  if (text[index + 1] === "*") {
+    const close = text.indexOf("*/", index + 2);
+    return close < 0 ? text.length : close + 2;
+  }
+  return null;
+}
+
+function markupCall(text: string, hash: number): { callee: string; open: number } | null {
+  const head = /^#(?:(?:set|show)\s+)?([A-Za-z_][\w.-]*)\s*\(/u.exec(text.slice(hash, hash + 200));
+  return head ? { callee: head[1], open: hash + head[0].length - 1 } : null;
+}
+
+export function enclosingFrames(text: string): StyleFrame[] {
+  const stack: StyleFrame[] = [];
+  let index = 0;
+  while (index < text.length) {
+    const character = text[index];
+    const top = stack.at(-1);
+    const comment = skipComment(text, index);
+    if (comment !== null) {
+      index = comment;
+      continue;
+    }
+    if (character === "\\") {
+      index += 2;
+      continue;
+    }
+    if (!top?.code) {
+      if (character === "`") {
+        index = skipRaw(text, index);
+      } else if (character === "#") {
+        const call = markupCall(text, index);
+        if (call) {
+          stack.push({ close: ")", code: true, callee: call.callee });
+          index = call.open + 1;
+        } else {
+          index += 1;
+        }
+      } else {
+        if (top && character === top.close) stack.pop();
+        index += 1;
+      }
+      continue;
+    }
+    if (character === '"') {
+      const end = skipQuoted(text, index);
+      if (end > text.length) return stack;
+      index = end;
+    } else if (character === "(" || character === "{") {
+      const callee = character === "(" ? IDENTIFIER_BEFORE.exec(text.slice(Math.max(0, index - 60), index))?.[1] ?? "" : "";
+      stack.push({ close: character === "(" ? ")" : "}", code: true, callee });
+      index += 1;
+    } else if (character === "[") {
+      stack.push({ close: "]", code: false, callee: "" });
+      index += 1;
+    } else {
+      if (character === top.close) stack.pop();
+      index += 1;
+    }
+  }
+  return stack;
+}
+
+export function typstStyleArgumentAt(before: string): { callee: string; query: string } | null {
+  const match = STYLE_STRING.exec(before);
+  if (!match) return null;
+  const frame = enclosingFrames(before.slice(0, match.index)).at(-1);
+  if (!frame?.code || frame.close !== ")" || !STYLE_CALLEES.has(frame.callee)) return null;
+  return { callee: frame.callee, query: match[1] };
+}

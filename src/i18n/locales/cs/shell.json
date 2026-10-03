@@ -43,7 +43,9 @@
     "noResults": "Nebyly nalezeny žádné výsledky. Zkontrolujte identifikátor nebo zkuste jiná slova z názvu.",
     "placeholder": "DOI, identifikátor arXiv, URL nebo název článku…",
     "privacyNote": "Odesílá se jen identifikátor nebo název, a to na doi.org, arXiv nebo Crossref.",
-    "title": "Přidat citaci"
+    "title": "Přidat citaci",
+    "bibliography": "Bibliografie",
+    "bibliographyHint": "Tento projekt má víc než jednu bibliografii. Záznam se uloží do souboru, který zde vyberete."
   },
   "backendProtocol": {
     "mismatch": "Toto okno a jeho backend byly sestaveny pro různé verze Oleafly, takže některé funkce nemusí fungovat. Pomůže přeinstalování aplikace."
@@ -124,6 +126,14 @@
       "keywords": "zavřít ukončit prostředí begin latex",
       "label": "Uzavřít prostředí LaTeX"
     },
+    "formatDocument": {
+      "keywords": "formátovat uklidit odsazení typstyle typst",
+      "label": "Formátovat dokument"
+    },
+    "formatSelection": {
+      "keywords": "formátovat výběr uklidit odsazení typstyle typst",
+      "label": "Formátovat výběr"
+    },
     "createProject": {
       "keywords": "nový projekt vytvořit šablona galerie",
       "label": "Vytvořit nový projekt"
@@ -131,6 +141,14 @@
     "diagramComposer": {
       "keywords": "diagram obrázek tikz skladatel kreslení plátno",
       "label": "Otevřít Skladatele diagramů"
+    },
+    "typstPackages": {
+      "keywords": "typst universe balíčky import knihovna procházet převzít do projektu",
+      "label": "Procházet balíčky Typst"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan balíčky usepackage preambule instalovat tlmgr procházet",
+      "label": "Procházet balíčky LaTeX"
     },
     "documentCitationScan": {
       "keywords": "citace literatura kontrola dokument odstavec reference najít",
@@ -197,7 +215,8 @@
       "label": "Obalit prostředím"
     },
     "synctex": {
-      "label": "Přejít do PDF (SyncTeX)"
+      "label": "Přejít do PDF (SyncTeX)",
+      "typstLabel": "Přejít do PDF"
     },
     "table": {
       "label": "Tabulka"
@@ -230,6 +249,79 @@
     "openFolder": {
       "label": "Otevřít složku…",
       "keywords": "otevřít složka adresář existující místní soubory disk"
+    },
+    "underline": {
+      "label": "Podtržené"
+    },
+    "strikethrough": {
+      "label": "Přeškrtnuté"
+    },
+    "inlineCode": {
+      "label": "Kód v řádku"
+    },
+    "link": {
+      "label": "Odkaz"
+    },
+    "footnote": {
+      "label": "Poznámka pod čarou"
+    },
+    "quote": {
+      "label": "Citát"
+    },
+    "inlineMath": {
+      "label": "Matematika v řádku"
+    },
+    "numberedEquation": {
+      "label": "Číslovaná rovnice"
+    },
+    "alignedEquations": {
+      "label": "Zarovnané rovnice"
+    },
+    "fraction": {
+      "label": "Zlomek"
+    },
+    "crossReference": {
+      "label": "Křížový odkaz"
+    },
+    "typstInsights": {
+      "label": "Přehled dokumentu",
+      "keywords": "obrázky tabulky rovnice nadpisy návěští citace todo fixme metadata abstrakt odeslání"
+    },
+    "typstDocumentSettings": {
+      "label": "Nastavení dokumentu",
+      "keywords": "velikost stránky okraje sloupce písmo velikost písma jazyk oblast zarovnání řádkování číslování"
+    },
+    "toggleComment": {
+      "label": "Přepnout komentář",
+      "keywords": "komentář odkomentovat řádek blok"
+    },
+    "goToDefinition": {
+      "label": "Přejít na definici",
+      "keywords": "definice skok symbol navigace"
+    },
+    "findReferences": {
+      "label": "Najít reference",
+      "keywords": "reference použití symbol"
+    },
+    "renameSymbol": {
+      "label": "Přejmenovat symbol",
+      "keywords": "přejmenovat symbol refaktoring"
+    },
+    "migrateToTypst": {
+      "label": "Převést na projekt Typst",
+      "keywords": "typst převést migrace latex projekt nový"
+    },
+    "typstMigrationReport": {
+      "label": "Zobrazit zprávu o převodu do formátu Typst",
+      "keywords": "typst převést migrace zpráva latex"
+    },
+    "present": {
+      "label": "Prezentovat snímky",
+      "keywords": "prezentovat snímky prezentace celá obrazovka beamer touying polylux poznámky přednášejícího pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "Prezentovat snímky se zobrazením přednášejícího",
+      "keywords": "prezentovat snímky zobrazení přednášejícího poznámky přednášejícího časovač další snímek"
     }
   },
   "community": {
@@ -242,7 +334,12 @@
     "autoCompile": {
       "off": "Vypnuto",
       "on": "Zapnuto",
-      "title": "Automatická kompilace"
+      "title": "Automatická kompilace",
+      "help": "Zkompiluje dokument několik sekund poté, co přestanete psát. Otevřený soubor se nejprve uloží.",
+      "typstHelp": "Typst běží na pozadí a aktualizuje PDF chvíli poté, co přestanete psát. Když je tato volba zapnutá, otevřený soubor se ukládá sám.",
+      "typstStarting": "Spouští se Typst",
+      "typstRestarting": "Typst se restartuje",
+      "typstFailed": "Typst se po opakovaných chybách zastavil. Úpravou souboru jej znovu spustíte."
     },
     "compile": "Kompilovat",
     "compiler": {
@@ -278,7 +375,37 @@
     "texRootLabel": "TEX root",
     "texRootName": "kořen: {{name}}",
     "texRootNotTex": "% !TEX root v {{file}} odkazuje na {{target}}, což není soubor LaTeX",
-    "texRootOverride": "kořen: {{path}} (nastaveno pomocí % !TEX root v {{file}})"
+    "texRootOverride": "kořen: {{path}} (nastaveno pomocí % !TEX root v {{file}})",
+    "typstVersion": {
+      "title": "Verze Typst (tento projekt)",
+      "help": "Připněte verzi, aby výstup tohoto projektu zůstal stejný, i když Oleafly aktualizuje Typst. Výchozí volba se řídí verzí zvolenou v Nastavení. Chcete-li instalovat verze nebo vyzkoušet projekt na novější verzi, otevřete Nastavení → Enginy → Typst.",
+      "default": "Výchozí ({{version}})",
+      "defaultPlain": "Výchozí",
+      "builtIn": "[vestavěný]",
+      "system": "[systémový]",
+      "missing": "[nenainstalováno]",
+      "switchFailed": "Verzi Typst se nepodařilo změnit."
+    },
+    "typstFonts": {
+      "title": "Písma (tento projekt)",
+      "help": "Typst čte písma ze složky fonts v projektu a ze složek uvedených pod font_paths v project.json. Jen s písmy projektu nezávisí PDF na písmech nainstalovaných v tomto počítači. V Nastavení dokumentu uvidíte písma, která Typst dokáže najít.",
+      "systemFonts": "Používat systémová písma",
+      "projectOnly": "Jen písma projektu",
+      "unsupported": "Vyžaduje novější Typst",
+      "saveFailed": "Nastavení písma se nepodařilo uložit."
+    },
+    "typstBuild": {
+      "title": "Sestavení (tento projekt)",
+      "help": "Reprodukovatelné sestavení používá jen písma projektu a datum PDF nastaví podle posledního commitu. Stejné zdroje pak dají stejné PDF na každém počítači.",
+      "standard": "Standardní sestavení",
+      "reproducible": "Reprodukovatelné sestavení",
+      "saveFailed": "Nastavení sestavení se nepodařilo uložit."
+    },
+    "typstVariant": {
+      "title": "Varianta (tento projekt)",
+      "help": "Varianta předává do sys.inputs vlastní hodnoty, například pro koncept nebo finální verzi do tisku. Vybraná varianta zůstává v tomto počítači. Varianty přidáte nebo upravíte v Nastavení dokumentu.",
+      "none": "Bez varianty"
+    }
   },
   "datePicker": {
     "placeholder": "Vyberte datum"
@@ -988,6 +1115,10 @@
     "wait": {
       "description": "{{phase}} Vaše kompilace je ve frontě a spustí se automaticky, jakmile bude engine připraven.",
       "title": "TinyTeX se stále stahuje"
+    },
+    "typstQuit": {
+      "title": "Typst se stále instaluje",
+      "description": "Typst {{version}} se stahuje. Pokud aplikaci teď ukončíte, stahování se zastaví a budete ho muset spustit znovu z Nastavení."
     }
   },
   "toolbar": {
@@ -1127,5 +1258,156 @@
     "added": "Přidáno. Teď ji najdete v nabídce Služby ve Finderu. Pokud ji chcete používat i z nabídky Rychlé akce, klikněte pravým tlačítkem na složku a zapněte ji v nabídce Rychlé akce › Vlastní.",
     "addedInQuickActions": "Přidáno. Klikněte pravým tlačítkem na složku a najdete ji v nabídce Rychlé akce.",
     "failed": "Přidání se nezdařilo. Můžete to zkusit znovu v Nastavení › Obecné."
+  },
+  "typstMigration": {
+    "title": "Převést na projekt Typst",
+    "closeLabel": "Zavřít převod do formátu Typst",
+    "intro": "Oleafly z tohoto projektu LaTeX vytvoří nový projekt Typst. Tento projekt se nezmění.",
+    "points": {
+      "text": "Pandoc převede text, matematiku, obrázky a tabulky.",
+      "files": "Z každého souboru input a include se stane samostatný soubor Typst.",
+      "bibliography": "Soubory BibTeX se zkopírují beze změny.",
+      "compile": "Typst nový projekt zkompiluje, aby jej zkontroloval."
+    },
+    "nameLabel": "Název nového projektu",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Otevřete projekt LaTeX, který chcete převést.",
+    "convert": "Převést",
+    "retry": "Zkusit znovu",
+    "progress": {
+      "reading": "Čte se projekt LaTeX",
+      "converting": "Převádí se nástrojem Pandoc",
+      "creating": "Vytváří se projekt Typst",
+      "compiling": "Kompiluje se nástrojem Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc není připraven. Nainstalujte jej v Nástrojích a zkuste to znovu.",
+      "noMain": "Hlavní soubor LaTeX se nepodařilo přečíst.",
+      "emptyOutput": "Pandoc vrátil prázdný dokument.",
+      "failed": "Převod se zastavil: {{detail}}"
+    },
+    "report": {
+      "created": "Vytvořeno: {{name}}.",
+      "compiled": "Projekt jde zkompilovat nástrojem Typst.",
+      "compileFailed_one": "Zatím se nezkompiluje. Je potřeba opravit {{count}} chybu.",
+      "compileFailed_few": "Zatím se nezkompiluje. Je potřeba opravit {{count}} chyby.",
+      "compileFailed_many": "Zatím se nezkompiluje. Je potřeba opravit {{count}} chyby.",
+      "compileFailed_other": "Zatím se nezkompiluje. Je potřeba opravit {{count}} chyb.",
+      "compileUnavailable": "Oleafly jej nedokázal zkompilovat: {{detail}}",
+      "converted": "Převedeno",
+      "sources_one": "{{count}} zdrojový soubor",
+      "sources_few": "{{count}} zdrojové soubory",
+      "sources_many": "{{count}} zdrojového souboru",
+      "sources_other": "{{count}} zdrojových souborů",
+      "figures_one": "{{count}} obrázek",
+      "figures_few": "{{count}} obrázky",
+      "figures_many": "{{count}} obrázku",
+      "figures_other": "{{count}} obrázků",
+      "tables_one": "{{count}} tabulka",
+      "tables_few": "{{count}} tabulky",
+      "tables_many": "{{count}} tabulky",
+      "tables_other": "{{count}} tabulek",
+      "equations_one": "{{count}} samostatná rovnice",
+      "equations_few": "{{count}} samostatné rovnice",
+      "equations_many": "{{count}} samostatné rovnice",
+      "equations_other": "{{count}} samostatných rovnic",
+      "references_one": "{{count}} křížový odkaz",
+      "references_few": "{{count}} křížové odkazy",
+      "references_many": "{{count}} křížového odkazu",
+      "references_other": "{{count}} křížových odkazů",
+      "mathFixed_one": "{{count}} vzorec opravený převodníkem matematiky",
+      "mathFixed_few": "{{count}} vzorce opravené převodníkem matematiky",
+      "mathFixed_many": "{{count}} vzorce opraveného převodníkem matematiky",
+      "mathFixed_other": "{{count}} vzorců opravených převodníkem matematiky",
+      "copied_one": "{{count}} soubor zkopírován",
+      "copied_few": "{{count}} soubory zkopírovány",
+      "copied_many": "{{count}} souboru zkopírováno",
+      "copied_other": "{{count}} souborů zkopírováno",
+      "style": "Styl bibliografie {{style}}",
+      "mapping": "{{source}} na {{target}}",
+      "attention": "Vyžaduje pozornost",
+      "noAttention": "Nic nevyžaduje pozornost.",
+      "problems": "Chyby a varování kompilace",
+      "location": "{{file}}, řádek {{line}}",
+      "noLocation": "Bez umístění v souboru",
+      "openAt": "Otevřít {{file}} na řádku {{line}}",
+      "open": "Otevřít projekt Typst"
+    },
+    "notes": {
+      "missingInclude": "Soubor {{detail}} nebyl nalezen, proto byl vynechán.",
+      "lostInclude": "{{detail}} nemohl dostat vlastní soubor. Jeho text zůstává v souboru, který jej vkládal.",
+      "missingImage": "Obrázek {{detail}} nebyl nalezen.",
+      "unsupportedImage": "Typst neumí zobrazit {{detail}}. Převeďte jej do PDF, PNG nebo SVG.",
+      "math": "Tato matematika vyžaduje ruční opravu: {{detail}}",
+      "bibliographyStyle": "Styl BibTeX {{detail}} nemá obdobu pro Typst. Použije se výchozí styl.",
+      "skippedFile": "{{detail}} se nezkopíroval, protože projekt je příliš velký.",
+      "unreadableFile": "{{detail}} se nepodařilo přečíst.",
+      "equationLabel": "Typst čísluje celé rovnice, takže odkazy na {{detail}} teď míří na rovnici, ve které byl."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Obrázky a HTML",
+    "title": "Export nástrojem Typst",
+    "close": "Zavřít export Typst",
+    "format": "Formát",
+    "png": "Obrázky PNG",
+    "svg": "Obrázky SVG",
+    "html": "HTML",
+    "experimental": "Experimentální",
+    "htmlNote": "Export HTML v nástroji Typst je stále experimentální. Vynechává nastavení stránky a umístěné prvky.",
+    "ppi": "Rozlišení",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Stránky",
+    "pagesPlaceholder": "Všechny stránky",
+    "pagesHelp": "Použijte čísla stránek a rozsahy, například 1, 3-5 nebo 8-.",
+    "pagesInvalid": "Zkontrolujte rozsah stránek. Použijte čísla stránek a rozsahy, například 1, 3-5 nebo 8-.",
+    "pagesUnsupported": "Tato verze Typst vždy exportuje všechny stránky.",
+    "multiPage": "Každá stránka se uloží jako samostatný soubor očíslovaný podle zvoleného názvu.",
+    "export": "Exportovat",
+    "cancel": "Zrušit"
+  },
+  "typstUpgrade": {
+    "title": "Vyzkoušet novější verzi Typst",
+    "description": "Oleafly sestaví tento projekt oběma verzemi v dočasných složkách. Dokud verzi nepřepnete, ve vašem projektu se nic nezmění.",
+    "compareWith": "Novější verze",
+    "running": "Sestavuje se pomocí Typst {{current}} a {{candidate}}",
+    "current": "Typst {{version}} (aktuální)",
+    "candidate": "Typst {{version}}",
+    "built": "Sestaveno",
+    "failed": "Selhalo",
+    "pages_one": "{{count}} stránka",
+    "pages_few": "{{count}} stránky",
+    "pages_many": "{{count}} stránky",
+    "pages_other": "{{count}} stránek",
+    "pagesUnknown": "Počet stránek neznámý",
+    "errors_one": "{{count}} chyba",
+    "errors_few": "{{count}} chyby",
+    "errors_many": "{{count}} chyby",
+    "errors_other": "{{count}} chyb",
+    "warnings_one": "{{count}} varování",
+    "warnings_few": "{{count}} varování",
+    "warnings_many": "{{count}} varování",
+    "warnings_other": "{{count}} varování",
+    "pageChange": "Počet stránek se změní z {{from}} na {{to}}.",
+    "pageSame": "Počet stránek zůstává {{pages}}.",
+    "added": "Nové v Typst {{version}}",
+    "removed": "Typst {{version}} už nehlásí",
+    "noChanges": "Obě verze hlásí stejné chyby a varování.",
+    "unchanged_one": "{{count}} zpráva je v obou verzích stejná.",
+    "unchanged_few": "{{count}} zprávy jsou v obou verzích stejné.",
+    "unchanged_many": "{{count}} zprávy je v obou verzích stejných.",
+    "unchanged_other": "{{count}} zpráv je v obou verzích stejných.",
+    "buildFailed": "Typst {{version}} nedokázal projekt sestavit.",
+    "switch": "Přepnout na Typst {{version}}",
+    "switched": "Tento projekt nyní používá Typst {{version}}.",
+    "switchFailed": "Verzi Typst se nepodařilo přepnout.",
+    "runAgain": "Zkontrolovat znovu",
+    "close": "Zavřít",
+    "checkFailed": "Kontrolu se nepodařilo dokončit.",
+    "noNewer": "Není nainstalovaná žádná novější verze Typst. Můžete ji nainstalovat v Nastavení.",
+    "openSettings": "Otevřít nastavení Typst",
+    "location": "{{file}}, řádek {{line}}",
+    "error": "Chyba",
+    "warning": "Varování"
   }
 }

@@ -3,6 +3,22 @@
     "aiProviderRequired": "Podłącz dostawcę AI w Ustawieniach, aby korzystać z opcji Popraw z pomocą AI.",
     "fixFailed": "Poprawka nie powiodła się: {{detail}}"
   },
+  "chooser": {
+    "title": "Wybierz kreator diagramów",
+    "description": "Wybierz rodzaj dokumentu, dla którego jest diagram.",
+    "tikz": {
+      "title": "Diagram TikZ",
+      "description": "Węzły i strzałki w TikZ dla dokumentów LaTeX."
+    },
+    "typst": {
+      "title": "Diagram Typst",
+      "description": "Diagram fletcher dla dokumentów Typst."
+    },
+    "mermaid": {
+      "title": "Diagram Mermaid",
+      "description": "Schemat blokowy Mermaid dla dokumentów Markdown."
+    }
+  },
   "package": {
     "composer": {
       "title": "Wstaw diagram",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Anuluj (Esc)",
       "cancelRename": "Anuluj zmianę nazwy",
       "renameTooltip": "Zmień nazwę diagramu",
-      "importTooltip": "Importuj plik .tikz lub .tex, zastępując ten szkic",
-      "importLabel": "Importuj plik TikZ",
+      "importTooltip": "Importuj plik .tikz, .tex, .typ, .mmd lub .md, zastępując ten szkic",
+      "importLabel": "Importuj plik diagramu",
       "modeDraw": "Rysowanie",
       "modeCode": "Kod",
       "fixWithAiTooltip": "Poproś AI o poprawienie błędu kompilacji",
@@ -28,20 +44,29 @@
       "newProject": "Nowy projekt",
       "noOtherProjects": "Nie ma jeszcze innych projektów.",
       "saveFigure": "Zapisz rysunek",
+      "insertTypst": "Wstaw jako Typst",
+      "insertLatex": "Wstaw jako TikZ",
       "downloadTooltip": "Pobierz ten diagram",
       "download": "Pobierz",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (wkrótce)",
       "svgTooltip": "Eksport do SVG wymaga mechanizmu wektorowego, który nie jest jeszcze dostępny",
       "snippets": "Fragmenty",
-      "untitledName": "Diagram bez tytułu"
+      "untitledName": "Diagram bez tytułu",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Wstaw jako Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Język diagramu: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Węzeł prostokątny",
       "circleNode": "Węzeł okrągły",
       "arrowEdge": "Krawędź ze strzałką",
       "lineEdge": "Krawędź liniowa",
-      "scope": "Scope"
+      "scope": "Scope",
+      "group": "Grupa"
     },
     "preview": {
       "label": "Podgląd",
@@ -53,7 +78,8 @@
       "pngScale": "Skala PNG",
       "scaleFactor": "{{factor}}x",
       "background": "Tło",
-      "backgroundLabel": "Kolor tła rysunku"
+      "backgroundLabel": "Kolor tła rysunku",
+      "diagnosticAt": "Wiersz {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Diagram nie skompilował się. Sprawdź dziennik poniżej.",
@@ -68,16 +94,25 @@
       "figureCached": "Rysunek jest już w pamięci podręcznej, zostanie użyty ponownie.",
       "figureSaved": "Zapisano w pamięci podręcznej rysunków.",
       "saveFigureFailed": "Nie udało się zapisać rysunku: {{detail}}",
+      "insertedTypst": "Wstawiono jako kod Typst.",
+      "insertedLatex": "Wstawiono jako kod TikZ.",
       "downloaded": "Pobrano.",
       "imported": "Zaimportowano {{name}} do edycji.",
       "importedCodeOnly": "Zaimportowano {{name}} (tylko kod, bez możliwości rysowania).",
       "importFailed": "Nie udało się zaimportować tego pliku: {{detail}}",
       "noAiFix": "AI nie zwróciło poprawki.",
       "fixFailed": "Poprawka nie powiodła się: {{detail}}",
-      "notDrawable": "Nic w tym kodzie nie dało się narysować. Kod pozostał bez zmian."
+      "notDrawable": "Nic w tym kodzie nie dało się narysować. Kod pozostał bez zmian.",
+      "savedTypstToProject": "Zapisano {{path}}. Dodaj go do dokumentu przez #include.",
+      "insertedMermaid": "Wstawiono jako blok kodu Mermaid.",
+      "savedMermaidToProject": "Zapisano {{path}}. Dodaj go do dokumentu Markdown w bloku kodu mermaid.",
+      "typstPackageMissing": "Typst nie mógł uzyskać pakietu fletcher. Połącz się raz z internetem, aby Typst mógł go pobrać i zachować.",
+      "previewUnavailable": "Ten podgląd nie jest tu dostępny.",
+      "readerUnavailable": "Nie udało się wczytać czytnika kodu. Spróbuj ponownie."
     },
     "confirm": {
-      "overwrite": "Plik {{files}} już istnieje. Zastąpić go? (Wybierz inną nazwę, aby zachować oba.)"
+      "overwrite": "Plik {{files}} już istnieje. Zastąpić go? (Wybierz inną nazwę, aby zachować oba.)",
+      "switchLanguage": "Przełączyć ten diagram z {{from}} na {{to}}? Kod, którego obszar roboczy nie umie pokazać, nie zostanie przeniesiony."
     },
     "canvas": {
       "shapeTools": "Narzędzia kształtów",
@@ -136,7 +171,59 @@
       "routingStraight": "Proste",
       "routingOrthogonal": "Ortogonalne",
       "routingCurved": "Krzywe",
-      "line": "Linia"
+      "line": "Linia",
+      "nodeLabelTypst": "Etykieta (Typst)"
+    },
+    "notes": {
+      "tooltip": "Czego obszar roboczy nie pokazuje w pełni",
+      "count_one": "{{count}} uwaga",
+      "count_few": "{{count}} uwagi",
+      "count_many": "{{count}} uwag",
+      "count_other": "{{count}} uwagi",
+      "keptHeading": "Zachowane w kodzie",
+      "approximatedHeading": "Pokazane w przybliżeniu",
+      "droppedHeading": "Nierysowane w obszarze roboczym",
+      "notDiagram": "W tym kodzie nie ma niczego, co obszar roboczy mógłby narysować.",
+      "outsideCode": "Kod przed diagramem lub po nim zostaje w niezmienionej postaci.",
+      "wrapper": "Kod wokół diagramu, na przykład rysunek, zostaje w niezmienionej postaci.",
+      "diagramSetting": "Ustawienie diagramu {{detail}} zostaje w kodzie.",
+      "edgeOption": "Opcja krawędzi {{detail}} zostaje w kodzie.",
+      "scripted": "Skryptowa zawartość diagramu, na przykład pętle, zostaje w kodzie.",
+      "mathMode": "Zawartość diagramu w trybie matematycznym zostaje w kodzie.",
+      "unplacedNode": "Węzły bez stałej pozycji zostają w kodzie.",
+      "unreadEdge": "Krawędzie, których obszar roboczy nie umie odczytać, zostają w kodzie.",
+      "danglingEdge": "Krawędzie, które nie łączą dwóch węzłów, zostają w kodzie.",
+      "gridCoordinates": "Współrzędne siatki są pokazywane w stałych pozycjach.",
+      "formattedLabels": "Sformatowane etykiety są pokazywane jako zwykły tekst.",
+      "unknownShapes": "Kształty, których obszar roboczy nie ma, są pokazywane jako prostokąty.",
+      "estimatedSize": "Węzły bez szerokości i wysokości są pokazywane w szacowanym rozmiarze.",
+      "colorAdjustments": "Zmodyfikowane kolory, na przykład lighten, są pokazywane w kolorze bazowym.",
+      "colorExpressions": "Kolory ustawione przez zmienne lub wyrażenia nie są pokazywane w obszarze roboczym.",
+      "strokeStyles": "Niektóre style linii są pokazywane w najbliższym stylu obszaru roboczego.",
+      "arrowMarks": "Groty strzałek, których obszar roboczy nie ma, są pokazywane jako zwykłe strzałki.",
+      "freePoints": "Krawędzie przechodzące przez wolne punkty są rysowane w obszarze roboczym jako proste.",
+      "tikzCommand": "Polecenie {{detail}} nie jest rysowane. Edycja w obszarze roboczym zapisze kod od nowa bez niego.",
+      "truncated": "Kod jest za długi, więc rysowana jest tylko jego pierwsza część.",
+      "mermaidNotFlowchart": "W obszarze roboczym można rysować tylko schematy blokowe. Ten kod to diagram typu {{detail}}.",
+      "mermaidFrontmatter": "Blok frontmatter zostaje w kodzie.",
+      "mermaidDirective": "Dyrektywy konfiguracyjne zostają w kodzie.",
+      "mermaidComment": "Komentarze zostają w kodzie.",
+      "mermaidAccessibility": "Tytuły i opisy dostępności zostają w kodzie.",
+      "mermaidClick": "Obsługa kliknięć zostaje w kodzie.",
+      "mermaidStyleProperty": "Właściwość stylu {{detail}} zostaje w kodzie.",
+      "mermaidClassProperty": "Właściwość klasy {{detail}} zostaje w kodzie.",
+      "mermaidLinkStyleProperty": "Właściwość stylu połączenia {{detail}} zostaje w kodzie.",
+      "mermaidNodeSetting": "Ustawienie węzła {{detail}} zostaje w kodzie.",
+      "mermaidEdgeSetting": "Ustawienie krawędzi {{detail}} zostaje w kodzie.",
+      "mermaidInvisibleLink": "Niewidoczne połączenia zostają w kodzie.",
+      "mermaidLinkLength": "Długości połączeń zostają w kodzie.",
+      "mermaidSubgraphDirection": "Kierunki podgrafów zostają w kodzie.",
+      "mermaidUnknownStatement": "Instrukcje, których obszar roboczy nie umie odczytać, zostają w kodzie.",
+      "mermaidShape": "Kształt {{detail}} jest pokazywany jako najbliższy kształt obszaru roboczego.",
+      "mermaidThickLink": "Grube połączenia są pokazywane jako zwykłe linie.",
+      "mermaidArrowHead": "Groty w kształcie koła i krzyżyka są pokazywane jako strzałki.",
+      "mermaidMarkdownLabel": "Etykiety Markdown są pokazywane jako zwykły tekst.",
+      "mermaidNoFlowchartHeader": "W obszarze roboczym można rysować tylko schematy blokowe. Zacznij kod od flowchart lub graph."
     }
   }
 }

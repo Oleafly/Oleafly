@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.15.0"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+typst_catalog() {
+  (cd "$ROOT" && node scripts/typst/bundled-typst.mjs "$@")
+}
+VERSION="$(typst_catalog version)"
 BIN_DIR="$ROOT/src-tauri/binaries"
 CACHE_DIR="${OLEAFLY_SIDECAR_CACHE_DIR:-$ROOT/src-tauri/target/e2e-sidecars}"
 mkdir -p "$BIN_DIR"
@@ -17,20 +20,6 @@ cleanup_fetch() {
 }
 trap cleanup_fetch EXIT INT TERM
 
-asset_for() {
-  case "$1" in
-    aarch64-apple-darwin)
-      echo "typst-aarch64-apple-darwin.tar.xz:tar:fe53838737abf93a774495952a1a797b4686e9c4a21c2d99b9fdf77f46cc3572" ;;
-    aarch64-unknown-linux-gnu)
-      echo "typst-aarch64-unknown-linux-musl.tar.xz:tar:cdf50ffc7b8ba759ed02200632eda3d78eb8b99aacb6611f4f75684990647620" ;;
-    x86_64-pc-windows-msvc)
-      echo "typst-x86_64-pc-windows-msvc.zip:zip:66ae7f0907b4b9afed5c7d6cb9b21e07f0f3c3d4e293ba3e0026a54d88202fe9" ;;
-    x86_64-unknown-linux-gnu)
-      echo "typst-x86_64-unknown-linux-musl.tar.xz:tar:59b207df01be2dab9f13e80f73d04d7ff8273ffd46b3dd1b9eef5c60f3eeabea" ;;
-    *) echo "" ;;
-  esac
-}
-
 checksum() {
   local file="$1"
   if command -v sha256sum >/dev/null 2>&1; then
@@ -42,24 +31,18 @@ checksum() {
 
 fetch() {
   local target="$1"
-  local entry
-  entry="$(asset_for "$target")"
-  if [[ -z "$entry" ]]; then
+  local asset kind member expected binary_expected mirror_url url
+  if ! read -r asset kind member expected binary_expected mirror_url url \
+    < <(typst_catalog target "$target" 2>/dev/null); then
     echo "unsupported Typst target: $target" >&2
     exit 1
   fi
-  local asset="${entry%%:*}"
-  local rest="${entry#*:}"
-  local kind="${rest%%:*}"
-  local expected="${rest##*:}"
   local ext=""
   [[ "$target" == *windows* ]] && ext=".exe"
   local out="$BIN_DIR/typst-$target$ext"
   TMP="$(mktemp -d)"
   local tmp="$TMP"
   local archive="$CACHE_DIR/$asset"
-  local mirror_url="https://mirrors.oleafly.com/binaries/typst/$VERSION/$asset"
-  local url="https://github.com/typst/typst/releases/download/v$VERSION/$asset"
 
   local actual
   actual=""
@@ -88,17 +71,22 @@ fetch() {
     exit 1
   fi
 
-  local archive_root="${asset%.tar.xz}"
-  archive_root="${archive_root%.zip}"
-  local bin="$tmp/$archive_root/typst$ext"
-  mkdir -p "$tmp/$archive_root"
+  local bin="$tmp/typst$ext"
   case "$kind" in
-    tar) tar xJOf "$archive" "$archive_root/typst$ext" > "$bin" ;;
-    zip) unzip -p "$archive" "$archive_root/typst$ext" > "$bin" ;;
+    tar.xz) tar xJOf "$archive" "$member" > "$bin" ;;
+    zip) unzip -p "$archive" "$member" > "$bin" ;;
     *) ;;
   esac
   if [[ ! -s "$bin" ]]; then
-    echo "expected Typst binary is missing or empty: $archive_root/typst$ext" >&2
+    echo "expected Typst binary is missing or empty: $member" >&2
+    exit 1
+  fi
+  local binary_actual
+  binary_actual="$(checksum "$bin")"
+  if [[ "$binary_actual" != "$binary_expected" ]]; then
+    echo "Typst binary checksum mismatch for $member" >&2
+    echo "expected: $binary_expected" >&2
+    echo "actual:   $binary_actual" >&2
     exit 1
   fi
   if [[ -f "$out" && ! -L "$out" ]] && cmp -s "$bin" "$out"; then

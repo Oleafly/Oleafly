@@ -27,7 +27,7 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
 
-import { imageToLatex } from "./image-to-latex";
+import { imageToLatex, imageToTypst } from "./image-to-latex";
 
 const KEY = "image-to-latex";
 const image = () => new File([new Uint8Array([1, 2, 3])], "equation.png", { type: "image/png" });
@@ -152,5 +152,25 @@ describe("imageToLatex", () => {
 
     expect(mocks.insertAtCursor).toHaveBeenCalledWith("a+b");
     expect(mocks.toast.dismiss).not.toHaveBeenCalled();
+  });
+
+  it("transcribes into Typst with its own prompt and failure message", async () => {
+    mocks.completeViaBackend.mockResolvedValueOnce({ text: "```typst\n$ E = m c^2 $\n```" });
+    await imageToTypst(image());
+    const request = mocks.completeViaBackend.mock.calls[0][0] as {
+      system: string;
+      messages: { content: { type: string; text?: string }[] }[];
+    };
+    expect(request.system).toContain("Typst");
+    expect(request.system).not.toContain("LaTeX");
+    expect(request.messages[0].content[0].text).toBe("Transcribe this image to Typst.");
+    expect(mocks.insertAtCursor).toHaveBeenCalledExactlyOnceWith("$ E = m c^2 $");
+
+    mocks.completeViaBackend.mockRejectedValueOnce(new Error("offline"));
+    await imageToTypst(image());
+    expect(mocks.toast.errorUnique).toHaveBeenCalledWith(
+      KEY,
+      i18n.t(($) => $.core.imageToTypst.failed, { detail: "offline" }),
+    );
   });
 });

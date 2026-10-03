@@ -26,7 +26,11 @@ import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { imageMime, isImagePath } from "@/lib/image-mime";
 import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
-import { formattingForEngine, pathUsesEngineSource } from "@/lib/document-engine";
+import {
+  formattingForPath,
+  formattingProfileForPath,
+  pathUsesEngineSource,
+} from "@/lib/document-engine";
 import { useVisualModeStore } from "@/store/visual-mode";
 import { getMarkdownSplitSize, setMarkdownSplitSize } from "@/lib/wysiwyg-mode";
 import {
@@ -170,27 +174,20 @@ export function Editor() {
       // or any other input would silently mutate the document.
       const el = document.activeElement as HTMLElement | null;
       if (!el?.closest(".cm-editor")) return;
-      const path = useFilesStore.getState().activePath;
-      const engineState = useFilesStore.getState();
-      if (!engineState.engineLoaded) return;
-      if (!pathUsesEngineSource(engineState.engine, path)) return;
+      const { activePath: path, engine, engineLoaded } = useFilesStore.getState();
       const k = e.key.toLowerCase();
-      if (k === "b") {
-        e.preventDefault();
-        const f = formattingForEngine(engineState.engine, true, "bold");
-        if (f?.kind === "wrap") wrapSelection(f.before, f.after);
-      } else if (k === "i") {
-        e.preventDefault();
-        const f = formattingForEngine(engineState.engine, true, "italic");
-        if (f?.kind === "wrap") wrapSelection(f.before, f.after);
-      }
+      const action = k === "b" ? "bold" : k === "i" ? "italic" : null;
+      if (!action) return;
+      const f = formattingForPath(engine, engineLoaded, path, action);
+      if (f?.kind !== "wrap") return;
+      e.preventDefault();
+      wrapSelection(f.before, f.after);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const hasOpenFile = activePath !== null;
-  const isTypstFile = activePath?.toLowerCase().endsWith(".typ") ?? false;
   const isPdfFile = activePath?.toLowerCase().endsWith(".pdf");
   const isImageFile = activePath != null && isImagePath(activePath);
   // No in-app preview for these; show a notice instead of an empty text
@@ -208,13 +205,12 @@ export function Editor() {
   // Any Markdown file gets the Markdown toolbar, whatever engine the project
   // compiles with: README.md inside a LaTeX project edits like a Markdown project.
   const isMarkdownFile = /\.(md|markdown)$/iu.test(activePath ?? "");
-  const showLatexToolbar =
-    engineLoaded && formattingProfile === "latex" && pathUsesEngineSource(engine, activePath) && !isMarkdownFile;
+  const toolbarProfile = formattingProfileForPath(engine, engineLoaded, activePath);
+  const showLatexToolbar = toolbarProfile === "latex";
   const markdownIsEngineSource =
     engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
-  const showMarkdownToolbar = isMarkdownFile || markdownIsEngineSource;
-  const showTypstToolbar =
-    engineLoaded && formattingProfile === "typst" && pathUsesEngineSource(engine, activePath);
+  const showMarkdownToolbar = toolbarProfile === "markdown";
+  const showTypstToolbar = toolbarProfile === "typst";
 
   const wysiwyg = useVisualModeStore((s) => s.enabled);
   const markdownSplitEnabled = useVisualModeStore((s) => s.markdownSplit);
@@ -242,7 +238,7 @@ export function Editor() {
   const markdownVisual = wysiwyg && isMarkdownFile && !markdownSplit;
   const markdownMode = markdownSplit ? "both" : markdownVisual ? "visual" : "code";
   const showBreadcrumbs =
-    !isDiagramMainFile && /\.(?:tex|latex|ltx)$/iu.test(activePath ?? "");
+    !isDiagramMainFile && /\.(?:tex|latex|ltx|typ)$/iu.test(activePath ?? "");
 
   useEffect(() => {
     setWysiwygVisibilityController(setWysiwyg);
@@ -395,16 +391,6 @@ export function Editor() {
         </div>
       );
     }
-    if (isTypstFile) {
-      return (
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <EditorContextMenu>
-            <CodeMirrorEditor />
-          </EditorContextMenu>
-          <SelectionActionMenu />
-        </div>
-      );
-    }
     return renderTextArea();
   };
 
@@ -458,7 +444,10 @@ export function Editor() {
         )}
         {showTypstToolbar && (
           <div className="shrink-0">
-            <TypstToolbar />
+            <TypstToolbar
+              wysiwyg={wysiwyg}
+              onToggleWysiwyg={/\.typ$/iu.test(activePath ?? "") ? toggleWysiwyg : undefined}
+            />
           </div>
         )}
         {renderFileArea()}

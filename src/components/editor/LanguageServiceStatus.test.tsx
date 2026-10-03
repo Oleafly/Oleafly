@@ -707,6 +707,49 @@ describe("LanguageServiceStatus", () => {
     unregister();
   });
 
+  it("waits quietly while the matched Tinymist downloads and retries a failed download", async () => {
+    vi.useFakeTimers();
+    fixRandomFraction(1);
+    activateProject();
+    useFilesStore.setState({ activePath: "main.typ" });
+    const retry = vi.fn();
+    const setup = vi.fn();
+    const unregister = registerLanguageServiceLifecycleActions({ setup, retry });
+    renderStatus();
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService({
+        kind: "tinymist",
+        readiness: "installing",
+        reason: { key: "tinymistDownloading", params: { version: "0.13.30" } },
+      });
+    });
+    await advance(LANGUAGE_SERVICE_RETRY_POLICY.maxMs * 2);
+    expect(retry).not.toHaveBeenCalled();
+    expect(setupNotice()).toBeNull();
+
+    act(() => {
+      useProjectAnalysisStore.getState().setLanguageService({
+        kind: "tinymist",
+        readiness: "unavailable",
+        reason: { key: "tinymistDownloadFailed", params: { version: "0.13.30" } },
+        failure: {
+          name: "LanguageServiceError",
+          message: "Tinymist 0.13.30 could not be downloaded.",
+          retryable: true,
+        },
+      });
+    });
+    await advance(LANGUAGE_SERVICE_RETRY_POLICY.baseMs);
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(setup).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith(
+      UNAVAILABLE_SCOPE,
+      "Tinymist 0.13.30 could not be downloaded.",
+    );
+    expect(toasts()).toEqual([]);
+    unregister();
+  });
+
   it("starts the backoff over after the server recovers", async () => {
     vi.useFakeTimers();
     fixRandomFraction(1);

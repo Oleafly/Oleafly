@@ -1537,6 +1537,17 @@ export async function caretIn(
 // The Diagram Composer is now a standalone home-shell page (not a per-project
 // modal), reached from the dock and backed by a single hidden scratch
 // project, not the currently open project.
+export async function chooseDiagramComposer(
+  page: Page,
+  language: "tikz" | "typst" | "mermaid",
+) {
+  const chooser = page.locator(
+    '[data-testid="diagram-composer-chooser"]',
+  ) as unknown as LocatorLike;
+  await expect(chooser).toBeVisible({ timeout: 20_000 });
+  await page.click(`[data-testid="diagram-composer-choice-${language}"]`);
+}
+
 export async function openDiagramComposer(page: Page) {
   const libraryVisible = await page.evaluate<boolean>(
     `!!document.querySelector('[data-testid="library"]')`,
@@ -1552,6 +1563,7 @@ export async function openDiagramComposer(page: Page) {
   ) as unknown as LocatorLike;
   await expect(library).toBeVisible({ timeout: SHELL_READY_TIMEOUT_MS });
   await page.click('[data-testid="open-diagram-composer"]');
+  await chooseDiagramComposer(page, "tikz");
   const dialog = page.locator(
     '[role="dialog"][data-tour="diagram-composer"]',
   ) as unknown as LocatorLike;

@@ -26,6 +26,7 @@ export interface CmHandle {
   insert: (text: string) => void;
   wrap: (before: string, after: string) => void;
   focus: () => void;
+  revealLine: (line: number, column?: number | null) => void;
 }
 
 // Deliberately independent of the app's document editor that insertAtCursor
@@ -125,6 +126,15 @@ export const CmCodeEditor = forwardRef<
           v.focus();
         },
         focus: () => viewRef.current?.focus(),
+        revealLine: (line, column) => {
+          const v = viewRef.current;
+          if (!v) return;
+          const doc = v.state.doc;
+          const target = doc.line(Math.min(Math.max(1, line), doc.lines));
+          const anchor = Math.min(target.to, target.from + Math.max(0, (column ?? 1) - 1));
+          v.dispatch({ selection: { anchor }, effects: EditorView.scrollIntoView(anchor, { y: "center" }) });
+          v.focus();
+        },
       }),
       [],
     );

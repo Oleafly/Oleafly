@@ -94,7 +94,9 @@
     "exitFullscreen": "退出全屏",
     "retryCompile": "重试编译",
     "chooseEngine": "选择引擎…",
-    "installPackages_other": "查找并安装 {{count}} 个文件"
+    "installPackages_other": "查找并安装 {{count}} 个文件",
+    "downloadTypst": "下载 Typst {{version}}",
+    "useTypst": "使用 Typst {{version}}"
   },
   "stale": {
     "badge": "已过期",
@@ -103,8 +105,8 @@
     "explanation": "此 PDF 不代表项目的当前版本。",
     "revisionExplanation": "当前显示的是项目版本 {{displayed}}，项目的当前版本为 {{active}}。",
     "noIdentity": "所显示的 PDF 缺少针对当前版本的已验证编译标识。",
-    "syncTexAvailable": "对已编辑的内容，SyncTeX 会使用最近的未更改行进行同步。",
-    "syncTexUnavailable": "SyncTeX 需要最新的编译结果。"
+    "syncTexAvailable": "对已编辑的内容，源码同步会使用最近的未更改行。",
+    "syncTexUnavailable": "源码同步需要最新的编译结果。"
   },
   "save": {
     "title": "将 PDF 保存到项目",
@@ -272,5 +274,33 @@
       "pageLabel": "第 {{page}} 页，共 {{total}} 页",
       "empty": "此页面上未找到可读取的文本。"
     }
+  },
+  "presentation": {
+    "windowTitle": "演示",
+    "presenterTitle": "演示者视图",
+    "present": "放映",
+    "presentFromStart": "从头放映",
+    "presentFromPage": "从此页放映",
+    "presentWithPresenter": "使用演示者视图放映",
+    "loading": "正在打开幻灯片",
+    "failed": "无法打开幻灯片。请先编译项目，然后重试。",
+    "close": "关闭",
+    "slideLabel": "第 {{page}} 张幻灯片，共 {{total}} 张",
+    "current": "当前幻灯片",
+    "next": "下一张幻灯片",
+    "lastSlide": "这是最后一张幻灯片。",
+    "notes": "演讲者备注",
+    "notesLoading": "正在读取演讲者备注",
+    "noNotes": "此幻灯片没有演讲者备注。",
+    "elapsed": "已用时间",
+    "clock": "当前时间",
+    "pause": "暂停计时",
+    "resume": "继续计时",
+    "reset": "重置计时",
+    "previousAction": "上一张幻灯片",
+    "nextAction": "下一张幻灯片",
+    "end": "结束放映",
+    "blank": "观众屏幕已清空。按 B 显示幻灯片。",
+    "toggleBlank": "清空观众屏幕"
   }
 }

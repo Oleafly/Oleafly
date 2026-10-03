@@ -3,6 +3,22 @@
     "aiProviderRequired": "Forbind en AI-udbyder under Indstillinger for at bruge Ret med AI.",
     "fixFailed": "Rettelsen mislykkedes: {{detail}}"
   },
+  "chooser": {
+    "title": "Vælg en diagrameditor",
+    "description": "Vælg, hvilken slags dokument diagrammet skal bruges i.",
+    "tikz": {
+      "title": "TikZ-diagram",
+      "description": "Knuder og pile i TikZ til LaTeX-dokumenter."
+    },
+    "typst": {
+      "title": "Typst-diagram",
+      "description": "Et fletcher-diagram til Typst-dokumenter."
+    },
+    "mermaid": {
+      "title": "Mermaid-diagram",
+      "description": "Et Mermaid-flowdiagram til Markdown-dokumenter."
+    }
+  },
   "package": {
     "composer": {
       "title": "Indsæt diagram",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Annuller (Esc)",
       "cancelRename": "Annuller omdøbningen",
       "renameTooltip": "Omdøb diagrammet",
-      "importTooltip": "Importer en .tikz- eller .tex-fil, og erstat dette udkast",
-      "importLabel": "Importer TikZ-fil",
+      "importTooltip": "Importer en .tikz-, .tex-, .typ-, .mmd- eller .md-fil, og erstat dette udkast",
+      "importLabel": "Importer diagramfil",
       "modeDraw": "Tegn",
       "modeCode": "Kode",
       "fixWithAiTooltip": "Bed AI om at rette kompileringsfejlen",
@@ -28,20 +44,29 @@
       "newProject": "Nyt projekt",
       "noOtherProjects": "Ingen andre projekter endnu.",
       "saveFigure": "Gem figur",
+      "insertTypst": "Indsæt som Typst",
+      "insertLatex": "Indsæt som TikZ",
       "downloadTooltip": "Download dette diagram",
       "download": "Download",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (på vej)",
       "svgTooltip": "SVG-eksport kræver en vektor-renderer, som ikke findes endnu",
       "snippets": "Kodestumper",
-      "untitledName": "Diagram uden titel"
+      "untitledName": "Diagram uden titel",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Indsæt som Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Diagramsprog: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Rektangulær knude",
       "circleNode": "Cirkelknude",
       "arrowEdge": "Kant med pil",
       "lineEdge": "Kant med linje",
-      "scope": "Scope"
+      "scope": "Scope",
+      "group": "Gruppe"
     },
     "preview": {
       "label": "Forhåndsvisning",
@@ -53,7 +78,8 @@
       "pngScale": "PNG-skalering",
       "scaleFactor": "{{factor}}x",
       "background": "Baggrund",
-      "backgroundLabel": "Figurens baggrundsfarve"
+      "backgroundLabel": "Figurens baggrundsfarve",
+      "diagnosticAt": "Linje {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Diagrammet kunne ikke kompileres. Se loggen nedenfor.",
@@ -68,16 +94,25 @@
       "figureCached": "Allerede i cachen, den eksisterende figur genbruges.",
       "figureSaved": "Gemt i din figurcache.",
       "saveFigureFailed": "Kunne ikke gemme figuren: {{detail}}",
+      "insertedTypst": "Indsat som Typst-kode.",
+      "insertedLatex": "Indsat som TikZ-kode.",
       "downloaded": "Downloadet.",
       "imported": "Importerede {{name}} til redigering.",
       "importedCodeOnly": "Importerede {{name}} (kun kode, kan ikke tegnes).",
       "importFailed": "Kunne ikke importere den fil: {{detail}}",
       "noAiFix": "AI'en gav ingen rettelse.",
       "fixFailed": "Rettelsen mislykkedes: {{detail}}",
-      "notDrawable": "Intet i denne kode kunne tegnes. Koden er uændret."
+      "notDrawable": "Intet i denne kode kunne tegnes. Koden er uændret.",
+      "savedTypstToProject": "{{path}} er gemt. Føj den til et dokument med #include.",
+      "insertedMermaid": "Indsat som Mermaid-kodeblok.",
+      "savedMermaidToProject": "{{path}} er gemt. Føj den til et Markdown-dokument i en mermaid-kodeblok.",
+      "typstPackageMissing": "Typst kunne ikke hente pakken fletcher. Opret forbindelse til internettet én gang, så Typst kan downloade og gemme den.",
+      "previewUnavailable": "Denne forhåndsvisning er ikke tilgængelig her.",
+      "readerUnavailable": "Kodelæseren kunne ikke indlæses. Prøv igen."
     },
     "confirm": {
-      "overwrite": "{{files}} findes allerede. Vil du overskrive? (Vælg et andet navn for at beholde begge.)"
+      "overwrite": "{{files}} findes allerede. Vil du overskrive? (Vælg et andet navn for at beholde begge.)",
+      "switchLanguage": "Vil du skifte dette diagram fra {{from}} til {{to}}? Kode, som lærredet ikke kan vise, kommer ikke med."
     },
     "canvas": {
       "shapeTools": "Figurværktøjer",
@@ -136,7 +171,57 @@
       "routingStraight": "Lige",
       "routingOrthogonal": "Retvinklet",
       "routingCurved": "Buet",
-      "line": "Linje"
+      "line": "Linje",
+      "nodeLabelTypst": "Etiket (Typst)"
+    },
+    "notes": {
+      "tooltip": "Det, lærredet ikke viser helt",
+      "count_one": "{{count}} bemærkning",
+      "count_other": "{{count}} bemærkninger",
+      "keptHeading": "Bevaret i koden",
+      "approximatedHeading": "Vist omtrentligt",
+      "droppedHeading": "Ikke tegnet på lærredet",
+      "notDiagram": "Der er intet i denne kode, som lærredet kan tegne.",
+      "outsideCode": "Kode før eller efter diagrammet bevares, som den er.",
+      "wrapper": "Koden omkring diagrammet, fx en figur, bevares, som den er.",
+      "diagramSetting": "Diagramindstillingen {{detail}} bevares i koden.",
+      "edgeOption": "Kantvalget {{detail}} bevares i koden.",
+      "scripted": "Scriptet diagramindhold, fx løkker, bevares i koden.",
+      "mathMode": "Diagramindhold i matematiktilstand bevares i koden.",
+      "unplacedNode": "Knuder uden fast placering bevares i koden.",
+      "unreadEdge": "Kanter, som lærredet ikke kan læse, bevares i koden.",
+      "danglingEdge": "Kanter, der ikke forbinder to knuder, bevares i koden.",
+      "gridCoordinates": "Gitterkoordinater vises på faste placeringer.",
+      "formattedLabels": "Formaterede etiketter vises som ren tekst.",
+      "unknownShapes": "Figurer, som lærredet ikke har, vises som rektangler.",
+      "estimatedSize": "Knuder uden bredde og højde vises i en anslået størrelse.",
+      "colorAdjustments": "Justerede farver, fx lighten, vises med deres grundfarve.",
+      "colorExpressions": "Farver, der angives med variabler eller udtryk, vises ikke på lærredet.",
+      "strokeStyles": "Nogle linjestile vises med den nærmeste stil på lærredet.",
+      "arrowMarks": "Pilespidser, som lærredet ikke har, vises som almindelige pile.",
+      "freePoints": "Kanter gennem frie punkter tegnes lige på lærredet.",
+      "tikzCommand": "Kommandoen {{detail}} tegnes ikke. En ændring på lærredet omskriver koden uden den.",
+      "truncated": "Koden er for lang, så kun den første del tegnes.",
+      "mermaidNotFlowchart": "Kun flowdiagrammer kan tegnes på lærredet. Denne kode er et diagram af typen {{detail}}.",
+      "mermaidFrontmatter": "YAML-hovedet bevares i koden.",
+      "mermaidDirective": "Konfigurationsdirektiver bevares i koden.",
+      "mermaidComment": "Kommentarer bevares i koden.",
+      "mermaidAccessibility": "Titler og beskrivelser til tilgængelighed bevares i koden.",
+      "mermaidClick": "Handlere for click bevares i koden.",
+      "mermaidStyleProperty": "Stilegenskaben {{detail}} bevares i koden.",
+      "mermaidClassProperty": "Egenskaben {{detail}} i classDef bevares i koden.",
+      "mermaidLinkStyleProperty": "Egenskaben {{detail}} i linkStyle bevares i koden.",
+      "mermaidNodeSetting": "Knudeindstillingen {{detail}} bevares i koden.",
+      "mermaidEdgeSetting": "Kantindstillingen {{detail}} bevares i koden.",
+      "mermaidInvisibleLink": "Usynlige forbindelser bevares i koden.",
+      "mermaidLinkLength": "Længden på forbindelser bevares i koden.",
+      "mermaidSubgraphDirection": "Retninger i subgraph-blokke bevares i koden.",
+      "mermaidUnknownStatement": "Instruktioner, som lærredet ikke kan læse, bevares i koden.",
+      "mermaidShape": "Figuren {{detail}} vises som den nærmeste figur på lærredet.",
+      "mermaidThickLink": "Tykke forbindelser vises som almindelige linjer.",
+      "mermaidArrowHead": "Pilespidser med cirkel eller kryds vises som pile.",
+      "mermaidMarkdownLabel": "Markdown-etiketter vises som ren tekst.",
+      "mermaidNoFlowchartHeader": "Kun flowdiagrammer kan tegnes på lærredet. Start koden med flowchart eller graph."
     }
   }
 }

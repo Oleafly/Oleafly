@@ -1,4 +1,4 @@
-import type { CheckCoverage, Coverage, PdfExtractionStatus, PdfFacts, PositionedText, PreflightEngine, PreflightReport, ProjectContext } from "./types";
+import type { CheckCoverage, Coverage, Finding, PdfExtractionStatus, PdfFacts, PositionedText, PreflightEngine, PreflightReport, ProjectContext } from "./types";
 import type { StructDoc } from "./structure";
 import { runSourceRules } from "./source-rules";
 import { runPdfRules } from "./pdf-rules";
@@ -11,9 +11,29 @@ import { runSubmissionRules } from "./submission-rules";
 import { pdfUaCoverage, type PdfUaAvailability } from "./standards";
 import type { SubmissionProfileId } from "./profiles";
 
+export type SourcePreflightProfile = "latex" | "typst" | "none";
+
+export interface SourceRuleInput {
+  readonly source: string;
+  readonly project?: ProjectContext;
+  readonly submissionProfile: SubmissionProfileId;
+  readonly anonymousReview: boolean;
+  readonly pdf?: PdfFacts;
+  readonly engine: PreflightEngine;
+  readonly typstVersion?: string;
+}
+
+export interface SourceRuleSet {
+  readonly source: (input: SourceRuleInput) => Finding[];
+  readonly refs: (input: SourceRuleInput, refs: RefsContext) => Finding[];
+  readonly submission: (input: SourceRuleInput, project: ProjectContext) => Finding[];
+}
+
 export interface PreflightInput {
   source: string;
-  sourceProfile?: "latex" | "none";
+  sourceProfile?: SourcePreflightProfile;
+  sourceRules?: SourceRuleSet;
+  typstVersion?: string;
   pages?: PositionedText[][];
   meta?: { lang?: string | null; title?: string | null; tagged?: boolean | null };
   extraction?: PdfExtractionStatus;
@@ -76,14 +96,14 @@ function latexProjectSources(project: ProjectContext | undefined, fallback: stri
 
 type LatexSource = { path: string | undefined; content: string };
 
-function submissionCoverage(isLatex: boolean, hasProject: boolean, hasFacts: boolean): Coverage {
-  if (!isLatex) return "unsupported";
+function submissionCoverage(supported: boolean, hasProject: boolean, hasFacts: boolean): Coverage {
+  if (!supported) return "unsupported";
   if (!hasProject) return "not_run";
   return hasFacts ? "evaluated" : "partial";
 }
 
-function privacyCoverage(isLatex: boolean, hasProject: boolean, factsPending: boolean): Coverage {
-  if (!isLatex) return "unsupported";
+function privacyCoverage(supported: boolean, hasProject: boolean, factsPending: boolean): Coverage {
+  if (!supported) return "unsupported";
   if (!hasProject) return "not_run";
   return factsPending ? "partial" : "evaluated";
 }
@@ -103,6 +123,30 @@ function projectRefsFindings(
   );
 }
 
+const LATEX_SOURCE_RULES: SourceRuleSet = {
+  source: (input) =>
+    latexProjectSources(input.project, input.source).flatMap((file) =>
+      runSourceRules(file.content, { engine: input.engine }).map((finding) => ({
+        ...finding,
+        ...(file.path ? { file: file.path } : {}),
+      })),
+    ),
+  refs: (input, refs) => projectRefsFindings(latexProjectSources(input.project, input.source), refs),
+  submission: (input, project) =>
+    runSubmissionRules({
+      project,
+      profileId: input.submissionProfile,
+      pdf: input.pdf,
+      anonymousReview: input.anonymousReview,
+    }),
+};
+
+function sourceRulesFor(profile: SourcePreflightProfile, typstRules: SourceRuleSet | undefined): SourceRuleSet | null {
+  if (profile === "latex") return LATEX_SOURCE_RULES;
+  if (profile === "typst") return typstRules ?? null;
+  return null;
+}
+
 function structureOnlyFindings(
   struct: StructDoc | undefined,
   extraction: PdfExtractionStatus | undefined,
@@ -116,6 +160,8 @@ function structureOnlyFindings(
 export function runPreflight({
   source,
   sourceProfile = "latex",
+  sourceRules,
+  typstVersion,
   pages,
   meta,
   extraction,
@@ -129,13 +175,20 @@ export function runPreflight({
   anonymousReview = false,
   engine = "unknown",
 }: PreflightInput): PreflightReport {
-  const isLatex = sourceProfile === "latex";
+  const rules = sourceRulesFor(sourceProfile, sourceRules);
+  const supported = rules !== null;
   const atsParse = readerText !== undefined ? simulateAtsParse(readerText) : undefined;
-  const latexSources = isLatex ? latexProjectSources(project, source) : [];
-  const sourceFindings = latexSources.flatMap((file) =>
-    runSourceRules(file.content, { engine }).map((finding) => ({ ...finding, ...(file.path ? { file: file.path } : {}) })),
-  );
-  const refsFindings = isLatex && refs ? projectRefsFindings(latexSources, refs) : [];
+  const ruleInput: SourceRuleInput = {
+    source,
+    submissionProfile,
+    anonymousReview,
+    engine,
+    ...(project ? { project } : {}),
+    ...(facts ? { pdf: facts } : {}),
+    ...(typstVersion ? { typstVersion } : {}),
+  };
+  const sourceFindings = rules ? rules.source(ruleInput) : [];
+  const refsFindings = rules && refs ? rules.refs(ruleInput, refs) : [];
 
   const findings = dedupeUntaggedFinding([
     ...sourceFindings,
@@ -144,9 +197,7 @@ export function runPreflight({
     ...(atsParse ? atsParseFindings(atsParse, facts) : []),
     ...refsFindings,
     ...runCompileRules(compile, facts),
-    ...(isLatex && project
-      ? runSubmissionRules({ project, profileId: submissionProfile, pdf: facts, anonymousReview })
-      : []),
+    ...(rules && project ? rules.submission(ruleInput, project) : []),
   ]);
 
   const scores = computeScores(findings);
@@ -155,9 +206,9 @@ export function runPreflight({
     ats: pages && readerText !== undefined ? "evaluated" : "not_run",
     compile: compileRan ? "evaluated" : "not_run",
     a11y: pages ? "evaluated" : "not_run",
-    refs: isLatex && refs ? "evaluated" : "unsupported",
-    submission: submissionCoverage(isLatex, Boolean(project), Boolean(facts)),
-    privacy: privacyCoverage(isLatex, Boolean(project), anonymousReview && !facts),
+    refs: supported && refs ? "evaluated" : "unsupported",
+    submission: submissionCoverage(supported, Boolean(project), Boolean(facts)),
+    privacy: privacyCoverage(supported, Boolean(project), anonymousReview && !facts),
   };
   const scoreOrNull = (id: keyof typeof coverage) =>
     coverage[id] === "not_run" || coverage[id] === "unsupported" ? null : scores[id];

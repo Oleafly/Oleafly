@@ -25,7 +25,7 @@ oleafly-history = { path = "../crates/oleafly-history" }
 # browser window uses for its toolbar and tabs. It also makes every window's
 # webview a child webview; webview_frame.rs and webview_focus.rs cover that.
 tauri = { version = "2", features = ["macos-private-api", "unstable"] }
-tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util", "fs"] }
+tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util", "fs", "net"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 tauri-plugin-shell = "2"
 tauri-plugin-playwright = { version = "0.4", optional = true }
@@ -65,6 +65,7 @@ zstd = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 rand = "0.8"
 ring = "0.17"
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 argon2 = "0.5"
 aes = { version = "0.9", features = ["zeroize"] }
 cbc = { version = "0.2", features = ["zeroize"] }
@@ -109,7 +110,7 @@ windows-sys = { version = "0.61", features = [
   "Win32_UI_WindowsAndMessaging",
 ] }
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(not(windows))'.dependencies]
 # Streaming decoder for TinyTeX's official Linux ARM64 .tar.xz. Static linking
 # avoids a runtime liblzma dependency; disabling defaults avoids bindgen.
 liblzma = { version = "=0.4.8", default-features = false, features = ["static"] }

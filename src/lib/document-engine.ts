@@ -1,3 +1,4 @@
+import type { CompletionSyntax } from "@oleafly/editor";
 import { i18n } from "@/i18n";
 import type { DocumentEngineDescriptor, EngineCapabilities } from "@/lib/tauri";
 
@@ -59,6 +60,20 @@ export function compileOfflineForEngine(
 export const isLatexEngine = (engine: DocumentEngineDescriptor) =>
   engine.capabilities.formatting_profile === "latex";
 
+export interface EngineCompileSettings {
+  readonly syntaxCheck: boolean;
+  readonly draftMode: boolean;
+  readonly stopOnFirstError: boolean;
+}
+
+export const compileSettingsForEngine = (
+  engine: DocumentEngineDescriptor,
+): EngineCompileSettings => ({
+  syntaxCheck: isLatexEngine(engine),
+  draftMode: engine.id === "latex",
+  stopOnFirstError: isLatexEngine(engine),
+});
+
 export const pathUsesEngineSource = (
   engine: DocumentEngineDescriptor,
   path: string | null,
@@ -67,24 +82,100 @@ export const pathUsesEngineSource = (
   return !!extension && engine.source_extensions.includes(extension);
 };
 
+export const engineSyncsPath = (
+  engine: DocumentEngineDescriptor,
+  path: string | null,
+) => engine.capabilities.supports_synctex && (path === null || pathUsesEngineSource(engine, path));
+
+export type FigureToolEngine = "latex" | "typst";
+
+export function figureToolEngine(
+  engine: DocumentEngineDescriptor,
+  engineLoaded = true,
+): FigureToolEngine | null {
+  if (!engineLoaded) return null;
+  const profile = engine.capabilities.formatting_profile;
+  if (profile === "latex") return engine.capabilities.supports_isolated_compile ? "latex" : null;
+  return profile === "typst" ? "typst" : null;
+}
+
 export const supportsFigureTools = (engine: DocumentEngineDescriptor, engineLoaded = true) =>
-  engineLoaded &&
-  engine.capabilities.formatting_profile === "latex" &&
-  engine.capabilities.supports_isolated_compile;
+  figureToolEngine(engine, engineLoaded) !== null;
 
 export type EngineFormattingAction = "bold" | "italic" | "section" | "list";
 export type EngineFormatting =
   | { kind: "wrap"; before: string; after: string }
   | { kind: "insert"; text: string };
 
+export type FormattingProfile = EngineCapabilities["formatting_profile"];
+export type SourceLanguage = Exclude<FormattingProfile, "none">;
+
+const SOURCE_LANGUAGE_BY_EXTENSION: ReadonlyMap<string, SourceLanguage> = new Map([
+  ["typ", "typst"],
+  ["tex", "latex"],
+  ["ltx", "latex"],
+  ["latex", "latex"],
+  ["md", "markdown"],
+  ["markdown", "markdown"],
+]);
+
+export function sourceLanguageForPath(path: string | null): SourceLanguage | null {
+  const name = path?.split("/").pop() ?? "";
+  const dot = name.lastIndexOf(".");
+  if (dot < 0) return null;
+  return SOURCE_LANGUAGE_BY_EXTENSION.get(name.slice(dot + 1).toLowerCase()) ?? null;
+}
+
+export function completionSyntaxForPath(
+  path: string | null,
+  sourceFormat: DocumentEngineDescriptor["source_format"],
+): CompletionSyntax {
+  if (path && /\.bib$/iu.test(path)) return "bibtex";
+  if (path && /\.(?:sty|cls)$/iu.test(path)) return "latex";
+  const language = sourceLanguageForPath(path);
+  if (language) return language;
+  return sourceFormat === "latex" || sourceFormat === "markdown" || sourceFormat === "typst"
+    ? sourceFormat
+    : "generic";
+}
+
+export function formattingProfileForPath(
+  engine: DocumentEngineDescriptor,
+  engineLoaded: boolean,
+  path: string | null,
+): FormattingProfile {
+  const language = sourceLanguageForPath(path);
+  if (language) return language;
+  return engineLoaded && pathUsesEngineSource(engine, path)
+    ? engine.capabilities.formatting_profile
+    : "none";
+}
+
+export function formattingForPath(
+  engine: DocumentEngineDescriptor,
+  engineLoaded: boolean,
+  path: string | null,
+  action: EngineFormattingAction,
+): EngineFormatting | null {
+  return formattingForProfile(formattingProfileForPath(engine, engineLoaded, path), action);
+}
+
 export function formattingForEngine(
   engine: DocumentEngineDescriptor,
   engineLoaded: boolean,
   action: EngineFormattingAction,
 ): EngineFormatting | null {
-  if (!engineLoaded || engine.capabilities.formatting_profile === "none") return null;
-  const typst = engine.capabilities.formatting_profile === "typst";
-  const markdown = engine.capabilities.formatting_profile === "markdown";
+  if (!engineLoaded) return null;
+  return formattingForProfile(engine.capabilities.formatting_profile, action);
+}
+
+function formattingForProfile(
+  profile: FormattingProfile,
+  action: EngineFormattingAction,
+): EngineFormatting | null {
+  if (profile === "none") return null;
+  const typst = profile === "typst";
+  const markdown = profile === "markdown";
   const byProfile = (typstText: string, markdownText: string, latexText: string): string => {
     if (typst) return typstText;
     if (markdown) return markdownText;

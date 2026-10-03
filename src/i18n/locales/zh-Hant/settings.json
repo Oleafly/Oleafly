@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "找出論證、方法、證據與呈現方式的弱點。",
-        "documentEditor": "以聚焦而穩妥的修改處理文句、結構、引用與 LaTeX。",
-        "figure": "以 LaTeX TikZ 或 PGFPlots 產生出版品質的圖片與圖表。",
+        "documentEditor": "以聚焦而穩妥的修改處理文句、結構、引用，以及 LaTeX 或 Typst 原始碼。",
+        "figure": "以 LaTeX 的 TikZ 或 Typst 的 CeTZ 產生出版品質的圖片與圖表。",
         "researchWriter": "撰寫並組織學術文字，不憑空捏造證據或引用。"
       },
       "suggestedDescription": "先從其中一個開始，再修改它的指示來配合你的流程。",
@@ -680,6 +680,29 @@
       "mathPreview": {
         "description": "在游標所在的公式上方顯示排版後的公式。",
         "label": "公式預覽"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "按 ⌘S 或 Ctrl+S 時，用 typstyle 整理 Typst 檔案。自動儲存不會變動它們。",
+          "label": "儲存時格式化"
+        },
+        "lineWidth": {
+          "description": "typstyle 會將超過這個長度的行換行。",
+          "label": "格式化工具行寬"
+        },
+        "indent": {
+          "description": "格式化後的 Typst 程式碼中，每一層縮排的空格數。",
+          "label": "格式化工具縮排"
+        },
+        "inlayHints": {
+          "description": "在 Typst 函式呼叫的引數前顯示參數名稱。",
+          "label": "參數名稱提示"
+        },
+        "lint": {
+          "description": "每次儲存 Typst 檔案時，檢查可能的錯誤。開啟或關閉此項會重新啟動 Typst 語言伺服器。",
+          "label": "Typst lint 檢查"
+        }
       }
     },
     "files": {
@@ -1015,11 +1038,57 @@
       "resume": "繼續下載（已完成 {{size}} MB）"
     },
     "typst": {
-      "detail": "隨 Oleafly 提供。快速、離線、免設定。可將 Typst 文件編譯成 PDF。",
+      "detail": "隨 Oleafly 提供，無需任何設定。只有在文件首次匯入 @preview 套件時才需要連網。",
       "heading": "Typst 編譯器",
       "name": "Typst（內建）",
-      "note": "Typst 專案一律使用內建的編譯器。目前還無法選擇編譯器版本，也無法使用系統的 Typst。",
-      "tooltip": "Typst 內建在 Oleafly 中，不需要安裝或設定。每個 Typst 專案都會以內建的編譯器編譯。"
+      "note": "從編譯選單選擇專案使用的版本。在你變更之前，專案會一直使用該版本。",
+      "tooltip": "Oleafly 隨附一個 Typst 版本，也能下載其他版本。每個專案會以它鎖定的版本編譯，沒有鎖定時則使用預設版本。",
+      "system": {
+        "name": "這台電腦上的 Typst",
+        "detail": "鎖定 {{version}} 版本的專案可以用它編譯。"
+      },
+      "versions": {
+        "heading": "版本",
+        "tooltip": "新專案與未鎖定版本的專案都會使用預設版本。",
+        "loading": "正在檢查 Typst 版本",
+        "default": "預設",
+        "setDefault": "預設使用 Typst {{version}}",
+        "released": "發布於 {{date}}",
+        "install": "安裝",
+        "installAria": "安裝 Typst {{version}}",
+        "removeAria": "移除 Typst {{version}}",
+        "removeDefault": "這是預設版本。移除前請先選擇其他預設版本。",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "內建",
+          "downloaded": "已下載",
+          "system": "系統"
+        }
+      },
+      "progress": {
+        "starting": "正在啟動",
+        "downloading": "正在下載 {{percent}}%",
+        "verifying": "正在檢查",
+        "extracting": "正在解壓縮",
+        "done": "即將完成"
+      },
+      "languageServer": {
+        "unused_other": "有 {{count}} 個語言伺服器下載未被任何已安裝的 Typst 版本使用。",
+        "remove": "移除未使用的語言伺服器下載",
+        "removed_other": "已移除 {{count}} 個語言伺服器下載。"
+      },
+      "error": {
+        "load": "無法讀取 Typst 版本。",
+        "install": "無法安裝 Typst {{version}}。",
+        "remove": "無法移除 Typst {{version}}。",
+        "default": "無法變更預設的 Typst 版本。",
+        "removeTinymist": "無法移除未使用的語言伺服器下載。"
+      },
+      "upgrade": {
+        "heading": "試用較新版本",
+        "detail": "切換前，先用已安裝的較新版本建置開啟中的專案，並比較結果。",
+        "check": "以 Typst {{version}} 檢查"
+      }
     }
   },
   "github": {

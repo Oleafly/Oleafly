@@ -574,6 +574,76 @@
       "tag2": "Pijlen",
       "tag3": "Spiekbriefje",
       "tag4": "Invoegen bij de cursor"
+    },
+    "arxivToTypst": {
+      "name": "arXiv naar Typst",
+      "description": "Zet een arXiv-bronbundel om naar Typst. Een compileercontrole toont wat niet is omgezet.",
+      "tag1": "Bronarchief",
+      "tag2": "Compileercontrole",
+      "tag3": "ID vraagt netwerk"
+    },
+    "csvToTypst": {
+      "name": "CSV naar Typst",
+      "description": "Plak CSV- of TSV-rijen en krijg een veilige Typst-tabel.",
+      "tag1": "CSV en TSV",
+      "tag2": "Tabellen",
+      "tag3": "Lokaal"
+    },
+    "equationToTypst": {
+      "name": "Vergelijking naar Typst",
+      "description": "Zet getypte LaTeX-wiskunde of een afbeelding van een vergelijking om in Typst-wiskunde.",
+      "tag1": "Tekst of afbeelding",
+      "tag2": "Wiskunde",
+      "tag3": "Ingebouwd"
+    },
+    "excelToTypst": {
+      "name": "Excel naar Typst",
+      "description": "Zet een Excel-, CSV- of TSV-blad om in een veilige Typst-tabel.",
+      "tag1": "XLSX",
+      "tag2": "CSV en TSV",
+      "tag3": "Lokaal"
+    },
+    "htmlToTypst": {
+      "name": "HTML naar Typst",
+      "description": "Zet geplakte HTML om in een zelfstandig Typst-document.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Lokaal"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid naar Typst",
+      "description": "Zet een Mermaid-stroomdiagram om in bewerkbare fletcher-code.",
+      "tag1": "Stroomdiagrammen",
+      "tag2": "Fletcher",
+      "tag3": "Lokaal"
+    },
+    "typstToHtml": {
+      "name": "Typst naar HTML",
+      "description": "Zet Typst-opmaak om in zelfstandige HTML met MathML-vergelijkingen.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst naar Markdown",
+      "description": "Zet Typst-opmaak om in overdraagbare Markdown.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Project optioneel"
+    },
+    "typstToWord": {
+      "name": "Typst naar Word",
+      "description": "Maak een Word-document waarin vergelijkingen als Word-wiskunde zijn opgeslagen.",
+      "tag1": "DOCX",
+      "tag2": "Eigen wiskunde",
+      "tag3": "Lokaal"
+    },
+    "wordToTypst": {
+      "name": "Word naar Typst",
+      "description": "Zet een Word-document om in Typst en houd de eruit gehaalde media erbij.",
+      "tag1": "DOCX",
+      "tag2": "Media",
+      "tag3": "Project optioneel"
     }
   },
   "generators": {
@@ -655,7 +725,9 @@
     "insertInEditor": "Invoegen in de editor",
     "noDescription": "Voor dit commando is geen beschrijving beschikbaar.",
     "loadingPreview": "Een symbool laden om te bekijken.",
-    "chooseSymbol": "Kies een symbool uit de bibliotheek."
+    "chooseSymbol": "Kies een symbool uit de bibliotheek.",
+    "insertHintTypst": "Voeg de Typst-code in het geopende Typst-document in.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · Klik om te vervangen",
@@ -711,7 +783,8 @@
     "openAiSettings": "AI-instellingen openen",
     "fileReady": "{{fileName}} staat klaar",
     "saveWordHint": "Sla het Word-document op wanneer je zover bent.",
-    "resultPlaceholder": "Hier verschijnt je omgezette resultaat."
+    "resultPlaceholder": "Hier verschijnt je omgezette resultaat.",
+    "progressConvertingSource": "De broncode omzetten naar Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -832,6 +905,76 @@
       "inputLabel": "Word-document",
       "inputHint": "Kies een .docx-bestand. Vergelijkingen en afbeeldingen worden lokaal gelezen.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv naar Typst",
+      "subtitle": "Zet de LaTeX-broncode van een e-print om naar Typst en zie wat je met de hand moet herstellen",
+      "inputLabel": "arXiv-broncode",
+      "inputHint": "Vul een arXiv-ID in of kies een bewaard .tar.gz- of .gz-bronarchief.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV naar Typst",
+      "subtitle": "Plak spreadsheetgegevens en krijg een veilige Typst-tabel",
+      "inputLabel": "CSV of TSV",
+      "inputHint": "Plak rijen gescheiden door komma's of tabs. De eerste rij wordt de kop.",
+      "outputLabel": "Typst-tabel"
+    },
+    "equationToTypst": {
+      "title": "Vergelijking naar Typst",
+      "subtitle": "Maak van getypte of gefotografeerde wiskunde Typst-wiskunde",
+      "inputLabel": "Vergelijking",
+      "inputHint": "Typ LaTeX-wiskunde, beschrijf het in woorden of kies een afbeelding.",
+      "outputLabel": "Typst-vergelijking"
+    },
+    "excelToTypst": {
+      "title": "Excel naar Typst",
+      "subtitle": "Zet het eerste blad om in een Typst-tabel",
+      "inputLabel": "Spreadsheet",
+      "inputHint": "XLSX, XLS, CSV of TSV. Formules gebruiken hun opgeslagen waarden.",
+      "outputLabel": "Typst-tabel"
+    },
+    "htmlToTypst": {
+      "title": "HTML naar Typst",
+      "subtitle": "Zet semantische HTML om in een zelfstandig Typst-document",
+      "inputLabel": "HTML",
+      "inputHint": "Plak een HTML-fragment of een volledig document.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid naar Typst",
+      "subtitle": "Maak van een Mermaid-stroomdiagram een bewerkbaar fletcher-diagram",
+      "inputLabel": "Mermaid-stroomdiagram",
+      "inputHint": "Stroomdiagrammen ondersteunen de lay-outs TD, LR, BT en RL, labels en gangbare knoopvormen.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst naar HTML",
+      "subtitle": "Maak zelfstandige HTML met MathML-vergelijkingen",
+      "inputLabel": "Typst",
+      "inputHint": "Plak een fragment of een volledig Typst-document.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst naar Markdown",
+      "subtitle": "Maak overdraagbare Markdown zonder eerst een project te maken",
+      "inputLabel": "Typst",
+      "inputHint": "Plak een fragment of een volledig Typst-document.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst naar Word",
+      "subtitle": "Maak een DOCX met vergelijkingen als bewerkbare Word-wiskunde",
+      "inputLabel": "Typst",
+      "inputHint": "Plak een fragment of een volledig Typst-document.",
+      "outputLabel": "Word-document"
+    },
+    "wordToTypst": {
+      "title": "Word naar Typst",
+      "subtitle": "Zet een DOCX om en houd de eruit gehaalde media bij het resultaat",
+      "inputLabel": "Word-document",
+      "inputHint": "Kies een .docx-bestand. Vergelijkingen en afbeeldingen worden lokaal gelezen.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -847,7 +990,8 @@
     "chooseFile": "Kies een bestand voordat je omzet.",
     "fileTooLarge": "Kies een bestand kleiner dan 128 MB.",
     "emptySheet": "Het gekozen blad is leeg.",
-    "arxivInputRequired": "Vul een arXiv-ID in of kies een bronarchief."
+    "arxivInputRequired": "Vul een arXiv-ID in of kies een bronarchief.",
+    "equationToTypst": "Pandoc kon deze vergelijking niet omzetten naar Typst. Controleer de LaTeX-wiskunde en probeer het opnieuw."
   },
   "converterNotes": {
     "scannedPages": "{{pages}} gescande pagina's overgenomen met een lokaal model. Controleer de vergelijkingen en tabellen voordat je het resultaat gebruikt.",
@@ -855,7 +999,16 @@
     "mermaidTikz": "Dit stroomdiagram is omgezet in bewerkbare TikZ.",
     "mermaidRendered": "Dit diagram is lokaal weergegeven omdat de Mermaid-syntaxis niet netjes naar bewerkbare TikZ vertaalt.",
     "tableConverted": "{{rows}} rijen en {{columns}} kolommen omgezet.",
-    "arxivBundle": "{{files}} bronbestanden. Hoofddocument: {{mainFile}}."
+    "arxivBundle": "{{files}} bronbestanden. Hoofddocument: {{mainFile}}.",
+    "mermaidFletcher": "Dit stroomdiagram is omgezet in bewerkbare fletcher-code voor Typst.",
+    "mermaidRenderedTypst": "Dit diagram is lokaal weergegeven omdat de Mermaid-syntaxis niet netjes naar bewerkbare fletcher-code vertaalt.",
+    "arxivTypstConverted": "{{mainFile}} omgezet.",
+    "typstCheckPassed": "Typst heeft het resultaat zonder fouten gecompileerd.",
+    "typstCheckFailed_one": "Typst vond {{count}} fout.",
+    "typstCheckFailed_other": "Typst vond {{count}} fouten.",
+    "notConverted_one": "{{count}} item is niet omgezet.",
+    "notConverted_other": "{{count}} items zijn niet omgezet.",
+    "checkLine": "Regel {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Dit Mermaid-diagram is groter dan de limiet van 50.000 tekens.",
@@ -1110,9 +1263,15 @@
   },
   "equation": {
     "subtitle": "Live LaTeX-werkruimte",
+    "subtitleTypst": "Live Typst-werkruimte",
+    "mathLanguage": "Wiskundetaal",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Fout",
     "statusRendered": "Weergegeven",
+    "statusRendering": "Weergeven",
     "copyLatex": "LaTeX kopiëren",
+    "copyTypst": "Typst kopiëren",
     "exportOptions": "Exportopties",
     "export": "Exporteren",
     "downloadPng": "PNG downloaden",
@@ -1125,6 +1284,7 @@
     "exportSvgFailed": "Kon dit fragment niet als SVG exporteren",
     "copyKatexFailed": "Kon de KaTeX-HTML niet kopiëren",
     "copyLatexFailed": "Kon de LaTeX-broncode niet kopiëren",
+    "copyTypstFailed": "Kon de Typst-broncode niet kopiëren",
     "invalidPngName": "Kies een korte PNG-bestandsnaam zonder schuine strepen of speciale tekens.",
     "replaceConfirm": "{{path}} bestaat al in {{project}}. Vervangen?",
     "savedToProject": "{{path}} opgeslagen in {{project}}.",
@@ -1138,6 +1298,7 @@
     "newImageProject": "Nieuw afbeeldingsproject",
     "mathmlFailed": "Kon dit fragment niet omzetten naar MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "In de tekst",
     "display": "Op een eigen regel",
     "examples": "VOORBEELDEN",
@@ -1146,6 +1307,8 @@
     "previewLight": "Voorbeeld op licht",
     "inlineSample": "Zo staat het midden in een zin, zoals <formula></formula>, meelopend met de tekst eromheen.",
     "empty": "Typ links LaTeX-wiskunde.",
+    "emptyTypst": "Typ links Typst-wiskunde.",
+    "typstFailed": "Typst kon deze vergelijking niet weergeven.",
     "zoomOut": "Uitzoomen",
     "zoomIn": "Inzoomen",
     "resetZoom": "Zoom herstellen",

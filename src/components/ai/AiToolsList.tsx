@@ -54,6 +54,7 @@ export function aiToolGroupLabel(group: AiToolGroup): string {
 }
 
 const latexOnly = () => i18n.t(($) => $.ai.tools.notes.latexOnly);
+const latexAndTypstOnly = () => i18n.t(($) => $.ai.tools.notes.latexAndTypstOnly);
 
 export const AI_TOOLS: AiToolInfo[] = [
   { name: "read_file", group: "Files", desc: () => i18n.t(($) => $.ai.tools.catalog.readFile) },
@@ -92,13 +93,13 @@ export const AI_TOOLS: AiToolInfo[] = [
     name: "preview_figure",
     group: "Figures",
     desc: () => i18n.t(($) => $.ai.tools.catalog.previewFigure),
-    note: latexOnly,
+    note: latexAndTypstOnly,
   },
   {
     name: "insert_figure",
     group: "Figures",
     desc: () => i18n.t(($) => $.ai.tools.catalog.insertFigure),
-    note: latexOnly,
+    note: latexAndTypstOnly,
   },
   { name: "load_image", group: "Figures", desc: () => i18n.t(($) => $.ai.tools.catalog.loadImage) },
   { name: "update_todos", group: "Plan and memory", desc: () => i18n.t(($) => $.ai.tools.catalog.updateTodos) },

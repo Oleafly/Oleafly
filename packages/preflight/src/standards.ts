@@ -170,6 +170,7 @@ const TABLE: Record<string, StandardEntry> = {
     wcag("1.3.1", "Info and Relationships", "PDF6"),
   ]),
   "heading-skip": machine(HEADING_REFS),
+  "empty-heading": machine(HEADING_REFS),
   "output-heading-skip": machine(HEADING_REFS),
   "no-lang": machine(LANG_REFS),
   "no-title": machine(TITLE_REFS),

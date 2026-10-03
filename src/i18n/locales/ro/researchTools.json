@@ -575,6 +575,76 @@
       "tag2": "Săgeți",
       "tag3": "Fișă de lucru",
       "tag4": "Inserare la cursor"
+    },
+    "arxivToTypst": {
+      "name": "Din arXiv în Typst",
+      "description": "Convertește un pachet sursă arXiv în Typst. O compilare de verificare arată ce nu s-a convertit.",
+      "tag1": "Arhivă sursă",
+      "tag2": "Verificare prin compilare",
+      "tag3": "Identificatorul cere rețea"
+    },
+    "csvToTypst": {
+      "name": "Din CSV în Typst",
+      "description": "Lipește rânduri CSV sau TSV și obține un tabel Typst cu caractere protejate.",
+      "tag1": "CSV și TSV",
+      "tag2": "Tabele",
+      "tag3": "Local"
+    },
+    "equationToTypst": {
+      "name": "Din ecuație în Typst",
+      "description": "Convertește formule LaTeX scrise sau o imagine cu o ecuație în formule Typst.",
+      "tag1": "Text sau imagine",
+      "tag2": "Formule",
+      "tag3": "Inclus"
+    },
+    "excelToTypst": {
+      "name": "Din Excel în Typst",
+      "description": "Convertește o foaie Excel, CSV sau TSV într-un tabel Typst cu caractere protejate.",
+      "tag1": "XLSX",
+      "tag2": "CSV și TSV",
+      "tag3": "Local"
+    },
+    "htmlToTypst": {
+      "name": "Din HTML în Typst",
+      "description": "Convertește codul HTML lipit într-un document Typst de sine stătător.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Local"
+    },
+    "mermaidToTypst": {
+      "name": "Din Mermaid în Typst",
+      "description": "Convertește o diagramă de flux Mermaid în cod fletcher editabil.",
+      "tag1": "Diagrame de flux",
+      "tag2": "Fletcher",
+      "tag3": "Local"
+    },
+    "typstToHtml": {
+      "name": "Din Typst în HTML",
+      "description": "Convertește marcajul Typst în HTML de sine stătător, cu ecuații MathML.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Din Typst în Markdown",
+      "description": "Convertește marcajul Typst în Markdown portabil.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Proiect opțional"
+    },
+    "typstToWord": {
+      "name": "Din Typst în Word",
+      "description": "Creează un document Word cu ecuațiile păstrate ca formule native Word.",
+      "tag1": "DOCX",
+      "tag2": "Formule native",
+      "tag3": "Local"
+    },
+    "wordToTypst": {
+      "name": "Din Word în Typst",
+      "description": "Convertește un document Word în Typst și păstrează împreună cu el fișierele extrase.",
+      "tag1": "DOCX",
+      "tag2": "Fișiere media",
+      "tag3": "Proiect opțional"
     }
   },
   "generators": {
@@ -658,7 +728,9 @@
     "insertInEditor": "Inserează în editor",
     "noDescription": "Pentru această comandă nu există nicio descriere.",
     "loadingPreview": "Se încarcă un simbol pentru previzualizare.",
-    "chooseSymbol": "Alege un simbol din bibliotecă."
+    "chooseSymbol": "Alege un simbol din bibliotecă.",
+    "insertHintTypst": "Inserează codul Typst în documentul Typst deschis.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · Apasă pentru a înlocui",
@@ -714,7 +786,8 @@
     "openAiSettings": "Deschide setările AI",
     "fileReady": "{{fileName}} este gata",
     "saveWordHint": "Salvează documentul Word când ești gata.",
-    "resultPlaceholder": "Rezultatul convertit va apărea aici."
+    "resultPlaceholder": "Rezultatul convertit va apărea aici.",
+    "progressConvertingSource": "Se convertește sursa în Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -835,6 +908,76 @@
       "inputLabel": "Document Word",
       "inputHint": "Alege un fișier .docx. Ecuațiile și imaginile sunt citite local.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "Din arXiv în Typst",
+      "subtitle": "Convertește sursa LaTeX a unui preprint în Typst și vezi ce trebuie reparat manual",
+      "inputLabel": "Sursă arXiv",
+      "inputHint": "Introdu un identificator arXiv sau alege o arhivă sursă .tar.gz ori .gz salvată.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "Din CSV în Typst",
+      "subtitle": "Lipește date dintr-o foaie de calcul și obține un tabel Typst cu caractere protejate",
+      "inputLabel": "CSV sau TSV",
+      "inputHint": "Lipește rânduri separate prin virgulă sau tab. Primul rând devine antetul.",
+      "outputLabel": "Tabel Typst"
+    },
+    "equationToTypst": {
+      "title": "Din ecuație în Typst",
+      "subtitle": "Transformă formule scrise sau fotografiate în formule Typst",
+      "inputLabel": "Ecuație",
+      "inputHint": "Scrie formule LaTeX, descrie-le în cuvinte sau alege o imagine.",
+      "outputLabel": "Ecuație Typst"
+    },
+    "excelToTypst": {
+      "title": "Din Excel în Typst",
+      "subtitle": "Convertește prima foaie într-un tabel Typst",
+      "inputLabel": "Foaie de calcul",
+      "inputHint": "XLSX, XLS, CSV sau TSV. Formulele folosesc valorile lor din cache.",
+      "outputLabel": "Tabel Typst"
+    },
+    "htmlToTypst": {
+      "title": "Din HTML în Typst",
+      "subtitle": "Convertește HTML semantic într-un document Typst de sine stătător",
+      "inputLabel": "HTML",
+      "inputHint": "Lipește un fragment HTML sau un document complet.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Din Mermaid în Typst",
+      "subtitle": "Transformă o diagramă de flux Mermaid într-o diagramă fletcher editabilă",
+      "inputLabel": "Diagramă de flux Mermaid",
+      "inputHint": "Diagramele de flux acceptă aranjările TD, LR, BT și RL, etichetele și formele obișnuite de noduri.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Din Typst în HTML",
+      "subtitle": "Creează HTML de sine stătător, cu ecuații MathML",
+      "inputLabel": "Typst",
+      "inputHint": "Lipește un fragment sau un document Typst complet.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Din Typst în Markdown",
+      "subtitle": "Creează Markdown portabil fără să faci întâi un proiect",
+      "inputLabel": "Typst",
+      "inputHint": "Lipește un fragment sau un document Typst complet.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Din Typst în Word",
+      "subtitle": "Creează un DOCX cu ecuațiile păstrate ca formule Word editabile",
+      "inputLabel": "Typst",
+      "inputHint": "Lipește un fragment sau un document Typst complet.",
+      "outputLabel": "Document Word"
+    },
+    "wordToTypst": {
+      "title": "Din Word în Typst",
+      "subtitle": "Convertește un DOCX și păstrează fișierele lui extrase lângă rezultat",
+      "inputLabel": "Document Word",
+      "inputHint": "Alege un fișier .docx. Ecuațiile și imaginile sunt citite local.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -850,7 +993,8 @@
     "chooseFile": "Alege un fișier înainte de conversie.",
     "fileTooLarge": "Alege un fișier mai mic de 128 MB.",
     "emptySheet": "Foaia selectată este goală.",
-    "arxivInputRequired": "Introdu un identificator arXiv sau alege o arhivă sursă."
+    "arxivInputRequired": "Introdu un identificator arXiv sau alege o arhivă sursă.",
+    "equationToTypst": "Pandoc nu a putut converti această ecuație în Typst. Verifică formula LaTeX și încearcă din nou."
   },
   "converterNotes": {
     "scannedPages": "S-au transcris {{pages}} pagini scanate cu un model local. Verifică ecuațiile și tabelele înainte să folosești rezultatul.",
@@ -858,7 +1002,18 @@
     "mermaidTikz": "Această diagramă de flux a fost convertită în cod TikZ editabil.",
     "mermaidRendered": "Această diagramă a fost randată local, fiindcă sintaxa ei Mermaid nu se traduce curat în cod TikZ editabil.",
     "tableConverted": "S-au convertit {{rows}} rânduri și {{columns}} coloane.",
-    "arxivBundle": "{{files}} fișiere sursă. Document principal: {{mainFile}}."
+    "arxivBundle": "{{files}} fișiere sursă. Document principal: {{mainFile}}.",
+    "mermaidFletcher": "Această diagramă de flux a fost convertită în cod fletcher editabil pentru Typst.",
+    "mermaidRenderedTypst": "Această diagramă a fost randată local, fiindcă sintaxa ei Mermaid nu se traduce curat în cod fletcher editabil.",
+    "arxivTypstConverted": "S-a convertit {{mainFile}}.",
+    "typstCheckPassed": "Typst a compilat rezultatul fără erori.",
+    "typstCheckFailed_one": "Typst a găsit {{count}} eroare.",
+    "typstCheckFailed_few": "Typst a găsit {{count}} erori.",
+    "typstCheckFailed_other": "Typst a găsit {{count}} de erori.",
+    "notConverted_one": "{{count}} element nu s-a convertit.",
+    "notConverted_few": "{{count}} elemente nu s-au convertit.",
+    "notConverted_other": "{{count}} de elemente nu s-au convertit.",
+    "checkLine": "Linia {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Această diagramă Mermaid depășește limita de 50.000 de caractere.",
@@ -1118,9 +1273,15 @@
   },
   "equation": {
     "subtitle": "Spațiu de lucru LaTeX în timp real",
+    "subtitleTypst": "Spațiu de lucru Typst în timp real",
+    "mathLanguage": "Limbajul formulelor",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Eroare",
     "statusRendered": "Randat",
+    "statusRendering": "Se randează",
     "copyLatex": "Copiază LaTeX",
+    "copyTypst": "Copiază Typst",
     "exportOptions": "Opțiuni de export",
     "export": "Exportă",
     "downloadPng": "Descarcă PNG",
@@ -1133,6 +1294,7 @@
     "exportSvgFailed": "Acest fragment nu a putut fi exportat ca SVG",
     "copyKatexFailed": "Codul HTML KaTeX nu a putut fi copiat",
     "copyLatexFailed": "Sursa LaTeX nu a putut fi copiată",
+    "copyTypstFailed": "Sursa Typst nu a putut fi copiată",
     "invalidPngName": "Alege un nume scurt de fișier PNG, fără bare oblice și fără caractere speciale.",
     "replaceConfirm": "{{path}} există deja în {{project}}. Îl înlocuiești?",
     "savedToProject": "S-a salvat {{path}} în {{project}}.",
@@ -1146,6 +1308,7 @@
     "newImageProject": "Proiect de imagine nou",
     "mathmlFailed": "Acest fragment nu a putut fi convertit în MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "În text",
     "display": "Pe rând separat",
     "examples": "EXEMPLE",
@@ -1154,6 +1317,8 @@
     "previewLight": "Previzualizare pe fundal deschis",
     "inlineSample": "Așa arată în interiorul unei propoziții, ca <formula></formula>, curgând odată cu textul din jur.",
     "empty": "Scrie formule LaTeX în stânga.",
+    "emptyTypst": "Scrie formule Typst în stânga.",
+    "typstFailed": "Typst nu a putut randa această ecuație.",
     "zoomOut": "Micșorează",
     "zoomIn": "Mărește",
     "resetZoom": "Resetează mărirea",

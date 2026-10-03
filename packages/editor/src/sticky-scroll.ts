@@ -1,9 +1,15 @@
 import { syntaxTree } from "@codemirror/language";
 import type { Extension, Text } from "@codemirror/state";
+import type { Tree } from "@lezer/common";
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { highlightTree } from "@lezer/highlight";
 import { EDITOR_LINE_HEIGHT_CSS, editorHighlightStyle } from "./theme";
-import { scopesAtLine, stickyScopes, type StickyScope } from "./sticky-structure";
+import {
+  latexStickySource,
+  scopesAtLine,
+  type StickyScope,
+  type StickySource,
+} from "./sticky-structure";
 
 /** How many nested scopes may be pinned before the viewport starts to suffer. */
 const MAX_STICKY_ROWS = 6;
@@ -113,13 +119,17 @@ class StickyScrollPlugin {
   private readonly container: HTMLDivElement;
   private scopes: StickyScope[] = [];
   private scannedDoc: Text | null = null;
+  private scannedTree: Tree | null = null;
   private rows: RenderedRow[] = [];
   private columns: Columns | null = null;
   private rescanTimer: ReturnType<typeof setTimeout> | null = null;
   private frame = 0;
   private readonly onScroll: () => void;
 
-  constructor(private readonly view: EditorView) {
+  constructor(
+    private readonly view: EditorView,
+    private readonly source: StickySource,
+  ) {
     this.container = document.createElement("div");
     this.container.className = "cm-stickyScroll";
     this.container.setAttribute("aria-hidden", "true");
@@ -133,11 +143,13 @@ class StickyScrollPlugin {
   }
 
   update(update: ViewUpdate) {
-    if (update.docChanged) {
+    const treeChanged =
+      this.source.followsTree === true && syntaxTree(update.state) !== syntaxTree(update.startState);
+    if (update.docChanged || treeChanged) {
       if (update.state.doc.lines <= INLINE_RESCAN_LINES) this.rescan();
       else this.scheduleRescan();
     }
-    if (update.docChanged || update.viewportChanged || update.geometryChanged) {
+    if (update.docChanged || treeChanged || update.viewportChanged || update.geometryChanged) {
       this.schedulePaint();
     }
   }
@@ -172,10 +184,12 @@ class StickyScrollPlugin {
   }
 
   private rescan() {
-    const { doc } = this.view.state;
-    if (this.scannedDoc === doc) return;
-    this.scannedDoc = doc;
-    this.scopes = stickyScopes(doc);
+    const { state } = this.view;
+    const tree = this.source.followsTree ? syntaxTree(state) : null;
+    if (this.scannedDoc === state.doc && this.scannedTree === tree) return;
+    this.scannedDoc = state.doc;
+    this.scannedTree = tree;
+    this.scopes = this.source.scopes(state);
   }
 
   private topLine(): number {
@@ -326,6 +340,6 @@ class StickyScrollPlugin {
  * editor while you scroll, so a paragraph deep inside a nested block still
  * says which section, figure, and environment it belongs to.
  */
-export function stickyScroll(): Extension {
-  return [stickyTheme, ViewPlugin.fromClass(StickyScrollPlugin)];
+export function stickyScroll(source: StickySource = latexStickySource): Extension {
+  return [stickyTheme, ViewPlugin.define((view) => new StickyScrollPlugin(view, source))];
 }

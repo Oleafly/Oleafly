@@ -80,6 +80,7 @@ import {
 } from "./proofreading";
 import { scrollVisualSelectionLocally } from "./scroll";
 import { resetDesktopDocumentScroll } from "@/lib/desktop-viewport";
+import { publishVisualEditorHistory } from "@/components/editor/history-signal";
 
 function isMarkdownPath(path: string): boolean {
   const p = path.toLowerCase();
@@ -684,6 +685,10 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   useEffect(() => {
     setWysiwygEditor(editor ?? null);
     setWysiwygInsertions(editor ? visualInsertions : null);
+    const publishHistory = () =>
+      publishVisualEditorHistory(editor ? { canUndo: editor.can().undo(), canRedo: editor.can().redo() } : null);
+    publishHistory();
+    editor?.on("transaction", publishHistory);
     const unregisterMutationOwner = editor ? registerEditorMutationOwner({
       projectId: () => projectIdRef.current,
       setLocked: (locked) => editor.setEditable(!locked && !activeFileReadOnly(), false),
@@ -710,6 +715,8 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
         : null,
     );
     return () => {
+      editor?.off("transaction", publishHistory);
+      publishVisualEditorHistory(null);
       unregisterMutationOwner?.();
       setWysiwygProjectNavigation(null);
       setWysiwygFlushController(null);

@@ -1,6 +1,7 @@
 import { registerRailTabs } from "@/contributions/tabs";
 import { registerOmnibarCommands, registerPaletteCommands } from "@/contributions/commands";
 import { registerContextProviders } from "@/contributions/context-providers";
+import { registerPresentationCommands } from "@/contributions/presentation-commands";
 
 let registered = false;
 
@@ -11,5 +12,6 @@ export function registerContributions() {
   registerRailTabs();
   registerOmnibarCommands();
   registerPaletteCommands();
+  registerPresentationCommands();
   registerContextProviders();
 }

@@ -19,6 +19,7 @@ import { UpdateWindow } from "./UpdateWindow";
 import { clearReleasePageCache } from "@/lib/release-history";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -94,6 +95,13 @@ it("tries the install again after it fails", async () => {
   fireEvent.click(screen.getByRole("button", { name: enShell.updateChecker.tryAgain }));
   await waitFor(() => expect(mocks.installUpdate).toHaveBeenCalledTimes(2));
   expect(screen.queryByText("Error: connection reset")).not.toBeInTheDocument();
+});
+
+it("names the running Typst install when it holds the update back", async () => {
+  mocks.installUpdate.mockRejectedValue('@oleafly/error:{"code":"typst_toolchain.update_waits","params":{}}');
+  render(<UpdateWindow />);
+  fireEvent.click(await screen.findByRole("button", { name: enShell.updateChecker.updateNow }));
+  expect(await screen.findByText(enErrors.typst_toolchain.update_waits)).toBeInTheDocument();
 });
 
 it("checks again after a failed check", async () => {

@@ -1,4 +1,6 @@
-export type MathSourceFormat = "latex" | "markdown";
+import { typstAutolinkEnd } from "./typst-syntax";
+
+export type MathSourceFormat = "latex" | "markdown" | "typst";
 export type MathDelimiter = "$" | "$$" | "\\(" | "\\[";
 export type MathExpressionStatus = "complete" | "incomplete";
 
@@ -393,6 +395,129 @@ function appendMathExpression(
   return Math.max(cursor + openerLength, expressionTo);
 }
 
+const TYPST_CODE_STRING_OPENERS = new Set(["(", ",", "=", ":", "+", "{", "[", "#"]);
+
+function previousNonBlank(text: string, index: number): string {
+  for (let cursor = index - 1; cursor >= 0; cursor--) {
+    if (text[cursor] !== " " && text[cursor] !== "\t") return text[cursor];
+  }
+  return "";
+}
+
+function typstStringEnd(text: string, from: number, limit: number): number {
+  for (let cursor = from + 1; cursor < limit; cursor++) {
+    if (text[cursor] === "\\") cursor++;
+    else if (text[cursor] === '"') return cursor + 1;
+    else if (text[cursor] === "\n") return cursor;
+  }
+  return limit;
+}
+
+function typstBlockCommentEnd(text: string, from: number, limit: number): number {
+  let depth = 0;
+  let cursor = from;
+  while (cursor < limit) {
+    if (text.startsWith("/*", cursor)) {
+      depth++;
+      cursor += 2;
+    } else if (text.startsWith("*/", cursor)) {
+      depth--;
+      cursor += 2;
+      if (depth === 0) return cursor;
+    } else {
+      cursor++;
+    }
+  }
+  return limit;
+}
+
+function typstRawEnd(text: string, from: number, limit: number): number {
+  let width = 1;
+  while (text[from + width] === "`") width++;
+  if (width === 2) return from + 2;
+  const close = text.indexOf("`".repeat(width), from + width);
+  return close < 0 || close + width > limit ? limit : close + width;
+}
+
+function typstLineEnd(text: string, from: number, limit: number): number {
+  const newline = text.indexOf("\n", from);
+  return newline < 0 || newline > limit ? limit : newline;
+}
+
+function typstSkipEnd(text: string, cursor: number, limit: number, inMath: boolean): number | null {
+  const character = text[cursor];
+  if (character === "\\") return Math.min(limit, cursor + 2);
+  if (!inMath) {
+    const link = typstAutolinkEnd(text, cursor);
+    if (link !== null && link > cursor) return Math.min(limit, link);
+    if (character === "`") return typstRawEnd(text, cursor, limit);
+  }
+  if (text.startsWith("//", cursor)) return typstLineEnd(text, cursor, limit);
+  if (text.startsWith("/*", cursor)) return typstBlockCommentEnd(text, cursor, limit);
+  if (character === '"' && (inMath || TYPST_CODE_STRING_OPENERS.has(previousNonBlank(text, cursor)))) {
+    return typstStringEnd(text, cursor, limit);
+  }
+  return null;
+}
+
+export function isTypstDisplayBody(body: string): boolean {
+  return body.trim() !== "" && /^\s/u.test(body) && /\s$/u.test(body);
+}
+
+function typstExpression(text: string, open: number, close: number | null, limit: number): MathExpression {
+  const bodyFrom = open + 1;
+  const bodyTo = close ?? incompleteEnd(text, bodyFrom, limit);
+  const to = close === null ? bodyTo : close + 1;
+  const body = text.slice(bodyFrom, bodyTo);
+  return {
+    from: open,
+    to,
+    bodyFrom,
+    bodyTo,
+    source: text.slice(open, to),
+    body,
+    display: isTypstDisplayBody(body),
+    delimiter: "$",
+    status: close === null ? "incomplete" : "complete",
+  };
+}
+
+function scanTypstMath(
+  text: string,
+  from: number,
+  to: number,
+  excluded: readonly { from: number; to: number }[],
+): MathExpression[] {
+  const expressions: MathExpression[] = [];
+  let open = -1;
+  let cursor = from;
+  while (cursor < to && expressions.length < MAX_SCANNED_EXPRESSIONS) {
+    const protectedRange = excluded.find((range) => range.from <= cursor && range.to > cursor);
+    if (protectedRange) {
+      cursor = protectedRange.to;
+      continue;
+    }
+    const skipped = typstSkipEnd(text, cursor, to, open >= 0);
+    if (skipped !== null) {
+      cursor = Math.max(cursor + 1, skipped);
+      continue;
+    }
+    if (text[cursor] === "$") {
+      if (open < 0) {
+        open = cursor;
+      } else {
+        expressions.push(typstExpression(text, open, cursor, to));
+        open = -1;
+      }
+    }
+    cursor++;
+  }
+  if (open >= 0 && expressions.length < MAX_SCANNED_EXPRESSIONS) {
+    expressions.push(typstExpression(text, open, null, to));
+  }
+  return expressions;
+}
+
 /**
  * Recognizes math without changing the input. The returned ranges always point
  * into the exact source string. Escaped delimiters, Markdown code/fences and
@@ -405,6 +530,7 @@ export function scanMathExpressions(
   const from = Math.max(0, Math.min(options.from ?? 0, text.length));
   const to = Math.max(from, Math.min(options.to ?? text.length, text.length));
   const excluded = normalizeExcluded(options.excluded ?? [], from, to);
+  if (options.format === "typst") return scanTypstMath(text, from, to, excluded);
   const expressions: MathExpression[] = [];
   let excludedIndex = 0;
   let cursor = from;

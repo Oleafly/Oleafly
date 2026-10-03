@@ -158,7 +158,7 @@ function uncitedEntriesFinding(ctx: RefsContext, entries: BibEntries): Finding |
   };
 }
 
-function bibliographyQuality(ctx: RefsContext): Finding[] {
+export function bibliographyQuality(ctx: RefsContext): Finding[] {
   const entries = ctx.bibEntries ?? [];
   if (entries.length === 0) return [];
   return [
@@ -169,7 +169,7 @@ function bibliographyQuality(ctx: RefsContext): Finding[] {
   ].filter((finding): finding is Finding => finding !== null);
 }
 
-function projectLabelQuality(ctx: RefsContext): Finding[] {
+export function projectLabelQuality(ctx: RefsContext): Finding[] {
   const out: Finding[] = [];
   const duplicates = ctx.duplicateLabels ?? [];
   if (duplicates.length > 0) {
@@ -395,7 +395,7 @@ function missingBibliographyFindings(
   return out;
 }
 
-function duplicateDoiFindings(ctx: RefsContext): Finding[] {
+export function duplicateDoiFindings(ctx: RefsContext): Finding[] {
   return ctx.duplicateDois.map((dup) => ({
     id: "refs-duplicate-bib",
     lens: "refs" as const,

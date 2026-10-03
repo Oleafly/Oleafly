@@ -3,7 +3,12 @@ import {
   synctexInverse,
   synctexMapLine,
 } from "@/lib/tauri";
-import { getCurrentLine, gotoLine, selectWordNearLine } from "@/components/editor/cm/controller";
+import {
+  getCurrentLine,
+  getEditorView,
+  gotoLine,
+  selectWordNearLine,
+} from "@/components/editor/cm/controller";
 import { gotoRect } from "@/components/pdf/pdfController";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -21,9 +26,43 @@ import {
   useIndexStore,
 } from "@/store/project-index";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { engineSyncsPath } from "@/lib/document-engine";
 import { resolveCompilePath } from "@/lib/compile-file-path";
 import { logError } from "@/lib/log";
 import { openProjectLocation } from "@/lib/open-location";
+
+const loadTypstSync = () => import("@/features/typst-sync");
+
+function cursorColumn(): number | null {
+  const view = getEditorView();
+  if (!view) return null;
+  const head = view.state.selection.main.head;
+  return head - view.state.doc.lineAt(head).from;
+}
+
+async function typstForward(
+  projectId: string,
+  mainDoc: string,
+  file: string,
+  line: number,
+  column: number | null,
+) {
+  const sync = await loadTypstSync();
+  sync.watchTypstSyncProject(projectId);
+  return sync.typstForward({ projectId, mainDoc, file, line, column });
+}
+
+async function typstInverse(
+  projectId: string,
+  mainDoc: string,
+  page: number,
+  x: number,
+  y: number,
+) {
+  const sync = await loadTypstSync();
+  sync.watchTypstSyncProject(projectId);
+  return sync.typstInverse({ projectId, mainDoc, page, x, y });
+}
 
 type SyncTexContext = readonly [
   CompileSuccessCheckpoint,
@@ -127,7 +166,7 @@ export async function forwardFromCursor() {
   const files = useFilesStore.getState();
   const { projectId, activePath } = files;
   const mainDoc = resolveEffectiveMainDoc().mainDoc;
-  if (!files.engineLoaded || !files.engine.capabilities.supports_synctex) return;
+  if (!files.engineLoaded || !engineSyncsPath(files.engine, activePath)) return;
   if (!projectId || !activePath) {
     void logError("synctex forward", "no active project/file");
     return;
@@ -139,6 +178,8 @@ export async function forwardFromCursor() {
     void logError("synctex forward", "could not determine cursor line");
     return;
   }
+  const typst = files.engine.id === "typst";
+  const column = typst ? cursorColumn() : null;
   try {
     let compiledPath = activePath;
     let compiledLine = line;
@@ -150,12 +191,9 @@ export async function forwardFromCursor() {
       compiledPath = mapped[0];
       compiledLine = mapped[2];
     }
-    const rect = await synctexForward(
-      projectId,
-      mainDoc,
-      compiledPath,
-      compiledLine,
-    );
+    const rect = typst
+      ? await typstForward(projectId, mainDoc, compiledPath, compiledLine, stale ? null : column)
+      : await synctexForward(projectId, mainDoc, compiledPath, compiledLine);
     if (
       !contextStillValid(context) ||
       (stale && currentSource(stale[1]) !== stale[3])
@@ -185,13 +223,14 @@ function nextFrames(n: number): Promise<void> {
 }
 
 // A log or PDF location with no file refers to the active file.
-export async function openFileAndGotoLine(file: string | null, line: number) {
+export async function openFileAndGotoLine(file: string | null, line: number, column?: number) {
   if (!file) {
-    gotoLine(line);
+    if (column === undefined) gotoLine(line);
+    else gotoLine(line, column);
     return;
   }
   const target = resolveCompilePath(file, currentProjectSourcePaths());
-  if (target) await openProjectLocation({ path: target, line });
+  if (target) await openProjectLocation(column === undefined ? { path: target, line } : { path: target, line, column });
 }
 
 // In a multi-file project the click may land on content from a different file
@@ -243,8 +282,11 @@ export async function inverseFromClick(
   if (!context) return;
   const currentLine = getCurrentLine();
   if (word && currentLine != null) selectWordNearLine(currentLine, word);
+  const typst = store.engine.id === "typst";
   try {
-    const hit = await synctexInverse(projectId, mainDoc, page, x, y);
+    const hit = typst
+      ? await typstInverse(projectId, mainDoc, page, x, y)
+      : await synctexInverse(projectId, mainDoc, page, x, y);
     if (!contextStillValid(context)) return;
     if (!hit) return;
 
@@ -253,6 +295,10 @@ export async function inverseFromClick(
     const targetLine = target.line;
 
     if (!(await focusInverseTarget(store, context, target.path))) return;
+    if (typst && !context[1]) {
+      gotoLine(targetLine, hit.column + 1);
+      return;
+    }
     // SyncTeX only resolves to a line (its column is coarse and often lands on a
     // `\begin`/`\end`). If we know the word that was clicked, place the cursor on
     // the nearest matching word; otherwise fall back to the line start.

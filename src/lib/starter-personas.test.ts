@@ -22,6 +22,7 @@ describe("starter personas", () => {
     expect(figure?.prompt).toMatch(/publication-quality/u);
     expect(figure?.prompt).toMatch(/TikZ/u);
     expect(figure?.prompt).toMatch(/PGFPlots/u);
+    expect(figure?.prompt).toMatch(/CeTZ or fletcher in a Typst project/u);
     expect(figure?.prompt).toMatch(/revise/u);
     expect(figure?.prompt).toMatch(/Never invent data/u);
     expect(
@@ -29,6 +30,12 @@ describe("starter personas", () => {
         `${persona.name}${persona.prompt}`.includes("—"),
       ),
     ).toBe(false);
+  });
+
+  it("lets the document editor diagnose Typst source as well as LaTeX", () => {
+    const editor = STARTER_PERSONAS.find((persona) => persona.id === "starter-document-editor");
+
+    expect(editor?.prompt).toMatch(/LaTeX or Typst source/u);
   });
 
   it("creates a persistence payload without suggestion-only descriptions", () => {

@@ -14,6 +14,10 @@ const mocks = vi.hoisted(() => ({
   unsubscribeFiles: vi.fn(),
   setAutoCompile: vi.fn(), setCompileMode: vi.fn(), setCheckSyntaxBeforeCompile: vi.fn(), setStopOnFirstError: vi.fn(),
   setEngine: vi.fn(async () => {}), refreshTree: vi.fn(async () => {}),
+  setTypstVersion: vi.fn(async (_version: string | null) => {}),
+  applyTypstCompileOptions: vi.fn(async (_update: unknown) => {}),
+  chooseTypstVariant: vi.fn(),
+  setFocus: vi.fn(async () => {}),
   off: vi.fn(),
   files: {} as Record<string, unknown>,
   filesChanged: ((_next: unknown, _previous: unknown) => {}) as (next: unknown, previous: unknown) => void,
@@ -24,12 +28,17 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: { errorUnique: mocks.errorUnique }, notifyError: mocks.notifyError }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
+vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ setFocus: mocks.setFocus }) }));
+vi.mock("@/lib/typst-compile-actions", () => ({
+  applyTypstCompileOptions: mocks.applyTypstCompileOptions,
+  chooseTypstVariant: mocks.chooseTypstVariant,
+}));
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: mocks.emitTo,
   listen: vi.fn(async (name, handler) => { mocks.handlers.set(name, handler); return mocks.off; }),
 }));
 vi.mock("@/store/files", () => ({ engineSwitchToastKey: (projectId: string) => `engine-switch:${projectId}`, useFilesStore: {
-  getState: () => ({ projectId: "current", engine: { id: "latex", label: "LaTeX" }, engineLoaded: true, mainDoc: "main.tex", setEngine: mocks.setEngine, refreshTree: mocks.refreshTree, ...mocks.files }),
+  getState: () => ({ projectId: "current", engine: { id: "latex", label: "LaTeX" }, engineLoaded: true, mainDoc: "main.tex", setEngine: mocks.setEngine, setTypstVersion: mocks.setTypstVersion, refreshTree: mocks.refreshTree, ...mocks.files }),
   subscribe: (listener: (next: unknown, previous: unknown) => void) => { mocks.filesChanged = listener; return mocks.unsubscribeFiles; },
 } }));
 vi.mock("@/store/preview-detached", () => ({ usePreviewDetachedStore: { getState: () => ({ projectId: mocks.detachedProject }), subscribe: (listener: () => void) => { mocks.detachedChanged = listener; return mocks.unsubscribeDetached; } } }));
@@ -37,6 +46,7 @@ vi.mock("@/store/compile", () => ({ useCompileStore: {
   getState: () => ({ recompile: mocks.recompile, stopCompile: mocks.stopCompile, status: "success", log: "Build output", errors: [], diagnostics: [], compileTimeMs: 120,
     lastAttemptIdentity: null, lastCompileCheckpoint: mocks.checkpoint, failureReason: null,
     autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
+    livePreview: { projectId: "current", enabled: false, status: "off", message: null },
     setAutoCompile: mocks.setAutoCompile, setCompileMode: mocks.setCompileMode,
     setCheckSyntaxBeforeCompile: mocks.setCheckSyntaxBeforeCompile, setStopOnFirstError: mocks.setStopOnFirstError }),
   subscribe: () => mocks.unsubscribe,
@@ -78,6 +88,7 @@ describe("detached compile commands", () => {
       compileRevision: 0, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
       engine: { id: "latex", label: "LaTeX" }, engineLoaded: true, mainDoc: "main.tex",
       noMainDocument: false, systemTexLocked: false,
+      typstVariant: null, livePreview: { projectId: "current", enabled: false, status: "off", message: null },
     });
     cleanup();
   });
@@ -215,6 +226,55 @@ describe("detached compile commands", () => {
       "engine-switch:current",
       "Oleafly can't make this change because project.json or its folder is read-only. Copy the folder you opened into your library and edit it there.",
     );
+    cleanup();
+  });
+
+  it("pins the Typst version the detached menu chose", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "typst-version", version: 7 });
+    command({ projectId: "current", action: "typst-version", version: "0.13.1" });
+    command({ projectId: "current", action: "typst-version", version: null });
+    await vi.waitFor(() => expect(mocks.setTypstVersion).toHaveBeenCalledTimes(2));
+    expect(mocks.setTypstVersion).toHaveBeenNthCalledWith(1, "0.13.1");
+    expect(mocks.setTypstVersion).toHaveBeenNthCalledWith(2, null);
+    cleanup();
+  });
+
+  it("reports a failed Typst version switch once, in the slot the toolbar shares", async () => {
+    mocks.setTypstVersion.mockRejectedValueOnce(new Error("not a Typst project"));
+    const cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "typst-version", version: "0.13.1" } });
+    await vi.waitFor(() => expect(mocks.errorUnique).toHaveBeenCalledOnce());
+    expect(mocks.errorUnique).toHaveBeenCalledWith("engine-switch:current", enShell.compile.typstVersion.switchFailed);
+    cleanup();
+  });
+
+  it("saves the Typst font and build choices from the detached menu and rejects anything else", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "typst-options", systemFonts: "no" });
+    command({ projectId: "current", action: "typst-options" });
+    command({ projectId: "old", action: "typst-options", systemFonts: false });
+    command({ projectId: "current", action: "typst-options", systemFonts: false });
+    command({ projectId: "current", action: "typst-options", reproducible: true, fontPaths: ["/etc"] });
+    await vi.waitFor(() => expect(mocks.applyTypstCompileOptions).toHaveBeenCalledTimes(2));
+    expect(mocks.applyTypstCompileOptions).toHaveBeenNthCalledWith(1, { systemFonts: false });
+    expect(mocks.applyTypstCompileOptions).toHaveBeenNthCalledWith(2, { reproducible: true });
+    cleanup();
+  });
+
+  it("picks only a variant the project defines", async () => {
+    mocks.files = { engine: { id: "typst", label: "Typst", source_format: "typst", typst_options: { variants: ["draft"] } } };
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "typst-variant", variant: 3 });
+    command({ projectId: "current", action: "typst-variant", variant: "missing" });
+    command({ projectId: "current", action: "typst-variant", variant: "draft" });
+    command({ projectId: "current", action: "typst-variant", variant: null });
+    await vi.waitFor(() => expect(mocks.chooseTypstVariant).toHaveBeenCalledTimes(2));
+    expect(mocks.chooseTypstVariant).toHaveBeenNthCalledWith(1, "draft");
+    expect(mocks.chooseTypstVariant).toHaveBeenNthCalledWith(2, null);
     cleanup();
   });
 

@@ -171,6 +171,76 @@ describe("ConverterToolView", () => {
     expect(mocks.notifyError).not.toHaveBeenCalled();
   });
 
+  it("shows what an arXiv to Typst conversion left behind and creates a Typst project", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "arxiv-to-typst" });
+    useFilesStore.setState({
+      engine: {
+        ...useFilesStore.getState().engine,
+        id: "typst",
+        typst_resolved: { version: "0.13.1", source: "downloaded" },
+      },
+    });
+    mocks.runAdHocConverter.mockResolvedValue({
+      kind: "text",
+      text: "= Intro",
+      dataBase64: null,
+      fileName: "main.typ",
+      mediaType: "text/x-typst",
+      files: [{ path: "figs/plot.png", dataBase64: "iVBO" }],
+      mainFile: "main.typ",
+      note: "Converted main.tex. Typst found 1 error. 1 item did not convert.",
+      details: ["Line 4: file not found", "Skipped '\\weird{x}' at line 1 column 7"],
+    });
+    render(<ConverterToolView />);
+    fireEvent.change(screen.getByTestId("converter-text-input"), { target: { value: "2301.01234" } });
+    fireEvent.click(screen.getByTestId("converter-run"));
+
+    await waitFor(() =>
+      expect(mocks.runAdHocConverter).toHaveBeenCalledWith(
+        "arxiv-to-typst",
+        { text: "2301.01234", file: null, typstVersion: "0.13.1" },
+        expect.any(Function),
+        expect.any(AbortSignal),
+      ),
+    );
+    expect(await screen.findByText("Converted main.tex. Typst found 1 error. 1 item did not convert.")).toBeVisible();
+    const details = screen.getByTestId("converter-details");
+    expect(details).toHaveTextContent("Line 4: file not found");
+    expect(details).toHaveTextContent("Skipped '\\weird{x}' at line 1 column 7");
+    expect(screen.getByText("Downloads from arXiv")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Create project/i }));
+    await waitFor(() =>
+      expect(mocks.createProjectFromAdHoc).toHaveBeenCalledWith({
+        name: "arXiv 2301.01234",
+        target: "typst",
+        text: "= Intro",
+        mainFile: undefined,
+        files: [{ path: "figs/plot.png", dataBase64: "iVBO" }],
+      }),
+    );
+  });
+
+  it("does not pin a Typst version when the open project is not Typst", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "mermaid-to-typst" });
+    useFilesStore.setState({
+      engine: { ...useFilesStore.getState().engine, id: "latex", typst_resolved: null },
+    });
+    mocks.runAdHocConverter.mockResolvedValue({
+      kind: "text",
+      text: "#diagram()",
+      dataBase64: null,
+      fileName: "diagram.typ",
+      mediaType: "text/x-typst",
+      files: [],
+    });
+    render(<ConverterToolView />);
+    fireEvent.click(screen.getByTestId("converter-run"));
+    await waitFor(() => expect(mocks.runAdHocConverter).toHaveBeenCalledOnce());
+    expect(mocks.runAdHocConverter.mock.calls[0][1]).not.toHaveProperty("typstVersion");
+    expect(screen.queryByTestId("converter-details")).not.toBeInTheDocument();
+  });
+
   it("renders nothing outside a converter route", () => {
     useHomeViewStore.setState({ page: "tools", activeConverter: null });
     const { container } = render(<ConverterToolView />);

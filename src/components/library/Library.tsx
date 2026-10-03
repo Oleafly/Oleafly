@@ -196,8 +196,8 @@ function projectCardLabels(t: Translate, project: ProjectInfo, updatedAt: number
   if (project.recovery_pending) {
     return {
       date: t(($) => $.library.projects.openToRecover),
-      engine: t(($) => $.library.projects.recoveryRequired),
-      kind: t(($) => $.library.projects.openToRecover),
+      engine: t(($) => $.library.projects.openToRecover),
+      kind: t(($) => $.library.projects.recoveryRequired),
       openLabel: t(($) => $.library.projects.openToRecoverNamed, { name: project.name }),
     };
   }
@@ -1442,7 +1442,7 @@ export function Library() {
               value={facetValue("engine")}              onChange={(value) => setFacet("engine", value)}              customLabel={t(($) => $.library.home.customFilter)}
               options={[
                 { value: "all", label: t(($) => $.library.home.filters.engineAll) },
-                { value: "tectonic", label: "Tectonic" },
+                { value: "latex", label: "LaTeX" },
                 { value: "typst", label: "Typst" },
                 { value: "markdown", label: "Markdown" },
               ]}

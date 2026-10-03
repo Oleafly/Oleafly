@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Kuva ilman vaihtoehtoista tekstiä",
-      "detail": "Tällä kuvalla ei ole kuvailevaa vaihtoehtoista tekstiä, joten ruudunlukija ei voi välittää sitä. Lisää kuvaus, esimerkiksi \\includegraphics[alt={Tekijän kasvokuva}]{...}. Merkitse puhtaasti koristeelliset kuvat sen sijaan artefakteiksi."
+      "detail": "Tällä kuvalla ei ole kuvailevaa vaihtoehtoista tekstiä, joten ruudunlukija ei voi välittää sitä. Lisää kuvaus, esimerkiksi \\includegraphics[alt={Tekijän kasvokuva}]{...}. Merkitse puhtaasti koristeelliset kuvat sen sijaan artefakteiksi.",
+      "detailTypst": "Tällä kuvalla ei ole vaihtoehtoista tekstiä, joten ruudunlukija ei voi välittää sitä. Lisää kuvaus, esimerkiksi #image(\"chart.png\", alt: \"Pylväskaavio vuosimyynnistä\").",
+      "detailTypstFigure": "Tällä kuvalla ei ole vaihtoehtoista tekstiä, joten ruudunlukija ei voi välittää sitä. Kuvaile se kuvassa tai sen sisältävässä kuvaympäristössä, esimerkiksi #figure(image(\"chart.png\"), alt: \"Pylväskaavio vuosimyynnistä\")."
     },
     "link-text": {
       "title": "Linkkiteksti ei kuvaa kohdetta",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "PDF:llä ei ole otsikkoa",
-      "detail": "PDF:n metatiedoissa ei ole otsikkoa, jota avustavat tekniikat ja selaimet käyttävät dokumentin ilmoittamiseen. Aseta se hyperrefillä, esimerkiksi \\hypersetup{pdftitle={Nimi, CV}}."
+      "detail": "PDF:n metatiedoissa ei ole otsikkoa, jota avustavat tekniikat ja selaimet käyttävät dokumentin ilmoittamiseen. Aseta se hyperrefillä, esimerkiksi \\hypersetup{pdftitle={Nimi, CV}}.",
+      "detailTypst": "PDF-tiedoston metatiedoissa ei ole otsikkoa, jota avustavat tekniikat ja selaimet käyttävät dokumentin ilmoittamiseen. Aseta se komennolla #set document(title: \"Otsikkosi\") tai anna otsikko mallipohjalle."
     },
     "heading-skip": {
       "title": "Otsikkotaso hypättiin yli",
@@ -284,11 +287,16 @@
     },
     "refs-undefined-cite": {
       "title": "Viittausta \"{{key}}\" ei ole missään .bib-tiedostossa",
-      "detail": "Tätä viiteavainta ei löytynyt ladatusta lähdeluettelosta, joten se piirtyy PDF:ään muodossa [?]. Tarkista avain tai lisää viite .bib-tiedostoon (Lisää viittaus osaa hakea sen)."
+      "detail": "Tätä viiteavainta ei löytynyt ladatusta lähdeluettelosta, joten se piirtyy PDF:ään muodossa [?]. Tarkista avain tai lisää viite .bib-tiedostoon (Lisää viittaus osaa hakea sen).",
+      "titleTypst": "Viittausta \"{{key}}\" ei ole lähdeluettelossa",
+      "detailTypst": "Tätä avainta ei ole missään projektin lataamassa lähdeluettelotiedostossa, joten kääntäminen epäonnistuu. Tarkista avain tai lisää viite .bib- tai Hayagriva .yml -tiedostoon."
     },
     "refs-undefined-ref": {
       "title": "Viitteelle \"{{label}}\" ei löydy vastaavaa \\label-komentoa",
-      "detail": "Tämä ristiviittaus osoittaa nimikkeeseen, jota ei ole määritelty, joten se piirtyy PDF:ään muodossa ??. Tarkista nimikkeen nimi tai lisää puuttuva \\label."
+      "detail": "Tämä ristiviittaus osoittaa nimikkeeseen, jota ei ole määritelty, joten se piirtyy PDF:ään muodossa ??. Tarkista nimikkeen nimi tai lisää puuttuva \\label.",
+      "titleTypst": "Nimikettä tai viitettä nimeltä \"{{label}}\" ei ole",
+      "detailTypst": "Typst pysäyttää kääntämisen tähän. Tarkista kirjoitusasu tai lisää puuttuva <label> tai lähdeluettelon viite.",
+      "detailTypstPackage": "Projektissa ei ole tämännimistä nimikettä eikä lähdeluettelon viitettä. Paketti voi luoda nimikkeitä dokumentin kääntämisen aikana, esimerkiksi sanaston merkintöjä. Jos käännösloki ilmoittaa siitä, tarkista kirjoitusasu."
     },
     "refs-duplicate-label": {
       "title": "Nimike \"{{label}}\" on kahteen kertaan",
@@ -298,11 +306,14 @@
       "titleImage": "Kuvaa ei löydy: {{file}}",
       "detailImage": "Tämä \\includegraphics osoittaa tiedostoon, jota ei ole projektissa, joten kuva jää puuttumaan. Tarkista tiedostonimi ja polku.",
       "titleInclude": "Sisällytettyä tiedostoa ei löydy: {{file}}",
-      "detailInclude": "Tämä \\input tai \\include osoittaa tiedostoon, jota ei ole projektissa. Tarkista tiedostonimi ja polku."
+      "detailInclude": "Tämä \\input tai \\include osoittaa tiedostoon, jota ei ole projektissa. Tarkista tiedostonimi ja polku.",
+      "detailImageTypst": "Mikään projektin tiedosto ei vastaa tätä kuvapolkua, joten kääntäminen epäonnistuu. Typst lukee polun suhteessa tiedostoon tai projektin juuresta, kun polku alkaa merkillä /.",
+      "detailIncludeTypst": "Mikään projektin tiedosto ei vastaa tätä #include- tai #import-polkua, joten kääntäminen epäonnistuu. Tarkista tiedostonimi ja polku."
     },
     "refs-bib-missing": {
       "title": "Lähdeluettelotiedostoa ei löydy: {{file}}",
-      "detail": "Tämä \\bibliography tai \\addbibresource osoittaa tiedostoon, jota ei ole projektissa, joten jokainen viittaus piirtyy muodossa [?]. Tarkista tiedostonimi tai luo se tuomalla lähdekirjasto."
+      "detail": "Tämä \\bibliography tai \\addbibresource osoittaa tiedostoon, jota ei ole projektissa, joten jokainen viittaus piirtyy muodossa [?]. Tarkista tiedostonimi tai luo se tuomalla lähdekirjasto.",
+      "detailTypst": "Tämä #bibliography-kutsu osoittaa tiedostoon, jota ei ole projektissa, joten kääntäminen epäonnistuu. Tarkista tiedostonimi tai luo se tuomalla lähdekirjasto."
     },
     "refs-duplicate-bib": {
       "title": "Lähdeviitteitä kahteen kertaan: {{keys}}",
@@ -345,7 +356,8 @@
     },
     "privacy-blind-author": {
       "title": "Tekijän henkilöllisyys on yhä anonyymiin arviointiin menevässä lähdekoodissa",
-      "detail": "Lähdekoodi sisältää nimellisen tekijän, affiliaation, sähköpostin, osoitteen tai kiitoskentän. Korvaa tunnistava sisältö foorumin anonyymin arvioinnin tilalla."
+      "detail": "Lähdekoodi sisältää nimellisen tekijän, affiliaation, sähköpostin, osoitteen tai kiitoskentän. Korvaa tunnistava sisältö foorumin anonyymin arvioinnin tilalla.",
+      "detailTypst": "Lähdekoodi antaa dokumentille tai sen mallipohjalle tekijän nimen, sähköpostin tai affiliaation. Poista se tai vaihda mallipohja anonyymiin tilaan."
     },
     "privacy-blind-acknowledgements": {
       "title": "Kiitokset voivat paljastaa tekijät",
@@ -374,15 +386,20 @@
     "submission-document-class": {
       "title": "Dokumenttiluokka {{profile}} ei ole käytössä",
       "detail": "Tämä profiili odottaa luokkaa {{expected}}, mutta projekti käyttää luokkaa {{actual}}. Aloita foorumin nykyisestä virallisesta mallipohjasta.",
-      "detailNoClass": "Tämä profiili odottaa luokkaa {{expected}}, mutta dokumenttiluokkaa ei havaittu. Aloita foorumin nykyisestä virallisesta mallipohjasta."
+      "detailNoClass": "Tämä profiili odottaa luokkaa {{expected}}, mutta dokumenttiluokkaa ei havaittu. Aloita foorumin nykyisestä virallisesta mallipohjasta.",
+      "titleTypst": "Profiilin {{profile}} mallipohja ei ole käytössä",
+      "detailTypst": "Tämä profiili odottaa Typst-mallipohjaa, kuten {{expected}}, mutta projekti tuo pohjan {{actual}}. Aloita jostakin niistä mallipohjista.",
+      "detailNoTemplateTypst": "Tämä profiili odottaa Typst-mallipohjaa, kuten {{expected}}, mutta projekti ei tuo mitään mallipohjaa. Aloita jostakin niistä mallipohjista."
     },
     "submission-no-abstract": {
       "title": "Tiivistelmää ei havaittu",
-      "detail": "Tämä julkaisuprofiili odottaa tiivistelmää vakiomuotoisessa abstract-ympäristössä. Lisää se tai varmista, ettei kyseinen foorumi vaadi sitä."
+      "detail": "Tämä julkaisuprofiili odottaa tiivistelmää vakiomuotoisessa abstract-ympäristössä. Lisää se tai varmista, ettei kyseinen foorumi vaadi sitä.",
+      "detailTypst": "Tämä julkaisuprofiili odottaa tiivistelmää. Anna se mallipohjalle, esimerkiksi abstract: [Tiivistelmäsi], tai lisää Abstract-otsikko."
     },
     "submission-no-keywords": {
       "title": "Julkaisun avainsanoja ei havaittu",
-      "detail": "Profiili {{profile}} odottaa avainsanoja sen mallipohjan vakiokomennolla tai -ympäristöllä."
+      "detail": "Profiili {{profile}} odottaa avainsanoja sen mallipohjan vakiokomennolla tai -ympäristöllä.",
+      "detailTypst": "Profiili {{profile}} odottaa avainsanoja. Anna ne mallipohjalle, esimerkiksi keywords: (\"one\", \"two\") tai index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Tukematon kuvamuoto: {{file}}",
@@ -390,7 +407,8 @@
     },
     "submission-placeholder": {
       "title": "Käsikirjoituksessa on yhä luonnoksen paikanvaraaja",
-      "detail": "Lähdekoodi sisältää TODO-, TBD- tai FIXME-merkintöjä, paikanvaraajatekstiä tai kysymysmerkkejä. Käy jokainen esiintymä läpi ennen lopullisen lähetyksen tuottamista."
+      "detail": "Lähdekoodi sisältää TODO-, TBD- tai FIXME-merkintöjä, paikanvaraajatekstiä tai kysymysmerkkejä. Käy jokainen esiintymä läpi ennen lopullisen lähetyksen tuottamista.",
+      "detailTypst": "Dokumentti kutsuu yhä #lorem-funktiota tai sisältää paikanvaraajatekstiä. Korvaa se ennen lopullista lähetystä."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} on vaadittua versiota vanhempi",
@@ -420,6 +438,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Kaikkien fonttien upotusta ei voitu varmistaa",
       "detail": "Esitarkistus ei voinut todentaa fonttien {{fonts}} upotuksen tilaa. Varmista ne foorumin virallisella PDF-tarkistimella."
+    },
+    "empty-heading": {
+      "title": "Tyhjä otsikko",
+      "detail": "Tässä otsikossa ei ole tekstiä. Ruudunlukijat ilmoittavat sen tyhjänä kohtana jäsennyksessä. Lisää otsikkoteksti tai poista otsikko."
+    },
+    "todo-in-text": {
+      "title": "Luonnosmerkintä tekstissä",
+      "detail": "Tämä merkintä on osa tekstiä, joten se tulostuu PDF-tiedostoon. Ratkaise se tai muuta se //-kommentiksi."
+    },
+    "no-author": {
+      "title": "Dokumentilla ei ole tekijää",
+      "detail": "PDF-metatiedoissa ei ole tekijää. Lisää se komennolla #set document(author: \"Nimesi\") tai anna tekijät mallipohjalle. Jätä se pois anonyymiä arviointia varten."
+    },
+    "privacy-local-path": {
+      "title": "Polku tietokoneellasi: {{path}}",
+      "detail": "Tämä polku osoittaa projektin ulkopuoliseen kansioon. Se voi paljastaa käyttäjänimesi, ja käännös epäonnistuu kaikilla muilla koneilla. Siirrä tiedosto projektiin ja käytä suhteellista polkua."
+    },
+    "privacy-blind-email": {
+      "title": "Sähköpostiosoite tiedostossa {{file}}",
+      "detail": "Sähköpostiosoite voi paljastaa tekijät anonyymin arvioinnin aikana. Poista se tai korvaa se anonyymillä paikanvaraajalla."
+    },
+    "refs-no-bibliography": {
+      "title": "Viittauksia ilman lähdeluetteloa",
+      "detail": "Dokumentti viittaa lähteisiin mutta ei koskaan kutsu #bibliography-funktiota, joten Typst ei voi ratkaista viittauksia. Lisää #bibliography(\"refs.bib\") kohtaan, jossa lähdeluettelon pitää näkyä."
+    },
+    "submission-large-image": {
+      "title": "Hyvin suuri kuva: {{file}}",
+      "detail": "Tämä kuva on yli {{limit}}. Suuret kuvat hidastavat kääntämistä ja paisuttavat PDF-tiedostoa. Jotkin foorumit myös rajoittavat lähetyksen kokoa. Pakkaa kuva tai vie se siinä koossa, jossa se tulostetaan."
     }
   },
   "lens": {
@@ -643,5 +689,15 @@
     "compileTagged": "Käännä merkittynä ja varmista",
     "compileTaggedWarning": "Järjestelmän LuaLaTeX voi lukea paikallisia tiedostoja. Aja se vain projektille, johon luotat.",
     "noEngine": "Jotta merkityn PDF:n voi tuottaa sovelluksessa, ota moottori käyttöön kohdassa Asetukset, LaTeX-moottori. Vaihtoehtoisesti käännä valmisteltu lähdekoodi omalla pdfLaTeXilla tai LuaLaTeXilla TeX Live 2025:stä tai uudemmasta."
+  },
+  "typstStandards": {
+    "title": "PDF-standardit",
+    "intro": "Typst kirjoittaa arkistointikelpoiset ja saavutettavat PDF-tiedostot itse. Valitse standardi ja vie sitten PDF.",
+    "standard": "Standardi",
+    "export": "Vie PDF",
+    "tagged": "Typst {{version}} merkitsee jokaisen PDF-tiedoston ruudunlukijoita varten, joten erillistä merkittyä käännöstä ei tarvita.",
+    "untagged": "Typst {{version}} ei merkitse PDF-tiedostoja ruudunlukijoita varten. Typst 0.14 ja uudemmat merkitsevät.",
+    "none": "Typst {{version}} ei osaa kirjoittaa PDF-standardeja. Valitse käännösvalikosta Typst 0.12 tai uudempi.",
+    "uaNote": "PDF/UA-1 vaatii dokumentin otsikon ja vaihtoehtoisen tekstin jokaiselle kuvalle."
   }
 }

@@ -3,8 +3,11 @@ import { useTranslation } from "react-i18next";
 import {
   DiagramComposer as DiagramComposerCore,
   DiagramKitContext,
+  type DiagramFixPrompt,
   type DiagramHost,
   type DiagramKit,
+  type DiagramLanguageId,
+  languageForPath,
 } from "@oleafly/diagram";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { KIT } from "@/components/diagram/diagram-kit";
@@ -14,6 +17,7 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { tourRegistry } from "@/lib/tours/registry";
 import {
   compileIsolated,
@@ -27,14 +31,16 @@ import {
   getOrCreateScratchProject,
   saveFigureToCache,
   getConfig,
+  renderTypstSnippet,
 } from "@/lib/tauri";
+import { renderMermaidFigure } from "@/components/diagram/mermaid-render";
 import { completeText } from "@/lib/agent-backend";
 import { hasConfiguredProvider } from "@/lib/ai-providers";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { i18n } from "@/i18n";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { insertAtCursor } from "@/components/editor/cm/controller";
-import { diagramCodeExtensions } from "@/components/diagram/code-extensions";
+import { diagramCodeExtensions, diagramLanguageExtensions } from "@/components/diagram/code-extensions";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { isMac } from "@/lib/utils";
 import { pickSavePath } from "@/lib/native-file-dialog";
@@ -55,7 +61,7 @@ if (typeof window !== "undefined" && E2E_HOOKS) {
 }
 let nextTikzImportOverride: { name: string; content: string } | null | undefined;
 
-function pickTikzFile(): Promise<{ name: string; content: string } | null> {
+function pickTikzFile(accept = ".tikz,.tex"): Promise<{ name: string; content: string } | null> {
   if (E2E_HOOKS && nextTikzImportOverride !== undefined) {
     const next = nextTikzImportOverride;
     nextTikzImportOverride = undefined;
@@ -64,7 +70,7 @@ function pickTikzFile(): Promise<{ name: string; content: string } | null> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".tikz,.tex";
+    input.accept = accept;
     let settled = false;
     const settle = (result: { name: string; content: string } | null) => {
       if (settled) return;
@@ -87,18 +93,20 @@ function pickTikzFile(): Promise<{ name: string; content: string } | null> {
   });
 }
 
-async function fixWithAi(code: string, logTail: string): Promise<string> {
+async function fixWithAi(code: string, logTail: string, prompt?: DiagramFixPrompt): Promise<string> {
   const cfg = await getConfig();
   if (!hasConfiguredProvider(cfg)) {
     throw new Error(i18n.t(($) => $.diagram.composer.aiProviderRequired));
   }
   let text: string;
   try {
-    text = await completeText({
-      system:
-        String.raw`You fix LaTeX/TikZ figure code so it compiles under Tectonic (XeLaTeX) in a standalone document with tikz + shapes.geometric, arrows.meta, positioning, calc, backgrounds loaded. Return ONLY the corrected figure body: the \begin{tikzpicture}...\end{tikzpicture} plus any \definecolor lines. No preamble, no \documentclass, no explanation, no markdown code fences. Never use em dashes.`,
-      user: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${code}\n\nCOMPILE LOG (tail):\n${logTail}`,
-    });
+    text = await completeText(
+      prompt ?? {
+        system:
+          String.raw`You fix LaTeX/TikZ figure code so it compiles under Tectonic (XeLaTeX) in a standalone document with tikz + shapes.geometric, arrows.meta, positioning, calc, backgrounds loaded. Return ONLY the corrected figure body: the \begin{tikzpicture}...\end{tikzpicture} plus any \definecolor lines. No preamble, no \documentclass, no explanation, no markdown code fences. Never use em dashes.`,
+        user: `This TikZ figure failed to compile. Fix it.\n\nCODE:\n${code}\n\nCOMPILE LOG (tail):\n${logTail}`,
+      },
+    );
   } catch (e) {
     throw new Error(
       i18n.t(($) => $.diagram.composer.fixFailed, { detail: describeError(e) }),
@@ -108,6 +116,12 @@ async function fixWithAi(code: string, logTail: string): Promise<string> {
     .replace(/^```[a-zA-Z]*\n?/gm, "")
     .replace(/```$/gm, "")
     .trim();
+}
+
+function projectLanguage(engine: string | undefined, mainDoc: string): DiagramLanguageId {
+  if (engine === "typst") return "typst";
+  if (engine === "markdown") return "mermaid";
+  return languageForPath(mainDoc) ?? "tikz";
 }
 
 function describedWriteFailure(error: unknown): unknown {
@@ -137,7 +151,7 @@ const HOST: DiagramHost = {
     await useFilesStore.getState().refreshTree();
   },
   createImageProject,
-  createDiagramProject,
+  createDiagramProject: (name, source, language) => createDiagramProject(name, source, language),
   refreshProjects: () => useFilesStore.getState().refreshProjects(),
   findProjectIdByName: async (name) => {
     await useFilesStore.getState().refreshProjects();
@@ -145,7 +159,10 @@ const HOST: DiagramHost = {
   },
   listProjectNames: async () => {
     await useFilesStore.getState().refreshProjects();
-    return useFilesStore.getState().projects.map((p) => ({ id: p.id, name: p.name }));
+    return useFilesStore.getState().projects.map((p) => {
+      const language = projectLanguage(p.engine, p.main_doc);
+      return { id: p.id, name: p.name, typst: language === "typst", language };
+    });
   },
   saveFigureToCache: async (name, pngBase64, tikz) => {
     const r = await saveFigureToCache(name, pngBase64, tikz);
@@ -162,6 +179,27 @@ const HOST: DiagramHost = {
   },
   pickTikzFile,
   fixWithAi,
+  insertTarget: () => {
+    const { projectId, activePath } = useFilesStore.getState();
+    const language = languageForPath(activePath);
+    if (!projectId || !activePath || !language || /\.(?:tikz|mmd)$/iu.test(activePath)) return null;
+    return { projectId, language };
+  },
+  typstContext: () => {
+    const { projectId, engine } = useFilesStore.getState();
+    const typst = engine.id === "typst";
+    return { projectId: typst ? projectId : null, typstVersion: typst ? (engine.typst_resolved?.version ?? null) : null };
+  },
+  renderTypst: (request) =>
+    renderTypstSnippet({
+      source: request.source,
+      format: request.format,
+      ppi: request.ppi,
+      projectId: request.projectId ?? undefined,
+      document: request.document,
+      offline: useSettingsStore.getState().offline,
+    }),
+  renderMermaid: renderMermaidFigure,
 };
 
 // Bridges app-specific stores/Tauri/editor into the package's headless composer.
@@ -169,8 +207,14 @@ export function DiagramComposer() {
   const { t } = useTranslation(["diagram"]);
   const open = useHomeViewStore((s) => s.page === "diagram-composer");
   const goTo = useHomeViewStore((s) => s.goTo);
+  const inProject = useFilesStore((s) => s.projectId !== null);
+  const projectName = useFilesStore((s) => s.projectName);
+  const requestedLanguage = useDiagramComposerStore((s) => s.language);
+  const languageRequest = useDiagramComposerStore((s) => s.requestId);
   const fullscreen = useFullscreen();
   const codeExtensions = useMemo(diagramCodeExtensions, []);
+  const languageExtensions = useMemo(diagramLanguageExtensions, []);
+
   const kit = useMemo<DiagramKit>(
     () => ({
       ...KIT,
@@ -208,10 +252,14 @@ export function DiagramComposer() {
           onClose={() => goTo("library")}
           host={HOST}
           codeExtensions={codeExtensions}
+          languageExtensions={languageExtensions}
+          language={requestedLanguage}
+          languageRequest={languageRequest}
           isMac={isMac}
           fullscreen={fullscreen}
           forcePreviewOpen={forcePreviewOpen}
-          brand={<HomeBrandButton onClick={() => goTo("library")} />}
+          projectName={inProject ? projectName : null}
+          brand={inProject ? undefined : <HomeBrandButton onClick={() => goTo("library")} />}
           windowControls={<WindowControls />}
         />
       </DiagramKitContext.Provider>

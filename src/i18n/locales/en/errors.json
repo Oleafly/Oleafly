@@ -146,5 +146,37 @@
       "check_running": "A test for this agent is already running.",
       "main_window": "Change agent programs from the main window."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly doesn't offer Typst {{version}}, and no Typst on this computer has that version.",
+    "busy": "Typst {{version}} is still installing. Try again when it's done.",
+    "remove_default": "Typst {{version}} is your default. Pick a different default before removing it.",
+    "remove_not_downloaded": "Oleafly can only remove Typst versions it downloaded, and it didn't download Typst {{version}}.",
+    "not_offered": "Typst {{version}} can't be downloaded for this computer.",
+    "install_unverified": "Typst {{version}} downloaded but failed its integrity check. Try installing it again.",
+    "not_typst_project": "Only Typst projects have a Typst version.",
+    "update_waits": "Wait for Typst to finish installing before you update Oleafly."
+  },
+  "typst_packages": {
+    "index_offline": "You're offline, and the Typst Universe package list hasn't been downloaded yet.",
+    "index_unavailable": "The Typst Universe package list couldn't be loaded. Check your internet connection and try again.",
+    "vendor_failed": "Oleafly couldn't copy the packages into the project."
+  },
+  "typst_query": {
+    "timeout": "Typst took too long to read this document.",
+    "failed": "Typst couldn't read this document."
+  },
+  "typst_version_missing": "Typst {{version}} is not installed.",
+  "typst_options": {
+    "invalid_input_key": "Value names can't be empty or contain an equals sign.",
+    "invalid_variant_name": "Each variant needs a short name that no other variant uses.",
+    "invalid_font_path": "Font folders must be inside the project.",
+    "fonts_failed": "Typst couldn't list the fonts.",
+    "fonts_timeout": "Typst took too long to list the fonts."
+  },
+  "typst_export": {
+    "failed": "Typst couldn't export the document.",
+    "unsupported": "This Typst version can't export with these settings.",
+    "invalid_ppi": "Pick a resolution from 1 to {{max}} PPI."
   }
 }

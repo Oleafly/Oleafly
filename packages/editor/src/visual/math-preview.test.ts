@@ -2,7 +2,9 @@
 
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { setTypstMathHost } from "../math-render";
+import { loadTypstParser, typstLanguage } from "../typst";
 import {
   hideMathPreview,
   mathPreviewEnabled,
@@ -278,5 +280,86 @@ describe("math preview tooltip view", () => {
     items[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(preview(view.state).enabled).toBe(false);
     expect(preview(view.state).tooltip).toBeNull();
+  });
+});
+
+describe("Typst math preview tooltip", () => {
+  const TYPST = "Area $pi r^2$ and `raw $q$` and $ a + b $.";
+
+  function typstState(doc: string, cursor: number): EditorState {
+    return EditorState.create({ doc, selection: { anchor: cursor }, extensions: [mathPreviewTooltip("typst")] });
+  }
+
+  afterEach(() => {
+    setTypstMathHost(null);
+    vi.useRealTimers();
+  });
+
+  it("finds inline and display equations and skips raw text", () => {
+    expect(mathPreviewTargetAt(typstState(TYPST, TYPST.indexOf("pi")), "typst")).toEqual({
+      from: TYPST.indexOf("$pi"),
+      to: TYPST.indexOf("$pi") + "$pi r^2$".length,
+      body: "pi r^2",
+      display: false,
+    });
+    expect(mathPreviewTargetAt(typstState(TYPST, TYPST.indexOf("a + b")), "typst")?.display).toBe(true);
+    expect(mathPreviewTargetAt(typstState(TYPST, TYPST.indexOf("q$")), "typst")).toBeNull();
+  });
+
+  it("reads the equation from the Typst syntax tree once the parser has loaded", async () => {
+    await loadTypstParser();
+    const doc = "Text $ a #box[$b$] c $ end";
+    const state = EditorState.create({
+      doc,
+      selection: { anchor: doc.indexOf(" c ") + 1 },
+      extensions: [typstLanguage(), mathPreviewTooltip("typst")],
+    });
+    expect(preview(state).target?.body).toBe(" a #box[$b$] c ");
+    expect(preview(state).tooltip).not.toBeNull();
+  });
+
+  it("renders the equation through Typst once the debounce has passed", async () => {
+    vi.useFakeTimers();
+    const render = vi.fn(async () => ({ status: "rendered" as const, svg: "<svg>pi</svg>" }));
+    setTypstMathHost({ render, typstVersion: () => "0.15.1" });
+    const view = mount(typstState(TYPST, TYPST.indexOf("pi")));
+    const created = preview(view.state).tooltip?.create(view);
+    document.body.append(created?.dom as HTMLElement);
+    created?.mount?.(view);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(render).toHaveBeenCalledWith(expect.stringContaining("$pi r^2$"));
+    expect(created?.dom.querySelector("img.ofl-typst-math")).not.toBeNull();
+    created?.destroy?.();
+  });
+
+  it("shows the Typst error message when the equation does not compile", async () => {
+    vi.useFakeTimers();
+    setTypstMathHost({
+      render: async () => ({ status: "failed", message: "unknown variable: foo" }),
+      typstVersion: () => "0.15.1",
+    });
+    const doc = "Broken $foo + x$ here";
+    const view = mount(typstState(doc, doc.indexOf("foo")));
+    const created = preview(view.state).tooltip?.create(view);
+    document.body.append(created?.dom as HTMLElement);
+    created?.mount?.(view);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(created?.dom.querySelector(".ofl-visual-math-tooltip-error")?.textContent).toBe("unknown variable: foo");
+    created?.destroy?.();
+  });
+
+  it("does not render after the tooltip is destroyed", async () => {
+    vi.useFakeTimers();
+    const render = vi.fn(async () => ({ status: "rendered" as const, svg: "<svg/>" }));
+    setTypstMathHost({ render, typstVersion: () => "0.15.1" });
+    const doc = "Gone $g h$ soon";
+    const view = mount(typstState(doc, doc.indexOf("g h")));
+    const created = preview(view.state).tooltip?.create(view);
+    created?.mount?.(view);
+    created?.destroy?.();
+    view.destroy();
+    mounted = null;
+    await vi.advanceTimersByTimeAsync(400);
+    expect(render).not.toHaveBeenCalled();
   });
 });

@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "找出论证、方法、证据和表述中的弱点。",
-        "documentEditor": "对行文、结构、引用和 LaTeX 进行有针对性的稳妥修改。",
-        "figure": "以 LaTeX TikZ 或 PGFPlots 生成出版级质量的图片和图表。",
+        "documentEditor": "对行文、结构、引用以及 LaTeX 或 Typst 源码进行有针对性的稳妥修改。",
+        "figure": "用 LaTeX 中的 TikZ 或 Typst 中的 CeTZ 生成出版级质量的图片和图表。",
         "researchWriter": "起草并组织学术文本，不虚构证据或引用。"
       },
       "suggestedDescription": "从其中一个开始，然后编辑其指令以适应你的工作流。",
@@ -680,6 +680,29 @@
       "mathPreview": {
         "description": "在光标所在的公式上方显示渲染后的公式。",
         "label": "公式预览"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "按 ⌘S 或 Ctrl+S 时，用 typstyle 整理 Typst 文件。自动保存不会改动它们。",
+          "label": "保存时格式化"
+        },
+        "lineWidth": {
+          "description": "typstyle 会对超过此长度的行进行换行。",
+          "label": "格式化行宽"
+        },
+        "indent": {
+          "description": "格式化后的 Typst 代码中每级缩进的空格数。",
+          "label": "格式化缩进"
+        },
+        "inlayHints": {
+          "description": "在 Typst 函数调用的实参前显示参数名称。",
+          "label": "参数名称提示"
+        },
+        "lint": {
+          "description": "每次保存 Typst 文件时检查可能的错误。开启或关闭此项会重启 Typst 语言服务器。",
+          "label": "Typst lint 检查"
+        }
       }
     },
     "files": {
@@ -1015,11 +1038,57 @@
       "resume": "继续下载（已完成 {{size}} MB）"
     },
     "typst": {
-      "detail": "Oleafly 内置。快速、离线、无需配置。可将 Typst 文档编译为 PDF。",
+      "detail": "Oleafly 内置，无需任何配置。只有当文档首次导入 @preview 包时才需要联网。",
       "heading": "Typst 编译器",
       "name": "Typst（内置）",
-      "note": "Typst 项目始终使用内置编译器。目前尚不支持选择编译器版本或使用系统 Typst。",
-      "tooltip": "Typst 内置于 Oleafly，无需安装或配置。每个 Typst 项目都使用内置编译器进行编译。"
+      "note": "在编译菜单中选择项目使用的版本。项目会一直使用该版本，直到你更改它。",
+      "tooltip": "Oleafly 自带一个 Typst 版本，也可以下载其他版本。每个项目使用其固定的版本编译，未固定版本时使用默认版本。",
+      "system": {
+        "name": "这台电脑上的 Typst",
+        "detail": "固定为 {{version}} 版本的项目可以用它编译。"
+      },
+      "versions": {
+        "heading": "版本",
+        "tooltip": "新项目和未固定版本的项目都使用默认版本。",
+        "loading": "正在检查 Typst 版本",
+        "default": "默认",
+        "setDefault": "默认使用 Typst {{version}}",
+        "released": "发布于 {{date}}",
+        "install": "安装",
+        "installAria": "安装 Typst {{version}}",
+        "removeAria": "移除 Typst {{version}}",
+        "removeDefault": "这是默认版本。请先选择其他默认版本，再将其移除。",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "内置",
+          "downloaded": "已下载",
+          "system": "系统"
+        }
+      },
+      "progress": {
+        "starting": "正在启动",
+        "downloading": "正在下载 {{percent}}%",
+        "verifying": "正在校验",
+        "extracting": "正在解压",
+        "done": "即将完成"
+      },
+      "languageServer": {
+        "unused_other": "有 {{count}} 个语言服务器下载未被任何已安装的 Typst 版本使用。",
+        "remove": "移除未使用的语言服务器下载",
+        "removed_other": "已移除 {{count}} 个语言服务器下载。"
+      },
+      "error": {
+        "load": "无法读取 Typst 版本。",
+        "install": "无法安装 Typst {{version}}。",
+        "remove": "无法移除 Typst {{version}}。",
+        "default": "无法更改默认 Typst 版本。",
+        "removeTinymist": "无法移除未使用的语言服务器下载。"
+      },
+      "upgrade": {
+        "heading": "试用较新版本",
+        "detail": "在切换前，用已安装的较新版本构建当前打开的项目并比较结果。",
+        "check": "用 Typst {{version}} 检查"
+      }
     }
   },
   "github": {

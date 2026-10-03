@@ -4,22 +4,26 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import earlySource from "@/lib/__fixtures__/tikz-v026-generated.tex?raw";
 import legacySource from "@/lib/__fixtures__/tikz-v0313-generated.tex?raw";
 import type { DiagramModel } from "@oleafly/latex";
+import { diagramLanguage } from "@oleafly/diagram";
 
 const mocks = vi.hoisted(() => ({
-  read: vi.fn(), write: vi.fn(),
+  read: vi.fn(), write: vi.fn(), bytes: vi.fn(async () => undefined),
+  renderFigure: vi.fn(async () => ({ svg: "<svg/>", pngBase64: "iVBORw0KGgo=" })),
   change: null as null | ((model: DiagramModel) => void),
   model: null as DiagramModel | null,
   readOnly: false,
 }));
 vi.mock("@/lib/tauri", () => ({
-  readFileContent: mocks.read, writeFileContent: mocks.write,
+  readFileContent: mocks.read, writeFileContent: mocks.write, writeProjectBytes: mocks.bytes,
   projectMutationGeneration: vi.fn(async () => 0), mcpSetActiveProject: vi.fn(async () => {}),
   listFiles: vi.fn(async () => []), listFileTree: vi.fn(async () => ({ entries: [], truncated: false })), gitShow: vi.fn(async () => ""),
 }));
 vi.mock("@/components/diagram/diagram-kit", () => ({ KIT: {} }));
+vi.mock("@/components/diagram/mermaid-render", () => ({ renderMermaidFigure: mocks.renderFigure }));
 vi.mock("@oleafly/diagram", async () => {
   const { createContext } = await import("react");
-  return { DiagramKitContext: createContext({}), DiagramCanvas: ({ model, onChange, readOnly }: {
+  const actual = await vi.importActual<typeof import("@oleafly/diagram")>("@oleafly/diagram");
+  return { ...actual, DiagramKitContext: createContext({}), DiagramCanvas: ({ model, onChange, readOnly }: {
     model: DiagramModel; onChange: (model: DiagramModel) => void; readOnly: boolean;
   }) => {
     mocks.model = model; mocks.change = onChange; mocks.readOnly = readOnly;
@@ -42,12 +46,12 @@ function changeModel(model: DiagramModel) {
   mocks.change(model);
 }
 
-async function open(source: string) {
+async function open(source: string, path = "main.tex") {
   mocks.read.mockResolvedValue(source);
   mocks.write.mockResolvedValue({ generation: 1 });
-  useFilesStore.setState({ projectId: "diagram", activePath: "main.tex", mainDoc: "main.tex", projectKind: "diagram",
-    files: { "main.tex": { content: source, dirty: false } }, openTabs: ["main.tex"] });
-  render(<DiagramMainFileView projectId="diagram" path="main.tex" />);
+  useFilesStore.setState({ projectId: "diagram", activePath: path, mainDoc: path, projectKind: "diagram",
+    files: { [path]: { content: source, dirty: false } }, openTabs: [path] });
+  render(<DiagramMainFileView projectId="diagram" path={path} />);
   await screen.findByTestId("canvas");
 }
 
@@ -114,4 +118,79 @@ it("keeps customized 0.2.6 source read-only", async () => {
   expect(mocks.readOnly).toBe(true);
   await useFilesStore.getState().flushForQuit();
   expect(mocks.write).not.toHaveBeenCalled();
+});
+
+const TYPST_DRAWING: DiagramModel = {
+  version: 1,
+  nodes: [
+    { id: "a", shape: "rectangle", x: 0, y: 0, w: 80, h: 40, label: "A", stroke: "#1e293b" },
+    { id: "b", shape: "circle", x: 160, y: 0, w: 40, h: 40, label: "B", fill: "#cfe8f8" },
+  ],
+  edges: [{ id: "e", source: "a", target: "b", routing: "straight", arrow: "forward", style: "solid" }],
+};
+
+it("draws a Typst diagram project and writes canvas edits back as a standalone .typ", async () => {
+  const typst = diagramLanguage("typst");
+  await typst.load();
+  const source = typst.standaloneSource({ ...TYPST_DRAWING, background: "#ffffff" });
+  await open(source, "main.typ");
+  expect(mocks.readOnly).toBe(false);
+  expect(currentModel()).toEqual(TYPST_DRAWING);
+  const next = structuredClone(currentModel()); next.nodes[1].x += 40;
+  act(() => changeModel(next));
+  const written = useFilesStore.getState().files["main.typ"].content;
+  expect(written).toBe(typst.standaloneSource({ ...next, background: "#ffffff" }));
+  expect(written.split("\n")[0]).toBe('#set page(width: auto, height: auto, margin: 4pt, fill: rgb("#ffffff"))');
+});
+
+it("keeps hand-written fletcher code it cannot draw when the canvas edits a Typst diagram", async () => {
+  const source = [
+    "#set page(width: auto, height: auto, margin: 4pt)",
+    '#import "@preview/fletcher:0.5.8": diagram, node, edge',
+    "#diagram(",
+    "  spacing: 3em,",
+    "  node((0cm, 0cm), [A], name: <a>, width: 2cm, height: 1cm),",
+    "  node((4cm, 0cm), [B], name: <b>, width: 2cm, height: 1cm),",
+    '  edge(<a>, <b>, "->"),',
+    ")",
+  ].join("\n");
+  await open(source, "main.typ");
+  expect(mocks.readOnly).toBe(false);
+  const next = structuredClone(currentModel()); next.nodes[1].y += 40;
+  act(() => changeModel(next));
+  const written = useFilesStore.getState().files["main.typ"].content;
+  expect(written).toContain("  spacing: 3em,");
+  expect(written).toContain("  node((0cm, 0cm), [A], name: <a>, width: 2cm, height: 1cm),");
+  expect(written).toContain('  edge(<a>, <b>, "->"),');
+  expect(written).not.toContain("node((4cm, 0cm), [B]");
+});
+
+it("says a Typst file without a fletcher diagram cannot be drawn", async () => {
+  mocks.read.mockResolvedValue("= Notes");
+  useFilesStore.setState({ projectId: "diagram", activePath: "main.typ", mainDoc: "main.typ", projectKind: "diagram",
+    files: { "main.typ": { content: "= Notes", dirty: false } }, openTabs: ["main.typ"] });
+  render(<DiagramMainFileView projectId="diagram" path="main.typ" />);
+  expect(await screen.findByText(/nothing in this code the canvas can draw/i)).toBeInTheDocument();
+});
+
+it("draws a Markdown diagram project, keeps the text around the block and refreshes the PDF figure", async () => {
+  const mermaid = diagramLanguage("mermaid");
+  const block = mermaid.standaloneSource(TYPST_DRAWING);
+  const source = `# Pipeline\n\n${block}\nMore notes.\n`;
+  await open(source, "main.md");
+  expect(mocks.readOnly).toBe(false);
+  expect(currentModel()).toEqual(TYPST_DRAWING);
+  vi.useFakeTimers();
+  try {
+    const next = structuredClone(currentModel()); next.nodes[0].label = "Input";
+    act(() => changeModel(next));
+    const written = useFilesStore.getState().files["main.md"].content;
+    expect(written.startsWith("# Pipeline\n\n```mermaid\n")).toBe(true);
+    expect(written.endsWith("```\n\nMore notes.\n")).toBe(true);
+    expect(written).toBe(`# Pipeline\n\n${mermaid.standaloneSource(next)}\nMore notes.\n`);
+    await act(async () => { await vi.advanceTimersByTimeAsync(900); });
+  } finally {
+    vi.useRealTimers();
+  }
+  await waitFor(() => expect(mocks.bytes).toHaveBeenCalledWith("diagram", expect.stringMatching(/^figures\/mermaid-[0-9a-f]{16}\.png$/), expect.any(String)));
 });

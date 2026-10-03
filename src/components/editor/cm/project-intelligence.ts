@@ -11,18 +11,23 @@ import {
   completionRequestIsCurrent,
   createCompletionRequestGuard,
   environmentSnippet,
+  getEditorDocumentPath,
   latexReferenceCitationCompletions,
+  shouldRunCompletionSource,
+  typstBibliographyParameterCompletions,
+  typstBibliographyStyleCompletions,
+  typstContextAt,
   type CompletionRequestGuard,
 } from "@oleafly/editor";
 import { forceLinting, linter, type Action, type Diagnostic } from "@codemirror/lint";
-import { StateEffect, type Extension } from "@codemirror/state";
+import { StateEffect, type EditorState, type Extension } from "@codemirror/state";
 import {
   closeHoverTooltips,
   ViewPlugin,
   type ViewUpdate,
 } from "@codemirror/view";
 import { auxNumberFor } from "@/lib/aux-numbers";
-import { basename } from "@/lib/path-utils";
+import { basename, dirname } from "@/lib/path-utils";
 import {
   atSuggestionCompletion,
   warmAtSuggestions,
@@ -162,8 +167,19 @@ const STANDARD_LATEX_PACKAGES = [
 
 interface CompletionGuard {
   path: string;
-  snapshot: ProjectIntelligenceSnapshot;
+  snapshot: ProjectIntelligenceSnapshot | null;
   request: CompletionRequestGuard;
+  retained?: boolean;
+}
+
+function completionGuardHolds(
+  guard: CompletionGuard,
+  state: EditorState,
+): boolean {
+  if (!completionRequestIsCurrent(guard.request, state)) return false;
+  if (guard.retained) return getEditorDocumentPath() === guard.path;
+  const current = currentSourceProjectIntelligence(state.doc.toString());
+  return current?.path === guard.path && current.snapshot === guard.snapshot;
 }
 
 function guardedApply(
@@ -174,14 +190,7 @@ function guardedApply(
   linkedInsert: string | null = null,
 ): NonNullable<Completion["apply"]> {
   return (view, completion, from, to) => {
-    const current = currentSourceProjectIntelligence(
-      view.state.doc.toString(),
-    );
-    if (
-      !completionRequestIsCurrent(guard.request, view.state) ||
-      current?.path !== guard.path ||
-      current.snapshot !== guard.snapshot
-    ) {
+    if (!completionGuardHolds(guard, view.state)) {
       closeCompletion(view);
       return;
     }
@@ -226,7 +235,7 @@ const ENGINE_SCOPED_KINDS: ReadonlySet<ProjectDefinition["kind"]> = new Set([
 ]);
 
 function definitionOptions(
-  snapshot: ProjectIntelligenceSnapshot,
+  snapshot: Pick<ProjectIntelligenceSnapshot, "definitions">,
   guard: CompletionGuard,
   kinds: ReadonlySet<ProjectDefinition["kind"]>,
   query: string,
@@ -307,10 +316,11 @@ function definitionOptions(
 }
 
 function citationOptions(
-  snapshot: ProjectIntelligenceSnapshot,
+  snapshot: ProjectIntelligenceSnapshot | null,
   guard: CompletionGuard,
   query: string,
 ): Completion[] {
+  if (!snapshot) return [];
   return citationCompletions(
     snapshot,
     query,
@@ -916,58 +926,427 @@ function markdownCompletion(
   );
 }
 
-function typstCompletion(
+const TYPST_SOURCE_RE = /\.typ$/i;
+
+const TYPST_LABEL_KINDS: ReadonlySet<ProjectDefinition["kind"]> = new Set([
+  "label",
+]);
+
+const TYPST_PATH_ARGUMENT_RE =
+  /(?<![\p{L}\p{N}_.-])(?:(image|read|csv|json|yaml|toml|xml|cbor|plugin|bibliography)\s*\(\s*(?:\(\s*(?:"[^"\n]*"\s*,\s*)*)?|(include|import)\s+)"([^"\n]*)$/u;
+
+const TYPST_PATH_EXTENSIONS: ReadonlyMap<string, RegExp | null> = new Map([
+  ["image", /\.(?:png|jpe?g|gif|svg|webp|pdf)$/iu],
+  ["include", /\.typ$/iu],
+  ["import", /\.typ$/iu],
+  ["read", null],
+  ["csv", /\.(?:csv|tsv)$/iu],
+  ["json", /\.json$/iu],
+  ["yaml", /\.ya?ml$/iu],
+  ["toml", /\.toml$/iu],
+  ["xml", /\.xml$/iu],
+  ["cbor", /\.cbor$/iu],
+  ["bibliography", /\.(?:bib|ya?ml)$/iu],
+  ["plugin", /\.wasm$/iu],
+]);
+
+const TYPST_CITATION_RE =
+  /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")([\p{L}\p{M}\p{N}_:.+/-]*)$/u;
+
+const TYPST_REFERENCE_RE =
+  /(?:#|(?<![\p{L}\p{N}_.-]))(?:ref|link)\s*\(\s*<([\p{L}\p{M}\p{N}_:.+/-]*)$/u;
+
+const TYPST_AT_RE = /(?:^|[\s[(;,])@([\p{L}\p{M}\p{N}_:.+/-]*)$/u;
+
+const TYPST_HASH_IDENTIFIER_RE = /#([\p{L}_][\p{L}\p{M}\p{N}_-]*)$/u;
+
+const TYPST_CODE_IDENTIFIER_RE =
+  /(?<![\p{L}\p{M}\p{N}_-])([\p{L}_][\p{L}\p{M}\p{N}_-]*)?$/u;
+
+const TYPST_POSITIONAL_PARAMETER = /^[\p{L}_][\p{L}\p{M}\p{N}_-]*$/u;
+
+const TYPST_KEYWORDS: ReadonlySet<string> = new Set([
+  "let",
+  "set",
+  "show",
+  "import",
+  "include",
+  "if",
+  "else",
+  "for",
+  "while",
+  "return",
+  "context",
+  "break",
+  "continue",
+]);
+
+const TYPST_PARAMETER_SCAN_LIMIT = 2_000;
+
+interface TypstCompletionModel {
+  readonly guard: CompletionGuard;
+  readonly definitions: Pick<ProjectIntelligenceSnapshot, "definitions">;
+  readonly bibliography: ProjectIntelligenceSnapshot | null;
+  readonly textFor: (file: string) => string | undefined;
+}
+
+function relativeProjectPath(fromFile: string, target: string): string {
+  const base = dirname(fromFile).split("/").filter(Boolean);
+  const parts = target.split("/");
+  let shared = 0;
+  while (
+    shared < base.length &&
+    shared < parts.length - 1 &&
+    base[shared] === parts[shared]
+  ) {
+    shared += 1;
+  }
+  return [...base.slice(shared).map(() => ".."), ...parts.slice(shared)].join("/");
+}
+
+function hiddenProjectPath(path: string): boolean {
+  return path.split("/").some((segment) => segment.startsWith("."));
+}
+
+function prefixFirst(query: string): (left: string, right: string) => number {
+  return (left, right) => {
+    const leftPrefix = completionKey(left).startsWith(query);
+    const rightPrefix = completionKey(right).startsWith(query);
+    if (leftPrefix !== rightPrefix) return leftPrefix ? -1 : 1;
+    return left.localeCompare(right);
+  };
+}
+
+function requestGuardedApply(
+  request: CompletionRequestGuard,
+  insert: string,
+): NonNullable<Completion["apply"]> {
+  return (view, _completion, from, to) => {
+    if (!completionRequestIsCurrent(request, view.state)) {
+      closeCompletion(view);
+      return;
+    }
+    view.dispatch(insertCompletionText(view.state, insert, from, to));
+  };
+}
+
+function typstPathCompletion(
   context: CompletionContext,
-  snapshot: ProjectIntelligenceSnapshot,
-  guard: CompletionGuard,
+  path: string,
+  before: string,
+  request: CompletionRequestGuard,
+): LatexCompletionOutcome {
+  const match = TYPST_PATH_ARGUMENT_RE.exec(before);
+  if (!match) return undefined;
+  if (typstContextAt(context.state, context.pos) !== "string") return undefined;
+  const command = match[1] ?? match[2] ?? "";
+  const query = match[3] ?? "";
+  if (command === "import" && query.startsWith("@")) return null;
+  const accepts = TYPST_PATH_EXTENSIONS.get(command) ?? null;
+  const rooted = query.startsWith("/");
+  const queryKey = completionKey(query);
+  const options = useFilesStore
+    .getState()
+    .tree.filter(
+      (entry) =>
+        !entry.is_dir &&
+        !entry.placeholder &&
+        entry.path !== path &&
+        !hiddenProjectPath(entry.path) &&
+        (!accepts || accepts.test(entry.path)),
+    )
+    .map((entry) =>
+      rooted ? `/${entry.path}` : relativeProjectPath(path, entry.path),
+    )
+    .filter((label) => !queryKey || completionKey(label).includes(queryKey))
+    .sort(prefixFirst(queryKey))
+    .slice(0, FILTERED_COMPLETION_LIMIT)
+    .map((label) => ({
+      label,
+      type: "variable",
+      detail: kindNoun("file"),
+      apply: requestGuardedApply(request, label),
+    } satisfies Completion));
+  return completionResult(context.pos - query.length, options, query);
+}
+
+function closingQuoteIndex(text: string, from: number, limit: number): number {
+  for (let index = from + 1; index < limit; index += 1) {
+    if (text[index] === "\\") index += 1;
+    else if (text[index] === '"') return index;
+  }
+  return limit;
+}
+
+function typstBindingParameters(text: string, nameEnd: number): string | null {
+  if (text[nameEnd] !== "(") return null;
+  const limit = Math.min(text.length, nameEnd + TYPST_PARAMETER_SCAN_LIMIT);
+  let depth = 0;
+  for (let index = nameEnd; index < limit; index += 1) {
+    const character = text[index];
+    if (character === '"') {
+      index = closingQuoteIndex(text, index, limit);
+    } else if (character === "(" || character === "[" || character === "{") {
+      depth += 1;
+    } else if (character === ")" || character === "]" || character === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return text
+          .slice(nameEnd + 1, index)
+          .replace(/\s+/gu, " ")
+          .trim()
+          .replace(/\s*,$/u, "");
+      }
+    }
+  }
+  return null;
+}
+
+function topLevelParameters(parameters: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < parameters.length; index += 1) {
+    const character = parameters[index];
+    if (character === '"') {
+      index = closingQuoteIndex(parameters, index, parameters.length);
+    } else if (character === "(" || character === "[" || character === "{") {
+      depth += 1;
+    } else if (character === ")" || character === "]" || character === "}") {
+      depth -= 1;
+    } else if (character === "," && depth === 0) {
+      parts.push(parameters.slice(start, index));
+      start = index + 1;
+    }
+  }
+  parts.push(parameters.slice(start));
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+function typstCallSnippet(name: string, parameters: string): string {
+  const positional = topLevelParameters(parameters).filter((parameter) =>
+    TYPST_POSITIONAL_PARAMETER.test(parameter),
+  );
+  const fields =
+    positional.length > 0
+      ? positional.map((parameter, index) => `\${${index + 1}:${parameter}}`).join(", ")
+      : `\${1}`;
+  return `${name}(${fields})`;
+}
+
+function typstBindingOptions(
+  model: TypstCompletionModel,
+  query: string,
+  nextCharacter: string,
+): Completion[] {
+  const key = completionKey(query);
+  const order = prefixFirst(key);
+  const candidates = model.definitions.definitions
+    .filter(
+      (definition) =>
+        definition.kind === "macro" &&
+        definition.engine === "typst" &&
+        (!key || completionKey(definition.name).includes(key)),
+    )
+    .sort(
+      (left, right) =>
+        Number(right.location.file === model.guard.path) -
+          Number(left.location.file === model.guard.path) ||
+        order(left.name, right.name) ||
+        left.location.file.localeCompare(right.location.file) ||
+        left.location.range.from - right.location.range.from,
+    );
+  const seen = new Set<string>();
+  const options: Completion[] = [];
+  for (const definition of candidates) {
+    if (options.length >= FILTERED_COMPLETION_LIMIT) break;
+    if (seen.has(definition.name)) continue;
+    seen.add(definition.name);
+    const text = model.textFor(definition.location.file);
+    const parameters =
+      text === undefined
+        ? null
+        : typstBindingParameters(text, definition.location.range.to);
+    const callable =
+      parameters !== null && nextCharacter !== "(" && nextCharacter !== "[";
+    const where = `${basename(definition.location.file)}:${definition.location.range.startLine}`;
+    options.push({
+      label: definition.name,
+      type: parameters === null ? "variable" : "function",
+      detail:
+        parameters === null
+          ? `${i18n.t(($) => $.intelligence.completion.typstBinding)} · ${where}`
+          : `(${parameters}) · ${where}`,
+      apply: guardedApply(
+        model.guard,
+        callable ? typstCallSnippet(definition.name, parameters) : definition.name,
+        callable,
+      ),
+    });
+  }
+  options.sort(
+    (left, right) =>
+      order(String(left.label), String(right.label)),
+  );
+  return options;
+}
+
+function typstBindingCompletion(
+  context: CompletionContext,
+  model: TypstCompletionModel,
   before: string,
 ): CompletionResult | null {
-  const explicitCitation =
-    /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")([\p{L}\p{M}\p{N}_:.+/-]*)$/u.exec(
-      before,
-    );
+  const hash = TYPST_HASH_IDENTIFIER_RE.exec(before);
+  let query: string | null = null;
+  if (hash && !TYPST_KEYWORDS.has(hash[1])) {
+    query = hash[1];
+  } else if (
+    context.explicit &&
+    typstContextAt(context.state, context.pos) === "code"
+  ) {
+    query = TYPST_CODE_IDENTIFIER_RE.exec(before)?.[1] ?? "";
+  }
+  if (query === null) return null;
+  return completionResult(
+    context.pos - query.length,
+    typstBindingOptions(
+      model,
+      query,
+      context.state.sliceDoc(context.pos, context.pos + 1),
+    ),
+    query,
+  );
+}
+
+function typstCompletion(
+  context: CompletionContext,
+  model: TypstCompletionModel,
+  before: string,
+): CompletionResult | null {
+  const explicitCitation = TYPST_CITATION_RE.exec(before);
   if (explicitCitation) {
     const query = explicitCitation[1] ?? "";
     return completionResult(
       context.pos - query.length,
-      citationOptions(snapshot, guard, query),
+      citationOptions(model.bibliography, model.guard, query),
       query,
     );
   }
 
-  const explicitReference = /#(?:ref|link)\(\s*<([\p{L}\p{M}\p{N}_:.+/-]*)$/u.exec(
-    before,
-  );
+  const explicitReference = TYPST_REFERENCE_RE.exec(before);
   if (explicitReference) {
     const query = explicitReference[1] ?? "";
     return completionResult(
       context.pos - query.length,
-      definitionOptions(
-        snapshot,
-        guard,
-        new Set(["label", "anchor", "section"]),
-        query,
-      ),
+      definitionOptions(model.definitions, model.guard, TYPST_LABEL_KINDS, query),
       query,
     );
   }
 
-  const at = /(?:^|[\s[(;,])@([\p{L}\p{M}\p{N}_:.+/-]*)$/u.exec(before);
-  if (!at) return null;
-  const query = at[1] ?? "";
-  return completionResult(
-    context.pos - query.length,
-    [
-      ...citationOptions(snapshot, guard, query),
-      ...definitionOptions(
-        snapshot,
-        guard,
-        new Set(["label", "anchor", "section"]),
-        query,
-      ),
-    ].slice(0, FILTERED_COMPLETION_LIMIT),
-    query,
+  const at = TYPST_AT_RE.exec(before);
+  if (at) {
+    const query = at[1] ?? "";
+    return completionResult(
+      context.pos - query.length,
+      [
+        ...citationOptions(model.bibliography, model.guard, query),
+        ...definitionOptions(model.definitions, model.guard, TYPST_LABEL_KINDS, query),
+      ].slice(0, FILTERED_COMPLETION_LIMIT),
+      query,
+    );
+  }
+
+  return typstBindingCompletion(context, model, before);
+}
+
+function typstTextFor(
+  path: string,
+  text: string,
+): (file: string) => string | undefined {
+  return (file) =>
+    file === path
+      ? text
+      : (useIndexStore.getState().texts[file] ??
+        useFilesStore.getState().files[file]?.content);
+}
+
+let currentTypstDefinitions: {
+  readonly path: string;
+  readonly text: string;
+  readonly definitions: readonly ProjectDefinition[];
+} | null = null;
+
+function currentFileDefinitions(
+  path: string,
+  text: string,
+): readonly ProjectDefinition[] {
+  if (
+    text.length > CURRENT_FILE_FALLBACK_MAX_CHARACTERS ||
+    exceedsFallbackSyntaxBudget(text)
+  ) {
+    return [];
+  }
+  if (currentTypstDefinitions?.path === path && currentTypstDefinitions.text === text) {
+    return currentTypstDefinitions.definitions;
+  }
+  let definitions: readonly ProjectDefinition[];
+  try {
+    definitions = analyzeProjectFile(path, text, 0).definitions;
+  } catch {
+    definitions = [];
+  }
+  currentTypstDefinitions = { path, text, definitions };
+  return definitions;
+}
+
+function retainedTypstModel(
+  path: string,
+  text: string,
+  request: CompletionRequestGuard,
+): TypstCompletionModel | null {
+  const files = useFilesStore.getState();
+  if (!files.projectId || getEditorDocumentPath() !== path) return null;
+  const data = useIndexStore.getState().intelligenceState.data;
+  const retained = data?.identity.projectId === files.projectId ? data : null;
+  return {
+    guard: { path, snapshot: retained, request, retained: true },
+    definitions: {
+      definitions: [
+        ...currentFileDefinitions(path, text),
+        ...(retained?.definitions.filter(
+          (definition) => definition.location.file !== path,
+        ) ?? []),
+      ],
+    },
+    bibliography: retained,
+    textFor: typstTextFor(path, text),
+  };
+}
+
+function typstProjectCompletion(
+  context: CompletionContext,
+  path: string,
+  current: { path: string; snapshot: ProjectIntelligenceSnapshot } | null,
+  text: string,
+): CompletionResult | null {
+  const where = typstContextAt(context.state, context.pos);
+  if (where === "comment" || where === "raw") return null;
+  const before = context.state.sliceDoc(
+    Math.max(0, context.pos - 1_000),
+    context.pos,
   );
+  const request = createCompletionRequestGuard(context);
+  const paths = typstPathCompletion(context, path, before, request);
+  if (paths !== undefined) return paths;
+  const model: TypstCompletionModel | null = current
+    ? {
+        guard: { path: current.path, snapshot: current.snapshot, request },
+        definitions: current.snapshot,
+        bibliography: current.snapshot,
+        textFor: typstTextFor(current.path, text),
+      }
+    : retainedTypstModel(path, text, request);
+  return model ? typstCompletion(context, model, before) : null;
 }
 
 function bibtexCompletion(
@@ -991,11 +1370,13 @@ function bibtexCompletion(
 export const projectIntelligenceCompletion: CompletionSource = (
   context,
 ): CompletionResult | null => {
-  const current = currentSourceProjectIntelligence(
-    context.state.doc.toString(),
-  );
+  const text = context.state.doc.toString();
+  const current = currentSourceProjectIntelligence(text);
   const path = current?.path ?? useFilesStore.getState().activePath;
   if (!path || !SUPPORTED_SOURCE_RE.test(path)) return null;
+  if (TYPST_SOURCE_RE.test(path)) {
+    return typstProjectCompletion(context, path, current, text);
+  }
   if (!current) {
     return /\.(?:tex|latex|ltx|sty|cls)$/i.test(path)
       ? latexReferenceCitationCompletions(context)
@@ -1017,9 +1398,6 @@ export const projectIntelligenceCompletion: CompletionSource = (
   }
   if (/\.(?:md|markdown)$/.test(normalizedPath)) {
     return markdownCompletion(context, current.snapshot, guard, before);
-  }
-  if (normalizedPath.endsWith(".typ")) {
-    return typstCompletion(context, current.snapshot, guard, before);
   }
   if (normalizedPath.endsWith(".bib")) {
     return bibtexCompletion(context, current.snapshot, guard, before);
@@ -1349,4 +1727,86 @@ export function projectCompletionSourcesForPath(
     return [projectIntelligenceCompletion, atSuggestionCompletion];
   }
   return [projectIntelligenceCompletion];
+}
+
+function completionIdentity(option: Completion): string {
+  return String(option.label).replace(/^[#@<"]+|[>"]+$/gu, "");
+}
+
+function shiftedCompletion(option: Completion, offset: number): Completion {
+  if (offset === 0) return option;
+  const apply = option.apply;
+  return {
+    ...option,
+    apply: (view, completion, from, to) => {
+      const start = from + offset;
+      if (typeof apply === "function") {
+        apply(view, completion, start, to);
+        return;
+      }
+      view.dispatch(
+        insertCompletionText(
+          view.state,
+          typeof apply === "string" ? apply : String(option.label),
+          start,
+          to,
+        ),
+      );
+    },
+  };
+}
+
+export function mergeCompletionResults(
+  primary: CompletionResult | null,
+  secondary: CompletionResult | null,
+): CompletionResult | null {
+  if (!primary || primary.options.length === 0) return secondary;
+  if (!secondary || secondary.options.length === 0) return primary;
+  const seen = new Set(primary.options.map(completionIdentity));
+  const extra = secondary.options.filter(
+    (option) => !seen.has(completionIdentity(option)),
+  );
+  if (extra.length === 0) return primary;
+  const from = Math.min(primary.from, secondary.from);
+  return {
+    from,
+    options: [
+      ...primary.options.map((option) =>
+        shiftedCompletion(option, primary.from - from),
+      ),
+      ...extra.map((option) => shiftedCompletion(option, secondary.from - from)),
+    ],
+    filter: false,
+  };
+}
+
+const mergedTypstSources = new WeakMap<CompletionSource, CompletionSource>();
+
+export function typstCompletionWithLanguageService(
+  languageService: CompletionSource,
+): CompletionSource {
+  const cached = mergedTypstSources.get(languageService);
+  if (cached) return cached;
+  const source: CompletionSource = async (context) => {
+    const local =
+      typstBibliographyStyleCompletions(context) ??
+      typstBibliographyParameterCompletions(context) ??
+      (shouldRunCompletionSource(context, "typst")
+        ? projectIntelligenceCompletion(context)
+        : null);
+    const [remote, own] = await Promise.all([languageService(context), local]);
+    return mergeCompletionResults(remote, own);
+  };
+  mergedTypstSources.set(languageService, source);
+  return source;
+}
+
+export function editorCompletionSourcesForPath(
+  path: string | null,
+  languageService: CompletionSource,
+): CompletionSource[] {
+  if (path && TYPST_SOURCE_RE.test(path)) {
+    return [typstCompletionWithLanguageService(languageService)];
+  }
+  return [languageService, ...projectCompletionSourcesForPath(path)];
 }

@@ -33,6 +33,7 @@ import {
   historyField,
   historyKeymap,
   indentWithTab,
+  isolateHistory,
 } from "@codemirror/commands";
 import {
   autocompletion,
@@ -57,7 +58,17 @@ import {
 import { languageForPath } from "./languages";
 import { openEnvironmentCompletion } from "./latex-environments";
 import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
-import { centerWithinEditor, setEditorDocumentPath, setEditorView } from "./controller";
+import { typstEditing } from "./typst-editing";
+import { typstSlashCompletions } from "./typst-snippets";
+import { typstMathPaste } from "./typst-math-paste";
+import { isVendoredTypstPackagePath } from "./typst-syntax";
+import {
+  centerWithinEditor,
+  registerBackgroundDocumentEditor,
+  setEditorDocumentPath,
+  setEditorView,
+  type BackgroundDocumentChange,
+} from "./controller";
 import {
   cancelSourceProofreading,
   clearEditorProofreadingDiagnostics,
@@ -73,6 +84,7 @@ import { createBibtexLinter } from "./bibtex-linter";
 import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
 import { stickyScroll } from "./sticky-scroll";
+import { typstStickySource } from "./sticky-structure";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 import { gateCompletionSource, type CompletionSyntax } from "./completion-trigger";
 import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
@@ -231,6 +243,30 @@ function capturePathViewState(view: EditorView, doc: string): PathViewState {
   };
 }
 
+function editedPathViewState(
+  saved: PathViewState,
+  changes: readonly BackgroundDocumentChange[],
+): PathViewState {
+  const state = EditorState.create({
+    doc: saved.doc,
+    selection: saved.selection,
+    extensions: [
+      EditorState.allowMultipleSelections.of(true),
+      saved.history ? [historyField.init(() => saved.history), history()] : history(),
+    ],
+  });
+  const transaction = state.update({
+    changes: [...changes],
+    annotations: isolateHistory.of("full"),
+  });
+  return {
+    doc: transaction.state.doc.toString(),
+    selection: transaction.state.selection,
+    history: transaction.state.field(historyField, false),
+    scroll: saved.scroll.map(transaction.changes) ?? saved.scroll,
+  };
+}
+
 function takeSavedPathState(
   states: Map<string, PathViewState>,
   path: string,
@@ -329,15 +365,19 @@ export const isLatexSourcePath = (path: string | null): boolean =>
   !!path && /\.(?:tex|latex|ltx|sty|cls)$/i.test(path);
 export const isBibtexSourcePath = (path: string | null): boolean =>
   !!path && /\.bib$/i.test(path);
+export const isTypstSourcePath = (path: string | null): boolean =>
+  !!path && /\.typ$/i.test(path);
 export const isProseSourcePath = (path: string | null): boolean =>
-  !!path && /\.(?:tex|latex|ltx|md|markdown|typ)$/i.test(path);
+  !!path &&
+  !isVendoredTypstPackagePath(path) &&
+  /\.(?:tex|latex|ltx|md|markdown|typ)$/i.test(path);
 const isLatexDocumentPath = (path: string | null): boolean =>
   !!path && /\.(?:tex|latex|ltx)$/i.test(path);
 const isMarkdownDocumentPath = (path: string | null): boolean =>
   !!path && /\.(?:md|markdown)$/i.test(path);
 
 export function supportsVisualMode(path: string | null): boolean {
-  return isLatexDocumentPath(path);
+  return isLatexDocumentPath(path) || isTypstSourcePath(path);
 }
 
 function visualRendersPath(
@@ -348,7 +388,7 @@ function visualRendersPath(
   return visualActive && !!ports && supportsVisualMode(path);
 }
 
-type VisualModule = Pick<typeof import("./visual"), "latexTreeSupport" | "visualMode">;
+type VisualModule = Pick<typeof import("./visual"), "latexTreeSupport" | "visualMode" | "typstVisualMode">;
 
 let visualModule: VisualModule | null = null;
 let visualModuleLoading: Promise<VisualModule> | null = null;
@@ -363,12 +403,17 @@ function loadVisualModule(): Promise<VisualModule> {
 
 function languageExtensionFor(path: string | null, visual: VisualModule | null): Extension {
   if (!path) return [];
-  if (visual) return visual.latexTreeSupport();
+  if (visual && isLatexDocumentPath(path)) return visual.latexTreeSupport();
   return languageForPath(path) ?? [];
 }
 
-function visualExtensionFor(visual: VisualModule | null, ports: VisualPorts | undefined): Extension {
-  return visual && ports ? visual.visualMode(ports) : [];
+function visualExtensionFor(
+  visual: VisualModule | null,
+  ports: VisualPorts | undefined,
+  path: string | null,
+): Extension {
+  if (!visual || !ports) return [];
+  return isTypstSourcePath(path) ? visual.typstVisualMode(ports) : visual.visualMode(ports);
 }
 
 interface VisualCompartments {
@@ -400,7 +445,7 @@ function visualCompartmentEffects(
 ): StateEffect<unknown>[] {
   return [
     compartments.language.reconfigure(languageExtensionFor(path, rendered ? visualModule : null)),
-    compartments.visual.reconfigure(visualExtensionFor(rendered ? visualModule : null, ports)),
+    compartments.visual.reconfigure(visualExtensionFor(rendered ? visualModule : null, ports, path)),
     compartments.wrap.reconfigure(lineWrapExtensionFor(lineWrap, rendered)),
   ];
 }
@@ -429,6 +474,9 @@ function mathPreviewForPath(path: string | null, enabled: boolean): Extension[] 
   }
   if (isMarkdownDocumentPath(path)) {
     return [mathPreviewTooltip("markdown"), mathPreviewEnabled.of(enabled)];
+  }
+  if (isTypstSourcePath(path)) {
+    return [mathPreviewTooltip("typst"), mathPreviewEnabled.of(enabled)];
   }
   return [];
 }
@@ -496,6 +544,21 @@ function sourceToolsForPath(
     ];
   }
 
+  if (isTypstSourcePath(path)) {
+    return [
+      ...mathPreviewExtensions,
+      typstMathPaste(),
+      ...(ghostCompletionEnabled
+        ? [ghostCompletion([...ghostCompletionSources, typstSlashCompletions], completionSyntax)]
+        : []),
+      autocompletion({
+        override: [...gatedCompletionSources, typstSlashCompletions],
+        activateOnTyping: autocompleteWhileTyping,
+        closeOnBlur: true,
+      }),
+    ];
+  }
+
   return [
     ...mathPreviewExtensions,
     ...(ghostCompletionEnabled && ghostCompletionSources.length > 0
@@ -516,6 +579,7 @@ function sourceToolsForPath(
 // Sticky scroll reads LaTeX sectioning and environments, so it has nothing to
 // pin in a Markdown, BibTeX, or JSON buffer.
 function stickyScrollFor(path: string | null): Extension[] {
+  if (isTypstSourcePath(path)) return [stickyScroll(typstStickySource)];
   return isLatexSourcePath(path) ? [stickyScroll()] : [];
 }
 
@@ -534,9 +598,13 @@ function editorPrefExtensions(
         ...(math ? [Prec.highest(keymap.of(latexPairKeymap))] : []),
       ]
     : [];
+  const typstPairs = isTypstSourcePath(path)
+    ? [typstEditing({ math, wrap: autoCloseBrackets })]
+    : [];
   return [
     autoCloseBrackets ? closeBrackets() : [],
     ...latexPairs,
+    ...typstPairs,
     // A zero blink cycle keeps the cursor permanently visible.
     drawSelection(nonBlinkingCursor ? { cursorBlinkRate: 0 } : {}),
   ];
@@ -752,7 +820,7 @@ export function CodeMirrorEditor({
         ...diagnosticPresentationExtensions(),
         lineWrapCompartment.of(lineWrapExtensionFor(lineWrap, initialVisual)),
         langCompartment.of(languageExtensionFor(initialPath, initialVisual ? visualModule : null)),
-        visualCompartment.of(visualExtensionFor(initialVisual ? visualModule : null, host.visualPorts)),
+        visualCompartment.of(visualExtensionFor(initialVisual ? visualModule : null, host.visualPorts, initialPath)),
         editorTheme(),
         historyCompartment.of(history()),
         vscodeSearch(host.t),
@@ -821,6 +889,12 @@ export function CodeMirrorEditor({
       },
     );
     if (host.saveActive) registerHostSave(view, host.saveActive);
+    const unregisterBackgroundEditor = registerBackgroundDocumentEditor((path, base, changes) => {
+      const saved = pathStatesRef.current.get(path);
+      if (!saved || saved.doc !== base || prevPathRef.current === path) return false;
+      pathStatesRef.current.set(path, editedPathViewState(saved, changes));
+      return true;
+    });
     if (vimEnabled) attachVimModeBridge(view);
     setEditorView(view);
     setEditorDocumentPath(initialPath);
@@ -833,6 +907,7 @@ export function CodeMirrorEditor({
     view.focus();
 
     return () => {
+      unregisterBackgroundEditor();
       unregisterMutationOwner?.();
       cancelSourceProofreading(prevPathRef.current ?? undefined);
       setEditorDocumentPath(null);

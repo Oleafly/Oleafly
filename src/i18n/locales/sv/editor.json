@@ -42,7 +42,18 @@
     "selectImage": "Välj en bild för att infoga den.",
     "editTitle": "Redigera bilden",
     "editDescription": "Byt ut bilden eller ändra dess bredd. Bildtexten och etiketten lämnas som de är.",
-    "save": "Spara bilden"
+    "save": "Spara bilden",
+    "customWidthPlaceholderTypst": "8cm eller 60%",
+    "altLabel": "Alt-text",
+    "altPlaceholder": "Beskriv bilden för skärmläsare",
+    "placement": "Placering",
+    "placementNone": "På plats",
+    "placementAuto": "Automatisk",
+    "placementTop": "Överst",
+    "placementBottom": "Nederst",
+    "editFigureTitle": "Redigera figur",
+    "editFigureDescription": "Ändra bilden, storleken, bildtexten, etiketten, alt-texten eller placeringen.",
+    "saveFigure": "Spara figur"
   },
   "tableToolbar": {
     "label": "Tabellverktyg",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Infoga blockcitat",
     "insertFigure": "Infoga figur",
     "insertImage": "Infoga bild",
+    "drawDiagram": "Rita ett diagram",
     "insertTable": "Infoga tabell",
     "imageToLatexTooltip": "Bild till LaTeX (transkribera med AI)",
     "imageToLatex": "Bild till LaTeX",
@@ -130,6 +142,7 @@
     "redo": "Gör om ({{shortcut}})",
     "find": "Sök ({{shortcut}})",
     "goToPdf": "Gå till PDF (SyncTeX)",
+    "goToPdfTypst": "Gå till PDF",
     "linkUrl": "Länkens URL",
     "removeLink": "Ta bort länken",
     "imageFile": "Bildfil",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figurer/diagram.png",
     "split": "Delad",
     "both": "Båda",
-    "stacked": "Staplade"
+    "stacked": "Staplade",
+    "displayMath": "Ekvation på egen rad",
+    "numberedEquation": "Numrerad ekvation",
+    "alignedEquations": "Justerade ekvationer",
+    "addLabel": "Lägg till etikett",
+    "imageToTypst": "Bild till Typst",
+    "imageToTypstTooltip": "Bild till Typst (transkribera med AI)",
+    "typstPackages": "Typst-paket",
+    "latexPackages": "LaTeX-paket"
   },
   "contextMenu": {
     "engineUnavailable": "Åtgärder för dokumentmotorn är inte tillgängliga",
     "askAi": "Fråga AI…",
     "noIndexedSymbol": "Ingen indexerad symbol på den här platsen.",
     "noRenamableSymbol": "Ingen symbol att byta namn på här.",
+    "formatDocument": "Formatera dokumentet",
+    "formatSelection": "Formatera markeringen",
     "itemize": "Itemize",
     "enumerate": "Enumerate",
     "figure": "Figur",
@@ -156,7 +179,16 @@
     "equationAsPng": "Ekvation som PNG",
     "crossReference": "Korsreferens",
     "label": "Etikett",
-    "footnote": "Fotnot"
+    "footnote": "Fotnot",
+    "toggleComment": "Kommentera eller avkommentera",
+    "inlineMath": "Matematik i löptext",
+    "displayMath": "Ekvation på egen rad",
+    "numberedEquation": "Numrerad ekvation",
+    "alignedEquations": "Justerade ekvationer",
+    "quote": "Citat",
+    "addLabel": "Lägg till etikett",
+    "convertLatexMath": "Konvertera LaTeX-matematik till Typst",
+    "noLatexMath": "Markera lite LaTeX-matematik först."
   },
   "shell": {
     "noFileOpenTab": "Ingen fil är öppen",
@@ -233,9 +265,15 @@
     "footerTypst": "Specialtecken är skyddade i tabellens källkod.",
     "footerLatex": "Den genererade LaTeX-tabellen använder booktabs för sina vågräta linjer.",
     "chooseAnother": "Välj en annan fil",
-    "chooseFile": "Välj CSV, TSV eller XLSX",
+    "chooseFile": "Välj CSV, TSV, XLSX eller JSON",
     "selectedSummary": "{{file}} · Rader: {{rows}} · Kolumner: {{columns}}",
     "firstRowHeader": "Första raden är en rubrik",
+    "keepLinked": "Behåll länken till datafilen",
+    "keepLinkedHint": "Kopierar data till datamappen. Redigera den filen så ändras tabellen vid nästa kompilering.",
+    "footerLinked": "Tabellen läser {{path}} varje gång dokumentet kompileras.",
+    "jsonNotTable": "Den här JSON-filen är ingen lista med poster eller rader.",
+    "insertedLinked": "Länkad tabell infogad. Redigera {{path}} för att ändra den.",
+    "linkFailed": "Det gick inte att kopiera data till projektet.",
     "captionLabel": "Bildtext (valfritt)",
     "captionPlaceholder": "Resultat för alla körningar",
     "labelLabel": "Etikett (valfritt)",
@@ -266,7 +304,8 @@
     "svgImage": "SVG-bild",
     "pngImage": "PNG-bild",
     "svgKind": "Ekvation som SVG",
-    "pngKind": "Ekvation som PNG"
+    "pngKind": "Ekvation som PNG",
+    "typstFailed": "Typst kunde inte rendera den här ekvationen ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Fråga AI",
@@ -307,7 +346,17 @@
     "info": "Information",
     "empty": "Utdata från kompileringen visas här.",
     "scrollToTop": "Rulla högst upp",
-    "scrollToBottom": "Rulla längst ner"
+    "scrollToBottom": "Rulla längst ner",
+    "locationFileLineColumn": "{{file}} · rad {{line}}, kolumn {{column}}",
+    "locationLineColumn": "rad {{line}}, kolumn {{column}}",
+    "hint": "Tips",
+    "sourceExcerpt": "Källrad {{line}}",
+    "summaryErrors_one": "{{count}} fel",
+    "summaryErrors_other": "{{count}} fel",
+    "summaryWarnings_one": "{{count}} varning",
+    "summaryWarnings_other": "{{count}} varningar",
+    "summaryReferences_one": "{{count}} olöst referens",
+    "summaryReferences_other": "{{count}} olösta referenser"
   },
   "history": {
     "untitledCommit": "Namnlös commit",
@@ -352,7 +401,8 @@
       "navigation": "Navigering",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Inställningar"
+      "settings": "Inställningar",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Kompilera om",
@@ -369,12 +419,20 @@
       "goToDefinition": "Gå till definitionen",
       "findReferences": "Hitta referenser",
       "renameSymbol": "Byt namn på symbolen (i hela projektet)",
+      "formatDocument": "Formatera Typst-dokumentet",
       "commandPalette": "Kommandopalett",
       "searchAllDocuments": "Sök i alla dokument",
       "goToPdf": "Gå till PDF (SyncTeX framåt)",
       "jumpToSource": "Hoppa till källkoden från PDF:en",
       "commitAndPush": "Checka in och pusha",
-      "openSettings": "Öppna inställningar"
+      "openSettings": "Öppna inställningar",
+      "typstContinueList": "Fortsätt listan med en ny punkt",
+      "typstItemNewLine": "Börja en ny rad inuti listpunkten",
+      "typstRemoveMarker": "Ta bort punkttecknet före markören",
+      "typstIndentItem": "Flytta listpunkten en nivå djupare",
+      "typstOutdentItem": "Flytta listpunkten en nivå upp",
+      "typstMathPair": "Stäng $-matematik automatiskt, blanksteg gör det till matematik på egen rad",
+      "typstWrapSelection": "Omge markeringen med fet, betonad, rå text eller matematik"
     }
   },
   "citations": {
@@ -645,6 +703,7 @@
       "unsupported": "Uttrycket är ofullständigt eller stöds inte.",
       "missingClosing": "Saknad avslutande {{delimiter}}.",
       "notRendered": "Uttrycket kunde inte renderas.",
+      "typstUnavailable": "Typst-förhandsvisningen är inte tillgänglig.",
       "preview": {
         "moreOptions": "Fler alternativ",
         "hide": "Dölj",
@@ -652,6 +711,10 @@
         "disable": "Stäng av",
         "disableDescription": "Stänger av förhandsvisningen av ekvationer. Slå på den igen i Inställningar."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Klistra in som Typst-matematik",
+      "pasteOffer": "LaTeX-matematik inklistrad"
     },
     "latex": {
       "command": {
@@ -834,6 +897,45 @@
         "revtex": "REVTeX-stil"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Rubrik",
+        "figure": "Figur med bild",
+        "tableFigure": "Figur med tabell",
+        "table": "Tabell",
+        "equation": "Ekvation på egen rad",
+        "numberedEquation": "Numrerad ekvation med etikett",
+        "footnote": "Fotnot",
+        "quote": "Blockcitat",
+        "code": "Kodblock",
+        "outline": "Innehållsförteckning",
+        "bibliography": "Bibliografi",
+        "pagebreak": "Sidbrytning",
+        "columns": "Spalter",
+        "grid": "Rutnät",
+        "link": "Länk",
+        "list": "Punktlista",
+        "enum": "Numrerad lista",
+        "terms": "Begreppslista",
+        "partBibliography": "Bibliografi för en del med etikett"
+      },
+      "bibliographyStyle": {
+        "builtin": "inbyggd CSL-stil",
+        "citation": "bara citeringsstil",
+        "project": "CSL-fil i det här projektet"
+      },
+      "bibliographyParameter": {
+        "target": "vilka citeringar den listar",
+        "group": "hur numren delas",
+        "targetAuto": "närmaste bibliografi med nyckeln",
+        "targetWithin": "citeringar inuti en del med etikett",
+        "targetAfter": "citeringar efter en etikett",
+        "targetBefore": "citeringar före en etikett",
+        "groupAuto": "numrera tillsammans med de andra bibliografierna",
+        "groupNone": "numrera separat",
+        "groupNamed": "numrera tillsammans med bibliografier med samma namn"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Sammanfattning",
@@ -960,6 +1062,12 @@
       "reference": "Referens",
       "label": "Etikett",
       "includedFile": "Inkluderad fil",
+      "typst": {
+        "settings": {
+          "show": "Visa dokumentinställningar",
+          "hide": "Dölj dokumentinställningar"
+        }
+      },
       "table": {
         "captionPlacement": "Bildtext",
         "captionAbove": "Bildtext ovanför",
@@ -1034,6 +1142,11 @@
     "goTo": "Gå till {{title}}",
     "untitled": "Namnlöst"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Öppna på Typst Universe",
+    "formatUnavailable": "Typst-formateraren är inte klar än. Försök igen om en stund.",
+    "formatFailed": "Det gick inte att formatera filen."
+  },
   "changedOnDisk": {
     "message": "{{file}} ändrades på disken medan du hade osparade ändringar.",
     "compare": "Jämför",
@@ -1041,5 +1154,330 @@
     "reload": "Läs in igen",
     "failed": "Oleafly kunde inte uppdatera {{file}}. Försök igen.",
     "tabMark": "Ändrad på disken. Öppna fliken för att välja vilken version du vill behålla."
+  },
+  "labels": {
+    "filterPlaceholder": "Etikettnamn",
+    "filterLabel": "Filtrera projektets etiketter",
+    "noMatches": "Inga matchande etiketter.",
+    "empty": "Inga etiketter i projektet än.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Lägg till en etikett här"
+  },
+  "typst": {
+    "numberingNote": "Ekvationsnummer kräver en numreringsregel.",
+    "addNumberingRule": "Lägg till regel",
+    "bibliographyAdded": "Bibliografin lades till i {{file}}."
+  },
+  "typstInsights": {
+    "title": "Dokumentinsikter",
+    "description": "Vad det kompilerade dokumentet innehåller, med länkar tillbaka till källkoden.",
+    "refresh": "Uppdatera",
+    "copyMetadata": "Kopiera metadata för inlämning",
+    "metadataCopied": "Metadata för inlämning kopierades till urklipp.",
+    "copyFailed": "Metadata kopierades inte. Kontrollera åtkomsten till urklipp och försök igen.",
+    "loading": "Läser dokumentet med Typst",
+    "compileFailed": "Typst kunde inte kompilera dokumentet. Åtgärda felen för att lista figurer, tabeller och ekvationer.",
+    "noProject": "Öppna ett Typst-projekt först.",
+    "tabs": {
+      "overview": "Översikt",
+      "headings": "Rubriker",
+      "figures": "Figurer",
+      "tables": "Tabeller",
+      "equations": "Ekvationer",
+      "labels": "Etiketter",
+      "citations": "Citeringar",
+      "todos": "Att göra"
+    },
+    "metadata": {
+      "heading": "Metadata för inlämning",
+      "title": "Titel",
+      "authors": "Författare",
+      "keywords": "Nyckelord",
+      "abstract": "Sammanfattning",
+      "date": "Datum",
+      "missing": "Inte angivet"
+    },
+    "empty": {
+      "headings": "Inga rubriker i det kompilerade dokumentet.",
+      "figures": "Inga figurer i det kompilerade dokumentet.",
+      "tables": "Inga tabeller i det kompilerade dokumentet.",
+      "equations": "Inga ekvationer på egen rad i det kompilerade dokumentet.",
+      "labels": "Inga etiketter i dokumentet.",
+      "citations": "Inga citeringar i det kompilerade dokumentet.",
+      "todos": "Inga TODO- eller FIXME-anteckningar."
+    },
+    "labelKinds": {
+      "heading": "Rubrik",
+      "figure": "Figur",
+      "table": "Tabell",
+      "equation": "Ekvation",
+      "other": "Annat"
+    },
+    "page": "Sida {{page}}",
+    "unnumbered": "Onumrerad",
+    "untitled": "Ingen bildtext",
+    "cited_one": "Citerad {{count}} gång",
+    "cited_other": "Citerad {{count}} gånger",
+    "notInSource": "Hittades inte i källkoden",
+    "openSource": "Öppna {{file}} på rad {{line}}",
+    "versionNote": "Typst {{version}} med typst {{method}}",
+    "truncated": "Bara de första 5 000 elementen listas."
+  },
+  "documentInsights": {
+    "description": "Vad dokumentet innehåller, med länkar tillbaka till källkoden.",
+    "loading": "Läser dokumentet",
+    "noProject": "Öppna ett projekt först.",
+    "unresolved": "Finns inte i bibliografin",
+    "unresolvedCount_one": "{{count}} citeringsnyckel saknas i bibliografin.",
+    "unresolvedCount_other": "{{count}} citeringsnycklar saknas i bibliografin.",
+    "numbersCurrent": "Nummer och sidor kommer från den senaste kompileringen.",
+    "numbersStale": "Källkoden har ändrats sedan den senaste kompileringen. Kompilera igen för att se nummer och sidor.",
+    "numbersMissing": "Kompilera dokumentet för att se nummer och sidor.",
+    "sourceOrder": "Listas i källkodsordning.",
+    "empty": {
+      "headings": "Inga rubriker i dokumentet.",
+      "figures": "Inga figurer i dokumentet.",
+      "tables": "Inga tabeller i dokumentet.",
+      "equations": "Inga ekvationer på egen rad i dokumentet.",
+      "citations": "Inga citeringar i dokumentet."
+    }
+  },
+  "typstSettings": {
+    "title": "Dokumentinställningar",
+    "description": "Regler för sida, text och numrering i {{file}}.",
+    "templateNotice": "Det här dokumentet använder en mall. Värden som anges i mallen visas inte här. Ett värde som du anger här åsidosätter mallen.",
+    "loading": "Läser huvudfilen",
+    "readFailed": "Det gick inte att läsa huvudfilen.",
+    "saveFailed": "Det gick inte att uppdatera huvudfilen.",
+    "noMainFile": "Projektet har ingen huvudfil för Typst.",
+    "applied": "Dokumentinställningarna har uppdaterats.",
+    "apply": "Tillämpa",
+    "cancel": "Avbryt",
+    "sections": {
+      "page": "Sida",
+      "text": "Text",
+      "paragraph": "Stycke",
+      "numbering": "Numrering"
+    },
+    "fields": {
+      "paper": "Sidstorlek",
+      "margin": "Marginaler",
+      "columns": "Spalter",
+      "font": "Typsnitt för brödtext",
+      "fontSize": "Teckenstorlek",
+      "lang": "Språk",
+      "region": "Region",
+      "justify": "Justering",
+      "leading": "Radavstånd",
+      "headingNumbering": "Numrering av rubriker",
+      "equationNumbering": "Numrering av ekvationer"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Standard",
+      "justified": "Marginaljusterad",
+      "ragged": "Ojämn högermarginal",
+      "off": "Av"
+    },
+    "locked": {
+      "template": "Anges av mallen",
+      "expression": "Anges av ett uttryck i källkoden"
+    },
+    "invalid": {
+      "length": "Använd en längd som 11pt, 2.5cm eller 0.65em.",
+      "margin": "Använd en längd som 2.5cm, eller auto.",
+      "columns": "Använd ett heltal från 1 till 99.",
+      "lang": "Använd en språkkod med två eller tre bokstäver, som en.",
+      "region": "Använd en regionkod med två bokstäver, som GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Klassalternativ och ingressinställningar i {{file}}.",
+    "markdownDescription": "Fält i YAML-huvudet i {{file}}.",
+    "noLatexMainFile": "Projektet har ingen huvudfil för LaTeX.",
+    "noMarkdownMainFile": "Projektet har ingen huvudfil för Markdown.",
+    "noDocumentClass": "Huvudfilen har ingen \\documentclass-rad.",
+    "unclosedFrontMatter": "YAML-huvudet överst i huvudfilen är inte avslutat. Lägg först till en avslutande rad med ---.",
+    "noFrontMatter": "Filen har inget YAML-huvud än. Knappen Tillämpa lägger till ett överst.",
+    "externalPreamble": "En del av ingressen finns i andra filer. Värden som anges där visas inte här.",
+    "classNotice": "Klassen {{name}} styr några av de här inställningarna. De är skrivskyddade här.",
+    "styleNotice": "Stilen {{name}} anger sidlayouten. Sidstorlek och marginaler är skrivskyddade här.",
+    "availableFonts": "Tillgängliga typsnitt",
+    "fontsLoading": "Letar efter typsnitt",
+    "fields": {
+      "secnumdepth": "Numrerade nivåer",
+      "numberSections": "Avsnittsnummer",
+      "documentClass": "Dokumentklass"
+    },
+    "placeholders": {
+      "latexLang": "swedish",
+      "markdownLang": "sv-SE",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "En spalt",
+      "twocolumn": "Två spalter",
+      "single": "Enkelt",
+      "onehalf": "1,5 rader",
+      "double": "Dubbelt",
+      "bySection": "Per avsnitt",
+      "byChapter": "Per kapitel",
+      "bySubsection": "Per underavsnitt",
+      "numbered": "Numrerade",
+      "unnumbered": "Onumrerade",
+      "depthNone": "Ingen",
+      "depthChapters": "Endast kapitel",
+      "depthSections": "Ned till avsnitt",
+      "depthSubsections": "Ned till underavsnitt",
+      "depthSubsubsections": "Ned till underunderavsnitt",
+      "depthParagraphs": "Ned till paragrafer",
+      "depthSubparagraphs": "Ned till underparagrafer"
+    },
+    "locked": {
+      "class": "Anges av klassen {{name}}",
+      "package": "Anges av stilen {{name}}",
+      "engine": "Kräver kompilatorn XeLaTeX eller LuaLaTeX. Välj en i kompileringsmenyn.",
+      "sides": "Källkoden anger varje marginal separat",
+      "conditional": "Anges i ett villkorsblock"
+    },
+    "invalid": {
+      "length": "Använd en längd som 2.5cm, 1in eller 12pt.",
+      "fontName": "Använd ett vanligt typsnittsnamn utan klammerparenteser eller omvända snedstreck.",
+      "latexLang": "Använd ett språknamn för babel, till exempel swedish.",
+      "markdownLang": "Använd en språktagg som sv-SE.",
+      "lineStretch": "Använd ett tal som 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Typst-paket",
+    "close": "Stäng Typst-paket",
+    "searchLabel": "Sök paket efter namn, nyckelord eller kategori",
+    "searchPlaceholder": "Sök i Typst Universe",
+    "categories": "Kategorier",
+    "allCategories": "Alla",
+    "loading": "Läser in paketlistan",
+    "results_one": "{{count}} paket",
+    "results_other": "{{count}} paket",
+    "resultsCapped": "Visar {{shown}} av {{count}} paket. Sök för att smalna av listan.",
+    "empty": "Inga paket matchar sökningen.",
+    "staleOffline": "Du är offline. Listan är från {{date}}.",
+    "stale": "Listan är från {{date}}. Det gick inte att uppdatera den.",
+    "latest": "Senaste {{version}}",
+    "template": "Mall",
+    "needsTypst": "Kräver Typst {{version}}. Projektet använder Typst {{current}}.",
+    "insert": "Infoga import",
+    "insertAria": "Infoga importen av {{name}} överst i filen",
+    "insertNeedsFile": "Öppna en Typst-fil för att infoga en import.",
+    "copy": "Kopiera import",
+    "copyAria": "Kopiera importen av {{name}}",
+    "vendor": {
+      "heading": "Projektets paket",
+      "toggle": "Använd paket från projektmappen",
+      "detail": "Typst letar först i projektets mapp typst-packages. Projekt med egna paket kompileras offline och på andra datorer.",
+      "action": "Kopiera in paketen i projektet",
+      "running": "Kopierar paket",
+      "copied_one": "Kopierade {{count}} paket till typst-packages.",
+      "copied_other": "Kopierade {{count}} paket till typst-packages.",
+      "upToDate": "Alla paket som projektet importerar finns redan i typst-packages.",
+      "missing": "De här paketen finns inte i paketcachen: {{names}}. Kompilera en gång när du är online och kopiera sedan in dem igen.",
+      "count_one": "{{count}} paket i projektet",
+      "count_other": "{{count}} paket i projektet",
+      "none": "Inga paket i projektet än."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} finns. Den här importen använder {{version}}.",
+      "update": "Uppdatera till {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX-paket",
+    "close": "Stäng LaTeX-paket",
+    "searchLabel": "Sök paket efter namn eller beskrivning",
+    "searchPlaceholder": "Sök i CTAN",
+    "loading": "Läser in paketlistan",
+    "results_one": "{{count}} paket",
+    "results_other": "{{count}} paket",
+    "resultsCapped": "Visar {{shown}} av {{count}} paket. Sök för att smalna av listan.",
+    "empty": "Inga paket matchar sökningen.",
+    "stale": "Listan är från {{date}}. Det gick inte att uppdatera den.",
+    "staleOffline": "Du är offline. Listan är från {{date}}.",
+    "partial": "Det gick inte att nå CTAN. Visar den inbyggda listan i Oleafly.",
+    "partialOffline": "Du är offline. Visar den inbyggda listan i Oleafly.",
+    "loaded": "I dokumentet",
+    "documentClass": "Dokumentklass",
+    "installed": "Installerat",
+    "install": "Installera",
+    "installing": "Installerar",
+    "installAria": "Installera {{name}} med tlmgr",
+    "insert": "Lägg till i ingressen",
+    "insertAria": "Lägg till {{name}} i ingressen i {{file}}",
+    "copy": "Kopiera rad",
+    "copyAria": "Kopiera raden som läser in {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Öppna {{name}} på CTAN",
+    "options": "Alternativ",
+    "optionsAria": "Alternativ för {{name}}",
+    "optionsInvalid": "Kontrollera alternativen. Klammerparenteserna måste matcha, och ] eller % kan inte användas.",
+    "classNote": "Det här är en dokumentklass. Ange den med \\documentclass i stället.",
+    "onDemand": "Tectonic laddar ner paket första gången dokumentet använder dem. Det finns inget att installera.",
+    "checking": "Kontrollerar vilka paket som är installerade",
+    "unknownInstall": "Oleafly kan inte avgöra vilka paket din TeX-installation har.",
+    "noProject": "Öppna ett LaTeX-projekt för att lägga till paket.",
+    "added": "{{name}} har lagts till i {{file}}.",
+    "noPreamble": "{{file}} har ingen ingress att lägga till ett paket i.",
+    "alreadyLoaded": "{{file}} läser redan in {{name}}.",
+    "insertFailed": "Paketet kunde inte läggas till. Försök igen."
+  },
+  "typstFonts": {
+    "title": "Typsnitt",
+    "close": "Stäng typsnittslistan",
+    "searchLabel": "Sök typsnittsfamiljer",
+    "searchPlaceholder": "Sök typsnitt",
+    "loading": "Frågar Typst efter dess typsnitt",
+    "summary_one": "{{count}} typsnittsfamilj från Typst {{version}}",
+    "summary_other": "{{count}} typsnittsfamiljer från Typst {{version}}",
+    "systemOff": "Systemtypsnitt är avstängda för projektet, så bara projektets och de inbyggda typsnitten listas.",
+    "noSources": "Den här Typst-versionen anger inte var varje typsnitt kommer ifrån.",
+    "empty": "Inga typsnittsfamiljer matchar sökningen.",
+    "copy": "Kopiera namn",
+    "copyAria": "Kopiera namnet på typsnittsfamiljen {{name}}",
+    "sources": {
+      "project": "Projekt",
+      "system": "System",
+      "embedded": "Inbyggt"
+    },
+    "fontsFolder": "Lägg typsnittets fil i projektets mapp fonts för att använda det i projektet."
+  },
+  "typstVariants": {
+    "title": "Kompileringsvarianter",
+    "close": "Stäng kompileringsvarianter",
+    "intro": "Varje variant anger värden som dokumentet läser med sys.inputs. Välj en variant i kompileringsmenyn.",
+    "empty": "Inga varianter än.",
+    "add": "Lägg till variant",
+    "name": "Variantnamn",
+    "defaultName": "variant {{number}}",
+    "remove": "Ta bort variant",
+    "removeAria": "Ta bort varianten {{name}}",
+    "key": "Namn",
+    "value": "Värde",
+    "addInput": "Lägg till värde",
+    "removeInput": "Ta bort värde",
+    "noInputs": "Den här varianten anger inga värden.",
+    "save": "Spara",
+    "cancel": "Avbryt",
+    "loading": "Läser in varianter",
+    "nameRequired": "Ge varje variant ett namn.",
+    "nameTaken": "Två varianter kan inte ha samma namn.",
+    "keyInvalid": "Värdenamn får inte vara tomma eller innehålla ett likhetstecken.",
+    "keyTaken": "En variant kan inte ange samma namn två gånger.",
+    "saveFailed": "Det gick inte att spara varianterna."
   }
 }

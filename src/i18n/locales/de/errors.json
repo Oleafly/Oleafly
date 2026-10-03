@@ -146,5 +146,37 @@
       "check_running": "Für diesen Agenten läuft bereits ein Test.",
       "main_window": "Ändern Sie die Programme der Agenten im Hauptfenster."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly bietet Typst {{version}} nicht an, und kein Typst auf diesem Rechner hat diese Version.",
+    "busy": "Typst {{version}} wird noch installiert. Versuchen Sie es erneut, wenn die Installation fertig ist.",
+    "remove_default": "Typst {{version}} ist Ihre Standardversion. Wählen Sie einen anderen Standard, bevor Sie es entfernen.",
+    "remove_not_downloaded": "Oleafly kann nur Typst-Versionen entfernen, die es selbst heruntergeladen hat, und Typst {{version}} hat es nicht heruntergeladen.",
+    "not_offered": "Typst {{version}} kann für diesen Rechner nicht heruntergeladen werden.",
+    "install_unverified": "Typst {{version}} wurde heruntergeladen, hat aber die Integritätsprüfung nicht bestanden. Versuchen Sie die Installation erneut.",
+    "not_typst_project": "Nur Typst-Projekte haben eine Typst-Version.",
+    "update_waits": "Warten Sie, bis Typst fertig installiert ist, bevor Sie Oleafly aktualisieren."
+  },
+  "typst_packages": {
+    "index_offline": "Sie sind offline, und die Paketliste von Typst Universe wurde noch nicht heruntergeladen.",
+    "index_unavailable": "Die Paketliste von Typst Universe konnte nicht geladen werden. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+    "vendor_failed": "Oleafly konnte die Pakete nicht ins Projekt kopieren."
+  },
+  "typst_query": {
+    "timeout": "Typst hat zu lange gebraucht, um dieses Dokument zu lesen.",
+    "failed": "Typst konnte dieses Dokument nicht lesen."
+  },
+  "typst_version_missing": "Typst {{version}} ist nicht installiert.",
+  "typst_options": {
+    "invalid_input_key": "Wertnamen dürfen nicht leer sein und kein Gleichheitszeichen enthalten.",
+    "invalid_variant_name": "Jede Variante braucht einen kurzen Namen, den keine andere Variante nutzt.",
+    "invalid_font_path": "Schriftordner müssen im Projekt liegen.",
+    "fonts_failed": "Typst konnte die Schriften nicht auflisten.",
+    "fonts_timeout": "Typst hat zu lange gebraucht, um die Schriften aufzulisten."
+  },
+  "typst_export": {
+    "failed": "Typst konnte das Dokument nicht exportieren.",
+    "unsupported": "Diese Typst-Version kann mit diesen Einstellungen nicht exportieren.",
+    "invalid_ppi": "Wählen Sie eine Auflösung von 1 bis {{max}} PPI."
   }
 }

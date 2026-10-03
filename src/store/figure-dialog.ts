@@ -1,10 +1,12 @@
 import { create } from "zustand";
+import type { TypstFigureFields } from "@/components/editor/typst-figure";
 
 export interface FigureEditTarget {
   from: number;
   to: number;
   path: string;
   width: string | null;
+  typst?: TypstFigureFields;
 }
 
 interface FigureDialogState {

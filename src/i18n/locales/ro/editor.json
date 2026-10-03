@@ -42,7 +42,18 @@
     "selectImage": "Selectează o imagine ca să o inserezi.",
     "editTitle": "Editează imaginea",
     "editDescription": "Înlocuiește imaginea sau schimbă-i lățimea. Legenda și eticheta rămân neschimbate.",
-    "save": "Salvează imaginea"
+    "save": "Salvează imaginea",
+    "customWidthPlaceholderTypst": "8cm sau 60%",
+    "altLabel": "Text alternativ",
+    "altPlaceholder": "Descrie imaginea pentru cititoarele de ecran",
+    "placement": "Plasare",
+    "placementNone": "Pe loc",
+    "placementAuto": "Automat",
+    "placementTop": "Sus",
+    "placementBottom": "Jos",
+    "editFigureTitle": "Editează figura",
+    "editFigureDescription": "Schimbă imaginea, dimensiunea, legenda, eticheta, textul alternativ sau plasarea ei.",
+    "saveFigure": "Salvează figura"
   },
   "tableToolbar": {
     "label": "Instrumente pentru tabel",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Inserează un citat în bloc",
     "insertFigure": "Inserează o figură",
     "insertImage": "Inserează o imagine",
+    "drawDiagram": "Desenează o diagramă",
     "insertTable": "Inserează un tabel",
     "imageToLatexTooltip": "Din imagine în LaTeX (transcriere cu AI)",
     "imageToLatex": "Din imagine în LaTeX",
@@ -130,6 +142,7 @@
     "redo": "Refă ({{shortcut}})",
     "find": "Caută ({{shortcut}})",
     "goToPdf": "Mergi la PDF (SyncTeX)",
+    "goToPdfTypst": "Mergi la PDF",
     "linkUrl": "URL-ul legăturii",
     "removeLink": "Elimină legătura",
     "imageFile": "Fișier imagine",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figuri/grafic.png",
     "split": "Împărțit",
     "both": "Ambele",
-    "stacked": "Suprapuse"
+    "stacked": "Suprapuse",
+    "displayMath": "Ecuație pe rând separat",
+    "numberedEquation": "Ecuație numerotată",
+    "alignedEquations": "Ecuații aliniate",
+    "addLabel": "Adaugă o etichetă",
+    "imageToTypst": "Din imagine în Typst",
+    "imageToTypstTooltip": "Din imagine în Typst (transcriere cu AI)",
+    "typstPackages": "Pachete Typst",
+    "latexPackages": "Pachete LaTeX"
   },
   "contextMenu": {
     "engineUnavailable": "Acțiunile motorului de documente nu sunt disponibile",
     "askAi": "Întreabă AI…",
     "noIndexedSymbol": "Niciun simbol indexat în acest loc.",
     "noRenamableSymbol": "Niciun simbol care poate fi redenumit în acest loc.",
+    "formatDocument": "Formatează documentul",
+    "formatSelection": "Formatează selecția",
     "itemize": "itemize",
     "enumerate": "enumerate",
     "figure": "Figură",
@@ -156,7 +179,16 @@
     "equationAsPng": "Ecuație ca PNG",
     "crossReference": "Referință încrucișată",
     "label": "Etichetă",
-    "footnote": "Notă de subsol"
+    "footnote": "Notă de subsol",
+    "toggleComment": "Comentează sau decomentează",
+    "inlineMath": "Formulă în text",
+    "displayMath": "Ecuație pe rând separat",
+    "numberedEquation": "Ecuație numerotată",
+    "alignedEquations": "Ecuații aliniate",
+    "quote": "Citat",
+    "addLabel": "Adaugă o etichetă",
+    "convertLatexMath": "Convertește formula LaTeX în Typst",
+    "noLatexMath": "Selectează întâi o formulă LaTeX."
   },
   "shell": {
     "noFileOpenTab": "Niciun fișier deschis",
@@ -235,9 +267,15 @@
     "footerTypst": "Caracterele speciale sunt protejate în sursa tabelului.",
     "footerLatex": "Tabelul LaTeX generat folosește booktabs pentru liniile orizontale.",
     "chooseAnother": "Alege alt fișier",
-    "chooseFile": "Alege CSV, TSV sau XLSX",
+    "chooseFile": "Alege CSV, TSV, XLSX sau JSON",
     "selectedSummary": "{{file}} · Rânduri: {{rows}} · Coloane: {{columns}}",
     "firstRowHeader": "Primul rând este antet",
+    "keepLinked": "Păstrează legătura cu fișierul de date",
+    "keepLinkedHint": "Copiază datele în folderul de date. Modifică acel fișier și tabelul se schimbă la următoarea compilare.",
+    "footerLinked": "Tabelul citește {{path}} de fiecare dată când se compilează documentul.",
+    "jsonNotTable": "Acest fișier JSON nu este o listă de înregistrări sau rânduri.",
+    "insertedLinked": "Tabelul legat a fost inserat. Modifică {{path}} ca să-l schimbi.",
+    "linkFailed": "Datele nu au putut fi copiate în proiect.",
     "captionLabel": "Legendă (opțional)",
     "captionPlaceholder": "Rezultate pentru toate rulările",
     "labelLabel": "Etichetă (opțional)",
@@ -269,7 +307,8 @@
     "svgImage": "Imagine SVG",
     "pngImage": "Imagine PNG",
     "svgKind": "Ecuație SVG",
-    "pngKind": "Ecuație PNG"
+    "pngKind": "Ecuație PNG",
+    "typstFailed": "Typst nu a putut afișa această ecuație ({{detail}})"
   },
   "selectionActions": {
     "askAi": "Întreabă AI",
@@ -310,7 +349,20 @@
     "info": "Informații",
     "empty": "Rezultatul compilării va apărea aici.",
     "scrollToTop": "Derulează la început",
-    "scrollToBottom": "Derulează la sfârșit"
+    "scrollToBottom": "Derulează la sfârșit",
+    "locationFileLineColumn": "{{file}} · linia {{line}}, coloana {{column}}",
+    "locationLineColumn": "linia {{line}}, coloana {{column}}",
+    "hint": "Indiciu",
+    "sourceExcerpt": "Linia sursă {{line}}",
+    "summaryErrors_one": "{{count}} eroare",
+    "summaryErrors_few": "{{count}} erori",
+    "summaryErrors_other": "{{count}} de erori",
+    "summaryWarnings_one": "{{count}} avertisment",
+    "summaryWarnings_few": "{{count}} avertismente",
+    "summaryWarnings_other": "{{count}} de avertismente",
+    "summaryReferences_one": "{{count}} referință nerezolvată",
+    "summaryReferences_few": "{{count}} referințe nerezolvate",
+    "summaryReferences_other": "{{count}} de referințe nerezolvate"
   },
   "history": {
     "untitledCommit": "Comitere fără titlu",
@@ -355,7 +407,8 @@
       "navigation": "Navigare",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Setări"
+      "settings": "Setări",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Recompilează",
@@ -372,12 +425,20 @@
       "goToDefinition": "Mergi la definiție",
       "findReferences": "Găsește referințele",
       "renameSymbol": "Redenumește simbolul (în tot proiectul)",
+      "formatDocument": "Formatează documentul Typst",
       "commandPalette": "Paleta de comenzi",
       "searchAllDocuments": "Caută în toate documentele",
       "goToPdf": "Mergi la PDF (SyncTeX înainte)",
       "jumpToSource": "Sari la sursă din PDF",
       "commitAndPush": "Comite și trimite",
-      "openSettings": "Deschide setările"
+      "openSettings": "Deschide setările",
+      "typstContinueList": "Continuă lista cu un element nou",
+      "typstItemNewLine": "Începe un rând nou în interiorul elementului din listă",
+      "typstRemoveMarker": "Elimină marcajul de listă dinaintea cursorului",
+      "typstIndentItem": "Mută elementul din listă cu un nivel mai adânc",
+      "typstOutdentItem": "Mută elementul din listă cu un nivel mai sus",
+      "typstMathPair": "Închide automat $ pentru formule, Spațiu o face ecuație pe rând separat",
+      "typstWrapSelection": "Încadrează selecția în aldin, cursiv, cod sau formulă"
     }
   },
   "citations": {
@@ -653,6 +714,7 @@
       "unsupported": "Această expresie este incompletă sau neacceptată.",
       "missingClosing": "Lipsește {{delimiter}} de închidere.",
       "notRendered": "Această expresie nu a putut fi randată.",
+      "typstUnavailable": "Previzualizarea Typst nu este disponibilă.",
       "preview": {
         "moreOptions": "Mai multe opțiuni",
         "hide": "Ascunde",
@@ -660,6 +722,10 @@
         "disable": "Dezactivează",
         "disableDescription": "Oprește previzualizarea formulelor. O poți reactiva din Setări."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Lipește ca formulă Typst",
+      "pasteOffer": "Ai lipit o formulă LaTeX"
     },
     "latex": {
       "command": {
@@ -715,7 +781,6 @@
         "href": "hiperlegătură",
         "addbibresource": "resursă bibliografică",
         "bibliography": "baza de date bibliografică",
-        "bibliographystyle": "stilul bibliografiei",
         "printbibliography": "randează bibliografia",
         "frac": "fracție",
         "sqrt": "radical",
@@ -734,7 +799,8 @@
         "itemize": "listă cu buline",
         "enumerate": "listă numerotată",
         "equation": "formulă pe rând separat",
-        "align": "formule aliniate"
+        "align": "formule aliniate",
+        "bibliographystyle": "stilul bibliografiei"
       },
       "packageCommand": {
         "dfrac": "fracție pe rând separat",
@@ -771,13 +837,6 @@
         "documentClass": "clasă de document LaTeX",
         "label": "etichetă",
         "citation": "citare"
-      },
-      "bibliographyStyle": {
-        "bibtex": "stil BibTeX",
-        "natbib": "stil natbib",
-        "journal": "stil de revistă",
-        "revtex": "stil REVTeX",
-        "project": "fișier de stil din acest proiect"
       },
       "macro": {
         "plain": "macro de document",
@@ -842,21 +901,52 @@
         "triggerToken": "Tipul de argument xparse t are nevoie de un token declanșator",
         "delimiterTokens": "Tipul de argument xparse {{type}} are nevoie de două tokenuri delimitatoare",
         "unknownType": "Tip de argument xparse necunoscut: „{{type}}”"
+      },
+      "bibliographyStyle": {
+        "bibtex": "stil BibTeX",
+        "journal": "stil de revistă",
+        "natbib": "stil natbib",
+        "project": "fișier de stil din acest proiect",
+        "revtex": "stil REVTeX"
       }
     },
-    "bibtex": {
-      "completion": {
-        "entryType": "intrare BibTeX",
-        "directive": "directivă BibTeX",
-        "requiredField": "câmp obligatoriu",
-        "optionalField": "câmp opțional"
+    "typst": {
+      "snippet": {
+        "heading": "Titlu",
+        "figure": "Figură cu imagine",
+        "tableFigure": "Figură cu tabel",
+        "table": "Tabel",
+        "equation": "Ecuație pe rând separat",
+        "numberedEquation": "Ecuație numerotată cu etichetă",
+        "footnote": "Notă de subsol",
+        "quote": "Citat în bloc",
+        "code": "Bloc de cod",
+        "outline": "Cuprins",
+        "bibliography": "Bibliografie",
+        "pagebreak": "Sfârșit de pagină",
+        "columns": "Coloane",
+        "grid": "Grilă",
+        "link": "Legătură",
+        "list": "Listă cu buline",
+        "enum": "Listă numerotată",
+        "terms": "Listă de termeni",
+        "partBibliography": "Bibliografie pentru o singură parte etichetată"
       },
-      "lint": {
-        "source": "BibTeX",
-        "missingRequiredField": "{{entry}} nu are câmpul obligatoriu {{fields}}.",
-        "unknownEntryType": "Tip de intrare bibliografică necunoscut @{{type}}.",
-        "fieldRepeated": "Câmpul „{{name}}” se repetă în intrarea bibliografică „{{key}}”.",
-        "invalidYear": "Anul „{{year}}” nu este un an BibTeX din patru cifre."
+      "bibliographyStyle": {
+        "builtin": "stil CSL inclus",
+        "citation": "doar stil de citare",
+        "project": "fișier CSL din acest proiect"
+      },
+      "bibliographyParameter": {
+        "target": "ce citări listează",
+        "group": "cum își împarte numerotarea",
+        "targetAuto": "cea mai apropiată bibliografie cu cheia",
+        "targetWithin": "citările dintr-o parte etichetată",
+        "targetAfter": "citările de după o etichetă",
+        "targetBefore": "citările dinaintea unei etichete",
+        "groupAuto": "numerotare comună cu celelalte bibliografii",
+        "groupNone": "numerotare proprie",
+        "groupNamed": "numerotare comună cu bibliografiile cu același nume"
       }
     },
     "wysiwyg": {
@@ -945,6 +1035,21 @@
         "captionPlaceholder": "Legendă"
       }
     },
+    "bibtex": {
+      "completion": {
+        "directive": "directivă BibTeX",
+        "entryType": "intrare BibTeX",
+        "optionalField": "câmp opțional",
+        "requiredField": "câmp obligatoriu"
+      },
+      "lint": {
+        "fieldRepeated": "Câmpul „{{name}}” se repetă în intrarea bibliografică „{{key}}”.",
+        "invalidYear": "Anul „{{year}}” nu este un an BibTeX din patru cifre.",
+        "missingRequiredField": "{{entry}} nu are câmpul obligatoriu {{fields}}.",
+        "source": "BibTeX",
+        "unknownEntryType": "Tip de intrare bibliografică necunoscut @{{type}}."
+      }
+    },
     "visual": {
       "graphics": {
         "loading": "Se încarcă imaginea",
@@ -970,6 +1075,12 @@
       "reference": "Referință",
       "label": "Etichetă",
       "includedFile": "Fișier inclus",
+      "typst": {
+        "settings": {
+          "show": "Arată setările documentului",
+          "hide": "Ascunde setările documentului"
+        }
+      },
       "table": {
         "captionPlacement": "Legendă",
         "captionAbove": "Legendă deasupra",
@@ -1044,6 +1155,11 @@
     "goTo": "Mergi la {{title}}",
     "untitled": "Fără titlu"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Deschide în Typst Universe",
+    "formatUnavailable": "Formatatorul Typst nu este încă pregătit. Încearcă din nou peste câteva clipe.",
+    "formatFailed": "Acest fișier nu a putut fi formatat."
+  },
   "changedOnDisk": {
     "message": "{{file}} s-a schimbat pe disc în timp ce aveai modificări nesalvate.",
     "compare": "Compară",
@@ -1051,5 +1167,337 @@
     "reload": "Reîncarcă",
     "failed": "Oleafly nu a putut actualiza {{file}}. Încearcă din nou.",
     "tabMark": "Schimbat pe disc. Deschide această filă ca să alegi ce versiune păstrezi."
+  },
+  "labels": {
+    "filterPlaceholder": "Numele etichetei",
+    "filterLabel": "Filtrează etichetele proiectului",
+    "noMatches": "Nicio etichetă potrivită.",
+    "empty": "Acest proiect nu are încă etichete.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Adaugă o etichetă aici"
+  },
+  "typst": {
+    "numberingNote": "Numerele ecuațiilor au nevoie de o regulă de numerotare.",
+    "addNumberingRule": "Adaugă regula",
+    "bibliographyAdded": "Bibliografia a fost adăugată în {{file}}."
+  },
+  "typstInsights": {
+    "title": "Informații despre document",
+    "description": "Ce conține documentul compilat, cu legături înapoi la sursă.",
+    "refresh": "Reîmprospătează",
+    "copyMetadata": "Copiază metadatele pentru trimitere",
+    "metadataCopied": "Metadatele pentru trimitere au fost copiate în clipboard.",
+    "copyFailed": "Metadatele nu au fost copiate. Verifică accesul la clipboard și încearcă din nou.",
+    "loading": "Se citește documentul cu Typst",
+    "compileFailed": "Typst nu a putut compila documentul. Repară aceste erori ca să vezi lista de figuri, tabele și ecuații.",
+    "noProject": "Deschide întâi un proiect Typst.",
+    "tabs": {
+      "overview": "Prezentare generală",
+      "headings": "Titluri",
+      "figures": "Figuri",
+      "tables": "Tabele",
+      "equations": "Ecuații",
+      "labels": "Etichete",
+      "citations": "Citări",
+      "todos": "De făcut"
+    },
+    "metadata": {
+      "heading": "Metadate pentru trimitere",
+      "title": "Titlu",
+      "authors": "Autori",
+      "keywords": "Cuvinte-cheie",
+      "abstract": "Rezumat",
+      "date": "Dată",
+      "missing": "Nesetat"
+    },
+    "empty": {
+      "headings": "Documentul compilat nu are titluri.",
+      "figures": "Documentul compilat nu are figuri.",
+      "tables": "Documentul compilat nu are tabele.",
+      "equations": "Documentul compilat nu are ecuații pe rând separat.",
+      "labels": "Documentul nu are etichete.",
+      "citations": "Documentul compilat nu are citări.",
+      "todos": "Nu există note TODO sau FIXME."
+    },
+    "labelKinds": {
+      "heading": "Titlu",
+      "figure": "Figură",
+      "table": "Tabel",
+      "equation": "Ecuație",
+      "other": "Altele"
+    },
+    "page": "Pagina {{page}}",
+    "unnumbered": "Nenumerotat",
+    "untitled": "Fără legendă",
+    "cited_one": "{{count}} citare",
+    "cited_few": "{{count}} citări",
+    "cited_other": "{{count}} de citări",
+    "notInSource": "Negăsit în sursă",
+    "openSource": "Deschide {{file}} la linia {{line}}",
+    "versionNote": "Typst {{version}} cu typst {{method}}",
+    "truncated": "Sunt listate doar primele 5.000 de elemente."
+  },
+  "documentInsights": {
+    "description": "Ce conține documentul, cu legături înapoi la sursă.",
+    "loading": "Se citește documentul",
+    "noProject": "Deschide întâi un proiect.",
+    "unresolved": "Nu este în bibliografie",
+    "unresolvedCount_one": "{{count}} cheie citată lipsește din bibliografie.",
+    "unresolvedCount_few": "{{count}} chei citate lipsesc din bibliografie.",
+    "unresolvedCount_other": "{{count}} de chei citate lipsesc din bibliografie.",
+    "numbersCurrent": "Numerele și paginile sunt din ultima compilare.",
+    "numbersStale": "Sursa s-a modificat după ultima compilare. Compilează din nou ca să vezi numerele și paginile.",
+    "numbersMissing": "Compilează documentul ca să vezi numerele și paginile.",
+    "sourceOrder": "Listate în ordinea din sursă.",
+    "empty": {
+      "headings": "Documentul nu are titluri.",
+      "figures": "Documentul nu are figuri.",
+      "tables": "Documentul nu are tabele.",
+      "equations": "Documentul nu are ecuații pe rând separat.",
+      "citations": "Documentul nu are citări."
+    }
+  },
+  "typstSettings": {
+    "title": "Setările documentului",
+    "description": "Reguli pentru pagină, text și numerotare din {{file}}.",
+    "templateNotice": "Acest document folosește un șablon. Valorile setate în șablon nu apar aici. O valoare setată aici are prioritate față de șablon.",
+    "loading": "Se citește fișierul principal",
+    "readFailed": "Fișierul principal nu a putut fi citit.",
+    "saveFailed": "Fișierul principal nu a putut fi actualizat.",
+    "noMainFile": "Acest proiect nu are un fișier principal Typst.",
+    "applied": "Setările documentului au fost actualizate.",
+    "apply": "Aplică",
+    "cancel": "Anulează",
+    "sections": {
+      "page": "Pagină",
+      "text": "Text",
+      "paragraph": "Paragraf",
+      "numbering": "Numerotare"
+    },
+    "fields": {
+      "paper": "Dimensiunea paginii",
+      "margin": "Margini",
+      "columns": "Coloane",
+      "font": "Fontul textului",
+      "fontSize": "Dimensiunea fontului",
+      "lang": "Limbă",
+      "region": "Regiune",
+      "justify": "Aliniere",
+      "leading": "Spațiere între rânduri",
+      "headingNumbering": "Numerotarea titlurilor",
+      "equationNumbering": "Numerotarea ecuațiilor"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Implicit",
+      "justified": "Justificat",
+      "ragged": "Aliniat la stânga",
+      "off": "Oprit"
+    },
+    "locked": {
+      "template": "Setat de șablon",
+      "expression": "Setat de o expresie din sursă"
+    },
+    "invalid": {
+      "length": "Folosește o lungime precum 11pt, 2.5cm sau 0.65em.",
+      "margin": "Folosește o lungime precum 2.5cm sau auto.",
+      "columns": "Folosește un număr întreg de la 1 la 99.",
+      "lang": "Folosește un cod de limbă din două sau trei litere, precum en.",
+      "region": "Folosește un cod de regiune din două litere, precum GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Opțiunile clasei și setările preambulului din {{file}}.",
+    "markdownDescription": "Câmpurile antetului YAML din {{file}}.",
+    "noLatexMainFile": "Acest proiect nu are un fișier principal LaTeX.",
+    "noMarkdownMainFile": "Acest proiect nu are un fișier principal Markdown.",
+    "noDocumentClass": "Fișierul principal nu are o linie \\documentclass.",
+    "unclosedFrontMatter": "Antetul YAML de la începutul fișierului principal nu este închis. Adaugă întâi o linie --- de închidere.",
+    "noFrontMatter": "Acest fișier nu are încă antet YAML. Butonul Aplică adaugă unul la început.",
+    "externalPreamble": "O parte din preambul se află în alte fișiere. Valorile setate acolo nu apar aici.",
+    "classNotice": "Clasa {{name}} controlează unele dintre aceste setări. Aici sunt doar pentru citire.",
+    "styleNotice": "Stilul {{name}} stabilește aspectul paginii. Dimensiunea paginii și marginile sunt aici doar pentru citire.",
+    "availableFonts": "Fonturi disponibile",
+    "fontsLoading": "Se caută fonturile",
+    "fields": {
+      "secnumdepth": "Niveluri numerotate",
+      "numberSections": "Numerotarea secțiunilor",
+      "documentClass": "Clasa documentului"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "O coloană",
+      "twocolumn": "Două coloane",
+      "single": "Simplă",
+      "onehalf": "Unu și jumătate",
+      "double": "Dublă",
+      "bySection": "Pe secțiuni",
+      "byChapter": "Pe capitole",
+      "bySubsection": "Pe subsecțiuni",
+      "numbered": "Numerotate",
+      "unnumbered": "Nenumerotate",
+      "depthNone": "Niciunul",
+      "depthChapters": "Doar capitolele",
+      "depthSections": "Până la secțiuni",
+      "depthSubsections": "Până la subsecțiuni",
+      "depthSubsubsections": "Până la subsubsecțiuni",
+      "depthParagraphs": "Până la paragrafe",
+      "depthSubparagraphs": "Până la subparagrafe"
+    },
+    "locked": {
+      "class": "Setat de clasa {{name}}",
+      "package": "Setat de stilul {{name}}",
+      "engine": "Necesită compilatorul XeLaTeX sau LuaLaTeX. Alege unul din meniul de compilare.",
+      "sides": "Sursa setează fiecare margine separat",
+      "conditional": "Setat într-un bloc condițional"
+    },
+    "invalid": {
+      "length": "Folosește o lungime precum 2.5cm, 1in sau 12pt.",
+      "fontName": "Folosește un nume simplu de font, fără acolade sau bare oblice inverse.",
+      "latexLang": "Folosește un nume de limbă babel, precum english.",
+      "markdownLang": "Folosește o etichetă de limbă, precum en-US.",
+      "lineStretch": "Folosește un număr precum 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Pachete Typst",
+    "close": "Închide pachetele Typst",
+    "searchLabel": "Caută pachete după nume, cuvânt-cheie sau categorie",
+    "searchPlaceholder": "Caută în Typst Universe",
+    "categories": "Categorii",
+    "allCategories": "Toate",
+    "loading": "Se încarcă lista de pachete",
+    "results_one": "{{count}} pachet",
+    "results_few": "{{count}} pachete",
+    "results_other": "{{count}} de pachete",
+    "resultsCapped": "Pachete afișate: {{shown}} din {{count}}. Caută ca să restrângi lista.",
+    "empty": "Niciun pachet nu se potrivește căutării.",
+    "staleOffline": "Ești offline. Această listă este din {{date}}.",
+    "stale": "Această listă este din {{date}}. Nu a putut fi reîmprospătată.",
+    "latest": "Cea mai nouă: {{version}}",
+    "template": "Șablon",
+    "needsTypst": "Necesită Typst {{version}}. Acest proiect folosește Typst {{current}}.",
+    "insert": "Inserează importul",
+    "insertAria": "Inserează importul pentru {{name}} la începutul fișierului",
+    "insertNeedsFile": "Deschide un fișier Typst ca să inserezi un import.",
+    "copy": "Copiază importul",
+    "copyAria": "Copiază importul pentru {{name}}",
+    "vendor": {
+      "heading": "Pachetele proiectului",
+      "toggle": "Folosește pachetele din folderul proiectului",
+      "detail": "Typst caută întâi în folderul typst-packages al proiectului. Proiectele cu pachetele copiate se compilează offline și pe alte computere.",
+      "action": "Copiază pachetele în proiect",
+      "running": "Se copiază pachetele",
+      "copied_one": "S-a copiat {{count}} pachet în typst-packages.",
+      "copied_few": "S-au copiat {{count}} pachete în typst-packages.",
+      "copied_other": "S-au copiat {{count}} de pachete în typst-packages.",
+      "upToDate": "Toate pachetele importate de acest proiect se află deja în typst-packages.",
+      "missing": "Aceste pachete nu se află în cache-ul de pachete: {{names}}. Compilează o dată când ești online, apoi copiază din nou pachetele.",
+      "count_one": "{{count}} pachet în acest proiect",
+      "count_few": "{{count}} pachete în acest proiect",
+      "count_other": "{{count}} de pachete în acest proiect",
+      "none": "Acest proiect nu are încă pachete."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} este disponibil. Acest import folosește {{version}}.",
+      "update": "Actualizează la {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "Pachete LaTeX",
+    "close": "Închide pachetele LaTeX",
+    "searchLabel": "Caută pachete după nume sau descriere",
+    "searchPlaceholder": "Caută în CTAN",
+    "loading": "Se încarcă lista de pachete",
+    "results_one": "{{count}} pachet",
+    "results_few": "{{count}} pachete",
+    "results_other": "{{count}} de pachete",
+    "resultsCapped": "Pachete afișate: {{shown}} din {{count}}. Caută ca să restrângi lista.",
+    "empty": "Niciun pachet nu se potrivește căutării.",
+    "stale": "Această listă este din {{date}}. Nu a putut fi reîmprospătată.",
+    "staleOffline": "Ești offline. Această listă este din {{date}}.",
+    "partial": "CTAN nu a putut fi accesat. Se afișează lista inclusă în Oleafly.",
+    "partialOffline": "Ești offline. Se afișează lista inclusă în Oleafly.",
+    "loaded": "În document",
+    "documentClass": "Clasă de document",
+    "installed": "Instalat",
+    "install": "Instalează",
+    "installing": "Se instalează",
+    "installAria": "Instalează {{name}} cu tlmgr",
+    "insert": "Adaugă în preambul",
+    "insertAria": "Adaugă {{name}} în preambulul din {{file}}",
+    "copy": "Copiază linia",
+    "copyAria": "Copiază linia care încarcă {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Deschide {{name}} în CTAN",
+    "options": "Opțiuni",
+    "optionsAria": "Opțiuni pentru {{name}}",
+    "optionsInvalid": "Verifică opțiunile. Acoladele trebuie să fie pereche, iar ] și % nu pot fi folosite.",
+    "classNote": "Aceasta este o clasă de document. Seteaz-o cu \\documentclass.",
+    "onDemand": "Tectonic descarcă pachetele prima dată când documentul tău le folosește. Nu ai nimic de instalat.",
+    "checking": "Se verifică ce pachete sunt instalate",
+    "unknownInstall": "Oleafly nu poate afla ce pachete are instalarea ta TeX.",
+    "noProject": "Deschide un proiect LaTeX ca să adaugi pachete.",
+    "added": "{{name}} a fost adăugat în {{file}}.",
+    "noPreamble": "{{file}} nu are un preambul în care să se adauge un pachet.",
+    "alreadyLoaded": "{{file}} încarcă deja {{name}}.",
+    "insertFailed": "Pachetul nu a putut fi adăugat. Încearcă din nou."
+  },
+  "typstFonts": {
+    "title": "Fonturi",
+    "close": "Închide lista de fonturi",
+    "searchLabel": "Caută familii de fonturi",
+    "searchPlaceholder": "Caută fonturi",
+    "loading": "Se cer fonturile de la Typst",
+    "summary_one": "{{count}} familie de fonturi din Typst {{version}}",
+    "summary_few": "{{count}} familii de fonturi din Typst {{version}}",
+    "summary_other": "{{count}} de familii de fonturi din Typst {{version}}",
+    "systemOff": "Fonturile sistemului sunt dezactivate pentru acest proiect, așa că apar doar fonturile proiectului și cele incluse.",
+    "noSources": "Această versiune Typst nu spune de unde provine fiecare font.",
+    "empty": "Nicio familie de fonturi nu se potrivește căutării.",
+    "copy": "Copiază numele",
+    "copyAria": "Copiază numele familiei de fonturi {{name}}",
+    "sources": {
+      "project": "Proiect",
+      "system": "Sistem",
+      "embedded": "Inclus"
+    },
+    "fontsFolder": "Ca să folosești un font în acest proiect, adaugă fișierul lui în folderul fonts al proiectului."
+  },
+  "typstVariants": {
+    "title": "Variante de compilare",
+    "close": "Închide variantele de compilare",
+    "intro": "Fiecare variantă setează valori pe care documentul le citește cu sys.inputs. Alege o variantă din meniul de compilare.",
+    "empty": "Încă nu există variante.",
+    "add": "Adaugă o variantă",
+    "name": "Numele variantei",
+    "defaultName": "varianta {{number}}",
+    "remove": "Elimină varianta",
+    "removeAria": "Elimină varianta {{name}}",
+    "key": "Nume",
+    "value": "Valoare",
+    "addInput": "Adaugă o valoare",
+    "removeInput": "Elimină valoarea",
+    "noInputs": "Această variantă nu setează nicio valoare.",
+    "save": "Salvează",
+    "cancel": "Anulează",
+    "loading": "Se încarcă variantele",
+    "nameRequired": "Dă un nume fiecărei variante.",
+    "nameTaken": "Două variante nu pot avea același nume.",
+    "keyInvalid": "Numele valorilor nu pot fi goale și nici nu pot conține semnul egal.",
+    "keyTaken": "O variantă nu poate seta același nume de două ori.",
+    "saveFailed": "Variantele nu au putut fi salvate."
   }
 }

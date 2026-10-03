@@ -15,7 +15,10 @@ const TABLE_SIZES = Array.from({ length: MAX_ROWS }, (_, row) =>
   })),
 ).flat();
 
-export function TableSizePicker({ menuRow }: Readonly<{ menuRow?: boolean }>) {
+export function TableSizePicker({
+  menuRow,
+  onPick = insertTable,
+}: Readonly<{ menuRow?: boolean; onPick?: (rows: number, cols: number) => void }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [hover, setHover] = useState<{ row: number; col: number } | null>(null);
 
@@ -47,7 +50,7 @@ export function TableSizePicker({ menuRow }: Readonly<{ menuRow?: boolean }>) {
               key={id}
               aria-label={t(($) => $.editor.table.cell, { rows: row + 1, columns: col + 1 })}
               onMouseEnter={() => setHover({ row, col })}
-              onClick={() => insertTable(row + 1, col + 1)}
+              onClick={() => onPick(row + 1, col + 1)}
               className={cn(
                 "size-5 rounded-sm border transition-colors",
                 active ? "border-primary bg-primary/20" : "border-border bg-transparent",

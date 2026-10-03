@@ -576,6 +576,76 @@
       "tag2": "Стрелки",
       "tag3": "Шпаргалка",
       "tag4": "Вставка у курсора"
+    },
+    "arxivToTypst": {
+      "name": "Из arXiv в Typst",
+      "description": "Преобразуйте пакет исходников arXiv в Typst. Проверочная компиляция покажет, что не удалось преобразовать.",
+      "tag1": "Архив исходников",
+      "tag2": "Проверка компиляцией",
+      "tag3": "Для ID нужна сеть"
+    },
+    "csvToTypst": {
+      "name": "Из CSV в Typst",
+      "description": "Вставьте строки CSV или TSV и получите экранированную таблицу Typst.",
+      "tag1": "CSV и TSV",
+      "tag2": "Таблицы",
+      "tag3": "Локально"
+    },
+    "equationToTypst": {
+      "name": "Из формулы в Typst",
+      "description": "Преобразуйте набранную формулу LaTeX или изображение формулы в математику Typst.",
+      "tag1": "Текст или изображение",
+      "tag2": "Формулы",
+      "tag3": "Встроенный"
+    },
+    "excelToTypst": {
+      "name": "Из Excel в Typst",
+      "description": "Преобразуйте лист Excel, CSV или TSV в экранированную таблицу Typst.",
+      "tag1": "XLSX",
+      "tag2": "CSV и TSV",
+      "tag3": "Локально"
+    },
+    "htmlToTypst": {
+      "name": "Из HTML в Typst",
+      "description": "Преобразуйте вставленный HTML в самостоятельный документ Typst.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Локально"
+    },
+    "mermaidToTypst": {
+      "name": "Из Mermaid в Typst",
+      "description": "Преобразуйте блок-схему Mermaid в редактируемый код fletcher.",
+      "tag1": "Блок-схемы",
+      "tag2": "Fletcher",
+      "tag3": "Локально"
+    },
+    "typstToHtml": {
+      "name": "Из Typst в HTML",
+      "description": "Преобразуйте разметку Typst в самостоятельный HTML с формулами MathML.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Из Typst в Markdown",
+      "description": "Преобразуйте разметку Typst в переносимый Markdown.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Проект необязателен"
+    },
+    "typstToWord": {
+      "name": "Из Typst в Word",
+      "description": "Создайте документ Word, где формулы хранятся в собственном формате Word.",
+      "tag1": "DOCX",
+      "tag2": "Родные формулы",
+      "tag3": "Локально"
+    },
+    "wordToTypst": {
+      "name": "Из Word в Typst",
+      "description": "Преобразуйте документ Word в Typst и сохраните извлечённые медиафайлы вместе с ним.",
+      "tag1": "DOCX",
+      "tag2": "Медиафайлы",
+      "tag3": "Проект необязателен"
     }
   },
   "generators": {
@@ -661,7 +731,9 @@
     "insertInEditor": "Вставить в редактор",
     "noDescription": "Для этой команды описания нет.",
     "loadingPreview": "Загружаем символ для просмотра.",
-    "chooseSymbol": "Выберите символ из библиотеки."
+    "chooseSymbol": "Выберите символ из библиотеки.",
+    "insertHintTypst": "Вставить код Typst в открытый документ Typst.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · нажмите, чтобы заменить",
@@ -717,7 +789,8 @@
     "openAiSettings": "Открыть настройки ИИ",
     "fileReady": "{{fileName}} готов",
     "saveWordHint": "Сохраните документ Word, когда будете готовы.",
-    "resultPlaceholder": "Здесь появится ваш преобразованный результат."
+    "resultPlaceholder": "Здесь появится ваш преобразованный результат.",
+    "progressConvertingSource": "Преобразуем исходник в Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -838,6 +911,76 @@
       "inputLabel": "Документ Word",
       "inputHint": "Выберите файл .docx. Формулы и изображения читаются локально.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "Из arXiv в Typst",
+      "subtitle": "Преобразуйте исходник LaTeX препринта в Typst и посмотрите, что нужно исправить вручную",
+      "inputLabel": "Исходник arXiv",
+      "inputHint": "Введите ID arXiv или выберите сохранённый архив .tar.gz либо .gz.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "Из CSV в Typst",
+      "subtitle": "Вставьте данные таблицы и получите экранированную таблицу Typst",
+      "inputLabel": "CSV или TSV",
+      "inputHint": "Вставьте строки, разделённые запятыми или табуляцией. Первая строка станет заголовком.",
+      "outputLabel": "Таблица Typst"
+    },
+    "equationToTypst": {
+      "title": "Из формулы в Typst",
+      "subtitle": "Превратите набранную или сфотографированную формулу в математику Typst",
+      "inputLabel": "Формула",
+      "inputHint": "Наберите формулу LaTeX, опишите её словами или выберите изображение.",
+      "outputLabel": "Формула Typst"
+    },
+    "excelToTypst": {
+      "title": "Из Excel в Typst",
+      "subtitle": "Преобразуйте первый лист в таблицу Typst",
+      "inputLabel": "Таблица",
+      "inputHint": "XLSX, XLS, CSV или TSV. Формулы берут свои сохранённые значения.",
+      "outputLabel": "Таблица Typst"
+    },
+    "htmlToTypst": {
+      "title": "Из HTML в Typst",
+      "subtitle": "Преобразуйте семантический HTML в самостоятельный документ Typst",
+      "inputLabel": "HTML",
+      "inputHint": "Вставьте фрагмент HTML или целый документ.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Из Mermaid в Typst",
+      "subtitle": "Превратите блок-схему Mermaid в редактируемую диаграмму fletcher",
+      "inputLabel": "Блок-схема Mermaid",
+      "inputHint": "Блок-схемы поддерживают раскладки TD, LR, BT и RL, подписи и распространённые формы узлов.",
+      "outputLabel": "Typst и fletcher"
+    },
+    "typstToHtml": {
+      "title": "Из Typst в HTML",
+      "subtitle": "Создайте самостоятельный HTML с формулами MathML",
+      "inputLabel": "Typst",
+      "inputHint": "Вставьте фрагмент или целый документ Typst.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Из Typst в Markdown",
+      "subtitle": "Получите переносимый Markdown, не создавая проект",
+      "inputLabel": "Typst",
+      "inputHint": "Вставьте фрагмент или целый документ Typst.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Из Typst в Word",
+      "subtitle": "Создайте DOCX, где формулы хранятся как редактируемые формулы Word",
+      "inputLabel": "Typst",
+      "inputHint": "Вставьте фрагмент или целый документ Typst.",
+      "outputLabel": "Документ Word"
+    },
+    "wordToTypst": {
+      "title": "Из Word в Typst",
+      "subtitle": "Преобразуйте DOCX и сохраните извлечённые медиафайлы вместе с результатом",
+      "inputLabel": "Документ Word",
+      "inputHint": "Выберите файл .docx. Формулы и изображения читаются локально.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -853,7 +996,8 @@
     "chooseFile": "Выберите файл перед преобразованием.",
     "fileTooLarge": "Выберите файл меньше 128 МБ.",
     "emptySheet": "Выбранный лист пуст.",
-    "arxivInputRequired": "Введите ID arXiv или выберите архив исходников."
+    "arxivInputRequired": "Введите ID arXiv или выберите архив исходников.",
+    "equationToTypst": "Pandoc не удалось преобразовать эту формулу в Typst. Проверьте формулу LaTeX и попробуйте снова."
   },
   "converterNotes": {
     "scannedPages": "Отсканированных страниц распознано локальной моделью: {{pages}}. Проверьте формулы и таблицы, прежде чем пользоваться результатом.",
@@ -861,7 +1005,20 @@
     "mermaidTikz": "Эта блок-схема преобразована в редактируемый TikZ.",
     "mermaidRendered": "Эта диаграмма отрисована локально, потому что её синтаксис Mermaid не переводится однозначно в редактируемый TikZ.",
     "tableConverted": "Преобразовано строк: {{rows}}, колонок: {{columns}}.",
-    "arxivBundle": "Исходных файлов: {{files}}. Главный документ: {{mainFile}}."
+    "arxivBundle": "Исходных файлов: {{files}}. Главный документ: {{mainFile}}.",
+    "mermaidFletcher": "Эта блок-схема преобразована в редактируемый код fletcher для Typst.",
+    "mermaidRenderedTypst": "Эта диаграмма отрисована локально, потому что её синтаксис Mermaid не переводится однозначно в редактируемый код fletcher.",
+    "arxivTypstConverted": "Преобразовано: {{mainFile}}.",
+    "typstCheckPassed": "Typst скомпилировал результат без ошибок.",
+    "typstCheckFailed_one": "Typst нашёл {{count}} ошибку.",
+    "typstCheckFailed_few": "Typst нашёл {{count}} ошибки.",
+    "typstCheckFailed_many": "Typst нашёл {{count}} ошибок.",
+    "typstCheckFailed_other": "Typst нашёл {{count}} ошибки.",
+    "notConverted_one": "{{count}} элемент не удалось преобразовать.",
+    "notConverted_few": "{{count}} элемента не удалось преобразовать.",
+    "notConverted_many": "{{count}} элементов не удалось преобразовать.",
+    "notConverted_other": "{{count}} элемента не удалось преобразовать.",
+    "checkLine": "Строка {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Эта диаграмма Mermaid больше предела в 50 000 символов.",
@@ -1126,9 +1283,15 @@
   },
   "equation": {
     "subtitle": "Живая рабочая область LaTeX",
+    "subtitleTypst": "Живая рабочая область Typst",
+    "mathLanguage": "Язык формул",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Ошибка",
     "statusRendered": "Отрисовано",
+    "statusRendering": "Отрисовка",
     "copyLatex": "Копировать LaTeX",
+    "copyTypst": "Копировать Typst",
     "exportOptions": "Параметры экспорта",
     "export": "Экспорт",
     "downloadPng": "Скачать PNG",
@@ -1141,6 +1304,7 @@
     "exportSvgFailed": "Не удалось экспортировать этот фрагмент в SVG",
     "copyKatexFailed": "Не удалось скопировать HTML KaTeX",
     "copyLatexFailed": "Не удалось скопировать исходник LaTeX",
+    "copyTypstFailed": "Не удалось скопировать исходник Typst",
     "invalidPngName": "Выберите короткое имя файла PNG без косых черт и специальных символов.",
     "replaceConfirm": "{{path}} уже есть в проекте {{project}}. Заменить?",
     "savedToProject": "{{path}} сохранён в проект {{project}}.",
@@ -1154,6 +1318,7 @@
     "newImageProject": "Новый проект изображения",
     "mathmlFailed": "Не удалось преобразовать этот фрагмент в MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "В строке",
     "display": "Выключно",
     "examples": "ПРИМЕРЫ",
@@ -1162,6 +1327,8 @@
     "previewLight": "Просмотр на светлом",
     "inlineSample": "Вот так она смотрится внутри предложения, например <formula></formula>, вписываясь в окружающий текст.",
     "empty": "Наберите математику LaTeX слева.",
+    "emptyTypst": "Наберите математику Typst слева.",
+    "typstFailed": "Typst не удалось отрисовать эту формулу.",
     "zoomOut": "Уменьшить",
     "zoomIn": "Увеличить",
     "resetZoom": "Сбросить масштаб",

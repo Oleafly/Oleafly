@@ -9,12 +9,13 @@ export {
   normalizeFigureCode,
 } from "@oleafly/latex";
 export { modelSupportsVision } from "@oleafly/ai-core";
+import type { FigurePreview } from "@oleafly/ai-tools";
 
-let lastPreview: { pdfBytes: Uint8Array } | null = null;
-export function setLastFigurePreview(v: { pdfBytes: Uint8Array } | null) {
+let lastPreview: FigurePreview | null = null;
+export function setLastFigurePreview(v: FigurePreview | null) {
   lastPreview = v;
 }
-export function getLastFigurePreview(): { pdfBytes: Uint8Array } | null {
+export function getLastFigurePreview(): FigurePreview | null {
   return lastPreview;
 }
 

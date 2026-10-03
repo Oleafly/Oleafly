@@ -42,6 +42,7 @@ const mocks = vi.hoisted(() => ({
     writeProjectBytes: vi.fn(),
     compileIsolated: vi.fn(),
     readIsolatedPdf: vi.fn(),
+    renderTypstSnippet: vi.fn(),
     agentExecCwd: vi.fn(async () => "/library/projects/proj"),
     agentExecAuthorize: vi.fn(async () => "approval-token"),
     agentExec: vi.fn(),
@@ -49,6 +50,8 @@ const mocks = vi.hoisted(() => ({
   filesState: {
     projectId: "proj" as string | null,
     mainDoc: "main.tex",
+    engine: null as unknown,
+    engineLoaded: true,
     loading: false,
     applyExternalWrite: vi.fn(() => true),
     applyExternalDelete: vi.fn(() => true),
@@ -89,6 +92,37 @@ import { summarizeMcpError, summarizeMcpResult } from "@/store/mcp-activity";
 import { invoke } from "@tauri-apps/api/core";
 import type { SkillEntry } from "@/lib/skills";
 import { useSettingsStore } from "@/store/settings";
+import { LATEX_ENGINE, UNKNOWN_ENGINE } from "@/lib/document-engine";
+import type { DocumentEngineDescriptor } from "@/lib/tauri";
+
+const TYPST_ENGINE: DocumentEngineDescriptor = {
+  ...LATEX_ENGINE,
+  id: "typst",
+  label: "Typst",
+  source_format: "typst",
+  main_document: "main.typ",
+  source_extensions: ["typ"],
+  capabilities: {
+    ...LATEX_ENGINE.capabilities,
+    supports_offline: false,
+    supports_synctex: false,
+    supports_isolated_compile: false,
+    formatting_profile: "typst",
+    source_preflight_profile: "none",
+  },
+};
+
+const MARKDOWN_ENGINE: DocumentEngineDescriptor = {
+  ...TYPST_ENGINE,
+  id: "markdown",
+  label: "Markdown",
+  source_format: "markdown",
+  main_document: "main.md",
+  source_extensions: ["md"],
+  capabilities: { ...TYPST_ENGINE.capabilities, formatting_profile: "markdown" },
+};
+
+mocks.filesState.engine = LATEX_ENGINE;
 
 function skillFixture(overrides: Partial<SkillEntry> = {}): SkillEntry {
   return {
@@ -118,7 +152,12 @@ function skillFixture(overrides: Partial<SkillEntry> = {}): SkillEntry {
 // when the experimental web browser is on, so enable it before the describe.
 useSettingsStore.getState().setWebBrowser(true);
 
-afterEach(() => registerCuaSurface(null));
+afterEach(() => {
+  registerCuaSurface(null);
+  mocks.filesState.engine = LATEX_ENGINE;
+  mocks.filesState.engineLoaded = true;
+  mocks.filesState.mainDoc = "main.tex";
+});
 
 describe("mcp tool registry", () => {
   const registry = buildMcpToolRegistry({
@@ -200,6 +239,84 @@ describe("mcp tool registry", () => {
     expect(registry.get_status).toBeDefined();
     expect(registry.list_projects).toBeDefined();
     expect(registry.open_project).toBeDefined();
+  });
+
+  it("get_status reports the project's document engine", async () => {
+    mocks.filesState.engine = TYPST_ENGINE;
+    mocks.filesState.mainDoc = "main.typ";
+    expect(await registry.get_status.execute({})).toMatchObject({
+      project_id: "proj",
+      main_doc: "main.typ",
+      engine: "typst",
+    });
+    mocks.filesState.engine = UNKNOWN_ENGINE;
+    mocks.filesState.engineLoaded = false;
+    expect(await registry.get_status.execute({})).toMatchObject({ engine: null });
+  });
+
+  it("refuses to preview or insert a figure in a Markdown project", async () => {
+    mocks.filesState.engine = MARKDOWN_ENGINE;
+    const confirm = vi.fn(async () => true);
+    const local = buildMcpToolRegistry({ confirm, readOnly: false, onImage: () => {} });
+    for (const [name, input] of [
+      ["preview_figure", { code: "x" }],
+      ["insert_figure", { code: "x", caption: "c" }],
+    ] as const) {
+      const result = await local[name].execute(input);
+      expect(result, name).toEqual({
+        error: "Figure tools work only in LaTeX and Typst projects. This project uses Markdown.",
+      });
+    }
+    expect(confirm).not.toHaveBeenCalled();
+    expect(mocks.api.compileIsolated).not.toHaveBeenCalled();
+    expect(mocks.api.renderTypstSnippet).not.toHaveBeenCalled();
+  });
+
+  it("loads a project image in any project", async () => {
+    mocks.filesState.engine = MARKDOWN_ENGINE;
+    mocks.api.readProjectBytes.mockRejectedValueOnce(new Error("missing file"));
+    const local = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {} });
+
+    const result = await local.load_image.execute({ path: "sketch.png" });
+
+    expect(mocks.api.readProjectBytes).toHaveBeenCalledWith("proj", "sketch.png");
+    expect(result).toEqual({ error: "Error: missing file" });
+    expect(local.load_image.description).not.toContain("Works only in");
+  });
+
+  it("previews a figure through the Typst renderer in a Typst project", async () => {
+    mocks.filesState.engine = TYPST_ENGINE;
+    mocks.api.renderTypstSnippet.mockResolvedValueOnce({
+      status: "rendered",
+      image: { format: "png", pngBase64: "UE5H" },
+      diagnostics: [],
+    });
+    const onImage = vi.fn();
+    const local = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage });
+
+    const result = await local.preview_figure.execute({ code: "#circle(radius: 1cm)" });
+
+    expect(result).toEqual({ success: true, has_image: true, errors: [], warnings: [] });
+    expect(onImage).toHaveBeenCalledWith("data:image/png;base64,UE5H");
+    expect(mocks.api.compileIsolated).not.toHaveBeenCalled();
+    expect(local.preview_figure.description).toContain("Works only in LaTeX and Typst projects.");
+  });
+
+  it("refuses the figure tools until the document engine has loaded", async () => {
+    mocks.filesState.engine = UNKNOWN_ENGINE;
+    mocks.filesState.engineLoaded = false;
+    const result = await registry.insert_figure.execute({ code: "x" });
+    expect(result).toEqual({
+      error: "Figure tools are not available until the project's document engine loads.",
+    });
+  });
+
+  it("runs the figure tools in a LaTeX project", async () => {
+    const confirm = vi.fn(async () => false);
+    const local = buildMcpToolRegistry({ confirm, readOnly: false, onImage: () => {} });
+    const result = await local.insert_figure.execute({ code: "x" });
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ tool: "insert_figure" }));
+    expect(result).toMatchObject({ declined: true });
   });
 
   it("read-only mode strips every mutating tool", () => {

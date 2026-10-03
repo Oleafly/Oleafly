@@ -1,0 +1,15 @@
+{
+  "id": "typst-figure",
+  "name": "Typst Figure",
+  "category": "Diagrams & Figures",
+  "description": "A standalone Typst figure that previews as an image. Draw it with shapes and text, compile, and reuse it anywhere.",
+  "main_doc": "main.typ",
+  "engine": "typst",
+  "layout": "single",
+  "pages": "single",
+  "default_color": "#7048e8",
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
+  "requires": { "packages": [], "fonts": [], "engine": "typst" },
+  "kind": "image",
+  "order": 6
+}

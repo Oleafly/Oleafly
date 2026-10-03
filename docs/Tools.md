@@ -22,9 +22,14 @@ palette and slash-command menu.
 | `pdf-to-latex` | PDF to LaTeX | Reconstruct editable LaTeX from a PDF, including math, figures, and structure where the source allows it. | `/pdf-to-latex`, `/pdf-import` |
 | `visual-typst-editor` | Visual Typst Editor | Start a Typst document in the project editor with live preview. | `/visual-typst-editor`, `/typst-visual` |
 | `arxiv-to-latex` | arXiv to LaTeX | Download an arXiv source bundle or open a saved archive from disk. | `/arxiv-to-latex`, `/arxiv-source` |
+| `arxiv-to-typst` | arXiv to Typst | Convert an arXiv source bundle to Typst. A compile check lists what did not convert. | `/arxiv-to-typst` |
+| `csv-to-typst` | CSV to Typst | Paste CSV or TSV rows and get an escaped Typst table. | `/csv-to-typst`, `/typst-table` |
 | `equation-to-latex` | Equation to LaTeX | Convert typed math or an equation image into LaTeX. | `/equation-to-latex`, `/math-to-latex` |
+| `equation-to-typst` | Equation to Typst | Convert typed LaTeX math or an equation image into Typst math. | `/equation-to-typst`, `/math-to-typst` |
 | `excel-to-latex` | Excel to LaTeX | Convert Excel, CSV, or TSV data into an escaped LaTeX table. | `/excel-to-latex`, `/spreadsheet-to-latex` |
+| `excel-to-typst` | Excel to Typst | Convert an Excel, CSV, or TSV sheet into an escaped Typst table. | `/excel-to-typst`, `/spreadsheet-to-typst` |
 | `html-to-latex` | HTML to LaTeX | Convert pasted HTML into a standalone LaTeX document. | `/html-to-latex` |
+| `html-to-typst` | HTML to Typst | Convert pasted HTML into a standalone Typst document. | `/html-to-typst` |
 | `image-to-typst` | Image to Typst | Turn notes, equations, or a table in an image into editable Typst. | `/image-to-typst` |
 | `latex-to-html` | LaTeX to HTML | Convert LaTeX into standalone HTML with MathML equations. | `/latex-to-html` |
 | `latex-to-image` | LaTeX to Image | Render a LaTeX equation and export PNG or SVG. | `/latex-to-image`, `/latex-preview` |
@@ -34,12 +39,17 @@ palette and slash-command menu.
 | `markdown-to-latex` | Markdown to LaTeX | Convert Markdown notes into a standalone LaTeX document. | `/markdown-to-latex` |
 | `markdown-to-typst` | Markdown to Typst | Convert Markdown notes into Typst source. | `/markdown-to-typst` |
 | `mermaid-to-latex` | Mermaid to LaTeX | Convert a Mermaid flowchart into editable TikZ code. | `/mermaid-to-latex`, `/mermaid-to-tikz` |
+| `mermaid-to-typst` | Mermaid to Typst | Convert a Mermaid flowchart into editable fletcher code. | `/mermaid-to-typst`, `/mermaid-to-fletcher` |
 | `pdf-to-markdown` | PDF to Markdown | Extract a PDF text layer, equations, and figures into Markdown. | `/pdf-to-markdown` |
 | `pdf-to-typst` | PDF to Typst | Extract a PDF text layer, equations, and figures into Typst. | `/pdf-to-typst` |
 | `table-to-latex` | Table to LaTeX | Build a LaTeX table in a visual row-and-column editor. | `/table-to-latex`, `/latex-table`, `/table-generator` |
 | `typst-editor` | Typst Editor | Start a Typst project with source editing, live preview, and PDF export. | `/typst-editor`, `/new-typst` |
+| `typst-to-html` | Typst to HTML | Convert Typst markup into standalone HTML with MathML equations. | `/typst-to-html` |
 | `typst-to-latex` | Typst to LaTeX | Convert Typst markup into LaTeX for journals and submissions. | `/typst-to-latex` |
+| `typst-to-markdown` | Typst to Markdown | Convert Typst markup into portable Markdown. | `/typst-to-markdown` |
+| `typst-to-word` | Typst to Word | Create a Word document with equations stored as native Word math. | `/typst-to-word`, `/typst-to-docx` |
 | `word-to-latex` | Word to LaTeX | Convert a Word document into LaTeX while keeping extracted media together. | `/word-to-latex`, `/docx-to-latex` |
+| `word-to-typst` | Word to Typst | Convert a Word document into Typst and keep extracted media together. | `/word-to-typst`, `/docx-to-typst` |
 
 Most conversions use local files and the installed or bundled toolchain. An
 identifier lookup, an AI-assisted image conversion, or a provider-backed

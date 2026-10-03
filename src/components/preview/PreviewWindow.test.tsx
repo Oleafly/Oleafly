@@ -97,6 +97,7 @@ import userEvent from "@testing-library/user-event";
 import { PreviewWindow } from "./PreviewWindow";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
+import { useTypstToolchainStore } from "@/store/typst-toolchain";
 
 /**
  * The detached window only displays output whose compile identity it can
@@ -224,6 +225,110 @@ describe("detached compile controls in an opened folder", () => {
 
     act(() => mocks.listeners.get("preview:workspace")?.({ payload: { ...workspace, noMainDocument: false, systemTexLocked: false } }));
     expect(screen.getByTestId("compile-button")).not.toHaveAttribute("aria-disabled");
+  });
+});
+
+describe("detached Typst version menu", () => {
+  const typstWorkspace: PreviewWorkspaceSnapshot = {
+    projectId: "alpha",
+    engine: {
+      ...LATEX_ENGINE,
+      id: "typst",
+      label: "Typst",
+      source_format: "typst",
+      main_document: "main.typ",
+      source_extensions: ["typ"],
+      typst_version: "0.15.1",
+      typst_resolved: { version: "0.15.1", source: "bundled" },
+      typst_missing: null,
+    },
+    engineLoaded: true, mainDoc: "main.typ",
+    status: "idle", log: "", errors: [], diagnostics: null, compileTimeMs: null,
+    compileRevision: 0, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
+    noMainDocument: false, systemTexLocked: false,
+  };
+
+  it("pins a version through the main window", async () => {
+    mocks.native = true;
+    const refresh = vi.fn(async () => null);
+    useTypstToolchainStore.setState({
+      refresh,
+      status: {
+        bundledVersion: "0.15.1",
+        defaultVersion: "0.15.1",
+        defaultChoice: null,
+        system: null,
+        installing: null,
+        versions: [
+          { version: "0.15.1", releasedAt: "2026-08-01", inCatalog: true, sources: ["bundled"], downloadBytes: 1 },
+          { version: "0.13.1", releasedAt: "2025-03-07", inCatalog: true, sources: ["downloaded"], downloadBytes: 1 },
+        ],
+      },
+    });
+    render(<PreviewWindow />);
+    await vi.waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: typstWorkspace }));
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalled());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(enShell.compile.options));
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByTestId("typst-version-0.15.1")).toHaveAttribute("aria-checked", "true");
+    expect(within(menu).queryByText("Manage Typst versions")).not.toBeInTheDocument();
+    await user.click(within(menu).getByTestId("typst-version-0.13.1"));
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", {
+      projectId: "alpha",
+      action: "typst-version",
+      version: "0.13.1",
+    });
+  });
+
+  it("shows the same fonts, build and variant choices as the main window and sends them there", async () => {
+    mocks.native = true;
+    render(<PreviewWindow />);
+    await vi.waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
+    act(() => mocks.listeners.get("preview:workspace")?.({
+      payload: {
+        ...typstWorkspace,
+        engine: {
+          ...typstWorkspace.engine,
+          typst_options: {
+            system_fonts: true,
+            reproducible: false,
+            variants: ["draft"],
+            font_dirs: [],
+            flags: ["--creation-timestamp", "--ignore-system-fonts", "--input", "--font-path"],
+            output_formats: ["pdf"],
+            pdf_standards: [],
+          },
+        },
+        autoCompile: true,
+        typstVariant: null,
+        livePreview: { projectId: "alpha", enabled: true, status: "compiling", message: null },
+      },
+    }));
+
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(enShell.compile.options));
+    let menu = await screen.findByRole("menu");
+    expect(within(menu).queryAllByRole("menuitemcheckbox")).toHaveLength(0);
+    await user.click(within(menu).getByTestId("typst-project-fonts"));
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "typst-options", systemFonts: false });
+
+    await user.click(screen.getByLabelText(enShell.compile.options));
+    menu = await screen.findByRole("menu");
+    await user.click(within(menu).getByTestId("typst-reproducible"));
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "typst-options", reproducible: true });
+
+    await user.click(screen.getByLabelText(enShell.compile.options));
+    menu = await screen.findByRole("menu");
+    await user.click(within(menu).getByTestId("typst-variant-draft"));
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "typst-variant", variant: "draft" });
+
+    await user.click(screen.getByLabelText(enShell.compile.options));
+    menu = await screen.findByRole("menu");
+    await user.click(within(menu).getByRole("menuitem", { name: enShell.compile.stop }));
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "stop" });
   });
 });
 

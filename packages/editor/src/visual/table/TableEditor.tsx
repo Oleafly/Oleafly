@@ -40,7 +40,9 @@ class TableErrorBoundary extends Component<{ fallback: ReactNode; children: Reac
 }
 
 const EditorBody: FC = () => {
-  const { view, parsed } = useTableHost();
+  const { view, parsed, dialect } = useTableHost();
+  const BodyToolbar = dialect?.Toolbar ?? Toolbar;
+  const BodyDialogs = dialect ? dialect.Dialogs : Dialogs;
   const { selection, setSelection } = useTableSelection();
   const { editing, commitEditing } = useTableEditing();
   const { containerRef, setOpenMenu } = useTableUi();
@@ -64,9 +66,9 @@ const EditorBody: FC = () => {
 
   return (
     <div className="ofl-visual-table-frame" ref={containerRef}>
-      {view.state.readOnly ? null : <Toolbar />}
+      {view.state.readOnly ? null : <BodyToolbar />}
       <Grid />
-      <Dialogs />
+      {BodyDialogs ? <BodyDialogs /> : null}
     </div>
   );
 };

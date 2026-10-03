@@ -71,6 +71,7 @@ import {
   selectCitationBibliography,
 } from "./citation";
 import { resolveBibliographyPath } from "@oleafly/latex";
+import { hayagrivaEntries } from "@/lib/citation/hayagriva";
 import { useFolderAccessStore } from "@/store/folder-access";
 
 const BIBTEX = "@article{placeholder,\n  title = {Edge Sensing},\n  author = {Ada Lovelace},\n  year = {2024}\n}";
@@ -687,4 +688,97 @@ it("preserves main-document edits made while the bibliography is saving", async 
   });
   expect(await addCitation(BIBTEX)).toHaveProperty("key");
   expect(filesState.files["paper.md"].content).toContain("# Revised\n");
+});
+
+describe("Typst Hayagriva bibliographies", () => {
+  function typstProject(main: string, files: Record<string, string>) {
+    filesState.mainDoc = "paper.typ";
+    filesState.activePath = "paper.typ";
+    filesState.engine = {
+      source_extensions: ["typ"],
+      capabilities: { formatting_profile: "typst" },
+    };
+    filesState.files = {
+      "paper.typ": { content: main },
+      ...Object.fromEntries(Object.entries(files).map(([path, content]) => [path, { content }])),
+    };
+    filesState.tree = Object.keys(filesState.files).map((path) => ({ path, is_dir: false }));
+  }
+
+  it("appends a Hayagriva entry to the YAML file the document declares", async () => {
+    typstProject('= Paper\n\n#bibliography("refs.yml", style: "apa")\n', {
+      "refs.yml": 'existing:\n  type: book\n  title: "Old"\n',
+      "unused.bib": "",
+    });
+
+    const result = await addCitation(`${BIBTEX.slice(0, -1)},\n  doi = {10.1000/edge}\n}`);
+
+    expect(result).toEqual({ key: "lovelace2024edge" });
+    const yaml = filesState.files["refs.yml"].content;
+    expect(yaml.startsWith('existing:\n  type: book\n  title: "Old"\n\nlovelace2024edge:\n  type: article\n')).toBe(true);
+    expect(yaml).not.toContain("parent:");
+    expect(hayagrivaEntries(yaml).map((entry) => [entry.key, entry.title?.value, entry.authors])).toEqual([
+      ["existing", "Old", []],
+      ["lovelace2024edge", "Edge Sensing", ["Lovelace, Ada"]],
+    ]);
+    expect(filesState.files["unused.bib"].content).toBe("");
+    expect(mocks.saveFile).toHaveBeenCalledWith("refs.yml");
+    expect(mocks.saveFile).not.toHaveBeenCalledWith("paper.typ");
+    expect(mocks.insertAtCursor).toHaveBeenCalledWith("@lovelace2024edge");
+  });
+
+  it("writes BibTeX when the declaration also lists a .bib file", async () => {
+    typstProject('#bibliography(("refs.yml", "refs.bib"))\n', { "refs.yml": "", "refs.bib": "" });
+
+    expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edge" });
+    expect(filesState.files["refs.bib"].content).toContain("@article{lovelace2024edge,");
+    expect(filesState.files["refs.yml"].content).toBe("");
+  });
+
+  it("creates a declared YAML file that does not exist yet", async () => {
+    typstProject('#bibliography(\n  "refs.yaml",\n  title: [References],\n)\n', {});
+    mocks.readFileContent.mockResolvedValue("");
+
+    expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edge" });
+    expect(mocks.writeProjectFile).toHaveBeenCalledWith(
+      "project-1",
+      "refs.yaml",
+      expect.stringContaining("lovelace2024edge:\n  type: article\n"),
+    );
+    expect(mocks.writeProjectFile).not.toHaveBeenCalledWith("project-1", "paper.typ", expect.anything());
+  });
+
+  it("reuses the YAML entry with the same DOI and never duplicates a key", async () => {
+    typstProject('#bibliography("refs.yml")\n', {
+      "refs.yml": 'earlier:\n  type: article\n  title: "Edge"\n  serial-number:\n    doi: "10.1000/EDGE"\nlovelace2024edge:\n  title: "Taken"\n',
+    });
+
+    expect(await addCitation("@article{x,\n  title = {Edge Sensing},\n  doi = {10.1000/edge}\n}")).toEqual({ key: "earlier" });
+    expect(mocks.saveFile).not.toHaveBeenCalled();
+
+    expect(await addCitation(BIBTEX)).toEqual({ key: "lovelace2024edgea" });
+    expect(hayagrivaEntries(filesState.files["refs.yml"].content).map((entry) => entry.key)).toEqual([
+      "earlier",
+      "lovelace2024edge",
+      "lovelace2024edgea",
+    ]);
+  });
+
+  it("imports a reference library into the declared YAML file", async () => {
+    typstProject('#bibliography("refs.yml")\n', { "refs.yml": "" });
+    const library: ParsedBib[] = [
+      { type: "book", key: "a", fields: { title: "Looms", author: "Grace Hopper", year: "1959", doi: "10.1/one" } },
+      { type: "book", key: "b", fields: { title: "Looms again", author: "Grace Hopper", year: "1959", doi: "10.1/ONE" } },
+      { type: "article", key: "c", fields: { title: "Cards", author: "Ada Lovelace", journal: "J", year: "1843" } },
+    ];
+
+    const result = await addCitations(library);
+
+    expect(result).toMatchObject({ imported: 2, duplicates: 1, errors: [], bibPath: "refs.yml" });
+    const entries = hayagrivaEntries(filesState.files["refs.yml"].content);
+    expect(entries.map((entry) => [entry.key, entry.type, entry.doi])).toEqual([
+      ["hopper1959looms", "book", "10.1/one"],
+      ["lovelace1843cards", "article", undefined],
+    ]);
+  });
 });

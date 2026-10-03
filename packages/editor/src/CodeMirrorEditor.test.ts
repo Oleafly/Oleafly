@@ -50,6 +50,12 @@ describe("isProseSourcePath", () => {
     expect(isProseSourcePath("main.tex")).toBe(true);
     expect(isProseSourcePath("main.typ")).toBe(true);
   });
+
+  it("leaves vendored Typst package sources out of prose checks", () => {
+    expect(isProseSourcePath("typst-packages/preview/cetz/0.5.2/lib.typ")).toBe(false);
+    expect(isProseSourcePath("typst-packages/preview/cetz/0.5.2/README.md")).toBe(false);
+    expect(isProseSourcePath("chapters/typst-packages/notes.typ")).toBe(true);
+  });
 });
 
 describe("CodeMirrorEditor measurement", () => {

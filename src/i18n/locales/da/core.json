@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} har ingen offlinetilstand for kompilatoren. Kompilerer på normal vis.",
     "retry": "Kompiler igen",
-    "bundleFetchFailed": "Oleafly kunne ikke downloade de TeX-pakker, som dette dokument skal bruge. Tjek din forbindelse, og kompiler igen."
+    "bundleFetchFailed": "Oleafly kunne ikke downloade de TeX-pakker, som dette dokument skal bruge. Tjek din forbindelse, og kompiler igen.",
+    "typstMissing": "Typst {{version}} er ikke installeret. Download det, eller skift dette projekt til en anden version.",
+    "typstPackage": {
+      "downloadFailed": "Typst kunne ikke downloade {{spec}}. Tjek din internetforbindelse, og kompiler igen.",
+      "downloadFailedUnnamed": "Typst kunne ikke downloade en pakke, som dette dokument importerer. Tjek din internetforbindelse, og kompiler igen.",
+      "offlineNotCached": "Du er offline, og {{spec}} er ikke i pakkecachen endnu. Kompiler én gang, mens du er online, eller kopier pakkerne ind i projektet.",
+      "offlineNotCachedUnnamed": "Du er offline, og en pakke, som dette dokument importerer, er ikke i pakkecachen endnu. Kompiler én gang, mens du er online.",
+      "notFound": "Typst Universe har ingen pakke ved navn {{spec}}. Tjek navnet i importen.",
+      "localNotFound": "Den lokale pakke {{spec}} er ikke installeret. Læg den i Oleaflys mappe til Typst-pakker eller i projektets typst-packages-mappe.",
+      "versionMissing": "Denne pakke har ingen version {{version}}. Den nyeste version er {{latest}}.",
+      "versionMissingNoLatest": "Denne pakke har ingen version {{version}}. Tjek versionen i importen."
+    }
   },
   "developer": {
     "actions": {
@@ -345,6 +356,7 @@
     "notRenamable": "Dette symbol kan ikke omdøbes.",
     "nothingToRename": "Der er intet at omdøbe.",
     "referencesFor": "Referencer til {{name}}",
+    "renameFailed": "Kunne ikke omdøbe til \"{{name}}\".",
     "renamePartial": "Omdøbt til \"{{name}}\" i {{edited}} af {{total}} filer. Kunne ikke skrive {{files}}.",
     "renamed": "Omdøbt til \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -581,5 +593,8 @@
   "folderUnavailable": {
     "compile": "Kompilering er sat på pause, indtil projektmappen er tilbage.",
     "saveReason": "projektmappen er ikke tilgængelig"
+  },
+  "imageToTypst": {
+    "failed": "Billede til Typst mislykkedes: {{detail}}"
   }
 }

@@ -220,18 +220,18 @@ export const REGISTRY: readonly ConversionRoute[] = [
   },
   ...pandocRoutes("typst", [
     ["typst-to-latex", "LaTeX (.tex)", "Convert directly, import as a LaTeX project, or export from a Typst project.", "latex", "available", "G10", { flags: PANDOC_NATBIB, surface: "Tools page, Import dialog, Export menu" }],
-    ["typst-to-markdown", "Markdown (.md)", "Pandoc's markdown writer; import as a Markdown project or export .md.", "markdown", "available", "G28", { flags: PANDOC_STANDALONE, surface: "Import dialog, Export menu" }],
+    ["typst-to-markdown", "Markdown (.md)", "Convert directly, import as a Markdown project, or export .md from a Typst project.", "markdown", "available", "G28", { flags: PANDOC_STANDALONE, surface: "Tools page, Import dialog, Export menu" }],
   ], { direction: "import", extensions: ["typ"] }),
   ...pandocRoutes("typst", [
-    ["typst-to-html", "HTML (MathML)", "Standalone HTML export from a Typst project.", "html", "available", "G28", { flags: PANDOC_HTML_CITEPROC }],
-    ["typst-to-docx", "Word (.docx)", "Pandoc reads Typst directly and writes a .docx with OMML equations.", "docx", "available", "G28", { flags: PANDOC_CITEPROC }],
+    ["typst-to-html", "HTML (MathML)", "Convert directly, or export standalone HTML from a Typst project. Project exports go through the HTML Typst writes itself.", "html", "available", "G28", { flags: PANDOC_HTML_CITEPROC, surface: "Export menu, Tools page" }],
+    ["typst-to-docx", "Word (.docx)", "From a Typst project, Typst writes HTML and pandoc turns it into a .docx with OMML equations. The Tools page reads Typst with pandoc.", "docx", "available", "G28", { flags: PANDOC_CITEPROC, surface: "Export menu, Tools page" }],
   ], { direction: "export" }),
 
   // --- Word ---------------------------------------------------------------
   ...pandocRoutes("docx", [
     ["docx-to-latex", "LaTeX project", "Pandoc keeps editable equations and extracts embedded media into assets/.", "latex", "existing", undefined, { flags: PANDOC_EXTRACT_MEDIA, surface: "Import dialog, Tools page" }],
     ["docx-to-markdown", "Markdown project", "Import as a Markdown project; export other formats from there.", "markdown", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
-    ["docx-to-typst", "Typst project", "Import as a Typst project.", "typst", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
+    ["docx-to-typst", "Typst project", "Convert directly, or import as a Typst project with media extracted into assets/.", "typst", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA, surface: "Import dialog, Tools page" }],
     ["docx-to-pdf", "PDF", "Import as a LaTeX project, then compile.", "pdf", "existing", undefined, { extensions: false, plan: false }],
     ["docx-to-html", "HTML (MathML)", "Import as a Markdown project, then export self-contained HTML with MathML.", "html", "available", "G10", { extensions: false, plan: false, surface: "Import dialog, then Export menu" }],
   ], { direction: "import", extensions: ["docx"] }),
@@ -240,7 +240,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   ...pandocRoutes("html", [
     ["html-to-latex", "LaTeX project", "Pandoc converts semantic HTML and extracts embedded images into assets/.", "latex", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA, surface: "Import dialog, Tools page" }],
     ["html-to-markdown", "Markdown project", "Import as a Markdown project.", "markdown", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
-    ["html-to-typst", "Typst project", "Import as a Typst project.", "typst", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA }],
+    ["html-to-typst", "Typst project", "Convert directly, or import as a Typst project with images extracted into assets/.", "typst", "available", "G10", { flags: PANDOC_EXTRACT_MEDIA, surface: "Import dialog, Tools page" }],
     ["html-to-pdf", "PDF", "Import as a LaTeX project, then compile.", "pdf", "available", "G10", { extensions: false, plan: false }],
     ["html-to-docx", "Word (.docx)", "Import as a LaTeX or Markdown project, then export Word.", "docx", "available", "G10", { extensions: false, plan: false, surface: "Import dialog, then Export menu" }],
   ], { direction: "import", extensions: ["html", "htm"] }),
@@ -368,6 +368,19 @@ export const REGISTRY: readonly ConversionRoute[] = [
     surface: "Tools page",
   },
 
+  {
+    id: "equation-to-typst",
+    label: "Typst equation",
+    blurb: "Typed LaTeX math converts with Oleafly's built-in translator, with Pandoc as a fallback for commands it does not know. Natural-language and photographed equations go through a local model first.",
+    source: "equation",
+    target: "typst",
+    direction: "tool",
+    engine: "internal",
+    status: "available",
+    surface: "Tools page",
+    pandoc: { from: "latex", to: "typst" },
+  },
+
   // --- Spreadsheets -------------------------------------------------------
   {
     id: "csv-to-latex",
@@ -385,14 +398,14 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "csv-to-typst",
     label: "Typst table",
-    blurb: "Same parser, Typst table emitter.",
+    blurb: "Same parser, Typst table emitter with a header row, alignment, and an optional figure caption.",
     source: "csv",
     target: "typst",
     direction: "tool",
     engine: "internal",
     status: "available",
     gapId: "G17",
-    surface: "Editor context menu, Table tool",
+    surface: "Tools page, Editor context menu, Table tool",
     extensions: ["csv", "tsv", "xlsx", "xls"],
   },
 
@@ -403,6 +416,18 @@ export const REGISTRY: readonly ConversionRoute[] = [
     blurb: "Common flowcharts become editable TikZ; other Mermaid diagrams render locally as a LaTeX-ready figure.",
     source: "mermaid",
     target: "latex",
+    direction: "tool",
+    engine: "internal",
+    status: "available",
+    surface: "Tools page",
+  },
+
+  {
+    id: "mermaid-to-typst",
+    label: "Fletcher diagram",
+    blurb: "Common flowcharts become editable fletcher code pinned to a version that runs on the project's Typst.",
+    source: "mermaid",
+    target: "typst",
     direction: "tool",
     engine: "internal",
     status: "available",
@@ -421,6 +446,19 @@ export const REGISTRY: readonly ConversionRoute[] = [
     status: "available",
     gapId: "G7",
     surface: "Tools page, Import dialog",
+  },
+  {
+    id: "arxiv-to-typst",
+    label: "Typst project",
+    blurb: "Download or unpack the e-print source, convert the main document with Pandoc, compile it with Typst, and list what did not convert.",
+    source: "arxiv",
+    target: "typst",
+    direction: "tool",
+    engine: "pandoc",
+    status: "available",
+    gapId: "G7",
+    surface: "Tools page",
+    pandoc: { from: "latex", to: "typst", flags: ["--standalone", "--number-sections", "--verbose"] },
   },
   {
     id: "arxiv-to-bibtex",

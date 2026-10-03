@@ -60,15 +60,29 @@ describe("LatexToolsView", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders the catalog as a full page with 22 converter cards", () => {
+  it("renders the catalog as a full page with 32 converter cards", () => {
     render(<LatexToolsView />);
     expect(screen.getByTestId("latex-tools-view")).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: enResearchTools.tools.heroTitle })).toBeVisible();
     expect(screen.getByText(enResearchTools.tools.heroBody)).toBeVisible();
-    expect(screen.getByText("22", { selector: "span" })).toBeInTheDocument();
+    expect(screen.getByText("32", { selector: "span" })).toBeInTheDocument();
     expect(screen.getByTestId("latex-tool-card-image-to-latex")).toBeVisible();
     expect(screen.getByTestId("latex-tool-card-word-to-latex")).toBeVisible();
+    for (const id of [
+      "word-to-typst",
+      "typst-to-word",
+      "typst-to-html",
+      "typst-to-markdown",
+      "mermaid-to-typst",
+      "arxiv-to-typst",
+      "equation-to-typst",
+      "csv-to-typst",
+      "excel-to-typst",
+      "html-to-typst",
+    ]) {
+      expect(screen.getByTestId(`latex-tool-card-${id}`)).toBeVisible();
+    }
     expect(screen.getByTestId("latex-tool-card-doi-to-bibtex")).toBeVisible();
     expect(screen.getByTestId("latex-tool-card-url-to-bibtex")).toBeVisible();
   });

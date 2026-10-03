@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "O {{engine}} não oferece um modo de compilação offline. Compilando normalmente.",
     "retry": "Compilar de novo",
-    "bundleFetchFailed": "O Oleafly não conseguiu baixar os pacotes TeX de que este documento precisa. Confira sua conexão e compile de novo."
+    "bundleFetchFailed": "O Oleafly não conseguiu baixar os pacotes TeX de que este documento precisa. Confira sua conexão e compile de novo.",
+    "typstMissing": "O Typst {{version}} não está instalado. Baixe-o ou mude este projeto para outra versão.",
+    "typstPackage": {
+      "downloadFailed": "O Typst não conseguiu baixar {{spec}}. Confira sua conexão com a internet e compile de novo.",
+      "downloadFailedUnnamed": "O Typst não conseguiu baixar um pacote que este documento importa. Confira sua conexão com a internet e compile de novo.",
+      "offlineNotCached": "Você está offline e {{spec}} ainda não está no cache de pacotes. Compile uma vez com conexão ou incorpore os pacotes ao projeto.",
+      "offlineNotCachedUnnamed": "Você está offline e um pacote que este documento importa ainda não está no cache de pacotes. Compile uma vez com conexão.",
+      "notFound": "O Typst Universe não tem nenhum pacote {{spec}}. Confira o nome na importação.",
+      "localNotFound": "O pacote local {{spec}} não está instalado. Coloque-o na pasta de pacotes Typst do Oleafly ou na pasta typst-packages do projeto.",
+      "versionMissing": "Este pacote não tem a versão {{version}}. A mais recente é {{latest}}.",
+      "versionMissingNoLatest": "Este pacote não tem a versão {{version}}. Confira a versão na importação."
+    }
   },
   "developer": {
     "actions": {
@@ -353,6 +364,7 @@
     "notRenamable": "Este símbolo não pode ser renomeado.",
     "nothingToRename": "Nada para renomear.",
     "referencesFor": "Referências a {{name}}",
+    "renameFailed": "Não foi possível renomear para \"{{name}}\".",
     "renamePartial": "Renomeado para \"{{name}}\" em {{edited}} de {{total}} arquivos. Não foi possível gravar {{files}}.",
     "renamed": "Renomeado para \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) em $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -597,5 +609,8 @@
   "folderUnavailable": {
     "compile": "A compilação está pausada até a pasta do projeto voltar.",
     "saveReason": "a pasta do projeto não está disponível"
+  },
+  "imageToTypst": {
+    "failed": "Falha na conversão de imagem para Typst: {{detail}}"
   }
 }

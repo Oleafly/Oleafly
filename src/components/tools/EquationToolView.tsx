@@ -17,9 +17,12 @@ import { Popover, PopoverItem } from "@/components/ui/popover";
 import {
   CopyLatexLabel,
   EQUATION_EXAMPLES,
+  type EquationLanguage,
   EquationPreviewPanel,
   renderEquation,
+  useTypstEquationPreview,
 } from "@/components/tools/EquationPreviewPanel";
+import { latexMathToTypst } from "@oleafly/editor/latex-to-typst-math";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -41,6 +44,8 @@ import {
   equationToSvgDocument,
   equationFailureMessage,
   svgDocumentToPngBytes,
+  typstEquationToPngBytes,
+  typstEquationToSvgDocument,
 } from "@/features/equation-export";
 import { toolName } from "@/lib/tool-catalog";
 import { bytesToBase64 } from "@/lib/base64";
@@ -71,6 +76,18 @@ function pngFileName(value: string): string | null {
 
 const EQUATION_PROJECT_TOAST_KEY = "equation-project";
 
+const DARK_BACKDROP = "#111111";
+const LIGHT_BACKDROP = "#ffffff";
+
+function typstWrapped(input: string, display: boolean): string {
+  const body = input.trim();
+  return display ? `$ ${body} $` : `$${body}$`;
+}
+
+function typstPngSource(wrapped: string, theme: "light" | "dark"): string {
+  return theme === "dark" ? `#set text(fill: rgb("#ffffff"))\n${wrapped}` : wrapped;
+}
+
 function showProjectOutcome(kind: "success" | "error", message: string): void {
   if (kind === "success") toast.successUnique(EQUATION_PROJECT_TOAST_KEY, message);
   else toast.errorUnique(EQUATION_PROJECT_TOAST_KEY, message);
@@ -83,6 +100,9 @@ export function EquationToolView() {
   const editorTheme = useSettingsStore((s) => s.editorTheme);
   const fullscreen = useFullscreen();
   const [input, setInput] = useState(EQUATION_EXAMPLES[0].latex);
+  const [language, setLanguage] = useState<EquationLanguage>("latex");
+  const [typstInput, setTypstInput] = useState("");
+  const [convertedLatex, setConvertedLatex] = useState<string | null>(null);
   const [display, setDisplay] = useState(true);
   const [previewTheme, setPreviewTheme] = useState<"light" | "dark">("dark");
   const [zoom, setZoom] = useState(100);
@@ -93,15 +113,51 @@ export function EquationToolView() {
   const latexCopy = useCopyStatus({
     onError: (error) => void logError("equation copy latex", error),
   });
+  const typst = language === "typst";
+  const typstPreview = useTypstEquationPreview(typstInput, display, previewTheme, typst);
 
   if (activePage !== "equation") return null;
 
-  const rendered = renderEquation(input, display);
-  const wrapped = display ? String.raw`\[ ${input} \]` : `$${input}$`;
+  const rendered = typst ? { html: "", error: null } : renderEquation(input, display);
+  const wrapped = typst
+    ? typstWrapped(typstInput, display)
+    : display ? String.raw`\[ ${input} \]` : `$${input}$`;
+  const ready = typst ? typstPreview.status === "rendered" : Boolean(rendered.html);
+  const failed = typst ? typstPreview.status === "error" : Boolean(rendered.error);
+  const backdrop = previewTheme === "dark" ? DARK_BACKDROP : LIGHT_BACKDROP;
+  let statusLabel = t(($) => $.researchTools.equation.statusRendered);
+  if (failed) statusLabel = t(($) => $.researchTools.equation.statusError);
+  else if (typst && typstPreview.status === "rendering") {
+    statusLabel = t(($) => $.researchTools.equation.statusRendering);
+  }
+
+  const switchLanguage = (next: EquationLanguage) => {
+    if (next === language) return;
+    if (next === "typst" && convertedLatex !== input) {
+      setTypstInput(latexMathToTypst(input));
+      setConvertedLatex(input);
+    }
+    setLanguage(next);
+  };
+
+  const exportTypstPng = () =>
+    typstEquationToPngBytes(typstPngSource(wrapped, previewTheme), 3, backdrop);
 
   // True vector export: MathJax renders the equation to an SVG document with
   // glyph paths, rather than rasterizing the KaTeX preview.
   const exportPng = async () => {
+    if (typst) {
+      try {
+        downloadBytes(await exportTypstPng(), "image/png", "equation.png");
+      } catch (e) {
+        notifyError(
+          "equation export png",
+          e,
+          equationFailureMessage(e, t(($) => $.researchTools.equation.exportImageFailed)),
+        );
+      }
+      return;
+    }
     try {
       const svg = await equationToSvgDocument(input, display);
       const bytes = await svgDocumentToPngBytes(
@@ -116,6 +172,19 @@ export function EquationToolView() {
   };
 
   const exportSvg = async () => {
+    if (typst) {
+      try {
+        const svg = await typstEquationToSvgDocument(wrapped);
+        downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "equation.svg");
+      } catch (e) {
+        notifyError(
+          "equation export svg",
+          e,
+          equationFailureMessage(e, t(($) => $.researchTools.equation.exportSvgFailed)),
+        );
+      }
+      return;
+    }
     try {
       const svg = await equationToSvgDocument(input, display);
       downloadBlob(new Blob([svg], { type: "image/svg+xml" }), "equation.svg");
@@ -154,6 +223,7 @@ export function EquationToolView() {
     refreshProjects().catch((error: unknown) => logError("equation refresh projects", error));
 
   const equationPng = async () => {
+    if (typst) return exportTypstPng();
     const svg = await equationToSvgDocument(input, display);
     return svgDocumentToPngBytes(
       svg,
@@ -240,22 +310,44 @@ export function EquationToolView() {
         <div className="min-w-0">
           <div className="text-sm font-semibold leading-tight">{toolName("equation")}</div>
           <div className="text-xs leading-tight text-muted-foreground">
-            {t(($) => $.researchTools.equation.subtitle)}
+            {typst
+              ? t(($) => $.researchTools.equation.subtitleTypst)
+              : t(($) => $.researchTools.equation.subtitle)}
           </div>
         </div>
 
         <div className="flex-1" />
 
+        <fieldset
+          aria-label={t(($) => $.researchTools.equation.mathLanguage)}
+          className="m-0 flex h-7 items-center rounded-full border-0 bg-muted p-0.5 text-xs font-medium"
+        >
+          {(["latex", "typst"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-pressed={language === option}
+              onClick={() => switchLanguage(option)}
+              className={cn(
+                "rounded-full px-3 py-1 transition-colors",
+                language === option ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+              )}
+            >
+              {option === "typst"
+                ? t(($) => $.researchTools.equation.languageTypst)
+                : t(($) => $.researchTools.equation.languageLatex)}
+            </button>
+          ))}
+        </fieldset>
+
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span
             className={cn(
               "size-1.5 rounded-full",
-              rendered.error ? "bg-destructive" : "bg-emerald-500",
+              failed ? "bg-destructive" : "bg-emerald-500",
             )}
           />
-          {rendered.error
-            ? t(($) => $.researchTools.equation.statusError)
-            : t(($) => $.researchTools.equation.statusRendered)}
+          {statusLabel}
         </div>
         <ThemeMenu testId="equation-theme-menu" />
         <Button
@@ -265,11 +357,16 @@ export function EquationToolView() {
         >
           <CopyLatexLabel
             status={latexCopy.status}
-            idleLabel={t(($) => $.researchTools.equation.copyLatex)}
+            idleLabel={
+              typst
+                ? t(($) => $.researchTools.equation.copyTypst)
+                : t(($) => $.researchTools.equation.copyLatex)
+            }
+            failedLabel={typst ? t(($) => $.researchTools.equation.copyTypstFailed) : undefined}
             iconClassName="size-4"
           />
         </Button>
-        {rendered.html && (
+        {ready && (
           <Popover
             align="right"
             closeOnClick={false}
@@ -297,10 +394,12 @@ export function EquationToolView() {
               className="mt-1 h-8"
             />
             <div className="my-2 border-t" />
-            <PopoverItem onClick={() => void saveAsProject()}>
-              <FolderPlus className="size-4" /> {t(($) => $.researchTools.equation.newImageProject)}
-            </PopoverItem>
-            {projects.length > 0 && <div className="my-1 border-t" />}
+            {!typst && (
+              <PopoverItem onClick={() => void saveAsProject()}>
+                <FolderPlus className="size-4" /> {t(($) => $.researchTools.equation.newImageProject)}
+              </PopoverItem>
+            )}
+            {!typst && projects.length > 0 && <div className="my-1 border-t" />}
             <div className="max-h-52 overflow-y-auto">
               {projects.map((project) => (
                 <PopoverItem key={project.id} onClick={() => void saveToProject(project)}>
@@ -311,7 +410,7 @@ export function EquationToolView() {
             </div>
           </Popover>
         )}
-        {rendered.html ? (
+        {ready ? (
           <Popover
             align="right"
             ariaLabel={t(($) => $.researchTools.equation.exportOptions)}
@@ -329,12 +428,16 @@ export function EquationToolView() {
             <PopoverItem onClick={exportSvg}>
               <FileCode2 className="size-4" /> {t(($) => $.researchTools.equation.downloadSvg)}
             </PopoverItem>
-            <PopoverItem onClick={() => void copyMathML()}>
-              <Braces className="size-4" /> {t(($) => $.researchTools.equation.copyMathml)}
-            </PopoverItem>
-            <PopoverItem onClick={() => void copyHtml()}>
-              <Copy className="size-4" /> {t(($) => $.researchTools.equation.copyKatexHtml)}
-            </PopoverItem>
+            {!typst && (
+              <PopoverItem onClick={() => void copyMathML()}>
+                <Braces className="size-4" /> {t(($) => $.researchTools.equation.copyMathml)}
+              </PopoverItem>
+            )}
+            {!typst && (
+              <PopoverItem onClick={() => void copyHtml()}>
+                <Copy className="size-4" /> {t(($) => $.researchTools.equation.copyKatexHtml)}
+              </PopoverItem>
+            )}
           </Popover>
         ) : (
           <Button size="sm" disabled>
@@ -345,8 +448,10 @@ export function EquationToolView() {
       </div>
 
       <EquationPreviewPanel
-        input={input}
-        onInputChange={setInput}
+        language={language}
+        typst={typstPreview}
+        input={typst ? typstInput : input}
+        onInputChange={typst ? setTypstInput : setInput}
         display={display}
         onDisplayChange={setDisplay}
         rendered={rendered}

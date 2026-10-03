@@ -148,5 +148,10 @@
       "detail": "最新项目版本尚未完成索引。",
       "title": "正在等待项目分析"
     }
+  },
+  "bibliographyStyle": {
+    "label": "引用样式",
+    "ariaLabel": "{{path}} 中参考文献的引用样式",
+    "failed": "Oleafly 无法更改引用样式。"
   }
 }

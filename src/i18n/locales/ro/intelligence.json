@@ -59,6 +59,8 @@
       "startingAndInitializing": "Se pornește și se inițializează serviciul de limbaj al proiectului.",
       "stopTimeout": "Procesul anterior al serviciului de limbaj nu s-a oprit la timp. Reîncearcă pentru a-l recupera.",
       "synchronizedAndReady": "Serviciul de limbaj este sincronizat și pregătit.",
+      "tinymistDownloadFailed": "Tinymist {{version}} nu a putut fi descărcat. Oleafly va încerca din nou.",
+      "tinymistDownloading": "Se descarcă Tinymist {{version}} potrivit versiunii Typst a acestui proiect.",
       "transportClosed": "Conexiunea cu serviciul de limbaj s-a închis neașteptat. Reîncearcă pentru a te reconecta.",
       "versionMismatch": "Se aștepta {{kind}} {{expected}}, dar configurarea a raportat {{reported}}."
     }
@@ -139,7 +141,8 @@
     "packageOption": "opțiune {{name}}",
     "keyvalKey": "cheie \\{{command}}",
     "duplicateCount": "duplicat ({{count}})",
-    "duplicateIndex": "duplicatul {{index}}/{{total}}"
+    "duplicateIndex": "duplicatul {{index}}/{{total}}",
+    "typstBinding": "legare Typst"
   },
   "token": {
     "citation": "Citare",

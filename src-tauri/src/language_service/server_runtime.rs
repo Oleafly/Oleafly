@@ -99,6 +99,14 @@ pub(super) struct ServerLaunch {
     pub(super) working_directory: PathBuf,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(super) struct DownloadedTinymist<'a> {
+    pub(super) binary: &'a Path,
+    pub(super) version: &'a str,
+    pub(super) size: u64,
+    pub(super) sha256: &'a str,
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct BundledResourcePaths {
     pub(super) root: PathBuf,
@@ -180,6 +188,28 @@ fn resolve_profile_for_launch(
         executable,
         args: profile.args,
         search_path: launch_search_path(app_local_data, profile.kind, inherited)?,
+        working_directory: ensure_tool_shims(app_local_data)?,
+    })
+}
+
+pub(super) fn resolve_downloaded_tinymist_for_launch(
+    app_local_data: &Path,
+    downloaded: DownloadedTinymist<'_>,
+) -> Result<ServerLaunch, LanguageServiceError> {
+    let kind = LanguageServiceKind::Tinymist;
+    let profile = profile(kind)?;
+    let executable = verify_pinned_binary(downloaded.binary, downloaded.size, downloaded.sha256)?
+        .ok_or_else(|| {
+        LanguageServiceError::setup_required(
+            kind,
+            downloaded.version.to_owned(),
+            format!("Tinymist {} is not downloaded yet.", downloaded.version),
+        )
+    })?;
+    Ok(ServerLaunch {
+        executable,
+        args: profile.args,
+        search_path: None,
         working_directory: ensure_tool_shims(app_local_data)?,
     })
 }
@@ -1379,6 +1409,14 @@ fn verify_binary(
     path: &Path,
     target: &ManifestTarget,
 ) -> Result<Option<PathBuf>, LanguageServiceError> {
+    verify_pinned_binary(path, target.binary_size, &target.binary_sha256)
+}
+
+fn verify_pinned_binary(
+    path: &Path,
+    binary_size: u64,
+    binary_sha256: &str,
+) -> Result<Option<PathBuf>, LanguageServiceError> {
     let metadata = match std::fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -1395,7 +1433,7 @@ fn verify_binary(
             "language-server binary is not a real regular file",
         ));
     }
-    if metadata.len() != target.binary_size {
+    if metadata.len() != binary_size {
         return Err(LanguageServiceError::new(
             LanguageServiceErrorCode::IntegrityFailure,
             "language-server binary size does not match the pinned manifest",
@@ -1426,7 +1464,7 @@ fn verify_binary(
             break;
         }
         total = total.saturating_add(read as u64);
-        if total > target.binary_size {
+        if total > binary_size {
             return Err(LanguageServiceError::new(
                 LanguageServiceErrorCode::IntegrityFailure,
                 "language-server binary exceeded the pinned size while hashing",
@@ -1435,7 +1473,7 @@ fn verify_binary(
         hasher.update(&buffer[..read]);
     }
     let digest = format!("{:x}", hasher.finalize());
-    if total != target.binary_size || digest != target.binary_sha256 {
+    if total != binary_size || !digest.eq_ignore_ascii_case(binary_sha256) {
         return Err(LanguageServiceError::new(
             LanguageServiceErrorCode::IntegrityFailure,
             "language-server binary SHA-256 does not match the pinned manifest",
@@ -1858,7 +1896,7 @@ mod tests {
         assert_eq!(texlab.args, ["run"]);
         assert_eq!(tinymist.args, ["lsp"]);
         assert_eq!(texlab.version, "5.26.0");
-        assert_eq!(tinymist.version, "0.15.2");
+        assert_eq!(tinymist.version, "0.15.8");
     }
 
     #[test]
@@ -2111,6 +2149,49 @@ mod tests {
         let target = target_for("zip", "server", &archive, binary);
         assert_eq!(
             verify_binary(&link, &target).unwrap_err().code,
+            LanguageServiceErrorCode::IntegrityFailure
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn a_downloaded_tinymist_launches_only_once_its_catalog_hash_verifies() {
+        let root = temp_dir("catalog-tinymist");
+        let app_data = root.join("app-data");
+        std::fs::create_dir(&app_data).unwrap();
+        let binary = root
+            .join("toolchains")
+            .join("tinymist")
+            .join("0.13.30")
+            .join("tinymist");
+        let bytes = b"catalog tinymist";
+        let sha256 = format!("{:x}", Sha256::digest(bytes));
+        let pinned = DownloadedTinymist {
+            binary: &binary,
+            version: "0.13.30",
+            size: bytes.len() as u64,
+            sha256: &sha256,
+        };
+
+        let missing = resolve_downloaded_tinymist_for_launch(&app_data, pinned).unwrap_err();
+        assert_eq!(missing.code, LanguageServiceErrorCode::SidecarSetupRequired);
+        assert_eq!(missing.kind, Some(LanguageServiceKind::Tinymist));
+        assert_eq!(missing.version.as_deref(), Some("0.13.30"));
+
+        std::fs::create_dir_all(binary.parent().unwrap()).unwrap();
+        std::fs::write(&binary, bytes).unwrap();
+        make_executable(&binary).unwrap();
+        let launch = resolve_downloaded_tinymist_for_launch(&app_data, pinned).unwrap();
+        assert_eq!(launch.executable, std::fs::canonicalize(&binary).unwrap());
+        assert_eq!(launch.args, ["lsp"]);
+        assert_eq!(launch.search_path, None);
+        assert!(launch.working_directory.ends_with("shims"));
+
+        std::fs::write(&binary, b"tampered tinymist").unwrap();
+        assert_eq!(
+            resolve_downloaded_tinymist_for_launch(&app_data, pinned)
+                .unwrap_err()
+                .code,
             LanguageServiceErrorCode::IntegrityFailure
         );
         std::fs::remove_dir_all(root).unwrap();

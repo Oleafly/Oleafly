@@ -22,7 +22,9 @@ import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { cn } from "@/lib/utils";
 import {
   clearDocumentScanCache,
+  detectScanFormat,
   documentScanCacheKey,
+  hayagrivaIdentityText,
   loadDocumentCitationSettings,
   loadDocumentScanCache,
   saveDocumentCitationSettings,
@@ -128,8 +130,8 @@ function scoreBadgeVariant(score: number): BadgeVariant {
   return "muted";
 }
 
-function isLatexPath(path: string | null | undefined): boolean {
-  return !!path && /\.tex$/i.test(path);
+function isScannablePath(path: string | null | undefined): boolean {
+  return !!path && /\.(?:tex|typ)$/i.test(path);
 }
 
 function SourceBadge({ source }: Readonly<{ source: LiteratureSource }>) {
@@ -443,7 +445,7 @@ export function DocumentCitationScanPanel() {
         sourceText: selectionSource,
       };
     }
-    if (activePath && isLatexPath(activePath)) {
+    if (activePath && isScannablePath(activePath)) {
       const content = files[activePath]?.content;
       if (content != null) {
         return {
@@ -458,11 +460,19 @@ export function DocumentCitationScanPanel() {
     };
   }, [activePath, files, mainDoc, selectionSource]);
 
+  const scanFormat = useMemo(
+    () => detectScanFormat(selectionSource ? activePath ?? mainDoc : sourcePath, sourceText),
+    [activePath, mainDoc, selectionSource, sourcePath, sourceText],
+  );
+
   const bibText = useMemo(() => {
     if (bibSource) return bibSource;
     return tree
-      .filter((entry) => !entry.is_dir && entry.path.endsWith(".bib"))
-      .map((entry) => files[entry.path]?.content ?? "")
+      .filter((entry) => !entry.is_dir && /\.(?:bib|ya?ml)$/i.test(entry.path))
+      .map((entry) => {
+        const content = files[entry.path]?.content ?? "";
+        return entry.path.toLowerCase().endsWith(".bib") ? content : hayagrivaIdentityText(content);
+      })
       .filter(Boolean)
       .join("\n\n");
   }, [bibSource, tree, files]);
@@ -569,6 +579,7 @@ export function DocumentCitationScanPanel() {
       const result = await scanDocumentForCitations({
         sourceText,
         bibText,
+        format: scanFormat,
         settings,
         rankMode,
         signal: controller.signal,

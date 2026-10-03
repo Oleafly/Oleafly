@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Findet Schwächen in Argumenten, Methoden, Belegen und Darstellung.",
-        "documentEditor": "Verbessert Text, Struktur, Zitationen und LaTeX mit gezielten, sicheren Änderungen.",
-        "figure": "Erzeugt publikationsreife Abbildungen und Diagramme als LaTeX mit TikZ oder PGFPlots.",
+        "documentEditor": "Verbessert Text, Struktur, Zitationen und LaTeX- oder Typst-Quelltext mit gezielten, sicheren Änderungen.",
+        "figure": "Erzeugt publikationsreife Abbildungen und Diagramme mit TikZ in LaTeX oder CeTZ in Typst.",
         "researchWriter": "Entwirft und gliedert wissenschaftlichen Text, ohne Belege oder Zitationen zu erfinden."
       },
       "suggestedDescription": "Beginnen Sie mit einer davon und passen Sie ihre Anweisungen an Ihre Arbeitsweise an.",
@@ -685,6 +685,29 @@
       "mathPreview": {
         "description": "Die gesetzte Formel über der Formel anzeigen, in der der Cursor steht.",
         "label": "Formelvorschau"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Räumt Typst-Dateien mit typstyle auf, wenn Sie ⌘S oder Ctrl+S drücken. Automatisches Speichern lässt sie unverändert.",
+          "label": "Beim Speichern formatieren"
+        },
+        "lineWidth": {
+          "description": "typstyle bricht Zeilen um, die länger sind.",
+          "label": "Zeilenbreite des Formatierers"
+        },
+        "indent": {
+          "description": "Leerzeichen je Einrückungsebene in formatiertem Typst-Code.",
+          "label": "Einrückung des Formatierers"
+        },
+        "inlayHints": {
+          "description": "Zeigt Parameternamen vor den Argumenten in Typst-Funktionsaufrufen.",
+          "label": "Hinweise zu Parameternamen"
+        },
+        "lint": {
+          "description": "Prüft Typst-Dateien beim Speichern auf wahrscheinliche Fehler. Das Ein- oder Ausschalten startet den Typst-Sprachserver neu.",
+          "label": "Typst-Lint-Prüfungen"
+        }
       }
     },
     "files": {
@@ -1021,11 +1044,59 @@
       "resume": "Download fortsetzen ({{size}} MB erledigt)"
     },
     "typst": {
-      "detail": "Liegt Oleafly bei. Schnell, offline, keine Einrichtung. Kompiliert Typst-Dokumente zu PDF.",
+      "detail": "Liegt Oleafly bei, Sie müssen also nichts einrichten. Eine Netzwerkverbindung braucht es nur, wenn ein Dokument zum ersten Mal ein @preview-Paket importiert.",
       "heading": "Typst-Compiler",
       "name": "Typst (eingebaut)",
-      "note": "Typst-Projekte nutzen immer den mitgelieferten Compiler. Eine Compilerversion zu wählen oder ein systemeigenes Typst zu nutzen, ist noch nicht möglich.",
-      "tooltip": "Typst steckt in Oleafly, es gibt also nichts zu installieren oder einzurichten. Jedes Typst-Projekt kompiliert mit dem mitgelieferten Compiler."
+      "note": "Wählen Sie die Version eines Projekts im Kompiliermenü. Ein Projekt behält diese Version, bis Sie sie ändern.",
+      "tooltip": "Oleafly bringt eine Typst-Version mit und kann weitere herunterladen. Jedes Projekt kompiliert mit der Version, die es fixiert, oder mit dem Standard, wenn es keine fixiert.",
+      "system": {
+        "name": "Typst auf diesem Rechner",
+        "detail": "Projekte, die Version {{version}} fixieren, können damit kompilieren."
+      },
+      "versions": {
+        "heading": "Versionen",
+        "tooltip": "Neue Projekte starten mit der Standardversion, ebenso Projekte ohne fixierte Version.",
+        "loading": "Typst-Versionen werden geprüft",
+        "default": "Standard",
+        "setDefault": "Typst {{version}} als Standard verwenden",
+        "released": "Veröffentlicht am {{date}}",
+        "install": "Installieren",
+        "installAria": "Typst {{version}} installieren",
+        "removeAria": "Typst {{version}} entfernen",
+        "removeDefault": "Das ist die Standardversion. Wählen Sie einen anderen Standard, bevor Sie sie entfernen.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Eingebaut",
+          "downloaded": "Heruntergeladen",
+          "system": "System"
+        }
+      },
+      "progress": {
+        "starting": "Wird gestartet",
+        "downloading": "Wird geladen {{percent}} %",
+        "verifying": "Wird geprüft",
+        "extracting": "Wird entpackt",
+        "done": "Wird abgeschlossen"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} Sprachserver-Download wird von keiner installierten Typst-Version genutzt.",
+        "unused_other": "{{count}} Sprachserver-Downloads werden von keiner installierten Typst-Version genutzt.",
+        "remove": "Ungenutzte Sprachserver-Downloads entfernen",
+        "removed_one": "{{count}} Sprachserver-Download entfernt.",
+        "removed_other": "{{count}} Sprachserver-Downloads entfernt."
+      },
+      "error": {
+        "load": "Die Typst-Versionen konnten nicht gelesen werden.",
+        "install": "Typst {{version}} konnte nicht installiert werden.",
+        "remove": "Typst {{version}} konnte nicht entfernt werden.",
+        "default": "Die Standardversion von Typst konnte nicht geändert werden.",
+        "removeTinymist": "Die ungenutzten Sprachserver-Downloads konnten nicht entfernt werden."
+      },
+      "upgrade": {
+        "heading": "Neuere Version ausprobieren",
+        "detail": "Bauen Sie das geöffnete Projekt mit einer neueren installierten Version und vergleichen Sie die Ergebnisse, bevor Sie wechseln.",
+        "check": "Mit Typst {{version}} prüfen"
+      }
     }
   },
   "github": {
@@ -1511,12 +1582,12 @@
       "labels": {
         "askAiEditSelection": "KI bitten, die Auswahl zu bearbeiten",
         "bold": "Fett",
-        "italic": "Kursiv",
         "findAndReplace": "Suchen und ersetzen",
         "findReferences": "Referenzen suchen",
         "goToDefinition": "Zur Definition springen",
         "goToDefinitionWithPointer": "Mit dem Zeiger zur Definition springen",
         "indentOrAcceptAutocomplete": "Einrücken oder Autovervollständigung übernehmen",
+        "italic": "Kursiv",
         "jumpToSourceFromPdf": "Vom PDF zum Quelltext springen",
         "redo": "Wiederholen",
         "renameSymbol": "Symbol im ganzen Projekt umbenennen",

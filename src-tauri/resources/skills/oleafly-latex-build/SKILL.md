@@ -5,7 +5,7 @@ license: MIT
 compatibility: Needs an open Oleafly project on any of the four engines (Tectonic, latexmk, Typst, Markdown). No external tools are required.
 allowed-tools: read_file replace_in_file write_file create_file list_files search_project project_map compile get_log get_pdf_text verify_pdf_pages set_main_doc run_command update_todos load_skill read_skill_file
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -33,13 +33,13 @@ A compile failure is a lookup, not a puzzle. Read the first error, name its clas
 
 ## 1. Know the engine before touching anything
 
-`read_file` on `project.json`. The `engine` value decides almost everything below.
+`read_file` on `project.json`. The `engine` value decides almost everything below. In a Typst project, `typst.version` in the same file is the Typst version the project pins.
 
 | `engine` | What runs | Notes |
 |---|---|---|
 | `xetex` | Bundled Tectonic sidecar, XeTeX engine | The default. Fetches packages from a pinned TeX Live bundle. `fontspec` works. |
 | `latexmk` | The user's system TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) | The underlying engine is pdfLaTeX unless a `% !TeX program =` line, or fontspec / polyglossia / unicode-math, forces XeLaTeX or LuaLaTeX. Shell escape is off unless the user granted it for this project on this machine. |
-| `typst` | Pinned Typst CLI | No SyncTeX, no isolated figure compile, no conversion exports. |
+| `typst` | The Typst CLI, at the version the project pins or the default version from Settings | No SyncTeX and no isolated compile. `preview_figure` still renders a Typst figure on its own. Exports to LaTeX, Word, HTML, Markdown and plain text. |
 | `markdown` | Bundled Pandoc, with bundled Tectonic as its PDF engine | Available offline in packaged builds. Settings can repair a missing development copy. |
 
 The assistant cannot switch engines. `set_main_doc` changes the engine as a side effect of the file extension, and that is the only lever it has. Anything else is a Settings change the user makes.
@@ -96,6 +96,7 @@ Then check what came out:
 |---|---|
 | biblatex plus Biber, or natbib plus BibTeX? | On Oleafly's Tectonic both work, because the app ships a pinned `tectonic-biber` and recovers when Tectonic misses it. Outside Oleafly, plain Tectonic and biblatex drift apart by version, so natbib plus BibTeX is the portable choice. Never swap a venue's supplied `.bst` for biblatex. |
 | A package is missing from Tectonic's bundle | Say which package and offer the closest bundled alternative. Installing packages needs system TeX, which is the user's engine switch to make, not yours. |
+| A Typst error points into a package, or a feature the project uses needs a newer Typst | Read `typst.version` in `project.json`. The fix is usually a package version that matches the pinned Typst. Changing the pin changes the output, so suggest it and let the user switch it from the Compile menu. |
 | Overfull box warnings | Not errors. Triage rather than chase: reword first, keep `microtype` loaded, hyphenate one stubborn word, and only then consider local `sloppypar`. Never `\sloppy` globally. |
 | The user asks to run latexmk or tectonic by hand | `run_command` can, with approval, but the app's own `compile` uses the project's engine and artifact layout. Prefer `compile`; reach for `run_command` only for something `compile` cannot do, such as inspecting a produced file. |
 | Nothing works and the error is opaque | Bisect. See the end of `references/error-catalog.md`. |
@@ -108,6 +109,7 @@ Then check what came out:
 | The error names a file that is not in the project | `list_files` and `search_project` before concluding it is missing. Then say whether it must be supplied by the user. |
 | Compile times out or is cancelled | Report it as a timeout, not a source error. A first Tectonic build downloads bundle files and is slow. |
 | Pandoc is missing on a Markdown project | Tell the user the bundled runtime is unavailable and direct them to Settings to repair it. |
+| The pinned Typst version is not installed | This is a missing download, not a source error. The user can install it in Settings or pick another version from the Compile menu. |
 | Biber or biblatex version skew | The log carries an `[Oleafly]` note that distinguishes Biber not found from a version mismatch. Quote it verbatim. |
 | The PDF looks stale | Compile again and compare page count with `get_pdf_text`. Do not delete build directories through `run_command` unless the user asks. |
 
