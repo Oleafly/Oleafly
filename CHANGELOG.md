@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-03
+
 ### Added
 
 - The project search on the home screen understands GitHub's search syntax.
@@ -27,17 +29,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   your alphaXiv library, asking you before each call. A key alphaXiv refuses
   is not saved.
 - Settings has a search box. Type a word such as "theme", "Zotero" or
-  "spelling" and the list narrows to the sections and settings that match;
-  pick one to jump to it.
+  "spelling" and the list narrows to the sections and settings that match.
+  Pick one to jump to it.
 - The Explorer shows Git status next to changed files, with the same letters
   as Source Control (M, U, D and so on). File names keep their normal
   colour, and a folder that holds changes gets a dot.
-- Settings > AI > Skills has a search box. It filters your skills and the
-  Domain shelf together, and the shelf can be narrowed to one domain.
+- Settings > AI Assistant > Skills has a search box. It filters your skills
+  and the Domain shelf together, and the shelf can be narrowed to one domain.
 - When a model in Plan mode answers without a plan, a note says so.
-- Each CLI agent in Settings > AI > Agents has a Program row. It shows the
-  program Oleafly found and where, and you can choose another file or type
-  its location (#84). Test starts the agent in an empty folder before
+- Each CLI agent in Settings > AI Assistant > CLI agents has a Program row. It
+  shows the program Oleafly found and where, and you can choose another file
+  or type its location (#84). Test starts the agent in an empty folder before
   anything is saved, and if it fails it says why in one sentence with one
   thing to try next. The assistant's setup card now has a Set up button that
   opens the right agent in Settings.
@@ -57,9 +59,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Export a CLI agent conversation as Markdown or JSON from the history menu.
   Conversations also record the Git commit they started from.
 - When Git isn't installed, Source Control says so and explains how to get it
-  on your system instead of showing buttons that fail.
+  on your system instead of showing buttons that fail. On a Mac without
+  Apple's developer tools, checking for Git no longer makes macOS offer to
+  install them.
 - Each Reset button in Settings shows a small dot when something it would
   reset is not at its default.
+- File paths and web addresses in the project terminal are links. Hover one to
+  see where it points, and Cmd-click it (Ctrl-click on Windows and Linux) to
+  open it. A source file opens at the line and column the output names, such
+  as a LaTeX or Typst error, a Python traceback or a grep result. PDFs and
+  images open in their viewer, and web addresses open in the browser. Only
+  paths to files inside the project become links.
 - Settings > Engines > Typst lists Typst 0.11 to 0.15. Oleafly downloads the
   version you pick and checks it against a published checksum, and a Typst
   already installed on your computer shows up there too. Each project can pin
@@ -80,25 +90,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every time.
 - With Auto compile on, a Typst project keeps one Typst process running and
   refreshes the PDF as you type.
-- Typst projects can export pages as PNG or SVG and the document as HTML, and
-  export preparation offers PDF/A and PDF/UA. Word, HTML, Markdown and EPUB
-  exports of Typst projects now go through Typst's own HTML output, so
-  equations and references survive.
+- Typst projects can export EPUB, pages as PNG or SVG, and the document as
+  HTML, and export preparation offers PDF/A and PDF/UA. With Typst 0.13 or
+  newer, Word, HTML, Markdown and EPUB exports go through Typst's own HTML
+  output, so equations and references survive.
 - Go to PDF and clicking in the PDF jump between Typst source and the page, as
-  they do for LaTeX.
+  they do for LaTeX, in projects on Typst 0.13 or newer.
 - Visual mode works in Typst files: headings, emphasis, lists, rendered math,
   images, editable tables, reference chips and footnotes, with the source
   shown where the cursor is.
 - Typst files get folding, sticky headings and breadcrumbs. Math pairs with
   `$`, lists continue on Enter, and `/` opens snippets. Completion covers
   functions, file paths, labels, packages and bibliography styles. Rename, Go
-  to definition, signature help and Format document (typstyle, optionally on
-  save) come from the language server.
+  to definition, signature help and Format document (typstyle) come from the
+  language server. Settings > Appearance > Editor has a Typst group for format
+  on save, the formatter's line width and indent, parameter name hints in
+  function calls, and Typst lint checks.
 - Typst has the insertion tools LaTeX has: a figure dialog that also edits
   existing figures, pasting or dropping images, tables, citations, labels and
   cross-references, equations of every kind, and symbols with their Typst
   names. Tables imported from CSV, TSV, Excel or JSON can stay linked to their
-  data file.
+  data file. Image to Typst on the toolbar turns a picture of notes, equations
+  or a table into Typst with an on-device model.
 - Typst math previews while you type, the Equation tool has a Typst mode, and
   LaTeX math pasted into a Typst file can be converted with "Paste as Typst
   math".
@@ -156,7 +169,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of LaTeX, and refuse to run in Markdown projects.
 - `oleaflyc build` and `oleaflyc watch` print a note when a flag such as
   `--fast` or `--offline` has no effect for the project's engine.
-
 - When you edit during an automatic compile, Oleafly stops that compile and
   starts again with your latest text, so the PDF catches up sooner. It never
   stops a compile you or an agent started, one that is downloading packages or
@@ -169,15 +181,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   References, Research workspace and MCP activity) uses the same icon and
   title size. A title that doesn't fit ends in an ellipsis, and the icon
   keeps its size.
-- Toasts are wider, so a message has room next to the close button.
+- Toasts are wider, with the close button inside on the right.
 - A new project gets a random cover colour from the palette when you don't
   pick one, instead of always the same blue.
 - Dialogs share one look: the same backdrop, panel and corners. In light
   mode a few dialogs that used a grey panel are now white, and every dialog
   covers the floating assistant and quick-action buttons.
 - Status pills, spinners, settings rows, empty states and section headings
-  come from one set of shared components, so they look the same on every
-  screen. Spinners stop when the system asks for reduced motion.
+  look the same on every screen. Spinners stop when the system asks for
+  reduced motion.
 - File sizes use one format everywhere, with the unit translated in every
   language, and times such as "5 minutes ago" are counted the same way in
   every panel.
@@ -191,13 +203,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   assigned to app shortcuts on macOS.
 - On Linux, Toggle Browser now defaults to Ctrl+Alt+B, because Ctrl+Shift+B
   makes a blockquote in the visual editor. If you still had the old default,
-  it moves to the new one; a shortcut you chose yourself stays.
+  it moves to the new one, and a shortcut you chose yourself stays.
 - On Windows, release builds no longer reload the app on F5 or Ctrl+R, print
   it on Ctrl+P, or open the built-in find bar. Pages in the browser window
   keep those keys.
-- Only a window's own page can start or control agents, terminals and
-  language servers for that window. The main, preview and update windows no
-  longer have webview permissions they never used.
 - Integration tabs and Citation Search sources show each service's own logo.
 - In the spelling dictionary list, download sizes and the installed check sit
   at the right edge of each row.
@@ -220,7 +229,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The bottom of the Settings sidebar has Discord, X, GitHub, Docs and Release
   notes buttons, with a divider between each, and Cite Oleafly is now the last
   section of Help & About. Release notes opens What's new.
-- Toasts have their close button inside, on the right.
 - The Float the assistant button has a picture-in-picture icon, so it no
   longer looks like Hide.
 - Pinned headings at the top of the code editor are a little taller and line
@@ -230,8 +238,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings > Dictionary lists every rule the academic profile keeps off,
   instead of scrolling them in a small box.
 - The selected Settings section has a border instead of a shadow, and the
-  empty states in Source Control and Settings search show their icon above
-  the text.
+  empty states in Source Control show their icon above the text.
 - What's new folds long release notes: older releases start closed, and big
   sections of the newest show a count you can open.
 - A project Oleafly creates or imports now starts with one Git commit of its
@@ -240,9 +247,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   skipped for projects over 100 MB or with files that usually hold passwords
   or keys, such as `.env`.
 - Oleafly now finds CLI agents installed with npm, pnpm, Scoop, winget and
-  similar tools on Windows, on any drive, and sees programs installed after
-  it started. It also tells the Pi bridge where Pi is. The Pi bridge is now
-  pi-acp 0.0.34, which handles folders with spaces on Windows.
+  similar tools on Windows, on any drive, and sees programs installed after it
+  started. Pi also works in folders with spaces in their names on Windows.
 - Agent setup no longer tells you a program is missing from your PATH. It
   says what Oleafly found and why it can't use it, such as a PowerShell
   script where a `.cmd` or `.exe` is needed.
@@ -256,13 +262,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Clicking the PDF of a LaTeX project with `\include` or `\input` chapters
-  could open `main.tex` instead of the chapter, most often on the last page
-  of a chapter. Clicks inside a paragraph often landed on its heading or
-  another sentence, and clicking a table of contents entry jumped into
-  whichever file was open. A click now goes to the text line under the
-  pointer and the source line each word came from, which matches TeX Live's
-  own SyncTeX tool on every word of the test documents. Go to PDF also finds
-  lines in the middle of a paragraph.
+  could open `main.tex` instead of the chapter, most often on the last page of
+  a chapter. Clicks inside a paragraph often landed on its heading or another
+  sentence, and clicking a table of contents entry jumped into whichever file
+  was open. A click now opens the line under the pointer in the file it came
+  from, and Go to PDF also finds lines in the middle of a paragraph (#234).
 - Files the assistant wrote opened as tabs at the far left of the tab bar
   instead of after the tabs already open.
 - On a narrow window, the LaTeX toolbar hid buttons without offering the More
@@ -293,11 +297,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.yml` file, or a list of files, wrote it to a different `.bib` file. It
   now goes into the bibliography the document declares, converted to
   Hayagriva when needed, and keys in Hayagriva files complete and resolve.
-- The Export menu offered EPUB only for a LaTeX book, report or memoir
-  class, and PowerPoint only for Beamer, so Markdown projects never saw
-  either. Typst and Markdown have no document class, so they now offer every
-  export their engine supports: EPUB for both, and PowerPoint for Markdown.
-
+- Markdown projects never offered EPUB or PowerPoint export, because the
+  Export menu showed EPUB only for a LaTeX book, report or memoir class and
+  PowerPoint only for Beamer. Markdown now offers both.
 - Clicking inside the Advanced filters panel while one of its menus is open
   now closes only that menu, so you can set several filters in a row.
 - On macOS, Cmd+A in the editor selected only the lines on screen, so
@@ -392,8 +394,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   shell that exists: `$SHELL`, then your account's shell, then `/bin/sh`.
 - On Windows, installing an agent bridge failed with `EISDIR: illegal
   operation on a directory, lstat 'D:'` on current Node.js versions, and a
-  bridge that did install could not start (#84). Oleafly no longer passes
-  Node.js paths in the `\\?\` form.
+  bridge that did install could not start (#84).
 - On macOS, agents installed in folders only your shell knows about, such as
   `~/.local/bin` or an nvm folder, were missed when Oleafly was opened from
   the Dock or Finder.
@@ -408,14 +409,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wrong size, Oleafly puts it back when the window is focused, resized or
   moves to a display with a different scale, and writes a line to the app
   log.
-- Publish to GitHub no longer commits and pushes files that look like keys or
-  passwords, such as `.env`, `*.pem`, SSH private keys or `credentials.json`.
-  They stay in the project folder, and the dialog names them. If a file with
-  such a name is already in the project's Git history, Oleafly asks before it
-  creates anything on GitHub. Templates like `.env.example`, public keys and
-  Keynote `.key` files are still published. The first "Create project" commit
-  now uses the same list, so a template, public key or Keynote file no longer
-  blocks it.
 - Recording a shortcut no longer saves a character typed with AltGr, such
   as @ from AltGr+Q on a German keyboard, or on macOS with Option. Once
   saved, such a key made every @ you typed run the command. Shift with a
@@ -423,6 +416,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   types text. If you saved one of these keys before, reset that shortcut.
 - Resetting Appearance now turns Math preview back on right away. Before, it
   stayed off until you restarted Oleafly.
+- The IEEE Research Paper template placed its two author groups off center and
+  printed a literal [1] after each name. Both groups now sit in one centered
+  column with proper equal-contribution marks.
+
+### Security
+
+- Publish to GitHub no longer commits and pushes files that look like keys or
+  passwords, such as `.env`, `*.pem`, SSH private keys or `credentials.json`.
+  They stay in the project folder, and the dialog names them. If a file with
+  such a name is already in the project's Git history, Oleafly asks before it
+  creates anything on GitHub. Templates like `.env.example`, public keys and
+  Keynote `.key` files are still published.
+- A window can only start or control its own agents, terminals and language
+  servers, and windows no longer hold permissions they never used.
 
 ## [0.4.3] - 2026-09-27
 
@@ -2876,7 +2883,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/Oleafly/Oleafly/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/Oleafly/Oleafly/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/Oleafly/Oleafly/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/Oleafly/Oleafly/compare/v0.4.0...v0.4.1
