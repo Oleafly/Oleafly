@@ -649,7 +649,7 @@
         "label": "Markör utan blinkning"
       },
       "stickyScroll": {
-        "description": "Håll kvar aktuella LaTeX-avsnitt och miljöer högst upp medan du rullar.",
+        "description": "Håll kvar aktuella avsnitt, rubriker och miljöer högst upp medan du rullar.",
         "label": "Klistrig rullning"
       },
       "theme": {

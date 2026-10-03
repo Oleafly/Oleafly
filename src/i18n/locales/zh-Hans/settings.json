@@ -644,7 +644,7 @@
         "label": "光标不闪烁"
       },
       "stickyScroll": {
-        "description": "滚动时将当前 LaTeX 章节和环境固定在顶部。",
+        "description": "滚动时将当前章节、标题和环境固定在顶部。",
         "label": "粘性滚动"
       },
       "theme": {

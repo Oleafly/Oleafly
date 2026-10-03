@@ -369,6 +369,59 @@ describe("TopToolbar export menu", () => {
     ).toBeInTheDocument();
   });
 
+  it("leaves the book and slide exports out for an article class", async () => {
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(toolbar.export));
+    await screen.findByRole("menuitem", { name: toolbar.exportPdf });
+    expect(screen.queryByRole("menuitem", { name: toolbar.exportEpub })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: toolbar.exportPptx })).toBeNull();
+  });
+
+  const CLASSLESS_PROJECTS = {
+    typst: { mainDoc: "main.typ", content: "= Introduction", exports: ["tex", "docx", "html", "md", "txt", "epub"] },
+    markdown: { mainDoc: "main.md", content: "# Introduction", exports: ["docx", "html", "txt", "pptx", "epub", "typst", "tex"] },
+  } as const;
+
+  async function openClasslessExportMenu(profile: keyof typeof CLASSLESS_PROJECTS) {
+    const { mainDoc, content, exports } = CLASSLESS_PROJECTS[profile];
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: profile,
+        source_format: profile,
+        main_document: mainDoc,
+        capabilities: {
+          ...LATEX_ENGINE.capabilities,
+          formatting_profile: profile,
+          conversion_exports: [...exports],
+        },
+      },
+      files: { [mainDoc]: { content } },
+      mainDoc,
+      activePath: mainDoc,
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(toolbar.export));
+    await screen.findByRole("menuitem", { name: toolbar.exportPdf });
+  }
+
+  it.each(["typst", "markdown"] as const)("offers the book export for every %s document", async (profile) => {
+    await openClasslessExportMenu(profile);
+    expect(screen.getByRole("menuitem", { name: toolbar.exportEpub })).toBeInTheDocument();
+  });
+
+  it("offers the slide export for every Markdown document", async () => {
+    await openClasslessExportMenu("markdown");
+    expect(screen.getByRole("menuitem", { name: toolbar.exportPptx })).toBeInTheDocument();
+  });
+
+  it("leaves the slide export out when the engine has none", async () => {
+    await openClasslessExportMenu("typst");
+    expect(screen.queryByRole("menuitem", { name: toolbar.exportPptx })).toBeNull();
+  });
+
   it("offers raster and vector exports for a figure project", async () => {
     useFilesStore.setState({ projectKind: "image" });
     renderToolbar();

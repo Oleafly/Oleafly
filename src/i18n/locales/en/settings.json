@@ -649,7 +649,7 @@
         "label": "Non-blinking cursor"
       },
       "stickyScroll": {
-        "description": "Keep the current LaTeX sections and environments at the top while you scroll.",
+        "description": "Keep the current sections, headings and environments at the top while you scroll.",
         "label": "Sticky scroll"
       },
       "theme": {

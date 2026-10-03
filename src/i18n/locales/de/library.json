@@ -256,7 +256,7 @@
       },
       "markdown": {
         "title": "Markdown-Dokument",
-        "description": "Eine .md-Datei, die Markdown bleibt."
+        "description": "Eine .md-Datei, die in LaTeX oder Typst umgewandelt wird."
       },
       "html": {
         "title": "HTML-Seite",

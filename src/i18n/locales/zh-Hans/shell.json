@@ -812,7 +812,7 @@
         "offlineRefused": "离线模式已开启，请关闭后再下载 {{name}}。"
       },
       "harper": {
-        "description": "在 LaTeX 与 Markdown 的源码和可视化编辑以及 Typst 源码编辑中检查英语语法和风格，并提供一键修复。",
+        "description": "在 LaTeX、Typst 与 Markdown 的源码和可视化编辑中检查英语语法和风格，并提供一键修复。",
         "label": "语法与风格（Harper）",
         "englishOnly": "语法检查仅适用于英语。拼写词典为 {{name}} 时暂停。"
       },

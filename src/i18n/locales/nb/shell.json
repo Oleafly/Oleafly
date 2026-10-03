@@ -827,7 +827,7 @@
         "offlineRefused": "Frakoblet modus er på. Slå den av for å laste ned {{name}}."
       },
       "harper": {
-        "description": "Sjekk engelsk grammatikk og stil i LaTeX og Markdown, både i Kilde og Visuell, og i Typst-kilde, med rettelser på ett klikk.",
+        "description": "Sjekk engelsk grammatikk og stil i LaTeX, Typst og Markdown, både i Kilde og Visuell, med rettelser på ett klikk.",
         "label": "Grammatikk og stil (Harper)",
         "englishOnly": "Grammatikkontroll fungerer bare for engelsk. Den er satt på pause så lenge staveordboken er {{name}}."
       },

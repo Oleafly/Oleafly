@@ -649,7 +649,7 @@
         "label": "Cursor ohne Blinken"
       },
       "stickyScroll": {
-        "description": "Die aktuellen LaTeX-Abschnitte und -Umgebungen beim Scrollen oben halten.",
+        "description": "Die aktuellen Abschnitte, Überschriften und Umgebungen beim Scrollen oben halten.",
         "label": "Haftende Kopfzeile"
       },
       "theme": {

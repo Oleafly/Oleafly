@@ -842,7 +842,7 @@
         "offlineRefused": "El modo sin conexión está activado. Desactívalo para descargar {{name}}."
       },
       "harper": {
-        "description": "Revisa la gramática y el estilo del inglés en la edición de LaTeX y Markdown, en Código y en Visual, y también en Typst en Código, con correcciones en un clic.",
+        "description": "Revisa la gramática y el estilo del inglés en LaTeX, Typst y Markdown, tanto en Código como en Visual, con correcciones en un clic.",
         "label": "Gramática y estilo (Harper)",
         "englishOnly": "La revisión gramatical solo funciona en inglés. Está en pausa mientras el diccionario ortográfico sea {{name}}."
       },

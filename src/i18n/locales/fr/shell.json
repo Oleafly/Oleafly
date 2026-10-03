@@ -842,7 +842,7 @@
         "offlineRefused": "Le mode hors ligne est actif. Désactivez-le pour télécharger {{name}}."
       },
       "harper": {
-        "description": "Vérifier la grammaire et le style anglais dans l'édition LaTeX et Markdown en mode Source et Visuel, ainsi qu'en mode Source Typst, avec des corrections en un clic.",
+        "description": "Vérifier la grammaire et le style anglais dans LaTeX, Typst et Markdown, en mode Source comme en mode Visuel, avec des corrections en un clic.",
         "label": "Grammaire et style (Harper)",
         "englishOnly": "La vérification grammaticale ne fonctionne qu’en anglais. Elle est en pause tant que le dictionnaire orthographique est {{name}}."
       },

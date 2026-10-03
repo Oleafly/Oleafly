@@ -58,7 +58,7 @@ import { ProjectImportDialog } from "./ProjectImportDialog";
 const LOCAL_CARDS = [
   ["project-import-project", CHOICE_ART.importArchive, "Existing project", "A .zip archive of a project folder."],
   ["project-import-word", CHOICE_ART.importWord, "Word document", "A .docx file, converted on the way in."],
-  ["project-import-markdown", CHOICE_ART.importMarkdown, "Markdown document", "A .md file, kept as Markdown."],
+  ["project-import-markdown", CHOICE_ART.importMarkdown, "Markdown document", "A .md file, converted to LaTeX or Typst."],
   ["project-import-html", CHOICE_ART.importHtml, "HTML page", "Convert HTML to LaTeX, Markdown, or Typst."],
   ["project-import-typst", CHOICE_ART.importTypst, "Typst document", "Convert Typst to LaTeX or Markdown."],
 ] as const;

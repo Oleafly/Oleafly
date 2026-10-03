@@ -258,7 +258,7 @@
       },
       "markdown": {
         "title": "Dokument Markdown",
-        "description": "Plik .md, zachowany jako Markdown."
+        "description": "Plik .md, konwertowany do LaTeX lub Typst."
       },
       "html": {
         "title": "Strona HTML",

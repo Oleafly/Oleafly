@@ -654,7 +654,7 @@
         "label": "Cursor sin parpadeo"
       },
       "stickyScroll": {
-        "description": "Mantiene arriba las secciones y los entornos de LaTeX actuales mientras te desplazas.",
+        "description": "Mantiene arriba las secciones, los títulos y los entornos actuales mientras te desplazas.",
         "label": "Desplazamiento fijo"
       },
       "theme": {

@@ -649,7 +649,7 @@
         "label": "Yanıp sönmeyen imleç"
       },
       "stickyScroll": {
-        "description": "Siz kaydırırken geçerli LaTeX bölümlerini ve ortamlarını üstte tutar.",
+        "description": "Siz kaydırırken geçerli bölümleri, başlıkları ve ortamları üstte tutar.",
         "label": "Yapışkan kaydırma"
       },
       "theme": {

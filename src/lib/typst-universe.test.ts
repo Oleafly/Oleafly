@@ -157,6 +157,12 @@ describe("importEdit", () => {
     expect(importEdit(text, "cetz", "0.5.2")).toEqual({ from, to: from + 5, insert: "0.5.2" });
     expect(importEdit('#import "@preview/cetz:0.5.2"', "cetz", "0.5.2")).toBeNull();
   });
+
+  it("replaces an escaped version in place", () => {
+    const text = String.raw`#import "@preview/cetz:0.4.\u{32}": canvas`;
+    const edit = importEdit(text, "cetz", "0.5.2");
+    expect(edit).toEqual({ from: text.indexOf("0.4."), to: text.indexOf('": canvas'), insert: "0.5.2" });
+  });
 });
 
 describe("previewImports", () => {
@@ -178,7 +184,7 @@ describe("previewImports", () => {
 
   it("reads escapes, stops strings at a line end and skips unclosed comments", () => {
     const tricky = [
-      '#import "@preview/\\cetz:0.4.2"',
+      String.raw`#import "@preview/\u{63}etz:0.4.2"`,
       '#let s = "open string // not a comment',
       '#import "@preview/after:1.0.0"',
       '#let q = "a\\"b" + "@preview/quoted:2.0.0"',
@@ -191,7 +197,19 @@ describe("previewImports", () => {
       ["after", "1.0.0"],
       ["quoted", "2.0.0"],
     ]);
-    expect(found.slice(1).map((entry) => tricky.slice(entry.from, entry.to))).toEqual(["1.0.0", "2.0.0"]);
+    expect(found.map((entry) => tricky.slice(entry.from, entry.to))).toEqual(["0.4.2", "1.0.0", "2.0.0"]);
+  });
+
+  it("keeps unknown escapes as Typst does and points at the version in the source", () => {
+    const escaped = [
+      String.raw`#import "@preview/fletcher:0.5.\u{31}"`,
+      String.raw`#import "@preview/\cetz:0.4.2"`,
+      String.raw`#import "@preview/tablex:0.0.\u{zz}9"`,
+    ].join("\n");
+    const found = previewImports(escaped);
+    expect(found.map((entry) => [entry.name, entry.version, escaped.slice(entry.from, entry.to)])).toEqual([
+      ["fletcher", "0.5.1", String.raw`0.5.\u{31}`],
+    ]);
   });
 
   it("reports only imports older than the newest release", () => {

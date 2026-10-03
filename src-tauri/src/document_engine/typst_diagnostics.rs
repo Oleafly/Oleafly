@@ -42,7 +42,7 @@ pub(super) fn humanize_typst_error(message: &str) -> Option<&'static str> {
         return Some("Typst does not recognize this name. Check for a typo, define it with #let before you use it, or import it from the file or package that defines it.");
     }
     if m.starts_with("unknown font family: ") {
-        return Some("Typst cannot find this font, so it uses a fallback font. Check the name in the font list from the compile menu. To use a font that is not listed, add its file to the fonts folder of the project. If Use system fonts is off, fonts installed on this computer are skipped.");
+        return Some("Typst cannot find this font, so it uses a fallback font. Check the name against Available fonts under Body font in Document settings. To use a font that is not listed, add its file to the fonts folder of the project. If Use system fonts is off, fonts installed on this computer are skipped.");
     }
     if m.starts_with("file not found") {
         return Some("Typst cannot find this file. Check the path. Relative paths start from the folder of the file that uses them. Paths that start with / start from the project root.");
@@ -325,8 +325,11 @@ mod tests {
             "syntax errors without a found type are not type errors"
         );
         assert!(humanize_typst_error("unclosed string").is_some());
-        assert!(humanize_typst_error("unknown font family: nope")
-            .is_some_and(|text| text.contains("font list") && text.contains("fonts folder")));
+        assert!(
+            humanize_typst_error("unknown font family: nope").is_some_and(|text| text
+                .contains("Document settings")
+                && text.contains("fonts folder"))
+        );
     }
 
     fn project(files: &[(&str, &str)]) -> tempfile::TempDir {

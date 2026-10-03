@@ -255,7 +255,7 @@
       },
       "markdown": {
         "title": "Markdown 文書",
-        "description": "Markdown のまま扱う .md ファイル。"
+        "description": "LaTeX または Typst に変換する .md ファイル。"
       },
       "html": {
         "title": "HTML ページ",

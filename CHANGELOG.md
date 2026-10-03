@@ -147,8 +147,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fast compile mode or "stop on first error", and latexmk projects no longer
   list the fast mode.
 - External agents connected over MCP see the project's engine in
-  `get_status`. The figure tools now refuse to run outside LaTeX projects
-  instead of writing LaTeX into a Typst file.
+  `get_status`. The figure tools write CeTZ or fletcher in Typst projects
+  instead of LaTeX, and refuse to run in Markdown projects.
 - `oleaflyc build` and `oleaflyc watch` print a note when a flag such as
   `--fast` or `--offline` has no effect for the project's engine.
 
@@ -278,6 +278,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.yml` file, or a list of files, wrote it to a different `.bib` file. It
   now goes into the bibliography the document declares, converted to
   Hayagriva when needed, and keys in Hayagriva files complete and resolve.
+- The Export menu offered EPUB only for a LaTeX book, report or memoir
+  class, and PowerPoint only for Beamer, so Markdown projects never saw
+  either. Typst and Markdown have no document class, so they now offer every
+  export their engine supports: EPUB for both, and PowerPoint for Markdown.
 
 - Clicking inside the Advanced filters panel while one of its menus is open
   now closes only that menu, so you can set several filters in a row.

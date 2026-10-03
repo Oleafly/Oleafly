@@ -842,7 +842,7 @@
         "offlineRefused": "O modo offline está ligado. Desligue para baixar {{name}}."
       },
       "harper": {
-        "description": "Verifica gramática e estilo do inglês na edição em LaTeX e Markdown, nos modos Código e Visual, além do Código em Typst, com correções em um clique.",
+        "description": "Verifica gramática e estilo do inglês em LaTeX, Typst e Markdown, nos modos Código e Visual, com correções em um clique.",
         "label": "Gramática e estilo (Harper)",
         "englishOnly": "A verificação gramatical só funciona em inglês. Ela fica pausada enquanto o dicionário ortográfico for {{name}}."
       },

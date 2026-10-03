@@ -649,7 +649,7 @@
         "label": "Markør, der ikke blinker"
       },
       "stickyScroll": {
-        "description": "Hold de aktuelle LaTeX-afsnit og LaTeX-miljøer øverst, mens du ruller.",
+        "description": "Hold de aktuelle afsnit, overskrifter og miljøer øverst, mens du ruller.",
         "label": "Fastlåst rulning"
       },
       "theme": {

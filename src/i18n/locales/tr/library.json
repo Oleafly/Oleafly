@@ -256,7 +256,7 @@
       },
       "markdown": {
         "title": "Markdown belgesi",
-        "description": "Markdown olarak kalan bir .md dosyası."
+        "description": "LaTeX veya Typst'e dönüştürülen bir .md dosyası."
       },
       "html": {
         "title": "HTML sayfası",

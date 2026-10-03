@@ -654,7 +654,7 @@
         "label": "Cursor sem piscar"
       },
       "stickyScroll": {
-        "description": "Mantém no topo as seções e os ambientes LaTeX atuais enquanto você rola.",
+        "description": "Mantém no topo as seções, os títulos e os ambientes atuais enquanto você rola.",
         "label": "Rolagem fixa"
       },
       "theme": {

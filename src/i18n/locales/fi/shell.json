@@ -827,7 +827,7 @@
         "offlineRefused": "Offline-tila on päällä. Poista se käytöstä, niin {{name}} voidaan ladata."
       },
       "harper": {
-        "description": "Tarkista englannin kielioppi ja tyyli LaTeXin ja Markdownin lähdekoodi- ja visuaalisessa muokkauksessa sekä Typstin lähdekoodissa, yhden napsautuksen korjauksilla.",
+        "description": "Tarkista englannin kielioppi ja tyyli LaTeXissa, Typstissa ja Markdownissa sekä lähdekoodi- että visuaalisessa muokkauksessa, yhden napsautuksen korjauksilla.",
         "label": "Kielioppi ja tyyli (Harper)",
         "englishOnly": "Kieliopin tarkistus toimii vain englannille. Se on tauolla, kun oikeinkirjoitussanakirja on {{name}}."
       },

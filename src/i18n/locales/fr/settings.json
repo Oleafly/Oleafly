@@ -654,7 +654,7 @@
         "label": "Curseur sans clignotement"
       },
       "stickyScroll": {
-        "description": "Garder les sections et environnements LaTeX en cours affichés en haut pendant le défilement.",
+        "description": "Garder les sections, titres et environnements en cours affichés en haut pendant le défilement.",
         "label": "Défilement ancré"
       },
       "theme": {

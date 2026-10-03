@@ -644,7 +644,7 @@
         "label": "깜박이지 않는 커서"
       },
       "stickyScroll": {
-        "description": "스크롤하는 동안 현재 LaTeX 절과 환경을 위쪽에 고정합니다.",
+        "description": "스크롤하는 동안 현재 절, 제목, 환경을 위쪽에 고정합니다.",
         "label": "고정 스크롤"
       },
       "theme": {

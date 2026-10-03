@@ -827,7 +827,7 @@
         "offlineRefused": "Offlinetilstand er slået til. Slå den fra for at downloade {{name}}."
       },
       "harper": {
-        "description": "Tjek engelsk grammatik og stil i Kilde- og Visuel-redigering af LaTeX og Markdown samt i Kilde-redigering af Typst, med rettelser på ét klik.",
+        "description": "Tjek engelsk grammatik og stil i LaTeX, Typst og Markdown, både i Kilde- og Visuel-redigering, med rettelser på ét klik.",
         "label": "Grammatik og stil (Harper)",
         "englishOnly": "Grammatikkontrol virker kun for engelsk. Den er sat på pause, mens stavningsordbogen er {{name}}."
       },

@@ -61,6 +61,7 @@ import {
   duplicateProject,
 } from "@/lib/tauri";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import type { FormattingProfile } from "@/lib/document-engine";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { logError } from "@/lib/log";
 import { notifyError } from "@/lib/toast";
@@ -91,12 +92,18 @@ function formatForTarget(target: string): DocFormat {
   }
 }
 
-function classifyDoc(source: string): "presentation" | "book" | "doc" {
+type ExportKind = "presentation" | "book" | "doc" | "classless";
+
+function classifyDoc(source: string, profile: FormattingProfile): ExportKind {
+  if (profile !== "latex") return "classless";
   if (/\\documentclass(\[[^\]]*\])?\{\s*beamer\s*\}/.test(source)) return "presentation";
   if (/\\documentclass(\[[^\]]*\])?\{\s*(book|report|memoir|scrbook|scrreprt)\s*\}/.test(source))
     return "book";
   return "doc";
 }
+
+const offersSlides = (kind: ExportKind) => kind === "presentation" || kind === "classless";
+const offersEpub = (kind: ExportKind) => kind === "book" || kind === "classless";
 
 export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof Columns2 }[] = [
   {
@@ -315,14 +322,14 @@ export function TopToolbar() {
   };
   const [dlOpen, setDlOpen] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
-  const [exportKind, setExportKind] = useState<"presentation" | "book" | "doc">("doc");
+  const [exportKind, setExportKind] = useState<ExportKind>("doc");
 
   // Imperative read (not a subscription) to avoid re-rendering on every keystroke.
   const prepareExportMenu = () => {
     const f = useFilesStore.getState();
     // A root directive can redirect export to another document.
     const src = f.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "";
-    setExportKind(classifyDoc(src));
+    setExportKind(classifyDoc(src, f.engine.capabilities.formatting_profile));
   };
   const setExportMenuOpen = (open: boolean) => {
     if (open && exporting) return;
@@ -470,7 +477,7 @@ export function TopToolbar() {
         </DropdownMenuItem>}
       </>
     )}
-    {exportKind === "presentation" && engine.capabilities.conversion_exports.includes("pptx") && (
+    {offersSlides(exportKind) && engine.capabilities.conversion_exports.includes("pptx") && (
       <>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void doExportFormat("pptx")}>
@@ -479,7 +486,7 @@ export function TopToolbar() {
         </DropdownMenuItem>
       </>
     )}
-    {exportKind === "book" && engine.capabilities.conversion_exports.includes("epub") && (
+    {offersEpub(exportKind) && engine.capabilities.conversion_exports.includes("epub") && (
       <>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void doExportFormat("epub")}>

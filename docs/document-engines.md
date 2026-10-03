@@ -1,21 +1,21 @@
 # Document engines
 
-Oleafly loads one backend-owned engine descriptor when a project opens. The frontend treats that descriptor as the source of truth for formatting, preflight, compile options, diagrams, SyncTeX, and conversion exports. Until it loads successfully those controls stay unavailable rather than guessing from a filename.
+Oleafly loads one backend-owned engine descriptor when a project opens. The frontend treats that descriptor as the source of truth for formatting, preflight, compile options, diagrams, source and PDF sync, and conversion exports. Until it loads successfully those controls stay unavailable rather than guessing from a filename.
 
 | Capability | LaTeX / Tectonic | Typst | Markdown / Pandoc |
 |---|---|---|---|
 | Main source | `.tex`, `.ltx`, `.latex` | `.typ` | `.md`, `.markdown` |
 | PDF compile and shared PDF preflight | Yes | Yes | Yes |
-| Source preflight | LaTeX rules | Not yet, labelled unavailable | Not yet, labelled unavailable |
+| Source preflight | LaTeX rules | Typst rules | Not yet, labelled unavailable |
 | Formatting profile | LaTeX | Typst | Pandoc Markdown |
 | Project index and citations | Yes | Yes | Yes |
-| SyncTeX | Yes | No | No |
-| Offline compiler mode | Yes | No separate mode | No separate mode |
-| Isolated figure studio | Yes | No | No |
-| Conversion exports | DOCX, HTML, Markdown, text, plus PPTX/EPUB where relevant | None | DOCX, HTML, text, plus PPTX/EPUB where relevant |
+| Source and PDF sync | Yes, through SyncTeX | Yes, on Typst 0.13 and later (Tinymist 0.13.30 or later) | No |
+| Offline compiler mode | Yes | Yes, with cached packages only | No separate mode |
+| AI figure tools | TikZ, compiled in isolation | CeTZ or fletcher, rendered as a Typst snippet | No |
+| Conversion exports | DOCX, HTML, Markdown, text, Typst, plus PPTX/EPUB where relevant | LaTeX, DOCX, HTML, Markdown, text, EPUB | DOCX, HTML, text, Typst, LaTeX, PPTX, EPUB |
 | Bundled blank template | Yes | Yes | Yes |
 
-Typst and Markdown source checks are intentionally not simulated with LaTeX regular expressions. Compile-log and PDF checks remain shared when the engine provides those inputs. LaTeX projects also receive source-level submission, reference, accessibility, privacy, and ATS checks.
+Typst projects get their own source rules, checked against the project's Typst version. Markdown source checks are not simulated with LaTeX regular expressions. Compile-log and PDF checks remain shared when the engine provides those inputs. LaTeX projects also receive source-level submission, reference, accessibility, privacy, and ATS checks.
 
 Preflight reports coverage separately for compile, submission, ATS,
 accessibility, references, and privacy. A check is `not_run` when its required
