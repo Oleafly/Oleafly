@@ -182,6 +182,14 @@
       "keywords": "terminal shell console nieuw",
       "label": "Nieuwe terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "alle editor tabbladen bestanden sluiten",
+      "label": "Alle editortabbladen sluiten"
+    },
+    "closeAssistantTabs": {
+      "keywords": "tabbladen bestanden assistent ai agent geopend sluiten",
+      "label": "Bestanden sluiten die de assistent heeft geopend"
+    },
     "offline": {
       "offline": "Offlinemodus (--only-cached)",
       "online": "Onlinemodus (pakketten mogen worden opgehaald)"

@@ -205,7 +205,17 @@
     "noFileOpen": "Nie otwarto pliku.",
     "noFileOpenHint": "Wybierz plik z drzewa, aby zacząć edycję.",
     "linkedFileReadOnly": "{{file}} wskazuje plik poza tym folderem, więc nie możesz go tu edytować. Zmień go tam, gdzie się znajduje, na przykład w Zotero.",
-    "diffOnDisk": "Na dysku"
+    "diffOnDisk": "Na dysku",
+    "assistantTab": "Otwarty przez asystenta",
+    "closeOthers": "Zamknij pozostałe",
+    "closeLeft": "Zamknij wszystkie po lewej",
+    "closeRight": "Zamknij wszystkie po prawej",
+    "closeAll": "Zamknij wszystkie",
+    "closeAssistantTabs": "Zamknij pliki otwarte przez asystenta",
+    "closeAssistantTabsCount_one": "Zamknij plik otwarty przez asystenta",
+    "closeAssistantTabsCount_few": "Zamknij {{count}} pliki otwarte przez asystenta",
+    "closeAssistantTabsCount_many": "Zamknij {{count}} plików otwartych przez asystenta",
+    "closeAssistantTabsCount_other": "Zamknij {{count}} pliku otwartego przez asystenta"
   },
   "projectInfo": {
     "trigger": "Informacje o projekcie",

@@ -184,6 +184,14 @@
       "keywords": "terminal shell consolă nou",
       "label": "Terminal nou"
     },
+    "closeAllEditorTabs": {
+      "keywords": "închide toate file editor fișiere",
+      "label": "Închide toate filele editorului"
+    },
+    "closeAssistantTabs": {
+      "keywords": "închide file fișiere asistent ia agent deschise",
+      "label": "Închide fișierele deschise de asistent"
+    },
     "offline": {
       "offline": "Mod offline (--only-cached)",
       "online": "Mod online (permite descărcarea pachetelor)"

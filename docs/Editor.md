@@ -41,6 +41,11 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   they do not infer behavior from a file extension alone.
 - Vim mode, find and replace, code folding, multi-file tabs, and slash-command
   insertion are application contributions rather than editor parser logic.
+- File and diff tabs share one strip in open order. Each tab has a context
+  menu (Close, Close others, Close all to the left or right, Close all) and
+  closes on a middle click. Tabs opened by the assistant, through its writes,
+  reveals or approval cards, are tracked in the files store and marked, so
+  they can be closed together. Opening such a file yourself clears the mark.
 - LaTeX structural helpers: Enter continues `\item` lists. A description item
   comes out as `\item[] ` with the caret in the label. An empty item deletes
   its marker. When the inner list closes right below it, the item moves out to

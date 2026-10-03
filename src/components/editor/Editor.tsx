@@ -1,8 +1,8 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
-import { FileText, Settings2, X } from "lucide-react";
+import { FileText, Settings2 } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
@@ -19,8 +19,8 @@ import { wrapSelection } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
 import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
 import { ChangedOnDiskBanner } from "./ChangedOnDiskBanner";
-import { FileTabStatus } from "./FileTabStatus";
-import { useDiffStore, diffKey, type DiffSide } from "@/store/diff";
+import { CloseAssistantTabsButton, EditorTabStrip } from "./EditorTabStrip";
+import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { imageMime, isImagePath } from "@/lib/image-mime";
@@ -59,12 +59,6 @@ const FORMATTING_SHORTCUTS: ReadonlyMap<string, "bold" | "italic"> = new Map([
   ["b", "bold"],
   ["i", "italic"],
 ]);
-
-const DIFF_TAB_SIDE_LABEL = {
-  working: "diffWorkingTree",
-  staged: "diffIndex",
-  disk: "diffOnDisk",
-} as const satisfies Record<DiffSide, string>;
 
 function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
   const { t } = useTranslation(["common", "editor"]);
@@ -138,38 +132,15 @@ export function Editor() {
       else element.removeAttribute("aria-busy");
     },
   }), []);
-  const openTabs = useFilesStore((s) => s.openTabs);
   const activePath = useFilesStore((s) => s.activePath);
   const manifestHome = useFilesStore((s) => s.manifestHome);
   const managedFile = !!activePath && isManagedProjectPath(activePath, manifestHome);
   const linkedFile = useFilesStore(
     (s) => !!s.activePath && isReadOnlyLink(s.activePath, s.tree),
   );
-  const setActive = useFilesStore((s) => s.setActive);
-  const closeTab = useFilesStore((s) => s.closeTab);
   const diffs = useDiffStore((s) => s.diffs);
   const activeKey = useDiffStore((s) => s.activeKey);
-  const setActiveDiff = useDiffStore((s) => s.setActiveDiff);
-  const closeDiff = useDiffStore((s) => s.closeDiff);
   const diffFocused = activeKey !== null && diffs.some((d) => diffKey(d) === activeKey);
-  const tabOrder = useFilesStore((s) => s.tabOrder);
-
-  // Files and diffs interleaved into one strip; re-opening a tab keeps its
-  // stamp (see the stores) so it doesn't jump position.
-  const tabs = useMemo(() => {
-    const fileTabs = openTabs.map((path) => ({
-      kind: "file" as const,
-      id: path,
-      order: tabOrder[path] ?? 0,
-    }));
-    const diffTabs = diffs.map((d) => ({
-      kind: "diff" as const,
-      id: diffKey(d),
-      d,
-      order: d.order,
-    }));
-    return [...fileTabs, ...diffTabs].sort((a, b) => a.order - b.order);
-  }, [openTabs, diffs, tabOrder]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -468,79 +439,9 @@ export function Editor() {
         <div className="flex shrink-0 items-center border-r border-border pl-2 pr-1">
           <SidebarCollapseToggle />
         </div>
-        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 no-scrollbar">
-        {tabs.length === 0 && (
-          <span className="px-2 text-xs text-muted-foreground">
-            {t(($) => $.editor.shell.noFileOpenTab)}
-          </span>
-        )}
-        {tabs.map((tab) =>
-          tab.kind === "file" ? (
-            <div
-              key={`f:${tab.id}`}
-              className={cn(
-                "group flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs",
-                tab.id === activePath && !diffFocused
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-accent"
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => setActive(tab.id)}
-                className="flex items-center gap-1.5"
-              >
-                {basename(tab.id)}
-                <FileTabStatus path={tab.id} />
-              </button>
-              <button
-                type="button"
-                aria-label={t(($) => $.editor.shell.closeFile, { name: basename(tab.id) })}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeTab(tab.id);
-                }}
-                className="ml-0.5 cursor-pointer rounded p-0.5 hover:bg-accent"
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          ) : (
-            <div
-              key={`d:${tab.id}`}
-              className={cn(
-                "group flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs",
-                activeKey === tab.id
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-accent"
-              )}
-            >
-              <button
-                type="button"
-                onClick={() => setActiveDiff(tab.id)}
-                className="flex items-center gap-1.5"
-              >
-                {basename(tab.d.path)}
-                <span className="text-muted-foreground">
-                  {t(($) => $.editor.shell[DIFF_TAB_SIDE_LABEL[tab.d.side]])}
-                </span>
-              </button>
-              <button
-                type="button"
-                aria-label={t(($) => $.editor.shell.closeDiffTab, { name: basename(tab.d.path) })}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeDiff(tab.id);
-                }}
-                className="ml-0.5 cursor-pointer rounded p-0.5 hover:bg-accent"
-              >
-                <X className="size-3" />
-              </button>
-            </div>
-          )
-        )}
-        </div>
-        <div className="flex shrink-0 items-center border-l border-border pl-1 pr-2">
+        <EditorTabStrip diffFocused={diffFocused} />
+        <div className="flex shrink-0 items-center gap-1 border-l border-border pl-1 pr-2">
+          <CloseAssistantTabsButton />
           <Tooltip label={t(($) => $.editor.shell.editorSettings)} side="bottom">
             <button
               type="button"

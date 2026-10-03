@@ -205,7 +205,14 @@
     "noFileOpen": "ファイルが開かれていません。",
     "noFileOpenHint": "ツリーからファイルを選ぶと編集を始められます。",
     "linkedFileReadOnly": "{{file}} はこのフォルダ外のファイルへのリンクのため、ここでは編集できません。Zotero など、ファイルがある場所で変更してください。",
-    "diffOnDisk": "ディスク上"
+    "diffOnDisk": "ディスク上",
+    "assistantTab": "アシスタントが開いたファイル",
+    "closeOthers": "ほかを閉じる",
+    "closeLeft": "左側をすべて閉じる",
+    "closeRight": "右側をすべて閉じる",
+    "closeAll": "すべて閉じる",
+    "closeAssistantTabs": "アシスタントが開いたファイルを閉じる",
+    "closeAssistantTabsCount_other": "アシスタントが開いた {{count}} 個のファイルを閉じる"
   },
   "projectInfo": {
     "trigger": "プロジェクト情報",

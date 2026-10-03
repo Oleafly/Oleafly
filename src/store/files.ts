@@ -415,6 +415,12 @@ export interface SaveBlockedState {
   failures: SaveFailure[];
 }
 
+export type TabOpener = "user" | "assistant";
+
+export interface OpenFileOptions {
+  opener?: TabOpener;
+}
+
 const describeFailure = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
@@ -438,6 +444,7 @@ interface FilesStore {
   // Open-order stamp per file tab, shared with diff tabs so the editor renders
   // files and diffs interleaved by the order they were opened.
   tabOrder: Record<string, number>;
+  assistantTabs: string[];
   activePath: string | null;
   projects: ProjectInfo[];
   projectsLoaded: boolean;
@@ -472,9 +479,10 @@ interface FilesStore {
 
   refreshTree: (options?: { keepUnchanged?: boolean }) => Promise<boolean>;
   resumeAutosave: (projectId: string) => void;
-  openFile: (path: string) => Promise<void>;
+  openFile: (path: string, options?: OpenFileOptions) => Promise<void>;
   setActive: (path: string) => void;
   closeTab: (path: string) => void;
+  closeTabs: (paths: readonly string[]) => void;
   setContent: (path: string, content: string, opts?: { bumpVersion?: boolean }) => boolean;
   bumpDocVersion: () => void;
   saveActive: (options?: SaveOptions) => Promise<void>;
@@ -497,7 +505,12 @@ interface FilesStore {
   ) => Promise<T>;
   recordMutationGeneration: (projectId: string, generation: number) => void;
   writeProjectFile: (projectId: string, path: string, content: string) => Promise<void>;
-  applyExternalWrite: (projectId: string, path: string, content: string) => boolean;
+  applyExternalWrite: (
+    projectId: string,
+    path: string,
+    content: string,
+    options?: OpenFileOptions,
+  ) => boolean;
   applyExternalReload: (projectId: string, path: string, content: string) => boolean;
   applyExternalDelete: (projectId: string, path: string) => boolean;
   applyExternalRename: (projectId: string, from: string, to: string) => boolean;
@@ -892,6 +905,57 @@ function discardQueuedSavesUnder(
   return { discardedPending, writes };
 }
 
+type TabState = Pick<FilesStore, "openTabs" | "tabOrder" | "assistantTabs" | "activePath">;
+
+function keepAssistantTabs(assistantTabs: readonly string[], openTabs: readonly string[]): string[] {
+  return assistantTabs.filter((path) => openTabs.includes(path));
+}
+
+function remapTabList(
+  paths: readonly string[],
+  keep: (path: string) => boolean,
+  remap: (path: string) => string,
+): string[] {
+  return [...new Set(paths.filter(keep).map(remap))];
+}
+
+function assistantTabsAfterOpen(
+  assistantTabs: string[],
+  path: string,
+  isNew: boolean,
+  opener: TabOpener = "user",
+): string[] {
+  if (opener === "user") {
+    return assistantTabs.includes(path) ? assistantTabs.filter((p) => p !== path) : assistantTabs;
+  }
+  return isNew && !assistantTabs.includes(path) ? [...assistantTabs, path] : assistantTabs;
+}
+
+function tabsAfterExternalWrite(
+  s: TabState,
+  path: string,
+  opener: TabOpener = "user",
+): Pick<TabState, "openTabs" | "tabOrder" | "assistantTabs"> {
+  if (s.openTabs.includes(path)) {
+    return { openTabs: s.openTabs, tabOrder: s.tabOrder, assistantTabs: s.assistantTabs };
+  }
+  return {
+    openTabs: [...s.openTabs, path],
+    tabOrder: { ...s.tabOrder, [path]: nextTabSeq() },
+    assistantTabs: assistantTabsAfterOpen(s.assistantTabs, path, true, opener),
+  };
+}
+
+function withoutTabs(s: TabState, closing: ReadonlySet<string>): TabState {
+  const openTabs = s.openTabs.filter((path) => !closing.has(path));
+  return {
+    openTabs,
+    tabOrder: Object.fromEntries(Object.entries(s.tabOrder).filter(([path]) => !closing.has(path))),
+    assistantTabs: s.assistantTabs.filter((path) => !closing.has(path)),
+    activePath: s.activePath && closing.has(s.activePath) ? (openTabs.at(-1) ?? null) : s.activePath,
+  };
+}
+
 function pruneDeletedPaths(s: FilesStore, isDeletedPath: (candidate: string) => boolean) {
   const files = Object.fromEntries(
     Object.entries(s.files).filter(([candidate]) => !isDeletedPath(candidate)),
@@ -905,6 +969,7 @@ function pruneDeletedPaths(s: FilesStore, isDeletedPath: (candidate: string) => 
     files,
     tabOrder,
     openTabs,
+    assistantTabs: keepAssistantTabs(s.assistantTabs, openTabs),
     activePath: deletedActive ? (openTabs.at(-1) ?? null) : s.activePath,
   };
 }
@@ -1441,6 +1506,7 @@ function reconciledProjectState(
     files,
     openTabs,
     tabOrder: Object.fromEntries(Object.entries(state.tabOrder).filter(([path]) => retained(path))),
+    assistantTabs: keepAssistantTabs(state.assistantTabs, openTabs),
     activePath:
       state.activePath && retained(state.activePath) ? state.activePath : (openTabs.at(-1) ?? null),
     docVersion: state.docVersion + 1,
@@ -1496,6 +1562,7 @@ function settleProjectStateReloadFailure(
       const openTabs = state.openTabs.filter((path) => files[path]);
       return {
         ...metadata, files, openTabs,
+        assistantTabs: keepAssistantTabs(state.assistantTabs, openTabs),
         activePath: state.activePath && files[state.activePath] ? state.activePath : openTabs.at(-1) ?? null,
         docVersion: state.docVersion + 1,
       };
@@ -1539,6 +1606,7 @@ const EMPTY_PROJECT_STATE = {
   files: {},
   openTabs: [],
   tabOrder: {},
+  assistantTabs: [],
   activePath: null,
   loading: false,
   saveBlocked: null,
@@ -1561,6 +1629,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   files: {},
   openTabs: [],
   tabOrder: {},
+  assistantTabs: [],
   activePath: null,
   projects: [],
   projectsLoaded: false,
@@ -1751,7 +1820,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     scheduleAutosave(get);
   },
 
-  openFile: async (path) => {
+  openFile: async (path, options) => {
     const { projectId, files } = get();
     if (!projectId) return;
     if (path.endsWith("/")) return;
@@ -1798,6 +1867,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return {
         openTabs: isNew ? [...s.openTabs, path] : s.openTabs,
         tabOrder: isNew ? { ...s.tabOrder, [path]: nextTabSeq() } : s.tabOrder,
+        assistantTabs: assistantTabsAfterOpen(s.assistantTabs, path, isNew, options?.opener),
         activePath: path,
       };
     });
@@ -1809,17 +1879,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set({ activePath: path });
   },
 
-  closeTab: (path) => {
-    const { projectId, openTabs, activePath, tabOrder } = get();
-    invalidatePendingFileOpen(projectId, path);
-    const next = openTabs.filter((p) => p !== path);
-    const nextOrder = { ...tabOrder };
-    delete nextOrder[path];
-    set({
-      openTabs: next,
-      tabOrder: nextOrder,
-      activePath: activePath === path ? (next[next.length - 1] ?? null) : activePath,
-    });
+  closeTab: (path) => get().closeTabs([path]),
+
+  closeTabs: (paths) => {
+    if (paths.length === 0) return;
+    const closing = new Set(paths);
+    const projectId = get().projectId;
+    for (const path of closing) invalidatePendingFileOpen(projectId, path);
+    set((s) => withoutTabs(s, closing));
   },
 
   setContent: (path, content, opts) => {
@@ -2018,19 +2085,12 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         if (conflictStrategy === "replace" && isWithin(k, to) && !isWithin(k, from)) continue;
         tabOrder[remap(k)] = v;
       }
-      const openTabs = [
-        ...new Set(
-          s.openTabs
-            .filter(
-              (path) =>
-                conflictStrategy !== "replace" || !isWithin(path, to) || isWithin(path, from),
-            )
-            .map(remap),
-        ),
-      ];
+      const keptTab = (path: string) =>
+        conflictStrategy !== "replace" || !isWithin(path, to) || isWithin(path, from);
       return {
         files,
-        openTabs,
+        openTabs: remapTabList(s.openTabs, keptTab, remap),
+        assistantTabs: remapTabList(s.assistantTabs, keptTab, remap),
         tabOrder,
         activePath: s.activePath ? remap(s.activePath) : null,
         mainDoc: remap(s.mainDoc),
@@ -2273,7 +2333,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
   // disk, so the in-memory editor buffer stays in sync and the next save does
   // not clobber the edit. Cross-window broadcast is done by the AI host so
   // listeners can re-apply without echoing forever.
-  applyExternalWrite: (projectId, path, content) => {
+  applyExternalWrite: (projectId, path, content, options) => {
     if (get().projectId !== projectId) return false;
     const canonicalContent = normalizeTextContent(content);
     rememberDiskSnapshot(projectId, path, diskSnapshotOf(content));
@@ -2324,7 +2384,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       const activatesPath = !s.activePath || s.activePath === path;
       return {
         files: { ...s.files, [path]: { content: canonicalContent, dirty: false } },
-        openTabs: s.openTabs.includes(path) ? s.openTabs : [...s.openTabs, path],
+        ...tabsAfterExternalWrite(s, path, options?.opener),
         activePath: s.activePath || path,
         docVersion: activatesPath ? s.docVersion + 1 : s.docVersion,
       };
@@ -2378,6 +2438,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         files,
         tabOrder,
         openTabs,
+        assistantTabs: keepAssistantTabs(s.assistantTabs, openTabs),
         activePath: s.activePath && files[s.activePath] ? s.activePath : openTabs.at(-1) ?? null,
       };
     });
@@ -2446,6 +2507,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         files,
         tabOrder,
         openTabs: s.openTabs.map(remap),
+        assistantTabs: s.assistantTabs.map(remap),
         activePath: s.activePath === from ? to : remappedActivePath(s.activePath),
         mainDoc,
         docVersion: s.activePath === from || s.activePath?.startsWith(`${from}/`) ? s.docVersion + 1 : s.docVersion,

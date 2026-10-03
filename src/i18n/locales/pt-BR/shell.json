@@ -184,6 +184,14 @@
       "keywords": "terminal shell console novo",
       "label": "Novo terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "fechar todas abas editor arquivos",
+      "label": "Fechar todas as abas do editor"
+    },
+    "closeAssistantTabs": {
+      "keywords": "fechar abas arquivos assistente ia agente abertos",
+      "label": "Fechar os arquivos abertos pelo assistente"
+    },
     "offline": {
       "offline": "Modo offline (--only-cached)",
       "online": "Modo online (permitir baixar pacotes)"

@@ -182,6 +182,14 @@
       "keywords": "terminal shell konsol ny",
       "label": "Ny terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "stäng alla redigerare flikar filer",
+      "label": "Stäng alla redigerarflikar"
+    },
+    "closeAssistantTabs": {
+      "keywords": "stäng flikar filer assistent ai agent öppnat",
+      "label": "Stäng filer som assistenten har öppnat"
+    },
     "offline": {
       "offline": "Offlineläge (--only-cached)",
       "online": "Onlineläge (tillåt hämtning av paket)"

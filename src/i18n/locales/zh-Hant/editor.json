@@ -205,7 +205,14 @@
     "noFileOpen": "未開啟任何檔案。",
     "noFileOpenHint": "從檔案樹選一個檔案即可開始編輯。",
     "linkedFileReadOnly": "{{file}} 連結到此資料夾以外的檔案，因此無法在這裡編輯。請到檔案所在的位置修改，例如在 Zotero 中。",
-    "diffOnDisk": "磁碟上"
+    "diffOnDisk": "磁碟上",
+    "assistantTab": "由助理開啟",
+    "closeOthers": "關閉其他分頁",
+    "closeLeft": "關閉左側全部",
+    "closeRight": "關閉右側全部",
+    "closeAll": "關閉全部",
+    "closeAssistantTabs": "關閉助理開啟的檔案",
+    "closeAssistantTabsCount_other": "關閉助理開啟的 {{count}} 個檔案"
   },
   "projectInfo": {
     "trigger": "專案資訊",

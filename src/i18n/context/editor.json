@@ -35,7 +35,11 @@
   "shell": {
     "diffIndex": "Git index side of a diff tab, shown in parentheses after the file name",
     "diffWorkingTree": "Git working tree side of a diff tab, shown in parentheses after the file name",
-    "diffOnDisk": "Suffix on a comparison tab whose left side is the file as saved on disk"
+    "diffOnDisk": "Suffix on a comparison tab whose left side is the file as saved on disk",
+    "assistantTab": "Screen reader text and tooltip for the small sparkle mark on an editor tab that the AI assistant opened",
+    "closeAssistantTabs": "Editor tab right-click menu item that closes every tab the AI assistant opened, leaving the tabs the user opened",
+    "closeAssistantTabsCount_one": "Tooltip of the tab bar button that closes the one editor tab the AI assistant opened",
+    "closeAssistantTabsCount_other": "Tooltip of the tab bar button that closes every editor tab the AI assistant opened. {{count}} is how many such tabs are open"
   },
   "log": {
     "open": "Jumps to the source line of a compile error",

@@ -2358,3 +2358,141 @@ describe("project.json in an opened folder", () => {
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
   });
 });
+
+describe("editor tab bookkeeping", () => {
+  const CLEAN = { content: "x\n", dirty: false };
+
+  function openThree(extra: Record<string, unknown> = {}) {
+    useFilesStore.setState({
+      files: { "a.tex": CLEAN, "b.tex": CLEAN, "c.tex": CLEAN },
+      openTabs: ["a.tex", "b.tex", "c.tex"],
+      tabOrder: { "a.tex": 1, "b.tex": 2, "c.tex": 3 },
+      assistantTabs: [],
+      activePath: "b.tex",
+      ...extra,
+    });
+  }
+
+  it("closes several tabs at once and keeps the active tab when it stays open", () => {
+    openThree();
+
+    useFilesStore.getState().closeTabs(["a.tex", "c.tex"]);
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).toEqual(["b.tex"]);
+    expect(state.tabOrder).toEqual({ "b.tex": 2 });
+    expect(state.activePath).toBe("b.tex");
+    expect(state.files["a.tex"]).toEqual(CLEAN);
+  });
+
+  it("falls back to the last remaining tab when the active tab closes, like closeTab", () => {
+    openThree();
+    useFilesStore.getState().closeTabs(["b.tex", "c.tex"]);
+    expect(useFilesStore.getState().activePath).toBe("a.tex");
+
+    openThree();
+    useFilesStore.getState().closeTab("b.tex");
+    expect(useFilesStore.getState()).toMatchObject({
+      openTabs: ["a.tex", "c.tex"],
+      activePath: "c.tex",
+    });
+
+    useFilesStore.getState().closeTabs(["a.tex", "c.tex"]);
+    expect(useFilesStore.getState()).toMatchObject({ openTabs: [], activePath: null });
+  });
+
+  it("marks a tab the assistant opens, but not one the user already had open", async () => {
+    openThree({ openTabs: ["a.tex"], tabOrder: { "a.tex": 1 }, activePath: "a.tex" });
+
+    await useFilesStore.getState().openFile("b.tex", { opener: "assistant" });
+    await useFilesStore.getState().openFile("a.tex", { opener: "assistant" });
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).toEqual(["a.tex", "b.tex"]);
+    expect(state.assistantTabs).toEqual(["b.tex"]);
+    expect(state.activePath).toBe("a.tex");
+  });
+
+  it("never marks a tab the user opens, and clears the mark when the user opens it", async () => {
+    openThree({ openTabs: [], tabOrder: {}, activePath: null });
+
+    await useFilesStore.getState().openFile("a.tex");
+    await useFilesStore.getState().openFile("b.tex", { opener: "assistant" });
+    await useFilesStore.getState().openFile("c.tex", { opener: "assistant" });
+    expect(useFilesStore.getState().assistantTabs).toEqual(["b.tex", "c.tex"]);
+
+    await useFilesStore.getState().openFile("b.tex");
+    expect(useFilesStore.getState().assistantTabs).toEqual(["c.tex"]);
+
+    await useFilesStore.getState().openFile("b.tex", { opener: "assistant" });
+    expect(useFilesStore.getState().assistantTabs).toEqual(["c.tex"]);
+  });
+
+  it("drops the mark when its tab closes", () => {
+    openThree({ assistantTabs: ["a.tex", "c.tex"] });
+
+    useFilesStore.getState().closeTab("a.tex");
+    expect(useFilesStore.getState().assistantTabs).toEqual(["c.tex"]);
+
+    useFilesStore.getState().closeTabs(["b.tex", "c.tex"]);
+    expect(useFilesStore.getState().assistantTabs).toEqual([]);
+  });
+
+  it("forgets every mark when the project closes or another project opens", async () => {
+    openThree({ assistantTabs: ["a.tex", "c.tex"] });
+    await useFilesStore.getState().closeProject();
+    expect(useFilesStore.getState()).toMatchObject({ openTabs: [], assistantTabs: [] });
+
+    openThree({ assistantTabs: ["a.tex"] });
+    primeOpen();
+    await useFilesStore.getState().openProject("opened");
+    expect(useFilesStore.getState()).toMatchObject({ projectId: "opened", assistantTabs: [] });
+  });
+
+  it("follows a renamed tab and forgets a deleted one", () => {
+    openThree({ assistantTabs: ["a.tex", "c.tex"] });
+
+    useFilesStore.getState().applyExternalRename("project", "a.tex", "intro.tex");
+    expect(useFilesStore.getState().assistantTabs).toEqual(["intro.tex", "c.tex"]);
+
+    useFilesStore.getState().applyExternalDelete("project", "c.tex");
+    expect(useFilesStore.getState().assistantTabs).toEqual(["intro.tex"]);
+  });
+
+  it("stamps the open order of a tab an external write adds, and keeps an open tab's stamp", () => {
+    useFilesStore.setState({
+      files: { "main.tex": CLEAN },
+      openTabs: ["main.tex"],
+      tabOrder: { "main.tex": 5 },
+      assistantTabs: [],
+      activePath: "main.tex",
+    });
+
+    useFilesStore.getState().applyExternalWrite("project", "main.tex", "new\n");
+    useFilesStore.getState().applyExternalWrite("project", "figure.tex", "drawn\n");
+
+    const state = useFilesStore.getState();
+    expect(state.openTabs).toEqual(["main.tex", "figure.tex"]);
+    expect(state.tabOrder).toEqual({ "main.tex": 5, "figure.tex": 1 });
+    expect(state.assistantTabs).toEqual([]);
+  });
+
+  it("marks a tab only when an assistant write is the one that opens it", () => {
+    useFilesStore.setState({
+      files: { "main.tex": CLEAN },
+      openTabs: ["main.tex"],
+      tabOrder: { "main.tex": 5 },
+      assistantTabs: [],
+      activePath: "main.tex",
+    });
+
+    useFilesStore.getState().applyExternalWrite("project", "main.tex", "edited\n", { opener: "assistant" });
+    useFilesStore.getState().applyExternalWrite("project", "notes.tex", "made\n", { opener: "assistant" });
+
+    expect(useFilesStore.getState()).toMatchObject({
+      openTabs: ["main.tex", "notes.tex"],
+      assistantTabs: ["notes.tex"],
+      activePath: "main.tex",
+    });
+  });
+});

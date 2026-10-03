@@ -182,6 +182,14 @@
       "keywords": "pääte shell konsoli uusi terminal console new",
       "label": "Uusi pääte"
     },
+    "closeAllEditorTabs": {
+      "keywords": "sulje kaikki editori välilehdet tiedostot",
+      "label": "Sulje kaikki editorin välilehdet"
+    },
+    "closeAssistantTabs": {
+      "keywords": "sulje välilehdet tiedostot avustaja tekoäly agentti avatut",
+      "label": "Sulje avustajan avaamat tiedostot"
+    },
     "offline": {
       "offline": "Offline-tila (--only-cached)",
       "online": "Verkkotila (salli pakettien haku)"

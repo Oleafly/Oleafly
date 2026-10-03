@@ -205,7 +205,15 @@
     "noFileOpen": "No file open.",
     "noFileOpenHint": "Pick a file from the tree to start editing.",
     "linkedFileReadOnly": "{{file}} links to a file outside this folder, so you can't edit it here. Change it where it lives, for example in Zotero.",
-    "diffOnDisk": "On Disk"
+    "diffOnDisk": "On Disk",
+    "assistantTab": "Opened by the assistant",
+    "closeOthers": "Close others",
+    "closeLeft": "Close all to the left",
+    "closeRight": "Close all to the right",
+    "closeAll": "Close all",
+    "closeAssistantTabs": "Close files the assistant opened",
+    "closeAssistantTabsCount_one": "Close the file the assistant opened",
+    "closeAssistantTabsCount_other": "Close the {{count}} files the assistant opened"
   },
   "projectInfo": {
     "trigger": "Project info",

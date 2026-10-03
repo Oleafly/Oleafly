@@ -205,7 +205,14 @@
     "noFileOpen": "未打开文件。",
     "noFileOpenHint": "从文件树中选择一个文件开始编辑。",
     "linkedFileReadOnly": "{{file}} 链接到此文件夹之外的文件，因此无法在此编辑。请在它所在的位置修改，例如在 Zotero 中。",
-    "diffOnDisk": "磁盘上"
+    "diffOnDisk": "磁盘上",
+    "assistantTab": "由助手打开",
+    "closeOthers": "关闭其他标签页",
+    "closeLeft": "关闭左侧所有标签页",
+    "closeRight": "关闭右侧所有标签页",
+    "closeAll": "关闭全部标签页",
+    "closeAssistantTabs": "关闭助手打开的文件",
+    "closeAssistantTabsCount_other": "关闭助手打开的 {{count}} 个文件"
   },
   "projectInfo": {
     "trigger": "项目信息",

@@ -221,6 +221,7 @@ describe("applyExternalFileChange", () => {
     await vi.waitFor(() => {
       expect(useFilesStore.getState().openTabs).toEqual(["references.bib"]);
     });
+    expect(useFilesStore.getState().assistantTabs).toEqual(["references.bib"]);
   });
 });
 

@@ -205,7 +205,15 @@
     "noFileOpen": "Ingen fil är öppen.",
     "noFileOpenHint": "Välj en fil i trädet för att börja redigera.",
     "linkedFileReadOnly": "{{file}} länkar till en fil utanför mappen, så du kan inte redigera den här. Ändra den där den finns, till exempel i Zotero.",
-    "diffOnDisk": "På disken"
+    "diffOnDisk": "På disken",
+    "assistantTab": "Öppnad av assistenten",
+    "closeOthers": "Stäng övriga",
+    "closeLeft": "Stäng alla till vänster",
+    "closeRight": "Stäng alla till höger",
+    "closeAll": "Stäng alla",
+    "closeAssistantTabs": "Stäng filer som assistenten har öppnat",
+    "closeAssistantTabsCount_one": "Stäng filen som assistenten har öppnat",
+    "closeAssistantTabsCount_other": "Stäng de {{count}} filerna som assistenten har öppnat"
   },
   "projectInfo": {
     "trigger": "Projektinfo",

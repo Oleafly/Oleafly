@@ -205,7 +205,15 @@
     "noFileOpen": "Keine Datei geöffnet.",
     "noFileOpenHint": "Wählen Sie eine Datei aus dem Baum, um mit dem Bearbeiten zu beginnen.",
     "linkedFileReadOnly": "{{file}} verweist auf eine Datei außerhalb dieses Ordners und lässt sich hier nicht bearbeiten. Ändern Sie sie dort, wo sie liegt, zum Beispiel in Zotero.",
-    "diffOnDisk": "Auf dem Datenträger"
+    "diffOnDisk": "Auf dem Datenträger",
+    "assistantTab": "Vom Assistenten geöffnet",
+    "closeOthers": "Andere schließen",
+    "closeLeft": "Alle links schließen",
+    "closeRight": "Alle rechts schließen",
+    "closeAll": "Alle schließen",
+    "closeAssistantTabs": "Vom Assistenten geöffnete Dateien schließen",
+    "closeAssistantTabsCount_one": "Die vom Assistenten geöffnete Datei schließen",
+    "closeAssistantTabsCount_other": "Die {{count}} vom Assistenten geöffneten Dateien schließen"
   },
   "projectInfo": {
     "trigger": "Projektinfo",

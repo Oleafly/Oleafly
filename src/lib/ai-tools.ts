@@ -28,7 +28,7 @@ import {
   type TypstFigureRender,
 } from "@oleafly/ai-tools";
 import { figureToolEngine } from "@/lib/document-engine";
-import { useFilesStore } from "@/store/files";
+import { useFilesStore, type OpenFileOptions } from "@/store/files";
 import { codedSaveFailure } from "@/store/save-flush-error";
 import { projectFolderIsReadOnly, readOnlyFolderMessageInEnglish } from "@/store/folder-access";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
@@ -92,6 +92,8 @@ function insertTargetPathFor(files: ReturnType<typeof useFilesStore.getState>): 
   return files.activePath || files.mainDoc || files.engine?.main_document || "main.tex";
 }
 
+const ASSISTANT_OPENER: OpenFileOptions = { opener: "assistant" };
+
 const TYPST_FIGURE_PPI = 192;
 
 async function renderTypstFigure(projectId: string, source: string): Promise<TypstFigureRender> {
@@ -137,7 +139,7 @@ const insertAtCursorHost: AiToolsHost["insertAtCursor"] = async (
   const next = `${current.slice(0, at)}${text}\n${current.slice(at)}`;
   const result = await writeFileContent(projectId, path, next, expectedGeneration);
   recordMutationResult(projectId, result);
-  return useFilesStore.getState().applyExternalWrite(projectId, path, next);
+  return useFilesStore.getState().applyExternalWrite(projectId, path, next, ASSISTANT_OPENER);
 };
 
 const replaceRangeHost: AiToolsHost["replaceRange"] = async (
@@ -162,7 +164,7 @@ const replaceRangeHost: AiToolsHost["replaceRange"] = async (
   const next = `${current.slice(0, start)}${text}${current.slice(end)}`;
   const result = await writeFileContent(projectId, path, next, expectedGeneration);
   recordMutationResult(projectId, result);
-  return useFilesStore.getState().applyExternalWrite(projectId, path, next);
+  return useFilesStore.getState().applyExternalWrite(projectId, path, next, ASSISTANT_OPENER);
 };
 
 function delay(ms: number): Promise<void> {
@@ -179,7 +181,7 @@ function syncTexAvailable(): boolean {
 
 // An AI jump must not pull the workspace open or take keyboard focus from the chat.
 export async function revealEditorLine(path: string, line: number): Promise<boolean> {
-  return openProjectLocation({ path, line }, { keepFocus: true, showEditor: false });
+  return openProjectLocation({ path, line }, { keepFocus: true, showEditor: false, opener: "assistant" });
 }
 
 async function showPreviewSurfaces(needsEditor: boolean, needsPdf: boolean): Promise<boolean> {
@@ -324,7 +326,7 @@ const HOST: AiToolsHost = {
   applyExternalWrite: (projectId, path, content) => {
     const files = useFilesStore.getState();
     if (files.projectId !== projectId) return false;
-    const applied = files.applyExternalWrite(projectId, path, content);
+    const applied = files.applyExternalWrite(projectId, path, content, ASSISTANT_OPENER);
     const finalContent = applied
       ? content
       : useFilesStore.getState().files[path]?.content ?? content;

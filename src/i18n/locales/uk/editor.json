@@ -205,7 +205,17 @@
     "noFileOpen": "Немає відкритих файлів.",
     "noFileOpenHint": "Виберіть файл у дереві, щоб почати редагувати.",
     "linkedFileReadOnly": "{{file}} посилається на файл поза цією текою, тому тут його не можна редагувати. Змінюйте його там, де він зберігається, наприклад у Zotero.",
-    "diffOnDisk": "На диску"
+    "diffOnDisk": "На диску",
+    "assistantTab": "Відкрито асистентом",
+    "closeOthers": "Закрити інші",
+    "closeLeft": "Закрити всі ліворуч",
+    "closeRight": "Закрити всі праворуч",
+    "closeAll": "Закрити всі",
+    "closeAssistantTabs": "Закрити файли, відкриті асистентом",
+    "closeAssistantTabsCount_one": "Закрити файл, відкритий асистентом",
+    "closeAssistantTabsCount_few": "Закрити {{count}} файли, відкриті асистентом",
+    "closeAssistantTabsCount_many": "Закрити {{count}} файлів, відкритих асистентом",
+    "closeAssistantTabsCount_other": "Закрити {{count}} файлу, відкритого асистентом"
   },
   "projectInfo": {
     "trigger": "Відомості про проєкт",

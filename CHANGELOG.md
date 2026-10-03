@@ -138,6 +138,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   packages, font folders, system fonts, inputs, variants (with `--variant`)
   and reproducible builds. `oleaflyc doctor` lists them, and Typst errors in
   the terminal now include Typst's hints.
+- Editor tabs have a right-click menu that closes the tab, the others, every
+  tab to the left or right, or all of them. A middle click closes a tab.
+  Files the assistant opens carry a small sparkle mark, and one button in the
+  tab bar closes all of them. The command palette has Close all editor tabs
+  and Close files the assistant opened.
 
 ### Changed
 
@@ -250,6 +255,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Clicking the PDF of a LaTeX project with `\include` or `\input` chapters
+  could open `main.tex` instead of the chapter, most often on the last page
+  of a chapter. Clicks inside a paragraph often landed on its heading or
+  another sentence, and clicking a table of contents entry jumped into
+  whichever file was open. A click now goes to the text line under the
+  pointer and the source line each word came from, which matches TeX Live's
+  own SyncTeX tool on every word of the test documents. Go to PDF also finds
+  lines in the middle of a paragraph.
+- Files the assistant wrote opened as tabs at the far left of the tab bar
+  instead of after the tabs already open.
 - On a narrow window, the LaTeX toolbar hid buttons without offering the More
   menu, and the Typst toolbar cut its buttons off. Every editor toolbar now
   moves the buttons that do not fit into More, at any width.

@@ -184,6 +184,14 @@
       "keywords": "terminale nuovo terminal shell console new",
       "label": "Nuovo terminale"
     },
+    "closeAllEditorTabs": {
+      "keywords": "chiudi tutte schede editor file",
+      "label": "Chiudi tutte le schede dell'editor"
+    },
+    "closeAssistantTabs": {
+      "keywords": "chiudi schede file assistente ia agente aperti",
+      "label": "Chiudi i file aperti dall'assistente"
+    },
     "offline": {
       "offline": "Modalità offline (--only-cached)",
       "online": "Modalità online (consenti il download dei pacchetti)"

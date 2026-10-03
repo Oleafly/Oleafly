@@ -26,6 +26,7 @@ interface DiffState {
   mode: DiffMode;
   openDiff: (path: string, side: DiffSide) => void;
   closeDiff: (key: string) => void;
+  closeDiffs: (keys: readonly string[]) => void;
   // Focuses a diff tab without touching the open file tabs.
   setActiveDiff: (key: string) => void;
   clearActiveDiff: () => void;
@@ -59,6 +60,14 @@ export const useDiffStore = create<DiffState>((set) => ({
       diffs: s.diffs.filter((d) => diffKey(d) !== key),
       activeKey: s.activeKey === key ? null : s.activeKey,
     })),
+  closeDiffs: (keys) => {
+    if (keys.length === 0) return;
+    const closing = new Set(keys);
+    set((s) => ({
+      diffs: s.diffs.filter((d) => !closing.has(diffKey(d))),
+      activeKey: s.activeKey !== null && closing.has(s.activeKey) ? null : s.activeKey,
+    }));
+  },
   setActiveDiff: (key) => set({ activeKey: key }),
   clearActiveDiff: () => set({ activeKey: null }),
   setMode: (mode) => {

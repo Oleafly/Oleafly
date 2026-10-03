@@ -14,6 +14,13 @@ struct Doc {
     /// synctex tag → input file path.
     inputs: BTreeMap<i32, String>,
     nodes: Vec<Node>,
+    marks: Vec<Mark>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum BoxKind {
+    Vertical,
+    Horizontal,
 }
 
 struct Node {
@@ -26,6 +33,15 @@ struct Node {
     width: f64,
     height: f64,
     depth: f64,
+    kind: BoxKind,
+    parent: Option<usize>,
+}
+
+struct Mark {
+    tag: i32,
+    line: i32,
+    h: f64,
+    parent: Option<usize>,
 }
 
 #[derive(Serialize, Clone, Copy)]
@@ -338,12 +354,10 @@ fn read_synctex_text(project_id: &str, _main_doc: &str) -> Result<String, String
 fn parse(text: &str) -> Doc {
     let mut doc = Doc::default();
     let mut page = 0i32;
+    let mut open: Vec<Option<usize>> = Vec::new();
 
     for raw in text.lines() {
         let line = raw.trim_end();
-        if line.is_empty() {
-            continue;
-        }
         if let Some(rest) = line.strip_prefix("Input:") {
             // Input:<tag>:<path>
             if let Some(idx) = rest.find(':') {
@@ -354,28 +368,59 @@ fn parse(text: &str) -> Doc {
                     }
                 }
             }
-        } else if let Some(rest) = line.strip_prefix('{') {
-            // {<page> opens a page block.
-            page = rest.trim().parse().unwrap_or(0);
-        } else if line.starts_with('[') || line.starts_with('(') {
-            if let Some(node) = parse_box(line, page) {
-                doc.nodes.push(node);
-            }
+            continue;
         }
-        // Compact node forms we ignore for now: 'v'/'h' void, 'k' kern, 'g' glue, '$' math.
+        let parent = open.iter().rev().find_map(|slot| *slot);
+        match line.chars().next() {
+            Some('{') => {
+                page = line[1..].trim().parse().unwrap_or(0);
+                open.clear();
+            }
+            Some(open_char @ ('[' | '(')) => {
+                let kind = if open_char == '(' {
+                    BoxKind::Horizontal
+                } else {
+                    BoxKind::Vertical
+                };
+                let node = parse_box(line, page, kind, parent);
+                open.push(node.as_ref().map(|_| doc.nodes.len()));
+                doc.nodes.extend(node);
+            }
+            Some(']' | ')') => {
+                open.pop();
+            }
+            Some('k' | 'g' | 'x' | '$') => doc.marks.extend(parse_mark(line, parent)),
+            _ => {}
+        }
     }
     doc
 }
 
+fn tag_and_line(head: &str) -> Option<(i32, i32)> {
+    let mut head = head.split(',');
+    let tag = head.next()?.parse().ok()?;
+    let line = head.next()?.parse().ok()?;
+    Some((tag, line))
+}
+
+fn parse_mark(line: &str, parent: Option<usize>) -> Option<Mark> {
+    let (head, tail) = line[1..].split_once(':')?;
+    let (tag, line_no) = tag_and_line(head)?;
+    let h: f64 = tail.split([',', ':']).next()?.parse().ok()?;
+    Some(Mark {
+        tag,
+        line: line_no,
+        h: h * SP_TO_BP,
+        parent,
+    })
+}
+
 /// Parse a compact box line: `[tag,line:h,v:width,height,depth` (vbox) or
 /// `(tag,line:h,v:width,height,depth` (hbox).
-fn parse_box(line: &str, page: i32) -> Option<Node> {
+fn parse_box(line: &str, page: i32, kind: BoxKind, parent: Option<usize>) -> Option<Node> {
     let rest = &line[1..]; // drop leading [ or (
     let (head, tail) = rest.split_once(':')?;
-
-    let mut head = head.split(',');
-    let tag: i32 = head.next()?.parse().ok()?;
-    let line_no: i32 = head.next()?.parse().ok()?;
+    let (tag, line_no) = tag_and_line(head)?;
 
     let mut tail = tail.splitn(2, ':');
     let hv = tail.next()?;
@@ -399,6 +444,8 @@ fn parse_box(line: &str, page: i32) -> Option<Node> {
         width: width * SP_TO_BP,
         height: height * SP_TO_BP,
         depth: depth * SP_TO_BP,
+        kind,
+        parent,
     })
 }
 
@@ -484,6 +531,22 @@ fn forward(doc: &Doc, file: &str, line: i32, roots: &[String]) -> Option<Synctex
     let tag = tag_for_file(doc, file, roots)?;
     let real = |n: &Node| n.height + n.depth >= 4.0 && n.width >= 5.0;
 
+    if let Some(chosen) = doc
+        .marks
+        .iter()
+        .filter(|mark| mark.tag == tag && mark.line == line)
+        .filter_map(|mark| line_box(doc, mark.parent))
+        .filter(|n| real(n))
+        .min_by(|a, b| {
+            a.page
+                .cmp(&b.page)
+                .then((a.v - a.height).total_cmp(&(b.v - b.height)))
+                .then(a.h.total_cmp(&b.h))
+        })
+    {
+        return Some(to_rect(chosen));
+    }
+
     // Prefer an exact-line match; among those, the tightest (smallest) real box.
     let exact: Vec<&Node> = doc
         .nodes
@@ -517,16 +580,13 @@ fn to_rect(n: &Node) -> SynctexRect {
     }
 }
 
-/// Inverse search: (page, x, y) in bp → nearest node → (file, line).
+/// Inverse search: (page, x, y) in bp → (file, line).
 fn inverse(doc: &Doc, page: i32, x: f64, y: f64, roots: &[String]) -> Option<SynctexHit> {
-    let best = doc.nodes.iter().filter(|n| n.page == page).min_by(|a, b| {
-        let da = dist(a, x, y);
-        let db = dist(b, x, y);
-        da.partial_cmp(&db).unwrap_or(std::cmp::Ordering::Equal)
-    })?;
+    let chosen = pick_box(doc, page, x, y)?;
+    let (tag, line) = refine_line(doc, chosen, x);
     let file = doc
         .inputs
-        .get(&best.tag)
+        .get(&tag)
         .map(|path| {
             let path = normalized_path(path);
             project_relative(&path, roots).unwrap_or(path)
@@ -534,16 +594,114 @@ fn inverse(doc: &Doc, page: i32, x: f64, y: f64, roots: &[String]) -> Option<Syn
         .unwrap_or_default();
     Some(SynctexHit {
         file,
-        line: best.line,
+        line,
         column: 0,
     })
 }
 
-fn dist(n: &Node, x: f64, y: f64) -> f64 {
-    // Distance to the box center.
-    let cx = n.h + n.width / 2.0;
-    let cy = n.v + (n.depth - n.height) / 2.0;
-    (cx - x).hypot(cy - y)
+fn contains(n: &Node, x: f64, y: f64) -> bool {
+    x >= n.h && x <= n.h + n.width && y >= n.v - n.height && y <= n.v + n.depth
+}
+
+fn edge_distance(n: &Node, x: f64, y: f64) -> f64 {
+    let dx = (n.h - x).max(x - (n.h + n.width)).max(0.0);
+    let dy = (n.v - n.height - y).max(y - (n.v + n.depth)).max(0.0);
+    dx.hypot(dy)
+}
+
+fn area(n: &Node) -> f64 {
+    n.width * (n.height + n.depth)
+}
+
+fn within(doc: &Doc, mut index: Option<usize>, ancestor: usize) -> bool {
+    while let Some(current) = index {
+        if current == ancestor {
+            return true;
+        }
+        index = doc.nodes[current].parent;
+    }
+    false
+}
+
+fn smallest(doc: &Doc, candidates: impl Iterator<Item = usize>) -> Option<usize> {
+    candidates.min_by(|&a, &b| area(&doc.nodes[a]).total_cmp(&area(&doc.nodes[b])))
+}
+
+fn nearest(doc: &Doc, candidates: impl Iterator<Item = usize>, x: f64, y: f64) -> Option<usize> {
+    candidates.min_by(|&a, &b| {
+        let (a, b) = (&doc.nodes[a], &doc.nodes[b]);
+        edge_distance(a, x, y)
+            .total_cmp(&edge_distance(b, x, y))
+            .then(area(a).total_cmp(&area(b)))
+    })
+}
+
+fn pick_box(doc: &Doc, page: i32, x: f64, y: f64) -> Option<usize> {
+    let on_page: Vec<usize> = (0..doc.nodes.len())
+        .filter(|&index| doc.nodes[index].page == page)
+        .collect();
+    let named = |index: &usize| doc.inputs.contains_key(&doc.nodes[*index].tag);
+    let lines: Vec<usize> = on_page
+        .iter()
+        .copied()
+        .filter(|index| {
+            let node = &doc.nodes[*index];
+            named(index) && node.kind == BoxKind::Horizontal && node.width > 0.0
+        })
+        .collect();
+    let under = |index: &usize| contains(&doc.nodes[*index], x, y);
+    if let Some(line) = smallest(doc, lines.iter().copied().filter(under)) {
+        return Some(line);
+    }
+    let mut containers: Vec<usize> = on_page.iter().copied().filter(under).collect();
+    containers.sort_by(|&a, &b| area(&doc.nodes[a]).total_cmp(&area(&doc.nodes[b])));
+    containers
+        .into_iter()
+        .find_map(|container| {
+            let inside = lines
+                .iter()
+                .copied()
+                .filter(|&line| within(doc, Some(line), container));
+            nearest(doc, inside, x, y)
+        })
+        .or_else(|| nearest(doc, lines.iter().copied(), x, y))
+        .or_else(|| nearest(doc, on_page.iter().copied().filter(named), x, y))
+}
+
+fn refine_line(doc: &Doc, chosen: usize, x: f64) -> (i32, i32) {
+    let node = &doc.nodes[chosen];
+    let marks: Vec<&Mark> = doc
+        .marks
+        .iter()
+        .filter(|mark| doc.inputs.contains_key(&mark.tag) && within(doc, mark.parent, chosen))
+        .collect();
+    let from_text: Vec<&Mark> = marks
+        .iter()
+        .copied()
+        .filter(|mark| mark.tag != node.tag || mark.line != node.line)
+        .collect();
+    let pool = if from_text.is_empty() {
+        marks
+    } else {
+        from_text
+    };
+    pool.iter()
+        .rev()
+        .filter(|mark| mark.h <= x)
+        .max_by(|a, b| a.h.total_cmp(&b.h))
+        .or_else(|| pool.iter().min_by(|a, b| a.h.total_cmp(&b.h)))
+        .map_or((node.tag, node.line), |mark| (mark.tag, mark.line))
+}
+
+fn line_box(doc: &Doc, mut index: Option<usize>) -> Option<&Node> {
+    while let Some(current) = index {
+        let node = &doc.nodes[current];
+        if node.kind == BoxKind::Horizontal && node.width > 0.0 {
+            return Some(node);
+        }
+        index = node.parent;
+    }
+    None
 }
 
 #[tauri::command]
@@ -598,55 +756,186 @@ pub async fn synctex_map_line(
 mod tests {
     use super::*;
 
-    // The fixture is a real compile artifact of the default project. It only
-    // exists after the app (or a manual Tectonic run) has compiled that project,
-    // so it is absent in CI and fresh checkouts. Return None there and let the
-    // test skip rather than fail on missing state.
-    fn load_default() -> Option<String> {
-        let home = std::env::var_os("HOME")?;
-        let p = std::path::PathBuf::from(home)
-            .join(".oleafly/projects/default/.oleafly/build/_oleafly_entry.synctex.gz");
-        let bytes = std::fs::read(&p).ok()?;
-        let mut dec = GzDecoder::new(&bytes[..]);
-        let mut s = String::new();
-        dec.read_to_string(&mut s).ok()?;
-        Some(s)
+    const BOOK: &[u8] = include_bytes!("fixtures/synctex/include-book.synctex.gz");
+    const BOOK_INVERSE: &str = include_str!("fixtures/synctex/include-book.inverse.tsv");
+    const BOOK_FORWARD: &str = include_str!("fixtures/synctex/include-book.forward.tsv");
+    const ARTICLE: &[u8] = include_bytes!("fixtures/synctex/academic-article.synctex.gz");
+    const ARTICLE_INVERSE: &str = include_str!("fixtures/synctex/academic-article.inverse.tsv");
+    const ARTICLE_FORWARD: &str = include_str!("fixtures/synctex/academic-article.forward.tsv");
+
+    fn fixture(gz: &[u8]) -> Doc {
+        let mut text = String::new();
+        GzDecoder::new(gz).read_to_string(&mut text).unwrap();
+        parse(&text)
+    }
+
+    fn fixture_roots() -> Vec<String> {
+        vec!["/p".to_string()]
+    }
+
+    fn texlive_clicks(tsv: &str) -> Vec<(i32, f64, f64, &str, i32)> {
+        tsv.lines()
+            .filter(|row| !row.is_empty())
+            .map(|row| {
+                let cells: Vec<&str> = row.split('\t').collect();
+                (
+                    cells[0].parse().unwrap(),
+                    cells[1].parse().unwrap(),
+                    cells[2].parse().unwrap(),
+                    cells[3],
+                    cells[4].parse().unwrap(),
+                )
+            })
+            .collect()
+    }
+
+    type TexliveSpots<'a> = (&'a str, i32, Vec<(i32, f64)>);
+
+    fn texlive_spots(tsv: &str) -> Vec<TexliveSpots<'_>> {
+        tsv.lines()
+            .filter(|row| !row.is_empty())
+            .map(|row| {
+                let cells: Vec<&str> = row.split('\t').collect();
+                let spots = cells[2]
+                    .split(',')
+                    .map(|spot| {
+                        let (page, v) = spot.split_once(':').unwrap();
+                        (page.parse().unwrap(), v.parse().unwrap())
+                    })
+                    .collect();
+                (cells[0], cells[1].parse().unwrap(), spots)
+            })
+            .collect()
     }
 
     #[test]
-    fn forward_then_inverse_round_trips() {
-        let Some(text) = load_default() else {
-            eprintln!("skipping: no compiled default-project synctex fixture present");
-            return;
-        };
-        let doc = parse(&text);
-        let roots = project_roots("default");
-        let tag = tag_for_file(&doc, "main.tex", &roots).expect("main.tex has a synctex tag");
-        let node = doc
-            .nodes
-            .iter()
-            .find(|n| n.tag == tag && n.line > 0)
-            .expect("a main.tex node exists");
-        let line = node.line;
+    fn inverse_search_matches_texlive_on_every_word_of_an_include_book() {
+        let doc = fixture(BOOK);
+        let roots = fixture_roots();
+        let clicks = texlive_clicks(BOOK_INVERSE);
+        assert!(clicks.len() > 400);
+        for (page, x, y, file, line) in clicks {
+            let hit = inverse(&doc, page, x, y, &roots).expect("a word always hits");
+            assert_eq!(
+                (hit.file.as_str(), hit.line),
+                (file, line),
+                "click on page {page} at ({x}, {y})"
+            );
+        }
+    }
 
-        let rect =
-            forward(&doc, "main.tex", line, &roots).expect("forward should resolve a known line");
-        assert!(rect.page >= 1, "page should be >= 1");
-        // A box at the very top margin can sit a hair above the reference point,
-        // so allow a small negative y rather than requiring y >= 0.
+    #[test]
+    fn inverse_search_stays_within_two_lines_of_texlive_in_an_article() {
+        let doc = fixture(ARTICLE);
+        let roots = fixture_roots();
+        let clicks = texlive_clicks(ARTICLE_INVERSE);
+        let mut exact = 0;
+        for (page, x, y, file, line) in &clicks {
+            let hit = inverse(&doc, *page, *x, *y, &roots).expect("a word always hits");
+            assert_eq!(hit.file, *file, "click on page {page} at ({x}, {y})");
+            assert!(
+                (hit.line - line).abs() <= 2,
+                "click on page {page} at ({x}, {y}) gave line {} for {line}",
+                hit.line
+            );
+            exact += usize::from(hit.line == *line);
+        }
         assert!(
-            rect.y > -5.0 && rect.y < 2000.0,
-            "y={} out of range",
-            rect.y
+            exact * 100 >= clicks.len() * 95,
+            "{exact} of {} exact",
+            clicks.len()
         );
-        assert!(rect.width > 0.0);
+    }
 
-        // Inverse at the box center must round-trip to the same source line.
-        let cx = rect.x + rect.width / 2.0;
-        let cy = rect.y + rect.height / 2.0;
-        let hit = inverse(&doc, rect.page, cx, cy, &roots).expect("inverse should hit");
-        assert_eq!(hit.file, "main.tex");
-        assert_eq!(hit.line, line, "inverse should round-trip to line {line}");
+    #[test]
+    fn forward_search_lands_on_a_line_texlive_reports() {
+        for (gz, tsv) in [(BOOK, BOOK_FORWARD), (ARTICLE, ARTICLE_FORWARD)] {
+            let doc = fixture(gz);
+            let roots = fixture_roots();
+            for (file, line, spots) in texlive_spots(tsv) {
+                let rect = forward(&doc, file, line, &roots).expect("a text line has a box");
+                let covered = spots.iter().any(|&(page, v)| {
+                    page == rect.page && v >= rect.y - 1.0 && v <= rect.y + rect.height + 1.0
+                });
+                assert!(
+                    covered,
+                    "{file}:{line} went to page {} at {}",
+                    rect.page, rect.y
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn a_click_below_the_last_paragraph_of_a_chapter_opens_that_chapter() {
+        let doc = fixture(BOOK);
+        let roots = fixture_roots();
+        for (page, chapter) in [
+            (5, "chapters/intro.tex"),
+            (9, "chapters/methods.tex"),
+            (13, "chapters/results.tex"),
+        ] {
+            for (x, y) in [(120.0, 530.0), (300.0, 560.0), (440.0, 640.0)] {
+                let hit = inverse(&doc, page, x, y, &roots).expect("the page has text");
+                assert_eq!(hit.file, chapter, "page {page} at ({x}, {y})");
+            }
+        }
+    }
+
+    const PARAGRAPH: &str = "SyncTeX Version:1\n\
+Input:1:/p/main.tex\n\
+Input:2:/p/chapter.tex\n\
+Input:3:\n\
+Content:\n\
+{1\n\
+[1,4:0,52625288:39468966,52625288,0\n\
+(2,9:6578176,6578176:32890790,657818,0\n\
+g2,9:6578176,6578176\n\
+k2,7:7894000,6578176:65536\n\
+g2,7:9867000,6578176\n\
+g2,8:13156000,6578176\n\
+)\n\
+(3,5:6578176,13156352:32890790,657818,0\n\
+g3,5:6578176,13156352\n\
+)\n\
+(1,4:6578176,49343220:32890790,0,0\n\
+)\n\
+]\n\
+}1\n\
+{2\n\
+[3,1:0,52625288:39468966,52625288,0\n\
+]\n\
+}2\n";
+
+    #[test]
+    fn a_click_resolves_to_the_line_each_word_was_read_from() {
+        let doc = parse(PARAGRAPH);
+        let roots = fixture_roots();
+        let at = |x: f64| inverse(&doc, 1, x, 95.0, &roots).unwrap();
+        assert_eq!(
+            (at(101.0).file.as_str(), at(101.0).line),
+            ("chapter.tex", 7)
+        );
+        assert_eq!(at(140.0).line, 7);
+        assert_eq!(at(210.0).line, 8);
+    }
+
+    #[test]
+    fn boxes_without_a_file_name_never_become_the_hit() {
+        let doc = parse(PARAGRAPH);
+        let roots = fixture_roots();
+        let hit = inverse(&doc, 1, 150.0, 195.0, &roots).unwrap();
+        assert_eq!(hit.file, "chapter.tex");
+        assert!(inverse(&doc, 2, 150.0, 195.0, &roots).is_none());
+    }
+
+    #[test]
+    fn forward_search_finds_a_line_inside_a_paragraph() {
+        let doc = parse(PARAGRAPH);
+        let roots = fixture_roots();
+        let rect = forward(&doc, "chapter.tex", 8, &roots).unwrap();
+        assert_eq!(rect.page, 1);
+        assert!((rect.y - 90.0).abs() < 1.0, "y = {}", rect.y);
     }
 
     const DUPLICATE_BASENAMES: &str = "SyncTeX Version:1\n\
