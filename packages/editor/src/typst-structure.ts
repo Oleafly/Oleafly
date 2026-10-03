@@ -71,7 +71,7 @@ const SILENT_MARKUP = new Set([
 ]);
 
 function decodeTypstEscape(text: string): string {
-  if (text.startsWith("\\u{")) {
+  if (/^\\u\{/u.test(text)) {
     const value = Number.parseInt(text.slice(3, -1), 16);
     return Number.isFinite(value) && value <= 0x10ffff ? String.fromCodePoint(value) : "";
   }
@@ -216,10 +216,10 @@ export function typstStickyScopes(state: EditorState): StickyScope[] {
   syntaxTree(state).iterate({
     enter(node) {
       if (node.name === "Heading") {
-        const open = containers[containers.length - 1];
+        const open = containers.at(-1) as OpenHeading[];
         const line = doc.lineAt(node.from).number;
         const level = typstHeadingLevel(node.node);
-        while (open.length > 0 && open[open.length - 1].level >= level) close(open.pop()!.line, line - 1);
+        while (open.length > 0 && (open.at(-1) as OpenHeading).level >= level) close(open.pop()!.line, line - 1);
         open.push({ line, level });
         return false;
       }

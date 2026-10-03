@@ -95,8 +95,8 @@ export function PackagesDialog<P, C>({
         (list) => {
           if (current === request.current) setListState({ status: "ready", list });
         },
-        (failure: unknown) => {
-          if (current === request.current) setListState({ status: "error", message: describeError(failure) });
+        (error_: unknown) => {
+          if (current === request.current) setListState({ status: "error", message: describeError(error_) });
         },
       );
     },

@@ -10,7 +10,7 @@ export function figureHash(text: string): string {
 }
 
 export function fencedCode(code: string): string {
-  return code.replaceAll("\r\n", "\n").replace(/^(?:[ \t]*\n)+/, "").replace(/\s+$/, "");
+  return code.replaceAll("\r\n", "\n").replace(/^(?:[ \t]*\n)+/, "").trimEnd();
 }
 
 export function mermaidCodeFence(code: string): string {

@@ -31,6 +31,9 @@ describe("htmlToTypst", () => {
     ["headings", "<h1>Title</h1><h3>Deep</h3>", "= Title\n\n=== Deep"],
     ["a line break", "<p>one<br>two</p>", "one \\\ntwo"],
     ["Google Docs bold spans", '<p><span style="font-weight:700">Bold</span> and <span style="font-style:italic">it</span></p>', "*Bold* and _it_"],
+    ["spaces inside a formatting tag", "<p>a <b>bold </b>b</p>", "a #strong[bold] b"],
+    ["a link whose address has a quote", `<p><a href='https://x.y/a"b'>t</a></p>`, String.raw`#link("https://x.y/a\"b")[t]`],
+    ["a numbered paragraph", "<p>12. twelve</p>", String.raw`12\. twelve`],
   ])("converts %s", (_name, html, expected) => {
     expect(htmlToTypst(html)).toBe(expected);
   });
@@ -63,6 +66,12 @@ describe("htmlToTypst", () => {
       "#table(\n  columns: 2,\n  table.header([Name], [Count]),\n  [Alpha], [*1*],\n)",
     );
     expect(errors(typst ?? "")).toBe(0);
+  });
+
+  it("keeps a line break inside a table cell", () => {
+    expect(htmlToTypst("<table><tr><td>a<br>b</td><td>c</td></tr></table>")).toBe(
+      "#table(\n  columns: 2,\n  [a \\ b], [c],\n)",
+    );
   });
 
   it("converts block quotes and preformatted code", () => {

@@ -212,26 +212,36 @@ function skipPlaceholderFiles(
   }
 }
 
-async function readOversizedAlone(
+async function readOversizedFile(
+  binding: BatchBinding,
+  projectId: string,
+  path: string,
+  into: ProjectSourcesBatch,
+): Promise<void> {
+  const entry = cache.get(path);
+  stats.invokes += 1;
+  const result = await binding(projectId, {
+    paths: [path],
+    known: entry ? [{ path, hash: entry.hash }] : [],
+  });
+  const requested = new Set([path]);
+  const seen = new Set<string>();
+  applyFreshFiles(result.files, requested, seen, into);
+  applyUnchangedFiles(result.unchanged, requested, seen, into, []);
+  applyUnreadableFiles(result.unreadable, requested, seen, into);
+  if (!seen.has(path)) forget(path);
+}
+
+function readOversizedAlone(
   binding: BatchBinding,
   projectId: string,
   paths: readonly string[],
   into: ProjectSourcesBatch,
 ): Promise<void> {
-  for (const path of paths) {
-    const entry = cache.get(path);
-    stats.invokes += 1;
-    const result = await binding(projectId, {
-      paths: [path],
-      known: entry ? [{ path, hash: entry.hash }] : [],
-    });
-    const requested = new Set([path]);
-    const seen = new Set<string>();
-    applyFreshFiles(result.files, requested, seen, into);
-    applyUnchangedFiles(result.unchanged, requested, seen, into, []);
-    applyUnreadableFiles(result.unreadable, requested, seen, into);
-    if (!seen.has(path)) forget(path);
-  }
+  return paths.reduce<Promise<void>>(
+    (previous, path) => previous.then(() => readOversizedFile(binding, projectId, path, into)),
+    Promise.resolve(),
+  );
 }
 
 async function readThroughBatch(

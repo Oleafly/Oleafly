@@ -76,6 +76,17 @@ describe("Typst abstract and keywords", () => {
     );
     expect(finding?.detail.key).toBe("rules.submission-no-keywords.detailTypst");
   });
+
+  it("accepts keywords given as an argument, a call or a heading", () => {
+    const head = '#import "@preview/charged-ieee:0.1.4": ieee\n#show: ieee.with(abstract: [Text]';
+    const keywords = (content: string) =>
+      ids([{ path: "main.typ", content }], { profileId: "ieee" }).includes("submission-no-keywords");
+    expect(keywords(`${head}, index-terms: ("a",))`)).toBe(false);
+    expect(keywords(`${head}, keywords: none)`)).toBe(true);
+    expect(keywords(`${head}, keywords: ( ))`)).toBe(true);
+    expect(keywords(`${head})\n#ieee-keywords("a")`)).toBe(false);
+    expect(keywords(`${head})\n= Index Terms\nA`)).toBe(false);
+  });
 });
 
 describe("Typst project paths", () => {
@@ -201,6 +212,20 @@ describe("Typst privacy", () => {
     );
     expect(finding && content.slice(finding.from, finding.to)).toBe("jane@uni.edu");
     expect(finding?.file).toBe("main.typ");
+  });
+
+  it("spans the first full address and stops at the last letter-only top-level domain", () => {
+    const email = (text: string) => {
+      const content = `${FRONT}${text}`;
+      const finding = run([{ path: "main.typ", content }], { anonymousReview: true }).find(
+        (item) => item.id === "privacy-blind-email",
+      );
+      return finding ? content.slice(finding.from, finding.to) : null;
+    };
+    expect(email("x@@jane.doe+tag@mail.uni.edu.2 and bob@lab.org")).toBe("jane.doe+tag@mail.uni.edu");
+    expect(email("first@host.c then j_d%1@a-b.co2")).toBe("j_d%1@a-b.co");
+    expect(email("no@tld.x and @alone.com")).toBeNull();
+    expect(email(`${"a".repeat(20000)}@ ${"b.".repeat(20000)}`)).toBeNull();
   });
 
   it("reads the PDF author during anonymous review", () => {

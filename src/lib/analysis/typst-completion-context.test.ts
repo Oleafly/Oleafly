@@ -143,6 +143,39 @@ describe("typstCompletionTrigger", () => {
     expect(trigger("plain words", true)).toEqual({ triggerKind: 1 });
   });
 
+  it("opens field access after calls, content blocks and any identifier tail", () => {
+    const dot = { triggerKind: 2, triggerCharacter: "." };
+    expect(trigger("#f(x).")).toEqual(dot);
+    expect(trigger("#f(x)[a].")).toEqual(dot);
+    expect(trigger("#let x = 𝒜.")).toEqual(dot);
+    expect(trigger("#let x = 1a-.")).toEqual(dot);
+    expect(trigger("#let x = _1.")).toEqual(dot);
+    expect(trigger("#let x = 12-3.")).toBeNull();
+    expect(trigger("#let x = (1 + 2) * 3.")).toBeNull();
+    expect(trigger("#let x = \uD835.")).toBeNull();
+  });
+
+  it("opens on : only after an identifier inside arguments", () => {
+    const colon = { triggerKind: 2, triggerCharacter: ":" };
+    expect(trigger("#f(𝒜:")).toEqual(colon);
+    expect(trigger("#f(1a:")).toEqual(colon);
+    expect(trigger("#f(1:")).toBeNull();
+    expect(trigger("#f(a :")).toBeNull();
+    expect(trigger("#let d = (a:")).toEqual(colon);
+    expect(trigger("#{ a:")).toBeNull();
+  });
+
+  it("recognises every path-taking call and keyword", () => {
+    for (const call of ["image", "read", "json", "yaml", "toml", "csv", "xml", "cbor", "bibliography", "plugin"]) {
+      expect(trigger(`#${call}(  "dir/`)).toEqual({ triggerKind: 2, triggerCharacter: "/" });
+    }
+    expect(trigger("#import  \"a/")).toEqual({ triggerKind: 2, triggerCharacter: "/" });
+    expect(trigger("#include\"a/")).toBeNull();
+    expect(trigger("#myimage(\"a/")).toBeNull();
+    expect(trigger("#reimport \"a/")).toBeNull();
+    expect(trigger("#text(\"plain", true)).toEqual({ triggerKind: 1 });
+  });
+
   it("falls back to an invoked request for characters the server does not list", () => {
     expect(typstCompletionTrigger("#calc.", false, ["#"])).toEqual({
       triggerKind: 1,

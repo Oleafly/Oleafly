@@ -115,28 +115,20 @@ function joinNotes(collected: ReadonlyMap<number, string[]>): Map<number, string
   return notes;
 }
 
-export function notesFromTypstQuery(result: TypstNotesQuery): Map<number, string> {
-  for (const file of result.files) {
-    const fromFile = notesFromPdfpcFile(file);
-    if (fromFile.size > 0) return fromFile;
+type AddNote = (page: number | null, text: string | null) => void;
+
+function collectLocatedNotes(notes: readonly unknown[], add: AddNote): void {
+  for (const entry of notes) {
+    if (!isRecord(entry)) continue;
+    const page = typeof entry.page === "number" ? entry.page : null;
+    add(explicitPage(entry.value) ?? page, noteText(entry.value));
   }
-  const collected = new Map<number, string[]>();
-  const add = (page: number | null, text: string | null) => {
-    const trimmed = text?.trim();
-    if (!page || page < 1 || !trimmed) return;
-    collected.set(page, [...(collected.get(page) ?? []), trimmed]);
-  };
-  if (result.located) {
-    for (const entry of result.notes) {
-      if (!isRecord(entry)) continue;
-      const page = typeof entry.page === "number" ? entry.page : null;
-      add(explicitPage(entry.value) ?? page, noteText(entry.value));
-    }
-    return joinNotes(collected);
-  }
+}
+
+function collectSequentialNotes(notes: readonly unknown[], add: AddNote): void {
   let current: number | null = null;
   let sequential = 0;
-  for (const value of result.notes) {
+  for (const value of notes) {
     if (isRecord(value) && value.t === "Idx" && typeof value.v === "number") {
       current = value.v + 1;
       continue;
@@ -151,6 +143,21 @@ export function notesFromTypstQuery(result: TypstNotesQuery): Map<number, string
     if (current === null) sequential += 1;
     add(current ?? sequential, text);
   }
+}
+
+export function notesFromTypstQuery(result: TypstNotesQuery): Map<number, string> {
+  for (const file of result.files) {
+    const fromFile = notesFromPdfpcFile(file);
+    if (fromFile.size > 0) return fromFile;
+  }
+  const collected = new Map<number, string[]>();
+  const add: AddNote = (page, text) => {
+    const trimmed = text?.trim();
+    if (!page || page < 1 || !trimmed) return;
+    collected.set(page, [...(collected.get(page) ?? []), trimmed]);
+  };
+  if (result.located) collectLocatedNotes(result.notes, add);
+  else collectSequentialNotes(result.notes, add);
   return joinNotes(collected);
 }
 

@@ -86,11 +86,13 @@ function presenterBounds(rect: Rect | null) {
   };
 }
 
+async function closeWindow(label: string): Promise<void> {
+  const existing = await WebviewWindow.getByLabel(label).catch(() => null);
+  if (existing) await existing.destroy().catch(() => {});
+}
+
 export async function closePresentation(): Promise<void> {
-  for (const label of [PRESENTATION_WINDOW, PRESENTER_WINDOW]) {
-    const existing = await WebviewWindow.getByLabel(label).catch(() => null);
-    if (existing) await existing.destroy().catch(() => {});
-  }
+  await Promise.all([PRESENTATION_WINDOW, PRESENTER_WINDOW].map(closeWindow));
 }
 
 function watchErrors(window: WebviewWindow, scope: string): void {

@@ -50,55 +50,79 @@ function styleValueStart(source: string, start: number, end: number): number | n
   return head ? skipTrivia(source, start + head[0].length, end) : null;
 }
 
+interface ArgumentScan {
+  readonly source: string;
+  readonly end: number;
+  readonly stack: string[];
+  index: number;
+  style: StyleArgument | null;
+  valueFrom: number | null;
+  argumentStart: boolean;
+}
+
+function finishValue(scan: ArgumentScan): void {
+  const { valueFrom } = scan;
+  if (valueFrom === null) return;
+  let valueTo = scan.index;
+  while (valueTo > valueFrom && scan.source[valueTo - 1].trim() === "") valueTo -= 1;
+  scan.style = { valueFrom, valueTo };
+  scan.valueFrom = null;
+}
+
+function startArgument(scan: ArgumentScan): void {
+  const start = skipTrivia(scan.source, scan.index, scan.end);
+  scan.argumentStart = false;
+  const value = scan.style === null ? styleValueStart(scan.source, start, scan.end) : null;
+  if (value !== null) scan.valueFrom = value;
+  scan.index = value ?? start;
+}
+
+function trackNesting(stack: string[], character: string): void {
+  const closer = OPENERS[character];
+  if (closer && (stack.at(-1) !== "]" || character === "[")) stack.push(closer);
+  else if (character === stack.at(-1)) stack.pop();
+}
+
+function stepArgument(scan: ArgumentScan): boolean {
+  const { source, stack } = scan;
+  const character = source[scan.index];
+  const comment = skipComment(source, scan.index);
+  if (comment !== null) {
+    scan.index = comment;
+    return false;
+  }
+  if (character === "\\") {
+    scan.index += 2;
+    return false;
+  }
+  if (stack.at(-1) !== "]" && character === '"') {
+    scan.index = skipString(source, scan.index);
+    return false;
+  }
+  if (stack.length === 0 && (character === "," || character === ")")) {
+    finishValue(scan);
+    if (character === ")") return true;
+    scan.argumentStart = true;
+  } else {
+    trackNesting(stack, character);
+  }
+  scan.index += 1;
+  return false;
+}
+
 function readArguments(source: string, open: number, end: number): CallArguments | null {
-  const stack: string[] = [];
-  let style: StyleArgument | null = null;
-  let valueFrom: number | null = null;
-  let argumentStart = true;
-  let index = open + 1;
-  const finishValue = (at: number) => {
-    if (valueFrom === null) return;
-    let valueTo = at;
-    while (valueTo > valueFrom && source[valueTo - 1].trim() === "") valueTo -= 1;
-    style = { valueFrom, valueTo };
-    valueFrom = null;
+  const scan: ArgumentScan = {
+    source,
+    end,
+    stack: [],
+    index: open + 1,
+    style: null,
+    valueFrom: null,
+    argumentStart: true,
   };
-  while (index < end) {
-    const character = source[index];
-    const inContent = stack.at(-1) === "]";
-    if (stack.length === 0 && argumentStart) {
-      const start = skipTrivia(source, index, end);
-      argumentStart = false;
-      const value = style === null ? styleValueStart(source, start, end) : null;
-      if (value !== null) {
-        valueFrom = value;
-        index = value;
-        continue;
-      }
-      index = start;
-      continue;
-    }
-    const comment = skipComment(source, index);
-    if (comment !== null) {
-      index = comment;
-    } else if (character === "\\") {
-      index += 2;
-    } else if (!inContent && character === '"') {
-      index = skipString(source, index);
-    } else if (stack.length === 0 && character === ",") {
-      finishValue(index);
-      argumentStart = true;
-      index += 1;
-    } else if (stack.length === 0 && character === ")") {
-      finishValue(index);
-      return { close: index, style };
-    } else if (OPENERS[character] && (!inContent || character === "[")) {
-      stack.push(OPENERS[character]);
-      index += 1;
-    } else {
-      if (character === stack.at(-1)) stack.pop();
-      index += 1;
-    }
+  while (scan.index < end) {
+    if (scan.stack.length === 0 && scan.argumentStart) startArgument(scan);
+    else if (stepArgument(scan)) return { close: scan.index, style: scan.style };
   }
   return null;
 }
@@ -123,7 +147,8 @@ export function typstBibliographyStyleValue(source: string): string | null | und
 }
 
 function typstString(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  const escaped = value.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`);
+  return `"${escaped}"`;
 }
 
 export function setTypstBibliographyStyle(source: string, style: string): string | null {

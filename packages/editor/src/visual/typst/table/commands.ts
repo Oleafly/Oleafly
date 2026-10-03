@@ -22,7 +22,7 @@ function bracketsBalanced(text: string): boolean {
 }
 
 export function sanitizeTypstCell(text: string): string {
-  return bracketsBalanced(text) ? text : text.replaceAll(/(?<!\\)([[\]])/gu, "\\$1");
+  return bracketsBalanced(text) ? text : text.replaceAll(/(?<!\\)([[\]])/gu, String.raw`\$1`);
 }
 
 function emptyRow(count: number): string {

@@ -133,7 +133,7 @@ const WIDE_FLOAT = /\\(begin|end)\{(figure|table)\*\}/gu;
 const MULTILINE_MATH = /\\begin\{(align|gather|multline|flalign|alignat|eqnarray)(\*?)\}([\s\S]*?)\\end\{\1\2\}/gu;
 const LATEX_LABEL = /\\label\s*\{([^{}]+)\}/gu;
 const BLOCK_LABEL_LINE = /^\]\s*<([^<>\s]+)>\s*$/u;
-const BLOCK_NUMBER = /^#strong\[[^\]]*?(\d+(?:\.\d+)*[A-Za-z]?)\]/u;
+const BLOCK_HEADING = "#strong[";
 const STRUCTURE: Readonly<Record<string, string>> = {
   "\\tableofcontents": "#outline()",
   "\\listoffigures": "#outline(title: [List of Figures], target: figure.where(kind: image))",
@@ -158,8 +158,10 @@ const ENVIRONMENT = /\\(begin|end)\s*\{([^{}]+)\}/gu;
 const GRAPHICS_PATH = /\\graphicspath\s*\{((?:\s*\{[^{}]*\})*)\s*\}/u;
 const BIBLIOGRAPHY_STYLE = /\\bibliographystyle\s*\{([^{}]+)\}/u;
 const LATEX_SOURCE = /\.(?:tex|ltx)$/iu;
-const SKIP_READ =
-  /\.(?:aux|log|out|toc|lof|lot|blg|bbl|bcf|run\.xml|fls|fdb_latexmk|synctex\.gz|synctex|nav|snm|vrb|xdv|dvi|idx|ind|ilg|glo|gls|glg|ist)$/iu;
+const SKIP_READ: readonly RegExp[] = [
+  /\.(?:aux|log|out|toc|lof|lot|blg|bbl|bcf|run\.xml|fls|fdb_latexmk)$/iu,
+  /\.(?:synctex\.gz|synctex|nav|snm|vrb|xdv|dvi|idx|ind|ilg|glo|gls|glg|ist)$/iu,
+];
 const TYPST_IMAGE_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"];
 const UNSUPPORTED_IMAGE_EXTENSIONS = [".eps", ".ps"];
 const REFERENCE_LINK = /#link\(<([^<>\s]+)>\)\[((?:\\.|[^\]\\\n])*)\]/gu;
@@ -174,10 +176,67 @@ const TYPST_LABEL = /^[\w:.-]+$/u;
 const CONF_SHOW = "#show: doc => conf(";
 const EQUATION_NUMBERING = '#set math.equation(numbering: "(1)")';
 const BIBLIOGRAPHY_CALL = /#bibliography\(((?:[^()\n]|\([^()\n]*\))*)\)/u;
-const SHARED_DEFINITION = /^#let ([A-Za-z_][\w-]*)\s*=\s*.+$/u;
-const REPORT_LOCATION = /\s+at (?:\S+\.tex )?line (\d+) column \d+\s*$/u;
-const HARMLESS_SKIP =
-  /^Skipped '\\(?:centering|maketitle|noindent|bibliographystyle|vspace\*?|hspace\*?|vfill|hfill|smallskip|medskip|bigskip|raggedright|raggedleft|sloppy|protect|phantomsection|FloatBarrier|balance|newpage|clearpage|cleardoublepage|IEEEoverridecommandlockouts|IEEEpeerreviewmaketitle|label|tiny|scriptsize|footnotesize|small|normalsize|large|Large|LARGE|huge|Huge|setlength|addtolength|pagenumbering|pgfplotsset|usetikzlibrary|lstset|onehalfspacing|doublespacing|singlespacing|SetAlgoLined|cmidrule|addcontentsline|thispagestyle|pagestyle|tableofcontents|listoffigures|listoftables|appendix|begin\{titlepage\}|end\{titlepage\}|[;,!]|quad|qquad)(?![A-Za-z])/u;
+const SHARED_DEFINITION_HEAD = /^#let ([A-Za-z_][\w-]*)\s*=/u;
+const LINE_TERMINATORS = new Set(["\n", "\r", "\u2028", "\u2029"]);
+const HARMLESS_SKIP_PREFIX = "Skipped '\\";
+const HARMLESS_SKIP_SYMBOLS = new Set([";", ",", "!"]);
+const HARMLESS_SKIP_ENVIRONMENTS = ["begin{titlepage}", "end{titlepage}"];
+const HARMLESS_SKIP_COMMANDS = new Set([
+  "centering",
+  "maketitle",
+  "noindent",
+  "bibliographystyle",
+  "vspace",
+  "hspace",
+  "vfill",
+  "hfill",
+  "smallskip",
+  "medskip",
+  "bigskip",
+  "raggedright",
+  "raggedleft",
+  "sloppy",
+  "protect",
+  "phantomsection",
+  "FloatBarrier",
+  "balance",
+  "newpage",
+  "clearpage",
+  "cleardoublepage",
+  "IEEEoverridecommandlockouts",
+  "IEEEpeerreviewmaketitle",
+  "label",
+  "tiny",
+  "scriptsize",
+  "footnotesize",
+  "small",
+  "normalsize",
+  "large",
+  "Large",
+  "LARGE",
+  "huge",
+  "Huge",
+  "setlength",
+  "addtolength",
+  "pagenumbering",
+  "pgfplotsset",
+  "usetikzlibrary",
+  "lstset",
+  "onehalfspacing",
+  "doublespacing",
+  "singlespacing",
+  "SetAlgoLined",
+  "cmidrule",
+  "addcontentsline",
+  "thispagestyle",
+  "pagestyle",
+  "tableofcontents",
+  "listoffigures",
+  "listoftables",
+  "appendix",
+  "quad",
+  "qquad",
+]);
 const UNCONVERTED_MATH_REPORT = /^Could not convert TeX math ([\s\S]*?),? rendering as TeX:?$/u;
 
 const BIBLIOGRAPHY_STYLES: Readonly<Record<string, string>> = {
@@ -477,73 +536,99 @@ export interface SplitIncludes {
   readonly lost: readonly number[];
 }
 
+class IncludeSplitter {
+  private readonly byId: ReadonlyMap<number, MigrationInclude>;
+  private readonly stack: SplitFrame[] = [{ id: null, lines: [] }];
+  private readonly parts: { target: string; text: string }[] = [];
+  private readonly written = new Set<string>();
+  private readonly lost = new Set<number>();
+
+  constructor(
+    includes: readonly MigrationInclude[],
+    private readonly raw: readonly string[],
+  ) {
+    this.byId = new Map(includes.map((include) => [include.id, include]));
+  }
+
+  split(typst: string): SplitIncludes {
+    for (const line of typst.split("\n")) this.line(line);
+    this.unwindTo(1);
+    return { main: this.stack[0].lines.join("\n"), parts: this.parts, lost: [...this.lost] };
+  }
+
+  private top(): SplitFrame {
+    return this.stack.at(-1) ?? this.stack[0];
+  }
+
+  private unwindTo(length: number): void {
+    while (this.stack.length > length) {
+      const inner = this.stack.pop();
+      if (!inner) return;
+      if (inner.id !== null) this.lost.add(inner.id);
+      this.top().lines.push(...inner.lines);
+    }
+  }
+
+  private line(line: string): void {
+    const placeholder = RAW_LINE.exec(line);
+    if (placeholder) {
+      this.top().lines.push(this.raw[Number(placeholder[1])] ?? "");
+      return;
+    }
+    if (line.includes(RAW_PREFIX)) {
+      this.top().lines.push(line.replaceAll(RAW_ANYWHERE, "").trimEnd());
+      return;
+    }
+    const marker = MARKER_LINE.exec(line);
+    if (marker) {
+      this.marker(marker[1], Number(marker[2]));
+      return;
+    }
+    if (line.includes(MARKER_PREFIX)) {
+      for (const match of line.matchAll(MARKER_ANYWHERE)) this.lost.add(Number(match[1]));
+      this.top().lines.push(line.replaceAll(MARKER_ANYWHERE, "").trimEnd());
+      return;
+    }
+    this.top().lines.push(line);
+  }
+
+  private marker(kind: string, id: number): void {
+    const include = this.byId.get(id);
+    if (!include) {
+      this.lost.add(id);
+      return;
+    }
+    if (kind === "BEGIN") {
+      this.stack.push({ id, lines: [] });
+      return;
+    }
+    const index = lastFrameIndex(this.stack, id);
+    if (index <= 0) {
+      this.lost.add(id);
+      return;
+    }
+    this.unwindTo(index + 1);
+    const frame = this.stack.pop();
+    if (frame) this.close(include, frame);
+  }
+
+  private close(include: MigrationInclude, frame: SplitFrame): void {
+    const parentId = this.top().id;
+    const parentTarget = parentId === null ? CONVERTED_MAIN_FILE : (this.byId.get(parentId)?.target ?? CONVERTED_MAIN_FILE);
+    if (!this.written.has(include.target)) {
+      this.written.add(include.target);
+      this.parts.push({ target: include.target, text: `${trimBlankLines(frame.lines).join("\n")}\n` });
+    }
+    this.top().lines.push(includeStatement(include, parentTarget));
+  }
+}
+
 export function splitConvertedIncludes(
   typst: string,
   includes: readonly MigrationInclude[],
   raw: readonly string[] = [],
 ): SplitIncludes {
-  const byId = new Map(includes.map((include) => [include.id, include]));
-  const stack: SplitFrame[] = [{ id: null, lines: [] }];
-  const parts: { target: string; text: string }[] = [];
-  const written = new Set<string>();
-  const lost = new Set<number>();
-  const top = () => stack[stack.length - 1];
-  const unwindTo = (length: number) => {
-    while (stack.length > length) {
-      const inner = stack.pop();
-      if (!inner) return;
-      if (inner.id !== null) lost.add(inner.id);
-      top().lines.push(...inner.lines);
-    }
-  };
-  for (const line of typst.split("\n")) {
-    const placeholder = RAW_LINE.exec(line);
-    if (placeholder) {
-      top().lines.push(raw[Number(placeholder[1])] ?? "");
-      continue;
-    }
-    if (line.includes(RAW_PREFIX)) {
-      top().lines.push(line.replace(RAW_ANYWHERE, "").trimEnd());
-      continue;
-    }
-    const marker = MARKER_LINE.exec(line);
-    if (!marker) {
-      if (line.includes(MARKER_PREFIX)) {
-        for (const match of line.matchAll(MARKER_ANYWHERE)) lost.add(Number(match[1]));
-        top().lines.push(line.replace(MARKER_ANYWHERE, "").trimEnd());
-      } else {
-        top().lines.push(line);
-      }
-      continue;
-    }
-    const id = Number(marker[2]);
-    const include = byId.get(id);
-    if (!include) {
-      lost.add(id);
-      continue;
-    }
-    if (marker[1] === "BEGIN") {
-      stack.push({ id, lines: [] });
-      continue;
-    }
-    const index = lastFrameIndex(stack, id);
-    if (index <= 0) {
-      lost.add(id);
-      continue;
-    }
-    unwindTo(index + 1);
-    const frame = stack.pop();
-    if (!frame) continue;
-    const parentId = top().id;
-    const parentTarget = parentId === null ? CONVERTED_MAIN_FILE : (byId.get(parentId)?.target ?? CONVERTED_MAIN_FILE);
-    if (!written.has(include.target)) {
-      written.add(include.target);
-      parts.push({ target: include.target, text: `${trimBlankLines(frame.lines).join("\n")}\n` });
-    }
-    top().lines.push(includeStatement(include, parentTarget));
-  }
-  unwindTo(1);
-  return { main: stack[0].lines.join("\n"), parts, lost: [...lost] };
+  return new IncludeSplitter(includes, raw).split(typst);
 }
 
 export function fixCrossReferences(text: string): { text: string; count: number } {
@@ -559,7 +644,7 @@ export function fixCrossReferences(text: string): { text: string; count: number 
 }
 
 function referencePattern(label: string): RegExp {
-  return new RegExp(`@${escapeRegExp(label)}(?![\\w-]|[:.][\\w-])`, "gu");
+  return new RegExp(String.raw`@${escapeRegExp(label)}(?![\w-]|[:.][\w-])`, "gu");
 }
 
 export function fixEquationAliases(
@@ -577,6 +662,34 @@ export function fixEquationAliases(
   return { text: fixed, used };
 }
 
+function isAsciiDigit(character: string | undefined): boolean {
+  return character !== undefined && character >= "0" && character <= "9";
+}
+
+function isAsciiLetter(character: string | undefined): boolean {
+  return character !== undefined && /^[A-Za-z]$/u.test(character);
+}
+
+function digitRunStart(text: string, end: number): number {
+  let start = end;
+  while (start > 0 && isAsciiDigit(text[start - 1])) start -= 1;
+  return start;
+}
+
+function trailingBlockNumber(content: string): string | null {
+  const end = isAsciiLetter(content.at(-1)) ? content.length - 1 : content.length;
+  let start = digitRunStart(content, end);
+  if (start === end) return null;
+  while (start >= 2 && content[start - 1] === "." && isAsciiDigit(content[start - 2])) start = digitRunStart(content, start - 1);
+  return content.slice(start);
+}
+
+function blockNumber(line: string): string | null {
+  if (!line.startsWith(BLOCK_HEADING)) return null;
+  const close = line.indexOf("]", BLOCK_HEADING.length);
+  return close < 0 ? null : trailingBlockNumber(line.slice(BLOCK_HEADING.length, close));
+}
+
 function blockLabels(text: string): Map<string, string | null> {
   const labels = new Map<string, string | null>();
   const lines = text.split("\n");
@@ -586,7 +699,7 @@ function blockLabels(text: string): Map<string, string | null> {
     let number: string | null = null;
     for (let back = index - 1; back >= Math.max(0, index - 400); back -= 1) {
       if (lines[back].trim() !== "#block[") continue;
-      number = BLOCK_NUMBER.exec(lines[back + 1] ?? "")?.[1] ?? null;
+      number = blockNumber(lines[back + 1] ?? "");
       break;
     }
     labels.set(label, number);
@@ -670,7 +783,8 @@ function convertMathSource(latex: string, display: boolean, typstVersion: string
   if (!result.typst.trim() || result.unsupported.length > 0) return null;
   if (!display) return `$${result.typst}$`;
   const label = labels.find((candidate) => TYPST_LABEL.test(candidate));
-  return `$ ${result.typst} $${label ? `<${label}>` : ""}`;
+  const suffix = label ? `<${label}>` : "";
+  return `$ ${result.typst} $${suffix}`;
 }
 
 export function fixUnconvertedMath(
@@ -754,6 +868,19 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
 }
 
+function hasOneLineValue(rest: string): boolean {
+  let lastBreak = -1;
+  for (let index = 0; index < rest.length; index += 1) {
+    if (LINE_TERMINATORS.has(rest[index])) lastBreak = index;
+  }
+  return rest.length > lastBreak + 1 && rest.slice(0, lastBreak + 1).trim() === "";
+}
+
+function sharedDefinitionName(line: string): string | null {
+  const head = SHARED_DEFINITION_HEAD.exec(line);
+  return head && hasOneLineValue(line.slice(head[0].length)) ? head[1] : null;
+}
+
 export function carrySharedDefinitions(main: string, part: string): string {
   const show = main.indexOf(CONF_SHOW);
   if (show < 0) return part;
@@ -761,10 +888,10 @@ export function carrySharedDefinitions(main: string, part: string): string {
     .slice(0, show)
     .split("\n")
     .flatMap((line) => {
-      const match = SHARED_DEFINITION.exec(line);
-      return match && balanced(line) ? [{ line, name: match[1] }] : [];
+      const name = sharedDefinitionName(line);
+      return name !== null && balanced(line) ? [{ line, name }] : [];
     })
-    .filter(({ name }) => new RegExp(`#${escapeRegExp(name)}(?![\\w-])`, "u").test(part));
+    .filter(({ name }) => new RegExp(String.raw`#${escapeRegExp(name)}(?![\w-])`, "u").test(part));
   if (used.length === 0) return part;
   return `${used.map(({ line }) => line).join("\n")}\n\n${part}`;
 }
@@ -788,6 +915,48 @@ function wasFixed(report: string, fixed: readonly string[]): boolean {
   });
 }
 
+function harmlessSkip(entry: string): boolean {
+  if (!entry.startsWith(HARMLESS_SKIP_PREFIX)) return false;
+  const rest = entry.slice(HARMLESS_SKIP_PREFIX.length);
+  const name = /^[A-Za-z]*/u.exec(rest)?.[0] ?? "";
+  if (HARMLESS_SKIP_COMMANDS.has(name)) return true;
+  const symbol = name === "" && HARMLESS_SKIP_SYMBOLS.has(rest.charAt(0)) ? rest.charAt(0) : null;
+  const matched = symbol ?? HARMLESS_SKIP_ENVIRONMENTS.find((environment) => rest.startsWith(environment));
+  return matched !== undefined && !isAsciiLetter(rest[matched.length]);
+}
+
+function literalStart(text: string, end: number, literal: string): number {
+  return end >= literal.length && text.slice(end - literal.length, end) === literal ? end - literal.length : -1;
+}
+
+function spaceRunStart(text: string, end: number): number {
+  let start = end;
+  while (start > 0 && /\s/u.test(text[start - 1])) start -= 1;
+  return start;
+}
+
+function texFileStart(text: string, end: number): number {
+  const space = literalStart(text, end, ".tex ");
+  if (space < 0) return -1;
+  let start = end - 1;
+  while (start > 0 && !/\s/u.test(text[start - 1])) start -= 1;
+  return end - 1 - start > ".tex".length ? start : -1;
+}
+
+function reportLocation(entry: string): { index: number; line: number } | null {
+  const end = entry.trimEnd().length;
+  const column = digitRunStart(entry, end);
+  const lineEnd = column < end ? literalStart(entry, column, " column ") : -1;
+  const lineStart = lineEnd < 0 ? -1 : digitRunStart(entry, lineEnd);
+  if (lineStart < 0 || lineStart === lineEnd) return null;
+  const word = literalStart(entry, lineStart, "line ");
+  if (word < 0) return null;
+  const file = texFileStart(entry, word);
+  const at = literalStart(entry, file < 0 ? word : file, "at ");
+  const index = at < 0 ? -1 : spaceRunStart(entry, at);
+  return index >= 0 && index < at ? { index, line: Number(entry.slice(lineStart, lineEnd)) } : null;
+}
+
 export function pandocReportNotes(
   report: readonly string[],
   origins: readonly LineOrigin[],
@@ -795,10 +964,10 @@ export function pandocReportNotes(
 ): MigrationNote[] {
   const notes: MigrationNote[] = [];
   for (const entry of report) {
-    if (HARMLESS_SKIP.test(entry) || entry.startsWith("Could not load include file") || wasFixed(entry, fixed)) continue;
-    const location = REPORT_LOCATION.exec(entry);
+    if (harmlessSkip(entry) || entry.startsWith("Could not load include file") || wasFixed(entry, fixed)) continue;
+    const location = reportLocation(entry);
     const detail = location ? entry.slice(0, location.index) : entry;
-    const origin = location ? origins[Number(location[1]) - 1] : undefined;
+    const origin = location ? origins[location.line - 1] : undefined;
     notes.push(origin ? { kind: "pandoc", detail, source: origin } : { kind: "pandoc", detail });
   }
   return notes;
@@ -809,7 +978,7 @@ function decodeText(base64: string): string {
 }
 
 function countMatches(texts: readonly string[], pattern: RegExp): number {
-  return texts.reduce((total, text) => total + (text.match(pattern)?.length ?? 0), 0);
+  return texts.reduce((total, text) => total + [...text.matchAll(pattern)].length, 0);
 }
 
 function projectRelative(file: string | null, created: readonly string[]): string | null {
@@ -847,42 +1016,65 @@ function isHidden(path: string): boolean {
   return path.split("/").some((segment) => segment.startsWith("."));
 }
 
+interface ProjectReader extends ReadProject {
+  readonly request: MigrationRequest;
+  readonly deps: MigrationDeps;
+  readonly compiledPdf: string;
+  total: number;
+}
+
+function readablePath(entry: ProjectEntry, compiledPdf: string): string | null {
+  if (entry.is_dir || entry.unreadable || entry.placeholder) return null;
+  const path = normalizePath(entry.path);
+  if (!path || isHidden(path) || SKIP_READ.some((pattern) => pattern.test(path)) || path === compiledPdf) return null;
+  return path;
+}
+
+function storeRead(reader: ProjectReader, path: string, data: string): void {
+  if (reader.total + data.length > MAX_TOTAL_BASE64) {
+    reader.attention.push({ kind: "skippedFile", detail: path });
+    return;
+  }
+  reader.total += data.length;
+  if (LATEX_SOURCE.test(path)) reader.texts.set(path, decodeText(data));
+  else reader.files.push({ path, dataBase64: data });
+}
+
+async function readEntry(reader: ProjectReader, entry: ProjectEntry): Promise<void> {
+  const path = readablePath(entry, reader.compiledPdf);
+  if (!path) return;
+  const buffered = reader.request.buffers?.get(path);
+  if (buffered !== undefined && LATEX_SOURCE.test(path)) {
+    reader.texts.set(path, buffered);
+    return;
+  }
+  if (reader.texts.size + reader.files.length >= MAX_FILES) {
+    reader.attention.push({ kind: "skippedFile", detail: path });
+    return;
+  }
+  let data: string;
+  try {
+    data = await reader.deps.readFileBase64(reader.request.projectId, path);
+  } catch {
+    reader.attention.push({ kind: "unreadableFile", detail: path });
+    return;
+  }
+  storeRead(reader, path, data);
+}
+
 async function readProject(request: MigrationRequest, deps: MigrationDeps): Promise<ReadProject> {
   const entries = await deps.listFiles(request.projectId);
-  const compiledPdf = `${request.mainDoc.replace(LATEX_SOURCE, "")}.pdf`;
-  const texts = new Map<string, string>();
-  const files: AdHocArtifact[] = [];
-  const attention: MigrationNote[] = [];
-  let total = 0;
-  for (const entry of entries) {
-    if (entry.is_dir || entry.unreadable || entry.placeholder) continue;
-    const path = normalizePath(entry.path);
-    if (!path || isHidden(path) || SKIP_READ.test(path) || path === compiledPdf) continue;
-    const buffered = request.buffers?.get(path);
-    if (buffered !== undefined && LATEX_SOURCE.test(path)) {
-      texts.set(path, buffered);
-      continue;
-    }
-    if (texts.size + files.length >= MAX_FILES) {
-      attention.push({ kind: "skippedFile", detail: path });
-      continue;
-    }
-    let data: string;
-    try {
-      data = await deps.readFileBase64(request.projectId, path);
-    } catch {
-      attention.push({ kind: "unreadableFile", detail: path });
-      continue;
-    }
-    if (total + data.length > MAX_TOTAL_BASE64) {
-      attention.push({ kind: "skippedFile", detail: path });
-      continue;
-    }
-    total += data.length;
-    if (LATEX_SOURCE.test(path)) texts.set(path, decodeText(data));
-    else files.push({ path, dataBase64: data });
-  }
-  return { texts, files, attention };
+  const reader: ProjectReader = {
+    request,
+    deps,
+    compiledPdf: `${request.mainDoc.replace(LATEX_SOURCE, "")}.pdf`,
+    texts: new Map<string, string>(),
+    files: [],
+    attention: [],
+    total: 0,
+  };
+  await entries.reduce<Promise<void>>((previous, entry) => previous.then(() => readEntry(reader, entry)), Promise.resolve());
+  return { texts: reader.texts, files: reader.files, attention: reader.attention };
 }
 
 interface FixedDocuments {

@@ -18,6 +18,15 @@ class TypstRevealPlugin {
 
   constructor(private readonly view: EditorView) {
     this.fallback = window.setTimeout(() => this.reveal(), REVEAL_FALLBACK_MS);
+  }
+
+  static start(view: EditorView): TypstRevealPlugin {
+    const plugin = new TypstRevealPlugin(view);
+    plugin.waitForParser();
+    return plugin;
+  }
+
+  private waitForParser(): void {
     loadTypstParser().then(
       () => window.setTimeout(() => this.settle()),
       () => this.reveal(),
@@ -51,5 +60,5 @@ class TypstRevealPlugin {
 export const typstContentShownWhenParsed: Extension = [
   contentParsedField,
   EditorView.editorAttributes.from(contentParsedField, (shown) => () => (shown ? { class: "ofl-visual-parsed" } : null)),
-  ViewPlugin.fromClass(TypstRevealPlugin),
+  ViewPlugin.define((view) => TypstRevealPlugin.start(view)),
 ];

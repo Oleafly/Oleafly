@@ -227,6 +227,7 @@ export function TableImportDialog() {
   };
 
   const columnCount = rows.reduce((count, row) => Math.max(count, row.length), 0);
+  const engineFooter = target === "typst" ? t(($) => $.editor.tableImport.footerTypst) : t(($) => $.editor.tableImport.footerLatex);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -246,7 +247,7 @@ export function TableImportDialog() {
           <ToolPane
             title={t(($) => $.editor.tableImport.spreadsheetPane)}
             badge={target === "typst" ? "Typst" : "LaTeX"}
-            footer={<p className="text-xs leading-relaxed text-muted-foreground">{linkedPlan ? t(($) => $.editor.tableImport.footerLinked, { path: linkedPlan.dataPath }) : target === "typst" ? t(($) => $.editor.tableImport.footerTypst) : t(($) => $.editor.tableImport.footerLatex)}</p>}
+            footer={<p className="text-xs leading-relaxed text-muted-foreground">{linkedPlan ? t(($) => $.editor.tableImport.footerLinked, { path: linkedPlan.dataPath }) : engineFooter}</p>}
           >
             <div className="space-y-5 p-5">
               <div className="space-y-2">

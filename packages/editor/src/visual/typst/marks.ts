@@ -173,22 +173,20 @@ class TypstMarkBuilder {
     const name = calleeName(this.state, node);
     const args = callArguments(node);
     if (!name || !args) return;
-    if (name === "link") {
-      const [block] = trailingContentBlocks(args);
-      const body = block ? contentBody(block) : null;
-      if (body && body.to > body.from) this.marks.push(mark("ofl-visual-link-text", body.from, body.to));
-      else this.marks.push(mark("ofl-visual-link-text", hash.from, node.to));
-      return;
-    }
-    if (name === "cite" || name === "ref") {
-      this.marks.push(mark(`ofl-visual-chip ofl-visual-chip-${name === "cite" ? "cite" : "ref"}`, hash.from, node.to));
-      return;
-    }
-    if (name === "figure") {
-      this.caption(args);
-      return;
-    }
-    if (!TYPST_STYLE_CALLS.has(name)) return;
+    if (name === "link") this.link(hash, node, args);
+    else if (name === "cite" || name === "ref") this.marks.push(mark(`ofl-visual-chip ofl-visual-chip-${name}`, hash.from, node.to));
+    else if (name === "figure") this.caption(args);
+    else if (TYPST_STYLE_CALLS.has(name)) this.styleCall(name, args);
+  }
+
+  private link(hash: SyntaxNode, node: SyntaxNode, args: SyntaxNode): void {
+    const [block] = trailingContentBlocks(args);
+    const body = block ? contentBody(block) : null;
+    if (body && body.to > body.from) this.marks.push(mark("ofl-visual-link-text", body.from, body.to));
+    else this.marks.push(mark("ofl-visual-link-text", hash.from, node.to));
+  }
+
+  private styleCall(name: string, args: SyntaxNode): void {
     const blocks = trailingContentBlocks(args);
     const body = blocks.length === 1 ? contentBody(blocks[0]) : null;
     if (!body || body.to <= body.from) return;

@@ -288,7 +288,8 @@ export interface StyleFrame {
 }
 
 const STYLE_STRING = /\bstyle\s*:\s*"([^"\\\n]*)$/u;
-const IDENTIFIER_BEFORE = /([A-Za-z_][\w-]*)\s*$/u;
+const IDENTIFIER_START = /[A-Za-z_]/u;
+const IDENTIFIER_PART = /[\w-]/u;
 const STYLE_CALLEES = new Set(["bibliography", "cite"]);
 
 function skipQuoted(text: string, start: number): number {
@@ -317,58 +318,56 @@ function skipComment(text: string, index: number): number | null {
   return null;
 }
 
+function identifierBefore(text: string): string {
+  const trimmed = text.trimEnd();
+  let start = trimmed.length;
+  while (start > 0 && IDENTIFIER_PART.test(trimmed[start - 1])) start -= 1;
+  while (start < trimmed.length && !IDENTIFIER_START.test(trimmed[start])) start += 1;
+  return trimmed.slice(start);
+}
+
 function markupCall(text: string, hash: number): { callee: string; open: number } | null {
   const head = /^#(?:(?:set|show)\s+)?([A-Za-z_][\w.-]*)\s*\(/u.exec(text.slice(hash, hash + 200));
   return head ? { callee: head[1], open: hash + head[0].length - 1 } : null;
+}
+
+function markupStep(text: string, index: number, stack: StyleFrame[]): number {
+  const character = text[index];
+  if (character === "`") return skipRaw(text, index);
+  if (character === "#") {
+    const call = markupCall(text, index);
+    if (!call) return index + 1;
+    stack.push({ close: ")", code: true, callee: call.callee });
+    return call.open + 1;
+  }
+  if (character === stack.at(-1)?.close) stack.pop();
+  return index + 1;
+}
+
+function codeStep(text: string, index: number, stack: StyleFrame[]): number {
+  const character = text[index];
+  if (character === '"') return skipQuoted(text, index);
+  if (character === "(") {
+    stack.push({ close: ")", code: true, callee: identifierBefore(text.slice(Math.max(0, index - 60), index)) });
+  } else if (character === "{") {
+    stack.push({ close: "}", code: true, callee: "" });
+  } else if (character === "[") {
+    stack.push({ close: "]", code: false, callee: "" });
+  } else if (character === stack.at(-1)?.close) {
+    stack.pop();
+  }
+  return index + 1;
 }
 
 export function enclosingFrames(text: string): StyleFrame[] {
   const stack: StyleFrame[] = [];
   let index = 0;
   while (index < text.length) {
-    const character = text[index];
-    const top = stack.at(-1);
     const comment = skipComment(text, index);
-    if (comment !== null) {
-      index = comment;
-      continue;
-    }
-    if (character === "\\") {
-      index += 2;
-      continue;
-    }
-    if (!top?.code) {
-      if (character === "`") {
-        index = skipRaw(text, index);
-      } else if (character === "#") {
-        const call = markupCall(text, index);
-        if (call) {
-          stack.push({ close: ")", code: true, callee: call.callee });
-          index = call.open + 1;
-        } else {
-          index += 1;
-        }
-      } else {
-        if (top && character === top.close) stack.pop();
-        index += 1;
-      }
-      continue;
-    }
-    if (character === '"') {
-      const end = skipQuoted(text, index);
-      if (end > text.length) return stack;
-      index = end;
-    } else if (character === "(" || character === "{") {
-      const callee = character === "(" ? IDENTIFIER_BEFORE.exec(text.slice(Math.max(0, index - 60), index))?.[1] ?? "" : "";
-      stack.push({ close: character === "(" ? ")" : "}", code: true, callee });
-      index += 1;
-    } else if (character === "[") {
-      stack.push({ close: "]", code: false, callee: "" });
-      index += 1;
-    } else {
-      if (character === top.close) stack.pop();
-      index += 1;
-    }
+    if (comment !== null) index = comment;
+    else if (text[index] === "\\") index += 2;
+    else if (stack.at(-1)?.code) index = codeStep(text, index, stack);
+    else index = markupStep(text, index, stack);
   }
   return stack;
 }

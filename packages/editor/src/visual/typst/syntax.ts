@@ -107,7 +107,7 @@ export function listDepth(node: SyntaxNode): number {
 }
 
 export function decodeTypstEscape(text: string): string {
-  if (text.startsWith("\\u{")) {
+  if (/^\\u\{/u.test(text)) {
     const value = Number.parseInt(text.slice(3, -1), 16);
     return Number.isFinite(value) && value <= 0x10ffff ? String.fromCodePoint(value) : text;
   }

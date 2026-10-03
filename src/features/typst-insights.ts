@@ -2,17 +2,23 @@ import { invoke } from "@tauri-apps/api/core";
 import type { SyntaxNode, Tree } from "@lezer/common";
 import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
 import type {
-  CitationEntry,
   DocumentInsightsBase,
   InsightEntry,
-  LabelEntry,
   SourceLocation,
   SubmissionMetadata,
   TodoEntry,
 } from "./document-insights";
 
-export { formatSubmissionMetadata, hasSubmissionMetadata } from "./document-insights";
-export type { CitationEntry, InsightEntry, LabelEntry, SourceLocation, SubmissionMetadata, TodoEntry };
+export {
+  formatSubmissionMetadata,
+  hasSubmissionMetadata,
+  type CitationEntry,
+  type InsightEntry,
+  type LabelEntry,
+  type SourceLocation,
+  type SubmissionMetadata,
+  type TodoEntry,
+} from "./document-insights";
 
 export type TypstInsightKind = "heading" | "figure" | "equation" | "citation";
 
@@ -125,9 +131,15 @@ function normalizePath(path: string): string {
   return parts.join("/");
 }
 
+function trimTrailingDotsAndColons(text: string): string {
+  let end = text.length;
+  while (end > 0 && (text[end - 1] === "." || text[end - 1] === ":")) end -= 1;
+  return text.slice(0, end);
+}
+
 function unquote(literal: string): string {
   const body = literal.slice(1, -1);
-  return body.replaceAll(/\\(["\\])/gu, "$1").replaceAll("\\n", "\n").replaceAll("\\t", "\t");
+  return body.replaceAll(/\\(["\\])/gu, "$1").replaceAll(String.raw`\n`, "\n").replaceAll(String.raw`\t`, "\t");
 }
 
 function children(node: SyntaxNode): SyntaxNode[] {
@@ -301,7 +313,7 @@ function scanFile(file: SourceFile, scan: SourceScan): void {
         }
         case "Ref": {
           const marker = node.getChild("RefMarker");
-          if (marker) scan.citations.push({ key: text.slice(marker.from + 1, marker.to).replace(/[.:]+$/u, ""), path, from: node.from });
+          if (marker) scan.citations.push({ key: trimTrailingDotsAndColons(text.slice(marker.from + 1, marker.to)), path, from: node.from });
           return undefined;
         }
         case "Label":

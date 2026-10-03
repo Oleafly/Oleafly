@@ -612,6 +612,9 @@ const TYPST_MAX_SVG = 2 * 1024 * 1024;
 const TYPST_FALLBACK_COLOR = "#808080";
 const TYPST_FALLBACK_SIZE = 11;
 const TYPST_COLOR = /^#[\da-f]{6}$/iu;
+const RGB_FUNCTION = /^rgba?\((.*)\)$/isu;
+const RGB_CHANNELS = /^\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/u;
+const RGB_ALPHA = /^(?:\s*[,/]\s*([\d.]+%?))?\s*$/u;
 
 let typstMathHost: TypstMathHost | null = null;
 const typstCache = new Map<string, { outcome: TypstMathOutcome; bytes: number }>();
@@ -775,14 +778,14 @@ export function paintTypstMath(
   const cached = cachedTypstMath(body, theme);
   if (cached) {
     apply(cached);
-    return cancel;
+  } else {
+    paintTypstPending(output, body, options.owner);
+    timer = setTimeout(() => {
+      timer = null;
+      if (cancelled) return;
+      void renderTypstMath(body, theme).then(apply);
+    }, options.delay ?? 0);
   }
-  paintTypstPending(output, body, options.owner);
-  timer = setTimeout(() => {
-    timer = null;
-    if (cancelled) return;
-    void renderTypstMath(body, theme).then(apply);
-  }, options.delay ?? 0);
   return cancel;
 }
 
@@ -805,15 +808,25 @@ function canvasColor(color: string): string | null {
   return `#${hexByte(red)}${hexByte(green)}${hexByte(blue)}`;
 }
 
+function rgbFunctionParts(value: string): { channels: string[]; alpha: string | undefined } | null {
+  const inner = RGB_FUNCTION.exec(value)?.[1];
+  if (inner === undefined) return null;
+  const channels = RGB_CHANNELS.exec(inner);
+  if (!channels) return null;
+  const alpha = RGB_ALPHA.exec(inner.slice(channels[0].length));
+  if (!alpha) return null;
+  return { channels: channels.slice(1, 4), alpha: alpha[1] };
+}
+
 export function cssColorToHex(color: string): string | null {
   const value = color.trim();
   if (TYPST_COLOR.test(value)) return value.toLowerCase();
   const short = /^#([\da-f])([\da-f])([\da-f])$/iu.exec(value);
   if (short) return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`.toLowerCase();
-  const rgb = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/iu.exec(value);
+  const rgb = rgbFunctionParts(value);
   if (rgb) {
-    if (rgb[4] !== undefined && Number.parseFloat(rgb[4]) === 0) return null;
-    return `#${hexByte(Number(rgb[1]))}${hexByte(Number(rgb[2]))}${hexByte(Number(rgb[3]))}`;
+    if (rgb.alpha !== undefined && Number.parseFloat(rgb.alpha) === 0) return null;
+    return `#${rgb.channels.map((channel) => hexByte(Number(channel))).join("")}`;
   }
   return value ? canvasColor(value) : null;
 }

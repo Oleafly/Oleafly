@@ -124,6 +124,51 @@ describe("notesFromTypstQuery", () => {
     ]);
   });
 
+  it("skips located entries without a usable page or text, and lets an explicit slide win", () => {
+    const notes = notesFromTypstQuery({
+      located: true,
+      notes: [
+        "not a record",
+        { page: "2", value: "No page" },
+        { page: 3, value: "   " },
+        { page: 0, value: "Page zero" },
+        { page: 1, value: { notes: "Moved", slide: 6 } },
+        { page: 1, value: { notes: "Kept", page: 0 } },
+      ],
+      files: [],
+    });
+    expect(entries(notes)).toEqual([
+      [1, "Kept"],
+      [6, "Moved"],
+    ]);
+  });
+
+  it("keeps counting plain notes around indexed and explicit ones", () => {
+    const notes = notesFromTypstQuery({
+      located: false,
+      notes: [
+        { notes: "One" },
+        { notes: "Seven", page: 7 },
+        { t: "Idx", v: "x" },
+        { notes: "Two" },
+        { t: "Idx", v: 3 },
+        { notes: "Four" },
+        { t: "Note", v: "Also four" },
+        { notes: "Nine", slide: 9 },
+        42,
+        { notes: "" },
+      ],
+      files: [],
+    });
+    expect(entries(notes)).toEqual([
+      [1, "One"],
+      [2, "Two"],
+      [4, "Four\n\nAlso four"],
+      [7, "Seven"],
+      [9, "Nine"],
+    ]);
+  });
+
   it("numbers plain notes in order when pages are unknown", () => {
     const notes = notesFromTypstQuery({
       located: false,

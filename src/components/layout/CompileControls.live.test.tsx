@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -193,6 +193,24 @@ describe("live preview wiring in the main window", () => {
     await waitFor(() => expect(mocks.syncTypstLivePreview).toHaveBeenCalled());
     unmount();
     expect(mocks.stopTypstLivePreview).toHaveBeenCalled();
+  });
+
+  it("syncs the watcher again only when its inputs change", async () => {
+    render(<CompileControls />);
+    await waitFor(() => expect(mocks.syncTypstLivePreview).toHaveBeenCalled());
+    const calls = () => mocks.syncTypstLivePreview.mock.calls.length;
+    const before = calls();
+    act(() => useFilesStore.setState({ activePath: "other.typ" }));
+    expect(calls()).toBe(before);
+    act(() => useFilesStore.setState({ projectId: "p2" }));
+    expect(calls()).toBe(before + 1);
+    act(() => useFilesStore.setState({ engine: typstEngine({ typst_missing: "0.14.2" }) }));
+    expect(calls()).toBe(before + 2);
+    act(() => useFilesStore.setState({ engineLoaded: false }));
+    expect(calls()).toBe(before + 3);
+    act(() => useFilesStore.setState({ engine: { ...LATEX_ENGINE } }));
+    expect(calls()).toBe(before + 4);
+    expect(mocks.stopTypstLivePreview).not.toHaveBeenCalled();
   });
 
   it("starts the watcher when Auto compile is turned on", async () => {

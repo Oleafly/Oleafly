@@ -135,6 +135,10 @@ function frame(kind: number, cls: number, callee = NO_CALL): Frame {
   };
 }
 
+function codeAt(text: string, index: number): number {
+  return text.codePointAt(index) ?? Number.NaN;
+}
+
 function isSpace(unit: number): boolean {
   return (
     (unit >= 0x09 && unit <= 0x0d) ||
@@ -187,8 +191,8 @@ function escapeEnd(text: string, at: number): number {
   if (next === undefined) return at + 1;
   if (text.startsWith("u{", at + 1)) {
     let end = at + 3;
-    while (end < text.length && isHexDigit(text.charCodeAt(end))) end += 1;
-    if (text.charCodeAt(end) === CLOSE_BRACE) end += 1;
+    while (end < text.length && isHexDigit(codeAt(text, end))) end += 1;
+    if (codeAt(text, end) === CLOSE_BRACE) end += 1;
     return end;
   }
   const escaped = String.fromCodePoint(next);
@@ -220,10 +224,10 @@ function blockCommentEnd(text: string, at: number): number {
 
 function rawEnd(text: string, at: number): number {
   let width = 1;
-  while (text.charCodeAt(at + width) === BACKTICK) width += 1;
+  while (codeAt(text, at + width) === BACKTICK) width += 1;
   let run = 0;
   for (let index = at + width; index < text.length; index += 1) {
-    if (text.charCodeAt(index) !== BACKTICK) {
+    if (codeAt(text, index) !== BACKTICK) {
       run = 0;
       continue;
     }
@@ -235,7 +239,7 @@ function rawEnd(text: string, at: number): number {
 
 function quoteEnd(text: string, from: number): number {
   for (let index = from; index < text.length; index += 1) {
-    const unit = text.charCodeAt(index);
+    const unit = codeAt(text, index);
     if (unit === BACKSLASH) {
       index += 1;
       continue;
@@ -247,28 +251,28 @@ function quoteEnd(text: string, from: number): number {
 
 function numberEnd(text: string, at: number): number {
   let end = at;
-  while (end < text.length && isDigit(text.charCodeAt(end))) end += 1;
-  if (text.charCodeAt(end) === DOT && isDigit(text.charCodeAt(end + 1))) {
+  while (end < text.length && isDigit(codeAt(text, end))) end += 1;
+  if (codeAt(text, end) === DOT && isDigit(codeAt(text, end + 1))) {
     end += 1;
-    while (end < text.length && isDigit(text.charCodeAt(end))) end += 1;
+    while (end < text.length && isDigit(codeAt(text, end))) end += 1;
   }
-  while (end < text.length && isAsciiLetter(text.charCodeAt(end))) end += 1;
-  if (text.charCodeAt(end) === 0x25) end += 1;
+  while (end < text.length && isAsciiLetter(codeAt(text, end))) end += 1;
+  if (codeAt(text, end) === 0x25) end += 1;
   return end;
 }
 
 function labelEnd(text: string, at: number): number {
   let end = typstReferenceEnd(text, at + 1);
   if (end === at + 1) return -1;
-  while (text.charCodeAt(end) === DOT || text.charCodeAt(end) === COLON) end += 1;
-  return text.charCodeAt(end) === GREATER ? end + 1 : -1;
+  while (codeAt(text, end) === DOT || codeAt(text, end) === COLON) end += 1;
+  return codeAt(text, end) === GREATER ? end + 1 : -1;
 }
 
 function codePointBefore(text: string, at: number): number {
-  const last = text.charCodeAt(at - 1);
+  const last = codeAt(text, at - 1);
   if (last >= 0xdc00 && last <= 0xdfff && at >= 2) {
-    const high = text.charCodeAt(at - 2);
-    if (high >= 0xd800 && high <= 0xdbff) return text.codePointAt(at - 2) ?? last;
+    const pair = codeAt(text, at - 2);
+    if (pair > 0xffff) return pair;
   }
   return last;
 }
@@ -281,7 +285,7 @@ interface MathSpan {
 function mathSpan(text: string, at: number): MathSpan {
   let end = at + 1;
   while (end < text.length) {
-    const unit = text.charCodeAt(end);
+    const unit = codeAt(text, end);
     if (unit === BACKSLASH) {
       end += 2;
       continue;
@@ -289,8 +293,8 @@ function mathSpan(text: string, at: number): MathSpan {
     if (unit === DOLLAR) {
       const display =
         end > at + 1 &&
-        isSpace(text.charCodeAt(at + 1)) &&
-        isSpace(text.charCodeAt(end - 1));
+        isSpace(codeAt(text, at + 1)) &&
+        isSpace(codeAt(text, end - 1));
       return { end: end + 1, display };
     }
     end += 1;
@@ -333,7 +337,7 @@ class TypstScanner {
     this.stack.push(top);
     let index = 0;
     while (index < this.n) {
-      const current = this.stack[this.stack.length - 1];
+      const current = this.stack.at(-1) ?? top;
       if (current.kind === MARKUP) index = this.markupStep(current, index);
       else if (current.kind === CHAIN) index = this.chainStep(current, index);
       else if (current.kind === COND) index = this.condStep(current, index);
@@ -343,7 +347,7 @@ class TypstScanner {
   }
 
   private unit(index: number): number {
-    return this.text.charCodeAt(index);
+    return codeAt(this.text, index);
   }
 
   private push(next: Frame): void {
@@ -482,17 +486,7 @@ class TypstScanner {
       this.emit(index, index + 1, kept, cls);
       return index + 1;
     }
-    if (unit === EQUALS && current.atLineStart) {
-      current.atLineStart = false;
-      let end = index;
-      while (end < this.n && this.unit(end) === EQUALS) end += 1;
-      this.emit(index, end, kept, cls);
-      if (kept && end < this.n && isInlineSpace(this.unit(end))) {
-        this.headingLevels.push(Math.min(end - index, MAX_HEADING_LEVEL));
-        current.heading = true;
-      }
-      return end;
-    }
+    if (unit === EQUALS && current.atLineStart) return this.headingMarker(current, index, kept, cls);
     current.atLineStart = false;
     const end = this.markupTokenEnd(index, unit, kept);
     if (end > index) {
@@ -503,21 +497,38 @@ class TypstScanner {
       this.code(index, index + 1);
       return this.embedded(index + 1, cls);
     }
-    if (!current.top && unit === OPEN_BRACKET) current.depth += 1;
-    if (!current.top && unit === CLOSE_BRACKET) {
-      if (current.depth === 0) {
-        this.pop();
-        this.code(index, index + 1);
-        if (current.callee !== NO_CALL) {
-          this.lastCallEnd = index + 1;
-          this.lastCallCallee = current.callee;
-        }
-        return index + 1;
-      }
-      current.depth -= 1;
-    }
+    if (this.closesContent(current, unit, index)) return index + 1;
     this.emit(index, index + 1, kept, cls);
     return index + 1;
+  }
+
+  private headingMarker(current: Frame, index: number, kept: boolean, cls: number): number {
+    current.atLineStart = false;
+    let end = index;
+    while (end < this.n && this.unit(end) === EQUALS) end += 1;
+    this.emit(index, end, kept, cls);
+    if (kept && end < this.n && isInlineSpace(this.unit(end))) {
+      this.headingLevels.push(Math.min(end - index, MAX_HEADING_LEVEL));
+      current.heading = true;
+    }
+    return end;
+  }
+
+  private closesContent(current: Frame, unit: number, index: number): boolean {
+    if (current.top) return false;
+    if (unit === OPEN_BRACKET) current.depth += 1;
+    if (unit !== CLOSE_BRACKET) return false;
+    if (current.depth !== 0) {
+      current.depth -= 1;
+      return false;
+    }
+    this.pop();
+    this.code(index, index + 1);
+    if (current.callee !== NO_CALL) {
+      this.lastCallEnd = index + 1;
+      this.lastCallCallee = current.callee;
+    }
+    return true;
   }
 
   private markupTokenEnd(index: number, unit: number, counted: boolean): number {
@@ -529,94 +540,99 @@ class TypstScanner {
     if (unit === SLASH && next === SLASH) return lineEnd(text, index + 2);
     if (unit === SLASH && next === STAR) return blockCommentEnd(text, index);
     if (unit === BACKTICK) return rawEnd(text, index);
-    if (unit === DOLLAR) {
-      const span = mathSpan(text, index);
-      if (counted) this.countMath(span);
-      return span.end;
-    }
-    if (unit === LESS) {
-      const end = labelEnd(text, index);
-      if (end < 0) return index;
-      if (counted) {
-        this.labelCount += 1;
-        this.labels.add(text.slice(index + 1, end - 1));
-      }
-      return end;
-    }
-    if (unit === AT) {
-      const end = typstReferenceEnd(text, index + 1);
-      if (end <= index + 1) return index;
-      const glued =
-        index > 0 && WORD_CHARACTER.test(String.fromCodePoint(codePointBefore(text, index)));
-      if (counted && !glued) this.references.push(text.slice(index + 1, end));
-      return end;
-    }
+    if (unit === DOLLAR) return this.mathEnd(index, counted);
+    if (unit === LESS) return this.labelTokenEnd(index, counted);
+    if (unit === AT) return this.referenceTokenEnd(index, counted);
     return index;
   }
 
-  private embedded(start: number, cls: number): number {
-    const chain = frame(CHAIN, cls);
-    this.push(chain);
-    let index = start;
-    for (;;) {
-      if (index >= this.n) {
-        this.pop();
-        return index;
-      }
-      const unit = this.unit(index);
-      if (unit === OPEN_BRACE) {
-        this.code(index, index + 1);
-        this.push(frame(BRACE, cls));
-        return index + 1;
-      }
-      if (unit === OPEN_PAREN) {
-        this.code(index, index + 1);
-        this.push(frame(PAREN, cls));
-        return index + 1;
-      }
-      if (unit === OPEN_BRACKET) return this.openContent(index, cls, NO_CALL);
-      if (unit === QUOTE) {
-        const end = quoteEnd(this.text, index + 1);
-        this.code(index, end);
-        return end;
-      }
-      const end = typstIdentifierEnd(this.text, index);
-      if (end > index) {
-        const name = this.text.slice(index, end);
-        this.code(index, end);
-        if (DEFINITION_KEYWORDS.has(name)) {
-          this.replaceTop(frame(STATEMENT, UNCOUNTED));
-          return end;
-        }
-        if (name === "show") {
-          this.replaceTop(frame(STATEMENT, this.showClass(end, cls)));
-          return end;
-        }
-        if (name === "return") {
-          this.replaceTop(frame(STATEMENT, cls));
-          return end;
-        }
-        if (BLOCK_KEYWORDS.has(name)) {
-          this.replaceTop(frame(COND, cls));
-          return end;
-        }
-        if (name === "context") {
-          let after = end;
-          while (after < this.n && isInlineSpace(this.unit(after))) after += 1;
-          this.code(end, after);
-          index = after;
-          continue;
-        }
-        this.lastIdentEnd = end;
-        this.lastIdentCallee = calleeOf(name);
-        return end;
-      }
-      this.pop();
-      if (!isDigit(unit)) return index;
-      const number = numberEnd(this.text, index);
-      this.code(index, number);
-      return number;
+  private mathEnd(index: number, counted: boolean): number {
+    const span = mathSpan(this.text, index);
+    if (counted) this.countMath(span);
+    return span.end;
+  }
+
+  private labelTokenEnd(index: number, counted: boolean): number {
+    const end = labelEnd(this.text, index);
+    if (end < 0) return index;
+    if (counted) {
+      this.labelCount += 1;
+      this.labels.add(this.text.slice(index + 1, end - 1));
     }
+    return end;
+  }
+
+  private referenceTokenEnd(index: number, counted: boolean): number {
+    const text = this.text;
+    const end = typstReferenceEnd(text, index + 1);
+    if (end <= index + 1) return index;
+    const glued =
+      index > 0 && WORD_CHARACTER.test(String.fromCodePoint(codePointBefore(text, index)));
+    if (counted && !glued) this.references.push(text.slice(index + 1, end));
+    return end;
+  }
+
+  private embeddedOpener(index: number, unit: number, cls: number): number | null {
+    if (unit === OPEN_BRACE || unit === OPEN_PAREN) {
+      this.code(index, index + 1);
+      this.push(frame(unit === OPEN_BRACE ? BRACE : PAREN, cls));
+      return index + 1;
+    }
+    if (unit === OPEN_BRACKET) return this.openContent(index, cls, NO_CALL);
+    if (unit === QUOTE) {
+      const end = quoteEnd(this.text, index + 1);
+      this.code(index, end);
+      return end;
+    }
+    return null;
+  }
+
+  private keywordFrame(name: string, end: number, cls: number): Frame | null {
+    if (DEFINITION_KEYWORDS.has(name)) return frame(STATEMENT, UNCOUNTED);
+    if (name === "show") return frame(STATEMENT, this.showClass(end, cls));
+    if (name === "return") return frame(STATEMENT, cls);
+    if (BLOCK_KEYWORDS.has(name)) return frame(COND, cls);
+    return null;
+  }
+
+  private embeddedIdentifier(name: string, end: number, cls: number): number {
+    const keyword = this.keywordFrame(name, end, cls);
+    if (keyword) {
+      this.replaceTop(keyword);
+    } else {
+      this.lastIdentEnd = end;
+      this.lastIdentCallee = calleeOf(name);
+    }
+    return end;
+  }
+
+  private embeddedNumber(index: number, unit: number): number {
+    this.pop();
+    if (!isDigit(unit)) return index;
+    const number = numberEnd(this.text, index);
+    this.code(index, number);
+    return number;
+  }
+
+  private embedded(start: number, cls: number): number {
+    this.push(frame(CHAIN, cls));
+    let index = start;
+    while (index < this.n) {
+      const unit = this.unit(index);
+      const opened = this.embeddedOpener(index, unit, cls);
+      if (opened !== null) return opened;
+      const end = typstIdentifierEnd(this.text, index);
+      if (end <= index) return this.embeddedNumber(index, unit);
+      const name = this.text.slice(index, end);
+      this.code(index, end);
+      if (name !== "context") return this.embeddedIdentifier(name, end, cls);
+      let after = end;
+      while (after < this.n && isInlineSpace(this.unit(after))) after += 1;
+      this.code(end, after);
+      index = after;
+    }
+    this.pop();
+    return index;
   }
 
   private chainStep(chain: Frame, index: number): number {
@@ -813,7 +829,7 @@ function proseCharacters(masked: string): number {
   let count = 0;
   let pending = false;
   for (let index = 0; index < masked.length; index += 1) {
-    if (isSpace(masked.charCodeAt(index))) {
+    if (isSpace(codeAt(masked, index))) {
       if (count > 0) pending = true;
       continue;
     }

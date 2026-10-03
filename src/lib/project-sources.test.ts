@@ -626,6 +626,30 @@ describe("readProjectSourcesBatch with skipOversized", () => {
     expect(disk.calls.map((call) => call.paths)).toEqual([["a.yml", "b.yml", "huge.yml"], ["b.yml"], ["huge.yml"]]);
   });
 
+  it("waits for each oversized file before asking for the next", async () => {
+    const disk = fakeDisk({ "a.yml": "a".repeat(60), "b.yml": "b".repeat(60), "huge.yml": "h".repeat(200) });
+    mountFallback(disk);
+    const limited = limitedCommand(disk, 100, 60);
+    let inFlight = 0;
+    let widest = 0;
+    bridge.batch = async (projectId, request) => {
+      inFlight += 1;
+      widest = Math.max(widest, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      try {
+        return await limited(projectId, request);
+      } finally {
+        inFlight -= 1;
+      }
+    };
+
+    const result = await readProjectSourcesBatch("p", ["a.yml", "b.yml", "huge.yml"], { skipOversized: true });
+
+    expect(widest).toBe(1);
+    expect(disk.calls.map((call) => call.paths)).toEqual([["a.yml", "b.yml", "huge.yml"], ["b.yml"], ["huge.yml"]]);
+    expect(result.texts).toEqual({ "a.yml": "a".repeat(60), "b.yml": "b".repeat(60) });
+  });
+
   it("still reads oversized files one by one without the option", async () => {
     const disk = fakeDisk({ "huge.tex": "h".repeat(200) });
     mountFallback(disk);

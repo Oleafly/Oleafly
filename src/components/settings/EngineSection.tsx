@@ -13,6 +13,9 @@ import {
   removeUnusedTinymistDownloads,
   texDistributions,
   type TexDistribution,
+  type TypstSource,
+  type TypstToolchainStatus,
+  type TypstVersionEntry,
 } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { describeError } from "@/lib/app-error";
@@ -33,7 +36,6 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { formatDownloadSize } from "@/lib/download-size";
-import type { TypstSource, TypstToolchainStatus, TypstVersionEntry } from "@/lib/tauri";
 import {
   TYPST_SETTINGS_TARGET,
   typstInstallBusy,

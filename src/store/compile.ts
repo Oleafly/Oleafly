@@ -1413,9 +1413,8 @@ function settleAlreadyShownOutput(
   result: CompileResult,
   currentCheckpoint: CompileSuccessCheckpoint | null,
 ): boolean {
+  if (!result.ok || !currentCheckpoint) return false;
   if (
-    !result.ok ||
-    !currentCheckpoint ||
     result.output_revision !== currentCheckpoint.outputRevision ||
     result.output_id !== currentCheckpoint.outputId
   ) {

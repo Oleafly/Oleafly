@@ -125,11 +125,19 @@ export function mathPreviewTargetAt(
 
   const environment = environmentMathAt(text, window.from, pos);
   if (environment) return environment.body.trim() === "" ? null : environment;
+  return scannedMathAt(text, window.from, pos, format);
+}
 
+function scannedMathAt(
+  text: string,
+  offset: number,
+  pos: number,
+  format: MathSourceFormat,
+): MathPreviewTarget | null {
   for (const found of scanMathExpressions(text, { format })) {
     if (found.status !== "complete") continue;
-    const from = found.from + window.from;
-    const to = found.to + window.from;
+    const from = found.from + offset;
+    const to = found.to + offset;
     if (from <= pos && pos <= to) {
       if (found.body.trim() === "") return null;
       return { from, to, body: found.body, display: found.display };

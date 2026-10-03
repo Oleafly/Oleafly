@@ -42,6 +42,7 @@ import {
   workspaceEditFromValue,
   type LanguageServiceLocation,
   type OffsetRange,
+  type WorkspaceEditOperation,
 } from "@/lib/analysis/language-service-results";
 import type { LanguageServiceFeature } from "@/lib/language-service";
 import {
@@ -684,42 +685,51 @@ interface RenameWriteResult {
   unwritten: string[];
 }
 
+type RenameFileOutcome = "edited" | "ignored" | "failed";
+
+interface RenameWriteContext {
+  readonly view: EditorView;
+  readonly files: ReturnType<typeof useFilesStore.getState>;
+  readonly baseFor: (file: string) => string | undefined;
+}
+
+function inSequence<T>(items: readonly T[], task: (item: T) => Promise<void>): Promise<void> {
+  return items.reduce<Promise<void>>((chain, item) => chain.then(() => task(item)), Promise.resolve());
+}
+
+function writeRenameFile(
+  context: RenameWriteContext,
+  file: string,
+  edits: readonly Edit[],
+): Promise<RenameFileOutcome> {
+  const { view, files, baseFor } = context;
+  if (isReadOnlyProjectPath(file, files.manifestHome, files.tree)) return Promise.resolve("failed");
+  if (file === files.activePath) {
+    // Edit the live editor so the view updates; CM wants ascending, non-overlapping changes.
+    view.dispatch({ changes: ascendingChanges(edits) });
+    return Promise.resolve("edited");
+  }
+  const base = baseFor(file);
+  if (base === undefined) return Promise.resolve("ignored");
+  return writeRenamedFile(files, files.projectId, file, base, edits);
+}
+
 async function writeRenameEdits(
   view: EditorView,
   edits: readonly Edit[],
   baseFor: (file: string) => string | undefined,
 ): Promise<RenameWriteResult> {
-  const files = useFilesStore.getState();
-  const id = files.projectId;
-  const activePath = files.activePath;
-
-  const byFile = groupEditsByFile(edits);
-
-  const unwritten: string[] = [];
-  let editedFiles = 0;
-  let editedCount = 0;
-  for (const [file, edits] of byFile) {
-    if (isReadOnlyProjectPath(file, files.manifestHome, files.tree)) {
-      unwritten.push(file);
-      continue;
-    }
-    if (file === activePath) {
-      // Edit the live editor so the view updates; CM wants ascending, non-overlapping changes.
-      view.dispatch({ changes: ascendingChanges(edits) });
-      editedFiles++;
-      editedCount += edits.length;
-      continue;
-    }
-    const base = baseFor(file);
-    if (base === undefined) continue;
-    const outcome = await writeRenamedFile(files, id, file, base, edits);
-    if (outcome === "failed") unwritten.push(file);
+  const context: RenameWriteContext = { view, files: useFilesStore.getState(), baseFor };
+  const result: RenameWriteResult = { editedFiles: 0, editedCount: 0, unwritten: [] };
+  await inSequence([...groupEditsByFile(edits)], async ([file, fileEdits]) => {
+    const outcome = await writeRenameFile(context, file, fileEdits);
+    if (outcome === "failed") result.unwritten.push(file);
     else if (outcome === "edited") {
-      editedFiles++;
-      editedCount += edits.length;
+      result.editedFiles++;
+      result.editedCount += fileEdits.length;
     }
-  }
-  return { editedFiles, editedCount, unwritten };
+  });
+  return result;
 }
 
 function reportRename(
@@ -762,6 +772,39 @@ interface LanguageServiceRenamePlan {
   skipped: string[];
 }
 
+function planFileMove(
+  plan: LanguageServiceRenamePlan,
+  root: string,
+  operation: Extract<WorkspaceEditOperation, { kind: "rename" }>,
+): void {
+  const from = projectPathForUri(root, operation.oldUri);
+  const to = projectPathForUri(root, operation.newUri);
+  if (from && to) plan.moves.push({ from, to });
+  else plan.skipped.push(from ?? operation.oldUri);
+}
+
+function planFileEdits(
+  plan: LanguageServiceRenamePlan,
+  current: CurrentInteractiveDocument,
+  root: string,
+  operation: Extract<WorkspaceEditOperation, { kind: "edit" }>,
+): void {
+  const path = projectPathForUri(root, operation.uri);
+  const base = path ? projectText(current.session, path) : undefined;
+  const converted =
+    path && base !== undefined && base === appTextFor(path)
+      ? offsetEdits(operation.edits, base, current.session.positionEncoding)
+      : null;
+  if (!path || base === undefined || !converted) {
+    plan.skipped.push(path ?? operation.uri);
+    return;
+  }
+  plan.bases.set(path, base);
+  for (const edit of converted) {
+    plan.edits.push({ file: path, from: edit.from, to: edit.to, newText: edit.insert });
+  }
+}
+
 function languageServiceRenamePlan(
   current: CurrentInteractiveDocument,
   value: unknown,
@@ -776,27 +819,8 @@ function languageServiceRenamePlan(
     skipped: [],
   };
   for (const operation of parsed.operations) {
-    if (operation.kind === "rename") {
-      const from = projectPathForUri(root, operation.oldUri);
-      const to = projectPathForUri(root, operation.newUri);
-      if (from && to) plan.moves.push({ from, to });
-      else plan.skipped.push(from ?? operation.oldUri);
-      continue;
-    }
-    const path = projectPathForUri(root, operation.uri);
-    const base = path ? projectText(current.session, path) : undefined;
-    const converted =
-      path && base !== undefined && base === appTextFor(path)
-        ? offsetEdits(operation.edits, base, current.session.positionEncoding)
-        : null;
-    if (!path || base === undefined || !converted) {
-      plan.skipped.push(path ?? operation.uri);
-      continue;
-    }
-    plan.bases.set(path, base);
-    for (const edit of converted) {
-      plan.edits.push({ file: path, from: edit.from, to: edit.to, newText: edit.insert });
-    }
+    if (operation.kind === "rename") planFileMove(plan, root, operation);
+    else planFileEdits(plan, current, root, operation);
   }
   return plan;
 }
@@ -806,14 +830,14 @@ async function moveRenamedFiles(
   unwritten: string[],
 ): Promise<number> {
   let moved = 0;
-  for (const move of moves) {
+  await inSequence(moves, async (move) => {
     try {
       await useFilesStore.getState().renameEntry(move.from, move.to);
       moved++;
     } catch {
       unwritten.push(move.from);
     }
-  }
+  });
   return moved;
 }
 

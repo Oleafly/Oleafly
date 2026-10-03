@@ -119,12 +119,34 @@ export async function readTableFile(path: string): Promise<TableFile> {
   return readTableFileFromBytes(path, bytesFromBase64(base64));
 }
 
+function isDashOrDot(character: string | undefined): boolean {
+  return character === "-" || character === ".";
+}
+
+function trimDashesAndDots(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && isDashOrDot(text[start])) start += 1;
+  while (end > start && isDashOrDot(text[end - 1])) end -= 1;
+  return text.slice(start, end);
+}
+
 function fileStem(fileName: string): string {
   const name = fileName.replace(/^.*[/\\]/u, "");
   const dot = name.lastIndexOf(".");
   const stem = dot > 0 ? name.slice(0, dot) : name;
-  const safe = stem.replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^[-.]+|[-.]+$/gu, "");
+  const safe = trimDashesAndDots(stem.replaceAll(/[^\p{L}\p{N}._-]+/gu, "-"));
   return safe || "table";
+}
+
+function linkedExtension(format: TableFileFormat): string {
+  if (format === "json") return "json";
+  return format === "tsv" ? "tsv" : "csv";
+}
+
+function linkedSource(file: TableFile, path: string, tabbed: boolean): LinkedTableSource {
+  if (file.format === "json") return { format: "json", path, shape: file.jsonShape ?? "records" };
+  return tabbed ? { format: "csv", path, delimiter: "\t" } : { format: "csv", path };
 }
 
 export function planLinkedTable(
@@ -135,16 +157,10 @@ export function planLinkedTable(
 ): LinkedTablePlan {
   const text = file.text ?? "";
   const tabbed = file.format === "tsv" || (file.format === "csv" && delimiterOf(text) === "\t");
-  const extension = file.format === "json" ? "json" : file.format === "tsv" ? "tsv" : "csv";
   const content = file.format === "spreadsheet" ? serializeCsv(file.rows) : text;
-  const dataPath = uniqueProjectPath(`${LINKED_DATA_DIRECTORY}/${fileStem(fileName)}.${extension}`, tree);
+  const dataPath = uniqueProjectPath(`${LINKED_DATA_DIRECTORY}/${fileStem(fileName)}.${linkedExtension(file.format)}`, tree);
   const path = latexGraphicsPath(dataPath, documentPath);
-  const source: LinkedTableSource = file.format === "json"
-    ? { format: "json", path, shape: file.jsonShape ?? "records" }
-    : tabbed
-      ? { format: "csv", path, delimiter: "\t" }
-      : { format: "csv", path };
-  return { dataPath, content, source };
+  return { dataPath, content, source: linkedSource(file, path, tabbed) };
 }
 
 export function emitLinkedTable(rows: string[][], options: LinkedTableOptions): string {

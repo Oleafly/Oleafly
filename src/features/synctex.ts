@@ -191,8 +191,9 @@ export async function forwardFromCursor() {
       compiledPath = mapped[0];
       compiledLine = mapped[2];
     }
+    const forwardColumn = stale ? null : column;
     const rect = typst
-      ? await typstForward(projectId, mainDoc, compiledPath, compiledLine, stale ? null : column)
+      ? await typstForward(projectId, mainDoc, compiledPath, compiledLine, forwardColumn)
       : await synctexForward(projectId, mainDoc, compiledPath, compiledLine);
     if (
       !contextStillValid(context) ||

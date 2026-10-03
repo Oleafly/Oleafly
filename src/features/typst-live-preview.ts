@@ -181,7 +181,7 @@ function onFiles(state: FilesState, previous: FilesState): void {
 }
 
 function onStatus(payload: StatusPayload): void {
-  if (!session || payload.projectId !== session.projectId || payload.sessionId < session.sessionId) return;
+  if (payload.projectId !== session?.projectId || payload.sessionId < session.sessionId) return;
   session.sessionId = payload.sessionId;
   if (payload.state === "compiling") {
     const files = useFilesStore.getState();
@@ -198,7 +198,7 @@ function onStatus(payload: StatusPayload): void {
 function onResult(payload: ResultPayload): void {
   const files = useFilesStore.getState();
   if (files.projectId !== payload.projectId || !typstLivePreviewWanted(files)) return;
-  if (session && session.projectId === payload.projectId && payload.sessionId < session.sessionId) return;
+  if (session?.projectId === payload.projectId && payload.sessionId < session.sessionId) return;
   const projectRevision = cycleRevision ?? compileProjectRevision(payload.projectId);
   cycleRevision = null;
   void applyTypstLiveResult({

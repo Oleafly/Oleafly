@@ -54,13 +54,21 @@ const NUMBER_SUFFIXES = new Set(["", "pt", "mm", "cm", "in", "deg", "rad", "em",
 
 const TEXT_STOP = new Uint8Array(128);
 for (const character of " \t\n\u000b\u000c\r\\/[]~-.'\"*_:h`$<>@#") {
-  TEXT_STOP[character.charCodeAt(0)] = 1;
+  TEXT_STOP[character.codePointAt(0) ?? 0] = 1;
 }
 
 const LINK_CHARACTER = new Uint8Array(128);
 for (const character of "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&*+,-./:;=?@_~'") {
-  LINK_CHARACTER[character.charCodeAt(0)] = 1;
+  LINK_CHARACTER[character.codePointAt(0) ?? 0] = 1;
 }
+
+const BASE_DIGITS: Readonly<Record<number, RegExp>> = {
+  2: /^[01]+$/,
+  8: /^[0-7]+$/,
+  16: /^[0-9a-fA-F]+$/,
+};
+
+const FLOAT_LITERAL = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
 
 const MATH_SHORTHANDS: Readonly<Record<string, readonly string[]>> = {
   "-": [">>", ">", "->"],
@@ -174,6 +182,15 @@ function width(code: number): number {
   return code > 0xffff ? 2 : 1;
 }
 
+function codeUnitAt(text: string, index: number): number {
+  const code = text.codePointAt(index) as number;
+  return code > 0xffff ? (code >> 10) + 0xd7c0 : code;
+}
+
+function isSuffixCharacter(code: number): boolean {
+  return isAsciiAlphanumeric(code) || code === 37;
+}
+
 export class TypstLexer {
   pos = 0;
   start = 0;
@@ -189,23 +206,28 @@ export class TypstLexer {
 
   unit(index: number): number {
     if (index >= this.reach) this.reach = index + 1;
-    return index < this.end && index >= 0 ? this.text.charCodeAt(index) : -1;
+    return index < this.end && index >= 0 ? codeUnitAt(this.text, index) : -1;
   }
 
   point(index: number): number {
-    const code = this.unit(index);
-    if (code >= 0xd800 && code <= 0xdbff) {
-      const low = this.unit(index + 1);
-      if (low >= 0xdc00 && low <= 0xdfff) return ((code - 0xd800) << 10) + (low - 0xdc00) + 0x10000;
-    }
-    return code;
+    if (index >= this.reach) this.reach = index + 1;
+    if (index >= this.end || index < 0) return -1;
+    const code = this.text.codePointAt(index) as number;
+    return code < 0xd800 ? code : this.surrogatePoint(index, code);
+  }
+
+  private surrogatePoint(index: number, code: number): number {
+    if (code > 0xdbff && code <= 0xffff) return code;
+    if (index + 1 >= this.reach) this.reach = index + 2;
+    if (code <= 0xffff || index + 1 < this.end) return code;
+    return codeUnitAt(this.text, index);
   }
 
   private pointBefore(index: number): number {
     if (index <= 0) return -1;
-    const code = this.text.charCodeAt(index - 1);
+    const code = codeUnitAt(this.text, index - 1);
     if (code >= 0xdc00 && code <= 0xdfff && index >= 2) {
-      const high = this.text.charCodeAt(index - 2);
+      const high = codeUnitAt(this.text, index - 2);
       if (high >= 0xd800 && high <= 0xdbff) return ((high - 0xd800) << 10) + (code - 0xdc00) + 0x10000;
     }
     return code;
@@ -229,7 +251,7 @@ export class TypstLexer {
 
   private at(literal: string, offset = 0): boolean {
     for (let index = 0; index < literal.length; index += 1) {
-      if (this.unit(this.pos + offset + index) !== literal.charCodeAt(index)) return false;
+      if (this.unit(this.pos + offset + index) !== literal.codePointAt(index)) return false;
     }
     return true;
   }
@@ -261,7 +283,7 @@ export class TypstLexer {
   column(index: number): number {
     let count = 0;
     for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
-      const code = this.text.charCodeAt(cursor);
+      const code = codeUnitAt(this.text, cursor);
       if (isNewline(code)) break;
       if (code < 0xdc00 || code > 0xdfff) count += 1;
     }
@@ -302,9 +324,9 @@ export class TypstLexer {
     let newlines = 0;
     if (first !== 32 || more > 0) {
       for (let index = start; index < this.pos; index += 1) {
-        const code = this.text.charCodeAt(index);
+        const code = this.text.codePointAt(index) as number;
         if (!isNewline(code)) continue;
-        if (code === 13 && index + 1 < this.pos && this.text.charCodeAt(index + 1) === 10) index += 1;
+        if (code === 13 && index + 1 < this.pos && this.text.codePointAt(index + 1) === 10) index += 1;
         newlines += 1;
       }
     }
@@ -339,32 +361,34 @@ export class TypstLexer {
       this.aux = [start + 1, -1, -1, start + 1];
       return K.Raw;
     }
+    if (!this.closeRaw(backticks)) return K.Error;
+    const innerStart = start + backticks;
+    const innerEnd = this.pos - backticks;
+    const langTo = backticks >= 3 ? this.rawLangEnd(innerStart, innerEnd) : -1;
+    this.aux = [innerStart, langTo < 0 ? -1 : innerStart, langTo, innerEnd];
+    return K.Raw;
+  }
+
+  private closeRaw(backticks: number): boolean {
     let found = 0;
     while (found < backticks) {
       const code = this.eat();
-      if (code < 0) return K.Error;
+      if (code < 0) return false;
       found = code === 96 ? found + 1 : 0;
     }
-    const end = this.pos;
-    const innerStart = start + backticks;
-    const innerEnd = end - backticks;
-    let langFrom = -1;
-    let langTo = -1;
-    if (backticks >= 3) {
-      const first = innerStart < innerEnd ? this.point(innerStart) : -1;
-      if (first >= 0 && !isWhitespace(first) && first !== 96 && isIdStart(first)) {
-        let cursor = innerStart + width(first);
-        while (cursor < innerEnd) {
-          const code = this.point(cursor);
-          if (!isIdContinue(code)) break;
-          cursor += width(code);
-        }
-        langFrom = innerStart;
-        langTo = cursor;
-      }
+    return true;
+  }
+
+  private rawLangEnd(innerStart: number, innerEnd: number): number {
+    const first = innerStart < innerEnd ? this.point(innerStart) : -1;
+    if (first < 0 || isWhitespace(first) || first === 96 || !isIdStart(first)) return -1;
+    let cursor = innerStart + width(first);
+    while (cursor < innerEnd) {
+      const code = this.point(cursor);
+      if (!isIdContinue(code)) break;
+      cursor += width(code);
     }
-    this.aux = [innerStart, langFrom, langTo, innerEnd];
-    return K.Raw;
+    return cursor;
   }
 
   private inWord(start: number): boolean {
@@ -381,23 +405,19 @@ export class TypstLexer {
       case 92:
         return this.backslash();
       case 104:
-        if (this.eatLiteral("ttp://") || this.eatLiteral("ttps://")) return this.link();
-        return this.plainText();
+        return this.linkOrText();
       case 60:
-        return isIdContinue(this.peek()) ? this.label() : this.plainText();
+        return this.labelOrText();
       case 64:
-        return isIdContinue(this.peek()) ? this.refMarker() : this.plainText();
+        return this.refOrText();
       case 46:
-        return this.eatLiteral("..") ? K.Shorthand : this.plainText();
+        return this.ellipsisOrText();
       case 45:
-        if (this.eatLiteral("--") || this.eatIf(45) || this.eatIf(63) || isNumeric(this.peek())) {
-          return K.Shorthand;
-        }
-        return this.spaceOrEnd() ? K.ListMarker : this.plainText();
+        return this.hyphen();
       case 42:
-        return this.inWord(start) ? this.plainText() : K.Star;
+        return this.delimiterOrText(start, K.Star);
       case 95:
-        return this.inWord(start) ? this.plainText() : K.Underscore;
+        return this.delimiterOrText(start, K.Underscore);
       case 35:
         return K.Hash;
       case 91:
@@ -414,16 +434,49 @@ export class TypstLexer {
       case 58:
         return K.Colon;
       case 61:
-        while (this.eatIf(61));
-        return this.spaceOrEnd() ? K.HeadingMarker : this.plainText();
+        return this.headingMarker();
       case 43:
-        return this.spaceOrEnd() ? K.EnumMarker : this.plainText();
+        return this.markerOrText(K.EnumMarker);
       case 47:
-        return this.spaceOrEnd() ? K.TermMarker : this.plainText();
+        return this.markerOrText(K.TermMarker);
       default:
-        if (isAsciiDigit(code)) return this.numbering(start);
-        return this.plainText();
+        return isAsciiDigit(code) ? this.numbering(start) : this.plainText();
     }
+  }
+
+  private linkOrText(): number {
+    if (this.eatLiteral("ttp://") || this.eatLiteral("ttps://")) return this.link();
+    return this.plainText();
+  }
+
+  private labelOrText(): number {
+    return isIdContinue(this.peek()) ? this.label() : this.plainText();
+  }
+
+  private refOrText(): number {
+    return isIdContinue(this.peek()) ? this.refMarker() : this.plainText();
+  }
+
+  private ellipsisOrText(): number {
+    return this.eatLiteral("..") ? K.Shorthand : this.plainText();
+  }
+
+  private hyphen(): number {
+    if (this.eatLiteral("--") || this.eatIf(45) || this.eatIf(63) || isNumeric(this.peek())) return K.Shorthand;
+    return this.markerOrText(K.ListMarker);
+  }
+
+  private delimiterOrText(start: number, kind: number): number {
+    return this.inWord(start) ? this.plainText() : kind;
+  }
+
+  private headingMarker(): number {
+    while (this.eatIf(61));
+    return this.markerOrText(K.HeadingMarker);
+  }
+
+  private markerOrText(kind: number): number {
+    return this.spaceOrEnd() ? kind : this.plainText();
   }
 
   private backslash(): number {
@@ -431,9 +484,9 @@ export class TypstLexer {
       const hexStart = this.pos;
       this.eatWhile(isAsciiAlphanumeric);
       const hex = this.text.slice(hexStart, this.pos);
-      if (!this.eatIf(125)) return K.Error;
-      const value = /^[0-9a-fA-F]+$/.test(hex) ? Number.parseInt(hex, 16) : Number.NaN;
-      if (!(value <= 0x10ffff) || (value >= 0xd800 && value <= 0xdfff)) return K.Error;
+      if (!this.eatIf(125) || !/^[0-9a-fA-F]+$/.test(hex)) return K.Error;
+      const value = Number.parseInt(hex, 16);
+      if (value > 0x10ffff || (value >= 0xd800 && value <= 0xdfff)) return K.Error;
       return K.Escape;
     }
     const next = this.peek();
@@ -480,35 +533,66 @@ export class TypstLexer {
 
   private plainText(): number {
     for (;;) {
-      for (;;) {
-        const code = this.unit(this.pos);
-        if (code < 0) break;
-        if (code < 128 ? TEXT_STOP[code] === 1 : isWhitespace(code)) break;
-        this.pos += 1;
-      }
-      const code = this.unit(this.pos);
+      this.skipTextRun();
       const after = this.pos + 1;
-      let proceed = false;
-      if (code === 32) proceed = isAlphanumeric(this.point(after));
-      else if (code === 47) proceed = !this.at("/", 1) && !this.at("*", 1);
-      else if (code === 45) proceed = !this.at("-", 1) && !this.at("?", 1);
-      else if (code === 46) proceed = !this.at("..", 1);
-      else if (code === 104) proceed = !this.at("ttp://", 1) && !this.at("ttps://", 1);
-      else if (code === 64) proceed = !isLabelCharacter(this.point(after));
-      if (!proceed) return K.Text;
+      if (!this.textContinues(this.unit(this.pos), after)) return K.Text;
       this.pos = after;
+    }
+  }
+
+  private skipTextRun(): void {
+    const text = this.text;
+    let pos = this.pos;
+    while (pos < this.end) {
+      const code = text.codePointAt(pos) as number;
+      if (code < 128 ? TEXT_STOP[code] === 1 : isWhitespace(code)) break;
+      pos += 1;
+    }
+    this.pos = pos;
+    if (pos >= this.reach) this.reach = pos + 1;
+  }
+
+  private textContinues(code: number, after: number): boolean {
+    switch (code) {
+      case 32:
+        return isAlphanumeric(this.point(after));
+      case 47:
+        return !this.at("/", 1) && !this.at("*", 1);
+      case 45:
+        return !this.at("-", 1) && !this.at("?", 1);
+      case 46:
+        return !this.at("..", 1);
+      case 104:
+        return !this.at("ttp://", 1) && !this.at("ttps://", 1);
+      case 64:
+        return !isLabelCharacter(this.point(after));
+      default:
+        return false;
     }
   }
 
   private math(start: number, code: number): number {
     if (code === 92) return this.backslash();
     if (code === 34) return this.string();
+    if (this.eatMathShorthandTail(code)) return K.MathShorthand;
+    const punctuation = this.mathPunctuation(code);
+    if (punctuation >= 0) return punctuation;
+    const brace = this.mathBrace(code);
+    if (brace >= 0) return brace;
+    if (isMathIdStart(code) && isMathIdContinue(this.peek())) return this.mathIdent(start);
+    return this.mathText(start, code);
+  }
+
+  private eatMathShorthandTail(code: number): boolean {
     const shorthands = MATH_SHORTHANDS[character(code)];
-    if (shorthands) {
-      for (const tail of shorthands) {
-        if (this.eatLiteral(tail)) return K.MathShorthand;
-      }
+    if (!shorthands) return false;
+    for (const tail of shorthands) {
+      if (this.eatLiteral(tail)) return true;
     }
+    return false;
+  }
+
+  private mathPunctuation(code: number): number {
     switch (code) {
       case 42:
       case 45:
@@ -546,18 +630,22 @@ export class TypstLexer {
       case 41:
         return K.RightParen;
       default:
-        break;
+        return -1;
     }
+  }
+
+  private mathBrace(code: number): number {
     if (code === 91 && this.eatIf(124)) return K.LeftBrace;
     if (code === 124 && this.eatIf(93)) return K.RightBrace;
     if (MATH_OPENING.has(code)) return K.LeftBrace;
     if (MATH_CLOSING.has(code)) return K.RightBrace;
-    if (isMathIdStart(code) && isMathIdContinue(this.peek())) {
-      this.eatWhile(isMathIdContinue);
-      if (this.graphemeEnd(start) >= this.pos) return K.MathText;
-      return this.mathIdentOrField();
-    }
-    return this.mathText(start, code);
+    return -1;
+  }
+
+  private mathIdent(start: number): number {
+    this.eatWhile(isMathIdContinue);
+    if (this.graphemeEnd(start) >= this.pos) return K.MathText;
+    return this.mathIdentOrField();
   }
 
   private graphemeEnd(start: number): number {
@@ -629,33 +717,35 @@ export class TypstLexer {
 
   private code(start: number, code: number): number {
     if (code === 60 && isIdContinue(this.peek())) return this.label();
-    if (isAsciiDigit(code)) return this.number(start, code);
-    if (code === 46 && isAsciiDigit(this.unit(this.pos))) return this.number(start, code);
+    if (isAsciiDigit(code) || (code === 46 && isAsciiDigit(this.unit(this.pos)))) return this.number(start, code);
     if (code === 34) return this.string();
-    const next = this.unit(this.pos);
+    const operator = this.operator(code, this.unit(this.pos));
+    if (operator >= 0) return operator;
+    return isIdStart(code) ? this.ident(start) : K.Error;
+  }
+
+  private operator(code: number, next: number): number {
     switch (code) {
       case 61:
-        if (next === 61) return this.take(K.EqEq);
         if (next === 62) return this.take(K.Arrow);
-        return K.Eq;
+        return this.paired(next, 61, K.EqEq, K.Eq);
       case 33:
-        if (next === 61) return this.take(K.ExclEq);
-        return K.Error;
+        return this.paired(next, 61, K.ExclEq, K.Error);
       case 60:
-        return next === 61 ? this.take(K.LtEq) : K.Lt;
+        return this.paired(next, 61, K.LtEq, K.Lt);
       case 62:
-        return next === 61 ? this.take(K.GtEq) : K.Gt;
+        return this.paired(next, 61, K.GtEq, K.Gt);
       case 43:
-        return next === 61 ? this.take(K.PlusEq) : K.Plus;
+        return this.paired(next, 61, K.PlusEq, K.Plus);
       case 45:
       case 0x2212:
-        return next === 61 ? this.take(K.HyphEq) : K.Minus;
+        return this.paired(next, 61, K.HyphEq, K.Minus);
       case 42:
-        return next === 61 ? this.take(K.StarEq) : K.Star;
+        return this.paired(next, 61, K.StarEq, K.Star);
       case 47:
-        return next === 61 ? this.take(K.SlashEq) : K.Slash;
+        return this.paired(next, 61, K.SlashEq, K.Slash);
       case 46:
-        return next === 46 ? this.take(K.Dots) : K.Dot;
+        return this.paired(next, 46, K.Dots, K.Dot);
       case 123:
         return K.LeftBrace;
       case 125:
@@ -677,19 +767,18 @@ export class TypstLexer {
       case 58:
         return K.Colon;
       case 38:
-        if (next === 38) this.pos += 1;
-        return K.Error;
+        return this.paired(next, 38, K.Error, K.Error);
       case 124:
-        if (next === 124) this.pos += 1;
-        return K.Error;
+        return this.paired(next, 124, K.Error, K.Error);
       case 126:
-        if (next === 61) this.pos += 1;
-        return K.Error;
+        return this.paired(next, 61, K.Error, K.Error);
       default:
-        break;
+        return -1;
     }
-    if (isIdStart(code)) return this.ident(start);
-    return K.Error;
+  }
+
+  private paired(next: number, second: number, double: number, single: number): number {
+    return next === second ? this.take(double) : single;
   }
 
   private take(kind: number): number {
@@ -700,8 +789,8 @@ export class TypstLexer {
   private ident(start: number): number {
     this.eatWhile(isIdContinue);
     const name = this.text.slice(start, this.pos);
-    const before = start > 0 ? this.text.charCodeAt(start - 1) : -1;
-    const afterDots = before === 46 && start > 1 && this.text.charCodeAt(start - 2) === 46;
+    const before = start > 0 ? (this.text.codePointAt(start - 1) as number) : -1;
+    const afterDots = before === 46 && start > 1 && this.text.codePointAt(start - 2) === 46;
     if (!(before === 46 || before === 64) || afterDots) {
       const keyword = KEYWORDS.get(name);
       if (keyword !== undefined) return keyword;
@@ -710,42 +799,40 @@ export class TypstLexer {
   }
 
   private number(start: number, first: number): number {
-    let base = 10;
-    if (first === 48) {
-      if (this.eatIf(98)) base = 2;
-      else if (this.eatIf(111)) base = 8;
-      else if (this.eatIf(120)) base = 16;
-    }
-    if (base === 16) this.eatWhile(isAsciiAlphanumeric);
-    else this.eatWhile(isAsciiDigit);
-    let isFloat = false;
-    if (base === 10) {
-      if (first === 46) {
-        isFloat = true;
-      } else if (!this.at("..") && !isIdStart(this.point(this.pos + 1)) && this.eatIf(46)) {
-        isFloat = true;
-        this.eatWhile(isAsciiDigit);
-      }
-      if (!this.at("em") && (this.eatIf(101) || this.eatIf(69))) {
-        isFloat = true;
-        if (!this.eatIf(43)) this.eatIf(45);
-        this.eatWhile(isAsciiDigit);
-      }
-    }
+    const base = this.numberBase(first);
+    this.eatWhile(base === 16 ? isAsciiAlphanumeric : isAsciiDigit);
+    const isFloat = base === 10 && this.decimalTail(first);
     const number = this.text.slice(start, this.pos);
     const suffixStart = this.pos;
-    this.eatWhile((code) => isAsciiAlphanumeric(code) || code === 37);
+    this.eatWhile(isSuffixCharacter);
     const suffix = this.text.slice(suffixStart, this.pos);
     if (!NUMBER_SUFFIXES.has(suffix)) return K.Error;
-    if (base !== 10) {
-      if (suffix !== "") return K.Error;
-      const digits = number.slice(2);
-      const valid = base === 2 ? /^[01]+$/ : base === 8 ? /^[0-7]+$/ : /^[0-9a-fA-F]+$/;
-      return valid.test(digits) ? K.Int : K.Error;
-    }
-    if (isFloat && !/^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(number)) return K.Error;
+    if (base !== 10) return suffix === "" && BASE_DIGITS[base].test(number.slice(2)) ? K.Int : K.Error;
+    if (isFloat && !FLOAT_LITERAL.test(number)) return K.Error;
     if (suffix !== "") return K.Numeric;
     return isFloat ? K.Float : K.Int;
+  }
+
+  private numberBase(first: number): number {
+    if (first !== 48) return 10;
+    if (this.eatIf(98)) return 2;
+    if (this.eatIf(111)) return 8;
+    if (this.eatIf(120)) return 16;
+    return 10;
+  }
+
+  private decimalTail(first: number): boolean {
+    let isFloat = first === 46;
+    if (!isFloat && !this.at("..") && !isIdStart(this.point(this.pos + 1)) && this.eatIf(46)) {
+      isFloat = true;
+      this.eatWhile(isAsciiDigit);
+    }
+    if (!this.at("em") && (this.eatIf(101) || this.eatIf(69))) {
+      isFloat = true;
+      if (!this.eatIf(43)) this.eatIf(45);
+      this.eatWhile(isAsciiDigit);
+    }
+    return isFloat;
   }
 
   private string(): number {

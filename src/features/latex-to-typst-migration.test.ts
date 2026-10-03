@@ -191,6 +191,31 @@ describe("fixBlockReferences", () => {
       "Definition~#link(<def:fraction>)[2.1] and #link(<def:fraction>)[2.1]. and @sec:intro",
     ]);
   });
+
+  it.each([
+    ["#strong[Theorem 2.1a] (Name).", "2.1a"],
+    ["#strong[Lemma 12]", "12"],
+    ["#strong[x.1] text", "1"],
+    ["#strong[1..2]", "2"],
+    ["#strong[A1B2]", "2"],
+    ["#strong[5 6]", "6"],
+    ["#strong[3.4.5B]", "3.4.5B"],
+    ["#strong[Remark]", "b:x"],
+    ["#strong[Def 3.]", "b:x"],
+    ["#strong[Def 3ab]", "b:x"],
+    ["#strong[2.1", "b:x"],
+    ["#strong[]", "b:x"],
+    [" #strong[2.1]", "b:x"],
+    ["#emph[2.1]", "b:x"],
+  ])("reads the block number from %j", (heading, shown) => {
+    const block = ["#block[", heading, "", "] <b:x>"].join("\n");
+    expect(fixBlockReferences([block, "See @b:x."])[1]).toBe(`See #link(<b:x>)[${shown}].`);
+  });
+
+  it("reads a long block heading", () => {
+    const block = ["#block[", `#strong[${"1.".repeat(20000)}x${"9".repeat(20000)}`, "", "] <b:x>"].join("\n");
+    expect(fixBlockReferences([block, "@b:x"])[1]).toBe("#link(<b:x>)[b:x]");
+  });
 });
 
 describe("relativeTypstPath", () => {
@@ -364,6 +389,28 @@ describe("carrySharedDefinitions", () => {
     );
     expect(carrySharedDefinitions(main, "Plain text\n")).toBe("Plain text\n");
   });
+
+  it.each([
+    ["#let x = 1", true],
+    ["#let x=1", true],
+    ["#let x = ", true],
+    ["#let x =", false],
+    ["#let x(a) = a", false],
+    ["#let x-y_2 = (a: 1)", true],
+    ["#let x = 1\r", false],
+    ["#let x =\r 1", true],
+    ["#let x = 1\u2028", false],
+    ["#let x = \u2029\t2", true],
+    ["#let x \r= 1", true],
+    ["#let 1x = 1", false],
+    [" #let x = 1", false],
+    ["#letx = 1", false],
+  ])("carries the definition %j only when it is a one line value", (line, carried) => {
+    const name = /^#let ([A-Za-z_][\w-]*)/u.exec(line.trim())?.[1] ?? "x";
+    const main = `${line}\n#show: doc => conf(\n  doc,\n)`;
+    const part = `Text #${name}\n`;
+    expect(carrySharedDefinitions(main, part)).toBe(carried ? `${line}\n\n${part}` : part);
+  });
 });
 
 describe("pandocReportNotes", () => {
@@ -386,6 +433,53 @@ describe("pandocReportNotes", () => {
       { kind: "pandoc", detail: String.raw`Skipped '\begin{tikzpicture} ...'`, source: { file: "chapters/one.tex", line: 30 } },
       { kind: "pandoc", detail: String.raw`Could not convert TeX math \foo, rendering as TeX:` },
     ]);
+  });
+
+  it.each([
+    [String.raw`Skipped '\vspace*{2mm}' at line 3 column 1`, false],
+    [String.raw`Skipped '\hspace{1em}'`, false],
+    [String.raw`Skipped '\vspacex' at line 3 column 1`, true],
+    [String.raw`Skipped '\;' at line 1 column 1`, false],
+    [String.raw`Skipped '\;a'`, true],
+    [String.raw`Skipped '\!'`, false],
+    [String.raw`Skipped '\begin{titlepage}'`, false],
+    [String.raw`Skipped '\begin{titlepage}x'`, true],
+    [String.raw`Skipped '\end{titlepage}' at line 2 column 1`, false],
+    [String.raw`Skipped '\begin{abstract}'`, true],
+    [String.raw`Skipped '\Large'`, false],
+    [String.raw`Skipped '\LARGEx'`, true],
+    [String.raw`Skipped '\label{sec:x}'`, false],
+    [String.raw`Skipped '\qquad'`, false],
+    [String.raw`Skipped '\IEEEpeerreviewmaketitle'`, false],
+    [String.raw`Skipped '\SetAlgoLined'`, false],
+    [String.raw` Skipped '\centering'`, true],
+    [String.raw`Skipped '\centering@x'`, false],
+    [String.raw`Skipped '\'`, true],
+    ["Skipped 'centering'", true],
+  ])("decides whether %j is worth a note", (entry, noted) => {
+    expect(pandocReportNotes([entry], origins)).toHaveLength(noted ? 1 : 0);
+  });
+
+  it.each([
+    ["Odd thing at line 7 column 2", "Odd thing", 7],
+    ["Odd thing at main.tex line 7 column 2  \n", "Odd thing", 7],
+    ["Odd thing at a b.tex line 7 column 2", "Odd thing at a b.tex line 7 column 2", null],
+    ["Odd thing\n\tat line 3 column 12", "Odd thing", 3],
+    ["A at line 1 column 1 and B at line 2 column 3", "A at line 1 column 1 and B", 2],
+    ["Odd at  line 2 column 1", "Odd at  line 2 column 1", null],
+    ["Odd at line 2 column", "Odd at line 2 column", null],
+    ["Odd at line x column 1", "Odd at line x column 1", null],
+    ["at line 2 column 1", "at line 2 column 1", null],
+    [" at line 2 column 1", "", 2],
+    ["Odd at at.tex line 2 column 1", "Odd", 2],
+    ["Odd at .tex line 2 column 1", "Odd at .tex line 2 column 1", null],
+    ["Odd at x.tex.tex line 2 column 1", "Odd", 2],
+    ["Odd at line 99 column 1", "Odd", null],
+    ["Odd at line 02 column 1", "Odd", 2],
+  ])("splits the location off %j", (entry, detail, line) => {
+    const [note] = pandocReportNotes([entry], origins);
+    expect(note.detail).toBe(detail);
+    expect(note.source?.line ?? null).toBe(line);
   });
 });
 
@@ -527,5 +621,39 @@ describe("runLatexToTypstMigration", () => {
     const { deps: fake, converted } = deps();
     await runLatexToTypstMigration({ ...request, buffers: new Map([["inline.tex", "EDITED"]]) }, fake);
     expect(converted[0].text).toContain("Text EDITED more.");
+  });
+
+  it("skips build files, reads the rest in order and notes files it cannot read", async () => {
+    const extra = [
+      { path: "main.synctex.gz", is_dir: false },
+      { path: "build/x.run.xml", is_dir: false },
+      { path: "a.FDB_LATEXMK", is_dir: false },
+      { path: "b.Log", is_dir: false },
+      { path: "c.glg", is_dir: false },
+      { path: "notes.logx", is_dir: false },
+      { path: "broken.png", is_dir: false },
+      { path: "data.csv", is_dir: false },
+    ];
+    const { deps: fake, read, created } = deps({ listFiles: vi.fn(() => Promise.resolve([...tree, ...extra])) });
+    const readFile = fake.readFileBase64;
+    fake.readFileBase64 = vi.fn(async (projectId: string, path: string) => {
+      if (path === "broken.png") throw new Error("denied");
+      return readFile(projectId, path);
+    });
+    const report = await runLatexToTypstMigration(request, fake);
+    expect(read).toEqual([
+      "main.tex",
+      "macros.tex",
+      "chapters/one.tex",
+      "chapters/sub.tex",
+      "figures/table.tex",
+      "inline.tex",
+      "figures/plot.png",
+      "refs.bib",
+      "notes.logx",
+      "data.csv",
+    ]);
+    expect(report.attention).toContainEqual({ kind: "unreadableFile", detail: "broken.png" });
+    expect(created[0].files.map((file) => file.path)).toEqual(expect.arrayContaining(["notes.logx", "data.csv"]));
   });
 });

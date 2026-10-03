@@ -1,8 +1,9 @@
 import {
   composeSettingSteps,
   type DocumentSettingChanges,
-  type DocumentSettingState,
   type DocumentSettingsEdit,
+  type DocumentSettingState,
+  lastWhere,
   type SettingsStep,
 } from "./document-settings";
 
@@ -112,30 +113,33 @@ function splitLines(text: string, start: number): Line[] {
   return lines;
 }
 
+function doubleQuotedScalar(source: string, offset: number): { item: ScalarItem; end: number } | null {
+  let index = 1;
+  while (index < source.length && source[index] !== '"') index += source[index] === "\\" ? 2 : 1;
+  if (index >= source.length) return null;
+  try {
+    const value = JSON.parse(source.slice(0, index + 1)) as string;
+    return { item: { from: offset, to: offset + index + 1, value, quote: '"' }, end: index + 1 };
+  } catch {
+    return null;
+  }
+}
+
+function singleQuotedScalar(source: string, offset: number): { item: ScalarItem; end: number } | null {
+  let index = 1;
+  while (index < source.length) {
+    if (source[index] === "'" && source[index + 1] === "'") index += 2;
+    else if (source[index] === "'") break;
+    else index += 1;
+  }
+  if (index >= source.length) return null;
+  const value = source.slice(1, index).replaceAll("''", "'");
+  return { item: { from: offset, to: offset + index + 1, value, quote: "'" }, end: index + 1 };
+}
+
 function quotedScalar(source: string, offset: number): { item: ScalarItem; end: number } | null {
-  const quote = source[0];
-  if (quote === '"') {
-    let index = 1;
-    while (index < source.length && source[index] !== '"') index += source[index] === "\\" ? 2 : 1;
-    if (index >= source.length) return null;
-    try {
-      const value = JSON.parse(source.slice(0, index + 1)) as string;
-      return { item: { from: offset, to: offset + index + 1, value, quote: '"' }, end: index + 1 };
-    } catch {
-      return null;
-    }
-  }
-  if (quote === "'") {
-    let index = 1;
-    while (index < source.length) {
-      if (source[index] === "'" && source[index + 1] === "'") index += 2;
-      else if (source[index] === "'") break;
-      else index += 1;
-    }
-    if (index >= source.length) return null;
-    const value = source.slice(1, index).replaceAll("''", "'");
-    return { item: { from: offset, to: offset + index + 1, value, quote: "'" }, end: index + 1 };
-  }
+  if (source.startsWith('"')) return doubleQuotedScalar(source, offset);
+  if (source.startsWith("'")) return singleQuotedScalar(source, offset);
   return null;
 }
 
@@ -247,7 +251,7 @@ function scanFrontMatter(text: string): Scan {
 }
 
 function entryFor(frontMatter: FrontMatter | null, key: string): Entry | undefined {
-  return frontMatter?.entries.filter((entry) => entry.key === key).at(-1);
+  return frontMatter ? lastWhere(frontMatter.entries, (entry) => entry.key === key) : undefined;
 }
 
 function itemsOf(value: YamlValue): ScalarItem[] | null {
@@ -269,7 +273,7 @@ function geometryParts(value: string): { key: string; text: string; value: strin
 }
 
 function marginOfParts(parts: readonly { key: string; text: string; value: string }[]): DocumentSettingState {
-  const margin = parts.filter((part) => part.key === "margin").at(-1);
+  const margin = lastWhere(parts, (part) => part.key === "margin");
   if (margin) {
     return LENGTH.test(margin.value)
       ? { status: "set", value: margin.value }
@@ -298,7 +302,7 @@ function columnsState(entry: Entry | undefined): DocumentSettingState {
       ? { status: "locked", reason: "expression", source: value }
       : { status: "unset" };
   }
-  const item = entry.value.items.filter((candidate) => COLUMNS.has(candidate.value)).at(-1);
+  const item = lastWhere(entry.value.items, (candidate) => COLUMNS.has(candidate.value));
   return item ? { status: "set", value: item.value } : { status: "unset" };
 }
 
@@ -408,7 +412,7 @@ function appendListItem(
   insert: string,
 ): DocumentSettingsEdit {
   if (value.kind === "block") {
-    const last = value.items[value.items.length - 1];
+    const last = value.items.at(-1) as BlockItem;
     const newline = last.line.next > last.line.to ? "" : "\n";
     const tail = last.line.next > last.line.to ? "\n" : "";
     return { from: last.line.next, to: last.line.next, insert: `${newline}${last.indent}- ${insert}${tail}` };
@@ -440,6 +444,32 @@ function scalarStep(key: ScalarKey, value: string | null): SettingsStep {
   });
 }
 
+type ScalarValue = Extract<YamlValue, { kind: "scalar" }>;
+type ListValue = Extract<YamlValue, { kind: "flow" | "block" }>;
+
+function listItemEdit(
+  entry: Entry,
+  list: ListValue,
+  item: ScalarItem | undefined,
+  value: string | null,
+  insert: (item: ScalarItem | null) => string,
+): DocumentSettingsEdit[] {
+  if (value === null) {
+    if (!item) return [];
+    return list.items.length === 1 ? [removeEntry(entry)] : [removeListItem(list, item)];
+  }
+  if (item) return [{ from: item.from, to: item.to, insert: insert(item) }];
+  return [appendListItem(list, insert(null))];
+}
+
+function columnsScalarEdit(text: string, entry: Entry, current: ScalarValue, value: string | null): DocumentSettingsEdit[] {
+  if (COLUMNS.has(current.value)) {
+    return value === null ? [removeEntry(entry)] : [{ from: current.from, to: current.to, insert: value }];
+  }
+  if (value === null || current.value.includes(",")) return [];
+  return [{ from: current.from, to: current.to, insert: `[${text.slice(current.from, current.to)}, ${value}]` }];
+}
+
 function columnsStep(value: string | null): SettingsStep {
   return scanned((text, scan) => {
     const entry = entryIn(scan, "classoption");
@@ -447,21 +477,24 @@ function columnsStep(value: string | null): SettingsStep {
     const current = entry.value;
     if (current.kind === "complex") return [];
     if (current.kind === "empty") return value === null ? [] : [{ from: current.at, to: current.at, insert: ` ${value}` }];
-    if (current.kind === "scalar") {
-      if (COLUMNS.has(current.value)) {
-        return value === null ? [removeEntry(entry)] : [{ from: current.from, to: current.to, insert: value }];
-      }
-      if (value === null || current.value.includes(",")) return [];
-      return [{ from: current.from, to: current.to, insert: `[${text.slice(current.from, current.to)}, ${value}]` }];
-    }
-    const item = current.items.filter((candidate) => COLUMNS.has(candidate.value)).at(-1);
-    if (value === null) {
-      if (!item) return [];
-      return current.items.length === 1 ? [removeEntry(entry)] : [removeListItem(current, item)];
-    }
-    if (item) return [{ from: item.from, to: item.to, insert: value }];
-    return [appendListItem(current, value)];
+    if (current.kind === "scalar") return columnsScalarEdit(text, entry, current, value);
+    const item = lastWhere<ScalarItem>(current.items, (candidate) => COLUMNS.has(candidate.value));
+    return listItemEdit(entry, current, item, value, () => value ?? "");
   });
+}
+
+function marginScalarEdit(entry: Entry, current: ScalarValue, value: string | null): DocumentSettingsEdit[] {
+  const parts = geometryParts(current.value).map((part) => part.text);
+  const separator = current.value.includes(", ") || parts.length < 2 ? ", " : ",";
+  const keys = geometryParts(current.value).map((part) => part.key);
+  const index = keys.lastIndexOf("margin");
+  if (value === null) {
+    if (index < 0) return [];
+    parts.splice(index, 1);
+    if (parts.length === 0) return [removeEntry(entry)];
+  } else if (index < 0) parts.push(`margin=${value}`);
+  else parts[index] = `margin=${value}`;
+  return [{ from: current.from, to: current.to, insert: serialize(parts.join(separator), current.quote, false) }];
 }
 
 function marginStep(value: string | null): SettingsStep {
@@ -473,26 +506,11 @@ function marginStep(value: string | null): SettingsStep {
     const current = entry.value;
     if (current.kind === "complex") return [];
     if (current.kind === "empty") return value === null ? [] : [{ from: current.at, to: current.at, insert: ` margin=${value}` }];
-    if (current.kind === "scalar") {
-      const parts = geometryParts(current.value).map((part) => part.text);
-      const separator = current.value.includes(", ") || parts.length < 2 ? ", " : ",";
-      const keys = geometryParts(current.value).map((part) => part.key);
-      const index = keys.lastIndexOf("margin");
-      if (value === null) {
-        if (index < 0) return [];
-        parts.splice(index, 1);
-        if (parts.length === 0) return [removeEntry(entry)];
-      } else if (index < 0) parts.push(`margin=${value}`);
-      else parts[index] = `margin=${value}`;
-      return [{ from: current.from, to: current.to, insert: serialize(parts.join(separator), current.quote, false) }];
-    }
-    const item = current.items.filter((candidate) => geometryParts(candidate.value)[0]?.key === "margin").at(-1);
-    if (value === null) {
-      if (!item) return [];
-      return current.items.length === 1 ? [removeEntry(entry)] : [removeListItem(current, item)];
-    }
-    if (item) return [{ from: item.from, to: item.to, insert: serialize(`margin=${value}`, item.quote, false) }];
-    return [appendListItem(current, `margin=${value}`)];
+    if (current.kind === "scalar") return marginScalarEdit(entry, current, value);
+    const item = lastWhere<ScalarItem>(current.items, (candidate) => geometryParts(candidate.value)[0]?.key === "margin");
+    return listItemEdit(entry, current, item, value, (found) =>
+      found ? serialize(`margin=${value}`, found.quote, false) : `margin=${value}`,
+    );
   });
 }
 

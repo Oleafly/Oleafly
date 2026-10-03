@@ -152,9 +152,8 @@ export function searchPackages(
     }
     if (matched) scored.push({ pkg, score });
   }
-  return scored
-    .sort((left, right) => left.score - right.score || left.pkg.name.localeCompare(right.pkg.name))
-    .map((entry) => entry.pkg);
+  scored.sort((left, right) => left.score - right.score || left.pkg.name.localeCompare(right.pkg.name));
+  return scored.map((entry) => entry.pkg);
 }
 
 export function packageCategories(packages: readonly UniversePackage[]): string[] {
@@ -172,33 +171,46 @@ interface StringLiteral {
   readonly from: number;
 }
 
+function commentEnd(text: string, index: number): number | null {
+  if (text[index] !== "/") return null;
+  const next = text[index + 1];
+  if (next === "/") {
+    const end = text.indexOf("\n", index);
+    return end === -1 ? text.length : end + 1;
+  }
+  if (next === "*") {
+    const end = text.indexOf("*/", index + 2);
+    return end === -1 ? text.length : end + 2;
+  }
+  return null;
+}
+
+function readStringLiteral(text: string, from: number): { literal: StringLiteral; end: number } {
+  let value = "";
+  let index = from;
+  while (index < text.length && text[index] !== '"' && text[index] !== "\n") {
+    if (text[index] === "\\") {
+      value += text[index + 1] ?? "";
+      index += 2;
+    } else {
+      value += text[index];
+      index += 1;
+    }
+  }
+  return { literal: { value, from }, end: index + 1 };
+}
+
 function stringLiterals(text: string): StringLiteral[] {
   const literals: StringLiteral[] = [];
   let index = 0;
   while (index < text.length) {
-    const character = text[index];
-    const next = text[index + 1];
-    if (character === "/" && next === "/") {
-      const end = text.indexOf("\n", index);
-      index = end === -1 ? text.length : end + 1;
-    } else if (character === "/" && next === "*") {
-      const end = text.indexOf("*/", index + 2);
-      index = end === -1 ? text.length : end + 2;
-    } else if (character === '"') {
-      const from = index + 1;
-      let value = "";
-      index = from;
-      while (index < text.length && text[index] !== '"' && text[index] !== "\n") {
-        if (text[index] === "\\") {
-          value += text[index + 1] ?? "";
-          index += 2;
-        } else {
-          value += text[index];
-          index += 1;
-        }
-      }
-      literals.push({ value, from });
-      index += 1;
+    const comment = commentEnd(text, index);
+    if (comment !== null) {
+      index = comment;
+    } else if (text[index] === '"') {
+      const read = readStringLiteral(text, index + 1);
+      literals.push(read.literal);
+      index = read.end;
     } else {
       index += 1;
     }

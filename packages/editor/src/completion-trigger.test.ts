@@ -37,6 +37,10 @@ describe("completion lexical triggers", () => {
     ["typst", '#image("figures/a'],
     ["typst", '#include "chap'],
     ["typst", '#bibliography(("a.bib", "re'],
+    ["typst", '#bibliography( ( "a(", "b.bib" , "c'],
+    ["typst", '#csv( "data/x'],
+    ["typst", '#read(\n"notes'],
+    ["typst", '#import "@preview/x'],
     ["markdown", "[Viz](#u\u0301vod"],
     ["markdown", "\u05E8\u05D0\u05D4 @\u05E9\u05B8\u05C1\u05DC"],
     ["bibtex", "crossref = {\u092A\u0930\u093F"],
@@ -51,7 +55,17 @@ describe("completion lexical triggers", () => {
     expect(triggered(source, "bibtex")).toBe(false);
   });
 
-  it.each(["a/b", "// note", "https://example.com/x", '#myimage("x', "#"])(
+  it.each([
+    "a/b",
+    "// note",
+    "https://example.com/x",
+    '#myimage("x',
+    "#",
+    '#image("a.png", "b',
+    '#image("a\nb',
+    '#bibliography(("a.bib" "b',
+    '#image("done") and "x',
+  ])(
     "leaves %j without a Typst trigger",
     (source) => {
       expect(triggered(source, "typst")).toBe(false);

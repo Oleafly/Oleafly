@@ -43,8 +43,7 @@ export function figureParts(builder: TypstDecorationBuilder, hash: SyntaxNode, c
   if (!args) return null;
   const label = trailingLabel(builder, call);
   const trailing = trailingContentBlocks(args);
-  const positional = positionalArguments(args).filter((node) => !trailing.includes(node));
-  const body = positional[0] ?? trailing[0] ?? null;
+  const body = positionalArguments(args).find((node) => !trailing.includes(node)) ?? trailing[0] ?? null;
   let caption: Extents | null = null;
   for (const node of argumentNodes(args)) {
     if (node.name !== "Named" || builder.state.sliceDoc(node.firstChild?.from ?? 0, node.firstChild?.to ?? 0) !== "caption") {
@@ -109,6 +108,39 @@ function ownsLines(builder: TypstDecorationBuilder, range: Extents, islands: rea
   return !islands.some((other) => other !== island && intersects(other, first.from, last.to));
 }
 
+function placeIslands(
+  builder: TypstDecorationBuilder,
+  range: Extents,
+  ordered: readonly FigureIsland[],
+  decorations: Range<Decoration>[],
+  consumed: Set<number>,
+): boolean {
+  const { doc } = builder.state;
+  for (const island of ordered) {
+    if (!island.widget) continue;
+    if (ownsLines(builder, range, ordered, island)) {
+      const first = doc.lineAt(island.from);
+      const last = doc.lineAt(island.to);
+      decorations.push(Decoration.replace({ widget: island.widget(true), block: true }).range(first.from, last.to));
+      for (let number = first.number; number <= last.number; number += 1) consumed.add(number);
+    } else if (island.blockOnly) {
+      return false;
+    } else {
+      decorations.push(Decoration.replace({ widget: island.widget(false) }).range(island.from, island.to));
+    }
+  }
+  return true;
+}
+
+function hideAround(decorations: Range<Decoration>[], islands: readonly FigureIsland[], from: number, to: number): void {
+  let pos = from;
+  for (const island of islands) {
+    if (island.from > pos) decorations.push(Decoration.replace({}).range(pos, island.from));
+    pos = Math.max(pos, island.to);
+  }
+  if (to > pos) decorations.push(Decoration.replace({}).range(pos, to));
+}
+
 export function islandDecorations(
   builder: TypstDecorationBuilder,
   range: Extents,
@@ -118,19 +150,7 @@ export function islandDecorations(
   const ordered = [...islands].sort((a, b) => a.from - b.from);
   const decorations: Range<Decoration>[] = [];
   const consumed = new Set<number>();
-  for (const island of ordered) {
-    if (!island.widget) continue;
-    if (ownsLines(builder, range, ordered, island)) {
-      const first = doc.lineAt(island.from);
-      const last = doc.lineAt(island.to);
-      decorations.push(Decoration.replace({ widget: island.widget(true), block: true }).range(first.from, last.to));
-      for (let number = first.number; number <= last.number; number += 1) consumed.add(number);
-    } else if (island.blockOnly) {
-      return null;
-    } else {
-      decorations.push(Decoration.replace({ widget: island.widget(false) }).range(island.from, island.to));
-    }
-  }
+  if (!placeIslands(builder, range, ordered, decorations, consumed)) return null;
   const run: Extents = { from: -1, to: -1 };
   const flush = () => {
     if (run.from >= 0) decorations.push(Decoration.replace({ block: true }).range(run.from, run.to));
@@ -154,12 +174,7 @@ export function islandDecorations(
       continue;
     }
     flush();
-    let pos = from;
-    for (const island of here) {
-      if (island.from > pos) decorations.push(Decoration.replace({}).range(pos, island.from));
-      pos = Math.max(pos, island.to);
-    }
-    if (to > pos) decorations.push(Decoration.replace({}).range(pos, to));
+    hideAround(decorations, here, from, to);
   }
   flush();
   return decorations;

@@ -85,6 +85,13 @@ describe("Typst mark decorations", () => {
     expect(classesFor(doc, "@knuth", ports)).toContain("ofl-visual-chip ofl-visual-chip-ref");
   });
 
+  it("styles link and ref calls", () => {
+    const doc = '= Intro <intro>\n#link("https://typst.app")[Typst] and #link("https://x.y") and #ref(<intro>)';
+    expect(classesFor(doc, "Typst")).toContain("ofl-visual-link-text");
+    expect(classesFor(doc, '#link("https://x.y")')).toContain("ofl-visual-link-text");
+    expect(classesFor(doc, "#ref(<intro>)")).toContain("ofl-visual-chip ofl-visual-chip-ref");
+  });
+
   it("keeps a reference supplement inside the chip and styles it as text", () => {
     const doc = "= Intro <intro>\nSee @intro[Part one] now.";
     expect(classesFor(doc, "@intro[Part one]")).toContain("ofl-visual-chip ofl-visual-chip-ref");

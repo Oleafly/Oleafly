@@ -164,36 +164,38 @@ function yamlScalar(raw: string): string {
   return text;
 }
 
+function quotedMappingKey(text: string, start: number, quote: string): MappingKey | null {
+  const close = closingQuote(text, start, quote);
+  if (close < 0) return null;
+  const key = yamlScalar(text.slice(start, close + 1));
+  let after = close + 1;
+  while (text[after] === " " || text[after] === "\t") after += 1;
+  if (text[after] !== ":" || !key) return null;
+  return { key, keyFrom: start + 1, keyTo: close, valueStart: after + 1 };
+}
+
+function plainKeyColon(text: string, start: number): number {
+  for (let index = start; index < text.length; index++) {
+    const next = text[index + 1];
+    if (text[index] === ":" && (next === undefined || next.trim() === "")) return index;
+    if (text[index] === "#" && index > start && text[index - 1].trim() === "") return -1;
+  }
+  return -1;
+}
+
+function plainMappingKey(text: string, start: number): MappingKey | null {
+  const colon = plainKeyColon(text, start);
+  if (colon < 0) return null;
+  const key = text.slice(start, colon).trimEnd();
+  if (!key) return null;
+  return { key, keyFrom: start, keyTo: start + key.length, valueStart: colon + 1 };
+}
+
 function readMappingKey(text: string, start: number): MappingKey | null {
   const first = text[start];
   if (first === undefined || "-?[]{}#&*!|>%@`,".includes(first)) return null;
-  let keyFrom = start;
-  let keyTo: number;
-  let key: string;
-  let after: number;
-  if (first === '"' || first === "'") {
-    const close = closingQuote(text, start, first);
-    if (close < 0) return null;
-    key = yamlScalar(text.slice(start, close + 1));
-    keyFrom = start + 1;
-    keyTo = close;
-    after = close + 1;
-    while (text[after] === " " || text[after] === "\t") after += 1;
-    if (text[after] !== ":") return null;
-  } else {
-    after = start;
-    while (after < text.length) {
-      const next = text[after + 1];
-      if (text[after] === ":" && (next === undefined || next.trim() === "")) break;
-      if (text[after] === "#" && after > start && text[after - 1].trim() === "") return null;
-      after += 1;
-    }
-    if (after >= text.length) return null;
-    key = text.slice(start, after).trimEnd();
-    keyTo = start + key.length;
-  }
-  if (!key) return null;
-  return { key, keyFrom, keyTo, valueStart: after + 1 };
+  if (first === '"' || first === "'") return quotedMappingKey(text, start, first);
+  return plainMappingKey(text, start);
 }
 
 function splitFlow(body: string): string[] {
@@ -477,12 +479,12 @@ export function yamlQuote(value: string): string {
   let out = '"';
   for (const character of value) {
     const code = character.codePointAt(0) ?? 0;
-    if (character === "\\") out += "\\\\";
-    else if (character === '"') out += '\\"';
-    else if (character === "\n") out += "\\n";
-    else if (character === "\t") out += "\\t";
+    if (character === "\\") out += String.raw`\\`;
+    else if (character === '"') out += String.raw`\"`;
+    else if (character === "\n") out += String.raw`\n`;
+    else if (character === "\t") out += String.raw`\t`;
     else if (code >= 0xd800 && code <= 0xdfff) out += "\ufffd";
-    else if (isUnsafeCodePoint(code)) out += `\\u${code.toString(16).padStart(4, "0")}`;
+    else if (isUnsafeCodePoint(code)) out += String.raw`\u${code.toString(16).padStart(4, "0")}`;
     else out += character;
   }
   return `${out}"`;
@@ -553,8 +555,10 @@ function splitTopLevel(value: string, separator: (text: string, index: number) =
   const parts: string[] = [];
   let depth = 0;
   let start = 0;
-  for (let index = 0; index < value.length; index++) {
+  let index = 0;
+  while (index < value.length) {
     const character = value[index];
+    let step = 1;
     if (character === "{") depth += 1;
     else if (character === "}") depth = Math.max(0, depth - 1);
     else if (depth === 0) {
@@ -562,9 +566,10 @@ function splitTopLevel(value: string, separator: (text: string, index: number) =
       if (length > 0) {
         parts.push(value.slice(start, index));
         start = index + length;
-        index = start - 1;
+        step = length;
       }
     }
+    index += step;
   }
   parts.push(value.slice(start));
   return parts.map((part) => part.trim());
@@ -576,7 +581,7 @@ function andSeparator(text: string, index: number): number {
   while (text[cursor]?.trim() === "") cursor += 1;
   if (text.slice(cursor, cursor + 3).toLowerCase() !== "and") return 0;
   const after = text[cursor + 3];
-  if (after === undefined || after.trim() !== "") return 0;
+  if (after?.trim() !== "") return 0;
   let end = cursor + 3;
   while (text[end]?.trim() === "") end += 1;
   return end - index;
@@ -678,7 +683,7 @@ function hayagrivaDate(fields: Readonly<Record<string, string>>): string | undef
 }
 
 function absoluteUrl(value: string | undefined): string | undefined {
-  const text = value?.trim().replace(/^\{|\}$/g, "").replaceAll("\\_", "_").replaceAll("\\%", "%").replaceAll("\\&", "&");
+  const text = value?.trim().replaceAll(/^\{|\}$/g, "").replaceAll(String.raw`\_`, "_").replaceAll(String.raw`\%`, "%").replaceAll(String.raw`\&`, "&");
   if (!text || !/^[a-z][a-z0-9+.-]*:/i.test(text)) return undefined;
   try {
     return new URL(text).protocol ? text : undefined;
@@ -687,8 +692,26 @@ function absoluteUrl(value: string | undefined): string | undefined {
   }
 }
 
+function dropSpacesAroundHyphens(text: string): string {
+  let out = "";
+  let index = 0;
+  while (index < text.length) {
+    let end = index;
+    while (end < text.length && /\s/.test(text[end])) end += 1;
+    if (end === index) {
+      out += text[index];
+      index += 1;
+    } else {
+      if (text[index - 1] !== "-" && text[end] !== "-") out += text.slice(index, end);
+      index = end;
+    }
+  }
+  return out;
+}
+
 function pageRange(value: string | undefined): string | undefined {
-  return plainText(value?.replace(/\s*(?:-+|\u2013|\u2014)\s*/g, "-"));
+  if (value === undefined) return undefined;
+  return plainText(dropSpacesAroundHyphens(value.replaceAll(/-+|[\u2013\u2014]/g, "-")));
 }
 
 interface EntryShape {
@@ -762,6 +785,52 @@ function arxivId(fields: Readonly<Record<string, string>>): string | undefined {
   return /arxiv/i.test(prefix) ? fields.eprint : undefined;
 }
 
+function institutionFor(shape: EntryShape, fields: Readonly<Record<string, string>>): string | undefined {
+  if (shape.type === "thesis") return fields.school ?? fields.institution;
+  return shape.type === "report" ? fields.institution : undefined;
+}
+
+function setPublication(
+  map: YamlMap,
+  container: YamlMap,
+  shape: EntryShape,
+  fields: Readonly<Record<string, string>>,
+): void {
+  const publisherName = formattable(fields.publisher ?? institutionFor(shape, fields));
+  const location = formattable(fields.address ?? fields.location);
+  setValue(container, "publisher", publisherNode(publisherName, location));
+  if (!publisherName) setValue(map, "location", location);
+  setValue(container, "organization", formattable(fields.organization));
+}
+
+function entrySerialNumbers(
+  fields: Readonly<Record<string, string>>,
+  hasParent: boolean,
+  collection: boolean,
+  report: boolean,
+): YamlMap {
+  return serialNumbers([
+    ["doi", fields.doi],
+    ["arxiv", arxivId(fields)],
+    ["isbn", collection ? undefined : fields.isbn],
+    ["issn", hasParent ? undefined : fields.issn],
+    ["serial", report ? fields.number : undefined],
+  ]);
+}
+
+function attachParent(
+  map: YamlMap,
+  parent: YamlMap,
+  fields: Readonly<Record<string, string>>,
+  collection: boolean,
+): void {
+  setValue(parent, "serial-number", serialNumbers([
+    ["isbn", collection ? fields.isbn : undefined],
+    ["issn", fields.issn],
+  ]));
+  if (parent.size > 1) map.set("parent", parent);
+}
+
 export function bibtexToHayagriva(entry: ParsedBib): string {
   const fields = entry.fields;
   const shape = entryShape(entry.type, fields);
@@ -771,38 +840,21 @@ export function bibtexToHayagriva(entry: ParsedBib): string {
   if (parent) setValue(parent, "title", formattable(shape.parentTitle));
 
   const map: YamlMap = new Map([["type", { plain: shape.type }]]);
+  const container = parent ?? map;
   setValue(map, "title", formattable(fields.title));
   setValue(map, "author", hayagrivaPeople(fields.author));
   setValue(collection && parent ? parent : map, "editor", hayagrivaPeople(fields.editor));
   setValue(map, "date", hayagrivaDate(fields));
   setValue(map, "edition", plainText(fields.edition));
-  setValue(parent ?? map, "volume", plainText(fields.volume));
-  if (!report) setValue(parent ?? map, "issue", plainText(fields.number ?? fields.issue));
+  setValue(container, "volume", plainText(fields.volume));
+  if (!report) setValue(container, "issue", plainText(fields.number ?? fields.issue));
   setValue(map, "page-range", pageRange(fields.pages));
-
-  const institution = shape.type === "thesis" ? fields.school ?? fields.institution : report ? fields.institution : undefined;
-  const publisherName = formattable(fields.publisher ?? institution);
-  const location = formattable(fields.address ?? fields.location);
-  setValue(parent ?? map, "publisher", publisherNode(publisherName, location));
-  if (!publisherName) setValue(map, "location", location);
-  setValue(parent ?? map, "organization", formattable(fields.organization));
+  setPublication(map, container, shape, fields);
   setValue(map, "genre", formattable(shape.genre));
   setValue(map, "url", absoluteUrl(fields.url));
-  setValue(map, "serial-number", serialNumbers([
-    ["doi", fields.doi],
-    ["arxiv", arxivId(fields)],
-    ["isbn", collection ? undefined : fields.isbn],
-    ["issn", parent ? undefined : fields.issn],
-    ["serial", report ? fields.number : undefined],
-  ]));
+  setValue(map, "serial-number", entrySerialNumbers(fields, parent !== null, collection, report));
   setValue(map, "note", formattable(fields.note));
-  if (parent) {
-    setValue(parent, "serial-number", serialNumbers([
-      ["isbn", collection ? fields.isbn : undefined],
-      ["issn", fields.issn],
-    ]));
-    if (parent.size > 1) map.set("parent", parent);
-  }
+  if (parent) attachParent(map, parent, fields, collection);
 
   const lines: string[] = [`${yamlKey(entry.key)}:`];
   serializeMap(map, 2, lines);

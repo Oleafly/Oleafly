@@ -4,6 +4,7 @@ import { i18n } from "@/i18n";
 import {
   currentInteractiveDocument,
   interactiveRequestStillCurrent,
+  type CurrentInteractiveDocument,
 } from "@/lib/analysis/interactive-document";
 import { currentInteractiveLanguageService } from "@/lib/analysis/interactive-language-service";
 import { offsetEdits } from "@/lib/analysis/language-service-results";
@@ -60,6 +61,51 @@ function reportFormatProblem(outcome: "unavailable" | "failed"): void {
   );
 }
 
+function formatProblem(outcome: "unavailable" | "failed", quiet: boolean): FormatOutcome {
+  if (!quiet) reportFormatProblem(outcome);
+  return outcome;
+}
+
+function sendFormattingRequest(
+  view: EditorView,
+  current: CurrentInteractiveDocument,
+  feature: "formatting" | "rangeFormatting",
+  text: string,
+): Promise<unknown> {
+  const { session, document } = current;
+  const textDocument = { uri: document.uri };
+  const options = {
+    tabSize: useSettingsStore.getState().typstFormatterIndent,
+    insertSpaces: true,
+  };
+  const requestOptions = {
+    timeoutMs: FORMAT_TIMEOUT_MS,
+    projectRevision: session.projectRevision,
+    documentUri: document.uri,
+    documentVersion: document.version,
+  };
+  if (feature !== "rangeFormatting") {
+    return session.client.requestFormatting(
+      { textDocument, options },
+      requestOptions,
+    );
+  }
+  const encoding = session.positionEncoding;
+  const positions = new TextPositionIndex(text);
+  const { from, to } = view.state.selection.main;
+  return session.client.requestRangeFormatting(
+    {
+      textDocument,
+      options,
+      range: {
+        start: positions.offsetToPosition(from, encoding),
+        end: positions.offsetToPosition(to, encoding),
+      },
+    },
+    requestOptions,
+  );
+}
+
 async function requestFormattingEdits(
   view: EditorView,
   scope: FormatScope,
@@ -73,49 +119,17 @@ async function requestFormattingEdits(
       : null;
   const feature = formattingFeature(view, scope);
   if (!current?.session.client.supports(feature)) {
-    if (!quiet) reportFormatProblem("unavailable");
-    return "unavailable";
+    return formatProblem("unavailable", quiet);
   }
   const { session, document } = current;
   const encoding = session.positionEncoding;
-  const textDocument = { uri: document.uri };
-  const options = {
-    tabSize: useSettingsStore.getState().typstFormatterIndent,
-    insertSpaces: true,
-  };
-  const requestOptions = {
-    timeoutMs: FORMAT_TIMEOUT_MS,
-    projectRevision: session.projectRevision,
-    documentUri: document.uri,
-    documentVersion: document.version,
-  };
   let response: unknown;
   try {
-    if (feature === "rangeFormatting") {
-      const positions = new TextPositionIndex(text);
-      const { from, to } = view.state.selection.main;
-      response = await session.client.requestRangeFormatting(
-        {
-          textDocument,
-          options,
-          range: {
-            start: positions.offsetToPosition(from, encoding),
-            end: positions.offsetToPosition(to, encoding),
-          },
-        },
-        requestOptions,
-      );
-    } else {
-      response = await session.client.requestFormatting(
-        { textDocument, options },
-        requestOptions,
-      );
-    }
+    response = await sendFormattingRequest(view, current, feature, text);
   } catch (error) {
     if (view.state.doc.toString() !== text) return "stale";
     void logError("language-service format", error);
-    if (!quiet) reportFormatProblem("failed");
-    return "failed";
+    return formatProblem("failed", quiet);
   }
   if (
     view.state.doc.toString() !== text ||
@@ -124,10 +138,7 @@ async function requestFormattingEdits(
     return "stale";
   }
   const edits = offsetEdits(response, text, encoding);
-  if (!edits) {
-    if (!quiet) reportFormatProblem("failed");
-    return "failed";
-  }
+  if (!edits) return formatProblem("failed", quiet);
   const changes = edits
     .filter((edit) => text.slice(edit.from, edit.to) !== edit.insert)
     .sort((left, right) => left.from - right.from);

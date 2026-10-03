@@ -80,29 +80,32 @@ function stringEnd(source: string, start: number): number {
   return Math.min(source.length, index + 1);
 }
 
+function skippedStatementPart(source: string, index: number, inContent: boolean): number | null {
+  const comment = commentEnd(source, index);
+  if (comment !== null) return comment;
+  const character = source[index];
+  if (character === "\\") return index + 2;
+  if (!inContent && character === '"') return stringEnd(source, index);
+  if (character === "`") return rawEnd(source, index);
+  return null;
+}
+
 function statementEnd(source: string, start: number): number {
   const stack: string[] = [];
   let index = start + 1;
   while (index < source.length) {
     const character = source[index];
-    const inContent = stack.at(-1) === "]";
     if (character === "\n" && stack.length === 0) return index;
-    const comment = commentEnd(source, index);
-    if (comment !== null) {
-      index = comment;
-    } else if (character === "\\") {
-      index += 2;
-    } else if (!inContent && character === '"') {
-      index = stringEnd(source, index);
-    } else if (character === "`") {
-      index = rawEnd(source, index);
-    } else if (CLOSERS[character] && (!inContent || character === "[")) {
-      stack.push(CLOSERS[character]);
-      index += 1;
-    } else {
-      if (character === stack.at(-1)) stack.pop();
-      index += 1;
+    const inContent = stack.at(-1) === "]";
+    const skipped = skippedStatementPart(source, index, inContent);
+    if (skipped !== null) {
+      index = skipped;
+      continue;
     }
+    const closer = CLOSERS[character];
+    if (closer && (!inContent || character === "[")) stack.push(closer);
+    else if (character === stack.at(-1)) stack.pop();
+    index += 1;
   }
   return source.length;
 }
@@ -111,41 +114,41 @@ function statementName(source: string, hash: number): string | null {
   return /^[A-Za-z_][\w-]*/.exec(source.slice(hash + 1, hash + 41))?.[0] ?? null;
 }
 
+interface ProseBreak {
+  readonly next: number;
+  readonly text: string;
+}
+
+function proseBreak(source: string, index: number, lineStart: boolean): ProseBreak | null {
+  const comment = commentEnd(source, index);
+  if (comment !== null) return { next: comment, text: "" };
+  if (source.startsWith("```", index)) return { next: rawEnd(source, index), text: "\n\n" };
+  if (lineStart && source[index] === "#" && STATEMENTS.has(statementName(source, index) ?? "")) {
+    return { next: statementEnd(source, index), text: "\n\n" };
+  }
+  return null;
+}
+
 function proseSource(source: string): string {
   let out = "";
   let index = 0;
   let lineStart = true;
   while (index < source.length) {
+    const skipped = proseBreak(source, index, lineStart);
+    if (skipped) {
+      out += skipped.text;
+      index = skipped.next;
+      continue;
+    }
     const character = source[index];
-    const comment = commentEnd(source, index);
-    if (comment !== null) {
-      index = comment;
-      continue;
-    }
-    if (character === "`" && source.startsWith("```", index)) {
-      index = rawEnd(source, index);
-      out += "\n\n";
-      continue;
-    }
     if (character === "\\") {
       out += source.slice(index, index + 2);
       index += 2;
       lineStart = false;
       continue;
     }
-    if (character === "#" && lineStart) {
-      const name = statementName(source, index);
-      if (name && STATEMENTS.has(name)) {
-        index = statementEnd(source, index);
-        out += "\n\n";
-        continue;
-      }
-    }
-    if (character === "\n") {
-      lineStart = true;
-    } else if (character.trim() !== "") {
-      lineStart = false;
-    }
+    if (character === "\n") lineStart = true;
+    else if (character.trim() !== "") lineStart = false;
     out += character;
     index += 1;
   }
@@ -178,6 +181,14 @@ export function splitTypstParagraphs(
   return paragraphs;
 }
 
+function dropSpaceBeforePunctuation(text: string): string {
+  const parts = text.split(/(\s+)/);
+  for (let index = 1; index < parts.length; index += 2) {
+    if (/^[.,;:!?]/.test(parts[index + 1])) parts[index] = "";
+  }
+  return parts.join("");
+}
+
 const CITATION_CALL = /#(?:cite|ref)\((?:[^()]|\([^()]*\))*\)/g;
 const CALL_HEAD = /#[A-Za-z_][\w.-]*(?:\((?:[^()]|\([^()]*\))*\))?/g;
 
@@ -191,14 +202,13 @@ export function extractTypstKeywords(text: string, maxTerms: number = DEFAULT_MA
   cleaned = cleaned.replace(CALL_HEAD, " ");
   cleaned = cleaned.replace(/<[\p{L}\p{N}_:.-]+>/gu, " ");
   cleaned = cleaned.replace(/(^|[^\p{L}\p{N}])@[\p{L}\p{N}_:.-]*[\p{L}\p{N}_-]/gu, "$1 ");
-  cleaned = cleaned.replace(/^\s*(?:=+|[-+]|\/)\s+/gm, " ");
+  cleaned = cleaned.replaceAll(/^[^\S\n\r\u2028\u2029]*(?:=+|[-+]|\/)\s+/gm, " ");
   cleaned = cleaned.replace(/[*_[\]#\\]/g, "");
-  cleaned = cleaned.replace(/~/g, " ");
-  cleaned = cleaned.replace(/\s+([.,;:!?])/g, "$1");
-  return keywordQuery(cleaned, maxTerms);
+  cleaned = cleaned.replaceAll("~", " ");
+  return keywordQuery(dropSpaceBeforePunctuation(cleaned), maxTerms);
 }
 
-const TYPST_SIGNAL = /^\s*(?:#(?:set|show|import|let|include)\b|=+\s+\S)/m;
+const TYPST_SIGNAL = /^[^\S\n\r\u2028\u2029]*(?:#(?:set|show|import|let|include)\b|=+\s+\S)/m;
 const LATEX_SIGNAL = /\\(?:section|subsection|begin|documentclass|cite[tp]?|usepackage)\b/;
 
 export function detectScanFormat(path: string | null | undefined, text: string): ScanFormat {

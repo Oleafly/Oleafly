@@ -209,6 +209,50 @@ describe("bibtexToHayagriva", () => {
   });
 });
 
+describe("bibtexToHayagriva field details", () => {
+  function pageRangeOf(pages: string): string | undefined {
+    return /page-range: "(.*)"/.exec(convert(`@misc{m, title = {T}, pages = {${pages}}}`))?.[1];
+  }
+
+  it.each([
+    ["12 -- 15", "12-15"],
+    ["12\u2013  15", "12-15"],
+    ["12 \u2014 15", "12-15"],
+    ["1 - - 2", "1--2"],
+    ["1\u2013\u20132", "1--2"],
+    ["1---2", "1-2"],
+    ["e12 -- e15, 20 -- 22", "e12-e15, 20-22"],
+    ["x  y -z", "x y-z"],
+    ["- 7", "-7"],
+    ["7 -", "7-"],
+  ])("joins the page range %j as %j", (pages, expected) => {
+    expect(pageRangeOf(pages)).toBe(expected);
+  });
+
+  it("splits authors only on a spaced and outside braces", () => {
+    const yaml = convert("@misc{m, title = {T}, author = {Ada Lovelace  AND {Smith and Co} and\tBob Roe and Grand Ole}}");
+    expect(yaml).toContain('    - "Lovelace, Ada"\n    - "Smith and Co"\n    - "Roe, Bob"\n    - "Ole, Grand"');
+    expect(convert("@misc{m, title = {T}, author = {Ann Band}}")).toContain('    - "Band, Ann"');
+  });
+
+  it("uses the school or institution as publisher only where it applies", () => {
+    expect(convert("@phdthesis{t, title = {T}, school = {MIT}, address = {Cambridge}}")).toContain(
+      '  publisher:\n    name: "MIT"\n    location: "Cambridge"',
+    );
+    expect(convert("@mastersthesis{t, title = {T}, institution = {ETH}}")).toContain('  publisher: "ETH"');
+    expect(convert("@techreport{r, title = {T}, institution = {NASA}, number = {42}}")).toContain('  publisher: "NASA"');
+    const misc = convert("@misc{m, title = {T}, institution = {Nowhere}, address = {Paris}}");
+    expect(misc).not.toContain("publisher");
+    expect(misc).toContain('  location: "Paris"');
+  });
+
+  it("keeps escaped URL characters readable", () => {
+    expect(convert(String.raw`@misc{m, title = {T}, url = {{https://example.com/a\_b\%20\&c}}}`)).toContain(
+      '  url: "https://example.com/a_b%20&c"',
+    );
+  });
+});
+
 describe("yamlQuote", () => {
   it("escapes characters YAML cannot hold raw", () => {
     expect(yamlQuote('a\\b"c\nd\te\u0007\u0085\u2028')).toBe(String.raw`"a\\b\"c\nd\te\u0007\u0085\u2028"`);
@@ -288,6 +332,29 @@ describe("hayagrivaEntries", () => {
     expect(findHayagrivaKeyByDoi(HAND_WRITTEN, "https://doi.org/10.1/HARRY")).toBe("harry");
     expect(findHayagrivaKeyByDoi(HAND_WRITTEN, "10.2/legacy")).toBe("quoted:key");
     expect(findHayagrivaKeyByDoi(HAND_WRITTEN, "10.9/none")).toBeNull();
+  });
+
+  it("reads quoted, spaced and commented keys the way YAML does", () => {
+    const source = [
+      "plain key: 1",
+      '"dq \\"key\\""  : 2',
+      "'it''s': 3",
+      "url:http://x: 4",
+      "a#b: 5",
+      "c #d: 6",
+      '"": 7',
+      '"open: 8',
+      "tail:",
+      "-dash: 9",
+    ].join("\n");
+    expect(hayagrivaEntries(source).map((entry) => [entry.key, source.slice(entry.keyFrom, entry.keyTo)])).toEqual([
+      ["plain key", "plain key"],
+      ['dq "key"', 'dq \\"key\\"'],
+      ["it's", "it''s"],
+      ["url:http://x", "url:http://x"],
+      ["a#b", "a#b"],
+      ["tail", "tail"],
+    ]);
   });
 
   it("returns nothing for an empty or non-mapping document", () => {

@@ -92,7 +92,7 @@ class TypstScanner {
   }
 
   private top(): Frame {
-    return this.stack[this.stack.length - 1];
+    return this.stack.at(-1) as Frame;
   }
 
   private push(kind: FrameKind, fresh = false): void {
@@ -769,7 +769,7 @@ function runPlans(
   if (state.readOnly || vimOwnsInput(view)) return false;
   if (state.selection.ranges.some((range) => !range.empty)) return false;
   const plans = state.selection.ranges.map((range) => plan(state, range.head));
-  if (plans.some((entry) => entry === null)) return false;
+  if (plans.includes(null)) return false;
   let index = 0;
   view.dispatch({
     ...state.changeByRange(() => {

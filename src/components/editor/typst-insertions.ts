@@ -215,11 +215,16 @@ export function uniqueTypstLabel(base: string, taken: ReadonlySet<string>): stri
   }
 }
 
+function trimHyphens(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && text[start] === "-") start += 1;
+  while (end > start && text[end - 1] === "-") end -= 1;
+  return text.slice(start, end);
+}
+
 function slug(text: string): string {
-  return foldLatinDiacritics(text)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/gu, "-")
-    .replace(/^-+|-+$/gu, "");
+  return trimHyphens(foldLatinDiacritics(text).toLowerCase().replaceAll(/[^a-z0-9]+/gu, "-"));
 }
 
 export type TypstLabelPlan =
@@ -247,6 +252,19 @@ function enclosingEquation(text: string, pos: number): { from: number; to: numbe
   return null;
 }
 
+const HEADING_MARKER = /^([ \t]*)=+[ \t]+/u;
+const LINE_TERMINATOR = /[\n\r\p{Zl}\p{Zp}]/u;
+
+function headingParts(line: string): { indent: string; content: string } | null {
+  const marker = HEADING_MARKER.exec(line);
+  if (!marker) return null;
+  const rest = line.slice(marker[0].length);
+  if (LINE_TERMINATOR.test(rest)) return null;
+  let end = rest.length;
+  while (end > 0 && (rest[end - 1] === " " || rest[end - 1] === "\t")) end -= 1;
+  return { indent: marker[1], content: rest.slice(0, end) };
+}
+
 function headingLabelPlan(
   text: string,
   pos: number,
@@ -257,12 +275,12 @@ function headingLabelPlan(
   const newline = text.indexOf("\n", pos);
   const lineEnd = newline < 0 ? text.length : newline;
   const line = text.slice(lineStart, lineEnd);
-  const heading = /^([ \t]*)(=+)[ \t]+(.*?)[ \t]*$/u.exec(line);
-  if (!heading || context(lineStart + heading[1].length) !== "markup") return null;
+  const heading = headingParts(line);
+  if (!heading || context(lineStart + heading.indent.length) !== "markup") return null;
   const contentEnd = lineStart + line.trimEnd().length;
-  const existing = new RegExp(`<(${TYPST_LABEL_PATTERN})>$`, "u").exec(heading[3]);
+  const existing = new RegExp(`<(${TYPST_LABEL_PATTERN})>$`, "u").exec(heading.content);
   if (existing) return { kind: "existing", from: contentEnd - 1 - existing[1].length, to: contentEnd - 1 };
-  const title = slug(heading[3]);
+  const title = slug(heading.content);
   return insertPlan(contentEnd, uniqueTypstLabel(`sec:${title || "label"}`, taken), " ");
 }
 

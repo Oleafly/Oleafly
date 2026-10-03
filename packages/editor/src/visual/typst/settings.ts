@@ -9,10 +9,12 @@ export function typstSettingsEnd(state: EditorState, tree: Tree): number {
   const { doc } = state;
   let pos = 0;
   let end = 0;
-  for (let child = tree.topNode.firstChild; child; child = child.nextSibling) {
+  let child = tree.topNode.firstChild;
+  while (child) {
     if (!isBlank(doc.sliceString(pos, child.from))) break;
     if (COMMENTS.has(child.name)) {
       pos = child.to;
+      child = child.nextSibling;
       continue;
     }
     if (child.name !== "Hash") break;
@@ -25,7 +27,7 @@ export function typstSettingsEnd(state: EditorState, tree: Tree): number {
     }
     end = line.to;
     pos = statement.to;
-    child = statement;
+    child = statement.nextSibling;
   }
   return end;
 }

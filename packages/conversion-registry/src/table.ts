@@ -249,7 +249,7 @@ export function escapeLatexCell(value: string): string {
 const TYPST_ESCAPED_CHARACTERS = new Set(["\\", "[", "]", "#", "$", "@", "*", "_", "`", "<", ">", '"', "~"]);
 
 function isTypstSpace(character: string | undefined): boolean {
-  return character !== undefined && character.trim() === "";
+  return character?.trim() === "";
 }
 
 function typstLeadingMarkerIndex(text: string): number {
@@ -319,6 +319,12 @@ export function emitLatexTable(rowsInput: string[][], options: TableOptions): st
   return lines.join("\n");
 }
 
+function typstAlignment(letter: string): string {
+  if (letter === "r") return "right";
+  if (letter === "c") return "center";
+  return "left";
+}
+
 /** Emit a Typst `#table` with a strong header row. */
 export function emitTypstTable(rowsInput: string[][], options: TableOptions): string {
   const { rows } = padRows(rowsInput);
@@ -328,9 +334,7 @@ export function emitTypstTable(rowsInput: string[][], options: TableOptions): st
   const bold = options.boldHeader ?? true;
   const alignment = explicitAlignment(options.alignment, rows[0].length)
     ?? inferAlignment(rowsInput, options.header);
-  const alignments = [...alignment].map((letter) =>
-    letter === "r" ? "right" : letter === "c" ? "center" : "left",
-  );
+  const alignments = [...alignment].map(typstAlignment);
   const alignArg = alignments.length === 1 ? alignments[0] : `(${alignments.join(", ")})`;
   const body: string[] = [
     `columns: ${alignments.length},`,
@@ -344,7 +348,8 @@ export function emitTypstTable(rowsInput: string[][], options: TableOptions): st
       const headerCells = cells.map((cell) => (bold && cell ? `[*${cell}*]` : `[${cell}]`));
       body.push(`table.header(${headerCells.join(", ")}),`, "table.hline(stroke: 0.5pt),");
     } else {
-      body.push(`${cells.map((cell) => `[${cell}]`).join(", ")},`);
+      const bracketed = cells.map((cell) => `[${cell}]`).join(", ");
+      body.push(`${bracketed},`);
     }
   });
   body.push("table.hline(),");
@@ -447,9 +452,9 @@ function typstStringLiteral(value: string): string {
   let out = "";
   for (const character of value) {
     if (character === "\\" || character === '"') out += `\\${character}`;
-    else if (character === "\n") out += "\\n";
-    else if (character === "\r") out += "\\r";
-    else if (character === "\t") out += "\\t";
+    else if (character === "\n") out += String.raw`\n`;
+    else if (character === "\r") out += String.raw`\r`;
+    else if (character === "\t") out += String.raw`\t`;
     else out += character;
   }
   return `"${out}"`;
@@ -481,17 +486,19 @@ function linkedTableLines(name: string, options: LinkedTableOptions): { prelude:
   }
   if (source.format === "json") {
     prelude.push(cellHelper);
+    const jsonHeader = strong(`${data}.first().map(${cell})`);
     return {
       prelude,
       columns: `${data}.first().len()`,
-      header: `table.header(..${strong(`${data}.first().map(${cell})`)}),`,
+      header: `table.header(..${jsonHeader}),`,
       body: options.header ? `..${data}.slice(1).flatten().map(${cell}),` : `..${data}.flatten().map(${cell}),`,
     };
   }
+  const csvHeader = strong(`${data}.first()`);
   return {
     prelude,
     columns: `${data}.first().len()`,
-    header: `table.header(..${strong(`${data}.first()`)}),`,
+    header: `table.header(..${csvHeader}),`,
     body: options.header ? `..${data}.slice(1).flatten(),` : `..${data}.flatten(),`,
   };
 }
@@ -503,9 +510,7 @@ export function emitTypstLinkedTable(rowsInput: string[][], options: LinkedTable
   }
   const alignment = explicitAlignment(options.alignment, rows[0].length)
     ?? inferAlignment(rowsInput, options.header);
-  const alignments = [...alignment].map((letter) =>
-    letter === "r" ? "right" : letter === "c" ? "center" : "left",
-  );
+  const alignments = [...alignment].map(typstAlignment);
   const alignArg = alignments.length === 1 ? alignments[0] : `(${alignments.join(", ")})`;
   const parts = linkedTableLines(typstDataName(options.source.path), options);
   const body = [`columns: ${parts.columns},`, `align: ${alignArg},`, "stroke: none,", "table.hline(),"];

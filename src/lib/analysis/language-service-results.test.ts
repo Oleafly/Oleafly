@@ -79,6 +79,14 @@ describe("projectPathForUri", () => {
     expect(projectPathForUri("/p", "file:///p/../x.typ")).toBeNull();
     expect(projectPathForUri("/p", "https://typst.app")).toBeNull();
   });
+
+  it("ignores trailing slashes on the root and the file path", () => {
+    expect(projectPathForUri("/p///", "file:///p/a.typ")).toBe("a.typ");
+    expect(projectPathForUri("C:\\Papers\\", "file:///c:/Papers/main.typ")).toBe("main.typ");
+    expect(projectPathForUri("/p", "file:///p/sub//")).toBe("sub");
+    expect(projectPathForUri("/p", "file:///p///")).toBeNull();
+    expect(projectPathForUri("/", "file:///a.typ")).toBe("a.typ");
+  });
 });
 
 describe("workspaceEditFromValue", () => {
@@ -136,5 +144,32 @@ describe("workspaceEditFromValue", () => {
       })?.unsupported,
     ).toBe(true);
     expect(workspaceEditFromValue("nope")).toBeNull();
+  });
+
+  it("returns an empty edit when neither form is present", () => {
+    expect(workspaceEditFromValue({})).toEqual({ operations: [], unsupported: false });
+    expect(workspaceEditFromValue({ changes: [] })).toEqual({ operations: [], unsupported: false });
+  });
+
+  it("prefers document changes over the changes map", () => {
+    expect(
+      workspaceEditFromValue({
+        documentChanges: [],
+        changes: { "file:///p/a.typ": [{ range: range(0, 0, 1), newText: "x" }] },
+      }),
+    ).toEqual({ operations: [], unsupported: false });
+  });
+
+  it("rejects the whole edit when one entry is malformed", () => {
+    expect(
+      workspaceEditFromValue({
+        documentChanges: [
+          { kind: "create", uri: "file:///p/b.typ" },
+          { textDocument: { uri: "file:///p/a.typ" }, edits: [{ newText: "x" }] },
+        ],
+      }),
+    ).toBeNull();
+    expect(workspaceEditFromValue({ documentChanges: ["nope"] })).toBeNull();
+    expect(workspaceEditFromValue({ changes: { "file:///p/a.typ": "x" } })).toBeNull();
   });
 });

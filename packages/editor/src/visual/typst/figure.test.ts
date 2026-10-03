@@ -127,6 +127,23 @@ Next.`;
     expect(lineClassesAt(state, 0)).toContain("ofl-visual-typst-figure-line");
   });
 
+  it("shows a trailing content-block body", () => {
+    const doc = "#figure(caption: [Cap])[Body]\nNext.";
+    const state = typstState(doc, { cursor: doc.length });
+    expect(hiddenRanges(state)).toEqual([
+      { from: 0, to: rangeOf(doc, "Cap").from, block: false },
+      { from: rangeOf(doc, "Cap").to, to: rangeOf(doc, "Body").from, block: false },
+      { from: rangeOf(doc, "Body").to, to: doc.indexOf("\nNext"), block: false },
+    ]);
+  });
+
+  it("leaves a table figure on one line as source", () => {
+    const doc = "#figure(table(columns: 2, [a], [b]), caption: [N])\nNext.";
+    const state = typstState(doc, { cursor: doc.length });
+    expect(widgetsOf(state, TypstTableWidget)).toEqual([]);
+    expect(hiddenRanges(state)).toEqual([]);
+  });
+
   it("falls back to source for tables the grid cannot model", () => {
     const doc = "#figure(\n  table(columns: 2, table.cell(colspan: 2)[x]),\n  caption: [Merged],\n)\nNext.";
     const state = typstState(doc, { cursor: doc.length });

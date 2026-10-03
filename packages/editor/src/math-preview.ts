@@ -107,6 +107,30 @@ function viewportWindows(
   return merged;
 }
 
+function scannedExpressions(
+  view: EditorView,
+  format: MathSourceFormat,
+  window: { from: number; to: number },
+): MathExpression[] {
+  const text = view.state.doc.sliceString(window.from, window.to);
+  const excluded = protectedSyntaxRanges(view, window.from, window.to).map(
+    (range) => ({
+      from: range.from - window.from,
+      to: range.to - window.from,
+    }),
+  );
+  return scanMathExpressions(text, {
+    format,
+    excluded,
+  }).map((localExpression) => ({
+    ...localExpression,
+    from: localExpression.from + window.from,
+    to: localExpression.to + window.from,
+    bodyFrom: localExpression.bodyFrom + window.from,
+    bodyTo: localExpression.bodyTo + window.from,
+  }));
+}
+
 function visibleExpressions(
   view: EditorView,
   format: MathSourceFormat,
@@ -115,33 +139,11 @@ function visibleExpressions(
   const seen = new Set<string>();
   const found: MathExpression[] = [];
   for (const window of windows) {
-    if (format === "typst") {
-      for (const expression of typstMathExpressionsInState(view.state, window.from, window.to)) {
-        const key = `${expression.from}:${expression.to}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        found.push(expression);
-      }
-      continue;
-    }
-    const text = view.state.doc.sliceString(window.from, window.to);
-    const excluded = protectedSyntaxRanges(view, window.from, window.to).map(
-      (range) => ({
-        from: range.from - window.from,
-        to: range.to - window.from,
-      }),
-    );
-    for (const localExpression of scanMathExpressions(text, {
-      format,
-      excluded,
-    })) {
-      const expression: MathExpression = {
-        ...localExpression,
-        from: localExpression.from + window.from,
-        to: localExpression.to + window.from,
-        bodyFrom: localExpression.bodyFrom + window.from,
-        bodyTo: localExpression.bodyTo + window.from,
-      };
+    const expressions =
+      format === "typst"
+        ? typstMathExpressionsInState(view.state, window.from, window.to)
+        : scannedExpressions(view, format, window);
+    for (const expression of expressions) {
       const key = `${expression.from}:${expression.to}`;
       if (seen.has(key)) continue;
       seen.add(key);

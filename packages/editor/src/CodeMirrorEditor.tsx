@@ -481,6 +481,45 @@ function mathPreviewForPath(path: string | null, enabled: boolean): Extension[] 
   return [];
 }
 
+function latexSourceTools(
+  completionSyntax: CompletionSyntax,
+  completionSources: CompletionSource[],
+  ghostCompletionSources: CompletionSource[],
+  gatedCompletionSources: CompletionSource[],
+  autocompleteWhileTyping: boolean,
+  ghostCompletionEnabled: boolean,
+  mathPreviewExtensions: Extension[],
+): Extension[] {
+  const staticLatexSource =
+    completionSources.length > 0 ? latexCommandCompletions : latexCompletions;
+  const sources = [
+    ...gatedCompletionSources,
+    staticLatexSource,
+    slashCompletions,
+  ];
+  const ghostSources = [
+    ...ghostCompletionSources,
+    staticLatexSource,
+    slashCompletions,
+  ];
+  return [
+    latexFolding(),
+    // Before autocompletion: both register keymaps at the highest
+    // precedence, where the earlier extension wins, and the ghost's Escape
+    // has to record its dismissal before the popup consumes the key. Its
+    // handlers decline whenever the popup should own the key instead.
+    ...(ghostCompletionEnabled ? [ghostCompletion(ghostSources, completionSyntax)] : []),
+    autocompletion({
+      override: sources,
+      activateOnTyping: autocompleteWhileTyping,
+      closeOnBlur: true,
+    }),
+    ...(autocompleteWhileTyping ? [openEnvironmentCompletion] : []),
+    ...mathPreviewExtensions,
+    createLatexLinter(),
+  ];
+}
+
 function sourceToolsForPath(
   path: string | null,
   completionSyntax: CompletionSyntax,
@@ -497,34 +536,15 @@ function sourceToolsForPath(
   const mathPreviewExtensions = mathPreviewForPath(path, mathPreview);
 
   if (isLatexSourcePath(path)) {
-    const staticLatexSource =
-      completionSources.length > 0 ? latexCommandCompletions : latexCompletions;
-    const sources = [
-      ...gatedCompletionSources,
-      staticLatexSource,
-      slashCompletions,
-    ];
-    const ghostSources = [
-      ...ghostCompletionSources,
-      staticLatexSource,
-      slashCompletions,
-    ];
-    return [
-      latexFolding(),
-      // Before autocompletion: both register keymaps at the highest
-      // precedence, where the earlier extension wins, and the ghost's Escape
-      // has to record its dismissal before the popup consumes the key. Its
-      // handlers decline whenever the popup should own the key instead.
-      ...(ghostCompletionEnabled ? [ghostCompletion(ghostSources, completionSyntax)] : []),
-      autocompletion({
-        override: sources,
-        activateOnTyping: autocompleteWhileTyping,
-        closeOnBlur: true,
-      }),
-      ...(autocompleteWhileTyping ? [openEnvironmentCompletion] : []),
-      ...mathPreviewExtensions,
-      createLatexLinter(),
-    ];
+    return latexSourceTools(
+      completionSyntax,
+      completionSources,
+      ghostCompletionSources,
+      gatedCompletionSources,
+      autocompleteWhileTyping,
+      ghostCompletionEnabled,
+      mathPreviewExtensions,
+    );
   }
 
   if (isBibtexSourcePath(path)) {
@@ -891,7 +911,7 @@ export function CodeMirrorEditor({
     if (host.saveActive) registerHostSave(view, host.saveActive);
     const unregisterBackgroundEditor = registerBackgroundDocumentEditor((path, base, changes) => {
       const saved = pathStatesRef.current.get(path);
-      if (!saved || saved.doc !== base || prevPathRef.current === path) return false;
+      if (saved?.doc !== base || prevPathRef.current === path) return false;
       pathStatesRef.current.set(path, editedPathViewState(saved, changes));
       return true;
     });

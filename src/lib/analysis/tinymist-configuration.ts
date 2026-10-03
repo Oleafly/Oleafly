@@ -35,7 +35,7 @@ export function tinymistConfiguration(
   settings: TypstLanguageServiceSettings,
 ): { [key: string]: JsonValue } {
   return {
-    ...(base ?? {}),
+    ...base,
     formatterMode: "typstyle",
     formatterPrintWidth: settings.formatterPrintWidth,
     formatterIndentSize: settings.formatterIndentSize,
@@ -55,7 +55,9 @@ export function languageServiceStartupKey(
   kind: LanguageServiceKind,
   settings: TypstLanguageServiceSettings,
 ): string {
-  return kind === "tinymist" ? `lint:${settings.lint ? 1 : 0}${fontKey(settings)}` : "";
+  if (kind !== "tinymist") return "";
+  const lint = settings.lint ? 1 : 0;
+  return `lint:${lint}${fontKey(settings)}`;
 }
 
 export function runtimeProfileForSettings(
@@ -88,10 +90,16 @@ export function typstMainDocument(
   return mainDoc.replaceAll("\\", "/").replace(/^\/+/, "");
 }
 
+function trimTrailingSeparators(path: string): string {
+  let end = path.length;
+  while (end > 0 && (path[end - 1] === "/" || path[end - 1] === "\\")) end -= 1;
+  return path.slice(0, end);
+}
+
 export function absoluteProjectPath(root: string, path: string): string {
   const windows = /^[A-Za-z]:[\\/]/.test(root) || root.startsWith("\\\\");
   const separator = windows ? "\\" : "/";
-  const trimmedRoot = root.replace(/[\\/]+$/, "");
+  const trimmedRoot = trimTrailingSeparators(root);
   const relative = path
     .replace(/^[\\/]+/, "")
     .split(/[\\/]/)

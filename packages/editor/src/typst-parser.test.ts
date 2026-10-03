@@ -229,6 +229,17 @@ describe("Typst syntax tree", () => {
     ]);
   });
 
+  it.each([
+    ["$√x ∛(a+b) x! a'^2 x^a_b x_i' 1/2/3$", "Equation(Dollar Math(MathRoot(Root MathText) MathRoot(Root Math(LeftParen Math(MathText MathText MathText) RightParen)) Math(MathText MathText) MathAttach(MathText MathPrimes Hat MathText) MathAttach(MathText Hat MathText Underscore MathText) MathAttach(MathText Underscore MathAttach(MathText MathPrimes)) MathFrac(MathFrac(MathText Slash MathText) Slash MathText)) Dollar)"],
+    ["$a' b'$ $f(x)' x!!$", "Equation(Dollar Math(MathAttach(MathText MathPrimes) MathAttach(MathText MathPrimes)) Dollar) Equation(Dollar Math(MathAttach(Math(MathText MathDelimited(MathText Math(MathText) MathText)) MathPrimes) Math(Math(MathText MathText) MathText)) Dollar)"],
+    ["#(a not in b) #(a not b)", "Hash Parenthesized(LeftParen Binary(Ident Not In Ident) RightParen) Hash Array(LeftParen Ident Not ⚠ Ident RightParen)"],
+    ["#-x and #(not true)", "Hash ⚠ Hash Parenthesized(LeftParen Unary(Not Bool) RightParen)"],
+    ['#(a: 1, a: 2, "b": 3, "b": 4)', "Hash Dict(LeftParen Named(Ident Colon Int) Comma Named(⚠ Colon Int) Comma Keyed(Str Colon Int) Comma Keyed(⚠ Colon Int) RightParen)"],
+    ["#(1, a: 2) #(a: 1, 2)", "Hash Array(LeftParen Int Comma ⚠ RightParen) Hash Dict(LeftParen Named(Ident Colon Int) Comma ⚠ RightParen)"],
+  ])("keeps math operators, unary and binary code and duplicate keys in %j", (text, expected) => {
+    expect(structure(text)).toBe(expected);
+  });
+
   it("produces no error nodes for any research seed, all of which Typst compiles", () => {
     const seeds = seedFiles();
     expect(seeds.length).toBeGreaterThan(60);
@@ -333,7 +344,7 @@ describe("Typst parsing stays linear", () => {
   ])("on %s", (_name, source) => {
     const started = performance.now();
     const tree = parseTypst(source);
-    expect(tree.length).toBe(source.length);
+    expect(tree).toHaveLength(source.length);
     let depth = 0;
     let deepest = 0;
     tree.iterate({

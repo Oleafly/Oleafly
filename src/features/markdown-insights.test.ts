@@ -230,3 +230,205 @@ describe("buildMarkdownInsights", () => {
     expect(result.citations.map((citation) => citation.key)).toEqual(["vaswani2017attention", "knuth1984literate"]);
   });
 });
+
+function insightsFor(text: string, extra: Record<string, string> = {}) {
+  return buildMarkdownInsights({ mainDoc: "a.md", texts: { "a.md": text, ...extra } });
+}
+
+describe("buildMarkdownInsights edge cases", () => {
+  it.each([
+    ["# Title", 1, "Title"],
+    ["   ###### Six   ", 6, "Six"],
+    ["    # Four spaces", null, null],
+    ["####### Seven", null, null],
+    ["#NoSpace", null, null],
+    ["#", 1, ""],
+    ["##\t", 2, ""],
+    ["# Title ##", 1, "Title"],
+    ["# Title#", 1, "Title#"],
+    [String.raw`# Title \#`, 1, "Title #"],
+    ["# ##", 1, ""],
+    ["# a ## b ##  ", 1, "a ## b"],
+    ["# Title {#sec:x}", 1, "Title"],
+    ["# Title\rmore", null, null],
+    ["\t# Tab", null, null],
+  ])("reads the ATX heading %j", (line, level, text) => {
+    const headings = insightsFor(`${line}\n`).headings;
+    expect(headings.map((heading) => [heading.level, heading.text])).toEqual(level === null ? [] : [[level, text]]);
+  });
+
+  it.each([
+    ["|a|b|\n|---|:-:|", true],
+    ["a | b\n- | --", true],
+    ["a | b\n:--:", true],
+    ["a | b\n| -- || -- |", false],
+    ["a | b\n|", false],
+    ["a | b\n| : |", false],
+    ["a | b\n| - - |", false],
+    ["a | b\n --- | --- \t", true],
+    ["a | b\n|-|", true],
+    ["a | b\n||-", false],
+    ["a | b\n-||", false],
+  ])("decides whether %j is a pipe table", (text, table) => {
+    expect(insightsFor(`\n${text}\n`).tables).toHaveLength(table ? 1 : 0);
+  });
+
+  it.each([
+    ["Table: Rates {#tbl:a}", "Rates", "tbl:a"],
+    ["table:  lower", "lower", null],
+    ["  : Bare caption", "Bare caption", null],
+    ["Table:NoSpace", "", null],
+    ["Tables: plural", "", null],
+    [": ", "", null],
+  ])("reads the table caption %j", (caption, text, label) => {
+    const [table] = insightsFor(`\n| a | b |\n|---|---|\n| 1 | 2 |\n\n${caption}\n`).tables;
+    expect([table.text, table.label]).toEqual([text, label]);
+  });
+
+  it.each([
+    ["![Alt](a.png)", "Alt", 1],
+    ["![Alt [x] y](a.png)", "Alt [x] y", 1],
+    ["![Alt [[x]] y](a.png)", null, 0],
+    ["![Alt](a.png \"Title\")", "Alt", 1],
+    ["![](a.png 'Only title')", "Only title", 1],
+    ["![](a.png \"Dbl\"){#fig:t}", "Dbl", 1],
+    ["![Alt]( <a b.png> )", null, 0],
+    ["![Alt](<a.png>){#fig:x .wide}", "Alt", 1],
+    ["![Alt]( \"quoted url\" )", "Alt", 1],
+    ["![]( \"t i t\")", "t i t", 1],
+    ["![Alt](a.png \"unclosed)", null, 0],
+    ["![Alt](a.png){#fig:a", null, 0],
+    ["![Alt](a.png) trailing", null, 0],
+    ["![Alt](a.png)![B](b.png)", null, 0],
+    ["![Alt\n", null, 0],
+  ])("reads the standalone image %j", (line, caption, count) => {
+    const figures = insightsFor(`\n${line}\n`).figures;
+    expect(figures).toHaveLength(count);
+    if (caption !== null) expect(figures[0].text).toBe(caption);
+  });
+
+  it("finds figure ids and keeps citations around images", () => {
+    const figures = insightsFor("\n![Alt](a.png \"T\"){#fig:z width=3}\n").figures;
+    expect(figures.map((figure) => [figure.label, figure.location?.column])).toEqual([["fig:z", 1]]);
+    const cites = insightsFor("See ![x](a.png) and [@k] with ![y](b.png 'z') @m.\n").citations;
+    expect(cites.map((citation) => [citation.key, citation.location?.column])).toEqual([
+      ["k", 22],
+      ["m", 47],
+    ]);
+  });
+
+  it.each([
+    ["[link](http://x) text", "link text"],
+    ["![img](a.png) after", "img after"],
+    ["[a [b](c) d", "a [b d"],
+    ["[a] (b) [c](d)", "[a] (b) c"],
+    ["[a](b [c](d)", "a"],
+    ["[no close", "[no close"],
+    ["[a](no close", "[a](no close"],
+    ["![x]y [z](w)", "![x]y z"],
+  ])("turns links in the title %j into their text", (title, plain) => {
+    expect(insightsFor(`---\ntitle: "${title}"\n---\n`).metadata.title).toBe(plain);
+  });
+
+  it.each([
+    ["a: b", { a: "b" }],
+    ["a  :  b  c", { a: "b  c" }],
+    ['"quoted key": v', { "quoted key": "v" }],
+    ["'single key' : v", { "single key": "v" }],
+    ["a b: c", { "a b": "c" }],
+    ["a:b", {}],
+    ["a:", { a: "" }],
+    ["#a: b", {}],
+    ['"open: b', {}],
+    ["key: value # note", { key: "value" }],
+    ["url: http://x:80/y", { url: "http://x:80/y" }],
+  ])("reads the front matter line %j", (line, values) => {
+    expect(parseFrontMatter(`---\n${line}\n---\n`)?.values).toEqual(values);
+  });
+
+  it("reads chomping and nested values in the front matter", () => {
+    const front = parseFrontMatter(
+      [
+        "---",
+        "keep: |+",
+        "  kept",
+        "",
+        "strip: >-",
+        "  a",
+        "  b",
+        "",
+        "  c",
+        "clip: |",
+        "  x",
+        "flow: [a, {b: c}, 'd, e']",
+        "multi: [one,",
+        "  two]",
+        "map:",
+        "  inner: 1",
+        "  deeper:",
+        "    - x",
+        "    - y: z",
+        "empty:",
+        "quoted: \"two",
+        "  lines\"",
+        "plain: first",
+        "  second",
+        "---",
+      ].join("\n"),
+    );
+    expect(front?.values).toEqual({
+      keep: "kept\n",
+      strip: "a b\nc",
+      clip: "x\n",
+      flow: ["a", { b: "c" }, "d, e"],
+      multi: ["one", "two"],
+      map: { inner: "1", deeper: ["x", { y: "z" }] },
+      empty: "",
+      quoted: "two lines",
+      plain: "first second",
+    });
+  });
+
+  it.each([
+    ["refs.yaml", "- id: one\n-   id :  'two'\n  - id: \"three\"\nid: four # c\n\n\n   id: five\nnot id: six\n- id:\n", ["one", "two", "three", "four", "five"]],
+    ["refs.yml", "- id: a\r- id: b\u2028- id: c", ["a", "b", "c"]],
+    ["refs.json", '[{"id": "j1"}, {"id" : "j2"}]', ["j1", "j2"]],
+  ])("reads the reference ids in %s", (path, text, ids) => {
+    const cited = ids.map((id) => `[@${id}]`).join(" ");
+    const main = `---\nbibliography: ${path}\n---\n\n${cited} [@missing]\n`;
+    const citations = insightsFor(main, { [path]: text }).citations;
+    expect(citations.filter((citation) => citation.unresolved === false).map((citation) => citation.key)).toEqual(ids);
+    expect(citations.at(-1)).toMatchObject({ key: "missing", unresolved: true });
+  });
+
+  it("strips trailing punctuation from citation keys and keeps braced keys whole", () => {
+    const citations = insightsFor("See @smith2020., @jones?! @{odd.key.} and @lee/-.\n").citations;
+    expect(citations.map((citation) => citation.key)).toEqual(["smith2020", "jones", "odd.key.", "lee"]);
+  });
+
+  it("reads trailing attributes on headings and display math", () => {
+    const insights = insightsFor("# A {#sec:a}  \n\n# B {.unnumbered}\n\n# C {x}\n\n$$ x $$ \t{#eq:x}\n\n# D {#sec:d} tail\n");
+    expect(insights.headings.map((heading) => [heading.text, heading.label, heading.numbered])).toEqual([
+      ["A", "sec:a", true],
+      ["B", null, false],
+      ["C {x}", null, true],
+      ["D {#sec:d} tail", null, true],
+    ]);
+    expect(insights.equations.map((equation) => equation.label)).toEqual(["eq:x"]);
+  });
+
+  it("handles long lines of spaces, brackets and hashes", () => {
+    const text = [
+      `#${" ".repeat(20000)}x${" ".repeat(20000)}\u2028`,
+      `![${"[".repeat(5000)}`,
+      `${"[a]".repeat(5000)}`,
+      `Table:${" ".repeat(20000)}\u2028x`,
+      `| ${"- ".repeat(10000)}x`,
+      `x${" ".repeat(20000)}{y}z`,
+      `key${" ".repeat(20000)}value`,
+    ].join("\n");
+    insightsFor(`---\ntitle: "${"[x".repeat(5000)}"\n${"k ".repeat(10000)}\n---\n${text}\n`, {
+      "refs.yaml": `${"\n".repeat(5000)}${" ".repeat(5000)}x`,
+    });
+  });
+});

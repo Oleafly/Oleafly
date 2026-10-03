@@ -116,20 +116,18 @@ function TexRootIndicator() {
   );
 }
 
+function TypstLivePreviewSync() {
+  useEffect(syncTypstLivePreview, []);
+  return null;
+}
+
 function TypstLivePreviewKeeper() {
   const projectId = useFilesStore((s) => s.projectId);
   const typst = useFilesStore((s) => s.engine.source_format === "typst");
   const typstMissing = useFilesStore((s) => s.engine.typst_missing ?? null);
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
-  useEffect(() => {
-    void projectId;
-    void typst;
-    void typstMissing;
-    void engineLoaded;
-    syncTypstLivePreview();
-  }, [projectId, typst, typstMissing, engineLoaded]);
   useEffect(() => () => stopTypstLivePreview(), []);
-  return null;
+  return <TypstLivePreviewSync key={JSON.stringify([projectId, typst, typstMissing, engineLoaded])} />;
 }
 
 /**

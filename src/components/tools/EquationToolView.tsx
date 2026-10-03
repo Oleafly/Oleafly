@@ -84,6 +84,29 @@ function typstWrapped(input: string, display: boolean): string {
   return display ? `$ ${body} $` : `$${body}$`;
 }
 
+function equationWrapped(typst: boolean, typstInput: string, input: string, display: boolean): string {
+  if (typst) return typstWrapped(typstInput, display);
+  return display ? String.raw`\[ ${input} \]` : `$${input}$`;
+}
+
+function EquationStatus({ failed, rendering }: Readonly<{ failed: boolean; rendering: boolean }>) {
+  const { t } = useTranslation(["researchTools"]);
+  let statusLabel = t(($) => $.researchTools.equation.statusRendered);
+  if (failed) statusLabel = t(($) => $.researchTools.equation.statusError);
+  else if (rendering) statusLabel = t(($) => $.researchTools.equation.statusRendering);
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span
+        className={cn(
+          "size-1.5 rounded-full",
+          failed ? "bg-destructive" : "bg-emerald-500",
+        )}
+      />
+      {statusLabel}
+    </div>
+  );
+}
+
 function typstPngSource(wrapped: string, theme: "light" | "dark"): string {
   return theme === "dark" ? `#set text(fill: rgb("#ffffff"))\n${wrapped}` : wrapped;
 }
@@ -119,17 +142,10 @@ export function EquationToolView() {
   if (activePage !== "equation") return null;
 
   const rendered = typst ? { html: "", error: null } : renderEquation(input, display);
-  const wrapped = typst
-    ? typstWrapped(typstInput, display)
-    : display ? String.raw`\[ ${input} \]` : `$${input}$`;
+  const wrapped = equationWrapped(typst, typstInput, input, display);
   const ready = typst ? typstPreview.status === "rendered" : Boolean(rendered.html);
   const failed = typst ? typstPreview.status === "error" : Boolean(rendered.error);
   const backdrop = previewTheme === "dark" ? DARK_BACKDROP : LIGHT_BACKDROP;
-  let statusLabel = t(($) => $.researchTools.equation.statusRendered);
-  if (failed) statusLabel = t(($) => $.researchTools.equation.statusError);
-  else if (typst && typstPreview.status === "rendering") {
-    statusLabel = t(($) => $.researchTools.equation.statusRendering);
-  }
 
   const switchLanguage = (next: EquationLanguage) => {
     if (next === language) return;
@@ -340,15 +356,7 @@ export function EquationToolView() {
           ))}
         </fieldset>
 
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span
-            className={cn(
-              "size-1.5 rounded-full",
-              failed ? "bg-destructive" : "bg-emerald-500",
-            )}
-          />
-          {statusLabel}
-        </div>
+        <EquationStatus failed={failed} rendering={typst && typstPreview.status === "rendering"} />
         <ThemeMenu testId="equation-theme-menu" />
         <Button
           variant="outline"

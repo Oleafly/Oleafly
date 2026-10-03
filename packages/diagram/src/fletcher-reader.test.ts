@@ -50,6 +50,310 @@ const everything: DiagramModel = {
   ],
 };
 
+describe("readFletcher number and text forms", () => {
+  it("reads decimal, leading-dot and exponent lengths and angles", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>, width: .5cm, height: 1.25cm),",
+      "  node((1, 0), [B], name: <b>, width: 2e1pt, height: 10mm),",
+      "  node((2, 0), [C], name: <c>, width: 1.5em, height: 0.5in),",
+      '  edge(<a>, <b>, "->", bend: .25turn),',
+      '  edge(<b>, <c>, "->", bend: -1.5rad),',
+      '  edge(<c>, <a>, "->", bend: 45deg),',
+      ")",
+    ].join("\n");
+    const { model } = read(source);
+    expect(model?.nodes.map((n) => [n.w, n.h])).toEqual([
+      [20, 50],
+      [28.222222222222225, 40],
+      [23.283333333333335, 50.8],
+    ]);
+    expect(model?.edges.map((e) => [e.routing, e.sourceHandle, e.targetHandle])).toEqual([
+      ["straight", undefined, undefined],
+      ["curved", "b", "b"],
+      ["curved", "b", "r"],
+    ]);
+  });
+
+  it("leaves a length with a trailing dot unread", () => {
+    const source = "#diagram(\n  node((0, 0), [A], name: <a>, width: 12cm),\n  node((1, 0), [B], name: <b>, width: 3.cm),\n)";
+    expect(read(source).model?.nodes.map((n) => n.w)).toEqual([480, 40]);
+  });
+
+  it("joins label lines with one space and trims the spaces around each break", () => {
+    const source = "#diagram(\n  node((0, 0), [Two  \n   lines \t\r\n\n  here], name: <a>),\n  node((1,0), text(size: 9pt)[x  \n  y], name: <b>),\n)";
+    expect(read(source).model?.nodes.map((n) => n.label)).toEqual(["Two lines  here", "x y"]);
+  });
+});
+
+describe("readFletcher styling, shapes and edge forms", () => {
+  const noteCodes = (notes: { code: string; detail?: string }[]) => notes.map((n) => (n.detail ? `${n.code}:${n.detail}` : n.code));
+
+  it("reads colour literals, channels and adjusted colours", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>, fill: rgb(\"#abc\")),",
+      "  node((1, 0), [B], name: <b>, fill: rgb(10%, 20, 30)),",
+      "  node((2, 0), [C], name: <c>, fill: rgb(1, 2, 3, 50%)),",
+      "  node((3, 0), [D], name: <d>, fill: luma(128)),",
+      "  node((4, 0), [E], name: <e>, fill: red.lighten(20%)),",
+      "  node((5, 0), [F], name: <f>, fill: gray.lighter),",
+      "  node((6, 0), [G], name: <g>, fill: rgb(\"#zz\")),",
+      "  node((7, 0), [H], name: <h>, fill: none, stroke: none),",
+      "  node((8, 0), [I], name: <i>, fill: teal),",
+      ")",
+    ].join("\n");
+    const result = read(source);
+    expect(result.model?.nodes).toEqual([
+      { id: "a", shape: "rectangle", x: -20, y: -15, w: 40, h: 30, label: "A", fontSize: 11, fill: "#aabbcc" },
+      { id: "b", shape: "rectangle", x: 90, y: -15, w: 40, h: 30, label: "B", fontSize: 11, fill: "#1a141e" },
+      { id: "c", shape: "rectangle", x: 200, y: -15, w: 40, h: 30, label: "C", fontSize: 11, fill: "#010203" },
+      { id: "d", shape: "rectangle", x: 310, y: -15, w: 40, h: 30, label: "D", fontSize: 11, fill: "#808080" },
+      { id: "e", shape: "rectangle", x: 420, y: -15, w: 40, h: 30, label: "E", fontSize: 11, fill: "#ff4136" },
+      { id: "f", shape: "rectangle", x: 530, y: -15, w: 40, h: 30, label: "F", fontSize: 11, fill: "#aaaaaa" },
+      { id: "g", shape: "rectangle", x: 640, y: -15, w: 40, h: 30, label: "G", fontSize: 11 },
+      { id: "h", shape: "text", x: 750, y: -15, w: 40, h: 30, label: "H", fontSize: 11, fill: "" },
+      { id: "i", shape: "rectangle", x: 860, y: -15, w: 40, h: 30, label: "I", fontSize: 11, fill: "#39cccc" },
+    ]);
+    expect(noteCodes(result.notes)).toEqual(["gridCoordinates", "estimatedSize", "colorAdjustments", "colorExpressions"]);
+  });
+
+  it("reads stroke lengths, sums and dictionaries", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>, stroke: 2pt + red),",
+      "  node((1, 0), [B], name: <b>, stroke: red + 2pt),",
+      "  node((2, 0), [C], name: <c>, stroke: (paint: blue, thickness: 1.5pt, dash: \"dashed\", cap: \"round\")),",
+      "  node((3, 0), [D], name: <d>, stroke: (paint: blue, dash: \"dash-dotted\")),",
+      "  node((4, 0), [E], name: <e>, stroke: (paint: oops)),",
+      "  node((5, 0), [F], name: <f>, stroke: (thickness: auto)),",
+      "  node((6, 0), [G], name: <g>, stroke: (dash: none, miter-limit: 2)),",
+      "  node((7, 0), [H], name: <h>, stroke: auto),",
+      "  node((8, 0), [I], name: <i>, stroke: 1pt),",
+      "  node((9, 0), [J], name: <j>, stroke: (dash: \"loosely-dotted\")),",
+      "  node((10, 0), [K], name: <k>, stroke: (dash: 5)),",
+      "  node((11, 0), [L], name: <l>, stroke: 2pt + 3pt + red),",
+      ")",
+    ].join("\n");
+    const result = read(source);
+    expect(result.model?.nodes).toEqual([
+      { id: "a", shape: "rectangle", x: -20, y: -15, w: 40, h: 30, label: "A", fontSize: 11, stroke: "#ff4136", strokeWidth: 2.822 },
+      { id: "b", shape: "rectangle", x: 90, y: -15, w: 40, h: 30, label: "B", fontSize: 11, stroke: "#ff4136", strokeWidth: 2.822 },
+      { id: "c", shape: "rectangle", x: 200, y: -15, w: 40, h: 30, label: "C", fontSize: 11, stroke: "#0074d9", strokeWidth: 2.117, strokeStyle: "dashed" },
+      { id: "d", shape: "rectangle", x: 310, y: -15, w: 40, h: 30, label: "D", fontSize: 11, stroke: "#0074d9", strokeWidth: 1.411, strokeStyle: "dotted" },
+      { id: "e", shape: "rectangle", x: 420, y: -15, w: 40, h: 30, label: "E", fontSize: 11 },
+      { id: "f", shape: "rectangle", x: 530, y: -15, w: 40, h: 30, label: "F", fontSize: 11 },
+      { id: "g", shape: "rectangle", x: 640, y: -15, w: 40, h: 30, label: "G", fontSize: 11, stroke: "#000000", strokeWidth: 1.411 },
+      { id: "h", shape: "rectangle", x: 750, y: -15, w: 40, h: 30, label: "H", fontSize: 11 },
+      { id: "i", shape: "rectangle", x: 860, y: -15, w: 40, h: 30, label: "I", fontSize: 11, stroke: "#000000", strokeWidth: 1.411 },
+      { id: "j", shape: "rectangle", x: 970, y: -15, w: 40, h: 30, label: "J", fontSize: 11, stroke: "#000000", strokeWidth: 1.411, strokeStyle: "dotted" },
+      { id: "k", shape: "rectangle", x: 1080, y: -15, w: 40, h: 30, label: "K", fontSize: 11, stroke: "#000000", strokeWidth: 1.411, strokeStyle: "dashed" },
+      { id: "l", shape: "rectangle", x: 1190, y: -15, w: 40, h: 30, label: "L", fontSize: 11, stroke: "#000000", strokeWidth: 1.411 },
+    ]);
+    expect(noteCodes(result.notes)).toEqual(["gridCoordinates", "estimatedSize", "strokeStyles"]);
+  });
+
+  it("reads styled text labels and other label forms", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), text(size: 9pt, fill: red, font: \"Courier New\")[x], name: <a>),",
+      "  node((1, 0), text(font: \"Helvetica\")[y], name: <b>),",
+      "  node((2, 0), text(font: \"Times\")[z], name: <c>),",
+      "  node((3, 0), text(red)[p], name: <d>),",
+      "  node((4, 0), text(weight: \"bold\")[w], name: <e>),",
+      "  node((5, 0), text(size: auto)[s], name: <f>),",
+      "  node((6, 0), text(font: (\"A\", \"B\"))[f], name: <g>),",
+      "  node((7, 0), text(fill: red.darken(10%))[q], name: <h>),",
+      "  node((8, 0), $x^2$, name: <i>),",
+      "  node((9, 0), \"plain\", name: <j>),",
+      String.raw`  node((10, 0), [*bold* \u{41}], name: <k>),`,
+      "  node((11, 0), label: [named], pos: (11, 1), name: <l>),",
+      "  node((12, 0), text(font: \"DejaVu Sans Mono\")[m], name: <m>),",
+      "  node((13, 0), text(font: \"Arial\")[n], name: <n>),",
+      ")",
+    ].join("\n");
+    const result = read(source);
+    expect(result.model?.nodes).toEqual([
+      { id: "a", shape: "rectangle", x: -20, y: -15, w: 40, h: 30, label: "x", fontSize: 9, textColor: "#ff4136", fontFamily: "mono" },
+      { id: "b", shape: "rectangle", x: 90, y: -15, w: 40, h: 30, label: "y", fontFamily: "sans" },
+      { id: "c", shape: "rectangle", x: 200, y: -15, w: 40, h: 30, label: "z" },
+      { id: "d", shape: "rectangle", x: 310, y: -15, w: 40, h: 30, label: "p" },
+      { id: "e", shape: "rectangle", x: 420, y: -15, w: 40, h: 30, label: "w" },
+      { id: "f", shape: "rectangle", x: 530, y: -15, w: 40, h: 30, label: "s" },
+      { id: "g", shape: "rectangle", x: 640, y: -15, w: 40, h: 30, label: "f" },
+      { id: "h", shape: "rectangle", x: 750, y: -15, w: 40, h: 30, label: "q", textColor: "#ff4136" },
+      { id: "i", shape: "rectangle", x: 852.5, y: -15, w: 55, h: 30, label: "$x^2$", fontSize: 11 },
+      { id: "j", shape: "rectangle", x: 962.5, y: -15, w: 55, h: 30, label: "plain", fontSize: 11 },
+      { id: "k", shape: "rectangle", x: 1062, y: -15, w: 76, h: 30, label: "*bold* A", fontSize: 11 },
+      { id: "l", shape: "rectangle", x: 1182.5, y: 65, w: 55, h: 30, label: "named", fontSize: 11 },
+      { id: "m", shape: "rectangle", x: 1300, y: -15, w: 40, h: 30, label: "m", fontFamily: "mono" },
+      { id: "n", shape: "rectangle", x: 1410, y: -15, w: 40, h: 30, label: "n", fontFamily: "sans" },
+    ]);
+    expect(noteCodes(result.notes)).toEqual(["gridCoordinates", "formattedLabels", "estimatedSize"]);
+  });
+
+  it("reads shapes, sizes and unplaced nodes", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>, radius: 1cm),",
+      "  node((1, 0), [B], name: <b>, shape: pill),",
+      "  node((2, 0), [C], name: <c>, shape: fletcher.shapes.hexagon),",
+      "  node((3, 0), [D], name: <d>, corner-radius: 3pt),",
+      "  node((4, 0), [E], name: <e>, stroke: none),",
+      "  node((5, 0), [F], name: <f>, shape: circle, width: 2cm, height: 1cm),",
+      "  node((6, 0), [G], name: <g>, shape: circle),",
+      "  node((7, 0), [H], name: <h>, radius: 5mm, shape: rect),",
+      "  node((8, 0), [I], name: <i>, shape: shapes.diamond.with(fit: 0)),",
+      "  node(enclose: (<a>, <b>)),",
+      "  node((0, 0), [x], [y], [z]),",
+      "  node((9, 0), [Trailing],),",
+      "  node((10cm, 2cm)),",
+      "  node([no pos]),",
+      "  node((11, 0), [Pill], shape: pill, corner-radius: 2pt),",
+      ")",
+    ].join("\n");
+    const result = read(source);
+    expect(result.model?.nodes).toEqual([
+      { id: "a", shape: "circle", x: -40, y: -40, w: 80, h: 80, label: "A", fontSize: 11 },
+      { id: "b", shape: "roundrect", x: 90, y: -15, w: 40, h: 30, label: "B", fontSize: 11, radius: 15 },
+      { id: "c", shape: "rectangle", x: 200, y: -15, w: 40, h: 30, label: "C", fontSize: 11 },
+      { id: "d", shape: "roundrect", x: 310, y: -15, w: 40, h: 30, label: "D", fontSize: 11, radius: 4.233 },
+      { id: "e", shape: "text", x: 420, y: -15, w: 40, h: 30, label: "E", fontSize: 11 },
+      { id: "f", shape: "circle", x: 510, y: -40, w: 80, h: 80, label: "F", fontSize: 11 },
+      { id: "g", shape: "circle", x: 640, y: -20, w: 40, h: 40, label: "G", fontSize: 11 },
+      { id: "h", shape: "rectangle", x: 750, y: -20, w: 40, h: 40, label: "H", fontSize: 11 },
+      { id: "i", shape: "diamond", x: 860, y: -15, w: 40, h: 30, label: "I", fontSize: 11 },
+      { id: "node-2", shape: "rectangle", x: 952, y: -15, w: 76, h: 30, label: "Trailing", fontSize: 11 },
+      { id: "node-3", shape: "rectangle", x: 380, y: -95, w: 40, h: 30, label: "" },
+      { id: "node-5", shape: "roundrect", x: 1186, y: -15, w: 48, h: 30, label: "Pill", fontSize: 11, radius: 2.822 },
+    ]);
+    expect(result.extras?.items).toEqual([
+      "node(enclose: (<a>, <b>))",
+      "node((0, 0), [x], [y], [z])",
+      "node([no pos])",
+    ]);
+    expect(noteCodes(result.notes)).toEqual(["gridCoordinates", "unknownShapes", "estimatedSize", "unplacedNode"]);
+  });
+
+  it("reads edge endpoints, marks, flags, labels and bends", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>),",
+      "  node((2, 0), [B], name: <b>),",
+      "  node((2, 2), [C], name: <c>),",
+      "  edge((0, 0), (2, 0), \"->\"),",
+      "  edge(<a>, \"r\", \"->\"),",
+      "  edge(<a>, \"dd,rr\", \"-->\"),",
+      "  edge(<a>, <b>, \"->\", left, [lab]),",
+      "  edge(<a>, <b>, [lab], \"->\"),",
+      "  edge(<a>, <b>, \"dashed\", \"wave\"),",
+      "  edge(<a>, <b>, marks: \"<->\", label: [x], bend: 20deg, dash: \"dotted\"),",
+      "  edge(<a>, <b>, dash: \"densely-dotted\"),",
+      "  edge(<a>, <b>, \"<-\"),",
+      "  edge(<a>, <c>, \"->\", vertices: ((0, 2),)),",
+      "  edge(<a>, (1, 1), (1, 3), <c>, \"->\"),",
+      "  edge(<a>, (0, 2), <c>, \"<-\"),",
+      "  edge(<zz>, <b>),",
+      "  edge(<a>, <b>, \"x->\", stroke: red),",
+      "  edge(<a>, <b>, \"|=|\"),",
+      "  edge(<a>, <b>, \"-->\"),",
+      "  edge(<a>, <b>, \"..\"),",
+      "  edge(<a>, <b>, \"->-\"),",
+      "  edge(<a>, <b>, \"-\", \"dotted\"),",
+      "  edge(<a>, <b>, arrow.r),",
+      "  edge(<b>, <b>, \"->\", bend: 130deg),",
+      "  edge(<a>, <c>, \"->\", bend: -40deg),",
+      "  edge(<b>, <a>, \"<->\", bend: 1rad),",
+      "  edge(\"->\"),",
+      "  edge(<a>, auto, \"->\"),",
+      "  edge(<a>, <b>, \"->\", [one], [two]),",
+      "  edge(<a>, <b>, \"->\", label-side: right, label-pos: 0.2),",
+      "  edge(<c>, \"u\", \"l\", \"->\"),",
+      "  edge(<a>, <c>, \"->\", vertices: ((1, 0), (1, 2))),",
+      "  edge(<c>, <a>, \"<-\", vertices: ((1, 2), (1, 0))),",
+      "  edge(\"r\", \"->\"),",
+      ")",
+    ].join("\n");
+    const result = read(source);
+    expect(result.model?.nodes).toEqual([
+      { id: "a", shape: "rectangle", x: -20, y: -15, w: 40, h: 30, label: "A", fontSize: 11 },
+      { id: "b", shape: "rectangle", x: 200, y: -15, w: 40, h: 30, label: "B", fontSize: 11 },
+      { id: "c", shape: "rectangle", x: 200, y: 145, w: 40, h: 30, label: "C", fontSize: 11 },
+    ]);
+    expect(result.model?.edges).toEqual([
+      { id: "edge", source: "a", target: "b", routing: "straight", arrow: "forward", style: "solid" },
+      { id: "edge-1", source: "a", target: "c", routing: "orthogonal", arrow: "forward", style: "dashed", sourceHandle: "b", targetHandle: "l" },
+      { id: "edge-2", source: "a", target: "b", routing: "straight", arrow: "forward", style: "solid", label: "lab" },
+      { id: "edge-3", source: "a", target: "b", routing: "straight", arrow: "forward", style: "solid", label: "lab" },
+      { id: "edge-4", source: "a", target: "b", routing: "straight", arrow: "none", style: "dashed" },
+      { id: "edge-5", source: "a", target: "b", routing: "curved", arrow: "both", style: "dotted", label: "x", sourceHandle: "r", targetHandle: "l" },
+      { id: "edge-6", source: "a", target: "b", routing: "straight", arrow: "none", style: "dotted" },
+      { id: "edge-7", source: "b", target: "a", routing: "straight", arrow: "forward", style: "solid" },
+      { id: "edge-8", source: "a", target: "c", routing: "straight", arrow: "forward", style: "solid" },
+      { id: "edge-9", source: "c", target: "a", routing: "orthogonal", arrow: "forward", style: "solid", sourceHandle: "l", targetHandle: "b" },
+      { id: "edge-10", source: "a", target: "b", routing: "straight", arrow: "both", style: "solid" },
+      { id: "edge-11", source: "a", target: "b", routing: "straight", arrow: "both", style: "solid" },
+      { id: "edge-12", source: "a", target: "b", routing: "straight", arrow: "forward", style: "dashed" },
+      { id: "edge-13", source: "a", target: "b", routing: "straight", arrow: "none", style: "dotted" },
+      { id: "edge-14", source: "a", target: "b", routing: "straight", arrow: "none", style: "solid" },
+      { id: "edge-15", source: "a", target: "b", routing: "straight", arrow: "none", style: "dotted" },
+      { id: "edge-16", source: "a", target: "b", routing: "straight", arrow: "forward", style: "solid" },
+      { id: "edge-17", source: "b", target: "b", routing: "curved", arrow: "forward", style: "solid" },
+      { id: "edge-18", source: "a", target: "c", routing: "curved", arrow: "forward", style: "solid", sourceHandle: "b", targetHandle: "l" },
+      { id: "edge-19", source: "b", target: "a", routing: "curved", arrow: "both", style: "solid", sourceHandle: "b", targetHandle: "b" },
+      { id: "edge-20", source: "a", target: "b", routing: "straight", arrow: "forward", style: "solid" },
+    ]);
+    expect(result.extras?.items).toEqual([
+      "edge(<a>, <b>, \"->\", [one], [two])",
+      "edge(<a>, \"r\", \"->\")",
+      "edge(<a>, <c>, \"->\", vertices: ((0, 2),))",
+      "edge(<zz>, <b>)",
+      "edge(\"->\")",
+      "edge(<a>, auto, \"->\")",
+      "edge(<c>, \"u\", \"l\", \"->\")",
+      "edge(<a>, <c>, \"->\", vertices: ((1, 0), (1, 2)))",
+      "edge(<c>, <a>, \"<-\", vertices: ((1, 2), (1, 0)))",
+      "edge(\"r\", \"->\")",
+    ]);
+    expect(noteCodes(result.notes)).toEqual(["gridCoordinates", "estimatedSize", "edgeOption:wave", "strokeStyles", "arrowMarks", "unreadEdge", "danglingEdge", "freePoints"]);
+  });
+
+  it("reads background boxes, kept wrappers and diagram settings", () => {
+    const body = '  node((0, 0), [A], name: <a>),\n  node((1, 0), [B], name: <b>),\n  edge(<a>, <b>, "->"),\n';
+    const wrapped = (open: string, close: string) => read(`${open}${body}${close}\n// after`);
+    const cases = [
+      ["#import \"@preview/fletcher:0.5.8\": diagram, node, edge, shapes\n#diagram(\n", ")"],
+      ["#import \"@preview/fletcher:0.5.8\" as fl\n#box(fill: rgb(\"#ffeedd\"), inset: 4pt, fl.diagram(\n", "))"],
+      ["#import \"@preview/fletcher:0.5.8\": *\n#align(center, diagram(\n", "))"],
+      ["#box(fill: red, inset: 2pt, diagram(\n", "))"],
+      ["#box(fill: red.lighten(5%), inset: 4pt, diagram(\n", "))"],
+      ["#box(stroke: red, inset: 4pt, diagram(\n", "))"],
+      ["#diagram(\n  spacing: 3em,\n  node-stroke: 1pt,\n  mystery: 2,\n", ")"],
+    ];
+    expect(
+      cases.map(([open, close]) => {
+        const result = wrapped(open, close);
+        return {
+          background: result.model?.background ?? null,
+          open: result.extras?.open,
+          close: result.extras?.close,
+          imports: result.extras?.imports,
+          diagramArgs: result.extras?.diagramArgs.map((arg) => arg.key),
+          notes: noteCodes(result.notes),
+        };
+      }),
+    ).toEqual([
+      { background: null, open: null, close: null, imports: [], diagramArgs: [], notes: ["outsideCode", "gridCoordinates", "estimatedSize"] },
+      { background: "#ffeedd", open: null, close: null, imports: ["#import \"@preview/fletcher:0.5.8\" as fl"], diagramArgs: [], notes: ["outsideCode", "gridCoordinates", "estimatedSize"] },
+      { background: null, open: "#align(center, ", close: ")", imports: ["#import \"@preview/fletcher:0.5.8\": *"], diagramArgs: [], notes: ["outsideCode", "wrapper", "gridCoordinates", "estimatedSize"] },
+      { background: null, open: "#box(fill: red, inset: 2pt, ", close: ")", imports: [], diagramArgs: [], notes: ["outsideCode", "wrapper", "gridCoordinates", "estimatedSize"] },
+      { background: null, open: "#box(fill: red.lighten(5%), inset: 4pt, ", close: ")", imports: [], diagramArgs: [], notes: ["outsideCode", "wrapper", "gridCoordinates", "estimatedSize"] },
+      { background: null, open: "#box(stroke: red, inset: 4pt, ", close: ")", imports: [], diagramArgs: [], notes: ["outsideCode", "wrapper", "gridCoordinates", "estimatedSize"] },
+      { background: null, open: null, close: null, imports: [], diagramArgs: ["spacing", "node-stroke", "mystery"], notes: ["outsideCode", "diagramSetting:spacing", "diagramSetting:node-stroke", "diagramSetting:mystery", "gridCoordinates", "estimatedSize"] },
+    ]);
+  });
+});
+
 describe("readFletcher round trips", () => {
   it("gives back the exact model when the canvas model is the hint", () => {
     const code = modelToFletcher(everything);

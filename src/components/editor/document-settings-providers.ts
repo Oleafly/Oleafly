@@ -164,27 +164,43 @@ function sharedLabel(key: string): string {
   }
 }
 
+const SHARED_OPTION_LABELS: ReadonlyMap<string, ReadonlyMap<string, () => string>> = new Map([
+  [
+    "columns",
+    new Map([
+      ["onecolumn", () => i18n.t(($) => $.editor.documentSettings.options.onecolumn)],
+      ["twocolumn", () => i18n.t(($) => $.editor.documentSettings.options.twocolumn)],
+    ]),
+  ],
+  [
+    "lineSpacing",
+    new Map([
+      ["single", () => i18n.t(($) => $.editor.documentSettings.options.single)],
+      ["onehalf", () => i18n.t(($) => $.editor.documentSettings.options.onehalf)],
+      ["double", () => i18n.t(($) => $.editor.documentSettings.options.double)],
+    ]),
+  ],
+  [
+    "equationNumbering",
+    new Map([
+      ["section", () => i18n.t(($) => $.editor.documentSettings.options.bySection)],
+      ["chapter", () => i18n.t(($) => $.editor.documentSettings.options.byChapter)],
+      ["subsection", () => i18n.t(($) => $.editor.documentSettings.options.bySubsection)],
+    ]),
+  ],
+  [
+    "numberSections",
+    new Map([
+      ["true", () => i18n.t(($) => $.editor.documentSettings.options.numbered)],
+      ["false", () => i18n.t(($) => $.editor.documentSettings.options.unnumbered)],
+    ]),
+  ],
+]);
+
 function sharedOption(key: string, option: string): string {
-  if (key === "columns") {
-    if (option === "onecolumn") return i18n.t(($) => $.editor.documentSettings.options.onecolumn);
-    if (option === "twocolumn") return i18n.t(($) => $.editor.documentSettings.options.twocolumn);
-  }
-  if (key === "lineSpacing") {
-    if (option === "single") return i18n.t(($) => $.editor.documentSettings.options.single);
-    if (option === "onehalf") return i18n.t(($) => $.editor.documentSettings.options.onehalf);
-    if (option === "double") return i18n.t(($) => $.editor.documentSettings.options.double);
-  }
-  if (key === "equationNumbering") {
-    if (option === "section") return i18n.t(($) => $.editor.documentSettings.options.bySection);
-    if (option === "chapter") return i18n.t(($) => $.editor.documentSettings.options.byChapter);
-    if (option === "subsection") return i18n.t(($) => $.editor.documentSettings.options.bySubsection);
-  }
-  if (key === "numberSections") {
-    if (option === "true") return i18n.t(($) => $.editor.documentSettings.options.numbered);
-    if (option === "false") return i18n.t(($) => $.editor.documentSettings.options.unnumbered);
-  }
   if (key === "secnumdepth") return depthLabel(option);
-  return option;
+  const label = SHARED_OPTION_LABELS.get(key)?.get(option);
+  return label ? label() : option;
 }
 
 function depthLabel(option: string): string {
@@ -265,10 +281,10 @@ const latexProvider: DocumentSettingsProvider = {
   fontSources: ["system"],
   description: (file) => i18n.t(($) => $.editor.documentSettings.latexDescription, { file }),
   noMainFile: () => i18n.t(($) => $.editor.documentSettings.noLatexMainFile),
-  async read(text, context) {
+  read(text, context) {
     const settings = readLatexDocumentSettings(text, latexEnvironment(text, context));
     if (!settings.documentClass) {
-      return { status: "error", message: i18n.t(($) => $.editor.documentSettings.noDocumentClass) };
+      return Promise.resolve({ status: "error", message: i18n.t(($) => $.editor.documentSettings.noDocumentClass) });
     }
     const notices: string[] = [];
     if (settings.lockingClass) {
@@ -278,10 +294,10 @@ const latexProvider: DocumentSettingsProvider = {
       notices.push(i18n.t(($) => $.editor.documentSettings.styleNotice, { name: settings.layoutStyle }));
     }
     if (settings.externalPreamble) notices.push(i18n.t(($) => $.editor.documentSettings.externalPreamble));
-    return { status: "ready", fields: settings.fields, notices };
+    return Promise.resolve({ status: "ready", fields: settings.fields, notices });
   },
-  async edits(text, changes, context) {
-    return latexSettingsEdits(text, changes, latexEnvironment(text, context));
+  edits(text, changes, context) {
+    return Promise.resolve(latexSettingsEdits(text, changes, latexEnvironment(text, context)));
   },
   validate: (key, value) => validateLatexSetting(key as LatexSettingKey, value),
   label: sharedLabel,
@@ -311,16 +327,16 @@ const markdownProvider: DocumentSettingsProvider = {
   fontSources: ["system"],
   description: (file) => i18n.t(($) => $.editor.documentSettings.markdownDescription, { file }),
   noMainFile: () => i18n.t(($) => $.editor.documentSettings.noMarkdownMainFile),
-  async read(text) {
+  read(text) {
     const settings = readMarkdownDocumentSettings(text);
     if (settings.frontMatter === "unclosed") {
-      return { status: "error", message: i18n.t(($) => $.editor.documentSettings.unclosedFrontMatter) };
+      return Promise.resolve({ status: "error", message: i18n.t(($) => $.editor.documentSettings.unclosedFrontMatter) });
     }
     const notices = settings.frontMatter === "absent" ? [i18n.t(($) => $.editor.documentSettings.noFrontMatter)] : [];
-    return { status: "ready", fields: settings.fields, notices };
+    return Promise.resolve({ status: "ready", fields: settings.fields, notices });
   },
-  async edits(text, changes) {
-    return markdownSettingsEdits(text, changes);
+  edits(text, changes) {
+    return Promise.resolve(markdownSettingsEdits(text, changes));
   },
   validate: (key, value) => validateMarkdownSetting(key as MarkdownSettingKey, value),
   label: sharedLabel,

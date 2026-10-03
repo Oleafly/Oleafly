@@ -60,7 +60,7 @@ function escapeText(text: string): string {
 }
 
 function escapeString(text: string): string {
-  return text.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n");
+  return text.replaceAll("\\", "\\\\").replaceAll('"', String.raw`\"`).replaceAll("\n", String.raw`\n`);
 }
 
 function escapeLineStarts(text: string): string {
@@ -70,7 +70,7 @@ function escapeLineStarts(text: string): string {
       const marker = LINE_MARKER.exec(line);
       if (!marker) return line;
       const value = marker[0];
-      return /^\d/u.test(value) ? `${value.slice(0, -1)}\\.${line.slice(value.length)}` : `\\${line}`;
+      return /^\d/u.test(value) ? String.raw`${value.slice(0, -1)}\.${line.slice(value.length)}` : `\\${line}`;
     })
     .join("\n");
 }
@@ -112,7 +112,7 @@ function wrap(element: Element, content: string, marker: string, call: string): 
   const inner = content.trim();
   if (inner === "") return content;
   const lead = /^\s*/u.exec(content)?.[0] ?? "";
-  const trail = /\s*$/u.exec(content)?.[0] ?? "";
+  const trail = content.slice(content.trimEnd().length);
   const form = neighbourIsWord(element) || inner.includes("\n") ? `#${call}[${inner}]` : `${marker}${inner}${marker}`;
   return `${lead}${form}${trail}`;
 }
@@ -239,7 +239,7 @@ function renderList(list: Element, depth: number): string {
 }
 
 function cellContent(cell: Element): string {
-  return tidy(renderInline(Array.from(cell.childNodes))).replaceAll(LINE_BREAK, " \\ ").replaceAll("\n", " ");
+  return tidy(renderInline(Array.from(cell.childNodes))).replaceAll(LINE_BREAK, String.raw` \ `).replaceAll("\n", " ");
 }
 
 function renderTable(table: Element): string {

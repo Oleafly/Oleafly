@@ -805,7 +805,7 @@ export class LanguageServiceController {
     if (this.disposed) return;
     const previous = this.lastObserved;
     const savedPaths =
-      previous && previous.projectId === snapshot.projectId
+      previous?.projectId === snapshot.projectId
         ? savedFilePaths(previous.files, snapshot.files)
         : [];
     this.applySnapshot(snapshot);
@@ -2039,7 +2039,7 @@ export class LanguageServiceController {
       return;
     }
     const files = this.desired?.snapshot.files ?? {};
-    for (const path of [...this.pendingSaves]) {
+    for (const path of this.pendingSaves) {
       const file = files[path];
       const tracked = runtime.documents.get(
         fileUriForProjectPath(runtime.root, path),

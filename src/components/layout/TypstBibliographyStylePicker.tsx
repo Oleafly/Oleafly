@@ -28,11 +28,11 @@ function declaringFile(snapshot: ProjectIntelligenceSnapshot | null, mainDoc: st
   return mainDoc.toLowerCase().endsWith(".typ") ? mainDoc : null;
 }
 
-async function currentSource(projectId: string, path: string): Promise<string> {
+function currentSource(projectId: string, path: string): Promise<string> {
   const loaded = useFilesStore.getState().files[path]?.content;
-  if (loaded !== undefined) return loaded;
+  if (loaded !== undefined) return Promise.resolve(loaded);
   const indexed = useIndexStore.getState().texts[path];
-  if (indexed !== undefined) return indexed;
+  if (indexed !== undefined) return Promise.resolve(indexed);
   return readFileContent(projectId, path);
 }
 

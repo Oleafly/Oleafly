@@ -20,7 +20,7 @@ export interface Hidden {
   block: boolean;
 }
 
-export const NO_PORTS: VisualPorts = { resolveImage: async () => null };
+export const NO_PORTS: VisualPorts = { resolveImage: () => Promise.resolve(null) };
 
 export function typstState(
   doc: string,

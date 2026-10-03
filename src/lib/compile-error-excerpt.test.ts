@@ -33,6 +33,17 @@ describe("compileErrorExcerpt", () => {
     expect(compileErrorExcerpt(error({ end_column: undefined, column: 1, source_line: "😀 x" }))?.span).toBe("😀");
   });
 
+  it("widens a clipped excerpt instead of splitting a surrogate pair", () => {
+    const line = `😀${"b".repeat(59)}E${"c".repeat(59)}😀tail`;
+    const excerpt = compileErrorExcerpt(error({ column: 62, end_column: 63, source_line: line }));
+    expect(excerpt).toMatchObject({ span: "E", clippedStart: false, clippedEnd: true });
+    expect(excerpt?.before).toBe(`😀${"b".repeat(59)}`);
+    expect(excerpt?.after).toBe(`${"c".repeat(59)}😀`);
+    const plain = compileErrorExcerpt(error({ column: 63, end_column: 64, source_line: `x${line}` }));
+    expect(plain).toMatchObject({ clippedStart: true, clippedEnd: true });
+    expect(plain?.before).toBe(`😀${"b".repeat(59)}`);
+  });
+
   it("has nothing to show without a source line or a column", () => {
     expect(compileErrorExcerpt(error({ source_line: null }))).toBeNull();
     expect(compileErrorExcerpt(error({ column: null }))).toBeNull();

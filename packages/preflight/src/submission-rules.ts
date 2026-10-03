@@ -601,9 +601,8 @@ export function runSubmissionRules({
     );
   }
 
-  out.push(...pdfSubmissionFindings(profile, pdf));
-
   out.push(
+    ...pdfSubmissionFindings(profile, pdf),
     ...checkProjectReferences(project, profileId),
     ...checkFiguresAndTables(project),
     ...checkPrivacy(project, pdf, anonymousReview),

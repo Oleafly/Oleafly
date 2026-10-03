@@ -77,13 +77,14 @@ function requestOptions(
   };
 }
 
+function stringOrValue(value: unknown): string | null {
+  if (typeof value === "string") return value;
+  if (isRecord(value) && typeof value.value === "string") return value.value;
+  return null;
+}
+
 function plainText(value: unknown, limit: number): string | null {
-  const text =
-    typeof value === "string"
-      ? value
-      : isRecord(value) && typeof value.value === "string"
-        ? value.value
-        : null;
+  const text = stringOrValue(value);
   const trimmed = text?.replaceAll("\0", "").trim();
   return trimmed ? trimmed.slice(0, limit) : null;
 }

@@ -45,7 +45,7 @@ export function typstHeadingFoldRange(state: EditorState, heading: SyntaxNode): 
 export function typstHeadingFold(state: EditorState, lineStart: number, lineEnd: number): FoldRange | null {
   const text = state.sliceDoc(lineStart, lineEnd);
   const indent = text.length - text.trimStart().length;
-  if (text.charCodeAt(indent) !== 61) return null;
+  if (text.codePointAt(indent) !== 61) return null;
   const heading = headingStartingAt(state, lineStart + indent);
   return heading ? typstHeadingFoldRange(state, heading) : null;
 }

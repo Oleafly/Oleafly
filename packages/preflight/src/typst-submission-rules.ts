@@ -15,7 +15,7 @@ import {
   pdfSubmissionFindings,
   portableNameFindings,
 } from "./submission-rules";
-import { typstPathReferences, typstTemplateCalls } from "./typst-references";
+import { type TypstPathReference, typstPathReferences, typstTemplateCalls } from "./typst-references";
 import {
   type TypstCall,
   type TypstScan,
@@ -124,10 +124,9 @@ function structureFindings(scans: readonly ScannedFile[], profile: SubmissionPro
     );
   }
   const hasKeywords =
-    codeMentions(
-      scans,
-      /(?<![\p{L}\p{N}_.-])(?:keywords|index-terms)\s*:(?!\s*(?:\(\s*\)|none\b))|(?<![\p{L}\p{N}_.-])[\p{L}-]*keywords\s*\(/u,
-    ) || scans.some(({ scan }) => markupLines(scan, /^([ \t]*)(?:=+[ \t]+)?(?:Keywords|Index Terms)\b/i));
+    codeMentions(scans, /(?<![\p{L}\p{N}_.-])(?:keywords|index-terms)\s*:(?!\s*(?:\(\s*\)|none\b))/u) ||
+    codeMentions(scans, /(?<![\p{L}\p{N}_.-])[\p{L}-]*keywords\s*\(/u) ||
+    scans.some(({ scan }) => markupLines(scan, /^([ \t]*)(?:=+[ \t]+)?(?:Keywords|Index Terms)\b/i));
   if (profile.source.requireKeywords && !hasKeywords) {
     out.push(
       make(
@@ -162,6 +161,38 @@ function placeholderFindings(scans: readonly ScannedFile[]): Finding[] {
   ];
 }
 
+function missingPathFinding(
+  reference: TypstPathReference,
+  path: string,
+  exact: ReadonlySet<string>,
+  folded: ReadonlyMap<string, string>,
+): Finding | null {
+  if (reference.kind !== "image" && reference.kind !== "include") return null;
+  if (isExternalTypstPath(reference.raw)) return null;
+  const resolved = resolveTypstPath(path, reference.raw);
+  if (resolved !== null && exact.has(resolved)) return null;
+  const kind = reference.kind === "image" ? "Figure" : "Include";
+  const caseMatch = resolved === null ? undefined : folded.get(resolved.toLowerCase());
+  if (caseMatch) {
+    return make(
+      "submission-path-case",
+      "submission",
+      "error",
+      message("rules.submission-path-case.title", { target: reference.raw }),
+      message(`rules.submission-path-case.detail${kind}`, { match: caseMatch }),
+      path,
+    );
+  }
+  return make(
+    "submission-missing-project-file",
+    "submission",
+    "error",
+    message(`rules.submission-missing-project-file.title${kind}`, { target: reference.raw }),
+    message("rules.submission-missing-project-file.detail", { file: path }),
+    path,
+  );
+}
+
 function pathFindings(scans: readonly ScannedFile[], project: ProjectContext, profile: SubmissionProfile): Finding[] {
   if (!profile.source.exactCasePaths) return [];
   const paths = project.files.map((file) => normalizeProjectPath(file.path) ?? file.path);
@@ -170,31 +201,8 @@ function pathFindings(scans: readonly ScannedFile[], project: ProjectContext, pr
   const out: Finding[] = [];
   for (const { path, scan } of scans) {
     for (const reference of typstPathReferences(scan)) {
-      if (reference.kind !== "image" && reference.kind !== "include") continue;
-      if (isExternalTypstPath(reference.raw)) continue;
-      const resolved = resolveTypstPath(path, reference.raw);
-      if (resolved !== null && exact.has(resolved)) continue;
-      const kind = reference.kind === "image" ? "Figure" : "Include";
-      const caseMatch = resolved === null ? undefined : folded.get(resolved.toLowerCase());
-      out.push(
-        caseMatch
-          ? make(
-              "submission-path-case",
-              "submission",
-              "error",
-              message("rules.submission-path-case.title", { target: reference.raw }),
-              message(`rules.submission-path-case.detail${kind}`, { match: caseMatch }),
-              path,
-            )
-          : make(
-              "submission-missing-project-file",
-              "submission",
-              "error",
-              message(`rules.submission-missing-project-file.title${kind}`, { target: reference.raw }),
-              message("rules.submission-missing-project-file.detail", { file: path }),
-              path,
-            ),
-      );
+      const finding = missingPathFinding(reference, path, exact, folded);
+      if (finding) out.push(finding);
     }
   }
   return out;
@@ -289,7 +297,23 @@ function namesAuthors(scan: TypstScan): boolean {
   );
 }
 
-const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/;
+const EMAIL_LOCAL_CHAR = /[A-Za-z0-9._%+-]/;
+const EMAIL_DOMAIN = /[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/y;
+
+function emailDomainEnd(text: string, from: number): number {
+  EMAIL_DOMAIN.lastIndex = from;
+  return EMAIL_DOMAIN.test(text) ? EMAIL_DOMAIN.lastIndex : -1;
+}
+
+function findEmail(text: string): { from: number; to: number } | null {
+  for (let at = text.indexOf("@"); at !== -1; at = text.indexOf("@", at + 1)) {
+    let from = at;
+    while (from > 0 && EMAIL_LOCAL_CHAR.test(text[from - 1])) from -= 1;
+    const to = from < at ? emailDomainEnd(text, at + 1) : -1;
+    if (to !== -1) return { from, to };
+  }
+  return null;
+}
 
 function blindReviewFindings(scans: readonly ScannedFile[], pdf: PdfFacts | undefined): Finding[] {
   const out: Finding[] = [];
@@ -305,7 +329,7 @@ function blindReviewFindings(scans: readonly ScannedFile[], pdf: PdfFacts | unde
     );
   }
   for (const { path, scan } of scans) {
-    const email = EMAIL.exec(scan.masked);
+    const email = findEmail(scan.masked);
     if (!email) continue;
     out.push({
       ...make(
@@ -316,8 +340,8 @@ function blindReviewFindings(scans: readonly ScannedFile[], pdf: PdfFacts | unde
         message("rules.privacy-blind-email.detail"),
         path,
       ),
-      from: email.index,
-      to: email.index + email[0].length,
+      from: email.from,
+      to: email.to,
     });
   }
   const acknowledgements = scans.some(

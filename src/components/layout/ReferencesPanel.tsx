@@ -85,6 +85,16 @@ function identitiesMatch(
   );
 }
 
+function queryIsCurrent(
+  query: ReferenceQuery | null,
+  state: ProjectIntelligenceState,
+  snapshot: ProjectIntelligenceSnapshot,
+): boolean {
+  if (!query) return false;
+  if (query.locations) return query.projectId === snapshot.identity.projectId;
+  return identitiesMatch(query, state, snapshot);
+}
+
 function resolveQuery(
   snapshot: ProjectIntelligenceSnapshot,
   query: ReferenceQuery,
@@ -204,11 +214,7 @@ function QueryContent({
   onActivate: (node: IntelligenceTreeNode) => void;
 }>) {
   const { t } = useTranslation(["references"]);
-  const current = query?.locations
-    ? query.projectId === snapshot.identity.projectId
-    : query
-      ? identitiesMatch(query, state, snapshot)
-      : false;
+  const current = queryIsCurrent(query, state, snapshot);
   const result = useMemo(
     () =>
       query && current && !query.locations
@@ -216,13 +222,10 @@ function QueryContent({
         : { definitions: [], uses: [] },
     [current, query, snapshot],
   );
-  const nodes = useMemo(
-    () =>
-      query?.locations
-        ? buildLocationResultNodes(current ? query.locations : [])
-        : buildReferenceResultNodes(result.definitions, result.uses),
-    [current, query, result],
-  );
+  const nodes = useMemo(() => {
+    if (!query?.locations) return buildReferenceResultNodes(result.definitions, result.uses);
+    return buildLocationResultNodes(current ? query.locations : []);
+  }, [current, query, result]);
 
   if (!query) {
     return (

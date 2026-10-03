@@ -13,7 +13,7 @@ export function typstIdentifierEndAt(source: string, from: number): number {
   return index;
 }
 
-export function skipTypstString(source: string, from: number): number {
+function closedTypstStringEnd(source: string, from: number): number | null {
   let index = from + 1;
   while (index < source.length) {
     const character = source[index];
@@ -21,7 +21,11 @@ export function skipTypstString(source: string, from: number): number {
     else if (character === '"') return index + 1;
     else index += 1;
   }
-  return source.length;
+  return null;
+}
+
+export function skipTypstString(source: string, from: number): number {
+  return closedTypstStringEnd(source, from) ?? source.length;
 }
 
 function lineEnd(source: string, from: number): number {
@@ -206,25 +210,27 @@ export function typstArguments(source: string, open: number): { args: TypstArgum
 
 export function typstStringValue(source: string): string | null {
   const trimmed = source.trim();
-  if (!trimmed.startsWith('"') || skipTypstString(trimmed, 0) !== trimmed.length) return null;
+  if (!trimmed.startsWith('"') || closedTypstStringEnd(trimmed, 0) !== trimmed.length) return null;
   let value = "";
-  for (let index = 1; index < trimmed.length - 1; index++) {
+  let index = 1;
+  while (index < trimmed.length - 1) {
     const character = trimmed[index];
+    index += 1;
     if (character !== "\\") {
       value += character;
       continue;
     }
-    const next = trimmed[index + 1];
+    const next = trimmed[index];
     index += 1;
     if (next === "n") value += "\n";
     else if (next === "t") value += "\t";
     else if (next === "r") value += "\r";
-    else if (next === "u" && trimmed[index + 1] === "{") {
+    else if (next === "u" && trimmed[index] === "{") {
       const close = trimmed.indexOf("}", index);
-      const code = Number.parseInt(trimmed.slice(index + 2, close), 16);
+      const code = Number.parseInt(trimmed.slice(index + 1, close), 16);
       if (close < 0 || Number.isNaN(code)) return null;
       value += String.fromCodePoint(code);
-      index = close;
+      index = close + 1;
     } else {
       value += next ?? "";
     }
@@ -233,5 +239,9 @@ export function typstStringValue(source: string): string | null {
 }
 
 export function typstStringLiteral(value: string): string {
-  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", "\\n")}"`;
+  const escaped = value
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', String.raw`\"`)
+    .replaceAll("\n", String.raw`\n`);
+  return `"${escaped}"`;
 }
