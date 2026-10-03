@@ -227,7 +227,7 @@ function capabilitiesProblems(label, capabilities) {
   const { flags, outputFormats, pdfStandards } = capabilities;
   if (!Array.isArray(flags) || flags.some((flag) => !OPTIONAL_TYPST_FLAGS.includes(flag))) {
     problems.push(`${label} lists an unknown flag`);
-  } else if (JSON.stringify(flags) !== JSON.stringify([...flags].sort())) {
+  } else if (JSON.stringify(flags) !== JSON.stringify([...flags].sort(compareText))) {
     problems.push(`${label} flags are not sorted`);
   }
   if (!Array.isArray(outputFormats) || !outputFormats.includes("pdf")) {
@@ -388,8 +388,16 @@ async function downloadAsset(url, expectedSize) {
   return bytes;
 }
 
+const TAR =
+  process.platform === "win32" ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "/usr/bin/tar";
+
+function compareText(left, right) {
+  if (left < right) return -1;
+  return left > right ? 1 : 0;
+}
+
 function runTar(args, input) {
-  const result = spawnSync("tar", args, { input, maxBuffer: MAX_TOOL_OUTPUT });
+  const result = spawnSync(TAR, args, { input, maxBuffer: MAX_TOOL_OUTPUT });
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(`tar ${args.join(" ")} failed: ${result.stderr.toString("utf8").trim()}`);
@@ -797,8 +805,8 @@ export async function probeTypst(binary, version, workDir) {
   if (report.flags.includes("--pdf-standard") && !report.pdfStandards.includes("a-2b")) {
     throw new Error(`Typst ${version} accepted --pdf-standard a-2b but does not list it`);
   }
-  report.flags.sort();
-  report.outputFormats.sort();
+  report.flags.sort(compareText);
+  report.outputFormats.sort(compareText);
   return report;
 }
 

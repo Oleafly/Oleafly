@@ -1,7 +1,7 @@
 use crate::process;
 use crate::typst::PinnedTypst;
 use crate::typst_settings::TypstSettings;
-use oleafly_core::typst_log::parse_typst_diagnostics;
+use oleafly_core::typst_log::{parse_typst_diagnostics, typst_path_relative_to};
 use oleafly_core::typst_toolchain::{
     bundled_typst_version, capabilities_for, typst_compile_args, ToolchainVersion,
     TypstCapabilities, TypstDiagnosticFormat,
@@ -292,6 +292,14 @@ impl NativeCompiler {
         }
         let output = output.is_file().then_some(output);
         let mut errors = parse_errors(build.engine(), &log);
+        if build.engine() == Engine::Typst {
+            for error in &mut errors {
+                error.file = error
+                    .file
+                    .take()
+                    .map(|file| typst_path_relative_to(&file, &command.working_directory));
+            }
+        }
         let ok = exit_code == Some(0)
             && output.is_some()
             && !errors.iter().any(|error| error.kind == "error");

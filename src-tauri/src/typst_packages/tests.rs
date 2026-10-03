@@ -80,10 +80,19 @@ fn the_environment_names_both_directories_for_every_version() {
     assert_eq!(
         dirs.environment(),
         vec![
-            ("TYPST_PACKAGE_PATH", OsString::from("/data/typst/packages")),
+            (
+                "TYPST_PACKAGE_PATH",
+                Path::new("/data")
+                    .join("typst")
+                    .join("packages")
+                    .into_os_string()
+            ),
             (
                 "TYPST_PACKAGE_CACHE_PATH",
-                OsString::from("/data/typst/packages-cache")
+                Path::new("/data")
+                    .join("typst")
+                    .join("packages-cache")
+                    .into_os_string()
             ),
         ]
     );

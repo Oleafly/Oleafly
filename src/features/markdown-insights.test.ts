@@ -170,6 +170,14 @@ describe("buildMarkdownInsights", () => {
     ]);
   });
 
+  it("reads files saved with Windows line endings", () => {
+    const text = "---\r\ntitle: Notes\r\n---\r\n\r\n# Setup\r\n\r\nTODO: check\r\n";
+    const insights = buildMarkdownInsights({ mainDoc: "notes.md", texts: { "notes.md": text } });
+    expect(insights.headings.map((entry) => entry.text)).toEqual(["Setup"]);
+    expect(insights.metadata.title).toBe("Notes");
+    expect(insights.todos.map((todo) => todo.text)).toEqual(["TODO: check"]);
+  });
+
   it("ends an HTML comment at --!> as well as -->", () => {
     const text = "<!-- TODO: hidden --!> shown\n<!--\nTODO: inside --!> after\n";
     const notes = buildMarkdownInsights({ mainDoc: "notes.md", texts: { "notes.md": text } }).todos;

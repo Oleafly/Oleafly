@@ -3277,6 +3277,7 @@ dependencies = [
  "clap",
  "clap_complete",
  "clap_mangen",
+ "dunce",
  "libc",
  "notify",
  "oleafly-core",

@@ -1772,7 +1772,7 @@ fn typst_errors_keep_their_columns_and_hints_in_json_and_text() {
         .unwrap()
         .starts_with("if you meant to display multiple letters"));
     assert_eq!(errors[1]["kind"], "warning");
-    assert_eq!(errors[1]["file"], "chapters\\intro.typ");
+    assert_eq!(errors[1]["file"], "chapters/intro.typ");
     assert_eq!(errors[1]["column"], 17);
     assert_eq!(errors[1]["hints"], serde_json::json!([]));
 

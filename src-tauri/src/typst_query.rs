@@ -485,7 +485,15 @@ pub(crate) fn run_insights(
         return Ok(TypstDocumentInsights::Failed {
             typst_version,
             method,
-            diagnostics: parse_failure(&log, output.status.code()),
+            diagnostics: parse_failure(&log, output.status.code())
+                .into_iter()
+                .map(|mut diagnostic| {
+                    diagnostic.file = diagnostic.file.map(|file| {
+                        oleafly_core::typst_log::typst_path_relative_to(&file, context.root)
+                    });
+                    diagnostic
+                })
+                .collect(),
         });
     }
     let (elements, truncated) = parse_elements(&String::from_utf8_lossy(&output.stdout))?;

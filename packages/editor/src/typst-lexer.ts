@@ -9,7 +9,7 @@ const XID_CONTINUE = /\p{XID_Continue}/u;
 const ALPHABETIC = /\p{Alphabetic}/u;
 const NUMERIC = /\p{N}/u;
 const WIDE_SCRIPT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
-const GRAPHEME_EXTEND = /[\p{M}\u200c\ufe00-\ufe0f\u{1F3FB}-\u{1F3FF}\u{E0020}-\u{E007F}]/u;
+const GRAPHEME_EXTEND = /\p{M}|\u200c|[\ufe00-\ufe0f]|[\u{1F3FB}-\u{1F3FF}]|[\u{E0020}-\u{E007F}]/u;
 const MATH_OPENING = new Set(
   [..."([{\u2308\u230a\u231c\u231e\u2772\u27e6\u27e8\u27ea\u27ec\u27ee\u2983\u2985\u2987\u2989\u298b\u298d\u298f\u2991\u2993\u2995\u2997\u29d8\u29da\u29fc\u23b0\u27c5"].map(
     (character) => character.codePointAt(0) ?? 0,

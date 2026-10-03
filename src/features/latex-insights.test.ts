@@ -75,6 +75,14 @@ describe("buildLatexInsights", () => {
     expect(headings[3].location).toEqual({ path: "main.tex", line: 21, column: 1 });
   });
 
+  it("gives the same headings for files saved with Windows line endings", () => {
+    const crlf = Object.fromEntries(Object.entries(TEXTS).map(([path, text]) => [path, text.replaceAll("\n", "\r\n")]));
+    const lf = buildLatexInsights({ mainDoc: "main.tex", texts: TEXTS });
+    const windows = buildLatexInsights({ mainDoc: "main.tex", texts: crlf });
+    expect(windows.headings).toEqual(lf.headings);
+    expect(windows.todos).toEqual(lf.todos);
+  });
+
   it("lists figures, tables and display equations with captions and labels", () => {
     const insights = buildLatexInsights({ mainDoc: "main.tex", texts: TEXTS });
     expect(insights.figures.map((entry) => [entry.text, entry.label, entry.numbered])).toEqual([
@@ -222,7 +230,7 @@ function readSeed(name: string): Record<string, string> {
     for (const entry of readdirSync(dir)) {
       const path = join(dir, entry);
       if (statSync(path).isDirectory()) walk(path);
-      else if (/\.(?:tex|bib)$/u.test(entry)) texts[relative(root, path)] = readFileSync(path, "utf8");
+      else if (/\.(?:tex|bib)$/u.test(entry)) texts[relative(root, path).replaceAll("\\", "/")] = readFileSync(path, "utf8");
     }
   };
   walk(root);

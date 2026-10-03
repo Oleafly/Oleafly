@@ -946,7 +946,8 @@ function locate(event: LocatedEvent): SourceLocation {
   return { path: event.file.path, ...event.file.locate(event.at) };
 }
 
-export function buildLatexInsights({ mainDoc, texts, numberFor = null }: LatexInsightsInput): DocumentInsightsBase {
+export function buildLatexInsights({ mainDoc, texts: raw, numberFor = null }: LatexInsightsInput): DocumentInsightsBase {
+  const texts = Object.fromEntries(Object.entries(raw).map(([path, text]) => [path, text.replaceAll("\r\n", "\n")]));
   if (texts[mainDoc] === undefined) return emptyInsights();
   const macros = collectLatexOutlineMacros(texts);
   const context = runWalk(mainDoc, texts, macros);

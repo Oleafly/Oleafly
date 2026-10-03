@@ -366,7 +366,7 @@ export function validateMarkdownSetting(key: MarkdownSettingKey, value: string):
 function plainSafe(value: string): boolean {
   if (value === "" || value !== value.trim()) return false;
   if (/^[-?:,[\]{}#&*!|>'"%@`]/u.test(value)) return false;
-  if (/:\s|\s#|:$/u.test(value)) return false;
+  if (/(?::\s|\s#|:$)/u.test(value)) return false;
   if (/^(?:true|false|yes|no|on|off|null|~)$/iu.test(value)) return false;
   return !/^[+-]?\d+(?:\.\d+)?$/u.test(value);
 }

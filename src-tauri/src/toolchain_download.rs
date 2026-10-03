@@ -1228,7 +1228,7 @@ fn copy_verified(
 #[cfg(unix)]
 fn make_executable(path: &Path) -> Result<(), ToolchainInstallError> {
     use std::os::unix::fs::PermissionsExt as _;
-    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755))
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700))
         .map_err(|error| filesystem_error("mark as executable", path, error))
 }
 
@@ -1601,7 +1601,11 @@ mod tests {
         {
             use std::os::unix::fs::PermissionsExt as _;
             let mode = std::fs::metadata(&binary).unwrap().permissions().mode();
-            assert_eq!(mode & 0o111, 0o111, "binary is not executable: {mode:o}");
+            assert_eq!(
+                mode & 0o777,
+                0o700,
+                "binary is not owner-only executable: {mode:o}"
+            );
         }
         let entries: Vec<_> = std::fs::read_dir(&request.install_dir)
             .unwrap()

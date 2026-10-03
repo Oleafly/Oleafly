@@ -464,7 +464,7 @@ function tableEnd(lines: readonly string[], start: number, grid: boolean): numbe
 }
 
 export function buildMarkdownInsights({ mainDoc, texts }: MarkdownInsightsInput): DocumentInsightsBase {
-  const text = texts[mainDoc];
+  const text = texts[mainDoc]?.replaceAll("\r\n", "\n");
   if (text === undefined) return emptyInsights();
   const insights = emptyInsights();
   const front = parseFrontMatter(text);

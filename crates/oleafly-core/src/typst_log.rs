@@ -1,5 +1,6 @@
 use crate::compile_log::LogCategory;
 use serde::Serialize;
+use std::path::Path;
 
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -110,6 +111,44 @@ fn absolute_like(path: &str) -> bool {
             && bytes[0].is_ascii_alphabetic()
             && bytes[1] == b':'
             && bytes[2] == b'/')
+}
+
+fn without_verbatim_prefix(path: String) -> String {
+    if let Some(rest) = path.strip_prefix("//?/UNC/") {
+        return format!("//{rest}");
+    }
+    match path.strip_prefix("//?/") {
+        Some(rest) => rest.to_owned(),
+        None => path,
+    }
+}
+
+pub fn typst_path_relative_to(reported: &str, directory: &Path) -> String {
+    let reported = without_verbatim_prefix(normalized_path(reported));
+    if !absolute_like(&reported) {
+        return reported;
+    }
+    let base = without_verbatim_prefix(normalized_path(&directory.to_string_lossy()));
+    let base = base.trim_end_matches('/');
+    if base.is_empty() {
+        return reported;
+    }
+    let drive_like = base.as_bytes().get(1) == Some(&b':') || base.starts_with("//");
+    let comparable = |text: &str| {
+        if drive_like {
+            text.to_ascii_lowercase()
+        } else {
+            text.to_owned()
+        }
+    };
+    let stripped = comparable(&reported)
+        .strip_prefix(&comparable(base))
+        .and_then(|rest| rest.strip_prefix('/'))
+        .map(str::len);
+    match stripped {
+        Some(length) if length > 0 => reported[reported.len() - length..].to_owned(),
+        _ => reported,
+    }
 }
 
 pub fn typst_paths_match(reported: &str, expected: &str) -> bool {

@@ -1115,10 +1115,10 @@ mod tests {
         let check = missing.check.expect("the converted Typst was checked");
         assert!(!check.ok);
         assert!(
-            check
-                .diagnostics
-                .iter()
-                .any(|diagnostic| diagnostic.message.contains("figs/plot.png")),
+            check.diagnostics.iter().any(|diagnostic| diagnostic
+                .message
+                .replace('\\', "/")
+                .contains("figs/plot.png")),
             "{check:?}"
         );
         assert!(missing.report.is_empty());

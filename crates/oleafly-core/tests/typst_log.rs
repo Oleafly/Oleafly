@@ -3,7 +3,7 @@ use std::path::Path;
 
 use oleafly_core::typst_log::{
     parse_typst_diagnostics, parse_typst_location, typst_display_end, typst_log_category,
-    typst_paths_match, TypstDiagnostic, TypstSeverity, TypstSpan,
+    typst_path_relative_to, typst_paths_match, TypstDiagnostic, TypstSeverity, TypstSpan,
 };
 use oleafly_core::LogCategory;
 
@@ -418,4 +418,41 @@ fn display_widths_map_back_to_character_offsets() {
     assert_eq!(typst_display_end("漢字", 0, 2), 1);
     assert_eq!(typst_display_end("a\tb", 1, 1), 2);
     assert_eq!(typst_display_end("abc", 2, 10), 3);
+}
+
+#[test]
+fn reported_paths_become_relative_to_the_directory_typst_ran_in() {
+    let relative =
+        |reported: &str, directory: &str| typst_path_relative_to(reported, Path::new(directory));
+    assert_eq!(relative("main.typ", "/p"), "main.typ");
+    assert_eq!(
+        relative("./chapters\\intro.typ", "/p"),
+        "chapters/intro.typ"
+    );
+    assert_eq!(relative("/p/paper/main.typ", "/p"), "paper/main.typ");
+    assert_eq!(relative("/p/paper/main.typ", "/p/"), "paper/main.typ");
+    assert_eq!(relative("/elsewhere/main.typ", "/p"), "/elsewhere/main.typ");
+    assert_eq!(relative("/pp/main.typ", "/p"), "/pp/main.typ");
+    assert_eq!(
+        relative(
+            r"\\?\C:\Users\Runner\Temp\.tmp1\main.typ",
+            r"C:\Users\runner\Temp\.tmp1"
+        ),
+        "main.typ"
+    );
+    assert_eq!(
+        relative(
+            r"\\?\C:\Users\runner\Temp\.tmp1\sub\a.typ",
+            r"\\?\C:\Users\runner\Temp\.tmp1"
+        ),
+        "sub/a.typ"
+    );
+    assert_eq!(
+        relative(r"\\?\UNC\server\share\p\main.typ", r"\\server\share\p"),
+        "main.typ"
+    );
+    assert_eq!(
+        relative("@preview/cetz:0.3.4/src/lib.typ", "/p"),
+        "@preview/cetz:0.3.4/src/lib.typ"
+    );
 }

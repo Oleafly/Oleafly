@@ -51,9 +51,10 @@ const SEEDS = fileURLToPath(new URL("../../../fixtures/research-seeds/", import.
 
 function seedFiles(): { path: string; text: string }[] {
   return readdirSync(SEEDS, { recursive: true, encoding: "utf8" })
+    .map((path) => path.replaceAll("\\", "/"))
     .filter((path) => /^[^/]+-typst\//u.test(path) && path.endsWith(".typ"))
     .sort()
-    .map((path) => ({ path, text: readFileSync(`${SEEDS}${path}`, "utf8") }));
+    .map((path) => ({ path, text: readFileSync(`${SEEDS}${path}`, "utf8").replaceAll("\r\n", "\n") }));
 }
 
 function chunksOf(tree: Tree): Set<Tree | TreeBuffer> {

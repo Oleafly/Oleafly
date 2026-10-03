@@ -29,3 +29,4 @@ src-tauri/windows/*.nsh text eol=lf
 src-tauri/windows/*.wxs text eol=lf
 
 src-tauri/resources/typst-toolchain.json text eol=lf
+crates/oleafly-core/tests/fixtures/typst-log/*.log text eol=lf

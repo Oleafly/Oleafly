@@ -890,7 +890,7 @@ impl Supervisor {
                 let _ = ack.send(self.generation);
             }
             let started_at = Instant::now();
-            let _ = std::fs::create_dir_all(&self.target.staging_dir);
+            let _ = tokio::fs::create_dir_all(&self.target.staging_dir).await;
             let end = match spawn_watch(&self.target.command) {
                 Ok((child, guard)) => {
                     self.kill.arm(guard);
@@ -954,7 +954,7 @@ impl Supervisor {
             }
         }
         self.kill.kill_now();
-        let _ = std::fs::remove_dir_all(&self.target.staging_dir);
+        let _ = tokio::fs::remove_dir_all(&self.target.staging_dir).await;
         self.status(final_state, final_message);
         if let Some(ack) = stop_ack {
             let _ = ack.send(());
@@ -1139,7 +1139,8 @@ async fn prepare_target(
         return Err("Live preview is only available for Typst projects.".into());
     }
     let staging = staging_dir(project_id)?;
-    std::fs::create_dir_all(&staging)
+    tokio::fs::create_dir_all(&staging)
+        .await
         .map_err(|error| format!("failed to prepare the live preview folder: {error}"))?;
     let spec = main.spec(main_doc, &staging, main.options.clone()).await?;
     let program = match &spec.executable {

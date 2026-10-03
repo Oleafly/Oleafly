@@ -981,6 +981,7 @@ fn version_probes_read_the_binary_and_give_up_quickly() {
     assert!(started.elapsed() < std::time::Duration::from_secs(5));
 }
 
+#[cfg(unix)]
 #[test]
 fn system_candidates_cover_path_and_the_usual_install_folders() {
     let home = Path::new("/home/me");
@@ -1002,6 +1003,22 @@ fn system_candidates_cover_path_and_the_usual_install_folders() {
     );
     let windows = system_typst_candidates_from(None, Some(home), true);
     assert_eq!(windows, [home.join(".cargo").join("bin").join("typst.exe")]);
+    assert!(system_typst_candidates_from(None, None, true).is_empty());
+}
+
+#[cfg(windows)]
+#[test]
+fn system_candidates_on_windows_cover_path_and_cargo() {
+    let home = Path::new(r"C:\Users\me");
+    let path =
+        std::env::join_paths([PathBuf::from(r"C:\tools"), PathBuf::from(r"relative\bin")]).unwrap();
+    assert_eq!(
+        system_typst_candidates_from(Some(&path), Some(home), true),
+        [
+            PathBuf::from(r"C:\tools\typst.exe"),
+            home.join(".cargo").join("bin").join("typst.exe"),
+        ]
+    );
     assert!(system_typst_candidates_from(None, None, true).is_empty());
 }
 

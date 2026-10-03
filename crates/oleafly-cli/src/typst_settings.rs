@@ -313,6 +313,7 @@ pub(crate) fn parse_commit_time(output: &str) -> Option<u64> {
 }
 
 pub(crate) async fn head_commit_time(project_root: &Path) -> Option<u64> {
+    let project_root = dunce::simplified(project_root);
     let marker = project_root.join(".git");
     if !is_repository_marker(&marker) {
         return None;
