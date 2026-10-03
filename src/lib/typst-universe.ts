@@ -228,7 +228,7 @@ function readStringLiteral(text: string, from: number): { literal: StringLiteral
   while (index < text.length && text[index] !== '"' && text[index] !== "\n") {
     if (text[index] === "\\") {
       const decoded = readEscape(text, index);
-      for (let unit = 0; unit < decoded.value.length; unit += 1) offsets.push(index);
+      offsets.push(...Array.from({ length: decoded.value.length }, () => index));
       value += decoded.value;
       index = decoded.end;
     } else {
