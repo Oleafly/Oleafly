@@ -40,16 +40,16 @@ tauri-plugin-process = "2"
 tauri-plugin-single-instance = "2.4.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
-toml = "0.8"
+toml = "1.1"
 unicode-normalization = "0.1"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.40", features = ["bundled"] }
 portable-pty = "0.9"
 base64 = "0.23"
 window-vibrancy = "0.8"
 cap-fs-ext = "=4.0.3"
 cap-std = "=4.0.3"
 flate2 = { version = "1.0", default-features = false, features = ["rust_backend"] }
-zip = { version = "4", default-features = false, features = ["deflate"] }
+zip = { version = "7", default-features = false, features = ["deflate"] }
 # Extracting the Linux pandoc tarball on-demand (macOS/Windows ship a zip).
 tar = "0.4"
 # Streaming the pandoc download so we can report progress.
@@ -58,7 +58,7 @@ fs4 = "1.1"
 atomicwrites = "0.4"
 sha2 = "0.10"
 # Compresses the before-turn copies kept for Undo (already used by oleafly-history).
-zstd = "0.13"
+zstd = "0.14"
 # Async HTTP client for GitHub OAuth, repository operations, and public
 # repository metadata. These requests stay in Rust so tokens never enter the
 # webview and the CSP does not need to allow GitHub API origins.
@@ -66,25 +66,25 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 rand = "0.8"
 ring = "0.17"
 tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
-argon2 = "0.5"
+argon2 = "0.6"
 aes = { version = "0.9", features = ["zeroize"] }
 cbc = { version = "0.2", features = ["zeroize"] }
 zeroize = "=1.9.0"
 libc = "0.2"
-dirs = "6"
+dirs = "7"
 serde_yaml = "0.9"
 same-file = "1"
 tempfile = { workspace = true }
 biblatex = "0.12.0"
 icu_properties = "2.2"
-statrs = "0.18.0"
+statrs = "0.19.1"
 rapidfuzz = "0.5.0"
-muda = { version = "0.19", default-features = false }
+muda = { version = "0.20", default-features = false }
 notify = "8.2"
 trash = "5.2.9"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "=2.11.1"
+security-framework = "=3.7.0"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSGeometry", "objc2-core-foundation"] }
 # Lets AppKit size the WKWebView of Oleafly's own windows (webview_frame.rs).
@@ -93,9 +93,9 @@ dispatch2 = "0.3"
 plist = "1"
 
 [target.'cfg(windows)'.dependencies]
-webview2-com = "0.38"
-windows-core = "0.61"
-windows-registry = "0.6"
+webview2-com = "0.39"
+windows-core = "0.62"
+windows-registry = "0.100"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Security",
