@@ -293,11 +293,13 @@ impl NativeCompiler {
         let output = output.is_file().then_some(output);
         let mut errors = parse_errors(build.engine(), &log);
         if build.engine() == Engine::Typst {
+            let canonical = std::fs::canonicalize(&command.working_directory)
+                .unwrap_or_else(|_| command.working_directory.clone());
             for error in &mut errors {
-                error.file = error
-                    .file
-                    .take()
-                    .map(|file| typst_path_relative_to(&file, &command.working_directory));
+                error.file = error.file.take().map(|file| {
+                    let file = typst_path_relative_to(&file, &canonical);
+                    typst_path_relative_to(&file, &command.working_directory)
+                });
             }
         }
         let ok = exit_code == Some(0)

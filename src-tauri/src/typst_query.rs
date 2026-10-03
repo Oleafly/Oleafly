@@ -460,6 +460,23 @@ pub(crate) fn run_query(
     crate::proc::output_contained_with_timeout(command, timeout)
 }
 
+fn relative_to_root(
+    diagnostics: Vec<TypstQueryDiagnostic>,
+    root: &Path,
+) -> Vec<TypstQueryDiagnostic> {
+    let canonical = std::fs::canonicalize(root).unwrap_or_else(|_| root.to_path_buf());
+    diagnostics
+        .into_iter()
+        .map(|mut diagnostic| {
+            diagnostic.file = diagnostic.file.map(|file| {
+                let file = oleafly_core::typst_log::typst_path_relative_to(&file, &canonical);
+                oleafly_core::typst_log::typst_path_relative_to(&file, root)
+            });
+            diagnostic
+        })
+        .collect()
+}
+
 pub(crate) fn run_insights(
     context: &TypstQueryContext<'_>,
     timeout: Duration,
@@ -485,15 +502,7 @@ pub(crate) fn run_insights(
         return Ok(TypstDocumentInsights::Failed {
             typst_version,
             method,
-            diagnostics: parse_failure(&log, output.status.code())
-                .into_iter()
-                .map(|mut diagnostic| {
-                    diagnostic.file = diagnostic.file.map(|file| {
-                        oleafly_core::typst_log::typst_path_relative_to(&file, context.root)
-                    });
-                    diagnostic
-                })
-                .collect(),
+            diagnostics: relative_to_root(parse_failure(&log, output.status.code()), context.root),
         });
     }
     let (elements, truncated) = parse_elements(&String::from_utf8_lossy(&output.stdout))?;

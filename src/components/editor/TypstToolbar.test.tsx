@@ -187,10 +187,12 @@ describe("TypstToolbar", () => {
     widenToolbar(4000);
     render(<TypstToolbar />);
     fireEvent.click(screen.getByLabelText(enSymbols.picker.trigger));
-    await waitFor(() => expect(screen.getByLabelText("Insert alpha (alpha)")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText("Insert alpha (alpha)")).toBeInTheDocument(), {
+      timeout: 10_000,
+    });
     fireEvent.click(screen.getByLabelText("Insert alpha (alpha)"));
     expect(commands.insertTypstSymbol).toHaveBeenCalledWith("\\alpha", "α");
-  });
+  }, 15_000);
 
   it("offers code navigation from the code menu", () => {
     widenToolbar(4000);

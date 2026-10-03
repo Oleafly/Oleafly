@@ -13,6 +13,13 @@ import {
 
 installEnglishEditorMessages();
 
+if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
+  Object.defineProperty(Range.prototype, "getClientRects", {
+    configurable: true,
+    value: () => [],
+  });
+}
+
 let view: EditorView | null = null;
 
 afterEach(() => {
