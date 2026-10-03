@@ -416,7 +416,7 @@ test("advanced filters keep select interactions open and dismiss outside", async
   const selected = await tauriPage.evaluate<boolean>(
     `(() => {
       const option = Array.from(document.querySelectorAll('[role="option"]'))
-        .find((element) => element.textContent.trim() === 'Tectonic');
+        .find((element) => element.textContent.trim() === 'LaTeX');
       if (!(option instanceof HTMLElement)) return false;
       option.click();
       return true;

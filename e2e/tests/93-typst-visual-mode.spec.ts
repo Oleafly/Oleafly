@@ -241,7 +241,7 @@ test("Typst toolbar insertions write Typst into the document in visual mode", as
   await clickToolbarControl(tauriPage, '[aria-label^="Bold ("]', "Bold");
   await expect.poll(() => editorSource(tauriPage), { timeout: 10_000 }).toContain("*Body*");
 
-  await selectEditorText(tauriPage, "text");
+  await selectEditorText(tauriPage, "text", 2);
   await clickToolbarControl(tauriPage, '[aria-label="Underline"]', "Underline");
   await expect.poll(() => editorSource(tauriPage), { timeout: 10_000 }).toContain("#underline[text]");
   await setEditorCaretAfter(tauriPage, "Body*");

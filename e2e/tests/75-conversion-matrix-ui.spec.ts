@@ -239,7 +239,7 @@ test("table import dialog previews and inserts a booktabs table", async ({ tauri
   await setNextImportPaths(tauriPage, [fixture("messy.csv")]);
   await tauriPage.evaluate(`import("/src/store/table-import.ts").then((m) => m.useTableImportStore.getState().setOpen(true))`);
   await waitLong(tauriPage, `!!document.querySelector('[data-testid="table-import-dialog"]')`, 10_000);
-  await tauriPage.getByText("Choose CSV, TSV, or XLSX").click();
+  await tauriPage.getByText("Choose CSV, TSV, XLSX, or JSON").click();
   await waitLong(tauriPage, `!!document.querySelector('[data-testid="table-import-preview"]')`, 30_000);
   await shot(tauriPage, "08-table-import-preview.png");
   await tauriPage.locator('[data-testid="table-import-insert"]').click();

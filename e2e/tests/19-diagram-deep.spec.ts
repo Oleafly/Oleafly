@@ -216,7 +216,7 @@ test("importing hand-written TikZ draws it on the canvas", async ({ tauriPage })
   await tauriPage.evaluate(
     `window.__setNextTikzImport(${JSON.stringify("flowchart.tikz")}, ${JSON.stringify(importedTikz)})`,
   );
-  await tauriPage.click('[aria-label="Import TikZ file"]');
+  await tauriPage.click('[aria-label="Import diagram file"]');
 
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('Imported flowchart.tikz for editing.')`,
@@ -246,7 +246,7 @@ test("importing TikZ with no shapes stays code-only", async ({ tauriPage }) => {
   await tauriPage.evaluate(
     `window.__setNextTikzImport(${JSON.stringify("hand-written.tikz")}, ${JSON.stringify(importedTikz)})`,
   );
-  await tauriPage.click('[aria-label="Import TikZ file"]');
+  await tauriPage.click('[aria-label="Import diagram file"]');
 
   await tauriPage.waitForFunction(
     `document.body.innerText.includes('Imported hand-written.tikz (code only, not drawable).')`,
@@ -281,9 +281,9 @@ test("canceling the file picker during import leaves the draft untouched", async
   // name: null simulates the user dismissing the picker without choosing a
   // file - pickTikzFile() resolves null the same way for a real cancel.
   await tauriPage.evaluate(`window.__setNextTikzImport(null, null)`);
-  await tauriPage.click('[aria-label="Import TikZ file"]');
+  await tauriPage.click('[aria-label="Import diagram file"]');
   await tauriPage.waitForFunction(
-    `!document.querySelector('[aria-label="Import TikZ file"][disabled]')`,
+    `!document.querySelector('[aria-label="Import diagram file"][disabled]')`,
     5_000,
   );
 
