@@ -5573,7 +5573,7 @@ mod tests {
     }
 
     const MERMAID_FLOWCHART: &str = "flowchart TD\n    A --> B";
-    const MERMAID_FLOWCHART_FIGURE: &str = "figures/mermaid-5468d2efb1783cd2.png";
+    const MERMAID_FLOWCHART_FIGURE: &str = "figures/mermaid-a8a349062462ae46.png";
 
     fn pandoc_args_writing(spec: &EngineCompileSpec, to: &str, output: &Path) -> Vec<String> {
         let mut args: Vec<String> = spec

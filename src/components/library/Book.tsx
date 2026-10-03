@@ -181,12 +181,13 @@ export function Book({
             {illustration}
 
             <div className="relative z-10 flex min-w-0 flex-1 flex-col justify-end p-3">
-              {engine && (
+              {kind && (
                 <span
+                  data-testid="project-card-kind"
                   className="mb-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
                   style={{ color: ink }}
                 >
-                  {engine}
+                  {kind}
                 </span>
               )}
               <span
@@ -244,9 +245,9 @@ export function Book({
       )}
       <div className="mt-2.5 flex items-end justify-between gap-2 px-0.5">
         <div className="min-w-0">
-        {kind && (
-          <div className="flex items-center gap-1.5 text-xs capitalize text-muted-foreground">
-            <span data-testid="project-card-kind">{kind}</span>
+        {engine && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span data-testid="project-card-engine">{engine}</span>
             {forkedFrom ? (
               <>
                 <span aria-hidden>•</span>

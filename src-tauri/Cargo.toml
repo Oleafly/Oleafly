@@ -65,6 +65,7 @@ zstd = "0.13"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 rand = "0.8"
 ring = "0.17"
+tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 argon2 = "0.5"
 aes = { version = "0.9", features = ["zeroize"] }
 cbc = { version = "0.2", features = ["zeroize"] }

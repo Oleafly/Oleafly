@@ -20,6 +20,14 @@ fn version(text: &str) -> ToolchainVersion {
 }
 
 #[test]
+fn the_accept_key_matches_the_rfc_6455_example() {
+    assert_eq!(
+        ws::accept_key("dGhlIHNhbXBsZSBub25jZQ=="),
+        "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+    );
+}
+
+#[test]
 fn only_tinymist_builds_from_0_13_30_answer_both_sync_directions() {
     for unsupported in ["0.11.32", "0.12.22", "0.13.29"] {
         assert!(

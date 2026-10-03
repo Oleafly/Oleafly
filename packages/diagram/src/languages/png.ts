@@ -78,10 +78,3 @@ export function pngWithDpi(pngBase64: string, dpi: number): string {
   }
   return bytesBase64(out);
 }
-
-export async function sha1Prefix(text: string, length = 16): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, length);
-}

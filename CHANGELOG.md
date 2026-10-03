@@ -241,12 +241,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent setup no longer tells you a program is missing from your PATH. It
   says what Oleafly found and why it can't use it, such as a PowerShell
   script where a `.cmd` or `.exe` is needed.
-- Project cards and the engine filter on the home screen say LaTeX instead of
-  naming the LaTeX engine. `engine:latex` finds LaTeX projects, and
-  `engine:tectonic` still works.
+- Project cards show what the project is (Document, for example) on the
+  cover and its engine under the card, and they say LaTeX instead of naming
+  the LaTeX engine. The engine filter does the same: `engine:latex` finds
+  LaTeX projects, and `engine:tectonic` still works.
+- Undo and Redo on the editor toolbar are greyed out when there is nothing to
+  undo or redo.
 
 ### Fixed
 
+- On a narrow window, the LaTeX toolbar hid buttons without offering the More
+  menu, and the Typst toolbar cut its buttons off. Every editor toolbar now
+  moves the buttons that do not fit into More, at any width.
 - Typst projects could refuse to compile with "Syntax check found errors"
   because the check before compiling ran the LaTeX checker on Typst source.
   The check now runs only for LaTeX.

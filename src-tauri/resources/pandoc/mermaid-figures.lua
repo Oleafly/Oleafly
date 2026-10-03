@@ -12,8 +12,16 @@ local function is_file(path)
   return false
 end
 
+local function figure_hash(text)
+  local hash = 0xcbf29ce484222325
+  for index = 1, #text do
+    hash = (hash ~ text:byte(index)) * 0x100000001b3
+  end
+  return string.format("%016x", hash)
+end
+
 local function saved_figure(text)
-  local name = "figures/mermaid-" .. pandoc.utils.sha1(text):sub(1, 16) .. ".png"
+  local name = "figures/mermaid-" .. figure_hash(text) .. ".png"
   for _, directory in ipairs(PANDOC_STATE.resource_path or {}) do
     if is_file(pandoc.path.join({ directory, name })) then
       return name

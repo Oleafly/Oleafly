@@ -6,6 +6,8 @@ import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enSymbols from "@/i18n/locales/en/symbols.json" with { type: "json" };
 import { shortcut } from "@/lib/utils";
 
+const editorHistory = vi.hoisted(() => ({ canUndo: true, canRedo: true }));
+vi.mock("@/components/editor/history-signal", () => ({ useEditorHistory: () => editorHistory }));
 const controller = vi.hoisted(() => ({
   editorFind: vi.fn(),
   editorRedo: vi.fn(),
@@ -149,6 +151,19 @@ describe("TypstToolbar", () => {
     expect(controller.editorUndo).toHaveBeenCalledOnce();
     expect(controller.editorRedo).toHaveBeenCalledOnce();
     expect(controller.editorFind).toHaveBeenCalledOnce();
+  });
+
+  it("disables undo and redo when the editor has nothing to undo or redo", () => {
+    widenToolbar(4000);
+    Object.assign(editorHistory, { canUndo: false, canRedo: true });
+    const { rerender } = render(<TypstToolbar />);
+    expect(screen.getByLabelText(withShortcut(toolbar.undo, "⌘Z"))).toBeDisabled();
+    expect(screen.getByLabelText(withShortcut(toolbar.redo, "⌘⇧Z"))).toBeEnabled();
+    Object.assign(editorHistory, { canUndo: true, canRedo: false });
+    rerender(<TypstToolbar />);
+    expect(screen.getByLabelText(withShortcut(toolbar.undo, "⌘Z"))).toBeEnabled();
+    expect(screen.getByLabelText(withShortcut(toolbar.redo, "⌘⇧Z"))).toBeDisabled();
+    Object.assign(editorHistory, { canUndo: true, canRedo: true });
   });
 
   it("opens the Typst diagram composer without asking", async () => {

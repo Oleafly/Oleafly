@@ -107,6 +107,7 @@ vi.mock("./CmCodeEditor", () => ({
 
 import { DiagramComposer, safeName } from "./DiagramComposer";
 import { modelToFletcher } from "./fletcher";
+import { figureHash } from "./languages/mermaid-figure";
 
 const PNG = "data:image/png;base64,AAAA";
 
@@ -1212,9 +1213,7 @@ describe("DiagramComposer in Mermaid mode", () => {
     const inserted = (host.insertAtCursor as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
     expect(inserted).toMatch(/^```mermaid\nflowchart TD\n[\s\S]*\n```\n$/);
     const body = inserted.slice("```mermaid\n".length, inserted.length - "\n```\n".length);
-    const digest = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(body));
-    const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("").slice(0, 16);
-    expect(host.writeProjectBytes).toHaveBeenCalledWith("notes", `figures/mermaid-${hash}.png`, expect.any(String));
+    expect(host.writeProjectBytes).toHaveBeenCalledWith("notes", `figures/mermaid-${figureHash(body)}.png`, expect.any(String));
     expect(kit.toast.success).toHaveBeenCalledWith("toast.insertedMermaid");
   });
 

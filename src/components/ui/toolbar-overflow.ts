@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * Width-measured toolbar overflow.
@@ -54,7 +54,7 @@ export function useAvailableWidth() {
  * hide its last controls behind a button it never needed.
  */
 export function fitCount(
-  controls: ToolbarControl[],
+  controls: readonly ToolbarControl[],
   availableWidth: number,
 ): number {
   const total = controls.reduce(
@@ -70,4 +70,36 @@ export function fitCount(
     if (used + CONTROL_GAP + MORE_BUTTON_WIDTH > availableWidth) return index;
   }
   return controls.length;
+}
+
+function rootFontSize(): number {
+  if (typeof document === "undefined") return 16;
+  return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+}
+
+export function useFittedCount(controls: readonly ToolbarControl[]) {
+  const { containerRef, availableWidth } = useAvailableWidth();
+  const elementRef = useRef<HTMLDivElement | null>(null);
+  const ref = useCallback(
+    (element: HTMLDivElement | null) => {
+      elementRef.current = element;
+      containerRef(element);
+    },
+    [containerRef],
+  );
+  const signature = `${availableWidth}|${controls.map((control) => control.id).join(" ")}`;
+  const [trim, setTrim] = useState({ signature, count: 0 });
+  const trimmed = trim.signature === signature ? trim.count : 0;
+  const estimate = fitCount(controls, (availableWidth * 16) / rootFontSize());
+  const visibleCount = Math.max(0, estimate - trimmed);
+
+  useLayoutEffect(() => {
+    const element = elementRef.current;
+    if (!element || visibleCount === 0) return;
+    if (element.scrollWidth > element.clientWidth + 1) {
+      setTrim({ signature, count: trimmed + 1 });
+    }
+  });
+
+  return { containerRef: ref, visibleCount };
 }

@@ -8,7 +8,6 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
 
-const ACCEPT_GUID: &str = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const MAX_HEAD_BYTES: u64 = 16 * 1024;
 pub(super) const MAX_KEPT_MESSAGE: u64 = 64 * 1024;
 const MAX_CONTROL_PAYLOAD: u64 = 125;
@@ -42,11 +41,7 @@ fn protocol_error(message: &str) -> Error {
 }
 
 pub(super) fn accept_key(key: &str) -> String {
-    let digest = ring::digest::digest(
-        &ring::digest::SHA1_FOR_LEGACY_USE_ONLY,
-        format!("{key}{ACCEPT_GUID}").as_bytes(),
-    );
-    base64::engine::general_purpose::STANDARD.encode(digest.as_ref())
+    tungstenite::handshake::derive_accept_key(key.as_bytes())
 }
 
 fn handshake_request(address: SocketAddr, key: &str) -> String {

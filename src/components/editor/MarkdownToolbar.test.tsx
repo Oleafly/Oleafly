@@ -8,6 +8,8 @@ import { shortcut } from "@/lib/utils";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useHomeViewStore } from "@/store/home-view";
 
+const editorHistory = vi.hoisted(() => ({ canUndo: true, canRedo: true }));
+vi.mock("@/components/editor/history-signal", () => ({ useEditorHistory: () => editorHistory }));
 const controller = vi.hoisted(() => ({
   editorFind: vi.fn(),
   editorRedo: vi.fn(),

@@ -76,7 +76,7 @@ function loadMermaid(content: string): LoadedDiagram {
 async function exportMermaidFigure(projectId: string, code: string) {
   const { renderMermaidFigure } = await import("@/components/diagram/mermaid-render");
   const rendered = await renderMermaidFigure(code, { scale: 2, background: "#ffffff" });
-  await writeProjectBytes(projectId, await mermaidFigurePath(code), pngWithDpi(rendered.pngBase64, 192));
+  await writeProjectBytes(projectId, mermaidFigurePath(code), pngWithDpi(rendered.pngBase64, 192));
 }
 
 function loadDiagram(language: DiagramLanguageId, content: string): Promise<LoadedDiagram> {

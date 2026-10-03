@@ -652,7 +652,7 @@ export function DiagramComposer({
   const writeMermaidFigure = useCallback(async (targetProject: string, source: string) => {
     const rendered = await renderMermaidPng(source).catch(() => null);
     if (!rendered) return;
-    await host.writeProjectBytes(targetProject, await mermaidFigurePath(source), rendered.png);
+    await host.writeProjectBytes(targetProject, mermaidFigurePath(source), rendered.png);
   }, [host, renderMermaidPng]);
 
   const insertIntoDocument = useCallback(async () => {

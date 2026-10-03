@@ -1,4 +1,13 @@
-import { sha1Prefix } from "./png";
+const FNV_OFFSET = 0xcbf29ce484222325n;
+const FNV_PRIME = 0x100000001b3n;
+
+export function figureHash(text: string): string {
+  let hash = FNV_OFFSET;
+  for (const byte of new TextEncoder().encode(text)) {
+    hash = BigInt.asUintN(64, (hash ^ BigInt(byte)) * FNV_PRIME);
+  }
+  return hash.toString(16).padStart(16, "0");
+}
 
 export function fencedCode(code: string): string {
   return code.replaceAll("\r\n", "\n").replace(/^(?:[ \t]*\n)+/, "").replace(/\s+$/, "");
@@ -15,6 +24,6 @@ export function mermaidCodeFence(code: string): string {
   return `${fence}mermaid\n${body}\n${fence}`;
 }
 
-export async function mermaidFigurePath(code: string): Promise<string> {
-  return `figures/mermaid-${await sha1Prefix(fencedCode(code))}.png`;
+export function mermaidFigurePath(code: string): string {
+  return `figures/mermaid-${figureHash(fencedCode(code))}.png`;
 }

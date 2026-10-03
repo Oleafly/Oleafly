@@ -54,11 +54,11 @@ import { TypstLabelPicker } from "@/components/editor/TypstLabelPicker";
 import {
   DROPDOWN_TRIGGER_WIDTH,
   ICON_BUTTON_WIDTH,
-  fitCount,
-  useAvailableWidth,
   type ToolbarControl,
+  useFittedCount,
 } from "@/components/ui/toolbar-overflow";
 import { editorFind, editorRedo, editorUndo, getEditorView } from "@/components/editor/cm/controller";
+import { useEditorHistory } from "@/components/editor/history-signal";
 import {
   TYPST_HEADING_LEVELS,
   addTypstLabel,
@@ -346,8 +346,8 @@ export function TypstToolbar({
     return list;
   }, [t, visionReady]);
 
-  const { containerRef, availableWidth } = useAvailableWidth();
-  const visibleCount = fitCount(controls, availableWidth);
+  const { containerRef, visibleCount } = useFittedCount(controls);
+  const history = useEditorHistory();
   const visibleControls = controls.slice(0, visibleCount);
   const overflowControls = controls.slice(visibleCount);
 
@@ -364,10 +364,10 @@ export function TypstToolbar({
           <Divider />
         </>
       ) : null}
-      <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
+      <IconBtn onClick={editorUndo} disabled={!history.canUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
         <Undo2 className="size-4" />
       </IconBtn>
-      <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
+      <IconBtn onClick={editorRedo} disabled={!history.canRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
         <Redo2 className="size-4" />
       </IconBtn>
 

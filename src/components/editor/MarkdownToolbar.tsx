@@ -41,11 +41,11 @@ import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import {
   DROPDOWN_TRIGGER_WIDTH,
   ICON_BUTTON_WIDTH,
-  fitCount,
-  useAvailableWidth,
   type ToolbarControl,
+  useFittedCount,
 } from "@/components/ui/toolbar-overflow";
 import { editorFind, editorRedo, editorUndo } from "@/components/editor/cm/controller";
+import { useEditorHistory } from "@/components/editor/history-signal";
 import {
   MARKDOWN_HEADING_LEVELS,
   currentMarkdownLinkHref,
@@ -425,9 +425,8 @@ export function MarkdownToolbar({
     return list;
   }, [t, wysiwyg]);
 
-  const { containerRef, availableWidth } = useAvailableWidth();
-  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  const visibleCount = fitCount(controls, availableWidth * 16 / rem);
+  const { containerRef, visibleCount } = useFittedCount(controls);
+  const history = useEditorHistory(wysiwyg);
   const visibleControls = controls.slice(0, visibleCount);
   const overflowControls = controls.slice(visibleCount);
 
@@ -443,10 +442,10 @@ export function MarkdownToolbar({
       />
       <div className={cn("flex flex-1 items-center gap-0.5", showProjectInfo ? "min-w-44" : "min-w-36")}>
         <Divider />
-        <IconBtn onClick={editorUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
+        <IconBtn onClick={editorUndo} disabled={!history.canUndo} title={t(($) => $.editor.toolbar.undo, { shortcut: shortcut("⌘Z") })}>
           <Undo2 className="size-4" />
         </IconBtn>
-        <IconBtn onClick={editorRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
+        <IconBtn onClick={editorRedo} disabled={!history.canRedo} title={t(($) => $.editor.toolbar.redo, { shortcut: shortcut("⌘⇧Z") })}>
           <Redo2 className="size-4" />
         </IconBtn>
 

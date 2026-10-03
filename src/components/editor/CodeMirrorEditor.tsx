@@ -28,6 +28,7 @@ import { createTypstPackageHintLinter } from "./cm/typst-package-hints";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
 import { imagePasteExtension } from "./cm/image-paste";
 import { cursorSignalExtension } from "./cm/cursor-signal";
+import { historySignalExtension } from "./history-signal";
 import { recompileShortcutBinding } from "./cm/recompile-shortcut";
 import { codeIntel } from "./cm/code-intel";
 import { hoverIntel } from "./cm/hover-intel";
@@ -291,7 +292,7 @@ const HOST: EditorHost = {
   ],
 };
 
-const SHELL_EXTENSIONS: Extension[] = [inlineDiffPlugin, cursorSignalExtension()];
+const SHELL_EXTENSIONS: Extension[] = [inlineDiffPlugin, cursorSignalExtension(), historySignalExtension()];
 
 const LATEX_EXTENSIONS: Extension[] = [
   createPreflightLinter(),

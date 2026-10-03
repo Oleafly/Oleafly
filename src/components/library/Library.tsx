@@ -196,8 +196,8 @@ function projectCardLabels(t: Translate, project: ProjectInfo, updatedAt: number
   if (project.recovery_pending) {
     return {
       date: t(($) => $.library.projects.openToRecover),
-      engine: t(($) => $.library.projects.recoveryRequired),
-      kind: t(($) => $.library.projects.openToRecover),
+      engine: t(($) => $.library.projects.openToRecover),
+      kind: t(($) => $.library.projects.recoveryRequired),
       openLabel: t(($) => $.library.projects.openToRecoverNamed, { name: project.name }),
     };
   }
