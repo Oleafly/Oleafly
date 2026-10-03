@@ -369,18 +369,22 @@ describe("TopToolbar export menu", () => {
     ).toBeInTheDocument();
   });
 
-  it("leaves the book export out for an article class", async () => {
+  it("leaves the book and slide exports out for an article class", async () => {
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByLabelText(toolbar.export));
     await screen.findByRole("menuitem", { name: toolbar.exportPdf });
     expect(screen.queryByRole("menuitem", { name: toolbar.exportEpub })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: toolbar.exportPptx })).toBeNull();
   });
 
-  it.each([
-    ["typst", "main.typ", "= Introduction", ["tex", "docx", "html", "md", "txt", "epub"]],
-    ["markdown", "main.md", "# Introduction", ["docx", "html", "txt", "pptx", "epub", "typst", "tex"]],
-  ] as const)("offers the book export for every %s document", async (profile, mainDoc, content, exports) => {
+  const CLASSLESS_PROJECTS = {
+    typst: { mainDoc: "main.typ", content: "= Introduction", exports: ["tex", "docx", "html", "md", "txt", "epub"] },
+    markdown: { mainDoc: "main.md", content: "# Introduction", exports: ["docx", "html", "txt", "pptx", "epub", "typst", "tex"] },
+  } as const;
+
+  async function openClasslessExportMenu(profile: keyof typeof CLASSLESS_PROJECTS) {
+    const { mainDoc, content, exports } = CLASSLESS_PROJECTS[profile];
     useFilesStore.setState({
       engine: {
         ...LATEX_ENGINE,
@@ -400,9 +404,22 @@ describe("TopToolbar export menu", () => {
     renderToolbar();
     const user = userEvent.setup();
     await user.click(screen.getByLabelText(toolbar.export));
-    expect(
-      await screen.findByRole("menuitem", { name: toolbar.exportEpub }),
-    ).toBeInTheDocument();
+    await screen.findByRole("menuitem", { name: toolbar.exportPdf });
+  }
+
+  it.each(["typst", "markdown"] as const)("offers the book export for every %s document", async (profile) => {
+    await openClasslessExportMenu(profile);
+    expect(screen.getByRole("menuitem", { name: toolbar.exportEpub })).toBeInTheDocument();
+  });
+
+  it("offers the slide export for every Markdown document", async () => {
+    await openClasslessExportMenu("markdown");
+    expect(screen.getByRole("menuitem", { name: toolbar.exportPptx })).toBeInTheDocument();
+  });
+
+  it("leaves the slide export out when the engine has none", async () => {
+    await openClasslessExportMenu("typst");
+    expect(screen.queryByRole("menuitem", { name: toolbar.exportPptx })).toBeNull();
   });
 
   it("offers raster and vector exports for a figure project", async () => {

@@ -10,7 +10,8 @@ the persisted engine descriptor and writes only to a user-approved destination.
 - Conversions to DOCX, HTML, Markdown, plain text, Typst and LaTeX when the
   engine descriptor allows them. Typst projects convert through Typst's own
   HTML output.
-- PowerPoint export for Beamer presentations.
+- PowerPoint export for Beamer presentations and for every Markdown document.
+  Level 1 headings become section slides and level 2 headings start new slides.
 - EPUB export for LaTeX books, reports and theses, and for every Typst and
   Markdown document.
 - Source and PDF export records retained in project metadata.

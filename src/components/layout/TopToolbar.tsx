@@ -102,6 +102,7 @@ function classifyDoc(source: string, profile: FormattingProfile): ExportKind {
   return "doc";
 }
 
+const offersSlides = (kind: ExportKind) => kind === "presentation" || kind === "classless";
 const offersEpub = (kind: ExportKind) => kind === "book" || kind === "classless";
 
 export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof Columns2 }[] = [
@@ -476,7 +477,7 @@ export function TopToolbar() {
         </DropdownMenuItem>}
       </>
     )}
-    {exportKind === "presentation" && engine.capabilities.conversion_exports.includes("pptx") && (
+    {offersSlides(exportKind) && engine.capabilities.conversion_exports.includes("pptx") && (
       <>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void doExportFormat("pptx")}>
