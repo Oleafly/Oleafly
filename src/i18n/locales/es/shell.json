@@ -184,6 +184,14 @@
       "keywords": "terminal shell consola nuevo console new",
       "label": "Terminal nuevo"
     },
+    "closeAllEditorTabs": {
+      "keywords": "cerrar todas pestañas editor archivos",
+      "label": "Cerrar todas las pestañas del editor"
+    },
+    "closeAssistantTabs": {
+      "keywords": "cerrar pestañas archivos asistente ia agente abiertos",
+      "label": "Cerrar los archivos que abrió el asistente"
+    },
     "offline": {
       "offline": "Modo sin conexión (--only-cached)",
       "online": "Modo con conexión (permite descargar paquetes)"

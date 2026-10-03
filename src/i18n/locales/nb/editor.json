@@ -205,7 +205,15 @@
     "noFileOpen": "Ingen filer er åpne.",
     "noFileOpenHint": "Velg en fil fra treet for å begynne å redigere.",
     "linkedFileReadOnly": "{{file}} lenker til en fil utenfor mappen, så du kan ikke redigere den her. Endre den der den ligger, for eksempel i Zotero.",
-    "diffOnDisk": "På disken"
+    "diffOnDisk": "På disken",
+    "assistantTab": "Åpnet av assistenten",
+    "closeOthers": "Lukk de andre",
+    "closeLeft": "Lukk alle til venstre",
+    "closeRight": "Lukk alle til høyre",
+    "closeAll": "Lukk alle",
+    "closeAssistantTabs": "Lukk filer som assistenten har åpnet",
+    "closeAssistantTabsCount_one": "Lukk filen som assistenten har åpnet",
+    "closeAssistantTabsCount_other": "Lukk de {{count}} filene som assistenten har åpnet"
   },
   "projectInfo": {
     "trigger": "Prosjektinfo",

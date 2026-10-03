@@ -186,6 +186,14 @@
       "keywords": "terminál shell konzole nový",
       "label": "Nový terminál"
     },
+    "closeAllEditorTabs": {
+      "keywords": "zavřít všechny karty editor soubory",
+      "label": "Zavřít všechny karty editoru"
+    },
+    "closeAssistantTabs": {
+      "keywords": "zavřít karty soubory asistent ai agent otevřené",
+      "label": "Zavřít soubory otevřené asistentem"
+    },
     "offline": {
       "offline": "Režim offline (--only-cached)",
       "online": "Režim online (povolit stahování balíčků)"

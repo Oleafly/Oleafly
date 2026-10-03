@@ -87,7 +87,7 @@ export function ToolConfirm({
     void (async () => {
       const files = useFilesStore.getState();
       if (files.activePath !== filePath) {
-        await files.openFile(filePath);
+        await files.openFile(filePath, { opener: "assistant" });
       }
       // Let CodeMirror remount on the new active file before scrolling.
       await new Promise((r) => window.setTimeout(r, 40));

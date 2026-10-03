@@ -47,6 +47,7 @@ import {
   ToolCase,
   Trash2,
   Underline,
+  X,
   Zap,
 } from "lucide-react";
 import { ClockCheck } from "@/components/icons/ClockCheck";
@@ -71,6 +72,12 @@ import { handoffToAssistant } from "@/features/assistant-handoff";
 import { forwardFromCursor } from "@/features/synctex";
 import { exportCurrentPdf } from "@/features/export";
 import { useFilesStore } from "@/store/files";
+import {
+  closeAllEditorTabs,
+  closeAssistantTabs,
+  currentEditorTabs,
+  openAssistantTabs,
+} from "@/components/editor/editor-tabs";
 import { useDocumentCitationUiStore } from "@/store/document-citation-ui";
 import { TERMINAL_LIMIT, terminalLimitMessage, useTerminalsStore } from "@/store/terminals";
 import { toast } from "@/lib/toast";
@@ -177,6 +184,8 @@ const ENGLISH_KEYWORDS = {
   formatSelection: "format selection tidy indent typstyle typst",
   typstPackages: "typst universe packages import library browse vendor",
   latexPackages: "latex ctan packages usepackage preamble install tlmgr browse",
+  closeAllEditorTabs: "close all editor tabs files",
+  closeAssistantTabs: "close editor tabs files assistant ai agent opened",
 } as const;
 
 const runLanguageServiceFormat = (scope: FormatScope) => {
@@ -883,6 +892,28 @@ export function registerPaletteCommands() {
       },
     });
   }
+  palette({
+    id: "palette.close-all-editor-tabs",
+    group: () => i18n.t(($) => $.shell.commandGroups.editor),
+    label: () => i18n.t(($) => $.shell.commands.closeAllEditorTabs.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.closeAllEditorTabs.keywords)} ${ENGLISH_KEYWORDS.closeAllEditorTabs}`,
+    icon: () => <X className="size-4" />,
+    order: 496,
+    when: () => currentEditorTabs().length > 0,
+    run: () => closeAllEditorTabs(),
+  });
+  palette({
+    id: "palette.close-assistant-tabs",
+    group: () => i18n.t(($) => $.shell.commandGroups.editor),
+    label: () => i18n.t(($) => $.shell.commands.closeAssistantTabs.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.closeAssistantTabs.keywords)} ${ENGLISH_KEYWORDS.closeAssistantTabs}`,
+    icon: () => <Sparkles className="size-4" />,
+    order: 497,
+    when: () => openAssistantTabs().length > 0,
+    run: () => closeAssistantTabs(),
+  });
 
   palette({
     id: "palette.theme",

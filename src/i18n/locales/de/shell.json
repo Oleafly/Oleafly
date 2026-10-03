@@ -182,6 +182,14 @@
       "keywords": "Terminal Konsole neu terminal shell console new",
       "label": "Neues Terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "alle editor tabs dateien schließen",
+      "label": "Alle Editor-Tabs schließen"
+    },
+    "closeAssistantTabs": {
+      "keywords": "editor tabs dateien assistent ki agent geöffnet schließen",
+      "label": "Vom Assistenten geöffnete Dateien schließen"
+    },
     "offline": {
       "offline": "Offline-Modus (--only-cached)",
       "online": "Online-Modus (Pakete dürfen geladen werden)"

@@ -182,6 +182,14 @@
       "keywords": "terminal shell konsol yeni console new",
       "label": "Yeni terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "kapat tüm düzenleyici sekmeler dosyalar",
+      "label": "Tüm düzenleyici sekmelerini kapat"
+    },
+    "closeAssistantTabs": {
+      "keywords": "kapat sekmeler dosyalar asistan yapay zeka ajan açılan",
+      "label": "Asistanın açtığı dosyaları kapat"
+    },
     "offline": {
       "offline": "Çevrimdışı kip (--only-cached)",
       "online": "Çevrimiçi kip (paket indirmeye izin ver)"

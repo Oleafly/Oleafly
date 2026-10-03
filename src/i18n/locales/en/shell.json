@@ -182,6 +182,14 @@
       "keywords": "terminal shell console new",
       "label": "New terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "close all editor tabs files",
+      "label": "Close all editor tabs"
+    },
+    "closeAssistantTabs": {
+      "keywords": "close editor tabs files assistant ai agent opened",
+      "label": "Close files the assistant opened"
+    },
     "offline": {
       "offline": "Offline mode (--only-cached)",
       "online": "Online mode (allow package fetch)"

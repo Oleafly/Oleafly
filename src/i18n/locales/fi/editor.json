@@ -205,7 +205,15 @@
     "noFileOpen": "Ei avointa tiedostoa.",
     "noFileOpenHint": "Aloita muokkaus valitsemalla tiedosto puusta.",
     "linkedFileReadOnly": "{{file}} on linkki tämän kansion ulkopuoliseen tiedostoon, joten et voi muokata sitä täällä. Muuta sitä sen omassa sijainnissa, esimerkiksi Zoterossa.",
-    "diffOnDisk": "Levyllä"
+    "diffOnDisk": "Levyllä",
+    "assistantTab": "Avustajan avaama",
+    "closeOthers": "Sulje muut",
+    "closeLeft": "Sulje kaikki vasemmalta",
+    "closeRight": "Sulje kaikki oikealta",
+    "closeAll": "Sulje kaikki",
+    "closeAssistantTabs": "Sulje avustajan avaamat tiedostot",
+    "closeAssistantTabsCount_one": "Sulje avustajan avaama tiedosto",
+    "closeAssistantTabsCount_other": "Sulje {{count}} avustajan avaamaa tiedostoa"
   },
   "projectInfo": {
     "trigger": "Projektin tiedot",

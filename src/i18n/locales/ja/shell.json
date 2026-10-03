@@ -180,6 +180,14 @@
       "keywords": "ターミナル shell コンソール 新規",
       "label": "新規ターミナル"
     },
+    "closeAllEditorTabs": {
+      "keywords": "閉じる すべて エディター タブ ファイル",
+      "label": "エディターのタブをすべて閉じる"
+    },
+    "closeAssistantTabs": {
+      "keywords": "閉じる タブ ファイル アシスタント AI エージェント 開いた",
+      "label": "アシスタントが開いたファイルを閉じる"
+    },
     "offline": {
       "offline": "オフラインモード（--only-cached）",
       "online": "オンラインモード（パッケージの取得を許可）"

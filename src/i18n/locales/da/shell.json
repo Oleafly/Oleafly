@@ -182,6 +182,14 @@
       "keywords": "terminal shell konsol ny console new",
       "label": "Ny terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "luk alle editor faner filer",
+      "label": "Luk alle editorfaner"
+    },
+    "closeAssistantTabs": {
+      "keywords": "luk faner filer assistent ai agent åbnet",
+      "label": "Luk filer, som assistenten har åbnet"
+    },
     "offline": {
       "offline": "Offlinetilstand (--only-cached)",
       "online": "Onlinetilstand (tillad hentning af pakker)"

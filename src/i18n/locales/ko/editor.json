@@ -205,7 +205,14 @@
     "noFileOpen": "열린 파일이 없습니다.",
     "noFileOpenHint": "편집을 시작하려면 트리에서 파일을 고르세요.",
     "linkedFileReadOnly": "{{file}}은(는) 이 폴더 밖의 파일로 연결되어 있어 여기에서 편집할 수 없습니다. Zotero처럼 파일이 있는 곳에서 바꾸세요.",
-    "diffOnDisk": "디스크"
+    "diffOnDisk": "디스크",
+    "assistantTab": "어시스턴트가 연 파일",
+    "closeOthers": "다른 탭 닫기",
+    "closeLeft": "왼쪽 탭 모두 닫기",
+    "closeRight": "오른쪽 탭 모두 닫기",
+    "closeAll": "모두 닫기",
+    "closeAssistantTabs": "어시스턴트가 연 파일 닫기",
+    "closeAssistantTabsCount_other": "어시스턴트가 연 파일 {{count}}개 닫기"
   },
   "projectInfo": {
     "trigger": "프로젝트 정보",

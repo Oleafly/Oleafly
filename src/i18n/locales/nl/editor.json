@@ -205,7 +205,15 @@
     "noFileOpen": "Geen bestand geopend.",
     "noFileOpenHint": "Kies een bestand uit de boom om te beginnen met bewerken.",
     "linkedFileReadOnly": "{{file}} verwijst naar een bestand buiten deze map, dus je kunt het hier niet bewerken. Wijzig het waar het staat, bijvoorbeeld in Zotero.",
-    "diffOnDisk": "Op schijf"
+    "diffOnDisk": "Op schijf",
+    "assistantTab": "Geopend door de assistent",
+    "closeOthers": "Andere sluiten",
+    "closeLeft": "Alles links sluiten",
+    "closeRight": "Alles rechts sluiten",
+    "closeAll": "Alles sluiten",
+    "closeAssistantTabs": "Bestanden sluiten die de assistent heeft geopend",
+    "closeAssistantTabsCount_one": "Het bestand sluiten dat de assistent heeft geopend",
+    "closeAssistantTabsCount_other": "De {{count}} bestanden sluiten die de assistent heeft geopend"
   },
   "projectInfo": {
     "trigger": "Projectinfo",

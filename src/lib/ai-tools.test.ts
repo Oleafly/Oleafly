@@ -143,6 +143,12 @@ describe("ai-tools: destructive edits require approval (U1)", () => {
       "new body",
       9,
     );
+    expect(mocks.filesState.applyExternalWrite).toHaveBeenCalledWith(
+      "proj",
+      "a.tex",
+      "new body",
+      { opener: "assistant" },
+    );
   });
 
   it("write_file on a new file shows an empty old side (all additions)", async () => {
@@ -579,6 +585,12 @@ describe("ai-tools: insert_figure", () => {
       "chapters/results.tex",
       expect.stringContaining("\\draw (0,0);"),
       0,
+    );
+    expect(mocks.filesState.applyExternalWrite).toHaveBeenCalledWith(
+      "proj",
+      "chapters/results.tex",
+      expect.stringContaining(String.raw`\draw (0,0);`),
+      { opener: "assistant" },
     );
     expect(res).toEqual({ success: true, path: "chapters/results.tex" });
   });

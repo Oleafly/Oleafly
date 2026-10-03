@@ -180,6 +180,14 @@
       "keywords": "터미널 shell 콘솔 새로",
       "label": "새 터미널"
     },
+    "closeAllEditorTabs": {
+      "keywords": "닫기 모두 편집기 탭 파일",
+      "label": "편집기 탭 모두 닫기"
+    },
+    "closeAssistantTabs": {
+      "keywords": "닫기 탭 파일 어시스턴트 AI 에이전트 연",
+      "label": "어시스턴트가 연 파일 닫기"
+    },
     "offline": {
       "offline": "오프라인 모드(--only-cached)",
       "online": "온라인 모드(패키지 내려받기 허용)"

@@ -111,7 +111,7 @@ function applyKnownExternalChange(
       files.applyExternalRename(projectId, change.from, change.to);
       return true;
     case "write":
-      files.applyExternalWrite(projectId, change.path, change.content);
+      files.applyExternalWrite(projectId, change.path, change.content, { opener: "assistant" });
       return true;
     default:
       return false;

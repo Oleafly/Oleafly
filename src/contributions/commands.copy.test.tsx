@@ -26,6 +26,10 @@ const mocks = vi.hoisted(() => ({
     files: {} as Record<string, { content?: string }>,
     tree: [] as { path: string; is_dir: boolean }[],
     mainDoc: null as string | null,
+    openTabs: [] as string[],
+    tabOrder: {} as Record<string, number>,
+    assistantTabs: [] as string[],
+    closeTabs: vi.fn(),
     closeProject: vi.fn(async () => {}),
     createTypstProject: vi.fn(async () => "typst-project"),
   },
@@ -179,6 +183,9 @@ beforeEach(() => {
   mocks.files.files = {};
   mocks.files.tree = [];
   mocks.files.mainDoc = null;
+  mocks.files.openTabs = [];
+  mocks.files.tabOrder = {};
+  mocks.files.assistantTabs = [];
   mocks.settings.vim = false;
   mocks.settings.spellcheck = false;
   mocks.settings.offline = false;
@@ -448,6 +455,25 @@ describe("command contributions behaviour", () => {
   it("does nothing for the cache command without a project id", () => {
     run("palette.clear-cache", { ...baseContext, projectId: null });
     expect(mocks.clearBuildCache).not.toHaveBeenCalled();
+  });
+
+  it("offers the editor tab close commands only while there is something to close", () => {
+    const ids = () => commandsFor("palette", baseContext).map((command) => command.id);
+    expect(ids()).not.toContain("palette.close-all-editor-tabs");
+    expect(ids()).not.toContain("palette.close-assistant-tabs");
+
+    mocks.files.openTabs = ["main.tex", "draft.tex"];
+    mocks.files.tabOrder = { "main.tex": 1, "draft.tex": 2 };
+    expect(ids()).toContain("palette.close-all-editor-tabs");
+    expect(ids()).not.toContain("palette.close-assistant-tabs");
+
+    mocks.files.assistantTabs = ["draft.tex"];
+    expect(ids()).toContain("palette.close-assistant-tabs");
+
+    run("palette.close-assistant-tabs");
+    expect(mocks.files.closeTabs).toHaveBeenLastCalledWith(["draft.tex"]);
+    run("palette.close-all-editor-tabs");
+    expect(mocks.files.closeTabs).toHaveBeenLastCalledWith(["main.tex", "draft.tex"]);
   });
 
   it("adds a terminal until the limit, then opens the dock and warns in one slot", () => {

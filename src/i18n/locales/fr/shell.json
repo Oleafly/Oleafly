@@ -184,6 +184,14 @@
       "keywords": "terminal shell console nouveau",
       "label": "Nouveau terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "fermer tous onglets éditeur fichiers",
+      "label": "Fermer tous les onglets de l'éditeur"
+    },
+    "closeAssistantTabs": {
+      "keywords": "fermer onglets fichiers assistant ia agent ouverts",
+      "label": "Fermer les fichiers ouverts par l'assistant"
+    },
     "offline": {
       "offline": "Mode hors ligne (--only-cached)",
       "online": "Mode en ligne (récupération des paquets autorisée)"

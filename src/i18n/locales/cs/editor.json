@@ -205,7 +205,17 @@
     "noFileOpen": "Není otevřený žádný soubor.",
     "noFileOpenHint": "Vyberte ve stromu soubor a začněte psát.",
     "linkedFileReadOnly": "{{file}} odkazuje na soubor mimo tuto složku, proto ho tu nelze upravit. Změňte ho tam, kde je uložený, například v Zotero.",
-    "diffOnDisk": "Na disku"
+    "diffOnDisk": "Na disku",
+    "assistantTab": "Otevřel asistent",
+    "closeOthers": "Zavřít ostatní",
+    "closeLeft": "Zavřít vše nalevo",
+    "closeRight": "Zavřít vše napravo",
+    "closeAll": "Zavřít vše",
+    "closeAssistantTabs": "Zavřít soubory otevřené asistentem",
+    "closeAssistantTabsCount_one": "Zavřít soubor otevřený asistentem",
+    "closeAssistantTabsCount_few": "Zavřít {{count}} soubory otevřené asistentem",
+    "closeAssistantTabsCount_many": "Zavřít {{count}} souboru otevřeného asistentem",
+    "closeAssistantTabsCount_other": "Zavřít {{count}} souborů otevřených asistentem"
   },
   "projectInfo": {
     "trigger": "Informace o projektu",

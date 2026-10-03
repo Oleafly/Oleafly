@@ -112,6 +112,7 @@ describe("Editor shell", () => {
       activePath: null,
       openTabs: [],
       tabOrder: {},
+      assistantTabs: [],
       files: {},
       mainDoc: "main.tex",
       engine: LATEX_ENGINE,
@@ -146,6 +147,55 @@ describe("Editor shell", () => {
 
     fireEvent.click(screen.getByLabelText(shell.closeFile.replace("{{name}}", "intro.tex")));
     expect(useFilesStore.getState().openTabs).not.toContain("chapters/intro.tex");
+  });
+
+  it("closes the other tabs from a tab's right-click menu", () => {
+    openFile("chapters/intro.tex", {
+      openTabs: ["chapters/intro.tex", "notes.md", "refs.bib"],
+      tabOrder: { "chapters/intro.tex": 1, "notes.md": 2, "refs.bib": 4 },
+    });
+    useDiffStore.setState({ diffs: [{ path: "main.tex", side: "working", order: 3 }], activeKey: null });
+    render(<Editor />);
+
+    fireEvent.contextMenu(screen.getByText("notes.md"));
+    fireEvent.click(screen.getByRole("menuitem", { name: shell.closeOthers }));
+
+    expect(screen.getByText("notes.md")).toBeInTheDocument();
+    expect(screen.queryByText("refs.bib")).not.toBeInTheDocument();
+    expect(screen.queryByText(shell.diffWorkingTree)).not.toBeInTheDocument();
+    expect(useFilesStore.getState()).toMatchObject({ openTabs: ["notes.md"], activePath: "notes.md" });
+    expect(useDiffStore.getState().diffs).toEqual([]);
+  });
+
+  it("marks the assistant's tabs and closes them from the tab bar", () => {
+    openFile("main.tex", {
+      openTabs: ["main.tex", "draft.tex"],
+      tabOrder: { "main.tex": 1, "draft.tex": 2 },
+      assistantTabs: ["draft.tex"],
+    });
+    render(<Editor />);
+
+    expect(screen.getByText(shell.assistantTab)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(shell.closeAssistantTabsCount_one));
+
+    expect(screen.queryByText("draft.tex")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(shell.closeAssistantTabsCount_one)).not.toBeInTheDocument();
+    expect(useFilesStore.getState().openTabs).toEqual(["main.tex"]);
+  });
+
+  it("closes a tab on middle click", () => {
+    openFile("main.tex", {
+      openTabs: ["main.tex", "draft.tex"],
+      tabOrder: { "main.tex": 1, "draft.tex": 2 },
+    });
+    render(<Editor />);
+
+    fireEvent(
+      screen.getByText("draft.tex"),
+      new MouseEvent("auxclick", { bubbles: true, cancelable: true, button: 1 }),
+    );
+
+    expect(useFilesStore.getState().openTabs).toEqual(["main.tex"]);
   });
 
   it("labels both diff sides and closes a diff tab", () => {

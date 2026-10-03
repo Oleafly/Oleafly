@@ -1,6 +1,6 @@
 import { revealSourceEditor } from "@/components/editor/wysiwyg/controller";
 import { isBinaryProjectPath } from "@/lib/project-paths";
-import { useFilesStore } from "@/store/files";
+import { useFilesStore, type TabOpener } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 
 export interface ProjectLocation {
@@ -21,6 +21,7 @@ export interface OpenLocationOptions {
   showEditor?: boolean;
   /** From the PDF-only view, show the editor beside the PDF or in its place. Defaults to "split". */
   pdfView?: "editor" | "split";
+  opener?: TabOpener;
 }
 
 export const EDITOR_DOCUMENT_WAIT_MS = 4000;
@@ -47,6 +48,14 @@ function reveal(editor: EditorController, view: ReadyView, target: ProjectLocati
   } else {
     editor.gotoLine(target.line ?? 1, target.column);
   }
+}
+
+function openTab(
+  files: ReturnType<typeof useFilesStore.getState>,
+  path: string,
+  opener: TabOpener | undefined,
+): Promise<void> {
+  return opener ? files.openFile(path, { opener }) : files.openFile(path);
 }
 
 function showEditor(pdfView: OpenLocationOptions["pdfView"]) {
@@ -100,7 +109,7 @@ async function openLocation(
   const projectId = before.projectId;
   if (!projectId || !target.path) return false;
   if (options.showEditor !== false) showEditor(options.pdfView);
-  if (before.activePath !== target.path) await before.openFile(target.path);
+  if (before.activePath !== target.path) await openTab(before, target.path, options.opener);
 
   const current = (state = useFilesStore.getState()) =>
     !abort.signal.aborted && state.projectId === projectId && state.activePath === target.path;

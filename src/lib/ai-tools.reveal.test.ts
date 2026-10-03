@@ -87,7 +87,9 @@ describe("show_location adapter", () => {
   it("opens the file and jumps to the line", async () => {
     const result = await showLocation().execute({ path: "sections/intro.tex", line: 12 });
 
-    expect(mocks.filesState.openFile).toHaveBeenCalledWith("sections/intro.tex");
+    expect(mocks.filesState.openFile).toHaveBeenCalledWith("sections/intro.tex", {
+      opener: "assistant",
+    });
     expect(mocks.gotoLine).toHaveBeenCalledWith(12);
     expect(result).toMatchObject({ revealed: true, path: "sections/intro.tex", line: 12 });
   });

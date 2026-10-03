@@ -182,6 +182,14 @@
       "keywords": "terminal shell konsoll ny console new",
       "label": "Ny terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "lukk alle redigering faner filer",
+      "label": "Lukk alle redigeringsfaner"
+    },
+    "closeAssistantTabs": {
+      "keywords": "lukk faner filer assistent ki agent åpnet",
+      "label": "Lukk filer som assistenten har åpnet"
+    },
     "offline": {
       "offline": "Frakoblet modus (--only-cached)",
       "online": "Tilkoblet modus (tillat henting av pakker)"

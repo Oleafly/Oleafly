@@ -186,6 +186,14 @@
       "keywords": "terminal shell konsola nowy",
       "label": "Nowy terminal"
     },
+    "closeAllEditorTabs": {
+      "keywords": "zamknij wszystkie karty edytor pliki",
+      "label": "Zamknij wszystkie karty edytora"
+    },
+    "closeAssistantTabs": {
+      "keywords": "zamknij karty pliki asystent ai agent otwarte",
+      "label": "Zamknij pliki otwarte przez asystenta"
+    },
     "offline": {
       "offline": "Tryb offline (--only-cached)",
       "online": "Tryb online (pobieranie pakietów dozwolone)"

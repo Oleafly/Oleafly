@@ -180,6 +180,14 @@
       "keywords": "终端 shell 控制台 新建",
       "label": "新建终端"
     },
+    "closeAllEditorTabs": {
+      "keywords": "关闭 全部 编辑器 标签页 文件",
+      "label": "关闭所有编辑器标签页"
+    },
+    "closeAssistantTabs": {
+      "keywords": "关闭 标签页 文件 助手 AI 智能体 打开",
+      "label": "关闭助手打开的文件"
+    },
     "offline": {
       "offline": "离线模式（--only-cached）",
       "online": "在线模式（允许获取宏包）"

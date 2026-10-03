@@ -205,7 +205,16 @@
     "noFileOpen": "Niciun fișier deschis.",
     "noFileOpenHint": "Alege un fișier din arbore ca să începi să editezi.",
     "linkedFileReadOnly": "{{file}} trimite la un fișier din afara acestui folder, așa că nu îl poți edita aici. Modifică-l acolo unde se află, de exemplu în Zotero.",
-    "diffOnDisk": "Pe disc"
+    "diffOnDisk": "Pe disc",
+    "assistantTab": "Deschis de asistent",
+    "closeOthers": "Închide-le pe celelalte",
+    "closeLeft": "Închide-le pe toate din stânga",
+    "closeRight": "Închide-le pe toate din dreapta",
+    "closeAll": "Închide-le pe toate",
+    "closeAssistantTabs": "Închide fișierele deschise de asistent",
+    "closeAssistantTabsCount_one": "Închide fișierul deschis de asistent",
+    "closeAssistantTabsCount_few": "Închide cele {{count}} fișiere deschise de asistent",
+    "closeAssistantTabsCount_other": "Închide cele {{count}} de fișiere deschise de asistent"
   },
   "projectInfo": {
     "trigger": "Informații despre proiect",

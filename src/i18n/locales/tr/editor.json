@@ -205,7 +205,15 @@
     "noFileOpen": "Açık dosya yok.",
     "noFileOpenHint": "Düzenlemeye başlamak için ağaçtan bir dosya seçin.",
     "linkedFileReadOnly": "{{file}} bu klasörün dışındaki bir dosyaya bağlantı verir, bu yüzden burada düzenleyemezsiniz. Dosyayı bulunduğu yerde değiştirin, örneğin Zotero'da.",
-    "diffOnDisk": "Diskte"
+    "diffOnDisk": "Diskte",
+    "assistantTab": "Asistan tarafından açıldı",
+    "closeOthers": "Diğerlerini kapat",
+    "closeLeft": "Soldakilerin tümünü kapat",
+    "closeRight": "Sağdakilerin tümünü kapat",
+    "closeAll": "Tümünü kapat",
+    "closeAssistantTabs": "Asistanın açtığı dosyaları kapat",
+    "closeAssistantTabsCount_one": "Asistanın açtığı dosyayı kapat",
+    "closeAssistantTabsCount_other": "Asistanın açtığı {{count}} dosyayı kapat"
   },
   "projectInfo": {
     "trigger": "Proje bilgileri",

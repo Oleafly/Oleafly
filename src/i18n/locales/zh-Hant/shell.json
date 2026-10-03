@@ -180,6 +180,14 @@
       "keywords": "終端機 主控台 新增 shell terminal console new",
       "label": "新增終端機"
     },
+    "closeAllEditorTabs": {
+      "keywords": "關閉 全部 編輯器 分頁 檔案",
+      "label": "關閉所有編輯器分頁"
+    },
+    "closeAssistantTabs": {
+      "keywords": "關閉 分頁 檔案 助理 AI 代理 開啟",
+      "label": "關閉助理開啟的檔案"
+    },
     "offline": {
       "offline": "離線模式（--only-cached）",
       "online": "線上模式（允許取得套件）"

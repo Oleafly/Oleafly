@@ -205,7 +205,16 @@
     "noFileOpen": "Aucun fichier ouvert.",
     "noFileOpenHint": "Choisissez un fichier dans l'arborescence pour commencer à écrire.",
     "linkedFileReadOnly": "{{file}} renvoie vers un fichier situé hors de ce dossier, vous ne pouvez donc pas le modifier ici. Modifiez-le là où il se trouve, par exemple dans Zotero.",
-    "diffOnDisk": "Sur le disque"
+    "diffOnDisk": "Sur le disque",
+    "assistantTab": "Ouvert par l'assistant",
+    "closeOthers": "Fermer les autres",
+    "closeLeft": "Fermer tout à gauche",
+    "closeRight": "Fermer tout à droite",
+    "closeAll": "Fermer tout",
+    "closeAssistantTabs": "Fermer les fichiers ouverts par l'assistant",
+    "closeAssistantTabsCount_one": "Fermer le fichier ouvert par l'assistant",
+    "closeAssistantTabsCount_many": "Fermer les {{count}} fichiers ouverts par l'assistant",
+    "closeAssistantTabsCount_other": "Fermer les {{count}} fichiers ouverts par l'assistant"
   },
   "projectInfo": {
     "trigger": "Infos du projet",

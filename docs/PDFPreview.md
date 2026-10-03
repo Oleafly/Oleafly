@@ -32,6 +32,19 @@ editor to the corresponding PDF location and inverse SyncTeX moves from a PDF
 click back to source. Engines that do not provide SyncTeX advertise that
 capability as unavailable instead of showing a non-functional control.
 
+For LaTeX, a click resolves to the smallest text line under the pointer. A
+click in blank space takes the nearest line inside the smallest box around it,
+so a click below the last paragraph of a chapter still opens that chapter. The
+line number comes from the kern and glue records inside the text line, which
+carry the source line each word was read from. A text line's own tag points at
+the line that ended its paragraph, so it is only the fallback. Boxes whose input
+has no file name, such as table of contents entries Tectonic reads from its
+build folder, never become the target. Forward search uses the same records to
+find the text line that holds the requested source line.
+
+Selecting text in the PDF never jumps to the source, so copying text leaves the
+editor where it is. A single click jumps.
+
 ## Reliability rules
 
 - A PDF result carries a project revision identity.
@@ -47,5 +60,6 @@ capability as unavailable instead of showing a non-functional control.
 - `src/components/preview/PreviewPane.tsx`
 - `src/components/preview/PreviewWindow.tsx`
 - `src/components/pdf/PdfViewer.tsx`
-- `src/features/synctex/`
+- `src/features/synctex.ts`
+- `src-tauri/src/synctex.rs`
 - `src/store/pdf-view.ts`

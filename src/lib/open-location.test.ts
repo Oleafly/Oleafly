@@ -99,6 +99,15 @@ describe("openProjectLocation", () => {
     expect(mocks.gotoLine).toHaveBeenLastCalledWith(1);
   });
 
+  it("tells the files store who opened the tab only when a caller says so", async () => {
+    await openProjectLocation({ path: "main.tex", line: 3 });
+    expect(openFile.mock.lastCall).toEqual(["main.tex"]);
+
+    useFilesStore.setState({ activePath: null });
+    await openProjectLocation({ path: "notes.tex", line: 3 }, { opener: "assistant" });
+    expect(openFile).toHaveBeenLastCalledWith("notes.tex", { opener: "assistant" });
+  });
+
   it("does not reopen the file that is already active", async () => {
     useFilesStore.setState({ activePath: "main.tex" });
     await openProjectLocation({ path: "main.tex", line: 2 });
