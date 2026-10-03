@@ -2391,6 +2391,19 @@ mod tests {
         )
         .unwrap();
 
+        let deadline = std::time::Instant::now() + crate::test_wait::CHILD_PATIENCE;
+        let session = loop {
+            match crate::language_service::spawn_sidecar(&launch) {
+                Ok(session) => break session,
+                Err(error)
+                    if error.message.contains("os error 26")
+                        && std::time::Instant::now() < deadline =>
+                {
+                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                }
+                Err(error) => panic!("{error:?}"),
+            }
+        };
         let crate::language_service::SpawnedSession {
             mut child,
             stdin,
@@ -2398,7 +2411,7 @@ mod tests {
             stderr,
             containment,
             ..
-        } = crate::language_service::spawn_sidecar(&launch).unwrap();
+        } = session;
         drop(stdin);
         drop(stderr);
         let mut output = Vec::new();
