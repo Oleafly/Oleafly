@@ -307,7 +307,7 @@
       "literatureSearch": "Buscar artigos no OpenAlex por palavra-chave, sem precisar de chave.",
       "verifyCitation": "Transformar um DOI ou um título em BibTeX verificado pelo doi.org ou pelo Crossref.",
       "projectLibrarySearch": "Buscar por palavra-chave no próprio texto e nas notas do projeto.",
-      "previewFigure": "Compilar uma figura TikZ ou PGFPlots isoladamente e mostrar o resultado na conversa.",
+      "previewFigure": "Renderizar uma figura TikZ ou CeTZ isoladamente e mostrar o resultado na conversa.",
       "insertFigure": "Inserir a figura pronta no cursor, com legenda e rótulo, e salvar um PNG em figures/.",
       "loadImage": "Olhar uma imagem que já está no projeto.",
       "updateTodos": "Escrever ou atualizar o plano passo a passo mostrado na conversa.",
@@ -350,6 +350,7 @@
     "noDescription": "Nenhuma descrição fornecida.",
     "notes": {
       "latexOnly": "Só em projetos LaTeX",
+      "latexAndTypstOnly": "Só em projetos LaTeX e Typst",
       "pdfCaptureSetting": "Precisa da configuração de captura de páginas do PDF",
       "chatApproval": "Aprovada na conversa, um comando de cada vez",
       "browserSetting": "Precisa da configuração do navegador web"
@@ -685,6 +686,24 @@
     "tikzFigure": {
       "label": "Figura TikZ",
       "description": "Rascunhar código TikZ na conversa"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Corrigir erros de Typst"
+      },
+      "writeEquation": {
+        "description": "De linguagem natural para matemática em Typst"
+      },
+      "academicPresentation": {
+        "description": "Uma apresentação em Typst a partir do seu artigo"
+      },
+      "generateTable": {
+        "description": "Rascunhar uma tabela Typst na conversa"
+      },
+      "figure": {
+        "label": "Figura CeTZ",
+        "description": "Rascunhar código CeTZ na conversa"
+      }
     }
   },
   "turn": {

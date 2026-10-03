@@ -9,7 +9,10 @@ export {
   type ToolApprovalRequest,
   type ConfirmFn,
   type ExecAuthorization,
+  type FigureEngine,
+  type FigurePreview,
 } from "./tools";
+export type { TypstFigureDiagnostic, TypstFigureRender } from "./typst-figure";
 export { pickPagesToVerify } from "./pick-pages";
 export {
   registerConnector,

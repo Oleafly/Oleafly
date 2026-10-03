@@ -7,7 +7,7 @@ import { create } from "zustand";
 import { undo, undoDepth } from "@codemirror/commands";
 import { Transaction } from "@codemirror/state";
 import { CodeMirrorEditor, minimalReplacement, type EditorHost } from "./CodeMirrorEditor";
-import { getEditorView } from "./controller";
+import { editBackgroundDocument, getEditorView } from "./controller";
 import { englishEditorMessage } from "./test-messages";
 
 if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
@@ -114,6 +114,51 @@ describe("switching files", () => {
     expect(view.state.doc.toString()).toBe("kratší");
     expect(undoDepth(view.state)).toBe(0);
     expect(view.state.selection.main.head).toBeLessThanOrEqual("kratší".length);
+  });
+});
+
+describe("edits to a file in a background tab", () => {
+  it("keeps the undo history of a file renamed while another tab was active", async () => {
+    const store = await mountEditor({
+      activePath: "a.typ",
+      docVersion: 0,
+      files: { "a.typ": "#let greet = 1\n#greet\n", "b.typ": "b" },
+    });
+    await act(async () => typeAt(0, "// "));
+    await switchTo(store, "b.typ");
+
+    const base = store.getState().files["a.typ"];
+    const changes = [...base.matchAll(/greet/g)].map((match) => ({
+      from: match.index,
+      to: match.index + "greet".length,
+      insert: "hello",
+    }));
+    const renamed = base.replaceAll("greet", "hello");
+    expect(editBackgroundDocument("a.typ", base, changes)).toBe(true);
+    await act(async () => store.setState((s) => ({ files: { ...s.files, "a.typ": renamed } })));
+    await switchTo(store, "a.typ");
+
+    const view = getEditorView()!;
+    expect(view.state.doc.toString()).toBe(renamed);
+    expect(undoDepth(view.state)).toBe(2);
+    await act(async () => { undo(view); });
+    expect(store.getState().files["a.typ"]).toBe(base);
+    await act(async () => { undo(view); });
+    expect(store.getState().files["a.typ"]).toBe("#let greet = 1\n#greet\n");
+  });
+
+  it("declines edits for the active file, unknown files and files whose text moved on", async () => {
+    const store = await mountEditor({
+      activePath: "a.typ",
+      docVersion: 0,
+      files: { "a.typ": "a", "b.typ": "b" },
+    });
+    const change = [{ from: 0, to: 1, insert: "z" }];
+    expect(editBackgroundDocument("a.typ", "a", change)).toBe(false);
+    expect(editBackgroundDocument("c.typ", "c", change)).toBe(false);
+    await switchTo(store, "b.typ");
+    expect(editBackgroundDocument("a.typ", "stale", change)).toBe(false);
+    expect(getEditorView()!.state.doc.toString()).toBe("b");
   });
 });
 

@@ -54,6 +54,7 @@ mod initial_state;
 mod known_folders;
 mod language_service;
 mod latex_engine;
+mod latex_package_index;
 mod library_db;
 mod linked_copy;
 mod linked_registry;
@@ -75,6 +76,7 @@ mod process_identity;
 mod program_locator;
 mod project;
 mod project_availability;
+mod project_file_sizes;
 mod project_grants;
 mod project_location;
 mod project_manifest;
@@ -115,8 +117,18 @@ mod terminal;
 mod test_wait;
 mod tex_distro;
 mod tinytex_archive;
+mod toolchain_download;
 mod trust;
+mod typst_export;
+mod typst_options;
+mod typst_packages;
+mod typst_query;
 mod typst_render;
+mod typst_slide_notes;
+mod typst_sync;
+mod typst_toolchain;
+mod typst_upgrade;
+mod typst_watch;
 // Only macOS sizes webviews itself; the frame logic is unit-tested everywhere.
 #[cfg(windows)]
 mod webview_focus;
@@ -356,6 +368,8 @@ pub fn run() {
         .plugin(acp::lifecycle_plugin())
         .plugin(updater::lifecycle_plugin())
         .plugin(research_lifecycle::lifecycle_plugin())
+        .plugin(typst_sync::lifecycle_plugin())
+        .plugin(typst_watch::lifecycle_plugin())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_dialog::init());
@@ -437,6 +451,8 @@ pub fn run() {
         .invoke_handler(traced_commands(tauri::generate_handler![
             ad_hoc_conversion::convert_ad_hoc,
             typst_render::render_typst_snippet,
+            typst_query::typst_document_insights,
+            typst_slide_notes::typst_slide_notes,
             arxiv_import::extract_arxiv_source,
             research_tasks::research_task_list,
             research_tasks::research_task_create,
@@ -655,6 +671,9 @@ pub fn run() {
             synctex::synctex_forward,
             synctex::synctex_inverse,
             synctex::synctex_map_line,
+            typst_sync::typst_sync_forward,
+            typst_sync::typst_sync_inverse,
+            typst_sync::typst_sync_stop,
             project::list_files,
             project::list_file_tree,
             project::existing_project_files,
@@ -662,6 +681,7 @@ pub fn run() {
             folder_watch::unwatch_project_folder,
             project::read_file,
             project_sources::read_project_sources,
+            project_file_sizes::project_file_sizes,
             document_stats::document_stats,
             rag::rag_retrieve,
             project::project_mutation_generation,
@@ -692,6 +712,7 @@ pub fn run() {
             latex_engine::tlmgr_installed,
             latex_engine::packages::tlmgr_search,
             latex_engine::packages::tlmgr_install_missing,
+            latex_package_index::latex_package_index,
             latex_engine::tlmgr_install,
             latex_engine::tlmgr_remove,
             latex_engine::compile_tagged,
@@ -713,6 +734,24 @@ pub fn run() {
             zotero::zotero_library_bibtex,
             project::set_main_doc,
             project::set_project_engine,
+            typst_toolchain::typst_toolchain_status,
+            typst_toolchain::install_typst_version,
+            typst_toolchain::remove_typst_version,
+            typst_toolchain::remove_unused_tinymist_downloads,
+            typst_toolchain::set_default_typst_version,
+            typst_toolchain::set_project_typst_version,
+            typst_watch::typst_watch_start,
+            typst_watch::typst_watch_compile,
+            typst_watch::typst_watch_stop,
+            typst_upgrade::typst_upgrade_check,
+            typst_options::typst_project_options,
+            typst_options::set_typst_project_options,
+            typst_options::typst_project_fonts,
+            typst_export::export_typst_document,
+            typst_packages::typst_universe_index,
+            typst_packages::typst_package_settings,
+            typst_packages::set_typst_vendor_packages,
+            typst_packages::vendor_typst_packages,
             project::set_project_shell_escape,
             project::record_project_tex_spec,
             project::project_tex_status,
@@ -843,6 +882,11 @@ pub fn run() {
             git::git_abort_merge,
             git::git_show,
         ]))
-        .run(tauri::generate_context!())
-        .expect("error while running Oleafly");
+        .build(tauri::generate_context!())
+        .expect("error while running Oleafly")
+        .run(|_, event| {
+            if let tauri::RunEvent::Exit = event {
+                quit_gate::on_app_exit();
+            }
+        });
 }

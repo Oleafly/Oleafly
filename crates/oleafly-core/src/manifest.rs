@@ -125,6 +125,193 @@ pub struct TexSpec {
     pub recorded_at: f64,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct TypstSpec {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub vendor_packages: bool,
+    #[serde(
+        default,
+        skip_serializing_if = "Vec::is_empty",
+        deserialize_with = "lenient_paths"
+    )]
+    pub font_paths: Vec<String>,
+    #[serde(
+        default = "enabled",
+        skip_serializing_if = "is_enabled",
+        deserialize_with = "lenient_enabled"
+    )]
+    pub system_fonts: bool,
+    #[serde(
+        default,
+        skip_serializing_if = "std::ops::Not::not",
+        deserialize_with = "lenient_disabled"
+    )]
+    pub reproducible: bool,
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "lenient_inputs"
+    )]
+    pub inputs: BTreeMap<String, String>,
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "lenient_variants"
+    )]
+    pub variants: BTreeMap<String, TypstVariant>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+impl Default for TypstSpec {
+    fn default() -> Self {
+        Self {
+            version: None,
+            vendor_packages: false,
+            font_paths: Vec::new(),
+            system_fonts: true,
+            reproducible: false,
+            inputs: BTreeMap::new(),
+            variants: BTreeMap::new(),
+            extra: HashMap::new(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
+pub struct TypstVariant {
+    #[serde(
+        default,
+        skip_serializing_if = "BTreeMap::is_empty",
+        deserialize_with = "lenient_inputs"
+    )]
+    pub inputs: BTreeMap<String, String>,
+    #[serde(flatten)]
+    pub extra: HashMap<String, serde_json::Value>,
+}
+
+impl TypstSpec {
+    pub fn is_empty(&self) -> bool {
+        serde_json::to_value(self)
+            .ok()
+            .and_then(|value| value.as_object().map(serde_json::Map::is_empty))
+            .unwrap_or(false)
+    }
+
+    pub fn ignores_system_fonts(&self) -> bool {
+        !self.system_fonts || self.reproducible
+    }
+
+    pub fn inputs_for(&self, variant: Option<&str>) -> Vec<(String, String)> {
+        let mut inputs = self.inputs.clone();
+        if let Some(chosen) = variant.and_then(|name| self.variants.get(name)) {
+            inputs.extend(chosen.inputs.clone());
+        }
+        inputs.into_iter().collect()
+    }
+}
+
+pub fn valid_typst_input_key(key: &str) -> bool {
+    !key.trim().is_empty() && !key.contains('=') && !key.chars().any(char::is_control)
+}
+
+const fn enabled() -> bool {
+    true
+}
+
+const fn is_enabled(value: &bool) -> bool {
+    *value
+}
+
+fn lenient_value<'de, D>(deserializer: D) -> std::result::Result<serde_json::Value, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    serde_json::Value::deserialize(deserializer)
+}
+
+fn lenient_paths<'de, D>(deserializer: D) -> std::result::Result<Vec<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(match lenient_value(deserializer)? {
+        serde_json::Value::String(path) => vec![path],
+        serde_json::Value::Array(paths) => paths
+            .into_iter()
+            .filter_map(|path| path.as_str().map(str::to_owned))
+            .collect(),
+        _ => Vec::new(),
+    }
+    .into_iter()
+    .filter(|path| !path.trim().is_empty())
+    .collect())
+}
+
+fn lenient_enabled<'de, D>(deserializer: D) -> std::result::Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(lenient_value(deserializer)?.as_bool().unwrap_or(true))
+}
+
+fn lenient_disabled<'de, D>(deserializer: D) -> std::result::Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(lenient_value(deserializer)?.as_bool().unwrap_or(false))
+}
+
+fn input_map(value: serde_json::Value) -> BTreeMap<String, String> {
+    let serde_json::Value::Object(entries) = value else {
+        return BTreeMap::new();
+    };
+    entries
+        .into_iter()
+        .filter(|(key, _)| valid_typst_input_key(key))
+        .filter_map(|(key, value)| {
+            let text = match value {
+                serde_json::Value::String(text) => text,
+                serde_json::Value::Bool(flag) => flag.to_string(),
+                serde_json::Value::Number(number) => number.to_string(),
+                _ => return None,
+            };
+            Some((key, text))
+        })
+        .collect()
+}
+
+fn lenient_inputs<'de, D>(
+    deserializer: D,
+) -> std::result::Result<BTreeMap<String, String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Ok(input_map(lenient_value(deserializer)?))
+}
+
+fn lenient_variants<'de, D>(
+    deserializer: D,
+) -> std::result::Result<BTreeMap<String, TypstVariant>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let serde_json::Value::Object(entries) = lenient_value(deserializer)? else {
+        return Ok(BTreeMap::new());
+    };
+    Ok(entries
+        .into_iter()
+        .filter(|(name, _)| !name.trim().is_empty())
+        .filter_map(|(name, value)| {
+            value.is_object().then_some(())?;
+            serde_json::from_value::<TypstVariant>(value)
+                .ok()
+                .map(|variant| (name, variant))
+        })
+        .collect())
+}
+
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq)]
 pub struct ExportRecord {
     pub date: f64,
@@ -264,6 +451,8 @@ pub struct ProjectManifest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub typst: Option<TypstSpec>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub dictionary_locale: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compile_dir: Option<String>,
@@ -291,6 +480,7 @@ impl Default for ProjectManifest {
             engine: default_engine(),
             tex: None,
             tex_flavor: None,
+            typst: None,
             dictionary_locale: None,
             compile_dir: None,
             color: String::new(),
@@ -349,6 +539,19 @@ impl ProjectManifest {
         }
     }
 
+    pub fn typst_version_pin(&self) -> Option<&str> {
+        self.typst
+            .as_ref()?
+            .version
+            .as_deref()
+            .map(str::trim)
+            .filter(|version| !version.is_empty())
+    }
+
+    pub fn typst_vendor_packages(&self) -> bool {
+        self.typst.as_ref().is_some_and(|spec| spec.vendor_packages)
+    }
+
     pub fn validate(&self) -> Result<()> {
         if self.main_doc.trim().is_empty() {
             return Err(Error::new(
@@ -386,6 +589,260 @@ mod tests {
         manifest.validate().unwrap();
         let output = serde_json::to_value(manifest).unwrap();
         assert_eq!(output["future"]["enabled"], true);
+    }
+
+    #[test]
+    fn typst_pin_round_trips_in_snake_case_and_is_omitted_when_unset() {
+        let manifest: ProjectManifest = serde_json::from_str(
+            r#"{"name":"Paper","main_doc":"main.typ","engine":"typst","typst":{"version":"0.13.1"}}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            manifest.typst,
+            Some(TypstSpec {
+                version: Some("0.13.1".into()),
+                ..TypstSpec::default()
+            })
+        );
+        assert_eq!(manifest.typst_version_pin(), Some("0.13.1"));
+        let output = serde_json::to_value(&manifest).unwrap();
+        assert_eq!(output["typst"], serde_json::json!({"version": "0.13.1"}));
+        let again: ProjectManifest = serde_json::from_value(output).unwrap();
+        assert_eq!(again, manifest);
+
+        let unpinned = ProjectManifest {
+            main_doc: "main.typ".into(),
+            engine: "typst".into(),
+            ..ProjectManifest::default()
+        };
+        assert_eq!(unpinned.typst_version_pin(), None);
+        let output = serde_json::to_value(&unpinned).unwrap();
+        assert!(output.get("typst").is_none());
+
+        let empty = ProjectManifest {
+            typst: Some(TypstSpec::default()),
+            ..unpinned.clone()
+        };
+        let output = serde_json::to_value(&empty).unwrap();
+        assert_eq!(output["typst"], serde_json::json!({}));
+        assert_eq!(empty.typst_version_pin(), None);
+    }
+
+    #[test]
+    fn blank_and_null_typst_pins_read_as_unpinned() {
+        for source in [
+            r#"{"main_doc":"main.typ","engine":"typst","typst":null}"#,
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{}}"#,
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{"version":null}}"#,
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{"version":"  "}}"#,
+        ] {
+            let manifest: ProjectManifest = serde_json::from_str(source).unwrap();
+            assert_eq!(manifest.typst_version_pin(), None, "{source}");
+        }
+        let padded: ProjectManifest = serde_json::from_str(
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{"version":" 0.15.1 "}}"#,
+        )
+        .unwrap();
+        assert_eq!(padded.typst_version_pin(), Some("0.15.1"));
+    }
+
+    #[test]
+    fn future_typst_fields_survive_a_rewrite() {
+        let typst = serde_json::json!({
+            "version": "0.15.1",
+            "font_paths": ["fonts"],
+            "inputs": {"draft": "true"},
+            "packages": {"future": {"enabled": true}}
+        });
+        let source = serde_json::json!({
+            "name": "Future Typst",
+            "main_doc": "main.typ",
+            "engine": "typst",
+            "typst": typst.clone()
+        });
+        let manifest: ProjectManifest = serde_json::from_value(source).unwrap();
+        manifest.validate().unwrap();
+        assert_eq!(manifest.typst_version_pin(), Some("0.15.1"));
+        let output = serde_json::to_value(manifest).unwrap();
+        assert_eq!(output["typst"], typst);
+        assert!(output.get("font_paths").is_none());
+        assert!(sniff_oleafly_manifest(output.to_string().as_bytes()).is_some());
+    }
+
+    #[test]
+    fn typst_vendor_packages_round_trips_and_is_omitted_when_off() {
+        let manifest: ProjectManifest = serde_json::from_str(
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{"version":"0.15.1","vendor_packages":true}}"#,
+        )
+        .unwrap();
+        assert!(manifest.typst_vendor_packages());
+        assert_eq!(manifest.typst_version_pin(), Some("0.15.1"));
+        let output = serde_json::to_value(&manifest).unwrap();
+        assert_eq!(
+            output["typst"],
+            serde_json::json!({"version": "0.15.1", "vendor_packages": true})
+        );
+
+        let off: ProjectManifest = serde_json::from_str(
+            r#"{"main_doc":"main.typ","engine":"typst","typst":{"version":"0.15.1","vendor_packages":false}}"#,
+        )
+        .unwrap();
+        assert!(!off.typst_vendor_packages());
+        let output = serde_json::to_value(&off).unwrap();
+        assert_eq!(output["typst"], serde_json::json!({"version": "0.15.1"}));
+
+        let unset: ProjectManifest =
+            serde_json::from_str(r#"{"main_doc":"main.typ","engine":"typst"}"#).unwrap();
+        assert!(!unset.typst_vendor_packages());
+    }
+
+    #[test]
+    fn typst_compile_options_round_trip_in_snake_case() {
+        let typst = serde_json::json!({
+            "version": "0.15.1",
+            "font_paths": ["fonts/extra", "assets/type"],
+            "system_fonts": false,
+            "reproducible": true,
+            "inputs": {"draft": "false", "lang": "en"},
+            "variants": {
+                "camera-ready": {"inputs": {"draft": "false", "anonymous": "false"}},
+                "review": {"inputs": {"anonymous": "true"}}
+            }
+        });
+        let manifest: ProjectManifest = serde_json::from_value(serde_json::json!({
+            "main_doc": "main.typ",
+            "engine": "typst",
+            "typst": typst.clone()
+        }))
+        .unwrap();
+        let spec = manifest.typst.clone().unwrap();
+        assert_eq!(spec.font_paths, ["fonts/extra", "assets/type"]);
+        assert!(!spec.system_fonts);
+        assert!(spec.reproducible);
+        assert_eq!(spec.inputs["lang"], "en");
+        assert_eq!(spec.variants["review"].inputs["anonymous"], "true");
+        assert!(spec.extra.is_empty());
+        let output = serde_json::to_value(&manifest).unwrap();
+        assert_eq!(output["typst"], typst);
+        let again: ProjectManifest = serde_json::from_value(output).unwrap();
+        assert_eq!(again, manifest);
+    }
+
+    #[test]
+    fn default_typst_compile_options_are_omitted() {
+        let spec = TypstSpec::default();
+        assert!(spec.system_fonts);
+        assert!(!spec.reproducible);
+        assert!(spec.is_empty());
+        assert_eq!(serde_json::to_value(&spec).unwrap(), serde_json::json!({}));
+        let explicit: TypstSpec = serde_json::from_value(serde_json::json!({
+            "system_fonts": true,
+            "reproducible": false,
+            "font_paths": [],
+            "inputs": {},
+            "variants": {}
+        }))
+        .unwrap();
+        assert!(explicit.is_empty());
+        assert_eq!(
+            serde_json::to_value(&explicit).unwrap(),
+            serde_json::json!({})
+        );
+        for spec in [
+            TypstSpec {
+                system_fonts: false,
+                ..TypstSpec::default()
+            },
+            TypstSpec {
+                reproducible: true,
+                ..TypstSpec::default()
+            },
+            TypstSpec {
+                font_paths: vec!["fonts".into()],
+                ..TypstSpec::default()
+            },
+            TypstSpec {
+                extra: HashMap::from([("future".into(), serde_json::json!(1))]),
+                ..TypstSpec::default()
+            },
+        ] {
+            assert!(!spec.is_empty(), "{spec:?}");
+        }
+    }
+
+    #[test]
+    fn an_unknown_typst_field_keeps_the_spec_through_a_setter() {
+        let mut spec: TypstSpec =
+            serde_json::from_value(serde_json::json!({"version": "0.15.1", "future": {"a": 1}}))
+                .unwrap();
+        spec.version = None;
+        assert!(!spec.is_empty());
+        assert_eq!(
+            serde_json::to_value(&spec).unwrap(),
+            serde_json::json!({"future": {"a": 1}})
+        );
+        spec.extra.clear();
+        assert!(spec.is_empty());
+    }
+
+    #[test]
+    fn malformed_typst_compile_options_still_open() {
+        let manifest: ProjectManifest = serde_json::from_value(serde_json::json!({
+            "main_doc": "main.typ",
+            "engine": "typst",
+            "typst": {
+                "font_paths": "fonts",
+                "system_fonts": "no",
+                "reproducible": 1,
+                "inputs": {"draft": true, "copies": 2, "bad=key": "x", "": "y", "nested": {"a": 1}},
+                "variants": {"ok": {"inputs": {"a": "b"}}, "broken": "x", "  ": {"inputs": {}}}
+            }
+        }))
+        .unwrap();
+        let spec = manifest.typst.unwrap();
+        assert_eq!(spec.font_paths, ["fonts"]);
+        assert!(spec.system_fonts);
+        assert!(!spec.reproducible);
+        assert_eq!(
+            spec.inputs,
+            BTreeMap::from([
+                ("copies".to_string(), "2".to_string()),
+                ("draft".to_string(), "true".to_string()),
+            ])
+        );
+        assert_eq!(spec.variants.keys().collect::<Vec<_>>(), ["ok"]);
+        assert_eq!(spec.variants["ok"].inputs["a"], "b");
+    }
+
+    #[test]
+    fn typst_variant_inputs_overlay_the_base_inputs() {
+        let spec: TypstSpec = serde_json::from_value(serde_json::json!({
+            "inputs": {"draft": "true", "lang": "en"},
+            "variants": {"final": {"inputs": {"draft": "false", "venue": "acm"}}}
+        }))
+        .unwrap();
+        assert_eq!(
+            spec.inputs_for(None),
+            vec![
+                ("draft".to_string(), "true".to_string()),
+                ("lang".to_string(), "en".to_string()),
+            ]
+        );
+        assert_eq!(
+            spec.inputs_for(Some("final")),
+            vec![
+                ("draft".to_string(), "false".to_string()),
+                ("lang".to_string(), "en".to_string()),
+                ("venue".to_string(), "acm".to_string()),
+            ]
+        );
+        assert_eq!(spec.inputs_for(Some("missing")), spec.inputs_for(None));
+        assert!(!spec.ignores_system_fonts());
+        let reproducible = TypstSpec {
+            reproducible: true,
+            ..TypstSpec::default()
+        };
+        assert!(reproducible.ignores_system_fonts());
     }
 
     #[test]

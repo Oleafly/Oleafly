@@ -12,6 +12,11 @@ const mocks = vi.hoisted(() => ({
   info: vi.fn(),
   error: vi.fn(),
   success: vi.fn(),
+  insertTypstCitation: vi.fn(async () => {}),
+}));
+
+vi.mock("@/components/editor/typst-commands", () => ({
+  insertTypstCitation: mocks.insertTypstCitation,
 }));
 
 vi.mock("@/components/ui/popover", () => ({
@@ -137,5 +142,26 @@ describe("ProjectCitationPicker", () => {
     fireEvent.click(row);
     expect(mocks.insertAtCursor).not.toHaveBeenCalled();
     expect(mocks.info).not.toHaveBeenCalled();
+  });
+
+  it("cites with Typst syntax in a Typst file, even inside a LaTeX project", () => {
+    useFilesStore.setState({
+      activePath: "notes.typ",
+      files: { "notes.typ": { content: "", dirty: false } },
+    } as never);
+    const row = renderPicker();
+    fireEvent.click(row);
+    expect(mocks.insertTypstCitation).toHaveBeenCalledWith("knuth1984", "refs.bib");
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+  });
+
+  it("keeps Markdown and LaTeX citation output unchanged", () => {
+    useFilesStore.setState({
+      activePath: "README.md",
+      files: { "README.md": { content: "", dirty: false } },
+    } as never);
+    fireEvent.click(renderPicker());
+    expect(mocks.insertAtCursor).toHaveBeenCalledWith("[@knuth1984]");
+    expect(mocks.insertTypstCitation).not.toHaveBeenCalled();
   });
 });

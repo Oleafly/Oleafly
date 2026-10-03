@@ -3,6 +3,22 @@
     "aiProviderRequired": "Conectează un furnizor AI în Setări ca să folosești Repară cu AI.",
     "fixFailed": "Repararea a eșuat: {{detail}}"
   },
+  "chooser": {
+    "title": "Alege un compozitor de diagrame",
+    "description": "Alege tipul de document pentru care este diagrama.",
+    "tikz": {
+      "title": "Diagramă TikZ",
+      "description": "Noduri și săgeți în TikZ, pentru documente LaTeX."
+    },
+    "typst": {
+      "title": "Diagramă Typst",
+      "description": "O diagramă fletcher pentru documente Typst."
+    },
+    "mermaid": {
+      "title": "Diagramă Mermaid",
+      "description": "O diagramă de flux Mermaid pentru documente Markdown."
+    }
+  },
   "package": {
     "composer": {
       "title": "Inserează diagramă",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Anulează (Esc)",
       "cancelRename": "Anulează redenumirea",
       "renameTooltip": "Redenumește diagrama",
-      "importTooltip": "Importă un fișier .tikz sau .tex, înlocuind această ciornă",
-      "importLabel": "Importă fișier TikZ",
+      "importTooltip": "Importă un fișier .tikz, .tex, .typ, .mmd sau .md, înlocuind această ciornă",
+      "importLabel": "Importă fișier de diagramă",
       "modeDraw": "Desenare",
       "modeCode": "Cod",
       "fixWithAiTooltip": "Cere-i AI-ului să repare eroarea de compilare",
@@ -28,20 +44,29 @@
       "newProject": "Proiect nou",
       "noOtherProjects": "Încă nu ai alte proiecte.",
       "saveFigure": "Salvează figura",
+      "insertTypst": "Inserează ca Typst",
+      "insertLatex": "Inserează ca TikZ",
       "downloadTooltip": "Descarcă această diagramă",
       "download": "Descarcă",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (în curând)",
       "svgTooltip": "Exportul SVG are nevoie de un randator vectorial, care încă nu este disponibil",
       "snippets": "Fragmente",
-      "untitledName": "Diagramă fără titlu"
+      "untitledName": "Diagramă fără titlu",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Inserează ca Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Limbajul diagramei: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Nod dreptunghiular",
       "circleNode": "Nod circular",
       "arrowEdge": "Muchie cu săgeată",
       "lineEdge": "Muchie simplă",
-      "scope": "Domeniu"
+      "scope": "Domeniu",
+      "group": "Grup"
     },
     "preview": {
       "label": "Previzualizare",
@@ -53,7 +78,8 @@
       "pngScale": "Scara PNG",
       "scaleFactor": "{{factor}}x",
       "background": "Fundal",
-      "backgroundLabel": "Culoarea de fundal a figurii"
+      "backgroundLabel": "Culoarea de fundal a figurii",
+      "diagnosticAt": "Linia {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Diagrama nu s-a compilat. Verifică jurnalul de mai jos.",
@@ -68,16 +94,25 @@
       "figureCached": "Există deja în cache, se refolosește figura existentă.",
       "figureSaved": "Salvat în cache-ul de figuri.",
       "saveFigureFailed": "Figura nu a putut fi salvată: {{detail}}",
+      "insertedTypst": "Inserat ca cod Typst.",
+      "insertedLatex": "Inserat ca cod TikZ.",
       "downloaded": "Descărcat.",
       "imported": "{{name}} a fost importat pentru editare.",
       "importedCodeOnly": "{{name}} a fost importat (doar cod, nu se poate desena).",
       "importFailed": "Fișierul nu a putut fi importat: {{detail}}",
       "noAiFix": "AI-ul nu a returnat nicio reparație.",
       "fixFailed": "Repararea a eșuat: {{detail}}",
-      "notDrawable": "Nimic din acest cod nu a putut fi desenat. Codul rămâne neatins."
+      "notDrawable": "Nimic din acest cod nu a putut fi desenat. Codul rămâne neatins.",
+      "savedTypstToProject": "S-a salvat {{path}}. Adaugă-l într-un document cu #include.",
+      "insertedMermaid": "Inserat ca bloc de cod Mermaid.",
+      "savedMermaidToProject": "S-a salvat {{path}}. Adaugă-l într-un document Markdown, într-un bloc de cod mermaid.",
+      "typstPackageMissing": "Typst nu a putut obține pachetul fletcher. Conectează-te o dată la internet ca Typst să îl poată descărca și păstra.",
+      "previewUnavailable": "Această previzualizare nu este disponibilă aici.",
+      "readerUnavailable": "Cititorul de cod nu s-a putut încărca. Încearcă din nou."
     },
     "confirm": {
-      "overwrite": "{{files}} există deja. Suprascrii? (Alege alt nume ca să le păstrezi pe amândouă.)"
+      "overwrite": "{{files}} există deja. Suprascrii? (Alege alt nume ca să le păstrezi pe amândouă.)",
+      "switchLanguage": "Treci această diagramă din {{from}} în {{to}}? Codul pe care pânza nu îl poate afișa nu va fi preluat."
     },
     "canvas": {
       "shapeTools": "Instrumente pentru forme",
@@ -136,7 +171,58 @@
       "routingStraight": "Drept",
       "routingOrthogonal": "Ortogonal",
       "routingCurved": "Curbat",
-      "line": "Linie"
+      "line": "Linie",
+      "nodeLabelTypst": "Etichetă (Typst)"
+    },
+    "notes": {
+      "tooltip": "Ce nu afișează complet pânza",
+      "count_one": "{{count}} notă",
+      "count_few": "{{count}} note",
+      "count_other": "{{count}} de note",
+      "keptHeading": "Păstrate în cod",
+      "approximatedHeading": "Afișate aproximativ",
+      "droppedHeading": "Nedesenate pe pânză",
+      "notDiagram": "În acest cod nu există nimic pe care pânza să îl poată desena.",
+      "outsideCode": "Codul dinainte sau de după diagramă este păstrat așa cum este scris.",
+      "wrapper": "Codul din jurul diagramei, de exemplu o figură, este păstrat așa cum este scris.",
+      "diagramSetting": "Setarea de diagramă {{detail}} este păstrată în cod.",
+      "edgeOption": "Opțiunea de muchie {{detail}} este păstrată în cod.",
+      "scripted": "Conținutul scriptat al diagramei, de exemplu buclele, este păstrat în cod.",
+      "mathMode": "Conținutul diagramei în mod matematic este păstrat în cod.",
+      "unplacedNode": "Nodurile fără o poziție fixă sunt păstrate în cod.",
+      "unreadEdge": "Muchiile pe care pânza nu le poate citi sunt păstrate în cod.",
+      "danglingEdge": "Muchiile care nu leagă două noduri sunt păstrate în cod.",
+      "gridCoordinates": "Coordonatele de grilă sunt afișate în poziții fixe.",
+      "formattedLabels": "Etichetele formatate sunt afișate ca text simplu.",
+      "unknownShapes": "Formele pe care pânza nu le are sunt afișate ca dreptunghiuri.",
+      "estimatedSize": "Nodurile fără lățime și înălțime sunt afișate la o dimensiune estimată.",
+      "colorAdjustments": "Culorile ajustate, de exemplu cu lighten, sunt afișate cu culoarea de bază.",
+      "colorExpressions": "Culorile setate prin variabile sau expresii nu sunt afișate pe pânză.",
+      "strokeStyles": "Unele stiluri de linie sunt afișate cu cel mai apropiat stil de pe pânză.",
+      "arrowMarks": "Vârfurile de săgeată pe care pânza nu le are sunt afișate ca săgeți simple.",
+      "freePoints": "Muchiile care trec prin puncte libere sunt desenate drept pe pânză.",
+      "tikzCommand": "Comanda {{detail}} nu este desenată. O editare pe pânză rescrie codul fără ea.",
+      "truncated": "Codul este prea lung, așa că doar prima lui parte este desenată.",
+      "mermaidNotFlowchart": "Pe pânză se pot desena doar diagrame de flux. Acest cod este o diagramă {{detail}}.",
+      "mermaidFrontmatter": "Antetul YAML este păstrat în cod.",
+      "mermaidDirective": "Directivele de configurare sunt păstrate în cod.",
+      "mermaidComment": "Comentariile sunt păstrate în cod.",
+      "mermaidAccessibility": "Titlurile și descrierile pentru accesibilitate sunt păstrate în cod.",
+      "mermaidClick": "Acțiunile click sunt păstrate în cod.",
+      "mermaidStyleProperty": "Proprietatea de stil {{detail}} este păstrată în cod.",
+      "mermaidClassProperty": "Proprietatea de clasă {{detail}} este păstrată în cod.",
+      "mermaidLinkStyleProperty": "Proprietatea de stil al legăturii {{detail}} este păstrată în cod.",
+      "mermaidNodeSetting": "Setarea de nod {{detail}} este păstrată în cod.",
+      "mermaidEdgeSetting": "Setarea de muchie {{detail}} este păstrată în cod.",
+      "mermaidInvisibleLink": "Legăturile invizibile sunt păstrate în cod.",
+      "mermaidLinkLength": "Lungimile legăturilor sunt păstrate în cod.",
+      "mermaidSubgraphDirection": "Direcțiile din blocurile subgraph sunt păstrate în cod.",
+      "mermaidUnknownStatement": "Instrucțiunile pe care pânza nu le poate citi sunt păstrate în cod.",
+      "mermaidShape": "Forma {{detail}} este afișată ca cea mai apropiată formă de pe pânză.",
+      "mermaidThickLink": "Legăturile groase sunt afișate ca linii normale.",
+      "mermaidArrowHead": "Vârfurile de săgeată în formă de cerc sau cruce sunt afișate ca săgeți.",
+      "mermaidMarkdownLabel": "Etichetele Markdown sunt afișate ca text simplu.",
+      "mermaidNoFlowchartHeader": "Pe pânză se pot desena doar diagrame de flux. Începe codul cu flowchart sau graph."
     }
   }
 }

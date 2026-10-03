@@ -1,4 +1,5 @@
 import { PdfToolbarControls } from "./PdfToolbarControls";
+import { present } from "@/features/presentation/launch";
 import { CompileLogControls } from "./CompileLogControls";
 import { SavePreviewDialog } from "./SavePreviewDialog";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
@@ -64,6 +65,7 @@ import {
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
+import { useTypstToolchainFor, useTypstToolchainStore } from "@/store/typst-toolchain";
 import {
   attachPreviewZoom,
   MAX_PREVIEW_SCALE,
@@ -301,6 +303,8 @@ export function PreviewWindow({
   const [fsToolbarHidden, setFsToolbarHidden] = useState(false);
   const [rotationPending, setRotationPending] = useState(false);
   const command = (request: PreviewWorkspaceCommand) => sendPreviewCommand(projectId, request);
+  const typstToolchain = useTypstToolchainFor(disableNativeBridge ? null : workspace?.engine);
+  const refreshTypstToolchain = useTypstToolchainStore((s) => s.refresh);
   usePreviewGeometry(projectId, !disableNativeBridge && isTauri());
   const [compileState, setCompileState] =
     useState<PreviewWindowState | null>(initialContext.state);
@@ -1105,6 +1109,15 @@ export function PreviewWindow({
           blockedReason={workspace?.noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
           systemTexLocked={workspace?.systemTexLocked ?? false}
           onTrustForSystemTex={() => { void command({ action: "trust-folder" }); }}
+          typstToolchain={typstToolchain}
+          setTypstVersion={(version) => command({ action: "typst-version", version })}
+          setTypstOptions={(update) => command({ action: "typst-options", ...update })}
+          typstVariant={workspace?.typstVariant ?? null}
+          setTypstVariant={(variant) => { void command({ action: "typst-variant", variant }); }}
+          livePreview={workspace?.livePreview}
+          onOptionsOpen={() => {
+            if (workspace?.engine.source_format === "typst") void refreshTypstToolchain();
+          }}
         />
         <Button size="sm" variant="ghost" className="ml-auto" data-testid="preview-reattach"
           onClick={() => void getCurrentWindow().close()}>{t(($) => $.ai.shell.dockBack)}</Button>
@@ -1136,10 +1149,19 @@ export function PreviewWindow({
           isFs={isFs} setFsToolbarHidden={setFsToolbarHidden} toggleFullscreen={toggleFullscreen}
           detached onWindow={() => void getCurrentWindow().close()}
           onSettings={() => void command({ action: "pdf-settings" })}
+          onPresent={(mode) =>
+            void present({
+              projectId,
+              mode,
+              page,
+              mainDoc: workspace?.mainDoc || compileState?.identity.mainDocument || null,
+              typst: workspace?.engine.source_format === "typst",
+            })
+          }
         />}
       </div>
       {logsOpen && workspace && <div className="min-h-0 flex-1" data-testid="detached-compile-log">
-        <LogPane snapshot={workspace} onOpenLocation={(file, line) => command({ action: "source-location", file, line })} />
+        <LogPane snapshot={workspace} onOpenLocation={(file, line, column) => command({ action: "source-location", file, line, column })} />
       </div>}
 
       {renderStaleNotice()}

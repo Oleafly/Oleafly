@@ -96,7 +96,9 @@
     "chooseEngine": "Escolher motor…",
     "installPackages_one": "Localizar e instalar {{name}}",
     "installPackages_many": "Localizar e instalar {{count}} arquivos",
-    "installPackages_other": "Localizar e instalar {{count}} arquivos"
+    "installPackages_other": "Localizar e instalar {{count}} arquivos",
+    "downloadTypst": "Baixar Typst {{version}}",
+    "useTypst": "Usar Typst {{version}}"
   },
   "stale": {
     "badge": "Desatualizado",
@@ -105,8 +107,8 @@
     "explanation": "Este PDF não representa a revisão ativa do projeto.",
     "revisionExplanation": "Mostrando a revisão {{displayed}} do projeto. O projeto ativo está na revisão {{active}}.",
     "noIdentity": "O PDF exibido não tem uma identidade de compilação verificada para a revisão ativa.",
-    "syncTexAvailable": "O SyncTeX usa a linha inalterada mais próxima para as edições.",
-    "syncTexUnavailable": "O SyncTeX exige uma compilação atual."
+    "syncTexAvailable": "A sincronização com o código usa a linha inalterada mais próxima para as edições.",
+    "syncTexUnavailable": "A sincronização com o código exige uma compilação atual."
   },
   "save": {
     "title": "Salvar o PDF no projeto",
@@ -274,5 +276,33 @@
       "pageLabel": "Página {{page}} de {{total}}",
       "empty": "Nenhum texto legível foi encontrado nesta página."
     }
+  },
+  "presentation": {
+    "windowTitle": "Apresentação",
+    "presenterTitle": "Modo do apresentador",
+    "present": "Apresentar",
+    "presentFromStart": "Apresentar do início",
+    "presentFromPage": "Apresentar desta página",
+    "presentWithPresenter": "Apresentar com o modo do apresentador",
+    "loading": "Abrindo os slides",
+    "failed": "Não foi possível abrir os slides. Compile o projeto e tente de novo.",
+    "close": "Fechar",
+    "slideLabel": "Slide {{page}} de {{total}}",
+    "current": "Slide atual",
+    "next": "Próximo slide",
+    "lastSlide": "Este é o último slide.",
+    "notes": "Notas do apresentador",
+    "notesLoading": "Lendo as notas do apresentador",
+    "noNotes": "Nenhuma nota do apresentador para este slide.",
+    "elapsed": "Tempo decorrido",
+    "clock": "Hora atual",
+    "pause": "Pausar o cronômetro",
+    "resume": "Retomar o cronômetro",
+    "reset": "Zerar o cronômetro",
+    "previousAction": "Slide anterior",
+    "nextAction": "Próximo slide",
+    "end": "Encerrar apresentação",
+    "blank": "A tela do público está apagada. Pressione B para mostrar os slides.",
+    "toggleBlank": "Apagar a tela do público"
   }
 }

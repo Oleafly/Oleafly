@@ -314,7 +314,7 @@
       "literatureSearch": "Vyhledat články v OpenAlex podle klíčových slov, bez potřeby klíče.",
       "verifyCitation": "Převést DOI nebo název na ověřený BibTeX přes doi.org nebo Crossref.",
       "projectLibrarySearch": "Prohledat vlastní text a poznámky projektu podle klíčových slov.",
-      "previewFigure": "Zkompilovat obrázek TikZ nebo PGFPlots samostatně a ukázat výsledek v chatu.",
+      "previewFigure": "Vykreslit obrázek TikZ nebo CeTZ samostatně a ukázat výsledek v chatu.",
       "insertFigure": "Vložit hotový obrázek na pozici kurzoru s popiskem a návěštím a uložit PNG do figures/.",
       "loadImage": "Podívat se na obrázek, který už v projektu je.",
       "updateTodos": "Zapsat nebo aktualizovat plán po krocích zobrazený v chatu.",
@@ -357,6 +357,7 @@
     "noDescription": "Popis není k dispozici.",
     "notes": {
       "latexOnly": "Jen projekty LaTeX",
+      "latexAndTypstOnly": "Jen projekty LaTeX a Typst",
       "pdfCaptureSetting": "Vyžaduje nastavení snímání stránek PDF",
       "chatApproval": "Schvaluje se v chatu, vždy jeden příkaz",
       "browserSetting": "Vyžaduje nastavení webového prohlížeče"
@@ -694,6 +695,24 @@
     "tikzFigure": {
       "label": "Obrázek TikZ",
       "description": "Navrhnout kód TikZ přímo v chatu"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Opravit chyby Typst"
+      },
+      "writeEquation": {
+        "description": "Z přirozeného jazyka do matematiky Typst"
+      },
+      "academicPresentation": {
+        "description": "Prezentace ve formátu Typst z vašeho článku"
+      },
+      "generateTable": {
+        "description": "Navrhnout tabulku Typst přímo v chatu"
+      },
+      "figure": {
+        "label": "Obrázek CeTZ",
+        "description": "Navrhnout kód CeTZ v chatu"
+      }
     }
   },
   "turn": {

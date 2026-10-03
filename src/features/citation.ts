@@ -41,6 +41,7 @@ import { useSettingsStore } from "@/store/settings";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView, insertAtCursor } from "@/components/editor/cm/controller";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { logError } from "@/lib/log";
 import { basename } from "@/lib/path-utils";
 
 export async function resolveCitation(
@@ -247,6 +248,7 @@ function pickTargetBib(
   files: ReturnType<typeof useFilesStore.getState>,
   source: string | undefined,
   acceptHayagriva: boolean,
+  preferred?: string,
 ): { path: string; content: string; readOnly: boolean } {
   // Look for \bibliography in the document that actually compiles, which a
   // `% !TEX root` comment in the active file may redirect.
@@ -260,7 +262,8 @@ function pickTargetBib(
     ? files.tree.filter((f) => !f.is_dir && !f.read_only && isHayagrivaPath(f.path)).map((f) => f.path)
     : undefined;
 
-  const path = selectCitationBibliography(
+  const preferredWritable = preferred !== undefined && (writable.includes(preferred) || hayagriva?.includes(preferred));
+  const path = preferredWritable ? preferred : selectCitationBibliography(
     files.engine.capabilities.formatting_profile,
     mainContent,
     writable,
@@ -291,7 +294,11 @@ function validateCitationFiles(files: ReturnType<typeof useFilesStore.getState>,
   }
 }
 
-async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState>, acceptHayagriva = false) {
+async function loadCitationFiles(
+  files: ReturnType<typeof useFilesStore.getState>,
+  acceptHayagriva = false,
+  preferred?: string,
+) {
   const id = files.projectId;
   const profile = files.engine.capabilities.formatting_profile;
   const read = async (path: string, allowMissing = false) => {
@@ -304,18 +311,20 @@ async function loadCitationFiles(files: ReturnType<typeof useFilesStore.getState
   const main = id && (profile === "typst" || profile === "markdown")
     ? await read(files.mainDoc)
     : undefined;
-  const target = pickTargetBib(files, main, acceptHayagriva);
+  const target = pickTargetBib(files, main, acceptHayagriva, preferred);
   const content = await read(target.path, true);
 
   return { target, content, main };
 }
 
-export async function bibliographyTargetForProject(): Promise<
+export async function bibliographyTargetForProject(
+  options: { acceptHayagriva?: boolean } = {},
+): Promise<
   { path: string; exists: boolean; content: string; readOnly: boolean } | null
 > {
   const files = useFilesStore.getState();
   if (!files.projectId) return null;
-  const loaded = await loadCitationFiles(files);
+  const loaded = await loadCitationFiles(files, options.acceptHayagriva === true);
   const exists = files.tree.some(
     (entry) => !entry.is_dir && entry.path === loaded.target.path,
   );
@@ -332,9 +341,10 @@ type LoadedCitationFiles = Awaited<ReturnType<typeof loadCitationFiles>>;
 
 async function loadCitationTarget(
   files: CitationFiles,
+  preferred?: string,
 ): Promise<{ loaded: LoadedCitationFiles } | { error: string }> {
   try {
-    const loaded = await loadCitationFiles(files, true);
+    const loaded = await loadCitationFiles(files, true, preferred);
     validateCitationFiles(files, loaded.target.path);
     return { loaded };
   } catch (error) {
@@ -467,7 +477,10 @@ function dedupeImportedEntries(
   return { newBlocks, duplicates };
 }
 
-export async function addCitation(bibtex: string): Promise<{ key: string } | { error: string }> {
+export async function addCitation(
+  bibtex: string,
+  options: { bibliography?: string } = {},
+): Promise<{ key: string } | { error: string }> {
   if (projectFolderIsReadOnly(useFilesStore.getState().projectId)) {
     return { error: readOnlyFolderMessage() };
   }
@@ -476,7 +489,7 @@ export async function addCitation(bibtex: string): Promise<{ key: string } | { e
 
   const files = useFilesStore.getState();
   const id = files.projectId;
-  const outcome = await loadCitationTarget(files);
+  const outcome = await loadCitationTarget(files, options.bibliography);
   if ("error" in outcome) return { error: outcome.error };
   const loaded = outcome.loaded;
   const { target, content } = loaded;
@@ -517,6 +530,16 @@ export interface BatchImportResult {
   bibPath?: string;
 }
 
+async function bulkImportBibliography(): Promise<string | undefined> {
+  try {
+    const { preferredCitationBibliography } = await import("./citation-bibliographies");
+    return (await preferredCitationBibliography()) ?? undefined;
+  } catch (error) {
+    void logError("choose citation bibliography", error);
+    return undefined;
+  }
+}
+
 // Imports a whole reference library (from Zotero/EndNote/RIS/BibTeX) into the
 // project's bib file in one write, deduping by DOI against both the existing
 // file and the rest of the batch. Unlike addCitation, this never inserts a
@@ -527,9 +550,10 @@ export async function addCitations(entries: ParsedBib[]): Promise<BatchImportRes
     return { imported: 0, duplicates: 0, errors: [readOnlyFolderMessage()] };
   }
 
+  const preferred = await bulkImportBibliography();
   const files = useFilesStore.getState();
   const id = files.projectId;
-  const outcome = await loadCitationTarget(files);
+  const outcome = await loadCitationTarget(files, preferred);
   if ("error" in outcome) return { imported: 0, duplicates: 0, errors: [outcome.error] };
   const loaded = outcome.loaded;
   const { target, content } = loaded;

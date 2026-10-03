@@ -42,7 +42,18 @@
     "selectImage": "Vælg et billede for at indsætte det.",
     "editTitle": "Rediger billedet",
     "editDescription": "Byt billedet ud, eller ændr dets bredde. Figurteksten og etiketten bliver, som de er.",
-    "save": "Gem billedet"
+    "save": "Gem billedet",
+    "customWidthPlaceholderTypst": "8cm eller 60%",
+    "altLabel": "Alternativ tekst",
+    "altPlaceholder": "Beskriv billedet til skærmlæsere",
+    "placement": "Placering",
+    "placementNone": "På stedet",
+    "placementAuto": "Automatisk",
+    "placementTop": "Øverst",
+    "placementBottom": "Nederst",
+    "editFigureTitle": "Rediger figur",
+    "editFigureDescription": "Skift billedet, størrelsen, figurteksten, etiketten, den alternative tekst eller placeringen.",
+    "saveFigure": "Gem figur"
   },
   "tableToolbar": {
     "label": "Tabelværktøjer",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Indsæt blokcitat",
     "insertFigure": "Indsæt figur",
     "insertImage": "Indsæt billede",
+    "drawDiagram": "Tegn et diagram",
     "insertTable": "Indsæt tabel",
     "imageToLatexTooltip": "Billede til LaTeX (transskriber med AI)",
     "imageToLatex": "Billede til LaTeX",
@@ -130,6 +142,7 @@
     "redo": "Gentag ({{shortcut}})",
     "find": "Find ({{shortcut}})",
     "goToPdf": "Gå til PDF (SyncTeX)",
+    "goToPdfTypst": "Gå til PDF",
     "linkUrl": "URL til linket",
     "removeLink": "Fjern linket",
     "imageFile": "Billedfil",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "Opdel",
     "both": "Begge",
-    "stacked": "Stablet"
+    "stacked": "Stablet",
+    "displayMath": "Ligning på egen linje",
+    "numberedEquation": "Nummereret ligning",
+    "alignedEquations": "Opstillede ligninger",
+    "addLabel": "Tilføj etiket",
+    "imageToTypst": "Billede til Typst",
+    "imageToTypstTooltip": "Billede til Typst (transskriber med AI)",
+    "typstPackages": "Typst-pakker",
+    "latexPackages": "LaTeX-pakker"
   },
   "contextMenu": {
     "engineUnavailable": "Handlinger fra dokumentmotoren er ikke tilgængelige",
     "askAi": "Spørg AI…",
     "noIndexedSymbol": "Der er intet indekseret symbol her.",
     "noRenamableSymbol": "Der er intet symbol her, der kan omdøbes.",
+    "formatDocument": "Formater dokumentet",
+    "formatSelection": "Formater markeringen",
     "itemize": "itemize",
     "enumerate": "enumerate",
     "figure": "Figur",
@@ -156,7 +179,16 @@
     "equationAsPng": "Ligning som PNG",
     "crossReference": "Krydsreference",
     "label": "Etiket",
-    "footnote": "Fodnote"
+    "footnote": "Fodnote",
+    "toggleComment": "Slå kommentar til eller fra",
+    "inlineMath": "Matematik i linjen",
+    "displayMath": "Ligning på egen linje",
+    "numberedEquation": "Nummereret ligning",
+    "alignedEquations": "Opstillede ligninger",
+    "quote": "Citat",
+    "addLabel": "Tilføj etiket",
+    "convertLatexMath": "Konverter LaTeX-matematik til Typst",
+    "noLatexMath": "Marker noget LaTeX-matematik først."
   },
   "shell": {
     "noFileOpenTab": "Ingen fil er åben",
@@ -233,9 +265,15 @@
     "footerTypst": "Specialtegn bliver escapet i tabellens kilde.",
     "footerLatex": "Den genererede LaTeX-tabel bruger booktabs til sine vandrette streger.",
     "chooseAnother": "Vælg en anden fil",
-    "chooseFile": "Vælg CSV, TSV eller XLSX",
+    "chooseFile": "Vælg CSV, TSV, XLSX eller JSON",
     "selectedSummary": "{{file}} · Rækker: {{rows}} · Kolonner: {{columns}}",
     "firstRowHeader": "Første række er en hovedrække",
+    "keepLinked": "Hold forbundet med datafilen",
+    "keepLinkedHint": "Kopierer dataene til datamappen. Rediger den fil, så ændres tabellen ved næste kompilering.",
+    "footerLinked": "Tabellen læser {{path}}, hver gang dokumentet kompileres.",
+    "jsonNotTable": "Denne JSON-fil er ikke en liste af poster eller rækker.",
+    "insertedLinked": "Forbundet tabel indsat. Rediger {{path}} for at ændre den.",
+    "linkFailed": "Dataene kunne ikke kopieres ind i projektet.",
     "captionLabel": "Tabeltekst (valgfri)",
     "captionPlaceholder": "Resultater på tværs af alle kørsler",
     "labelLabel": "Etiket (valgfri)",
@@ -308,7 +346,17 @@
     "info": "Info",
     "empty": "Resultatet af kompileringen dukker op her.",
     "scrollToTop": "Rul til toppen",
-    "scrollToBottom": "Rul til bunden"
+    "scrollToBottom": "Rul til bunden",
+    "locationFileLineColumn": "{{file}} · linje {{line}}, kolonne {{column}}",
+    "locationLineColumn": "linje {{line}}, kolonne {{column}}",
+    "hint": "Tip",
+    "sourceExcerpt": "Kildelinje {{line}}",
+    "summaryErrors_one": "{{count}} fejl",
+    "summaryErrors_other": "{{count}} fejl",
+    "summaryWarnings_one": "{{count}} advarsel",
+    "summaryWarnings_other": "{{count}} advarsler",
+    "summaryReferences_one": "{{count}} uløst reference",
+    "summaryReferences_other": "{{count}} uløste referencer"
   },
   "history": {
     "untitledCommit": "Commit uden titel",
@@ -353,7 +401,8 @@
       "navigation": "Navigation",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Indstillinger"
+      "settings": "Indstillinger",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Kompiler igen",
@@ -370,12 +419,20 @@
       "goToDefinition": "Gå til definitionen",
       "findReferences": "Find referencer",
       "renameSymbol": "Omdøb symbolet (i hele projektet)",
+      "formatDocument": "Formater Typst-dokumentet",
       "commandPalette": "Kommandopalet",
       "searchAllDocuments": "Søg i alle dokumenter",
       "goToPdf": "Gå til PDF (SyncTeX fremad)",
       "jumpToSource": "Hop til kilden fra PDF'en",
       "commitAndPush": "Commit og push",
-      "openSettings": "Åbn indstillinger"
+      "openSettings": "Åbn indstillinger",
+      "typstContinueList": "Fortsæt listen med et nyt punkt",
+      "typstItemNewLine": "Start en ny linje i listepunktet",
+      "typstRemoveMarker": "Fjern punkttegnet før markøren",
+      "typstIndentItem": "Ryk listepunktet et niveau ind",
+      "typstOutdentItem": "Ryk listepunktet et niveau op",
+      "typstMathPair": "Luk $-matematik automatisk, mellemrum gør det til matematik på egen linje",
+      "typstWrapSelection": "Omgiv markeringen med fed, fremhævet, rå tekst eller matematik"
     }
   },
   "citations": {
@@ -646,6 +703,7 @@
       "unsupported": "Udtrykket er ufuldstændigt eller understøttes ikke.",
       "missingClosing": "Der mangler et afsluttende {{delimiter}}.",
       "notRendered": "Udtrykket kunne ikke gengives.",
+      "typstUnavailable": "Typst-forhåndsvisningen er ikke tilgængelig.",
       "preview": {
         "moreOptions": "Flere muligheder",
         "hide": "Skjul",
@@ -653,6 +711,10 @@
         "disable": "Slå fra",
         "disableDescription": "Slår forhåndsvisningen af ligninger fra. Du kan slå den til igen under Indstillinger."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Indsæt som Typst-matematik",
+      "pasteOffer": "LaTeX-matematik indsat"
     },
     "latex": {
       "command": {
@@ -835,6 +897,45 @@
         "revtex": "REVTeX-stil"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Overskrift",
+        "figure": "Figur med billede",
+        "tableFigure": "Figur med tabel",
+        "table": "Tabel",
+        "equation": "Ligning på egen linje",
+        "numberedEquation": "Nummereret ligning med etiket",
+        "footnote": "Fodnote",
+        "quote": "Blokcitat",
+        "code": "Kodeblok",
+        "outline": "Indholdsfortegnelse",
+        "bibliography": "Litteraturliste",
+        "pagebreak": "Sideskift",
+        "columns": "Spalter",
+        "grid": "Gitter",
+        "link": "Link",
+        "list": "Punktopstilling",
+        "enum": "Nummereret liste",
+        "terms": "Begrebsliste",
+        "partBibliography": "Litteraturliste for én del med etiket"
+      },
+      "bibliographyStyle": {
+        "builtin": "indbygget CSL-stil",
+        "citation": "kun citationsstil",
+        "project": "CSL-fil i dette projekt"
+      },
+      "bibliographyParameter": {
+        "target": "hvilke citationer den viser",
+        "group": "hvordan numrene deles",
+        "targetAuto": "den nærmeste litteraturliste med nøglen",
+        "targetWithin": "citationer i en del med etiket",
+        "targetAfter": "citationer efter en etiket",
+        "targetBefore": "citationer før en etiket",
+        "groupAuto": "nummerer sammen med de andre litteraturlister",
+        "groupNone": "nummerer for sig",
+        "groupNamed": "nummerer sammen med litteraturlister med samme navn"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Resumé",
@@ -961,6 +1062,12 @@
       "reference": "Reference",
       "label": "Etiket",
       "includedFile": "Inkluderet fil",
+      "typst": {
+        "settings": {
+          "show": "Vis dokumentindstillinger",
+          "hide": "Skjul dokumentindstillinger"
+        }
+      },
       "table": {
         "captionPlacement": "Tabeltekst",
         "captionAbove": "Tabeltekst over",
@@ -1035,6 +1142,11 @@
     "goTo": "Gå til {{title}}",
     "untitled": "Uden titel"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Åbn på Typst Universe",
+    "formatUnavailable": "Typst-formateringen er ikke klar endnu. Prøv igen om et øjeblik.",
+    "formatFailed": "Filen kunne ikke formateres."
+  },
   "changedOnDisk": {
     "message": "{{file}} blev ændret på disken, mens du havde ændringer, der ikke var gemt.",
     "compare": "Sammenlign",
@@ -1042,5 +1154,330 @@
     "reload": "Genindlæs",
     "failed": "Oleafly kunne ikke opdatere {{file}}. Prøv igen.",
     "tabMark": "Ændret på disken. Åbn fanen for at vælge, hvilken version du vil beholde."
+  },
+  "labels": {
+    "filterPlaceholder": "Etiketnavn",
+    "filterLabel": "Filtrer projektets etiketter",
+    "noMatches": "Ingen matchende etiketter.",
+    "empty": "Ingen etiketter i projektet endnu.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Tilføj en etiket her"
+  },
+  "typst": {
+    "numberingNote": "Ligningsnumre kræver en nummereringsregel.",
+    "addNumberingRule": "Tilføj regel",
+    "bibliographyAdded": "Litteraturlisten er føjet til {{file}}."
+  },
+  "typstInsights": {
+    "title": "Indsigt i dokumentet",
+    "description": "Hvad det kompilerede dokument indeholder, med links tilbage til kilden.",
+    "refresh": "Opdater",
+    "copyMetadata": "Kopier metadata til indsendelse",
+    "metadataCopied": "Metadata til indsendelse er kopieret til udklipsholderen.",
+    "copyFailed": "Metadataene blev ikke kopieret. Tjek adgangen til udklipsholderen, og prøv igen.",
+    "loading": "Læser dokumentet med Typst",
+    "compileFailed": "Typst kunne ikke kompilere dokumentet. Ret disse fejl for at få vist figurer, tabeller og ligninger.",
+    "noProject": "Åbn et Typst-projekt først.",
+    "tabs": {
+      "overview": "Overblik",
+      "headings": "Overskrifter",
+      "figures": "Figurer",
+      "tables": "Tabeller",
+      "equations": "Ligninger",
+      "labels": "Etiketter",
+      "citations": "Citationer",
+      "todos": "Huskenoter"
+    },
+    "metadata": {
+      "heading": "Metadata til indsendelse",
+      "title": "Titel",
+      "authors": "Forfattere",
+      "keywords": "Nøgleord",
+      "abstract": "Resumé",
+      "date": "Dato",
+      "missing": "Ikke angivet"
+    },
+    "empty": {
+      "headings": "Ingen overskrifter i det kompilerede dokument.",
+      "figures": "Ingen figurer i det kompilerede dokument.",
+      "tables": "Ingen tabeller i det kompilerede dokument.",
+      "equations": "Ingen ligninger på egen linje i det kompilerede dokument.",
+      "labels": "Ingen etiketter i dokumentet.",
+      "citations": "Ingen citationer i det kompilerede dokument.",
+      "todos": "Ingen TODO- eller FIXME-noter."
+    },
+    "labelKinds": {
+      "heading": "Overskrift",
+      "figure": "Figur",
+      "table": "Tabel",
+      "equation": "Ligning",
+      "other": "Andet"
+    },
+    "page": "Side {{page}}",
+    "unnumbered": "Unummereret",
+    "untitled": "Ingen figurtekst",
+    "cited_one": "Citeret {{count}} gang",
+    "cited_other": "Citeret {{count}} gange",
+    "notInSource": "Ikke fundet i kilden",
+    "openSource": "Åbn {{file}} på linje {{line}}",
+    "versionNote": "Typst {{version}} med typst {{method}}",
+    "truncated": "Kun de første 5.000 elementer vises."
+  },
+  "documentInsights": {
+    "description": "Hvad dokumentet indeholder, med links tilbage til kilden.",
+    "loading": "Læser dokumentet",
+    "noProject": "Åbn et projekt først.",
+    "unresolved": "Ikke i litteraturlisten",
+    "unresolvedCount_one": "{{count}} citeret nøgle mangler i litteraturlisten.",
+    "unresolvedCount_other": "{{count}} citerede nøgler mangler i litteraturlisten.",
+    "numbersCurrent": "Numre og sider er fra den seneste kompilering.",
+    "numbersStale": "Kilden er ændret efter den seneste kompilering. Kompiler igen for at se numre og sider.",
+    "numbersMissing": "Kompiler dokumentet for at se numre og sider.",
+    "sourceOrder": "Vist i samme rækkefølge som i kilden.",
+    "empty": {
+      "headings": "Ingen overskrifter i dokumentet.",
+      "figures": "Ingen figurer i dokumentet.",
+      "tables": "Ingen tabeller i dokumentet.",
+      "equations": "Ingen ligninger på egen linje i dokumentet.",
+      "citations": "Ingen citationer i dokumentet."
+    }
+  },
+  "typstSettings": {
+    "title": "Dokumentindstillinger",
+    "description": "Regler for side, tekst og nummerering i {{file}}.",
+    "templateNotice": "Dette dokument bruger en skabelon. Værdier, der er angivet i skabelonen, vises ikke her. En værdi, du angiver her, tilsidesætter skabelonen.",
+    "loading": "Læser hovedfilen",
+    "readFailed": "Hovedfilen kunne ikke læses.",
+    "saveFailed": "Hovedfilen kunne ikke opdateres.",
+    "noMainFile": "Projektet har ingen Typst-hovedfil.",
+    "applied": "Dokumentindstillingerne er opdateret.",
+    "apply": "Anvend",
+    "cancel": "Annuller",
+    "sections": {
+      "page": "Side",
+      "text": "Tekst",
+      "paragraph": "Afsnit",
+      "numbering": "Nummerering"
+    },
+    "fields": {
+      "paper": "Sidestørrelse",
+      "margin": "Margener",
+      "columns": "Spalter",
+      "font": "Brødtekstens skrifttype",
+      "fontSize": "Skriftstørrelse",
+      "lang": "Sprog",
+      "region": "Område",
+      "justify": "Justering",
+      "leading": "Linjeafstand",
+      "headingNumbering": "Nummerering af overskrifter",
+      "equationNumbering": "Nummerering af ligninger"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Standard",
+      "justified": "Lige margener",
+      "ragged": "Lige venstremargen",
+      "off": "Fra"
+    },
+    "locked": {
+      "template": "Angivet af skabelonen",
+      "expression": "Angivet af et udtryk i kilden"
+    },
+    "invalid": {
+      "length": "Brug en længde som 11pt, 2.5cm eller 0.65em.",
+      "margin": "Brug en længde som 2.5cm eller auto.",
+      "columns": "Brug et helt tal fra 1 til 99.",
+      "lang": "Brug en sprogkode på to eller tre bogstaver som en.",
+      "region": "Brug en områdekode på to bogstaver som GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Klasseindstillinger og præambelindstillinger i {{file}}.",
+    "markdownDescription": "Felter i YAML-hovedet i {{file}}.",
+    "noLatexMainFile": "Projektet har ingen LaTeX-hovedfil.",
+    "noMarkdownMainFile": "Projektet har ingen Markdown-hovedfil.",
+    "noDocumentClass": "Hovedfilen har ingen \\documentclass-linje.",
+    "unclosedFrontMatter": "YAML-hovedet øverst i hovedfilen er ikke lukket. Tilføj først en afsluttende linje med ---.",
+    "noFrontMatter": "Filen har endnu intet YAML-hoved. Når du vælger Anvend, tilføjes et øverst.",
+    "externalPreamble": "En del af præamblen ligger i andre filer. Værdier, der er angivet der, vises ikke her.",
+    "classNotice": "Klassen {{name}} styrer nogle af disse indstillinger. De er skrivebeskyttede her.",
+    "styleNotice": "Stilen {{name}} bestemmer sidelayoutet. Sidestørrelse og margener er skrivebeskyttede her.",
+    "availableFonts": "Tilgængelige skrifttyper",
+    "fontsLoading": "Leder efter skrifttyper",
+    "fields": {
+      "secnumdepth": "Nummererede niveauer",
+      "numberSections": "Afsnitsnumre",
+      "documentClass": "Dokumentklasse"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "Én spalte",
+      "twocolumn": "To spalter",
+      "single": "Enkelt",
+      "onehalf": "Halvanden",
+      "double": "Dobbelt",
+      "bySection": "Pr. afsnit",
+      "byChapter": "Pr. kapitel",
+      "bySubsection": "Pr. underafsnit",
+      "numbered": "Nummereret",
+      "unnumbered": "Ikke nummereret",
+      "depthNone": "Ingen",
+      "depthChapters": "Kun kapitler",
+      "depthSections": "Ned til afsnit",
+      "depthSubsections": "Ned til underafsnit",
+      "depthSubsubsections": "Ned til underunderafsnit",
+      "depthParagraphs": "Ned til paragraffer",
+      "depthSubparagraphs": "Ned til underparagraffer"
+    },
+    "locked": {
+      "class": "Angivet af klassen {{name}}",
+      "package": "Angivet af stilen {{name}}",
+      "engine": "Kræver kompilatoren XeLaTeX eller LuaLaTeX. Vælg en i kompileringsmenuen.",
+      "sides": "Kilden angiver hver margen for sig",
+      "conditional": "Angivet i en betinget blok"
+    },
+    "invalid": {
+      "length": "Brug en længde som 2.5cm, 1in eller 12pt.",
+      "fontName": "Brug et almindeligt skrifttypenavn uden tuborgklammer eller backslashes.",
+      "latexLang": "Brug et babel-sprognavn som english.",
+      "markdownLang": "Brug en sprogkode som en-US.",
+      "lineStretch": "Brug et tal som 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Typst-pakker",
+    "close": "Luk Typst-pakker",
+    "searchLabel": "Søg i pakker efter navn, nøgleord eller kategori",
+    "searchPlaceholder": "Søg i Typst Universe",
+    "categories": "Kategorier",
+    "allCategories": "Alle",
+    "loading": "Indlæser pakkelisten",
+    "results_one": "{{count}} pakke",
+    "results_other": "{{count}} pakker",
+    "resultsCapped": "Viser {{shown}} af {{count}} pakker. Søg for at indsnævre listen.",
+    "empty": "Ingen pakker matcher din søgning.",
+    "staleOffline": "Du er offline. Listen er fra {{date}}.",
+    "stale": "Listen er fra {{date}}. Den kunne ikke opdateres.",
+    "latest": "Nyeste {{version}}",
+    "template": "Skabelon",
+    "needsTypst": "Kræver Typst {{version}}. Projektet bruger Typst {{current}}.",
+    "insert": "Indsæt import",
+    "insertAria": "Indsæt importen af {{name}} øverst i filen",
+    "insertNeedsFile": "Åbn en Typst-fil for at indsætte en import.",
+    "copy": "Kopier import",
+    "copyAria": "Kopier importen af {{name}}",
+    "vendor": {
+      "heading": "Projektets pakker",
+      "toggle": "Brug pakker fra projektmappen",
+      "detail": "Typst kigger først i projektets typst-packages-mappe. Projekter med egne pakker kan kompileres offline og på andre computere.",
+      "action": "Kopier pakker ind i projektet",
+      "running": "Kopierer pakker",
+      "copied_one": "Kopierede {{count}} pakke til typst-packages.",
+      "copied_other": "Kopierede {{count}} pakker til typst-packages.",
+      "upToDate": "Alle pakker, projektet importerer, ligger allerede i typst-packages.",
+      "missing": "Disse pakker er ikke i pakkecachen: {{names}}. Kompiler én gang, mens du er online, og kopier dem så igen.",
+      "count_one": "{{count}} pakke i projektet",
+      "count_other": "{{count}} pakker i projektet",
+      "none": "Ingen pakker i projektet endnu."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} er tilgængelig. Denne import bruger {{version}}.",
+      "update": "Opdater til {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX-pakker",
+    "close": "Luk LaTeX-pakker",
+    "searchLabel": "Søg i pakker efter navn eller beskrivelse",
+    "searchPlaceholder": "Søg i CTAN",
+    "loading": "Indlæser pakkelisten",
+    "results_one": "{{count}} pakke",
+    "results_other": "{{count}} pakker",
+    "resultsCapped": "Viser {{shown}} af {{count}} pakker. Søg for at indsnævre listen.",
+    "empty": "Ingen pakker matcher din søgning.",
+    "stale": "Listen er fra {{date}}. Den kunne ikke opdateres.",
+    "staleOffline": "Du er offline. Listen er fra {{date}}.",
+    "partial": "Kunne ikke få forbindelse til CTAN. Viser den indbyggede liste fra Oleafly.",
+    "partialOffline": "Du er offline. Viser den indbyggede liste fra Oleafly.",
+    "loaded": "I dokumentet",
+    "documentClass": "Dokumentklasse",
+    "installed": "Installeret",
+    "install": "Installer",
+    "installing": "Installerer",
+    "installAria": "Installer {{name}} med tlmgr",
+    "insert": "Føj til præamblen",
+    "insertAria": "Føj {{name}} til præamblen i {{file}}",
+    "copy": "Kopier linjen",
+    "copyAria": "Kopier linjen, der indlæser {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Åbn {{name}} på CTAN",
+    "options": "Indstillinger",
+    "optionsAria": "Indstillinger for {{name}}",
+    "optionsInvalid": "Tjek indstillingerne. Tuborgklammer skal passe sammen, og ] eller % kan ikke bruges.",
+    "classNote": "Dette er en dokumentklasse. Angiv den med \\documentclass i stedet.",
+    "onDemand": "Tectonic downloader pakker første gang, dit dokument bruger dem. Der er intet at installere.",
+    "checking": "Tjekker, hvilke pakker der er installeret",
+    "unknownInstall": "Oleafly kan ikke se, hvilke pakker din TeX-opsætning har.",
+    "noProject": "Åbn et LaTeX-projekt for at tilføje pakker.",
+    "added": "{{name}} er føjet til {{file}}.",
+    "noPreamble": "{{file}} har ingen præambel at føje en pakke til.",
+    "alreadyLoaded": "{{file}} indlæser allerede {{name}}.",
+    "insertFailed": "Pakken kunne ikke tilføjes. Prøv igen."
+  },
+  "typstFonts": {
+    "title": "Skrifttyper",
+    "close": "Luk listen over skrifttyper",
+    "searchLabel": "Søg i skriftfamilier",
+    "searchPlaceholder": "Søg i skrifttyper",
+    "loading": "Spørger Typst om dens skrifttyper",
+    "summary_one": "{{count}} skriftfamilie fra Typst {{version}}",
+    "summary_other": "{{count}} skriftfamilier fra Typst {{version}}",
+    "systemOff": "Systemskrifttyper er slået fra for projektet, så kun projektets og de indbyggede skrifttyper vises.",
+    "noSources": "Denne Typst-version oplyser ikke, hvor hver skrifttype kommer fra.",
+    "empty": "Ingen skriftfamilier matcher din søgning.",
+    "copy": "Kopier navn",
+    "copyAria": "Kopier navnet på skriftfamilien {{name}}",
+    "sources": {
+      "project": "Projekt",
+      "system": "System",
+      "embedded": "Indbygget"
+    },
+    "fontsFolder": "Læg skrifttypens fil i projektets fonts-mappe for at bruge den i projektet."
+  },
+  "typstVariants": {
+    "title": "Kompileringsvarianter",
+    "close": "Luk kompileringsvarianter",
+    "intro": "Hver variant angiver værdier, som dokumentet læser med sys.inputs. Vælg en variant i kompileringsmenuen.",
+    "empty": "Ingen varianter endnu.",
+    "add": "Tilføj variant",
+    "name": "Variantnavn",
+    "defaultName": "variant {{number}}",
+    "remove": "Fjern variant",
+    "removeAria": "Fjern varianten {{name}}",
+    "key": "Navn",
+    "value": "Værdi",
+    "addInput": "Tilføj værdi",
+    "removeInput": "Fjern værdi",
+    "noInputs": "Denne variant angiver ingen værdier.",
+    "save": "Gem",
+    "cancel": "Annuller",
+    "loading": "Indlæser varianter",
+    "nameRequired": "Giv hver variant et navn.",
+    "nameTaken": "To varianter kan ikke have samme navn.",
+    "keyInvalid": "Navne på værdier må ikke være tomme eller indeholde et lighedstegn.",
+    "keyTaken": "En variant kan ikke angive det samme navn to gange.",
+    "saveFailed": "Varianterne kunne ikke gemmes."
   }
 }

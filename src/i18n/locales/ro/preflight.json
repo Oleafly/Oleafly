@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Imagine fără text alternativ",
-      "detail": "Această imagine nu are text alternativ descriptiv, așa că un cititor de ecran nu o poate reda. Adaugă o descriere, de exemplu \\includegraphics[alt={Portretul autorului}]{...}. Marchează imaginile pur decorative ca artefacte."
+      "detail": "Această imagine nu are text alternativ descriptiv, așa că un cititor de ecran nu o poate reda. Adaugă o descriere, de exemplu \\includegraphics[alt={Portretul autorului}]{...}. Marchează imaginile pur decorative ca artefacte.",
+      "detailTypst": "Această imagine nu are text alternativ, așa că un cititor de ecran nu o poate reda. Adaugă o descriere, de exemplu #image(\"chart.png\", alt: \"Bar chart of yearly sales\").",
+      "detailTypstFigure": "Această imagine nu are text alternativ, așa că un cititor de ecran nu o poate reda. Descrie-o în imagine sau în figura care o conține, de exemplu #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")."
     },
     "link-text": {
       "title": "Text de legătură nedescriptiv",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "PDF-ul nu are titlu",
-      "detail": "PDF-ul nu are titlu în metadate, iar tehnologiile asistive și browserele îl folosesc ca să anunțe documentul. Setează unul cu hyperref, de exemplu \\hypersetup{pdftitle={Numele tău, CV}}."
+      "detail": "PDF-ul nu are titlu în metadate, iar tehnologiile asistive și browserele îl folosesc ca să anunțe documentul. Setează unul cu hyperref, de exemplu \\hypersetup{pdftitle={Numele tău, CV}}.",
+      "detailTypst": "PDF-ul nu are titlu în metadate, iar tehnologiile asistive și browserele îl folosesc ca să anunțe documentul. Setează unul cu #set document(title: \"Your title\") sau transmite un titlu șablonului."
     },
     "heading-skip": {
       "title": "S-a sărit peste un nivel de titlu",
@@ -299,11 +302,16 @@
     },
     "refs-undefined-cite": {
       "title": "Citarea „{{key}}” nu se află în niciun fișier .bib",
-      "detail": "Această cheie de citare nu a fost găsită în bibliografia încărcată, așa că se va randa ca [?] în PDF. Verifică cheia sau adaugă intrarea în fișierul tău .bib (Adaugă citare o poate aduce)."
+      "detail": "Această cheie de citare nu a fost găsită în bibliografia încărcată, așa că se va randa ca [?] în PDF. Verifică cheia sau adaugă intrarea în fișierul tău .bib (Adaugă citare o poate aduce).",
+      "titleTypst": "Citarea „{{key}}” nu se află în bibliografie",
+      "detailTypst": "Această cheie nu se află în niciun fișier de bibliografie încărcat de proiect, așa că compilarea eșuează. Verifică cheia sau adaugă intrarea în fișierul tău .bib sau Hayagriva .yml."
     },
     "refs-undefined-ref": {
       "title": "Referința la „{{label}}” nu are un \\label corespunzător",
-      "detail": "Această referință încrucișată trimite la o etichetă care nu este definită, așa că se va randa ca ?? în PDF. Verifică numele etichetei sau adaugă \\label-ul lipsă."
+      "detail": "Această referință încrucișată trimite la o etichetă care nu este definită, așa că se va randa ca ?? în PDF. Verifică numele etichetei sau adaugă \\label-ul lipsă.",
+      "titleTypst": "Nu există nicio etichetă sau intrare numită „{{label}}”",
+      "detailTypst": "Typst oprește compilarea aici. Verifică ortografia sau adaugă eticheta <label> ori intrarea de bibliografie care lipsește.",
+      "detailTypstPackage": "Nicio etichetă sau intrare de bibliografie din proiect nu are acest nume. Un pachet poate crea etichete în timpul compilării documentului, de exemplu intrări de glosar. Dacă jurnalul de compilare o semnalează, verifică ortografia."
     },
     "refs-duplicate-label": {
       "title": "Etichetă duplicată „{{label}}”",
@@ -313,11 +321,14 @@
       "titleImage": "Imagine negăsită: {{file}}",
       "detailImage": "Acest \\includegraphics trimite la un fișier care nu se află în proiect, așa că figura va lipsi. Verifică numele fișierului și calea.",
       "titleInclude": "Fișier inclus negăsit: {{file}}",
-      "detailInclude": "Acest \\input sau \\include trimite la un fișier care nu se află în proiect. Verifică numele fișierului și calea."
+      "detailInclude": "Acest \\input sau \\include trimite la un fișier care nu se află în proiect. Verifică numele fișierului și calea.",
+      "detailImageTypst": "Niciun fișier din proiect nu corespunde acestei căi de imagine, așa că compilarea eșuează. Typst citește calea relativ la fișier sau de la rădăcina proiectului când începe cu /.",
+      "detailIncludeTypst": "Niciun fișier din proiect nu corespunde acestei căi #include sau #import, așa că compilarea eșuează. Verifică numele fișierului și calea."
     },
     "refs-bib-missing": {
       "title": "Fișier de bibliografie negăsit: {{file}}",
-      "detail": "Acest \\bibliography sau \\addbibresource trimite la un fișier care nu se află în proiect, așa că fiecare citare se va randa ca [?]. Verifică numele fișierului sau importă o bibliotecă de referințe ca să îl creezi."
+      "detail": "Acest \\bibliography sau \\addbibresource trimite la un fișier care nu se află în proiect, așa că fiecare citare se va randa ca [?]. Verifică numele fișierului sau importă o bibliotecă de referințe ca să îl creezi.",
+      "detailTypst": "Acest apel #bibliography trimite la un fișier care nu se află în proiect, așa că compilarea eșuează. Verifică numele fișierului sau importă o bibliotecă de referințe ca să îl creezi."
     },
     "refs-duplicate-bib": {
       "title": "Intrări bibliografice duplicate: {{keys}}",
@@ -360,7 +371,8 @@
     },
     "privacy-blind-author": {
       "title": "Identitatea autorului a rămas în sursa pentru recenzia oarbă",
-      "detail": "Sursa conține un autor, o afiliere, un e-mail, o adresă sau mulțumiri neanonimizate. Înlocuiește conținutul care identifică autorii folosind modul de recenzie anonimă al locului de publicare."
+      "detail": "Sursa conține un autor, o afiliere, un e-mail, o adresă sau mulțumiri neanonimizate. Înlocuiește conținutul care identifică autorii folosind modul de recenzie anonimă al locului de publicare.",
+      "detailTypst": "Sursa dă documentului sau șablonului un nume de autor, un e-mail sau o afiliere. Elimină-le sau comută șablonul pe modul lui anonim."
     },
     "privacy-blind-acknowledgements": {
       "title": "Mulțumirile pot dezvălui autorii",
@@ -389,15 +401,20 @@
     "submission-document-class": {
       "title": "Clasa de document {{profile}} nu este activă",
       "detail": "Acest profil așteaptă {{expected}}, dar proiectul folosește {{actual}}. Pornește de la șablonul oficial actual al locului de publicare.",
-      "detailNoClass": "Acest profil așteaptă {{expected}}, dar nu s-a detectat nicio clasă de document. Pornește de la șablonul oficial actual al locului de publicare."
+      "detailNoClass": "Acest profil așteaptă {{expected}}, dar nu s-a detectat nicio clasă de document. Pornește de la șablonul oficial actual al locului de publicare.",
+      "titleTypst": "Șablonul {{profile}} nu este activ",
+      "detailTypst": "Acest profil așteaptă un șablon Typst precum {{expected}}, dar proiectul importă {{actual}}. Pornește de la unul dintre aceste șabloane.",
+      "detailNoTemplateTypst": "Acest profil așteaptă un șablon Typst precum {{expected}}, dar proiectul nu importă niciunul. Pornește de la unul dintre aceste șabloane."
     },
     "submission-no-abstract": {
       "title": "Nu s-a detectat niciun rezumat",
-      "detail": "Acest profil de publicare așteaptă un rezumat într-un mediu abstract standard. Adaugă-l sau confirmă că locul de publicare respectiv nu cere unul."
+      "detail": "Acest profil de publicare așteaptă un rezumat într-un mediu abstract standard. Adaugă-l sau confirmă că locul de publicare respectiv nu cere unul.",
+      "detailTypst": "Acest profil de publicare așteaptă un rezumat. Transmite-l șablonului, de exemplu abstract: [Your abstract], sau adaugă un titlu „Abstract”."
     },
     "submission-no-keywords": {
       "title": "Nu s-au detectat cuvinte-cheie de publicare",
-      "detail": "Profilul {{profile}} așteaptă cuvinte-cheie scrise cu comanda sau cu mediul standard din șablonul lui."
+      "detail": "Profilul {{profile}} așteaptă cuvinte-cheie scrise cu comanda sau cu mediul standard din șablonul lui.",
+      "detailTypst": "Profilul {{profile}} așteaptă cuvinte-cheie. Transmite-le șablonului, de exemplu keywords: (\"one\", \"two\") sau index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Format de figură neacceptat: {{file}}",
@@ -405,7 +422,8 @@
     },
     "submission-placeholder": {
       "title": "În manuscris au rămas marcaje de ciornă",
-      "detail": "Sursa conține TODO, TBD, FIXME, text de umplutură sau semne de întrebare. Verifică fiecare apariție înainte să produci varianta finală."
+      "detail": "Sursa conține TODO, TBD, FIXME, text de umplutură sau semne de întrebare. Verifică fiecare apariție înainte să produci varianta finală.",
+      "detailTypst": "Documentul încă apelează #lorem sau conține text de umplutură. Înlocuiește-l înainte de trimiterea finală."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} este sub versiunea cerută",
@@ -436,6 +454,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Includerea unor fonturi nu a putut fi verificată",
       "detail": "Preverificarea nu a putut dovedi starea includerii pentru {{fonts}}. Confirm-o cu instrumentul oficial de verificare PDF al locului de publicare."
+    },
+    "empty-heading": {
+      "title": "Titlu gol",
+      "detail": "Acest titlu nu are text. Cititoarele de ecran îl anunță ca pe o intrare goală în cuprins. Adaugă un text sau elimină titlul."
+    },
+    "todo-in-text": {
+      "title": "Notă de ciornă în text",
+      "detail": "Această notă face parte din text, așa că apare în PDF. Rezolvă nota sau transform-o într-un comentariu //."
+    },
+    "no-author": {
+      "title": "Documentul nu are autor",
+      "detail": "Metadatele PDF nu au autor. Adaugă unul cu #set document(author: \"Your Name\") sau transmite autorii șablonului. Omite-l pentru recenzia anonimă."
+    },
+    "privacy-local-path": {
+      "title": "Cale de pe computerul tău: {{path}}",
+      "detail": "Această cale trimite la un folder din afara proiectului. Îți poate dezvălui numele de utilizator, iar compilarea eșuează pe orice alt computer. Mută fișierul în proiect și folosește o cale relativă."
+    },
+    "privacy-blind-email": {
+      "title": "Adresă de e-mail în {{file}}",
+      "detail": "O adresă de e-mail îi poate identifica pe autori în timpul recenziei oarbe. Elimin-o sau înlocuiește-o cu un substituent anonim."
+    },
+    "refs-no-bibliography": {
+      "title": "Citări fără bibliografie",
+      "detail": "Documentul citează surse, dar nu apelează niciodată #bibliography, așa că Typst nu le poate rezolva. Adaugă #bibliography(\"refs.bib\") acolo unde trebuie să apară lista de referințe."
+    },
+    "submission-large-image": {
+      "title": "Imagine foarte mare: {{file}}",
+      "detail": "Această imagine depășește {{limit}}. Imaginile mari încetinesc compilarea și umflă PDF-ul. Unele locuri de publicare limitează și dimensiunea încărcării. Comprimă imaginea sau exporteaz-o la dimensiunea la care se tipărește."
     }
   },
   "lens": {
@@ -666,5 +712,15 @@
     "compileTagged": "Compilează etichetat și verifică",
     "compileTaggedWarning": "LuaLaTeX din sistem poate citi fișiere locale. Rulează-l doar pentru un proiect în care ai încredere.",
     "noEngine": "Ca să produci PDF-ul etichetat în aplicație, activează un motor din Setări, Motor LaTeX. Sau compilează sursa pregătită cu propriul tău pdfLaTeX ori LuaLaTeX din TeX Live 2025 sau mai nou."
+  },
+  "typstStandards": {
+    "title": "Standarde PDF",
+    "intro": "Typst scrie singur PDF-uri de arhivare și accesibile. Alege un standard, apoi exportă PDF-ul.",
+    "standard": "Standard",
+    "export": "Exportă PDF-ul",
+    "tagged": "Typst {{version}} etichetează fiecare PDF pentru cititoarele de ecran, așa că nu există o compilare etichetată separată.",
+    "untagged": "Typst {{version}} nu etichetează PDF-urile pentru cititoarele de ecran. Typst 0.14 și versiunile ulterioare o fac.",
+    "none": "Typst {{version}} nu poate scrie standarde PDF. Alege Typst 0.12 sau o versiune ulterioară din meniul de compilare.",
+    "uaNote": "PDF/UA-1 necesită un titlu de document și text alternativ pentru fiecare imagine."
   }
 }

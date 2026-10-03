@@ -17,10 +17,10 @@ Legend: ✅ shipped · 🟡 deferred with a gap id · — not applicable.
 | HTML | ✅ [PDF](#html-to-pdf) | ✅ [Word (.docx)](#html-to-docx) | — | ✅ [Markdown project](#html-to-markdown) | ✅ [LaTeX project](#html-to-latex) | ✅ [Typst project](#html-to-typst) | — | — |
 | PDF | — | 🟡 DEFERRED (G13) [Word (.docx)](#pdf-to-docx) | 🟡 DEFERRED (G13) [HTML](#pdf-to-html) | ✅ [Markdown](#pdf-to-markdown) | ✅ [LaTeX project](#pdf-to-latex)<br>✅ [Scanned PDF to LaTeX](#pdf-scanned-to-latex) | ✅ [Typst](#pdf-to-typst) | — | ✅ [Page PNG](#pdf-to-image) |
 | Image (equation or photo) | — | — | — | — | ✅ [LaTeX equation](#image-to-latex) | ✅ [Typst source](#image-to-typst) | — | — |
-| Typed or photographed equation | — | — | — | — | ✅ [LaTeX equation](#equation-to-latex) | — | — | — |
+| Typed or photographed equation | — | — | — | — | ✅ [LaTeX equation](#equation-to-latex) | ✅ [Typst equation](#equation-to-typst) | — | — |
 | CSV / XLSX | — | — | — | — | ✅ [LaTeX booktabs table](#csv-to-latex) | ✅ [Typst table](#csv-to-typst) | — | — |
-| Mermaid diagram | — | — | — | — | ✅ [TikZ or LaTeX figure](#mermaid-to-latex) | — | — | — |
-| arXiv id | — | — | — | — | ✅ [LaTeX project](#arxiv-to-latex) | — | ✅ [BibTeX](#arxiv-to-bibtex) | — |
+| Mermaid diagram | — | — | — | — | ✅ [TikZ or LaTeX figure](#mermaid-to-latex) | ✅ [Fletcher diagram](#mermaid-to-typst) | — | — |
+| arXiv id | — | — | — | — | ✅ [LaTeX project](#arxiv-to-latex) | ✅ [Typst project](#arxiv-to-typst) | ✅ [BibTeX](#arxiv-to-bibtex) | — |
 | DOI | — | — | — | — | — | — | ✅ [BibTeX](#doi-to-bibtex) | — |
 | ISBN | — | — | — | — | — | — | ✅ [BibTeX](#isbn-to-bibtex) | — |
 | PMID | — | — | — | — | — | — | ✅ [BibTeX](#pmid-to-bibtex) | — |
@@ -170,34 +170,34 @@ Convert directly, import as a LaTeX project, or export from a Typst project.
 
 ### typst-to-markdown
 
-Pandoc's markdown writer; import as a Markdown project or export .md.
+Convert directly, import as a Markdown project, or export .md from a Typst project.
 
 - **Direction:** import
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Import dialog, Export menu
+- **Surface:** Tools page, Import dialog, Export menu
 - **Gap:** G28
 - **Pandoc route:** `--from=typst --to=markdown --standalone`
 
 ### typst-to-html
 
-Standalone HTML export from a Typst project.
+Convert directly, or export standalone HTML from a Typst project. Project exports go through the HTML Typst writes itself.
 
 - **Direction:** export
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Export menu
+- **Surface:** Export menu, Tools page
 - **Gap:** G28
 - **Pandoc route:** `--from=typst --to=html5 --standalone --embed-resources --mathml --citeproc`
 
 ### typst-to-docx
 
-Pandoc reads Typst directly and writes a .docx with OMML equations.
+From a Typst project, Typst writes HTML and pandoc turns it into a .docx with OMML equations. The Tools page reads Typst with pandoc.
 
 - **Direction:** export
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Export menu
+- **Surface:** Export menu, Tools page
 - **Gap:** G28
 - **Pandoc route:** `--from=typst --to=docx --citeproc`
 
@@ -226,12 +226,12 @@ Import as a Markdown project; export other formats from there.
 
 ### docx-to-typst
 
-Import as a Typst project.
+Convert directly, or import as a Typst project with media extracted into assets/.
 
 - **Direction:** import
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Import dialog
+- **Surface:** Import dialog, Tools page
 - **Gap:** G10
 - **Pandoc route:** `--from=docx --to=typst --standalone --extract-media=assets`
 
@@ -280,12 +280,12 @@ Import as a Markdown project.
 
 ### html-to-typst
 
-Import as a Typst project.
+Convert directly, or import as a Typst project with images extracted into assets/.
 
 - **Direction:** import
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Import dialog
+- **Surface:** Import dialog, Tools page
 - **Gap:** G10
 - **Pandoc route:** `--from=html --to=typst --standalone --extract-media=assets`
 
@@ -412,6 +412,16 @@ Normalize typed math directly, or read natural-language and photographed equatio
 - **Status:** available
 - **Surface:** Tools page
 
+### equation-to-typst
+
+Typed LaTeX math converts with Oleafly's built-in translator, with Pandoc as a fallback for commands it does not know. Natural-language and photographed equations go through a local model first.
+
+- **Direction:** tool
+- **Engine:** internal
+- **Status:** available
+- **Surface:** Tools page
+- **Pandoc route:** `--from=latex --to=typst`
+
 ## CSV / XLSX
 
 ### csv-to-latex
@@ -426,12 +436,12 @@ Parse CSV (or XLSX via SheetJS) and emit a booktabs table with full escaping, in
 
 ### csv-to-typst
 
-Same parser, Typst table emitter.
+Same parser, Typst table emitter with a header row, alignment, and an optional figure caption.
 
 - **Direction:** tool
 - **Engine:** internal
 - **Status:** available
-- **Surface:** Editor context menu, Table tool
+- **Surface:** Tools page, Editor context menu, Table tool
 - **Gap:** G17
 
 ## Mermaid diagram
@@ -439,6 +449,15 @@ Same parser, Typst table emitter.
 ### mermaid-to-latex
 
 Common flowcharts become editable TikZ; other Mermaid diagrams render locally as a LaTeX-ready figure.
+
+- **Direction:** tool
+- **Engine:** internal
+- **Status:** available
+- **Surface:** Tools page
+
+### mermaid-to-typst
+
+Common flowcharts become editable fletcher code pinned to a version that runs on the project's Typst.
 
 - **Direction:** tool
 - **Engine:** internal
@@ -456,6 +475,17 @@ Download an e-print source bundle, or unpack a saved archive offline, then infer
 - **Status:** available
 - **Surface:** Tools page, Import dialog
 - **Gap:** G7
+
+### arxiv-to-typst
+
+Download or unpack the e-print source, convert the main document with Pandoc, compile it with Typst, and list what did not convert.
+
+- **Direction:** tool
+- **Engine:** pandoc
+- **Status:** available
+- **Surface:** Tools page
+- **Gap:** G7
+- **Pandoc route:** `--from=latex --to=typst --standalone --number-sections --verbose`
 
 ### arxiv-to-bibtex
 

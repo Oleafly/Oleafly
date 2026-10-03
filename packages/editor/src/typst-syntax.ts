@@ -93,3 +93,11 @@ export function typstAutolinkEnd(text: string, from: number): number | null {
   }
   return end;
 }
+
+export const TYPST_VENDOR_DIRECTORY = "typst-packages";
+
+export function isVendoredTypstPackagePath(path: string | null | undefined): boolean {
+  if (!path) return false;
+  const [head] = path.replaceAll("\\", "/").replace(/^\/+/, "").split("/");
+  return head === TYPST_VENDOR_DIRECTORY;
+}

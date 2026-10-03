@@ -4113,6 +4113,10 @@ fn load_texts(
     Ok(())
 }
 
+fn is_vendored_typst_package(path: &str) -> bool {
+    path.split('/').next() == Some(crate::typst_packages::VENDOR_DIR)
+}
+
 fn walk_document(
     file: &str,
     depth: usize,
@@ -4161,7 +4165,10 @@ pub(crate) fn document_stats_with_limits(
             let Some(text) = texts.get(path) else {
                 continue;
             };
-            let targets = parse_edges(path, text, &known);
+            let targets: Vec<String> = parse_edges(path, text, &known)
+                .into_iter()
+                .filter(|target| !is_vendored_typst_package(target))
+                .collect();
             for target in &targets {
                 if seen.insert(target.clone()) {
                     next.push(target.clone());
@@ -4929,6 +4936,33 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["notes.md", "parts/one.md", "parts/two.md"]
         );
+    }
+
+    #[test]
+    fn vendored_typst_packages_are_never_counted_as_document_text() {
+        let project = project("stats-typst-vendored");
+        write(
+            &project,
+            "main.typ",
+            b"#import \"@preview/cetz:0.5.2\": canvas\n#import \"typst-packages/preview/cetz/0.5.2/lib.typ\": *\n#include \"sections/intro\"\nBody words.\n",
+        );
+        write(
+            &project,
+            "typst-packages/preview/cetz/0.5.2/lib.typ",
+            b"Package words that are not the paper.\n",
+        );
+        write(&project, "sections/intro.typ", b"Intro words.\n");
+        let result = collect(&project, "main.typ");
+        assert_eq!(
+            result
+                .files
+                .iter()
+                .map(|f| f.path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["main.typ", "sections/intro.typ"]
+        );
+        assert!(result.unreadable.is_empty(), "{:?}", result.unreadable);
+        assert_eq!(result.stats.words, 4);
     }
 
     #[test]

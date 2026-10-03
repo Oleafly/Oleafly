@@ -31,4 +31,13 @@ describe("TableSizePicker", () => {
     fireEvent.click(screen.getByLabelText("8 by 10 table"));
     expect(insertTable).toHaveBeenLastCalledWith(8, 10);
   });
+
+  it("hands the chosen size to a custom inserter instead of LaTeX", () => {
+    const onPick = vi.fn();
+    render(<TableSizePicker onPick={onPick} />);
+    fireEvent.click(screen.getByLabelText("Insert table"));
+    fireEvent.click(screen.getByLabelText("3 by 4 table"));
+    expect(onPick).toHaveBeenCalledWith(3, 4);
+    expect(insertTable).not.toHaveBeenCalled();
+  });
 });

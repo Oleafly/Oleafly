@@ -4,6 +4,8 @@ use tauri::Emitter;
 
 use crate::proc::{isolate_process_tree, terminate_process_tree, NoConsole};
 
+mod typst_diagnostics;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DocumentEngineId {
     Latex,
@@ -35,6 +37,7 @@ pub enum FormattingProfile {
 #[serde(rename_all = "snake_case")]
 pub enum SourcePreflightProfile {
     Latex,
+    Typst,
     None,
 }
 
@@ -119,6 +122,22 @@ pub struct EngineDescriptor {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
     pub allow_shell_escape: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub typst_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub typst_resolved: Option<TypstResolvedDescriptor>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub typst_missing: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub typst_vendor_packages: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub typst_options: Option<crate::typst_options::TypstOptionsDescriptor>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TypstResolvedDescriptor {
+    pub version: String,
+    pub source: oleafly_core::typst_toolchain::TypstSource,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -166,6 +185,10 @@ impl EngineEnvironment {
 
     fn path_excluded_root<'a>(&'a self, working_dir: &'a Path) -> &'a Path {
         self.project_root.as_deref().unwrap_or(working_dir)
+    }
+
+    pub(crate) fn variables(&self) -> &[(String, String)] {
+        &self.variables
     }
 }
 
@@ -324,13 +347,14 @@ impl DocumentEngine for LatexEngine {
         let out = out_dir.to_string_lossy();
         let search_path = format!("search-path={}", project_dir.to_string_lossy());
         let entry = input.path().to_string_lossy();
+        let environment = EngineEnvironment::inherited(options.source_date_epoch);
         Ok(EngineCompileSpec {
             executable: EngineExecutable::BundledSidecar("tectonic"),
             args: tectonic_args(&out, &search_path, &entry, options),
             input,
             artifacts,
             working_dir: project_dir.to_owned(),
-            environment: EngineEnvironment::inherited(options.source_date_epoch),
+            environment,
         })
     }
 
@@ -909,11 +933,11 @@ impl DocumentEngine for TypstEngine {
     fn capabilities(&self) -> EngineCapabilities {
         EngineCapabilities {
             produces_pdf: true,
-            supports_synctex: false,
-            supports_offline: false,
+            supports_synctex: true,
+            supports_offline: true,
             supports_isolated_compile: false,
             formatting_profile: FormattingProfile::Typst,
-            source_preflight_profile: SourcePreflightProfile::None,
+            source_preflight_profile: SourcePreflightProfile::Typst,
             features: &[EngineFeature::Citations, EngineFeature::DocumentIndex],
             conversion_exports: &[
                 ConversionExport::Tex,
@@ -921,8 +945,9 @@ impl DocumentEngine for TypstEngine {
                 ConversionExport::Html,
                 ConversionExport::Md,
                 ConversionExport::Txt,
+                ConversionExport::Epub,
             ],
-            template_kinds: &[TemplateKind::Document],
+            template_kinds: &[TemplateKind::Document, TemplateKind::Image],
             compiler_prerequisite: None,
         }
     }
@@ -970,18 +995,81 @@ impl DocumentEngine for TypstEngine {
             .pdf
             .as_ref()
             .ok_or_else(|| "Typst PDF artifact was not declared".to_string())?;
+        let (executable, capabilities) = match options.typst.as_deref() {
+            Some(resolved)
+                if resolved.source != oleafly_core::typst_toolchain::TypstSource::Bundled =>
+            {
+                (
+                    EngineExecutable::ExternalPath(resolved.path.clone()),
+                    &resolved.capabilities,
+                )
+            }
+            Some(resolved) => (
+                EngineExecutable::BundledSidecar("typst"),
+                &resolved.capabilities,
+            ),
+            None => (
+                EngineExecutable::BundledSidecar("typst"),
+                oleafly_core::typst_toolchain::capabilities_for(
+                    &oleafly_core::typst_toolchain::bundled_typst_version().to_string(),
+                ),
+            ),
+        };
+        let mut package_flags = options
+            .typst_packages
+            .as_ref()
+            .map(|packages| packages.compile_flags(capabilities))
+            .unwrap_or_default();
+        if let Some(settings) = &options.typst_settings {
+            package_flags.extend(settings.compile_flags(capabilities));
+        }
+        if options.external_build && capabilities.supports_flag("--deps") {
+            package_flags.push(oleafly_core::typst_toolchain::TypstCompileFlag::Deps(
+                crate::typst_options::dependency_file(out_dir),
+            ));
+        }
+        let args = oleafly_core::typst_toolchain::typst_compile_args(
+            capabilities,
+            &input,
+            output,
+            project_dir,
+            oleafly_core::typst_toolchain::TypstDiagnosticFormat::Human,
+            &package_flags,
+        )
+        .map_err(|error| error.to_string())?
+        .into_iter()
+        .map(|argument| argument.to_string_lossy().into_owned())
+        .collect();
+        let mut environment = EngineEnvironment::inherited(
+            options
+                .typst_settings
+                .as_ref()
+                .map_or(options.source_date_epoch, |settings| {
+                    settings.source_date_epoch(options.source_date_epoch)
+                }),
+        );
+        if let Some(packages) = &options.typst_packages {
+            for (name, value) in packages.environment() {
+                environment = environment.with_variable(name, value.to_string_lossy().into_owned());
+            }
+        }
+        if options.offline {
+            for (name, value) in crate::typst_packages::offline_environment() {
+                environment = environment.with_variable(name, value.to_owned());
+            }
+        }
         Ok(EngineCompileSpec {
-            executable: EngineExecutable::BundledSidecar("typst"),
-            args: typst_args(&input, output, project_dir),
+            executable,
+            args,
             input: EngineInput::Direct(input),
             artifacts,
             working_dir: project_dir.to_owned(),
-            environment: EngineEnvironment::inherited(options.source_date_epoch),
+            environment,
         })
     }
 
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
-        parse_typst_short_diagnostics(log)
+        typst_diagnostics::parse_typst_errors(log)
     }
 }
 
@@ -1149,6 +1237,9 @@ fn pandoc_scratch_error(error: std::io::Error) -> String {
     format!("Oleafly could not create a temporary folder for Pandoc: {error}")
 }
 
+const MERMAID_FIGURES_FILTER_NAME: &str = "oleafly-mermaid-figures.lua";
+const MERMAID_FIGURES_FILTER: &str = include_str!("../resources/pandoc/mermaid-figures.lua");
+
 struct MarkdownTools {
     pandoc: PathBuf,
     tectonic: PathBuf,
@@ -1180,6 +1271,11 @@ fn markdown_compile_spec(
     let resources = scratch
         .pandoc_resource_path(&project)
         .map_err(pandoc_scratch_error)?;
+    std::fs::write(
+        scratch.path().join(MERMAID_FIGURES_FILTER_NAME),
+        MERMAID_FIGURES_FILTER,
+    )
+    .map_err(|error| format!("Oleafly could not prepare the Mermaid figure filter: {error}"))?;
     let mut args = vec![
         resources.argument.to_string_lossy().into_owned(),
         "--from=markdown".into(),
@@ -1193,6 +1289,7 @@ fn markdown_compile_spec(
             oleafly_core::plain_path(output).to_string_lossy()
         ),
         "--sandbox".into(),
+        format!("--lua-filter={MERMAID_FIGURES_FILTER_NAME}"),
         "--citeproc".into(),
     ];
     let bibliographies = discover_bibliographies(project_dir)?;
@@ -1291,6 +1388,7 @@ fn parse_pandoc_diagnostics(log: &str) -> Vec<CompileError> {
                 message: trimmed.to_owned(),
                 kind: kind.to_owned(),
                 explanation: None,
+                ..Default::default()
             })
         })
         .collect()
@@ -1323,10 +1421,15 @@ pub fn descriptor_for(
         capabilities: engine.capabilities(),
         tex_flavor: None,
         allow_shell_escape: false,
+        typst_version: None,
+        typst_resolved: None,
+        typst_missing: None,
+        typst_vendor_packages: false,
+        typst_options: None,
     })
 }
 
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Clone, Debug, Default, PartialEq, Eq)]
 pub struct CompileError {
     pub line: Option<u32>,
     pub file: Option<String>,
@@ -1334,6 +1437,14 @@ pub struct CompileError {
     pub kind: String,
     /// Deterministic plain-English explanation for common errors, when known.
     pub explanation: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub column: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_column: Option<u32>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub hints: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_line: Option<String>,
 }
 
 #[derive(Serialize, Default)]
@@ -1372,7 +1483,7 @@ pub(crate) fn fingerprint_compile_output(bytes: &[u8]) -> String {
 
 /// User-selected compiler behaviour for one request. Engines that cannot honour
 /// a flag ignore it; `supports_offline` already guards the offline case.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CompileOptions {
     pub offline: bool,
     /// Single typesetting pass instead of reruns until the document stabilizes.
@@ -1385,6 +1496,9 @@ pub struct CompileOptions {
     pub allow_shell_escape: bool,
     pub source_date_epoch: Option<u64>,
     pub external_build: bool,
+    pub typst: Option<std::sync::Arc<oleafly_core::typst_toolchain::ResolvedTypst>>,
+    pub typst_packages: Option<crate::typst_packages::TypstPackageDirs>,
+    pub typst_settings: Option<crate::typst_options::TypstCompileSettings>,
 }
 
 pub struct CompileRequest<'a> {
@@ -1933,11 +2047,30 @@ fn apply_image_findings(
             message,
             kind: "error".into(),
             explanation: None,
+            ..Default::default()
         },
     );
 }
 
 type ParsedCompileLog = (String, Vec<oleafly_core::LogDiagnostic>, Vec<CompileError>);
+
+pub(crate) async fn typst_log_errors(
+    log: String,
+    main_document: &str,
+    project_dir: PathBuf,
+    log_dir: PathBuf,
+) -> Result<ParsedCompileLog, String> {
+    let errors = TYPST_ENGINE.parse_errors(&log);
+    parse_log_diagnostics(
+        DocumentEngineId::Typst,
+        log,
+        Some(main_document.to_owned()),
+        project_dir,
+        log_dir,
+        errors,
+    )
+    .await
+}
 
 async fn parse_log_diagnostics(
     engine: DocumentEngineId,
@@ -1947,6 +2080,15 @@ async fn parse_log_diagnostics(
     log_dir: PathBuf,
     mut errors: Vec<CompileError>,
 ) -> Result<ParsedCompileLog, String> {
+    if engine == DocumentEngineId::Typst {
+        return tokio::task::spawn_blocking(move || {
+            typst_diagnostics::attach_typst_sources(&project_dir, &log_dir, &mut errors);
+            let diagnostics = typst_diagnostics::typst_log_diagnostics(&errors);
+            (log, diagnostics, errors)
+        })
+        .await
+        .map_err(|error| format!("failed to parse the compile log: {error}"));
+    }
     let is_tex = matches!(engine, DocumentEngineId::Latex | DocumentEngineId::Latexmk);
     if !is_tex {
         return Ok((log, Vec::new(), errors));
@@ -2147,6 +2289,7 @@ fn append_pythontex_error(errors: &mut Vec<CompileError>, stopped: bool, failure
         explanation: Some(
             "Install PythonTeX in the same TeX distribution that provides latexmk, or disable PythonTeX in this document. PythonTeX runs project code and therefore also requires explicit shell-command consent.".into(),
         ),
+        ..Default::default()
     });
 }
 
@@ -2186,6 +2329,7 @@ fn append_shell_escape_error(
         message,
         kind: "error".into(),
         explanation: Some(explanation),
+        ..Default::default()
     });
 }
 
@@ -2256,7 +2400,7 @@ async fn resolve_compile_spec(request: &CompileRequest<'_>) -> Result<EngineComp
         request.out_dir.to_owned(),
         request.project_dir.to_owned(),
         request.target,
-        request.options,
+        request.options.clone(),
     )
     .await
 }
@@ -3200,47 +3344,6 @@ pub(crate) fn search_compile_directory_first(
     spec
 }
 
-fn typst_args(input: &Path, output: &Path, project_dir: &Path) -> Vec<String> {
-    vec![
-        "--color=never".into(),
-        "compile".into(),
-        input.to_string_lossy().into_owned(),
-        output.to_string_lossy().into_owned(),
-        "--root".into(),
-        project_dir.to_string_lossy().into_owned(),
-        "--diagnostic-format".into(),
-        "short".into(),
-    ]
-}
-
-fn parse_typst_short_diagnostics(log: &str) -> Vec<CompileError> {
-    let mut diagnostics = Vec::new();
-    for line in log.lines() {
-        let Some((location, kind, message)) = ["error", "warning"].into_iter().find_map(|kind| {
-            let marker = format!(": {kind}: ");
-            line.rsplit_once(&marker)
-                .map(|(location, message)| (location, kind, message))
-        }) else {
-            continue;
-        };
-        let mut fields = location.rsplitn(3, ':');
-        let column = fields.next().and_then(|value| value.parse::<u32>().ok());
-        let line_number = fields.next().and_then(|value| value.parse::<u32>().ok());
-        let file = fields.next().map(str::to_owned);
-        if column.is_none() || line_number.is_none() || file.as_deref().is_none_or(str::is_empty) {
-            continue;
-        }
-        diagnostics.push(CompileError {
-            line: line_number,
-            file,
-            message: message.to_owned(),
-            kind: kind.to_owned(),
-            explanation: None,
-        });
-    }
-    diagnostics
-}
-
 // A TeX log token after `(` looks like an input file if it carries a path
 // separator or a file extension. Font/date/version parens ("(Font)", "(2021/01/01)")
 // do not, so they never masquerade as the source file for an error.
@@ -3453,6 +3556,7 @@ fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
                 message: lines[i].trim().to_owned(),
                 kind: "warning".to_owned(),
                 explanation: Some(explanation.to_owned()),
+                ..Default::default()
             });
             continue;
         }
@@ -3480,6 +3584,7 @@ fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
                 message: message.to_owned(),
                 kind: "error".to_owned(),
                 explanation: humanize_tex_error(message).map(str::to_owned),
+                ..Default::default()
             });
         }
     }
@@ -3832,6 +3937,7 @@ mod tests {
             message: "Undefined control sequence.".into(),
             kind: "error".into(),
             explanation: None,
+            ..Default::default()
         };
         let mut errors = vec![
             error("kapitoly/\u{fa}vod"),
@@ -3869,6 +3975,7 @@ mod tests {
             message: "Undefined control sequence.".into(),
             kind: "error".into(),
             explanation: None,
+            ..Default::default()
         };
         let absolute = latexmk_test_home().join("texmf").join("article.cls");
         let absolute = absolute.to_string_lossy().into_owned();
@@ -4883,20 +4990,21 @@ mod tests {
             descriptor.capabilities,
             EngineCapabilities {
                 produces_pdf: true,
-                supports_synctex: false,
-                supports_offline: false,
+                supports_synctex: true,
+                supports_offline: true,
                 supports_isolated_compile: false,
                 formatting_profile: FormattingProfile::Typst,
-                source_preflight_profile: SourcePreflightProfile::None,
+                source_preflight_profile: SourcePreflightProfile::Typst,
                 features: &[EngineFeature::Citations, EngineFeature::DocumentIndex],
                 conversion_exports: &[
                     ConversionExport::Tex,
                     ConversionExport::Docx,
                     ConversionExport::Html,
                     ConversionExport::Md,
-                    ConversionExport::Txt
+                    ConversionExport::Txt,
+                    ConversionExport::Epub
                 ],
-                template_kinds: &[TemplateKind::Document],
+                template_kinds: &[TemplateKind::Document, TemplateKind::Image],
                 compiler_prerequisite: None,
             }
         );
@@ -4938,8 +5046,274 @@ mod tests {
                 "--root",
                 "/project",
                 "--diagnostic-format",
-                "short",
+                "human",
             ]
+        );
+    }
+
+    fn resolved_typst(
+        path: &str,
+        version: &str,
+        source: oleafly_core::typst_toolchain::TypstSource,
+    ) -> CompileOptions {
+        CompileOptions {
+            typst: Some(std::sync::Arc::new(
+                oleafly_core::typst_toolchain::ResolvedTypst {
+                    path: PathBuf::from(path),
+                    version: oleafly_core::typst_toolchain::ToolchainVersion::parse(version)
+                        .unwrap(),
+                    source,
+                    capabilities: oleafly_core::typst_toolchain::capabilities_for(version).clone(),
+                },
+            )),
+            ..CompileOptions::default()
+        }
+    }
+
+    #[test]
+    fn typst_compiles_with_the_resolved_binary_and_keeps_the_bundled_sidecar_for_bundled() {
+        use oleafly_core::typst_toolchain::TypstSource;
+        let engine = engine_for("typst", "main.typ").unwrap();
+        let spec_for = |options: CompileOptions| {
+            engine
+                .compile_spec(
+                    Path::new("/build"),
+                    Path::new("/project"),
+                    CompileTarget::Main {
+                        main_document: "main.typ",
+                    },
+                    options,
+                )
+                .unwrap()
+        };
+        let unresolved = spec_for(CompileOptions::default());
+        let bundled = spec_for(resolved_typst("/app/typst", "0.15.1", TypstSource::Bundled));
+        assert_eq!(
+            bundled.executable,
+            EngineExecutable::BundledSidecar("typst")
+        );
+        assert_eq!(bundled.args, unresolved.args);
+
+        let downloaded = spec_for(resolved_typst(
+            "/data/toolchains/typst/0.13.1/typst",
+            "0.13.1",
+            TypstSource::Downloaded,
+        ));
+        assert_eq!(
+            downloaded.executable,
+            EngineExecutable::ExternalPath(PathBuf::from("/data/toolchains/typst/0.13.1/typst"))
+        );
+        assert_eq!(downloaded.args, unresolved.args);
+        assert_eq!(downloaded.input, unresolved.input);
+        assert_eq!(downloaded.artifacts, unresolved.artifacts);
+
+        let system = spec_for(resolved_typst(
+            "/opt/homebrew/bin/typst",
+            "0.12.0",
+            TypstSource::System,
+        ));
+        assert_eq!(
+            system.executable,
+            EngineExecutable::ExternalPath(PathBuf::from("/opt/homebrew/bin/typst"))
+        );
+        assert_eq!(system.args, unresolved.args);
+    }
+
+    fn typst_spec_with(
+        version: &str,
+        packages: Option<crate::typst_packages::TypstPackageDirs>,
+        offline: bool,
+    ) -> EngineCompileSpec {
+        let options = CompileOptions {
+            typst_packages: packages,
+            offline,
+            source_date_epoch: Some(1_700_000_000),
+            ..resolved_typst(
+                "/data/toolchains/typst/x/typst",
+                version,
+                oleafly_core::typst_toolchain::TypstSource::Downloaded,
+            )
+        };
+        engine_for("typst", "main.typ")
+            .unwrap()
+            .compile_spec(
+                Path::new("/build"),
+                Path::new("/project"),
+                CompileTarget::Main {
+                    main_document: "main.typ",
+                },
+                options,
+            )
+            .unwrap()
+    }
+
+    fn package_dirs() -> crate::typst_packages::TypstPackageDirs {
+        crate::typst_packages::TypstPackageDirs::for_project(
+            Path::new("/data"),
+            Path::new("/project"),
+            true,
+        )
+    }
+
+    #[test]
+    fn typst_compiles_name_the_package_directories_in_flags_and_environment() {
+        let spec = typst_spec_with("0.15.1", Some(package_dirs()), false);
+        let vendored = joined("/project", "typst-packages");
+        let cache = package_dirs().cache_path.to_string_lossy().into_owned();
+        let tail: Vec<&str> = spec.args.iter().skip(8).map(String::as_str).collect();
+        assert_eq!(
+            tail,
+            [
+                "--package-path",
+                vendored.as_str(),
+                "--package-cache-path",
+                cache.as_str(),
+            ]
+        );
+        assert_eq!(
+            spec.environment.variables,
+            vec![
+                ("SOURCE_DATE_EPOCH".to_string(), "1700000000".to_string()),
+                ("TYPST_PACKAGE_PATH".to_string(), vendored),
+                ("TYPST_PACKAGE_CACHE_PATH".to_string(), cache),
+            ]
+        );
+    }
+
+    #[test]
+    fn typst_versions_without_package_flags_still_get_the_environment() {
+        let spec = typst_spec_with("0.11.1", Some(package_dirs()), false);
+        assert_eq!(spec.args.len(), 8);
+        assert!(!spec
+            .args
+            .iter()
+            .any(|argument| argument.starts_with("--package")));
+        let names: Vec<&str> = spec
+            .environment
+            .variables
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "SOURCE_DATE_EPOCH",
+                "TYPST_PACKAGE_PATH",
+                "TYPST_PACKAGE_CACHE_PATH"
+            ]
+        );
+    }
+
+    fn typst_spec_with_settings(version: &str, external_build: bool) -> EngineCompileSpec {
+        let options = CompileOptions {
+            external_build,
+            source_date_epoch: Some(1_700_000_000),
+            typst_settings: Some(crate::typst_options::TypstCompileSettings {
+                font_dirs: vec![PathBuf::from("/project/fonts")],
+                ignore_system_fonts: true,
+                inputs: vec![("draft".into(), "true".into())],
+                creation_timestamp: Some(42),
+            }),
+            ..resolved_typst(
+                "/data/toolchains/typst/x/typst",
+                version,
+                oleafly_core::typst_toolchain::TypstSource::Downloaded,
+            )
+        };
+        engine_for("typst", "main.typ")
+            .unwrap()
+            .compile_spec(
+                Path::new("/build"),
+                Path::new("/project"),
+                CompileTarget::Main {
+                    main_document: "main.typ",
+                },
+                options,
+            )
+            .unwrap()
+    }
+
+    #[test]
+    fn typst_compiles_carry_fonts_inputs_timestamps_and_dependency_lists_the_version_takes() {
+        let newest = typst_spec_with_settings("0.15.1", true);
+        let deps = crate::typst_options::dependency_file(Path::new("/build"))
+            .to_string_lossy()
+            .into_owned();
+        let tail: Vec<&str> = newest.args.iter().skip(8).map(String::as_str).collect();
+        assert_eq!(
+            tail,
+            [
+                "--font-path",
+                "/project/fonts",
+                "--ignore-system-fonts",
+                "--input",
+                "draft=true",
+                "--creation-timestamp",
+                "42",
+                "--deps",
+                deps.as_str(),
+                "--deps-format",
+                "json",
+            ]
+        );
+        assert_eq!(&newest.args[6..8], ["--diagnostic-format", "human"]);
+        assert!(newest
+            .environment
+            .variables
+            .contains(&("SOURCE_DATE_EPOCH".to_string(), "42".to_string())));
+        let library = typst_spec_with_settings("0.15.1", false);
+        assert!(!library.args.iter().any(|argument| argument == "--deps"));
+        let oldest = typst_spec_with_settings("0.11.1", true);
+        let tail: Vec<&str> = oldest.args.iter().skip(8).map(String::as_str).collect();
+        assert_eq!(
+            tail,
+            ["--font-path", "/project/fonts", "--input", "draft=true"]
+        );
+    }
+
+    #[test]
+    fn offline_typst_compiles_cannot_reach_the_package_registry() {
+        let online = typst_spec_with("0.15.1", None, false);
+        assert!(!online
+            .environment
+            .variables
+            .iter()
+            .any(|(name, _)| name.eq_ignore_ascii_case("https_proxy")));
+        let offline = typst_spec_with("0.15.1", None, true);
+        for (name, value) in crate::typst_packages::offline_environment() {
+            assert!(
+                offline
+                    .environment
+                    .variables
+                    .contains(&(name.to_string(), value.to_string())),
+                "{name} is missing"
+            );
+        }
+        assert_eq!(offline.args, online.args);
+    }
+
+    #[test]
+    fn typst_descriptors_start_without_version_details() {
+        let descriptor = descriptor_for("typst", "main.typ").unwrap();
+        assert_eq!(descriptor.typst_version, None);
+        assert_eq!(descriptor.typst_resolved, None);
+        assert_eq!(descriptor.typst_missing, None);
+        let json = serde_json::to_value(&descriptor).unwrap();
+        assert!(json.get("typst_version").is_none());
+        assert!(json.get("typst_missing").is_none());
+        let described = EngineDescriptor {
+            typst_version: Some("0.13.1".into()),
+            typst_resolved: Some(TypstResolvedDescriptor {
+                version: "0.13.1".into(),
+                source: oleafly_core::typst_toolchain::TypstSource::Downloaded,
+            }),
+            ..descriptor
+        };
+        let json = serde_json::to_value(&described).unwrap();
+        assert_eq!(json["typst_version"], "0.13.1");
+        assert_eq!(
+            json["typst_resolved"],
+            serde_json::json!({"version": "0.13.1", "source": "downloaded"})
         );
     }
 
@@ -4959,6 +5333,66 @@ mod tests {
         assert_eq!(errors[1].file.as_deref(), Some("C:\\work\\main.typ"));
         assert_eq!(errors[1].line, Some(9));
         assert_eq!(errors[1].kind, "warning");
+        assert_eq!((errors[0].column, errors[1].column), (Some(13), Some(3)));
+
+        let human = engine.parse_errors(
+            "error: unknown variable: foo\n  ┌─ C:\\work\\chapters\\intro.typ:7:12\n  │\n7 │ Hello world #foo\n  │             ^^^\n\nwarning: unused label\n  ┌─ chapters\\intro.typ:9:2\n  │\n9 │ x <a>\n  │   ^^^\n",
+        );
+        assert_eq!(human.len(), 2);
+        assert_eq!(
+            human[0].file.as_deref(),
+            Some("C:\\work\\chapters\\intro.typ")
+        );
+        assert_eq!(
+            (human[0].line, human[0].column, human[0].end_column),
+            (Some(7), Some(13), Some(16))
+        );
+        assert_eq!(human[1].file.as_deref(), Some("chapters\\intro.typ"));
+        assert_eq!((human[1].line, human[1].column), (Some(9), Some(3)));
+    }
+
+    #[tokio::test]
+    async fn typst_compiles_return_excerpts_and_grouped_structured_diagnostics() {
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(project.path().join("main.typ"), "See @nolabel.\n").unwrap();
+        let engine = engine_for("typst", "main.typ").unwrap();
+        let log = "error: label `<nolabel>` does not exist in the document\n  ┌─ main.typ:1:4\n  │\n1 │ See @nolabel.\n  │     ^^^^^^^^\n".to_string();
+        let errors = engine.parse_errors(&log);
+        let (_, diagnostics, errors) = parse_log_diagnostics(
+            DocumentEngineId::Typst,
+            log,
+            Some("main.typ".into()),
+            project.path().to_owned(),
+            project.path().to_owned(),
+            errors,
+        )
+        .await
+        .unwrap();
+        assert_eq!(errors[0].source_line.as_deref(), Some("See @nolabel."));
+        assert_eq!(
+            (errors[0].column, errors[0].end_column),
+            (Some(5), Some(13))
+        );
+        assert!(errors[0].explanation.is_some());
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].category,
+            oleafly_core::LogCategory::UndefinedReference
+        );
+        let json = serde_json::to_value(&errors[0]).unwrap();
+        assert_eq!(json["column"], 5);
+        assert_eq!(json["end_column"], 13);
+        assert_eq!(json["source_line"], "See @nolabel.");
+        assert!(json.get("hints").is_none());
+    }
+
+    #[test]
+    fn typst_descriptor_reports_the_typst_source_preflight_profile() {
+        let descriptor = descriptor_for("typst", "main.typ").unwrap();
+        assert_eq!(
+            serde_json::to_value(&descriptor).unwrap()["capabilities"]["source_preflight_profile"],
+            "typst"
+        );
     }
 
     #[test]
@@ -5101,16 +5535,24 @@ mod tests {
                 "--pdf-engine-opt=-Zsearch-path=/project",
                 format!("--output={}", joined("/build", "_oleafly_entry.pdf")).as_str(),
                 "--sandbox",
+                "--lua-filter=oleafly-mermaid-figures.lua",
                 "--citeproc",
                 "--",
                 joined("/project", "chapters/main.md").as_str(),
             ]
+        );
+        assert_eq!(
+            std::fs::read_to_string(scratch_path.join(MERMAID_FIGURES_FILTER_NAME)).unwrap(),
+            MERMAID_FIGURES_FILTER
         );
         let retry = args_without_bundle(&spec.args);
         assert_eq!(retry[0], "--resource-path=/project");
         assert!(retry
             .iter()
             .any(|arg| arg == "--pdf-engine-opt=-Zsearch-path=/project"));
+        assert!(retry
+            .iter()
+            .any(|arg| arg == "--lua-filter=oleafly-mermaid-figures.lua"));
         assert_eq!(resource_variable(&spec), None);
         let scratch_text = scratch_path.to_string_lossy().into_owned();
         assert_eq!(
@@ -5120,6 +5562,129 @@ mod tests {
         assert!(scratch_path.is_dir());
         drop(spec);
         assert!(!scratch_path.exists());
+    }
+
+    fn bundled_pandoc() -> Option<PathBuf> {
+        let triple = crate::biber_toolchain::host_triple_guess()?;
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join(format!("pandoc-{triple}{}", std::env::consts::EXE_SUFFIX));
+        path.is_file().then_some(path)
+    }
+
+    const MERMAID_FLOWCHART: &str = "flowchart TD\n    A --> B";
+    const MERMAID_FLOWCHART_FIGURE: &str = "figures/mermaid-5468d2efb1783cd2.png";
+
+    fn pandoc_args_writing(spec: &EngineCompileSpec, to: &str, output: &Path) -> Vec<String> {
+        let mut args: Vec<String> = spec
+            .args
+            .iter()
+            .filter(|arg| !arg.starts_with("--pdf-engine") && !arg.starts_with("--output="))
+            .cloned()
+            .collect();
+        let separator = args.iter().position(|arg| arg == "--").unwrap();
+        args.splice(
+            separator..separator,
+            [
+                format!("--to={to}"),
+                format!("--output={}", output.to_string_lossy()),
+            ],
+        );
+        args
+    }
+
+    fn mermaid_markdown() -> String {
+        format!(
+            "# Notes\n\n```mermaid\n{MERMAID_FLOWCHART}\n```\n\n```mermaid\nflowchart LR\n    C --> D\n```\n"
+        )
+    }
+
+    #[tokio::test]
+    async fn real_pandoc_swaps_a_mermaid_block_for_its_saved_figure_and_keeps_unsaved_blocks() {
+        let Some(pandoc) = bundled_pandoc() else {
+            eprintln!("Pandoc sidecar is not staged; skipping the Mermaid figure filter check");
+            return;
+        };
+        let separator = if cfg!(windows) { ';' } else { ':' };
+        let base = tempfile::tempdir().unwrap();
+        let base_path = oleafly_core::plain_path(&base.path().canonicalize().unwrap());
+        for name in [
+            "Notes".to_string(),
+            format!("Notes{separator} draft"),
+            format!("Notes{separator} ${{draft}}"),
+        ] {
+            let project = base_path.join(&name);
+            std::fs::create_dir_all(project.join("figures")).unwrap();
+            std::fs::write(project.join("main.md"), mermaid_markdown()).unwrap();
+            std::fs::write(project.join(MERMAID_FLOWCHART_FIGURE), b"png").unwrap();
+            let bases = tempfile::tempdir().unwrap();
+            let spec = markdown_compile_spec(
+                &MARKDOWN_ENGINE,
+                &base_path.join("build"),
+                &project,
+                "main.md",
+                MarkdownTools {
+                    pandoc: pandoc.clone(),
+                    tectonic: PathBuf::from("/tectonic"),
+                    scratch: test_scratch(bases.path()),
+                },
+                CompileOptions::default(),
+            )
+            .unwrap();
+            let latex = project.join("main.tex");
+            let (log, code) = run_supervised_process_with_environment(
+                &pandoc,
+                &pandoc_args_writing(&spec, "latex", &latex),
+                &spec.working_dir,
+                None,
+                COMPILE_TIMEOUT,
+                None,
+                &spec.environment,
+            )
+            .await
+            .unwrap();
+            assert_eq!(code, Some(0), "{log}");
+            let tex = std::fs::read_to_string(&latex).unwrap();
+            assert_eq!(tex.matches("\\includegraphics").count(), 1, "{tex}");
+            assert!(
+                tex.contains(&format!("{{{MERMAID_FLOWCHART_FIGURE}}}")),
+                "{tex}"
+            );
+            assert!(tex.contains("\\begin{center}"), "{tex}");
+            assert!(!tex.contains("flowchart TD"), "{tex}");
+            assert!(tex.contains("flowchart LR"), "{tex}");
+        }
+    }
+
+    #[tokio::test]
+    async fn real_pandoc_leaves_mermaid_blocks_as_code_when_no_figure_was_saved() {
+        let Some(pandoc) = bundled_pandoc() else {
+            eprintln!("Pandoc sidecar is not staged; skipping the Mermaid figure filter check");
+            return;
+        };
+        let base = tempfile::tempdir().unwrap();
+        let project = oleafly_core::plain_path(&base.path().canonicalize().unwrap()).join("Notes");
+        std::fs::create_dir_all(project.join("figures")).unwrap();
+        std::fs::write(project.join("main.md"), mermaid_markdown()).unwrap();
+        std::fs::write(project.join("figures/mermaid-0000000000000000.png"), b"png").unwrap();
+        let bases = tempfile::tempdir().unwrap();
+        let spec = markdown_spec_with(&project.join("build"), &project, test_scratch(bases.path()));
+        let output = project.join("main.native");
+        let (log, code) = run_supervised_process_with_environment(
+            &pandoc,
+            &pandoc_args_writing(&spec, "native", &output),
+            &spec.working_dir,
+            None,
+            COMPILE_TIMEOUT,
+            None,
+            &spec.environment,
+        )
+        .await
+        .unwrap();
+        assert_eq!(code, Some(0), "{log}");
+        let native = std::fs::read_to_string(&output).unwrap();
+        assert_eq!(native.matches("CodeBlock").count(), 2, "{native}");
+        assert!(!native.contains("Image"), "{native}");
     }
 
     #[test]
@@ -5614,6 +6179,33 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         assert_eq!(std::fs::read_dir(&inherited_temp).unwrap().count(), 0);
         drop(spec);
         assert!(!scratch.exists());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn real_pandoc_hands_tectonic_the_saved_mermaid_figure() {
+        let Some(run) = RealPandocRun::new() else {
+            return;
+        };
+        let project = run.base.join("folders").join("Diagrams");
+        RealPandocRun::file(&project, "main.md", mermaid_markdown().as_bytes());
+        RealPandocRun::file(&project, MERMAID_FLOWCHART_FIGURE, &ONE_PIXEL_PNG);
+        let out = run.base.join("build");
+        std::fs::create_dir_all(&out).unwrap();
+        let created = run.scratch(&out);
+        let spec = run.spec(&out, &project, created);
+        run.run(&spec, &[]).await;
+        let images = run.recorded("images");
+        let images: Vec<_> = images.lines().collect();
+        assert_eq!(images.len(), 1, "{images:?}");
+        assert!(images[0].ends_with(MERMAID_FLOWCHART_FIGURE), "{images:?}");
+        let tex = run.recorded("tex");
+        assert!(tex.contains("\\begin{center}"), "{tex}");
+        assert!(tex.contains("flowchart LR"), "{tex}");
+        assert!(!tex.contains("flowchart TD"), "{tex}");
+        assert!(out
+            .join(format!("{}.pdf", crate::paths::ENTRY_STEM))
+            .is_file());
     }
 
     #[cfg(unix)]
@@ -6294,7 +6886,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             &project.join("main.tex"),
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
-            options,
+            options.clone(),
             "texlive",
         )
         .unwrap();
@@ -6305,7 +6897,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
                 Path::new("main.tex"),
                 crate::paths::ENTRY_STEM,
                 LatexmkFlavor::Pdflatex,
-                options,
+                options.clone(),
                 "texlive",
             )
             .unwrap()
@@ -6354,7 +6946,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             &project.join("main.tex"),
             crate::paths::ENTRY_STEM,
             LatexmkFlavor::Pdflatex,
-            options,
+            options.clone(),
             "texlive",
         )
         .unwrap();
@@ -6411,7 +7003,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
                 &share.join("main.tex"),
                 crate::paths::ENTRY_STEM,
                 LatexmkFlavor::Pdflatex,
-                options,
+                options.clone(),
                 "texlive",
             )
             .unwrap_err();
@@ -7266,6 +7858,9 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
                 allow_shell_escape: false,
                 source_date_epoch: None,
                 external_build: false,
+                typst: None,
+                typst_packages: None,
+                typst_settings: None,
             },
         );
         let before = crate::biber_toolchain::bbl_stamp(&build, stem);

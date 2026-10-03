@@ -7,10 +7,14 @@ import {
   getConfig,
   getOrCreateScratchProject,
   readIsolatedPdf,
+  renderTypstSnippet,
   saveCustomTemplate,
+  type TypstSnippetDiagnostic,
 } from "@/lib/tauri";
 
 const GENERATE_TIMEOUT_MS = 45_000;
+const PREVIEW_PPI = 108;
+const LOG_TAIL_CHARS = 2000;
 
 const SYSTEM = [
   "You create document templates for a LaTeX/Typst/Markdown editor.",
@@ -25,6 +29,11 @@ const SYSTEM = [
   "before it is referenced. Prefer no colors at all. Stick to widely available packages",
   "(geometry, graphicx, hyperref, xcolor, booktabs, enumitem, titlesec, caption, microtype,",
   "amsmath, lipsum). Every environment and command you reference must be defined.",
+  "Typst safety rules: the source must compile with Typst 0.13 or newer and the bundled compiler alone.",
+  'Never import packages (no #import "@preview/..."). Never read other files, so no image(),',
+  "read(), json(), csv() or bibliography(). Use no images. Draw any figure with rect, line,",
+  "circle, polygon and grid. Set no font, or use only Libertinus Serif, New Computer Modern",
+  "or DejaVu Sans Mono.",
 ].join(" ");
 
 export interface ParsedTemplate {
@@ -108,15 +117,41 @@ export async function generateTemplateSource(
   return parseGeneratedTemplate(text);
 }
 
+function typstLogLine(file: string, diagnostic: TypstSnippetDiagnostic): string {
+  const location =
+    diagnostic.line === null ? "" : `${file}:${diagnostic.line}:${diagnostic.column ?? 1}: `;
+  return `${location}${diagnostic.severity}: ${diagnostic.message}`;
+}
+
+async function compileGeneratedTypst(
+  parsed: ParsedTemplate,
+): Promise<{ png: string | null; log: string }> {
+  const result = await renderTypstSnippet({
+    source: parsed.source,
+    format: "png",
+    ppi: PREVIEW_PPI,
+    document: true,
+  });
+  const log = result.diagnostics
+    .map((diagnostic) => typstLogLine(parsed.mainDoc, diagnostic))
+    .join("\n")
+    .slice(-LOG_TAIL_CHARS);
+  if (result.status !== "rendered" || result.image.format !== "png") {
+    return { png: null, log };
+  }
+  return { png: `data:image/png;base64,${result.image.pngBase64}`, log };
+}
+
 export async function compileGeneratedTemplate(
   parsed: ParsedTemplate,
 ): Promise<{ png: string | null; log: string }> {
+  if (parsed.engine === "typst") return compileGeneratedTypst(parsed);
   if (parsed.engine !== "xetex") {
     return { png: null, log: "" };
   }
   const scratchId = await getOrCreateScratchProject();
   const res = await compileIsolated(scratchId, parsed.source);
-  const log = (res.log ?? "").slice(-2000);
+  const log = (res.log ?? "").slice(-LOG_TAIL_CHARS);
   if (!res.has_pdf) return { png: null, log };
   const bytes = new Uint8Array(await readIsolatedPdf(scratchId));
   const png = await pdfPageToPng(bytes, 1, 1.5, "#ffffff");

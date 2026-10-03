@@ -32,17 +32,18 @@ vi.mock("@/components/editor/cm/controller", () => ({
   wrapSelectionOrPlaceholder: vi.fn(),
 }));
 
+import { useFilesStore } from "@/store/files";
 import { imagePasteExtension, imageTransferFiles } from "./image-paste";
 
 let views: EditorView[] = [];
 
-function mount(doc = "Hello\n", readOnly = false): EditorView {
+function mount(doc = "Hello\n", readOnly = false, language: "latex" | "typst" = "latex"): EditorView {
   const parent = document.createElement("div");
   document.body.append(parent);
   const view = new EditorView({
     state: EditorState.create({
       doc,
-      extensions: [imagePasteExtension(), EditorState.readOnly.of(readOnly)],
+      extensions: [imagePasteExtension(language), EditorState.readOnly.of(readOnly)],
     }),
     parent,
   });
@@ -161,5 +162,38 @@ describe("imagePasteExtension", () => {
     await flush();
     expect(view.state.doc.toString()).toBe("Hello\n");
     expectNoNotice();
+  });
+
+  it("writes a Typst figure relative to the open Typst file", async () => {
+    useFilesStore.setState({ activePath: "chapters/one.typ", engine: { ...useFilesStore.getState().engine, typst_resolved: { version: "0.15.1", source: "bundled" } } } as never);
+    const view = mount("Text\n", false, "typst");
+    view.dispatch({ selection: { anchor: 5 } });
+    const event = dispatch(view, "paste", transfer(["Files"], [pngFile()]));
+    expect(event.defaultPrevented).toBe(true);
+    await vi.waitFor(() => expect(view.state.doc.toString()).toContain("#figure("));
+    expect(view.state.doc.toString()).toBe(
+      [
+        "Text",
+        "#figure(",
+        '  image("../figures/pasted.png", width: 80%),',
+        "  caption: [],",
+        ") <fig:pasted>",
+        "",
+      ].join("\n"),
+    );
+    const caret = view.state.selection.main;
+    expect(caret.empty).toBe(true);
+    expect(view.state.sliceDoc(caret.from - "caption: [".length, caret.from)).toBe("caption: [");
+    expect(view.state.doc.toString()).not.toContain("\\includegraphics");
+    expectNoNotice();
+  });
+
+  it("drops Typst figures at the drop position", async () => {
+    useFilesStore.setState({ activePath: "main.typ" } as never);
+    const view = mount("First\nSecond\n", false, "typst");
+    vi.spyOn(view, "posAtCoords").mockReturnValue(6);
+    dispatch(view, "drop", transfer(["Files"], [pngFile(), pngFile()]), { clientX: 1, clientY: 1 });
+    await vi.waitFor(() => expect(view.state.doc.toString().match(/#figure\(/gu)).toHaveLength(2));
+    expect(view.state.doc.toString().startsWith('First\n#figure(\n  image("figures/pasted.png", width: 80%),')).toBe(true);
   });
 });

@@ -149,6 +149,107 @@ Word and Markdown imports carry citations as literal text.
 The lookup and verification belong to `oleafly-literature-sweep`. Give it the reference
 list text; it comes back with verified entries.
 
+## Pandoc into Typst
+
+A Word, Markdown, or HTML import with Typst as the target goes through pandoc's Typst
+writer. The output compiles as it is. What it needs is the same cleanup as the LaTeX
+route, in Typst terms.
+
+### The preamble
+
+| Block | What it does | Keep? |
+|---|---|---|
+| `#let horizontalrule = line(...)` | Draws a thematic break | Only if the body uses `horizontalrule`. |
+| `#show terms.item: ...` | Formats definition lists | Only if the body has `/ term: description` lists. |
+| `#set table(inset: 6pt, stroke: none)` | Removes every table rule | Replace with rules on each table, or drop `stroke: none` and style tables in one place. |
+| `#show figure.where(kind: table): set figure.caption(position: top)` | Captions above tables | Keep. Most venues want it. |
+| `#let content-to-string(...)` | Turns author names into the PDF author string | Only while `conf` stays. |
+| `#let conf(...)` and `#show: doc => conf(...)` | Page, text, and title block | Keep until the build is green, then replace with plain `#set` rules if the user wants a short preamble. |
+| `sectionnumbering: none` in the `conf(...)` call | Turns off heading numbering | Set it to `"1.1"` unless the user wants unnumbered headings. |
+
+### Headings
+
+Before:
+
+```typst
+== Results
+<results>
+```
+
+After:
+
+```typst
+== Results <sec:results>
+```
+
+Fix every `@results` in the same edit. A reference to a heading only works when headings
+are numbered (``cannot reference heading without numbering`` otherwise), so do the
+preamble step first.
+
+### Tables
+
+Before:
+
+```typst
+#figure(
+  align(center)[#table(
+    columns: (28.27%, 28.27%, 28.27%),
+    align: (auto,right,auto,),
+    table.header([Model], table.cell(align: right)[Score], [Time],),
+    table.hline(),
+    [A], table.cell(align: right)[0.91], [3 s],
+  )]
+  , caption: [Main results
+
+  ]
+  , kind: table
+  )
+```
+
+After:
+
+```typst
+#figure(
+  table(
+    columns: 3,
+    align: (left, right, left),
+    table.hline(),
+    table.header([Model], [Score], [Time]),
+    table.hline(),
+    [A], [0.91], [3 s],
+    table.hline(),
+  ),
+  caption: [Main results],
+) <tab:main>
+```
+
+### Images
+
+Before:
+
+```typst
+#figure(image("assets/media/rId10.png", height: 1.16667in, width: 4.44444in, alt: "Pipeline overview"),
+  caption: [
+    Pipeline overview
+  ]
+)
+```
+
+After:
+
+```typst
+#figure(
+  image("assets/pipeline.png", width: 80%, alt: "Pipeline overview"),
+  caption: [Pipeline overview],
+) <fig:pipeline>
+```
+
+### Citations
+
+Literal citations and a plain `= References` section arrive exactly as in the LaTeX route.
+Once the entries exist in `references.bib`, cite with `@key` and replace the section with
+`#bibliography("references.bib")`. Typst adds its own heading, so delete the old one.
+
 ## The PDF converter's output
 
 The built-in converter is deterministic and local. It reads the PDF text layer, orders it

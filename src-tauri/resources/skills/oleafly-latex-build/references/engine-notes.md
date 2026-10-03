@@ -97,9 +97,14 @@ Neither is something to fix from inside a document. Report them so the user know
 
 ## Typst
 
-- Pinned Typst CLI, run as `compile <in> <out.pdf> --root <project dir>`.
-- No SyncTeX, no isolated figure compile, no DOCX, HTML or PPTX export. The capability flags say so honestly; do not promise otherwise.
-- `@preview` package imports need network on the first compile and are cached per user afterwards. Oleafly does not pre-fetch them and reports Typst as not offline capable, so prefer built-in features for anything that has to work on a plane.
+- Oleafly ships one Typst version and can download others in Settings. A project compiles with the version in `project.json` under `typst.version`, or with the default version from Settings when it has no pin. The user changes the pin from the Compile menu. Typst syntax and output shift between releases, so never change the pin to get past one error. Suggest it and let the user decide.
+- When the pinned version is not installed, the compile stops and says so. That is a missing download, not a source error.
+- Typst runs as `compile <in> <out.pdf> --root <project dir>`. Every file the document reads has to sit inside the project folder.
+- `@preview` package imports need network on the first compile and are cached per user afterwards. Oleafly does not pre-fetch them and reports Typst as not offline capable, so prefer built-in features for anything that has to work on a plane. Always import an exact package version. A package written for a newer Typst fails on an older pin, and the errors then point into the package's own files rather than the project.
+- Fonts: Typst embeds Libertinus Serif, New Computer Modern, New Computer Modern Math and DejaVu Sans Mono, and it also reads the fonts installed on this computer. It does not look in the project folder for fonts on its own. A missing family is only a warning (`unknown font family`) and the text falls back to another font, so read the log for it. When coauthors build on other machines, stick to the embedded fonts or the fonts the template documents.
+- Bibliography: `#bibliography("refs.bib")` reads BibTeX and `#bibliography("refs.yml")` reads Hayagriva YAML. Citations are `@key` or `#cite(<key>)`. Typst formats the list itself with a CSL style, so there is no BibTeX or Biber step to fix.
+- No SyncTeX and no isolated compile. `preview_figure` still renders a Typst figure (CeTZ, fletcher, or plain content) on its own, and `insert_figure` places it in a `#figure`.
+- Exports: a Typst project exports to LaTeX, Word, HTML, Markdown and plain text. There is no PowerPoint or EPUB export, so do not promise one.
 - Source to PDF position mapping does not exist in a plain Typst PDF at all. The compiled file carries no source file name, and its `/Span` entries are tagged-PDF structure, not Typst spans. The only positional data is named destinations from labelled headings, which is heading granularity. So when a Typst error names a line, go to that line in the editor; there is nothing to click through in the preview.
 
 ## Markdown

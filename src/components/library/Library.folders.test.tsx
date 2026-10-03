@@ -202,7 +202,7 @@ describe("folder cards", () => {
     await renderLibrary();
     for (const name of ["Open Thesis", "Open Slides"]) {
       const folderCard = card(name);
-      expect(within(folderCard).getByText("Tectonic")).toBeInTheDocument();
+      expect(within(folderCard).getByText("LaTeX")).toBeInTheDocument();
       expect(within(folderCard).getByText(EXTERNAL)).toBeInTheDocument();
       expect(within(folderCard).getByText(projectModifiedLabel(TODAY) as string)).toBeInTheDocument();
       expect(within(folderCard).queryByText("No main document")).toBeNull();
@@ -305,12 +305,12 @@ describe("folder cards", () => {
     const list = screen.getByTestId("project-list");
     expect(await within(card("Open Slides")).findAllByText(enLibrary.folder.state.offline)).not.toHaveLength(0);
     expect(list.textContent).not.toContain("Desktop");
-    expect(columns("Open Thesis")).toEqual([EXTERNAL, "Tectonic", projectModifiedLabel(TODAY)]);
-    expect(columns("Open Slides")).toEqual([EXTERNAL, "Tectonic", enLibrary.folder.state.offline]);
+    expect(columns("Open Thesis")).toEqual([EXTERNAL, "LaTeX", projectModifiedLabel(TODAY)]);
+    expect(columns("Open Slides")).toEqual([EXTERNAL, "LaTeX", enLibrary.folder.state.offline]);
     const slides = screen.getByRole("button", { name: "Open Slides" });
     expect(within(slides).getByText(enLibrary.folder.state.offline).closest("span.sm\\:hidden")).not.toBeNull();
-    expect(within(slides).getByText(`Tectonic · ${EXTERNAL}`)).toHaveClass("hidden", "sm:block", "lg:hidden");
-    expect(within(screen.getByRole("button", { name: "Open Thesis" })).getByText(`Tectonic · ${EXTERNAL}`)).toHaveClass("lg:hidden");
+    expect(within(slides).getByText(`LaTeX · ${EXTERNAL}`)).toHaveClass("hidden", "sm:block", "lg:hidden");
+    expect(within(screen.getByRole("button", { name: "Open Thesis" })).getByText(`LaTeX · ${EXTERNAL}`)).toHaveClass("lg:hidden");
   });
 
   it("label the date column Modified whether or not folders are listed", async () => {
@@ -361,7 +361,7 @@ describe("project cards and rows", () => {
     ).toBeInTheDocument();
 
     const thesis = card("Open Thesis");
-    expect(within(thesis).getByText("Tectonic")).toBeInTheDocument();
+    expect(within(thesis).getByText("LaTeX")).toBeInTheDocument();
     expect(within(thesis).getByText(EXTERNAL)).toBeInTheDocument();
     expect(within(thesis).queryByText("paper/main.tex")).toBeNull();
     expect(within(thesis).queryByText(enLibrary.projects.kind.document)).toBeNull();
@@ -395,8 +395,8 @@ describe("project cards and rows", () => {
 
     const thesis = screen.getByRole("button", { name: "Open Thesis" });
     expect(within(thesis).queryByTitle(/Desktop/)).toBeNull();
-    expect(within(thesis).getByText(`Tectonic · ${EXTERNAL}`)).toHaveClass("lg:hidden");
-    expect(columns("Open Thesis")).toEqual([EXTERNAL, "Tectonic", projectModifiedLabel(TODAY)]);
+    expect(within(thesis).getByText(`LaTeX · ${EXTERNAL}`)).toHaveClass("lg:hidden");
+    expect(columns("Open Thesis")).toEqual([EXTERNAL, "LaTeX", projectModifiedLabel(TODAY)]);
     expect(columns("Open Unopened")[2]).toBe(projectModifiedLabel(today));
   });
 });

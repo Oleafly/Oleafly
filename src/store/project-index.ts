@@ -34,6 +34,7 @@ import {
   resetProjectSourcesCache,
 } from "@/lib/project-sources";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
+import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
 import { useFilesStore } from "@/store/files";
 
 const PROJECT_ANALYSIS_IDLE_MS = 300;
@@ -153,7 +154,7 @@ function treePaths(): string[] {
     .getState()
     .tree.filter((entry) => !entry.is_dir)
     .map((entry) => normalizeProjectPath(entry.path))
-    .filter((path): path is string => path !== null)
+    .filter((path): path is string => path !== null && !isVendoredTypstPackagePath(path))
     .sort();
 }
 
@@ -162,7 +163,9 @@ function currentKnownFiles(extraPath?: string): string[] {
   const normalizedExtra = extraPath
     ? normalizeProjectPath(extraPath)
     : null;
-  if (normalizedExtra) paths.add(normalizedExtra);
+  if (normalizedExtra && !isVendoredTypstPackagePath(normalizedExtra)) {
+    paths.add(normalizedExtra);
+  }
   return [...paths].sort((a, b) => Number(a > b) - Number(a < b));
 }
 

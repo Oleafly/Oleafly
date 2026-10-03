@@ -43,7 +43,9 @@
     "noResults": "Ничего не найдено. Проверьте идентификатор или попробуйте другие слова из заголовка.",
     "placeholder": "DOI, идентификатор arXiv, URL или заголовок статьи…",
     "privacyNote": "Отправляется только идентификатор или заголовок, на doi.org, arXiv или Crossref.",
-    "title": "Добавить цитату"
+    "title": "Добавить цитату",
+    "bibliography": "Библиография",
+    "bibliographyHint": "В этом проекте больше одной библиографии. Запись попадёт в файл, который вы выберете здесь."
   },
   "backendProtocol": {
     "mismatch": "Это окно и его серверная часть собраны для разных версий Oleafly, поэтому часть возможностей может не работать. Переустановка приложения это исправит."
@@ -124,6 +126,14 @@
       "keywords": "закрыть окружение close end environment begin latex",
       "label": "Закрыть окружение LaTeX"
     },
+    "formatDocument": {
+      "keywords": "форматировать упорядочить отступ typstyle typst format tidy indent",
+      "label": "Форматировать документ"
+    },
+    "formatSelection": {
+      "keywords": "форматировать выделение упорядочить отступ typstyle typst format selection tidy indent",
+      "label": "Форматировать выделенное"
+    },
     "createProject": {
       "keywords": "новый проект создать шаблон галерея new project create template gallery",
       "label": "Создать новый проект"
@@ -131,6 +141,14 @@
     "diagramComposer": {
       "keywords": "диаграмма рисунок холст diagram figure tikz composer draw canvas",
       "label": "Открыть конструктор диаграмм"
+    },
+    "typstPackages": {
+      "keywords": "typst universe пакеты импорт библиотека обзор копировать packages import library browse vendor",
+      "label": "Обзор пакетов Typst"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan пакеты usepackage преамбула установить tlmgr обзор packages preamble install browse",
+      "label": "Обзор пакетов LaTeX"
     },
     "documentCitationScan": {
       "keywords": "цитаты литература абзац источники найти citations literature scan document paragraph references find",
@@ -197,7 +215,8 @@
       "label": "Обернуть в окружение"
     },
     "synctex": {
-      "label": "Перейти к PDF (SyncTeX)"
+      "label": "Перейти к PDF (SyncTeX)",
+      "typstLabel": "Перейти к PDF"
     },
     "table": {
       "label": "Таблица"
@@ -230,6 +249,79 @@
     "openFolder": {
       "label": "Открыть папку…",
       "keywords": "открыть папка каталог существующий локальный файлы диск"
+    },
+    "underline": {
+      "label": "Подчёркнутый"
+    },
+    "strikethrough": {
+      "label": "Зачёркнутый"
+    },
+    "inlineCode": {
+      "label": "Код в строке"
+    },
+    "link": {
+      "label": "Ссылка"
+    },
+    "footnote": {
+      "label": "Сноска"
+    },
+    "quote": {
+      "label": "Цитата"
+    },
+    "inlineMath": {
+      "label": "Формула в строке"
+    },
+    "numberedEquation": {
+      "label": "Нумерованная формула"
+    },
+    "alignedEquations": {
+      "label": "Выровненные формулы"
+    },
+    "fraction": {
+      "label": "Дробь"
+    },
+    "crossReference": {
+      "label": "Перекрёстная ссылка"
+    },
+    "typstInsights": {
+      "label": "Сведения о документе",
+      "keywords": "рисунки таблицы формулы заголовки метки цитаты todo fixme метаданные аннотация подача figures tables equations headings labels citations metadata abstract submission"
+    },
+    "typstDocumentSettings": {
+      "label": "Настройки документа",
+      "keywords": "размер страницы поля колонки размер шрифта язык регион выравнивание интерлиньяж межстрочный интервал нумерация page size margins columns font language region justify leading line spacing numbering"
+    },
+    "toggleComment": {
+      "label": "Закомментировать или раскомментировать",
+      "keywords": "комментарий закомментировать раскомментировать строка блок comment uncomment line block"
+    },
+    "goToDefinition": {
+      "label": "Перейти к определению",
+      "keywords": "определение перейти символ навигация definition jump symbol navigate"
+    },
+    "findReferences": {
+      "label": "Найти ссылки",
+      "keywords": "ссылки использования символ references usages symbol"
+    },
+    "renameSymbol": {
+      "label": "Переименовать символ",
+      "keywords": "переименовать символ рефакторинг rename symbol refactor"
+    },
+    "migrateToTypst": {
+      "label": "Преобразовать в проект Typst",
+      "keywords": "typst преобразовать перенести latex проект новый convert migrate project new"
+    },
+    "typstMigrationReport": {
+      "label": "Показать отчёт о преобразовании в Typst",
+      "keywords": "typst преобразование перенос отчёт latex convert migrate report"
+    },
+    "present": {
+      "label": "Показать слайды",
+      "keywords": "показ слайды презентация полноэкранный beamer touying polylux заметки докладчика pdfpc present slides presentation fullscreen speaker notes"
+    },
+    "presentWithPresenter": {
+      "label": "Показать слайды в режиме докладчика",
+      "keywords": "показ слайды режим докладчика заметки докладчика таймер следующий слайд present slides presenter view speaker notes timer next slide"
     }
   },
   "community": {
@@ -242,7 +334,12 @@
     "autoCompile": {
       "off": "Выключена",
       "on": "Включена",
-      "title": "Автокомпиляция"
+      "title": "Автокомпиляция",
+      "help": "Компиляция запускается через несколько секунд после того, как вы перестаёте печатать. Открытый файл сначала сохраняется.",
+      "typstHelp": "Typst работает постоянно и обновляет PDF вскоре после того, как вы перестаёте печатать. Пока режим включён, открытый файл сохраняется автоматически.",
+      "typstStarting": "Запуск Typst",
+      "typstRestarting": "Typst перезапускается",
+      "typstFailed": "Typst остановился после повторяющихся ошибок. Измените файл, чтобы запустить его снова."
     },
     "compile": "Скомпилировать",
     "compiler": {
@@ -278,7 +375,37 @@
     "texRootLabel": "Корень TEX",
     "texRootName": "корень: {{name}}",
     "texRootNotTex": "% !TEX root в {{file}} указывает на {{target}}, который не является файлом LaTeX",
-    "texRootOverride": "корень: {{path}} (задан через % !TEX root в {{file}})"
+    "texRootOverride": "корень: {{path}} (задан через % !TEX root в {{file}})",
+    "typstVersion": {
+      "title": "Версия Typst (этот проект)",
+      "help": "Закрепите версию, чтобы результат этого проекта не менялся, когда Oleafly обновляет Typst. Пункт «По умолчанию» берёт версию, выбранную в настройках. Чтобы установить версии или проверить проект на более новой, откройте Настройки → Движки → Typst.",
+      "default": "По умолчанию ({{version}})",
+      "defaultPlain": "По умолчанию",
+      "builtIn": "[встроенная]",
+      "system": "[системная]",
+      "missing": "[не установлена]",
+      "switchFailed": "Не удалось изменить версию Typst."
+    },
+    "typstFonts": {
+      "title": "Шрифты (этот проект)",
+      "help": "Typst читает шрифты из папки fonts проекта и из папок, перечисленных в font_paths в project.json. Если оставить только шрифты проекта, PDF не будет зависеть от шрифтов, установленных на этом компьютере. В окне «Настройки документа» перечислены шрифты, которые может найти Typst.",
+      "systemFonts": "Использовать системные шрифты",
+      "projectOnly": "Только шрифты проекта",
+      "unsupported": "Нужен более новый Typst",
+      "saveFailed": "Не удалось сохранить настройку шрифтов."
+    },
+    "typstBuild": {
+      "title": "Сборка (этот проект)",
+      "help": "Воспроизводимая сборка использует только шрифты проекта и ставит на PDF дату последнего коммита. Тогда одни и те же исходники дают один и тот же PDF на любом компьютере.",
+      "standard": "Стандартная сборка",
+      "reproducible": "Воспроизводимая сборка",
+      "saveFailed": "Не удалось сохранить настройку сборки."
+    },
+    "typstVariant": {
+      "title": "Вариант (этот проект)",
+      "help": "Вариант передаёт свои значения в sys.inputs, например для черновой или финальной сборки. Выбранный вариант хранится только на этом компьютере. Добавлять и изменять варианты можно в окне «Настройки документа».",
+      "none": "Без варианта"
+    }
   },
   "datePicker": {
     "placeholder": "Выберите дату"
@@ -988,6 +1115,10 @@
     "wait": {
       "description": "{{phase}} Ваша компиляция поставлена в очередь и начнётся автоматически, как только движок будет готов.",
       "title": "TinyTeX ещё скачивается"
+    },
+    "typstQuit": {
+      "title": "Typst ещё устанавливается",
+      "description": "Typst {{version}} скачивается. Если выйти сейчас, скачивание остановится и его придётся начать заново в настройках."
     }
   },
   "toolbar": {
@@ -1127,5 +1258,156 @@
     "added": "Готово. Команда уже есть в меню «Службы» в Finder. Чтобы пользоваться ею и из меню «Быстрые действия», щёлкните папку правой кнопкой и включите её в меню «Быстрые действия» › «Настроить».",
     "addedInQuickActions": "Готово. Щёлкните папку правой кнопкой, и вы найдёте команду в меню «Быстрые действия».",
     "failed": "Не удалось добавить. Попробуйте ещё раз в разделе «Настройки» › «Общие»."
+  },
+  "typstMigration": {
+    "title": "Преобразовать в проект Typst",
+    "closeLabel": "Закрыть преобразование в Typst",
+    "intro": "Oleafly создаст новый проект Typst из этого проекта LaTeX. Этот проект не изменится.",
+    "points": {
+      "text": "Pandoc преобразует текст, формулы, рисунки и таблицы.",
+      "files": "Каждый файл input и include становится отдельным файлом Typst.",
+      "bibliography": "Файлы BibTeX копируются как есть.",
+      "compile": "Typst компилирует новый проект для проверки."
+    },
+    "nameLabel": "Имя нового проекта",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Откройте проект LaTeX, чтобы преобразовать его.",
+    "convert": "Преобразовать",
+    "retry": "Попробовать снова",
+    "progress": {
+      "reading": "Читаем проект LaTeX",
+      "converting": "Преобразуем с помощью Pandoc",
+      "creating": "Создаём проект Typst",
+      "compiling": "Компилируем с помощью Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc не готов. Установите его в разделе «Инструменты», затем попробуйте снова.",
+      "noMain": "Не удалось прочитать главный файл LaTeX.",
+      "emptyOutput": "Pandoc вернул пустой документ.",
+      "failed": "Преобразование остановлено: {{detail}}"
+    },
+    "report": {
+      "created": "Создано: {{name}}.",
+      "compiled": "Проект компилируется с Typst.",
+      "compileFailed_one": "Проект пока не компилируется. Нужно исправить {{count}} ошибку.",
+      "compileFailed_few": "Проект пока не компилируется. Нужно исправить {{count}} ошибки.",
+      "compileFailed_many": "Проект пока не компилируется. Нужно исправить {{count}} ошибок.",
+      "compileFailed_other": "Проект пока не компилируется. Нужно исправить {{count}} ошибки.",
+      "compileUnavailable": "Oleafly не удалось его скомпилировать: {{detail}}",
+      "converted": "Преобразовано",
+      "sources_one": "{{count}} исходный файл",
+      "sources_few": "{{count}} исходных файла",
+      "sources_many": "{{count}} исходных файлов",
+      "sources_other": "{{count}} исходного файла",
+      "figures_one": "{{count}} рисунок",
+      "figures_few": "{{count}} рисунка",
+      "figures_many": "{{count}} рисунков",
+      "figures_other": "{{count}} рисунка",
+      "tables_one": "{{count}} таблица",
+      "tables_few": "{{count}} таблицы",
+      "tables_many": "{{count}} таблиц",
+      "tables_other": "{{count}} таблицы",
+      "equations_one": "{{count}} выключная формула",
+      "equations_few": "{{count}} выключные формулы",
+      "equations_many": "{{count}} выключных формул",
+      "equations_other": "{{count}} выключной формулы",
+      "references_one": "{{count}} перекрёстная ссылка",
+      "references_few": "{{count}} перекрёстные ссылки",
+      "references_many": "{{count}} перекрёстных ссылок",
+      "references_other": "{{count}} перекрёстной ссылки",
+      "mathFixed_one": "{{count}} формула исправлена конвертером формул",
+      "mathFixed_few": "{{count}} формулы исправлены конвертером формул",
+      "mathFixed_many": "{{count}} формул исправлено конвертером формул",
+      "mathFixed_other": "{{count}} формулы исправлено конвертером формул",
+      "copied_one": "{{count}} файл скопирован",
+      "copied_few": "{{count}} файла скопированы",
+      "copied_many": "{{count}} файлов скопировано",
+      "copied_other": "{{count}} файла скопировано",
+      "style": "Стиль библиографии {{style}}",
+      "mapping": "{{source}} в {{target}}",
+      "attention": "Требует внимания",
+      "noAttention": "Ничего не требует внимания.",
+      "problems": "Ошибки и предупреждения компиляции",
+      "location": "{{file}}, строка {{line}}",
+      "noLocation": "Без расположения в файле",
+      "openAt": "Открыть {{file}} на строке {{line}}",
+      "open": "Открыть проект Typst"
+    },
+    "notes": {
+      "missingInclude": "Файл {{detail}} не найден, поэтому он пропущен.",
+      "lostInclude": "Для {{detail}} не удалось создать отдельный файл. Его текст остаётся в файле, который его включал.",
+      "missingImage": "Изображение {{detail}} не найдено.",
+      "unsupportedImage": "Typst не может показать {{detail}}. Преобразуйте его в PDF, PNG или SVG.",
+      "math": "Эту формулу нужно исправить вручную: {{detail}}",
+      "bibliographyStyle": "Для стиля BibTeX {{detail}} нет соответствия в Typst. Используется стиль по умолчанию.",
+      "skippedFile": "{{detail}} не скопирован, потому что проект слишком большой.",
+      "unreadableFile": "Не удалось прочитать {{detail}}.",
+      "equationLabel": "Typst нумерует формулы целиком, поэтому ссылки на {{detail}} теперь указывают на формулу, в которой была метка."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Изображения и HTML",
+    "title": "Экспорт с помощью Typst",
+    "close": "Закрыть экспорт Typst",
+    "format": "Формат",
+    "png": "Изображения PNG",
+    "svg": "Изображения SVG",
+    "html": "HTML",
+    "experimental": "Экспериментально",
+    "htmlNote": "Экспорт HTML в Typst пока экспериментальный. Он не учитывает настройки страницы и размещённые элементы.",
+    "ppi": "Разрешение",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Страницы",
+    "pagesPlaceholder": "Все страницы",
+    "pagesHelp": "Укажите номера и диапазоны страниц, например 1, 3-5 или 8-.",
+    "pagesInvalid": "Проверьте диапазон страниц. Укажите номера и диапазоны страниц, например 1, 3-5 или 8-.",
+    "pagesUnsupported": "Эта версия Typst всегда экспортирует все страницы.",
+    "multiPage": "Каждая страница сохраняется в отдельный файл с номером после выбранного имени.",
+    "export": "Экспортировать",
+    "cancel": "Отмена"
+  },
+  "typstUpgrade": {
+    "title": "Попробовать более новую версию Typst",
+    "description": "Oleafly собирает этот проект обеими версиями во временных папках. В проекте ничего не изменится, пока вы не переключитесь.",
+    "compareWith": "Более новая версия",
+    "running": "Сборка в Typst {{current}} и {{candidate}}",
+    "current": "Typst {{version}} (текущая)",
+    "candidate": "Typst {{version}}",
+    "built": "Собрано",
+    "failed": "Ошибка",
+    "pages_one": "{{count}} страница",
+    "pages_few": "{{count}} страницы",
+    "pages_many": "{{count}} страниц",
+    "pages_other": "{{count}} страницы",
+    "pagesUnknown": "Число страниц неизвестно",
+    "errors_one": "{{count}} ошибка",
+    "errors_few": "{{count}} ошибки",
+    "errors_many": "{{count}} ошибок",
+    "errors_other": "{{count}} ошибки",
+    "warnings_one": "{{count}} предупреждение",
+    "warnings_few": "{{count}} предупреждения",
+    "warnings_many": "{{count}} предупреждений",
+    "warnings_other": "{{count}} предупреждения",
+    "pageChange": "Число страниц меняется с {{from}} на {{to}}.",
+    "pageSame": "Число страниц остаётся равным {{pages}}.",
+    "added": "Новое в Typst {{version}}",
+    "removed": "Больше не выводится в Typst {{version}}",
+    "noChanges": "Обе версии выдают одни и те же ошибки и предупреждения.",
+    "unchanged_one": "{{count}} сообщение совпадает в обеих версиях.",
+    "unchanged_few": "{{count}} сообщения совпадают в обеих версиях.",
+    "unchanged_many": "{{count}} сообщений совпадают в обеих версиях.",
+    "unchanged_other": "{{count}} сообщения совпадают в обеих версиях.",
+    "buildFailed": "Typst {{version}} не смог собрать проект.",
+    "switch": "Перейти на Typst {{version}}",
+    "switched": "Теперь этот проект использует Typst {{version}}.",
+    "switchFailed": "Не удалось сменить версию Typst.",
+    "runAgain": "Проверить снова",
+    "close": "Закрыть",
+    "checkFailed": "Не удалось завершить проверку.",
+    "noNewer": "Более новая версия Typst не установлена. Её можно установить в настройках.",
+    "openSettings": "Открыть настройки Typst",
+    "location": "{{file}}, строка {{line}}",
+    "error": "Ошибка",
+    "warning": "Предупреждение"
   }
 }

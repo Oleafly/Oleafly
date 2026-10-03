@@ -134,11 +134,11 @@ window.
 | Tool | What it does |
 |---|---|
 | `compile` | Compile the project to PDF |
-| `preview_figure` | Compile a figure in isolation and return a PNG image |
+| `preview_figure` | Render a figure on its own and return a PNG image |
 | `insert_figure` | Insert the last previewed figure into the document |
 | `load_image` | Load an image from the project for figure work |
 
-The three figure tools work only in LaTeX projects. In a Typst or Markdown project they return an error and change nothing.
+`preview_figure` and `insert_figure` work in LaTeX and Typst projects. A LaTeX figure is TikZ code that compiles in a small standalone document, and `insert_figure` wraps it in a `figure` environment. A Typst figure is Typst markup, such as a CeTZ canvas or a fletcher diagram, rendered with the project's Typst version. Packages from `@preview` load the same way they do in a normal Typst compile. `insert_figure` wraps the code in `#figure`, puts the label after it, and moves the figure's `#import` lines above it. In a Markdown project both tools return an error and change nothing. `load_image` works in every project.
 
 ### App
 

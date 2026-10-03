@@ -300,7 +300,7 @@
       "literatureSearch": "Søg efter artikler i OpenAlex på nøgleord, uden at der kræves en nøgle.",
       "verifyCitation": "Lav en DOI eller en titel om til bekræftet BibTeX via doi.org eller Crossref.",
       "projectLibrarySearch": "Søg på nøgleord i projektets egen tekst og noter.",
-      "previewFigure": "Kompiler en figur i TikZ eller PGFPlots for sig, og vis resultatet i chatten.",
+      "previewFigure": "Gengiv en TikZ- eller CeTZ-figur for sig, og vis resultatet i chatten.",
       "insertFigure": "Indsæt den færdige figur ved markøren med figurtekst og etiket, og gem en PNG under figures/.",
       "loadImage": "Se på et billede, der allerede ligger i projektet.",
       "updateTodos": "Skriv eller opdater den trinvise plan, der vises i chatten.",
@@ -343,6 +343,7 @@
     "noDescription": "Der er ikke angivet nogen beskrivelse.",
     "notes": {
       "latexOnly": "Kun i LaTeX-projekter",
+      "latexAndTypstOnly": "Kun i LaTeX- og Typst-projekter",
       "pdfCaptureSetting": "Kræver indstillingen for optagelse af PDF-sider",
       "chatApproval": "Godkendes i chatten, én kommando ad gangen",
       "browserSetting": "Kræver indstillingen for webbrowseren"
@@ -676,6 +677,24 @@
     "tikzFigure": {
       "label": "TikZ-figur",
       "description": "Laver et udkast til TikZ-kode i chatten"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Ret Typst-fejl"
+      },
+      "writeEquation": {
+        "description": "Fra almindeligt sprog til Typst-matematik"
+      },
+      "academicPresentation": {
+        "description": "En Typst-præsentation ud fra din artikel"
+      },
+      "generateTable": {
+        "description": "Laver et udkast til en Typst-tabel i chatten"
+      },
+      "figure": {
+        "label": "CeTZ-figur",
+        "description": "Laver et udkast til CeTZ-kode i chatten"
+      }
     }
   },
   "turn": {

@@ -44,8 +44,9 @@ export function sourceToCompile(
   mode: "draw" | "code",
   model: DiagramModel,
   code: string,
+  write: (model: DiagramModel) => string = modelToTikz,
 ): string {
   if (model.nodes.length === 0) return code;
-  if (sync.canvasAhead) return modelToTikz(model);
-  return mode === "draw" && !sync.codeDirty ? modelToTikz(model) : code;
+  if (sync.canvasAhead) return write(model);
+  return mode === "draw" && !sync.codeDirty ? write(model) : code;
 }

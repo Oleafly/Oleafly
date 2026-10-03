@@ -1,9 +1,14 @@
 export type ConverterToolId =
   | "image-to-latex"
   | "arxiv-to-latex"
+  | "arxiv-to-typst"
+  | "csv-to-typst"
   | "equation-to-latex"
+  | "equation-to-typst"
   | "excel-to-latex"
+  | "excel-to-typst"
   | "html-to-latex"
+  | "html-to-typst"
   | "image-to-typst"
   | "latex-to-html"
   | "latex-to-markdown"
@@ -12,7 +17,12 @@ export type ConverterToolId =
   | "markdown-to-latex"
   | "markdown-to-typst"
   | "mermaid-to-latex"
+  | "mermaid-to-typst"
   | "pdf-to-markdown"
   | "pdf-to-typst"
+  | "typst-to-html"
   | "typst-to-latex"
-  | "word-to-latex";
+  | "typst-to-markdown"
+  | "typst-to-word"
+  | "word-to-latex"
+  | "word-to-typst";

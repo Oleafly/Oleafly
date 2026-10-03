@@ -146,5 +146,37 @@
       "check_running": "Test tohoto agenta už probíhá.",
       "main_window": "Programy agentů měňte v hlavním okně."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly nenabízí Typst {{version}} a žádný Typst v tomto počítači tuto verzi nemá.",
+    "busy": "Typst {{version}} se stále instaluje. Zkuste to znovu, až instalace skončí.",
+    "remove_default": "Typst {{version}} je vaše výchozí verze. Před odebráním vyberte jinou výchozí.",
+    "remove_not_downloaded": "Oleafly může odebrat jen verze Typst, které sám stáhl, a Typst {{version}} nestahoval.",
+    "not_offered": "Typst {{version}} nelze pro tento počítač stáhnout.",
+    "install_unverified": "Typst {{version}} se stáhl, ale neprošel kontrolou integrity. Zkuste jej nainstalovat znovu.",
+    "not_typst_project": "Verzi Typst mají jen projekty Typst.",
+    "update_waits": "Než aktualizujete Oleafly, počkejte na dokončení instalace Typst."
+  },
+  "typst_packages": {
+    "index_offline": "Jste offline a seznam balíčků z Typst Universe ještě nebyl stažen.",
+    "index_unavailable": "Seznam balíčků z Typst Universe se nepodařilo načíst. Zkontrolujte připojení k internetu a zkuste to znovu.",
+    "vendor_failed": "Oleafly nedokázal zkopírovat balíčky do projektu."
+  },
+  "typst_query": {
+    "timeout": "Čtení tohoto dokumentu trvalo nástroji Typst příliš dlouho.",
+    "failed": "Typst nedokázal tento dokument přečíst."
+  },
+  "typst_version_missing": "Typst {{version}} není nainstalován.",
+  "typst_options": {
+    "invalid_input_key": "Názvy hodnot nesmějí být prázdné ani obsahovat rovnítko.",
+    "invalid_variant_name": "Každá varianta potřebuje krátký název, který nepoužívá žádná jiná varianta.",
+    "invalid_font_path": "Složky s písmy musí být uvnitř projektu.",
+    "fonts_failed": "Typst nedokázal vypsat písma.",
+    "fonts_timeout": "Výpis písem trval nástroji Typst příliš dlouho."
+  },
+  "typst_export": {
+    "failed": "Typst nedokázal dokument exportovat.",
+    "unsupported": "Tato verze Typst neumí exportovat s tímto nastavením.",
+    "invalid_ppi": "Vyberte rozlišení od 1 do {{max}} PPI."
   }
 }

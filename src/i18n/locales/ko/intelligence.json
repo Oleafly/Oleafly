@@ -59,6 +59,8 @@
       "startingAndInitializing": "프로젝트 언어 서비스를 시작하고 초기화하는 중입니다.",
       "stopTimeout": "이전 언어 서비스 프로세스가 제때 멈추지 않았습니다. 다시 시도해 복구하세요.",
       "synchronizedAndReady": "언어 서비스가 동기화되어 사용할 준비가 되었습니다.",
+      "tinymistDownloadFailed": "Tinymist {{version}}을(를) 내려받지 못했습니다. Oleafly가 다시 시도합니다.",
+      "tinymistDownloading": "이 프로젝트의 Typst 버전에 맞춰 Tinymist {{version}}을(를) 내려받는 중입니다.",
       "transportClosed": "언어 서비스 연결이 예기치 않게 끊겼습니다. 다시 시도해 연결하세요.",
       "versionMismatch": "{{kind}} {{expected}}을(를) 기대했지만 설치 과정에서 {{reported}}을(를) 보고했습니다."
     }
@@ -135,7 +137,8 @@
     "packageOption": "{{name}} 옵션",
     "keyvalKey": "\\{{command}} 키",
     "duplicateCount": "중복({{count}})",
-    "duplicateIndex": "중복 {{index}}/{{total}}"
+    "duplicateIndex": "중복 {{index}}/{{total}}",
+    "typstBinding": "Typst 바인딩"
   },
   "token": {
     "citation": "인용",

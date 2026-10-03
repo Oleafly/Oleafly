@@ -146,5 +146,37 @@
       "check_running": "È già in corso una prova di questo agente.",
       "main_window": "Cambia i programmi degli agenti dalla finestra principale."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly non offre Typst {{version}} e nessun Typst su questo computer ha quella versione.",
+    "busy": "Typst {{version}} si sta ancora installando. Riprova quando ha finito.",
+    "remove_default": "Typst {{version}} è la tua versione predefinita. Scegli un'altra versione predefinita prima di rimuoverla.",
+    "remove_not_downloaded": "Oleafly può rimuovere solo le versioni di Typst che ha scaricato, e non ha scaricato Typst {{version}}.",
+    "not_offered": "Typst {{version}} non può essere scaricato per questo computer.",
+    "install_unverified": "Typst {{version}} è stato scaricato ma non ha superato la verifica di integrità. Prova a installarlo di nuovo.",
+    "not_typst_project": "Solo i progetti Typst hanno una versione di Typst.",
+    "update_waits": "Attendi che Typst finisca l'installazione prima di aggiornare Oleafly."
+  },
+  "typst_packages": {
+    "index_offline": "Sei offline e l'elenco dei pacchetti di Typst Universe non è ancora stato scaricato.",
+    "index_unavailable": "Non è stato possibile caricare l'elenco dei pacchetti di Typst Universe. Controlla la connessione a internet e riprova.",
+    "vendor_failed": "Oleafly non è riuscito a copiare i pacchetti nel progetto."
+  },
+  "typst_query": {
+    "timeout": "Typst ha impiegato troppo tempo a leggere questo documento.",
+    "failed": "Typst non è riuscito a leggere questo documento."
+  },
+  "typst_version_missing": "Typst {{version}} non è installato.",
+  "typst_options": {
+    "invalid_input_key": "I nomi dei valori non possono essere vuoti né contenere un segno di uguale.",
+    "invalid_variant_name": "Ogni variante ha bisogno di un nome breve che nessun'altra variante usa.",
+    "invalid_font_path": "Le cartelle dei font devono trovarsi dentro il progetto.",
+    "fonts_failed": "Typst non è riuscito a elencare i font.",
+    "fonts_timeout": "Typst ha impiegato troppo tempo a elencare i font."
+  },
+  "typst_export": {
+    "failed": "Typst non è riuscito a esportare il documento.",
+    "unsupported": "Questa versione di Typst non può esportare con queste impostazioni.",
+    "invalid_ppi": "Scegli una risoluzione da 1 a {{max}} PPI."
   }
 }

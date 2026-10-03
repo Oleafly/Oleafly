@@ -38,16 +38,20 @@ export const BUNDLED_TINYMIST_VERSION = "0.15.8";
 export const ARCHIVE_TYPES = ["tar.xz", "tar.gz", "zip", "binary"];
 export const OPTIONAL_TYPST_FLAGS = [
   "--color",
+  "--creation-timestamp",
+  "--deps",
+  "--features",
   "--font-path",
   "--format",
   "--ignore-system-fonts",
   "--input",
   "--package-cache-path",
   "--package-path",
+  "--pages",
   "--pdf-standard",
   "--ppi",
 ];
-export const PROBED_OUTPUT_FORMATS = ["pdf", "png", "svg"];
+export const PROBED_OUTPUT_FORMATS = ["html", "pdf", "png", "svg"];
 
 export const TYPST_TOOL = {
   repository: "https://github.com/typst/typst",
@@ -236,6 +240,9 @@ function capabilitiesProblems(label, capabilities) {
   } else if (Array.isArray(flags) && flags.includes("--pdf-standard") !== pdfStandards.length > 0) {
     problems.push(`${label} PDF standards disagree with --pdf-standard support`);
   }
+  if (Array.isArray(flags) && Array.isArray(outputFormats) && flags.includes("--features") !== outputFormats.includes("html")) {
+    problems.push(`${label} HTML output disagrees with --features support`);
+  }
   return problems;
 }
 
@@ -396,7 +403,7 @@ function tarCompressionFlag(archiveType) {
 
 function listTar(bytes, archiveType) {
   const flag = tarCompressionFlag(archiveType);
-  const lines = (output) => output.toString("utf8").split("\n").filter((line) => line.length > 0);
+  const lines = (output) => output.toString("utf8").split(/\r?\n/u).filter((line) => line.length > 0);
   const names = lines(runTar([`-t${flag}f`, "-"], bytes));
   const details = lines(runTar([`-tv${flag}f`, "-"], bytes));
   if (names.length !== details.length) throw new Error("tar listing is inconsistent");
@@ -596,6 +603,7 @@ function pngWidth(bytes) {
 }
 
 const PROBE_SOURCE = "#set page(width: 120pt, height: 80pt)\n= Oleafly Typst probe\n\nThe engine works.\n";
+const HTML_PROBE_SOURCE = "= Oleafly Typst probe\n\nThe engine works.\n";
 const PACKAGE_MANIFEST = '[package]\nname = "oleafly-probe"\nversion = "0.1.0"\nentrypoint = "lib.typ"\n';
 const PACKAGE_LIBRARY = '#let greeting = [Hello from a package]\n';
 
@@ -632,6 +640,32 @@ const TYPST_FLAG_PROBES = [
     flag: "--pdf-standard",
     async prepare() {
       return { source: PROBE_SOURCE, args: ["--pdf-standard", "a-2b"] };
+    },
+  },
+  {
+    flag: "--pages",
+    async prepare() {
+      return { source: `${PROBE_SOURCE}#pagebreak()\nSecond page.\n`, args: ["--pages", "2"] };
+    },
+  },
+  {
+    flag: "--creation-timestamp",
+    async prepare() {
+      return { source: PROBE_SOURCE, args: ["--creation-timestamp", "0"] };
+    },
+  },
+  {
+    flag: "--deps",
+    async prepare(dir) {
+      return { source: PROBE_SOURCE, args: ["--deps", join(dir, "deps.json"), "--deps-format", "json"] };
+    },
+    async verify(dir) {
+      try {
+        const deps = JSON.parse(await readFile(join(dir, "deps.json"), "utf8"));
+        return Array.isArray(deps.inputs) && deps.inputs.some((input) => String(input).endsWith("main.typ"));
+      } catch {
+        return false;
+      }
     },
   },
   {
@@ -721,7 +755,7 @@ export async function probeTypst(binary, version, workDir) {
     await mkdir(dir, { recursive: true });
     const { source, args } = await probe.prepare(dir);
     const result = await probeCompile(binary, dir, "run", source, args, "out.pdf");
-    if (isPdf(result)) {
+    if (isPdf(result) && (!probe.verify || (await probe.verify(dir)))) {
       report.flags.push(probe.flag);
     } else if (unsupported(result)) {
       report.notes.push(`${probe.flag}: ${result.stderr.trim().split("\n")[0]}`);
@@ -747,6 +781,15 @@ export async function probeTypst(binary, version, workDir) {
     report.notes.push(`--format png --ppi 144: ${png.stderr.trim().split("\n")[0]}`);
   } else {
     throw new Error(`Typst ${version} failed the PNG probe: ${png.stderr.trim()} width ${png.bytes ? pngWidth(png.bytes) : "none"}`);
+  }
+  const html = await probeCompile(binary, workDir, "html", HTML_PROBE_SOURCE, ["--features", "html", "--format", "html"], "out.html");
+  if (html.status === 0 && html.bytes?.toString("utf8").includes("<html")) {
+    report.outputFormats.push("html");
+    report.flags.push("--features");
+  } else if (unsupported(html)) {
+    report.notes.push(`--features html --format html: ${html.stderr.trim().split("\n")[0]}`);
+  } else {
+    throw new Error(`Typst ${version} failed the HTML probe: ${html.stderr.trim()}`);
   }
   const help = runTool(binary, ["compile", "-h"], workDir);
   if (help.status !== 0) throw new Error(`Typst ${version} compile -h failed`);

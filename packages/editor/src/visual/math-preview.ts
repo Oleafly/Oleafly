@@ -9,8 +9,9 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap, showTooltip, type Tooltip, type TooltipView } from "@codemirror/view";
 import { hasMouseDownEffect, pointerSelectionTracking, selectionAtMouseDown } from "./selection";
-import { renderMathSource } from "../math-render";
+import { paintTypstMath, renderMathSource, typstMathTheme } from "../math-render";
 import { type MathSourceFormat, scanMathExpressions } from "../math-source";
+import { typstMathAt } from "../math-typst";
 import { editorMessage } from "../messages";
 
 export interface MathPreviewTarget {
@@ -28,6 +29,7 @@ export interface MathPreviewTooltipState {
 }
 
 const MAX_WINDOW = 8_000;
+const TYPST_PREVIEW_DEBOUNCE_MS = 180;
 
 const MATH_ENVIRONMENTS = new Set([
   "align",
@@ -114,6 +116,10 @@ export function mathPreviewTargetAt(
   const range = state.selection.main;
   if (!range.empty) return null;
   const pos = range.head;
+  if (format === "typst") {
+    const found = typstMathAt(state, pos);
+    return found ? { from: found.from, to: found.to, body: found.body, display: found.display } : null;
+  }
   const window = paragraphWindow(state.doc, pos);
   const text = state.doc.sliceString(window.from, window.to);
 
@@ -235,7 +241,9 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
 
   const output = document.createElement("div");
   output.className = "ofl-visual-math-tooltip-output";
-  paintMath(output, target);
+  const typst = view.state.facet(mathPreviewFormat) === "typst";
+  if (!typst) paintMath(output, target);
+  let cancelTypst = () => {};
 
   const menu = document.createElement("div");
   menu.className = "ofl-visual-math-tooltip-menu";
@@ -321,6 +329,14 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
     overlap: true,
     offset: { x: 0, y: 8 },
     mount: () => {
+      if (typst) {
+        cancelTypst = paintTypstMath(output, target.body, typstMathTheme(output), {
+          delay: TYPST_PREVIEW_DEBOUNCE_MS,
+          owner: view,
+          errorClass: "ofl-visual-math-tooltip-error",
+        });
+        return;
+      }
       fit();
       // KaTeX's fonts load on first use and change the formula's width.
       void document.fonts?.ready.then(fit);
@@ -329,7 +345,10 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
     positioned: () => {
       if (dom.style.height !== fittedHeight) fit();
     },
-    destroy: closeMenu,
+    destroy: () => {
+      cancelTypst();
+      closeMenu();
+    },
   };
 }
 
@@ -462,6 +481,14 @@ const mathPreviewTooltipTheme = EditorView.baseTheme({
   },
   ".ofl-visual-math-tooltip-output .katex-display": {
     margin: "0",
+  },
+  ".ofl-visual-math-tooltip-output img.ofl-typst-math": {
+    display: "block",
+    maxWidth: "100%",
+    height: "auto",
+  },
+  ".ofl-visual-math-tooltip-output img.ofl-typst-math.is-stale": {
+    opacity: "0.45",
   },
   ".ofl-visual-math-tooltip-error": {
     color: "var(--destructive)",

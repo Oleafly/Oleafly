@@ -88,6 +88,63 @@ export interface SemanticTokensRangeParams extends SemanticTokensParams {
   range: Range;
 }
 
+export interface SignatureHelpContext {
+  triggerKind: 1 | 2 | 3;
+  triggerCharacter?: string;
+  isRetrigger: boolean;
+  activeSignatureHelp?: JsonValue;
+}
+
+export interface SignatureHelpParams extends TextDocumentPositionParams {
+  context?: SignatureHelpContext;
+}
+
+export interface InlayHintParams {
+  textDocument: TextDocumentIdentifier;
+  range: Range;
+}
+
+export interface DocumentLinkParams {
+  textDocument: TextDocumentIdentifier;
+}
+
+export interface DocumentColorParams {
+  textDocument: TextDocumentIdentifier;
+}
+
+export interface FormattingOptions {
+  tabSize: number;
+  insertSpaces: boolean;
+  trimTrailingWhitespace?: boolean;
+  insertFinalNewline?: boolean;
+  trimFinalNewlines?: boolean;
+}
+
+export interface DocumentFormattingParams {
+  textDocument: TextDocumentIdentifier;
+  options: FormattingOptions;
+}
+
+export interface DocumentRangeFormattingParams
+  extends DocumentFormattingParams {
+  range: Range;
+}
+
+export type PrepareRenameParams = TextDocumentPositionParams;
+
+export interface RenameParams extends TextDocumentPositionParams {
+  newName: string;
+}
+
+export interface ExecuteCommandParams {
+  command: string;
+  arguments?: JsonValue[];
+}
+
+export interface DidChangeConfigurationParams {
+  settings: JsonValue;
+}
+
 export interface DidOpenTextDocumentParams {
   textDocument: TextDocumentItem;
 }
@@ -164,10 +221,30 @@ export interface InitializeParams {
         tokenModifiers: string[];
         formats: ["relative"];
       };
+      signatureHelp: {
+        contextSupport: boolean;
+        signatureInformation: {
+          documentationFormat: string[];
+          activeParameterSupport: boolean;
+          parameterInformation: { labelOffsetSupport: boolean };
+        };
+      };
+      inlayHint: Record<string, never>;
+      documentLink: Record<string, never>;
+      colorProvider: Record<string, never>;
+      formatting: Record<string, never>;
+      rangeFormatting: Record<string, never>;
+      rename: { prepareSupport: boolean };
     };
     workspace: {
       symbol: Record<string, never>;
       diagnostics: { refreshSupport: boolean };
+      executeCommand: Record<string, never>;
+      didChangeConfiguration: Record<string, never>;
+      workspaceEdit: {
+        documentChanges: boolean;
+        resourceOperations: string[];
+      };
     };
   };
 }
@@ -242,6 +319,19 @@ export interface NegotiatedServerCapabilities {
     range: boolean;
     legend: SemanticTokensLegend | null;
   };
+  completionTriggerCharacters: string[];
+  signatureHelp: {
+    enabled: boolean;
+    triggerCharacters: string[];
+    retriggerCharacters: string[];
+  };
+  inlayHints: boolean;
+  documentLinks: boolean;
+  documentColors: boolean;
+  formatting: boolean;
+  rangeFormatting: boolean;
+  rename: { enabled: boolean; prepare: boolean };
+  executeCommands: string[];
   textDocumentSync: {
     openClose: boolean;
     change: "none" | "full" | "incremental";
@@ -262,6 +352,19 @@ export const EMPTY_SERVER_CAPABILITIES: NegotiatedServerCapabilities = {
   workspaceSymbols: false,
   diagnostics: { document: false, workspace: false },
   semanticTokens: { full: false, range: false, legend: null },
+  completionTriggerCharacters: [],
+  signatureHelp: {
+    enabled: false,
+    triggerCharacters: [],
+    retriggerCharacters: [],
+  },
+  inlayHints: false,
+  documentLinks: false,
+  documentColors: false,
+  formatting: false,
+  rangeFormatting: false,
+  rename: { enabled: false, prepare: false },
+  executeCommands: [],
   textDocumentSync: {
     openClose: false,
     change: "none",
@@ -285,6 +388,35 @@ function stringArray(value: unknown): string[] | null {
     return null;
   }
   return [...value];
+}
+
+function stringItems(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function signatureHelpCapabilities(
+  value: unknown,
+): NegotiatedServerCapabilities["signatureHelp"] {
+  if (!isAdvertised(value)) {
+    return { enabled: false, triggerCharacters: [], retriggerCharacters: [] };
+  }
+  const options = isRecord(value) ? value : {};
+  return {
+    enabled: true,
+    triggerCharacters: stringItems(options.triggerCharacters),
+    retriggerCharacters: stringItems(options.retriggerCharacters),
+  };
+}
+
+function renameCapabilities(
+  value: unknown,
+): NegotiatedServerCapabilities["rename"] {
+  return {
+    enabled: isAdvertised(value),
+    prepare: isRecord(value) && value.prepareProvider === true,
+  };
 }
 
 function semanticTokenCapabilities(value: unknown) {
@@ -442,6 +574,23 @@ export function negotiateServerCapabilities(
         diagnosticProvider.workspaceDiagnostics === true,
     },
     semanticTokens,
+    completionTriggerCharacters: isRecord(capabilities.completionProvider)
+      ? stringItems(capabilities.completionProvider.triggerCharacters)
+      : [],
+    signatureHelp: signatureHelpCapabilities(
+      capabilities.signatureHelpProvider,
+    ),
+    inlayHints: isAdvertised(capabilities.inlayHintProvider),
+    documentLinks: isAdvertised(capabilities.documentLinkProvider),
+    documentColors: isAdvertised(capabilities.colorProvider),
+    formatting: isAdvertised(capabilities.documentFormattingProvider),
+    rangeFormatting: isAdvertised(
+      capabilities.documentRangeFormattingProvider,
+    ),
+    rename: renameCapabilities(capabilities.renameProvider),
+    executeCommands: isRecord(capabilities.executeCommandProvider)
+      ? stringItems(capabilities.executeCommandProvider.commands)
+      : [],
     textDocumentSync: textDocumentSyncCapabilities(
       capabilities.textDocumentSync,
     ),
@@ -479,10 +628,30 @@ export function createInitializeParams(
           tokenModifiers: [...STANDARD_SEMANTIC_TOKEN_MODIFIERS],
           formats: ["relative"],
         },
+        signatureHelp: {
+          contextSupport: true,
+          signatureInformation: {
+            documentationFormat: ["markdown", "plaintext"],
+            activeParameterSupport: true,
+            parameterInformation: { labelOffsetSupport: true },
+          },
+        },
+        inlayHint: {},
+        documentLink: {},
+        colorProvider: {},
+        formatting: {},
+        rangeFormatting: {},
+        rename: { prepareSupport: true },
       },
       workspace: {
         symbol: {},
         diagnostics: { refreshSupport: true },
+        executeCommand: {},
+        didChangeConfiguration: {},
+        workspaceEdit: {
+          documentChanges: true,
+          resourceOperations: ["rename"],
+        },
       },
     },
   };

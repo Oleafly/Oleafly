@@ -21,7 +21,11 @@ const AT_REFERENCE = /(?:^|[\s[(;,])@[\p{L}\p{M}\p{N}_:.+/-]*$/u;
 const TYPST_CITATION =
   /#cite\s*\([\s\S]{0,500}(?:<|label\s*\(\s*"|")[\p{L}\p{M}\p{N}_:.+/-]*$/u;
 const TYPST_REFERENCE =
-  /#(?:ref|link)\(\s*<[\p{L}\p{M}\p{N}_:.+/-]*$/u;
+  /(?:#|(?<![\p{L}\p{N}_.-]))(?:ref|link)\s*\(\s*<[\p{L}\p{M}\p{N}_:.+/-]*$/u;
+const TYPST_SLASH_COMMAND = /(?:^|\s)\/[A-Za-z]*$/u;
+const TYPST_HASH_IDENTIFIER = /#[\p{L}_][\p{L}\p{M}\p{N}_-]*$/u;
+const TYPST_PATH_ARGUMENT =
+  /(?<![\p{L}\p{N}_.-])(?:(?:image|read|csv|json|yaml|toml|xml|cbor|plugin|bibliography)\s*\(\s*(?:\(\s*(?:"[^"\n]*"\s*,\s*)*)?|(?:include|import)\s+)"[^"\n]*$/u;
 const BIBTEX_REFERENCE =
   /(?:crossref|xref|xdata|related|entryset)\s*=\s*["{]\s*[\p{L}\p{M}\p{N}_:.+/-]*$/iu;
 const BIBTEX_ENTRY_TYPE = /(?:^|\n)[ \t]*@[A-Za-z]*$/u;
@@ -132,7 +136,10 @@ function typstTriggered(before: string): boolean {
   return (
     AT_REFERENCE.test(before) ||
     TYPST_CITATION.test(before) ||
-    TYPST_REFERENCE.test(before)
+    TYPST_REFERENCE.test(before) ||
+    TYPST_SLASH_COMMAND.test(before) ||
+    TYPST_HASH_IDENTIFIER.test(before) ||
+    TYPST_PATH_ARGUMENT.test(before)
   );
 }
 

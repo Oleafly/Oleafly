@@ -154,5 +154,10 @@
       "detail": "Die neueste Projektfassung wurde noch nicht indexiert.",
       "title": "Warten auf die Projektanalyse"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Zitationsstil",
+    "ariaLabel": "Zitationsstil für das Literaturverzeichnis in {{path}}",
+    "failed": "Oleafly konnte den Zitationsstil nicht ändern."
   }
 }

@@ -160,5 +160,10 @@
       "detail": "Cea mai recentă revizie a proiectului nu a fost încă indexată.",
       "title": "Se așteaptă analiza proiectului"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Stilul citării",
+    "ariaLabel": "Stilul citării pentru bibliografia din {{path}}",
+    "failed": "Oleafly nu a putut schimba stilul citării."
   }
 }

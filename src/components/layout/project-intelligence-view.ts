@@ -17,6 +17,7 @@ import type {
   IntelligenceTreeNode,
 } from "@/components/layout/IntelligenceTree";
 import { i18n } from "@/i18n";
+import type { ReferenceLocation } from "@/store/references";
 
 function locationTarget(location: SourceLocation) {
   return {
@@ -743,6 +744,38 @@ export function buildReferenceResultNodes(
     });
   }
   return nodes;
+}
+
+export function buildLocationResultNodes(
+  locations: readonly ReferenceLocation[],
+): readonly IntelligenceTreeNode[] {
+  const groups = new Map<string, ReferenceLocation[]>();
+  for (const location of locations) {
+    const existing = groups.get(location.path);
+    if (existing) existing.push(location);
+    else groups.set(location.path, [location]);
+  }
+  return [...groups.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([file, fileLocations]) => ({
+      id: `query:locations:file:${file}`,
+      label: basename(file),
+      kind: "file" as const,
+      description: file,
+      badge: String(fileLocations.length),
+      defaultExpanded: true,
+      searchText: file,
+      children: [...fileLocations]
+        .sort((left, right) => left.from - right.from)
+        .map((location) => ({
+          id: `query:locations:${file}:${location.from}:${location.to}`,
+          label: location.preview || `${basename(file)}:${location.line}`,
+          kind: "reference" as const,
+          provenance: `${basename(file)}:${location.line}:${location.column}`,
+          searchText: `${file} ${location.preview}`,
+          target: { path: file, from: location.from, to: location.to },
+        })),
+    }));
 }
 
 export function projectIssueCount(

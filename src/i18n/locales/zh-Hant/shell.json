@@ -40,7 +40,9 @@
     "noResults": "找不到結果。請檢查識別碼，或改用其他標題關鍵字。",
     "placeholder": "DOI、arXiv 編號、URL 或論文標題…",
     "privacyNote": "只會將識別碼或標題傳送至 doi.org、arXiv 或 Crossref。",
-    "title": "新增引用"
+    "title": "新增引用",
+    "bibliography": "參考文獻",
+    "bibliographyHint": "這個專案有多個參考文獻檔案。條目會加入你在此選擇的檔案。"
   },
   "backendProtocol": {
     "mismatch": "此視窗與其後端是為不同的 Oleafly 版本建置的，部分功能可能無法運作。重新安裝應用程式即可解決。"
@@ -118,6 +120,14 @@
       "keywords": "關閉 結束 環境 begin end latex close environment",
       "label": "關閉 LaTeX 環境"
     },
+    "formatDocument": {
+      "keywords": "格式化 整理 縮排 typstyle typst format tidy indent",
+      "label": "格式化文件"
+    },
+    "formatSelection": {
+      "keywords": "格式化 選取範圍 整理 縮排 typstyle typst format selection tidy indent",
+      "label": "格式化選取範圍"
+    },
     "createProject": {
       "keywords": "新增 建立 專案 範本 範本庫 new project create template gallery",
       "label": "建立新專案"
@@ -125,6 +135,14 @@
     "diagramComposer": {
       "keywords": "圖表 圖片 編排 繪製 畫布 tikz diagram figure composer draw canvas",
       "label": "開啟圖表編排器"
+    },
+    "typstPackages": {
+      "keywords": "套件 匯入 程式庫 瀏覽 複製 typst universe packages import library browse vendor",
+      "label": "瀏覽 Typst 套件"
+    },
+    "latexPackages": {
+      "keywords": "套件 序言區 安裝 瀏覽 latex ctan packages usepackage preamble install tlmgr browse",
+      "label": "瀏覽 LaTeX 套件"
     },
     "documentCitationScan": {
       "keywords": "引用 文獻 掃描 文件 段落 參考文獻 尋找 citations literature scan document paragraph references find",
@@ -191,7 +209,8 @@
       "label": "以環境包圍"
     },
     "synctex": {
-      "label": "跳至 PDF（SyncTeX）"
+      "label": "跳至 PDF（SyncTeX）",
+      "typstLabel": "跳至 PDF"
     },
     "table": {
       "label": "表格"
@@ -224,6 +243,79 @@
     "openFolder": {
       "label": "開啟資料夾…",
       "keywords": "開啟 資料夾 目錄 現有 本機 檔案 磁碟"
+    },
+    "underline": {
+      "label": "底線"
+    },
+    "strikethrough": {
+      "label": "刪除線"
+    },
+    "inlineCode": {
+      "label": "行內程式碼"
+    },
+    "link": {
+      "label": "連結"
+    },
+    "footnote": {
+      "label": "註腳"
+    },
+    "quote": {
+      "label": "引文"
+    },
+    "inlineMath": {
+      "label": "行內公式"
+    },
+    "numberedEquation": {
+      "label": "編號公式"
+    },
+    "alignedEquations": {
+      "label": "多行對齊公式"
+    },
+    "fraction": {
+      "label": "分數"
+    },
+    "crossReference": {
+      "label": "交互參照"
+    },
+    "typstInsights": {
+      "label": "文件分析",
+      "keywords": "圖片 表格 方程式 標題 標籤 引用 中繼資料 摘要 投稿 todo fixme figures tables equations headings labels citations metadata abstract submission"
+    },
+    "typstDocumentSettings": {
+      "label": "文件設定",
+      "keywords": "紙張大小 邊界 分欄 字型大小 語言 地區 對齊 行距 編號 page size margins columns font size language region justify leading line spacing numbering"
+    },
+    "toggleComment": {
+      "label": "切換註解",
+      "keywords": "註解 取消註解 行 區塊 comment uncomment line block"
+    },
+    "goToDefinition": {
+      "label": "前往定義",
+      "keywords": "定義 跳至 符號 導覽 definition jump symbol navigate"
+    },
+    "findReferences": {
+      "label": "尋找參考",
+      "keywords": "參考 用法 符號 references usages symbol"
+    },
+    "renameSymbol": {
+      "label": "重新命名符號",
+      "keywords": "重新命名 符號 重構 rename symbol refactor"
+    },
+    "migrateToTypst": {
+      "label": "轉換為 Typst 專案",
+      "keywords": "轉換 遷移 專案 新增 typst convert migrate latex project new"
+    },
+    "typstMigrationReport": {
+      "label": "顯示 Typst 轉換報告",
+      "keywords": "轉換 遷移 報告 typst convert migrate report latex"
+    },
+    "present": {
+      "label": "放映投影片",
+      "keywords": "放映 投影片 簡報 全螢幕 講者備忘稿 beamer touying polylux pdfpc present slides presentation fullscreen speaker notes"
+    },
+    "presentWithPresenter": {
+      "label": "以簡報者檢視放映投影片",
+      "keywords": "放映 投影片 簡報者檢視 講者備忘稿 計時器 下一張投影片 present slides presenter view speaker notes timer next slide"
     }
   },
   "community": {
@@ -236,7 +328,12 @@
     "autoCompile": {
       "off": "關閉",
       "on": "開啟",
-      "title": "自動編譯"
+      "title": "自動編譯",
+      "help": "停止輸入幾秒後就會編譯。會先儲存開啟中的檔案。",
+      "typstHelp": "Typst 會持續執行，在你停止輸入片刻後更新 PDF。開啟期間，開啟中的檔案會自動儲存。",
+      "typstStarting": "正在啟動 Typst",
+      "typstRestarting": "Typst 正在重新啟動",
+      "typstFailed": "Typst 因重複出錯而停止。編輯檔案即可重新啟動。"
     },
     "compile": "編譯",
     "compiler": {
@@ -272,7 +369,37 @@
     "texRootLabel": "TEX 根檔案",
     "texRootName": "根檔案：{{name}}",
     "texRootNotTex": "{{file}} 中的 % !TEX root 指向 {{target}}，它不是 LaTeX 檔案",
-    "texRootOverride": "根檔案：{{path}}（由 {{file}} 中的 % !TEX root 設定）"
+    "texRootOverride": "根檔案：{{path}}（由 {{file}} 中的 % !TEX root 設定）",
+    "typstVersion": {
+      "title": "Typst 版本（本專案）",
+      "help": "鎖定版本後，即使 Oleafly 更新 Typst，此專案的輸出也會維持不變。「預設」會跟隨在設定中選擇的版本。若要安裝版本，或在較新的版本上測試此專案，請前往設定 → 引擎 → Typst。",
+      "default": "預設（{{version}}）",
+      "defaultPlain": "預設",
+      "builtIn": "[內建]",
+      "system": "[系統]",
+      "missing": "[未安裝]",
+      "switchFailed": "無法變更 Typst 版本。"
+    },
+    "typstFonts": {
+      "title": "字型（本專案）",
+      "help": "Typst 會從專案的 fonts 資料夾，以及 project.json 中 font_paths 列出的資料夾讀取字型。只使用專案字型時，PDF 就不會依賴這台電腦上安裝的字型。文件設定會列出 Typst 能找到的字型。",
+      "systemFonts": "使用系統字型",
+      "projectOnly": "僅限專案字型",
+      "unsupported": "需要較新的 Typst",
+      "saveFailed": "無法儲存字型設定。"
+    },
+    "typstBuild": {
+      "title": "建置（本專案）",
+      "help": "可重現建置只使用專案字型，並把 PDF 日期設為最後一次提交的日期。這樣相同的原始碼在任何電腦上都會產生相同的 PDF。",
+      "standard": "標準建置",
+      "reproducible": "可重現建置",
+      "saveFailed": "無法儲存建置設定。"
+    },
+    "typstVariant": {
+      "title": "變體（本專案）",
+      "help": "變體會把自己的值傳給 sys.inputs，例如草稿版或定稿版建置。你選擇的變體只會儲存在這台電腦上。可在文件設定中新增或編輯變體。",
+      "none": "無變體"
+    }
   },
   "datePicker": {
     "placeholder": "選擇日期"
@@ -925,6 +1052,10 @@
     "wait": {
       "description": "{{phase}}。你的編譯已排入佇列，引擎就緒後會自動開始。",
       "title": "TinyTeX 仍在下載中"
+    },
+    "typstQuit": {
+      "title": "Typst 仍在安裝中",
+      "description": "正在下載 Typst {{version}}。如果現在結束，下載會停止，你需要從設定重新開始。"
     }
   },
   "toolbar": {
@@ -1064,5 +1195,120 @@
     "added": "已加入。現在可以從 Finder 的「服務」選單使用它。若也要在「快速動作」中使用，請以右鍵按一下資料夾，然後在「快速動作」›「自訂」中開啟它。",
     "addedInQuickActions": "已加入。以右鍵按一下資料夾，即可在「快速動作」中找到它。",
     "failed": "無法加入。你可以在「設定」›「一般」中再試一次。"
+  },
+  "typstMigration": {
+    "title": "轉換為 Typst 專案",
+    "closeLabel": "關閉 Typst 轉換",
+    "intro": "Oleafly 會根據這個 LaTeX 專案建立新的 Typst 專案。這個專案不會被變更。",
+    "points": {
+      "text": "Pandoc 會轉換文字、數學式、圖片與表格。",
+      "files": "每個 input 與 include 檔案都會成為獨立的 Typst 檔案。",
+      "bibliography": "BibTeX 檔案會原樣複製。",
+      "compile": "Typst 會編譯新專案來進行檢查。"
+    },
+    "nameLabel": "新專案名稱",
+    "defaultName": "{{name}}（Typst）",
+    "notLatex": "請開啟 LaTeX 專案以進行轉換。",
+    "convert": "轉換",
+    "retry": "再試一次",
+    "progress": {
+      "reading": "正在讀取 LaTeX 專案",
+      "converting": "正在用 Pandoc 轉換",
+      "creating": "正在建立 Typst 專案",
+      "compiling": "正在用 Typst 編譯"
+    },
+    "errors": {
+      "pandoc": "Pandoc 尚未就緒。請從工具安裝，然後再試一次。",
+      "noMain": "無法讀取 LaTeX 主檔案。",
+      "emptyOutput": "Pandoc 傳回了空白文件。",
+      "failed": "轉換已停止：{{detail}}"
+    },
+    "report": {
+      "created": "已建立 {{name}}。",
+      "compiled": "可以用 Typst 編譯。",
+      "compileFailed_other": "尚無法編譯。有 {{count}} 個錯誤需要修正。",
+      "compileUnavailable": "Oleafly 無法編譯：{{detail}}",
+      "converted": "已轉換",
+      "sources_other": "{{count}} 個原始碼檔案",
+      "figures_other": "{{count}} 張圖片",
+      "tables_other": "{{count}} 個表格",
+      "equations_other": "{{count}} 個行間公式",
+      "references_other": "{{count}} 處交互參照",
+      "mathFixed_other": "數學轉換器修正了 {{count}} 個公式",
+      "copied_other": "已複製 {{count}} 個檔案",
+      "style": "參考文獻樣式 {{style}}",
+      "mapping": "{{source}} → {{target}}",
+      "attention": "需要處理",
+      "noAttention": "沒有需要處理的項目。",
+      "problems": "編譯錯誤與警告",
+      "location": "{{file}}，第 {{line}} 行",
+      "noLocation": "無檔案位置",
+      "openAt": "在第 {{line}} 行開啟 {{file}}",
+      "open": "開啟 Typst 專案"
+    },
+    "notes": {
+      "missingInclude": "找不到檔案 {{detail}}，因此已略過。",
+      "lostInclude": "{{detail}} 無法成為獨立檔案。它的文字會留在引入它的檔案中。",
+      "missingImage": "找不到影像 {{detail}}。",
+      "unsupportedImage": "Typst 無法顯示 {{detail}}。請將它轉換成 PDF、PNG 或 SVG。",
+      "math": "這個數學式需要手動修正：{{detail}}",
+      "bibliographyStyle": "BibTeX 樣式 {{detail}} 沒有對應的 Typst 樣式，將使用預設樣式。",
+      "skippedFile": "專案過大，因此未複製 {{detail}}。",
+      "unreadableFile": "無法讀取 {{detail}}。",
+      "equationLabel": "Typst 是對整個方程式編號，因此指向 {{detail}} 的參照現在會指向它所在的方程式。"
+    }
+  },
+  "typstExport": {
+    "menuItem": "影像與 HTML",
+    "title": "以 Typst 匯出",
+    "close": "關閉 Typst 匯出",
+    "format": "格式",
+    "png": "PNG 影像",
+    "svg": "SVG 影像",
+    "html": "HTML",
+    "experimental": "實驗性",
+    "htmlNote": "Typst 的 HTML 匯出仍屬實驗性質。它不包含頁面設定與定位元素。",
+    "ppi": "解析度",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "頁面",
+    "pagesPlaceholder": "所有頁面",
+    "pagesHelp": "使用頁碼與範圍，例如 1、3-5 或 8-。",
+    "pagesInvalid": "請檢查頁面範圍。使用頁碼與範圍，例如 1、3-5 或 8-。",
+    "pagesUnsupported": "這個 Typst 版本一律匯出所有頁面。",
+    "multiPage": "每一頁都會儲存成獨立的檔案，並在你選擇的名稱後加上編號。",
+    "export": "匯出",
+    "cancel": "取消"
+  },
+  "typstUpgrade": {
+    "title": "試用較新的 Typst 版本",
+    "description": "Oleafly 會在暫存資料夾中用兩個版本分別建置此專案。除非你切換，否則專案不會有任何變更。",
+    "compareWith": "較新版本",
+    "running": "正在以 Typst {{current}} 與 {{candidate}} 建置",
+    "current": "Typst {{version}}（目前）",
+    "candidate": "Typst {{version}}",
+    "built": "已建置",
+    "failed": "失敗",
+    "pages_other": "{{count}} 頁",
+    "pagesUnknown": "頁數不明",
+    "errors_other": "{{count}} 個錯誤",
+    "warnings_other": "{{count}} 個警告",
+    "pageChange": "頁數從 {{from}} 變為 {{to}}。",
+    "pageSame": "頁數維持 {{pages}}。",
+    "added": "Typst {{version}} 新增",
+    "removed": "Typst {{version}} 不再回報",
+    "noChanges": "兩個版本回報的錯誤與警告相同。",
+    "unchanged_other": "有 {{count}} 則訊息在兩個版本中相同。",
+    "buildFailed": "Typst {{version}} 無法建置此專案。",
+    "switch": "切換到 Typst {{version}}",
+    "switched": "此專案現在使用 Typst {{version}}。",
+    "switchFailed": "無法切換 Typst 版本。",
+    "runAgain": "重新檢查",
+    "close": "關閉",
+    "checkFailed": "檢查未能完成。",
+    "noNewer": "尚未安裝較新的 Typst。你可以在設定中安裝。",
+    "openSettings": "開啟 Typst 設定",
+    "location": "{{file}}，第 {{line}} 行",
+    "error": "錯誤",
+    "warning": "警告"
   }
 }

@@ -139,11 +139,32 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     tone: "rose",
   }),
   converter({
+    id: "arxiv-to-typst",
+    converter: "arxiv-to-typst",
+    icon: ArxivIcon,
+    slash: ["arxiv-to-typst"],
+    tone: "sky",
+  }),
+  converter({
+    id: "csv-to-typst",
+    converter: "csv-to-typst",
+    icon: Table2,
+    slash: ["csv-to-typst", "typst-table"],
+    tone: "emerald",
+  }),
+  converter({
     id: "equation-to-latex",
     converter: "equation-to-latex",
     icon: Sigma,
     slash: ["equation-to-latex", "math-to-latex"],
     tone: "violet",
+  }),
+  converter({
+    id: "equation-to-typst",
+    converter: "equation-to-typst",
+    icon: Sigma,
+    slash: ["equation-to-typst", "math-to-typst"],
+    tone: "sky",
   }),
   converter({
     id: "excel-to-latex",
@@ -153,11 +174,25 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     tone: "emerald",
   }),
   converter({
+    id: "excel-to-typst",
+    converter: "excel-to-typst",
+    icon: FileSpreadsheet,
+    slash: ["excel-to-typst", "spreadsheet-to-typst"],
+    tone: "emerald",
+  }),
+  converter({
     id: "html-to-latex",
     converter: "html-to-latex",
     icon: FileCode2,
     slash: ["html-to-latex"],
     tone: "amber",
+  }),
+  converter({
+    id: "html-to-typst",
+    converter: "html-to-typst",
+    icon: FileCode2,
+    slash: ["html-to-typst"],
+    tone: "sky",
   }),
   converter({
     id: "image-to-typst",
@@ -224,6 +259,13 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     tone: "violet",
   }),
   converter({
+    id: "mermaid-to-typst",
+    converter: "mermaid-to-typst",
+    icon: Network,
+    slash: ["mermaid-to-typst", "mermaid-to-fletcher"],
+    tone: "sky",
+  }),
+  converter({
     id: "pdf-to-markdown",
     converter: "pdf-to-markdown",
     icon: FileInput,
@@ -254,10 +296,31 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     tone: "sky",
   },
   converter({
+    id: "typst-to-html",
+    converter: "typst-to-html",
+    icon: FileCode2,
+    slash: ["typst-to-html"],
+    tone: "sky",
+  }),
+  converter({
     id: "typst-to-latex",
     converter: "typst-to-latex",
     icon: ArrowLeftRight,
     slash: ["typst-to-latex"],
+    tone: "sky",
+  }),
+  converter({
+    id: "typst-to-markdown",
+    converter: "typst-to-markdown",
+    icon: FileText,
+    slash: ["typst-to-markdown"],
+    tone: "sky",
+  }),
+  converter({
+    id: "typst-to-word",
+    converter: "typst-to-word",
+    icon: FileType2,
+    slash: ["typst-to-word", "typst-to-docx"],
     tone: "sky",
   }),
   converter({
@@ -266,6 +329,13 @@ export const TOOL_DEFINITIONS: readonly ToolDefinition[] = [
     icon: FileType2,
     slash: ["word-to-latex", "docx-to-latex"],
     tone: "blue",
+  }),
+  converter({
+    id: "word-to-typst",
+    converter: "word-to-typst",
+    icon: FileType2,
+    slash: ["word-to-typst", "docx-to-typst"],
+    tone: "sky",
   }),
   {
     id: "bibtex",
@@ -584,6 +654,96 @@ const TOOL_COPY: Record<ToolId, () => ToolCopy> = {
       i18n.t(($) => $.researchTools.tools.wordToLatex.tag1),
       i18n.t(($) => $.researchTools.tools.wordToLatex.tag2),
       i18n.t(($) => $.researchTools.tools.wordToLatex.tag3),
+    ],
+  }),
+  "arxiv-to-typst": () => ({
+    name: i18n.t(($) => $.researchTools.tools.arxivToTypst.name),
+    description: i18n.t(($) => $.researchTools.tools.arxivToTypst.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.arxivToTypst.tag1),
+      i18n.t(($) => $.researchTools.tools.arxivToTypst.tag2),
+      i18n.t(($) => $.researchTools.tools.arxivToTypst.tag3),
+    ],
+  }),
+  "csv-to-typst": () => ({
+    name: i18n.t(($) => $.researchTools.tools.csvToTypst.name),
+    description: i18n.t(($) => $.researchTools.tools.csvToTypst.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.csvToTypst.tag1),
+      i18n.t(($) => $.researchTools.tools.csvToTypst.tag2),
+      i18n.t(($) => $.researchTools.tools.csvToTypst.tag3),
+    ],
+  }),
+  "equation-to-typst": () => ({
+    name: i18n.t(($) => $.researchTools.tools.equationToTypst.name),
+    description: i18n.t(($) => $.researchTools.tools.equationToTypst.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.equationToTypst.tag1),
+      i18n.t(($) => $.researchTools.tools.equationToTypst.tag2),
+      i18n.t(($) => $.researchTools.tools.equationToTypst.tag3),
+    ],
+  }),
+  "excel-to-typst": () => ({
+    name: i18n.t(($) => $.researchTools.tools.excelToTypst.name),
+    description: i18n.t(($) => $.researchTools.tools.excelToTypst.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.excelToTypst.tag1),
+      i18n.t(($) => $.researchTools.tools.excelToTypst.tag2),
+      i18n.t(($) => $.researchTools.tools.excelToTypst.tag3),
+    ],
+  }),
+  "html-to-typst": () => ({
+    name: i18n.t(($) => $.researchTools.tools.htmlToTypst.name),
+    description: i18n.t(($) => $.researchTools.tools.htmlToTypst.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.htmlToTypst.tag1),
+      i18n.t(($) => $.researchTools.tools.htmlToTypst.tag2),
+      i18n.t(($) => $.researchTools.tools.htmlToTypst.tag3),
+    ],
+  }),
+  "mermaid-to-typst": () => ({
+    name: i18n.t(($) => $.researchTools.tools.mermaidToTypst.name),
+    description: i18n.t(($) => $.researchTools.tools.mermaidToTypst.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.mermaidToTypst.tag1),
+      i18n.t(($) => $.researchTools.tools.mermaidToTypst.tag2),
+      i18n.t(($) => $.researchTools.tools.mermaidToTypst.tag3),
+    ],
+  }),
+  "typst-to-html": () => ({
+    name: i18n.t(($) => $.researchTools.tools.typstToHtml.name),
+    description: i18n.t(($) => $.researchTools.tools.typstToHtml.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.typstToHtml.tag1),
+      i18n.t(($) => $.researchTools.tools.typstToHtml.tag2),
+      i18n.t(($) => $.researchTools.tools.typstToHtml.tag3),
+    ],
+  }),
+  "typst-to-markdown": () => ({
+    name: i18n.t(($) => $.researchTools.tools.typstToMarkdown.name),
+    description: i18n.t(($) => $.researchTools.tools.typstToMarkdown.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.typstToMarkdown.tag1),
+      i18n.t(($) => $.researchTools.tools.typstToMarkdown.tag2),
+      i18n.t(($) => $.researchTools.tools.typstToMarkdown.tag3),
+    ],
+  }),
+  "typst-to-word": () => ({
+    name: i18n.t(($) => $.researchTools.tools.typstToWord.name),
+    description: i18n.t(($) => $.researchTools.tools.typstToWord.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.typstToWord.tag1),
+      i18n.t(($) => $.researchTools.tools.typstToWord.tag2),
+      i18n.t(($) => $.researchTools.tools.typstToWord.tag3),
+    ],
+  }),
+  "word-to-typst": () => ({
+    name: i18n.t(($) => $.researchTools.tools.wordToTypst.name),
+    description: i18n.t(($) => $.researchTools.tools.wordToTypst.description),
+    tags: [
+      i18n.t(($) => $.researchTools.tools.wordToTypst.tag1),
+      i18n.t(($) => $.researchTools.tools.wordToTypst.tag2),
+      i18n.t(($) => $.researchTools.tools.wordToTypst.tag3),
     ],
   }),
   "bibtex": () => ({

@@ -1400,3 +1400,34 @@ fn every_research_seed_opens_on_its_main_document() {
     }
     assert!(checked >= 20, "only {checked} research seeds found");
 }
+
+#[test]
+fn vendored_typst_packages_never_compete_with_the_project_document() {
+    let thesis = "#set document(title: \"Field Study\")\n#import \"@preview/report:0.1.0\": report\n#show: report\n= Findings\nText.\n";
+    let package = "typst-packages/preview/report/0.1.0";
+    let vendored = [
+        ("thesis.typ", thesis),
+        (
+            &format!("{package}/typst.toml") as &str,
+            "[package]\nname = \"report\"\nversion = \"0.1.0\"\nentrypoint = \"lib.typ\"\n\n[template]\npath = \"template\"\nentrypoint = \"main.typ\"\n",
+        ),
+        (
+            &format!("{package}/lib.typ"),
+            "#let report(body) = {\n  body\n}\n",
+        ),
+        (
+            &format!("{package}/template/main.typ"),
+            "#import \"@preview/report:0.1.0\": report\n#show: report\n= Title\nWrite here.\n",
+        ),
+    ];
+    let directory = tree(&vendored);
+    let detection = detect(&directory);
+    auto(&detection, "thesis.typ", DetectionSource::Scan);
+    assert_eq!(paths(&detection), ["thesis.typ"]);
+
+    let nested = tree(&[
+        ("thesis.typ", thesis),
+        ("drafts/typst-packages/old.typ", "= Old draft\nText.\n"),
+    ]);
+    assert!(paths(&detect(&nested)).contains(&"drafts/typst-packages/old.typ"));
+}

@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Afbeelding zonder alt-tekst",
-      "detail": "Deze afbeelding heeft geen beschrijvende alt-tekst, dus een schermlezer kan hem niet overbrengen. Voeg een beschrijving toe, bijvoorbeeld \\includegraphics[alt={Een portretfoto van de auteur}]{...}. Markeer puur decoratieve afbeeldingen in plaats daarvan als artefact."
+      "detail": "Deze afbeelding heeft geen beschrijvende alt-tekst, dus een schermlezer kan hem niet overbrengen. Voeg een beschrijving toe, bijvoorbeeld \\includegraphics[alt={Een portretfoto van de auteur}]{...}. Markeer puur decoratieve afbeeldingen in plaats daarvan als artefact.",
+      "detailTypst": "Deze afbeelding heeft geen alt-tekst, dus een schermlezer kan hem niet overbrengen. Voeg een beschrijving toe, bijvoorbeeld #image(\"chart.png\", alt: \"Bar chart of yearly sales\").",
+      "detailTypstFigure": "Deze afbeelding heeft geen alt-tekst, dus een schermlezer kan hem niet overbrengen. Beschrijf hem bij de afbeelding of bij de figuur waarin hij staat, bijvoorbeeld #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")."
     },
     "link-text": {
       "title": "Niet-beschrijvende linktekst",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "Geen PDF-titel",
-      "detail": "De PDF heeft geen titel in de metagegevens, terwijl hulpsoftware en browsers die gebruiken om het document aan te kondigen. Stel er een in met hyperref, bijvoorbeeld \\hypersetup{pdftitle={Jouw naam, cv}}."
+      "detail": "De PDF heeft geen titel in de metagegevens, terwijl hulpsoftware en browsers die gebruiken om het document aan te kondigen. Stel er een in met hyperref, bijvoorbeeld \\hypersetup{pdftitle={Jouw naam, cv}}.",
+      "detailTypst": "De PDF heeft geen titel in de metagegevens, terwijl hulpsoftware en browsers die gebruiken om het document aan te kondigen. Stel er een in met #set document(title: \"Your title\") of geef je sjabloon een titel mee."
     },
     "heading-skip": {
       "title": "Kopniveau overgeslagen",
@@ -284,11 +287,16 @@
     },
     "refs-undefined-cite": {
       "title": "Citatie \"{{key}}\" staat in geen enkele .bib",
-      "detail": "Deze citatiesleutel is niet in de geladen bibliografie gevonden, dus hij verschijnt als [?] in de PDF. Controleer de sleutel of voeg het item toe aan je .bib (Citatie toevoegen kan het ophalen)."
+      "detail": "Deze citatiesleutel is niet in de geladen bibliografie gevonden, dus hij verschijnt als [?] in de PDF. Controleer de sleutel of voeg het item toe aan je .bib (Citatie toevoegen kan het ophalen).",
+      "titleTypst": "Citatie \"{{key}}\" staat niet in de bibliografie",
+      "detailTypst": "Deze sleutel staat in geen enkel bibliografiebestand dat het project laadt, dus het compileren mislukt. Controleer de sleutel, of voeg het item toe aan je .bib- of Hayagriva-.yml-bestand."
     },
     "refs-undefined-ref": {
       "title": "Verwijzing naar \"{{label}}\" heeft geen bijbehorende \\label",
-      "detail": "Deze kruisverwijzing wijst naar een label dat niet gedefinieerd is, dus hij verschijnt als ?? in de PDF. Controleer de labelnaam of voeg de ontbrekende \\label toe."
+      "detail": "Deze kruisverwijzing wijst naar een label dat niet gedefinieerd is, dus hij verschijnt als ?? in de PDF. Controleer de labelnaam of voeg de ontbrekende \\label toe.",
+      "titleTypst": "Geen label of item met de naam \"{{label}}\"",
+      "detailTypst": "Typst stopt het compileren hier. Controleer de spelling, of voeg het ontbrekende <label> of bibliografie-item toe.",
+      "detailTypstPackage": "Geen label of bibliografie-item in het project heeft deze naam. Een pakket kan tijdens het compileren labels maken, zoals items in een woordenlijst. Als het compileerlogboek hem meldt, controleer dan de spelling."
     },
     "refs-duplicate-label": {
       "title": "Dubbel label \"{{label}}\"",
@@ -298,11 +306,14 @@
       "titleImage": "Afbeelding niet gevonden: {{file}}",
       "detailImage": "Deze \\includegraphics wijst naar een bestand dat niet in het project zit, dus de figuur ontbreekt straks. Controleer de bestandsnaam en het pad.",
       "titleInclude": "Ingesloten bestand niet gevonden: {{file}}",
-      "detailInclude": "Deze \\input of \\include wijst naar een bestand dat niet in het project zit. Controleer de bestandsnaam en het pad."
+      "detailInclude": "Deze \\input of \\include wijst naar een bestand dat niet in het project zit. Controleer de bestandsnaam en het pad.",
+      "detailImageTypst": "Geen projectbestand past bij dit afbeeldingspad, dus het compileren mislukt. Typst leest een pad relatief aan het bestand, of vanaf de hoofdmap van het project als het met / begint.",
+      "detailIncludeTypst": "Geen projectbestand past bij dit #include- of #import-pad, dus het compileren mislukt. Controleer de bestandsnaam en het pad."
     },
     "refs-bib-missing": {
       "title": "Bibliografiebestand niet gevonden: {{file}}",
-      "detail": "Deze \\bibliography of \\addbibresource wijst naar een bestand dat niet in het project zit, dus elke citatie verschijnt als [?]. Controleer de bestandsnaam of importeer een referentiebibliotheek om het aan te maken."
+      "detail": "Deze \\bibliography of \\addbibresource wijst naar een bestand dat niet in het project zit, dus elke citatie verschijnt als [?]. Controleer de bestandsnaam of importeer een referentiebibliotheek om het aan te maken.",
+      "detailTypst": "Deze #bibliography-aanroep wijst naar een bestand dat niet in het project zit, dus het compileren mislukt. Controleer de bestandsnaam, of importeer een referentiebibliotheek om het aan te maken."
     },
     "refs-duplicate-bib": {
       "title": "Dubbele bibliografie-items: {{keys}}",
@@ -345,7 +356,8 @@
     },
     "privacy-blind-author": {
       "title": "De identiteit van de auteur staat nog in de blinde-reviewbron",
-      "detail": "De broncode bevat een niet-geanonimiseerde auteur, affiliatie, e-mailadres, adres of dankwoordveld. Vervang identificerende inhoud met de anonieme reviewmodus van de uitgever."
+      "detail": "De broncode bevat een niet-geanonimiseerde auteur, affiliatie, e-mailadres, adres of dankwoordveld. Vervang identificerende inhoud met de anonieme reviewmodus van de uitgever.",
+      "detailTypst": "De broncode geeft het document of het sjabloon een auteursnaam, e-mailadres of affiliatie. Haal die weg, of zet het sjabloon in de anonieme modus."
     },
     "privacy-blind-acknowledgements": {
       "title": "Het dankwoord kan de auteurs verraden",
@@ -374,15 +386,20 @@
     "submission-document-class": {
       "title": "De documentklasse van {{profile}} is niet actief",
       "detail": "Dit profiel verwacht {{expected}}, maar het project gebruikt {{actual}}. Begin met het huidige officiële sjabloon van de uitgever.",
-      "detailNoClass": "Dit profiel verwacht {{expected}}, maar er is geen documentklasse gevonden. Begin met het huidige officiële sjabloon van de uitgever."
+      "detailNoClass": "Dit profiel verwacht {{expected}}, maar er is geen documentklasse gevonden. Begin met het huidige officiële sjabloon van de uitgever.",
+      "titleTypst": "Het sjabloon van {{profile}} is niet actief",
+      "detailTypst": "Dit profiel verwacht een Typst-sjabloon zoals {{expected}}, maar het project importeert {{actual}}. Begin met een van die sjablonen.",
+      "detailNoTemplateTypst": "Dit profiel verwacht een Typst-sjabloon zoals {{expected}}, maar het project importeert er geen. Begin met een van die sjablonen."
     },
     "submission-no-abstract": {
       "title": "Geen samenvatting gevonden",
-      "detail": "Dit publicatieprofiel verwacht een samenvatting in een standaard abstract-omgeving. Voeg er een toe of ga na of deze uitgever er geen vraagt."
+      "detail": "Dit publicatieprofiel verwacht een samenvatting in een standaard abstract-omgeving. Voeg er een toe of ga na of deze uitgever er geen vraagt.",
+      "detailTypst": "Dit publicatieprofiel verwacht een samenvatting. Geef er een mee aan je sjabloon, bijvoorbeeld abstract: [Your abstract], of voeg een kop \"Abstract\" toe."
     },
     "submission-no-keywords": {
       "title": "Geen trefwoorden voor de publicatie gevonden",
-      "detail": "Het profiel {{profile}} verwacht trefwoorden via de standaardopdracht of -omgeving van het sjabloon."
+      "detail": "Het profiel {{profile}} verwacht trefwoorden via de standaardopdracht of -omgeving van het sjabloon.",
+      "detailTypst": "Het profiel {{profile}} verwacht trefwoorden. Geef ze mee aan je sjabloon, bijvoorbeeld keywords: (\"one\", \"two\") of index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Niet-ondersteund figuurformaat: {{file}}",
@@ -390,7 +407,8 @@
     },
     "submission-placeholder": {
       "title": "Er staat nog conceptopvulling in het manuscript",
-      "detail": "De broncode bevat TODO, TBD, FIXME, opvultekst of vraagtekens. Bekijk elk voorkomen voordat je de definitieve inzending maakt."
+      "detail": "De broncode bevat TODO, TBD, FIXME, opvultekst of vraagtekens. Bekijk elk voorkomen voordat je de definitieve inzending maakt.",
+      "detailTypst": "Het document roept nog #lorem aan of bevat opvultekst. Vervang die voor de definitieve inzending."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} ligt onder de vereiste versie",
@@ -420,6 +438,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Van sommige lettertypen kon de insluiting niet worden gecontroleerd",
       "detail": "Preflight kon de insluitingsstatus van {{fonts}} niet vaststellen. Controleer ze met de officiële PDF-controle van de uitgever."
+    },
+    "empty-heading": {
+      "title": "Lege kop",
+      "detail": "Deze kop heeft geen tekst. Schermlezers melden hem als lege regel in de structuur van het document. Voeg een titel toe of verwijder de kop."
+    },
+    "todo-in-text": {
+      "title": "Conceptnotitie in de tekst",
+      "detail": "Deze notitie hoort bij de tekst, dus hij komt in de PDF. Werk hem af, of maak er een //-commentaar van."
+    },
+    "no-author": {
+      "title": "Geen documentauteur",
+      "detail": "De PDF-metagegevens bevatten geen auteur. Voeg er een toe met #set document(author: \"Your Name\") of geef de auteurs mee aan je sjabloon. Laat het weg voor een anonieme review."
+    },
+    "privacy-local-path": {
+      "title": "Pad op je computer: {{path}}",
+      "detail": "Dit pad wijst naar een map buiten het project. Het kan je gebruikersnaam verraden, en op elke andere computer mislukt het compileren. Zet het bestand in het project en gebruik een relatief pad."
+    },
+    "privacy-blind-email": {
+      "title": "E-mailadres in {{file}}",
+      "detail": "Een e-mailadres kan de auteurs herkenbaar maken tijdens een blinde review. Haal het weg of vervang het door een anonieme plaatshouder."
+    },
+    "refs-no-bibliography": {
+      "title": "Citaties zonder bibliografie",
+      "detail": "Het document citeert bronnen, maar roept nergens #bibliography aan, dus Typst kan ze niet oplossen. Voeg #bibliography(\"refs.bib\") toe waar de literatuurlijst moet komen."
+    },
+    "submission-large-image": {
+      "title": "Zeer grote afbeelding: {{file}}",
+      "detail": "Deze afbeelding is groter dan {{limit}}. Grote afbeeldingen vertragen het compileren en maken de PDF onnodig groot. Sommige uitgevers beperken ook de uploadgrootte. Comprimeer hem, of exporteer hem op het formaat waarop hij wordt afgedrukt."
     }
   },
   "lens": {
@@ -643,5 +689,15 @@
     "compileTagged": "Getagd compileren en controleren",
     "compileTaggedWarning": "De LuaLaTeX van je systeem kan lokale bestanden lezen. Voer hem alleen uit voor een project dat je vertrouwt.",
     "noEngine": "Schakel een engine in bij Instellingen, LaTeX-engine om de getagde PDF in de app te maken. Of compileer de voorbereide broncode met je eigen pdfLaTeX of LuaLaTeX uit TeX Live 2025 of nieuwer."
+  },
+  "typstStandards": {
+    "title": "PDF-standaarden",
+    "intro": "Typst maakt zelf archiveerbare en toegankelijke PDF's. Kies een standaard en exporteer dan de PDF.",
+    "standard": "Standaard",
+    "export": "PDF exporteren",
+    "tagged": "Typst {{version}} tagt elke PDF voor schermlezers, dus een aparte getagde compilatie is niet nodig.",
+    "untagged": "Typst {{version}} tagt geen PDF's voor schermlezers. Typst 0.14 en nieuwer doen dat wel.",
+    "none": "Typst {{version}} kan geen PDF-standaarden maken. Kies Typst 0.12 of nieuwer in het compileermenu.",
+    "uaNote": "PDF/UA-1 vereist een documenttitel en alternatieve tekst voor elke afbeelding."
   }
 }

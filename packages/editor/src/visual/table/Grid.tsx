@@ -91,7 +91,7 @@ const Row: FC<{ row: RowData; rowIndex: number }> = ({ row, rowIndex }) => {
 };
 
 export const Grid: FC = () => {
-  const { view, parsed } = useTableHost();
+  const { view, parsed, dialect } = useTableHost();
   const { model } = parsed;
   const { selection, setSelection: select } = useTableSelection();
   const { editing, startEditing, commitEditing, cancelEditing } = useTableEditing();
@@ -133,10 +133,12 @@ export const Grid: FC = () => {
       select(next);
       return;
     }
-    const edit = insertRowsEdit(view.state, parsed, CellSelection.row(model, model.rowCount - 1), "below", 1);
+    const edit = dialect
+      ? dialect.appendRowEdit(view.state, parsed)
+      : insertRowsEdit(view.state, parsed, CellSelection.row(model, model.rowCount - 1), "below", 1);
     const apply = editing ? commitEditing : applyEdit;
-    apply({ changes: edit.changes, selection: CellSelection.cell(model.rowCount, 0) });
-  }, [selection, model, select, view, parsed, applyEdit, editing, commitEditing]);
+    apply({ changes: edit?.changes ?? [], selection: CellSelection.cell(edit ? model.rowCount : model.rowCount - 1, 0) });
+  }, [selection, model, select, view, parsed, dialect, applyEdit, editing, commitEditing]);
 
   const onKeyDown = useCallback(
     (event: KeyboardEvent) => {

@@ -1,3 +1,4 @@
+import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
 import { readProjectSources } from "@/store/project-index";
 import type { ProjectIndex } from "@/lib/index/types";
 
@@ -27,7 +28,10 @@ export function documentSourcePaths(
     const edges = index.uses
       .filter((use) => use.kind === "inputedge" && use.file === file)
       .sort((a, b) => a.from - b.from);
-    for (const edge of edges) walk(edge.target ?? edge.name, depth + 1);
+    for (const edge of edges) {
+      const target = edge.target ?? edge.name;
+      if (!isVendoredTypstPackagePath(target)) walk(target, depth + 1);
+    }
   };
 
   walk(root, 0);

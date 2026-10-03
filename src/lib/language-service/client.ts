@@ -27,9 +27,18 @@ import {
   type DidCloseTextDocumentParams,
   type DidOpenTextDocumentParams,
   type DidSaveTextDocumentParams,
+  type DocumentColorParams,
   type DocumentDiagnosticParams,
+  type DocumentFormattingParams,
+  type DocumentLinkParams,
+  type DocumentRangeFormattingParams,
   type DocumentSymbolParams,
+  type ExecuteCommandParams,
   type HoverParams,
+  type InlayHintParams,
+  type PrepareRenameParams,
+  type RenameParams,
+  type SignatureHelpParams,
   type ClientInfo,
   type NegotiatedServerCapabilities,
   type PublishDiagnosticsParams,
@@ -53,6 +62,25 @@ import type {
   LanguageServiceTransport,
   LanguageServiceTransportEvent,
 } from "./transport";
+import {
+  LanguageServiceStateError,
+  UnsupportedLanguageServiceCapabilityError,
+  LanguageServiceTimeoutError,
+  LanguageServiceAbortError,
+  LanguageServiceExitedError,
+  StaleLanguageServiceResultError,
+} from "./errors";
+
+export {
+  LanguageServiceStateError,
+  UnsupportedLanguageServiceCapabilityError,
+  LanguageServiceTimeoutError,
+  LanguageServiceAbortError,
+  LanguageServiceExitedError,
+  StaleLanguageServiceResultError,
+  isLanguageServiceStaleError,
+  isLanguageServiceCancellation,
+} from "./errors";
 
 export type LanguageServiceClientState =
   | "stopped"
@@ -73,7 +101,16 @@ export type LanguageServiceFeature =
   | "documentDiagnostics"
   | "workspaceDiagnostics"
   | "semanticTokensFull"
-  | "semanticTokensRange";
+  | "semanticTokensRange"
+  | "signatureHelp"
+  | "inlayHints"
+  | "documentLinks"
+  | "documentColors"
+  | "formatting"
+  | "rangeFormatting"
+  | "rename"
+  | "prepareRename"
+  | "executeCommand";
 
 export interface LanguageServiceRequestIdentity {
   session: string;
@@ -171,62 +208,6 @@ export type LanguageServiceClientListener = (
   event: LanguageServiceClientEvent,
 ) => void;
 
-export class LanguageServiceStateError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "LanguageServiceStateError";
-  }
-}
-
-export class UnsupportedLanguageServiceCapabilityError extends Error {
-  readonly feature: LanguageServiceFeature;
-
-  constructor(feature: LanguageServiceFeature) {
-    super(`Language server did not advertise ${feature}`);
-    this.name = "UnsupportedLanguageServiceCapabilityError";
-    this.feature = feature;
-  }
-}
-
-export class LanguageServiceTimeoutError extends Error {
-  readonly method: string;
-  readonly timeoutMs: number;
-
-  constructor(method: string, timeoutMs: number) {
-    super(`Language service request ${method} timed out after ${timeoutMs} ms`);
-    this.name = "LanguageServiceTimeoutError";
-    this.method = method;
-    this.timeoutMs = timeoutMs;
-  }
-}
-
-export class LanguageServiceAbortError extends Error {
-  readonly method: string;
-
-  constructor(method: string) {
-    super(`Language service request ${method} was aborted`);
-    this.name = "LanguageServiceAbortError";
-    this.method = method;
-  }
-}
-
-export class LanguageServiceExitedError extends Error {
-  constructor(message = "Language service exited") {
-    super(message);
-    this.name = "LanguageServiceExitedError";
-  }
-}
-
-export class StaleLanguageServiceResultError extends Error {
-  readonly identity: LanguageServiceRequestIdentity;
-
-  constructor(identity: LanguageServiceRequestIdentity, reason: string) {
-    super(`Discarded stale language service result: ${reason}`);
-    this.name = "StaleLanguageServiceResultError";
-    this.identity = identity;
-  }
-}
-
 interface PendingRequest {
   id: JsonRpcId;
   method: string;
@@ -294,6 +275,16 @@ function cloneCapabilities(
           }
         : null,
     },
+    completionTriggerCharacters: [...capabilities.completionTriggerCharacters],
+    signatureHelp: {
+      ...capabilities.signatureHelp,
+      triggerCharacters: [...capabilities.signatureHelp.triggerCharacters],
+      retriggerCharacters: [
+        ...capabilities.signatureHelp.retriggerCharacters,
+      ],
+    },
+    rename: { ...capabilities.rename },
+    executeCommands: [...capabilities.executeCommands],
   };
 }
 
@@ -542,7 +533,29 @@ export class LanguageServiceClient {
         return this.negotiated.semanticTokens.full;
       case "semanticTokensRange":
         return this.negotiated.semanticTokens.range;
+      case "signatureHelp":
+        return this.negotiated.signatureHelp.enabled;
+      case "inlayHints":
+        return this.negotiated.inlayHints;
+      case "documentLinks":
+        return this.negotiated.documentLinks;
+      case "documentColors":
+        return this.negotiated.documentColors;
+      case "formatting":
+        return this.negotiated.formatting;
+      case "rangeFormatting":
+        return this.negotiated.rangeFormatting;
+      case "rename":
+        return this.negotiated.rename.enabled;
+      case "prepareRename":
+        return this.negotiated.rename.prepare;
+      case "executeCommand":
+        return this.negotiated.executeCommands.length > 0;
     }
+  }
+
+  supportsCommand(command: string): boolean {
+    return this.negotiated.executeCommands.includes(command);
   }
 
   async start(options: LanguageServiceClientStartOptions): Promise<void> {
@@ -1093,6 +1106,134 @@ export class LanguageServiceClient {
       params.textDocument.uri,
       options,
     );
+  }
+
+  requestSignatureHelp(
+    params: SignatureHelpParams,
+    options: LanguageServiceRequestOptions = {},
+  ): Promise<JsonValue> {
+    return this.requestFeature(
+      "signatureHelp",
+      "textDocument/signatureHelp",
+      params,
+      params.textDocument.uri,
+      options,
+    );
+  }
+
+  requestInlayHints(
+    params: InlayHintParams,
+    options: LanguageServiceRequestOptions = {},
+  ): Promise<JsonValue> {
+    return this.requestFeature(
+      "inlayHints",
+      "textDocument/inlayHint",
+      params,
+      params.textDocument.uri,
+      options,
+    );
+  }
+
+  requestDocumentLinks(
+    params: DocumentLinkParams,
+    options: LanguageServiceRequestOptions = {},
+  ): Promise<JsonValue> {
+    return this.requestFeature(
+      "documentLinks",
+      "textDocument/documentLink",
+      params,
+      params.textDocument.uri,
+      options,
+    );
+  }
+
+  requestDocumentColors(
+    params: DocumentColorParams,
+    options: LanguageServiceRequestOptions = {},
+  ): Promise<JsonValue> {
+    return this.requestFeature(
+      "documentColors",
+      "textDocument/documentColor",
+      params,
+      params.textDocument.uri,
+      options,
+    );
+  }
+
+  requestFormatting(
+    params: DocumentFormattingParams,
+    options: LanguageServiceRequestOptions = {},
+  ): Promise<JsonValue> {
+    return this.requestFeature(
+      "formatting",
+      "textDocument/formatting",
+      params,
+      params.textDocument.uri,
+      options,
+    );
+  }
+
+  requestRangeFormatting(
+    params: DocumentRangeFormattingParams,
+    options: LanguageServiceRequestOptions = {},
+  ): Promise<JsonValue> {
+    return this.requestFeature(
+      "rangeFormatting",
+      "textDocument/rangeFormatting",
+      params,
+      params.textDocument.uri,
+      options,
+    );
+  }
+
+  requestPrepareRename(
+    params: PrepareRenameParams,
+    options: LanguageServiceRequestOptions = {},
+  ): Promise<JsonValue> {
+    return this.requestFeature(
+      "prepareRename",
+      "textDocument/prepareRename",
+      params,
+      params.textDocument.uri,
+      options,
+    );
+  }
+
+  requestRename(
+    params: RenameParams,
+    options: LanguageServiceRequestOptions = {},
+  ): Promise<JsonValue> {
+    return this.requestFeature(
+      "rename",
+      "textDocument/rename",
+      params,
+      params.textDocument.uri,
+      options,
+    );
+  }
+
+  executeCommand(
+    params: ExecuteCommandParams,
+    options: Pick<LanguageServiceRequestOptions, "signal" | "timeoutMs"> = {},
+  ): Promise<JsonValue> {
+    this.ensureReady();
+    if (!this.supportsCommand(params.command)) {
+      return Promise.reject(
+        new UnsupportedLanguageServiceCapabilityError("executeCommand"),
+      );
+    }
+    return this.sendRequest("workspace/executeCommand", params, {
+      ...options,
+      trackFreshness: false,
+      latestWinsKey: `executeCommand:${params.command}`,
+    });
+  }
+
+  async changeConfiguration(settings: JsonValue): Promise<void> {
+    this.ensureReady();
+    await this.sendNotification("workspace/didChangeConfiguration", {
+      settings,
+    });
   }
 
   private requestFeature(
@@ -1844,21 +1985,6 @@ export class LanguageServiceClient {
   private emit(event: LanguageServiceClientEvent): void {
     for (const listener of this.listeners) listener(event);
   }
-}
-
-export function isLanguageServiceStaleError(
-  error: unknown,
-): error is StaleLanguageServiceResultError {
-  return error instanceof StaleLanguageServiceResultError;
-}
-
-export function isLanguageServiceCancellation(
-  error: unknown,
-): error is LanguageServiceAbortError | LanguageServiceTimeoutError {
-  return (
-    error instanceof LanguageServiceAbortError ||
-    error instanceof LanguageServiceTimeoutError
-  );
 }
 
 export function assertJsonRpcError(error: unknown): asserts error is Error {

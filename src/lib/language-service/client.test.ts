@@ -958,3 +958,157 @@ describe("LanguageServiceClient", () => {
     expect(client.state).toBe("ready");
   });
 });
+
+describe("LanguageServiceClient editing features", () => {
+  const typstUri = "file:///project/main.typ";
+  const tinymistOptions: LanguageServiceClientStartOptions = {
+    runtimeProfile: getLanguageServiceRuntimeProfile("tinymist"),
+    clientInfo: { name: "Oleafly test" },
+  };
+
+  async function startTinymist(
+    capabilities: Record<string, JsonValue>,
+  ): Promise<{ client: LanguageServiceClient; transport: FakeTransport }> {
+    const transport = new FakeTransport();
+    const client = createClient(transport, 1_000, "tinymist");
+    await startClient(client, transport, capabilities, tinymistOptions);
+    await client.openDocument({
+      uri: typstUri,
+      languageId: "typst",
+      version: 1,
+      text: "#let x = rgb(\"#ff0000\")\n#text(fill: x)[hi]",
+    });
+    return { client, transport };
+  }
+
+  it("sends each editing request the server advertises", async () => {
+    const { client, transport } = await startTinymist({
+      signatureHelpProvider: { triggerCharacters: ["(", ",", ":"] },
+      inlayHintProvider: true,
+      documentLinkProvider: {},
+      colorProvider: true,
+      documentFormattingProvider: true,
+      documentRangeFormattingProvider: true,
+      renameProvider: { prepareProvider: true },
+    });
+    const textDocument = { uri: typstUri };
+    const position = { line: 1, character: 6 };
+    const range = {
+      start: { line: 0, character: 0 },
+      end: { line: 1, character: 0 },
+    };
+    const options = { tabSize: 2, insertSpaces: true };
+    const calls: Array<[string, () => Promise<JsonValue>]> = [
+      [
+        "textDocument/signatureHelp",
+        () =>
+          client.requestSignatureHelp({
+            textDocument,
+            position,
+            context: {
+              triggerKind: 2,
+              triggerCharacter: "(",
+              isRetrigger: false,
+            },
+          }),
+      ],
+      [
+        "textDocument/inlayHint",
+        () => client.requestInlayHints({ textDocument, range }),
+      ],
+      [
+        "textDocument/documentLink",
+        () => client.requestDocumentLinks({ textDocument }),
+      ],
+      [
+        "textDocument/documentColor",
+        () => client.requestDocumentColors({ textDocument }),
+      ],
+      [
+        "textDocument/formatting",
+        () => client.requestFormatting({ textDocument, options }),
+      ],
+      [
+        "textDocument/rangeFormatting",
+        () =>
+          client.requestRangeFormatting({ textDocument, options, range }),
+      ],
+      [
+        "textDocument/prepareRename",
+        () => client.requestPrepareRename({ textDocument, position }),
+      ],
+      [
+        "textDocument/rename",
+        () =>
+          client.requestRename({ textDocument, position, newName: "y" }),
+      ],
+    ];
+    for (const [method, call] of calls) {
+      const pending = call();
+      const sent = await requestAt(transport, method);
+      expect(sent.message).toMatchObject({
+        method,
+        params: { textDocument },
+      });
+      transport.respond(sent, [method]);
+      await expect(pending).resolves.toEqual([method]);
+    }
+  });
+
+  it("refuses editing requests the server did not advertise", async () => {
+    const { client, transport } = await startTinymist({});
+    const textDocument = { uri: typstUri };
+    await expect(
+      client.requestFormatting({
+        textDocument,
+        options: { tabSize: 2, insertSpaces: true },
+      }),
+    ).rejects.toBeInstanceOf(UnsupportedLanguageServiceCapabilityError);
+    await expect(
+      client.requestSignatureHelp({
+        textDocument,
+        position: { line: 0, character: 0 },
+      }),
+    ).rejects.toBeInstanceOf(UnsupportedLanguageServiceCapabilityError);
+    await expect(
+      client.executeCommand({ command: "tinymist.pinMain", arguments: [null] }),
+    ).rejects.toBeInstanceOf(UnsupportedLanguageServiceCapabilityError);
+    expect(transport.requests("textDocument/formatting")).toHaveLength(0);
+    expect(transport.requests("workspace/executeCommand")).toHaveLength(0);
+  });
+
+  it("runs only the commands the server lists", async () => {
+    const { client, transport } = await startTinymist({
+      executeCommandProvider: { commands: ["tinymist.pinMain"] },
+    });
+    expect(client.supportsCommand("tinymist.pinMain")).toBe(true);
+    expect(client.supportsCommand("tinymist.exportPdf")).toBe(false);
+    const pinned = client.executeCommand({
+      command: "tinymist.pinMain",
+      arguments: ["/project/main.typ"],
+    });
+    const sent = await requestAt(transport, "workspace/executeCommand");
+    expect(sent.message).toMatchObject({
+      params: {
+        command: "tinymist.pinMain",
+        arguments: ["/project/main.typ"],
+      },
+    });
+    transport.respond(sent, null);
+    await expect(pinned).resolves.toBeNull();
+    await expect(
+      client.executeCommand({ command: "tinymist.exportPdf" }),
+    ).rejects.toBeInstanceOf(UnsupportedLanguageServiceCapabilityError);
+  });
+
+  it("pushes configuration changes to a running server", async () => {
+    const { client, transport } = await startTinymist({});
+    await client.changeConfiguration({ formatterPrintWidth: 80 });
+    expect(
+      transport.notifications("workspace/didChangeConfiguration").at(-1)
+        ?.message,
+    ).toMatchObject({
+      params: { settings: { formatterPrintWidth: 80 } },
+    });
+  });
+});

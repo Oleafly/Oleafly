@@ -28,6 +28,8 @@ vi.mock("@/components/diagram/diagram-kit", () => ({ KIT: {} }));
 vi.mock("@oleafly/diagram", async () => {
   const { createContext } = await import("react");
   return {
+    languageForPath: () => null,
+    diagramLanguage: () => ({ seeds: { math: "$x$", code: "x" } }),
     DiagramKitContext: createContext({}),
     DiagramCanvas: ({ onChange }: { onChange: (model: unknown) => void }) => {
       mocks.diagramChange = onChange;

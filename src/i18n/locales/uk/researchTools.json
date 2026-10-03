@@ -576,6 +576,76 @@
       "tag2": "Стрілки",
       "tag3": "Шпаргалка",
       "tag4": "Вставити в позицію курсора"
+    },
+    "arxivToTypst": {
+      "name": "arXiv у Typst",
+      "description": "Перетворіть пакунок коду з arXiv на Typst. Перевірна компіляція покаже, що не вдалося перетворити.",
+      "tag1": "Архів коду",
+      "tag2": "Перевірка компіляцією",
+      "tag3": "Для ID потрібна мережа"
+    },
+    "csvToTypst": {
+      "name": "CSV у Typst",
+      "description": "Вставте рядки CSV або TSV і отримайте екрановану таблицю Typst.",
+      "tag1": "CSV і TSV",
+      "tag2": "Таблиці",
+      "tag3": "Локально"
+    },
+    "equationToTypst": {
+      "name": "Рівняння в Typst",
+      "description": "Перетворіть набрану математику LaTeX чи зображення рівняння на математику Typst.",
+      "tag1": "Текст або зображення",
+      "tag2": "Формули",
+      "tag3": "Вбудований"
+    },
+    "excelToTypst": {
+      "name": "Excel у Typst",
+      "description": "Перетворіть аркуш Excel, CSV чи TSV на екрановану таблицю Typst.",
+      "tag1": "XLSX",
+      "tag2": "CSV і TSV",
+      "tag3": "Локально"
+    },
+    "htmlToTypst": {
+      "name": "HTML у Typst",
+      "description": "Перетворіть вставлений HTML на самодостатній документ Typst.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Локально"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid у Typst",
+      "description": "Перетворіть блок-схему Mermaid на код fletcher, який можна редагувати.",
+      "tag1": "Блок-схеми",
+      "tag2": "Fletcher",
+      "tag3": "Локально"
+    },
+    "typstToHtml": {
+      "name": "Typst у HTML",
+      "description": "Перетворіть розмітку Typst на самодостатній HTML із рівняннями MathML.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst у Markdown",
+      "description": "Перетворіть розмітку Typst на переносимий Markdown.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Проєкт необов’язковий"
+    },
+    "typstToWord": {
+      "name": "Typst у Word",
+      "description": "Створіть документ Word із рівняннями у власному форматі математики Word.",
+      "tag1": "DOCX",
+      "tag2": "Власна математика",
+      "tag3": "Локально"
+    },
+    "wordToTypst": {
+      "name": "Word у Typst",
+      "description": "Перетворіть документ Word на Typst і збережіть видобуті медіафайли разом з ним.",
+      "tag1": "DOCX",
+      "tag2": "Медіа",
+      "tag3": "Проєкт необов’язковий"
     }
   },
   "generators": {
@@ -661,7 +731,9 @@
     "insertInEditor": "Вставити в редактор",
     "noDescription": "Для цієї команди опису немає.",
     "loadingPreview": "Завантаження символу для перегляду.",
-    "chooseSymbol": "Виберіть символ у бібліотеці."
+    "chooseSymbol": "Виберіть символ у бібліотеці.",
+    "insertHintTypst": "Вставити код Typst у відкритий документ Typst.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} КБ · натисніть, щоб замінити",
@@ -717,7 +789,8 @@
     "openAiSettings": "Відкрити налаштування ШІ",
     "fileReady": "{{fileName}} готовий",
     "saveWordHint": "Збережіть документ Word, коли будете готові.",
-    "resultPlaceholder": "Тут з’явиться ваш перетворений результат."
+    "resultPlaceholder": "Тут з’явиться ваш перетворений результат.",
+    "progressConvertingSource": "Перетворення коду на Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -838,6 +911,76 @@
       "inputLabel": "Документ Word",
       "inputHint": "Виберіть файл .docx. Рівняння та зображення читаються локально.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv у Typst",
+      "subtitle": "Перетворіть код LaTeX препринта на Typst і подивіться, що треба виправити вручну",
+      "inputLabel": "Код з arXiv",
+      "inputHint": "Введіть ідентифікатор arXiv або виберіть збережений архів .tar.gz чи .gz.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV у Typst",
+      "subtitle": "Вставте дані електронної таблиці й отримайте екрановану таблицю Typst",
+      "inputLabel": "CSV або TSV",
+      "inputHint": "Вставте рядки, розділені комами чи табуляцією. Перший рядок стане заголовком.",
+      "outputLabel": "Таблиця Typst"
+    },
+    "equationToTypst": {
+      "title": "Рівняння в Typst",
+      "subtitle": "Перетворіть набрану чи сфотографовану математику на математику Typst",
+      "inputLabel": "Рівняння",
+      "inputHint": "Наберіть математику LaTeX, опишіть її словами або виберіть зображення.",
+      "outputLabel": "Рівняння Typst"
+    },
+    "excelToTypst": {
+      "title": "Excel у Typst",
+      "subtitle": "Перетворіть перший аркуш на таблицю Typst",
+      "inputLabel": "Електронна таблиця",
+      "inputHint": "XLSX, XLS, CSV або TSV. Формули беруться за кешованими значеннями.",
+      "outputLabel": "Таблиця Typst"
+    },
+    "htmlToTypst": {
+      "title": "HTML у Typst",
+      "subtitle": "Перетворіть семантичний HTML на самодостатній документ Typst",
+      "inputLabel": "HTML",
+      "inputHint": "Вставте фрагмент HTML або повний документ.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid у Typst",
+      "subtitle": "Перетворіть блок-схему Mermaid на редаговану діаграму fletcher",
+      "inputLabel": "Блок-схема Mermaid",
+      "inputHint": "Блок-схеми підтримують макети TD, LR, BT і RL, підписи та поширені форми вузлів.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst у HTML",
+      "subtitle": "Створіть самодостатній HTML із рівняннями MathML",
+      "inputLabel": "Typst",
+      "inputHint": "Вставте фрагмент або повний документ Typst.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst у Markdown",
+      "subtitle": "Створіть переносимий Markdown, не створюючи спершу проєкт",
+      "inputLabel": "Typst",
+      "inputHint": "Вставте фрагмент або повний документ Typst.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst у Word",
+      "subtitle": "Створіть DOCX із рівняннями у редагованому форматі математики Word",
+      "inputLabel": "Typst",
+      "inputHint": "Вставте фрагмент або повний документ Typst.",
+      "outputLabel": "Документ Word"
+    },
+    "wordToTypst": {
+      "title": "Word у Typst",
+      "subtitle": "Перетворіть DOCX і збережіть видобуті медіафайли разом із результатом",
+      "inputLabel": "Документ Word",
+      "inputHint": "Виберіть файл .docx. Рівняння та зображення читаються локально.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -853,7 +996,8 @@
     "chooseFile": "Виберіть файл перед перетворенням.",
     "fileTooLarge": "Виберіть файл менший за 128 МБ.",
     "emptySheet": "Вибраний аркуш порожній.",
-    "arxivInputRequired": "Введіть ідентифікатор arXiv або виберіть архів коду."
+    "arxivInputRequired": "Введіть ідентифікатор arXiv або виберіть архів коду.",
+    "equationToTypst": "Pandoc не вдалося перетворити це рівняння на Typst. Перевірте математику LaTeX і спробуйте ще раз."
   },
   "converterNotes": {
     "scannedPages": "Розшифровано {{pages}} сканованих сторінок локальною моделлю. Перевірте рівняння і таблиці, перш ніж користуватися результатом.",
@@ -861,7 +1005,20 @@
     "mermaidTikz": "Цю блок-схему перетворено на редагований TikZ.",
     "mermaidRendered": "Цю діаграму відтворено локально, бо її синтаксис Mermaid не лягає чисто в редагований TikZ.",
     "tableConverted": "Перетворено {{rows}} рядків і {{columns}} колонок.",
-    "arxivBundle": "Файлів коду: {{files}}. Головний документ: {{mainFile}}."
+    "arxivBundle": "Файлів коду: {{files}}. Головний документ: {{mainFile}}.",
+    "mermaidFletcher": "Цю блок-схему перетворено на редагований код fletcher для Typst.",
+    "mermaidRenderedTypst": "Цю діаграму відтворено локально, бо її синтаксис Mermaid не лягає чисто в редагований код fletcher.",
+    "arxivTypstConverted": "Перетворено {{mainFile}}.",
+    "typstCheckPassed": "Typst скомпілював результат без помилок.",
+    "typstCheckFailed_one": "Typst знайшов {{count}} помилку.",
+    "typstCheckFailed_few": "Typst знайшов {{count}} помилки.",
+    "typstCheckFailed_many": "Typst знайшов {{count}} помилок.",
+    "typstCheckFailed_other": "Typst знайшов {{count}} помилки.",
+    "notConverted_one": "{{count}} елемент не вдалося перетворити.",
+    "notConverted_few": "{{count}} елементи не вдалося перетворити.",
+    "notConverted_many": "{{count}} елементів не вдалося перетворити.",
+    "notConverted_other": "{{count}} елемента не вдалося перетворити.",
+    "checkLine": "Рядок {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Ця діаграма Mermaid перевищує обмеження в 50 000 символів.",
@@ -1126,9 +1283,15 @@
   },
   "equation": {
     "subtitle": "Жива робоча область LaTeX",
+    "subtitleTypst": "Жива робоча область Typst",
+    "mathLanguage": "Мова формул",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Помилка",
     "statusRendered": "Відтворено",
+    "statusRendering": "Відтворення",
     "copyLatex": "Копіювати LaTeX",
+    "copyTypst": "Копіювати Typst",
     "exportOptions": "Параметри експорту",
     "export": "Експорт",
     "downloadPng": "Завантажити PNG",
@@ -1141,6 +1304,7 @@
     "exportSvgFailed": "Не вдалося експортувати цей фрагмент як SVG",
     "copyKatexFailed": "Не вдалося скопіювати HTML KaTeX",
     "copyLatexFailed": "Не вдалося скопіювати код LaTeX",
+    "copyTypstFailed": "Не вдалося скопіювати код Typst",
     "invalidPngName": "Виберіть коротку назву файлу PNG без скісних рисок і спеціальних символів.",
     "replaceConfirm": "{{path}} уже існує в {{project}}. Замінити?",
     "savedToProject": "Збережено {{path}} у {{project}}.",
@@ -1154,6 +1318,7 @@
     "newImageProject": "Новий проєкт зображення",
     "mathmlFailed": "Не вдалося перетворити цей фрагмент на MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "У рядку",
     "display": "Виносне",
     "examples": "ПРИКЛАДИ",
@@ -1162,6 +1327,8 @@
     "previewLight": "Перегляд на світлому",
     "inlineSample": "Ось так воно виглядає в рядку всередині речення, як <formula></formula>, разом із текстом навколо.",
     "empty": "Наберіть математику LaTeX ліворуч.",
+    "emptyTypst": "Наберіть математику Typst ліворуч.",
+    "typstFailed": "Typst не вдалося відтворити це рівняння.",
     "zoomOut": "Зменшити",
     "zoomIn": "Збільшити",
     "resetZoom": "Скинути масштаб",

@@ -300,7 +300,7 @@
       "literatureSearch": "Durchsucht OpenAlex nach Aufsätzen per Stichwort, ohne Schlüssel.",
       "verifyCitation": "Macht aus einer DOI oder einem Titel geprüftes BibTeX über doi.org oder Crossref.",
       "projectLibrarySearch": "Durchsucht Text und Notizen des Projekts per Stichwort.",
-      "previewFigure": "Kompiliert eine TikZ- oder PGFPlots-Abbildung für sich und zeigt das Ergebnis im Chat.",
+      "previewFigure": "Stellt eine TikZ- oder CeTZ-Abbildung für sich dar und zeigt das Ergebnis im Chat.",
       "insertFigure": "Fügt die fertige Abbildung mit Bildunterschrift und Label an der Cursorstelle ein und sichert ein PNG unter figures/.",
       "loadImage": "Sieht sich ein Bild an, das bereits im Projekt liegt.",
       "updateTodos": "Schreibt oder aktualisiert den Schritt-für-Schritt-Plan im Chat.",
@@ -343,6 +343,7 @@
     "noDescription": "Keine Beschreibung vorhanden.",
     "notes": {
       "latexOnly": "Nur für LaTeX-Projekte",
+      "latexAndTypstOnly": "Nur für LaTeX- und Typst-Projekte",
       "pdfCaptureSetting": "Braucht die Einstellung zum Erfassen von PDF-Seiten",
       "chatApproval": "Im Chat freigegeben, ein Befehl nach dem anderen",
       "browserSetting": "Braucht die Einstellung für den Webbrowser"
@@ -676,6 +677,24 @@
     "tikzFigure": {
       "label": "TikZ-Abbildung",
       "description": "TikZ-Code im Chat entwerfen"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Typst-Fehler beheben"
+      },
+      "writeEquation": {
+        "description": "Aus natürlicher Sprache Typst-Formeln machen"
+      },
+      "academicPresentation": {
+        "description": "Ein Typst-Foliensatz aus Ihrem Aufsatz"
+      },
+      "generateTable": {
+        "description": "Eine Typst-Tabelle im Chat entwerfen"
+      },
+      "figure": {
+        "label": "CeTZ-Abbildung",
+        "description": "CeTZ-Code im Chat entwerfen"
+      }
     }
   },
   "turn": {

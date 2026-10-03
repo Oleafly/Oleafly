@@ -88,6 +88,10 @@ export interface CompileError {
     message: string;
     kind: string;
     explanation: string | null;
+    column?: number | null;
+    end_column?: number | null;
+    hints?: string[];
+    source_line?: string | null;
 }
 export type LogSeverity = "error" | "warning" | "info" | "typesetting";
 export type LogCategory =
@@ -146,7 +150,7 @@ export interface EngineCapabilities {
     supports_offline: boolean;
     supports_isolated_compile: boolean;
     formatting_profile: "latex" | "typst" | "markdown" | "none";
-    source_preflight_profile: "latex" | "none";
+    source_preflight_profile: "latex" | "typst" | "none";
     features: EngineFeature[];
     conversion_exports: Array<"docx" | "html" | "md" | "txt" | "pptx" | "epub" | "typst" | "tex">;
     template_kinds: Array<"document" | "image">;
@@ -163,6 +167,34 @@ export interface DocumentEngineDescriptor {
     /** Pinned latexmk compiler; absent means auto-detect from the source. */
     tex_flavor?: TexFlavor;
     allow_shell_escape: boolean;
+    typst_version?: string | null;
+    typst_resolved?: TypstResolved | null;
+    typst_missing?: string | null;
+    typst_vendor_packages?: boolean;
+    typst_options?: TypstOptionsDescriptor | null;
+}
+export interface TypstOptionsDescriptor {
+    system_fonts: boolean;
+    reproducible: boolean;
+    variants: string[];
+    font_dirs: string[];
+    flags: string[];
+    output_formats: string[];
+    pdf_standards: string[];
+}
+export type TypstSource = "bundled" | "downloaded" | "system";
+export interface TypstResolved {
+    version: string;
+    source: TypstSource;
+}
+export interface TypstSpec {
+    version?: string | null;
+    vendor_packages?: boolean;
+    font_paths?: string[];
+    system_fonts?: boolean;
+    reproducible?: boolean;
+    inputs?: Record<string, string>;
+    variants?: Record<string, { inputs?: Record<string, string> }>;
 }
 export type TexFlavor = "pdflatex" | "xelatex" | "lualatex";
 export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "unknown";
@@ -274,6 +306,7 @@ export interface ProjectMeta {
     kind?: string;
     tex?: TexSpec | null;
     tex_flavor?: TexFlavor | null;
+    typst?: TypstSpec | null;
     dictionary_locale?: string | null;
     exports?: ProjectExportRecord[];
     hidden?: boolean;
@@ -851,7 +884,7 @@ export interface BackendPort {
   recordProjectTexSpec: (projectId: string) => Promise<TexSpec | null>;
   importOverleafProjectCmd: (path: string, name?: string) => Promise<string>;
   projectTexStatus: (projectId: string) => Promise<TexStatus | null>;
-  compileProject: (projectId: string, mainDoc: string, offline?: boolean, fast?: boolean, haltOnError?: boolean) => Promise<CompileResult>;
+  compileProject: (projectId: string, mainDoc: string, offline?: boolean, fast?: boolean, haltOnError?: boolean, typstVariant?: string | null) => Promise<CompileResult>;
   checkpointList: (projectId: string) => Promise<CheckpointSummary[]>;
   checkpointSetLabel: (projectId: string, snapshotRoot: string, label: string) => Promise<CheckpointSummary>;
   checkpointFiles: (projectId: string, snapshotRoot: string) => Promise<CheckpointFileSummary[]>;
@@ -920,7 +953,7 @@ export interface BackendPort {
   createTypstProject: (name: string) => Promise<string>;
   createMarkdownProject: (name: string) => Promise<string>;
   createImageProject: (name: string, source: string, color?: string) => Promise<string>;
-  createDiagramProject: (name: string, source: string) => Promise<string>;
+  createDiagramProject: (name: string, source: string, language?: "tikz" | "typst" | "mermaid") => Promise<string>;
   getOrCreateScratchProject: () => Promise<string>;
   saveFigureToCache: (name: string, pngBase64: string, tikz: string) => Promise<FigureCacheResult>;
   saveCustomTemplate: (slug: string, manifestJson: string, files: {

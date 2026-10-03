@@ -166,5 +166,10 @@
       "detail": "Nejnovější revize projektu zatím nebyla naindexována.",
       "title": "Čeká se na analýzu projektu"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Styl citace",
+    "ariaLabel": "Styl citace pro bibliografii v {{path}}",
+    "failed": "Oleafly nedokázal změnit styl citace."
   }
 }

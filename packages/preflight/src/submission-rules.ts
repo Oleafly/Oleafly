@@ -183,11 +183,11 @@ const SECRET_PATTERNS = [
   /-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----/,
 ];
 
-const INTERNAL_COMMENT_TERMS =
+export const INTERNAL_COMMENT_TERMS =
   /\b(?:TODO|FIXME|CONFIDENTIAL|INTERNAL ONLY|DO NOT DISTRIBUTE)\b/i;
 const SOURCE_LINE_BREAK = /\r\n|[\n\r\u2028\u2029]/u;
 
-function hasInternalComment(content: string): boolean {
+export function hasInternalComment(content: string): boolean {
   for (const line of content.split(SOURCE_LINE_BREAK)) {
     const start = line.search(/\S/u);
     if (start === -1 || line[start] !== "%") continue;
@@ -196,7 +196,10 @@ function hasInternalComment(content: string): boolean {
   return false;
 }
 
-function filePrivacyFindings(file: ProjectContext["files"][number]): Finding[] {
+export function filePrivacyFindings(
+  file: ProjectContext["files"][number],
+  internalNote: (content: string) => boolean = hasInternalComment,
+): Finding[] {
   const out: Finding[] = [];
   if (isSensitiveFile(file.path)) {
     out.push(
@@ -224,7 +227,7 @@ function filePrivacyFindings(file: ProjectContext["files"][number]): Finding[] {
       ),
     );
   }
-  if (hasInternalComment(content)) {
+  if (internalNote(content)) {
     out.push(
       make(
         "privacy-internal-comment",
@@ -268,22 +271,25 @@ function blindReviewFindings(source: string, pdf: PdfFacts | undefined): Finding
       ),
     );
   }
-  if (pdf?.author && !/anonymous|omitted|blind review/i.test(pdf.author)) {
-    out.push(
-      make(
-        "privacy-pdf-author",
-        "privacy",
-        "error",
-        message("rules.privacy-pdf-author.title"),
-        message("rules.privacy-pdf-author.detail", { author: pdf.author }),
-      ),
-    );
-  }
+  out.push(...pdfAuthorFindings(pdf));
   return out;
 }
 
+export function pdfAuthorFindings(pdf: PdfFacts | undefined): Finding[] {
+  if (!pdf?.author || /anonymous|omitted|blind review/i.test(pdf.author)) return [];
+  return [
+    make(
+      "privacy-pdf-author",
+      "privacy",
+      "error",
+      message("rules.privacy-pdf-author.title"),
+      message("rules.privacy-pdf-author.detail", { author: pdf.author }),
+    ),
+  ];
+}
+
 function checkPrivacy(project: ProjectContext, pdf: PdfFacts | undefined, anonymousReview: boolean): Finding[] {
-  const out: Finding[] = project.files.flatMap(filePrivacyFindings);
+  const out: Finding[] = project.files.flatMap((file) => filePrivacyFindings(file));
 
   const source = sourceCorpus(project);
   const draftArtifact = /\\usepackage(?:\[[^\]]*\])?\{(?:draftwatermark|todonotes|showkeys|changes)\}|\\todo\s*\{|\\documentclass\s*\[[^\]]*\bdraft\b/i.exec(source);
@@ -314,7 +320,7 @@ export interface SubmissionRuleInput {
   anonymousReview?: boolean;
 }
 
-function portableNameFindings(project: ProjectContext): Finding[] {
+export function portableNameFindings(project: ProjectContext): Finding[] {
   const out: Finding[] = [];
   for (const file of project.files) {
     if (!PORTABLE_NAME.test(file.path)) {
@@ -366,7 +372,7 @@ function sourceHygieneFindings(project: ProjectContext): Finding[] {
   return out;
 }
 
-function generatedFileFindings(project: ProjectContext): Finding[] {
+export function generatedFileFindings(project: ProjectContext): Finding[] {
   const out: Finding[] = [];
   for (const file of project.files) {
     if (GENERATED_FILE.test(file.path)) {
@@ -470,6 +476,100 @@ function figureFormatFindings(
   return out;
 }
 
+export function pdfSubmissionFindings(profile: SubmissionProfile, pdf: PdfFacts | undefined): Finding[] {
+  if (!pdf) return [];
+  const out: Finding[] = [];
+  const minimum = profile.pdf.minimumVersion;
+  if (minimum && pdf.version && Number(pdf.version) < Number(minimum)) {
+    out.push(
+      make(
+        "submission-pdf-version",
+        "submission",
+        "error",
+        message("rules.submission-pdf-version.title", { version: pdf.version }),
+        message("rules.submission-pdf-version.detail", { profile: profile.label, minimum }),
+      ),
+    );
+  }
+  if (profile.pdf.forbidBookmarks && pdf.outlineCount > 0) {
+    out.push(
+      make(
+        "submission-bookmarks",
+        "submission",
+        "error",
+        message("rules.submission-bookmarks.title"),
+        message("rules.submission-bookmarks.detail", { profile: profile.label }),
+      ),
+    );
+  }
+  if (profile.pdf.forbidLinks && pdf.linkCount > 0) {
+    out.push(
+      make(
+        "submission-links",
+        "submission",
+        "error",
+        message("rules.submission-links.title"),
+        message("rules.submission-links.detail", { profile: profile.label }),
+      ),
+    );
+  }
+  if (profile.pdf.forbidAttachments && pdf.attachmentCount > 0) {
+    out.push(
+      make(
+        "submission-attachments",
+        "submission",
+        "error",
+        message("rules.submission-attachments.title"),
+        message("rules.submission-attachments.detail", { profile: profile.label }),
+      ),
+    );
+  }
+  if (profile.pdf.forbidRestrictions && pdf.restricted === true) {
+    out.push(
+      make(
+        "submission-security",
+        "submission",
+        "error",
+        message("rules.submission-security.title"),
+        message("rules.submission-security.detail", { profile: profile.label }),
+      ),
+    );
+  }
+  if (profile.pdf.requireEmbeddedFonts) {
+    const unembedded = pdf.fonts.filter((font) => font.embedded === false);
+    const unknown = pdf.fonts.filter((font) => font.embedded === null);
+    if (unembedded.length > 0) {
+      out.push(
+        make(
+          "submission-unembedded-font",
+          "submission",
+          "error",
+          message("rules.submission-unembedded-font.title", { count: unembedded.length }),
+          message("rules.submission-unembedded-font.detail", {
+            profile: profile.label,
+            fonts: unembedded.slice(0, 6).map((font) => font.name).join(", "),
+          }),
+        ),
+      );
+    } else if (unknown.length > 0) {
+      out.push(
+        make(
+          "submission-font-inspection-incomplete",
+          "submission",
+          "info",
+          message("rules.submission-font-inspection-incomplete.title"),
+          message("rules.submission-font-inspection-incomplete.detail", {
+            fonts: unknown.slice(0, 6).map((font) => font.name).join(", "),
+          }),
+          undefined,
+          "manual",
+        ),
+      );
+    }
+  }
+  return out;
+}
+
 export function runSubmissionRules({
   project,
   profileId,
@@ -501,96 +601,7 @@ export function runSubmissionRules({
     );
   }
 
-  if (pdf) {
-    const minimum = profile.pdf.minimumVersion;
-    if (minimum && pdf.version && Number(pdf.version) < Number(minimum)) {
-      out.push(
-        make(
-          "submission-pdf-version",
-          "submission",
-          "error",
-          message("rules.submission-pdf-version.title", { version: pdf.version }),
-          message("rules.submission-pdf-version.detail", { profile: profile.label, minimum }),
-        ),
-      );
-    }
-    if (profile.pdf.forbidBookmarks && pdf.outlineCount > 0) {
-      out.push(
-        make(
-          "submission-bookmarks",
-          "submission",
-          "error",
-          message("rules.submission-bookmarks.title"),
-          message("rules.submission-bookmarks.detail", { profile: profile.label }),
-        ),
-      );
-    }
-    if (profile.pdf.forbidLinks && pdf.linkCount > 0) {
-      out.push(
-        make(
-          "submission-links",
-          "submission",
-          "error",
-          message("rules.submission-links.title"),
-          message("rules.submission-links.detail", { profile: profile.label }),
-        ),
-      );
-    }
-    if (profile.pdf.forbidAttachments && pdf.attachmentCount > 0) {
-      out.push(
-        make(
-          "submission-attachments",
-          "submission",
-          "error",
-          message("rules.submission-attachments.title"),
-          message("rules.submission-attachments.detail", { profile: profile.label }),
-        ),
-      );
-    }
-    if (profile.pdf.forbidRestrictions && pdf.restricted === true) {
-      out.push(
-        make(
-          "submission-security",
-          "submission",
-          "error",
-          message("rules.submission-security.title"),
-          message("rules.submission-security.detail", { profile: profile.label }),
-        ),
-      );
-    }
-    if (profile.pdf.requireEmbeddedFonts) {
-      const unembedded = pdf.fonts.filter((font) => font.embedded === false);
-      const unknown = pdf.fonts.filter((font) => font.embedded === null);
-      if (unembedded.length > 0) {
-        out.push(
-          make(
-            "submission-unembedded-font",
-            "submission",
-            "error",
-            message("rules.submission-unembedded-font.title", { count: unembedded.length }),
-            message("rules.submission-unembedded-font.detail", {
-              profile: profile.label,
-              fonts: unembedded.slice(0, 6).map((font) => font.name).join(", "),
-            }),
-          ),
-        );
-      } else if (unknown.length > 0) {
-        out.push(
-          make(
-            "submission-font-inspection-incomplete",
-            "submission",
-            "info",
-            message("rules.submission-font-inspection-incomplete.title"),
-            message("rules.submission-font-inspection-incomplete.detail", {
-              fonts: unknown.slice(0, 6).map((font) => font.name).join(", "),
-            }),
-            undefined,
-            "manual",
-          ),
-        );
-      }
-    }
-  }
+  out.push(...pdfSubmissionFindings(profile, pdf));
 
   out.push(
     ...checkProjectReferences(project, profileId),

@@ -2,10 +2,10 @@
 name: oleafly-pre-submission
 description: Run a pre-flight pass over the project before uploading to arXiv or a venue, and write a pass or fail checklist. Use when preparing an arXiv submission or a camera-ready, when checking anonymity for a double-blind venue, page limits, reference style, or supplementary material rules, when hunting undefined references, missing fonts, or figure problems that only surface at the publisher, or when building a clean source bundle to upload.
 license: MIT
-compatibility: Any Oleafly project. The compile and log checks need a project that builds. arXiv source rules apply to LaTeX projects only. Venue depth improves when the venue-templates skill is enabled.
+compatibility: Any Oleafly project. The compile and log checks need a project that builds. arXiv source rules apply to LaTeX projects only, and Typst projects get their own source checks. Venue depth improves when the venue-templates skill is enabled.
 allowed-tools: read_file list_files search_project project_map compile get_log get_pdf_text verify_pdf_pages create_file write_file run_command load_skill read_skill_file show_location update_todos
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   skill-author: "Oleafly"
   oleafly:
     tier: native
@@ -77,6 +77,17 @@ Only for arXiv, and only for LaTeX sources. Read `references/arxiv-checks.md` in
 - The abstract for the metadata field fits arXiv's character limit. Check it before you open the form.
 - The license choice is deliberate. It cannot be changed after announcement.
 
+### Typst projects
+
+arXiv does not build Typst. It refuses a PDF that was made from TeX, but a Typst PDF was not, so a PDF-only upload is the normal route. Skip the LaTeX rows above and check these instead, for arXiv and for any other venue:
+
+- The Typst version is on record. Read `typst.version` in `project.json` and write it into the checklist, so a camera-ready rebuild uses the same version. A project with no pin compiles with whatever default the app has at the time.
+- Every `@preview` import names an exact version, and the project has compiled once while online so the packages are cached.
+- The log has no `unknown font family` warning. Typst embeds and subsets every font it uses, so the risk is a silent fallback font, not a missing one.
+- The PDF title and author come from `#set document(title: ..., author: ...)`. Check that the title matches, and for a double-blind venue that `author` is empty or absent.
+- A missing label or citation key stops a Typst compile with an error instead of printing `??`, so a clean build already covers that row. Still read the bibliography in `get_pdf_text`, because an entry with missing fields renders without complaint.
+- When the venue wants source files, the bundle holds the main `.typ` file, every file it includes or imports, the `.bib` or `.yml` bibliography, every image, and a note with the Typst version.
+
 ## 4. Front matter and metadata
 
 - Title matches between the manuscript, the metadata, and any cover letter.
@@ -86,7 +97,7 @@ Only for arXiv, and only for LaTeX sources. Read `references/arxiv-checks.md` in
 - Keywords or subject categories chosen.
 - Funding, acknowledgements, data availability, code availability, ethics, and conflict statements present where the venue asks for them.
 
-For a double-blind venue, all of the following must be absent from the submission: author names, affiliations, acknowledgements, funding statements naming a grant holder, a repository URL that identifies the group, self-citations written in the first person ("in our previous work [12]"), and identifying metadata in the PDF. Search for them with `search_project` rather than trusting a read-through. `references/venue-rules.md` has the search patterns.
+For a double-blind venue, all of the following must be absent from the submission: author names, affiliations, acknowledgements, funding statements naming a grant holder, a repository URL that identifies the group, self-citations written in the first person ("in our previous work [12]"), and identifying metadata in the PDF. In a Typst project that metadata comes from the `author` in `#set document(...)`. Search for them with `search_project` rather than trusting a read-through. `references/venue-rules.md` has the search patterns.
 
 ## 5. Figures and tables
 
@@ -142,6 +153,7 @@ Then `show_location` on the first two or three failures, and report in chat: how
 | Venue unknown | Run every general and arXiv check, mark the venue-specific rows `needs decision` |
 | Compile fails | Stop the pass. A failing build makes every downstream check meaningless. Report the first error. |
 | Document needs XeTeX or LuaTeX and the target is arXiv | Flag it as a `fail` with two options: make the source pdfLaTeX-compatible, or submit a PDF-only version |
+| Typst project and the target is arXiv | Plan a PDF-only upload. Leave out the LaTeX source rows and add one row that records the upload as PDF only |
 | Double-blind and an author name appears anywhere | `fail`, with every location listed |
 | Page count over the limit | `fail`. Do not start cutting text yourself unless asked. |
 | PDF page capture is off | Note it in the checklist and do the figure pass from the source and `get_pdf_text` |
@@ -150,7 +162,7 @@ Then `show_location` on the first two or three failures, and report in chat: how
 ## When something goes wrong
 
 - `get_log` is truncated: the log is capped, so recompile and read it immediately, or search the source for the construct the last visible error mentions.
-- `project_map` is not offered: fall back to `search_project` for `\ref{`, `\cite{`, and `\label{` and reconcile by hand.
+- `project_map` is not offered: fall back to `search_project` for `\ref{`, `\cite{`, and `\label{` and reconcile by hand. In a Typst project search for `@` references, `#cite(` calls, and `<label>` markers instead.
 - `run_command` is declined: everything except the tarball build can be done with the project tools. Say which check you skipped.
 - Fonts cannot be checked without external tools: mark the row `needs decision` and point the user at the PDF reader's document properties.
 - A venue rule cannot be confirmed: `needs decision`, with the exact question the user should answer. Never guess a number.

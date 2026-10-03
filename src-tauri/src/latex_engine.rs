@@ -442,7 +442,7 @@ static QUIT_CONFIRMED: AtomicBool = AtomicBool::new(false);
 
 /// True while a TinyTeX download/extract is running (drives quit interception).
 pub fn install_in_progress() -> bool {
-    INSTALL_ACTIVE.load(Ordering::SeqCst)
+    INSTALL_ACTIVE.load(Ordering::SeqCst) || crate::toolchain_download::install_in_progress()
 }
 
 /// True once the user explicitly confirmed quitting mid-install.
@@ -673,7 +673,7 @@ pub async fn tinytex_install_state() -> TinytexInstallState {
     .await
     .unwrap_or(0);
     TinytexInstallState {
-        installing: install_in_progress(),
+        installing: INSTALL_ACTIVE.load(Ordering::SeqCst),
         partial_download_bytes: partial,
     }
 }

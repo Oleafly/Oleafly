@@ -13,6 +13,8 @@ import {
   setSpellHost,
   setBibKeysProvider,
   setEditorTranslator,
+  setTypstCslStyleProvider,
+  setTypstStyleVersionProvider,
   bibKeysFromSources,
   closeEnvironmentOnEnter,
   latexListKeymap,
@@ -22,6 +24,7 @@ import {
 import { setWysiwygTranslator, type WysiwygTranslator } from "@oleafly/wysiwyg";
 import { i18n } from "@/i18n";
 import { createPreflightLinter } from "./cm/preflight-linter";
+import { createTypstPackageHintLinter } from "./cm/typst-package-hints";
 import { createCompileErrorLinter } from "./cm/compile-error-linter";
 import { imagePasteExtension } from "./cm/image-paste";
 import { cursorSignalExtension } from "./cm/cursor-signal";
@@ -31,6 +34,7 @@ import { hoverIntel } from "./cm/hover-intel";
 import { inlineDiffPlugin } from "./cm/inline-ai/plugin";
 import { toggleInlineEdit } from "./cm/inline-ai/openSession";
 import {
+  editorCompletionSourcesForPath,
   projectCompletionSourcesForPath,
   projectIntelligenceExtensions,
 } from "./cm/project-intelligence";
@@ -38,8 +42,12 @@ import {
   languageServiceCompletion,
   languageServiceEditorExtensions,
 } from "./cm/language-service";
+import { formatsOnSave, saveTypstDocument } from "./cm/language-service-format";
+import { getEditorView } from "./cm/controller";
 import { resolveVisualAsset } from "./wysiwyg/asset-url";
-import { openFigureEditorAt } from "./figure-edit";
+import { openVisualFigureEditor } from "./visual-figure-edit";
+import { referenceKindIn } from "./visual-reference-kind";
+import { completionSyntaxForPath } from "@/lib/document-engine";
 import { reportFileSaveFailure, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
@@ -49,6 +57,7 @@ import { useVisualModeStore } from "@/store/visual-mode";
 import { useDictionary, isWordIgnored, ignoreWordForProject, ignoreWordGlobally } from "@/lib/dictionary";
 import { installAuxNumbers } from "@/lib/aux-numbers";
 import { installLatexCorpus } from "@/lib/latex-corpus";
+import { installTypstMathHost } from "./cm/typst-math-host";
 import { isSessionIgnoredWord } from "@/lib/proofreading/ignored";
 import {
   cancelProofreading,
@@ -165,6 +174,14 @@ setSpellHost({
   ignoreWordGlobally,
 });
 
+setTypstStyleVersionProvider(() => useFilesStore.getState().engine.typst_resolved?.version ?? null);
+setTypstCslStyleProvider(() =>
+  useFilesStore
+    .getState()
+    .tree.filter((entry) => !entry.is_dir && /\.csl$/i.test(entry.path))
+    .map((entry) => `/${entry.path}`),
+);
+
 setBibKeysProvider(() => {
   const filesState = useFilesStore.getState();
   const bibs = Object.entries(filesState.files)
@@ -187,6 +204,7 @@ setBibKeysProvider(() => {
 
 installLatexCorpus();
 installAuxNumbers();
+installTypstMathHost();
 
 function imageKind(path: string): VisualImage["kind"] {
   const lower = path.toLowerCase();
@@ -200,11 +218,19 @@ const VISUAL_PORTS: VisualPorts = {
     resolveVisualAsset(path).then((asset) =>
       asset ? { url: asset.url, kind: imageKind(asset.path) } : null,
     ),
-  openFigureEditor: openFigureEditorAt,
+  openFigureEditor: (range) => {
+    void openVisualFigureEditor(range);
+  },
+  referenceKind: (key) => referenceKindIn(useIndexStore.getState().index, key),
 };
 
 export function saveActiveFromKeymap(): void {
   const { projectId, activePath } = useFilesStore.getState();
+  const view = getEditorView();
+  if (view && formatsOnSave(activePath)) {
+    void saveTypstDocument(view);
+    return;
+  }
   void useFilesStore
     .getState()
     .saveActive({ overwrite: true })
@@ -225,11 +251,7 @@ const HOST: EditorHost = {
   useDocVersion: () => useFilesStore((s) => s.docVersion),
   useCompletionSyntax: (path) => {
     const sourceFormat = useFilesStore((s) => s.engine.source_format);
-    if (path?.toLowerCase().endsWith(".bib")) return "bibtex";
-    if (sourceFormat === "latex" || sourceFormat === "markdown" || sourceFormat === "typst") {
-      return sourceFormat;
-    }
-    return "generic";
+    return completionSyntaxForPath(path, sourceFormat);
   },
   getContent: (path) => useFilesStore.getState().files[path]?.content ?? "",
   setContent: (path, content) => useFilesStore.getState().setContent(path, content),
@@ -275,6 +297,13 @@ const LATEX_EXTENSIONS: Extension[] = [
   createPreflightLinter(),
   createCompileErrorLinter(),
   imagePasteExtension(),
+];
+
+const TYPST_EXTENSIONS: Extension[] = [
+  createPreflightLinter("typst"),
+  createCompileErrorLinter(),
+  createTypstPackageHintLinter(),
+  imagePasteExtension("typst"),
 ];
 
 const PROJECT_INTELLIGENCE_EXTENSIONS: Extension[] = [
@@ -331,14 +360,16 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|typ|bib)$/i.test(path)) {
           return [];
         }
-        return /\.(?:tex|latex|ltx|sty|cls)$/i.test(path)
-          ? [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS]
+        if (/\.(?:tex|latex|ltx|sty|cls)$/i.test(path)) {
+          return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS];
+        }
+        return /\.typ$/i.test(path)
+          ? [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS]
           : PROJECT_INTELLIGENCE_EXTENSIONS;
       }}
-      extraCompletionSourcesForPath={(path) => [
-        languageServiceCompletion,
-        ...projectCompletionSourcesForPath(path),
-      ]}
+      extraCompletionSourcesForPath={(path) =>
+        editorCompletionSourcesForPath(path, languageServiceCompletion)
+      }
       extraGhostCompletionSourcesForPath={projectCompletionSourcesForPath}
       extraKeymap={EXTRA_KEYMAP}
     />

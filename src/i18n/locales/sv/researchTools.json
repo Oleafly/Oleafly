@@ -574,6 +574,76 @@
       "tag2": "Pilar",
       "tag3": "Snabbreferens",
       "tag4": "Infoga vid markören"
+    },
+    "arxivToTypst": {
+      "name": "arXiv till Typst",
+      "description": "Konvertera ett arXiv-källpaket till Typst. En kompileringskontroll visar vad som inte konverterades.",
+      "tag1": "Källarkiv",
+      "tag2": "Kompileringskontroll",
+      "tag3": "ID kräver nätverk"
+    },
+    "csvToTypst": {
+      "name": "CSV till Typst",
+      "description": "Klistra in CSV- eller TSV-rader och få en skyddad Typst-tabell.",
+      "tag1": "CSV och TSV",
+      "tag2": "Tabeller",
+      "tag3": "Lokalt"
+    },
+    "equationToTypst": {
+      "name": "Ekvation till Typst",
+      "description": "Konvertera skriven LaTeX-matematik eller en bild av en ekvation till Typst-matematik.",
+      "tag1": "Text eller bild",
+      "tag2": "Matematik",
+      "tag3": "Inbyggt"
+    },
+    "excelToTypst": {
+      "name": "Excel till Typst",
+      "description": "Konvertera ett Excel-, CSV- eller TSV-blad till en skyddad Typst-tabell.",
+      "tag1": "XLSX",
+      "tag2": "CSV och TSV",
+      "tag3": "Lokalt"
+    },
+    "htmlToTypst": {
+      "name": "HTML till Typst",
+      "description": "Konvertera inklistrad HTML till ett fristående Typst-dokument.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Lokalt"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid till Typst",
+      "description": "Konvertera ett flödesschema i Mermaid till redigerbar fletcher-kod.",
+      "tag1": "Flödesscheman",
+      "tag2": "Fletcher",
+      "tag3": "Lokalt"
+    },
+    "typstToHtml": {
+      "name": "Typst till HTML",
+      "description": "Konvertera Typst-markering till fristående HTML med MathML-ekvationer.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst till Markdown",
+      "description": "Konvertera Typst-markering till portabel Markdown.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Projekt valfritt"
+    },
+    "typstToWord": {
+      "name": "Typst till Word",
+      "description": "Skapa ett Word-dokument med ekvationer lagrade som Words egen matematik.",
+      "tag1": "DOCX",
+      "tag2": "Inbyggd matematik",
+      "tag3": "Lokalt"
+    },
+    "wordToTypst": {
+      "name": "Word till Typst",
+      "description": "Konvertera ett Word-dokument till Typst och håll ihop de extraherade mediefilerna med resultatet.",
+      "tag1": "DOCX",
+      "tag2": "Media",
+      "tag3": "Projekt valfritt"
     }
   },
   "generators": {
@@ -655,7 +725,9 @@
     "insertInEditor": "Infoga i redigeraren",
     "noDescription": "Det finns ingen beskrivning för det här kommandot.",
     "loadingPreview": "Läser in en symbol att förhandsvisa.",
-    "chooseSymbol": "Välj en symbol i biblioteket."
+    "chooseSymbol": "Välj en symbol i biblioteket.",
+    "insertHintTypst": "Infoga Typst-koden i det öppna Typst-dokumentet.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} kB · Klicka för att ersätta",
@@ -711,7 +783,8 @@
     "openAiSettings": "Öppna AI-inställningar",
     "fileReady": "{{fileName}} är klar",
     "saveWordHint": "Spara Word-dokumentet när du är redo.",
-    "resultPlaceholder": "Ditt konverterade resultat visas här."
+    "resultPlaceholder": "Ditt konverterade resultat visas här.",
+    "progressConvertingSource": "Konverterar källkoden till Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -832,6 +905,76 @@
       "inputLabel": "Word-dokument",
       "inputHint": "Välj en .docx-fil. Ekvationer och bilder läses lokalt.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv till Typst",
+      "subtitle": "Konvertera LaTeX-källan för en e-print till Typst och se vad som behöver rättas för hand",
+      "inputLabel": "arXiv-källa",
+      "inputHint": "Ange ett arXiv-ID, eller välj ett sparat källarkiv i formatet .tar.gz eller .gz.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV till Typst",
+      "subtitle": "Klistra in kalkylbladsdata och få en skyddad Typst-tabell",
+      "inputLabel": "CSV eller TSV",
+      "inputHint": "Klistra in rader avgränsade med komma eller tabb. Den första raden blir rubrikrad.",
+      "outputLabel": "Typst-tabell"
+    },
+    "equationToTypst": {
+      "title": "Ekvation till Typst",
+      "subtitle": "Gör skriven eller fotograferad matematik till Typst-matematik",
+      "inputLabel": "Ekvation",
+      "inputHint": "Skriv LaTeX-matematik, beskriv den i ord, eller välj en bild.",
+      "outputLabel": "Typst-ekvation"
+    },
+    "excelToTypst": {
+      "title": "Excel till Typst",
+      "subtitle": "Konvertera det första bladet till en Typst-tabell",
+      "inputLabel": "Kalkylblad",
+      "inputHint": "XLSX, XLS, CSV eller TSV. Formler använder sina cachade värden.",
+      "outputLabel": "Typst-tabell"
+    },
+    "htmlToTypst": {
+      "title": "HTML till Typst",
+      "subtitle": "Konvertera semantisk HTML till ett fristående Typst-dokument",
+      "inputLabel": "HTML",
+      "inputHint": "Klistra in ett HTML-fragment eller ett helt dokument.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid till Typst",
+      "subtitle": "Gör ett flödesschema i Mermaid till ett redigerbart fletcher-diagram",
+      "inputLabel": "Flödesschema i Mermaid",
+      "inputHint": "Flödesscheman stöder layouterna TD, LR, BT och RL, etiketter och vanliga nodformer.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst till HTML",
+      "subtitle": "Skapa fristående HTML med MathML-ekvationer",
+      "inputLabel": "Typst",
+      "inputHint": "Klistra in ett fragment eller ett helt Typst-dokument.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst till Markdown",
+      "subtitle": "Skapa portabel Markdown utan att först skapa ett projekt",
+      "inputLabel": "Typst",
+      "inputHint": "Klistra in ett fragment eller ett helt Typst-dokument.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst till Word",
+      "subtitle": "Skapa en DOCX med ekvationer lagrade som redigerbar Word-matematik",
+      "inputLabel": "Typst",
+      "inputHint": "Klistra in ett fragment eller ett helt Typst-dokument.",
+      "outputLabel": "Word-dokument"
+    },
+    "wordToTypst": {
+      "title": "Word till Typst",
+      "subtitle": "Konvertera en DOCX och behåll de extraherade mediefilerna med resultatet",
+      "inputLabel": "Word-dokument",
+      "inputHint": "Välj en .docx-fil. Ekvationer och bilder läses lokalt.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -847,7 +990,8 @@
     "chooseFile": "Välj en fil innan du konverterar.",
     "fileTooLarge": "Välj en fil som är mindre än 128 MB.",
     "emptySheet": "Det valda bladet är tomt.",
-    "arxivInputRequired": "Ange ett arXiv-ID eller välj ett källarkiv."
+    "arxivInputRequired": "Ange ett arXiv-ID eller välj ett källarkiv.",
+    "equationToTypst": "Pandoc kunde inte konvertera ekvationen till Typst. Kontrollera LaTeX-matematiken och försök igen."
   },
   "converterNotes": {
     "scannedPages": "Transkriberade {{pages}} inskannade sidor med en lokal modell. Granska ekvationer och tabeller innan du använder resultatet.",
@@ -855,7 +999,16 @@
     "mermaidTikz": "Konverterade det här flödesschemat till redigerbar TikZ.",
     "mermaidRendered": "Renderade det här diagrammet lokalt eftersom dess Mermaid-syntax inte går att översätta rent till redigerbar TikZ.",
     "tableConverted": "Konverterade {{rows}} rader och {{columns}} kolumner.",
-    "arxivBundle": "{{files}} källfiler. Huvuddokument: {{mainFile}}."
+    "arxivBundle": "{{files}} källfiler. Huvuddokument: {{mainFile}}.",
+    "mermaidFletcher": "Konverterade det här flödesschemat till redigerbar fletcher-kod för Typst.",
+    "mermaidRenderedTypst": "Renderade det här diagrammet lokalt eftersom dess Mermaid-syntax inte går att översätta rent till redigerbar fletcher-kod.",
+    "arxivTypstConverted": "Konverterade {{mainFile}}.",
+    "typstCheckPassed": "Typst kompilerade resultatet utan fel.",
+    "typstCheckFailed_one": "Typst hittade {{count}} fel.",
+    "typstCheckFailed_other": "Typst hittade {{count}} fel.",
+    "notConverted_one": "{{count}} element konverterades inte.",
+    "notConverted_other": "{{count}} element konverterades inte.",
+    "checkLine": "Rad {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Det här Mermaid-diagrammet är större än gränsen på 50 000 tecken.",
@@ -1110,9 +1263,15 @@
   },
   "equation": {
     "subtitle": "Levande LaTeX-arbetsyta",
+    "subtitleTypst": "Levande Typst-arbetsyta",
+    "mathLanguage": "Matematikspråk",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Fel",
     "statusRendered": "Renderad",
+    "statusRendering": "Renderar",
     "copyLatex": "Kopiera LaTeX",
+    "copyTypst": "Kopiera Typst",
     "exportOptions": "Exportalternativ",
     "export": "Exportera",
     "downloadPng": "Ladda ner PNG",
@@ -1125,6 +1284,7 @@
     "exportSvgFailed": "Det gick inte att exportera det här utdraget som SVG",
     "copyKatexFailed": "Det gick inte att kopiera KaTeX-HTML",
     "copyLatexFailed": "Det gick inte att kopiera LaTeX-källan",
+    "copyTypstFailed": "Det gick inte att kopiera Typst-källan",
     "invalidPngName": "Välj ett kort PNG-filnamn utan snedstreck eller specialtecken.",
     "replaceConfirm": "{{path}} finns redan i {{project}}. Vill du ersätta den?",
     "savedToProject": "Sparade {{path}} i {{project}}.",
@@ -1138,6 +1298,7 @@
     "newImageProject": "Nytt bildprojekt",
     "mathmlFailed": "Det gick inte att konvertera det här utdraget till MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "I löptext",
     "display": "På egen rad",
     "examples": "EXEMPEL",
@@ -1146,6 +1307,8 @@
     "previewLight": "Förhandsvisa mot ljus bakgrund",
     "inlineSample": "Så här sitter den mitt i en mening, som <formula></formula>, och följer med den omgivande texten.",
     "empty": "Skriv LaTeX-matematik till vänster.",
+    "emptyTypst": "Skriv Typst-matematik till vänster.",
+    "typstFailed": "Typst kunde inte rendera ekvationen.",
     "zoomOut": "Zooma ut",
     "zoomIn": "Zooma in",
     "resetZoom": "Återställ zoomen",

@@ -154,8 +154,8 @@
       "inputLabel": "Buget AI în dolari americani",
       "inputPlaceholder": "Fără buget",
       "limit": "Rulările se opresc când bugetul este atins.",
-      "spent": "Cheltuială estimată până acum: {{amount}}. Rulările se opresc când bugetul este atins.",
       "save": "Salvează bugetul",
+      "spent": "Cheltuială estimată până acum: {{amount}}. Rulările se opresc când bugetul este atins.",
       "title": "Buget AI"
     },
     "customProvider": {
@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Găsește slăbiciuni în argumente, metode, dovezi și prezentare.",
-        "documentEditor": "Repară textul, structura, citările și codul LaTeX prin modificări punctuale și sigure.",
-        "figure": "Generează figuri și diagrame de calitate editorială, în LaTeX TikZ sau PGFPlots.",
+        "documentEditor": "Repară textul, structura, citările și codul LaTeX sau Typst prin modificări punctuale și sigure.",
+        "figure": "Generează figuri și diagrame de calitate editorială, cu TikZ în LaTeX sau CeTZ în Typst.",
         "researchWriter": "Redactează și structurează text științific fără să inventeze dovezi sau citări."
       },
       "suggestedDescription": "Începe cu unul dintre acestea, apoi modifică-i instrucțiunile ca să ți se potrivească.",
@@ -690,6 +690,29 @@
       "mathPreview": {
         "description": "Arată formula randată deasupra celei în care se află cursorul.",
         "label": "Previzualizarea formulelor"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Aranjează fișierele Typst cu typstyle când apeși ⌘S sau Ctrl+S. Salvarea automată nu le atinge.",
+          "label": "Formatează la salvare"
+        },
+        "lineWidth": {
+          "description": "typstyle rupe liniile mai lungi decât această valoare.",
+          "label": "Lățimea liniei la formatare"
+        },
+        "indent": {
+          "description": "Spațiile pentru fiecare nivel de indentare în codul Typst formatat.",
+          "label": "Indentarea la formatare"
+        },
+        "inlayHints": {
+          "description": "Arată numele parametrilor înaintea argumentelor în apelurile de funcții Typst.",
+          "label": "Indicii cu numele parametrilor"
+        },
+        "lint": {
+          "description": "Verifică fișierele Typst pentru greșeli probabile ori de câte ori sunt salvate. Activarea sau dezactivarea repornește serverul de limbaj Typst.",
+          "label": "Verificări lint Typst"
+        }
       }
     },
     "files": {
@@ -1030,8 +1053,58 @@
       "detail": "Vine cu Oleafly, deci nu ai nimic de configurat. Are nevoie de conexiune la rețea doar prima dată când un document importă un pachet @preview.",
       "heading": "Compilator Typst",
       "name": "Typst (inclus)",
-      "note": "Proiectele Typst folosesc întotdeauna compilatorul inclus. Alegerea unei versiuni de compilator sau a unui Typst din sistem nu este încă disponibilă.",
-      "tooltip": "Typst vine în interiorul Oleafly, așa că nu ai nimic de instalat sau de configurat. Fiecare proiect Typst se compilează cu compilatorul inclus."
+      "note": "Alege versiunea folosită de un proiect din meniul Compilare. Proiectul păstrează acea versiune până o schimbi.",
+      "tooltip": "Oleafly vine cu o versiune Typst și le poate descărca pe celelalte. Fiecare proiect se compilează cu versiunea fixată sau cu cea implicită, dacă nu are una fixată.",
+      "system": {
+        "name": "Typst de pe acest computer",
+        "detail": "Proiectele care fixează versiunea {{version}} se pot compila cu el."
+      },
+      "versions": {
+        "heading": "Versiuni",
+        "tooltip": "Proiectele noi pornesc cu versiunea implicită, la fel și proiectele fără o versiune fixată.",
+        "loading": "Se verifică versiunile Typst",
+        "default": "Implicită",
+        "setDefault": "Folosește implicit Typst {{version}}",
+        "released": "Lansată pe {{date}}",
+        "install": "Instalează",
+        "installAria": "Instalează Typst {{version}}",
+        "removeAria": "Elimină Typst {{version}}",
+        "removeDefault": "Aceasta este versiunea implicită. Alege altă versiune implicită înainte să o elimini.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Inclusă",
+          "downloaded": "Descărcată",
+          "system": "Din sistem"
+        }
+      },
+      "progress": {
+        "starting": "Se pornește",
+        "downloading": "Se descarcă {{percent}}%",
+        "verifying": "Se verifică",
+        "extracting": "Se dezarhivează",
+        "done": "Se finalizează"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} descărcare de server de limbaj nu este folosită de nicio versiune Typst instalată.",
+        "unused_few": "{{count}} descărcări de server de limbaj nu sunt folosite de nicio versiune Typst instalată.",
+        "unused_other": "{{count}} de descărcări de server de limbaj nu sunt folosite de nicio versiune Typst instalată.",
+        "remove": "Elimină descărcările nefolosite de servere de limbaj",
+        "removed_one": "S-a eliminat {{count}} descărcare de server de limbaj.",
+        "removed_few": "S-au eliminat {{count}} descărcări de server de limbaj.",
+        "removed_other": "S-au eliminat {{count}} de descărcări de server de limbaj."
+      },
+      "error": {
+        "load": "Versiunile Typst nu au putut fi citite.",
+        "install": "Typst {{version}} nu a putut fi instalat.",
+        "remove": "Typst {{version}} nu a putut fi eliminat.",
+        "default": "Versiunea Typst implicită nu a putut fi schimbată.",
+        "removeTinymist": "Descărcările nefolosite de servere de limbaj nu au putut fi eliminate."
+      },
+      "upgrade": {
+        "heading": "Încearcă o versiune mai nouă",
+        "detail": "Compilează proiectul deschis cu o versiune instalată mai nouă și compară rezultatele înainte să treci la ea.",
+        "check": "Verifică cu Typst {{version}}"
+      }
     }
   },
   "github": {

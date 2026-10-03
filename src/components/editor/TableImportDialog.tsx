@@ -19,9 +19,13 @@ import { useFilesStore } from "@/store/files";
 import { useTableImportStore } from "@/store/table-import";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import {
+  emitLinkedTable,
   emitTable,
   hasValidTableLabel,
-  readTableRows,
+  planLinkedTable,
+  readTableFile,
+  writeLinkedTableData,
+  type TableFile,
   type TableTarget,
 } from "@/features/table-import";
 
@@ -48,7 +52,10 @@ export function TableImportDialog() {
   const open = useTableImportStore((state) => state.open);
   const setOpen = useTableImportStore((state) => state.setOpen);
   const engine = useFilesStore((state) => state.engine);
+  const tree = useFilesStore((state) => state.tree);
   const [rows, setRows] = useState<string[][]>([]);
+  const [tableFile, setTableFile] = useState<TableFile | null>(null);
+  const [linked, setLinked] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [header, setHeader] = useState(true);
@@ -65,6 +72,7 @@ export function TableImportDialog() {
     if (!open) {
       selectionRequest.current += 1;
       setRows([]);
+      setTableFile(null);
       setFileName(null);
       setError(null);
       setTableContext(null);
@@ -73,13 +81,23 @@ export function TableImportDialog() {
     }
   }, [open]);
 
-  const source = (): string | null => {
-    const tableTarget = tableContext?.target ?? target;
+  const tableTarget = tableContext?.target ?? target;
+  const linkedPlan = linked && tableTarget === "typst" && tableFile && fileName && tableContext?.activePath
+    ? planLinkedTable(tableFile, fileName, tree, tableContext.activePath)
+    : null;
+
+  const validLabel = (): string | null => {
     const trimmedLabel = label.trim();
     if (trimmedLabel && !hasValidTableLabel(trimmedLabel)) {
       setError(t(($) => $.editor.tableImport.invalidLabel));
       return null;
     }
+    return trimmedLabel;
+  };
+
+  const source = (): string | null => {
+    const trimmedLabel = validLabel();
+    if (trimmedLabel === null) return null;
     return emitTable(rows, {
       header,
       caption: caption.trim() || undefined,
@@ -105,12 +123,13 @@ export function TableImportDialog() {
       if (!contextMatches(context)) {
         throw new Error(t(($) => $.editor.tableImport.activeChangedPicker));
       }
-      const parsed = await readTableRows(selection);
-      if (parsed.length === 0) {
+      const parsed = await readTableFile(selection);
+      if (parsed.rows.length === 0) {
         throw new Error(t(($) => $.editor.tableImport.noRows));
       }
       if (request === selectionRequest.current && contextMatches(context)) {
-        setRows(parsed);
+        setRows(parsed.rows);
+        setTableFile(parsed);
         setFileName(basename(selection));
         setTableContext(context);
       } else if (request === selectionRequest.current) {
@@ -121,6 +140,7 @@ export function TableImportDialog() {
         void logError("import table", e);
         setError(e instanceof Error ? e.message : t(($) => $.editor.tableImport.readFailed));
         setRows([]);
+        setTableFile(null);
         setFileName(null);
       }
     } finally {
@@ -142,6 +162,10 @@ export function TableImportDialog() {
       setError(readOnly);
       return;
     }
+    if (linkedPlan) {
+      void insertLinked(tableContext, linkedPlan);
+      return;
+    }
     const tableSource = source();
     if (!tableSource) return;
     setOpen(false);
@@ -151,6 +175,41 @@ export function TableImportDialog() {
         ? t(($) => $.editor.tableImport.insertedTypst)
         : t(($) => $.editor.tableImport.insertedLatex),
     );
+  };
+
+  const insertLinked = async (context: TableImportContext, plan: NonNullable<typeof linkedPlan>) => {
+    const trimmedLabel = validLabel();
+    if (trimmedLabel === null || !context.projectId || busyRef.current) return;
+    const tableSource = emitLinkedTable(rows, {
+      header,
+      caption: caption.trim() || undefined,
+      label: trimmedLabel || undefined,
+      source: plan.source,
+    });
+    const request = selectionRequest.current;
+    busyRef.current = true;
+    setBusy(true);
+    setError(null);
+    try {
+      await writeLinkedTableData(context.projectId, plan);
+    } catch (e) {
+      void logError("link table data", e);
+      if (request === selectionRequest.current) setError(t(($) => $.editor.tableImport.linkFailed));
+      return;
+    } finally {
+      if (request === selectionRequest.current) {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    }
+    if (request !== selectionRequest.current) return;
+    if (!contextMatches(context)) {
+      setError(t(($) => $.editor.tableImport.activeChangedInsert));
+      return;
+    }
+    setOpen(false);
+    insertAtCursor(`\n${tableSource}\n`);
+    toast.success(t(($) => $.editor.tableImport.insertedLinked, { path: plan.dataPath }));
   };
 
   const copy = async () => {
@@ -187,7 +246,7 @@ export function TableImportDialog() {
           <ToolPane
             title={t(($) => $.editor.tableImport.spreadsheetPane)}
             badge={target === "typst" ? "Typst" : "LaTeX"}
-            footer={<p className="text-xs leading-relaxed text-muted-foreground">{target === "typst" ? t(($) => $.editor.tableImport.footerTypst) : t(($) => $.editor.tableImport.footerLatex)}</p>}
+            footer={<p className="text-xs leading-relaxed text-muted-foreground">{linkedPlan ? t(($) => $.editor.tableImport.footerLinked, { path: linkedPlan.dataPath }) : target === "typst" ? t(($) => $.editor.tableImport.footerTypst) : t(($) => $.editor.tableImport.footerLatex)}</p>}
           >
             <div className="space-y-5 p-5">
               <div className="space-y-2">
@@ -201,6 +260,13 @@ export function TableImportDialog() {
                 <label htmlFor="table-import-header" className="text-sm">{t(($) => $.editor.tableImport.firstRowHeader)}</label>
                 <Switch id="table-import-header" checked={header} onCheckedChange={setHeader} aria-label={t(($) => $.editor.tableImport.firstRowHeader)} />
               </div>
+              {target === "typst" && <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="table-import-linked" className="text-sm">{t(($) => $.editor.tableImport.keepLinked)}</label>
+                  <p className="text-xs leading-relaxed text-muted-foreground">{t(($) => $.editor.tableImport.keepLinkedHint)}</p>
+                </div>
+                <Switch id="table-import-linked" data-testid="table-import-linked" checked={linked} onCheckedChange={setLinked} aria-label={t(($) => $.editor.tableImport.keepLinked)} />
+              </div>}
               <div className="grid gap-2">
                 <label htmlFor="table-import-caption" className="text-xs text-muted-foreground">{t(($) => $.editor.tableImport.captionLabel)}</label>
                 <Input id="table-import-caption" value={caption} onChange={(event) => setCaption(event.target.value)} placeholder={t(($) => $.editor.tableImport.captionPlaceholder)} />
@@ -242,7 +308,7 @@ export function TableImportDialog() {
           </ToolPane>
         </ToolSplitView>
         <div className="flex shrink-0 items-center justify-end gap-2 border-t px-5 py-3">
-          <Button type="button" variant="outline" size="sm" disabled={busy || rows.length === 0} onClick={() => void copy()}><Copy aria-hidden className="size-3.5" /> {t(($) => $.editor.tableImport.copySource)}</Button>
+          {!linkedPlan && <Button type="button" variant="outline" size="sm" disabled={busy || rows.length === 0} onClick={() => void copy()}><Copy aria-hidden className="size-3.5" /> {t(($) => $.editor.tableImport.copySource)}</Button>}
           <Button type="button" size="sm" disabled={busy || rows.length === 0} data-testid="table-import-insert" onClick={insert}>{t(($) => $.editor.tableImport.insertAtCursor)}</Button>
         </div>
       </DialogContent>

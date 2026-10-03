@@ -59,6 +59,8 @@
       "startingAndInitializing": "Proje dil hizmeti başlatılıyor ve hazırlanıyor.",
       "stopTimeout": "Önceki dil hizmeti süreci zamanında durmadı. Kurtarmak için yeniden deneyin.",
       "synchronizedAndReady": "Dil hizmeti eşitlendi ve hazır.",
+      "tinymistDownloadFailed": "Tinymist {{version}} indirilemedi. Oleafly yeniden deneyecek.",
+      "tinymistDownloading": "Bu projenin Typst sürümüne uyması için Tinymist {{version}} indiriliyor.",
       "transportClosed": "Dil hizmeti bağlantısı beklenmedik biçimde kapandı. Yeniden bağlanmak için tekrar deneyin.",
       "versionMismatch": "{{kind}} {{expected}} bekleniyordu, ancak kurulum {{reported}} bildirdi."
     }
@@ -137,7 +139,8 @@
     "packageOption": "{{name}} seçeneği",
     "keyvalKey": "\\{{command}} anahtarı",
     "duplicateCount": "yinelenen ({{count}})",
-    "duplicateIndex": "yinelenen {{index}}/{{total}}"
+    "duplicateIndex": "yinelenen {{index}}/{{total}}",
+    "typstBinding": "Typst bağlaması"
   },
   "token": {
     "citation": "Atıf",

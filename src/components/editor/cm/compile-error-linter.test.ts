@@ -72,6 +72,73 @@ describe("createCompileErrorLinter", () => {
     view.destroy();
   });
 
+  it("underlines the exact Typst span from the column and end column", async () => {
+    useFilesStore.setState({ activePath: "chapters/intro.typ", tree: [] } as unknown as ReturnType<typeof useFilesStore.getState>);
+    useCompileStore.setState({
+      errors: [
+        {
+          line: 2,
+          file: "chapters/intro.typ",
+          message: "unknown variable: foo",
+          kind: "error",
+          explanation: "Typst does not know this name.",
+          column: 11,
+          end_column: 14,
+          hints: [],
+          source_line: "Hello 😀 #foo world",
+        },
+        {
+          line: 1,
+          file: "chapters/intro.typ",
+          message: "unknown font family: nosuchfont",
+          kind: "warning",
+          explanation: null,
+          column: 17,
+          end_column: 29,
+        },
+      ],
+    } as unknown as ReturnType<typeof useCompileStore.getState>);
+
+    const view = makeView('#set text(font: "NoSuchFont")\nHello 😀 #foo world\n');
+    await runLinting(view);
+
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(1);
+    expect(view.dom.querySelectorAll(".cm-lint-marker-warning")).toHaveLength(1);
+    expect([...view.dom.querySelectorAll(".cm-lintRange-error")].map((node) => node.textContent).join("")).toBe("foo");
+    expect([...view.dom.querySelectorAll(".cm-lintRange-warning")].map((node) => node.textContent).join("")).toBe(
+      '"NoSuchFont"',
+    );
+    view.destroy();
+  });
+
+  it("underlines one character when a Typst error has a column but no end", async () => {
+    useFilesStore.setState({ activePath: "main.typ", tree: [] } as unknown as ReturnType<typeof useFilesStore.getState>);
+    useCompileStore.setState({
+      errors: [{ line: 1, file: "main.typ", message: "unclosed delimiter", kind: "error", explanation: null, column: 3 }],
+    } as unknown as ReturnType<typeof useCompileStore.getState>);
+
+    const view = makeView("#f(1, 2\n");
+    await runLinting(view);
+
+    expect([...view.dom.querySelectorAll(".cm-lintRange-error")].map((node) => node.textContent).join("")).toBe("(");
+    view.destroy();
+  });
+
+  it("keeps a stale column inside the line after the source changed", async () => {
+    useFilesStore.setState({ activePath: "main.typ", tree: [] } as unknown as ReturnType<typeof useFilesStore.getState>);
+    useCompileStore.setState({
+      errors: [
+        { line: 1, file: "main.typ", message: "unknown variable: foo", kind: "error", explanation: null, column: 40, end_column: 43 },
+      ],
+    } as unknown as ReturnType<typeof useCompileStore.getState>);
+
+    const view = makeView("short\n");
+    await runLinting(view);
+
+    expect(view.dom.querySelectorAll(".cm-lint-marker-error")).toHaveLength(1);
+    view.destroy();
+  });
+
   it("shows no diagnostics when there are no compile errors", async () => {
     useFilesStore.setState({ activePath: "main.tex" } as unknown as ReturnType<typeof useFilesStore.getState>);
     const view = makeView("line one\n");

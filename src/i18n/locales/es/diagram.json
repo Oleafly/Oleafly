@@ -3,6 +3,22 @@
     "aiProviderRequired": "Conecta un proveedor de IA en Ajustes para usar Corregir con IA.",
     "fixFailed": "No se pudo corregir: {{detail}}"
   },
+  "chooser": {
+    "title": "Elegir un compositor de diagramas",
+    "description": "Elige el tipo de documento al que va destinado el diagrama.",
+    "tikz": {
+      "title": "Diagrama TikZ",
+      "description": "Nodos y flechas en TikZ, para documentos LaTeX."
+    },
+    "typst": {
+      "title": "Diagrama Typst",
+      "description": "Un diagrama fletcher para documentos Typst."
+    },
+    "mermaid": {
+      "title": "Diagrama Mermaid",
+      "description": "Un diagrama de flujo Mermaid para documentos Markdown."
+    }
+  },
   "package": {
     "composer": {
       "title": "Insertar diagrama",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Cancelar (Esc)",
       "cancelRename": "Cancelar el cambio de nombre",
       "renameTooltip": "Cambiar el nombre del diagrama",
-      "importTooltip": "Importa un archivo .tikz o .tex y sustituye este borrador",
-      "importLabel": "Importar archivo TikZ",
+      "importTooltip": "Importa un archivo .tikz, .tex, .typ, .mmd o .md y sustituye este borrador",
+      "importLabel": "Importar archivo de diagrama",
       "modeDraw": "Dibujar",
       "modeCode": "Código",
       "fixWithAiTooltip": "Pedir a la IA que corrija el error de compilación",
@@ -28,20 +44,29 @@
       "newProject": "Proyecto nuevo",
       "noOtherProjects": "Todavía no hay otros proyectos.",
       "saveFigure": "Guardar figura",
+      "insertTypst": "Insertar como Typst",
+      "insertLatex": "Insertar como TikZ",
       "downloadTooltip": "Descargar este diagrama",
       "download": "Descargar",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (próximamente)",
       "svgTooltip": "La exportación a SVG necesita un renderizador vectorial que todavía no está disponible",
       "snippets": "Fragmentos",
-      "untitledName": "Diagrama sin título"
+      "untitledName": "Diagrama sin título",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Insertar como Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Lenguaje del diagrama: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Nodo rectangular",
       "circleNode": "Nodo circular",
       "arrowEdge": "Arista con flecha",
       "lineEdge": "Arista simple",
-      "scope": "Ámbito"
+      "scope": "Ámbito",
+      "group": "Grupo"
     },
     "preview": {
       "label": "Vista previa",
@@ -53,7 +78,8 @@
       "pngScale": "Escala del PNG",
       "scaleFactor": "{{factor}}x",
       "background": "Fondo",
-      "backgroundLabel": "Color de fondo de la figura"
+      "backgroundLabel": "Color de fondo de la figura",
+      "diagnosticAt": "Línea {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "El diagrama no compiló. Revisa el registro de abajo.",
@@ -68,16 +94,25 @@
       "figureCached": "Ya está en la caché, se reutiliza la figura existente.",
       "figureSaved": "Guardado en tu caché de figuras.",
       "saveFigureFailed": "No se pudo guardar la figura: {{detail}}",
+      "insertedTypst": "Se insertó como código Typst.",
+      "insertedLatex": "Se insertó como código TikZ.",
       "downloaded": "Descargado.",
       "imported": "Se importó {{name}} para editarlo.",
       "importedCodeOnly": "Se importó {{name}} (solo código, no se puede dibujar).",
       "importFailed": "No se pudo importar ese archivo: {{detail}}",
       "noAiFix": "La IA no devolvió ninguna corrección.",
       "fixFailed": "No se pudo corregir: {{detail}}",
-      "notDrawable": "No se pudo dibujar nada de este código. El código queda intacto."
+      "notDrawable": "No se pudo dibujar nada de este código. El código queda intacto.",
+      "savedTypstToProject": "Se guardó {{path}}. Añádelo a un documento con #include.",
+      "insertedMermaid": "Se insertó como bloque de código Mermaid.",
+      "savedMermaidToProject": "Se guardó {{path}}. Añádelo a un documento Markdown dentro de un bloque de código mermaid.",
+      "typstPackageMissing": "Typst no pudo obtener el paquete fletcher. Conéctate a internet una vez para que Typst pueda descargarlo y guardarlo.",
+      "previewUnavailable": "Esta vista previa no está disponible aquí.",
+      "readerUnavailable": "No se pudo cargar el lector de código. Inténtalo de nuevo."
     },
     "confirm": {
-      "overwrite": "{{files}} ya existe. ¿Quieres sobrescribirlo? (Elige otro nombre para conservar los dos.)"
+      "overwrite": "{{files}} ya existe. ¿Quieres sobrescribirlo? (Elige otro nombre para conservar los dos.)",
+      "switchLanguage": "¿Cambiar este diagrama de {{from}} a {{to}}? El código que el lienzo no puede mostrar no se conservará."
     },
     "canvas": {
       "shapeTools": "Herramientas de forma",
@@ -136,7 +171,58 @@
       "routingStraight": "Recto",
       "routingOrthogonal": "Ortogonal",
       "routingCurved": "Curvo",
-      "line": "Línea"
+      "line": "Línea",
+      "nodeLabelTypst": "Etiqueta (Typst)"
+    },
+    "notes": {
+      "tooltip": "Lo que el lienzo no muestra del todo",
+      "count_one": "{{count}} nota",
+      "count_many": "{{count}} notas",
+      "count_other": "{{count}} notas",
+      "keptHeading": "Se conserva en el código",
+      "approximatedHeading": "Se muestra de forma aproximada",
+      "droppedHeading": "No se dibuja en el lienzo",
+      "notDiagram": "Este código no contiene nada que el lienzo pueda dibujar.",
+      "outsideCode": "El código antes o después del diagrama se conserva tal cual.",
+      "wrapper": "El código que rodea el diagrama, como una figura, se conserva tal cual.",
+      "diagramSetting": "El ajuste de diagrama {{detail}} se conserva en el código.",
+      "edgeOption": "La opción de arista {{detail}} se conserva en el código.",
+      "scripted": "El contenido generado por código, como los bucles, se conserva en el código.",
+      "mathMode": "El contenido en modo matemático se conserva en el código.",
+      "unplacedNode": "Los nodos sin posición fija se conservan en el código.",
+      "unreadEdge": "Las aristas que el lienzo no puede leer se conservan en el código.",
+      "danglingEdge": "Las aristas que no conectan dos nodos se conservan en el código.",
+      "gridCoordinates": "Las coordenadas de cuadrícula se muestran en posiciones fijas.",
+      "formattedLabels": "Las etiquetas con formato se muestran como texto sin formato.",
+      "unknownShapes": "Las formas que el lienzo no tiene se muestran como rectángulos.",
+      "estimatedSize": "Los nodos sin ancho ni alto se muestran con un tamaño estimado.",
+      "colorAdjustments": "Los colores ajustados, como lighten, se muestran con su color base.",
+      "colorExpressions": "Los colores definidos con variables o expresiones no se muestran en el lienzo.",
+      "strokeStyles": "Algunos estilos de línea se muestran con el estilo más parecido del lienzo.",
+      "arrowMarks": "Las puntas de flecha que el lienzo no tiene se muestran como flechas simples.",
+      "freePoints": "Las aristas que pasan por puntos libres se dibujan rectas en el lienzo.",
+      "tikzCommand": "El comando {{detail}} no se dibuja. Una edición en el lienzo reescribe el código sin él.",
+      "truncated": "El código es demasiado largo, así que solo se dibuja la primera parte.",
+      "mermaidNotFlowchart": "En el lienzo solo se pueden dibujar diagramas de flujo. Este código es un diagrama {{detail}}.",
+      "mermaidFrontmatter": "El bloque frontmatter se conserva en el código.",
+      "mermaidDirective": "Las directivas de configuración se conservan en el código.",
+      "mermaidComment": "Los comentarios se conservan en el código.",
+      "mermaidAccessibility": "Los títulos y las descripciones de accesibilidad se conservan en el código.",
+      "mermaidClick": "Los controladores de clic se conservan en el código.",
+      "mermaidStyleProperty": "La propiedad de estilo {{detail}} se conserva en el código.",
+      "mermaidClassProperty": "La propiedad de clase {{detail}} se conserva en el código.",
+      "mermaidLinkStyleProperty": "La propiedad de estilo de enlace {{detail}} se conserva en el código.",
+      "mermaidNodeSetting": "El ajuste de nodo {{detail}} se conserva en el código.",
+      "mermaidEdgeSetting": "El ajuste de arista {{detail}} se conserva en el código.",
+      "mermaidInvisibleLink": "Los enlaces invisibles se conservan en el código.",
+      "mermaidLinkLength": "Las longitudes de enlace se conservan en el código.",
+      "mermaidSubgraphDirection": "Las direcciones de los subgrafos se conservan en el código.",
+      "mermaidUnknownStatement": "Las instrucciones que el lienzo no puede leer se conservan en el código.",
+      "mermaidShape": "La forma {{detail}} se muestra como la forma más parecida del lienzo.",
+      "mermaidThickLink": "Los enlaces gruesos se muestran como líneas normales.",
+      "mermaidArrowHead": "Las puntas de flecha en círculo y en cruz se muestran como flechas.",
+      "mermaidMarkdownLabel": "Las etiquetas Markdown se muestran como texto sin formato.",
+      "mermaidNoFlowchartHeader": "En el lienzo solo se pueden dibujar diagramas de flujo. Empieza el código con flowchart o graph."
     }
   }
 }

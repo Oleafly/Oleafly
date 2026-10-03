@@ -12,6 +12,7 @@ import {
 import { heuristicScore, rankLiteraturePapers } from "./debate-ranker";
 import { enrichAuthorlessRecords, type ArxivLookupFn } from "./enrich";
 import { extractKeywords, splitIntoParagraphs } from "./latex-paragraphs";
+import { extractTypstKeywords, splitTypstParagraphs, type ScanFormat } from "./typst-paragraphs";
 import { completeChatWithActiveModel } from "./llm-complete";
 import {
   DEFAULT_DOCUMENT_CITATION_SETTINGS,
@@ -83,6 +84,7 @@ function rankHeuristic(papers: LiteratureRecord[]): RankedLiteraturePaper[] {
 export async function scanDocumentForCitations(args: {
   sourceText: string;
   bibText: string;
+  format?: ScanFormat;
   sources?: LiteratureSource[];
   settings?: DocumentCitationSettings;
   search?: typeof searchLiterature;
@@ -111,13 +113,15 @@ export async function scanDocumentForCitations(args: {
     message: i18n.t(($) => $.core.documentScan.splitting),
   });
 
-  const paragraphs = splitIntoParagraphs(args.sourceText, {
+  const typst = args.format === "typst";
+  const keywords = typst ? extractTypstKeywords : extractKeywords;
+  const paragraphs = (typst ? splitTypstParagraphs : splitIntoParagraphs)(args.sourceText, {
     maxParagraphs: settings.maxParagraphs,
   });
   const totalParagraphs = paragraphs.length;
   const bibIds = parseBibliographyIdentities(args.bibText);
   // Full-doc keyword context (built once) for the debate ranker.
-  const fullDocContext = extractKeywords(args.sourceText.slice(0, 4000), 60);
+  const fullDocContext = keywords(args.sourceText.slice(0, 4000), 60);
 
   const results: ParagraphCitationResult[] = [];
 
@@ -126,7 +130,7 @@ export async function scanDocumentForCitations(args: {
       throwIfAborted(signal);
 
       const paragraph = paragraphs[i];
-      const query = extractKeywords(paragraph.text);
+      const query = keywords(paragraph.text);
       if (!query) {
         onProgress?.({
           phase: "paragraph",

@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} にはオフラインのコンパイルモードがありません。通常どおりコンパイルします。",
     "retry": "もう一度コンパイル",
-    "bundleFetchFailed": "この文書に必要な TeX パッケージを Oleafly がダウンロードできませんでした。接続を確認して、もう一度コンパイルしてください。"
+    "bundleFetchFailed": "この文書に必要な TeX パッケージを Oleafly がダウンロードできませんでした。接続を確認して、もう一度コンパイルしてください。",
+    "typstMissing": "Typst {{version}} がインストールされていません。ダウンロードするか、このプロジェクトを別のバージョンに切り替えてください。",
+    "typstPackage": {
+      "downloadFailed": "Typst が {{spec}} をダウンロードできませんでした。インターネット接続を確認して、もう一度コンパイルしてください。",
+      "downloadFailedUnnamed": "この文書が読み込むパッケージを Typst がダウンロードできませんでした。インターネット接続を確認して、もう一度コンパイルしてください。",
+      "offlineNotCached": "オフラインです。{{spec}} はまだパッケージキャッシュにありません。オンライン時に一度コンパイルするか、パッケージをプロジェクトに取り込んでください。",
+      "offlineNotCachedUnnamed": "オフラインです。この文書が読み込むパッケージが、まだパッケージキャッシュにありません。オンライン時に一度コンパイルしてください。",
+      "notFound": "Typst Universe に {{spec}} というパッケージはありません。import 文の名前を確認してください。",
+      "localNotFound": "ローカルパッケージ {{spec}} がインストールされていません。Oleafly の Typst パッケージフォルダか、プロジェクトの typst-packages フォルダに置いてください。",
+      "versionMissing": "このパッケージにバージョン {{version}} はありません。最新のバージョンは {{latest}} です。",
+      "versionMissingNoLatest": "このパッケージにバージョン {{version}} はありません。import 文のバージョンを確認してください。"
+    }
   },
   "developer": {
     "actions": {
@@ -337,6 +348,7 @@
     "notRenamable": "このシンボルの名前は変更できません。",
     "nothingToRename": "名前を変更する対象がありません。",
     "referencesFor": "{{name}} への参照",
+    "renameFailed": "「{{name}}」に名前を変更できませんでした。",
     "renamePartial": "{{total}} 件中 {{edited}} 件のファイルで「{{name}}」に変更しました。{{files}} には書き込めませんでした。",
     "renamed": "「{{name}}」に変更しました（$t(core:navigation.files, {\"count\": {{files}} }) で $t(core:navigation.edits, {\"count\": {{edits}} })）"
   },
@@ -565,5 +577,8 @@
   "folderUnavailable": {
     "compile": "プロジェクトフォルダが再び使えるようになるまで、コンパイルは一時停止しています。",
     "saveReason": "プロジェクトフォルダを使用できません"
+  },
+  "imageToTypst": {
+    "failed": "画像から Typst への変換に失敗しました: {{detail}}"
   }
 }

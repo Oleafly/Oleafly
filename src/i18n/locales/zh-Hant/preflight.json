@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "圖片沒有替代文字",
-      "detail": "這張圖片沒有描述性的替代文字，螢幕閱讀器無法傳達它的內容。請加上說明，例如 \\includegraphics[alt={A headshot of the author}]{...}。純裝飾用的圖片請改標示為 artifact。"
+      "detail": "這張圖片沒有描述性的替代文字，螢幕閱讀器無法傳達它的內容。請加上說明，例如 \\includegraphics[alt={A headshot of the author}]{...}。純裝飾用的圖片請改標示為 artifact。",
+      "detailTypst": "這張影像沒有替代文字，螢幕閱讀器無法傳達它的內容。請加上說明，例如 #image(\"chart.png\", alt: \"Bar chart of yearly sales\")。",
+      "detailTypstFigure": "這張影像沒有替代文字，螢幕閱讀器無法傳達它的內容。請在影像或包含它的插圖上加上說明，例如 #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")。"
     },
     "link-text": {
       "title": "連結文字沒有描述性",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "沒有 PDF 標題",
-      "detail": "這個 PDF 的中繼資料中沒有標題，而輔助科技與瀏覽器會用它來播報文件。請用 hyperref 設定，例如 \\hypersetup{pdftitle={Your Name, CV}}。"
+      "detail": "這個 PDF 的中繼資料中沒有標題，而輔助科技與瀏覽器會用它來播報文件。請用 hyperref 設定，例如 \\hypersetup{pdftitle={Your Name, CV}}。",
+      "detailTypst": "這個 PDF 的中繼資料中沒有標題，而輔助科技與瀏覽器會用它來播報文件。請用 #set document(title: \"Your title\") 設定，或將標題傳給你的範本。"
     },
     "heading-skip": {
       "title": "跳過了標題層級",
@@ -269,11 +272,16 @@
     },
     "refs-undefined-cite": {
       "title": "引用「{{key}}」不在任何 .bib 中",
-      "detail": "載入的參考文獻中找不到這個引用鍵，PDF 中會顯示成 [?]。請檢查這個鍵，或把條目加進你的 .bib（「新增引用」可以幫你抓取）。"
+      "detail": "載入的參考文獻中找不到這個引用鍵，PDF 中會顯示成 [?]。請檢查這個鍵，或把條目加進你的 .bib（「新增引用」可以幫你抓取）。",
+      "titleTypst": "引用「{{key}}」不在參考文獻中",
+      "detailTypst": "專案載入的參考文獻檔案中都沒有這個鍵，因此編譯會失敗。請檢查這個鍵，或把條目加進你的 .bib 或 Hayagriva .yml 檔案。"
     },
     "refs-undefined-ref": {
       "title": "指向「{{label}}」的參照沒有對應的 \\label",
-      "detail": "這個交互參照指向未定義的標籤，PDF 中會顯示成 ??。請檢查標籤名稱，或補上缺少的 \\label。"
+      "detail": "這個交互參照指向未定義的標籤，PDF 中會顯示成 ??。請檢查標籤名稱，或補上缺少的 \\label。",
+      "titleTypst": "沒有名為「{{label}}」的標籤或條目",
+      "detailTypst": "Typst 會在這裡停止編譯。請檢查拼寫，或補上缺少的 <label> 或參考文獻條目。",
+      "detailTypstPackage": "專案中沒有這個名稱的標籤或參考文獻條目。套件可能會在文件編譯時建立標籤，例如詞彙表條目。如果編譯記錄檔回報這個問題，請檢查拼寫。"
     },
     "refs-duplicate-label": {
       "title": "標籤「{{label}}」重複",
@@ -283,11 +291,14 @@
       "titleImage": "找不到圖片：{{file}}",
       "detailImage": "這個 \\includegraphics 指向專案中不存在的檔案，圖片會因此缺少。請檢查檔名與路徑。",
       "titleInclude": "找不到引入的檔案：{{file}}",
-      "detailInclude": "這個 \\input 或 \\include 指向專案中不存在的檔案。請檢查檔名與路徑。"
+      "detailInclude": "這個 \\input 或 \\include 指向專案中不存在的檔案。請檢查檔名與路徑。",
+      "detailImageTypst": "沒有符合這個影像路徑的專案檔案，因此編譯會失敗。Typst 會以相對於檔案的路徑讀取，若路徑以 / 開頭，則從專案根目錄讀取。",
+      "detailIncludeTypst": "沒有符合這個 #include 或 #import 路徑的專案檔案，因此編譯會失敗。請檢查檔名與路徑。"
     },
     "refs-bib-missing": {
       "title": "找不到參考文獻檔案：{{file}}",
-      "detail": "這個 \\bibliography 或 \\addbibresource 指向專案中不存在的檔案，所有引用都會顯示成 [?]。請檢查檔名，或匯入參考文獻庫來建立它。"
+      "detail": "這個 \\bibliography 或 \\addbibresource 指向專案中不存在的檔案，所有引用都會顯示成 [?]。請檢查檔名，或匯入參考文獻庫來建立它。",
+      "detailTypst": "這個 #bibliography 呼叫指向專案中不存在的檔案，因此編譯會失敗。請檢查檔名，或匯入參考文獻庫來建立它。"
     },
     "refs-duplicate-bib": {
       "title": "重複的參考文獻條目：{{keys}}",
@@ -330,7 +341,8 @@
     },
     "privacy-blind-author": {
       "title": "匿名審查的原始碼中仍留有作者身分",
-      "detail": "原始碼中含有未匿名的作者、單位、電子郵件、地址或誌謝欄位。請改用該會議的匿名審查模式，取代可識別身分的內容。"
+      "detail": "原始碼中含有未匿名的作者、單位、電子郵件、地址或誌謝欄位。請改用該會議的匿名審查模式，取代可識別身分的內容。",
+      "detailTypst": "原始碼為文件或其範本提供了作者姓名、電子郵件或單位。請將其移除，或將範本切換到匿名模式。"
     },
     "privacy-blind-acknowledgements": {
       "title": "誌謝可能洩漏作者身分",
@@ -359,15 +371,20 @@
     "submission-document-class": {
       "title": "未使用 {{profile}} 的文件類別",
       "detail": "這個設定檔預期使用 {{expected}}，但專案使用的是 {{actual}}。請從該會議目前的官方範本開始。",
-      "detailNoClass": "這個設定檔預期使用 {{expected}}，但沒有偵測到文件類別。請從該會議目前的官方範本開始。"
+      "detailNoClass": "這個設定檔預期使用 {{expected}}，但沒有偵測到文件類別。請從該會議目前的官方範本開始。",
+      "titleTypst": "未使用 {{profile}} 範本",
+      "detailTypst": "這個設定檔預期使用 {{expected}} 之類的 Typst 範本，但專案匯入的是 {{actual}}。請從其中一個範本開始。",
+      "detailNoTemplateTypst": "這個設定檔預期使用 {{expected}} 之類的 Typst 範本，但專案沒有匯入任何範本。請從其中一個範本開始。"
     },
     "submission-no-abstract": {
       "title": "未偵測到摘要",
-      "detail": "這個出版設定檔預期摘要要放在標準的 abstract 環境中。請補上摘要，或確認該會議並不要求。"
+      "detail": "這個出版設定檔預期摘要要放在標準的 abstract 環境中。請補上摘要，或確認該會議並不要求。",
+      "detailTypst": "這個出版設定檔預期要有摘要。請將摘要傳給你的範本，例如 abstract: [Your abstract]，或加入 Abstract 標題。"
     },
     "submission-no-keywords": {
       "title": "未偵測到出版關鍵字",
-      "detail": "{{profile}} 設定檔預期使用它範本中的標準指令或環境來標示關鍵字。"
+      "detail": "{{profile}} 設定檔預期使用它範本中的標準指令或環境來標示關鍵字。",
+      "detailTypst": "{{profile}} 設定檔預期要有關鍵字。請將關鍵字傳給你的範本，例如 keywords: (\"one\", \"two\") 或 index-terms: (\"one\", \"two\")。"
     },
     "submission-figure-format": {
       "title": "不支援的圖片格式：{{file}}",
@@ -375,7 +392,8 @@
     },
     "submission-placeholder": {
       "title": "稿件中仍留有草稿預留內容",
-      "detail": "原始碼中含有 TODO、TBD、FIXME、預留文字或問號標記。產生最終投稿版本前，請逐一檢查。"
+      "detail": "原始碼中含有 TODO、TBD、FIXME、預留文字或問號標記。產生最終投稿版本前，請逐一檢查。",
+      "detailTypst": "文件仍在呼叫 #lorem 或含有預留文字。請在最終投稿前取代。"
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} 低於要求的版本",
@@ -404,6 +422,34 @@
     "submission-font-inspection-incomplete": {
       "title": "部分字型的嵌入狀態無法驗證",
       "detail": "預檢無法確認 {{fonts}} 的嵌入狀態。請用該會議的官方 PDF 檢查工具確認。"
+    },
+    "empty-heading": {
+      "title": "空白標題",
+      "detail": "這個標題沒有文字。螢幕閱讀器會在大綱中將它讀成空白項目。請加上標題文字，或移除這個標題。"
+    },
+    "todo-in-text": {
+      "title": "內文中的草稿註記",
+      "detail": "這則註記是內文的一部分，因此會印在 PDF 中。請處理它，或改成 // 註解。"
+    },
+    "no-author": {
+      "title": "沒有文件作者",
+      "detail": "PDF 中繼資料中沒有作者。請用 #set document(author: \"Your Name\") 加入，或將作者傳給你的範本。匿名審查時請省略。"
+    },
+    "privacy-local-path": {
+      "title": "你電腦上的路徑：{{path}}",
+      "detail": "這個路徑指向專案外的資料夾。它可能洩漏你的使用者名稱，而且在其他電腦上建置會失敗。請將檔案移進專案，並使用相對路徑。"
+    },
+    "privacy-blind-email": {
+      "title": "{{file}} 中的電子郵件地址",
+      "detail": "在匿名審查期間，電子郵件地址可能洩漏作者身分。請將其移除，或改成匿名的預留文字。"
+    },
+    "refs-no-bibliography": {
+      "title": "有引用但沒有參考文獻",
+      "detail": "文件引用了來源，但從未呼叫 #bibliography，因此 Typst 無法解析這些引用。請在參考文獻清單應出現的位置加入 #bibliography(\"refs.bib\")。"
+    },
+    "submission-large-image": {
+      "title": "影像過大：{{file}}",
+      "detail": "這張影像超過 {{limit}}。大型影像會拖慢編譯並讓 PDF 變得臃腫。有些期刊或會議也會限制上傳大小。請壓縮影像，或以實際列印尺寸匯出。"
     }
   },
   "lens": {
@@ -620,5 +666,15 @@
     "compileTagged": "編譯標記式輸出並驗證",
     "compileTaggedWarning": "系統的 LuaLaTeX 可以讀取本機檔案。請只在你信任的專案上執行。",
     "noEngine": "若要在應用程式內產生標記式 PDF，請在設定的「LaTeX 引擎」中啟用引擎。或者用你自己的 TeX Live 2025 或更新版本的 pdfLaTeX 或 LuaLaTeX 編譯準備好的原始碼。"
+  },
+  "typstStandards": {
+    "title": "PDF 標準",
+    "intro": "Typst 可以直接產生封存用與無障礙的 PDF。請選擇標準，然後匯出 PDF。",
+    "standard": "標準",
+    "export": "匯出 PDF",
+    "tagged": "Typst {{version}} 會為每個 PDF 加上供螢幕閱讀器使用的標記，因此不需要另外進行標記編譯。",
+    "untagged": "Typst {{version}} 不會為 PDF 加上供螢幕閱讀器使用的標記。Typst 0.14 以上版本才會加上。",
+    "none": "Typst {{version}} 無法產生符合 PDF 標準的檔案。請在編譯選單中選擇 Typst 0.12 以上版本。",
+    "uaNote": "PDF/UA-1 需要文件標題，以及每張影像的替代文字。"
   }
 }

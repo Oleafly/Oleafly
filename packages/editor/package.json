@@ -13,10 +13,13 @@
     "./math-render": "./src/math-render.ts",
     "./math-source": "./src/math-source.ts",
     "./math-preview": "./src/math-preview.ts",
+    "./latex-to-typst-math": "./src/latex-to-typst-math.ts",
+    "./typst-math-paste": "./src/typst-math-paste.ts",
     "./CodeMirrorEditor": "./src/CodeMirrorEditor.tsx",
     "./visual": "./src/visual/index.ts",
     "./latex-tree": "./src/latex-tree.ts",
     "./typst-syntax": "./src/typst-syntax.ts",
+    "./typst": "./src/typst.ts",
     "./prose": "./src/prose.ts"
   },
   "dependencies": {

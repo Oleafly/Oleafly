@@ -14,6 +14,7 @@ import { toast } from "@/lib/toast";
 import { objectKey } from "@/lib/react-key";
 import { canPrepareAccessible, gateDocument, prepGate } from "./prep-capability";
 import { renderMessage, type PreflightTranslate } from "./message";
+import { TypstPdfStandards } from "./TypstPdfStandards";
 
 const KIND: Record<PrepChange["kind"], { icon: typeof Info; color: string }> = {
   add: { icon: Plus, color: "text-emerald-500" },
@@ -37,6 +38,11 @@ export function PrepExport() {
     canPrepareAccessible(s.engineLoaded, s.engine.capabilities.source_preflight_profile) &&
     pathUsesEngineSource(s.engine, s.activePath),
   );
+
+  const typstOptions = useFilesStore((s) =>
+    s.engine.source_format === "typst" ? (s.engine.typst_options ?? null) : null,
+  );
+  const typstVersion = useFilesStore((s) => s.engine.typst_resolved?.version ?? null);
 
   const engine = useEngineStore((s) => s.info);
   const ensureEngine = useEngineStore((s) => s.ensureLoaded);
@@ -76,7 +82,9 @@ export function PrepExport() {
     void navigator.clipboard.writeText(result.output).then(() => setCopied(true));
   };
 
-  if (!latexSource) return null;
+  if (!latexSource) {
+    return typstOptions ? <TypstPdfStandards options={typstOptions} version={typstVersion} /> : null;
+  }
   return (
     <div className="mx-3 mb-4 rounded-md border border-sidebar-border bg-black/[0.03] dark:bg-background">
       <div className="px-2.5 py-2">

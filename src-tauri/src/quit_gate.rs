@@ -145,6 +145,12 @@ pub fn cancel_quit_flush() {
     clear_flush_confirmed();
 }
 
+pub const BACKGROUND_DOWNLOAD_GRACE: Duration = Duration::from_secs(2);
+
+pub fn on_app_exit() {
+    crate::toolchain_download::abandon_background_installs(BACKGROUND_DOWNLOAD_GRACE);
+}
+
 #[cfg(test)]
 pub(crate) fn test_lock() -> &'static tokio::sync::Mutex<()> {
     static LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());

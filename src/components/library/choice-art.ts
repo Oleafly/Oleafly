@@ -16,6 +16,9 @@ export const CHOICE_ART = {
   importTypst: "/project-kind/import-typst-light.webp",
   importArxiv: "/project-kind/import-arxiv-light.webp",
   importGithub: "/project-kind/import-github-light.webp",
+  diagramTikz: "/project-kind/diagram-tikz-light.webp",
+  diagramTypst: "/project-kind/diagram-typst-light.webp",
+  diagramMermaid: "/project-kind/diagram-mermaid-light.webp",
 } as const;
 
 let warmed = false;

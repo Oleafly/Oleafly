@@ -115,6 +115,12 @@ const PALETTE: {
   { shape: "text", id: "code", key: "palette.code", icon: <Code2 className="size-4" />, seed: String.raw`\texttt{print(x)}` },
 ];
 
+function paletteSeed(entry: { id: string; seed?: string }, seeds?: { math: string; code: string }): string | undefined {
+  if (seeds && entry.id === "math") return seeds.math;
+  if (seeds && entry.id === "code") return seeds.code;
+  return entry.seed;
+}
+
 const routingToType = (r: DiagEdge["routing"]) => {
   if (r === "orthogonal") return "diagramOrthogonal";
   if (r === "curved") return "default";
@@ -375,12 +381,16 @@ function CanvasInner({
   showPreviewAction,
   onShowPreview,
   readOnly = false,
+  seeds,
+  labelKey,
 }: Readonly<{
   model: DiagramModel;
   onChange: (m: DiagramModel) => void;
   showPreviewAction?: boolean;
   onShowPreview?: () => void;
   readOnly?: boolean;
+  seeds?: { math: string; code: string };
+  labelKey?: DiagramMessageKey;
 }>) {
   const { Tooltip, useThemeMode, t } = useDiagramKit();
   const themeMode = useThemeMode();
@@ -825,6 +835,7 @@ function CanvasInner({
           onNodeChange={patchNode}
           onEdgeChange={patchEdge}
           onReorder={reorder}
+          labelKey={labelKey}
         />
       </div>
     )
@@ -876,7 +887,7 @@ function CanvasInner({
                 aria-pressed={pending?.key === p.id}
                 onClick={() =>
                   setPending((cur) =>
-                    cur?.key === p.id ? null : { shape: p.shape, seed: p.seed, key: p.id },
+                    cur?.key === p.id ? null : { shape: p.shape, seed: paletteSeed(p, seeds), key: p.id },
                   )
                 }
                 className={cn(
@@ -979,6 +990,8 @@ export function DiagramCanvas(
     showPreviewAction?: boolean;
     onShowPreview?: () => void;
     readOnly?: boolean;
+    seeds?: { math: string; code: string };
+    labelKey?: DiagramMessageKey;
   }>,
 ) {
   return (

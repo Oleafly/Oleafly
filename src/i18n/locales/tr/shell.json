@@ -41,7 +41,9 @@
     "noResults": "Sonuç bulunamadı. Tanımlayıcıyı denetleyin veya başka başlık sözcükleri deneyin.",
     "placeholder": "DOI, arXiv kimliği, URL veya bir makale başlığı…",
     "privacyNote": "Yalnızca tanımlayıcı veya başlık doi.org, arXiv ya da Crossref'e gönderilir.",
-    "title": "Atıf ekle"
+    "title": "Atıf ekle",
+    "bibliography": "Kaynakça",
+    "bibliographyHint": "Bu projede birden fazla kaynakça var. Kayıt, burada seçtiğiniz dosyaya eklenir."
   },
   "backendProtocol": {
     "mismatch": "Bu pencere ve arka ucu farklı Oleafly sürümleri için derlendi, bu yüzden bazı özellikler çalışmayabilir. Uygulamayı yeniden kurmak bunu düzeltir."
@@ -120,6 +122,14 @@
       "keywords": "ortam kapat close end environment begin latex",
       "label": "LaTeX ortamını kapat"
     },
+    "formatDocument": {
+      "keywords": "biçimlendir düzenle girinti typstyle typst format tidy indent",
+      "label": "Belgeyi biçimlendir"
+    },
+    "formatSelection": {
+      "keywords": "biçimlendir seçim düzenle girinti typstyle typst format selection tidy indent",
+      "label": "Seçimi biçimlendir"
+    },
     "createProject": {
       "keywords": "yeni proje şablon new project create template gallery",
       "label": "Yeni bir proje oluştur"
@@ -127,6 +137,14 @@
     "diagramComposer": {
       "keywords": "diyagram şekil çiz tuval diagram figure tikz composer draw canvas",
       "label": "Diyagram Oluşturucu'yu aç"
+    },
+    "typstPackages": {
+      "keywords": "typst universe paketler içe aktar kitaplık göz at kopyala packages import library browse vendor",
+      "label": "Typst paketlerine göz at"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan paketler usepackage ön bölüm kur tlmgr göz at packages preamble install browse",
+      "label": "LaTeX paketlerine göz at"
     },
     "documentCitationScan": {
       "keywords": "atıf literatür tarama kaynak citations literature scan document paragraph references find",
@@ -193,7 +211,8 @@
       "label": "Ortamla çevrele"
     },
     "synctex": {
-      "label": "PDF'e git (SyncTeX)"
+      "label": "PDF'e git (SyncTeX)",
+      "typstLabel": "PDF'e git"
     },
     "table": {
       "label": "Tablo"
@@ -226,6 +245,79 @@
     "openFolder": {
       "label": "Klasör aç…",
       "keywords": "aç klasör dizin mevcut yerel dosyalar disk"
+    },
+    "underline": {
+      "label": "Altı çizili"
+    },
+    "strikethrough": {
+      "label": "Üstü çizili"
+    },
+    "inlineCode": {
+      "label": "Satır içi kod"
+    },
+    "link": {
+      "label": "Bağlantı"
+    },
+    "footnote": {
+      "label": "Dipnot"
+    },
+    "quote": {
+      "label": "Alıntı"
+    },
+    "inlineMath": {
+      "label": "Satır içi matematik"
+    },
+    "numberedEquation": {
+      "label": "Numaralı denklem"
+    },
+    "alignedEquations": {
+      "label": "Hizalanmış denklemler"
+    },
+    "fraction": {
+      "label": "Kesir"
+    },
+    "crossReference": {
+      "label": "Çapraz başvuru"
+    },
+    "typstInsights": {
+      "label": "Belge içgörüleri",
+      "keywords": "şekiller tablolar denklemler başlıklar etiketler atıflar todo fixme üst veri özet gönderim figures tables equations headings labels citations metadata abstract submission"
+    },
+    "typstDocumentSettings": {
+      "label": "Belge ayarları",
+      "keywords": "sayfa boyutu kenar boşlukları sütunlar yazı tipi boyutu dil bölge hizalama satır aralığı numaralandırma page size margins columns font language region justify leading line spacing numbering"
+    },
+    "toggleComment": {
+      "label": "Açıklama satırı yap/kaldır",
+      "keywords": "açıklama yorum satır blok comment uncomment line block"
+    },
+    "goToDefinition": {
+      "label": "Tanıma git",
+      "keywords": "tanım atla sembol gezin definition jump symbol navigate"
+    },
+    "findReferences": {
+      "label": "Kaynakları bul",
+      "keywords": "kaynaklar kullanımlar sembol references usages symbol"
+    },
+    "renameSymbol": {
+      "label": "Sembolü yeniden adlandır",
+      "keywords": "yeniden adlandır sembol yeniden düzenle rename symbol refactor"
+    },
+    "migrateToTypst": {
+      "label": "Typst projesine dönüştür",
+      "keywords": "typst dönüştür taşı latex proje yeni convert migrate project new"
+    },
+    "typstMigrationReport": {
+      "label": "Typst dönüştürme raporunu göster",
+      "keywords": "typst dönüştürme taşıma rapor latex convert migrate report"
+    },
+    "present": {
+      "label": "Slaytları sun",
+      "keywords": "sun slaytlar sunum tam ekran beamer touying polylux konuşmacı notları pdfpc present slides presentation fullscreen speaker notes"
+    },
+    "presentWithPresenter": {
+      "label": "Slaytları sunucu görünümüyle sun",
+      "keywords": "sun slaytlar sunucu görünümü konuşmacı notları zamanlayıcı sonraki slayt present slides presenter view speaker notes timer next slide"
     }
   },
   "community": {
@@ -238,7 +330,12 @@
     "autoCompile": {
       "off": "Kapalı",
       "on": "Açık",
-      "title": "Otomatik derleme"
+      "title": "Otomatik derleme",
+      "help": "Yazmayı bıraktıktan birkaç saniye sonra derler. Açık dosya önce kaydedilir.",
+      "typstHelp": "Typst çalışmaya devam eder ve yazmayı bıraktığınızda PDF'i kısa süre içinde günceller. Bu açıkken açık dosya kendiliğinden kaydedilir.",
+      "typstStarting": "Typst başlatılıyor",
+      "typstRestarting": "Typst yeniden başlatılıyor",
+      "typstFailed": "Typst tekrarlanan hatalardan sonra durdu. Yeniden başlatmak için dosyayı düzenleyin."
     },
     "compile": "Derle",
     "compiler": {
@@ -274,7 +371,37 @@
     "texRootLabel": "TEX kökü",
     "texRootName": "kök: {{name}}",
     "texRootNotTex": "{{file}} içindeki % !TEX root, LaTeX dosyası olmayan {{target}} dosyasını gösteriyor",
-    "texRootOverride": "kök: {{path}} ({{file}} içindeki % !TEX root ile belirlendi)"
+    "texRootOverride": "kök: {{path}} ({{file}} içindeki % !TEX root ile belirlendi)",
+    "typstVersion": {
+      "title": "Typst sürümü (bu proje)",
+      "help": "Bir sürüm sabitleyin, böylece Oleafly Typst güncellemesi yaptığında bu projenin çıktısı aynı kalır. Varsayılan, Ayarlar'da seçilen sürümü izler. Sürüm yüklemek veya bu projeyi daha yeni bir sürümde denemek için Ayarlar → Motorlar → Typst bölümüne gidin.",
+      "default": "Varsayılan ({{version}})",
+      "defaultPlain": "Varsayılan",
+      "builtIn": "[yerleşik]",
+      "system": "[sistem]",
+      "missing": "[kurulu değil]",
+      "switchFailed": "Typst sürümü değiştirilemedi."
+    },
+    "typstFonts": {
+      "title": "Yazı tipleri (bu proje)",
+      "help": "Typst yazı tiplerini projenin fonts klasöründen ve project.json içinde font_paths altında listelenen klasörlerden okur. Yalnızca proje yazı tipleriyle PDF bu bilgisayarda kurulu yazı tiplerine bağlı kalmaz. Typst tarafından bulunabilen yazı tipleri Belge ayarlarında listelenir.",
+      "systemFonts": "Sistem yazı tiplerini kullan",
+      "projectOnly": "Yalnızca proje yazı tipleri",
+      "unsupported": "Daha yeni bir Typst gerekir",
+      "saveFailed": "Yazı tipi ayarı kaydedilemedi."
+    },
+    "typstBuild": {
+      "title": "Derleme (bu proje)",
+      "help": "Yinelenebilir derleme yalnızca proje yazı tiplerini kullanır ve PDF tarihini son commit tarihine sabitler. Böylece aynı kaynaklar her bilgisayarda aynı PDF'i verir.",
+      "standard": "Standart derleme",
+      "reproducible": "Yinelenebilir derleme",
+      "saveFailed": "Derleme ayarı kaydedilemedi."
+    },
+    "typstVariant": {
+      "title": "Varyant (bu proje)",
+      "help": "Bir varyant, taslak veya baskıya hazır derleme gibi kendi değerlerini sys.inputs içine aktarır. Seçtiğiniz varyant bu bilgisayarda kalır. Varyantları Belge ayarlarında ekleyin veya düzenleyin.",
+      "none": "Varyant yok"
+    }
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"
@@ -946,6 +1073,10 @@
     "wait": {
       "description": "{{phase}} Derlemeniz sıraya alındı ve motor hazır olur olmaz kendiliğinden başlar.",
       "title": "TinyTeX hâlâ indiriliyor"
+    },
+    "typstQuit": {
+      "title": "Typst hâlâ kuruluyor",
+      "description": "Typst {{version}} indiriliyor. Şimdi çıkarsanız indirme durur ve Ayarlar'dan yeniden başlatmanız gerekir."
     }
   },
   "toolbar": {
@@ -1085,5 +1216,132 @@
     "added": "Eklendi. Artık Finder'ın Servisler menüsünde. Hızlı Eylemler'den de kullanmak için bir klasöre sağ tıklayın ve Hızlı Eylemler › Özelleştir'de açın.",
     "addedInQuickActions": "Eklendi. Bir klasöre sağ tıklayın, komutu Hızlı Eylemler'de bulabilirsiniz.",
     "failed": "Eklenemedi. Ayarlar › Genel bölümünden yeniden deneyebilirsiniz."
+  },
+  "typstMigration": {
+    "title": "Typst projesine dönüştür",
+    "closeLabel": "Typst dönüştürmesini kapat",
+    "intro": "Oleafly bu LaTeX projesinden yeni bir Typst projesi oluşturur. Bu proje değişmez.",
+    "points": {
+      "text": "Pandoc metni, matematiği, şekilleri ve tabloları dönüştürür.",
+      "files": "Her input ve include dosyası kendi Typst dosyası olur.",
+      "bibliography": "BibTeX dosyaları olduğu gibi kopyalanır.",
+      "compile": "Typst yeni projeyi denetlemek için derler."
+    },
+    "nameLabel": "Yeni proje adı",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Dönüştürmek için bir LaTeX projesi açın.",
+    "convert": "Dönüştür",
+    "retry": "Yeniden dene",
+    "progress": {
+      "reading": "LaTeX projesi okunuyor",
+      "converting": "Pandoc ile dönüştürülüyor",
+      "creating": "Typst projesi oluşturuluyor",
+      "compiling": "Typst ile derleniyor"
+    },
+    "errors": {
+      "pandoc": "Pandoc hazır değil. Araçlar'dan kurun, sonra yeniden deneyin.",
+      "noMain": "Ana LaTeX dosyası okunamadı.",
+      "emptyOutput": "Pandoc boş bir belge döndürdü.",
+      "failed": "Dönüştürme durdu: {{detail}}"
+    },
+    "report": {
+      "created": "{{name}} oluşturuldu.",
+      "compiled": "Proje Typst ile derleniyor.",
+      "compileFailed_one": "Proje henüz derlenmiyor. {{count}} hatanın düzeltilmesi gerekiyor.",
+      "compileFailed_other": "Proje henüz derlenmiyor. {{count}} hatanın düzeltilmesi gerekiyor.",
+      "compileUnavailable": "Oleafly projeyi derleyemedi: {{detail}}",
+      "converted": "Dönüştürüldü",
+      "sources_one": "{{count}} kaynak dosyası",
+      "sources_other": "{{count}} kaynak dosyası",
+      "figures_one": "{{count}} şekil",
+      "figures_other": "{{count}} şekil",
+      "tables_one": "{{count}} tablo",
+      "tables_other": "{{count}} tablo",
+      "equations_one": "{{count}} blok denklem",
+      "equations_other": "{{count}} blok denklem",
+      "references_one": "{{count}} çapraz başvuru",
+      "references_other": "{{count}} çapraz başvuru",
+      "mathFixed_one": "Matematik dönüştürücüsünün düzelttiği {{count}} formül",
+      "mathFixed_other": "Matematik dönüştürücüsünün düzelttiği {{count}} formül",
+      "copied_one": "{{count}} dosya kopyalandı",
+      "copied_other": "{{count}} dosya kopyalandı",
+      "style": "Kaynakça stili {{style}}",
+      "mapping": "{{source}} → {{target}}",
+      "attention": "Dikkat gerektiriyor",
+      "noAttention": "Dikkat gerektiren bir şey yok.",
+      "problems": "Derleme hataları ve uyarıları",
+      "location": "{{file}}, satır {{line}}",
+      "noLocation": "Dosya konumu yok",
+      "openAt": "{{file}} dosyasını {{line}}. satırda aç",
+      "open": "Typst projesini aç"
+    },
+    "notes": {
+      "missingInclude": "{{detail}} dosyası bulunamadı, bu yüzden dışarıda bırakıldı.",
+      "lostInclude": "{{detail}} için ayrı bir dosya oluşturulamadı. Metni onu içeren dosyada kalır.",
+      "missingImage": "{{detail}} görseli bulunamadı.",
+      "unsupportedImage": "Typst {{detail}} dosyasını gösteremez. Dosyayı PDF, PNG veya SVG biçimine dönüştürün.",
+      "math": "Bu matematiğin elle düzeltilmesi gerekiyor: {{detail}}",
+      "bibliographyStyle": "{{detail}} BibTeX stilinin Typst karşılığı yok. Varsayılan stil kullanılır.",
+      "skippedFile": "Proje çok büyük olduğu için {{detail}} kopyalanmadı.",
+      "unreadableFile": "{{detail}} okunamadı.",
+      "equationLabel": "Typst denklemleri bütün olarak numaralandırır, bu yüzden {{detail}} başvuruları artık içinde bulunduğu denklemi gösterir."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Görseller ve HTML",
+    "title": "Typst ile dışa aktar",
+    "close": "Typst dışa aktarmayı kapat",
+    "format": "Biçim",
+    "png": "PNG görselleri",
+    "svg": "SVG görselleri",
+    "html": "HTML",
+    "experimental": "Deneysel",
+    "htmlNote": "Typst HTML dışa aktarması hâlâ deneysel. Sayfa düzenini ve yerleştirilmiş öğeleri dışarıda bırakır.",
+    "ppi": "Çözünürlük",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Sayfalar",
+    "pagesPlaceholder": "Tüm sayfalar",
+    "pagesHelp": "1, 3-5 veya 8- gibi sayfa numaraları ve aralıkları kullanın.",
+    "pagesInvalid": "Sayfa aralığını denetleyin. 1, 3-5 veya 8- gibi sayfa numaraları ve aralıkları kullanın.",
+    "pagesUnsupported": "Bu Typst sürümü her zaman tüm sayfaları dışa aktarır.",
+    "multiPage": "Her sayfa, seçtiğiniz addan sonra numaralanan ayrı bir dosya olarak kaydedilir.",
+    "export": "Dışa aktar",
+    "cancel": "İptal"
+  },
+  "typstUpgrade": {
+    "title": "Daha yeni bir Typst sürümünü deneyin",
+    "description": "Oleafly bu projeyi geçici klasörlerde iki sürümle de derler. Geçiş yapmadığınız sürece projenizde hiçbir şey değişmez.",
+    "compareWith": "Daha yeni sürüm",
+    "running": "Typst {{current}} ve {{candidate}} ile derleniyor",
+    "current": "Typst {{version}} (geçerli)",
+    "candidate": "Typst {{version}}",
+    "built": "Derlendi",
+    "failed": "Başarısız",
+    "pages_one": "{{count}} sayfa",
+    "pages_other": "{{count}} sayfa",
+    "pagesUnknown": "Sayfa sayısı bilinmiyor",
+    "errors_one": "{{count}} hata",
+    "errors_other": "{{count}} hata",
+    "warnings_one": "{{count}} uyarı",
+    "warnings_other": "{{count}} uyarı",
+    "pageChange": "Sayfa sayısı {{from}} değerinden {{to}} değerine değişiyor.",
+    "pageSame": "Sayfa sayısı {{pages}} olarak kalıyor.",
+    "added": "Typst {{version}} sürümünde yeni",
+    "removed": "Typst {{version}} artık bildirmiyor",
+    "noChanges": "İki sürüm de aynı hataları ve uyarıları bildiriyor.",
+    "unchanged_one": "{{count}} ileti iki sürümde de aynı.",
+    "unchanged_other": "{{count}} ileti iki sürümde de aynı.",
+    "buildFailed": "Typst {{version}} projeyi derleyemedi.",
+    "switch": "Typst {{version}} sürümüne geç",
+    "switched": "Bu proje artık Typst {{version}} kullanıyor.",
+    "switchFailed": "Typst sürümü değiştirilemedi.",
+    "runAgain": "Yeniden denetle",
+    "close": "Kapat",
+    "checkFailed": "Denetim tamamlanamadı.",
+    "noNewer": "Daha yeni bir Typst kurulu değil. Ayarlar'dan bir sürüm kurabilirsiniz.",
+    "openSettings": "Typst ayarlarını aç",
+    "location": "{{file}}, satır {{line}}",
+    "error": "Hata",
+    "warning": "Uyarı"
   }
 }

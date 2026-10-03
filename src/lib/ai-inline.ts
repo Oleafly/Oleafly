@@ -22,11 +22,13 @@ export const PRESETS: { id: string; label: string; instruction: string }[] = [
 
 function markupRule(profile: string): string {
   if (profile === "none") return "Do not introduce markup or engine-specific commands.";
-  if (profile === "typst") return "Preserve valid Typst markup and scripting syntax.";
-  if (profile === "markdown") {
-    return "Preserve valid Pandoc Markdown syntax and YAML front matter.";
+  if (profile === "typst") {
+    return "Preserve valid Typst markup and scripting syntax. Keep every @key reference, #cite call and <label> unchanged.";
   }
-  return "Preserve LaTeX validity: balanced braces and environments.";
+  if (profile === "markdown") {
+    return "Preserve valid Pandoc Markdown syntax and YAML front matter. Keep every [@key] citation unchanged.";
+  }
+  return String.raw`Preserve LaTeX validity: balanced braces and environments. Keep every \cite, \ref and \label command and its key unchanged.`;
 }
 
 const systemFor = (engine: InlineEditArgs["engine"]) => {

@@ -27,3 +27,5 @@ src-tauri/resources/templates/**/*.json text eol=lf
 src-tauri/linux/** text eol=lf
 src-tauri/windows/*.nsh text eol=lf
 src-tauri/windows/*.wxs text eol=lf
+
+src-tauri/resources/typst-toolchain.json text eol=lf

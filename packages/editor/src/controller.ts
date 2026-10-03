@@ -84,6 +84,35 @@ export function waitForEditorDocument(
   });
 }
 
+export interface BackgroundDocumentChange {
+  readonly from: number;
+  readonly to: number;
+  readonly insert: string;
+}
+
+export type BackgroundDocumentEditor = (
+  path: string,
+  base: string,
+  changes: readonly BackgroundDocumentChange[],
+) => boolean;
+
+let backgroundDocumentEditor: BackgroundDocumentEditor | null = null;
+
+export function registerBackgroundDocumentEditor(editor: BackgroundDocumentEditor): () => void {
+  backgroundDocumentEditor = editor;
+  return () => {
+    if (backgroundDocumentEditor === editor) backgroundDocumentEditor = null;
+  };
+}
+
+export function editBackgroundDocument(
+  path: string,
+  base: string,
+  changes: readonly BackgroundDocumentChange[],
+): boolean {
+  return backgroundDocumentEditor?.(path, base, changes) ?? false;
+}
+
 export function getCurrentLine(): number | null {
   const v = getEditorView();
   if (!v) return null;

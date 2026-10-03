@@ -146,5 +146,37 @@
       "check_running": "Der kører allerede en test af denne agent.",
       "main_window": "Skift agenternes programmer fra hovedvinduet."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly tilbyder ikke Typst {{version}}, og ingen Typst på denne computer har den version.",
+    "busy": "Typst {{version}} installeres stadig. Prøv igen, når det er færdigt.",
+    "remove_default": "Typst {{version}} er din standardversion. Vælg en anden standard, før du fjerner den.",
+    "remove_not_downloaded": "Oleafly kan kun fjerne Typst-versioner, som programmet selv har downloadet, og Typst {{version}} er ikke downloadet af Oleafly.",
+    "not_offered": "Typst {{version}} kan ikke downloades til denne computer.",
+    "install_unverified": "Typst {{version}} blev downloadet, men bestod ikke integritetstjekket. Prøv at installere den igen.",
+    "not_typst_project": "Kun Typst-projekter har en Typst-version.",
+    "update_waits": "Vent, til Typst er færdig med at installere, før du opdaterer Oleafly."
+  },
+  "typst_packages": {
+    "index_offline": "Du er offline, og pakkelisten fra Typst Universe er ikke downloadet endnu.",
+    "index_unavailable": "Pakkelisten fra Typst Universe kunne ikke indlæses. Tjek din internetforbindelse, og prøv igen.",
+    "vendor_failed": "Oleafly kunne ikke kopiere pakkerne ind i projektet."
+  },
+  "typst_query": {
+    "timeout": "Typst var for længe om at læse dokumentet.",
+    "failed": "Typst kunne ikke læse dokumentet."
+  },
+  "typst_version_missing": "Typst {{version}} er ikke installeret.",
+  "typst_options": {
+    "invalid_input_key": "Navne på værdier må ikke være tomme eller indeholde et lighedstegn.",
+    "invalid_variant_name": "Hver variant skal have et kort navn, som ingen anden variant bruger.",
+    "invalid_font_path": "Skrifttypemapper skal ligge i projektet.",
+    "fonts_failed": "Typst kunne ikke vise skrifttyperne.",
+    "fonts_timeout": "Typst var for længe om at vise skrifttyperne."
+  },
+  "typst_export": {
+    "failed": "Typst kunne ikke eksportere dokumentet.",
+    "unsupported": "Denne Typst-version kan ikke eksportere med disse indstillinger.",
+    "invalid_ppi": "Vælg en opløsning fra 1 til {{max}} PPI."
   }
 }

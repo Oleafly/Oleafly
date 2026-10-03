@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const insertAtCursor = vi.fn();
+const insertTypstSymbol = vi.fn(async (_latex: string, _glyph: string) => {});
 vi.mock("@/components/editor/cm/controller", () => ({
   insertAtCursor: (text: string) => insertAtCursor(text),
+}));
+vi.mock("@/components/editor/typst-commands", () => ({
+  insertTypstSymbol: (latex: string, glyph: string) => insertTypstSymbol(latex, glyph),
 }));
 
 import {
@@ -58,5 +62,25 @@ describe("SymbolPicker", () => {
       expect(insertAtCursor).toHaveBeenLastCalledWith(symbol.latex);
     }
     expect(insertAtCursor).toHaveBeenCalledTimes(symbols.length);
+  });
+
+  it("shows Typst names and inserts through the Typst path in a Typst file", async () => {
+    insertAtCursor.mockClear();
+    render(<SymbolPicker language="typst" />);
+    fireEvent.click(screen.getByLabelText("Insert symbol"));
+    await waitFor(() => expect(screen.getByLabelText("Insert right arrow (arrow.r)")).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText("Search symbols"), { target: { value: "chevron" } });
+    expect(screen.getByLabelText(/^Insert left angle bracket \(chevron\.l\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText(/^Insert left angle bracket \(chevron\.l\)/));
+    expect(insertTypstSymbol).toHaveBeenCalledWith("\\langle", "⟨");
+    expect(insertAtCursor).not.toHaveBeenCalled();
+  });
+
+  it("routes every inventory item through the Typst insertion in Typst mode", () => {
+    insertTypstSymbol.mockClear();
+    const symbols = SYMBOL_CATEGORIES.flatMap((category) => category.items);
+    for (const symbol of symbols) insertToolbarSymbol(symbol, "typst");
+    expect(insertTypstSymbol).toHaveBeenCalledTimes(symbols.length);
+    expect(insertTypstSymbol).toHaveBeenLastCalledWith(symbols.at(-1)?.latex, symbols.at(-1)?.char);
   });
 });

@@ -40,7 +40,9 @@
     "noResults": "결과를 찾지 못했습니다. 식별자를 확인하거나 다른 제목 단어로 시도하세요.",
     "placeholder": "DOI, arXiv 아이디, URL 또는 논문 제목…",
     "privacyNote": "식별자나 제목만 doi.org, arXiv 또는 Crossref로 전송됩니다.",
-    "title": "인용 추가"
+    "title": "인용 추가",
+    "bibliography": "참고문헌",
+    "bibliographyHint": "이 프로젝트에는 참고문헌이 여러 개 있습니다. 항목은 여기에서 고른 파일에 들어갑니다."
   },
   "backendProtocol": {
     "mismatch": "이 창과 백엔드가 서로 다른 Oleafly 버전으로 빌드되어 일부 기능이 동작하지 않을 수 있습니다. 앱을 다시 설치하면 해결됩니다."
@@ -118,6 +120,14 @@
       "keywords": "닫기 end 환경 begin latex",
       "label": "LaTeX 환경 닫기"
     },
+    "formatDocument": {
+      "keywords": "서식 정리 들여쓰기 typstyle typst",
+      "label": "문서 서식 정리"
+    },
+    "formatSelection": {
+      "keywords": "서식 선택 영역 정리 들여쓰기 typstyle typst",
+      "label": "선택 영역 서식 정리"
+    },
     "createProject": {
       "keywords": "새 프로젝트 만들기 템플릿 갤러리",
       "label": "새 프로젝트 만들기"
@@ -125,6 +135,14 @@
     "diagramComposer": {
       "keywords": "다이어그램 그림 tikz 작성기 그리기 캔버스",
       "label": "다이어그램 작성기 열기"
+    },
+    "typstPackages": {
+      "keywords": "typst universe 패키지 가져오기 라이브러리 찾아보기 포함",
+      "label": "Typst 패키지 찾아보기"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan 패키지 usepackage 프리앰블 설치 tlmgr 찾아보기",
+      "label": "LaTeX 패키지 찾아보기"
     },
     "documentCitationScan": {
       "keywords": "인용 문헌 검사 문서 문단 참고문헌 찾기",
@@ -191,7 +209,8 @@
       "label": "환경으로 감싸기"
     },
     "synctex": {
-      "label": "PDF로 이동(SyncTeX)"
+      "label": "PDF로 이동(SyncTeX)",
+      "typstLabel": "PDF로 이동"
     },
     "table": {
       "label": "표"
@@ -224,6 +243,79 @@
     "openFolder": {
       "label": "폴더 열기…",
       "keywords": "열기 폴더 디렉터리 기존 로컬 파일 디스크"
+    },
+    "underline": {
+      "label": "밑줄"
+    },
+    "strikethrough": {
+      "label": "취소선"
+    },
+    "inlineCode": {
+      "label": "인라인 코드"
+    },
+    "link": {
+      "label": "링크"
+    },
+    "footnote": {
+      "label": "각주"
+    },
+    "quote": {
+      "label": "인용문"
+    },
+    "inlineMath": {
+      "label": "인라인 수식"
+    },
+    "numberedEquation": {
+      "label": "번호 붙은 수식"
+    },
+    "alignedEquations": {
+      "label": "정렬된 수식"
+    },
+    "fraction": {
+      "label": "분수"
+    },
+    "crossReference": {
+      "label": "상호 참조"
+    },
+    "typstInsights": {
+      "label": "문서 분석",
+      "keywords": "그림 표 수식 제목 레이블 인용 todo fixme 메타데이터 초록 제출"
+    },
+    "typstDocumentSettings": {
+      "label": "문서 설정",
+      "keywords": "용지 크기 여백 단 글꼴 크기 언어 지역 양쪽 정렬 줄 간격 행간 번호"
+    },
+    "toggleComment": {
+      "label": "주석 전환",
+      "keywords": "주석 주석 해제 줄 블록"
+    },
+    "goToDefinition": {
+      "label": "정의로 이동",
+      "keywords": "정의 이동 심볼 탐색"
+    },
+    "findReferences": {
+      "label": "참조 찾기",
+      "keywords": "참조 사용 위치 심볼"
+    },
+    "renameSymbol": {
+      "label": "심볼 이름 바꾸기",
+      "keywords": "이름 바꾸기 심볼 리팩터링"
+    },
+    "migrateToTypst": {
+      "label": "Typst 프로젝트로 변환",
+      "keywords": "typst 변환 마이그레이션 latex 프로젝트 새로"
+    },
+    "typstMigrationReport": {
+      "label": "Typst 변환 보고서 보기",
+      "keywords": "typst 변환 마이그레이션 보고서 latex"
+    },
+    "present": {
+      "label": "슬라이드 발표",
+      "keywords": "발표 슬라이드 프레젠테이션 전체 화면 beamer touying polylux 발표자 노트 pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "발표자 보기로 슬라이드 발표",
+      "keywords": "발표 슬라이드 발표자 보기 발표자 노트 타이머 다음 슬라이드"
     }
   },
   "community": {
@@ -236,7 +328,12 @@
     "autoCompile": {
       "off": "끄기",
       "on": "켜기",
-      "title": "자동 컴파일"
+      "title": "자동 컴파일",
+      "help": "입력을 멈추고 몇 초 뒤에 컴파일합니다. 열린 파일을 먼저 저장합니다.",
+      "typstHelp": "Typst가 계속 실행되며 입력을 멈추면 잠시 뒤 PDF를 업데이트합니다. 켜져 있는 동안 열린 파일은 자동으로 저장됩니다.",
+      "typstStarting": "Typst를 시작하는 중",
+      "typstRestarting": "Typst를 다시 시작하는 중",
+      "typstFailed": "오류가 반복되어 Typst가 멈췄습니다. 파일을 편집하면 다시 시작합니다."
     },
     "compile": "컴파일",
     "compiler": {
@@ -272,7 +369,37 @@
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
     "texRootNotTex": "{{file}}의 % !TEX root가 LaTeX 파일이 아닌 {{target}}을(를) 가리킵니다",
-    "texRootOverride": "root: {{path}}({{file}}의 % !TEX root로 지정됨)"
+    "texRootOverride": "root: {{path}}({{file}}의 % !TEX root로 지정됨)",
+    "typstVersion": {
+      "title": "Typst 버전(이 프로젝트)",
+      "help": "버전을 고정하면 Oleafly가 Typst를 업데이트해도 이 프로젝트의 출력이 그대로 유지됩니다. 기본은 설정에서 고른 버전을 따릅니다. 버전을 설치하거나 이 프로젝트를 더 새로운 버전으로 테스트하려면 설정 → 엔진 → Typst로 이동하세요.",
+      "default": "기본({{version}})",
+      "defaultPlain": "기본",
+      "builtIn": "[내장]",
+      "system": "[시스템]",
+      "missing": "[설치되지 않음]",
+      "switchFailed": "Typst 버전을 바꾸지 못했습니다."
+    },
+    "typstFonts": {
+      "title": "글꼴(이 프로젝트)",
+      "help": "Typst는 프로젝트의 fonts 폴더와 project.json의 font_paths에 나열된 폴더에서 글꼴을 읽습니다. 프로젝트 글꼴만 쓰면 PDF가 이 컴퓨터에 설치된 글꼴에 의존하지 않습니다. Typst가 찾을 수 있는 글꼴은 문서 설정에서 볼 수 있습니다.",
+      "systemFonts": "시스템 글꼴 사용",
+      "projectOnly": "프로젝트 글꼴만",
+      "unsupported": "더 새로운 Typst 필요",
+      "saveFailed": "글꼴 설정을 저장하지 못했습니다."
+    },
+    "typstBuild": {
+      "title": "빌드(이 프로젝트)",
+      "help": "재현 가능한 빌드는 프로젝트 글꼴만 쓰고 PDF 날짜를 마지막 커밋 날짜로 맞춥니다. 그러면 같은 소스로 어느 컴퓨터에서나 같은 PDF가 나옵니다.",
+      "standard": "표준 빌드",
+      "reproducible": "재현 가능한 빌드",
+      "saveFailed": "빌드 설정을 저장하지 못했습니다."
+    },
+    "typstVariant": {
+      "title": "변형(이 프로젝트)",
+      "help": "변형은 초안이나 최종본 빌드처럼 자체 값을 sys.inputs에 넘깁니다. 고른 변형은 이 컴퓨터에만 저장됩니다. 변형은 문서 설정에서 추가하거나 편집하세요.",
+      "none": "변형 없음"
+    }
   },
   "datePicker": {
     "placeholder": "날짜 선택"
@@ -925,6 +1052,10 @@
     "wait": {
       "description": "{{phase}} 컴파일은 대기열에 있으며 엔진이 준비되는 대로 자동으로 시작됩니다.",
       "title": "TinyTeX를 아직 내려받는 중입니다"
+    },
+    "typstQuit": {
+      "title": "Typst를 아직 설치하는 중입니다",
+      "description": "Typst {{version}}을(를) 내려받는 중입니다. 지금 종료하면 다운로드가 멈추고 설정에서 다시 시작해야 합니다."
     }
   },
   "toolbar": {
@@ -1064,5 +1195,120 @@
     "added": "추가했습니다. 이제 Finder의 서비스 메뉴에서 사용할 수 있습니다. 빠른 동작에서도 사용하려면 폴더를 오른쪽 클릭하고 빠른 동작 › 사용자화에서 켜세요.",
     "addedInQuickActions": "추가했습니다. 폴더를 오른쪽 클릭하면 빠른 동작에서 찾을 수 있습니다.",
     "failed": "추가하지 못했습니다. 설정 › 일반에서 다시 시도할 수 있습니다."
+  },
+  "typstMigration": {
+    "title": "Typst 프로젝트로 변환",
+    "closeLabel": "Typst 변환 닫기",
+    "intro": "Oleafly가 이 LaTeX 프로젝트로 새 Typst 프로젝트를 만듭니다. 이 프로젝트는 바뀌지 않습니다.",
+    "points": {
+      "text": "Pandoc이 텍스트, 수식, 그림, 표를 변환합니다.",
+      "files": "input과 include 파일은 각각 별도의 Typst 파일이 됩니다.",
+      "bibliography": "BibTeX 파일은 그대로 복사됩니다.",
+      "compile": "Typst가 새 프로젝트를 컴파일해 확인합니다."
+    },
+    "nameLabel": "새 프로젝트 이름",
+    "defaultName": "{{name}}(Typst)",
+    "notLatex": "변환하려면 LaTeX 프로젝트를 여세요.",
+    "convert": "변환",
+    "retry": "다시 시도",
+    "progress": {
+      "reading": "LaTeX 프로젝트를 읽는 중",
+      "converting": "Pandoc으로 변환하는 중",
+      "creating": "Typst 프로젝트를 만드는 중",
+      "compiling": "Typst로 컴파일하는 중"
+    },
+    "errors": {
+      "pandoc": "Pandoc이 준비되지 않았습니다. 도구에서 설치한 다음 다시 시도하세요.",
+      "noMain": "주 LaTeX 파일을 읽지 못했습니다.",
+      "emptyOutput": "Pandoc이 빈 문서를 반환했습니다.",
+      "failed": "변환이 중단되었습니다: {{detail}}"
+    },
+    "report": {
+      "created": "{{name}}을(를) 만들었습니다.",
+      "compiled": "Typst로 컴파일됩니다.",
+      "compileFailed_other": "아직 컴파일되지 않습니다. 오류 {{count}}개를 고쳐야 합니다.",
+      "compileUnavailable": "Oleafly가 컴파일하지 못했습니다: {{detail}}",
+      "converted": "변환됨",
+      "sources_other": "소스 파일 {{count}}개",
+      "figures_other": "그림 {{count}}개",
+      "tables_other": "표 {{count}}개",
+      "equations_other": "별행 수식 {{count}}개",
+      "references_other": "상호 참조 {{count}}개",
+      "mathFixed_other": "수식 변환기가 고친 수식 {{count}}개",
+      "copied_other": "복사한 파일 {{count}}개",
+      "style": "참고문헌 스타일 {{style}}",
+      "mapping": "{{source}} → {{target}}",
+      "attention": "확인 필요",
+      "noAttention": "확인이 필요한 항목이 없습니다.",
+      "problems": "컴파일 오류와 경고",
+      "location": "{{file}}, {{line}}번째 줄",
+      "noLocation": "파일 위치 없음",
+      "openAt": "{{file}}의 {{line}}번째 줄 열기",
+      "open": "Typst 프로젝트 열기"
+    },
+    "notes": {
+      "missingInclude": "{{detail}} 파일을 찾지 못해 제외했습니다.",
+      "lostInclude": "{{detail}}을(를) 별도 파일로 만들지 못했습니다. 그 내용은 이를 포함한 파일에 남아 있습니다.",
+      "missingImage": "{{detail}} 이미지를 찾지 못했습니다.",
+      "unsupportedImage": "Typst는 {{detail}}을(를) 표시할 수 없습니다. PDF, PNG 또는 SVG로 변환하세요.",
+      "math": "이 수식은 직접 고쳐야 합니다: {{detail}}",
+      "bibliographyStyle": "BibTeX 스타일 {{detail}}에 맞는 Typst 스타일이 없습니다. 기본 스타일을 씁니다.",
+      "skippedFile": "프로젝트가 너무 커서 {{detail}}을(를) 복사하지 않았습니다.",
+      "unreadableFile": "{{detail}}을(를) 읽지 못했습니다.",
+      "equationLabel": "Typst는 수식 전체에 번호를 매기므로, 이제 {{detail}}에 대한 참조는 그것이 들어 있던 수식을 가리킵니다."
+    }
+  },
+  "typstExport": {
+    "menuItem": "이미지와 HTML",
+    "title": "Typst로 내보내기",
+    "close": "Typst 내보내기 닫기",
+    "format": "형식",
+    "png": "PNG 이미지",
+    "svg": "SVG 이미지",
+    "html": "HTML",
+    "experimental": "실험적",
+    "htmlNote": "Typst HTML 내보내기는 아직 실험적입니다. 페이지 설정과 배치된 요소는 빠집니다.",
+    "ppi": "해상도",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "페이지",
+    "pagesPlaceholder": "모든 페이지",
+    "pagesHelp": "1, 3-5, 8-처럼 페이지 번호와 범위를 쓰세요.",
+    "pagesInvalid": "페이지 범위를 확인하세요. 1, 3-5, 8-처럼 페이지 번호와 범위를 쓰세요.",
+    "pagesUnsupported": "이 Typst 버전은 항상 모든 페이지를 내보냅니다.",
+    "multiPage": "각 페이지는 고른 이름 뒤에 번호를 붙인 별도 파일로 저장됩니다.",
+    "export": "내보내기",
+    "cancel": "취소"
+  },
+  "typstUpgrade": {
+    "title": "새 Typst 버전 사용해 보기",
+    "description": "Oleafly가 임시 폴더에서 두 버전으로 이 프로젝트를 빌드합니다. 전환하지 않으면 프로젝트는 바뀌지 않습니다.",
+    "compareWith": "새 버전",
+    "running": "Typst {{current}} 및 {{candidate}} 버전으로 빌드하는 중",
+    "current": "Typst {{version}}(현재)",
+    "candidate": "Typst {{version}}",
+    "built": "빌드됨",
+    "failed": "실패",
+    "pages_other": "{{count}}쪽",
+    "pagesUnknown": "쪽수 알 수 없음",
+    "errors_other": "오류 {{count}}개",
+    "warnings_other": "경고 {{count}}개",
+    "pageChange": "쪽수가 {{from}}쪽에서 {{to}}쪽으로 바뀝니다.",
+    "pageSame": "쪽수는 {{pages}}쪽 그대로입니다.",
+    "added": "Typst {{version}}에서 새로 보고됨",
+    "removed": "Typst {{version}}에서는 보고되지 않음",
+    "noChanges": "두 버전 모두 같은 오류와 경고를 보고합니다.",
+    "unchanged_other": "메시지 {{count}}개는 두 버전에서 같습니다.",
+    "buildFailed": "Typst {{version}} 버전으로 프로젝트를 빌드하지 못했습니다.",
+    "switch": "Typst {{version}} 버전으로 전환",
+    "switched": "이제 이 프로젝트는 Typst {{version}} 버전을 씁니다.",
+    "switchFailed": "Typst 버전을 전환하지 못했습니다.",
+    "runAgain": "다시 확인",
+    "close": "닫기",
+    "checkFailed": "확인을 끝내지 못했습니다.",
+    "noNewer": "더 새로운 Typst가 설치되어 있지 않습니다. 설정에서 설치할 수 있습니다.",
+    "openSettings": "Typst 설정 열기",
+    "location": "{{file}}, {{line}}번째 줄",
+    "error": "오류",
+    "warning": "경고"
   }
 }

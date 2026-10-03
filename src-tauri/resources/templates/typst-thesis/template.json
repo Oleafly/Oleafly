@@ -1,0 +1,14 @@
+{
+  "id": "typst-thesis",
+  "name": "Typst Thesis",
+  "category": "Theses & Reports",
+  "description": "A thesis in Typst with a title page, abstract, table of contents, chapters, figures, a bibliography and an appendix.",
+  "main_doc": "main.typ",
+  "engine": "typst",
+  "layout": "single-column",
+  "pages": "multi",
+  "default_color": "#7b2d43",
+  "license": { "spdx": "MIT", "author": "Oleafly", "url": "https://github.com/Oleafly/Oleafly" },
+  "requires": { "packages": [], "fonts": [], "engine": "typst" },
+  "order": 51
+}

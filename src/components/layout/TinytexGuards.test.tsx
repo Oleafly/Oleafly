@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   isTauri: vi.fn(() => true),
   confirmQuitDuringInstall: vi.fn(async () => {}),
   cancelQuitFlush: vi.fn(async () => {}),
+  typstToolchainStatus: vi.fn(async () => null as unknown),
   notifyError: vi.fn(),
 }));
 
@@ -19,12 +20,14 @@ vi.mock("@tauri-apps/api/core", () => ({ isTauri: mocks.isTauri }));
 vi.mock("@/lib/tauri", () => ({
   confirmQuitDuringInstall: mocks.confirmQuitDuringInstall,
   cancelQuitFlush: mocks.cancelQuitFlush,
+  typstToolchainStatus: mocks.typstToolchainStatus,
 }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { TinytexGuards } from "./TinytexGuards";
 import { useEngineStore } from "@/store/engine";
+import { useTypstToolchainStore } from "@/store/typst-toolchain";
 
 beforeEach(() => {
   mocks.events.clear();
@@ -32,6 +35,9 @@ beforeEach(() => {
   mocks.confirmQuitDuringInstall.mockClear();
   mocks.cancelQuitFlush.mockClear();
   mocks.notifyError.mockClear();
+  mocks.typstToolchainStatus.mockReset();
+  mocks.typstToolchainStatus.mockResolvedValue(null);
+  useTypstToolchainStore.setState({ status: null, install: null, loading: false, loadFailed: false });
   useEngineStore.setState({
     installing: true,
     installWaitNoticeOpen: false,
@@ -113,5 +119,69 @@ describe("TinytexGuards quit failure", () => {
     await waitFor(() =>
       expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith("quit during install", error),
     );
+  });
+});
+
+function typstStatus(installing: string | null) {
+  return {
+    bundledVersion: "0.15.1",
+    defaultVersion: "0.15.1",
+    defaultChoice: null,
+    system: null,
+    installing,
+    versions: [],
+  };
+}
+
+async function blockQuit() {
+  render(<TinytexGuards />);
+  await waitFor(() => expect(mocks.events.has("tinytex-quit-blocked")).toBe(true));
+  act(() => {
+    mocks.events.get("tinytex-quit-blocked")?.({ payload: undefined });
+  });
+}
+
+describe("TinytexGuards during a Typst install", () => {
+  beforeEach(() => {
+    useEngineStore.setState({ installing: false });
+  });
+
+  it("asks before quitting while this window installs a Typst version", async () => {
+    useTypstToolchainStore.setState({
+      install: { version: "0.13.1", phase: "downloading", receivedBytes: 10, totalBytes: 100 },
+    });
+    await blockQuit();
+    await screen.findByText(enShell.tinytexGuards.typstQuit.title);
+    expect(screen.getByText(/Typst 0\.13\.1 is downloading/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: enShell.tinytexGuards.quit.confirm }));
+    await waitFor(() => expect(mocks.confirmQuitDuringInstall).toHaveBeenCalledTimes(1));
+  });
+
+  it("learns about an install started in another window before asking", async () => {
+    mocks.typstToolchainStatus.mockResolvedValue(typstStatus("0.14.2"));
+    await blockQuit();
+    await screen.findByText(enShell.tinytexGuards.typstQuit.title);
+    expect(screen.getByText(/Typst 0\.14\.2 is downloading/)).toBeInTheDocument();
+    expect(mocks.typstToolchainStatus).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops asking and re-arms the quit flush once no install is running", async () => {
+    mocks.typstToolchainStatus.mockResolvedValue(typstStatus(null));
+    await blockQuit();
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(enShell.tinytexGuards.typstQuit.title)).toBeNull();
+  });
+
+  it("closes the question when the Typst install finishes", async () => {
+    useTypstToolchainStore.setState({
+      install: { version: "0.13.1", phase: "extracting", receivedBytes: 100, totalBytes: 100 },
+    });
+    await blockQuit();
+    await screen.findByText(enShell.tinytexGuards.typstQuit.title);
+    act(() => {
+      useTypstToolchainStore.setState({ install: null });
+    });
+    await waitFor(() => expect(mocks.cancelQuitFlush).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText(enShell.tinytexGuards.typstQuit.title)).toBeNull();
   });
 });

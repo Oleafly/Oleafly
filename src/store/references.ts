@@ -8,6 +8,15 @@ export type ReferenceQueryMode = "references" | "definitions";
  * makes an edit or project switch invalidate results immediately instead of
  * leaving stale source locations on screen.
  */
+export interface ReferenceLocation {
+  path: string;
+  from: number;
+  to: number;
+  line: number;
+  column: number;
+  preview: string;
+}
+
 export interface ReferenceQuery {
   projectId: string;
   projectRevision: number;
@@ -15,6 +24,7 @@ export interface ReferenceQuery {
   mode: ReferenceQueryMode;
   targetId: string;
   title: string;
+  locations?: readonly ReferenceLocation[];
 }
 
 interface ReferencesStore {

@@ -95,7 +95,9 @@
     "retryCompile": "Kompiler igen",
     "chooseEngine": "Vælg motor…",
     "installPackages_one": "Find og installer {{name}}",
-    "installPackages_other": "Find og installer {{count}} filer"
+    "installPackages_other": "Find og installer {{count}} filer",
+    "downloadTypst": "Download Typst {{version}}",
+    "useTypst": "Brug Typst {{version}}"
   },
   "stale": {
     "badge": "Forældet",
@@ -104,8 +106,8 @@
     "explanation": "Denne PDF svarer ikke til den aktive projektrevision.",
     "revisionExplanation": "Viser projektrevision {{displayed}}. Det aktive projekt er revision {{active}}.",
     "noIdentity": "Den viste PDF har ingen verificeret kompileringsidentitet for den aktive revision.",
-    "syncTexAvailable": "SyncTeX bruger den nærmeste uændrede linje ved redigeringer.",
-    "syncTexUnavailable": "SyncTeX kræver en aktuel kompilering."
+    "syncTexAvailable": "Kildesynkronisering bruger den nærmeste uændrede linje ved redigeringer.",
+    "syncTexUnavailable": "Kildesynkronisering kræver en aktuel kompilering."
   },
   "save": {
     "title": "Gem PDF i projektet",
@@ -273,5 +275,33 @@
       "pageLabel": "Side {{page}} af {{total}}",
       "empty": "Der blev ikke fundet læsbar tekst på denne side."
     }
+  },
+  "presentation": {
+    "windowTitle": "Præsentation",
+    "presenterTitle": "Præsentationsvisning",
+    "present": "Præsenter",
+    "presentFromStart": "Præsenter fra begyndelsen",
+    "presentFromPage": "Præsenter fra denne side",
+    "presentWithPresenter": "Præsenter med præsentationsvisning",
+    "loading": "Åbner slides",
+    "failed": "Slides kunne ikke åbnes. Kompiler projektet, og prøv igen.",
+    "close": "Luk",
+    "slideLabel": "Slide {{page}} af {{total}}",
+    "current": "Aktuel slide",
+    "next": "Næste slide",
+    "lastSlide": "Dette er den sidste slide.",
+    "notes": "Talernoter",
+    "notesLoading": "Læser talernoter",
+    "noNotes": "Ingen talernoter til denne slide.",
+    "elapsed": "Forløbet tid",
+    "clock": "Aktuelt klokkeslæt",
+    "pause": "Sæt timer på pause",
+    "resume": "Genoptag timer",
+    "reset": "Nulstil timer",
+    "previousAction": "Forrige slide",
+    "nextAction": "Næste slide",
+    "end": "Afslut præsentationen",
+    "blank": "Publikumsskærmen er tom. Tryk på B for at vise slides.",
+    "toggleBlank": "Gør publikumsskærmen tom"
   }
 }

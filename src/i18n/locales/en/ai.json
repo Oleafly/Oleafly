@@ -300,7 +300,7 @@
       "literatureSearch": "Search OpenAlex for papers by keyword, no key needed.",
       "verifyCitation": "Turn a DOI or a title into verified BibTeX through doi.org or Crossref.",
       "projectLibrarySearch": "Search the project's own text and notes by keyword.",
-      "previewFigure": "Compile a TikZ or PGFPlots figure on its own and show the result in the chat.",
+      "previewFigure": "Render a TikZ or CeTZ figure on its own and show the result in the chat.",
       "insertFigure": "Insert the finished figure at the cursor with a caption and label, and save a PNG under figures/.",
       "loadImage": "Look at an image that is already in the project.",
       "updateTodos": "Write or update the step by step plan shown in the chat.",
@@ -343,6 +343,7 @@
     "noDescription": "No description provided.",
     "notes": {
       "latexOnly": "LaTeX projects only",
+      "latexAndTypstOnly": "LaTeX and Typst projects only",
       "pdfCaptureSetting": "Needs the PDF page capture setting",
       "chatApproval": "Approved in the chat, one command at a time",
       "browserSetting": "Needs the web browser setting"
@@ -676,6 +677,24 @@
     "tikzFigure": {
       "label": "TikZ figure",
       "description": "Draft TikZ code in chat"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Fix Typst errors"
+      },
+      "writeEquation": {
+        "description": "Natural language to Typst math"
+      },
+      "academicPresentation": {
+        "description": "A Typst slide deck from your paper"
+      },
+      "generateTable": {
+        "description": "Draft a Typst table in chat"
+      },
+      "figure": {
+        "label": "CeTZ figure",
+        "description": "Draft CeTZ code in chat"
+      }
     }
   },
   "turn": {

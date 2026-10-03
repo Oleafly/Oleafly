@@ -146,5 +146,37 @@
       "check_running": "Ya hay una prueba de este agente en marcha.",
       "main_window": "Cambia los programas de los agentes desde la ventana principal."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly no ofrece Typst {{version}} y ningún Typst de este equipo tiene esa versión.",
+    "busy": "Typst {{version}} todavía se está instalando. Inténtalo de nuevo cuando termine.",
+    "remove_default": "Typst {{version}} es tu versión predeterminada. Elige otra predeterminada antes de quitarla.",
+    "remove_not_downloaded": "Oleafly solo puede quitar las versiones de Typst que descargó, y no descargó Typst {{version}}.",
+    "not_offered": "Typst {{version}} no se puede descargar para este equipo.",
+    "install_unverified": "Typst {{version}} se descargó, pero no superó la verificación de integridad. Vuelve a instalarlo.",
+    "not_typst_project": "Solo los proyectos de Typst tienen versión de Typst.",
+    "update_waits": "Espera a que Typst termine de instalarse antes de actualizar Oleafly."
+  },
+  "typst_packages": {
+    "index_offline": "No tienes conexión y la lista de paquetes de Typst Universe aún no se ha descargado.",
+    "index_unavailable": "No se pudo cargar la lista de paquetes de Typst Universe. Revisa tu conexión a internet e inténtalo de nuevo.",
+    "vendor_failed": "Oleafly no pudo copiar los paquetes al proyecto."
+  },
+  "typst_query": {
+    "timeout": "Typst tardó demasiado en leer este documento.",
+    "failed": "Typst no pudo leer este documento."
+  },
+  "typst_version_missing": "Typst {{version}} no está instalado.",
+  "typst_options": {
+    "invalid_input_key": "Los nombres de valor no pueden estar vacíos ni contener un signo igual.",
+    "invalid_variant_name": "Cada variante necesita un nombre corto que no use ninguna otra.",
+    "invalid_font_path": "Las carpetas de tipografías deben estar dentro del proyecto.",
+    "fonts_failed": "Typst no pudo listar las tipografías.",
+    "fonts_timeout": "Typst tardó demasiado en listar las tipografías."
+  },
+  "typst_export": {
+    "failed": "Typst no pudo exportar el documento.",
+    "unsupported": "Esta versión de Typst no puede exportar con estos ajustes.",
+    "invalid_ppi": "Elige una resolución de 1 a {{max}} PPI."
   }
 }

@@ -43,7 +43,8 @@ export interface PromptCategory {
 // Every prompt here is something the assistant's existing tools (file edit,
 // compile, the research/citation connectors, figure drawing) can actually
 // attempt - no card promises a capability the app doesn't have.
-export function promptCategories(): PromptCategory[] {
+export function promptCategories(profile = "latex"): PromptCategory[] {
+  const typst = profile === "typst";
   return [
     {
       id: "write-and-edit",
@@ -66,16 +67,20 @@ export function promptCategories(): PromptCategory[] {
         {
           id: "fix-latex-errors",
           icon: Wrench,
-          label: i18n.t(($) => $.ai.shortcuts.fixLatexErrors.label),
+          label: typst
+            ? i18n.t(($) => $.ai.shortcuts.typstVariants.fixErrors.label)
+            : i18n.t(($) => $.ai.shortcuts.fixLatexErrors.label),
           description: i18n.t(($) => $.ai.shortcuts.fixLatexErrors.description),
-          prompt: "Find and fix any LaTeX errors or compile issues in this document.",
+          prompt: `Find and fix any ${typst ? "Typst" : "LaTeX"} errors or compile issues in this document.`,
         },
         {
           id: "write-equation",
           icon: Sigma,
           label: i18n.t(($) => $.ai.shortcuts.writeEquation.label),
-          description: i18n.t(($) => $.ai.shortcuts.writeEquation.description),
-          prompt: "Write a LaTeX equation for: ",
+          description: typst
+            ? i18n.t(($) => $.ai.shortcuts.typstVariants.writeEquation.description)
+            : i18n.t(($) => $.ai.shortcuts.writeEquation.description),
+          prompt: typst ? "Write a Typst math equation for: " : "Write a LaTeX equation for: ",
         },
         {
           id: "draft-section",
@@ -213,8 +218,10 @@ export function promptCategories(): PromptCategory[] {
           id: "academic-presentation",
           icon: MonitorPlay,
           label: i18n.t(($) => $.ai.shortcuts.academicPresentation.label),
-          description: i18n.t(($) => $.ai.shortcuts.academicPresentation.description),
-          prompt: "Turn this paper into a Beamer slide presentation.",
+          description: typst
+            ? i18n.t(($) => $.ai.shortcuts.typstVariants.academicPresentation.description)
+            : i18n.t(($) => $.ai.shortcuts.academicPresentation.description),
+          prompt: `Turn this paper into a ${typst ? "Typst" : "Beamer"} slide presentation.`,
         },
         {
           id: "academic-poster",
@@ -227,15 +234,21 @@ export function promptCategories(): PromptCategory[] {
           id: "generate-table",
           icon: Table,
           label: i18n.t(($) => $.ai.shortcuts.generateTable.label),
-          description: i18n.t(($) => $.ai.shortcuts.generateTable.description),
-          prompt: "Draft a LaTeX table for: ",
+          description: typst
+            ? i18n.t(($) => $.ai.shortcuts.typstVariants.generateTable.description)
+            : i18n.t(($) => $.ai.shortcuts.generateTable.description),
+          prompt: `Draft a ${typst ? "Typst" : "LaTeX"} table for: `,
         },
         {
           id: "tikz-figure",
           icon: PenTool,
-          label: i18n.t(($) => $.ai.shortcuts.tikzFigure.label),
-          description: i18n.t(($) => $.ai.shortcuts.tikzFigure.description),
-          prompt: "Draft a TikZ figure for: ",
+          label: typst
+            ? i18n.t(($) => $.ai.shortcuts.typstVariants.figure.label)
+            : i18n.t(($) => $.ai.shortcuts.tikzFigure.label),
+          description: typst
+            ? i18n.t(($) => $.ai.shortcuts.typstVariants.figure.description)
+            : i18n.t(($) => $.ai.shortcuts.tikzFigure.description),
+          prompt: `Draft a ${typst ? "CeTZ" : "TikZ"} figure for: `,
         },
       ],
     },

@@ -314,7 +314,7 @@
       "literatureSearch": "Шукати статті в OpenAlex за ключовими словами, ключ не потрібен.",
       "verifyCitation": "Перетворити DOI чи назву на перевірений BibTeX через doi.org або Crossref.",
       "projectLibrarySearch": "Шукати за ключовими словами у власному тексті та нотатках проєкту.",
-      "previewFigure": "Скомпілювати рисунок TikZ або PGFPlots окремо і показати результат у чаті.",
+      "previewFigure": "Відтворити рисунок TikZ або CeTZ окремо і показати результат у чаті.",
       "insertFigure": "Вставити готовий рисунок у позицію курсора з підписом і міткою та зберегти PNG у figures/.",
       "loadImage": "Подивитися на зображення, яке вже є в проєкті.",
       "updateTodos": "Записати чи оновити покроковий план, показаний у чаті.",
@@ -357,6 +357,7 @@
     "noDescription": "Опис не надано.",
     "notes": {
       "latexOnly": "Лише для проєктів LaTeX",
+      "latexAndTypstOnly": "Лише для проєктів LaTeX і Typst",
       "pdfCaptureSetting": "Потребує налаштування захоплення сторінок PDF",
       "chatApproval": "Схвалюється в чаті, по одній команді за раз",
       "browserSetting": "Потребує налаштування вебпереглядача"
@@ -694,6 +695,24 @@
     "tikzFigure": {
       "label": "Рисунок TikZ",
       "description": "Накидати код TikZ у чаті"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Виправити помилки Typst"
+      },
+      "writeEquation": {
+        "description": "З природної мови в математику Typst"
+      },
+      "academicPresentation": {
+        "description": "Презентація Typst на основі вашої статті"
+      },
+      "generateTable": {
+        "description": "Накидати таблицю Typst у чаті"
+      },
+      "figure": {
+        "label": "Рисунок CeTZ",
+        "description": "Накидати код CeTZ у чаті"
+      }
     }
   },
   "turn": {

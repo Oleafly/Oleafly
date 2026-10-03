@@ -16,6 +16,7 @@ import {
   History,
   Presentation,
   LayoutGrid,
+  ImageDown,
   ImagePlay,
   Maximize,
   Sparkles,
@@ -54,6 +55,7 @@ import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
+import { openTypstExport } from "@/components/typst-export/open";
 import { exportRoutesFor } from "@oleafly/conversion-registry";
 import {
   duplicateProject,
@@ -426,6 +428,18 @@ export function TopToolbar() {
       <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
         <ImagePlay className="size-4 text-muted-foreground" />
         {t(($) => $.shell.toolbar.exportPagePng)}
+      </DropdownMenuItem>
+    )}
+    {engine.source_format === "typst" && engine.typst_options && (
+      <DropdownMenuItem
+        data-testid="export-typst-native"
+        onSelect={() => {
+          setDlOpen(false);
+          openTypstExport();
+        }}
+      >
+        <ImageDown className="size-4 text-muted-foreground" />
+        {t(($) => $.shell.typstExport.menuItem)}
       </DropdownMenuItem>
     )}
     {!pdfBytes && (

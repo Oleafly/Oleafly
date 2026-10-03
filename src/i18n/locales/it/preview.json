@@ -96,7 +96,9 @@
     "chooseEngine": "Scegli il motore…",
     "installPackages_one": "Trova e installa {{name}}",
     "installPackages_many": "Trova e installa {{count}} file",
-    "installPackages_other": "Trova e installa {{count}} file"
+    "installPackages_other": "Trova e installa {{count}} file",
+    "downloadTypst": "Scarica Typst {{version}}",
+    "useTypst": "Usa Typst {{version}}"
   },
   "stale": {
     "badge": "Obsoleto",
@@ -105,8 +107,8 @@
     "explanation": "Questo PDF non rappresenta la revisione attiva del progetto.",
     "revisionExplanation": "È mostrata la revisione {{displayed}} del progetto. Il progetto attivo è alla revisione {{active}}.",
     "noIdentity": "Il PDF visualizzato non ha un'identità di compilazione verificata per la revisione attiva.",
-    "syncTexAvailable": "Per le modifiche SyncTeX usa la riga invariata più vicina.",
-    "syncTexUnavailable": "SyncTeX richiede una compilazione aggiornata."
+    "syncTexAvailable": "La sincronizzazione con il sorgente usa la riga invariata più vicina per le modifiche.",
+    "syncTexUnavailable": "La sincronizzazione con il sorgente richiede una compilazione aggiornata."
   },
   "save": {
     "title": "Salva il PDF nel progetto",
@@ -274,5 +276,33 @@
       "pageLabel": "Pagina {{page}} di {{total}}",
       "empty": "Non è stato trovato nessun testo leggibile in questa pagina."
     }
+  },
+  "presentation": {
+    "windowTitle": "Presentazione",
+    "presenterTitle": "Vista relatore",
+    "present": "Presenta",
+    "presentFromStart": "Presenta dall'inizio",
+    "presentFromPage": "Presenta da questa pagina",
+    "presentWithPresenter": "Presenta con la vista relatore",
+    "loading": "Apertura delle slide",
+    "failed": "Impossibile aprire le slide. Compila il progetto, poi riprova.",
+    "close": "Chiudi",
+    "slideLabel": "Slide {{page}} di {{total}}",
+    "current": "Slide corrente",
+    "next": "Slide successiva",
+    "lastSlide": "Questa è l'ultima slide.",
+    "notes": "Note del relatore",
+    "notesLoading": "Lettura delle note del relatore",
+    "noNotes": "Nessuna nota del relatore per questa slide.",
+    "elapsed": "Tempo trascorso",
+    "clock": "Ora attuale",
+    "pause": "Metti in pausa il timer",
+    "resume": "Riprendi il timer",
+    "reset": "Azzera il timer",
+    "previousAction": "Slide precedente",
+    "nextAction": "Slide successiva",
+    "end": "Termina la presentazione",
+    "blank": "Lo schermo del pubblico è oscurato. Premi B per mostrare le slide.",
+    "toggleBlank": "Oscura lo schermo del pubblico"
   }
 }

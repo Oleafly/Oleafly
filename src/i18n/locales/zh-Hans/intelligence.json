@@ -59,6 +59,8 @@
       "startingAndInitializing": "正在启动并初始化项目语言服务。",
       "stopTimeout": "上一个语言服务进程未及时停止。请重试以恢复。",
       "synchronizedAndReady": "语言服务已同步，准备就绪。",
+      "tinymistDownloadFailed": "无法下载 Tinymist {{version}}。Oleafly 会再次尝试。",
+      "tinymistDownloading": "正在下载 Tinymist {{version}}，以匹配此项目的 Typst 版本。",
       "transportClosed": "语言服务连接意外关闭。请重试以重新连接。",
       "versionMismatch": "预期 {{kind}} {{expected}}，但安装程序报告为 {{reported}}。"
     }
@@ -135,7 +137,8 @@
     "packageOption": "{{name}} 选项",
     "keyvalKey": "\\{{command}} 键",
     "duplicateCount": "重复（{{count}}）",
-    "duplicateIndex": "重复 {{index}}/{{total}}"
+    "duplicateIndex": "重复 {{index}}/{{total}}",
+    "typstBinding": "Typst 绑定"
   },
   "token": {
     "citation": "引用",

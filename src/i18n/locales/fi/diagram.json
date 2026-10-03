@@ -3,6 +3,22 @@
     "aiProviderRequired": "Yhdistä tekoälypalvelu asetuksissa, jotta Korjaa tekoälyllä on käytettävissä.",
     "fixFailed": "Korjaus epäonnistui: {{detail}}"
   },
+  "chooser": {
+    "title": "Valitse kaavioeditori",
+    "description": "Valitse, millaiseen dokumenttiin kaavio tulee.",
+    "tikz": {
+      "title": "TikZ-kaavio",
+      "description": "Solmuja ja nuolia TikZ-koodina LaTeX-dokumentteihin."
+    },
+    "typst": {
+      "title": "Typst-kaavio",
+      "description": "Kaavio fletcher-paketilla Typst-dokumentteihin."
+    },
+    "mermaid": {
+      "title": "Mermaid-kaavio",
+      "description": "Mermaid-vuokaavio Markdown-dokumentteihin."
+    }
+  },
   "package": {
     "composer": {
       "title": "Lisää kaavio",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Peruuta (Esc)",
       "cancelRename": "Peruuta nimeäminen",
       "renameTooltip": "Nimeä kaavio uudelleen",
-      "importTooltip": "Tuo .tikz- tai .tex-tiedosto ja korvaa tämä luonnos",
-      "importLabel": "Tuo TikZ-tiedosto",
+      "importTooltip": "Tuo .tikz-, .tex-, .typ-, .mmd- tai .md-tiedosto ja korvaa tämä luonnos",
+      "importLabel": "Tuo kaaviotiedosto",
       "modeDraw": "Piirrä",
       "modeCode": "Koodi",
       "fixWithAiTooltip": "Pyydä tekoälyä korjaamaan käännösvirhe",
@@ -28,20 +44,29 @@
       "newProject": "Uusi projekti",
       "noOtherProjects": "Muita projekteja ei vielä ole.",
       "saveFigure": "Tallenna kuva",
+      "insertTypst": "Lisää Typst-koodina",
+      "insertLatex": "Lisää TikZ-koodina",
       "downloadTooltip": "Lataa tämä kaavio",
       "download": "Lataa",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (tulossa pian)",
       "svgTooltip": "SVG-vienti vaatii vektoripiirtimen, jota ei ole vielä saatavilla",
       "snippets": "Katkelmat",
-      "untitledName": "Nimetön kaavio"
+      "untitledName": "Nimetön kaavio",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Lisää Mermaid-koodina",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Kaavion kieli: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Suorakulmiosolmu",
       "circleNode": "Ympyräsolmu",
       "arrowEdge": "Nuolikaari",
       "lineEdge": "Viivakaari",
-      "scope": "Scope"
+      "scope": "Scope",
+      "group": "Ryhmä"
     },
     "preview": {
       "label": "Esikatselu",
@@ -53,7 +78,8 @@
       "pngScale": "PNG-skaala",
       "scaleFactor": "{{factor}}x",
       "background": "Tausta",
-      "backgroundLabel": "Kuvan taustaväri"
+      "backgroundLabel": "Kuvan taustaväri",
+      "diagnosticAt": "Rivi {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Kaavio ei kääntynyt. Tarkista alla oleva loki.",
@@ -68,16 +94,25 @@
       "figureCached": "Löytyi jo välimuistista, käytetään olemassa olevaa kuvaa.",
       "figureSaved": "Tallennettu kuvien välimuistiin.",
       "saveFigureFailed": "Kuvaa ei voitu tallentaa: {{detail}}",
+      "insertedTypst": "Lisätty Typst-koodina.",
+      "insertedLatex": "Lisätty TikZ-koodina.",
       "downloaded": "Ladattu.",
       "imported": "{{name}} tuotiin muokattavaksi.",
       "importedCodeOnly": "{{name}} tuotiin (vain koodi, ei piirrettävissä).",
       "importFailed": "Tiedostoa ei voitu tuoda: {{detail}}",
       "noAiFix": "Tekoäly ei palauttanut korjausta.",
       "fixFailed": "Korjaus epäonnistui: {{detail}}",
-      "notDrawable": "Tästä koodista ei voitu piirtää mitään. Koodi jäi ennalleen."
+      "notDrawable": "Tästä koodista ei voitu piirtää mitään. Koodi jäi ennalleen.",
+      "savedTypstToProject": "{{path}} tallennettiin. Lisää se dokumenttiin #include-komennolla.",
+      "insertedMermaid": "Lisätty Mermaid-koodilohkona.",
+      "savedMermaidToProject": "{{path}} tallennettiin. Lisää se Markdown-dokumenttiin mermaid-koodilohkossa.",
+      "typstPackageMissing": "Typst ei saanut fletcher-pakettia. Muodosta internetyhteys kerran, jotta Typst voi ladata paketin ja säilyttää sen.",
+      "previewUnavailable": "Tämä esikatselu ei ole käytettävissä täällä.",
+      "readerUnavailable": "Koodin lukijaa ei voitu ladata. Yritä uudelleen."
     },
     "confirm": {
-      "overwrite": "{{files}} on jo olemassa. Korvataanko? (Säilytä molemmat valitsemalla eri nimi.)"
+      "overwrite": "{{files}} on jo olemassa. Korvataanko? (Säilytä molemmat valitsemalla eri nimi.)",
+      "switchLanguage": "Vaihdetaanko tämä kaavio muodosta {{from}} muotoon {{to}}? Koodi, jota piirtoalusta ei voi näyttää, ei siirry mukana."
     },
     "canvas": {
       "shapeTools": "Muototyökalut",
@@ -136,7 +171,57 @@
       "routingStraight": "Suora",
       "routingOrthogonal": "Suorakulmainen",
       "routingCurved": "Kaareva",
-      "line": "Viiva"
+      "line": "Viiva",
+      "nodeLabelTypst": "Nimike (Typst)"
+    },
+    "notes": {
+      "tooltip": "Mitä piirtoalusta ei näytä kokonaan",
+      "count_one": "{{count}} huomautus",
+      "count_other": "{{count}} huomautusta",
+      "keptHeading": "Säilyy koodissa",
+      "approximatedHeading": "Näytetään likimääräisesti",
+      "droppedHeading": "Ei piirretä piirtoalustalle",
+      "notDiagram": "Tässä koodissa ei ole mitään, mitä piirtoalusta voi piirtää.",
+      "outsideCode": "Kaaviota edeltävä tai seuraava koodi säilyy sellaisenaan.",
+      "wrapper": "Kaavion ympärillä oleva koodi, esimerkiksi kuva, säilyy sellaisenaan.",
+      "diagramSetting": "Kaavion asetus {{detail}} säilyy koodissa.",
+      "edgeOption": "Kaaren asetus {{detail}} säilyy koodissa.",
+      "scripted": "Skriptattu kaavion sisältö, kuten silmukat, säilyy koodissa.",
+      "mathMode": "Matematiikkatilassa oleva kaavion sisältö säilyy koodissa.",
+      "unplacedNode": "Solmut, joilla ei ole kiinteää sijaintia, säilyvät koodissa.",
+      "unreadEdge": "Kaaret, joita piirtoalusta ei osaa lukea, säilyvät koodissa.",
+      "danglingEdge": "Kaaret, jotka eivät yhdistä kahta solmua, säilyvät koodissa.",
+      "gridCoordinates": "Ruudukkokoordinaatit näytetään kiinteissä sijainneissa.",
+      "formattedLabels": "Muotoillut nimikkeet näytetään pelkkänä tekstinä.",
+      "unknownShapes": "Muodot, joita piirtoalustalla ei ole, näytetään suorakulmioina.",
+      "estimatedSize": "Solmut, joilla ei ole leveyttä ja korkeutta, näytetään arvioidun kokoisina.",
+      "colorAdjustments": "Säädetyt värit, kuten lighten, näytetään perusvärillään.",
+      "colorExpressions": "Muuttujilla tai lausekkeilla asetettuja värejä ei näytetä piirtoalustalla.",
+      "strokeStyles": "Jotkin viivatyylit näytetään lähimmällä piirtoalustan tyylillä.",
+      "arrowMarks": "Nuolenkärjet, joita piirtoalustalla ei ole, näytetään tavallisina nuolina.",
+      "freePoints": "Vapaiden pisteiden kautta kulkevat kaaret piirretään piirtoalustalle suorina.",
+      "tikzCommand": "Komentoa {{detail}} ei piirretä. Piirtoalustalla tehty muutos kirjoittaa koodin uudelleen ilman sitä.",
+      "truncated": "Koodi on liian pitkä, joten vain sen alkuosa piirretään.",
+      "mermaidNotFlowchart": "Piirtoalustalle voi piirtää vain vuokaavioita. Tämän koodin kaaviotyyppi on {{detail}}.",
+      "mermaidFrontmatter": "Frontmatter-lohko säilyy koodissa.",
+      "mermaidDirective": "Asetusdirektiivit säilyvät koodissa.",
+      "mermaidComment": "Kommentit säilyvät koodissa.",
+      "mermaidAccessibility": "Saavutettavuuden otsikot ja kuvaukset säilyvät koodissa.",
+      "mermaidClick": "Napsautusten käsittelijät säilyvät koodissa.",
+      "mermaidStyleProperty": "Tyyliominaisuus {{detail}} säilyy koodissa.",
+      "mermaidClassProperty": "Luokkaominaisuus {{detail}} säilyy koodissa.",
+      "mermaidLinkStyleProperty": "Linkkityylin ominaisuus {{detail}} säilyy koodissa.",
+      "mermaidNodeSetting": "Solmun asetus {{detail}} säilyy koodissa.",
+      "mermaidEdgeSetting": "Kaaren asetus {{detail}} säilyy koodissa.",
+      "mermaidInvisibleLink": "Näkymättömät linkit säilyvät koodissa.",
+      "mermaidLinkLength": "Linkkien pituudet säilyvät koodissa.",
+      "mermaidSubgraphDirection": "Alikaavioiden suunnat säilyvät koodissa.",
+      "mermaidUnknownStatement": "Lauseet, joita piirtoalusta ei osaa lukea, säilyvät koodissa.",
+      "mermaidShape": "Muoto {{detail}} näytetään lähimpänä piirtoalustan muotona.",
+      "mermaidThickLink": "Paksut linkit näytetään tavallisina viivoina.",
+      "mermaidArrowHead": "Ympyrä- ja ristinuolenkärjet näytetään nuolina.",
+      "mermaidMarkdownLabel": "Markdown-nimikkeet näytetään pelkkänä tekstinä.",
+      "mermaidNoFlowchartHeader": "Piirtoalustalle voi piirtää vain vuokaavioita. Aloita koodi sanalla flowchart tai graph."
     }
   }
 }

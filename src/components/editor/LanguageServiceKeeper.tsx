@@ -57,6 +57,15 @@ function currentProjectSnapshot(): LanguageServiceProjectSnapshot {
     indexTexts: index.texts,
     index: index.index,
     indexBuilding: index.building,
+    typstVersion:
+      files.engine.source_format === "typst"
+        ? (files.engine.typst_resolved?.version ??
+          files.engine.typst_missing ??
+          files.engine.typst_version ??
+          null)
+        : null,
+    typstVendorPackages:
+      files.engine.source_format === "typst" && files.engine.typst_vendor_packages === true,
   };
 }
 
@@ -73,7 +82,9 @@ function sameSnapshotInputs(
     left.files === right.files &&
     left.indexTexts === right.indexTexts &&
     left.index === right.index &&
-    left.indexBuilding === right.indexBuilding
+    left.indexBuilding === right.indexBuilding &&
+    left.typstVersion === right.typstVersion &&
+    left.typstVendorPackages === right.typstVendorPackages
   );
 }
 

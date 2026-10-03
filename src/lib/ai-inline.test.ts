@@ -77,6 +77,60 @@ describe("runInlineCompletion", () => {
     expect(system).toMatch(/LaTeX/);
   });
 
+  it("tells a LaTeX edit to keep \\cite, \\ref and \\label keys", async () => {
+    streamText.mockResolvedValue("");
+    await runInlineCompletion({ instruction: "x", selection: "y", engine: LATEX_ENGINE });
+
+    const { system } = streamText.mock.calls[0][0] as StreamArgs;
+    expect(system).toContain(String.raw`Keep every \cite, \ref and \label command and its key unchanged.`);
+  });
+
+  it("tells a Typst edit to keep @key references, #cite calls and labels", async () => {
+    streamText.mockResolvedValue("");
+    await runInlineCompletion({
+      instruction: "x",
+      selection: "y",
+      engine: {
+        ...LATEX_ENGINE,
+        id: "typst",
+        label: "Typst",
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "typst" },
+      },
+    });
+
+    const { system } = streamText.mock.calls[0][0] as StreamArgs;
+    expect(system).toContain("Preserve valid Typst markup and scripting syntax.");
+    expect(system).toContain("Keep every @key reference, #cite call and <label> unchanged.");
+    expect(system).not.toContain("LaTeX");
+    expect(system).not.toContain(String.raw`\cite`);
+  });
+
+  it("tells a Markdown edit to keep Pandoc citations", async () => {
+    streamText.mockResolvedValue("");
+    await runInlineCompletion({
+      instruction: "x",
+      selection: "y",
+      engine: {
+        ...LATEX_ENGINE,
+        id: "markdown",
+        label: "Markdown",
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "markdown" },
+      },
+    });
+
+    const { system } = streamText.mock.calls[0][0] as StreamArgs;
+    expect(system).toContain("Keep every [@key] citation unchanged.");
+  });
+
+  it("adds no citation syntax when the engine is unknown", async () => {
+    streamText.mockResolvedValue("");
+    await runInlineCompletion({ instruction: "x", selection: "y" });
+
+    const { system } = streamText.mock.calls[0][0] as StreamArgs;
+    expect(system).not.toContain("@key");
+    expect(system).not.toContain(String.raw`\cite`);
+  });
+
   it("forwards the abort signal so an inline edit can be cancelled", async () => {
     streamText.mockResolvedValue("");
     const controller = new AbortController();

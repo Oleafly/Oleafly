@@ -166,5 +166,10 @@
       "detail": "Najnowsza wersja projektu nie została jeszcze zindeksowana.",
       "title": "Oczekiwanie na analizę projektu"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Styl cytowania",
+    "ariaLabel": "Styl cytowania bibliografii w {{path}}",
+    "failed": "Oleafly nie mógł zmienić stylu cytowania."
   }
 }

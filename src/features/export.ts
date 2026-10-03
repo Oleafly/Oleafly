@@ -7,6 +7,8 @@ import { ensurePandoc } from "@/features/pandoc";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { i18n } from "@/i18n";
 import { basename } from "@/lib/path-utils";
+import type { TypstExportRequest } from "@/lib/typst-options";
+import { activeTypstVariant } from "@/store/typst-variant";
 
 export type DocumentExportFormat = "docx" | "html" | "md" | "pptx" | "epub" | "txt" | "typst" | "tex";
 
@@ -16,7 +18,7 @@ let documentExportInFlight = false;
 
 export async function exportCurrentDocument(format: DocumentExportFormat | "zip"): Promise<void> {
   if (documentExportInFlight) return;
-  const { projectId, projectName } = useFilesStore.getState();
+  const { projectId, projectName, engine } = useFilesStore.getState();
   if (!projectId) return;
   const mainDoc = resolveEffectiveMainDoc().mainDoc;
   const extension = format === "typst" ? "typ" : format;
@@ -46,7 +48,7 @@ export async function exportCurrentDocument(format: DocumentExportFormat | "zip"
       true,
     );
     if (format === "zip") await downloadProjectZip(projectId, destination);
-    else await exportDocument(projectId, mainDoc, format, destination);
+    else await exportDocument(projectId, mainDoc, format, destination, activeTypstVariant(projectId, engine));
     exportSuccessToast(extension.toUpperCase(), destination);
     progress = undefined;
   } catch (error) {
@@ -151,6 +153,49 @@ export async function exportCurrentImagePng(scale = 3): Promise<void> {
         : i18n.t(($) => $.core.export.pngFailed),
     );
   } finally {
+    documentExportInFlight = false;
+  }
+}
+
+export async function exportCurrentTypst(request: TypstExportRequest): Promise<void> {
+  if (documentExportInFlight) return;
+  const { projectId, projectName, engine } = useFilesStore.getState();
+  if (!projectId || engine.source_format !== "typst") return;
+  const mainDoc = resolveEffectiveMainDoc().mainDoc;
+  const extension = request.format;
+  const kind = extension.toUpperCase();
+  const name = (projectName || "document").replace(/[^\w.-]+/g, "_");
+  documentExportInFlight = true;
+  let progress: number | undefined;
+  try {
+    const destination = await pickSavePath({
+      defaultPath: `${name}.${extension}`,
+      filters: [{ name: kind, extensions: [extension] }],
+    });
+    if (!destination) return;
+    if (useFilesStore.getState().projectId !== projectId) {
+      throw new Error("The open project changed. Start the export again from the project you want to save.");
+    }
+    await useFilesStore.getState().flushForQuit();
+    progress = toast.infoUnique(
+      EXPORT_TOAST_KEY,
+      i18n.t(($) => $.shell.toolbar.exporting, { format: extension }),
+      undefined,
+      true,
+    );
+    const { exportTypstDocument } = await import("@/lib/typst-options");
+    const result = await exportTypstDocument(
+      projectId,
+      mainDoc,
+      { ...request, variant: activeTypstVariant(projectId, engine) },
+      destination,
+    );
+    exportSuccessToast(kind, result.files[0] ?? destination);
+    progress = undefined;
+  } catch (error) {
+    notifyError("export with Typst", error);
+  } finally {
+    if (progress !== undefined) toast.dismiss(progress);
     documentExportInFlight = false;
   }
 }

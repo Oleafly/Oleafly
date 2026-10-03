@@ -3,6 +3,22 @@
     "aiProviderRequired": "AI で修正を使うには、設定で AI プロバイダに接続してください。",
     "fixFailed": "修正に失敗しました: {{detail}}"
   },
+  "chooser": {
+    "title": "ダイアグラムコンポーザーを選択",
+    "description": "図を使う文書の種類を選んでください。",
+    "tikz": {
+      "title": "TikZ の図",
+      "description": "LaTeX 文書向けの、TikZ によるノードと矢印。"
+    },
+    "typst": {
+      "title": "Typst の図",
+      "description": "Typst 文書向けの fletcher の図。"
+    },
+    "mermaid": {
+      "title": "Mermaid の図",
+      "description": "Markdown 文書向けの Mermaid フローチャート。"
+    }
+  },
   "package": {
     "composer": {
       "title": "図を挿入",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "キャンセル（Esc）",
       "cancelRename": "名前の変更をキャンセル",
       "renameTooltip": "図の名前を変更",
-      "importTooltip": ".tikz または .tex ファイルを読み込み、この下書きを置き換えます",
-      "importLabel": "TikZ ファイルを読み込む",
+      "importTooltip": ".tikz、.tex、.typ、.mmd、.md ファイルを読み込み、この下書きを置き換えます",
+      "importLabel": "図のファイルを読み込む",
       "modeDraw": "描画",
       "modeCode": "コード",
       "fixWithAiTooltip": "コンパイルエラーの修正を AI に依頼します",
@@ -28,20 +44,29 @@
       "newProject": "新規プロジェクト",
       "noOtherProjects": "ほかのプロジェクトはまだありません。",
       "saveFigure": "図を保存",
+      "insertTypst": "Typst として挿入",
+      "insertLatex": "TikZ として挿入",
       "downloadTooltip": "この図をダウンロードします",
       "download": "ダウンロード",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG（近日対応）",
       "svgTooltip": "SVG 書き出しにはベクタレンダラが必要で、まだ利用できません",
       "snippets": "スニペット",
-      "untitledName": "無題の図"
+      "untitledName": "無題の図",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Mermaid として挿入",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "図の言語: {{language}}"
     },
     "snippets": {
       "rectangleNode": "長方形ノード",
       "circleNode": "円ノード",
       "arrowEdge": "矢印の辺",
       "lineEdge": "直線の辺",
-      "scope": "スコープ"
+      "scope": "スコープ",
+      "group": "グループ"
     },
     "preview": {
       "label": "プレビュー",
@@ -53,7 +78,8 @@
       "pngScale": "PNG の倍率",
       "scaleFactor": "{{factor}} 倍",
       "background": "背景",
-      "backgroundLabel": "図の背景色"
+      "backgroundLabel": "図の背景色",
+      "diagnosticAt": "{{line}} 行目: {{message}}"
     },
     "toast": {
       "compileFailed": "図をコンパイルできませんでした。下のログを確認してください。",
@@ -68,16 +94,25 @@
       "figureCached": "すでにキャッシュにあるため、既存の図を再利用します。",
       "figureSaved": "図のキャッシュに保存しました。",
       "saveFigureFailed": "図を保存できませんでした: {{detail}}",
+      "insertedTypst": "Typst のコードとして挿入しました。",
+      "insertedLatex": "TikZ のコードとして挿入しました。",
       "downloaded": "ダウンロードしました。",
       "imported": "{{name}} を編集用に読み込みました。",
       "importedCodeOnly": "{{name}} を読み込みました（コードのみ、描画はできません）。",
       "importFailed": "そのファイルを読み込めませんでした: {{detail}}",
       "noAiFix": "AI は修正を返しませんでした。",
       "fixFailed": "修正に失敗しました: {{detail}}",
-      "notDrawable": "このコードには描画できるものがありません。コードは変更していません。"
+      "notDrawable": "このコードには描画できるものがありません。コードは変更していません。",
+      "savedTypstToProject": "{{path}} を保存しました。#include で文書に追加してください。",
+      "insertedMermaid": "Mermaid のコードブロックとして挿入しました。",
+      "savedMermaidToProject": "{{path}} を保存しました。mermaid のコードブロックに入れて Markdown 文書に追加してください。",
+      "typstPackageMissing": "Typst は fletcher パッケージを取得できませんでした。Typst がダウンロードして保存できるよう、一度インターネットに接続してください。",
+      "previewUnavailable": "このプレビューはここでは利用できません。",
+      "readerUnavailable": "コードの読み取り機能を読み込めませんでした。もう一度お試しください。"
     },
     "confirm": {
-      "overwrite": "{{files}} はすでに存在します。上書きしますか？（両方を残すには別の名前を選んでください。）"
+      "overwrite": "{{files}} はすでに存在します。上書きしますか？（両方を残すには別の名前を選んでください。）",
+      "switchLanguage": "この図を {{from}} から {{to}} に切り替えますか？キャンバスで表示できないコードは引き継がれません。"
     },
     "canvas": {
       "shapeTools": "図形ツール",
@@ -136,7 +171,56 @@
       "routingStraight": "直線",
       "routingOrthogonal": "直交",
       "routingCurved": "曲線",
-      "line": "線"
+      "line": "線",
+      "nodeLabelTypst": "ラベル（Typst）"
+    },
+    "notes": {
+      "tooltip": "キャンバスで完全には表示されない内容",
+      "count_other": "注記 {{count}} 件",
+      "keptHeading": "コードに残る内容",
+      "approximatedHeading": "近似表示される内容",
+      "droppedHeading": "キャンバスに描画されない内容",
+      "notDiagram": "このコードには、キャンバスで描画できるものがありません。",
+      "outsideCode": "図の前後にあるコードは、書かれたまま残ります。",
+      "wrapper": "図を囲むコード（figure など）は、書かれたまま残ります。",
+      "diagramSetting": "図の設定 {{detail}} はコードに残ります。",
+      "edgeOption": "辺のオプション {{detail}} はコードに残ります。",
+      "scripted": "ループなど、スクリプトで生成する図の内容はコードに残ります。",
+      "mathMode": "数式モードの図の内容はコードに残ります。",
+      "unplacedNode": "位置が決まっていないノードはコードに残ります。",
+      "unreadEdge": "キャンバスで読み取れない辺はコードに残ります。",
+      "danglingEdge": "2 つのノードをつないでいない辺はコードに残ります。",
+      "gridCoordinates": "グリッド座標は固定位置に表示されます。",
+      "formattedLabels": "書式付きのラベルはプレーンテキストで表示されます。",
+      "unknownShapes": "キャンバスにない図形は長方形で表示されます。",
+      "estimatedSize": "幅と高さがないノードは、推定サイズで表示されます。",
+      "colorAdjustments": "lighten などで調整した色は、元の色で表示されます。",
+      "colorExpressions": "変数や式で指定した色はキャンバスに表示されません。",
+      "strokeStyles": "一部の線のスタイルは、キャンバスで最も近いスタイルで表示されます。",
+      "arrowMarks": "キャンバスにない矢じりは、通常の矢印で表示されます。",
+      "freePoints": "自由な点を通る辺は、キャンバスでは直線で描かれます。",
+      "tikzCommand": "{{detail}} コマンドは描画されません。キャンバスで編集すると、このコマンドを除いてコードが書き直されます。",
+      "truncated": "コードが長すぎるため、最初の部分だけを描画します。",
+      "mermaidNotFlowchart": "キャンバスで描画できるのはフローチャートだけです。このコードは {{detail}} の図です。",
+      "mermaidFrontmatter": "frontmatter のブロックはコードに残ります。",
+      "mermaidDirective": "設定ディレクティブはコードに残ります。",
+      "mermaidComment": "コメントはコードに残ります。",
+      "mermaidAccessibility": "アクセシビリティ用のタイトルと説明はコードに残ります。",
+      "mermaidClick": "クリックハンドラーはコードに残ります。",
+      "mermaidStyleProperty": "スタイルプロパティ {{detail}} はコードに残ります。",
+      "mermaidClassProperty": "クラスプロパティ {{detail}} はコードに残ります。",
+      "mermaidLinkStyleProperty": "リンクスタイルのプロパティ {{detail}} はコードに残ります。",
+      "mermaidNodeSetting": "ノードの設定 {{detail}} はコードに残ります。",
+      "mermaidEdgeSetting": "辺の設定 {{detail}} はコードに残ります。",
+      "mermaidInvisibleLink": "非表示のリンクはコードに残ります。",
+      "mermaidLinkLength": "リンクの長さはコードに残ります。",
+      "mermaidSubgraphDirection": "サブグラフの向きはコードに残ります。",
+      "mermaidUnknownStatement": "キャンバスで読み取れない文はコードに残ります。",
+      "mermaidShape": "{{detail}} の図形は、キャンバスで最も近い図形で表示されます。",
+      "mermaidThickLink": "太いリンクは通常の線で表示されます。",
+      "mermaidArrowHead": "円形や × 印の矢じりは矢印で表示されます。",
+      "mermaidMarkdownLabel": "Markdown のラベルはプレーンテキストで表示されます。",
+      "mermaidNoFlowchartHeader": "キャンバスで描画できるのはフローチャートだけです。コードを flowchart または graph で始めてください。"
     }
   }
 }

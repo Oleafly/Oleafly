@@ -160,5 +160,10 @@
       "detail": "La dernière révision du projet n'a pas encore été indexée.",
       "title": "En attente de l'analyse du projet"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Style de citation",
+    "ariaLabel": "Style de citation de la bibliographie dans {{path}}",
+    "failed": "Oleafly n'a pas pu changer le style de citation."
   }
 }

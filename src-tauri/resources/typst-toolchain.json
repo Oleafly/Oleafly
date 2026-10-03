@@ -90,12 +90,14 @@
         "releasedAt": "2024-10-18",
         "capabilities": {
           "flags": [
+            "--creation-timestamp",
             "--font-path",
             "--format",
             "--ignore-system-fonts",
             "--input",
             "--package-cache-path",
             "--package-path",
+            "--pages",
             "--pdf-standard",
             "--ppi"
           ],
@@ -164,16 +166,20 @@
         "capabilities": {
           "flags": [
             "--color",
+            "--creation-timestamp",
+            "--features",
             "--font-path",
             "--format",
             "--ignore-system-fonts",
             "--input",
             "--package-cache-path",
             "--package-path",
+            "--pages",
             "--pdf-standard",
             "--ppi"
           ],
           "outputFormats": [
+            "html",
             "pdf",
             "png",
             "svg"
@@ -239,16 +245,21 @@
         "capabilities": {
           "flags": [
             "--color",
+            "--creation-timestamp",
+            "--deps",
+            "--features",
             "--font-path",
             "--format",
             "--ignore-system-fonts",
             "--input",
             "--package-cache-path",
             "--package-path",
+            "--pages",
             "--pdf-standard",
             "--ppi"
           ],
           "outputFormats": [
+            "html",
             "pdf",
             "png",
             "svg"
@@ -328,16 +339,21 @@
         "capabilities": {
           "flags": [
             "--color",
+            "--creation-timestamp",
+            "--deps",
+            "--features",
             "--font-path",
             "--format",
             "--ignore-system-fonts",
             "--input",
             "--package-cache-path",
             "--package-path",
+            "--pages",
             "--pdf-standard",
             "--ppi"
           ],
           "outputFormats": [
+            "html",
             "pdf",
             "png",
             "svg"
@@ -417,16 +433,21 @@
         "capabilities": {
           "flags": [
             "--color",
+            "--creation-timestamp",
+            "--deps",
+            "--features",
             "--font-path",
             "--format",
             "--ignore-system-fonts",
             "--input",
             "--package-cache-path",
             "--package-path",
+            "--pages",
             "--pdf-standard",
             "--ppi"
           ],
           "outputFormats": [
+            "html",
             "pdf",
             "png",
             "svg"

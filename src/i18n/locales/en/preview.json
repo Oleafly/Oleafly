@@ -95,7 +95,9 @@
     "retryCompile": "Retry compile",
     "chooseEngine": "Choose engine…",
     "installPackages_one": "Find and install {{name}}",
-    "installPackages_other": "Find and install {{count}} files"
+    "installPackages_other": "Find and install {{count}} files",
+    "downloadTypst": "Download Typst {{version}}",
+    "useTypst": "Use Typst {{version}}"
   },
   "stale": {
     "badge": "Stale",
@@ -104,8 +106,8 @@
     "explanation": "This PDF does not represent the active project revision.",
     "revisionExplanation": "Showing project revision {{displayed}}. The active project is revision {{active}}.",
     "noIdentity": "The displayed PDF has no verified compile identity for the active revision.",
-    "syncTexAvailable": "SyncTeX uses the nearest unchanged line for edits.",
-    "syncTexUnavailable": "SyncTeX requires a current compile."
+    "syncTexAvailable": "Source sync uses the nearest unchanged line for edits.",
+    "syncTexUnavailable": "Source sync needs a current compile."
   },
   "save": {
     "title": "Save PDF to project",
@@ -273,5 +275,33 @@
       "pageLabel": "Page {{page}} of {{total}}",
       "empty": "No readable text was found on this page."
     }
+  },
+  "presentation": {
+    "windowTitle": "Presentation",
+    "presenterTitle": "Presenter view",
+    "present": "Present",
+    "presentFromStart": "Present from the start",
+    "presentFromPage": "Present from this page",
+    "presentWithPresenter": "Present with presenter view",
+    "loading": "Opening the slides",
+    "failed": "The slides could not be opened. Compile the project, then try again.",
+    "close": "Close",
+    "slideLabel": "Slide {{page}} of {{total}}",
+    "current": "Current slide",
+    "next": "Next slide",
+    "lastSlide": "This is the last slide.",
+    "notes": "Speaker notes",
+    "notesLoading": "Reading speaker notes",
+    "noNotes": "No speaker notes for this slide.",
+    "elapsed": "Elapsed time",
+    "clock": "Current time",
+    "pause": "Pause timer",
+    "resume": "Resume timer",
+    "reset": "Reset timer",
+    "previousAction": "Previous slide",
+    "nextAction": "Next slide",
+    "end": "End presentation",
+    "blank": "The audience screen is blank. Press B to show the slides.",
+    "toggleBlank": "Blank the audience screen"
   }
 }

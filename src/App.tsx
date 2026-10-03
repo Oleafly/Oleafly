@@ -67,6 +67,7 @@ import { useFilesStore, useActiveContent } from "@/store/files";
 import {
   isCompileCheckpointCurrent,
   stopOutdatedAutomaticCompile,
+  typstLivePreviewWanted,
   useCompileStore,
 } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
@@ -147,6 +148,11 @@ const SettingsModal = lazy(() =>
 );
 const DiagramComposer = lazy(() =>
   import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })),
+);
+const DiagramComposerChooserHost = lazy(() =>
+  import("@/components/diagram/composer-chooser/DiagramComposerChooser").then((m) => ({
+    default: m.DiagramComposerChooserHost,
+  })),
 );
 const CopilotOverlay = lazy(() =>
   import("@/components/ai/CopilotOverlay").then((m) => ({ default: m.CopilotOverlay })),
@@ -363,6 +369,7 @@ function AppContent() {
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
+  const projectComposerOpen = homePage === "diagram-composer";
   const sidebarPanelRef = useRef<PanelImperativeHandle>(null);
   const editorPanelRef = useRef<PanelImperativeHandle>(null);
   const pdfPanelRef = useRef<PanelImperativeHandle>(null);
@@ -882,6 +889,7 @@ function AppContent() {
           <CiteOleaflyDialog />
           <HotkeysModal />
           <DiagramComposer />
+          <DiagramComposerChooserHost />
           <TourGuide />
         </LazyModals>
       </ThemeProvider>
@@ -891,7 +899,7 @@ function AppContent() {
   return (
     <ThemeProvider>
       <div data-sidebar-open={showTree ? "true" : "false"} className="flex h-full flex-col">
-        <div className="contents" inert={projectToolOpen || undefined}>
+        <div className="contents" inert={projectToolOpen || projectComposerOpen || undefined}>
           {/* Drives the gutter's horizontal metrics: the line-number column gives
               back a few pixels only while the sidebar is competing for the width
               (see globals.css). */}
@@ -1139,6 +1147,8 @@ function AppContent() {
         </div>
         <LazyModals>
           <SettingsModal />
+          <DiagramComposer />
+          <DiagramComposerChooserHost />
         </LazyModals>
         {projectToolOpen && (
           <Suspense fallback={null}>
@@ -1167,7 +1177,7 @@ function AutoCompileKeeper() {
 
   useEffect(() => {
     void activeContent;
-    if (!autoCompile || !projectId) {
+    if (!autoCompile || !projectId || typstLivePreviewWanted()) {
       pathRef.current = activePath;
       return;
     }
@@ -1181,7 +1191,7 @@ function AutoCompileKeeper() {
     let cancelled = false;
     const editedAt = Date.now();
     const attempt = () => {
-      if (cancelled) return;
+      if (cancelled || typstLivePreviewWanted()) return;
       if (useCompileStore.getState().status === "compiling") {
         stopOutdatedAutomaticCompile(editedAt);
         timer = setTimeout(attempt, 500);

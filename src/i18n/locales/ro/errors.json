@@ -146,5 +146,37 @@
       "check_running": "Un test pentru acest agent rulează deja.",
       "main_window": "Schimbă programele agenților din fereastra principală."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly nu oferă Typst {{version}} și niciun Typst de pe acest computer nu are această versiune.",
+    "busy": "Typst {{version}} încă se instalează. Încearcă din nou după ce se termină.",
+    "remove_default": "Typst {{version}} este versiunea ta implicită. Alege altă versiune implicită înainte să o elimini.",
+    "remove_not_downloaded": "Oleafly poate elimina doar versiunile Typst pe care le-a descărcat, iar Typst {{version}} nu a fost descărcat de el.",
+    "not_offered": "Typst {{version}} nu poate fi descărcat pentru acest computer.",
+    "install_unverified": "Typst {{version}} s-a descărcat, dar nu a trecut verificarea integrității. Încearcă să-l instalezi din nou.",
+    "not_typst_project": "Doar proiectele Typst au o versiune Typst.",
+    "update_waits": "Așteaptă să se termine instalarea Typst înainte să actualizezi Oleafly."
+  },
+  "typst_packages": {
+    "index_offline": "Ești offline, iar lista de pachete Typst Universe nu a fost descărcată încă.",
+    "index_unavailable": "Lista de pachete Typst Universe nu a putut fi încărcată. Verifică conexiunea la internet și încearcă din nou.",
+    "vendor_failed": "Oleafly nu a putut copia pachetele în proiect."
+  },
+  "typst_query": {
+    "timeout": "Typst a avut nevoie de prea mult timp ca să citească acest document.",
+    "failed": "Typst nu a putut citi acest document."
+  },
+  "typst_version_missing": "Typst {{version}} nu este instalat.",
+  "typst_options": {
+    "invalid_input_key": "Numele valorilor nu pot fi goale și nici nu pot conține semnul egal.",
+    "invalid_variant_name": "Fiecare variantă are nevoie de un nume scurt, pe care nu îl folosește nicio altă variantă.",
+    "invalid_font_path": "Folderele de fonturi trebuie să fie în interiorul proiectului.",
+    "fonts_failed": "Typst nu a putut lista fonturile.",
+    "fonts_timeout": "Typst a avut nevoie de prea mult timp ca să listeze fonturile."
+  },
+  "typst_export": {
+    "failed": "Typst nu a putut exporta documentul.",
+    "unsupported": "Această versiune Typst nu poate exporta cu aceste setări.",
+    "invalid_ppi": "Alege o rezoluție între 1 și {{max}} PPI."
   }
 }

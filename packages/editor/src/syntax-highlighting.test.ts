@@ -2,8 +2,13 @@ import { readFileSync } from "node:fs";
 import { ensureSyntaxTree, syntaxTree } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { classHighlighter, highlightTree } from "@lezer/highlight";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { languageForPath } from "./languages";
+import { loadTypstParser } from "./typst";
+
+beforeAll(async () => {
+  await loadTypstParser();
+});
 
 interface HighlightSpan {
   from: number;
@@ -41,6 +46,23 @@ function highlightedState(path: string, text: string): {
     (from, to, classes) => spans.push({ from, to, classes }),
   );
   return { state, spans };
+}
+
+function coveredBy(
+  text: string,
+  spans: readonly HighlightSpan[],
+  token: string,
+  className: string,
+): boolean {
+  const from = text.indexOf(token);
+  if (from < 0) return false;
+  for (let pos = from; pos < from + token.length; pos += 1) {
+    const covered = spans.some(
+      (span) => span.from <= pos && pos < span.to && span.classes.split(" ").includes(className),
+    );
+    if (!covered) return false;
+  }
+  return true;
 }
 
 function tokenClasses(
@@ -123,7 +145,7 @@ describe("contractual source syntax highlighting", () => {
   it("highlights Typst markup, code, labels, references, strings, and math", () => {
     const text = fixture("paper.typ");
     const { spans } = highlightedState("PAPER.TYP", text);
-    expect(tokenClasses(text, spans, "#set")).toContain("tok-keyword");
+    expect(coveredBy(text, spans, "#set", "tok-keyword")).toBe(true);
     expect(
       tokenClasses(text, spans, "Typst introduction").some((classes) =>
         classes.includes("tok-heading"),
@@ -157,13 +179,13 @@ describe("contractual source syntax highlighting", () => {
         classes.includes("tok-comment"),
       ),
     ).toBe(true);
-    expect(tokenClasses(text, spans, "#let")).toContain("tok-keyword");
+    expect(coveredBy(text, spans, "#let", "tok-keyword")).toBe(true);
     expect(
       tokenClasses(text, spans, "still level one").some((classes) =>
         classes.includes("tok-comment"),
       ),
     ).toBe(true);
-    expect(tokenClasses(text, spans, "#set")).toContain("tok-keyword");
+    expect(coveredBy(text, spans, "#set", "tok-keyword")).toBe(true);
   });
 
   it("highlights BibTeX entry types, keys, fields, and values", () => {

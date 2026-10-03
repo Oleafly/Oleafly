@@ -31,6 +31,7 @@ export function preflightEngineFor(
 ): PreflightEngine {
   if (engine === "latex") return "bundled";
   if (engine === "latexmk") return flavor ?? "unknown";
+  if (engine === "typst") return "typst";
   return "unknown";
 }
 
@@ -317,11 +318,20 @@ export const usePreflightStore = create<PreflightStore>((set) => ({
 
       const engine = preflightEngineFor(files.engine.id, files.engine.tex_flavor);
       const bytes = outputIsCurrent ? compileState.pdfBytes : null;
+      const sourceProfile = files.engine.capabilities.source_preflight_profile;
+      const typst =
+        sourceProfile === "typst"
+          ? await import("@/store/preflight-typst").then(({ typstPreflightInputs }) =>
+              typstPreflightInputs(pid, project, files.engine),
+            )
+          : null;
+      if (stale()) return;
       const common = {
         source,
-        sourceProfile: files.engine.capabilities.source_preflight_profile,
+        sourceProfile,
         refs,
-        project,
+        project: typst?.project ?? project,
+        ...(typst ? { sourceRules: typst.sourceRules, typstVersion: typst.typstVersion } : {}),
         compile,
         submissionProfile,
         anonymousReview: state.anonymousReview,

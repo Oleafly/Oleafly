@@ -28,6 +28,8 @@ import {
 } from "@/components/editor/wysiwyg/controller";
 import { projectIntelligenceFailureText } from "@/lib/project-intelligence/reason";
 import { LoadingState } from "@/components/ui/empty";
+import { insertTypstCitation } from "@/components/editor/typst-commands";
+import { formattingProfileForPath } from "@/lib/document-engine";
 
 function citationSource(key: string, format: string): string {
   return format === "markdown" ? `[@${key}]` : String.raw`\cite{${key}}`;
@@ -84,8 +86,8 @@ export function ProjectCitationPicker({
       ? state.files[state.activePath]?.content ?? ""
       : "",
   );
-  const formattingProfile = useFilesStore(
-    (state) => state.engine.capabilities.formatting_profile,
+  const formattingProfile = useFilesStore((state) =>
+    formattingProfileForPath(state.engine, state.engineLoaded, state.activePath),
   );
   const intelligenceState = useIndexStore(
     (state) => state.intelligenceState,
@@ -131,6 +133,10 @@ export function ProjectCitationPicker({
       (candidate) => candidate.key === completion.key,
     );
     if (!known) return;
+    if (formattingProfile === "typst") {
+      void insertTypstCitation(completion.key, completion.location.file);
+      return;
+    }
     insertAtCursor(citationSource(completion.key, formattingProfile));
   };
 

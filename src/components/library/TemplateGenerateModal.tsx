@@ -42,6 +42,8 @@ const ENGINE_LABELS: Record<ParsedTemplate["engine"], string> = {
   markdown: "PANDOC",
 };
 
+const PREVIEW_ENGINES: ReadonlySet<ParsedTemplate["engine"]> = new Set(["xetex", "typst"]);
+
 function SkeletonPage({ dim }: Readonly<{ dim?: boolean }>) {
   return (
     <div
@@ -514,7 +516,7 @@ export function TemplateGenerateModal({
                     <div className="relative h-full">
                       <SkeletonPage dim />
                       <p className="absolute inset-x-0 bottom-4 mx-auto w-fit rounded-full bg-black/70 px-3.5 py-1.5 text-xs text-white backdrop-blur-sm">
-                        {parsed.engine === "xetex"
+                        {PREVIEW_ENGINES.has(parsed.engine)
                           ? t(($) => $.library.generate.compileFailed)
                           : t(($) => $.library.generate.previewUnsupported)}
                       </p>
@@ -533,7 +535,7 @@ export function TemplateGenerateModal({
                   </span>
                 </div>
                 <h3 className="text-2xl font-semibold leading-tight">{parsed.name}</h3>
-                {parsed.engine === "xetex" && !previewPng && (
+                {PREVIEW_ENGINES.has(parsed.engine) && !previewPng && (
                   <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
                     {t(($) => $.library.generate.compileWarning)}
                   </div>

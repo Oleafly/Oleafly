@@ -300,7 +300,7 @@
       "literatureSearch": "Doorzoekt OpenAlex op trefwoord naar artikelen, zonder sleutel.",
       "verifyCitation": "Zet een DOI of titel om in geverifieerde BibTeX via doi.org of Crossref.",
       "projectLibrarySearch": "Doorzoekt de eigen tekst en notities van het project op trefwoord.",
-      "previewFigure": "Compileert een TikZ- of PGFPlots-figuur apart en toont het resultaat in de chat.",
+      "previewFigure": "Geeft een TikZ- of CeTZ-figuur apart weer en toont het resultaat in de chat.",
       "insertFigure": "Voegt de afgeronde figuur bij de cursor in met bijschrift en label, en bewaart een PNG onder figures/.",
       "loadImage": "Bekijkt een afbeelding die al in het project staat.",
       "updateTodos": "Schrijft of werkt het stappenplan bij dat in de chat staat.",
@@ -343,6 +343,7 @@
     "noDescription": "Geen beschrijving opgegeven.",
     "notes": {
       "latexOnly": "Alleen LaTeX-projecten",
+      "latexAndTypstOnly": "Alleen LaTeX- en Typst-projecten",
       "pdfCaptureSetting": "Vereist de instelling voor PDF-paginaopname",
       "chatApproval": "Goedgekeurd in de chat, één opdracht tegelijk",
       "browserSetting": "Vereist de instelling voor de webbrowser"
@@ -676,6 +677,24 @@
     "tikzFigure": {
       "label": "TikZ-figuur",
       "description": "Zet TikZ-code op in de chat"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Typst-fouten oplossen"
+      },
+      "writeEquation": {
+        "description": "Van gewone taal naar Typst-wiskunde"
+      },
+      "academicPresentation": {
+        "description": "Een Typst-presentatie op basis van je artikel"
+      },
+      "generateTable": {
+        "description": "Zet een Typst-tabel op in de chat"
+      },
+      "figure": {
+        "label": "CeTZ-figuur",
+        "description": "Zet CeTZ-code op in de chat"
+      }
     }
   },
   "turn": {

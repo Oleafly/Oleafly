@@ -28,6 +28,7 @@ import {
   saveProjectSettingsToFolder,
   setMainDocCmd,
   setProjectEngineCmd,
+  setProjectTypstVersion,
   setProjectShellEscapeCmd,
   writeFileContent,
   type FileConflictStrategy,
@@ -503,6 +504,7 @@ interface FilesStore {
   applyProjectStateChanged: (event: ProjectStateChanged) => Promise<boolean>;
   setMainDoc: (path: string) => Promise<void>;
   setEngine: (engine: string, flavor?: TexFlavor | null) => Promise<void>;
+  setTypstVersion: (version: string | null) => Promise<void>;
   refreshEngine: () => Promise<void>;
   setShellEscape: (allow: boolean) => Promise<void>;
 }
@@ -2608,6 +2610,37 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (!current()) return;
       set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: "loadFailed" });
       void logError("set compile engine", error);
+      throw error;
+    }
+  },
+
+  setTypstVersion: async (version) => {
+    const { projectId } = get();
+    if (!projectId) return;
+    const seq = ++mainDocSeq;
+    const current = () => seq === mainDocSeq && get().projectId === projectId;
+    const compileStore = import("@/store/compile");
+    set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: null });
+    try {
+      await setProjectTypstVersion(projectId, version);
+    } catch (error) {
+      if (!current()) return;
+      void logError("set Typst version", error);
+      await reloadUnchangedEngine(projectId, current, set);
+      throw error;
+    }
+    try {
+      if (!current()) return;
+      const compile = await compileStore;
+      if (!current()) return;
+      compile.useCompileStore.getState().reset();
+      const engine = await fetchProjectEngineQuietly(projectId, current);
+      if (!current()) return;
+      set({ engine, engineLoaded: true, engineError: null });
+    } catch (error) {
+      if (!current()) return;
+      set({ engine: UNKNOWN_ENGINE, engineLoaded: false, engineError: "loadFailed" });
+      void logError("set Typst version", error);
       throw error;
     }
   },

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import {
   EDITOR_KEY_DEFINITIONS,
@@ -13,6 +14,7 @@ import {
   type EditorKeyId,
 } from "@/store/editor-keymap";
 import { i18n } from "@/i18n";
+import { sourceLanguageForPath, type SourceLanguage } from "@/lib/document-engine";
 import { shortcut } from "@/lib/utils";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -75,6 +77,7 @@ interface ShortcutRow {
   keys: string;
   desc: () => string;
   tokens?: readonly string[];
+  languages?: readonly SourceLanguage[];
 }
 
 function editorKeyRows(keys: Readonly<Record<EditorKeyId, string>>): ShortcutRow[] {
@@ -153,12 +156,71 @@ const SHORTCUTS: ShortcutRow[] = [
     category: () => i18n.t(($) => $.editor.hotkeys.categories.editor),
     keys: "/",
     desc: () => i18n.t(($) => $.editor.hotkeys.actions.slashCommandMenu),
+    languages: ["latex", "typst"],
   },
   {
     id: "indent",
     category: () => i18n.t(($) => $.editor.hotkeys.categories.editor),
     keys: "Tab",
     desc: () => i18n.t(($) => $.editor.hotkeys.actions.indentOrAccept),
+  },
+  {
+    id: "typst-continue-list",
+    category: () => i18n.t(($) => $.editor.hotkeys.categories.typst),
+    keys: "↵",
+    desc: () => i18n.t(($) => $.editor.hotkeys.actions.typstContinueList),
+    languages: ["typst"],
+  },
+  {
+    id: "typst-item-new-line",
+    category: () => i18n.t(($) => $.editor.hotkeys.categories.typst),
+    keys: "⇧↵",
+    desc: () => i18n.t(($) => $.editor.hotkeys.actions.typstItemNewLine),
+    languages: ["typst"],
+  },
+  {
+    id: "typst-remove-marker",
+    category: () => i18n.t(($) => $.editor.hotkeys.categories.typst),
+    keys: "Backspace",
+    desc: () => i18n.t(($) => $.editor.hotkeys.actions.typstRemoveMarker),
+    languages: ["typst"],
+  },
+  {
+    id: "typst-indent-item",
+    category: () => i18n.t(($) => $.editor.hotkeys.categories.typst),
+    keys: "Tab",
+    desc: () => i18n.t(($) => $.editor.hotkeys.actions.typstIndentItem),
+    languages: ["typst"],
+  },
+  {
+    id: "typst-outdent-item",
+    category: () => i18n.t(($) => $.editor.hotkeys.categories.typst),
+    keys: "⇧Tab",
+    desc: () => i18n.t(($) => $.editor.hotkeys.actions.typstOutdentItem),
+    languages: ["typst"],
+  },
+  {
+    id: "typst-math-pair",
+    category: () => i18n.t(($) => $.editor.hotkeys.categories.typst),
+    keys: "$ Space",
+    desc: () => i18n.t(($) => $.editor.hotkeys.actions.typstMathPair),
+    tokens: ["$", "Space"],
+    languages: ["typst"],
+  },
+  {
+    id: "typst-wrap-selection",
+    category: () => i18n.t(($) => $.editor.hotkeys.categories.typst),
+    keys: "* _ ` $",
+    desc: () => i18n.t(($) => $.editor.hotkeys.actions.typstWrapSelection),
+    tokens: ["*", "_", "`", "$"],
+    languages: ["typst"],
+  },
+  {
+    id: "typst-format-document",
+    category: () => i18n.t(($) => $.editor.hotkeys.categories.typst),
+    keys: "⇧⌥F",
+    desc: () => i18n.t(($) => $.editor.hotkeys.actions.formatDocument),
+    languages: ["typst"],
   },
   {
     id: "definition-f12",
@@ -230,8 +292,18 @@ export function HotkeysModal() {
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const [q, setQ] = useState("");
   const editorKeys = useEditorKeymapStore((s) => s.keys);
+  const activePath = useFilesStore((s) => s.activePath);
 
-  const rows = useMemo(() => [...SHORTCUTS, ...editorKeyRows(editorKeys)], [editorKeys]);
+  const rows = useMemo(() => {
+    const language = sourceLanguageForPath(activePath);
+    const shown = SHORTCUTS.filter(
+      (row) =>
+        !row.languages ||
+        activePath === null ||
+        (language !== null && row.languages.includes(language)),
+    );
+    return [...shown, ...editorKeyRows(editorKeys)];
+  }, [activePath, editorKeys]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: t re-runs the filter when the interface language changes.
   const filtered = useMemo(

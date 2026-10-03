@@ -42,7 +42,18 @@
     "selectImage": "Виберіть зображення, щоб вставити його.",
     "editTitle": "Редагувати зображення",
     "editDescription": "Замініть зображення або змініть його ширину. Підпис і мітка залишаться незмінними.",
-    "save": "Зберегти зображення"
+    "save": "Зберегти зображення",
+    "customWidthPlaceholderTypst": "8cm або 60%",
+    "altLabel": "Альтернативний текст",
+    "altPlaceholder": "Опишіть зображення для зчитувачів екрана",
+    "placement": "Розміщення",
+    "placementNone": "На місці",
+    "placementAuto": "Авто",
+    "placementTop": "Згори",
+    "placementBottom": "Знизу",
+    "editFigureTitle": "Редагувати рисунок",
+    "editFigureDescription": "Змініть зображення, його розмір, підпис, мітку, альтернативний текст або розміщення.",
+    "saveFigure": "Зберегти рисунок"
   },
   "tableToolbar": {
     "label": "Інструменти таблиці",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Вставити цитату блоком",
     "insertFigure": "Вставити рисунок",
     "insertImage": "Вставити зображення",
+    "drawDiagram": "Намалювати діаграму",
     "insertTable": "Вставити таблицю",
     "imageToLatexTooltip": "Зображення в LaTeX (розшифрувати за допомогою ШІ)",
     "imageToLatex": "Зображення в LaTeX",
@@ -130,6 +142,7 @@
     "redo": "Повторити дію ({{shortcut}})",
     "find": "Знайти ({{shortcut}})",
     "goToPdf": "Перейти до PDF (SyncTeX)",
+    "goToPdfTypst": "Перейти до PDF",
     "linkUrl": "URL посилання",
     "removeLink": "Вилучити посилання",
     "imageFile": "Файл зображення",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "Розділити",
     "both": "Обидва",
-    "stacked": "Один над одним"
+    "stacked": "Один над одним",
+    "displayMath": "Виносна формула",
+    "numberedEquation": "Нумерована формула",
+    "alignedEquations": "Вирівняні формули",
+    "addLabel": "Додати мітку",
+    "imageToTypst": "Зображення в Typst",
+    "imageToTypstTooltip": "Зображення в Typst (розшифрувати за допомогою ШІ)",
+    "typstPackages": "Пакети Typst",
+    "latexPackages": "Пакети LaTeX"
   },
   "contextMenu": {
     "engineUnavailable": "Дії рушія документа недоступні",
     "askAi": "Запитати ШІ…",
     "noIndexedSymbol": "У цьому місці немає проіндексованого символу.",
     "noRenamableSymbol": "У цьому місці немає символу, який можна перейменувати.",
+    "formatDocument": "Форматувати документ",
+    "formatSelection": "Форматувати виділене",
     "itemize": "Itemize",
     "enumerate": "Enumerate",
     "figure": "Рисунок",
@@ -156,7 +179,16 @@
     "equationAsPng": "Рівняння як PNG",
     "crossReference": "Перехресне посилання",
     "label": "Мітка",
-    "footnote": "Виноска"
+    "footnote": "Виноска",
+    "toggleComment": "Перемкнути коментар",
+    "inlineMath": "Формула в рядку",
+    "displayMath": "Виносна формула",
+    "numberedEquation": "Нумерована формула",
+    "alignedEquations": "Вирівняні формули",
+    "quote": "Цитата",
+    "addLabel": "Додати мітку",
+    "convertLatexMath": "Перетворити формулу LaTeX на Typst",
+    "noLatexMath": "Спершу виділіть формулу LaTeX."
   },
   "shell": {
     "noFileOpenTab": "Немає відкритих файлів",
@@ -237,9 +269,15 @@
     "footerTypst": "Спеціальні символи екрановано в коді таблиці.",
     "footerLatex": "Згенерована таблиця LaTeX використовує booktabs для горизонтальних лінійок.",
     "chooseAnother": "Вибрати інший файл",
-    "chooseFile": "Виберіть CSV, TSV або XLSX",
+    "chooseFile": "Виберіть CSV, TSV, XLSX або JSON",
     "selectedSummary": "{{file}} · рядків: {{rows}} · колонок: {{columns}}",
     "firstRowHeader": "Перший рядок це заголовок",
+    "keepLinked": "Зберігати зв’язок із файлом даних",
+    "keepLinkedHint": "Копіює дані в папку даних. Змініть цей файл, і таблиця оновиться під час наступної компіляції.",
+    "footerLinked": "Таблиця читає {{path}} під час кожної компіляції документа.",
+    "jsonNotTable": "Цей файл JSON не є списком записів чи рядків.",
+    "insertedLinked": "Пов’язану таблицю вставлено. Щоб змінити її, відредагуйте {{path}}.",
+    "linkFailed": "Не вдалося скопіювати дані в проєкт.",
     "captionLabel": "Підпис (необов’язково)",
     "captionPlaceholder": "Результати всіх запусків",
     "labelLabel": "Мітка (необов’язково)",
@@ -314,7 +352,23 @@
     "info": "Інформація",
     "empty": "Тут з’явиться вивід компіляції.",
     "scrollToTop": "Прокрутити вгору",
-    "scrollToBottom": "Прокрутити донизу"
+    "scrollToBottom": "Прокрутити донизу",
+    "locationFileLineColumn": "{{file}} · рядок {{line}}, стовпець {{column}}",
+    "locationLineColumn": "рядок {{line}}, стовпець {{column}}",
+    "hint": "Підказка",
+    "sourceExcerpt": "Рядок коду {{line}}",
+    "summaryErrors_one": "{{count}} помилка",
+    "summaryErrors_few": "{{count}} помилки",
+    "summaryErrors_many": "{{count}} помилок",
+    "summaryErrors_other": "{{count}} помилки",
+    "summaryWarnings_one": "{{count}} попередження",
+    "summaryWarnings_few": "{{count}} попередження",
+    "summaryWarnings_many": "{{count}} попереджень",
+    "summaryWarnings_other": "{{count}} попередження",
+    "summaryReferences_one": "{{count}} нерозпізнане посилання",
+    "summaryReferences_few": "{{count}} нерозпізнані посилання",
+    "summaryReferences_many": "{{count}} нерозпізнаних посилань",
+    "summaryReferences_other": "{{count}} нерозпізнаного посилання"
   },
   "history": {
     "untitledCommit": "Коміт без назви",
@@ -359,7 +413,8 @@
       "navigation": "Навігація",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Налаштування"
+      "settings": "Налаштування",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Скомпілювати знову",
@@ -376,12 +431,20 @@
       "goToDefinition": "Перейти до визначення",
       "findReferences": "Знайти посилання",
       "renameSymbol": "Перейменувати символ (у всьому проєкті)",
+      "formatDocument": "Форматувати документ Typst",
       "commandPalette": "Палітра команд",
       "searchAllDocuments": "Пошук у всіх документах",
       "goToPdf": "Перейти до PDF (SyncTeX вперед)",
       "jumpToSource": "Перейти з PDF до коду",
       "commitAndPush": "Закомітити і надіслати",
-      "openSettings": "Відкрити налаштування"
+      "openSettings": "Відкрити налаштування",
+      "typstContinueList": "Продовжити список новим пунктом",
+      "typstItemNewLine": "Почати новий рядок усередині пункту списку",
+      "typstRemoveMarker": "Видалити маркер списку перед курсором",
+      "typstIndentItem": "Вкласти пункт списку на рівень глибше",
+      "typstOutdentItem": "Підняти пункт списку на рівень вище",
+      "typstMathPair": "Автозакриття $ для формул, Space робить формулу виносною",
+      "typstWrapSelection": "Обгорнути виділене в жирний, курсив, код або формулу"
     }
   },
   "citations": {
@@ -662,6 +725,7 @@
       "unsupported": "Цей вираз неповний або непідтримуваний.",
       "missingClosing": "Бракує закривного {{delimiter}}.",
       "notRendered": "Цей вираз не вдалося відтворити.",
+      "typstUnavailable": "Перегляд Typst недоступний.",
       "preview": {
         "moreOptions": "Більше параметрів",
         "hide": "Сховати",
@@ -669,6 +733,10 @@
         "disable": "Вимкнути",
         "disableDescription": "Вимикає перегляд формул. Знову ввімкнути його можна в Налаштуваннях."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Вставити як формулу Typst",
+      "pasteOffer": "Вставлено формулу LaTeX"
     },
     "latex": {
       "command": {
@@ -855,6 +923,45 @@
         "revtex": "стиль REVTeX"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Заголовок",
+        "figure": "Рисунок із зображенням",
+        "tableFigure": "Рисунок із таблицею",
+        "table": "Таблиця",
+        "equation": "Виносна формула",
+        "numberedEquation": "Нумерована формула з міткою",
+        "footnote": "Виноска",
+        "quote": "Цитата блоком",
+        "code": "Блок коду",
+        "outline": "Зміст",
+        "bibliography": "Бібліографія",
+        "pagebreak": "Розрив сторінки",
+        "columns": "Колонки",
+        "grid": "Сітка",
+        "link": "Посилання",
+        "list": "Маркований список",
+        "enum": "Нумерований список",
+        "terms": "Список термінів",
+        "partBibliography": "Бібліографія для однієї частини з міткою"
+      },
+      "bibliographyStyle": {
+        "builtin": "вбудований стиль CSL",
+        "citation": "лише стиль цитування",
+        "project": "файл CSL у цьому проєкті"
+      },
+      "bibliographyParameter": {
+        "target": "які цитування вона перелічує",
+        "group": "як вона ділить нумерацію",
+        "targetAuto": "найближча бібліографія з цим ключем",
+        "targetWithin": "цитування всередині частини з міткою",
+        "targetAfter": "цитування після мітки",
+        "targetBefore": "цитування перед міткою",
+        "groupAuto": "спільна нумерація з іншими бібліографіями",
+        "groupNone": "власна нумерація",
+        "groupNamed": "спільна нумерація з однойменними бібліографіями"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Анотація",
@@ -981,6 +1088,12 @@
       "reference": "Посилання",
       "label": "Мітка",
       "includedFile": "Включений файл",
+      "typst": {
+        "settings": {
+          "show": "Показати налаштування документа",
+          "hide": "Сховати налаштування документа"
+        }
+      },
       "table": {
         "captionPlacement": "Підпис",
         "captionAbove": "Підпис зверху",
@@ -1055,6 +1168,11 @@
     "goTo": "Перейти до {{title}}",
     "untitled": "Без назви"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Відкрити в Typst Universe",
+    "formatUnavailable": "Форматувальник Typst ще не готовий. Спробуйте ще раз за мить.",
+    "formatFailed": "Не вдалося відформатувати цей файл."
+  },
   "changedOnDisk": {
     "message": "Файл {{file}} змінився на диску, поки у вас були незбережені зміни.",
     "compare": "Порівняти",
@@ -1062,5 +1180,344 @@
     "reload": "Перезавантажити",
     "failed": "Oleafly не вдалося оновити {{file}}. Спробуйте ще раз.",
     "tabMark": "Змінено на диску. Відкрийте цю вкладку, щоб вибрати, яку версію залишити."
+  },
+  "labels": {
+    "filterPlaceholder": "Назва мітки",
+    "filterLabel": "Фільтр міток проєкту",
+    "noMatches": "Немає відповідних міток.",
+    "empty": "У цьому проєкті ще немає міток.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Додати мітку тут"
+  },
+  "typst": {
+    "numberingNote": "Для номерів формул потрібне правило нумерації.",
+    "addNumberingRule": "Додати правило",
+    "bibliographyAdded": "Бібліографію додано до {{file}}."
+  },
+  "typstInsights": {
+    "title": "Відомості про документ",
+    "description": "Що містить скомпільований документ, з посиланнями на код.",
+    "refresh": "Оновити",
+    "copyMetadata": "Копіювати метадані для подання",
+    "metadataCopied": "Метадані для подання скопійовано в буфер обміну.",
+    "copyFailed": "Метадані не скопійовано. Перевірте доступ до буфера обміну і спробуйте ще раз.",
+    "loading": "Читання документа за допомогою Typst",
+    "compileFailed": "Typst не вдалося скомпілювати документ. Виправте ці помилки, щоб побачити список рисунків, таблиць і формул.",
+    "noProject": "Спершу відкрийте проєкт Typst.",
+    "tabs": {
+      "overview": "Огляд",
+      "headings": "Заголовки",
+      "figures": "Рисунки",
+      "tables": "Таблиці",
+      "equations": "Формули",
+      "labels": "Мітки",
+      "citations": "Цитування",
+      "todos": "Завдання"
+    },
+    "metadata": {
+      "heading": "Метадані для подання",
+      "title": "Заголовок",
+      "authors": "Автори",
+      "keywords": "Ключові слова",
+      "abstract": "Анотація",
+      "date": "Дата",
+      "missing": "Не задано"
+    },
+    "empty": {
+      "headings": "У скомпільованому документі немає заголовків.",
+      "figures": "У скомпільованому документі немає рисунків.",
+      "tables": "У скомпільованому документі немає таблиць.",
+      "equations": "У скомпільованому документі немає виносних формул.",
+      "labels": "У документі немає міток.",
+      "citations": "У скомпільованому документі немає цитувань.",
+      "todos": "Немає нотаток TODO чи FIXME."
+    },
+    "labelKinds": {
+      "heading": "Заголовок",
+      "figure": "Рисунок",
+      "table": "Таблиця",
+      "equation": "Формула",
+      "other": "Інше"
+    },
+    "page": "Сторінка {{page}}",
+    "unnumbered": "Без номера",
+    "untitled": "Без підпису",
+    "cited_one": "Цитується {{count}} раз",
+    "cited_few": "Цитується {{count}} рази",
+    "cited_many": "Цитується {{count}} разів",
+    "cited_other": "Цитується {{count}} разу",
+    "notInSource": "Не знайдено в коді",
+    "openSource": "Відкрити {{file}} на рядку {{line}}",
+    "versionNote": "Typst {{version}}, команда typst {{method}}",
+    "truncated": "Показано лише перші 5000 елементів."
+  },
+  "documentInsights": {
+    "description": "Що містить документ, з посиланнями на код.",
+    "loading": "Читання документа",
+    "noProject": "Спершу відкрийте проєкт.",
+    "unresolved": "Немає в бібліографії",
+    "unresolvedCount_one": "{{count}} ключ цитування відсутній у бібліографії.",
+    "unresolvedCount_few": "{{count}} ключі цитувань відсутні в бібліографії.",
+    "unresolvedCount_many": "{{count}} ключів цитувань відсутні в бібліографії.",
+    "unresolvedCount_other": "{{count}} ключа цитувань відсутні в бібліографії.",
+    "numbersCurrent": "Номери й сторінки взято з останньої компіляції.",
+    "numbersStale": "Код змінився після останньої компіляції. Скомпілюйте знову, щоб побачити номери й сторінки.",
+    "numbersMissing": "Скомпілюйте документ, щоб побачити номери й сторінки.",
+    "sourceOrder": "Перелічено в порядку коду.",
+    "empty": {
+      "headings": "У документі немає заголовків.",
+      "figures": "У документі немає рисунків.",
+      "tables": "У документі немає таблиць.",
+      "equations": "У документі немає виносних формул.",
+      "citations": "У документі немає цитувань."
+    }
+  },
+  "typstSettings": {
+    "title": "Налаштування документа",
+    "description": "Правила сторінки, тексту й нумерації в {{file}}.",
+    "templateNotice": "Цей документ використовує шаблон. Значення, задані всередині шаблона, тут не показано. Значення, яке ви задасте тут, перевизначає шаблон.",
+    "loading": "Читання головного файлу",
+    "readFailed": "Не вдалося прочитати головний файл.",
+    "saveFailed": "Не вдалося оновити головний файл.",
+    "noMainFile": "У цьому проєкті немає головного файлу Typst.",
+    "applied": "Налаштування документа оновлено.",
+    "apply": "Застосувати",
+    "cancel": "Скасувати",
+    "sections": {
+      "page": "Сторінка",
+      "text": "Текст",
+      "paragraph": "Абзац",
+      "numbering": "Нумерація"
+    },
+    "fields": {
+      "paper": "Розмір сторінки",
+      "margin": "Поля",
+      "columns": "Колонки",
+      "font": "Шрифт тексту",
+      "fontSize": "Розмір шрифту",
+      "lang": "Мова",
+      "region": "Регіон",
+      "justify": "Вирівнювання",
+      "leading": "Міжрядковий інтервал",
+      "headingNumbering": "Нумерація заголовків",
+      "equationNumbering": "Нумерація формул"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Типово",
+      "justified": "За шириною",
+      "ragged": "За лівим краєм",
+      "off": "Вимк."
+    },
+    "locked": {
+      "template": "Задано шаблоном",
+      "expression": "Задано виразом у коді"
+    },
+    "invalid": {
+      "length": "Вкажіть довжину, наприклад 11pt, 2.5cm або 0.65em.",
+      "margin": "Вкажіть довжину, наприклад 2.5cm, або auto.",
+      "columns": "Вкажіть ціле число від 1 до 99.",
+      "lang": "Вкажіть дво- або трилітерний код мови, наприклад en.",
+      "region": "Вкажіть дволітерний код регіону, наприклад GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Параметри класу й налаштування преамбули в {{file}}.",
+    "markdownDescription": "Поля заголовка YAML у {{file}}.",
+    "noLatexMainFile": "У цьому проєкті немає головного файлу LaTeX.",
+    "noMarkdownMainFile": "У цьому проєкті немає головного файлу Markdown.",
+    "noDocumentClass": "У головному файлі немає рядка \\documentclass.",
+    "unclosedFrontMatter": "Заголовок YAML на початку головного файлу не закрито. Спершу додайте закривальний рядок ---.",
+    "noFrontMatter": "У цьому файлі ще немає заголовка YAML. Кнопка «Застосувати» додасть його на початок.",
+    "externalPreamble": "Частина преамбули міститься в інших файлах. Задані там значення тут не показано.",
+    "classNotice": "Частиною цих налаштувань керує клас {{name}}. Тут вони доступні лише для читання.",
+    "styleNotice": "Стиль {{name}} задає макет сторінки. Розмір сторінки й поля тут доступні лише для читання.",
+    "availableFonts": "Доступні шрифти",
+    "fontsLoading": "Пошук шрифтів",
+    "fields": {
+      "secnumdepth": "Нумеровані рівні",
+      "numberSections": "Номери розділів",
+      "documentClass": "Клас документа"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "Одна колонка",
+      "twocolumn": "Дві колонки",
+      "single": "Одинарний",
+      "onehalf": "Півторний",
+      "double": "Подвійний",
+      "bySection": "За розділами",
+      "byChapter": "За главами",
+      "bySubsection": "За підрозділами",
+      "numbered": "З номерами",
+      "unnumbered": "Без номерів",
+      "depthNone": "Немає",
+      "depthChapters": "Лише глави",
+      "depthSections": "До розділів",
+      "depthSubsections": "До підрозділів",
+      "depthSubsubsections": "До підпідрозділів",
+      "depthParagraphs": "До параграфів",
+      "depthSubparagraphs": "До підпараграфів"
+    },
+    "locked": {
+      "class": "Задано класом {{name}}",
+      "package": "Задано стилем {{name}}",
+      "engine": "Потрібен компілятор XeLaTeX або LuaLaTeX. Виберіть його в меню компіляції.",
+      "sides": "У коді кожне поле задано окремо",
+      "conditional": "Задано всередині умовного блоку"
+    },
+    "invalid": {
+      "length": "Вкажіть довжину, наприклад 2.5cm, 1in або 12pt.",
+      "fontName": "Вкажіть просту назву шрифту без фігурних дужок і зворотних скісних рисок.",
+      "latexLang": "Вкажіть назву мови babel, наприклад english.",
+      "markdownLang": "Вкажіть тег мови, наприклад en-US.",
+      "lineStretch": "Вкажіть число, наприклад 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Пакети Typst",
+    "close": "Закрити пакети Typst",
+    "searchLabel": "Пошук пакетів за назвою, ключовим словом чи категорією",
+    "searchPlaceholder": "Пошук у Typst Universe",
+    "categories": "Категорії",
+    "allCategories": "Усі",
+    "loading": "Завантаження списку пакетів",
+    "results_one": "{{count}} пакет",
+    "results_few": "{{count}} пакети",
+    "results_many": "{{count}} пакетів",
+    "results_other": "{{count}} пакета",
+    "resultsCapped": "Показано пакетів: {{shown}} з {{count}}. Скористайтеся пошуком, щоб звузити список.",
+    "empty": "Немає пакетів, що відповідають пошуку.",
+    "staleOffline": "Ви офлайн. Цей список від {{date}}.",
+    "stale": "Цей список від {{date}}. Не вдалося його оновити.",
+    "latest": "Остання {{version}}",
+    "template": "Шаблон",
+    "needsTypst": "Потрібен Typst {{version}}. Цей проєкт використовує Typst {{current}}.",
+    "insert": "Вставити імпорт",
+    "insertAria": "Вставити імпорт {{name}} на початок файлу",
+    "insertNeedsFile": "Відкрийте файл Typst, щоб вставити імпорт.",
+    "copy": "Копіювати імпорт",
+    "copyAria": "Копіювати імпорт {{name}}",
+    "vendor": {
+      "heading": "Пакети проєкту",
+      "toggle": "Використовувати пакети з папки проєкту",
+      "detail": "Typst спершу шукає в папці typst-packages проєкту. Проєкти зі скопійованими пакетами компілюються офлайн і на інших комп’ютерах.",
+      "action": "Скопіювати пакети в проєкт",
+      "running": "Копіювання пакетів",
+      "copied_one": "Скопійовано {{count}} пакет у typst-packages.",
+      "copied_few": "Скопійовано {{count}} пакети у typst-packages.",
+      "copied_many": "Скопійовано {{count}} пакетів у typst-packages.",
+      "copied_other": "Скопійовано {{count}} пакета у typst-packages.",
+      "upToDate": "Усі пакети, які імпортує цей проєкт, уже є в typst-packages.",
+      "missing": "Цих пакетів немає в кеші пакетів: {{names}}. Скомпілюйте один раз, коли будете онлайн, потім скопіюйте пакети знову.",
+      "count_one": "{{count}} пакет у цьому проєкті",
+      "count_few": "{{count}} пакети у цьому проєкті",
+      "count_many": "{{count}} пакетів у цьому проєкті",
+      "count_other": "{{count}} пакета у цьому проєкті",
+      "none": "У цьому проєкті ще немає пакетів."
+    },
+    "hints": {
+      "updateAvailable": "Доступний {{name}} {{latest}}. Цей імпорт використовує {{version}}.",
+      "update": "Оновити до {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "Пакети LaTeX",
+    "close": "Закрити пакети LaTeX",
+    "searchLabel": "Пошук пакетів за назвою чи описом",
+    "searchPlaceholder": "Пошук у CTAN",
+    "loading": "Завантаження списку пакетів",
+    "results_one": "{{count}} пакет",
+    "results_few": "{{count}} пакети",
+    "results_many": "{{count}} пакетів",
+    "results_other": "{{count}} пакета",
+    "resultsCapped": "Показано пакетів: {{shown}} з {{count}}. Скористайтеся пошуком, щоб звузити список.",
+    "empty": "Немає пакетів, що відповідають пошуку.",
+    "stale": "Цей список від {{date}}. Не вдалося його оновити.",
+    "staleOffline": "Ви офлайн. Цей список від {{date}}.",
+    "partial": "Не вдалося зв’язатися з CTAN. Показано вбудований список Oleafly.",
+    "partialOffline": "Ви офлайн. Показано вбудований список Oleafly.",
+    "loaded": "У документі",
+    "documentClass": "Клас документа",
+    "installed": "Встановлено",
+    "install": "Встановити",
+    "installing": "Встановлення",
+    "installAria": "Встановити {{name}} через tlmgr",
+    "insert": "Додати до преамбули",
+    "insertAria": "Додати {{name}} до преамбули {{file}}",
+    "copy": "Копіювати рядок",
+    "copyAria": "Копіювати рядок, який підключає {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Відкрити {{name}} на CTAN",
+    "options": "Параметри",
+    "optionsAria": "Параметри {{name}}",
+    "optionsInvalid": "Перевірте параметри. Фігурні дужки мають бути парними, а ] і % використовувати не можна.",
+    "classNote": "Це клас документа. Задайте його через \\documentclass.",
+    "onDemand": "Tectonic завантажує пакети, коли документ уперше їх використовує. Встановлювати нічого не потрібно.",
+    "checking": "Перевірка встановлених пакетів",
+    "unknownInstall": "Oleafly не може визначити, які пакети є у вашій інсталяції TeX.",
+    "noProject": "Відкрийте проєкт LaTeX, щоб додавати пакети.",
+    "added": "Пакет {{name}} додано до {{file}}.",
+    "noPreamble": "У {{file}} немає преамбули, куди можна додати пакет.",
+    "alreadyLoaded": "{{file}} уже підключає {{name}}.",
+    "insertFailed": "Не вдалося додати пакет. Спробуйте ще раз."
+  },
+  "typstFonts": {
+    "title": "Шрифти",
+    "close": "Закрити список шрифтів",
+    "searchLabel": "Пошук родин шрифтів",
+    "searchPlaceholder": "Пошук шрифтів",
+    "loading": "Запитуємо шрифти в Typst",
+    "summary_one": "{{count}} родина шрифтів із Typst {{version}}",
+    "summary_few": "{{count}} родини шрифтів із Typst {{version}}",
+    "summary_many": "{{count}} родин шрифтів із Typst {{version}}",
+    "summary_other": "{{count}} родини шрифтів із Typst {{version}}",
+    "systemOff": "Системні шрифти для цього проєкту вимкнено, тож показано лише шрифти проєкту і вбудовані.",
+    "noSources": "Ця версія Typst не повідомляє, звідки береться кожен шрифт.",
+    "empty": "Немає родин шрифтів, що відповідають пошуку.",
+    "copy": "Копіювати назву",
+    "copyAria": "Копіювати назву родини шрифтів {{name}}",
+    "sources": {
+      "project": "Проєкт",
+      "system": "Система",
+      "embedded": "Вбудований"
+    },
+    "fontsFolder": "Щоб використати шрифт у цьому проєкті, додайте його файл у папку fonts проєкту."
+  },
+  "typstVariants": {
+    "title": "Варіанти збірки",
+    "close": "Закрити варіанти збірки",
+    "intro": "Кожен варіант задає значення, які документ читає через sys.inputs. Виберіть варіант у меню компіляції.",
+    "empty": "Варіантів ще немає.",
+    "add": "Додати варіант",
+    "name": "Назва варіанта",
+    "defaultName": "варіант {{number}}",
+    "remove": "Вилучити варіант",
+    "removeAria": "Вилучити варіант {{name}}",
+    "key": "Назва",
+    "value": "Значення",
+    "addInput": "Додати значення",
+    "removeInput": "Вилучити значення",
+    "noInputs": "Цей варіант не задає значень.",
+    "save": "Зберегти",
+    "cancel": "Скасувати",
+    "loading": "Завантаження варіантів",
+    "nameRequired": "Дайте назву кожному варіанту.",
+    "nameTaken": "Два варіанти не можуть мати однакову назву.",
+    "keyInvalid": "Назви значень не можуть бути порожніми чи містити знак рівності.",
+    "keyTaken": "Варіант не може задавати ту саму назву двічі.",
+    "saveFailed": "Не вдалося зберегти варіанти."
   }
 }

@@ -574,6 +574,76 @@
       "tag2": "Pile",
       "tag3": "Snydeark",
       "tag4": "Indsæt ved markøren"
+    },
+    "arxivToTypst": {
+      "name": "arXiv til Typst",
+      "description": "Konverter en kildepakke fra arXiv til Typst. Et kompileringstjek viser, hvad der ikke blev konverteret.",
+      "tag1": "Kildearkiv",
+      "tag2": "Kompileringstjek",
+      "tag3": "Id kræver netværk"
+    },
+    "csvToTypst": {
+      "name": "CSV til Typst",
+      "description": "Indsæt CSV- eller TSV-rækker, og få en Typst-tabel med korrekt escaping.",
+      "tag1": "CSV og TSV",
+      "tag2": "Tabeller",
+      "tag3": "Lokal"
+    },
+    "equationToTypst": {
+      "name": "Ligning til Typst",
+      "description": "Konverter indtastet LaTeX-matematik eller et billede af en ligning til Typst-matematik.",
+      "tag1": "Tekst eller billede",
+      "tag2": "Matematik",
+      "tag3": "Indbygget"
+    },
+    "excelToTypst": {
+      "name": "Excel til Typst",
+      "description": "Konverter et Excel-, CSV- eller TSV-ark til en Typst-tabel med korrekt escaping.",
+      "tag1": "XLSX",
+      "tag2": "CSV og TSV",
+      "tag3": "Lokal"
+    },
+    "htmlToTypst": {
+      "name": "HTML til Typst",
+      "description": "Konverter indsat HTML til et selvstændigt Typst-dokument.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Lokal"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid til Typst",
+      "description": "Konverter et Mermaid-flowdiagram til redigerbar fletcher-kode.",
+      "tag1": "Flowdiagrammer",
+      "tag2": "Fletcher",
+      "tag3": "Lokal"
+    },
+    "typstToHtml": {
+      "name": "Typst til HTML",
+      "description": "Konverter Typst-markup til selvstændig HTML med MathML-ligninger.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst til Markdown",
+      "description": "Konverter Typst-markup til flytbar Markdown.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Projekt er valgfrit"
+    },
+    "typstToWord": {
+      "name": "Typst til Word",
+      "description": "Lav et Word-dokument, hvor ligninger gemmes som Words egen matematik.",
+      "tag1": "DOCX",
+      "tag2": "Indbygget matematik",
+      "tag3": "Lokal"
+    },
+    "wordToTypst": {
+      "name": "Word til Typst",
+      "description": "Konverter et Word-dokument til Typst, og hold de udtrukne mediefiler samlet.",
+      "tag1": "DOCX",
+      "tag2": "Mediefiler",
+      "tag3": "Projekt er valgfrit"
     }
   },
   "generators": {
@@ -655,7 +725,9 @@
     "insertInEditor": "Indsæt i editoren",
     "noDescription": "Der er ingen beskrivelse af denne kommando.",
     "loadingPreview": "Indlæser et symbol til forhåndsvisning.",
-    "chooseSymbol": "Vælg et symbol fra biblioteket."
+    "chooseSymbol": "Vælg et symbol fra biblioteket.",
+    "insertHintTypst": "Indsæt Typst-koden i det åbne Typst-dokument.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · Klik for at erstatte",
@@ -711,7 +783,8 @@
     "openAiSettings": "Åbn AI-indstillinger",
     "fileReady": "{{fileName}} er klar",
     "saveWordHint": "Gem Word-dokumentet, når du er klar.",
-    "resultPlaceholder": "Dit konverterede resultat dukker op her."
+    "resultPlaceholder": "Dit konverterede resultat dukker op her.",
+    "progressConvertingSource": "Konverterer kilden til Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -832,6 +905,76 @@
       "inputLabel": "Word-dokument",
       "inputHint": "Vælg en .docx-fil. Ligninger og billeder læses lokalt.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv til Typst",
+      "subtitle": "Konverter LaTeX-kilden til et e-print til Typst, og se, hvad der skal rettes i hånden",
+      "inputLabel": "arXiv-kilde",
+      "inputHint": "Indtast et arXiv-id, eller vælg et gemt kildearkiv i .tar.gz eller .gz.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV til Typst",
+      "subtitle": "Indsæt regnearksdata, og få en Typst-tabel med korrekt escaping",
+      "inputLabel": "CSV eller TSV",
+      "inputHint": "Indsæt rækker adskilt af kommaer eller tabulatorer. Den første række bliver overskrift.",
+      "outputLabel": "Typst-tabel"
+    },
+    "equationToTypst": {
+      "title": "Ligning til Typst",
+      "subtitle": "Lav indtastet eller fotograferet matematik om til Typst-matematik",
+      "inputLabel": "Ligning",
+      "inputHint": "Skriv LaTeX-matematik, beskriv den med ord, eller vælg et billede.",
+      "outputLabel": "Typst-ligning"
+    },
+    "excelToTypst": {
+      "title": "Excel til Typst",
+      "subtitle": "Konverter det første ark til en Typst-tabel",
+      "inputLabel": "Regneark",
+      "inputHint": "XLSX, XLS, CSV eller TSV. Formler bruger deres cachede værdier.",
+      "outputLabel": "Typst-tabel"
+    },
+    "htmlToTypst": {
+      "title": "HTML til Typst",
+      "subtitle": "Konverter semantisk HTML til et selvstændigt Typst-dokument",
+      "inputLabel": "HTML",
+      "inputHint": "Indsæt et HTML-fragment eller et helt dokument.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid til Typst",
+      "subtitle": "Lav et Mermaid-flowdiagram om til et redigerbart fletcher-diagram",
+      "inputLabel": "Mermaid-flowdiagram",
+      "inputHint": "Flowdiagrammer understøtter layouterne TD, LR, BT og RL, etiketter og almindelige knudeformer.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst til HTML",
+      "subtitle": "Lav selvstændig HTML med MathML-ligninger",
+      "inputLabel": "Typst",
+      "inputHint": "Indsæt et fragment eller et helt Typst-dokument.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst til Markdown",
+      "subtitle": "Lav flytbar Markdown uden først at oprette et projekt",
+      "inputLabel": "Typst",
+      "inputHint": "Indsæt et fragment eller et helt Typst-dokument.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst til Word",
+      "subtitle": "Lav en DOCX, hvor ligninger gemmes som redigerbar Word-matematik",
+      "inputLabel": "Typst",
+      "inputHint": "Indsæt et fragment eller et helt Typst-dokument.",
+      "outputLabel": "Word-dokument"
+    },
+    "wordToTypst": {
+      "title": "Word til Typst",
+      "subtitle": "Konverter en DOCX, og hold de udtrukne mediefiler sammen med resultatet",
+      "inputLabel": "Word-dokument",
+      "inputHint": "Vælg en .docx-fil. Ligninger og billeder læses lokalt.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -847,7 +990,8 @@
     "chooseFile": "Vælg en fil, før du konverterer.",
     "fileTooLarge": "Vælg en fil, der fylder mindre end 128 MB.",
     "emptySheet": "Det valgte ark er tomt.",
-    "arxivInputRequired": "Indtast et arXiv-id, eller vælg et kildearkiv."
+    "arxivInputRequired": "Indtast et arXiv-id, eller vælg et kildearkiv.",
+    "equationToTypst": "Pandoc kunne ikke konvertere denne ligning til Typst. Tjek LaTeX-matematikken, og prøv igen."
   },
   "converterNotes": {
     "scannedPages": "Transskriberede {{pages}} skannede sider med en lokal model. Gennemgå ligninger og tabeller, før du bruger resultatet.",
@@ -855,7 +999,16 @@
     "mermaidTikz": "Konverterede dette flowdiagram til redigerbar TikZ.",
     "mermaidRendered": "Gengav dette diagram lokalt, fordi dets Mermaid-syntaks ikke kan oversættes rent til redigerbar TikZ.",
     "tableConverted": "Konverterede {{rows}} rækker og {{columns}} kolonner.",
-    "arxivBundle": "{{files}} kildefiler. Hoveddokument: {{mainFile}}."
+    "arxivBundle": "{{files}} kildefiler. Hoveddokument: {{mainFile}}.",
+    "mermaidFletcher": "Konverterede dette flowdiagram til redigerbar fletcher-kode til Typst.",
+    "mermaidRenderedTypst": "Gengav dette diagram lokalt, fordi dets Mermaid-syntaks ikke kan oversættes rent til redigerbar fletcher-kode.",
+    "arxivTypstConverted": "Konverterede {{mainFile}}.",
+    "typstCheckPassed": "Typst kompilerede resultatet uden fejl.",
+    "typstCheckFailed_one": "Typst fandt {{count}} fejl.",
+    "typstCheckFailed_other": "Typst fandt {{count}} fejl.",
+    "notConverted_one": "{{count}} element blev ikke konverteret.",
+    "notConverted_other": "{{count}} elementer blev ikke konverteret.",
+    "checkLine": "Linje {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Dette Mermaid-diagram er større end grænsen på 50.000 tegn.",
@@ -1110,9 +1263,15 @@
   },
   "equation": {
     "subtitle": "Direkte LaTeX-arbejdsområde",
+    "subtitleTypst": "Direkte Typst-arbejdsområde",
+    "mathLanguage": "Matematiksprog",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Fejl",
     "statusRendered": "Gengivet",
+    "statusRendering": "Gengiver",
     "copyLatex": "Kopier LaTeX",
+    "copyTypst": "Kopier Typst",
     "exportOptions": "Eksportmuligheder",
     "export": "Eksporter",
     "downloadPng": "Hent PNG",
@@ -1125,6 +1284,7 @@
     "exportSvgFailed": "Kunne ikke eksportere dette uddrag som SVG",
     "copyKatexFailed": "Kunne ikke kopiere KaTeX-HTML'en",
     "copyLatexFailed": "Kunne ikke kopiere LaTeX-kildekoden",
+    "copyTypstFailed": "Kunne ikke kopiere Typst-kilden",
     "invalidPngName": "Vælg et kort PNG-filnavn uden skråstreger eller specialtegn.",
     "replaceConfirm": "{{path}} findes allerede i {{project}}. Vil du erstatte den?",
     "savedToProject": "Gemte {{path}} i {{project}}.",
@@ -1138,6 +1298,7 @@
     "newImageProject": "Nyt billedprojekt",
     "mathmlFailed": "Kunne ikke konvertere dette uddrag til MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "I linjen",
     "display": "På egen linje",
     "examples": "EKSEMPLER",
@@ -1146,6 +1307,8 @@
     "previewLight": "Forhåndsvis på lys baggrund",
     "inlineSample": "Sådan ser det ud inde i en sætning, som <formula></formula>, i flow med teksten omkring.",
     "empty": "Skriv LaTeX-matematik til venstre.",
+    "emptyTypst": "Skriv Typst-matematik til venstre.",
+    "typstFailed": "Typst kunne ikke gengive denne ligning.",
     "zoomOut": "Zoom ud",
     "zoomIn": "Zoom ind",
     "resetZoom": "Nulstil zoom",

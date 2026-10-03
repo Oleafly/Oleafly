@@ -619,6 +619,99 @@ mod tests {
         let _ = std::fs::remove_dir_all(&root);
     }
 
+    fn bundled_typst() -> Option<PathBuf> {
+        let triple = crate::biber_toolchain::host_triple_guess()?;
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("binaries")
+            .join(format!("typst-{triple}{}", std::env::consts::EXE_SUFFIX));
+        path.is_file().then_some(path)
+    }
+
+    #[test]
+    fn typst_figure_template_is_an_image_kind_typst_template() {
+        let dir = repo_templates_dir().join("typst-figure");
+        let manifest = read_manifest(&dir).unwrap();
+        assert_eq!(manifest.engine, "typst");
+        assert_eq!(manifest.main_doc, "main.typ");
+        assert_eq!(manifest.kind.as_deref(), Some("image"));
+        assert_eq!(manifest.category, "Diagrams & Figures");
+        validate_manifest_dir(&dir, &manifest).expect("image-kind Typst template validates");
+    }
+
+    #[test]
+    fn bundled_typst_templates_compile_without_errors_or_warnings() {
+        let Some(typst) = bundled_typst() else {
+            eprintln!("Typst sidecar is not staged; skipping the template compile check");
+            return;
+        };
+        let out = tempfile::tempdir().unwrap();
+        let mut dirs: Vec<PathBuf> = std::fs::read_dir(repo_templates_dir())
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect();
+        dirs.sort();
+        let mut compiled = Vec::new();
+        for dir in dirs {
+            let manifest = read_manifest(&dir).unwrap();
+            if !matches!(
+                manifest.engine.to_ascii_lowercase().as_str(),
+                "typst" | "typ"
+            ) {
+                continue;
+            }
+            let pdf = out.path().join(format!("{}.pdf", manifest.id));
+            let mut command = std::process::Command::new(&typst);
+            command
+                .arg("--color=never")
+                .arg("compile")
+                .arg(dir.join(&manifest.main_doc))
+                .arg(&pdf)
+                .arg("--root")
+                .arg(&dir)
+                .args(["--diagnostic-format", "short", "--ignore-system-fonts"])
+                .current_dir(&dir);
+            let output = crate::proc::output_contained_with_timeout(
+                command,
+                std::time::Duration::from_secs(120),
+            )
+            .unwrap_or_else(|error| panic!("{} did not finish: {error}", manifest.id));
+            let log = format!(
+                "{}{}",
+                String::from_utf8_lossy(&output.stderr),
+                String::from_utf8_lossy(&output.stdout)
+            );
+            assert!(
+                output.status.success(),
+                "{} failed to compile:\n{log}",
+                manifest.id
+            );
+            assert!(
+                !log.contains("warning:"),
+                "{} compiled with warnings:\n{log}",
+                manifest.id
+            );
+            assert!(pdf.is_file(), "{} wrote no PDF", manifest.id);
+            compiled.push(manifest.id);
+        }
+        for id in [
+            "blank-typst",
+            "typst-conference-style-article",
+            "typst-figure",
+            "typst-letter",
+            "typst-report",
+            "typst-resume",
+            "typst-technical-report",
+            "typst-thesis",
+        ] {
+            assert!(
+                compiled.iter().any(|compiled| compiled == id),
+                "{id} was not compiled: {compiled:?}"
+            );
+        }
+    }
+
     #[test]
     fn first_root_wins_on_id_collision() {
         let base = std::env::temp_dir().join(format!("oleafly-roots-{}", std::process::id()));

@@ -227,7 +227,7 @@ describe("Editor shell", () => {
       en.changedOnDisk.message.replace("{{file}}", "main.typ"),
     );
     expect(screen.getByTestId("codemirror")).toBeInTheDocument();
-    expect(screen.queryByTestId("editor-breadcrumbs")).not.toBeInTheDocument();
+    expect(screen.getByTestId("editor-breadcrumbs")).toBeInTheDocument();
   });
 
   it("marks a managed Typst file as read-only", () => {
@@ -461,6 +461,57 @@ describe("Editor shell", () => {
     expect(wrapSelection).toHaveBeenCalledTimes(2);
 
     fireEvent.keyDown(window, { key: "b" });
+    expect(wrapSelection).toHaveBeenCalledTimes(2);
+  });
+
+  it("picks the toolbar from the file language when it differs from the engine", () => {
+    openFile("notes.typ");
+    const typstInLatex = render(<Editor />);
+    expect(screen.getByTestId("typst-toolbar")).toBeInTheDocument();
+    expect(screen.queryByTestId("latex-toolbar")).not.toBeInTheDocument();
+    typstInLatex.unmount();
+
+    openFile("appendix.tex", { engine: engineWithProfile("typst", ["typ"]) });
+    const latexInTypst = render(<Editor />);
+    expect(screen.getByTestId("latex-toolbar")).toBeInTheDocument();
+    expect(screen.queryByTestId("typst-toolbar")).not.toBeInTheDocument();
+    latexInTypst.unmount();
+
+    openFile("README.md", { engine: engineWithProfile("typst", ["typ"]) });
+    const markdownInTypst = render(<Editor />);
+    expect(screen.getByTestId("markdown-toolbar")).toBeInTheDocument();
+    expect(screen.queryByTestId("typst-toolbar")).not.toBeInTheDocument();
+    markdownInTypst.unmount();
+
+    openFile("refs.bib");
+    render(<Editor />);
+    expect(screen.queryByTestId("latex-toolbar")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("typst-toolbar")).not.toBeInTheDocument();
+  });
+
+  it("formats in the file's own language when it differs from the engine", () => {
+    openFile("notes.typ");
+    const { container } = render(<Editor />);
+    const surface = document.createElement("div");
+    surface.className = "cm-editor";
+    const focusable = document.createElement("input");
+    surface.appendChild(focusable);
+    container.appendChild(surface);
+    focusable.focus();
+
+    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    expect(wrapSelection).toHaveBeenLastCalledWith("*", "*");
+
+    act(() => {
+      useFilesStore.setState({ activePath: "README.md", engine: engineWithProfile("typst", ["typ"]) });
+    });
+    fireEvent.keyDown(window, { key: "i", metaKey: true });
+    expect(wrapSelection).toHaveBeenLastCalledWith("*", "*");
+
+    act(() => {
+      useFilesStore.setState({ activePath: "refs.bib", engine: LATEX_ENGINE });
+    });
+    fireEvent.keyDown(window, { key: "b", metaKey: true });
     expect(wrapSelection).toHaveBeenCalledTimes(2);
   });
 });

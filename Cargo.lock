@@ -3299,6 +3299,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "unicode-normalization",
  "windows-sys 0.61.2",

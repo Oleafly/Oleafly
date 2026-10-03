@@ -4,7 +4,7 @@
   "packs": [
     {
       "id": "research-core",
-      "version": "2026.09.04.4638ceea",
+      "version": "2026.09.04.fa2d6752",
       "kind": "bundled"
     }
   ],
@@ -12,12 +12,12 @@
     {
       "id": "citation-management",
       "name": "citation-management",
-      "description": "Comprehensive citation management for academic research. Search OpenAlex, PubMed, and Google Scholar for papers, extract accurate metadata, validate citations, and generate properly formatted BibTeX entries. This skill should be used when you need to find papers, verify citation information, convert DOIs to BibTeX, or ensure reference accuracy in scientific writing.",
+      "description": "Comprehensive citation management for academic research. Search OpenAlex, PubMed, and Google Scholar for papers, extract accurate metadata, validate citations, and generate properly formatted BibTeX entries, or Hayagriva YAML for Typst projects. This skill should be used when you need to find papers, verify citation information, convert DOIs to BibTeX, or ensure reference accuracy in scientific writing.",
       "phase": "research",
       "license": "MIT License",
-      "version": "2.1",
-      "bytes": 278795,
-      "files": 21,
+      "version": "2.1.1",
+      "bytes": 282416,
+      "files": 22,
       "pack": "research-core",
       "origin": {
         "repo": "https://github.com/K-Dense-AI/scientific-agent-skills",
@@ -72,11 +72,11 @@
     {
       "id": "import-refine",
       "name": "Import refine",
-      "description": "Turn a document Oleafly imported from Word, Markdown, or PDF into a project that compiles cleanly and reads like it was written here. Use after any import, or when a project is full of pandoc leftovers, longtable wrappers, hypertarget blocks, broken math, or citations that arrived as plain text.",
+      "description": "Turn a document Oleafly imported from Word, Markdown, or PDF into a project that compiles cleanly and reads like it was written here. Use after any import, or when a project is full of pandoc leftovers, longtable wrappers, hypertarget blocks, a Typst conf template, broken math, or citations that arrived as plain text.",
       "phase": "tooling",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 20150,
+      "version": "1.1.0",
+      "bytes": 26104,
       "files": 2,
       "pack": "research-core"
     },
@@ -109,11 +109,11 @@
     {
       "id": "oleafly-figure-prep",
       "name": "Figure prep",
-      "description": "Build and place publication-quality figures in an Oleafly manuscript. Use when the user wants a TikZ or pgfplots figure, a diagram, an architecture or pipeline drawing, a matplotlib or seaborn plot, a chart from a CSV, a multi-panel figure, subfigures, a colorblind-safe palette, correct figure sizing for a journal column, or help with captions, labels, includegraphics and cross-references.",
+      "description": "Build and place publication-quality figures in an Oleafly manuscript. Use when the user wants a TikZ or pgfplots figure, a CeTZ or fletcher figure in Typst, a diagram, an architecture or pipeline drawing, a matplotlib or seaborn plot, a chart from a CSV, a multi-panel figure, subfigures, a colorblind-safe palette, correct figure sizing for a journal column, or help with captions, labels, includegraphics and cross-references.",
       "phase": "figures",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 19772,
+      "version": "1.1.0",
+      "bytes": 21862,
       "files": 3,
       "pack": "research-core"
     },
@@ -123,8 +123,8 @@
       "description": "Drive Oleafly's compile, diagnose, fix loop until the document builds clean. Use when a compile fails, when the log shows undefined control sequence, missing package or file not found, missing $ inserted, runaway argument, undefined citation or reference, a font that will not load, overfull hbox warnings, a bibliography that will not resolve, a Typst error, or when the user says it will not compile, the PDF is stale, or asks why the build is different on another machine.",
       "phase": "tooling",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 25347,
+      "version": "1.1.0",
+      "bytes": 28587,
       "files": 3,
       "pack": "research-core"
     },
@@ -156,8 +156,8 @@
       "description": "Run a pre-flight pass over the project before uploading to arXiv or a venue, and write a pass or fail checklist. Use when preparing an arXiv submission or a camera-ready, when checking anonymity for a double-blind venue, page limits, reference style, or supplementary material rules, when hunting undefined references, missing fonts, or figure problems that only surface at the publisher, or when building a clean source bundle to upload.",
       "phase": "submission",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 28850,
+      "version": "1.1.0",
+      "bytes": 31965,
       "files": 5,
       "pack": "research-core"
     },
@@ -186,12 +186,12 @@
     {
       "id": "oleafly-response-letter",
       "name": "oleafly-response-letter",
-      "description": "Turn reviewer comments and the changes already made into a point-by-point response letter, in LaTeX and in plain text. Use when preparing a rebuttal, an author response, or a revision cover letter for a journal or conference, when mapping each reviewer point to the passage that changed, when a resubmission needs every comment answered, or when a response letter has to compile alongside the paper.",
+      "description": "Turn reviewer comments and the changes already made into a point-by-point response letter, in LaTeX or Typst and in plain text. Use when preparing a rebuttal, an author response, or a revision cover letter for a journal or conference, when mapping each reviewer point to the passage that changed, when a resubmission needs every comment answered, or when a response letter has to compile alongside the paper.",
       "phase": "review",
       "license": "MIT",
-      "version": "1.0.0",
-      "bytes": 15028,
-      "files": 4,
+      "version": "1.1.0",
+      "bytes": 17539,
+      "files": 5,
       "pack": "research-core"
     },
     {
@@ -212,7 +212,7 @@
       "phase": "communication",
       "license": "MIT",
       "version": "1.0.0",
-      "bytes": 35510,
+      "bytes": 35482,
       "files": 8,
       "pack": "research-core"
     },
@@ -476,8 +476,8 @@
       "description": "Prepare journal manuscripts, conference papers, research posters, and grant documents using venue-specific formatting guidance and bundled LaTeX scaffolds. Use when selecting an official template, checking current page or anonymity rules, adapting academic writing to a venue, or inspecting a submission PDF.",
       "phase": "authoring",
       "license": "MIT license",
-      "version": "1.3",
-      "bytes": 402668,
+      "version": "1.3.1",
+      "bytes": 404939,
       "files": 31,
       "pack": "research-core",
       "origin": {

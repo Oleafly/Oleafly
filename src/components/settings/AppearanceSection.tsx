@@ -27,6 +27,8 @@ import {
   EDITOR_THEMES,
   TERMINAL_COLOR_THEMES,
   TERMINAL_FONTS,
+  TYPST_FORMATTER_INDENT_SIZES,
+  TYPST_FORMATTER_LINE_WIDTHS,
   sectionDiffersFromDefaults,
   type BrowserSearchEngineId,
   type TerminalColorThemeId,
@@ -41,6 +43,7 @@ import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
+import { SectionHeading } from "@/components/ui/section-heading";
 
 const APPEARANCE_TABS = [
   { id: "app", label: () => i18n.t(($) => $.settings.appearance.tabs.app) },
@@ -524,7 +527,95 @@ function EditorAppearanceTab() {
         checked={editorMathPreview}
         onChange={setEditorMathPreview}
       />
+      <TypstEditorSettings />
     </div>
+  );
+}
+
+function TypstEditorSettings() {
+  const { t } = useTranslation(["common", "settings"]);
+  const formatOnSave = useSettingsStore((state) => state.typstFormatOnSave);
+  const setFormatOnSave = useSettingsStore((state) => state.setTypstFormatOnSave);
+  const lineWidth = useSettingsStore((state) => state.typstFormatterLineWidth);
+  const setLineWidth = useSettingsStore((state) => state.setTypstFormatterLineWidth);
+  const indent = useSettingsStore((state) => state.typstFormatterIndent);
+  const setIndent = useSettingsStore((state) => state.setTypstFormatterIndent);
+  const inlayHints = useSettingsStore((state) => state.typstInlayHints);
+  const setInlayHints = useSettingsStore((state) => state.setTypstInlayHints);
+  const lint = useSettingsStore((state) => state.typstLint);
+  const setLint = useSettingsStore((state) => state.setTypstLint);
+
+  return (
+    <section className="space-y-3 pt-3" aria-labelledby="settings-editor-typst-heading">
+      <SectionHeading id="settings-editor-typst-heading">
+        {t(($) => $.settings.appearance.editor.typst.title)}
+      </SectionHeading>
+      <SettingsToggleRow
+        testId="settings-row-typst-format-on-save"
+        label={t(($) => $.settings.appearance.editor.typst.formatOnSave.label)}
+        description={t(($) => $.settings.appearance.editor.typst.formatOnSave.description)}
+        checked={formatOnSave}
+        onChange={setFormatOnSave}
+      />
+      <SettingsRow
+        testId="settings-row-typst-line-width"
+        label={t(($) => $.settings.appearance.editor.typst.lineWidth.label)}
+        description={t(($) => $.settings.appearance.editor.typst.lineWidth.description)}
+        control={
+          <Select
+            value={String(lineWidth)}
+            onValueChange={(value) => setLineWidth(Number(value))}
+          >
+            <SelectTrigger className="w-[88px]" data-testid="settings-typst-line-width-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {TYPST_FORMATTER_LINE_WIDTHS.map((width) => (
+                <SelectItem key={width} value={String(width)}>
+                  {String(width)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+      <SettingsRow
+        testId="settings-row-typst-indent"
+        label={t(($) => $.settings.appearance.editor.typst.indent.label)}
+        description={t(($) => $.settings.appearance.editor.typst.indent.description)}
+        control={
+          <Select
+            value={String(indent)}
+            onValueChange={(value) => setIndent(Number(value))}
+          >
+            <SelectTrigger className="w-[88px]" data-testid="settings-typst-indent-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {TYPST_FORMATTER_INDENT_SIZES.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {String(size)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+      <SettingsToggleRow
+        testId="settings-row-typst-inlay-hints"
+        label={t(($) => $.settings.appearance.editor.typst.inlayHints.label)}
+        description={t(($) => $.settings.appearance.editor.typst.inlayHints.description)}
+        checked={inlayHints}
+        onChange={setInlayHints}
+      />
+      <SettingsToggleRow
+        testId="settings-row-typst-lint"
+        label={t(($) => $.settings.appearance.editor.typst.lint.label)}
+        description={t(($) => $.settings.appearance.editor.typst.lint.description)}
+        checked={lint}
+        onChange={setLint}
+      />
+    </section>
   );
 }
 

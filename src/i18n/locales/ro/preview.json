@@ -96,7 +96,9 @@
     "chooseEngine": "Alege motorul…",
     "installPackages_one": "Găsește și instalează {{name}}",
     "installPackages_few": "Găsește și instalează {{count}} fișiere",
-    "installPackages_other": "Găsește și instalează {{count}} de fișiere"
+    "installPackages_other": "Găsește și instalează {{count}} de fișiere",
+    "downloadTypst": "Descarcă Typst {{version}}",
+    "useTypst": "Folosește Typst {{version}}"
   },
   "stale": {
     "badge": "Învechit",
@@ -105,8 +107,8 @@
     "explanation": "Acest PDF nu reprezintă revizia activă a proiectului.",
     "revisionExplanation": "Se afișează revizia {{displayed}} a proiectului. Proiectul activ este la revizia {{active}}.",
     "noIdentity": "PDF-ul afișat nu are o identitate de compilare verificată pentru revizia activă.",
-    "syncTexAvailable": "SyncTeX folosește cea mai apropiată linie nemodificată pentru editări.",
-    "syncTexUnavailable": "SyncTeX are nevoie de o compilare curentă."
+    "syncTexAvailable": "Sincronizarea cu sursa folosește cea mai apropiată linie nemodificată pentru editări.",
+    "syncTexUnavailable": "Sincronizarea cu sursa are nevoie de o compilare curentă."
   },
   "save": {
     "title": "Salvează PDF-ul în proiect",
@@ -274,5 +276,33 @@
       "pageLabel": "Pagina {{page}} din {{total}}",
       "empty": "Pe această pagină nu s-a găsit text lizibil."
     }
+  },
+  "presentation": {
+    "windowTitle": "Prezentare",
+    "presenterTitle": "Vizualizare prezentator",
+    "present": "Prezintă",
+    "presentFromStart": "Prezintă de la început",
+    "presentFromPage": "Prezintă de la această pagină",
+    "presentWithPresenter": "Prezintă cu vizualizarea prezentatorului",
+    "loading": "Se deschid diapozitivele",
+    "failed": "Diapozitivele nu au putut fi deschise. Compilează proiectul, apoi încearcă din nou.",
+    "close": "Închide",
+    "slideLabel": "Diapozitivul {{page}} din {{total}}",
+    "current": "Diapozitivul curent",
+    "next": "Diapozitivul următor",
+    "lastSlide": "Acesta este ultimul diapozitiv.",
+    "notes": "Notele prezentatorului",
+    "notesLoading": "Se citesc notele prezentatorului",
+    "noNotes": "Acest diapozitiv nu are note pentru prezentator.",
+    "elapsed": "Timp scurs",
+    "clock": "Ora curentă",
+    "pause": "Pune cronometrul pe pauză",
+    "resume": "Reia cronometrul",
+    "reset": "Resetează cronometrul",
+    "previousAction": "Diapozitivul anterior",
+    "nextAction": "Diapozitivul următor",
+    "end": "Încheie prezentarea",
+    "blank": "Ecranul pentru public este întunecat. Apasă B ca să afișezi diapozitivele.",
+    "toggleBlank": "Întunecă ecranul pentru public"
   }
 }

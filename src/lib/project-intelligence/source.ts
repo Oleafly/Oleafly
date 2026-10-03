@@ -1,4 +1,7 @@
-import { typstAutolinkEnd } from "@oleafly/editor/typst-syntax";
+import {
+  isVendoredTypstPackagePath,
+  typstAutolinkEnd,
+} from "@oleafly/editor/typst-syntax";
 import { isHayagrivaPath } from "@/lib/citation/hayagriva";
 import { dirname } from "@/lib/path-utils";
 import type {
@@ -39,6 +42,7 @@ export function analysisEngineForPath(
 }
 
 export function isProjectIntelligencePath(path: string): boolean {
+  if (isVendoredTypstPackagePath(path)) return false;
   return INDEXABLE_PROJECT_FILE.test(path) || isBibliographyYamlCandidate(path);
 }
 

@@ -123,8 +123,10 @@ export interface LanguageServiceTransport {
   cleanup(): Promise<void>;
   install?(
     kind: LanguageServiceKind,
+    projectId?: string,
   ): Promise<LanguageServiceInstallResult>;
   installStatus?(
     kind: LanguageServiceKind,
+    projectId?: string,
   ): Promise<LanguageServiceInstallStatus>;
 }

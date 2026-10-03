@@ -41,7 +41,9 @@
     "noResults": "Tuloksia ei löytynyt. Tarkista tunniste tai kokeile toisia otsikon sanoja.",
     "placeholder": "DOI, arXiv-tunnus, URL tai artikkelin otsikko…",
     "privacyNote": "Vain tunniste tai otsikko lähetetään, ja vain doi.orgille, arXiville tai Crossrefille.",
-    "title": "Lisää viittaus"
+    "title": "Lisää viittaus",
+    "bibliography": "Lähdeluettelo",
+    "bibliographyHint": "Tässä projektissa on useampi kuin yksi lähdeluettelo. Viite lisätään tässä valitsemaasi tiedostoon."
   },
   "backendProtocol": {
     "mismatch": "Tämä ikkuna ja sen taustaosa on koostettu eri Oleafly-versioille, joten kaikki toiminnot eivät ehkä toimi. Sovelluksen uudelleenasennus korjaa tämän."
@@ -120,6 +122,14 @@
       "keywords": "sulje lopeta ympäristö aloita latex close end environment begin",
       "label": "Sulje LaTeX-ympäristö"
     },
+    "formatDocument": {
+      "keywords": "muotoile siisti sisennä typstyle typst format tidy indent",
+      "label": "Muotoile dokumentti"
+    },
+    "formatSelection": {
+      "keywords": "muotoile valinta siisti sisennä typstyle typst format selection tidy indent",
+      "label": "Muotoile valinta"
+    },
     "createProject": {
       "keywords": "uusi projekti luo mallipohja galleria new project create template gallery",
       "label": "Luo uusi projekti"
@@ -127,6 +137,14 @@
     "diagramComposer": {
       "keywords": "kaavio kuva tikz editori piirrä piirtoalusta diagram figure composer draw canvas",
       "label": "Avaa kaavioeditori"
+    },
+    "typstPackages": {
+      "keywords": "typst universe paketit tuonti kirjasto selaa kopioi projektiin packages import library browse vendor",
+      "label": "Selaa Typst-paketteja"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan paketit usepackage esittelyosa asenna tlmgr selaa packages preamble install browse",
+      "label": "Selaa LaTeX-paketteja"
     },
     "documentCitationScan": {
       "keywords": "viittaukset kirjallisuus haku dokumentti kappale viitteet etsi citations literature scan document paragraph references find",
@@ -193,7 +211,8 @@
       "label": "Ympäröi ympäristöllä"
     },
     "synctex": {
-      "label": "Siirry PDF:ään (SyncTeX)"
+      "label": "Siirry PDF:ään (SyncTeX)",
+      "typstLabel": "Siirry PDF-tiedostoon"
     },
     "table": {
       "label": "Taulukko"
@@ -226,6 +245,79 @@
     "openFolder": {
       "label": "Avaa kansio…",
       "keywords": "avaa kansio hakemisto olemassa oleva paikallinen tiedostot levy open folder directory existing local files disk"
+    },
+    "underline": {
+      "label": "Alleviivaus"
+    },
+    "strikethrough": {
+      "label": "Yliviivaus"
+    },
+    "inlineCode": {
+      "label": "Tekstin sisäinen koodi"
+    },
+    "link": {
+      "label": "Linkki"
+    },
+    "footnote": {
+      "label": "Alaviite"
+    },
+    "quote": {
+      "label": "Lainaus"
+    },
+    "inlineMath": {
+      "label": "Tekstin sisäinen matematiikka"
+    },
+    "numberedEquation": {
+      "label": "Numeroitu kaava"
+    },
+    "alignedEquations": {
+      "label": "Kohdistetut kaavat"
+    },
+    "fraction": {
+      "label": "Murtoluku"
+    },
+    "crossReference": {
+      "label": "Ristiviittaus"
+    },
+    "typstInsights": {
+      "label": "Dokumentin tiedot",
+      "keywords": "kuvat taulukot kaavat otsikot nimikkeet viittaukset todo fixme metatiedot tiivistelmä lähetys figures tables equations headings labels citations metadata abstract submission"
+    },
+    "typstDocumentSettings": {
+      "label": "Dokumentin asetukset",
+      "keywords": "sivukoko marginaalit palstat fontti fonttikoko kieli alue tasaus riviväli numerointi page size margins columns font size language region justify leading line spacing numbering"
+    },
+    "toggleComment": {
+      "label": "Kommentoi tai poista kommentointi",
+      "keywords": "kommentti poista kommentointi rivi lohko comment uncomment line block"
+    },
+    "goToDefinition": {
+      "label": "Siirry määritelmään",
+      "keywords": "määritelmä hyppää symboli siirry definition jump symbol navigate"
+    },
+    "findReferences": {
+      "label": "Etsi viitteet",
+      "keywords": "viitteet käyttökohdat symboli references usages symbol"
+    },
+    "renameSymbol": {
+      "label": "Nimeä symboli uudelleen",
+      "keywords": "nimeä uudelleen symboli refaktoroi rename symbol refactor"
+    },
+    "migrateToTypst": {
+      "label": "Muunna Typst-projektiksi",
+      "keywords": "typst muunna siirrä latex projekti uusi convert migrate project new"
+    },
+    "typstMigrationReport": {
+      "label": "Näytä Typst-muunnoksen raportti",
+      "keywords": "typst muunna siirrä raportti latex convert migrate report"
+    },
+    "present": {
+      "label": "Esitä kalvot",
+      "keywords": "esitä kalvot esitys koko näyttö beamer touying polylux puhujan muistiinpanot pdfpc present slides presentation fullscreen speaker notes"
+    },
+    "presentWithPresenter": {
+      "label": "Esitä kalvot esittäjän näkymällä",
+      "keywords": "esitä kalvot esittäjän näkymä puhujan muistiinpanot ajastin seuraava kalvo present slides presenter view speaker notes timer next slide"
     }
   },
   "community": {
@@ -238,7 +330,12 @@
     "autoCompile": {
       "off": "Pois",
       "on": "Päällä",
-      "title": "Automaattikäännös"
+      "title": "Automaattikäännös",
+      "help": "Kääntää muutaman sekunnin kuluttua siitä, kun lopetat kirjoittamisen. Avoin tiedosto tallennetaan ensin.",
+      "typstHelp": "Typst on käynnissä koko ajan ja päivittää PDF-tiedoston hetki sen jälkeen, kun lopetat kirjoittamisen. Avoin tiedosto tallentuu itsestään, kun tämä on päällä.",
+      "typstStarting": "Käynnistetään Typst",
+      "typstRestarting": "Typst käynnistyy uudelleen",
+      "typstFailed": "Typst pysähtyi toistuvien virheiden jälkeen. Käynnistä se uudelleen muokkaamalla tiedostoa."
     },
     "compile": "Käännä",
     "compiler": {
@@ -274,7 +371,37 @@
     "texRootLabel": "TEX root",
     "texRootName": "juuri: {{name}}",
     "texRootNotTex": "% !TEX root tiedostossa {{file}} osoittaa kohteeseen {{target}}, joka ei ole LaTeX-tiedosto",
-    "texRootOverride": "juuri: {{path}} (asetettu komennolla % !TEX root tiedostossa {{file}})"
+    "texRootOverride": "juuri: {{path}} (asetettu komennolla % !TEX root tiedostossa {{file}})",
+    "typstVersion": {
+      "title": "Typst-versio (tämä projekti)",
+      "help": "Kiinnitä versio, niin tämän projektin tuloste pysyy samana, vaikka Oleafly päivittäisi Typst-kääntäjän. Oletus seuraa asetuksissa valittua versiota. Jos haluat asentaa versioita tai testata projektia uudemmalla versiolla, siirry kohtaan Asetukset → Moottorit → Typst.",
+      "default": "Oletus ({{version}})",
+      "defaultPlain": "Oletus",
+      "builtIn": "[sisäänrakennettu]",
+      "system": "[järjestelmä]",
+      "missing": "[ei asennettu]",
+      "switchFailed": "Typst-versiota ei voitu vaihtaa."
+    },
+    "typstFonts": {
+      "title": "Fontit (tämä projekti)",
+      "help": "Typst lukee fontit projektin fonts-kansiosta ja kansioista, jotka on lueteltu project.json-tiedoston kohdassa font_paths. Kun käytössä on vain projektin fontit, PDF ei riipu tälle tietokoneelle asennetuista fonteista. Kohdassa Dokumentin asetukset näet, mitkä fontit Typst löytää.",
+      "systemFonts": "Käytä järjestelmän fontteja",
+      "projectOnly": "Vain projektin fontit",
+      "unsupported": "Vaatii uudemman Typst-version",
+      "saveFailed": "Fonttiasetusta ei voitu tallentaa."
+    },
+    "typstBuild": {
+      "title": "Käännös (tämä projekti)",
+      "help": "Toistettava käännös käyttää vain projektin fontteja ja asettaa PDF-tiedoston päivämääräksi viimeisimmän commitin ajan. Samat lähteet tuottavat silloin saman PDF-tiedoston millä tahansa tietokoneella.",
+      "standard": "Tavallinen käännös",
+      "reproducible": "Toistettava käännös",
+      "saveFailed": "Käännösasetusta ei voitu tallentaa."
+    },
+    "typstVariant": {
+      "title": "Muunnelma (tämä projekti)",
+      "help": "Muunnelma välittää omat arvonsa kohteeseen sys.inputs, esimerkiksi luonnosta tai lopullista painoversiota varten. Valitsemasi muunnelma säilyy tällä tietokoneella. Lisää tai muokkaa muunnelmia kohdassa Dokumentin asetukset.",
+      "none": "Ei muunnelmaa"
+    }
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"
@@ -946,6 +1073,10 @@
     "wait": {
       "description": "{{phase}} Käännös on jonossa ja alkaa automaattisesti heti, kun moottori on valmis.",
       "title": "TinyTeX latautuu yhä"
+    },
+    "typstQuit": {
+      "title": "Typst asentuu yhä",
+      "description": "Typst {{version}} latautuu. Jos lopetat nyt, lataus pysähtyy ja sinun on aloitettava se uudelleen asetuksista."
     }
   },
   "toolbar": {
@@ -1085,5 +1216,132 @@
     "added": "Lisätty. Se on nyt Finderin Palvelut-valikossa. Jos haluat käyttää sitä myös Pikatoiminnot-valikosta, napsauta kansiota hiiren oikealla ja ota se käyttöön kohdassa Pikatoiminnot › Muokkaa.",
     "addedInQuickActions": "Lisätty. Napsauta kansiota hiiren oikealla, niin löydät sen Pikatoiminnot-valikosta.",
     "failed": "Lisääminen epäonnistui. Voit yrittää uudelleen kohdassa Asetukset › Yleiset."
+  },
+  "typstMigration": {
+    "title": "Muunna Typst-projektiksi",
+    "closeLabel": "Sulje Typst-muunnos",
+    "intro": "Oleafly luo tästä LaTeX-projektista uuden Typst-projektin. Tätä projektia ei muuteta.",
+    "points": {
+      "text": "Pandoc muuntaa tekstin, matematiikan, kuvat ja taulukot.",
+      "files": "Jokaisesta input- ja include-tiedostosta tulee oma Typst-tiedostonsa.",
+      "bibliography": "BibTeX-tiedostot kopioidaan sellaisinaan.",
+      "compile": "Typst kääntää uuden projektin sen tarkistamiseksi."
+    },
+    "nameLabel": "Uuden projektin nimi",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Avaa LaTeX-projekti, jotta voit muuntaa sen.",
+    "convert": "Muunna",
+    "retry": "Yritä uudelleen",
+    "progress": {
+      "reading": "Luetaan LaTeX-projektia",
+      "converting": "Muunnetaan Pandoc-työkalulla",
+      "creating": "Luodaan Typst-projektia",
+      "compiling": "Käännetään Typst-kääntäjällä"
+    },
+    "errors": {
+      "pandoc": "Pandoc ei ole valmis. Asenna se Työkalut-näkymästä ja yritä sitten uudelleen.",
+      "noMain": "LaTeX-päätiedostoa ei voitu lukea.",
+      "emptyOutput": "Pandoc palautti tyhjän dokumentin.",
+      "failed": "Muunnos pysähtyi: {{detail}}"
+    },
+    "report": {
+      "created": "{{name}} luotiin.",
+      "compiled": "Se kääntyy Typst-kääntäjällä.",
+      "compileFailed_one": "Se ei vielä käänny. {{count}} virhe pitää korjata.",
+      "compileFailed_other": "Se ei vielä käänny. {{count}} virhettä pitää korjata.",
+      "compileUnavailable": "Oleafly ei voinut kääntää sitä: {{detail}}",
+      "converted": "Muunnettu",
+      "sources_one": "{{count}} lähdetiedosto",
+      "sources_other": "{{count}} lähdetiedostoa",
+      "figures_one": "{{count}} kuva",
+      "figures_other": "{{count}} kuvaa",
+      "tables_one": "{{count}} taulukko",
+      "tables_other": "{{count}} taulukkoa",
+      "equations_one": "{{count}} erillinen kaava",
+      "equations_other": "{{count}} erillistä kaavaa",
+      "references_one": "{{count}} ristiviittaus",
+      "references_other": "{{count}} ristiviittausta",
+      "mathFixed_one": "Matematiikkamuunnin korjasi {{count}} kaavan",
+      "mathFixed_other": "Matematiikkamuunnin korjasi {{count}} kaavaa",
+      "copied_one": "{{count}} tiedosto kopioitu",
+      "copied_other": "{{count}} tiedostoa kopioitu",
+      "style": "Lähdeluettelon tyyli {{style}}",
+      "mapping": "{{source}} → {{target}}",
+      "attention": "Vaatii huomiota",
+      "noAttention": "Mikään ei vaadi huomiota.",
+      "problems": "Käännösvirheet ja -varoitukset",
+      "location": "{{file}}, rivi {{line}}",
+      "noLocation": "Ei sijaintia tiedostossa",
+      "openAt": "Avaa {{file}} riviltä {{line}}",
+      "open": "Avaa Typst-projekti"
+    },
+    "notes": {
+      "missingInclude": "Tiedostoa {{detail}} ei löytynyt, joten se jätettiin pois.",
+      "lostInclude": "{{detail}} ei saanut omaa tiedostoaan. Sen teksti jää tiedostoon, joka sisällytti sen.",
+      "missingImage": "Kuvaa {{detail}} ei löytynyt.",
+      "unsupportedImage": "Typst ei voi näyttää kuvaa {{detail}}. Muunna se PDF-, PNG- tai SVG-muotoon.",
+      "math": "Tämä matematiikka vaatii käsin korjausta: {{detail}}",
+      "bibliographyStyle": "BibTeX-tyylille {{detail}} ei ole Typst-vastinetta. Käytetään oletustyyliä.",
+      "skippedFile": "{{detail}} jäi kopioimatta, koska projekti on liian suuri.",
+      "unreadableFile": "Tiedostoa {{detail}} ei voitu lukea.",
+      "equationLabel": "Typst numeroi kokonaisia kaavoja, joten viittaukset kohteeseen {{detail}} osoittavat nyt kaavaan, jossa se oli."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Kuvat ja HTML",
+    "title": "Vie Typst-kääntäjällä",
+    "close": "Sulje Typst-vienti",
+    "format": "Muoto",
+    "png": "PNG-kuvat",
+    "svg": "SVG-kuvat",
+    "html": "HTML",
+    "experimental": "Kokeellinen",
+    "htmlNote": "Typst-kääntäjän HTML-vienti on yhä kokeellinen. Se jättää pois sivun asettelun ja sijoitetut elementit.",
+    "ppi": "Tarkkuus",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Sivut",
+    "pagesPlaceholder": "Kaikki sivut",
+    "pagesHelp": "Käytä sivunumeroita ja -alueita, kuten 1, 3-5 tai 8-.",
+    "pagesInvalid": "Tarkista sivualue. Käytä sivunumeroita ja -alueita, kuten 1, 3-5 tai 8-.",
+    "pagesUnsupported": "Tämä Typst-versio vie aina kaikki sivut.",
+    "multiPage": "Jokainen sivu tallennetaan omaksi tiedostokseen, joka numeroidaan valitsemasi nimen perään.",
+    "export": "Vie",
+    "cancel": "Peruuta"
+  },
+  "typstUpgrade": {
+    "title": "Kokeile uudempaa Typst-versiota",
+    "description": "Oleafly kääntää tämän projektin molemmilla versioilla väliaikaisissa kansioissa. Projektissasi ei muutu mitään, ellet vaihda versiota.",
+    "compareWith": "Uudempi versio",
+    "running": "Käännetään Typst-versioilla {{current}} ja {{candidate}}",
+    "current": "Typst {{version}} (nykyinen)",
+    "candidate": "Typst {{version}}",
+    "built": "Käännetty",
+    "failed": "Epäonnistui",
+    "pages_one": "{{count}} sivu",
+    "pages_other": "{{count}} sivua",
+    "pagesUnknown": "Sivumäärä tuntematon",
+    "errors_one": "{{count}} virhe",
+    "errors_other": "{{count}} virhettä",
+    "warnings_one": "{{count}} varoitus",
+    "warnings_other": "{{count}} varoitusta",
+    "pageChange": "Sivumäärä muuttuu arvosta {{from}} arvoon {{to}}.",
+    "pageSame": "Sivumäärä pysyy samana: {{pages}}.",
+    "added": "Uutta versiossa Typst {{version}}",
+    "removed": "Typst {{version}} ei enää ilmoita",
+    "noChanges": "Molemmat versiot ilmoittavat samat virheet ja varoitukset.",
+    "unchanged_one": "{{count}} ilmoitus on sama molemmissa versioissa.",
+    "unchanged_other": "{{count}} ilmoitusta on samoja molemmissa versioissa.",
+    "buildFailed": "Typst {{version}} ei pystynyt kääntämään projektia.",
+    "switch": "Vaihda versioon Typst {{version}}",
+    "switched": "Tämä projekti käyttää nyt versiota Typst {{version}}.",
+    "switchFailed": "Typst-versiota ei voitu vaihtaa.",
+    "runAgain": "Tarkista uudelleen",
+    "close": "Sulje",
+    "checkFailed": "Tarkistusta ei voitu viedä loppuun.",
+    "noNewer": "Uudempaa Typst-versiota ei ole asennettu. Voit asentaa sellaisen asetuksissa.",
+    "openSettings": "Avaa Typst-asetukset",
+    "location": "{{file}}, rivi {{line}}",
+    "error": "Virhe",
+    "warning": "Varoitus"
   }
 }

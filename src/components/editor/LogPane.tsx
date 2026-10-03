@@ -1,4 +1,14 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  lazy,
+  Suspense,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { parseLatexLog, type LogDiagnostic } from "@oleafly/latex";
@@ -134,6 +144,34 @@ function extractErrorExcerpt(log: string, message: string): string {
 
 const LogNavigation = createContext(openFileAndGotoLine);
 
+const CompileErrorDetails = lazy(() =>
+  import("./compile-log-details").then((module) => ({ default: module.CompileErrorDetails })),
+);
+const CompileLogSummary = lazy(() =>
+  import("./compile-log-details").then((module) => ({ default: module.CompileLogSummary })),
+);
+
+function hasErrorDetails(err: CompileError): boolean {
+  return err.source_line != null || (err.hints?.length ?? 0) > 0;
+}
+
+function errorLocation(
+  err: CompileError,
+  t: ReturnType<typeof useTranslation<["common", "editor"]>>["t"],
+): string {
+  const column = err.column ?? null;
+  if (err.file && err.line != null) {
+    return column == null
+      ? t(($) => $.editor.log.locationFileLine, { file: err.file, line: err.line })
+      : t(($) => $.editor.log.locationFileLineColumn, { file: err.file, line: err.line, column });
+  }
+  if (err.file) return err.file;
+  if (err.line == null) return "";
+  return column == null
+    ? t(($) => $.editor.log.locationLine, { line: err.line })
+    : t(($) => $.editor.log.locationLineColumn, { line: err.line, column });
+}
+
 function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
   const { t } = useTranslation(["common", "editor"]);
   const displayText = useDisplayText();
@@ -141,19 +179,24 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
   const [expanded, setExpanded] = useState(true);
   const { copied, copy } = useCopyStatus();
   const excerpt = extractErrorExcerpt(log, err.message);
-  const collapsible = Boolean(excerpt);
+  const details = hasErrorDetails(err);
+  const collapsible = Boolean(excerpt) || details;
   const title = err.explanation ?? err.message;
-  let location = "";
-  if (err.file) {
-    location =
-      err.line != null
-        ? t(($) => $.editor.log.locationFileLine, { file: err.file, line: err.line })
-        : err.file;
-  } else if (err.line != null) {
-    location = t(($) => $.editor.log.locationLine, { line: err.line });
-  }
+  const location = errorLocation(err, t);
 
-  const copyError = () => copy([title, location, excerpt].filter(Boolean).join("\n"));
+  const copyError = async () => {
+    const detailText = details
+      ? (await import("@/lib/compile-error-excerpt")).formatCompileErrorDetails(
+          err,
+          t(($) => $.editor.log.hint),
+        )
+      : "";
+    await copy([title, location, excerpt, detailText].filter(Boolean).join("\n"));
+  };
+  const openErrorLocation = () =>
+    err.column == null
+      ? openLocation(err.file, err.line as number)
+      : openLocation(err.file, err.line as number, err.column);
 
   return (
     <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
@@ -208,7 +251,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
             <button
               type="button"
               aria-label={t(($) => $.editor.log.goToLocation)}
-              onClick={() => void openLocation(err.file, err.line as number)}
+              onClick={() => void openErrorLocation()}
               className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
             >
               {t(($) => $.editor.log.open)}
@@ -223,6 +266,11 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
             <LogText text={excerpt} />
           </pre>
         </div>
+      )}
+      {expanded && details && (
+        <Suspense fallback={null}>
+          <CompileErrorDetails err={err} />
+        </Suspense>
       )}
     </div>
   );
@@ -365,10 +413,11 @@ function errorText(message: string): string {
     .replace(/\.$/, "");
 }
 
-function reportedAsError(diagnostic: LogDiagnostic, errors: readonly CompileError[]): boolean {
+function reportedAsCard(diagnostic: LogDiagnostic, errors: readonly CompileError[]): boolean {
   const text = errorText(diagnostic.message);
   return errors.some(
     (error) =>
+      (diagnostic.severity === "error" || error.kind === "warning") &&
       errorText(error.message) === text &&
       (error.line == null || diagnostic.line == null || error.line === diagnostic.line),
   );
@@ -393,7 +442,7 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
 
   const structured = useMemo<readonly LogDiagnostic[]>(() => {
     if (diagnostics) return diagnostics;
-    if (!log || status === "compiling") return NO_DIAGNOSTICS;
+    if (!log || status === "compiling" || /\.typ$/i.test(mainDoc)) return NO_DIAGNOSTICS;
     return parseLatexLog(log, mainDoc);
   }, [diagnostics, log, mainDoc, status]);
   const groups = useMemo(() => {
@@ -405,19 +454,29 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
     for (const d of structured) {
       if (d.severity === "error") {
         // Rust-side errors[] cards stay authoritative; skip duplicates.
-        if (!reportedAsError(d, errors)) errs.push(d);
+        if (!reportedAsCard(d, errors)) errs.push(d);
       } else if (d.category === "undefined-reference" || d.category === "undefined-citation") {
-        refs.push(d);
+        if (!reportedAsCard(d, errors)) refs.push(d);
       } else if (d.severity === "typesetting") {
         boxes.push(d);
       } else if (d.severity === "info") {
         infos.push(d);
-      } else {
+      } else if (!reportedAsCard(d, errors)) {
         warns.push(d);
       }
     }
     return { errs, refs, warns, boxes, infos };
   }, [structured, errors]);
+  const summary = useMemo(() => {
+    const errorCards = errors.filter((error) => error.kind === "error").length;
+    return {
+      errors: errorCards + groups.errs.length,
+      warnings: errors.length - errorCards + groups.refs.length + groups.warns.length,
+      references: structured.filter(
+        (d) => d.category === "undefined-reference" || d.category === "undefined-citation",
+      ).length,
+    };
+  }, [errors, groups, structured]);
 
   useEffect(() => {
     if (!E2E_HOOKS) return;
@@ -476,6 +535,11 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
         onScroll={onScroll}
       >
         <div className="space-y-3">
+          {status !== "compiling" && (summary.errors > 0 || summary.warnings > 0) && (
+            <Suspense fallback={null}>
+              <CompileLogSummary {...summary} />
+            </Suspense>
+          )}
           {errors.length > 0 &&
             errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}
           {[...groups.errs, ...groups.refs, ...groups.warns].map((d) => (

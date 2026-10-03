@@ -56,6 +56,9 @@ Typst reports `file:line:col: error: message` with `--diagnostic-format short`, 
 | `failed to load file` on `bibliography(...)` | The `.bib` is missing or empty | Add the file with at least one entry before adding the call |
 | `package not found` or a hang on first compile | An `@preview` import needs network on first use | Prefer built-in Typst features. Oleafly reports Typst as not offline capable for exactly this reason |
 | `file not found (searched at ...)` | A path outside the project root | Typst is run with `--root` at the project directory. Keep every path inside it |
+| An error inside `@preview/<package>:<version>/...` | The package version expects a different Typst than the one the project pins | Read `typst.version` in `project.json`, then import a package version made for that Typst. Changing the pin is the user's call |
+| `warning: unknown font family: X` | The font is not embedded in Typst and not installed on this computer, so the text fell back to another font | Use an embedded font (Libertinus Serif, New Computer Modern, DejaVu Sans Mono) or one the template documents |
+| ``label `<x>` does not exist in the document`` | A `@x` reference or citation with no matching label or bibliography entry | Check `project_map`. In Typst `@x` can mean a label or a citation, so look in both places |
 
 Typst has no SyncTeX, so an error location cannot be clicked through to the PDF. Read the reported line directly.
 

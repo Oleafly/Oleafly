@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} no ofrece un modo de compilación sin conexión. Se compila de forma normal.",
     "retry": "Compilar otra vez",
-    "bundleFetchFailed": "Oleafly no pudo descargar los paquetes de TeX que necesita este documento. Revisa tu conexión y vuelve a compilar."
+    "bundleFetchFailed": "Oleafly no pudo descargar los paquetes de TeX que necesita este documento. Revisa tu conexión y vuelve a compilar.",
+    "typstMissing": "Typst {{version}} no está instalado. Descárgalo o cambia este proyecto a otra versión.",
+    "typstPackage": {
+      "downloadFailed": "Typst no pudo descargar {{spec}}. Revisa tu conexión a internet y vuelve a compilar.",
+      "downloadFailedUnnamed": "Typst no pudo descargar un paquete que importa este documento. Revisa tu conexión a internet y vuelve a compilar.",
+      "offlineNotCached": "No tienes conexión y {{spec}} aún no está en la caché de paquetes. Compila una vez con conexión o incorpora los paquetes al proyecto.",
+      "offlineNotCachedUnnamed": "No tienes conexión y un paquete que importa este documento aún no está en la caché de paquetes. Compila una vez con conexión.",
+      "notFound": "Typst Universe no tiene ningún paquete {{spec}}. Revisa el nombre en la importación.",
+      "localNotFound": "El paquete local {{spec}} no está instalado. Ponlo en la carpeta de paquetes de Typst de Oleafly o en la carpeta typst-packages del proyecto.",
+      "versionMissing": "Este paquete no tiene la versión {{version}}. La más reciente es {{latest}}.",
+      "versionMissingNoLatest": "Este paquete no tiene la versión {{version}}. Revisa la versión en la importación."
+    }
   },
   "developer": {
     "actions": {
@@ -353,6 +364,7 @@
     "notRenamable": "Este símbolo no se puede renombrar.",
     "nothingToRename": "No hay nada que renombrar.",
     "referencesFor": "Referencias a {{name}}",
+    "renameFailed": "No se pudo cambiar el nombre a \"{{name}}\".",
     "renamePartial": "Se renombró a \"{{name}}\" en {{edited}} de {{total}} archivos. No se pudo escribir en {{files}}.",
     "renamed": "Se renombró a \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) en $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -597,5 +609,8 @@
   "folderUnavailable": {
     "compile": "La compilación está en pausa hasta que vuelva la carpeta del proyecto.",
     "saveReason": "la carpeta del proyecto no está disponible"
+  },
+  "imageToTypst": {
+    "failed": "Falló la conversión de imagen a Typst: {{detail}}"
   }
 }

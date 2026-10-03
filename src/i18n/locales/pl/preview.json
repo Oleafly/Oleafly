@@ -97,7 +97,9 @@
     "installPackages_one": "Znajdź i zainstaluj {{name}}",
     "installPackages_few": "Znajdź i zainstaluj {{count}} pliki",
     "installPackages_many": "Znajdź i zainstaluj {{count}} plików",
-    "installPackages_other": "Znajdź i zainstaluj {{count}} pliku"
+    "installPackages_other": "Znajdź i zainstaluj {{count}} pliku",
+    "downloadTypst": "Pobierz Typst {{version}}",
+    "useTypst": "Użyj Typst {{version}}"
   },
   "stale": {
     "badge": "Nieaktualny",
@@ -106,8 +108,8 @@
     "explanation": "Ten PDF nie odpowiada aktywnej wersji projektu.",
     "revisionExplanation": "Wyświetlana jest wersja projektu {{displayed}}. Aktywny projekt to wersja {{active}}.",
     "noIdentity": "Wyświetlany PDF nie ma zweryfikowanej tożsamości kompilacji dla aktywnej wersji.",
-    "syncTexAvailable": "SyncTeX korzysta przy edycjach z najbliższego niezmienionego wiersza.",
-    "syncTexUnavailable": "SyncTeX wymaga aktualnej kompilacji."
+    "syncTexAvailable": "Synchronizacja ze źródłem korzysta przy edycjach z najbliższego niezmienionego wiersza.",
+    "syncTexUnavailable": "Synchronizacja ze źródłem wymaga aktualnej kompilacji."
   },
   "save": {
     "title": "Zapisz PDF w projekcie",
@@ -275,5 +277,33 @@
       "pageLabel": "Strona {{page}} z {{total}}",
       "empty": "Na tej stronie nie znaleziono czytelnego tekstu."
     }
+  },
+  "presentation": {
+    "windowTitle": "Prezentacja",
+    "presenterTitle": "Widok prelegenta",
+    "present": "Prezentuj",
+    "presentFromStart": "Prezentuj od początku",
+    "presentFromPage": "Prezentuj od tej strony",
+    "presentWithPresenter": "Prezentuj z widokiem prelegenta",
+    "loading": "Otwieranie slajdów",
+    "failed": "Nie udało się otworzyć slajdów. Skompiluj projekt i spróbuj ponownie.",
+    "close": "Zamknij",
+    "slideLabel": "Slajd {{page}} z {{total}}",
+    "current": "Bieżący slajd",
+    "next": "Następny slajd",
+    "lastSlide": "To jest ostatni slajd.",
+    "notes": "Notatki prelegenta",
+    "notesLoading": "Odczytywanie notatek prelegenta",
+    "noNotes": "Ten slajd nie ma notatek prelegenta.",
+    "elapsed": "Czas trwania",
+    "clock": "Bieżąca godzina",
+    "pause": "Wstrzymaj stoper",
+    "resume": "Wznów stoper",
+    "reset": "Wyzeruj stoper",
+    "previousAction": "Poprzedni slajd",
+    "nextAction": "Następny slajd",
+    "end": "Zakończ prezentację",
+    "blank": "Ekran dla publiczności jest wygaszony. Naciśnij B, aby pokazać slajdy.",
+    "toggleBlank": "Wygaś ekran dla publiczności"
   }
 }

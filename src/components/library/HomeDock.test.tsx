@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 
@@ -29,6 +30,7 @@ beforeEach(() => {
   themeMocks.setPreference.mockClear();
   useHomeViewStore.setState({ page: "library", activeConverter: null });
   useSettingsStore.setState({ dockPlacement: "left", latexTools: true });
+  useDiagramComposerStore.setState({ chooserOpen: false, requestId: 0 });
 });
 
 function openThemeMenu(trigger: HTMLElement) {
@@ -55,6 +57,13 @@ describe("HomeDock", () => {
     render(<HomeDock />);
     fireEvent.click(screen.getByTestId("open-latex-tools"));
     expect(useHomeViewStore.getState().page).toBe("tools");
+  });
+
+  it("asks which diagram composer to open before opening one", () => {
+    render(<HomeDock />);
+    fireEvent.click(screen.getByTestId("open-diagram-composer"));
+    expect(useDiagramComposerStore.getState()).toMatchObject({ chooserOpen: true, requestId: 0 });
+    expect(useHomeViewStore.getState().page).toBe("library");
   });
 
   it("renders bottom orientation when dockPlacement is bottom", () => {

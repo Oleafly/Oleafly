@@ -95,7 +95,9 @@
     "retryCompile": "Käännä uudelleen",
     "chooseEngine": "Valitse moottori…",
     "installPackages_one": "Etsi ja asenna {{name}}",
-    "installPackages_other": "Etsi ja asenna {{count}} tiedostoa"
+    "installPackages_other": "Etsi ja asenna {{count}} tiedostoa",
+    "downloadTypst": "Lataa Typst {{version}}",
+    "useTypst": "Käytä versiota Typst {{version}}"
   },
   "stale": {
     "badge": "Vanhentunut",
@@ -104,8 +106,8 @@
     "explanation": "Tämä PDF ei vastaa projektin aktiivista versiota.",
     "revisionExplanation": "Näytetään projektin versio {{displayed}}. Aktiivinen projekti on versio {{active}}.",
     "noIdentity": "Näytetyllä PDF-tiedostolla ei ole varmennettua käännöstunnistetta aktiiviselle versiolle.",
-    "syncTexAvailable": "SyncTeX käyttää muokkauksissa lähintä muuttumatonta riviä.",
-    "syncTexUnavailable": "SyncTeX vaatii ajantasaisen käännöksen."
+    "syncTexAvailable": "Lähdesynkronointi käyttää muokkauksissa lähintä muuttumatonta riviä.",
+    "syncTexUnavailable": "Lähdesynkronointi vaatii ajantasaisen käännöksen."
   },
   "save": {
     "title": "Tallenna PDF projektiin",
@@ -273,5 +275,33 @@
       "pageLabel": "Sivu {{page}}/{{total}}",
       "empty": "Tältä sivulta ei löytynyt luettavaa tekstiä."
     }
+  },
+  "presentation": {
+    "windowTitle": "Esitys",
+    "presenterTitle": "Esittäjän näkymä",
+    "present": "Esitä",
+    "presentFromStart": "Esitä alusta",
+    "presentFromPage": "Esitä tältä sivulta",
+    "presentWithPresenter": "Esitä esittäjän näkymällä",
+    "loading": "Avataan kalvoja",
+    "failed": "Kalvoja ei voitu avata. Käännä projekti ja yritä sitten uudelleen.",
+    "close": "Sulje",
+    "slideLabel": "Kalvo {{page}}/{{total}}",
+    "current": "Nykyinen kalvo",
+    "next": "Seuraava kalvo",
+    "lastSlide": "Tämä on viimeinen kalvo.",
+    "notes": "Puhujan muistiinpanot",
+    "notesLoading": "Luetaan puhujan muistiinpanoja",
+    "noNotes": "Tällä kalvolla ei ole puhujan muistiinpanoja.",
+    "elapsed": "Kulunut aika",
+    "clock": "Kellonaika",
+    "pause": "Keskeytä ajastin",
+    "resume": "Jatka ajastinta",
+    "reset": "Nollaa ajastin",
+    "previousAction": "Edellinen kalvo",
+    "nextAction": "Seuraava kalvo",
+    "end": "Lopeta esitys",
+    "blank": "Yleisön näyttö on tyhjä. Näytä kalvot painamalla B.",
+    "toggleBlank": "Tyhjennä yleisön näyttö"
   }
 }

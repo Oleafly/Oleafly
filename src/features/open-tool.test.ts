@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { toolById } from "@/lib/tool-catalog";
+import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -26,7 +27,13 @@ function deferred() {
   return { promise, resolve };
 }
 
-import { openHomePage, openTool, openToolsGallery } from "./open-tool";
+import {
+  openDiagramComposer,
+  openDiagramComposerChooser,
+  openHomePage,
+  openTool,
+  openToolsGallery,
+} from "./open-tool";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -42,6 +49,7 @@ beforeEach(() => {
     createTypstProject: vi.fn().mockResolvedValue("typst-project"),
   });
   useSettingsStore.setState({ viewMode: "editor" });
+  useDiagramComposerStore.setState({ language: "tikz", requestId: 0, chooserOpen: false });
 });
 
 describe("tool navigation", () => {
@@ -55,6 +63,14 @@ describe("tool navigation", () => {
     useFilesStore.setState({ projectId: "paper" });
     await openHomePage("symbols");
     expect(useHomeViewStore.getState().page).toBe("symbols");
+    expect(useFilesStore.getState().closeProject).not.toHaveBeenCalled();
+  });
+
+  it("opens the diagram composer over the active project", async () => {
+    useFilesStore.setState({ projectId: "paper" });
+    await openHomePage("diagram-composer");
+    expect(useHomeViewStore.getState().page).toBe("diagram-composer");
+    expect(useHomeViewStore.getState().queuedPageAfterProjectClose).toBeNull();
     expect(useFilesStore.getState().closeProject).not.toHaveBeenCalled();
   });
 
@@ -156,5 +172,38 @@ describe("tool navigation", () => {
       ["typst-start-failed", TYPST_START_FAILED],
     ]);
     expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+});
+
+describe("diagram composer entry", () => {
+  it("opens the chooser without leaving the current page", () => {
+    useFilesStore.setState({ projectId: "paper" });
+    openDiagramComposerChooser();
+    expect(useDiagramComposerStore.getState().chooserOpen).toBe(true);
+    expect(useHomeViewStore.getState().page).toBe("library");
+    expect(useFilesStore.getState().closeProject).not.toHaveBeenCalled();
+  });
+
+  it.each(["tikz", "typst", "mermaid"] as const)(
+    "opens the composer in %s and closes the chooser",
+    async (language) => {
+      useDiagramComposerStore.setState({ chooserOpen: true });
+      await openDiagramComposer(language);
+      expect(useDiagramComposerStore.getState()).toMatchObject({
+        language,
+        requestId: 1,
+        chooserOpen: false,
+      });
+      expect(useHomeViewStore.getState().page).toBe("diagram-composer");
+    },
+  );
+
+  it("opens the composer over the active project in the requested language", async () => {
+    useFilesStore.setState({ projectId: "paper" });
+    await openDiagramComposer("typst");
+    expect(useDiagramComposerStore.getState().language).toBe("typst");
+    expect(useHomeViewStore.getState().page).toBe("diagram-composer");
+    expect(useHomeViewStore.getState().queuedPageAfterProjectClose).toBeNull();
+    expect(useFilesStore.getState().closeProject).not.toHaveBeenCalled();
   });
 });

@@ -58,3 +58,26 @@ export function oleaflyBibtex(version: string): string {
 export function bibtexHasOleaflyEntry(bibtex: string): boolean {
   return new RegExp(String.raw`@\w+\s*\{\s*${OLEAFLY_CITATION_KEY}\s*,`, "iu").test(bibtex);
 }
+
+export const OLEAFLY_HAYAGRIVA_AUTHORS = ["Venkateshmurthy, Prajwal S."] as const;
+export const OLEAFLY_HAYAGRIVA_GROUP = "The Oleafly contributors";
+
+function yamlString(value: string): string {
+  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+}
+
+export function oleaflyHayagriva(version: string): string {
+  const cleaned = version.trim();
+  return [
+    `${OLEAFLY_CITATION_KEY}:`,
+    "  type: repository",
+    `  title: ${yamlString(OLEAFLY_CITATION_TITLE)}`,
+    "  author:",
+    ...OLEAFLY_HAYAGRIVA_AUTHORS.map((author) => `    - ${yamlString(author)}`),
+    `    - name: ${yamlString(OLEAFLY_HAYAGRIVA_GROUP)}`,
+    `  date: ${OLEAFLY_CITATION_YEAR}`,
+    `  url: ${yamlString(OLEAFLY_REPOSITORY_URL)}`,
+    ...(cleaned ? [`  note: ${yamlString(`Version ${cleaned}`)}`] : []),
+  ].join("\n");
+}
+

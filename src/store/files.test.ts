@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   importPathsIntoProject: vi.fn(),
   setMainDocCmd: vi.fn(),
   setProjectEngineCmd: vi.fn(),
+  setProjectTypstVersion: vi.fn(),
   setProjectShellEscapeCmd: vi.fn(),
   recordProjectTexSpec: vi.fn(),
   importOverleafProjectCmd: vi.fn(),
@@ -58,6 +59,7 @@ vi.mock("@/lib/tauri", () => ({
   importPathsIntoProject: mocks.importPathsIntoProject,
   setMainDocCmd: mocks.setMainDocCmd,
   setProjectEngineCmd: mocks.setProjectEngineCmd,
+  setProjectTypstVersion: mocks.setProjectTypstVersion,
   setProjectShellEscapeCmd: mocks.setProjectShellEscapeCmd,
   recordProjectTexSpec: mocks.recordProjectTexSpec,
   importOverleafProjectCmd: mocks.importOverleafProjectCmd,
@@ -2080,6 +2082,39 @@ describe("engine setting failures", () => {
       engineError: "loadFailed",
     });
     expect(mocks.logError).toHaveBeenCalledWith("load document engine", expect.any(Error));
+    expectNoToasts();
+  });
+
+  it("pins a Typst version, resets the compile and loads the new descriptor", async () => {
+    const typst = {
+      ...LATEX_ENGINE,
+      id: "typst" as const,
+      source_format: "typst" as const,
+      typst_version: "0.13.1",
+      typst_resolved: { version: "0.13.1", source: "downloaded" as const },
+      typst_missing: null,
+    };
+    mocks.setProjectTypstVersion.mockResolvedValue({ main_doc: "main.typ" });
+    mocks.getProjectEngine.mockResolvedValue(typst);
+
+    await useFilesStore.getState().setTypstVersion("0.13.1");
+
+    expect(mocks.setProjectTypstVersion).toHaveBeenCalledExactlyOnceWith("project", "0.13.1");
+    expect(mocks.resetCompile).toHaveBeenCalled();
+    expect(useFilesStore.getState()).toMatchObject({ engine: typst, engineLoaded: true, engineError: null });
+    expectNoToasts();
+  });
+
+  it("logs a refused Typst version and keeps the project compilable", async () => {
+    const failure = new Error("not a Typst project");
+    mocks.setProjectTypstVersion.mockRejectedValue(failure);
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    await expect(useFilesStore.getState().setTypstVersion(null)).rejects.toBe(failure);
+
+    expect(mocks.setProjectTypstVersion).toHaveBeenCalledExactlyOnceWith("project", null);
+    expect(useFilesStore.getState()).toMatchObject({ engine: LATEX_ENGINE, engineLoaded: true, engineError: null });
+    expect(mocks.logError).toHaveBeenCalledWith("set Typst version", failure);
     expectNoToasts();
   });
 

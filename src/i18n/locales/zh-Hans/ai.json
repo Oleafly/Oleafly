@@ -293,7 +293,7 @@
       "literatureSearch": "通过关键词在 OpenAlex 中搜索论文，无需密钥。",
       "verifyCitation": "通过 doi.org 或 Crossref 将 DOI 或标题转换为经过验证的 BibTeX。",
       "projectLibrarySearch": "通过关键词搜索项目自身的文本和笔记。",
-      "previewFigure": "单独编译 TikZ 或 PGFPlots 图片，并在聊天中显示结果。",
+      "previewFigure": "单独渲染 TikZ 或 CeTZ 图形，并在聊天中显示结果。",
       "insertFigure": "将完成的图片插入光标处，附带题注和标签，并在 figures/ 下保存一张 PNG。",
       "loadImage": "查看项目中已有的图片。",
       "updateTodos": "编写或更新聊天中显示的分步计划。",
@@ -336,6 +336,7 @@
     "noDescription": "未提供描述。",
     "notes": {
       "latexOnly": "仅限 LaTeX 项目",
+      "latexAndTypstOnly": "仅限 LaTeX 和 Typst 项目",
       "pdfCaptureSetting": "需要启用 PDF 页面截图设置。",
       "chatApproval": "在聊天中逐条批准命令。",
       "browserSetting": "需要启用浏览器设置。"
@@ -667,6 +668,24 @@
     "tikzFigure": {
       "label": "TikZ 图形",
       "description": "在聊天中起草 TikZ 代码。"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "修复 Typst 错误"
+      },
+      "writeEquation": {
+        "description": "用自然语言生成 Typst 数学公式。"
+      },
+      "academicPresentation": {
+        "description": "根据你的论文生成 Typst 幻灯片。"
+      },
+      "generateTable": {
+        "description": "在聊天中起草 Typst 表格。"
+      },
+      "figure": {
+        "label": "CeTZ 图形",
+        "description": "在聊天中起草 CeTZ 代码。"
+      }
     }
   },
   "turn": {

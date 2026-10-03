@@ -3,6 +3,22 @@
     "aiProviderRequired": "AI로 수정 기능을 쓰려면 설정에서 AI 제공자를 연결하세요.",
     "fixFailed": "수정하지 못했습니다: {{detail}}"
   },
+  "chooser": {
+    "title": "다이어그램 작성기 선택",
+    "description": "다이어그램을 쓸 문서 종류를 고르세요.",
+    "tikz": {
+      "title": "TikZ 다이어그램",
+      "description": "LaTeX 문서용 TikZ 노드와 화살표입니다."
+    },
+    "typst": {
+      "title": "Typst 다이어그램",
+      "description": "Typst 문서용 fletcher 다이어그램입니다."
+    },
+    "mermaid": {
+      "title": "Mermaid 다이어그램",
+      "description": "Markdown 문서용 Mermaid 순서도입니다."
+    }
+  },
   "package": {
     "composer": {
       "title": "다이어그램 삽입",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "취소(Esc)",
       "cancelRename": "이름 바꾸기 취소",
       "renameTooltip": "다이어그램 이름 바꾸기",
-      "importTooltip": ".tikz 또는 .tex 파일을 가져와 이 초안을 대체합니다",
-      "importLabel": "TikZ 파일 가져오기",
+      "importTooltip": ".tikz, .tex, .typ, .mmd 또는 .md 파일을 가져와 이 초안을 대체합니다",
+      "importLabel": "다이어그램 파일 가져오기",
       "modeDraw": "그리기",
       "modeCode": "코드",
       "fixWithAiTooltip": "컴파일 오류 수정을 AI에게 요청합니다",
@@ -28,20 +44,29 @@
       "newProject": "새 프로젝트",
       "noOtherProjects": "다른 프로젝트가 아직 없습니다.",
       "saveFigure": "그림 저장",
+      "insertTypst": "Typst로 삽입",
+      "insertLatex": "TikZ로 삽입",
       "downloadTooltip": "이 다이어그램을 다운로드합니다",
       "download": "다운로드",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG(준비 중)",
       "svgTooltip": "SVG 내보내기에는 벡터 렌더러가 필요하며 아직 제공되지 않습니다",
       "snippets": "스니펫",
-      "untitledName": "제목 없는 다이어그램"
+      "untitledName": "제목 없는 다이어그램",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Mermaid로 삽입",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "다이어그램 언어: {{language}}"
     },
     "snippets": {
       "rectangleNode": "사각형 노드",
       "circleNode": "원형 노드",
       "arrowEdge": "화살표 간선",
       "lineEdge": "직선 간선",
-      "scope": "스코프"
+      "scope": "스코프",
+      "group": "그룹"
     },
     "preview": {
       "label": "미리보기",
@@ -53,7 +78,8 @@
       "pngScale": "PNG 배율",
       "scaleFactor": "{{factor}}배",
       "background": "배경",
-      "backgroundLabel": "그림 배경색"
+      "backgroundLabel": "그림 배경색",
+      "diagnosticAt": "{{line}}번째 줄: {{message}}"
     },
     "toast": {
       "compileFailed": "다이어그램이 컴파일되지 않았습니다. 아래 로그를 확인하세요.",
@@ -68,16 +94,25 @@
       "figureCached": "이미 캐시에 있어 기존 그림을 다시 사용합니다.",
       "figureSaved": "그림 캐시에 저장했습니다.",
       "saveFigureFailed": "그림을 저장하지 못했습니다: {{detail}}",
+      "insertedTypst": "Typst 코드로 삽입했습니다.",
+      "insertedLatex": "TikZ 코드로 삽입했습니다.",
       "downloaded": "다운로드했습니다.",
       "imported": "{{name}}을(를) 편집용으로 가져왔습니다.",
       "importedCodeOnly": "{{name}}을(를) 가져왔습니다(코드 전용, 그리기 불가).",
       "importFailed": "해당 파일을 가져오지 못했습니다: {{detail}}",
       "noAiFix": "AI가 수정안을 반환하지 않았습니다.",
       "fixFailed": "수정하지 못했습니다: {{detail}}",
-      "notDrawable": "이 코드에서 그릴 수 있는 것이 없습니다. 코드는 그대로 두었습니다."
+      "notDrawable": "이 코드에서 그릴 수 있는 것이 없습니다. 코드는 그대로 두었습니다.",
+      "savedTypstToProject": "{{path}}을(를) 저장했습니다. #include로 문서에 추가하세요.",
+      "insertedMermaid": "Mermaid 코드 블록으로 삽입했습니다.",
+      "savedMermaidToProject": "{{path}}을(를) 저장했습니다. mermaid 코드 블록에 넣어 Markdown 문서에 추가하세요.",
+      "typstPackageMissing": "Typst가 fletcher 패키지를 가져오지 못했습니다. Typst가 내려받아 보관할 수 있도록 한 번 인터넷에 연결하세요.",
+      "previewUnavailable": "여기서는 이 미리보기를 쓸 수 없습니다.",
+      "readerUnavailable": "코드 판독기를 불러오지 못했습니다. 다시 시도하세요."
     },
     "confirm": {
-      "overwrite": "{{files}}이(가) 이미 있습니다. 덮어쓸까요? (둘 다 남기려면 다른 이름을 지정하세요.)"
+      "overwrite": "{{files}}이(가) 이미 있습니다. 덮어쓸까요? (둘 다 남기려면 다른 이름을 지정하세요.)",
+      "switchLanguage": "이 다이어그램을 {{from}}에서 {{to}}(으)로 전환할까요? 캔버스가 표시할 수 없는 코드는 옮겨지지 않습니다."
     },
     "canvas": {
       "shapeTools": "도형 도구",
@@ -136,7 +171,56 @@
       "routingStraight": "직선",
       "routingOrthogonal": "직교",
       "routingCurved": "곡선",
-      "line": "선"
+      "line": "선",
+      "nodeLabelTypst": "레이블(Typst)"
+    },
+    "notes": {
+      "tooltip": "캔버스에 다 표시되지 않는 내용",
+      "count_other": "참고 사항 {{count}}개",
+      "keptHeading": "코드에 유지됨",
+      "approximatedHeading": "근사치로 표시됨",
+      "droppedHeading": "캔버스에 그려지지 않음",
+      "notDiagram": "이 코드에는 캔버스가 그릴 수 있는 것이 없습니다.",
+      "outsideCode": "다이어그램 앞뒤의 코드는 작성된 그대로 유지됩니다.",
+      "wrapper": "figure처럼 다이어그램을 감싼 코드는 작성된 그대로 유지됩니다.",
+      "diagramSetting": "다이어그램 설정 {{detail}}은(는) 코드에 유지됩니다.",
+      "edgeOption": "간선 옵션 {{detail}}은(는) 코드에 유지됩니다.",
+      "scripted": "반복문처럼 스크립트로 만든 다이어그램 내용은 코드에 유지됩니다.",
+      "mathMode": "수식 모드의 다이어그램 내용은 코드에 유지됩니다.",
+      "unplacedNode": "위치가 정해지지 않은 노드는 코드에 유지됩니다.",
+      "unreadEdge": "캔버스가 읽을 수 없는 간선은 코드에 유지됩니다.",
+      "danglingEdge": "두 노드를 잇지 않는 간선은 코드에 유지됩니다.",
+      "gridCoordinates": "격자 좌표는 고정된 위치에 표시됩니다.",
+      "formattedLabels": "서식이 있는 레이블은 일반 텍스트로 표시됩니다.",
+      "unknownShapes": "캔버스에 없는 도형은 사각형으로 표시됩니다.",
+      "estimatedSize": "너비와 높이가 없는 노드는 추정한 크기로 표시됩니다.",
+      "colorAdjustments": "lighten 같은 조정된 색은 기본 색으로 표시됩니다.",
+      "colorExpressions": "변수나 식으로 지정한 색은 캔버스에 표시되지 않습니다.",
+      "strokeStyles": "일부 선 스타일은 캔버스에서 가장 가까운 스타일로 표시됩니다.",
+      "arrowMarks": "캔버스에 없는 화살촉은 일반 화살표로 표시됩니다.",
+      "freePoints": "자유 점을 지나는 간선은 캔버스에서 직선으로 그려집니다.",
+      "tikzCommand": "{{detail}} 명령은 그려지지 않습니다. 캔버스에서 편집하면 이 명령 없이 코드를 다시 씁니다.",
+      "truncated": "코드가 너무 길어 앞부분만 그립니다.",
+      "mermaidNotFlowchart": "캔버스에는 순서도만 그릴 수 있습니다. 이 코드는 {{detail}} 다이어그램입니다.",
+      "mermaidFrontmatter": "frontmatter 블록은 코드에 유지됩니다.",
+      "mermaidDirective": "설정 지시문은 코드에 유지됩니다.",
+      "mermaidComment": "주석은 코드에 유지됩니다.",
+      "mermaidAccessibility": "접근성 제목과 설명은 코드에 유지됩니다.",
+      "mermaidClick": "클릭 핸들러는 코드에 유지됩니다.",
+      "mermaidStyleProperty": "스타일 속성 {{detail}}은(는) 코드에 유지됩니다.",
+      "mermaidClassProperty": "클래스 속성 {{detail}}은(는) 코드에 유지됩니다.",
+      "mermaidLinkStyleProperty": "링크 스타일 속성 {{detail}}은(는) 코드에 유지됩니다.",
+      "mermaidNodeSetting": "노드 설정 {{detail}}은(는) 코드에 유지됩니다.",
+      "mermaidEdgeSetting": "간선 설정 {{detail}}은(는) 코드에 유지됩니다.",
+      "mermaidInvisibleLink": "보이지 않는 링크는 코드에 유지됩니다.",
+      "mermaidLinkLength": "링크 길이는 코드에 유지됩니다.",
+      "mermaidSubgraphDirection": "하위 그래프 방향은 코드에 유지됩니다.",
+      "mermaidUnknownStatement": "캔버스가 읽을 수 없는 구문은 코드에 유지됩니다.",
+      "mermaidShape": "{{detail}} 도형은 캔버스에서 가장 가까운 도형으로 표시됩니다.",
+      "mermaidThickLink": "굵은 링크는 일반 선으로 표시됩니다.",
+      "mermaidArrowHead": "원형과 X자 화살촉은 화살표로 표시됩니다.",
+      "mermaidMarkdownLabel": "Markdown 레이블은 일반 텍스트로 표시됩니다.",
+      "mermaidNoFlowchartHeader": "캔버스에는 순서도만 그릴 수 있습니다. 코드를 flowchart 또는 graph로 시작하세요."
     }
   }
 }

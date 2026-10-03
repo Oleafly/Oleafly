@@ -12,6 +12,7 @@ import {
   collectLatexOutlineMacros,
   renderLatexOutlineTitle,
 } from "@oleafly/latex";
+import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
 import { useEditorViewportAnchor } from "@/components/editor/cm/use-viewport-anchor";
 import { Button } from "@/components/ui/button";
 import { PanelState } from "@/components/layout/IntelligenceTree";
@@ -23,6 +24,25 @@ import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { cn } from "@/lib/utils";
 import { basename } from "@/lib/path-utils";
+
+function useTypstTitles(items: readonly OutlineItem[]): boolean {
+  const wanted = items.some((item) => /\.typ$/iu.test(item.file));
+  const [ready, setReady] = useState(() => typstTools() !== null);
+  useEffect(() => {
+    if (!wanted || ready) return;
+    let live = true;
+    loadTypstParser().then(
+      () => {
+        if (live) setReady(true);
+      },
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, [ready, wanted]);
+  return ready;
+}
 
 function normalizedHeadingTitle(title: string): string {
   return title.replace(/\s+/gu, " ").trim().toLowerCase();
@@ -227,6 +247,7 @@ export function DocumentOutline({
     () => collectLatexOutlineMacros(texts),
     [texts],
   );
+  const typstTitles = useTypstTitles(items);
 
   const activeRef = useRef<HTMLButtonElement | null>(null);
   // A long outline scrolls itself to follow the editor, but never while the
@@ -343,7 +364,9 @@ export function DocumentOutline({
               const headingCollapsed = collapsedHeadingIds.has(id);
               const displayTitle = /\.(?:latex|ltx|tex)$/iu.test(item.file)
                 ? renderLatexOutlineTitle(item.title, latexMacros)
-                : item.title;
+                : typstTitles && /\.typ$/iu.test(item.file)
+                  ? (typstTools()?.typstPlainTitle(item.title) ?? item.title)
+                  : item.title;
               return (
                 <div
                   key={`${item.file}:${item.line}:${item.kind}:${item.title}`}

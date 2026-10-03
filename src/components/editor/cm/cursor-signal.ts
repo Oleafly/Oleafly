@@ -1,5 +1,5 @@
 import { EditorView } from "@codemirror/view";
-import { SECTION_LINE_RE } from "@/components/editor/breadcrumbs-source";
+import { SECTION_LINE_RE, typstOutlineChanged } from "@/components/editor/breadcrumbs-source";
 import { createEmitter } from "@/lib/emitter";
 
 let revision = 0;
@@ -28,12 +28,13 @@ export function noteEditorDocument(path: string | null, version: number): void {
 
 export function cursorSignalExtension() {
   return EditorView.updateListener.of((update) => {
-    if (!update.selectionSet && !update.docChanged) return;
+    const outlineChanged = typstOutlineChanged(update);
+    if (!update.selectionSet && !update.docChanged && !outlineChanged) return;
     const head = update.state.selection.main.head;
     const line = update.state.doc.lineAt(head);
     const movedLine = line.number !== lastLine;
     lastLine = line.number;
     const editedHeading = update.docChanged && SECTION_LINE_RE.test(line.text);
-    if (movedLine || editedHeading) bumpEditorCursorRevision();
+    if (movedLine || editedHeading || outlineChanged) bumpEditorCursorRevision();
   });
 }

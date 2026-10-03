@@ -4,11 +4,21 @@ import * as XLSX from "xlsx";
 const mocks = vi.hoisted(() => ({
   readPickedFileBase64: vi.fn(),
   registerPickedFileForE2E: vi.fn(),
+  writeProjectBytes: vi.fn(),
+  refreshTree: vi.fn(),
+  notifyProjectFilesChanged: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
   readPickedFileBase64: mocks.readPickedFileBase64,
   registerPickedFileForE2E: mocks.registerPickedFileForE2E,
+  writeProjectBytes: mocks.writeProjectBytes,
+}));
+vi.mock("@/lib/cross-window", () => ({
+  notifyProjectFilesChanged: mocks.notifyProjectFilesChanged,
+}));
+vi.mock("@/store/files", () => ({
+  useFilesStore: { getState: () => ({ projectId: "paper", refreshTree: mocks.refreshTree }) },
 }));
 vi.mock("xlsx", async (importOriginal) => {
   const actual = await importOriginal<typeof import("xlsx")>();
@@ -19,9 +29,14 @@ import {
   MAX_TABLE_COLUMNS,
   MAX_TABLE_CHARACTERS,
   MAX_TABLE_ROWS,
+  emitLinkedTable,
   emitTable,
   hasValidTableLabel,
+  planLinkedTable,
+  readTableFile,
   readTableRows,
+  writeLinkedTableData,
+  type TableFile,
 } from "./table-import";
 
 function csvBase64(text: string): string {
@@ -169,5 +184,107 @@ describe("emitTable", () => {
     expect(source).toContain("\\begin{tabular}{lr}"); // 50% infers as numeric
     expect(source).toContain("x\\&y & 50\\%");
     expect(source).toContain("\\label{tab:x}");
+  });
+});
+
+describe("readTableFile", () => {
+  it("keeps the decoded text and the delimiter kind for CSV and TSV", async () => {
+    mocks.readPickedFileBase64.mockResolvedValue(csvBase64("\uFEFFa,b\n1,2\n"));
+    await expect(readTableFile("/tmp/x.csv")).resolves.toEqual({
+      rows: [["a", "b"], ["1", "2"]],
+      format: "csv",
+      text: "a,b\n1,2\n",
+    });
+    mocks.readPickedFileBase64.mockResolvedValue(csvBase64("a\tb\n"));
+    await expect(readTableFile("/tmp/x.TSV")).resolves.toMatchObject({ format: "tsv", text: "a\tb\n" });
+  });
+
+  it("reads JSON records with every key as a header column", async () => {
+    mocks.readPickedFileBase64.mockResolvedValue(csvBase64('[{"a":1},{"b":"x"}]'));
+    await expect(readTableFile("/tmp/runs.json")).resolves.toEqual({
+      rows: [["a", "b"], ["1", ""], ["", "x"]],
+      format: "json",
+      jsonShape: "records",
+      text: '[{"a":1},{"b":"x"}]',
+    });
+  });
+
+  it("explains when a JSON file is not a list of records or rows", async () => {
+    mocks.readPickedFileBase64.mockResolvedValue(csvBase64('{"a":1}'));
+    await expect(readTableFile("/tmp/config.json")).rejects.toThrow(/list of records or rows/);
+  });
+
+  it("marks a workbook as a spreadsheet with no text to copy", async () => {
+    mocks.readPickedFileBase64.mockResolvedValue(workbookBase64(XLSX.utils.aoa_to_sheet([["a"], [1]])));
+    await expect(readTableFile("/tmp/book.xlsx")).resolves.toEqual({
+      rows: [["a"], ["1"]],
+      format: "spreadsheet",
+      text: null,
+    });
+  });
+});
+
+describe("planLinkedTable", () => {
+  const tree = [
+    { path: "data", name: "data", is_dir: true },
+    { path: "data/results.csv", name: "results.csv", is_dir: false },
+  ] as never[];
+
+  it("copies a CSV next to the others in data/ and points the source at it from the document", () => {
+    const file: TableFile = { rows: [["a"], ["1"]], format: "csv", text: "a\n1\n" };
+    expect(planLinkedTable(file, "results.csv", tree, "sections/results.typ")).toEqual({
+      dataPath: "data/results-2.csv",
+      content: "a\n1\n",
+      source: { format: "csv", path: "../data/results-2.csv" },
+    });
+  });
+
+  it("passes the tab delimiter for TSV files and for CSV files that use tabs", () => {
+    const tsv: TableFile = { rows: [["a", "b"]], format: "tsv", text: "a\tb\n" };
+    expect(planLinkedTable(tsv, "Run Log.tsv", [], "main.typ")).toEqual({
+      dataPath: "data/Run-Log.tsv",
+      content: "a\tb\n",
+      source: { format: "csv", path: "data/Run-Log.tsv", delimiter: "\t" },
+    });
+    const tabbed: TableFile = { rows: [["a", "b"]], format: "csv", text: "a\tb\n" };
+    expect(planLinkedTable(tabbed, "x.csv", [], "main.typ").source.delimiter).toBe("\t");
+  });
+
+  it("converts a workbook to CSV on import", () => {
+    const book: TableFile = { rows: [["Name", "Note"], ["A", "x, y"]], format: "spreadsheet", text: null };
+    expect(planLinkedTable(book, "Book1.xlsx", [], "main.typ")).toEqual({
+      dataPath: "data/Book1.csv",
+      content: 'Name,Note\nA,"x, y"\n',
+      source: { format: "csv", path: "data/Book1.csv" },
+    });
+  });
+
+  it("keeps JSON as JSON with its shape", () => {
+    const json: TableFile = { rows: [["a"], ["1"]], format: "json", text: "[[1]]", jsonShape: "rows" };
+    expect(planLinkedTable(json, "grid.json", [], "main.typ")).toEqual({
+      dataPath: "data/grid.json",
+      content: "[[1]]",
+      source: { format: "json", path: "data/grid.json", shape: "rows" },
+    });
+  });
+});
+
+describe("linked tables", () => {
+  it("emits the compile-time reader for the planned file", () => {
+    const source = emitLinkedTable([["A"], ["1"]], {
+      header: true,
+      label: "tab:x",
+      source: { format: "csv", path: "data/x.csv" },
+    });
+    expect(source.split("\n")[0]).toBe('#let x-data = csv("data/x.csv")');
+    expect(source).toContain(") <tab:x>");
+  });
+
+  it("writes the data file as UTF-8 and refreshes the file tree", async () => {
+    mocks.refreshTree.mockResolvedValue(true);
+    await writeLinkedTableData("paper", { dataPath: "data/é.csv", content: "é\n", source: { format: "csv", path: "data/é.csv" } });
+    expect(mocks.writeProjectBytes).toHaveBeenCalledWith("paper", "data/é.csv", btoa("\u00c3\u00a9\n"));
+    expect(mocks.refreshTree).toHaveBeenCalled();
+    expect(mocks.notifyProjectFilesChanged).toHaveBeenCalledWith("paper", ["data/é.csv"]);
   });
 });

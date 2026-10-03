@@ -3,6 +3,22 @@
     "aiProviderRequired": "Подключите поставщика ИИ в настройках, чтобы пользоваться исправлением с помощью ИИ.",
     "fixFailed": "Не удалось исправить: {{detail}}"
   },
+  "chooser": {
+    "title": "Выберите конструктор диаграмм",
+    "description": "Выберите, для какого типа документа нужна диаграмма.",
+    "tikz": {
+      "title": "Диаграмма TikZ",
+      "description": "Узлы и стрелки на TikZ для документов LaTeX."
+    },
+    "typst": {
+      "title": "Диаграмма Typst",
+      "description": "Диаграмма fletcher для документов Typst."
+    },
+    "mermaid": {
+      "title": "Диаграмма Mermaid",
+      "description": "Блок-схема Mermaid для документов Markdown."
+    }
+  },
   "package": {
     "composer": {
       "title": "Вставить диаграмму",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Отмена (Esc)",
       "cancelRename": "Отменить переименование",
       "renameTooltip": "Переименовать диаграмму",
-      "importTooltip": "Импортировать файл .tikz или .tex, заменив этот черновик",
-      "importLabel": "Импортировать файл TikZ",
+      "importTooltip": "Импортировать файл .tikz, .tex, .typ, .mmd или .md, заменив этот черновик",
+      "importLabel": "Импортировать файл диаграммы",
       "modeDraw": "Рисование",
       "modeCode": "Код",
       "fixWithAiTooltip": "Попросить ИИ исправить ошибку компиляции",
@@ -28,20 +44,29 @@
       "newProject": "Новый проект",
       "noOtherProjects": "Других проектов пока нет.",
       "saveFigure": "Сохранить рисунок",
+      "insertTypst": "Вставить как Typst",
+      "insertLatex": "Вставить как TikZ",
       "downloadTooltip": "Скачать эту диаграмму",
       "download": "Скачать",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (скоро)",
       "svgTooltip": "Для экспорта в SVG нужен векторный обработчик, он пока недоступен",
       "snippets": "Фрагменты",
-      "untitledName": "Диаграмма без названия"
+      "untitledName": "Диаграмма без названия",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Вставить как Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Язык диаграммы: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Прямоугольный узел",
       "circleNode": "Круглый узел",
       "arrowEdge": "Ребро со стрелкой",
       "lineEdge": "Ребро линией",
-      "scope": "Область"
+      "scope": "Область",
+      "group": "Группа"
     },
     "preview": {
       "label": "Просмотр",
@@ -53,7 +78,8 @@
       "pngScale": "Масштаб PNG",
       "scaleFactor": "{{factor}}x",
       "background": "Фон",
-      "backgroundLabel": "Цвет фона рисунка"
+      "backgroundLabel": "Цвет фона рисунка",
+      "diagnosticAt": "Строка {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Диаграмма не скомпилировалась. Смотрите журнал ниже.",
@@ -68,16 +94,25 @@
       "figureCached": "Уже в кэше, используем существующий рисунок.",
       "figureSaved": "Сохранено в кэш рисунков.",
       "saveFigureFailed": "Не удалось сохранить рисунок: {{detail}}",
+      "insertedTypst": "Вставлено как код Typst.",
+      "insertedLatex": "Вставлено как код TikZ.",
       "downloaded": "Скачано.",
       "imported": "Файл {{name}} импортирован для редактирования.",
       "importedCodeOnly": "Файл {{name}} импортирован (только код, рисовать нельзя).",
       "importFailed": "Не удалось импортировать этот файл: {{detail}}",
       "noAiFix": "ИИ не вернул исправление.",
       "fixFailed": "Не удалось исправить: {{detail}}",
-      "notDrawable": "В этом коде нечего рисовать. Код остался без изменений."
+      "notDrawable": "В этом коде нечего рисовать. Код остался без изменений.",
+      "savedTypstToProject": "Сохранено: {{path}}. Добавьте его в документ через #include.",
+      "insertedMermaid": "Вставлено как блок кода Mermaid.",
+      "savedMermaidToProject": "Сохранено: {{path}}. Добавьте его в документ Markdown в блоке кода mermaid.",
+      "typstPackageMissing": "Typst не удалось получить пакет fletcher. Подключитесь к интернету один раз, чтобы Typst скачал и сохранил его.",
+      "previewUnavailable": "Этот просмотр здесь недоступен.",
+      "readerUnavailable": "Не удалось загрузить модуль чтения кода. Попробуйте снова."
     },
     "confirm": {
-      "overwrite": "{{files}} уже существует. Перезаписать? (Выберите другое имя, чтобы сохранить оба.)"
+      "overwrite": "{{files}} уже существует. Перезаписать? (Выберите другое имя, чтобы сохранить оба.)",
+      "switchLanguage": "Перевести эту диаграмму с {{from}} на {{to}}? Код, который холст не может показать, не перенесётся."
     },
     "canvas": {
       "shapeTools": "Инструменты фигур",
@@ -136,7 +171,59 @@
       "routingStraight": "Прямой",
       "routingOrthogonal": "Ортогональный",
       "routingCurved": "Кривой",
-      "line": "Линия"
+      "line": "Линия",
+      "nodeLabelTypst": "Подпись (Typst)"
+    },
+    "notes": {
+      "tooltip": "Что холст показывает не полностью",
+      "count_one": "{{count}} примечание",
+      "count_few": "{{count}} примечания",
+      "count_many": "{{count}} примечаний",
+      "count_other": "{{count}} примечания",
+      "keptHeading": "Остаётся в коде",
+      "approximatedHeading": "Показано приблизительно",
+      "droppedHeading": "Не рисуется на холсте",
+      "notDiagram": "В этом коде нет ничего, что холст может нарисовать.",
+      "outsideCode": "Код до и после диаграммы сохраняется как есть.",
+      "wrapper": "Код вокруг диаграммы, например рисунок, сохраняется как есть.",
+      "diagramSetting": "Настройка диаграммы {{detail}} сохраняется в коде.",
+      "edgeOption": "Параметр ребра {{detail}} сохраняется в коде.",
+      "scripted": "Содержимое диаграммы, заданное программно, например циклы, сохраняется в коде.",
+      "mathMode": "Содержимое диаграммы в математическом режиме сохраняется в коде.",
+      "unplacedNode": "Узлы без фиксированного положения сохраняются в коде.",
+      "unreadEdge": "Рёбра, которые холст не может прочитать, сохраняются в коде.",
+      "danglingEdge": "Рёбра, которые не соединяют два узла, сохраняются в коде.",
+      "gridCoordinates": "Координаты сетки показаны в фиксированных позициях.",
+      "formattedLabels": "Отформатированные подписи показаны как обычный текст.",
+      "unknownShapes": "Фигуры, которых нет на холсте, показаны как прямоугольники.",
+      "estimatedSize": "Узлы без ширины и высоты показаны с примерным размером.",
+      "colorAdjustments": "Изменённые цвета, например через lighten, показаны базовым цветом.",
+      "colorExpressions": "Цвета, заданные переменными или выражениями, не показаны на холсте.",
+      "strokeStyles": "Некоторые стили линий показаны ближайшим стилем холста.",
+      "arrowMarks": "Наконечники стрелок, которых нет на холсте, показаны как обычные стрелки.",
+      "freePoints": "Рёбра через свободные точки рисуются на холсте прямыми.",
+      "tikzCommand": "Команда {{detail}} не рисуется. Правка на холсте перепишет код без неё.",
+      "truncated": "Код слишком длинный, поэтому рисуется только его начало.",
+      "mermaidNotFlowchart": "На холсте можно рисовать только блок-схемы. Этот код описывает диаграмму типа {{detail}}.",
+      "mermaidFrontmatter": "Заголовочный блок YAML сохраняется в коде.",
+      "mermaidDirective": "Директивы конфигурации сохраняются в коде.",
+      "mermaidComment": "Комментарии сохраняются в коде.",
+      "mermaidAccessibility": "Заголовки и описания для специальных возможностей сохраняются в коде.",
+      "mermaidClick": "Обработчики click сохраняются в коде.",
+      "mermaidStyleProperty": "Свойство стиля {{detail}} сохраняется в коде.",
+      "mermaidClassProperty": "Свойство класса {{detail}} сохраняется в коде.",
+      "mermaidLinkStyleProperty": "Свойство стиля связи {{detail}} сохраняется в коде.",
+      "mermaidNodeSetting": "Настройка узла {{detail}} сохраняется в коде.",
+      "mermaidEdgeSetting": "Настройка ребра {{detail}} сохраняется в коде.",
+      "mermaidInvisibleLink": "Невидимые связи сохраняются в коде.",
+      "mermaidLinkLength": "Длины связей сохраняются в коде.",
+      "mermaidSubgraphDirection": "Направления в блоках subgraph сохраняются в коде.",
+      "mermaidUnknownStatement": "Инструкции, которые холст не может прочитать, сохраняются в коде.",
+      "mermaidShape": "Фигура {{detail}} показана ближайшей фигурой холста.",
+      "mermaidThickLink": "Толстые связи показаны обычными линиями.",
+      "mermaidArrowHead": "Наконечники в виде круга и крестика показаны как стрелки.",
+      "mermaidMarkdownLabel": "Подписи с Markdown показаны как обычный текст.",
+      "mermaidNoFlowchartHeader": "На холсте можно рисовать только блок-схемы. Начните код с flowchart или graph."
     }
   }
 }

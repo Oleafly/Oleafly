@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { afterEach, describe, it, expect, beforeEach, vi } from "vitest";
 
 // Inverse SyncTeX reaches into the tauri bridge, the editor/pdf controllers and
 // the files store. Mock them all so we can assert the multi-file switch logic.
@@ -10,6 +10,10 @@ const mocks = vi.hoisted(() => ({
   selectWordNearLine: vi.fn(),
   getCurrentLine: vi.fn(),
   gotoRect: vi.fn(),
+  getEditorView: vi.fn(),
+  typstForward: vi.fn(),
+  typstInverse: vi.fn(),
+  watchTypstSyncProject: vi.fn(),
   openFile: vi.fn(),
   openProjectLocation: vi.fn(async () => true),
   logError: vi.fn(),
@@ -25,7 +29,7 @@ const mocks = vi.hoisted(() => ({
   state: {
     projectId: "proj" as string | null,
     mainDoc: "main.tex",
-    engine: { capabilities: { supports_synctex: true } },
+    engine: { id: "latex", source_extensions: ["tex"], capabilities: { supports_synctex: true } },
     engineLoaded: true,
     activePath: "main.tex" as string | null,
     tree: [] as { path: string; is_dir: boolean }[],
@@ -54,6 +58,12 @@ vi.mock("@/components/editor/cm/controller", () => ({
   gotoLine: mocks.gotoLine,
   selectWordNearLine: mocks.selectWordNearLine,
   getCurrentLine: mocks.getCurrentLine,
+  getEditorView: mocks.getEditorView,
+}));
+vi.mock("@/features/typst-sync", () => ({
+  typstForward: mocks.typstForward,
+  typstInverse: mocks.typstInverse,
+  watchTypstSyncProject: mocks.watchTypstSyncProject,
 }));
 vi.mock("@/components/pdf/pdfController", () => ({ gotoRect: mocks.gotoRect }));
 vi.mock("@/store/files", () => ({
@@ -103,6 +113,12 @@ beforeEach(() => {
     mocks[k].mockReset();
   mocks.openProjectLocation.mockClear();
   mocks.synctexForward.mockReset();
+  mocks.typstForward.mockReset().mockResolvedValue(null);
+  mocks.typstInverse.mockReset().mockResolvedValue(null);
+  mocks.watchTypstSyncProject.mockReset();
+  mocks.getEditorView.mockReset().mockReturnValue(null);
+  mocks.state.engine.id = "latex";
+  mocks.state.engine.source_extensions = ["tex"];
   mocks.synctexMapLine.mockReset().mockResolvedValue(null);
   mocks.isCompileCheckpointCurrent.mockReset().mockReturnValue(true);
   mocks.compiledSnapshot = null;
@@ -365,5 +381,146 @@ describe("source locations in projects with repeated or unusual file names", () 
     await openFileAndGotoLine(null, 5);
     expect(mocks.openProjectLocation).not.toHaveBeenCalled();
     expect(mocks.gotoLine).toHaveBeenCalledWith(5);
+  });
+
+  it("carries a compile error's column to the exact position", async () => {
+    mocks.state.tree = [
+      { path: "main.typ", is_dir: false },
+      { path: "chapters/intro.typ", is_dir: false },
+    ];
+    await openFileAndGotoLine("chapters/intro.typ", 3, 8);
+    expect(mocks.openProjectLocation).toHaveBeenCalledExactlyOnceWith({
+      path: "chapters/intro.typ",
+      line: 3,
+      column: 8,
+    });
+    await openFileAndGotoLine(null, 4, 2);
+    expect(mocks.gotoLine).toHaveBeenCalledWith(4, 2);
+  });
+});
+
+describe("Typst sync through the Tinymist preview server", () => {
+  const rect = { page: 2, x: 70, y: 87, width: 96, height: 12 };
+
+  beforeEach(() => {
+    mocks.state.engine.id = "typst";
+    mocks.state.engine.source_extensions = ["typ"];
+    mocks.state.mainDoc = "main.typ";
+    mocks.state.activePath = "main.typ";
+    mocks.compileCheckpoint.mainDocument = "main.typ";
+    mocks.state.tree = [
+      { path: "main.typ", is_dir: false },
+      { path: "chapters/intro.typ", is_dir: false },
+    ];
+    mocks.state.files = {
+      "main.typ": { content: "= Title\nHello world\nMore", dirty: false },
+      "chapters/intro.typ": { content: "Intro one\nIntro two\nIntro three", dirty: false },
+    };
+    mocks.getCurrentLine.mockReturnValue(2);
+    mocks.getEditorView.mockReturnValue({
+      state: {
+        selection: { main: { head: 11 } },
+        doc: { lineAt: () => ({ from: 8 }) },
+      },
+    });
+  });
+
+  afterEach(() => {
+    mocks.compileCheckpoint.mainDocument = "main.tex";
+  });
+
+  it("moves the PDF to the cursor's line and column without SyncTeX", async () => {
+    mocks.typstForward.mockResolvedValue(rect);
+
+    await forwardFromCursor();
+
+    expect(mocks.typstForward).toHaveBeenCalledWith({
+      projectId: "proj",
+      mainDoc: "main.typ",
+      file: "main.typ",
+      line: 2,
+      column: 3,
+    });
+    expect(mocks.watchTypstSyncProject).toHaveBeenCalledWith("proj");
+    expect(mocks.synctexForward).not.toHaveBeenCalled();
+    expect(mocks.gotoRect).toHaveBeenCalledWith(rect);
+  });
+
+  it("drops the column once the cursor line had to be mapped to an older compile", async () => {
+    mocks.isCompileCheckpointCurrent.mockReturnValue(false);
+    mocks.compiledSnapshot = {
+      projectId: "proj",
+      filesystemEpoch: 0,
+      texts: { "main.typ": "= Title\nMore", "chapters/intro.typ": "Intro one\nIntro two\nIntro three" },
+    };
+    mocks.synctexMapLine.mockResolvedValue(1);
+    mocks.typstForward.mockResolvedValue(rect);
+
+    await forwardFromCursor();
+
+    expect(mocks.typstForward).toHaveBeenCalledWith({
+      projectId: "proj",
+      mainDoc: "main.typ",
+      file: "main.typ",
+      line: 1,
+      column: null,
+    });
+    expect(mocks.gotoRect).toHaveBeenCalledWith(rect);
+  });
+
+  it("puts the cursor on the exact character clicked in the PDF", async () => {
+    mocks.typstInverse.mockResolvedValue({ file: "chapters/intro.typ", line: 3, column: 4 });
+
+    await inverseFromClick(2, 120, 340, "three");
+
+    expect(mocks.typstInverse).toHaveBeenCalledWith({
+      projectId: "proj",
+      mainDoc: "main.typ",
+      page: 2,
+      x: 120,
+      y: 340,
+    });
+    expect(mocks.synctexInverse).not.toHaveBeenCalled();
+    expect(mocks.openFile).toHaveBeenCalledWith("chapters/intro.typ");
+    expect(mocks.gotoLine).toHaveBeenCalledWith(3, 5);
+    expect(mocks.selectWordNearLine).not.toHaveBeenCalledWith(3, "three");
+  });
+
+  it("falls back to the clicked word when the PDF is older than the editor", async () => {
+    mocks.isCompileCheckpointCurrent.mockReturnValue(false);
+    mocks.compiledSnapshot = {
+      projectId: "proj",
+      filesystemEpoch: 0,
+      texts: { "main.typ": "= Title\nMore", "chapters/intro.typ": "Intro one\nIntro two\nIntro three" },
+    };
+    mocks.typstInverse.mockResolvedValue({ file: "main.typ", line: 2, column: 1 });
+    mocks.synctexMapLine.mockResolvedValue(3);
+    mocks.selectWordNearLine.mockReturnValue(true);
+
+    await inverseFromClick(1, 10, 10, "More", mocks.compileCheckpoint);
+
+    expect(mocks.selectWordNearLine).toHaveBeenLastCalledWith(3, "More");
+    expect(mocks.gotoLine).not.toHaveBeenCalled();
+  });
+
+  it("does not jump to the PDF from a LaTeX file the Typst project does not compile", async () => {
+    mocks.state.activePath = "notes.tex";
+    mocks.state.files["notes.tex"] = { content: "a\nb", dirty: false };
+
+    await forwardFromCursor();
+
+    expect(mocks.typstForward).not.toHaveBeenCalled();
+    expect(mocks.synctexForward).not.toHaveBeenCalled();
+    expect(mocks.gotoRect).not.toHaveBeenCalled();
+  });
+
+  it("stays out of the way for a Typst project whose Tinymist cannot sync", async () => {
+    mocks.state.engine.capabilities.supports_synctex = false;
+
+    await forwardFromCursor();
+    await inverseFromClick(1, 10, 10);
+
+    expect(mocks.typstForward).not.toHaveBeenCalled();
+    expect(mocks.typstInverse).not.toHaveBeenCalled();
   });
 });

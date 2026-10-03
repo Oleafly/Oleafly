@@ -4,6 +4,7 @@ import {
   isLanguageServiceSetupRequiredError,
   isTauriLanguageServiceAvailable,
   LanguageServiceClient,
+  type ExecuteCommandParams,
   type JsonValue,
   type LanguageServiceClientStartOptions,
   type LanguageServiceClientEvent,
@@ -14,6 +15,7 @@ import {
   type LanguageServiceInstallResult,
   type LanguageServiceInstallStatus,
   type LanguageServiceRequestOptions,
+  type LanguageServiceRuntimeProfile,
   type PositionEncoding,
   type TextDocumentItem,
   type WorkspaceSymbolParams,
@@ -40,6 +42,20 @@ import {
   type LanguageServiceReasonKey,
 } from "@/lib/analysis/reason";
 import { activateInteractiveLanguageService } from "@/lib/analysis/interactive-language-service";
+import {
+  absoluteProjectPath,
+  languageServiceStartupKey,
+  liveLanguageServiceConfiguration,
+  runtimeProfileForSettings,
+  settingsStoreLanguageServiceSettings,
+  TINYMIST_PIN_MAIN_COMMAND,
+  typstMainDocument,
+  type LanguageServiceSettingsSource,
+} from "@/lib/analysis/tinymist-configuration";
+import {
+  tinymistOptionsForVersion,
+  tinymistProfileForVersion,
+} from "@/lib/analysis/tinymist-compat";
 import { languageServiceContribution } from "@/lib/project-intelligence/language-service-contribution";
 import type { ProjectIntelligenceIdentity } from "@/lib/project-intelligence/types";
 import {
@@ -74,6 +90,8 @@ export interface LanguageServiceProjectSnapshot {
   indexTexts: Readonly<Record<string, string>>;
   index: ProjectIndex | null;
   indexBuilding?: boolean;
+  typstVersion?: string | null;
+  typstVendorPackages?: boolean;
 }
 
 export interface LifecycleLanguageServiceClient {
@@ -105,14 +123,23 @@ export interface LifecycleLanguageServiceClient {
     params: WorkspaceSymbolParams,
     options?: LanguageServiceRequestOptions,
   ): Promise<JsonValue>;
+  supportsCommand?(command: string): boolean;
+  executeCommand?(
+    params: ExecuteCommandParams,
+    options?: Pick<LanguageServiceRequestOptions, "signal" | "timeoutMs">,
+  ): Promise<JsonValue>;
+  changeConfiguration?(settings: JsonValue): Promise<void>;
+  saveDocument?(uri: string): Promise<void>;
 }
 
 export interface LanguageServiceProvisioner {
   installStatus(
     kind: LanguageServiceKind,
+    projectId?: string,
   ): Promise<LanguageServiceInstallStatus>;
   install(
     kind: LanguageServiceKind,
+    projectId?: string,
   ): Promise<LanguageServiceInstallResult>;
 }
 
@@ -149,6 +176,7 @@ export interface LanguageServiceControllerOptions {
   restartMaxDelayMs?: number;
   maxRestartAttempts?: number;
   restartStableWindowMs?: number;
+  settings?: LanguageServiceSettingsSource;
 }
 
 interface TrackedDocument {
@@ -187,6 +215,9 @@ interface ActiveRuntime {
   intelligenceHandle: unknown;
   intelligenceIdentityKey: string | null;
   deactivateInteractive: (() => void) | null;
+  profile: LanguageServiceRuntimeProfile | null;
+  configurationKey: string | null;
+  pinnedMain: string | null | undefined;
 }
 
 interface LastObservedProject {
@@ -198,6 +229,8 @@ interface LastObservedProject {
   files: LanguageServiceProjectSnapshot["files"];
   indexTexts: LanguageServiceProjectSnapshot["indexTexts"];
   effectiveTexts: ReadonlyMap<string, string>;
+  typstLine: string;
+  typstPackages: string;
 }
 
 const DEFAULT_RESTART_BASE_DELAY_MS = 250;
@@ -206,6 +239,7 @@ const DEFAULT_MAX_RESTART_ATTEMPTS = 4;
 const DEFAULT_RESTART_STABLE_WINDOW_MS = 30_000;
 const LANGUAGE_SERVICE_INTELLIGENCE_DELAY_MS = 400;
 const LANGUAGE_SERVICE_INTELLIGENCE_TIMEOUT_MS = 8_000;
+const LANGUAGE_SERVICE_COMMAND_TIMEOUT_MS = 5_000;
 
 class LanguageServiceSetupActionError extends Error {
   constructor() {
@@ -331,6 +365,20 @@ function localOnlyReason(
   return null;
 }
 
+type LanguageServiceSnapshotFiles = LanguageServiceProjectSnapshot["files"];
+
+function typstLineFor(snapshot: LanguageServiceProjectSnapshot): string {
+  if (snapshot.engineId !== "typst") return "";
+  const version = snapshot.typstVersion?.trim() ?? "";
+  return /^(\d+\.\d+)\./.exec(version)?.[1] ?? version;
+}
+
+function typstPackagesFor(snapshot: LanguageServiceProjectSnapshot): string {
+  return snapshot.engineId === "typst" && snapshot.typstVendorPackages === true
+    ? "vendored"
+    : "shared";
+}
+
 interface SyncContext {
   readonly operation: number;
   readonly desired: DesiredProject;
@@ -446,13 +494,70 @@ function snapshotDelta(
     revisionChanged,
     lifecycleChanged:
       revisionChanged ||
-      previous?.engineLoaded !== snapshot.engineLoaded,
+      previous?.engineLoaded !== snapshot.engineLoaded ||
+      previous?.typstLine !== typstLineFor(snapshot) ||
+      previous?.typstPackages !== typstPackagesFor(snapshot),
     engineBecameUnloaded:
       !projectChanged &&
       previous?.engineLoaded === true &&
       !snapshot.engineLoaded,
     effectiveTexts,
   };
+}
+
+function savedFilePaths(
+  previous: LanguageServiceSnapshotFiles,
+  next: LanguageServiceSnapshotFiles,
+): string[] {
+  if (previous === next) return [];
+  const saved: string[] = [];
+  for (const [path, file] of Object.entries(next)) {
+    const before = previous[path];
+    if (
+      before?.dirty === true &&
+      file.dirty !== true &&
+      before.content === file.content
+    ) {
+      saved.push(path);
+    }
+  }
+  return saved;
+}
+
+function configurationKey(configuration: JsonValue | null): string | null {
+  return configuration === null ? null : JSON.stringify(configuration);
+}
+
+function liveConfiguration(
+  profile: LanguageServiceRuntimeProfile,
+  settings: ReturnType<LanguageServiceSettingsSource["get"]>,
+): { [key: string]: JsonValue } | null {
+  return tinymistOptionsForVersion(
+    liveLanguageServiceConfiguration(profile, settings),
+    profile.version,
+  );
+}
+
+function tinymistDownloadFailure(
+  version: string,
+  error: unknown,
+): AnalysisFailure {
+  return {
+    ...safeLanguageServiceFailure(error),
+    message: `Tinymist ${version} could not be downloaded.`,
+    reason: { key: "tinymistDownloadFailed", params: { version } },
+    retryable: true,
+  };
+}
+
+function matchedTinymistVersion(
+  kind: LanguageServiceKind,
+  profile: LanguageServiceRuntimeProfile,
+  installStatus: LanguageServiceInstallStatus,
+): string | null {
+  return kind === "tinymist" && installStatus.version !== profile.version
+    ? installStatus.version
+    : null;
 }
 
 function encodePathSegments(path: string): string {
@@ -522,19 +627,19 @@ function defaultCreateClient(
 function defaultProvisioner(): LanguageServiceProvisioner {
   const transport = createTauriLanguageServiceTransport();
   return {
-    installStatus: async (kind) => {
+    installStatus: async (kind, projectId) => {
       if (!transport.installStatus) {
         throw new Error(
           "Language-service install status is unavailable",
         );
       }
-      return transport.installStatus(kind);
+      return transport.installStatus(kind, projectId);
     },
-    install: async (kind) => {
+    install: async (kind, projectId) => {
       if (!transport.install) {
         throw new Error("Language-service setup is unavailable");
       }
-      return transport.install(kind);
+      return transport.install(kind, projectId);
     },
   };
 }
@@ -569,6 +674,9 @@ export class LanguageServiceController {
   private readonly maxRestartAttempts: number;
   private readonly restartStableWindowMs: number;
   private readonly indexShadow: ProjectIndexShadowCoordinator;
+  private readonly settingsSource: LanguageServiceSettingsSource;
+  private readonly unsubscribeSettings: () => void;
+  private readonly pendingSaves = new Set<string>();
 
   private desired: DesiredProject | null = null;
   private lastObserved: LastObservedProject | null = null;
@@ -582,6 +690,11 @@ export class LanguageServiceController {
   private scheduledReconcileOperation: number | null = null;
   private restartAttempts = 0;
   private forcedRestartToken: number | null = null;
+  private tinymistDownload: { version: string } | null = null;
+  private tinymistFailure: {
+    version: string;
+    failure: AnalysisFailure;
+  } | null = null;
   private lastIndex:
     | {
         index: ProjectIndex;
@@ -624,6 +737,11 @@ export class LanguageServiceController {
       throw new RangeError("Invalid language-service restart policy");
     }
     this.indexShadow = new ProjectIndexShadowCoordinator(this.store);
+    this.settingsSource =
+      options.settings ?? settingsStoreLanguageServiceSettings;
+    this.unsubscribeSettings = this.settingsSource.subscribe(() =>
+      this.applySettings(),
+    );
   }
 
   private clearProject(): void {
@@ -644,6 +762,7 @@ export class LanguageServiceController {
     this.projectRevision = 0;
     this.restartAttempts = 0;
     this.localDocuments.clear();
+    this.pendingSaves.clear();
     this.lastIndex = null;
     this.store.getState().reset();
     this.enqueueReconcile(operation);
@@ -661,6 +780,7 @@ export class LanguageServiceController {
       this.restartAttempts = 0;
       this.lastIndex = null;
       this.localDocuments.clear();
+      this.pendingSaves.clear();
       this.store.getState().activateProject({
         projectId: snapshot.projectId,
         projectRevision: this.projectRevision,
@@ -683,7 +803,18 @@ export class LanguageServiceController {
 
   update(snapshot: LanguageServiceProjectSnapshot): void {
     if (this.disposed) return;
+    const previous = this.lastObserved;
+    const savedPaths =
+      previous && previous.projectId === snapshot.projectId
+        ? savedFilePaths(previous.files, snapshot.files)
+        : [];
+    this.applySnapshot(snapshot);
+    if (savedPaths.length > 0 && !this.disposed) {
+      this.forwardSaves(savedPaths);
+    }
+  }
 
+  private applySnapshot(snapshot: LanguageServiceProjectSnapshot): void {
     if (!snapshot.projectId) {
       this.clearProject();
       return;
@@ -710,6 +841,8 @@ export class LanguageServiceController {
       files: snapshot.files,
       indexTexts: snapshot.indexTexts,
       effectiveTexts,
+      typstLine: typstLineFor(snapshot),
+      typstPackages: typstPackagesFor(snapshot),
     };
     this.hasObservedSnapshot = true;
     const canCoalesceLifecycle =
@@ -774,6 +907,8 @@ export class LanguageServiceController {
   dispose(): Promise<void> {
     if (this.disposed) return this.work;
     this.disposed = true;
+    this.unsubscribeSettings();
+    this.pendingSaves.clear();
     const operation = ++this.operationToken;
     this.cancelRestart();
     this.desired = null;
@@ -785,6 +920,7 @@ export class LanguageServiceController {
     if (this.disposed || !this.desired) return;
     const operation = ++this.operationToken;
     this.restartAttempts = 0;
+    this.tinymistFailure = null;
     this.cancelRestart();
     const runtime = this.runtime;
     this.detachRuntime(runtime);
@@ -1007,7 +1143,10 @@ export class LanguageServiceController {
     }
     let installStatus: LanguageServiceInstallStatus;
     try {
-      installStatus = await this.provisioner.installStatus(kind);
+      installStatus =
+        kind === "tinymist"
+          ? await this.provisioner.installStatus(kind, desired.projectId)
+          : await this.provisioner.installStatus(kind);
     } catch (error) {
       if (!this.operationIsCurrent(operation, desired)) return null;
       this.publishUnavailable(safeLanguageServiceFailure(error), {
@@ -1078,6 +1217,73 @@ export class LanguageServiceController {
     return false;
   }
 
+  private matchedTinymistBlocksStart(
+    desired: DesiredProject,
+    installStatus: LanguageServiceInstallStatus,
+  ): boolean {
+    const version = installStatus.version;
+    if (installStatus.state === "installed") {
+      if (this.tinymistFailure?.version === version) {
+        this.tinymistFailure = null;
+      }
+      return false;
+    }
+    const recorded = this.tinymistFailure;
+    if (
+      recorded?.version === version &&
+      installStatus.state !== "installing"
+    ) {
+      this.publishUnavailable(recorded.failure, recorded.failure.reason ?? {
+        key: "tinymistDownloadFailed",
+        params: { version },
+      });
+      return true;
+    }
+    this.ensureTinymistDownload(desired.projectId, version);
+    this.publishInstalling("tinymist", {
+      key: "tinymistDownloading",
+      params: { version },
+    });
+    return true;
+  }
+
+  private ensureTinymistDownload(projectId: string, version: string): void {
+    if (this.tinymistDownload?.version === version) return;
+    const download = { version };
+    this.tinymistDownload = download;
+    void this.provisioner.install("tinymist", projectId).then(
+      () => {
+        if (this.tinymistFailure?.version === version) {
+          this.tinymistFailure = null;
+        }
+        this.finishTinymistDownload(download, projectId);
+      },
+      (error: unknown) => {
+        this.tinymistFailure = {
+          version,
+          failure: tinymistDownloadFailure(version, error),
+        };
+        this.finishTinymistDownload(download, projectId);
+      },
+    );
+  }
+
+  private finishTinymistDownload(
+    download: { version: string },
+    projectId: string,
+  ): void {
+    if (this.tinymistDownload === download) this.tinymistDownload = null;
+    const desired = this.desired;
+    if (
+      this.disposed ||
+      desired?.projectId !== projectId ||
+      languageServiceKindForEngine(desired.snapshot.engineId) !== "tinymist"
+    ) {
+      return;
+    }
+    this.enqueueReconcile(++this.operationToken);
+  }
+
   private async startNewRuntime(
     desired: DesiredProject,
     kind: LanguageServiceKind,
@@ -1086,14 +1292,27 @@ export class LanguageServiceController {
   ): Promise<void> {
     const resolved = await this.resolveRuntimeStart(desired, kind, operation);
     if (!resolved) return;
-    if (this.installBlocksStart(kind, resolved.profile, resolved.installStatus)) {
+    const matched = matchedTinymistVersion(
+      kind,
+      resolved.profile,
+      resolved.installStatus,
+    );
+    if (matched !== null) {
+      if (this.matchedTinymistBlocksStart(desired, resolved.installStatus)) {
+        return;
+      }
+    } else if (
+      this.installBlocksStart(kind, resolved.profile, resolved.installStatus)
+    ) {
       return;
     }
     await this.startRuntime(
       desired,
       kind,
       key,
-      resolved.profile,
+      matched === null
+        ? resolved.profile
+        : tinymistProfileForVersion(resolved.profile, matched),
       operation,
     );
     if (!this.operationIsCurrent(operation, desired)) return;
@@ -1203,7 +1422,7 @@ export class LanguageServiceController {
       return;
     }
 
-    const key = `${desired.projectId}\0${kind}`;
+    const key = this.runtimeKey(desired.projectId, kind, desired.snapshot);
     const proceed = await this.teardownStaleRuntime(
       desired,
       kind,
@@ -1229,6 +1448,7 @@ export class LanguageServiceController {
   ): Promise<void> {
     const token = ++this.runtimeToken;
     const client = this.createClient(kind, desired.projectId);
+    const settings = this.settingsSource.get();
     const runtime: ActiveRuntime = {
       token,
       key,
@@ -1251,6 +1471,11 @@ export class LanguageServiceController {
       intelligenceHandle: null,
       intelligenceIdentityKey: null,
       deactivateInteractive: null,
+      profile: runtimeProfile,
+      configurationKey: configurationKey(
+        liveConfiguration(runtimeProfile, settings),
+      ),
+      pinnedMain: undefined,
     };
     runtime.unsubscribe = client.subscribe((event) =>
       this.handleClientEvent(runtime, event),
@@ -1272,7 +1497,10 @@ export class LanguageServiceController {
 
     try {
       await client.start({
-        runtimeProfile,
+        runtimeProfile: tinymistProfileForVersion(
+          runtimeProfileForSettings(runtimeProfile, settings),
+          runtimeProfile.version,
+        ),
         clientInfo: { name: "Oleafly" },
       });
     } catch (error) {
@@ -1311,6 +1539,7 @@ export class LanguageServiceController {
     runtime.root = client.workspaceRoot;
     runtime.rootUri = client.rootUri;
     runtime.protocolReady = true;
+    this.pushConfiguration(runtime);
     runtime.coordinator = this.createCoordinator(client, this.store);
     runtime.coordinator.activateProject({
       projectId: runtime.projectId,
@@ -1675,6 +1904,8 @@ export class LanguageServiceController {
       restartAttempt: this.restartAttempts,
     });
     this.scheduleLanguageServiceIntelligence(runtime);
+    this.pinMainDocument(runtime);
+    this.flushPendingSaves();
     if (runtime.stableHandle !== null) {
       this.scheduler.clearTimeout(runtime.stableHandle);
     }
@@ -1693,6 +1924,134 @@ export class LanguageServiceController {
         restartAttempt: 0,
       });
     }, this.restartStableWindowMs);
+  }
+
+  private runtimeKey(
+    projectId: string,
+    kind: LanguageServiceKind,
+    snapshot: LanguageServiceProjectSnapshot,
+  ): string {
+    return [
+      projectId,
+      kind,
+      languageServiceStartupKey(kind, this.settingsSource.get()),
+      kind === "tinymist"
+        ? `typst:${typstLineFor(snapshot)}:${typstPackagesFor(snapshot)}`
+        : "",
+    ].join("\0");
+  }
+
+  private runtimeAcceptsRequests(runtime: ActiveRuntime): boolean {
+    return (
+      runtime === this.runtime &&
+      !runtime.expectedStop &&
+      !runtime.failed &&
+      runtime.protocolReady &&
+      runtime.client.state === "ready"
+    );
+  }
+
+  private applySettings(): void {
+    if (this.disposed) return;
+    const runtime = this.runtime;
+    const desired = this.desired;
+    if (!runtime || runtime.expectedStop || !desired) return;
+    if (
+      runtime.projectId === desired.projectId &&
+      runtime.key !==
+        this.runtimeKey(runtime.projectId, runtime.kind, desired.snapshot)
+    ) {
+      this.enqueueReconcile(++this.operationToken);
+      return;
+    }
+    this.pushConfiguration(runtime);
+  }
+
+  private pushConfiguration(runtime: ActiveRuntime): void {
+    const changeConfiguration = runtime.client.changeConfiguration;
+    if (
+      !runtime.profile ||
+      !changeConfiguration ||
+      !this.runtimeAcceptsRequests(runtime)
+    ) {
+      return;
+    }
+    const configuration = liveConfiguration(
+      runtime.profile,
+      this.settingsSource.get(),
+    );
+    const key = configurationKey(configuration);
+    if (configuration === null || key === runtime.configurationKey) return;
+    runtime.configurationKey = key;
+    void changeConfiguration
+      .call(runtime.client, configuration)
+      .catch(() => {
+        if (runtime.configurationKey === key) {
+          runtime.configurationKey = null;
+        }
+      });
+  }
+
+  private pinMainDocument(runtime: ActiveRuntime): void {
+    const executeCommand = runtime.client.executeCommand;
+    if (
+      runtime.kind !== "tinymist" ||
+      !runtime.root ||
+      !executeCommand ||
+      !runtime.client.supportsCommand?.(TINYMIST_PIN_MAIN_COMMAND) ||
+      !this.runtimeAcceptsRequests(runtime)
+    ) {
+      return;
+    }
+    const mainDoc = typstMainDocument(this.desired?.snapshot.mainDoc);
+    const target = mainDoc ? absoluteProjectPath(runtime.root, mainDoc) : null;
+    if (runtime.pinnedMain === target) return;
+    if (runtime.pinnedMain === undefined && target === null) {
+      runtime.pinnedMain = null;
+      return;
+    }
+    runtime.pinnedMain = target;
+    void executeCommand
+      .call(
+        runtime.client,
+        { command: TINYMIST_PIN_MAIN_COMMAND, arguments: [target] },
+        { timeoutMs: LANGUAGE_SERVICE_COMMAND_TIMEOUT_MS },
+      )
+      .catch(() => {
+        if (runtime.pinnedMain === target) runtime.pinnedMain = undefined;
+      });
+  }
+
+  private forwardSaves(paths: readonly string[]): void {
+    for (const path of paths) this.pendingSaves.add(path);
+    this.flushPendingSaves();
+  }
+
+  private flushPendingSaves(): void {
+    const runtime = this.runtime;
+    const saveDocument = runtime?.client.saveDocument;
+    if (
+      !runtime?.ready ||
+      !runtime.root ||
+      !saveDocument ||
+      !this.runtimeAcceptsRequests(runtime)
+    ) {
+      return;
+    }
+    const files = this.desired?.snapshot.files ?? {};
+    for (const path of [...this.pendingSaves]) {
+      const file = files[path];
+      const tracked = runtime.documents.get(
+        fileUriForProjectPath(runtime.root, path),
+      );
+      if (!file || file.dirty === true || !tracked) {
+        this.pendingSaves.delete(path);
+        continue;
+      }
+      if (tracked.text !== file.content) continue;
+      this.pendingSaves.delete(path);
+      void saveDocument.call(runtime.client, tracked.uri).catch(() => {});
+    }
   }
 
   private scheduleLanguageServiceIntelligence(

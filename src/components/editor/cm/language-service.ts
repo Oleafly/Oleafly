@@ -32,6 +32,14 @@ import {
   type InteractiveLanguageServiceSession,
 } from "@/lib/analysis/interactive-language-service";
 import {
+  currentInteractiveDocument as currentDocument,
+  interactiveRequestStillCurrent as requestStillCurrent,
+} from "@/lib/analysis/interactive-document";
+import { strictOffset } from "@/lib/analysis/language-service-results";
+import { typstCompletionTrigger } from "@/lib/analysis/typst-completion-context";
+import { languageServiceAssistExtensions } from "./language-service-assist";
+import { languageServiceFormattingKeymap } from "./language-service-format";
+import {
   TextPositionIndex,
   type PositionEncoding,
 } from "@/lib/language-service";
@@ -40,6 +48,7 @@ import {
   corpusPackageNames,
 } from "@/lib/latex-corpus";
 import { isStandardLatexEnvironment } from "@oleafly/editor";
+import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 
@@ -71,46 +80,6 @@ function boundedText(
   const normalized = value.replaceAll("\0", "");
   if (!normalized) return null;
   return normalized.slice(0, limit);
-}
-
-function currentDocument(
-  path: string,
-  text: string,
-): {
-  session: InteractiveLanguageServiceSession;
-  document: InteractiveLanguageServiceDocument;
-} | null {
-  const files = useFilesStore.getState();
-  const session = currentInteractiveLanguageService();
-  if (
-    !session ||
-    !files.projectId ||
-    files.projectId !== session.projectId ||
-    files.activePath !== path ||
-    files.files[path]?.content !== text
-  ) {
-    return null;
-  }
-  const document = session.documentForPath(path);
-  if (!document) return null;
-  if (document.text !== text) return null;
-  return { session, document };
-}
-
-function requestStillCurrent(
-  session: InteractiveLanguageServiceSession,
-  document: InteractiveLanguageServiceDocument,
-  text: string,
-): boolean {
-  const current = currentDocument(document.path, text);
-  if (!current) return false;
-  return (
-    current.session.owner === session.owner &&
-    current.session.projectRevision === session.projectRevision &&
-    current.session.client.generation === session.client.generation &&
-    current.document.uri === document.uri &&
-    current.document.version === document.version
-  );
 }
 
 function completionType(kind: unknown): string | undefined {
@@ -258,26 +227,6 @@ interface TextEdit {
   insert: string;
 }
 
-function strictOffset(
-  index: TextPositionIndex,
-  position: { line: number; character: number },
-  encoding: PositionEncoding,
-): number | null {
-  if (
-    position.line < 0 ||
-    position.line >= index.lineCount ||
-    position.character < 0
-  ) {
-    return null;
-  }
-  const offset = index.positionToOffset(position, encoding);
-  const roundTrip = index.offsetToPosition(offset, encoding);
-  return roundTrip.line === position.line &&
-    roundTrip.character === position.character
-    ? offset
-    : null;
-}
-
 function rangeFromValue(
   value: unknown,
   index: TextPositionIndex,
@@ -421,6 +370,11 @@ function completionItems(value: unknown): unknown[] {
   return [];
 }
 
+interface CompletionRequestTrigger {
+  triggerKind: 1 | 2;
+  triggerCharacter?: string;
+}
+
 interface PreparedCompletion {
   label: string;
   mainEdit: TextEdit;
@@ -546,18 +500,15 @@ function normalizeCompletion(
   return options;
 }
 
-function shouldRequestCompletion(
-  context: CompletionContext,
-  path: string,
-): boolean {
+const TYPST_PATH = /\.typ$/i;
+const TYPST_CONTEXT_CHARS = 20_000;
+
+function shouldRequestLatexCompletion(context: CompletionContext): boolean {
   if (context.explicit) return true;
   const before = context.state.sliceDoc(
     Math.max(0, context.pos - 300),
     context.pos,
   );
-  if (/\.typ$/i.test(path)) {
-    return /[#@<][\p{L}\p{M}\p{N}_:.-]*$/u.test(before);
-  }
   return (
     /\\[\p{L}@]*$/u.test(before) ||
     /\\(?:begin|end|usepackage|documentclass)\s*(?:\[[^\]]*\])?\{[^{}]*$/u.test(
@@ -571,20 +522,24 @@ export const languageServiceCompletion: CompletionSource = async (
 ): Promise<CompletionResult | null> => {
   const files = useFilesStore.getState();
   const path = files.activePath;
-  if (
-    !path ||
-    !LANGUAGE_SERVICE_PATH.test(path) ||
-    !shouldRequestCompletion(context, path)
-  ) {
-    return null;
-  }
+  if (!path || !LANGUAGE_SERVICE_PATH.test(path)) return null;
+  const typst = TYPST_PATH.test(path);
+  if (!typst && !shouldRequestLatexCompletion(context)) return null;
   const text = context.state.doc.toString();
   const current = currentDocument(path, text);
   if (!current?.session.client.supports("completion")) {
     return null;
   }
+  const trigger: CompletionRequestTrigger | null = typst
+    ? typstCompletionTrigger(
+        text.slice(Math.max(0, context.pos - TYPST_CONTEXT_CHARS), context.pos),
+        context.explicit,
+        current.session.client.capabilities.completionTriggerCharacters,
+      )
+    : { triggerKind: 1 };
+  if (!trigger) return null;
   const token = context.matchBefore(
-    /[\\#<]?[\p{L}\p{M}\p{N}_:./@-]*$/u,
+    typst ? /[\p{L}\p{M}\p{N}_-]*$/u : /[\\#<]?[\p{L}\p{M}\p{N}_:./@-]*$/u,
   );
   const fallbackFrom = token?.from ?? context.pos;
   const positions = new TextPositionIndex(text);
@@ -601,7 +556,7 @@ export const languageServiceCompletion: CompletionSource = async (
             context.pos,
             current.session.positionEncoding,
           ),
-          context: { triggerKind: 1 },
+          context: trigger,
         },
         {
           signal: abort.signal,
@@ -688,6 +643,33 @@ function packageNameBefore(text: string): string {
  * The hovered `\usepackage`/`\documentclass` argument doubles as a CTAN
  * package id, which gives the hover card a stable documentation link.
  */
+interface HoverLink {
+  href: string;
+  label: string;
+}
+
+const TYPST_UNIVERSE_IMPORT =
+  /\bimport\s+"@preview\/([a-z0-9][a-z0-9-]*)(?::[^"\n]*)?"/giu;
+
+export function hoverUniverseLink(
+  text: string,
+  position: number,
+): HoverLink | null {
+  const lineStart = text.lastIndexOf("\n", position - 1) + 1;
+  const lineBreak = text.indexOf("\n", position);
+  const line = text.slice(lineStart, lineBreak === -1 ? text.length : lineBreak);
+  const column = position - lineStart;
+  for (const match of line.matchAll(TYPST_UNIVERSE_IMPORT)) {
+    const quote = match.index + match[0].indexOf("\"");
+    if (column < quote || column > match.index + match[0].length) continue;
+    return {
+      href: `https://typst.app/universe/package/${match[1]}`,
+      label: i18n.t(($) => $.editor.languageService.openOnTypstUniverse),
+    };
+  }
+  return null;
+}
+
 function hoverCtanUrl(
   text: string,
   position: number,
@@ -711,8 +693,8 @@ function hoverCtanUrl(
 
 function hoverTooltipForText(
   position: number,
-  text: string,
-  link: string | null,
+  text: string | null,
+  link: HoverLink | null,
 ): Tooltip {
   return {
     pos: position,
@@ -720,7 +702,7 @@ function hoverTooltipForText(
     create: () => {
       const dom = document.createElement("div");
       dom.className = "cm-language-service-hover";
-      for (const block of text.split(/\n{2,}/u)) {
+      for (const block of text?.split(/\n{2,}/u) ?? []) {
         const paragraph = document.createElement("p");
         paragraph.className = "cm-language-service-hover-block";
         paragraph.textContent = block;
@@ -729,10 +711,10 @@ function hoverTooltipForText(
       if (link) {
         const anchor = document.createElement("a");
         anchor.className = "cm-language-service-hover-link";
-        anchor.href = link;
+        anchor.href = link.href;
         anchor.target = "_blank";
         anchor.rel = "noreferrer";
-        anchor.textContent = link.replace(/^https:\/\//u, "");
+        anchor.textContent = link.label;
         dom.appendChild(anchor);
       }
       return { dom };
@@ -776,19 +758,22 @@ const languageServiceHoverSource = async (
         current.session,
         current.document,
         text,
-      ) ||
-      !isRecord(response)
+      )
     ) {
       return null;
     }
-    const content = hoverText(response.contents);
-    return content
-      ? hoverTooltipForText(
-          position,
-          content,
-          hoverCtanUrl(text, position),
-        )
+    const content = isRecord(response) ? hoverText(response.contents) : null;
+    const universe = TYPST_PATH.test(path)
+      ? hoverUniverseLink(text, position)
       : null;
+    if (!content && !universe) return null;
+    const ctan = universe ? null : hoverCtanUrl(text, position);
+    return hoverTooltipForText(
+      position,
+      content,
+      universe ??
+        (ctan ? { href: ctan, label: ctan.replace(/^https:\/\//u, "") } : null),
+    );
   } catch {
     return null;
   }
@@ -975,7 +960,30 @@ const semanticTokenField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-function semanticClass(tokenType: string): string | null {
+const TYPST_SEMANTIC_CLASSES: Readonly<Record<string, string>> = {
+  heading: "cm-semantic-heading",
+  raw: "cm-semantic-string",
+  label: "cm-semantic-label",
+  ref: "cm-semantic-label",
+  link: "cm-semantic-link",
+  marker: "cm-semantic-keyword",
+  term: "cm-semantic-term",
+  delim: "cm-semantic-bracket",
+  punct: "cm-semantic-bracket",
+  pol: "cm-semantic-variable",
+  escape: "cm-semantic-escape",
+  bool: "cm-semantic-number",
+  error: "cm-semantic-error",
+};
+
+const SEMANTIC_MODIFIER_CLASSES: Readonly<Record<string, string>> = {
+  strong: "cm-semantic-strong",
+  emph: "cm-semantic-emph",
+};
+
+export function semanticClass(tokenType: string): string | null {
+  const typst = TYPST_SEMANTIC_CLASSES[tokenType];
+  if (typst) return typst;
   if (tokenType === "keyword" || tokenType === "modifier") {
     return "cm-semantic-keyword";
   }
@@ -1018,6 +1026,22 @@ function semanticClass(tokenType: string): string | null {
   return null;
 }
 
+export function semanticClassName(
+  tokenType: string | undefined,
+  modifierBits: number,
+  modifiers: readonly string[],
+): string | null {
+  const classes: string[] = [];
+  const base = tokenType ? semanticClass(tokenType) : null;
+  if (base) classes.push(base);
+  for (let bit = 0; bit < modifiers.length && bit < 31; bit += 1) {
+    if ((modifierBits & (1 << bit)) === 0) continue;
+    const modifierClass = SEMANTIC_MODIFIER_CLASSES[modifiers[bit]];
+    if (modifierClass) classes.push(modifierClass);
+  }
+  return classes.length > 0 ? classes.join(" ") : null;
+}
+
 function semanticTokenData(value: unknown): number[] | null {
   if (
     !isRecord(value) ||
@@ -1057,16 +1081,18 @@ function decodeSemanticTokens(
     const deltaStart = data[cursor + 1];
     const length = data[cursor + 2];
     const typeIndex = data[cursor + 3];
+    const modifierBits = data[cursor + 4];
     if (deltaLine > 0) {
       line += deltaLine;
       character = deltaStart;
     } else {
       character += deltaStart;
     }
-    const tokenType = legend.tokenTypes[typeIndex];
-    const className = tokenType
-      ? semanticClass(tokenType)
-      : null;
+    const className = semanticClassName(
+      legend.tokenTypes[typeIndex],
+      modifierBits,
+      legend.tokenModifiers,
+    );
     if (!className || length === 0) continue;
     const from = strictOffset(
       positions,
@@ -1109,8 +1135,32 @@ const semanticTheme = EditorView.baseTheme({
   ".cm-semantic-property, .cm-semantic-variable": {
     color: "var(--cm-variable) !important",
   },
-  ".cm-semantic-operator, .cm-semantic-decorator": {
+  ".cm-semantic-operator, .cm-semantic-decorator, .cm-semantic-escape": {
     color: "var(--cm-operator) !important",
+  },
+  ".cm-semantic-heading": {
+    color: "var(--cm-meta) !important",
+    fontWeight: "600",
+  },
+  ".cm-semantic-label": {
+    color: "var(--cm-tag) !important",
+  },
+  ".cm-semantic-link": {
+    color: "var(--cm-string) !important",
+    textDecoration: "underline",
+  },
+  ".cm-semantic-bracket": {
+    color: "var(--cm-bracket) !important",
+  },
+  ".cm-semantic-term, .cm-semantic-strong": {
+    fontWeight: "600",
+  },
+  ".cm-semantic-emph": {
+    fontStyle: "italic",
+  },
+  ".cm-semantic-error": {
+    textDecoration: "underline wavy",
+    textDecorationColor: "var(--destructive, #e5484d)",
   },
   ".cm-language-service-hover": {
     maxWidth: "min(36rem, 80vw)",
@@ -1279,5 +1329,7 @@ export function languageServiceEditorExtensions(): Extension[] {
     semanticTokenField,
     semanticTokensPlugin(),
     semanticTheme,
+    ...languageServiceAssistExtensions(),
+    languageServiceFormattingKeymap(),
   ];
 }

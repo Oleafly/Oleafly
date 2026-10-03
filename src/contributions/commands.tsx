@@ -1,36 +1,52 @@
 import {
+  AlignLeft,
+  ArrowRightToLine,
+  Asterisk,
   Bold,
   CaseLower,
   CaseSensitive,
   CaseUpper,
   Command as CommandIcon,
   CopyPlus,
+  Code,
   Crosshair,
+  Divide,
   Download,
   Eraser,
   FileJson,
   FolderOpen,
   FolderPlus,
+  Hash,
   Image as ImageIcon,
   Italic,
   LibraryBig,
+  Link,
   List,
+  MessageSquareCode,
   Monitor,
   Moon,
+  Package,
+  Pencil,
   PenTool,
   Play,
   Plus,
   Quote,
+  Rows3,
+  ScanSearch,
+  SearchCode,
   Settings,
   Sigma,
+  SlidersHorizontal,
   Sparkles,
   Square,
   SquareTerminal,
+  Strikethrough,
   Sun,
   Table,
   Tag,
   ToolCase,
   Trash2,
+  Underline,
   Zap,
 } from "lucide-react";
 import { ClockCheck } from "@/components/icons/ClockCheck";
@@ -38,6 +54,7 @@ import { registerCommand, type AppContext } from "@oleafly/registry";
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
+import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { useCitationStore } from "@/store/citation";
 import { clearBuildCache } from "@/lib/tauri";
 import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
@@ -61,10 +78,34 @@ import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { requestThemePreference } from "@/lib/theme";
 import { showSourceControlGraph } from "@/lib/source-control-events";
 import {
-  formattingForEngine,
+  engineSyncsPath,
+  formattingForPath,
+  formattingProfileForPath,
   pathUsesEngineSource,
+  sourceLanguageForPath,
+  supportsFigureTools,
   type EngineFormattingAction,
 } from "@/lib/document-engine";
+import { findReferences, goToDefinition, startRename } from "@/lib/index/nav";
+import {
+  addTypstLabel,
+  insertTypstAlignedMath,
+  insertTypstDisplayMath,
+  insertTypstFigure,
+  insertTypstFootnote,
+  insertTypstFraction,
+  insertTypstLink,
+  insertTypstMath,
+  insertTypstNumberedEquation,
+  insertTypstQuote,
+  insertTypstRawInline,
+  insertTypstReference,
+  insertTypstStrikethrough,
+  insertTypstTable,
+  insertTypstUnderline,
+  toggleTypstComment,
+  typstLanguageServiceOffers,
+} from "@/components/editor/typst-commands";
 import {
   TOOL_DEFINITIONS,
   toolDescription,
@@ -73,12 +114,21 @@ import {
   type ToolDefinition,
 } from "@/lib/tool-catalog";
 import {
+  openDiagramComposerChooser,
   openHomePage,
   openTool,
   openToolsGallery,
 } from "@/features/open-tool";
 import { openFolderWithPicker } from "@/features/open-folder";
+import { openTypstPackages } from "@/components/typst-packages/open";
+import { openLatexPackages } from "@/components/packages/open";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { shortcut } from "@/lib/utils";
+import {
+  formatWithLanguageService,
+  languageServiceFormattingAvailable,
+  type FormatScope,
+} from "@/components/editor/cm/language-service-format";
 
 const engine = () => useFilesStore.getState().engine;
 const engineLoaded = () => useFilesStore.getState().engineLoaded;
@@ -86,18 +136,20 @@ const activeUsesEngineSource = () => {
   const files = useFilesStore.getState();
   return pathUsesEngineSource(files.engine, files.activePath);
 };
-const isLatex = () =>
-  engineLoaded() && engine().capabilities.formatting_profile === "latex";
-const activeIsLatexSource = () => isLatex() && activeUsesEngineSource();
+const activeSourceLanguage = () =>
+  engineLoaded() ? sourceLanguageForPath(useFilesStore.getState().activePath) : null;
+const activeIsLatexSource = () => activeSourceLanguage() === "latex";
+const activeIsTypstSource = () => activeSourceLanguage() === "typst";
+const activeIsLatexOrTypstSource = () => activeIsLatexSource() || activeIsTypstSource();
 const supportsCitations = () =>
   engineLoaded() && activeUsesEngineSource() && engine().capabilities.features.includes("citations");
-const supportsSyncTeX = () => engineLoaded() && engine().capabilities.supports_synctex;
-const supportsIsolatedCompile = () =>
-  engineLoaded() && engine().capabilities.supports_isolated_compile;
-export const engineFormattingAvailable = () => engineLoaded() && activeUsesEngineSource();
+const supportsSyncTeX = () => engineLoaded() && engineSyncsPath(engine(), useFilesStore.getState().activePath);
+const activeFormattingProfile = () =>
+  formattingProfileForPath(engine(), engineLoaded(), useFilesStore.getState().activePath);
+export const engineFormattingAvailable = () => engineLoaded() && activeFormattingProfile() !== "none";
 export const runEngineFormatting = (action: EngineFormattingAction) => {
-  if (!activeUsesEngineSource()) return;
-  const formatting = formattingForEngine(engine(), engineLoaded(), action);
+  if (!engineFormattingAvailable()) return;
+  const formatting = formattingForPath(engine(), engineLoaded(), useFilesStore.getState().activePath, action);
   if (!formatting) return;
   if (formatting.kind === "wrap") wrapSelection(formatting.before, formatting.after);
   else insertAtCursor(formatting.text);
@@ -108,7 +160,7 @@ const openNewProject = () => useSettingsStore.getState().setNewProjectOpen(true)
 const ENGLISH_KEYWORDS = {
   createProject: "new project create template gallery",
   theme: "theme dark light appearance mode",
-  generateFigure: "figure diagram draw tikz plot chart illustration",
+  generateFigure: "figure diagram draw tikz cetz fletcher typst plot chart illustration",
   diagramComposer: "diagram figure tikz composer draw canvas",
   tools: "tools latex pdf equation bibtex table lab search deadlines gallery",
   settings: "settings preferences options",
@@ -121,7 +173,18 @@ const ENGLISH_KEYWORDS = {
   appearance: "theme appearance mode",
   saveSettingsToFolder: "save project settings folder project.json share main document engine",
   openFolder: "open folder directory existing local files disk",
+  formatDocument: "format tidy indent typstyle typst",
+  formatSelection: "format selection tidy indent typstyle typst",
+  typstPackages: "typst universe packages import library browse vendor",
+  latexPackages: "latex ctan packages usepackage preamble install tlmgr browse",
 } as const;
+
+const runLanguageServiceFormat = (scope: FormatScope) => {
+  const view = getEditorView();
+  if (!view) return;
+  void formatWithLanguageService(view, scope);
+  view.focus();
+};
 
 const EDITOR_COMMAND_KEYWORDS = {
   uppercase: "uppercase upper case capitals selection",
@@ -196,6 +259,147 @@ function documentScanBibOverride(files: CommandFilesState): string | null {
   );
 }
 
+type PaletteRegistrar = (cmd: Omit<Parameters<typeof registerCommand>[0], "surfaces">) => void;
+
+const TYPST_NAVIGATION_KEYWORDS = {
+  goToDefinition: "definition jump symbol navigate typst",
+  findReferences: "references usages symbol typst",
+  renameSymbol: "rename symbol refactor typst",
+  toggleComment: "comment uncomment line block typst",
+} as const;
+
+const DOCUMENT_SETTINGS_KEYWORDS =
+  "documentclass geometry babel polyglossia fontspec setspace secnumdepth numberwithin yaml frontmatter pandoc mainfont variants";
+
+function runWithEditorView(action: (view: NonNullable<ReturnType<typeof getEditorView>>) => unknown) {
+  const view = getEditorView();
+  if (view) action(view);
+}
+
+function registerTypstPaletteCommands(palette: PaletteRegistrar) {
+  const insertGroup = () => i18n.t(($) => $.shell.commandGroups.insert);
+  const editorGroup = () => i18n.t(($) => $.shell.commandGroups.editor);
+  const insertions = [
+    ["underline", () => i18n.t(($) => $.shell.commands.underline.label), Underline, 411, insertTypstUnderline],
+    ["strikethrough", () => i18n.t(($) => $.shell.commands.strikethrough.label), Strikethrough, 412, insertTypstStrikethrough],
+    ["inline-code", () => i18n.t(($) => $.shell.commands.inlineCode.label), Code, 413, insertTypstRawInline],
+    ["link", () => i18n.t(($) => $.shell.commands.link.label), Link, 414, insertTypstLink],
+    ["footnote", () => i18n.t(($) => $.shell.commands.footnote.label), Asterisk, 435, insertTypstFootnote],
+    ["quote", () => i18n.t(($) => $.shell.commands.quote.label), Quote, 436, insertTypstQuote],
+    ["inline-math", () => i18n.t(($) => $.shell.commands.inlineMath.label), Sigma, 461, insertTypstMath],
+    [
+      "numbered-equation",
+      () => i18n.t(($) => $.shell.commands.numberedEquation.label),
+      Hash,
+      462,
+      () => void insertTypstNumberedEquation(),
+    ],
+    ["aligned-equations", () => i18n.t(($) => $.shell.commands.alignedEquations.label), Rows3, 463, insertTypstAlignedMath],
+    ["fraction", () => i18n.t(($) => $.shell.commands.fraction.label), Divide, 464, insertTypstFraction],
+    ["cross-reference", () => i18n.t(($) => $.shell.commands.crossReference.label), Tag, 471, insertTypstReference],
+  ] as const;
+  for (const [id, label, Icon, order, run] of insertions) {
+    palette({
+      id: `palette.typst-${id}`,
+      group: insertGroup,
+      label,
+      icon: () => <Icon className="size-4" />,
+      order,
+      when: activeIsTypstSource,
+      run,
+    });
+  }
+  const insightsProject = () => {
+    if (!engineLoaded()) return false;
+    const format = engine().source_format;
+    if (format === "latex") {
+      const kind = useFilesStore.getState().projectKind;
+      return kind !== "diagram" && kind !== "image";
+    }
+    return format === "typst" || format === "markdown";
+  };
+  palette({
+    id: "palette.document-insights",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.typstInsights.label),
+    keywords: () => i18n.t(($) => $.shell.commands.typstInsights.keywords),
+    icon: () => <ScanSearch className="size-4" />,
+    order: 296,
+    when: insightsProject,
+    run: () => useTypstDocumentPanelStore.getState().openPanel("insights"),
+  });
+  palette({
+    id: "palette.document-settings",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.typstDocumentSettings.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.typstDocumentSettings.keywords)} ${DOCUMENT_SETTINGS_KEYWORDS}`,
+    icon: () => <SlidersHorizontal className="size-4" />,
+    order: 297,
+    when: insightsProject,
+    run: () => useTypstDocumentPanelStore.getState().openPanel("settings"),
+  });
+  const navigation = [
+    {
+      id: "go-to-definition",
+      feature: "definition",
+      label: () => i18n.t(($) => $.shell.commands.goToDefinition.label),
+      keywords: () =>
+        `${i18n.t(($) => $.shell.commands.goToDefinition.keywords)} ${TYPST_NAVIGATION_KEYWORDS.goToDefinition}`,
+      icon: ArrowRightToLine,
+      hint: "F12",
+      order: 482,
+      run: goToDefinition,
+    },
+    {
+      id: "find-references",
+      feature: "references",
+      label: () => i18n.t(($) => $.shell.commands.findReferences.label),
+      keywords: () =>
+        `${i18n.t(($) => $.shell.commands.findReferences.keywords)} ${TYPST_NAVIGATION_KEYWORDS.findReferences}`,
+      icon: SearchCode,
+      hint: "⇧F12",
+      order: 483,
+      run: findReferences,
+    },
+    {
+      id: "rename-symbol",
+      feature: "rename",
+      label: () => i18n.t(($) => $.shell.commands.renameSymbol.label),
+      keywords: () =>
+        `${i18n.t(($) => $.shell.commands.renameSymbol.keywords)} ${TYPST_NAVIGATION_KEYWORDS.renameSymbol}`,
+      icon: Pencil,
+      hint: "F2",
+      order: 484,
+      run: startRename,
+    },
+  ] as const;
+  for (const entry of navigation) {
+    palette({
+      id: `palette.typst-${entry.id}`,
+      group: editorGroup,
+      label: entry.label,
+      keywords: entry.keywords,
+      icon: () => <entry.icon className="size-4" />,
+      hint: () => shortcut(entry.hint),
+      order: entry.order,
+      when: () => activeIsTypstSource() && typstLanguageServiceOffers(entry.feature),
+      run: () => runWithEditorView(entry.run),
+    });
+  }
+  palette({
+    id: "palette.typst-toggle-comment",
+    group: editorGroup,
+    label: () => i18n.t(($) => $.shell.commands.toggleComment.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.toggleComment.keywords)} ${TYPST_NAVIGATION_KEYWORDS.toggleComment}`,
+    icon: () => <MessageSquareCode className="size-4" />,
+    hint: () => shortcut("⌘/"),
+    order: 485,
+    when: activeIsTypstSource,
+    run: toggleTypstComment,
+  });
+}
+
 export function registerOmnibarCommands() {
   registerCommand({
     id: "omnibar.create",
@@ -226,7 +430,7 @@ export function registerOmnibarCommands() {
       `${i18n.t(($) => $.shell.commands.generateFigure.keywords)} ${ENGLISH_KEYWORDS.generateFigure}`,
     icon: () => <Sparkles className="size-4" />,
     order: 30,
-    when: (ctx) => !!ctx.projectId && isLatex() && supportsIsolatedCompile(),
+    when: (ctx) => !!ctx.projectId && supportsFigureTools(engine(), engineLoaded()),
     run: () => {
       useSettingsStore.getState().setAssistantOpen(true);
       handoffToAssistant("Draw a figure of ");
@@ -243,7 +447,7 @@ export function registerOmnibarCommands() {
     hint: "/diagram-composer",
     icon: () => <PenTool className="size-4" />,
     order: 20,
-    run: () => void openHomePage("diagram-composer"),
+    run: () => openDiagramComposerChooser(),
   });
   registerCommand({
     id: "omnibar.tools",
@@ -293,6 +497,14 @@ export function registerOmnibarCommands() {
 
 export function registerPaletteCommands() {
   const ins = (text: string) => () => insertAtCursor(text);
+  const latexFigure = ins(
+    "\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{}\n  \\caption{}\n\\end{figure}\n",
+  );
+  const latexTable = ins(
+    "\\begin{table}[htbp]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n    & \\\\\n  \\end{tabular}\n\\end{table}\n",
+  );
+  const latexEquation = ins("\\begin{equation}\n  \n\\end{equation}\n");
+  const latexLabel = ins(String.raw`\label{}`);
   const palette = (
     cmd: Omit<Parameters<typeof registerCommand>[0], "surfaces">,
   ) => registerCommand({ ...cmd, surfaces: ["palette"] });
@@ -355,7 +567,10 @@ export function registerPaletteCommands() {
   palette({
     id: "palette.synctex",
     group: () => i18n.t(($) => $.shell.commandGroups.compile),
-    label: () => i18n.t(($) => $.shell.commands.synctex.label),
+    label: () =>
+      engineLoaded() && engine().id === "typst"
+        ? i18n.t(($) => $.shell.commands.synctex.typstLabel)
+        : i18n.t(($) => $.shell.commands.synctex.label),
     icon: () => <Crosshair className="size-4" />,
     hint: "⌘⇧J",
     order: 220,
@@ -453,6 +668,28 @@ export function registerPaletteCommands() {
     run: () => useCitationStore.getState().setOpen(true),
   });
   palette({
+    id: "palette.typst-packages",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.typstPackages.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.typstPackages.keywords)} ${ENGLISH_KEYWORDS.typstPackages}`,
+    icon: () => <Package className="size-4" />,
+    order: 321,
+    when: (ctx) => !!ctx.projectId && engineLoaded() && engine().id === "typst",
+    run: openTypstPackages,
+  });
+  palette({
+    id: "palette.latex-packages",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.latexPackages.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.latexPackages.keywords)} ${ENGLISH_KEYWORDS.latexPackages}`,
+    icon: () => <Package className="size-4" />,
+    order: 321,
+    when: (ctx) => !!ctx.projectId && engineLoaded() && engine().source_format === "latex",
+    run: openLatexPackages,
+  });
+  palette({
     id: "document-citation-scan",
     group: () => i18n.t(($) => $.shell.commandGroups.tools),
     label: () => i18n.t(($) => $.shell.commands.documentCitationScan.label),
@@ -529,10 +766,11 @@ export function registerPaletteCommands() {
     label: () => i18n.t(($) => $.shell.commands.figure.label),
     icon: () => <ImageIcon className="size-4" />,
     order: 440,
-    when: activeIsLatexSource,
-    run: ins(
-      "\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\textwidth]{}\n  \\caption{}\n\\end{figure}\n",
-    ),
+    when: activeIsLatexOrTypstSource,
+    run: () => {
+      if (activeIsTypstSource()) void insertTypstFigure();
+      else latexFigure();
+    },
   });
   palette({
     id: "palette.table",
@@ -540,10 +778,11 @@ export function registerPaletteCommands() {
     label: () => i18n.t(($) => $.shell.commands.table.label),
     icon: () => <Table className="size-4" />,
     order: 450,
-    when: activeIsLatexSource,
-    run: ins(
-      "\\begin{table}[htbp]\n  \\centering\n  \\caption{}\n  \\begin{tabular}{ll}\n    & \\\\\n  \\end{tabular}\n\\end{table}\n",
-    ),
+    when: activeIsLatexOrTypstSource,
+    run: () => {
+      if (activeIsTypstSource()) void insertTypstTable(2, 2);
+      else latexTable();
+    },
   });
   palette({
     id: "palette.equation",
@@ -551,8 +790,11 @@ export function registerPaletteCommands() {
     label: () => i18n.t(($) => $.shell.commands.equation.label),
     icon: () => <Sigma className="size-4" />,
     order: 460,
-    when: activeIsLatexSource,
-    run: ins("\\begin{equation}\n  \n\\end{equation}\n"),
+    when: activeIsLatexOrTypstSource,
+    run: () => {
+      if (activeIsTypstSource()) insertTypstDisplayMath();
+      else latexEquation();
+    },
   });
   palette({
     id: "palette.label",
@@ -560,9 +802,13 @@ export function registerPaletteCommands() {
     label: () => i18n.t(($) => $.shell.commands.label.label),
     icon: () => <Tag className="size-4" />,
     order: 470,
-    when: activeIsLatexSource,
-    run: ins(String.raw`\label{}`),
+    when: activeIsLatexOrTypstSource,
+    run: () => {
+      if (activeIsTypstSource()) void addTypstLabel();
+      else latexLabel();
+    },
   });
+  registerTypstPaletteCommands(palette);
 
   palette({
     id: "palette.close-environment",
@@ -596,6 +842,29 @@ export function registerPaletteCommands() {
       if (!view) return;
       if (surroundSelectionWithEnvironment(view)) view.focus();
     },
+  });
+  palette({
+    id: "palette.format-document",
+    group: () => i18n.t(($) => $.shell.commandGroups.editor),
+    label: () => i18n.t(($) => $.shell.commands.formatDocument.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.formatDocument.keywords)} ${ENGLISH_KEYWORDS.formatDocument}`,
+    icon: () => <AlignLeft className="size-4" />,
+    hint: () => shortcut("⇧⌥F"),
+    order: 488,
+    when: languageServiceFormattingAvailable,
+    run: () => runLanguageServiceFormat("document"),
+  });
+  palette({
+    id: "palette.format-selection",
+    group: () => i18n.t(($) => $.shell.commandGroups.editor),
+    label: () => i18n.t(($) => $.shell.commands.formatSelection.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.formatSelection.keywords)} ${ENGLISH_KEYWORDS.formatSelection}`,
+    icon: () => <AlignLeft className="size-4" />,
+    order: 489,
+    when: languageServiceFormattingAvailable,
+    run: () => runLanguageServiceFormat("selection"),
   });
   for (const entry of EDITOR_COMMAND_PALETTE) {
     palette({

@@ -356,6 +356,9 @@ pub async fn install_update<R: Runtime>(
         .resources_table()
         .take::<DownloadedUpdate>(rid)
         .map_err(|error| error.to_string())?;
+    if crate::toolchain_download::install_in_progress() {
+        return Err(crate::app_error::AppError::new("typst_toolchain.update_waits").into());
+    }
     if crate::latex_engine::install_in_progress() {
         return Err("Wait for the TeX installation to finish before updating Oleafly.".into());
     }

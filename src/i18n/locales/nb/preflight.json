@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Bilde uten alternativ tekst",
-      "detail": "Dette bildet har ingen beskrivende alternativ tekst, så en skjermleser kan ikke formidle det. Legg til en beskrivelse, for eksempel \\includegraphics[alt={Et portrett av forfatteren}]{...}. Bilder som bare er pynt, merker du som artefakter i stedet."
+      "detail": "Dette bildet har ingen beskrivende alternativ tekst, så en skjermleser kan ikke formidle det. Legg til en beskrivelse, for eksempel \\includegraphics[alt={Et portrett av forfatteren}]{...}. Bilder som bare er pynt, merker du som artefakter i stedet.",
+      "detailTypst": "Dette bildet har ingen alternativ tekst, så en skjermleser kan ikke formidle det. Legg til en beskrivelse, for eksempel #image(\"chart.png\", alt: \"Søylediagram over årlig salg\").",
+      "detailTypstFigure": "Dette bildet har ingen alternativ tekst, så en skjermleser kan ikke formidle det. Beskriv det på bildet eller på figuren som holder det, for eksempel #figure(image(\"chart.png\"), alt: \"Søylediagram over årlig salg\")."
     },
     "link-text": {
       "title": "Lenketekst som ikke sier noe",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "PDF-en har ingen tittel",
-      "detail": "PDF-en har ingen tittel i metadataene, og det er den hjelpemidler og nettlesere bruker til å annonsere dokumentet. Sett en med hyperref, for eksempel \\hypersetup{pdftitle={Navnet ditt, CV}}."
+      "detail": "PDF-en har ingen tittel i metadataene, og det er den hjelpemidler og nettlesere bruker til å annonsere dokumentet. Sett en med hyperref, for eksempel \\hypersetup{pdftitle={Navnet ditt, CV}}.",
+      "detailTypst": "PDF-en har ingen tittel i metadataene, og det er den hjelpemidler og nettlesere bruker til å annonsere dokumentet. Sett en med #set document(title: \"Tittelen din\"), eller gi malen en tittel."
     },
     "heading-skip": {
       "title": "Et overskriftsnivå ble hoppet over",
@@ -284,11 +287,16 @@
     },
     "refs-undefined-cite": {
       "title": "Siteringen \"{{key}}\" finnes ikke i noen .bib",
-      "detail": "Denne siteringsnøkkelen finnes ikke i litteraturlisten som er lastet, så den blir vist som [?] i PDF-en. Sjekk nøkkelen, eller legg oppføringen inn i .bib-filen din (Legg til sitering kan hente den)."
+      "detail": "Denne siteringsnøkkelen finnes ikke i litteraturlisten som er lastet, så den blir vist som [?] i PDF-en. Sjekk nøkkelen, eller legg oppføringen inn i .bib-filen din (Legg til sitering kan hente den).",
+      "titleTypst": "Siteringen \"{{key}}\" finnes ikke i litteraturlisten",
+      "detailTypst": "Denne nøkkelen finnes ikke i noen litteraturlistefil som prosjektet laster inn, så kompileringen mislykkes. Sjekk nøkkelen, eller legg oppføringen inn i .bib-filen eller Hayagriva-filen (.yml)."
     },
     "refs-undefined-ref": {
       "title": "Referansen til \"{{label}}\" har ingen \\label som passer",
-      "detail": "Denne kryssreferansen peker på en etikett som ikke er definert, så den blir vist som ?? i PDF-en. Sjekk navnet på etiketten, eller legg til den manglende \\label."
+      "detail": "Denne kryssreferansen peker på en etikett som ikke er definert, så den blir vist som ?? i PDF-en. Sjekk navnet på etiketten, eller legg til den manglende \\label.",
+      "titleTypst": "Ingen etikett eller oppføring heter \"{{label}}\"",
+      "detailTypst": "Typst stopper kompileringen her. Sjekk stavemåten, eller legg til den manglende <label> eller litteraturlisteoppføringen.",
+      "detailTypstPackage": "Ingen etikett eller litteraturlisteoppføring i prosjektet har dette navnet. En pakke kan lage etiketter mens dokumentet kompileres, for eksempel ordlisteoppføringer. Hvis kompileringsloggen melder om den, sjekk stavemåten."
     },
     "refs-duplicate-label": {
       "title": "Duplisert etikett \"{{label}}\"",
@@ -298,11 +306,14 @@
       "titleImage": "Fant ikke bildet: {{file}}",
       "detailImage": "Denne \\includegraphics peker på en fil som ikke er i prosjektet, så figuren blir borte. Sjekk filnavnet og stien.",
       "titleInclude": "Fant ikke den inkluderte filen: {{file}}",
-      "detailInclude": "Denne \\input eller \\include peker på en fil som ikke er i prosjektet. Sjekk filnavnet og stien."
+      "detailInclude": "Denne \\input eller \\include peker på en fil som ikke er i prosjektet. Sjekk filnavnet og stien.",
+      "detailImageTypst": "Ingen prosjektfil passer til denne bildestien, så kompileringen mislykkes. Typst leser en sti relativt til filen, eller fra prosjektroten når den starter med /.",
+      "detailIncludeTypst": "Ingen prosjektfil passer til denne #include- eller #import-stien, så kompileringen mislykkes. Sjekk filnavnet og stien."
     },
     "refs-bib-missing": {
       "title": "Fant ikke litteraturfilen: {{file}}",
-      "detail": "Denne \\bibliography eller \\addbibresource peker på en fil som ikke er i prosjektet, så alle siteringer blir vist som [?]. Sjekk filnavnet, eller importer et referansebibliotek for å opprette filen."
+      "detail": "Denne \\bibliography eller \\addbibresource peker på en fil som ikke er i prosjektet, så alle siteringer blir vist som [?]. Sjekk filnavnet, eller importer et referansebibliotek for å opprette filen.",
+      "detailTypst": "Dette #bibliography-kallet peker på en fil som ikke er i prosjektet, så kompileringen mislykkes. Sjekk filnavnet, eller importer et referansebibliotek for å opprette filen."
     },
     "refs-duplicate-bib": {
       "title": "Dupliserte oppføringer i litteraturlisten: {{keys}}",
@@ -345,7 +356,8 @@
     },
     "privacy-blind-author": {
       "title": "Forfatteridentiteten står igjen i kilden til blind fagfellevurdering",
-      "detail": "Kilden inneholder en forfatter, tilknytning, e-postadresse, adresse eller takkefelt som ikke er anonymisert. Bytt ut identifiserende innhold med arenaens anonyme modus."
+      "detail": "Kilden inneholder en forfatter, tilknytning, e-postadresse, adresse eller takkefelt som ikke er anonymisert. Bytt ut identifiserende innhold med arenaens anonyme modus.",
+      "detailTypst": "Kilden gir dokumentet eller malen et forfatternavn, en e-postadresse eller en tilknytning. Fjern det, eller sett malen i anonym modus."
     },
     "privacy-blind-acknowledgements": {
       "title": "Takksigelsene kan avsløre forfatterne",
@@ -374,15 +386,20 @@
     "submission-document-class": {
       "title": "Dokumentklassen for {{profile}} er ikke i bruk",
       "detail": "Denne profilen venter {{expected}}, men prosjektet bruker {{actual}}. Start fra den gjeldende offisielle malen til arenaen.",
-      "detailNoClass": "Denne profilen venter {{expected}}, men fant ingen dokumentklasse. Start fra den gjeldende offisielle malen til arenaen."
+      "detailNoClass": "Denne profilen venter {{expected}}, men fant ingen dokumentklasse. Start fra den gjeldende offisielle malen til arenaen.",
+      "titleTypst": "Malen for {{profile}} er ikke i bruk",
+      "detailTypst": "Denne profilen venter en Typst-mal som {{expected}}, men prosjektet importerer {{actual}}. Start fra en av de malene.",
+      "detailNoTemplateTypst": "Denne profilen venter en Typst-mal som {{expected}}, men prosjektet importerer ingen. Start fra en av de malene."
     },
     "submission-no-abstract": {
       "title": "Fant ikke noe sammendrag",
-      "detail": "Denne publiseringsprofilen venter et sammendrag i et standard abstract-miljø. Legg det til, eller sjekk at nettopp denne arenaen ikke krever ett."
+      "detail": "Denne publiseringsprofilen venter et sammendrag i et standard abstract-miljø. Legg det til, eller sjekk at nettopp denne arenaen ikke krever ett.",
+      "detailTypst": "Denne publiseringsprofilen venter et sammendrag. Gi det til malen, for eksempel abstract: [Sammendraget ditt], eller legg til en Abstract-overskrift."
     },
     "submission-no-keywords": {
       "title": "Fant ingen nøkkelord for publisering",
-      "detail": "Profilen {{profile}} venter nøkkelord satt med standardkommandoen eller miljøet i malen sin."
+      "detail": "Profilen {{profile}} venter nøkkelord satt med standardkommandoen eller miljøet i malen sin.",
+      "detailTypst": "Profilen {{profile}} venter nøkkelord. Gi dem til malen, for eksempel keywords: (\"one\", \"two\") eller index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Figurformat som ikke støttes: {{file}}",
@@ -390,7 +407,8 @@
     },
     "submission-placeholder": {
       "title": "Utkastmarkering står igjen i manuset",
-      "detail": "Kilden inneholder TODO, TBD, FIXME, fylltekst eller spørsmålstegn som markører. Se over hver forekomst før du lager den endelige innsendingen."
+      "detail": "Kilden inneholder TODO, TBD, FIXME, fylltekst eller spørsmålstegn som markører. Se over hver forekomst før du lager den endelige innsendingen.",
+      "detailTypst": "Dokumentet kaller fortsatt #lorem eller inneholder fylltekst. Bytt den ut før den endelige innsendingen."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} er lavere enn versjonen som kreves",
@@ -420,6 +438,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Innbygging av enkelte skrifter kunne ikke bekreftes",
       "detail": "Forhåndssjekken kunne ikke fastslå innbyggingsstatusen til {{fonts}}. Bekreft dem med den offisielle PDF-sjekkeren til arenaen."
+    },
+    "empty-heading": {
+      "title": "Tom overskrift",
+      "detail": "Denne overskriften har ingen tekst. Skjermlesere leser den opp som en tom oppføring i disposisjonen. Legg til en tittel, eller fjern overskriften."
+    },
+    "todo-in-text": {
+      "title": "Utkastnotat i teksten",
+      "detail": "Dette notatet er en del av teksten, så det kommer med i PDF-en. Løs det, eller gjør det om til en //-kommentar."
+    },
+    "no-author": {
+      "title": "Ingen dokumentforfatter",
+      "detail": "PDF-metadataene har ingen forfatter. Legg til en med #set document(author: \"Navnet ditt\"), eller gi forfatterne til malen. Utelat den ved anonym vurdering."
+    },
+    "privacy-local-path": {
+      "title": "Sti på datamaskinen din: {{path}}",
+      "detail": "Denne stien peker på en mappe utenfor prosjektet. Den kan avsløre brukernavnet ditt, og byggingen mislykkes på alle andre maskiner. Flytt filen inn i prosjektet og bruk en relativ sti."
+    },
+    "privacy-blind-email": {
+      "title": "E-postadresse i {{file}}",
+      "detail": "En e-postadresse kan identifisere forfatterne under anonym vurdering. Fjern den, eller bytt den ut med en anonym plassholder."
+    },
+    "refs-no-bibliography": {
+      "title": "Siteringer uten litteraturliste",
+      "detail": "Dokumentet siterer kilder, men kaller aldri #bibliography, så Typst kan ikke løse dem opp. Legg til #bibliography(\"refs.bib\") der referanselisten skal stå."
+    },
+    "submission-large-image": {
+      "title": "Svært stort bilde: {{file}}",
+      "detail": "Dette bildet er over {{limit}}. Store bilder gjør kompileringen tregere og PDF-en større. Noen arenaer begrenser også opplastingsstørrelsen. Komprimer det, eller eksporter det i den størrelsen det skrives ut i."
     }
   },
   "lens": {
@@ -643,5 +689,15 @@
     "compileTagged": "Kompiler med tagger og verifiser",
     "compileTaggedWarning": "LuaLaTeX fra systemet kan lese lokale filer. Kjør den bare for et prosjekt du stoler på.",
     "noEngine": "For å lage den taggede PDF-en i appen slår du på en motor under Innstillinger, LaTeX-motor. Eller du kompilerer den klargjorte kilden med din egen pdfLaTeX eller LuaLaTeX fra TeX Live 2025 eller nyere."
+  },
+  "typstStandards": {
+    "title": "PDF-standarder",
+    "intro": "Typst lager arkivbestandige og tilgjengelige PDF-er selv. Velg en standard, og eksporter så PDF-en.",
+    "standard": "Standard",
+    "export": "Eksporter PDF",
+    "tagged": "Typst {{version}} tagger alle PDF-er for skjermlesere, så det finnes ingen egen kompilering med tagger.",
+    "untagged": "Typst {{version}} tagger ikke PDF-er for skjermlesere. Typst 0.14 og nyere gjør det.",
+    "none": "Typst {{version}} kan ikke lage PDF-standarder. Velg Typst 0.12 eller nyere i kompileringsmenyen.",
+    "uaNote": "PDF/UA-1 krever en dokumenttittel og alternativ tekst for hvert bilde."
   }
 }

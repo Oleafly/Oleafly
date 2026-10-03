@@ -9,7 +9,7 @@ import { useFullscreen } from "@/lib/use-fullscreen";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
-import { openToolsGallery } from "@/features/open-tool";
+import { openDiagramComposerChooser, openToolsGallery } from "@/features/open-tool";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 
 const DOCK_BUTTON_SHAPE = "rounded-full hover:scale-[1.2]";
@@ -72,7 +72,6 @@ export function HomeDock() {
   const hasProjects = useFilesStore((s) => s.projects.length > 0);
   const fullscreen = useFullscreen();
   const page = useHomeViewStore((s) => s.page);
-  const goTo = useHomeViewStore((s) => s.goTo);
   const horizontal = dockPlacement === "bottom";
   const verticalTooltipSide = dockPlacement === "right" ? "left" : "right";
   const tooltipSide = horizontal ? "top" : verticalTooltipSide;
@@ -100,7 +99,7 @@ export function HomeDock() {
       <DockButton
         label={t(($) => $.library.dock.diagramComposer)}
         icon={<PenTool className="size-4" />}
-        onClick={() => goTo("diagram-composer")}
+        onClick={openDiagramComposerChooser}
         active={page === "diagram-composer"}
         testId="open-diagram-composer"
         tooltipSide={tooltipSide}

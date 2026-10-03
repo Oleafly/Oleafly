@@ -413,22 +413,24 @@ function createMcpOnlyTools(
   };
 }
 
+const ENGINE_NEUTRAL_FIGURE_TOOLS = new Set(["load_image"]);
+
 function figureToolsRefusal(): string | null {
   const { engine, engineLoaded } = useFilesStore.getState();
   if (supportsFigureTools(engine, engineLoaded)) return null;
   if (!engineLoaded) {
     return "Figure tools are not available until the project's document engine loads.";
   }
-  return `Figure tools work only in LaTeX projects. This project uses ${engine.label}.`;
+  return `Figure tools work only in LaTeX and Typst projects. This project uses ${engine.label}.`;
 }
 
 function gateFigureTools(tools: Record<string, McpToolEntry>): Record<string, McpToolEntry> {
   return Object.fromEntries(
     Object.entries(tools).map(([name, tool]) => [
       name,
-      {
+      ENGINE_NEUTRAL_FIGURE_TOOLS.has(name) ? tool : {
         ...tool,
-        description: `${tool.description} Works only in LaTeX projects.`,
+        description: `${tool.description} Works only in LaTeX and Typst projects.`,
         execute: async (input: Record<string, unknown>) => {
           const refusal = figureToolsRefusal();
           return refusal ? { error: refusal } : tool.execute(input);

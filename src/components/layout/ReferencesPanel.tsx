@@ -33,9 +33,11 @@ import { runCiteOleaflyAction } from "@/features/cite-oleafly";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CleanLibraryDialog } from "@/components/layout/CleanLibraryDialog";
+import { TypstBibliographyStylePicker } from "@/components/layout/TypstBibliographyStylePicker";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
 import {
   buildCitationNodes,
+  buildLocationResultNodes,
   buildReferenceResultNodes,
   buildSymbolNodes,
   projectIssueCount,
@@ -202,17 +204,24 @@ function QueryContent({
   onActivate: (node: IntelligenceTreeNode) => void;
 }>) {
   const { t } = useTranslation(["references"]);
-  const current = query ? identitiesMatch(query, state, snapshot) : false;
+  const current = query?.locations
+    ? query.projectId === snapshot.identity.projectId
+    : query
+      ? identitiesMatch(query, state, snapshot)
+      : false;
   const result = useMemo(
     () =>
-      query && current
+      query && current && !query.locations
         ? resolveQuery(snapshot, query)
         : { definitions: [], uses: [] },
     [current, query, snapshot],
   );
   const nodes = useMemo(
-    () => buildReferenceResultNodes(result.definitions, result.uses),
-    [result],
+    () =>
+      query?.locations
+        ? buildLocationResultNodes(current ? query.locations : [])
+        : buildReferenceResultNodes(result.definitions, result.uses),
+    [current, query, result],
   );
 
   if (!query) {
@@ -263,6 +272,9 @@ export function ReferencesPanel() {
   const query = useReferencesStore((state) => state.query);
   const focusRequest = useReferencesStore((state) => state.focusRequest);
   const clearQuery = useReferencesStore((state) => state.clear);
+  const typstProject = useFilesStore(
+    (state) => state.engine.capabilities.formatting_profile === "typst",
+  );
   const [importOpen, setImportOpen] = useState(false);
   const [cleanOpen, setCleanOpen] = useState(false);
   const [view, setView] = useState<ReferencePanelView>(
@@ -571,6 +583,7 @@ export function ReferencesPanel() {
         </div>
         {view === "citations" && projectId ? (
           <div className="shrink-0 border-t border-sidebar-border/65 px-2 py-1.5">
+            {typstProject ? <TypstBibliographyStylePicker snapshot={snapshot} /> : null}
             <button
               type="button"
               data-testid="cite-oleafly-row"

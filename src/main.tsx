@@ -20,6 +20,7 @@ import { prepareColdOpen } from "@/features/open-folder";
 import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
 import { readCachedPreference } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
+import { useTypstMigrationStore } from "@/store/typst-migration";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import { installSelectAllRouting } from "@/lib/select-all";
@@ -47,11 +48,19 @@ if ((window as { __OLEAFLY_E2E_BOOT__?: boolean }).__OLEAFLY_E2E_BOOT__) {
   registerE2EImports();
 }
 
-type WindowView = "main" | "update" | "preview" | "browser";
+type WindowView = "main" | "update" | "preview" | "browser" | "present" | "presenter";
 
 function currentWindowView(): WindowView {
   const view = new URLSearchParams(window.location.search).get("view");
-  if (view === "update" || view === "preview" || view === "browser") return view;
+  if (
+    view === "update" ||
+    view === "preview" ||
+    view === "browser" ||
+    view === "present" ||
+    view === "presenter"
+  ) {
+    return view;
+  }
   return "main";
 }
 
@@ -82,7 +91,7 @@ function prepareWindow(view: WindowView): void {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }
-  if (view === "browser") {
+  if (view === "browser" || view === "present" || view === "presenter") {
     document.documentElement.style.setProperty("--app-surface", "var(--background)");
   }
   dismissBootSplash();
@@ -112,6 +121,23 @@ const TableImportDialog = lazy(() =>
 );
 const FigureDialog = lazy(() =>
   import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })),
+);
+const PresentationWindow = lazy(() =>
+  import("@/components/presentation/PresentationWindow").then((module) => ({ default: module.PresentationWindow })),
+);
+const PresenterWindow = lazy(() =>
+  import("@/components/presentation/PresenterWindow").then((module) => ({ default: module.PresenterWindow })),
+);
+const TypstMigrationDialog = lazy(() =>
+  import("@/components/migration/TypstMigrationDialog").then((module) => ({ default: module.TypstMigrationDialog })),
+);
+
+function TypstMigrationHost() {
+  const open = useTypstMigrationStore((state) => state.open);
+  return open ? <TypstMigrationDialog /> : null;
+}
+const TypstDocumentPanels = lazy(() =>
+  import("@/components/editor/TypstDocumentPanels").then((module) => ({ default: module.TypstDocumentPanels })),
 );
 
 // Dev builds only; the conditional import keeps devtools out of the bundle.
@@ -145,6 +171,15 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       </QueryClientProvider>
     );
   }
+  if (view === "present" || view === "presenter") {
+    return (
+      <ThemeProvider>
+        <Suspense fallback={null}>
+          {view === "present" ? <PresentationWindow /> : <PresenterWindow />}
+        </Suspense>
+      </ThemeProvider>
+    );
+  }
   if (view === "browser") {
     return (
       <ThemeProvider>
@@ -165,6 +200,8 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
         <AddCitationDialog />
         <TableImportDialog />
         <FigureDialog />
+        <TypstMigrationHost />
+        <TypstDocumentPanels />
       </Suspense>
       {ReactQueryDevtools && (
         <Suspense fallback={null}>

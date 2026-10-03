@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} nenabízí offline režim překladače. Kompiluje se běžným způsobem.",
     "retry": "Kompilovat znovu",
-    "bundleFetchFailed": "Oleafly nedokázal stáhnout balíčky TeXu, které tento dokument potřebuje. Zkontrolujte připojení a spusťte kompilaci znovu."
+    "bundleFetchFailed": "Oleafly nedokázal stáhnout balíčky TeXu, které tento dokument potřebuje. Zkontrolujte připojení a spusťte kompilaci znovu.",
+    "typstMissing": "Typst {{version}} není nainstalován. Stáhněte jej, nebo v tomto projektu přepněte na jinou verzi.",
+    "typstPackage": {
+      "downloadFailed": "Typst nedokázal stáhnout {{spec}}. Zkontrolujte připojení k internetu a spusťte kompilaci znovu.",
+      "downloadFailedUnnamed": "Typst nedokázal stáhnout balíček, který tento dokument importuje. Zkontrolujte připojení k internetu a spusťte kompilaci znovu.",
+      "offlineNotCached": "Jste offline a {{spec}} zatím není v mezipaměti balíčků. Jednou zkompilujte s připojením k internetu, nebo zkopírujte balíčky do projektu.",
+      "offlineNotCachedUnnamed": "Jste offline a balíček, který tento dokument importuje, zatím není v mezipaměti balíčků. Jednou zkompilujte s připojením k internetu.",
+      "notFound": "Typst Universe nemá balíček {{spec}}. Zkontrolujte název v importu.",
+      "localNotFound": "Místní balíček {{spec}} není nainstalován. Vložte jej do složky balíčků Typst v Oleafly nebo do složky typst-packages v projektu.",
+      "versionMissing": "Tento balíček nemá verzi {{version}}. Nejnovější verze je {{latest}}.",
+      "versionMissingNoLatest": "Tento balíček nemá verzi {{version}}. Zkontrolujte verzi v importu."
+    }
   },
   "developer": {
     "actions": {
@@ -361,6 +372,7 @@
     "notRenamable": "Tento symbol nelze přejmenovat.",
     "nothingToRename": "Není co přejmenovat.",
     "referencesFor": "Reference na {{name}}",
+    "renameFailed": "Nepodařilo se přejmenovat na „{{name}}“.",
     "renamePartial": "Přejmenováno na „{{name}}“ v {{edited}} z {{total}} souborů. Nepodařilo se zapsat {{files}}.",
     "renamed": "Přejmenováno na „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) · $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -613,5 +625,8 @@
   "folderUnavailable": {
     "compile": "Kompilace je pozastavena, dokud se složka projektu nevrátí.",
     "saveReason": "složka projektu není dostupná"
+  },
+  "imageToTypst": {
+    "failed": "Převod obrázku do formátu Typst selhal: {{detail}}"
   }
 }

@@ -11,7 +11,14 @@ import { useFilesStore } from "@/store/files";
 const view = vi.hoisted(() => ({
   dispatch: vi.fn(),
   posAtCoords: vi.fn(() => 7),
-  state: { doc: { toString: () => "See \\ref{fig:plot}." } },
+  state: {
+    doc: { toString: () => "See \\ref{fig:plot}." },
+    selection: { main: { empty: true, from: 0, to: 0 } },
+  },
+}));
+
+const formatting = vi.hoisted(() => ({
+  formatWithLanguageService: vi.fn(async () => "formatted"),
 }));
 
 const controller = vi.hoisted(() => ({
@@ -58,9 +65,39 @@ const latexCommands = vi.hoisted(() => ({
   insertUnderline: vi.fn(),
 }));
 
+const typstCommands = vi.hoisted(() => ({
+  addTypstLabel: vi.fn(async () => {}),
+  insertTypstAlignedMath: vi.fn(),
+  insertTypstBold: vi.fn(),
+  insertTypstBulletList: vi.fn(),
+  insertTypstDisplayMath: vi.fn(),
+  insertTypstFigure: vi.fn(async () => {}),
+  insertTypstFootnote: vi.fn(),
+  insertTypstFraction: vi.fn(),
+  insertTypstHeading: vi.fn(),
+  insertTypstItalic: vi.fn(),
+  insertTypstLink: vi.fn(),
+  insertTypstMath: vi.fn(),
+  insertTypstNumberedEquation: vi.fn(async () => {}),
+  insertTypstNumberedList: vi.fn(),
+  insertTypstQuote: vi.fn(),
+  insertTypstRawInline: vi.fn(),
+  insertTypstReference: vi.fn(),
+  insertTypstStrikethrough: vi.fn(),
+  insertTypstTable: vi.fn(async () => {}),
+  insertTypstUnderline: vi.fn(),
+  toggleTypstComment: vi.fn(),
+  typstLanguageServiceOffers: vi.fn((_feature: string) => false),
+}));
+
 vi.mock("./cm/controller", () => controller);
+vi.mock("@/components/editor/typst-commands", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/editor/typst-commands")>();
+  return { ...actual, ...typstCommands };
+});
 vi.mock("@/components/editor/cm/controller", () => controller);
 vi.mock("./cm/inline-ai/openSession", () => inlineAi);
+vi.mock("./cm/language-service-format", () => formatting);
 vi.mock("@/lib/index/nav", () => nav);
 vi.mock("@/features/synctex", () => synctex);
 vi.mock("@/features/equation-export", () => equationExport);
@@ -75,6 +112,7 @@ vi.mock("@/components/editor/latex-commands", async (importOriginal) => {
 });
 
 import { HEADING_LEVELS } from "@/components/editor/latex-commands";
+import { TYPST_HEADING_LEVELS } from "@/components/editor/typst-commands";
 import { EditorContextMenu } from "./EditorContextMenu";
 
 const menu = en.contextMenu;
@@ -87,9 +125,14 @@ function engineWithProfile(profile: string): DocumentEngineDescriptor {
   } as DocumentEngineDescriptor;
 }
 
-function openMenu(engine: DocumentEngineDescriptor, engineLoaded: boolean, projectKind = "") {
+function openMenu(
+  engine: DocumentEngineDescriptor,
+  engineLoaded: boolean,
+  projectKind = "",
+  activePath: string | null = null,
+) {
   cleanup();
-  useFilesStore.setState({ engine, engineLoaded, projectKind });
+  useFilesStore.setState({ engine, engineLoaded, projectKind, activePath });
   render(
     <EditorContextMenu>
       <div data-testid="editor-surface" />
@@ -108,6 +151,7 @@ describe("EditorContextMenu", () => {
     nav.findReferences.mockReturnValue(true);
     nav.startRename.mockReturnValue(true);
     projectIndex.state = { index: {} };
+    typstCommands.typstLanguageServiceOffers.mockImplementation(() => false);
   });
 
   it("offers only a disabled notice before an engine is loaded", () => {
@@ -124,27 +168,126 @@ describe("EditorContextMenu", () => {
     expect(view.dispatch).toHaveBeenCalledWith({ selection: { anchor: 7 } });
   });
 
+  it("keeps a selection the pointer lands in", () => {
+    view.state.selection.main = { empty: false, from: 4, to: 10 };
+    try {
+      openMenu(LATEX_ENGINE, true);
+      expect(view.dispatch).not.toHaveBeenCalled();
+    } finally {
+      view.state.selection.main = { empty: true, from: 0, to: 0 };
+    }
+  });
+
+  it("formats the document or the selection from the Typst menu", () => {
+    openMenu(engineWithProfile("typst"), true);
+    fireEvent.click(screen.getByText(menu.formatDocument));
+    expect(formatting.formatWithLanguageService).toHaveBeenCalledWith(view, "document");
+
+    openMenu(engineWithProfile("typst"), true);
+    fireEvent.click(screen.getByText(menu.formatSelection));
+    expect(formatting.formatWithLanguageService).toHaveBeenCalledWith(view, "selection");
+  });
+
   it("writes Typst markup from the Typst menu", () => {
     openMenu(engineWithProfile("typst"), true);
 
     fireEvent.click(screen.getByText(menu.askAi));
     expect(inlineAi.openInlineEdit).toHaveBeenCalledWith(view);
 
-    openMenu(engineWithProfile("typst"), true);
-    fireEvent.click(screen.getByText(toolbar.bold));
-    expect(controller.wrapSelection).toHaveBeenCalledWith("*", "*");
+    const items: [string, keyof typeof typstCommands][] = [
+      [toolbar.bold, "insertTypstBold"],
+      [toolbar.italic, "insertTypstItalic"],
+      [toolbar.underline, "insertTypstUnderline"],
+      [toolbar.strikethrough, "insertTypstStrikethrough"],
+      [toolbar.inlineCode, "insertTypstRawInline"],
+      [toolbar.insertLink, "insertTypstLink"],
+      [menu.toggleComment, "toggleTypstComment"],
+      [menu.figure, "insertTypstFigure"],
+      [menu.inlineMath, "insertTypstMath"],
+      [menu.displayMath, "insertTypstDisplayMath"],
+      [menu.numberedEquation, "insertTypstNumberedEquation"],
+      [menu.alignedEquations, "insertTypstAlignedMath"],
+      [toolbar.fraction, "insertTypstFraction"],
+      [menu.quote, "insertTypstQuote"],
+      [menu.footnote, "insertTypstFootnote"],
+      [menu.crossReference, "insertTypstReference"],
+      [menu.addLabel, "addTypstLabel"],
+    ];
+    for (const [label, command] of items) {
+      openMenu(engineWithProfile("typst"), true);
+      fireEvent.click(screen.getByText(label));
+      expect(typstCommands[command], label).toHaveBeenCalledOnce();
+    }
 
     openMenu(engineWithProfile("typst"), true);
-    fireEvent.click(screen.getByText(toolbar.italic));
-    expect(controller.wrapSelection).toHaveBeenLastCalledWith("_", "_");
+    fireEvent.click(screen.getByText(menu.table));
+    expect(typstCommands.insertTypstTable).toHaveBeenCalledWith(3, 3);
+    expect(controller.wrapSelection).not.toHaveBeenCalled();
+    expect(latexCommands.insertBold).not.toHaveBeenCalled();
+  });
 
+  it("jumps to the PDF from the Typst menu only when the project can sync", () => {
+    const typst = { ...engineWithProfile("typst"), id: "typst", source_extensions: ["typ"] } as DocumentEngineDescriptor;
+    openMenu(typst, true, "", "main.typ");
+    fireEvent.click(screen.getByText(toolbar.goToPdfTypst));
+    expect(synctex.goToSyncTex).toHaveBeenCalledOnce();
+
+    const unsupported = {
+      ...typst,
+      capabilities: { ...typst.capabilities, supports_synctex: false },
+    } as DocumentEngineDescriptor;
+    openMenu(unsupported, true, "", "main.typ");
+    expect(screen.queryByText(toolbar.goToPdfTypst)).not.toBeInTheDocument();
+
+    openMenu(LATEX_ENGINE, true, "", "notes.typ");
+    expect(screen.queryByText(toolbar.goToPdfTypst)).not.toBeInTheDocument();
+    expect(screen.queryByText(toolbar.goToPdf)).not.toBeInTheDocument();
+  });
+
+  it("offers no PDF jump for a LaTeX file the Typst project does not compile", () => {
+    const typst = {
+      ...LATEX_ENGINE,
+      id: "typst",
+      source_extensions: ["typ"],
+      capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "typst" },
+    } as DocumentEngineDescriptor;
+    openMenu(typst, true, "", "notes.tex");
+    expect(screen.queryByText(toolbar.goToPdf)).not.toBeInTheDocument();
+    expect(screen.queryByText(toolbar.goToPdfTypst)).not.toBeInTheDocument();
+
+    openMenu(LATEX_ENGINE, true, "", "chapters/intro.tex");
+    expect(screen.getByText(toolbar.goToPdf)).toBeInTheDocument();
+  });
+
+  it("opens the Typst heading and list submenus", () => {
     openMenu(engineWithProfile("typst"), true);
     fireEvent.click(screen.getByText(toolbar.heading));
-    expect(controller.insertAtCursor).toHaveBeenCalledWith("= Heading\n");
+    for (const level of TYPST_HEADING_LEVELS) {
+      expect(screen.getByText(level.label())).toBeInTheDocument();
+    }
+    fireEvent.click(screen.getByText(TYPST_HEADING_LEVELS[2].label()));
+    expect(typstCommands.insertTypstHeading).toHaveBeenCalledWith(TYPST_HEADING_LEVELS[2]);
 
     openMenu(engineWithProfile("typst"), true);
-    fireEvent.click(screen.getByText(toolbar.bulletedList));
-    expect(controller.insertAtCursor).toHaveBeenLastCalledWith("- Item\n");
+    fireEvent.click(screen.getByText(toolbar.list));
+    fireEvent.click(screen.getByText(toolbar.numberedList));
+    expect(typstCommands.insertTypstNumberedList).toHaveBeenCalledOnce();
+  });
+
+  it("shows Typst navigation only for features the language server offers", () => {
+    openMenu(engineWithProfile("typst"), true, "", "main.typ");
+    expect(screen.queryByText(toolbar.goToDefinition)).not.toBeInTheDocument();
+    expect(screen.queryByText(toolbar.renameSymbol)).not.toBeInTheDocument();
+
+    typstCommands.typstLanguageServiceOffers.mockImplementation((feature) => feature !== "references");
+    openMenu(engineWithProfile("typst"), true, "", "main.typ");
+    expect(screen.queryByText(toolbar.findReferences)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(toolbar.goToDefinition));
+    expect(nav.goToDefinition).toHaveBeenCalledWith(view);
+
+    openMenu(engineWithProfile("typst"), true, "", "main.typ");
+    fireEvent.click(screen.getByText(toolbar.renameSymbol));
+    expect(nav.startRename).toHaveBeenCalledWith(view);
   });
 
   it("exports the equation under the caret as SVG or PNG from the Typst menu", () => {
@@ -321,6 +464,34 @@ describe("EditorContextMenu", () => {
     openMenu(LATEX_ENGINE, true);
     fireEvent.click(screen.getByText(toolbar.goToPdf));
     expect(synctex.goToSyncTex).toHaveBeenCalledOnce();
+  });
+
+  it("follows the file language for a Typst file in a LaTeX project", () => {
+    openMenu(LATEX_ENGINE, true, "", "notes.typ");
+    expect(screen.queryByText(menu.align)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(toolbar.bold));
+    expect(typstCommands.insertTypstBold).toHaveBeenCalledOnce();
+    expect(latexCommands.insertBold).not.toHaveBeenCalled();
+  });
+
+  it("follows the file language for a Markdown file in a Typst project", () => {
+    openMenu(engineWithProfile("typst"), true, "", "README.md");
+    expect(screen.queryByText(menu.equationAsSvg)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText(toolbar.bold));
+    expect(controller.wrapSelection).toHaveBeenCalledWith("**", "**");
+  });
+
+  it("follows the file language for a LaTeX file in a Typst project", () => {
+    openMenu(engineWithProfile("typst"), true, "", "appendix.tex");
+    fireEvent.click(screen.getByText(toolbar.bold));
+    expect(latexCommands.insertBold).toHaveBeenCalledOnce();
+    expect(controller.wrapSelection).not.toHaveBeenCalled();
+  });
+
+  it("keeps the engine menu for files without a source language", () => {
+    openMenu(engineWithProfile("typst"), true, "", "refs.bib");
+    fireEvent.click(screen.getByText(toolbar.bold));
+    expect(typstCommands.insertTypstBold).toHaveBeenCalledOnce();
   });
 
   it("skips the caret placement when no editor view is mounted", () => {

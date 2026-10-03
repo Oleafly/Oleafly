@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} ei tarjoa offline-käännöstilaa. Käännetään normaalisti.",
     "retry": "Käännä uudelleen",
-    "bundleFetchFailed": "Oleafly ei voinut ladata TeX-paketteja, joita tämä dokumentti tarvitsee. Tarkista yhteys ja käännä uudelleen."
+    "bundleFetchFailed": "Oleafly ei voinut ladata TeX-paketteja, joita tämä dokumentti tarvitsee. Tarkista yhteys ja käännä uudelleen.",
+    "typstMissing": "Typst {{version}} ei ole asennettu. Lataa se tai vaihda tämän projektin versio toiseen.",
+    "typstPackage": {
+      "downloadFailed": "Typst ei voinut ladata pakettia {{spec}}. Tarkista internetyhteys ja käännä uudelleen.",
+      "downloadFailedUnnamed": "Typst ei voinut ladata pakettia, jonka tämä dokumentti tuo. Tarkista internetyhteys ja käännä uudelleen.",
+      "offlineNotCached": "Olet offline-tilassa, eikä {{spec}} ole vielä pakettivälimuistissa. Käännä kerran verkkoyhteyden ollessa päällä tai kopioi paketit projektiin.",
+      "offlineNotCachedUnnamed": "Olet offline-tilassa, eikä jokin tämän dokumentin tuoma paketti ole vielä pakettivälimuistissa. Käännä kerran verkkoyhteyden ollessa päällä.",
+      "notFound": "Typst Universe -palvelussa ei ole pakettia {{spec}}. Tarkista tuonnissa käytetty nimi.",
+      "localNotFound": "Paikallista pakettia {{spec}} ei ole asennettu. Lisää se Oleafly-sovelluksen Typst-pakettikansioon tai projektin typst-packages-kansioon.",
+      "versionMissing": "Tästä paketista ei ole versiota {{version}}. Uusin versio on {{latest}}.",
+      "versionMissingNoLatest": "Tästä paketista ei ole versiota {{version}}. Tarkista tuonnissa käytetty versio."
+    }
   },
   "developer": {
     "actions": {
@@ -345,6 +356,7 @@
     "notRenamable": "Tätä symbolia ei voi nimetä uudelleen.",
     "nothingToRename": "Ei mitään nimettävää uudelleen.",
     "referencesFor": "Viitteet kohteeseen {{name}}",
+    "renameFailed": "Nimeä ei voitu muuttaa muotoon \"{{name}}\".",
     "renamePartial": "Nimettiin muotoon \"{{name}}\" {{edited}}/{{total}} tiedostossa. Kohteita {{files}} ei voitu kirjoittaa.",
     "renamed": "Nimettiin muotoon \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) kohteessa $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -581,5 +593,8 @@
   "folderUnavailable": {
     "compile": "Kääntäminen on keskeytetty, kunnes projektikansio on taas saatavilla.",
     "saveReason": "projektikansio ei ole käytettävissä"
+  },
+  "imageToTypst": {
+    "failed": "Kuvan muunto Typst-muotoon epäonnistui: {{detail}}"
   }
 }

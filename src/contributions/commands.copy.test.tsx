@@ -15,6 +15,7 @@ import {
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { TOOL_DEFINITIONS, toolName } from "@/lib/tool-catalog";
+import { useDiagramComposerStore } from "@/store/diagram-composer";
 
 const mocks = vi.hoisted(() => ({
   files: {
@@ -78,7 +79,34 @@ const mocks = vi.hoisted(() => ({
   terminalLimitMessage: vi.fn(() => "limit"),
   closeEnvironmentAtCursor: vi.fn(() => null as unknown),
   surroundSelectionWithEnvironment: vi.fn(() => false),
+  typst: {
+    addTypstLabel: vi.fn(async () => {}),
+    insertTypstAlignedMath: vi.fn(),
+    insertTypstDisplayMath: vi.fn(),
+    insertTypstFigure: vi.fn(async () => {}),
+    insertTypstFootnote: vi.fn(),
+    insertTypstFraction: vi.fn(),
+    insertTypstLink: vi.fn(),
+    insertTypstMath: vi.fn(),
+    insertTypstNumberedEquation: vi.fn(async () => {}),
+    insertTypstQuote: vi.fn(),
+    insertTypstRawInline: vi.fn(),
+    insertTypstReference: vi.fn(),
+    insertTypstStrikethrough: vi.fn(),
+    insertTypstTable: vi.fn(async () => {}),
+    insertTypstUnderline: vi.fn(),
+    toggleTypstComment: vi.fn(),
+    typstLanguageServiceOffers: vi.fn((_feature: string) => false),
+  },
+  nav: {
+    goToDefinition: vi.fn(() => true),
+    findReferences: vi.fn(() => true),
+    startRename: vi.fn(() => true),
+  },
 }));
+
+vi.mock("@/components/editor/typst-commands", () => mocks.typst);
+vi.mock("@/lib/index/nav", () => mocks.nav);
 
 vi.mock("@oleafly/editor", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
@@ -160,6 +188,7 @@ beforeEach(() => {
   mocks.getEditorView.mockReturnValue(null);
   mocks.closeEnvironmentAtCursor.mockReturnValue(null);
   mocks.surroundSelectionWithEnvironment.mockReturnValue(false);
+  mocks.typst.typstLanguageServiceOffers.mockImplementation(() => false);
   registerOmnibarCommands();
   registerPaletteCommands();
 });
@@ -234,6 +263,23 @@ describe("command contributions copy", () => {
     expect(labelOf("palette.offline")).toBe(enShell.commands.offline.online);
   });
 
+  it("names PDF sync without SyncTeX in a Typst project", () => {
+    const command = registry.commands.find((entry) => entry.id === "palette.synctex");
+    if (!command) throw new Error("missing palette.synctex");
+    expect(commandLabel(command, baseContext)).toBe(enShell.commands.synctex.label);
+    mocks.files.engine = { ...LATEX_ENGINE, id: "typst" };
+    expect(commandLabel(command, baseContext)).toBe(enShell.commands.synctex.typstLabel);
+    expect(commandsFor("palette", baseContext).map((entry) => entry.id)).toContain("palette.synctex");
+  });
+
+  it("offers no PDF jump for a LaTeX file the Typst project does not compile", () => {
+    mocks.files.engine = { ...LATEX_ENGINE, id: "typst", source_extensions: ["typ"] };
+    mocks.files.activePath = "notes.tex";
+    expect(commandsFor("palette", baseContext).map((entry) => entry.id)).not.toContain("palette.synctex");
+    mocks.files.activePath = "main.typ";
+    expect(commandsFor("palette", baseContext).map((entry) => entry.id)).toContain("palette.synctex");
+  });
+
   it("follows the theme of the context for the theme commands", () => {
     const light: AppContext = { ...baseContext, theme: "light" };
     for (const id of ["omnibar.theme", "palette.theme"]) {
@@ -305,17 +351,43 @@ describe("command contributions behaviour", () => {
     expect(mocks.handoffToAssistant).toHaveBeenCalledTimes(1);
   });
 
-  it("closes an open project before navigating to a home page", async () => {
+  it("offers the figure prompt in LaTeX and Typst projects but not in Markdown", () => {
+    const figure = registry.commands.find((entry) => entry.id === "omnibar.figure");
+    const withProfile = (formatting_profile: "typst" | "markdown", supports_isolated_compile: boolean) => ({
+      ...LATEX_ENGINE,
+      capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile, supports_isolated_compile },
+    });
+    expect(figure?.when?.(baseContext)).toBe(true);
+    mocks.files.engine = withProfile("typst", false);
+    expect(figure?.when?.(baseContext)).toBe(true);
+    mocks.files.engine = withProfile("markdown", false);
+    expect(figure?.when?.(baseContext)).toBe(false);
+    mocks.files.engine = LATEX_ENGINE;
+    mocks.files.engineLoaded = false;
+    expect(figure?.when?.(baseContext)).toBe(false);
+  });
+
+  it("asks which diagram composer to open, over an open project", () => {
+    useDiagramComposerStore.setState({ chooserOpen: false, requestId: 0 });
     run("omnibar.diagram-composer");
+    expect(useDiagramComposerStore.getState()).toMatchObject({ chooserOpen: true, requestId: 0 });
+    expect(mocks.home.goTo).not.toHaveBeenCalled();
+    expect(mocks.files.closeProject).not.toHaveBeenCalled();
+    expect(mocks.home.queuePageAfterProjectClose).not.toHaveBeenCalled();
+  });
+
+  it("closes an open project before navigating to another home page", async () => {
+    run("omnibar.tools");
     await vi.waitFor(() => expect(mocks.files.closeProject).toHaveBeenCalled());
-    expect(mocks.home.queuePageAfterProjectClose).toHaveBeenCalledWith("diagram-composer");
+    expect(mocks.home.queuePageAfterProjectClose).toHaveBeenCalledWith("tools");
     expect(mocks.home.clearQueuedPageAfterProjectClose).toHaveBeenCalled();
+    expect(mocks.home.goTo).not.toHaveBeenCalled();
   });
 
   it("navigates straight to a home page with no project open", async () => {
     mocks.files.projectId = null;
-    run("omnibar.diagram-composer");
-    await vi.waitFor(() => expect(mocks.home.goTo).toHaveBeenCalledWith("diagram-composer"));
+    run("omnibar.tools");
+    await vi.waitFor(() => expect(mocks.home.goTo).toHaveBeenCalledWith("tools"));
     expect(mocks.files.closeProject).not.toHaveBeenCalled();
   });
 
@@ -454,6 +526,64 @@ describe("command contributions behaviour", () => {
     }
     expect(mocks.wrapSelection).toHaveBeenCalledTimes(2);
     expect(mocks.insertAtCursor.mock.calls.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("runs the Typst versions of the shared insert commands in a Typst file", () => {
+    mocks.files.activePath = "chapters/intro.typ";
+    run("palette.figure");
+    run("palette.table");
+    run("palette.equation");
+    run("palette.label");
+    expect(mocks.typst.insertTypstFigure).toHaveBeenCalledOnce();
+    expect(mocks.typst.insertTypstTable).toHaveBeenCalledWith(2, 2);
+    expect(mocks.typst.insertTypstDisplayMath).toHaveBeenCalledOnce();
+    expect(mocks.typst.addTypstLabel).toHaveBeenCalledOnce();
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+  });
+
+  it("offers the Typst-only commands only in Typst files", () => {
+    const typstOnly = [
+      "palette.typst-underline",
+      "palette.typst-strikethrough",
+      "palette.typst-inline-code",
+      "palette.typst-link",
+      "palette.typst-footnote",
+      "palette.typst-quote",
+      "palette.typst-inline-math",
+      "palette.typst-numbered-equation",
+      "palette.typst-aligned-equations",
+      "palette.typst-fraction",
+      "palette.typst-cross-reference",
+      "palette.typst-toggle-comment",
+    ];
+    const latexIds = commandsFor("palette", baseContext).map((command) => command.id);
+    for (const id of typstOnly) expect(latexIds).not.toContain(id);
+    mocks.files.activePath = "main.typ";
+    const typstIds = commandsFor("palette", baseContext).map((command) => command.id);
+    for (const id of typstOnly) {
+      expect(typstIds).toContain(id);
+      run(id);
+    }
+    expect(typstIds).not.toContain("palette.close-environment");
+    expect(mocks.typst.insertTypstUnderline).toHaveBeenCalledOnce();
+    expect(mocks.typst.insertTypstNumberedEquation).toHaveBeenCalledOnce();
+    expect(mocks.typst.insertTypstReference).toHaveBeenCalledOnce();
+    expect(mocks.typst.toggleTypstComment).toHaveBeenCalledOnce();
+  });
+
+  it("offers Typst navigation only when the language server supports it", () => {
+    mocks.files.activePath = "main.typ";
+    const navigation = ["palette.typst-go-to-definition", "palette.typst-find-references", "palette.typst-rename-symbol"];
+    let ids = commandsFor("palette", baseContext).map((command) => command.id);
+    for (const id of navigation) expect(ids).not.toContain(id);
+    mocks.typst.typstLanguageServiceOffers.mockImplementation((feature) => feature === "definition");
+    ids = commandsFor("palette", baseContext).map((command) => command.id);
+    expect(ids).toContain("palette.typst-go-to-definition");
+    expect(ids).not.toContain("palette.typst-rename-symbol");
+    const view = { focus: vi.fn() };
+    mocks.getEditorView.mockReturnValue(view as unknown as null);
+    run("palette.typst-go-to-definition");
+    expect(mocks.nav.goToDefinition).toHaveBeenCalledWith(view);
   });
 
   it("no-ops the environment commands without an editor view", () => {

@@ -28,10 +28,11 @@ means a quarter or more.
 
 ## Citation finishing
 
-- **CSL style picker (G4, S–M).** The reference tool renders eight styles
-  locally, but a compiled bibliography still takes its style from the document
-  source. A picker that writes the chosen style into the document has not been
-  implemented.
+- **CSL style picker for LaTeX (G4, S–M).** Typst projects have one: the
+  References panel lists the built-in styles for the project's Typst version
+  and writes the choice into `#bibliography`. A LaTeX bibliography still takes
+  its style from `\bibliographystyle` or the biblatex options in the source,
+  and nothing writes that for you yet.
 - **Zotero live sync (G5, M).** The connector stores a key, and RDF exports
   import fine, but nothing calls the Zotero API yet.
 - **Word-import citation recovery (G8, M).** Importing a .docx flattens
@@ -66,6 +67,17 @@ means a quarter or more.
 - **Typst parity beyond conversions (G28, M).** Typst now converts in and
   out. Source-to-preview navigation and a dedicated preflight profile remain
   on the roadmap.
+- **Typst to PowerPoint (G28, S).** Pandoc's Typst reader does not evaluate
+  Typst code. It stops on `counter(page).get()`, `here()`, `selector`,
+  `context` blocks and helper functions, so it fails on every Typst document
+  in `fixtures/research-seeds`. Project exports now go through Typst's own
+  HTML output on Typst 0.13 and later, then pandoc reads that HTML. Word,
+  HTML, Markdown, plain text, LaTeX and EPUB exports work for 10 of the 11
+  Typst seeds that way. `systems-measurement-paper-typst` still fails,
+  because Typst's HTML export drops floating `place` content and with it the
+  figure a reference points at. PowerPoint stays off: the HTML has no slide
+  structure, so a Typst deck turns into a few long slides. Older Typst
+  versions still use the pandoc reader.
 - **Browser extension (G29, M).** Nothing shipped.
 - **Domain packs (G30–G38, S–M each).** Math, engineering, medical, and
   biology tool packs have not been started.

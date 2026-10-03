@@ -3,6 +3,22 @@
     "aiProviderRequired": "Chcete-li použít Opravit pomocí AI, připojte v Nastavení poskytovatele AI.",
     "fixFailed": "Oprava se nezdařila: {{detail}}"
   },
+  "chooser": {
+    "title": "Vyberte skladatele diagramů",
+    "description": "Vyberte, pro jaký druh dokumentu diagram je.",
+    "tikz": {
+      "title": "Diagram TikZ",
+      "description": "Uzly a šipky v TikZ pro dokumenty LaTeX."
+    },
+    "typst": {
+      "title": "Diagram Typst",
+      "description": "Diagram fletcher pro dokumenty Typst."
+    },
+    "mermaid": {
+      "title": "Diagram Mermaid",
+      "description": "Vývojový diagram Mermaid pro dokumenty Markdown."
+    }
+  },
   "package": {
     "composer": {
       "title": "Vložit diagram",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Zrušit (Esc)",
       "cancelRename": "Zrušit přejmenování",
       "renameTooltip": "Přejmenovat diagram",
-      "importTooltip": "Importovat soubor .tikz nebo .tex a nahradit jím tento koncept",
-      "importLabel": "Importovat soubor TikZ",
+      "importTooltip": "Importovat soubor .tikz, .tex, .typ, .mmd nebo .md a nahradit jím tento koncept",
+      "importLabel": "Importovat soubor diagramu",
       "modeDraw": "Kreslení",
       "modeCode": "Kód",
       "fixWithAiTooltip": "Požádat AI o opravu chyby kompilace",
@@ -28,20 +44,29 @@
       "newProject": "Nový projekt",
       "noOtherProjects": "Zatím nemáte žádné další projekty.",
       "saveFigure": "Uložit obrázek",
+      "insertTypst": "Vložit jako Typst",
+      "insertLatex": "Vložit jako TikZ",
       "downloadTooltip": "Stáhnout tento diagram",
       "download": "Stáhnout",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (již brzy)",
       "svgTooltip": "Export do SVG potřebuje vektorový vykreslovač, který zatím není k dispozici",
       "snippets": "Úryvky",
-      "untitledName": "Diagram bez názvu"
+      "untitledName": "Diagram bez názvu",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Vložit jako Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Jazyk diagramu: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Obdélníkový uzel",
       "circleNode": "Kruhový uzel",
       "arrowEdge": "Hrana se šipkou",
       "lineEdge": "Čárová hrana",
-      "scope": "Scope"
+      "scope": "Scope",
+      "group": "Skupina"
     },
     "preview": {
       "label": "Náhled",
@@ -53,7 +78,8 @@
       "pngScale": "Měřítko PNG",
       "scaleFactor": "{{factor}}x",
       "background": "Pozadí",
-      "backgroundLabel": "Barva pozadí obrázku"
+      "backgroundLabel": "Barva pozadí obrázku",
+      "diagnosticAt": "Řádek {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Diagram se nezkompiloval. Zkontrolujte protokol níže.",
@@ -68,16 +94,25 @@
       "figureCached": "Už je v mezipaměti, použije se stávající obrázek.",
       "figureSaved": "Uloženo do mezipaměti obrázků.",
       "saveFigureFailed": "Obrázek se nepodařilo uložit: {{detail}}",
+      "insertedTypst": "Vloženo jako kód Typst.",
+      "insertedLatex": "Vloženo jako kód TikZ.",
       "downloaded": "Staženo.",
       "imported": "Soubor {{name}} byl importován k úpravám.",
       "importedCodeOnly": "Soubor {{name}} byl importován (pouze kód, nelze kreslit).",
       "importFailed": "Tento soubor se nepodařilo importovat: {{detail}}",
       "noAiFix": "AI nevrátila žádnou opravu.",
       "fixFailed": "Oprava se nezdařila: {{detail}}",
-      "notDrawable": "V tomto kódu nebylo nic, co by šlo nakreslit. Kód zůstal beze změny."
+      "notDrawable": "V tomto kódu nebylo nic, co by šlo nakreslit. Kód zůstal beze změny.",
+      "savedTypstToProject": "Uloženo {{path}}. Do dokumentu jej přidáte pomocí #include.",
+      "insertedMermaid": "Vloženo jako blok kódu Mermaid.",
+      "savedMermaidToProject": "Uloženo {{path}}. Do dokumentu Markdown jej přidáte v bloku kódu mermaid.",
+      "typstPackageMissing": "Typst nemohl získat balíček fletcher. Jednou se připojte k internetu, aby si jej Typst mohl stáhnout a uchovat.",
+      "previewUnavailable": "Tento náhled zde není k dispozici.",
+      "readerUnavailable": "Čtečku kódu se nepodařilo načíst. Zkuste to znovu."
     },
     "confirm": {
-      "overwrite": "{{files}} už existuje. Přepsat? (Chcete-li zachovat obojí, zvolte jiný název.)"
+      "overwrite": "{{files}} už existuje. Přepsat? (Chcete-li zachovat obojí, zvolte jiný název.)",
+      "switchLanguage": "Přepnout tento diagram z {{from}} na {{to}}? Kód, který plátno neumí zobrazit, se nepřenese."
     },
     "canvas": {
       "shapeTools": "Nástroje tvarů",
@@ -136,7 +171,59 @@
       "routingStraight": "Přímé",
       "routingOrthogonal": "Pravoúhlé",
       "routingCurved": "Zakřivené",
-      "line": "Čára"
+      "line": "Čára",
+      "nodeLabelTypst": "Popisek (Typst)"
+    },
+    "notes": {
+      "tooltip": "Co plátno plně nezobrazí",
+      "count_one": "{{count}} poznámka",
+      "count_few": "{{count}} poznámky",
+      "count_many": "{{count}} poznámky",
+      "count_other": "{{count}} poznámek",
+      "keptHeading": "Zachováno v kódu",
+      "approximatedHeading": "Zobrazeno přibližně",
+      "droppedHeading": "Nevykresleno na plátně",
+      "notDiagram": "V tomto kódu není nic, co by plátno umělo nakreslit.",
+      "outsideCode": "Kód před diagramem nebo za ním zůstane tak, jak je napsaný.",
+      "wrapper": "Kód kolem diagramu, například obrázek, zůstane tak, jak je napsaný.",
+      "diagramSetting": "Nastavení diagramu {{detail}} zůstane v kódu.",
+      "edgeOption": "Možnost hrany {{detail}} zůstane v kódu.",
+      "scripted": "Skriptovaný obsah diagramu, například cykly, zůstane v kódu.",
+      "mathMode": "Obsah diagramu v matematickém režimu zůstane v kódu.",
+      "unplacedNode": "Uzly bez pevné pozice zůstávají v kódu.",
+      "unreadEdge": "Hrany, které plátno neumí přečíst, zůstávají v kódu.",
+      "danglingEdge": "Hrany, které nespojují dva uzly, zůstávají v kódu.",
+      "gridCoordinates": "Souřadnice mřížky se zobrazují na pevných pozicích.",
+      "formattedLabels": "Formátované popisky se zobrazují jako prostý text.",
+      "unknownShapes": "Tvary, které plátno nemá, se zobrazují jako obdélníky.",
+      "estimatedSize": "Uzly bez šířky a výšky se zobrazují v odhadnuté velikosti.",
+      "colorAdjustments": "Upravené barvy, například lighten, se zobrazují svou základní barvou.",
+      "colorExpressions": "Barvy nastavené proměnnými nebo výrazy se na plátně nezobrazují.",
+      "strokeStyles": "Některé styly čar se zobrazují nejbližším stylem plátna.",
+      "arrowMarks": "Zakončení šipek, která plátno nemá, se zobrazují jako obyčejné šipky.",
+      "freePoints": "Hrany vedoucí volnými body se na plátně kreslí rovně.",
+      "tikzCommand": "Příkaz {{detail}} se nevykreslí. Úprava na plátně přepíše kód bez něj.",
+      "truncated": "Kód je příliš dlouhý, proto se vykreslí jen jeho první část.",
+      "mermaidNotFlowchart": "Na plátně lze kreslit jen vývojové diagramy. Tento kód je diagram typu {{detail}}.",
+      "mermaidFrontmatter": "Blok frontmatter zůstane v kódu.",
+      "mermaidDirective": "Konfigurační direktivy zůstávají v kódu.",
+      "mermaidComment": "Komentáře zůstávají v kódu.",
+      "mermaidAccessibility": "Názvy a popisy pro přístupnost zůstávají v kódu.",
+      "mermaidClick": "Obsluha kliknutí zůstává v kódu.",
+      "mermaidStyleProperty": "Vlastnost stylu {{detail}} zůstane v kódu.",
+      "mermaidClassProperty": "Vlastnost třídy {{detail}} zůstane v kódu.",
+      "mermaidLinkStyleProperty": "Vlastnost stylu spojnice {{detail}} zůstane v kódu.",
+      "mermaidNodeSetting": "Nastavení uzlu {{detail}} zůstane v kódu.",
+      "mermaidEdgeSetting": "Nastavení hrany {{detail}} zůstane v kódu.",
+      "mermaidInvisibleLink": "Neviditelné spojnice zůstávají v kódu.",
+      "mermaidLinkLength": "Délky spojnic zůstávají v kódu.",
+      "mermaidSubgraphDirection": "Směry podgrafů zůstávají v kódu.",
+      "mermaidUnknownStatement": "Příkazy, které plátno neumí přečíst, zůstávají v kódu.",
+      "mermaidShape": "Tvar {{detail}} se zobrazí jako nejbližší tvar plátna.",
+      "mermaidThickLink": "Silné spojnice se zobrazují jako běžné čáry.",
+      "mermaidArrowHead": "Zakončení s kroužkem a křížkem se zobrazují jako šipky.",
+      "mermaidMarkdownLabel": "Popisky v Markdown se zobrazují jako prostý text.",
+      "mermaidNoFlowchartHeader": "Na plátně lze kreslit jen vývojové diagramy. Začněte kód slovem flowchart nebo graph."
     }
   }
 }

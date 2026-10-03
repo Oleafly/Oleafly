@@ -81,6 +81,103 @@ describe("LanguageServiceKeeper", () => {
     ).toEqual([null, "linked-a"]);
   });
 
+  it("publishes the effective Typst version so Tinymist can follow the pin", async () => {
+    const typstEngine = {
+      ...LATEX_ENGINE,
+      id: "typst" as const,
+      label: "Typst",
+      source_format: "typst" as const,
+      main_document: "main.typ",
+      source_extensions: ["typ"],
+      typst_version: null,
+      typst_resolved: { version: "0.15.1", source: "bundled" as const },
+      typst_missing: null,
+    };
+    useFilesStore.setState({
+      projectId: "typst-a",
+      mainDoc: "main.typ",
+      engine: typstEngine,
+      engineLoaded: true,
+      tree: [{ path: "main.typ", is_dir: false }],
+      files: {},
+    });
+    const controller: LanguageServiceKeeperController = {
+      update: vi.fn(),
+      dispose: vi.fn(async () => {}),
+    };
+    render(<LanguageServiceKeeper controller={controller} />);
+    await waitFor(() =>
+      expect(controller.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ typstVersion: "0.15.1" }),
+      ),
+    );
+    act(() => {
+      useFilesStore.setState({
+        engine: {
+          ...typstEngine,
+          typst_version: "0.12.0",
+          typst_resolved: null,
+          typst_missing: "0.12.0",
+        },
+      });
+    });
+    await waitFor(() =>
+      expect(controller.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ typstVersion: "0.12.0" }),
+      ),
+    );
+  });
+
+  it("publishes whether the Typst project reads its vendored packages", async () => {
+    const typstEngine = {
+      ...LATEX_ENGINE,
+      id: "typst" as const,
+      label: "Typst",
+      source_format: "typst" as const,
+      main_document: "main.typ",
+      source_extensions: ["typ"],
+      typst_resolved: { version: "0.15.1", source: "bundled" as const },
+    };
+    useFilesStore.setState({
+      projectId: "typst-vendored",
+      mainDoc: "main.typ",
+      engine: typstEngine,
+      engineLoaded: true,
+      tree: [{ path: "main.typ", is_dir: false }],
+      files: {},
+    });
+    const controller: LanguageServiceKeeperController = {
+      update: vi.fn(),
+      dispose: vi.fn(async () => {}),
+    };
+    render(<LanguageServiceKeeper controller={controller} />);
+    await waitFor(() =>
+      expect(controller.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ typstVendorPackages: false }),
+      ),
+    );
+    act(() => {
+      useFilesStore.setState({
+        engine: { ...typstEngine, typst_vendor_packages: true },
+      });
+    });
+    await waitFor(() =>
+      expect(controller.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ typstVendorPackages: true }),
+      ),
+    );
+    act(() => {
+      useFilesStore.setState({
+        engine: { ...LATEX_ENGINE, typst_vendor_packages: true },
+      });
+    });
+    await waitFor(() =>
+      expect(controller.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ typstVendorPackages: false }),
+      ),
+    );
+  });
+
   it("publishes Files/Index snapshots and disposes after unmount", async () => {
     useFilesStore.setState({
       projectId: "project-a",

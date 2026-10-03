@@ -18,6 +18,7 @@ export interface SubmissionProfile {
     exactCasePaths?: boolean;
     allowedFigureExtensions?: readonly string[];
     recommendedDocumentClasses?: readonly string[];
+    recommendedTypstTemplates?: readonly string[];
     requireAbstract?: boolean;
     requireKeywords?: boolean;
   };
@@ -62,6 +63,7 @@ export const SUBMISSION_PROFILES: Record<SubmissionProfileId, SubmissionProfile>
     source: {
       exactCasePaths: true,
       recommendedDocumentClasses: ["IEEEtran"],
+      recommendedTypstTemplates: ["charged-ieee", "bamdone-ieeeconf", "tatras-ieee"],
       requireAbstract: true,
       requireKeywords: true,
     },
@@ -81,6 +83,7 @@ export const SUBMISSION_PROFILES: Record<SubmissionProfileId, SubmissionProfile>
     source: {
       exactCasePaths: true,
       recommendedDocumentClasses: ["acmart"],
+      recommendedTypstTemplates: ["clean-acmart", "faithful-acmart", "approximate-acmsmall"],
       requireAbstract: true,
       requireKeywords: true,
     },
@@ -137,7 +140,23 @@ export function extractDocumentClass(source: string): string | null {
   return null;
 }
 
+export function extractTypstTemplates(source: string): string[] {
+  return [...source.matchAll(/^[ \t]*#import\s+"@[a-z0-9-]+\/([a-z0-9-]+):/gm)].map((match) => match[1]);
+}
+
+function typstProfile(source: string): SubmissionProfileId | null {
+  for (const template of extractTypstTemplates(source)) {
+    for (const id of ["ieee", "acm"] as const) {
+      if (SUBMISSION_PROFILES[id].source.recommendedTypstTemplates?.includes(template)) return id;
+    }
+    if (/thesis|dissertation/.test(template)) return "thesis";
+  }
+  return null;
+}
+
 export function detectSubmissionProfile(source: string): SubmissionProfileId {
+  const typst = typstProfile(source);
+  if (typst) return typst;
   const className = extractDocumentClass(source)?.toLowerCase();
   if (className === "ieeetran") return "ieee";
   if (className === "acmart") return "acm";

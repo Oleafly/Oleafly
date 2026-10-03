@@ -42,7 +42,18 @@
     "selectImage": "Select an image to insert it.",
     "editTitle": "Edit image",
     "editDescription": "Swap the image or change its width. The caption and label stay as they are.",
-    "save": "Save image"
+    "save": "Save image",
+    "customWidthPlaceholderTypst": "8cm or 60%",
+    "altLabel": "Alt text",
+    "altPlaceholder": "Describe the image for screen readers",
+    "placement": "Placement",
+    "placementNone": "In place",
+    "placementAuto": "Auto",
+    "placementTop": "Top",
+    "placementBottom": "Bottom",
+    "editFigureTitle": "Edit figure",
+    "editFigureDescription": "Change the image, its size, caption, label, alt text or placement.",
+    "saveFigure": "Save figure"
   },
   "tableToolbar": {
     "label": "Table tools",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Insert blockquote",
     "insertFigure": "Insert figure",
     "insertImage": "Insert image",
+    "drawDiagram": "Draw a diagram",
     "insertTable": "Insert table",
     "imageToLatexTooltip": "Image to LaTeX (transcribe with AI)",
     "imageToLatex": "Image to LaTeX",
@@ -130,6 +142,7 @@
     "redo": "Redo ({{shortcut}})",
     "find": "Find ({{shortcut}})",
     "goToPdf": "Go to PDF (SyncTeX)",
+    "goToPdfTypst": "Go to PDF",
     "linkUrl": "Link URL",
     "removeLink": "Remove link",
     "imageFile": "Image file",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "Split",
     "both": "Both",
-    "stacked": "Stacked"
+    "stacked": "Stacked",
+    "displayMath": "Display equation",
+    "numberedEquation": "Numbered equation",
+    "alignedEquations": "Aligned equations",
+    "addLabel": "Add label",
+    "imageToTypst": "Image to Typst",
+    "imageToTypstTooltip": "Image to Typst (transcribe with AI)",
+    "typstPackages": "Typst packages",
+    "latexPackages": "LaTeX packages"
   },
   "contextMenu": {
     "engineUnavailable": "Document engine actions unavailable",
     "askAi": "Ask AI…",
     "noIndexedSymbol": "No indexed symbol at this location.",
     "noRenamableSymbol": "No renamable symbol at this location.",
+    "formatDocument": "Format document",
+    "formatSelection": "Format selection",
     "itemize": "Itemize",
     "enumerate": "Enumerate",
     "figure": "Figure",
@@ -156,7 +179,16 @@
     "equationAsPng": "Equation as PNG",
     "crossReference": "Cross-reference",
     "label": "Label",
-    "footnote": "Footnote"
+    "footnote": "Footnote",
+    "toggleComment": "Toggle comment",
+    "inlineMath": "Inline math",
+    "displayMath": "Display equation",
+    "numberedEquation": "Numbered equation",
+    "alignedEquations": "Aligned equations",
+    "quote": "Quote",
+    "addLabel": "Add label",
+    "convertLatexMath": "Convert LaTeX math to Typst",
+    "noLatexMath": "Select some LaTeX math first."
   },
   "shell": {
     "noFileOpenTab": "No file open",
@@ -233,9 +265,15 @@
     "footerTypst": "Special characters are escaped in the table source.",
     "footerLatex": "The generated LaTeX table uses booktabs for its horizontal rules.",
     "chooseAnother": "Choose another file",
-    "chooseFile": "Choose CSV, TSV, or XLSX",
+    "chooseFile": "Choose CSV, TSV, XLSX, or JSON",
     "selectedSummary": "{{file}} · Rows: {{rows}} · Columns: {{columns}}",
     "firstRowHeader": "First row is a header",
+    "keepLinked": "Keep linked to the data file",
+    "keepLinkedHint": "Copies the data into the data folder. Edit that file and the table changes on the next compile.",
+    "footerLinked": "The table reads {{path}} each time the document compiles.",
+    "jsonNotTable": "This JSON file is not a list of records or rows.",
+    "insertedLinked": "Linked table inserted. Edit {{path}} to change it.",
+    "linkFailed": "Could not copy the data into the project.",
     "captionLabel": "Caption (optional)",
     "captionPlaceholder": "Results across all runs",
     "labelLabel": "Label (optional)",
@@ -308,7 +346,17 @@
     "info": "Info",
     "empty": "Compile output will appear here.",
     "scrollToTop": "Scroll to top",
-    "scrollToBottom": "Scroll to bottom"
+    "scrollToBottom": "Scroll to bottom",
+    "locationFileLineColumn": "{{file}} · line {{line}}, column {{column}}",
+    "locationLineColumn": "line {{line}}, column {{column}}",
+    "hint": "Hint",
+    "sourceExcerpt": "Source line {{line}}",
+    "summaryErrors_one": "{{count}} error",
+    "summaryErrors_other": "{{count}} errors",
+    "summaryWarnings_one": "{{count}} warning",
+    "summaryWarnings_other": "{{count}} warnings",
+    "summaryReferences_one": "{{count}} unresolved reference",
+    "summaryReferences_other": "{{count}} unresolved references"
   },
   "history": {
     "untitledCommit": "Untitled commit",
@@ -353,7 +401,8 @@
       "navigation": "Navigation",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Settings"
+      "settings": "Settings",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Recompile",
@@ -370,12 +419,20 @@
       "goToDefinition": "Go to definition",
       "findReferences": "Find references",
       "renameSymbol": "Rename symbol (project-wide)",
+      "formatDocument": "Format Typst document",
       "commandPalette": "Command palette",
       "searchAllDocuments": "Search all documents",
       "goToPdf": "Go to PDF (SyncTeX forward)",
       "jumpToSource": "Jump to source from PDF",
       "commitAndPush": "Commit & push",
-      "openSettings": "Open settings"
+      "openSettings": "Open settings",
+      "typstContinueList": "Continue the list with a new item",
+      "typstItemNewLine": "Start a new line inside the list item",
+      "typstRemoveMarker": "Remove the list marker before the cursor",
+      "typstIndentItem": "Nest the list item one level deeper",
+      "typstOutdentItem": "Move the list item up one level",
+      "typstMathPair": "Auto-close $ math, Space turns it into display math",
+      "typstWrapSelection": "Wrap the selection in strong, emphasis, raw or math"
     }
   },
   "citations": {
@@ -646,6 +703,7 @@
       "unsupported": "This expression is incomplete or unsupported.",
       "missingClosing": "Missing closing {{delimiter}}.",
       "notRendered": "This expression could not be rendered.",
+      "typstUnavailable": "Typst preview is unavailable.",
       "preview": {
         "moreOptions": "More options",
         "hide": "Hide",
@@ -653,6 +711,10 @@
         "disable": "Disable",
         "disableDescription": "Turns the equation preview off. Turn it back on in Settings."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Paste as Typst math",
+      "pasteOffer": "Pasted LaTeX math"
     },
     "latex": {
       "command": {
@@ -835,6 +897,45 @@
         "revtex": "REVTeX style"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Heading",
+        "figure": "Figure with image",
+        "tableFigure": "Figure with table",
+        "table": "Table",
+        "equation": "Display equation",
+        "numberedEquation": "Numbered equation with label",
+        "footnote": "Footnote",
+        "quote": "Block quote",
+        "code": "Code block",
+        "outline": "Table of contents",
+        "bibliography": "Bibliography",
+        "pagebreak": "Page break",
+        "columns": "Columns",
+        "grid": "Grid",
+        "link": "Link",
+        "list": "Bulleted list",
+        "enum": "Numbered list",
+        "terms": "Term list",
+        "partBibliography": "Bibliography for one labelled part"
+      },
+      "bibliographyStyle": {
+        "builtin": "built-in CSL style",
+        "citation": "citation style only",
+        "project": "CSL file in this project"
+      },
+      "bibliographyParameter": {
+        "target": "which citations it lists",
+        "group": "how its numbers are shared",
+        "targetAuto": "the nearest bibliography with the key",
+        "targetWithin": "citations inside a labelled part",
+        "targetAfter": "citations after a label",
+        "targetBefore": "citations before a label",
+        "groupAuto": "number with the other bibliographies",
+        "groupNone": "number on its own",
+        "groupNamed": "number with bibliographies of the same name"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Abstract",
@@ -961,6 +1062,12 @@
       "reference": "Reference",
       "label": "Label",
       "includedFile": "Included file",
+      "typst": {
+        "settings": {
+          "show": "Show document settings",
+          "hide": "Hide document settings"
+        }
+      },
       "table": {
         "captionPlacement": "Caption",
         "captionAbove": "Caption above",
@@ -1035,6 +1142,11 @@
     "goTo": "Go to {{title}}",
     "untitled": "Untitled"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Open on Typst Universe",
+    "formatUnavailable": "The Typst formatter isn't ready yet. Try again in a moment.",
+    "formatFailed": "Couldn't format this file."
+  },
   "changedOnDisk": {
     "message": "{{file}} changed on disk while you had unsaved edits.",
     "compare": "Compare",
@@ -1042,5 +1154,330 @@
     "reload": "Reload",
     "failed": "Oleafly couldn't update {{file}}. Try again.",
     "tabMark": "Changed on disk. Open this tab to pick which version to keep."
+  },
+  "labels": {
+    "filterPlaceholder": "Label name",
+    "filterLabel": "Filter project labels",
+    "noMatches": "No matching labels.",
+    "empty": "No labels in this project yet.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Add a label here"
+  },
+  "typst": {
+    "numberingNote": "Equation numbers need a numbering rule.",
+    "addNumberingRule": "Add rule",
+    "bibliographyAdded": "Added the bibliography to {{file}}."
+  },
+  "typstInsights": {
+    "title": "Document insights",
+    "description": "What the compiled document contains, with links back to the source.",
+    "refresh": "Refresh",
+    "copyMetadata": "Copy submission metadata",
+    "metadataCopied": "Submission metadata copied to the clipboard.",
+    "copyFailed": "The metadata was not copied. Check clipboard access and try again.",
+    "loading": "Reading the document with Typst",
+    "compileFailed": "Typst could not compile the document. Fix these errors to list figures, tables and equations.",
+    "noProject": "Open a Typst project first.",
+    "tabs": {
+      "overview": "Overview",
+      "headings": "Headings",
+      "figures": "Figures",
+      "tables": "Tables",
+      "equations": "Equations",
+      "labels": "Labels",
+      "citations": "Citations",
+      "todos": "To-dos"
+    },
+    "metadata": {
+      "heading": "Submission metadata",
+      "title": "Title",
+      "authors": "Authors",
+      "keywords": "Keywords",
+      "abstract": "Abstract",
+      "date": "Date",
+      "missing": "Not set"
+    },
+    "empty": {
+      "headings": "No headings in the compiled document.",
+      "figures": "No figures in the compiled document.",
+      "tables": "No tables in the compiled document.",
+      "equations": "No display equations in the compiled document.",
+      "labels": "No labels in the document.",
+      "citations": "No citations in the compiled document.",
+      "todos": "No TODO or FIXME notes."
+    },
+    "labelKinds": {
+      "heading": "Heading",
+      "figure": "Figure",
+      "table": "Table",
+      "equation": "Equation",
+      "other": "Other"
+    },
+    "page": "Page {{page}}",
+    "unnumbered": "Unnumbered",
+    "untitled": "No caption",
+    "cited_one": "Cited {{count}} time",
+    "cited_other": "Cited {{count}} times",
+    "notInSource": "Not found in the source",
+    "openSource": "Open {{file}} at line {{line}}",
+    "versionNote": "Typst {{version}} with typst {{method}}",
+    "truncated": "Only the first 5,000 elements are listed."
+  },
+  "documentInsights": {
+    "description": "What the document contains, with links back to the source.",
+    "loading": "Reading the document",
+    "noProject": "Open a project first.",
+    "unresolved": "Not in the bibliography",
+    "unresolvedCount_one": "{{count}} cited key is missing from the bibliography.",
+    "unresolvedCount_other": "{{count}} cited keys are missing from the bibliography.",
+    "numbersCurrent": "Numbers and pages are from the last compile.",
+    "numbersStale": "The source changed after the last compile. Compile again to see numbers and pages.",
+    "numbersMissing": "Compile the document to see numbers and pages.",
+    "sourceOrder": "Listed in source order.",
+    "empty": {
+      "headings": "No headings in the document.",
+      "figures": "No figures in the document.",
+      "tables": "No tables in the document.",
+      "equations": "No display equations in the document.",
+      "citations": "No citations in the document."
+    }
+  },
+  "typstSettings": {
+    "title": "Document settings",
+    "description": "Page, text and numbering rules in {{file}}.",
+    "templateNotice": "This document uses a template. Values set inside the template are not shown here. A value you set here overrides the template.",
+    "loading": "Reading the main file",
+    "readFailed": "Could not read the main file.",
+    "saveFailed": "Could not update the main file.",
+    "noMainFile": "This project has no Typst main file.",
+    "applied": "Document settings updated.",
+    "apply": "Apply",
+    "cancel": "Cancel",
+    "sections": {
+      "page": "Page",
+      "text": "Text",
+      "paragraph": "Paragraph",
+      "numbering": "Numbering"
+    },
+    "fields": {
+      "paper": "Page size",
+      "margin": "Margins",
+      "columns": "Columns",
+      "font": "Body font",
+      "fontSize": "Font size",
+      "lang": "Language",
+      "region": "Region",
+      "justify": "Justification",
+      "leading": "Line spacing",
+      "headingNumbering": "Heading numbering",
+      "equationNumbering": "Equation numbering"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Default",
+      "justified": "Justified",
+      "ragged": "Ragged right",
+      "off": "Off"
+    },
+    "locked": {
+      "template": "Set by the template",
+      "expression": "Set by an expression in the source"
+    },
+    "invalid": {
+      "length": "Use a length such as 11pt, 2.5cm or 0.65em.",
+      "margin": "Use a length such as 2.5cm, or auto.",
+      "columns": "Use a whole number from 1 to 99.",
+      "lang": "Use a two or three letter language code such as en.",
+      "region": "Use a two letter region code such as GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Class options and preamble settings in {{file}}.",
+    "markdownDescription": "Front matter fields in {{file}}.",
+    "noLatexMainFile": "This project has no LaTeX main file.",
+    "noMarkdownMainFile": "This project has no Markdown main file.",
+    "noDocumentClass": "The main file has no \\documentclass line.",
+    "unclosedFrontMatter": "The front matter at the top of the main file is not closed. Add a closing --- line first.",
+    "noFrontMatter": "This file has no front matter yet. Apply adds one at the top.",
+    "externalPreamble": "Part of the preamble lives in other files. Values set there are not shown here.",
+    "classNotice": "The {{name}} class controls some of these settings. They are read-only here.",
+    "styleNotice": "The {{name}} style sets the page layout. Page size and margins are read-only here.",
+    "availableFonts": "Available fonts",
+    "fontsLoading": "Looking for fonts",
+    "fields": {
+      "secnumdepth": "Numbered levels",
+      "numberSections": "Section numbers",
+      "documentClass": "Document class"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "One column",
+      "twocolumn": "Two columns",
+      "single": "Single",
+      "onehalf": "One and a half",
+      "double": "Double",
+      "bySection": "By section",
+      "byChapter": "By chapter",
+      "bySubsection": "By subsection",
+      "numbered": "Numbered",
+      "unnumbered": "Not numbered",
+      "depthNone": "None",
+      "depthChapters": "Chapters only",
+      "depthSections": "Down to sections",
+      "depthSubsections": "Down to subsections",
+      "depthSubsubsections": "Down to subsubsections",
+      "depthParagraphs": "Down to paragraphs",
+      "depthSubparagraphs": "Down to subparagraphs"
+    },
+    "locked": {
+      "class": "Set by the {{name}} class",
+      "package": "Set by the {{name}} style",
+      "engine": "Needs the XeLaTeX or LuaLaTeX compiler. Pick one in the compile menu.",
+      "sides": "The source sets each margin separately",
+      "conditional": "Set inside a conditional block"
+    },
+    "invalid": {
+      "length": "Use a length such as 2.5cm, 1in or 12pt.",
+      "fontName": "Use a plain font name without braces or backslashes.",
+      "latexLang": "Use a babel language name such as english.",
+      "markdownLang": "Use a language tag such as en-US.",
+      "lineStretch": "Use a number such as 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Typst packages",
+    "close": "Close Typst packages",
+    "searchLabel": "Search packages by name, keyword or category",
+    "searchPlaceholder": "Search Typst Universe",
+    "categories": "Categories",
+    "allCategories": "All",
+    "loading": "Loading the package list",
+    "results_one": "{{count}} package",
+    "results_other": "{{count}} packages",
+    "resultsCapped": "Showing {{shown}} of {{count}} packages. Search to narrow the list.",
+    "empty": "No packages match your search.",
+    "staleOffline": "You're offline. This list is from {{date}}.",
+    "stale": "This list is from {{date}}. It couldn't be refreshed.",
+    "latest": "Latest {{version}}",
+    "template": "Template",
+    "needsTypst": "Needs Typst {{version}}. This project uses Typst {{current}}.",
+    "insert": "Insert import",
+    "insertAria": "Insert the import for {{name}} at the top of the file",
+    "insertNeedsFile": "Open a Typst file to insert an import.",
+    "copy": "Copy import",
+    "copyAria": "Copy the import for {{name}}",
+    "vendor": {
+      "heading": "Project packages",
+      "toggle": "Use packages from the project folder",
+      "detail": "Typst looks in the project's typst-packages folder first. Vendored projects compile offline and on other computers.",
+      "action": "Vendor packages into project",
+      "running": "Copying packages",
+      "copied_one": "Copied {{count}} package into typst-packages.",
+      "copied_other": "Copied {{count}} packages into typst-packages.",
+      "upToDate": "Every package this project imports is already in typst-packages.",
+      "missing": "These packages aren't in the package cache: {{names}}. Compile once while online, then vendor again.",
+      "count_one": "{{count}} package in this project",
+      "count_other": "{{count}} packages in this project",
+      "none": "No packages in this project yet."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} is available. This import uses {{version}}.",
+      "update": "Update to {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX packages",
+    "close": "Close LaTeX packages",
+    "searchLabel": "Search packages by name or description",
+    "searchPlaceholder": "Search CTAN",
+    "loading": "Loading the package list",
+    "results_one": "{{count}} package",
+    "results_other": "{{count}} packages",
+    "resultsCapped": "Showing {{shown}} of {{count}} packages. Search to narrow the list.",
+    "empty": "No packages match your search.",
+    "stale": "This list is from {{date}}. It couldn't be refreshed.",
+    "staleOffline": "You're offline. This list is from {{date}}.",
+    "partial": "Couldn't reach CTAN. Showing Oleafly's built-in list.",
+    "partialOffline": "You're offline. Showing Oleafly's built-in list.",
+    "loaded": "In document",
+    "documentClass": "Document class",
+    "installed": "Installed",
+    "install": "Install",
+    "installing": "Installing",
+    "installAria": "Install {{name}} with tlmgr",
+    "insert": "Add to preamble",
+    "insertAria": "Add {{name}} to the preamble of {{file}}",
+    "copy": "Copy line",
+    "copyAria": "Copy the line that loads {{name}}",
+    "ctan": "CTAN",
+    "ctanAria": "Open {{name}} on CTAN",
+    "options": "Options",
+    "optionsAria": "Options for {{name}}",
+    "optionsInvalid": "Check the options. Braces must match, and ] or % can't be used.",
+    "classNote": "This is a document class. Set it with \\documentclass instead.",
+    "onDemand": "Tectonic downloads packages the first time your document uses them. There's nothing to install.",
+    "checking": "Checking which packages are installed",
+    "unknownInstall": "Oleafly can't tell which packages your TeX setup has.",
+    "noProject": "Open a LaTeX project to add packages.",
+    "added": "Added {{name}} to {{file}}.",
+    "noPreamble": "{{file}} has no preamble to add a package to.",
+    "alreadyLoaded": "{{file}} already loads {{name}}.",
+    "insertFailed": "The package couldn't be added. Try again."
+  },
+  "typstFonts": {
+    "title": "Fonts",
+    "close": "Close font list",
+    "searchLabel": "Search font families",
+    "searchPlaceholder": "Search fonts",
+    "loading": "Asking Typst for its fonts",
+    "summary_one": "{{count}} font family from Typst {{version}}",
+    "summary_other": "{{count}} font families from Typst {{version}}",
+    "systemOff": "System fonts are off for this project, so only project and built-in fonts are listed.",
+    "noSources": "This Typst version does not say where each font comes from.",
+    "empty": "No font families match your search.",
+    "copy": "Copy name",
+    "copyAria": "Copy the font family name {{name}}",
+    "sources": {
+      "project": "Project",
+      "system": "System",
+      "embedded": "Built in"
+    },
+    "fontsFolder": "To use a font in this project, add its file to the project's fonts folder."
+  },
+  "typstVariants": {
+    "title": "Build variants",
+    "close": "Close build variants",
+    "intro": "Each variant sets values that the document reads with sys.inputs. Pick a variant from the compile menu.",
+    "empty": "No variants yet.",
+    "add": "Add variant",
+    "name": "Variant name",
+    "defaultName": "variant {{number}}",
+    "remove": "Remove variant",
+    "removeAria": "Remove the variant {{name}}",
+    "key": "Name",
+    "value": "Value",
+    "addInput": "Add value",
+    "removeInput": "Remove value",
+    "noInputs": "This variant sets no values.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "loading": "Loading variants",
+    "nameRequired": "Give every variant a name.",
+    "nameTaken": "Two variants can't share a name.",
+    "keyInvalid": "Value names can't be empty or contain an equals sign.",
+    "keyTaken": "A variant can't set the same name twice.",
+    "saveFailed": "Could not save the variants."
   }
 }

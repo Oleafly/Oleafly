@@ -12,12 +12,14 @@ import {
 import {
   mountMathPreview,
   type MountedMathPreview,
+  typstMathTheme,
 } from "./math-render";
 import {
   scanMathExpressions,
   type MathExpression,
   type MathSourceFormat,
 } from "./math-source";
+import { typstMathExpressionsInState } from "./math-typst";
 
 export {
   mountMathPreview,
@@ -113,6 +115,15 @@ function visibleExpressions(
   const seen = new Set<string>();
   const found: MathExpression[] = [];
   for (const window of windows) {
+    if (format === "typst") {
+      for (const expression of typstMathExpressionsInState(view.state, window.from, window.to)) {
+        const key = `${expression.from}:${expression.to}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push(expression);
+      }
+      continue;
+    }
     const text = view.state.doc.sliceString(window.from, window.to);
     const excluded = protectedSyntaxRanges(view, window.from, window.to).map(
       (range) => ({
@@ -181,6 +192,7 @@ class MathPreviewWidget extends WidgetType {
   constructor(
     readonly expression: MathExpression,
     readonly identity: string,
+    readonly format: MathSourceFormat = "latex",
   ) {
     super();
   }
@@ -214,6 +226,7 @@ class MathPreviewWidget extends WidgetType {
       // reflows wrapped source lines during a fast scroll.
       eager: true,
       errorDisplay: "hidden",
+      ...(this.format === "typst" ? { typstTheme: () => typstMathTheme(view.contentDOM) } : {}),
     });
     this.mounted.set(dom, mounted);
     // KaTeX lays out against font metrics, so a preview that paints before its
@@ -281,6 +294,7 @@ function buildDecorations(
         widget: new MathPreviewWidget(
           expression,
           identity,
+          format,
         ),
         side: 1,
       }).range(expression.to),
@@ -334,6 +348,13 @@ const mathPreviewTheme = EditorView.baseTheme({
     display: "inline-block",
     margin: "0",
   },
+  ".math-preview-output img.ofl-typst-math": {
+    display: "block",
+    maxHeight: "100%",
+  },
+  ".math-preview-output img.ofl-typst-math.is-stale": {
+    opacity: "0.45",
+  },
   ".math-preview-output": {
     minWidth: "0",
     maxWidth: "100%",
@@ -351,8 +372,8 @@ const mathPreviewTheme = EditorView.baseTheme({
 });
 
 /**
- * Live, source-preserving math preview for LaTeX document bodies and Pandoc
- * Markdown. Typst deliberately has no extension and remains non-applicable.
+ * Live, source-preserving math preview for LaTeX document bodies, Pandoc
+ * Markdown and Typst equations.
  */
 export function liveMathPreview(format: MathSourceFormat): Extension {
   const plugin = ViewPlugin.fromClass(

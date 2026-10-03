@@ -307,7 +307,7 @@
       "literatureSearch": "Chercher des articles par mot-clé dans OpenAlex, sans clé nécessaire.",
       "verifyCitation": "Transformer un DOI ou un titre en BibTeX vérifié via doi.org ou Crossref.",
       "projectLibrarySearch": "Chercher par mot-clé dans le texte et les notes du projet.",
-      "previewFigure": "Compiler une figure TikZ ou PGFPlots à part et afficher le résultat dans la discussion.",
+      "previewFigure": "Effectuer le rendu d'une figure TikZ ou CeTZ à part et afficher le résultat dans la discussion.",
       "insertFigure": "Insérer la figure terminée au curseur avec une légende et une étiquette, et enregistrer un PNG dans figures/.",
       "loadImage": "Regarder une image déjà présente dans le projet.",
       "updateTodos": "Écrire ou mettre à jour le plan par étapes affiché dans la discussion.",
@@ -350,6 +350,7 @@
     "noDescription": "Aucune description fournie.",
     "notes": {
       "latexOnly": "Projets LaTeX uniquement",
+      "latexAndTypstOnly": "Projets LaTeX et Typst uniquement",
       "pdfCaptureSetting": "Nécessite le réglage de capture des pages PDF",
       "chatApproval": "Autorisé dans la discussion, une commande à la fois",
       "browserSetting": "Nécessite le réglage du navigateur web"
@@ -685,6 +686,24 @@
     "tikzFigure": {
       "label": "Figure TikZ",
       "description": "Rédiger du code TikZ dans la discussion"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Corriger les erreurs Typst"
+      },
+      "writeEquation": {
+        "description": "Du langage naturel aux maths Typst"
+      },
+      "academicPresentation": {
+        "description": "Une présentation Typst à partir de votre article"
+      },
+      "generateTable": {
+        "description": "Rédiger un tableau Typst dans la discussion"
+      },
+      "figure": {
+        "label": "Figure CeTZ",
+        "description": "Rédiger du code CeTZ dans la discussion"
+      }
     }
   },
   "turn": {

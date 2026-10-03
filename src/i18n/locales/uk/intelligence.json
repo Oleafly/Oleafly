@@ -59,6 +59,8 @@
       "startingAndInitializing": "Запуск та ініціалізація мовної служби проєкту.",
       "stopTimeout": "Попередній процес мовної служби не зупинився вчасно. Повторіть, щоб відновити його.",
       "synchronizedAndReady": "Мовну службу синхронізовано, вона готова.",
+      "tinymistDownloadFailed": "Не вдалося завантажити Tinymist {{version}}. Oleafly спробує ще раз.",
+      "tinymistDownloading": "Завантажуємо Tinymist {{version}} відповідно до версії Typst цього проєкту.",
       "transportClosed": "З’єднання з мовною службою несподівано закрилося. Повторіть, щоб перепідключитися.",
       "versionMismatch": "Очікували {{kind}} {{expected}}, але налаштування повідомило {{reported}}."
     }
@@ -141,7 +143,8 @@
     "packageOption": "параметр {{name}}",
     "keyvalKey": "ключ \\{{command}}",
     "duplicateCount": "дублікат ({{count}})",
-    "duplicateIndex": "дублікат {{index}}/{{total}}"
+    "duplicateIndex": "дублікат {{index}}/{{total}}",
+    "typstBinding": "прив’язка Typst"
   },
   "token": {
     "citation": "Цитування",

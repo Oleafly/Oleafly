@@ -146,5 +146,37 @@
       "check_running": "Tämän agentin testi on jo käynnissä.",
       "main_window": "Vaihda agenttien ohjelmia pääikkunasta."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly ei tarjoa versiota Typst {{version}}, eikä tällä tietokoneella ole sitä Typst-versiota.",
+    "busy": "Typst {{version}} asennetaan yhä. Yritä uudelleen, kun asennus on valmis.",
+    "remove_default": "Typst {{version}} on oletusversiosi. Valitse toinen oletus ennen kuin poistat sen.",
+    "remove_not_downloaded": "Oleafly voi poistaa vain itse lataamiaan Typst-versioita, eikä se ladannut versiota Typst {{version}}.",
+    "not_offered": "Typst {{version}} ei ole ladattavissa tälle tietokoneelle.",
+    "install_unverified": "Typst {{version}} ladattiin, mutta se ei läpäissyt eheystarkistusta. Yritä asentaa se uudelleen.",
+    "not_typst_project": "Vain Typst-projekteilla on Typst-versio.",
+    "update_waits": "Odota, että Typst on asennettu, ennen kuin päivität Oleafly-sovelluksen."
+  },
+  "typst_packages": {
+    "index_offline": "Olet offline-tilassa, eikä Typst Universe -pakettiluetteloa ole vielä ladattu.",
+    "index_unavailable": "Typst Universe -pakettiluetteloa ei voitu ladata. Tarkista internetyhteys ja yritä uudelleen.",
+    "vendor_failed": "Oleafly ei voinut kopioida paketteja projektiin."
+  },
+  "typst_query": {
+    "timeout": "Dokumentin lukeminen kesti Typst-kääntäjältä liian kauan.",
+    "failed": "Typst ei voinut lukea tätä dokumenttia."
+  },
+  "typst_version_missing": "Typst {{version}} ei ole asennettu.",
+  "typst_options": {
+    "invalid_input_key": "Arvon nimi ei voi olla tyhjä eikä sisältää yhtäsuuruusmerkkiä.",
+    "invalid_variant_name": "Jokainen muunnelma tarvitsee lyhyen nimen, jota mikään muu muunnelma ei käytä.",
+    "invalid_font_path": "Fonttikansioiden on oltava projektin sisällä.",
+    "fonts_failed": "Typst ei voinut luetella fontteja.",
+    "fonts_timeout": "Fonttien luettelointi kesti Typst-kääntäjältä liian kauan."
+  },
+  "typst_export": {
+    "failed": "Typst ei voinut viedä dokumenttia.",
+    "unsupported": "Tämä Typst-versio ei voi viedä näillä asetuksilla.",
+    "invalid_ppi": "Tarkkuuden on oltava vähintään 1 ja enintään {{max}} PPI."
   }
 }

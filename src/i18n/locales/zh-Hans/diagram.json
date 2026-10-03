@@ -3,6 +3,22 @@
     "aiProviderRequired": "要使用 AI 修复，请先在设置中连接 AI 提供商。",
     "fixFailed": "修复失败：{{detail}}"
   },
+  "chooser": {
+    "title": "选择图表编排器",
+    "description": "选择该图表要用于哪种文档。",
+    "tikz": {
+      "title": "TikZ 图表",
+      "description": "用 TikZ 绘制节点和箭头，适用于 LaTeX 文档。"
+    },
+    "typst": {
+      "title": "Typst 图表",
+      "description": "适用于 Typst 文档的 fletcher 图表。"
+    },
+    "mermaid": {
+      "title": "Mermaid 图表",
+      "description": "适用于 Markdown 文档的 Mermaid 流程图。"
+    }
+  },
   "package": {
     "composer": {
       "title": "插入图表",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "取消（Esc）",
       "cancelRename": "取消重命名",
       "renameTooltip": "重命名图表",
-      "importTooltip": "导入 .tikz 或 .tex 文件，替换当前草稿。",
-      "importLabel": "导入 TikZ 文件",
+      "importTooltip": "导入 .tikz、.tex、.typ、.mmd 或 .md 文件，替换当前草稿。",
+      "importLabel": "导入图表文件",
       "modeDraw": "绘制",
       "modeCode": "代码",
       "fixWithAiTooltip": "让 AI 修复编译错误。",
@@ -28,20 +44,29 @@
       "newProject": "新建项目",
       "noOtherProjects": "还没有其他项目。",
       "saveFigure": "保存图片",
+      "insertTypst": "以 Typst 插入",
+      "insertLatex": "以 TikZ 插入",
       "downloadTooltip": "下载此图表。",
       "download": "下载",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG（即将推出）",
       "svgTooltip": "SVG 导出需要矢量渲染器，目前尚不可用。",
       "snippets": "代码片段",
-      "untitledName": "未命名图表"
+      "untitledName": "未命名图表",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "以 Mermaid 插入",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "图表语言：{{language}}"
     },
     "snippets": {
       "rectangleNode": "矩形节点",
       "circleNode": "圆形节点",
       "arrowEdge": "箭头边",
       "lineEdge": "直线边",
-      "scope": "作用域"
+      "scope": "作用域",
+      "group": "分组"
     },
     "preview": {
       "label": "预览",
@@ -53,7 +78,8 @@
       "pngScale": "PNG 缩放",
       "scaleFactor": "{{factor}}x",
       "background": "背景",
-      "backgroundLabel": "图片背景色"
+      "backgroundLabel": "图片背景色",
+      "diagnosticAt": "第 {{line}} 行：{{message}}"
     },
     "toast": {
       "compileFailed": "图表编译失败，请查看下方日志。",
@@ -68,16 +94,25 @@
       "figureCached": "已有缓存，将复用现有图片。",
       "figureSaved": "已保存到图片缓存。",
       "saveFigureFailed": "无法保存图片：{{detail}}",
+      "insertedTypst": "已作为 Typst 代码插入。",
+      "insertedLatex": "已作为 TikZ 代码插入。",
       "downloaded": "已下载。",
       "imported": "已导入 {{name}} 进行编辑。",
       "importedCodeOnly": "已导入 {{name}}（仅代码，不可绘制）。",
       "importFailed": "无法导入该文件：{{detail}}",
       "noAiFix": "AI 未返回修复结果。",
       "fixFailed": "修复失败：{{detail}}",
-      "notDrawable": "此代码中没有可绘制的内容。代码保持原样。"
+      "notDrawable": "此代码中没有可绘制的内容。代码保持原样。",
+      "savedTypstToProject": "已保存 {{path}}。请用 #include 将其添加到文档中。",
+      "insertedMermaid": "已作为 Mermaid 代码块插入。",
+      "savedMermaidToProject": "已保存 {{path}}。请将其放入 mermaid 代码块，添加到 Markdown 文档中。",
+      "typstPackageMissing": "Typst 无法获取 fletcher 包。请联网一次，让 Typst 下载并保存它。",
+      "previewUnavailable": "此处无法使用此预览。",
+      "readerUnavailable": "无法加载代码读取器。请重试。"
     },
     "confirm": {
-      "overwrite": "{{files}} 已存在。要覆盖吗？（换个名称可两者都保留。）"
+      "overwrite": "{{files}} 已存在。要覆盖吗？（换个名称可两者都保留。）",
+      "switchLanguage": "要将此图表从 {{from}} 切换为 {{to}} 吗？画布无法显示的代码不会保留。"
     },
     "canvas": {
       "shapeTools": "形状工具",
@@ -136,7 +171,56 @@
       "routingStraight": "直线",
       "routingOrthogonal": "直角",
       "routingCurved": "曲线",
-      "line": "线条"
+      "line": "线条",
+      "nodeLabelTypst": "标签（Typst）"
+    },
+    "notes": {
+      "tooltip": "画布无法完整显示的内容",
+      "count_other": "{{count}} 条说明",
+      "keptHeading": "保留在代码中",
+      "approximatedHeading": "近似显示",
+      "droppedHeading": "未在画布上绘制",
+      "notDiagram": "此代码中没有画布可以绘制的内容。",
+      "outsideCode": "图表前后的代码按原样保留。",
+      "wrapper": "图表外围的代码（例如 figure）按原样保留。",
+      "diagramSetting": "图表设置 {{detail}} 保留在代码中。",
+      "edgeOption": "边选项 {{detail}} 保留在代码中。",
+      "scripted": "由脚本生成的图表内容（例如循环）保留在代码中。",
+      "mathMode": "数学模式中的图表内容保留在代码中。",
+      "unplacedNode": "没有固定位置的节点保留在代码中。",
+      "unreadEdge": "画布无法读取的边保留在代码中。",
+      "danglingEdge": "未连接两个节点的边保留在代码中。",
+      "gridCoordinates": "网格坐标显示在固定位置。",
+      "formattedLabels": "带格式的标签显示为纯文本。",
+      "unknownShapes": "画布没有的形状显示为矩形。",
+      "estimatedSize": "未设置宽度和高度的节点按估算尺寸显示。",
+      "colorAdjustments": "调整过的颜色（例如 lighten）按其基础颜色显示。",
+      "colorExpressions": "由变量或表达式设置的颜色不会显示在画布上。",
+      "strokeStyles": "部分线条样式按画布上最接近的样式显示。",
+      "arrowMarks": "画布没有的箭头样式显示为普通箭头。",
+      "freePoints": "经过自由点的边在画布上画成直线。",
+      "tikzCommand": "{{detail}} 命令不会被绘制。在画布上编辑会重写代码并去掉该命令。",
+      "truncated": "代码过长，仅绘制前面一部分。",
+      "mermaidNotFlowchart": "画布只能绘制流程图。此代码是 {{detail}} 图表。",
+      "mermaidFrontmatter": "frontmatter 块保留在代码中。",
+      "mermaidDirective": "配置指令保留在代码中。",
+      "mermaidComment": "注释保留在代码中。",
+      "mermaidAccessibility": "无障碍标题和描述保留在代码中。",
+      "mermaidClick": "点击处理程序保留在代码中。",
+      "mermaidStyleProperty": "样式属性 {{detail}} 保留在代码中。",
+      "mermaidClassProperty": "类属性 {{detail}} 保留在代码中。",
+      "mermaidLinkStyleProperty": "连线样式属性 {{detail}} 保留在代码中。",
+      "mermaidNodeSetting": "节点设置 {{detail}} 保留在代码中。",
+      "mermaidEdgeSetting": "边设置 {{detail}} 保留在代码中。",
+      "mermaidInvisibleLink": "隐藏连线保留在代码中。",
+      "mermaidLinkLength": "连线长度保留在代码中。",
+      "mermaidSubgraphDirection": "子图方向保留在代码中。",
+      "mermaidUnknownStatement": "画布无法读取的语句保留在代码中。",
+      "mermaidShape": "{{detail}} 形状按画布上最接近的形状显示。",
+      "mermaidThickLink": "粗连线显示为普通线条。",
+      "mermaidArrowHead": "圆形和叉形箭头显示为普通箭头。",
+      "mermaidMarkdownLabel": "Markdown 标签显示为纯文本。",
+      "mermaidNoFlowchartHeader": "画布只能绘制流程图。请以 flowchart 或 graph 开头编写代码。"
     }
   }
 }

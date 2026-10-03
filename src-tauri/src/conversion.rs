@@ -114,7 +114,7 @@ pub(crate) fn drop_false_bibliography(markdown: &str) -> String {
 /// have dedicated adapters and deliberately do not enter this table.
 pub(crate) fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
     let (reader, source_name) = match source {
-        "latex" => ("latex", "source.tex"),
+        "latex" | "equation" => ("latex", "source.tex"),
         "markdown" => ("markdown", "source.md"),
         "typst" => ("typst", "source.typ"),
         "html" => ("html", "source.html"),
@@ -146,18 +146,26 @@ pub(crate) fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
             | ("markdown", "latex")
             | ("markdown", "typst")
             | ("typst", "latex")
+            | ("typst", "docx")
+            | ("typst", "html")
+            | ("typst", "markdown")
             | ("html", "latex")
+            | ("html", "typst")
             | ("docx", "latex")
+            | ("docx", "typst")
+            | ("equation", "typst")
     );
     if !supported {
         return None;
     }
 
-    let mut args = vec![
-        format!("--from={reader}"),
-        format!("--to={writer}"),
-        "--standalone".into(),
-    ];
+    let mut args = vec![format!("--from={reader}"), format!("--to={writer}")];
+    if source != "equation" {
+        args.push("--standalone".into());
+    }
+    if source == "latex" && target == "typst" {
+        args.push("--number-sections".into());
+    }
     if source != "html" {
         args.push("--sandbox".into());
     }
@@ -193,6 +201,127 @@ pub(crate) fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
         references_filter,
         local_bibliography: writes_source_bibliography(reader, writer),
     })
+}
+
+pub(crate) const MAX_REPORT_LINES: usize = 200;
+const MAX_REPORT_LINE_CHARS: usize = 240;
+
+fn report_line(text: &str) -> String {
+    let collapsed = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    collapsed.chars().take(MAX_REPORT_LINE_CHARS).collect()
+}
+
+fn skipped_location(text: &str) -> Option<(&str, &str)> {
+    let (head, location) = text.rsplit_once(" at ")?;
+    let (_, position) = location.split_once(" line ")?;
+    let (line, column) = position.split_once(" column ")?;
+    let numeric =
+        |value: &str| !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit());
+    (numeric(line) && numeric(column.trim_end())).then_some((head, position.trim_end()))
+}
+
+fn skipped_report(head: &str, position: Option<&str>) -> String {
+    match position {
+        Some(position) => report_line(&format!("Skipped {head} at line {position}")),
+        None => report_line(&format!("Skipped {head}")),
+    }
+}
+
+fn push_report_entry(entry: String, entries: &mut Vec<String>) {
+    if !entry.is_empty() && !entries.contains(&entry) && entries.len() < MAX_REPORT_LINES {
+        entries.push(entry);
+    }
+}
+
+pub(crate) fn pandoc_report(log: &str) -> Vec<String> {
+    let mut entries: Vec<String> = Vec::new();
+    let mut warning: Option<String> = None;
+    let mut warning_closed = false;
+    let mut skipped: Option<String> = None;
+    for line in log.lines() {
+        if let Some(head) = skipped.as_ref() {
+            if !line.starts_with('[') {
+                if let Some((_, position)) = skipped_location(line) {
+                    let head = format!("{head} ...'");
+                    push_report_entry(skipped_report(&head, Some(position)), &mut entries);
+                    skipped = None;
+                }
+                continue;
+            }
+            let head = format!("{head} ...'");
+            push_report_entry(skipped_report(&head, None), &mut entries);
+            skipped = None;
+        }
+        let continuation = line.starts_with(char::is_whitespace) && !line.trim().is_empty();
+        if continuation {
+            if let Some(current) = warning.as_mut().filter(|_| !warning_closed) {
+                current.push(' ');
+                current.push_str(line.trim());
+                warning_closed = line.trim_end().ends_with(':');
+            }
+            continue;
+        }
+        if let Some(done) = warning.take() {
+            push_report_entry(report_line(&done), &mut entries);
+        }
+        if let Some(rest) = line.strip_prefix("[WARNING] ") {
+            warning_closed = rest.trim_end().ends_with(':');
+            warning = Some(rest.trim().to_string());
+        } else if let Some(rest) = line.strip_prefix("[INFO] Skipped ") {
+            match skipped_location(rest.trim_end()) {
+                Some((head, position)) => {
+                    push_report_entry(skipped_report(head, Some(position)), &mut entries)
+                }
+                None => skipped = Some(rest.trim_end().to_string()),
+            }
+        }
+    }
+    if let Some(done) = warning.take() {
+        push_report_entry(report_line(&done), &mut entries);
+    }
+    if let Some(head) = skipped.take() {
+        push_report_entry(skipped_report(&format!("{head} ...'"), None), &mut entries);
+    }
+    entries
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub(crate) struct TypstCheckDiagnostic {
+    pub severity: &'static str,
+    pub message: String,
+    pub line: Option<u32>,
+}
+
+const MAX_CHECK_DIAGNOSTICS: usize = 50;
+
+fn typst_check_location(location: &str, file: &str) -> Option<u32> {
+    let span = oleafly_core::typst_log::parse_typst_location(location)?;
+    oleafly_core::typst_log::typst_paths_match(&span.file, file).then_some(span.line)
+}
+
+pub(crate) fn typst_check_diagnostics(log: &str, file: &str) -> Vec<TypstCheckDiagnostic> {
+    log.lines()
+        .filter_map(|line| {
+            let line = line.trim_end();
+            [("error", "error: "), ("warning", "warning: ")]
+                .into_iter()
+                .find_map(|(severity, label)| {
+                    let (line_number, message) = match line.strip_prefix(label) {
+                        Some(message) => (None, message),
+                        None => {
+                            let (location, message) = line.split_once(&format!(": {label}"))?;
+                            (typst_check_location(location, file), message)
+                        }
+                    };
+                    Some(TypstCheckDiagnostic {
+                        severity,
+                        message: report_line(message),
+                        line: line_number,
+                    })
+                })
+        })
+        .take(MAX_CHECK_DIAGNOSTICS)
+        .collect()
 }
 
 /// The pandoc reader name for an importable file extension.
@@ -719,6 +848,11 @@ mod tests {
             ("typst", "latex"),
             ("html", "latex"),
             ("docx", "latex"),
+            ("html", "typst"),
+            ("docx", "typst"),
+            ("typst", "docx"),
+            ("typst", "html"),
+            ("typst", "markdown"),
         ] {
             let plan = ad_hoc_plan(source, target)
                 .unwrap_or_else(|| panic!("missing ad-hoc route {source} -> {target}"));
@@ -731,8 +865,165 @@ mod tests {
         }
         assert!(ad_hoc_plan("latex", "latex").is_none());
         assert!(ad_hoc_plan("pdf", "latex").is_none());
-        assert!(ad_hoc_plan("docx", "typst").is_none());
+        assert!(ad_hoc_plan("docx", "markdown").is_none());
         assert!(ad_hoc_plan("unknown", "html").is_none());
+    }
+
+    #[test]
+    fn typst_tools_routes_read_and_write_typst() {
+        for (source, target, reader, writer) in [
+            ("html", "typst", "html", "typst"),
+            ("docx", "typst", "docx", "typst"),
+            ("typst", "docx", "typst", "docx"),
+            ("typst", "html", "typst", "html5"),
+            ("typst", "markdown", "typst", "markdown"),
+        ] {
+            let plan = ad_hoc_plan(source, target)
+                .unwrap_or_else(|| panic!("missing ad-hoc route {source} -> {target}"));
+            assert!(plan.args.contains(&format!("--from={reader}")));
+            assert!(plan.args.contains(&format!("--to={writer}")));
+            assert!(plan.args.contains(&"--standalone".to_string()));
+            assert!(!plan.references_filter, "{source} -> {target}");
+            assert!(!plan.local_bibliography, "{source} -> {target}");
+        }
+        assert!(ad_hoc_plan("typst", "html")
+            .unwrap()
+            .args
+            .contains(&"--mathml".to_string()));
+        for source in ["html", "docx"] {
+            assert!(ad_hoc_plan(source, "typst")
+                .unwrap()
+                .args
+                .contains(&"--extract-media=assets".to_string()));
+        }
+        assert!(ad_hoc_plan("latex", "typst")
+            .unwrap()
+            .args
+            .contains(&"--number-sections".to_string()));
+        for (source, target) in [
+            ("markdown", "typst"),
+            ("latex", "markdown"),
+            ("html", "typst"),
+        ] {
+            assert!(
+                !ad_hoc_plan(source, target)
+                    .unwrap()
+                    .args
+                    .contains(&"--number-sections".to_string()),
+                "{source} -> {target}"
+            );
+        }
+        let word = ad_hoc_plan("typst", "docx").unwrap();
+        assert!(word.binary_output);
+        assert_eq!(word.output_name, "converted.docx");
+        assert_eq!(
+            ad_hoc_plan("docx", "typst").unwrap().output_name,
+            "converted.typ"
+        );
+    }
+
+    #[test]
+    fn equation_route_writes_a_bare_typst_fragment() {
+        let plan = ad_hoc_plan("equation", "typst").unwrap();
+        assert_eq!(plan.source_name, "source.tex");
+        assert_eq!(plan.output_name, "converted.typ");
+        assert!(plan.args.contains(&"--from=latex".to_string()));
+        assert!(plan.args.contains(&"--to=typst".to_string()));
+        assert!(plan.args.contains(&"--sandbox".to_string()));
+        assert!(!plan.args.contains(&"--standalone".to_string()));
+        assert!(!plan.args.contains(&"--number-sections".to_string()));
+        assert!(!plan.local_bibliography);
+        for target in ["latex", "html", "markdown", "docx"] {
+            assert!(ad_hoc_plan("equation", target).is_none(), "{target}");
+        }
+    }
+
+    #[test]
+    fn pandoc_report_keeps_skipped_markup_and_warnings_once() {
+        let log = "[INFO] Could not load include file amsmath.sty at source.tex line 2 column 50\n\
+                   [INFO] Skipped '\\maketitle' at source.tex line 7 column 11\n\
+                   [INFO] Skipped '\\centering' at source.tex line 10 column 28\n\
+                   [INFO] Skipped '\\centering' at source.tex line 10 column 28\n\
+                   [INFO] Loaded some resource\n\
+                   [WARNING] Could not convert TeX math \\begin{equation}\n\
+                   \x20  \\int_0^1 f(x)\\,dx \\label{eq:1}\n\
+                   \x20 \\end{equation}, rendering as TeX:\n\
+                   \x20 0^1 f(x)\\,dx \\label{eq:1}\n\
+                   \x20                    ^\n\
+                   \x20 unexpected control sequence \\label\n\
+                   [WARNING] Citeproc: citation knuth not found\n\
+                   [INFO] Skipped '\\begin{tikzpicture}[\n\
+                   \x20       node distance=7mm,\n\
+                   \x20     ]\n\
+                   \\end{tikzpicture}' at source.tex line 120 column 3\n";
+        assert_eq!(
+            pandoc_report(log),
+            vec![
+                "Skipped '\\maketitle' at line 7 column 11".to_string(),
+                "Skipped '\\centering' at line 10 column 28".to_string(),
+                "Could not convert TeX math \\begin{equation} \\int_0^1 f(x)\\,dx \\label{eq:1} \\end{equation}, rendering as TeX:".to_string(),
+                "Citeproc: citation knuth not found".to_string(),
+                "Skipped '\\begin{tikzpicture}[ ...' at line 120 column 3".to_string(),
+            ]
+        );
+        assert!(pandoc_report("").is_empty());
+        let many: String = (0..400)
+            .map(|line| format!("[INFO] Skipped '\\x{line}' at source.tex line {line} column 1\n"))
+            .collect();
+        assert_eq!(pandoc_report(&many).len(), MAX_REPORT_LINES);
+    }
+
+    #[test]
+    fn typst_check_diagnostics_locate_lines_in_the_converted_file() {
+        let log = "converted.typ:12:5: error: unknown variable: foo\n\
+                   converted.typ:3:1: warning: unknown font family: bar\n\
+                   ./converted.typ:20:2: error: file not found (searched at figs/plot.pdf)\n\
+                   lib.typ:4:2: error: deep failure\n\
+                   error: failed to load file\n\
+                   compiled with errors\n";
+        let diagnostics = typst_check_diagnostics(log, "converted.typ");
+        assert_eq!(
+            diagnostics,
+            vec![
+                TypstCheckDiagnostic {
+                    severity: "error",
+                    message: "unknown variable: foo".into(),
+                    line: Some(12),
+                },
+                TypstCheckDiagnostic {
+                    severity: "warning",
+                    message: "unknown font family: bar".into(),
+                    line: Some(3),
+                },
+                TypstCheckDiagnostic {
+                    severity: "error",
+                    message: "file not found (searched at figs/plot.pdf)".into(),
+                    line: Some(20),
+                },
+                TypstCheckDiagnostic {
+                    severity: "error",
+                    message: "deep failure".into(),
+                    line: None,
+                },
+                TypstCheckDiagnostic {
+                    severity: "error",
+                    message: "failed to load file".into(),
+                    line: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn typst_check_diagnostics_accept_windows_paths_to_the_converted_file() {
+        let log = "C:\\Users\\me\\AppData\\Local\\Temp\\convert\\converted.typ:12:5: error: unknown variable: foo\n\
+                   .\\converted.typ:3:1: warning: unknown font family: bar\n\
+                   C:\\Users\\me\\lib.typ:4:2: error: deep failure\n";
+        let lines: Vec<_> = typst_check_diagnostics(log, "converted.typ")
+            .into_iter()
+            .map(|diagnostic| diagnostic.line)
+            .collect();
+        assert_eq!(lines, [Some(12), Some(3), None]);
     }
 
     #[test]

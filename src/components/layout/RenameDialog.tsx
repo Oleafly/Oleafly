@@ -3,7 +3,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { useRenameStore } from "@/store/rename";
 import { useIndexStore } from "@/store/project-index";
 import { getEditorView } from "@/components/editor/cm/controller";
-import { applyRename } from "@/lib/index/nav";
+import { applyRename, renamePreview } from "@/lib/index/nav";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Input } from "@/components/ui/input";
 
@@ -20,7 +20,7 @@ export function RenameDialog() {
 
   if (!sym) return null;
 
-  const plan = index && name && name !== sym.name ? index.renamePlan(sym, name) : null;
+  const plan = renamePreview(index, sym, name);
   const valid = name.trim().length > 0 && name !== sym.name && !plan?.collision;
 
   const submit = async () => {

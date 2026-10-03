@@ -1,4 +1,11 @@
 use crate::process;
+use crate::typst::PinnedTypst;
+use crate::typst_settings::TypstSettings;
+use oleafly_core::typst_log::parse_typst_diagnostics;
+use oleafly_core::typst_toolchain::{
+    bundled_typst_version, capabilities_for, typst_compile_args, ToolchainVersion,
+    TypstCapabilities, TypstDiagnosticFormat,
+};
 use oleafly_core::{
     image_failure_evidence, image_failure_notes, place_image_findings, plain_path, slash_path,
     walk_source_tree, Engine, EngineScratch, EngineScratchBases, Error, ErrorKind, ImageFinding,
@@ -36,7 +43,8 @@ impl BuildOptions {
         let (offline, fast, halt_on_error) = match engine {
             Engine::Tectonic => (false, false, false),
             Engine::Latexmk => (false, true, false),
-            Engine::Typst | Engine::Markdown => (true, true, true),
+            Engine::Typst => (false, true, true),
+            Engine::Markdown => (true, true, true),
         };
         [
             (offline && self.offline, "--offline"),
@@ -55,6 +63,8 @@ pub struct BuildError {
     pub file: Option<String>,
     pub message: String,
     pub kind: String,
+    pub column: Option<u32>,
+    pub hints: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -90,6 +100,9 @@ pub struct BuildTools {
     pub typst: Option<PathBuf>,
     pub pandoc: Option<PathBuf>,
     rejected_overrides: BTreeMap<&'static str, ToolRejection>,
+    typst_capabilities: Option<TypstCapabilities>,
+    typst_version: Option<ToolchainVersion>,
+    typst_pin_error: Option<String>,
 }
 
 impl BuildTools {
@@ -115,7 +128,54 @@ impl BuildTools {
             typst: typst.executable,
             pandoc: pandoc.executable,
             rejected_overrides,
+            typst_capabilities: None,
+            typst_version: None,
+            typst_pin_error: None,
         }
+    }
+
+    pub(crate) fn use_pinned_typst(
+        &mut self,
+        resolution: std::result::Result<PinnedTypst, String>,
+    ) {
+        match resolution {
+            Ok(pinned) => {
+                self.typst = Some(pinned.path);
+                self.typst_capabilities = Some(pinned.capabilities);
+                self.typst_version = Some(pinned.version);
+                self.typst_pin_error = None;
+            }
+            Err(message) => {
+                self.typst = None;
+                self.typst_capabilities = None;
+                self.typst_version = None;
+                self.typst_pin_error = Some(message);
+            }
+        }
+    }
+
+    pub(crate) fn use_typst_version(&mut self, version: Option<ToolchainVersion>) {
+        self.typst_capabilities = version
+            .as_ref()
+            .map(|version| capabilities_for(&version.to_string()).clone());
+        self.typst_version = version;
+    }
+
+    pub(crate) fn typst_version_label(&self) -> String {
+        self.typst_version
+            .as_ref()
+            .unwrap_or_else(|| bundled_typst_version())
+            .to_string()
+    }
+
+    pub(crate) fn typst_pin_error(&self) -> Option<&str> {
+        self.typst_pin_error.as_deref()
+    }
+
+    pub(crate) fn typst_capabilities(&self) -> &TypstCapabilities {
+        self.typst_capabilities
+            .as_ref()
+            .unwrap_or_else(|| capabilities_for(&bundled_typst_version().to_string()))
     }
 
     pub fn for_engine(&self, engine: Engine) -> Option<&Path> {
@@ -147,6 +207,9 @@ impl BuildTools {
 
     fn missing_for_engine(&self, engine: Engine) -> Error {
         let name = engine.tool_name();
+        if let (Engine::Typst, Some(message)) = (engine, self.typst_pin_error()) {
+            return Error::new(ErrorKind::MissingTool, message);
+        }
         match self.rejected_override(name) {
             Some((variable, path)) => rejected_tool(variable, path),
             None => missing_tool(engine),
@@ -170,6 +233,7 @@ pub struct NativeCompiler {
     tools: BuildTools,
     log: CompilerLog,
     timeout: Duration,
+    typst: TypstSettings,
 }
 
 impl NativeCompiler {
@@ -178,7 +242,13 @@ impl NativeCompiler {
             tools,
             log: CompilerLog::default(),
             timeout: DEFAULT_TIMEOUT,
+            typst: TypstSettings::default(),
         }
+    }
+
+    pub(crate) fn with_typst_settings(mut self, settings: TypstSettings) -> Self {
+        self.typst = settings;
+        self
     }
 
     pub fn with_log(mut self, log: CompilerLog) -> Self {
@@ -283,6 +353,8 @@ impl NativeCompiler {
                 file: None,
                 message,
                 kind: "error".to_string(),
+                column: None,
+                hints: Vec::new(),
             },
         );
     }
@@ -326,7 +398,10 @@ impl NativeCompiler {
                 )
             }
             Engine::Latexmk => (latexmk_arguments(build, options)?, output.clone()),
-            Engine::Typst => (typst_arguments(build, &output), output.clone()),
+            Engine::Typst => (
+                typst_arguments(build, &output, self.tools.typst_capabilities(), &self.typst)?,
+                output.clone(),
+            ),
             Engine::Markdown => {
                 let tectonic = self.tools.tectonic.as_deref().ok_or_else(|| {
                     Error::new(
@@ -353,13 +428,15 @@ impl NativeCompiler {
             (None, _) => build.project_root(),
         }
         .to_path_buf();
-        let environment = scratch.as_ref().map_or_else(Vec::new, |scratch| {
-            TEMP_DIRECTORY_VARIABLES
+        let environment = match (&scratch, build.engine()) {
+            (Some(scratch), _) => TEMP_DIRECTORY_VARIABLES
                 .iter()
                 .map(|name| (*name, scratch.path().as_os_str().to_owned()))
                 .chain(resource_variable)
-                .collect()
-        });
+                .collect(),
+            (None, Engine::Typst) => self.typst.environment(),
+            (None, _) => Vec::new(),
+        };
         Ok(BuildCommand {
             executable,
             arguments,
@@ -486,6 +563,12 @@ pub fn executable_name(name: &str) -> String {
 }
 
 fn discover_tool(name: &str, variable: &'static str, workspace_root: &Path) -> ToolResolution {
+    let mut candidates = bundled_tool_candidates(name);
+    candidates.extend(path_tool_candidates(name));
+    discover_from_candidates(variable, candidates, workspace_root)
+}
+
+pub(crate) fn bundled_tool_candidates(name: &str) -> Vec<PathBuf> {
     let mut candidates = Vec::new();
     if let Ok(current) = std::env::current_exe() {
         if let Some(parent) = current.parent() {
@@ -493,12 +576,17 @@ fn discover_tool(name: &str, variable: &'static str, workspace_root: &Path) -> T
         }
     }
     candidates.extend(development_sidecars(name));
-    if let Some(path) = std::env::var_os("PATH") {
-        candidates.extend(
-            std::env::split_paths(&path).map(|directory| directory.join(executable_name(name))),
-        );
-    }
-    discover_from_candidates(variable, candidates, workspace_root)
+    candidates
+}
+
+pub(crate) fn path_tool_candidates(name: &str) -> Vec<PathBuf> {
+    std::env::var_os("PATH")
+        .map(|path| {
+            std::env::split_paths(&path)
+                .map(|directory| directory.join(executable_name(name)))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn discover_pandoc(workspace_root: &Path) -> ToolResolution {
@@ -561,13 +649,13 @@ fn discover_from_candidates(
     }
 }
 
-enum CandidateResolution {
+pub(crate) enum CandidateResolution {
     Missing,
     Safe(PathBuf),
     ProjectLocal(PathBuf),
 }
 
-fn resolve_executable(candidate: PathBuf, workspace_root: &Path) -> CandidateResolution {
+pub(crate) fn resolve_executable(candidate: PathBuf, workspace_root: &Path) -> CandidateResolution {
     if !is_executable_file(&candidate) {
         return CandidateResolution::Missing;
     }
@@ -759,17 +847,21 @@ fn detect_latexmk_flavor(source: &Path) -> Result<&'static str> {
     }
 }
 
-fn typst_arguments(build: &PreparedBuild, output: &Path) -> Vec<OsString> {
-    vec![
-        "--color=never".into(),
-        "compile".into(),
-        build.source_path().as_os_str().to_owned(),
-        output.as_os_str().to_owned(),
-        "--root".into(),
-        build.project_root().as_os_str().to_owned(),
-        "--diagnostic-format".into(),
-        "short".into(),
-    ]
+fn typst_arguments(
+    build: &PreparedBuild,
+    output: &Path,
+    capabilities: &TypstCapabilities,
+    settings: &TypstSettings,
+) -> Result<Vec<OsString>> {
+    typst_compile_args(
+        capabilities,
+        build.source_path(),
+        output,
+        build.project_root(),
+        TypstDiagnosticFormat::Human,
+        &settings.compile_flags(capabilities),
+    )
+    .map_err(|error| Error::new(ErrorKind::Build, error.to_string()))
 }
 
 fn markdown_arguments(
@@ -816,7 +908,7 @@ fn discover_bibliographies(root: &Path) -> Result<Vec<PathBuf>> {
     Ok(output)
 }
 
-async fn run_command(
+pub(crate) async fn run_command(
     executable: &Path,
     arguments: &[OsString],
     working_directory: &Path,
@@ -1027,22 +1119,18 @@ fn parse_errors(engine: Engine, log: &str) -> Vec<BuildError> {
 }
 
 fn parse_typst_errors(log: &str) -> Vec<BuildError> {
-    log.lines()
-        .filter_map(|line| {
-            ["error", "warning"].into_iter().find_map(|kind| {
-                let marker = format!(": {kind}: ");
-                let (location, message) = line.rsplit_once(&marker)?;
-                let mut parts = location.rsplitn(3, ':');
-                let _column = parts.next()?.parse::<u32>().ok()?;
-                let line = parts.next()?.parse::<u32>().ok()?;
-                let file = parts.next()?.to_string();
-                Some(BuildError {
-                    line: Some(line),
-                    file: Some(file),
-                    message: message.to_string(),
-                    kind: kind.to_string(),
-                })
-            })
+    parse_typst_diagnostics(log)
+        .into_iter()
+        .map(|diagnostic| {
+            let span = diagnostic.user_span().cloned();
+            BuildError {
+                line: span.as_ref().map(|span| span.line),
+                column: span.as_ref().map(|span| span.column + 1),
+                file: span.map(|span| span.file),
+                kind: diagnostic.severity.as_str().to_string(),
+                message: diagnostic.message,
+                hints: diagnostic.hints,
+            }
         })
         .collect()
 }
@@ -1064,6 +1152,8 @@ fn parse_pandoc_errors(log: &str) -> Vec<BuildError> {
                 file: None,
                 message: value.to_string(),
                 kind: kind.to_string(),
+                column: None,
+                hints: Vec::new(),
             })
         })
         .collect()
@@ -1090,6 +1180,8 @@ fn parse_tex_errors(log: &str) -> Vec<BuildError> {
                 file: None,
                 message: message.to_string(),
                 kind: "error".to_string(),
+                column: None,
+                hints: Vec::new(),
             })
         })
         .collect()
@@ -1168,13 +1260,17 @@ mod tests {
         }
         assert!(all.ignored_by(Engine::Tectonic).is_empty());
         assert_eq!(all.ignored_by(Engine::Latexmk), vec!["--fast"]);
-        assert_eq!(all.ignored_by(Engine::Typst), every_flag);
+        assert_eq!(
+            all.ignored_by(Engine::Typst),
+            vec!["--fast", "--halt-on-error"]
+        );
         assert_eq!(all.ignored_by(Engine::Markdown), every_flag);
         let offline_only = BuildOptions {
             offline: true,
             ..BuildOptions::default()
         };
-        assert_eq!(offline_only.ignored_by(Engine::Typst), vec!["--offline"]);
+        assert!(offline_only.ignored_by(Engine::Typst).is_empty());
+        assert_eq!(offline_only.ignored_by(Engine::Markdown), vec!["--offline"]);
         assert!(offline_only.ignored_by(Engine::Latexmk).is_empty());
     }
 
@@ -1339,7 +1435,7 @@ mod tests {
         assert_eq!(&typst_arguments[..2], ["--color=never", "compile"]);
         assert!(typst_arguments
             .windows(2)
-            .any(|pair| pair == ["--diagnostic-format", "short"]));
+            .any(|pair| pair == ["--diagnostic-format", "human"]));
         assert!(typst_command
             .produced_output
             .ends_with("_oleafly_entry.pdf"));
@@ -1670,6 +1766,55 @@ mod tests {
             .unwrap();
         assert!(typst_command.environment.is_empty());
         assert_eq!(typst_command.working_directory, typst_build.project_root());
+    }
+
+    #[test]
+    fn a_pinned_typst_runs_the_resolved_binary_and_a_missing_pin_blocks_the_build() {
+        let tools_directory = TempDir::new().unwrap();
+        let unpinned = tools_directory.path().join(executable_name("typst"));
+        let pinned = tools_directory.path().join("pinned-typst");
+        for tool in [&unpinned, &pinned] {
+            std::fs::write(tool, "tool").unwrap();
+        }
+        let typst_directory = TempDir::new().unwrap();
+        let build = workspace_for_engine(&typst_directory, Engine::Typst, None)
+            .prepare_build()
+            .unwrap();
+        let mut tools = BuildTools {
+            typst: Some(unpinned.clone()),
+            ..BuildTools::default()
+        };
+        let unpinned_arguments = arguments(
+            &NativeCompiler::new(tools.clone())
+                .command(&build, BuildOptions::default())
+                .unwrap(),
+        );
+
+        tools.use_pinned_typst(Ok(PinnedTypst {
+            path: pinned.clone(),
+            capabilities: capabilities_for("0.11.1").clone(),
+            version: ToolchainVersion::parse("0.11.1").unwrap(),
+        }));
+        let command = NativeCompiler::new(tools.clone())
+            .command(&build, BuildOptions::default())
+            .unwrap();
+        assert_eq!(command.executable, pinned);
+        assert_eq!(arguments(&command), unpinned_arguments);
+        assert_eq!(tools.typst_pin_error(), None);
+        assert_eq!(tools.typst_version_label(), "0.11.1");
+
+        tools.use_pinned_typst(Err("this project pins Typst 0.12.0".into()));
+        assert_eq!(tools.typst, None);
+        let error = NativeCompiler::new(tools.clone())
+            .command(&build, BuildOptions::default())
+            .err()
+            .unwrap();
+        assert_eq!(error.kind(), ErrorKind::MissingTool);
+        assert_eq!(error.message(), "this project pins Typst 0.12.0");
+        assert_eq!(
+            tools.typst_pin_error(),
+            Some("this project pins Typst 0.12.0")
+        );
     }
 
     #[cfg(windows)]
@@ -2062,7 +2207,10 @@ mod tests {
         assert_eq!(typst.len(), 2);
         assert_eq!(typst[0].file.as_deref(), Some("paper.typ"));
         assert_eq!(typst[0].line, Some(7));
+        assert_eq!(typst[0].column, Some(3));
         assert_eq!(typst[1].kind, "warning");
+        assert_eq!(typst[1].file.as_deref(), Some("C:\\paper.typ"));
+        assert_eq!((typst[1].line, typst[1].column), (Some(8), Some(4)));
 
         let markdown = parse_errors(
             Engine::Markdown,
@@ -2079,6 +2227,279 @@ mod tests {
         assert_eq!(tectonic[0].line, Some(12));
         assert_eq!(tectonic[1].line, None);
         assert_eq!(parse_errors(Engine::Latexmk, "normal output"), Vec::new());
+    }
+
+    const TYPST_LOGS: [(&str, &str); 6] = [
+        (
+            "0.11.1",
+            include_str!("../../oleafly-core/tests/fixtures/typst-log/0.11.1.log"),
+        ),
+        (
+            "0.12.0",
+            include_str!("../../oleafly-core/tests/fixtures/typst-log/0.12.0.log"),
+        ),
+        (
+            "0.13.1",
+            include_str!("../../oleafly-core/tests/fixtures/typst-log/0.13.1.log"),
+        ),
+        (
+            "0.14.2",
+            include_str!("../../oleafly-core/tests/fixtures/typst-log/0.14.2.log"),
+        ),
+        (
+            "0.15.0",
+            include_str!("../../oleafly-core/tests/fixtures/typst-log/0.15.0.log"),
+        ),
+        (
+            "0.15.1",
+            include_str!("../../oleafly-core/tests/fixtures/typst-log/0.15.1.log"),
+        ),
+    ];
+
+    fn typst_log_case(log: &str, name: &str) -> String {
+        let marker = format!("=== {name}\n");
+        let start = log.find(&marker).expect("fixture case") + marker.len();
+        let rest = &log[start..];
+        rest[..rest.find("=== ").unwrap_or(rest.len())].to_owned()
+    }
+
+    #[test]
+    fn typst_human_diagnostics_keep_hints_columns_and_the_calling_line() {
+        let errors = parse_errors(
+            Engine::Typst,
+            "error: unknown variable: foo\n  \u{250c}\u{2500} main.typ:3:1\n  \u{2502}\n3 \u{2502} $foo$ and text.\n  \u{2502}  ^^^\n  \u{2502}\n  = hint: try adding spaces: `f o o`\n  = hint: or quote it: `\"foo\"`\n\nwarning: unknown font family: x\n  \u{250c}\u{2500} C:\\Users\\ada\\paper\\chapters\\intro.typ:1:16\n  \u{2502}\n1 \u{2502} #set text(font: \"X\")\n  \u{2502}                 ^^^\n\n",
+        );
+        assert_eq!(
+            errors,
+            [
+                BuildError {
+                    line: Some(3),
+                    file: Some("main.typ".into()),
+                    message: "unknown variable: foo".into(),
+                    kind: "error".into(),
+                    column: Some(2),
+                    hints: vec![
+                        "try adding spaces: `f o o`".into(),
+                        "or quote it: `\"foo\"`".into(),
+                    ],
+                },
+                BuildError {
+                    line: Some(1),
+                    file: Some("C:\\Users\\ada\\paper\\chapters\\intro.typ".into()),
+                    message: "unknown font family: x".into(),
+                    kind: "warning".into(),
+                    column: Some(17),
+                    hints: Vec::new(),
+                },
+            ]
+        );
+        for (version, log) in TYPST_LOGS {
+            let traced = parse_errors(Engine::Typst, &typst_log_case(log, "package_trace"));
+            assert_eq!(traced.len(), 1, "{version}");
+            assert_eq!(traced[0].file.as_deref(), Some("main.typ"), "{version}");
+            assert_eq!((traced[0].line, traced[0].column), (Some(4), Some(2)));
+            let case = typst_log_case(log, "math_hints");
+            let hinted = parse_errors(Engine::Typst, &case);
+            assert_eq!(hinted[0].message, "unknown variable: foo", "{version}");
+            assert_eq!(hinted[0].column, Some(2), "{version}");
+            assert_eq!(
+                hinted[0].hints.len(),
+                case.matches("= hint:").count(),
+                "{version}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_unpinned_typst_uses_the_capabilities_of_the_version_it_reports() {
+        let mut tools = BuildTools::default();
+        assert_eq!(
+            tools.typst_capabilities(),
+            capabilities_for(&bundled_typst_version().to_string())
+        );
+        assert_eq!(
+            tools.typst_version_label(),
+            bundled_typst_version().to_string()
+        );
+        tools.use_typst_version(ToolchainVersion::parse("0.11.1"));
+        assert_eq!(tools.typst_capabilities(), capabilities_for("0.11.1"));
+        assert_eq!(tools.typst_version_label(), "0.11.1");
+        tools.use_typst_version(None);
+        assert_eq!(
+            tools.typst_capabilities(),
+            capabilities_for(&bundled_typst_version().to_string())
+        );
+    }
+
+    #[test]
+    fn typst_commands_carry_the_project_settings_the_version_supports() {
+        let tools_directory = TempDir::new().unwrap();
+        let typst = tools_directory.path().join(executable_name("typst"));
+        std::fs::write(&typst, "tool").unwrap();
+        let project = TempDir::new().unwrap();
+        let build = workspace_for_engine(&project, Engine::Typst, None)
+            .prepare_build()
+            .unwrap();
+        let settings = TypstSettings {
+            packages: Some(crate::typst_settings::PackageDirs {
+                package_path: PathBuf::from("/data/typst/packages"),
+                cache_path: PathBuf::from("/data/typst/packages-cache"),
+            }),
+            font_dirs: vec![PathBuf::from("/project/fonts")],
+            ignore_system_fonts: true,
+            inputs: vec![("draft".into(), "true".into())],
+            creation_timestamp: Some(7),
+            offline: true,
+        };
+        let mut tools = BuildTools {
+            typst: Some(typst),
+            ..BuildTools::default()
+        };
+        let command = |tools: &BuildTools| {
+            NativeCompiler::new(tools.clone())
+                .with_typst_settings(settings.clone())
+                .command(&build, BuildOptions::default())
+                .unwrap()
+        };
+        let current = command(&tools);
+        let current_arguments = arguments(&current);
+        for pair in [
+            ["--package-path", "/data/typst/packages"],
+            ["--package-cache-path", "/data/typst/packages-cache"],
+            ["--font-path", "/project/fonts"],
+            ["--input", "draft=true"],
+            ["--creation-timestamp", "7"],
+        ] {
+            assert!(
+                current_arguments.windows(2).any(|window| window == pair),
+                "{pair:?} {current_arguments:?}"
+            );
+        }
+        assert!(current_arguments.contains(&"--ignore-system-fonts".to_string()));
+        let environment: BTreeMap<&str, String> = current
+            .environment
+            .iter()
+            .map(|(name, value)| (*name, value.to_string_lossy().into_owned()))
+            .collect();
+        assert_eq!(environment["TYPST_PACKAGE_PATH"], "/data/typst/packages");
+        assert_eq!(environment["SOURCE_DATE_EPOCH"], "7");
+        assert_eq!(environment["HTTPS_PROXY"], "http://127.0.0.1:9");
+
+        tools.use_typst_version(ToolchainVersion::parse("0.11.1"));
+        let old_arguments = arguments(&command(&tools));
+        for absent in [
+            "--package-path",
+            "--package-cache-path",
+            "--ignore-system-fonts",
+            "--creation-timestamp",
+        ] {
+            assert!(!old_arguments.iter().any(|argument| argument == absent));
+        }
+        assert!(old_arguments
+            .windows(2)
+            .any(|window| window == ["--input", "draft=true"]));
+    }
+
+    fn real_typst() -> Option<PathBuf> {
+        let typst = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../src-tauri/binaries")
+            .join(format!(
+                "typst-{}{}",
+                option_env!("OLEAFLY_BUILD_TARGET")?,
+                std::env::consts::EXE_SUFFIX
+            ));
+        typst.is_file().then(|| typst.canonicalize().unwrap())
+    }
+
+    #[tokio::test]
+    async fn real_typst_builds_with_vendored_packages_and_variant_inputs_offline() {
+        let Some(typst) = real_typst() else {
+            return;
+        };
+        let project = TempDir::new().unwrap();
+        let data = TempDir::new().unwrap();
+        let package = "typst-packages/local/greet/0.1.0";
+        project_file(
+            project.path(),
+            &format!("{package}/typst.toml"),
+            b"[package]\nname = \"greet\"\nversion = \"0.1.0\"\nentrypoint = \"lib.typ\"\n",
+        );
+        project_file(
+            project.path(),
+            &format!("{package}/lib.typ"),
+            b"#let hello(name) = [Hello #name]\n",
+        );
+        project_file(
+            project.path(),
+            "main.typ",
+            b"#import \"@local/greet:0.1.0\": hello\n#assert.eq(sys.inputs.at(\"who\"), \"reviewer\")\n#hello(sys.inputs.at(\"who\"))\n",
+        );
+        let spec: oleafly_core::TypstSpec = serde_json::from_value(serde_json::json!({
+            "vendor_packages": true,
+            "inputs": {"who": "everyone"},
+            "variants": {"review": {"inputs": {"who": "reviewer"}}}
+        }))
+        .unwrap();
+        let workspace = Workspace::from_manifest(
+            project.path(),
+            ProjectManifest {
+                main_doc: "main.typ".into(),
+                engine: "typst".into(),
+                typst: Some(spec.clone()),
+                ..ProjectManifest::default()
+            },
+        )
+        .unwrap();
+        let settings = |variant: Option<&str>| {
+            TypstSettings::resolve(&crate::typst_settings::SettingsRequest {
+                spec: Some(&spec),
+                project_root: workspace.root(),
+                data_root: Some(data.path()),
+                variant,
+                offline: true,
+                commit_time: None,
+            })
+        };
+        let compiler = |variant: Option<&str>| {
+            NativeCompiler::new(BuildTools {
+                typst: Some(typst.clone()),
+                ..BuildTools::default()
+            })
+            .with_typst_settings(settings(variant))
+        };
+        let result = compiler(Some("review"))
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(result.ok, "{}", result.log);
+        assert!(result.output.is_some_and(|output| output.is_file()));
+
+        let base = compiler(None)
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(!base.ok);
+        assert!(
+            base.errors[0].message.contains("assertion"),
+            "{:?}",
+            base.errors
+        );
+
+        std::fs::write(
+            project.path().join("main.typ"),
+            "= Draft\n\n$foo$ and text.\n",
+        )
+        .unwrap();
+        let failed = compiler(None)
+            .build(&workspace, BuildOptions::default())
+            .await
+            .unwrap();
+        assert!(!failed.ok);
+        let error = &failed.errors[0];
+        assert_eq!(error.message, "unknown variable: foo", "{}", failed.log);
+        assert_eq!(error.file.as_deref(), Some("main.typ"));
+        assert_eq!((error.line, error.column), (Some(3), Some(2)));
+        assert!(!error.hints.is_empty(), "{}", failed.log);
     }
 
     #[test]
@@ -2192,6 +2613,8 @@ mod tests {
                 file: None,
                 message: EMPTY_PLOT.into(),
                 kind: "error".into(),
+                column: None,
+                hints: Vec::new(),
             }
         );
         assert_eq!(errors[1..], original[..]);

@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Find weaknesses in arguments, methods, evidence, and presentation.",
-        "documentEditor": "Fix prose, structure, citations, and LaTeX with focused, safe changes.",
-        "figure": "Generate publication-quality figures and diagrams as LaTeX TikZ or PGFPlots.",
+        "documentEditor": "Fix prose, structure, citations, and LaTeX or Typst source with focused, safe changes.",
+        "figure": "Generate publication-quality figures and diagrams with TikZ in LaTeX or CeTZ in Typst.",
         "researchWriter": "Draft and structure scholarly text without inventing evidence or citations."
       },
       "suggestedDescription": "Start with one of these, then edit its instructions to fit your workflow.",
@@ -685,6 +685,29 @@
       "mathPreview": {
         "description": "Show the rendered equation above the one the cursor is in.",
         "label": "Math preview"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "Tidy Typst files with typstyle when you press ⌘S or Ctrl+S. Autosave leaves them alone.",
+          "label": "Format on save"
+        },
+        "lineWidth": {
+          "description": "typstyle wraps lines longer than this.",
+          "label": "Formatter line width"
+        },
+        "indent": {
+          "description": "Spaces per indentation level in formatted Typst code.",
+          "label": "Formatter indent"
+        },
+        "inlayHints": {
+          "description": "Show parameter names before the arguments in Typst function calls.",
+          "label": "Parameter name hints"
+        },
+        "lint": {
+          "description": "Check Typst files for likely mistakes whenever they're saved. Turning this on or off restarts the Typst language server.",
+          "label": "Typst lint checks"
+        }
       }
     },
     "files": {
@@ -1024,8 +1047,56 @@
       "detail": "Ships with Oleafly, so there is nothing to set up. It needs a network connection only the first time a document imports an @preview package.",
       "heading": "Typst compiler",
       "name": "Typst (built in)",
-      "note": "Typst projects always use the bundled compiler. Choosing a compiler version, and system Typst, are not available yet.",
-      "tooltip": "Typst ships inside Oleafly, so there is nothing to install or configure. Every Typst project compiles with the bundled compiler."
+      "note": "Choose the version a project uses from the Compile menu. A project keeps that version until you change it.",
+      "tooltip": "Oleafly comes with one Typst version and can download others. Each project compiles with the version it pins, or with the default if it has no pin.",
+      "system": {
+        "name": "Typst on this computer",
+        "detail": "Projects that pin version {{version}} can compile with it."
+      },
+      "versions": {
+        "heading": "Versions",
+        "tooltip": "New projects start on the default version, and so do projects without a pin.",
+        "loading": "Checking Typst versions",
+        "default": "Default",
+        "setDefault": "Use Typst {{version}} by default",
+        "released": "Released {{date}}",
+        "install": "Install",
+        "installAria": "Install Typst {{version}}",
+        "removeAria": "Remove Typst {{version}}",
+        "removeDefault": "This is the default version. Choose another default before you remove it.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Built in",
+          "downloaded": "Downloaded",
+          "system": "System"
+        }
+      },
+      "progress": {
+        "starting": "Starting",
+        "downloading": "Downloading {{percent}}%",
+        "verifying": "Checking",
+        "extracting": "Unpacking",
+        "done": "Finishing"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} language server download is not used by any installed Typst version.",
+        "unused_other": "{{count}} language server downloads are not used by any installed Typst version.",
+        "remove": "Remove unused language server downloads",
+        "removed_one": "Removed {{count}} language server download.",
+        "removed_other": "Removed {{count}} language server downloads."
+      },
+      "error": {
+        "load": "Could not read the Typst versions.",
+        "install": "Could not install Typst {{version}}.",
+        "remove": "Could not remove Typst {{version}}.",
+        "default": "Could not change the default Typst version.",
+        "removeTinymist": "Could not remove the unused language server downloads."
+      },
+      "upgrade": {
+        "heading": "Try a newer version",
+        "detail": "Build the open project with a newer installed version and compare the results before you switch.",
+        "check": "Check with Typst {{version}}"
+      }
     }
   },
   "github": {

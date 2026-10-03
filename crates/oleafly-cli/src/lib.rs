@@ -4,6 +4,8 @@ mod desktop_link;
 mod launcher;
 mod native;
 mod process;
+mod typst;
+mod typst_settings;
 
 #[cfg(test)]
 #[path = "../tests/support/mod.rs"]
@@ -14,9 +16,10 @@ use native::{
     rejected_override_message, BuildOptions, BuildResult, BuildTools, CompilerLog, NativeCompiler,
 };
 use notify::{Config, Event, EventKind, PollWatcher, RecursiveMode, Watcher};
+use oleafly_core::typst_toolchain::{typst_version_of, TYPST_VERSION_TIMEOUT};
 use oleafly_core::{
-    is_generated_directory, DoctorCheck, DoctorStatus, Engine, Error, ErrorKind, InitOptions,
-    Workspace,
+    is_generated_directory, DoctorCheck, DoctorReport, DoctorStatus, Engine, Error, ErrorKind,
+    InitOptions, TypstSpec, Workspace,
 };
 use serde_json::{json, Value};
 use std::ffi::{OsStr, OsString};
@@ -24,6 +27,10 @@ use std::io::Write;
 use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::mpsc;
+use typst::{resolve_pinned, TypstInventory};
+use typst_settings::{
+    chosen_variant, unsupported_settings, SettingsRequest, SettingsSummary, TypstSettings,
+};
 
 pub use native::executable_name;
 
@@ -111,7 +118,7 @@ pub struct InitCommand {
     pub engine: Option<CliEngine>,
 }
 
-#[derive(Clone, Copy, Debug, Args)]
+#[derive(Clone, Debug, Args)]
 pub struct BuildCommand {
     #[arg(long, help = "Do not download compiler resources")]
     pub offline: bool,
@@ -127,6 +134,12 @@ pub struct BuildCommand {
         help = "Stop a compiler that exceeds this duration"
     )]
     pub timeout_seconds: u64,
+    #[arg(
+        long,
+        value_name = "NAME",
+        help = "Compile a Typst project with this variant from project.json"
+    )]
+    pub variant: Option<String>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -156,8 +169,8 @@ impl From<CliEngine> for Engine {
     }
 }
 
-impl From<BuildCommand> for BuildOptions {
-    fn from(value: BuildCommand) -> Self {
+impl From<&BuildCommand> for BuildOptions {
+    fn from(value: &BuildCommand) -> Self {
         Self {
             offline: value.offline,
             fast: value.fast,
@@ -166,19 +179,21 @@ impl From<BuildCommand> for BuildOptions {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct BuildRequest {
     options: BuildOptions,
     timeout: Duration,
     reporter: Reporter,
+    variant: Option<String>,
 }
 
 impl BuildRequest {
     fn new(command: BuildCommand, reporter: Reporter) -> Self {
         Self {
-            options: command.into(),
+            options: BuildOptions::from(&command),
             timeout: Duration::from_secs(command.timeout_seconds),
             reporter,
+            variant: command.variant,
         }
     }
 }
@@ -407,8 +422,11 @@ fn run_init(path: &Path, command: InitCommand, reporter: Reporter) -> Result<u8,
 
 async fn run_build(path: &Path, request: BuildRequest) -> Result<u8, Error> {
     let workspace = open_or_detect(path, request.reporter)?;
-    note_ignored_options(&workspace, request);
-    let result = compile(&workspace, request).await?;
+    note_ignored_options(&workspace, &request);
+    typst_variant(&workspace, &request)?;
+    let tools = build_tools(&workspace, None);
+    note_unapplied_settings(&workspace, &tools, request.reporter);
+    let result = compile(&workspace, &request, tools).await?;
     report_build(&result, request.reporter, "build")?;
     Ok(if result.ok { EXIT_SUCCESS } else { EXIT_BUILD })
 }
@@ -424,14 +442,20 @@ fn open_or_detect(path: &Path, reporter: Reporter) -> Result<Workspace, Error> {
     Ok(workspace)
 }
 
-fn note_ignored_options(workspace: &Workspace, request: BuildRequest) {
+fn note_ignored_options(workspace: &Workspace, request: &BuildRequest) {
     if request.reporter.json {
         return;
     }
     let Ok(engine) = workspace.manifest().engine() else {
         return;
     };
-    for flag in request.options.ignored_by(engine) {
+    let variant = (request.variant.is_some() && engine != Engine::Typst).then_some("--variant");
+    for flag in request
+        .options
+        .ignored_by(engine)
+        .into_iter()
+        .chain(variant)
+    {
         eprintln!(
             "note: {flag} is ignored for {} projects",
             engine.canonical_name()
@@ -439,19 +463,135 @@ fn note_ignored_options(workspace: &Workspace, request: BuildRequest) {
     }
 }
 
+fn is_typst_workspace(workspace: &Workspace) -> bool {
+    matches!(workspace.manifest().engine(), Ok(Engine::Typst))
+}
+
+fn typst_variant(workspace: &Workspace, request: &BuildRequest) -> Result<Option<String>, Error> {
+    if !is_typst_workspace(workspace) {
+        return Ok(None);
+    }
+    chosen_variant(
+        workspace.manifest().typst.as_ref(),
+        request.variant.as_deref(),
+    )
+}
+
+fn unapplied_settings(workspace: &Workspace, tools: &BuildTools) -> Vec<String> {
+    if !is_typst_workspace(workspace) || tools.typst.is_none() {
+        return Vec::new();
+    }
+    unsupported_settings(
+        workspace.manifest().typst.as_ref(),
+        tools.typst_capabilities(),
+        &tools.typst_version_label(),
+    )
+}
+
+fn note_unapplied_settings(workspace: &Workspace, tools: &BuildTools, reporter: Reporter) {
+    if reporter.json {
+        return;
+    }
+    for note in unapplied_settings(workspace, tools) {
+        eprintln!("note: {note}");
+    }
+}
+
+async fn typst_settings(
+    workspace: &Workspace,
+    request: &BuildRequest,
+) -> Result<TypstSettings, Error> {
+    if !is_typst_workspace(workspace) {
+        return Ok(TypstSettings::default());
+    }
+    let spec = workspace.manifest().typst.as_ref();
+    let variant = chosen_variant(spec, request.variant.as_deref())?;
+    let commit_time = if spec.is_some_and(|spec| spec.reproducible) {
+        typst_settings::head_commit_time(workspace.root()).await
+    } else {
+        None
+    };
+    let data_root = desktop_link::data_root();
+    Ok(TypstSettings::resolve(&SettingsRequest {
+        spec,
+        project_root: workspace.root(),
+        data_root: data_root.as_deref(),
+        variant: variant.as_deref(),
+        offline: request.options.offline,
+        commit_time,
+    }))
+}
+
 fn detected_workspace(path: &Path) -> Result<(Workspace, bool), Error> {
     match Workspace::open(path) {
         Err(error) if error.kind() == ErrorKind::NotInitialized => {
-            let saved = desktop_link::saved_main_document(path);
-            Workspace::detected(path, saved.as_deref()).map(|workspace| (workspace, true))
+            let saved = desktop_link::saved_project(path);
+            let workspace = Workspace::detected(path, saved.main_doc.as_deref())?;
+            with_saved_typst(workspace, saved.typst).map(|workspace| (workspace, true))
         }
         opened => opened.map(|workspace| (workspace, false)),
     }
 }
 
-async fn compile(workspace: &Workspace, request: BuildRequest) -> Result<BuildResult, Error> {
-    let tools = BuildTools::discover(workspace.root());
+fn with_saved_typst(workspace: Workspace, saved: Option<TypstSpec>) -> Result<Workspace, Error> {
+    let Some(saved) = saved else {
+        return Ok(workspace);
+    };
+    let mut manifest = workspace.manifest().clone();
+    manifest.typst = Some(overlay_typst(manifest.typst.take(), saved));
+    Workspace::from_manifest(workspace.root(), manifest)
+}
+
+fn overlay_typst(current: Option<TypstSpec>, saved: TypstSpec) -> TypstSpec {
+    let Some(current) = current else {
+        return saved;
+    };
+    let fields = |spec: &TypstSpec| match serde_json::to_value(spec) {
+        Ok(Value::Object(fields)) => fields,
+        _ => serde_json::Map::new(),
+    };
+    let mut merged = fields(&current);
+    merged.extend(fields(&saved));
+    serde_json::from_value(Value::Object(merged)).unwrap_or(saved)
+}
+
+fn typst_project_pin(workspace: &Workspace) -> Option<&str> {
+    match workspace.manifest().engine() {
+        Ok(Engine::Typst) => workspace.manifest().typst_version_pin(),
+        _ => None,
+    }
+}
+
+fn build_tools(workspace: &Workspace, inventory: Option<&TypstInventory>) -> BuildTools {
+    let mut tools = BuildTools::discover(workspace.root());
+    if let Some(pin) = typst_project_pin(workspace) {
+        let discovered;
+        let inventory = match inventory {
+            Some(inventory) => inventory,
+            None => {
+                discovered = TypstInventory::discover(workspace.root());
+                &discovered
+            }
+        };
+        tools.use_pinned_typst(resolve_pinned(pin, inventory));
+    } else if let (true, Some(path)) = (is_typst_workspace(workspace), tools.typst.clone()) {
+        let version = match inventory {
+            Some(inventory) => inventory.version_of(&path),
+            None => typst_version_of(&path, TYPST_VERSION_TIMEOUT),
+        };
+        tools.use_typst_version(version);
+    }
+    tools
+}
+
+async fn compile(
+    workspace: &Workspace,
+    request: &BuildRequest,
+    tools: BuildTools,
+) -> Result<BuildResult, Error> {
+    let settings = typst_settings(workspace, request).await?;
     NativeCompiler::new(tools)
+        .with_typst_settings(settings)
         .with_log(request.reporter.compiler_log())
         .with_timeout(request.timeout)
         .build(workspace, request.options)
@@ -544,7 +684,9 @@ fn install_hint(tool: &str) -> Option<String> {
 
 fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
     let (workspace, detected) = detected_workspace(path)?;
-    let tools = BuildTools::discover(workspace.root());
+    let engine = workspace.manifest().engine()?;
+    let inventory = (engine == Engine::Typst).then(|| TypstInventory::discover(workspace.root()));
+    let tools = build_tools(&workspace, inventory.as_ref());
     let mut report = workspace.doctor();
     if detected {
         if let Some(check) = report
@@ -559,8 +701,20 @@ fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
             );
         }
     }
-    for (name, path) in tools.required_for_engine(workspace.manifest().engine()?) {
+    for (name, path) in tools.required_for_engine(engine) {
         let rejected = tools.rejected_override(name);
+        if let (None, Some(message)) = (path, tools.typst_pin_error().filter(|_| name == "typst")) {
+            report.checks.push(DoctorCheck {
+                name: format!("compiler_{name}"),
+                status: DoctorStatus::Fail,
+                message: message.to_string(),
+            });
+            continue;
+        }
+        let found = inventory
+            .as_ref()
+            .zip(path)
+            .and_then(|(inventory, path)| inventory.find(path));
         report.checks.push(match (path, rejected) {
             (Some(path), Some((variable, rejected))) => DoctorCheck {
                 name: format!("compiler_{name}"),
@@ -574,7 +728,10 @@ fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
             (Some(path), None) => DoctorCheck {
                 name: format!("compiler_{name}"),
                 status: DoctorStatus::Pass,
-                message: path.display().to_string(),
+                message: match found {
+                    Some(found) => format!("{} ({})", path.display(), found.describe()),
+                    None => path.display().to_string(),
+                },
             },
             (None, Some((variable, rejected))) => DoctorCheck {
                 name: format!("compiler_{name}"),
@@ -591,19 +748,40 @@ fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
             },
         });
     }
+    let pin = typst_project_pin(&workspace);
+    if inventory.is_some() {
+        report
+            .checks
+            .push(typst_version_check(pin, &tools, inventory.as_ref()));
+        let unapplied = unapplied_settings(&workspace, &tools);
+        if !unapplied.is_empty() {
+            report.checks.push(DoctorCheck {
+                name: "typst_settings".to_string(),
+                status: DoctorStatus::Warning,
+                message: unapplied.join(". "),
+            });
+        }
+    }
     report.ok = report
         .checks
         .iter()
         .all(|check| check.status != DoctorStatus::Fail);
-    reporter.value(json!({"ok": report.ok, "command": "doctor", "report": report}))?;
+    let settings = inventory.is_some().then(|| {
+        SettingsSummary::of(
+            workspace.manifest().typst.as_ref(),
+            workspace.root(),
+            desktop_link::data_root().as_deref(),
+        )
+    });
+    let mut value = json!({"ok": report.ok, "command": "doctor", "report": report});
+    if let Some(inventory) = &inventory {
+        value["typst"] = json!({"pinned": pin, "found": inventory.found, "settings": settings});
+    }
+    reporter.value(value)?;
     if !reporter.json {
-        for check in &report.checks {
-            let status = match check.status {
-                DoctorStatus::Pass => "PASS",
-                DoctorStatus::Warning => "WARN",
-                DoctorStatus::Fail => "FAIL",
-            };
-            println!("{status} {}: {}", check.name, check.message);
+        print_doctor(&report, inventory.as_ref());
+        if let Some(settings) = &settings {
+            print_typst_settings(pin, settings);
         }
     }
     Ok(if report.ok {
@@ -611,6 +789,140 @@ fn run_doctor(path: &Path, reporter: Reporter) -> Result<u8, Error> {
     } else {
         EXIT_ENVIRONMENT
     })
+}
+
+fn typst_version_check(
+    pin: Option<&str>,
+    tools: &BuildTools,
+    inventory: Option<&TypstInventory>,
+) -> DoctorCheck {
+    let resolved = tools
+        .typst
+        .as_deref()
+        .and_then(|path| inventory.and_then(|inventory| inventory.find(path)));
+    let (status, message) = match (pin, tools.typst_pin_error()) {
+        (Some(pin), Some(_)) => (
+            DoctorStatus::Fail,
+            format!("This project pins Typst {pin}, but no Typst {pin} was found"),
+        ),
+        (Some(pin), None) => (DoctorStatus::Pass, format!("This project pins Typst {pin}")),
+        (None, _) => (
+            DoctorStatus::Pass,
+            match resolved.and_then(|found| found.version.as_ref()) {
+                Some(version) => {
+                    format!("No Typst version is pinned, so builds use Typst {version}")
+                }
+                None => "No Typst version is pinned".to_string(),
+            },
+        ),
+    };
+    DoctorCheck {
+        name: "typst_version".to_string(),
+        status,
+        message,
+    }
+}
+
+fn print_doctor(report: &DoctorReport, inventory: Option<&TypstInventory>) {
+    for check in &report.checks {
+        let status = match check.status {
+            DoctorStatus::Pass => "PASS",
+            DoctorStatus::Warning => "WARN",
+            DoctorStatus::Fail => "FAIL",
+        };
+        println!("{status} {}: {}", check.name, check.message);
+    }
+    let Some(inventory) = inventory else {
+        return;
+    };
+    if inventory.found.is_empty() {
+        println!("Typst found: none");
+        return;
+    }
+    println!("Typst found:");
+    for found in &inventory.found {
+        let version = found
+            .version
+            .as_ref()
+            .map_or_else(|| "unknown".to_string(), ToString::to_string);
+        println!(
+            "  {version:<12} {:<13} {}",
+            found.source.label(),
+            found.path.display()
+        );
+    }
+}
+
+fn listed(items: Vec<String>) -> String {
+    if items.is_empty() {
+        "none".to_string()
+    } else {
+        items.join(", ")
+    }
+}
+
+fn assignments(inputs: &std::collections::BTreeMap<String, String>) -> Vec<String> {
+    inputs
+        .iter()
+        .map(|(key, value)| format!("{key}={value}"))
+        .collect()
+}
+
+fn on_off(value: bool) -> String {
+    if value { "on" } else { "off" }.to_string()
+}
+
+fn typst_settings_lines(pin: Option<&str>, settings: &SettingsSummary) -> Vec<String> {
+    let path = |path: &Option<PathBuf>| {
+        path.as_ref()
+            .map_or_else(|| "none".to_string(), |path| path.display().to_string())
+    };
+    let variants = settings
+        .variants
+        .iter()
+        .map(|(name, inputs)| match assignments(inputs).as_slice() {
+            [] => name.clone(),
+            inputs => format!("{name} ({})", inputs.join(", ")),
+        })
+        .collect();
+    [
+        ("Version pin", pin.unwrap_or("none").to_string()),
+        ("Vendored packages", on_off(settings.vendor_packages)),
+        ("Package folder", path(&settings.package_path)),
+        ("Package cache", path(&settings.package_cache_path)),
+        (
+            "Font folders",
+            listed(
+                settings
+                    .font_dirs
+                    .iter()
+                    .map(|directory| directory.display().to_string())
+                    .collect(),
+            ),
+        ),
+        (
+            "System fonts",
+            if settings.system_fonts {
+                "used"
+            } else {
+                "ignored"
+            }
+            .to_string(),
+        ),
+        ("Reproducible", on_off(settings.reproducible)),
+        ("Inputs", listed(assignments(&settings.inputs))),
+        ("Variants", listed(variants)),
+    ]
+    .into_iter()
+    .map(|(label, value)| format!("  {label:<18} {value}"))
+    .collect()
+}
+
+fn print_typst_settings(pin: Option<&str>, settings: &SettingsSummary) {
+    println!("Typst settings:");
+    for line in typst_settings_lines(pin, settings) {
+        println!("{line}");
+    }
 }
 
 fn run_project_info(path: &Path, reporter: Reporter) -> Result<u8, Error> {
@@ -643,7 +955,8 @@ fn run_project_info(path: &Path, reporter: Reporter) -> Result<u8, Error> {
 async fn run_watch(path: &Path, request: BuildRequest) -> Result<u8, Error> {
     let reporter = request.reporter;
     let workspace = open_or_detect(path, reporter)?;
-    note_ignored_options(&workspace, request);
+    note_ignored_options(&workspace, &request);
+    typst_variant(&workspace, &request)?;
     let workspace_root = workspace.root().to_path_buf();
     let (sender, mut receiver) = mpsc::unbounded_channel();
     let mut watcher = create_watcher(sender)?;
@@ -658,7 +971,7 @@ async fn run_watch(path: &Path, request: BuildRequest) -> Result<u8, Error> {
     if !reporter.json {
         println!("Watching {}", workspace_root.display());
     }
-    if !watch_build(&workspace_root, request).await? {
+    if !watch_build(&workspace_root, &request, true).await? {
         return Ok(EXIT_SUCCESS);
     }
     loop {
@@ -685,7 +998,7 @@ async fn run_watch(path: &Path, request: BuildRequest) -> Result<u8, Error> {
                 emit_watch_error(reporter, &error)?;
             }
         }
-        if !watch_build(&workspace_root, request).await? {
+        if !watch_build(&workspace_root, &request, false).await? {
             return Ok(EXIT_SUCCESS);
         }
     }
@@ -711,13 +1024,17 @@ fn create_watcher(
     }
 }
 
-async fn watch_build(path: &Path, request: BuildRequest) -> Result<bool, Error> {
+async fn watch_build(path: &Path, request: &BuildRequest, first: bool) -> Result<bool, Error> {
     let reporter = request.reporter;
     reporter.value(json!({"ok": true, "event": "build_started"}))?;
     let result = tokio::select! {
         result = async {
             let (workspace, _) = detected_workspace(path)?;
-            compile(&workspace, request).await
+            let tools = build_tools(&workspace, None);
+            if first {
+                note_unapplied_settings(&workspace, &tools, reporter);
+            }
+            compile(&workspace, request, tools).await
         } => result,
         signal = tokio::signal::ctrl_c() => {
             signal.map_err(|error| Error::new(ErrorKind::Io, error.to_string()))?;
@@ -955,6 +1272,81 @@ mod tests {
     }
 
     #[test]
+    fn build_and_watch_take_a_typst_variant() {
+        for command in ["build", "watch"] {
+            let cli =
+                Cli::try_parse_from(["oleafly", command, "--variant", "camera-ready"]).unwrap();
+            let (Command::Build(parsed) | Command::Watch(parsed)) = cli.command else {
+                panic!("expected a build command");
+            };
+            assert_eq!(parsed.variant.as_deref(), Some("camera-ready"));
+            let request = BuildRequest::new(parsed, Reporter { json: false });
+            assert_eq!(request.variant.as_deref(), Some("camera-ready"));
+        }
+        let cli = Cli::try_parse_from(["oleafly", "build"]).unwrap();
+        let Command::Build(parsed) = cli.command else {
+            panic!("expected build command");
+        };
+        assert_eq!(parsed.variant, None);
+    }
+
+    #[test]
+    fn doctor_lists_the_effective_typst_settings() {
+        let summary = SettingsSummary {
+            vendor_packages: true,
+            package_path: Some(PathBuf::from("/p/typst-packages")),
+            package_cache_path: Some(PathBuf::from("/data/typst/packages-cache")),
+            font_dirs: vec![PathBuf::from("/p/fonts"), PathBuf::from("/p/assets/type")],
+            system_fonts: false,
+            reproducible: true,
+            inputs: [("draft".to_string(), "true".to_string())].into(),
+            variants: [
+                (
+                    "review".to_string(),
+                    [("anonymous".to_string(), "true".to_string())].into(),
+                ),
+                ("plain".to_string(), Default::default()),
+            ]
+            .into(),
+        };
+        let lines = typst_settings_lines(Some("0.13.1"), &summary);
+        let value = |label: &str| {
+            lines
+                .iter()
+                .find_map(|line| line.trim_start().strip_prefix(label))
+                .map(str::trim)
+                .unwrap_or_else(|| panic!("no {label} line in {lines:?}"))
+                .to_string()
+        };
+        assert_eq!(value("Version pin"), "0.13.1");
+        assert_eq!(value("Vendored packages"), "on");
+        assert_eq!(value("Package folder"), "/p/typst-packages");
+        assert_eq!(value("Font folders"), "/p/fonts, /p/assets/type");
+        assert_eq!(value("System fonts"), "ignored");
+        assert_eq!(value("Reproducible"), "on");
+        assert_eq!(value("Inputs"), "draft=true");
+        assert_eq!(value("Variants"), "plain, review (anonymous=true)");
+
+        let empty = SettingsSummary::of(None, Path::new("/nowhere"), None);
+        let lines = typst_settings_lines(None, &empty);
+        for label in [
+            "Version pin",
+            "Package folder",
+            "Font folders",
+            "Inputs",
+            "Variants",
+        ] {
+            assert!(
+                lines
+                    .iter()
+                    .any(|line| line.trim_start().starts_with(label) && line.ends_with(" none")),
+                "{label}: {lines:?}"
+            );
+        }
+        assert!(lines.iter().any(|line| line.ends_with(" used")));
+    }
+
+    #[test]
     fn watcher_ignores_generated_and_dependency_trees() {
         let root = Path::new("workspace");
         assert!(ignored_path(&root.join(".oleafly/build/out.pdf"), root));
@@ -1004,11 +1396,12 @@ mod tests {
             assert_eq!(Engine::from(cli_engine), engine);
         }
         assert_eq!(
-            BuildOptions::from(BuildCommand {
+            BuildOptions::from(&BuildCommand {
                 offline: true,
                 fast: true,
                 halt_on_error: true,
                 timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
+                variant: Some("review".into()),
             }),
             BuildOptions {
                 offline: true,
@@ -1029,6 +1422,7 @@ mod tests {
             fast: false,
             halt_on_error: false,
             timeout_seconds: DEFAULT_TIMEOUT_SECONDS,
+            variant: None,
         };
         assert_eq!(command_name(&init()), "init");
         assert_eq!(command_name(&Command::Build(build())), "build");
@@ -1093,5 +1487,57 @@ mod tests {
         ] {
             assert_eq!(exit_for_error(&Error::new(kind, "project")), EXIT_PROJECT);
         }
+    }
+
+    fn typst_spec(value: Value) -> TypstSpec {
+        serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn the_saved_typst_settings_reach_a_detected_folder_whole() {
+        let directory = tempfile::TempDir::new().unwrap();
+        std::fs::write(directory.path().join("main.typ"), "= Paper\n").unwrap();
+        let detected = Workspace::detected(directory.path(), None).unwrap();
+        let saved = json!({
+            "version": "0.13.1",
+            "vendor_packages": true,
+            "font_paths": ["fonts"],
+            "future": {"enabled": true}
+        });
+        let workspace = with_saved_typst(detected, Some(typst_spec(saved.clone()))).unwrap();
+        let manifest = workspace.manifest();
+        assert_eq!(manifest.typst_version_pin(), Some("0.13.1"));
+        assert!(manifest.typst_vendor_packages());
+        assert_eq!(serde_json::to_value(&manifest.typst).unwrap(), saved);
+
+        let untouched = Workspace::detected(directory.path(), None).unwrap();
+        let unchanged = with_saved_typst(untouched, None).unwrap();
+        assert!(unchanged.manifest().typst.is_none());
+    }
+
+    #[test]
+    fn saved_typst_settings_keep_the_fields_a_manifest_already_has() {
+        let directory = tempfile::TempDir::new().unwrap();
+        std::fs::write(directory.path().join("main.typ"), "= Paper\n").unwrap();
+        let manifest = oleafly_core::ProjectManifest {
+            main_doc: "main.typ".into(),
+            engine: "typst".into(),
+            typst: Some(typst_spec(json!({
+                "version": "0.12.0",
+                "inputs": {"draft": "true"}
+            }))),
+            ..oleafly_core::ProjectManifest::default()
+        };
+        let workspace = Workspace::from_manifest(directory.path(), manifest).unwrap();
+        let saved = typst_spec(json!({"version": "0.13.1", "vendor_packages": true}));
+        let workspace = with_saved_typst(workspace, Some(saved)).unwrap();
+        assert_eq!(
+            serde_json::to_value(&workspace.manifest().typst).unwrap(),
+            json!({
+                "version": "0.13.1",
+                "vendor_packages": true,
+                "inputs": {"draft": "true"}
+            })
+        );
     }
 }

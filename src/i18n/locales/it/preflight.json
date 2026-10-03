@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Immagine senza testo alternativo",
-      "detail": "Questa immagine non ha un testo alternativo descrittivo, quindi uno screen reader non può trasmetterla. Aggiungi una descrizione, ad esempio \\includegraphics[alt={A headshot of the author}]{...}. Le immagini puramente decorative vanno invece marcate come artefatti."
+      "detail": "Questa immagine non ha un testo alternativo descrittivo, quindi uno screen reader non può trasmetterla. Aggiungi una descrizione, ad esempio \\includegraphics[alt={A headshot of the author}]{...}. Le immagini puramente decorative vanno invece marcate come artefatti.",
+      "detailTypst": "Questa immagine non ha testo alternativo, quindi uno screen reader non può trasmetterla. Aggiungi una descrizione, ad esempio #image(\"chart.png\", alt: \"Bar chart of yearly sales\").",
+      "detailTypstFigure": "Questa immagine non ha testo alternativo, quindi uno screen reader non può trasmetterla. Descrivila sull'immagine o sulla figura che la contiene, ad esempio #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")."
     },
     "link-text": {
       "title": "Testo del collegamento non descrittivo",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "Nessun titolo nel PDF",
-      "detail": "Il PDF non ha un titolo nei metadati, quello che le tecnologie assistive e i browser usano per annunciare il documento. Impostalo con hyperref, ad esempio \\hypersetup{pdftitle={Your Name, CV}}."
+      "detail": "Il PDF non ha un titolo nei metadati, quello che le tecnologie assistive e i browser usano per annunciare il documento. Impostalo con hyperref, ad esempio \\hypersetup{pdftitle={Your Name, CV}}.",
+      "detailTypst": "Il PDF non ha un titolo nei metadati, quello che le tecnologie assistive e i browser usano per annunciare il documento. Impostalo con #set document(title: \"Your title\") oppure passa un titolo al tuo modello."
     },
     "heading-skip": {
       "title": "Livello di titolo saltato",
@@ -299,11 +302,16 @@
     },
     "refs-undefined-cite": {
       "title": "La citazione \"{{key}}\" non è in nessun .bib",
-      "detail": "Questa chiave di citazione non è stata trovata nella bibliografia caricata, quindi nel PDF comparirà come [?]. Controlla la chiave oppure aggiungi la voce al tuo .bib (Aggiungi citazione può recuperarla)."
+      "detail": "Questa chiave di citazione non è stata trovata nella bibliografia caricata, quindi nel PDF comparirà come [?]. Controlla la chiave oppure aggiungi la voce al tuo .bib (Aggiungi citazione può recuperarla).",
+      "titleTypst": "La citazione \"{{key}}\" non è nella bibliografia",
+      "detailTypst": "Questa chiave non è in nessun file bibliografico caricato dal progetto, quindi la compilazione non riesce. Controlla la chiave oppure aggiungi la voce al tuo file .bib o Hayagriva .yml."
     },
     "refs-undefined-ref": {
       "title": "Il riferimento a \"{{label}}\" non ha nessun \\label corrispondente",
-      "detail": "Questo riferimento incrociato punta a un'etichetta non definita, quindi nel PDF comparirà come ??. Controlla il nome dell'etichetta oppure aggiungi il \\label mancante."
+      "detail": "Questo riferimento incrociato punta a un'etichetta non definita, quindi nel PDF comparirà come ??. Controlla il nome dell'etichetta oppure aggiungi il \\label mancante.",
+      "titleTypst": "Nessuna etichetta o voce chiamata \"{{label}}\"",
+      "detailTypst": "Typst interrompe la compilazione qui. Controlla l'ortografia oppure aggiungi l'etichetta <label> o la voce bibliografica mancante.",
+      "detailTypstPackage": "Nessuna etichetta o voce bibliografica del progetto ha questo nome. Un pacchetto può creare etichette durante la compilazione del documento, come le voci di un glossario. Se il log di compilazione lo segnala, controlla l'ortografia."
     },
     "refs-duplicate-label": {
       "title": "Etichetta duplicata \"{{label}}\"",
@@ -313,11 +321,14 @@
       "titleImage": "Immagine non trovata: {{file}}",
       "detailImage": "Questo \\includegraphics punta a un file che non è nel progetto, quindi la figura mancherà. Controlla il nome del file e il percorso.",
       "titleInclude": "File incluso non trovato: {{file}}",
-      "detailInclude": "Questo \\input o \\include punta a un file che non è nel progetto. Controlla il nome del file e il percorso."
+      "detailInclude": "Questo \\input o \\include punta a un file che non è nel progetto. Controlla il nome del file e il percorso.",
+      "detailImageTypst": "Nessun file del progetto corrisponde a questo percorso dell'immagine, quindi la compilazione non riesce. Typst legge un percorso relativo al file, o dalla radice del progetto quando inizia con /.",
+      "detailIncludeTypst": "Nessun file del progetto corrisponde a questo percorso #include o #import, quindi la compilazione non riesce. Controlla il nome del file e il percorso."
     },
     "refs-bib-missing": {
       "title": "File bibliografico non trovato: {{file}}",
-      "detail": "Questo \\bibliography o \\addbibresource punta a un file che non è nel progetto, quindi ogni citazione comparirà come [?]. Controlla il nome del file oppure importa una libreria di riferimenti per crearlo."
+      "detail": "Questo \\bibliography o \\addbibresource punta a un file che non è nel progetto, quindi ogni citazione comparirà come [?]. Controlla il nome del file oppure importa una libreria di riferimenti per crearlo.",
+      "detailTypst": "Questa chiamata #bibliography punta a un file che non è nel progetto, quindi la compilazione non riesce. Controlla il nome del file oppure importa una libreria di riferimenti per crearlo."
     },
     "refs-duplicate-bib": {
       "title": "Voci bibliografiche duplicate: {{keys}}",
@@ -360,7 +371,8 @@
     },
     "privacy-blind-author": {
       "title": "L'identità dell'autore è ancora nel sorgente per la revisione anonima",
-      "detail": "Il sorgente contiene un autore, un'affiliazione, un'email, un indirizzo o un ringraziamento non anonimi. Sostituisci i contenuti identificativi usando la modalità di revisione anonima della sede."
+      "detail": "Il sorgente contiene un autore, un'affiliazione, un'email, un indirizzo o un ringraziamento non anonimi. Sostituisci i contenuti identificativi usando la modalità di revisione anonima della sede.",
+      "detailTypst": "Il sorgente dà al documento o al suo modello un nome di autore, un'email o un'affiliazione. Rimuovili oppure passa il modello alla sua modalità anonima."
     },
     "privacy-blind-acknowledgements": {
       "title": "I ringraziamenti possono rivelare gli autori",
@@ -389,15 +401,20 @@
     "submission-document-class": {
       "title": "La classe di documento {{profile}} non è attiva",
       "detail": "Questo profilo si aspetta {{expected}}, ma il progetto usa {{actual}}. Parti dal modello ufficiale aggiornato della sede.",
-      "detailNoClass": "Questo profilo si aspetta {{expected}}, ma non è stata rilevata nessuna classe di documento. Parti dal modello ufficiale aggiornato della sede."
+      "detailNoClass": "Questo profilo si aspetta {{expected}}, ma non è stata rilevata nessuna classe di documento. Parti dal modello ufficiale aggiornato della sede.",
+      "titleTypst": "Il modello {{profile}} non è attivo",
+      "detailTypst": "Questo profilo si aspetta un modello Typst come {{expected}}, ma il progetto importa {{actual}}. Parti da uno di quei modelli.",
+      "detailNoTemplateTypst": "Questo profilo si aspetta un modello Typst come {{expected}}, ma il progetto non ne importa nessuno. Parti da uno di quei modelli."
     },
     "submission-no-abstract": {
       "title": "Nessun abstract rilevato",
-      "detail": "Questo profilo di pubblicazione si aspetta un abstract in un ambiente abstract standard. Aggiungilo oppure verifica che quella specifica sede non lo richieda."
+      "detail": "Questo profilo di pubblicazione si aspetta un abstract in un ambiente abstract standard. Aggiungilo oppure verifica che quella specifica sede non lo richieda.",
+      "detailTypst": "Questo profilo di pubblicazione si aspetta un abstract. Passalo al tuo modello, ad esempio abstract: [Your abstract], oppure aggiungi un titolo Abstract."
     },
     "submission-no-keywords": {
       "title": "Nessuna parola chiave di pubblicazione rilevata",
-      "detail": "Il profilo {{profile}} si aspetta le parole chiave nel comando o nell'ambiente standard del suo modello."
+      "detail": "Il profilo {{profile}} si aspetta le parole chiave nel comando o nell'ambiente standard del suo modello.",
+      "detailTypst": "Il profilo {{profile}} si aspetta parole chiave. Passale al tuo modello, ad esempio keywords: (\"one\", \"two\") o index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Formato di figura non supportato: {{file}}",
@@ -405,7 +422,8 @@
     },
     "submission-placeholder": {
       "title": "Nel manoscritto ci sono ancora segnaposto di bozza",
-      "detail": "Il sorgente contiene TODO, TBD, FIXME, testo segnaposto o punti interrogativi. Controlla ogni occorrenza prima di produrre la versione definitiva."
+      "detail": "Il sorgente contiene TODO, TBD, FIXME, testo segnaposto o punti interrogativi. Controlla ogni occorrenza prima di produrre la versione definitiva.",
+      "detailTypst": "Il documento chiama ancora #lorem o contiene testo segnaposto. Sostituiscilo prima dell'invio definitivo."
     },
     "submission-pdf-version": {
       "title": "La versione PDF {{version}} è inferiore a quella richiesta",
@@ -436,6 +454,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Non è stato possibile verificare l'incorporazione di alcuni font",
       "detail": "Preflight non è riuscito a dimostrare lo stato di incorporazione di {{fonts}}. Verificali con il validatore PDF ufficiale della sede."
+    },
+    "empty-heading": {
+      "title": "Titolo vuoto",
+      "detail": "Questo titolo non ha testo. Gli screen reader lo annunciano come una voce vuota nell'indice. Aggiungi un titolo o rimuovilo."
+    },
+    "todo-in-text": {
+      "title": "Nota di bozza nel testo",
+      "detail": "Questa nota fa parte del testo, quindi viene stampata nel PDF. Risolvila oppure trasformala in un commento //."
+    },
+    "no-author": {
+      "title": "Nessun autore del documento",
+      "detail": "I metadati del PDF non hanno un autore. Aggiungilo con #set document(author: \"Your Name\") oppure passa gli autori al tuo modello. Omettilo per una revisione anonima."
+    },
+    "privacy-local-path": {
+      "title": "Percorso sul tuo computer: {{path}}",
+      "detail": "Questo percorso punta a una cartella fuori dal progetto. Può rivelare il tuo nome utente e la compilazione non riesce su qualsiasi altra macchina. Sposta il file nel progetto e usa un percorso relativo."
+    },
+    "privacy-blind-email": {
+      "title": "Indirizzo email in {{file}}",
+      "detail": "Un indirizzo email può identificare gli autori durante la revisione anonima. Rimuovilo o sostituiscilo con un segnaposto anonimo."
+    },
+    "refs-no-bibliography": {
+      "title": "Citazioni senza bibliografia",
+      "detail": "Il documento cita delle fonti ma non chiama mai #bibliography, quindi Typst non può risolverle. Aggiungi #bibliography(\"refs.bib\") dove deve comparire l'elenco dei riferimenti."
+    },
+    "submission-large-image": {
+      "title": "Immagine molto grande: {{file}}",
+      "detail": "Questa immagine supera {{limit}}. Le immagini grandi rallentano la compilazione e appesantiscono il PDF. Alcune sedi limitano anche la dimensione del caricamento. Comprimila oppure esportala alla dimensione di stampa."
     }
   },
   "lens": {
@@ -666,5 +712,15 @@
     "compileTagged": "Compila con i tag e verifica",
     "compileTaggedWarning": "Il LuaLaTeX di sistema può leggere i file locali. Eseguilo solo per un progetto di cui ti fidi.",
     "noEngine": "Per produrre il PDF taggato dentro l'app, abilita un motore nelle impostazioni, in Motore LaTeX. Oppure compila il sorgente preparato con il tuo pdfLaTeX o LuaLaTeX da TeX Live 2025 o successive."
+  },
+  "typstStandards": {
+    "title": "Standard PDF",
+    "intro": "Typst scrive da solo PDF archiviabili e accessibili. Scegli uno standard, poi esporta il PDF.",
+    "standard": "Standard",
+    "export": "Esporta PDF",
+    "tagged": "Typst {{version}} tagga ogni PDF per gli screen reader, quindi non serve una compilazione taggata separata.",
+    "untagged": "Typst {{version}} non tagga i PDF per gli screen reader. Typst 0.14 e versioni successive lo fanno.",
+    "none": "Typst {{version}} non può scrivere PDF conformi agli standard. Scegli Typst 0.12 o successivo nel menu di compilazione.",
+    "uaNote": "PDF/UA-1 richiede un titolo del documento e un testo alternativo per ogni immagine."
   }
 }

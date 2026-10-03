@@ -300,7 +300,7 @@
       "literatureSearch": "OpenAlex'te anahtar sözcükle makale arar, anahtar gerekmez.",
       "verifyCitation": "Bir DOI'yi veya başlığı doi.org ya da Crossref üzerinden doğrulanmış BibTeX'e dönüştürür.",
       "projectLibrarySearch": "Projenin kendi metninde ve notlarında anahtar sözcükle arar.",
-      "previewFigure": "Bir TikZ veya PGFPlots şeklini tek başına derler ve sonucu sohbette gösterir.",
+      "previewFigure": "Bir TikZ veya CeTZ şeklini tek başına işler ve sonucu sohbette gösterir.",
       "insertFigure": "Bitmiş şekli imlecin olduğu yere başlık ve etiketle ekler, figures/ altına bir PNG kaydeder.",
       "loadImage": "Projede zaten bulunan bir görsele bakar.",
       "updateTodos": "Sohbette gösterilen adım adım planı yazar veya günceller.",
@@ -343,6 +343,7 @@
     "noDescription": "Açıklama verilmedi.",
     "notes": {
       "latexOnly": "Yalnızca LaTeX projeleri",
+      "latexAndTypstOnly": "Yalnızca LaTeX ve Typst projeleri",
       "pdfCaptureSetting": "PDF sayfa yakalama ayarı gerekir",
       "chatApproval": "Sohbette, her seferinde tek komut olarak onaylanır",
       "browserSetting": "Web tarayıcısı ayarı gerekir"
@@ -676,6 +677,24 @@
     "tikzFigure": {
       "label": "TikZ şekli",
       "description": "Sohbette TikZ kodu taslağı hazırlar"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Typst hatalarını düzelt"
+      },
+      "writeEquation": {
+        "description": "Doğal dilden Typst matematiğine"
+      },
+      "academicPresentation": {
+        "description": "Makalenizden bir Typst sunumu"
+      },
+      "generateTable": {
+        "description": "Sohbette bir Typst tablosu taslağı hazırlar"
+      },
+      "figure": {
+        "label": "CeTZ şekli",
+        "description": "Sohbette CeTZ kodu taslağı hazırlar"
+      }
     }
   },
   "turn": {

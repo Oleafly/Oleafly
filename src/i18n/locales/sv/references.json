@@ -154,5 +154,10 @@
       "detail": "Den senaste projektrevisionen har inte indexerats än.",
       "title": "Väntar på projektanalysen"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Citeringsstil",
+    "ariaLabel": "Citeringsstil för bibliografin i {{path}}",
+    "failed": "Oleafly kunde inte ändra citeringsstilen."
   }
 }

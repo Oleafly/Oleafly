@@ -369,3 +369,119 @@ describe("LogPane", () => {
     expect(text.split("Undefined control sequence").length - 1).toBe(2);
   });
 });
+
+describe("LogPane with Typst diagnostics", () => {
+  const TYPST_LOG = [
+    "error: unknown variable: foo",
+    "  ┌─ chapters/intro.typ:3:7",
+    "  │",
+    "3 │ Hello #foo world.",
+    "  │        ^^^",
+    "",
+  ].join("\n");
+
+  const typstError = {
+    line: 3,
+    file: "chapters/intro.typ",
+    message: "unknown variable: foo",
+    kind: "error",
+    explanation: "Typst does not know this name.",
+    column: 8,
+    end_column: 11,
+    source_line: "Hello #foo world.",
+    hints: [
+      "if you meant to display multiple letters as is, try adding spaces between each letter: `f o o`",
+      "or if you meant to display this as text, try placing it in quotes: `\"foo\"`",
+    ],
+  };
+  const typstLabel = {
+    line: 1,
+    file: "main.typ",
+    message: "label `<intro>` does not exist in the document",
+    kind: "error",
+    explanation: "Nothing in the document has this label.",
+    column: 5,
+    end_column: 11,
+    source_line: "See @intro.",
+  };
+  const typstWarning = {
+    line: 2,
+    file: "main.typ",
+    message: "unknown font family: nosuchfont",
+    kind: "warning",
+    explanation: "Typst cannot find this font.",
+    column: 17,
+    end_column: 29,
+    source_line: '#set text(font: "NoSuchFont")',
+  };
+  const structured: PortLogDiagnostic[] = [
+    { severity: "error", category: "error", file: "chapters/intro.typ", line: 3, message: typstError.message },
+    { severity: "error", category: "undefined-reference", file: "main.typ", line: 1, message: typstLabel.message },
+    { severity: "warning", category: "package-warning", file: "main.typ", line: 2, message: typstWarning.message },
+  ];
+
+  beforeEach(() => {
+    openFileAndGotoLine.mockClear();
+    parseLatexLogSpy.mockClear();
+    useFilesStore.setState({ activePath: "main.typ", mainDoc: "main.typ", tree: [] } as unknown as ReturnType<
+      typeof useFilesStore.getState
+    >);
+  });
+
+  it("shows the source line with a caret under the span, then the hints", async () => {
+    setCompileState({ status: "error", log: TYPST_LOG, errors: [typstError], diagnostics: [structured[0]] });
+    render(<LogPane />);
+    const [excerpt] = await screen.findAllByTestId("compile-error-excerpt");
+    expect(excerpt.textContent).toContain("Hello #foo world.");
+    const caret = excerpt.querySelector("[data-caret]");
+    expect(caret?.textContent).toBe("^^^");
+    expect(caret?.previousElementSibling?.textContent).toBe("Hello #");
+    expect(screen.getByText(/try adding spaces between each letter/)).toBeInTheDocument();
+    expect(screen.getByText(/try placing it in quotes/)).toBeInTheDocument();
+    expect(screen.getByText("chapters/intro.typ · line 3, column 8")).toBeInTheDocument();
+  });
+
+  it("opens the exact line and column of a Typst error", () => {
+    setCompileState({ status: "error", log: TYPST_LOG, errors: [typstError], diagnostics: [structured[0]] });
+    render(<LogPane />);
+    fireEvent.click(screen.getByLabelText("Go to code location"));
+    expect(openFileAndGotoLine).toHaveBeenCalledWith("chapters/intro.typ", 3, 8);
+  });
+
+  it("summarizes errors, warnings and unresolved references and shows each diagnostic once", async () => {
+    setCompileState({
+      status: "error",
+      log: TYPST_LOG,
+      errors: [typstError, typstLabel, typstWarning],
+      diagnostics: structured,
+    });
+    const { container } = render(<LogPane />);
+    const summary = await screen.findByTestId("compile-log-summary");
+    expect(summary.textContent).toContain("2 errors");
+    expect(summary.textContent).toContain("1 warning");
+    expect(summary.textContent).toContain("1 unresolved reference");
+    const text = container.textContent ?? "";
+    expect(text.split("Typst cannot find this font.").length - 1).toBe(1);
+    expect(text.split("unknown font family").length - 1).toBe(0);
+    expect(text.split("Nothing in the document has this label.").length - 1).toBe(1);
+  });
+
+  it("copies the excerpt and the hints with the error", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    setCompileState({ status: "error", log: TYPST_LOG, errors: [typstError], diagnostics: [structured[0]] });
+    render(<LogPane />);
+    fireEvent.click(screen.getByLabelText("Copy error"));
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    const copied = writeText.mock.calls[0][0] as string;
+    expect(copied).toContain("3 | Hello #foo world.");
+    expect(copied).toContain("  |        ^^^");
+    expect(copied).toContain("Hint: if you meant to display multiple letters as is");
+  });
+
+  it("does not run the LaTeX log parser over a Typst log", () => {
+    setCompileState({ status: "error", log: TYPST_LOG, errors: [typstError], diagnostics: null });
+    render(<LogPane />);
+    expect(parseLatexLogSpy).not.toHaveBeenCalled();
+  });
+});

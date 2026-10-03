@@ -59,6 +59,8 @@
       "startingAndInitializing": "Spouští se a inicializuje jazyková služba projektu.",
       "stopTimeout": "Předchozí proces jazykové služby se včas nezastavil. Opakováním jej obnovíte.",
       "synchronizedAndReady": "Jazyková služba je synchronizovaná a připravená.",
+      "tinymistDownloadFailed": "Tinymist {{version}} se nepodařilo stáhnout. Oleafly to zkusí znovu.",
+      "tinymistDownloading": "Stahuje se Tinymist {{version}} odpovídající verzi Typst v tomto projektu.",
       "transportClosed": "Připojení k jazykové službě se neočekávaně zavřelo. Opakováním se znovu připojíte.",
       "versionMismatch": "Očekáváno {{kind}} {{expected}}, ale instalace hlásí {{reported}}."
     }
@@ -141,7 +143,8 @@
     "packageOption": "volba balíčku {{name}}",
     "keyvalKey": "klíč \\{{command}}",
     "duplicateCount": "duplicita ({{count}})",
-    "duplicateIndex": "duplicita {{index}}/{{total}}"
+    "duplicateIndex": "duplicita {{index}}/{{total}}",
+    "typstBinding": "Vazba Typst"
   },
   "token": {
     "citation": "Citace",

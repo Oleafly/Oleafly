@@ -154,5 +154,10 @@
       "detail": "The latest project revision has not been indexed yet.",
       "title": "Waiting for project analysis"
     }
+  },
+  "bibliographyStyle": {
+    "label": "Citation style",
+    "ariaLabel": "Citation style for the bibliography in {{path}}",
+    "failed": "Oleafly couldn't change the citation style."
   }
 }

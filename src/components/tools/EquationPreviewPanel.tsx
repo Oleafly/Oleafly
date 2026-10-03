@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -14,12 +14,17 @@ import { cn } from "@/lib/utils";
 import { logError } from "@/lib/log";
 import { i18n } from "@/i18n";
 import { Badge } from "@/components/ui/badge";
+import { RenderCache } from "@/components/ui/render-cache";
+import { describeError } from "@/lib/app-error";
+import { renderTypstSnippet } from "@/lib/tauri";
+import { convertLatexMath } from "@oleafly/editor/latex-to-typst-math";
 
 export function CopyLatexLabel({
   status,
   idleLabel,
   iconClassName,
-}: Readonly<{ status: CopyStatus; idleLabel: string; iconClassName: string }>) {
+  failedLabel,
+}: Readonly<{ status: CopyStatus; idleLabel: string; iconClassName: string; failedLabel?: string }>) {
   const { t } = useTranslation(["common", "researchTools"]);
   let icon = <Copy aria-hidden className={iconClassName} />;
   let label = idleLabel;
@@ -28,7 +33,7 @@ export function CopyLatexLabel({
     label = t(($) => $.common.actions.copied);
   } else if (status === "failed") {
     icon = <AlertCircle aria-hidden className={cn(iconClassName, "text-destructive")} />;
-    label = t(($) => $.researchTools.equation.copyLatexFailed);
+    label = failedLabel ?? t(($) => $.researchTools.equation.copyLatexFailed);
   }
   return (
     <>
@@ -92,6 +97,123 @@ export const EQUATION_EXAMPLES: { id: string; label: () => string; latex: string
   },
 ];
 
+export type EquationLanguage = "latex" | "typst";
+
+export type TypstEquationPreview =
+  | { status: "idle" }
+  | { status: "rendering"; svg?: string }
+  | { status: "rendered"; svg: string }
+  | { status: "error"; message: string };
+
+interface TypstEquationExample {
+  id: string;
+  label: () => string;
+  typst: string;
+}
+
+let typstExamples: TypstEquationExample[] | null = null;
+
+export function typstEquationExamples(): TypstEquationExample[] {
+  typstExamples ??= EQUATION_EXAMPLES.flatMap((example) => {
+    const converted = convertLatexMath(example.latex);
+    return converted.unsupported.length === 0 && converted.typst
+      ? [{ id: example.id, label: example.label, typst: converted.typst }]
+      : [];
+  });
+  return typstExamples;
+}
+
+const TYPST_PREVIEW_DEBOUNCE_MS = 250;
+const TYPST_PREVIEW_SIZE = 15;
+const typstPreviewCache = new RenderCache<TypstEquationPreview>(80, 4 * 1024 * 1024);
+
+export function typstEquationSource(input: string, display: boolean, theme: "light" | "dark"): string {
+  const body = input.trim();
+  const fill = theme === "dark" ? "#ffffff" : "#000000";
+  return `#set text(fill: rgb("${fill}"), size: ${TYPST_PREVIEW_SIZE}pt)\n${display ? `$ ${body} $` : `$${body}$`}`;
+}
+
+export function typstEquationImageUrl(svg: string): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+async function renderTypstEquationPreview(
+  source: string,
+): Promise<{ preview: TypstEquationPreview; cacheable: boolean }> {
+  try {
+    const result = await renderTypstSnippet({ source, format: "svg" });
+    if (result.status === "failed") {
+      const error = result.diagnostics.find((diagnostic) => diagnostic.severity === "error") ?? result.diagnostics[0];
+      return { preview: { status: "error", message: error?.message ?? "" }, cacheable: true };
+    }
+    if (result.image.format !== "svg") return { preview: { status: "error", message: "" }, cacheable: false };
+    return { preview: { status: "rendered", svg: result.image.svg }, cacheable: true };
+  } catch (error) {
+    return { preview: { status: "error", message: describeError(error) }, cacheable: false };
+  }
+}
+
+function previewWeight(preview: TypstEquationPreview): number {
+  if (preview.status === "rendered") return preview.svg.length;
+  return preview.status === "error" ? preview.message.length : 1;
+}
+
+export function useTypstEquationPreview(
+  input: string,
+  display: boolean,
+  theme: "light" | "dark",
+  enabled: boolean,
+): TypstEquationPreview {
+  const source = typstEquationSource(input, display, theme);
+  const active = enabled && input.trim() !== "";
+  const [latest, setLatest] = useState<{ source: string; preview: TypstEquationPreview }>({
+    source: "",
+    preview: { status: "idle" },
+  });
+  useEffect(() => {
+    if (!active || typstPreviewCache.has(source)) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void renderTypstEquationPreview(source).then(({ preview, cacheable }) => {
+        if (cacheable) typstPreviewCache.set(source, preview, previewWeight(preview));
+        if (!cancelled) setLatest({ source, preview });
+      });
+    }, TYPST_PREVIEW_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [active, source]);
+  if (!active) return { status: "idle" };
+  const cached = typstPreviewCache.get(source);
+  if (cached) return cached;
+  if (latest.source === source) return latest.preview;
+  const previous = latest.preview;
+  const svg = previous.status === "rendered" || previous.status === "rendering" ? previous.svg : undefined;
+  return { status: "rendering", svg };
+}
+
+function TypstFormulaImage({
+  svg,
+  alt,
+  pending,
+  inline,
+}: Readonly<{ svg: string; alt: string; pending: boolean; inline?: boolean }>) {
+  return (
+    <img
+      data-testid="equation-typst-image"
+      src={typstEquationImageUrl(svg)}
+      alt={alt}
+      draggable={false}
+      className={cn(inline ? "inline-block align-middle" : "block max-w-none", pending && "opacity-50")}
+    />
+  );
+}
+
+function plainTypstLanguage(): never[] {
+  return [];
+}
+
 function InlineFormula({ html }: Readonly<{ html: string }>) {
   // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
@@ -115,6 +237,8 @@ export function renderEquation(input: string, display: boolean): EquationRendere
 }
 
 interface EquationPreviewPanelProps {
+  language?: EquationLanguage;
+  typst?: TypstEquationPreview;
   input: string;
   onInputChange: (value: string) => void;
   display: boolean;
@@ -132,6 +256,8 @@ const MIN_ZOOM = 25;
 const MAX_ZOOM = 400;
 
 export function EquationPreviewPanel({
+  language = "latex",
+  typst = { status: "idle" },
   input,
   onInputChange,
   display,
@@ -150,6 +276,13 @@ export function EquationPreviewPanel({
     onError: (error) => void logError("equation copy latex from preview", error),
   });
 
+  const typstMode = language === "typst";
+  const typstSvg = typst.status === "rendered" || typst.status === "rendering" ? typst.svg : undefined;
+  const hasOutput = typstMode ? Boolean(typstSvg) && typst.status !== "error" : Boolean(rendered.html);
+  const examples = typstMode
+    ? typstEquationExamples().map((example) => ({ id: example.id, label: example.label, source: example.typst }))
+    : EQUATION_EXAMPLES.map((example) => ({ id: example.id, label: example.label, source: example.latex }));
+
   const toggleFullscreen = () => {
     const card = previewCardRef.current;
     if (!card) return;
@@ -162,7 +295,9 @@ export function EquationPreviewPanel({
       <div className="flex h-full min-w-0 flex-col">
         <div className="flex items-center justify-between border-b px-4 py-2.5">
           <span className="text-xs font-semibold tracking-wide text-muted-foreground">
-            {t(($) => $.researchTools.equation.sourceHeading)}
+            {typstMode
+              ? t(($) => $.researchTools.equation.sourceHeadingTypst)
+              : t(($) => $.researchTools.equation.sourceHeading)}
           </span>
           <div className="flex h-7 items-center rounded-full bg-muted p-0.5 text-xs font-medium">
             <button
@@ -189,11 +324,12 @@ export function EquationPreviewPanel({
         </div>
 
         <CodeField
+          key={language}
           value={input}
           onChange={onInputChange}
-          language={latexMathLanguage}
+          language={typstMode ? plainTypstLanguage : latexMathLanguage}
           themeId={editorTheme}
-          testId="equation-latex-field"
+          testId={typstMode ? "equation-typst-field" : "equation-latex-field"}
           className="min-h-0 flex-1 overflow-auto text-sm [&_.cm-editor]:h-full"
         />
 
@@ -202,12 +338,12 @@ export function EquationPreviewPanel({
             {t(($) => $.researchTools.equation.examples)}
           </div>
           <div className="flex flex-wrap gap-2">
-            {EQUATION_EXAMPLES.map((ex) => (
+            {examples.map((ex) => (
               <Button
                 key={ex.id}
                 variant="outline"
                 size="sm"
-                onClick={() => onInputChange(ex.latex)}
+                onClick={() => onInputChange(ex.source)}
               >
                 {ex.label()}
               </Button>
@@ -258,7 +394,7 @@ export function EquationPreviewPanel({
               previewTheme === "dark" ? "bg-[#111111] text-white" : "bg-white text-black",
             )}
           >
-            {rendered.html && (
+            {hasOutput && (
               <Button
                 variant="outline"
                 size="sm"
@@ -281,14 +417,23 @@ export function EquationPreviewPanel({
               style={{ transform: `scale(${zoom / 100})` }}
               className="transition-transform"
             >
-              {rendered.error ? (
+              {typstMode ? (
+                <TypstPreviewContent
+                  typst={typst}
+                  svg={typstSvg}
+                  display={display}
+                  wrapped={wrapped}
+                  blank={!input.trim()}
+                />
+              ) : null}
+              {!typstMode && rendered.error ? (
                 <p className="max-w-sm text-sm text-destructive">{rendered.error}</p>
               ) : null}
-              {!rendered.error && rendered.html && display ? (
+              {!typstMode && !rendered.error && rendered.html && display ? (
                 // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
                 <div dangerouslySetInnerHTML={{ __html: rendered.html }} />
               ) : null}
-              {!rendered.error && rendered.html && !display ? (
+              {!typstMode && !rendered.error && rendered.html && !display ? (
                 <p className="max-w-md text-base leading-relaxed">
                   <Trans
                     ns="researchTools"
@@ -297,7 +442,7 @@ export function EquationPreviewPanel({
                   />
                 </p>
               ) : null}
-              {!rendered.error && !rendered.html ? (
+              {!typstMode && !rendered.error && !rendered.html ? (
                 <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.empty)}</p>
               ) : null}
             </div>
@@ -352,5 +497,37 @@ export function EquationPreviewPanel({
         </div>
       </div>
     </ToolSplitView>
+  );
+}
+
+function TypstPreviewContent({
+  typst,
+  svg,
+  display,
+  wrapped,
+  blank,
+}: Readonly<{ typst: TypstEquationPreview; svg?: string; display: boolean; wrapped: string; blank: boolean }>) {
+  const { t } = useTranslation(["researchTools"]);
+  if (blank) return <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.emptyTypst)}</p>;
+  if (typst.status === "error") {
+    return (
+      <p className="max-w-sm text-sm text-destructive">
+        {typst.message || t(($) => $.researchTools.equation.typstFailed)}
+      </p>
+    );
+  }
+  if (!svg) {
+    return <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.statusRendering)}</p>;
+  }
+  const pending = typst.status === "rendering";
+  if (display) return <TypstFormulaImage svg={svg} alt={wrapped} pending={pending} />;
+  return (
+    <p className="max-w-md text-base leading-relaxed">
+      <Trans
+        ns="researchTools"
+        i18nKey={($) => $.researchTools.equation.inlineSample}
+        components={{ formula: <TypstFormulaImage svg={svg} alt={wrapped} pending={pending} inline /> }}
+      />
+    </p>
   );
 }

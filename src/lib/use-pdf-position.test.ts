@@ -22,3 +22,31 @@ it("restores the last page after loading and keeps projects separate", () => {
   expect(gotoPage).toHaveBeenLastCalledWith(1);
   expect(localStorage.getItem("oleafly.pdf.page.paper")).toBe("8");
 });
+
+it("keeps the exact scroll offset across reloads when asked", () => {
+  const gotoPage = vi.fn();
+  const viewer = { current: { gotoPage } as unknown as PdfViewerHandle };
+  const box = document.createElement("div");
+  const scrollBox = { current: box };
+  const { result, rerender } = renderHook(
+    ({ keep }) => usePdfPosition("paper", viewer, scrollBox, keep),
+    { initialProps: { keep: true } },
+  );
+  result.current.onLoad({ status: "loading", documentIdentity: "first" });
+  result.current.onLoad({ status: "ready", documentIdentity: "first" });
+  expect(gotoPage).toHaveBeenCalledTimes(1);
+
+  box.scrollTop = 840;
+  box.scrollLeft = 12;
+  result.current.onLoad({ status: "loading", documentIdentity: "second" });
+  box.scrollTop = 0;
+  result.current.onLoad({ status: "ready", documentIdentity: "second" });
+  expect(gotoPage).toHaveBeenCalledTimes(1);
+  expect(box.scrollTop).toBe(840);
+  expect(box.scrollLeft).toBe(12);
+
+  rerender({ keep: false });
+  result.current.onLoad({ status: "loading", documentIdentity: "third" });
+  result.current.onLoad({ status: "ready", documentIdentity: "third" });
+  expect(gotoPage).toHaveBeenCalledTimes(2);
+});

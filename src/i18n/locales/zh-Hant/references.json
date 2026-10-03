@@ -148,5 +148,10 @@
       "detail": "最新的專案修訂版本尚未建立索引。",
       "title": "正在等待專案分析"
     }
+  },
+  "bibliographyStyle": {
+    "label": "引用樣式",
+    "ariaLabel": "{{path}} 中參考文獻的引用樣式",
+    "failed": "Oleafly 無法變更引用樣式。"
   }
 }

@@ -1,3 +1,4 @@
+import { escapeTypstCell } from "@oleafly/conversion-registry/table";
 import { i18n } from "@/i18n";
 
 type Direction = "TD" | "TB" | "BT" | "LR" | "RL";
@@ -115,7 +116,7 @@ function splitEdge(
   return { left, right, label, style };
 }
 
-function coordinates(
+function layoutUnits(
   nodes: MermaidNode[],
   edges: MermaidEdge[],
   direction: Direction,
@@ -157,18 +158,24 @@ function coordinates(
       const offset = index - (members.length - 1) / 2;
       if (direction === "LR" || direction === "RL") {
         const sign = direction === "RL" ? -1 : 1;
-        result.set(node.id, [sign * level * 4.2, -offset * 2.4]);
+        result.set(node.id, [sign * level, -offset]);
       } else {
         const sign = direction === "BT" ? 1 : -1;
-        result.set(node.id, [offset * 4.2, sign * level * 2.4]);
+        result.set(node.id, [offset, sign * level]);
       }
     });
   }
   return result;
 }
 
-/** Convert the common Mermaid flowchart grammar into dependency-free TikZ. */
-export function mermaidToTikz(source: string): string {
+interface Flowchart {
+  nodes: MermaidNode[];
+  edges: MermaidEdge[];
+  positions: Map<string, [number, number]>;
+  names: Map<string, string>;
+}
+
+function parseFlowchart(source: string): Flowchart {
   if (source.length > 50_000) {
     throw new Error(i18n.t(($) => $.researchTools.mermaidErrors.tooLarge));
   }
@@ -212,10 +219,21 @@ export function mermaidToTikz(source: string): string {
   }
 
   const ordered = [...nodes.values()].sort((left, right) => left.order - right.order);
-  const positions = coordinates(ordered, edges, direction);
-  const names = new Map(ordered.map((node, index) => [node.id, `n${index + 1}`]));
-  const nodeLines = ordered.map((node) => {
-    const [x, y] = positions.get(node.id) ?? [0, 0];
+  return {
+    nodes: ordered,
+    edges,
+    positions: layoutUnits(ordered, edges, direction),
+    names: new Map(ordered.map((node, index) => [node.id, `n${index + 1}`])),
+  };
+}
+
+/** Convert the common Mermaid flowchart grammar into dependency-free TikZ. */
+export function mermaidToTikz(source: string): string {
+  const { nodes, edges, positions, names } = parseFlowchart(source);
+  const nodeLines = nodes.map((node) => {
+    const [column, row] = positions.get(node.id) ?? [0, 0];
+    const x = column * 4.2;
+    const y = row * 2.4;
     const shape =
       node.shape === "diamond"
         ? ", diamond, aspect=2"
@@ -249,5 +267,44 @@ export function mermaidToTikz(source: string): string {
     ...nodeLines,
     ...edgeLines,
     "\\end{tikzpicture}",
+  ].join("\n");
+}
+
+const FLETCHER_SHAPES: Record<NodeShape, string> = {
+  box: "shape: rect",
+  rounded: "shape: rect, corner-radius: 3pt",
+  diamond: "shape: shapes.diamond",
+  circle: "shape: circle",
+  stadium: "shape: shapes.pill",
+};
+
+const gridNumber = (value: number) => String(+value.toFixed(3));
+
+export function mermaidToFletcher(source: string, fletcherVersion: string): string {
+  const { nodes, edges, positions, names } = parseFlowchart(source);
+  const nodeLines = nodes.map((node) => {
+    const [column, row] = positions.get(node.id) ?? [0, 0];
+    const at = `(${gridNumber(column)}, ${gridNumber(-row)})`;
+    return `  node(${at}, [${escapeTypstCell(node.label)}], name: <${names.get(node.id)}>, ${FLETCHER_SHAPES[node.shape]}),`;
+  });
+  const pairs = new Set(edges.map((edge) => JSON.stringify([edge.from, edge.to])));
+  const edgeLines = edges.map((edge) => {
+    const twoWay = edge.from !== edge.to && pairs.has(JSON.stringify([edge.to, edge.from]));
+    const args = [`<${names.get(edge.from)}>`, `<${names.get(edge.to)}>`, edge.style === "plain" ? '"-"' : '"-|>"'];
+    if (edge.label) args.push(`[${escapeTypstCell(edge.label)}]`, "label-side: center");
+    if (edge.style === "dashed") args.push('dash: "dashed"');
+    if (edge.style === "heavy") args.push("stroke: 1.2pt");
+    if (edge.from === edge.to) args.push("bend: 130deg");
+    if (twoWay) args.push("bend: 25deg");
+    return `  edge(${args.join(", ")}),`;
+  });
+  return [
+    `#import "@preview/fletcher:${fletcherVersion}": diagram, node, edge, shapes`,
+    "#diagram(",
+    "  node-stroke: 0.4pt,",
+    "  spacing: (4em, 3em),",
+    ...nodeLines,
+    ...edgeLines,
+    ")",
   ].join("\n");
 }

@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  state: { projectId: "paper-a", projectName: "My paper", flushForQuit: vi.fn() },
+  state: {
+    projectId: "paper-a",
+    projectName: "My paper",
+    flushForQuit: vi.fn(),
+    engine: { source_format: "latex", typst_options: null },
+  },
   pdfBytes: new Uint8Array([1, 2]), exportPdf: vi.fn(), exportProjectImage: vi.fn(),
   pdfPageToPng: vi.fn(),
   pickSavePath: vi.fn(), ensurePandoc: vi.fn(), exportDocument: vi.fn(), downloadProjectZip: vi.fn(),
@@ -43,7 +48,7 @@ describe("document exports", () => {
     await exportCurrentDocument("typst");
     expect(mocks.pickSavePath).toHaveBeenCalledWith(expect.objectContaining({ defaultPath: "My_paper.typ", filters: [{ name: "TYP", extensions: ["typ"] }] }));
     expect(mocks.state.flushForQuit).toHaveBeenCalledOnce();
-    expect(mocks.exportDocument).toHaveBeenCalledWith("paper-a", "chapters/main.tex", "typst", "/tmp/paper.typ");
+    expect(mocks.exportDocument).toHaveBeenCalledWith("paper-a", "chapters/main.tex", "typst", "/tmp/paper.typ", null);
     expect(mocks.state.flushForQuit.mock.invocationCallOrder[0]).toBeLessThan(mocks.exportDocument.mock.invocationCallOrder[0]);
   });
   it("turns the progress toast into the result in place instead of stacking a second toast", async () => {

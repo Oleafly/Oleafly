@@ -8,7 +8,14 @@ import {
   type DefaultLatexEngine,
 } from "@/store/settings";
 import { TexPackagesSection } from "./TexPackagesSection";
-import { hasPandoc, texDistributions, type TexDistribution } from "@/lib/tauri";
+import {
+  hasPandoc,
+  removeUnusedTinymistDownloads,
+  texDistributions,
+  type TexDistribution,
+} from "@/lib/tauri";
+import { toast } from "@/lib/toast";
+import { describeError } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
 import { SettingsPath } from "@/components/settings/SettingsPath";
 import { ensurePandoc } from "@/features/pandoc";
@@ -19,13 +26,24 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n } from "@/i18n";
-import { formatList, formatNumber } from "@/lib/intl";
+import { formatDate, formatList, formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionHeading } from "@/components/ui/section-heading";
-
-// Kept in step with scripts/fetch-typst.sh, which pins the bundled sidecar.
-const BUNDLED_TYPST_VERSION = "0.15.1";
+import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { formatDownloadSize } from "@/lib/download-size";
+import type { TypstSource, TypstToolchainStatus, TypstVersionEntry } from "@/lib/tauri";
+import {
+  TYPST_SETTINGS_TARGET,
+  typstInstallBusy,
+  typstInstallLabel,
+  typstInstallPercent,
+  useTypstToolchainStore,
+} from "@/store/typst-toolchain";
+import { useFilesStore } from "@/store/files";
+import { openTypstUpgrade } from "@/components/typst-upgrade/open";
+import { newerInstalledTypstVersions, projectTypstVersion } from "@/components/typst-upgrade/versions";
 
 const ENGINE_CHOICES: DefaultLatexEngine[] = ["tectonic", "latexmk"];
 
@@ -126,6 +144,309 @@ function MarkdownEngineTab() {
   );
 }
 
+type EngineTab = "latex" | "typst" | "markdown";
+
+function releaseDate(releasedAt: string | null): string | null {
+  if (!releasedAt) return null;
+  const time = Date.parse(releasedAt);
+  return Number.isFinite(time) ? formatDate(time, { dateStyle: "medium", timeZone: "UTC" }) : null;
+}
+
+function typstSourceLabel(source: TypstSource): string {
+  if (source === "bundled") return i18n.t(($) => $.settings.engine.typst.versions.source.bundled);
+  if (source === "system") return i18n.t(($) => $.settings.engine.typst.versions.source.system);
+  return i18n.t(($) => $.settings.engine.typst.versions.source.downloaded);
+}
+
+const ROW_BUTTON =
+  "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent focus-visible:bg-accent disabled:opacity-50";
+
+function TypstVersionRow({
+  entry,
+  status,
+}: Readonly<{ entry: TypstVersionEntry; status: TypstToolchainStatus }>) {
+  const { t } = useTranslation(["common", "settings"]);
+  const install = useTypstToolchainStore((s) => s.install);
+  const busy = useTypstToolchainStore((s) => s.busy);
+  const installVersion = useTypstToolchainStore((s) => s.installVersion);
+  const removeVersion = useTypstToolchainStore((s) => s.removeVersion);
+  const installed = entry.sources.length > 0;
+  const isDefault = entry.version === status.defaultVersion;
+  const held = busy || typstInstallBusy(install, status);
+  const installing = install?.version === entry.version ? install : null;
+  const details = [
+    releaseDate(entry.releasedAt) &&
+      t(($) => $.settings.engine.typst.versions.released, { date: releaseDate(entry.releasedAt) }),
+    entry.downloadBytes ? formatDownloadSize(entry.downloadBytes) : null,
+    installed && entry.tinymistVersion
+      ? t(($) => $.settings.engine.typst.versions.tinymist, { version: entry.tinymistVersion })
+      : null,
+  ].filter((part): part is string => Boolean(part));
+
+  const renderAction = () => {
+    if (installing) return null;
+    if (entry.sources.includes("downloaded")) {
+      const removeLabel = t(($) => $.settings.engine.typst.versions.removeAria, { version: entry.version });
+      const removeButton = (
+        <button
+          type="button"
+          aria-label={removeLabel}
+          aria-disabled={isDefault || undefined}
+          disabled={!isDefault && held}
+          onClick={() => {
+            if (!isDefault) void removeVersion(entry.version);
+          }}
+          className={cn(ROW_BUTTON, isDefault && "cursor-not-allowed opacity-50 hover:bg-transparent")}
+        >
+          <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
+        </button>
+      );
+      return isDefault ? (
+        <Tooltip wide side="left" label={t(($) => $.settings.engine.typst.versions.removeDefault)}>
+          {removeButton}
+        </Tooltip>
+      ) : (
+        removeButton
+      );
+    }
+    if (installed || !entry.inCatalog) return null;
+    return (
+      <button
+        type="button"
+        aria-label={t(($) => $.settings.engine.typst.versions.installAria, { version: entry.version })}
+        disabled={held}
+        onClick={() => void installVersion(entry.version)}
+        className={ROW_BUTTON}
+      >
+        <Download className="size-3.5" /> {t(($) => $.settings.engine.typst.versions.install)}
+      </button>
+    );
+  };
+
+  return (
+    <div
+      data-testid={`typst-version-row-${entry.version}`}
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b px-3 py-2.5 last:border-b-0"
+    >
+      <span className="flex w-4 shrink-0 justify-center">
+        {installed && (
+          <RadioGroupItem
+            value={entry.version}
+            aria-label={t(($) => $.settings.engine.typst.versions.setDefault, { version: entry.version })}
+          />
+        )}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-mono text-sm">{entry.version}</span>
+          {isDefault && (
+            <Badge variant="primaryGhost" size="sm">
+              {t(($) => $.settings.engine.typst.versions.default)}
+            </Badge>
+          )}
+          {entry.sources.map((source) => (
+            <Badge key={source} variant={source === "downloaded" ? "success" : "muted"} size="sm">
+              {typstSourceLabel(source)}
+            </Badge>
+          ))}
+        </div>
+        {details.length > 0 && (
+          <p className="truncate text-[11px] text-muted-foreground">{details.join(" · ")}</p>
+        )}
+        {installing && (
+          <div className="mt-1.5 flex items-center gap-2">
+            <Progress
+              value={typstInstallPercent(installing) ?? 0}
+              className="max-w-48"
+              indicatorClassName="bg-primary"
+            />
+            <span className="shrink-0 text-[11px] text-muted-foreground">{typstInstallLabel(installing)}</span>
+          </div>
+        )}
+      </div>
+      {renderAction()}
+    </div>
+  );
+}
+
+function TypstVersionList() {
+  const { t } = useTranslation(["common", "settings"]);
+  const status = useTypstToolchainStore((s) => s.status);
+  const loadFailed = useTypstToolchainStore((s) => s.loadFailed);
+  const busy = useTypstToolchainStore((s) => s.busy);
+  const refresh = useTypstToolchainStore((s) => s.refresh);
+  const setDefaultVersion = useTypstToolchainStore((s) => s.setDefaultVersion);
+
+  if (!status) {
+    if (!loadFailed) {
+      return (
+        <p className="text-xs text-muted-foreground">
+          {t(($) => $.settings.engine.typst.versions.loading)}
+        </p>
+      );
+    }
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs text-muted-foreground">{t(($) => $.settings.engine.typst.error.load)}</p>
+        <button type="button" onClick={() => void refresh()} className={ROW_BUTTON}>
+          {t(($) => $.common.actions.retry)}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <RadioGroup
+      value={status.defaultChoice ?? status.bundledVersion}
+      onValueChange={(value) => {
+        void setDefaultVersion(value === status.bundledVersion ? null : value);
+      }}
+      disabled={busy}
+      aria-label={t(($) => $.settings.engine.typst.versions.heading)}
+      className="gap-0 overflow-hidden rounded-lg border"
+    >
+      {status.versions.map((entry) => (
+        <TypstVersionRow key={entry.version} entry={entry} status={status} />
+      ))}
+    </RadioGroup>
+  );
+}
+
+const TINYMIST_CLEANUP_TOAST = "typst-tinymist-cleanup";
+const NO_DOWNLOADS: readonly string[] = [];
+
+function TinymistCleanup() {
+  const { t } = useTranslation(["settings"]);
+  const unused = useTypstToolchainStore((s) => s.status?.unusedTinymist ?? NO_DOWNLOADS);
+  const [removing, setRemoving] = useState(false);
+  if (unused.length === 0) return null;
+
+  const remove = async () => {
+    setRemoving(true);
+    try {
+      const status = await removeUnusedTinymistDownloads();
+      useTypstToolchainStore.setState({ status, loading: false, loadFailed: false });
+      toast.successUnique(
+        TINYMIST_CLEANUP_TOAST,
+        t(($) => $.settings.engine.typst.languageServer.removed, { count: unused.length }),
+      );
+    } catch (error) {
+      toast.errorUnique(
+        TINYMIST_CLEANUP_TOAST,
+        t(($) => $.settings.engine.packages.error.withDetail, {
+          message: t(($) => $.settings.engine.typst.error.removeTinymist),
+          detail: describeError(error),
+        }),
+      );
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  return (
+    <div
+      data-testid="typst-tinymist-cleanup"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border px-3 py-2.5"
+    >
+      <p className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+        {t(($) => $.settings.engine.typst.languageServer.unused, { count: unused.length })}
+      </p>
+      <button type="button" disabled={removing} onClick={() => void remove()} className={ROW_BUTTON}>
+        <Trash2 className="size-3.5" /> {t(($) => $.settings.engine.typst.languageServer.remove)}
+      </button>
+    </div>
+  );
+}
+
+function TypstUpgradeEntry() {
+  const { t } = useTranslation(["settings"]);
+  const projectId = useFilesStore((s) => s.projectId);
+  const engine = useFilesStore((s) => s.engine);
+  const status = useTypstToolchainStore((s) => s.status);
+  if (!projectId || engine.source_format !== "typst") return null;
+  const newer = newerInstalledTypstVersions(status, projectTypstVersion(engine, status))[0];
+  if (!newer) return null;
+  return (
+    <div className="flex items-center gap-3 rounded-lg border p-3" data-testid="typst-upgrade-entry">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm">{t(($) => $.settings.engine.typst.upgrade.heading)}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">{t(($) => $.settings.engine.typst.upgrade.detail)}</p>
+      </div>
+      <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => openTypstUpgrade(newer)}>
+        {t(($) => $.settings.engine.typst.upgrade.check, { version: newer })}
+      </Button>
+    </div>
+  );
+}
+
+function TypstEngineTab() {
+  const { t } = useTranslation(["common", "settings"]);
+  const status = useTypstToolchainStore((s) => s.status);
+  const refresh = useTypstToolchainStore((s) => s.refresh);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+  const bundledIsDefault = status !== null && status.defaultVersion === status.bundledVersion;
+
+  return (
+    <>
+      <div className="flex items-center gap-1.5">
+        <SectionHeading>
+          {t(($) => $.settings.engine.typst.heading)}
+        </SectionHeading>
+        <Tooltip wide side="right" label={t(($) => $.settings.engine.typst.tooltip)}>
+          <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+        </Tooltip>
+      </div>
+      <div
+        className={cn("rounded-lg border p-3", bundledIsDefault && "border-primary")}
+        data-testid="typst-engine-bundled"
+      >
+        <div className="flex items-center gap-2">
+          <Cpu className="size-4 shrink-0 text-muted-foreground" />
+          <span className="text-sm">{t(($) => $.settings.engine.typst.name)}</span>
+          {bundledIsDefault && <Check className="size-3.5 text-primary" />}
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {t(($) => $.settings.engine.typst.detail)}
+        </p>
+        {status && (
+          <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">{`Typst ${status.bundledVersion}`}</p>
+        )}
+      </div>
+      {status?.system && (
+        <div className="rounded-lg border p-3" data-testid="typst-engine-system">
+          <div className="flex items-center gap-2">
+            <HardDrive className="size-4 shrink-0 text-muted-foreground" />
+            <span className="text-sm">{t(($) => $.settings.engine.typst.system.name)}</span>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {t(($) => $.settings.engine.typst.system.detail, { version: status.system.version })}
+          </p>
+          <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">{`Typst ${status.system.version}`}</p>
+          <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
+            <SettingsPath path={status.system.path} />
+          </p>
+        </div>
+      )}
+      <div className="flex items-center gap-1.5">
+        <SectionHeading>
+          {t(($) => $.settings.engine.typst.versions.heading)}
+        </SectionHeading>
+        <Tooltip wide side="right" label={t(($) => $.settings.engine.typst.versions.tooltip)}>
+          <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
+        </Tooltip>
+      </div>
+      <TypstVersionList />
+      <TypstUpgradeEntry />
+      <TinymistCleanup />
+      <p className="text-xs text-muted-foreground">
+        {t(($) => $.settings.engine.typst.note)}
+      </p>
+    </>
+  );
+}
+
 export function EngineSection() {
   const { t } = useTranslation(["common", "settings"]);
   const displayPath = useDisplayPath();
@@ -138,7 +459,16 @@ export function EngineSection() {
   const installPhase = useEngineStore((s) => s.installPhase);
   const partialDownloadBytes = useEngineStore((s) => s.partialDownloadBytes);
   const [distros, setDistros] = useState<TexDistribution[]>([]);
-  const [tab, setTab] = useState<"latex" | "typst" | "markdown">("latex");
+  const scrollTarget = useSettingsStore((s) => s.settingsScrollTarget);
+  const setScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+  const [tab, setTab] = useState<EngineTab>(() =>
+    scrollTarget === TYPST_SETTINGS_TARGET ? "typst" : "latex",
+  );
+  useEffect(() => {
+    if (scrollTarget !== TYPST_SETTINGS_TARGET) return;
+    setTab("typst");
+    setScrollTarget(null);
+  }, [scrollTarget, setScrollTarget]);
 
   useEffect(() => {
     // refreshPackages() needs engine info from refresh() first, so run in sequence.
@@ -169,7 +499,7 @@ export function EngineSection() {
   return (
     <Tabs
       value={tab}
-      onValueChange={(value) => setTab(value as "latex" | "typst" | "markdown")}
+      onValueChange={(value) => setTab(value as EngineTab)}
       className="flex flex-col gap-5"
     >
       <TabsList aria-label={t(($) => $.settings.engine.sectionName)} className="w-fit self-start">
@@ -183,32 +513,7 @@ export function EngineSection() {
       </TabsContent>
 
       <TabsContent value="typst" className="flex flex-col gap-5">
-          <div className="flex items-center gap-1.5">
-            <SectionHeading>
-              {t(($) => $.settings.engine.typst.heading)}
-            </SectionHeading>
-            <Tooltip
-              wide
-              side="right"
-              label={t(($) => $.settings.engine.typst.tooltip)}
-            >
-              <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
-            </Tooltip>
-          </div>
-          <div className="rounded-lg border border-primary p-3">
-            <div className="flex items-center gap-2">
-              <Cpu className="size-4 text-muted-foreground" />
-              <span className="text-sm">{t(($) => $.settings.engine.typst.name)}</span>
-              <Check className="size-3.5 text-primary" />
-            </div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {t(($) => $.settings.engine.typst.detail)}
-            </p>
-            <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">{`Typst ${BUNDLED_TYPST_VERSION}`}</p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {t(($) => $.settings.engine.typst.note)}
-          </p>
+        <TypstEngineTab />
       </TabsContent>
 
       <TabsContent value="latex" className="flex flex-col gap-5">

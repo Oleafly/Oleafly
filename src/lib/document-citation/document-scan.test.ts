@@ -81,6 +81,38 @@ SCORE: 88
     expect(result.paragraphs).toEqual([]);
   });
 
+  it("splits and cleans a Typst document when the format is typst", async () => {
+    const queries: string[] = [];
+    const result = await scanDocumentForCitations({
+      sourceText: [
+        "#set page(paper: \"a4\")",
+        "#show: doc => conf(title: [A title that is long enough to look like prose], doc)",
+        "= Introduction",
+        "",
+        "Graph neural networks enable molecule generation with high fidelity @kipf2017.",
+        "",
+        "// Transformers for protein folding are discussed in a long comment here.",
+      ].join("\n"),
+      bibText: "",
+      format: "typst",
+      rankMode: "heuristic",
+      settings: {
+        scoreThreshold: 0,
+        maxResultsPerSource: 5,
+        maxResultsPerParagraph: 3,
+        maxParagraphs: 20,
+      },
+      search: async ({ query }) => {
+        queries.push(query);
+        return searchOk([paper()]);
+      },
+      completeChat: async () => "",
+    });
+    expect(queries).toEqual(["Graph neural networks enable molecule generation with high fidelity."]);
+    expect(result.totalParagraphs).toBe(1);
+    expect(result.paragraphs[0].paragraphPreview).toMatch(/^Graph neural networks/);
+  });
+
   it("uses heuristic ranking when rankMode is heuristic", async () => {
     const completeChat = vi.fn(async () => {
       throw new Error("LLM should not be called");

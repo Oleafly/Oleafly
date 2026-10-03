@@ -170,3 +170,157 @@ describe("insert_figure tool", () => {
     expect(result).toEqual({ success: true, path: "chapters/results.tex" });
   });
 });
+
+describe("figure tools in a Typst project", () => {
+  const CANVAS = '#import "@preview/cetz:0.4.2"\n#cetz.canvas({ cetz.draw.circle((0, 0)) })';
+
+  function typstHost(overrides: Partial<AiToolsHost> = {}): AiToolsHost {
+    let preview: unknown = null;
+    return {
+      getProjectId: () => "proj",
+      getFigureEngine: () => "typst",
+      renderTypstFigure: vi.fn(async () => ({ ok: true, pngBase64: "UE5H", diagnostics: [] })),
+      compileIsolated: vi.fn(),
+      readIsolatedPdf: vi.fn(),
+      pdfToPng: vi.fn(),
+      setLastFigurePreview: vi.fn((value: unknown) => {
+        preview = value;
+      }),
+      getLastFigurePreview: () => preview,
+      getFigureInsertTarget: () => null,
+      prepareExternalMutation: vi.fn(async () => 7),
+      insertAtCursor: vi.fn(async () => true),
+      replaceRange: vi.fn(async () => true),
+      writeProjectBytes: vi.fn(async () => ({})),
+      refreshTree: vi.fn(async () => {}),
+      readFileContent: vi.fn(async () => "= Results\n"),
+      insertTargetPath: () => "main.typ",
+      ...overrides,
+    } as unknown as AiToolsHost;
+  }
+
+  it("previews through the Typst renderer and hands the image to the model", async () => {
+    const host = typstHost();
+    const onImage = vi.fn();
+    const tools = createFigureTools(host, { onImage });
+
+    const result = await tools.preview_figure.execute({ code: CANVAS });
+
+    expect(host.renderTypstFigure).toHaveBeenCalledWith(
+      "proj",
+      `#set page(fill: white, margin: 6pt)\n${CANVAS}`,
+    );
+    expect(host.compileIsolated).not.toHaveBeenCalled();
+    expect(onImage).toHaveBeenCalledWith("data:image/png;base64,UE5H");
+    expect(host.setLastFigurePreview).toHaveBeenCalledWith({
+      pngDataUrl: "data:image/png;base64,UE5H",
+    });
+    expect(result).toEqual({ success: true, has_image: true, errors: [], warnings: [] });
+  });
+
+  it("reports Typst errors against the model's own line numbers and clears the old preview", async () => {
+    const host = typstHost({
+      renderTypstFigure: vi.fn(async () => ({
+        ok: false as const,
+        diagnostics: [
+          { severity: "error" as const, message: "unknown variable: cetz", line: 3, column: 2 },
+        ],
+      })),
+    });
+    const onImage = vi.fn();
+    const tools = createFigureTools(host, { onImage });
+
+    const result = await tools.preview_figure.execute({ code: "#cetz.canvas({})" });
+
+    expect(onImage).not.toHaveBeenCalled();
+    expect(host.setLastFigurePreview).toHaveBeenCalledWith(null);
+    expect(result).toEqual({
+      success: false,
+      has_image: false,
+      warnings: [],
+      errors: [{ severity: "error", message: "unknown variable: cetz", line: 2, column: 2 }],
+    });
+  });
+
+  it("inserts a #figure with its caption and label, and saves the previewed PNG", async () => {
+    const confirm = vi.fn(async () => true);
+    const host = typstHost();
+    const tools = createFigureTools(host, { confirm });
+    await tools.preview_figure.execute({ code: CANVAS });
+
+    const result = await tools.insert_figure.execute({
+      code: CANVAS,
+      caption: "Unit circle",
+      label: "fig:circle",
+    });
+
+    expect(confirm).toHaveBeenCalledWith(
+      expect.objectContaining({ tool: "insert_figure", image: "data:image/png;base64,UE5H" }),
+    );
+    expect(host.insertAtCursor).toHaveBeenCalledWith(
+      "proj",
+      '#import "@preview/cetz:0.4.2"\n#figure(caption: [Unit circle])[\n  #cetz.canvas({ cetz.draw.circle((0, 0)) })\n] <fig:circle>',
+      expect.any(Function),
+    );
+    expect(host.pdfToPng).not.toHaveBeenCalled();
+    expect(host.writeProjectBytes).toHaveBeenCalledWith("proj", "figures/unit-circle.png", "UE5H", 7);
+    expect(result).toEqual({ success: true, path: "main.typ", figure: "figures/unit-circle.png" });
+  });
+
+  it("does not repeat an import the document already has", async () => {
+    const host = typstHost({
+      readFileContent: vi.fn(async () => '#import "@preview/cetz:0.4.2"\n= Results\n'),
+    });
+    const tools = createFigureTools(host);
+
+    await tools.insert_figure.execute({ code: CANVAS });
+
+    expect(host.readFileContent).toHaveBeenCalledWith("proj", "main.typ");
+    expect(host.insertAtCursor).toHaveBeenCalledWith(
+      "proj",
+      "#figure[\n  #cetz.canvas({ cetz.draw.circle((0, 0)) })\n]",
+      expect.any(Function),
+    );
+  });
+
+  it("refuses to preview or insert when the project's engine has no figure support", async () => {
+    const host = typstHost({ getFigureEngine: () => null });
+    const tools = createFigureTools(host);
+
+    expect(await tools.preview_figure.execute({ code: "x" })).toEqual({
+      error: "Figure tools work only in LaTeX and Typst projects.",
+    });
+    expect(await tools.insert_figure.execute({ code: "x" })).toEqual({
+      error: "Figure tools work only in LaTeX and Typst projects.",
+    });
+    expect(host.renderTypstFigure).not.toHaveBeenCalled();
+    expect(host.insertAtCursor).not.toHaveBeenCalled();
+  });
+
+  it("describes both engines in the preview tool", () => {
+    const description = createFigureTools(typstHost()).preview_figure.description;
+    expect(description).toContain("TikZ");
+    expect(description).toContain("CeTZ");
+    expect(description).toContain("fletcher");
+  });
+});
+
+describe("load_image in any project", () => {
+  it("loads a project image even when the engine has no figure support", async () => {
+    const png = new Uint8Array([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52,
+      0, 0, 0, 4, 0, 0, 0, 3,
+    ]);
+    const onImage = vi.fn();
+    const host = {
+      getProjectId: () => "proj",
+      getFigureEngine: () => null,
+      readProjectBytes: vi.fn(async () => png),
+    } as unknown as AiToolsHost;
+
+    const result = await createFigureTools(host, { onImage }).load_image.execute({ path: "sketch.png" });
+
+    expect(result).toEqual({ loaded: true, path: "sketch.png", width: 4, height: 3 });
+    expect(onImage).toHaveBeenCalledWith(expect.stringMatching(/^data:image\/png;base64,/));
+  });
+});

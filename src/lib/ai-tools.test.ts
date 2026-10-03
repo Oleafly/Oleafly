@@ -19,9 +19,12 @@ const mocks = vi.hoisted(() => ({
     agentExecRegisterExternal: vi.fn(),
     agentExecAuthorize: vi.fn(),
     agentExec: vi.fn(),
+    renderTypstSnippet: vi.fn(),
   },
   filesState: {
     projectId: "proj" as string | null,
+    engine: null as unknown,
+    engineLoaded: true,
     mainDecision: "auto" as "auto" | "ask" | "no_main",
     files: {} as Record<string, { content: string; dirty: boolean }>,
     applyExternalWrite: vi.fn(() => true),
@@ -49,6 +52,9 @@ vi.mock("@/lib/pdf-text", () => ({ extractPdfText: vi.fn() }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: vi.fn() }));
 
 import { createFigureTools, createOleaflyTools } from "./ai-tools";
+import { setLastFigurePreview } from "./ai-figure";
+import { LATEX_ENGINE } from "./document-engine";
+import type { DocumentEngineDescriptor } from "./tauri";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useSettingsStore } from "@/store/settings";
 
@@ -74,6 +80,8 @@ beforeEach(() => {
     timed_out: false,
   });
   mocks.filesState.projectId = "proj";
+  mocks.filesState.engine = LATEX_ENGINE;
+  mocks.filesState.engineLoaded = true;
   mocks.filesState.mainDecision = "auto";
   mocks.filesState.files = {};
   mocks.filesState.activePath = null;
@@ -573,5 +581,97 @@ describe("ai-tools: insert_figure", () => {
       0,
     );
     expect(res).toEqual({ success: true, path: "chapters/results.tex" });
+  });
+});
+
+describe("ai-tools: Typst figures", () => {
+  const TYPST: DocumentEngineDescriptor = {
+    ...LATEX_ENGINE,
+    id: "typst",
+    label: "Typst",
+    source_format: "typst",
+    main_document: "main.typ",
+    source_extensions: ["typ"],
+    capabilities: {
+      ...LATEX_ENGINE.capabilities,
+      supports_isolated_compile: false,
+      formatting_profile: "typst",
+    },
+  };
+
+  afterEach(() => setLastFigurePreview(null));
+
+  it("renders the preview with the project's Typst and returns the image", async () => {
+    mocks.filesState.engine = TYPST;
+    mocks.api.renderTypstSnippet.mockResolvedValue({
+      status: "rendered",
+      image: { format: "png", pngBase64: "UE5H" },
+      diagnostics: [],
+    });
+    const onImage = vi.fn();
+    const tools = createFigureTools({ onImage });
+
+    const res = await tools.preview_figure.execute({ code: "#circle(radius: 1cm)" });
+
+    expect(mocks.api.renderTypstSnippet).toHaveBeenCalledWith({
+      source: "#set page(fill: white, margin: 6pt)\n#circle(radius: 1cm)",
+      format: "png",
+      ppi: 192,
+      projectId: "proj",
+    });
+    expect(onImage).toHaveBeenCalledWith("data:image/png;base64,UE5H");
+    expect(res).toEqual({ success: true, has_image: true, errors: [], warnings: [] });
+  });
+
+  it("passes Typst errors back to the model", async () => {
+    mocks.filesState.engine = TYPST;
+    mocks.api.renderTypstSnippet.mockResolvedValue({
+      status: "failed",
+      diagnostics: [{ severity: "error", message: "unclosed delimiter", line: 2, column: 9 }],
+    });
+
+    const res = await createFigureTools().preview_figure.execute({ code: "#circle(" });
+
+    expect(res).toEqual({
+      success: false,
+      has_image: false,
+      warnings: [],
+      errors: [{ severity: "error", message: "unclosed delimiter", line: 1, column: 9 }],
+    });
+  });
+
+  it("inserts a #figure at the end of the open Typst file when no editor is mounted", async () => {
+    mocks.filesState.engine = TYPST;
+    mocks.filesState.mainDoc = "main.typ";
+    mocks.filesState.activePath = "main.typ";
+    mocks.api.readFileContent.mockResolvedValue("= Results\n");
+    mocks.api.writeFileContent.mockResolvedValue({ generation: 1 });
+
+    const res = await createFigureTools().insert_figure.execute({
+      code: "#rect()[A]",
+      caption: "A box",
+      label: "fig:box",
+    });
+
+    expect(mocks.api.writeFileContent).toHaveBeenCalledWith(
+      "proj",
+      "main.typ",
+      "= Results\n#figure(caption: [A box])[\n  #rect()[A]\n] <fig:box>\n",
+      0,
+    );
+    expect(res).toEqual({ success: true, path: "main.typ" });
+  });
+
+  it("refuses to preview in a Markdown project", async () => {
+    mocks.filesState.engine = {
+      ...TYPST,
+      id: "markdown",
+      capabilities: { ...TYPST.capabilities, formatting_profile: "markdown" },
+    };
+
+    const res = await createFigureTools().preview_figure.execute({ code: "x" });
+
+    expect(res).toEqual({ error: "Figure tools work only in LaTeX and Typst projects." });
+    expect(mocks.api.renderTypstSnippet).not.toHaveBeenCalled();
   });
 });

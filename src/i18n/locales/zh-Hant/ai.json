@@ -293,7 +293,7 @@
       "literatureSearch": "以關鍵字在 OpenAlex 搜尋論文，不需要金鑰。",
       "verifyCitation": "透過 doi.org 或 Crossref 把 DOI 或標題轉成已驗證的 BibTeX。",
       "projectLibrarySearch": "以關鍵字搜尋專案本身的文字與筆記。",
-      "previewFigure": "單獨編譯 TikZ 或 PGFPlots 圖片，並在聊天中顯示結果。",
+      "previewFigure": "單獨算繪 TikZ 或 CeTZ 圖形，並在聊天中顯示結果。",
       "insertFigure": "在游標處插入完成的圖片，附上圖說與標籤，並在 figures/ 下儲存一張 PNG。",
       "loadImage": "檢視專案中已有的影像。",
       "updateTodos": "撰寫或更新聊天中顯示的逐步計畫。",
@@ -336,6 +336,7 @@
     "noDescription": "未提供說明。",
     "notes": {
       "latexOnly": "僅限 LaTeX 專案",
+      "latexAndTypstOnly": "僅限 LaTeX 與 Typst 專案",
       "pdfCaptureSetting": "需要啟用 PDF 頁面擷取設定",
       "chatApproval": "在聊天中逐一核准指令",
       "browserSetting": "需要啟用網頁瀏覽器設定"
@@ -667,6 +668,24 @@
     "tikzFigure": {
       "label": "TikZ 圖片",
       "description": "在聊天中草擬 TikZ 程式碼"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "修正 Typst 錯誤"
+      },
+      "writeEquation": {
+        "description": "把自然語言寫成 Typst 數學式"
+      },
+      "academicPresentation": {
+        "description": "由你的論文做出 Typst 投影片"
+      },
+      "generateTable": {
+        "description": "在聊天中草擬 Typst 表格"
+      },
+      "figure": {
+        "label": "CeTZ 圖形",
+        "description": "在聊天中草擬 CeTZ 程式碼"
+      }
     }
   },
   "turn": {

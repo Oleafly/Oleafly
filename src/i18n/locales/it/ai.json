@@ -307,7 +307,7 @@
       "literatureSearch": "Cerca articoli su OpenAlex per parola chiave, senza bisogno di chiave.",
       "verifyCitation": "Trasforma un DOI o un titolo in BibTeX verificato tramite doi.org o Crossref.",
       "projectLibrarySearch": "Cerca per parola chiave nel testo e nelle note del progetto.",
-      "previewFigure": "Compila una figura TikZ o PGFPlots a parte e mostra il risultato nella chat.",
+      "previewFigure": "Renderizza una figura TikZ o CeTZ a parte e mostra il risultato nella chat.",
       "insertFigure": "Inserisce la figura finita al cursore con didascalia ed etichetta e salva un PNG in figures/.",
       "loadImage": "Guarda un'immagine già presente nel progetto.",
       "updateTodos": "Scrive o aggiorna il piano passo per passo mostrato nella chat.",
@@ -350,6 +350,7 @@
     "noDescription": "Nessuna descrizione fornita.",
     "notes": {
       "latexOnly": "Solo per progetti LaTeX",
+      "latexAndTypstOnly": "Solo per progetti LaTeX e Typst",
       "pdfCaptureSetting": "Richiede l'impostazione di cattura delle pagine PDF",
       "chatApproval": "Approvato nella chat, un comando alla volta",
       "browserSetting": "Richiede l'impostazione del browser web"
@@ -685,6 +686,24 @@
     "tikzFigure": {
       "label": "Figura TikZ",
       "description": "Abbozza codice TikZ nella chat"
+    },
+    "typstVariants": {
+      "fixErrors": {
+        "label": "Correggi gli errori Typst"
+      },
+      "writeEquation": {
+        "description": "Dal linguaggio naturale alla matematica in Typst"
+      },
+      "academicPresentation": {
+        "description": "Una presentazione Typst a partire dal tuo articolo"
+      },
+      "generateTable": {
+        "description": "Abbozza una tabella Typst in chat"
+      },
+      "figure": {
+        "label": "Figura CeTZ",
+        "description": "Abbozza codice CeTZ in chat"
+      }
     }
   },
   "turn": {

@@ -66,6 +66,18 @@ also producing build artifacts:
 `pnpm language-servers:test` checks the complete object shape and exact values.
 An unknown, missing, or differently typed profile must fail closed.
 
+The app adds the editor's Typst settings on top of Tinymist's packaged
+initialization options when it starts the server: `formatterMode: "typstyle"`,
+`formatterPrintWidth`, `formatterIndentSize`, and `lint` with `enabled` and
+`when: "onSave"`. The packaged keys stay in the object. When a formatter setting
+changes, the full merged object goes to the running server through
+`workspace/didChangeConfiguration`. Tinymist 0.15.8 reads `lint` only at
+startup, so switching lint restarts the session. After each document sync the
+app pins the project's main file with `workspace/executeCommand`
+`tinymist.pinMain` (an absolute path, or `null` to unpin). Diagnostics in
+included files are then computed from that entry, not from whichever file was
+opened last.
+
 ## User-consent setup and retry
 
 TexLab is not part of an Oleafly installer or release artifact. When LaTeX

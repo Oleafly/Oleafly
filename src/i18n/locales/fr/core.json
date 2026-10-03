@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} ne propose pas de mode de compilation hors ligne. Compilation normale.",
     "retry": "Compiler à nouveau",
-    "bundleFetchFailed": "Oleafly n'a pas pu télécharger les paquets TeX dont ce document a besoin. Vérifiez votre connexion et compilez à nouveau."
+    "bundleFetchFailed": "Oleafly n'a pas pu télécharger les paquets TeX dont ce document a besoin. Vérifiez votre connexion et compilez à nouveau.",
+    "typstMissing": "Typst {{version}} n'est pas installé. Téléchargez-le, ou passez ce projet à une autre version.",
+    "typstPackage": {
+      "downloadFailed": "Typst n'a pas pu télécharger {{spec}}. Vérifiez votre connexion Internet et compilez à nouveau.",
+      "downloadFailedUnnamed": "Typst n'a pas pu télécharger un paquet importé par ce document. Vérifiez votre connexion Internet et compilez à nouveau.",
+      "offlineNotCached": "Vous êtes hors ligne et {{spec}} n'est pas encore dans le cache des paquets. Compilez une fois en ligne, ou intégrez les paquets au projet.",
+      "offlineNotCachedUnnamed": "Vous êtes hors ligne et un paquet importé par ce document n'est pas encore dans le cache des paquets. Compilez une fois en ligne.",
+      "notFound": "Typst Universe n'a aucun paquet {{spec}}. Vérifiez le nom dans l'import.",
+      "localNotFound": "Le paquet local {{spec}} n'est pas installé. Placez-le dans le dossier des paquets Typst d'Oleafly ou dans le dossier typst-packages du projet.",
+      "versionMissing": "Ce paquet n'a pas de version {{version}}. La version la plus récente est {{latest}}.",
+      "versionMissingNoLatest": "Ce paquet n'a pas de version {{version}}. Vérifiez la version dans l'import."
+    }
   },
   "developer": {
     "actions": {
@@ -353,6 +364,7 @@
     "notRenamable": "Ce symbole ne peut pas être renommé.",
     "nothingToRename": "Rien à renommer.",
     "referencesFor": "Références à {{name}}",
+    "renameFailed": "Impossible de renommer en « {{name}} ».",
     "renamePartial": "Renommé en « {{name}} » dans {{edited}} fichiers sur {{total}}. Impossible d'écrire {{files}}.",
     "renamed": "Renommé en « {{name}} » ($t(core:navigation.edits, {\"count\": {{edits}} }) dans $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -597,5 +609,8 @@
   "folderUnavailable": {
     "compile": "La compilation est en pause jusqu'au retour du dossier du projet.",
     "saveReason": "le dossier du projet n'est pas disponible"
+  },
+  "imageToTypst": {
+    "failed": "Échec de la conversion d'image en Typst : {{detail}}"
   }
 }

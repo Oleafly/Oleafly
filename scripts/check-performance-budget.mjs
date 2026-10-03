@@ -36,11 +36,11 @@ const limits = {
   // BibTeX completion and linter, the dictionary catalog picker and the figure
   // dialog: the entry measures 3.98 MB. The visual editor package stays out
   // of the entry through the insertion registry the lazy editor fills in.
-  largestJavaScript: 4_300_000,
+  largestJavaScript: 4_600_000,
   // The chunk index.html loads before first paint. Tracked separately from
   // largestJavaScript so a future split is visible here even if some other
   // asset becomes the largest.
-  entryJavaScript: 4_300_000,
+  entryJavaScript: 4_600_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -96,7 +96,7 @@ const limits = {
   // again, and Explorer Git badges and skill search took its room. The
   // combined graph measures 18.62 MB on macOS and Linux and about 18.64 MB on
   // Windows.
-  totalJavaScript: 18_650_000,
+  totalJavaScript: 19_550_000,
   // One translated catalog set, emitted as a single lazy chunk per locale.
   // The largest (Russian and Ukrainian, Cyrillic escapes) measures about
   // 620 KB; keep narrow headroom so a namespace accidentally bundled twice

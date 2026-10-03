@@ -154,15 +154,15 @@ describe("Library bookmark filters", () => {
     expect(screen.getByLabelText("Engine")).toHaveTextContent("Typst");
 
     fireEvent.pointerDown(screen.getByLabelText("Engine"), { button: 0, ctrlKey: false, pointerType: "mouse" });
-    fireEvent.click(await screen.findByRole("option", { name: "Tectonic" }));
-    expect(search).toHaveValue("research engine:tectonic");
+    fireEvent.click(await screen.findByRole("option", { name: "LaTeX" }));
+    expect(search).toHaveValue("research engine:latex");
     expect(screen.getByTestId("project-grid")).toBeInTheDocument();
 
     fireEvent.pointerDown(screen.getByLabelText("Sort by"), { button: 0, ctrlKey: false, pointerType: "mouse" });
     fireEvent.click(await screen.findByRole("option", { name: "Name, A to Z" }));
-    expect(search).toHaveValue("research engine:tectonic sort:name-asc");
+    expect(search).toHaveValue("research engine:latex sort:name-asc");
 
-    fireEvent.change(search, { target: { value: "research engine:tectonic,typst" } });
+    fireEvent.change(search, { target: { value: "research engine:latex,typst" } });
     expect(screen.getByLabelText("Engine")).toHaveTextContent("Custom");
 
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));

@@ -59,6 +59,8 @@
       "startingAndInitializing": "Käynnistetään ja alustetaan projektin kielipalvelua.",
       "stopTimeout": "Edellinen kielipalvelun prosessi ei pysähtynyt ajoissa. Palauta se yrittämällä uudelleen.",
       "synchronizedAndReady": "Kielipalvelu on synkronoitu ja valmis.",
+      "tinymistDownloadFailed": "Tinymist {{version}} -versiota ei voitu ladata. Oleafly yrittää uudelleen.",
+      "tinymistDownloading": "Ladataan Tinymist {{version}} -versiota, joka vastaa tämän projektin Typst-versiota.",
       "transportClosed": "Kielipalvelun yhteys katkesi odottamatta. Yhdistä uudelleen yrittämällä uudestaan.",
       "versionMismatch": "Odotettiin {{kind}} {{expected}}, mutta käyttöönotto ilmoitti version {{reported}}."
     }
@@ -137,7 +139,8 @@
     "packageOption": "{{name}}-paketin valitsin",
     "keyvalKey": "\\{{command}}-komennon avain",
     "duplicateCount": "kahteen kertaan ({{count}})",
-    "duplicateIndex": "kahteen kertaan {{index}}/{{total}}"
+    "duplicateIndex": "kahteen kertaan {{index}}/{{total}}",
+    "typstBinding": "Typst-sidonta"
   },
   "token": {
     "citation": "Viittaus",

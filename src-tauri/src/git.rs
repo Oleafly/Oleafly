@@ -2532,6 +2532,26 @@ pub(crate) fn head_state(root: &Path) -> Option<(String, bool)> {
     Some((oid, dirty))
 }
 
+pub(crate) fn head_commit_time(root: &Path) -> Option<u64> {
+    if !is_repository_marker(&root.join(".git")) || !git_available() {
+        return None;
+    }
+    let root = root.to_path_buf();
+    let restricted = crate::trust::restricted_git_env(&root, &|_| None);
+    let output = run_configured_git_bounded(
+        &root,
+        &["log", "-1", "--format=%ct", "HEAD"],
+        false,
+        OutputBounds::total(HEAD_STATE_DEADLINE),
+        |command| {
+            command.envs(restricted.iter().map(|(key, value)| (key, value)));
+        },
+    )
+    .ok()
+    .filter(|output| output.status.success())?;
+    String::from_utf8_lossy(&output.stdout).trim().parse().ok()
+}
+
 /// Whether the repo has a HEAD commit yet (false on a fresh repo).
 fn has_head(root: &PathBuf) -> bool {
     run_git(root, &["rev-parse", "--verify", "--quiet", "HEAD"])

@@ -222,8 +222,11 @@ export function extractKeywords(text: string, maxTerms: number = DEFAULT_MAX_TER
   cleaned = cleaned.replace(/\\[a-zA-Z]+\{[^}]*\}/g, " ");
   cleaned = cleaned.replace(/\\[a-zA-Z]+/g, " ");
   cleaned = cleaned.replace(/[{}~\\&%$#_^]/g, " ");
-  cleaned = cleaned.replace(/\s+/g, " ").trim();
+  return keywordQuery(cleaned, maxTerms);
+}
 
+export function keywordQuery(text: string, maxTerms: number = DEFAULT_MAX_TERMS): string {
+  const cleaned = text.replace(/\s+/g, " ").trim();
   if (!cleaned || cleaned.length < 10) return "";
   if (cleaned.length <= 200) return cleaned;
 

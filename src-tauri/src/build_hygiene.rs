@@ -317,11 +317,12 @@ pub(crate) fn is_build_artifact(relative_path: &str, has_sibling: impl Fn(&str) 
     else {
         return false;
     };
-    let tex = match folder {
-        Some(folder) => format!("{folder}/{stem}.tex"),
-        None => format!("{stem}.tex"),
-    };
-    has_sibling(&tex)
+    ["tex", "typ"].into_iter().any(|extension| {
+        has_sibling(&match folder {
+            Some(folder) => format!("{folder}/{stem}.{extension}"),
+            None => format!("{stem}.{extension}"),
+        })
+    })
 }
 
 #[cfg(test)]
@@ -352,6 +353,27 @@ mod tests {
         ] {
             assert!(!is_build_artifact(path, has), "{path} is not build output");
         }
+    }
+
+    #[test]
+    fn a_pdf_beside_its_typst_source_is_build_output() {
+        let sources = ["main.typ", "talks/slides.Typ"];
+        let has = |path: &str| sources.contains(&path);
+        for path in ["main.pdf", "main.PDF"] {
+            assert!(is_build_artifact(path, has), "{path} is build output");
+        }
+        for path in [
+            "slides.pdf",
+            "talks/main.pdf",
+            "figures/chart.pdf",
+            "main.typ",
+        ] {
+            assert!(!is_build_artifact(path, has), "{path} is not build output");
+        }
+        let lowercase = ["talks/slides.typ"];
+        assert!(is_build_artifact("talks/slides.pdf", |path: &str| {
+            lowercase.contains(&path)
+        }));
     }
 
     #[test]

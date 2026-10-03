@@ -59,6 +59,8 @@
       "startingAndInitializing": "Uruchamianie i inicjowanie usługi językowej projektu.",
       "stopTimeout": "Poprzedni proces usługi językowej nie zatrzymał się na czas. Ponów, aby go przywrócić.",
       "synchronizedAndReady": "Usługa językowa jest zsynchronizowana i gotowa.",
+      "tinymistDownloadFailed": "Nie udało się pobrać Tinymist {{version}}. Oleafly spróbuje ponownie.",
+      "tinymistDownloading": "Pobieranie Tinymist {{version}} zgodnego z wersją Typst tego projektu.",
       "transportClosed": "Połączenie z usługą językową zostało nieoczekiwanie zamknięte. Ponów, aby połączyć się ponownie.",
       "versionMismatch": "Oczekiwano {{kind}} {{expected}}, a konfiguracja zgłosiła {{reported}}."
     }
@@ -141,7 +143,8 @@
     "packageOption": "opcja pakietu {{name}}",
     "keyvalKey": "klucz polecenia \\{{command}}",
     "duplicateCount": "duplikat ({{count}})",
-    "duplicateIndex": "duplikat {{index}}/{{total}}"
+    "duplicateIndex": "duplikat {{index}}/{{total}}",
+    "typstBinding": "Powiązanie Typst"
   },
   "token": {
     "citation": "Cytowanie",

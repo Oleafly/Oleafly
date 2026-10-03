@@ -28,7 +28,17 @@ const TEX_TEMPLATES = [
   "thesis",
 ];
 const NETWORK_TEMPLATES = ["modern-resume"];
-const OTHER_TEMPLATES = ["blank-typst", "typst-report", "typst-resume", "blank-markdown"];
+const OTHER_TEMPLATES = [
+  "blank-typst",
+  "typst-conference-style-article",
+  "typst-figure",
+  "typst-letter",
+  "typst-report",
+  "typst-resume",
+  "typst-technical-report",
+  "typst-thesis",
+  "blank-markdown",
+];
 
 async function createFromTemplate(page: import("../helpers").Page, id: string, name: string) {
   await createProjectFromTemplate(page, id, name);

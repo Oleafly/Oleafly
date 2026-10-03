@@ -25,7 +25,7 @@ export interface StandardRef {
   url: string;
 }
 
-export type PreflightEngine = "bundled" | "pdflatex" | "lualatex" | "xelatex" | "unknown";
+export type PreflightEngine = "bundled" | "pdflatex" | "lualatex" | "xelatex" | "typst" | "unknown";
 
 export type FindingMethod = "pdf-object-model" | "source-heuristic" | "compile-log" | "layout-heuristic";
 
@@ -112,6 +112,7 @@ export interface PdfFacts {
 export interface ProjectFile {
   path: string;
   content?: string;
+  size?: number;
 }
 
 export interface ProjectContext {

@@ -10,8 +10,11 @@ import {
   Link as LinkIcon,
   List,
   MoreHorizontal,
+  PenTool,
   Quote,
+  ScanSearch,
   Search,
+  SlidersHorizontal,
   Strikethrough,
   Subscript,
   Superscript,
@@ -63,7 +66,10 @@ import {
   insertMarkdownTaskList,
   insertMarkdownUnderline,
 } from "@/components/editor/markdown-commands";
+import { openDiagramComposer } from "@/features/open-tool";
 import { cn, shortcut } from "@/lib/utils";
+import { useFilesStore } from "@/store/files";
+import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 
 function MarkdownHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
@@ -254,6 +260,7 @@ export function MarkdownToolbar({
   showProjectInfo?: boolean;
 }>) {
   const { t } = useTranslation(["common", "editor"]);
+  const markdownProject = useFilesStore((state) => state.engineLoaded && state.engine.source_format === "markdown");
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
       {
@@ -412,6 +419,7 @@ export function MarkdownToolbar({
           />
         ),
       },
+      btnControl("diagram", PenTool, t(($) => $.editor.toolbar.drawDiagram), () => void openDiagramComposer("mermaid")),
     );
 
     return list;
@@ -464,6 +472,22 @@ export function MarkdownToolbar({
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          {markdownProject && (
+            <IconBtn
+              onClick={() => useTypstDocumentPanelStore.getState().openPanel("insights")}
+              title={t(($) => $.editor.typstInsights.title)}
+            >
+              <ScanSearch data-testid="document-insights-button" className="size-4" />
+            </IconBtn>
+          )}
+          {markdownProject && (
+            <IconBtn
+              onClick={() => useTypstDocumentPanelStore.getState().openPanel("settings")}
+              title={t(($) => $.editor.typstSettings.title)}
+            >
+              <SlidersHorizontal data-testid="document-settings-button" className="size-4" />
+            </IconBtn>
+          )}
           {showProjectInfo && <ProjectInfoButton surface={wysiwyg ? "visual" : "source"} />}
           {!wysiwyg && (
             <IconBtn onClick={editorFind} title={t(($) => $.editor.toolbar.find, { shortcut: shortcut("⌘F") })}>

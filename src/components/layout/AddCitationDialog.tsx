@@ -3,6 +3,13 @@ import { useTranslation } from "react-i18next";
 import { AlertCircle, AtSign, BookOpen, Search } from "lucide-react";
 import { useCitationStore } from "@/store/citation";
 import { resolveCitation, bibtexForHit, addCitation } from "@/features/citation";
+import { citationBibliographyChoices } from "@/features/citation-bibliographies";
+import {
+  preferredBibliography,
+  rememberBibliography,
+  rememberedBibliography,
+} from "@/lib/citation/bibliography-choices";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { CitationHit } from "@/lib/citation/types";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
@@ -57,6 +64,8 @@ export function AddCitationDialog() {
   const [bibtex, setBibtex] = useState("");
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
+  const [bibliographies, setBibliographies] = useState<string[]>([]);
+  const [bibliography, setBibliography] = useState<string | null>(null);
   const close = () => setOpen(false);
 
   useEffect(() => {
@@ -68,6 +77,24 @@ export function AddCitationDialog() {
       setError("");
       setAdding(false);
     }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    let current = true;
+    setBibliographies([]);
+    setBibliography(null);
+    const projectId = useFilesStore.getState().projectId;
+    void citationBibliographyChoices()
+      .then((choices) => {
+        if (!current) return;
+        setBibliographies(choices);
+        setBibliography(preferredBibliography(choices, projectId ? rememberedBibliography(projectId) : null));
+      })
+      .catch((error_) => void logError("list citation bibliographies", error_));
+    return () => {
+      current = false;
+    };
   }, [open]);
 
   if (!open) return null;
@@ -103,9 +130,12 @@ export function AddCitationDialog() {
 
   const add = async () => {
     setAdding(true);
+    const chosen = bibliographies.length > 1 ? bibliography : null;
     try {
-      const r = await addCitation(bibtex);
+      const r = chosen ? await addCitation(bibtex, { bibliography: chosen }) : await addCitation(bibtex);
       if ("key" in r) {
+        const projectId = useFilesStore.getState().projectId;
+        if (chosen && projectId) rememberBibliography(projectId, chosen);
         const profile = useFilesStore.getState().engine.capabilities.formatting_profile;
         close();
         toast.success(i18n.t(($) => $.shell.addCitation.added, { cite: citeMarkup(profile, r.key) }));
@@ -234,6 +264,33 @@ export function AddCitationDialog() {
             <pre className="max-h-52 overflow-auto rounded-md border border-sidebar-border bg-background p-2.5 font-mono text-[11px] leading-relaxed">
               {bibtex}
             </pre>
+            {bibliographies.length > 1 && bibliography && (
+              <div className="mt-3">
+                <div className="flex items-center gap-2">
+                  <span className="shrink-0 text-xs font-medium">
+                    {t(($) => $.shell.addCitation.bibliography)}
+                  </span>
+                  <Select value={bibliography} onValueChange={setBibliography}>
+                    <SelectTrigger
+                      aria-label={t(($) => $.shell.addCitation.bibliography)}
+                      className="h-8 min-w-0 flex-1 text-xs"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100]">
+                      {bibliographies.map((path) => (
+                        <SelectItem key={path} value={path} className="text-xs">
+                          {path}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {t(($) => $.shell.addCitation.bibliographyHint)}
+                </p>
+              </div>
+            )}
             {error && (
               <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" />

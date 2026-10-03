@@ -146,5 +146,37 @@
       "check_running": "このエージェントのテストはすでに実行中です。",
       "main_window": "エージェントのプログラムはメインウィンドウから変更してください。"
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly は Typst {{version}} を提供しておらず、このコンピュータにもそのバージョンの Typst はありません。",
+    "busy": "Typst {{version}} はまだインストール中です。完了してから、もう一度お試しください。",
+    "remove_default": "Typst {{version}} は既定のバージョンです。削除する前に、別のバージョンを既定にしてください。",
+    "remove_not_downloaded": "Oleafly が削除できるのは、自分でダウンロードした Typst のバージョンだけです。Typst {{version}} は Oleafly がダウンロードしたものではありません。",
+    "not_offered": "Typst {{version}} はこのコンピュータ向けにダウンロードできません。",
+    "install_unverified": "Typst {{version}} をダウンロードしましたが、整合性チェックに失敗しました。もう一度インストールしてください。",
+    "not_typst_project": "Typst のバージョンがあるのは Typst のプロジェクトだけです。",
+    "update_waits": "Oleafly を更新する前に、Typst のインストールが終わるまでお待ちください。"
+  },
+  "typst_packages": {
+    "index_offline": "オフラインです。Typst Universe のパッケージ一覧もまだダウンロードされていません。",
+    "index_unavailable": "Typst Universe のパッケージ一覧を読み込めませんでした。インターネット接続を確認して、もう一度お試しください。",
+    "vendor_failed": "Oleafly はパッケージをプロジェクトにコピーできませんでした。"
+  },
+  "typst_query": {
+    "timeout": "Typst がこの文書を読み込むのに時間がかかりすぎました。",
+    "failed": "Typst はこの文書を読み込めませんでした。"
+  },
+  "typst_version_missing": "Typst {{version}} がインストールされていません。",
+  "typst_options": {
+    "invalid_input_key": "値の名前は空にできず、等号を含めることもできません。",
+    "invalid_variant_name": "各バリアントには、ほかのバリアントと重ならない短い名前が必要です。",
+    "invalid_font_path": "フォントフォルダはプロジェクト内に置く必要があります。",
+    "fonts_failed": "Typst はフォントを一覧にできませんでした。",
+    "fonts_timeout": "Typst がフォントを一覧にするのに時間がかかりすぎました。"
+  },
+  "typst_export": {
+    "failed": "Typst は文書を書き出せませんでした。",
+    "unsupported": "この Typst のバージョンでは、この設定で書き出せません。",
+    "invalid_ppi": "1 から {{max}} PPI までの解像度を選んでください。"
   }
 }

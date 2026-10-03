@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Alternatif metni olmayan görsel",
-      "detail": "Bu görselin açıklayıcı alternatif metni yok, bu yüzden ekran okuyucu onu aktaramaz. Bir açıklama ekleyin, örneğin \\includegraphics[alt={Yazarın vesikalık fotoğrafı}]{...}. Yalnızca süsleme amaçlı görselleri bunun yerine yapıntı olarak işaretleyin."
+      "detail": "Bu görselin açıklayıcı alternatif metni yok, bu yüzden ekran okuyucu onu aktaramaz. Bir açıklama ekleyin, örneğin \\includegraphics[alt={Yazarın vesikalık fotoğrafı}]{...}. Yalnızca süsleme amaçlı görselleri bunun yerine yapıntı olarak işaretleyin.",
+      "detailTypst": "Bu görselin alternatif metni yok, bu yüzden ekran okuyucu onu aktaramaz. Bir açıklama ekleyin, örneğin #image(\"chart.png\", alt: \"Bar chart of yearly sales\").",
+      "detailTypstFigure": "Bu görselin alternatif metni yok, bu yüzden ekran okuyucu onu aktaramaz. Açıklamayı görsele veya onu içeren şekle ekleyin, örneğin #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")."
     },
     "link-text": {
       "title": "Açıklayıcı olmayan bağlantı metni",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "PDF başlığı yok",
-      "detail": "PDF'in üst verisinde, yardımcı teknolojilerin ve tarayıcıların belgeyi duyurmak için kullandığı bir başlık yok. hyperref ile bir tane ayarlayın, örneğin \\hypersetup{pdftitle={Adınız, CV}}."
+      "detail": "PDF'in üst verisinde, yardımcı teknolojilerin ve tarayıcıların belgeyi duyurmak için kullandığı bir başlık yok. hyperref ile bir tane ayarlayın, örneğin \\hypersetup{pdftitle={Adınız, CV}}.",
+      "detailTypst": "PDF'in üst verisinde, yardımcı teknolojilerin ve tarayıcıların belgeyi duyurmak için kullandığı bir başlık yok. #set document(title: \"Your title\") ile bir başlık ayarlayın veya şablonunuza bir başlık verin."
     },
     "heading-skip": {
       "title": "Başlık düzeyi atlandı",
@@ -284,11 +287,16 @@
     },
     "refs-undefined-cite": {
       "title": "\"{{key}}\" atıfı hiçbir .bib dosyasında yok",
-      "detail": "Bu atıf anahtarı yüklü kaynakçada bulunamadı, bu yüzden PDF'te [?] olarak görünecek. Anahtarı denetleyin veya kaydı .bib dosyanıza ekleyin (Atıf ekle onu getirebilir)."
+      "detail": "Bu atıf anahtarı yüklü kaynakçada bulunamadı, bu yüzden PDF'te [?] olarak görünecek. Anahtarı denetleyin veya kaydı .bib dosyanıza ekleyin (Atıf ekle onu getirebilir).",
+      "titleTypst": "\"{{key}}\" atıfı kaynakçada yok",
+      "detailTypst": "Bu anahtar, projenin yüklediği hiçbir kaynakça dosyasında yok, bu yüzden derleme başarısız olur. Anahtarı denetleyin veya kaydı .bib ya da Hayagriva .yml dosyanıza ekleyin."
     },
     "refs-undefined-ref": {
       "title": "\"{{label}}\" başvurusunun eşleşen bir \\label etiketi yok",
-      "detail": "Bu çapraz başvuru tanımlanmamış bir etiketi gösteriyor, bu yüzden PDF'te ?? olarak görünecek. Etiket adını denetleyin veya eksik \\label komutunu ekleyin."
+      "detail": "Bu çapraz başvuru tanımlanmamış bir etiketi gösteriyor, bu yüzden PDF'te ?? olarak görünecek. Etiket adını denetleyin veya eksik \\label komutunu ekleyin.",
+      "titleTypst": "\"{{label}}\" adlı etiket veya kayıt yok",
+      "detailTypst": "Typst derlemeyi burada durdurur. Yazımı denetleyin veya eksik <label> etiketini ya da kaynakça kaydını ekleyin.",
+      "detailTypstPackage": "Projede bu adda bir etiket veya kaynakça kaydı yok. Bir paket, belge derlenirken sözlük kayıtları gibi etiketler oluşturabilir. Derleme günlüğü bunu bildirirse yazımı denetleyin."
     },
     "refs-duplicate-label": {
       "title": "Yinelenen etiket \"{{label}}\"",
@@ -298,11 +306,14 @@
       "titleImage": "Görsel bulunamadı: {{file}}",
       "detailImage": "Bu \\includegraphics, projede olmayan bir dosyayı gösteriyor; bu yüzden şekil eksik kalacak. Dosya adını ve yolu denetleyin.",
       "titleInclude": "Dahil edilen dosya bulunamadı: {{file}}",
-      "detailInclude": "Bu \\input veya \\include, projede olmayan bir dosyayı gösteriyor. Dosya adını ve yolu denetleyin."
+      "detailInclude": "Bu \\input veya \\include, projede olmayan bir dosyayı gösteriyor. Dosya adını ve yolu denetleyin.",
+      "detailImageTypst": "Bu görsel yoluyla eşleşen bir proje dosyası yok, bu yüzden derleme başarısız olur. Typst yolu dosyaya göre okur, / ile başlıyorsa proje kökünden okur.",
+      "detailIncludeTypst": "Bu #include veya #import yoluyla eşleşen bir proje dosyası yok, bu yüzden derleme başarısız olur. Dosya adını ve yolu denetleyin."
     },
     "refs-bib-missing": {
       "title": "Kaynakça dosyası bulunamadı: {{file}}",
-      "detail": "Bu \\bibliography veya \\addbibresource, projede olmayan bir dosyayı gösteriyor; bu yüzden her atıf [?] olarak görünecek. Dosya adını denetleyin veya dosyayı oluşturmak için bir kaynak kitaplığı içe aktarın."
+      "detail": "Bu \\bibliography veya \\addbibresource, projede olmayan bir dosyayı gösteriyor; bu yüzden her atıf [?] olarak görünecek. Dosya adını denetleyin veya dosyayı oluşturmak için bir kaynak kitaplığı içe aktarın.",
+      "detailTypst": "Bu #bibliography çağrısı projede olmayan bir dosyayı gösteriyor, bu yüzden derleme başarısız olur. Dosya adını denetleyin veya dosyayı oluşturmak için bir kaynak kitaplığı içe aktarın."
     },
     "refs-duplicate-bib": {
       "title": "Yinelenen kaynakça kayıtları: {{keys}}",
@@ -345,7 +356,8 @@
     },
     "privacy-blind-author": {
       "title": "Kör hakemlik kaynağında yazar kimliği kalmış",
-      "detail": "Kaynak; anonim olmayan bir yazar, kurum, e-posta, adres veya teşekkür alanı içeriyor. Kimlik belirten içeriği etkinliğin anonim hakemlik kipini kullanarak değiştirin."
+      "detail": "Kaynak; anonim olmayan bir yazar, kurum, e-posta, adres veya teşekkür alanı içeriyor. Kimlik belirten içeriği etkinliğin anonim hakemlik kipini kullanarak değiştirin.",
+      "detailTypst": "Kaynak, belgeye veya şablonuna bir yazar adı, e-posta ya da kurum veriyor. Bunu kaldırın veya şablonu anonim kipine geçirin."
     },
     "privacy-blind-acknowledgements": {
       "title": "Teşekkürler yazarları ele verebilir",
@@ -374,15 +386,20 @@
     "submission-document-class": {
       "title": "{{profile}} belge sınıfı etkin değil",
       "detail": "Bu profil {{expected}} bekliyor, ancak proje {{actual}} kullanıyor. Etkinliğin güncel resmi şablonundan başlayın.",
-      "detailNoClass": "Bu profil {{expected}} bekliyor, ancak hiçbir belge sınıfı algılanmadı. Etkinliğin güncel resmi şablonundan başlayın."
+      "detailNoClass": "Bu profil {{expected}} bekliyor, ancak hiçbir belge sınıfı algılanmadı. Etkinliğin güncel resmi şablonundan başlayın.",
+      "titleTypst": "{{profile}} şablonu etkin değil",
+      "detailTypst": "Bu profil {{expected}} gibi bir Typst şablonu bekliyor, ancak proje {{actual}} içe aktarıyor. Bu şablonlardan biriyle başlayın.",
+      "detailNoTemplateTypst": "Bu profil {{expected}} gibi bir Typst şablonu bekliyor, ancak proje hiçbir şablon içe aktarmıyor. Bu şablonlardan biriyle başlayın."
     },
     "submission-no-abstract": {
       "title": "Özet algılanmadı",
-      "detail": "Bu yayın profili, standart bir abstract ortamında özet bekliyor. Ekleyin veya ilgili etkinliğin özet istemediğini doğrulayın."
+      "detail": "Bu yayın profili, standart bir abstract ortamında özet bekliyor. Ekleyin veya ilgili etkinliğin özet istemediğini doğrulayın.",
+      "detailTypst": "Bu yayın profili bir özet bekliyor. Şablonunuza bir özet verin, örneğin abstract: [Your abstract], veya bir \"Abstract\" başlığı ekleyin."
     },
     "submission-no-keywords": {
       "title": "Yayın anahtar sözcükleri algılanmadı",
-      "detail": "{{profile}} profili, kendi standart şablon komutu veya ortamıyla anahtar sözcük bekliyor."
+      "detail": "{{profile}} profili, kendi standart şablon komutu veya ortamıyla anahtar sözcük bekliyor.",
+      "detailTypst": "{{profile}} profili anahtar sözcükler bekliyor. Bunları şablonunuza verin, örneğin keywords: (\"one\", \"two\") veya index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Desteklenmeyen şekil biçimi: {{file}}",
@@ -390,7 +407,8 @@
     },
     "submission-placeholder": {
       "title": "Metinde taslak yer tutucusu kalmış",
-      "detail": "Kaynak; TODO, TBD, FIXME, yer tutucu metin veya soru işareti imleri içeriyor. Son gönderimi üretmeden önce her geçişi gözden geçirin."
+      "detail": "Kaynak; TODO, TBD, FIXME, yer tutucu metin veya soru işareti imleri içeriyor. Son gönderimi üretmeden önce her geçişi gözden geçirin.",
+      "detailTypst": "Belge hâlâ #lorem çağırıyor veya yer tutucu metin içeriyor. Son gönderimden önce bunu değiştirin."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} gereken sürümün altında",
@@ -420,6 +438,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Bazı yazı tiplerinin gömülü olduğu doğrulanamadı",
       "detail": "Ön denetim {{fonts}} yazı tiplerinin gömülme durumunu kanıtlayamadı. Bunları etkinliğin resmi PDF denetleyicisiyle doğrulayın."
+    },
+    "empty-heading": {
+      "title": "Boş başlık",
+      "detail": "Bu başlığın metni yok. Ekran okuyucular onu anahatta boş bir öğe olarak duyurur. Bir başlık metni ekleyin veya başlığı kaldırın."
+    },
+    "todo-in-text": {
+      "title": "Metinde taslak notu",
+      "detail": "Bu not metnin bir parçası, bu yüzden PDF'te basılır. Notu çözün veya bir // yorumuna dönüştürün."
+    },
+    "no-author": {
+      "title": "Belge yazarı yok",
+      "detail": "PDF üst verisinde yazar yok. #set document(author: \"Your Name\") ile bir yazar ekleyin veya yazarları şablonunuza verin. Anonim hakemlik için yazarı eklemeyin."
+    },
+    "privacy-local-path": {
+      "title": "Bilgisayarınızdaki yol: {{path}}",
+      "detail": "Bu yol proje dışındaki bir klasörü gösteriyor. Kullanıcı adınızı açığa çıkarabilir ve derleme başka hiçbir makinede çalışmaz. Dosyayı projeye taşıyın ve göreli bir yol kullanın."
+    },
+    "privacy-blind-email": {
+      "title": "{{file}} içinde e-posta adresi",
+      "detail": "Bir e-posta adresi kör hakemlik sırasında yazarları tanıtabilir. Kaldırın veya anonim bir yer tutucuyla değiştirin."
+    },
+    "refs-no-bibliography": {
+      "title": "Kaynakçası olmayan atıflar",
+      "detail": "Belge kaynaklara atıf yapıyor ama hiç #bibliography çağırmıyor, bu yüzden Typst atıfları çözümleyemiyor. Kaynak listesinin görünmesi gereken yere #bibliography(\"refs.bib\") ekleyin."
+    },
+    "submission-large-image": {
+      "title": "Çok büyük görsel: {{file}}",
+      "detail": "Bu görsel {{limit}} boyutunu aşıyor. Büyük görseller derlemeyi yavaşlatır ve PDF'i şişirir. Bazı etkinlikler yükleme boyutunu da sınırlar. Görseli sıkıştırın veya basılacağı boyutta dışa aktarın."
     }
   },
   "lens": {
@@ -643,5 +689,15 @@
     "compileTagged": "Etiketli derle ve doğrula",
     "compileTaggedWarning": "Sistem LuaLaTeX'i yerel dosyaları okuyabilir. Onu yalnızca güvendiğiniz bir proje için çalıştırın.",
     "noEngine": "Etiketli PDF'i uygulama içinde üretmek için Ayarlar'daki LaTeX Motoru bölümünden bir motor etkinleştirin. Ya da hazırlanan kaynağı TeX Live 2025 veya daha yenisinden kendi pdfLaTeX veya LuaLaTeX kurulumunuzla derleyin."
+  },
+  "typstStandards": {
+    "title": "PDF standartları",
+    "intro": "Typst arşivlik ve erişilebilir PDF'leri kendisi yazar. Bir standart seçin, sonra PDF'i dışa aktarın.",
+    "standard": "Standart",
+    "export": "PDF'i dışa aktar",
+    "tagged": "Typst {{version}} her PDF'i ekran okuyucular için etiketler, bu yüzden ayrı bir etiketli derleme yoktur.",
+    "untagged": "Typst {{version}} PDF'leri ekran okuyucular için etiketlemez. Typst 0.14 ve sonraki sürümler etiketler.",
+    "none": "Typst {{version}} PDF standartlarını yazamaz. Derleme menüsünden Typst 0.12 veya sonrasını seçin.",
+    "uaNote": "PDF/UA-1 için bir belge başlığı ve her görsel için alternatif metin gerekir."
   }
 }

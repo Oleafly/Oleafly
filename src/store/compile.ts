@@ -14,6 +14,7 @@ import {
 } from "@/lib/tauri";
 import {
   engineErrorMessage,
+  engineSwitchToastKey,
   projectCompatibilityFindings,
   reportFileSaveFailure,
   texDistributionGapNotice,
@@ -29,6 +30,7 @@ import {
 } from "@oleafly/latex";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useSettingsStore } from "@/store/settings";
+import { activeTypstVariant } from "@/store/typst-variant";
 import { notifyError, toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { decodeAppError, describeError } from "@/lib/app-error";
@@ -349,14 +351,111 @@ export interface CompileState {
    * the on-disk PDF is not the fingerprinted output.
    */
   restoreFromDisk: (projectId: string, mainDoc: string) => Promise<boolean>;
+  livePreview: LivePreviewState;
+  setLivePreviewStatus: (projectId: string, status: LivePreviewStatus, message?: string | null) => void;
 }
 
 export type CompileMode = "normal" | "fast";
+
+export type LivePreviewStatus = "off" | "starting" | "on" | "compiling" | "restarting" | "failed";
+
+export interface LivePreviewState {
+  readonly projectId: string | null;
+  readonly enabled: boolean;
+  readonly status: LivePreviewStatus;
+  readonly message: string | null;
+}
 
 const AUTO_COMPILE_KEY = "oleafly:compile:auto";
 const COMPILE_MODE_KEY = "oleafly:compile:mode";
 const SYNTAX_CHECK_KEY = "oleafly:compile:syntax-check";
 const STOP_ON_ERROR_KEY = "oleafly:compile:stop-on-first-error";
+const LEGACY_LIVE_PREVIEW_KEY = "oleafly:compile:typst-live:";
+
+function dropLegacyLivePreviewFlags(): void {
+  try {
+    const stale: string[] = [];
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(LEGACY_LIVE_PREVIEW_KEY)) stale.push(key);
+    }
+    for (const key of stale) localStorage.removeItem(key);
+  } catch {
+    return;
+  }
+}
+
+type FilesSnapshot = ReturnType<typeof useFilesStore.getState>;
+
+export function typstLivePreviewWanted(
+  files: FilesSnapshot = useFilesStore.getState(),
+  autoCompile: boolean = useCompileStore.getState().autoCompile,
+): boolean {
+  return Boolean(
+    autoCompile &&
+      files.projectId &&
+      files.engineLoaded &&
+      files.engine.source_format === "typst" &&
+      !files.engine.typst_missing,
+  );
+}
+
+export function compileProjectRevision(projectId: string): number {
+  return projectRevisionFor(projectId);
+}
+
+type LivePreviewModule = typeof import("@/features/typst-live-preview");
+let livePreviewModule: Promise<LivePreviewModule> | null = null;
+
+function loadLivePreview(): Promise<LivePreviewModule> {
+  livePreviewModule ??= import("@/features/typst-live-preview");
+  return livePreviewModule;
+}
+
+function livePreviewFlagFor(live: LivePreviewState, projectId: string | null, enabled: boolean): LivePreviewState {
+  if (live.projectId === projectId && live.enabled === enabled) return live;
+  return { projectId, enabled, status: enabled ? "starting" : "off", message: null };
+}
+
+export function syncTypstLivePreview(): void {
+  dropLegacyLivePreviewFlags();
+  const files = useFilesStore.getState();
+  const wanted = typstLivePreviewWanted(files);
+  const live = useCompileStore.getState().livePreview;
+  const next = livePreviewFlagFor(live, files.projectId, wanted);
+  if (next !== live) useCompileStore.setState({ livePreview: next });
+  if (!livePreviewModule && !wanted) return;
+  void loadLivePreview()
+    .then((module) => module.syncLivePreview())
+    .catch((error: unknown) => logError("live preview", error));
+}
+
+export function stopTypstLivePreview(): void {
+  if (!livePreviewModule) return;
+  void livePreviewModule
+    .then((module) => module.stopLivePreview())
+    .catch((error: unknown) => logError("live preview", error));
+}
+
+async function interruptTypstLivePreview(): Promise<void> {
+  if (!livePreviewModule) return;
+  try {
+    const module = await livePreviewModule;
+    await module.interruptLivePreview();
+  } catch (error) {
+    void logError("live preview", error);
+  }
+}
+
+function livePreviewRoutes(state: CompileState, files: FilesSnapshot, projectId: string): boolean {
+  const live = state.livePreview;
+  return (
+    live.enabled &&
+    live.projectId === projectId &&
+    live.status !== "failed" &&
+    files.engine.source_format === "typst"
+  );
+}
 
 function readStoredFlag(key: string, fallback: boolean): boolean {
   try {
@@ -439,7 +538,14 @@ export type CompileOffer =
       readonly kind: "missing-packages";
       readonly projectId: string;
       readonly packages: string[];
+    }
+  | {
+      readonly kind: "typst-version-missing";
+      readonly projectId: string;
+      readonly version: string;
     };
+
+const TYPST_VERSION_MISSING = "typst_version_missing";
 
 const offeredPackageSets = new Map<string, Set<string>>();
 const packageInstallsRunning = new Set<string>();
@@ -706,9 +812,45 @@ export function acceptCompileOffer(offer: CompileOffer): void {
   if (useFilesStore.getState().projectId !== offer.projectId) return;
   if (offer.kind === "engine-gap") {
     useEnginePickerStore.getState().openPicker("compile-failure", offer.findings);
+  } else if (offer.kind === "typst-version-missing") {
+    void downloadMissingTypst(offer.projectId, offer.version);
   } else {
     installOfferedPackages(offer.projectId, offer.packages);
   }
+}
+
+function typstMissingMessage(version: string): string {
+  return i18n.t(($) => $.core.compile.typstMissing, { version });
+}
+
+export async function downloadMissingTypst(projectId: string, version: string): Promise<void> {
+  if (useFilesStore.getState().projectId !== projectId) return;
+  const { useTypstToolchainStore } = await import("@/store/typst-toolchain");
+  const installed = await useTypstToolchainStore.getState().installVersion(version);
+  if (!installed || useFilesStore.getState().projectId !== projectId) return;
+  clearOffer(projectId);
+  void useCompileStore.getState().recompile();
+}
+
+export async function switchToDefaultTypst(projectId: string): Promise<void> {
+  const files = useFilesStore.getState();
+  if (files.projectId !== projectId) return;
+  try {
+    await files.setTypstVersion(null);
+  } catch (error) {
+    void logError("use the default Typst version", error);
+    if (useFilesStore.getState().projectId !== projectId) return;
+    toast.errorUnique(
+      engineSwitchToastKey(projectId),
+      decodeAppError(error)
+        ? describeError(error)
+        : i18n.t(($) => $.shell.compile.typstVersion.switchFailed),
+    );
+    return;
+  }
+  if (useFilesStore.getState().projectId !== projectId) return;
+  clearOffer(projectId);
+  void useCompileStore.getState().recompile();
 }
 
 function settleCompileNotices(projectId: string): void {
@@ -867,6 +1009,20 @@ function engineLoadedGate(ctx: CompileGateContext): boolean {
   return false;
 }
 
+function typstVersionGate(ctx: CompileGateContext): boolean {
+  const missing = ctx.files.engine.typst_missing;
+  if (!missing || !ctx.capturedProjectId) return true;
+  ctx.set({
+    status: "unavailable",
+    phase: "idle",
+    failureReason: typstMissingMessage(missing),
+    lastAttemptIdentity: gateAttemptIdentity(ctx),
+    offer: { kind: "typst-version-missing", projectId: ctx.capturedProjectId, version: missing },
+  });
+  ctx.abortIntent();
+  return false;
+}
+
 async function pandocPrerequisiteGate(ctx: CompileGateContext): Promise<boolean> {
   if (ctx.files.engine.capabilities.compiler_prerequisite !== "pandoc") return true;
   try {
@@ -906,7 +1062,31 @@ async function systemTexPrerequisiteGate(ctx: CompileGateContext): Promise<boole
   return compileIdentityGate(ctx);
 }
 
+const TYPST_SOURCE_PATH = /\.typ$/i;
+
+function formatsBeforeCompileSave(ctx: CompileGateContext): boolean {
+  const path = useFilesStore.getState().activePath;
+  return Boolean(
+    ctx.origin === "explicit" &&
+      path &&
+      TYPST_SOURCE_PATH.test(path) &&
+      useSettingsStore.getState().typstFormatOnSave,
+  );
+}
+
+async function formatActiveFileBeforeCompileSave(): Promise<void> {
+  try {
+    const { formatActiveBeforeSave } = await import(
+      "@/components/editor/cm/language-service-format"
+    );
+    await formatActiveBeforeSave();
+  } catch (error) {
+    void logError("format before save", error);
+  }
+}
+
 async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> {
+  if (formatsBeforeCompileSave(ctx)) await formatActiveFileBeforeCompileSave();
   try {
     await saveActiveForCompile(ctx.files);
   } catch (e) {
@@ -990,6 +1170,7 @@ async function runCompileGates(
   if (!folderAvailableGate(ctx)) return null;
   if (!mainDocumentGate(ctx)) return null;
   if (!engineLoadedGate(ctx)) return null;
+  if (!typstVersionGate(ctx)) return null;
   if (!(await pandocPrerequisiteGate(ctx))) return null;
   if (!(await systemTexPrerequisiteGate(ctx))) return null;
   if (!compileIdentityGate(ctx)) return null;
@@ -1207,17 +1388,69 @@ function compileSuccessCheckpointFor(
   });
 }
 
+const TYPST_PACKAGE_ERROR = /\bpackage\b/;
+
+async function explainedErrors(result: CompileResult): Promise<CompileError[]> {
+  if (
+    useFilesStore.getState().engine.id !== "typst" ||
+    !result.errors.some((error) => TYPST_PACKAGE_ERROR.test(error.message))
+  ) {
+    return result.errors;
+  }
+  try {
+    const { explainTypstPackageErrors } = await import("@/lib/typst-package-errors");
+    const offline =
+      useSettingsStore.getState().offline ||
+      (typeof navigator !== "undefined" && navigator.onLine === false);
+    return explainTypstPackageErrors(result.errors, offline);
+  } catch {
+    return result.errors;
+  }
+}
+
+function settleAlreadyShownOutput(
+  ctx: CompileApplyContext,
+  result: CompileResult,
+  currentCheckpoint: CompileSuccessCheckpoint | null,
+): boolean {
+  if (
+    !result.ok ||
+    !currentCheckpoint ||
+    result.output_revision !== currentCheckpoint.outputRevision ||
+    result.output_id !== currentCheckpoint.outputId
+  ) {
+    return false;
+  }
+  ctx.set((state) =>
+    ctx.identityStale() ||
+    state.status !== "compiling" ||
+    state.lastAttemptIdentity?.requestGeneration !== ctx.requestIdentity.requestGeneration
+      ? state
+      : {
+          status: "success",
+          phase: "idle",
+          failureReason: null,
+          errors: result.errors,
+          diagnostics: result.diagnostics ?? null,
+          log: `${ctx.offlineNoticePrefix}${result.log}`,
+        },
+  );
+  return true;
+}
+
 async function applyCompileResult(
   ctx: CompileApplyContext,
   result: CompileResult,
 ): Promise<CompileResult> {
   const currentCheckpoint = ctx.get().lastCompileCheckpoint;
   if (compileResultSuperseded(ctx, result, currentCheckpoint)) return result;
+  if (settleAlreadyShownOutput(ctx, result, currentCheckpoint)) return result;
   // Wrap the IPC ArrayBuffer as a view (no copy of the payload bytes). Read
   // whenever a PDF exists, even on error: Tectonic's continue-on-errors mode
   // still produces a best-effort PDF, and we want to keep showing it.
   const buf = result.has_pdf ? await readCompiledPdf(ctx.projectId) : null;
   const bytes = buf ? new Uint8Array(buf) : null;
+  const errors = await explainedErrors(result);
   if (ctx.identityStale()) return result;
   const verified = verifiedCompileOutput(result, bytes);
   const checkpoint = compileSuccessCheckpointFor(ctx, result, verified);
@@ -1242,7 +1475,7 @@ async function applyCompileResult(
         ? null
         : verified.outputIdentityError.trim() ||
           "Compilation did not produce a valid current PDF.",
-      errors: result.errors,
+      errors,
       diagnostics: result.diagnostics ?? null,
       log: `${ctx.offlineNoticePrefix}${result.log}${verified.outputIdentityError}`,
       lastCompiledAt: checkpoint?.completedAt ?? state.lastCompiledAt,
@@ -1277,6 +1510,60 @@ async function applyCompileResult(
   return result;
 }
 
+export interface TypstLiveResult {
+  readonly projectId: string;
+  readonly mainDocument: string;
+  readonly projectRevision: number;
+  readonly result: CompileResult;
+}
+
+export async function applyTypstLiveResult(live: TypstLiveResult): Promise<boolean> {
+  const { projectId, mainDocument, result } = live;
+  const stillWanted = () => {
+    const files = useFilesStore.getState();
+    return (
+      files.projectId === projectId &&
+      files.engine.source_format === "typst" &&
+      resolveEffectiveMainDoc().mainDoc === mainDocument
+    );
+  };
+  if (!stillWanted()) return false;
+  if (!result.ok && activeCompileIntent !== null) return false;
+  const checkpointAtStart = useCompileStore.getState().lastCompileCheckpoint;
+  const ctx: CompileApplyContext = {
+    set: useCompileStore.setState,
+    get: useCompileStore.getState,
+    projectId,
+    mainDoc: mainDocument,
+    requestIdentity: {
+      projectId,
+      mainDocument,
+      projectRevision: live.projectRevision,
+      requestGeneration: compileIntentGeneration,
+    },
+    checkpointAtStart,
+    identityStale: () => !stillWanted(),
+    checkpointAdvanced: (current = useCompileStore.getState().lastCompileCheckpoint) =>
+      hasCompileCheckpointAdvanced(checkpointAtStart, current),
+    offlineNoticePrefix: "",
+    compiledSourceSnapshot: null,
+    origin: "automatic",
+  };
+  await applyCompileResult(ctx, result);
+  return true;
+}
+
+async function compileThroughLivePreview(
+  projectId: string,
+  mainDoc: string,
+  offline: boolean,
+  typstVariant: string | null,
+  fresh: boolean,
+): Promise<CompileResult> {
+  const module = await loadLivePreview();
+  return module.compileLive({ projectId, mainDoc, offline, typstVariant, fresh });
+}
+
 function pauseCompileForMissingFolder(ctx: CompileApplyContext, e: unknown): void {
   const paused = i18n.t(($) => $.core.folderUnavailable.compile);
   ctx.set((state) =>
@@ -1298,8 +1585,46 @@ function pauseCompileForMissingFolder(ctx: CompileApplyContext, e: unknown): voi
   void import("@/lib/log").then(({ logError }) => logError("compile", e));
 }
 
+function reportMissingTypst(ctx: CompileApplyContext, version: string, e: unknown): void {
+  const message = typstMissingMessage(version);
+  ctx.set((state) => {
+    if (
+      ctx.identityStale() ||
+      hasCompileCheckpointAdvanced(ctx.checkpointAtStart, state.lastCompileCheckpoint)
+    ) {
+      return state;
+    }
+    return {
+      status: "unavailable",
+      phase: "idle",
+      failureReason: message,
+      offer: { kind: "typst-version-missing", projectId: ctx.projectId, version },
+    };
+  });
+  void import("@/lib/preview-window")
+    .then((module) =>
+      module.refreshPreviewWindow({
+        identity: ctx.requestIdentity,
+        status: "unavailable",
+        checkpoint: null,
+        message,
+      }),
+    )
+    .catch(() => {});
+  void logError("compile", e);
+  if (useFilesStore.getState().projectId === ctx.projectId) {
+    void useFilesStore.getState().refreshEngine();
+  }
+}
+
 function handleCompileException(ctx: CompileApplyContext, e: unknown): void {
-  const message = decodeAppError(e) ? describeError(e) : String(e);
+  const appError = decodeAppError(e);
+  const missingTypst = appError?.code === TYPST_VERSION_MISSING ? appError.params.version : undefined;
+  if (missingTypst) {
+    reportMissingTypst(ctx, missingTypst, e);
+    return;
+  }
+  const message = appError ? describeError(e) : String(e);
   ctx.set((state) => {
     if (
       ctx.identityStale() ||
@@ -1390,6 +1715,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
   setAutoCompile: (v) => {
     storeFlag(AUTO_COMPILE_KEY, v);
     set({ autoCompile: v });
+    syncTypstLivePreview();
   },
   compileMode: readStoredCompileMode(),
   setCompileMode: (mode) => {
@@ -1419,6 +1745,7 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     } catch (error) {
       notifyError("stop compile", error);
     }
+    await interruptTypstLivePreview();
   },
   reset: () => {
     compileSeq++;
@@ -1443,6 +1770,14 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     });
   },
   dismissOffer: () => set({ offer: null }),
+  livePreview: { projectId: null, enabled: false, status: "off", message: null },
+  setLivePreviewStatus: (projectId, status, message = null) => {
+    set((state) =>
+      state.livePreview.projectId === projectId && state.livePreview.enabled
+        ? { livePreview: { ...state.livePreview, status, message } }
+        : state,
+    );
+  },
   restoreFromDisk: async (projectId, mainDoc) => {
     // Only seed a fresh store: once any compile has produced a checkpoint in
     // this session, disk state is older by definition.
@@ -1623,13 +1958,22 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     try {
       return await withEventListener("compile:log", (chunk: string) => logPump.push(chunk), async () => {
         if (identityStale() || checkpointAdvanced()) return undefined;
-        const result = await compileProject(
-          projectId,
-          mainDoc,
-          offlinePolicy.offline,
-          get().compileMode === "fast",
-          get().stopOnFirstError,
-        );
+        const result = livePreviewRoutes(get(), useFilesStore.getState(), projectId)
+          ? await compileThroughLivePreview(
+              projectId,
+              mainDoc,
+              offlinePolicy.offline,
+              activeTypstVariant(projectId, files.engine),
+              origin !== "automatic" || options?.fromScratch === true,
+            )
+          : await compileProject(
+              projectId,
+              mainDoc,
+              offlinePolicy.offline,
+              get().compileMode === "fast",
+              get().stopOnFirstError,
+              activeTypstVariant(projectId, files.engine),
+            );
         logPump.flush();
         if (result.stopped) {
           applyStoppedCompile(set, identityStale);

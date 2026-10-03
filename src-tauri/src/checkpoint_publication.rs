@@ -185,6 +185,7 @@ pub(crate) struct PublicationRequest {
     pub project_root: PathBuf,
     pub engine_name: String,
     pub main_document: String,
+    pub toolchain_identity: String,
 }
 
 pub(crate) const PUBLICATION_EVENT: &str = "checkpoint:publication";
@@ -456,6 +457,7 @@ fn publication_request(
         project_root: project_root.to_path_buf(),
         engine_name: engine_name.to_owned(),
         main_document: main_document.to_owned(),
+        toolchain_identity: engine_name.to_owned(),
     }
 }
 
@@ -470,8 +472,12 @@ pub(crate) fn schedule_after_successful_compile<R: tauri::Runtime>(
     project_root: &Path,
     engine_name: &str,
     main_document: &str,
+    toolchain_identity: &str,
 ) {
-    let request = publication_request(project_id, project_root, engine_name, main_document);
+    let request = PublicationRequest {
+        toolchain_identity: toolchain_identity.to_owned(),
+        ..publication_request(project_id, project_root, engine_name, main_document)
+    };
     if let Some((request, cancel)) = admit_publication(request) {
         tauri::async_runtime::spawn(run_publication_lane(app.clone(), request, cancel));
     }
@@ -536,7 +542,7 @@ fn snapshot_evidence(
 ) -> Result<oleafly_history::CompileEvidence, AdapterFailure> {
     oleafly_history::CompileEvidence::new(
         request.engine_name.as_str(),
-        request.engine_name.as_str(),
+        request.toolchain_identity.as_str(),
         request.main_document.as_str(),
         ContentHash::digest(&[]),
         completed_at_unix_ms,
@@ -768,6 +774,11 @@ fn linked_capture_policy(
             forced.extend(crate::checkpoint_capture::recorded_inputs_in(
                 &recorder, root,
             ));
+        }
+    }
+    if oleafly_core::Engine::named(&request.engine_name) == Some(oleafly_core::Engine::Typst) {
+        if let Ok(Some(build)) = crate::paths::existing_build_dir(&request.project_id) {
+            forced.extend(crate::typst_options::recorded_dependencies(&build, root));
         }
     }
     crate::checkpoint_capture::LinkedCapturePolicy::new(forced)
@@ -1193,6 +1204,7 @@ mod tests {
             project_root: std::path::PathBuf::from("/project"),
             engine_name: "typst".into(),
             main_document: format!("main-{generation}.typ"),
+            toolchain_identity: "typst 0.15.1".into(),
         }
     }
 
@@ -1212,6 +1224,19 @@ mod tests {
         assert_eq!(request.project_root, project);
         assert_eq!(request.engine_name, "latex");
         assert_eq!(request.main_document, "main.tex");
+        assert_eq!(request.toolchain_identity, "latex");
+    }
+
+    #[test]
+    fn the_compile_evidence_names_the_typst_version_that_produced_it() {
+        let temp = tempdir().unwrap();
+        let request = PublicationRequest {
+            toolchain_identity: "typst 0.13.1".into(),
+            ..publication_request("identity", temp.path(), "typst", "main.typ")
+        };
+        let evidence = super::snapshot_evidence(&request, 1).unwrap();
+        assert_eq!(evidence.engine, "typst");
+        assert_eq!(evidence.toolchain_identity, "typst 0.13.1");
     }
 
     #[test]
@@ -1230,7 +1255,9 @@ mod tests {
         let project_id = "lane-compile-path";
         let (_running, holder) = admit_publication(lane_request(project_id, 1)).unwrap();
 
-        schedule_after_successful_compile(&handle, project_id, &project, "latex", "main.tex");
+        schedule_after_successful_compile(
+            &handle, project_id, &project, "latex", "main.tex", "latex",
+        );
 
         assert_eq!(
             lane_successor_document(project_id).as_deref(),
@@ -1788,6 +1815,39 @@ mod tests {
         assert_eq!(
             newest_checkpoint_paths(&id),
             vec!["build/figure.pdf", "out/main.tex"]
+        );
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_typst_dependency_list_brings_in_files_the_folder_skip_list_would_miss() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempdir().unwrap();
+        let folders = tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let runtime = publication_runtime();
+        let (id, folder) = linked_folder(folders.path());
+        fs::write(folder.join("main.typ"), b"#image(\"build/plot.svg\")").unwrap();
+        fs::create_dir_all(folder.join("build")).unwrap();
+        fs::write(folder.join("build/plot.svg"), b"<svg/>").unwrap();
+        fs::write(folder.join("build/unused.svg"), b"<svg/>").unwrap();
+        let build = crate::paths::build_dir(&id).unwrap();
+        fs::write(
+            crate::typst_options::dependency_file(&build),
+            r#"{"inputs":["build/plot.svg","main.typ"],"outputs":[]}"#,
+        )
+        .unwrap();
+
+        let outcome = publish_checkpoint(&runtime, &id, &folder, "typst", "main.typ");
+        assert!(
+            matches!(outcome, CheckpointPublicationOutcome::Published { .. }),
+            "{outcome:?}"
+        );
+        let paths = newest_checkpoint_paths(&id);
+        assert!(paths.contains(&"build/plot.svg".to_string()), "{paths:?}");
+        assert!(
+            !paths.contains(&"build/unused.svg".to_string()),
+            "{paths:?}"
         );
         std::env::remove_var("OLEAFLY_DATA_DIR");
     }

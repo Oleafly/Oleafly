@@ -484,7 +484,7 @@ function toolWrittenPaths(args: unknown, output: Record<string, unknown> | null)
 }
 
 const UNIVERSAL_TOOLS = ["read_file", "write_file", "replace_in_file", "create_file", "delete_file", "rename_file", "list_files", "search_project", "compile", "get_log", "get_pdf_text", "verify_pdf_pages", "update_todos", "get_todos", "remember_note", "forget_note", "list_notes", "set_main_doc", "toggle_theme"];
-export const FIGURE_TOOLS = ["preview_figure", "insert_figure", "load_image"];
+export const ENGINE_FIGURE_TOOLS = ["preview_figure", "insert_figure"];
 
 export function buildAiToolInventory(
   features: EngineFeature[],
@@ -504,18 +504,26 @@ export function excludedToolNames(
 ): string[] {
   return [
     ...(features.includes("document_index") ? [] : ["project_map"]),
-    ...(figureTools ? [] : FIGURE_TOOLS),
+    ...(figureTools ? [] : ENGINE_FIGURE_TOOLS),
   ];
 }
 
-export function figureGuidance(toolNames: readonly string[]): string {
+const LATEX_FIGURE_SOURCE = `
+- When the user asks for a figure, diagram, plot, or schematic, write it as TikZ or PGFPlots.`;
+
+const TYPST_FIGURE_SOURCE = `
+- When the user asks for a figure, diagram, plot, or schematic, write it in Typst. Use CeTZ for drawings, cetz-plot or lilaq for data plots, fletcher for node and arrow diagrams, and plain Typst content for simple layouts.
+- Put the #import lines the figure needs at the top of the code, for example #import "@preview/cetz:0.4.2".`;
+
+export function figureGuidance(toolNames: readonly string[], profile = "latex"): string {
   if (!toolNames.includes("preview_figure")) return "";
+  const typst = profile === "typst";
+  const insertNote = typst ? " It wraps the code in #figure and puts the label after it." : "";
   return `
-Figures and diagrams:
-- When the user asks for a figure, diagram, plot, or schematic, write it as TikZ or PGFPlots.
+Figures and diagrams:${typst ? TYPST_FIGURE_SOURCE : LATEX_FIGURE_SOURCE}
 - Render it with preview_figure and look at the result before you go any further.
 - Keep refining until labels do not overlap, spacing is even, and the layout reads cleanly at print size.
-- Call insert_figure to place the finished figure at the cursor, with a short caption and a label.
+- Call insert_figure to place the finished figure at the cursor, with a short caption and a label.${insertNote}
 - Use load_image when you need to look at an image already in the project, such as a sketch to redraw.
 - Never invent data. Use the numbers the user gives you, and keep any placeholder obviously a placeholder.`;
 }
@@ -722,6 +730,31 @@ function describeProbeFailure(error: unknown): string {
   return detail
     ? i18n.t(($) => $.ai.models.probeFailedWithDetail, { detail })
     : i18n.t(($) => $.ai.models.probeFailed);
+}
+
+export function imageProjectRule(profile: string): string {
+  const typst = profile === "typst";
+  const figure = typst
+    ? "a standalone Typst figure on an auto-sized page (#set page(width: auto, height: auto, ...))"
+    : "a standalone TikZ/LaTeX figure";
+  const keep = typst
+    ? "Keep the auto-sized page setting so the page stays cropped to the figure."
+    : "Keep the standalone document class and its tikzpicture.";
+  return `
+This is an IMAGE project, not a text document. The main document is ${figure} that compiles to a single cropped image (not a paper). Your job is to build, edit, and fix that ONE figure: shapes, arrows, labels, colors, and layout. Do not add prose, sections, abstracts, bibliographies, or multi-page document structure. ${keep} When you compile, success means the figure renders cleanly; the "PDF" here is the image.`;
+}
+
+export function citationRule(profile: string): string {
+  if (profile === "latex") {
+    return String.raw`Every \cite key must resolve to an entry in the project bibliography. Check unresolvedCites in project_map, or search the .bib file with search_project, before you add a citation.`;
+  }
+  if (profile === "typst") {
+    return "Every citation, written as @key or #cite(<key>), must resolve to an entry in the project bibliography, a .bib file or a Hayagriva .yml file loaded with #bibliography. Compare the key with bibKeys in project_map, or search the bibliography file with search_project, before you add a citation. In Typst @key also points at labels, so never give a citation key the same name as a label.";
+  }
+  if (profile === "markdown") {
+    return "Every [@key] citation must resolve to an entry in the project bibliography. Check unresolvedCites in project_map, or search the .bib file with search_project, before you add a citation.";
+  }
+  return "Every citation must resolve to an entry in the project bibliography. Search the bibliography with search_project before you add a citation.";
 }
 
 function sourceVocabularyFor(profile: string): string {
@@ -2257,7 +2290,7 @@ USER_CUSTOM_INSTRUCTIONS`
       /* non-fatal */
     }
 
-    const mainDocument = useFilesStore.getState().mainDoc || "main.tex";
+    const mainDocument = useFilesStore.getState().mainDoc || documentEngine.main_document || "main.tex";
     const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
     const runSkillTools = createLoadSkillTools(runSkills, requestedSkillIds);
     const runToolAdditions: RuntimeToolset[] = [
@@ -2305,20 +2338,22 @@ USER_CUSTOM_INSTRUCTIONS`
       enabledToolsForRun,
       Object.keys(tools),
     );
-    const figureBlock = figureGuidance(Object.keys(tools));
+    const figureBlock = figureGuidance(
+      Object.keys(tools),
+      documentEngine.capabilities.formatting_profile,
+    );
     const imageProjectBlock =
       projectKind === "image"
-        ? `
-This is an IMAGE project, not a text document. The main document is a standalone TikZ/LaTeX figure that compiles to a single cropped image (not a paper). Your job is to build, edit, and fix that ONE figure: shapes, arrows, labels, colors, and layout. Do not add prose, sections, abstracts, bibliographies, or multi-page document structure. Keep the standalone document class and its tikzpicture. When you compile, success means the figure renders cleanly; the "PDF" here is the image.`
+        ? imageProjectRule(documentEngine.capabilities.formatting_profile)
         : "";
     const goalBlock = activeGoalLine ? `\n${activeGoalLine}` : "";
     const researchRulesBlock =
       projectKind === "image"
         ? ""
-        : String.raw`
+        : `
 Research rules:
 - Never invent a reference, a bibliography entry, an author list, or a DOI. If you cannot verify a source, say so plainly.
-- Every \cite key must resolve to an entry in the project bibliography. Check unresolvedCites in project_map, or search the .bib file with search_project, before you add a citation.
+- ${citationRule(documentEngine.capabilities.formatting_profile)}
 - Verify a DOI with verify_citation before you rely on it.
 - Keep sources under research/sources/, notes under research/notes/, the reading list at research/reading-list.md, claims at research/claims.md, and reviews under review/. That is the layout the research skills read and write.
 - Compile after each section you write, and fix what breaks before you move on.
@@ -3942,7 +3977,7 @@ ${sandboxedCustom}`;
                           </>
                         }
                       >
-                        {[...promptCategories(), ...skillPromptCategories].map((category, i) => (
+                        {[...promptCategories(documentEngine.capabilities.formatting_profile), ...skillPromptCategories].map((category, i) => (
                           <div
                             key={category.id}
                             className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}

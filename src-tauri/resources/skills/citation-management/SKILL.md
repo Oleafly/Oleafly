@@ -1,11 +1,11 @@
 ---
 name: citation-management
-description: Comprehensive citation management for academic research. Search OpenAlex, PubMed, and Google Scholar for papers, extract accurate metadata, validate citations, and generate properly formatted BibTeX entries. This skill should be used when you need to find papers, verify citation information, convert DOIs to BibTeX, or ensure reference accuracy in scientific writing.
+description: Comprehensive citation management for academic research. Search OpenAlex, PubMed, and Google Scholar for papers, extract accurate metadata, validate citations, and generate properly formatted BibTeX entries, or Hayagriva YAML for Typst projects. This skill should be used when you need to find papers, verify citation information, convert DOIs to BibTeX, or ensure reference accuracy in scientific writing.
 allowed-tools: Read Write Edit Bash WebSearch WebFetch
 license: MIT License
 compatibility: Requires Python 3.9+ with requests. Google Scholar search additionally needs scholarly. Needs network access to api.openalex.org, api.crossref.org, eutils.ncbi.nlm.nih.gov, export.arxiv.org, and api.datacite.org.
 metadata:
-  version: "2.1"
+  version: "2.1.1"
   skill-author: K-Dense Inc.
   openclaw:
     envVars:
@@ -47,6 +47,7 @@ Use this skill when:
 - Building a bibliography for a manuscript or thesis
 - Checking for duplicate citations
 - Ensuring consistent citation formatting
+- Keeping a Typst bibliography in BibTeX or in Hayagriva YAML
 
 If a document built from these citations needs a diagram, use the
 **scientific-schematics** skill.
@@ -163,6 +164,42 @@ literature-review and Zotero/pyzotero export paths — are in
 [references/core_workflow.md](references/core_workflow.md) and
 [references/example_workflows.md](references/example_workflows.md).
 
+### Typst projects: BibTeX or Hayagriva
+
+Typst reads BibTeX directly. `#bibliography("references.bib")` works with the file
+these scripts produce, so a Typst paper needs no extra step. Citations are written
+`@key` or `#cite(<key>)`.
+
+Typst also reads Hayagriva, a YAML format, from `#bibliography("references.yml")`.
+Use it only when the project already has a `.yml` bibliography or the user asks for
+one, and add new entries in whatever format the project already uses. Mixing the two
+in one project makes duplicates easy to miss.
+
+`assets/hayagriva_template.yml` holds four of the works from `bibtex_template.bib`
+in Hayagriva form. The BibTeX fields map like this:
+
+| BibTeX | Hayagriva |
+|---|---|
+| entry key | the top-level key |
+| `@article` | `type: article` with a `parent` of `type: periodical` |
+| `@inproceedings` | `type: article` with a `parent` of `type: proceedings` |
+| `@book` | `type: book` |
+| `journal`, `booktitle` | `parent.title` |
+| `volume`, `number` | `parent.volume`, `parent.issue` |
+| `pages` | `page-range` |
+| `year` | `date` |
+| `doi`, `isbn` | `serial-number.doi`, `serial-number.isbn` |
+| `address` | `location` on the parent, or `publisher.location` for a book |
+
+Watch for three things. Quote any title that contains a colon, or YAML reads it as a
+mapping. A citation key must not share its name with a label, because Typst resolves
+`@name` against both. And the scripts here only read BibTeX: `format_bibtex.py` and
+`validate_citations.py` cannot check a `.yml` file, so build and validate the entries
+as BibTeX first, then write the Hayagriva version from the same fields.
+`validate_citations.py --manuscript paper.typ` does find `@key` citations, but it also
+counts references to labels such as `@fig:results`, so read its unresolved list with
+that in mind.
+
 ## Reference Files
 
 - [references/core_workflow.md](references/core_workflow.md): all five phases in full.
@@ -225,7 +262,7 @@ literature-review and Zotero/pyzotero export paths — are in
 
 **Citation Management** ensures accurate references for **Scientific Writing**:
 
-- Export validated BibTeX for use in LaTeX manuscripts
+- Export validated BibTeX for use in LaTeX or Typst manuscripts
 - Verify citations match publication standards
 - Format references according to journal requirements
 
@@ -260,6 +297,7 @@ literature-review and Zotero/pyzotero export paths — are in
 
 **Assets** (in `assets/`):
 - `bibtex_template.bib`: Example BibTeX entries for all types
+- `hayagriva_template.yml`: The same kinds of entries in Hayagriva YAML, for Typst
 - `citation_checklist.md`: Quality assurance checklist
 
 ### External Resources

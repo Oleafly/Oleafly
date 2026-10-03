@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} non espone una modalità di compilazione offline. La compilazione procede normalmente.",
     "retry": "Compila di nuovo",
-    "bundleFetchFailed": "Oleafly non è riuscito a scaricare i pacchetti TeX necessari a questo documento. Controlla la connessione e compila di nuovo."
+    "bundleFetchFailed": "Oleafly non è riuscito a scaricare i pacchetti TeX necessari a questo documento. Controlla la connessione e compila di nuovo.",
+    "typstMissing": "Typst {{version}} non è installato. Scaricalo oppure passa questo progetto a un'altra versione.",
+    "typstPackage": {
+      "downloadFailed": "Typst non è riuscito a scaricare {{spec}}. Controlla la connessione a internet e compila di nuovo.",
+      "downloadFailedUnnamed": "Typst non è riuscito a scaricare un pacchetto importato da questo documento. Controlla la connessione a internet e compila di nuovo.",
+      "offlineNotCached": "Sei offline e {{spec}} non è ancora nella cache dei pacchetti. Compila una volta online oppure includi i pacchetti nel progetto.",
+      "offlineNotCachedUnnamed": "Sei offline e un pacchetto importato da questo documento non è ancora nella cache dei pacchetti. Compila una volta online.",
+      "notFound": "Typst Universe non ha nessun pacchetto {{spec}}. Controlla il nome nell'import.",
+      "localNotFound": "Il pacchetto locale {{spec}} non è installato. Mettilo nella cartella dei pacchetti Typst di Oleafly o nella cartella typst-packages del progetto.",
+      "versionMissing": "Questo pacchetto non ha la versione {{version}}. La più recente è {{latest}}.",
+      "versionMissingNoLatest": "Questo pacchetto non ha la versione {{version}}. Controlla la versione nell'import."
+    }
   },
   "developer": {
     "actions": {
@@ -353,6 +364,7 @@
     "notRenamable": "Questo simbolo non può essere rinominato.",
     "nothingToRename": "Niente da rinominare.",
     "referencesFor": "Riferimenti a {{name}}",
+    "renameFailed": "Impossibile rinominare in \"{{name}}\".",
     "renamePartial": "Rinominato in \"{{name}}\" in {{edited}} file su {{total}}. Impossibile scrivere {{files}}.",
     "renamed": "Rinominato in \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -597,5 +609,8 @@
   "folderUnavailable": {
     "compile": "La compilazione è in pausa finché la cartella del progetto non torna disponibile.",
     "saveReason": "la cartella del progetto non è disponibile"
+  },
+  "imageToTypst": {
+    "failed": "Conversione da immagine a Typst non riuscita: {{detail}}"
   }
 }

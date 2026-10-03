@@ -21,7 +21,7 @@
 //! window, and `browser.rs` lays them out.
 
 /// Windows that hold one webview filling the whole window.
-const FILLING_WINDOWS: [&str; 3] = ["main", "preview", "update"];
+const FILLING_WINDOWS: [&str; 5] = ["main", "preview", "update", "presentation", "presenter"];
 
 /// How far (in points) an edge may sit from where it belongs before the
 /// frame counts as wrong. Frames are floating point, so a fraction of a
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn only_oleafly_single_webview_windows_are_filled() {
-        for label in ["main", "preview", "update"] {
+        for label in ["main", "preview", "update", "presentation", "presenter"] {
             assert!(fills_window(label), "{label}");
         }
         for label in [

@@ -267,6 +267,7 @@ fn successful_builds_preserve_human_and_json_output_contracts() {
 }
 
 const BUILD_FLAGS: [&str; 3] = ["--offline", "--fast", "--halt-on-error"];
+const TYPST_IGNORED_FLAGS: [&str; 2] = ["--fast", "--halt-on-error"];
 
 fn build_with_tools(
     project: &std::path::Path,
@@ -294,7 +295,7 @@ fn build_notes_each_flag_the_engine_ignores_and_keeps_the_exit_code() {
     for (engine, variables, ignored) in [
         ("tectonic", &["OLEAFLY_TECTONIC"][..], &[][..]),
         ("latexmk", &["OLEAFLY_LATEXMK"][..], &["--fast"][..]),
-        ("typst", &["OLEAFLY_TYPST"][..], &BUILD_FLAGS[..]),
+        ("typst", &["OLEAFLY_TYPST"][..], &TYPST_IGNORED_FLAGS[..]),
         (
             "markdown",
             &["OLEAFLY_PANDOC", "OLEAFLY_TECTONIC"][..],
@@ -949,4 +950,903 @@ fn open_refuses_missing_folders_files_and_a_missing_app() {
     assert_eq!(itself.status.code(), Some(4));
     let stderr = String::from_utf8_lossy(&itself.stderr);
     assert!(stderr.contains("that's this command"), "{stderr}");
+}
+
+fn typst_fixture(directory: &std::path::Path, version: &str) -> PathBuf {
+    std::fs::create_dir_all(directory).unwrap();
+    let binary = support::rust_fixture(directory, "typst.rs", "typst", None);
+    std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
+    binary
+}
+
+fn place_typst(fixture: &std::path::Path, directory: &std::path::Path, version: &str) -> PathBuf {
+    std::fs::create_dir_all(directory).unwrap();
+    let binary = directory.join(oleafly_cli::executable_name("typst"));
+    std::fs::copy(fixture, &binary).unwrap();
+    std::fs::write(directory.join("fixture-typst-version"), version).unwrap();
+    binary.canonicalize().unwrap()
+}
+
+fn install_typst(
+    fixture: &std::path::Path,
+    data: &std::path::Path,
+    version: &str,
+) -> Option<PathBuf> {
+    use oleafly_core::typst_toolchain::{
+        host_target, typst_install_dir, ToolchainVersion, TypstToolchainCatalog,
+        INSTALLED_CACHE_FILE,
+    };
+    let target = host_target()?;
+    let directory = typst_install_dir(data, &ToolchainVersion::parse(version).unwrap());
+    let binary = place_typst(fixture, &directory, version);
+    let artifact = TypstToolchainCatalog::embedded()
+        .typst_artifact(version, target)
+        .unwrap();
+    let metadata = std::fs::metadata(&binary).unwrap();
+    let modified = metadata
+        .modified()
+        .unwrap()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap();
+    std::fs::write(
+        directory.join(INSTALLED_CACHE_FILE),
+        serde_json::json!({
+            "binary": binary.file_name().unwrap().to_str().unwrap(),
+            "binarySha256": artifact.binary_sha256,
+            "size": metadata.len(),
+            "modifiedSecs": modified.as_secs(),
+            "modifiedNanos": modified.subsec_nanos()
+        })
+        .to_string(),
+    )
+    .unwrap();
+    Some(binary)
+}
+
+fn typst_project(pin: Option<&str>) -> TempDir {
+    let project = TempDir::new().unwrap();
+    assert!(run(&["init", "--engine", "typst"], Some(project.path()))
+        .status
+        .success());
+    if let Some(pin) = pin {
+        let path = project.path().join("project.json");
+        let mut manifest: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        manifest["typst"] = serde_json::json!({ "version": pin });
+        std::fs::write(&path, manifest.to_string()).unwrap();
+    }
+    project
+}
+
+fn oleafly_typst(
+    project: &std::path::Path,
+    data: &std::path::Path,
+    path_directories: &[&std::path::Path],
+    typst_override: Option<&std::path::Path>,
+    arguments: &[&str],
+) -> Output {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_oleaflyc"));
+    command
+        .args(arguments)
+        .current_dir(project)
+        .env("OLEAFLY_DATA_DIR", data)
+        .env("PATH", std::env::join_paths(path_directories).unwrap())
+        .env_remove("OLEAFLY_TYPST");
+    for variable in INHERITED_VARIABLES {
+        command.env_remove(variable);
+    }
+    if let Some(path) = typst_override {
+        command.env("OLEAFLY_TYPST", path);
+    }
+    command.output().unwrap()
+}
+
+const INHERITED_VARIABLES: [&str; 13] = [
+    "HTTPS_PROXY",
+    "https_proxy",
+    "HTTP_PROXY",
+    "http_proxy",
+    "ALL_PROXY",
+    "all_proxy",
+    "NO_PROXY",
+    "no_proxy",
+    "SOURCE_DATE_EPOCH",
+    "TYPST_PACKAGE_PATH",
+    "TYPST_PACKAGE_CACHE_PATH",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+];
+
+fn build_log(output: &Output) -> String {
+    json(output)["build"]["log"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn fixture_calls(binary: &std::path::Path) -> Vec<String> {
+    std::fs::read_to_string(binary.with_file_name("fixture-typst-calls"))
+        .unwrap_or_default()
+        .lines()
+        .map(str::to_string)
+        .collect()
+}
+
+#[test]
+fn a_pinned_typst_project_builds_with_the_installed_version() {
+    let tools = TempDir::new().unwrap();
+    let fixture = typst_fixture(tools.path(), "0.15.1");
+    let data = TempDir::new().unwrap();
+    let Some(installed) = install_typst(&fixture, data.path(), "0.13.1") else {
+        return;
+    };
+    let decoy = place_typst(&fixture, &tools.path().join("decoy"), "0.14.2");
+    let project = typst_project(Some("0.13.1"));
+    let output = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[decoy.parent().unwrap()],
+        None,
+        &["--json", "build"],
+    );
+    assert!(
+        output.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let log = build_log(&output);
+    assert!(log.contains("typst-fixture-ok:0.13.1:"), "{log}");
+    assert!(log.contains("--color=never compile "), "{log}");
+    assert!(log.contains(" --diagnostic-format human"), "{log}");
+    assert_eq!(fixture_calls(&installed).len(), 1);
+    assert!(project
+        .path()
+        .join(".oleafly/build/_oleafly_entry.pdf")
+        .is_file());
+}
+
+#[test]
+fn a_missing_typst_pin_stops_the_build_with_an_install_hint() {
+    let tools = TempDir::new().unwrap();
+    let fixture = typst_fixture(tools.path(), "0.14.2");
+    let data = TempDir::new().unwrap();
+    let project = typst_project(Some("0.12.0"));
+
+    let machine = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[tools.path()],
+        None,
+        &["--json", "build"],
+    );
+    assert_eq!(machine.status.code(), Some(4));
+    let value = json(&machine);
+    assert_eq!(value["ok"], false);
+    assert_eq!(value["error"]["kind"], "missing_tool");
+    let message = value["error"]["message"].as_str().unwrap();
+    assert!(message.contains("Typst 0.12.0"), "{message}");
+    assert!(message.contains("Settings > Engines > Typst"), "{message}");
+
+    let human = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[tools.path()],
+        None,
+        &["build"],
+    );
+    assert_eq!(human.status.code(), Some(4));
+    let stderr = String::from_utf8_lossy(&human.stderr);
+    assert!(stderr.starts_with("error: "), "{stderr}");
+    assert!(stderr.contains("Typst 0.12.0"), "{stderr}");
+    assert!(stderr.contains("Settings > Engines > Typst"), "{stderr}");
+
+    assert!(fixture_calls(&fixture)
+        .iter()
+        .all(|call| call == "--version"));
+    assert!(!project
+        .path()
+        .join(".oleafly/build/_oleafly_entry.pdf")
+        .exists());
+
+    let unknown = typst_project(Some("0.99.0"));
+    let output = oleafly_typst(
+        unknown.path(),
+        data.path(),
+        &[tools.path()],
+        None,
+        &["--json", "build"],
+    );
+    assert_eq!(output.status.code(), Some(4));
+    let message = json(&output)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(message.contains("Typst 0.99.0"), "{message}");
+    assert!(!message.contains("Settings > Engines > Typst"), "{message}");
+}
+
+#[test]
+fn a_typst_on_path_with_the_pinned_version_satisfies_the_pin() {
+    let tools = TempDir::new().unwrap();
+    let fixture = typst_fixture(&tools.path().join("compiled"), "0.15.0");
+    let older = place_typst(&fixture, &tools.path().join("older"), "0.13.1");
+    let pinned = place_typst(&fixture, &tools.path().join("pinned"), "0.14.2");
+    let data = TempDir::new().unwrap();
+    let project = typst_project(Some("0.14.2"));
+    let output = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[older.parent().unwrap(), pinned.parent().unwrap()],
+        None,
+        &["--json", "build"],
+    );
+    assert!(
+        output.status.success(),
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(build_log(&output).contains("typst-fixture-ok:0.14.2:"));
+    assert_eq!(fixture_calls(&older), ["--version"]);
+    assert_eq!(fixture_calls(&pinned).len(), 2);
+}
+
+#[test]
+fn the_typst_override_must_match_a_pin_but_not_an_unpinned_project() {
+    let tools = TempDir::new().unwrap();
+    let fixture = typst_fixture(&tools.path().join("compiled"), "0.15.0");
+    let other = place_typst(&fixture, &tools.path().join("other"), "0.15.0");
+    let matching = place_typst(&fixture, &tools.path().join("matching"), "0.14.2");
+    let data = TempDir::new().unwrap();
+
+    let pinned = typst_project(Some("0.14.2"));
+    let refused = oleafly_typst(
+        pinned.path(),
+        data.path(),
+        &[matching.parent().unwrap()],
+        Some(&other),
+        &["--json", "build"],
+    );
+    assert_eq!(refused.status.code(), Some(4));
+    let message = json(&refused)["error"]["message"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(message.contains("OLEAFLY_TYPST"), "{message}");
+    assert!(message.contains("0.15.0"), "{message}");
+    assert!(message.contains("0.14.2"), "{message}");
+
+    let accepted = oleafly_typst(
+        pinned.path(),
+        data.path(),
+        &[],
+        Some(&matching),
+        &["--json", "build"],
+    );
+    assert!(accepted.status.success());
+    assert!(build_log(&accepted).contains("typst-fixture-ok:0.14.2:"));
+
+    let unpinned = typst_project(None);
+    let before = fixture_calls(&other).len();
+    let output = oleafly_typst(
+        unpinned.path(),
+        data.path(),
+        &[],
+        Some(&other),
+        &["--json", "build"],
+    );
+    assert!(output.status.success());
+    let log = build_log(&output);
+    assert!(log.contains("typst-fixture-ok:0.15.0:"), "{log}");
+    let calls = fixture_calls(&other);
+    assert_eq!(calls.len(), before + 2, "{calls:?}");
+    assert_eq!(calls[before], "--version");
+    let call = calls.last().unwrap();
+    assert!(call.starts_with("--color=never compile "), "{call}");
+    assert!(call.contains(" --root "), "{call}");
+    assert!(call.contains(" --diagnostic-format human"), "{call}");
+    let shared = data.path().join("typst");
+    assert!(
+        call.contains(&format!(
+            " --package-path {} --package-cache-path {}",
+            shared.join("packages").display(),
+            shared.join("packages-cache").display()
+        )),
+        "{call}"
+    );
+}
+
+fn doctor_check(report: &Value, name: &str) -> Value {
+    report["report"]["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|check| check["name"] == name)
+        .unwrap_or_else(|| panic!("no {name} check in {report}"))
+        .clone()
+}
+
+#[test]
+fn doctor_reports_the_pin_and_every_typst_it_can_see() {
+    let tools = TempDir::new().unwrap();
+    let fixture = typst_fixture(&tools.path().join("compiled"), "0.15.0");
+    let on_path = place_typst(&fixture, &tools.path().join("path"), "0.14.2");
+    let data = TempDir::new().unwrap();
+    let Some(installed) = install_typst(&fixture, data.path(), "0.13.1") else {
+        return;
+    };
+    let project = typst_project(Some("0.13.1"));
+
+    let machine = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[on_path.parent().unwrap()],
+        None,
+        &["--json", "doctor"],
+    );
+    assert!(
+        machine.status.success(),
+        "{}",
+        String::from_utf8_lossy(&machine.stdout)
+    );
+    let report = json(&machine);
+    assert_eq!(report["typst"]["pinned"], "0.13.1");
+    let found = report["typst"]["found"].as_array().unwrap();
+    let entry = |source: &str, version: &str| {
+        found
+            .iter()
+            .find(|entry| entry["source"] == source && entry["version"] == version)
+            .unwrap_or_else(|| panic!("no {source} {version} in {found:?}"))
+            .clone()
+    };
+    assert_eq!(
+        entry("downloaded", "0.13.1")["path"],
+        installed.to_str().unwrap()
+    );
+    assert_eq!(entry("system", "0.14.2")["path"], on_path.to_str().unwrap());
+    let compiler = doctor_check(&report, "compiler_typst");
+    assert_eq!(compiler["status"], "pass");
+    let message = compiler["message"].as_str().unwrap();
+    assert!(message.contains(installed.to_str().unwrap()), "{message}");
+    assert!(message.contains("0.13.1"), "{message}");
+    assert!(message.contains("downloaded"), "{message}");
+    let pin = doctor_check(&report, "typst_version");
+    assert_eq!(pin["status"], "pass");
+    assert!(pin["message"].as_str().unwrap().contains("0.13.1"));
+
+    let human = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[on_path.parent().unwrap()],
+        None,
+        &["doctor"],
+    );
+    assert!(human.status.success());
+    let stdout = String::from_utf8_lossy(&human.stdout);
+    assert!(stdout.contains("PASS typst_version: "), "{stdout}");
+    assert!(stdout.contains("Typst found:"), "{stdout}");
+    let line = |version: &str, source: &str, path: &PathBuf| {
+        stdout.lines().any(|line| {
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            fields.len() >= 3
+                && fields[0] == version
+                && fields[1] == source
+                && line.contains(path.to_str().unwrap())
+        })
+    };
+    assert!(line("0.13.1", "downloaded", &installed), "{stdout}");
+    assert!(line("0.14.2", "PATH", &on_path), "{stdout}");
+
+    let missing = typst_project(Some("0.12.0"));
+    let output = oleafly_typst(
+        missing.path(),
+        data.path(),
+        &[on_path.parent().unwrap()],
+        None,
+        &["--json", "doctor"],
+    );
+    assert_eq!(output.status.code(), Some(4));
+    let report = json(&output);
+    assert_eq!(report["ok"], false);
+    assert_eq!(report["typst"]["pinned"], "0.12.0");
+    let compiler = doctor_check(&report, "compiler_typst");
+    assert_eq!(compiler["status"], "fail");
+    assert!(compiler["message"]
+        .as_str()
+        .unwrap()
+        .contains("Settings > Engines > Typst"));
+    assert_eq!(doctor_check(&report, "typst_version")["status"], "fail");
+
+    let unpinned = typst_project(None);
+    let output = oleafly_typst(
+        unpinned.path(),
+        data.path(),
+        &[on_path.parent().unwrap()],
+        None,
+        &["--json", "doctor"],
+    );
+    let report = json(&output);
+    assert_eq!(report["typst"]["pinned"], Value::Null);
+    assert_eq!(doctor_check(&report, "typst_version")["status"], "pass");
+}
+
+#[test]
+fn doctor_leaves_typst_out_of_other_engines() {
+    let data = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let output = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[],
+        None,
+        &["--json", "doctor"],
+    );
+    let report = json(&output);
+    assert!(report.get("typst").is_none());
+    assert!(report["report"]["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|check| check["name"] != "typst_version"));
+}
+
+fn set_typst(project: &std::path::Path, typst: Value) {
+    let path = project.join("project.json");
+    let mut manifest: Value = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    manifest["typst"] = typst;
+    std::fs::write(&path, manifest.to_string()).unwrap();
+}
+
+fn fixture_environment(binary: &std::path::Path) -> std::collections::BTreeMap<String, String> {
+    std::fs::read_to_string(binary.with_file_name("fixture-typst-env"))
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|line| line.split_once('='))
+        .map(|(name, value)| (name.to_string(), value.to_string()))
+        .collect()
+}
+
+fn last_compile(binary: &std::path::Path) -> String {
+    fixture_calls(binary)
+        .into_iter()
+        .rev()
+        .find(|call| call.contains(" compile "))
+        .unwrap_or_default()
+}
+
+fn stderr(output: &Output) -> String {
+    String::from_utf8_lossy(&output.stderr).into_owned()
+}
+
+fn typst_project_with_settings(typst: Value) -> (TempDir, PathBuf) {
+    let project = typst_project(None);
+    for folder in ["fonts", "assets/type"] {
+        std::fs::create_dir_all(project.path().join(folder)).unwrap();
+    }
+    set_typst(project.path(), typst);
+    let root = project.path().canonicalize().unwrap();
+    (project, root)
+}
+
+#[test]
+fn typst_builds_pass_package_folders_fonts_inputs_and_the_chosen_variant() {
+    let tools = TempDir::new().unwrap();
+    let typst = typst_fixture(tools.path(), "0.15.1");
+    let data = TempDir::new().unwrap();
+    let (project, root) = typst_project_with_settings(serde_json::json!({
+        "vendor_packages": true,
+        "font_paths": ["assets/type"],
+        "inputs": {"draft": "true", "anonymous": "false"},
+        "variants": {"review": {"inputs": {"anonymous": "true"}}, "final": {}}
+    }));
+    let output = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[],
+        Some(&typst),
+        &["--json", "build", "--variant", "review"],
+    );
+    assert!(
+        output.status.success(),
+        "{}{}",
+        build_log(&output),
+        stderr(&output)
+    );
+    let call = last_compile(&typst);
+    for expected in [
+        format!("--package-path {}", root.join("typst-packages").display()),
+        format!(
+            "--package-cache-path {}",
+            data.path().join("typst").join("packages-cache").display()
+        ),
+        format!("--font-path {}", root.join("fonts").display()),
+        format!("--font-path {}", root.join("assets").join("type").display()),
+        "--input anonymous=true".to_string(),
+        "--input draft=true".to_string(),
+    ] {
+        assert!(call.contains(&expected), "{expected}: {call}");
+    }
+    assert!(!call.contains("--ignore-system-fonts"), "{call}");
+    assert!(!call.contains("--creation-timestamp"), "{call}");
+    let environment = fixture_environment(&typst);
+    assert_eq!(
+        PathBuf::from(&environment["TYPST_PACKAGE_PATH"]),
+        root.join("typst-packages")
+    );
+    assert_eq!(
+        PathBuf::from(&environment["TYPST_PACKAGE_CACHE_PATH"]),
+        data.path().join("typst").join("packages-cache")
+    );
+    assert!(!environment.contains_key("HTTPS_PROXY"), "{environment:?}");
+    assert!(!environment.contains_key("SOURCE_DATE_EPOCH"));
+
+    let base = oleafly_typst(project.path(), data.path(), &[], Some(&typst), &["build"]);
+    assert!(base.status.success(), "{}", stderr(&base));
+    assert!(last_compile(&typst).contains("--input anonymous=false"));
+}
+
+#[test]
+fn an_unknown_typst_variant_stops_before_typst_runs_and_names_the_others() {
+    let tools = TempDir::new().unwrap();
+    let typst = typst_fixture(tools.path(), "0.15.1");
+    let data = TempDir::new().unwrap();
+    let (project, _root) = typst_project_with_settings(serde_json::json!({
+        "variants": {"review": {"inputs": {"anonymous": "true"}}, "camera-ready": {}}
+    }));
+    for command in ["build", "watch"] {
+        let machine = oleafly_typst(
+            project.path(),
+            data.path(),
+            &[],
+            Some(&typst),
+            &["--json", command, "--variant", "final"],
+        );
+        assert_eq!(machine.status.code(), Some(3), "{command}");
+        let value = json(&machine);
+        assert_eq!(value["error"]["kind"], "invalid_input");
+        assert_eq!(
+            value["error"]["message"],
+            "this project has no Typst variant named `final`. Available variants: camera-ready, review"
+        );
+    }
+    let human = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[],
+        Some(&typst),
+        &["build", "--variant", "final"],
+    );
+    assert_eq!(human.status.code(), Some(3));
+    assert!(
+        stderr(&human).starts_with("error: this project has no Typst variant named `final`"),
+        "{}",
+        stderr(&human)
+    );
+    assert!(fixture_calls(&typst).is_empty());
+}
+
+#[test]
+fn a_variant_for_another_engine_is_noted_and_ignored() {
+    let tools = TempDir::new().unwrap();
+    let compiler = compiler_fixture(&tools);
+    let data = TempDir::new().unwrap();
+    let project = TempDir::new().unwrap();
+    assert!(run(&["init"], Some(project.path())).status.success());
+    let output = build_with_tools(
+        project.path(),
+        data.path(),
+        &[("OLEAFLY_TECTONIC", compiler.as_path())],
+        &["build", "--variant", "review"],
+    );
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(stderr(&output).contains("note: --variant is ignored for tectonic projects"));
+}
+
+#[test]
+fn typst_offline_builds_point_downloads_at_an_address_that_never_answers() {
+    let tools = TempDir::new().unwrap();
+    let typst = typst_fixture(tools.path(), "0.15.1");
+    let data = TempDir::new().unwrap();
+    let project = typst_project(None);
+    let output = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[],
+        Some(&typst),
+        &["build", "--offline"],
+    );
+    assert!(output.status.success(), "{}", stderr(&output));
+    assert!(
+        !stderr(&output).contains("is ignored"),
+        "{}",
+        stderr(&output)
+    );
+    let environment = fixture_environment(&typst);
+    assert_eq!(environment["HTTPS_PROXY"], "http://127.0.0.1:9");
+    assert_eq!(environment["NO_PROXY"], "");
+    assert!(environment.contains_key("TYPST_PACKAGE_CACHE_PATH"));
+    assert!(!environment.contains_key("GIT_DIR"));
+}
+
+#[test]
+fn an_older_typst_gets_only_the_flags_it_knows_and_one_note_per_setting() {
+    let tools = TempDir::new().unwrap();
+    let fixture = typst_fixture(tools.path(), "0.15.1");
+    let data = TempDir::new().unwrap();
+    let (Some(old), Some(new)) = (
+        install_typst(&fixture, data.path(), "0.11.1"),
+        install_typst(&fixture, data.path(), "0.15.1"),
+    ) else {
+        return;
+    };
+    let settings = |version: &str| {
+        serde_json::json!({
+            "version": version,
+            "vendor_packages": true,
+            "system_fonts": false,
+            "reproducible": true,
+            "inputs": {"draft": "true"}
+        })
+    };
+    let (project, root) = typst_project_with_settings(settings("0.11.1"));
+    let human = oleafly_typst(project.path(), data.path(), &[], None, &["build"]);
+    assert!(human.status.success(), "{}", stderr(&human));
+    let notes: Vec<String> = stderr(&human)
+        .lines()
+        .filter(|line| line.starts_with("note: "))
+        .map(str::to_string)
+        .collect();
+    assert_eq!(
+        notes,
+        [
+            "note: Typst 0.11.1 does not support --ignore-system-fonts, so typst.system_fonts is not applied",
+            "note: Typst 0.11.1 does not support --ignore-system-fonts or --creation-timestamp, so typst.reproducible is not applied",
+            "note: Typst 0.11.1 does not support --package-path, so typst.vendor_packages is not applied",
+        ]
+    );
+    let call = last_compile(&old);
+    for absent in [
+        "--ignore-system-fonts",
+        "--creation-timestamp",
+        "--package-path",
+        "--package-cache-path",
+    ] {
+        assert!(!call.contains(absent), "{absent}: {call}");
+    }
+    assert!(call.contains("--input draft=true"), "{call}");
+    assert!(
+        call.contains(&format!("--font-path {}", root.join("fonts").display())),
+        "{call}"
+    );
+    let environment = fixture_environment(&old);
+    assert_eq!(environment["SOURCE_DATE_EPOCH"], "0");
+    assert_eq!(
+        PathBuf::from(&environment["TYPST_PACKAGE_PATH"]),
+        root.join("typst-packages")
+    );
+
+    let machine = oleafly_typst(project.path(), data.path(), &[], None, &["--json", "build"]);
+    assert!(machine.status.success());
+    assert!(machine.stderr.is_empty(), "{}", stderr(&machine));
+
+    let doctor = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[],
+        None,
+        &["--json", "doctor"],
+    );
+    let report = json(&doctor);
+    let check = doctor_check(&report, "typst_settings");
+    assert_eq!(check["status"], "warning");
+    assert!(check["message"]
+        .as_str()
+        .unwrap()
+        .contains("typst.reproducible is not applied"));
+
+    set_typst(project.path(), settings("0.15.1"));
+    let current = oleafly_typst(project.path(), data.path(), &[], None, &["build"]);
+    assert!(current.status.success(), "{}", stderr(&current));
+    assert!(!stderr(&current).contains("note: "), "{}", stderr(&current));
+    let call = last_compile(&new);
+    for expected in [
+        "--ignore-system-fonts".to_string(),
+        "--creation-timestamp 0".to_string(),
+        format!("--package-path {}", root.join("typst-packages").display()),
+    ] {
+        assert!(call.contains(&expected), "{expected}: {call}");
+    }
+    let report = json(&oleafly_typst(
+        project.path(),
+        data.path(),
+        &[],
+        None,
+        &["--json", "doctor"],
+    ));
+    assert!(report["report"]["checks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|check| check["name"] != "typst_settings"));
+}
+
+fn git_directory() -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path).find(|directory| {
+        directory
+            .join(oleafly_cli::executable_name("git"))
+            .is_file()
+    })
+}
+
+#[test]
+fn reproducible_typst_builds_use_the_last_commit_time() {
+    let Some(git) = git_directory() else {
+        return;
+    };
+    let tools = TempDir::new().unwrap();
+    let typst = typst_fixture(tools.path(), "0.15.1");
+    let data = TempDir::new().unwrap();
+    let (project, _root) = typst_project_with_settings(serde_json::json!({"reproducible": true}));
+    let commit = Command::new(git.join(oleafly_cli::executable_name("git")))
+        .args([
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+        ])
+        .args(["init", "-q"])
+        .current_dir(project.path())
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .output()
+        .unwrap();
+    assert!(commit.status.success(), "{}", stderr(&commit));
+    let commit = Command::new(git.join(oleafly_cli::executable_name("git")))
+        .args([
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+        ])
+        .args(["commit", "-q", "--allow-empty", "-m", "Draft"])
+        .current_dir(project.path())
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env("GIT_AUTHOR_NAME", "Ada")
+        .env("GIT_AUTHOR_EMAIL", "ada@example.com")
+        .env("GIT_COMMITTER_NAME", "Ada")
+        .env("GIT_COMMITTER_EMAIL", "ada@example.com")
+        .env("GIT_AUTHOR_DATE", "@1700000000 +0000")
+        .env("GIT_COMMITTER_DATE", "@1700000000 +0000")
+        .output()
+        .unwrap();
+    assert!(commit.status.success(), "{}", stderr(&commit));
+    let output = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[&git],
+        Some(&typst),
+        &["build"],
+    );
+    assert!(output.status.success(), "{}", stderr(&output));
+    let call = last_compile(&typst);
+    assert!(call.contains("--creation-timestamp 1700000000"), "{call}");
+    assert!(call.contains("--ignore-system-fonts"), "{call}");
+    assert_eq!(
+        fixture_environment(&typst)["SOURCE_DATE_EPOCH"],
+        "1700000000"
+    );
+}
+
+#[test]
+fn typst_errors_keep_their_columns_and_hints_in_json_and_text() {
+    let tools = TempDir::new().unwrap();
+    let typst = typst_fixture(tools.path(), "0.15.1");
+    let data = TempDir::new().unwrap();
+    let project = typst_project(None);
+    std::fs::write(project.path().join("main.typ"), "// fixture-human-error\n").unwrap();
+    let machine = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[],
+        Some(&typst),
+        &["--json", "build"],
+    );
+    assert_eq!(machine.status.code(), Some(5));
+    let value = json(&machine);
+    assert_eq!(value["ok"], false);
+    let errors = value["build"]["errors"].as_array().unwrap();
+    assert_eq!(errors.len(), 2, "{errors:?}");
+    assert_eq!(errors[0]["kind"], "error");
+    assert_eq!(errors[0]["file"], "main.typ");
+    assert_eq!(errors[0]["line"], 3);
+    assert_eq!(errors[0]["column"], 2);
+    assert_eq!(errors[0]["message"], "unknown variable: foo");
+    assert_eq!(errors[0]["hints"].as_array().unwrap().len(), 2);
+    assert!(errors[0]["hints"][0]
+        .as_str()
+        .unwrap()
+        .starts_with("if you meant to display multiple letters"));
+    assert_eq!(errors[1]["kind"], "warning");
+    assert_eq!(errors[1]["file"], "chapters\\intro.typ");
+    assert_eq!(errors[1]["column"], 17);
+    assert_eq!(errors[1]["hints"], serde_json::json!([]));
+
+    let human = oleafly_typst(project.path(), data.path(), &[], Some(&typst), &["build"]);
+    assert_eq!(human.status.code(), Some(5));
+    let text = stderr(&human);
+    assert!(text.contains("main.typ:3:1"), "{text}");
+    assert!(text.contains("= hint: if you meant"), "{text}");
+    assert!(text.contains("Build failed in "), "{text}");
+}
+
+#[test]
+fn doctor_shows_the_effective_typst_settings() {
+    let tools = TempDir::new().unwrap();
+    let typst = typst_fixture(tools.path(), "0.15.1");
+    let data = TempDir::new().unwrap();
+    let (project, root) = typst_project_with_settings(serde_json::json!({
+        "vendor_packages": true,
+        "font_paths": ["assets/type"],
+        "system_fonts": false,
+        "inputs": {"draft": "true"},
+        "variants": {"review": {"inputs": {"anonymous": "true"}}}
+    }));
+    let machine = oleafly_typst(
+        project.path(),
+        data.path(),
+        &[],
+        Some(&typst),
+        &["--json", "doctor"],
+    );
+    assert!(
+        machine.status.success(),
+        "{}",
+        String::from_utf8_lossy(&machine.stdout)
+    );
+    let settings = json(&machine)["typst"]["settings"].clone();
+    assert_eq!(settings["vendor_packages"], true);
+    assert_eq!(
+        PathBuf::from(settings["package_path"].as_str().unwrap()),
+        root.join("typst-packages")
+    );
+    assert_eq!(
+        PathBuf::from(settings["package_cache_path"].as_str().unwrap()),
+        data.path().join("typst").join("packages-cache")
+    );
+    assert_eq!(
+        settings["font_dirs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|directory| PathBuf::from(directory.as_str().unwrap()))
+            .collect::<Vec<_>>(),
+        [root.join("fonts"), root.join("assets").join("type")]
+    );
+    assert_eq!(settings["system_fonts"], false);
+    assert_eq!(settings["reproducible"], false);
+    assert_eq!(settings["inputs"], serde_json::json!({"draft": "true"}));
+    assert_eq!(
+        settings["variants"],
+        serde_json::json!({"review": {"anonymous": "true"}})
+    );
+
+    let human = oleafly_typst(project.path(), data.path(), &[], Some(&typst), &["doctor"]);
+    assert!(human.status.success());
+    let stdout = String::from_utf8_lossy(&human.stdout);
+    for expected in [
+        "Typst settings:",
+        "Version pin",
+        "Vendored packages  on",
+        "System fonts       ignored",
+        "Reproducible       off",
+        "Inputs             draft=true",
+        "Variants           review (anonymous=true)",
+    ] {
+        assert!(stdout.contains(expected), "{expected}: {stdout}");
+    }
 }

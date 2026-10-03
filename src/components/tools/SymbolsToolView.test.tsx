@@ -14,6 +14,11 @@ const mocks = vi.hoisted(() => ({
   toastInfo: vi.fn(),
   toastSuccess: vi.fn(),
   writeClipboard: vi.fn(),
+  insertTypstSymbol: vi.fn(async () => {}),
+}));
+
+vi.mock("@/components/editor/typst-commands", () => ({
+  insertTypstSymbol: mocks.insertTypstSymbol,
 }));
 
 vi.mock("@/components/editor/cm/controller", () => ({
@@ -41,6 +46,7 @@ function corpus() {
         alpha: { detail: "α", documentation: "Greek letter alpha" },
         beta: { detail: "β", documentation: "Greek letter beta" },
         rightarrow: { detail: "→", documentation: "Right arrow" },
+        circledast: { detail: "⊛", documentation: "Circled asterisk" },
       }),
     } as Response)
     .mockResolvedValueOnce({ ok: true, json: async () => ({ commands: [] }) } as Response);
@@ -123,5 +129,37 @@ describe("SymbolsToolView", () => {
 
     expect(await screen.findByText("The symbol reference could not load.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("shows and inserts the Typst form in an open Typst file", async () => {
+    useFilesStore.setState({
+      projectId: "project",
+      activePath: "main.typ",
+      engine: { ...LATEX_ENGINE, typst_resolved: { version: "0.13.1", source: "bundled" } },
+    });
+    mocks.getEditorView.mockReturnValue({});
+    corpus();
+    renderSymbols();
+
+    await screen.findByTestId("symbol-entry-alpha");
+    expect(screen.getByTestId("symbols-typst")).toHaveTextContent("alpha");
+    expect(screen.getByText("Insert the Typst code into the open Typst document.")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("symbol-entry-circledast"));
+    expect(screen.getByTestId("symbols-typst")).toHaveTextContent("⊛");
+    fireEvent.click(screen.getByTestId("symbol-entry-alpha"));
+    fireEvent.click(screen.getByRole("button", { name: "Insert in editor" }));
+
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith("Inserted alpha in the open editor."));
+    expect(mocks.insertTypstSymbol).toHaveBeenCalledWith("\\alpha", "α");
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+    expect(useHomeViewStore.getState().page).toBe("library");
+  });
+
+  it("does not show a Typst form for LaTeX files", async () => {
+    useFilesStore.setState({ projectId: "project", activePath: "main.tex", engine: LATEX_ENGINE });
+    corpus();
+    renderSymbols();
+    await screen.findByTestId("symbol-entry-alpha");
+    expect(screen.queryByTestId("symbols-typst")).not.toBeInTheDocument();
   });
 });

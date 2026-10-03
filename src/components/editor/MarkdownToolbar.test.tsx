@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { shortcut } from "@/lib/utils";
+import { useDiagramComposerStore } from "@/store/diagram-composer";
+import { useHomeViewStore } from "@/store/home-view";
 
 const controller = vi.hoisted(() => ({
   editorFind: vi.fn(),
@@ -132,6 +134,25 @@ describe("MarkdownToolbar", () => {
     expect(controller.editorFind).toHaveBeenCalledOnce();
   });
 
+  it.each([false, true])(
+    "opens the Mermaid diagram composer without asking (visual mode %s)",
+    async (wysiwyg) => {
+      widenToolbar(2000);
+      useHomeViewStore.setState({ page: "library", queuedPageAfterProjectClose: null });
+      useDiagramComposerStore.setState({ language: "tikz", requestId: 0, chooserOpen: false });
+      render(<MarkdownToolbar wysiwyg={wysiwyg} onToggleWysiwyg={vi.fn()} />);
+
+      fireEvent.click(screen.getByLabelText(toolbar.drawDiagram));
+
+      await vi.waitFor(() => expect(useHomeViewStore.getState().page).toBe("diagram-composer"));
+      expect(useDiagramComposerStore.getState()).toMatchObject({
+        language: "mermaid",
+        requestId: 1,
+        chooserOpen: false,
+      });
+    },
+  );
+
   it("offers every heading level from the bar dropdown", () => {
     widenToolbar(2000);
     render(<MarkdownToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
@@ -178,6 +199,7 @@ describe("MarkdownToolbar", () => {
     expect(screen.getByText(toolbar.insertImage)).toBeInTheDocument();
     expect(screen.getByText(toolbar.heading)).toBeInTheDocument();
     expect(screen.getByText(toolbar.list)).toBeInTheDocument();
+    expect(screen.getByText(toolbar.drawDiagram)).toBeInTheDocument();
 
     fireEvent.click(screen.getByText(toolbar.bold));
     fireEvent.click(screen.getByText(toolbar.insertTable));

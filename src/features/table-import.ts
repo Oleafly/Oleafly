@@ -3,16 +3,30 @@
  * spreadsheets in the webview; the emitter and its escaping live in
  * @oleafly/conversion-registry so both engines share one proven path.
  */
+import type { FileEntry } from "@oleafly/backend-port";
 import {
+  delimiterOf,
   emitLatexTable,
+  emitTypstLinkedTable,
   emitTypstTable,
   inferAlignment,
   isValidLatexLabel,
   parseDelimited,
+  parseJsonTable,
+  serializeCsv,
+  type JsonTable,
+  type LinkedTableOptions,
+  type LinkedTableSource,
   type TableOptions,
 } from "@oleafly/conversion-registry/table";
-import { readPickedFileBase64, registerPickedFileForE2E } from "@/lib/tauri";
+import { latexGraphicsPath, uniqueProjectPath } from "@/components/editor/figure-import";
+import { i18n } from "@/i18n";
+import { bytesToBase64 } from "@/lib/base64";
+import { notifyProjectFilesChanged } from "@/lib/cross-window";
+import { readPickedFileBase64, registerPickedFileForE2E, writeProjectBytes } from "@/lib/tauri";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { logError } from "@/lib/log";
+import { useFilesStore } from "@/store/files";
 
 export type TableTarget = "latex" | "typst";
 
@@ -61,11 +75,100 @@ function validateSheetRange(XLSX: typeof import("xlsx"), sheet: import("xlsx").W
   }
 }
 
+export type TableFileFormat = "csv" | "tsv" | "spreadsheet" | "json";
+
+export interface TableFile {
+  rows: string[][];
+  format: TableFileFormat;
+  text: string | null;
+  jsonShape?: JsonTable["shape"];
+}
+
+export const LINKED_DATA_DIRECTORY = "data";
+
+export interface LinkedTablePlan {
+  dataPath: string;
+  content: string;
+  source: LinkedTableSource;
+}
+
+function decodeText(bytes: Uint8Array): string {
+  const text = new TextDecoder().decode(bytes);
+  return text.startsWith("\uFEFF") ? text.slice(1) : text;
+}
+
+export async function readTableFileFromBytes(fileName: string, bytes: Uint8Array): Promise<TableFile> {
+  if (/\.(xlsx|xls)$/i.test(fileName)) {
+    return { rows: await readTableRowsFromBytes(fileName, bytes), format: "spreadsheet", text: null };
+  }
+  const text = decodeText(bytes);
+  if (/\.json$/i.test(fileName)) {
+    const table = parseJsonTable(text);
+    if (!table) throw new Error(i18n.t(($) => $.editor.tableImport.jsonNotTable));
+    return { rows: validateTableRows(table.rows), format: "json", jsonShape: table.shape, text };
+  }
+  return {
+    rows: validateTableRows(parseDelimited(text)),
+    format: /\.tsv$/i.test(fileName) ? "tsv" : "csv",
+    text,
+  };
+}
+
+export async function readTableFile(path: string): Promise<TableFile> {
+  const base64 = await readPickedFileBase64(path);
+  return readTableFileFromBytes(path, bytesFromBase64(base64));
+}
+
+function fileStem(fileName: string): string {
+  const name = fileName.replace(/^.*[/\\]/u, "");
+  const dot = name.lastIndexOf(".");
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const safe = stem.replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^[-.]+|[-.]+$/gu, "");
+  return safe || "table";
+}
+
+export function planLinkedTable(
+  file: TableFile,
+  fileName: string,
+  tree: readonly FileEntry[],
+  documentPath: string,
+): LinkedTablePlan {
+  const text = file.text ?? "";
+  const tabbed = file.format === "tsv" || (file.format === "csv" && delimiterOf(text) === "\t");
+  const extension = file.format === "json" ? "json" : file.format === "tsv" ? "tsv" : "csv";
+  const content = file.format === "spreadsheet" ? serializeCsv(file.rows) : text;
+  const dataPath = uniqueProjectPath(`${LINKED_DATA_DIRECTORY}/${fileStem(fileName)}.${extension}`, tree);
+  const path = latexGraphicsPath(dataPath, documentPath);
+  const source: LinkedTableSource = file.format === "json"
+    ? { format: "json", path, shape: file.jsonShape ?? "records" }
+    : tabbed
+      ? { format: "csv", path, delimiter: "\t" }
+      : { format: "csv", path };
+  return { dataPath, content, source };
+}
+
+export function emitLinkedTable(rows: string[][], options: LinkedTableOptions): string {
+  return emitTypstLinkedTable(rows, options);
+}
+
+export async function writeLinkedTableData(projectId: string, plan: LinkedTablePlan): Promise<void> {
+  await writeProjectBytes(projectId, plan.dataPath, bytesToBase64(new TextEncoder().encode(plan.content)));
+  if (useFilesStore.getState().projectId !== projectId) return;
+  await useFilesStore
+    .getState()
+    .refreshTree()
+    .catch((error) => logError("refresh files after linking a table", error));
+  notifyProjectFilesChanged(projectId, [plan.dataPath]);
+}
+
 /** Parse CSV/TSV/XLSX bytes without reading outside the supplied payload. */
 export async function readTableRowsFromBytes(
   fileName: string,
   bytes: Uint8Array,
 ): Promise<string[][]> {
+  if (/\.json$/i.test(fileName)) {
+    return (await readTableFileFromBytes(fileName, bytes)).rows;
+  }
   if (/\.(xlsx|xls)$/i.test(fileName)) {
     const XLSX = await import("xlsx");
     const workbook = XLSX.read(bytes, {

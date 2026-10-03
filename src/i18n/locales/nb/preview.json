@@ -95,7 +95,9 @@
     "retryCompile": "Kompiler på nytt",
     "chooseEngine": "Velg motor…",
     "installPackages_one": "Finn og installer {{name}}",
-    "installPackages_other": "Finn og installer {{count}} filer"
+    "installPackages_other": "Finn og installer {{count}} filer",
+    "downloadTypst": "Last ned Typst {{version}}",
+    "useTypst": "Bruk Typst {{version}}"
   },
   "stale": {
     "badge": "Utdatert",
@@ -104,8 +106,8 @@
     "explanation": "Denne PDF-en viser ikke den aktive prosjektrevisjonen.",
     "revisionExplanation": "Viser prosjektrevisjon {{displayed}}. Det aktive prosjektet er revisjon {{active}}.",
     "noIdentity": "PDF-en som vises, har ingen verifisert kompileringsidentitet for den aktive revisjonen.",
-    "syncTexAvailable": "SyncTeX bruker den nærmeste uendrede linjen ved redigering.",
-    "syncTexUnavailable": "SyncTeX krever en oppdatert kompilering."
+    "syncTexAvailable": "Kildesynkronisering bruker den nærmeste uendrede linjen ved redigering.",
+    "syncTexUnavailable": "Kildesynkronisering krever en oppdatert kompilering."
   },
   "save": {
     "title": "Lagre PDF-en i prosjektet",
@@ -273,5 +275,33 @@
       "pageLabel": "Side {{page}} av {{total}}",
       "empty": "Fant ingen lesbar tekst på denne siden."
     }
+  },
+  "presentation": {
+    "windowTitle": "Presentasjon",
+    "presenterTitle": "Foredragsholdervisning",
+    "present": "Presenter",
+    "presentFromStart": "Presenter fra starten",
+    "presentFromPage": "Presenter fra denne siden",
+    "presentWithPresenter": "Presenter med foredragsholdervisning",
+    "loading": "Åpner lysbildene",
+    "failed": "Lysbildene kunne ikke åpnes. Kompiler prosjektet, og prøv igjen.",
+    "close": "Lukk",
+    "slideLabel": "Lysbilde {{page}} av {{total}}",
+    "current": "Gjeldende lysbilde",
+    "next": "Neste lysbilde",
+    "lastSlide": "Dette er det siste lysbildet.",
+    "notes": "Talernotater",
+    "notesLoading": "Leser talernotater",
+    "noNotes": "Ingen talernotater for dette lysbildet.",
+    "elapsed": "Medgått tid",
+    "clock": "Klokkeslett",
+    "pause": "Sett tidtakeren på pause",
+    "resume": "Fortsett tidtakeren",
+    "reset": "Nullstill tidtakeren",
+    "previousAction": "Forrige lysbilde",
+    "nextAction": "Neste lysbilde",
+    "end": "Avslutt presentasjonen",
+    "blank": "Publikumsskjermen er svart. Trykk B for å vise lysbildene.",
+    "toggleBlank": "Gjør publikumsskjermen svart"
   }
 }

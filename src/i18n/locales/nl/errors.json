@@ -146,5 +146,37 @@
       "check_running": "Er loopt al een test voor deze agent.",
       "main_window": "Wijzig de programma's van agents in het hoofdvenster."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly biedt Typst {{version}} niet aan, en geen enkele Typst op deze computer heeft die versie.",
+    "busy": "Typst {{version}} wordt nog geïnstalleerd. Probeer het opnieuw als dat klaar is.",
+    "remove_default": "Typst {{version}} is je standaardversie. Kies een andere standaard voordat je hem verwijdert.",
+    "remove_not_downloaded": "Oleafly kan alleen Typst-versies verwijderen die het zelf heeft gedownload, en Typst {{version}} heeft het niet gedownload.",
+    "not_offered": "Typst {{version}} kan niet worden gedownload voor deze computer.",
+    "install_unverified": "Typst {{version}} is gedownload, maar de integriteitscontrole is mislukt. Probeer het opnieuw te installeren.",
+    "not_typst_project": "Alleen Typst-projecten hebben een Typst-versie.",
+    "update_waits": "Wacht tot Typst klaar is met installeren voordat je Oleafly bijwerkt."
+  },
+  "typst_packages": {
+    "index_offline": "Je bent offline en de pakketlijst van Typst Universe is nog niet gedownload.",
+    "index_unavailable": "De pakketlijst van Typst Universe kon niet worden geladen. Controleer je internetverbinding en probeer het opnieuw.",
+    "vendor_failed": "Oleafly kon de pakketten niet naar het project kopiëren."
+  },
+  "typst_query": {
+    "timeout": "Typst deed te lang over het lezen van dit document.",
+    "failed": "Typst kon dit document niet lezen."
+  },
+  "typst_version_missing": "Typst {{version}} is niet geïnstalleerd.",
+  "typst_options": {
+    "invalid_input_key": "Namen van waarden mogen niet leeg zijn en geen isgelijkteken bevatten.",
+    "invalid_variant_name": "Elke variant heeft een korte naam nodig die geen andere variant gebruikt.",
+    "invalid_font_path": "Lettertypemappen moeten in het project staan.",
+    "fonts_failed": "Typst kon de lettertypen niet tonen.",
+    "fonts_timeout": "Typst deed te lang over het tonen van de lettertypen."
+  },
+  "typst_export": {
+    "failed": "Typst kon het document niet exporteren.",
+    "unsupported": "Deze Typst-versie kan niet exporteren met deze instellingen.",
+    "invalid_ppi": "Kies een resolutie van 1 tot en met {{max}} PPI."
   }
 }

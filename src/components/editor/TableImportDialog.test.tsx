@@ -15,6 +15,7 @@ interface FilesState {
 }
 const mocks = vi.hoisted(() => ({
   pick: vi.fn(), read: vi.fn(), insert: vi.fn(), notify: vi.fn(), success: vi.fn(), log: vi.fn(),
+  writeLinked: vi.fn(),
   files: {} as FilesState,
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickTableImportPath: mocks.pick }));
@@ -26,7 +27,9 @@ vi.mock("@/store/files", () => ({
   useFilesStore: Object.assign((select: (state: FilesState) => unknown) => select(mocks.files), { getState: () => mocks.files }),
 }));
 vi.mock("@/features/table-import", async (original) => ({
-  ...await original<typeof import("@/features/table-import")>(), readTableRows: mocks.read,
+  ...await original<typeof import("@/features/table-import")>(),
+  readTableFile: async (path: string) => ({ rows: await mocks.read(path), format: "csv", text: "Method,Score\n" }),
+  writeLinkedTableData: mocks.writeLinked,
 }));
 import { TableImportDialog } from "./TableImportDialog";
 
@@ -236,6 +239,48 @@ describe("TableImportDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Choose the table again before inserting");
     expect(mocks.insert).not.toHaveBeenCalled();
+  });
+
+  it("offers a linked table only for Typst documents", async () => {
+    render(<TableImportDialog />);
+    await choose();
+    expect(screen.queryByRole("switch", { name: enEditor.tableImport.keepLinked })).not.toBeInTheDocument();
+  });
+
+  it("copies the data into data/ and inserts code that reads it at compile time", async () => {
+    mocks.files = { ...mocks.files, activePath: "sections/results.typ", engine: { id: "typst" } };
+    mocks.writeLinked.mockResolvedValue(undefined);
+    render(<TableImportDialog />);
+    await choose();
+    fireEvent.click(screen.getByRole("switch", { name: enEditor.tableImport.keepLinked }));
+    expect(screen.queryByRole("button", { name: "Copy source" })).not.toBeInTheDocument();
+    expect(screen.getByText(enEditor.tableImport.footerLinked.replace("{{path}}", "data/results.csv"))).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
+    await waitFor(() => expect(mocks.insert).toHaveBeenCalledOnce());
+    expect(mocks.writeLinked).toHaveBeenCalledWith("paper", {
+      dataPath: "data/results.csv",
+      content: "Method,Score\n",
+      source: { format: "csv", path: "../data/results.csv" },
+    });
+    const inserted = mocks.insert.mock.calls[0][0];
+    expect(inserted).toContain('#let results-data = csv("../data/results.csv")');
+    expect(inserted).toContain("..results-data.slice(1).flatten(),");
+    expect(inserted).toContain(") <tab:imported>");
+    expect(useTableImportStore.getState().open).toBe(false);
+    expect(mocks.success).toHaveBeenCalledWith(enEditor.tableImport.insertedLinked.replace("{{path}}", "data/results.csv"));
+  });
+
+  it("keeps the dialog open and inserts nothing when the data copy fails", async () => {
+    mocks.files = { ...mocks.files, activePath: "main.typ", engine: { id: "typst" } };
+    mocks.writeLinked.mockRejectedValue(new Error("disk full"));
+    render(<TableImportDialog />);
+    await choose();
+    fireEvent.click(screen.getByRole("switch", { name: enEditor.tableImport.keepLinked }));
+    fireEvent.click(screen.getByRole("button", { name: "Insert at cursor" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enEditor.tableImport.linkFailed);
+    expect(mocks.insert).not.toHaveBeenCalled();
+    expect(mocks.log).toHaveBeenCalledWith("link table data", expect.any(Error));
+    expect(useTableImportStore.getState().open).toBe(true);
   });
 
   it("can reopen during a pending read without accepting its old result", async () => {

@@ -3119,7 +3119,41 @@ describe("ChatCore agent turns", () => {
     await act(async () => finishRun(0, "Done"));
   });
 
-  it("leaves the figure tools and their guidance out of a Markdown run", async () => {
+  it("offers Typst figure tools with CeTZ guidance and @key citation rules to a Typst run", async () => {
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: "typst",
+        label: "Typst",
+        source_format: "typst",
+        main_document: "main.typ",
+        source_extensions: ["typ"],
+        capabilities: {
+          ...LATEX_ENGINE.capabilities,
+          formatting_profile: "typst",
+          supports_isolated_compile: false,
+        },
+      },
+      mainDoc: "main.typ",
+    });
+    const rendered = await renderChat();
+
+    submit(rendered, "Draw the encoder block");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const system = mocks.runs[0].options.system;
+    expect(mocks.runs[0].options.tools).toHaveProperty("preview_figure");
+    expect(mocks.runs[0].options.tools).toHaveProperty("insert_figure");
+    expect(mocks.runs[0].options.tools).toHaveProperty("load_image");
+    expect(system).toContain("Main document: main.typ.");
+    expect(system).toContain("Use CeTZ for drawings");
+    expect(system).not.toContain("TikZ");
+    expect(system).toContain("Every citation, written as @key or #cite(<key>)");
+    expect(system).not.toContain("Every \\cite key");
+    await act(async () => finishRun(0, "Done"));
+  });
+
+  it("leaves the figure preview tools and their guidance out of a Markdown run", async () => {
     useFilesStore.setState({
       engine: {
         ...LATEX_ENGINE,
@@ -3143,8 +3177,9 @@ describe("ChatCore agent turns", () => {
 
     expect(mocks.runs[0].options.tools).not.toHaveProperty("preview_figure");
     expect(mocks.runs[0].options.tools).not.toHaveProperty("insert_figure");
-    expect(mocks.runs[0].options.tools).not.toHaveProperty("load_image");
+    expect(mocks.runs[0].options.tools).toHaveProperty("load_image");
     expect(mocks.runs[0].options.system).not.toContain("Figures and diagrams:");
+    expect(mocks.runs[0].options.system).toContain("Every [@key] citation");
     await act(async () => finishRun(0, "Done"));
   });
 

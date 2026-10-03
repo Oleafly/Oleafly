@@ -1,0 +1,176 @@
+=== citation_missing
+error: key `missingkey` does not exist in the bibliography
+  ┌─ main.typ:1:1
+  │
+1 │ #cite(<missingkey>)
+  │  ^^^^^^^^^^^^^^^^^^
+
+=== cyclic_import
+error: cyclic import
+  ┌─ b.typ:1:8
+  │
+1 │ #import "main.typ": *
+  │         ^^^^^^^^^^
+
+help: error occurred while importing this module
+  ┌─ main.typ:1:8
+  │
+1 │ #import "b.typ": *
+  │         ^^^^^^^
+
+=== expected_found
+error: expected integer or auto, found string
+  ┌─ main.typ:1:16
+  │
+1 │ #heading(level: "two")[Text]
+  │                 ^^^^^
+
+=== file_not_found
+error: file not found (searched at /project/figures/missing.png)
+  ┌─ main.typ:2:7
+  │
+2 │ #image("figures/missing.png")
+  │        ^^^^^^^^^^^^^^^^^^^^^
+
+=== function_trace
+error: cannot add integer and string
+  ┌─ main.typ:1:12
+  │
+1 │ #let f(x) = x + "a"
+  │             ^^^^^^^
+
+help: error occurred in this call of function `f`
+  ┌─ main.typ:2:1
+  │
+2 │ #f(1)
+  │  ^^^^
+
+=== label_missing
+error: label `<nolabel>` does not exist in the document
+  ┌─ main.typ:1:4
+  │
+1 │ See @nolabel.
+  │     ^^^^^^^^
+
+=== layout_convergence
+warning: layout did not converge within 5 attempts
+ = hint: check if any states or queries are updating themselves
+
+=== locate_callback
+warning: `locate` with callback function is deprecated
+  ┌─ main.typ:1:1
+  │
+1 │ #locate(loc => [x])
+  │  ^^^^^^^^^^^^^^^^^^
+  │
+  = hint: use a `context` expression instead
+
+=== math_hints
+error: unknown variable: foo
+  ┌─ main.typ:3:1
+  │
+3 │ $foo$ and text.
+  │  ^^^
+  │
+  = hint: if you meant to display multiple letters as is, try adding spaces between each letter: `f o o`
+  = hint: or if you meant to display this as text, try placing it in quotes: `"foo"`
+
+=== multiline_span
+error: cannot add dictionary and integer
+  ┌─ main.typ:1:9
+  │  
+1 │   #let x = (
+  │ ╭──────────^
+2 │ │   a: 1,
+3 │ │   b: 2
+4 │ │ ) + 3
+  │ ╰─────^
+
+=== package_not_found
+error: package not found (searched for @local/nosuchpkg:0.1.0)
+  ┌─ main.typ:1:8
+  │
+1 │ #import "@local/nosuchpkg:0.1.0": *
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^
+
+=== package_offline
+downloading @preview/tablex:0.0.8
+error: failed to download package (https://packages.typst.org/preview/tablex-0.0.8.tar.gz: Connection Failed: Connect error: Connection refused (os error 61))
+  ┌─ main.typ:1:8
+  │
+1 │ #import "@preview/tablex:0.0.8": *
+  │         ^^^^^^^^^^^^^^^^^^^^^^^
+
+=== package_trace
+error: cannot add integer and string
+  ┌─ @local/mypkg:0.1.0/lib.typ:2:2
+  │
+2 │   x + "a"
+  │   ^^^^^^^
+
+help: error occurred in this call of function `boom`
+  ┌─ main.typ:4:1
+  │
+4 │ #boom(1)
+  │  ^^^^^^^
+
+=== package_version
+downloading @preview/cetz:99.0.0
+error: package found, but version 99.0.0 does not exist (latest is 0.5.2)
+  ┌─ main.typ:1:8
+  │
+1 │ #import "@preview/cetz:99.0.0": *
+  │         ^^^^^^^^^^^^^^^^^^^^^^
+
+=== show_rule_depth
+error: maximum show rule depth exceeded
+  ┌─ main.typ:1:21
+  │
+1 │ #show heading: it => heading(it.body)
+  │                      ^^^^^^^^^^^^^^^^
+  │
+  = hint: check whether the show rule matches its own output
+
+=== subdirectory
+error: unknown variable: undefined-name
+  ┌─ chapters/intro.typ:2:1
+  │
+2 │ #undefined-name
+  │  ^^^^^^^^^^^^^^
+  │
+  = hint: if you meant to use subtraction, try adding spaces around the minus sign: `undefined - name`
+
+help: error occurred while importing this module
+  ┌─ main.typ:1:9
+  │
+1 │ #include "chapters/intro.typ"
+  │          ^^^^^^^^^^^^^^^^^^^^
+
+=== unclosed_delimiter
+error: unclosed delimiter
+  ┌─ main.typ:3:2
+  │
+3 │ #f(1, 2
+  │   ^
+
+=== unknown_font
+warning: unknown font family: nosuchfontfamily
+  ┌─ main.typ:1:16
+  │
+1 │ #set text(font: "NoSuchFontFamily")
+  │                 ^^^^^^^^^^^^^^^^^^
+
+=== unknown_variable
+error: unknown variable: foo
+  ┌─ main.typ:3:7
+  │
+3 │ Hello #foo world.
+  │        ^^^
+
+=== wide_characters
+error: unknown variable: foo
+  ┌─ main.typ:1:5
+  │
+1 │   漢字 #foo and more
+  │         ^^^
+

@@ -1,5 +1,6 @@
 import { test, expect } from "../fixtures";
 import {
+  chooseDiagramComposer,
   createBlankProject,
   fillCommandPalette,
   pressGlobal,
@@ -112,6 +113,7 @@ test("dock opens the Diagram Composer as a standalone page and back returns to L
   // is active (Library.tsx: `if (page !== "library") return null`), so there
   // is no dock button left to check an active state on once the dialog opens.
   await tauriPage.click('[data-testid="open-diagram-composer"]');
+  await chooseDiagramComposer(tauriPage, "tikz");
   await expect(
     tauriPage.locator('[role="dialog"][data-tour="diagram-composer"]'),
   ).toBeVisible({ timeout: 20_000 });
@@ -126,6 +128,7 @@ test("dock opens the Diagram Composer as a standalone page and back returns to L
   // Reopening reuses the same hidden scratch project rather than creating a
   // new one each time (idempotent get-or-create on the Rust side).
   await tauriPage.click('[data-testid="open-diagram-composer"]');
+  await chooseDiagramComposer(tauriPage, "tikz");
   await expect(
     tauriPage.locator('[role="dialog"][data-tour="diagram-composer"]'),
   ).toBeVisible({ timeout: 20_000 });

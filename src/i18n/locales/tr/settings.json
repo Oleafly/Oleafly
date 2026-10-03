@@ -267,8 +267,8 @@
       },
       "starters": {
         "criticalReviewer": "Savlardaki, yöntemlerdeki, kanıtlardaki ve sunumdaki zayıflıkları bulur.",
-        "documentEditor": "Metni, yapıyı, atıfları ve LaTeX kodunu odaklı ve güvenli değişikliklerle düzeltir.",
-        "figure": "Yayın kalitesinde şekilleri ve diyagramları LaTeX TikZ veya PGFPlots olarak üretir.",
+        "documentEditor": "Metni, yapıyı, atıfları ve LaTeX ya da Typst kodunu odaklı ve güvenli değişikliklerle düzeltir.",
+        "figure": "Yayın kalitesinde şekilleri ve diyagramları LaTeX'te TikZ ya da Typst'te CeTZ ile üretir.",
         "researchWriter": "Kanıt veya atıf uydurmadan bilimsel metin yazar ve yapılandırır."
       },
       "suggestedDescription": "Bunlardan biriyle başlayın, sonra yönergelerini kendi çalışma biçiminize göre düzenleyin.",
@@ -685,6 +685,29 @@
       "mathPreview": {
         "description": "İmlecin içinde bulunduğu denklemin işlenmiş halini üstünde gösterir.",
         "label": "Matematik önizlemesi"
+      },
+      "typst": {
+        "title": "Typst",
+        "formatOnSave": {
+          "description": "⌘S veya Ctrl+S tuşlarına bastığınızda Typst dosyalarını typstyle ile düzenler. Otomatik kaydetme onlara dokunmaz.",
+          "label": "Kaydederken biçimlendir"
+        },
+        "lineWidth": {
+          "description": "typstyle bundan uzun satırları alt satıra taşır.",
+          "label": "Biçimlendirici satır genişliği"
+        },
+        "indent": {
+          "description": "Biçimlendirilmiş Typst kodunda her girinti düzeyi için boşluk sayısı.",
+          "label": "Biçimlendirici girintisi"
+        },
+        "inlayHints": {
+          "description": "Typst işlev çağrılarında bağımsız değişkenlerden önce parametre adlarını gösterir.",
+          "label": "Parametre adı ipuçları"
+        },
+        "lint": {
+          "description": "Typst dosyalarını her kaydedildiğinde olası hatalara karşı denetler. Bunu açıp kapatmak Typst dil sunucusunu yeniden başlatır.",
+          "label": "Typst lint denetimleri"
+        }
       }
     },
     "files": {
@@ -1024,8 +1047,56 @@
       "detail": "Oleafly ile birlikte gelir, kurulacak bir şey yoktur. Ağ bağlantısı yalnızca bir belge bir @preview paketini ilk kez içe aktardığında gerekir.",
       "heading": "Typst derleyicisi",
       "name": "Typst (yerleşik)",
-      "note": "Typst projeleri her zaman paketlenmiş derleyiciyi kullanır. Derleyici sürümü seçmek ve sistem Typst'i kullanmak henüz mümkün değil.",
-      "tooltip": "Typst, Oleafly'nin içinde gelir; kurulacak veya yapılandırılacak bir şey yoktur. Her Typst projesi paketlenmiş derleyiciyle derlenir."
+      "note": "Bir projenin kullandığı sürümü Derleme menüsünden seçin. Proje, siz değiştirene kadar bu sürümü korur.",
+      "tooltip": "Oleafly tek bir Typst sürümüyle gelir ve diğerlerini indirebilir. Her proje sabitlediği sürümle, sabitlenmiş sürümü yoksa varsayılanla derlenir.",
+      "system": {
+        "name": "Bu bilgisayardaki Typst",
+        "detail": "{{version}} sürümünü sabitleyen projeler onunla derlenebilir."
+      },
+      "versions": {
+        "heading": "Sürümler",
+        "tooltip": "Yeni projeler varsayılan sürümle başlar, sabitlenmiş sürümü olmayan projeler de öyle.",
+        "loading": "Typst sürümleri denetleniyor",
+        "default": "Varsayılan",
+        "setDefault": "Varsayılan olarak Typst {{version}} kullan",
+        "released": "Yayın tarihi: {{date}}",
+        "install": "Kur",
+        "installAria": "Typst {{version}} kur",
+        "removeAria": "Typst {{version}} kaldır",
+        "removeDefault": "Bu varsayılan sürüm. Kaldırmadan önce başka bir varsayılan seçin.",
+        "tinymist": "Tinymist {{version}}",
+        "source": {
+          "bundled": "Yerleşik",
+          "downloaded": "İndirilen",
+          "system": "Sistem"
+        }
+      },
+      "progress": {
+        "starting": "Başlatılıyor",
+        "downloading": "İndiriliyor %{{percent}}",
+        "verifying": "Denetleniyor",
+        "extracting": "Arşivden çıkarılıyor",
+        "done": "Tamamlanıyor"
+      },
+      "languageServer": {
+        "unused_one": "{{count}} dil sunucusu indirmesi, kurulu hiçbir Typst sürümü tarafından kullanılmıyor.",
+        "unused_other": "{{count}} dil sunucusu indirmesi, kurulu hiçbir Typst sürümü tarafından kullanılmıyor.",
+        "remove": "Kullanılmayan dil sunucusu indirmelerini kaldır",
+        "removed_one": "{{count}} dil sunucusu indirmesi kaldırıldı.",
+        "removed_other": "{{count}} dil sunucusu indirmesi kaldırıldı."
+      },
+      "error": {
+        "load": "Typst sürümleri okunamadı.",
+        "install": "Typst {{version}} kurulamadı.",
+        "remove": "Typst {{version}} kaldırılamadı.",
+        "default": "Varsayılan Typst sürümü değiştirilemedi.",
+        "removeTinymist": "Kullanılmayan dil sunucusu indirmeleri kaldırılamadı."
+      },
+      "upgrade": {
+        "heading": "Daha yeni bir sürümü deneyin",
+        "detail": "Geçiş yapmadan önce açık projeyi kurulu daha yeni bir sürümle derleyin ve sonuçları karşılaştırın.",
+        "check": "Typst {{version}} ile denetle"
+      }
     }
   },
   "github": {

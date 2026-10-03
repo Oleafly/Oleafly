@@ -25,7 +25,14 @@ export function skipAtomicRanges(state: EditorState, sets: RangeSet<RangeValue>[
   return Math.min(pos, state.doc.length);
 }
 
-export function skipPreambleCursor(field: StateField<{ preamble: Preamble }>): Extension {
+function fullyParsed(state: EditorState): boolean {
+  return syntaxTree(state).length >= state.doc.length;
+}
+
+export function skipPreambleCursor(
+  field: StateField<{ preamble: Preamble }>,
+  ready: (state: EditorState) => boolean = fullyParsed,
+): Extension {
   return ViewPlugin.define((view: EditorView) => {
     let checked = false;
     let destroyed = false;
@@ -57,7 +64,7 @@ export function skipPreambleCursor(field: StateField<{ preamble: Preamble }>): E
     };
 
     const checkInitialSelection = (state: EditorState) => {
-      if (checked || syntaxTree(state).length < state.doc.length) return;
+      if (checked || !ready(state)) return;
       checked = true;
       if (state.selection.eq(EditorSelection.create([EditorSelection.cursor(0)]))) leavePreamble();
       else escapeAtomicRanges(state.selection);

@@ -59,6 +59,8 @@
       "startingAndInitializing": "Der Sprachdienst für das Projekt wird gestartet und initialisiert.",
       "stopTimeout": "Der vorherige Prozess des Sprachdienstes wurde nicht rechtzeitig beendet. Versuchen Sie es erneut, um ihn wiederherzustellen.",
       "synchronizedAndReady": "Der Sprachdienst ist abgeglichen und bereit.",
+      "tinymistDownloadFailed": "Tinymist {{version}} konnte nicht heruntergeladen werden. Oleafly versucht es erneut.",
+      "tinymistDownloading": "Tinymist {{version}} wird passend zur Typst-Version dieses Projekts heruntergeladen.",
       "transportClosed": "Die Verbindung zum Sprachdienst wurde unerwartet geschlossen. Versuchen Sie es erneut, um sie wiederherzustellen.",
       "versionMismatch": "Erwartet wurde {{kind}} {{expected}}, die Einrichtung meldet aber {{reported}}."
     }
@@ -137,7 +139,8 @@
     "packageOption": "Option von {{name}}",
     "keyvalKey": "Schlüssel von \\{{command}}",
     "duplicateCount": "doppelt ({{count}})",
-    "duplicateIndex": "doppelt {{index}}/{{total}}"
+    "duplicateIndex": "doppelt {{index}}/{{total}}",
+    "typstBinding": "Typst-Bindung"
   },
   "token": {
     "citation": "Zitation",

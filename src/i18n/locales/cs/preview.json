@@ -97,7 +97,9 @@
     "installPackages_one": "Najít a nainstalovat {{name}}",
     "installPackages_few": "Najít a nainstalovat {{count}} soubory",
     "installPackages_many": "Najít a nainstalovat {{count}} souboru",
-    "installPackages_other": "Najít a nainstalovat {{count}} souborů"
+    "installPackages_other": "Najít a nainstalovat {{count}} souborů",
+    "downloadTypst": "Stáhnout Typst {{version}}",
+    "useTypst": "Použít Typst {{version}}"
   },
   "stale": {
     "badge": "Zastaralé",
@@ -106,8 +108,8 @@
     "explanation": "Toto PDF neodpovídá aktivní revizi projektu.",
     "revisionExplanation": "Zobrazuje se revize projektu {{displayed}}. Aktivní projekt je v revizi {{active}}.",
     "noIdentity": "Zobrazené PDF nemá ověřenou identitu kompilace pro aktivní revizi.",
-    "syncTexAvailable": "SyncTeX u úprav používá nejbližší nezměněný řádek.",
-    "syncTexUnavailable": "SyncTeX vyžaduje aktuální kompilaci."
+    "syncTexAvailable": "Synchronizace se zdrojem u úprav používá nejbližší nezměněný řádek.",
+    "syncTexUnavailable": "Synchronizace se zdrojem vyžaduje aktuální kompilaci."
   },
   "save": {
     "title": "Uložení PDF do projektu",
@@ -275,5 +277,33 @@
       "pageLabel": "Stránka {{page}} z {{total}}",
       "empty": "Na této stránce nebyl nalezen žádný čitelný text."
     }
+  },
+  "presentation": {
+    "windowTitle": "Prezentace",
+    "presenterTitle": "Zobrazení přednášejícího",
+    "present": "Prezentovat",
+    "presentFromStart": "Prezentovat od začátku",
+    "presentFromPage": "Prezentovat od této stránky",
+    "presentWithPresenter": "Prezentovat se zobrazením přednášejícího",
+    "loading": "Otevírají se snímky",
+    "failed": "Snímky se nepodařilo otevřít. Zkompilujte projekt a zkuste to znovu.",
+    "close": "Zavřít",
+    "slideLabel": "Snímek {{page}} z {{total}}",
+    "current": "Aktuální snímek",
+    "next": "Další snímek",
+    "lastSlide": "Toto je poslední snímek.",
+    "notes": "Poznámky přednášejícího",
+    "notesLoading": "Čtou se poznámky přednášejícího",
+    "noNotes": "K tomuto snímku nejsou žádné poznámky přednášejícího.",
+    "elapsed": "Uplynulý čas",
+    "clock": "Aktuální čas",
+    "pause": "Pozastavit časovač",
+    "resume": "Pokračovat v měření času",
+    "reset": "Vynulovat časovač",
+    "previousAction": "Předchozí snímek",
+    "nextAction": "Další snímek",
+    "end": "Ukončit prezentaci",
+    "blank": "Obrazovka pro publikum je zatemněná. Snímky zobrazíte stisknutím B.",
+    "toggleBlank": "Zatemnit obrazovku pro publikum"
   }
 }

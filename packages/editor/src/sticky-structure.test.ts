@@ -1,6 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { Text } from "@codemirror/state";
+import { beforeAll, describe, expect, it } from "vitest";
+import { EditorState, Text } from "@codemirror/state";
 import { STICKY_MAX_LINES, scopesAtLine, stickyScopes } from "./sticky-structure";
+import { typstStickyScopes } from "./typst-structure";
+import { loadTypstParser, typstLanguage } from "./typst";
+import { parsedState } from "./visual/test-document";
 
 const doc = (...lines: string[]) => Text.of(lines);
 
@@ -119,5 +122,49 @@ describe("scopesAtLine", () => {
 
   it("returns nothing at the top of the document", () => {
     expect(scopesAtLine(scopes, 1, 6)).toEqual([]);
+  });
+});
+
+describe("typstStickyScopes", () => {
+  beforeAll(async () => {
+    await loadTypstParser();
+  });
+
+  const scopes = (...lines: string[]) =>
+    typstStickyScopes(
+      parsedState(EditorState.create({ doc: lines.join("\n"), extensions: [typstLanguage()] })),
+    );
+
+  it("closes a heading at the next same-or-higher-level heading", () => {
+    expect(scopes("= A", "body", "== A1", "body", "= B", "body")).toEqual([
+      { line: 1, endLine: 4 },
+      { line: 3, endLine: 4 },
+      { line: 5, endLine: 6 },
+    ]);
+  });
+
+  it("pins a multi-line embedded call through its closing line", () => {
+    expect(scopes("#figure(", '  image("a.png"),', ")", "after")).toEqual([{ line: 1, endLine: 3 }]);
+  });
+
+  it("closes headings inside a content block before the block's closing line", () => {
+    expect(scopes("#block[", "= Inner", "text", "]", "= Outer", "x")).toEqual([
+      { line: 1, endLine: 4 },
+      { line: 2, endLine: 3 },
+      { line: 5, endLine: 6 },
+    ]);
+  });
+
+  it("ignores heading markers in raw blocks and comments", () => {
+    expect(scopes("```", "= not a heading", "```", "/* = not either */", "x")).toEqual([]);
+  });
+
+  it("drops calls that fit on one line and calls that do not start a line", () => {
+    expect(scopes("#f(a)", "text #g(", "  b", ")")).toEqual([]);
+  });
+
+  it("turns itself off past the line budget", () => {
+    const huge = new Array(STICKY_MAX_LINES + 2).fill("= A").join("\n");
+    expect(typstStickyScopes(EditorState.create({ doc: huge }))).toEqual([]);
   });
 });

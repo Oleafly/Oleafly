@@ -4,7 +4,7 @@ description: Prepare journal manuscripts, conference papers, research posters, a
 license: MIT license
 compatibility: Requires Python 3.11+ for helper scripts; LaTeX and Poppler command-line tools are optional for compilation and PDF inspection.
 metadata:
-  version: "1.3"
+  version: "1.3.1"
   skill-author: K-Dense Inc.
   oleafly:
     tier: vendored
@@ -57,7 +57,7 @@ Ask for or derive:
 - year/cycle and track;
 - document type, such as research article, short paper, main track, R01, or R21;
 - submission stage; and
-- authoring format, such as LaTeX or Word.
+- authoring format, such as LaTeX, Typst, or Word.
 
 Do not combine rules from similarly named venues or tracks.
 
@@ -145,6 +145,31 @@ The matching Elsevier `.bst` files are in `assets/journals/`.
 | `assets/grants/nih_specific_aims.tex` | Writing scaffold for a one-page NIH Specific Aims attachment |
 
 Use SciENcv and agency-provided common forms where required. Do not recreate biosketch or current-support forms in LaTeX.
+
+### Typst projects
+
+Few venues accept Typst source. Most take a PDF at initial submission, and many want LaTeX or Word source at camera-ready. Check the official instructions for both stages before you suggest Typst, and say plainly when the final upload needs a source format Typst cannot give. Oleafly can export a Typst project to LaTeX, but that export is a starting point, not the venue's class file.
+
+When Typst fits, start from a Typst-style template in Oleafly's template gallery instead of rebuilding a venue's layout by hand. Filter the gallery by the Typst engine. The venue templates come from the "Open journal & conference templates" pack, which Get more templates downloads. They are community templates from Typst Universe. None of them is an official venue template, so treat each one as a look-alike and check its page size, margins, fonts, and anonymity mode against the current instructions.
+
+| Venue family | Template in the gallery | Typst Universe package |
+|---|---|---|
+| IEEE conference | Charged Ieee, Bamdone Ieeeconf, Tatras Ieee | `charged-ieee`, `bamdone-ieeeconf`, `tatras-ieee` |
+| ACM | Clean Acmart, Faithful Acmart, Approximate Acmsmall | `clean-acmart`, `faithful-acmart`, `approximate-acmsmall` |
+| NeurIPS | Bloated Neurips | `bloated-neurips` |
+| CVPR | Blind Cvpr | `blind-cvpr` |
+| JMLR, TMLR | Classic Jmlr, Smooth Tmlr | `classic-jmlr`, `smooth-tmlr` |
+| ACL | Tracl | `tracl` |
+| Springer LNCS | Fine Lncs | `fine-lncs` |
+| Springer Nature journals | Stellar Springer Nature | `stellar-springer-nature` |
+| APA style | Apa7 Ish | `apa7-ish` |
+| AMS journals | Unequivocal Ams | `unequivocal-ams` |
+| APS journals | Revtyp | `revtyp` |
+| Preprints | Arkheion | `arkheion` |
+
+The "Journal & conference classes" pack adds two plain starters that need no packages: Typst Conference Paper (two-column) and Typst Journal Article.
+
+Each template imports its package at an exact version, for example `#import "@preview/charged-ieee:0.1.4": ieee`. Keep that version unless the Typst version the project pins needs a newer one, and compile once while online so Typst can download the package. The helper scripts below only know the LaTeX scaffolds, but `scripts/validate_format.py` works on any compiled PDF, Typst included.
 
 ### Poster scaffold
 

@@ -260,6 +260,26 @@ test("validation reports missing targets, bad hashes, an uncurated bundle and a 
   const unknownFlag = clone(catalog);
   unknownFlag.typst.versions[0].capabilities.flags = ["--shell-escape"];
   assert.ok(validateCatalog(unknownFlag).some((problem) => problem.includes("unknown flag")));
+
+  const htmlWithoutFeatures = clone(catalog);
+  const newest = htmlWithoutFeatures.typst.versions.at(-1).capabilities;
+  newest.flags = newest.flags.filter((flag) => flag !== "--features");
+  assert.ok(validateCatalog(htmlWithoutFeatures).some((problem) => problem.includes("HTML output disagrees")));
+});
+
+test("capabilities record the flags each Typst release accepted", () => {
+  const flags = (version) => catalog.typst.versions.find((release) => release.version === version).capabilities;
+  assert.deepEqual(
+    ["--pages", "--creation-timestamp", "--deps", "--features"].map((flag) => flags("0.11.1").flags.includes(flag)),
+    [false, false, false, false],
+  );
+  assert.ok(flags("0.12.0").flags.includes("--pages"));
+  assert.ok(flags("0.12.0").flags.includes("--creation-timestamp"));
+  assert.ok(!flags("0.12.0").outputFormats.includes("html"));
+  assert.ok(flags("0.13.1").outputFormats.includes("html"));
+  assert.ok(!flags("0.13.1").flags.includes("--deps"));
+  assert.ok(flags("0.14.2").flags.includes("--deps"));
+  assert.ok(flags("0.15.1").flags.includes("--features"));
 });
 
 test("asset naming follows each upstream's release layout", () => {

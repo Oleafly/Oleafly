@@ -573,6 +573,76 @@
       "tag2": "矢印",
       "tag3": "早見表",
       "tag4": "カーソル位置に挿入"
+    },
+    "arxivToTypst": {
+      "name": "arXiv から Typst へ",
+      "description": "arXiv のソース一式を Typst に変換します。変換できなかった部分はコンパイルチェックで一覧にします。",
+      "tag1": "ソースのアーカイブ",
+      "tag2": "コンパイルチェック",
+      "tag3": "ID にはネットワークが必要"
+    },
+    "csvToTypst": {
+      "name": "CSV から Typst へ",
+      "description": "CSV や TSV の行を貼り付けると、エスケープ済みの Typst の表になります。",
+      "tag1": "CSV と TSV",
+      "tag2": "表",
+      "tag3": "ローカル"
+    },
+    "equationToTypst": {
+      "name": "数式から Typst へ",
+      "description": "入力した LaTeX の数式や数式の画像を、Typst の数式に変換します。",
+      "tag1": "テキストまたは画像",
+      "tag2": "数式",
+      "tag3": "組み込み"
+    },
+    "excelToTypst": {
+      "name": "Excel から Typst へ",
+      "description": "Excel、CSV、TSV のシートを、エスケープ済みの Typst の表に変換します。",
+      "tag1": "XLSX",
+      "tag2": "CSV と TSV",
+      "tag3": "ローカル"
+    },
+    "htmlToTypst": {
+      "name": "HTML から Typst へ",
+      "description": "貼り付けた HTML を、単独で完結する Typst 文書に変換します。",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "ローカル"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid から Typst へ",
+      "description": "Mermaid のフローチャートを、編集できる fletcher のコードに変換します。",
+      "tag1": "フローチャート",
+      "tag2": "Fletcher",
+      "tag3": "ローカル"
+    },
+    "typstToHtml": {
+      "name": "Typst から HTML へ",
+      "description": "Typst のマークアップを、MathML の数式を含む単独で完結する HTML に変換します。",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst から Markdown へ",
+      "description": "Typst のマークアップを、持ち運びやすい Markdown に変換します。",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "プロジェクトは任意"
+    },
+    "typstToWord": {
+      "name": "Typst から Word へ",
+      "description": "数式を Word 本来の数式として保持した Word 文書を作ります。",
+      "tag1": "DOCX",
+      "tag2": "本来の数式",
+      "tag3": "ローカル"
+    },
+    "wordToTypst": {
+      "name": "Word から Typst へ",
+      "description": "Word の文書を Typst に変換し、取り出したメディアも一緒に保持します。",
+      "tag1": "DOCX",
+      "tag2": "メディア",
+      "tag3": "プロジェクトは任意"
     }
   },
   "generators": {
@@ -652,7 +722,9 @@
     "insertInEditor": "エディタに挿入",
     "noDescription": "このコマンドの説明はありません。",
     "loadingPreview": "プレビューする記号を読み込んでいます。",
-    "chooseSymbol": "ライブラリから記号を選んでください。"
+    "chooseSymbol": "ライブラリから記号を選んでください。",
+    "insertHintTypst": "開いている Typst 文書に Typst のコードを挿入します。",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · クリックで差し替え",
@@ -708,7 +780,8 @@
     "openAiSettings": "AI の設定を開く",
     "fileReady": "{{fileName}} の準備ができました",
     "saveWordHint": "準備ができたら Word の文書を保存してください。",
-    "resultPlaceholder": "変換の結果がここに表示されます。"
+    "resultPlaceholder": "変換の結果がここに表示されます。",
+    "progressConvertingSource": "ソースを Typst に変換しています"
   },
   "converters": {
     "imageToLatex": {
@@ -829,6 +902,76 @@
       "inputLabel": "Word 文書",
       "inputHint": ".docx のファイルを選んでください。数式と画像はローカルで読み取られます。",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv から Typst へ",
+      "subtitle": "e-print の LaTeX ソースを Typst に変換し、手作業で直す必要がある箇所を確認します",
+      "inputLabel": "arXiv のソース",
+      "inputHint": "arXiv の ID を入力するか、保存済みの .tar.gz または .gz のソースアーカイブを選んでください。",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV から Typst へ",
+      "subtitle": "スプレッドシートのデータを貼り付けると、エスケープ済みの Typst の表になります",
+      "inputLabel": "CSV または TSV",
+      "inputHint": "カンマ区切りかタブ区切りの行を貼り付けてください。最初の行が見出しになります。",
+      "outputLabel": "Typst の表"
+    },
+    "equationToTypst": {
+      "title": "数式から Typst へ",
+      "subtitle": "入力した数式や撮影した数式を、Typst の数式にします",
+      "inputLabel": "数式",
+      "inputHint": "LaTeX の数式を入力するか、言葉で説明するか、画像を選んでください。",
+      "outputLabel": "Typst の数式"
+    },
+    "excelToTypst": {
+      "title": "Excel から Typst へ",
+      "subtitle": "最初のシートを Typst の表に変換します",
+      "inputLabel": "スプレッドシート",
+      "inputHint": "XLSX、XLS、CSV、TSV に対応しています。数式はキャッシュされた値を使います。",
+      "outputLabel": "Typst の表"
+    },
+    "htmlToTypst": {
+      "title": "HTML から Typst へ",
+      "subtitle": "セマンティックな HTML を、単独で完結する Typst 文書に変換します",
+      "inputLabel": "HTML",
+      "inputHint": "HTML の断片か、完全な文書を貼り付けてください。",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid から Typst へ",
+      "subtitle": "Mermaid のフローチャートを、編集できる fletcher の図にします",
+      "inputLabel": "Mermaid のフローチャート",
+      "inputHint": "フローチャートは TD、LR、BT、RL のレイアウト、ラベル、よく使うノードの形に対応しています。",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst から HTML へ",
+      "subtitle": "MathML の数式を含む、単独で完結する HTML を作ります",
+      "inputLabel": "Typst",
+      "inputHint": "Typst の断片か、完全な Typst 文書を貼り付けてください。",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst から Markdown へ",
+      "subtitle": "プロジェクトを作らずに、持ち運びやすい Markdown を作ります",
+      "inputLabel": "Typst",
+      "inputHint": "Typst の断片か、完全な Typst 文書を貼り付けてください。",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst から Word へ",
+      "subtitle": "数式を編集できる Word の数式として保持した DOCX を作ります",
+      "inputLabel": "Typst",
+      "inputHint": "Typst の断片か、完全な Typst 文書を貼り付けてください。",
+      "outputLabel": "Word 文書"
+    },
+    "wordToTypst": {
+      "title": "Word から Typst へ",
+      "subtitle": "DOCX を変換し、取り出したメディアを結果と一緒に保持します",
+      "inputLabel": "Word 文書",
+      "inputHint": ".docx のファイルを選んでください。数式と画像はローカルで読み取られます。",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -844,7 +987,8 @@
     "chooseFile": "変換する前にファイルを選んでください。",
     "fileTooLarge": "128 MB 未満のファイルを選んでください。",
     "emptySheet": "選択したシートは空です。",
-    "arxivInputRequired": "arXiv の ID を入力するか、ソースのアーカイブを選んでください。"
+    "arxivInputRequired": "arXiv の ID を入力するか、ソースのアーカイブを選んでください。",
+    "equationToTypst": "Pandoc はこの数式を Typst に変換できませんでした。LaTeX の数式を確認して、もう一度お試しください。"
   },
   "converterNotes": {
     "scannedPages": "ローカルのモデルで、スキャンされた {{pages}} ページを文字起こししました。使う前に数式と表を確認してください。",
@@ -852,7 +996,14 @@
     "mermaidTikz": "このフローチャートを、編集できる TikZ に変換しました。",
     "mermaidRendered": "この図の Mermaid の記法は、編集できる TikZ にきれいに対応づけられないため、ローカルで描画しました。",
     "tableConverted": "{{rows}} 行 {{columns}} 列を変換しました。",
-    "arxivBundle": "{{files}} 件のソースファイル。メイン文書: {{mainFile}}。"
+    "arxivBundle": "{{files}} 件のソースファイル。メイン文書: {{mainFile}}。",
+    "mermaidFletcher": "このフローチャートを、Typst 用の編集できる fletcher のコードに変換しました。",
+    "mermaidRenderedTypst": "この図の Mermaid の記法は、編集できる fletcher のコードにきれいに対応づけられないため、ローカルで描画しました。",
+    "arxivTypstConverted": "{{mainFile}} を変換しました。",
+    "typstCheckPassed": "Typst は結果をエラーなしでコンパイルしました。",
+    "typstCheckFailed_other": "Typst が {{count}} 件のエラーを見つけました。",
+    "notConverted_other": "{{count}} 件の項目を変換できませんでした。",
+    "checkLine": "{{line}} 行目: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "この Mermaid の図は、上限の 50,000 文字を超えています。",
@@ -1102,9 +1253,15 @@
   },
   "equation": {
     "subtitle": "LaTeX のライブ作業画面",
+    "subtitleTypst": "Typst のライブ作業画面",
+    "mathLanguage": "数式の言語",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "エラー",
     "statusRendered": "描画しました",
+    "statusRendering": "描画中",
     "copyLatex": "LaTeX をコピー",
+    "copyTypst": "Typst をコピー",
     "exportOptions": "書き出しのオプション",
     "export": "書き出し",
     "downloadPng": "PNG をダウンロード",
@@ -1117,6 +1274,7 @@
     "exportSvgFailed": "この式を SVG として書き出せませんでした",
     "copyKatexFailed": "KaTeX の HTML をコピーできませんでした",
     "copyLatexFailed": "LaTeX のソースをコピーできませんでした",
+    "copyTypstFailed": "Typst のソースをコピーできませんでした",
     "invalidPngName": "スラッシュや特殊文字を含まない、短い PNG のファイル名を指定してください。",
     "replaceConfirm": "{{project}} には {{path}} がすでに存在します。置き換えますか？",
     "savedToProject": "{{path}} を {{project}} に保存しました。",
@@ -1130,6 +1288,7 @@
     "newImageProject": "新しい画像プロジェクト",
     "mathmlFailed": "この式を MathML に変換できませんでした",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "行内",
     "display": "ディスプレイ",
     "examples": "例",
@@ -1138,6 +1297,8 @@
     "previewLight": "明るい背景でプレビュー",
     "inlineSample": "文中に置くとこのように <formula></formula> と並び、前後の文章に沿って流れます。",
     "empty": "左側に LaTeX の数式を入力してください。",
+    "emptyTypst": "左側に Typst の数式を入力してください。",
+    "typstFailed": "Typst はこの数式を描画できませんでした。",
     "zoomOut": "縮小",
     "zoomIn": "拡大",
     "resetZoom": "表示倍率をリセット",

@@ -146,5 +146,37 @@
       "check_running": "Ett test av den här agenten körs redan.",
       "main_window": "Byt agentprogram från huvudfönstret."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly erbjuder inte Typst {{version}}, och ingen Typst på den här datorn har den versionen.",
+    "busy": "Typst {{version}} installeras fortfarande. Försök igen när det är klart.",
+    "remove_default": "Typst {{version}} är din standardversion. Välj en annan standard innan du tar bort den.",
+    "remove_not_downloaded": "Oleafly kan bara ta bort Typst-versioner som programmet själv har laddat ner, och Typst {{version}} har inte laddats ner av Oleafly.",
+    "not_offered": "Typst {{version}} kan inte laddas ner för den här datorn.",
+    "install_unverified": "Typst {{version}} laddades ner men klarade inte integritetskontrollen. Försök installera den igen.",
+    "not_typst_project": "Bara Typst-projekt har en Typst-version.",
+    "update_waits": "Vänta tills Typst har installerats klart innan du uppdaterar Oleafly."
+  },
+  "typst_packages": {
+    "index_offline": "Du är offline och paketlistan från Typst Universe har inte laddats ner än.",
+    "index_unavailable": "Det gick inte att läsa in paketlistan från Typst Universe. Kontrollera internetanslutningen och försök igen.",
+    "vendor_failed": "Oleafly kunde inte kopiera in paketen i projektet."
+  },
+  "typst_query": {
+    "timeout": "Typst tog för lång tid på sig att läsa dokumentet.",
+    "failed": "Typst kunde inte läsa dokumentet."
+  },
+  "typst_version_missing": "Typst {{version}} är inte installerat.",
+  "typst_options": {
+    "invalid_input_key": "Värdenamn får inte vara tomma eller innehålla ett likhetstecken.",
+    "invalid_variant_name": "Varje variant behöver ett kort namn som ingen annan variant använder.",
+    "invalid_font_path": "Typsnittsmappar måste ligga i projektet.",
+    "fonts_failed": "Typst kunde inte lista typsnitten.",
+    "fonts_timeout": "Typst tog för lång tid på sig att lista typsnitten."
+  },
+  "typst_export": {
+    "failed": "Typst kunde inte exportera dokumentet.",
+    "unsupported": "Den här Typst-versionen kan inte exportera med de här inställningarna.",
+    "invalid_ppi": "Välj en upplösning från 1 till {{max}} PPI."
   }
 }

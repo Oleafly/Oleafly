@@ -2,6 +2,7 @@ import { previewWindowState } from "@/lib/preview-state";
 import { SavePreviewDialog } from "./SavePreviewDialog";
 import { CompileLogControls } from "./CompileLogControls";
 import { PdfToolbarControls } from "./PdfToolbarControls";
+import { present } from "@/features/presentation/launch";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
 import { PdfViewerOverlay } from "./PdfViewerOverlay";
@@ -671,9 +672,12 @@ export function PreviewPane() {
   const [fsToolbarHidden, setFsToolbarHidden] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PdfViewerHandle>(null);
-  const pdfPosition = usePdfPosition(projectId, pdfRef);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
+  const livePreview = useCompileStore(
+    (s) => s.livePreview.enabled && s.livePreview.projectId === projectId,
+  );
+  const pdfPosition = usePdfPosition(projectId, pdfRef, scrollBoxRef, livePreview);
   const scaleRef = useRef(scale);
   const lastReadyDocumentRef = useRef<PreviewDocument | null>(null);
   const rejectedDocumentIdentitiesRef = useRef(new Set<string>());
@@ -1218,6 +1222,15 @@ export function PreviewPane() {
               .catch((error) => void logError("open preview window", error));
           }}
           onSettings={() => useSettingsStore.getState().openSettingsAt("appearance", "pdf")}
+          onPresent={(mode) =>
+            void present({
+              projectId,
+              mode,
+              page,
+              mainDoc,
+              typst: useFilesStore.getState().engine.source_format === "typst",
+            })
+          }
         />
       )}
     </div>

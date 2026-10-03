@@ -95,7 +95,9 @@
     "retryCompile": "Opnieuw compileren",
     "chooseEngine": "Engine kiezen…",
     "installPackages_one": "{{name}} zoeken en installeren",
-    "installPackages_other": "{{count}} bestanden zoeken en installeren"
+    "installPackages_other": "{{count}} bestanden zoeken en installeren",
+    "downloadTypst": "Typst {{version}} downloaden",
+    "useTypst": "Typst {{version}} gebruiken"
   },
   "stale": {
     "badge": "Verouderd",
@@ -104,8 +106,8 @@
     "explanation": "Deze PDF hoort niet bij de actieve projectrevisie.",
     "revisionExplanation": "Je ziet projectrevisie {{displayed}}. Het actieve project is revisie {{active}}.",
     "noIdentity": "De weergegeven PDF heeft geen geverifieerde compilatie-identiteit voor de actieve revisie.",
-    "syncTexAvailable": "SyncTeX gebruikt de dichtstbijzijnde ongewijzigde regel voor bewerkingen.",
-    "syncTexUnavailable": "SyncTeX heeft een actuele compilatie nodig."
+    "syncTexAvailable": "Bronsynchronisatie gebruikt de dichtstbijzijnde ongewijzigde regel voor bewerkingen.",
+    "syncTexUnavailable": "Bronsynchronisatie heeft een actuele compilatie nodig."
   },
   "save": {
     "title": "PDF opslaan in project",
@@ -273,5 +275,33 @@
       "pageLabel": "Pagina {{page}} van {{total}}",
       "empty": "Er is geen leesbare tekst gevonden op deze pagina."
     }
+  },
+  "presentation": {
+    "windowTitle": "Presentatie",
+    "presenterTitle": "Presentatorweergave",
+    "present": "Presenteren",
+    "presentFromStart": "Vanaf het begin presenteren",
+    "presentFromPage": "Vanaf deze pagina presenteren",
+    "presentWithPresenter": "Presenteren met presentatorweergave",
+    "loading": "De dia's openen",
+    "failed": "De dia's konden niet worden geopend. Compileer het project en probeer het opnieuw.",
+    "close": "Sluiten",
+    "slideLabel": "Dia {{page}} van {{total}}",
+    "current": "Huidige dia",
+    "next": "Volgende dia",
+    "lastSlide": "Dit is de laatste dia.",
+    "notes": "Sprekersnotities",
+    "notesLoading": "Sprekersnotities lezen",
+    "noNotes": "Geen sprekersnotities voor deze dia.",
+    "elapsed": "Verstreken tijd",
+    "clock": "Huidige tijd",
+    "pause": "Timer pauzeren",
+    "resume": "Timer hervatten",
+    "reset": "Timer resetten",
+    "previousAction": "Vorige dia",
+    "nextAction": "Volgende dia",
+    "end": "Presentatie beëindigen",
+    "blank": "Het scherm voor het publiek is leeg. Druk op B om de dia's te tonen.",
+    "toggleBlank": "Het scherm voor het publiek leegmaken"
   }
 }

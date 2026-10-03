@@ -43,7 +43,9 @@
     "noResults": "Nie znaleziono wyników. Sprawdź identyfikator albo spróbuj innych słów z tytułu.",
     "placeholder": "DOI, identyfikator arXiv, adres URL lub tytuł artykułu…",
     "privacyNote": "Wysyłany jest tylko identyfikator lub tytuł, do doi.org, arXiv albo Crossref.",
-    "title": "Dodaj cytowanie"
+    "title": "Dodaj cytowanie",
+    "bibliography": "Bibliografia",
+    "bibliographyHint": "Ten projekt ma więcej niż jedną bibliografię. Pozycja trafi do pliku, który tu wybierzesz."
   },
   "backendProtocol": {
     "mismatch": "To okno i jego zaplecze zbudowano dla różnych wersji Oleafly, więc część funkcji może nie działać. Ponowna instalacja aplikacji to naprawia."
@@ -124,6 +126,14 @@
       "keywords": "zamknij koniec środowisko begin latex",
       "label": "Zamknij środowisko LaTeX"
     },
+    "formatDocument": {
+      "keywords": "formatuj porządkuj wcięcia typstyle typst",
+      "label": "Formatuj dokument"
+    },
+    "formatSelection": {
+      "keywords": "formatuj zaznaczenie porządkuj wcięcia typstyle typst",
+      "label": "Formatuj zaznaczenie"
+    },
     "createProject": {
       "keywords": "nowy projekt utwórz szablon galeria",
       "label": "Utwórz nowy projekt"
@@ -131,6 +141,14 @@
     "diagramComposer": {
       "keywords": "diagram rysunek tikz kreator rysowanie obszar roboczy",
       "label": "Otwórz Kreator diagramów"
+    },
+    "typstPackages": {
+      "keywords": "typst universe pakiety import biblioteka przeglądaj kopiuj do projektu",
+      "label": "Przeglądaj pakiety Typst"
+    },
+    "latexPackages": {
+      "keywords": "latex ctan pakiety usepackage preambuła instaluj tlmgr przeglądaj",
+      "label": "Przeglądaj pakiety LaTeX"
     },
     "documentCitationScan": {
       "keywords": "cytowania literatura skanowanie dokument akapit odwołania znajdź",
@@ -197,7 +215,8 @@
       "label": "Otocz środowiskiem"
     },
     "synctex": {
-      "label": "Przejdź do PDF (SyncTeX)"
+      "label": "Przejdź do PDF (SyncTeX)",
+      "typstLabel": "Przejdź do PDF"
     },
     "table": {
       "label": "Tabela"
@@ -230,6 +249,79 @@
     "openFolder": {
       "label": "Otwórz folder…",
       "keywords": "otwórz folder katalog istniejący lokalny pliki dysk"
+    },
+    "underline": {
+      "label": "Podkreślenie"
+    },
+    "strikethrough": {
+      "label": "Przekreślenie"
+    },
+    "inlineCode": {
+      "label": "Kod w wierszu"
+    },
+    "link": {
+      "label": "Odsyłacz"
+    },
+    "footnote": {
+      "label": "Przypis"
+    },
+    "quote": {
+      "label": "Cytat"
+    },
+    "inlineMath": {
+      "label": "Wzór w wierszu"
+    },
+    "numberedEquation": {
+      "label": "Wzór numerowany"
+    },
+    "alignedEquations": {
+      "label": "Wzory wyrównane"
+    },
+    "fraction": {
+      "label": "Ułamek"
+    },
+    "crossReference": {
+      "label": "Odwołanie"
+    },
+    "typstInsights": {
+      "label": "Przegląd dokumentu",
+      "keywords": "rysunki tabele równania nagłówki etykiety cytowania todo fixme metadane streszczenie zgłoszenie"
+    },
+    "typstDocumentSettings": {
+      "label": "Ustawienia dokumentu",
+      "keywords": "rozmiar strony marginesy kolumny krój rozmiar pisma język region wyjustowanie interlinia odstęp wierszy numeracja"
+    },
+    "toggleComment": {
+      "label": "Przełącz komentarz",
+      "keywords": "komentarz odkomentuj wiersz blok"
+    },
+    "goToDefinition": {
+      "label": "Przejdź do definicji",
+      "keywords": "definicja skok symbol nawigacja"
+    },
+    "findReferences": {
+      "label": "Znajdź odwołania",
+      "keywords": "odwołania użycia symbol"
+    },
+    "renameSymbol": {
+      "label": "Zmień nazwę symbolu",
+      "keywords": "zmień nazwę symbol refaktoryzacja"
+    },
+    "migrateToTypst": {
+      "label": "Konwertuj na projekt Typst",
+      "keywords": "typst konwertuj migracja latex projekt nowy"
+    },
+    "typstMigrationReport": {
+      "label": "Pokaż raport konwersji na Typst",
+      "keywords": "typst konwertuj migracja raport latex"
+    },
+    "present": {
+      "label": "Prezentuj slajdy",
+      "keywords": "prezentuj slajdy prezentacja pełny ekran beamer touying polylux notatki prelegenta pdfpc"
+    },
+    "presentWithPresenter": {
+      "label": "Prezentuj slajdy z widokiem prelegenta",
+      "keywords": "prezentuj slajdy widok prelegenta notatki prelegenta stoper następny slajd"
     }
   },
   "community": {
@@ -242,7 +334,12 @@
     "autoCompile": {
       "off": "Wyłączona",
       "on": "Włączona",
-      "title": "Kompilacja automatyczna"
+      "title": "Kompilacja automatyczna",
+      "help": "Kompiluje kilka sekund po tym, jak przestaniesz pisać. Otwarty plik jest najpierw zapisywany.",
+      "typstHelp": "Typst działa w tle i aktualizuje PDF chwilę po tym, jak przestaniesz pisać. Gdy ta opcja jest włączona, otwarty plik zapisuje się sam.",
+      "typstStarting": "Uruchamianie Typst",
+      "typstRestarting": "Typst uruchamia się ponownie",
+      "typstFailed": "Typst zatrzymał się po powtarzających się błędach. Edytuj plik, aby uruchomić go ponownie."
     },
     "compile": "Kompiluj",
     "compiler": {
@@ -278,7 +375,37 @@
     "texRootLabel": "TEX root",
     "texRootName": "root: {{name}}",
     "texRootNotTex": "% !TEX root w pliku {{file}} wskazuje na {{target}}, który nie jest plikiem LaTeX",
-    "texRootOverride": "root: {{path}} (ustawione przez % !TEX root w {{file}})"
+    "texRootOverride": "root: {{path}} (ustawione przez % !TEX root w {{file}})",
+    "typstVersion": {
+      "title": "Wersja Typst (ten projekt)",
+      "help": "Przypnij wersję, aby wynik tego projektu nie zmieniał się, gdy Oleafly aktualizuje Typst. Opcja domyślna podąża za wersją wybraną w Ustawieniach. Aby instalować wersje lub przetestować ten projekt w nowszej, otwórz Ustawienia → Silniki → Typst.",
+      "default": "Domyślna ({{version}})",
+      "defaultPlain": "Domyślna",
+      "builtIn": "[wbudowany]",
+      "system": "[systemowy]",
+      "missing": "[niezainstalowany]",
+      "switchFailed": "Nie udało się zmienić wersji Typst."
+    },
+    "typstFonts": {
+      "title": "Kroje pisma (ten projekt)",
+      "help": "Typst czyta kroje z folderu fonts projektu oraz z folderów wymienionych w font_paths w pliku project.json. Przy samych krojach projektu PDF nie zależy od krojów zainstalowanych na tym komputerze. W Ustawieniach dokumentu zobaczysz kroje, które Typst potrafi znaleźć.",
+      "systemFonts": "Używaj krojów systemowych",
+      "projectOnly": "Tylko kroje projektu",
+      "unsupported": "Wymaga nowszej wersji Typst",
+      "saveFailed": "Nie udało się zapisać ustawienia krojów."
+    },
+    "typstBuild": {
+      "title": "Kompilacja (ten projekt)",
+      "help": "Powtarzalna kompilacja używa tylko krojów projektu i ustawia datę PDF na datę ostatniego commita. Te same źródła dają wtedy ten sam PDF na każdym komputerze.",
+      "standard": "Standardowa kompilacja",
+      "reproducible": "Powtarzalna kompilacja",
+      "saveFailed": "Nie udało się zapisać ustawienia kompilacji."
+    },
+    "typstVariant": {
+      "title": "Wariant (ten projekt)",
+      "help": "Wariant przekazuje własne wartości do sys.inputs, na przykład dla szkicu albo wersji do druku. Wybrany wariant zostaje na tym komputerze. Warianty dodasz lub zmienisz w Ustawieniach dokumentu.",
+      "none": "Brak wariantu"
+    }
   },
   "datePicker": {
     "placeholder": "Wybierz datę"
@@ -988,6 +1115,10 @@
     "wait": {
       "description": "{{phase}} Twoja kompilacja czeka w kolejce i ruszy automatycznie, gdy silnik będzie gotowy.",
       "title": "TinyTeX wciąż się pobiera"
+    },
+    "typstQuit": {
+      "title": "Typst wciąż się instaluje",
+      "description": "Trwa pobieranie Typst {{version}}. Jeśli teraz zakończysz pracę, pobieranie się zatrzyma i trzeba będzie uruchomić je ponownie w Ustawieniach."
     }
   },
   "toolbar": {
@@ -1127,5 +1258,156 @@
     "added": "Dodano. Polecenie jest już w menu Usługi w Finderze. Aby używać go też z menu Szybkie czynności, kliknij folder prawym przyciskiem i włącz je w menu Szybkie czynności › Dostosuj.",
     "addedInQuickActions": "Dodano. Kliknij folder prawym przyciskiem, a znajdziesz polecenie w menu Szybkie czynności.",
     "failed": "Nie udało się dodać. Możesz spróbować ponownie w sekcji Ustawienia › Ogólne."
+  },
+  "typstMigration": {
+    "title": "Konwertuj na projekt Typst",
+    "closeLabel": "Zamknij konwersję na Typst",
+    "intro": "Oleafly utworzy nowy projekt Typst z tego projektu LaTeX. Ten projekt pozostanie bez zmian.",
+    "points": {
+      "text": "Pandoc konwertuje tekst, wzory, rysunki i tabele.",
+      "files": "Każdy plik input i include staje się osobnym plikiem Typst.",
+      "bibliography": "Pliki BibTeX są kopiowane bez zmian.",
+      "compile": "Typst kompiluje nowy projekt, aby go sprawdzić."
+    },
+    "nameLabel": "Nazwa nowego projektu",
+    "defaultName": "{{name}} (Typst)",
+    "notLatex": "Otwórz projekt LaTeX, aby go przekonwertować.",
+    "convert": "Konwertuj",
+    "retry": "Spróbuj ponownie",
+    "progress": {
+      "reading": "Odczytywanie projektu LaTeX",
+      "converting": "Konwertowanie przez Pandoc",
+      "creating": "Tworzenie projektu Typst",
+      "compiling": "Kompilowanie w Typst"
+    },
+    "errors": {
+      "pandoc": "Pandoc nie jest gotowy. Zainstaluj go w Narzędziach i spróbuj ponownie.",
+      "noMain": "Nie udało się odczytać głównego pliku LaTeX.",
+      "emptyOutput": "Pandoc zwrócił pusty dokument.",
+      "failed": "Konwersja została przerwana: {{detail}}"
+    },
+    "report": {
+      "created": "Utworzono {{name}}.",
+      "compiled": "Projekt kompiluje się w Typst.",
+      "compileFailed_one": "Projekt jeszcze się nie kompiluje. {{count}} błąd wymaga poprawki.",
+      "compileFailed_few": "Projekt jeszcze się nie kompiluje. {{count}} błędy wymagają poprawki.",
+      "compileFailed_many": "Projekt jeszcze się nie kompiluje. {{count}} błędów wymaga poprawki.",
+      "compileFailed_other": "Projekt jeszcze się nie kompiluje. {{count}} błędu wymaga poprawki.",
+      "compileUnavailable": "Oleafly nie mógł go skompilować: {{detail}}",
+      "converted": "Przekonwertowano",
+      "sources_one": "{{count}} plik źródłowy",
+      "sources_few": "{{count}} pliki źródłowe",
+      "sources_many": "{{count}} plików źródłowych",
+      "sources_other": "{{count}} pliku źródłowego",
+      "figures_one": "{{count}} rysunek",
+      "figures_few": "{{count}} rysunki",
+      "figures_many": "{{count}} rysunków",
+      "figures_other": "{{count}} rysunku",
+      "tables_one": "{{count}} tabela",
+      "tables_few": "{{count}} tabele",
+      "tables_many": "{{count}} tabel",
+      "tables_other": "{{count}} tabeli",
+      "equations_one": "{{count}} wzór wyeksponowany",
+      "equations_few": "{{count}} wzory wyeksponowane",
+      "equations_many": "{{count}} wzorów wyeksponowanych",
+      "equations_other": "{{count}} wzoru wyeksponowanego",
+      "references_one": "{{count}} odwołanie",
+      "references_few": "{{count}} odwołania",
+      "references_many": "{{count}} odwołań",
+      "references_other": "{{count}} odwołania",
+      "mathFixed_one": "{{count}} wzór poprawiony przez konwerter wzorów",
+      "mathFixed_few": "{{count}} wzory poprawione przez konwerter wzorów",
+      "mathFixed_many": "{{count}} wzorów poprawionych przez konwerter wzorów",
+      "mathFixed_other": "{{count}} wzoru poprawionego przez konwerter wzorów",
+      "copied_one": "Skopiowano {{count}} plik",
+      "copied_few": "Skopiowano {{count}} pliki",
+      "copied_many": "Skopiowano {{count}} plików",
+      "copied_other": "Skopiowano {{count}} pliku",
+      "style": "Styl bibliografii {{style}}",
+      "mapping": "{{source}} na {{target}}",
+      "attention": "Wymaga uwagi",
+      "noAttention": "Nic nie wymaga uwagi.",
+      "problems": "Błędy i ostrzeżenia kompilacji",
+      "location": "{{file}}, wiersz {{line}}",
+      "noLocation": "Brak położenia w pliku",
+      "openAt": "Otwórz {{file}} w wierszu {{line}}",
+      "open": "Otwórz projekt Typst"
+    },
+    "notes": {
+      "missingInclude": "Nie znaleziono pliku {{detail}}, więc został pominięty.",
+      "lostInclude": "{{detail}} nie mógł dostać własnego pliku. Jego tekst pozostaje w pliku, który go dołączał.",
+      "missingImage": "Nie znaleziono obrazu {{detail}}.",
+      "unsupportedImage": "Typst nie potrafi wyświetlić {{detail}}. Przekonwertuj go na PDF, PNG lub SVG.",
+      "math": "Ten wzór wymaga ręcznej poprawki: {{detail}}",
+      "bibliographyStyle": "Styl BibTeX {{detail}} nie ma odpowiednika w Typst. Zostanie użyty styl domyślny.",
+      "skippedFile": "Nie skopiowano {{detail}}, ponieważ projekt jest zbyt duży.",
+      "unreadableFile": "Nie udało się odczytać {{detail}}.",
+      "equationLabel": "Typst numeruje całe równania, więc odwołania do {{detail}} wskazują teraz równanie, w którym się znajdowało."
+    }
+  },
+  "typstExport": {
+    "menuItem": "Obrazy i HTML",
+    "title": "Eksport przez Typst",
+    "close": "Zamknij eksport Typst",
+    "format": "Format",
+    "png": "Obrazy PNG",
+    "svg": "Obrazy SVG",
+    "html": "HTML",
+    "experimental": "Eksperymentalne",
+    "htmlNote": "Eksport HTML w Typst jest wciąż eksperymentalny. Pomija ustawienia strony i elementy pozycjonowane.",
+    "ppi": "Rozdzielczość",
+    "ppiValue": "{{ppi}} PPI",
+    "pages": "Strony",
+    "pagesPlaceholder": "Wszystkie strony",
+    "pagesHelp": "Użyj numerów i zakresów stron, np. 1, 3-5 lub 8-.",
+    "pagesInvalid": "Sprawdź zakres stron. Użyj numerów i zakresów stron, np. 1, 3-5 lub 8-.",
+    "pagesUnsupported": "Ta wersja Typst zawsze eksportuje wszystkie strony.",
+    "multiPage": "Każda strona jest zapisywana jako osobny plik, numerowany po wybranej nazwie.",
+    "export": "Eksportuj",
+    "cancel": "Anuluj"
+  },
+  "typstUpgrade": {
+    "title": "Wypróbuj nowszą wersję Typst",
+    "description": "Oleafly kompiluje ten projekt obiema wersjami w folderach tymczasowych. Dopóki nie przełączysz wersji, w projekcie nic się nie zmieni.",
+    "compareWith": "Nowsza wersja",
+    "running": "Kompilowanie przy użyciu Typst {{current}} i {{candidate}}",
+    "current": "Typst {{version}} (bieżąca)",
+    "candidate": "Typst {{version}}",
+    "built": "Skompilowano",
+    "failed": "Niepowodzenie",
+    "pages_one": "{{count}} strona",
+    "pages_few": "{{count}} strony",
+    "pages_many": "{{count}} stron",
+    "pages_other": "{{count}} strony",
+    "pagesUnknown": "Nieznana liczba stron",
+    "errors_one": "{{count}} błąd",
+    "errors_few": "{{count}} błędy",
+    "errors_many": "{{count}} błędów",
+    "errors_other": "{{count}} błędu",
+    "warnings_one": "{{count}} ostrzeżenie",
+    "warnings_few": "{{count}} ostrzeżenia",
+    "warnings_many": "{{count}} ostrzeżeń",
+    "warnings_other": "{{count}} ostrzeżenia",
+    "pageChange": "Liczba stron zmienia się z {{from}} na {{to}}.",
+    "pageSame": "Liczba stron pozostaje bez zmian: {{pages}}.",
+    "added": "Nowe w Typst {{version}}",
+    "removed": "Typst {{version}} już tego nie zgłasza",
+    "noChanges": "Obie wersje zgłaszają te same błędy i ostrzeżenia.",
+    "unchanged_one": "{{count}} komunikat jest taki sam w obu wersjach.",
+    "unchanged_few": "{{count}} komunikaty są takie same w obu wersjach.",
+    "unchanged_many": "{{count}} komunikatów jest takich samych w obu wersjach.",
+    "unchanged_other": "{{count}} komunikatu jest takich samych w obu wersjach.",
+    "buildFailed": "Typst {{version}} nie mógł skompilować projektu.",
+    "switch": "Przełącz na Typst {{version}}",
+    "switched": "Ten projekt używa teraz Typst {{version}}.",
+    "switchFailed": "Nie udało się przełączyć wersji Typst.",
+    "runAgain": "Sprawdź ponownie",
+    "close": "Zamknij",
+    "checkFailed": "Nie udało się dokończyć sprawdzania.",
+    "noNewer": "Nie zainstalowano nowszej wersji Typst. Możesz ją zainstalować w Ustawieniach.",
+    "openSettings": "Otwórz ustawienia Typst",
+    "location": "{{file}}, wiersz {{line}}",
+    "error": "Błąd",
+    "warning": "Ostrzeżenie"
   }
 }

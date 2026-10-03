@@ -3,6 +3,22 @@
     "aiProviderRequired": "Verbind een AI-provider bij Instellingen om Repareren met AI te gebruiken.",
     "fixFailed": "Reparatie mislukt: {{detail}}"
   },
+  "chooser": {
+    "title": "Kies een diagrameditor",
+    "description": "Kies voor wat voor document het diagram is.",
+    "tikz": {
+      "title": "TikZ-diagram",
+      "description": "Nodes en pijlen in TikZ, voor LaTeX-documenten."
+    },
+    "typst": {
+      "title": "Typst-diagram",
+      "description": "Een fletcher-diagram voor Typst-documenten."
+    },
+    "mermaid": {
+      "title": "Mermaid-diagram",
+      "description": "Een Mermaid-stroomdiagram voor Markdown-documenten."
+    }
+  },
   "package": {
     "composer": {
       "title": "Diagram invoegen",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "Annuleren (Esc)",
       "cancelRename": "Naamswijziging annuleren",
       "renameTooltip": "Naam van diagram wijzigen",
-      "importTooltip": "Een .tikz- of .tex-bestand importeren en dit concept vervangen",
-      "importLabel": "TikZ-bestand importeren",
+      "importTooltip": "Een .tikz-, .tex-, .typ-, .mmd- of .md-bestand importeren en dit concept vervangen",
+      "importLabel": "Diagrambestand importeren",
       "modeDraw": "Tekenen",
       "modeCode": "Code",
       "fixWithAiTooltip": "Vraag AI om de compileerfout op te lossen",
@@ -28,20 +44,29 @@
       "newProject": "Nieuw project",
       "noOtherProjects": "Nog geen andere projecten.",
       "saveFigure": "Figuur opslaan",
+      "insertTypst": "Invoegen als Typst",
+      "insertLatex": "Invoegen als TikZ",
       "downloadTooltip": "Dit diagram downloaden",
       "download": "Downloaden",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (binnenkort)",
       "svgTooltip": "SVG-export heeft een vectorrenderer nodig, die er nog niet is",
       "snippets": "Fragmenten",
-      "untitledName": "Naamloos diagram"
+      "untitledName": "Naamloos diagram",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Invoegen als Mermaid",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Diagramtaal: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Rechthoekige node",
       "circleNode": "Ronde node",
       "arrowEdge": "Pijlverbinding",
       "lineEdge": "Lijnverbinding",
-      "scope": "Scope"
+      "scope": "Scope",
+      "group": "Groep"
     },
     "preview": {
       "label": "Voorbeeld",
@@ -53,7 +78,8 @@
       "pngScale": "PNG-schaal",
       "scaleFactor": "{{factor}}x",
       "background": "Achtergrond",
-      "backgroundLabel": "Achtergrondkleur van de figuur"
+      "backgroundLabel": "Achtergrondkleur van de figuur",
+      "diagnosticAt": "Regel {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Het diagram is niet gecompileerd. Bekijk het logboek hieronder.",
@@ -68,16 +94,25 @@
       "figureCached": "Staat al in de cache, de bestaande figuur wordt hergebruikt.",
       "figureSaved": "Opgeslagen in je figurencache.",
       "saveFigureFailed": "Kon de figuur niet opslaan: {{detail}}",
+      "insertedTypst": "Ingevoegd als Typst-code.",
+      "insertedLatex": "Ingevoegd als TikZ-code.",
       "downloaded": "Gedownload.",
       "imported": "{{name}} geïmporteerd om te bewerken.",
       "importedCodeOnly": "{{name}} geïmporteerd (alleen code, niet tekenbaar).",
       "importFailed": "Kon dat bestand niet importeren: {{detail}}",
       "noAiFix": "De AI gaf geen oplossing terug.",
       "fixFailed": "Reparatie mislukt: {{detail}}",
-      "notDrawable": "Er kon niets uit deze code getekend worden. De code is ongewijzigd."
+      "notDrawable": "Er kon niets uit deze code getekend worden. De code is ongewijzigd.",
+      "savedTypstToProject": "{{path}} opgeslagen. Voeg het met #include aan een document toe.",
+      "insertedMermaid": "Ingevoegd als Mermaid-codeblok.",
+      "savedMermaidToProject": "{{path}} opgeslagen. Voeg het in een mermaid-codeblok toe aan een Markdown-document.",
+      "typstPackageMissing": "Typst kon het pakket fletcher niet ophalen. Maak één keer verbinding met internet, zodat Typst het kan downloaden en bewaren.",
+      "previewUnavailable": "Dit voorbeeld is hier niet beschikbaar.",
+      "readerUnavailable": "De codelezer kon niet worden geladen. Probeer het opnieuw."
     },
     "confirm": {
-      "overwrite": "{{files}} bestaat al. Overschrijven? (Kies een andere naam om beide te behouden.)"
+      "overwrite": "{{files}} bestaat al. Overschrijven? (Kies een andere naam om beide te behouden.)",
+      "switchLanguage": "Dit diagram omzetten van {{from}} naar {{to}}? Code die het canvas niet kan tonen, gaat niet mee."
     },
     "canvas": {
       "shapeTools": "Vormgereedschap",
@@ -136,7 +171,57 @@
       "routingStraight": "Recht",
       "routingOrthogonal": "Orthogonaal",
       "routingCurved": "Gebogen",
-      "line": "Lijn"
+      "line": "Lijn",
+      "nodeLabelTypst": "Label (Typst)"
+    },
+    "notes": {
+      "tooltip": "Wat het canvas niet volledig toont",
+      "count_one": "{{count}} opmerking",
+      "count_other": "{{count}} opmerkingen",
+      "keptHeading": "In de code behouden",
+      "approximatedHeading": "Bij benadering getoond",
+      "droppedHeading": "Niet op het canvas getekend",
+      "notDiagram": "Er staat niets in deze code dat het canvas kan tekenen.",
+      "outsideCode": "Code voor of na het diagram blijft ongewijzigd.",
+      "wrapper": "De code rond het diagram, zoals een figuur, blijft ongewijzigd.",
+      "diagramSetting": "De diagraminstelling {{detail}} blijft in de code behouden.",
+      "edgeOption": "De verbindingsoptie {{detail}} blijft in de code behouden.",
+      "scripted": "Gescripte diagraminhoud, zoals lussen, blijft in de code behouden.",
+      "mathMode": "Diagraminhoud in wiskundemodus blijft in de code behouden.",
+      "unplacedNode": "Nodes zonder vaste positie blijven in de code behouden.",
+      "unreadEdge": "Verbindingen die het canvas niet kan lezen, blijven in de code behouden.",
+      "danglingEdge": "Verbindingen die niet twee nodes verbinden, blijven in de code behouden.",
+      "gridCoordinates": "Rastercoördinaten worden op vaste posities getoond.",
+      "formattedLabels": "Opgemaakte labels worden als platte tekst getoond.",
+      "unknownShapes": "Vormen die het canvas niet heeft, worden als rechthoeken getoond.",
+      "estimatedSize": "Nodes zonder breedte en hoogte worden op een geschatte grootte getoond.",
+      "colorAdjustments": "Aangepaste kleuren, zoals lighten, worden in hun basiskleur getoond.",
+      "colorExpressions": "Kleuren uit variabelen of expressies worden niet op het canvas getoond.",
+      "strokeStyles": "Sommige lijnstijlen worden in de dichtstbijzijnde canvasstijl getoond.",
+      "arrowMarks": "Pijlpunten die het canvas niet heeft, worden als gewone pijlen getoond.",
+      "freePoints": "Verbindingen via losse punten worden recht op het canvas getekend.",
+      "tikzCommand": "Het commando {{detail}} wordt niet getekend. Een bewerking op het canvas herschrijft de code zonder dit commando.",
+      "truncated": "De code is te lang, dus alleen het eerste deel wordt getekend.",
+      "mermaidNotFlowchart": "Alleen stroomdiagrammen kunnen op het canvas worden getekend. Deze code is een diagram van het type {{detail}}.",
+      "mermaidFrontmatter": "Het frontmatter-blok blijft in de code behouden.",
+      "mermaidDirective": "Configuratiedirectives blijven in de code behouden.",
+      "mermaidComment": "Commentaar blijft in de code behouden.",
+      "mermaidAccessibility": "Toegankelijkheidstitels en -beschrijvingen blijven in de code behouden.",
+      "mermaidClick": "Handlers voor click blijven in de code behouden.",
+      "mermaidStyleProperty": "De stijleigenschap {{detail}} blijft in de code behouden.",
+      "mermaidClassProperty": "De eigenschap {{detail}} in classDef blijft in de code behouden.",
+      "mermaidLinkStyleProperty": "De eigenschap {{detail}} in linkStyle blijft in de code behouden.",
+      "mermaidNodeSetting": "De node-instelling {{detail}} blijft in de code behouden.",
+      "mermaidEdgeSetting": "De verbindingsinstelling {{detail}} blijft in de code behouden.",
+      "mermaidInvisibleLink": "Onzichtbare verbindingen blijven in de code behouden.",
+      "mermaidLinkLength": "Verbindingslengtes blijven in de code behouden.",
+      "mermaidSubgraphDirection": "Richtingen in subgraph-blokken blijven in de code behouden.",
+      "mermaidUnknownStatement": "Instructies die het canvas niet kan lezen, blijven in de code behouden.",
+      "mermaidShape": "De vorm {{detail}} wordt getoond als de meest gelijkende canvasvorm.",
+      "mermaidThickLink": "Dikke verbindingen worden als gewone lijnen getoond.",
+      "mermaidArrowHead": "Pijlpunten met een cirkel of kruis worden als pijlen getoond.",
+      "mermaidMarkdownLabel": "Markdown-labels worden als platte tekst getoond.",
+      "mermaidNoFlowchartHeader": "Alleen stroomdiagrammen kunnen op het canvas worden getekend. Begin de code met flowchart of graph."
     }
   }
 }

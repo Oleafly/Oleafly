@@ -148,5 +148,10 @@
       "detail": "최신 프로젝트 리비전이 아직 색인되지 않았습니다.",
       "title": "프로젝트 분석 대기 중"
     }
+  },
+  "bibliographyStyle": {
+    "label": "인용 스타일",
+    "ariaLabel": "{{path}} 참고문헌의 인용 스타일",
+    "failed": "Oleafly가 인용 스타일을 바꾸지 못했습니다."
   }
 }

@@ -34,6 +34,9 @@ const mocks = vi.hoisted(() => ({
   refreshPreviewWindow: vi.fn(),
   gitPreparePublish: vi.fn(),
   ensurePandoc: vi.fn(),
+  installTypstVersion: vi.fn(),
+  setTypstVersion: vi.fn(),
+  refreshEngine: vi.fn(),
   saveActive: vi.fn(),
   readProjectSources: vi.fn(),
   settings: {
@@ -63,6 +66,8 @@ const mocks = vi.hoisted(() => ({
       },
     } as Record<string, { content: string; dirty: boolean }>,
     saveActive: vi.fn(),
+    setTypstVersion: vi.fn(),
+    refreshEngine: vi.fn(),
   },
 }));
 
@@ -82,6 +87,7 @@ vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
 vi.mock("@/store/files", () => ({
   engineErrorMessage: (reason: string) => `engine error: ${reason}`,
+  engineSwitchToastKey: (projectId: string) => `engine-switch:${projectId}`,
   projectCompatibilityFindings: mocks.projectCompatibilityFindings,
   reportFileSaveFailure: mocks.reportFileSaveFailure,
   texDistributionGapNotice: mocks.texDistributionGapNotice,
@@ -118,6 +124,9 @@ vi.mock("@/lib/toast", () => ({
     dismiss: mocks.dismiss,
   },
 }));
+vi.mock("@/store/typst-toolchain", () => ({
+  useTypstToolchainStore: { getState: () => ({ installVersion: mocks.installTypstVersion }) },
+}));
 vi.mock("@/store/engine", () => ({ useEngineStore: { getState: () => ({ refreshPackages: mocks.refreshPackages }) } }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/preview-window", () => ({
@@ -127,6 +136,8 @@ vi.mock("@/lib/cross-window", () => ({
   currentCompileProducerId: () => "test-window",
   notifyCompileSucceeded: mocks.notifyCompileSucceeded,
 }));
+const formatting = vi.hoisted(() => ({ formatActiveBeforeSave: vi.fn() }));
+vi.mock("@/components/editor/cm/language-service-format", () => formatting);
 
 import { importCompatFinding } from "@oleafly/latex";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
@@ -135,6 +146,8 @@ import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   acceptCompileOffer,
   clearFolderPause,
+  downloadMissingTypst,
+  switchToDefaultTypst,
   installerNotices,
   isCompileCheckpointCurrent,
   saveActiveForCompile,
@@ -201,6 +214,11 @@ beforeEach(() => {
   mocks.gitPreparePublish.mockReset().mockResolvedValue(undefined);
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
+  mocks.installTypstVersion.mockReset().mockResolvedValue(true);
+  mocks.setTypstVersion.mockReset().mockResolvedValue(undefined);
+  mocks.refreshEngine.mockReset().mockResolvedValue(undefined);
+  mocks.files.setTypstVersion = mocks.setTypstVersion;
+  mocks.files.refreshEngine = mocks.refreshEngine;
   mocks.readProjectSources.mockReset().mockImplementation(
     async (_projectId: string, paths: readonly string[]) => ({
       texts: Object.fromEntries(
@@ -520,8 +538,36 @@ describe("compile output lifecycle", () => {
       false,
       false,
       false,
+      null,
     );
     expect(useCompileStore.getState().log).toContain("Typst does not expose an offline compiler mode");
+  });
+
+  it("explains a Typst package that is not cached when compiling offline", async () => {
+    mocks.files.mainDoc = "main.typ";
+    mocks.files.engine = {
+      ...LATEX_ENGINE,
+      id: "typst",
+      label: "Typst",
+      source_format: "typst",
+      main_document: "main.typ",
+      source_extensions: ["typ"],
+      capabilities: { ...LATEX_ENGINE.capabilities, supports_offline: true },
+    };
+    mocks.settings.offline = true;
+    const message =
+      "failed to download package (https://packages.typst.org/preview/cetz-0.4.2.tar.gz: Connection refused)";
+    mocks.compileProject.mockResolvedValue({
+      ok: false, has_pdf: false, log: "", synctex_path: null, out_dir: null, compile_time_ms: 1,
+      errors: [{ line: 1, file: "main.typ", message, kind: "error", explanation: null }],
+    });
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).toHaveBeenCalledWith("project", "main.typ", true, false, false, null);
+    const [explained] = useCompileStore.getState().errors;
+    expect(explained.message).toBe(message);
+    expect(explained.explanation).toBe(
+      enCore.compile.typstPackage.offlineNotCached.replace("{{spec}}", "@preview/cetz:0.4.2"),
+    );
   });
 
   it("stops safely when the Markdown Pandoc install flow is unavailable", async () => {
@@ -882,6 +928,70 @@ describe("saving before a compile", () => {
   });
 });
 
+describe("formatting a Typst file before a compile saves it", () => {
+  const failedResult = {
+    ok: false,
+    has_pdf: false,
+    log: "",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+  const settings = mocks.settings as typeof mocks.settings & { typstFormatOnSave?: boolean };
+
+  beforeEach(() => {
+    formatting.formatActiveBeforeSave.mockReset().mockResolvedValue(undefined);
+    settings.typstFormatOnSave = true;
+    mocks.files.activePath = "main.typ";
+    mocks.files.files = {
+      ...mocks.files.files,
+      "main.typ": { content: "#let a = 1\n", dirty: true },
+    };
+    mocks.compileProject.mockResolvedValue(failedResult);
+  });
+
+  afterEach(() => {
+    delete settings.typstFormatOnSave;
+  });
+
+  it("formats the active Typst file before an explicit compile saves it", async () => {
+    await useCompileStore.getState().recompile();
+    expect(formatting.formatActiveBeforeSave).toHaveBeenCalledOnce();
+    expect(mocks.saveActive).toHaveBeenCalledOnce();
+    expect(formatting.formatActiveBeforeSave.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.saveActive.mock.invocationCallOrder[0],
+    );
+    expect(mocks.compileProject).toHaveBeenCalledOnce();
+  });
+
+  it("leaves automatic and agent compiles alone", async () => {
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    await useCompileStore.getState().recompile({ origin: "agent" });
+    expect(formatting.formatActiveBeforeSave).not.toHaveBeenCalled();
+    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+  });
+
+  it("does nothing when the setting is off or the file is not Typst", async () => {
+    settings.typstFormatOnSave = false;
+    await useCompileStore.getState().recompile();
+    settings.typstFormatOnSave = true;
+    mocks.files.activePath = "main.tex";
+    await useCompileStore.getState().recompile();
+    expect(formatting.formatActiveBeforeSave).not.toHaveBeenCalled();
+    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+  });
+
+  it("still saves and compiles when formatting fails", async () => {
+    formatting.formatActiveBeforeSave.mockRejectedValue(new Error("formatter crashed"));
+    await useCompileStore.getState().recompile();
+    expect(mocks.saveActive).toHaveBeenCalledOnce();
+    expect(mocks.compileProject).toHaveBeenCalledOnce();
+    expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("format before save", expect.any(Error));
+  });
+});
+
 describe("restore from the on-disk compile fingerprint", () => {
   const pdfBytes = new TextEncoder().encode("%PDF-1.7 restored");
   const pdfBuffer = () => pdfBytes.buffer.slice(0) as ArrayBuffer;
@@ -983,6 +1093,7 @@ describe("compile options", () => {
       false,
       true,
       true,
+      null,
     );
   });
 
@@ -1010,6 +1121,7 @@ describe("compile options", () => {
       false,
       false,
       false,
+      null,
     );
   });
 
@@ -1057,7 +1169,7 @@ describe("compile options", () => {
     await useCompileStore.getState().recompile();
 
     expect(mocks.readFileContent).not.toHaveBeenCalled();
-    expect(mocks.compileProject).toHaveBeenCalledWith("project", "main.typ", false, false, false);
+    expect(mocks.compileProject).toHaveBeenCalledWith("project", "main.typ", false, false, false, null);
     expect(useCompileStore.getState().log).not.toContain("the compiler was not run");
   });
 
@@ -1088,7 +1200,7 @@ describe("compile options", () => {
     await useCompileStore.getState().recompile();
 
     expect(mocks.readFileContent).not.toHaveBeenCalled();
-    expect(mocks.compileProject).toHaveBeenCalledWith("project", "main.md", false, false, false);
+    expect(mocks.compileProject).toHaveBeenCalledWith("project", "main.md", false, false, false, null);
   });
 
   it("still checks LaTeX source that has a stray closing brace", async () => {
@@ -1944,5 +2056,144 @@ describe("stopping an outdated automatic compile", () => {
   it("does nothing when no compile is running", () => {
     expect(stopOutdatedAutomaticCompile(later())).toBe(false);
     expect(mocks.cancelCompile).not.toHaveBeenCalled();
+  });
+});
+
+describe("a project pinned to a Typst version that is not installed", () => {
+  const typst = (missing: string | null) => ({
+    ...LATEX_ENGINE,
+    id: "typst",
+    label: "Typst",
+    source_format: "typst",
+    main_document: "main.typ",
+    source_extensions: ["typ"],
+    capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "typst", supports_offline: false },
+    typst_version: "0.13.1",
+    typst_resolved: missing ? null : { version: "0.13.1", source: "downloaded" },
+    typst_missing: missing,
+  });
+  const missingOffer = { kind: "typst-version-missing", projectId: "project", version: "0.13.1" };
+  const typstSuccess: CompileResult = {
+    ok: true,
+    has_pdf: false,
+    output_id: null,
+    output_revision: null,
+    log: "",
+    errors: [],
+    synctex_path: null,
+    out_dir: null,
+    compile_time_ms: 1,
+  };
+
+  beforeEach(() => {
+    mocks.files.mainDoc = "main.typ";
+    mocks.files.activePath = "main.typ";
+    mocks.files.tree = [{ path: "main.typ", is_dir: false }];
+    mocks.files.files = { "main.typ": { content: "= Title\n", dirty: false } };
+    mocks.index.texts = { "main.typ": "= Title\n" };
+    mocks.files.engine = typst("0.13.1");
+    mocks.compileProject.mockResolvedValue(typstSuccess);
+  });
+
+  it("blocks the compile and offers the download instead", async () => {
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.compile.typstMissing.replace("{{version}}", "0.13.1"),
+      offer: missingOffer,
+    });
+    expect(useCompileStore.getState().lastAttemptIdentity?.projectId).toBe("project");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+    expect(mocks.infoUnique).not.toHaveBeenCalled();
+  });
+
+  it("blocks an automatic compile the same way", async () => {
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().offer).toEqual(missingOffer);
+  });
+
+  it("compiles once the pinned version is installed", async () => {
+    mocks.files.engine = typst(null);
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).toHaveBeenCalledOnce();
+  });
+
+  it("downloads the pinned version and then compiles again", async () => {
+    await useCompileStore.getState().recompile();
+    const install = deferred<boolean>();
+    mocks.installTypstVersion.mockReturnValue(install.promise);
+    const downloading = downloadMissingTypst("project", "0.13.1");
+    await vi.waitFor(() => expect(mocks.installTypstVersion).toHaveBeenCalledExactlyOnceWith("0.13.1"));
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    mocks.files.engine = typst(null);
+    install.resolve(true);
+    await downloading;
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledOnce());
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("accepts the offer through the shared offer action", async () => {
+    await useCompileStore.getState().recompile();
+    mocks.installTypstVersion.mockImplementation(async () => {
+      mocks.files.engine = typst(null);
+      return true;
+    });
+    const offer = useCompileStore.getState().offer;
+    expect(offer).not.toBeNull();
+    if (offer) acceptCompileOffer(offer);
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledOnce());
+  });
+
+  it("does not compile when the download fails", async () => {
+    await useCompileStore.getState().recompile();
+    mocks.installTypstVersion.mockResolvedValue(false);
+    await downloadMissingTypst("project", "0.13.1");
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().offer).toEqual(missingOffer);
+  });
+
+  it("ignores a download once another project is open", async () => {
+    mocks.files.projectId = "other";
+    await downloadMissingTypst("project", "0.13.1");
+    expect(mocks.installTypstVersion).not.toHaveBeenCalled();
+  });
+
+  it("clears the pin for the default version and then compiles", async () => {
+    await useCompileStore.getState().recompile();
+    mocks.setTypstVersion.mockImplementation(async () => {
+      mocks.files.engine = { ...typst(null), typst_version: null };
+    });
+    await switchToDefaultTypst("project");
+    expect(mocks.setTypstVersion).toHaveBeenCalledExactlyOnceWith(null);
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledOnce());
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
+  });
+
+  it("reports a refused switch to the default once and does not compile", async () => {
+    await useCompileStore.getState().recompile();
+    mocks.setTypstVersion.mockRejectedValue(new Error("project.json is read only"));
+    await switchToDefaultTypst("project");
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.errorUnique).toHaveBeenCalledOnce();
+    expect(mocks.errorUnique.mock.calls[0][0]).toBe("engine-switch:project");
+  });
+
+  it("offers the download when the compiler reports the pin missing", async () => {
+    mocks.files.engine = typst(null);
+    mocks.compileProject.mockRejectedValue(
+      '@oleafly/error:{"code":"typst_version_missing","params":{"version":"0.13.1"}}',
+    );
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.compile.typstMissing.replace("{{version}}", "0.13.1"),
+      offer: missingOffer,
+    });
+    expect(mocks.refreshEngine).toHaveBeenCalledOnce();
+    expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 });

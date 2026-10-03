@@ -7,6 +7,8 @@ mod image_check;
 pub mod locking;
 mod manifest;
 mod tree;
+pub mod typst_log;
+pub mod typst_toolchain;
 mod utf8_stream;
 mod workspace;
 
@@ -32,9 +34,10 @@ pub use image_check::{
     place_image_findings, BrokenImage, ImageContent, ImageEvidence, ImageFinding, ImageFormat,
     ImageProblem, ASK_AI_ERROR_BUDGET,
 };
+pub use manifest::valid_typst_input_key;
 pub use manifest::{
     is_oleafly_manifest, sniff_oleafly_manifest, CheckpointCaptureMode, CheckpointPolicy, Engine,
-    ExportRecord, ProjectManifest, TexSpec, MAX_MANIFEST_BYTES,
+    ExportRecord, ProjectManifest, TexSpec, TypstSpec, TypstVariant, MAX_MANIFEST_BYTES,
 };
 pub use tree::{
     is_cloud_placeholder, is_dataless_flags, is_generated_directory, is_placeholder_attributes,

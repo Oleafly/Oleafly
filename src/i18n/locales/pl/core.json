@@ -58,7 +58,18 @@
   "compile": {
     "noOfflineMode": "{{engine}} nie udostępnia trybu kompilacji offline. Trwa zwykła kompilacja.",
     "retry": "Kompiluj ponownie",
-    "bundleFetchFailed": "Oleafly nie mógł pobrać pakietów TeX potrzebnych temu dokumentowi. Sprawdź połączenie i skompiluj ponownie."
+    "bundleFetchFailed": "Oleafly nie mógł pobrać pakietów TeX potrzebnych temu dokumentowi. Sprawdź połączenie i skompiluj ponownie.",
+    "typstMissing": "Typst {{version}} nie jest zainstalowany. Pobierz go albo przełącz ten projekt na inną wersję.",
+    "typstPackage": {
+      "downloadFailed": "Typst nie mógł pobrać {{spec}}. Sprawdź połączenie z internetem i skompiluj ponownie.",
+      "downloadFailedUnnamed": "Typst nie mógł pobrać pakietu importowanego przez ten dokument. Sprawdź połączenie z internetem i skompiluj ponownie.",
+      "offlineNotCached": "Pracujesz offline, a {{spec}} nie ma jeszcze w pamięci podręcznej pakietów. Skompiluj raz z dostępem do sieci albo skopiuj pakiety do projektu.",
+      "offlineNotCachedUnnamed": "Pracujesz offline, a pakietu importowanego przez ten dokument nie ma jeszcze w pamięci podręcznej pakietów. Skompiluj raz z dostępem do sieci.",
+      "notFound": "W Typst Universe nie ma pakietu {{spec}}. Sprawdź nazwę w imporcie.",
+      "localNotFound": "Lokalny pakiet {{spec}} nie jest zainstalowany. Umieść go w folderze pakietów Typst w Oleafly albo w folderze typst-packages projektu.",
+      "versionMissing": "Ten pakiet nie ma wersji {{version}}. Najnowsza wersja to {{latest}}.",
+      "versionMissingNoLatest": "Ten pakiet nie ma wersji {{version}}. Sprawdź wersję w imporcie."
+    }
   },
   "developer": {
     "actions": {
@@ -361,6 +372,7 @@
     "notRenamable": "Tego symbolu nie można zmienić.",
     "nothingToRename": "Nie ma czego zmieniać.",
     "referencesFor": "Odwołania do {{name}}",
+    "renameFailed": "Nie udało się zmienić nazwy na \"{{name}}\".",
     "renamePartial": "Zmieniono nazwę na \"{{name}}\" w {{edited}} z {{total}} plików. Nie udało się zapisać {{files}}.",
     "renamed": "Zmieniono nazwę na \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) w $t(core:navigation.files, {\"count\": {{files}} }))"
   },
@@ -613,5 +625,8 @@
   "folderUnavailable": {
     "compile": "Kompilowanie jest wstrzymane, dopóki folder projektu nie wróci.",
     "saveReason": "folder projektu jest niedostępny"
+  },
+  "imageToTypst": {
+    "failed": "Konwersja obrazu na Typst nie powiodła się: {{detail}}"
   }
 }

@@ -12,7 +12,12 @@ optional assets so the library can filter and validate it.
 - Page-one previews and metadata-driven library search.
 - Optional template packs and fonts downloaded only after user selection.
 - AI-generated starters can be compiled and saved as ordinary editable
-  projects when a provider is configured.
+  projects when a provider is configured. LaTeX and Typst starters show a
+  page-one preview before you save them.
+- Bundled Typst starters cover a blank document, a short report, a technical
+  report, a two-column conference-style paper, a thesis, a formal letter, a
+  resume, and a standalone figure. Each one compiles with Typst 0.13 through
+  0.15 without packages.
 
 <div align="center">
   <img src="assets/readme/template-downloads.png" alt="Oleafly Downloads settings showing editable academic, presentation, business, and research templates" width="100%" />

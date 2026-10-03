@@ -33,7 +33,9 @@
     },
     "figure-alt": {
       "title": "Bild utan alt-text",
-      "detail": "Den här bilden har ingen beskrivande alt-text, så en skärmläsare kan inte förmedla den. Lägg till en beskrivning, till exempel \\includegraphics[alt={Ett porträtt av författaren}]{...}. Markera rent dekorativa bilder som artefakter i stället."
+      "detail": "Den här bilden har ingen beskrivande alt-text, så en skärmläsare kan inte förmedla den. Lägg till en beskrivning, till exempel \\includegraphics[alt={Ett porträtt av författaren}]{...}. Markera rent dekorativa bilder som artefakter i stället.",
+      "detailTypst": "Den här bilden har ingen alt-text, så en skärmläsare kan inte förmedla den. Lägg till en beskrivning, till exempel #image(\"chart.png\", alt: \"Bar chart of yearly sales\").",
+      "detailTypstFigure": "Den här bilden har ingen alt-text, så en skärmläsare kan inte förmedla den. Beskriv den på bilden eller på figuren som innehåller den, till exempel #figure(image(\"chart.png\"), alt: \"Bar chart of yearly sales\")."
     },
     "link-text": {
       "title": "Länktext som inte beskriver målet",
@@ -49,7 +51,8 @@
     },
     "no-title": {
       "title": "Ingen PDF-titel",
-      "detail": "PDF:en har ingen titel i sina metadata, och den använder hjälpmedel och webbläsare för att presentera dokumentet. Ange en med hyperref, till exempel \\hypersetup{pdftitle={Ditt namn, CV}}."
+      "detail": "PDF:en har ingen titel i sina metadata. Hjälpmedel och webbläsare använder titeln för att presentera dokumentet. Ange en med hyperref, till exempel \\hypersetup{pdftitle={Ditt namn, CV}}.",
+      "detailTypst": "PDF:en har ingen titel i sina metadata, som hjälpmedel och webbläsare använder för att presentera dokumentet. Ange en med #set document(title: \"Your title\") eller skicka en titel till din mall."
     },
     "heading-skip": {
       "title": "En rubriknivå hoppades över",
@@ -284,11 +287,16 @@
     },
     "refs-undefined-cite": {
       "title": "Citeringen \"{{key}}\" finns inte i någon .bib",
-      "detail": "Den här citeringsnyckeln hittades inte i den inlästa bibliografin, så den renderas som [?] i PDF:en. Kontrollera nyckeln, eller lägg till posten i din .bib (Lägg till citering kan hämta den)."
+      "detail": "Den här citeringsnyckeln hittades inte i den inlästa bibliografin, så den renderas som [?] i PDF:en. Kontrollera nyckeln, eller lägg till posten i din .bib (Lägg till citering kan hämta den).",
+      "titleTypst": "Citeringen \"{{key}}\" finns inte i bibliografin",
+      "detailTypst": "Nyckeln finns inte i någon bibliografifil som projektet läser in, så kompileringen misslyckas. Kontrollera nyckeln, eller lägg till posten i din .bib- eller Hayagriva-.yml-fil."
     },
     "refs-undefined-ref": {
       "title": "Referensen till \"{{label}}\" saknar matchande \\label",
-      "detail": "Den här korsreferensen pekar på en etikett som inte är definierad, så den renderas som ?? i PDF:en. Kontrollera etikettnamnet, eller lägg till den saknade \\label."
+      "detail": "Den här korsreferensen pekar på en etikett som inte är definierad, så den renderas som ?? i PDF:en. Kontrollera etikettnamnet, eller lägg till den saknade \\label.",
+      "titleTypst": "Ingen etikett eller post som heter \"{{label}}\"",
+      "detailTypst": "Typst stoppar kompileringen här. Kontrollera stavningen, eller lägg till den saknade <label> eller bibliografiposten.",
+      "detailTypstPackage": "Ingen etikett eller bibliografipost i projektet har det här namnet. Ett paket kan skapa etiketter medan dokumentet kompileras, till exempel ordlisteposter. Om kompileringsloggen rapporterar den, kontrollera stavningen."
     },
     "refs-duplicate-label": {
       "title": "Dubblerad etikett \"{{label}}\"",
@@ -298,11 +306,14 @@
       "titleImage": "Bilden hittades inte: {{file}}",
       "detailImage": "Den här \\includegraphics pekar på en fil som inte finns i projektet, så figuren kommer att saknas. Kontrollera filnamnet och sökvägen.",
       "titleInclude": "Den inkluderade filen hittades inte: {{file}}",
-      "detailInclude": "Den här \\input eller \\include pekar på en fil som inte finns i projektet. Kontrollera filnamnet och sökvägen."
+      "detailInclude": "Den här \\input eller \\include pekar på en fil som inte finns i projektet. Kontrollera filnamnet och sökvägen.",
+      "detailImageTypst": "Ingen projektfil matchar den här bildsökvägen, så kompileringen misslyckas. Typst läser en sökväg relativt filen, eller från projektets rot när den börjar med /.",
+      "detailIncludeTypst": "Ingen projektfil matchar den här #include- eller #import-sökvägen, så kompileringen misslyckas. Kontrollera filnamnet och sökvägen."
     },
     "refs-bib-missing": {
       "title": "Bibliografifilen hittades inte: {{file}}",
-      "detail": "Den här \\bibliography eller \\addbibresource pekar på en fil som inte finns i projektet, så varje citering renderas som [?]. Kontrollera filnamnet, eller importera ett referensbibliotek för att skapa filen."
+      "detail": "Den här \\bibliography eller \\addbibresource pekar på en fil som inte finns i projektet, så varje citering renderas som [?]. Kontrollera filnamnet, eller importera ett referensbibliotek för att skapa filen.",
+      "detailTypst": "Det här #bibliography-anropet pekar på en fil som inte finns i projektet, så kompileringen misslyckas. Kontrollera filnamnet, eller importera ett referensbibliotek för att skapa filen."
     },
     "refs-duplicate-bib": {
       "title": "Dubblerade bibliografiposter: {{keys}}",
@@ -345,7 +356,8 @@
     },
     "privacy-blind-author": {
       "title": "Författarens identitet finns kvar i källkod för blindgranskning",
-      "detail": "Källkoden innehåller en icke-anonym författare, affiliering, e-postadress, adress eller ett tackfält. Ersätt identifierande innehåll med publiceringsforumets läge för anonym granskning."
+      "detail": "Källkoden innehåller en icke-anonym författare, affiliering, e-postadress, adress eller ett tackfält. Ersätt identifierande innehåll med publiceringsforumets läge för anonym granskning.",
+      "detailTypst": "Källkoden ger dokumentet eller dess mall ett författarnamn, en e-postadress eller en affiliering. Ta bort det, eller växla mallen till dess anonyma läge."
     },
     "privacy-blind-acknowledgements": {
       "title": "Tacksägelserna kan avslöja författarna",
@@ -374,15 +386,20 @@
     "submission-document-class": {
       "title": "Dokumentklassen för {{profile}} är inte aktiv",
       "detail": "Den här profilen förväntar sig {{expected}}, men projektet använder {{actual}}. Utgå från publiceringsforumets aktuella officiella mall.",
-      "detailNoClass": "Den här profilen förväntar sig {{expected}}, men ingen dokumentklass hittades. Utgå från publiceringsforumets aktuella officiella mall."
+      "detailNoClass": "Den här profilen förväntar sig {{expected}}, men ingen dokumentklass hittades. Utgå från publiceringsforumets aktuella officiella mall.",
+      "titleTypst": "Mallen för {{profile}} är inte aktiv",
+      "detailTypst": "Den här profilen förväntar sig en Typst-mall som {{expected}}, men projektet importerar {{actual}}. Utgå från någon av de mallarna.",
+      "detailNoTemplateTypst": "Den här profilen förväntar sig en Typst-mall som {{expected}}, men projektet importerar ingen. Utgå från någon av de mallarna."
     },
     "submission-no-abstract": {
       "title": "Ingen sammanfattning hittades",
-      "detail": "Den här publiceringsprofilen förväntar sig en sammanfattning i en vanlig abstract-miljö. Lägg till en eller bekräfta att det aktuella publiceringsforumet inte kräver någon."
+      "detail": "Den här publiceringsprofilen förväntar sig en sammanfattning i en vanlig abstract-miljö. Lägg till en eller bekräfta att det aktuella publiceringsforumet inte kräver någon.",
+      "detailTypst": "Den här publiceringsprofilen förväntar sig en sammanfattning. Skicka en till din mall, till exempel abstract: [Your abstract], eller lägg till rubriken \"Abstract\"."
     },
     "submission-no-keywords": {
       "title": "Inga publiceringsnyckelord hittades",
-      "detail": "Profilen {{profile}} förväntar sig nyckelord med mallens standardkommando eller standardmiljö."
+      "detail": "Profilen {{profile}} förväntar sig nyckelord med mallens standardkommando eller standardmiljö.",
+      "detailTypst": "Profilen {{profile}} förväntar sig nyckelord. Skicka dem till din mall, till exempel keywords: (\"one\", \"two\") eller index-terms: (\"one\", \"two\")."
     },
     "submission-figure-format": {
       "title": "Figurformat som inte stöds: {{file}}",
@@ -390,7 +407,8 @@
     },
     "submission-placeholder": {
       "title": "Platshållare från utkastet finns kvar i manuset",
-      "detail": "Källkoden innehåller TODO, TBD, FIXME, platshållartext eller frågeteckenmarkörer. Granska varje förekomst innan du framställer den slutliga inlämningen."
+      "detail": "Källkoden innehåller TODO, TBD, FIXME, platshållartext eller frågeteckenmarkörer. Granska varje förekomst innan du framställer den slutliga inlämningen.",
+      "detailTypst": "Dokumentet anropar fortfarande #lorem eller innehåller platshållartext. Ersätt den före den slutliga inlämningen."
     },
     "submission-pdf-version": {
       "title": "PDF {{version}} är under den version som krävs",
@@ -420,6 +438,34 @@
     "submission-font-inspection-incomplete": {
       "title": "Inbäddningen av vissa typsnitt kunde inte verifieras",
       "detail": "Förkontrollen kunde inte belägga inbäddningsstatus för {{fonts}}. Bekräfta dem med publiceringsforumets officiella PDF-kontroll."
+    },
+    "empty-heading": {
+      "title": "Tom rubrik",
+      "detail": "Den här rubriken har ingen text. Skärmläsare läser upp den som en tom post i dokumentets struktur. Lägg till en titel eller ta bort rubriken."
+    },
+    "todo-in-text": {
+      "title": "Utkastanteckning i texten",
+      "detail": "Anteckningen är en del av texten, så den skrivs ut i PDF:en. Åtgärda den, eller gör den till en //-kommentar."
+    },
+    "no-author": {
+      "title": "Ingen dokumentförfattare",
+      "detail": "PDF-metadata saknar författare. Lägg till en med #set document(author: \"Your Name\") eller skicka författarna till din mall. Utelämna den vid anonym granskning."
+    },
+    "privacy-local-path": {
+      "title": "Sökväg på din dator: {{path}}",
+      "detail": "Sökvägen pekar på en mapp utanför projektet. Den kan avslöja ditt användarnamn, och kompileringen misslyckas på alla andra datorer. Flytta filen till projektet och använd en relativ sökväg."
+    },
+    "privacy-blind-email": {
+      "title": "E-postadress i {{file}}",
+      "detail": "En e-postadress kan avslöja författarna vid blindgranskning. Ta bort den eller ersätt den med en anonym platshållare."
+    },
+    "refs-no-bibliography": {
+      "title": "Citeringar utan bibliografi",
+      "detail": "Dokumentet citerar källor men anropar aldrig #bibliography, så Typst kan inte lösa upp dem. Lägg till #bibliography(\"refs.bib\") där referenslistan ska stå."
+    },
+    "submission-large-image": {
+      "title": "Mycket stor bild: {{file}}",
+      "detail": "Bilden är större än {{limit}}. Stora bilder gör kompileringen långsammare och PDF:en onödigt stor. Vissa publiceringsforum begränsar också uppladdningsstorleken. Komprimera den, eller exportera den i den storlek den skrivs ut i."
     }
   },
   "lens": {
@@ -643,5 +689,15 @@
     "compileTagged": "Kompilera taggat och verifiera",
     "compileTaggedWarning": "Systemets LuaLaTeX kan läsa lokala filer. Kör den bara för ett projekt du litar på.",
     "noEngine": "För att skapa den taggade PDF:en i appen aktiverar du en motor under Inställningar, LaTeX-motor. Eller kompilera den förberedda källkoden med din egen pdfLaTeX eller LuaLaTeX från TeX Live 2025 eller senare."
+  },
+  "typstStandards": {
+    "title": "PDF-standarder",
+    "intro": "Typst skriver själv arkivbeständiga och tillgängliga PDF:er. Välj en standard och exportera sedan PDF:en.",
+    "standard": "Standard",
+    "export": "Exportera PDF",
+    "tagged": "Typst {{version}} taggar varje PDF för skärmläsare, så det behövs ingen separat taggad kompilering.",
+    "untagged": "Typst {{version}} taggar inte PDF:er för skärmläsare. Det gör Typst 0.14 och senare.",
+    "none": "Typst {{version}} kan inte skriva PDF-standarder. Välj Typst 0.12 eller senare i kompileringsmenyn.",
+    "uaNote": "PDF/UA-1 kräver en dokumenttitel och alternativ text för varje bild."
   }
 }

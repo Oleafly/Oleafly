@@ -576,6 +576,76 @@
       "tag2": "Šipky",
       "tag3": "Tahák",
       "tag4": "Vložení na pozici kurzoru"
+    },
+    "arxivToTypst": {
+      "name": "arXiv do formátu Typst",
+      "description": "Převeďte balík zdrojů z arXiv do formátu Typst. Kontrola kompilace vypíše, co se nepřevedlo.",
+      "tag1": "Archiv zdrojů",
+      "tag2": "Kontrola kompilace",
+      "tag3": "ID vyžaduje síť"
+    },
+    "csvToTypst": {
+      "name": "CSV do formátu Typst",
+      "description": "Vložte řádky CSV nebo TSV a získejte ošetřenou tabulku Typst.",
+      "tag1": "CSV a TSV",
+      "tag2": "Tabulky",
+      "tag3": "Místní"
+    },
+    "equationToTypst": {
+      "name": "Rovnice do formátu Typst",
+      "description": "Převeďte napsanou matematiku LaTeX nebo obrázek rovnice na matematiku Typst.",
+      "tag1": "Text nebo obrázek",
+      "tag2": "Matematika",
+      "tag3": "Vestavěný"
+    },
+    "excelToTypst": {
+      "name": "Excel do formátu Typst",
+      "description": "Převeďte list Excelu, CSV nebo TSV na ošetřenou tabulku Typst.",
+      "tag1": "XLSX",
+      "tag2": "CSV a TSV",
+      "tag3": "Místní"
+    },
+    "htmlToTypst": {
+      "name": "HTML do formátu Typst",
+      "description": "Převeďte vložené HTML na samostatný dokument Typst.",
+      "tag1": "HTML",
+      "tag2": "Pandoc",
+      "tag3": "Místní"
+    },
+    "mermaidToTypst": {
+      "name": "Mermaid do formátu Typst",
+      "description": "Převeďte vývojový diagram Mermaid na upravitelný kód fletcher.",
+      "tag1": "Vývojové diagramy",
+      "tag2": "Fletcher",
+      "tag3": "Místní"
+    },
+    "typstToHtml": {
+      "name": "Typst do HTML",
+      "description": "Převeďte značkování Typst na samostatné HTML s rovnicemi v MathML.",
+      "tag1": "HTML",
+      "tag2": "MathML",
+      "tag3": "Pandoc"
+    },
+    "typstToMarkdown": {
+      "name": "Typst do formátu Markdown",
+      "description": "Převeďte značkování Typst na přenositelný Markdown.",
+      "tag1": "Markdown",
+      "tag2": "Pandoc",
+      "tag3": "Projekt volitelný"
+    },
+    "typstToWord": {
+      "name": "Typst do Wordu",
+      "description": "Vytvořte dokument Word s rovnicemi uloženými jako nativní matematika Wordu.",
+      "tag1": "DOCX",
+      "tag2": "Nativní matematika",
+      "tag3": "Místní"
+    },
+    "wordToTypst": {
+      "name": "Word do formátu Typst",
+      "description": "Převeďte dokument Word do formátu Typst a zachovejte u něj vytažená média.",
+      "tag1": "DOCX",
+      "tag2": "Média",
+      "tag3": "Projekt volitelný"
     }
   },
   "generators": {
@@ -661,7 +731,9 @@
     "insertInEditor": "Vložit do editoru",
     "noDescription": "Pro tento příkaz není k dispozici žádný popis.",
     "loadingPreview": "Načítá se symbol pro náhled.",
-    "chooseSymbol": "Vyberte symbol z knihovny."
+    "chooseSymbol": "Vyberte symbol z knihovny.",
+    "insertHintTypst": "Vložte kód Typst do otevřeného dokumentu Typst.",
+    "typstLabel": "Typst"
   },
   "converter": {
     "fileDetails": "{{size}} KB · Kliknutím nahradíte",
@@ -717,7 +789,8 @@
     "openAiSettings": "Otevřít nastavení AI",
     "fileReady": "{{fileName}} je připraven",
     "saveWordHint": "Dokument Word uložte, až budete připraveni.",
-    "resultPlaceholder": "Tady se objeví váš převedený výsledek."
+    "resultPlaceholder": "Tady se objeví váš převedený výsledek.",
+    "progressConvertingSource": "Zdroj se převádí do formátu Typst"
   },
   "converters": {
     "imageToLatex": {
@@ -838,6 +911,76 @@
       "inputLabel": "Dokument Word",
       "inputHint": "Vyberte soubor .docx. Rovnice a obrázky se čtou místně.",
       "outputLabel": "LaTeX"
+    },
+    "arxivToTypst": {
+      "title": "arXiv do formátu Typst",
+      "subtitle": "Převeďte zdrojový kód LaTeX z e-printu do formátu Typst a zjistěte, co je třeba opravit ručně",
+      "inputLabel": "Zdroj z arXiv",
+      "inputHint": "Zadejte ID na arXiv, nebo vyberte uložený archiv zdrojů .tar.gz či .gz.",
+      "outputLabel": "Typst"
+    },
+    "csvToTypst": {
+      "title": "CSV do formátu Typst",
+      "subtitle": "Vložte data z tabulky a získejte ošetřenou tabulku Typst",
+      "inputLabel": "CSV nebo TSV",
+      "inputHint": "Vložte řádky oddělené čárkou nebo tabulátorem. První řádek se stane záhlavím.",
+      "outputLabel": "Tabulka Typst"
+    },
+    "equationToTypst": {
+      "title": "Rovnice do formátu Typst",
+      "subtitle": "Proměňte napsanou nebo vyfocenou matematiku v matematiku Typst",
+      "inputLabel": "Rovnice",
+      "inputHint": "Napište matematiku LaTeX, popište ji slovy, nebo vyberte obrázek.",
+      "outputLabel": "Rovnice Typst"
+    },
+    "excelToTypst": {
+      "title": "Excel do formátu Typst",
+      "subtitle": "Převeďte první list na tabulku Typst",
+      "inputLabel": "Tabulkový soubor",
+      "inputHint": "XLSX, XLS, CSV nebo TSV. U vzorců se použijí jejich uložené hodnoty.",
+      "outputLabel": "Tabulka Typst"
+    },
+    "htmlToTypst": {
+      "title": "HTML do formátu Typst",
+      "subtitle": "Převeďte sémantické HTML na samostatný dokument Typst",
+      "inputLabel": "HTML",
+      "inputHint": "Vložte fragment HTML nebo celý dokument.",
+      "outputLabel": "Typst"
+    },
+    "mermaidToTypst": {
+      "title": "Mermaid do formátu Typst",
+      "subtitle": "Proměňte vývojový diagram Mermaid v upravitelný diagram fletcher",
+      "inputLabel": "Vývojový diagram Mermaid",
+      "inputHint": "Vývojové diagramy podporují rozvržení TD, LR, BT a RL, popisky a běžné tvary uzlů.",
+      "outputLabel": "Typst / fletcher"
+    },
+    "typstToHtml": {
+      "title": "Typst do HTML",
+      "subtitle": "Vytvořte samostatné HTML s rovnicemi v MathML",
+      "inputLabel": "Typst",
+      "inputHint": "Vložte fragment nebo celý dokument Typst.",
+      "outputLabel": "HTML"
+    },
+    "typstToMarkdown": {
+      "title": "Typst do formátu Markdown",
+      "subtitle": "Vytvořte přenositelný Markdown, aniž byste nejdřív zakládali projekt",
+      "inputLabel": "Typst",
+      "inputHint": "Vložte fragment nebo celý dokument Typst.",
+      "outputLabel": "Markdown"
+    },
+    "typstToWord": {
+      "title": "Typst do Wordu",
+      "subtitle": "Vytvořte DOCX s rovnicemi uloženými jako upravitelná matematika Wordu",
+      "inputLabel": "Typst",
+      "inputHint": "Vložte fragment nebo celý dokument Typst.",
+      "outputLabel": "Dokument Word"
+    },
+    "wordToTypst": {
+      "title": "Word do formátu Typst",
+      "subtitle": "Převeďte DOCX a ponechte u výsledku vytažená média",
+      "inputLabel": "Dokument Word",
+      "inputHint": "Vyberte soubor .docx. Rovnice a obrázky se čtou místně.",
+      "outputLabel": "Typst"
     }
   },
   "converterErrors": {
@@ -853,7 +996,8 @@
     "chooseFile": "Před převodem vyberte soubor.",
     "fileTooLarge": "Vyberte soubor menší než 128 MB.",
     "emptySheet": "Vybraný list je prázdný.",
-    "arxivInputRequired": "Zadejte ID na arXiv nebo vyberte archiv zdrojů."
+    "arxivInputRequired": "Zadejte ID na arXiv nebo vyberte archiv zdrojů.",
+    "equationToTypst": "Pandoc nedokázal převést tuto rovnici do formátu Typst. Zkontrolujte matematiku LaTeX a zkuste to znovu."
   },
   "converterNotes": {
     "scannedPages": "Místním modelem bylo přepsáno {{pages}} skenovaných stránek. Než výsledek použijete, zkontrolujte rovnice a tabulky.",
@@ -861,7 +1005,20 @@
     "mermaidTikz": "Tento vývojový diagram byl převeden na upravitelný TikZ.",
     "mermaidRendered": "Tento diagram byl vykreslen místně, protože jeho syntaxe Mermaid se čistě nemapuje na upravitelný TikZ.",
     "tableConverted": "Převedeno {{rows}} řádků a {{columns}} sloupců.",
-    "arxivBundle": "{{files}} zdrojových souborů. Hlavní dokument: {{mainFile}}."
+    "arxivBundle": "{{files}} zdrojových souborů. Hlavní dokument: {{mainFile}}.",
+    "mermaidFletcher": "Tento vývojový diagram byl převeden na upravitelný kód fletcher pro Typst.",
+    "mermaidRenderedTypst": "Tento diagram byl vykreslen místně, protože jeho syntaxe Mermaid se čistě nemapuje na upravitelný kód fletcher.",
+    "arxivTypstConverted": "Převedeno: {{mainFile}}.",
+    "typstCheckPassed": "Typst výsledek zkompiloval bez chyb.",
+    "typstCheckFailed_one": "Typst našel {{count}} chybu.",
+    "typstCheckFailed_few": "Typst našel {{count}} chyby.",
+    "typstCheckFailed_many": "Typst našel {{count}} chyby.",
+    "typstCheckFailed_other": "Typst našel {{count}} chyb.",
+    "notConverted_one": "{{count}} položka se nepřevedla.",
+    "notConverted_few": "{{count}} položky se nepřevedly.",
+    "notConverted_many": "{{count}} položky se nepřevedlo.",
+    "notConverted_other": "{{count}} položek se nepřevedlo.",
+    "checkLine": "Řádek {{line}}: {{message}}"
   },
   "mermaidErrors": {
     "tooLarge": "Tento diagram Mermaid přesahuje limit 50 000 znaků.",
@@ -1126,9 +1283,15 @@
   },
   "equation": {
     "subtitle": "Živý pracovní prostor pro LaTeX",
+    "subtitleTypst": "Živý pracovní prostor pro Typst",
+    "mathLanguage": "Jazyk matematiky",
+    "languageLatex": "LaTeX",
+    "languageTypst": "Typst",
     "statusError": "Chyba",
     "statusRendered": "Vykresleno",
+    "statusRendering": "Vykresluje se",
     "copyLatex": "Kopírovat LaTeX",
+    "copyTypst": "Kopírovat Typst",
     "exportOptions": "Možnosti exportu",
     "export": "Exportovat",
     "downloadPng": "Stáhnout PNG",
@@ -1141,6 +1304,7 @@
     "exportSvgFailed": "Tento úryvek se nepodařilo vyexportovat jako SVG",
     "copyKatexFailed": "HTML z KaTeX se nepodařilo zkopírovat",
     "copyLatexFailed": "Zdroj v LaTeXu se nepodařilo zkopírovat",
+    "copyTypstFailed": "Zdroj Typst se nepodařilo zkopírovat",
     "invalidPngName": "Zvolte krátký název souboru PNG bez lomítek a speciálních znaků.",
     "replaceConfirm": "{{path}} už v projektu {{project}} existuje. Nahradit jej?",
     "savedToProject": "{{path}} bylo uloženo do projektu {{project}}.",
@@ -1154,6 +1318,7 @@
     "newImageProject": "Nový obrázkový projekt",
     "mathmlFailed": "Tento úryvek se nepodařilo převést do MathML",
     "sourceHeading": "LATEX",
+    "sourceHeadingTypst": "TYPST",
     "inline": "V řádku",
     "display": "Na samostatném řádku",
     "examples": "PŘÍKLADY",
@@ -1162,6 +1327,8 @@
     "previewLight": "Náhled na světlém",
     "inlineSample": "Takhle to sedí přímo v řádku uvnitř věty, třeba <formula></formula>, a plyne spolu s okolním textem.",
     "empty": "Vlevo napište matematiku v LaTeXu.",
+    "emptyTypst": "Vlevo napište matematiku Typst.",
+    "typstFailed": "Typst nedokázal tuto rovnici vykreslit.",
     "zoomOut": "Oddálit",
     "zoomIn": "Přiblížit",
     "resetZoom": "Obnovit přiblížení",

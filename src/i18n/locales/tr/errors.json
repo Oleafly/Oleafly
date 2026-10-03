@@ -146,5 +146,37 @@
       "check_running": "Bu ajan için bir test zaten çalışıyor.",
       "main_window": "Ajan programlarını ana pencereden değiştirin."
     }
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly, Typst {{version}} sunmuyor ve bu bilgisayardaki hiçbir Typst bu sürümde değil.",
+    "busy": "Typst {{version}} hâlâ kuruluyor. Kurulum bitince yeniden deneyin.",
+    "remove_default": "Typst {{version}} varsayılan sürümünüz. Kaldırmadan önce başka bir varsayılan seçin.",
+    "remove_not_downloaded": "Oleafly yalnızca kendi indirdiği Typst sürümlerini kaldırabilir ve Typst {{version}} sürümünü o indirmedi.",
+    "not_offered": "Typst {{version}} bu bilgisayar için indirilemez.",
+    "install_unverified": "Typst {{version}} indirildi ancak bütünlük denetiminden geçemedi. Yeniden kurmayı deneyin.",
+    "not_typst_project": "Yalnızca Typst projelerinin Typst sürümü vardır.",
+    "update_waits": "Oleafly'yi güncellemeden önce Typst kurulumunun bitmesini bekleyin."
+  },
+  "typst_packages": {
+    "index_offline": "Çevrimdışısınız ve Typst Universe paket listesi henüz indirilmedi.",
+    "index_unavailable": "Typst Universe paket listesi yüklenemedi. İnternet bağlantınızı denetleyip yeniden deneyin.",
+    "vendor_failed": "Oleafly paketleri projeye kopyalayamadı."
+  },
+  "typst_query": {
+    "timeout": "Typst'in bu belgeyi okuması çok uzun sürdü.",
+    "failed": "Typst bu belgeyi okuyamadı."
+  },
+  "typst_version_missing": "Typst {{version}} kurulu değil.",
+  "typst_options": {
+    "invalid_input_key": "Değer adları boş olamaz veya eşittir işareti içeremez.",
+    "invalid_variant_name": "Her varyantın başka hiçbir varyantın kullanmadığı kısa bir adı olmalı.",
+    "invalid_font_path": "Yazı tipi klasörleri projenin içinde olmalı.",
+    "fonts_failed": "Typst yazı tiplerini listeleyemedi.",
+    "fonts_timeout": "Typst'in yazı tiplerini listelemesi çok uzun sürdü."
+  },
+  "typst_export": {
+    "failed": "Typst belgeyi dışa aktaramadı.",
+    "unsupported": "Bu Typst sürümü bu ayarlarla dışa aktaramaz.",
+    "invalid_ppi": "1 ile {{max}} PPI arasında bir çözünürlük seçin."
   }
 }

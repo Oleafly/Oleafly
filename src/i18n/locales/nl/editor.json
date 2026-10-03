@@ -42,7 +42,18 @@
     "selectImage": "Selecteer een afbeelding om die in te voegen.",
     "editTitle": "Afbeelding bewerken",
     "editDescription": "Vervang de afbeelding of wijzig de breedte. Het bijschrift en het label blijven zoals ze zijn.",
-    "save": "Afbeelding opslaan"
+    "save": "Afbeelding opslaan",
+    "customWidthPlaceholderTypst": "8cm of 60%",
+    "altLabel": "Alt-tekst",
+    "altPlaceholder": "Beschrijf de afbeelding voor schermlezers",
+    "placement": "Plaatsing",
+    "placementNone": "Op deze plek",
+    "placementAuto": "Automatisch",
+    "placementTop": "Boven",
+    "placementBottom": "Onder",
+    "editFigureTitle": "Figuur bewerken",
+    "editFigureDescription": "Wijzig de afbeelding, de grootte, het bijschrift, het label, de alt-tekst of de plaatsing.",
+    "saveFigure": "Figuur opslaan"
   },
   "tableToolbar": {
     "label": "Tabelgereedschap",
@@ -112,6 +123,7 @@
     "insertBlockquote": "Citaatblok invoegen",
     "insertFigure": "Figuur invoegen",
     "insertImage": "Afbeelding invoegen",
+    "drawDiagram": "Een diagram tekenen",
     "insertTable": "Tabel invoegen",
     "imageToLatexTooltip": "Afbeelding naar LaTeX (overnemen met AI)",
     "imageToLatex": "Afbeelding naar LaTeX",
@@ -130,6 +142,7 @@
     "redo": "Opnieuw ({{shortcut}})",
     "find": "Zoeken ({{shortcut}})",
     "goToPdf": "Naar de PDF (SyncTeX)",
+    "goToPdfTypst": "Naar de PDF",
     "linkUrl": "URL van de link",
     "removeLink": "Link weghalen",
     "imageFile": "Afbeeldingsbestand",
@@ -138,13 +151,23 @@
     "imagePlaceholder": "figures/plot.png",
     "split": "Splitsen",
     "both": "Beide",
-    "stacked": "Gestapeld"
+    "stacked": "Gestapeld",
+    "displayMath": "Vergelijking op een eigen regel",
+    "numberedEquation": "Genummerde vergelijking",
+    "alignedEquations": "Uitgelijnde vergelijkingen",
+    "addLabel": "Label toevoegen",
+    "imageToTypst": "Afbeelding naar Typst",
+    "imageToTypstTooltip": "Afbeelding naar Typst (transcriberen met AI)",
+    "typstPackages": "Typst-pakketten",
+    "latexPackages": "LaTeX-pakketten"
   },
   "contextMenu": {
     "engineUnavailable": "Acties van de document-engine niet beschikbaar",
     "askAi": "AI vragen…",
     "noIndexedSymbol": "Op deze plek staat geen geïndexeerd symbool.",
     "noRenamableSymbol": "Op deze plek staat geen symbool dat hernoemd kan worden.",
+    "formatDocument": "Document opmaken",
+    "formatSelection": "Selectie opmaken",
     "itemize": "Itemize",
     "enumerate": "Enumerate",
     "figure": "Figuur",
@@ -156,7 +179,16 @@
     "equationAsPng": "Vergelijking als PNG",
     "crossReference": "Kruisverwijzing",
     "label": "Label",
-    "footnote": "Voetnoot"
+    "footnote": "Voetnoot",
+    "toggleComment": "Commentaar aan- of uitzetten",
+    "inlineMath": "Wiskunde in de tekst",
+    "displayMath": "Vergelijking op een eigen regel",
+    "numberedEquation": "Genummerde vergelijking",
+    "alignedEquations": "Uitgelijnde vergelijkingen",
+    "quote": "Citaat",
+    "addLabel": "Label toevoegen",
+    "convertLatexMath": "LaTeX-wiskunde omzetten naar Typst",
+    "noLatexMath": "Selecteer eerst wat LaTeX-wiskunde."
   },
   "shell": {
     "noFileOpenTab": "Geen bestand geopend",
@@ -233,9 +265,15 @@
     "footerTypst": "Speciale tekens worden in de tabelbroncode geëscaped.",
     "footerLatex": "De gegenereerde LaTeX-tabel gebruikt booktabs voor de horizontale lijnen.",
     "chooseAnother": "Een ander bestand kiezen",
-    "chooseFile": "Kies CSV, TSV of XLSX",
+    "chooseFile": "Kies CSV, TSV, XLSX of JSON",
     "selectedSummary": "{{file}} · Rijen: {{rows}} · Kolommen: {{columns}}",
     "firstRowHeader": "De eerste rij is een koprij",
+    "keepLinked": "Gekoppeld houden aan het gegevensbestand",
+    "keepLinkedHint": "Kopieert de gegevens naar de gegevensmap. Bewerk dat bestand en de tabel verandert bij de volgende compilatie.",
+    "footerLinked": "De tabel leest {{path}} telkens als het document compileert.",
+    "jsonNotTable": "Dit JSON-bestand is geen lijst met records of rijen.",
+    "insertedLinked": "Gekoppelde tabel ingevoegd. Bewerk {{path}} om hem te wijzigen.",
+    "linkFailed": "Kon de gegevens niet naar het project kopiëren.",
     "captionLabel": "Bijschrift (optioneel)",
     "captionPlaceholder": "Resultaten over alle runs",
     "labelLabel": "Label (optioneel)",
@@ -308,7 +346,17 @@
     "info": "Info",
     "empty": "Hier verschijnt de uitvoer van het compileren.",
     "scrollToTop": "Naar boven scrollen",
-    "scrollToBottom": "Naar beneden scrollen"
+    "scrollToBottom": "Naar beneden scrollen",
+    "locationFileLineColumn": "{{file}} · regel {{line}}, kolom {{column}}",
+    "locationLineColumn": "regel {{line}}, kolom {{column}}",
+    "hint": "Tip",
+    "sourceExcerpt": "Bronregel {{line}}",
+    "summaryErrors_one": "{{count}} fout",
+    "summaryErrors_other": "{{count}} fouten",
+    "summaryWarnings_one": "{{count}} waarschuwing",
+    "summaryWarnings_other": "{{count}} waarschuwingen",
+    "summaryReferences_one": "{{count}} onopgeloste verwijzing",
+    "summaryReferences_other": "{{count}} onopgeloste verwijzingen"
   },
   "history": {
     "untitledCommit": "Naamloze commit",
@@ -353,7 +401,8 @@
       "navigation": "Navigatie",
       "pdf": "PDF",
       "git": "Git",
-      "settings": "Instellingen"
+      "settings": "Instellingen",
+      "typst": "Typst"
     },
     "actions": {
       "recompile": "Opnieuw compileren",
@@ -370,12 +419,20 @@
       "goToDefinition": "Naar de definitie",
       "findReferences": "Referenties zoeken",
       "renameSymbol": "Symbool hernoemen (in het hele project)",
+      "formatDocument": "Typst-document opmaken",
       "commandPalette": "Opdrachtenpalet",
       "searchAllDocuments": "Alle documenten doorzoeken",
       "goToPdf": "Naar de PDF (SyncTeX vooruit)",
       "jumpToSource": "Vanuit de PDF naar de broncode springen",
       "commitAndPush": "Commit en push",
-      "openSettings": "Instellingen openen"
+      "openSettings": "Instellingen openen",
+      "typstContinueList": "De lijst voortzetten met een nieuw item",
+      "typstItemNewLine": "Een nieuwe regel beginnen binnen het lijstitem",
+      "typstRemoveMarker": "Het lijstteken voor de cursor verwijderen",
+      "typstIndentItem": "Het lijstitem één niveau dieper zetten",
+      "typstOutdentItem": "Het lijstitem één niveau omhoog zetten",
+      "typstMathPair": "$ voor wiskunde automatisch sluiten, met Spatie wordt het wiskunde op een eigen regel",
+      "typstWrapSelection": "De selectie omsluiten met vet, nadruk, ruwe tekst of wiskunde"
     }
   },
   "citations": {
@@ -646,6 +703,7 @@
       "unsupported": "Deze uitdrukking is onvolledig of wordt niet ondersteund.",
       "missingClosing": "Ontbrekende sluitende {{delimiter}}.",
       "notRendered": "Deze uitdrukking kon niet worden weergegeven.",
+      "typstUnavailable": "Het Typst-voorbeeld is niet beschikbaar.",
       "preview": {
         "moreOptions": "Meer opties",
         "hide": "Verbergen",
@@ -653,6 +711,10 @@
         "disable": "Uitschakelen",
         "disableDescription": "Zet het voorbeeld van vergelijkingen uit. Je zet het weer aan bij Instellingen."
       }
+    },
+    "typstMath": {
+      "pasteAsTypst": "Plakken als Typst-wiskunde",
+      "pasteOffer": "LaTeX-wiskunde geplakt"
     },
     "latex": {
       "command": {
@@ -835,6 +897,45 @@
         "revtex": "REVTeX-stijl"
       }
     },
+    "typst": {
+      "snippet": {
+        "heading": "Kop",
+        "figure": "Figuur met afbeelding",
+        "tableFigure": "Figuur met tabel",
+        "table": "Tabel",
+        "equation": "Vergelijking op een eigen regel",
+        "numberedEquation": "Genummerde vergelijking met label",
+        "footnote": "Voetnoot",
+        "quote": "Blokcitaat",
+        "code": "Codeblok",
+        "outline": "Inhoudsopgave",
+        "bibliography": "Bibliografie",
+        "pagebreak": "Pagina-einde",
+        "columns": "Kolommen",
+        "grid": "Raster",
+        "link": "Link",
+        "list": "Opsommingslijst",
+        "enum": "Genummerde lijst",
+        "terms": "Begrippenlijst",
+        "partBibliography": "Bibliografie voor één deel met een label"
+      },
+      "bibliographyStyle": {
+        "builtin": "ingebouwde CSL-stijl",
+        "citation": "alleen citatiestijl",
+        "project": "CSL-bestand in dit project"
+      },
+      "bibliographyParameter": {
+        "target": "welke citaties het toont",
+        "group": "hoe de nummers worden gedeeld",
+        "targetAuto": "de dichtstbijzijnde bibliografie met de sleutel",
+        "targetWithin": "citaties binnen een deel met een label",
+        "targetAfter": "citaties na een label",
+        "targetBefore": "citaties voor een label",
+        "groupAuto": "nummeren samen met de andere bibliografieën",
+        "groupNone": "apart nummeren",
+        "groupNamed": "nummeren samen met bibliografieën met dezelfde naam"
+      }
+    },
     "wysiwyg": {
       "block": {
         "abstract": "Samenvatting",
@@ -961,6 +1062,12 @@
       "reference": "Verwijzing",
       "label": "Label",
       "includedFile": "Ingesloten bestand",
+      "typst": {
+        "settings": {
+          "show": "Documentinstellingen tonen",
+          "hide": "Documentinstellingen verbergen"
+        }
+      },
       "table": {
         "captionPlacement": "Bijschrift",
         "captionAbove": "Bijschrift erboven",
@@ -1035,6 +1142,11 @@
     "goTo": "Naar {{title}}",
     "untitled": "Naamloos"
   },
+  "languageService": {
+    "openOnTypstUniverse": "Openen in Typst Universe",
+    "formatUnavailable": "De Typst-opmaker is nog niet klaar. Probeer het zo opnieuw.",
+    "formatFailed": "Kon dit bestand niet opmaken."
+  },
   "changedOnDisk": {
     "message": "{{file}} is op schijf gewijzigd terwijl je niet-opgeslagen wijzigingen had.",
     "compare": "Vergelijken",
@@ -1042,5 +1154,330 @@
     "reload": "Opnieuw laden",
     "failed": "Oleafly kon {{file}} niet bijwerken. Probeer het opnieuw.",
     "tabMark": "Op schijf gewijzigd. Open dit tabblad om te kiezen welke versie je wilt houden."
+  },
+  "labels": {
+    "filterPlaceholder": "Labelnaam",
+    "filterLabel": "Projectlabels filteren",
+    "noMatches": "Geen passende labels.",
+    "empty": "Nog geen labels in dit project.",
+    "location": "{{file}}:{{line}}",
+    "addHere": "Hier een label toevoegen"
+  },
+  "typst": {
+    "numberingNote": "Vergelijkingsnummers hebben een nummeringsregel nodig.",
+    "addNumberingRule": "Regel toevoegen",
+    "bibliographyAdded": "De bibliografie is toegevoegd aan {{file}}."
+  },
+  "typstInsights": {
+    "title": "Documentinzichten",
+    "description": "Wat het gecompileerde document bevat, met links terug naar de broncode.",
+    "refresh": "Vernieuwen",
+    "copyMetadata": "Metagegevens voor inzending kopiëren",
+    "metadataCopied": "Metagegevens voor inzending naar het klembord gekopieerd.",
+    "copyFailed": "De metagegevens zijn niet gekopieerd. Controleer de toegang tot het klembord en probeer het opnieuw.",
+    "loading": "Typst leest het document",
+    "compileFailed": "Typst kon het document niet compileren. Los deze fouten op om figuren, tabellen en vergelijkingen te tonen.",
+    "noProject": "Open eerst een Typst-project.",
+    "tabs": {
+      "overview": "Overzicht",
+      "headings": "Koppen",
+      "figures": "Figuren",
+      "tables": "Tabellen",
+      "equations": "Vergelijkingen",
+      "labels": "Labels",
+      "citations": "Citaties",
+      "todos": "To-do's"
+    },
+    "metadata": {
+      "heading": "Metagegevens voor inzending",
+      "title": "Titel",
+      "authors": "Auteurs",
+      "keywords": "Trefwoorden",
+      "abstract": "Samenvatting",
+      "date": "Datum",
+      "missing": "Niet ingesteld"
+    },
+    "empty": {
+      "headings": "Geen koppen in het gecompileerde document.",
+      "figures": "Geen figuren in het gecompileerde document.",
+      "tables": "Geen tabellen in het gecompileerde document.",
+      "equations": "Geen vergelijkingen op een eigen regel in het gecompileerde document.",
+      "labels": "Geen labels in het document.",
+      "citations": "Geen citaties in het gecompileerde document.",
+      "todos": "Geen TODO- of FIXME-notities."
+    },
+    "labelKinds": {
+      "heading": "Kop",
+      "figure": "Figuur",
+      "table": "Tabel",
+      "equation": "Vergelijking",
+      "other": "Overig"
+    },
+    "page": "Pagina {{page}}",
+    "unnumbered": "Ongenummerd",
+    "untitled": "Geen bijschrift",
+    "cited_one": "{{count}} keer geciteerd",
+    "cited_other": "{{count}} keer geciteerd",
+    "notInSource": "Niet gevonden in de broncode",
+    "openSource": "{{file}} openen op regel {{line}}",
+    "versionNote": "Typst {{version}} met typst {{method}}",
+    "truncated": "Alleen de eerste 5.000 elementen worden getoond."
+  },
+  "documentInsights": {
+    "description": "Wat het document bevat, met links terug naar de broncode.",
+    "loading": "Het document lezen",
+    "noProject": "Open eerst een project.",
+    "unresolved": "Niet in de bibliografie",
+    "unresolvedCount_one": "{{count}} geciteerde sleutel ontbreekt in de bibliografie.",
+    "unresolvedCount_other": "{{count}} geciteerde sleutels ontbreken in de bibliografie.",
+    "numbersCurrent": "Nummers en pagina's komen uit de laatste compilatie.",
+    "numbersStale": "De broncode is gewijzigd na de laatste compilatie. Compileer opnieuw om nummers en pagina's te zien.",
+    "numbersMissing": "Compileer het document om nummers en pagina's te zien.",
+    "sourceOrder": "Op volgorde van de broncode.",
+    "empty": {
+      "headings": "Geen koppen in het document.",
+      "figures": "Geen figuren in het document.",
+      "tables": "Geen tabellen in het document.",
+      "equations": "Geen vergelijkingen op een eigen regel in het document.",
+      "citations": "Geen citaties in het document."
+    }
+  },
+  "typstSettings": {
+    "title": "Documentinstellingen",
+    "description": "Regels voor pagina, tekst en nummering in {{file}}.",
+    "templateNotice": "Dit document gebruikt een sjabloon. Waarden die in het sjabloon zijn ingesteld, zie je hier niet. Een waarde die je hier instelt, gaat voor op het sjabloon.",
+    "loading": "Het hoofdbestand lezen",
+    "readFailed": "Kon het hoofdbestand niet lezen.",
+    "saveFailed": "Kon het hoofdbestand niet bijwerken.",
+    "noMainFile": "Dit project heeft geen Typst-hoofdbestand.",
+    "applied": "Documentinstellingen bijgewerkt.",
+    "apply": "Toepassen",
+    "cancel": "Annuleren",
+    "sections": {
+      "page": "Pagina",
+      "text": "Tekst",
+      "paragraph": "Alinea",
+      "numbering": "Nummering"
+    },
+    "fields": {
+      "paper": "Paginaformaat",
+      "margin": "Marges",
+      "columns": "Kolommen",
+      "font": "Lettertype voor de tekst",
+      "fontSize": "Lettergrootte",
+      "lang": "Taal",
+      "region": "Regio",
+      "justify": "Uitlijning",
+      "leading": "Regelafstand",
+      "headingNumbering": "Nummering van koppen",
+      "equationNumbering": "Nummering van vergelijkingen"
+    },
+    "placeholders": {
+      "margin": "2.5cm",
+      "columns": "1",
+      "font": "Libertinus Serif",
+      "fontSize": "11pt",
+      "lang": "en",
+      "region": "GB",
+      "leading": "0.65em"
+    },
+    "options": {
+      "default": "Standaard",
+      "justified": "Uitgevuld",
+      "ragged": "Links uitgelijnd",
+      "off": "Uit"
+    },
+    "locked": {
+      "template": "Ingesteld door het sjabloon",
+      "expression": "Ingesteld door een expressie in de broncode"
+    },
+    "invalid": {
+      "length": "Gebruik een lengte zoals 11pt, 2.5cm of 0.65em.",
+      "margin": "Gebruik een lengte zoals 2.5cm, of auto.",
+      "columns": "Gebruik een geheel getal van 1 tot en met 99.",
+      "lang": "Gebruik een taalcode van twee of drie letters, zoals en.",
+      "region": "Gebruik een regiocode van twee letters, zoals GB."
+    }
+  },
+  "documentSettings": {
+    "latexDescription": "Klasse-opties en preambule-instellingen in {{file}}.",
+    "markdownDescription": "Front-matter-velden in {{file}}.",
+    "noLatexMainFile": "Dit project heeft geen LaTeX-hoofdbestand.",
+    "noMarkdownMainFile": "Dit project heeft geen Markdown-hoofdbestand.",
+    "noDocumentClass": "Het hoofdbestand heeft geen \\documentclass-regel.",
+    "unclosedFrontMatter": "De front matter bovenaan het hoofdbestand is niet afgesloten. Voeg eerst een afsluitende regel --- toe.",
+    "noFrontMatter": "Dit bestand heeft nog geen front matter. Met Toepassen wordt die bovenaan toegevoegd.",
+    "externalPreamble": "Een deel van de preambule staat in andere bestanden. Waarden die daar zijn ingesteld, zie je hier niet.",
+    "classNotice": "De klasse {{name}} bepaalt een deel van deze instellingen. Ze zijn hier alleen-lezen.",
+    "styleNotice": "De stijl {{name}} bepaalt de pagina-indeling. Paginaformaat en marges zijn hier alleen-lezen.",
+    "availableFonts": "Beschikbare lettertypen",
+    "fontsLoading": "Lettertypen zoeken",
+    "fields": {
+      "secnumdepth": "Genummerde niveaus",
+      "numberSections": "Sectienummers",
+      "documentClass": "Documentklasse"
+    },
+    "placeholders": {
+      "latexLang": "english",
+      "markdownLang": "en-US",
+      "lineStretch": "1.5"
+    },
+    "options": {
+      "onecolumn": "Eén kolom",
+      "twocolumn": "Twee kolommen",
+      "single": "Enkel",
+      "onehalf": "Anderhalf",
+      "double": "Dubbel",
+      "bySection": "Per sectie",
+      "byChapter": "Per hoofdstuk",
+      "bySubsection": "Per subsectie",
+      "numbered": "Genummerd",
+      "unnumbered": "Niet genummerd",
+      "depthNone": "Geen",
+      "depthChapters": "Alleen hoofdstukken",
+      "depthSections": "Tot en met secties",
+      "depthSubsections": "Tot en met subsecties",
+      "depthSubsubsections": "Tot en met subsubsecties",
+      "depthParagraphs": "Tot en met paragrafen",
+      "depthSubparagraphs": "Tot en met subparagrafen"
+    },
+    "locked": {
+      "class": "Ingesteld door de klasse {{name}}",
+      "package": "Ingesteld door de stijl {{name}}",
+      "engine": "Vereist de compiler XeLaTeX of LuaLaTeX. Kies er een in het compileermenu.",
+      "sides": "De broncode stelt elke marge apart in",
+      "conditional": "Ingesteld in een voorwaardelijk blok"
+    },
+    "invalid": {
+      "length": "Gebruik een lengte zoals 2.5cm, 1in of 12pt.",
+      "fontName": "Gebruik een gewone lettertypenaam zonder accolades of backslashes.",
+      "latexLang": "Gebruik een babel-taalnaam, zoals english.",
+      "markdownLang": "Gebruik een taaltag, zoals en-US.",
+      "lineStretch": "Gebruik een getal, zoals 1.5."
+    }
+  },
+  "typstPackages": {
+    "title": "Typst-pakketten",
+    "close": "Typst-pakketten sluiten",
+    "searchLabel": "Pakketten zoeken op naam, trefwoord of categorie",
+    "searchPlaceholder": "Typst Universe doorzoeken",
+    "categories": "Categorieën",
+    "allCategories": "Alle",
+    "loading": "De pakketlijst laden",
+    "results_one": "{{count}} pakket",
+    "results_other": "{{count}} pakketten",
+    "resultsCapped": "{{shown}} van {{count}} pakketten getoond. Zoek om de lijst in te perken.",
+    "empty": "Geen pakketten gevonden voor je zoekopdracht.",
+    "staleOffline": "Je bent offline. Deze lijst is van {{date}}.",
+    "stale": "Deze lijst is van {{date}}. Hij kon niet worden vernieuwd.",
+    "latest": "Nieuwste {{version}}",
+    "template": "Sjabloon",
+    "needsTypst": "Vereist Typst {{version}}. Dit project gebruikt Typst {{current}}.",
+    "insert": "Import invoegen",
+    "insertAria": "De import voor {{name}} bovenaan het bestand invoegen",
+    "insertNeedsFile": "Open een Typst-bestand om een import in te voegen.",
+    "copy": "Import kopiëren",
+    "copyAria": "De import voor {{name}} kopiëren",
+    "vendor": {
+      "heading": "Projectpakketten",
+      "toggle": "Pakketten uit de projectmap gebruiken",
+      "detail": "Typst zoekt eerst in de map typst-packages van het project. Projecten met eigen pakketten compileren offline en op andere computers.",
+      "action": "Pakketten naar het project kopiëren",
+      "running": "Pakketten kopiëren",
+      "copied_one": "{{count}} pakket naar typst-packages gekopieerd.",
+      "copied_other": "{{count}} pakketten naar typst-packages gekopieerd.",
+      "upToDate": "Elk pakket dat dit project importeert staat al in typst-packages.",
+      "missing": "Deze pakketten staan niet in de pakketcache: {{names}}. Compileer één keer terwijl je online bent en kopieer ze daarna opnieuw.",
+      "count_one": "{{count}} pakket in dit project",
+      "count_other": "{{count}} pakketten in dit project",
+      "none": "Nog geen pakketten in dit project."
+    },
+    "hints": {
+      "updateAvailable": "{{name}} {{latest}} is beschikbaar. Deze import gebruikt {{version}}.",
+      "update": "Bijwerken naar {{version}}"
+    }
+  },
+  "latexPackages": {
+    "title": "LaTeX-pakketten",
+    "close": "LaTeX-pakketten sluiten",
+    "searchLabel": "Pakketten zoeken op naam of beschrijving",
+    "searchPlaceholder": "CTAN doorzoeken",
+    "loading": "De pakketlijst laden",
+    "results_one": "{{count}} pakket",
+    "results_other": "{{count}} pakketten",
+    "resultsCapped": "{{shown}} van {{count}} pakketten getoond. Zoek om de lijst in te perken.",
+    "empty": "Geen pakketten gevonden voor je zoekopdracht.",
+    "stale": "Deze lijst is van {{date}}. Hij kon niet worden vernieuwd.",
+    "staleOffline": "Je bent offline. Deze lijst is van {{date}}.",
+    "partial": "Kon CTAN niet bereiken. De ingebouwde lijst van Oleafly wordt getoond.",
+    "partialOffline": "Je bent offline. De ingebouwde lijst van Oleafly wordt getoond.",
+    "loaded": "In document",
+    "documentClass": "Documentklasse",
+    "installed": "Geïnstalleerd",
+    "install": "Installeren",
+    "installing": "Installeren",
+    "installAria": "{{name}} installeren met tlmgr",
+    "insert": "Aan preambule toevoegen",
+    "insertAria": "{{name}} toevoegen aan de preambule van {{file}}",
+    "copy": "Regel kopiëren",
+    "copyAria": "De regel kopiëren die {{name}} laadt",
+    "ctan": "CTAN",
+    "ctanAria": "{{name}} openen op CTAN",
+    "options": "Opties",
+    "optionsAria": "Opties voor {{name}}",
+    "optionsInvalid": "Controleer de opties. Accolades moeten kloppen, en ] of % mag je niet gebruiken.",
+    "classNote": "Dit is een documentklasse. Stel die in met \\documentclass.",
+    "onDemand": "Tectonic downloadt pakketten zodra je document ze voor het eerst gebruikt. Je hoeft niets te installeren.",
+    "checking": "Controleren welke pakketten geïnstalleerd zijn",
+    "unknownInstall": "Oleafly kan niet zien welke pakketten je TeX-installatie heeft.",
+    "noProject": "Open een LaTeX-project om pakketten toe te voegen.",
+    "added": "{{name}} toegevoegd aan {{file}}.",
+    "noPreamble": "{{file}} heeft geen preambule om een pakket aan toe te voegen.",
+    "alreadyLoaded": "{{file}} laadt {{name}} al.",
+    "insertFailed": "Het pakket kon niet worden toegevoegd. Probeer het opnieuw."
+  },
+  "typstFonts": {
+    "title": "Lettertypen",
+    "close": "Lijst met lettertypen sluiten",
+    "searchLabel": "Lettertypefamilies zoeken",
+    "searchPlaceholder": "Lettertypen zoeken",
+    "loading": "Typst om zijn lettertypen vragen",
+    "summary_one": "{{count}} lettertypefamilie uit Typst {{version}}",
+    "summary_other": "{{count}} lettertypefamilies uit Typst {{version}}",
+    "systemOff": "Systeemlettertypen staan uit voor dit project, dus alleen project- en ingebouwde lettertypen worden getoond.",
+    "noSources": "Deze Typst-versie geeft niet aan waar elk lettertype vandaan komt.",
+    "empty": "Geen lettertypefamilies gevonden voor je zoekopdracht.",
+    "copy": "Naam kopiëren",
+    "copyAria": "De naam van lettertypefamilie {{name}} kopiëren",
+    "sources": {
+      "project": "Project",
+      "system": "Systeem",
+      "embedded": "Ingebouwd"
+    },
+    "fontsFolder": "Wil je een lettertype in dit project gebruiken, zet het bestand dan in de map fonts van het project."
+  },
+  "typstVariants": {
+    "title": "Compileervarianten",
+    "close": "Compileervarianten sluiten",
+    "intro": "Elke variant stelt waarden in die het document leest met sys.inputs. Kies een variant in het compileermenu.",
+    "empty": "Nog geen varianten.",
+    "add": "Variant toevoegen",
+    "name": "Naam van de variant",
+    "defaultName": "variant {{number}}",
+    "remove": "Variant verwijderen",
+    "removeAria": "De variant {{name}} verwijderen",
+    "key": "Naam",
+    "value": "Waarde",
+    "addInput": "Waarde toevoegen",
+    "removeInput": "Waarde verwijderen",
+    "noInputs": "Deze variant stelt geen waarden in.",
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "loading": "Varianten laden",
+    "nameRequired": "Geef elke variant een naam.",
+    "nameTaken": "Twee varianten kunnen niet dezelfde naam hebben.",
+    "keyInvalid": "Namen van waarden mogen niet leeg zijn en geen isgelijkteken bevatten.",
+    "keyTaken": "Een variant kan dezelfde naam niet twee keer instellen.",
+    "saveFailed": "Kon de varianten niet opslaan."
   }
 }

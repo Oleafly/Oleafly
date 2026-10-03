@@ -35,6 +35,17 @@
 - `Overfull \hbox` under 5pt
 - Package version notices and load-order info lines
 
+## Typst
+
+Typst writes one line per problem, as `file:line:col: error: message` or `warning: message`. Missing references and citations are errors there, so they stop the build instead of leaving `??` in the PDF.
+
+| Log text | Meaning | Fix |
+| --- | --- | --- |
+| ``label `<x>` does not exist in the document`` | A `@x` reference with no matching label or bibliography entry. Blocks the build. | Fix the label or the key. In Typst `@x` can point at either. |
+| ``citation key `x` is not present in the bibliography`` | A `#cite(<x>)` or `@x` with no entry in the `.bib` or `.yml` file. Blocks the build. | Add the entry or fix the key. |
+| ``label `<x>` occurs multiple times in the document`` | Two elements share a label and a reference to it is ambiguous. Blocks the build. | Rename one. |
+| `unknown font family: x` | The font is not embedded in Typst or installed on this computer, so the text fell back to another font. | Worth checking. Blocking at camera-ready when the venue names a font. |
+
 ## How to scan
 
 Read the log tail, then confirm with the structured data. `project_map` gives you `unresolvedRefs` and `unresolvedCites` directly, which is more reliable than grepping a truncated log. Use the log for font, box, and float problems, which `project_map` does not know about.

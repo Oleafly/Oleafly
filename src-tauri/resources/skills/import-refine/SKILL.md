@@ -1,11 +1,11 @@
 ---
 name: Import refine
-description: Turn a document Oleafly imported from Word, Markdown, or PDF into a project that compiles cleanly and reads like it was written here. Use after any import, or when a project is full of pandoc leftovers, longtable wrappers, hypertarget blocks, broken math, or citations that arrived as plain text.
+description: Turn a document Oleafly imported from Word, Markdown, or PDF into a project that compiles cleanly and reads like it was written here. Use after any import, or when a project is full of pandoc leftovers, longtable wrappers, hypertarget blocks, a Typst conf template, broken math, or citations that arrived as plain text.
 license: MIT
-compatibility: Works on LaTeX projects created by the Word, Markdown, and PDF importers. Needs a working compile (Tectonic or latexmk). Nothing external.
+compatibility: Works on LaTeX and Typst projects created by the Word, Markdown, and PDF importers. Needs a working compile (Tectonic, latexmk, or Typst). Nothing external.
 allowed-tools: read_file, search_project, project_map, list_files, replace_in_file, write_file, create_file, compile, get_log, get_pdf_text, verify_pdf_pages, update_todos, load_skill, read_skill_file
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   skill-author: Oleafly
   oleafly:
     tier: native
@@ -48,6 +48,11 @@ Two rules hold throughout:
 | `pdfcreator={LaTeX via pandoc}`, `\providecommand{\tightlist}`, `\hypertarget` around headings | Word (docx) through pandoc |
 | The same pandoc markers, plus `Shaded` and `Highlighting` environments | Markdown through pandoc |
 | `\documentclass[11pt]{article}` with `inputenc`, `geometry`, `parskip 0.5em`, `\parindent 0pt` and nothing else | The built-in PDF converter |
+| A `main.typ` that defines `content-to-string` and `conf(...)` and applies it with `#show: doc => conf(...)` | Word, Markdown, or HTML through pandoc into Typst |
+
+When the main file is `.typ`, the steps below still apply in the same order. Each one has
+a Typst note, and `references/import-artifacts.md` has a Typst section with before and
+after for every pattern.
 
 If it is the PDF converter, stop here and use `pdf-to-latex` instead. That skill rebuilds
 structure against the original pages; this one cleans up a document that already has its
@@ -68,6 +73,9 @@ Run `compile` before editing anything. Then:
 - **It fails on a missing package.** Imports frequently pull in packages the engine does
   not have. Check `references/import-artifacts.md` first: most of them (`lmodern`,
   `selnolig`, `microtype`, `xurl`) can simply be dropped rather than installed.
+
+In a Typst project the log lines read `file:line:col: error: message`. Fix the first one,
+compile, and repeat. `oleafly-latex-build` covers Typst errors too.
 
 Do not start the preamble pass on a broken build. You will not be able to tell your
 breakage from the import's.
@@ -98,6 +106,15 @@ Keep every macro the document body actually uses. Before deleting a `\newcommand
 `\providecommand`, `search_project` for its name. `\tightlist` in particular is used by
 every pandoc list, so it stays unless you also rewrite the lists.
 
+**Typst.** Pandoc writes about 150 lines: a few helpers, a `conf` function that sets the
+page, the text, and the title block, and `#show: doc => conf(...)` to apply it. Two
+things in it matter most. `sectionnumbering: none` in the `conf(...)` call turns off
+heading numbering, so set it to `"1.1"` unless the user wants unnumbered headings. And
+`#set table(stroke: none)` removes every rule from every table, which step 5 deals with.
+Once the build is green you can replace `conf` with a short block of `#set document`,
+`#set page`, `#set text`, `#set par`, and `#set heading` rules. `search_project` for
+`horizontalrule`, `content-to-string`, and each other helper before you remove it.
+
 ## 4. Fix the sectioning
 
 Pandoc wraps every heading:
@@ -116,6 +133,11 @@ Then check the hierarchy with `project_map`: a Word document often starts at
 `\subsection` because its top level was the title, or jumps from `\section` to
 `\subsubsection`. Promote or demote so the levels are contiguous. Compile.
 
+**Typst.** Pandoc puts the label on the line after the heading (`= Results`, then
+`<results>`). Move it onto the heading line as `= Results <sec:results>`, and when you
+rename it, `search_project` for `@results` and fix every reference in the same edit. The
+level is the number of `=` signs, so fix a jump from `=` to `===` the same way.
+
 ## 5. Tables
 
 Pandoc renders every table as a `longtable`, even a three-row one, with a column spec
@@ -133,6 +155,15 @@ built out of `\real{}` fractions of `\columnwidth`.
 One table per edit, compile after each. `references/import-artifacts.md` has the before and
 after.
 
+**Typst.** Pandoc emits `#figure(align(center)[#table(...)], caption: [...], kind: table)`
+with percentage column widths and no label. Drop the `align(center)` wrapper, because a
+figure centers its body. Use `auto` or `1fr` columns unless the widths were doing real
+work, add rules with `table.hline()` under the header and at the top and bottom (the
+global `stroke: none` removed all of them), trim the blank lines pandoc leaves inside the
+caption, and put a `<tab:...>` label after the figure. A figure does not break across
+pages, so for a table that runs over a page add
+`#show figure.where(kind: table): set block(breakable: true)` once near the top.
+
 ## 6. Images
 
 Find them all with `search_project` for `includegraphics`.
@@ -146,6 +177,11 @@ Find them all with `search_project` for `includegraphics`.
   inline. Then reference it from the text.
 - `imageN.png` is not a name. Rename the files to something meaningful with `rename_file`
   and update the paths, or record in `import/notes.md` that they need names.
+
+**Typst.** Images arrive as `#figure(image("assets/media/rIdN.png", height: ..., width: ...,
+alt: "..."), caption: [...])` with fixed sizes in inches and no label. Replace the sizes
+with `width: 100%` or a fraction of it, keep the `alt` text, add a `<fig:...>` label after
+the figure, and rename `rIdN.png` the same way as above.
 
 Compile and look at the result. `verify_pdf_pages` (if PDF page capture is on) or
 `get_pdf_text` will tell you whether a figure landed where you expect.
@@ -162,6 +198,12 @@ Word math survives conversion better than PDF math, but both need a pass.
   are the first thing an extractor loses, and a wrong subscript reads as correct LaTeX.
 - Align multi-line equations with `align` rather than stacked `\[ \]` blocks.
 
+**Typst.** Pandoc writes Typst math directly: `$x^2$` inline, `$ ... $` with spaces inside
+for display. Read each display equation against the source, because spacing words such as
+`thin` and juxtaposed letters (`d x`) come through literally. To number equations, add
+`#set math.equation(numbering: "(1)")` once and put `<eq:...>` after each one you
+reference.
+
 ## 8. Citations
 
 An imported document has citations as literal text: `(Smith and Chen, 2020)` or `[14]`.
@@ -175,7 +217,9 @@ There is no `.bib` file and no `\cite`.
    the reference list alone. A mangled author list becomes a wrong citation, and a citation
    you cannot verify does not go in the file.
 4. Once entries exist, replace each literal citation with `\cite{key}` and delete the plain
-   reference section in favour of `\printbibliography` or `\bibliography{...}`.
+   reference section in favour of `\printbibliography` or `\bibliography{...}`. In a Typst
+   project the citation is `@key`, and the plain section gives way to
+   `#bibliography("references.bib")` at the end of the document.
 5. Compile twice and check `project_map` for unresolved citations.
 
 If the user does not want the bibliography rebuilt now, leave the literal citations alone
@@ -191,7 +235,7 @@ Things that belong in it:
 
 - Content the importer dropped: text boxes, headers and footers, comments, tracked
   changes, equations that arrived as images, anything under a "no text layer" note.
-- Formatting that has no LaTeX equivalent and was approximated.
+- Formatting that has no LaTeX or Typst equivalent and was approximated.
 - Tables or figures you flagged but did not convert.
 - Citation counts: how many literal citations remain, how many were resolved.
 - Anything you deliberately left alone and why.
@@ -211,18 +255,20 @@ Things that belong in it:
 | Path | What goes in it |
 |---|---|
 | `import/notes.md` | Lost content, approximations, and open decisions. |
-| `references.bib` (or the project's existing `.bib`) | Entries recovered in step 8. |
+| `references.bib` (or the project's existing `.bib` or `.yml`) | Entries recovered in step 8. |
 | `assets/` | Extracted media, renamed. |
 
 ## Done when
 
 - The project compiles with no errors.
 - The preamble is one readable block with nothing in it the document does not use.
-- Headings are plain sectioning commands with labels, and the levels are contiguous.
-- Every table is either a captioned `tabular` or a deliberate `longtable`.
+- Headings are plain sectioning commands (or Typst `=` headings) with labels, and the levels
+  are contiguous.
+- Every table is either a captioned `tabular` or a deliberate `longtable`, or in Typst a
+  labelled `#figure` around a `table` with its rules back.
 - Every figure has a caption, a label, and a path that resolves.
-- Citations are either real `\cite` keys with verified entries, or literal text with a
-  count in `import/notes.md`.
+- Citations are either real `\cite` keys (or `@key` in Typst) with verified entries, or
+  literal text with a count in `import/notes.md`.
 - `import/notes.md` exists and says what a human still needs to decide.
 
 ## References

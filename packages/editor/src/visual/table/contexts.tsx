@@ -1,3 +1,4 @@
+import type { EditorState } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import {
   type Dispatch,
@@ -16,11 +17,19 @@ import { type TableEdit, sanitizeCellInput, writeCellEdit } from "./commands";
 import type { ParsedTable, TableEnvironmentInfo } from "./model";
 import { type CellSelection, clampSelection } from "./table-selection";
 
+export interface TableDialect {
+  sanitizeCellInput(text: string): string;
+  appendRowEdit(state: EditorState, parsed: ParsedTable): TableEdit | null;
+  Toolbar: FC;
+  Dialogs: FC | null;
+}
+
 export interface TableHost {
   view: EditorView;
   parsed: ParsedTable;
   environment: TableEnvironmentInfo | null;
   directChild: boolean;
+  dialect?: TableDialect;
 }
 
 export type SelectionUpdate = CellSelection | null | ((current: CellSelection | null) => CellSelection | null);
@@ -122,7 +131,7 @@ export const TableProviders: FC<{ host: TableHost; children: ReactNode }> = ({ h
     const current = editingRef.current;
     const changes = [];
     if (current?.dirty && current.row < model.rowCount) {
-      const content = sanitizeCellInput(current.content);
+      const content = (host.dialect?.sanitizeCellInput ?? sanitizeCellInput)(current.content);
       changes.push(...writeCellEdit(host.parsed, current.row, current.column, content).changes);
     }
     editingRef.current = null;

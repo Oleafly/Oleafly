@@ -3,6 +3,22 @@
     "aiProviderRequired": "Yapay zeka ile düzelt özelliğini kullanmak için Ayarlar'dan bir yapay zeka sağlayıcısı bağlayın.",
     "fixFailed": "Düzeltme başarısız oldu: {{detail}}"
   },
+  "chooser": {
+    "title": "Bir diyagram oluşturucu seçin",
+    "description": "Diyagramın hangi tür belge için olduğunu seçin.",
+    "tikz": {
+      "title": "TikZ diyagramı",
+      "description": "LaTeX belgeleri için TikZ ile düğümler ve oklar."
+    },
+    "typst": {
+      "title": "Typst diyagramı",
+      "description": "Typst belgeleri için bir fletcher diyagramı."
+    },
+    "mermaid": {
+      "title": "Mermaid diyagramı",
+      "description": "Markdown belgeleri için bir Mermaid akış şeması."
+    }
+  },
   "package": {
     "composer": {
       "title": "Diyagram ekle",
@@ -13,8 +29,8 @@
       "cancelRenameTooltip": "İptal (Esc)",
       "cancelRename": "Yeniden adlandırmayı iptal et",
       "renameTooltip": "Diyagramı yeniden adlandır",
-      "importTooltip": "Bir .tikz veya .tex dosyasını içe aktarır ve bu taslağın yerine koyar",
-      "importLabel": "TikZ dosyası içe aktar",
+      "importTooltip": "Bir .tikz, .tex, .typ, .mmd veya .md dosyasını içe aktarır ve bu taslağın yerine koyar",
+      "importLabel": "Diyagram dosyası içe aktar",
       "modeDraw": "Çiz",
       "modeCode": "Kod",
       "fixWithAiTooltip": "Derleme hatasını düzeltmesi için yapay zekaya sor",
@@ -28,20 +44,29 @@
       "newProject": "Yeni proje",
       "noOtherProjects": "Henüz başka proje yok.",
       "saveFigure": "Şekli kaydet",
+      "insertTypst": "Typst olarak ekle",
+      "insertLatex": "TikZ olarak ekle",
       "downloadTooltip": "Bu diyagramı indir",
       "download": "İndir",
       "formatPng": "PNG",
       "formatSvgSoon": "SVG (yakında)",
       "svgTooltip": "SVG dışa aktarma bir vektör işleyici gerektirir, henüz kullanılamıyor",
       "snippets": "Parçacıklar",
-      "untitledName": "Adsız Diyagram"
+      "untitledName": "Adsız Diyagram",
+      "formatTypst": "Typst (.typ)",
+      "insertMermaid": "Mermaid olarak ekle",
+      "formatTikz": "TikZ (.tikz)",
+      "formatMermaid": "Mermaid (.mmd)",
+      "formatSvg": "SVG",
+      "languageLabel": "Diyagram dili: {{language}}"
     },
     "snippets": {
       "rectangleNode": "Dikdörtgen düğüm",
       "circleNode": "Daire düğüm",
       "arrowEdge": "Oklu kenar",
       "lineEdge": "Çizgi kenar",
-      "scope": "Scope"
+      "scope": "Scope",
+      "group": "Grup"
     },
     "preview": {
       "label": "Önizleme",
@@ -53,7 +78,8 @@
       "pngScale": "PNG ölçeği",
       "scaleFactor": "{{factor}}x",
       "background": "Arka plan",
-      "backgroundLabel": "Şekil arka plan rengi"
+      "backgroundLabel": "Şekil arka plan rengi",
+      "diagnosticAt": "Satır {{line}}: {{message}}"
     },
     "toast": {
       "compileFailed": "Diyagram derlenmedi. Aşağıdaki günlüğe bakın.",
@@ -68,16 +94,25 @@
       "figureCached": "Zaten önbellekte, var olan şekil yeniden kullanılıyor.",
       "figureSaved": "Şekil önbelleğinize kaydedildi.",
       "saveFigureFailed": "Şekil kaydedilemedi: {{detail}}",
+      "insertedTypst": "Typst kodu olarak eklendi.",
+      "insertedLatex": "TikZ kodu olarak eklendi.",
       "downloaded": "İndirildi.",
       "imported": "{{name}} düzenlenmek üzere içe aktarıldı.",
       "importedCodeOnly": "{{name}} içe aktarıldı (yalnızca kod, çizilemez).",
       "importFailed": "Bu dosya içe aktarılamadı: {{detail}}",
       "noAiFix": "Yapay zeka bir düzeltme döndürmedi.",
       "fixFailed": "Düzeltme başarısız oldu: {{detail}}",
-      "notDrawable": "Bu kodda çizilebilecek bir şey yok. Koda dokunulmadı."
+      "notDrawable": "Bu kodda çizilebilecek bir şey yok. Koda dokunulmadı.",
+      "savedTypstToProject": "{{path}} kaydedildi. Bir belgeye #include ile ekleyin.",
+      "insertedMermaid": "Mermaid kod bloğu olarak eklendi.",
+      "savedMermaidToProject": "{{path}} kaydedildi. Bunu bir Markdown belgesine mermaid kod bloğu içinde ekleyin.",
+      "typstPackageMissing": "Typst fletcher paketini alamadı. Typst'in paketi indirip saklayabilmesi için bir kez internete bağlanın.",
+      "previewUnavailable": "Bu önizleme burada kullanılamıyor.",
+      "readerUnavailable": "Kod okuyucu yüklenemedi. Yeniden deneyin."
     },
     "confirm": {
-      "overwrite": "{{files}} zaten var. Üzerine yazılsın mı? (İkisini de tutmak için farklı bir ad seçin.)"
+      "overwrite": "{{files}} zaten var. Üzerine yazılsın mı? (İkisini de tutmak için farklı bir ad seçin.)",
+      "switchLanguage": "Bu diyagram {{from}} dilinden {{to}} diline geçirilsin mi? Tuvalin gösteremediği kod aktarılmaz."
     },
     "canvas": {
       "shapeTools": "Şekil araçları",
@@ -136,7 +171,57 @@
       "routingStraight": "Düz",
       "routingOrthogonal": "Dik",
       "routingCurved": "Eğri",
-      "line": "Çizgi"
+      "line": "Çizgi",
+      "nodeLabelTypst": "Etiket (Typst)"
+    },
+    "notes": {
+      "tooltip": "Tuvalin tam olarak göstermedikleri",
+      "count_one": "{{count}} not",
+      "count_other": "{{count}} not",
+      "keptHeading": "Kodda korunanlar",
+      "approximatedHeading": "Yaklaşık gösterilenler",
+      "droppedHeading": "Tuvalde çizilmeyenler",
+      "notDiagram": "Bu kodda tuvalin çizebileceği bir şey yok.",
+      "outsideCode": "Diyagramdan önceki veya sonraki kod yazıldığı gibi korunur.",
+      "wrapper": "Diyagramı çevreleyen kod, örneğin bir şekil, yazıldığı gibi korunur.",
+      "diagramSetting": "{{detail}} diyagram ayarı kodda korunur.",
+      "edgeOption": "{{detail}} kenar seçeneği kodda korunur.",
+      "scripted": "Döngüler gibi betikle oluşturulan diyagram içeriği kodda korunur.",
+      "mathMode": "Matematik kipindeki diyagram içeriği kodda korunur.",
+      "unplacedNode": "Sabit konumu olmayan düğümler kodda korunur.",
+      "unreadEdge": "Tuvalin okuyamadığı kenarlar kodda korunur.",
+      "danglingEdge": "İki düğümü birbirine bağlamayan kenarlar kodda korunur.",
+      "gridCoordinates": "Izgara koordinatları sabit konumlarda gösterilir.",
+      "formattedLabels": "Biçimlendirilmiş etiketler düz metin olarak gösterilir.",
+      "unknownShapes": "Tuvalde bulunmayan şekiller dikdörtgen olarak gösterilir.",
+      "estimatedSize": "Genişliği ve yüksekliği olmayan düğümler tahmini bir boyutta gösterilir.",
+      "colorAdjustments": "lighten gibi işlevlerle ayarlanan renkler temel renkleriyle gösterilir.",
+      "colorExpressions": "Değişkenlerle veya ifadelerle ayarlanan renkler tuvalde gösterilmez.",
+      "strokeStyles": "Bazı çizgi stilleri tuvaldeki en yakın stille gösterilir.",
+      "arrowMarks": "Tuvalde bulunmayan ok uçları düz ok olarak gösterilir.",
+      "freePoints": "Serbest noktalardan geçen kenarlar tuvalde düz çizilir.",
+      "tikzCommand": "{{detail}} komutu çizilmez. Tuvalde yapılan bir düzenleme kodu bu komut olmadan yeniden yazar.",
+      "truncated": "Kod çok uzun, bu yüzden yalnızca ilk kısmı çizilir.",
+      "mermaidNotFlowchart": "Tuvalde yalnızca akış şemaları çizilebilir. Bu kod bir {{detail}} diyagramı.",
+      "mermaidFrontmatter": "Ön bilgi bloğu kodda korunur.",
+      "mermaidDirective": "Yapılandırma yönergeleri kodda korunur.",
+      "mermaidComment": "Yorumlar kodda korunur.",
+      "mermaidAccessibility": "Erişilebilirlik başlıkları ve açıklamaları kodda korunur.",
+      "mermaidClick": "click işleyicileri kodda korunur.",
+      "mermaidStyleProperty": "{{detail}} stil özelliği kodda korunur.",
+      "mermaidClassProperty": "{{detail}} sınıf özelliği kodda korunur.",
+      "mermaidLinkStyleProperty": "{{detail}} bağlantı stili özelliği kodda korunur.",
+      "mermaidNodeSetting": "{{detail}} düğüm ayarı kodda korunur.",
+      "mermaidEdgeSetting": "{{detail}} kenar ayarı kodda korunur.",
+      "mermaidInvisibleLink": "Görünmez bağlantılar kodda korunur.",
+      "mermaidLinkLength": "Bağlantı uzunlukları kodda korunur.",
+      "mermaidSubgraphDirection": "subgraph yönleri kodda korunur.",
+      "mermaidUnknownStatement": "Tuvalin okuyamadığı ifadeler kodda korunur.",
+      "mermaidShape": "{{detail}} şekli tuvaldeki en yakın şekil olarak gösterilir.",
+      "mermaidThickLink": "Kalın bağlantılar normal çizgi olarak gösterilir.",
+      "mermaidArrowHead": "Daire ve çarpı biçimli ok uçları ok olarak gösterilir.",
+      "mermaidMarkdownLabel": "Markdown etiketleri düz metin olarak gösterilir.",
+      "mermaidNoFlowchartHeader": "Tuvalde yalnızca akış şemaları çizilebilir. Koda flowchart veya graph ile başlayın."
     }
   }
 }

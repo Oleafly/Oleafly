@@ -17,15 +17,19 @@ import {
   List,
   ListOrdered,
   MoreHorizontal,
+  Package,
   Pencil,
+  PenTool,
   Quote,
   Redo2,
   Rows3,
+  ScanSearch,
   Search,
   SearchCode,
   SeparatorHorizontal,
   SeparatorVertical,
   Sigma,
+  SlidersHorizontal,
   Tag,
   Type,
   Underline,
@@ -40,10 +44,14 @@ import { editorFind, editorRedo, editorUndo, getEditorView } from "./cm/controll
 import { goToDefinition, findReferences, startRename } from "@/lib/index/nav";
 import { imageToLatex, imageToLatexAvailable } from "@/features/image-to-latex";
 import { goToSyncTex } from "@/features/synctex";
+import { engineSyncsPath } from "@/lib/document-engine";
+import { openDiagramComposer } from "@/features/open-tool";
 import { ProjectInfoButton } from "@/components/editor/ProjectInfo";
 import { useFilesStore } from "@/store/files";
 import { useActiveFileReadOnly } from "@/lib/read-only-files";
 import { runCiteOleaflyAction } from "@/features/cite-oleafly";
+import { openLatexPackages } from "@/components/packages/open";
+import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { cn, shortcut } from "@/lib/utils";
 import {
   HEADING_LEVELS,
@@ -349,7 +357,9 @@ export function EditorToolbar({
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const engine = useFilesStore((s) => s.engine);
   const syncTexSupported =
-    projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engine.capabilities.supports_synctex;
+    projectKind !== "image" && projectKind !== "diagram" && engineLoaded && engineSyncsPath(engine, activePath);
+  const latexProject = engineLoaded && engine.source_format === "latex";
+  const latexDocument = latexProject && projectKind !== "diagram" && projectKind !== "image";
   useEffect(() => {
     void imageToLatexAvailable().then(setVisionReady);
   }, []);
@@ -400,6 +410,7 @@ export function EditorToolbar({
         render: () => <TableSizePicker />,
         renderMenu: () => <TableSizePicker key="table" menuRow />,
       },
+      btnControl("diagram", PenTool, t(($) => $.editor.toolbar.drawDiagram), () => void openDiagramComposer("tikz")),
     ];
 
     if (visionReady) {
@@ -538,6 +549,27 @@ export function EditorToolbar({
             title={t(($) => $.editor.toolbar.citeOleafly)}
           >
             <Quote className="size-4" />
+          </IconBtn>
+        )}
+        {latexProject && (
+          <IconBtn onClick={openLatexPackages} title={t(($) => $.editor.toolbar.latexPackages)}>
+            <Package className="size-4" />
+          </IconBtn>
+        )}
+        {latexDocument && (
+          <IconBtn
+            onClick={() => useTypstDocumentPanelStore.getState().openPanel("insights")}
+            title={t(($) => $.editor.typstInsights.title)}
+          >
+            <ScanSearch data-testid="document-insights-button" className="size-4" />
+          </IconBtn>
+        )}
+        {latexDocument && (
+          <IconBtn
+            onClick={() => useTypstDocumentPanelStore.getState().openPanel("settings")}
+            title={t(($) => $.editor.typstSettings.title)}
+          >
+            <SlidersHorizontal data-testid="document-settings-button" className="size-4" />
           </IconBtn>
         )}
         <ProjectInfoButton surface="source" />
