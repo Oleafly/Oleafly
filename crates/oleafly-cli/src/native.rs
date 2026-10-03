@@ -293,7 +293,8 @@ impl NativeCompiler {
         let output = output.is_file().then_some(output);
         let mut errors = parse_errors(build.engine(), &log);
         if build.engine() == Engine::Typst {
-            let canonical = std::fs::canonicalize(&command.working_directory)
+            let canonical = tokio::fs::canonicalize(&command.working_directory)
+                .await
                 .unwrap_or_else(|_| command.working_directory.clone());
             for error in &mut errors {
                 error.file = error.file.take().map(|file| {

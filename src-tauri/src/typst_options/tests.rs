@@ -308,6 +308,7 @@ fn the_bundled_typst_lists_fonts_from_the_project_folder() {
     );
 }
 
+#[cfg_attr(target_os = "windows", allow(dead_code))]
 pub(crate) fn bundled_typst() -> Option<PathBuf> {
     let triple = crate::biber_toolchain::host_triple_guess()?;
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))

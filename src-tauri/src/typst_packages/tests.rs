@@ -267,6 +267,7 @@ fn deps_from_the_compiler_add_packages_the_source_scan_cannot_see() {
     assert_eq!(report.vendored, vec!["@preview/dynamic:0.3.0"]);
 }
 
+#[cfg(unix)]
 #[test]
 fn vendoring_skips_symlinks_inside_packages() {
     let data = tempfile::tempdir().unwrap();
@@ -275,7 +276,6 @@ fn vendoring_skips_symlinks_inside_packages() {
     let package = fake_package(&app.cache_path, "preview", "linked", "1.0.0", "#let l = 1");
     let outside = data.path().join("secret.txt");
     write(&outside, "secret");
-    #[cfg(unix)]
     std::os::unix::fs::symlink(&outside, package.join("leak.txt")).unwrap();
     write(
         &project.path().join("main.typ"),

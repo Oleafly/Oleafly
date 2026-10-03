@@ -295,6 +295,7 @@ impl Registry {
     }
 
     #[cfg(test)]
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     async fn running_pid(&self, project_id: &str) -> Option<u32> {
         let slot = lock(&self.slots).get(project_id).cloned()?;
         let state = slot.state.lock().await;

@@ -335,6 +335,7 @@ pub(super) fn server_args(spec: &ServerSpec, data_port: u16, control_port: u16) 
 
 pub(super) struct KillSwitch {
     #[cfg(test)]
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     pid: u32,
     guard: Mutex<Option<ProcessTreeGuard>>,
 }
@@ -508,6 +509,7 @@ impl Session {
     }
 
     #[cfg(test)]
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     pub(super) fn pid(&self) -> u32 {
         self.process.kill.pid
     }

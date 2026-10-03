@@ -672,11 +672,13 @@ impl Registry {
     }
 
     #[cfg(test)]
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     pub(crate) fn len(&self) -> usize {
         lock(&self.sessions).len()
     }
 
     #[cfg(test)]
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     pub(crate) fn session(&self, project_id: &str) -> Option<Arc<Session>> {
         lock(&self.sessions).get(project_id).cloned()
     }

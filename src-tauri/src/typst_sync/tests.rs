@@ -518,6 +518,7 @@ impl FakeServer {
         server
     }
 
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     fn ports(&self) -> (u16, u16) {
         (self.data_port, self.control_port)
     }
@@ -706,6 +707,7 @@ fn loopback(port: u16) -> std::net::SocketAddr {
     std::net::SocketAddr::from(([127, 0, 0, 1], port))
 }
 
+#[cfg_attr(target_os = "windows", allow(dead_code))]
 fn quick_timeouts() -> Timeouts {
     Timeouts {
         connect: Duration::from_millis(500),

@@ -250,6 +250,7 @@ fn backoff_doubles_up_to_the_ceiling() {
     assert_eq!(config.backoff_for(30), Duration::from_millis(350));
 }
 
+#[cfg_attr(target_os = "windows", allow(dead_code))]
 #[derive(Debug, Clone)]
 enum Seen {
     Status(WatchState, Option<String>),
@@ -269,6 +270,7 @@ impl TestHost {
         })
     }
 
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     fn statuses(&self) -> Vec<WatchState> {
         self.seen
             .lock()
@@ -281,6 +283,7 @@ impl TestHost {
             .collect()
     }
 
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     fn results(&self) -> Vec<(u64, bool, Option<u64>)> {
         self.seen
             .lock()
@@ -335,6 +338,7 @@ impl WatchHost for TestHost {
     }
 }
 
+#[cfg_attr(target_os = "windows", allow(dead_code))]
 fn fast_config() -> WatchConfig {
     WatchConfig {
         quiet: Duration::from_millis(40),
