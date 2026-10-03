@@ -202,13 +202,13 @@ export function extractTypstKeywords(text: string, maxTerms: number = DEFAULT_MA
   cleaned = cleaned.replace(CALL_HEAD, " ");
   cleaned = cleaned.replace(/<[\p{L}\p{N}_:.-]+>/gu, " ");
   cleaned = cleaned.replace(/(^|[^\p{L}\p{N}])@[\p{L}\p{N}_:.-]*[\p{L}\p{N}_-]/gu, "$1 ");
-  cleaned = cleaned.replaceAll(/^[^\S\n\r\u2028\u2029]*(?:=+|[-+]|\/)\s+/gm, " ");
+  cleaned = cleaned.replaceAll(/^[\t\v\f \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]*(?:=+|[-+]|\/)\s+/gm, " ");
   cleaned = cleaned.replace(/[*_[\]#\\]/g, "");
   cleaned = cleaned.replaceAll("~", " ");
   return keywordQuery(dropSpaceBeforePunctuation(cleaned), maxTerms);
 }
 
-const TYPST_SIGNAL = /^[^\S\n\r\u2028\u2029]*(?:#(?:set|show|import|let|include)\b|=+\s+\S)/m;
+const TYPST_SIGNAL = /^[\t\v\f \u00a0\u1680\u2000-\u200a\u202f\u205f\u3000\ufeff]*(?:#(?:set|show|import|let|include)\b|=+\s+\S)/m;
 const LATEX_SIGNAL = /\\(?:section|subsection|begin|documentclass|cite[tp]?|usepackage)\b/;
 
 export function detectScanFormat(path: string | null | undefined, text: string): ScanFormat {

@@ -427,8 +427,10 @@ describe("buildMarkdownInsights edge cases", () => {
       `x${" ".repeat(20000)}{y}z`,
       `key${" ".repeat(20000)}value`,
     ].join("\n");
-    insightsFor(`---\ntitle: "${"[x".repeat(5000)}"\n${"k ".repeat(10000)}\n---\n${text}\n`, {
+    const insights = insightsFor(`---\ntitle: "${"[x".repeat(5000)}"\n${"k ".repeat(10000)}\n---\n${text}\n`, {
       "refs.yaml": `${"\n".repeat(5000)}${" ".repeat(5000)}x`,
     });
+    expect(insights.metadata.title).toBe("[x".repeat(5000));
+    expect(insights.citations).toEqual([]);
   });
 });

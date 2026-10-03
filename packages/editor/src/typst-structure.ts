@@ -71,7 +71,7 @@ const SILENT_MARKUP = new Set([
 ]);
 
 function decodeTypstEscape(text: string): string {
-  if (/^\\u\{/u.test(text)) {
+  if (text.startsWith("\\") && text.startsWith("u{", 1)) {
     const value = Number.parseInt(text.slice(3, -1), 16);
     return Number.isFinite(value) && value <= 0x10ffff ? String.fromCodePoint(value) : "";
   }

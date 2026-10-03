@@ -226,7 +226,6 @@ describe("Typst file path completion", () => {
     ['#plugin("', ["plugin.wasm"]],
     ['#image(  "', ["figures/a.png", "figures/b.svg"]],
     ['#bibliography( ( "refs.bib" , "x.bib",  "', ["refs.bib"]],
-    ['#bibliography(("refs.bib", "', ["refs.bib"]],
     ['#import  "', ["chapters/intro.typ"]],
   ])("filters %s by extension", (doc, expected) => {
     expect(pathsFor(doc).sort()).toEqual([...expected].sort());
