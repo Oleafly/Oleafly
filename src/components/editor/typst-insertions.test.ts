@@ -199,6 +199,22 @@ describe("typst labels", () => {
     expect(plan).toEqual({ kind: "insert", at: 14, insert: " <sec:related-work>", from: 2, to: 18 });
   });
 
+  it.each([
+    ["  ==\t-- Wörk, Plan! --\t \nBody", 5, " <sec:work-plan>"],
+    ["= ---\nBody", 3, " <sec:label>"],
+    ["=   \nBody", 1, " <sec:label>"],
+  ])("trims spaces and hyphens around the heading title in %j", (text, pos, insert) => {
+    expect(typstLabelPlan(text, pos, markup)).toMatchObject({ kind: "insert", insert });
+  });
+
+  it.each([
+    ["= Title\r\nBody", 3],
+    ["=Title\nBody", 3],
+    ["x = Title\nBody", 5],
+  ])("does not treat %j as a heading", (text, pos) => {
+    expect(typstLabelPlan(text, pos, markup)).toMatchObject({ kind: "insert", at: pos, insert: "<label>" });
+  });
+
   it("selects a label the heading already has", () => {
     const text = "== Method <sec:method>  \nBody";
     const plan = typstLabelPlan(text, 3, markup);

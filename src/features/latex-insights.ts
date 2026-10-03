@@ -255,10 +255,50 @@ const LAYOUT_ARGUMENTS: Readonly<Record<string, number>> = {
   rule: 2,
 };
 const AUTHOR_SEPARATOR = /\\(?:and|And|AND|quad|qquad|hfill)(?![A-Za-z@])|\\hspace\*?\s*\{[^{}]*\}/gu;
-const DECLARATIVES =
-  /\\(?:bfseries|itshape|slshape|scshape|upshape|mdseries|rmfamily|sffamily|ttfamily|normalfont|tiny|scriptsize|footnotesize|small|normalsize|large|Large|LARGE|huge|Huge|centering|raggedright|raggedleft|noindent|indent|par|maketitle|selectfont|newline|linebreak|smallskip|medskip|bigskip|hfill|vfill|quad|qquad|nonumber|notag)(?![A-Za-z@])/gu;
+const DECLARATIVES = new Set([
+  "bfseries",
+  "itshape",
+  "slshape",
+  "scshape",
+  "upshape",
+  "mdseries",
+  "rmfamily",
+  "sffamily",
+  "ttfamily",
+  "normalfont",
+  "tiny",
+  "scriptsize",
+  "footnotesize",
+  "small",
+  "normalsize",
+  "large",
+  "Large",
+  "LARGE",
+  "huge",
+  "Huge",
+  "centering",
+  "raggedright",
+  "raggedleft",
+  "noindent",
+  "indent",
+  "par",
+  "maketitle",
+  "selectfont",
+  "newline",
+  "linebreak",
+  "smallskip",
+  "medskip",
+  "bigskip",
+  "hfill",
+  "vfill",
+  "quad",
+  "qquad",
+  "nonumber",
+  "notag",
+]);
+const COMMAND_WORD = /\\([A-Za-z@]+)/gu;
 const MATH_SEGMENT = /(\$\$[\s\S]*?\$\$|\$(?:\\.|[^$\\])+\$|\\\([\s\S]*?\\\))/u;
-const KEYWORD_SEPARATOR = /\s*(?:,|;|\\and(?![A-Za-z@])|\\sep(?![A-Za-z@])|\\textbullet(?![A-Za-z@])|·)\s*/u;
+const KEYWORD_SEPARATOR = /,|;|\\and(?![A-Za-z@])|\\sep(?![A-Za-z@])|\\textbullet(?![A-Za-z@])|·/gu;
 
 function blank(text: string): string {
   return text.replaceAll(/[^\n]/gu, " ");
@@ -308,32 +348,45 @@ function matchBrace(text: string, open: number): number {
   return -1;
 }
 
+function isSpace(character: string | undefined): boolean {
+  return character !== undefined && /\s/u.test(character);
+}
+
 function skipSpace(text: string, index: number): number {
   let cursor = index;
   while (cursor < text.length && /\s/u.test(text[cursor])) cursor += 1;
   return cursor;
 }
 
+function trimTrailing(text: string, characters: string): string {
+  let end = text.length;
+  while (end > 0 && characters.includes(text[end - 1])) end -= 1;
+  return text.slice(0, end);
+}
+
+function optionalEnd(text: string, open: number): number {
+  let depth = 0;
+  let scan = open;
+  while (scan < text.length) {
+    const char = text[scan];
+    if (char === "\\") {
+      scan += 2;
+      continue;
+    }
+    if (char === "{" || char === "[") depth += 1;
+    else if (char === "}" || char === "]") {
+      depth -= 1;
+      if (depth === 0 && char === "]") return scan;
+    }
+    scan += 1;
+  }
+  return -1;
+}
+
 function skipOptional(text: string, index: number): number {
   let cursor = skipSpace(text, index);
   while (text[cursor] === "[") {
-    let depth = 0;
-    let end = -1;
-    for (let scan = cursor; scan < text.length; scan += 1) {
-      const char = text[scan];
-      if (char === "\\") {
-        scan += 1;
-        continue;
-      }
-      if (char === "{" || char === "[") depth += 1;
-      else if (char === "}" || char === "]") {
-        depth -= 1;
-        if (depth === 0 && char === "]") {
-          end = scan;
-          break;
-        }
-      }
-    }
+    const end = optionalEnd(text, cursor);
     if (end < 0) return cursor;
     cursor = skipSpace(text, end + 1);
   }
@@ -499,8 +552,12 @@ function dropCommands(source: string): string {
   return result + source.slice(index);
 }
 
+function dropDeclaratives(segment: string): string {
+  return segment.replaceAll(COMMAND_WORD, (whole: string, name: string) => (DECLARATIVES.has(name) ? " " : whole));
+}
+
 function plainSegment(segment: string, macros: Macros): string {
-  const text = renderLatexOutlineTitle(segment.replace(DECLARATIVES, " "), macros)
+  const text = renderLatexOutlineTitle(dropDeclaratives(segment), macros)
     .replaceAll(/\\[A-Za-z@]+\*?/gu, "")
     .replaceAll(/[{}]/gu, "");
   return `${/^\s/u.test(segment) ? " " : ""}${text}${/\s$/u.test(segment) ? " " : ""}`;
@@ -633,12 +690,19 @@ function equationText(body: string): string {
     .trim();
 }
 
-function equationEvents(file: ScannedFile, inBody: (offset: number) => boolean, labels: readonly LabelEvent[]): EquationEvent[] {
+function isEquationRange(range: EnvRange): boolean {
+  return EQUATION_ENVS.has(baseName(range.name)) && baseName(range.name) !== "subequations";
+}
+
+function environmentEquationEvents(
+  file: ScannedFile,
+  inBody: (offset: number) => boolean,
+  labels: readonly LabelEvent[],
+  equations: readonly EnvRange[],
+): EquationEvent[] {
   const events: EquationEvent[] = [];
-  const isEquation = (range: EnvRange) => EQUATION_ENVS.has(baseName(range.name)) && baseName(range.name) !== "subequations";
-  const equations = file.envs.filter(isEquation);
   for (const range of equations) {
-    if (!inBody(range.from) || hasAncestor(range, isEquation)) continue;
+    if (!inBody(range.from) || hasAncestor(range, isEquationRange)) continue;
     let body = file.masked.slice(range.bodyFrom, range.bodyTo);
     if (baseName(range.name) === "alignat") body = body.replace(/^\s*\{[^{}]*\}/u, "");
     const base = baseName(range.name);
@@ -650,6 +714,11 @@ function equationEvents(file: ScannedFile, inBody: (offset: number) => boolean, 
       numbered: !range.name.endsWith("*") && base !== "displaymath",
     });
   }
+  return events;
+}
+
+function bracketEquationEvents(file: ScannedFile, inBody: (offset: number) => boolean, equations: readonly EnvRange[]): EquationEvent[] {
+  const events: EquationEvent[] = [];
   const { masked } = file;
   for (const match of masked.matchAll(/\\\[/gu)) {
     if (escaped(masked, match.index) || !inBody(match.index) || insideRange(equations, match.index)) continue;
@@ -658,6 +727,12 @@ function equationEvents(file: ScannedFile, inBody: (offset: number) => boolean, 
     if (close < 0) continue;
     events.push({ type: "equation", at: match.index, text: equationText(masked.slice(match.index + 2, close)), label: null, numbered: false });
   }
+  return events;
+}
+
+function dollarEquationEvents(file: ScannedFile, inBody: (offset: number) => boolean): EquationEvent[] {
+  const events: EquationEvent[] = [];
+  const { masked } = file;
   const dollars = [...masked.matchAll(/\$\$/gu)].filter((match) => !escaped(masked, match.index));
   for (let index = 0; index + 1 < dollars.length; index += 2) {
     const open = dollars[index].index;
@@ -667,33 +742,53 @@ function equationEvents(file: ScannedFile, inBody: (offset: number) => boolean, 
   return events;
 }
 
+function equationEvents(file: ScannedFile, inBody: (offset: number) => boolean, labels: readonly LabelEvent[]): EquationEvent[] {
+  const equations = file.envs.filter(isEquationRange);
+  return [
+    ...environmentEquationEvents(file, inBody, labels, equations),
+    ...bracketEquationEvents(file, inBody, equations),
+    ...dollarEquationEvents(file, inBody),
+  ];
+}
+
+function skipCiteNotes(masked: string, from: number): number {
+  let cursor = from;
+  for (let notes = 0; notes < 2; notes += 1) {
+    const at = skipSpace(masked, cursor);
+    if (masked[at] !== "(") break;
+    const close = masked.indexOf(")", at);
+    if (close < 0) break;
+    cursor = close + 1;
+  }
+  return cursor;
+}
+
+function pushCiteKeys(content: string, keys: string[]): void {
+  for (const key of content.split(",")) {
+    const trimmed = key.trim();
+    if (trimmed && trimmed !== "*" && !trimmed.includes("#")) keys.push(trimmed);
+  }
+}
+
+function citeKeys(masked: string, from: number, multi: boolean): string[] {
+  const keys: string[] = [];
+  let argument = commandArgument(masked, from);
+  while (argument) {
+    pushCiteKeys(argument.content, keys);
+    if (!multi) break;
+    argument = commandArgument(masked, argument.end);
+  }
+  return keys;
+}
+
 function citeEvents(file: ScannedFile, inBody: (offset: number) => boolean): CiteEvent[] {
   const events: CiteEvent[] = [];
   const { masked } = file;
   for (const match of masked.matchAll(CITE_COMMAND)) {
     if (!inBody(match.index)) continue;
     const multi = MULTI_CITE.has(match[1]);
-    let cursor = match.index + match[0].length;
-    if (multi) {
-      for (let notes = 0; notes < 2; notes += 1) {
-        const at = skipSpace(masked, cursor);
-        if (masked[at] !== "(") break;
-        const close = masked.indexOf(")", at);
-        if (close < 0) break;
-        cursor = close + 1;
-      }
-    }
-    const keys: string[] = [];
-    for (;;) {
-      const argument = commandArgument(masked, cursor);
-      if (!argument) break;
-      for (const key of argument.content.split(",")) {
-        const trimmed = key.trim();
-        if (trimmed && trimmed !== "*" && !trimmed.includes("#")) keys.push(trimmed);
-      }
-      cursor = argument.end;
-      if (!multi) break;
-    }
+    const after = match.index + match[0].length;
+    const keys = citeKeys(masked, multi ? skipCiteNotes(masked, after) : after, multi);
     if (keys.length > 0) events.push({ type: "cite", at: match.index, keys });
   }
   return events;
@@ -745,7 +840,7 @@ function theoremNames(texts: Readonly<Record<string, string>>): Set<string> {
   const names = new Set(DEFAULT_THEOREMS);
   for (const [path, text] of Object.entries(texts)) {
     if (!/\.(?:tex|ltx|latex|sty|cls)$/iu.test(path)) continue;
-    for (const match of text.matchAll(/\\(?:newtheorem\*?|declaretheorem(?:\s*\[[^\]]*\])?|newmdtheoremenv|newtcbtheorem(?:\s*\[[^\]]*\])?)\s*\{([^{}]+)\}/gu)) {
+    for (const match of text.matchAll(/\\(?:newtheorem\*?|newmdtheoremenv|(?:declaretheorem|newtcbtheorem)(?:\s*\[[^\]]*\])?)\s*\{([^{}]+)\}/gu)) {
       names.add(match[1].trim());
     }
   }
@@ -855,13 +950,47 @@ function environmentBody(masked: string, names: readonly string[]): string | nul
   return null;
 }
 
+function andWordEnd(text: string, at: number): number {
+  return text.startsWith("and", at) && isSpace(text[at + 3]) ? skipSpace(text, at + 3) : -1;
+}
+
+function nameSeparatorEnd(text: string, from: number): number {
+  const at = skipSpace(text, from);
+  if (text[at] === ",") {
+    const after = skipSpace(text, at + 1);
+    const and = andWordEnd(text, after);
+    return and < 0 ? after : and;
+  }
+  const and = at > from ? andWordEnd(text, at) : -1;
+  if (and >= 0) return and;
+  return text[at] === ";" ? skipSpace(text, at + 1) : -1;
+}
+
+function splitNames(text: string): string[] {
+  const names: string[] = [];
+  let start = 0;
+  let index = 0;
+  while (index < text.length) {
+    const end = nameSeparatorEnd(text, index);
+    if (end >= 0) {
+      names.push(text.slice(start, index));
+      start = end;
+      index = end;
+    } else {
+      index = Math.max(index + 1, skipSpace(text, index));
+    }
+  }
+  names.push(text.slice(start));
+  return names;
+}
+
 function authorNames(block: string, macros: Macros): string[] {
   const blockNames = allArguments(block, /\\IEEEauthorblockN(?![A-Za-z@])/gu);
   const parts = blockNames.length > 0 ? blockNames : block.split(AUTHOR_SEPARATOR);
   const names: string[] = [];
   for (const part of parts) {
     const firstLine = dropCommands(part).split(/\\\\/u)[0];
-    for (const name of latexPlainText(firstLine, macros).split(/\s*,\s*(?:and\s+)?|\s+and\s+|\s*;\s*/u)) {
+    for (const name of splitNames(latexPlainText(firstLine, macros))) {
       const trimmed = name.trim();
       if (trimmed) names.push(trimmed);
     }
@@ -869,11 +998,46 @@ function authorNames(block: string, macros: Macros): string[] {
   return names;
 }
 
+function splitKeywordSource(source: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  for (const match of source.matchAll(KEYWORD_SEPARATOR)) {
+    let from = match.index;
+    while (from > start && isSpace(source[from - 1])) from -= 1;
+    parts.push(source.slice(start, from));
+    start = skipSpace(source, match.index + match[0].length);
+  }
+  parts.push(source.slice(start));
+  return parts;
+}
+
 function splitKeywords(source: string, macros: Macros): string[] {
-  return source
-    .split(KEYWORD_SEPARATOR)
-    .map((keyword) => latexPlainText(keyword, macros).replace(/[.;,]+$/u, "").trim())
+  return splitKeywordSource(source)
+    .map((keyword) => trimTrailing(latexPlainText(keyword, macros), ".;,").trim())
     .filter(Boolean);
+}
+
+function endsKeywordLine(front: string, index: number): boolean {
+  const char = front[index];
+  if (char === "\\") return front[index + 1] === "\\" || /^\\(?:par|end)(?![A-Za-z@])/u.test(front.slice(index));
+  return char === "\n" && /^\n\s*\n/u.test(front.slice(index));
+}
+
+function keywordLineEnd(front: string, start: number): number {
+  let depth = 0;
+  let index = start;
+  while (index < front.length) {
+    if (endsKeywordLine(front, index)) return index;
+    const char = front[index];
+    if (char === "\\") index += 1;
+    else if (char === "{") depth += 1;
+    else if (char === "}") {
+      if (depth === 0) return index;
+      depth -= 1;
+    }
+    index += 1;
+  }
+  return index;
 }
 
 function keywordLine(main: ScannedFile): string | null {
@@ -883,22 +1047,7 @@ function keywordLine(main: ScannedFile): string | null {
   const marker = /(?:Index\s+Terms|Keywords|Key\s+words)\s*[:.—-]?\s*\}?\s*[:.—-]?/u.exec(front);
   if (!marker) return null;
   const start = marker.index + marker[0].length;
-  let depth = 0;
-  let index = start;
-  for (; index < front.length; index += 1) {
-    const char = front[index];
-    if (char === "\\") {
-      if (front[index + 1] === "\\" || /^\\(?:par|end)(?![A-Za-z@])/u.test(front.slice(index))) break;
-      index += 1;
-      continue;
-    }
-    if (char === "{") depth += 1;
-    else if (char === "}") {
-      if (depth === 0) break;
-      depth -= 1;
-    } else if (char === "\n" && /^\n\s*\n/u.test(front.slice(index))) break;
-  }
-  return front.slice(start, index);
+  return front.slice(start, keywordLineEnd(front, start));
 }
 
 function readKeywords(files: readonly ScannedFile[], main: ScannedFile, macros: Macros): string[] {

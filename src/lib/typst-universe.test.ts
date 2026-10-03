@@ -176,6 +176,24 @@ describe("previewImports", () => {
     ]);
   });
 
+  it("reads escapes, stops strings at a line end and skips unclosed comments", () => {
+    const tricky = [
+      '#import "@preview/\\cetz:0.4.2"',
+      '#let s = "open string // not a comment',
+      '#import "@preview/after:1.0.0"',
+      '#let q = "a\\"b" + "@preview/quoted:2.0.0"',
+      '#let path = "a/b" // "@preview/commented:1.0.0"',
+      '/* "@preview/unclosed:1.0.0"',
+    ].join("\n");
+    const found = previewImports(tricky);
+    expect(found.map((entry) => [entry.name, entry.version])).toEqual([
+      ["cetz", "0.4.2"],
+      ["after", "1.0.0"],
+      ["quoted", "2.0.0"],
+    ]);
+    expect(found.slice(1).map((entry) => tricky.slice(entry.from, entry.to))).toEqual(["1.0.0", "2.0.0"]);
+  });
+
   it("reports only imports older than the newest release", () => {
     const latest = new Map([
       ["cetz", "0.5.2"],

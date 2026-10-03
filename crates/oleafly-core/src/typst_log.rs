@@ -286,110 +286,183 @@ fn apply_caret(span: &mut TypstSpan, markers: &str, multiline: &mut bool) {
     }
 }
 
-pub fn parse_typst_diagnostics(log: &str) -> Vec<TypstDiagnostic> {
-    let mut diagnostics: Vec<TypstDiagnostic> = Vec::new();
-    let mut block = Block::None;
-    let mut multiline = false;
-    let mut hint_indent: Option<usize> = None;
-    for raw in log.lines() {
+fn new_diagnostic(
+    severity: TypstSeverity,
+    message: &str,
+    span: Option<TypstSpan>,
+) -> TypstDiagnostic {
+    TypstDiagnostic {
+        severity,
+        message: message.trim().to_owned(),
+        span,
+        hints: Vec::new(),
+        trace: Vec::new(),
+    }
+}
+
+fn help_line(
+    current: &mut TypstDiagnostic,
+    trimmed: &str,
+    located: bool,
+    multiline: &mut bool,
+) -> bool {
+    if let Some(location) = locus(trimmed) {
+        if located {
+            return false;
+        }
+        let Some(point) = parse_typst_location(location) else {
+            return false;
+        };
+        current.trace.push(point);
+        return true;
+    }
+    if let Some(markers) = gutter(trimmed) {
+        if let (true, Some(point)) = (located, current.trace.last_mut()) {
+            apply_caret(point, markers, multiline);
+        }
+    }
+    false
+}
+
+fn diagnostic_detail(current: &mut TypstDiagnostic, trimmed: &str, multiline: &mut bool) {
+    if let Some(location) = locus(trimmed) {
+        if current.span.is_none() {
+            current.span = parse_typst_location(location);
+        }
+    } else if let Some(markers) = gutter(trimmed) {
+        if let Some(span) = current.span.as_mut() {
+            apply_caret(span, markers, multiline);
+        }
+    } else if !source_line(trimmed) {
+        if let Some(point) = trace_point(trimmed) {
+            current.trace.push(point);
+        }
+    }
+}
+
+fn diagnostic_line(
+    current: &mut TypstDiagnostic,
+    trimmed: &str,
+    indent: usize,
+    hint_indent: Option<usize>,
+    multiline: &mut bool,
+) -> Option<usize> {
+    if hint_indent.is_some_and(|start| indent > start) {
+        if let Some(hint) = current.hints.last_mut() {
+            hint.push('\n');
+            hint.push_str(trimmed.trim_end());
+        }
+        return hint_indent;
+    }
+    if let Some(hint) = trimmed.strip_prefix("= hint:") {
+        current.hints.push(hint.trim().to_owned());
+        return Some(indent);
+    }
+    diagnostic_detail(current, trimmed, multiline);
+    None
+}
+
+struct DiagnosticParser {
+    diagnostics: Vec<TypstDiagnostic>,
+    block: Block,
+    multiline: bool,
+    hint_indent: Option<usize>,
+}
+
+impl DiagnosticParser {
+    const fn new() -> Self {
+        Self {
+            diagnostics: Vec::new(),
+            block: Block::None,
+            multiline: false,
+            hint_indent: None,
+        }
+    }
+
+    fn line(&mut self, raw: &str) {
         let line = raw.trim_end_matches('\r');
         let trimmed = line.trim_start();
         let indent = line.len() - trimmed.len();
-        if trimmed.trim_end().is_empty() {
-            hint_indent = None;
-            continue;
+        if trimmed.trim_end().is_empty() || (indent == 0 && source_line(trimmed)) {
+            self.hint_indent = None;
+        } else if indent == 0 {
+            self.top_level_line(line);
+        } else {
+            self.indented_line(trimmed, indent);
         }
-        if indent == 0 && source_line(trimmed) {
-            hint_indent = None;
-            continue;
+    }
+
+    fn top_level_line(&mut self, line: &str) {
+        self.hint_indent = None;
+        self.multiline = false;
+        if let Some((severity, message)) = header(line) {
+            self.block = self.open_block(severity, message);
+            return;
         }
-        if indent == 0 {
-            hint_indent = None;
-            multiline = false;
-            if let Some((severity, message)) = header(line) {
-                block = match severity {
-                    Some(severity) => {
-                        diagnostics.push(TypstDiagnostic {
-                            severity,
-                            message: message.trim().to_owned(),
-                            span: None,
-                            hints: Vec::new(),
-                            trace: Vec::new(),
-                        });
-                        Block::Diagnostic
-                    }
-                    None if diagnostics.is_empty() => Block::None,
-                    None => Block::Help { located: false },
-                };
-                continue;
-            }
-            block = Block::None;
-            if let Some((severity, span, message)) = short_line(line) {
-                match severity {
-                    Some(severity) => diagnostics.push(TypstDiagnostic {
-                        severity,
-                        message: message.trim().to_owned(),
-                        span: Some(span),
-                        hints: Vec::new(),
-                        trace: Vec::new(),
-                    }),
-                    None => {
-                        if let Some(last) = diagnostics.last_mut() {
-                            last.trace.push(span);
-                        }
-                    }
-                }
-            }
-            continue;
+        self.block = Block::None;
+        if let Some((severity, span, message)) = short_line(line) {
+            self.short_diagnostic(severity, span, message);
         }
-        let Some(current) = diagnostics.last_mut() else {
-            continue;
-        };
-        match block {
-            Block::None => {}
-            Block::Help { located } => {
-                if let Some(location) = locus(trimmed) {
-                    if !located {
-                        if let Some(point) = parse_typst_location(location) {
-                            current.trace.push(point);
-                            block = Block::Help { located: true };
-                        }
-                    }
-                } else if let Some(markers) = gutter(trimmed) {
-                    if let (true, Some(point)) = (located, current.trace.last_mut()) {
-                        apply_caret(point, markers, &mut multiline);
-                    }
-                }
+    }
+
+    fn open_block(&mut self, severity: Option<TypstSeverity>, message: &str) -> Block {
+        match severity {
+            Some(severity) => {
+                self.diagnostics
+                    .push(new_diagnostic(severity, message, None));
+                Block::Diagnostic
             }
-            Block::Diagnostic => {
-                if hint_indent.is_some_and(|start| indent > start) {
-                    if let Some(hint) = current.hints.last_mut() {
-                        hint.push('\n');
-                        hint.push_str(trimmed.trim_end());
-                    }
-                    continue;
-                }
-                if let Some(hint) = trimmed.strip_prefix("= hint:") {
-                    current.hints.push(hint.trim().to_owned());
-                    hint_indent = Some(indent);
-                    continue;
-                }
-                hint_indent = None;
-                if let Some(location) = locus(trimmed) {
-                    if current.span.is_none() {
-                        current.span = parse_typst_location(location);
-                    }
-                } else if let Some(markers) = gutter(trimmed) {
-                    if let Some(span) = current.span.as_mut() {
-                        apply_caret(span, markers, &mut multiline);
-                    }
-                } else if !source_line(trimmed) {
-                    if let Some(point) = trace_point(trimmed) {
-                        current.trace.push(point);
-                    }
+            None if self.diagnostics.is_empty() => Block::None,
+            None => Block::Help { located: false },
+        }
+    }
+
+    fn short_diagnostic(
+        &mut self,
+        severity: Option<TypstSeverity>,
+        span: TypstSpan,
+        message: &str,
+    ) {
+        match severity {
+            Some(severity) => self
+                .diagnostics
+                .push(new_diagnostic(severity, message, Some(span))),
+            None => {
+                if let Some(last) = self.diagnostics.last_mut() {
+                    last.trace.push(span);
                 }
             }
         }
     }
-    diagnostics
+
+    fn indented_line(&mut self, trimmed: &str, indent: usize) {
+        let Some(current) = self.diagnostics.last_mut() else {
+            return;
+        };
+        match self.block {
+            Block::None => {}
+            Block::Help { located } => {
+                if help_line(current, trimmed, located, &mut self.multiline) {
+                    self.block = Block::Help { located: true };
+                }
+            }
+            Block::Diagnostic => {
+                self.hint_indent = diagnostic_line(
+                    current,
+                    trimmed,
+                    indent,
+                    self.hint_indent,
+                    &mut self.multiline,
+                );
+            }
+        }
+    }
+}
+
+pub fn parse_typst_diagnostics(log: &str) -> Vec<TypstDiagnostic> {
+    let mut parser = DiagnosticParser::new();
+    for raw in log.lines() {
+        parser.line(raw);
+    }
+    parser.diagnostics
 }

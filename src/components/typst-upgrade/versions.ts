@@ -29,7 +29,7 @@ export function newerInstalledTypstVersions(
   return status.versions
     .filter((entry) => entry.sources.length > 0 && compareTypstVersions(entry.version, current) > 0)
     .map((entry) => entry.version)
-    .sort((left, right) => compareTypstVersions(right, left));
+    .sort((first, second) => compareTypstVersions(second, first));
 }
 
 export function projectTypstVersion(

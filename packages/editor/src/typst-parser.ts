@@ -77,7 +77,7 @@ class TypstParse implements PartialParse {
     ranges: readonly { from: number; to: number }[],
   ) {
     this.from = ranges[0].from;
-    this.to = ranges[ranges.length - 1].to;
+    this.to = (ranges.at(-1) as { from: number; to: number }).to;
     this.core = new TypstParserCore(input.read(0, this.to), this.from, this.to);
     this.parsedPos = this.from;
     this.chunkStart = this.from;
@@ -92,15 +92,18 @@ class TypstParse implements PartialParse {
       if (boundary >= 0) {
         if (this.stoppedAt !== null && boundary >= this.stoppedAt) return this.finish(boundary);
         if (this.reuse(boundary)) continue;
-        if (boundary - this.chunkStart >= MIN_CHUNK) this.closeChunk(boundary);
-        if (boundary >= budget) {
-          this.parsedPos = boundary;
-          return null;
-        }
+        if (this.pauseAt(boundary, budget)) return null;
       }
       this.started = true;
       core.topLevelStep();
     }
+  }
+
+  private pauseAt(boundary: number, budget: number): boolean {
+    if (boundary - this.chunkStart >= MIN_CHUNK) this.closeChunk(boundary);
+    if (boundary < budget) return false;
+    this.parsedPos = boundary;
+    return true;
   }
 
   stopAt(pos: number): void {
@@ -116,7 +119,7 @@ class TypstParse implements PartialParse {
   private lineStart(pos: number): number {
     const text = this.core.text;
     let cursor = pos;
-    while (cursor > this.from && !isNewline(text.charCodeAt(cursor - 1))) cursor -= 1;
+    while (cursor > this.from && !isNewline(text.codePointAt(cursor - 1) as number)) cursor -= 1;
     return cursor;
   }
 

@@ -1,6 +1,7 @@
 import { message } from "./messages";
 import { bibliographyQuality, duplicateDoiFindings, projectLabelQuality, type RefsContext } from "./refs-rules";
 import {
+  type TypstNameUse,
   type TypstPathReference,
   typstAtReferences,
   typstCiteCalls,
@@ -78,7 +79,20 @@ interface ReferenceTally {
   citations: number;
 }
 
-function referenceFindings(
+function undefinedRefFinding(use: TypstNameUse, packages: boolean): Finding {
+  return {
+    id: "refs-undefined-ref",
+    lens: "refs",
+    severity: packages ? "warning" : "error",
+    title: message("rules.refs-undefined-ref.titleTypst", { label: use.name }),
+    detail: message(packages ? "rules.refs-undefined-ref.detailTypstPackage" : "rules.refs-undefined-ref.detailTypst"),
+    from: use.from,
+    to: use.to,
+    ...(packages ? { certainty: "advisory" as const } : {}),
+  };
+}
+
+function labelReferenceFindings(
   source: ScannedSource,
   labels: ReadonlySet<string>,
   bibKeys: ReadonlySet<string>,
@@ -95,17 +109,18 @@ function referenceFindings(
       continue;
     }
     if (!citationsCheckable(bibliography, bibKeys) && bibliography.declared) continue;
-    out.push({
-      id: "refs-undefined-ref",
-      lens: "refs",
-      severity: packages ? "warning" : "error",
-      title: message("rules.refs-undefined-ref.titleTypst", { label: use.name }),
-      detail: message(packages ? "rules.refs-undefined-ref.detailTypstPackage" : "rules.refs-undefined-ref.detailTypst"),
-      from: use.from,
-      to: use.to,
-      ...(packages ? { certainty: "advisory" as const } : {}),
-    });
+    out.push(undefinedRefFinding(use, packages));
   }
+  return out;
+}
+
+function citeCallFindings(
+  source: ScannedSource,
+  bibKeys: ReadonlySet<string>,
+  bibliography: BibliographyState,
+  tally: ReferenceTally,
+): Finding[] {
+  const out: Finding[] = [];
   for (const use of typstCiteCalls(source.scan)) {
     tally.citations++;
     if (bibKeys.has(use.name)) {
@@ -124,6 +139,18 @@ function referenceFindings(
     });
   }
   return out;
+}
+
+function referenceFindings(
+  source: ScannedSource,
+  labels: ReadonlySet<string>,
+  bibKeys: ReadonlySet<string>,
+  bibliography: BibliographyState,
+  tally: ReferenceTally,
+  packages: boolean,
+): Finding[] {
+  const refs = labelReferenceFindings(source, labels, bibKeys, bibliography, tally, packages);
+  return [...refs, ...citeCallFindings(source, bibKeys, bibliography, tally)];
 }
 
 function duplicateLabelFindings(scan: TypstScan): Finding[] {

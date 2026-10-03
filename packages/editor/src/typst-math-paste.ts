@@ -20,8 +20,8 @@ const LATEX_MATH_ENVIRONMENT =
   /\\begin\{(?:equation|align|gather|multline|eqnarray|displaymath|flalign|alignat)\*?\}/u;
 const LATEX_MATH_DELIMITERS: readonly (readonly [string, string])[] = [
   ["$$", "$$"],
-  ["\\[", "\\]"],
-  ["\\(", "\\)"],
+  [String.raw`\[`, String.raw`\]`],
+  [String.raw`\(`, String.raw`\)`],
 ];
 const DOLLAR_SPAN = /(?<!\\)\$([^$]+)\$/gu;
 const LATEX_SIGNAL = /\\[A-Za-z]{2,}|[\^_]\{/u;
@@ -39,7 +39,7 @@ function loadConverter(): Promise<LatexToTypst> {
 function hasDelimitedLatexMath(text: string): boolean {
   for (const [open, close] of LATEX_MATH_DELIMITERS) {
     const start = text.indexOf(open);
-    if (start >= 0 && text.indexOf(close, start + open.length + 1) >= 0) return true;
+    if (start >= 0 && text.includes(close, start + open.length + 1)) return true;
   }
   return LATEX_MATH_ENVIRONMENT.test(text);
 }
@@ -139,7 +139,7 @@ export async function applyTypstMathPaste(view: EditorView): Promise<boolean> {
 
 function bodyWithSpacing(body: string, converted: string): string {
   const leading = /^\s*/u.exec(body)?.[0] ?? "";
-  const trailing = /\s*$/u.exec(body)?.[0] ?? "";
+  const trailing = body.slice(body.trimEnd().length);
   return `${leading}${converted}${trailing}`;
 }
 

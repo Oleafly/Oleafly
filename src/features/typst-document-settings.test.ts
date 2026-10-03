@@ -45,6 +45,19 @@ describe("readTypstDocumentSettings", () => {
     expect(fields.equationNumbering).toMatchObject({ status: "set", value: "none" });
   });
 
+  it("reads escapes inside string values", async () => {
+    const source = String.raw`#set text(font: "A\nB\tC\rD\u{1F600}\u{zz}E\"F\\G\qH")`;
+    const { fields } = await settingsOf(`${source}\n`);
+    expect(fields.font).toMatchObject({ status: "set", value: 'A\nB\tC\rD\u{1F600}E"F\\GqH' });
+  });
+
+  it("keeps an unterminated or out-of-range unicode escape without hanging", async () => {
+    const open = await settingsOf(`${String.raw`#set text(font: "A\u{41")`}\n`);
+    expect(open.fields.font).toMatchObject({ status: "set", value: String.raw`A\u{41` });
+    const large = await settingsOf(`${String.raw`#set text(font: "A\u{110000}B")`}\n`);
+    expect(large.fields.font).toMatchObject({ status: "set", value: "AB" });
+  });
+
   it("lets the last rule win and reports unset fields", async () => {
     const { fields } = await settingsOf("#set text(size: 10pt)\n#set text(size: 12pt)\nBody\n");
     expect(fields.fontSize).toMatchObject({ status: "set", value: "12pt" });
@@ -133,6 +146,23 @@ describe("typstSettingsEdits", () => {
     expect(await edited(locked, { fontSize: "12pt" })).toBe(locked);
     const expression = '#set page(margin: (x: 1cm))\n';
     expect(await edited(expression, { margin: "2cm" })).toBe(expression);
+  });
+
+  it("writes newlines and tabs in a string as Typst escapes", async () => {
+    const expected = String.raw`#set text(font: "One\tTwo\nThree")`;
+    expect(await edited('#set text(font: "A")\n', { font: "One\tTwo\nThree" })).toBe(`${expected}\n`);
+  });
+
+  it("removes and updates arguments in the same pass and keeps edits in source order", async () => {
+    const text = '#set page(paper: "a4", columns: 2)\n#set text(size: 11pt)\n#set heading(numbering: "1.")\n';
+    expect(await edited(text, { paper: null, columns: "3", fontSize: "11pt", lang: "fr", justify: "true", headingNumbering: "" })).toBe(
+      '#set par(justify: true)\n#set page(columns: 3)\n#set text(size: 11pt, lang: "fr")\n#set heading()\n',
+    );
+  });
+
+  it("only extends the last editable rule for an element", async () => {
+    const text = "#set text(size: 9pt)\n#set text(size: 10pt) if draft\n";
+    expect(await edited(text, { lang: "de" })).toBe('#set text(size: 9pt, lang: "de")\n#set text(size: 10pt) if draft\n');
   });
 
   it("leaves the document alone when nothing changed or a value is invalid", async () => {

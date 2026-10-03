@@ -241,7 +241,7 @@ pub(crate) fn final_destinations(dest: &Path, produced: &[PathBuf]) -> Vec<PathB
         .map(|page| {
             let number = page
                 .file_stem()
-                .and_then(|stem| stem.to_str())
+                .and_then(std::ffi::OsStr::to_str)
                 .and_then(|stem| stem.strip_prefix(&format!("{STAGED_STEM}-")))
                 .unwrap_or("0");
             let name = match &extension {
@@ -426,9 +426,7 @@ pub async fn export_typst_document(
         ));
     }
     let worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-    let root = crate::project_location::locate(&project_id)
-        .map_err(String::from)?
-        .root;
+    let root = crate::project_location::locate(&project_id)?.root;
     crate::project::require_export_destination_outside_project(&root, &dest)?;
     let project = resolve_project_async(&project_id, &main_doc, &root, request.variant.clone())
         .await?

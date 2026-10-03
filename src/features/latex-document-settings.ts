@@ -1,11 +1,12 @@
 import { maskComments } from "@/lib/index/parse-file";
 import {
   composeSettingSteps,
+  type DocumentSettingChanges,
+  type DocumentSettingsEdit,
+  type DocumentSettingState,
+  lastWhere,
   lineEndOf,
   removeRange,
-  type DocumentSettingChanges,
-  type DocumentSettingState,
-  type DocumentSettingsEdit,
   type SettingsStep,
 } from "./document-settings";
 
@@ -160,9 +161,11 @@ const CLASS_LOCKS: Record<string, readonly LatexSettingKey[]> = {
   ctexbook: ["lang"],
 };
 
-const STYLE_LOCKS: readonly LatexSettingKey[] = ["paper", "margin"];
-const LAYOUT_STYLE =
-  /^(?:neurips|nips|icml|iclr|cvpr|iccv|eccv|wacv|aaai|acl|naacl|emnlp|coling|ijcai|colm|tmlr|jmlr|corl|aistats|uai|interspeech|fullpage|a4wide)/iu;
+const STYLE_LOCKS: ReadonlySet<LatexSettingKey> = new Set<LatexSettingKey>(["paper", "margin"]);
+const LAYOUT_STYLES: readonly RegExp[] = [
+  /^(?:neurips|nips|icml|iclr|cvpr|iccv|eccv|wacv|aaai|acl|naacl|emnlp)/iu,
+  /^(?:coling|ijcai|colm|tmlr|jmlr|corl|aistats|uai|interspeech|fullpage|a4wide)/iu,
+];
 
 const PAPER_FLAG = /^(?:a[0-6]|b[0-6]|c[0-6]|letter|legal|executive)paper$/u;
 const FONT_SIZE = /^\d{1,2}(?:\.\d+)?pt$/u;
@@ -389,60 +392,79 @@ function startsConditional(masked: string, name: string, nameEnd: number): boole
   return masked[skipSpace(masked, nameEnd)] !== "{";
 }
 
+class PreambleScanner {
+  private readonly commands: Command[] = [];
+  private depth = 0;
+  private conditionals = 0;
+  private skip = 0;
+
+  constructor(
+    private readonly masked: string,
+    private readonly end: number,
+  ) {}
+
+  scan(): Command[] {
+    let index = 0;
+    while (index < this.end) index = this.step(index);
+    return this.commands;
+  }
+
+  private step(index: number): number {
+    const character = this.masked[index];
+    if (character === "{") this.depth += 1;
+    else if (character === "}") this.depth = Math.max(0, this.depth - 1);
+    else if (character === "\\") return this.control(index);
+    return index + 1;
+  }
+
+  private control(index: number): number {
+    let nameEnd = index + 1;
+    while (nameEnd < this.end && isLetter(this.masked[nameEnd])) nameEnd += 1;
+    if (nameEnd === index + 1) {
+      if (this.skip > 0) this.skip -= 1;
+      return index + 2;
+    }
+    const name = this.masked.slice(index + 1, nameEnd);
+    if (this.skipped(name) || this.depth > 0 || this.tracksConditional(name, nameEnd)) return nameEnd;
+    return this.command(index, name, nameEnd);
+  }
+
+  private skipped(name: string): boolean {
+    if (this.skip > 0) {
+      this.skip -= 1;
+      return true;
+    }
+    const skipCount = own(SKIP_AFTER, name);
+    if (!skipCount) return false;
+    this.skip = skipCount;
+    return true;
+  }
+
+  private tracksConditional(name: string, nameEnd: number): boolean {
+    if (startsConditional(this.masked, name, nameEnd)) {
+      this.conditionals += 1;
+      return true;
+    }
+    if (name !== "fi") return false;
+    this.conditionals = Math.max(0, this.conditionals - 1);
+    return true;
+  }
+
+  private command(index: number, name: string, nameEnd: number): number {
+    const spec = own(COMMANDS, name);
+    if (!spec) return nameEnd;
+    const command = parseCommand(this.masked, index, name, nameEnd, spec);
+    if (!command || command.to > this.end) return nameEnd;
+    command.conditional = this.conditionals > 0;
+    this.commands.push(command);
+    return command.to;
+  }
+}
+
 function scanPreamble(text: string): Preamble {
   const masked = maskComments(text);
   const begin = /\\begin\s*\{document\}/u.exec(masked);
-  const end = begin ? begin.index : masked.length;
-  const commands: Command[] = [];
-  let depth = 0;
-  let conditionals = 0;
-  let skip = 0;
-  for (let index = 0; index < end; index++) {
-    const character = masked[index];
-    if (character === "{") {
-      depth += 1;
-      continue;
-    }
-    if (character === "}") {
-      depth = Math.max(0, depth - 1);
-      continue;
-    }
-    if (character !== "\\") continue;
-    let nameEnd = index + 1;
-    while (nameEnd < end && isLetter(masked[nameEnd])) nameEnd += 1;
-    if (nameEnd === index + 1) {
-      index += 1;
-      if (skip > 0) skip -= 1;
-      continue;
-    }
-    const name = masked.slice(index + 1, nameEnd);
-    index = nameEnd - 1;
-    if (skip > 0) {
-      skip -= 1;
-      continue;
-    }
-    const skipCount = own(SKIP_AFTER, name);
-    if (skipCount) {
-      skip = skipCount;
-      continue;
-    }
-    if (depth > 0) continue;
-    if (startsConditional(masked, name, nameEnd)) {
-      conditionals += 1;
-      continue;
-    }
-    if (name === "fi") {
-      conditionals = Math.max(0, conditionals - 1);
-      continue;
-    }
-    const spec = own(COMMANDS, name);
-    if (!spec) continue;
-    const command = parseCommand(masked, index - name.length, name, nameEnd, spec);
-    if (!command || command.to > end) continue;
-    command.conditional = conditionals > 0;
-    commands.push(command);
-    index = command.to - 1;
-  }
+  const commands = new PreambleScanner(masked, begin ? begin.index : masked.length).scan();
   const docClass = commands.find((command) => command.name === "documentclass" && command.args.length === 1) ?? null;
   const packages = commands
     .filter((command) => (command.name === "usepackage" || command.name === "RequirePackage") && command.args.length === 1)
@@ -483,7 +505,7 @@ function braceList(masked: string, arg: Span): OptionList {
 }
 
 function loads(p: Preamble, ...names: string[]): PackageUse | undefined {
-  return p.packages.filter((pkg) => pkg.names.some((name) => names.includes(name))).at(-1);
+  return lastWhere(p.packages, (pkg) => pkg.names.some((name) => names.includes(name)));
 }
 
 function classKey(p: Preamble): string {
@@ -494,13 +516,13 @@ function lockedBy(p: Preamble, key: LatexSettingKey): { reason: "class" | "packa
   const locks = own(CLASS_LOCKS, classKey(p));
   if (p.className && locks?.includes(key)) return { reason: "class", owner: p.className };
   const style = layoutStyle(p);
-  if (style && STYLE_LOCKS.includes(key)) return { reason: "package", owner: style };
+  if (style && STYLE_LOCKS.has(key)) return { reason: "package", owner: style };
   return null;
 }
 
 function layoutStyle(p: Preamble): string | null {
   for (const pkg of p.packages) {
-    const name = pkg.names.find((candidate) => LAYOUT_STYLE.test(candidate));
+    const name = pkg.names.find((candidate) => LAYOUT_STYLES.some((style) => style.test(candidate)));
     if (name) return name;
   }
   return null;
@@ -596,7 +618,7 @@ function marginRead(p: Preamble): MarginRead {
 }
 
 function lastCommand(p: Preamble, names: readonly string[], test?: (command: Command) => boolean): Command | undefined {
-  return p.commands.filter((command) => names.includes(command.name) && (!test || test(command))).at(-1);
+  return lastWhere(p.commands, (command) => names.includes(command.name) && (!test || test(command)));
 }
 
 type LangRef =
@@ -609,25 +631,27 @@ function babelLanguage(item: OptionItem): { value: string; key: string | null } 
   return BABEL_FLAGS.has(item.text.toLowerCase()) ? null : { value: item.text, key: null };
 }
 
+function babelOptionLanguage(babel: PackageUse, list: OptionList): LangRef | "unknown" {
+  let main: OptionRef | null = null;
+  let last: OptionRef | null = null;
+  for (const item of list.items) {
+    const found = babelLanguage(item);
+    if (!found) continue;
+    const ref = { list, item, command: babel.command, ...found };
+    if (found.key === "main") main = ref;
+    else last = ref;
+  }
+  const chosen = main ?? last;
+  return chosen ? { kind: "option", ref: chosen, pkg: babel } : "unknown";
+}
+
 function langRead(p: Preamble): LangRef | "unset" | "unknown" {
   const poly = lastCommand(p, ["setdefaultlanguage", "setmainlanguage"], (command) => command.args.length === 1);
   if (poly) return { kind: "command", command: poly, value: argText(p.masked, poly, 0) };
   const babel = loads(p, "babel");
   if (!babel) return "unset";
   const list = babel.command.options;
-  if (list && list.items.length > 0) {
-    let main: OptionRef | null = null;
-    let last: OptionRef | null = null;
-    for (const item of list.items) {
-      const found = babelLanguage(item);
-      if (!found) continue;
-      const ref = { list, item, command: babel.command, ...found };
-      if (found.key === "main") main = ref;
-      else last = ref;
-    }
-    const chosen = main ?? last;
-    return chosen ? { kind: "option", ref: chosen, pkg: babel } : "unknown";
-  }
+  if (list && list.items.length > 0) return babelOptionLanguage(babel, list);
   const global = classOptionRefs(p, (item) =>
     LANGUAGES.has(item.text.toLowerCase()) ? { value: item.text, key: null } : null,
   ).at(-1);
@@ -656,7 +680,8 @@ function spacingRead(p: Preamble): SpacingRef | null {
       refs.push({ at: command.from, ref: { kind: "command", command, value: argText(p.masked, command, 0) } });
     }
   }
-  return refs.sort((left, right) => left.at - right.at).at(-1)?.ref ?? null;
+  refs.sort((left, right) => left.at - right.at);
+  return refs.at(-1)?.ref ?? null;
 }
 
 function secnumdepthCommand(p: Preamble): Command | undefined {
@@ -696,6 +721,43 @@ function sourceValue(p: Preamble, key: LatexSettingKey): string {
   return state.status === "locked" ? state.source : "";
 }
 
+function marginField(p: Preamble): DocumentSettingState {
+  const { margin, sides } = marginRead(p);
+  if (margin) return located(margin.command.conditional, margin.value, LATEX_LENGTH.test(margin.value));
+  if (sides.length > 0) return { status: "locked", reason: "sides", source: sides.map((item) => item.text).join(",") };
+  return unset;
+}
+
+function fontField(p: Preamble, env: LatexEnvironment): DocumentSettingState {
+  const command = fontCommand(p);
+  const value = command ? argText(p.masked, command, 0) : "";
+  if (!env.unicodeFonts) return { status: "locked", reason: "engine", source: value };
+  return command ? located(command.conditional, value, !/[\\{}]/u.test(value)) : unset;
+}
+
+function langField(p: Preamble): DocumentSettingState {
+  const read = langRead(p);
+  if (read === "unset") return unset;
+  if (read === "unknown") return { status: "locked", reason: "expression", source: "" };
+  if (read.kind === "command") {
+    return located(read.command.conditional, read.value, /^[A-Za-z][A-Za-z-]*$/u.test(read.value));
+  }
+  return fromOption(read.ref);
+}
+
+function lineSpacingField(p: Preamble): DocumentSettingState {
+  const read = spacingRead(p);
+  if (!read) return unset;
+  if (read.kind === "option") return fromOption(read.ref);
+  return located(read.command.conditional, read.value, SPACING_VALUES.has(read.value) || NUMBER.test(read.value));
+}
+
+function counterField(p: Preamble, command: Command | undefined, valid: RegExp): DocumentSettingState {
+  if (!command) return unset;
+  const value = argText(p.masked, command, 1);
+  return located(command.conditional, value, valid.test(value));
+}
+
 function rawField(p: Preamble, key: LatexSettingKey, env: LatexEnvironment): DocumentSettingState {
   switch (key) {
     case "paper":
@@ -704,45 +766,18 @@ function rawField(p: Preamble, key: LatexSettingKey, env: LatexEnvironment): Doc
       return fromOption(fontSizeRefs(p).at(-1));
     case "columns":
       return fromOption(columnRefs(p).at(-1));
-    case "margin": {
-      const { margin, sides } = marginRead(p);
-      if (margin) return located(margin.command.conditional, margin.value, LATEX_LENGTH.test(margin.value));
-      if (sides.length > 0) return { status: "locked", reason: "sides", source: sides.map((item) => item.text).join(",") };
-      return unset;
-    }
-    case "font": {
-      const command = fontCommand(p);
-      const value = command ? argText(p.masked, command, 0) : "";
-      if (!env.unicodeFonts) return { status: "locked", reason: "engine", source: value };
-      return command ? located(command.conditional, value, !/[\\{}]/u.test(value)) : unset;
-    }
-    case "lang": {
-      const read = langRead(p);
-      if (read === "unset") return unset;
-      if (read === "unknown") return { status: "locked", reason: "expression", source: "" };
-      if (read.kind === "command") {
-        return located(read.command.conditional, read.value, /^[A-Za-z][A-Za-z-]*$/u.test(read.value));
-      }
-      return fromOption(read.ref);
-    }
-    case "lineSpacing": {
-      const read = spacingRead(p);
-      if (!read) return unset;
-      if (read.kind === "option") return fromOption(read.ref);
-      return located(read.command.conditional, read.value, SPACING_VALUES.has(read.value) || NUMBER.test(read.value));
-    }
-    case "secnumdepth": {
-      const command = secnumdepthCommand(p);
-      if (!command) return unset;
-      const value = argText(p.masked, command, 1);
-      return located(command.conditional, value, /^-?\d+$/u.test(value));
-    }
-    case "equationNumbering": {
-      const command = equationCommand(p);
-      if (!command) return unset;
-      const value = argText(p.masked, command, 1);
-      return located(command.conditional, value, /^[A-Za-z]+$/u.test(value));
-    }
+    case "margin":
+      return marginField(p);
+    case "font":
+      return fontField(p, env);
+    case "lang":
+      return langField(p);
+    case "lineSpacing":
+      return lineSpacingField(p);
+    case "secnumdepth":
+      return counterField(p, secnumdepthCommand(p), /^-?\d+$/u);
+    case "equationNumbering":
+      return counterField(p, equationCommand(p), /^[A-Za-z]+$/u);
   }
 }
 
@@ -792,12 +827,33 @@ export function validateLatexSetting(key: LatexSettingKey, value: string): boole
   }
 }
 
+const TEX_PROGRAM_MAGIC = /%\s*(?:!+\s*)?tex\s+program\s*=\s*([a-z]+)/iuy;
+const LINE_BREAKS = new Set(["\n", "\r", "\u2028", "\u2029"]);
+
+function texProgramMagic(head: string): string | null {
+  let lineStart = true;
+  for (let index = 0; index < head.length; index++) {
+    const character = head[index];
+    if (LINE_BREAKS.has(character)) {
+      lineStart = true;
+    } else if (!isSpace(character)) {
+      if (lineStart && character === "%") {
+        TEX_PROGRAM_MAGIC.lastIndex = index;
+        const match = TEX_PROGRAM_MAGIC.exec(head);
+        if (match) return match[1];
+      }
+      lineStart = false;
+    }
+  }
+  return null;
+}
+
 export function latexSupportsSystemFonts(engine: string | undefined, flavor: string | null | undefined, text: string): boolean {
   if (engine !== "latexmk") return true;
   if (flavor) return flavor === "xelatex" || flavor === "lualatex";
   const head = text.split("\n").slice(0, 100).join("\n");
-  const magic = /^\s*%\s*!*\s*tex\s+program\s*=\s*([A-Za-z]+)/imu.exec(head);
-  if (magic) return /^(?:xelatex|lualatex)$/iu.test(magic[1]);
+  const magic = texProgramMagic(head);
+  if (magic !== null) return /^(?:xelatex|lualatex)$/iu.test(magic);
   return /fontspec|polyglossia|unicode-math|\\setmainfont/u.test(text);
 }
 
@@ -835,7 +891,7 @@ function appendItem(text: string, list: OptionList | null, command: Command, ins
 function anchorEnd(p: Preamble, kind: "package" | "command"): number | null {
   const start = p.docClass?.from ?? -1;
   const usable = (command: Command) => !command.conditional && command.from > start;
-  let end = p.packages.map((pkg) => pkg.command).filter(usable).at(-1)?.to ?? p.docClass?.to ?? null;
+  let end = lastWhere(p.packages, (pkg) => usable(pkg.command))?.command.to ?? p.docClass?.to ?? null;
   if (end === null) return null;
   if (kind === "command") {
     for (const command of p.commands) {
@@ -871,7 +927,7 @@ const scanned = (step: (p: Preamble) => DocumentSettingsEdit[]): SettingsStep =>
 };
 
 function ensurePackage(name: string, satisfied: (p: Preamble) => boolean): PlannedStep {
-  return ["package", scanned((p) => (satisfied(p) ? [] : insertLines(p, [`\\usepackage{${name}}`], "package")))];
+  return ["package", scanned((p) => (satisfied(p) ? [] : insertLines(p, [String.raw`\usepackage{${name}}`], "package")))];
 }
 
 function hasSetspace(p: Preamble, before = Number.POSITIVE_INFINITY): boolean {
@@ -880,7 +936,7 @@ function hasSetspace(p: Preamble, before = Number.POSITIVE_INFINITY): boolean {
 }
 
 function hasAmsmath(p: Preamble): boolean {
-  return /^ams/u.test(classKey(p)) || !!loads(p, "amsmath", "mathtools");
+  return classKey(p).startsWith("ams") || !!loads(p, "amsmath", "mathtools");
 }
 
 function hasFontspec(p: Preamble): boolean {
@@ -925,7 +981,7 @@ function marginPlan(value: string | null): PlannedStep[] {
       if (!margin) return [];
       const sole = margin.list.items.length === 1 && margin.list.kind === "bracket";
       const pkg = p.packages.find((candidate) => candidate.command === margin.command);
-      if (sole && pkg && pkg.names.length === 1) return [removeCommand(p, margin.command)];
+      if (sole && pkg?.names.length === 1) return [removeCommand(p, margin.command)];
       return [removeItem(p.text, margin)];
     })]];
   }
@@ -936,10 +992,10 @@ function marginPlan(value: string | null): PlannedStep[] {
     const call = lastCommand(p, ["geometry"], (command) => command.args.length === 1);
     if (call) return [appendItem(p.text, braceList(p.masked, call.args[0]), call, `margin=${value}`)];
     const pkg = loads(p, "geometry");
-    if (pkg && pkg.names.length === 1) return [appendItem(p.text, pkg.command.options, pkg.command, `margin=${value}`)];
-    if (pkg) return insertLines(p, [`\\geometry{margin=${value}}`], "command");
-    if (p.external) return insertLines(p, ["\\usepackage{geometry}", `\\geometry{margin=${value}}`], "package");
-    return insertLines(p, [`\\usepackage[margin=${value}]{geometry}`], "package");
+    if (pkg?.names.length === 1) return [appendItem(p.text, pkg.command.options, pkg.command, `margin=${value}`)];
+    if (pkg) return insertLines(p, [String.raw`\geometry{margin=${value}}`], "command");
+    if (p.external) return insertLines(p, [String.raw`\usepackage{geometry}`, String.raw`\geometry{margin=${value}}`], "package");
+    return insertLines(p, [String.raw`\usepackage[margin=${value}]{geometry}`], "package");
   })]];
 }
 
@@ -955,30 +1011,35 @@ function fontPlan(value: string | null): PlannedStep[] {
     ["command", scanned((p) => {
       const command = fontCommand(p);
       if (command) return [replaceArg(command, 0, value)];
-      return insertLines(p, [`\\setmainfont{${value}}`], "command");
+      return insertLines(p, [String.raw`\setmainfont{${value}}`], "command");
     })],
   ];
+}
+
+function langRemoval(p: Preamble, read: LangRef | "unset"): DocumentSettingsEdit[] {
+  if (read === "unset") return [];
+  if (read.kind === "command") return [removeCommand(p, read.command)];
+  const { ref, pkg } = read;
+  if (pkg && ref.list.items.length === 1 && pkg.names.length === 1) return [removeCommand(p, pkg.command)];
+  return [removeItem(p.text, ref)];
+}
+
+function langAssignment(p: Preamble, read: LangRef | "unset", value: string): DocumentSettingsEdit[] {
+  if (read !== "unset") {
+    if (read.kind === "command") return [replaceArg(read.command, 0, value)];
+    return [read.ref.key === "main" ? replaceValue(read.ref, value) : replaceItem(read.ref.item, value)];
+  }
+  const babel = loads(p, "babel");
+  if (babel) return [appendItem(p.text, babel.command.options, babel.command, value)];
+  if (loads(p, "polyglossia")) return insertLines(p, [String.raw`\setdefaultlanguage{${value}}`], "command");
+  return insertLines(p, [String.raw`\usepackage[${value}]{babel}`], "package");
 }
 
 function langPlan(value: string | null): PlannedStep[] {
   return [[value === null ? "command" : "package", scanned((p) => {
     const read = langRead(p);
     if (read === "unknown") return [];
-    if (value === null) {
-      if (read === "unset") return [];
-      if (read.kind === "command") return [removeCommand(p, read.command)];
-      const { ref, pkg } = read;
-      if (pkg && ref.list.items.length === 1 && pkg.names.length === 1) return [removeCommand(p, pkg.command)];
-      return [removeItem(p.text, ref)];
-    }
-    if (read !== "unset") {
-      if (read.kind === "command") return [replaceArg(read.command, 0, value)];
-      return [read.ref.key === "main" ? replaceValue(read.ref, value) : replaceItem(read.ref.item, value)];
-    }
-    const babel = loads(p, "babel");
-    if (babel) return [appendItem(p.text, babel.command.options, babel.command, value)];
-    if (loads(p, "polyglossia")) return insertLines(p, [`\\setdefaultlanguage{${value}}`], "command");
-    return insertLines(p, [`\\usepackage[${value}]{babel}`], "package");
+    return value === null ? langRemoval(p, read) : langAssignment(p, read, value);
   })]];
 }
 
@@ -995,7 +1056,7 @@ function lineSpacingPlan(value: string | null): PlannedStep[] {
     })]];
   }
   if (!SPACING_VALUES.has(value)) {
-    const stretch = (p: Preamble) => (hasSetspace(p) ? `\\setstretch{${value}}` : `\\linespread{${value}}`);
+    const stretch = (p: Preamble) => (hasSetspace(p) ? String.raw`\setstretch{${value}}` : String.raw`\linespread{${value}}`);
     return [
       ["command", scanned((p) => {
         const read = spacingRead(p);
@@ -1058,11 +1119,11 @@ function planFor(key: LatexSettingKey, value: string | null): PlannedStep[] {
     case "lineSpacing":
       return lineSpacingPlan(value);
     case "secnumdepth":
-      return counterPlan(secnumdepthCommand, (next) => `\\setcounter{secnumdepth}{${next}}`, value);
+      return counterPlan(secnumdepthCommand, (next) => String.raw`\setcounter{secnumdepth}{${next}}`, value);
     case "equationNumbering":
       return counterPlan(
         equationCommand,
-        (next) => `\\numberwithin{equation}{${next}}`,
+        (next) => String.raw`\numberwithin{equation}{${next}}`,
         value,
         ensurePackage("amsmath", (p) => hasAmsmath(p) || !!equationCommand(p)),
       );

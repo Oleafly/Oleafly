@@ -40,16 +40,18 @@ function bibliographyWithCalls(scan: TypstScan): TypstCall[] {
   );
 }
 
+function argumentStrings(scan: TypstScan, call: TypstCall, valueFrom: number, valueTo: number): TypstStringValue[] {
+  const single = stringValue(scan, valueFrom, valueTo);
+  if (single) return [single];
+  if (scan.code[valueFrom] === "(" && call.name === "bibliography") return stringsWithin(scan, valueFrom, valueTo);
+  return [];
+}
+
 function firstStringArguments(scan: TypstScan, calls: readonly TypstCall[]): { name: string; callFrom: number; callTo: number; values: TypstStringValue[] }[] {
   return calls.flatMap((call) => {
     const arg = positionalArgument(scan, call);
     if (!arg) return [];
-    const single = stringValue(scan, arg.valueFrom, arg.valueTo);
-    const values = single
-      ? [single]
-      : scan.code[arg.valueFrom] === "(" && call.name === "bibliography"
-        ? stringsWithin(scan, arg.valueFrom, arg.valueTo)
-        : [];
+    const values = argumentStrings(scan, call, arg.valueFrom, arg.valueTo);
     return values.length > 0 ? [{ name: call.name, callFrom: call.from, callTo: call.close + 1, values }] : [];
   });
 }
@@ -85,13 +87,19 @@ function namedBibliographyFiles(scan: TypstScan): TypstPathReference[] {
   return out;
 }
 
+function pathKindOfCall(name: string): TypstPathKind {
+  if (name === "image") return "image";
+  if (name === "bibliography") return "bibliography";
+  return "data";
+}
+
 export function typstPathReferences(scan: TypstScan): TypstPathReference[] {
   const calls = firstStringArguments(scan, [
     ...typstCalls(scan, ["image", "bibliography", ...DATA_CALLS]),
     ...bibliographyWithCalls(scan),
   ]).flatMap((call) =>
     call.values.map((value): TypstPathReference => ({
-      kind: call.name === "image" ? "image" : call.name === "bibliography" ? "bibliography" : "data",
+      kind: pathKindOfCall(call.name),
       raw: value.value,
       from: value.from,
       to: value.to,

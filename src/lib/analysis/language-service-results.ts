@@ -165,8 +165,14 @@ function decodedPath(uri: string): string | null {
   }
 }
 
+function trimTrailingSlashes(path: string): string {
+  let end = path.length;
+  while (end > 0 && path[end - 1] === "/") end -= 1;
+  return path.slice(0, end);
+}
+
 function comparablePath(path: string): string {
-  const normalized = path.replaceAll("\\", "/").replace(/\/+$/, "");
+  const normalized = trimTrailingSlashes(path.replaceAll("\\", "/"));
   return /^[A-Za-z]:\//.test(normalized)
     ? `${normalized[0].toLowerCase()}${normalized.slice(1)}`
     : normalized;
@@ -182,7 +188,7 @@ export function projectPathForUri(
   const path = comparablePath(absolute);
   if (!path.startsWith(`${root}/`)) return null;
   const relative = path.slice(root.length + 1);
-  if (!relative || relative.split("/").some((part) => part === "..")) {
+  if (!relative || relative.split("/").includes("..")) {
     return null;
   }
   return relative;
@@ -227,31 +233,42 @@ function documentChangeOperation(
   return null;
 }
 
+function documentChangesEdit(
+  changes: readonly unknown[],
+): ParsedWorkspaceEdit | null {
+  const operations: WorkspaceEditOperation[] = [];
+  let unsupported = false;
+  for (const change of changes) {
+    const operation = documentChangeOperation(change);
+    if (operation === "unsupported") {
+      unsupported = true;
+      continue;
+    }
+    if (!operation) return null;
+    operations.push(operation);
+  }
+  return { operations, unsupported };
+}
+
+function changesMapEdit(
+  changes: Record<string, unknown>,
+): ParsedWorkspaceEdit | null {
+  const operations: WorkspaceEditOperation[] = [];
+  for (const [uri, edits] of Object.entries(changes)) {
+    const operation = editOperation(uri, edits);
+    if (!operation) return null;
+    operations.push(operation);
+  }
+  return { operations, unsupported: false };
+}
+
 export function workspaceEditFromValue(
   value: unknown,
 ): ParsedWorkspaceEdit | null {
   if (!isRecord(value)) return null;
-  const operations: WorkspaceEditOperation[] = [];
-  let unsupported = false;
   if (Array.isArray(value.documentChanges)) {
-    for (const change of value.documentChanges) {
-      const operation = documentChangeOperation(change);
-      if (operation === "unsupported") {
-        unsupported = true;
-        continue;
-      }
-      if (!operation) return null;
-      operations.push(operation);
-    }
-    return { operations, unsupported };
+    return documentChangesEdit(value.documentChanges);
   }
-  if (isRecord(value.changes)) {
-    for (const [uri, edits] of Object.entries(value.changes)) {
-      const operation = editOperation(uri, edits);
-      if (!operation) return null;
-      operations.push(operation);
-    }
-    return { operations, unsupported };
-  }
-  return { operations, unsupported };
+  if (isRecord(value.changes)) return changesMapEdit(value.changes);
+  return { operations: [], unsupported: false };
 }

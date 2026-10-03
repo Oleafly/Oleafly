@@ -143,36 +143,41 @@ function headerCells(state: EditorState, call: SyntaxNode): TypstCell[] | null {
   return cells;
 }
 
+function collectCall(state: EditorState, node: SyntaxNode, collected: Collected): boolean {
+  const name = calleeName(state, node);
+  if (name === "table.header" && !collected.header && collected.cells.length === 0) {
+    const cells = headerCells(state, node);
+    if (!cells) return false;
+    collected.header = { cells, range: range(node) };
+    return true;
+  }
+  if (name !== "table.hline") return false;
+  const at = collected.cells.length;
+  collected.rules.set(at, [...(collected.rules.get(at) ?? []), range(node)]);
+  return true;
+}
+
+function collectItem(state: EditorState, node: SyntaxNode, collected: Collected): boolean {
+  if (node.name === "Named") {
+    const named = readNamed(state, node);
+    if (!named) return false;
+    collected.named.push(named);
+    return true;
+  }
+  collected.firstItem ??= range(node);
+  if (node.name === "ContentBlock") {
+    const cell = cellOf(state, node);
+    if (!cell) return false;
+    collected.cells.push(cell);
+    return true;
+  }
+  return node.name === "FuncCall" && collectCall(state, node, collected);
+}
+
 function collect(state: EditorState, args: SyntaxNode): Collected | null {
   const collected: Collected = { cells: [], header: null, rules: new Map(), named: [], firstItem: null };
   for (const node of argumentNodes(args)) {
-    if (node.name === "Named") {
-      const named = readNamed(state, node);
-      if (!named) return null;
-      collected.named.push(named);
-      continue;
-    }
-    collected.firstItem ??= range(node);
-    if (node.name === "ContentBlock") {
-      const cell = cellOf(state, node);
-      if (!cell) return null;
-      collected.cells.push(cell);
-      continue;
-    }
-    if (node.name !== "FuncCall") return null;
-    const name = calleeName(state, node);
-    if (name === "table.header" && !collected.header && collected.cells.length === 0) {
-      const cells = headerCells(state, node);
-      if (!cells) return null;
-      collected.header = { cells, range: range(node) };
-      continue;
-    }
-    if (name === "table.hline") {
-      const at = collected.cells.length;
-      collected.rules.set(at, [...(collected.rules.get(at) ?? []), range(node)]);
-      continue;
-    }
-    return null;
+    if (!collectItem(state, node, collected)) return null;
   }
   return collected;
 }
@@ -189,7 +194,7 @@ function rowsOf(collected: Collected, count: number): TypstRow[] | null {
     rows.push({
       cells,
       header: false,
-      range: { from: cells[0].node.from, to: cells[cells.length - 1].node.to },
+      range: { from: cells[0].node.from, to: (cells.at(-1) as TypstCell).node.to },
       rulesAbove: collected.rules.get(start) ?? [],
     });
   }
@@ -220,7 +225,7 @@ export function parseTypstTable(state: EditorState, call: SyntaxNode): TypstTabl
   const args = call.getChild("Args");
   const open = args?.firstChild;
   const close = args ? closingParenthesis(args) : null;
-  if (!args || !open || open.name !== "LeftParen" || !close) return null;
+  if (!args || open?.name !== "LeftParen" || !close) return null;
   if (trailingContentBlocks(args).length > 0) return null;
   const collected = collect(state, args);
   if (!collected) return null;

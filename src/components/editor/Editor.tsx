@@ -55,6 +55,10 @@ const MARKDOWN_SPLIT_LIMITS = {
   [MARKDOWN_SOURCE_PANEL]: MARKDOWN_PANE_LIMITS,
   [MARKDOWN_PREVIEW_PANEL]: MARKDOWN_PANE_LIMITS,
 };
+const FORMATTING_SHORTCUTS: ReadonlyMap<string, "bold" | "italic"> = new Map([
+  ["b", "bold"],
+  ["i", "italic"],
+]);
 
 const DIFF_TAB_SIDE_LABEL = {
   working: "diffWorkingTree",
@@ -175,8 +179,7 @@ export function Editor() {
       const el = document.activeElement as HTMLElement | null;
       if (!el?.closest(".cm-editor")) return;
       const { activePath: path, engine, engineLoaded } = useFilesStore.getState();
-      const k = e.key.toLowerCase();
-      const action = k === "b" ? "bold" : k === "i" ? "italic" : null;
+      const action = FORMATTING_SHORTCUTS.get(e.key.toLowerCase());
       if (!action) return;
       const f = formattingForPath(engine, engineLoaded, path, action);
       if (f?.kind !== "wrap") return;

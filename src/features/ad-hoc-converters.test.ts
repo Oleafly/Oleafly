@@ -673,6 +673,23 @@ describe("Typst converters", () => {
     expect(result.text).toBe("x star.filled y");
   });
 
+  it.each([
+    ["$\n  x star.filled y\n$\n", "x star.filled y"],
+    ["  $\tx $ y\t$  ", "x $ y"],
+    ["$x$", "x"],
+  ])("unwraps the Pandoc display math %j", async (output, expected) => {
+    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: output });
+    const result = await runAdHocConverter("equation-to-typst", { text: String.raw`x \bigstar y`, file: null });
+    expect(result.text).toBe(expected);
+  });
+
+  it.each(["$   $", "$", "x $y$", "$y$ x", ""])("rejects the Pandoc output %j that holds no display math", async (output) => {
+    mocks.convertAdHoc.mockResolvedValue({ ...converted, text: output });
+    await expect(
+      runAdHocConverter("equation-to-typst", { text: String.raw`x \bigstar y`, file: null }),
+    ).rejects.toThrow("couldn't convert this equation to Typst");
+  });
+
   it("fails clearly when Pandoc cannot read the equation either", async () => {
     mocks.convertAdHoc.mockResolvedValue({ ...converted, text: "\\$\\$\\\\frac\\$\\$" });
     await expect(

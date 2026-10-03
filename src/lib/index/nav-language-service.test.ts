@@ -382,6 +382,45 @@ describe("Typst rename through Tinymist", () => {
     expect(mocks.renameEntry).toHaveBeenCalledWith("util.typ", "helpers.typ");
   });
 
+  it("moves files one after another and reports the moves that fail", async () => {
+    mocks.requestPrepareRename.mockResolvedValue({
+      placeholder: "util.typ",
+      range: range(0, 8, 18),
+    });
+    const view = editorAt(10);
+    startRename(view);
+    await vi.waitFor(() => expect(mocks.openRename).toHaveBeenCalled());
+    const sym = mocks.openRename.mock.calls[0][0] as Sym;
+    mocks.requestRename.mockResolvedValue({
+      documentChanges: [
+        { kind: "rename", oldUri: "file:///project/util.typ", newUri: "file:///project/helpers.typ" },
+        { kind: "rename", oldUri: "file:///project/notes.typ", newUri: "file:///project/memo.typ" },
+      ],
+    });
+    let rejectFirst: (error: Error) => void = () => {};
+    mocks.renameEntry
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            rejectFirst = reject;
+          }),
+      )
+      .mockResolvedValueOnce("memo.typ");
+    const outcome = applyRename(view, sym, "helpers.typ");
+    await vi.waitFor(() => expect(mocks.renameEntry).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.renameEntry).toHaveBeenCalledTimes(1);
+    rejectFirst(new Error("busy"));
+    await expect(outcome).resolves.toBe("partial");
+    expect(mocks.renameEntry.mock.calls).toEqual([
+      ["util.typ", "helpers.typ"],
+      ["notes.typ", "memo.typ"],
+    ]);
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      "Renamed to \"helpers.typ\" in 1 of 2 files. Could not write util.typ.",
+    );
+  });
+
   it("reports a rename the server refuses", async () => {
     mocks.requestPrepareRename.mockResolvedValue({
       placeholder: "greet",

@@ -51,18 +51,18 @@ async function readMissing(
   projectId: string,
   texts: Record<string, string>,
   missing: () => readonly (readonly string[])[],
+  attempted = new Set<string>(),
 ): Promise<void> {
-  const attempted = new Set<string>();
-  while (attempted.size < MAX_EXTRA_READS) {
-    const wanted = missing().filter((candidates) => candidates.length > 0 && !attempted.has(candidates[0]));
-    if (wanted.length === 0) return;
-    for (const candidates of wanted) attempted.add(candidates[0]);
-    await Promise.all(wanted.map((candidates) => readFirst(projectId, candidates, texts)));
-  }
+  if (attempted.size >= MAX_EXTRA_READS) return;
+  const wanted = missing().filter((candidates) => candidates.length > 0 && !attempted.has(candidates[0]));
+  if (wanted.length === 0) return;
+  for (const candidates of wanted) attempted.add(candidates[0]);
+  await Promise.all(wanted.map((candidates) => readFirst(projectId, candidates, texts)));
+  return readMissing(projectId, texts, missing, attempted);
 }
 
 async function ensureMain(projectId: string, texts: Record<string, string>, mainDoc: string): Promise<void> {
-  if (texts[mainDoc] === undefined) texts[mainDoc] = await readFileContent(projectId, mainDoc);
+  texts[mainDoc] ??= await readFileContent(projectId, mainDoc);
 }
 
 function requireProject(): string {
@@ -88,7 +88,7 @@ async function latexNumbers(
 ): Promise<{ numbers: LatexNumbers; numberFor: ((label: string) => LatexLabelNumber | null) | null }> {
   const [compile, aux] = await Promise.all([import("@/store/compile"), import("@/lib/aux-numbers")]);
   const checkpoint = compile.useCompileStore.getState().lastCompileCheckpoint;
-  if (!checkpoint || checkpoint.projectId !== projectId || checkpoint.mainDocument !== mainDoc) {
+  if (checkpoint?.projectId !== projectId || checkpoint.mainDocument !== mainDoc) {
     return { numbers: "missing", numberFor: null };
   }
   if (!compile.isCompileCheckpointCurrent(checkpoint)) return { numbers: "stale", numberFor: null };

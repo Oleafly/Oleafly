@@ -105,6 +105,22 @@ describe("extractTypstKeywords", () => {
     expect(query).toBe("Graph neural networks learn molecular");
   });
 
+  it("strips heading and list markers that follow blank or indented lines", () => {
+    expect(extractTypstKeywords("Intro words here\n\n\n  = Heading text\n\t- first item\n+ second item\n/ Term: body")).toBe(
+      "Intro words here Heading text first item second item Term: body",
+    );
+    expect(extractTypstKeywords("Keep x-y and a+b and ==no space marker here")).toBe(
+      "Keep x-y and a+b and ==no space marker here",
+    );
+  });
+
+  it("closes the space before punctuation however wide it is", () => {
+    expect(extractTypstKeywords("Words before   , a comma \n\n . and a stop ; done")).toBe(
+      "Words before, a comma. and a stop; done",
+    );
+    expect(extractTypstKeywords("  ! starts with punctuation then words")).toBe("! starts with punctuation then words");
+  });
+
   it("returns nothing for markup-only text", () => {
     expect(extractTypstKeywords("@a @b $x$ <l>")).toBe("");
   });
@@ -118,6 +134,38 @@ describe("detectScanFormat", () => {
     expect(detectScanFormat("selection", "= Heading\n\nSome prose.")).toBe("typst");
     expect(detectScanFormat("selection", "\\section{Intro} Some prose.")).toBe("latex");
     expect(detectScanFormat(null, "Plain words only.")).toBe("latex");
+  });
+
+  it("finds Typst statements and headings on any line after leading space", () => {
+    expect(detectScanFormat(null, "Prose first.\n\n   \n\t#let x = 1")).toBe("typst");
+    expect(detectScanFormat(null, "Prose first.\n  ==  Heading")).toBe("typst");
+    expect(detectScanFormat(null, "Prose\n=\n\nHeading below a bare marker")).toBe("typst");
+    expect(detectScanFormat(null, "Prose then #set inline only")).toBe("latex");
+    expect(detectScanFormat(null, "Prose\n#settings are not statements\n=")).toBe("latex");
+  });
+});
+
+describe("splitTypstParagraphs statements", () => {
+  it("skips a statement up to the end of its line or its closing bracket", () => {
+    const text = [
+      "#set text(font: \"A\\\"B)\", size: 9pt) // tail",
+      "#show heading: it => [Content with ( and { that never closes]",
+      "#let f(x) = `raw ) still raw`",
+      "#import \"a.typ\": (",
+      "  b,",
+      "  c,",
+      ")",
+      "Prose that should remain after the statements above.",
+    ].join("\n");
+    expect(splitTypstParagraphs(text, { minLength: 1 }).map((paragraph) => paragraph.text)).toEqual([
+      "Prose that should remain after the statements above.",
+    ]);
+  });
+
+  it("keeps escaped hashes and statements that are not at a line start", () => {
+    expect(splitTypstParagraphs("Text with \\#set inside and #set after words.", { minLength: 1 })).toEqual([
+      { index: 0, text: "Text with \\#set inside and #set after words." },
+    ]);
   });
 });
 

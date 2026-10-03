@@ -81,7 +81,7 @@ function typstColor(hex: string | undefined): string | null {
 
 const ESCAPED = new Set(["\\", "[", "]", "#", "$", "@", "*", "_", "`", "<", ">", '"', "~"]);
 
-const isSpace = (character: string | undefined) => character !== undefined && character.trim() === "";
+const isSpace = (character: string | undefined) => character?.trim() === "";
 
 function leadingMarkerIndex(text: string): number {
   let start = 0;
@@ -143,7 +143,11 @@ export function typstNames(nodes: DiagNode[]): { byIndex: string[]; byId: Map<st
   const byIndex = nodes.map((n) => {
     const base = labelBase(n.id);
     let name = base;
-    for (let suffix = 2; used.has(name); suffix++) name = `${base}-${suffix}`;
+    let suffix = 2;
+    while (used.has(name)) {
+      name = `${base}-${suffix}`;
+      suffix += 1;
+    }
     used.add(name);
     if (!byId.has(n.id)) byId.set(n.id, name);
     return name;

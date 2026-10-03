@@ -207,4 +207,17 @@ describe("typstMathTheme", () => {
     expect(cssColorToHex("rgb(1 2 3 / 0)")).toBeNull();
     expect(cssColorToHex("oklch(0.5 0 0)")).toBeNull();
   });
+
+  it.each([
+    ["RGB( 1 ,, 2\n3 )", "#010203"],
+    ["rgba(300, 12.6, .5, 50%)", "#ff0d01"],
+    ["rgb(255 255 255 / 0%)", null],
+    ["rgba(1,2,3,0.0)", null],
+    ["rgb(1, 2)", null],
+    ["rgb(1, 2, 3 x)", null],
+    ["rgb(1, 2, 3, 4, 5)", null],
+    ["rgb(1, 2, 3) ", "#010203"],
+  ])("reads the rgb() colour %j", (color, hex) => {
+    expect(cssColorToHex(color)).toBe(hex);
+  });
 });

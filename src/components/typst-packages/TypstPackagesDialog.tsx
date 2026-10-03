@@ -115,8 +115,8 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
   const refresh = useCallback(async () => {
     try {
       setSettings(await typstPackageSettings(projectId));
-    } catch (failure) {
-      setError(describeError(failure));
+    } catch (error_) {
+      setError(describeError(error_));
     }
   }, [projectId]);
 
@@ -130,8 +130,8 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
     try {
       await setTypstVendorPackages(projectId, enabled);
       await refresh();
-    } catch (failure) {
-      setError(describeError(failure));
+    } catch (error_) {
+      setError(describeError(error_));
     } finally {
       setBusy(null);
     }
@@ -145,8 +145,8 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
       const result = await vendorTypstPackages(projectId, offline);
       setNotice(vendorMessage(result.report));
       await refresh();
-    } catch (failure) {
-      setError(describeError(failure));
+    } catch (error_) {
+      setError(describeError(error_));
     } finally {
       setBusy(null);
     }

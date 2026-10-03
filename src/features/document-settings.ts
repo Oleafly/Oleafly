@@ -29,7 +29,7 @@ export function composeSettingSteps(text: string, steps: readonly SettingsStep[]
   for (const step of steps) {
     const edits = step(current).sort((left, right) => left.from - right.from);
     if (edits.length === 0) continue;
-    composed = composed.compose(ChangeSet.of(edits, current.length));
+    composed = composed.compose(ChangeSet.of(edits, current.length, "\n"));
     current = applySettingEdits(current, edits);
   }
   const out: DocumentSettingsEdit[] = [];
@@ -37,6 +37,13 @@ export function composeSettingSteps(text: string, steps: readonly SettingsStep[]
     out.push({ from, to, insert: inserted.toString() });
   });
   return out;
+}
+
+export function lastWhere<T>(items: readonly T[], test: (item: T) => boolean): T | undefined {
+  for (let index = items.length - 1; index >= 0; index--) {
+    if (test(items[index])) return items[index];
+  }
+  return undefined;
 }
 
 export function lineStartOf(text: string, pos: number): number {

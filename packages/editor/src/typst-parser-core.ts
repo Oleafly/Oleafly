@@ -208,12 +208,34 @@ interface Group {
   seen: Set<string>;
 }
 
+interface MathOperator {
+  readonly wrapper: number;
+  readonly associativity: number;
+  readonly precedence: number;
+}
+
+const MATH_FRACTION: MathOperator = { wrapper: K.MathFrac, associativity: 1, precedence: 1 };
+const MATH_SCRIPT: MathOperator = { wrapper: K.MathAttach, associativity: 2, precedence: 2 };
+const MATH_PRIMES: MathOperator = { wrapper: K.MathAttach, associativity: 0, precedence: 2 };
+const MATH_FACTORIAL: MathOperator = { wrapper: K.Math, associativity: 0, precedence: 3 };
+
+function attachChain(kind: number): Uint8Array {
+  if (kind === K.Hat) return CHAIN_UNDERSCORE;
+  if (kind === K.Underscore) return CHAIN_HAT;
+  return CHAIN_BOTH;
+}
+
+function groupKind(group: Group): number {
+  if (group.maybeJustParens && group.count === 1) return K.Parenthesized;
+  return group.kind >= 0 ? group.kind : K.Array;
+}
+
 function tooDeep(entries: number[]): Uint8Array | null {
   const count = entries.length >> 2;
   const open: number[] = [];
   let drop: Uint8Array | null = null;
   for (let entry = count - 1; entry >= 0; entry -= 1) {
-    while (open.length > 0 && open[open.length - 1] > entry) open.pop();
+    while ((open.at(-1) ?? -1) > entry) open.pop();
     const size = entries[entry * 4 + 3];
     if (size === 4) continue;
     if (open.length >= MAX_TREE_DEPTH) {
@@ -280,7 +302,7 @@ export class TypstParserCore {
   errorBefore = false;
   private nlMode = CONTINUE;
   private depth = 0;
-  private memo = new Map<number, Memo>();
+  private readonly memo = new Map<number, Memo>();
 
   constructor(
     readonly text: string,
@@ -386,11 +408,10 @@ export class TypstParserCore {
     const buf = this.buf;
     const aux = token.aux;
     if (kind === K.Raw && aux) {
-      const before = buf.length;
+      const hasLang = aux[1] >= 0;
       buf.push(K.RawDelim, token.start, aux[0], 4);
-      if (aux[1] >= 0) buf.push(K.RawLang, aux[1], aux[2], 4);
-      buf.push(K.RawDelim, aux[3], token.end, 4);
-      buf.push(K.Raw, token.start, token.end, buf.length - before + 4);
+      if (hasLang) buf.push(K.RawLang, aux[1], aux[2], 4);
+      buf.push(K.RawDelim, aux[3], token.end, 4, K.Raw, token.start, token.end, hasLang ? 16 : 12);
       return;
     }
     if (kind === K.MathFieldAccess && aux) {
@@ -398,8 +419,8 @@ export class TypstParserCore {
       buf.push(K.MathIdent, token.start, aux[0], 4);
       for (let index = 1; index < aux.length; index += 1) {
         const dot = aux[index - 1];
-        buf.push(K.Dot, dot, dot + 1, 4, K.MathIdent, dot + 1, aux[index], 4);
-        buf.push(K.MathFieldAccess, token.start, aux[index], buf.length - before + 4);
+        const size = buf.length - before + 12;
+        buf.push(K.Dot, dot, dot + 1, 4, K.MathIdent, dot + 1, aux[index], 4, K.MathFieldAccess, token.start, aux[index], size);
       }
       return;
     }
@@ -532,14 +553,13 @@ export class TypstParserCore {
 
   private trimErrors(): void {
     const buf = this.buf;
-    let end = this.tok.triviaIndex;
+    const end = this.tok.triviaIndex;
     let start = end;
     while (start >= 4 && buf[start - 4] === K.Error && buf[start - 3] === buf[start - 2] && buf[start - 1] === 4) {
       start -= 4;
     }
     if (start < end) {
       buf.splice(start, end - start);
-      end = start;
       this.tok.triviaIndex = start;
     }
   }
@@ -711,19 +731,10 @@ export class TypstParserCore {
         this.emph();
         break;
       case K.HeadingMarker:
-        if (atStart) this.heading();
-        else this.convertAndEat(K.Text);
-        break;
       case K.ListMarker:
-        if (atStart) this.listItem(K.ListItem);
-        else this.convertAndEat(K.Text);
-        break;
       case K.EnumMarker:
-        if (atStart) this.listItem(K.EnumItem);
-        else this.convertAndEat(K.Text);
-        break;
       case K.TermMarker:
-        if (atStart) this.termItem();
+        if (atStart) this.lineItem(this.tok.kind);
         else this.convertAndEat(K.Text);
         break;
       case K.RefMarker:
@@ -741,6 +752,23 @@ export class TypstParserCore {
     }
     this.depth -= 1;
     return nesting;
+  }
+
+  private lineItem(marker: number): void {
+    switch (marker) {
+      case K.HeadingMarker:
+        this.heading();
+        break;
+      case K.ListMarker:
+        this.listItem(K.ListItem);
+        break;
+      case K.EnumMarker:
+        this.listItem(K.EnumItem);
+        break;
+      default:
+        this.termItem();
+        break;
+    }
   }
 
   private delimitedMarkup(delimiter: number, wrapper: number, stop: Uint8Array): void {
@@ -834,62 +862,7 @@ export class TypstParserCore {
   private mathExprPrec(minPrec: number, stop: Uint8Array): void {
     if (!this.increaseDepth()) return;
     const marker = this.marker();
-    let continuable = false;
-    switch (this.tok.kind) {
-      case K.Hash:
-        this.embeddedCodeExpr();
-        break;
-      case K.MathIdent:
-      case K.MathFieldAccess:
-        continuable = true;
-        this.eat();
-        if (minPrec <= 2 && this.directlyAt(K.LeftParen)) {
-          this.mathArgs();
-          this.wrap(marker, K.MathCall);
-          continuable = false;
-        }
-        break;
-      case K.LeftBrace:
-      case K.LeftParen:
-        this.mathDelimited();
-        break;
-      case K.RightBrace:
-        this.convertAndEat(this.currentText() === "|]" ? K.MathShorthand : K.MathText);
-        break;
-      case K.Dot:
-      case K.Bang:
-      case K.Comma:
-      case K.Semicolon:
-      case K.RightParen:
-        this.convertAndEat(K.MathText);
-        break;
-      case K.MathText:
-        continuable = isMathAlphabetic(this.currentText());
-        this.eat();
-        break;
-      case K.Linebreak:
-      case K.MathAlignPoint:
-      case K.MathShorthand:
-        this.eat();
-        break;
-      case K.MathPrimes:
-      case K.Escape:
-      case K.Str:
-        continuable = true;
-        this.eat();
-        break;
-      case K.Root: {
-        this.eat();
-        const radicand = this.marker();
-        this.mathExprPrec(2, EMPTY);
-        this.mathUnparen(radicand);
-        this.wrap(marker, K.MathRoot);
-        break;
-      }
-      default:
-        this.expected();
-        break;
-    }
+    const continuable = this.mathPrimary(marker, minPrec);
     if (
       continuable &&
       minPrec <= 2 &&
@@ -901,55 +874,107 @@ export class TypstParserCore {
     }
     for (;;) {
       if (stop[this.tok.kind] === 1) break;
-      const op = this.tok.kind;
-      const trivia = this.hadTrivia();
-      let wrapper: number;
-      let associativity: number;
-      let precedence: number;
-      if (op === K.Slash) {
-        wrapper = K.MathFrac;
-        associativity = 1;
-        precedence = 1;
-      } else if (op === K.Underscore || op === K.Hat) {
-        wrapper = K.MathAttach;
-        associativity = 2;
-        precedence = 2;
-      } else if (op === K.MathPrimes && !trivia) {
-        wrapper = K.MathAttach;
-        associativity = 0;
-        precedence = 2;
-      } else if (op === K.Bang && !trivia) {
-        wrapper = K.Math;
-        associativity = 0;
-        precedence = 3;
-      } else {
-        break;
-      }
-      if (precedence < minPrec) break;
-      let chain = EMPTY;
-      if (wrapper === K.MathAttach) {
-        chain = op === K.Hat ? CHAIN_UNDERSCORE : op === K.Underscore ? CHAIN_HAT : CHAIN_BOTH;
-      }
-      if (op === K.Bang) this.convertAndEat(K.MathText);
-      else this.eat();
-      if (wrapper === K.MathFrac) this.mathUnparen(marker);
-      if (associativity !== 0) {
-        const rhs = this.marker();
-        this.mathExprPrec(associativity === 1 ? precedence + 1 : precedence, chain);
-        this.mathUnparen(rhs);
-      }
-      if (!(op === K.MathPrimes && stop[this.tok.kind] === 1)) {
-        while (chain[this.tok.kind] === 1) {
-          chain = chain === CHAIN_BOTH ? (this.tok.kind === K.Hat ? CHAIN_UNDERSCORE : CHAIN_HAT) : EMPTY;
-          this.eat();
-          const rhs = this.marker();
-          this.mathExprPrec(precedence, chain);
-          this.mathUnparen(rhs);
-        }
-      }
-      this.wrap(marker, wrapper);
+      const operator = this.mathOperator();
+      if (operator === null || operator.precedence < minPrec) break;
+      this.mathOperation(marker, operator, stop);
     }
     this.depth -= 1;
+  }
+
+  private mathPrimary(marker: Marker, minPrec: number): boolean {
+    switch (this.tok.kind) {
+      case K.Hash:
+        this.embeddedCodeExpr();
+        return false;
+      case K.MathIdent:
+      case K.MathFieldAccess:
+        return this.mathIdentOrCall(marker, minPrec);
+      case K.LeftBrace:
+      case K.LeftParen:
+        this.mathDelimited();
+        return false;
+      case K.RightBrace:
+        this.convertAndEat(this.currentText() === "|]" ? K.MathShorthand : K.MathText);
+        return false;
+      case K.Dot:
+      case K.Bang:
+      case K.Comma:
+      case K.Semicolon:
+      case K.RightParen:
+        this.convertAndEat(K.MathText);
+        return false;
+      case K.MathText: {
+        const continuable = isMathAlphabetic(this.currentText());
+        this.eat();
+        return continuable;
+      }
+      case K.Linebreak:
+      case K.MathAlignPoint:
+      case K.MathShorthand:
+        this.eat();
+        return false;
+      case K.MathPrimes:
+      case K.Escape:
+      case K.Str:
+        this.eat();
+        return true;
+      case K.Root:
+        this.mathRoot(marker);
+        return false;
+      default:
+        this.expected();
+        return false;
+    }
+  }
+
+  private mathIdentOrCall(marker: Marker, minPrec: number): boolean {
+    this.eat();
+    if (minPrec > 2 || !this.directlyAt(K.LeftParen)) return true;
+    this.mathArgs();
+    this.wrap(marker, K.MathCall);
+    return false;
+  }
+
+  private mathRoot(marker: Marker): void {
+    this.eat();
+    this.mathOperand(2, EMPTY);
+    this.wrap(marker, K.MathRoot);
+  }
+
+  private mathOperand(minPrec: number, stop: Uint8Array): void {
+    const operand = this.marker();
+    this.mathExprPrec(minPrec, stop);
+    this.mathUnparen(operand);
+  }
+
+  private mathOperator(): MathOperator | null {
+    const kind = this.tok.kind;
+    if (kind === K.Slash) return MATH_FRACTION;
+    if (kind === K.Underscore || kind === K.Hat) return MATH_SCRIPT;
+    if (this.hadTrivia()) return null;
+    if (kind === K.MathPrimes) return MATH_PRIMES;
+    return kind === K.Bang ? MATH_FACTORIAL : null;
+  }
+
+  private mathOperation(marker: Marker, operator: MathOperator, stop: Uint8Array): void {
+    const op = this.tok.kind;
+    const { wrapper, associativity, precedence } = operator;
+    const chain = wrapper === K.MathAttach ? attachChain(op) : EMPTY;
+    if (op === K.Bang) this.convertAndEat(K.MathText);
+    else this.eat();
+    if (wrapper === K.MathFrac) this.mathUnparen(marker);
+    if (associativity !== 0) this.mathOperand(associativity === 1 ? precedence + 1 : precedence, chain);
+    if (op !== K.MathPrimes || stop[this.tok.kind] !== 1) this.mathChain(chain, precedence);
+    this.wrap(marker, wrapper);
+  }
+
+  private mathChain(first: Uint8Array, precedence: number): void {
+    let chain = first;
+    while (chain[this.tok.kind] === 1) {
+      chain = chain === CHAIN_BOTH ? attachChain(this.tok.kind) : EMPTY;
+      this.eat();
+      this.mathOperand(precedence, chain);
+    }
   }
 
   private mathDelimited(): void {
@@ -1074,52 +1099,60 @@ export class TypstParserCore {
   private codeExprPrec(atomic: boolean, minPrec: number): void {
     if (!this.increaseDepth()) return;
     const marker = this.marker();
-    if (UNARY_OP[this.tok.kind] === 1) {
-      if (atomic) {
-        this.unexpected();
-      } else {
-        const precedence = this.tok.kind === K.Not ? 4 : 7;
-        this.eat();
-        this.codeExprPrec(false, precedence);
-        this.wrap(marker, K.Unary);
-      }
-    } else {
-      this.codePrimary(atomic);
-    }
+    if (UNARY_OP[this.tok.kind] === 1) this.unary(marker, atomic);
+    else this.codePrimary(atomic);
     for (;;) {
       if (this.directlyAt(K.LeftParen) || this.directlyAt(K.LeftBracket)) {
-        this.args();
-        this.markCallee();
-        this.wrap(marker, K.FuncCall);
+        this.call(marker);
         continue;
       }
       const atField = this.directlyAt(K.Dot) && this.peekAfterDot() === K.Ident;
       if (atomic && !atField) break;
-      if (this.eatIf(K.Dot)) {
-        if (this.expect(K.Ident)) this.buf[this.lastRoot()] = K.IdentField;
-        this.wrap(marker, K.FieldAccess);
-        continue;
-      }
-      let op = -1;
-      if (BINARY_OP[this.tok.kind] === 1) {
-        op = this.tok.kind;
-      } else if (minPrec <= 4 && this.eatIf(K.Not)) {
-        if (this.at(K.In)) {
-          op = K.In;
-        } else {
-          this.expected();
-          break;
-        }
-      }
-      if (op < 0) break;
-      let precedence = binaryPrecedence(op);
-      if (precedence < minPrec) break;
-      if (!rightAssociative(op)) precedence += 1;
-      this.eat();
-      this.codeExprPrec(false, precedence);
-      this.wrap(marker, K.Binary);
+      if (this.eatIf(K.Dot)) this.fieldAccess(marker);
+      else if (!this.binary(marker, minPrec)) break;
     }
     this.depth -= 1;
+  }
+
+  private unary(marker: Marker, atomic: boolean): void {
+    if (atomic) {
+      this.unexpected();
+      return;
+    }
+    const precedence = this.tok.kind === K.Not ? 4 : 7;
+    this.eat();
+    this.codeExprPrec(false, precedence);
+    this.wrap(marker, K.Unary);
+  }
+
+  private call(marker: Marker): void {
+    this.args();
+    this.markCallee();
+    this.wrap(marker, K.FuncCall);
+  }
+
+  private fieldAccess(marker: Marker): void {
+    if (this.expect(K.Ident)) this.buf[this.lastRoot()] = K.IdentField;
+    this.wrap(marker, K.FieldAccess);
+  }
+
+  private binary(marker: Marker, minPrec: number): boolean {
+    const op = this.binaryOperator(minPrec);
+    if (op < 0) return false;
+    const precedence = binaryPrecedence(op);
+    if (precedence < minPrec) return false;
+    this.eat();
+    this.codeExprPrec(false, rightAssociative(op) ? precedence : precedence + 1);
+    this.wrap(marker, K.Binary);
+    return true;
+  }
+
+  private binaryOperator(minPrec: number): number {
+    if (BINARY_OP[this.tok.kind] === 1) return this.tok.kind;
+    if (minPrec > 4 || !this.eatIf(K.Not)) return -1;
+    if (this.at(K.In)) return K.In;
+    this.expected();
+    return -1;
   }
 
   private peekAfterDot(): number {
@@ -1489,8 +1522,7 @@ export class TypstParserCore {
     }
     this.expectClosingDelimiter(marker, K.RightParen);
     this.popNl(CONTINUE, previous);
-    const kind =
-      group.maybeJustParens && group.count === 1 ? K.Parenthesized : group.kind >= 0 ? group.kind : K.Array;
+    const kind = groupKind(group);
     this.wrap(marker, kind);
     return kind;
   }
@@ -1504,30 +1536,34 @@ export class TypstParserCore {
       return;
     }
     this.codeExprPrec(false, 0);
-    if (this.eatIf(K.Colon)) {
-      this.codeExprPrec(false, 0);
-      const root = this.rootAt(marker.index);
-      const keyKind = root >= 0 ? this.buf[root] : -1;
-      const named = baseKind(keyKind) === K.Ident;
-      if (named || keyKind === K.Str) {
-        const raw = this.text.slice(this.buf[root + 1], this.buf[root + 2]);
-        const key = named ? raw : raw.slice(1, -1);
-        if (group.seen.has(key)) {
-          this.buf[root] = K.Error;
-        } else {
-          group.seen.add(key);
-          if (named) this.buf[root] = K.IdentProperty;
-        }
-      }
-      this.wrap(marker, named ? K.Named : K.Keyed);
-      group.maybeJustParens = false;
-      if (group.kind === K.Array) this.retypeAt(marker, K.Error);
-      else group.kind = K.Dict;
-    } else if (group.kind === K.Dict) {
-      this.retypeAt(marker, K.Error);
+    if (this.eatIf(K.Colon)) this.pairItem(marker, group);
+    else if (group.kind === K.Dict) this.retypeAt(marker, K.Error);
+    else group.kind = K.Array;
+  }
+
+  private pairItem(marker: Marker, group: Group): void {
+    this.codeExprPrec(false, 0);
+    const named = this.markPairKey(marker, group);
+    this.wrap(marker, named ? K.Named : K.Keyed);
+    group.maybeJustParens = false;
+    if (group.kind === K.Array) this.retypeAt(marker, K.Error);
+    else group.kind = K.Dict;
+  }
+
+  private markPairKey(marker: Marker, group: Group): boolean {
+    const root = this.rootAt(marker.index);
+    const keyKind = root >= 0 ? this.buf[root] : -1;
+    const named = baseKind(keyKind) === K.Ident;
+    if (!named && keyKind !== K.Str) return false;
+    const raw = this.text.slice(this.buf[root + 1], this.buf[root + 2]);
+    const key = named ? raw : raw.slice(1, -1);
+    if (group.seen.has(key)) {
+      this.buf[root] = K.Error;
     } else {
-      group.kind = K.Array;
+      group.seen.add(key);
+      if (named) this.buf[root] = K.IdentProperty;
     }
+    return named;
   }
 
   private args(): void {

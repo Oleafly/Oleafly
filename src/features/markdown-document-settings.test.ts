@@ -101,6 +101,21 @@ describe("readMarkdownDocumentSettings", () => {
     expect(fields.fontSize).toMatchObject({ status: "locked", reason: "expression" });
   });
 
+  it.each([
+    [String.raw`mainfont: "A \"B\" \u0041\\ C"`, { status: "set", value: String.raw`A "B" A\ C` }],
+    ["mainfont: 'It''s here' # note", { status: "set", value: "It's here" }],
+    ['mainfont: "Inter"   ', { status: "set", value: "Inter" }],
+    [String.raw`mainfont: "\q"`, { status: "locked", reason: "expression", source: String.raw`"\q"` }],
+    ['mainfont: "Inter', { status: "locked", reason: "expression", source: '"Inter' }],
+    ["mainfont: 'Inter", { status: "locked", reason: "expression", source: "'Inter" }],
+    ['mainfont: "Inter" Bold', { status: "locked", reason: "expression", source: '"Inter" Bold' }],
+    ["mainfont: 'Inter'x", { status: "locked", reason: "expression", source: "'Inter'x" }],
+    [String.raw`mainfont: "Inter\"`, { status: "locked", reason: "expression", source: String.raw`"Inter\"` }],
+    ["mainfont: ''", { status: "set", value: "" }],
+  ])("reads the quoted scalar %j", (line, state) => {
+    expect(readMarkdownDocumentSettings(front(line)).fields.font).toEqual(state);
+  });
+
   it("handles a byte order mark and Windows line endings", () => {
     const text = "﻿---\r\nfontsize: 11pt\r\nlang: de\r\n---\r\n\r\nText\r\n";
     const settings = readMarkdownDocumentSettings(text);
@@ -111,6 +126,15 @@ describe("readMarkdownDocumentSettings", () => {
 });
 
 describe("markdownSettingsEdits", () => {
+  it("adds several keys to front matter saved with Windows line endings", () => {
+    for (const bom of ["", "\uFEFF"]) {
+      const text = `${bom}---\r\ntitle: x\r\n---\r\n\r\nBody\r\n`;
+      expect(edited(text, { paper: "a4", lineSpacing: "1.5" })).toBe(
+        `${bom}---\r\ntitle: x\r\npapersize: a4\r\nlinestretch: 1.5\r\n---\r\n\r\nBody\r\n`,
+      );
+    }
+  });
+
   it("edits values in place and keeps comments, quotes, unknown keys and order", () => {
     const next = edited(FULL, {
       fontSize: "12pt",
@@ -192,6 +216,40 @@ describe("markdownSettingsEdits", () => {
     );
     expect(edited(front("geometry: a4paper, margin=2cm"), { margin: null })).toBe(front("geometry: a4paper"));
     expect(edited(front("geometry: [left=2cm, right=3cm]"), { margin: "1cm" })).toBe(front("geometry: [left=2cm, right=3cm]"));
+  });
+
+  it("edits class options in every form it reads", () => {
+    expect(edited(front("classoption: twocolumn"), { columns: null })).toBe(front());
+    expect(edited(front("classoption: twocolumn"), { columns: "onecolumn" })).toBe(front("classoption: onecolumn"));
+    expect(edited(front("classoption:", "title: T"), { columns: "twocolumn" })).toBe(front("classoption: twocolumn", "title: T"));
+    expect(edited(front("classoption: a4paper,landscape"), { columns: "twocolumn" })).toBe(front("classoption: a4paper,landscape"));
+    expect(edited(front("classoption: landscape"), { columns: null })).toBe(front("classoption: landscape"));
+    expect(edited(front("classoption: {a: b}"), { columns: "twocolumn" })).toBe(front("classoption: {a: b}"));
+    expect(edited(front("classoption: [landscape]"), { columns: null })).toBe(front("classoption: [landscape]"));
+    expect(edited(front("classoption: [twocolumn, landscape, onecolumn]"), { columns: "twocolumn" })).toBe(
+      front("classoption: [twocolumn, landscape, twocolumn]"),
+    );
+    expect(edited(front("classoption: [twocolumn, landscape, onecolumn]"), { columns: null })).toBe(
+      front("classoption: [twocolumn, landscape]"),
+    );
+  });
+
+  it("edits geometry margins in every form it reads", () => {
+    expect(edited(front("geometry:", "title: T"), { margin: "2cm" })).toBe(front("geometry: margin=2cm", "title: T"));
+    expect(edited(front("geometry: margin=2cm", "title: T"), { margin: null })).toBe(front("title: T"));
+    expect(edited(front('geometry: "margin=2cm"'), { margin: "1in" })).toBe(front('geometry: "margin=1in"'));
+    expect(edited(front("geometry: 'a4paper'"), { margin: "1in" })).toBe(front("geometry: 'a4paper, margin=1in'"));
+    expect(edited(front("geometry: a4paper,landscape"), { margin: "2cm" })).toBe(front("geometry: a4paper,landscape,margin=2cm"));
+    expect(edited(front("geometry: a4paper"), { margin: null })).toBe(front("geometry: a4paper"));
+    expect(edited(front("geometry: {a: b}"), { margin: "2cm" })).toBe(front("geometry: {a: b}"));
+    expect(edited(front("geometry:", "  - margin=1cm", "  - landscape"), { margin: null })).toBe(front("geometry:", "  - landscape"));
+    expect(edited(front("geometry:", "  - margin=1cm"), { margin: null })).toBe(front());
+    expect(edited(front("geometry: [landscape]"), { margin: null })).toBe(front("geometry: [landscape]"));
+    expect(edited(front("geometry: ['margin=1cm', landscape]"), { margin: "2cm" })).toBe(front("geometry: ['margin=2cm', landscape]"));
+    expect(edited(front("geometry: [landscape]"), { margin: "2cm" })).toBe(front("geometry: [landscape, margin=2cm]"));
+    expect(edited(front("geometry:", "  - landscape", "title: T"), { margin: "2cm" })).toBe(
+      front("geometry:", "  - landscape", "  - margin=2cm", "title: T"),
+    );
   });
 
   it("fills an empty value after its key", () => {

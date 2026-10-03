@@ -164,17 +164,17 @@ describe("Typst requests through the editor", () => {
   let deactivate: (() => void) | null = null;
   let views: EditorView[] = [];
 
-  function activate(text: string) {
+  function activate(text: string, active = "main.typ") {
     useFilesStore.setState({
       projectId: "project-typst",
-      activePath: "main.typ",
-      files: { "main.typ": { content: text, dirty: false } },
+      activePath: active,
+      files: { [active]: { content: text, dirty: false } },
     });
     deactivate = activateInteractiveLanguageService({
       owner: {},
       projectId: "project-typst",
       projectRevision: 1,
-      kind: "tinymist",
+      kind: active.endsWith(".typ") ? "tinymist" : "texlab",
       positionEncoding: "utf-16",
       client: {
         generation: 1,
@@ -188,8 +188,8 @@ describe("Typst requests through the editor", () => {
         requestRangeFormatting,
       } as unknown as LanguageServiceClient,
       documentForPath: (path) =>
-        path === "main.typ"
-          ? { path, uri: "file:///project/main.typ", text, version: 1 }
+        path === active
+          ? { path, uri: `file:///project/${active}`, text, version: 1 }
           : null,
     });
   }
@@ -238,6 +238,35 @@ describe("Typst requests through the editor", () => {
       context: { triggerKind: 2, triggerCharacter: "#" },
     });
     expect(result?.options.map((option) => option.label)).toEqual(["image"]);
+  });
+
+  it.each([
+    ["Hello #ima", 7],
+    ["#let my-f\u00fcn = x\n#my-f\u00fcn", 17],
+    ["$x + alpha", 5],
+    ["Done. ", 6],
+  ])("starts a Typst completion at the identifier before the cursor in %j", async (text, from) => {
+    activate(text);
+    requestCompletion.mockResolvedValue({ items: [{ label: "image", kind: 3 }] });
+    const state = EditorState.create({ doc: text });
+    const result = await languageServiceCompletion(new CompletionContext(state, text.length, true));
+    expect(result?.from).toBe(from);
+  });
+
+  it.each([
+    [String.raw`\sec`, 0],
+    [String.raw`see \cite{smi`, 10],
+    [String.raw`a\\b`, 2],
+    ["x <fig:a.b", 2],
+    ["x #y", 2],
+    ["fig@x/y-z", 0],
+    ["end. ", 5],
+  ])("starts a LaTeX completion at the token before the cursor in %j", async (text, from) => {
+    activate(text, "main.tex");
+    requestCompletion.mockResolvedValue({ items: [{ label: "section", kind: 3 }] });
+    const state = EditorState.create({ doc: text });
+    const result = await languageServiceCompletion(new CompletionContext(state, text.length, true));
+    expect(result?.from).toBe(from);
   });
 
   it("does not ask for completion at the end of a sentence", async () => {

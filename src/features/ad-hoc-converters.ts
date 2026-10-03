@@ -914,7 +914,10 @@ async function equationLatex(
   return transcribeWithLocalModel("LaTeX", { text, equationOnly: true }, signal);
 }
 
-const TYPST_DISPLAY_MATH = /^\$\s*([\s\S]*?)\s*\$$/;
+function displayMathBody(text: string): string {
+  if (text.length < 2 || !text.startsWith("$") || !text.endsWith("$")) return "";
+  return text.slice(1, -1).trim();
+}
 
 async function equationLatexToTypst(
   latex: string,
@@ -927,12 +930,12 @@ async function equationLatexToTypst(
 }
 
 async function pandocLatexMathToTypst(latex: string): Promise<string> {
-  const converted = await runPandoc({ source: "equation", target: "typst", text: `\\[ ${latex} \\]` });
-  const match = TYPST_DISPLAY_MATH.exec((converted.text ?? "").trim());
-  if (!match?.[1]) {
+  const converted = await runPandoc({ source: "equation", target: "typst", text: String.raw`\[ ${latex} \]` });
+  const body = displayMathBody((converted.text ?? "").trim());
+  if (!body) {
     throw new Error(i18n.t(($) => $.researchTools.converterErrors.equationToTypst));
   }
-  return match[1];
+  return body;
 }
 
 interface ArxivSource {

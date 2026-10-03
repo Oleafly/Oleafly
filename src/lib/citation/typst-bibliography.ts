@@ -122,33 +122,48 @@ function readString(source: string, start: number): TypstString {
   return { value, from: start + 1, to: index, end: Math.min(source.length, index + 1) };
 }
 
+const EXPRESSION_ENDS = new Set([",", ")", "]", "}"]);
+
+function expressionCloser(character: string, inContent: boolean): string | null {
+  if (character === "[") return "]";
+  if (inContent) return null;
+  if (character === "(") return ")";
+  return character === "{" ? "}" : null;
+}
+
+function skippedExpressionPart(source: string, index: number, inContent: boolean): number | null {
+  const comment = commentEnd(source, index);
+  if (comment !== null) return comment;
+  const character = source[index];
+  if (character === "\\") return index + 2;
+  if (!inContent && character === '"') return readString(source, index).end;
+  if (inContent && character === "`") return rawEnd(source, index);
+  return null;
+}
+
 function skipExpression(source: string, start: number): number {
   const closers: string[] = [];
   let index = start;
   while (index < source.length) {
     const character = source[index];
+    if (closers.length === 0 && EXPRESSION_ENDS.has(character)) return index;
     const inContent = closers.at(-1) === "]";
-    if (closers.length === 0 && (character === "," || character === ")" || character === "]" || character === "}")) {
-      return index;
+    const skipped = skippedExpressionPart(source, index, inContent);
+    if (skipped !== null) {
+      index = skipped;
+      continue;
     }
-    const comment = commentEnd(source, index);
-    if (comment !== null) {
-      index = comment;
-    } else if (character === "\\") {
-      index += 2;
-    } else if (!inContent && character === '"') {
-      index = readString(source, index).end;
-    } else if (inContent && character === "`") {
-      index = rawEnd(source, index);
-    } else {
-      if (character === "[") closers.push("]");
-      else if (!inContent && character === "(") closers.push(")");
-      else if (!inContent && character === "{") closers.push("}");
-      else if (character === closers.at(-1)) closers.pop();
-      index += 1;
-    }
+    const closer = expressionCloser(character, inContent);
+    if (closer) closers.push(closer);
+    else if (character === closers.at(-1)) closers.pop();
+    index += 1;
   }
   return index;
+}
+
+function skipArgument(source: string, index: number): number {
+  const next = skipExpression(source, index);
+  return next === index ? index + 1 : next;
 }
 
 function namedArgumentValueStart(source: string, start: number): number | null {
@@ -192,8 +207,7 @@ function readArrayStrings(source: string, open: number): { strings: TypstString[
         continue;
       }
     }
-    const next = skipExpression(source, index);
-    index = next === index ? index + 1 : next;
+    index = skipArgument(source, index);
   }
   return { strings, end: source.length };
 }
@@ -201,6 +215,17 @@ function readArrayStrings(source: string, open: number): { strings: TypstString[
 function singleString(source: string, start: number): { strings: TypstString[]; end: number } {
   const item = readString(source, start);
   return { strings: [item], end: item.end };
+}
+
+function positionalStrings(
+  source: string,
+  index: number,
+): { strings: TypstString[]; after: number } | null {
+  const character = source[index];
+  if (character !== '"' && character !== "(") return null;
+  const read = character === '"' ? singleString(source, index) : readArrayStrings(source, index);
+  const after = skipTrivia(source, read.end);
+  return isArgumentBoundary(source, after) ? { strings: read.strings, after } : null;
 }
 
 function readArguments(
@@ -225,17 +250,13 @@ function readArguments(
       continue;
     }
     declares = true;
-    if (character === '"' || character === "(") {
-      const read = character === '"' ? singleString(source, index) : readArrayStrings(source, index);
-      const after = skipTrivia(source, read.end);
-      if (isArgumentBoundary(source, after)) {
-        read.strings.forEach(push);
-        index = after;
-        continue;
-      }
+    const positional = positionalStrings(source, index);
+    if (positional) {
+      positional.strings.forEach(push);
+      index = positional.after;
+      continue;
     }
-    const next = skipExpression(source, index);
-    index = next === index ? index + 1 : next;
+    index = skipArgument(source, index);
   }
   return { sources, declares, end: source.length };
 }
@@ -244,6 +265,21 @@ function isCalleeAt(source: string, index: number, escapedEnd: number): boolean 
   if (index === escapedEnd || !source.startsWith(CALLEE, index)) return false;
   const before = source[index - 1];
   return !isIdentifierCharacter(before) && before !== "." && source[index + CALLEE.length] === "(";
+}
+
+function readCall(source: string, index: number): { call: TypstBibliographyCall | null; next: number } {
+  const hashed = source[index - 1] === "#";
+  const parsed = readArguments(source, index + CALLEE.length);
+  if (!hashed && parsed.sources.length === 0) return { call: null, next: index + CALLEE.length };
+  return {
+    call: {
+      from: hashed ? index - 1 : index,
+      to: parsed.end,
+      declares: parsed.declares,
+      sources: parsed.sources,
+    },
+    next: parsed.end,
+  };
 }
 
 export function typstBibliographyCalls(source: string): TypstBibliographyCall[] {
@@ -261,18 +297,9 @@ export function typstBibliographyCalls(source: string): TypstBibliographyCall[] 
     } else if (character === "`") {
       index = rawEnd(source, index);
     } else if (isCalleeAt(source, index, escapedEnd)) {
-      const hashed = source[index - 1] === "#";
-      const parsed = readArguments(source, index + CALLEE.length);
-      const accepted = hashed || parsed.sources.length > 0;
-      if (accepted) {
-        calls.push({
-          from: hashed ? index - 1 : index,
-          to: parsed.end,
-          declares: parsed.declares,
-          sources: parsed.sources,
-        });
-      }
-      index = accepted ? parsed.end : index + CALLEE.length;
+      const read = readCall(source, index);
+      if (read.call) calls.push(read.call);
+      index = read.next;
     } else {
       index += 1;
     }

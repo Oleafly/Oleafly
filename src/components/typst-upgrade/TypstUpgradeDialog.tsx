@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { I18nextProvider, useTranslation } from "react-i18next";
 import { ArrowUpCircle } from "lucide-react";
@@ -185,7 +185,6 @@ export function TypstUpgradeDialog({
   const currentVersion = projectTypstVersion(engine, status);
   const choices = useMemo(() => newerInstalledTypstVersions(status, currentVersion), [status, currentVersion]);
   const [picked, setPicked] = useState<string | null>(initialVersion);
-  const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<CheckState>({ status: "idle" });
   const [switching, setSwitching] = useState(false);
   const request = useRef(0);
@@ -199,8 +198,7 @@ export function TypstUpgradeDialog({
     if (open) void ensureLoaded();
   }, [open, ensureLoaded]);
 
-  useEffect(() => {
-    void attempt;
+  const runCheck = useCallback(() => {
     if (!open || !projectId || !version) return;
     const current = ++request.current;
     setState({ status: "loading", version });
@@ -222,7 +220,9 @@ export function TypstUpgradeDialog({
     return () => {
       request.current += 1;
     };
-  }, [open, projectId, version, attempt]);
+  }, [open, projectId, version]);
+
+  useEffect(runCheck, [runCheck]);
 
   const openFinding = (finding: TypstUpgradeFinding) => {
     if (!finding.file) return;
@@ -276,7 +276,7 @@ export function TypstUpgradeDialog({
     if (state.status === "error") {
       return (
         <ErrorState message={`${t(($) => $.shell.typstUpgrade.checkFailed)} ${state.message}`}>
-          <Button type="button" size="sm" variant="outline" onClick={() => setAttempt((value) => value + 1)}>
+          <Button type="button" size="sm" variant="outline" onClick={() => runCheck()}>
             {t(($) => $.shell.typstUpgrade.runAgain)}
           </Button>
         </ErrorState>
@@ -340,7 +340,7 @@ export function TypstUpgradeDialog({
         </Button>
         {state.status === "ready" && version && (
           <>
-            <Button type="button" size="sm" variant="outline" onClick={() => setAttempt((value) => value + 1)}>
+            <Button type="button" size="sm" variant="outline" onClick={() => runCheck()}>
               {t(($) => $.shell.typstUpgrade.runAgain)}
             </Button>
             <Button

@@ -66,7 +66,7 @@ function loadMermaid(content: string): LoadedDiagram {
     model: read.model,
     editable: !read.notes.some((note) => note.kind === "dropped"),
     write: (model) => {
-      const code = language.fileSource(model, { extras: read.extras }).replace(/\s+$/, "");
+      const code = language.fileSource(model, { extras: read.extras }).trimEnd();
       return `${content.slice(0, block.from)}${code}${content.slice(block.to)}`;
     },
     figure: firstBlock,

@@ -21,12 +21,12 @@ export async function documentPackages(mainDoc: string): Promise<Set<string>> {
   return loadedPackageNames(sources.texts);
 }
 
-async function readMainText(projectId: string, mainDoc: string): Promise<string> {
+function readMainText(projectId: string, mainDoc: string): Promise<string> {
   const files = useFilesStore.getState();
   const view = getEditorView();
-  if (view && files.activePath === mainDoc) return view.state.doc.toString();
+  if (view && files.activePath === mainDoc) return Promise.resolve(view.state.doc.toString());
   const open = files.files[mainDoc]?.content;
-  if (typeof open === "string") return open;
+  if (typeof open === "string") return Promise.resolve(open);
   return readFileContent(projectId, mainDoc);
 }
 

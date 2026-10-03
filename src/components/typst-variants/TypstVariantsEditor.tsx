@@ -62,8 +62,8 @@ export function useTypstVariantsDraft(projectId: string | null, enabled: boolean
         setSaved(JSON.stringify(variantsFromDraft(next)));
         setLoad({ status: "ready" });
       },
-      (failure: unknown) => {
-        if (current === request.current) setLoad({ status: "error", message: describeError(failure) });
+      (error_: unknown) => {
+        if (current === request.current) setLoad({ status: "error", message: describeError(error_) });
       },
     );
   }, [projectId]);

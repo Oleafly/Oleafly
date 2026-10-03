@@ -79,11 +79,32 @@ function bracketsBalanced(text: string): boolean {
 
 export function typstCaptionContent(caption: string): string {
   const flat = caption.replaceAll(/\r?\n/gu, " ");
-  return bracketsBalanced(flat) ? flat : flat.replaceAll(/(?<!\\)([[\]])/gu, "\\$1");
+  return bracketsBalanced(flat) ? flat : flat.replaceAll(/(?<!\\)([[\]])/gu, String.raw`\$1`);
 }
 
 function extraArgs(args: readonly TypstExtraArgument[] | undefined, skip: ReadonlySet<string>): string[] {
   return (args ?? []).filter((arg) => arg.name === null || !skip.has(arg.name)).map((arg) => arg.text);
+}
+
+function imageCallLine(fields: TypstFigureFields, alt: string | null): string {
+  const imageParts = [typstStringLiteral(fields.path)];
+  if (fields.width) imageParts.push(`width: ${fields.width}`);
+  const imageSkip = new Set<string>(["width", ...(alt ? ["alt"] : [])]);
+  imageParts.push(...extraArgs(fields.imageArgs, imageSkip));
+  if (alt) imageParts.push(`alt: ${typstStringLiteral(alt)}`);
+  return `  image(${imageParts.join(", ")}),`;
+}
+
+function figureArgumentLines(fields: TypstFigureFields, alt: string | null): string[] {
+  const lines: string[] = [];
+  if (alt) lines.push(`  alt: ${typstStringLiteral(alt)},`);
+  if (fields.placement !== "none") lines.push(`  placement: ${fields.placement},`);
+  const figureSkip = new Set<string>();
+  if (fields.caption !== null) figureSkip.add("caption");
+  if (fields.placement !== "none") figureSkip.add("placement");
+  if (alt) figureSkip.add("alt");
+  for (const extra of extraArgs(fields.figureArgs, figureSkip)) lines.push(`  ${extra},`);
+  return lines;
 }
 
 export function typstFigureSource(
@@ -91,19 +112,11 @@ export function typstFigureSource(
   version: string | null | undefined,
 ): TypstFigureSnippet {
   const altOnFigure = Boolean(fields.figureAlt) && typstVersionSupports(version, TYPST_FIGURE_ALT_SINCE);
-  const imageParts = [typstStringLiteral(fields.path)];
-  if (fields.width) imageParts.push(`width: ${fields.width}`);
-  const imageSkip = new Set<string>(["width", ...(fields.alt && !altOnFigure ? ["alt"] : [])]);
-  imageParts.push(...extraArgs(fields.imageArgs, imageSkip));
-  if (fields.alt && !altOnFigure) imageParts.push(`alt: ${typstStringLiteral(fields.alt)}`);
-  const lines = ["#figure(", `  image(${imageParts.join(", ")}),`];
-  if (fields.alt && altOnFigure) lines.push(`  alt: ${typstStringLiteral(fields.alt)},`);
-  if (fields.placement !== "none") lines.push(`  placement: ${fields.placement},`);
-  const figureSkip = new Set<string>();
-  if (fields.caption !== null) figureSkip.add("caption");
-  if (fields.placement !== "none") figureSkip.add("placement");
-  if (fields.alt && altOnFigure) figureSkip.add("alt");
-  for (const extra of extraArgs(fields.figureArgs, figureSkip)) lines.push(`  ${extra},`);
+  const lines = [
+    "#figure(",
+    imageCallLine(fields, fields.alt && !altOnFigure ? fields.alt : null),
+    ...figureArgumentLines(fields, fields.alt && altOnFigure ? fields.alt : null),
+  ];
   let selStart = -1;
   let selEnd = -1;
   if (fields.caption !== null) {
@@ -133,7 +146,7 @@ function parseImage(source: string, arg: TypstArgument): ParsedImage | null {
   const head = /^#?image(?=\()/u.exec(source.slice(arg.from, arg.to));
   if (!head || arg.name !== null) return null;
   const parsed = typstArguments(source, arg.from + head[0].length);
-  if (!parsed || parsed.end !== arg.to) return null;
+  if (parsed?.end !== arg.to) return null;
   let path: string | null = null;
   let width: string | null = null;
   let alt: string | null = null;
@@ -155,7 +168,7 @@ function parseImage(source: string, arg: TypstArgument): ParsedImage | null {
 }
 
 function figureBody(source: string, arg: TypstArgument | undefined): TypstFigureBody {
-  if (!arg || arg.name !== null) return "other";
+  if (arg?.name !== null) return "other";
   const text = source.slice(arg.from, arg.to);
   if (/^#?image\(/u.test(text)) return "image";
   if (/^#?table\(/u.test(text)) return "table";
@@ -214,26 +227,30 @@ function trailingLabel(source: string, from: number): { label: string; end: numb
   return match ? { label: match[1], end: index + match[0].length } : null;
 }
 
+function figureCandidate(source: string, index: number, pos: number): TypstFigureMatch | null {
+  const from = figureCallStart(source, index);
+  if (from === null) return null;
+  const parsed = typstArguments(source, index + "figure".length);
+  if (!parsed) return null;
+  const label = trailingLabel(source, parsed.end);
+  const to = label?.end ?? parsed.end;
+  if (pos < from || pos > to) return null;
+  const fields = parseFields(source, parsed.args);
+  return {
+    from,
+    to,
+    callEnd: parsed.end,
+    body: figureBody(source, parsed.args[0]),
+    label: label?.label ?? null,
+    fields: fields ? { ...fields, label: label?.label ?? null } : null,
+  };
+}
+
 export function typstFigureAt(source: string, pos: number): TypstFigureMatch | null {
   let index = source.lastIndexOf("figure(", Math.min(pos, source.length));
   for (let seen = 0; index >= 0 && seen < MAX_CANDIDATES && pos - index <= SEARCH_WINDOW; seen++) {
-    const from = figureCallStart(source, index);
-    const parsed = from === null ? null : typstArguments(source, index + "figure".length);
-    if (from !== null && parsed) {
-      const label = trailingLabel(source, parsed.end);
-      const to = label?.end ?? parsed.end;
-      if (pos >= from && pos <= to) {
-        const fields = parseFields(source, parsed.args);
-        return {
-          from,
-          to,
-          callEnd: parsed.end,
-          body: figureBody(source, parsed.args[0]),
-          label: label?.label ?? null,
-          fields: fields ? { ...fields, label: label?.label ?? null } : null,
-        };
-      }
-    }
+    const match = figureCandidate(source, index, pos);
+    if (match) return match;
     index = index === 0 ? -1 : source.lastIndexOf("figure(", index - 1);
   }
   return null;

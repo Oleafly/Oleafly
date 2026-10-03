@@ -768,6 +768,255 @@ describe("layout", () => {
   });
 });
 
+describe("pinned reader, layout and writer cases", () => {
+  const READER = [
+    "flowchart TD",
+    "  %%{init: {}}%%",
+    "  %% note",
+    "  end",
+    "  direction LR",
+    "  A:::",
+    "  classDef",
+    "  class D",
+    "  style",
+    "  classDef hot fill:#f00,rx:2",
+    "  subgraph S1 [Group one]",
+    "    direction RL",
+    "    style S1 fill:#eeeeee",
+    "    X --> Y",
+    "  end",
+    "  style S1 stroke:#333",
+    '  subgraph "spaced title"',
+    "    Z",
+    "  end",
+    "  linkStyle 0 interpolate basis stroke:#f00,stroke-dasharray:3",
+    "  P:::hot --o Q",
+    "  P --x R",
+    "  P ==> Q",
+    "  P o--o R",
+    "  V@{ shape: sm-circ, icon: x }",
+    "  W@{ shape: cyl }",
+    "  subgraph Open",
+    "    O1",
+    "  B@{ shape: rect",
+  ].join("\n");
+
+  const withoutNode = (m: DiagramModel, id: string): DiagramModel => ({
+    ...m,
+    nodes: m.nodes.filter((n) => n.id !== id),
+    edges: m.edges.filter((e) => e.source !== id && e.target !== id),
+  });
+
+  it("reads what it can and keeps the rest as raw statements", () => {
+    const { model: m, extras, notes } = read(READER);
+    expect(notes.map((n) => (n.detail ? `${n.code}:${n.detail}` : n.code))).toEqual([
+      "mermaidDirective",
+      "mermaidComment",
+      "mermaidUnknownStatement",
+      "mermaidClassProperty:rx",
+      "mermaidSubgraphDirection",
+      "mermaidLinkStyleProperty:interpolate",
+      "mermaidLinkStyleProperty:stroke",
+      "mermaidNodeSetting:icon",
+      "mermaidShape:sm-circ",
+      "mermaidShape:cyl",
+      "mermaidArrowHead",
+      "mermaidThickLink",
+    ]);
+    expect(extras.items.map((item) => item.kind)).toEqual([
+      "raw", "raw", "raw", "raw", "raw", "graph", "raw", "graph", "raw", "subgraph", "direction", "style", "graph", "end",
+      "style", "subgraph", "graph", "end", "linkStyle", "graph", "graph", "graph", "graph", "graph", "graph", "subgraph",
+      "graph", "raw",
+    ]);
+    expect(m.nodes.map((n) => [n.id, n.shape, n.label, n.fill ?? null, n.stroke ?? null])).toEqual([
+      ["classDef", "rectangle", "classDef", null, null],
+      ["style", "rectangle", "style", null, null],
+      ["S1", "roundrect", "Group one", "#eeeeee", "#333333"],
+      ["X", "rectangle", "X", null, null],
+      ["Y", "rectangle", "Y", null, null],
+      ["subGraph1", "roundrect", "spaced title", null, null],
+      ["Z", "rectangle", "Z", null, null],
+      ["P", "rectangle", "P", "#ff0000", null],
+      ["Q", "rectangle", "Q", null, null],
+      ["R", "rectangle", "R", null, null],
+      ["V", "circle", "V", null, null],
+      ["W", "rectangle", "W", null, null],
+      ["Open", "roundrect", "Open", null, null],
+      ["O1", "rectangle", "O1", null, null],
+    ]);
+    expect(m.edges.map((e) => [e.source, e.target, e.arrow, e.style, e.label ?? null])).toEqual([
+      ["X", "Y", "forward", "dashed", null],
+      ["P", "Q", "forward", "solid", null],
+      ["P", "R", "forward", "solid", null],
+      ["P", "Q", "forward", "solid", null],
+      ["P", "R", "both", "solid", null],
+    ]);
+    expect(extras.links).toEqual({
+      e2: { heads: ["", "o"] },
+      e3: { heads: ["", "x"] },
+      e4: { thick: true },
+      e5: { heads: ["o", "o"] },
+    });
+    expect(extras.directions).toEqual({ S1: "RL" });
+    expect(extras.parents).toEqual({ X: "S1", Y: "S1", Z: "subGraph1", O1: "Open" });
+  });
+
+  it("places new nodes and groups around hint geometry in every direction", () => {
+    const placed = (dir: string) => {
+      const hint = read(`flowchart ${dir}\n  A --> B`).model;
+      const source = [`flowchart ${dir}`, "  A --> B", "  C", "  subgraph G", "    D --> E", "  end", "  F --> A"].join("\n");
+      return read(source, hint).model.nodes.map((n) => [n.id, n.x, n.y, n.w, n.h]);
+    };
+    expect(placed("TB")).toEqual([
+      ["A", 40, 40, 120, 56],
+      ["B", 40, 156, 120, 56],
+      ["C", 40, 272, 120, 56],
+      ["G", 40, 388, 160, 236],
+      ["D", 60, 432, 120, 56],
+      ["E", 60, 548, 120, 56],
+      ["F", 40, -76, 120, 56],
+    ]);
+    expect(placed("BT")).toEqual([
+      ["A", 40, 156, 120, 56],
+      ["B", 40, 40, 120, 56],
+      ["C", 40, -76, 120, 56],
+      ["G", 40, -372, 160, 236],
+      ["D", 60, -212, 120, 56],
+      ["E", 60, -328, 120, 56],
+      ["F", 40, 272, 120, 56],
+    ]);
+    expect(placed("LR")).toEqual([
+      ["A", 40, 40, 120, 56],
+      ["B", 220, 40, 120, 56],
+      ["C", 400, 40, 120, 56],
+      ["G", 580, 40, 340, 120],
+      ["D", 600, 84, 120, 56],
+      ["E", 780, 84, 120, 56],
+      ["F", -140, 40, 120, 56],
+    ]);
+    expect(placed("RL")).toEqual([
+      ["A", 220, 40, 120, 56],
+      ["B", 40, 40, 120, 56],
+      ["C", -140, 40, 120, 56],
+      ["G", -540, 40, 340, 120],
+      ["D", -340, 84, 120, 56],
+      ["E", -520, 84, 120, 56],
+      ["F", 400, 40, 120, 56],
+    ]);
+    const group = read("flowchart TD\n  subgraph G\n    D\n  end").model;
+    const onlyBox = { ...group, nodes: group.nodes.filter((n) => n.id === "G") };
+    const boxed = read("flowchart TD\n  subgraph G\n    D --> E\n  end\n  F", onlyBox).model;
+    expect(boxed.nodes.map((n) => [n.id, n.x, n.y, n.w, n.h])).toEqual([
+      ["G", 20, -4, 180, 236],
+      ["D", 40, 40, 120, 56],
+      ["E", 40, 156, 120, 56],
+      ["F", 40, 272, 120, 56],
+    ]);
+  });
+
+  const WRITES: [string, string, (m: DiagramModel) => DiagramModel, string[]][] = [
+    [
+      "kept circle and cross heads",
+      "flowchart LR\n  A --o B\n  A x--x C",
+      (m) => patchEdge(patchEdge(m, "A", "B", { label: "kept" }), "A", "C", { arrow: "forward" }),
+      ["flowchart LR", "  A --o|kept| B", "  A --> C"],
+    ],
+    [
+      "a dash style that undoes a default class",
+      "flowchart TD\n  classDef default stroke-dasharray:3\n  A --> B\n  style A fill:#ff0000",
+      (m) => patchNode(patchNode(m, "A", { strokeStyle: "solid", fill: "#00ff00" }), "B", { strokeStyle: "dotted" }),
+      [
+        "flowchart TD",
+        "  classDef default stroke-dasharray:3",
+        "  A --> B",
+        "  style A fill:#00ff00,stroke-dasharray:0",
+        "  style B stroke-dasharray:2 3",
+      ],
+    ],
+    [
+      "a default linkStyle",
+      "flowchart TD\n  A --> B\n  B --> C\n  linkStyle default stroke-dasharray:3",
+      (m) => patchEdge(m, "A", "B", { style: "solid", label: "x" }),
+      ["flowchart TD", "  A -->|x| B", "  B --> C", "  linkStyle default stroke-dasharray:3"],
+    ],
+    [
+      "a dashed linkStyle whose edge became solid",
+      "flowchart TD\n  A --> B\n  B --> C\n  linkStyle 0,1 stroke-dasharray:3,stroke:#f00",
+      (m) => patchEdge(m, "A", "B", { style: "solid" }),
+      ["flowchart TD", "  A --> B", "  B --> C", "  linkStyle 1 stroke-dasharray:3,stroke:#f00", "  linkStyle 0 stroke:#f00"],
+    ],
+    [
+      "an interpolate-only linkStyle after an edge was deleted",
+      "flowchart TD\n  A --> B\n  B --> C\n  C --> D\n  linkStyle 1,2 interpolate basis",
+      (m) => ({ ...m, edges: m.edges.filter((e) => !(e.source === "A" && e.target === "B")) }),
+      ["flowchart TD", "  A", "  B", "  B --> C", "  C --> D", "  linkStyle 0,1 interpolate basis"],
+    ],
+    [
+      "relabeled data declarations",
+      'flowchart TD\n  A@{ shape: rect, label: "x" }\n  B@{ shape: diam }\n  A --> B',
+      (m) => patchNode(patchNode(m, "A", { label: "Renamed" }), "B", { label: "Q?" }),
+      ["flowchart TD", '  A@{ shape: rect, label: "Renamed" }', '  B@{ shape: diam, label: "Q?" }', "  A --> B"],
+    ],
+    [
+      "a subgraph statement that lost a node",
+      "flowchart TD\n  subgraph S\n    A:::hot --> B & C\n    B\n    S2\n  end\n  classDef hot fill:#f96",
+      (m) => withoutNode(m, "C"),
+      ["flowchart TD", "  subgraph S", "    A:::hot", "    A --> B", "    B", "    S2", "  end", "  classDef hot fill:#f96"],
+    ],
+    [
+      "style lines of a deleted node and of a cleared fill",
+      "flowchart TD\n  A --> B\n  style A fill:#ff0000,opacity:0.5\n  style B fill:#00ff00",
+      (m) => withoutNode(patchNode(m, "A", { fill: undefined }), "B"),
+      ["flowchart TD", "  A", "  style A opacity:0.5"],
+    ],
+    [
+      "a node declared only by a style line",
+      "flowchart TD\n  A --> B\n  style X fill:#ff0000",
+      (m) => patchNode(m, "X", { label: "Now labelled" }),
+      ["flowchart TD", "  A --> B", "  style X fill:#ff0000", "  X[Now labelled]"],
+    ],
+    [
+      "a deleted subgraph",
+      "flowchart TD\n  subgraph S\n    A --> B\n  end\n  style A fill:#ff0000,opacity:0.5\n  click A cb\n  e1@{ animate: true }\n  A e1@--> B\n  class A,B hot\n  linkStyle 0 stroke:#f00\n  A ~~~ B",
+      (m) => withoutNode(m, "S"),
+      [
+        "flowchart TD",
+        "  A",
+        "  B",
+        "  A --> B",
+        "  A e1@--> B",
+        "  A ~~~ B",
+        "  style A fill:#ff0000,opacity:0.5",
+        "  click A cb",
+        "  e1@{ animate: true }",
+        "  class A,B hot",
+        "  linkStyle 0 stroke:#f00",
+      ],
+    ],
+    [
+      "a class line that lost a node",
+      "flowchart TD\n  A --> B\n  B --> C\n  class A,B,C hot",
+      (m) => withoutNode(m, "B"),
+      ["flowchart TD", "  A", "  C", "  class A,C hot"],
+    ],
+    [
+      "a new node inside a subgraph",
+      "flowchart TD\n  subgraph S\n    A\n  end",
+      (m) => {
+        const a = m.nodes.find((n) => n.id === "A");
+        const fresh = node({ id: "N", shape: "circle", x: (a?.x ?? 0) + 2, y: (a?.y ?? 0) + 2, w: 10, h: 10, label: "N", fill: "#123456" });
+        return { ...m, nodes: [...m.nodes, fresh] };
+      },
+      ["flowchart TD", "  subgraph S", "    A", "    N((N))", "  end", "  style N fill:#123456"],
+    ],
+  ];
+
+  it.each(WRITES)("writes %s back with the hand-written parts kept", (_, source, change, expected) => {
+    const { model: m, extras } = read(source);
+    expect(modelToMermaid(change(m), { extras })).toBe(expected.join("\n"));
+  });
+});
+
 describe("mermaidBlocks and mermaidFence", () => {
   it("finds fenced mermaid blocks with their content ranges", () => {
     const markdown = [

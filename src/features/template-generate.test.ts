@@ -135,7 +135,7 @@ describe("compileGeneratedTemplate", () => {
       })),
     });
     const { log } = await compileGeneratedTemplate(template({}));
-    expect(log.length).toBe(2000);
+    expect(log).toHaveLength(2000);
     expect(log.endsWith(`problem 31 ${"x".repeat(100)}`)).toBe(true);
   });
 

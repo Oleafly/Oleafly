@@ -29,7 +29,7 @@ beforeEach(() => {
 });
 
 function slide(name: string) {
-  return screen.findByRole("img", { name });
+  return screen.findByRole("figure", { name });
 }
 
 describe("PresentationWindow", () => {
@@ -58,7 +58,7 @@ describe("PresentationWindow", () => {
     render(<PresentationWindow />);
     await slide("Slide 2 of 3");
     act(() => presentationHarness.deliver("presentation:goto", { session: "other", page: 1 }));
-    expect(screen.getByRole("img", { name: "Slide 2 of 3" })).toBeInTheDocument();
+    expect(screen.getByRole("figure", { name: "Slide 2 of 3" })).toBeInTheDocument();
     act(() => presentationHarness.deliver("presentation:goto", { session: "s1", page: 1 }));
     expect(await slide("Slide 1 of 3")).toBeInTheDocument();
   });
@@ -76,7 +76,7 @@ describe("PresentationWindow", () => {
     render(<PresentationWindow />);
     await slide("Slide 2 of 3");
     fireEvent.keyDown(window, { key: "b" });
-    await waitFor(() => expect(screen.queryByRole("img")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("figure")).toBeNull());
     expect(presentationHarness.emitted).toContainEqual({ event: "presentation:blank", payload: { session: "s1", blank: true } });
     fireEvent.keyDown(window, { key: "Escape" });
     expect(presentationHarness.emitted).toContainEqual({ event: "presentation:end", payload: { session: "s1" } });
@@ -87,7 +87,7 @@ describe("PresentationWindow", () => {
     render(<PresentationWindow />);
     await slide("Slide 2 of 3");
     fireEvent.keyDown(window, { key: "ArrowRight", metaKey: true });
-    expect(screen.getByRole("img", { name: "Slide 2 of 3" })).toBeInTheDocument();
+    expect(screen.getByRole("figure", { name: "Slide 2 of 3" })).toBeInTheDocument();
   });
 
   it("explains when the PDF cannot be opened", async () => {

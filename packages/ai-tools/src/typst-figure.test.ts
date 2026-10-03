@@ -73,6 +73,14 @@ describe("typstLabel", () => {
     expect(typstLabel("fig: loss curve!")).toBe("fig:-loss-curve");
     expect(typstLabel("  <>  ")).toBeNull();
   });
+
+  it("strips repeated brackets and dashes from both ends only", () => {
+    expect(typstLabel("<<<fig:x>>>")).toBe("fig:x");
+    expect(typstLabel(">>a<<")).toBe("a");
+    expect(typstLabel("--a  b--")).toBe("a-b");
+    expect(typstLabel(`${">".repeat(5000)}a`)).toBe("a");
+    expect(typstLabel(`a${"-".repeat(5000)}!`)).toBe("a");
+  });
 });
 
 describe("typstFigureMarkup", () => {

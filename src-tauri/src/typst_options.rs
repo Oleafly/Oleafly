@@ -454,9 +454,7 @@ fn font_list_settings(meta: &ProjectMeta, root: &Path) -> TypstCompileSettings {
 fn list_fonts_blocking(project_id: &str) -> Result<TypstFontList, String> {
     let meta =
         crate::trust::restrict_compile_meta(project_id, crate::project::read_meta(project_id)?)?;
-    let root = crate::project_location::locate(project_id)
-        .map_err(String::from)?
-        .root;
+    let root = crate::project_location::locate(project_id)?.root;
     let typst = match crate::typst_toolchain::resolve_for_compile(&meta)? {
         Some(typst) => typst,
         None => std::sync::Arc::new(crate::typst_toolchain::snippet_typst(None)?),

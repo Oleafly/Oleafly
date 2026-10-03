@@ -539,7 +539,9 @@ export const languageServiceCompletion: CompletionSource = async (
     : { triggerKind: 1 };
   if (!trigger) return null;
   const token = context.matchBefore(
-    typst ? /[\p{L}\p{M}\p{N}_-]*$/u : /[\\#<]?[\p{L}\p{M}\p{N}_:./@-]*$/u,
+    typst
+      ? /(?<![\p{L}\p{M}\p{N}_-])[\p{L}\p{M}\p{N}_-]*$/u
+      : /(?:[\\#<]|(?<![\p{L}\p{M}\p{N}_:./@-]))[\p{L}\p{M}\p{N}_:./@-]*$/u,
   );
   const fallbackFrom = token?.from ?? context.pos;
   const positions = new TextPositionIndex(text);

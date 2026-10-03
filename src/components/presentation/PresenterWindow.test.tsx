@@ -37,8 +37,8 @@ afterEach(() => vi.useRealTimers());
 describe("PresenterWindow", () => {
   it("shows the current slide, the next slide and the speaker notes", async () => {
     render(<PresenterWindow />);
-    expect(await screen.findByRole("img", { name: "Slide 2 of 3" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "Slide 3 of 3" })).toBeInTheDocument();
+    expect(await screen.findByRole("figure", { name: "Slide 2 of 3" })).toBeInTheDocument();
+    expect(screen.getByRole("figure", { name: "Slide 3 of 3" })).toBeInTheDocument();
     expect(await screen.findByTestId("presenter-notes")).toHaveTextContent("Explain the latency budget");
 
     fireEvent.click(screen.getByRole("button", { name: copy.nextAction }));
@@ -56,7 +56,7 @@ describe("PresenterWindow", () => {
 
   it("shows when the audience screen is blank", async () => {
     render(<PresenterWindow />);
-    await screen.findByRole("img", { name: "Slide 2 of 3" });
+    await screen.findByRole("figure", { name: "Slide 2 of 3" });
     act(() => presentationHarness.deliver("presentation:blank", { session: "s1", blank: true }));
     expect(await screen.findByText(copy.blank)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: copy.toggleBlank }));
@@ -83,7 +83,7 @@ describe("PresenterWindow", () => {
 
   it("ends the presentation for both windows", async () => {
     render(<PresenterWindow />);
-    await screen.findByRole("img", { name: "Slide 2 of 3" });
+    await screen.findByRole("figure", { name: "Slide 2 of 3" });
     fireEvent.click(screen.getByRole("button", { name: copy.end }));
     expect(presentationHarness.emitted).toContainEqual({ event: "presentation:end", payload: { session: "s1" } });
     expect(presentationHarness.close).toHaveBeenCalled();

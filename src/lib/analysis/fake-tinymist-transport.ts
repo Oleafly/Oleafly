@@ -59,7 +59,7 @@ export class FakeTinymistTransport implements LanguageServiceTransport {
   readonly handlers = new Map<string, Handler>();
   capabilities: Record<string, unknown> = { ...TINYMIST_TEST_CAPABILITIES };
   workspaceRoot = "/project";
-  private sinks = new Map<string, LanguageServiceEventSink>();
+  private readonly sinks = new Map<string, LanguageServiceEventSink>();
   private generation = 0;
   private current: LanguageServiceRuntimeSession | null = null;
 
@@ -69,7 +69,7 @@ export class FakeTinymistTransport implements LanguageServiceTransport {
       : { state: "stopped", session: null };
   }
 
-  async start(
+  start(
     options: LanguageServiceStartOptions,
     sink: LanguageServiceEventSink,
   ): Promise<LanguageServiceRuntimeSession> {
@@ -83,21 +83,21 @@ export class FakeTinymistTransport implements LanguageServiceTransport {
     };
     this.sinks.set(session.session, sink);
     this.current = session;
-    return session;
+    return Promise.resolve(session);
   }
 
-  async send(
+  send(
     session: LanguageServiceSession,
     message: JsonRpcMessage,
   ): Promise<void> {
-    if (!("method" in message)) return;
+    if (!("method" in message)) return Promise.resolve();
     const id = "id" in message ? (message.id as number | string) : undefined;
     this.messages.push({
       method: message.method,
       params: "params" in message ? message.params : undefined,
       ...(id === undefined ? {} : { id }),
     });
-    if (id === undefined) return;
+    if (id === undefined) return Promise.resolve();
     const result = this.resultFor(message.method, "params" in message ? message.params : undefined);
     queueMicrotask(() => {
       this.sinks.get(session.session)?.({
@@ -107,18 +107,22 @@ export class FakeTinymistTransport implements LanguageServiceTransport {
         message: { jsonrpc: "2.0", id, result },
       });
     });
+    return Promise.resolve();
   }
 
-  async refreshStatus(): Promise<LanguageServiceTransportStatus> {
-    return this.status();
+  refreshStatus(): Promise<LanguageServiceTransportStatus> {
+    return Promise.resolve(this.status());
   }
 
-  async stop(session: LanguageServiceSession): Promise<void> {
+  stop(session: LanguageServiceSession): Promise<void> {
     this.sinks.delete(session.session);
     if (this.current?.session === session.session) this.current = null;
+    return Promise.resolve();
   }
 
-  async cleanup(): Promise<void> {}
+  cleanup(): Promise<void> {
+    return Promise.resolve();
+  }
 
   methods(method: string): FakeServerMessage[] {
     return this.messages.filter((message) => message.method === method);

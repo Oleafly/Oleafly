@@ -179,6 +179,34 @@ describe("latexMathToTypst", () => {
     expect(latexMathToTypst(latex)).toBe(typst);
   });
 
+  it.each([
+    [String.raw`a \hspace{1em} b`, "a #h(1em) b"],
+    [String.raw`a\hspace{-.5cm}b`, "a #h(-.5cm) b"],
+    [String.raw`a\hspace{1.5in}b`, "a #h(1.5in) b"],
+    [String.raw`a\hspace{2.pt}b`, "a b"],
+    [String.raw`a\hspace{12}b`, "a b"],
+    [String.raw`a\hspace{-x1em}b`, "a b"],
+    [String.raw`\left. x \right)`, String.raw`lr(x \))`],
+    [String.raw`\left( x \right.`, String.raw`lr(\( x)`],
+    [String.raw`\left. \right)`, String.raw`lr( \))`],
+    [String.raw`\left( \right.`, String.raw`lr(\()`],
+    [String.raw`\left. x \right.`, "lr(x)"],
+    [String.raw`\left| x \right)`, String.raw`lr(|x\))`],
+    [String.raw`\text{a \textbackslash\ b}`, String.raw`"a \\ b"`],
+    [String.raw`\text{say "hi"}`, String.raw`"say \"hi\""`],
+    [String.raw`\text{x~y---z--w}`, `"x${String.fromCodePoint(0xa0)}y—z–w"`],
+    [String.raw`{\displaystyle}x`, "x"],
+    [String.raw`a {\scriptstyle b c} d`, "a script(b c) d"],
+    ["^2", `""^2`],
+    ["_i x", `""_i x`],
+    [String.raw`\foo(x)`, "foo (x)"],
+    [String.raw`\Re(x)`, "Re(x)"],
+    [String.raw`\sum\limits^{n}_{i} x''`, "limits(sum)_i^n x''"],
+    [String.raw`x^\prime^2`, "x'^2"],
+  ])("converts the edge case %s", (latex, typst) => {
+    expect(latexMathToTypst(latex)).toBe(typst);
+  });
+
   it("lists commands it has no Typst equivalent for", () => {
     const result = convertLatexMath(String.raw`\foo + \alpha + \ce{H2O}`);
     expect(result.unsupported).toEqual([String.raw`\foo`, String.raw`\ce`]);

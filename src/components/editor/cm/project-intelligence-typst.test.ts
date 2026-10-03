@@ -165,6 +165,23 @@ describe("Typst binding completion", () => {
     expect(accept(view, result, "note")).toBe("#let note(body) = body\n#note(x)");
   });
 
+  it("keeps strings and nested groups whole and drops a trailing comma from the parameters", () => {
+    const main = [
+      String.raw`#let plot(data, opts: (a: 1, b: "x, y"), label: "q\"(",`,
+      "  axis ,",
+      ") = data",
+      "#plo",
+    ].join("\n");
+    install({ "main.typ": main }, "main.typ");
+    const view = viewFor(main);
+    const result = completeIn(view);
+    const plot = result?.options.find((option) => option.label === "plot");
+    expect(plot?.detail).toBe(
+      String.raw`(data, opts: (a: 1, b: "x, y"), label: "q\"(", axis) · main.typ:1`,
+    );
+    expect(accept(view, result, "plot")).toBe(`${main.slice(0, -3)}plot(data, axis)`);
+  });
+
   it("keeps LaTeX macros out of Typst completion", () => {
     const main = "#no";
     install({ "main.typ": main, "paper.tex": String.raw`\newcommand{\nob}{x}` }, "main.typ");
@@ -207,9 +224,19 @@ describe("Typst file path completion", () => {
     ['#include "', ["chapters/intro.typ"]],
     ['#import "', ["chapters/intro.typ"]],
     ['#plugin("', ["plugin.wasm"]],
+    ['#image(  "', ["figures/a.png", "figures/b.svg"]],
+    ['#bibliography( ( "refs.bib" , "x.bib",  "', ["refs.bib"]],
+    ['#import  "', ["chapters/intro.typ"]],
   ])("filters %s by extension", (doc, expected) => {
     expect(pathsFor(doc).sort()).toEqual([...expected].sort());
   });
+
+  it.each(['#ximage("', '#a.image("', '#Image("', '#include("', '#image(width: 1, "'])(
+    "does not treat %s as a path argument",
+    (doc) => {
+      expect(pathsFor(doc)).not.toContain("figures/a.png");
+    },
+  );
 
   it("offers every readable file to read", () => {
     expect(pathsFor('#read("')).toEqual(

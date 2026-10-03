@@ -89,6 +89,19 @@ describe("buildTypstInsights", () => {
     ]);
   });
 
+  it("drops trailing dots and colons from a reference key", async () => {
+    const compiled: TypstDocumentInsightsResult = {
+      ...COMPILED,
+      elements: [element({ kind: "citation", text: "smith" }), element({ kind: "citation", text: "a.b:c" })],
+    };
+    const main = ["Intro.", "See @smith.:. and @a.b:c:..", ""].join("\n");
+    const insights = await buildTypstInsights("main.typ", { "main.typ": main }, compiled);
+    expect(insights.citations).toEqual([
+      { key: "smith", count: 1, location: { path: "main.typ", line: 2, column: 5 } },
+      { key: "a.b:c", count: 1, location: { path: "main.typ", line: 2, column: 19 } },
+    ]);
+  });
+
   it("lists compiled labels first, then labels only the source has", async () => {
     const insights = await buildTypstInsights("main.typ", TEXTS, COMPILED);
     expect(insights.labels.map((label) => [label.name, label.kind, label.location?.path, label.location?.line])).toEqual([

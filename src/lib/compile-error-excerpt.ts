@@ -16,7 +16,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function isLowSurrogate(text: string, index: number): boolean {
-  const code = text.charCodeAt(index);
+  const code = text.codePointAt(index) ?? 0;
   return code >= 0xdc00 && code <= 0xdfff;
 }
 

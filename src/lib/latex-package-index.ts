@@ -105,22 +105,21 @@ export function searchLatexPackages(
     }
     if (matched) scored.push({ pkg, score });
   }
-  return scored
-    .sort(
-      (left, right) =>
-        left.score - right.score ||
-        Number(right.pkg.bundled) - Number(left.pkg.bundled) ||
-        left.pkg.name.localeCompare(right.pkg.name),
-    )
-    .map((entry) => entry.pkg);
+  scored.sort(
+    (left, right) =>
+      left.score - right.score ||
+      Number(right.pkg.bundled) - Number(left.pkg.bundled) ||
+      left.pkg.name.localeCompare(right.pkg.name),
+  );
+  return scored.map((entry) => entry.pkg);
 }
 
 export function usepackageLine(name: string, options: string): string {
-  return options ? `\\usepackage[${options}]{${name}}` : `\\usepackage{${name}}`;
+  return options ? String.raw`\usepackage[${options}]{${name}}` : String.raw`\usepackage{${name}}`;
 }
 
 export function documentClassLine(name: string): string {
-  return `\\documentclass{${name}}`;
+  return String.raw`\documentclass{${name}}`;
 }
 
 export function ctanUrl(name: string): string {

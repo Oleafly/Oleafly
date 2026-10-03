@@ -130,26 +130,38 @@ function namedValue(named: SyntaxNode): SyntaxNode | null {
   return colon?.nextSibling ?? null;
 }
 
+const SIMPLE_ESCAPES: ReadonlyMap<string, string> = new Map([
+  ["n", "\n"],
+  ["t", "\t"],
+  ["r", "\r"],
+]);
+
+function typstEscape(body: string, at: number): { text: string; next: number } {
+  const character = body[at];
+  if (character === "u" && body[at + 1] === "{") {
+    const close = body.indexOf("}", at);
+    if (close < 0) return { text: `\\${body.slice(at)}`, next: body.length };
+    const code = Number.parseInt(body.slice(at + 2, close), 16);
+    const valid = Number.isInteger(code) && code >= 0 && code <= 0x10ffff;
+    return { text: valid ? String.fromCodePoint(code) : "", next: close + 1 };
+  }
+  return { text: SIMPLE_ESCAPES.get(character) ?? character ?? "", next: at + 1 };
+}
+
 function unescapeTypstString(literal: string): string {
   const body = literal.slice(1, -1);
   let out = "";
-  for (let index = 0; index < body.length; index++) {
+  let index = 0;
+  while (index < body.length) {
     const character = body[index];
-    if (character !== "\\") {
+    if (character === "\\") {
+      const escaped = typstEscape(body, index + 1);
+      out += escaped.text;
+      index = escaped.next;
+    } else {
       out += character;
-      continue;
+      index += 1;
     }
-    const next = body[index + 1];
-    index += 1;
-    if (next === "n") out += "\n";
-    else if (next === "t") out += "\t";
-    else if (next === "r") out += "\r";
-    else if (next === "u" && body[index + 1] === "{") {
-      const close = body.indexOf("}", index);
-      const code = Number.parseInt(body.slice(index + 2, close), 16);
-      out += Number.isFinite(code) ? String.fromCodePoint(code) : "";
-      index = close;
-    } else out += next ?? "";
   }
   return out;
 }
@@ -182,23 +194,30 @@ function appliesTemplate(node: SyntaxNode): boolean {
   return node.name === "ShowRule" && node.getChild("Show")?.nextSibling?.name === "Colon";
 }
 
+function ruleFieldState(
+  spec: SettingSpec,
+  rule: SetRuleInfo,
+  named: ReadonlyMap<string, SyntaxNode>,
+  text: string,
+): TypstSettingState | null {
+  const argument = named.get(spec.argument);
+  const value = argument ? namedValue(argument) : null;
+  if (!argument || !value) return null;
+  if (!rule.editable) return { status: "locked", reason: "template", source: slice(text, value) };
+  const editable = editableValue(spec.kind, value, text);
+  return editable === null
+    ? { status: "locked", reason: "expression", source: slice(text, value) }
+    : { status: "set", value: editable, from: value.from, to: value.to, named: { from: argument.from, to: argument.to } };
+}
+
 export function readTypstDocumentSettings(text: string, tree: Tree): TypstDocumentSettings {
   const fields = emptyFields();
   for (const rule of setRules(text, tree)) {
     const named = namedArguments(rule.args, text);
     for (const spec of TYPST_SETTINGS) {
       if (spec.rule !== rule.target) continue;
-      const argument = named.get(spec.argument);
-      const value = argument ? namedValue(argument) : null;
-      if (!argument || !value) continue;
-      if (!rule.editable) {
-        fields[spec.key] = { status: "locked", reason: "template", source: slice(text, value) };
-        continue;
-      }
-      const editable = editableValue(spec.kind, value, text);
-      fields[spec.key] = editable === null
-        ? { status: "locked", reason: "expression", source: slice(text, value) }
-        : { status: "set", value: editable, from: value.from, to: value.to, named: { from: argument.from, to: argument.to } };
+      const state = ruleFieldState(spec, rule, named, text);
+      if (state) fields[spec.key] = state;
     }
   }
   return { fields, templateApplied: topLevel(tree).some(appliesTemplate) };
@@ -215,7 +234,7 @@ export function validateTypstSetting(key: TypstSettingKey, value: string): boole
     case "leading":
       return LENGTH.test(trimmed);
     case "columns":
-      return /^[1-9]\d{0,1}$/u.test(trimmed);
+      return /^[1-9]\d?$/u.test(trimmed);
     case "justify":
       return trimmed === "true" || trimmed === "false";
     case "lang":
@@ -231,8 +250,8 @@ function typstString(value: string): string {
   let out = "";
   for (const character of value) {
     if (character === "\\" || character === '"') out += `\\${character}`;
-    else if (character === "\n") out += "\\n";
-    else if (character === "\t") out += "\\t";
+    else if (character === "\n") out += String.raw`\n`;
+    else if (character === "\t") out += String.raw`\t`;
     else out += character;
   }
   return `"${out}"`;
@@ -306,35 +325,49 @@ function insertionPoint(text: string, tree: Tree): number {
   return end < text.length ? end + 1 : end;
 }
 
-export function typstSettingsEdits(text: string, tree: Tree, changes: TypstSettingChanges): TypstEdit[] {
-  const { fields } = readTypstDocumentSettings(text, tree);
+interface PlannedChanges {
+  readonly edits: TypstEdit[];
+  readonly additions: Map<RuleTarget, string[]>;
+}
+
+function planChange(
+  text: string,
+  spec: SettingSpec,
+  next: string | null | undefined,
+  current: TypstSettingState,
+  plan: PlannedChanges,
+): void {
+  if (current.status === "locked") return;
+  if (next === null || next === undefined || next.trim() === "") {
+    if (current.status === "set") plan.edits.push(removal(text, current.named));
+    return;
+  }
+  if (!validateTypstSetting(spec.key, next)) return;
+  const serialized = serialize(spec, next);
+  if (current.status === "set") {
+    if (slice(text, current) !== serialized) plan.edits.push({ from: current.from, to: current.to, insert: serialized });
+    return;
+  }
+  const list = plan.additions.get(spec.rule) ?? [];
+  list.push(`${spec.argument}: ${serialized}`);
+  plan.additions.set(spec.rule, list);
+}
+
+function lastEditableRule(rules: readonly SetRuleInfo[], target: RuleTarget): SetRuleInfo | undefined {
+  for (let index = rules.length - 1; index >= 0; index--) {
+    if (rules[index].target === target && rules[index].editable) return rules[index];
+  }
+  return undefined;
+}
+
+function additionEdits(text: string, tree: Tree, additions: ReadonlyMap<RuleTarget, string[]>): TypstEdit[] {
   const rules = setRules(text, tree);
   const edits: TypstEdit[] = [];
-  const additions = new Map<RuleTarget, string[]>();
-  for (const spec of TYPST_SETTINGS) {
-    if (!Object.hasOwn(changes, spec.key)) continue;
-    const next = changes[spec.key];
-    const current = fields[spec.key];
-    if (current.status === "locked") continue;
-    if (next === null || next === undefined || next.trim() === "") {
-      if (current.status === "set") edits.push(removal(text, current.named));
-      continue;
-    }
-    if (!validateTypstSetting(spec.key, next)) continue;
-    const serialized = serialize(spec, next);
-    if (current.status === "set") {
-      if (slice(text, current) !== serialized) edits.push({ from: current.from, to: current.to, insert: serialized });
-      continue;
-    }
-    const list = additions.get(spec.rule) ?? [];
-    list.push(`${spec.argument}: ${serialized}`);
-    additions.set(spec.rule, list);
-  }
   const fresh: string[] = [];
   for (const target of RULE_ORDER) {
     const list = additions.get(target);
     if (!list) continue;
-    const rule = rules.filter((candidate) => candidate.target === target && candidate.editable).at(-1);
+    const rule = lastEditableRule(rules, target);
     if (rule) edits.push(appendArguments(text, rule.args, list));
     else fresh.push(`#set ${target}(${list.join(", ")})\n`);
   }
@@ -343,6 +376,16 @@ export function typstSettingsEdits(text: string, tree: Tree, changes: TypstSetti
     const lead = at > 0 && text[at - 1] !== "\n" ? "\n" : "";
     edits.push({ from: at, to: at, insert: `${lead}${fresh.join("")}` });
   }
+  return edits;
+}
+
+export function typstSettingsEdits(text: string, tree: Tree, changes: TypstSettingChanges): TypstEdit[] {
+  const { fields } = readTypstDocumentSettings(text, tree);
+  const plan: PlannedChanges = { edits: [], additions: new Map() };
+  for (const spec of TYPST_SETTINGS) {
+    if (Object.hasOwn(changes, spec.key)) planChange(text, spec, changes[spec.key], fields[spec.key], plan);
+  }
+  const edits = [...plan.edits, ...additionEdits(text, tree, plan.additions)];
   return edits.sort((left, right) => left.from - right.from);
 }
 

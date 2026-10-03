@@ -167,7 +167,7 @@ impl CatalogTinymist {
         let binary_name = self
             .binary
             .file_name()
-            .and_then(|name| name.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .ok_or_else(|| self.unusable())?
             .to_owned();
         let install_dir = self

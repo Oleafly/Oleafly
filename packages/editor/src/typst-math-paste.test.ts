@@ -164,6 +164,13 @@ describe("convertLatexMathSelection", () => {
     expect(editor.state.doc.toString()).toBe("Value $ sqrt(x) + 1 $ end");
   });
 
+  it("keeps the line breaks and indentation around a converted equation body", async () => {
+    const doc = "$\n  \\alpha^{2}\n$";
+    const editor = mount(doc, doc.indexOf("alpha"));
+    await convertLatexMathSelection(editor);
+    expect(editor.state.doc.toString()).toBe("$\n  alpha^2\n$");
+  });
+
   it("reports when there is nothing to convert", async () => {
     const editor = mount("Plain $x^2$ text", 8);
     await expect(convertLatexMathSelection(editor)).resolves.toBe(false);

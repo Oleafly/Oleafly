@@ -63,11 +63,13 @@ export const OLEAFLY_HAYAGRIVA_AUTHORS = ["Venkateshmurthy, Prajwal S."] as cons
 export const OLEAFLY_HAYAGRIVA_GROUP = "The Oleafly contributors";
 
 function yamlString(value: string): string {
-  return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
+  const escaped = value.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`);
+  return `"${escaped}"`;
 }
 
 export function oleaflyHayagriva(version: string): string {
   const cleaned = version.trim();
+  const note = `Version ${cleaned}`;
   return [
     `${OLEAFLY_CITATION_KEY}:`,
     "  type: repository",
@@ -77,7 +79,7 @@ export function oleaflyHayagriva(version: string): string {
     `    - name: ${yamlString(OLEAFLY_HAYAGRIVA_GROUP)}`,
     `  date: ${OLEAFLY_CITATION_YEAR}`,
     `  url: ${yamlString(OLEAFLY_REPOSITORY_URL)}`,
-    ...(cleaned ? [`  note: ${yamlString(`Version ${cleaned}`)}`] : []),
+    ...(cleaned ? [`  note: ${yamlString(note)}`] : []),
   ].join("\n");
 }
 

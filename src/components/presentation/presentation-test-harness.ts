@@ -5,8 +5,8 @@ type Handler = (event: { payload: unknown }) => void;
 export const presentationHarness = {
   handlers: new Map<string, Set<Handler>>(),
   emitted: [] as { event: string; payload: unknown }[],
-  close: vi.fn(async () => {}),
-  render: vi.fn(async () => true),
+  close: vi.fn(() => Promise.resolve()),
+  render: vi.fn(() => Promise.resolve(true)),
   destroy: vi.fn(),
   numPages: 3,
   failLoad: false,
@@ -27,39 +27,41 @@ export const presentationHarness = {
 };
 
 export const eventModule = {
-  listen: async (event: string, handler: Handler) => {
+  listen: (event: string, handler: Handler) => {
     const set = presentationHarness.handlers.get(event) ?? new Set<Handler>();
     set.add(handler);
     presentationHarness.handlers.set(event, set);
-    return () => set.delete(handler);
+    return Promise.resolve(() => set.delete(handler));
   },
-  emit: async (event: string, payload: unknown) => {
+  emit: (event: string, payload: unknown) => {
     presentationHarness.emitted.push({ event, payload });
     presentationHarness.deliver(event, payload);
+    return Promise.resolve();
   },
 };
 
 export const windowModule = {
   getCurrentWindow: () => ({
     close: presentationHarness.close,
-    onCloseRequested: async () => () => {},
+    onCloseRequested: () => Promise.resolve(() => {}),
   }),
 };
 
 export const loadModule = {
-  loadPresentationPdf: async () => {
-    if (presentationHarness.failLoad) throw new Error("no compiled PDF");
-    return new Uint8Array([37, 80, 68, 70]);
+  loadPresentationPdf: () => {
+    if (presentationHarness.failLoad) return Promise.reject(new Error("no compiled PDF"));
+    return Promise.resolve(new Uint8Array([37, 80, 68, 70]));
   },
-  loadPresentationNotes: async () => presentationHarness.notes,
+  loadPresentationNotes: () => Promise.resolve(presentationHarness.notes),
 };
 
 export const slidesModule = {
-  openSlideDocument: async () => ({
-    numPages: presentationHarness.numPages,
-    render: presentationHarness.render,
-    destroy: presentationHarness.destroy,
-  }),
+  openSlideDocument: () =>
+    Promise.resolve({
+      numPages: presentationHarness.numPages,
+      render: presentationHarness.render,
+      destroy: presentationHarness.destroy,
+    }),
 };
 
 export function presentationUrl(view: "present" | "presenter", extra = ""): void {

@@ -690,6 +690,10 @@ function scanTypst(text: string): TypstScan {
   };
 }
 
+function pushRepeated(target: number[], value: number, count: number): void {
+  for (let index = 0; index < count; index += 1) target.push(value);
+}
+
 function decodeScan(text: string, scan: TypstScan): DecodedTypstProse {
   const { masked, constructs } = scan;
   if (constructs.length === 0) {
@@ -714,10 +718,8 @@ function decodeScan(text: string, scan: TypstScan): DecodedTypstProse {
   for (const construct of constructs) {
     keepUntil(construct.from);
     pieces.push(construct.text);
-    for (let unit = 0; unit < construct.text.length; unit += 1) {
-      starts.push(construct.from);
-      ends.push(construct.to);
-    }
+    pushRepeated(starts, construct.from, construct.text.length);
+    pushRepeated(ends, construct.to, construct.text.length);
     cursor = construct.to;
   }
   keepUntil(masked.length);

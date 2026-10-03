@@ -77,6 +77,8 @@ const SHORTHANDS: Readonly<Record<string, string>> = {
 };
 
 const OPENING_CONTEXT = /[\s([{—–]/u;
+const DOUBLE_QUOTES = ["“", "”"] as const;
+const SINGLE_QUOTES = ["‘", "’"] as const;
 
 export function isTypstTree(tree: Tree): boolean {
   return tree.type.name === "Source";
@@ -245,7 +247,8 @@ export class TypstDecorationBuilder {
     const before = node.from > 0 ? this.state.sliceDoc(node.from - 1, node.from) : "";
     const opening = before === "" || OPENING_CONTEXT.test(before) || this.openingQuotes.has(node.from - 1);
     if (opening) this.openingQuotes.add(node.from);
-    const glyph = double ? (opening ? "“" : "”") : opening ? "‘" : "’";
+    const quotes = double ? DOUBLE_QUOTES : SINGLE_QUOTES;
+    const glyph = opening ? quotes[0] : quotes[1];
     this.characterWidget(node, glyph);
   }
 

@@ -38,7 +38,8 @@ const LINE_KEYWORDS = new Set([
 ]);
 const INVOKED: TypstCompletionTrigger = Object.freeze({ triggerKind: 1 });
 const PATH_CALL_STRING =
-  /(?:\b(?:image|read|json|yaml|toml|csv|xml|cbor|bibliography|plugin)\s*\(\s*"|\b(?:include|import)\s+")[^"\n]*$/u;
+  /\b(?:image|read|json|yaml|toml|csv|xml|cbor|bibliography|plugin)\s*\(\s*"[^"\n]*$/u;
+const PATH_KEYWORD_STRING = /\b(?:include|import)\s+"[^"\n]*$/u;
 const IMPORT_ITEMS = /\bimport\s+"[^"\n]*"\s*:$/u;
 
 interface ScanState {
@@ -50,8 +51,16 @@ interface ScanState {
   inRaw: boolean;
 }
 
+const ROOT_FRAME: Frame = Object.freeze({ kind: "markup", close: null });
+
+const CODE_OPENERS: Readonly<Record<string, Frame>> = {
+  "{": { kind: "code", close: "}" },
+  "(": { kind: "code", close: ")" },
+  "[": { kind: "markup", close: "]" },
+};
+
 function top(state: ScanState): Frame {
-  return state.stack[state.stack.length - 1];
+  return state.stack.at(-1) ?? ROOT_FRAME;
 }
 
 function isIdentStart(char: string | undefined): boolean {
@@ -162,14 +171,10 @@ function startEmbeddedCode(state: ScanState): void {
     );
     return;
   }
-  if (next === "(" || next === "{" || next === "[") {
+  const opener = CODE_OPENERS[next];
+  if (opener) {
     state.index += 2;
-    state.stack.push({ kind: "expr" });
-    state.stack.push(
-      next === "["
-        ? { kind: "markup", close: "]" }
-        : { kind: "code", close: next === "(" ? ")" : "}" },
-    );
+    state.stack.push({ kind: "expr" }, { ...opener });
     return;
   }
   state.index += 1;
@@ -244,12 +249,6 @@ function stepMath(state: ScanState): void {
   state.index += 1;
 }
 
-const CODE_OPENERS: Readonly<Record<string, Frame>> = {
-  "{": { kind: "code", close: "}" },
-  "(": { kind: "code", close: ")" },
-  "[": { kind: "markup", close: "]" },
-};
-
 function stepCode(
   state: ScanState,
   frame: Extract<Frame, { kind: "code" }>,
@@ -271,14 +270,9 @@ function stepCode(
     state.stack.push({ kind: "math" });
     return;
   }
-  if (
-    (char === "}" || char === ")") &&
-    frame.close === char
-  ) {
-    state.stack.pop();
-  } else if (frame.close === null && (char === "\n" || char === ";")) {
-    state.stack.pop();
-  }
+  const closes = (char === "}" || char === ")") && frame.close === char;
+  const endsStatement = frame.close === null && (char === "\n" || char === ";");
+  if (closes || endsStatement) state.stack.pop();
   state.index += 1;
 }
 
@@ -288,6 +282,11 @@ function step(state: ScanState): void {
   else if (frame.kind === "expr") stepExpression(state);
   else if (frame.kind === "math") stepMath(state);
   else stepCode(state, frame);
+}
+
+function frameMode(frame: Frame): TypstSyntaxMode {
+  if (frame.kind === "markup" || frame.kind === "math") return frame.kind;
+  return "code";
 }
 
 export function typstCursorContext(before: string): TypstCursorContext {
@@ -317,14 +316,8 @@ export function typstCursorContext(before: string): TypstCursorContext {
     state.stack.push({ kind: "markup", close: null });
   }
   const frame = top(state);
-  const mode: TypstSyntaxMode =
-    frame.kind === "markup"
-      ? "markup"
-      : frame.kind === "math"
-        ? "math"
-        : "code";
   return {
-    mode,
+    mode: frameMode(frame),
     inString: state.inString,
     inComment: state.inComment,
     inRaw: state.inRaw,
@@ -349,13 +342,36 @@ function markupTrigger(
   if (last === "#" && before.at(-2) !== "\\") {
     return triggerFor("#", serverTriggers);
   }
-  const reference = /(?:^|[^\p{L}\p{N}_\\])(@|<)[\p{L}\p{N}_:.-]*$/u.exec(
+  const reference = /(?:^|[^\p{L}\p{N}_\\])([@<])[\p{L}\p{N}_:.-]*$/u.exec(
     before,
   );
   if (!reference) return null;
   return last === reference[1]
     ? triggerFor(reference[1], serverTriggers)
     : INVOKED;
+}
+
+function charBefore(text: string, end: number): string {
+  if (end >= 2 && (text.codePointAt(end - 2) ?? 0) > 0xffff) {
+    return text.slice(end - 2, end);
+  }
+  return text.slice(end - 1, end);
+}
+
+function identifierEndsAt(text: string, end: number): boolean {
+  let index = end;
+  while (index > 0) {
+    const char = charBefore(text, index);
+    if (!isIdentPart(char)) return false;
+    if (isIdentStart(char)) return true;
+    index -= char.length;
+  }
+  return false;
+}
+
+function fieldAccessDot(before: string): boolean {
+  const owner = before.at(-2);
+  return owner === ")" || owner === "]" || identifierEndsAt(before, before.length - 1);
 }
 
 function codeTrigger(
@@ -368,9 +384,7 @@ function codeTrigger(
     return INVOKED;
   }
   if (last === ".") {
-    return /(?:[\p{L}_][\p{L}\p{N}_-]*|[)\]])\.$/u.test(before)
-      ? triggerFor(".", serverTriggers)
-      : null;
+    return fieldAccessDot(before) ? triggerFor(".", serverTriggers) : null;
   }
   if (last === "(") return triggerFor("(", serverTriggers);
   if (last === "," && context.inArguments) {
@@ -378,7 +392,7 @@ function codeTrigger(
   }
   if (last === ":") {
     if (
-      (context.inArguments && /[\p{L}_][\p{L}\p{N}_-]*:$/u.test(before)) ||
+      (context.inArguments && identifierEndsAt(before, before.length - 1)) ||
       IMPORT_ITEMS.test(before)
     ) {
       return triggerFor(":", serverTriggers);
@@ -399,6 +413,21 @@ function mathTrigger(
   return last === "." ? triggerFor(".", serverTriggers) : INVOKED;
 }
 
+function stringTrigger(
+  before: string,
+  explicit: boolean,
+  serverTriggers: readonly string[],
+): TypstCompletionTrigger | null {
+  if (!PATH_CALL_STRING.test(before) && !PATH_KEYWORD_STRING.test(before)) {
+    return explicit ? INVOKED : null;
+  }
+  if (explicit) return INVOKED;
+  const last = before.at(-1) ?? "";
+  return last === "\"" || last === "/"
+    ? triggerFor(last, serverTriggers)
+    : INVOKED;
+}
+
 export function typstCompletionTrigger(
   before: string,
   explicit: boolean,
@@ -406,14 +435,7 @@ export function typstCompletionTrigger(
 ): TypstCompletionTrigger | null {
   const context = typstCursorContext(before);
   if (context.inComment || context.inRaw) return explicit ? INVOKED : null;
-  if (context.inString) {
-    if (!PATH_CALL_STRING.test(before)) return explicit ? INVOKED : null;
-    if (explicit) return INVOKED;
-    const last = before.at(-1) ?? "";
-    return last === "\"" || last === "/"
-      ? triggerFor(last, serverTriggers)
-      : INVOKED;
-  }
+  if (context.inString) return stringTrigger(before, explicit, serverTriggers);
   if (explicit) return INVOKED;
   if (context.mode === "markup") return markupTrigger(before, serverTriggers);
   if (context.mode === "math") return mathTrigger(before, serverTriggers);

@@ -932,8 +932,25 @@ const TYPST_LABEL_KINDS: ReadonlySet<ProjectDefinition["kind"]> = new Set([
   "label",
 ]);
 
-const TYPST_PATH_ARGUMENT_RE =
-  /(?<![\p{L}\p{N}_.-])(?:(image|read|csv|json|yaml|toml|xml|cbor|plugin|bibliography)\s*\(\s*(?:\(\s*(?:"[^"\n]*"\s*,\s*)*)?|(include|import)\s+)"([^"\n]*)$/u;
+const TYPST_PATH_CALL_RE = /(?<![\p{L}\p{N}_.-])([a-z]+)\s*\(\s*"([^"\n]*)$/u;
+
+const TYPST_PATH_ARRAY_RE =
+  /(?<![\p{L}\p{N}_.-])([a-z]+)\s*\(\s*\(\s*(?:"[^"\n]*"\s*,\s*)*"([^"\n]*)$/u;
+
+const TYPST_MODULE_PATH_RE = /(?<![\p{L}\p{N}_.-])(include|import)\s+"([^"\n]*)$/u;
+
+const TYPST_PATH_CALLS: ReadonlySet<string> = new Set([
+  "image",
+  "read",
+  "csv",
+  "json",
+  "yaml",
+  "toml",
+  "xml",
+  "cbor",
+  "plugin",
+  "bibliography",
+]);
 
 const TYPST_PATH_EXTENSIONS: ReadonlyMap<string, RegExp | null> = new Map([
   ["image", /\.(?:png|jpe?g|gif|svg|webp|pdf)$/iu],
@@ -1030,17 +1047,30 @@ function requestGuardedApply(
   };
 }
 
+function typstPathArgument(
+  before: string,
+): { command: string; query: string } | null {
+  const call =
+    TYPST_PATH_CALL_RE.exec(before) ?? TYPST_PATH_ARRAY_RE.exec(before);
+  if (call) {
+    return TYPST_PATH_CALLS.has(call[1])
+      ? { command: call[1], query: call[2] }
+      : null;
+  }
+  const module = TYPST_MODULE_PATH_RE.exec(before);
+  return module ? { command: module[1], query: module[2] } : null;
+}
+
 function typstPathCompletion(
   context: CompletionContext,
   path: string,
   before: string,
   request: CompletionRequestGuard,
 ): LatexCompletionOutcome {
-  const match = TYPST_PATH_ARGUMENT_RE.exec(before);
-  if (!match) return undefined;
+  const argument = typstPathArgument(before);
+  if (!argument) return undefined;
   if (typstContextAt(context.state, context.pos) !== "string") return undefined;
-  const command = match[1] ?? match[2] ?? "";
-  const query = match[3] ?? "";
+  const { command, query } = argument;
   if (command === "import" && query.startsWith("@")) return null;
   const accepts = TYPST_PATH_EXTENSIONS.get(command) ?? null;
   const rooted = query.startsWith("/");
@@ -1082,7 +1112,8 @@ function typstBindingParameters(text: string, nameEnd: number): string | null {
   if (text[nameEnd] !== "(") return null;
   const limit = Math.min(text.length, nameEnd + TYPST_PARAMETER_SCAN_LIMIT);
   let depth = 0;
-  for (let index = nameEnd; index < limit; index += 1) {
+  let index = nameEnd;
+  while (index < limit) {
     const character = text[index];
     if (character === '"') {
       index = closingQuoteIndex(text, index, limit);
@@ -1091,13 +1122,16 @@ function typstBindingParameters(text: string, nameEnd: number): string | null {
     } else if (character === ")" || character === "]" || character === "}") {
       depth -= 1;
       if (depth === 0) {
-        return text
+        const parameters = text
           .slice(nameEnd + 1, index)
-          .replace(/\s+/gu, " ")
-          .trim()
-          .replace(/\s*,$/u, "");
+          .replaceAll(/\s+/gu, " ")
+          .trim();
+        return parameters.endsWith(",")
+          ? parameters.slice(0, -1).trimEnd()
+          : parameters;
       }
     }
+    index += 1;
   }
   return null;
 }
@@ -1106,7 +1140,8 @@ function topLevelParameters(parameters: string): string[] {
   const parts: string[] = [];
   let depth = 0;
   let start = 0;
-  for (let index = 0; index < parameters.length; index += 1) {
+  let index = 0;
+  while (index < parameters.length) {
     const character = parameters[index];
     if (character === '"') {
       index = closingQuoteIndex(parameters, index, parameters.length);
@@ -1118,6 +1153,7 @@ function topLevelParameters(parameters: string): string[] {
       parts.push(parameters.slice(start, index));
       start = index + 1;
     }
+    index += 1;
   }
   parts.push(parameters.slice(start));
   return parts.map((part) => part.trim()).filter(Boolean);
@@ -1729,8 +1765,16 @@ export function projectCompletionSourcesForPath(
   return [projectIntelligenceCompletion];
 }
 
+const COMPLETION_LEADING_MARKS: ReadonlySet<string> = new Set(["#", "@", "<", '"']);
+const COMPLETION_TRAILING_MARKS: ReadonlySet<string> = new Set([">", '"']);
+
 function completionIdentity(option: Completion): string {
-  return String(option.label).replace(/^[#@<"]+|[>"]+$/gu, "");
+  const label = String(option.label);
+  let start = 0;
+  let end = label.length;
+  while (start < end && COMPLETION_LEADING_MARKS.has(label[start])) start += 1;
+  while (end > start && COMPLETION_TRAILING_MARKS.has(label[end - 1])) end -= 1;
+  return label.slice(start, end);
 }
 
 function shiftedCompletion(option: Completion, offset: number): Completion {

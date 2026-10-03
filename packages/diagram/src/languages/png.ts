@@ -59,7 +59,7 @@ export function pngWithDpi(pngBase64: string, dpi: number): string {
   let inserted = false;
   while (at + 12 <= bytes.length) {
     const length = readUint32(bytes, at);
-    const type = String.fromCharCode(...bytes.subarray(at + 4, at + 8));
+    const type = String.fromCodePoint(...bytes.subarray(at + 4, at + 8));
     const end = at + 12 + length;
     if (end > bytes.length) return pngBase64;
     if (type !== "pHYs") kept.push(bytes.subarray(at, end));

@@ -130,7 +130,8 @@ const typstPreviewCache = new RenderCache<TypstEquationPreview>(80, 4 * 1024 * 1
 export function typstEquationSource(input: string, display: boolean, theme: "light" | "dark"): string {
   const body = input.trim();
   const fill = theme === "dark" ? "#ffffff" : "#000000";
-  return `#set text(fill: rgb("${fill}"), size: ${TYPST_PREVIEW_SIZE}pt)\n${display ? `$ ${body} $` : `$${body}$`}`;
+  const math = display ? `$ ${body} $` : `$${body}$`;
+  return `#set text(fill: rgb("${fill}"), size: ${TYPST_PREVIEW_SIZE}pt)\n${math}`;
 }
 
 export function typstEquationImageUrl(svg: string): string {
@@ -222,6 +223,25 @@ function InlineFormula({ html }: Readonly<{ html: string }>) {
 export interface EquationRendered {
   html: string;
   error: string | null;
+}
+
+function LatexPreviewContent({ rendered, display }: Readonly<{ rendered: EquationRendered; display: boolean }>) {
+  const { t } = useTranslation(["researchTools"]);
+  if (rendered.error) return <p className="max-w-sm text-sm text-destructive">{rendered.error}</p>;
+  if (!rendered.html) return <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.empty)}</p>;
+  if (display) {
+    // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
+    return <div dangerouslySetInnerHTML={{ __html: rendered.html }} />;
+  }
+  return (
+    <p className="max-w-md text-base leading-relaxed">
+      <Trans
+        ns="researchTools"
+        i18nKey={($) => $.researchTools.equation.inlineSample}
+        components={{ formula: <InlineFormula html={rendered.html} /> }}
+      />
+    </p>
+  );
 }
 
 export function renderEquation(input: string, display: boolean): EquationRendered {
@@ -425,26 +445,9 @@ export function EquationPreviewPanel({
                   wrapped={wrapped}
                   blank={!input.trim()}
                 />
-              ) : null}
-              {!typstMode && rendered.error ? (
-                <p className="max-w-sm text-sm text-destructive">{rendered.error}</p>
-              ) : null}
-              {!typstMode && !rendered.error && rendered.html && display ? (
-                // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
-                <div dangerouslySetInnerHTML={{ __html: rendered.html }} />
-              ) : null}
-              {!typstMode && !rendered.error && rendered.html && !display ? (
-                <p className="max-w-md text-base leading-relaxed">
-                  <Trans
-                    ns="researchTools"
-                    i18nKey={($) => $.researchTools.equation.inlineSample}
-                    components={{ formula: <InlineFormula html={rendered.html} /> }}
-                  />
-                </p>
-              ) : null}
-              {!typstMode && !rendered.error && !rendered.html ? (
-                <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.empty)}</p>
-              ) : null}
+              ) : (
+                <LatexPreviewContent rendered={rendered} display={display} />
+              )}
             </div>
           </div>
 

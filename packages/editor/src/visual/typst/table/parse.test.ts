@@ -78,6 +78,7 @@ describe("parseTypstTable", () => {
     ["trailing content blocks", "#table(columns: 1)[a][b]"],
     ["non-content cells", '#table(columns: 1, image("a.png"))'],
     ["a short header", "#table(columns: 2, table.header([a]), [b], [c])"],
+    ["a header with a non-content cell", '#table(columns: 1, table.header(image("a.png")), [b])'],
     ["vertical lines", "#table(columns: 2, table.vline(x: 1), [a], [b])"],
     ["a footer", "#table(columns: 1, [a], table.footer([b]))"],
     ["an unclosed call", "#table(columns: 2, [a], [b]"],

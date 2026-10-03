@@ -223,6 +223,153 @@ See \cite{knuth}.
   });
 });
 
+function insightsOf(main: string, extra: Record<string, string> = {}) {
+  return buildLatexInsights({ mainDoc: "main.tex", texts: { "main.tex": main, ...extra } });
+}
+
+describe("buildLatexInsights edge cases", () => {
+  it.each([
+    [String.raw`\keywords{ a ,  b ;c \and d \sep e \textbullet f · g }`, ["a", "b", "c", "d", "e", "f", "g"]],
+    [String.raw`\keywords{alpha \andmore beta \separate gamma \textbulletx delta}`, ["alpha beta gamma delta"]],
+    [String.raw`\keywords{,, x ,;, y,}`, ["x", "y"]],
+    [String.raw`\keywords{one.;, two... ,three;}`, ["one", "two", "three"]],
+    [String.raw`\keywords{${" ".repeat(40)}a${" ".repeat(40)},${" ".repeat(40)}b${" ".repeat(40)}}`, ["a", "b"]],
+  ])("splits the keywords in %j", (command, keywords) => {
+    expect(insightsOf(`${command}\n\\begin{document}\\end{document}`).metadata.keywords).toEqual(keywords);
+  });
+
+  it("splits a long keyword line full of spaces", () => {
+    const line = String.raw`\keywords{a${" ".repeat(20000)}b${" ".repeat(20000)}}`;
+    expect(insightsOf(`${line}\n\\begin{document}\\end{document}`).metadata.keywords).toEqual([`a b`]);
+  });
+
+  it.each([
+    [String.raw`\author{Ada Lovelace ,  and Alan Turing; Grace Hopper and Edsger Dijkstra,Barbara Liskov}`, [
+      "Ada Lovelace",
+      "Alan Turing",
+      "Grace Hopper",
+      "Edsger Dijkstra",
+      "Barbara Liskov",
+    ]],
+    [String.raw`\author{Sandra Andersen, andrew Ng ; ; Leo andor Wu}`, ["Sandra Andersen", "andrew Ng", "Leo andor Wu"]],
+    [String.raw`\author{and Ada,and}`, ["and Ada", "and"]],
+    [String.raw`\author{Ada, and  Bob}`, ["Ada", "Bob"]],
+  ])("splits the authors in %j", (command, authors) => {
+    expect(insightsOf(`${command}\n\\begin{document}\\end{document}`).metadata.authors).toEqual(authors);
+  });
+
+  it("drops declarations from titles but keeps their spacing", () => {
+    const title = String.raw`\title{A\bfseries{}B\Large{}C\large@x{}D\smallskipx{}E \\bfseries F \qquad\quad G \itshape}`;
+    expect(insightsOf(`${title}\n\\begin{document}\\end{document}`).metadata.title).toBe("A B C bfseries F G");
+  });
+
+  it.each([
+    [String.raw`\section[Short]{Long}`, ["Long"]],
+    [String.raw`\section [x] [y] {Two}`, ["Two"]],
+    [String.raw`\section[a\]b]{Escaped}`, ["Escaped"]],
+    [String.raw`\section[a [b] c]{Nested}`, ["Nested"]],
+    [String.raw`\section[a {b]} c]{Braced}`, []],
+    [String.raw`\section[unclosed{Title}`, []],
+    [String.raw`\section[]{Empty}`, ["Empty"]],
+  ])("skips optional arguments in %j", (heading, titles) => {
+    const main = `\\begin{document}\n${heading}\n\\end{document}`;
+    expect(insightsOf(main).headings.map((entry) => entry.text)).toEqual(titles);
+  });
+
+  it("finds include candidates for every include form", () => {
+    const main = String.raw`\begin{document}
+\import{parts/}{intro}
+\subimport{deep/}{body.tex}
+\inputfrom{lib}{macros}
+\include{chap.x}
+\subfile{../outside}
+\input{sub/./a}
+\input{#1}
+\input{sub/./a}
+\end{document}`;
+    expect(missingLatexSources("text/main.tex", { "text/main.tex": main })).toEqual([
+      ["text/parts/intro.tex"],
+      ["text/deep/body.tex", "text/deep/body.tex.tex"],
+      ["text/lib/macros.tex"],
+      ["text/chap.x", "text/chap.x.tex"],
+      ["outside.tex"],
+      ["text/sub/a.tex"],
+    ]);
+  });
+
+  it("reads citation keys with notes, stars and several groups", () => {
+    const main = String.raw`\begin{document}
+\citep[see][p.~2]{a, b ,*,#1}
+\cites(pre)(post)[x]{c}[y]{d}
+\autocites(only){e}{f} trailing {g}
+\citeauthor*{h}
+\parencite{}
+\cite
+\end{document}`;
+    expect(insightsOf(main).citations.map((citation) => [citation.key, citation.count])).toEqual([
+      ["a", 1],
+      ["b", 1],
+      ["c", 1],
+      ["d", 1],
+      ["e", 1],
+      ["f", 1],
+      ["h", 1],
+    ]);
+  });
+
+  it("reads display equations written with brackets, dollars and alignat", () => {
+    const main = String.raw`\begin{document}
+\[ a \] and \\[ not \] and \[ b \\] c \]
+$$ d $$ $$ e $$ \$$ f $$ $$ g
+\begin{alignat}{2} h &= i \end{alignat}
+\begin{subequations}\begin{equation} j \end{equation}\end{subequations}
+\[ unclosed
+\end{document}`;
+    expect(insightsOf(main).equations.map((equation) => [equation.text, equation.numbered])).toEqual([
+      ["a", false],
+      [String.raw`b \\] c`, false],
+      ["d", false],
+      ["e", false],
+      ["", false],
+      ["h &= i", true],
+      ["j", true],
+    ]);
+  });
+
+  it.each([
+    [String.raw`Index Terms—phase noise, channel estimation\par Next`, ["phase noise", "channel estimation"]],
+    ["Keywords: creep; niobium\n\nNext paragraph", ["creep", "niobium"]],
+    [String.raw`{\bfseries Keywords:} creep, {grain} boundary}`, ["creep", "grain boundary"]],
+    [String.raw`Key words. one, two\\ three`, ["one", "two"]],
+    [String.raw`Keywords - x, y\end{abstract}`, ["x", "y"]],
+    [String.raw`Keywords: a, b\section{Intro} Keywords: c`, ["a", "b"]],
+  ])("reads the keyword line in %j", (body, keywords) => {
+    expect(insightsOf(`\\begin{document}\n${body}\n\\end{document}`).metadata.keywords).toEqual(keywords);
+  });
+
+  it("treats environments declared as theorems as their own label kind", () => {
+    const main = String.raw`\declaretheorem[name=Claim]{myclaim}
+\newtcbtheorem[number within=section]{mybox}{Box}{}{bx}
+\newmdtheoremenv{frame}{Frame}
+\newtheorem*{rem}{Remark}
+\begin{document}
+\section{A}
+\begin{myclaim}\label{c:1}\end{myclaim}
+\begin{mybox}\label{c:2}\end{mybox}
+\begin{frame}\label{c:3}\end{frame}
+\begin{rem}\label{c:4}\end{rem}
+\begin{plain}\label{c:5}\end{plain}
+\end{document}`;
+    expect(insightsOf(main).labels.map((label) => [label.name, label.kind])).toEqual([
+      ["c:1", "other"],
+      ["c:2", "other"],
+      ["c:3", "other"],
+      ["c:4", "other"],
+      ["c:5", "heading"],
+    ]);
+  });
+});
+
 function readSeed(name: string): Record<string, string> {
   const root = join(process.cwd(), "fixtures/research-seeds", name);
   const texts: Record<string, string> = {};

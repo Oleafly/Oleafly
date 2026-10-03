@@ -167,37 +167,52 @@ function hostOf(url) {
   }
 }
 
-function targetProblems(label, tool, version, target, entry) {
+function assetProblems(where, entry) {
   const problems = [];
-  if (!entry || typeof entry !== "object") return [`${label} is missing ${target}`];
-  const where = `${label} ${target}`;
   if (!ARCHIVE_TYPES.includes(entry.archiveType)) problems.push(`${where} has an unknown archive type`);
   if (typeof entry.asset !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._+-]*$/u.test(entry.asset)) {
     problems.push(`${where} has an unusable asset name`);
   }
-  if (entry.archiveType === "binary") {
-    if (entry.archiveMember !== null) problems.push(`${where} is a bare binary but names a member`);
-    if (entry.archiveSha256 !== entry.binarySha256 || entry.archiveSize !== entry.binarySize) {
-      problems.push(`${where} is a bare binary whose archive and binary digests differ`);
-    }
-  } else {
-    if (!isSafeArchiveMember(entry.archiveMember)) problems.push(`${where} has an unsafe archive member`);
-    if (typeof entry.asset === "string" && !entry.asset.endsWith(`.${entry.archiveType}`)) {
-      problems.push(`${where} asset does not match its archive type`);
-    }
-    if (
-      typeof entry.archiveMember === "string" &&
-      posix.basename(entry.archiveMember) !== executableName(tool.binaryName, target)
-    ) {
-      problems.push(`${where} archive member is not the ${tool.binaryName} executable`);
-    }
+  return problems;
+}
+
+function bareBinaryProblems(where, entry) {
+  const problems = [];
+  if (entry.archiveMember !== null) problems.push(`${where} is a bare binary but names a member`);
+  if (entry.archiveSha256 !== entry.binarySha256 || entry.archiveSize !== entry.binarySize) {
+    problems.push(`${where} is a bare binary whose archive and binary digests differ`);
   }
+  return problems;
+}
+
+function archiveMemberProblems(where, tool, target, entry) {
+  const problems = [];
+  if (!isSafeArchiveMember(entry.archiveMember)) problems.push(`${where} has an unsafe archive member`);
+  if (typeof entry.asset === "string" && !entry.asset.endsWith(`.${entry.archiveType}`)) {
+    problems.push(`${where} asset does not match its archive type`);
+  }
+  if (
+    typeof entry.archiveMember === "string" &&
+    posix.basename(entry.archiveMember) !== executableName(tool.binaryName, target)
+  ) {
+    problems.push(`${where} archive member is not the ${tool.binaryName} executable`);
+  }
+  return problems;
+}
+
+function digestProblems(where, entry) {
+  const problems = [];
   for (const field of ["archiveSha256", "binarySha256"]) {
     if (!SHA256_RE.test(entry[field] ?? "")) problems.push(`${where} ${field} is not 64 hex characters`);
   }
   for (const field of ["archiveSize", "binarySize"]) {
     if (!Number.isSafeInteger(entry[field]) || entry[field] <= 0) problems.push(`${where} ${field} is not a positive integer`);
   }
+  return problems;
+}
+
+function addressProblems(where, tool, version, entry) {
+  const problems = [];
   const expected = downloadUrls(tool, version, entry.asset);
   if (entry.mirrorUrl !== expected.mirrorUrl) problems.push(`${where} mirrorUrl is not the canonical mirror address`);
   if (entry.githubUrl !== expected.githubUrl) problems.push(`${where} githubUrl is not the canonical release address`);
@@ -207,6 +222,19 @@ function targetProblems(label, tool, version, target, entry) {
     }
   }
   return problems;
+}
+
+function targetProblems(label, tool, version, target, entry) {
+  if (!entry || typeof entry !== "object") return [`${label} is missing ${target}`];
+  const where = `${label} ${target}`;
+  const layoutProblems =
+    entry.archiveType === "binary" ? bareBinaryProblems(where, entry) : archiveMemberProblems(where, tool, target, entry);
+  return [
+    ...assetProblems(where, entry),
+    ...layoutProblems,
+    ...digestProblems(where, entry),
+    ...addressProblems(where, tool, version, entry),
+  ];
 }
 
 function targetsProblems(label, tool, version, targets) {
@@ -255,9 +283,8 @@ function releaseListProblems(label, releases, versionField) {
   return problems;
 }
 
-export function validateCatalog(catalog) {
+function headerProblems(catalog) {
   const problems = [];
-  if (!catalog || typeof catalog !== "object") return ["catalog is not an object"];
   if (catalog.schemaVersion !== SCHEMA_VERSION) problems.push("schemaVersion is not 1");
   if (!DATE_RE.test(catalog.generatedAt ?? "")) problems.push("generatedAt is not a YYYY-MM-DD date");
   if (JSON.stringify(catalog.supportedTargets) !== JSON.stringify(SUPPORTED_TARGETS)) {
@@ -266,32 +293,52 @@ export function validateCatalog(catalog) {
   if (JSON.stringify(catalog.allowedDownloadHosts) !== JSON.stringify(ALLOWED_DOWNLOAD_HOSTS)) {
     problems.push("allowedDownloadHosts is not the expected allowlist");
   }
-  const typst = catalog.typst ?? {};
-  const typstVersions = Array.isArray(typst.versions) ? typst.versions : [];
+  return problems;
+}
+
+function typstReleaseProblems(release) {
+  const problems = [];
+  const label = `Typst ${release.version}`;
+  if (!VERSION_RE.test(release.version ?? "")) problems.push(`${label} has an unusable version`);
+  else {
+    if (release.tag !== `v${release.version}`) problems.push(`${label} tag is wrong`);
+    if (release.minor !== minorOf(release.version)) problems.push(`${label} minor is wrong`);
+  }
+  if (!DATE_RE.test(release.releasedAt ?? "")) problems.push(`${label} releasedAt is not a date`);
+  problems.push(
+    ...capabilitiesProblems(label, release.capabilities),
+    ...targetsProblems(label, TYPST_TOOL, release.version, release.targets),
+  );
+  return problems;
+}
+
+function tinymistReleaseProblems(release) {
+  const problems = [];
+  const label = `Tinymist ${release.version}`;
+  if (!VERSION_RE.test(release.version ?? "")) problems.push(`${label} has an unusable version`);
+  else {
+    if (release.tag !== `v${release.version}`) problems.push(`${label} tag is wrong`);
+    if (release.typstMinor !== minorOf(release.version)) problems.push(`${label} does not match its Typst minor`);
+  }
+  if (!DATE_RE.test(release.releasedAt ?? "")) problems.push(`${label} releasedAt is not a date`);
+  problems.push(...targetsProblems(label, TINYMIST_TOOL, release.version, release.targets));
+  return problems;
+}
+
+function typstProblems(typst, typstVersions) {
+  const problems = [];
   if (typst.repository !== TYPST_TOOL.repository) problems.push("typst.repository is wrong");
   if (typstVersions.length === 0) problems.push("typst.versions is empty");
   problems.push(...releaseListProblems("typst", typstVersions, "version"));
   if (!typstVersions.some((release) => release.version === typst.bundled)) {
     problems.push(`bundled Typst ${typst.bundled} is not a curated version`);
   }
-  for (const release of typstVersions) {
-    const label = `Typst ${release.version}`;
-    if (!VERSION_RE.test(release.version ?? "")) problems.push(`${label} has an unusable version`);
-    else {
-      if (release.tag !== `v${release.version}`) problems.push(`${label} tag is wrong`);
-      if (release.minor !== minorOf(release.version)) problems.push(`${label} minor is wrong`);
-    }
-    if (!DATE_RE.test(release.releasedAt ?? "")) problems.push(`${label} releasedAt is not a date`);
-    problems.push(...capabilitiesProblems(label, release.capabilities));
-    problems.push(...targetsProblems(label, TYPST_TOOL, release.version, release.targets));
-  }
-  const tinymist = catalog.tinymist ?? {};
-  const tinymistVersions = Array.isArray(tinymist.versions) ? tinymist.versions : [];
-  if (tinymist.repository !== TINYMIST_TOOL.repository) problems.push("tinymist.repository is wrong");
-  problems.push(...releaseListProblems("tinymist", tinymistVersions, "version"));
-  if (!tinymistVersions.some((release) => release.version === tinymist.bundled)) {
-    problems.push(`bundled Tinymist ${tinymist.bundled} is not listed`);
-  }
+  problems.push(...typstVersions.flatMap((release) => typstReleaseProblems(release)));
+  return problems;
+}
+
+function coverageProblems(typstVersions, tinymistVersions) {
+  const problems = [];
   const minors = new Set(tinymistVersions.map((release) => release.typstMinor));
   if (minors.size !== tinymistVersions.length) problems.push("tinymist lists one Typst minor twice");
   for (const release of typstVersions) {
@@ -299,24 +346,45 @@ export function validateCatalog(catalog) {
       problems.push(`no Tinymist release covers Typst ${minorOf(release.version)}`);
     }
   }
-  for (const release of tinymistVersions) {
-    const label = `Tinymist ${release.version}`;
-    if (!VERSION_RE.test(release.version ?? "")) problems.push(`${label} has an unusable version`);
-    else {
-      if (release.tag !== `v${release.version}`) problems.push(`${label} tag is wrong`);
-      if (release.typstMinor !== minorOf(release.version)) problems.push(`${label} does not match its Typst minor`);
-    }
-    if (!DATE_RE.test(release.releasedAt ?? "")) problems.push(`${label} releasedAt is not a date`);
-    problems.push(...targetsProblems(label, TINYMIST_TOOL, release.version, release.targets));
-  }
-  if (typstVersions.some((release) => release.version === typst.bundled)) {
-    const bundledMinor = minorOf(typst.bundled);
-    const bundledTinymist = tinymistVersions.find((release) => release.version === tinymist.bundled);
-    if (bundledTinymist && bundledTinymist.typstMinor !== bundledMinor) {
-      problems.push("bundled Tinymist does not match the bundled Typst minor");
-    }
-  }
   return problems;
+}
+
+function tinymistProblems(tinymist, tinymistVersions, typstVersions) {
+  const problems = [];
+  if (tinymist.repository !== TINYMIST_TOOL.repository) problems.push("tinymist.repository is wrong");
+  problems.push(...releaseListProblems("tinymist", tinymistVersions, "version"));
+  if (!tinymistVersions.some((release) => release.version === tinymist.bundled)) {
+    problems.push(`bundled Tinymist ${tinymist.bundled} is not listed`);
+  }
+  problems.push(
+    ...coverageProblems(typstVersions, tinymistVersions),
+    ...tinymistVersions.flatMap((release) => tinymistReleaseProblems(release)),
+  );
+  return problems;
+}
+
+function bundledPairProblems(typst, typstVersions, tinymist, tinymistVersions) {
+  if (!typstVersions.some((release) => release.version === typst.bundled)) return [];
+  const bundledMinor = minorOf(typst.bundled);
+  const bundledTinymist = tinymistVersions.find((release) => release.version === tinymist.bundled);
+  if (bundledTinymist && bundledTinymist.typstMinor !== bundledMinor) {
+    return ["bundled Tinymist does not match the bundled Typst minor"];
+  }
+  return [];
+}
+
+export function validateCatalog(catalog) {
+  if (!catalog || typeof catalog !== "object") return ["catalog is not an object"];
+  const typst = catalog.typst ?? {};
+  const typstVersions = Array.isArray(typst.versions) ? typst.versions : [];
+  const tinymist = catalog.tinymist ?? {};
+  const tinymistVersions = Array.isArray(tinymist.versions) ? tinymist.versions : [];
+  return [
+    ...headerProblems(catalog),
+    ...typstProblems(typst, typstVersions),
+    ...tinymistProblems(tinymist, tinymistVersions, typstVersions),
+    ...bundledPairProblems(typst, typstVersions, tinymist, tinymistVersions),
+  ];
 }
 
 export function bundledTypstRelease(catalog) {
@@ -326,8 +394,7 @@ export function bundledTypstRelease(catalog) {
 }
 
 export function withoutGeneratedAt(catalog) {
-  const { generatedAt: _ignored, ...rest } = catalog;
-  return rest;
+  return Object.fromEntries(Object.entries(catalog).filter(([key]) => key !== "generatedAt"));
 }
 
 export function serializeCatalog(catalog) {
@@ -345,21 +412,20 @@ function githubHeaders() {
   return headers;
 }
 
-async function fetchWithRetry(url, init) {
-  let lastError;
-  for (let attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt += 1) {
-    try {
-      const response = await fetch(url, { ...init, signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
-      if (!response.ok) throw new Error(`${url} answered HTTP ${response.status}`);
-      return response;
-    } catch (error) {
-      lastError = error;
-      if (attempt < DOWNLOAD_ATTEMPTS) {
-        await new Promise((resolvePromise) => setTimeout(resolvePromise, 1000 * attempt));
-      }
-    }
+function delay(milliseconds) {
+  return new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
+}
+
+async function fetchWithRetry(url, init, attempt = 1) {
+  try {
+    const response = await fetch(url, { ...init, signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) });
+    if (!response.ok) throw new Error(`${url} answered HTTP ${response.status}`);
+    return response;
+  } catch (error) {
+    if (attempt >= DOWNLOAD_ATTEMPTS) throw error;
+    await delay(1000 * attempt);
+    return fetchWithRetry(url, init, attempt + 1);
   }
-  throw lastError;
 }
 
 async function fetchRelease(tool, version) {
@@ -389,7 +455,7 @@ async function downloadAsset(url, expectedSize) {
 }
 
 const TAR =
-  process.platform === "win32" ? join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe") : "/usr/bin/tar";
+  process.platform === "win32" ? join(process.env.SystemRoot ?? String.raw`C:\Windows`, "System32", "tar.exe") : "/usr/bin/tar";
 
 function compareText(left, right) {
   if (left < right) return -1;
@@ -530,9 +596,9 @@ async function resolveTarget(tool, version, release, target, candidates, log) {
       : locateExecutable(listArchive(bytes, candidate.archiveType), executable);
   const binary = extractArchiveMember(bytes, candidate.archiveType, archiveMember);
   if (binary.length === 0) throw new Error(`${candidate.asset} holds an empty ${executable}`);
-  log(
-    `  ${target}: ${candidate.asset} (${digestSource === "github" ? "GitHub digest verified" : "hashed locally, no GitHub digest"})${archiveMember ? ` member ${archiveMember}` : ""}`,
-  );
+  const digestNote = digestSource === "github" ? "GitHub digest verified" : "hashed locally, no GitHub digest";
+  const memberNote = archiveMember ? ` member ${archiveMember}` : "";
+  log(`  ${target}: ${candidate.asset} (${digestNote})${memberNote}`);
   return {
     entry: {
       asset: candidate.asset,
@@ -591,7 +657,7 @@ export function portableCompileArgs(input, output, root) {
 
 export function parsePossibleValues(help, flag) {
   const lines = help.split(/\r?\n/u);
-  const start = lines.findIndex((line) => new RegExp(`(?:^|\\s)${escapeRegExp(flag)}(?:\\s|$|=|<)`, "u").test(line));
+  const start = lines.findIndex((line) => new RegExp(String.raw`(?:^|\s)${escapeRegExp(flag)}(?:\s|$|=|<)`, "u").test(line));
   if (start < 0) return [];
   const block = [lines[start]];
   for (let index = start + 1; index < lines.length; index += 1) {
@@ -720,33 +786,42 @@ function unsupported(result) {
   return result.status !== 0 && UNSUPPORTED_ARGUMENT_RE.test(result.stderr);
 }
 
-export async function probeTypst(binary, version, workDir) {
-  const report = {
-    version,
-    appArgv: false,
-    portableArgv: false,
-    diagnostics: false,
-    flags: [],
-    outputFormats: [],
-    pdfStandards: [],
-    notes: [],
-  };
-  await mkdir(workDir, { recursive: true });
+function firstLine(text) {
+  return text.trim().split("\n")[0];
+}
+
+function isPdf(result) {
+  return result.status === 0 && result.bytes?.subarray(0, 5).toString("latin1") === "%PDF-";
+}
+
+function mapSequentially(items, task) {
+  return items.reduce(
+    (chain, item) => chain.then((results) => task(item).then((result) => [...results, result])),
+    Promise.resolve([]),
+  );
+}
+
+function typstVersionOutput({ binary, version, workDir }) {
   const versionResult = runTool(binary, ["--version"], workDir);
-  if (versionResult.status !== 0 || !new RegExp(`^typst ${escapeRegExp(version)}(?:\\s|$)`, "u").test(versionResult.stdout)) {
+  if (versionResult.status !== 0 || !new RegExp(String.raw`^typst ${escapeRegExp(version)}(?:\s|$)`, "u").test(versionResult.stdout)) {
     throw new Error(`Typst ${version} reports ${JSON.stringify(versionResult.stdout.trim())}`);
   }
-  report.versionOutput = versionResult.stdout.trim();
-  const isPdf = (result) => result.status === 0 && result.bytes?.subarray(0, 5).toString("latin1") === "%PDF-";
+  return versionResult.stdout.trim();
+}
+
+async function probeAppArgv({ binary, version, workDir, report }) {
   const app = await probeCompile(binary, workDir, "app", PROBE_SOURCE, [], "out.pdf", appCompileArgs);
   if (isPdf(app)) {
     report.appArgv = true;
     report.flags.push("--color");
   } else if (app.status !== 0 && /unrecognized subcommand 'never'/u.test(app.stderr)) {
-    report.notes.push(`--color never: ${app.stderr.trim().split("\n")[0]}`);
+    report.notes.push(`--color never: ${firstLine(app.stderr)}`);
   } else {
     throw new Error(`Typst ${version} failed the app argv probe: ${app.stderr.trim()}`);
   }
+}
+
+async function probePortableArgv({ binary, version, workDir, report }) {
   const base = await probeCompile(binary, workDir, "base", PROBE_SOURCE, [], "out.pdf");
   if (!isPdf(base)) {
     throw new Error(`Typst ${version} cannot compile with --color=never: ${base.stderr.trim()}`);
@@ -758,53 +833,89 @@ export async function probeTypst(binary, version, workDir) {
     throw new Error(`Typst ${version} does not emit short diagnostics: ${invalid.stderr.trim()}`);
   }
   report.diagnostics = true;
-  for (const probe of TYPST_FLAG_PROBES) {
-    const dir = join(workDir, probe.flag.slice(2));
-    await mkdir(dir, { recursive: true });
-    const { source, args } = await probe.prepare(dir);
-    const result = await probeCompile(binary, dir, "run", source, args, "out.pdf");
-    if (isPdf(result) && (!probe.verify || (await probe.verify(dir)))) {
-      report.flags.push(probe.flag);
-    } else if (unsupported(result)) {
-      report.notes.push(`${probe.flag}: ${result.stderr.trim().split("\n")[0]}`);
-    } else {
-      throw new Error(`Typst ${version} failed the ${probe.flag} probe: ${result.stderr.trim()}`);
-    }
+}
+
+async function probeFlag({ binary, version, workDir, report }, probe) {
+  const dir = join(workDir, probe.flag.slice(2));
+  await mkdir(dir, { recursive: true });
+  const { source, args } = await probe.prepare(dir);
+  const result = await probeCompile(binary, dir, "run", source, args, "out.pdf");
+  if (isPdf(result) && (!probe.verify || (await probe.verify(dir)))) {
+    report.flags.push(probe.flag);
+  } else if (unsupported(result)) {
+    report.notes.push(`${probe.flag}: ${firstLine(result.stderr)}`);
+  } else {
+    throw new Error(`Typst ${version} failed the ${probe.flag} probe: ${result.stderr.trim()}`);
   }
+}
+
+async function probeSvg({ binary, version, workDir, report }) {
   const svg = await probeCompile(binary, workDir, "svg", PROBE_SOURCE, ["--format", "svg"], "out.svg");
   if (svg.status === 0 && svg.bytes?.toString("utf8").includes("<svg")) {
     report.outputFormats.push("svg");
     report.flags.push("--format");
   } else if (unsupported(svg)) {
-    report.notes.push(`--format svg: ${svg.stderr.trim().split("\n")[0]}`);
+    report.notes.push(`--format svg: ${firstLine(svg.stderr)}`);
   } else {
     throw new Error(`Typst ${version} failed the SVG probe: ${svg.stderr.trim()}`);
   }
+}
+
+async function probePng({ binary, version, workDir, report }) {
   const png = await probeCompile(binary, workDir, "png", PROBE_SOURCE, ["--format", "png", "--ppi", "144"], "out.png");
   if (png.status === 0 && png.bytes && pngWidth(png.bytes) === 240) {
     report.outputFormats.push("png");
     if (!report.flags.includes("--format")) report.flags.push("--format");
     report.flags.push("--ppi");
   } else if (unsupported(png)) {
-    report.notes.push(`--format png --ppi 144: ${png.stderr.trim().split("\n")[0]}`);
+    report.notes.push(`--format png --ppi 144: ${firstLine(png.stderr)}`);
   } else {
     throw new Error(`Typst ${version} failed the PNG probe: ${png.stderr.trim()} width ${png.bytes ? pngWidth(png.bytes) : "none"}`);
   }
+}
+
+async function probeHtml({ binary, version, workDir, report }) {
   const html = await probeCompile(binary, workDir, "html", HTML_PROBE_SOURCE, ["--features", "html", "--format", "html"], "out.html");
   if (html.status === 0 && html.bytes?.toString("utf8").includes("<html")) {
     report.outputFormats.push("html");
     report.flags.push("--features");
   } else if (unsupported(html)) {
-    report.notes.push(`--features html --format html: ${html.stderr.trim().split("\n")[0]}`);
+    report.notes.push(`--features html --format html: ${firstLine(html.stderr)}`);
   } else {
     throw new Error(`Typst ${version} failed the HTML probe: ${html.stderr.trim()}`);
   }
+}
+
+function probePdfStandards({ binary, version, workDir, report }) {
   const help = runTool(binary, ["compile", "-h"], workDir);
   if (help.status !== 0) throw new Error(`Typst ${version} compile -h failed`);
   report.pdfStandards = report.flags.includes("--pdf-standard") ? parsePossibleValues(help.stdout, "--pdf-standard") : [];
   if (report.flags.includes("--pdf-standard") && !report.pdfStandards.includes("a-2b")) {
     throw new Error(`Typst ${version} accepted --pdf-standard a-2b but does not list it`);
   }
+}
+
+export async function probeTypst(binary, version, workDir) {
+  const report = {
+    version,
+    appArgv: false,
+    portableArgv: false,
+    diagnostics: false,
+    flags: [],
+    outputFormats: [],
+    pdfStandards: [],
+    notes: [],
+  };
+  const context = { binary, version, workDir, report };
+  await mkdir(workDir, { recursive: true });
+  report.versionOutput = typstVersionOutput(context);
+  await probeAppArgv(context);
+  await probePortableArgv(context);
+  await mapSequentially(TYPST_FLAG_PROBES, (probe) => probeFlag(context, probe));
+  await probeSvg(context);
+  await probePng(context);
+  await probeHtml(context);
+  probePdfStandards(context);
   report.flags.sort(compareText);
   report.outputFormats.sort(compareText);
   return report;
@@ -814,7 +925,7 @@ export async function probeTinymist(binary, version, workDir) {
   await mkdir(workDir, { recursive: true });
   const versionResult = runTool(binary, ["--version"], workDir);
   const output = `${versionResult.stdout}\n${versionResult.stderr}`;
-  if (versionResult.status !== 0 || !new RegExp(`\\bv?${escapeRegExp(version)}\\b`, "u").test(output)) {
+  if (versionResult.status !== 0 || !new RegExp(String.raw`\bv?${escapeRegExp(version)}\b`, "u").test(output)) {
     throw new Error(`Tinymist ${version} reports ${JSON.stringify(output.trim())}`);
   }
   const lspHelp = runTool(binary, ["lsp", "--help"], workDir);
@@ -889,6 +1000,60 @@ function differingPaths(left, right, path = "$", out = []) {
   return out;
 }
 
+function committedCapabilities(committed, version) {
+  const capabilities = committed?.typst?.versions?.find((entry) => entry.version === version)?.capabilities;
+  if (!capabilities) throw new Error(`no committed capabilities for Typst ${version}`);
+  return capabilities;
+}
+
+async function probedCapabilities(version, bytes, { host, workRoot, probes }) {
+  const dir = join(workRoot, `typst-${version}`);
+  const binary = await stageBinary(dir, executableName("typst", host), bytes);
+  const report = await probeTypst(binary, version, join(dir, "probe"));
+  probes.typst.push(report);
+  const capabilities = capabilitiesFrom(report);
+  await rm(dir, { recursive: true, force: true });
+  return capabilities;
+}
+
+async function buildTypstRelease(version, context) {
+  const { skipProbe, committed, host, log } = context;
+  log(`Typst ${version}`);
+  const release = await fetchRelease(TYPST_TOOL, version);
+  const { targets, binaries } = await resolveTargets(TYPST_TOOL, version, release, (target) => [typstAssetFor(target)], log);
+  const capabilities = skipProbe
+    ? committedCapabilities(committed, version)
+    : await probedCapabilities(version, binaries[host], context);
+  return {
+    version,
+    tag: `v${version}`,
+    minor: minorOf(version),
+    releasedAt: release.published_at.slice(0, 10),
+    capabilities,
+    targets,
+  };
+}
+
+async function buildTinymistRelease(typstMinor, { skipProbe, host, workRoot, probes, log }) {
+  const version = TINYMIST_BY_TYPST_MINOR[typstMinor];
+  log(`Tinymist ${version} (Typst ${typstMinor})`);
+  const release = await fetchRelease(TINYMIST_TOOL, version);
+  const { targets, binaries } = await resolveTargets(TINYMIST_TOOL, version, release, tinymistAssetCandidates, log);
+  if (!skipProbe) {
+    const dir = join(workRoot, `tinymist-${version}`);
+    const binary = await stageBinary(dir, executableName("tinymist", host), binaries[host]);
+    probes.tinymist.push(await probeTinymist(binary, version, dir));
+    await rm(dir, { recursive: true, force: true });
+  }
+  return {
+    typstMinor,
+    version,
+    tag: `v${version}`,
+    releasedAt: release.published_at.slice(0, 10),
+    targets,
+  };
+}
+
 export async function buildCatalog({ skipProbe, committed, log = console.log }) {
   const host = skipProbe ? null : hostTarget();
   if (!skipProbe && !host) {
@@ -896,54 +1061,13 @@ export async function buildCatalog({ skipProbe, committed, log = console.log }) 
   }
   const workRoot = await mkdtemp(join(tmpdir(), "oleafly-typst-catalog-"));
   const probes = { typst: [], tinymist: [] };
+  const context = { skipProbe, committed, host, workRoot, probes, log };
   try {
-    const typstVersions = [];
-    for (const version of [...TYPST_VERSIONS].sort(compareVersions)) {
-      log(`Typst ${version}`);
-      const release = await fetchRelease(TYPST_TOOL, version);
-      const { targets, binaries } = await resolveTargets(TYPST_TOOL, version, release, (target) => [typstAssetFor(target)], log);
-      let capabilities;
-      if (skipProbe) {
-        capabilities = committed?.typst?.versions?.find((entry) => entry.version === version)?.capabilities;
-        if (!capabilities) throw new Error(`no committed capabilities for Typst ${version}`);
-      } else {
-        const dir = join(workRoot, `typst-${version}`);
-        const binary = await stageBinary(dir, executableName("typst", host), binaries[host]);
-        const report = await probeTypst(binary, version, join(dir, "probe"));
-        probes.typst.push(report);
-        capabilities = capabilitiesFrom(report);
-        await rm(dir, { recursive: true, force: true });
-      }
-      typstVersions.push({
-        version,
-        tag: `v${version}`,
-        minor: minorOf(version),
-        releasedAt: release.published_at.slice(0, 10),
-        capabilities,
-        targets,
-      });
-    }
-    const tinymistVersions = [];
+    const typstVersions = await mapSequentially([...TYPST_VERSIONS].sort(compareVersions), (version) =>
+      buildTypstRelease(version, context),
+    );
     const minors = Object.keys(TINYMIST_BY_TYPST_MINOR).sort(compareVersions);
-    for (const typstMinor of minors) {
-      const version = TINYMIST_BY_TYPST_MINOR[typstMinor];
-      log(`Tinymist ${version} (Typst ${typstMinor})`);
-      const release = await fetchRelease(TINYMIST_TOOL, version);
-      const { targets, binaries } = await resolveTargets(TINYMIST_TOOL, version, release, tinymistAssetCandidates, log);
-      if (!skipProbe) {
-        const dir = join(workRoot, `tinymist-${version}`);
-        const binary = await stageBinary(dir, executableName("tinymist", host), binaries[host]);
-        probes.tinymist.push(await probeTinymist(binary, version, dir));
-        await rm(dir, { recursive: true, force: true });
-      }
-      tinymistVersions.push({
-        typstMinor,
-        version,
-        tag: `v${version}`,
-        releasedAt: release.published_at.slice(0, 10),
-        targets,
-      });
-    }
+    const tinymistVersions = await mapSequentially(minors, (typstMinor) => buildTinymistRelease(typstMinor, context));
     const catalog = {
       schemaVersion: SCHEMA_VERSION,
       generatedAt: new Date().toISOString().slice(0, 10),
@@ -987,6 +1111,28 @@ function printProbes(probes, host, log) {
   }
 }
 
+function printProblems(problems) {
+  for (const problem of problems) console.error(problem);
+}
+
+function compareWithCommitted(catalog, committed) {
+  const expected = withoutGeneratedAt(catalog);
+  const actual = withoutGeneratedAt(committed);
+  if (serializeCatalog(expected) !== serializeCatalog(actual)) {
+    console.error(`${CATALOG_PATH} is out of date with GitHub:`);
+    for (const path of differingPaths(actual, expected)) console.error(`  ${path}`);
+    return 1;
+  }
+  console.log(`\n${CATALOG_PATH} matches GitHub.`);
+  return 0;
+}
+
+async function writeCatalog(catalog) {
+  await mkdir(dirname(CATALOG_PATH), { recursive: true });
+  await writeFile(CATALOG_PATH, serializeCatalog(catalog), "utf8");
+  console.log(`\nwrote ${CATALOG_PATH}`);
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const options = parseArgs(argv);
   if (options.help) {
@@ -998,7 +1144,7 @@ export async function main(argv = process.argv.slice(2)) {
     if (!committed) throw new Error(`${CATALOG_PATH} does not exist`);
     const committedProblems = validateCatalog(committed);
     if (committedProblems.length > 0) {
-      for (const problem of committedProblems) console.error(problem);
+      printProblems(committedProblems);
       return 1;
     }
   }
@@ -1006,23 +1152,11 @@ export async function main(argv = process.argv.slice(2)) {
   printProbes(probes, host, console.log);
   const problems = validateCatalog(catalog);
   if (problems.length > 0) {
-    for (const problem of problems) console.error(problem);
+    printProblems(problems);
     return 1;
   }
-  if (options.check) {
-    const expected = withoutGeneratedAt(catalog);
-    const actual = withoutGeneratedAt(committed);
-    if (serializeCatalog(expected) !== serializeCatalog(actual)) {
-      console.error(`${CATALOG_PATH} is out of date with GitHub:`);
-      for (const path of differingPaths(actual, expected)) console.error(`  ${path}`);
-      return 1;
-    }
-    console.log(`\n${CATALOG_PATH} matches GitHub.`);
-    return 0;
-  }
-  await mkdir(dirname(CATALOG_PATH), { recursive: true });
-  await writeFile(CATALOG_PATH, serializeCatalog(catalog), "utf8");
-  console.log(`\nwrote ${CATALOG_PATH}`);
+  if (options.check) return compareWithCommitted(catalog, committed);
+  await writeCatalog(catalog);
   return 0;
 }
 

@@ -24,8 +24,10 @@ const TYPST_REFERENCE =
   /(?:#|(?<![\p{L}\p{N}_.-]))(?:ref|link)\s*\(\s*<[\p{L}\p{M}\p{N}_:.+/-]*$/u;
 const TYPST_SLASH_COMMAND = /(?:^|\s)\/[A-Za-z]*$/u;
 const TYPST_HASH_IDENTIFIER = /#[\p{L}_][\p{L}\p{M}\p{N}_-]*$/u;
-const TYPST_PATH_ARGUMENT =
-  /(?<![\p{L}\p{N}_.-])(?:(?:image|read|csv|json|yaml|toml|xml|cbor|plugin|bibliography)\s*\(\s*(?:\(\s*(?:"[^"\n]*"\s*,\s*)*)?|(?:include|import)\s+)"[^"\n]*$/u;
+const TYPST_PATH_FUNCTION =
+  /(?<![\p{L}\p{N}_.-])(?:image|read|csv|json|yaml|toml|xml|cbor|plugin|bibliography)\s*\(\s*$/u;
+const TYPST_PATH_LIST = /\(\s*(?:"[^"\n]*"\s*,\s*)*"[^"\n]*$/u;
+const TYPST_PATH_KEYWORD = /(?<![\p{L}\p{N}_.-])(?:include|import)\s+"[^"\n]*$/u;
 const BIBTEX_REFERENCE =
   /(?:crossref|xref|xdata|related|entryset)\s*=\s*["{]\s*[\p{L}\p{M}\p{N}_:.+/-]*$/iu;
 const BIBTEX_ENTRY_TYPE = /(?:^|\n)[ \t]*@[A-Za-z]*$/u;
@@ -132,6 +134,14 @@ function markdownTriggered(before: string): boolean {
   return MARKDOWN_ANCHOR.test(before) || AT_REFERENCE.test(before);
 }
 
+function typstPathArgument(before: string): boolean {
+  const quote = before.lastIndexOf('"');
+  if (quote < 0 || before.includes("\n", quote)) return false;
+  if (TYPST_PATH_FUNCTION.test(before.slice(0, quote)) || TYPST_PATH_KEYWORD.test(before)) return true;
+  const list = TYPST_PATH_LIST.exec(before);
+  return list !== null && TYPST_PATH_FUNCTION.test(before.slice(0, list.index));
+}
+
 function typstTriggered(before: string): boolean {
   return (
     AT_REFERENCE.test(before) ||
@@ -139,7 +149,7 @@ function typstTriggered(before: string): boolean {
     TYPST_REFERENCE.test(before) ||
     TYPST_SLASH_COMMAND.test(before) ||
     TYPST_HASH_IDENTIFIER.test(before) ||
-    TYPST_PATH_ARGUMENT.test(before)
+    typstPathArgument(before)
   );
 }
 

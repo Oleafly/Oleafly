@@ -3,6 +3,7 @@ import {
   bibtexHasOleaflyEntry,
   oleaflyBibtex,
   oleaflyBibtexTokens,
+  oleaflyHayagriva,
   OLEAFLY_CITATION_KEY,
 } from "./cite-oleafly";
 
@@ -39,5 +40,30 @@ describe("oleaflyBibtex", () => {
     expect(bibtexHasOleaflyEntry("@misc{ Oleafly ,\n title={x}}")).toBe(true);
     expect(bibtexHasOleaflyEntry("@article{oleafly2026,\n title={x}}")).toBe(false);
     expect(bibtexHasOleaflyEntry("")).toBe(false);
+  });
+});
+
+describe("oleaflyHayagriva", () => {
+  it("writes a quoted repository entry with the version as a note", () => {
+    expect(oleaflyHayagriva(" 0.5.0 ")).toBe(
+      [
+        "oleafly:",
+        "  type: repository",
+        '  title: "Oleafly: a local-first desktop workspace for research writing"',
+        "  author:",
+        '    - "Venkateshmurthy, Prajwal S."',
+        '    - name: "The Oleafly contributors"',
+        "  date: 2026",
+        '  url: "https://github.com/Oleafly/Oleafly"',
+        '  note: "Version 0.5.0"',
+      ].join("\n"),
+    );
+  });
+
+  it("escapes backslashes and quotes and drops an empty version", () => {
+    expect(oleaflyHayagriva(String.raw`1.0 "beta" \ build`)).toContain(
+      String.raw`  note: "Version 1.0 \"beta\" \\ build"`,
+    );
+    expect(oleaflyHayagriva("  ")).not.toContain("note:");
   });
 });

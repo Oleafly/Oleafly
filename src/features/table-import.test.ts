@@ -259,6 +259,19 @@ describe("planLinkedTable", () => {
     });
   });
 
+  it.each([
+    [String.raw`C:\Users\me\-.Run..2026-.csv`, "data/Run..2026.csv"],
+    ["../in/--...--.csv", "data/table.csv"],
+    [".hidden.csv", "data/hidden.csv"],
+    ["a-.-.-.-.-b.csv", "data/a-.-.-.-.-b.csv"],
+    ["  Spaces & más!  .csv", "data/Spaces-más.csv"],
+    ["-.-.-x-.-.-.csv", "data/x.csv"],
+    ["noext", "data/noext.csv"],
+  ])("cleans the file name %j into %j", (fileName, dataPath) => {
+    const file: TableFile = { rows: [["a"]], format: "csv", text: "a\n" };
+    expect(planLinkedTable(file, fileName, [], "main.typ").dataPath).toBe(dataPath);
+  });
+
   it("keeps JSON as JSON with its shape", () => {
     const json: TableFile = { rows: [["a"], ["1"]], format: "json", text: "[[1]]", jsonShape: "rows" };
     expect(planLinkedTable(json, "grid.json", [], "main.typ")).toEqual({

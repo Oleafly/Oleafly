@@ -48,9 +48,21 @@ export function typstPreviewOutcome(render: TypstFigureRender): {
   };
 }
 
+function stripLeading(text: string, char: string): string {
+  let start = 0;
+  while (start < text.length && text[start] === char) start += 1;
+  return text.slice(start);
+}
+
+function stripTrailing(text: string, char: string): string {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === char) end -= 1;
+  return text.slice(0, end);
+}
+
 export function typstLabel(label: string): string | null {
-  const bare = label.trim().replace(/^<+/, "").replace(/>+$/, "");
-  const cleaned = bare.replace(INVALID_LABEL_CHARS, "-").replace(/^-+/, "").replace(/-+$/, "");
+  const bare = stripTrailing(stripLeading(label.trim(), "<"), ">");
+  const cleaned = stripTrailing(stripLeading(bare.replaceAll(INVALID_LABEL_CHARS, "-"), "-"), "-");
   return cleaned || null;
 }
 

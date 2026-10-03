@@ -44,6 +44,20 @@ function useTypstTitles(items: readonly OutlineItem[]): boolean {
   return ready;
 }
 
+function outlineDisplayTitle(
+  item: OutlineItem,
+  latexMacros: ReadonlyMap<string, string>,
+  typstTitles: boolean,
+): string {
+  if (/\.(?:latex|ltx|tex)$/iu.test(item.file)) {
+    return renderLatexOutlineTitle(item.title, latexMacros);
+  }
+  if (typstTitles && /\.typ$/iu.test(item.file)) {
+    return typstTools()?.typstPlainTitle(item.title) ?? item.title;
+  }
+  return item.title;
+}
+
 function normalizedHeadingTitle(title: string): string {
   return title.replace(/\s+/gu, " ").trim().toLowerCase();
 }
@@ -362,11 +376,7 @@ export function DocumentOutline({
               const crossFile = item.file !== activePath;
               const active = itemIndex === activeIndex;
               const headingCollapsed = collapsedHeadingIds.has(id);
-              const displayTitle = /\.(?:latex|ltx|tex)$/iu.test(item.file)
-                ? renderLatexOutlineTitle(item.title, latexMacros)
-                : typstTitles && /\.typ$/iu.test(item.file)
-                  ? (typstTools()?.typstPlainTitle(item.title) ?? item.title)
-                  : item.title;
+              const displayTitle = outlineDisplayTitle(item, latexMacros, typstTitles);
               return (
                 <div
                   key={`${item.file}:${item.line}:${item.kind}:${item.title}`}

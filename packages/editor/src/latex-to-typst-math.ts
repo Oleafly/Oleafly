@@ -594,7 +594,7 @@ const ESCAPABLE_DELIMITERS = new Set(["(", ")", "[", "]", "{", "}"]);
 const OPERATOR_CHARACTERS = "-<>=!:|~*+.";
 const SIMPLE_OPERATORS = new Set(["+", "-", "*", "!", "=", "?", ":"]);
 const WORD_CHARACTER = /[\p{L}\p{N}]/u;
-const TRAILING_IDENTIFIER = /(?:^|[^\p{L}\p{N}.])([\p{L}][\p{L}\p{N}.]*)$/u;
+const TRAILING_IDENTIFIER = /(?:^|[^\p{L}\p{N}.])(\p{L}[\p{L}\p{N}.]*)$/u;
 
 function word(code: string, simple = true): Atom {
   return { code, kind: "word", space: false, simple };
@@ -616,19 +616,20 @@ function isTypstVersionBefore(version: string | null | undefined, minor: number)
 }
 
 function typstString(text: string): string {
-  return `"${text.replace(/\\/gu, "\\\\").replace(/"/gu, String.raw`\"`)}"`;
+  const escaped = text.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`);
+  return `"${escaped}"`;
 }
 
 function plainText(raw: string): string {
   return raw
-    .replace(/\\textbackslash\b\s*/gu, "\\")
-    .replace(/\\([%&_$#{}])/gu, "$1")
-    .replace(/\\[,;:! ]/gu, " ")
-    .replace(/~/gu, " ")
-    .replace(/---/gu, "—")
-    .replace(/--/gu, "–")
-    .replace(/\\[A-Za-z]+\*?\s*/gu, "")
-    .replace(/[{}]/gu, "");
+    .replaceAll(/\\textbackslash\b\s*/gu, "\\")
+    .replaceAll(/\\([%&_$#{}])/gu, "$1")
+    .replaceAll(/\\[,;:! ]/gu, " ")
+    .replaceAll("~", " ")
+    .replaceAll("---", "—")
+    .replaceAll("--", "–")
+    .replaceAll(/\\[A-Za-z]+\*?\s*/gu, "")
+    .replaceAll(/[{}]/gu, "");
 }
 
 function lastCharacter(code: string): string {
@@ -642,14 +643,17 @@ function needsSpace(previous: Atom, next: Atom): boolean {
   const before = lastCharacter(previous.code);
   const after = next.code[0] ?? "";
   if (WORD_CHARACTER.test(before) && WORD_CHARACTER.test(after)) return true;
-  if (after === "(" || after === "[") {
-    const identifier = TRAILING_IDENTIFIER.exec(previous.code)?.[1];
-    if (identifier && identifier.length > 1 && !SAFE_BEFORE_PAREN.has(identifier)) return true;
-  }
+  if (callsTrailingIdentifier(previous, after)) return true;
   if (before === ")" && /\p{L}/u.test(after)) return true;
   if (OPERATOR_CHARACTERS.includes(before) && OPERATOR_CHARACTERS.includes(after)) return true;
   if ((before === "[" && after === "|") || (before === "|" && after === "]")) return true;
   return next.space;
+}
+
+function callsTrailingIdentifier(previous: Atom, after: string): boolean {
+  if (after !== "(" && after !== "[") return false;
+  const identifier = TRAILING_IDENTIFIER.exec(previous.code)?.[1];
+  return identifier !== undefined && identifier.length > 1 && !SAFE_BEFORE_PAREN.has(identifier);
 }
 
 function joinAtoms(atoms: readonly Atom[]): string {
@@ -704,6 +708,13 @@ interface Token {
   value: string;
   from: number;
   to: number;
+}
+
+interface Scripts {
+  primes: number;
+  sub: Atom[] | null;
+  sup: Atom[] | null;
+  current: Atom;
 }
 
 class LatexMathParser {
@@ -783,44 +794,50 @@ class LatexMathParser {
       const space = this.skipSpace();
       const token = this.peek();
       if (this.isStop(token, stop)) break;
-      if (token.type === "char" && token.value === "}") {
-        this.position = token.to;
-        continue;
-      }
-      if (token.type === "command" && (token.value === "right" || token.value === "end")) {
-        this.position = token.to;
-        if (token.value === "end") this.readRawGroup();
-        else this.readDelimiter();
-        continue;
-      }
+      if (this.skipClosing(token)) continue;
       if (token.type === "command" && lookup(STYLE_SWITCHES, token.value)) {
-        this.position = token.to;
-        const rest = this.parseSequence(stop);
-        if (rest.length > 0) {
-          const styled = call(STYLE_SWITCHES[token.value] as string, [rest]);
-          styled.space = space;
-          atoms.push(styled);
-        }
+        this.styleSwitch(token, stop, space, atoms);
         break;
       }
-      let atom: Atom | null;
-      if (token.type === "char" && (token.value === "^" || token.value === "_")) {
-        atom = word(`""`);
-      } else {
-        atom = this.parsePrimary();
-      }
-      if (!atom) continue;
-      atom = this.parseScripts(atom);
-      if (atom.kind === "group") {
-        const children = atom.children ?? [];
-        if (children.length > 0) children[0] = { ...children[0], space: space || children[0].space };
-        atoms.push(...children);
-        continue;
-      }
-      atom.space = atom.space || space;
-      atoms.push(atom);
+      this.pushAtom(atoms, token, space);
     }
     return atoms;
+  }
+
+  private skipClosing(token: Token): boolean {
+    if (token.type === "char" && token.value === "}") {
+      this.position = token.to;
+      return true;
+    }
+    if (token.type !== "command" || (token.value !== "right" && token.value !== "end")) return false;
+    this.position = token.to;
+    if (token.value === "end") this.readRawGroup();
+    else this.readDelimiter();
+    return true;
+  }
+
+  private styleSwitch(token: Token, stop: (token: Token) => boolean, space: boolean, atoms: Atom[]): void {
+    this.position = token.to;
+    const rest = this.parseSequence(stop);
+    if (rest.length === 0) return;
+    const styled = call(STYLE_SWITCHES[token.value] as string, [rest]);
+    styled.space = space;
+    atoms.push(styled);
+  }
+
+  private pushAtom(atoms: Atom[], token: Token, space: boolean): void {
+    const script = token.type === "char" && (token.value === "^" || token.value === "_");
+    const primary = script ? word(`""`) : this.parsePrimary();
+    if (!primary) return;
+    const atom = this.parseScripts(primary);
+    if (atom.kind === "group") {
+      const children = atom.children ?? [];
+      if (children.length > 0) children[0] = { ...children[0], space: space || children[0].space };
+      atoms.push(...children);
+      return;
+    }
+    atom.space = atom.space || space;
+    atoms.push(atom);
   }
 
   private parseGroupBody(): Atom[] {
@@ -904,35 +921,16 @@ class LatexMathParser {
   }
 
   private parseScripts(base: Atom): Atom {
-    let primes = 0;
-    let sub: Atom[] | null = null;
-    let sup: Atom[] | null = null;
-    let current = base;
+    const scripts: Scripts = { primes: 0, sub: null, sup: null, current: base };
     for (;;) {
       const save = this.position;
       this.skipSpace();
-      const token = this.peek();
-      if (token.type === "command" && (token.value === "limits" || token.value === "nolimits")) {
-        this.position = token.to;
-        current = call(token.value === "limits" ? "limits" : "scripts", [[current]]);
-        continue;
+      if (!this.parseScript(this.peek(), scripts)) {
+        this.position = save;
+        break;
       }
-      if (token.type === "char" && token.value === "'") {
-        this.position = token.to;
-        primes++;
-        continue;
-      }
-      if (token.type === "char" && (token.value === "^" || token.value === "_")) {
-        this.position = token.to;
-        const argument = this.parseScriptArgument();
-        if (token.value === "_") sub = argument;
-        else if (argument.length === 1 && argument[0].code === "prime") primes++;
-        else sup = argument;
-        continue;
-      }
-      this.position = save;
-      break;
     }
+    const { primes, sub, sup, current } = scripts;
     if (!sub && !sup && primes === 0 && current === base) return base;
     if (current.kind === "group") {
       const children = current.children ?? [];
@@ -941,6 +939,27 @@ class LatexMathParser {
       return { ...current, children: [...children.slice(0, -1), attached] };
     }
     return this.attach(current, primes, sub, sup);
+  }
+
+  private parseScript(token: Token, scripts: Scripts): boolean {
+    if (token.type === "command" && (token.value === "limits" || token.value === "nolimits")) {
+      this.position = token.to;
+      scripts.current = call(token.value === "limits" ? "limits" : "scripts", [[scripts.current]]);
+      return true;
+    }
+    if (token.type !== "char") return false;
+    if (token.value === "'") {
+      this.position = token.to;
+      scripts.primes++;
+      return true;
+    }
+    if (token.value !== "^" && token.value !== "_") return false;
+    this.position = token.to;
+    const argument = this.parseScriptArgument();
+    if (token.value === "_") scripts.sub = argument;
+    else if (argument.length === 1 && argument[0].code === "prime") scripts.primes++;
+    else scripts.sup = argument;
+    return true;
   }
 
   private attach(base: Atom, primes: number, sub: Atom[] | null, sup: Atom[] | null): Atom {
@@ -1158,8 +1177,14 @@ class LatexMathParser {
     }
     const escape = (delimiter: string) => (ESCAPABLE_DELIMITERS.has(delimiter) ? `\\${delimiter}` : delimiter);
     const inner = joinArgument(body);
-    if (!open) return word(`lr(${inner}${close ? ` ${escape(close)}` : ""})`);
-    if (!close) return word(`lr(${escape(open)}${inner ? ` ${inner}` : ""})`);
+    if (!open) {
+      const closing = close ? ` ${escape(close)}` : "";
+      return word(`lr(${inner}${closing})`);
+    }
+    if (!close) {
+      const content = inner ? ` ${inner}` : "";
+      return word(`lr(${escape(open)}${content})`);
+    }
     return word(`lr(${escape(open)}${inner}${escape(close)})`);
   }
 
@@ -1241,7 +1266,7 @@ class LatexMathParser {
       case "hspace":
       case "hspace*": {
         const length = this.readRawGroup().trim();
-        return /^-?\d*\.?\d+(?:pt|em|mm|cm|in)$/u.test(length) ? { ...word(`#h(${length})`), forceSpace: true } : null;
+        return /^-?(?:\d+|\d*\.\d+)(?:pt|em|mm|cm|in)$/u.test(length) ? { ...word(`#h(${length})`), forceSpace: true } : null;
       }
       case "hfill":
         return { ...word("#h(1fr)"), forceSpace: true };
@@ -1374,7 +1399,7 @@ function alignedRow(cells: readonly Atom[][], alignment = "&"): Atom[] {
   cells.forEach((cell, index) => {
     if (index > 0) atoms.push({ ...atomOf(alignment, "align"), space: true });
     cell.forEach((atom, position) => {
-      const hugs = alignment === "&" && /^[=<>+\-]/u.test(atom.code);
+      const hugs = alignment === "&" && /^[=<>+-]/u.test(atom.code);
       atoms.push(position === 0 && index > 0 ? { ...atom, space: !hugs } : atom);
     });
   });
@@ -1419,7 +1444,7 @@ function spanAt(text: string, index: number): LatexMathSpan | null {
   if (isEscapedAt(text, index)) return null;
   const environment = MATH_ENVIRONMENT.exec(text.slice(index));
   if (environment) {
-    const closing = `\\end{${environment[1]}${environment[2]}}`;
+    const closing = String.raw`\end{${environment[1]}${environment[2]}}`;
     const end = text.indexOf(closing, index + environment[0].length);
     if (end < 0) return null;
     return {

@@ -11,7 +11,7 @@ export interface SlideCanvasProps {
 }
 
 export function SlideCanvas({ document, page, label, className, canvasClassName }: SlideCanvasProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [box, setBox] = useState<SlideBox | null>(null);
 
@@ -33,8 +33,12 @@ export function SlideCanvas({ document, page, label, className, canvasClassName 
   }, [document, page, box]);
 
   return (
-    <div ref={containerRef} className={cn("flex min-h-0 min-w-0 items-center justify-center overflow-hidden", className)}>
-      <canvas ref={canvasRef} role="img" aria-label={label} data-page={page} className={cn("bg-white", canvasClassName)} />
-    </div>
+    <figure
+      ref={containerRef}
+      aria-label={label}
+      className={cn("flex min-h-0 min-w-0 items-center justify-center overflow-hidden", className)}
+    >
+      <canvas ref={canvasRef} data-page={page} className={cn("bg-white", canvasClassName)} />
+    </figure>
   );
 }

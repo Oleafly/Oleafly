@@ -2802,21 +2802,7 @@ impl<'a> TypstScanner<'a> {
             if end > index {
                 let name = &text[index..end];
                 self.code(index, end);
-                if units_are_any(name, TYPST_DEFINITION_KEYWORDS) {
-                    self.replace_top(TypstFrameKind::Statement, TYPST_UNCOUNTED);
-                    return end;
-                }
-                if units_are(name, "show") {
-                    let show = self.show_class(end, class);
-                    self.replace_top(TypstFrameKind::Statement, show);
-                    return end;
-                }
-                if units_are(name, "return") {
-                    self.replace_top(TypstFrameKind::Statement, class);
-                    return end;
-                }
-                if units_are_any(name, TYPST_BLOCK_KEYWORDS) {
-                    self.replace_top(TypstFrameKind::Cond, class);
+                if self.embedded_keyword(name, end, class) {
                     return end;
                 }
                 if units_are(name, "context") {
@@ -2840,6 +2826,22 @@ impl<'a> TypstScanner<'a> {
             self.code(index, number);
             return number;
         }
+    }
+
+    fn embedded_keyword(&mut self, name: &[u16], end: usize, class: u8) -> bool {
+        if units_are_any(name, TYPST_DEFINITION_KEYWORDS) {
+            self.replace_top(TypstFrameKind::Statement, TYPST_UNCOUNTED);
+        } else if units_are(name, "show") {
+            let show = self.show_class(end, class);
+            self.replace_top(TypstFrameKind::Statement, show);
+        } else if units_are(name, "return") {
+            self.replace_top(TypstFrameKind::Statement, class);
+        } else if units_are_any(name, TYPST_BLOCK_KEYWORDS) {
+            self.replace_top(TypstFrameKind::Cond, class);
+        } else {
+            return false;
+        }
+        true
     }
 
     fn chain_step(&mut self, current: usize, index: usize) -> usize {
@@ -4414,6 +4416,52 @@ mod tests {
         assert_eq!(summary.figures, 0);
         assert_eq!(summary.tables, 0);
         assert_eq!(summary.words, 0);
+    }
+
+    #[test]
+    fn typst_embedded_keywords_keep_their_counting_rules() {
+        let cases = [
+            "#import \"lib.typ\": greet\nVisible words here.\n",
+            "#include \"chapter.typ\"\nVisible words here.\n",
+            "#set text(size: 9pt)\nVisible words here.\n",
+            "#let note = [Hidden words]\nShown words.\n",
+            "#let f(x) = { return [Returned words] }\nAfter text.\n",
+            "#return [Returned words]\nAfter text.\n",
+            "#for x in (1, 2) [Loop body words]\nAfter text.\n",
+            "#while false [Never shown]\nAfter text.\n",
+            "#if true [Kept words] else [Other words]\nAfter text.\n",
+            "#show heading: it => [Styled #it.body]\n= Title words\n",
+            "#show: rest => [Wrapped words #rest]\nBody words here.\n",
+            "#context [Context words] here\n",
+            "#context   text(fill: red)[Painted words] here\n",
+            "#figure[Hidden caption words]\n",
+        ];
+        let counts: Vec<(u64, u64, u64)> = cases
+            .iter()
+            .map(|source| {
+                let stats = typst_document_stats(&to_units(source));
+                (stats.words, stats.words_in_text, stats.words_outside_text)
+            })
+            .collect();
+        assert_eq!(
+            counts,
+            [
+                (3, 3, 0),
+                (3, 3, 0),
+                (3, 3, 0),
+                (2, 2, 0),
+                (2, 2, 0),
+                (4, 4, 0),
+                (5, 5, 0),
+                (4, 4, 0),
+                (6, 6, 0),
+                (2, 0, 0),
+                (5, 5, 0),
+                (3, 3, 0),
+                (3, 3, 0),
+                (3, 3, 0),
+            ]
+        );
     }
 
     #[test]

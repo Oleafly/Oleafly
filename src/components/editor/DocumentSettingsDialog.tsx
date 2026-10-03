@@ -54,13 +54,13 @@ function providerContext(): ProviderContext {
   return engineLoaded && engine ? { engineId: engine.id, texFlavor: engine.tex_flavor ?? null } : {};
 }
 
-async function readMainText(): Promise<string> {
+function readMainText(): Promise<string> {
   const files = useFilesStore.getState();
   const view = getEditorView();
-  if (view && files.activePath === files.mainDoc) return view.state.doc.toString();
+  if (view && files.activePath === files.mainDoc) return Promise.resolve(view.state.doc.toString());
   const loaded = files.files[files.mainDoc]?.content;
-  if (typeof loaded === "string") return loaded;
-  if (!files.projectId) throw new Error("no project");
+  if (typeof loaded === "string") return Promise.resolve(loaded);
+  if (!files.projectId) return Promise.reject(new Error("no project"));
   return readFileContent(files.projectId, files.mainDoc);
 }
 
@@ -90,10 +90,16 @@ async function writeMainText(
   return true;
 }
 
+function initialValue(state: DocumentSettingState): string {
+  if (state.status === "set") return state.value;
+  if (state.status === "locked") return state.source;
+  return "";
+}
+
 function initialValues(fields: SettingsFields): Record<string, string> {
   const values: Record<string, string> = {};
   for (const [key, state] of Object.entries(fields)) {
-    values[key] = state.status === "set" ? state.value : state.status === "locked" ? state.source : "";
+    values[key] = initialValue(state);
   }
   return values;
 }

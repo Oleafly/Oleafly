@@ -146,7 +146,7 @@ interface Context {
 
 const slice = (context: Context, node: SyntaxNode) => context.source.slice(node.from, node.to);
 
-const squash = (text: string) => text.replace(/\s+/g, " ").replace(/\(\s+/g, "(").replace(/\s+\)/g, ")").trim();
+const squash = (text: string) => text.replaceAll(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")").trim();
 
 function note(context: Context, kind: DiagramNote["kind"], code: string, detail?: string) {
   if (!context.notes.some((existing) => existing.kind === kind && existing.code === code && existing.detail === detail)) {
@@ -183,9 +183,9 @@ function namedValue(named: SyntaxNode): SyntaxNode | null {
 }
 
 function stringValue(context: Context, node: SyntaxNode | null): string | null {
-  if (!node || node.name !== "Str") return null;
+  if (node?.name !== "Str") return null;
   const raw = slice(context, node).slice(1, -1);
-  return raw.replace(/\\u\{([0-9a-fA-F]+)\}|\\(.)/g, (_, code: string | undefined, escaped: string | undefined) => {
+  return raw.replaceAll(/\\u\{([0-9a-fA-F]+)\}|\\(.)/g, (_, code: string | undefined, escaped: string | undefined) => {
     if (code) return String.fromCodePoint(Number.parseInt(code, 16));
     if (escaped === "n") return "\n";
     if (escaped === "t") return "\t";
@@ -231,7 +231,7 @@ function lengthPx(context: Context, node: SyntaxNode | null): number | null {
   const { sign, node: inner } = signed(context, node);
   if (inner.name === "Int" || inner.name === "Float") return Number(slice(context, inner)) === 0 ? 0 : null;
   if (inner.name !== "Numeric") return null;
-  const match = /^(\d*\.?\d+(?:e[+-]?\d+)?)([a-z]+)$/i.exec(slice(context, inner));
+  const match = /^((?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)([a-z]+)$/i.exec(slice(context, inner));
   const unit = match ? UNIT_PX[match[2].toLowerCase()] : undefined;
   if (!match || unit === undefined) return null;
   return sign * Number(match[1]) * unit;
@@ -241,7 +241,7 @@ function angleDegrees(context: Context, node: SyntaxNode | null): number | null 
   if (!node) return null;
   const { sign, node: inner } = signed(context, node);
   if (inner.name !== "Numeric") return null;
-  const match = /^(\d*\.?\d+)(deg|rad|turn)$/i.exec(slice(context, inner));
+  const match = /^(\d+(?:\.\d+)?|\.\d+)(deg|rad|turn)$/i.exec(slice(context, inner));
   if (!match) return null;
   const value = Number(match[1]);
   const unit = match[2].toLowerCase();
@@ -276,6 +276,38 @@ interface ColorRead {
   exact: boolean;
 }
 
+function adjustedColor(context: Context, base: SyntaxNode | null): ColorRead | null {
+  const inner = base ? colorOf(context, base) : null;
+  return inner ? { hex: inner.hex, exact: false } : null;
+}
+
+function rgbColor(context: Context, args: SyntaxNode[]): ColorRead | null {
+  const text = stringValue(context, args[0] ?? null);
+  if (args.length === 1 && text !== null) {
+    const hex = normalizedHex(text);
+    return hex ? { hex, exact: true } : null;
+  }
+  const values = args.slice(0, 3).map((arg) => channel(context, arg));
+  if (values.length === 3 && values.every((value) => value !== null)) {
+    const [red, green, blue] = values as number[];
+    return { hex: hexOf(red, green, blue), exact: args.length === 3 };
+  }
+  return null;
+}
+
+function calledColor(context: Context, node: SyntaxNode): ColorRead | null {
+  const callee = node.firstChild;
+  if (callee?.name === "FieldAccess") return adjustedColor(context, callee.firstChild);
+  const name = calleeName(context, node);
+  const args = argNodes(node);
+  if (name === "rgb") return rgbColor(context, args);
+  if (name === "luma" && args[0]) {
+    const value = channel(context, args[0]);
+    return value === null ? null : { hex: hexOf(value, value, value), exact: args.length === 1 };
+  }
+  return null;
+}
+
 function colorOf(context: Context, node: SyntaxNode | null): ColorRead | null {
   if (!node) return null;
   if (node.name === "None") return { hex: "", exact: true };
@@ -283,38 +315,9 @@ function colorOf(context: Context, node: SyntaxNode | null): ColorRead | null {
     const hex = NAMED_COLORS[slice(context, node)];
     return hex ? { hex, exact: true } : null;
   }
-  if (node.name === "FieldAccess") {
-    const base = node.firstChild;
-    const named = base ? colorOf(context, base) : null;
-    return named ? { hex: named.hex, exact: false } : null;
-  }
+  if (node.name === "FieldAccess") return adjustedColor(context, node.firstChild);
   if (node.name !== "FuncCall") return null;
-  const callee = node.firstChild;
-  if (callee?.name === "FieldAccess") {
-    const base = callee.firstChild;
-    const inner = base ? colorOf(context, base) : null;
-    return inner ? { hex: inner.hex, exact: false } : null;
-  }
-  const name = calleeName(context, node);
-  const args = argNodes(node);
-  if (name === "rgb") {
-    const text = stringValue(context, args[0] ?? null);
-    if (args.length === 1 && text !== null) {
-      const hex = normalizedHex(text);
-      return hex ? { hex, exact: true } : null;
-    }
-    const values = args.slice(0, 3).map((arg) => channel(context, arg));
-    if (values.length === 3 && values.every((value) => value !== null)) {
-      const [red, green, blue] = values as number[];
-      return { hex: hexOf(red, green, blue), exact: args.length === 3 };
-    }
-    return null;
-  }
-  if (name === "luma" && args[0]) {
-    const value = channel(context, args[0]);
-    return value === null ? null : { hex: hexOf(value, value, value), exact: args.length === 1 };
-  }
-  return null;
+  return calledColor(context, node);
 }
 
 interface StrokeRead {
@@ -334,6 +337,48 @@ function dashStyle(context: Context, node: SyntaxNode | null): { style: StrokeSt
   return { style: "dashed", exact: false };
 }
 
+function binaryStroke(context: Context, node: SyntaxNode): StrokeRead | null {
+  const parts = children(node).filter((child) => child.name !== "Plus");
+  const reads = parts.map((part) => strokeOf(context, part));
+  if (reads.length !== 2 || reads.includes(null)) return null;
+  const [first, second] = reads as StrokeRead[];
+  const lengthFirst = lengthPx(context, parts[0]) !== null;
+  return {
+    color: lengthFirst ? second.color : first.color,
+    widthPx: lengthFirst ? first.widthPx : second.widthPx,
+    exact: first.exact && second.exact,
+  };
+}
+
+function applyStrokeKey(context: Context, read: StrokeRead, key: string, value: SyntaxNode | null): boolean {
+  if (key === "paint") {
+    const color = colorOf(context, value);
+    if (!color) return false;
+    read.color = color.hex;
+    read.exact &&= color.exact;
+  } else if (key === "thickness") {
+    const px = lengthPx(context, value);
+    if (px === null) return false;
+    read.widthPx = px;
+  } else if (key === "dash") {
+    const dash = dashStyle(context, value);
+    if (!dash) return false;
+    read.style = dash.style === "solid" ? undefined : dash.style;
+    read.exact &&= dash.exact;
+  } else if (key !== "cap") {
+    read.exact = false;
+  }
+  return true;
+}
+
+function dictStroke(context: Context, node: SyntaxNode): StrokeRead | null {
+  const read: StrokeRead = { color: "#000000", widthPx: PX_PER_CM / PT_PER_CM, exact: true };
+  for (const named of children(node).filter((child) => child.name === "Named")) {
+    if (!applyStrokeKey(context, read, namedKey(context, named), namedValue(named))) return null;
+  }
+  return read;
+}
+
 function strokeOf(context: Context, node: SyntaxNode): StrokeRead | null {
   if (node.name === "None") return { color: "", exact: true };
   if (node.name === "Auto") return null;
@@ -341,50 +386,15 @@ function strokeOf(context: Context, node: SyntaxNode): StrokeRead | null {
   if (width !== null) return { color: "#000000", widthPx: width, exact: true };
   const color = colorOf(context, node);
   if (color) return { color: color.hex, widthPx: PX_PER_CM / PT_PER_CM, exact: color.exact };
-  if (node.name === "Binary") {
-    const parts = children(node).filter((child) => child.name !== "Plus");
-    const reads = parts.map((part) => strokeOf(context, part));
-    if (reads.length !== 2 || reads.some((read) => read === null)) return null;
-    const [first, second] = reads as StrokeRead[];
-    const lengthFirst = lengthPx(context, parts[0]) !== null;
-    return {
-      color: lengthFirst ? second.color : first.color,
-      widthPx: lengthFirst ? first.widthPx : second.widthPx,
-      exact: first.exact && second.exact,
-    };
-  }
-  if (node.name === "Dict") {
-    const read: StrokeRead = { color: "#000000", widthPx: PX_PER_CM / PT_PER_CM, exact: true };
-    for (const named of children(node).filter((child) => child.name === "Named")) {
-      const key = namedKey(context, named);
-      const value = namedValue(named);
-      if (key === "paint") {
-        const color = colorOf(context, value);
-        if (!color) return null;
-        read.color = color.hex;
-        read.exact &&= color.exact;
-      } else if (key === "thickness") {
-        const px = lengthPx(context, value);
-        if (px === null) return null;
-        read.widthPx = px;
-      } else if (key === "dash") {
-        const dash = dashStyle(context, value);
-        if (!dash) return null;
-        read.style = dash.style === "solid" ? undefined : dash.style;
-        read.exact &&= dash.exact;
-      } else if (key !== "cap") {
-        read.exact = false;
-      }
-    }
-    return read;
-  }
+  if (node.name === "Binary") return binaryStroke(context, node);
+  if (node.name === "Dict") return dictStroke(context, node);
   return null;
 }
 
 type Coordinate = { kind: "abs"; point: DiagramPoint } | { kind: "grid"; point: DiagramPoint; u: number; v: number };
 
 function coordinateOf(context: Context, node: SyntaxNode | null): Coordinate | null {
-  if (!node || node.name !== "Array") return null;
+  if (node?.name !== "Array") return null;
   const parts = children(node).filter((child) => !PUNCTUATION.has(child.name));
   if (parts.length !== 2) return null;
   const lengths = parts.map((part) => lengthPx(context, part));
@@ -414,6 +424,34 @@ function decodeEscape(text: string): string {
 
 const PLAIN_CHILDREN = new Set(["Escape", "Shorthand", "SmartQuote", "Space", "Text"]);
 
+function isLineSpace(character: string | undefined): boolean {
+  return character === " " || character === "\t";
+}
+
+function spaceRunEnd(text: string, from: number): number {
+  let index = from;
+  while (isLineSpace(text[index])) index += 1;
+  return index;
+}
+
+function spaceRunStart(text: string, to: number): number {
+  let index = to;
+  while (index > 0 && isLineSpace(text[index - 1])) index -= 1;
+  return index;
+}
+
+function joinedLines(text: string): string {
+  const lines = text.split(/\r\n|\r|\n/);
+  const last = lines.length - 1;
+  return lines
+    .map((line, index) => {
+      const start = index > 0 ? spaceRunEnd(line, 0) : 0;
+      const end = index < last ? Math.max(start, spaceRunStart(line, line.length)) : line.length;
+      return line.slice(start, end);
+    })
+    .join(" ");
+}
+
 function markupText(context: Context, markup: SyntaxNode): { text: string; plain: boolean } {
   const kids = children(markup);
   const meaningful = kids.filter((child) => child.name !== "Space");
@@ -434,7 +472,7 @@ function markupText(context: Context, markup: SyntaxNode): { text: string; plain
     cursor = child.to;
   }
   text += context.source.slice(cursor, markup.to);
-  return { text: text.replace(/[ \t]*(?:\r\n|\r|\n)[ \t]*/g, " "), plain };
+  return { text: joinedLines(text), plain };
 }
 
 function contentText(context: Context, node: SyntaxNode): { text: string; plain: boolean } {
@@ -452,7 +490,7 @@ interface LabelRead {
   label: string;
   fontSize?: number;
   textColor?: string;
-  fontFamily?: DiagNode["fontFamily"];
+  fontFamily?: NonNullable<DiagNode["fontFamily"]>;
   exact: boolean;
 }
 
@@ -465,42 +503,56 @@ function fontFamilyOf(name: string): { family: DiagNode["fontFamily"]; exact: bo
   return { family: "serif", exact: false };
 }
 
-function labelOf(context: Context, node: SyntaxNode): LabelRead {
-  if (node.name === "FuncCall" && calleeName(context, node) === "text" && node.firstChild?.name === "Ident") {
-    const args = argNodes(node);
-    const body = args.at(-1);
-    if (body && body.name === "ContentBlock") {
-      const read: LabelRead = { ...{ label: "" }, exact: true };
-      const content = contentText(context, body);
-      read.label = content.text;
-      read.exact = content.plain;
-      for (const arg of args.slice(0, -1)) {
-        if (arg.name !== "Named") {
-          read.exact = false;
-          continue;
-        }
-        const key = namedKey(context, arg);
-        const value = namedValue(arg);
-        if (key === "size") {
-          const px = lengthPx(context, value);
-          if (px === null) read.exact = false;
-          else read.fontSize = Math.round(((px * PT_PER_CM) / PX_PER_CM) * 100) / 100;
-        } else if (key === "fill") {
-          const color = colorOf(context, value);
-          if (color?.hex) read.textColor = color.hex;
-          if (!color?.exact) read.exact = false;
-        } else if (key === "font") {
-          const font = stringValue(context, value);
-          const family = font === null ? null : fontFamilyOf(font);
-          if (family) {
-            read.fontFamily = family.family === "serif" ? undefined : family.family;
-            if (!family.exact) read.exact = false;
-          } else read.exact = false;
-        } else read.exact = false;
-      }
-      return read;
-    }
+function applyLabelSize(context: Context, read: LabelRead, value: SyntaxNode | null): void {
+  const px = lengthPx(context, value);
+  if (px === null) read.exact = false;
+  else read.fontSize = Math.round(((px * PT_PER_CM) / PX_PER_CM) * 100) / 100;
+}
+
+function applyLabelFill(context: Context, read: LabelRead, value: SyntaxNode | null): void {
+  const color = colorOf(context, value);
+  if (color?.hex) read.textColor = color.hex;
+  if (!color?.exact) read.exact = false;
+}
+
+function applyLabelFont(context: Context, read: LabelRead, value: SyntaxNode | null): void {
+  const font = stringValue(context, value);
+  if (font === null) {
+    read.exact = false;
+    return;
   }
+  const family = fontFamilyOf(font);
+  read.fontFamily = family.family === "serif" ? undefined : family.family;
+  if (!family.exact) read.exact = false;
+}
+
+function applyLabelArg(context: Context, read: LabelRead, arg: SyntaxNode): void {
+  if (arg.name !== "Named") {
+    read.exact = false;
+    return;
+  }
+  const key = namedKey(context, arg);
+  const value = namedValue(arg);
+  if (key === "size") applyLabelSize(context, read, value);
+  else if (key === "fill") applyLabelFill(context, read, value);
+  else if (key === "font") applyLabelFont(context, read, value);
+  else read.exact = false;
+}
+
+function textCallLabel(context: Context, node: SyntaxNode): LabelRead | null {
+  if (node.name !== "FuncCall" || calleeName(context, node) !== "text" || node.firstChild?.name !== "Ident") return null;
+  const args = argNodes(node);
+  const body = args.at(-1);
+  if (body?.name !== "ContentBlock") return null;
+  const content = contentText(context, body);
+  const read: LabelRead = { label: content.text, exact: content.plain };
+  for (const arg of args.slice(0, -1)) applyLabelArg(context, read, arg);
+  return read;
+}
+
+function labelOf(context: Context, node: SyntaxNode): LabelRead {
+  const styled = textCallLabel(context, node);
+  if (styled) return styled;
   const content = contentText(context, node);
   return { label: content.text, fontSize: EM_PT, exact: content.plain };
 }
@@ -545,14 +597,21 @@ function estimatedWidth(label: string): number {
   return Math.max(40, Math.round(label.length * 7 + 20));
 }
 
-function readNodeCall(context: Context, call: SyntaxNode, name: string | null, fallbackId: string): ParsedNode | null {
-  const args = argNodes(call);
-  const positional = args.filter((arg) => arg.name !== "Named");
-  const named = new Map(args.filter((arg) => arg.name === "Named").map((arg) => [namedKey(context, arg), arg]));
-  const sourceArgs = new Map<string, string>();
+type NamedArgs = Map<string, SyntaxNode>;
+
+function namedArgValue(named: NamedArgs, key: string): SyntaxNode | null {
+  const arg = named.get(key);
+  return arg ? namedValue(arg) : null;
+}
+
+function nodePlacement(
+  context: Context,
+  positional: SyntaxNode[],
+  named: NamedArgs,
+  sourceArgs: Map<string, string>,
+): { posNode: SyntaxNode | null; labelNode: SyntaxNode | null } {
   let posNode: SyntaxNode | null = null;
   let labelNode: SyntaxNode | null = null;
-  if (positional.length > 2) return null;
   if (positional.length === 2) [posNode, labelNode] = positional;
   else if (positional.length === 1) {
     if (["Array", "Dict", "Label"].includes(positional[0].name)) posNode = positional[0];
@@ -560,71 +619,134 @@ function readNodeCall(context: Context, call: SyntaxNode, name: string | null, f
   }
   if (posNode) sourceArgs.set("pos", slice(context, posNode));
   if (labelNode) sourceArgs.set("label", slice(context, labelNode));
-  if (named.has("pos")) {
-    posNode = namedValue(named.get("pos") as SyntaxNode);
-    sourceArgs.set("pos", slice(context, named.get("pos") as SyntaxNode));
+  const namedPos = named.get("pos");
+  if (namedPos) {
+    posNode = namedValue(namedPos);
+    sourceArgs.set("pos", slice(context, namedPos));
   }
-  if (named.has("label")) {
-    labelNode = namedValue(named.get("label") as SyntaxNode);
-    sourceArgs.set("label", slice(context, named.get("label") as SyntaxNode));
+  const namedLabel = named.get("label");
+  if (namedLabel) {
+    labelNode = namedValue(namedLabel);
+    sourceArgs.set("label", slice(context, namedLabel));
   }
+  return { posNode, labelNode };
+}
+
+function labeledNode(context: Context, labelNode: SyntaxNode | null, id: string): DiagNode {
+  const label: LabelRead = labelNode ? labelOf(context, labelNode) : { label: "", exact: true };
+  if (!label.exact) note(context, "approximated", "formattedLabels");
+  const node: DiagNode = { id, shape: "rectangle", x: 0, y: 0, w: 0, h: 0, label: label.label };
+  if (label.fontSize !== undefined) node.fontSize = label.fontSize;
+  if (label.textColor) node.textColor = label.textColor;
+  if (label.fontFamily) node.fontFamily = label.fontFamily;
+  return node;
+}
+
+function nodeSize(
+  kind: NodeShape | "rect",
+  radiusPx: number | null,
+  widthPx: number | null,
+  heightPx: number | null,
+  label: string,
+): { w: number; h: number } {
+  if (kind === "circle") {
+    const diameter = radiusPx !== null ? radiusPx * 2 : Math.max(widthPx ?? 0, heightPx ?? 0) || 40;
+    return { w: diameter, h: diameter };
+  }
+  return {
+    w: widthPx ?? (radiusPx !== null ? radiusPx * 2 : estimatedWidth(label)),
+    h: heightPx ?? (radiusPx !== null ? radiusPx * 2 : 30),
+  };
+}
+
+function nodeGeometry(context: Context, named: NamedArgs, label: string): { kind: NodeShape | "rect"; w: number; h: number } {
+  const shape = shapeOf(context, namedArgValue(named, "shape"));
+  if (shape && !shape.exact) note(context, "approximated", "unknownShapes");
+  const radiusPx = lengthPx(context, namedArgValue(named, "radius"));
+  const widthPx = lengthPx(context, namedArgValue(named, "width"));
+  const heightPx = lengthPx(context, namedArgValue(named, "height"));
+  const kind = shape?.shape ?? (radiusPx !== null ? "circle" : "rect");
+  const size = nodeSize(kind, radiusPx, widthPx, heightPx, label);
+  if (widthPx === null && heightPx === null && radiusPx === null) {
+    note(context, "approximated", "estimatedSize");
+  }
+  return { kind, w: size.w, h: size.h };
+}
+
+function applyNodeFill(context: Context, node: DiagNode, named: NamedArgs): ColorRead | null {
+  const fill = colorOf(context, namedArgValue(named, "fill"));
+  if (fill) node.fill = fill.hex;
+  if (fill && !fill.exact) note(context, "approximated", "colorAdjustments");
+  if (!fill && named.has("fill")) note(context, "approximated", "colorExpressions");
+  return fill;
+}
+
+function applyNodeStroke(context: Context, node: DiagNode, strokeValue: SyntaxNode | null): boolean {
+  if (!strokeValue) return false;
+  const stroke = strokeOf(context, strokeValue);
+  if (!stroke) {
+    note(context, "approximated", "strokeStyles");
+    return false;
+  }
+  if (stroke.color) node.stroke = stroke.color;
+  if (stroke.color && stroke.widthPx !== undefined) node.strokeWidth = Math.round(stroke.widthPx * 1000) / 1000;
+  if (stroke.style && stroke.style !== "solid") node.strokeStyle = stroke.style;
+  if (!stroke.exact) note(context, "approximated", "strokeStyles");
+  return stroke.color === "";
+}
+
+function applyNodeShape(
+  node: DiagNode,
+  kind: NodeShape | "rect",
+  strokeNone: boolean,
+  fill: ColorRead | null,
+  cornerPx: number | null,
+): void {
+  if (kind !== "rect") {
+    node.shape = kind;
+    if (kind === "roundrect") node.radius = Math.round(((cornerPx ?? node.h / 2) || 0) * 1000) / 1000;
+    return;
+  }
+  const rounded = cornerPx !== null && cornerPx > 0;
+  if (strokeNone && !fill?.hex && node.label) node.shape = "text";
+  else if (rounded) node.shape = "roundrect";
+  else node.shape = "rectangle";
+  if (rounded) node.radius = Math.round(cornerPx * 1000) / 1000;
+}
+
+function namePrefixAfter(before: SyntaxNode | null): string {
+  if (before?.name === "Comma") return " ";
+  if (before && before.name !== "LeftParen") return ", ";
+  return "";
+}
+
+function applyNameSlot(element: FletcherElement<DiagNode>, call: SyntaxNode): void {
+  const closing = call.getChild("Args")?.lastChild;
+  if (closing?.name !== "RightParen") return;
+  element.nameAt = closing.from - call.from;
+  element.namePrefix = namePrefixAfter(closing.prevSibling);
+}
+
+function readNodeCall(context: Context, call: SyntaxNode, name: string | null, fallbackId: string): ParsedNode | null {
+  const args = argNodes(call);
+  const positional = args.filter((arg) => arg.name !== "Named");
+  const named: NamedArgs = new Map(args.filter((arg) => arg.name === "Named").map((arg) => [namedKey(context, arg), arg]));
+  const sourceArgs = new Map<string, string>();
+  if (positional.length > 2) return null;
+  const { posNode, labelNode } = nodePlacement(context, positional, named, sourceArgs);
   if (named.has("enclose")) return null;
   const coordinate = coordinateOf(context, posNode);
   if (!coordinate) return null;
   if (coordinate.kind === "grid") note(context, "approximated", "gridCoordinates");
 
-  const label = labelNode ? labelOf(context, labelNode) : { label: "", exact: true };
-  if (!label.exact) note(context, "approximated", "formattedLabels");
-  const node: DiagNode = { id: name ?? fallbackId, shape: "rectangle", x: 0, y: 0, w: 0, h: 0, label: label.label };
-  if (label.fontSize !== undefined) node.fontSize = label.fontSize;
-  if (label.textColor) node.textColor = label.textColor;
-  if (label.fontFamily) node.fontFamily = label.fontFamily;
-
-  const shape = shapeOf(context, named.has("shape") ? namedValue(named.get("shape") as SyntaxNode) : null);
-  if (shape && !shape.exact) note(context, "approximated", "unknownShapes");
-  const radiusPx = lengthPx(context, named.has("radius") ? namedValue(named.get("radius") as SyntaxNode) : null);
-  const widthPx = lengthPx(context, named.has("width") ? namedValue(named.get("width") as SyntaxNode) : null);
-  const heightPx = lengthPx(context, named.has("height") ? namedValue(named.get("height") as SyntaxNode) : null);
-  const kind = shape?.shape ?? (radiusPx !== null ? "circle" : "rect");
-  if (kind === "circle") {
-    const diameter = radiusPx !== null ? radiusPx * 2 : Math.max(widthPx ?? 0, heightPx ?? 0) || 40;
-    node.w = diameter;
-    node.h = diameter;
-  } else {
-    node.w = widthPx ?? (radiusPx !== null ? radiusPx * 2 : estimatedWidth(label.label));
-    node.h = heightPx ?? (radiusPx !== null ? radiusPx * 2 : 30);
-  }
-  if (widthPx === null && heightPx === null && radiusPx === null) {
-    note(context, "approximated", "estimatedSize");
-  }
-
-  const fill = colorOf(context, named.has("fill") ? namedValue(named.get("fill") as SyntaxNode) : null);
-  if (fill) node.fill = fill.hex;
-  if (fill && !fill.exact) note(context, "approximated", "colorAdjustments");
-  if (!fill && named.has("fill")) note(context, "approximated", "colorExpressions");
-  let strokeNone = false;
-  const strokeValue = named.has("stroke") ? namedValue(named.get("stroke") as SyntaxNode) : null;
-  if (strokeValue) {
-    const stroke = strokeOf(context, strokeValue);
-    if (stroke) {
-      strokeNone = stroke.color === "";
-      if (stroke.color) node.stroke = stroke.color;
-      if (stroke.color && stroke.widthPx !== undefined) node.strokeWidth = Math.round(stroke.widthPx * 1000) / 1000;
-      if (stroke.style && stroke.style !== "solid") node.strokeStyle = stroke.style;
-      if (!stroke.exact) note(context, "approximated", "strokeStyles");
-    } else note(context, "approximated", "strokeStyles");
-  }
-  const cornerPx = lengthPx(context, named.has("corner-radius") ? namedValue(named.get("corner-radius") as SyntaxNode) : null);
-
-  if (kind === "rect") {
-    if (strokeNone && !fill?.hex && node.label) node.shape = "text";
-    else if (cornerPx !== null && cornerPx > 0) node.shape = "roundrect";
-    else node.shape = "rectangle";
-    if (cornerPx !== null && cornerPx > 0) node.radius = Math.round(cornerPx * 1000) / 1000;
-  } else {
-    node.shape = kind;
-    if (kind === "roundrect") node.radius = Math.round(((cornerPx ?? node.h / 2) || 0) * 1000) / 1000;
-  }
+  const node = labeledNode(context, labelNode, name ?? fallbackId);
+  const geometry = nodeGeometry(context, named, node.label);
+  node.w = geometry.w;
+  node.h = geometry.h;
+  const fill = applyNodeFill(context, node, named);
+  const strokeNone = applyNodeStroke(context, node, namedArgValue(named, "stroke"));
+  const cornerPx = lengthPx(context, namedArgValue(named, "corner-radius"));
+  applyNodeShape(node, geometry.kind, strokeNone, fill, cornerPx);
   const center =
     coordinate.kind === "abs" ? coordinate.point : { x: coordinate.point.x, y: coordinate.point.y };
   node.x = Math.round((center.x - node.w / 2) * 1000) / 1000;
@@ -639,14 +761,7 @@ function readNodeCall(context: Context, call: SyntaxNode, name: string | null, f
     args: [],
     named: name !== null,
   };
-  const argsNode = call.getChild("Args");
-  const closing = argsNode?.lastChild;
-  if (argsNode && closing?.name === "RightParen") {
-    const before = closing.prevSibling;
-    element.nameAt = closing.from - call.from;
-    element.namePrefix = before && before.name !== "LeftParen" && before.name !== "Comma" ? ", " : "";
-    if (before?.name === "Comma") element.namePrefix = " ";
-  }
+  applyNameSlot(element, call);
   return {
     node,
     element,
@@ -694,6 +809,12 @@ function eat(text: string, options: readonly string[]): [string, string | null] 
   return [text, null];
 }
 
+function lineStyle(line: string): DiagEdge["style"] {
+  if (line === "--") return "dashed";
+  if (line === "..") return "dotted";
+  return "solid";
+}
+
 function marksOf(value: string): MarksRead | null {
   let text = value;
   const marks: (string | null)[] = [];
@@ -717,7 +838,7 @@ function marksOf(value: string): MarksRead | null {
   const line = lines[0];
   const start = marks[0];
   const end = marks.at(-1) ?? null;
-  const style: DiagEdge["style"] = line === "--" ? "dashed" : line === ".." ? "dotted" : "solid";
+  const style = lineStyle(line);
   const exact = ["-", "--", ".."].includes(line) && marks.length === 2;
   if (start && end) return { arrow: "both", style, reversed: false, exact };
   if (end) return { arrow: "forward", style, reversed: false, exact };
@@ -800,110 +921,158 @@ function vertexOf(context: Context, node: SyntaxNode): VertexRef[] {
   return [coordinate ? { kind: "coord", coordinate } : { kind: "unknown" }];
 }
 
-function readEdgeCall(context: Context, call: SyntaxNode, nodeIndex: number): ParsedEdge | null {
-  const args = argNodes(call);
-  const positional = args.filter((arg) => arg.name !== "Named");
-  const named = args.filter((arg) => arg.name === "Named");
-  const sourceArgs = new Map<string, string>();
-  const refs: VertexRef[] = [];
+interface EdgeArgs {
+  queue: SyntaxNode[];
+  refs: VertexRef[];
+  sourceArgs: Map<string, string>;
+  marksNode: SyntaxNode | null;
+  labelNode: SyntaxNode | null;
+  flagStyle: DiagEdge["style"] | null;
+  bend: number | null;
+}
+
+function queueStarts(queue: readonly SyntaxNode[], ...predicates: ((node: SyntaxNode) => boolean)[]): boolean {
+  return queue.length >= predicates.length && predicates.every((predicate, index) => predicate(queue[index]));
+}
+
+function namedVertices(context: Context, arg: SyntaxNode): VertexRef[] {
+  const value = namedValue(arg);
+  const parts = value ? children(value).filter((child) => !PUNCTUATION.has(child.name)) : [];
+  return parts.flatMap((part) => vertexOf(context, part));
+}
+
+function takeEdgeVertices(context: Context, state: EdgeArgs, named: SyntaxNode[]): void {
+  const { queue, refs } = state;
+  const relative = (node: SyntaxNode) => isRelative(context, node);
   let hasFirst = false;
   let hasTail = false;
-  let marksNode: SyntaxNode | null = null;
-  let labelNode: SyntaxNode | null = null;
-  const queue = [...positional];
-  const peek = (...predicates: ((node: SyntaxNode) => boolean)[]) =>
-    queue.length >= predicates.length && predicates.every((predicate, index) => predicate(queue[index]));
-  if (peek((node) => isCoordNode(node))) {
+  if (queueStarts(queue, isCoordNode)) {
     refs.push(...vertexOf(context, queue.shift() as SyntaxNode));
     hasFirst = true;
   }
-  while (peek((node) => isRelative(context, node))) {
+  while (queueStarts(queue, relative)) {
     refs.push(...vertexOf(context, queue.shift() as SyntaxNode));
     hasTail = true;
   }
-  if (!hasTail && peek((node) => maybeMarks(context, node), (node) => isRelative(context, node))) {
-    marksNode = queue.shift() as SyntaxNode;
+  if (!hasTail && queueStarts(queue, (node) => maybeMarks(context, node), relative)) {
+    state.marksNode = queue.shift() as SyntaxNode;
     refs.push(...vertexOf(context, queue.shift() as SyntaxNode));
     hasTail = true;
   }
   const verticesNamed = named.find((arg) => namedKey(context, arg) === "vertices");
   if (verticesNamed) {
-    const value = namedValue(verticesNamed);
-    for (const part of value ? children(value).filter((child) => !PUNCTUATION.has(child.name)) : []) {
-      refs.push(...vertexOf(context, part));
-    }
+    refs.push(...namedVertices(context, verticesNamed));
     hasFirst = true;
     hasTail = true;
   }
   if (!hasTail) refs.unshift({ kind: "auto" });
   if (!hasFirst) refs.unshift({ kind: "auto" });
-  const sideIndex = queue.findIndex((node) => isAlignment(context, node));
+}
+
+function takeLabelSide(context: Context, state: EdgeArgs): void {
+  const sideIndex = state.queue.findIndex((node) => isAlignment(context, node));
   if (sideIndex >= 0) {
-    const [side] = queue.splice(sideIndex, 1);
-    sourceArgs.set("label-side", slice(context, side));
+    const [side] = state.queue.splice(sideIndex, 1);
+    state.sourceArgs.set("label-side", slice(context, side));
   }
-  if (peek((node) => maybeMarks(context, node), (node) => maybeLabel(context, node))) {
-    marksNode ??= queue.shift() as SyntaxNode;
-    labelNode = queue.shift() as SyntaxNode;
-  } else if (peek((node) => maybeLabel(context, node), (node) => maybeMarks(context, node))) {
-    labelNode = queue.shift() as SyntaxNode;
-    marksNode ??= queue.shift() as SyntaxNode;
-  } else if (peek((node) => maybeLabel(context, node))) {
-    labelNode = queue.shift() as SyntaxNode;
-  } else if (peek((node) => maybeMarks(context, node))) {
-    marksNode ??= queue.shift() as SyntaxNode;
+}
+
+function takeMarksAndLabel(context: Context, state: EdgeArgs): void {
+  const { queue } = state;
+  const marks = (node: SyntaxNode) => maybeMarks(context, node);
+  const label = (node: SyntaxNode) => maybeLabel(context, node);
+  if (queueStarts(queue, marks, label)) {
+    state.marksNode ??= queue.shift() as SyntaxNode;
+    state.labelNode = queue.shift() as SyntaxNode;
+  } else if (queueStarts(queue, label, marks)) {
+    state.labelNode = queue.shift() as SyntaxNode;
+    state.marksNode ??= queue.shift() as SyntaxNode;
+  } else if (queueStarts(queue, label)) {
+    state.labelNode = queue.shift() as SyntaxNode;
+  } else if (queueStarts(queue, marks)) {
+    state.marksNode ??= queue.shift() as SyntaxNode;
   }
-  let flagStyle: DiagEdge["style"] | null = null;
+}
+
+function takeEdgeFlags(context: Context, state: EdgeArgs): void {
+  const { queue } = state;
   while (queue.length > 0 && EDGE_FLAGS.has(stringValue(context, queue[0]) ?? "")) {
     const flag = queue.shift() as SyntaxNode;
     const value = stringValue(context, flag) as string;
     if (value === "dashed" || value === "dotted") {
-      flagStyle = value;
-      sourceArgs.set("dash", slice(context, flag));
+      state.flagStyle = value;
+      state.sourceArgs.set("dash", slice(context, flag));
     } else {
-      sourceArgs.set(`flag:${value}`, slice(context, flag));
+      state.sourceArgs.set(`flag:${value}`, slice(context, flag));
       note(context, "kept", "edgeOption", value);
     }
   }
-  if (queue.length > 0) return null;
-  let bend: number | null = null;
+}
+
+function applyEdgeKey(context: Context, state: EdgeArgs, key: string, value: SyntaxNode | null): void {
+  if (key === "marks") state.marksNode = value;
+  else if (key === "label") state.labelNode = value;
+  else if (key === "bend") state.bend = angleDegrees(context, value);
+  else if (key === "dash") {
+    const dash = dashStyle(context, value);
+    if (dash) state.flagStyle = dash.style;
+    if (dash && !dash.exact) note(context, "approximated", "strokeStyles");
+  }
+}
+
+function applyEdgeNamed(context: Context, state: EdgeArgs, named: SyntaxNode[]): void {
   for (const arg of named) {
     const key = namedKey(context, arg);
-    const value = namedValue(arg);
     if (key === "vertices") continue;
-    if (key === "marks") marksNode = value;
-    else if (key === "label") labelNode = value;
-    else if (key === "bend") bend = angleDegrees(context, value);
-    else if (key === "dash") {
-      const dash = dashStyle(context, value);
-      if (dash) flagStyle = dash.style;
-      if (dash && !dash.exact) note(context, "approximated", "strokeStyles");
-    }
-    sourceArgs.set(key, slice(context, arg));
+    applyEdgeKey(context, state, key, namedValue(arg));
+    state.sourceArgs.set(key, slice(context, arg));
   }
+}
+
+function endpointsOf(refs: VertexRef[]): FletcherEndpoints {
+  const allLabels = refs.length >= 2 && [refs[0], refs.at(-1)].every((ref) => ref?.kind === "label");
+  if (allLabels) return "labels";
+  if (refs.some((ref) => ref.kind === "auto" || ref.kind === "relative")) return "implicit";
+  return "coords";
+}
+
+function readEdgeCall(context: Context, call: SyntaxNode, nodeIndex: number): ParsedEdge | null {
+  const args = argNodes(call);
+  const named = args.filter((arg) => arg.name === "Named");
+  const state: EdgeArgs = {
+    queue: args.filter((arg) => arg.name !== "Named"),
+    refs: [],
+    sourceArgs: new Map<string, string>(),
+    marksNode: null,
+    labelNode: null,
+    flagStyle: null,
+    bend: null,
+  };
+  takeEdgeVertices(context, state, named);
+  takeLabelSide(context, state);
+  takeMarksAndLabel(context, state);
+  takeEdgeFlags(context, state);
+  if (state.queue.length > 0) return null;
+  applyEdgeNamed(context, state, named);
+  const { marksNode, labelNode, sourceArgs } = state;
   const marksText = marksNode ? stringValue(context, marksNode) : null;
   const marks = marksText !== null ? marksOf(marksText) : null;
   if (marksNode && !sourceArgs.has("marks")) sourceArgs.set("marks", slice(context, marksNode));
   if (labelNode && !sourceArgs.has("label")) sourceArgs.set("label", slice(context, labelNode));
   if (marksNode && !marks) note(context, "approximated", "arrowMarks");
   if (marks && !marks.exact) note(context, "approximated", "arrowMarks");
-  const allLabels = refs.length >= 2 && [refs[0], refs.at(-1)].every((ref) => ref?.kind === "label");
-  const implicit = refs.some((ref) => ref.kind === "auto" || ref.kind === "relative");
-  let endpoints: FletcherEndpoints = "coords";
-  if (allLabels) endpoints = "labels";
-  else if (implicit) endpoints = "implicit";
   return {
     call,
     nodeIndex,
-    vertices: refs,
-    endpoints,
+    vertices: state.refs,
+    endpoints: endpointsOf(state.refs),
     marks,
     marksText,
     label: labelNode,
     labelText: labelNode ? slice(context, labelNode) : null,
     sourceArgs,
-    bend,
-    flagStyle,
+    bend: state.bend,
+    flagStyle: state.flagStyle,
   };
 }
 
@@ -928,9 +1097,11 @@ function nodeAtPoint(nodes: ParsedNode[], point: DiagramPoint): ParsedNode | nul
 function handleToward(center: DiagramPoint, point: DiagramPoint): DiagramHandle {
   const dx = point.x - center.x;
   const dy = point.y - center.y;
-  if (Math.abs(dx) < 1) return dy < 0 ? "t" : "b";
-  if (Math.abs(dy) < 1) return dx > 0 ? "r" : "l";
-  return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "r" : "l") : dy < 0 ? "t" : "b";
+  const horizontal = dx > 0 ? "r" : "l";
+  const vertical = dy < 0 ? "t" : "b";
+  if (Math.abs(dx) < 1) return vertical;
+  if (Math.abs(dy) < 1) return horizontal;
+  return Math.abs(dx) > Math.abs(dy) ? horizontal : vertical;
 }
 
 function handleAt(angle: number): DiagramHandle {
@@ -941,74 +1112,93 @@ function handleAt(angle: number): DiagramHandle {
   return "l";
 }
 
-function resolveEdge(
-  context: Context,
+function vertexPoint(
+  ref: VertexRef,
+  index: number,
+  previous: DiagramPoint | null,
   edge: ParsedEdge,
   nodes: ParsedNode[],
   byName: Map<string, ParsedNode>,
-): { edge: DiagEdge; vertices: DiagramPoint[] } | null {
+): { point: DiagramPoint | null; owner: ParsedNode | null } {
+  if (ref.kind === "auto") {
+    const neighbour = index === 0 ? nodes[edge.nodeIndex - 1] : nodes[edge.nodeIndex];
+    return { point: neighbour?.center ?? null, owner: neighbour ?? null };
+  }
+  if (ref.kind === "label") {
+    const owner = byName.get(ref.name) ?? null;
+    return { point: owner?.center ?? null, owner };
+  }
+  if (ref.kind === "coord") return { point: ref.coordinate.point, owner: null };
+  if (ref.kind === "relative" && previous) {
+    return { point: { x: previous.x + ref.step.x * GRID_X, y: previous.y + ref.step.y * GRID_Y }, owner: null };
+  }
+  return { point: null, owner: null };
+}
+
+function edgeEnds(
+  edge: ParsedEdge,
+  nodes: ParsedNode[],
+  byName: Map<string, ParsedNode>,
+): { first: ParsedNode; last: ParsedNode; vertices: DiagramPoint[] } | null {
   const points: (DiagramPoint | null)[] = [];
   const owners: (ParsedNode | null)[] = [];
   edge.vertices.forEach((ref, index) => {
-    const previous = points[index - 1] ?? null;
-    if (ref.kind === "auto") {
-      const neighbour = index === 0 ? nodes[edge.nodeIndex - 1] : nodes[edge.nodeIndex];
-      points.push(neighbour?.center ?? null);
-      owners.push(neighbour ?? null);
-    } else if (ref.kind === "label") {
-      const owner = byName.get(ref.name) ?? null;
-      points.push(owner?.center ?? null);
-      owners.push(owner);
-    } else if (ref.kind === "coord") {
-      points.push(ref.coordinate.point);
-      owners.push(null);
-    } else if (ref.kind === "relative" && previous) {
-      points.push({ x: previous.x + ref.step.x * GRID_X, y: previous.y + ref.step.y * GRID_Y });
-      owners.push(null);
-    } else {
-      points.push(null);
-      owners.push(null);
-    }
+    const resolved = vertexPoint(ref, index, points[index - 1] ?? null, edge, nodes, byName);
+    points.push(resolved.point);
+    owners.push(resolved.owner);
   });
-  if (points.length < 2 || points.some((point) => point === null)) return null;
+  if (points.length < 2 || points.includes(null)) return null;
   const resolved = points as DiagramPoint[];
   const first = owners[0] ?? nodeAtPoint(nodes, resolved[0]);
   const last = owners.at(-1) ?? nodeAtPoint(nodes, resolved.at(-1) as DiagramPoint);
   if (!first || !last) return null;
-  const vertices = resolved.slice(1, -1);
-  const reversed = edge.marks?.reversed ?? false;
-  const source = reversed ? last : first;
-  const target = reversed ? first : last;
-  const model: DiagEdge = {
-    id: "",
-    source: source.node.id,
-    target: target.node.id,
-    routing: "straight",
-    arrow: edge.marks?.arrow ?? (edge.marksText === null && !edge.sourceArgs.has("marks") ? "none" : "forward"),
-    style: edge.flagStyle ?? edge.marks?.style ?? "solid",
-  };
-  if (edge.label) {
-    const label = contentText(context, edge.label);
-    model.label = label.text;
-    if (!label.plain) note(context, "approximated", "formattedLabels");
+  return { first, last, vertices: resolved.slice(1, -1) };
+}
+
+function edgeArrow(edge: ParsedEdge): EdgeArrow {
+  if (edge.marks) return edge.marks.arrow;
+  return edge.marksText === null && !edge.sourceArgs.has("marks") ? "none" : "forward";
+}
+
+function applyEdgeLabel(context: Context, model: DiagEdge, labelNode: SyntaxNode): void {
+  const label = contentText(context, labelNode);
+  model.label = label.text;
+  if (!label.plain) note(context, "approximated", "formattedLabels");
+}
+
+function applyVertexRouting(
+  context: Context,
+  model: DiagEdge,
+  source: ParsedNode,
+  target: ParsedNode,
+  path: DiagramPoint[],
+): void {
+  const chain = [source.center, ...path, target.center];
+  const axisAligned = path.every((point, index) => {
+    const before = chain[index];
+    return Math.abs(before.x - point.x) < 1 || Math.abs(before.y - point.y) < 1;
+  });
+  if (!axisAligned) {
+    note(context, "approximated", "freePoints");
+    return;
   }
-  const bend = edge.bend ?? 0;
+  model.routing = "orthogonal";
+  model.sourceHandle = handleToward(source.center, path[0]);
+  model.targetHandle = handleToward(target.center, path.at(-1) as DiagramPoint);
+}
+
+function applyEdgeRouting(
+  context: Context,
+  model: DiagEdge,
+  ends: { source: ParsedNode; target: ParsedNode; vertices: DiagramPoint[] },
+  reversed: boolean,
+  bend: number,
+): void {
+  const { source, target, vertices } = ends;
   if (source === target) {
     model.routing = "curved";
   } else if (vertices.length > 0) {
-    const path = reversed ? [...vertices].reverse() : vertices;
-    const chain = [source.center, ...path, target.center];
-    const axisAligned = path.every((point, index) => {
-      const before = chain[index];
-      return Math.abs(before.x - point.x) < 1 || Math.abs(before.y - point.y) < 1;
-    });
-    if (axisAligned) {
-      model.routing = "orthogonal";
-      model.sourceHandle = handleToward(source.center, path[0]);
-      model.targetHandle = handleToward(target.center, path.at(-1) as DiagramPoint);
-    } else {
-      note(context, "approximated", "freePoints");
-    }
+    applyVertexRouting(context, model, source, target, reversed ? [...vertices].reverse() : vertices);
   } else if (bend !== 0) {
     model.routing = "curved";
     const chord =
@@ -1017,6 +1207,29 @@ function resolveEdge(
     model.sourceHandle = handleAt(chord + signedBend);
     model.targetHandle = handleAt(chord - signedBend - 180);
   }
+}
+
+function resolveEdge(
+  context: Context,
+  edge: ParsedEdge,
+  nodes: ParsedNode[],
+  byName: Map<string, ParsedNode>,
+): { edge: DiagEdge; vertices: DiagramPoint[] } | null {
+  const ends = edgeEnds(edge, nodes, byName);
+  if (!ends) return null;
+  const { vertices } = ends;
+  const reversed = edge.marks?.reversed ?? false;
+  const [source, target] = reversed ? [ends.last, ends.first] : [ends.first, ends.last];
+  const model: DiagEdge = {
+    id: "",
+    source: source.node.id,
+    target: target.node.id,
+    routing: "straight",
+    arrow: edgeArrow(edge),
+    style: edge.flagStyle ?? edge.marks?.style ?? "solid",
+  };
+  if (edge.label) applyEdgeLabel(context, model, edge.label);
+  applyEdgeRouting(context, model, { source, target, vertices }, reversed, edge.bend ?? 0);
   if (reversed && (edge.sourceArgs.has("marks") || edge.marksText !== null)) {
     edge.sourceArgs.delete("marks");
   }
@@ -1056,7 +1269,7 @@ function statementStart(statement: SyntaxNode): number {
 function fletcherImportStatement(context: Context, node: SyntaxNode): boolean {
   if (node.name !== "ModuleImport") return false;
   const path = stringValue(context, node.getChild("Str"));
-  return path !== null && /^@preview\/fletcher:/.test(path);
+  return (path ?? "").startsWith("@preview/fletcher:");
 }
 
 function importIsCovered(context: Context, node: SyntaxNode): boolean {
@@ -1068,25 +1281,34 @@ function importIsCovered(context: Context, node: SyntaxNode): boolean {
     .every((item) => FLETCHER_IMPORT_NAMES.includes(slice(context, item)));
 }
 
-function backgroundBox(context: Context, wrapper: SyntaxNode, diagram: SyntaxNode): string | null {
-  if (wrapper.name !== "FuncCall" || calleeName(context, wrapper) !== "box" || wrapper.firstChild?.name !== "Ident") {
-    return null;
+function isBoxCall(context: Context, wrapper: SyntaxNode): boolean {
+  return wrapper.name === "FuncCall" && calleeName(context, wrapper) === "box" && wrapper.firstChild?.name === "Ident";
+}
+
+function boxSetting(context: Context, arg: SyntaxNode): { fill: string } | { inset: true } | null {
+  if (arg.name !== "Named") return null;
+  const key = namedKey(context, arg);
+  const value = namedValue(arg);
+  if (key === "fill") {
+    const color = colorOf(context, value);
+    return color?.exact && color.hex ? { fill: color.hex } : null;
   }
+  if (key === "inset" && value && slice(context, value) === "4pt") return { inset: true };
+  return null;
+}
+
+function backgroundBox(context: Context, wrapper: SyntaxNode, diagram: SyntaxNode): string | null {
+  if (!isBoxCall(context, wrapper)) return null;
   const args = argNodes(wrapper);
   if (args.length !== 3 || !args.some((arg) => arg.from === diagram.from && arg.to === diagram.to)) return null;
   let fill: string | null = null;
   let inset = false;
   for (const arg of args) {
     if (arg.from === diagram.from) continue;
-    if (arg.name !== "Named") return null;
-    const key = namedKey(context, arg);
-    const value = namedValue(arg);
-    if (key === "fill") {
-      const color = colorOf(context, value);
-      if (!color?.exact || !color.hex) return null;
-      fill = color.hex;
-    } else if (key === "inset" && value && slice(context, value) === "4pt") inset = true;
-    else return null;
+    const setting = boxSetting(context, arg);
+    if (!setting) return null;
+    if ("fill" in setting) fill = setting.fill;
+    else inset = true;
   }
   return fill && inset ? fill : null;
 }
@@ -1111,7 +1333,11 @@ function withoutMarkLines(text: string): string {
 
 function uniqueName(base: string, taken: Set<string>): string {
   let name = base;
-  for (let suffix = 1; taken.has(name); suffix++) name = `${base}-${suffix}`;
+  let suffix = 1;
+  while (taken.has(name)) {
+    name = `${base}-${suffix}`;
+    suffix += 1;
+  }
   taken.add(name);
   return name;
 }
@@ -1163,6 +1389,234 @@ function hintLines(hint: DiagramModel) {
   return { nodes, edges };
 }
 
+type OrderEntry = { kind: "node"; parsed: ParsedNode } | { kind: "edge"; parsed: ParsedEdge } | { kind: "item"; text: string };
+
+type HintLines = ReturnType<typeof hintLines>;
+
+const NODE_OMITTABLE = new Set(["width", "height", "radius", "shape", "layer", "corner-radius"]);
+const EDGE_OMITTABLE = new Set(["label-side", "label-pos", "corner-radius", "dash", "bend"]);
+
+function importCuts(context: Context, top: SyntaxNode, start: number): { cuts: { from: number; to: number }[]; imports: string[] } {
+  const cuts: { from: number; to: number }[] = [];
+  const imports: string[] = [];
+  for (let child = top.firstChild; child; child = child.nextSibling) {
+    if (child.from >= start) break;
+    if (!fletcherImportStatement(context, child)) continue;
+    const from = statementStart(child);
+    const to = context.source[child.to] === "\n" ? child.to + 1 : child.to;
+    cuts.push({ from, to });
+    if (!importIsCovered(context, child)) imports.push(context.source.slice(from, child.to));
+  }
+  return { cuts, imports };
+}
+
+function diagramWrapper(
+  context: Context,
+  statement: SyntaxNode,
+  diagram: SyntaxNode,
+  start: number,
+): { background: string | undefined; open: string | null; close: string | null } {
+  if (statement.from === diagram.from && statement.to === diagram.to) return { background: undefined, open: null, close: null };
+  const wrapper = diagram.parent?.parent ?? null;
+  const boxed =
+    wrapper?.from === statement.from && wrapper.to === statement.to ? backgroundBox(context, wrapper, diagram) : null;
+  if (boxed) return { background: boxed, open: null, close: null };
+  const open = context.source.slice(start, diagram.from);
+  const close = context.source.slice(diagram.to, statement.to);
+  note(context, "kept", "wrapper");
+  return { background: undefined, open, close };
+}
+
+function isCallTo(context: Context, item: SyntaxNode, name: string): boolean {
+  return item.name === "FuncCall" && calleeName(context, item) === name;
+}
+
+function nodeNameOf(context: Context, item: SyntaxNode): string | null {
+  const nameArg = argNodes(item).find((arg) => arg.name === "Named" && namedKey(context, arg) === "name");
+  return nameArg ? labelNameOf(context, namedValue(nameArg)) : null;
+}
+
+function takenNodeNames(context: Context, items: SyntaxNode[]): Set<string> {
+  const taken = new Set<string>();
+  for (const item of items) {
+    if (!isCallTo(context, item, "node")) continue;
+    const name = nodeNameOf(context, item);
+    if (name) taken.add(name);
+  }
+  return taken;
+}
+
+interface ItemReader {
+  context: Context;
+  extras: FletcherExtras;
+  defaults: Map<string, string>;
+  seenDefaults: Set<string>;
+  taken: Set<string>;
+  nodes: ParsedNode[];
+  pendingEdges: ParsedEdge[];
+  order: OrderEntry[];
+}
+
+function keepItem(reader: ItemReader, item: SyntaxNode, why: string): void {
+  const text = slice(reader.context, item);
+  reader.extras.items.push(text);
+  reader.order.push({ kind: "item", text });
+  note(reader.context, "kept", why);
+}
+
+function readDiagramSetting(reader: ItemReader, item: SyntaxNode): void {
+  const { context, defaults } = reader;
+  const key = namedKey(context, item);
+  const text = slice(context, item);
+  if (defaults.has(key)) {
+    reader.seenDefaults.add(key);
+    if (squash(defaults.get(key) ?? "") === squash(text)) return;
+  }
+  reader.extras.diagramArgs.push({ key, text });
+  if (!defaults.has(key)) note(context, "kept", "diagramSetting", key);
+}
+
+function readNodeItem(reader: ItemReader, item: SyntaxNode): void {
+  const name = nodeNameOf(reader.context, item);
+  const parsed = readNodeCall(reader.context, item, name, name ?? uniqueName("node", reader.taken));
+  if (!parsed) {
+    keepItem(reader, item, "unplacedNode");
+    return;
+  }
+  reader.nodes.push(parsed);
+  reader.order.push({ kind: "node", parsed });
+}
+
+function readEdgeItem(reader: ItemReader, item: SyntaxNode): void {
+  const parsed = readEdgeCall(reader.context, item, reader.nodes.length);
+  if (!parsed) {
+    keepItem(reader, item, "unreadEdge");
+    return;
+  }
+  reader.pendingEdges.push(parsed);
+  reader.order.push({ kind: "edge", parsed });
+}
+
+function readItem(reader: ItemReader, item: SyntaxNode): void {
+  if (item.name === "Named") readDiagramSetting(reader, item);
+  else if (isCallTo(reader.context, item, "node")) readNodeItem(reader, item);
+  else if (isCallTo(reader.context, item, "edge")) readEdgeItem(reader, item);
+  else keepItem(reader, item, item.name === "Equation" ? "mathMode" : "scripted");
+}
+
+function resolveNodes(
+  nodes: ParsedNode[],
+  hint: DiagramModel | null,
+  lines: HintLines | null,
+  names: Map<string, string>,
+  extras: FletcherExtras,
+): DiagNode[] {
+  const hintNodes = new Map((hint?.nodes ?? []).map((node) => [node.id, node]));
+  const modelNodes: DiagNode[] = [];
+  for (const parsed of nodes) {
+    const hinted = hintNodes.get(parsed.node.id);
+    if (hinted && lines?.nodes.get(hinted.id) === squash(parsed.element.text)) {
+      parsed.node = hinted;
+      parsed.element.read = hinted;
+      parsed.element.args = [];
+    } else {
+      const node = hinted ? mergeNode(parsed.node, hinted) : parsed.node;
+      const writer = nodeArgList(node, names.get(node.id) ?? node.id);
+      parsed.element.args = rawArgsFor(parsed.sourceArgs, writer, NODE_KEY_FIELDS, NODE_OMITTABLE);
+      parsed.node = node;
+      parsed.element.read = node;
+    }
+    modelNodes.push(parsed.node);
+    extras.nodes[parsed.node.id] = parsed.element;
+  }
+  return modelNodes;
+}
+
+interface EdgeRun {
+  context: Context;
+  extras: FletcherExtras;
+  hint: DiagramModel | null;
+  lines: HintLines | null;
+  nodes: ParsedNode[];
+  byName: Map<string, ParsedNode>;
+  names: Map<string, string>;
+  nodesById: Map<string, DiagNode>;
+  order: OrderEntry[];
+  usedHintEdges: Set<string>;
+  takenEdgeIds: Set<string>;
+  edgeIds: Map<ParsedEdge, string>;
+  modelEdges: DiagEdge[];
+}
+
+function keepDanglingEdge(run: EdgeRun, parsed: ParsedEdge): void {
+  const text = slice(run.context, parsed.call);
+  run.extras.items.push(text);
+  const at = run.order.findIndex((entry) => entry.kind === "edge" && entry.parsed === parsed);
+  if (at >= 0) run.order[at] = { kind: "item", text };
+  note(run.context, "kept", "danglingEdge");
+}
+
+function edgeRawArgs(run: EdgeRun, parsed: ParsedEdge, edge: DiagEdge, vertices: DiagramPoint[]): FletcherRawArg[] {
+  const writer = edgeArgList(edge, run.nodesById, run.names) ?? [];
+  const args = rawArgsFor(parsed.sourceArgs, writer, EDGE_KEY_FIELDS, EDGE_OMITTABLE);
+  if (vertices.length === 0 || parsed.marks?.reversed) return args;
+  const vertexText = argNodes(parsed.call)
+    .filter((arg) => arg.name === "Array")
+    .slice(parsed.vertices[0]?.kind === "coord" ? 1 : 0, parsed.vertices.at(-1)?.kind === "coord" ? -1 : undefined)
+    .map((arg) => slice(run.context, arg))
+    .join(", ");
+  const written = writer.find((arg) => arg.key === "vertices")?.text ?? "";
+  if (vertexText && squash(vertexText) !== squash(written)) {
+    args.push({ key: "vertices", text: vertexText, fields: EDGE_KEY_FIELDS.vertices, geometry: true });
+  }
+  return args;
+}
+
+function resolveEdgeEntry(run: EdgeRun, parsed: ParsedEdge): void {
+  const resolved = resolveEdge(run.context, parsed, run.nodes, run.byName);
+  if (!resolved) {
+    keepDanglingEdge(run, parsed);
+    return;
+  }
+  const read = resolved.edge;
+  const candidates = (run.hint?.edges ?? []).filter(
+    (candidate) => !run.usedHintEdges.has(candidate.id) && candidate.source === read.source && candidate.target === read.target,
+  );
+  const exact = candidates.find((candidate) => run.lines?.edges.get(candidate.id) === squash(slice(run.context, parsed.call)));
+  const match = exact ?? candidates[0];
+  let edge = read;
+  if (match) {
+    run.usedHintEdges.add(match.id);
+    edge = exact ? match : mergeEdge(read, match);
+  } else {
+    edge.id = uniqueName("edge", run.takenEdgeIds);
+  }
+  const args = exact ? [] : edgeRawArgs(run, parsed, edge, resolved.vertices);
+  run.edgeIds.set(parsed, edge.id);
+  run.modelEdges.push(edge);
+  run.extras.edges[edge.id] = {
+    read: edge,
+    text: slice(run.context, parsed.call),
+    args,
+    endpoints: parsed.endpoints,
+  };
+}
+
+function orderKey(entry: OrderEntry, edgeIds: Map<ParsedEdge, string>): string {
+  if (entry.kind === "node") return `n:${entry.parsed.node.id}`;
+  if (entry.kind === "edge") return `e:${edgeIds.get(entry.parsed) ?? ""}`;
+  return `i:${entry.text}`;
+}
+
+function dropUndefinedEdgeFields(edges: DiagEdge[]): void {
+  for (const edge of edges) {
+    const record = edge as unknown as Record<string, unknown>;
+    for (const field of EDGE_FIELDS) {
+      if (record[field] === undefined) delete record[field];
+    }
+  }
+}
+
 export function readFletcher(parser: Parser, source: string, options: DiagramReadOptions = {}): DiagramRead<FletcherExtras> {
   const context: Context = { source, notes: [] };
   const hint = readModelMark(source, TYPST_COMMENT) ?? options.hint ?? null;
@@ -1174,42 +1628,19 @@ export function readFletcher(parser: Parser, source: string, options: DiagramRea
   }
   const statement = topStatement(diagram, top);
   const start = statementStart(statement);
-  const cuts: { from: number; to: number }[] = [];
-  const imports: string[] = [];
-  for (let child = top.firstChild; child; child = child.nextSibling) {
-    if (child.from >= start) break;
-    if (fletcherImportStatement(context, child)) {
-      const from = statementStart(child);
-      let to = child.to;
-      if (source[to] === "\n") to += 1;
-      cuts.push({ from, to });
-      if (!importIsCovered(context, child)) imports.push(source.slice(from, child.to));
-    }
-  }
+  const { cuts, imports } = importCuts(context, top, start);
   const before = withoutMarkLines(cutRanges(source, 0, start, cuts));
   const after = withoutMarkLines(source.slice(statement.to));
   if (before.trim() || after.trim()) note(context, "kept", "outsideCode");
-
-  let background: string | undefined;
-  let open: string | null = null;
-  let close: string | null = null;
-  if (statement.from !== diagram.from || statement.to !== diagram.to) {
-    const wrapper = diagram.parent?.parent ?? null;
-    const boxed = wrapper && wrapper.from === statement.from && wrapper.to === statement.to ? backgroundBox(context, wrapper, diagram) : null;
-    if (boxed) background = boxed;
-    else {
-      open = source.slice(start, diagram.from);
-      close = source.slice(diagram.to, statement.to);
-      note(context, "kept", "wrapper");
-    }
-  }
+  const wrapper = diagramWrapper(context, statement, diagram, start);
+  let background = wrapper.background;
 
   const extras: FletcherExtras = {
     imports,
     before,
     after,
-    open,
-    close,
+    open: wrapper.open,
+    close: wrapper.close,
     diagramArgs: [],
     omitDefaults: [],
     items: [],
@@ -1217,167 +1648,55 @@ export function readFletcher(parser: Parser, source: string, options: DiagramRea
     nodes: {},
     edges: {},
   };
-  const defaults = new Map(FLETCHER_DEFAULTS.map((arg) => [arg.key, arg.text]));
-  const seenDefaults = new Set<string>();
   const items = argNodes(diagram);
-  const taken = new Set<string>();
-  for (const item of items) {
-    if (item.name !== "FuncCall" || calleeName(context, item) !== "node") continue;
-    const nameArg = argNodes(item).find((arg) => arg.name === "Named" && namedKey(context, arg) === "name");
-    const name = nameArg ? labelNameOf(context, namedValue(nameArg)) : null;
-    if (name) taken.add(name);
-  }
-  const nodes: ParsedNode[] = [];
-  const pendingEdges: ParsedEdge[] = [];
-  const order: ({ kind: "node"; parsed: ParsedNode } | { kind: "edge"; parsed: ParsedEdge } | { kind: "item"; text: string })[] = [];
-  const keepItem = (item: SyntaxNode, why: string) => {
-    const text = slice(context, item);
-    extras.items.push(text);
-    order.push({ kind: "item", text });
-    note(context, "kept", why);
+  const reader: ItemReader = {
+    context,
+    extras,
+    defaults: new Map(FLETCHER_DEFAULTS.map((arg) => [arg.key, arg.text])),
+    seenDefaults: new Set<string>(),
+    taken: takenNodeNames(context, items),
+    nodes: [],
+    pendingEdges: [],
+    order: [],
   };
-  for (const item of items) {
-    if (item.name === "Named") {
-      const key = namedKey(context, item);
-      const text = slice(context, item);
-      if (defaults.has(key)) {
-        seenDefaults.add(key);
-        if (squash(defaults.get(key) ?? "") === squash(text)) continue;
-      }
-      extras.diagramArgs.push({ key, text });
-      if (!defaults.has(key)) note(context, "kept", "diagramSetting", key);
-      continue;
-    }
-    if (item.name === "FuncCall" && calleeName(context, item) === "node") {
-      const nameArg = argNodes(item).find((arg) => arg.name === "Named" && namedKey(context, arg) === "name");
-      const name = nameArg ? labelNameOf(context, namedValue(nameArg)) : null;
-      const parsed = readNodeCall(context, item, name, name ?? uniqueName("node", taken));
-      if (!parsed) {
-        keepItem(item, "unplacedNode");
-        continue;
-      }
-      nodes.push(parsed);
-      order.push({ kind: "node", parsed });
-      continue;
-    }
-    if (item.name === "FuncCall" && calleeName(context, item) === "edge") {
-      const parsed = readEdgeCall(context, item, nodes.length);
-      if (!parsed) {
-        keepItem(item, "unreadEdge");
-        continue;
-      }
-      pendingEdges.push(parsed);
-      order.push({ kind: "edge", parsed });
-      continue;
-    }
-    if (item.name === "Equation") keepItem(item, "mathMode");
-    else keepItem(item, "scripted");
+  for (const item of items) readItem(reader, item);
+  for (const key of reader.defaults.keys()) {
+    if (!reader.seenDefaults.has(key)) extras.omitDefaults.push(key);
   }
-  for (const key of defaults.keys()) if (!seenDefaults.has(key)) extras.omitDefaults.push(key);
 
+  const { nodes, order } = reader;
   const byName = new Map(nodes.map((parsed) => [parsed.node.id, parsed]));
   const lines = hint ? hintLines(hint) : null;
-  const hintNodes = new Map((hint?.nodes ?? []).map((node) => [node.id, node]));
-  const modelNodes: DiagNode[] = [];
   const names = fletcherNames(
     nodes.map((parsed) => parsed.node),
     new Set(nodes.filter((parsed) => parsed.element.named).map((parsed) => parsed.node.id)),
   );
-  for (const parsed of nodes) {
-    const hinted = hintNodes.get(parsed.node.id);
-    if (hinted && lines?.nodes.get(hinted.id) === squash(parsed.element.text)) {
-      parsed.node = hinted;
-      parsed.element.read = hinted;
-      parsed.element.args = [];
-    } else {
-      const node = hinted ? mergeNode(parsed.node, hinted) : parsed.node;
-      const writer = nodeArgList(node, names.get(node.id) ?? node.id);
-      parsed.element.args = rawArgsFor(
-        parsed.sourceArgs,
-        writer,
-        NODE_KEY_FIELDS,
-        new Set(["width", "height", "radius", "shape", "layer", "corner-radius"]),
-      );
-      parsed.node = node;
-      parsed.element.read = node;
-    }
-    modelNodes.push(parsed.node);
-    extras.nodes[parsed.node.id] = parsed.element;
-  }
+  const modelNodes = resolveNodes(nodes, hint, lines, names, extras);
 
-  const usedHintEdges = new Set<string>();
-  const takenEdgeIds = new Set((hint?.edges ?? []).map((edge) => edge.id));
-  const modelEdges: DiagEdge[] = [];
-  const nodesById = new Map(modelNodes.map((node) => [node.id, node]));
-  const edgeIds = new Map<ParsedEdge, string>();
-  for (const parsed of pendingEdges) {
-    const resolved = resolveEdge(context, parsed, nodes, byName);
-    if (!resolved) {
-      const text = slice(context, parsed.call);
-      extras.items.push(text);
-      const at = order.findIndex((entry) => entry.kind === "edge" && entry.parsed === parsed);
-      if (at >= 0) order[at] = { kind: "item", text };
-      note(context, "kept", "danglingEdge");
-      continue;
-    }
-    let edge = resolved.edge;
-    const candidates = (hint?.edges ?? []).filter(
-      (candidate) => !usedHintEdges.has(candidate.id) && candidate.source === edge.source && candidate.target === edge.target,
-    );
-    const exact = candidates.find((candidate) => lines?.edges.get(candidate.id) === squash(slice(context, parsed.call)));
-    const match = exact ?? candidates[0];
-    let args: FletcherRawArg[] = [];
-    if (match) {
-      usedHintEdges.add(match.id);
-      edge = exact ? match : mergeEdge(edge, match);
-    } else {
-      edge.id = uniqueName("edge", takenEdgeIds);
-    }
-    if (!exact) {
-      const writer = edgeArgList(edge, nodesById, names) ?? [];
-      args = rawArgsFor(
-        parsed.sourceArgs,
-        writer,
-        EDGE_KEY_FIELDS,
-        new Set(["label-side", "label-pos", "corner-radius", "dash", "bend"]),
-      );
-      if (resolved.vertices.length > 0 && !parsed.marks?.reversed) {
-        const vertexText = argNodes(parsed.call)
-          .filter((arg) => arg.name === "Array")
-          .slice(parsed.vertices[0]?.kind === "coord" ? 1 : 0, parsed.vertices.at(-1)?.kind === "coord" ? -1 : undefined)
-          .map((arg) => slice(context, arg))
-          .join(", ");
-        const written = writer.find((arg) => arg.key === "vertices")?.text ?? "";
-        if (vertexText && squash(vertexText) !== squash(written)) {
-          args.push({ key: "vertices", text: vertexText, fields: EDGE_KEY_FIELDS.vertices, geometry: true });
-        }
-      }
-    }
-    edgeIds.set(parsed, edge.id);
-    modelEdges.push(edge);
-    extras.edges[edge.id] = {
-      read: edge,
-      text: slice(context, parsed.call),
-      args,
-      endpoints: parsed.endpoints,
-    };
-  }
-  extras.order = order.map((entry) => {
-    if (entry.kind === "node") return `n:${entry.parsed.node.id}`;
-    if (entry.kind === "edge") return `e:${edgeIds.get(entry.parsed) ?? ""}`;
-    return `i:${entry.text}`;
-  });
-  if (hint && hint.background !== undefined && (background ?? "") === (hint.background ?? "")) background = hint.background;
+  const run: EdgeRun = {
+    context,
+    extras,
+    hint,
+    lines,
+    nodes,
+    byName,
+    names,
+    nodesById: new Map(modelNodes.map((node) => [node.id, node])),
+    order,
+    usedHintEdges: new Set<string>(),
+    takenEdgeIds: new Set((hint?.edges ?? []).map((edge) => edge.id)),
+    edgeIds: new Map<ParsedEdge, string>(),
+    modelEdges: [],
+  };
+  for (const parsed of reader.pendingEdges) resolveEdgeEntry(run, parsed);
+  extras.order = order.map((entry) => orderKey(entry, run.edgeIds));
+  if (hint?.background !== undefined && (background ?? "") === hint.background) background = hint.background;
   const model: DiagramModel = {
     version: 1,
     nodes: modelNodes,
-    edges: modelEdges,
+    edges: run.modelEdges,
     ...(background === undefined ? {} : { background }),
   };
-  for (const edge of model.edges) {
-    for (const field of EDGE_FIELDS) {
-      if ((edge as unknown as Record<string, unknown>)[field] === undefined) delete (edge as unknown as Record<string, unknown>)[field];
-    }
-  }
+  dropUndefinedEdgeFields(model.edges);
   return { model, extras, notes: context.notes };
 }

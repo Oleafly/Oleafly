@@ -43,8 +43,9 @@ export function TinytexGuards() {
           if (status?.installing || useEngineStore.getState().installing) return;
           if (useTypstToolchainStore.getState().install) return;
           setQuitAsked(false);
-          void cancelQuitFlush().catch(() => {});
-        });
+          return cancelQuitFlush();
+        })
+        .catch(() => {});
     },
     native,
   );

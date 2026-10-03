@@ -2,6 +2,7 @@ import { CompletionContext, type CompletionResult } from "@codemirror/autocomple
 import { EditorState } from "@codemirror/state";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
+  enclosingFrames,
   setTypstCslStyleProvider,
   setTypstStyleVersionProvider,
   typstBibliographyStyles,
@@ -86,6 +87,36 @@ describe("typstStyleArgumentAt", () => {
     expect(typstStyleArgumentAt('#bibliography("refs.bib", style: "ieee") and "')).toBeNull();
     expect(typstStyleArgumentAt('#bibliography("refs.bib", style: "ieee", title: "')).toBeNull();
     expect(typstStyleArgumentAt("style: \"ieee")).toBeNull();
+  });
+
+  it("names a nested call from the identifier before its parenthesis", () => {
+    expect(typstStyleArgumentAt('#figure(bibliography ("refs.bib", style: "ie')).toEqual({
+      callee: "bibliography",
+      query: "ie",
+    });
+    expect(typstStyleArgumentAt('#figure(x.cite(style: "a')).toEqual({ callee: "cite", query: "a" });
+    expect(typstStyleArgumentAt('#figure(mycite(style: "a')).toBeNull();
+  });
+});
+
+describe("enclosingFrames", () => {
+  it("tracks code calls, code blocks and content blocks inside a markup call", () => {
+    expect(enclosingFrames("#f(a.b2-c (x, {y, [z")).toEqual([
+      { close: ")", code: true, callee: "f" },
+      { close: ")", code: true, callee: "b2-c" },
+      { close: "}", code: true, callee: "" },
+      { close: "]", code: false, callee: "" },
+    ]);
+  });
+
+  it("starts a callee at its first letter and leaves a parenthesis after an operator unnamed", () => {
+    expect(enclosingFrames("#f(9-x_1 (").map((frame) => frame.callee)).toEqual(["f", "x_1"]);
+    expect(enclosingFrames("#f(1 + (").map((frame) => frame.callee)).toEqual(["f", ""]);
+  });
+
+  it("skips comments, escapes, raw text and hashes that start no call", () => {
+    expect(enclosingFrames("// #f(\n/* #g( */ \\#h( `#i(` # j #k(")).toEqual([{ close: ")", code: true, callee: "k" }]);
+    expect(enclosingFrames("#f(a) [b] #g(c)")).toEqual([]);
   });
 });
 

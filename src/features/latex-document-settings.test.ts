@@ -203,6 +203,122 @@ describe("readLatexDocumentSettings", () => {
   });
 });
 
+describe("readLatexDocumentSettings edge cases", () => {
+  it.each([
+    ["ICLR2025_conference", "ICLR2025_conference"],
+    ["neurips_2024", "neurips_2024"],
+    ["NIPS", "NIPS"],
+    ["Aistats2025", "Aistats2025"],
+    ["interspeech2026", "interspeech2026"],
+    ["colm2024_conference", "colm2024_conference"],
+    ["a4wide", "a4wide"],
+    ["fullpage", "fullpage"],
+    ["mycvpr", null],
+    ["iclrx", "iclrx"],
+    ["cvp", null],
+    ["amsmath", null],
+  ])("matches the venue style %j by its prefix", (name, style) => {
+    const settings = readLatexDocumentSettings(doc(String.raw`\documentclass{article}`, String.raw`\usepackage{amsmath,${name}}`), UNICODE);
+    expect(settings.layoutStyle).toBe(style);
+    expect(settings.fields.margin).toEqual(
+      style === null ? { status: "unset" } : { status: "locked", reason: "package", source: "", owner: style },
+    );
+  });
+
+  it("skips the names that let, newif and control symbols consume", () => {
+    const { fields } = readLatexDocumentSettings(
+      doc(
+        String.raw`\documentclass{article}`,
+        String.raw`\let\singlespacing\relax`,
+        String.raw`\newif\ifdraft`,
+        String.raw`\def\@x\onehalfspacing`,
+        String.raw`\\\setcounter{secnumdepth}{4}`,
+        String.raw`\ifdraft \doublespacing \fi`,
+        String.raw`\ifthenelse{\boolean{x}}{}{}\numberwithin{equation}{section}`,
+      ),
+      UNICODE,
+    );
+    expect(fields.lineSpacing).toEqual({ status: "locked", reason: "conditional", source: "double" });
+    expect(fields.secnumdepth).toEqual({ status: "set", value: "4" });
+    expect(fields.equationNumbering).toEqual({ status: "set", value: "section" });
+  });
+
+  it("ignores commands it cannot finish reading and reads starred and trailing forms", () => {
+    const { fields } = readLatexDocumentSettings(
+      doc(
+        String.raw`\documentclass{article}`,
+        String.raw`\geometry*{margin=3cm}`,
+        String.raw`\setmainfont{Inter}[Scale=0.9]`,
+        String.raw`\setcounter{secnumdepth}{x`,
+      ),
+      UNICODE,
+    );
+    expect(fields.margin).toEqual({ status: "set", value: "3cm" });
+    expect(fields.font).toEqual({ status: "set", value: "Inter" });
+    expect(fields.secnumdepth).toEqual({ status: "unset" });
+  });
+
+  it("reads the last of repeated packages and commands", () => {
+    const { fields } = readLatexDocumentSettings(
+      doc(
+        String.raw`\documentclass{article}`,
+        String.raw`\usepackage[english]{babel}`,
+        String.raw`\usepackage[french]{babel}`,
+        String.raw`\usepackage{fontspec}`,
+        String.raw`\setmainfont{Old}`,
+        String.raw`\setmainfont{New}`,
+        String.raw`\usepackage[doublespacing]{setspace}`,
+        String.raw`\linespread{1.4}`,
+        String.raw`\setcounter{secnumdepth}{1}`,
+        String.raw`\setcounter{tocdepth}{2}`,
+        String.raw`\counterwithin{equation}{chapter}`,
+        String.raw`\numberwithin{figure}{section}`,
+      ),
+      UNICODE,
+    );
+    expect(fields.lang).toEqual({ status: "set", value: "french" });
+    expect(fields.font).toEqual({ status: "set", value: "New" });
+    expect(fields.lineSpacing).toEqual({ status: "set", value: "1.4" });
+    expect(fields.secnumdepth).toEqual({ status: "set", value: "1" });
+    expect(fields.equationNumbering).toEqual({ status: "set", value: "chapter" });
+  });
+
+  it("locks values it cannot write back", () => {
+    const { fields } = readLatexDocumentSettings(
+      doc(
+        String.raw`\documentclass{article}`,
+        String.raw`\usepackage{fontspec,polyglossia}`,
+        String.raw`\setmainfont{\myfont}`,
+        String.raw`\setdefaultlanguage{\mylang}`,
+        String.raw`\setstretch{\mystretch}`,
+        String.raw`\setcounter{secnumdepth}{two}`,
+        String.raw`\numberwithin{equation}{sec1}`,
+        String.raw`\usepackage[top=1in]{geometry}`,
+      ),
+      UNICODE,
+    );
+    expect(fields.font).toEqual({ status: "locked", reason: "expression", source: String.raw`\myfont` });
+    expect(fields.lang).toEqual({ status: "locked", reason: "expression", source: String.raw`\mylang` });
+    expect(fields.lineSpacing).toEqual({ status: "locked", reason: "expression", source: String.raw`\mystretch` });
+    expect(fields.secnumdepth).toEqual({ status: "locked", reason: "expression", source: "two" });
+    expect(fields.equationNumbering).toEqual({ status: "locked", reason: "expression", source: "sec1" });
+    expect(fields.margin).toEqual({ status: "locked", reason: "sides", source: "top=1in" });
+  });
+
+  it("tells a bare babel load from one it cannot read", () => {
+    const bare = readLatexDocumentSettings(doc(String.raw`\documentclass{article}`, String.raw`\usepackage{babel}`), UNICODE);
+    expect(bare.fields.lang).toEqual({ status: "unset" });
+    const shared = readLatexDocumentSettings(doc(String.raw`\documentclass{article}`, String.raw`\usepackage{babel,csquotes}`), UNICODE);
+    expect(shared.fields.lang).toEqual({ status: "locked", reason: "expression", source: "" });
+    const flags = readLatexDocumentSettings(doc(String.raw`\documentclass{article}`, String.raw`\usepackage[safe=none,bidi]{babel}`), UNICODE);
+    expect(flags.fields.lang).toEqual({ status: "locked", reason: "expression", source: "" });
+    const empty = readLatexDocumentSettings(doc(String.raw`\documentclass[french]{article}`, String.raw`\usepackage[]{babel}`), UNICODE);
+    expect(empty.fields.lang).toEqual({ status: "set", value: "french" });
+    const main = readLatexDocumentSettings(doc(String.raw`\documentclass{article}`, String.raw`\usepackage[main=dutch,english,safe]{babel}`), UNICODE);
+    expect(main.fields.lang).toEqual({ status: "set", value: "dutch" });
+  });
+});
+
 describe("latexSettingsEdits", () => {
   it("changes class and package options in place", () => {
     const next = edited(FULL, { fontSize: "12pt", paper: "letterpaper", margin: "1in", columns: "onecolumn" });
@@ -355,6 +471,59 @@ describe("latexSettingsEdits", () => {
     );
   });
 
+  it("removes and replaces languages in every form it reads", () => {
+    expect(edited(doc(String.raw`\documentclass{article}`, String.raw`\usepackage{polyglossia}`, String.raw`\setdefaultlanguage{english}`), { lang: null })).toBe(
+      doc(String.raw`\documentclass{article}`, String.raw`\usepackage{polyglossia}`),
+    );
+    expect(edited(doc(String.raw`\documentclass{article}`, String.raw`\usepackage[english,french]{babel}`), { lang: null })).toBe(
+      doc(String.raw`\documentclass{article}`, String.raw`\usepackage[english]{babel}`),
+    );
+    expect(edited(doc(String.raw`\documentclass[ngerman]{article}`, String.raw`\usepackage{babel}`), { lang: null })).toBe(
+      doc(String.raw`\documentclass{article}`, String.raw`\usepackage{babel}`),
+    );
+    expect(edited(doc(String.raw`\documentclass{article}`, String.raw`\usepackage[main=british,french]{babel}`), { lang: null })).toBe(
+      doc(String.raw`\documentclass{article}`, String.raw`\usepackage[french]{babel}`),
+    );
+    expect(edited(doc(String.raw`\documentclass{article}`, String.raw`\usepackage{babel}`), { lang: "dutch" })).toBe(
+      doc(String.raw`\documentclass{article}`, String.raw`\usepackage[dutch]{babel}`),
+    );
+    expect(edited(doc(String.raw`\documentclass{article}`, String.raw`\usepackage{babel}`), { lang: null })).toBe(
+      doc(String.raw`\documentclass{article}`, String.raw`\usepackage{babel}`),
+    );
+    expect(edited(doc(String.raw`\documentclass{article}`, String.raw`\usepackage{babel,csquotes}`), { lang: "dutch" })).toBe(
+      doc(String.raw`\documentclass{article}`, String.raw`\usepackage{babel,csquotes}`),
+    );
+  });
+
+  it("adds packages after the last unconditional package and commands after the last setting", () => {
+    expect(
+      edited(
+        doc(
+          String.raw`\documentclass{article}`,
+          String.raw`\usepackage{amsmath}`,
+          String.raw`\ifxetex`,
+          String.raw`\usepackage{fontspec}`,
+          String.raw`\fi`,
+          String.raw`\setcounter{secnumdepth}{2}`,
+          String.raw`\title{T}`,
+        ),
+        { lineSpacing: "1.2", margin: "2cm" },
+      ),
+    ).toBe(
+      doc(
+        String.raw`\documentclass{article}`,
+        String.raw`\usepackage{amsmath}`,
+        String.raw`\usepackage[margin=2cm]{geometry}`,
+        String.raw`\ifxetex`,
+        String.raw`\usepackage{fontspec}`,
+        String.raw`\fi`,
+        String.raw`\setcounter{secnumdepth}{2}`,
+        String.raw`\linespread{1.2}`,
+        String.raw`\title{T}`,
+      ),
+    );
+  });
+
   it("relies on memoir's built-in setspace commands", () => {
     expect(edited(doc("\\documentclass[12pt]{memoir}"), { lineSpacing: "onehalf" })).toBe(
       doc("\\documentclass[12pt]{memoir}", "\\onehalfspacing"),
@@ -436,5 +605,36 @@ describe("latexSupportsSystemFonts", () => {
     expect(latexSupportsSystemFonts("latexmk", undefined, "% !TeX program = pdflatex\n\\usepackage{fontspec}")).toBe(false);
     expect(latexSupportsSystemFonts("latexmk", undefined, "\\documentclass{article}")).toBe(false);
     expect(latexSupportsSystemFonts("latexmk", undefined, "\\usepackage{fontspec}")).toBe(true);
+  });
+
+  it.each([
+    ["%!TEX program = xelatex", true],
+    ["% !!! tex   program=LuaLaTeX", true],
+    ["\n\n   % !TeX program = xelatex", true],
+    ["%\n! TeX program = xelatex", true],
+    ["% ! TeX program =\n  xelatex", true],
+    ["% !TeX program = xelatex2", true],
+    ["% !TeX program = xelatexmk", false],
+    ["\r% !TeX program = xelatex", true],
+    ["\u2028% !TeX program = xelatex", true],
+    ["\u00a0% !TeX program = xelatex", true],
+    ["x\u00a0% !TeX program = xelatex", false],
+    [String.raw`\documentclass{article} % !TeX program = xelatex`, false],
+    ["%% !TeX program = xelatex", false],
+    ["% !TeX TS-program = xelatex", false],
+    ["% !TeX program = pdflatex\n% !TeX program = xelatex", false],
+    ["% !TeX program = \n% !TeX program = xelatex", true],
+    ["% ! ! TeX program = xelatex", false],
+    ["% !TeX program = pdflatex\n\\usepackage{fontspec}", false],
+    [`${"x\n".repeat(100)}% !TeX program = xelatex`, false],
+    [`${"x\n".repeat(99)}% !TeX program = xelatex`, true],
+    ["% !TeX program = \u017Felatex", false],
+  ])("reads the magic comment in %j", (text, expected) => {
+    expect(latexSupportsSystemFonts("latexmk", undefined, text)).toBe(expected);
+  });
+
+  it("reads a long run of blank lines and magic-looking comments", () => {
+    const text = `${"%".repeat(5000)}\n${" ".repeat(20000)}% ${"!".repeat(5000)}${" ".repeat(20000)}tex`;
+    expect(latexSupportsSystemFonts("latexmk", undefined, text)).toBe(false);
   });
 });

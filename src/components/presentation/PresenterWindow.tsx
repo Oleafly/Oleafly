@@ -188,9 +188,9 @@ export function PresenterWindow() {
           {formatTime(timer.now)}
         </span>
         {blank && (
-          <span role="status" className="rounded-md bg-amber-500/15 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
+          <output className="rounded-md bg-amber-500/15 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-300">
             {t(($) => $.preview.presentation.blank)}
-          </span>
+          </output>
         )}
         <div className="ml-auto flex items-center gap-1">
           <IconButton label={t(($) => $.preview.presentation.previousAction)} onClick={() => act("previous")}>

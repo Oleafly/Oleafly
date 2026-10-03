@@ -422,7 +422,7 @@ impl InstallPlan {
         let name = request
             .install_dir
             .file_name()
-            .and_then(|name| name.to_str())
+            .and_then(std::ffi::OsStr::to_str)
             .filter(|name| valid_segment(name) && !name.starts_with('.'))
             .ok_or_else(|| invalid("The install directory name is not a safe version name."))?
             .to_string();
