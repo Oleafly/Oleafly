@@ -654,7 +654,7 @@
         "label": "Cursor care nu clipește"
       },
       "stickyScroll": {
-        "description": "Păstrează în partea de sus secțiunile și mediile LaTeX curente în timp ce derulezi.",
+        "description": "Păstrează în partea de sus secțiunile, titlurile și mediile curente în timp ce derulezi.",
         "label": "Derulare cu antet fix"
       },
       "theme": {

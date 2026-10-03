@@ -659,7 +659,7 @@
         "label": "Neblikající kurzor"
       },
       "stickyScroll": {
-        "description": "Při posouvání držet aktuální sekce a prostředí LaTeXu nahoře.",
+        "description": "Při posouvání držet aktuální sekce, nadpisy a prostředí nahoře.",
         "label": "Přilepený posuv"
       },
       "theme": {

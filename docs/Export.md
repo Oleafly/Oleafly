@@ -7,10 +7,12 @@ the persisted engine descriptor and writes only to a user-approved destination.
 
 - Compiled PDF for all supported document engines.
 - Full source archive as a ZIP, excluding application metadata and Git internals.
-- Pandoc conversions for Markdown projects, including DOCX, HTML, Markdown, and
-  plain text when the descriptor allows them.
+- Conversions to DOCX, HTML, Markdown, plain text, Typst and LaTeX when the
+  engine descriptor allows them. Typst projects convert through Typst's own
+  HTML output.
 - PowerPoint export for Beamer presentations.
-- EPUB export for books, reports, and theses where the engine declares it.
+- EPUB export for LaTeX books, reports and theses, and for every Typst and
+  Markdown document.
 - Source and PDF export records retained in project metadata.
 
 ## Import and reconstruction

@@ -827,7 +827,7 @@
         "offlineRefused": "De offlinemodus staat aan. Zet die uit om {{name}} te downloaden."
       },
       "harper": {
-        "description": "Controleer Engelse grammatica en stijl in LaTeX en Markdown, in Broncode en Visueel, plus in Typst-broncode, met oplossingen in één klik.",
+        "description": "Controleer Engelse grammatica en stijl in LaTeX, Typst en Markdown, zowel in Broncode als in Visueel, met oplossingen in één klik.",
         "label": "Grammatica en stijl (Harper)",
         "englishOnly": "Grammaticacontrole werkt alleen voor Engels. Deze is gepauzeerd zolang het spellingwoordenboek {{name}} is."
       },

@@ -649,7 +649,7 @@
         "label": "Vilkkumaton kohdistin"
       },
       "stickyScroll": {
-        "description": "Pidä nykyiset LaTeX-luvut ja -ympäristöt ylhäällä vierittäessä.",
+        "description": "Pidä nykyiset luvut, otsikot ja ympäristöt ylhäällä vierittäessä.",
         "label": "Tarttuva vieritys"
       },
       "theme": {

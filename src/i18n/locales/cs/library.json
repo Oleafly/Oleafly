@@ -258,7 +258,7 @@
       },
       "markdown": {
         "title": "Dokument Markdown",
-        "description": "Soubor .md, který zůstane v Markdownu."
+        "description": "Soubor .md, převedený do LaTeXu nebo Typstu."
       },
       "html": {
         "title": "Stránka HTML",

@@ -649,7 +649,7 @@
         "label": "Niet-knipperende cursor"
       },
       "stickyScroll": {
-        "description": "Houd de huidige LaTeX-secties en -omgevingen bovenaan terwijl je scrolt.",
+        "description": "Houd de huidige secties, koppen en omgevingen bovenaan terwijl je scrolt.",
         "label": "Vastgezette scrollkoppen"
       },
       "theme": {

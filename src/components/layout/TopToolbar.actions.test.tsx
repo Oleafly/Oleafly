@@ -369,6 +369,42 @@ describe("TopToolbar export menu", () => {
     ).toBeInTheDocument();
   });
 
+  it("leaves the book export out for an article class", async () => {
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(toolbar.export));
+    await screen.findByRole("menuitem", { name: toolbar.exportPdf });
+    expect(screen.queryByRole("menuitem", { name: toolbar.exportEpub })).toBeNull();
+  });
+
+  it.each([
+    ["typst", "main.typ", "= Introduction", ["tex", "docx", "html", "md", "txt", "epub"]],
+    ["markdown", "main.md", "# Introduction", ["docx", "html", "txt", "pptx", "epub", "typst", "tex"]],
+  ] as const)("offers the book export for every %s document", async (profile, mainDoc, content, exports) => {
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: profile,
+        source_format: profile,
+        main_document: mainDoc,
+        capabilities: {
+          ...LATEX_ENGINE.capabilities,
+          formatting_profile: profile,
+          conversion_exports: [...exports],
+        },
+      },
+      files: { [mainDoc]: { content } },
+      mainDoc,
+      activePath: mainDoc,
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(toolbar.export));
+    expect(
+      await screen.findByRole("menuitem", { name: toolbar.exportEpub }),
+    ).toBeInTheDocument();
+  });
+
   it("offers raster and vector exports for a figure project", async () => {
     useFilesStore.setState({ projectKind: "image" });
     renderToolbar();

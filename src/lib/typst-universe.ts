@@ -168,7 +168,13 @@ export function importLine(name: string, version: string): string {
 
 interface StringLiteral {
   readonly value: string;
-  readonly from: number;
+  readonly offsets: readonly number[];
+  readonly to: number;
+}
+
+interface Escape {
+  readonly value: string;
+  readonly end: number;
 }
 
 function commentEnd(text: string, index: number): number | null {
@@ -185,19 +191,53 @@ function commentEnd(text: string, index: number): number | null {
   return null;
 }
 
+const SIMPLE_ESCAPES: ReadonlyMap<string, string> = new Map([
+  ["\\", "\\"],
+  ['"', '"'],
+  ["n", "\n"],
+  ["r", "\r"],
+  ["t", "\t"],
+]);
+
+function isHexDigit(char: string | undefined): boolean {
+  if (char === undefined) return false;
+  return (char >= "0" && char <= "9") || (char >= "a" && char <= "f") || (char >= "A" && char <= "F");
+}
+
+function unicodeEscape(text: string, index: number): Escape {
+  let end = index + 3;
+  while (isHexDigit(text[end])) end += 1;
+  const digits = text.slice(index + 3, end);
+  if (text[end] === "}") end += 1;
+  const code = digits === "" ? Number.NaN : Number.parseInt(digits, 16);
+  const valid = code <= 0x10ffff && (code < 0xd800 || code > 0xdfff);
+  return { value: valid ? String.fromCodePoint(code) : text.slice(index, end), end };
+}
+
+function readEscape(text: string, index: number): Escape {
+  const next = text[index + 1];
+  if (next === undefined || next === "\n") return { value: "\\", end: index + 1 };
+  if (next === "u" && text[index + 2] === "{") return unicodeEscape(text, index);
+  return { value: SIMPLE_ESCAPES.get(next) ?? text.slice(index, index + 2), end: index + 2 };
+}
+
 function readStringLiteral(text: string, from: number): { literal: StringLiteral; end: number } {
   let value = "";
+  const offsets: number[] = [];
   let index = from;
   while (index < text.length && text[index] !== '"' && text[index] !== "\n") {
     if (text[index] === "\\") {
-      value += text[index + 1] ?? "";
-      index += 2;
+      const decoded = readEscape(text, index);
+      for (let unit = 0; unit < decoded.value.length; unit += 1) offsets.push(index);
+      value += decoded.value;
+      index = decoded.end;
     } else {
+      offsets.push(index);
       value += text[index];
       index += 1;
     }
   }
-  return { literal: { value, from }, end: index + 1 };
+  return { literal: { value, offsets, to: index }, end: index + 1 };
 }
 
 function stringLiterals(text: string): StringLiteral[] {
@@ -232,8 +272,8 @@ export function previewImports(text: string): PreviewImport[] {
   for (const literal of stringLiterals(text)) {
     const match = PREVIEW_SPEC.exec(literal.value);
     if (!match) continue;
-    const from = literal.from + literal.value.length - match[2].length;
-    imports.push({ name: match[1], version: match[2], from, to: from + match[2].length });
+    const from = literal.offsets[literal.value.length - match[2].length];
+    imports.push({ name: match[1], version: match[2], from, to: literal.to });
   }
   return imports;
 }

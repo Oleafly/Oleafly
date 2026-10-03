@@ -255,7 +255,7 @@
       },
       "markdown": {
         "title": "Markdown 문서",
-        "description": "Markdown 그대로 유지되는 .md 파일입니다."
+        "description": "LaTeX 또는 Typst로 변환되는 .md 파일입니다."
       },
       "html": {
         "title": "HTML 페이지",

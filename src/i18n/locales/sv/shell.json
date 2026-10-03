@@ -827,7 +827,7 @@
         "offlineRefused": "Offlineläget är på. Stäng av det för att ladda ner {{name}}."
       },
       "harper": {
-        "description": "Kontrollera engelsk grammatik och stil i källkods- och visuell redigering av LaTeX och Markdown, samt i Typst-källkod, med åtgärder i ett klick.",
+        "description": "Kontrollera engelsk grammatik och stil i LaTeX, Typst och Markdown, i både källkods- och visuell redigering, med åtgärder i ett klick.",
         "label": "Grammatik och stil (Harper)",
         "englishOnly": "Grammatikkontroll fungerar bara för engelska. Den är pausad så länge stavningsordlistan är {{name}}."
       },

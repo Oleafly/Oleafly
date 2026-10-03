@@ -644,7 +644,7 @@
         "label": "游標不閃爍"
       },
       "stickyScroll": {
-        "description": "捲動時把目前的 LaTeX 章節與環境固定在頂端。",
+        "description": "捲動時把目前的章節、標題與環境固定在頂端。",
         "label": "固定捲動"
       },
       "theme": {

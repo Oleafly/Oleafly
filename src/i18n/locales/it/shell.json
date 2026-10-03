@@ -842,7 +842,7 @@
         "offlineRefused": "La modalità offline è attiva. Disattivala per scaricare {{name}}."
       },
       "harper": {
-        "description": "Controlla grammatica e stile dell'inglese nella scrittura LaTeX e Markdown, in modalità Sorgente e Visuale, e in Typst Sorgente, con correzioni in un clic.",
+        "description": "Controlla grammatica e stile dell'inglese in LaTeX, Typst e Markdown, sia in modalità Sorgente sia in Visuale, con correzioni in un clic.",
         "label": "Grammatica e stile (Harper)",
         "englishOnly": "Il controllo grammaticale funziona solo per l’inglese. È in pausa finché il dizionario ortografico è {{name}}."
       },

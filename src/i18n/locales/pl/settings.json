@@ -659,7 +659,7 @@
         "label": "Kursor bez migania"
       },
       "stickyScroll": {
-        "description": "Utrzymuj bieżące sekcje i środowiska LaTeX na górze podczas przewijania.",
+        "description": "Utrzymuj bieżące sekcje, nagłówki i środowiska na górze podczas przewijania.",
         "label": "Przypięte przewijanie"
       },
       "theme": {

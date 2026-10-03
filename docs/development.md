@@ -233,11 +233,12 @@ profiles and feature/export/template-kind sets. Frontend consumers use the
 fail-closed files-store descriptor rather than guessing from extensions. See
 the [document engine matrix](document-engines.md).
 
-Typst currently reports `supports_synctex=false`, `supports_offline=false`, and
-`supports_isolated_compile=false`. Consequently reverse/forward search, the
-offline compiler toggle, and LaTeX/TikZ figure generation are hidden or
-normalized off for Typst projects. Add such behavior only after the backend
-engine capability becomes truthful. Do not add extension-based UI exceptions.
+Typst reports `supports_synctex=true` and `supports_offline=true`, so source
+and PDF sync (through Tinymist) and the offline compiler toggle work for Typst
+projects. It reports `supports_isolated_compile=false`: its figure tools render
+CeTZ or fletcher as Typst snippets instead of compiling an isolated LaTeX
+document. Add engine-specific behaviour only once the backend capability says
+so. Do not add extension-based UI exceptions.
 
 ## Where state lives
 

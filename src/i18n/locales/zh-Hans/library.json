@@ -255,7 +255,7 @@
       },
       "markdown": {
         "title": "Markdown 文档",
-        "description": "一个 .md 文件，保持 Markdown 格式。"
+        "description": "一个 .md 文件，转换为 LaTeX 或 Typst。"
       },
       "html": {
         "title": "HTML 页面",
