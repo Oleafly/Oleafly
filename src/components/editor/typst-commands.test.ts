@@ -140,7 +140,8 @@ describe("typst commands", () => {
 
 function viewAt(doc: string) {
   const anchor = doc.indexOf("|");
-  const state = EditorState.create({ doc: doc.replace("|", ""), selection: EditorSelection.single(anchor) });
+  const text = anchor < 0 ? doc : doc.slice(0, anchor) + doc.slice(anchor + 1);
+  const state = EditorState.create({ doc: text, selection: EditorSelection.single(anchor) });
   return { state, focus: vi.fn(), dispatch: vi.fn() };
 }
 

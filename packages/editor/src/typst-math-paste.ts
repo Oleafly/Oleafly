@@ -16,8 +16,13 @@ export interface TypstMathPasteOffer {
   tooltip: Tooltip;
 }
 
-const DELIMITED_LATEX_MATH =
-  /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\\begin\{(?:equation|align|gather|multline|eqnarray|displaymath|flalign|alignat)\*?\}/u;
+const LATEX_MATH_ENVIRONMENT =
+  /\\begin\{(?:equation|align|gather|multline|eqnarray|displaymath|flalign|alignat)\*?\}/u;
+const LATEX_MATH_DELIMITERS: readonly (readonly [string, string])[] = [
+  ["$$", "$$"],
+  ["\\[", "\\]"],
+  ["\\(", "\\)"],
+];
 const DOLLAR_SPAN = /(?<!\\)\$([^$]+)\$/gu;
 const LATEX_SIGNAL = /\\[A-Za-z]{2,}|[\^_]\{/u;
 
@@ -31,9 +36,17 @@ function loadConverter(): Promise<LatexToTypst> {
   return converter;
 }
 
+function hasDelimitedLatexMath(text: string): boolean {
+  for (const [open, close] of LATEX_MATH_DELIMITERS) {
+    const start = text.indexOf(open);
+    if (start >= 0 && text.indexOf(close, start + open.length + 1) >= 0) return true;
+  }
+  return LATEX_MATH_ENVIRONMENT.test(text);
+}
+
 export function latexMathPasteKind(text: string, insideMath: boolean): LatexMathPasteKind | null {
   if (insideMath) return !text.includes("$") && LATEX_SIGNAL.test(text) ? "body" : null;
-  if (DELIMITED_LATEX_MATH.test(text)) return "delimited";
+  if (hasDelimitedLatexMath(text)) return "delimited";
   for (const match of text.matchAll(DOLLAR_SPAN)) {
     if (LATEX_SIGNAL.test(match[1])) return "delimited";
   }

@@ -170,6 +170,12 @@ describe("buildMarkdownInsights", () => {
     ]);
   });
 
+  it("ends an HTML comment at --!> as well as -->", () => {
+    const text = "<!-- TODO: hidden --!> shown\n<!--\nTODO: inside --!> after\n";
+    const notes = buildMarkdownInsights({ mainDoc: "notes.md", texts: { "notes.md": text } }).todos;
+    expect(notes.map((todo) => todo.text)).toEqual(["TODO: hidden", "TODO: inside"]);
+  });
+
   it("reads the submission metadata from the front matter", () => {
     expect(insights.metadata).toEqual({
       title: "Creep in Niobium",

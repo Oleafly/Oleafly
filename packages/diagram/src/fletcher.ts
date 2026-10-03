@@ -55,7 +55,7 @@ export interface FletcherOptions {
 const LATEST_FLETCHER = "0.5.8";
 
 export function fletcherVersionFor(typstVersion: string | null | undefined): string {
-  const match = /(\d+)\.(\d+)/.exec(typstVersion ?? "");
+  const match = /^\s*v?(\d{1,6})\.(\d{1,6})/.exec(typstVersion ?? "");
   if (!match) return LATEST_FLETCHER;
   const major = Number(match[1]);
   const minor = Number(match[2]);

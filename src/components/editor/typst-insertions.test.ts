@@ -51,7 +51,8 @@ import {
 } from "./typst-insertions";
 
 function mount(doc: string, anchor = doc.indexOf("|"), head = anchor): EditorView {
-  const text = doc.replace("|", "");
+  const marker = doc.indexOf("|");
+  const text = marker < 0 ? doc : doc.slice(0, marker) + doc.slice(marker + 1);
   const view = new EditorView({
     state: EditorState.create({ doc: text, selection: EditorSelection.single(anchor, head) }),
     parent: document.body.appendChild(document.createElement("div")),
@@ -275,6 +276,17 @@ describe("typst equations", () => {
   it("puts the numbering rule after leading imports and comments", () => {
     expect(typstNumberingRuleOffset('#import "a.typ": *\n// c\n= Title')).toBe(24);
     expect(typstNumberingRuleOffset("= Title")).toBe(0);
+  });
+
+  it("finds a numbering rule only inside the equation set rule's arguments", () => {
+    const opened = mount('#set math.equation(supplement: "Eq.")\n#let numbering: x\n|');
+    addTypstNumberingRule("main.typ");
+    expect(opened.state.doc.toString()).toContain(TYPST_NUMBERING_RULE);
+    opened.destroy();
+    const unclosed = mount(`${"#set\tmath.equation(".repeat(2_000)}|`);
+    addTypstNumberingRule("main.typ");
+    expect(unclosed.state.doc.toString()).toContain(TYPST_NUMBERING_RULE);
+    unclosed.destroy();
   });
 
   it("does not add the rule when the file changed or already has one", () => {

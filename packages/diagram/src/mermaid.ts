@@ -502,8 +502,16 @@ const labelText = (label: string) => (plainLabel(label) ? label : quoted(label))
 
 const plainId = (id: string) => PLAIN_ID.test(id) && !RESERVED_IDS.has(id);
 
+function trimUnderscores(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && text[start] === "_") start += 1;
+  while (end > start && text[end - 1] === "_") end -= 1;
+  return text.slice(start, end);
+}
+
 function sanitizeId(id: string): string {
-  const base = id.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^_+|_+$/g, "") || "node";
+  const base = trimUnderscores(id.replace(/[^A-Za-z0-9_]+/g, "_")) || "node";
   return RESERVED_IDS.has(base) ? `${base}_` : base;
 }
 
@@ -532,11 +540,9 @@ function writerNames(model: DiagramModel, extras: MermaidExtras | null): Map<str
 }
 
 function normalizeColor(value: string, allowNone: boolean): string | null {
-  const text = value
-    .trim()
-    .toLowerCase()
-    .replace(/\s*!important$/, "")
-    .replaceAll("\\", "");
+  const lowered = value.trim().toLowerCase();
+  const declared = lowered.endsWith("!important") ? lowered.slice(0, -"!important".length).trimEnd() : lowered;
+  const text = declared.replaceAll("\\", "");
   if (text === "none" || text === "transparent") return allowNone ? "" : null;
   const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/.exec(text);
   if (hex) {

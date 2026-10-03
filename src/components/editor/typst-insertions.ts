@@ -32,7 +32,20 @@ const LABEL_NAME = new RegExp(`^${TYPST_LABEL_PATTERN}$`, "u");
 const LABEL_USE = new RegExp(`<(${TYPST_LABEL_PATTERN})>`, "gu");
 const NAME_CHARACTER_BEFORE = /[\p{L}\p{M}\p{N}\p{Pc}]$/u;
 const REFERENCE_CHARACTER_AFTER = /^[\p{L}\p{M}\p{N}\p{Pc}]/u;
-const NUMBERING_RULE = /#set\s+math\.equation\s*\([^)]*\bnumbering\s*:/u;
+const EQUATION_SET_RULE = /#set\s+math\.equation\s*\(/gu;
+const NUMBERING_ARGUMENT = /\bnumbering\s*:/u;
+
+function hasNumberingRule(text: string): boolean {
+  EQUATION_SET_RULE.lastIndex = 0;
+  for (let match = EQUATION_SET_RULE.exec(text); match; match = EQUATION_SET_RULE.exec(text)) {
+    const start = match.index + match[0].length;
+    const close = text.indexOf(")", start);
+    if (NUMBERING_ARGUMENT.test(text.slice(start, close < 0 ? text.length : close))) return true;
+    if (close < 0) return false;
+    EQUATION_SET_RULE.lastIndex = close + 1;
+  }
+  return false;
+}
 const TYPST_FILE = /\.typ$/iu;
 
 export function activeTypstVersion(): string | null {
@@ -322,7 +335,7 @@ export function addTypstNumberingRule(path: string | null): void {
   const view = getEditorView();
   if (!view || useFilesStore.getState().activePath !== path) return;
   const text = view.state.doc.toString();
-  if (NUMBERING_RULE.test(text)) return;
+  if (hasNumberingRule(text)) return;
   const at = typstNumberingRuleOffset(text);
   view.dispatch({
     changes: { from: at, insert: `${TYPST_NUMBERING_RULE}\n` },
@@ -343,7 +356,7 @@ export function insertTypstNumberedEquation(): void {
   const path = useFilesStore.getState().activePath;
   const key = path ?? "";
   if (offeredNumbering.has(key)) return;
-  if (loadedTypstSources(path, view.state.doc.toString()).some((source) => NUMBERING_RULE.test(source))) return;
+  if (loadedTypstSources(path, view.state.doc.toString()).some(hasNumberingRule)) return;
   offeredNumbering.add(key);
   toast.infoUnique(TYPST_NUMBERING_TOAST_KEY, i18n.t(($) => $.editor.typst.numberingNote), {
     label: i18n.t(($) => $.editor.typst.addNumberingRule),

@@ -51,6 +51,14 @@ const ATX = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$/u;
 const CAPTION = /^\s*(?:Table|table)?:\s+(.*)$/u;
 const RAW_EQUATION = /^\s*\\begin\s*\{(equation|align|gather|multline|flalign|alignat|eqnarray)(\*?)\}/u;
 
+function htmlCommentEnd(text: string): { index: number; length: number } | null {
+  const plain = text.indexOf("-->");
+  const bang = text.indexOf("--!>");
+  if (plain < 0 && bang < 0) return null;
+  if (bang < 0 || (plain >= 0 && plain < bang)) return { index: plain, length: 3 };
+  return { index: bang, length: 4 };
+}
+
 function stripComment(value: string): string {
   let quote: string | null = null;
   for (let index = 0; index < value.length; index += 1) {
@@ -539,16 +547,22 @@ export function buildMarkdownInsights({ mainDoc, texts }: MarkdownInsightsInput)
     }
     const todo = TODO_MARKER.exec(line);
     if (todo && line[todo.index - 1] !== "\\") {
-      insights.todos.push({ text: todoText(line.slice(todo.index).replace(/\s*-->.*$/u, "")), location: at(index, todo.index + 1) });
+      const marked = line.slice(todo.index);
+      const commentEnd = htmlCommentEnd(marked);
+      insights.todos.push({
+        text: todoText(commentEnd ? marked.slice(0, commentEnd.index).trimEnd() : marked),
+        location: at(index, todo.index + 1),
+      });
     }
     let visible = line;
     if (inComment) {
-      const end = line.indexOf("-->");
-      if (end < 0) continue;
+      const end = htmlCommentEnd(line);
+      if (!end) continue;
       inComment = false;
-      visible = blankRun(line.slice(0, end + 3)) + line.slice(end + 3);
+      const after = end.index + end.length;
+      visible = blankRun(line.slice(0, after)) + line.slice(after);
     }
-    visible = visible.replaceAll(/<!--[\s\S]*?-->/gu, blankRun);
+    visible = visible.replaceAll(/<!--[\s\S]*?--!?>/gu, blankRun);
     const open = visible.indexOf("<!--");
     if (open >= 0) {
       inComment = true;

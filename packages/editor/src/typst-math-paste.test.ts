@@ -53,6 +53,10 @@ describe("latexMathPasteKind", () => {
     ["plain text", null],
     [String.raw`$a \ b$`, null],
     [String.raw`\frac{a}{b}`, null],
+    [String.raw`\( x \)`, "delimited"],
+    [String.raw`\[ a`, null],
+    ["$$$$", null],
+    ["\\[".repeat(20_000), null],
   ])("classifies %s outside math", (text, kind) => {
     expect(latexMathPasteKind(text, false)).toBe(kind);
   });

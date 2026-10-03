@@ -102,12 +102,17 @@ export function typstPathReferences(scan: TypstScan): TypstPathReference[] {
   return [...calls, ...statementPaths(scan), ...namedBibliographyFiles(scan)].sort((a, b) => a.from - b.from);
 }
 
+function importedName(item: string): string {
+  const words = item.split(/\s+/);
+  const alias = words.indexOf("as");
+  return alias > 0 && alias + 1 < words.length ? words[alias + 1] : item;
+}
+
 export function typstPackageImportNames(scan: TypstScan): string[] {
   const names: string[] = [];
   for (const match of scan.masked.matchAll(/#import\s+"@[^"\n]+"\s*:\s*([^\n]+)/g)) {
     for (const item of match[1].split(",")) {
-      const parts = item.replaceAll(/[()]/g, "").trim().split(/\s+as\s+/);
-      const name = (parts[1] ?? parts[0]).trim();
+      const name = importedName(item.replaceAll(/[()]/g, "").trim());
       if (/^[\p{L}_][\p{L}\p{N}_-]*$/u.test(name)) names.push(name);
     }
   }
