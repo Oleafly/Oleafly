@@ -257,6 +257,20 @@ describe("TopToolbar view and layout", () => {
       expect(useSettingsStore.getState().assistantOpen).toBe(true),
     );
   });
+
+  it("draws a different icon for every layout preset", async () => {
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: toolbar.layout }));
+    await screen.findAllByRole("menu");
+    const icons = Object.values(toolbar.layouts).map((label) => {
+      const icon = screen.getByRole("menuitem", { name: label }).querySelector("svg");
+      if (!icon) throw new Error(`no icon for ${label}`);
+      expect(icon).toHaveAttribute("aria-hidden", "true");
+      return icon.innerHTML;
+    });
+    expect(new Set(icons).size).toBe(icons.length);
+  });
 });
 
 describe("TopToolbar export menu", () => {
