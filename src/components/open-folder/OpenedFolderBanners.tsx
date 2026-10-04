@@ -1,17 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { Lock, ShieldAlert, X } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 import { copyIntoLibrary, useCopyIntoLibraryStore } from "@/store/copy-into-library";
 import { useFilesStore } from "@/store/files";
 import { folderIsReadOnly, folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { folderReachable, useProjectAvailabilityStore } from "@/store/project-availability";
 import { Spinner } from "@/components/ui/spinner";
-
-const TRUST_BUTTON =
-  "flex items-center gap-1 rounded border border-transparent px-2 py-0.5 font-medium transition-colors hover:bg-primary/10 focus-visible:border-primary/40 focus-visible:bg-primary/15 disabled:opacity-50";
-const READ_ONLY_BUTTON =
-  "flex items-center gap-1 rounded border border-transparent px-2 py-0.5 font-medium transition-colors hover:bg-amber-500/15 focus-visible:border-amber-500/40 focus-visible:bg-amber-500/20 disabled:opacity-50";
 
 function useFolderReachable(projectId: string | null): boolean {
   return useProjectAvailabilityStore(
@@ -29,16 +24,13 @@ function TrustBanner({ projectId }: Readonly<{ projectId: string }>) {
   const hide = useFolderAccessStore((state) => state.hideBanner);
   if (!restricted || hidden) return null;
   return (
-    <div
-      data-testid="folder-trust-banner"
-      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-primary/20 bg-[color-mix(in_srgb,var(--primary)_5%,var(--background))] px-3 py-1.5 text-xs text-foreground"
-    >
+    <WorkspaceBanner tone="primary" data-testid="folder-trust-banner">
       <ShieldAlert aria-hidden className="size-3.5 shrink-0 text-primary" />
       <p className="min-w-0 flex-1">{t(($) => $.shell.openedFolder.trust.banner)}</p>
       <span className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          className={cn(TRUST_BUTTON, "text-primary")}
+        <WorkspaceBannerButton
+          tone="primary"
+          className="text-primary"
           disabled={trusting !== null}
           onClick={() => void grant("folder")}
         >
@@ -46,11 +38,10 @@ function TrustBanner({ projectId }: Readonly<{ projectId: string }>) {
             <Spinner size="xs" />
           ) : null}
           {t(($) => $.shell.openedFolder.trust.trustFolder)}
-        </button>
+        </WorkspaceBannerButton>
         {parent ? (
-          <button
-            type="button"
-            className={TRUST_BUTTON}
+          <WorkspaceBannerButton
+            tone="primary"
             disabled={trusting !== null}
             onClick={() => void grant("parent")}
           >
@@ -58,20 +49,20 @@ function TrustBanner({ projectId }: Readonly<{ projectId: string }>) {
               <Spinner size="xs" />
             ) : null}
             {t(($) => $.shell.openedFolder.trust.trustParent)}
-          </button>
+          </WorkspaceBannerButton>
         ) : null}
         <Tooltip label={t(($) => $.shell.openedFolder.trust.hide)}>
-          <button
-            type="button"
+          <WorkspaceBannerButton
+            tone="primary"
             aria-label={t(($) => $.shell.openedFolder.trust.hide)}
-            className={cn(TRUST_BUTTON, "px-1 text-muted-foreground hover:text-foreground")}
+            className="px-1 text-muted-foreground hover:text-foreground"
             onClick={hide}
           >
             <X aria-hidden className="size-3.5" />
-          </button>
+          </WorkspaceBannerButton>
         </Tooltip>
       </span>
-    </div>
+    </WorkspaceBanner>
   );
 }
 
@@ -88,24 +79,16 @@ function ReadOnlyBanner({ projectId }: Readonly<{ projectId: string }>) {
     void copyIntoLibrary(projectId, projectName ?? "", { openAfterCopy: true });
   };
   return (
-    <div
-      data-testid="folder-read-only-banner"
-      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-amber-500/30 bg-[color-mix(in_srgb,var(--color-amber-500)_10%,var(--background))] px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
-    >
+    <WorkspaceBanner tone="warning" data-testid="folder-read-only-banner">
       <Lock aria-hidden className="size-3.5 shrink-0" />
       <p className="min-w-0 flex-1">{t(($) => $.shell.openedFolder.readOnly.banner)}</p>
-      <button
-        type="button"
-        className={READ_ONLY_BUTTON}
-        disabled={copying}
-        onClick={copy}
-      >
+      <WorkspaceBannerButton tone="warning" disabled={copying} onClick={copy}>
         {copying ? (
           <Spinner size="xs" />
         ) : null}
         {t(($) => $.shell.openedFolder.readOnly.copy)}
-      </button>
-    </div>
+      </WorkspaceBannerButton>
+    </WorkspaceBanner>
   );
 }
 

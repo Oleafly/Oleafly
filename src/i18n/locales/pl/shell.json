@@ -450,17 +450,14 @@
     },
     "recommended": "Zalecane",
     "shellEscape": {
-      "label": "Zezwalaj na polecenia zewnętrzne na tym komputerze",
-      "needed": "Ten projekt używa funkcji, które wymagają dowolnych poleceń zewnętrznych. Pozostaną zablokowane, dopóki nie wyrazisz na nie zgody.",
-      "warning": "Wymagane przez minted i część dokumentów PythonTeX. LaTeX może uruchamiać programy z Twoimi uprawnieniami, więc włącz to tylko dla zaufanego projektu. Własne narzędzia pomocnicze TeX Live, jak konwersja EPS, działają bez tego."
+      "included": "To pozwala też projektowi uruchamiać potrzebne mu polecenia zewnętrzne. LaTeX będzie wtedy mógł uruchamiać dowolne programy z twoimi uprawnieniami, więc rób to tylko dla projektu, któremu ufasz."
     },
     "shellEscapeFailed": "Nie udało się zmienić dostępu do poleceń zewnętrznych.",
     "switchFailed": "Nie udało się zmienić silnika kompilacji.",
     "switched": "Ten projekt kompiluje się teraz przy użyciu {{engine}}.",
     "switchedAfterInstall": "Zainstalowano TinyTeX. Ten projekt kompiluje się teraz przy użyciu {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Już wybrane",
-      "found": "Na tym komputerze znaleziono dystrybucję TeX. Systemowy TeX może czytać pliki lokalne dostępne dla Twojego konta, więc używaj go tylko przy zaufanych projektach. Dowolne polecenia zewnętrzne pozostają zablokowane, dopóki nie wyrazisz na nie zgody poniżej. TeX Live nadal uruchamia narzędzia z własnej listy dozwolonych, jak konwersja EPS.",
+      "found": "Na tym komputerze znaleziono dystrybucję TeX. Systemowy TeX może czytać pliki lokalne dostępne dla Twojego konta, więc używaj go tylko przy zaufanych projektach. TeX Live nadal uruchamia narzędzia z własnej listy dozwolonych, jak konwersja EPS.",
       "missing": "Na tym komputerze nie znaleziono żadnej dystrybucji TeX (MacTeX, TeX Live, MiKTeX, TinyTeX).",
       "switchPdflatex": "Przełącz na pdfLaTeX i skompiluj ponownie",
       "title": "Użyj systemowego LaTeX (latexmk)",
@@ -485,6 +482,10 @@
     },
     "titleCompileFailure": "Ta kompilacja wymaga czegoś więcej niż wbudowany silnik",
     "titleImportScan": "Ten projekt wymaga czegoś więcej niż wbudowany silnik"
+  },
+  "shellCommands": {
+    "allow": "Zezwól na polecenia zewnętrzne",
+    "banner": "Ten dokument podczas kompilacji uruchamia polecenia zewnętrzne, a ten projekt je blokuje. Zezwól na nie tylko wtedy, gdy ufasz każdemu plikowi w projekcie."
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopiuj dane diagnostyczne",

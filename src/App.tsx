@@ -33,6 +33,7 @@ import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner
 import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBanner";
 import { MainDocumentPicker } from "@/components/open-folder/MainDocumentPicker";
 import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
+import { ShellCommandsBanner } from "@/components/layout/ShellCommandsBanner";
 import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
 import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
 import { FolderWatchKeeper } from "@/components/layout/FolderWatchKeeper";
@@ -113,6 +114,8 @@ import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { ChatPanel } from "@/components/ai/ChatPanel";
 import { AboutModal } from "@/components/layout/AboutModal";
 import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
+import { expectEngineChoiceOnOpen, takeEngineChoiceOnOpen } from "@/store/engine-picker";
+import { revealPreviewForCompile } from "@/lib/compile-preview";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { SaveBlockedDialog } from "@/components/layout/SaveBlockedDialog";
@@ -635,9 +638,7 @@ function AppContent() {
       const bindings = useShortcutStore.getState().bindings;
       if (matchesShortcut(e, bindings.recompile)) {
         e.preventDefault();
-        // Reveal the PDF pane if it's hidden, so a keyboard recompile shows output.
-        const s = useSettingsStore.getState();
-        if (s.viewMode === "editor") s.setViewMode("split");
+        revealPreviewForCompile();
         void recompile();
       } else if (matchesShortcut(e, bindings.forwardSync)) {
         e.preventDefault();
@@ -791,9 +792,11 @@ function AppContent() {
           .catch(() => false);
         if (restored) return undefined;
       }
+      expectEngineChoiceOnOpen(requestedProjectId);
       return recompile({ origin: "automatic" });
     };
     void compileOrRestore().finally(() => {
+      takeEngineChoiceOnOpen(requestedProjectId);
       const files = useFilesStore.getState();
       const analysis =
         useProjectAnalysisStore.getState().snapshot.identity;
@@ -907,6 +910,7 @@ function AppContent() {
         <BackendProtocolBanner />
         <FolderUnavailableBanner />
         <OpenedFolderBanners />
+        <ShellCommandsBanner />
         <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <ErrorBoundary
             resetKey={projectId}

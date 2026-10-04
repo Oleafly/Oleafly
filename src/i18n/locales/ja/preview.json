@@ -93,7 +93,7 @@
     "fullscreen": "全画面プレビュー",
     "exitFullscreen": "全画面を終了",
     "retryCompile": "コンパイルを再試行",
-    "chooseEngine": "エンジンを選択…",
+    "chooseEngine": "エンジンを選択",
     "installPackages_other": "{{count}} 件のファイルを探してインストール",
     "downloadTypst": "Typst {{version}} をダウンロード",
     "useTypst": "Typst {{version}} を使う"

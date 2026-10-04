@@ -93,7 +93,7 @@
     "fullscreen": "全螢幕預覽",
     "exitFullscreen": "結束全螢幕",
     "retryCompile": "重試編譯",
-    "chooseEngine": "選擇引擎…",
+    "chooseEngine": "選擇引擎",
     "installPackages_other": "尋找並安裝 {{count}} 個檔案",
     "downloadTypst": "下載 Typst {{version}}",
     "useTypst": "使用 Typst {{version}}"

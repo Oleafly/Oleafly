@@ -7,6 +7,7 @@ import {
   loadsPackage,
   missingLatexFiles,
   needsPdflatexFinding,
+  needsShellEscapeFinding,
   scanImportCompatibility,
   stripLineComments,
 } from "./import-compat";
@@ -465,5 +466,16 @@ describe("missingLatexFiles odd names", () => {
   it("stops after eight distinct files", () => {
     const log = Array.from({ length: 10 }, (_, index) => `! LaTeX Error: File \`pkg${index}.sty' not found.`).join("\n");
     expect(missingLatexFiles(log)).toHaveLength(8);
+  });
+});
+
+describe("needsShellEscapeFinding", () => {
+  it("is true only for findings that run external commands", () => {
+    for (const id of ["minted", "pythontex", "shell-escape"]) {
+      expect(needsShellEscapeFinding(id)).toBe(true);
+    }
+    for (const id of ["pdftex-only", "fontspec", "glossaries-index", "unknown"]) {
+      expect(needsShellEscapeFinding(id)).toBe(false);
+    }
   });
 });

@@ -62,7 +62,10 @@
     "no_host_binary": "TinyTeX ne fournit pas de binaire {{name}} compatible avec cet hôte.",
     "package_operation_timeout": "L'opération sur les paquets a dépassé sa limite de {{span}} et a été interrompue, vous pouvez donc compiler à nouveau. Le miroir TeX Live est sans doute occupé. Réessayez plus tard ou lancez tlmgr vous-même.",
     "latexmk_build_path": "latexmk ne peut pas utiliser le dossier de compilation d'Oleafly sur cet ordinateur, car son chemin contient des caractères que latexmk n'accepte pas. Passez ce projet à Tectonic pour le compiler.",
-    "latexmk_network_folder": "latexmk ne peut pas compiler un dossier situé sur un partage réseau. Passez ce projet à Tectonic, ou copiez le dossier sur cet ordinateur."
+    "latexmk_network_folder": "latexmk ne peut pas compiler un dossier situé sur un partage réseau. Passez ce projet à Tectonic, ou copiez le dossier sur cet ordinateur.",
+    "shell_escape_denied_minted": "minted doit lancer un autre programme pour colorer le code, et ce projet le bloque. Pour l’autoriser, cliquez sur « {{setting}} » dans le bandeau au-dessus de l’éditeur. Ne le faites que si vous faites confiance à chaque fichier du projet. LaTeX pourra alors lancer n’importe quel programme avec vos droits, et un programme qu’il démarre peut continuer à tourner après l’arrêt de la compilation.",
+    "shell_escape_denied_pythontex": "PythonTeX doit lancer Python, et ce projet le bloque. Pour l’autoriser, cliquez sur « {{setting}} » dans le bandeau au-dessus de l’éditeur. Ne le faites que si vous faites confiance à chaque fichier du projet. LaTeX pourra alors lancer n’importe quel programme avec vos droits, et un programme qu’il démarre peut continuer à tourner après l’arrêt de la compilation.",
+    "shell_escape_denied_command": "Ce document lance une commande shell, et ce projet le bloque. Pour l’autoriser, cliquez sur « {{setting}} » dans le bandeau au-dessus de l’éditeur. Ne le faites que si vous faites confiance à chaque fichier du projet. LaTeX pourra alors lancer n’importe quel programme avec vos droits, et un programme qu’il démarre peut continuer à tourner après l’arrêt de la compilation."
   },
   "export": {
     "bibliography_unreadable": "Oleafly n'a pas pu lire la bibliographie {{name}}. Vérifiez qu'aucune entrée n'est endommagée, puis exportez à nouveau."

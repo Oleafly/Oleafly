@@ -35,6 +35,17 @@ describe("TrustRequiredNotice", () => {
     expect(grant).toHaveBeenCalledWith("folder");
   });
 
+  it("puts the trust action after the reason as the primary button", () => {
+    access(false);
+    render(<TrustRequiredNotice projectId="linked-a" reason="Trust this folder to compile with latexmk." />);
+    const notice = screen.getByTestId("trust-required-notice");
+    const button = screen.getByRole("button", { name: enShell.openedFolder.trust.trustFolder });
+    const reason = screen.getByText("Trust this folder to compile with latexmk.");
+    expect(button.parentElement).toBe(notice);
+    expect(reason.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(button).toHaveClass("bg-primary", "ml-auto");
+  });
+
   it("renders nothing for a trusted folder or another project", () => {
     access(true);
     const { rerender } = render(<TrustRequiredNotice projectId="linked-a" reason="Off" />);

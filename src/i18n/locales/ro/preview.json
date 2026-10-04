@@ -93,7 +93,7 @@
     "fullscreen": "Previzualizare pe ecran complet",
     "exitFullscreen": "Ieși din ecranul complet",
     "retryCompile": "Reîncearcă compilarea",
-    "chooseEngine": "Alege motorul…",
+    "chooseEngine": "Alege motorul",
     "installPackages_one": "Găsește și instalează {{name}}",
     "installPackages_few": "Găsește și instalează {{count}} fișiere",
     "installPackages_other": "Găsește și instalează {{count}} de fișiere",

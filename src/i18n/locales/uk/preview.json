@@ -93,7 +93,7 @@
     "fullscreen": "Повноекранний перегляд",
     "exitFullscreen": "Вийти з повноекранного режиму",
     "retryCompile": "Скомпілювати ще раз",
-    "chooseEngine": "Вибрати рушій…",
+    "chooseEngine": "Вибрати рушій",
     "installPackages_one": "Знайти і встановити {{name}}",
     "installPackages_few": "Знайти і встановити {{count}} файли",
     "installPackages_many": "Знайти і встановити {{count}} файлів",

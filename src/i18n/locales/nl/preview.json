@@ -93,7 +93,7 @@
     "fullscreen": "Voorbeeld op volledig scherm",
     "exitFullscreen": "Volledig scherm verlaten",
     "retryCompile": "Opnieuw compileren",
-    "chooseEngine": "Engine kiezen…",
+    "chooseEngine": "Engine kiezen",
     "installPackages_one": "{{name}} zoeken en installeren",
     "installPackages_other": "{{count}} bestanden zoeken en installeren",
     "downloadTypst": "Typst {{version}} downloaden",

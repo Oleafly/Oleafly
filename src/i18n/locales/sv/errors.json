@@ -62,7 +62,10 @@
     "no_host_binary": "TinyTeX saknar en {{name}}-binär som fungerar på den här datorn.",
     "package_operation_timeout": "Paketåtgärden passerade gränsen på {{span}} och stoppades, så att du kan kompilera igen. TeX Live-spegeln är troligen upptagen. Försök igen senare, eller kör tlmgr själv.",
     "latexmk_build_path": "latexmk kan inte använda Oleaflys byggmapp på den här datorn eftersom sökvägen innehåller tecken som latexmk inte godtar. Byt projektet till Tectonic för att kompilera det.",
-    "latexmk_network_folder": "latexmk kan inte kompilera en mapp på en nätverksresurs. Byt projektet till Tectonic eller kopiera mappen till den här datorn."
+    "latexmk_network_folder": "latexmk kan inte kompilera en mapp på en nätverksresurs. Byt projektet till Tectonic eller kopiera mappen till den här datorn.",
+    "shell_escape_denied_minted": "minted måste köra ett annat program för att markera kod, och det här projektet blockerar det. Om du vill tillåta det klickar du på \"{{setting}}\" i fältet ovanför redigeraren. Gör det bara om du litar på alla filer i projektet. LaTeX kan då köra vilket program som helst med dina behörigheter, och ett program som det startar kan fortsätta köras efter att du har stoppat kompileringen.",
+    "shell_escape_denied_pythontex": "PythonTeX måste köra Python, och det här projektet blockerar det. Om du vill tillåta det klickar du på \"{{setting}}\" i fältet ovanför redigeraren. Gör det bara om du litar på alla filer i projektet. LaTeX kan då köra vilket program som helst med dina behörigheter, och ett program som det startar kan fortsätta köras efter att du har stoppat kompileringen.",
+    "shell_escape_denied_command": "Det här dokumentet kör ett shell-kommando, och det här projektet blockerar det. Om du vill tillåta det klickar du på \"{{setting}}\" i fältet ovanför redigeraren. Gör det bara om du litar på alla filer i projektet. LaTeX kan då köra vilket program som helst med dina behörigheter, och ett program som det startar kan fortsätta köras efter att du har stoppat kompileringen."
   },
   "export": {
     "bibliography_unreadable": "Oleafly kunde inte läsa bibliografin {{name}}. Leta efter en trasig post i den och exportera sedan igen."

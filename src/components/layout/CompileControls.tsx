@@ -40,6 +40,7 @@ import type { DocumentEngineDescriptor, TexFlavor, TypstToolchainStatus } from "
 import type { TypstOptionsDescriptor } from "@oleafly/backend-port";
 import { typstSupports, type TypstOptionsUpdate } from "@/lib/typst-options";
 import { applyTypstCompileOptions, chooseTypstVariant } from "@/lib/typst-compile-actions";
+import { recompileWithPreview } from "@/lib/compile-preview";
 import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant";
 import { cn, shortcut } from "@/lib/utils";
 import { compileSettingsForEngine } from "@/lib/document-engine";
@@ -143,8 +144,6 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   const engineLoaded = useFilesStore((s) => s.engineLoaded);
   const setEngine = useFilesStore((s) => s.setEngine);
   const viewMode = useSettingsStore((s) => s.viewMode);
-  const setViewMode = useSettingsStore((s) => s.setViewMode);
-  const recompile = useCompileStore((s) => s.recompile);
   const stopCompile = useCompileStore((s) => s.stopCompile);
   const autoCompile = useCompileStore((s) => s.autoCompile);
   const setAutoCompile = useCompileStore((s) => s.setAutoCompile);
@@ -174,6 +173,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   return <>
     <TexRootIndicator />
     <TypstLivePreviewKeeper />
+    {(viewMode === "editor" || detached) && <CompileOfferButton placement="toolbar" />}
     <CompileControlsView
       iconOnly={iconOnly}
       blockedReason={noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
@@ -193,10 +193,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
       setStopOnFirstError={setStopOnFirstError}
       status={status}
       compileRevision={compileRevision}
-      recompile={(options) => {
-        if (viewMode === "editor" && !detached) setViewMode("split");
-        return recompile(options);
-      }}
+      recompile={recompileWithPreview}
       typstToolchain={typstToolchain}
       setTypstVersion={setTypstVersion}
       livePreview={
@@ -211,7 +208,6 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
       setTypstVariant={chooseTypstVariant}
       setTypstOptions={applyTypstCompileOptions}
     />
-    {(viewMode === "editor" || detached) && <CompileOfferButton placement="toolbar" />}
   </>;
 }
 

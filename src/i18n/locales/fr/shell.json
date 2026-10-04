@@ -448,17 +448,14 @@
     },
     "recommended": "Recommandé",
     "shellEscape": {
-      "label": "Autoriser les commandes externes sur cet ordinateur",
-      "needed": "Ce projet utilise des fonctions qui demandent des commandes externes arbitraires. Elles restent bloquées tant que vous ne les autorisez pas.",
-      "warning": "Requis par minted et par certains documents PythonTeX. LaTeX peut exécuter des programmes avec vos droits d'utilisateur : n'activez ceci que pour un projet de confiance. Les utilitaires propres à TeX Live, comme la conversion EPS, fonctionnent sans cela."
+      "included": "Cela autorise aussi le projet à lancer les commandes externes dont il a besoin. LaTeX pourra alors lancer n’importe quel programme avec vos droits, donc ne le faites que pour un projet de confiance."
     },
     "shellEscapeFailed": "Impossible de modifier l'accès aux commandes externes.",
     "switchFailed": "Impossible de changer de moteur de compilation.",
     "switched": "Ce projet compile désormais avec {{engine}}.",
     "switchedAfterInstall": "TinyTeX installé. Ce projet compile désormais avec {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Déjà sélectionné",
-      "found": "Une distribution TeX a été trouvée sur cette machine. Le TeX du système peut lire les fichiers locaux accessibles à votre compte : réservez-le aux projets de confiance. Les commandes externes arbitraires restent bloquées tant que vous ne les autorisez pas ci-dessous. TeX Live exécute toujours les utilitaires de sa propre liste d'autorisation, comme la conversion EPS.",
+      "found": "Une distribution TeX a été trouvée sur cette machine. Le TeX du système peut lire les fichiers locaux accessibles à votre compte : réservez-le aux projets de confiance. TeX Live exécute toujours les utilitaires de sa propre liste d'autorisation, comme la conversion EPS.",
       "missing": "Aucune distribution TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) n'a été trouvée sur cette machine.",
       "switchPdflatex": "Passer à pdfLaTeX et recompiler",
       "title": "Utiliser le LaTeX de mon système (latexmk)",
@@ -482,6 +479,10 @@
     },
     "titleCompileFailure": "Cette compilation demande plus que le moteur intégré",
     "titleImportScan": "Ce projet demande plus que le moteur intégré"
+  },
+  "shellCommands": {
+    "allow": "Autoriser les commandes externes",
+    "banner": "Ce document lance des commandes externes pendant la compilation, et ce projet les bloque. Autorisez-les seulement si vous faites confiance à chaque fichier du projet."
   },
   "errorBoundary": {
     "copyDiagnostics": "Copier les diagnostics",

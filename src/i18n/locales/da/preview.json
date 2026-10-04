@@ -93,7 +93,7 @@
     "fullscreen": "Forhåndsvisning i fuld skærm",
     "exitFullscreen": "Forlad fuld skærm",
     "retryCompile": "Kompiler igen",
-    "chooseEngine": "Vælg motor…",
+    "chooseEngine": "Vælg motor",
     "installPackages_one": "Find og installer {{name}}",
     "installPackages_other": "Find og installer {{count}} filer",
     "downloadTypst": "Download Typst {{version}}",

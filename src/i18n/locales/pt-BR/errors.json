@@ -62,7 +62,10 @@
     "no_host_binary": "O TinyTeX não tem um binário {{name}} compatível com este sistema.",
     "package_operation_timeout": "A operação com pacotes passou do limite de {{span}} e foi interrompida, para que você possa compilar de novo. O espelho do TeX Live provavelmente está sobrecarregado. Tente mais tarde ou execute o tlmgr você mesmo.",
     "latexmk_build_path": "O latexmk não consegue usar a pasta de compilação do Oleafly neste computador porque o caminho dela contém caracteres que o latexmk não aceita. Mude este projeto para o Tectonic para compilá-lo.",
-    "latexmk_network_folder": "O latexmk não consegue compilar uma pasta em um compartilhamento de rede. Mude este projeto para o Tectonic ou copie a pasta para este computador."
+    "latexmk_network_folder": "O latexmk não consegue compilar uma pasta em um compartilhamento de rede. Mude este projeto para o Tectonic ou copie a pasta para este computador.",
+    "shell_escape_denied_minted": "O minted precisa executar outro programa para destacar o código, e este projeto bloqueia isso. Para permitir, clique em \"{{setting}}\" no aviso acima do editor. Só faça isso se você confiar em todos os arquivos do projeto. O LaTeX poderá executar qualquer programa com as suas permissões, e um programa iniciado por ele pode continuar rodando depois que você parar a compilação.",
+    "shell_escape_denied_pythontex": "O PythonTeX precisa executar o Python, e este projeto bloqueia isso. Para permitir, clique em \"{{setting}}\" no aviso acima do editor. Só faça isso se você confiar em todos os arquivos do projeto. O LaTeX poderá executar qualquer programa com as suas permissões, e um programa iniciado por ele pode continuar rodando depois que você parar a compilação.",
+    "shell_escape_denied_command": "Este documento executa um comando shell, e este projeto bloqueia isso. Para permitir, clique em \"{{setting}}\" no aviso acima do editor. Só faça isso se você confiar em todos os arquivos do projeto. O LaTeX poderá executar qualquer programa com as suas permissões, e um programa iniciado por ele pode continuar rodando depois que você parar a compilação."
   },
   "export": {
     "bibliography_unreadable": "O Oleafly não conseguiu ler a bibliografia {{name}}. Verifique se há uma entrada com defeito e exporte de novo."

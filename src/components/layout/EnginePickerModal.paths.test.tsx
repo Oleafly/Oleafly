@@ -80,6 +80,7 @@ vi.mock("@oleafly/latex", () => ({
   latexmkFixesFinding: () => mocks.fixes,
   needsPdflatexFinding: (id: string) =>
     ["hyperref-pdftex-driver", "eps-image", "pdftex-only"].includes(id),
+  needsShellEscapeFinding: (id: string) => ["minted", "pythontex", "shell-escape"].includes(id),
 }));
 vi.mock("@/lib/toast", () => ({
   toast: {
@@ -186,24 +187,43 @@ describe("EnginePickerModal states", () => {
     expect(mocks.errorUnique).not.toHaveBeenCalled();
   });
 
-  it("lists the findings that prompted the dialog", () => {
+  it("lists the findings and says the switch also allows external commands", () => {
     mocks.picker.source = "compile-failure";
     mocks.fixes = true;
-    mocks.picker.findings = [
-      { id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" },
-    ];
+    mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
     render(<EnginePickerModal />);
     expect(screen.getByText(copy.titleCompileFailure)).toBeInTheDocument();
     expect(screen.getByText("minted needs a shell")).toBeInTheDocument();
     expect(screen.getByText("why")).toBeInTheDocument();
-    expect(screen.getByText(copy.shellEscape.needed)).toBeInTheDocument();
+    expect(screen.getByText(copy.shellEscape.included)).toBeInTheDocument();
+    expect(screen.queryByTestId("engine-picker-shell-escape")).toBeNull();
   });
 
-  it("reports a failed switch and restores the consent box", async () => {
+  it("allows external commands with the switch when the project needs them", async () => {
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
+    render(<EnginePickerModal />);
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
+    await waitFor(() => expect(mocks.recompile).toHaveBeenCalledOnce());
+    expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", null);
+    expect(mocks.setShellEscape).toHaveBeenCalledExactlyOnceWith(true);
+    expect(mocks.close).toHaveBeenCalled();
+  });
+
+  it("leaves external commands off when nothing in the project needs them", async () => {
+    render(<EnginePickerModal />);
+    expect(screen.queryByText(copy.shellEscape.included)).toBeNull();
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
+    await waitFor(() => expect(mocks.close).toHaveBeenCalled());
+    expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", null);
+    expect(mocks.setShellEscape).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed switch and keeps the dialog open", async () => {
     const error = new Error("no engine");
     mocks.setEngine.mockRejectedValue(error);
+    mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
     render(<EnginePickerModal />);
-    fireEvent.click(screen.getByTestId("engine-picker-shell-escape"));
     fireEvent.click(screen.getByTestId("engine-picker-use-system"));
     await waitFor(() =>
       expect(mocks.errorUnique).toHaveBeenCalledExactlyOnceWith(
@@ -212,7 +232,7 @@ describe("EnginePickerModal states", () => {
       ),
     );
     expect(mocks.logError).toHaveBeenCalledWith("switch compile engine", error);
-    expect(screen.getByTestId("engine-picker-shell-escape")).not.toBeChecked();
+    expect(mocks.setShellEscape).not.toHaveBeenCalled();
     expect(mocks.close).not.toHaveBeenCalled();
     expect(mocks.success).not.toHaveBeenCalled();
   });
@@ -220,8 +240,8 @@ describe("EnginePickerModal states", () => {
   it("names the external command step when only that step of a switch fails", async () => {
     const error = new Error("denied");
     mocks.setShellEscape.mockRejectedValue(error);
+    mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
     render(<EnginePickerModal />);
-    fireEvent.click(screen.getByTestId("engine-picker-shell-escape"));
     fireEvent.click(screen.getByTestId("engine-picker-use-system"));
     await waitFor(() =>
       expect(mocks.errorUnique).toHaveBeenCalledExactlyOnceWith(
@@ -235,45 +255,32 @@ describe("EnginePickerModal states", () => {
     expect(mocks.success).not.toHaveBeenCalled();
   });
 
-  it("stores the shell escape consent for a latexmk project", async () => {
+  it("allows external commands before recompiling a latexmk project that needs them", async () => {
     mocks.files.engine = { id: "latexmk", allow_shell_escape: false };
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
     render(<EnginePickerModal />);
-    fireEvent.click(screen.getByTestId("engine-picker-shell-escape"));
-    await waitFor(() => expect(mocks.setShellEscape).toHaveBeenCalledWith(true));
-    await waitFor(() =>
-      expect(screen.getByTestId("engine-picker-shell-escape")).not.toBeDisabled(),
-    );
-    expect(screen.getByTestId("engine-picker-shell-escape")).toBeChecked();
-    expect(mocks.success).not.toHaveBeenCalled();
-    expect(mocks.infoUnique).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
+    await waitFor(() => expect(mocks.recompile).toHaveBeenCalledOnce());
+    expect(mocks.setShellEscape).toHaveBeenCalledExactlyOnceWith(true);
+    expect(mocks.setEngine).not.toHaveBeenCalled();
+    expect(mocks.close).toHaveBeenCalled();
   });
 
-  it("reports a failed shell escape change", async () => {
+  it("stays open when external commands cannot be allowed before a recompile", async () => {
     mocks.files.engine = { id: "latexmk", allow_shell_escape: false };
+    mocks.picker.findings = [{ id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" }];
     mocks.setShellEscape.mockRejectedValue(new Error("denied"));
     render(<EnginePickerModal />);
-    fireEvent.click(screen.getByTestId("engine-picker-shell-escape"));
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
     await waitFor(() =>
       expect(mocks.errorUnique).toHaveBeenCalledExactlyOnceWith(
         "engine-switch:project-1",
         copy.shellEscapeFailed,
       ),
     );
-    expect(mocks.logError).toHaveBeenCalledWith("update external command access", expect.any(Error));
-    await waitFor(() =>
-      expect(screen.getByTestId("engine-picker-shell-escape")).not.toBeChecked(),
-    );
-  });
-
-  it("keeps the consent local until latexmk is pinned", async () => {
-    render(<EnginePickerModal />);
-    fireEvent.click(screen.getByTestId("engine-picker-shell-escape"));
-    await waitFor(() =>
-      expect(screen.getByTestId("engine-picker-shell-escape")).toBeChecked(),
-    );
-    expect(mocks.setShellEscape).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
-    await waitFor(() => expect(mocks.setShellEscape).toHaveBeenCalledWith(true));
+    expect(mocks.close).not.toHaveBeenCalled();
+    expect(mocks.recompile).not.toHaveBeenCalled();
   });
 
   it("dismisses the hint when the reader keeps Tectonic", async () => {
@@ -290,7 +297,7 @@ describe("EnginePickerModal states", () => {
     expect(
       screen.getByRole("button", { name: copy.tectonic.switchBack }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("engine-picker-use-system")).toBeDisabled();
+    expect(screen.getByTestId("engine-picker-use-system")).toHaveTextContent(enShell.compile.recompile);
     fireEvent.click(screen.getByTestId("engine-picker-keep-tectonic"));
     await waitFor(() => expect(mocks.setEngine).toHaveBeenCalledWith("xetex"));
   });

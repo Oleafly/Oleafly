@@ -62,7 +62,10 @@
     "no_host_binary": "TinyTeX에 이 호스트와 호환되는 {{name}} 실행 파일이 없습니다.",
     "package_operation_timeout": "패키지 작업이 {{span}} 제한을 넘겨 중단되었으므로 다시 컴파일할 수 있습니다. TeX Live 미러가 혼잡한 것으로 보입니다. 나중에 다시 시도하거나 tlmgr을 직접 실행하세요.",
     "latexmk_build_path": "이 컴퓨터에서는 Oleafly 빌드 폴더 경로에 latexmk가 허용하지 않는 문자가 있어 latexmk가 이 폴더를 사용할 수 없습니다. 컴파일하려면 이 프로젝트를 Tectonic으로 전환하세요.",
-    "latexmk_network_folder": "latexmk는 네트워크 공유에 있는 폴더를 컴파일할 수 없습니다. 이 프로젝트를 Tectonic으로 전환하거나 폴더를 이 컴퓨터로 복사하세요."
+    "latexmk_network_folder": "latexmk는 네트워크 공유에 있는 폴더를 컴파일할 수 없습니다. 이 프로젝트를 Tectonic으로 전환하거나 폴더를 이 컴퓨터로 복사하세요.",
+    "shell_escape_denied_minted": "minted가 코드를 강조 표시하려면 다른 프로그램을 실행해야 하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다.",
+    "shell_escape_denied_pythontex": "PythonTeX가 Python을 실행해야 하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다.",
+    "shell_escape_denied_command": "이 문서는 shell 명령을 실행하지만, 이 프로젝트에서는 차단되어 있습니다. 허용하려면 편집기 위 배너에서 \"{{setting}}\"을 클릭하세요. 프로젝트의 모든 파일을 신뢰할 때만 그렇게 하세요. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으며, LaTeX가 시작한 프로그램은 컴파일을 중지한 후에도 계속 실행될 수 있습니다."
   },
   "export": {
     "bibliography_unreadable": "Oleafly에서 참고문헌 {{name}} 파일을 읽지 못했습니다. 깨진 항목이 있는지 확인한 뒤 다시 내보내세요."

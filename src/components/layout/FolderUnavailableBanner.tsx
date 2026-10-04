@@ -6,9 +6,7 @@ import { adoptReplacedFolder, locateProjectFolder, revealInDir, saveOpenBuffersC
 import { notifyError, toast } from "@/lib/toast";
 import { collectOpenBuffersForCopy, useFilesStore } from "@/store/files";
 import { folderReachable, useProjectAvailabilityStore } from "@/store/project-availability";
-
-const BUTTON =
-  "rounded border border-transparent px-2 py-0.5 font-medium transition-colors hover:bg-amber-500/15 focus-visible:border-amber-500/40 focus-visible:bg-amber-500/20 disabled:opacity-50";
+import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 
 export function FolderUnavailableBanner() {
   const { t } = useTranslation(["shell", "core"]);
@@ -54,10 +52,7 @@ export function FolderUnavailableBanner() {
   }
 
   return (
-    <div
-      data-testid="folder-unavailable-banner"
-      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-amber-500/30 bg-[color-mix(in_srgb,var(--color-amber-500)_10%,var(--background))] px-3 py-1.5 text-xs text-amber-700 dark:text-amber-400"
-    >
+    <WorkspaceBanner tone="warning" data-testid="folder-unavailable-banner">
       <FolderX aria-hidden="true" className="size-3.5 shrink-0" />
       <output className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
         <span className="font-medium">{title}</span>
@@ -65,9 +60,8 @@ export function FolderUnavailableBanner() {
       </output>
       <span className="flex shrink-0 items-center gap-1">
         {availability === "replaced" && (
-          <button
-            type="button"
-            className={BUTTON}
+          <WorkspaceBannerButton
+            tone="warning"
             disabled={busy}
             onClick={() =>
               run("use the replaced folder", async () => {
@@ -76,12 +70,11 @@ export function FolderUnavailableBanner() {
             }
           >
             {t(($) => $.shell.folderUnavailable.useThisFolder)}
-          </button>
+          </WorkspaceBannerButton>
         )}
         {availability !== "permission_denied" && (
-          <button
-            type="button"
-            className={BUTTON}
+          <WorkspaceBannerButton
+            tone="warning"
             disabled={busy}
             onClick={() =>
               run("locate project folder", async () => {
@@ -90,27 +83,25 @@ export function FolderUnavailableBanner() {
             }
           >
             {t(($) => $.shell.folderUnavailable.locate)}
-          </button>
+          </WorkspaceBannerButton>
         )}
-        <button
-          type="button"
-          className={BUTTON}
+        <WorkspaceBannerButton
+          tone="warning"
           disabled={busy || !hasOpenFiles}
           onClick={() => run("save a copy of open files", saveCopy)}
         >
           {t(($) => $.shell.folderUnavailable.saveCopy)}
-        </button>
+        </WorkspaceBannerButton>
         {availability !== "replaced" && (
-          <button
-            type="button"
-            className={BUTTON}
+          <WorkspaceBannerButton
+            tone="warning"
             disabled={busy}
             onClick={() => run("check project folder", recheckProjectAvailability)}
           >
             {t(($) => $.shell.folderUnavailable.tryAgain)}
-          </button>
+          </WorkspaceBannerButton>
         )}
       </span>
-    </div>
+    </WorkspaceBanner>
   );
 }

@@ -93,7 +93,7 @@
     "fullscreen": "Visualização em tela cheia",
     "exitFullscreen": "Sair da tela cheia",
     "retryCompile": "Compilar de novo",
-    "chooseEngine": "Escolher motor…",
+    "chooseEngine": "Escolher motor",
     "installPackages_one": "Localizar e instalar {{name}}",
     "installPackages_many": "Localizar e instalar {{count}} arquivos",
     "installPackages_other": "Localizar e instalar {{count}} arquivos",

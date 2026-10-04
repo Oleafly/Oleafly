@@ -448,17 +448,14 @@
     },
     "recommended": "Recomendado",
     "shellEscape": {
-      "label": "Permitir comandos externos en este equipo",
-      "needed": "Este proyecto usa funciones que necesitan comandos externos arbitrarios. Seguirán bloqueados hasta que los permitas.",
-      "warning": "Lo necesitan minted y algunos documentos con PythonTeX. LaTeX puede ejecutar programas con tus permisos de usuario, así que actívalo solo con proyectos de confianza. Los propios auxiliares de TeX Live, como la conversión de EPS, funcionan sin esto."
+      "included": "Esto también permite que el proyecto ejecute los comandos externos que necesita. LaTeX podrá ejecutar cualquier programa con tus permisos, así que hazlo solo con un proyecto en el que confíes."
     },
     "shellEscapeFailed": "No se pudo cambiar el acceso a comandos externos.",
     "switchFailed": "No se pudo cambiar el motor de compilación.",
     "switched": "Este proyecto ahora compila con {{engine}}.",
     "switchedAfterInstall": "TinyTeX instalado. Este proyecto ahora compila con {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Ya está seleccionado",
-      "found": "Se encontró una distribución de TeX en este equipo. El TeX del sistema puede leer los archivos locales a los que llega tu cuenta, así que úsalo solo con proyectos de confianza. Los comandos externos arbitrarios siguen bloqueados salvo que los permitas abajo. TeX Live sigue ejecutando los auxiliares de su propia lista, como la conversión de EPS.",
+      "found": "Se encontró una distribución de TeX en este equipo. El TeX del sistema puede leer los archivos locales a los que llega tu cuenta, así que úsalo solo con proyectos de confianza. TeX Live sigue ejecutando los auxiliares de su propia lista, como la conversión de EPS.",
       "missing": "No se encontró ninguna distribución de TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) en este equipo.",
       "switchPdflatex": "Cambiar a pdfLaTeX y recompilar",
       "title": "Usar el LaTeX de mi sistema (latexmk)",
@@ -482,6 +479,10 @@
     },
     "titleCompileFailure": "Esta compilación necesita más que el motor incluido",
     "titleImportScan": "Este proyecto necesita más que el motor incluido"
+  },
+  "shellCommands": {
+    "allow": "Permitir comandos externos",
+    "banner": "Este documento ejecuta comandos externos al compilar, y este proyecto los bloquea. Permítelos solo si confías en todos los archivos del proyecto."
   },
   "errorBoundary": {
     "copyDiagnostics": "Copiar los diagnósticos",

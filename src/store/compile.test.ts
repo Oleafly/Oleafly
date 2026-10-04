@@ -141,6 +141,7 @@ vi.mock("@/components/editor/cm/language-service-format", () => formatting);
 
 import { importCompatFinding } from "@oleafly/latex";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
@@ -155,7 +156,7 @@ import {
   stopRunningCompileQuietly,
   useCompileStore,
 } from "./compile";
-import { useEnginePickerStore } from "@/store/engine-picker";
+import { expectEngineChoiceOnOpen, useEnginePickerStore } from "@/store/engine-picker";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import {
   createCompileSuccessCheckpoint,
@@ -567,6 +568,48 @@ describe("compile output lifecycle", () => {
     expect(explained.message).toBe(message);
     expect(explained.explanation).toBe(
       enCore.compile.typstPackage.offlineNotCached.replace("{{spec}}", "@preview/cetz:0.4.2"),
+    );
+  });
+
+  it("names the real switch when system TeX refuses a shell command", async () => {
+    mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
+    const message =
+      "minted syntax highlighting needs to run an outside program, which this project does not allow.";
+    mocks.compileProject.mockResolvedValue({
+      ok: false, has_pdf: false, log: "", synctex_path: null, out_dir: null, compile_time_ms: 1,
+      errors: [{
+        line: null,
+        file: null,
+        message,
+        kind: "error",
+        explanation: "English explanation from the compiler",
+        code: "tex.shell_escape_denied_minted",
+      }],
+    });
+    await useCompileStore.getState().recompile();
+    const [explained] = useCompileStore.getState().errors;
+    expect(explained.message).toBe(message);
+    expect(explained.explanation).toBe(
+      enErrors.tex.shell_escape_denied_minted.replace("{{setting}}", enShell.shellCommands.allow),
+    );
+  });
+
+  it("keeps the compiler's explanation for an error code the app does not know", async () => {
+    mocks.files.engine = { ...LATEX_ENGINE, id: "latexmk" };
+    mocks.compileProject.mockResolvedValue({
+      ok: false, has_pdf: false, log: "", synctex_path: null, out_dir: null, compile_time_ms: 1,
+      errors: [{
+        line: null,
+        file: null,
+        message: "something new went wrong",
+        kind: "error",
+        explanation: "English explanation from the compiler",
+        code: "tex.not_a_known_code",
+      }],
+    });
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState().errors[0].explanation).toBe(
+      "English explanation from the compiler",
     );
   });
 
@@ -1638,6 +1681,26 @@ describe("bundled-engine compile failures", () => {
       "hyperref-pdftex-driver",
       "eps-image",
     ]);
+  });
+
+  it("opens the engine picker once for the compile that runs when the project opens", async () => {
+    failWith(
+      [
+        "! Package hyperref Error: Wrong driver option `pdftex',",
+        'error: pdf: image inclusion failed for "images/MDHlogga.eps"',
+      ].join("\n"),
+    );
+    const projectId = mocks.files.projectId;
+    if (!projectId) throw new Error("expected an open project");
+    expectEngineChoiceOnOpen(projectId);
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    const picker = useEnginePickerStore.getState();
+    expect(picker.open).toBe(true);
+    expect(picker.source).toBe("compile-failure");
+
+    useEnginePickerStore.setState({ open: false });
+    await useCompileStore.getState().recompile({ origin: "automatic" });
+    expect(useEnginePickerStore.getState().open).toBe(false);
   });
 
   it("falls back to the findings of the open scan when the log names no known gap", async () => {

@@ -166,6 +166,12 @@ export function needsPdflatexFinding(id: string): boolean {
   return importCompatAction(id) === "switch-to-pdflatex";
 }
 
+const SHELL_ESCAPE_FINDINGS: ReadonlySet<string> = new Set(["minted", "pythontex", "shell-escape"]);
+
+export function needsShellEscapeFinding(id: string): boolean {
+  return SHELL_ESCAPE_FINDINGS.has(id);
+}
+
 /** Cap combined TeX size so import scan stays cheap and predictable. */
 const MAX_SCAN_CHARS = 512 * 1024;
 

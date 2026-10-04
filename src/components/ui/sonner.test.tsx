@@ -84,7 +84,7 @@ describe("Toaster keyed updates", () => {
       toast.infoUnique(
         "engine-compatibility:project-1",
         CHOOSE_MESSAGE,
-        { label: "Choose engine…", onClick: firstAction },
+        { label: "Choose engine", onClick: firstAction },
         true,
       );
     });
@@ -95,7 +95,7 @@ describe("Toaster keyed updates", () => {
       toast.infoUnique(
         "engine-compatibility:project-1",
         CHOOSE_MESSAGE,
-        { label: "Choose engine…", onClick: latestAction },
+        { label: "Choose engine", onClick: latestAction },
         true,
       );
     });
@@ -104,7 +104,7 @@ describe("Toaster keyed updates", () => {
     expect(mocks.info).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
-        action: expect.objectContaining({ label: "Choose engine…" }),
+        action: expect.objectContaining({ label: "Choose engine" }),
         duration: Number.POSITIVE_INFINITY,
       }),
     );

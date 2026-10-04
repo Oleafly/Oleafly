@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { useSettingsStore } from "@/store/settings";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
   close: vi.fn(),
@@ -84,6 +86,7 @@ vi.mock("@oleafly/latex", () => ({
   latexmkFixesFinding: () => false,
   needsPdflatexFinding: (id: string) =>
     ["hyperref-pdftex-driver", "eps-image", "pdftex-only"].includes(id),
+  needsShellEscapeFinding: (id: string) => ["minted", "pythontex", "shell-escape"].includes(id),
 }));
 vi.mock("@/lib/toast", () => ({
   toast: { success: vi.fn(), infoUnique: vi.fn(), errorUnique: vi.fn() },
@@ -149,6 +152,32 @@ describe("EnginePickerModal", () => {
     expect(mocks.files.engine.id).toBe("latexmk");
   });
 
+  it("opens the preview when it recompiles after the switch", async () => {
+    useSettingsStore.setState({ viewMode: "editor" });
+    mocks.picker.source = "compile-failure";
+    render(<EnginePickerModal />);
+
+    fireEvent.click(screen.getByTestId("engine-picker-use-system"));
+    await waitFor(() => expect(mocks.recompile).toHaveBeenCalled());
+    expect(useSettingsStore.getState().viewMode).toBe("split");
+  });
+
+  it("recompiles instead of dead-ending when system LaTeX is already in use", async () => {
+    useSettingsStore.setState({ viewMode: "editor" });
+    mocks.picker.source = "compile-failure";
+    mocks.files.engine = { id: "latexmk", allow_shell_escape: false };
+    render(<EnginePickerModal />);
+
+    const button = screen.getByTestId("engine-picker-use-system");
+    expect(button).toHaveTextContent(enShell.compile.recompile);
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    await waitFor(() => expect(mocks.recompile).toHaveBeenCalledOnce());
+    expect(mocks.close).toHaveBeenCalled();
+    expect(mocks.setEngine).not.toHaveBeenCalled();
+    expect(useSettingsStore.getState().viewMode).toBe("split");
+  });
+
   it("stops before recompiling when the engine did not change", async () => {
     mocks.picker.source = "compile-failure";
     mocks.setEngine.mockImplementation(async () => {});
@@ -177,7 +206,33 @@ describe("EnginePickerModal in a folder that is not trusted yet", () => {
       "Trust this folder to compile with latexmk.",
     );
     expect(screen.getByTestId("engine-picker-use-system")).toBeDisabled();
-    expect(screen.getByTestId("engine-picker-shell-escape")).toBeDisabled();
     expect(screen.getByTestId("engine-picker-keep-tectonic")).not.toBeDisabled();
+  });
+
+  it("only trusts the folder when trust is granted from the dialog", async () => {
+    useFolderAccessStore.getState().reset("project-1");
+    const grant = vi.fn(async () => {
+      useFolderAccessStore.setState({
+        trust: { trusted: true, source: "folder", parent: null, repository: null },
+      });
+      return true;
+    });
+    useFolderAccessStore.setState({
+      loaded: true,
+      trust: { trusted: false, source: null, parent: null, repository: null },
+      grant,
+    });
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [
+      { id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" },
+    ];
+    render(<EnginePickerModal />);
+    fireEvent.click(screen.getByRole("button", { name: enShell.openedFolder.trust.trustFolder }));
+    await waitFor(() => expect(screen.getByTestId("engine-picker-use-system")).toBeEnabled());
+    expect(grant).toHaveBeenCalledExactlyOnceWith("folder");
+    expect(mocks.setEngine).not.toHaveBeenCalled();
+    expect(mocks.setShellEscape).not.toHaveBeenCalled();
+    expect(mocks.recompile).not.toHaveBeenCalled();
+    expect(mocks.close).not.toHaveBeenCalled();
   });
 });

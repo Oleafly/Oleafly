@@ -450,17 +450,14 @@
     },
     "recommended": "Doporučeno",
     "shellEscape": {
-      "label": "Povolit v tomto počítači externí příkazy",
-      "needed": "Tento projekt používá funkce, které potřebují libovolné externí příkazy. Zůstanou blokované, dokud je nepovolíte.",
-      "warning": "Vyžaduje to minted a některé dokumenty s PythonTeX. LaTeX může spouštět programy s vaším uživatelským oprávněním, proto to zapínejte jen u projektu, kterému věříte. Vlastní pomocníci TeX Live, například převod EPS, běží i bez toho."
+      "included": "Tím projektu zároveň povolíte spouštět externí příkazy, které potřebuje. LaTeX pak může spouštět libovolné programy s vašimi oprávněními, proto to udělejte jen u projektu, kterému důvěřujete."
     },
     "shellEscapeFailed": "Přístup k externím příkazům se nepodařilo změnit.",
     "switchFailed": "Engine kompilace se nepodařilo přepnout.",
     "switched": "Tento projekt se teď kompiluje enginem {{engine}}.",
     "switchedAfterInstall": "TinyTeX byl nainstalován. Tento projekt se teď kompiluje enginem {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Již vybráno",
-      "found": "V tomto počítači byla nalezena distribuce TeX. Systémový TeX umí číst místní soubory dostupné vašemu účtu, proto jej používejte jen u projektů, kterým věříte. Libovolné externí příkazy zůstávají blokované, dokud je níže nepovolíte. TeX Live dál spouští pomocníky ze svého vlastního seznamu, například převod EPS.",
+      "found": "V tomto počítači byla nalezena distribuce TeX. Systémový TeX umí číst místní soubory dostupné vašemu účtu, proto jej používejte jen u projektů, kterým věříte. TeX Live dál spouští pomocníky ze svého vlastního seznamu, například převod EPS.",
       "missing": "V tomto počítači nebyla nalezena žádná distribuce TeX (MacTeX, TeX Live, MiKTeX, TinyTeX).",
       "switchPdflatex": "Přepnout na pdfLaTeX a kompilovat znovu",
       "title": "Použít můj systémový LaTeX (latexmk)",
@@ -485,6 +482,10 @@
     },
     "titleCompileFailure": "Tato kompilace potřebuje víc než vestavěný engine",
     "titleImportScan": "Tento projekt potřebuje víc než vestavěný engine"
+  },
+  "shellCommands": {
+    "allow": "Povolit externí příkazy",
+    "banner": "Tento dokument při kompilaci spouští externí příkazy a tento projekt je blokuje. Povolte je jen tehdy, pokud důvěřujete každému souboru v projektu."
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopírovat diagnostiku",

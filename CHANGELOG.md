@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A project that compiles with system LaTeX had no way to allow shell
+  commands, so documents using minted, PythonTeX or `\write18` couldn't
+  compile. The error pointed to an "Allow LaTeX shell commands" setting that
+  didn't exist. When a compile is blocked, or the failed compile shows the
+  project needs shell commands, a banner above the editor now offers "Allow
+  external commands".
+- Picking system LaTeX in the engine dialog also allows external commands
+  when the project needs them, instead of asking again with a separate
+  checkbox. The dialog says so before you click. Trusting a folder still
+  doesn't allow them.
+- The engine dialog opens on its own when the first compile after opening a
+  project hits a gap in the built-in engine, and "Switch to pdfLaTeX and
+  recompile" now shows the preview.
+- When system LaTeX was already selected, the engine dialog showed a disabled
+  "Already selected" button and nothing else to do. It now offers Recompile.
+- "Choose engine" now sits to the left of Compile.
 - On Windows PCs without Microsoft's Visual C++ runtime, Typst projects
   didn't compile and the LaTeX language server (TexLab) didn't start. Both
   need a runtime file that Windows doesn't include, so Oleafly now installs it

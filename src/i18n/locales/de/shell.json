@@ -446,17 +446,14 @@
     },
     "recommended": "Empfohlen",
     "shellEscape": {
-      "label": "Externe Befehle auf diesem Computer erlauben",
-      "needed": "Dieses Projekt nutzt Funktionen, die beliebige externe Befehle brauchen. Sie bleiben blockiert, bis Sie sie erlauben.",
-      "warning": "Wird von minted und manchen PythonTeX-Dokumenten benötigt. LaTeX kann Programme mit Ihren Benutzerrechten ausführen, aktivieren Sie das also nur für ein Projekt, dem Sie vertrauen. Die eigenen Hilfsprogramme von TeX Live, etwa die EPS-Umwandlung, laufen auch ohne."
+      "included": "Damit darf das Projekt auch die externen Befehle ausführen, die es braucht. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, tun Sie das also nur bei einem Projekt, dem Sie vertrauen."
     },
     "shellEscapeFailed": "Der Zugriff auf externe Befehle konnte nicht geändert werden.",
     "switchFailed": "Die Compiler-Engine konnte nicht gewechselt werden.",
     "switched": "Dieses Projekt kompiliert jetzt mit {{engine}}.",
     "switchedAfterInstall": "TinyTeX installiert. Dieses Projekt kompiliert jetzt mit {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Bereits ausgewählt",
-      "found": "Auf diesem Rechner wurde eine TeX-Distribution gefunden. Das System-TeX kann lokale Dateien lesen, auf die Ihr Konto zugreifen darf, nutzen Sie es also nur bei Projekten, denen Sie vertrauen. Beliebige externe Befehle bleiben blockiert, bis Sie sie unten erlauben. TeX Live führt die Hilfsprogramme seiner eigenen Erlaubnisliste weiterhin aus, etwa die EPS-Umwandlung.",
+      "found": "Auf diesem Rechner wurde eine TeX-Distribution gefunden. Das System-TeX kann lokale Dateien lesen, auf die Ihr Konto zugreifen darf, nutzen Sie es also nur bei Projekten, denen Sie vertrauen. TeX Live führt die Hilfsprogramme seiner eigenen Erlaubnisliste weiterhin aus, etwa die EPS-Umwandlung.",
       "missing": "Auf diesem Rechner wurde keine TeX-Distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) gefunden.",
       "switchPdflatex": "Zu pdfLaTeX wechseln und neu kompilieren",
       "title": "Mein System-LaTeX verwenden (latexmk)",
@@ -479,6 +476,10 @@
     },
     "titleCompileFailure": "Dieses Kompilieren braucht mehr als die eingebaute Engine",
     "titleImportScan": "Dieses Projekt braucht mehr als die eingebaute Engine"
+  },
+  "shellCommands": {
+    "allow": "Externe Befehle erlauben",
+    "banner": "Dieses Dokument führt beim Kompilieren externe Befehle aus, und dieses Projekt blockiert sie. Erlauben Sie sie nur, wenn Sie jeder Datei im Projekt vertrauen."
   },
   "errorBoundary": {
     "copyDiagnostics": "Diagnose kopieren",

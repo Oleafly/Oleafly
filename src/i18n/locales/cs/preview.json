@@ -93,7 +93,7 @@
     "fullscreen": "Náhled na celou obrazovku",
     "exitFullscreen": "Ukončit celou obrazovku",
     "retryCompile": "Zkusit kompilaci znovu",
-    "chooseEngine": "Vybrat engine…",
+    "chooseEngine": "Vybrat engine",
     "installPackages_one": "Najít a nainstalovat {{name}}",
     "installPackages_few": "Najít a nainstalovat {{count}} soubory",
     "installPackages_many": "Najít a nainstalovat {{count}} souboru",

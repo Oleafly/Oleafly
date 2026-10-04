@@ -141,7 +141,7 @@ test("a lone .tex file becomes the compile entry", async ({ tauriPage }) => {
   expect(state.main).toBe("paper.tex");
 });
 
-test("a Tectonic project with an engine gap offers the engine picker", async ({
+test("a Tectonic project with an engine gap opens the engine picker on open", async ({
   tauriPage,
 }) => {
   test.setTimeout(150_000);
@@ -171,7 +171,7 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
   );
   await waitLong(
     tauriPage,
-    `[...document.querySelectorAll("button")].some((b) => (b.textContent ?? "").includes("Choose engine"))`,
+    `!!document.querySelector('[data-testid="engine-picker-modal"]')`,
     60_000,
   ).catch(async (error: unknown) => {
     const state = await tauriPage.evaluate<string>(
@@ -187,28 +187,21 @@ test("a Tectonic project with an engine gap offers the engine picker", async ({
     );
     throw new Error(`${String(error)}\ncompile state: ${state}`);
   });
-  const actions = await tauriPage.evaluate<string[]>(
-    `(() => {
-      const buttons = [...document.querySelectorAll("button")].filter((b) =>
-        (b.textContent ?? "").includes("Choose engine"),
-      );
-      buttons[0]?.click();
-      return buttons.map((b) => b.getAttribute("data-testid") ?? "");
-    })()`,
+  const reopeners = await tauriPage.evaluate<string[]>(
+    `[...document.querySelectorAll("button")]
+      .filter((b) => (b.textContent ?? "").includes("Choose engine"))
+      .map((b) => b.getAttribute("data-testid") ?? "")`,
   );
-  expect(actions).toEqual(["toolbar-compile-offer"]);
-  await waitLong(
-    tauriPage,
-    `!!document.querySelector('[data-testid="engine-picker-modal"]')`,
-    10_000,
-  );
+  expect(reopeners).toEqual(["toolbar-compile-offer"]);
   const modalText = await tauriPage.evaluate<string>(
     `document.querySelector('[data-testid="engine-picker-modal"]')?.textContent ?? ""`,
   );
   expect(modalText).toContain("minted");
   expect(modalText).toContain("Keep using Tectonic");
-  expect(modalText).toContain("features that need arbitrary external commands");
-  await expect(tauriPage.getByTestId("engine-picker-shell-escape")).not.toBeChecked();
+  expect(modalText).toContain("This also lets the project run external commands");
+  expect(await tauriPage.evaluate<boolean>(
+    `!!document.querySelector('[data-testid="engine-picker-shell-escape"]')`,
+  )).toBe(false);
   await tauriPage.click('[data-testid="engine-picker-keep-tectonic"]');
   await waitLong(
     tauriPage,

@@ -93,7 +93,7 @@
     "fullscreen": "Förhandsvisning i helskärm",
     "exitFullscreen": "Lämna helskärm",
     "retryCompile": "Kompilera igen",
-    "chooseEngine": "Välj motor…",
+    "chooseEngine": "Välj motor",
     "installPackages_one": "Hitta och installera {{name}}",
     "installPackages_other": "Hitta och installera {{count}} filer",
     "downloadTypst": "Ladda ner Typst {{version}}",

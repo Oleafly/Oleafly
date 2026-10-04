@@ -446,17 +446,14 @@
     },
     "recommended": "Suositus",
     "shellEscape": {
-      "label": "Salli ulkoiset komennot tällä koneella",
-      "needed": "Tämä projekti käyttää ominaisuuksia, jotka vaativat mielivaltaisia ulkoisia komentoja. Ne pysyvät estettyinä, kunnes ne sallitaan.",
-      "warning": "Vaaditaan mintedissä ja joissakin PythonTeX-dokumenteissa. LaTeX voi ajaa ohjelmia käyttäjäoikeuksillasi, joten ota tämä käyttöön vain projektissa, johon luotat. TeX Liven omat apuohjelmat, kuten EPS-muunnos, toimivat ilman tätä."
+      "included": "Tämä sallii projektille myös sen tarvitsemat ulkoiset komennot. LaTeX voi silloin suorittaa mitä tahansa ohjelmaa sinun oikeuksillasi, joten tee näin vain projektille, johon luotat."
     },
     "shellEscapeFailed": "Ulkoisten komentojen käyttöoikeutta ei voitu päivittää.",
     "switchFailed": "Käännösmoottoria ei voitu vaihtaa.",
     "switched": "Tämä projekti kääntyy nyt moottorilla {{engine}}.",
     "switchedAfterInstall": "TinyTeX asennettiin. Tämä projekti kääntyy nyt moottorilla {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Jo valittuna",
-      "found": "Tältä koneelta löytyi TeX-jakelu. Järjestelmän TeX voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä sitä vain projekteissa, joihin luotat. Mielivaltaiset ulkoiset komennot pysyvät estettyinä, ellet salli niitä alla. TeX Live ajaa silti oman sallittujen listansa apuohjelmat, kuten EPS-muunnoksen.",
+      "found": "Tältä koneelta löytyi TeX-jakelu. Järjestelmän TeX voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä sitä vain projekteissa, joihin luotat. TeX Live ajaa silti oman sallittujen listansa apuohjelmat, kuten EPS-muunnoksen.",
       "missing": "Tältä koneelta ei löytynyt TeX-jakelua (MacTeX, TeX Live, MiKTeX, TinyTeX).",
       "switchPdflatex": "Vaihda pdfLaTeXiin ja käännä uudelleen",
       "title": "Käytä järjestelmän LaTeXia (latexmk)",
@@ -479,6 +476,10 @@
     },
     "titleCompileFailure": "Tämä käännös vaatii enemmän kuin sisäänrakennettu moottori",
     "titleImportScan": "Tämä projekti vaatii enemmän kuin sisäänrakennettu moottori"
+  },
+  "shellCommands": {
+    "allow": "Salli ulkoiset komennot",
+    "banner": "Tämä dokumentti suorittaa ulkoisia komentoja käännöksen aikana, ja tämä projekti estää ne. Salli ne vain, jos luotat jokaiseen projektin tiedostoon."
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopioi diagnostiikka",

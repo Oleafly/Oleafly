@@ -32,25 +32,23 @@ export function TrustRequiredNotice({
     <div
       data-testid="trust-required-notice"
       className={cn(
-        "flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs text-foreground",
+        "flex flex-wrap items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 text-xs text-foreground",
         className,
       )}
     >
-      <ShieldAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-primary" />
-      <div className="min-w-0 flex-1 space-y-2">
-        <p className="leading-relaxed">{reason}</p>
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={trusting !== null}
-          onClick={() => void grant("folder")}
-        >
-          {trusting === "folder" ? (
-            <Spinner />
-          ) : null}
-          {t(($) => $.shell.openedFolder.trust.trustFolder)}
-        </Button>
-      </div>
+      <ShieldAlert aria-hidden className="size-3.5 shrink-0 text-primary" />
+      <p className="min-w-40 flex-1 leading-relaxed">{reason}</p>
+      <Button
+        size="xs"
+        className="ml-auto shrink-0"
+        disabled={trusting !== null}
+        onClick={() => void grant("folder")}
+      >
+        {trusting === "folder" ? (
+          <Spinner />
+        ) : null}
+        {t(($) => $.shell.openedFolder.trust.trustFolder)}
+      </Button>
     </div>
   );
 }

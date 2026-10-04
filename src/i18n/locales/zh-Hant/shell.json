@@ -444,17 +444,14 @@
     },
     "recommended": "推薦",
     "shellEscape": {
-      "label": "允許在這台電腦上執行外部指令",
-      "needed": "這個專案使用的功能需要執行任意外部指令。在你允許之前，這些指令會一直被封鎖。",
-      "warning": "minted 與部分 PythonTeX 文件需要這項功能。LaTeX 可以用你的使用者權限執行程式，因此請只對你信任的專案啟用。TeX Live 自己的輔助工具（例如 EPS 轉換）不需要它也能執行。"
+      "included": "這也會允許專案執行它需要的外部命令。之後 LaTeX 可以用你的權限執行任何程式，因此只對你信任的專案這麼做。"
     },
     "shellEscapeFailed": "無法更新外部指令的存取權。",
     "switchFailed": "無法切換編譯引擎。",
     "switched": "這個專案現在改用 {{engine}} 編譯。",
     "switchedAfterInstall": "TinyTeX 已安裝。這個專案現在改用 {{engine}} 編譯。",
     "systemTex": {
-      "alreadySelected": "已選取",
-      "found": "這台電腦上找到了 TeX 發行版。系統 TeX 可以讀取你的帳戶可存取的本機檔案，因此請只用於你信任的專案。除非你在下方允許，否則任意外部指令會保持封鎖。TeX Live 仍會執行自己允許清單中的輔助工具，例如 EPS 轉換。",
+      "found": "這台電腦上找到了 TeX 發行版。系統 TeX 可以讀取你的帳戶可存取的本機檔案，因此請只用於你信任的專案。TeX Live 仍會執行自己允許清單中的輔助工具，例如 EPS 轉換。",
       "missing": "這台電腦上找不到 TeX 發行版（MacTeX、TeX Live、MiKTeX、TinyTeX）。",
       "switchPdflatex": "切換至 pdfLaTeX 並重新編譯",
       "title": "使用我的系統 LaTeX（latexmk）",
@@ -476,6 +473,10 @@
     },
     "titleCompileFailure": "這次編譯需要的功能超出內建引擎",
     "titleImportScan": "這個專案需要的功能超出內建引擎"
+  },
+  "shellCommands": {
+    "allow": "允許外部命令",
+    "banner": "此文件在編譯時會執行外部命令，但此專案封鎖了這些命令。只有在你信任專案中的每個檔案時才允許。"
   },
   "errorBoundary": {
     "copyDiagnostics": "複製診斷資訊",

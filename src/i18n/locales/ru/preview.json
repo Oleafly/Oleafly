@@ -93,7 +93,7 @@
     "fullscreen": "Полноэкранный просмотр",
     "exitFullscreen": "Выйти из полноэкранного режима",
     "retryCompile": "Скомпилировать заново",
-    "chooseEngine": "Выбрать движок…",
+    "chooseEngine": "Выбрать движок",
     "installPackages_one": "Найти и установить {{name}}",
     "installPackages_few": "Найти и установить {{count}} файла",
     "installPackages_many": "Найти и установить {{count}} файлов",
