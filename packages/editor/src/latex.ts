@@ -13,6 +13,7 @@ import {
   isLatexCompletionPosition,
   latexBalancedGroupEnd,
   latexIgnoredRangesField,
+  latexOptionalArgumentEnd,
   maskLatexIgnoredRegions,
 } from "./latex-lexical";
 import { environmentSnippet } from "./latex-environments";
@@ -352,7 +353,10 @@ function parsedGroup(
   closing = "}",
 ): ParsedGroup | null {
   const from = skipWhitespace(text, start);
-  const to = latexBalancedGroupEnd(text, from, opening, closing);
+  const to =
+    opening === "["
+      ? latexOptionalArgumentEnd(text, from)
+      : latexBalancedGroupEnd(text, from, opening, closing);
   if (to === null) return null;
   return {
     content: text.slice(from + 1, to - 1),
@@ -635,7 +639,7 @@ function collectPackageNames(
   while ((match = directive.exec(text))) {
     let cursor = skipWhitespace(text, match.index + match[0].length);
     if (text[cursor] === "[") {
-      const optionsEnd = latexBalancedGroupEnd(text, cursor, "[", "]");
+      const optionsEnd = latexOptionalArgumentEnd(text, cursor);
       // An unclosed option group owns the rest of the source. Stop instead of
       // repeatedly rescanning that suffix from every command-like substring.
       if (optionsEnd === null) break;
@@ -943,7 +947,7 @@ function skipOptionalGroups(
 ): number | null {
   let cursor = start;
   for (let group = 0; group < groups && prefix[cursor] === "["; group += 1) {
-    const groupEnd = latexBalancedGroupEnd(prefix, cursor, "[", "]");
+    const groupEnd = latexOptionalArgumentEnd(prefix, cursor);
     if (groupEnd === null) return null;
     cursor = skipWhitespace(prefix, groupEnd);
   }

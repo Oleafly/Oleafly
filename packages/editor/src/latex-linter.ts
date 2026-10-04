@@ -2,6 +2,7 @@ import { linter, type Diagnostic } from "@codemirror/lint";
 import {
   latexBalancedGroupEnd,
   latexInlineVerbatimSpan,
+  latexOptionalArgumentEnd,
 } from "./latex-lexical";
 import {
   novalidateDirectiveAt,
@@ -90,25 +91,8 @@ function skipWhitespace(text: string, start: number): number {
   return cursor;
 }
 
-function optionalArgumentClose(text: string, opening: number): number | null {
-  let braceDepth = 0;
-  let cursor = opening + 1;
-  while (cursor < text.length) {
-    const char = text[cursor];
-    if (char === "\\") {
-      cursor += Math.min(2, text.length - cursor);
-      continue;
-    }
-    if (char === "{") braceDepth += 1;
-    else if (char === "}" && braceDepth > 0) braceDepth -= 1;
-    else if (char === "]" && braceDepth === 0) return cursor + 1;
-    cursor += 1;
-  }
-  return null;
-}
-
 function optionalArgumentEnd(text: string, opening: number): number | null {
-  const close = optionalArgumentClose(text, opening);
+  const close = latexOptionalArgumentEnd(text, opening);
   return close === null ? null : skipWhitespace(text, close);
 }
 
@@ -175,7 +159,7 @@ function definitionGroup(
   const from = skipWhitespace(text, start);
   const to =
     opening === "["
-      ? optionalArgumentClose(text, from)
+      ? latexOptionalArgumentEnd(text, from)
       : latexBalancedGroupEnd(text, from, opening, closing);
   if (to === null) return null;
   return {

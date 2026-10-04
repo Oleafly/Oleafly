@@ -70,6 +70,27 @@ export function latexBalancedGroupEnd(
   return null;
 }
 
+export function latexOptionalArgumentEnd(
+  text: string,
+  start: number,
+  limits?: LexLimits,
+): number | null {
+  if (text[start] !== "[") return null;
+  let braceDepth = 0;
+  for (let cursor = start + 1; cursor < text.length; cursor += 1) {
+    const char = text[cursor];
+    if (char === "\\") {
+      cursor += 1;
+      continue;
+    }
+    if (char === "{") braceDepth += 1;
+    else if (char === "}" && braceDepth > 0) braceDepth -= 1;
+    else if (char === "]" && braceDepth === 0) return cursor + 1;
+  }
+  if (limits) limits.truncated = true;
+  return null;
+}
+
 function lineEnd(text: string, start: number): number {
   const newline = text.indexOf("\n", start);
   return newline < 0 ? text.length : newline;
@@ -140,7 +161,7 @@ function listingsVerbatimSpan(
 ): LatexInlineVerbatimSpan | null {
   let cursor = skipInlineWhitespace(text, from);
   if (text[cursor] === "[") {
-    const optionEnd = latexBalancedGroupEnd(text, cursor, "[", "]", limits);
+    const optionEnd = latexOptionalArgumentEnd(text, cursor, limits);
     if (optionEnd === null) {
       return {
         from: start,
