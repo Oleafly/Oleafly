@@ -12,7 +12,7 @@ Legend: ✅ shipped · 🟡 deferred with a gap id · — not applicable.
 |---|---|---|---|---|---|---|---|---|
 | LaTeX project | ✅ [PDF](#latex-to-pdf) | ✅ [Word (.docx)](#latex-to-docx) | ✅ [HTML (MathML)](#latex-to-html) | ✅ [Markdown (.md)](#latex-to-markdown) | — | ✅ [Typst (.typ)](#latex-to-typst) | — | ✅ [Equation SVG / PNG](#latex-to-image) |
 | Markdown | ✅ [PDF](#markdown-to-pdf) | ✅ [Word (.docx)](#markdown-to-docx) | ✅ [HTML (MathML)](#markdown-to-html) | — | ✅ [LaTeX (.tex)](#markdown-to-latex) | ✅ [Typst (.typ)](#markdown-to-typst) | — | — |
-| Typst | ✅ [PDF](#typst-to-pdf) | ✅ [Word (.docx)](#typst-to-docx) | ✅ [HTML (MathML)](#typst-to-html) | ✅ [Markdown (.md)](#typst-to-markdown) | ✅ [LaTeX (.tex)](#typst-to-latex) | — | — | — |
+| Typst | ✅ [PDF](#typst-to-pdf) | ✅ [Word (.docx)](#typst-to-docx) | ✅ [HTML (MathML)](#typst-to-html) | ✅ [Markdown (.md)](#typst-to-markdown) | ✅ [LaTeX (.tex)](#typst-to-latex) | — | — | ✅ [Page PNG / SVG](#typst-to-image) |
 | Word (.docx) | ✅ [PDF](#docx-to-pdf) | — | ✅ [HTML (MathML)](#docx-to-html) | ✅ [Markdown project](#docx-to-markdown) | ✅ [LaTeX project](#docx-to-latex) | ✅ [Typst project](#docx-to-typst) | — | — |
 | HTML | ✅ [PDF](#html-to-pdf) | ✅ [Word (.docx)](#html-to-docx) | — | ✅ [Markdown project](#html-to-markdown) | ✅ [LaTeX project](#html-to-latex) | ✅ [Typst project](#html-to-typst) | — | — |
 | PDF | — | 🟡 DEFERRED (G13) [Word (.docx)](#pdf-to-docx) | 🟡 DEFERRED (G13) [HTML](#pdf-to-html) | ✅ [Markdown](#pdf-to-markdown) | ✅ [LaTeX project](#pdf-to-latex)<br>✅ [Scanned PDF to LaTeX](#pdf-scanned-to-latex) | ✅ [Typst](#pdf-to-typst) | — | ✅ [Page PNG](#pdf-to-image) |
@@ -75,12 +75,12 @@ Pandoc keeps math in dollar delimiters.
 
 ### latex-to-typst
 
-Pandoc writes Typst source, followed by a compatibility fixup.
+Pandoc writes Typst source, followed by a compatibility fixup. The Convert to a Typst project command makes a new Typst project from the open LaTeX one and reports what needs attention and how the first compile went.
 
 - **Direction:** export
 - **Engine:** pandoc
 - **Status:** available
-- **Surface:** Export menu, Tools page
+- **Surface:** Export menu, Tools page, command palette (Convert to a Typst project)
 - **Gap:** G10
 - **Pandoc route:** `--from=latex --to=typst --standalone`
 
@@ -200,6 +200,15 @@ From a Typst project, Typst writes HTML and pandoc turns it into a .docx with OM
 - **Surface:** Export menu, Tools page
 - **Gap:** G28
 - **Pandoc route:** `--from=typst --to=docx --citeproc`
+
+### typst-to-image
+
+Typst renders each page of an open Typst project as PNG or SVG.
+
+- **Direction:** export
+- **Engine:** typst
+- **Status:** available
+- **Surface:** Export menu (Images and HTML)
 
 ## Word (.docx)
 
@@ -385,7 +394,7 @@ A local Ollama vision model transcribes scanned pages into editable LaTeX.
 
 ### image-to-latex
 
-A local vision model transcribes an equation or table photo into editable LaTeX.
+On the Tools page, a local vision model transcribes an equation or table photo into editable LaTeX. The editor toolbar button uses your configured vision-capable provider instead.
 
 - **Direction:** tool
 - **Engine:** local-model
@@ -394,12 +403,12 @@ A local vision model transcribes an equation or table photo into editable LaTeX.
 
 ### image-to-typst
 
-A local vision model transcribes notes, equations, or tables into editable Typst.
+On the Tools page, a local vision model transcribes notes, equations, or tables into editable Typst. The Typst editor toolbar button uses your configured vision-capable provider instead.
 
 - **Direction:** tool
 - **Engine:** local-model
 - **Status:** available
-- **Surface:** Tools page
+- **Surface:** Tools page, Editor toolbar
 
 ## Typed or photographed equation
 
@@ -419,7 +428,7 @@ Typed LaTeX math converts with Oleafly's built-in translator, with Pandoc as a f
 - **Direction:** tool
 - **Engine:** internal
 - **Status:** available
-- **Surface:** Tools page
+- **Surface:** Tools page, Equation tool (Typst mode), Paste as Typst math in a Typst file
 - **Pandoc route:** `--from=latex --to=typst`
 
 ## CSV / XLSX

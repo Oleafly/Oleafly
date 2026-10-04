@@ -180,7 +180,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
     ["latex-to-docx", "Word (.docx)", "Pandoc writes editable Word math instead of flattening equations into images.", "docx", "existing", undefined, { flags: PANDOC_CITEPROC, surface: "Export menu, Tools page" }],
     ["latex-to-html", "HTML (MathML)", "Standalone HTML with MathML equations for accessible reading.", "html", "existing", "G11", { flags: PANDOC_HTML_CITEPROC, surface: "Export menu, Tools page" }],
     ["latex-to-markdown", "Markdown (.md)", "Pandoc keeps math in dollar delimiters.", "markdown", "existing", undefined, { surface: "Export menu, Tools page" }],
-    ["latex-to-typst", "Typst (.typ)", "Pandoc writes Typst source, followed by a compatibility fixup.", "typst", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Export menu, Tools page" }],
+    ["latex-to-typst", "Typst (.typ)", "Pandoc writes Typst source, followed by a compatibility fixup. The Convert to a Typst project command makes a new Typst project from the open LaTeX one and reports what needs attention and how the first compile went.", "typst", "available", "G10", { flags: PANDOC_STANDALONE, surface: "Export menu, Tools page, command palette (Convert to a Typst project)" }],
   ], { direction: "export" }),
   {
     id: "latex-to-image",
@@ -226,6 +226,17 @@ export const REGISTRY: readonly ConversionRoute[] = [
     ["typst-to-html", "HTML (MathML)", "Convert directly, or export standalone HTML from a Typst project. Project exports go through the HTML Typst writes itself.", "html", "available", "G28", { flags: PANDOC_HTML_CITEPROC, surface: "Export menu, Tools page" }],
     ["typst-to-docx", "Word (.docx)", "From a Typst project, Typst writes HTML and pandoc turns it into a .docx with OMML equations. The Tools page reads Typst with pandoc.", "docx", "available", "G28", { flags: PANDOC_CITEPROC, surface: "Export menu, Tools page" }],
   ], { direction: "export" }),
+  {
+    id: "typst-to-image",
+    label: "Page PNG / SVG",
+    blurb: "Typst renders each page of an open Typst project as PNG or SVG.",
+    source: "typst",
+    target: "image",
+    direction: "export",
+    engine: "typst",
+    status: "available",
+    surface: "Export menu (Images and HTML)",
+  },
 
   // --- Word ---------------------------------------------------------------
   ...pandocRoutes("docx", [
@@ -335,7 +346,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "image-to-latex",
     label: "LaTeX equation",
-    blurb: "A local vision model transcribes an equation or table photo into editable LaTeX.",
+    blurb: "On the Tools page, a local vision model transcribes an equation or table photo into editable LaTeX. The editor toolbar button uses your configured vision-capable provider instead.",
     source: "image",
     target: "latex",
     direction: "tool",
@@ -346,13 +357,13 @@ export const REGISTRY: readonly ConversionRoute[] = [
   {
     id: "image-to-typst",
     label: "Typst source",
-    blurb: "A local vision model transcribes notes, equations, or tables into editable Typst.",
+    blurb: "On the Tools page, a local vision model transcribes notes, equations, or tables into editable Typst. The Typst editor toolbar button uses your configured vision-capable provider instead.",
     source: "image",
     target: "typst",
     direction: "tool",
     engine: "local-model",
     status: "available",
-    surface: "Tools page",
+    surface: "Tools page, Editor toolbar",
   },
 
   // --- Equations ----------------------------------------------------------
@@ -377,7 +388,7 @@ export const REGISTRY: readonly ConversionRoute[] = [
     direction: "tool",
     engine: "internal",
     status: "available",
-    surface: "Tools page",
+    surface: "Tools page, Equation tool (Typst mode), Paste as Typst math in a Typst file",
     pandoc: { from: "latex", to: "typst" },
   },
 
