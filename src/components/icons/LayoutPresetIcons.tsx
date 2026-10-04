@@ -6,7 +6,7 @@ type IconProps = SVGProps<SVGSVGElement>;
 
 const AI_PANE = "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4z";
 
-function LayoutIcon({ className, children, ...props }: IconProps & { children: ReactNode }) {
+function LayoutIcon({ className, children, ...props }: Readonly<IconProps & { children: ReactNode }>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -31,7 +31,7 @@ function AiPane() {
   return <path d={AI_PANE} fill="currentColor" stroke="none" opacity={0.28} />;
 }
 
-function Page({ d }: { d: string }) {
+function Page({ d }: Readonly<{ d: string }>) {
   return <path d={d} strokeWidth={1.5} />;
 }
 
