@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { DeltaQueues, ManualScheduler } from "./delta-queues";
+import { describe, expect, it, vi } from "vitest";
+import { DeltaQueues, MAX_BATCH, ManualScheduler } from "./delta-queues";
 
 describe("DeltaQueues", () => {
   it("applies text deltas in order when a frame runs", () => {
@@ -88,5 +88,67 @@ describe("DeltaQueues", () => {
     scheduler.runFrame();
     scheduler.runInterval();
     expect(seen).toEqual([]);
+  });
+});
+
+describe("DeltaQueues terminal and output edges", () => {
+  it("applies a terminal event at once when nothing is queued or scheduled", () => {
+    const queues = new DeltaQueues(new ManualScheduler());
+    const terminal = vi.fn();
+    expect(queues.drainBeforeTerminal(terminal)).toBeNull();
+    expect(terminal).toHaveBeenCalledOnce();
+  });
+
+  it("still drains through a scheduled frame whose queue was already flushed", () => {
+    const scheduler = new ManualScheduler();
+    const queues = new DeltaQueues(scheduler);
+    const order: string[] = [];
+    queues.enqueueFrameText(() => order.push("text"));
+    expect(queues.flushFrameText()).toBe("flushed");
+    expect(queues.flushFrameText()).toBe("empty");
+
+    expect(queues.drainBeforeTerminal(() => order.push("terminal"))).toBeNull();
+    expect(order).toEqual(["text", "terminal"]);
+  });
+
+  it("keeps the output interval running while output is over the batch cap", () => {
+    const scheduler = new ManualScheduler();
+    const queues = new DeltaQueues(scheduler);
+    let applied = 0;
+    for (let index = 0; index < MAX_BATCH + 10; index += 1) {
+      queues.enqueueOutput(() => {
+        applied += 1;
+      });
+    }
+
+    const terminal = vi.fn();
+    const deferred = queues.drainBeforeTerminal(terminal);
+    expect(deferred).toBe(terminal);
+    expect(terminal).not.toHaveBeenCalled();
+    expect(applied).toBe(MAX_BATCH);
+    expect(queues.pendingOutput()).toBe(10);
+
+    scheduler.runInterval();
+    expect(applied).toBe(MAX_BATCH + 10);
+    expect(queues.pendingOutput()).toBe(0);
+    expect(queues.drainBeforeTerminal(terminal)).toBeNull();
+    expect(terminal).toHaveBeenCalledOnce();
+  });
+
+  it("ignores an output flush requested from inside an output delta", () => {
+    const scheduler = new ManualScheduler();
+    const queues = new DeltaQueues(scheduler);
+    const nested: string[] = [];
+    queues.enqueueOutput(() => nested.push(queues.flushOutput()));
+    queues.enqueueOutput(() => nested.push("second"));
+    scheduler.runInterval();
+    expect(nested).toEqual(["empty", "second"]);
+  });
+
+  it("reports the visibility a test sets on the manual scheduler", () => {
+    const scheduler = new ManualScheduler();
+    expect(scheduler.isVisible()).toBe(true);
+    scheduler.visible = false;
+    expect(scheduler.isVisible()).toBe(false);
   });
 });

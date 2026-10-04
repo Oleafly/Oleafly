@@ -206,3 +206,135 @@ describe("registerPdfTextSelection", () => {
     unregisterRemaining();
   });
 });
+
+describe("registerPdfTextSelection global selection handling", () => {
+  function textLayer(...labels: string[]) {
+    const layer = document.createElement("div");
+    layer.className = "textLayer";
+    const spans = labels.map((label) => {
+      const span = document.createElement("span");
+      span.textContent = label;
+      layer.append(span);
+      return span;
+    });
+    document.body.append(layer);
+    return { layer, spans };
+  }
+
+  function select(startNode: Node, startOffset: number, endNode: Node, endOffset: number) {
+    const range = document.createRange();
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+    const selection = document.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    document.dispatchEvent(new Event("selectionchange"));
+    return range;
+  }
+
+  it("resets every layer when the selection is cleared", () => {
+    const { layer, spans } = textLayer("first", "second");
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+    const sentinel = layer.querySelector(".endOfContent");
+    select(spans[0].firstChild as Text, 0, spans[1].firstChild as Text, 3);
+    expect(layer).toHaveClass("selecting");
+
+    document.getSelection()?.removeAllRanges();
+    document.dispatchEvent(new Event("selectionchange"));
+
+    expect(layer).not.toHaveClass("selecting");
+    expect(layer.lastElementChild).toBe(sentinel);
+    unregister();
+  });
+
+  it("resets on key release or window blur unless a pointer drag is in progress", () => {
+    const { layer, spans } = textLayer("first", "second");
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+
+    select(spans[0].firstChild as Text, 0, spans[1].firstChild as Text, 3);
+    document.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift" }));
+    expect(layer).not.toHaveClass("selecting");
+
+    document.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    select(spans[0].firstChild as Text, 0, spans[1].firstChild as Text, 4);
+    document.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift" }));
+    expect(layer).toHaveClass("selecting");
+
+    window.dispatchEvent(new Event("blur"));
+    expect(layer).not.toHaveClass("selecting");
+    unregister();
+  });
+
+  it("places the sentinel before the start when the selection start moves", () => {
+    const { layer, spans } = textLayer("first", "second", "third");
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+    const sentinel = layer.querySelector(".endOfContent");
+    const third = spans[2].firstChild as Text;
+
+    select(spans[1].firstChild as Text, 2, third, 3);
+    select(spans[0].firstChild as Text, 1, third, 3);
+
+    expect(sentinel?.nextSibling).toBe(spans[0]);
+    unregister();
+  });
+
+  it("walks back to the previous text run when a selection ends at the start of a span", () => {
+    const { layer, spans } = textLayer("first", "second", "third");
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+    const sentinel = layer.querySelector(".endOfContent");
+
+    select(spans[0].firstChild as Text, 1, spans[2].firstChild as Text, 0);
+
+    expect(sentinel?.previousSibling).toBe(spans[1]);
+    expect(sentinel?.nextSibling).toBe(spans[2]);
+    unregister();
+  });
+
+  it("anchors on the run that contains a search highlight", () => {
+    const { layer, spans } = textLayer("first", "");
+    const highlight = document.createElement("span");
+    highlight.className = "highlight";
+    highlight.textContent = "match";
+    spans[1].append(highlight);
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+    const sentinel = layer.querySelector(".endOfContent");
+
+    select(spans[0].firstChild as Text, 0, highlight.firstChild as Text, 2);
+
+    expect(sentinel?.parentElement).toBe(layer);
+    expect(sentinel?.previousSibling).toBe(spans[1]);
+    unregister();
+  });
+
+  it("leaves the sentinel alone when the selection ends outside every text layer", () => {
+    const { layer, spans } = textLayer("first");
+    const outside = document.createElement("p");
+    outside.textContent = "outside the PDF";
+    document.body.append(outside);
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+    const sentinel = layer.querySelector(".endOfContent");
+
+    select(spans[0].firstChild as Text, 0, outside.firstChild as Text, 3);
+
+    expect(layer).toHaveClass("selecting");
+    expect(layer.lastElementChild).toBe(sentinel);
+    unregister();
+  });
+
+  it("ignores a stale unregister after the layer was registered again", () => {
+    const { layer, spans } = textLayer("first", "second");
+    const staleUnregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+
+    staleUnregister();
+    select(spans[0].firstChild as Text, 0, spans[1].firstChild as Text, 2);
+
+    expect(layer).toHaveClass("selecting");
+    unregister();
+    document.getSelection()?.removeAllRanges();
+    layer.classList.remove("selecting");
+    document.dispatchEvent(new Event("selectionchange"));
+    select(spans[0].firstChild as Text, 0, spans[1].firstChild as Text, 2);
+    expect(layer).not.toHaveClass("selecting");
+  });
+});

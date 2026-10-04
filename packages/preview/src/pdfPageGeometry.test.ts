@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   loadPdfPageViewport,
   scanPdfPageViewports,
@@ -120,5 +120,132 @@ describe("progressive PDF page geometry", () => {
     resolveLast(latePage);
     await Promise.resolve();
     expect(latePage.cleanup).toHaveBeenCalledOnce();
+  });
+});
+
+describe("PDF page geometry cancellation and timeouts", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function pendingDocument() {
+    let resolvePage!: (value: MockPage) => void;
+    const doc = {
+      numPages: 3,
+      getPage: vi.fn(
+        () =>
+          new Promise<MockPage>((resolve) => {
+            resolvePage = resolve;
+          }),
+      ),
+    };
+    return { doc, resolve: (value: MockPage) => resolvePage(value) };
+  }
+
+  it("rejects at once with the abort reason when already cancelled", async () => {
+    const { doc, resolve } = pendingDocument();
+    const abort = new AbortController();
+    abort.abort("document closed");
+
+    await expect(loadPdfPageViewport(doc as never, 2, abort.signal)).rejects.toMatchObject({
+      name: "AbortError",
+      message: "document closed",
+    });
+
+    const late = page();
+    late.cleanup.mockImplementation(() => {
+      throw new Error("already released");
+    });
+    resolve(late);
+    await Promise.resolve();
+    expect(late.cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a DOMException abort reason and names non-text reasons generically", async () => {
+    const reason = new DOMException("superseded", "AbortError");
+    const domAbort = new AbortController();
+    domAbort.abort(reason);
+    await expect(
+      loadPdfPageViewport(pendingDocument().doc as never, 1, domAbort.signal),
+    ).rejects.toBe(reason);
+
+    const objectAbort = new AbortController();
+    objectAbort.abort({ code: 7 });
+    await expect(
+      loadPdfPageViewport(pendingDocument().doc as never, 4, objectAbort.signal),
+    ).rejects.toMatchObject({
+      name: "AbortError",
+      message: "PDF page 4 geometry cancelled",
+    });
+  });
+
+  it("times out a page that never arrives", async () => {
+    vi.useFakeTimers();
+    const pending = loadPdfPageViewport(
+      pendingDocument().doc as never,
+      3,
+      new AbortController().signal,
+      50,
+    );
+    const outcome = expect(pending).rejects.toThrow("PDF page 3 geometry timed out after 50ms");
+
+    await vi.advanceTimersByTimeAsync(50);
+
+    await outcome;
+  });
+
+  it("applies the viewer rotation on top of the page's own rotation", async () => {
+    const proxy = { ...page(), rotate: 90 };
+    const doc = { getPage: vi.fn(() => Promise.resolve(proxy)) };
+
+    await loadPdfPageViewport(doc as never, 1, new AbortController().signal, 1_000, 270);
+
+    expect(proxy.getViewport).toHaveBeenCalledWith({ scale: 1, rotation: 0 });
+    expect(proxy.cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing when the parent signal is already aborted", async () => {
+    const doc = { numPages: 3, getPage: vi.fn() };
+    const abort = new AbortController();
+    abort.abort("closed");
+    const onViewport = vi.fn();
+    const onError = vi.fn();
+
+    await scanPdfPageViewports(doc as never, { signal: abort.signal, onViewport, onError }).done;
+
+    expect(doc.getPage).not.toHaveBeenCalled();
+    expect(onViewport).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("has nothing to scan past the last page", async () => {
+    const doc = { numPages: 1, getPage: vi.fn() };
+    const onViewport = vi.fn();
+
+    await scanPdfPageViewports(doc as never, {
+      signal: new AbortController().signal,
+      startPage: 2,
+      onViewport,
+    }).done;
+
+    expect(doc.getPage).not.toHaveBeenCalled();
+  });
+
+  it("scans from the first page by default and tolerates a missing error handler", async () => {
+    const doc = {
+      numPages: 2,
+      getPage: vi.fn((pageNumber: number) =>
+        pageNumber === 2 ? Promise.reject(new Error("broken")) : Promise.resolve(page()),
+      ),
+    };
+    const onViewport = vi.fn();
+
+    await scanPdfPageViewports(doc as never, {
+      signal: new AbortController().signal,
+      onViewport,
+    }).done;
+
+    expect(doc.getPage).toHaveBeenCalledWith(1);
+    expect(onViewport).toHaveBeenCalledWith(1, expect.objectContaining({ width: 612 }));
   });
 });

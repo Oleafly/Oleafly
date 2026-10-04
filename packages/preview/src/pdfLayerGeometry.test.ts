@@ -19,6 +19,12 @@ describe("pdfLayerGeometry", () => {
     [1.5, [3, 2]],
     [1.6, [8, 5]],
     [2, [2, 1]],
+    [0.1, [1, 8]],
+    [0.5, [1, 2]],
+    [0.3, [2, 7]],
+    [0.7, [5, 7]],
+    [0.9, [7, 8]],
+    [1.1, [8, 7]],
   ] as const)("matches pdf.js' DPR fraction for %s", (dpr, expected) => {
     expect(approximatePdfFraction(dpr)).toEqual(expected);
   });
@@ -120,6 +126,32 @@ describe("pdfLayerGeometry", () => {
     expect(geometry.cssHeightPx).toBeGreaterThan(17_990);
     expect(geometry.outputScaleX).toBeLessThan(1);
     expect(geometry.outputScaleY).toBeLessThan(1);
+  });
+
+  it("treats non-positive caps as unlimited and invalid sizes as one pixel", () => {
+    const uncapped = pdfLayerGeometry(
+      { width: 20_000, height: 30_000, scale: 1, userUnit: 1, rotation: 0 },
+      2,
+      false,
+      0,
+      0,
+    );
+    expect(uncapped.restrictedScaling).toBe(false);
+    expect(uncapped.canvasWidth).toBe(40_000);
+    expect(uncapped.canvasHeight).toBe(60_000);
+
+    const degenerate = pdfLayerGeometry(
+      { width: 0, height: Number.NaN, scale: 1, userUnit: 1, rotation: 0 },
+      -1,
+      false,
+    );
+    expect(degenerate).toMatchObject({
+      cssWidth: "1px",
+      cssHeight: "1px",
+      canvasWidth: 1,
+      canvasHeight: 1,
+      restrictedScaling: false,
+    });
   });
 
   it("zeros canvas backing stores even when callers retain stale node references", () => {

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { WYSIWYG_EXTENSIONS } from "./schema";
 import { theoremLabel } from "./theorem";
@@ -75,5 +75,66 @@ describe("Theorem", () => {
     const reparsed = new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS, content: html });
     editors.push(reparsed);
     expect(reparsed.getJSON()).toEqual(editor.getJSON());
+  });
+});
+
+describe("Theorem node view details", () => {
+  it("opens an empty title field for a theorem without a title", () => {
+    const { element } = mount({
+      type: "theorem",
+      attrs: { environment: "definition", title: null },
+      content: [{ type: "paragraph" }],
+    });
+
+    expect(element.querySelector(".theorem-title")).toHaveTextContent("");
+    element.querySelector<HTMLButtonElement>(".theorem-edit-title")?.click();
+
+    expect(element.querySelector<HTMLInputElement>("input.theorem-title-input")?.value).toBe("");
+  });
+
+  it("follows environment and title changes made elsewhere", () => {
+    const { editor, element } = mount(lemma);
+
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(0, undefined, { environment: "proof", title: "Sketch" }));
+
+    const node = element.querySelector<HTMLElement>('[data-type="theorem"]');
+    expect(node?.dataset.environment).toBe("proof");
+    expect(node?.querySelector(".theorem-name")).toHaveTextContent("theorem.name.proof");
+    expect(node?.querySelector(".theorem-title")).toHaveTextContent("(Sketch)");
+  });
+
+  it("keeps keys pressed in the header away from the editor and lets body keys through", () => {
+    const handleKeyDown = vi.fn((_view: unknown, _event: KeyboardEvent) => false);
+    const element = document.createElement("div");
+    document.body.append(element);
+    const editor = new Editor({
+      element,
+      extensions: WYSIWYG_EXTENSIONS,
+      editorProps: { handleKeyDown },
+      content: { type: "doc", content: [lemma] },
+    });
+    editors.push(editor);
+    const press = (target: EventTarget, key: string) =>
+      target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+
+    press(element.querySelector(".theorem-edit-title") as HTMLElement, "a");
+    expect(handleKeyDown).not.toHaveBeenCalled();
+
+    press(element.querySelector(".theorem-body p") as HTMLElement, "b");
+    expect(handleKeyDown.mock.calls.map(([, event]) => event.key)).toEqual(["b"]);
+  });
+
+  it("parses a theorem from HTML without environment or title data as a plain theorem", () => {
+    const editor = new Editor({
+      element: document.createElement("div"),
+      extensions: WYSIWYG_EXTENSIONS,
+      content: '<section data-type="theorem"><div class="theorem-body"><p>Claim.</p></div></section>',
+    });
+    editors.push(editor);
+
+    expect(editor.getJSON().content?.[0]).toMatchObject({
+      type: "theorem",
+      attrs: { environment: "theorem", title: null },
+    });
   });
 });

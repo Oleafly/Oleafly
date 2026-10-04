@@ -100,6 +100,15 @@ describe("show_location tool", () => {
     });
   });
 
+  it("gives a generic reason when the host gives none", async () => {
+    const reveal = vi.fn(async () => ({ revealed: false }));
+    const tools = createOleaflyTools(makeHost(reveal));
+
+    expect(await tools.show_location.execute({ page: 3 })).toEqual({
+      error: "Could not reveal that location.",
+    });
+  });
+
   it("stays usable on a host that cannot reveal anything", async () => {
     const tools = createOleaflyTools(makeHost());
     expect(await tools.show_location.execute({ path: "main.tex" })).toMatchObject({

@@ -183,3 +183,148 @@ describe("Figure in Markdown", () => {
     ]);
   });
 });
+
+describe("Figure image resolution order", () => {
+  function deferred() {
+    let resolve: (url: string | null) => void = () => {};
+    let reject: (error: Error) => void = () => {};
+    const promise = new Promise<string | null>((done, fail) => {
+      resolve = done;
+      reject = fail;
+    });
+    return { promise, resolve, reject };
+  }
+
+  it("shows the image of the latest path when an older lookup finishes last", async () => {
+    const lookups = new Map<string, ReturnType<typeof deferred>>();
+    const resolveAssetUrl = vi.fn((path: string) => {
+      const entry = deferred();
+      lookups.set(path, entry);
+      return entry.promise;
+    });
+    const { editor, element } = mount(createFigure({ path: "old.png" }), { resolveAssetUrl });
+    expect(element.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageLoading");
+
+    editor.commands.updateAttributes("figure", { path: "new.png" });
+    lookups.get("new.png")?.resolve("asset://new.png");
+    await settle();
+    lookups.get("old.png")?.resolve("asset://old.png");
+    await settle();
+
+    expect(element.querySelector<HTMLImageElement>(".figure-image")?.getAttribute("src")).toBe("asset://new.png");
+  });
+
+  it("ignores a failed older lookup once a newer path is loading", async () => {
+    const lookups = new Map<string, ReturnType<typeof deferred>>();
+    const resolveAssetUrl = vi.fn((path: string) => {
+      const entry = deferred();
+      lookups.set(path, entry);
+      return entry.promise;
+    });
+    const { editor, element } = mount(createFigure({ path: "old.png" }), { resolveAssetUrl });
+
+    editor.commands.updateAttributes("figure", { path: "new.png" });
+    lookups.get("old.png")?.reject(new Error("gone"));
+    await settle();
+
+    expect(element.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageLoading");
+  });
+
+  it("ignores lookups that finish after the figure is destroyed", async () => {
+    const lookup = deferred();
+    const { editor, element } = mount(createFigure({ path: "slow.png" }), { resolveAssetUrl: () => lookup.promise });
+    const image = element.querySelector<HTMLImageElement>(".figure-image") as HTMLImageElement;
+
+    editor.destroy();
+    lookup.resolve("asset://slow.png");
+    await settle();
+
+    expect(image.getAttribute("src")).toBeNull();
+  });
+
+  it("does not look up an empty path", async () => {
+    const resolveAssetUrl = vi.fn(async () => "asset://x");
+    const { element } = mount(createFigure({ path: "" }), { resolveAssetUrl });
+    await settle();
+
+    expect(resolveAssetUrl).not.toHaveBeenCalled();
+    expect(element.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageUnavailable");
+  });
+});
+
+describe("Figure node view state", () => {
+  it("shows and clears the selected state", () => {
+    const element = document.createElement("div");
+    document.body.append(element);
+    const editor = new Editor({
+      element,
+      extensions: createWysiwygExtensions(),
+      content: { type: "doc", content: [createFigure({ path: "x.png" }), { type: "paragraph" }] },
+    });
+    editors.push(editor);
+    const figure = element.querySelector<HTMLElement>('[data-type="figure"]') as HTMLElement;
+
+    editor.commands.setNodeSelection(0);
+    expect(figure).toHaveClass("ProseMirror-selectednode");
+
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+    expect(figure).not.toHaveClass("ProseMirror-selectednode");
+  });
+
+  it("leaves the width alone when the custom option is chosen", () => {
+    const { editor, element } = mount(createFigure({ path: "x.png", width: "3cm" }));
+    const select = element.querySelector<HTMLSelectElement>("select.figure-width") as HTMLSelectElement;
+
+    select.value = "custom";
+    select.dispatchEvent(new Event("change"));
+
+    expect(editor.state.doc.child(0).attrs.width).toBe("3cm");
+  });
+
+  it("adds at most one caption", () => {
+    const { editor, element } = mount(createFigure({ path: "x.png" }));
+    const addCaption = element.querySelector<HTMLButtonElement>(".figure-add-caption") as HTMLButtonElement;
+
+    addCaption.click();
+    addCaption.click();
+
+    expect(editor.state.doc.child(0).childCount).toBe(1);
+  });
+
+  it("keeps what the user is typing in the label field while the document changes", () => {
+    const { editor, element } = mount(createFigure({ path: "x.png" }));
+    const label = element.querySelector<HTMLInputElement>("input.figure-label") as HTMLInputElement;
+    label.focus();
+    label.value = "fig:typing";
+
+    editor.commands.updateAttributes("figure", { label: "fig:other", width: "0.25\\linewidth" });
+
+    expect(label.value).toBe("fig:typing");
+    expect(element.querySelector<HTMLImageElement>(".figure-image")?.style.width).toBe("25%");
+  });
+
+  it("keeps keys pressed in its controls away from the editor", () => {
+    const handleKeyDown = vi.fn((_view: unknown, _event: KeyboardEvent) => false);
+    const element = document.createElement("div");
+    document.body.append(element);
+    const editor = new Editor({
+      element,
+      extensions: createWysiwygExtensions(),
+      editorProps: { handleKeyDown },
+      content: {
+        type: "doc",
+        content: [createFigure({ path: "x.png", caption: "Cap" })],
+      },
+    });
+    editors.push(editor);
+    const press = (target: EventTarget, key: string) =>
+      target.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+
+    press(element.querySelector("input.figure-label") as HTMLElement, "a");
+    press(element.querySelector("select.figure-width") as HTMLElement, "b");
+    expect(handleKeyDown).not.toHaveBeenCalled();
+
+    press(element.querySelector(".figure-caption-host") as HTMLElement, "c");
+    expect(handleKeyDown.mock.calls.map(([, event]) => event.key)).toEqual(["c"]);
+  });
+});

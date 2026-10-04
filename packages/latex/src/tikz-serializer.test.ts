@@ -231,4 +231,16 @@ describe("round-trip", () => {
   it("returns null when there is no embedded model", () => {
     expect(parseEmbeddedModel("\\node (a) {x};")).toBeNull();
   });
+
+  it("returns null for an embedded payload that is not a version 1 model", () => {
+    const encode = (value: unknown) => btoa(JSON.stringify(value));
+    expect(parseEmbeddedModel(`% oleafly-diagram-v1: ${encode({ version: 2, nodes: [], edges: [] })}`)).toBeNull();
+    expect(parseEmbeddedModel(`% oleafly-diagram-v1: ${encode({ version: 1, nodes: "none" })}`)).toBeNull();
+    expect(parseEmbeddedModel(`% oleafly-diagram-v1: ${encode(null)}`)).toBeNull();
+  });
+
+  it("returns null for an embedded payload that cannot be decoded", () => {
+    expect(parseEmbeddedModel("% oleafly-diagram-v1: not*base64")).toBeNull();
+    expect(parseEmbeddedModel(`% oleafly-diagram-v1: ${btoa("{not json")}`)).toBeNull();
+  });
 });

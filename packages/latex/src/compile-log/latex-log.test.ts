@@ -440,4 +440,22 @@ describe("parseLatexLog", () => {
       ["biber", "Bibliography needs Biber (biblatex), but a usable .bbl was not produced."],
     ]);
   });
+
+  it("keeps a Tectonic summary line out of the diagnostic it follows", () => {
+    const log = ["LaTeX Warning: Something odd here", "error: main.tex:6: Unable to load picture", ""].join("\n");
+    expect(parseLatexLog(log).map((d) => d.message)).toEqual(["LaTeX: Something odd here"]);
+  });
+
+  it("caps the error context excerpt while still reading the l.<n> line", () => {
+    const log = [
+      "! Undefined control sequence.",
+      ...Array.from({ length: 30 }, (_, index) => `<argument> line ${index}`),
+      "l.9 \\bad",
+      "",
+    ].join("\n");
+    const [diagnostic] = parseLatexLog(log);
+    expect(diagnostic.line).toBe(9);
+    expect(diagnostic.errorContext?.split("\n")).toHaveLength(12);
+    expect(diagnostic.errorContext?.startsWith("! Undefined control sequence.\n<argument> line 0")).toBe(true);
+  });
 });

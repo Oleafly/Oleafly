@@ -67,3 +67,9 @@ describe("mode", () => {
     expect(mode([10, 10, 12])).toBe(10);
   });
 });
+
+describe("mode of nothing", () => {
+  it("is zero for an empty list", () => {
+    expect(mode([])).toBe(0);
+  });
+});

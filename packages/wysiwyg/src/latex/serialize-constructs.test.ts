@@ -260,6 +260,69 @@ describe("tables", () => {
   });
 });
 
+describe("tables with irregular shapes", () => {
+  it("leaves the trailing cells of a short row empty", () => {
+    const table: JSONContent = {
+      type: "table",
+      content: [
+        { type: "tableRow", content: [cell("tableCell", "a"), cell("tableCell", "b"), cell("tableCell", "c")] },
+        { type: "tableRow", content: [cell("tableCell", "d")] },
+      ],
+    };
+    expect(serializeLatexBody(doc(table))).toBe("\\begin{tabular}{lll}\n    a & b & c \\\\\n    d &  &  \\\\\n\\end{tabular}\n");
+  });
+
+  it("treats missing or invalid spans as single cells", () => {
+    const table: JSONContent = {
+      type: "table",
+      content: [
+        {
+          type: "tableRow",
+          content: [
+            { type: "tableCell", content: [paragraph({ type: "text", text: "plain" })] },
+            cell("tableCell", "zero", { colspan: 0, rowspan: 0 }),
+            cell("tableCell", "half", { colspan: 1.5, rowspan: "x" }),
+          ],
+        },
+      ],
+    };
+    expect(serializeLatexBody(doc(table))).toBe("\\begin{tabular}{lll}\n    plain & zero & half \\\\\n\\end{tabular}\n");
+  });
+
+  it("writes empty rows for rows and cells without content", () => {
+    expect(
+      serializeLatexBody(doc({ type: "table", content: [{ type: "tableRow" }, { type: "tableRow", content: [{ type: "tableCell" }] }] })),
+    ).toBe("\\begin{tabular}{l}\n     \\\\\n     \\\\\n\\end{tabular}\n");
+  });
+
+  it("ignores stray non-row children of a table", () => {
+    const table: JSONContent = {
+      type: "table",
+      content: [paragraph({ type: "text", text: "stray" }), { type: "tableRow", content: [cell("tableCell", "kept")] }],
+    };
+    expect(serializeLatexBody(doc(table))).toBe("\\begin{tabular}{l}\n    kept \\\\\n\\end{tabular}\n");
+  });
+
+  it("writes a float without attrs as a plain table environment", () => {
+    const table: JSONContent = { type: "table", content: [{ type: "tableRow", content: [cell("tableCell", "x")] }] };
+    expect(serializeLatexBody(doc({ type: "tableFloat", content: [table] }))).toBe(
+      "\\begin{table}\n    \\begin{tabular}{l}\n        x \\\\\n    \\end{tabular}\n\\end{table}\n",
+    );
+  });
+
+  it("keeps the float for a non-floating table that has a label or a caption", () => {
+    const labelled = createTableFloat(1, 1, { header: false });
+    labelled.attrs = { ...labelled.attrs, floating: false, label: "tab:kept", placement: "" };
+    expect(serializeLatexBody(doc(labelled))).toContain("\\begin{table}\n");
+    expect(serializeLatexBody(doc(labelled))).toContain("\\label{tab:kept}");
+
+    const captioned = createTableFloat(1, 1, { header: false });
+    captioned.attrs = { ...captioned.attrs, floating: false, captionPosition: "above" };
+    captioned.content?.push({ type: "tableCaption", content: [{ type: "text", text: "Top" }] });
+    expect(serializeLatexBody(doc(captioned))).toMatch(/\\centering\n {4}\\caption\{Top\}\n {4}\\begin\{tabular\}/u);
+  });
+});
+
 describe("lists", () => {
   it("writes nested blocks inside an item indented under the item line", () => {
     expect(
@@ -308,5 +371,124 @@ describe("stray table parts", () => {
         ),
       ),
     ).toBe("a & b\n\nsolo\n\n\\caption{cap}\n\ninner\n");
+  });
+});
+
+describe("sparse editor JSON", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("defaults headings, theorems, raw blocks and images that omit their attrs", () => {
+    expect(
+      serializeLatexBody(
+        doc(
+          { type: "heading", content: [{ type: "text", text: "Untitled" }] },
+          { type: "theorem" },
+          { type: "rawBlock" },
+          { type: "image" },
+        ),
+      ),
+    ).toBe("\\section{Untitled}\n\n\\begin{theorem}\n\n\\end{theorem}\n\n\\includegraphics{}\n");
+  });
+
+  it("writes empty containers when the editor omits their content", () => {
+    expect(serializeLatexBody(doc({ type: "blockquote" }))).toBe("\\begin{quote}\n\n\\end{quote}\n");
+    expect(serializeLatexBody(doc({ type: "orderedList" }))).toBe("\\begin{enumerate}\n\n\\end{enumerate}\n");
+    expect(serializeLatexBody(doc({ type: "bulletList", content: [{ type: "listItem" }] }))).toBe(
+      "\\begin{itemize}\n  \\item \n\\end{itemize}\n",
+    );
+    expect(
+      serializeLatexBody(doc({ type: "tableRow", content: [{ type: "tableCell" }, { type: "tableHeader" }] })),
+    ).toBe(" & \n");
+    expect(serializeLatexBody(doc({ type: "doc" }, paragraph({ type: "text", text: "after" })))).toBe("after\n");
+  });
+
+  it("skips item blocks that serialize to nothing and keeps nested blank lines unindented", () => {
+    const item: JSONContent = {
+      type: "listItem",
+      content: [
+        paragraph({ type: "text", text: "lead" }),
+        { type: "paragraph" },
+        {
+          type: "theorem",
+          attrs: { environment: "lemma" },
+          content: [paragraph({ type: "text", text: "one" }), paragraph({ type: "text", text: "two" })],
+        },
+      ],
+    };
+
+    expect(serializeLatexBody(doc({ type: "bulletList", content: [item] }))).toBe(
+      "\\begin{itemize}\n  \\item lead\n  \\begin{lemma}\n  one\n\n  two\n  \\end{lemma}\n\\end{itemize}\n",
+    );
+  });
+
+  it("serializes inline nodes that appear where a block is expected", () => {
+    expect(
+      serializeLatexBody(doc({ type: "mathInline", attrs: { source: "$x$" } }, { type: "text", text: "a & b" })),
+    ).toBe("$x$\n\na \\& b\n");
+  });
+
+  it("writes the text of typeless nodes outside development builds and names them in development", () => {
+    vi.stubEnv("DEV", false);
+    expect(serializeLatexBody(doc({ content: [{ type: "text", text: "loose" }] }, paragraph({ content: [{ type: "text" }] })))).toBe(
+      "loose\n",
+    );
+
+    vi.stubEnv("DEV", true);
+    expect(() => serializeLatexBody(doc({ content: [] }))).toThrow(/"unknown"/u);
+  });
+
+  it("reads the text of unknown nodes whose source attr is not a string", () => {
+    vi.stubEnv("DEV", false);
+    expect(
+      serializeLatexBody(doc({ type: "gadget", attrs: { source: 42 }, content: [{ type: "text", text: "kept" }] })),
+    ).toBe("kept\n");
+  });
+});
+
+describe("inline marks and nodes", () => {
+  it("writes underline and code marks", () => {
+    expect(
+      serializeLatexBody(
+        doc(
+          paragraph(
+            { type: "text", text: "under", marks: [{ type: "underline" }] },
+            { type: "text", text: " " },
+            { type: "text", text: "a_b", marks: [{ type: "code" }] },
+          ),
+        ),
+      ),
+    ).toBe("\\underline{under} \\texttt{a\\_b}\n");
+  });
+
+  it("leaves text untouched by marks it has no LaTeX form for", () => {
+    expect(
+      serializeLatexBody(doc(paragraph({ type: "text", text: "glow", marks: [{ type: "highlight" }, { type: "bold" }] }))),
+    ).toBe("\\textbf{glow}\n");
+  });
+
+  it("writes empty arguments when marks and nodes omit their attrs", () => {
+    expect(
+      serializeLatexBody(
+        doc(
+          paragraph(
+            { type: "text", text: "tinted", marks: [{ type: "textColor" }] },
+            { type: "text", text: "site", marks: [{ type: "link" }] },
+            { type: "text" },
+            { type: "rawInline" },
+            { type: "footnote" },
+          ),
+        ),
+      ),
+    ).toBe("\\textcolor{}{tinted}\\href{}{site}\\footnote{}\n");
+  });
+
+  it("writes inline images with and without a source", () => {
+    expect(
+      serializeLatexBody(
+        doc(paragraph({ type: "text", text: "icon " }, { type: "image", attrs: { src: "a.png" } }, { type: "image" })),
+      ),
+    ).toBe("icon \\includegraphics{a.png}\\includegraphics{}\n");
   });
 });

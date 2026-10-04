@@ -96,3 +96,43 @@ describe("convertPages", () => {
     expect(r.report.pages).toBe(1);
   });
 });
+
+describe("convertPages layout", () => {
+  it("renders a lone symbol-dense line as display math", () => {
+    const r = convertPages([
+      pg([
+        item("Body text that explains the result in words.", 72, 700),
+        item("α = β + γ", 200, 650),
+        item("More body text after the equation here and more.", 72, 600),
+      ]),
+    ]);
+    expect(r.tex).toContain("\\[ \\alpha = \\beta + \\gamma \\]");
+    expect(r.report.equations).toBe(1);
+    expect(r.report.paragraphs).toBe(2);
+  });
+
+  it("puts a page's figures after its last paragraph and before the next page", () => {
+    const r = convertPages([
+      pg([item("First page body text that runs on for a while.", 72, 700)], ["figure_p1_1.png"]),
+      pg([item("Introduction", 72, 700, 14), item("Second page body text that goes on and on.", 72, 680)]),
+    ]);
+    const figureAt = r.tex.indexOf("assets/figure_p1_1.png");
+    expect(figureAt).toBeGreaterThan(r.tex.indexOf("First page body text"));
+    expect(figureAt).toBeLessThan(r.tex.indexOf("\\section{Introduction}"));
+    expect(r.tex).toContain("\\title{}");
+    expect(r.tex).not.toContain("\\maketitle");
+  });
+
+  it("emits figures from a page without text at the end of the body", () => {
+    const r = convertPages([
+      pg([], ["figure_p1_1.png"]),
+      pg([item("Only the second page has selectable text.", 72, 700)]),
+    ]);
+    expect(r.tex.indexOf("assets/figure_p1_1.png")).toBeGreaterThan(r.tex.indexOf("Only the second page"));
+    expect(r.report.likelyScanned).toBe(false);
+    expect(r.report.notes).toEqual([
+      { page: 1, kind: "no-text-layer", detail: "no selectable text on this page" },
+      { page: 1, kind: "figure-extracted", detail: "figure_p1_1.png" },
+    ]);
+  });
+});

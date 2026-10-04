@@ -66,11 +66,25 @@ vi.mock("./kit", () => ({
       </button>
     ),
     Tooltip: ({ children }: { children: ReactNode }) => <>{children}</>,
-    Select: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-    SelectTrigger: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Select: ({
+      value,
+      onValueChange,
+      children,
+    }: {
+      value: string;
+      onValueChange: (next: string) => void;
+      children?: ReactNode;
+    }) => (
+      <select value={value} onChange={(event) => onValueChange(event.target.value)}>
+        {children}
+      </select>
+    ),
+    SelectTrigger: () => null,
     SelectValue: () => null,
-    SelectContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    SelectContent: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    SelectItem: ({ value, children }: { value: string; children?: ReactNode }) => (
+      <option value={value}>{children}</option>
+    ),
     toast: kit.toast,
     useThemeMode: () => "light",
     usePrimaryColor: () => "#000000",
@@ -1266,5 +1280,452 @@ describe("DiagramComposer in Mermaid mode", () => {
     await waitFor(() => expect(canvas.props.model?.nodes.map((n) => n.label)).toEqual(["Start", "End"]));
     fireEvent.click(screen.getByTestId("diagram-tab-code"));
     expect((screen.getByTestId("code-editor") as HTMLTextAreaElement).value).toBe("flowchart LR\n  a[Start] --> b[End]");
+  });
+});
+
+const EMPTY_DRAWING: DiagramModel = { version: 1, nodes: [], edges: [] };
+const HAND_TIKZ = "\\draw (0,0) -- (1,1);";
+
+function typeCode(value: string) {
+  fireEvent.click(screen.getByTestId("diagram-tab-code"));
+  fireEvent.change(screen.getByTestId("code-editor"), { target: { value } });
+}
+
+function relabelFirst(label: string): DiagramModel {
+  const drawing = canvas.props.model as DiagramModel;
+  return { ...drawing, nodes: drawing.nodes.map((node, index) => (index === 0 ? { ...node, label } : node)) };
+}
+
+describe("DiagramComposer details", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    canvas.props = {};
+    code.inserted = [];
+    code.revealed = [];
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("names a compile failure that carries no message", async () => {
+    const host = makeHost({ compileIsolated: vi.fn().mockRejectedValue(42) });
+    open(host);
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    expect(await screen.findByTestId("diagram-compile-failure")).toHaveTextContent("toast.compileError 42");
+  });
+
+  it("does nothing on compile without a project to compile in", () => {
+    const host = makeHost();
+    render(<DiagramComposer open projectId={null} onClose={() => {}} host={host} />);
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    expect(host.compileIsolated).not.toHaveBeenCalled();
+    expect(screen.queryByText("preview.label")).not.toBeInTheDocument();
+  });
+
+  it("says the preview is unavailable when the host cannot render Typst or Mermaid", async () => {
+    const typst = makeHost();
+    open(typst, { language: "typst" });
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    expect(await screen.findByTestId("diagram-compile-failure")).toHaveTextContent(
+      "toast.compileError toast.previewUnavailable",
+    );
+    cleanup();
+
+    const mermaid = makeHost();
+    open(mermaid, { language: "mermaid" });
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    expect(await screen.findByTestId("diagram-compile-failure")).toHaveTextContent(
+      "toast.compileError toast.previewUnavailable",
+    );
+    expect(typst.compileIsolated).not.toHaveBeenCalled();
+    expect(mermaid.compileIsolated).not.toHaveBeenCalled();
+  });
+
+  it("previews Typst without a project context", async () => {
+    const host = makeHost({ renderTypst: vi.fn(async () => RENDERED_TYPST) });
+    open(host, { language: "typst" });
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    await screen.findByAltText("preview.alt");
+    expect((host.renderTypst as ReturnType<typeof vi.fn>).mock.calls[0][0]).toMatchObject({ projectId: null });
+  });
+
+  it("leaves the preview empty when Typst returns no PNG", async () => {
+    const host = typstHost({
+      renderTypst: vi.fn(async () => ({
+        status: "rendered" as const,
+        image: { format: "svg" as const, svg: "<svg/>" },
+        diagnostics: [],
+      })),
+    });
+    open(host, { language: "typst" });
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    await waitFor(() => expect(host.renderTypst).toHaveBeenCalledOnce());
+    expect(await screen.findByText("preview.empty")).toBeInTheDocument();
+    expect(screen.queryByAltText("preview.alt")).not.toBeInTheDocument();
+  });
+
+  it("maps Typst diagnostics on the page rule to no code line and jumps from the code view", async () => {
+    const fixWithAi = vi.fn(async () => "");
+    const host = typstHost({
+      fixWithAi,
+      renderTypst: vi.fn(async () => ({
+        status: "failed" as const,
+        diagnostics: [
+          { severity: "warning" as const, message: "unused import", line: 3, column: null },
+          { severity: "error" as const, message: "page rule broke", line: 1, column: 5 },
+        ],
+      })),
+    });
+    open(host, { language: "typst" });
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+
+    const warning = await screen.findByRole("button", { name: "preview.diagnosticAt 2 unused import" });
+    expect(screen.getByText("page rule broke").tagName).toBe("SPAN");
+    fireEvent.click(screen.getByTestId("diagram-tab-code"));
+    fireEvent.click(warning);
+    expect(code.revealed).toEqual([[2, null]]);
+
+    fireEvent.click(screen.getByText("composer.fixWithAi"));
+    await waitFor(() => expect(fixWithAi).toHaveBeenCalledOnce());
+    expect((fixWithAi.mock.calls[0] as unknown[])[1]).toBe("line 2, column 1: unused import\npage rule broke");
+  });
+
+  it("shows a Mermaid error without a line as plain text", async () => {
+    const host = mermaidHost({ renderMermaid: vi.fn().mockRejectedValue(new Error("Lexical error")) });
+    open(host, { language: "mermaid" });
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    expect((await screen.findByText("Lexical error")).tagName).toBe("SPAN");
+    expect(screen.getByTestId("diagram-compile-failure")).toHaveTextContent("toast.compileFailed");
+  });
+
+  it("previews at the chosen PNG scale", async () => {
+    const host = makeHost({ compileIsolated: vi.fn(async () => ({ log: null, has_pdf: true })) });
+    open(host);
+    await compileOnce(host);
+    expect(host.pdfToPng).toHaveBeenLastCalledWith(expect.any(Uint8Array), 1, 2, "#ffffff");
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "3" } });
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    await waitFor(() => expect(host.pdfToPng).toHaveBeenCalledTimes(2));
+    expect(host.pdfToPng).toHaveBeenLastCalledWith(expect.any(Uint8Array), 1, 3, "#ffffff");
+  });
+
+  it("reopens a minimized preview from the code view", async () => {
+    const host = makeHost();
+    open(host);
+    await compileOnce(host);
+    fireEvent.click(screen.getByLabelText("preview.minimize"));
+    fireEvent.click(screen.getByTestId("diagram-tab-code"));
+    expect(screen.queryByAltText("preview.alt")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "preview.showLabel" }));
+    expect(screen.getByAltText("preview.alt")).toBeInTheDocument();
+  });
+
+  it("keeps saving when the target project's files cannot be listed", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const host = makeHost({ listFiles: vi.fn().mockRejectedValue(new Error("offline")) });
+    open(host);
+    await compileOnce(host);
+    await openProjectPicker();
+    fireEvent.click(screen.getByText("Other paper"));
+
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledWith("toast.savedToProject figures/diagram.png"));
+    expect(confirm).not.toHaveBeenCalled();
+    expect(host.writeFileContent).toHaveBeenCalledWith("other", "figures/diagram.tikz", expect.stringContaining("tikzpicture"));
+  });
+
+  it("asks for a compile before saving a figure the insert menu let through", async () => {
+    const host = makeHost({ insertTarget: vi.fn(() => ({ projectId: "doc", language: "tikz" as const })) });
+    open(host);
+    await openProjectPicker();
+    fireEvent.click(screen.getByText("Other paper"));
+    await waitFor(() => expect(kit.toast.error).toHaveBeenCalledWith("toast.compileBeforeSave"));
+
+    fireEvent.click(screen.getByText("composer.saveFigure"));
+    await waitFor(() => expect(kit.toast.error).toHaveBeenCalledTimes(2));
+    expect(host.writeProjectBytes).not.toHaveBeenCalled();
+    expect(host.saveFigureToCache).not.toHaveBeenCalled();
+  });
+
+  it("hides the project list when the pointer leaves it", async () => {
+    const host = makeHost();
+    open(host);
+    await compileOnce(host);
+    await openProjectPicker();
+    expect(screen.getByText("composer.newProject")).toBeInTheDocument();
+    fireEvent.mouseLeave(screen.getByTestId("diagram-save-to-project").parentElement as HTMLElement);
+    expect(screen.queryByText("composer.newProject")).not.toBeInTheDocument();
+  });
+
+  it("inserts hand-written code into the document even with an empty canvas", async () => {
+    const host = makeHost({ insertTarget: vi.fn(() => ({ projectId: "doc", language: "tikz" as const })) });
+    open(host);
+    act(() => canvas.props.onChange?.(EMPTY_DRAWING));
+    typeCode(HAND_TIKZ);
+
+    fireEvent.click(screen.getByLabelText("composer.save"));
+    fireEvent.click(await screen.findByText("composer.insertLatex"));
+    await waitFor(() => expect(host.insertAtCursor).toHaveBeenCalledWith(`${HAND_TIKZ}\n`));
+  });
+
+  it("inserts Mermaid without a figure when the host cannot render one", async () => {
+    const host = makeHost({ insertTarget: vi.fn(() => ({ projectId: "notes", language: "mermaid" as const })) });
+    open(host, { language: "mermaid" });
+    fireEvent.click(screen.getByLabelText("composer.save"));
+    fireEvent.click(await screen.findByText("composer.insertMermaid"));
+
+    await waitFor(() => expect(host.insertAtCursor).toHaveBeenCalledOnce());
+    expect(host.writeProjectBytes).not.toHaveBeenCalled();
+    expect(kit.toast.success).toHaveBeenCalledWith("toast.insertedMermaid");
+  });
+
+  it("saves hand-written TikZ that cannot be converted as TikZ, even into a Typst project", async () => {
+    const host = makeHost({
+      listProjectNames: vi.fn(async () => [{ id: "typ", name: "Typst paper", typst: true }]),
+    });
+    open(host);
+    act(() => canvas.props.onChange?.(EMPTY_DRAWING));
+    typeCode(HAND_TIKZ);
+    await compileOnce(host);
+    await openProjectPicker();
+    fireEvent.click(screen.getByText("Typst paper"));
+
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledWith("toast.savedToProject figures/diagram.png"));
+    expect(host.writeFileContent).toHaveBeenCalledWith("typ", "figures/diagram.tikz", HAND_TIKZ);
+  });
+
+  it.each([
+    ["tikz", HAND_TIKZ, (source: string) => source.endsWith(`\\pagecolor{obgcolor}\n\\begin{tikzpicture}\n${HAND_TIKZ}\n\\end{tikzpicture}\n\\end{document}\n`)],
+    ["typst", "#diagram()\n", (source: string) => source === '#set page(width: auto, height: auto, margin: 4pt, fill: rgb("#ffffff"))\n#diagram()\n'],
+    ["mermaid", "flowchart LR\n  x --> y", (source: string) => source === "```mermaid\nflowchart LR\n  x --> y\n```\n"],
+  ] as const)("creates a %s project around hand-written code", async (language, typed, matches) => {
+    const host = mermaidHost({ renderTypst: vi.fn(async () => RENDERED_TYPST) });
+    open(host, { language });
+    act(() => canvas.props.onChange?.(EMPTY_DRAWING));
+    typeCode(typed);
+    fireEvent.click(screen.getByTestId("diagram-compile"));
+    await screen.findByAltText("preview.alt");
+    await openProjectPicker();
+    fireEvent.click(screen.getByText("composer.newProject"));
+
+    await waitFor(() => expect(host.createDiagramProject).toHaveBeenCalledOnce());
+    const [, source, chosen] = (host.createDiagramProject as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(chosen).toBe(language);
+    expect(matches(source as string)).toBe(true);
+  });
+
+  it("downloads a fresh Mermaid SVG before any compile", async () => {
+    const host = mermaidHost();
+    open(host, { language: "mermaid" });
+    fireEvent.click(screen.getByLabelText("composer.download"));
+    fireEvent.click(screen.getByTestId("diagram-download-svg"));
+
+    await waitFor(() => expect(host.saveBytesToDisk).toHaveBeenCalledWith("diagram", "svg", btoa("<svg>m</svg>")));
+    const [source, options] = (host.renderMermaid as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(source).toMatch(/^flowchart TD\n/);
+    expect(options).toEqual({ scale: 2, background: "#ffffff" });
+    expect(screen.queryByTestId("diagram-download-svg")).not.toBeInTheDocument();
+  });
+
+  it("asks for a compile when no vector image can be made", async () => {
+    open(makeHost(), { language: "mermaid" });
+    fireEvent.click(screen.getByLabelText("composer.download"));
+    fireEvent.click(screen.getByTestId("diagram-download-svg"));
+    await waitFor(() => expect(kit.toast.error).toHaveBeenCalledWith("toast.compileBeforeDownload"));
+    cleanup();
+
+    const typst = makeHost();
+    open(typst, { language: "typst" });
+    fireEvent.click(screen.getByLabelText("composer.download"));
+    fireEvent.click(screen.getByTestId("diagram-download-svg"));
+    await waitFor(() => expect(kit.toast.error).toHaveBeenCalledTimes(2));
+    expect(typst.saveBytesToDisk).not.toHaveBeenCalled();
+  });
+
+  it("reports an SVG that fails to render for download", async () => {
+    const host = mermaidHost({ renderMermaid: vi.fn().mockRejectedValue(new Error("renderer crashed")) });
+    open(host, { language: "mermaid" });
+    fireEvent.click(screen.getByLabelText("composer.download"));
+    fireEvent.click(screen.getByTestId("diagram-download-svg"));
+
+    await waitFor(() => expect(kit.toast.error).toHaveBeenCalledWith("toast.saveFigureFailed renderer crashed"));
+    expect(kit.toast.keys).toHaveBeenCalledWith("diagram-save");
+  });
+
+  it("says there is nothing to download in another language for an empty canvas", async () => {
+    const host = makeHost();
+    open(host);
+    act(() => canvas.props.onChange?.(EMPTY_DRAWING));
+    fireEvent.click(screen.getByLabelText("composer.download"));
+    fireEvent.click(screen.getByText("composer.formatTypst"));
+
+    await waitFor(() => expect(kit.toast.info).toHaveBeenCalledWith("toast.notDrawable"));
+    expect(host.saveBytesToDisk).not.toHaveBeenCalled();
+  });
+
+  it("cancels a rename when clicking outside the name field", () => {
+    open(makeHost());
+    fireEvent.click(screen.getByTestId("diagram-name-display"));
+    const field = screen.getByLabelText("composer.nameLabel");
+    fireEvent.change(field, { target: { value: "elsewhere" } });
+    fireEvent.keyDown(field, { key: "a" });
+    fireEvent.mouseDown(field);
+    expect(screen.getByLabelText("composer.nameLabel")).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByLabelText("composer.nameLabel")).not.toBeInTheDocument();
+    expect(screen.getByTestId("diagram-name-display")).toHaveTextContent("diagram.tikz");
+  });
+
+  it("falls back to the default name when a rename leaves nothing usable", () => {
+    open(makeHost());
+    fireEvent.click(screen.getByTestId("diagram-name-display"));
+    fireEvent.change(screen.getByLabelText("composer.nameLabel"), { target: { value: "!!!" } });
+    fireEvent.click(screen.getByLabelText("composer.saveName"));
+    expect(screen.getByTestId("diagram-name-display")).toHaveTextContent("diagram.tikz");
+  });
+
+  it("closes the save and download menus on an outside click only", async () => {
+    const host = makeHost();
+    open(host);
+    await compileOnce(host);
+
+    fireEvent.click(screen.getByLabelText("composer.save"));
+    fireEvent.mouseDown(await screen.findByText("composer.saveFigure"));
+    expect(screen.getByText("composer.saveFigure")).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByText("composer.saveFigure")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("composer.download"));
+    fireEvent.mouseDown(screen.getByText("composer.formatPng"));
+    expect(screen.getByText("composer.formatPng")).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByText("composer.formatPng")).not.toBeInTheDocument();
+  });
+
+  it("closes the reading notes on an outside click and lists notes without detail", () => {
+    open(makeHost());
+    typeCode(`\\begin{tikzpicture}\n\\node[draw] (a) at (0,0) {A};\n${";".repeat(20_001)}\n\\end{tikzpicture}`);
+    fireEvent.click(screen.getByTestId("diagram-tab-draw"));
+
+    fireEvent.click(screen.getByTestId("diagram-notes"));
+    const list = screen.getByTestId("diagram-notes-list");
+    expect(list).toHaveTextContent("notes.truncated");
+    fireEvent.mouseDown(list);
+    expect(screen.getByTestId("diagram-notes-list")).toBeInTheDocument();
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByTestId("diagram-notes-list")).not.toBeInTheDocument();
+  });
+
+  it("returns to the canvas without re-reading untouched code", () => {
+    open(makeHost());
+    const drawing = canvas.props.model;
+    fireEvent.click(screen.getByTestId("diagram-tab-code"));
+    fireEvent.click(screen.getByTestId("diagram-tab-draw"));
+    expect(canvas.props.model).toBe(drawing);
+    expect(kit.toast.info).not.toHaveBeenCalled();
+  });
+
+  it("reads code typed right after a canvas edit", () => {
+    open(makeHost());
+    act(() => canvas.props.onChange?.(relabelFirst("Edited")));
+    typeCode("\\begin{tikzpicture}\n\\node[draw] (x) at (0,0) {Typed};\n\\end{tikzpicture}");
+    fireEvent.click(screen.getByTestId("diagram-tab-draw"));
+    expect(canvas.props.model?.nodes.map((node) => node.label)).toEqual(["Typed"]);
+  });
+
+  it("lets an import win over a canvas edit that has not reached the code yet", async () => {
+    vi.useFakeTimers();
+    const imported = "\\begin{tikzpicture}\n\\node[draw] (a) at (0,0) {Imported};\n\\end{tikzpicture}\n";
+    const host = makeHost({ pickTikzFile: vi.fn(async () => ({ name: "flow.tikz", content: imported })) });
+    open(host);
+    act(() => canvas.props.onChange?.(relabelFirst("Edited")));
+    fireEvent.click(screen.getByLabelText("composer.importLabel"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500);
+    });
+
+    expect(kit.toast.success).toHaveBeenCalledWith("toast.imported flow.tikz");
+    expect(canvas.props.model?.nodes.map((node) => node.label)).toEqual(["Imported"]);
+    fireEvent.click(screen.getByTestId("diagram-tab-code"));
+    expect(screen.getByTestId("code-editor")).toHaveValue(imported);
+  });
+
+  it("keeps the current language and name for files it cannot place", async () => {
+    const tikz = "\\begin{tikzpicture}\n\\node[draw] (a) at (0,0) {A};\n\\end{tikzpicture}\n";
+    const host = makeHost({ pickTikzFile: vi.fn(async () => ({ name: "figure.txt", content: tikz })) });
+    open(host);
+    fireEvent.click(screen.getByLabelText("composer.importLabel"));
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledWith("toast.imported figure.txt"));
+    expect(screen.getByTestId("diagram-language")).toHaveTextContent("TikZ");
+    expect(screen.getByTestId("diagram-name-display")).toHaveTextContent("figure-txt.tikz");
+
+    (host.pickTikzFile as ReturnType<typeof vi.fn>).mockResolvedValue({ name: ".tikz", content: tikz });
+    fireEvent.click(screen.getByLabelText("composer.importLabel"));
+    await waitFor(() => expect(kit.toast.success).toHaveBeenCalledWith("toast.imported .tikz"));
+    expect(screen.getByTestId("diagram-name-display")).toHaveTextContent("figure-txt.tikz");
+  });
+
+  it("converts a canvas edit that has not reached the code when the language changes", async () => {
+    const host = typstHost();
+    const view = render(
+      <DiagramComposer open projectId="project" onClose={() => {}} host={host} language="tikz" languageRequest={1} />,
+    );
+    act(() => canvas.props.onChange?.(relabelFirst("Edited")));
+    view.rerender(
+      <DiagramComposer open projectId="project" onClose={() => {}} host={host} language="typst" languageRequest={2} />,
+    );
+
+    await waitFor(() => expect(screen.getByTestId("diagram-language")).toHaveTextContent("Typst"));
+    expect(canvas.props.model?.nodes[0].label).toBe("Edited");
+    fireEvent.click(screen.getByTestId("diagram-tab-code"));
+    expect(screen.getByTestId("code-editor")).toHaveValue(
+      modelToFletcher(canvas.props.model as DiagramModel, { typstVersion: "0.13.1" }),
+    );
+  });
+
+  it("applies a language request made while closed once the composer opens", async () => {
+    const host = typstHost();
+    const view = render(
+      <DiagramComposer open={false} projectId="project" onClose={() => {}} host={host} language="tikz" languageRequest={0} />,
+    );
+    view.rerender(
+      <DiagramComposer open={false} projectId="project" onClose={() => {}} host={host} language="typst" languageRequest={1} />,
+    );
+    expect(view.container).toBeEmptyDOMElement();
+    view.rerender(
+      <DiagramComposer open projectId="project" onClose={() => {}} host={host} language="typst" languageRequest={1} />,
+    );
+    await waitFor(() => expect(screen.getByTestId("diagram-language")).toHaveTextContent("Typst"));
+  });
+
+  it("uses the app's brand, window controls and macOS title bar spacing", () => {
+    const brandText = "App brand";
+    const controlsText = "Window controls";
+    const { container, rerender } = render(
+      <DiagramComposer
+        open
+        projectId="project"
+        onClose={() => {}}
+        host={makeHost()}
+        isMac
+        brand={<span>{brandText}</span>}
+        windowControls={<span>{controlsText}</span>}
+      />,
+    );
+    expect(screen.getByText(brandText)).toBeInTheDocument();
+    expect(screen.getByText(controlsText)).toBeInTheDocument();
+    expect(screen.queryByLabelText("composer.backToProject")).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog")).not.toHaveAttribute("aria-labelledby");
+    const toolbar = container.querySelector("[data-tauri-drag-region]") as HTMLElement;
+    expect(toolbar).toHaveClass("pl-[78px]");
+
+    rerender(<DiagramComposer open projectId="project" onClose={() => {}} host={makeHost()} isMac fullscreen />);
+    expect(container.querySelector("[data-tauri-drag-region]")).toHaveClass("pl-4");
+    expect(screen.getByRole("dialog")).toHaveAttribute("aria-labelledby", "diagram-composer-title");
   });
 });

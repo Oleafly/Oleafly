@@ -74,6 +74,22 @@ describe("PdfViewer current-page geometry", () => {
     ).toBe(8);
   });
 
+  it("keeps the fallback page when no geometry is usable", () => {
+    expect(
+      selectCurrentPdfPage(
+        [
+          { pageNumber: 0, top: 0, bottom: 10 },
+          { pageNumber: 2, top: Number.NaN, bottom: 10 },
+          { pageNumber: 3, top: 50, bottom: 10 },
+        ],
+        0,
+        800,
+        6,
+      ),
+    ).toBe(6);
+    expect(selectCurrentPdfPage([], 0, 800)).toBe(1);
+  });
+
   it("uses visible area for mixed-size and rotated-page geometry", () => {
     expect(
       selectCurrentPdfPage(
@@ -404,6 +420,34 @@ describe("calculatePdfFitScale", () => {
     ).toBeCloseTo(800 / 1_000);
   });
 
+  it("fits a final odd page of a two-page layout on its own", () => {
+    expect(
+      calculatePdfFitScale({
+        mode: "width",
+        layout: "double",
+        currentPage: 5,
+        pagesCount: 5,
+        pageViewports: new Map([[5, { width: 500, height: 700 }]]) as never,
+        viewportWidth: 532,
+        viewportHeight: 732,
+      }),
+    ).toBeCloseTo(1);
+  });
+
+  it("returns null for degenerate page geometry", () => {
+    expect(
+      calculatePdfFitScale({
+        mode: "height",
+        layout: "single",
+        currentPage: 1,
+        pagesCount: 1,
+        pageViewports: new Map([[1, { width: 0, height: 0 }]]) as never,
+        viewportWidth: 800,
+        viewportHeight: 600,
+      }),
+    ).toBeNull();
+  });
+
   it("returns null instead of borrowing geometry for an unresolved spread page", () => {
     expect(
       calculatePdfFitScale({
@@ -432,5 +476,93 @@ describe("prioritizePdfPages", () => {
     expect(candidates).toEqual(expect.arrayContaining([14, 26]));
     expect(candidates).not.toContain(1);
     expect(candidates).not.toContain(30);
+  });
+});
+
+describe("createPdfLinkViewerAdapter", () => {
+  function adapter(overrides: Partial<Parameters<typeof createPdfLinkViewerAdapter>[0]> = {}) {
+    let current = 1;
+    const setCurrentPage = vi.fn((pageNumber: number) => {
+      current = pageNumber;
+    });
+    const viewer = createPdfLinkViewerAdapter({
+      pagesCount: 3,
+      getCurrentPage: () => current,
+      setCurrentPage,
+      scrollPageIntoView: vi.fn(),
+      optionalContentConfigPromise: Promise.resolve({} as never),
+      ...overrides,
+    });
+    return { viewer, setCurrentPage, page: () => current };
+  }
+
+  it("clamps the current page and steps within the document", () => {
+    const { viewer, setCurrentPage, page } = adapter();
+
+    viewer.currentPageNumber = 9.6;
+    expect(setCurrentPage).toHaveBeenLastCalledWith(3);
+    expect(viewer.nextPage()).toBe(false);
+    expect(viewer.previousPage()).toBe(true);
+    expect(page()).toBe(2);
+    viewer.currentPageNumber = -4;
+    expect(page()).toBe(1);
+    expect(viewer.previousPage()).toBe(false);
+    expect(viewer.nextPage()).toBe(true);
+    expect(viewer.currentPageNumber).toBe(2);
+  });
+
+  it("accepts only quarter-turn rotations and never reports presentation mode", () => {
+    const { viewer } = adapter();
+
+    viewer.pagesRotation = 90;
+    viewer.pagesRotation = 45;
+    viewer.pagesRotation = 180.5;
+
+    expect(viewer.pagesRotation).toBe(90);
+    expect(viewer.isInPresentationMode).toBe(false);
+  });
+
+  it("maps numeric page labels inside the document", () => {
+    const { viewer } = adapter();
+
+    expect(viewer.pageLabelToPageNumber("2")).toBe(2);
+    expect(viewer.pageLabelToPageNumber("0")).toBeNull();
+    expect(viewer.pageLabelToPageNumber("4")).toBeNull();
+    expect(viewer.pageLabelToPageNumber("iv")).toBeNull();
+  });
+
+  it("delegates page labels to the document's own label map", () => {
+    const pageLabelToPageNumber = vi.fn((label: string) => (label === "iv" ? 3 : null));
+    const { viewer } = adapter({ pageLabelToPageNumber });
+
+    expect(viewer.pageLabelToPageNumber("iv")).toBe(3);
+    expect(viewer.pageLabelToPageNumber("2")).toBeNull();
+  });
+
+  it("scrolls without re-emitting a text layer when none is rendered", async () => {
+    const scrollPageIntoView = vi.fn();
+    const dispatch = vi.fn();
+    const { viewer } = adapter({
+      scrollPageIntoView,
+      eventBus: { dispatch },
+      getRenderedTextLayer: () => null,
+    });
+
+    viewer.scrollPageIntoView({ pageNumber: 2 });
+    await Promise.resolve();
+
+    expect(scrollPageIntoView).toHaveBeenCalledWith({ pageNumber: 2 });
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("swaps the optional content configuration and notifies the viewer", () => {
+    const onOptionalContentConfigChange = vi.fn();
+    const { viewer } = adapter({ onOptionalContentConfigChange });
+    const next = Promise.resolve({ renderingIntent: "print" } as never);
+
+    viewer.optionalContentConfigPromise = next;
+
+    expect(viewer.optionalContentConfigPromise).toBe(next);
+    expect(onOptionalContentConfigChange).toHaveBeenCalledWith(next);
   });
 });

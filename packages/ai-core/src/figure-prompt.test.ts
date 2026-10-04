@@ -40,4 +40,9 @@ describe("vision capability", () => {
     expect(modelSupportsVision("ollama", "qwen2.5:7b")).toBe(false);
     expect(modelSupportsVision("ollama", "gemma3:1b")).toBe(false);
   });
+
+  it("finds a Qwen vision id among separators and trailing whitespace", () => {
+    expect(modelSupportsVision("ollama", " qwen2.5vl:7b ")).toBe(true);
+    expect(modelSupportsVision("ollama", " qwen2.5:7b ")).toBe(false);
+  });
 });

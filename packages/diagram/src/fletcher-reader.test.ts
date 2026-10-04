@@ -559,6 +559,38 @@ describe("readFletcher on hand-written code", () => {
     expect(again.model?.nodes.map((n) => n.id)).toEqual(["node", "node-1"]);
   });
 
+  it("carries a relabeled node's hand-written options over to its new code", () => {
+    const source = [
+      IMPORT,
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>, fill: accent.lighten(60%), inset: 8pt),",
+      "  node((1, 0), [B], name: <b>),",
+      ")",
+    ].join("\n");
+    const result = read(source);
+    const model = result.model as DiagramModel;
+    const relabeled: DiagramModel = {
+      ...model,
+      nodes: model.nodes.map((n) => (n.id === "a" ? { ...n, label: "Renamed" } : n)),
+    };
+    const line = modelToFletcher(relabeled, { extras: result.extras }).split("\n").find((text) => text.includes("[Renamed]")) ?? "";
+    expect(line).toContain("fill: accent.lighten(60%)");
+    expect(line).toContain("inset: 8pt");
+    expect(line).not.toContain("[A]");
+  });
+
+  it("writes nodes in canvas order once the canvas reorders them", () => {
+    const source = [IMPORT, "#diagram(", "  node((0, 0), [A], name: <a>),", "  node((1, 0), [B], name: <b>),", ")"].join("\n");
+    const result = read(source);
+    const model = result.model as DiagramModel;
+    const reordered: DiagramModel = { ...model, nodes: [...model.nodes].reverse() };
+    const lines = modelToFletcher(reordered, { extras: result.extras }).split("\n");
+    const first = lines.findIndex((line) => line.includes("[B]"));
+    const second = lines.findIndex((line) => line.includes("[A]"));
+    expect(first).toBeGreaterThan(0);
+    expect(second).toBeGreaterThan(first);
+  });
+
   it("keeps nodes it cannot place and edges it cannot connect", () => {
     const source = [
       IMPORT,
@@ -647,4 +679,106 @@ describe("fletcher written after a read compiles", () => {
     },
     600_000,
   );
+});
+
+describe("readFletcher uncommon forms", () => {
+  const noteCodes = (notes: { code: string; detail?: string }[]) => notes.map((n) => (n.detail ? `${n.code}:${n.detail}` : n.code));
+
+  it("reads string escapes, parenthesized coordinates and expression labels", () => {
+    const source = [
+      "#diagram(",
+      String.raw`  node((0, 0), "A\u{42}\nC\td\"q\\", name: <a>),`,
+      "  node(((1), -(2)), [P], name: <p>),",
+      "  node((6, 0), 1 + 2, name: <x>),",
+      ")",
+    ].join("\n");
+    const result = read(source);
+    expect(result.model?.nodes.map((n) => [n.id, n.label, n.x, n.y])).toEqual([
+      ["a", 'AB\nC\td"q\\', -41.5, -15],
+      ["p", "P", 90, -175],
+      ["x", "1 + 2", 632.5, -15],
+    ]);
+    expect(noteCodes(result.notes)).toContain("formattedLabels");
+  });
+
+  it("leaves colours, strokes and positions it cannot work out unset", () => {
+    const source = [
+      "#diagram(",
+      "  node((2, 0), [R], name: <r>, fill: rgb(1, 2)),",
+      "  node((3, 0), [S], name: <s>, fill: luma(128, 50%)),",
+      "  node((4, 0), [T], name: <t>, fill: cmyk(10%, 0%, 0%, 0%)),",
+      "  node((5, 0), [U], name: <u>, stroke: (1pt, red)),",
+      "  node((1, 2cm), [M], name: <m>),",
+      ")",
+    ].join("\n");
+    const result = read(source);
+    expect(result.model?.nodes.map((n) => [n.id, n.fill ?? null, n.stroke ?? null])).toEqual([
+      ["r", null, null],
+      ["s", "#808080", null],
+      ["t", null, null],
+      ["u", null, null],
+    ]);
+    expect(result.extras?.items).toEqual(["node((1, 2cm), [M], name: <m>)"]);
+    expect(noteCodes(result.notes)).toEqual([
+      "gridCoordinates",
+      "estimatedSize",
+      "colorExpressions",
+      "colorAdjustments",
+      "strokeStyles",
+      "unplacedNode",
+    ]);
+  });
+
+  it("reads marks between the endpoints, a bare label, and keeps edges it cannot connect", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>),",
+      "  node((3, 1), [B], name: <b>),",
+      '  edge(<a>, "-|>", <b>),',
+      "  edge(<a>, <b>, [lbl]),",
+      '  edge((0cm, 0cm), (3cm, 1cm), "->"),',
+      '  edge("r", "->"),',
+      ")",
+    ].join("\n");
+    const result = read(source);
+    expect(result.model?.edges.map((e) => [e.source, e.target, e.arrow, e.label ?? null])).toEqual([
+      ["a", "b", "forward", null],
+      ["a", "b", "none", "lbl"],
+    ]);
+    expect(result.extras?.items).toEqual(['edge((0cm, 0cm), (3cm, 1cm), "->")', 'edge("r", "->")']);
+    expect(noteCodes(result.notes)).toContain("danglingEdge");
+  });
+
+  it("attaches a bent edge to the side its last bend faces", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>),",
+      "  node((2, 1), [C], name: <c>),",
+      '  edge(<a>, (1, 0), <c>, "->"),',
+      ")",
+    ].join("\n");
+    const edge = read(source).model?.edges[0];
+    expect(edge).toMatchObject({ routing: "orthogonal", sourceHandle: "r", targetHandle: "l" });
+  });
+
+  it("keeps the hint's corner radius and edge handles when the code agrees with it", () => {
+    const source = [
+      "#diagram(",
+      "  node((0, 0), [A], name: <a>),",
+      "  node((1, 0), [B], name: <b>, corner-radius: 3pt),",
+      '  edge(<a>, <b>, "->"),',
+      ")",
+    ].join("\n");
+    const first = read(source).model as DiagramModel;
+    const hint: DiagramModel = {
+      ...first,
+      nodes: first.nodes.map((n) => (n.id === "b" ? { ...n, radius: 4.2 } : n)),
+      edges: first.edges.map((e) => ({ ...e, id: "hinted", sourceHandle: "r", targetHandle: "l" })),
+    };
+    const result = read(source, hint);
+    expect(result.model?.nodes[1]).toMatchObject({ shape: "roundrect", radius: 4.2 });
+    expect(result.model?.edges).toEqual([
+      { id: "hinted", source: "a", target: "b", routing: "straight", arrow: "forward", style: "solid", sourceHandle: "r", targetHandle: "l" },
+    ]);
+  });
 });

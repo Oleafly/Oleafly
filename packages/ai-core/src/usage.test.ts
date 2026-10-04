@@ -121,3 +121,31 @@ describe("normalizeAgentUsage", () => {
     });
   });
 });
+
+describe("normalizeAgentUsage guards", () => {
+  it("rejects an input semantics value it does not know", () => {
+    expect(() =>
+      normalizeAgentUsage({
+        input: 1,
+        output: 1,
+        inputSemantics: "partial" as unknown as "inclusive",
+      }),
+    ).toThrow("inputSemantics has an unsupported value");
+  });
+
+  it("rejects an exclusive input total that overflows a safe integer", () => {
+    expect(() =>
+      normalizeAgentUsage({
+        input: Number.MAX_SAFE_INTEGER,
+        output: 0,
+        cacheRead: 1,
+        cacheWrite: 0,
+        inputSemantics: "exclusive",
+      }),
+    ).toThrow("normalized input total must be a nonnegative safe integer");
+  });
+
+  it("rejects negative cache counters by name", () => {
+    expect(() => normalizeAgentUsage({ input: 1, output: 1, cacheWrite: -2 })).toThrow(/cacheWrite/u);
+  });
+});
