@@ -159,13 +159,41 @@ pub(super) fn resolve_for_launch(
     kind: LanguageServiceKind,
     resource: Option<&BundledResourcePaths>,
 ) -> Result<ServerLaunch, LanguageServiceError> {
+    let inherited = inherited_search_path(std::env::var_os("PATH"), bundled_runtime_directory());
     resolve_profile_for_launch(
         app_local_data,
         state,
         profile(kind)?,
         resource,
-        std::env::var_os("PATH").as_deref(),
+        inherited.as_deref(),
     )
+}
+
+const WINDOWS_RUNTIME_DLL: &str = "vcruntime140.dll";
+
+fn bundled_runtime_directory() -> Option<PathBuf> {
+    if !cfg!(windows) {
+        return None;
+    }
+    let directory = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    directory
+        .join(WINDOWS_RUNTIME_DLL)
+        .is_file()
+        .then_some(directory)
+}
+
+fn inherited_search_path(path: Option<OsString>, runtime: Option<PathBuf>) -> Option<OsString> {
+    let Some(runtime) = runtime else {
+        return path;
+    };
+    let mut entries: Vec<PathBuf> = path
+        .as_deref()
+        .map(|value| std::env::split_paths(value).collect())
+        .unwrap_or_default();
+    if !entries.contains(&runtime) {
+        entries.push(runtime);
+    }
+    std::env::join_paths(entries).ok().or(path)
 }
 
 fn resolve_profile_for_launch(
@@ -2221,6 +2249,43 @@ mod tests {
             std::env::split_paths(&alone).collect::<Vec<_>>(),
             vec![shims]
         );
+    }
+
+    #[test]
+    fn the_bundled_runtime_directory_goes_last_on_the_inherited_path() {
+        let root = std::env::temp_dir();
+        let first = root.join("system-first");
+        let runtime = root.join("oleafly-install");
+        let inherited = std::env::join_paths([first.clone()]).unwrap();
+
+        let joined = inherited_search_path(Some(inherited.clone()), Some(runtime.clone())).unwrap();
+        assert_eq!(
+            std::env::split_paths(&joined).collect::<Vec<_>>(),
+            vec![first.clone(), runtime.clone()]
+        );
+
+        let already = std::env::join_paths([runtime.clone(), first.clone()]).unwrap();
+        let unchanged =
+            inherited_search_path(Some(already.clone()), Some(runtime.clone())).unwrap();
+        assert_eq!(unchanged, already);
+
+        let alone = inherited_search_path(None, Some(runtime.clone())).unwrap();
+        assert_eq!(
+            std::env::split_paths(&alone).collect::<Vec<_>>(),
+            vec![runtime]
+        );
+
+        assert_eq!(
+            inherited_search_path(Some(inherited.clone()), None),
+            Some(inherited)
+        );
+        assert_eq!(inherited_search_path(None, None), None);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn only_windows_launches_look_for_a_bundled_runtime() {
+        assert_eq!(bundled_runtime_directory(), None);
     }
 
     #[cfg(unix)]

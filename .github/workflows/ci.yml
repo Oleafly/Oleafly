@@ -194,7 +194,7 @@ jobs:
       - name: Validate translations
         run: pnpm i18n:validate
       - name: Test dictionary catalogs, Windows download confinement and the Tauri version check
-        run: node --test scripts/dictionaries/build-catalog.node-tests.mjs scripts/fetch-language-servers.node-tests.mjs scripts/hunspell.node-tests.mjs scripts/check-tauri-versions.node-tests.mjs scripts/typst/build-toolchain-catalog.node-tests.mjs
+        run: node --test scripts/dictionaries/build-catalog.node-tests.mjs scripts/fetch-language-servers.node-tests.mjs scripts/hunspell.node-tests.mjs scripts/check-tauri-versions.node-tests.mjs scripts/typst/build-toolchain-catalog.node-tests.mjs scripts/stage-windows-vcruntime.node-tests.mjs
       - name: Typecheck and build
         run: pnpm build
       - name: Check performance budgets
@@ -372,6 +372,9 @@ jobs:
           bash scripts/fetch-biber.sh x86_64-pc-windows-msvc
           bash scripts/fetch-pandoc.sh x86_64-pc-windows-msvc
           bash scripts/fetch-typst.sh x86_64-pc-windows-msvc
+
+      - name: Stage the Microsoft VC++ runtime that Typst and TexLab need
+        run: node scripts/stage-windows-vcruntime.mjs
 
       - name: Stage checksum-pinned Tinymist resource archive
         run: node scripts/fetch-language-servers.mjs --server tinymist --target x86_64-pc-windows-msvc --install-mode resource
@@ -1158,7 +1161,7 @@ jobs:
       - name: Compute the packaged app cache key
         id: e2e-app-key
         shell: bash
-        run: echo "key=e2e-app-windows-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/windows/**', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/typst/bundled-typst.mjs', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
+        run: echo "key=e2e-app-windows-v2-${{ hashFiles('src/**', 'packages/**', 'crates/**', 'vendor/**', 'src-tauri/src/**', 'src-tauri/Cargo.toml', 'src-tauri/build.rs', 'src-tauri/tauri.conf.json', 'src-tauri/tauri.e2e.conf.json', 'src-tauri/tauri.windows.conf.json', 'src-tauri/windows/**', 'src-tauri/capabilities/**', 'src-tauri/resources/**', 'src-tauri/icons/**', 'Cargo.toml', 'Cargo.lock', 'package.json', 'pnpm-lock.yaml', 'vite.config.ts', 'tsconfig.json', 'index.html', 'public/**', 'patches/**', 'scripts/fetch-tectonic.sh', 'scripts/fetch-biber.sh', 'scripts/fetch-pandoc.sh', 'scripts/fetch-typst.sh', 'scripts/stage-windows-vcruntime.mjs', 'scripts/typst/bundled-typst.mjs', 'scripts/fetch-language-servers.mjs', 'scripts/tauri-sandbox.mjs') }}" >> "$GITHUB_OUTPUT"
 
       - name: Restore the packed app from the cache
         id: e2e-app-cache
@@ -1241,6 +1244,10 @@ jobs:
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         shell: bash
         run: bash scripts/smoke-typst.sh x86_64-pc-windows-msvc
+
+      - name: Stage the Microsoft VC++ runtime that Typst and TexLab need
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        run: node scripts/stage-windows-vcruntime.mjs
 
       - name: Build the packaged e2e app
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'

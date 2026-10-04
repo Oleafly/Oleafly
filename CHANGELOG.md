@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- On Windows PCs without Microsoft's Visual C++ runtime, Typst projects
+  didn't compile and the LaTeX language server (TexLab) didn't start. Both
+  need a runtime file that Windows doesn't include, so Oleafly now installs it
+  next to the app.
+
 ## [0.4.4] - 2026-10-03
 
 ### Added

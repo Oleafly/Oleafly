@@ -204,6 +204,10 @@ jobs:
         shell: bash
         run: bash scripts/fetch-typst.sh ${{ matrix.rust_target }}
 
+      - name: Stage the Microsoft VC++ runtime that Typst and TexLab need
+        if: matrix.os == 'windows-latest'
+        run: node scripts/stage-windows-vcruntime.mjs
+
       # Pandoc powers the ad-hoc document converters. Shipping the pinned
       # sidecar keeps every conversion available when the app is offline.
       - name: Fetch checksum-pinned Pandoc sidecar
@@ -477,6 +481,7 @@ jobs:
             test ! -e "$RUNTIME_DIR/tinymist.exe"
             test -f "$RUNTIME_DIR/pandoc.exe"
             test -f "$RUNTIME_DIR/typst.exe"
+            test -f "$RUNTIME_DIR/vcruntime140.dll"
           else
             RUNTIME_DIR="src-tauri/target/release"
             test -f "$RUNTIME_DIR/tectonic"
