@@ -292,6 +292,17 @@ describe("drawing shapes", () => {
     expect(lastModel(changed).nodes[0]).toMatchObject({ x: 200, y: 200, w: 100, h: 100 });
   });
 
+  it("keeps a circle where its preview was when the drag ends up and left unevenly", () => {
+    const changed = vi.fn();
+    render(<DiagramCanvas model={EMPTY} onChange={changed} />);
+    arm("palette.circle");
+    fireEvent.pointerDown(pane(), { button: 0, pointerId: 1, clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(pane(), { pointerId: 1, clientX: 250, clientY: 200 });
+    expect(lastModel(changed).nodes[0]).toMatchObject({ x: 200, y: 200, w: 100, h: 100 });
+    fireEvent.pointerUp(pane(), { pointerId: 1, clientX: 250, clientY: 200 });
+    expect(lastModel(changed).nodes[0]).toMatchObject({ x: 200, y: 200, w: 100, h: 100 });
+  });
+
   it("finishes the drawing when the pointer capture was already released", () => {
     const changed = vi.fn();
     const { container } = render(<DiagramCanvas model={EMPTY} onChange={changed} />);

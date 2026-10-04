@@ -2,6 +2,25 @@ import { describe, expect, it } from "vitest";
 import { parseBibtexLog } from "./bibtex-log";
 
 describe("parseBibtexLog", () => {
+  it("keeps an entry error and a later command error apart", () => {
+    const log = [
+      "I was expecting a `,' or a `}'---line 5 of file refs.bib",
+      " :   title = {A}",
+      " :           ^",
+      "I'm skipping whatever remains of this entry",
+      "Illegal, another \\bibdata command---line 3 of file main.aux",
+      " : \\bibdata",
+      " :         {refs}",
+      "I'm skipping whatever remains of this command",
+    ].join("\n");
+
+    const errors = parseBibtexLog(log).filter((d) => d.severity === "error");
+    expect(errors.map((d) => [d.message, d.line, d.file])).toEqual([
+      ["I was expecting a `,' or a `}'", 5, "refs.bib"],
+      ["Illegal, another \\bibdata command", 3, "main.aux"],
+    ]);
+  });
+
   it("parses single-line warnings with the entry key folded into the message", () => {
     const log = [
       "This is BibTeX, Version 0.99d (TeX Live 2024)",

@@ -231,6 +231,15 @@ describe("ReadableStream async iteration polyfill", () => {
     expect(chunks).toEqual(["a", "b", "c"]);
   });
 
+  it("releases the reader lock once iteration finishes", async () => {
+    await reinstall({ keepValues: false });
+    const { source } = stream(["a", "b"]);
+
+    for await (const chunk of source as unknown as AsyncIterable<string>) expect(chunk).toBeTypeOf("string");
+
+    expect(source.locked).toBe(false);
+  });
+
   it("cancels the stream when iteration stops early", async () => {
     await reinstall({ keepValues: false });
     const { source, cancel } = stream(["a", "b", "c"]);

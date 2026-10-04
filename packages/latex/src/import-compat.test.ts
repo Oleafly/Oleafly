@@ -407,6 +407,13 @@ describe("classifyCompileFailure log shapes", () => {
     expect(finding?.detail).toContain("plots/curve.eps");
   });
 
+  it("names the EPS file when the log quotes it with straight quotes", () => {
+    const finding = classifyCompileFailure("! LaTeX Error: File 'plots/curve-eps-converted-to.pdf' not found.").find(
+      (f) => f.id === "eps-image",
+    );
+    expect(finding?.detail).toContain("plots/curve.eps");
+  });
+
   it("names no file when the converted-file name is unreadable", () => {
     const blank = classifyCompileFailure("! LaTeX Error: File `-eps-converted-to.pdf' not found.").find(
       (f) => f.id === "eps-image",

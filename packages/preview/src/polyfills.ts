@@ -164,7 +164,11 @@ installURLParse(typeof URL !== "undefined" ? (URL as unknown as URLCtor) : undef
     const preventCancel = opts?.preventCancel ?? false;
     const reader = this.getReader();
     return {
-      next: () => reader.read(),
+      async next() {
+        const result = await reader.read();
+        if (result.done) reader.releaseLock();
+        return result;
+      },
       return(value?: unknown) {
         if (preventCancel) {
           reader.releaseLock();

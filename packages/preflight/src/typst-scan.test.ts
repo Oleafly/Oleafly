@@ -42,6 +42,12 @@ describe("scanTypst", () => {
     expect(scan.markup).not.toContain("@b");
   });
 
+  it("treats a URL glued to a word as a link, not a comment, as Typst does", () => {
+    const scan = scanTypst("Start xhttps://a.b tail");
+    expect(scan.comments).toEqual([]);
+    expect(scan.markup).toContain("tail");
+  });
+
   it("separates code from markup", () => {
     const text = '#image("a.png", alt: "Plot") and #emph[see @fig] here';
     const scan = scanTypst(text);

@@ -18,6 +18,11 @@ function golden(name: string) {
 }
 
 describe("parseLatexLog", () => {
+  it("reports a run that produced no pages with the log's own words", () => {
+    const [diagnostic] = parseLatexLog("No pages of output.\n");
+    expect(diagnostic).toMatchObject({ severity: "error", category: "error", message: "No pages of output." });
+  });
+
   it("reads logs written with Windows line endings like the same log with LF", () => {
     const names = readdirSync(GOLDEN_DIR)
       .filter((name) => name.endsWith(".log"))
