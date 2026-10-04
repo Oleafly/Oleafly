@@ -62,7 +62,10 @@
     "no_host_binary": "TinyTeX no tiene un binario {{name}} compatible con este sistema.",
     "package_operation_timeout": "La operación con paquetes superó su límite de {{span}} y se detuvo, para que puedas volver a compilar. Lo más probable es que el servidor de TeX Live esté saturado. Inténtalo más tarde o ejecuta tlmgr por tu cuenta.",
     "latexmk_build_path": "latexmk no puede usar la carpeta de compilación de Oleafly en este equipo porque su ruta contiene caracteres que latexmk no acepta. Cambia este proyecto a Tectonic para compilarlo.",
-    "latexmk_network_folder": "latexmk no puede compilar una carpeta en un recurso compartido de red. Cambia este proyecto a Tectonic o copia la carpeta a este equipo."
+    "latexmk_network_folder": "latexmk no puede compilar una carpeta en un recurso compartido de red. Cambia este proyecto a Tectonic o copia la carpeta a este equipo.",
+    "shell_escape_denied_minted": "minted necesita ejecutar otro programa para resaltar el código, y este proyecto lo bloquea. Para permitirlo, haz clic en \"{{setting}}\" en el aviso que hay sobre el editor. Hazlo solo si confías en todos los archivos del proyecto. LaTeX podrá ejecutar cualquier programa con tus permisos, y un programa que inicie puede seguir ejecutándose después de que detengas la compilación.",
+    "shell_escape_denied_pythontex": "PythonTeX necesita ejecutar Python, y este proyecto lo bloquea. Para permitirlo, haz clic en \"{{setting}}\" en el aviso que hay sobre el editor. Hazlo solo si confías en todos los archivos del proyecto. LaTeX podrá ejecutar cualquier programa con tus permisos, y un programa que inicie puede seguir ejecutándose después de que detengas la compilación.",
+    "shell_escape_denied_command": "Este documento ejecuta un comando de shell, y este proyecto lo bloquea. Para permitirlo, haz clic en \"{{setting}}\" en el aviso que hay sobre el editor. Hazlo solo si confías en todos los archivos del proyecto. LaTeX podrá ejecutar cualquier programa con tus permisos, y un programa que inicie puede seguir ejecutándose después de que detengas la compilación."
   },
   "export": {
     "bibliography_unreadable": "Oleafly no pudo leer el archivo de bibliografía {{name}}. Revisa si tiene alguna entrada dañada y vuelve a exportar."

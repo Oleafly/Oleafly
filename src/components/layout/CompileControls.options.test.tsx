@@ -16,6 +16,7 @@ const copy = enShell.compile;
 const recompile = vi.fn(async () => {});
 const stopCompile = vi.fn(async () => {});
 const setEngine = vi.fn(async (_engine: string, _flavor?: string | null) => {});
+const SYSTEM_TEX = { ...LATEX_ENGINE, id: "latexmk", tex_flavor: null };
 
 async function openOptions() {
   const user = userEvent.setup();
@@ -288,6 +289,17 @@ describe("CompileControls options menu", () => {
       expect(recompile).toHaveBeenCalledWith({ fromScratch: true }),
     );
     expect(useSettingsStore.getState().viewMode).toBe("split");
+  });
+});
+
+describe("CompileControls external commands", () => {
+  it("keeps the external commands switch out of the menu", async () => {
+    useFilesStore.setState({
+      engine: SYSTEM_TEX,
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    render(<CompileControls />);
+    await openOptions();
+    expect(screen.queryByRole("menuitemcheckbox")).not.toBeInTheDocument();
   });
 });
 

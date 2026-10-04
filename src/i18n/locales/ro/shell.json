@@ -448,17 +448,14 @@
     },
     "recommended": "Recomandat",
     "shellEscape": {
-      "label": "Permite comenzi externe pe acest computer",
-      "needed": "Acest proiect folosește funcții care au nevoie de comenzi externe arbitrare. Ele rămân blocate până când le permiți.",
-      "warning": "Necesar pentru minted și pentru unele documente PythonTeX. LaTeX poate rula programe cu permisiunile tale de utilizator, așa că activează asta doar pentru un proiect în care ai încredere. Ajutoarele proprii ale TeX Live, precum conversia EPS, rulează și fără."
+      "included": "Astfel, proiectul poate rula și comenzile externe de care are nevoie. LaTeX va putea rula orice program cu permisiunile tale, așa că fă asta doar pentru un proiect în care ai încredere."
     },
     "shellEscapeFailed": "Accesul la comenzi externe nu a putut fi actualizat.",
     "switchFailed": "Motorul de compilare nu a putut fi schimbat.",
     "switched": "Acest proiect se compilează acum cu {{engine}}.",
     "switchedAfterInstall": "TinyTeX a fost instalat. Acest proiect se compilează acum cu {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Deja selectat",
-      "found": "S-a găsit o distribuție TeX pe această mașină. TeX-ul din sistem poate citi fișierele locale accesibile contului tău, așa că folosește-l doar cu proiecte în care ai încredere. Comenzile externe arbitrare rămân blocate dacă nu le permiți mai jos. TeX Live rulează în continuare ajutoarele din lista lui proprie de permisiuni, precum conversia EPS.",
+      "found": "S-a găsit o distribuție TeX pe această mașină. TeX-ul din sistem poate citi fișierele locale accesibile contului tău, așa că folosește-l doar cu proiecte în care ai încredere. TeX Live rulează în continuare ajutoarele din lista lui proprie de permisiuni, precum conversia EPS.",
       "missing": "Nu s-a găsit nicio distribuție TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) pe această mașină.",
       "switchPdflatex": "Treci la pdfLaTeX și recompilează",
       "title": "Folosește LaTeX-ul din sistemul meu (latexmk)",
@@ -482,6 +479,10 @@
     },
     "titleCompileFailure": "Această compilare are nevoie de mai mult decât motorul inclus",
     "titleImportScan": "Acest proiect are nevoie de mai mult decât motorul inclus"
+  },
+  "shellCommands": {
+    "allow": "Permite comenzi externe",
+    "banner": "Acest document rulează comenzi externe la compilare, iar acest proiect le blochează. Permite-le doar dacă ai încredere în fiecare fișier din proiect."
   },
   "errorBoundary": {
     "copyDiagnostics": "Copiază diagnosticele",

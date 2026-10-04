@@ -93,7 +93,7 @@
     "fullscreen": "Podgląd pełnoekranowy",
     "exitFullscreen": "Wyjdź z pełnego ekranu",
     "retryCompile": "Ponów kompilację",
-    "chooseEngine": "Wybierz silnik…",
+    "chooseEngine": "Wybierz silnik",
     "installPackages_one": "Znajdź i zainstaluj {{name}}",
     "installPackages_few": "Znajdź i zainstaluj {{count}} pliki",
     "installPackages_many": "Znajdź i zainstaluj {{count}} plików",

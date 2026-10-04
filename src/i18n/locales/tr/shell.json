@@ -446,17 +446,14 @@
     },
     "recommended": "Önerilen",
     "shellEscape": {
-      "label": "Bu bilgisayarda dış komutlara izin ver",
-      "needed": "Bu proje, isteğe bağlı dış komutlar gerektiren özellikler kullanıyor. Siz izin verene kadar engellenmiş kalırlar.",
-      "warning": "minted ve bazı PythonTeX belgeleri için gereklidir. LaTeX, programları sizin kullanıcı izinlerinizle çalıştırabilir; bu yüzden bunu yalnızca güvendiğiniz bir projede açın. TeX Live'ın kendi yardımcıları, örneğin EPS dönüştürme, buna gerek duymadan çalışır."
+      "included": "Bu, projenin ihtiyaç duyduğu dış komutları çalıştırmasına da izin verir. LaTeX bundan sonra izinlerinizle herhangi bir programı çalıştırabilir, bu yüzden bunu yalnızca güvendiğiniz bir projede yapın."
     },
     "shellEscapeFailed": "Dış komut erişimi güncellenemedi.",
     "switchFailed": "Derleme motoru değiştirilemedi.",
     "switched": "Bu proje artık {{engine}} ile derleniyor.",
     "switchedAfterInstall": "TinyTeX kuruldu. Bu proje artık {{engine}} ile derleniyor.",
     "systemTex": {
-      "alreadySelected": "Zaten seçili",
-      "found": "Bu makinede bir TeX dağıtımı bulundu. Sistem TeX'i, hesabınızın erişebildiği yerel dosyaları okuyabilir; bu yüzden yalnızca güvendiğiniz projelerde kullanın. Aşağıdan izin vermediğiniz sürece isteğe bağlı dış komutlar engelli kalır. TeX Live, EPS dönüştürme gibi kendi izin listesindeki yardımcıları yine de çalıştırır.",
+      "found": "Bu makinede bir TeX dağıtımı bulundu. Sistem TeX'i, hesabınızın erişebildiği yerel dosyaları okuyabilir; bu yüzden yalnızca güvendiğiniz projelerde kullanın. TeX Live, EPS dönüştürme gibi kendi izin listesindeki yardımcıları yine de çalıştırır.",
       "missing": "Bu makinede bir TeX dağıtımı (MacTeX, TeX Live, MiKTeX, TinyTeX) bulunamadı.",
       "switchPdflatex": "pdfLaTeX'e geç ve yeniden derle",
       "title": "Sistemimdeki LaTeX'i kullan (latexmk)",
@@ -479,6 +476,10 @@
     },
     "titleCompileFailure": "Bu derleme yerleşik motordan fazlasını gerektiriyor",
     "titleImportScan": "Bu proje yerleşik motordan fazlasını gerektiriyor"
+  },
+  "shellCommands": {
+    "allow": "Dış komutlara izin ver",
+    "banner": "Bu belge derlenirken dış komutlar çalıştırıyor ve bu proje bunları engelliyor. Bunlara yalnızca projedeki her dosyaya güveniyorsanız izin verin."
   },
   "errorBoundary": {
     "copyDiagnostics": "Tanılamaları kopyala",

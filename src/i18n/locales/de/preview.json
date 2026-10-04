@@ -93,7 +93,7 @@
     "fullscreen": "Vorschau im Vollbild",
     "exitFullscreen": "Vollbild verlassen",
     "retryCompile": "Erneut kompilieren",
-    "chooseEngine": "Engine wählen…",
+    "chooseEngine": "Engine wählen",
     "installPackages_one": "{{name}} finden und installieren",
     "installPackages_other": "{{count}} Dateien finden und installieren",
     "downloadTypst": "Typst {{version}} herunterladen",

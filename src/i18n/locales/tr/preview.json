@@ -93,7 +93,7 @@
     "fullscreen": "Tam ekran önizleme",
     "exitFullscreen": "Tam ekrandan çık",
     "retryCompile": "Derlemeyi yeniden dene",
-    "chooseEngine": "Motor seç…",
+    "chooseEngine": "Motor seç",
     "installPackages_one": "{{name}} paketini bul ve kur",
     "installPackages_other": "{{count}} dosyayı bul ve kur",
     "downloadTypst": "Typst {{version}} sürümünü indir",

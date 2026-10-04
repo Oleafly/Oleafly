@@ -446,17 +446,14 @@
     },
     "recommended": "Anbefalt",
     "shellEscape": {
-      "label": "Tillat eksterne kommandoer på denne maskinen",
-      "needed": "Dette prosjektet bruker funksjoner som trenger vilkårlige eksterne kommandoer. De er blokkert til du tillater dem.",
-      "warning": "Kreves av minted og enkelte PythonTeX-dokumenter. LaTeX kan kjøre programmer med dine rettigheter, så slå dette på bare for et prosjekt du stoler på. TeX Lives egne hjelpeprogrammer, som EPS-konvertering, kjører uten dette."
+      "included": "Dette lar også prosjektet kjøre de eksterne kommandoene det trenger. LaTeX kan da kjøre hvilket som helst program med dine rettigheter, så gjør dette bare for et prosjekt du stoler på."
     },
     "shellEscapeFailed": "Kunne ikke oppdatere tilgangen til eksterne kommandoer.",
     "switchFailed": "Kunne ikke bytte kompileringsmotor.",
     "switched": "Dette prosjektet kompileres nå med {{engine}}.",
     "switchedAfterInstall": "TinyTeX er installert. Dette prosjektet kompileres nå med {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Allerede valgt",
-      "found": "Fant en TeX-distribusjon på denne maskinen. System-TeX kan lese lokale filer kontoen din har tilgang til, så bruk det bare med prosjekter du stoler på. Vilkårlige eksterne kommandoer er fortsatt blokkert med mindre du tillater dem nedenfor. TeX Live kjører fortsatt hjelpeprogrammene på sin egen tillatelsesliste, som EPS-konvertering.",
+      "found": "Fant en TeX-distribusjon på denne maskinen. System-TeX kan lese lokale filer kontoen din har tilgang til, så bruk det bare med prosjekter du stoler på. TeX Live kjører fortsatt hjelpeprogrammene på sin egen tillatelsesliste, som EPS-konvertering.",
       "missing": "Fant ingen TeX-distribusjon (MacTeX, TeX Live, MiKTeX, TinyTeX) på denne maskinen.",
       "switchPdflatex": "Bytt til pdfLaTeX og kompiler på nytt",
       "title": "Bruk LaTeX fra systemet mitt (latexmk)",
@@ -479,6 +476,10 @@
     },
     "titleCompileFailure": "Denne kompileringen trenger mer enn den innebygde motoren",
     "titleImportScan": "Dette prosjektet trenger mer enn den innebygde motoren"
+  },
+  "shellCommands": {
+    "allow": "Tillat eksterne kommandoer",
+    "banner": "Dette dokumentet kjører eksterne kommandoer under kompileringen, og dette prosjektet blokkerer dem. Tillat dem bare hvis du stoler på alle filene i prosjektet."
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopier diagnostikken",

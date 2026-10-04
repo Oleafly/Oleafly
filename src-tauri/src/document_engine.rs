@@ -453,29 +453,80 @@ fn read_source_head(path: &Path) -> String {
     String::from_utf8_lossy(&bytes).into_owned()
 }
 
-fn denied_shell_escape_feature(source: &str, log: &str) -> Option<&'static str> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DeniedShellEscape {
+    Minted,
+    PythonTex,
+    Command,
+}
+
+impl DeniedShellEscape {
+    fn feature(self) -> &'static str {
+        match self {
+            Self::Minted => "minted syntax highlighting",
+            Self::PythonTex => "PythonTeX",
+            Self::Command => "a LaTeX shell command",
+        }
+    }
+
+    fn code(self) -> &'static str {
+        match self {
+            Self::Minted => "tex.shell_escape_denied_minted",
+            Self::PythonTex => "tex.shell_escape_denied_pythontex",
+            Self::Command => "tex.shell_escape_denied_command",
+        }
+    }
+
+    fn reason(self) -> &'static str {
+        match self {
+            Self::Minted => {
+                "minted needs to run another program to highlight code, and this project blocks that."
+            }
+            Self::PythonTex => "PythonTeX needs to run Python, and this project blocks that.",
+            Self::Command => "This document runs a shell command, and this project blocks that.",
+        }
+    }
+}
+
+fn denied_shell_escape_feature(source: &str, log: &str) -> Option<DeniedShellEscape> {
     let source = source.to_ascii_lowercase();
     let log = log.to_ascii_lowercase();
     if ["minted", "inputminted", "mintinline", "pygmentize"]
         .iter()
         .any(|needle| source.contains(needle) || log.contains(needle))
     {
-        return Some("minted syntax highlighting");
+        return Some(DeniedShellEscape::Minted);
     }
     if ["pythontex", "pycode", "pysub", "pygment"]
         .iter()
         .any(|needle| source.contains(needle) || log.contains(needle))
     {
-        return Some("PythonTeX");
+        return Some(DeniedShellEscape::PythonTex);
     }
     if ["\\write18", "\\shellescape", "\\input{|", "includesvg"]
         .iter()
         .any(|needle| source.contains(needle))
         || log_refused_a_shell_command(&log)
     {
-        return Some("a LaTeX shell command");
+        return Some(DeniedShellEscape::Command);
     }
     None
+}
+
+fn shell_escape_denial(denied: DeniedShellEscape) -> CompileError {
+    CompileError {
+        message: format!(
+            "{} needs to run an outside program, which this project does not allow.",
+            denied.feature()
+        ),
+        kind: "error".into(),
+        explanation: Some(format!(
+            "{} To allow it, click \"Allow external commands\" in the banner above the editor. Only do this if you trust every file in the project. LaTeX can then run any program with your permissions, and a program it starts may keep running after you stop the compile.",
+            denied.reason()
+        )),
+        code: Some(denied.code().into()),
+        ..Default::default()
+    }
 }
 
 fn log_refused_a_shell_command(log: &str) -> bool {
@@ -1445,6 +1496,8 @@ pub struct CompileError {
     pub hints: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_line: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<String>,
 }
 
 #[derive(Serialize, Default)]
@@ -2313,24 +2366,20 @@ fn append_shell_escape_error(
         return;
     }
     let source_head = read_source_head(spec.input.path());
-    let Some(feature) = denied_shell_escape_feature(&source_head, log) else {
+    let Some(denied) = denied_shell_escape_feature(&source_head, log) else {
         return;
     };
-    let message =
-        format!("{feature} needs to run an outside program, which this project does not allow.");
-    let explanation = "Enable “Allow LaTeX shell commands” in this project's compiler settings only if you trust every project file. Enabling it permits arbitrary commands and persistent background programs to run on your computer. Cancellation cleanup is best-effort for programs that deliberately detach.".to_string();
+    let error = shell_escape_denial(denied);
     append_bounded(
         log,
-        format!("\n[Oleafly] {message} {explanation}\n").as_bytes(),
+        format!(
+            "\n[Oleafly] {} {}\n",
+            error.message,
+            error.explanation.as_deref().unwrap_or_default()
+        )
+        .as_bytes(),
     );
-    errors.push(CompileError {
-        line: None,
-        file: None,
-        message,
-        kind: "error".into(),
-        explanation: Some(explanation),
-        ..Default::default()
-    });
+    errors.push(error);
 }
 
 struct CompileResultParts {
@@ -6671,6 +6720,42 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
     }
 
     #[test]
+    fn shell_escape_denials_name_the_banner_button() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
+        let shell: serde_json::Value =
+            serde_json::from_str(include_str!("../../src/i18n/locales/en/shell.json")).unwrap();
+        let setting = shell["shellCommands"]["allow"].as_str().unwrap();
+        for (denied, code, key) in [
+            (
+                DeniedShellEscape::Minted,
+                "tex.shell_escape_denied_minted",
+                "shell_escape_denied_minted",
+            ),
+            (
+                DeniedShellEscape::PythonTex,
+                "tex.shell_escape_denied_pythontex",
+                "shell_escape_denied_pythontex",
+            ),
+            (
+                DeniedShellEscape::Command,
+                "tex.shell_escape_denied_command",
+                "shell_escape_denied_command",
+            ),
+        ] {
+            let error = shell_escape_denial(denied);
+            assert_eq!(error.code.as_deref(), Some(code));
+            assert_eq!(error.kind, "error");
+            let english = catalog["tex"][key]
+                .as_str()
+                .unwrap()
+                .replace("{{setting}}", setting);
+            assert_eq!(error.explanation.as_deref(), Some(english.as_str()));
+            assert!(english.contains(setting), "{english}");
+        }
+    }
+
+    #[test]
     fn shell_escape_denials_come_from_refusals_not_from_allowed_helpers() {
         for allowed in [
             "runsystem(repstopdf --outfile=./logo-eps-converted-to.pdf ./logo.eps)...executed.\n! undefined control sequence.\nl.42 \\oops",
@@ -6693,7 +6778,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         ] {
             assert_eq!(
                 denied_shell_escape_feature("\\documentclass{article}", denial),
-                Some("a LaTeX shell command"),
+                Some(DeniedShellEscape::Command),
                 "{denial}"
             );
         }

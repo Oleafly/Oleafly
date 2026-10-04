@@ -448,17 +448,14 @@
     },
     "recommended": "Consigliato",
     "shellEscape": {
-      "label": "Consenti i comandi esterni su questo computer",
-      "needed": "Questo progetto usa funzioni che richiedono comandi esterni arbitrari. Restano bloccati finché non li consenti.",
-      "warning": "Richiesto da minted e da alcuni documenti PythonTeX. LaTeX può eseguire programmi con i tuoi permessi utente, quindi abilitalo solo per un progetto di cui ti fidi. Gli strumenti di supporto di TeX Live, come la conversione EPS, funzionano comunque."
+      "included": "Così il progetto può anche eseguire i comandi esterni di cui ha bisogno. LaTeX potrà eseguire qualsiasi programma con i tuoi permessi, quindi fallo solo per un progetto di cui ti fidi."
     },
     "shellEscapeFailed": "Non è stato possibile aggiornare l'accesso ai comandi esterni.",
     "switchFailed": "Non è stato possibile cambiare il motore di compilazione.",
     "switched": "Questo progetto ora si compila con {{engine}}.",
     "switchedAfterInstall": "TinyTeX installato. Questo progetto ora si compila con {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Già selezionato",
-      "found": "Su questa macchina è stata trovata una distribuzione TeX. Il TeX di sistema può leggere i file locali accessibili al tuo account, quindi usalo solo con progetti di cui ti fidi. I comandi esterni arbitrari restano bloccati finché non li consenti qui sotto. TeX Live continua a eseguire gli strumenti della propria lista consentita, come la conversione EPS.",
+      "found": "Su questa macchina è stata trovata una distribuzione TeX. Il TeX di sistema può leggere i file locali accessibili al tuo account, quindi usalo solo con progetti di cui ti fidi. TeX Live continua a eseguire gli strumenti della propria lista consentita, come la conversione EPS.",
       "missing": "Su questa macchina non è stata trovata nessuna distribuzione TeX (MacTeX, TeX Live, MiKTeX, TinyTeX).",
       "switchPdflatex": "Passa a pdfLaTeX e ricompila",
       "title": "Usa il LaTeX del mio sistema (latexmk)",
@@ -482,6 +479,10 @@
     },
     "titleCompileFailure": "Questa compilazione richiede più del motore integrato",
     "titleImportScan": "Questo progetto richiede più del motore integrato"
+  },
+  "shellCommands": {
+    "allow": "Consenti comandi esterni",
+    "banner": "Questo documento esegue comandi esterni durante la compilazione, e questo progetto li blocca. Consentili solo se ti fidi di ogni file del progetto."
   },
   "errorBoundary": {
     "copyDiagnostics": "Copia le diagnostiche",

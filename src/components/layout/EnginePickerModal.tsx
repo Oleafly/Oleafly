@@ -1,8 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Cpu, Download, ShieldAlert, Zap } from "lucide-react";
+import { Cpu, Download, ShieldAlert, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
   dismissEngineHint,
@@ -13,11 +12,14 @@ import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import {
   latexmkFixesFinding,
   needsPdflatexFinding,
+  needsShellEscapeFinding,
   type ImportCompatFinding,
 } from "@oleafly/latex";
 import { toast } from "@/lib/toast";
 import { useDisplayPath } from "@/lib/display-path";
 import { decodeAppError, describeError } from "@/lib/app-error";
+import { applyShellEscape } from "@/lib/latex-compile-actions";
+import { recompileWithPreview } from "@/lib/compile-preview";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { logError } from "@/lib/log";
@@ -46,7 +48,6 @@ export function EnginePickerModal() {
 
   const projectId = useFilesStore((s) => s.projectId);
   const engineId = useFilesStore((s) => s.engine.id);
-  const allowShellEscape = useFilesStore((s) => s.engine.allow_shell_escape);
   const setEngine = useFilesStore((s) => s.setEngine);
   const setShellEscape = useFilesStore((s) => s.setShellEscape);
   const systemTexLocked = useFolderAccessStore((s) => folderIsRestricted(s, projectId));
@@ -60,30 +61,18 @@ export function EnginePickerModal() {
   const install = useEngineStore((s) => s.install);
 
   const [switching, setSwitching] = useState(false);
-  const [shellEscapeSaving, setShellEscapeSaving] = useState(false);
-  const [shellEscapeConsent, setShellEscapeConsent] = useState(allowShellEscape);
   const titleId = useId();
 
   useEffect(() => {
     if (open) void ensureLoaded();
   }, [open, ensureLoaded]);
 
-  useEffect(() => {
-    if (!open) return;
-    const state = useFilesStore.getState();
-    if (state.projectId === projectId) {
-      setShellEscapeConsent(state.engine.allow_shell_escape);
-    }
-  }, [open, projectId]);
-
   if (!open) return null;
 
   const hasSystemTex = !!info?.latexmk;
   const alreadyLatexmk = engineId === "latexmk";
   const fixable = findings.filter((finding) => latexmkFixesFinding(finding.id));
-  const needsShellEscape = findings.some((finding) =>
-    ["minted", "pythontex", "shell-escape"].includes(finding.id),
-  );
+  const needsShellEscape = findings.some((finding) => needsShellEscapeFinding(finding.id));
   const needsPdflatex = findings.some((finding) => needsPdflatexFinding(finding.id));
 
   const reportSwitchFailure = (scope: string, error: unknown, message: string) => {
@@ -102,7 +91,7 @@ export function EnginePickerModal() {
       const selected = useFilesStore.getState();
       if (selected.projectId !== projectId || selected.engine.id !== "latexmk") return;
       engineSwitched = true;
-      if (shellEscapeConsent) await setShellEscape(true);
+      if (needsShellEscape) await setShellEscape(true);
       if (useFilesStore.getState().projectId !== projectId) return;
       const engineName = needsPdflatex
         ? t(($) => $.shell.enginePicker.engineNames.pdflatexViaLatexmk)
@@ -116,15 +105,8 @@ export function EnginePickerModal() {
         toast.success(t(($) => $.shell.enginePicker.switched, { engine: engineName }));
       }
       close();
-      if (source === "compile-failure") {
-        const compile = await import("@/store/compile");
-        void compile.useCompileStore.getState().recompile();
-      }
+      if (source === "compile-failure") void recompileWithPreview();
     } catch (error) {
-      const current = useFilesStore.getState();
-      if (current.projectId === projectId) {
-        setShellEscapeConsent(current.engine.allow_shell_escape);
-      }
       if (engineSwitched) {
         reportSwitchFailure(
           "update external command access",
@@ -143,24 +125,20 @@ export function EnginePickerModal() {
     }
   };
 
-  const updateShellEscape = async (allow: boolean) => {
-    const previous = shellEscapeConsent;
-    setShellEscapeConsent(allow);
-    if (!alreadyLatexmk) return;
-    setShellEscapeSaving(true);
-    try {
-      await setShellEscape(allow);
-    } catch (error) {
-      setShellEscapeConsent(previous);
-      reportSwitchFailure(
-        "update external command access",
-        error,
-        t(($) => $.shell.enginePicker.shellEscapeFailed),
-      );
-    } finally {
-      setShellEscapeSaving(false);
+  const recompileHere = async () => {
+    const blocked = needsShellEscape && !useFilesStore.getState().engine.allow_shell_escape;
+    if (blocked) {
+      setSwitching(true);
+      const allowed = await applyShellEscape(true);
+      setSwitching(false);
+      if (!allowed) return;
     }
+    close();
+    void recompileWithPreview();
   };
+
+  const chooseSystemTex = () =>
+    useFilesStore.getState().engine.id === "latexmk" ? recompileHere() : pinLatexmk(false);
 
   const installThenPin = async () => {
     await install();
@@ -206,7 +184,7 @@ export function EnginePickerModal() {
 
   const systemTexActionLabel = () => {
     if (alreadyLatexmk) {
-      return t(($) => $.shell.enginePicker.systemTex.alreadySelected);
+      return t(($) => $.shell.compile.recompile);
     }
     if (needsPdflatex) {
       return t(($) => $.shell.enginePicker.systemTex.switchPdflatex);
@@ -249,53 +227,21 @@ export function EnginePickerModal() {
           {displayPath(info.latexmk)}
         </p>
       )}
-      <div className="mt-3 border-t pt-3">
-        <label
-          htmlFor="engine-shell-escape"
-          className="flex min-h-11 cursor-pointer items-start gap-2.5"
-        >
-          <Checkbox
-            id="engine-shell-escape"
-            data-testid="engine-picker-shell-escape"
-            checked={shellEscapeConsent}
-            disabled={switching || shellEscapeSaving || systemTexLocked}
-            aria-describedby="engine-shell-escape-warning"
-            onCheckedChange={(checked) => void updateShellEscape(checked === true)}
-            className="mt-0.5"
-          />
-          <span className="min-w-0 text-xs">
-            <span className="flex items-center gap-1.5 font-medium">
-              {shellEscapeSaving ? (
-                <Spinner size="sm" />
-              ) : (
-                <ShieldAlert className="size-3.5 text-amber-600 dark:text-amber-500" />
-              )}
-              {t(($) => $.shell.enginePicker.shellEscape.label)}
-            </span>
-            <span
-              id="engine-shell-escape-warning"
-              className="mt-1 block leading-relaxed text-muted-foreground"
-            >
-              {t(($) => $.shell.enginePicker.shellEscape.warning)}
-            </span>
-          </span>
-        </label>
-        {needsShellEscape && !shellEscapeConsent && (
-          <p className="mt-2 text-[11px] font-medium text-amber-700 dark:text-amber-400">
-            {t(($) => $.shell.enginePicker.shellEscape.needed)}
-          </p>
-        )}
-      </div>
+      {needsShellEscape && (
+        <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+          <ShieldAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
+          {t(($) => $.shell.enginePicker.shellEscape.included)}
+        </p>
+      )}
       <div className="mt-2">
         <Button
           size="sm"
           data-testid="engine-picker-use-system"
-          disabled={!hasSystemTex || switching || alreadyLatexmk || systemTexLocked}
-          onClick={() => void pinLatexmk(false)}
+          disabled={!hasSystemTex || switching || systemTexLocked}
+          onClick={() => void chooseSystemTex()}
           data-modal-initial-focus={hasSystemTex || undefined}
         >
           {switching ? <Spinner size="sm" /> : null}
-          {!switching && alreadyLatexmk ? <Check className="size-3.5" /> : null}
           {systemTexActionLabel()}
         </Button>
       </div>

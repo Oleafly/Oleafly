@@ -93,7 +93,7 @@
     "fullscreen": "Fullscreen preview",
     "exitFullscreen": "Exit fullscreen",
     "retryCompile": "Retry compile",
-    "chooseEngine": "Choose engine…",
+    "chooseEngine": "Choose engine",
     "installPackages_one": "Find and install {{name}}",
     "installPackages_other": "Find and install {{count}} files",
     "downloadTypst": "Download Typst {{version}}",

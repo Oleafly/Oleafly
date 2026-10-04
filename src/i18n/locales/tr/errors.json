@@ -62,7 +62,10 @@
     "no_host_binary": "TinyTeX bu sistemle uyumlu bir {{name}} ikili dosyası içermiyor.",
     "package_operation_timeout": "Paket işlemi {{span}} sınırını aştığı için durduruldu, böylece yeniden derleyebilirsiniz. TeX Live yansısı büyük olasılıkla meşgul. Daha sonra yeniden deneyin veya tlmgr komutunu kendiniz çalıştırın.",
     "latexmk_build_path": "latexmk bu bilgisayarda Oleafly'nin derleme klasörünü kullanamıyor, çünkü klasörün yolunda latexmk'nin kabul etmediği karakterler var. Derlemek için bu projeyi Tectonic'e geçirin.",
-    "latexmk_network_folder": "latexmk ağ paylaşımındaki bir klasörü derleyemez. Bu projeyi Tectonic'e geçirin veya klasörü bu bilgisayara kopyalayın."
+    "latexmk_network_folder": "latexmk ağ paylaşımındaki bir klasörü derleyemez. Bu projeyi Tectonic'e geçirin veya klasörü bu bilgisayara kopyalayın.",
+    "shell_escape_denied_minted": "minted'in kodu vurgulamak için başka bir program çalıştırması gerekiyor ve bu proje bunu engelliyor. İzin vermek için düzenleyicinin üstündeki şeritte \"{{setting}}\" düğmesine tıklayın. Bunu yalnızca projedeki her dosyaya güveniyorsanız yapın. LaTeX bundan sonra izinlerinizle herhangi bir programı çalıştırabilir ve başlattığı bir program, derlemeyi durdurduktan sonra da çalışmaya devam edebilir.",
+    "shell_escape_denied_pythontex": "PythonTeX'in Python çalıştırması gerekiyor ve bu proje bunu engelliyor. İzin vermek için düzenleyicinin üstündeki şeritte \"{{setting}}\" düğmesine tıklayın. Bunu yalnızca projedeki her dosyaya güveniyorsanız yapın. LaTeX bundan sonra izinlerinizle herhangi bir programı çalıştırabilir ve başlattığı bir program, derlemeyi durdurduktan sonra da çalışmaya devam edebilir.",
+    "shell_escape_denied_command": "Bu belge bir shell komutu çalıştırıyor ve bu proje bunu engelliyor. İzin vermek için düzenleyicinin üstündeki şeritte \"{{setting}}\" düğmesine tıklayın. Bunu yalnızca projedeki her dosyaya güveniyorsanız yapın. LaTeX bundan sonra izinlerinizle herhangi bir programı çalıştırabilir ve başlattığı bir program, derlemeyi durdurduktan sonra da çalışmaya devam edebilir."
   },
   "export": {
     "bibliography_unreadable": "Oleafly {{name}} kaynakçasını okuyamadı. Bozuk bir girdi olup olmadığını denetleyin, ardından yeniden dışa aktarın."

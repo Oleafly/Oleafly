@@ -33,6 +33,7 @@ fn compile_error(diagnostic: TypstDiagnostic) -> CompileError {
         message: diagnostic.message,
         hints: diagnostic.hints,
         source_line: None,
+        code: None,
     }
 }
 

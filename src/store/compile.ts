@@ -20,7 +20,11 @@ import {
   texDistributionGapNotice,
   useFilesStore,
 } from "@/store/files";
-import { engineHintDismissed, useEnginePickerStore } from "@/store/engine-picker";
+import {
+  engineHintDismissed,
+  takeEngineChoiceOnOpen,
+  useEnginePickerStore,
+} from "@/store/engine-picker";
 import {
   classifyCompileFailure,
   importCompatAction,
@@ -34,6 +38,7 @@ import { activeTypstVariant } from "@/store/typst-variant";
 import { notifyError, toast } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { decodeAppError, describeError } from "@/lib/app-error";
+import { explainCodedCompileErrors } from "@/lib/compile-error-codes";
 import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
 import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
@@ -788,6 +793,7 @@ function maybeOfferEngineChoice(
   ctx: CompileApplyContext,
   log: string,
   errors: CompileError[],
+  opening: boolean,
 ): void {
   const files = useFilesStore.getState();
   if (files.engine.id !== "latex" || files.projectId !== ctx.projectId) return;
@@ -803,7 +809,7 @@ function maybeOfferEngineChoice(
   const findings = engineGapFindings(ctx.projectId, engineFindings, errors);
   if (findings.length === 0 || engineHintDismissed(ctx.projectId, findings)) return;
   if (!offerForAttempt(ctx, { kind: "engine-gap", projectId: ctx.projectId, findings })) return;
-  if (ctx.origin === "explicit") {
+  if (ctx.origin === "explicit" || opening) {
     useEnginePickerStore.getState().openPicker("compile-failure", findings);
   }
 }
@@ -1391,20 +1397,21 @@ function compileSuccessCheckpointFor(
 const TYPST_PACKAGE_ERROR = /\bpackage\b/;
 
 async function explainedErrors(result: CompileResult): Promise<CompileError[]> {
+  const errors = explainCodedCompileErrors(result.errors);
   if (
     useFilesStore.getState().engine.id !== "typst" ||
-    !result.errors.some((error) => TYPST_PACKAGE_ERROR.test(error.message))
+    !errors.some((error) => TYPST_PACKAGE_ERROR.test(error.message))
   ) {
-    return result.errors;
+    return errors;
   }
   try {
     const { explainTypstPackageErrors } = await import("@/lib/typst-package-errors");
     const offline =
       useSettingsStore.getState().offline ||
       (typeof navigator !== "undefined" && navigator.onLine === false);
-    return explainTypstPackageErrors(result.errors, offline);
+    return explainTypstPackageErrors(errors, offline);
   } catch {
-    return result.errors;
+    return errors;
   }
 }
 
@@ -1484,10 +1491,11 @@ async function applyCompileResult(
     };
   });
   if (!applied) return result;
+  const opening = takeEngineChoiceOnOpen(ctx.projectId);
   if (checkpoint) {
     settleCompileNotices(ctx.projectId);
   } else {
-    maybeOfferEngineChoice(ctx, result.log, result.errors);
+    maybeOfferEngineChoice(ctx, result.log, result.errors, opening);
     maybeSuggestMissingPackages(ctx, result.log);
   }
   // Tell detached windows (PDF preview, other OS windows) to reload.

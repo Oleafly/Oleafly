@@ -62,7 +62,10 @@
     "no_host_binary": "TinyTeX 没有与主机兼容的 {{name}} 二进制文件。",
     "package_operation_timeout": "宏包操作超出了 {{span}} 的限制并已停止，你可以重新编译。TeX Live 镜像可能正忙。请稍后重试，或自行运行 tlmgr。",
     "latexmk_build_path": "Oleafly 在这台电脑上的构建文件夹路径包含 latexmk 不接受的字符，因此 latexmk 无法使用它。请将此项目切换到 Tectonic 进行编译。",
-    "latexmk_network_folder": "latexmk 无法编译网络共享上的文件夹。请将此项目切换到 Tectonic，或将文件夹复制到这台电脑。"
+    "latexmk_network_folder": "latexmk 无法编译网络共享上的文件夹。请将此项目切换到 Tectonic，或将文件夹复制到这台电脑。",
+    "shell_escape_denied_minted": "minted 需要运行另一个程序来高亮代码，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
+    "shell_escape_denied_pythontex": "PythonTeX 需要运行 Python，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
+    "shell_escape_denied_command": "此文档会运行 shell 命令，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。"
   },
   "export": {
     "bibliography_unreadable": "Oleafly 无法读取参考文献 {{name}}。请检查其中是否有损坏的条目，然后重新导出。"

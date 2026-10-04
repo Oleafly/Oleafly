@@ -92,6 +92,7 @@ export interface CompileError {
     end_column?: number | null;
     hints?: string[];
     source_line?: string | null;
+    code?: string | null;
 }
 export type LogSeverity = "error" | "warning" | "info" | "typesetting";
 export type LogCategory =

@@ -444,17 +444,14 @@
     },
     "recommended": "권장",
     "shellEscape": {
-      "label": "이 컴퓨터에서 외부 명령 허용",
-      "needed": "이 프로젝트는 임의의 외부 명령이 필요한 기능을 씁니다. 허용하기 전까지는 차단됩니다.",
-      "warning": "minted와 일부 PythonTeX 문서에 필요합니다. LaTeX가 사용자 권한으로 프로그램을 실행할 수 있으므로 신뢰하는 프로젝트에서만 켜세요. EPS 변환 같은 TeX Live 자체 보조 도구는 이 설정 없이도 실행됩니다."
+      "included": "이렇게 하면 프로젝트에 필요한 외부 명령 실행도 허용됩니다. 그러면 LaTeX가 사용자 권한으로 어떤 프로그램이든 실행할 수 있으므로, 신뢰하는 프로젝트에서만 이렇게 하세요."
     },
     "shellEscapeFailed": "외부 명령 접근 설정을 바꾸지 못했습니다.",
     "switchFailed": "컴파일 엔진을 바꾸지 못했습니다.",
     "switched": "이제 이 프로젝트는 {{engine}}(으)로 컴파일합니다.",
     "switchedAfterInstall": "TinyTeX를 설치했습니다. 이제 이 프로젝트는 {{engine}}(으)로 컴파일합니다.",
     "systemTex": {
-      "alreadySelected": "이미 선택됨",
-      "found": "이 컴퓨터에서 TeX 배포판을 찾았습니다. 시스템 TeX는 계정이 접근할 수 있는 로컬 파일을 읽을 수 있으므로 신뢰하는 프로젝트에만 쓰세요. 아래에서 허용하지 않는 한 임의의 외부 명령은 계속 차단됩니다. EPS 변환처럼 TeX Live가 자체 허용 목록에 둔 보조 도구는 그대로 실행됩니다.",
+      "found": "이 컴퓨터에서 TeX 배포판을 찾았습니다. 시스템 TeX는 계정이 접근할 수 있는 로컬 파일을 읽을 수 있으므로 신뢰하는 프로젝트에만 쓰세요. EPS 변환처럼 TeX Live가 자체 허용 목록에 둔 보조 도구는 그대로 실행됩니다.",
       "missing": "이 컴퓨터에서 TeX 배포판(MacTeX, TeX Live, MiKTeX, TinyTeX)을 찾지 못했습니다.",
       "switchPdflatex": "pdfLaTeX로 바꾸고 다시 컴파일",
       "title": "내 시스템 LaTeX 사용(latexmk)",
@@ -476,6 +473,10 @@
     },
     "titleCompileFailure": "이 컴파일에는 내장 엔진 이상의 기능이 필요합니다",
     "titleImportScan": "이 프로젝트에는 내장 엔진 이상의 기능이 필요합니다"
+  },
+  "shellCommands": {
+    "allow": "외부 명령 허용",
+    "banner": "이 문서는 컴파일할 때 외부 명령을 실행하지만, 이 프로젝트에서는 차단되어 있습니다. 프로젝트의 모든 파일을 신뢰할 때만 허용하세요."
   },
   "errorBoundary": {
     "copyDiagnostics": "진단 정보 복사",

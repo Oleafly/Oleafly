@@ -62,7 +62,10 @@
     "no_host_binary": "TinyTeX ei sisällä tälle järjestelmälle sopivaa {{name}}-ohjelmaa.",
     "package_operation_timeout": "Pakettitoiminto ylitti {{span}} rajan ja pysäytettiin, jotta kääntäminen onnistuu taas. TeX Live -peilipalvelin on todennäköisesti ruuhkainen. Yritä myöhemmin uudelleen tai aja tlmgr itse.",
     "latexmk_build_path": "latexmk ei voi käyttää Oleaflyn käännöskansiota tällä tietokoneella, koska sen polussa on merkkejä, joita latexmk ei hyväksy. Vaihda projektin kääntäjäksi Tectonic, niin voit kääntää sen.",
-    "latexmk_network_folder": "latexmk ei voi kääntää verkkojaossa olevaa kansiota. Vaihda projektin kääntäjäksi Tectonic tai kopioi kansio tälle tietokoneelle."
+    "latexmk_network_folder": "latexmk ei voi kääntää verkkojaossa olevaa kansiota. Vaihda projektin kääntäjäksi Tectonic tai kopioi kansio tälle tietokoneelle.",
+    "shell_escape_denied_minted": "minted:n täytyy suorittaa toinen ohjelma koodin korostamiseksi, ja tämä projekti estää sen. Jos haluat sallia sen, napsauta \"{{setting}}\" editorin yläpuolella olevassa ilmoituspalkissa. Tee näin vain, jos luotat jokaiseen projektin tiedostoon. LaTeX voi silloin suorittaa mitä tahansa ohjelmaa sinun oikeuksillasi, ja sen käynnistämä ohjelma voi jäädä käyntiin, vaikka pysäyttäisit käännöksen.",
+    "shell_escape_denied_pythontex": "PythonTeX:n täytyy suorittaa Python, ja tämä projekti estää sen. Jos haluat sallia sen, napsauta \"{{setting}}\" editorin yläpuolella olevassa ilmoituspalkissa. Tee näin vain, jos luotat jokaiseen projektin tiedostoon. LaTeX voi silloin suorittaa mitä tahansa ohjelmaa sinun oikeuksillasi, ja sen käynnistämä ohjelma voi jäädä käyntiin, vaikka pysäyttäisit käännöksen.",
+    "shell_escape_denied_command": "Tämä dokumentti suorittaa shell-komennon, ja tämä projekti estää sen. Jos haluat sallia sen, napsauta \"{{setting}}\" editorin yläpuolella olevassa ilmoituspalkissa. Tee näin vain, jos luotat jokaiseen projektin tiedostoon. LaTeX voi silloin suorittaa mitä tahansa ohjelmaa sinun oikeuksillasi, ja sen käynnistämä ohjelma voi jäädä käyntiin, vaikka pysäyttäisit käännöksen."
   },
   "export": {
     "bibliography_unreadable": "Oleafly ei voinut lukea lähdeluettelotiedostoa {{name}}. Tarkista, onko siinä virheellinen merkintä, ja vie sitten uudelleen."

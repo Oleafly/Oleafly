@@ -446,17 +446,14 @@
     },
     "recommended": "Aanbevolen",
     "shellEscape": {
-      "label": "Externe opdrachten op deze computer toestaan",
-      "needed": "Dit project gebruikt functies die willekeurige externe opdrachten nodig hebben. Die blijven geblokkeerd totdat je ze toestaat.",
-      "warning": "Nodig voor minted en sommige PythonTeX-documenten. LaTeX kan programma's uitvoeren met jouw gebruikersrechten, dus zet dit alleen aan voor een project dat je vertrouwt. De eigen hulpprogramma's van TeX Live, zoals EPS-conversie, werken ook zonder."
+      "included": "Hiermee mag het project ook de externe opdrachten uitvoeren die het nodig heeft. LaTeX kan dan elk programma uitvoeren met jouw rechten, dus doe dit alleen voor een project dat je vertrouwt."
     },
     "shellEscapeFailed": "Kon de toegang voor externe opdrachten niet bijwerken.",
     "switchFailed": "Kon niet van compileerengine wisselen.",
     "switched": "Dit project compileert nu met {{engine}}.",
     "switchedAfterInstall": "TinyTeX geïnstalleerd. Dit project compileert nu met {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Al geselecteerd",
-      "found": "Er is een TeX-distributie op deze computer gevonden. De TeX van je systeem kan lokale bestanden lezen waar jouw account bij kan, dus gebruik die alleen voor projecten die je vertrouwt. Willekeurige externe opdrachten blijven geblokkeerd tenzij je ze hieronder toestaat. TeX Live voert de hulpprogramma's op zijn eigen toegestane lijst, zoals EPS-conversie, nog steeds uit.",
+      "found": "Er is een TeX-distributie op deze computer gevonden. De TeX van je systeem kan lokale bestanden lezen waar jouw account bij kan, dus gebruik die alleen voor projecten die je vertrouwt. TeX Live voert de hulpprogramma's op zijn eigen toegestane lijst, zoals EPS-conversie, nog steeds uit.",
       "missing": "Er is geen TeX-distributie (MacTeX, TeX Live, MiKTeX, TinyTeX) op deze computer gevonden.",
       "switchPdflatex": "Overschakelen naar pdfLaTeX en opnieuw compileren",
       "title": "De LaTeX van mijn systeem gebruiken (latexmk)",
@@ -479,6 +476,10 @@
     },
     "titleCompileFailure": "Dit compileren vraagt meer dan de ingebouwde engine",
     "titleImportScan": "Dit project vraagt meer dan de ingebouwde engine"
+  },
+  "shellCommands": {
+    "allow": "Externe opdrachten toestaan",
+    "banner": "Dit document voert tijdens het compileren externe opdrachten uit, en dit project blokkeert ze. Sta ze alleen toe als je elk bestand in het project vertrouwt."
   },
   "errorBoundary": {
     "copyDiagnostics": "Diagnostiek kopiëren",

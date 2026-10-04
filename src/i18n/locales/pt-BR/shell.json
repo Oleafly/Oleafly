@@ -448,17 +448,14 @@
     },
     "recommended": "Recomendado",
     "shellEscape": {
-      "label": "Permitir comandos externos neste computador",
-      "needed": "Este projeto usa recursos que precisam de comandos externos arbitrários. Eles continuam bloqueados até você permitir.",
-      "warning": "Exigido pelo minted e por alguns documentos PythonTeX. O LaTeX pode executar programas com as suas permissões de usuário, então ative isso só em um projeto em que você confia. Os auxiliares do próprio TeX Live, como a conversão de EPS, rodam sem isso."
+      "included": "Isso também permite que o projeto execute os comandos externos de que precisa. O LaTeX poderá executar qualquer programa com as suas permissões, então só faça isso em um projeto em que você confia."
     },
     "shellEscapeFailed": "Não foi possível atualizar o acesso a comandos externos.",
     "switchFailed": "Não foi possível trocar o motor de compilação.",
     "switched": "Este projeto agora compila com o {{engine}}.",
     "switchedAfterInstall": "TinyTeX instalado. Este projeto agora compila com o {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Já selecionado",
-      "found": "Uma distribuição TeX foi encontrada nesta máquina. O TeX do sistema pode ler arquivos locais acessíveis à sua conta, então use-o só em projetos em que você confia. Comandos externos arbitrários continuam bloqueados a menos que você permita abaixo. O TeX Live continua rodando os auxiliares da própria lista de permissões dele, como a conversão de EPS.",
+      "found": "Uma distribuição TeX foi encontrada nesta máquina. O TeX do sistema pode ler arquivos locais acessíveis à sua conta, então use-o só em projetos em que você confia. O TeX Live continua rodando os auxiliares da própria lista de permissões dele, como a conversão de EPS.",
       "missing": "Nenhuma distribuição TeX (MacTeX, TeX Live, MiKTeX, TinyTeX) foi encontrada nesta máquina.",
       "switchPdflatex": "Mudar para pdfLaTeX e compilar de novo",
       "title": "Usar o LaTeX do meu sistema (latexmk)",
@@ -482,6 +479,10 @@
     },
     "titleCompileFailure": "Esta compilação precisa de mais do que o motor embutido",
     "titleImportScan": "Este projeto precisa de mais do que o motor embutido"
+  },
+  "shellCommands": {
+    "allow": "Permitir comandos externos",
+    "banner": "Este documento executa comandos externos durante a compilação, e este projeto os bloqueia. Permita-os apenas se você confiar em todos os arquivos do projeto."
   },
   "errorBoundary": {
     "copyDiagnostics": "Copiar os diagnósticos",

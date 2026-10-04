@@ -88,6 +88,16 @@ describe("compile offer while the preview is hidden", () => {
     expect(picker.findings.map((finding) => finding.id)).toEqual(["minted"]);
   });
 
+  it("sits left of Compile and its label has no ellipsis", () => {
+    failWithOffer("latex", engineGap);
+    render(<CompileControls />);
+
+    const offer = screen.getByTestId(OFFER_ID);
+    const position = offer.compareDocumentPosition(screen.getByTestId("compile-button"));
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(offer.textContent).not.toMatch(/…|\.\.\./);
+  });
+
   it("leaves the offer to the preview when the preview is on screen", () => {
     failWithOffer("latex", engineGap);
     useSettingsStore.setState({ viewMode: "split" });

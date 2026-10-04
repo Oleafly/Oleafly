@@ -62,7 +62,10 @@
     "no_host_binary": "TinyTeX heeft geen {{name}}-programma dat op dit systeem werkt.",
     "package_operation_timeout": "De pakketbewerking duurde langer dan {{span}} en is gestopt, zodat je opnieuw kunt compileren. Waarschijnlijk is de TeX Live-mirror druk. Probeer het later opnieuw of voer tlmgr zelf uit.",
     "latexmk_build_path": "latexmk kan de buildmap van Oleafly op deze computer niet gebruiken, omdat het pad tekens bevat die latexmk niet accepteert. Zet dit project om naar Tectonic om het te compileren.",
-    "latexmk_network_folder": "latexmk kan geen map op een netwerkshare compileren. Zet dit project om naar Tectonic of kopieer de map naar deze computer."
+    "latexmk_network_folder": "latexmk kan geen map op een netwerkshare compileren. Zet dit project om naar Tectonic of kopieer de map naar deze computer.",
+    "shell_escape_denied_minted": "minted moet een ander programma uitvoeren om code te markeren, en dit project blokkeert dat. Om dit toe te staan, klik je op \"{{setting}}\" in de balk boven de editor. Doe dit alleen als je elk bestand in het project vertrouwt. LaTeX kan dan elk programma uitvoeren met jouw rechten, en een programma dat het start, kan blijven draaien nadat je het compileren hebt gestopt.",
+    "shell_escape_denied_pythontex": "PythonTeX moet Python uitvoeren, en dit project blokkeert dat. Om dit toe te staan, klik je op \"{{setting}}\" in de balk boven de editor. Doe dit alleen als je elk bestand in het project vertrouwt. LaTeX kan dan elk programma uitvoeren met jouw rechten, en een programma dat het start, kan blijven draaien nadat je het compileren hebt gestopt.",
+    "shell_escape_denied_command": "Dit document voert een shell-opdracht uit, en dit project blokkeert dat. Om dit toe te staan, klik je op \"{{setting}}\" in de balk boven de editor. Doe dit alleen als je elk bestand in het project vertrouwt. LaTeX kan dan elk programma uitvoeren met jouw rechten, en een programma dat het start, kan blijven draaien nadat je het compileren hebt gestopt."
   },
   "export": {
     "bibliography_unreadable": "Oleafly kon de bibliografie {{name}} niet lezen. Kijk of er een beschadigd item in staat en exporteer daarna opnieuw."

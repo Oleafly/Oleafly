@@ -446,17 +446,14 @@
     },
     "recommended": "Rekommenderas",
     "shellEscape": {
-      "label": "Tillåt externa kommandon på den här datorn",
-      "needed": "Det här projektet använder funktioner som kräver godtyckliga externa kommandon. De förblir blockerade tills du tillåter dem.",
-      "warning": "Krävs av minted och vissa PythonTeX-dokument. LaTeX kan köra program med dina användarrättigheter, så aktivera det bara för ett projekt du litar på. TeX Lives egna hjälpprogram, som EPS-konvertering, körs utan detta."
+      "included": "Det låter också projektet köra de externa kommandon som det behöver. LaTeX kan då köra vilket program som helst med dina behörigheter, så gör det bara för ett projekt du litar på."
     },
     "shellEscapeFailed": "Det gick inte att uppdatera åtkomsten till externa kommandon.",
     "switchFailed": "Det gick inte att byta kompileringsmotor.",
     "switched": "Det här projektet kompileras nu med {{engine}}.",
     "switchedAfterInstall": "TinyTeX är installerat. Det här projektet kompileras nu med {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Redan vald",
-      "found": "En TeX-distribution hittades på den här datorn. Systemets TeX kan läsa lokala filer som ditt konto kommer åt, så använd den bara med projekt du litar på. Godtyckliga externa kommandon förblir blockerade om du inte tillåter dem nedan. TeX Live kör ändå hjälpprogrammen på sin egen tillåtelselista, som EPS-konvertering.",
+      "found": "En TeX-distribution hittades på den här datorn. Systemets TeX kan läsa lokala filer som ditt konto kommer åt, så använd den bara med projekt du litar på. TeX Live kör ändå hjälpprogrammen på sin egen tillåtelselista, som EPS-konvertering.",
       "missing": "Ingen TeX-distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) hittades på den här datorn.",
       "switchPdflatex": "Byt till pdfLaTeX och kompilera om",
       "title": "Använd mitt systems LaTeX (latexmk)",
@@ -479,6 +476,10 @@
     },
     "titleCompileFailure": "Den här kompileringen kräver mer än den inbyggda motorn",
     "titleImportScan": "Det här projektet kräver mer än den inbyggda motorn"
+  },
+  "shellCommands": {
+    "allow": "Tillåt externa kommandon",
+    "banner": "Det här dokumentet kör externa kommandon när det kompileras, och det här projektet blockerar dem. Tillåt dem bara om du litar på alla filer i projektet."
   },
   "errorBoundary": {
     "copyDiagnostics": "Kopiera diagnostiken",

@@ -46,13 +46,13 @@ describe("keyed toasts", () => {
     const firstId = toast.infoUnique(
       "engine-compatibility:project-1",
       CHOOSE_MESSAGE,
-      { label: "Choose engine…", onClick: firstAction },
+      { label: "Choose engine", onClick: firstAction },
       true,
     );
     const latestId = toast.infoUnique(
       "engine-compatibility:project-1",
       CHOOSE_MESSAGE,
-      { label: "Choose engine…", onClick: latestAction },
+      { label: "Choose engine", onClick: latestAction },
       true,
     );
 

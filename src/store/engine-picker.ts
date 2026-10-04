@@ -20,6 +20,16 @@ export const useEnginePickerStore = create<EnginePickerStore>((set) => ({
   close: () => set({ open: false }),
 }));
 
+const openingCompiles = new Set<string>();
+
+export function expectEngineChoiceOnOpen(projectId: string): void {
+  openingCompiles.add(projectId);
+}
+
+export function takeEngineChoiceOnOpen(projectId: string): boolean {
+  return openingCompiles.delete(projectId);
+}
+
 // --- "Don't nag" memory -------------------------------------------------------
 //
 // The project-open hint is shown once per project per set of findings. Choosing

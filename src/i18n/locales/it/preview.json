@@ -93,7 +93,7 @@
     "fullscreen": "Anteprima a schermo intero",
     "exitFullscreen": "Esci dallo schermo intero",
     "retryCompile": "Riprova la compilazione",
-    "chooseEngine": "Scegli il motore…",
+    "chooseEngine": "Scegli il motore",
     "installPackages_one": "Trova e installa {{name}}",
     "installPackages_many": "Trova e installa {{count}} file",
     "installPackages_other": "Trova e installa {{count}} file",

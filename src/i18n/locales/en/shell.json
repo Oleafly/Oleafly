@@ -446,17 +446,14 @@
     },
     "recommended": "Recommended",
     "shellEscape": {
-      "label": "Allow external commands on this computer",
-      "needed": "This project uses features that need arbitrary external commands. They stay blocked until you allow them.",
-      "warning": "Required by minted and some PythonTeX documents. LaTeX can run programs with your user permissions, so enable this only for a project you trust. TeX Live's own helpers, like EPS conversion, run without it."
+      "included": "This also lets the project run external commands, which it needs. LaTeX can then run any program with your permissions, so only do this for a project you trust."
     },
     "shellEscapeFailed": "Could not update external command access.",
     "switchFailed": "Could not switch the compile engine.",
     "switched": "This project now compiles with {{engine}}.",
     "switchedAfterInstall": "TinyTeX installed. This project now compiles with {{engine}}.",
     "systemTex": {
-      "alreadySelected": "Already selected",
-      "found": "A TeX distribution was found on this machine. System TeX can read local files available to your account, so use it only with projects you trust. Arbitrary external commands stay blocked unless you allow them below. TeX Live still runs the helpers on its own allow list, like EPS conversion.",
+      "found": "A TeX distribution was found on this machine. System TeX can read local files available to your account, so use it only with projects you trust. TeX Live still runs the helpers on its own allow list, like EPS conversion.",
       "missing": "No TeX distribution (MacTeX, TeX Live, MiKTeX, TinyTeX) was found on this machine.",
       "switchPdflatex": "Switch to pdfLaTeX and recompile",
       "title": "Use my system LaTeX (latexmk)",
@@ -479,6 +476,10 @@
     },
     "titleCompileFailure": "This compile needs more than the built-in engine",
     "titleImportScan": "This project needs more than the built-in engine"
+  },
+  "shellCommands": {
+    "allow": "Allow external commands",
+    "banner": "This document runs external commands while it compiles, and this project blocks them. Allow them only if you trust every file in the project."
   },
   "errorBoundary": {
     "copyDiagnostics": "Copy diagnostics",

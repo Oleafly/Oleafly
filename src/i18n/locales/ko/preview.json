@@ -93,7 +93,7 @@
     "fullscreen": "전체 화면 미리보기",
     "exitFullscreen": "전체 화면 종료",
     "retryCompile": "컴파일 다시 시도",
-    "chooseEngine": "엔진 선택…",
+    "chooseEngine": "엔진 선택",
     "installPackages_other": "파일 {{count}}개 찾아서 설치",
     "downloadTypst": "Typst {{version}} 다운로드",
     "useTypst": "Typst {{version}} 사용"

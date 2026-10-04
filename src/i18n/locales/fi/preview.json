@@ -93,7 +93,7 @@
     "fullscreen": "Koko näytön esikatselu",
     "exitFullscreen": "Poistu koko näytöstä",
     "retryCompile": "Käännä uudelleen",
-    "chooseEngine": "Valitse moottori…",
+    "chooseEngine": "Valitse moottori",
     "installPackages_one": "Etsi ja asenna {{name}}",
     "installPackages_other": "Etsi ja asenna {{count}} tiedostoa",
     "downloadTypst": "Lataa Typst {{version}}",
