@@ -85,11 +85,16 @@ function skipArgumentBackward(text: string, from: number): number | null {
   const close = text[from - 1];
   const open = close === "]" ? "[" : "{";
   let depth = 1;
+  let braceDepth = 0;
   let cursor = from - 1;
   while (cursor > 0 && depth > 0) {
     cursor--;
-    if (text[cursor] === close) depth++;
-    else if (text[cursor] === open) depth--;
+    const character = text[cursor];
+    if (open === "[" && character === "}") braceDepth++;
+    else if (open === "[" && character === "{") braceDepth = Math.max(0, braceDepth - 1);
+    else if (braceDepth > 0) continue;
+    else if (character === close) depth++;
+    else if (character === open) depth--;
   }
   if (depth !== 0) return null;
   return trimWhitespaceBackward(text, cursor);

@@ -195,6 +195,29 @@ describe("latexIgnoredRangesField incremental rescans", () => {
     expectMatchesFullScan(next);
   });
 
+  it("does not resume early when a listings option opened above the rescan window stays unclosed inside it", () => {
+    const filler = Array.from(
+      { length: 260 },
+      (_, index) => `prose line ${index} carries no group delimiters`,
+    ).join("\n");
+    const doc = ["start of file", filler, "closing text ]|code| here", "% tail note"]
+      .join("\n");
+    expect(doc.indexOf("]")).toBeGreaterThan(6 * 1024);
+
+    const next = apply(stateWith(doc), {
+      from: "start of file\n".length,
+      insert: "\\lstinline[",
+    });
+    const after = trackedRanges(next);
+
+    expect(after[0].kind).toBe("inline-verbatim");
+    expect(after[0].to).toBe(
+      next.doc.toString().indexOf("closing text ]|code|") +
+        "closing text ]|code|".length,
+    );
+    expectMatchesFullScan(next);
+  });
+
   it("agrees with a full rescan across a long sequence of scattered edits", () => {
     const blocks: string[] = [];
     for (let index = 0; index < 220; index += 1) {
@@ -261,5 +284,33 @@ describe("latexOptionalArgumentEnd", () => {
     expect(latexOptionalArgumentEnd("{a}", 0)).toBeNull();
     expect(latexOptionalArgumentEnd(String.raw`[{a]b}`, 0)).toBeNull();
     expect(latexOptionalArgumentEnd("[a\\", 0)).toBeNull();
+  });
+});
+
+describe("listings inline verbatim options", () => {
+  it("closes the option group at a bracket outside braces", () => {
+    for (const options of ["[style={a]b}]", "[style={[}]"]) {
+      const source = `Use \\lstinline${options}|code| and $x$ here`;
+      const inline = latexIgnoredRanges(source).filter(
+        (range) => range.kind === "inline-verbatim",
+      );
+      expect(inline).toEqual([
+        {
+          from: source.indexOf("\\lstinline"),
+          to: source.indexOf("|code|") + "|code|".length,
+          kind: "inline-verbatim",
+          complete: true,
+        },
+      ]);
+    }
+    const minted = String.raw`\mintinline[style={a]b}]{py}{code} after`;
+    expect(latexIgnoredRanges(minted)).toEqual([
+      {
+        from: 0,
+        to: minted.indexOf(" after"),
+        kind: "inline-verbatim",
+        complete: true,
+      },
+    ]);
   });
 });

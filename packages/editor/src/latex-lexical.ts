@@ -73,6 +73,7 @@ export function latexBalancedGroupEnd(
 export function latexOptionalArgumentEnd(
   text: string,
   start: number,
+  limits?: LexLimits,
 ): number | null {
   if (text[start] !== "[") return null;
   let braceDepth = 0;
@@ -86,6 +87,7 @@ export function latexOptionalArgumentEnd(
     else if (char === "}" && braceDepth > 0) braceDepth -= 1;
     else if (char === "]" && braceDepth === 0) return cursor + 1;
   }
+  if (limits) limits.truncated = true;
   return null;
 }
 
@@ -159,7 +161,7 @@ function listingsVerbatimSpan(
 ): LatexInlineVerbatimSpan | null {
   let cursor = skipInlineWhitespace(text, from);
   if (text[cursor] === "[") {
-    const optionEnd = latexBalancedGroupEnd(text, cursor, "[", "]", limits);
+    const optionEnd = latexOptionalArgumentEnd(text, cursor, limits);
     if (optionEnd === null) {
       return {
         from: start,

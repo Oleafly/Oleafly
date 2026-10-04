@@ -485,6 +485,31 @@ describe("recovery-oriented LaTeX completion", () => {
     expect(option(citation, "knuth1984")).toBeTruthy();
   });
 
+  it("reads package, class and citation options whose braces hold a bracket", () => {
+    function parsedCompletion(source: string) {
+      const state = parsedState(
+        EditorState.create({ doc: source, extensions: [latexLanguage()] }),
+      );
+      return latexCompletions(
+        new CompletionContext(state, state.doc.length, false),
+      );
+    }
+
+    for (const options of ["[opt={a]b}]", "[opt={[}]"]) {
+      expect(
+        option(parsedCompletion(`\\usepackage${options}{graphicx}\n\\rot`), "\\rotatebox"),
+      ).toBeTruthy();
+      expect(option(parsedCompletion(`\\documentclass${options}{scr`), "scrartcl")).toBeTruthy();
+      expect(option(parsedCompletion(`\\usepackage${options}{book`), "booktabs")).toBeTruthy();
+    }
+
+    setBibKeysProvider(() => ["knuth1984"]);
+    const citationSource = String.raw`\cite[{a]b}]{knu`;
+    const citation = parsedCompletion(citationSource);
+    expect(citation?.from).toBe(citationSource.length - "knu".length);
+    expect(option(citation, "knuth1984")).toBeTruthy();
+  });
+
   it("bounds malformed structural completion input", () => {
     const repeated = 1_000;
     expect(completion("\\usepackage[".repeat(repeated))).toBeNull();

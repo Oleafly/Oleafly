@@ -44,6 +44,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   leave `\x` out and the linter reported a missing body. Both read it
   correctly now. The linter's `\)` and `\]` messages also appear in your
   interface language.
+- Options with a `]` inside braces no longer confuse completion. After
+  `\usepackage[opt={a]b}]{graphicx}`, completion offers the graphicx
+  commands, and `\documentclass`, `\usepackage` and `\cite` with options like
+  that still complete their last argument. In
+  `\lstinline[style={a]b}]|code| more text`, only `|code|` counts as code, so
+  spell checking and the linter see the text after it.
 - Pressing Enter on an empty last item of a nested list near the end of a
   document no longer throws an error in the Visual editor.
 - Converting LaTeX math to Typst now handles `\hspace*`, a mismatched
