@@ -180,6 +180,46 @@ describe("TemplateGenerateModal prompt phase", () => {
   });
 });
 
+describe("TemplateGenerateModal model choice", () => {
+  it("generates with the first enabled model the user kept for the active provider", async () => {
+    getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-5",
+      ai_keys: { openai: "sk-test" },
+      ai_custom_providers: [],
+      ai_provider_models: {
+        openai: [
+          { id: "gpt-4o", name: "GPT-4o", enabled: false },
+          { id: "gpt-5-mini", name: "GPT-5 mini", enabled: true },
+        ],
+      },
+    });
+    generateTemplateSource.mockResolvedValue(TEMPLATE);
+    renderModal();
+    await waitFor(() => expect(getConfig).toHaveBeenCalled());
+    await act(async () => {});
+    fireEvent.change(screen.getByTestId("template-generate-input"), { target: { value: "a letter" } });
+
+    fireEvent.click(screen.getByTestId("template-generate-run"));
+
+    await waitFor(() =>
+      expect(generateTemplateSource).toHaveBeenCalledWith("a letter", { providerId: "openai", modelId: "gpt-5-mini" }),
+    );
+  });
+
+  it("generates without a model when no provider has a key", async () => {
+    getConfig.mockResolvedValue({ ai_provider: "openai", ai_keys: {}, ai_custom_providers: [] });
+    generateTemplateSource.mockResolvedValue(TEMPLATE);
+    renderModal();
+    await waitFor(() => expect(getConfig).toHaveBeenCalled());
+    fireEvent.change(screen.getByTestId("template-generate-input"), { target: { value: "a letter" } });
+
+    fireEvent.click(screen.getByTestId("template-generate-run"));
+
+    await waitFor(() => expect(generateTemplateSource).toHaveBeenCalledWith("a letter", undefined));
+  });
+});
+
 describe("TemplateGenerateModal loading phase", () => {
   it("shows the quoted prompt and advances the step list", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

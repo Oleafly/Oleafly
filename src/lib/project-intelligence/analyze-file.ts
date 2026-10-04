@@ -1,4 +1,5 @@
 import { parseFile } from "@/lib/index/parse-file";
+import { maskTypstSource, typstRawEnd } from "@/lib/index/parse-typst";
 import type { Sym } from "@/lib/index/types";
 import {
   latexBalancedGroupEnd,
@@ -9,6 +10,7 @@ import {
   validateXparseArgumentSpecification,
 } from "@oleafly/editor/latex-analysis";
 import {
+  isTypstEscaped,
   TYPST_IDENTIFIER_PATTERN,
   TYPST_LABEL_PATTERN,
   typstAutolinkEnd,
@@ -24,7 +26,6 @@ import {
   analysisEngineForPath,
   lineStarts,
   location,
-  maskTypstComments,
   rangeFromOffsets,
   resolveProjectPath,
   sourceHash,
@@ -452,7 +453,11 @@ function delimiterStepReportsClosing(
   state: DelimiterScanState,
 ): boolean {
   const char = masked[offset];
-  if (engine === "typst" && char === '"' && masked[offset - 1] !== "\\") {
+  if (
+    engine === "typst" &&
+    char === '"' &&
+    precedingBackslashCount(masked, offset, 0) % 2 === 0
+  ) {
     state.quote = !state.quote;
     return false;
   }
@@ -665,6 +670,9 @@ function typstCommentStep(
   if (source[offset] === '"') {
     state.quoted = true;
     return offset + 1;
+  }
+  if (source[offset] === "`" && !isTypstEscaped(source, offset)) {
+    return typstRawEnd(source, offset);
   }
   const link = typstAutolinkEnd(source, offset);
   if (link !== null) return link;
@@ -3076,7 +3084,7 @@ function analyzeTypstBody(
   diagnostics: ProjectDiagnostic[],
 ): boolean {
   const { engine, file, source, starts, definitions, uses, edges } = context;
-  const masked = maskTypstComments(source);
+  const masked = maskTypstSource(source).text;
   typstAdditionalSyntax(
     file,
     masked,

@@ -308,3 +308,60 @@ describe("CLI conversation names and export", () => {
     expect(within(ui.container).queryByText("Conversation exported")).toBeNull();
   });
 });
+
+describe("CLI history menu details", () => {
+  function workspace() {
+    return render(
+      <>
+        <AssistantShellAcpActions projectId="paper" />
+        <AcpWorkspaceAssistant projectId="paper" />
+      </>,
+    );
+  }
+
+  it("stays quiet when the export is cancelled and leaves an unnamed project out", async () => {
+    useFilesStore.setState({ projectName: "" });
+    vi.mocked(exportConversation).mockResolvedValue(false);
+    const ui = workspace();
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+
+    await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "Export conversation…");
+
+    await waitFor(() => expect(exportConversation).toHaveBeenCalledWith(expect.objectContaining({ projectName: null })));
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("names an untitled conversation and an agent that left the catalog", async () => {
+    snapshots.old = { session: session("old", { title: "", agentId: "retired", updatedAt: 0 }), permissions: [] };
+    const ui = workspace();
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+
+    const names = await menuItemNames(ui.getByRole("button", { name: "Saved conversations" }));
+
+    expect(names).toContain("Untitled conversation · retired");
+  });
+
+  it("does nothing when the open conversation is picked again", async () => {
+    const ui = workspace();
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · ready"));
+    const reads = vi.mocked(acpSnapshot).mock.calls.length;
+
+    await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "Conversation saved · Research CLI");
+
+    expect(vi.mocked(acpSnapshot).mock.calls).toHaveLength(reads);
+    expect(acpDisconnect).not.toHaveBeenCalled();
+  });
+
+  it("opens another conversation without disconnecting one that is already offline", async () => {
+    snapshots.saved = { session: session("saved", { status: "disconnected" }), permissions: [] };
+    snapshots.other = { session: session("other", { title: "Second thread", updatedAt: 0 }), permissions: [] };
+    const ui = workspace();
+    await waitFor(() => expect(ui.getByTestId("acp-session-status")).toHaveTextContent("Research CLI · disconnected"));
+
+    await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "Second thread · Research CLI");
+
+    await waitFor(() => expect(useAcpSessionsStore.getState().activeByProject.paper).toBe("other"));
+    expect(acpDisconnect).not.toHaveBeenCalled();
+  });
+});
+

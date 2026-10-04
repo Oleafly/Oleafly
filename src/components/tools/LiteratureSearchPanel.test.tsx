@@ -477,3 +477,62 @@ describe("LiteratureSearchToolView", () => {
     expect(screen.getByTestId("literature-search-panel")).toBeInTheDocument();
   });
 });
+
+describe("LiteratureSearchPanel guards and sparse runs", () => {
+  it("explains offline mode and a missing source when the form is sent anyway", () => {
+    useSettingsStore.setState({ offline: true });
+    const { unmount } = render(<LiteratureSearchPanel />);
+    fireEvent.change(queryField(), { target: { value: "transformers" } });
+    fireEvent.submit(queryField().closest("form") as HTMLFormElement);
+    expect(screen.getAllByText(enResearchTools.literature.offline).length).toBeGreaterThan(1);
+    unmount();
+
+    useSettingsStore.setState({ offline: false });
+    render(<LiteratureSearchPanel />);
+    for (const source of DEFAULT_LITERATURE_SOURCES) {
+      const definition = LITERATURE_SOURCES.find((candidate) => candidate.id === source);
+      if (definition) fireEvent.click(screen.getByRole("button", { name: definition.label, pressed: true }));
+    }
+    fireEvent.change(queryField(), { target: { value: "transformers" } });
+    fireEvent.submit(queryField().closest("form") as HTMLFormElement);
+
+    expect(screen.getByText(enResearchTools.literature.selectSource)).toBeInTheDocument();
+    expect(searchLiterature).not.toHaveBeenCalled();
+  });
+
+  it("names the source of a failure in its own words and tries a suggestion after an empty search", async () => {
+    searchLiterature.mockResolvedValue(
+      response({
+        results: [],
+        runs: [
+          { source: "crossref", status: "ok", count: 0, total: null, durationMs: 15 },
+          { source: "pubmed", status: "error", count: 0, total: null, durationMs: 40, error: "rate limited" },
+        ],
+      }),
+    );
+    await runQuery("nothing");
+
+    expect(await screen.findByText(/PubMed: rate limited/u)).toBeInTheDocument();
+    fireEvent.click(screen.getByText("perovskite silicon tandem solar cells"));
+
+    await waitFor(() => expect(searchLiterature).toHaveBeenCalledTimes(2));
+    expect(searchLiterature).toHaveBeenLastCalledWith(
+      expect.objectContaining({ query: "perovskite silicon tandem solar cells" }),
+    );
+  });
+
+  it("shows a small citation count as it is", async () => {
+    searchLiterature.mockResolvedValue(
+      response({
+        results: [{ ...FULL_RECORD, citationCount: 42, authors: ["Ada", "Grace"] }],
+        runs: [{ source: "crossref", status: "ok", count: 1, total: null, durationMs: 5 }],
+      }),
+    );
+    await runQuery("small");
+
+    expect(await screen.findByText(FULL_RECORD.title)).toBeInTheDocument();
+    expect(screen.getByText(/\b42\b/u)).toBeInTheDocument();
+    expect(screen.getByText(/Ada, Grace/u)).toBeInTheDocument();
+  });
+});
+

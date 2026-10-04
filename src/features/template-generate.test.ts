@@ -7,6 +7,7 @@ const tauri = vi.hoisted(() => ({
   readIsolatedPdf: vi.fn(),
   renderTypstSnippet: vi.fn(),
   saveCustomTemplate: vi.fn(),
+  deleteCustomTemplate: vi.fn(),
 }));
 const pdfPageToPng = vi.hoisted(() => vi.fn());
 const completeViaBackend = vi.hoisted(() => vi.fn());
@@ -20,10 +21,14 @@ vi.mock("@/lib/ai-providers", () => ({
   resolveActiveModel: vi.fn(),
 }));
 
+import { hasConfiguredProvider } from "@/lib/ai-providers";
 import {
   compileGeneratedTemplate,
+  deleteGeneratedTemplate,
+  generateTemplateAvailable,
   generateTemplateSource,
   parseGeneratedTemplate,
+  saveGeneratedTemplate,
   type ParsedTemplate,
 } from "./template-generate";
 
@@ -172,5 +177,82 @@ describe("generateTemplateSource", () => {
     expect(system).toContain("Typst 0.13");
     expect(system).toContain("@preview");
     expect(system).toMatch(/no images/i);
+  });
+});
+
+describe("generated template edge cases", () => {
+  beforeEach(() => {
+    for (const mock of Object.values(tauri)) mock.mockReset();
+    pdfPageToPng.mockReset();
+    completeViaBackend.mockReset();
+  });
+
+  it("rejects a reply without a JSON object or a usable slug", () => {
+    expect(() => parseGeneratedTemplate("Sorry, I cannot do that.")).toThrow(/no JSON object/);
+    expect(() => parseGeneratedTemplate(JSON.stringify({ slug: "!!!", engine: "typst", source: "= T" }))).toThrow(
+      /missing slug/,
+    );
+  });
+
+  it("keeps up to four text tags, names the template after its slug and defaults Markdown to main.md", () => {
+    const parsed = parseGeneratedTemplate(
+      JSON.stringify({ slug: "notes", engine: "markdown", source: "# Notes", tags: ["a", 2, "b", "c", "d", "e"] }),
+    );
+
+    expect(parsed).toMatchObject({ name: "notes", category: "Custom", mainDoc: "main.md", tags: ["a", "b", "c", "d"] });
+    expect(parseGeneratedTemplate(JSON.stringify({ slug: "x", engine: "typst", source: "= T", tags: "none" })).tags).toEqual([]);
+  });
+
+  it("is available only with a configured AI provider", async () => {
+    tauri.getConfig.mockResolvedValueOnce({ ai_provider: "openai" });
+    vi.mocked(hasConfiguredProvider).mockReturnValueOnce(true);
+    await expect(generateTemplateAvailable()).resolves.toBe(true);
+
+    tauri.getConfig.mockRejectedValueOnce(new Error("no config"));
+    await expect(generateTemplateAvailable()).resolves.toBe(false);
+  });
+
+  it("asks a chosen model when one is given", async () => {
+    completeViaBackend.mockResolvedValue({ text: JSON.stringify({ slug: "a", engine: "typst", source: "= T" }) });
+
+    await generateTemplateSource("a poster", { providerId: "anthropic", modelId: "claude" });
+
+    expect(completeViaBackend.mock.calls[0][2]).toEqual({ provider_id: "anthropic", model_id: "claude" });
+  });
+
+  it("returns the LaTeX log without a preview when the draft makes no PDF", async () => {
+    tauri.getOrCreateScratchProject.mockResolvedValue("scratch");
+    tauri.compileIsolated.mockResolvedValue({ has_pdf: false, log: null });
+
+    await expect(
+      compileGeneratedTemplate(template({ engine: "xetex", mainDoc: "main.tex", source: "\\bad" })),
+    ).resolves.toEqual({ png: null, log: "" });
+    expect(tauri.readIsolatedPdf).not.toHaveBeenCalled();
+  });
+
+  it("saves the template with its manifest and PNG preview, and deletes it", async () => {
+    const draft = template({ slug: "report", name: "Report", description: "Weekly" });
+
+    await saveGeneratedTemplate(draft, "data:image/png;base64,QUJD");
+    await saveGeneratedTemplate(draft, "https://example.com/preview.png");
+    await deleteGeneratedTemplate("report");
+
+    const [slug, manifest, files] = tauri.saveCustomTemplate.mock.calls[0];
+    expect(slug).toBe("report");
+    expect(JSON.parse(manifest)).toMatchObject({
+      id: "report",
+      name: "Report",
+      description: "Weekly",
+      category: "AI Generated",
+      engine: "typst",
+      main_doc: "main.typ",
+      license: { spdx: "CC0-1.0" },
+    });
+    expect(files).toEqual([
+      { name: "main.typ", content: "= Title\n\nBody text." },
+      { name: "preview.png", content: "", content_base64: "QUJD" },
+    ]);
+    expect(tauri.saveCustomTemplate.mock.calls[1][2]).toHaveLength(1);
+    expect(tauri.deleteCustomTemplate).toHaveBeenCalledWith("report");
   });
 });

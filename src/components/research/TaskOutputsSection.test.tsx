@@ -211,4 +211,105 @@ describe("TaskOutputsSection", () => {
       selectedTaskId: "review",
     });
   });
+
+  it("previews a task artifact and marks a long one as cut short", async () => {
+    vi.mocked(api.previewResearchTaskArtifact).mockResolvedValue({
+      path: "review.md",
+      content: { text: "# Findings", truncated: true },
+    } as never);
+    seed([task("review")]);
+    render(<TaskOutputsSection />);
+
+    fireEvent.click(page().getByRole("button", { name: /Report review/ }));
+
+    await waitFor(() => expect(page().getByText("# Findings")).toBeInTheDocument());
+    expect(page().getByText(enResearchTools.outputs.previewTruncated)).toBeInTheDocument();
+    expect(api.previewResearchTaskArtifact).toHaveBeenCalledWith("review", "review.md");
+  });
+
+  it("explains binary artifacts, binary files and deleted files", async () => {
+    vi.mocked(api.previewResearchTaskArtifact).mockResolvedValue({
+      path: "review.md",
+      content: { text: null, truncated: false },
+    } as never);
+    seed([task("review")]);
+    render(<TaskOutputsSection />);
+
+    fireEvent.click(page().getByRole("button", { name: /Report review/ }));
+    await waitFor(() => expect(page().getByText(enResearchTools.outputs.binaryArtifact)).toBeInTheDocument());
+    fireEvent.keyDown(page().getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
+
+    vi.mocked(api.previewResearchTaskFile).mockImplementationOnce(async (_id, path) => {
+      const value = preview(path);
+      return { ...value, after: { ...value.after, binary: true } };
+    });
+    fireEvent.click(page().getByRole("button", { name: /review\.tex/ }));
+    await waitFor(() => expect(page().getByText(enResearchTools.outputs.binaryFile)).toBeInTheDocument());
+    fireEvent.keyDown(page().getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
+
+    vi.mocked(api.previewResearchTaskFile).mockImplementationOnce(async (_id, path) => {
+      const value = preview(path);
+      return { ...value, after: { ...value.after, exists: false } };
+    });
+    fireEvent.click(page().getByRole("button", { name: /review\.tex/ }));
+    await waitFor(() => expect(page().getByText(enResearchTools.outputs.deleted)).toBeInTheDocument());
+  });
+
+  it("shows why a preview failed", async () => {
+    vi.mocked(api.previewResearchTaskFile).mockRejectedValueOnce(new Error("snapshot missing"));
+    vi.mocked(api.previewResearchTaskArtifact).mockRejectedValueOnce("artifact gone");
+    seed([task("review")]);
+    render(<TaskOutputsSection />);
+
+    fireEvent.click(page().getByRole("button", { name: /review\.tex/ }));
+    await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("snapshot missing"));
+    fireEvent.click(
+      within(page().getByRole("dialog")).getAllByRole("button", { name: enCommon.actions.close })[0],
+    );
+    await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
+
+    fireEvent.click(page().getByRole("button", { name: /Report review/ }));
+    await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("artifact gone"));
+  });
+
+  it("drops a preview that arrives after the dialog closed", async () => {
+    let finish: (value: TaskFilePreview) => void = () => {};
+    vi.mocked(api.previewResearchTaskFile).mockImplementationOnce(
+      () => new Promise<TaskFilePreview>((resolve) => (finish = resolve)),
+    );
+    seed([task("review")]);
+    render(<TaskOutputsSection />);
+
+    fireEvent.click(page().getByRole("button", { name: /review\.tex/ }));
+    await waitFor(() => expect(page().getByRole("dialog")).toBeInTheDocument());
+    fireEvent.click(
+      within(page().getByRole("dialog")).getAllByRole("button", { name: enCommon.actions.close })[0],
+    );
+    await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
+    finish(preview("review.tex"));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(page().queryByText("after review.tex")).not.toBeInTheDocument();
+  });
+
+  it("collapses and expands the output list", () => {
+    seed([task("review")]);
+    render(<TaskOutputsSection />);
+    const header = page().getByRole("button", { name: new RegExp(enResearchTools.outputs.title) });
+
+    fireEvent.click(header);
+    expect(header).toHaveAttribute("aria-expanded", "false");
+    expect(page().queryByText("review.tex")).not.toBeInTheDocument();
+    fireEvent.click(header);
+    expect(page().getByText("review.tex")).toBeInTheDocument();
+  });
+
+  it("leaves out tasks that were already reviewed", () => {
+    seed([{ ...task("done"), review: { decision: "accepted" } as never }]);
+    render(<TaskOutputsSection />);
+
+    expect(page().queryByTestId("task-outputs-section")).not.toBeInTheDocument();
+  });
 });

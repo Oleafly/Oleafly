@@ -7,7 +7,10 @@ import type { DetectionCandidate, FolderDetection, OpenedFolder } from "@/lib/fo
 const mocks = vi.hoisted(() => ({
   chooseMainDocument: vi.fn(),
   notifyError: vi.fn(),
+  logError: vi.fn(),
 }));
+
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 vi.mock("@/store/files", async () => {
   const { create } = await import("zustand");
@@ -327,6 +330,48 @@ describe("MainDocumentPicker", () => {
     expect(screen.getByRole("dialog", { name: labels.picker.askTitle })).toBeInTheDocument();
   });
 
+  it("only logs a failed choice once the user has moved to another project", async () => {
+    let fail: (error: Error) => void = () => {};
+    mocks.chooseMainDocument.mockReturnValueOnce(
+      new Promise<boolean>((_resolve, reject) => {
+        fail = reject;
+      }),
+    );
+    render(<MainDocumentPicker />);
+    present();
+    fireEvent.click(screen.getByRole("button", { name: labels.picker.open }));
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledTimes(1));
+
+    act(() => {
+      useFilesStore.setState({ projectId: "linked-b" });
+    });
+    await act(async () => fail(new Error("refused")));
+
+    expect(mocks.logError).toHaveBeenCalledWith("choose the main document", expect.any(Error));
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("cannot be dismissed or reopened while a choice is still opening", async () => {
+    let finish: (chosen: boolean) => void = () => {};
+    mocks.chooseMainDocument.mockReturnValueOnce(
+      new Promise<boolean>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    render(<MainDocumentPicker />);
+    present();
+    fireEvent.click(screen.getByRole("button", { name: labels.picker.open }));
+    await waitFor(() => expect(mocks.chooseMainDocument).toHaveBeenCalledTimes(1));
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    fireEvent.doubleClick(row(options()[1]));
+
+    expect(useOpenFolderStore.getState().opened).not.toBeNull();
+    expect(mocks.chooseMainDocument).toHaveBeenCalledTimes(1);
+    await act(async () => finish(true));
+    await waitFor(() => expect(useOpenFolderStore.getState().opened).toBeNull());
+  });
+
   it("says when the search stopped early", () => {
     render(<MainDocumentPicker />);
     present({ ...ambiguous, truncated: true });
@@ -339,4 +384,34 @@ describe("MainDocumentPicker", () => {
     expect(screen.getByText(labels.picker.empty)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: labels.picker.open })).toBeDisabled();
   });
+
+  it("scrolls the newly selected choice into view", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      render(<MainDocumentPicker />);
+      present();
+      await waitFor(() => expect(options()[0]).toHaveFocus());
+      scrollIntoView.mockClear();
+
+      press("ArrowDown");
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+      expect(scrollIntoView.mock.contexts.at(-1)).toBe(row(options()[1]));
+    } finally {
+      Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+    }
+  });
+
+  it("starts at the first choice when the suggested main is not one of the candidates", async () => {
+    render(<MainDocumentPicker />);
+    present({ ...ambiguous, main: "old/thesis.tex" });
+    await waitFor(() => expect(options()[0]).toHaveFocus());
+    expect(options().some((option) => (option as HTMLInputElement).checked)).toBe(false);
+
+    press("ArrowDown");
+
+    expect(options()[0]).toBeChecked();
+  });
 });
+

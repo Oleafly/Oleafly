@@ -33,6 +33,7 @@ import {
   installedTypstVersions,
   openTypstVersionSettings,
   typstInstallLabel,
+  typstInstallPercent,
   useTypstToolchainStore,
 } from "./typst-toolchain";
 
@@ -246,5 +247,30 @@ describe("opening the Typst settings", () => {
       settingsInitialSection: "engine",
       settingsScrollTarget: TYPST_SETTINGS_TARGET,
     });
+  });
+});
+
+describe("Typst install progress labels", () => {
+  const install = (phase: "starting" | "downloading" | "verifying" | "extracting" | "done", receivedBytes = 0, totalBytes = 0) => ({
+    version: "0.14.2",
+    phase,
+    receivedBytes,
+    totalBytes,
+  });
+
+  it("names every install phase", () => {
+    expect(typstInstallLabel(install("starting"))).toBe(copy.progress.starting);
+    expect(typstInstallLabel(install("extracting"))).toBe(copy.progress.extracting);
+    expect(typstInstallLabel(install("done"))).toBe(copy.progress.done);
+  });
+
+  it("shows zero percent while the download size is unknown", () => {
+    expect(typstInstallPercent(install("downloading", 10, 0))).toBeNull();
+    expect(typstInstallLabel(install("downloading", 10, 0))).toBe(copy.progress.downloading.replace("{{percent}}", "0"));
+  });
+
+  it("keeps the percentage between 0 and 100", () => {
+    expect(typstInstallPercent(install("downloading", 150, 100))).toBe(100);
+    expect(typstInstallPercent(install("downloading", 33, 100))).toBe(33);
   });
 });

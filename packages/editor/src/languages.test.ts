@@ -70,4 +70,17 @@ describe("languageForPath", () => {
     expect(dockerfile).not.toBeNull();
     expect(dockerfile?.language.name).not.toBe("shell");
   });
+
+  it.each(["app.dockerfile", "docker/API.Dockerfile"])(
+    "uses the Dockerfile mode for %s",
+    (path) => {
+      expect(languageForPath(path)?.language.name).toBe(
+        languageForPath("Dockerfile")?.language.name,
+      );
+    },
+  );
+
+  it("keeps a shell script named after Dockerfile in the shell mode", () => {
+    expect(languageForPath("dockerfile.sh")?.language.name).toBe("shell");
+  });
 });

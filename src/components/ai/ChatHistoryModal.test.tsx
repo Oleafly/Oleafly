@@ -256,3 +256,32 @@ describe("ChatHistoryModal list", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("ChatHistoryModal row details", () => {
+  beforeEach(() => {
+    mockSearch.mockReset().mockResolvedValue([]);
+  });
+
+  it("finds an untitled chat only through its content", async () => {
+    mockSearch.mockResolvedValue([{ project_id: "p", chat_id: "c9", title: "", snippet: "lemma" }]);
+    renderChats([chat({ id: "c9", title: "" }), chat({ id: "c8", title: "" })]);
+
+    fireEvent.change(screen.getByLabelText("Search chats"), { target: { value: "lemma" } });
+
+    expect(await screen.findAllByText(enAi.history.untitled)).toHaveLength(1);
+  });
+
+  it("highlights the open chat and leaves out a zero cost", () => {
+    renderChats(
+      [chat({ usage: { inputTokens: 10, outputTokens: 5, steps: 1, runs: 1 } }), chat({ id: "c2", title: "Other" })],
+      { activeId: "c1" },
+    );
+
+    const row = screen.getByText("Bibliography fixes").closest("button") as HTMLElement;
+    expect(row.parentElement).toHaveClass("bg-accent");
+    expect(screen.getByText("Other").closest("button")?.parentElement).not.toHaveClass("bg-accent");
+    expect(row).toHaveTextContent(enAi.history.tokens.replace("{{amount}}", "15"));
+    expect(row).not.toHaveTextContent("$");
+  });
+});
+

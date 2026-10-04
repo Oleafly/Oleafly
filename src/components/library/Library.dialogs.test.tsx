@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const recycleProject = vi.fn(async () => {});
 const duplicateProject = vi.fn(async () => "fork-1");
@@ -640,5 +640,114 @@ describe("Library hover previews", () => {
     );
     await waitFor(() => expect(readCompiledPdf).toHaveBeenCalled());
     expect(screen.getByTestId("project-grid")).toBeInTheDocument();
+  });
+});
+
+describe("Library dialog details", () => {
+  it("shows that a project is not bookmarked and has no preview, then closes", async () => {
+    render(<Library />);
+    await openListActions(NOTE.name);
+    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.projects.details }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(enCommon.actions.no);
+    expect(dialog).toHaveTextContent(enLibrary.projects.detailsDialog.previewUnavailable);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("names an export without a format by the fallback word and closes the history", async () => {
+    seedProjects([
+      { ...PAPER, exports: [{ filename: "notes", format: "", path: "/tmp/notes", date: 1_700_000_000 }] },
+      NOTE,
+    ]);
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.projects.exportHistory }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(enLibrary.projects.exportsDialog.fallbackFormat);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("keeps the project when deletion is cancelled", async () => {
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.projects.delete }));
+
+    const confirm = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirm).getAllByRole("button", { name: new RegExp(enCommon.actions.cancel) })[0]);
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(recycleProject).not.toHaveBeenCalled();
+  });
+
+  it("closes the PDF preview", async () => {
+    render(<Library />);
+    fireEvent.click(screen.getByRole("button", { name: enLibrary.home.listView }));
+    fireEvent.click(
+      screen.getByRole("button", { name: enLibrary.projects.previewNamed.replace("{{name}}", PAPER.name) }),
+    );
+    const viewer = await screen.findByTestId("library-pdf-viewer");
+    expect(viewer).toHaveTextContent("2");
+
+    fireEvent.keyDown(viewer, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("library-pdf-viewer")).toBeNull());
+  });
+
+  it("draws the chosen background pattern", () => {
+    useSettingsStore.setState({ bgPattern: "grid" });
+    const grid = render(<Library />);
+    expect(grid.container.querySelector("svg pattern")).not.toBeNull();
+    grid.unmount();
+
+    useSettingsStore.setState({ bgPattern: "dots" });
+    const dots = render(<Library />);
+    expect(dots.container.querySelector("svg pattern")).not.toBeNull();
+  });
+
+  it("shows a hover thumbnail in the list view", async () => {
+    useSettingsStore.setState({ hoverPreview: true });
+    render(<Library />);
+    fireEvent.click(screen.getByRole("button", { name: enLibrary.home.listView }));
+    const row = screen.getByRole("button", { name: enLibrary.projects.open.replace("{{name}}", PAPER.name) });
+
+    fireEvent.focus(row);
+    await waitFor(() => expect(row.querySelector("img")).not.toBeNull());
+    expect(row.querySelector("img")?.getAttribute("src")).toBe("data:image/png;base64,preview");
+
+    fireEvent.blur(row);
+    await waitFor(() => expect(row.querySelector("img")).toBeNull());
+  });
+});
+
+describe("Library list rows", () => {
+  it("bookmarks and unbookmarks a project from its list row", () => {
+    render(<Library />);
+    fireEvent.click(screen.getByRole("button", { name: enLibrary.home.listView }));
+
+    fireEvent.click(screen.getAllByRole("button", { name: enLibrary.projects.favoriteRemove })[0]);
+    expect(useFavoritesStore.getState().favs).not.toContain("paper");
+
+    fireEvent.click(screen.getAllByRole("button", { name: enLibrary.projects.favoriteAdd })[0]);
+    expect(useFavoritesStore.getState().favs).toHaveLength(1);
+  });
+
+  it("still explains a vanished project when the list cannot refresh", async () => {
+    recycleProject.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "project.not_found", params: {}, detail: null })}`,
+    );
+    refreshProjects.mockRejectedValue(new Error("list failed"));
+    render(<Library />);
+    await openListActions(PAPER.name);
+    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.projects.delete }));
+
+    fireEvent.click(await screen.findByRole("button", { name: enLibrary.projects.deleteDialog.confirm }));
+
+    await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
+    expect(toastSuccess).not.toHaveBeenCalled();
   });
 });

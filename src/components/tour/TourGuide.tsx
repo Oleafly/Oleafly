@@ -1144,12 +1144,12 @@ export function TourGuide() {
       ) {
         advanced.click();
       }
-      const frame = requestAnimationFrame(() =>
+      const frame = requestAnimationFrame(() => {
+        previousSettings.current = null;
         document
           .querySelector<HTMLElement>(`[data-testid="settings-section-${previous.section}"]`)
-          ?.click(),
-      );
-      previousSettings.current = null;
+          ?.click();
+      });
       return () => cancelAnimationFrame(frame);
     }
   }, [activeTourId]);

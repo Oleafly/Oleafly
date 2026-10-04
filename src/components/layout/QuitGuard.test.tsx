@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     return () => mocks.events.delete(name);
   }),
   isTauri: vi.fn(() => true),
+  invoke: vi.fn(async () => undefined),
   confirmQuitFlush: vi.fn(async () => {}),
   cancelQuitFlush: vi.fn(async () => {}),
   flushForQuit: vi.fn(async () => {}),
@@ -17,7 +18,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({ listen: mocks.listen }));
-vi.mock("@tauri-apps/api/core", () => ({ isTauri: mocks.isTauri }));
+vi.mock("@tauri-apps/api/core", () => ({ isTauri: mocks.isTauri, invoke: mocks.invoke }));
 vi.mock("@/lib/tauri", () => ({
   confirmQuitFlush: mocks.confirmQuitFlush,
   cancelQuitFlush: mocks.cancelQuitFlush,
@@ -25,7 +26,7 @@ vi.mock("@/lib/tauri", () => ({
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/store/files", () => ({
-  useFilesStore: { getState: () => ({ flushForQuit: mocks.flushForQuit }) },
+  useFilesStore: { getState: () => ({ flushForQuit: mocks.flushForQuit, projectId: null }) },
 }));
 
 import { QuitGuard } from "./QuitGuard";
@@ -209,5 +210,37 @@ describe("QuitGuard", () => {
       flush.resolve();
       vi.useRealTimers();
     }
+  });
+});
+
+describe("QuitGuard restarts and update installs", () => {
+  it("offers to restart anyway after a failed save during a restart", async () => {
+    mocks.flushForQuit.mockRejectedValue("disk full");
+    render(<QuitGuard />);
+    await fireQuitRequest(true);
+
+    expect(await screen.findByText(/restart anyway and lose them/)).toHaveTextContent("disk full");
+    fireEvent.click(screen.getByRole("button", { name: /Restart anyway/ }));
+
+    await waitFor(() => expect(mocks.confirmQuitFlush).toHaveBeenCalledWith(true));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("shows the install progress and ignores quit requests until the install finishes", async () => {
+    render(<QuitGuard />);
+    await waitFor(() => expect(mocks.events.has("update-install-prepare")).toBe(true));
+
+    act(() => mocks.events.get("update-install-prepare")?.({ payload: "token-1" }));
+    expect(await screen.findByText("Preparing to restart")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith("confirm_update_install", { token: "token-1", error: null }),
+    );
+
+    mocks.flushForQuit.mockClear();
+    mocks.events.get("quit-flush-requested")?.({ payload: false });
+    expect(mocks.flushForQuit).not.toHaveBeenCalled();
+
+    act(() => mocks.events.get("update-install-finished")?.({ payload: "token-1" }));
+    await waitFor(() => expect(screen.queryByText("Preparing to restart")).toBeNull());
   });
 });

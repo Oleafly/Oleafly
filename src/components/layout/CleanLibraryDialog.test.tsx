@@ -105,4 +105,54 @@ describe("CleanLibraryDialog", () => {
     await plan();
     expect(screen.getByTestId("clean-library-apply")).toBeDisabled();
   });
+  it("lists every kind of change and marks the lines the clean keeps, removes and adds", async () => {
+    mocks.clean.mockResolvedValue({
+      ...preview,
+      original: "@article{a,\n  title = {A}\n}\n\n@article{a,\n  title = {A}\n}",
+      cleaned: "@article{smith2020,\n  title = {A}\n}\n",
+      actions: [
+        { kind: "removed-duplicate", removed: "a", kept: "smith2020", by: "doi" },
+        { kind: "advisory", key: "", field: "missing year" },
+        { kind: "advisory", key: "Check the venue" },
+        { kind: "advisory" },
+      ],
+    });
+    render(<CleanLibraryDialog open onClose={vi.fn()} />);
+    await plan();
+
+    expect(screen.getByTestId("clean-action-removed-duplicate")).toHaveTextContent("a removed as a duplicate of smith2020 (matched by doi)");
+    const notes = screen.getAllByTestId("clean-action-advisory").map((item) => item.textContent);
+    expect(notes.slice(0, 2)).toEqual(["Reference library: missing year", "Check the venue"]);
+    const diff = screen.getByTestId("clean-library-diff");
+    const rows = [...diff.children].map((row) => row.textContent);
+    expect(rows).toContain("- @article{a,");
+    expect(rows).toContain("+ @article{smith2020,");
+    expect(rows).toContain("    title = {A}");
+  });
+
+  it("names the backup folder after an apply and shortens a very long diff", async () => {
+    const long = Array.from({ length: 600 }, (_, index) => `line ${index}`).join("\n");
+    mocks.clean.mockResolvedValue({ ...preview, original: long, cleaned: long });
+    render(<CleanLibraryDialog open onClose={vi.fn()} />);
+    await plan();
+    expect(screen.getByText("Preview shows the first 500 lines of each version.")).toBeInTheDocument();
+
+    mocks.clean.mockResolvedValue({ ...preview, applied: true, backupPath: ".oleafly/backup", entriesAfter: 1, entriesBefore: 2, projectState: { projectId: "one" } });
+    fireEvent.click(screen.getByTestId("clean-library-apply"));
+
+    await waitFor(() =>
+      expect(mocks.success).toHaveBeenCalledWith("Library cleaned. 1 of 2 entries kept. Original files are saved in .oleafly/backup."),
+    );
+  });
+
+  it("refuses an apply whose reloaded project is missing", async () => {
+    render(<CleanLibraryDialog open onClose={vi.fn()} />);
+    await plan();
+    mocks.clean.mockResolvedValue({ ...preview, applied: true });
+
+    fireEvent.click(screen.getByTestId("clean-library-apply"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("The cleaned files could not be reloaded. Reopen the project before editing.");
+  });
 });
+

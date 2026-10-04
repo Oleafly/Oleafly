@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { toast } from "@/lib/toast";
 
 const mocks = vi.hoisted(() => ({
   state: {
@@ -7,10 +8,11 @@ const mocks = vi.hoisted(() => ({
     flushForQuit: vi.fn(),
     engine: { source_format: "latex", typst_options: null },
   },
-  pdfBytes: new Uint8Array([1, 2]), exportPdf: vi.fn(), exportProjectImage: vi.fn(),
+  pdfBytes: new Uint8Array([1, 2]) as Uint8Array | null, exportPdf: vi.fn(), exportProjectImage: vi.fn(),
   pdfPageToPng: vi.fn(),
   pickSavePath: vi.fn(), ensurePandoc: vi.fn(), exportDocument: vi.fn(), downloadProjectZip: vi.fn(),
-  notifyError: vi.fn(), infoUnique: vi.fn(() => 42), successUnique: vi.fn(() => 42), info: vi.fn(), dismiss: vi.fn(),
+  revealInDir: vi.fn(),
+  notifyError: vi.fn(), infoUnique: vi.fn(() => 42), successUnique: vi.fn<typeof toast.successUnique>(() => 42), info: vi.fn(), dismiss: vi.fn(),
 }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.state } }));
 vi.mock("@/store/compile", () => ({ useCompileStore: { getState: () => ({ pdfBytes: mocks.pdfBytes }) } }));
@@ -18,7 +20,7 @@ vi.mock("@/lib/tex-root", () => ({ resolveEffectiveMainDoc: () => ({ mainDoc: "c
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: mocks.pdfPageToPng }));
-vi.mock("@/lib/tauri", () => ({ exportPdf: mocks.exportPdf, exportProjectImage: mocks.exportProjectImage, exportDocument: mocks.exportDocument, downloadProjectZip: mocks.downloadProjectZip }));
+vi.mock("@/lib/tauri", () => ({ exportPdf: mocks.exportPdf, exportProjectImage: mocks.exportProjectImage, exportDocument: mocks.exportDocument, downloadProjectZip: mocks.downloadProjectZip, revealInDir: mocks.revealInDir }));
 vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError, toast: { infoUnique: mocks.infoUnique, successUnique: mocks.successUnique, info: mocks.info, dismiss: mocks.dismiss } }));
 import { i18n } from "@/i18n";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng } from "./export";
@@ -155,5 +157,82 @@ describe("compiled exports", () => {
     await exportCurrentImagePng();
     expect(mocks.exportProjectImage).not.toHaveBeenCalled();
     expect(mocks.infoUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("export edge cases", () => {
+  it("does nothing without an open project or a compiled PDF", async () => {
+    mocks.state.projectId = null as unknown as string;
+    await exportCurrentDocument("docx");
+    await exportCurrentPdf();
+    await exportCurrentImagePng();
+    mocks.state.projectId = "paper-a";
+    mocks.pdfBytes = null;
+    await exportCurrentPdf();
+    await exportCurrentImagePng();
+    mocks.pdfBytes = new Uint8Array([1, 2]);
+
+    expect(mocks.pickSavePath).not.toHaveBeenCalled();
+  });
+
+  it("names an untitled export after its kind", async () => {
+    mocks.state.projectName = "";
+    try {
+      await exportCurrentDocument("md");
+      await exportCurrentImagePng();
+    } finally {
+      mocks.state.projectName = "My paper";
+    }
+
+    expect(mocks.pickSavePath.mock.calls.map(([options]) => options.defaultPath)).toEqual(["document.md", "figure.png"]);
+  });
+
+  it("stops when the save dialog is cancelled", async () => {
+    mocks.pickSavePath.mockResolvedValue(null);
+
+    await exportCurrentDocument("docx");
+    await exportCurrentPdf();
+    await exportCurrentImagePng();
+
+    expect(mocks.exportDocument).not.toHaveBeenCalled();
+    expect(mocks.exportPdf).not.toHaveBeenCalled();
+    expect(mocks.exportProjectImage).not.toHaveBeenCalled();
+  });
+
+  it("explains a failed PDF or PNG save with or without the reason", async () => {
+    mocks.exportPdf.mockRejectedValueOnce("disk full").mockRejectedValueOnce({ code: 5 });
+    await exportCurrentPdf();
+    await exportCurrentPdf();
+    mocks.exportProjectImage.mockRejectedValueOnce(new Error("read only")).mockRejectedValueOnce({ code: 5 });
+    await exportCurrentImagePng();
+    await exportCurrentImagePng();
+
+    expect(mocks.notifyError.mock.calls.map((call) => call[2])).toEqual([
+      i18n.t(($) => $.core.export.pdfFailedDetail, { detail: "disk full" }),
+      i18n.t(($) => $.core.export.pdfFailed),
+      i18n.t(($) => $.core.export.pngFailedDetail, { detail: "read only" }),
+      i18n.t(($) => $.core.export.pngFailed),
+    ]);
+  });
+
+  it("reveals a saved file and says so when its folder cannot be opened", async () => {
+    mocks.revealInDir.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("no file manager"));
+    mocks.pickSavePath.mockResolvedValue("/tmp/out.pdf");
+    await exportCurrentPdf();
+    const action = mocks.successUnique.mock.calls[0][2];
+
+    action?.onClick();
+    expect(mocks.revealInDir).toHaveBeenCalledWith("/tmp/out.pdf");
+    expect(mocks.info).not.toHaveBeenCalled();
+
+    action?.onClick();
+    await vi.waitFor(() => expect(mocks.info).toHaveBeenCalledWith(i18n.t(($) => $.core.export.revealFailed)));
+  });
+
+  it("shows the kind as the name of a destination without a file name", async () => {
+    mocks.pickSavePath.mockResolvedValue("/");
+    await exportCurrentPdf();
+
+    expect(mocks.successUnique.mock.calls[0][1]).toBe(savedMessage("PDF", "pdf"));
   });
 });

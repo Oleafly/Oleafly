@@ -237,8 +237,9 @@ function applyTurnEnd(state: ProjectionState, event: AcpEvent) {
   const terminal = event.kind === "turn_complete" || TERMINAL_STATUSES.has(text(data.status));
   if (!terminal) return;
   closeTurn(state, event.turnId);
-  if (data.error && !alreadySaid(state.rows, event.turnId, text(data.error))) {
-    appendRow(state, event, "error", noticed({ role: "assistant", content: "" }, displayText(text(data.error))));
+  const error = text(data.error);
+  if (error.trim() && !alreadySaid(state.rows, event.turnId, error)) {
+    appendRow(state, event, "error", noticed({ role: "assistant", content: "" }, displayText(error)));
   }
 }
 

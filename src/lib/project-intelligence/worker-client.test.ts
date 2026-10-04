@@ -182,7 +182,10 @@ describe("ProjectIntelligenceWorkerClient", () => {
   });
 
   it("fails the worker when the snapshot identity disagrees with its envelope", async () => {
-    void client.analyze(input);
+    let ownError: unknown;
+    void client.analyze(input).catch((error: unknown) => {
+      ownError = error;
+    });
     const other = client.bibliographyEntries(identity, []);
     workers[0].emit("message", {
       protocolVersion: PROJECT_INTELLIGENCE_PROTOCOL_VERSION,
@@ -192,6 +195,7 @@ describe("ProjectIntelligenceWorkerClient", () => {
       snapshot: snapshotShell({ ...identity, projectRevision: 7 }),
     });
     await expect(other).rejects.toMatchObject({ reasonKey: "malformedSnapshotIdentity" });
+    expect(ownError).toMatchObject({ reasonKey: "malformedSnapshotIdentity" });
     expect(workers[0].terminated).toBe(true);
   });
 

@@ -487,6 +487,7 @@ function tokenAtSelection(view: EditorView): VisualToken | null {
       };
       return false;
     }
+    if (child.marks.some((mark) => mark.type.name === "code")) return true;
     for (const match of textTokens(child.text)) {
       if (
         offset >= position + match.from &&

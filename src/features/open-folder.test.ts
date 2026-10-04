@@ -586,3 +586,106 @@ describe("the Open Recent menu", () => {
     expect(mocks.setRecentProjects).not.toHaveBeenCalled();
   });
 });
+
+describe("open folder failures", () => {
+  const NOT_FOUND = '@oleafly/error:{"code":"open_folder.not_found","params":{},"detail":null}';
+
+  it("explains a picker that could not open and ignores the picker while a folder is opening", async () => {
+    mocks.pickOpenFolder.mockRejectedValueOnce(NOT_FOUND);
+
+    await expect(openFolderWithPicker()).resolves.toBe("refused");
+    expect(useOpenFolderFlowStore.getState().refusal).toEqual({
+      title: null,
+      message: "Oleafly can't find this folder.",
+      hint: null,
+      browse: null,
+    });
+
+    useOpenFolderFlowStore.setState({ opening: true });
+    await expect(openFolderWithPicker()).resolves.toBe("cancelled");
+    expect(mocks.pickOpenFolder).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs a drain that could not list the waiting requests", async () => {
+    mocks.pendingOpenRequests.mockRejectedValueOnce(new Error("bridge down"));
+
+    await drainOpenRequests();
+
+    expect(mocks.logError).toHaveBeenCalledWith("open requested folders", expect.any(Error));
+    expect(bootSplashHeld()).toBe(false);
+  });
+
+  it("logs a declined request the backend could not discard", async () => {
+    useFilesStore.setState({ projectId: "thesis-1", projectName: "Thesis" });
+    useCompileStore.setState({ status: "compiling" });
+    mocks.prepareOpenRequest.mockResolvedValue({ project_id: null, display_name: "notes" });
+    mocks.discardOpenRequest.mockRejectedValueOnce(new Error("gone"));
+
+    const outcome = openPendingRequest(request("dc", "notes"));
+    await settled();
+    useOpenFolderFlowStore.getState().answer(false);
+
+    await expect(outcome).resolves.toBe("declined");
+    await settled();
+    expect(mocks.logError).toHaveBeenCalledWith("decline a folder request", expect.any(Error));
+  });
+
+  it("reports a switch that did not land and logs a project list that could not refresh", async () => {
+    useFilesStore.setState({ projectId: "thesis-1", projectName: "Thesis" });
+    openProject.mockImplementationOnce(async () => {});
+    refreshProjects.mockRejectedValueOnce(new Error("offline"));
+    mocks.openFolderRequest.mockResolvedValue(opened(NOTES_ID));
+
+    await expect(openPendingRequest(request("fl", "notes"))).resolves.toBe("failed");
+    await settled();
+
+    expect(useOpenFolderStore.getState().opened).toBeNull();
+    expect(mocks.logError).toHaveBeenCalledWith("refresh projects after opening a folder", expect.any(Error));
+  });
+});
+
+describe("Open Recent", () => {
+  it("opens a project the menu names and ignores other payloads", async () => {
+    const stop = await startOpenRequestIntake();
+    await settled();
+
+    mocks.listeners.get("menu://open-recent")?.({ payload: 42 });
+    await settled();
+    expect(openProject).not.toHaveBeenCalled();
+
+    mocks.listeners.get("menu://open-recent")?.({ payload: NOTES_ID });
+    await settled();
+    expect(openProject).toHaveBeenCalledWith(NOTES_ID);
+    stop();
+  });
+
+  it("does nothing for the open project and keeps it when the stop prompt is declined", async () => {
+    useFilesStore.setState({ projectId: "thesis-1", projectName: "Thesis", projects: [] });
+    await openRecentProject("thesis-1");
+    expect(openProject).not.toHaveBeenCalled();
+
+    useCompileStore.setState({ status: "compiling" });
+    const done = openRecentProject(NOTES_ID);
+    await settled();
+    expect(useOpenFolderFlowStore.getState().prompt?.name).toBe(NOTES_ID);
+    useOpenFolderFlowStore.getState().answer(false);
+    await done;
+
+    expect(openProject).not.toHaveBeenCalled();
+    expect(stopCompile).not.toHaveBeenCalled();
+  });
+
+  it("resends the menu when the project list changes and logs a menu it could not update", async () => {
+    mocks.setRecentProjects.mockRejectedValue(new Error("no menu"));
+    useFilesStore.setState({ projects: [{ id: "a", name: "A", updated_at: 1 }] as never[] });
+
+    const stop = startRecentProjectsMenuSync(true);
+    useFilesStore.setState({ projects: [{ id: "b", name: "B", updated_at: 2 }] as never[] });
+    await settled();
+
+    expect(mocks.setRecentProjects).toHaveBeenLastCalledWith([{ id: "b", name: "B" }]);
+    expect(mocks.setRecentProjects).toHaveBeenCalledTimes(2);
+    expect(mocks.logError).toHaveBeenCalledWith("update the Open Recent menu", expect.any(Error));
+    stop();
+  });
+});

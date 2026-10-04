@@ -87,18 +87,20 @@ export function InlineDiffPreview({
     };
 
     // Merge decorations / layout need a frame (sometimes two) before positions are stable.
+    let frame = 0;
     view.requestMeasure({
       read: () => null,
       write: () => {
-        requestAnimationFrame(() => {
+        frame = requestAnimationFrame(() => {
           scrollToChange();
           // Second pass after collapsed-unchanged / chunk widgets settle.
-          requestAnimationFrame(scrollToChange);
+          frame = requestAnimationFrame(scrollToChange);
         });
       },
     });
 
     return () => {
+      cancelAnimationFrame(frame);
       view.destroy();
       host.innerHTML = "";
     };

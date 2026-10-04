@@ -8,6 +8,9 @@ import {
   fetchTypstDocumentInsights,
   formatSubmissionMetadata,
   hasSubmissionMetadata,
+  orderTypstSources,
+  parseTypstFiles,
+  readSubmissionMetadata,
   type TypstDocumentInsightsResult,
   type TypstInsightElement,
 } from "./typst-insights";
@@ -164,6 +167,121 @@ describe("buildTypstInsights", () => {
     expect(insights.todos).toHaveLength(2);
     expect(insights.labels.map((label) => label.kind)).toEqual(["other", "other", "other", "other"]);
     expect(insights.compiled).toBe(failed);
+  });
+});
+
+describe("source edge cases", () => {
+  it("follows relative, parent and root includes and skips computed ones", async () => {
+    const files = await parseTypstFiles({
+      "sections/main.typ": [
+        '#include "../shared/intro.typ"',
+        '#include "/appendix/a.typ"',
+        '#include "./local.typ"',
+        "#include chapter",
+      ].join("\n"),
+      "shared/intro.typ": "= Intro",
+      "appendix/a.typ": "= Appendix",
+      "sections/local.typ": "= Local",
+      "aaa.typ": "= Loose",
+      "notes.txt": "TODO ignored",
+    });
+
+    expect(orderTypstSources("sections/main.typ", files).map((file) => file.path)).toEqual([
+      "sections/main.typ",
+      "shared/intro.typ",
+      "appendix/a.typ",
+      "sections/local.typ",
+      "aaa.typ",
+    ]);
+  });
+
+  it("reads template values written as dictionaries, numbers, none and auto", async () => {
+    const [main] = await parseTypstFiles({
+      "main.typ": [
+        "#show: conf.with(",
+        "  title: 42,",
+        '  authors: ((name: [Ada *Lovelace*]), (given: "Nameless"), "Bob"),',
+        "  keywords: none,",
+        "  date: auto,",
+        "  abstract: [],",
+        ")",
+        "#set text(size: 11pt)",
+        '#set document(title: "Ignored", date: "2026-10-04")',
+      ].join("\n"),
+    });
+
+    expect(readSubmissionMetadata(main)).toEqual({
+      title: "42",
+      authors: ["Ada Lovelace", "Bob"],
+      abstract: "",
+      keywords: [],
+      date: null,
+    });
+  });
+
+  it("takes an abstract heading that runs to the end of the file and ignores an empty one", async () => {
+    const [last] = await parseTypstFiles({ "main.typ": "= Intro\nBody.\n= Abstract\nClosing *words*." });
+    const [empty] = await parseTypstFiles({ "main.typ": "= Abstract\n= Introduction\nBody." });
+
+    expect(readSubmissionMetadata(last).abstract).toBe("Closing words.");
+    expect(readSubmissionMetadata(empty).abstract).toBeNull();
+    expect(readSubmissionMetadata(null)).toEqual({ title: null, authors: [], abstract: null, keywords: [], date: null });
+  });
+
+  it("shortens long notes and has no metadata without the main file", async () => {
+    const long = `TODO ${"x".repeat(200)}`;
+    const insights = await buildTypstInsights("missing.typ", { "other.typ": `// ${long}` }, null);
+
+    expect(insights.todos).toHaveLength(1);
+    expect(insights.todos[0].text).toBe(`${long.slice(0, 160)}…`);
+    expect(insights.metadata.title).toBeNull();
+  });
+
+  it("matches compiled elements by detached labels, text, captions and order", async () => {
+    const main = [
+      "= Methods",
+      "",
+      "<sec:methods>",
+      "== Setup",
+      "#figure(image(\"a.png\"), caption: [First])",
+      "#figure(image(\"b.png\"), caption: [Second])",
+      "$ x = 1 $",
+      "#cite(\"plain\")",
+      "",
+    ].join("\n");
+    const compiled: TypstDocumentInsightsResult = {
+      ...COMPILED,
+      elements: [
+        element({ kind: "heading", text: "Methods", label: "sec:methods", level: 1 }),
+        element({ kind: "heading", text: "Setup", level: 3 }),
+        element({ kind: "figure", text: "Generated", figureKind: "image", label: "fig:generated" }),
+        element({ kind: "figure", text: "", figureKind: "image" }),
+        element({ kind: "equation", text: "y = 2" }),
+        element({ kind: "equation", text: "z = 3" }),
+        element({ kind: "citation", text: "ghost" }),
+      ],
+    };
+
+    const insights = await buildTypstInsights("main.typ", { "main.typ": main }, compiled);
+
+    expect(insights.headings.map((entry) => [entry.text, entry.location?.line])).toEqual([
+      ["Methods", 3],
+      ["Setup", 4],
+    ]);
+    expect(insights.figures.map((entry) => [entry.text, entry.location?.line])).toEqual([
+      ["Generated", 5],
+      ["Second", 6],
+    ]);
+    expect(insights.equations.map((entry) => [entry.text, entry.location?.line ?? null])).toEqual([
+      ["x = 1", 7],
+      ["z = 3", null],
+    ]);
+    expect(insights.labels.find((label) => label.name === "fig:generated")).toEqual({
+      name: "fig:generated",
+      kind: "figure",
+      location: { path: "main.typ", line: 5, column: 2 },
+    });
+    expect(insights.citations).toEqual([{ key: "ghost", count: 1, location: null }]);
   });
 });
 

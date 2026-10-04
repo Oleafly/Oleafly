@@ -90,7 +90,7 @@ function skipWhitespace(text: string, start: number): number {
   return cursor;
 }
 
-function optionalArgumentEnd(text: string, opening: number): number | null {
+function optionalArgumentClose(text: string, opening: number): number | null {
   let braceDepth = 0;
   let cursor = opening + 1;
   while (cursor < text.length) {
@@ -101,12 +101,15 @@ function optionalArgumentEnd(text: string, opening: number): number | null {
     }
     if (char === "{") braceDepth += 1;
     else if (char === "}" && braceDepth > 0) braceDepth -= 1;
-    else if (char === "]" && braceDepth === 0) {
-      return skipWhitespace(text, cursor + 1);
-    }
+    else if (char === "]" && braceDepth === 0) return cursor + 1;
     cursor += 1;
   }
   return null;
+}
+
+function optionalArgumentEnd(text: string, opening: number): number | null {
+  const close = optionalArgumentClose(text, opening);
+  return close === null ? null : skipWhitespace(text, close);
 }
 
 function afterOptionalArguments(
@@ -170,7 +173,10 @@ function definitionGroup(
   closing = "}",
 ): DefinitionGroup | null {
   const from = skipWhitespace(text, start);
-  const to = latexBalancedGroupEnd(text, from, opening, closing);
+  const to =
+    opening === "["
+      ? optionalArgumentClose(text, from)
+      : latexBalancedGroupEnd(text, from, opening, closing);
   if (to === null) return null;
   return {
     content: text.slice(from + 1, to - 1),
@@ -614,8 +620,14 @@ function closeInlineMathStep(
         cursor + 2,
         "error",
         top
-          ? `Mismatched math delimiter: expected ${matchingMathClose(top.delimiter)}, got ${close}`
-          : `${close} has no matching ${expectedOpen}`,
+          ? editorMessage("latex.lint.mismatchedMathDelimiter", {
+              expected: matchingMathClose(top.delimiter),
+              found: close,
+            })
+          : editorMessage("latex.lint.endWithoutBegin", {
+              end: close,
+              begin: expectedOpen,
+            }),
       ),
     );
   }

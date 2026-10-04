@@ -308,4 +308,45 @@ describe("ProjectImportMenu GitHub submenu", () => {
     fireEvent.pointerDown(link, { button: 0, ctrlKey: false });
     await waitFor(() => expect(notifyError).toHaveBeenCalledTimes(1));
   });
+
+  it("tries the repository list again from the menu", async () => {
+    githubListRepos.mockRejectedValueOnce(new Error("rate limited")).mockResolvedValueOnce([PUBLIC_REPO]);
+    renderMenu();
+    await openGithubSubmenu();
+
+    fireEvent.click(await screen.findByText("Could not load repositories. Try again"));
+
+    expect(await screen.findByText(PUBLIC_REPO.full_name)).toBeInTheDocument();
+    expect(githubListRepos).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a repository that could not be imported", async () => {
+    githubListRepos.mockResolvedValue([PUBLIC_REPO]);
+    importGitHubRepository.mockRejectedValue(new Error("clone failed"));
+    renderMenu();
+    await openGithubSubmenu();
+
+    fireEvent.click(await screen.findByText(PUBLIC_REPO.full_name));
+
+    await waitFor(() => expect(notifyError).toHaveBeenCalledWith("import GitHub repository", expect.any(Error)));
+    expect(onImportSelected).not.toHaveBeenCalled();
+  });
+
+  it("does not import the row whose browser link was just pressed and ignores other keys on the link", async () => {
+    githubListRepos.mockResolvedValue([PUBLIC_REPO]);
+    renderMenu();
+    await openGithubSubmenu();
+    const link = await screen.findByLabelText(
+      enLibrary.import.openRepository.replace("{{name}}", PUBLIC_REPO.full_name),
+    );
+
+    fireEvent.keyDown(link, { key: "a" });
+    expect(openExternal).not.toHaveBeenCalled();
+    fireEvent.pointerDown(link, { button: 0, ctrlKey: false });
+    expect(fireEvent.click(link)).toBe(false);
+    fireEvent.click(screen.getByText(PUBLIC_REPO.full_name));
+
+    expect(openExternal).toHaveBeenCalledTimes(1);
+    expect(importGitHubRepository).not.toHaveBeenCalled();
+  });
 });

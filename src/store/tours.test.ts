@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AVAILABLE_TOUR_IDS,
   isTourAvailable,
@@ -231,5 +231,106 @@ describe("tour state", () => {
         (id) => store.getState().tours[id].status === "dismissed",
       ),
     ).toBe(true);
+  });
+});
+
+describe("tour state edge cases", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("migrates missing or malformed stored state to the defaults", () => {
+    expect(migrateTourState(null)).toEqual(defaultPersistedTourState());
+    expect(migrateTourState({ enabled: true, tours: "corrupt" })).toEqual(defaultPersistedTourState());
+  });
+
+  it("keeps the step at the start when stepping back with no tour running", () => {
+    const store = createTourState(storageFixture());
+
+    store.getState().back();
+    store.getState().complete();
+    store.getState().dismiss();
+
+    expect(store.getState().activeStepIndex).toBe(0);
+    expect(store.getState().tours.home.status).toBe("pending");
+  });
+
+  it("keeps the running tour when a different tour is completed", () => {
+    const store = createTourState(storageFixture());
+    store.getState().start("home");
+    store.getState().advance();
+
+    store.getState().complete("workspace");
+
+    expect(store.getState()).toMatchObject({ activeTourId: "home", activeStepIndex: 1 });
+    expect(store.getState().tours.workspace.status).toBe("completed");
+  });
+
+  it("stops the running tour when it is turned off", () => {
+    const store = createTourState(storageFixture());
+    store.getState().start("home");
+    store.getState().advance();
+
+    store.getState().setTourEnabled("home", false);
+
+    expect(store.getState()).toMatchObject({ activeTourId: null, activeStepIndex: 0 });
+    store.getState().start("workspace");
+    store.getState().setTourEnabled("home", true);
+    expect(store.getState().activeTourId).toBe("workspace");
+  });
+
+  it("leaves legacy keys alone when the new state cannot be written", () => {
+    const values = new Map([["oleafly.tour.home.v1", "finished"]]);
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: () => {
+        throw new Error("quota");
+      },
+      removeItem: (key: string) => void values.delete(key),
+    };
+
+    const store = createTourState(storage);
+
+    expect(values.get("oleafly.tour.home.v1")).toBe("finished");
+    expect(store.getState().tours.home.status).toBe("pending");
+  });
+
+  it("starts fresh when storage cannot be read at all", () => {
+    const storage = {
+      getItem: () => {
+        throw new Error("denied");
+      },
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    };
+
+    const store = createTourState(storage);
+
+    expect(store.getState().tours.home.status).toBe("pending");
+    expect(storage.removeItem).not.toHaveBeenCalled();
+  });
+
+  it("migrates state saved by an older schema version", () => {
+    const storage = storageFixture({
+      [TOUR_STORAGE_KEY]: JSON.stringify({
+        state: { enabled: true, tours: { home: { status: "completed", version: tourRegistry.home.version } } },
+        version: 0,
+      }),
+    });
+
+    const store = createTourState(storage);
+
+    expect(store.getState().tours.home.status).toBe("completed");
+    expect(store.getState().tours.workspace.status).toBe("pending");
+  });
+
+  it("keeps tour state in memory when there is no local storage", () => {
+    vi.stubGlobal("localStorage", undefined);
+
+    const store = createTourState();
+    store.getState().complete("home");
+    const again = createTourState();
+
+    expect(again.getState().tours.home.status).toBe("completed");
   });
 });

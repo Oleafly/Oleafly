@@ -88,9 +88,11 @@ vi.mock("@/store/compile", () => ({
   },
 }));
 
+import { useSettingsStore } from "@/store/settings";
 import {
   canUseSyncTexForCheckpoint,
   forwardFromCursor,
+  goToSyncTex,
   inverseFromClick,
   openFileAndGotoLine,
 } from "./synctex";
@@ -522,5 +524,66 @@ describe("Typst sync through the Tinymist preview server", () => {
 
     expect(mocks.typstForward).not.toHaveBeenCalled();
     expect(mocks.typstInverse).not.toHaveBeenCalled();
+  });
+});
+
+describe("forward SyncTeX from the editor", () => {
+  const rect = { page: 1, x: 1, y: 2, width: 3, height: 4 };
+
+  it("opens the preview beside the editor before jumping", async () => {
+    useSettingsStore.setState({ viewMode: "editor" });
+    mocks.synctexForward.mockResolvedValue(rect);
+
+    goToSyncTex();
+
+    expect(useSettingsStore.getState().viewMode).toBe("split");
+    await vi.waitFor(() => expect(mocks.gotoRect).toHaveBeenCalledWith(rect));
+  });
+
+  it("jumps straight away when the preview is already showing", async () => {
+    useSettingsStore.setState({ viewMode: "pdf" });
+    mocks.synctexForward.mockResolvedValue(rect);
+
+    goToSyncTex();
+
+    await vi.waitFor(() => expect(mocks.synctexForward).toHaveBeenCalledWith("proj", "main.tex", "main.tex", 1));
+    expect(useSettingsStore.getState().viewMode).toBe("pdf");
+  });
+
+  it("logs why it could not jump", async () => {
+    mocks.getCurrentLine.mockReturnValue(null);
+    await forwardFromCursor();
+    expect(mocks.logError).toHaveBeenCalledWith("synctex forward", "could not determine cursor line");
+
+    mocks.getCurrentLine.mockReturnValue(2);
+    mocks.synctexForward.mockResolvedValue(null);
+    await forwardFromCursor();
+    expect(mocks.logError).toHaveBeenCalledWith("synctex forward", "no SyncTeX rect for main.tex:2");
+
+    const failure = new Error("synctex binary missing");
+    mocks.synctexForward.mockRejectedValue(failure);
+    await forwardFromCursor();
+    expect(mocks.logError).toHaveBeenCalledWith("synctex forward", failure);
+    expect(mocks.gotoRect).not.toHaveBeenCalled();
+  });
+
+  it("does nothing until the engine is loaded", async () => {
+    mocks.state.engineLoaded = false;
+
+    await forwardFromCursor();
+
+    expect(mocks.synctexForward).not.toHaveBeenCalled();
+    expect(mocks.logError).not.toHaveBeenCalled();
+  });
+
+  it("drops a jump whose compile output was replaced while it ran", async () => {
+    mocks.synctexForward.mockImplementation(async () => {
+      mocks.isCompileCheckpointCurrent.mockReturnValue(false);
+      return rect;
+    });
+
+    await forwardFromCursor();
+
+    expect(mocks.gotoRect).not.toHaveBeenCalled();
   });
 });

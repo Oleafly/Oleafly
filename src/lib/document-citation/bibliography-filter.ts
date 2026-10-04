@@ -29,7 +29,7 @@ function normalizeArxivId(id: string): string {
 
 function extractArxivFromUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  const match = /arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/i.exec(url);
+  const match = /arxiv\.org\/(?:abs|pdf)\/([\w./-]+)/i.exec(url);
   if (!match) return null;
   // pdf URLs often end with .pdf (e.g. /pdf/2001.12345.pdf)
   const id = match[1].replace(/\.pdf$/i, "");
@@ -91,7 +91,7 @@ export function parseBibliographyIdentities(bibText: string): BibliographyIdenti
   }
 
   // Also catch bare arxiv.org/abs|pdf links anywhere in the bib text
-  const absRe = /arxiv\.org\/(?:abs|pdf)\/([^\s"'<>?#]+)/gi;
+  const absRe = /arxiv\.org\/(?:abs|pdf)\/([\w./-]+)/gi;
   for (
     let match = absRe.exec(bibText);
     match !== null;

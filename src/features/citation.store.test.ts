@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => ({
   rebuildFromDisk: vi.fn(),
   getEditorView: vi.fn(),
   insertAtCursor: vi.fn(),
+  preferredCitationBibliography: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -106,8 +107,15 @@ vi.mock("@/components/editor/cm/controller", () => ({
   insertAtCursor: mocks.insertAtCursor,
 }));
 
+vi.mock("./citation-bibliographies", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./citation-bibliographies")>();
+  mocks.preferredCitationBibliography.mockImplementation(actual.preferredCitationBibliography);
+  return { ...actual, preferredCitationBibliography: mocks.preferredCitationBibliography };
+});
+
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { useFilesStore } from "@/store/files";
-import { addCitation, addCitations } from "./citation";
+import { addCitation, addCitations, bibliographyTargetForProject } from "./citation";
 
 const MARKDOWN_ENGINE: DocumentEngineDescriptor = {
   ...LATEX_ENGINE,
@@ -149,7 +157,7 @@ function holdTreeListing() {
 
 beforeEach(async () => {
   await useFilesStore.getState().closeProject();
-  for (const fn of Object.values(mocks)) fn.mockReset();
+  for (const [name, fn] of Object.entries(mocks)) if (name !== "preferredCitationBibliography") fn.mockReset();
   refreshGate = null;
   refreshCompletions = 0;
   treeAtRebuild = [];
@@ -367,5 +375,82 @@ describe("a bibliography linked from outside the folder", () => {
 
     expect(result.errors[0]).toContain("refs.bib");
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+});
+
+describe("citation import failures", () => {
+  it("names the project's bibliography and whether it exists yet", async () => {
+    await expect(bibliographyTargetForProject()).resolves.toEqual({
+      path: "references.bib",
+      exists: false,
+      content: "",
+      readOnly: false,
+    });
+
+    useFilesStore.setState({ tree: FULL_TREE });
+    await expect(bibliographyTargetForProject()).resolves.toMatchObject({ path: "references.bib", exists: true });
+
+    useFilesStore.setState({ projectId: null });
+    await expect(bibliographyTargetForProject()).resolves.toBeNull();
+  });
+
+  it("stops when the main document changes while it is being read", async () => {
+    mocks.readFileContent.mockImplementation(async (_id: string, path: string) => {
+      if (path === "paper.md") {
+        useFilesStore.setState({ files: { "paper.md": { content: "# Edited\n", dirty: true } } });
+      }
+      return "# Paper\n";
+    });
+
+    const result = await addCitations([ENTRY]);
+
+    expect(result.errors).toEqual([enCore.citation.fileChanged.replace("{{path}}", "paper.md")]);
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("reports a bibliography it could not write", async () => {
+    mocks.writeFileContent.mockRejectedValue("disk full");
+
+    const result = await addCitations([ENTRY]);
+
+    expect(result).toMatchObject({ imported: 1, bibPath: "references.bib" });
+    expect(result.errors).toEqual([
+      enCore.citation.writeFailed.replace("{{path}}", "references.bib").replace("{{detail}}", "disk full"),
+    ]);
+    expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+  });
+
+  it("still imports when the preferred bibliography cannot be chosen", async () => {
+    mocks.preferredCitationBibliography.mockRejectedValueOnce(new Error("choices failed"));
+
+    const result = await addCitations([ENTRY]);
+
+    expect(result).toMatchObject({ imported: 1, errors: [], bibPath: "references.bib" });
+    expect(mocks.logError).toHaveBeenCalledWith("choose citation bibliography", expect.any(Error));
+  });
+
+  it("does not cite or rebuild when another project opens during the import", async () => {
+    mocks.writeFileContent.mockImplementation(async (_id: string, path: string) => {
+      if (path === "paper.md") useFilesStore.setState({ projectId: "other" });
+      return { path, generation: 9 };
+    });
+
+    const imported = await addCitations([ENTRY]);
+
+    expect(imported.errors).toEqual([enCore.citation.projectChanged]);
+    expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+  });
+
+  it("does not insert a single citation when another project opens during the write", async () => {
+    mocks.getEditorView.mockReturnValue({});
+    mocks.writeFileContent.mockImplementation(async (_id: string, path: string) => {
+      if (path === "paper.md") useFilesStore.setState({ projectId: "other" });
+      return { path, generation: 9 };
+    });
+
+    const result = await addCitation("@article{fresh,\n  title = {Edge Sensing},\n  author = {Ada Lovelace},\n  year = {2024}\n}");
+
+    expect(result).toEqual({ error: enCore.citation.projectChangedNotInserted });
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
   });
 });

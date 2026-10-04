@@ -12,6 +12,7 @@ import {
 } from "@/components/layout/WorkspaceControls";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { useGitStatusStore } from "@/store/git-status";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { i18n } from "@/i18n";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -173,4 +174,54 @@ describe("WorkspaceControls", () => {
       i18n.t(($) => $.shell.dock.browser.open, { shortcut: shortcutLabel(bindings.toggleBrowser) }));
   });
 
+
+  it("names the open browser window and opens settings from the toolbar itself", () => {
+    useSettingsStore.setState({ browserOpen: true, settingsOpen: false });
+    render(<ThemeProvider><WorkspaceDockControls overflow={0} /></ThemeProvider>);
+    const close = i18n.t(($) => $.shell.dock.browser.close, {
+      shortcut: shortcutLabel(useShortcutStore.getState().bindings.toggleBrowser),
+    });
+
+    expect(screen.getByRole("button", { name: close })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByTestId("open-settings"));
+
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+  });
+
+  it("leaves the MCP view once the server stops and reopens a hidden sidebar on a switch", () => {
+    useSettingsStore.setState({ railTab: "mcp", showTree: false });
+    render(
+      <ThemeProvider>
+        <SidebarViews />
+      </ThemeProvider>,
+    );
+    expect(useSettingsStore.getState().railTab).toBe("files");
+
+    fireEvent.click(screen.getByLabelText(enShell.rail.search));
+
+    expect(useSettingsStore.getState().railTab).toBe("search");
+    expect(useSettingsStore.getState().showTree).toBe(true);
+  });
+
+  it("counts pending source control changes on its view switcher", () => {
+    useGitStatusStore.setState({ count: 120 });
+    const { rerender } = render(
+      <ThemeProvider>
+        <SidebarViews />
+      </ThemeProvider>,
+    );
+    const badge = screen.getByLabelText(enShell.rail.sourceControl).querySelector("output");
+    expect(badge?.textContent).toBe("99+");
+    expect(badge?.getAttribute("aria-label")).toBe(i18n.t(($) => $.shell.rail.pendingBadge, { count: 120 }));
+
+    useGitStatusStore.setState({ count: 3 });
+    rerender(
+      <ThemeProvider>
+        <SidebarViews />
+      </ThemeProvider>,
+    );
+    expect(screen.getByLabelText(enShell.rail.sourceControl).querySelector("output")?.textContent).toBe("3");
+    useGitStatusStore.setState({ count: 0 });
+  });
 });
+

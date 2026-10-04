@@ -3,7 +3,10 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
+import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import { useGithubStore } from "@/store/github";
+import { useSettingsStore } from "@/store/settings";
 import { PublishToGitHubDialog } from "./PublishToGitHubDialog";
 
 function deferred<T>() {
@@ -792,4 +795,188 @@ describe("PublishToGitHubDialog", () => {
     expect(await screen.findByText(/push needs a pull first/)).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(".env");
   });
+
+  describe("form controls", () => {
+    function renderDialog(overrides: { onClose?: () => void; projectName?: string } = {}) {
+      return render(
+        <PublishToGitHubDialog
+          open
+          onClose={overrides.onClose ?? vi.fn()}
+          projectId="project-1"
+          projectName={overrides.projectName ?? "Research notes"}
+          onPublished={vi.fn()}
+        />,
+      );
+    }
+
+    it("sends a disconnected user to the GitHub settings", async () => {
+      useGithubStore.setState({ status: "disconnected" });
+      useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" });
+      const onClose = vi.fn();
+      const user = userEvent.setup();
+      renderDialog({ onClose });
+
+      await user.click(screen.getByRole("button", { name: enLibrary.github.connect }));
+
+      expect(onClose).toHaveBeenCalled();
+      expect(useSettingsStore.getState().settingsOpen).toBe(true);
+      expect(useSettingsStore.getState().settingsInitialSection).toBe("integrations");
+    });
+
+    it("creates a public repository under the name the user typed", async () => {
+      const user = userEvent.setup();
+      renderDialog();
+      const name = screen.getByRole("textbox", { name: enLibrary.github.repositoryName });
+      expect(name).toHaveValue("research-notes");
+
+      fireEvent.change(name, { target: { value: "Thesis Draft 2" } });
+      await user.click(screen.getByRole("checkbox"));
+      await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+      await waitFor(() => expect(mocks.githubCreateRepo).toHaveBeenCalledWith("thesis-draft-2", false));
+    });
+
+    it("asks for a name that survives cleaning", async () => {
+      const user = userEvent.setup();
+      renderDialog();
+      const name = screen.getByRole("textbox", { name: enLibrary.github.repositoryName });
+
+      fireEvent.change(name, { target: { value: "" } });
+      expect(screen.getByRole("button", { name: "Create and push" })).toBeDisabled();
+      fireEvent.change(name, { target: { value: "!!!" } });
+      await user.click(screen.getByRole("button", { name: "Create and push" }));
+
+      expect(await screen.findByText(enLibrary.github.nameRequired)).toBeInTheDocument();
+      expect(mocks.githubCreateRepo).not.toHaveBeenCalled();
+    });
+
+    it("suggests a default name for an unnamed project", () => {
+      renderDialog({ projectName: "" });
+
+      expect(screen.getByRole("textbox", { name: enLibrary.github.repositoryName })).toHaveValue(
+        "oleafly-project",
+      );
+    });
+
+    it("shows progress while repositories load and filters them by search", async () => {
+      const repos = deferred<(typeof createdRepo)[]>();
+      mocks.githubListRepos.mockReturnValue(repos.promise);
+      const user = userEvent.setup();
+      renderDialog();
+
+      await user.click(screen.getByRole("tab", { name: "Link existing" }));
+      expect(screen.getByText(enCommon.state.loading)).toBeInTheDocument();
+      await act(async () => {
+        repos.resolve([
+          createdRepo,
+          { ...createdRepo, id: 2, name: "slides", full_name: "prajwal/slides", private: false },
+        ]);
+      });
+
+      expect(screen.getByText("prajwal/slides")).toBeInTheDocument();
+      await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "SLIDE");
+      expect(screen.queryByText("prajwal/research-notes")).toBeNull();
+      expect(screen.getByText("prajwal/slides")).toBeInTheDocument();
+      await user.type(screen.getByRole("textbox", { name: enLibrary.github.searchRepositories }), "zzz");
+      expect(screen.getByText(enLibrary.github.noRepositories)).toBeInTheDocument();
+    });
+  });
 });
+
+describe("PublishToGitHubDialog stale reads and empty projects", () => {
+  function dialog(projectId: string, projectName: string) {
+    return (
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId={projectId}
+        projectName={projectName}
+        onPublished={vi.fn()}
+      />
+    );
+  }
+
+  it("links an existing repository but pushes nothing when the project has no commits", async () => {
+    const user = userEvent.setup();
+    mocks.githubListRepos.mockResolvedValue([createdRepo]);
+    mocks.gitPreparePublish.mockResolvedValue({ committed: false, hasCommit: false, leftOut: [] });
+    const onPublished = vi.fn();
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        onPublished={onPublished}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+    await user.click(await screen.findByText("prajwal/research-notes"));
+    await user.click(screen.getByRole("button", { name: "Link and push" }));
+
+    expect(
+      await screen.findByText("Nothing was pushed because this project has no commits yet."),
+    ).toBeInTheDocument();
+    expect(mocks.gitSetRemote).toHaveBeenCalledWith("project-1", createdRepo.clone_url);
+    expect(mocks.gitPush).not.toHaveBeenCalled();
+    expect(onPublished).toHaveBeenCalledWith(createdRepo.clone_url);
+  });
+
+  it("keeps an earlier project's repository list out of the next project's dialog", async () => {
+    const first = deferred<(typeof createdRepo)[]>();
+    mocks.githubListRepos.mockReturnValueOnce(first.promise).mockResolvedValueOnce([]);
+    const user = userEvent.setup();
+    const view = render(dialog("project-a", "Project A"));
+    view.rerender(dialog("project-b", "Project B"));
+
+    await act(async () => {
+      first.resolve([createdRepo]);
+      await first.promise;
+    });
+    await user.click(screen.getByRole("tab", { name: "Link existing" }));
+
+    expect(screen.queryByText("prajwal/research-notes")).toBeNull();
+    expect(screen.queryByText(enCommon.state.loading)).toBeNull();
+  });
+
+  it("does not log a repository read that failed for a project no longer shown", async () => {
+    let failFirst: (reason: unknown) => void = () => {};
+    mocks.githubListRepos
+      .mockReturnValueOnce(new Promise((_resolve, reject) => { failFirst = reject; }))
+      .mockResolvedValueOnce([]);
+    const view = render(dialog("project-a", "Project A"));
+    view.rerender(dialog("project-b", "Project B"));
+
+    await act(async () => {
+      failFirst(new Error("rate limited"));
+      await Promise.resolve();
+    });
+
+    expect(mocks.logError).not.toHaveBeenCalled();
+  });
+
+  it("creates the new repository and replaces the old link once the user confirms", async () => {
+    const user = userEvent.setup();
+    render(
+      <PublishToGitHubDialog
+        open
+        onClose={vi.fn()}
+        projectId="project-1"
+        projectName="Research notes"
+        currentRemote="https://github.com/prajwal/old-notes.git"
+        onPublished={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Create and push" }));
+    await user.click(screen.getByRole("button", { name: "Replace link" }));
+
+    await waitFor(() =>
+      expect(mocks.gitSetRemote).toHaveBeenCalledWith("project-1", createdRepo.clone_url, { replace: true }),
+    );
+    expect(mocks.githubCreateRepo).toHaveBeenCalledWith("research-notes", true);
+    expect(mocks.gitPush).toHaveBeenCalledWith("project-1");
+  });
+});
+

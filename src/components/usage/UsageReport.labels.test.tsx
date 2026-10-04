@@ -294,8 +294,9 @@ beforeEach(() => {
   useFilesStore.setState({ projects: [] });
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  await new Promise((resolve) => setTimeout(resolve, 0));
 });
 
 describe("UsageReport labels", () => {
@@ -462,6 +463,21 @@ describe("UsageReport charts and tables", () => {
     fireEvent.mouseLeave(host);
   });
 
+  it("shows no reading before the chart has a width and flips the reading at the right edge", () => {
+    render(<UsageReport report={report()} />);
+    const host = screen.getByRole("img", { name: enUsage.trend.chartLabel }).parentElement;
+    if (!host) throw new Error("no chart host");
+
+    fireEvent.mouseMove(host, { clientX: 50 });
+    expect(screen.queryByRole("status")).toBeNull();
+
+    host.getBoundingClientRect = () => ({ left: 0, width: 100 }) as DOMRect;
+    fireEvent.mouseMove(host, { clientX: 100 });
+    expect(screen.getByRole("status").style.transform).toBe("translateX(calc(-100% - 8px))");
+    fireEvent.mouseMove(host, { clientX: 0 });
+    expect(screen.getByRole("status").style.transform).toBe("translateX(8px)");
+  });
+
   it("reports an empty heatmap cell and an unavailable count", () => {
     render(<UsageReport report={report()} />);
     expect(
@@ -498,6 +514,28 @@ describe("UsageReport charts and tables", () => {
       within(agents).getByRole("button", { name: "Claude Code" }),
     );
     expect(onSelectFilter).toHaveBeenLastCalledWith("runtime", "acp:claude");
+  });
+
+  it("selects a project or a model from their breakdowns", () => {
+    const onSelectFilter = vi.fn();
+    const row = report().byProject[0];
+    render(
+      <UsageReport
+        report={report({ byModel: [{ ...row, key: "gpt-4o" }] })}
+        onSelectFilter={onSelectFilter}
+      />,
+    );
+
+    fireEvent.click(
+      within(sectionByHeading(enUsage.report.projects)).getByRole("button", {
+        name: enUsage.labels.generalProject,
+      }),
+    );
+    expect(onSelectFilter).toHaveBeenCalledWith("project", "global");
+    fireEvent.click(
+      within(sectionByHeading(enUsage.report.models)).getByRole("button", { name: "gpt-4o" }),
+    );
+    expect(onSelectFilter).toHaveBeenLastCalledWith("model", "gpt-4o");
   });
 
   it("selects a session filter from the session table", () => {
@@ -602,5 +640,17 @@ describe("UsageReportDialog controls", () => {
         page: 0,
       }),
     );
+  });
+
+  it("falls back to a generic hint when a load fails without a message", async () => {
+    const query = vi.fn(async (_filter: UsageReportFilter): Promise<UsageReportData> => {
+      throw "offline";
+    });
+    renderDialog(query);
+    fireEvent.click(screen.getByRole("button", { name: "open-usage" }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(enUsage.dialog.loadFailed);
+    expect(alert).toHaveTextContent(enUsage.dialog.loadFailedHint);
   });
 });

@@ -252,4 +252,41 @@ describe("SearchOmnibar modes", () => {
     press();
     expect(useSettingsStore.getState().searchOpen).toBe(true);
   });
+
+  it("runs a command or a tool picked from the default list", async () => {
+    const user = userEvent.setup();
+    const tool = registry.commands.find((command) => command.id === "tool.demo-tool");
+    render(<SearchOmnibar />);
+
+    await user.click(screen.getByText("Demo command"));
+    expect(run).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(useSettingsStore.getState().searchOpen).toBe(false));
+
+    useSettingsStore.setState({ searchOpen: true });
+    await user.click(await screen.findByText("Demo tool"));
+    expect(tool?.run).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes on Escape and clears the query", async () => {
+    render(<SearchOmnibar />);
+    const user = await type("alpha");
+
+    await user.keyboard("{Escape}");
+
+    await waitFor(() => expect(useSettingsStore.getState().searchOpen).toBe(false));
+  });
+
+  it("shows a document hit whose line does not contain the words searched", async () => {
+    mocks.searchDocs.mockResolvedValue([{ ...HIT, preview: "stemmed match only" }]);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<SearchOmnibar />);
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await user.type(screen.getByPlaceholderText(omnibar.placeholder), "/docs transformers");
+    await vi.advanceTimersByTimeAsync(250);
+    vi.useRealTimers();
+
+    const preview = await screen.findByText("stemmed match only");
+    expect(preview.querySelector("mark")).toBeNull();
+  });
 });
+

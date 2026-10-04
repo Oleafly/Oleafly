@@ -147,4 +147,67 @@ describe("useTypstEquationPreview", () => {
     expect(result.current.status).toBe("idle");
     expect(mocks.renderTypstSnippet).not.toHaveBeenCalled();
   });
+
+  it.each([
+    [
+      "a warning when nothing failed outright",
+      () => mocks.renderTypstSnippet.mockResolvedValue({ status: "failed", diagnostics: [{ severity: "warning", message: "unused" }] }),
+      "q + 1",
+      "unused",
+    ],
+    [
+      "nothing when there are no diagnostics",
+      () => mocks.renderTypstSnippet.mockResolvedValue({ status: "failed", diagnostics: [] }),
+      "q + 2",
+      "",
+    ],
+    [
+      "nothing for an image that is not SVG",
+      () => mocks.renderTypstSnippet.mockResolvedValue({ status: "rendered", image: { format: "png", pngBase64: "AQID" }, diagnostics: [] }),
+      "q + 3",
+      "",
+    ],
+    [
+      "the reason Typst could not start",
+      () => mocks.renderTypstSnippet.mockRejectedValue(new Error("typst is missing")),
+      "q + 4",
+      "typst is missing",
+    ],
+  ])("reports %s", async (_case, arrange, input, message) => {
+    vi.useFakeTimers();
+    arrange();
+    const { result } = renderHook(() => useTypstEquationPreview(input, true, "dark", true));
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    expect(result.current).toEqual({ status: "error", message });
+  });
+
+  it("falls back to a general message and resets the zoom from its label", () => {
+    const onZoomChange = vi.fn();
+    render(
+      <EquationPreviewPanel
+        language="typst"
+        typst={{ status: "error", message: "" }}
+        input="x"
+        onInputChange={onInputChange}
+        display
+        onDisplayChange={vi.fn()}
+        rendered={{ html: "", error: null }}
+        wrapped="$ x $"
+        previewTheme="light"
+        onPreviewThemeChange={vi.fn()}
+        zoom={150}
+        onZoomChange={onZoomChange}
+        editorTheme="oleafly-light"
+      />,
+    );
+
+    expect(screen.getByText(equation.typstFailed)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "150%" }));
+    expect(onZoomChange).toHaveBeenCalledWith(100);
+  });
 });
+

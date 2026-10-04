@@ -19,12 +19,14 @@ vi.mock("@/lib/toast", () => ({ toast: { success: mocks.success, errorUnique: mo
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { APP_ERROR_PREFIX } from "@/lib/app-error";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { DocumentEngineDescriptor, TypstToolchainStatus } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTypstToolchainStore } from "@/store/typst-toolchain";
 import type { TypstUpgradeReport } from "./api";
+import { openTypstUpgrade } from "./open";
 import { TypstUpgradeDialog } from "./TypstUpgradeDialog";
 
 const copy = enShell.typstUpgrade;
@@ -158,5 +160,154 @@ describe("Typst upgrade dialog", () => {
     render(<TypstUpgradeDialog open onClose={vi.fn()} />);
     expect(await screen.findByText(copy.noNewer)).toBeInTheDocument();
     expect(mocks.check).not.toHaveBeenCalled();
+  });
+});
+
+describe("Typst upgrade report details", () => {
+  it("shows build failures, unknown page counts and when nothing changed", async () => {
+    mocks.check.mockResolvedValueOnce({
+      current: { version: "0.13.1", ok: true, pages: null, errors: 0, warnings: 0, compileTimeMs: 1, failure: null },
+      candidate: {
+        version: "0.15.1",
+        ok: false,
+        pages: 3,
+        errors: 2,
+        warnings: 0,
+        compileTimeMs: 1,
+        failure: "error: package not found",
+      },
+      added: [],
+      removed: [],
+      unchanged: 0,
+    } satisfies TypstUpgradeReport);
+    render(<TypstUpgradeDialog open onClose={vi.fn()} />);
+
+    expect(await screen.findByText(copy.noChanges)).toBeInTheDocument();
+    expect(screen.getByText(copy.pagesUnknown)).toBeInTheDocument();
+    expect(screen.getByText("Typst 0.15.1 could not build the project.")).toBeInTheDocument();
+    expect(screen.getByText("error: package not found")).toBeInTheDocument();
+    expect(screen.queryByText(/The page count/)).toBeNull();
+    expect(screen.queryByText(/same in both versions/)).toBeNull();
+  });
+
+  it("says when the page count stays the same and lists findings without a location", async () => {
+    mocks.check.mockResolvedValueOnce({
+      ...report("0.15.1"),
+      current: { ...report("0.15.1").current, pages: 4 },
+      candidate: { ...report("0.15.1").candidate, pages: 4 },
+      added: [
+        { kind: "warning", file: "refs.typ", line: null, column: null, message: "unused label", hints: [] },
+        { kind: "error", file: null, line: null, column: null, message: "font missing", hints: [] },
+      ],
+    });
+    render(<TypstUpgradeDialog open onClose={vi.fn()} />);
+
+    expect(await screen.findByText("The page count stays at 4.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /unused label/ })).toHaveTextContent("refs.typ");
+    expect(screen.getByRole("button", { name: /font missing/ })).toBeDisabled();
+  });
+
+  it("reports a failed switch and keeps the dialog open", async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    mocks.setTypstVersion.mockRejectedValueOnce(new Error("pin rejected"));
+    render(<TypstUpgradeDialog open onClose={onClose} />);
+    await screen.findByText("unknown function: oldfn");
+
+    await user.click(screen.getByRole("button", { name: "Switch to Typst 0.15.1" }));
+
+    await waitFor(() =>
+      expect(mocks.errorUnique).toHaveBeenCalledWith("engine-switch:project", copy.switchFailed),
+    );
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Switch to Typst 0.15.1" })).toBeEnabled();
+  });
+
+  it("describes a structured switch failure", async () => {
+    const user = userEvent.setup();
+    mocks.setTypstVersion.mockRejectedValueOnce(
+      `${APP_ERROR_PREFIX}${JSON.stringify({ code: "project.not_found", params: {} })}`,
+    );
+    render(<TypstUpgradeDialog open onClose={vi.fn()} />);
+    await screen.findByText("unknown function: oldfn");
+
+    await user.click(screen.getByRole("button", { name: "Switch to Typst 0.15.1" }));
+
+    await waitFor(() =>
+      expect(mocks.errorUnique).toHaveBeenCalledWith(
+        "engine-switch:project",
+        "This project is no longer in your library.",
+      ),
+    );
+  });
+
+  it("runs the check again from the footer", async () => {
+    const user = userEvent.setup();
+    render(<TypstUpgradeDialog open onClose={vi.fn()} />);
+    await screen.findByText("unknown function: oldfn");
+
+    await user.click(screen.getByRole("button", { name: copy.runAgain }));
+
+    await waitFor(() => expect(mocks.check).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("unknown function: oldfn")).toBeInTheDocument();
+  });
+
+  it("ignores a result for a version the user moved away from", async () => {
+    let finishFirst: (value: TypstUpgradeReport) => void = () => {};
+    mocks.check.mockImplementationOnce(
+      () =>
+        new Promise<TypstUpgradeReport>((resolve) => {
+          finishFirst = resolve;
+        }),
+    );
+    const user = userEvent.setup();
+    render(<TypstUpgradeDialog open onClose={vi.fn()} initialVersion="0.14.2" />);
+    await waitFor(() => expect(mocks.check).toHaveBeenCalledTimes(1));
+
+    await user.click(screen.getByRole("button", { name: "0.15.1" }));
+    await screen.findByText("New in Typst 0.15.1");
+    finishFirst(report("0.14.2"));
+
+    await waitFor(() => expect(screen.queryByText("New in Typst 0.14.2")).toBeNull());
+    expect(screen.getByRole("button", { name: "0.15.1" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("waits for the toolchain before offering versions", () => {
+    useTypstToolchainStore.setState({ status: null });
+    render(<TypstUpgradeDialog open onClose={vi.fn()} />);
+
+    expect(screen.getByText(copy.compareWith)).toBeInTheDocument();
+    expect(mocks.check).not.toHaveBeenCalled();
+  });
+
+  it("opens the Typst settings when no newer version is installed", async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    useSettingsStore.setState({ settingsOpen: false });
+    useFilesStore.setState({
+      engine: { ...engine, typst_version: null, typst_resolved: { version: "0.15.1", source: "bundled" } },
+    });
+    render(<TypstUpgradeDialog open onClose={onClose} />);
+
+    await user.click(await screen.findByRole("button", { name: copy.openSettings }));
+
+    expect(onClose).toHaveBeenCalled();
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+    expect(useSettingsStore.getState().settingsInitialSection).toBe("engine");
+  });
+});
+
+describe("opening the upgrade check from anywhere", () => {
+  it("mounts one shared dialog and reopens it for a later request", async () => {
+    const user = userEvent.setup();
+    openTypstUpgrade("0.14.2");
+
+    expect(await screen.findByText("New in Typst 0.14.2")).toBeInTheDocument();
+    await user.click(within(screen.getByTestId("typst-upgrade-dialog")).getAllByRole("button", { name: copy.close }).at(-1) as HTMLElement);
+    await waitFor(() => expect(screen.queryByTestId("typst-upgrade-dialog")).toBeNull());
+
+    openTypstUpgrade();
+    expect(await screen.findByText("New in Typst 0.15.1")).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-typst-upgrade]")).toHaveLength(1);
   });
 });

@@ -148,4 +148,26 @@ describe("TypstBibliographyStylePicker", () => {
       "Oleafly couldn't change the citation style.",
     );
   });
+
+  it("refuses to rewrite an open file that cannot be edited", async () => {
+    setProject({ "main.typ": '#bibliography("refs.bib")' });
+    mocks.setContent.mockReturnValue(false);
+    render(<TypstBibliographyStylePicker snapshot={null} />);
+
+    choose("apa");
+
+    await waitFor(() => expect(mocks.notifyError).toHaveBeenCalledTimes(1));
+    expect((mocks.notifyError.mock.calls[0][1] as Error).message).toBe("main.typ is read-only");
+    expect(mocks.saveFile).not.toHaveBeenCalled();
+  });
+
+  it("stays hidden for a project whose main file is not Typst", () => {
+    setProject({ "main.tex": "\\bibliography{refs}" });
+    useFilesStore.setState({ mainDoc: "main.tex" });
+
+    const { container } = render(<TypstBibliographyStylePicker snapshot={null} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
 });
+

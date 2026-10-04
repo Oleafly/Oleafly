@@ -81,6 +81,24 @@ describe("Enter in Visual mode", () => {
     expect(doc.slice(0, editor.state.selection.main.head).endsWith("\\item ")).toBe(true);
   });
 
+  it("continues the outer list when the nested list ends the document", () => {
+    const text = "\\begin{itemize}\n\\item One\n\\begin{enumerate}\n\\item\n\\end{enumerate}";
+    const editor = mount(text, positionOf(text, "\\item\n") + "\\item".length);
+    expect(insertListItemOrLeaveHeading(editor)).toBe(true);
+    const doc = editor.state.doc.toString();
+    expect(doc).toBe("\\begin{itemize}\n\\item One\n\\begin{enumerate}\n\\end{enumerate}\n\\item ");
+    expect(editor.state.selection.main.head).toBe(doc.length);
+  });
+
+  it("puts the cursor on the new outer item when little text follows the nested list", () => {
+    const text = "\\begin{itemize}\n\\item One\n\\begin{enumerate}\n\\item\n\\end{enumerate}\nx";
+    const editor = mount(text, positionOf(text, "\\item\n") + "\\item".length);
+    expect(insertListItemOrLeaveHeading(editor)).toBe(true);
+    const doc = editor.state.doc.toString();
+    expect(doc).toBe("\\begin{itemize}\n\\item One\n\\begin{enumerate}\n\\end{enumerate}\n\\item \nx");
+    expect(doc.slice(0, editor.state.selection.main.head).endsWith("\\end{enumerate}\n\\item ")).toBe(true);
+  });
+
   it("keeps a selection and a heading on the last line unchanged", () => {
     const selected = new EditorView({
       state: EditorState.create({ doc: LIST_DOCUMENT, selection: { anchor: 0, head: 5 }, extensions: [latexTreeSupport()] }),

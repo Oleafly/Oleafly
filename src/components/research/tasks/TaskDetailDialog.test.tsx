@@ -526,4 +526,126 @@ describe("TaskDetailDialog", () => {
     view.rerender(<TaskDetailDialog {...input} task={{ ...current, status: "running" }} />);
     expect(page().queryByRole("button", { name: `Delete ${current.title}` })).not.toBeInTheDocument();
   });
+
+  describe("review details", () => {
+    const detail = enResearchTools.tasks.detail;
+
+    function binaryPreview(path: string, before: boolean, after: boolean): TaskFilePreview {
+      const side = (exists: boolean, size: number) => ({
+        exists, text: null, base64: null, mediaType: "application/pdf", binary: true, truncated: false, size, sha256: `${size}`,
+      });
+      return {
+        path,
+        change: before ? (after ? "modified" : "deleted") : "added",
+        before: side(before, 10),
+        after: side(after, 20),
+        projectSha256: "10",
+        baseIsCurrent: true,
+      };
+    }
+
+    function withFiles(...files: { path: string; kind: "added" | "modified" | "deleted" }[]) {
+      const current = task("files");
+      if (!current.result) throw new Error("Missing review fixture");
+      current.result.changedFiles = files.map((file) => ({
+        ...file, beforeSha256: null, afterSha256: null, beforeSize: null, afterSize: null,
+      })) as never;
+      return current;
+    }
+
+    it("labels added and deleted files and sizes binary previews", async () => {
+      const current = withFiles({ path: "fig.pdf", kind: "added" }, { path: "old.pdf", kind: "deleted" });
+      previewMocks.file.mockImplementation(async (_id: string, path: string) =>
+        path === "fig.pdf" ? binaryPreview(path, false, true) : binaryPreview(path, true, false),
+      );
+      render(<TaskDetailDialog {...props(current)} />);
+
+      expect(page().getByText(detail.changeAdded)).toBeInTheDocument();
+      expect(page().getByText(detail.changeDeleted)).toBeInTheDocument();
+      const [first, second] = page().getAllByRole("button", { name: "Preview" });
+      fireEvent.click(first);
+      await waitFor(() => expect(page().getByText(detail.beforeAbsent)).toBeInTheDocument());
+      expect(page().getByText(detail.afterBytes.replace("{{size}}", "20"))).toBeInTheDocument();
+      fireEvent.click(second);
+      await waitFor(() => expect(page().getByText(detail.afterAbsent)).toBeInTheDocument());
+      expect(page().getByText(detail.beforeBytes.replace("{{size}}", "10"))).toBeInTheDocument();
+    });
+
+    it("counts several files that changed in the project since the task started", async () => {
+      const current = withFiles({ path: "a.tex", kind: "modified" }, { path: "b.tex", kind: "modified" });
+      previewMocks.file.mockImplementation(async (_id: string, path: string) => ({
+        ...preview("after"),
+        path,
+        baseIsCurrent: false,
+      }));
+      render(<TaskDetailDialog {...props(current)} />);
+
+      for (const button of page().getAllByRole("button", { name: "Preview" })) fireEvent.click(button);
+
+      await waitFor(() =>
+        expect(page().getByRole("alert")).toHaveTextContent(detail.driftedMany.replace("{{fileCount}}", "2")),
+      );
+    });
+
+    it("shows why a file preview failed", async () => {
+      previewMocks.file.mockRejectedValueOnce(new Error("snapshot pruned"));
+      render(<TaskDetailDialog {...props(task("broken"))} />);
+
+      fireEvent.click(page().getByRole("button", { name: "Preview" }));
+
+      await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("snapshot pruned"));
+    });
+
+    it("shows why an artifact preview failed", async () => {
+      const current = task("artifact-failure");
+      if (!current.result) throw new Error("Missing review fixture");
+      current.result.artifacts = [{ path: "out.csv", label: "Table", mediaType: "text/csv" }];
+      previewMocks.artifact.mockRejectedValueOnce("artifact missing");
+      render(<TaskDetailDialog {...props(current)} />);
+      openTab(detail.tabOutput);
+
+      fireEvent.click(page().getByRole("button", { name: "Tableout.csv" }));
+
+      await waitFor(() => expect(page().getByText("artifact missing")).toBeInTheDocument());
+    });
+
+    it("names a Git worktree as the task's isolation", () => {
+      render(
+        <TaskDetailDialog
+          {...props({ ...task("worktree"), isolation: { kind: "git_worktree" } as never })}
+        />,
+      );
+
+      expect(page().getByText(new RegExp(detail.isolationWorktree))).toBeInTheDocument();
+    });
+
+    it("lets the reviewer clear and restore the file selection", () => {
+      render(<TaskDetailDialog {...props(task("select"))} />);
+      const checkbox = page().getByRole("checkbox", { name: "Apply main.tex" });
+
+      fireEvent.click(page().getByRole("button", { name: detail.clearSelection }));
+      expect(checkbox).not.toBeChecked();
+      fireEvent.click(page().getByRole("button", { name: detail.selectAll }));
+      expect(checkbox).toBeChecked();
+      fireEvent.click(checkbox);
+      expect(checkbox).not.toBeChecked();
+      fireEvent.click(checkbox);
+      expect(checkbox).toBeChecked();
+    });
+
+    it("opens on the requested tab and says when a result has no summary", () => {
+      const current = { ...task("quiet"), status: "completed" as const };
+      if (!current.result) throw new Error("Missing review fixture");
+      current.result.summary = "";
+      render(<TaskDetailDialog {...props(current)} initialTab="output" />);
+
+      expect(page().getByText(detail.noSummary)).toBeInTheDocument();
+    });
+
+    it("opens a finished task without output on its activity", () => {
+      render(<TaskDetailDialog {...props({ ...task("bare"), status: "failed", result: null })} />);
+
+      expect(page().getByRole("tab", { name: detail.tabActivity })).toHaveAttribute("aria-selected", "true");
+    });
+  });
 });

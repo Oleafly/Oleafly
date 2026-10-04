@@ -377,4 +377,42 @@ describe("McpSection server controls", () => {
     }
     expect(screen.getByText(mcpCopy.footer)).toBeInTheDocument();
   });
+
+  it("fetches a token that was not loaded when it is revealed, and explains a fetch that fails", async () => {
+    const user = userEvent.setup();
+    backend({ mcp_status: RUNNING });
+    const base = mockInvoke.getMockImplementation();
+    let infoCalls = 0;
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "mcp_connection_info") {
+        infoCalls += 1;
+        if (infoCalls <= 2) throw new Error("keychain locked");
+      }
+      return base?.(command, args);
+    });
+    render(<McpSection />);
+    await screen.findByText(mcpCopy.token.label);
+
+    await user.click(screen.getByRole("button", { name: mcpCopy.token.reveal }));
+    expect(await screen.findByText(/keychain locked/u)).toBeInTheDocument();
+    expect(screen.queryByText("secret-token")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: mcpCopy.token.reveal }));
+    expect(await screen.findByText("secret-token")).toBeInTheDocument();
+    expect(infoCalls).toBe(3);
+  });
+
+  it("regenerates the token while the server is off without fetching it", async () => {
+    const user = userEvent.setup();
+    backend();
+    render(<McpSection />);
+    await screen.findByText(mcpCopy.token.label);
+
+    await user.click(screen.getByRole("button", { name: mcpCopy.token.regenerate }));
+    await user.click(screen.getByRole("button", { name: enCommon.actions.confirm }));
+
+    await waitFor(() => expect(screen.queryByText(mcpCopy.token.regenerateWarning)).not.toBeInTheDocument());
+    expect(mockInvoke.mock.calls.some(([command]) => command === "mcp_regenerate_token")).toBe(true);
+    expect(mockInvoke.mock.calls.some(([command]) => command === "mcp_connection_info")).toBe(false);
+  });
 });

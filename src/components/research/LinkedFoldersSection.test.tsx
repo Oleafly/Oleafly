@@ -185,6 +185,96 @@ describe("LinkedFoldersSection", () => {
   });
 });
 
+describe("LinkedFoldersSection previews and states", () => {
+  const linked = enResearchTools.linked;
+  const rootName = enResearchTools.roots.dialog.labelPlaceholder;
+
+  function backend(
+    files: ResearchRootFileEntry[],
+    read: (relativePath: string) => unknown,
+    availability = "available",
+  ) {
+    native.invoke.mockImplementation(async (command, args) => {
+      if (command === "get_research_workspace") return workspace();
+      if (command === "research_root_health") return [{ rootId: "data-root", availability, detail: null }];
+      if (command === "list_research_root_files") return { rootId: "data-root", path: "", truncated: false, entries: files };
+      if (command === "read_research_root_file") return read(args.relativePath);
+      throw new Error(`Unexpected command: ${command}`);
+    });
+  }
+
+  async function openRoot() {
+    render(<LinkedFoldersSection />);
+    await waitFor(() => expect(page().getByTestId("linked-folders-section")).toBeInTheDocument());
+    fireEvent.click(page().getByRole("button", { name: new RegExp(rootName) }));
+  }
+
+  async function openFile(name: string) {
+    await waitFor(() => expect(page().getByRole("button", { name })).toBeInTheDocument());
+    fireEvent.click(page().getByRole("button", { name }));
+  }
+
+  it("explains a binary file and copies its full path", async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    backend([entry("scan.pdf")], (relativePath) => ({
+      rootId: "data-root", relativePath, content: "", bytesRead: 4, truncated: false, isBinary: true,
+    }));
+    await openRoot();
+    await openFile("scan.pdf");
+
+    await waitFor(() => expect(page().getByText(linked.binary)).toBeInTheDocument());
+    fireEvent.click(page().getByRole("button", { name: linked.copyPath }));
+
+    await waitFor(() => expect(page().getByRole("button", { name: linked.pathCopied })).toBeInTheDocument());
+    expect(writeText).toHaveBeenCalledWith("/study/data/scan.pdf");
+    fireEvent.click(page().getAllByRole("button", { name: "Close" }).at(-1) as HTMLElement);
+    await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("says when a long preview was cut short", async () => {
+    backend([entry("big.log")], (relativePath) => ({
+      rootId: "data-root", relativePath, content: "first lines", bytesRead: 262144, truncated: true, isBinary: false,
+    }));
+    await openRoot();
+    await openFile("big.log");
+
+    await waitFor(() => expect(page().getByText("first lines")).toBeInTheDocument());
+    expect(page().getByText(linked.previewTruncated)).toBeInTheDocument();
+  });
+
+  it("shows why a file could not be read", async () => {
+    backend([entry("locked.csv"), entry("other.csv")], (relativePath) => {
+      if (relativePath === "locked.csv") throw new Error("permission denied");
+      throw "busy";
+    });
+    await openRoot();
+    await openFile("locked.csv");
+
+    await waitFor(() => expect(page().getByRole("alert")).toHaveTextContent("permission denied"));
+  });
+
+  it("names a root that cannot be read and an empty folder", async () => {
+    backend([], () => null, "unreadable");
+    await openRoot();
+
+    expect(page().getByText(linked.unreadable)).toBeInTheDocument();
+    await waitFor(() => expect(page().getByText(linked.emptyFolder)).toBeInTheDocument());
+  });
+
+  it("reloads the linked folders on request", async () => {
+    backend([], () => null);
+    render(<LinkedFoldersSection />);
+    await waitFor(() => expect(page().getByTestId("linked-folders-section")).toBeInTheDocument());
+    const reads = () => native.invoke.mock.calls.filter(([command]) => command === "get_research_workspace").length;
+    const before = reads();
+
+    fireEvent.click(page().getByRole("button", { name: linked.refresh }));
+
+    await waitFor(() => expect(reads()).toBe(before + 1));
+  });
+});
+
 describe("joinPath", () => {
   it("drops a trailing separator run before joining", () => {
     expect(joinPath("/Users/me/data", "notes/day1.csv")).toBe("/Users/me/data/notes/day1.csv");

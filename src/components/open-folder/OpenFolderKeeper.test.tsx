@@ -245,6 +245,20 @@ describe("OpenFolderKeeper", () => {
     expect(useOpenFolderStore.getState().opened).toBeNull();
   });
 
+  it("forgets the folder's trust when the project closes", async () => {
+    mocks.projectTrustState.mockResolvedValue(trusted);
+    render(<OpenFolderKeeper />);
+    await openFolder("linked-a");
+    await vi.waitFor(() => expect(useFolderAccessStore.getState().projectId).toBe("linked-a"));
+
+    await act(async () => {
+      useFilesStore.setState({ projectId: null } as never);
+    });
+
+    expect(useFolderAccessStore.getState().projectId).toBeNull();
+    expect(useFolderAccessStore.getState().trust).toBeNull();
+  });
+
   it("drops an unanswered picker when the user leaves the project", async () => {
     render(<OpenFolderKeeper />);
     await openFolder("linked-a", { mainDoc: "main.tex", tree: [] });
@@ -381,4 +395,93 @@ describe("OpenFolderKeeper", () => {
       expect(mocks.projectFolderStatus.mock.calls).toEqual([["linked-a"]]);
     });
   });
+
+  describe("checks it skips", () => {
+    it("rechecks a linked folder whose status is not known yet when the window regains focus", async () => {
+      mocks.projectFolderStatus.mockResolvedValue(null);
+      render(<OpenFolderKeeper />);
+      await openFolder("linked-a", {
+        projects: [{ id: "linked-a", location: { kind: "linked", display_path: "~/papers/a" } }],
+      });
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().loaded).toBe(true));
+      vi.useFakeTimers();
+      mocks.projectFolderStatus.mockClear();
+
+      await act(async () => {
+        window.dispatchEvent(new Event("focus"));
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+
+      expect(mocks.projectFolderStatus.mock.calls).toEqual([["linked-a"]]);
+    });
+
+    it("checks nothing on focus while no project is open", async () => {
+      render(<OpenFolderKeeper />);
+      vi.useFakeTimers();
+
+      await act(async () => {
+        window.dispatchEvent(new Event("focus"));
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+
+      expect(mocks.projectFolderStatus).not.toHaveBeenCalled();
+    });
+
+    it("drops a pending focus recheck when the keeper unmounts", async () => {
+      const view = render(<OpenFolderKeeper />);
+      await openFolder("linked-a");
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().loaded).toBe(true));
+      vi.useFakeTimers();
+      mocks.projectFolderStatus.mockClear();
+
+      act(() => window.dispatchEvent(new Event("focus")));
+      view.unmount();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+
+      expect(mocks.projectFolderStatus).not.toHaveBeenCalled();
+    });
+
+    it("keeps trust as it is when an availability update neither moved nor reset the folder", async () => {
+      render(<OpenFolderKeeper />);
+      await openFolder("linked-a");
+      useProjectAvailabilityStore.getState().reset("linked-a");
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().loaded).toBe(true));
+      mocks.projectTrustState.mockClear();
+
+      act(() =>
+        useProjectAvailabilityStore.getState().apply({
+          projectId: "linked-a",
+          availability: "missing",
+          locationGeneration: 1,
+          relocated: false,
+          grantsReset: false,
+        }),
+      );
+
+      expect(mocks.projectTrustState).not.toHaveBeenCalled();
+    });
+
+    it("ignores an availability update for a project other than the one whose trust is loaded", async () => {
+      render(<OpenFolderKeeper />);
+      await openFolder("linked-a");
+      await vi.waitFor(() => expect(useFolderAccessStore.getState().loaded).toBe(true));
+      useProjectAvailabilityStore.getState().reset("linked-b");
+      mocks.projectTrustState.mockClear();
+
+      act(() =>
+        useProjectAvailabilityStore.getState().apply({
+          projectId: "linked-b",
+          availability: "ok",
+          locationGeneration: 1,
+          relocated: true,
+          grantsReset: true,
+        }),
+      );
+
+      expect(mocks.projectTrustState).not.toHaveBeenCalled();
+    });
+  });
 });
+

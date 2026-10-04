@@ -8,6 +8,7 @@ import type { ProjectIntelligenceSnapshot } from "@/lib/project-intelligence/typ
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import {
   buildCitationNodes,
+  buildLocationResultNodes,
   buildProjectStructureNodes,
   buildReferenceResultNodes,
   buildSymbolNodes,
@@ -18,6 +19,7 @@ const intelligence = enWorkspace.intelligence;
 
 function snapshot(
   sources: Readonly<Record<string, string>>,
+  mainDocument = "main.tex",
 ): ProjectIntelligenceSnapshot {
   const files = Object.fromEntries(
     Object.entries(sources).map(([file, source]) => [
@@ -29,7 +31,7 @@ function snapshot(
     identity: { projectId: "p", projectRevision: 1, requestGeneration: 1 },
     files,
     knownFiles: Object.keys(sources),
-    mainDocument: "main.tex",
+    mainDocument,
     stats: {
       fileCount: Object.keys(files).length,
       characterCount: 0,
@@ -220,5 +222,151 @@ describe("project issue count", () => {
   it("counts only the diagnostics the panel surfaces", () => {
     expect(projectIssueCount(PROJECT)).toBeGreaterThan(0);
     expect(projectIssueCount(snapshot({ "main.tex": "Plain text" }))).toBe(0);
+  });
+});
+
+describe("project structure edge cases", () => {
+  it("marks an include that loops back to an open file as a cycle", () => {
+    const looping = snapshot({
+      "main.tex": String.raw`\begin{document}
+\input{a}
+\end{document}`,
+      "a.tex": String.raw`\input{main}
+\input{a}`,
+    });
+
+    const nodes = flatten(buildProjectStructureNodes(looping));
+    const cycles = nodes.filter((node) => node.badge === intelligence.badges.cycle);
+
+    expect(cycles.length).toBeGreaterThan(0);
+    expect(cycles.every((node) => node.children === undefined)).toBe(true);
+  });
+
+  it("folds very deep include chains instead of expanding them", () => {
+    const sources: Record<string, string> = {
+      "main.tex": String.raw`\begin{document}
+\input{f0}
+\end{document}`,
+    };
+    for (let index = 0; index < 40; index += 1) {
+      sources[`f${index}.tex`] = String.raw`\input{f${index + 1}}`;
+    }
+    sources["f40.tex"] = "end";
+
+    const nodes = flatten(buildProjectStructureNodes(snapshot(sources)));
+    const folded = nodes.filter((node) => node.badge === intelligence.badges.folded);
+
+    expect(folded).toHaveLength(1);
+    expect(folded[0].children?.[0]).toMatchObject({
+      label: intelligence.folded.label,
+      description: intelligence.folded.description,
+      tone: "warning",
+    });
+  });
+});
+
+describe("location result nodes", () => {
+  it("groups locations by file in name order and sorts each file by position", () => {
+    const nodes = buildLocationResultNodes([
+      { path: "src/b.tex", from: 30, to: 34, line: 3, column: 2, preview: "late" },
+      { path: "src/b.tex", from: 5, to: 9, line: 1, column: 6, preview: "" },
+      { path: "a.tex", from: 0, to: 4, line: 1, column: 1, preview: "first" },
+    ]);
+
+    expect(nodes.map((node) => [node.label, node.badge, node.description])).toEqual([
+      ["a.tex", "1", "a.tex"],
+      ["b.tex", "2", "src/b.tex"],
+    ]);
+    expect(nodes[1].children?.map((child) => [child.label, child.provenance, child.target])).toEqual([
+      ["b.tex:1", "b.tex:1:6", { path: "src/b.tex", from: 5, to: 9 }],
+      ["late", "b.tex:3:2", { path: "src/b.tex", from: 30, to: 34 }],
+    ]);
+    expect(buildLocationResultNodes([])).toEqual([]);
+  });
+});
+
+describe("Typst project structure", () => {
+  const typst = snapshot(
+    {
+      "main.typ": [
+        '#import "lib.typ": *',
+        '#include "chapter.typ"',
+        '#image("figure.png")',
+        '#bibliography("refs.bib")',
+        "= Intro <intro>",
+        "See @intro.",
+      ].join("\n"),
+      "lib.typ": "#let helper = 1",
+      "chapter.typ": "== Body",
+      "refs.bib": "@misc{a, title={A}}",
+    },
+    "main.typ",
+  );
+
+  it("describes Typst imports, includes, assets and bibliographies by their kind", () => {
+    const descriptions = flatten(buildProjectStructureNodes(typst)).map((node) => node.description ?? "");
+
+    for (const kind of ["import", "include", "asset", "bibliography"] as const) {
+      expect(descriptions).toContain(
+        intelligence.fromFile.replace("{{kind}}", intelligence.kinds[kind]).replace("{{file}}", "main.typ"),
+      );
+    }
+  });
+});
+
+describe("reference results for every kind", () => {
+  const location = (file: string, from: number) => ({
+    file,
+    range: { from, to: from + 1, startLine: 3, startColumn: 4, endLine: 3, endColumn: 5 },
+  });
+  const definition = (kind: string, name: string) =>
+    ({ id: `${kind}-${name}`, source: "local", engine: "latex", kind, name, location: location("main.tex", 1) }) as never;
+  const use = (kind: string, name: string, resolution: string, from: number) =>
+    ({
+      id: `${kind}-${name}`,
+      source: "local",
+      engine: "typst",
+      kind,
+      name,
+      location: location("main.typ", from),
+      resolution,
+      definitionIds: [],
+    }) as never;
+
+  it("names definitions and uses by their kind and marks external targets", () => {
+    const nodes = buildReferenceResultNodes(
+      [
+        definition("anchor", "fig"),
+        definition("environment", "theorem"),
+        definition("glossary", "api"),
+        definition("macro", "proj"),
+        definition("custom-kind", "thing"),
+      ],
+      [
+        use("macro", "proj", "resolved", 10),
+        use("environment", "theorem", "resolved", 20),
+        use("import", "lib.typ", "resolved", 30),
+        use("link", "https://typst.app", "external", 40),
+      ],
+    );
+
+    const definitions = nodes[0].children ?? [];
+    expect(definitions.map((node) => [node.kind, node.description])).toEqual([
+      ["label", "anchor in main.tex"],
+      ["environment", "environment in main.tex"],
+      ["glossary", "glossary in main.tex"],
+      ["macro", "macro in main.tex"],
+      ["custom-kind", "custom kind in main.tex"],
+    ]);
+    expect(definitions.every((node) => node.badge === intelligence.badges.duplicate)).toBe(true);
+    expect(definitions[0].provenance).toBe("main.tex:3:5");
+
+    const uses = flatten(nodes[1].children ?? []).filter((node) => node.target);
+    expect(uses.map((node) => [node.kind, node.description, node.badge ?? null, node.tone])).toEqual([
+      ["macro", "macro in main.typ", null, "default"],
+      ["environment", "environment in main.typ", null, "default"],
+      ["include", "import in main.typ", null, "default"],
+      ["reference", "link in main.typ", intelligence.badges.external, "muted"],
+    ]);
   });
 });

@@ -194,6 +194,44 @@ describe("incremental analysis", () => {
     expect(snapshot.hierarchy.roots[0]).toBe("main.tex");
   });
 
+  it("reports an unreadable file with the message the project index sends", () => {
+    const { send } = worker();
+    const snapshot = snapshotOf(
+      send(
+        request({
+          knownFiles: ["main.tex", "locked.tex"],
+          upserts: [upsert("main.tex", "\\input{locked}")],
+          unreadable: [
+            { file: "locked.tex", sourceRevision: 2, message: { key: "projectFileUnreadable" } },
+          ],
+        }),
+      ),
+    );
+    expect(snapshot.fileStates["locked.tex"]).toMatchObject({
+      status: "error",
+      statusReason: "projectFileUnreadable",
+    });
+    expect(snapshot.diagnostics.find((d) => d.code === "unreadable-file")?.message).toEqual({
+      key: "projectFileUnreadable",
+    });
+  });
+
+  it.each([
+    ["a string message", "locked"],
+    ["a message without a key", {}],
+    ["a message with an empty key", { key: "" }],
+    ["a message with an unknown field", { key: "projectFileUnreadable", extra: 1 }],
+    ["message params that are not a record", { key: "projectFileUnreadable", params: ["x"] }],
+    ["message params with a non-scalar value", { key: "projectFileUnreadable", params: { path: {} } }],
+  ])("refuses an unreadable file with %s", (_label, message) => {
+    const { send } = worker();
+    const response = send({
+      ...request({ knownFiles: ["locked.tex"] }),
+      unreadable: [{ file: "locked.tex", sourceRevision: 1, message }],
+    });
+    expect(errorOf(response).code).toBe("invalid_request");
+  });
+
   it("refuses a project that exceeds the source file limit after loading known files", () => {
     const { send } = worker();
     const knownFiles = Array.from({ length: PROJECT_INTELLIGENCE_LIMITS.maxSourceFiles + 1 }, (_, i) => `f${i}.tex`);

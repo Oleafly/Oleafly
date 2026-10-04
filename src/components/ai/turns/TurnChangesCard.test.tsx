@@ -380,3 +380,100 @@ describe("TurnChangesCard", () => {
     expect(card()).toHaveTextContent("1 file couldn't be copied before the turn, so Undo can't put it back.");
   });
 });
+
+describe("TurnChangesCard edge states", () => {
+  it.each([
+    ["too_many_files", "Undo isn't available for this turn: the project has too many files."],
+    ["timeout", "Undo isn't available for this turn: copying the project took too long."],
+    ["error", "Undo isn't available for this turn: the project couldn't be copied."],
+  ] as const)("explains a turn that could not be copied because of %s", (unavailable, text) => {
+    const { container } = render(
+      <TurnChangesCard projectId="paper" showUnavailable changes={changes({ files: [], snapshotId: null, unavailable })} />,
+    );
+
+    expect(container).toHaveTextContent(text);
+  });
+
+  it("labels a deleted file and leaves out line counts nobody measured", async () => {
+    render(
+      <TurnChangesCard
+        projectId="paper"
+        changes={changes({ files: [file(0, "old.tex", { change: "deleted", added: null, removed: null })] })}
+      />,
+    );
+
+    expect(card()).toHaveTextContent("Changed 1 file");
+    expect(card()).not.toHaveTextContent("+0");
+    await expand();
+    const row = within(card()).getByRole("listitem");
+    expect(row).toHaveTextContent("Deleted");
+    expect(row).not.toHaveTextContent("+");
+  });
+
+  it("counts a file with only removed lines measured", () => {
+    render(
+      <TurnChangesCard projectId="paper" changes={changes({ files: [file(0, "a.tex", { added: null, removed: 4 })] })} />,
+    );
+
+    expect(card()).toHaveTextContent("+0 -4");
+  });
+
+  it.each([
+    ["a binary file", { binary: true }, "This file isn't text, so the change can't be shown."],
+    ["a change too large to show", { tooLarge: true }, "This change is too large to show here."],
+  ])("explains why %s has no diff", async (_label, overrides, text) => {
+    vi.mocked(agentTurnPreview).mockResolvedValue(preview(0, "main.tex", overrides));
+    render(<TurnChangesCard projectId="paper" changes={changes()} />);
+    await expand();
+
+    fireEvent.click(within(card()).getByRole("button", { name: "main.tex" }));
+
+    expect(await within(card()).findByText(text)).toBeInTheDocument();
+    expect(within(card()).queryByTestId("inline-diff")).toBeNull();
+  });
+
+  it("diffs an added file against empty text", async () => {
+    vi.mocked(agentTurnPreview).mockResolvedValue(preview(1, "refs.bib", { change: "added", before: null, after: "@book{x}" }));
+    render(<TurnChangesCard projectId="paper" changes={changes()} />);
+    await expand();
+
+    fireEvent.click(within(card()).getByRole("button", { name: "refs.bib" }));
+
+    expect((await within(card()).findByTestId("inline-diff")).textContent).toBe(" -> @book{x}");
+  });
+
+  it("shows the redo error copy when putting a file back fails", async () => {
+    vi.mocked(agentTurnRevert).mockResolvedValue(result([0]));
+    vi.mocked(agentTurnRedo).mockRejectedValue(new Error("disk"));
+    render(<TurnChangesCard projectId="paper" changes={changes()} />);
+    await expand();
+    fireEvent.click(within(card()).getByRole("button", { name: "Undo main.tex" }));
+    const redo = await within(card()).findByRole("button", { name: "Redo main.tex" });
+
+    fireEvent.click(redo);
+
+    expect(await within(card()).findByRole("alert")).toHaveTextContent(
+      "Couldn't redo the changes. Save your work and try again.",
+    );
+  });
+
+  it("reports files that could not be written back", async () => {
+    vi.mocked(agentTurnRevert).mockResolvedValue(result([], [{ index: 0, reason: "write_failed" }]));
+    render(<TurnChangesCard projectId="paper" changes={changes()} />);
+
+    fireEvent.click(within(card()).getByRole("button", { name: "Undo all" }));
+
+    await waitFor(() => expect(within(card()).getByRole("status")).toHaveTextContent("Some files couldn't be written."));
+    expect(within(card()).getByRole("status")).not.toHaveTextContent("Undid");
+  });
+
+  it("asks the user to wait on each file while the agent is still running", async () => {
+    useAcpSessionsStore.setState({ sessions: { live: session("live", { projectId: "paper", status: "running" }) } });
+    render(<TurnChangesCard projectId="paper" changes={changes()} />);
+    await expand();
+
+    const undo = within(card()).getByRole("button", { name: "Undo main.tex" });
+    expect(undo).toBeDisabled();
+    expect(undo).toHaveAttribute("title", "Undo is available when the agent finishes.");
+  });
+});

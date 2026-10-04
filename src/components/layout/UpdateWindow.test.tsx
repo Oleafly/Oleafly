@@ -132,3 +132,16 @@ it("loads the notes of skipped releases through the backend", async () => {
   expect(mocks.invoke).toHaveBeenCalledWith("release_notes_page", { page: 1 });
   expect(await screen.findByTestId("release-history-end")).toHaveTextContent("You're on v0.3.13");
 });
+
+it("opens a web link from the release notes in the browser", async () => {
+  mocks.findUpdate.mockResolvedValue({
+    version: "0.4.1",
+    currentVersion: "0.4.0",
+    body: "Read the [migration guide](https://oleafly.com/docs/migrate) first.",
+  });
+  render(<UpdateWindow />);
+
+  fireEvent.click(await screen.findByRole("link", { name: "migration guide" }));
+
+  await waitFor(() => expect(mocks.open).toHaveBeenCalledWith("https://oleafly.com/docs/migrate"));
+});

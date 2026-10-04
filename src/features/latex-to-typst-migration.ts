@@ -424,9 +424,8 @@ class LatexPreparer {
       const origin = { file, line: firstLine + index };
       const alone = INCLUDE_ALONE.exec(codeOf(line));
       if (alone) this.inlineAlone(line, alone, origin, stack);
-      else if (INCLUDE_COMMAND.test(codeOf(line))) this.inlineLine(line, origin, stack);
+      else if (codeOf(line).search(INCLUDE_COMMAND) >= 0) this.inlineLine(line, origin, stack);
       else this.push(line, origin);
-      INCLUDE_COMMAND.lastIndex = 0;
     });
   }
 
@@ -465,9 +464,8 @@ class LatexPreparer {
       if (depth === 0 && this.structure(code, origin)) return;
       if (alone && depth === 0) this.separate(alone, line, origin, stack);
       else if (alone) this.inlineAlone(line, alone, origin, stack);
-      else if (INCLUDE_COMMAND.test(code)) this.inlineLine(line, origin, stack);
+      else if (code.search(INCLUDE_COMMAND) >= 0) this.inlineLine(line, origin, stack);
       else this.push(line, origin);
-      INCLUDE_COMMAND.lastIndex = 0;
       depth = Math.max(0, depth + environmentDelta(code));
     });
   }

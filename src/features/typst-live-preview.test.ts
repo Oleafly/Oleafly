@@ -139,6 +139,7 @@ beforeEach(async () => {
   mocks.setStatus.mockClear();
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
   mocks.reportSaveFailure.mockClear();
+  mocks.logError.mockClear();
 });
 
 afterEach(async () => {
@@ -329,5 +330,78 @@ describe("Typst live preview", () => {
     await expect(
       compileLive({ projectId: "project", mainDoc: "main.typ", offline: false, typstVariant: null, fresh: true }),
     ).rejects.toThrow("Typst crashed");
+  });
+
+  it("keeps the session while the project reloads", async () => {
+    await syncLivePreview();
+    store.setState({ loading: true });
+    await syncLivePreview();
+    store.setState({ loading: false });
+    await syncLivePreview();
+
+    expect(invokedWith("typst_watch_stop")).toEqual([]);
+    expect(invokedWith("typst_watch_start")).toHaveLength(1);
+  });
+
+  it("shows why the watcher could not start", async () => {
+    const failure = new Error("typst missing");
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "typst_watch_start") throw failure;
+      return undefined;
+    });
+
+    await syncLivePreview();
+
+    expect(mocks.logError).toHaveBeenCalledWith("start live preview", failure);
+    expect(mocks.setStatus).toHaveBeenLastCalledWith("project", "failed", "typst missing");
+  });
+
+  it("logs a watcher that could not be stopped or interrupted", async () => {
+    await syncLivePreview();
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "typst_watch_stop") throw new Error("already gone");
+      return undefined;
+    });
+
+    await interruptLivePreview();
+    await stopLivePreview();
+
+    expect(mocks.logError.mock.calls.filter(([what]) => what === "stop live preview")).toHaveLength(2);
+  });
+
+  it("logs a watch result the compile store could not apply", async () => {
+    await syncLivePreview();
+    mocks.apply.mockRejectedValueOnce(new Error("bad pdf"));
+
+    emit("typst-watch:result", { projectId: "project", mainDocument: "main.typ", sessionId: 7, cycle: 1, result: { ok: true } });
+    await vi.waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("live preview", expect.any(Error)));
+  });
+
+  it("ignores status from another project and has no status for a stopped watcher", async () => {
+    await syncLivePreview();
+    mocks.setStatus.mockClear();
+
+    emit("typst-watch:status", { projectId: "elsewhere", mainDocument: "main.typ", sessionId: 7, state: "failed", message: "x" });
+    emit("typst-watch:status", { projectId: "project", mainDocument: "main.typ", sessionId: 7, state: "stopped", message: null });
+
+    expect(mocks.setStatus).not.toHaveBeenCalled();
+  });
+
+  it("stops a compile that started before any watch session", async () => {
+    let finish: (value: unknown) => void = () => {};
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "typst_watch_compile") return new Promise((resolve) => (finish = resolve));
+      return true;
+    });
+    const pending = compileLive({ projectId: "project", mainDoc: "main.typ", offline: false, typstVariant: null, fresh: false });
+    await vi.waitFor(() => expect(invokedWith("typst_watch_compile")).toHaveLength(1));
+
+    await interruptLivePreview();
+    finish({ ok: true, output_revision: 2 });
+
+    await expect(pending).resolves.toEqual({ ok: true, output_revision: 2 });
+    expect(invokedWith("typst_watch_stop")).toEqual([{ projectId: "project" }]);
+    await syncLivePreview();
+    expect(invokedWith("typst_watch_start")).toEqual([]);
   });
 });

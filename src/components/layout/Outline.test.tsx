@@ -153,6 +153,13 @@ describe("Outline unavailable states", () => {
     expect(screen.getByText("Analysis failed safely.")).toBeInTheDocument();
   });
 
+  it("falls back to a general message for a failure without details", () => {
+    setState({ status: "error", failure: null, reason: null } as never);
+    render(<Outline />);
+    expect(screen.getByText(copy.unavailable.failed.title)).toBeInTheDocument();
+    expect(screen.getByText(copy.unavailable.failed.detail)).toBeInTheDocument();
+  });
+
   it("waits for a revision whose snapshot has not arrived", () => {
     setState({ status: "success", identity: null, data: null });
     render(<Outline />);

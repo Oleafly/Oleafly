@@ -118,6 +118,13 @@ describe("project search schema", () => {
     expect(search("").ids[0]).toBe("thesis");
   });
 
+  it("sorts by the last edit and the last time a project was opened", () => {
+    expect(search("sort:updated-asc").ids[0]).toBe("notes");
+    expect(search("sort:modified-desc").ids[0]).toBe("linked");
+    expect(search("sort:opened-desc").ids[0]).toBe("thesis");
+    expect(search("sort:opened-asc").ids.at(-1)).toBe("thesis");
+  });
+
   it("lets later features add flags, fields and sorts", () => {
     const extension: ProjectSearchExtension = {
       is: [{ value: "shared", meta: { label: "Shared" }, test: (item) => item.id === "notes" }],

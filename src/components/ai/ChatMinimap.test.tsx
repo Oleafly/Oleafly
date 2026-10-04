@@ -78,3 +78,84 @@ describe("ChatMinimap", () => {
     expect(event.detail).toEqual({ index: 2, behavior: "smooth" });
   });
 });
+
+function activeTick(container: HTMLElement): number {
+  return ticks(container).findIndex((tick) => tick.querySelector("span")?.classList.contains("bg-foreground"));
+}
+
+function scroller(container: HTMLElement): HTMLElement {
+  return container.querySelector('[data-testid="scroll"]') as HTMLElement;
+}
+
+describe("ChatMinimap navigation", () => {
+  it("scrolls a mounted prompt into view just below the top edge", () => {
+    const { container } = render(<Harness visible count={6} />);
+    const scroll = scroller(container);
+    const scrollTo = vi.fn();
+    scroll.scrollTo = scrollTo as never;
+    Object.defineProperty(scroll.querySelector('[data-mm-index="4"]'), "offsetTop", { configurable: true, value: 500 });
+
+    fireEvent.click(ticks(container)[2]);
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 488, behavior: "smooth" });
+  });
+
+  it("highlights the prompt whose turn the virtual list reports on screen", async () => {
+    const { container } = render(<Harness visible count={6} />);
+    const scroll = scroller(container);
+    expect(activeTick(container)).toBe(2);
+
+    scroll.dataset.chatVisibleIndex = "3";
+    fireEvent(scroll, new Event("oleafly:chat-visible-index"));
+
+    await vi.waitFor(() => expect(activeTick(container)).toBe(1));
+  });
+
+  it("highlights the last prompt above the middle of the viewport while scrolling", async () => {
+    const { container } = render(<Harness visible count={6} />);
+    const scroll = scroller(container);
+    Object.defineProperty(scroll, "clientHeight", { configurable: true, value: 400 });
+    for (const [index, top] of [[0, 0], [2, 300], [4, 900]] as const) {
+      Object.defineProperty(scroll.querySelector(`[data-mm-index="${index}"]`), "offsetTop", { configurable: true, value: top });
+    }
+    scroll.scrollTop = 200;
+
+    fireEvent.scroll(scroll);
+
+    await vi.waitFor(() => expect(activeTick(container)).toBe(1));
+  });
+
+  it("names a multi-line prompt by its first line and drops the card when the pointer leaves", () => {
+    const ref = { current: document.createElement("div") };
+    const messages: ChatMessage[] = [
+      { role: "user", content: "Fix the abstract\nand tighten the intro" },
+      { role: "assistant", content: "Done." },
+      { role: "user", content: "Now the conclusion" },
+    ];
+    const { container, getByRole, queryByText } = render(
+      <ChatMinimap scrollRef={ref} messages={messages} visible />,
+    );
+    const first = getByRole("button", { name: /Fix the abstract$/u });
+
+    fireEvent.mouseEnter(ticks(container)[1]);
+    expect(queryByText("Now the conclusion", { selector: "p" })).toBeInTheDocument();
+    expect(container.querySelectorAll("p")).toHaveLength(1);
+    fireEvent.mouseLeave(first);
+    expect(queryByText("Now the conclusion", { selector: "p" })).toBeInTheDocument();
+    fireEvent.mouseLeave(ticks(container)[1]);
+    expect(queryByText("Now the conclusion", { selector: "p" })).toBeNull();
+  });
+
+  it("shows no card for an empty prompt with no reply", () => {
+    const ref = { current: document.createElement("div") };
+    const messages: ChatMessage[] = [
+      { role: "user", content: "First" },
+      { role: "user", content: "" },
+    ];
+    const { container } = render(<ChatMinimap scrollRef={ref} messages={messages} visible />);
+
+    fireEvent.mouseEnter(ticks(container)[1]);
+
+    expect(container.querySelector("p")).toBeNull();
+  });
+});

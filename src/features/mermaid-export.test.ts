@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   MERMAID_EXPORT_DIRECTIVE,
   mermaidExportSource,
@@ -286,5 +286,127 @@ describe("mermaidRasterScale", () => {
     expect(mermaidRasterScale(4000, 4000)).toBeCloseTo(1.024);
     const scale = mermaidRasterScale(3000, 2500);
     expect(3000 * scale * 2500 * scale).toBeCloseTo(4096 * 4096, 0);
+  });
+});
+
+describe("foreignObject label styling", () => {
+  it("keeps underline, strike-through and font colors and skips styles, scripts and comments", () => {
+    const diagram = htmlParsedSvg(
+      `<svg xmlns="${SVG_NS}" viewBox="0 0 200 60"><g class="label"><foreignObject width="200" height="24">` +
+        '<div xmlns="http://www.w3.org/1999/xhtml"><span class="nodeLabel"><style>.x{}</style><script>alert(1)</script><!-- note -->' +
+        '<u>under</u> <s>gone</s> <font color="#0000ff">blue</font> <span style="color: red">red</span>   </span></div>' +
+        "</foreignObject></g></svg>",
+    );
+
+    const text = parseXml(standaloneMermaidSvg(diagram).svg).getElementsByTagNameNS(SVG_NS, "text")[0];
+    const parts = Array.from(rows(text)[0].children).map((run) => [
+      run.textContent,
+      run.getAttribute("text-decoration") ?? "",
+      run.getAttribute("style") ?? "",
+    ]);
+
+    expect(lines(text)).toEqual(["under gone blue red"]);
+    expect(parts).toEqual([
+      ["under", "underline", ""],
+      [" ", "", ""],
+      ["gone", "line-through", ""],
+      [" ", "", ""],
+      ["blue", "", "fill: #0000ff"],
+      [" ", "", ""],
+      ["red", "", "fill: red"],
+    ]);
+  });
+});
+
+describe("labels measured in a mounted document", () => {
+  const prototype = SVGElement.prototype as unknown as Record<string, unknown>;
+  let bboxes: Array<{ x: number; y: number; width: number; height: number }> = [];
+
+  function measurable() {
+    prototype.getBBox = () => bboxes.shift() ?? { x: 0, y: 0, width: 0, height: 0 };
+    prototype.getComputedTextLength = function (this: Element) {
+      return (this.textContent ?? "").length * 10;
+    };
+  }
+
+  afterEach(() => {
+    delete prototype.getBBox;
+    delete prototype.getComputedTextLength;
+    bboxes = [];
+  });
+
+  function foreignLabel(content: string, width = 60, height = 60): Element {
+    return htmlParsedSvg(
+      `<svg xmlns="${SVG_NS}" viewBox="0 0 200 100"><g class="label"><foreignObject x="10" y="20" width="${width}" height="${height}">` +
+        `<div xmlns="http://www.w3.org/1999/xhtml">${content}</div></foreignObject></g></svg>`,
+    );
+  }
+
+  it("wraps a long label to the width of its box", () => {
+    measurable();
+
+    const text = parseXml(
+      standaloneMermaidSvg(foreignLabel('<span class="nodeLabel">alpha beta gamma</span>')).svg,
+    ).getElementsByTagNameNS(SVG_NS, "text")[0];
+
+    expect(lines(text)).toEqual(["alpha", "beta", "gamma"]);
+    expect(rows(text).map((row) => row.getAttribute("y"))).toEqual(["30", "50", "70"]);
+    expect(rows(text).map((row) => row.getAttribute("x"))).toEqual(["40", "40", "40"]);
+  });
+
+  it("keeps words together that fit and keeps formatting across a wrap", () => {
+    measurable();
+
+    const text = parseXml(
+      standaloneMermaidSvg(foreignLabel('<span class="nodeLabel">ab cd <b>efghijk</b></span>', 60, 40)).svg,
+    ).getElementsByTagNameNS(SVG_NS, "text")[0];
+
+    expect(lines(text)).toEqual(["ab cd", "efghijk"]);
+    expect(runs(rows(text)[1]).filter(([content]) => content)).toEqual([["efghijk", "bold", "", ""]]);
+  });
+
+  it("does not wrap a label styled to stay on one line", () => {
+    measurable();
+
+    const text = parseXml(
+      standaloneMermaidSvg(foreignLabel('<span class="nodeLabel" style="white-space: nowrap">alpha beta gamma</span>')).svg,
+    ).getElementsByTagNameNS(SVG_NS, "text")[0];
+
+    expect(lines(text)).toEqual(["alpha beta gamma"]);
+  });
+
+  it("re-centers a start-anchored node label whose formatting was rewritten", () => {
+    measurable();
+    bboxes = [
+      { x: 0, y: 0, width: 100, height: 20 },
+      { x: 10, y: 0, width: 60, height: 20 },
+    ];
+    const diagram = htmlParsedSvg(
+      `<svg xmlns="${SVG_NS}" viewBox="0 0 300 120"><g class="node default"><g class="label">${formattedLabel([
+        ["<b>", "Bold", "</b>"],
+      ]).replace('style=""', 'style="text-anchor: start" transform="scale(1)"')}</g></g></svg>`,
+    );
+
+    const text = parseXml(standaloneMermaidSvg(diagram, 'A["<b>Bold</b>"]').svg).getElementsByTagNameNS(SVG_NS, "text")[0];
+
+    expect(lines(text)).toEqual(["Bold"]);
+    expect(text.getAttribute("transform")).toBe("translate(10, 0) scale(1)");
+  });
+
+  it("leaves a label in place when rewriting does not move its center", () => {
+    measurable();
+    bboxes = [
+      { x: 0, y: 0, width: 100, height: 20 },
+      { x: 0, y: 0, width: 100, height: 20 },
+    ];
+    const diagram = htmlParsedSvg(
+      `<svg xmlns="${SVG_NS}" viewBox="0 0 300 120"><g class="node default"><g class="label">${formattedLabel([
+        ["<i>", "Lean", "</i>"],
+      ]).replace('style=""', 'style="text-anchor: start"')}</g></g></svg>`,
+    );
+
+    const text = parseXml(standaloneMermaidSvg(diagram, 'A["<i>Lean</i>"]').svg).getElementsByTagNameNS(SVG_NS, "text")[0];
+
+    expect(text.hasAttribute("transform")).toBe(false);
   });
 });

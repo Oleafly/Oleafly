@@ -2,7 +2,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
@@ -765,6 +765,133 @@ describe("SkillsTab", () => {
       expect(
         screen.getByText(fill(copy.share.status.linked, { linked: "5", total: "5" })),
       ).toBeInTheDocument(),
+    );
+  });
+
+  it("asks for the missing fields before creating or saving", async () => {
+    renderTab();
+    await screen.findByText("Methods Coach");
+
+    fireEvent.click(screen.getByRole("button", { name: copy.createSkill }));
+    fireEvent.click(screen.getByRole("button", { name: copy.editor.submitCreate }));
+    expect(await screen.findByText(copy.editor.requiredBasics)).toBeInTheDocument();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByText(copy.editor.requiredBasics)).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: fill(copy.editAria, { name: "Methods Coach" }) }));
+    fireEvent.change(screen.getByLabelText(copy.editor.instructions), { target: { value: "  " } });
+    fireEvent.click(screen.getByRole("button", { name: enCommon.actions.save }));
+
+    expect(await screen.findByText(copy.editor.requiredAll)).toBeInTheDocument();
+    expect(mockInvoke).not.toHaveBeenCalledWith("skills_create", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith("skills_update", expect.anything());
+  });
+
+  it("keeps the editor open with the error when the skill cannot be created", async () => {
+    const base = mockInvoke.getMockImplementation();
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "skills_create") throw new Error("Folder already exists");
+      return base?.(command, args);
+    });
+    renderTab();
+    await screen.findByText("Paper Lookup");
+    fireEvent.click(screen.getByRole("button", { name: copy.createSkill }));
+    fireEvent.change(screen.getByLabelText(enCommon.labels.name), { target: { value: "Claim Checker" } });
+    fireEvent.change(screen.getByLabelText(enCommon.labels.description), { target: { value: "Check claims." } });
+
+    fireEvent.click(screen.getByRole("button", { name: copy.editor.submitCreate }));
+
+    expect(await screen.findByText("Folder already exists")).toBeInTheDocument();
+    expect(screen.getByLabelText(enCommon.labels.name)).toHaveValue("Claim Checker");
+  });
+
+  it("reports toggles and removals that fail", async () => {
+    const base = mockInvoke.getMockImplementation();
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "skills_set_enabled") throw new Error("Settings are read-only");
+      if (command === "skills_remove") throw new Error("Folder is in use");
+      return base?.(command, args);
+    });
+    renderTab();
+    await screen.findByText("Methods Coach");
+
+    fireEvent.click(screen.getByRole("switch", { name: enableName("Methods Coach") }));
+    expect(await screen.findByText("Settings are read-only")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: fill(copy.removeAria, { name: "Methods Coach" }) }));
+    const confirmation = screen.getByRole("alertdialog", { name: copy.removeDialog.title });
+    fireEvent.click(within(confirmation).getByRole("button", { name: enCommon.actions.remove }));
+
+    expect(await screen.findByText("Folder is in use")).toBeInTheDocument();
+    expect(screen.getByText("Methods Coach")).toBeInTheDocument();
+  });
+
+  it("keeps a skill when the removal or update is cancelled and when no folder is picked", async () => {
+    records = [...records, STALE_BUILTIN];
+    mockPickOpenPath.mockResolvedValue(null);
+    renderTab();
+    await screen.findByText("Research Loop");
+
+    fireEvent.click(screen.getByRole("button", { name: fill(copy.removeAria, { name: "Methods Coach" }) }));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog", { name: copy.removeDialog.title })).getByRole("button", {
+        name: new RegExp(`^${enCommon.actions.cancel}`),
+      }),
+    );
+    fireEvent.click(screen.getByTestId("skill-update-oleafly-research-loop"));
+    fireEvent.click(
+      within(screen.getByRole("alertdialog", { name: copy.updateDialog.title })).getByRole("button", {
+        name: new RegExp(`^${enCommon.actions.cancel}`),
+      }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: copy.addFolder }));
+    await waitFor(() => expect(mockPickOpenPath).toHaveBeenCalled());
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(mockInvoke).not.toHaveBeenCalledWith("skills_remove", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith("skills_update_builtin", expect.anything());
+    expect(mockInvoke).not.toHaveBeenCalledWith("skills_add", expect.anything());
+  });
+
+  it("hides the file list again and names vendored and shelf skills without credits", async () => {
+    records = [
+      { ...RESEARCH_SKILL, author: null, license: null },
+      { ...SHELF_SKILL, license: null },
+    ];
+    renderTab();
+    await screen.findByText("Paper Lookup");
+
+    expect(screen.getByText(new RegExp(escapeRegExp(copy.tier.vendored)))).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(escapeRegExp(copy.tier.shelf)))).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("skill-files-toggle-paper-lookup"));
+    expect(await screen.findByText("SKILL.md")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("skill-files-toggle-paper-lookup"));
+    await waitFor(() => expect(screen.queryByText("SKILL.md")).not.toBeInTheDocument());
+  });
+
+  it("says when there are no skills and when they cannot be loaded", async () => {
+    records = [];
+    const { unmount } = render(
+      <QueryClientProvider client={createAppQueryClient()}>
+        <SkillsTab />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText(copy.empty)).toBeInTheDocument();
+    unmount();
+
+    const base = mockInvoke.getMockImplementation();
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "skills_list") throw new Error("Skills folder is unreadable");
+      return base?.(command, args);
+    });
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <SkillsTab />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      fill(copy.loadFailed, { message: "Skills folder is unreadable" }),
     );
   });
 });

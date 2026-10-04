@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE, UNKNOWN_ENGINE } from "@/lib/document-engine";
 import { useHomeViewStore } from "@/store/home-view";
 import { useFilesStore } from "@/store/files";
 import { ThemeProvider } from "@/lib/theme";
+import researchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
   getEditorView: vi.fn(),
@@ -161,5 +162,157 @@ describe("SymbolsToolView", () => {
     renderSymbols();
     await screen.findByTestId("symbol-entry-alpha");
     expect(screen.queryByTestId("symbols-typst")).not.toBeInTheDocument();
+  });
+});
+
+describe("SymbolsToolView corpus and browsing", () => {
+  const copy = researchTools.symbols;
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function corpora(unimath: unknown, core: unknown, ok = true) {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({ ok, json: async () => unimath } as Response)
+      .mockResolvedValueOnce({ ok, json: async () => core } as Response);
+  }
+
+  it("merges the core commands, sorts them into categories and skips entries without a glyph", async () => {
+    corpora(
+      { leq: { detail: "≤" }, sum: { detail: "∑", documentation: "Sum" }, plain: { detail: "abc" }, nodetail: {} },
+      {
+        commands: [
+          { name: "leq", detail: "≤" },
+          { name: "oplus", detail: "⊕" },
+          { name: "textbf", detail: "bold text" },
+          { name: "pounds", detail: "£ (pound sign)" },
+          { name: "nodetail" },
+        ],
+      },
+    );
+    renderSymbols();
+
+    await screen.findByTestId("symbol-entry-leq");
+    expect(screen.queryByTestId("symbol-entry-plain")).toBeNull();
+    expect(screen.queryByTestId("symbol-entry-textbf")).toBeNull();
+    expect(screen.getAllByRole("option")).toHaveLength(4);
+
+    fireEvent.click(screen.getByTestId("symbols-category-relations"));
+    expect(screen.getByTestId("symbol-entry-leq")).toBeInTheDocument();
+    expect(screen.queryByTestId("symbol-entry-sum")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("symbols-category-operators"));
+    expect(screen.getByTestId("symbol-entry-sum")).toBeInTheDocument();
+    expect(screen.getByTestId("symbol-entry-oplus")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("symbols-category-miscellaneous"));
+    fireEvent.click(screen.getByTestId("symbol-entry-pounds"));
+    expect(screen.getByText("£ (pound sign)")).toBeInTheDocument();
+  });
+
+  it("treats unavailable corpus files as empty and reports no matches for a search", async () => {
+    corpora({}, {}, false);
+    renderSymbols();
+
+    expect(await screen.findByText(copy.noMatches)).toBeInTheDocument();
+    expect(screen.getByText(copy.chooseSymbol)).toBeInTheDocument();
+  });
+
+  it("searches by command, glyph and description", async () => {
+    corpus();
+    renderSymbols();
+    await screen.findByTestId("symbol-entry-alpha");
+
+    fireEvent.change(screen.getByRole("textbox", { name: copy.searchAria }), { target: { value: "→" } });
+    expect(screen.getByTestId("symbol-entry-rightarrow")).toBeInTheDocument();
+    expect(screen.queryByTestId("symbol-entry-alpha")).toBeNull();
+
+    fireEvent.change(screen.getByRole("textbox", { name: copy.searchAria }), { target: { value: "greek letter b" } });
+    expect(screen.getByTestId("symbol-entry-beta")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("textbox", { name: copy.searchAria }), { target: { value: "nothing like this" } });
+    expect(screen.getByText(copy.noMatches)).toBeInTheDocument();
+  });
+
+  it("caps the visible list and asks for a narrower search", async () => {
+    const many = Object.fromEntries(Array.from({ length: 200 }, (_, index) => [`sym${index}`, { detail: "★" }]));
+    corpora(many, { commands: [] });
+    renderSymbols();
+
+    await screen.findByTestId("symbol-entry-sym0");
+    expect(screen.getByText(copy.visibleLimit.replace("{{count}}", "180"))).toBeInTheDocument();
+    expect(screen.queryByTestId("symbol-entry-sym199")).toBeNull();
+  });
+
+  it("moves the selection with all four arrow keys", async () => {
+    const letters = Object.fromEntries(
+      ["alpha", "beta", "gamma", "delta", "epsilon"].map((name, index) => [name, { detail: "αβγδε"[index] }]),
+    );
+    corpora(letters, { commands: [] });
+    const realStyle = window.getComputedStyle.bind(window);
+    vi.spyOn(window, "getComputedStyle").mockImplementation((element) => {
+      const style = realStyle(element);
+      if ((element as HTMLElement).dataset?.testid !== "symbols-grid") return style;
+      return { ...style, gridTemplateColumns: "1fr 1fr 1fr" } as CSSStyleDeclaration;
+    });
+    renderSymbols();
+
+    const alpha = await screen.findByTestId("symbol-entry-alpha");
+    fireEvent.keyDown(alpha, { key: "ArrowDown" });
+    expect(screen.getByTestId("symbols-command")).toHaveTextContent("\\delta");
+
+    fireEvent.keyDown(screen.getByTestId("symbol-entry-delta"), { key: "ArrowUp" });
+    expect(screen.getByTestId("symbols-command")).toHaveTextContent("\\alpha");
+
+    fireEvent.keyDown(screen.getByTestId("symbol-entry-alpha"), { key: "ArrowLeft" });
+    expect(screen.getByTestId("symbols-command")).toHaveTextContent("\\alpha");
+
+    fireEvent.keyDown(screen.getByTestId("symbol-entry-alpha"), { key: "Enter" });
+    expect(screen.getByTestId("symbols-command")).toHaveTextContent("\\alpha");
+  });
+
+  it("reports a command that could not be copied", async () => {
+    corpus();
+    mocks.writeClipboard.mockRejectedValue(new Error("denied"));
+    renderSymbols();
+    await screen.findByTestId("symbol-entry-alpha");
+
+    fireEvent.click(screen.getByRole("button", { name: copy.copyCommand }));
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(copy.copyFailed));
+  });
+
+  it("loads the reference again after a failed load", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("offline")).mockRejectedValueOnce(new Error("offline"));
+    renderSymbols();
+    await screen.findByText(copy.loadFailed);
+
+    corpus();
+    fireEvent.click(screen.getByRole("button", { name: copy.tryAgain }));
+
+    expect(await screen.findByTestId("symbol-entry-alpha")).toBeInTheDocument();
+  });
+
+  it("inserts into the visual editor and keeps a command that takes an argument as is", async () => {
+    useFilesStore.setState({ projectId: "project", activePath: "main.tex", engine: LATEX_ENGINE });
+    mocks.isWysiwygActive.mockReturnValue(true);
+    corpora({}, { commands: [{ name: "mathbb{}", detail: "𝔸 (\"mathbb\" command)" }] });
+    renderSymbols();
+
+    await screen.findByTestId("symbol-entry-mathbb{}");
+    expect(screen.getByText(copy.insertHint)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: copy.insertInEditor }));
+
+    expect(mocks.insertAtCursor).toHaveBeenCalledWith("\\mathbb{}");
+  });
+
+  it("renders nothing on another home page", () => {
+    useHomeViewStore.setState({ page: "library" });
+
+    const { container } = renderSymbols();
+
+    expect(container.querySelector("[data-testid='symbols-tool-view']")).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

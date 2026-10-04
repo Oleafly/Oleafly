@@ -153,6 +153,24 @@ function isUpsert(value: unknown): value is ProjectFileUpsert {
   );
 }
 
+function isDiagnosticMessage(
+  value: unknown,
+): value is ProjectDiagnosticMessage {
+  return (
+    isRecord(value) &&
+    exactKeys(value, ["key"], ["params"]) &&
+    typeof value.key === "string" &&
+    value.key.length > 0 &&
+    (value.params === undefined ||
+      (isRecord(value.params) &&
+        Object.values(value.params).every(
+          (param) =>
+            typeof param === "string" ||
+            (typeof param === "number" && Number.isFinite(param)),
+        )))
+  );
+}
+
 function isUnreadable(value: unknown): value is ProjectUnreadableFile {
   return (
     isRecord(value) &&
@@ -160,7 +178,7 @@ function isUnreadable(value: unknown): value is ProjectUnreadableFile {
     validPath(value.file) &&
     Number.isSafeInteger(value.sourceRevision) &&
     (value.sourceRevision as number) >= 0 &&
-    (value.message === undefined || typeof value.message === "string")
+    (value.message === undefined || isDiagnosticMessage(value.message))
   );
 }
 

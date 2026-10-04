@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   success: vi.fn(),
   notifyError: vi.fn(),
   logError: vi.fn(),
+  openTypstExport: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({
@@ -47,6 +48,7 @@ vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
+vi.mock("@/components/typst-export/open", () => ({ openTypstExport: mocks.openTypstExport }));
 
 import { TopToolbar } from "./TopToolbar";
 import { useCompileStore } from "@/store/compile";
@@ -537,5 +539,126 @@ describe("TopToolbar engine error", () => {
     renderToolbar();
     const banner = document.querySelector(".text-destructive");
     expect(banner?.textContent?.length ?? 0).toBeGreaterThan(0);
+  });
+});
+
+describe("TopToolbar export routes", () => {
+  async function openExportMenu() {
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(toolbar.export));
+    await screen.findByRole("menuitem", { name: toolbar.exportPdf });
+    return user;
+  }
+
+  it.each([
+    ["Export as Markdown (.md)", "md"],
+    ["Export as Typst (.typ)", "typst"],
+    ["Export as HTML (MathML)", "html"],
+  ])("sends %s to the %s exporter", async (label, format) => {
+    renderToolbar();
+    const user = await openExportMenu();
+
+    await user.click(screen.getByRole("menuitem", { name: label }));
+
+    await waitFor(() => expect(mocks.exportCurrentDocument).toHaveBeenCalledWith(format));
+  });
+
+  it("exports a page as PNG, plain text, slides and a book from a Markdown project", async () => {
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: "markdown",
+        source_format: "markdown",
+        main_document: "main.md",
+        capabilities: {
+          ...LATEX_ENGINE.capabilities,
+          formatting_profile: "markdown",
+          conversion_exports: ["docx", "html", "txt", "pptx", "epub", "typst", "tex"],
+        },
+      },
+      files: { "main.md": { content: "# Notes" } },
+      mainDoc: "main.md",
+      activePath: "main.md",
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    renderToolbar();
+
+    let user = await openExportMenu();
+    await user.click(screen.getByRole("menuitem", { name: toolbar.exportPagePng }));
+    await waitFor(() => expect(mocks.exportCurrentImagePng).toHaveBeenCalled());
+
+    for (const [label, format] of [
+      [toolbar.exportTxt, "txt"],
+      [toolbar.exportPptx, "pptx"],
+      [toolbar.exportEpub, "epub"],
+      ["Export as LaTeX (.tex)", "tex"],
+    ] as const) {
+      user = await openExportMenu();
+      await user.click(screen.getByRole("menuitem", { name: label }));
+      await waitFor(() => expect(mocks.exportCurrentDocument).toHaveBeenCalledWith(format));
+    }
+  });
+
+  it("asks a figure project for a compile before exporting", async () => {
+    useFilesStore.setState({ projectKind: "image" });
+    useCompileStore.setState({ pdfBytes: null });
+    renderToolbar();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByLabelText(toolbar.export));
+
+    expect(await screen.findByText(toolbar.compileFigureFirst)).toBeInTheDocument();
+  });
+
+  it("opens the native Typst export from the menu", async () => {
+    useFilesStore.setState({
+      engine: {
+        ...LATEX_ENGINE,
+        id: "typst",
+        source_format: "typst",
+        main_document: "main.typ",
+        typst_options: {},
+        capabilities: { ...LATEX_ENGINE.capabilities, formatting_profile: "typst", conversion_exports: [] },
+      },
+      files: { "main.typ": { content: "= Title" } },
+      mainDoc: "main.typ",
+      activePath: "main.typ",
+    } as unknown as ReturnType<typeof useFilesStore.getState>);
+    renderToolbar();
+    const user = await openExportMenu();
+
+    await user.click(screen.getByTestId("export-typst-native"));
+
+    expect(mocks.openTypstExport).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("TopToolbar active layout", () => {
+  it.each([
+    [{ viewMode: "split", assistantOpen: true, workspaceHidden: false }, toolbar.layouts.editorPreviewAi],
+    [{ viewMode: "editor", assistantOpen: false, workspaceHidden: false }, toolbar.layouts.editorOnly],
+    [{ viewMode: "editor", assistantOpen: true, workspaceHidden: false }, toolbar.layouts.editorAi],
+    [{ viewMode: "pdf", assistantOpen: false, workspaceHidden: false }, toolbar.layouts.previewOnly],
+    [{ viewMode: "pdf", assistantOpen: true, workspaceHidden: false }, toolbar.layouts.previewAi],
+    [{ viewMode: "editor", assistantOpen: true, workspaceHidden: true }, toolbar.layouts.aiOnly],
+  ] as const)("marks the current layout for %o", async (state, label) => {
+    useSettingsStore.setState(state);
+    renderToolbar();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: toolbar.layout }));
+
+    const item = await screen.findByRole("menuitem", { name: label });
+    expect(item.querySelector("svg.lucide-check")).not.toBeNull();
+  });
+
+  it("marks no layout while the workspace is hidden without the assistant", async () => {
+    useSettingsStore.setState({ viewMode: "editor", assistantOpen: false, workspaceHidden: true });
+    renderToolbar();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("button", { name: toolbar.layout }));
+    await screen.findByRole("menuitem", { name: toolbar.layouts.aiOnly });
+
+    expect(document.querySelectorAll("[role='menuitem'] svg.lucide-check")).toHaveLength(0);
   });
 });

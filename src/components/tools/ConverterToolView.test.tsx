@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import researchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
   createProjectFromAdHoc: vi.fn(),
@@ -556,5 +557,69 @@ describe("ConverterToolView", () => {
         "Oleafly couldn't create the project.",
       );
     });
+  });
+});
+
+describe("ConverterToolView progress and files", () => {
+  const converter = researchTools.converter;
+
+  it.each([
+    [{ step: "readingPages" }, converter.progressReadingPages],
+    [{ step: "documentStructure" }, converter.progressDocumentStructure],
+    [{ step: "mermaid" }, converter.progressMermaid],
+    [{ step: "firstSheet" }, converter.progressFirstSheet],
+    [{ step: "visionModel" }, converter.progressVisionModel],
+    [{ step: "readingEquation" }, converter.progressReadingEquation],
+    [{ step: "convertingEquation" }, converter.progressConvertingEquation],
+    [{ step: "unpackingSource" }, converter.progressUnpackingSource],
+    [{ step: "downloadingSource" }, converter.progressDownloadingSource],
+    [{ step: "convertingSource" }, converter.progressConvertingSource],
+    [
+      { step: "transcribingPage", page: 2, total: 5 },
+      converter.progressTranscribingPage.replace("{{page}}", "2").replace("{{total}}", "5"),
+    ],
+    [{ step: "transcribingPage" }, converter.progressTranscribingPage.replace("{{page}}", "0").replace("{{total}}", "0")],
+  ])("announces the %o step", async (progress, label) => {
+    mocks.runAdHocConverter.mockImplementation(
+      (_id: string, _input: unknown, onProgress: (status: unknown) => void) => {
+        onProgress(progress);
+        return new Promise(() => {});
+      },
+    );
+    render(<ConverterToolView />);
+
+    fireEvent.click(screen.getByTestId("converter-run"));
+
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(label));
+  });
+
+  it("takes a dropped file and highlights the drop zone while dragging", () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "word-to-latex" });
+    render(<ConverterToolView />);
+    const zone = screen.getByTestId("converter-file-drop");
+
+    fireEvent.dragOver(zone);
+    expect(zone.className).toContain("border-primary bg-primary/5");
+    fireEvent.dragLeave(zone);
+    expect(zone.className).not.toContain("bg-primary/5");
+
+    const dropped = new File(["docx"], "dropped.docx");
+    fireEvent.drop(zone, { dataTransfer: { files: [dropped] } });
+    expect(screen.getByText("dropped.docx")).toBeInTheDocument();
+    expect(screen.getByTestId("converter-run")).toBeEnabled();
+
+    fireEvent.drop(zone, { dataTransfer: { files: [] } });
+    expect(screen.queryByText("dropped.docx")).toBeNull();
+  });
+
+  it("opens the file picker from the drop zone", () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "word-to-latex" });
+    render(<ConverterToolView />);
+    const input = screen.getByTestId("converter-file-input") as HTMLInputElement;
+    const click = vi.spyOn(input, "click");
+
+    fireEvent.click(screen.getByTestId("converter-file-drop"));
+
+    expect(click).toHaveBeenCalledTimes(1);
   });
 });

@@ -10,8 +10,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, Channel: mocks.Channel }));
 
+const log = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
+vi.mock("@/lib/log", () => log);
+
 import type { AgentEvent } from "@/lib/agent-backend";
 import {
+  fileAttachmentText,
   packToolOutputText,
   providerCallIdFromToolReplyId,
   runAgentHarness,
@@ -656,5 +660,107 @@ describe("run scoping pass-through", () => {
 
     expect(raw).toEqual([{ kind: "textDelta", text: "hi" }]);
     expect(requestIds).toHaveLength(1);
+  });
+});
+
+describe("harness progress events", () => {
+  it("passes usage, sub-agent progress and summarising on to the caller", async () => {
+    const update = { kind: "subagentUpdate", id: "s1", status: "running" } as unknown as AgentEvent;
+    const h = harness([
+      { kind: "usage", usage: { input: 10, output: 2 } } as unknown as AgentEvent,
+      update,
+      { kind: "compacted" } as unknown as AgentEvent,
+      { kind: "done", stopReason: null },
+    ]);
+    await h.run();
+
+    expect(h.handlers.onUsage).toHaveBeenCalledWith({ input: 10, output: 2 });
+    expect(h.handlers.onSubagentUpdate).toHaveBeenCalledWith(update);
+    expect(h.handlers.onThinking).toHaveBeenCalledWith("Summarizing earlier conversation…");
+  });
+
+  it("keeps raw tool arguments it cannot parse and logs a failed render", async () => {
+    const h = harness([
+      { kind: "toolCallStart", id: "n1", name: "grep" },
+      { kind: "toolCallEnd", id: "n1", arguments: "not json" },
+      { kind: "toolOutcome", id: "n1", output: "plain output" },
+      { kind: "toolOutcome", id: "n2", output: "" },
+    ]);
+    h.handlers.onToolCall.mockImplementationOnce(() => Promise.reject(new Error("render failed")));
+    await h.run();
+
+    expect(h.handlers.onToolCall).toHaveBeenCalledWith({ id: "n1", name: "grep", args: "not json" });
+    expect(h.handlers.onToolResult).toHaveBeenCalledWith({ id: "n1", name: "grep", output: "plain output" });
+    expect(h.handlers.onToolCall).toHaveBeenCalledWith({ id: "n2", name: "tool", args: {} });
+    await vi.waitFor(() => expect(log.logError).toHaveBeenCalledWith("agent tool call", expect.any(Error)));
+  });
+
+  it("tells the model how to read attached images after a tool returns them", async () => {
+    const h = harness(
+      [{ kind: "toolRequest", id: "c1", name: "verify", arguments: "" }],
+      { verify: { execute: async () => "checked" } } as unknown as ToolSet,
+      {
+        takePendingImages: () => ["data:image/png;base64,AA"],
+        imageInstruction: "Look at the attached render.",
+      },
+    );
+    await h.run();
+
+    expect(h.posted[0].output).toEqual({
+      output: "checked\n\nLook at the attached render.",
+      images: ["data:image/png;base64,AA"],
+    });
+  });
+
+  it("reports a thrown non-error value as the tool's error", async () => {
+    const h = harness([{ kind: "toolRequest", id: "c1", name: "t", arguments: "{}" }], {
+      t: { execute: async () => Promise.reject("quota exceeded") },
+    } as unknown as ToolSet);
+    await h.run();
+
+    expect(String((h.posted[0].output as { output: string }).output)).toContain("quota exceeded");
+  });
+});
+
+describe("message conversion edge cases", () => {
+  it("drops empty text parts, unknown parts and non-array content", () => {
+    const messages = [
+      { role: "user", content: [{ type: "text", text: "" }, { type: "audio", data: "x" }, { type: "text", text: "kept" }] },
+      { role: "user", content: 42 },
+    ] as unknown as ModelMessage[];
+
+    expect(toAgentMessages(messages)).toEqual([{ role: "user", content: [{ type: "text", text: "kept" }] }]);
+  });
+
+  it("serialises tool results without a value wrapper", () => {
+    const messages = [
+      {
+        role: "tool",
+        content: [
+          { type: "tool-result", toolCallId: "a", toolName: "list", output: { files: ["main.tex"] } },
+          { type: "tool-result", toolCallId: "b", toolName: "noop" },
+          { type: "tool-call", toolCallId: "c", toolName: "ping" },
+        ],
+      },
+    ] as unknown as ModelMessage[];
+
+    expect(toAgentMessages(messages)[0].content).toEqual([
+      { type: "toolResult", id: "a", name: "list", output: '{"files":["main.tex"]}' },
+      { type: "toolResult", id: "b", name: "noop", output: "null" },
+      { type: "toolUse", id: "c", name: "ping", arguments: "{}" },
+    ]);
+  });
+
+  it("names attachments that cannot be decoded or described", () => {
+    expect(fileAttachmentText({ data: "data:text/plain;base64,%%%", mediaType: "text/plain", name: "notes.txt" })).toContain(
+      'could not be included',
+    );
+    expect(fileAttachmentText({ mediaType: "text/plain" })).toBe(
+      '[The attachment "attachment" (text/plain) could not be included. Only text based files are supported here. Ask the user to paste the relevant content instead.]',
+    );
+    expect(fileAttachmentText({ name: "photo.heic" })).toContain("(unknown type)");
+    expect(
+      fileAttachmentText({ data: `data:application/json;base64,${Buffer.from("{}").toString("base64")}`, mediaType: "application/json", name: "x" }),
+    ).toBe('Attached file "x":\n\n{}');
   });
 });
