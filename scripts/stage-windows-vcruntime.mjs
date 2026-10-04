@@ -27,13 +27,13 @@ export function compareVersions(left, right) {
 }
 
 export function newestRedistVersion(names) {
-  return names.filter((name) => VERSION_PATTERN.test(name)).sort(compareVersions).at(-1);
+  return names.filter((name) => VERSION_PATTERN.test(name)).toSorted(compareVersions).at(-1);
 }
 
 export function newestCrtDirectory(names) {
   return names
     .filter((name) => CRT_DIRECTORY_PATTERN.test(name))
-    .sort((left, right) => Number(left.match(CRT_DIRECTORY_PATTERN)[1]) - Number(right.match(CRT_DIRECTORY_PATTERN)[1]))
+    .toSorted((left, right) => Number(left.match(CRT_DIRECTORY_PATTERN)[1]) - Number(right.match(CRT_DIRECTORY_PATTERN)[1]))
     .at(-1);
 }
 
@@ -53,7 +53,7 @@ export function signatureProblem(report) {
 }
 
 function visualStudioRedistCandidates(env) {
-  const programFiles = env["ProgramFiles(x86)"] ?? "C:\\Program Files (x86)";
+  const programFiles = env["ProgramFiles(x86)"] ?? String.raw`C:\Program Files (x86)`;
   const vswhere = join(programFiles, "Microsoft Visual Studio", "Installer", "vswhere.exe");
   if (!existsSync(vswhere)) return [];
   const installations = execFileSync(
@@ -75,11 +75,15 @@ function visualStudioRedistCandidates(env) {
     const crt = newestCrtDirectory(readdirSync(x64));
     if (crt) candidates.push({ path: join(x64, crt, RUNTIME_DLL), version });
   }
-  return candidates.sort((left, right) => compareVersions(right.version, left.version)).map(({ path }) => path);
+  return candidates.toSorted((left, right) => compareVersions(right.version, left.version)).map(({ path }) => path);
+}
+
+function systemRoot(env) {
+  return env.SystemRoot ?? String.raw`C:\Windows`;
 }
 
 function systemCandidate(env) {
-  return join(env.SystemRoot ?? "C:\\Windows", "System32", RUNTIME_DLL);
+  return join(systemRoot(env), "System32", RUNTIME_DLL);
 }
 
 export function windowsPowerShellEnvironment(env, candidate) {
@@ -92,7 +96,7 @@ export function windowsPowerShellEnvironment(env, candidate) {
 function inspect(path) {
   const script = [
     "$ErrorActionPreference = 'Stop'",
-    "Import-Module (Join-Path $PSHOME 'Modules\\Microsoft.PowerShell.Security\\Microsoft.PowerShell.Security.psd1')",
+    String.raw`Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Security\Microsoft.PowerShell.Security.psd1')`,
     "$path = $env:OLEAFLY_VCRUNTIME_CANDIDATE",
     "$signature = Get-AuthenticodeSignature -LiteralPath $path",
     "$subject = ''",
@@ -100,20 +104,32 @@ function inspect(path) {
     "[pscustomobject]@{ status = $signature.Status.ToString(); subject = $subject; version = (Get-Item -LiteralPath $path).VersionInfo.FileVersion } | ConvertTo-Json -Compress",
   ].join("; ");
   const output = execFileSync(
-    "powershell.exe",
+    join(systemRoot(process.env), "System32", "WindowsPowerShell", "v1.0", "powershell.exe"),
     ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")],
     { encoding: "utf8", env: windowsPowerShellEnvironment(process.env, path), stdio: ["ignore", "pipe", "pipe"] },
   );
   return JSON.parse(output.trim());
 }
 
+function withoutMarkup(text) {
+  let result = "";
+  let insideTag = false;
+  for (const character of text) {
+    if (character === "<") {
+      insideTag = true;
+      result += " ";
+    } else if (character === ">" && insideTag) {
+      insideTag = false;
+    } else if (!insideTag) {
+      result += character;
+    }
+  }
+  return result;
+}
+
 export function powerShellFailure(error) {
-  const detail = `${error?.stderr ?? ""}`
-    .replace(/^#< CLIXML/, "")
-    .replace(/_x000D__x000A_/g, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const stderr = `${error?.stderr ?? ""}`.replace(/^#< CLIXML/, "").replaceAll("_x000D__x000A_", " ");
+  const detail = withoutMarkup(stderr).replaceAll(/\s+/g, " ").trim();
   return `PowerShell could not check its signature (${detail || error?.message || "no output"})`;
 }
 
