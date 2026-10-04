@@ -1,11 +1,10 @@
+import { Sparkles } from "lucide-react";
 import type { ComponentType, ReactNode, SVGProps } from "react";
 import type { LayoutPreset } from "@/store/settings";
 
 type IconProps = SVGProps<SVGSVGElement>;
 
 const AI_PANE = "M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4z";
-const AI_FULL = "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z";
-const SPARKLE = "M12 7.5l1.35 3.15L16.5 12l-3.15 1.35L12 16.5l-1.35-3.15L7.5 12l3.15-1.35z";
 
 function LayoutIcon({ className, children, ...props }: IconProps & { children: ReactNode }) {
   return (
@@ -28,8 +27,8 @@ function LayoutIcon({ className, children, ...props }: IconProps & { children: R
   );
 }
 
-function AiPane({ d = AI_PANE }: { d?: string }) {
-  return <path d={d} fill="currentColor" stroke="none" opacity={0.28} />;
+function AiPane() {
+  return <path d={AI_PANE} fill="currentColor" stroke="none" opacity={0.28} />;
 }
 
 function Page({ d }: { d: string }) {
@@ -89,15 +88,6 @@ export function PreviewOnlyLayoutIcon(props: IconProps) {
   );
 }
 
-export function AiOnlyLayoutIcon(props: IconProps) {
-  return (
-    <LayoutIcon {...props}>
-      <AiPane d={AI_FULL} />
-      <path d={SPARKLE} fill="currentColor" stroke="none" />
-    </LayoutIcon>
-  );
-}
-
 export const LAYOUT_PRESET_ICONS: Record<LayoutPreset, ComponentType<IconProps>> = {
   "editor-preview-ai": EditorPreviewAiLayoutIcon,
   "editor-preview": EditorPreviewLayoutIcon,
@@ -105,5 +95,5 @@ export const LAYOUT_PRESET_ICONS: Record<LayoutPreset, ComponentType<IconProps>>
   "preview-ai": PreviewAiLayoutIcon,
   "editor-only": EditorOnlyLayoutIcon,
   "preview-only": PreviewOnlyLayoutIcon,
-  "ai-only": AiOnlyLayoutIcon,
+  "ai-only": Sparkles,
 };
