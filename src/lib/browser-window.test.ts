@@ -180,4 +180,52 @@ describe("browser-window launcher", () => {
     await surface.navigate("https://second.test/");
     expect(mocks.browserWindowOpen).toHaveBeenLastCalledWith("https://second.test/");
   });
+
+  it("tracks the URL of a tab brought to the front", async () => {
+    registerBrowserCuaSurface();
+    const surface = lastSurface();
+    await openBrowserWindow("https://example.com/");
+    fire("browser-tab-activated", { label: "tab-2", url: "https://tab.test/" });
+    expect(surface.url()).toBe("https://tab.test/");
+    fire("browser-tab-activated", { label: "tab-3" });
+    expect(surface.url()).toBe("https://tab.test/");
+  });
+
+  it("focuses an existing window instead of opening another and forgets it when focus fails", async () => {
+    await openBrowserWindow("https://example.com/");
+    launchBrowser();
+    await vi.waitFor(() => expect(mocks.browserWindowFocus).toHaveBeenCalledWith("oleafly-browser-window-1"));
+    expect(mocks.browserWindowOpen).toHaveBeenCalledTimes(1);
+
+    mocks.browserWindowFocus.mockRejectedValueOnce(new Error("window gone"));
+    await expect(focusBrowserWindow()).resolves.toBe(false);
+    await expect(focusBrowserWindow()).resolves.toBe(false);
+    expect(mocks.browserWindowFocus).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens the default home page when none is set and does nothing with the browser off", async () => {
+    useSettingsStore.setState({ browserHomePage: "" });
+    launchBrowser();
+    await vi.waitFor(() => expect(mocks.browserWindowOpen).toHaveBeenCalledWith("https://www.google.com"));
+
+    useSettingsStore.setState({ webBrowser: false, browserOpen: false });
+    toggleBrowser();
+    expect(useSettingsStore.getState().browserOpen).toBe(false);
+    expect(mocks.browserWindowOpen).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("browser-window listener installation", () => {
+  it("retries installing the event listeners after a failure", async () => {
+    vi.resetModules();
+    state.tauri = true;
+    mocks.listen.mockClear();
+    mocks.listen.mockRejectedValueOnce(new Error("no event bus"));
+    const fresh = await import("./browser-window");
+    await expect(fresh.openBrowserWindow("https://example.com/")).resolves.toBe(true);
+    await fresh.openBrowserWindow("https://example.com/again");
+    expect(mocks.listen).toHaveBeenCalledTimes(8);
+    await fresh.openBrowserWindow("https://example.com/third");
+    expect(mocks.listen).toHaveBeenCalledTimes(8);
+  });
 });

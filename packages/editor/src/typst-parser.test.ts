@@ -252,6 +252,84 @@ describe("Typst syntax tree", () => {
   });
 });
 
+describe("Typst syntax tree for destructuring, imports and math arguments", () => {
+  it.each([
+    [
+      "a destructuring assignment in parentheses",
+      "#((a, b) = (1, 2))",
+      "Hash Parenthesized(LeftParen DestructAssignment(Destructuring(LeftParen Ident Comma Ident RightParen) Eq Array(LeftParen Int Comma Int RightParen)) RightParen)",
+    ],
+    [
+      "a named destructuring assignment in code",
+      "#{ (a: b) = c }",
+      "Hash CodeBlock(LeftBrace Code(DestructAssignment(Destructuring(LeftParen Named(Ident Colon Ident) RightParen) Eq Ident)) RightBrace)",
+    ],
+    [
+      "a parenthesised closure parameter",
+      "#{ (x) => x }",
+      "Hash CodeBlock(LeftBrace Code(Closure(Params(LeftParen Ident RightParen) Arrow Ident)) RightBrace)",
+    ],
+    [
+      "closures without, with trailing and with sink parameters",
+      "#{ () => 1 }\n#{ (a, b,) => 1 }\n#{ (..) => 1 }",
+      "Hash CodeBlock(LeftBrace Code(Closure(Params(LeftParen RightParen) Arrow Int)) RightBrace) Hash CodeBlock(LeftBrace Code(Closure(Params(LeftParen Ident Comma Ident Comma RightParen) Arrow Int)) RightBrace) Hash CodeBlock(LeftBrace Code(Closure(Params(LeftParen Spread(Dots) RightParen) Arrow Int)) RightBrace)",
+    ],
+    [
+      "spread, named, placeholder and nested destructuring in let bindings",
+      "#let (a, ..rest) = arr\n#let (a: x, ..) = d\n#let (_, b) = p\n#let ((a, b), c) = p",
+      "Hash LetBinding(Let Destructuring(LeftParen Ident Comma Spread(Dots Ident) RightParen) Eq Ident) Hash LetBinding(Let Destructuring(LeftParen Named(Ident Colon Ident) Comma Spread(Dots) RightParen) Eq Ident) Hash LetBinding(Let Destructuring(LeftParen Underscore Comma Ident RightParen) Eq Ident) Hash LetBinding(Let Destructuring(LeftParen Destructuring(LeftParen Ident Comma Ident RightParen) Comma Ident RightParen) Eq Ident)",
+    ],
+    [
+      "renamed, wildcard, parenthesised and nested imports",
+      '#import "m.typ" as n\n#import "m.typ": *\n#import "m.typ": (a, b)\n#import "m.typ": a.b as c',
+      "Hash ModuleImport(Import Str As Ident) Hash ModuleImport(Import Str Colon Star) Hash ModuleImport(Import Str Colon LeftParen ImportItems(ImportItemPath(Ident) Comma ImportItemPath(Ident)) RightParen) Hash ModuleImport(Import Str Colon ImportItems(RenamedImportItem(ImportItemPath(Ident Dot Ident) As Ident)))",
+    ],
+    [
+      "spread and named arguments in math calls",
+      '$mat(..x) mat(delim: "[", 1, 2)$',
+      'Equation(Dollar Math(MathCall(MathIdent MathArgs(LeftParen Spread(Dots MathText) RightParen)) MathCall(MathIdent MathArgs(LeftParen Named(Ident Colon Str) Comma MathText Comma MathText RightParen))) Dollar)',
+    ],
+    [
+      "bracket shorthands and primes in math",
+      "$[| x |]$ $ a'' b $",
+      "Equation(Dollar Math(MathDelimited(MathShorthand Math(MathText) MathShorthand)) Dollar) Equation(Dollar Math(MathAttach(MathText MathPrimes) MathText) Dollar)",
+    ],
+    [
+      "an underscore parameter and chained content arguments",
+      "#let f(_) = 1\n#f[a][b]",
+      "Hash LetBinding(Let Closure(Ident Params(LeftParen Underscore RightParen) Eq Int)) Hash FuncCall(Ident Args(ContentBlock(LeftBracket Markup RightBracket) ContentBlock(LeftBracket Markup RightBracket)))",
+    ],
+  ])("parses %s", (_name, text, expected) => {
+    expect(structure(text)).toBe(expected);
+    expect(errorsIn(parseTypst(text))).toBe(0);
+  });
+
+  it.each([
+    ["a repeated binding", "#let (a, a) = p", "LetBinding"],
+    ["two sinks", "#let (..a, ..b) = p", "LetBinding"],
+    ["a literal in a pattern", "#let (1) = p", "LetBinding"],
+    ["a keyword in a pattern", "#let (let) = p", "LetBinding"],
+    ["a repeated parameter", "#let f(x, x) = 1", "LetBinding"],
+    ["two sink parameters", "#let f(..a, ..b) = 1", "LetBinding"],
+    ["a literal parameter", "#let f(1) = 1", "LetBinding"],
+    ["a repeated named parameter", "#let f(a: 1, a: 2) = 1", "LetBinding"],
+    ["a repeated key", '#("a": 1, "a": 2)', "Dict"],
+    ["a positional item after a named one", "#(a: 1, 2)", "Dict"],
+    ["a named item after a positional one", "#(1, b: 2)", "Array"],
+    ["a repeated named argument", "#f(a: 1, a: 2)", "FuncCall"],
+    ["a repeated named math argument", "$func(a: 1, a: 2)$", "Equation"],
+    ["a placeholder math argument name", "$func(_: 1)$", "Equation"],
+    ["an empty spread", "#f(..)", "FuncCall"],
+    ["a missing binding body", "#let f(x) =", "LetBinding"],
+    ["a missing rename", '#import "m.typ": a as', "ModuleImport"],
+    ["an expression after break", "#{ break 1 }", "CodeBlock"],
+    ["an incomplete loop", "#for x in", "ForLoop"],
+  ])("recovers from %s", (_name, text, outer) => {
+    expect(errorsIn(parseTypst(text))).toBeGreaterThan(0);
+    expect(structure(text)).toContain(`${outer}(`);
+  });
+});
+
 describe("incremental Typst parsing", () => {
   const document = seedFiles()
     .map((seed) => seed.text)

@@ -52,3 +52,26 @@ describe("setTypstBibliographyStyle", () => {
     expect(typstBibliographyStyleValue(source)).toBeNull();
   });
 });
+
+describe("bibliography style arguments with comments and escapes", () => {
+  it("reads past line and block comments between arguments", () => {
+    const source = [
+      "#bibliography(",
+      "  // primary list",
+      '  "refs.bib", /* inline note */ style: /* chosen */ "apa", // trailing',
+      ")",
+    ].join("\n");
+    expect(typstBibliographyStyleValue(source)).toBe("apa");
+    expect(setTypstBibliographyStyle(source, "ieee")).toBe(source.replace('"apa"', '"ieee"'));
+  });
+
+  it("does not mistake a link, a division or an escape for the end of an argument", () => {
+    const source = '#bibliography("refs.bib", title: [see https://x.org, 1/2 \\] done], style: "a\\"b")';
+    expect(typstBibliographyStyleValue(source)).toBe('a"b');
+  });
+
+  it("leaves a call cut off by an unterminated comment alone", () => {
+    expect(typstBibliographyStyleValue('#bibliography("refs.bib" /* unterminated')).toBeUndefined();
+    expect(setTypstBibliographyStyle('#bibliography("refs.bib" // unterminated', "apa")).toBeNull();
+  });
+});

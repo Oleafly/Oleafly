@@ -5,6 +5,10 @@ import {
   enrichAuthorlessRecords,
 } from "./enrich";
 
+const mocks = vi.hoisted(() => ({ literatureArxivLookup: vi.fn<(id: string) => Promise<string>>() }));
+
+vi.mock("@/lib/tauri", () => ({ literatureArxivLookup: mocks.literatureArxivLookup }));
+
 function record(
   overrides: Partial<LiteratureRecord> & { id: string },
 ): LiteratureRecord {
@@ -29,6 +33,7 @@ function record(
 
 beforeEach(() => {
   clearArxivLookupCache();
+  mocks.literatureArxivLookup.mockReset();
 });
 
 describe("enrichAuthorlessRecords", () => {
@@ -94,5 +99,50 @@ describe("enrichAuthorlessRecords", () => {
     expect(first[0].authors).toEqual([]);
     expect(second[0].authors).toEqual([]);
     expect(lookup).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("enrichAuthorlessRecords with the Semantic Scholar lookup", () => {
+  it("reads authors, year, venue and DOI from the lookup response", async () => {
+    mocks.literatureArxivLookup.mockResolvedValue(
+      JSON.stringify({
+        title: "Paper",
+        authors: [{ name: " Ada Lovelace " }, { name: 7 }, {}, { name: "" }, null, { name: "Alan Turing" }],
+        year: 2021,
+        venue: "NeurIPS",
+        externalIds: { DOI: "10.1000/x" },
+      }),
+    );
+    const [result] = await enrichAuthorlessRecords([record({ id: "a", sourceIds: { arxiv: "2101.00010" } })]);
+    expect(mocks.literatureArxivLookup).toHaveBeenCalledWith("2101.00010");
+    expect(result).toMatchObject({
+      authors: ["Ada Lovelace", "Alan Turing"],
+      year: 2021,
+      venue: "NeurIPS",
+      doi: "10.1000/x",
+    });
+  });
+
+  it("ignores fields of the wrong shape", async () => {
+    mocks.literatureArxivLookup.mockResolvedValue(
+      JSON.stringify({ authors: [{ name: "Solo" }], year: "2021", venue: "", externalIds: { DOI: 5 } }),
+    );
+    const [result] = await enrichAuthorlessRecords([record({ id: "a", sourceIds: { arxiv: "2101.00011" } })]);
+    expect(result).toMatchObject({ authors: ["Solo"], year: null, venue: null, doi: null });
+  });
+
+  it("leaves a record alone when the response has no authors, is not JSON or the lookup fails", async () => {
+    const input = [
+      record({ id: "a", sourceIds: { arxiv: "2101.00012" } }),
+      record({ id: "b", sourceIds: { arxiv: "2101.00013" } }),
+      record({ id: "c", sourceIds: { arxiv: "2101.00014" } }),
+    ];
+    mocks.literatureArxivLookup.mockImplementation(async (id) => {
+      if (id === "2101.00012") return JSON.stringify({ title: "No people" });
+      if (id === "2101.00013") return "<html>busy</html>";
+      throw new Error("offline");
+    });
+    await expect(enrichAuthorlessRecords(input)).resolves.toEqual(input);
+    expect(mocks.literatureArxivLookup).toHaveBeenCalledTimes(3);
   });
 });

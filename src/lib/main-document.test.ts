@@ -85,9 +85,26 @@ describe("main document helpers", () => {
   });
 
   it("names each document kind", () => {
-    expect(documentKindLabel("presentation")).toBe(labels.kind.presentation);
-    expect(documentKindLabel("typst")).toBe(labels.kind.typst);
-    expect(documentKindLabel("unknown")).toBe(labels.kind.unknown);
+    for (const kind of ["document", "book", "presentation", "poster", "standalone", "typst", "markdown", "unknown"] as const) {
+      expect(documentKindLabel(kind), kind).toBe(labels.kind[kind]);
+    }
+  });
+
+  it("names every detection reason in strength order", () => {
+    const reasons = [
+      "placeholder",
+      "no_begin_document",
+      "standalone_figure",
+      "has_bibliography",
+      "includes_files",
+      "top_level",
+      "named_after_folder",
+      "named_main",
+      "declared",
+    ] as const;
+    expect(candidateReasonLine(candidate("main.tex", { reasons: [...reasons] }))).toBe(
+      [...reasons].reverse().map((reason) => labels.reason[reason]).join(" · "),
+    );
   });
 
   it("builds one reason line, strongest reason first", () => {

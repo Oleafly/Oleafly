@@ -83,3 +83,30 @@ describe("bibliography filter", () => {
     ).toBe(true);
   });
 });
+
+describe("bibliography identities from varied fields", () => {
+  const bib = `
+@article{a,
+  doi = {https://doi.org/10.1000/ABC},
+  title = {Graph {Neural} Networks},
+  url = {https://arxiv.org/abs/2001.00001v2},
+  note = "preprint at arxiv.org/pdf/2002.00002v1.pdf",
+}
+@misc{b, doi = {not-a-doi}, title = {!!!}, eprint = {}, url = {https://example.com/paper}}
+`;
+
+  it("collects normalised DOIs, arXiv ids and titles and skips unusable values", () => {
+    const ids = parseBibliographyIdentities(bib);
+    expect([...ids.dois]).toEqual(["10.1000/abc"]);
+    expect(ids.arxivIds.has("2001.00001")).toBe(true);
+    expect(ids.arxivIds.has("2002.00002")).toBe(true);
+    expect([...ids.titles]).toEqual(["graphneuralnetworks"]);
+  });
+
+  it("matches a record by its arXiv source id or its title", () => {
+    const ids = parseBibliographyIdentities(bib);
+    expect(isRecordInBibliography(rec({ doi: null, title: "Other", sourceIds: { arxiv: "2001.00001v3" } }), ids)).toBe(true);
+    expect(isRecordInBibliography(rec({ doi: "doi:", title: "Graph Neural Networks!" }), ids)).toBe(true);
+    expect(isRecordInBibliography(rec({ doi: "doi:", title: "Unrelated" }), ids)).toBe(false);
+  });
+});

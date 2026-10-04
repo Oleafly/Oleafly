@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { commandLabel, commandsFor, registry, type AppContext } from "@oleafly/registry";
+import { renderToStaticMarkup } from "react-dom/server";
+import { commandGroup, commandKeywords, commandLabel, commandsFor, registry, type AppContext } from "@oleafly/registry";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const mocks = vi.hoisted(() => ({
@@ -86,5 +87,33 @@ describe("Typst conversion commands", () => {
     mocks.migration.report = { projectId: "new" };
     command("palette.typst-migration-report")?.run(project);
     expect(mocks.migration.showReport).toHaveBeenCalledOnce();
+  });
+});
+
+describe("command metadata", () => {
+  it("files each command under its group with searchable keywords and an icon", () => {
+    mocks.files.engine = { source_format: "latex", capabilities: { formatting_profile: "latex" } };
+    mocks.migration.report = { projectId: "deck" };
+    const expected = [
+      ["palette.present", enShell.commandGroups.compile, enShell.commands.present],
+      ["palette.present-with-presenter", enShell.commandGroups.compile, enShell.commands.presentWithPresenter],
+      ["palette.migrate-to-typst", enShell.commandGroups.project, enShell.commands.migrateToTypst],
+      ["palette.typst-migration-report", enShell.commandGroups.project, enShell.commands.typstMigrationReport],
+    ] as const;
+    for (const [id, group, copy] of expected) {
+      const found = command(id);
+      if (!found) throw new Error(`missing ${id}`);
+      expect(commandGroup(found, project), id).toBe(group);
+      expect(commandLabel(found, project), id).toBe(copy.label);
+      expect(commandKeywords(found, project), id).toBe(copy.keywords);
+      expect(renderToStaticMarkup(found.icon?.(project)), id).toMatch(/^<svg[^>]*class="[^"]*size-4/);
+    }
+  });
+
+  it("presents without a main document when none is set", () => {
+    mocks.files.mainDoc = "";
+    command("palette.present")?.run(project);
+    expect(mocks.present).toHaveBeenCalledWith(expect.objectContaining({ mainDoc: null }));
+    mocks.files.mainDoc = "main.typ";
   });
 });

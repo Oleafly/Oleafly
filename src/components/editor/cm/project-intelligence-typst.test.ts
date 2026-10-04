@@ -364,3 +364,60 @@ describe("Typst completion merged with the language server", () => {
     );
   });
 });
+
+describe("Typst completion edge cases", () => {
+  it("writes a sibling path without climbing out of the shared folder", () => {
+    const doc = '#image("';
+    install({ "chapters/intro.typ": doc }, "chapters/intro.typ", ["chapters/figure.png", "chapters/deep/plot.png"]);
+    expect(labels(completeIn(viewFor(doc))).sort()).toEqual(["deep/plot.png", "figure.png"]);
+  });
+
+  it("refuses to insert a path once the document moved on", () => {
+    const doc = '#image("';
+    install({ "main.typ": doc }, "main.typ", ["figures/a.png"]);
+    const view = viewFor(doc);
+    const result = present(completeIn(view));
+    view.dispatch({ changes: { from: doc.length, insert: "x" } });
+    const option = present(result.options.find((candidate) => candidate.label === "figures/a.png"));
+    (option.apply as NonNullable<Exclude<Completion["apply"], string>>)(view, option, result.from, view.state.doc.length);
+    expect(view.state.doc.toString()).toBe(`${doc}x`);
+  });
+
+  it("shows a binding whose parameter list never closes as a variable", () => {
+    const main = '#let broken(a, b: "unterminated\n#bro';
+    install({ "main.typ": main }, "main.typ");
+    const broken = completeIn(viewFor(main))?.options.find((option) => option.label === "broken");
+    expect(broken?.type).toBe("variable");
+    expect(broken?.detail).toContain("Typst binding");
+  });
+
+  it("orders bindings from several files by name", () => {
+    const lib = "#let alpha-lib = 1\n#let alpha = 2\n";
+    const main = "#let alphabet = 3\n#al";
+    install({ "main.typ": main, "lib.typ": lib }, "main.typ");
+    expect(labels(completeIn(viewFor(main)))).toEqual(["alpha", "alpha-lib", "alphabet"]);
+  });
+
+  it("offers bindings on an explicit request inside code", () => {
+    const main = "#let width = 1\n#{ let x = wi";
+    install({ "main.typ": main }, "main.typ");
+    expect(labels(completeIn(viewFor(main), true))).toContain("width");
+    expect(completeIn(viewFor(main), false)).toBeNull();
+  });
+
+  it("offers citations inside an explicit #cite call", () => {
+    const bib = "@book{knuth84, title={T}}";
+    const main = "#cite(<kn";
+    install({ "main.typ": main, "refs.bib": bib }, "main.typ");
+    expect(labels(completeIn(viewFor(main)))).toEqual(["knuth84"]);
+  });
+
+  it("skips the current-file fallback for very large text and reuses it for the same text", () => {
+    install({ "main.typ": "Intro\n", "lib.typ": "#let helper = 1\n" }, "main.typ");
+    const huge = `${"x".repeat(100_001)}\n#hel`;
+    expect(labels(completeIn(viewFor(huge)))).toEqual(["helper"]);
+    const doc = "#let fresh = 1\n#fr";
+    expect(labels(completeIn(viewFor(doc)))).toContain("fresh");
+    expect(labels(completeIn(viewFor(doc)))).toContain("fresh");
+  });
+});

@@ -88,3 +88,24 @@ describe("parseZoteroRdf", () => {
     expect(parseZoteroRdf("not rdf at all")).toEqual([]);
   });
 });
+
+describe("parseZoteroRdf sparse records", () => {
+  it("falls back to the element name, skips nameless people and untitled containers", () => {
+    const rdf = `<rdf:RDF>
+  <bib:Journal rdf:about="#journal"><dc:identifier>ISSN 1</dc:identifier></bib:Journal>
+  <bib:Book rdf:about="#book">
+    <dc:title>Element Typed Book</dc:title>
+    <foaf:Person><foaf:surname>Solo</foaf:surname></foaf:Person>
+    <foaf:Person><foaf:nick>anon</foaf:nick></foaf:Person>
+    <dc:date>circa spring</dc:date>
+  </bib:Book>
+  <z:Gadget rdf:about="#gadget"><dc:title>Unknown Kind</dc:title></z:Gadget>
+</rdf:RDF>`;
+    const entries = parseZoteroRdf(rdf);
+    expect(entries.map((entry) => [entry.type, entry.fields.title])).toEqual([
+      ["book", "Element Typed Book"],
+      ["misc", "Unknown Kind"],
+    ]);
+    expect(entries[0].fields).toMatchObject({ author: "Solo", year: "" });
+  });
+});

@@ -363,3 +363,79 @@ describe("Typst math preview tooltip", () => {
     expect(render).not.toHaveBeenCalled();
   });
 });
+
+describe("math preview tooltip interactions", () => {
+  function tooltipView(view: EditorView) {
+    const tooltip = preview(view.state).tooltip;
+    if (!tooltip) throw new Error("no tooltip");
+    return tooltip.create(view);
+  }
+
+  it("shows the reason for math KaTeX cannot render", () => {
+    const doc = String.raw`See $\undefinedmacro x$ here`;
+    const view = mount(stateFor(doc, doc.indexOf("x$")));
+    const dom = tooltipView(view).dom as HTMLElement;
+    const error = dom.querySelector(".ofl-visual-math-tooltip-error");
+    expect(error?.getAttribute("role")).toBe("status");
+    expect(error?.textContent).toContain("undefinedmacro");
+  });
+
+  it("closes the menu on a second toggle, on Escape and on a click outside it", () => {
+    const view = mount(stateFor(INLINE, INLINE_CURSOR));
+    const dom = tooltipView(view).dom as HTMLElement;
+    document.body.append(dom);
+    const toggle = dom.querySelector<HTMLButtonElement>(".ofl-visual-math-tooltip-toggle") as HTMLButtonElement;
+    const list = dom.querySelector<HTMLElement>(".ofl-visual-math-tooltip-list") as HTMLElement;
+    const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    toggle.dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+    toggle.click();
+    toggle.click();
+    expect(list.hidden).toBe(true);
+    toggle.click();
+    dom.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    expect(list.hidden).toBe(true);
+    expect(preview(view.state).tooltip).not.toBeNull();
+    toggle.click();
+    list.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(list.hidden).toBe(false);
+    document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(list.hidden).toBe(true);
+    dom.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
+    expect(preview(view.state).tooltip).not.toBeNull();
+  });
+
+  it("closes an open menu when the tooltip is destroyed", () => {
+    const view = mount(stateFor(INLINE, INLINE_CURSOR));
+    const created = tooltipView(view);
+    const dom = created.dom as HTMLElement;
+    const list = dom.querySelector<HTMLElement>(".ofl-visual-math-tooltip-list") as HTMLElement;
+    dom.querySelector<HTMLButtonElement>(".ofl-visual-math-tooltip-toggle")?.click();
+    created.destroy?.();
+    expect(list.hidden).toBe(true);
+  });
+
+  it("hides the preview with the Escape key binding only while it is shown", () => {
+    const view = mount(stateFor(INLINE, INLINE_CURSOR));
+    view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    expect(preview(view.state).tooltip).toBeNull();
+    const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    view.contentDOM.dispatchEvent(escape);
+    expect(escape.defaultPrevented).toBe(false);
+  });
+
+  it("keeps a hidden preview hidden while edits move it", () => {
+    const state = stateFor(INLINE, INLINE_CURSOR).update({ effects: hideMathPreview.of(null) }).state;
+    const edited = state.update({ changes: { from: 0, insert: "More " } }).state;
+    expect(preview(edited).tooltip).toBeNull();
+    expect(preview(edited).hidden).toEqual({ from: INLINE.indexOf("$") + 5, to: INLINE.lastIndexOf("$") + 6 });
+  });
+
+  it("does not show the preview while the mouse is held down", () => {
+    const view = mount(stateFor(INLINE, OUTSIDE));
+    view.contentDOM.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, detail: 1 }));
+    view.dispatch({ selection: { anchor: INLINE_CURSOR } });
+    expect(preview(view.state).target).not.toBeNull();
+    expect(preview(view.state).tooltip).toBeNull();
+  });
+});

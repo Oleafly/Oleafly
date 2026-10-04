@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { buildLatexTable, parseBib, resizeTable, validateBib } from "./latex-tools";
 
 describe("parseBib", () => {
@@ -51,6 +52,70 @@ describe("validateBib", () => {
       `@article{ok, author={X}, title={T}, journal={J}, year={2020}}`,
     );
     expect(validateBib(entries)[0].level).toBe("ok");
+  });
+});
+
+describe("parseBib recovery", () => {
+  it("skips comment, preamble and string directives and stray at signs", () => {
+    const { entries, parseErrors } = parseBib(
+      `@comment{ignored} @preamble{"x"} @string{s = "y"} email@example.org @misc{m, title={T}}`,
+    );
+    expect(entries.map((entry) => entry.key)).toEqual(["m"]);
+    expect(parseErrors).toEqual([]);
+  });
+
+  it("reports fields it cannot read and continues with the next entry", () => {
+    const { entries, parseErrors } = parseBib(`@misc{bad, 9field = {x}} @misc{good, title={T}}`);
+    expect(parseErrors).toEqual([enCore.bibtex.unreadableFields.replace("{{entry}}", "bad")]);
+    expect(entries.map((entry) => entry.key)).toEqual(["bad", "good"]);
+  });
+
+  it("names the entry type when an entry without a key has unreadable fields", () => {
+    const { parseErrors } = parseBib(`@book{, 9field`);
+    expect(parseErrors).toEqual([
+      enCore.bibtex.unreadableFields.replace("{{entry}}", "book"),
+      enCore.bibtex.missingKey.replace("{{type}}", "book"),
+    ]);
+  });
+
+  it("stops at an entry whose key never ends", () => {
+    const { entries, parseErrors } = parseBib(`@misc{first, title={T}}\n@article{runaway`);
+    expect(entries.map((entry) => entry.key)).toEqual(["first"]);
+    expect(parseErrors).toEqual([enCore.bibtex.unterminatedEntry.replace("{{position}}", "24")]);
+  });
+});
+
+describe("validateBib warnings", () => {
+  it("warns about unknown types, unusual fields, shared DOIs and odd years", () => {
+    const { entries } = parseBib(
+      [
+        "@dataset{d, title={Data}}",
+        "@article{a1, author={X}, title={T}, journal={J}, year={2020}, doi={10.1/Same}, edition={2}}",
+        "@article{a2, author={Y}, title={U}, journal={J}, year={circa 2020}, doi={10.1/same}}",
+        "@book{b, editor={E}, title={B}, publisher={P}, year={2001}, keywords={k}}",
+      ].join("\n"),
+    );
+    const findings = validateBib(entries);
+    expect(findings.map((finding) => [finding.key, finding.level])).toEqual([
+      ["d", "warning"],
+      ["a1", "warning"],
+      ["a2", "warning"],
+      ["b", "ok"],
+    ]);
+    expect(findings[0].messages).toEqual([enCore.bibtex.unknownType.replace("{{type}}", "dataset")]);
+    expect(findings[1].messages).toEqual([
+      enCore.bibtex.unusualField.replace("{{type}}", "article").replace("{{field}}", "edition"),
+      enCore.bibtex.duplicateDoi.replace("{{keys}}", "a2"),
+    ]);
+    expect(findings[2].messages).toEqual([
+      enCore.bibtex.duplicateDoi.replace("{{keys}}", "a1"),
+      enCore.bibtex.invalidYear.replace("{{year}}", "circa 2020"),
+    ]);
+  });
+
+  it("keeps a missing-field error ahead of softer warnings", () => {
+    const { entries } = parseBib("@article{a, title={T}, journal={J}, year={20}}");
+    expect(validateBib(entries)[0].level).toBe("error");
   });
 });
 

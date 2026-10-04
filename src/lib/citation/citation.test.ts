@@ -215,3 +215,74 @@ describe("findKeyByDoi", () => {
     expect(findKeyByDoi(bib, "10.9/zz")).toBeNull();
   });
 });
+
+describe("parseCrossrefSearch item shapes", () => {
+  it("returns no hits for text that is not JSON", () => {
+    expect(parseCrossrefSearch("<html>rate limited</html>")).toEqual([]);
+  });
+
+  it("fills missing fields with empty values", () => {
+    const json = JSON.stringify({
+      message: {
+        items: [
+          {
+            title: "Plain Title",
+            author: [{ family: "Solo" }, { name: "The Consortium" }, { given: "Nameless" }],
+            "container-title": "Proceedings X",
+          },
+          { title: [], "container-title": [] },
+          {},
+        ],
+      },
+    });
+    expect(parseCrossrefSearch(json)).toEqual([
+      {
+        doi: null,
+        title: "Plain Title",
+        authors: ["Solo", "The Consortium"],
+        year: null,
+        venue: "Proceedings X",
+        type: null,
+      },
+      { doi: null, title: "", authors: [], year: null, venue: null, type: null },
+      { doi: null, title: "", authors: [], year: null, venue: null, type: null },
+    ]);
+  });
+});
+
+describe("arxivXmlToBibtex sparse entries", () => {
+  it("keeps a published DOI", () => {
+    const bib = arxivXmlToBibtex(`<feed><entry>
+      <id>http://arxiv.org/abs/2101.00001v2</id>
+      <title>T</title>
+      <arxiv:doi>10.1000/pub</arxiv:doi>
+    </entry></feed>`);
+    expect(required(parseEntry(bib)).fields.doi).toBe("10.1000/pub");
+  });
+
+  it("falls back to a generic key when the entry has no id", () => {
+    const bib = arxivXmlToBibtex("<feed><entry></entry></feed>");
+    expect(bib.startsWith("@misc{arxiv,\n")).toBe(true);
+    expect(required(parseEntry(bib)).fields).toMatchObject({ title: "", year: "", eprint: "" });
+  });
+});
+
+describe("citation helpers on sparse input", () => {
+  it("finds no key for an empty DOI", () => {
+    expect(findKeyByDoi("@article{a, doi={10.1/a}}", "  ")).toBeNull();
+  });
+
+  it("detects old-style arXiv identifiers", () => {
+    expect(detectInput("hep-th/9901001v2")).toEqual({ kind: "arxiv", value: "hep-th/9901001" });
+    expect(detectInput("arXiv:math.GT/0309136")).toEqual({ kind: "arxiv", value: "math.GT/0309136" });
+  });
+
+  it("stops reading fields after a trailing comma", () => {
+    expect(parseEntry("@misc{k, title = {T}, }")?.fields).toEqual({ title: "T" });
+  });
+
+  it("builds a key from whatever fields exist", () => {
+    expect(generateCiteKey({}, new Set())).toBe("ref");
+    expect(generateCiteKey({ author: "Jane Doe" }, new Set())).toBe("doe");
+  });
+});

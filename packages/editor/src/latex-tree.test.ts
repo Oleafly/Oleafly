@@ -3,8 +3,16 @@ import { EditorState } from "@codemirror/state";
 import { describe, expect, it } from "vitest";
 import {
   ancestorAt,
+  centeringCommandWithin,
   colorCommandSpan,
+  commandName,
+  descendantsOfType,
   environmentName,
+  fullyParsed,
+  listDepthOf,
+  listEnvironmentName,
+  sectioningLevelName,
+  shortArgumentText,
   latexTreeLanguage,
   latexTreeSupport,
   listItemsOf,
@@ -149,5 +157,59 @@ describe("tree helpers", () => {
     const state = createState(LIST_DOCUMENT);
     const list = ancestorAt(state, positionOf(LIST_DOCUMENT, "First"), "ListEnvironment");
     expect(list && listItemsOf(list).length).toBe(2);
+  });
+});
+
+describe("tree helpers on edge inputs", () => {
+  it("measures list nesting and names list environments", () => {
+    const doc = "\\begin{itemize}\n\\item a\n\\begin{enumerate}\n\\item b\n\\end{enumerate}\n\\end{itemize}\n\\begin{center}x\\end{center}\n";
+    const state = createState(doc);
+    const inner = ancestorAt(state, positionOf(doc, "b\n"), "Item") ?? syntaxTree(state).resolveInner(positionOf(doc, "b\n"), 1);
+    expect(listDepthOf(inner)).toBe(2);
+    const outer = ancestorAt(state, positionOf(doc, "a\n"), "ListEnvironment");
+    expect(outer && listEnvironmentName(state, outer)).toBe("itemize");
+    expect(outer && descendantsOfType(outer, "Item", "ListEnvironment")).toHaveLength(1);
+    expect(outer && descendantsOfType(outer, "Item")).toHaveLength(2);
+    const center = ancestorAt(state, positionOf(doc, "x\\end"), "$Environment");
+    expect(center && listEnvironmentName(state, center)).toBeNull();
+    expect(listDepthOf(null)).toBe(0);
+  });
+
+  it("finds centering only at the environment's own level", () => {
+    const doc = "\\begin{figure}\n\\begin{minipage}{1cm}\\centering\\end{minipage}\n\\end{figure}\n";
+    const state = createState(doc);
+    const figure = ancestorAt(state, 2, "$Environment");
+    const minipage = ancestorAt(state, positionOf(doc, "{1cm}"), "$Environment");
+    expect(figure && environmentName(figure, state)).toBe("figure");
+    expect(figure && centeringCommandWithin(figure)).toBeNull();
+    expect(minipage && centeringCommandWithin(minipage)).not.toBeNull();
+  });
+
+  it("reads math and displaymath environments as their bodies", () => {
+    const doc = "\\begin{math}a\\end{math} \\begin{displaymath}b\\end{displaymath}\n";
+    const state = createState(doc);
+    for (const [needle, display] of [["a\\end{math}", false], ["b\\end{display", true]] as const) {
+      const math = ancestorAt(state, positionOf(doc, needle), "Math", 1);
+      const container = math && mathContainerOf(math);
+      expect(math && container && mathSourceOf(state, math, container)).toEqual({ source: needle[0], display });
+    }
+  });
+
+  it("returns nothing for incomplete declarations, colours and names", () => {
+    const doc = "\\newtheorem{ }{ }\n\\textcolor{nocolor}{x} \\textcolor{red}{}\n\\section*{S}\n";
+    const state = createState(doc);
+    const declaration = ancestorAt(state, 2, "NewTheoremCommand");
+    expect(declaration && theoremDeclaration(state, declaration)).toBeNull();
+    expect(declaration && shortArgumentText(state, declaration)).toBe("");
+    const unknown = ancestorAt(state, positionOf(doc, "nocolor"), "TextColorCommand");
+    expect(unknown && colorCommandSpan(state, unknown)).toBeNull();
+    const empty = ancestorAt(state, positionOf(doc, "{red}{}"), "TextColorCommand");
+    expect(empty && colorCommandSpan(state, empty)).toBeNull();
+    const section = ancestorAt(state, positionOf(doc, "\\section") + 1, "SectioningCommand");
+    expect(section && sectioningLevelName(state, section)).toBe("section");
+    expect(section && commandName(state, section)).toBe("\\section");
+    expect(environmentName(section, state)).toBeNull();
+    expect(environmentName(null, state)).toBeNull();
+    expect(fullyParsed(state)).toBe(true);
   });
 });

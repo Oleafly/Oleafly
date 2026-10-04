@@ -661,3 +661,47 @@ Die Stra"se.
   });
 });
 
+
+describe("maskLatex inline verbatim and math forms", () => {
+  it.each([
+    [String.raw`Use \verb|qqword| here`, "qqword"],
+    [String.raw`Use \verb*+qqword+ here`, "qqword"],
+    [String.raw`Use \lstinline[language=C]{qqword} here`, "qqword"],
+    [String.raw`Use \mintinline{python}{qqword} here`, "qqword"],
+    [String.raw`Use \mintinline{python}|qqword| here`, "qqword"],
+    [String.raw`Use \verb|a\|qqword| here`, "qqword"],
+    [String.raw`Math \(qqword\) here`, "qqword"],
+    [String.raw`Math \[qqword\] here`, "qqword"],
+    ["Math $$qqword$$ here", "qqword"],
+    ["Math $$q % note\nqqword$$ here", "qqword"],
+  ])("masks the content of %j", (tex, hidden) => {
+    expect(maskLatex(tex)).toHaveLength(tex.length);
+    const found = words(tex);
+    expect(found.has(hidden)).toBe(false);
+    expect(found.has("here")).toBe(true);
+  });
+
+  it("stops an unclosed inline verbatim at the end of its line", () => {
+    const tex = "Use \\verb|qqword\nnextline words";
+    const found = words(tex);
+    expect(found.has("qqword")).toBe(false);
+    expect(found.has("nextline")).toBe(true);
+  });
+
+  it("keeps text after a verbatim command without a delimiter", () => {
+    expect(words("Use \\verb\nafter").has("after")).toBe(true);
+    expect(maskLatex("Use \\verb")).toHaveLength("Use \\verb".length);
+  });
+
+  it("masks an unterminated display math to the end of the text", () => {
+    const tex = "Math $$qqword more words";
+    expect(words(tex).has("more")).toBe(false);
+  });
+
+  it("masks a \\begin without a braced name as a command", () => {
+    const tex = "Before \\begin after";
+    expect(maskLatex(tex)).toHaveLength(tex.length);
+    expect(words(tex).has("Before")).toBe(true);
+    expect(words(tex).has("begin")).toBe(false);
+  });
+});

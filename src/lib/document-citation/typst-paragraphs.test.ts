@@ -183,3 +183,40 @@ describe("hayagrivaIdentityText", () => {
     expect(hayagrivaIdentityText("name: ci\non: push\n")).toBe("");
   });
 });
+
+describe("splitTypstParagraphs unterminated syntax", () => {
+  const paragraphs = (text: string) => splitTypstParagraphs(text, { minLength: 1 }).map((paragraph) => paragraph.text);
+
+  it("drops nested and unterminated block comments", () => {
+    expect(paragraphs("Kept prose.\n\n/* outer /* inner */ still comment */ After.\n\n/* never closed\nHidden prose.")).toEqual([
+      "Kept prose.",
+      "After.",
+    ]);
+  });
+
+  it("drops a statement whose bracket never closes", () => {
+    expect(paragraphs("Kept prose.\n\n#set text(\n  lang: \"en\",\nHidden prose.")).toEqual(["Kept prose."]);
+  });
+
+  it("drops an unclosed code fence to the end", () => {
+    expect(paragraphs("Kept prose.\n\n```python\nprint('hidden')")).toEqual(["Kept prose."]);
+  });
+
+  it("reads empty raw spans and escapes inside a statement", () => {
+    expect(paragraphs("#let x = [a \\] b ``] still statement]\nProse after the statement.")).toEqual([
+      "Prose after the statement.",
+    ]);
+  });
+
+  it("keeps a line that starts with a hash but names no statement", () => {
+    expect(paragraphs("#(1 + 2) apples were counted in this sentence.")).toEqual([
+      "#(1 + 2) apples were counted in this sentence.",
+    ]);
+  });
+});
+
+describe("hayagrivaIdentityText without titles", () => {
+  it("writes only the DOI for an entry without a title", () => {
+    expect(hayagrivaIdentityText("harry:\n  type: book\n  doi: 10.1/x\n")).toBe("@misc{harry,\n  doi = {10.1/x}\n}");
+  });
+});

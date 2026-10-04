@@ -277,3 +277,132 @@ describe("lintLatexText: %novalidate", () => {
     expect(found[0].message).toContain("\\begin{itemize}");
   });
 });
+
+function findings(source: string): Array<[string, string]> {
+  return lintLatexText(source).map((item) => [source.slice(item.from, item.to), item.message]);
+}
+
+describe("lintLatexText: bracket math delimiters", () => {
+  it("accepts balanced inline and display brackets, including nested in dollars", () => {
+    expect(lintLatexText(String.raw`\(a\) \[b\] $\(c\)$ \(\[d\]\)`)).toEqual([]);
+  });
+
+  it("reports a mismatched closing bracket and the opener left unclosed", () => {
+    expect(findings(String.raw`\(a\]`)).toEqual([
+      [String.raw`\(`, String.raw`Unclosed math delimiter \(. Expected \)`],
+      [String.raw`\]`, String.raw`Mismatched math delimiter: expected \), got \]`],
+    ]);
+    expect(findings(String.raw`\[a\)`).map(([, message]) => message)).toEqual([
+      String.raw`Unclosed math delimiter \[. Expected \]`,
+      String.raw`Mismatched math delimiter: expected \], got \)`,
+    ]);
+  });
+
+  it("reports closing brackets without an opener", () => {
+    expect(findings(String.raw`a\)`)).toEqual([[String.raw`\)`, String.raw`\) has no matching \(`]]);
+    expect(findings(String.raw`a\]`)).toEqual([[String.raw`\]`, String.raw`\] has no matching \[`]]);
+  });
+
+  it("reports a dollar that closes the wrong delimiter", () => {
+    expect(findings(String.raw`\(a$`)).toEqual([
+      [String.raw`\(`, String.raw`Unclosed math delimiter \(. Expected \)`],
+      ["$", String.raw`Mismatched math delimiter: expected \), got $`],
+    ]);
+  });
+});
+
+describe("lintLatexText: verbatim and environment recovery", () => {
+  it("skips a verbatim environment body and reports one left open", () => {
+    expect(lintLatexText(String.raw`\begin{verbatim}$x{\end{verbatim}`)).toEqual([]);
+    expect(findings(String.raw`\begin{verbatim} $x`)).toEqual([
+      [String.raw`\begin{verbatim}`, String.raw`Unclosed environment \begin{verbatim}`],
+    ]);
+  });
+
+  it("reports the environments skipped by an outer \\end", () => {
+    expect(findings(String.raw`\begin{a}\begin{b}\begin{c}\end{a}`)).toEqual([
+      [String.raw`\begin{b}`, String.raw`Unclosed environment \begin{b}`],
+      [String.raw`\begin{c}`, String.raw`Unclosed environment \begin{c}`],
+      [String.raw`\end{a}`, String.raw`Mismatched environment: expected \end{c}, got \end{a}`],
+    ]);
+  });
+
+  it("reports malformed \\begin and \\end arguments", () => {
+    expect(findings(String.raw`\begin x`)).toEqual([[String.raw`\begin`, String.raw`\begin requires a braced argument`]]);
+    expect(findings(String.raw`\begin{a`)).toEqual([[String.raw`\begin{`, String.raw`Unclosed argument to \begin`]]);
+    expect(findings(String.raw`\end{}`)).toEqual([["{}", String.raw`\end argument cannot be empty`]]);
+    expect(findings(String.raw`\label{}`)).toEqual([["{}", String.raw`\label argument cannot be empty`]]);
+  });
+
+  it("reports an inline verbatim command without a usable delimiter or close", () => {
+    expect(findings(String.raw`\verb|a`)).toEqual([[String.raw`\verb|`, String.raw`Unclosed \verb command`]]);
+    expect(findings(String.raw`\verb`)).toEqual([[String.raw`\verb`, String.raw`\verb has an invalid inline-verbatim argument`]]);
+  });
+
+  it("does not report math inside a comment line", () => {
+    expect(lintLatexText("% $x\n$y$")).toEqual([]);
+  });
+});
+
+describe("lintLatexText: definition forms", () => {
+  it("accepts starred definitions, spaced arguments and defaults", () => {
+    const source = String.raw`\newcommand*{\a}{y}
+\renewcommand*\b{a}
+\newcommand \c [1] {#1}
+\newcommand{\d}  [ 2 ]  [ d ]  {#1}
+\newcommand{\e}[2][def]{#1}
+\newcommand{\@f}{a}
+\newenvironment*{g}{a}{b}
+\newenvironment{h}[1]{a}{b}`;
+    expect(lintLatexText(source)).toEqual([]);
+  });
+
+  it("reports argument counts that are not a single digit", () => {
+    expect(findings(String.raw`\newcommand{\x}[a]{}`)).toEqual([
+      ["a", String.raw`\newcommand argument count must be a digit from 0 to 9`],
+    ]);
+    expect(findings(String.raw`\newcommand{\x}[10]{}`).map(([text]) => text)).toEqual(["10"]);
+  });
+
+  it("reports unclosed argument counts, defaults and names", () => {
+    expect(findings(String.raw`\newcommand{\x}[2`)).toEqual([["[", String.raw`Unclosed argument count for \newcommand`]]);
+    expect(findings(String.raw`\newcommand{\x}[2][d`)).toEqual([["[", String.raw`Unclosed default argument for \newcommand`]]);
+    expect(findings(String.raw`\newcommand{`).map(([, message]) => message)).toEqual([
+      "Opening brace is not closed",
+      String.raw`Unclosed command name for \newcommand`,
+    ]);
+    expect(findings(String.raw`\newcommand`)).toEqual([["d", String.raw`\newcommand requires a braced command name`]]);
+  });
+
+  it("reports missing bodies and empty environment names", () => {
+    expect(findings(String.raw`\newcommand\x`).map(([, message]) => message)).toEqual([
+      String.raw`\newcommand requires a braced replacement body`,
+    ]);
+    expect(findings(String.raw`\NewDocumentCommand{\x}`).map(([, message]) => message)).toEqual([
+      String.raw`\NewDocumentCommand requires a braced argument specification`,
+    ]);
+    expect(findings(String.raw`\newenvironment{x}`).map(([, message]) => message)).toEqual([
+      String.raw`\newenvironment requires a braced begin body`,
+    ]);
+    expect(findings(String.raw`\newenvironment{}{a}{b}`)).toEqual([
+      ["{}", String.raw`\newenvironment environment name cannot be empty`],
+    ]);
+  });
+});
+
+describe("lintLatexText: package and definition edge cases", () => {
+  it("accepts package options with braces, escapes and starred forms", () => {
+    const source = String.raw`\usepackage[a={x]y}, b=\%]{pkg}
+\usepackage* [opt] {pkg}
+\usepackage{\{pkg}
+\newcommand\%{percent}`;
+    expect(lintLatexText(source)).toEqual([]);
+  });
+
+  it("reports a control-sequence name cut off at the end of the file", () => {
+    expect(findings("\\newcommand\\")).toEqual([
+      ["\\", "Incomplete command at end of file"],
+      ["\\", String.raw`Incomplete command name argument to \newcommand`],
+    ]);
+  });
+});

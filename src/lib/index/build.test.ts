@@ -239,3 +239,103 @@ describe("buildIndex: LaTeX and Typst labels stay apart", () => {
     );
   });
 });
+
+describe("buildIndex: macro uses stay in LaTeX sources", () => {
+  it("does not read a backslash word in Typst or Markdown as a macro use", () => {
+    const idx = buildIndex({
+      "macros.tex": "\\newcommand{\\foo}{x}",
+      "body.tex": "\\foo",
+      "notes.md": "Write \\foo in prose.",
+      "slides.typ": "Write \\foo here.",
+      "NOTES.MARKDOWN": "\\foo",
+    });
+    expect(idx.uses.filter((u) => u.kind === "macrouse").map((u) => u.file)).toEqual(["body.tex"]);
+  });
+});
+
+describe("indexFromSymbols: lookups", () => {
+  const sym = (kind: Sym["kind"], name: string, file: string, from: number, to = from + name.length): Sym => ({
+    kind,
+    name,
+    file,
+    line: 1,
+    from,
+    to,
+    nameFrom: from,
+    nameTo: from + name.length,
+  });
+
+  it("prefers the innermost symbol under an offset", () => {
+    const section = sym("section", "Intro", "a.tex", 0, 40);
+    const ref = sym("ref", "fig:1", "a.tex", 10, 20);
+    const outer = indexFromSymbols([section], [ref]);
+    expect(outer.symbolAt("a.tex", 12)).toBe(ref);
+    const wide = sym("ref", "fig:1", "a.tex", 0, 40);
+    const label = sym("label", "fig:1", "a.tex", 10, 20);
+    const inner = indexFromSymbols([label], [wide]);
+    expect(inner.symbolAt("a.tex", 12)).toBe(label);
+    expect(inner.symbolAt("a.tex", 40)).toBeNull();
+    expect(inner.symbolAt("b.tex", 12)).toBeNull();
+  });
+
+  it("resolves definitions, includes, Typst references and environments", () => {
+    const label = sym("label", "eq", "doc.typ", 0);
+    const entry = sym("bibentry", "knuth", "refs.bib", 0);
+    const file = sym("file", "chapter.tex", "chapter.tex", 0, 0);
+    const environment = sym("environment", "proofsketch", "main.tex", 0);
+    const theorem = sym("theorem", "lemma", "main.tex", 50);
+    const idx = indexFromSymbols([label, entry, file, environment, theorem], []);
+
+    expect(idx.definitionFor(label)).toBe(label);
+    expect(idx.definitionFor({ ...sym("inputedge", "chapter.tex", "main.tex", 0) })).toBe(file);
+    expect(idx.definitionFor({ ...sym("inputedge", "chapter", "main.tex", 0), target: "chapter.tex" })).toBe(file);
+    expect(idx.definitionFor(sym("atuse", "eq", "doc.typ", 10))).toBe(label);
+    expect(idx.definitionFor(sym("atuse", "knuth", "doc.typ", 20))).toBe(entry);
+    expect(idx.definitionFor(sym("envuse", "lemma", "main.tex", 70))).toBe(theorem);
+    expect(idx.definitionFor(sym("envuse", "proofsketch", "main.tex", 90))).toBe(environment);
+    expect(idx.definitionFor(sym("envuse", "unknown", "main.tex", 90))).toBeNull();
+  });
+
+  it("lists a definition with its uses and nothing for an unresolved use", () => {
+    const label = sym("label", "a", "m.tex", 0);
+    const ref = sym("ref", "a", "m.tex", 10);
+    const file = { ...sym("file", "m.tex", "m.tex", 0, 0), nameTo: 0 };
+    const idx = indexFromSymbols([label, file], [ref]);
+
+    expect(idx.allReferences(label)).toEqual([label, ref]);
+    expect(idx.allReferences(ref)).toEqual([label, ref]);
+    expect(idx.allReferences(file)).toEqual([]);
+    expect(idx.allReferences(sym("ref", "ghost", "m.tex", 30))).toEqual([]);
+  });
+
+  it("renames the uses of an unresolved reference as a label", () => {
+    const first = sym("ref", "ghost", "m.tex", 5);
+    const second = sym("ref", "ghost", "n.tex", 7);
+    const idx = indexFromSymbols([], [first, second]);
+
+    const plan = idx.renamePlan(first, "spirit");
+    expect(plan).toEqual({
+      collision: false,
+      fileCount: 2,
+      edits: [
+        { file: "m.tex", from: 5, to: 10, newText: "spirit" },
+        { file: "n.tex", from: 7, to: 12, newText: "spirit" },
+      ],
+    });
+  });
+
+  it("does not edit a definition without a name span", () => {
+    const file = { ...sym("file", "a.tex", "a.tex", 0, 0), nameTo: 0 };
+    const idx = indexFromSymbols([file], []);
+    expect(idx.renamePlan(file, "b.tex")).toEqual({ collision: false, fileCount: 0, edits: [] });
+  });
+
+  it("scopes macros by engine and leaves unknown files unscoped", () => {
+    const latex = sym("macro", "foo", "a.sty", 0);
+    const other = sym("macro", "foo", "notes.txt", 0);
+    const idx = indexFromSymbols([latex, other], [sym("macrouse", "foo", "b.tex", 3)]);
+    expect(idx.definitionFor(sym("macrouse", "foo", "b.tex", 3))).toBe(latex);
+    expect(idx.definitionFor(sym("macrouse", "foo", "c.txt", 3))).toBe(other);
+    expect(idx.renamePlan(latex, "foo").collision).toBe(false);
+  });
+});

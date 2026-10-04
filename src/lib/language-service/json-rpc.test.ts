@@ -6,8 +6,11 @@ import {
   isJsonRpcRequest,
   isJsonRpcSuccessResponse,
   isJsonValue,
+  isJsonRpcErrorObject,
   JsonRpcProtocolError,
+  JsonRpcRemoteError,
   parseJsonRpcMessage,
+  toJsonValue,
 } from "./json-rpc";
 
 describe("JSON-RPC 2.0 runtime guards", () => {
@@ -87,5 +90,46 @@ describe("JSON-RPC 2.0 runtime guards", () => {
     expect(() => parseJsonRpcMessage({ jsonrpc: "2.0" })).toThrow(
       JsonRpcProtocolError,
     );
+  });
+});
+
+describe("JSON-RPC guards for non-object values", () => {
+  it.each([null, "text", 3, [1]])("rejects %j as any message shape", (value) => {
+    expect(isJsonRpcRequest(value)).toBe(false);
+    expect(isJsonRpcNotification(value)).toBe(false);
+    expect(isJsonRpcErrorObject(value)).toBe(false);
+    expect(isJsonRpcSuccessResponse(value)).toBe(false);
+    expect(isJsonRpcErrorResponse(value)).toBe(false);
+  });
+
+  it("checks error objects field by field", () => {
+    expect(isJsonRpcErrorObject({ code: -32600, message: "bad", data: [1] })).toBe(
+      true,
+    );
+    expect(isJsonRpcErrorObject({ code: 1.5, message: "bad" })).toBe(false);
+    expect(isJsonRpcErrorObject({ code: 1, message: 2 })).toBe(false);
+    expect(
+      isJsonRpcErrorObject({ code: 1, message: "bad", data: Number.NaN }),
+    ).toBe(false);
+  });
+
+  it("converts JSON values and remote errors", () => {
+    expect(toJsonValue({ ok: [1, "two", null] })).toEqual({
+      ok: [1, "two", null],
+    });
+    expect(() => toJsonValue({ ratio: Number.POSITIVE_INFINITY })).toThrow(
+      new JsonRpcProtocolError("Value is not JSON serializable"),
+    );
+    const remote = new JsonRpcRemoteError({
+      code: -32001,
+      message: "busy",
+      data: { retry: true },
+    });
+    expect(remote).toMatchObject({
+      name: "JsonRpcRemoteError",
+      code: -32001,
+      message: "busy",
+      data: { retry: true },
+    });
   });
 });

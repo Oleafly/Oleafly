@@ -106,3 +106,32 @@ describe("LSP position conversion", () => {
     });
   });
 });
+
+describe("LSP position conversion for unpaired surrogates", () => {
+  it("measures a lone high surrogate as one code point", () => {
+    const index = new TextPositionIndex("\uD83Dx");
+    expect(index.offsetToPosition(1, "utf-8")).toEqual({
+      line: 0,
+      character: 3,
+    });
+    expect(index.offsetToPosition(2, "utf-8")).toEqual({
+      line: 0,
+      character: 4,
+    });
+    expect(index.offsetToPosition(2, "utf-32")).toEqual({
+      line: 0,
+      character: 2,
+    });
+    expect(index.positionToOffset({ line: 0, character: 3 }, "utf-8")).toBe(1);
+  });
+
+  it("maps a non-finite offset to the start of the text", () => {
+    const index = new TextPositionIndex("abc\ndef");
+    expect(index.offsetToPosition(Number.NaN)).toEqual({
+      line: 0,
+      character: 0,
+    });
+    expect(index.offsetToPosition(5.9)).toEqual({ line: 1, character: 1 });
+  });
+});
+

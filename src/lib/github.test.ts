@@ -13,6 +13,7 @@ import {
   saveGithubToken,
   clearGithubToken,
   requestDeviceCode,
+  checkDeviceToken,
 } from "./github";
 
 beforeEach(() => {
@@ -77,5 +78,32 @@ describe("github.ts command bindings", () => {
     invoke.mockResolvedValue({ device_code: "d", user_code: "U", verification_uri: "v", expires_in: 900, interval: 5 });
     await requestDeviceCode("client-123");
     expect(invoke).toHaveBeenCalledWith("gh_request_device_code", { clientId: "client-123" });
+  });
+});
+
+describe("public repository stats cache", () => {
+  it("reuses one request per repository and retries after a failure", async () => {
+    invoke.mockRejectedValueOnce(new Error("rate limited"));
+    await expect(githubGetPublicRepoStats("acme/flaky")).rejects.toThrow("rate limited");
+    invoke.mockResolvedValue({ stars: 1, forks: 2 });
+    const first = githubGetPublicRepoStats("acme/flaky");
+    const second = githubGetPublicRepoStats("acme/flaky");
+    expect(second).toBe(first);
+    await expect(first).resolves.toEqual({ stars: 1, forks: 2 });
+    expect(invoke).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("checkDeviceToken", () => {
+  it.each([
+    [{ status: "token", token: "gho_x", interval: null }, { status: "token", token: "gho_x" }],
+    [{ status: "token", token: null, interval: null }, { status: "pending" }],
+    [{ status: "slow_down", token: null, interval: 10 }, { status: "slow_down", interval: 10 }],
+    [{ status: "slow_down", token: null, interval: null }, { status: "pending" }],
+    [{ status: "authorization_pending", token: null, interval: null }, { status: "pending" }],
+  ])("maps %j to %j", async (reply, expected) => {
+    invoke.mockResolvedValue(reply);
+    await expect(checkDeviceToken("client", "device")).resolves.toEqual(expected);
+    expect(invoke).toHaveBeenCalledWith("gh_check_device_token", { clientId: "client", deviceCode: "device" });
   });
 });

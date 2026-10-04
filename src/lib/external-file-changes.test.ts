@@ -431,3 +431,83 @@ describe("folder changes and the file tree", () => {
     expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
   });
 });
+
+describe("external changes from other windows", () => {
+  it("applies a delete or rename change directly without listing the folder", () => {
+    const applyExternalDelete = vi.fn(() => true);
+    const applyExternalRename = vi.fn(() => true);
+    useFilesStore.setState({ applyExternalDelete, applyExternalRename });
+    applyExternalFileChange(
+      { projectId: "project", paths: ["old.tex"], from: "other", change: { kind: "delete", path: "old.tex" } },
+      "self",
+    );
+    applyExternalFileChange(
+      { projectId: "project", paths: ["a.tex", "b.tex"], from: "other", change: { kind: "rename", from: "a.tex", to: "b.tex" } },
+      "self",
+    );
+    expect(applyExternalDelete).toHaveBeenCalledWith("project", "old.tex");
+    expect(applyExternalRename).toHaveBeenCalledWith("project", "a.tex", "b.tex");
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+  });
+
+  it("only refreshes the tree for a created file and ignores payloads without a project", async () => {
+    applyExternalFileChange({ projectId: "", paths: ["new.tex"], from: "other" }, "self");
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+    applyExternalFileChange(
+      { projectId: "project", paths: ["references.bib"], from: "other", change: { kind: "create", path: "references.bib" } },
+      "self",
+    );
+    await vi.waitFor(() => expect(mocks.listFiles).toHaveBeenCalledOnce());
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
+  });
+
+  it("checks every open buffer when the notification names no paths", async () => {
+    applyExternalFileChange({ projectId: "project", paths: [], from: "other" }, "self");
+    await vi.waitFor(() => expect(useFilesStore.getState().files["references.bib"]?.content).toBe("fresh\n"));
+    expect(mocks.readFileContent).toHaveBeenCalledWith("project", "references.bib");
+  });
+
+  it("keeps a buffer that was edited or switched away from while the disk read was running", async () => {
+    let release: (value: string) => void = () => {};
+    mocks.readFileContent.mockImplementation(() => new Promise<string>((resolve) => { release = resolve; }));
+    notifyPaths(["references.bib"]);
+    await vi.waitFor(() => expect(mocks.readFileContent).toHaveBeenCalledOnce());
+    useFilesStore.setState({ files: { "references.bib": { content: "typed meanwhile\n", dirty: false } } });
+    release("fresh\n");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(useFilesStore.getState().files["references.bib"]?.content).toBe("typed meanwhile\n");
+
+    notifyPaths(["references.bib"]);
+    await vi.waitFor(() => expect(mocks.readFileContent).toHaveBeenCalledTimes(2));
+    useFilesStore.setState({ projectId: "switched" });
+    release("fresh\n");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(useFilesStore.getState().files["references.bib"]?.content).toBe("typed meanwhile\n");
+  });
+});
+
+describe("folder change edge cases", () => {
+  it("reads nothing while the folder is unavailable", () => {
+    useProjectAvailabilityStore.getState().reset("project");
+    useProjectAvailabilityStore.getState().report("project", "missing");
+    applyFolderChange({ projectId: "project", paths: ["main.tex"], rescan: true });
+    expect(mocks.listFiles).not.toHaveBeenCalled();
+    expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+    useProjectAvailabilityStore.getState().reset(null);
+  });
+
+  it("rebuilds the index when listing the folder fails, but not after a project switch", async () => {
+    mocks.listFiles.mockRejectedValueOnce(new Error("permission denied"));
+    applyFolderChange({ projectId: "project", paths: ["chapters/new.tex"], rescan: false });
+    await vi.waitFor(() => expect(mocks.rebuildFromDisk).toHaveBeenCalledOnce());
+
+    let releaseListing: (value: typeof TREE) => void = () => {};
+    mocks.listFiles.mockImplementationOnce(() => new Promise((resolve) => { releaseListing = resolve; }));
+    applyFolderChange({ projectId: "project", paths: ["chapters/other.tex"], rescan: false });
+    await vi.waitFor(() => expect(mocks.listFiles).toHaveBeenCalledTimes(2));
+    useFilesStore.setState({ projectId: "switched" });
+    releaseListing(TREE);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.rebuildFromDisk).toHaveBeenCalledOnce();
+  });
+});

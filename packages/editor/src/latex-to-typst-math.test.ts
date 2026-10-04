@@ -203,6 +203,63 @@ describe("latexMathToTypst", () => {
     [String.raw`\Re(x)`, "Re(x)"],
     [String.raw`\sum\limits^{n}_{i} x''`, "limits(sum)_i^n x''"],
     [String.raw`x^\prime^2`, "x'^2"],
+    [String.raw`a\:b\>c\ d`, "a med b med c space d"],
+    [String.raw`a\-b\/c`, "a b c"],
+    ["a ~ b", "a space.nobreak b"],
+    [`a " b`, String.raw`a \" b`],
+    ["a # b $ c @ d", String.raw`a \# b \$ c \@ d`],
+    ["a < b > c", "a < b > c"],
+    ["a ? b : c", "a ? b : c"],
+    [String.raw`x \bigl( y \bigr) \Big.`, "x (y)"],
+    [String.raw`\big\langle x`, "⟨x"],
+    [String.raw`\Bigl\lbrace`, "{"],
+    [String.raw`\bigg`, ""],
+    [String.raw`\bigl\lvert x \bigr\rvert`, "|x|"],
+    [String.raw`\Big\|`, "‖"],
+    [String.raw`\bcancel{x}`, "cancel(inverted: #true, x)"],
+    [String.raw`\xcancel{x}`, "cancel(cross: #true, x)"],
+    [String.raw`\phantom{x}`, "#hide($x$)"],
+    [String.raw`\pod{n}`, "(n)"],
+    [String.raw`a \mod b`, "a mod b"],
+    [String.raw`\hfill`, "#h(1fr)"],
+    [String.raw`\xleftarrow[a]{b}`, "limits(<--)^b"],
+    [String.raw`\overbrace{x}`, "overbrace(x)"],
+    [String.raw`\underbrace{x} y`, "underbrace(x) y"],
+    [String.raw`\not\equiv`, "equiv.not"],
+    [String.raw`\not a`, "cancel(a)"],
+    [String.raw`\not\alpha`, "cancel(alpha)"],
+    [String.raw`\not`, ""],
+    [String.raw`\color{red} x + y`, "#text(fill: red, $x + y$)"],
+    [String.raw`{\color{blue} x} y`, "#text(fill: blue, $x$) y"],
+    [String.raw`\color{weird} x`, "x"],
+    [String.raw`\textcolor{weird}{x}`, "x"],
+    [String.raw`\qty{3}{m}`, `"3 m"`],
+    [String.raw`\unit{kg}`, `"kg"`],
+    [String.raw`\si{}`, ""],
+    [String.raw`\begin{array}{cc} a & b \end{array}`, "mat(delim: #none, a, b)"],
+    [String.raw`\begin{alignat}{2} a &= b \end{alignat}`, "a &= b"],
+    [String.raw`\begin{aligned} a \\* b \\[2pt] c \cr d \end{aligned}`, "a \\\nb \\\nc \\\nd"],
+    [String.raw`\begin{aligned} a \end{}`, "a"],
+    [String.raw`\textbf{bold}`, `bold("bold")`],
+    [String.raw`\textit{a $b$ c}`, `italic("a " b " c")`],
+    [String.raw`\text{$x$}`, "x"],
+    [String.raw`\text{}`, ""],
+    [String.raw`\middle.`, ""],
+    [String.raw`\left< x \right>`, "⟨x⟩"],
+    [String.raw`\left\uparrow x \right.`, "lr(arrow.t x)"],
+    [String.raw`x \right)`, "x"],
+    [String.raw`\left.\right.`, "lr()"],
+    [String.raw`\frac{a}`, `frac(a, "")`],
+    [String.raw`\sqrt[n]x`, "root(n, x)"],
+    [String.raw`\sqrt`, `sqrt("")`],
+    [String.raw`\mathit{ab}`, `italic("ab")`],
+    [String.raw`\mathsf{1}`, "sans(1)"],
+    [String.raw`\smash[b]{x}`, "x"],
+    [String.raw`\sum\limits`, "limits(sum)"],
+    ["a %c", "a"],
+    ["% only comment", ""],
+    [String.raw`a \le\le b`, "a <= <= b"],
+    ["日本", "日 本"],
   ])("converts the edge case %s", (latex, typst) => {
     expect(latexMathToTypst(latex)).toBe(typst);
   });
@@ -211,6 +268,16 @@ describe("latexMathToTypst", () => {
     const result = convertLatexMath(String.raw`\foo + \alpha + \ce{H2O}`);
     expect(result.unsupported).toEqual([String.raw`\foo`, String.raw`\ce`]);
     expect(result.typst).toBe(`foo + alpha + "H2O"`);
+  });
+
+  it("reports unknown symbols and environments it drops", () => {
+    expect(convertLatexMath(String.raw`\@`)).toEqual({ typst: "", unsupported: [String.raw`\@`] });
+    expect(convertLatexMath(String.raw`\begin{foo} a \end{foo}`)).toEqual({
+      typst: "a",
+      unsupported: [String.raw`\begin{foo}`],
+    });
+    expect(convertLatexMath(String.raw`\not\foo`)).toEqual({ typst: "cancel(foo)", unsupported: [String.raw`\foo`] });
+    expect(convertLatexMath(String.raw`\text{see $\foo$}`).unsupported).toEqual([String.raw`\foo`]);
   });
 
   it("uses the older name for the partial sign before Typst 0.12", () => {
@@ -248,6 +315,15 @@ describe("findLatexMathSpans", () => {
   it("skips escaped dollars and unclosed spans", () => {
     expect(findLatexMathSpans(String.raw`costs \$5 and $x`)).toEqual([]);
   });
+
+  it("keeps escaped delimiters inside a span and rejects empty or escaped openers", () => {
+    expect(findLatexMathSpans(String.raw`$a\$b$`).map((span) => span.body)).toEqual([String.raw`a\$b`]);
+    expect(findLatexMathSpans(String.raw`$$a$ b$$`).map((span) => [span.body, span.display])).toEqual([["a$ b", true]]);
+    expect(findLatexMathSpans("$$")).toEqual([]);
+    expect(findLatexMathSpans("a $$ b")).toEqual([]);
+    expect(findLatexMathSpans(String.raw`\\(a\)`)).toEqual([]);
+    expect(findLatexMathSpans(String.raw`\begin{equation} x`)).toEqual([]);
+  });
 });
 
 describe("convertLatexMathInText", () => {
@@ -262,6 +338,14 @@ describe("convertLatexMathInText", () => {
     expect(
       convertLatexMathInText(String.raw`\begin{align} a &= b \\ c &= d \end{align}`).text,
     ).toBe("$ a &= b \\\nc &= d $");
+  });
+
+  it("leaves spans that convert to nothing in place", () => {
+    expect(convertLatexMathInText(String.raw`$\label{x}$ y`)).toEqual({ text: String.raw`$\label{x}$ y`, count: 0 });
+  });
+
+  it("converts starred math environments", () => {
+    expect(convertLatexMathInText(String.raw`\begin{align*}a\end{align*}`)).toEqual({ text: "$ a $", count: 1 });
   });
 
   it("leaves text without LaTeX math alone", () => {

@@ -82,3 +82,34 @@ describe("gutter width, from the cascade rather than layout", () => {
     expect(view.dom.querySelector(".cm-foldGutter")).not.toBeNull();
   });
 });
+
+describe("fold marker hover label", () => {
+  function labels(): HTMLElement[] {
+    return Array.from(document.querySelectorAll<HTMLElement>(".cm-fold-label"));
+  }
+
+  it("shows a tooltip beside the marker on hover and removes it on leave", () => {
+    const marker = foldMarkerDOM(true);
+    document.body.append(marker);
+    marker.getBoundingClientRect = () => ({ right: 20, top: 100, height: 10 }) as DOMRect;
+    marker.dispatchEvent(new MouseEvent("mouseenter"));
+    const [label] = labels();
+    expect(label.textContent).toBe("Fold line");
+    expect(label.getAttribute("role")).toBe("tooltip");
+    expect([label.style.left, label.style.top]).toEqual(["26px", "105px"]);
+    marker.dispatchEvent(new MouseEvent("mouseleave"));
+    expect(labels()).toEqual([]);
+  });
+
+  it("keeps a single label and hides it when the marker is pressed", () => {
+    const open = foldMarkerDOM(true);
+    const closed = foldMarkerDOM(false);
+    document.body.append(open, closed);
+    open.dispatchEvent(new MouseEvent("mouseenter"));
+    closed.dispatchEvent(new MouseEvent("mouseenter"));
+    expect(labels().map((label) => label.textContent)).toEqual(["Unfold line"]);
+    expect(labels()[0].style.left).toBe("6px");
+    closed.dispatchEvent(new MouseEvent("mousedown"));
+    expect(labels()).toEqual([]);
+  });
+});

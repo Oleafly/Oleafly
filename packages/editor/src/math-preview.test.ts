@@ -8,7 +8,8 @@ import {
   type ViewPlugin,
   type WidgetType,
 } from "@codemirror/view";
-import { liveMathPreview } from "./math-preview";
+import { latexLanguage } from "codemirror-lang-latex";
+import { liveMathPreview, mathHover } from "./math-preview";
 import { setTypstMathHost } from "./math-render";
 import { loadTypstParser, typstLanguage } from "./typst";
 import { installEnglishEditorMessages } from "./test-messages";
@@ -197,6 +198,86 @@ describe("live math preview", () => {
     expect(
       editor.dom.querySelectorAll(".math-preview"),
     ).toHaveLength(96);
+  });
+});
+
+describe("live math preview limits and hosts", () => {
+  function widgetSources(editor: EditorView, extension: readonly Extension[]): string[] {
+    const plugin = extension[1] as ViewPlugin<{ decorations: DecorationSet }>;
+    const sources: string[] = [];
+    editor.plugin(plugin)?.decorations.between(0, editor.state.doc.length, (_from, _to, value) => {
+      const widget = value.spec.widget as { expression?: { source: string } } | undefined;
+      if (widget?.expression) sources.push(widget.expression.source);
+    });
+    return sources;
+  }
+
+  it("keeps the 240 expressions nearest the viewport in a math-dense document", () => {
+    const expressions = Array.from({ length: 300 }, (_, index) => `$y_{${index}}$`);
+    const extension = liveMathPreview("latex") as readonly Extension[];
+    const editor = new EditorView({
+      state: EditorState.create({ doc: expressions.join("\n"), extensions: [extension] }),
+      parent: document.body,
+    });
+    view = editor;
+    settle();
+    const sources = widgetSources(editor, extension);
+    expect(sources).toHaveLength(240);
+    expect(sources[0]).toBe(expressions[0]);
+    expect(sources).not.toContain(expressions[299]);
+  });
+
+  it("skips math inside URL arguments that the syntax tree marks", () => {
+    const doc = "See \\url{http://a/$b$/c} and $d$.\n";
+    const extension = liveMathPreview("latex") as readonly Extension[];
+    const editor = new EditorView({
+      state: EditorState.create({ doc, extensions: [latexLanguage, extension] }),
+      parent: document.body,
+    });
+    view = editor;
+    settle();
+    expect(widgetSources(editor, extension)).toEqual(["$d$"]);
+  });
+
+  it("asks the editor to re-measure when a mounted preview resizes and stops after it is destroyed", () => {
+    const callbacks: Array<() => void> = [];
+    const disconnect = vi.fn();
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          callbacks.push(callback);
+        }
+        observe() {}
+        disconnect = disconnect;
+      },
+    );
+    try {
+      const editor = mount();
+      settle();
+      const measure = vi.spyOn(editor, "requestMeasure");
+      expect(callbacks.length).toBeGreaterThan(0);
+      callbacks.at(-1)?.();
+      expect(measure).toHaveBeenCalledTimes(1);
+      editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: "No math here.\n" } });
+      settle();
+      expect(disconnect).toHaveBeenCalled();
+      const before = measure.mock.calls.length;
+      callbacks.at(-1)?.();
+      expect(measure).toHaveBeenCalledTimes(before);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps the older hover entry point working for LaTeX", () => {
+    const editor = new EditorView({
+      state: EditorState.create({ doc: DOC, extensions: [mathHover()] }),
+      parent: document.body,
+    });
+    view = editor;
+    settle();
+    expect(preview(editor)?.querySelector(".katex")).not.toBeNull();
   });
 });
 

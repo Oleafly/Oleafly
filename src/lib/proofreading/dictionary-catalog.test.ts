@@ -154,3 +154,17 @@ describe("catalog loading", () => {
     expect(mocks.listDictionaries).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("dictionary names without usable locale data", () => {
+  it("falls back to the catalog names when the interface locale is not valid", () => {
+    const portuguese = entry("pt_BR", "Portuguese", "Brazil");
+    expect(dictionaryLanguageName(portuguese, "not a locale")).toBe("Portuguese");
+    expect(dictionaryLabel(portuguese, "not a locale")).toBe("Portuguese (Brazil)");
+  });
+
+  it("matches a query against a pack that has no region", () => {
+    const esperanto = entry("eo", "Esperanto", null);
+    expect(matchesDictionaryQuery(esperanto, "en", "esper")).toBe(true);
+    expect(matchesDictionaryQuery(esperanto, "en", "brazil")).toBe(false);
+  });
+});

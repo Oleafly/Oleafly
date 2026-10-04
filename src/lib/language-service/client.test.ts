@@ -6,18 +6,23 @@ import {
   vi,
 } from "vitest";
 import {
+  assertJsonRpcError,
+  createIncrementalContentChange,
   LanguageServiceAbortError,
   LanguageServiceClient,
   LanguageServiceExitedError,
+  LanguageServiceStateError,
   LanguageServiceTimeoutError,
   StaleLanguageServiceResultError,
   UnsupportedLanguageServiceCapabilityError,
+  type LanguageServiceClientEvent,
   type LanguageServiceClientStartOptions,
 } from "./client";
 import { getLanguageServiceRuntimeProfile } from "./runtime-profile";
 import {
   isJsonRpcNotification,
   isJsonRpcRequest,
+  JsonRpcProtocolError,
   type JsonRpcMessage,
   type JsonValue,
 } from "./json-rpc";
@@ -41,6 +46,8 @@ class FakeTransport implements LanguageServiceTransport {
   stopFailures = 0;
   startEventCount = 0;
   startGate: Promise<void> | null = null;
+  workspaceRoot = "/project";
+  sendFailure: ((message: JsonRpcMessage) => Error | null) | null = null;
   private readonly sinks = new Map<string, LanguageServiceEventSink>();
   private transportStatus: LanguageServiceTransportStatus = {
     state: "stopped",
@@ -61,7 +68,7 @@ class FakeTransport implements LanguageServiceTransport {
       kind: options.kind,
       generation: ++this.generation,
       projectId: options.projectId,
-      workspaceRoot: "/project",
+      workspaceRoot: this.workspaceRoot,
     };
     this.sinks.set(session.session, sink);
     this.transportStatus = { state: "running", session };
@@ -87,6 +94,8 @@ class FakeTransport implements LanguageServiceTransport {
     message: JsonRpcMessage,
   ): Promise<void> {
     this.sent.push({ session: { ...session }, message });
+    const failure = this.sendFailure?.(message);
+    if (failure) throw failure;
   }
 
   async stop(session: LanguageServiceSession): Promise<void> {
@@ -206,10 +215,13 @@ async function requestAt(
   index = 0,
 ): Promise<SentMessage> {
   let found: SentMessage | undefined;
-  await vi.waitFor(() => {
-    found = transport.requests(method)[index];
-    expect(found).toBeDefined();
-  });
+  await vi.waitFor(
+    () => {
+      found = transport.requests(method)[index];
+      expect(found).toBeDefined();
+    },
+    { interval: 2 },
+  );
   if (!found) throw new Error(`Missing ${method} request`);
   return found;
 }
@@ -1110,5 +1122,734 @@ describe("LanguageServiceClient editing features", () => {
     ).toMatchObject({
       params: { settings: { formatterPrintWidth: 80 } },
     });
+  });
+});
+
+const MAIN_URI = "file:///project/main.tex";
+const OTHER_URI = "file:///project/other.tex";
+const AT_START = { line: 0, character: 0 };
+
+function recordEvents(client: LanguageServiceClient) {
+  const events: LanguageServiceClientEvent[] = [];
+  client.subscribe((event) => events.push(event));
+  return events;
+}
+
+describe("LanguageServiceClient configuration and idle state", () => {
+  it.each([
+    [{ projectId: "  " }, "projectId is required"],
+    [{ requestTimeoutMs: 0 }, "requestTimeoutMs must be positive"],
+    [{ requestTimeoutMs: Number.NaN }, "requestTimeoutMs must be positive"],
+    [
+      { diagnosticQuietWindowMs: -1 },
+      "diagnosticQuietWindowMs must be a non-negative number",
+    ],
+    [
+      { positionEncodings: [] },
+      "At least one position encoding must be offered",
+    ],
+  ])("rejects the options %o", (overrides, message) => {
+    const create = () =>
+      new LanguageServiceClient({
+        transport: new FakeTransport(),
+        kind: "texlab",
+        projectId: "project",
+        ...overrides,
+      });
+    expect(create).toThrow(RangeError);
+    expect(create).toThrow(message);
+  });
+
+  it("reports an idle client and refuses work that needs a session", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+
+    expect(client.workspaceRoot).toBeNull();
+    expect(client.rootUri).toBeNull();
+    expect(client.status()).toEqual({
+      state: "stopped",
+      session: null,
+      generation: 0,
+      projectRevision: 0,
+      transport: { state: "stopped", session: null },
+    });
+    await expect(client.refreshTransportStatus()).rejects.toThrow(
+      "Language service has no active session",
+    );
+    await expect(openMain(client)).rejects.toThrow(
+      "Language service is not ready (stopped)",
+    );
+    expect(() => client.acknowledgeDocumentRevision(MAIN_URI)).toThrow(
+      LanguageServiceStateError,
+    );
+    await expect(client.restart()).rejects.toThrow(
+      "Cannot restart before initialization options are known",
+    );
+    await expect(client.exit()).resolves.toBeUndefined();
+    expect(transport.sent).toEqual([]);
+    expect(client.state).toBe("stopped");
+  });
+
+  it("encodes a Windows workspace root and hands out capability copies", async () => {
+    const transport = new FakeTransport();
+    transport.workspaceRoot = "C:\\Papers\\My Paper";
+    const client = createClient(transport);
+    await startClient(client, transport, {
+      semanticTokensProvider: {
+        legend: { tokenTypes: ["macro"], tokenModifiers: [] },
+        full: true,
+      },
+      executeCommandProvider: { commands: ["texlab.build"] },
+    });
+
+    expect(client.workspaceRoot).toBe("C:\\Papers\\My Paper");
+    expect(client.rootUri).toBe("file:///C:/Papers/My%20Paper");
+    expect(transport.requests("initialize")[0]?.message).toMatchObject({
+      params: { rootUri: "file:///C:/Papers/My%20Paper" },
+    });
+    const copy = client.capabilities;
+    copy.semanticTokens.legend?.tokenTypes.push("mutated");
+    copy.executeCommands.push("injected");
+    expect(client.capabilities.semanticTokens.legend?.tokenTypes).toEqual([
+      "macro",
+    ]);
+    expect(client.supportsCommand("injected")).toBe(false);
+    expect(client.supports("executeCommand")).toBe(true);
+    expect(client.status()).toMatchObject({
+      state: "ready",
+      generation: 1,
+      session: { session: "opaque-test-session-1" },
+      transport: { state: "running" },
+    });
+    await expect(client.refreshTransportStatus()).resolves.toMatchObject({
+      state: "running",
+    });
+  });
+
+  it("validates and advances the project revision, invalidating older requests", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport, { completionProvider: {} });
+    expect(client.supports("executeCommand")).toBe(false);
+    expect(() => client.setProjectRevision(-1)).toThrow(RangeError);
+    expect(() => client.setProjectRevision(1.5)).toThrow(RangeError);
+    await openMain(client);
+
+    const pending = client.requestCompletion({
+      textDocument: { uri: MAIN_URI },
+      position: AT_START,
+    });
+    const stale = expect(pending).rejects.toBeInstanceOf(
+      StaleLanguageServiceResultError,
+    );
+    expect(client.advanceProjectRevision()).toBe(1);
+    expect(client.projectRevision).toBe(1);
+    await stale;
+  });
+});
+
+describe("LanguageServiceClient lifecycle edges", () => {
+  it("refuses to start twice or with another server's profile", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport);
+    await expect(client.start(initializeOptions)).rejects.toThrow(
+      "Cannot start language service while ready",
+    );
+
+    const tinymist = createClient(new FakeTransport(), 1_000, "tinymist");
+    await expect(tinymist.start(initializeOptions)).rejects.toThrow(
+      "Runtime profile texlab does not match client tinymist",
+    );
+    expect(tinymist.state).toBe("stopped");
+  });
+
+  it("refuses to start while an earlier failed session still cannot be stopped", async () => {
+    const transport = new FakeTransport();
+    transport.stopFailures = 2;
+    const client = createClient(transport);
+    const starting = client.start(initializeOptions);
+    const initialize = await requestAt(transport, "initialize");
+    transport.respond(initialize, { malformed: true });
+    await expect(starting).rejects.toThrow("capabilities");
+
+    await expect(client.start(initializeOptions)).rejects.toThrow(
+      "stop failed",
+    );
+    expect(client.state).toBe("error");
+    expect(transport.requests("initialize")).toHaveLength(1);
+
+    await startClient(client, transport);
+    expect(client.state).toBe("ready");
+    expect(transport.stopped).toHaveLength(3);
+  });
+
+  it("skips the shutdown request when stopping before initialization finishes", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    const starting = client.start(initializeOptions);
+    const startFailed = expect(starting).rejects.toBeInstanceOf(
+      LanguageServiceExitedError,
+    );
+    await requestAt(transport, "initialize");
+
+    await client.stop();
+    await startFailed;
+    expect(transport.requests("shutdown")).toHaveLength(0);
+    expect(transport.notifications("exit")).toHaveLength(1);
+    expect(client.state).toBe("stopped");
+    expect(client.session).toBeNull();
+  });
+
+  it("reports a failed shutdown request but still exits and stops", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport);
+    const stopping = client.stop();
+    const shutdown = await requestAt(transport, "shutdown");
+    transport.respondError(shutdown, -32603, "shutdown failed");
+
+    await expect(stopping).rejects.toThrow("shutdown failed");
+    expect(transport.notifications("exit")).toHaveLength(1);
+    expect(client.state).toBe("stopped");
+  });
+
+  it("does not send exit to a server that already exited during shutdown", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport);
+    const session = client.session;
+    if (!session) throw new Error("Expected active session");
+    const stopping = client.stop();
+    await requestAt(transport, "shutdown");
+    transport.emitExit(session, 0);
+
+    await expect(stopping).rejects.toBeInstanceOf(LanguageServiceExitedError);
+    expect(transport.notifications("exit")).toHaveLength(0);
+    expect(client.state).toBe("stopped");
+  });
+
+  it("reports a failed exit notification after a clean shutdown", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport);
+    transport.sendFailure = (message) =>
+      isJsonRpcNotification(message) && message.method === "exit"
+        ? new Error("pipe closed")
+        : null;
+    const stopping = client.stop();
+    transport.respond(await requestAt(transport, "shutdown"), null);
+
+    await expect(stopping).rejects.toThrow("pipe closed");
+    expect(client.state).toBe("stopped");
+  });
+
+  it("exits without the shutdown handshake and invalidates pending work", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport, { completionProvider: {} });
+    await openMain(client);
+    const session = client.session;
+    const pending = client.requestCompletion({
+      textDocument: { uri: MAIN_URI },
+      position: AT_START,
+    });
+    const rejected = expect(pending).rejects.toBeInstanceOf(
+      LanguageServiceExitedError,
+    );
+
+    await client.exit();
+    await rejected;
+    expect(transport.requests("shutdown")).toHaveLength(0);
+    expect(transport.notifications("exit")).toHaveLength(1);
+    expect(transport.stopped).toEqual([session]);
+    expect(client.state).toBe("exited");
+    expect(client.session).toBeNull();
+    expect(client.getDocument(MAIN_URI)).toBeNull();
+  });
+
+  it("reports a failed exit notification and keeps the session for cleanup", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport);
+    const session = client.session;
+    const events = recordEvents(client);
+    transport.sendFailure = (message) =>
+      isJsonRpcNotification(message) && message.method === "exit"
+        ? new Error("pipe closed")
+        : null;
+
+    await expect(client.exit()).rejects.toThrow("pipe closed");
+    expect(client.state).toBe("exited");
+    expect(client.session).toBeNull();
+    expect(events.at(-1)).toMatchObject({
+      type: "status",
+      state: "exited",
+      error: { message: "pipe closed" },
+    });
+
+    await client.stop();
+    expect(transport.stopped).toEqual([session]);
+    expect(client.state).toBe("stopped");
+  });
+});
+
+describe("LanguageServiceClient document guards", () => {
+  it("rejects invalid versions, duplicate opens and edits to closed documents", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport);
+    await expect(
+      client.openDocument({
+        uri: MAIN_URI,
+        languageId: "latex",
+        version: -1,
+        text: "",
+      }),
+    ).rejects.toThrow(RangeError);
+    await openMain(client);
+    await expect(openMain(client)).rejects.toThrow(
+      `Document is already open: ${MAIN_URI}`,
+    );
+    await expect(
+      client.didChange({
+        textDocument: { uri: OTHER_URI, version: 2 },
+        contentChanges: [{ text: "x" }],
+      }),
+    ).rejects.toThrow(`Document is not open: ${OTHER_URI}`);
+    await expect(
+      client.changeDocument(OTHER_URI, [{ text: "x" }]),
+    ).rejects.toThrow(`Document is not open: ${OTHER_URI}`);
+    await expect(client.saveDocument(OTHER_URI)).rejects.toThrow(
+      `Document is not open: ${OTHER_URI}`,
+    );
+    expect(() => client.acknowledgeDocumentRevision(OTHER_URI)).toThrow(
+      `Document is not open: ${OTHER_URI}`,
+    );
+    await expect(client.closeDocument(OTHER_URI)).resolves.toBeUndefined();
+    expect(transport.notifications("textDocument/didClose")).toHaveLength(0);
+  });
+
+  it("applies ranged edits, including reversed ranges, and sends the smallest change", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport);
+    await openMain(client);
+
+    await client.changeDocument(MAIN_URI, [
+      {
+        range: {
+          start: { line: 0, character: 9 },
+          end: { line: 0, character: 14 },
+        },
+        text: "World",
+      },
+    ]);
+    expect(client.getDocument(MAIN_URI)?.text).toBe("\\section{World}");
+
+    await client.changeDocument(MAIN_URI, [
+      {
+        range: {
+          start: { line: 0, character: 14 },
+          end: { line: 0, character: 9 },
+        },
+        text: "Again",
+      },
+    ]);
+    expect(client.getDocument(MAIN_URI)).toMatchObject({
+      text: "\\section{Again}",
+      version: 3,
+    });
+    expect(
+      transport.notifications("textDocument/didChange").at(-1)?.message,
+    ).toMatchObject({
+      params: {
+        textDocument: { uri: MAIN_URI, version: 3 },
+        contentChanges: [
+          {
+            range: {
+              start: { line: 0, character: 9 },
+              end: { line: 0, character: 14 },
+            },
+            text: "Again",
+          },
+        ],
+      },
+    });
+  });
+});
+
+describe("LanguageServiceClient analysis requests", () => {
+  it("sends every analysis request the server advertises", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport, {
+      definitionProvider: true,
+      referencesProvider: true,
+      documentSymbolProvider: true,
+      diagnosticProvider: { workspaceDiagnostics: true },
+      semanticTokensProvider: {
+        legend: { tokenTypes: ["macro"], tokenModifiers: [] },
+        full: true,
+        range: true,
+      },
+    });
+    await openMain(client);
+    const textDocument = { uri: MAIN_URI };
+    const calls: Array<[string, () => Promise<JsonValue>]> = [
+      [
+        "textDocument/definition",
+        () => client.requestDefinition({ textDocument, position: AT_START }),
+      ],
+      [
+        "textDocument/references",
+        () =>
+          client.requestReferences({
+            textDocument,
+            position: AT_START,
+            context: { includeDeclaration: true },
+          }),
+      ],
+      [
+        "textDocument/documentSymbol",
+        () => client.requestDocumentSymbols({ textDocument }),
+      ],
+      [
+        "textDocument/diagnostic",
+        () => client.requestDocumentDiagnostics({ textDocument }),
+      ],
+      [
+        "workspace/diagnostic",
+        () => client.requestWorkspaceDiagnostics({ previousResultIds: [] }),
+      ],
+      [
+        "textDocument/semanticTokens/full",
+        () => client.requestSemanticTokensFull({ textDocument }),
+      ],
+      [
+        "textDocument/semanticTokens/range",
+        () =>
+          client.requestSemanticTokensRange({
+            textDocument,
+            range: { start: AT_START, end: { line: 0, character: 4 } },
+          }),
+      ],
+    ];
+    for (const [method, call] of calls) {
+      const index = transport.requests(method).length;
+      const result = call();
+      transport.respond(await requestAt(transport, method, index), {
+        answered: method,
+      });
+      await expect(result).resolves.toEqual({ answered: method });
+    }
+  });
+
+  it("rejects requests with invalid options before sending them", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport, { completionProvider: {} });
+    await openMain(client);
+    const params = { textDocument: { uri: MAIN_URI }, position: AT_START };
+    const aborted = new AbortController();
+    aborted.abort();
+
+    await expect(
+      client.requestCompletion(params, { timeoutMs: 0 }),
+    ).rejects.toThrow("Request timeout must be positive");
+    await expect(
+      client.requestCompletion(params, { signal: aborted.signal }),
+    ).rejects.toBeInstanceOf(LanguageServiceAbortError);
+    await expect(
+      client.requestCompletion(params, { projectRevision: 5 }),
+    ).rejects.toBeInstanceOf(StaleLanguageServiceResultError);
+    await expect(
+      client.requestCompletion({
+        textDocument: { uri: OTHER_URI },
+        position: AT_START,
+      }),
+    ).rejects.toThrow(`Document is not open: ${OTHER_URI}`);
+    await expect(
+      client.requestCompletion(params, { documentVersion: 0 }),
+    ).rejects.toBeInstanceOf(StaleLanguageServiceResultError);
+    expect(transport.requests("textDocument/completion")).toHaveLength(0);
+  });
+
+  it("rejects a request the transport could not deliver", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport, { completionProvider: {} });
+    await openMain(client);
+    transport.sendFailure = (message) =>
+      isJsonRpcRequest(message) && message.method === "textDocument/completion"
+        ? new Error("pipe closed")
+        : null;
+    await expect(
+      client.requestCompletion({
+        textDocument: { uri: MAIN_URI },
+        position: AT_START,
+      }),
+    ).rejects.toThrow("pipe closed");
+    expect(client.state).toBe("ready");
+  });
+});
+
+describe("LanguageServiceClient transport events", () => {
+  it("forwards logs and notifications and refuses server requests", async () => {
+    const transport = new FakeTransport();
+    transport.startEventCount = 1;
+    const client = createClient(transport);
+    const events = recordEvents(client);
+    await startClient(client, transport);
+    const session = client.session;
+    if (!session) throw new Error("Expected active session");
+
+    transport.emitMessage(session, {
+      jsonrpc: "2.0",
+      method: "window/logMessage",
+      params: { type: 3, message: "indexing" },
+    });
+    transport.emitMessage(session, { jsonrpc: "2.0", method: "custom/ping" });
+    transport.emitMessage(session, {
+      jsonrpc: "2.0",
+      id: 99,
+      method: "window/workDoneProgress/create",
+      params: { token: "t" },
+    });
+    transport.emitMessage(session, {
+      jsonrpc: "2.0",
+      id: null,
+      error: { code: -32700, message: "parse error" },
+    });
+
+    expect(events).toContainEqual({
+      type: "log",
+      stream: "stderr",
+      message: "early event 1",
+      generation: 1,
+    });
+    expect(events).toContainEqual({
+      type: "notification",
+      method: "window/logMessage",
+      params: { type: 3, message: "indexing" },
+      generation: 1,
+    });
+    expect(events).toContainEqual({
+      type: "notification",
+      method: "custom/ping",
+      generation: 1,
+    });
+    expect(events).toContainEqual({
+      type: "discarded",
+      reason: "response had a null id",
+      generation: 1,
+    });
+    await vi.waitFor(() => {
+      expect(transport.sent.at(-1)?.message).toEqual({
+        jsonrpc: "2.0",
+        id: 99,
+        error: {
+          code: -32601,
+          message: "Method not found: window/workDoneProgress/create",
+        },
+      });
+    });
+    expect(client.state).toBe("ready");
+  });
+
+  it("fails the session on a malformed message", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport, { completionProvider: {} });
+    await openMain(client);
+    const session = client.session;
+    if (!session) throw new Error("Expected active session");
+    const pending = client.requestCompletion({
+      textDocument: { uri: MAIN_URI },
+      position: AT_START,
+    });
+    const rejected = expect(pending).rejects.toBeInstanceOf(
+      JsonRpcProtocolError,
+    );
+
+    transport.emitMessage(session, { jsonrpc: "1.0", method: "broken" });
+    await rejected;
+    expect(client.state).toBe("error");
+    expect(client.session).toBeNull();
+    await vi.waitFor(() => expect(transport.stopped).toEqual([session]));
+  });
+
+  it("reports an exit without a code", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport);
+    const events = recordEvents(client);
+    const session = client.session;
+    if (!session) throw new Error("Expected active session");
+    transport.emitExit(session, null);
+    expect(client.state).toBe("exited");
+    expect(events.at(-1)).toMatchObject({
+      type: "status",
+      state: "exited",
+      error: { message: "Language service exited" },
+    });
+  });
+});
+
+describe("LanguageServiceClient pushed diagnostics", () => {
+  const diagnostic = (message: string) => ({
+    range: { start: AT_START, end: { line: 0, character: 1 } },
+    severity: 1,
+    message,
+  });
+
+  async function readyWithMain(
+    sync: Record<string, JsonValue> = {
+      openClose: true,
+      change: 2,
+    },
+  ) {
+    vi.useFakeTimers();
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    await startClient(client, transport, { textDocumentSync: sync });
+    const events = recordEvents(client);
+    await openMain(client);
+    const session = client.session;
+    if (!session) throw new Error("Expected active session");
+    const publish = (
+      params: Record<string, JsonValue>,
+    ) =>
+      transport.emitMessage(session, {
+        jsonrpc: "2.0",
+        method: "textDocument/publishDiagnostics",
+        params,
+      });
+    const emitted = () =>
+      events.flatMap((event) =>
+        event.type === "diagnostics"
+          ? [event.diagnostics.map((item) => item.message)]
+          : [],
+      );
+    const discarded = () =>
+      events.flatMap((event) =>
+        event.type === "discarded" ? [event.reason] : [],
+      );
+    return { transport, client, events, publish, emitted, discarded };
+  }
+
+  it("discards malformed, unopened and unsynchronized publications", async () => {
+    const { publish, discarded, emitted } = await readyWithMain({
+      openClose: false,
+      change: 1,
+    });
+    publish({ uri: 5 } as unknown as Record<string, JsonValue>);
+    publish({ uri: OTHER_URI, diagnostics: [] });
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("no epoch")] });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(discarded()).toEqual([
+      "publishDiagnostics payload is malformed",
+      "diagnostics target is not an open document",
+      "diagnostics have no current synchronization epoch",
+    ]);
+    expect(emitted()).toEqual([]);
+  });
+
+  it("treats an error answer to the barrier as acknowledgement", async () => {
+    const { transport, publish, emitted } = await readyWithMain();
+    const barrier = await requestAt(transport, "textDocument/documentSymbol");
+    transport.respondError(barrier, -32601, "no symbols here");
+    await vi.advanceTimersByTimeAsync(0);
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("after error")] });
+    await vi.advanceTimersByTimeAsync(76);
+    expect(emitted()).toEqual([["after error"]]);
+  });
+
+  it("keeps only the latest unversioned publication after the barrier", async () => {
+    const { transport, publish, emitted } = await readyWithMain();
+    transport.respond(
+      await requestAt(transport, "textDocument/documentSymbol"),
+      [],
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("first")] });
+    await vi.advanceTimersByTimeAsync(40);
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("second")] });
+    await vi.advanceTimersByTimeAsync(76);
+    expect(emitted()).toEqual([["second"]]);
+  });
+
+  it("lets a versioned publication replace a waiting unversioned one", async () => {
+    const { transport, publish, emitted } = await readyWithMain();
+    transport.respond(
+      await requestAt(transport, "textDocument/documentSymbol"),
+      [],
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("unversioned")] });
+    publish({
+      uri: MAIN_URI,
+      version: 1,
+      diagnostics: [diagnostic("versioned")],
+    });
+    await vi.advanceTimersByTimeAsync(200);
+    expect(emitted()).toEqual([["versioned"]]);
+  });
+
+  it.each([
+    [
+      "the document closes",
+      (client: LanguageServiceClient) => client.closeDocument(MAIN_URI),
+    ],
+    [
+      "the document changes",
+      (client: LanguageServiceClient) =>
+        client.replaceDocument(MAIN_URI, "\\section{Edited}"),
+    ],
+  ])(
+    "drops a waiting publication when %s",
+    async (_label, act) => {
+      const { transport, client, publish, emitted } = await readyWithMain();
+      transport.respond(
+        await requestAt(transport, "textDocument/documentSymbol"),
+        [],
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      publish({ uri: MAIN_URI, diagnostics: [diagnostic("stale")] });
+      await act(client);
+      await vi.advanceTimersByTimeAsync(200);
+      expect(emitted()).toEqual([]);
+    },
+  );
+});
+
+describe("createIncrementalContentChange", () => {
+  it("never splits a surrogate pair at the start of the change", () => {
+    expect(createIncrementalContentChange("😀", "😁", "utf-16")).toEqual({
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 2 },
+      },
+      text: "😁",
+    });
+  });
+
+  it("never splits a surrogate pair at the end of the change", () => {
+    expect(
+      createIncrementalContentChange("x\uD83D\uDE00", "x\uD83C\uDE00", "utf-16"),
+    ).toEqual({
+      range: {
+        start: { line: 0, character: 1 },
+        end: { line: 0, character: 3 },
+      },
+      text: "\uD83C\uDE00",
+    });
+  });
+});
+
+describe("assertJsonRpcError", () => {
+  it("accepts errors and rejects anything else", () => {
+    expect(() => assertJsonRpcError(new Error("boom"))).not.toThrow();
+    expect(() => assertJsonRpcError("boom")).toThrow(JsonRpcProtocolError);
   });
 });

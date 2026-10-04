@@ -50,4 +50,24 @@ describe("languageForPath", () => {
     );
     expect(languageForPath("main.tex.json")?.language.name).toBe("json");
   });
+
+  it.each([
+    ["styles.css", "css"],
+    [".gitignore", "properties"],
+    ["web/.dockerignore.gitignore", "properties"],
+    ["config/.env", "properties"],
+    ["ci.yml", "yaml"],
+    ["ci.yaml", "yaml"],
+    ["Cargo.toml", "toml"],
+    ["build.sh", "shell"],
+    ["run.bash", "shell"],
+  ])("highlights the project file %s as %s", (path, language) => {
+    expect(languageForPath(path)?.language.name).toBe(language);
+  });
+
+  it("uses the Dockerfile mode for a file named Dockerfile", () => {
+    const dockerfile = languageForPath("Dockerfile");
+    expect(dockerfile).not.toBeNull();
+    expect(dockerfile?.language.name).not.toBe("shell");
+  });
 });

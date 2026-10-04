@@ -152,3 +152,23 @@ describe("parseFile: input targets", () => {
     expect(target("\\input{intro.}", "intro.")).toBe("intro..tex");
   });
 });
+
+describe("parseFile: unusual inputs", () => {
+  it("skips a section whose title never closes", () => {
+    const parsed = parseFile("main.tex", "\\section{Intro\n\\label{a}");
+    expect(parsed.defs.filter((d) => d.kind === "section")).toEqual([]);
+    expect(parsed.defs.some((d) => d.kind === "label" && d.name === "a")).toBe(true);
+  });
+
+  it("resolves absolute-looking includes against the including folder", () => {
+    const nested = parseFile("chapters/main.tex", "\\input{/parts/intro}");
+    expect(nested.uses.find((u) => u.kind === "inputedge")?.target).toBe("chapters/parts/intro.tex");
+    const root = parseFile("main.tex", "\\include{./data.v2.tex}");
+    expect(root.uses.find((u) => u.kind === "inputedge")?.target).toBe("data.v2.tex");
+  });
+
+  it("ignores empty and starred keys in a multi-key citation", () => {
+    const parsed = parseFile("main.tex", "\\cite{a,, *,b}");
+    expect(parsed.uses.filter((u) => u.kind === "cite").map((u) => u.name)).toEqual(["a", "b"]);
+  });
+});

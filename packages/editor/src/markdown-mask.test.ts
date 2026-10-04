@@ -130,3 +130,54 @@ describe("Markdown email addresses", () => {
     ]);
   });
 });
+
+describe("Markdown masking of block and reference constructs", () => {
+  function visible(source: string): string[] {
+    return markdownSpellcheckRanges(source).map((range) => range.word);
+  }
+
+  it("masks a footnote label but keeps its body and indented continuation", () => {
+    const words = visible("Text.\n\n[^qqnote]: Body words\n    more words\nAfter\n");
+    expect(words).toContain("Body");
+    expect(words).toContain("more");
+    expect(words).toContain("After");
+    expect(words).not.toContain("qqnote");
+  });
+
+  it("masks indented code and reference definitions", () => {
+    const words = visible("Intro\n\n    qqcode here\n[qqref]: https://example.test\nOutro\n");
+    expect(words).toEqual(["Intro", "Outro"]);
+  });
+
+  it("masks the reference label of links and images but keeps their text", () => {
+    const words = visible("See [the qqtext][qqlabel] and ![qqimage][qqother] or [open [bracket text.\n");
+    expect(words).not.toContain("qqlabel");
+    expect(words).not.toContain("qqother");
+    expect(words).toContain("qqtext");
+    expect(words).toContain("See");
+    expect(words).toContain("bracket");
+  });
+
+  it("keeps unmatched inline code and masks link destinations with escaped parentheses", () => {
+    expect(visible("A `qqopen code span\n")).toContain("qqopen");
+    expect(visible("A ``x`` and [l](https://x.test/a\\)qqdest) end")).not.toContain("qqdest");
+    expect(visible("A [l](https://x.test/(qqnested)) end")).toEqual(["A", "l", "end"]);
+  });
+
+  it("masks frontmatter, comments, raw HTML blocks and tags", () => {
+    const source = "---\ntitle: qqmeta\n---\nBody <!-- qqcomment --> <span class=\"qqclass\">kept</span>\n<script>qqscript()</script>\n";
+    const words = visible(source);
+    expect(words).toEqual(["Body", "kept"]);
+  });
+
+  it("masks autolinks and e-mail addresses", () => {
+    const words = visible("Mail <me@qqhost.org> or <https://qqsite.test> and www.qqweb.test now\n");
+    expect(words).toEqual(["Mail", "or", "and", "now"]);
+  });
+
+  it("maps prose without a leading gap back to the source", () => {
+    const { prose, map } = markdownToProse("  Hello ,  world");
+    expect(prose).toBe("Hello, world");
+    expect(map[0]).toBe(2);
+  });
+});

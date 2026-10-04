@@ -85,3 +85,47 @@ describe("language-service runtime profile", () => {
     ).toThrow("invalid");
   });
 });
+
+describe("language-service runtime profile manifest checks", () => {
+  const validLsp = {
+    args: ["run"],
+    helpArgs: [],
+    initializationOptions: null,
+    didChangeConfiguration: null,
+  };
+
+  it("accepts profiles without initialization options or configuration", () => {
+    expect(
+      parseLanguageServiceRuntimeProfile(manifestWithLsp(validLsp), "texlab"),
+    ).toEqual({
+      kind: "texlab",
+      version: "5.26.0",
+      args: ["run"],
+      initializationOptions: null,
+      didChangeConfiguration: null,
+    });
+  });
+
+  it.each([
+    [null],
+    [{ schemaVersion: 2, servers: {} }],
+    [{ schemaVersion: 1, servers: [] }],
+  ])("rejects the manifest %o", (manifest) => {
+    expect(() =>
+      parseLanguageServiceRuntimeProfile(manifest, "texlab"),
+    ).toThrow("Language-server manifest schema is invalid");
+  });
+
+  it("rejects configuration settings that are not a JSON object", () => {
+    expect(() =>
+      parseLanguageServiceRuntimeProfile(
+        manifestWithLsp({
+          ...validLsp,
+          didChangeConfiguration: { settings: "texlab" },
+        }),
+        "texlab",
+      ),
+    ).toThrow("Language-server configuration settings for texlab are invalid");
+  });
+});
+

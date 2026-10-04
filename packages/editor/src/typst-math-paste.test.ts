@@ -176,4 +176,40 @@ describe("convertLatexMathSelection", () => {
     await expect(convertLatexMathSelection(editor)).resolves.toBe(false);
     expect(editor.state.doc.toString()).toBe("Plain $x^2$ text");
   });
+
+  it("converts a selected bare LaTeX body inside an equation without adding delimiters", async () => {
+    const doc = String.raw`Value $ \sqrt{x} + 1 $ end`;
+    const from = doc.indexOf(String.raw`\sqrt`);
+    const editor = mount(doc, from, from + String.raw`\sqrt{x}`.length);
+    await expect(convertLatexMathSelection(editor)).resolves.toBe(true);
+    expect(editor.state.doc.toString()).toBe("Value $ sqrt(x) + 1 $ end");
+  });
+
+  it("refuses selections without LaTeX and edits made while the converter loads", async () => {
+    const plain = mount("plain words", 0, 5);
+    await expect(convertLatexMathSelection(plain)).resolves.toBe(false);
+    plain.destroy();
+    const doc = String.raw`See \frac{1}{2} here`;
+    const editor = mount(doc, 4, 4 + String.raw`\frac{1}{2}`.length);
+    const pending = convertLatexMathSelection(editor);
+    editor.dispatch({ changes: { from: 0, insert: "x" } });
+    await expect(pending).resolves.toBe(false);
+    expect(editor.state.doc.toString()).toBe(`x${doc}`);
+  });
+});
+
+describe("paste offer edge cases", () => {
+  it("does not offer a conversion for a paste made of several changes or only whitespace", () => {
+    const editor = mount("ab", 1);
+    editor.dispatch({
+      changes: [
+        { from: 0, insert: String.raw`$\alpha$` },
+        { from: 2, insert: String.raw`$\beta$` },
+      ],
+      userEvent: "input.paste",
+    });
+    expect(typstMathPasteOffer(editor.state)).toBeNull();
+    paste(editor, "   ");
+    expect(typstMathPasteOffer(editor.state)).toBeNull();
+  });
 });

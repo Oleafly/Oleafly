@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { scanDocumentForCitations } from "./document-scan";
 import type { LiteratureRecord, LiteratureSearchResponse } from "@/lib/literature-search";
 
@@ -199,5 +200,94 @@ SCORE: 70
       }),
     ).rejects.toMatchObject({ name: "AbortError" });
     expect(searches).toBe(1);
+  });
+});
+
+describe("scanDocumentForCitations progress and failures", () => {
+  const settings = {
+    scoreThreshold: 0,
+    maxResultsPerSource: 5,
+    maxResultsPerParagraph: 2,
+    maxParagraphs: 20,
+  };
+  const copy = enCore.documentScan;
+
+  it("reports every step and skips a paragraph with no searchable words", async () => {
+    const progress: string[] = [];
+    const long = `Graph neural networks ${"enable molecule generation ".repeat(5)}with high fidelity.`;
+    const sourceText = [
+      "\\begin{document}",
+      "$$\\int_0^1 f(x)\\,dx = \\sum_{k=0}^{\\infty} a_k b_k c_k d_k$$",
+      "",
+      long,
+      "\\end{document}",
+    ].join("\n");
+    const result = await scanDocumentForCitations({
+      sourceText,
+      bibText: "",
+      rankMode: "heuristic",
+      settings,
+      search: async () => searchOk([paper({ citationCount: null }), paper({ id: "openalex:2", doi: "10.1/b", title: "B", citationCount: 3 }), paper({ id: "openalex:3", doi: "10.1/c", title: "C", citationCount: 9 })]),
+      onProgress: (step) => progress.push(`${step.phase}:${step.completedParagraphs}/${step.totalParagraphs}:${step.message}`),
+    });
+    expect(progress).toEqual([
+      `splitting:0/0:${copy.splitting}`,
+      "paragraph:1/2:Skipped empty query (1/2)",
+      "paragraph:1/2:Processing 2/2 paragraphs\u2026",
+      "paragraph:2/2:Processed 2/2 paragraphs\u2026",
+      `complete:2/2:${copy.complete}`,
+    ]);
+    expect(result.paragraphs).toHaveLength(1);
+    expect(result.paragraphs[0].paragraphPreview).toBe(`${long.slice(0, 100)}\u2026`);
+    const scores = result.paragraphs[0].suggestions.map((suggestion) => suggestion.score);
+    expect(scores).toHaveLength(2);
+    expect(scores[0]).toBeGreaterThanOrEqual(scores[1]);
+  });
+
+  it.each(["heuristic", "llm"] as const)("ranks an empty result list without asking the model (%s)", async (rankMode) => {
+    const completeChat = vi.fn(async () => "");
+    const result = await scanDocumentForCitations({
+      sourceText: source,
+      bibText: "",
+      rankMode,
+      settings,
+      search: async () => searchOk([], [{ source: "arxiv", status: "error", count: 0, total: null, durationMs: 1 }]),
+      completeChat,
+    });
+    expect(result.paragraphs.map((paragraph) => paragraph.suggestions)).toEqual([[], []]);
+    expect(result.paragraphs[0].sourceErrors).toEqual([]);
+    expect(completeChat).not.toHaveBeenCalled();
+  });
+
+  it("reports a failed search and rethrows it", async () => {
+    const progress: Array<{ phase: string; message?: string }> = [];
+    await expect(
+      scanDocumentForCitations({
+        sourceText: source,
+        bibText: "",
+        settings,
+        search: async () => {
+          throw new Error("search offline");
+        },
+        onProgress: (step) => progress.push(step),
+      }),
+    ).rejects.toThrow("search offline");
+    expect(progress.at(-1)).toMatchObject({ phase: "error", message: "search offline" });
+  });
+
+  it("uses the catalog message for a failure that is not an error object", async () => {
+    const progress: Array<{ phase: string; message?: string }> = [];
+    await expect(
+      scanDocumentForCitations({
+        sourceText: source,
+        bibText: "",
+        settings,
+        search: async () => {
+          throw "offline";
+        },
+        onProgress: (step) => progress.push(step),
+      }),
+    ).rejects.toBe("offline");
+    expect(progress.at(-1)).toMatchObject({ phase: "error", message: copy.failed });
   });
 });

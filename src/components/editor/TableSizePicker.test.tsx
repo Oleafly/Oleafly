@@ -40,4 +40,21 @@ describe("TableSizePicker", () => {
     expect(onPick).toHaveBeenCalledWith(3, 4);
     expect(insertTable).not.toHaveBeenCalled();
   });
+
+  it("previews the hovered size and fills the grid up to it", () => {
+    render(<TableSizePicker />);
+    fireEvent.click(screen.getByLabelText("Insert table"));
+    expect(screen.getByText("Select size")).toBeInTheDocument();
+    fireEvent.mouseEnter(screen.getByLabelText("2 by 3 table"));
+    expect(screen.getByText("2 × 3")).toBeInTheDocument();
+    expect(screen.getByLabelText("1 by 1 table")).toHaveClass("bg-primary/20");
+    expect(screen.getByLabelText("2 by 3 table")).toHaveClass("bg-primary/20");
+    expect(screen.getByLabelText("3 by 3 table")).not.toHaveClass("bg-primary/20");
+    expect(screen.getByLabelText("2 by 4 table")).not.toHaveClass("bg-primary/20");
+  });
+
+  it("labels the trigger as a menu row when asked", () => {
+    render(<TableSizePicker menuRow />);
+    expect(screen.getByLabelText("Insert table")).toHaveTextContent("Table");
+  });
 });

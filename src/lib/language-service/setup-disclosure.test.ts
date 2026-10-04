@@ -45,3 +45,88 @@ describe("language-service setup disclosure", () => {
     ).toThrow(/binarySha256/u);
   });
 });
+
+describe("language-service setup disclosure validation", () => {
+  const target = "aarch64-apple-darwin";
+
+  function broken(
+    mutate: (manifest: typeof languageServerManifest) => void,
+  ): typeof languageServerManifest {
+    const manifest = structuredClone(languageServerManifest);
+    mutate(manifest);
+    return manifest;
+  }
+
+  it.each([
+    [
+      "an unsupported schema",
+      broken((manifest) => {
+        manifest.schemaVersion = 2;
+      }),
+      /setup manifest schema is invalid/u,
+    ],
+    [
+      "an empty target list",
+      broken((manifest) => {
+        manifest.supportedTargets = [];
+      }),
+      /setup manifest schema is invalid/u,
+    ],
+    [
+      "a missing server entry",
+      broken((manifest) => {
+        Reflect.deleteProperty(manifest.servers.texlab, "license");
+      }),
+      /setup metadata for texlab is missing/u,
+    ],
+    [
+      "a blank display name",
+      broken((manifest) => {
+        manifest.servers.texlab.displayName = " ";
+      }),
+      /field texlab.displayName is invalid/u,
+    ],
+    [
+      "a license URL that is not a URL",
+      broken((manifest) => {
+        manifest.servers.texlab.license.licenseUrl = "not a url";
+      }),
+      /field texlab.license.licenseUrl is not a URL/u,
+    ],
+    [
+      "a source URL without HTTPS",
+      broken((manifest) => {
+        manifest.servers.texlab.license.sourceUrl =
+          "http://github.com/latex-lsp/texlab/tree/v5.26.0";
+      }),
+      /field texlab.license.sourceUrl must use HTTPS/u,
+    ],
+    [
+      "a source URL that is not pinned to the tag",
+      broken((manifest) => {
+        manifest.servers.texlab.license.sourceUrl =
+          "https://github.com/latex-lsp/texlab/tree/master";
+      }),
+      /not pinned to v5.26.0/u,
+    ],
+    [
+      "a missing target artifact",
+      broken((manifest) => {
+        Reflect.deleteProperty(manifest.servers.texlab.targets, target);
+      }),
+      new RegExp(`artifact for texlab/${target} is missing`, "u"),
+    ],
+    [
+      "a zero archive size",
+      broken((manifest) => {
+        manifest.servers.texlab.targets[target].archiveSize = 0;
+      }),
+      /archiveSize must be a positive integer/u,
+    ],
+  ])("fails closed on %s", (_label, manifest, message) => {
+    expect(() =>
+      parseLanguageServiceSetupDisclosure(manifest, "texlab"),
+    ).toThrow(message);
+  });
+});
+

@@ -24,10 +24,17 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(async () => {}),
   errorUnique: vi.fn(),
   notifyError: vi.fn(),
+  openFileAndGotoLine: vi.fn(async (_file: string | null, _line: number, _column?: number) => {}),
+  askAiAboutCompileErrors: vi.fn(async () => {}),
+  openSettingsAt: vi.fn(),
+  tauri: true,
 }));
+vi.mock("@/features/synctex", () => ({ openFileAndGotoLine: mocks.openFileAndGotoLine }));
+vi.mock("@/features/ask-ai-compile-errors", () => ({ askAiAboutCompileErrors: mocks.askAiAboutCompileErrors }));
+vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({ openSettingsAt: mocks.openSettingsAt }) } }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: { errorUnique: mocks.errorUnique }, notifyError: mocks.notifyError }));
-vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
+vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.tauri }));
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => ({ setFocus: mocks.setFocus }) }));
 vi.mock("@/lib/typst-compile-actions", () => ({
   applyTypstCompileOptions: mocks.applyTypstCompileOptions,
@@ -60,7 +67,7 @@ const trusted = { trusted: true, source: "folder", parent: null, repository: nul
 
 beforeEach(() => {
   vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.detachedChanged = () => {};
-  mocks.files = {}; mocks.filesChanged = () => {};
+  mocks.files = {}; mocks.filesChanged = () => {}; mocks.tauri = true;
   useFolderAccessStore.getState().reset(null);
 });
 
@@ -292,5 +299,71 @@ describe("detached compile commands", () => {
     expect(mocks.errorUnique).not.toHaveBeenCalled();
     expect(mocks.notifyError).not.toHaveBeenCalled();
     cleanup();
+  });
+
+  it("opens the PDF settings and focuses the main window", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "pdf-settings" } });
+    await vi.waitFor(() => expect(mocks.setFocus).toHaveBeenCalledOnce());
+    expect(mocks.openSettingsAt).toHaveBeenCalledWith("appearance", "pdf");
+    cleanup();
+  });
+
+  it("jumps to a source location from the detached preview and ignores invalid locations", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    const command = (payload: unknown) => mocks.handlers.get("preview:command")?.({ payload });
+    command({ projectId: "current", action: "source-location", file: 5, line: 3 });
+    command({ projectId: "current", action: "source-location", file: "a.tex", line: 0 });
+    command({ projectId: "current", action: "source-location", file: "a.tex", line: 2.5 });
+    command({ projectId: "current", action: "source-location", file: "chapters/a.tex", line: 12, column: 4 });
+    await vi.waitFor(() => expect(mocks.setFocus).toHaveBeenCalledOnce());
+    command({ projectId: "current", action: "source-location", file: null, line: 3, column: 0 });
+    await vi.waitFor(() => expect(mocks.setFocus).toHaveBeenCalledTimes(2));
+    expect(mocks.openFileAndGotoLine.mock.calls).toEqual([
+      ["chapters/a.tex", 12, 4],
+      [null, 3, undefined],
+    ]);
+    cleanup();
+  });
+
+  it("asks the assistant about compile errors and focuses the main window", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "ask-ai" } });
+    await vi.waitFor(() => expect(mocks.setFocus).toHaveBeenCalledOnce());
+    expect(mocks.askAiAboutCompileErrors).toHaveBeenCalledOnce();
+    cleanup();
+  });
+
+  it("ignores commands without a project and starts no bridge outside the desktop shell", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { action: "compile" } });
+    mocks.handlers.get("preview:command")?.({ payload: null });
+    expect(mocks.recompile).not.toHaveBeenCalled();
+    cleanup();
+
+    mocks.handlers.clear();
+    mocks.tauri = false;
+    const noop = await startPreviewWorkspaceBridge();
+    expect(mocks.handlers.size).toBe(0);
+    noop();
+  });
+
+  it("publishes once for a burst of changes and skips file changes that do not affect the preview", async () => {
+    vi.useFakeTimers();
+    try {
+      const cleanup = await startPreviewWorkspaceBridge();
+      const files = { engine: { id: "latex" }, engineLoaded: true, mainDoc: "main.tex", tree: [] };
+      mocks.filesChanged({ ...files, activePath: "b.tex" }, { ...files, activePath: "a.tex" });
+      vi.advanceTimersByTime(200);
+      expect(mocks.emitTo).not.toHaveBeenCalled();
+      mocks.detachedChanged();
+      mocks.detachedChanged();
+      mocks.filesChanged({ ...files, mainDoc: "other.tex" }, files);
+      vi.advanceTimersByTime(100);
+      expect(mocks.emitTo).toHaveBeenCalledOnce();
+      cleanup();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

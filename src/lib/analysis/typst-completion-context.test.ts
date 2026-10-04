@@ -182,3 +182,81 @@ describe("typstCompletionTrigger", () => {
     });
   });
 });
+
+describe("typstCursorContext scanning", () => {
+  it("resumes after a line comment ends", () => {
+    expect(typstCursorContext("// note\n#calc.")).toMatchObject({
+      mode: "code",
+      inComment: false,
+    });
+  });
+
+  it("tracks nested block comments", () => {
+    expect(typstCursorContext("/* a /* b */ still").inComment).toBe(true);
+    expect(typstCursorContext("/* a /* b */ c */ #calc.")).toMatchObject({
+      mode: "code",
+      inComment: false,
+    });
+    expect(typstCursorContext("#{ x /* note */ ").mode).toBe("code");
+    expect(typstCursorContext("#{ x // note").inComment).toBe(true);
+  });
+
+  it("handles escapes and line ends inside strings", () => {
+    expect(typstCursorContext("#text(\"a \\\" b").inString).toBe(true);
+    expect(typstCursorContext("#text(\"a \\\" b\", ")).toMatchObject({
+      inString: false,
+      inArguments: true,
+    });
+    expect(typstCursorContext("#text(\"open\n")).toMatchObject({
+      inString: false,
+      inArguments: true,
+    });
+  });
+
+  it("treats a pair of backticks as an empty raw span", () => {
+    expect(typstCursorContext("`` #calc.")).toMatchObject({
+      mode: "code",
+      inRaw: false,
+    });
+  });
+
+  it("reads escapes, strings, comments and embedded code inside math", () => {
+    expect(typstCursorContext("$ a \\$ b").mode).toBe("math");
+    expect(typstCursorContext("$ \"text").inString).toBe(true);
+    expect(typstCursorContext("$ \"a\" + b")).toMatchObject({
+      mode: "math",
+      inString: false,
+    });
+    expect(typstCursorContext("$ x // note").inComment).toBe(true);
+    expect(typstCursorContext("$ #calc.").mode).toBe("code");
+    expect(typstCursorContext("#{ $ al").mode).toBe("math");
+  });
+
+  it("scans only the trailing window from the start of a line", () => {
+    const blockBeforeWindow = `#{\n${"a ".repeat(10_001)}\nlet x = `;
+    expect(typstCursorContext(blockBeforeWindow).mode).toBe("markup");
+    const codeInsideWindow = `${"x".repeat(20_001)}\n#calc.`;
+    expect(typstCursorContext(codeInsideWindow).mode).toBe("code");
+    expect(typstCursorContext(`#{${"a".repeat(20_005)}`)).toEqual({
+      mode: "markup",
+      inString: false,
+      inComment: false,
+      inRaw: false,
+      inArguments: false,
+    });
+  });
+});
+
+describe("typstCompletionTrigger edge cases", () => {
+  it("opens after # inside math and stays closed after operators in code", () => {
+    expect(trigger("$ x + #")).toEqual({
+      triggerKind: 2,
+      triggerCharacter: "#",
+    });
+    expect(trigger("#let x = 1 +")).toBeNull();
+  });
+
+  it("reports an explicit request inside a path string as invoked", () => {
+    expect(trigger("#image(\"fig", true)).toEqual({ triggerKind: 1 });
+  });
+});
