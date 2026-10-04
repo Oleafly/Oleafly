@@ -250,7 +250,7 @@ export function maskMarkdown(text: string): string {
   maskInlineCode(chars);
   maskLinkDestinations(chars);
   maskReferenceLinks(chars);
-  for (const match of chars.join("").matchAll(/\[\^[^\]\s]+\]/gu)) {
+  for (const match of chars.join("").matchAll(/\[\^[^[\]\s]+\]/gu)) {
     blank(chars, match.index, match.index + match[0].length);
   }
   for (const pattern of [

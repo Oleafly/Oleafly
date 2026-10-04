@@ -81,7 +81,7 @@ describe("plan approval without a chat", () => {
     const store = usePlanApprovalStore.getState();
     expect(store.load(null)).toBe("planning");
     store.setStatus(null, "approved");
-    expect(localStorage.length).toBe(0);
+    expect(localStorage).toHaveLength(0);
     expect(planApprovalForChat({}, null)).toBe("planning");
 
     store.setStatus("chat-c", "awaiting");
