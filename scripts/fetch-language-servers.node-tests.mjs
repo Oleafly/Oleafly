@@ -777,16 +777,14 @@ test("license and redistribution metadata is explicit and pinned", async () => {
     tinymistLicense.toString("utf8"),
     /Copyright 2023-2025 Myriad Dreamin, Nathan Varner/u,
   );
-  assert.ok(
-    tauriConfig.bundle.resources.includes(
-      "resources/licenses/**/*",
-    ),
+  assert.equal(
+    tauriConfig.bundle.resources["resources/licenses/"],
+    "resources/licenses/",
     "Tauri bundles the pinned Tinymist license resource",
   );
-  assert.ok(
-    tauriConfig.bundle.resources.includes(
-      "resources/language-servers/**/*",
-    ),
+  assert.equal(
+    tauriConfig.bundle.resources["resources/language-servers/"],
+    "resources/language-servers/",
     "Tauri bundles the checksum-pinned Tinymist archive resource",
   );
   assert.ok(
@@ -808,10 +806,8 @@ test("Tauri resources and package scripts mirror the manifest without a Tinymist
   assert.equal(tauriConfig.bundle.externalBin.includes("binaries/texlab"), false);
   assert.equal(tauriConfig.bundle.externalBin.includes("binaries/tinymist"), false);
   assert.equal(
-    tauriConfig.bundle.resources.includes(
-      "resources/language-servers/**/*",
-    ),
-    true,
+    tauriConfig.bundle.resources["resources/language-servers/"],
+    "resources/language-servers/",
   );
   assert.equal(
     tauriConfig.bundle.externalBin.some((entry) =>

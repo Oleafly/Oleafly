@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "resources": {
+      "binaries/vcruntime140.dll": "vcruntime140.dll"
+    }
+  }
+}

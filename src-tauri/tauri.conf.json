@@ -52,18 +52,18 @@
       "binaries/pandoc",
       "binaries/typst"
     ],
-    "resources": [
-      "resources/templates/**/*",
-      "resources/font-packs.json",
-      "resources/dictionary-packs.json",
-      "resources/template-packs.json",
-      "resources/deadlines-seed.json",
-      "resources/deadlines-extra.json",
-      "resources/licenses/**/*",
-      "resources/language-servers/**/*",
-      "resources/skills/**/*",
-      "resources/skills-catalog.json"
-    ],
+    "resources": {
+      "resources/templates/": "resources/templates/",
+      "resources/font-packs.json": "resources/font-packs.json",
+      "resources/dictionary-packs.json": "resources/dictionary-packs.json",
+      "resources/template-packs.json": "resources/template-packs.json",
+      "resources/deadlines-seed.json": "resources/deadlines-seed.json",
+      "resources/deadlines-extra.json": "resources/deadlines-extra.json",
+      "resources/licenses/": "resources/licenses/",
+      "resources/language-servers/": "resources/language-servers/",
+      "resources/skills/": "resources/skills/",
+      "resources/skills-catalog.json": "resources/skills-catalog.json"
+    },
     "macOS": {
       "hardenedRuntime": true,
       "entitlements": "entitlements.plist",

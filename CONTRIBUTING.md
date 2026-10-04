@@ -32,6 +32,8 @@ pnpm install
 # Find your target with `rustc -vV | grep host`.
 bash scripts/fetch-tectonic.sh aarch64-apple-darwin   # or your host triple
 bash scripts/fetch-typst.sh aarch64-apple-darwin
+# Windows only: copy Microsoft's VC++ runtime that Typst and TexLab need.
+node scripts/stage-windows-vcruntime.mjs
 
 # Run the app in dev mode (hot-reloads the frontend, rebuilds Rust on change):
 pnpm tauri dev

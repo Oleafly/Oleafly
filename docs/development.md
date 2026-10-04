@@ -55,8 +55,16 @@ host_target="$(rustc -vV | sed -n 's/^host: //p')"
 ./scripts/fetch-biber.sh "$host_target" # pinned Biber 2.17
 ./scripts/fetch-pandoc.sh "$host_target"
 ./scripts/fetch-typst.sh "$host_target"
+node scripts/stage-windows-vcruntime.mjs # Windows only
 pnpm tauri dev
 ```
+
+On Windows, `stage-windows-vcruntime.mjs` copies Microsoft's
+`vcruntime140.dll` into `src-tauri/binaries/`. Typst and TexLab need it and
+Windows doesn't include it, so Oleafly installs it next to `Oleafly.exe`. The
+script takes the copy from Visual Studio Build Tools, or from `System32` when
+that's the only one, and refuses any file Microsoft didn't sign. Windows builds
+fail until it has run.
 
 The sidecar scripts fetch only the current host for day-to-day development.
 Pass `all` only when preparing every supported target for CI or release work.
