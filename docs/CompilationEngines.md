@@ -176,8 +176,10 @@ records.
 
 - Uses the pinned Typst CLI.
 - Supports `.typ` source and direct PDF output.
-- Advertises current capability limits truthfully: SyncTeX, offline, and
-  isolated-compile support are currently disabled.
+- Source and PDF sync goes through Tinymist and needs Typst 0.13 or newer.
+  Offline mode works when packages are already cached or vendored into
+  `typst-packages/`. Isolated compilation is not supported, so the figure tools
+  render CeTZ or fletcher as Typst snippets.
 - Typst-specific UI behavior is driven by the descriptor, not extensions.
 - Receives the same supervised `PATH` prepending as LaTeX (see above). Typst
   does not use Biber or TeX Live bins.

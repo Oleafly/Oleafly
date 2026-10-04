@@ -217,7 +217,7 @@ Oleafly hält die Kompilierung nah am Manuskript und verwandelt Compiler-Ausgabe
 | --- | --- | --- |
 | LaTeX mit Tectonic | Portable, gebündelte LaTeX-Builds | Wird mit der Desktop-App ausgeliefert; unterstützt Multi-Datei-Projekte, Bilder, Zitate, Biber, SyncTeX, isolierte Abbildungskompilierung und zwischengespeicherte Offline-Builds, wenn Pakete verfügbar sind |
 | LaTeX mit `latexmk` | Projekte, die eine vollständige System-TeX-Distribution benötigen | Verwendet MacTeX, TeX Live, MiKTeX oder TinyTeX; unterstützt `minted`, `glossaries`, `makeidx`, PythonTeX, stark auf Shell-Escape angewiesene Templates und Unicode-Engines, wenn du ihnen ausdrücklich vertraust |
-| Typst | Schnelles modernes Erstellen von Dokumenten | Gebündelter Compiler, PDF-Ausgabe, Projektindex und Zitate; SyncTeX, Offline-Compiler-Modus und isolierte Abbildungskompilierung sind in dieser Version nicht verfügbar |
+| Typst | Schnelles modernes Erstellen von Dokumenten | Gebündelter Compiler, PDF-Ausgabe, Projektindex und Zitate; Synchronisierung zwischen Quelltext und PDF ab Typst 0.13 und Offline-Builds, wenn die Pakete im Cache oder im Projekt liegen. Isolierte Abbildungskompilierung ist in dieser Version nicht verfügbar |
 | Markdown mit Pandoc | Leichte Prosa- und Konvertierungs-Workflows | Pandoc kann über die Einstellungen installiert werden; die PDF-Ausgabe verwendet den gebündelten Tectonic-Eingang, DOCX-, HTML-, Markdown- und Text-Exporte stehen zur Verfügung, soweit unterstützt |
 
 LaTeX-Projekte erhalten beim Öffnen eine Kompatibilitätsprüfung. Wenn ein Projekt mehr benötigt, als die gebündelte Engine verarbeiten kann, erklärt Oleafly die Lücke und verweist auf die passende Engine oder das passende Paket. System-TeX läuft standardmäßig mit eingeschränkten Shell-Befehlen; vollständiges Shell Escape aktivierst du separat für jedes Projekt und jeden Computer.
@@ -234,7 +234,7 @@ Der PDF-Viewer ist in den Arbeitsbereich integriert und kann auch in einem separ
 
 Verwende den fortlaufenden Bildlauf oder eine einseitige beziehungsweise zweiseitige Ansicht. Zoome, passe die Ansicht an Breite oder Höhe an, drehe die Seite, invertiere Farben, durchsuche den Dokumenttext, folge der Gliederung, springe zu einer Seite, lade das PDF mit einem gewählten Dateinamen herunter oder prüfe das Kompilierungsprotokoll in derselben Ansicht. Verschlüsselte PDFs zeigen eine Passwortabfrage statt eines leeren Viewers.
 
-Wenn gültige SyncTeX-Daten vorhanden sind, führt die Vorwärtsnavigation vom Quelltext zum PDF und die Rückwärtsnavigation nach einem Klick im PDF zurück zur Quelltextzeile. Engines ohne SyncTeX deaktivieren diese Steuerelemente.
+Der Befehl „Zum PDF springen“ bringt dich vom Quelltext an die passende Stelle im PDF, und ein Klick im PDF bringt dich zurück zur Quelltextzeile. LaTeX nutzt dafür SyncTeX, Typst ab Version 0.13 den Sprachserver Tinymist. Markdown und ältere Typst-Versionen können nicht synchronisieren, deshalb erscheinen diese Steuerelemente dort nicht.
 
 <div align="center">
   <img src="../assets/readme/pdf-preview.png" alt="Oleafly-PDF-Vorschau neben dem Quelltexteditor" width="100%" />
@@ -570,7 +570,7 @@ Linux-Pakete benötigen glibc 2.39 oder neuer. Releases enthalten signierte Upda
 
 ## Aktuelle Version
 
-Oleafly befindet sich in der Beta. Live-Zusammenarbeit, Kommentare und Hintergrundsynchronisierung zwischen Geräten sind in dieser Version nicht verfügbar. Typst und Markdown bieten derzeit weder SyncTeX noch die LaTeX-spezifischen Preflight-Prüfungen für den Quelltext. Prüfe die aktive Engine in der App und verfolge Änderungen im [Changelog](../../CHANGELOG.md).
+Oleafly befindet sich in der Beta. Live-Zusammenarbeit, Kommentare und Hintergrundsynchronisierung zwischen Geräten sind in dieser Version nicht verfügbar. Markdown bietet noch keine Synchronisierung zwischen Quelltext und PDF und keine Preflight-Prüfungen für den Quelltext, und die Typst-Synchronisierung braucht Typst 0.13 oder neuer. Prüfe die aktive Engine in der App und verfolge Änderungen im [Changelog](../../CHANGELOG.md).
 
 ## Community und Support
 

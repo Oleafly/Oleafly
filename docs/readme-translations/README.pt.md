@@ -216,7 +216,7 @@ Oleafly mantém a compilação perto do manuscrito e transforma a saída do comp
 | --- | --- | --- |
 | LaTeX com Tectonic | Compilações LaTeX portáteis e incluídas | Vem com o aplicativo desktop; aceita projetos com vários arquivos, imagens, citações, Biber, SyncTeX, figuras isoladas e builds offline em cache quando os pacotes estão disponíveis |
 | LaTeX com latexmk | Projetos que precisam de uma distribuição TeX de sistema completa | Usa MacTeX, TeX Live, MiKTeX ou TinyTeX; aceita minted, glossaries, makeidx, PythonTeX, shell escape e mecanismos Unicode confiados |
-| Typst | Criação rápida de documentos modernos | Compilador incluído, saída PDF, indexação e citações; SyncTeX, compilação offline e figuras isoladas não estão disponíveis nesta versão |
+| Typst | Criação rápida de documentos modernos | Compilador incluído, saída PDF, indexação e citações; sincronização entre fonte e PDF no Typst 0.13 ou mais recente, e compilação offline quando os pacotes estão em cache ou guardados no projeto. Figuras isoladas não estão disponíveis nesta versão |
 | Markdown com Pandoc | Fluxos leves de prosa e conversão | Pandoc pode ser instalado em Settings; a saída PDF usa a entrada Tectonic incluída, com DOCX, HTML, Markdown e texto quando suportados |
 
 Projetos LaTeX recebem uma verificação de compatibilidade ao abrir. Se o projeto precisar de algo além do mecanismo incluído, o Oleafly explica a lacuna e indica o mecanismo ou pacote correto. O TeX de sistema executa comandos shell restritos por padrão; shell escape completo é habilitado por projeto e computador.
@@ -233,7 +233,7 @@ O visualizador de PDF faz parte do espaço de trabalho e também pode abrir em u
 
 Use rolagem contínua ou um modo de uma ou duas páginas. Ajuste zoom, largura ou altura, gire, inverta as cores, pesquise o texto, siga o esquema, salte para uma página, baixe com um nome escolhido ou veja o log. PDFs criptografados mostram um pedido de senha.
 
-Quando houver dados SyncTeX válidos, a navegação direta vai da fonte ao PDF e a inversa vai do PDF à linha da fonte. Mecanismos sem SyncTeX desativam esses controles.
+O comando Ir para o PDF leva você da fonte ao ponto correspondente no PDF, e um clique no PDF leva de volta à linha da fonte. O LaTeX faz isso com SyncTeX, e o Typst, a partir da versão 0.13, pelo servidor de linguagem Tinymist. Markdown e versões mais antigas do Typst não sincronizam, então esses controles não aparecem.
 
 <div align="center">
   <img src="../assets/readme/pdf-preview.png" alt="Prévia de PDF do Oleafly ao lado do editor de fonte" width="100%" />
@@ -569,7 +569,7 @@ Pacotes Linux exigem glibc 2.39 ou mais recente. Os releases incluem artefatos a
 
 ## Versão atual
 
-Oleafly está em beta. Coedição ao vivo, comentários e sincronização em segundo plano entre dispositivos não estão disponíveis nesta versão. Typst e Markdown ainda não oferecem SyncTeX nem as verificações de fonte específicas de LaTeX no Preflight. Confira o mecanismo ativo e acompanhe o [changelog](../../CHANGELOG.md).
+Oleafly está em beta. Coedição ao vivo, comentários e sincronização em segundo plano entre dispositivos não estão disponíveis nesta versão. Markdown ainda não tem sincronização entre fonte e PDF nem verificações de fonte no Preflight, e a sincronização do Typst exige Typst 0.13 ou mais recente. Confira o mecanismo ativo e acompanhe o [changelog](../../CHANGELOG.md).
 
 ## Comunidade e suporte
 

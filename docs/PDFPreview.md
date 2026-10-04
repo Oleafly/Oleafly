@@ -42,6 +42,11 @@ has no file name, such as table of contents entries Tectonic reads from its
 build folder, never become the target. Forward search uses the same records to
 find the text line that holds the requested source line.
 
+Typst sync does not use SyncTeX data. It goes through the Tinymist language
+server and needs Typst 0.13 or newer (Tinymist 0.13.30 or newer). With an older
+Typst, the engine reports sync as unavailable, the same as Markdown, and the
+controls stay hidden.
+
 Selecting text in the PDF never jumps to the source, so copying text leaves the
 editor where it is. A single click jumps.
 
@@ -62,4 +67,6 @@ editor where it is. A single click jumps.
 - `src/components/pdf/PdfViewer.tsx`
 - `src/features/synctex.ts`
 - `src-tauri/src/synctex.rs`
+- `src/features/typst-sync.ts`
+- `src-tauri/src/typst_sync.rs`
 - `src/store/pdf-view.ts`

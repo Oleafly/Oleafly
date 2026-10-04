@@ -217,7 +217,7 @@ Oleafly keeps compilation close to the manuscript and turns compiler output into
 | --- | --- | --- |
 | LaTeX with Tectonic | Portable, bundled LaTeX builds | Ships with the desktop app; supports multi-file projects, images, citations, Biber, SyncTeX, isolated figure compilation, and cached offline builds when packages are available |
 | LaTeX with `latexmk` | Projects that need a full system TeX distribution | Uses MacTeX, TeX Live, MiKTeX, or TinyTeX; supports `minted`, `glossaries`, `makeidx`, PythonTeX, shell-escape-heavy templates, and Unicode engines when explicitly trusted |
-| Typst | Fast modern document authoring | Bundled compiler, PDF output, project indexing, and citations; SyncTeX, offline compiler mode, and isolated figure compilation are not available in this release |
+| Typst | Fast modern document authoring | Bundled compiler, PDF output, project indexing, and citations; source and PDF sync on Typst 0.13 or newer, and offline builds when packages are cached or kept in the project. Isolated figure compilation is not available in this release |
 | Markdown with Pandoc | Lightweight prose and conversion workflows | Pandoc can be installed from Settings; PDF output uses the bundled Tectonic input, with DOCX, HTML, Markdown, and text exports where supported |
 
 LaTeX projects get a compatibility scan when they open. If a project needs more than the bundled engine can handle, Oleafly explains the gap and points you to the right engine or package. System TeX runs with restricted shell commands by default; you enable full shell escape separately for each project and computer.
@@ -234,7 +234,7 @@ The PDF viewer is built into the workspace and can also open in a detached previ
 
 Use continuous scroll or a one-page / two-page spread. Zoom, fit to width, fit to height, rotate, invert colors, search the document text, follow the outline, jump to a page, download with a chosen filename, or inspect the compile log in the same surface. Encrypted PDFs get a password prompt rather than a blank viewer.
 
-When valid SyncTeX data exists, forward navigation moves from source to PDF and inverse navigation moves from a PDF click back to the source line. Engines that do not support SyncTeX disable those controls.
+Go to PDF takes you from the source to the matching spot in the PDF, and a click in the PDF takes you back to the source line. LaTeX does this with SyncTeX, and Typst does it through the Tinymist language server on Typst 0.13 or newer. Markdown and older Typst versions cannot sync, so those controls do not appear.
 
 <div align="center">
   <img src="docs/assets/readme/pdf-preview.png" alt="Oleafly PDF preview beside the source editor" width="100%" />
@@ -570,7 +570,7 @@ Linux packages require glibc 2.39 or newer. Releases include signed update artif
 
 ## Current release
 
-Oleafly is in beta. Live co-editing, comments, and background sync across devices are not available in this release. Typst and Markdown do not yet provide SyncTeX or the LaTeX-specific source preflight checks. Check the active engine in the app and follow the [changelog](CHANGELOG.md) for changes.
+Oleafly is in beta. Live co-editing, comments, and background sync across devices are not available in this release. Markdown has no source and PDF sync or source preflight checks yet, and Typst sync needs Typst 0.13 or newer. Check the active engine in the app and follow the [changelog](CHANGELOG.md) for changes.
 
 ## Community and support
 

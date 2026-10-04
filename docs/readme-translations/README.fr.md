@@ -217,7 +217,7 @@ Oleafly garde la compilation près du manuscrit et transforme la sortie du compi
 | --- | --- | --- |
 | LaTeX avec Tectonic | Compilations LaTeX portables avec moteur inclus | Inclus dans l'application de bureau ; prend en charge les projets multi-fichiers, les images, les citations, Biber, SyncTeX, la compilation isolée de figures et les compilations hors ligne mises en cache lorsque les paquets sont disponibles |
 | LaTeX avec `latexmk` | Projets qui nécessitent une distribution TeX système complète | Utilise MacTeX, TeX Live, MiKTeX ou TinyTeX ; prend en charge `minted`, `glossaries`, `makeidx`, PythonTeX, les modèles qui utilisent beaucoup le shell escape et les moteurs Unicode lorsque vous les autorisez explicitement |
-| Typst | Rédaction rapide de documents modernes | Compilateur inclus, sortie PDF, indexation du projet et citations ; SyncTeX, mode compilateur hors ligne et compilation isolée de figures ne sont pas disponibles dans cette version |
+| Typst | Rédaction rapide de documents modernes | Compilateur inclus, sortie PDF, indexation du projet et citations ; synchronisation entre la source et le PDF à partir de Typst 0.13, et compilations hors ligne quand les paquets sont en cache ou conservés dans le projet. La compilation isolée de figures n'est pas disponible dans cette version |
 | Markdown avec Pandoc | Prose légère et workflows de conversion | Pandoc peut être installé depuis Settings ; la sortie PDF utilise l'entrée Tectonic incluse, avec des exportations DOCX, HTML, Markdown et texte lorsque prises en charge |
 
 Les projets LaTeX reçoivent une analyse de compatibilité à leur ouverture. Si un projet demande plus que ce que le moteur inclus peut gérer, Oleafly explique l'écart et vous oriente vers le bon moteur ou paquet. TeX système s'exécute par défaut avec des commandes shell restreintes ; vous activez séparément le shell escape complet pour chaque projet et chaque ordinateur.
@@ -234,7 +234,7 @@ Le lecteur PDF est intégré à l'espace de travail et peut aussi s'ouvrir dans 
 
 Utilisez le défilement continu ou un affichage d'une page ou de deux pages. Zoomez, ajustez à la largeur ou à la hauteur, faites pivoter, inversez les couleurs, recherchez dans le texte du document, suivez le plan, allez à une page, téléchargez avec le nom de fichier choisi ou consultez le journal de compilation dans la même vue. Les PDF chiffrés affichent une demande de mot de passe plutôt qu'un lecteur vide.
 
-Lorsque des données SyncTeX valides existent, la navigation directe va de la source au PDF et la navigation inverse ramène d'un clic dans le PDF à la ligne source. Les moteurs qui ne prennent pas SyncTeX en charge désactivent ces contrôles.
+La commande Aller au PDF vous amène de la source à l'endroit correspondant du PDF, et un clic dans le PDF vous ramène à la ligne source. LaTeX s'appuie pour cela sur SyncTeX, et Typst, à partir de la version 0.13, sur le serveur de langage Tinymist. Markdown et les versions plus anciennes de Typst ne peuvent pas synchroniser, donc ces contrôles n'apparaissent pas.
 
 <div align="center">
   <img src="../assets/readme/pdf-preview.png" alt="Aperçu PDF Oleafly à côté de l'éditeur source" width="100%" />
@@ -570,7 +570,7 @@ Les paquets Linux nécessitent glibc 2.39 ou une version plus récente. Les vers
 
 ## Version actuelle
 
-Oleafly est en bêta. La coédition en direct, les commentaires et la synchronisation en arrière-plan entre appareils ne sont pas disponibles dans cette version. Typst et Markdown ne fournissent pas encore SyncTeX ni les vérifications de source propres à LaTeX. Vérifiez le moteur actif dans l'application et consultez le [journal des modifications](../../CHANGELOG.md) pour suivre les changements.
+Oleafly est en bêta. La coédition en direct, les commentaires et la synchronisation en arrière-plan entre appareils ne sont pas disponibles dans cette version. Markdown n'offre pas encore de synchronisation entre la source et le PDF ni de vérifications Preflight de la source, et la synchronisation Typst nécessite Typst 0.13 ou une version plus récente. Vérifiez le moteur actif dans l'application et consultez le [journal des modifications](../../CHANGELOG.md) pour suivre les changements.
 
 ## Communauté et assistance
 

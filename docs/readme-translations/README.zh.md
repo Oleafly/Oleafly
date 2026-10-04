@@ -216,7 +216,7 @@ Oleafly 将编译放在手稿旁边，并把编译器输出转换为与源文件
 | --- | --- | --- |
 | 使用 Tectonic 的 LaTeX | 便携、内置的 LaTeX 构建 | 随桌面应用提供；支持多文件项目、图像、引文、Biber、SyncTeX、独立图形编译，以及宏包可用时的缓存离线构建 |
 | 使用 `latexmk` 的 LaTeX | 需要完整系统 TeX 发行版的项目 | 使用 MacTeX、TeX Live、MiKTeX 或 TinyTeX；支持 `minted`、`glossaries`、`makeidx`、PythonTeX、重度 shell-escape 模板和明确受信任的 Unicode 引擎 |
-| Typst | 快速的现代文档写作 | 内置编译器、PDF 输出、项目索引和引文；当前版本不提供 SyncTeX、离线编译模式或独立图形编译 |
+| Typst | 快速的现代文档写作 | 内置编译器、PDF 输出、项目索引和引文；Typst 0.13 及以上版本支持源文件与 PDF 同步，宏包已缓存或保存在项目中时可以离线构建。当前版本不提供独立图形编译 |
 | 使用 Pandoc 的 Markdown | 轻量写作和转换工作流 | Pandoc 可从设置中安装；PDF 输出使用内置 Tectonic，并在支持时提供 DOCX、HTML、Markdown 和文本导出 |
 
 LaTeX 项目打开时会进行兼容性扫描。如果项目超出内置引擎的能力，Oleafly 会说明差距，并指向适合的引擎或宏包。系统 TeX 默认使用受限 shell 命令；如有需要，可以为每个项目和每台电脑分别启用完整 shell escape。
@@ -233,7 +233,7 @@ PDF 查看器内置在工作空间中，也可以在独立预览窗口中打开�
 
 你可以使用连续滚动或单页、双页模式。还可以缩放、适应宽度或高度、旋转、反色、搜索文档文本、跟随大纲、跳转页面、使用指定文件名下载，或在同一个界面查看编译日志。加密 PDF 会显示密码提示，而不是空白查看器。
 
-存在有效 SyncTeX 数据时，可以从源文件跳转到 PDF，也可以从 PDF 点击位置返回源文件。无法提供 SyncTeX 的引擎会关闭这些控件。
+“跳转到 PDF”会从源文件跳到 PDF 中的对应位置，在 PDF 中点击则会回到源文件中的对应行。LaTeX 通过 SyncTeX 实现，Typst 0.13 及以上版本通过 Tinymist 语言服务器实现。Markdown 和较旧的 Typst 版本无法同步，因此不会显示这些控件。
 
 <div align="center">
   <img src="../assets/readme/pdf-preview.png" alt="Oleafly 源文件编辑器旁的 PDF 预览" width="100%" />
@@ -569,7 +569,7 @@ Linux 软件包要求 glibc 2.39 或更高版本。发行版包含签名的更�
 
 ## 当前版本
 
-Oleafly 仍处于 beta。此版本尚未提供实时共同编辑、评论和跨设备后台同步。Typst 和 Markdown 目前也不提供 SyncTeX 或 LaTeX 专用的源文件 Preflight 检查。请在应用中查看当前引擎，并关注[更新日志](../../CHANGELOG.md)的变化。
+Oleafly 仍处于 beta。此版本尚未提供实时共同编辑、评论和跨设备后台同步。Markdown 目前还不提供源文件与 PDF 同步或源文件 Preflight 检查，Typst 同步需要 Typst 0.13 或更高版本。请在应用中查看当前引擎，并关注[更新日志](../../CHANGELOG.md)的变化。
 
 ## 社区与支持
 

@@ -217,7 +217,7 @@ Oleafly mantiene la compilación cerca del manuscrito y convierte la salida del 
 | --- | --- | --- |
 | LaTeX con Tectonic | Compilaciones LaTeX portátiles e incluidas | Viene con la aplicación de escritorio; admite proyectos de varios archivos, imágenes, citas, Biber, SyncTeX, compilación aislada de figuras y compilaciones sin conexión en caché cuando los paquetes están disponibles |
 | LaTeX con `latexmk` | Proyectos que necesitan una distribución TeX de sistema completa | Usa MacTeX, TeX Live, MiKTeX o TinyTeX; admite `minted`, `glossaries`, `makeidx`, PythonTeX, plantillas que dependen mucho de shell-escape y motores Unicode cuando se confían explícitamente |
-| Typst | Creación rápida de documentos modernos | Compilador incluido, salida PDF, indexación del proyecto y citas; SyncTeX, el modo de compilación sin conexión y la compilación aislada de figuras no están disponibles en esta versión |
+| Typst | Creación rápida de documentos modernos | Compilador incluido, salida PDF, indexación del proyecto y citas; sincronización entre código fuente y PDF con Typst 0.13 o posterior, y compilaciones sin conexión cuando los paquetes están en caché o guardados en el proyecto. La compilación aislada de figuras no está disponible en esta versión |
 | Markdown con Pandoc | Prosa ligera y flujos de conversión | Pandoc se puede instalar desde Ajustes; la salida PDF usa la entrada de Tectonic incluida, con exportación a DOCX, HTML, Markdown y texto cuando es compatible |
 
 Los proyectos LaTeX reciben un análisis de compatibilidad al abrirse. Si un proyecto necesita más de lo que puede manejar el motor incluido, Oleafly explica la diferencia y te dirige al motor o paquete adecuado. TeX de sistema se ejecuta con comandos de shell restringidos de forma predeterminada; activas el shell escape completo por separado para cada proyecto y ordenador.
@@ -234,7 +234,7 @@ El visor de PDF está integrado en el espacio de trabajo y también puede abrirs
 
 Usa el desplazamiento continuo o una vista de una página o de dos páginas. Amplía, ajusta al ancho o a la altura, gira, invierte los colores, busca el texto del documento, sigue el esquema, salta a una página, descarga con el nombre de archivo que elijas o inspecciona el registro de compilación en la misma superficie. Los PDF cifrados muestran una solicitud de contraseña en lugar de un visor en blanco.
 
-Cuando existen datos SyncTeX válidos, la navegación directa va del código fuente al PDF y la navegación inversa va de un clic en el PDF a la línea del código fuente. Los motores que no admiten SyncTeX desactivan esos controles.
+El comando Ir al PDF te lleva del código fuente al punto correspondiente del PDF, y un clic en el PDF te devuelve a la línea del código fuente. LaTeX lo hace con SyncTeX, y Typst, con Typst 0.13 o posterior, a través del servidor de lenguaje Tinymist. Markdown y las versiones anteriores de Typst no pueden sincronizar, así que esos controles no aparecen.
 
 <div align="center">
   <img src="../assets/readme/pdf-preview.png" alt="Vista previa del PDF de Oleafly junto al editor de código fuente" width="100%" />
@@ -570,7 +570,7 @@ Los paquetes de Linux requieren glibc 2.39 o una versión posterior. Las version
 
 ## Versión actual
 
-Oleafly está en beta. La coedición en directo, los comentarios y la sincronización en segundo plano entre dispositivos no están disponibles en esta versión. Typst y Markdown aún no ofrecen SyncTeX ni las comprobaciones de Preflight específicas de LaTeX para el código fuente. Comprueba el motor activo en la aplicación y consulta el [registro de cambios](../../CHANGELOG.md) para ver los cambios.
+Oleafly está en beta. La coedición en directo, los comentarios y la sincronización en segundo plano entre dispositivos no están disponibles en esta versión. Markdown aún no tiene sincronización entre código fuente y PDF ni comprobaciones de Preflight del código fuente, y la sincronización de Typst requiere Typst 0.13 o posterior. Comprueba el motor activo en la aplicación y consulta el [registro de cambios](../../CHANGELOG.md) para ver los cambios.
 
 ## Comunidad y asistencia
 
