@@ -328,7 +328,9 @@ describe("SkillCatalogList", () => {
     await screen.findByTestId("skill-shelf-row-pydicom");
 
     expect(screen.queryByTestId("skill-shelf-row-scanpy")).not.toBeInTheDocument();
-    expect(onMatchCountChange).toHaveBeenLastCalledWith(1);
+    // The count is reported from an effect, which can run after the row is
+    // already on screen, so wait for the call rather than the row.
+    await waitFor(() => expect(onMatchCountChange).toHaveBeenLastCalledWith(1));
 
     view.rerender(
       <QueryClientProvider client={createAppQueryClient()}>
@@ -336,7 +338,7 @@ describe("SkillCatalogList", () => {
       </QueryClientProvider>,
     );
     expect(await screen.findByText(skills.search.empty)).toBeInTheDocument();
-    expect(onMatchCountChange).toHaveBeenLastCalledWith(0);
+    await waitFor(() => expect(onMatchCountChange).toHaveBeenLastCalledWith(0));
   });
 
   it("leaves the no-match message to the parent when asked", async () => {
