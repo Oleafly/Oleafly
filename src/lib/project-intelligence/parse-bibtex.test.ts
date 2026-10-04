@@ -179,4 +179,43 @@ describe("parseBibtexIntelligence", () => {
       ["title", "T", "braced", true],
     ]);
   });
+
+  it("keeps escaped quotes and braces inside directives and values", () => {
+    const value = analyze(
+      '@string{s = "a \\" } b"}\n@misc{m, title={A \\} brace}, note="say \\"hi\\""}',
+    );
+    expect(value.status).toBe("success");
+    expect(fieldSummary('@misc{m, title={A \\} brace}, note="say \\"hi\\""}')).toEqual([
+      ["title", "A \\} brace", "braced", true],
+      ["note", 'say \\"hi\\"', "quoted", true],
+    ]);
+  });
+
+  it("stops a braced value at the next entry when it never closes", () => {
+    const value = analyze("@misc{a, title={Open\n@misc{b, title={B}}");
+    expect(value.bibliographyEntries.map((entry) => [entry.key, entry.complete])).toEqual([
+      ["a", false],
+      ["b", true],
+    ]);
+  });
+
+  it("names the entry type when an entry without a key is malformed", () => {
+    expect(messages("@misc{, 9bad={T}}")).toContainEqual({ key: "unparsableField", params: { type: "misc" } });
+    expect(messages("@misc{, 9bad")).toContainEqual({ key: "unparsableField", params: { type: "misc" } });
+    expect(messages("@misc{,")).toContainEqual({ key: "unclosedEntry", params: { type: "misc" } });
+    expect(messages("@misc(k")).toContainEqual({ key: "entryMissingFieldList", params: { key: "k" } });
+  });
+
+  it("reports an entry cut off by the end of the file or the next entry", () => {
+    expect(messages("@misc{k, title={T},")).toContainEqual({ key: "unclosedEntryNamed", params: { key: "k" } });
+    expect(messages("@misc{k, title")).toContainEqual({ key: "fieldMissingEquals", params: { name: "title" } });
+    expect(messages("@misc{k, title = {T}, note\n@misc{j, title={J}}")).toContainEqual({
+      key: "fieldMissingEquals",
+      params: { name: "note" },
+    });
+  });
+
+  it("ignores empty keys in a cross-reference list", () => {
+    expect(analyze("@misc{m, crossref={one,, ,two}}").uses.map((use) => use.name)).toEqual(["one", "two"]);
+  });
 });

@@ -4,6 +4,8 @@ import {
   getProvider,
   defaultModel,
   credentialMeta,
+  hasConfiguredProvider,
+  mergeCustomProviders,
   pickActiveProvider,
 } from "./providers";
 
@@ -74,5 +76,74 @@ describe("pickActiveProvider", () => {
     expect(r.providerId).toBe("openai");
     expect(r.modelId).toBe(defaultModel("openai"));
     expect(r.credential).toBe("");
+  });
+});
+
+describe("custom providers", () => {
+  it("appends custom providers after the catalog with no preset models", () => {
+    const merged = mergeCustomProviders([
+      { id: "lab-gateway", name: "Lab gateway", baseURL: "https://gw.example/v1" },
+    ]);
+    expect(merged.slice(0, PROVIDERS.length)).toEqual(PROVIDERS);
+    expect(merged.at(-1)).toEqual({
+      id: "lab-gateway",
+      name: "Lab gateway",
+      blurb: "Custom provider.",
+      baseURL: "https://gw.example/v1",
+      models: [],
+    });
+  });
+
+  it("keeps a saved key-optional provider active without any key", () => {
+    const r = pickActiveProvider({
+      ai_provider: "local-llm",
+      ai_model: "mistral-7b",
+      ai_custom_providers: [
+        { id: "local-llm", name: "Local", baseURL: "http://127.0.0.1:8080", keyOptional: true },
+      ],
+    });
+    expect(r).toEqual({ providerId: "local-llm", modelId: "mistral-7b", credential: "" });
+  });
+
+  it("falls back to a key-optional provider when the saved one has only a blank key", () => {
+    const r = pickActiveProvider({
+      ai_provider: "openai",
+      ai_keys: { openai: "   " },
+      ai_custom_providers: [
+        { id: "plain", name: "Plain", baseURL: "http://a" },
+        { id: "local-llm", name: "Local", baseURL: "http://b", keyOptional: true },
+      ],
+    });
+    expect(r.providerId).toBe("local-llm");
+    expect(r.credential).toBe("");
+  });
+});
+
+describe("hasConfiguredProvider", () => {
+  it("is true once the active provider has a non-blank key", () => {
+    expect(hasConfiguredProvider({ ai_keys: { groq: "gsk" } })).toBe(true);
+  });
+
+  it("is false with no keys or only blank ones", () => {
+    expect(hasConfiguredProvider({})).toBe(false);
+    expect(hasConfiguredProvider({ ai_provider: "anthropic", ai_keys: { anthropic: "  " } })).toBe(false);
+  });
+
+  it("counts a key-optional custom provider as configured", () => {
+    expect(
+      hasConfiguredProvider({
+        ai_provider: "local-llm",
+        ai_custom_providers: [{ id: "local-llm", name: "Local", baseURL: "http://b", keyOptional: true }],
+      }),
+    ).toBe(true);
+  });
+
+  it("does not count a custom provider that needs a key it lacks", () => {
+    expect(
+      hasConfiguredProvider({
+        ai_provider: "gateway",
+        ai_custom_providers: [{ id: "gateway", name: "Gateway", baseURL: "http://b" }],
+      }),
+    ).toBe(false);
   });
 });

@@ -410,3 +410,197 @@ describe("looksLikeHayagriva", () => {
     expect(looksLikeHayagriva(`- row\n${"harry:\n  type: book\n".repeat(100_000)}`)).toBe(false);
   });
 });
+
+describe("hayagrivaEntries edge shapes", () => {
+  it("decodes YAML escapes in double-quoted titles", () => {
+    const source = String.raw`e:
+  type: misc
+  title: "caf\xe9 \u00e9 \U0001F600 \UFFFFFFFF \xZZ \q end\
+`;
+    expect(hayagrivaEntries(source)[0].title?.value).toBe("café é 😀 \ufffd xZZ q end");
+  });
+
+  it("reads an unterminated quoted title to the end of the line", () => {
+    expect(hayagrivaEntries('e:\n  title: "open ended\n')[0].title?.value).toBe("open ended");
+  });
+
+  it("skips lines that have no key", () => {
+    const source = "e:\n  junk line without colon\n    deeper: x\n  title: Kept\n: orphan\n";
+    const entries = hayagrivaEntries(source);
+    expect(entries.map((entry) => entry.key)).toEqual(["e"]);
+    expect(entries[0].title?.value).toBe("Kept");
+  });
+
+  it("reads flow lists of people with nested maps and escaped quotes", () => {
+    const source = String.raw`e:
+  type: misc
+  author: [{name: Doe, given-name: Jane}, "Roe \"Rick\" R", {given-name: Solo}, {name: Last}]
+`;
+    expect(hayagrivaEntries(source)[0].authors).toEqual(["Doe, Jane", 'Roe "Rick" R', "Solo", "Last"]);
+  });
+
+  it("reads block lists of flow maps and skips empty items", () => {
+    const source = [
+      "e:",
+      "  type: misc",
+      "  author:",
+      "  - {name: Doe, given-name: Jane}",
+      "  -",
+      "  - name: Roe",
+      "    - stray",
+      "  - Poe, Edgar",
+    ].join("\n");
+    expect(hayagrivaEntries(source)[0].authors).toEqual(["Doe, Jane", "Roe", "Poe, Edgar"]);
+  });
+
+  it("finds no people in an author mapping that is not a list", () => {
+    const entry = hayagrivaEntries("e:\n  type: misc\n  author:\n    name: Doe\n")[0];
+    expect(entry.authors).toEqual([]);
+    expect(entry.author).toBeUndefined();
+  });
+
+  it("reads titles from flow maps and nested maps and drops ones without a value", () => {
+    const source = [
+      "a:",
+      '  title: {value: "Flow Title", short: T}',
+      "b:",
+      "  title: {short: T}",
+      "c:",
+      "  title:",
+      "    short: Only",
+      "      deeper: x",
+      "d:",
+      "  title:",
+      "  type: misc",
+    ].join("\n");
+    expect(hayagrivaEntries(source).map((entry) => entry.title?.value)).toEqual([
+      "Flow Title",
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it("falls back to a legacy DOI when the serial numbers carry none", () => {
+    const source = [
+      "a:",
+      "  type: misc",
+      "  serial-number: {isbn: 123}",
+      "  doi: 10.1/legacy-a",
+      "b:",
+      "  type: misc",
+      "  serial-number: 12345",
+      "  doi: 10.1/legacy-b",
+      "c:",
+      "  type: misc",
+      "  serial-number:",
+      "  doi: 10.1/legacy-c",
+      "d:",
+      "  type: misc",
+      "  serial-number:",
+      "    doi: 10.1/nested",
+    ].join("\n");
+    expect(hayagrivaEntries(source).map((entry) => entry.doi)).toEqual([
+      "10.1/legacy-a",
+      "10.1/legacy-b",
+      "10.1/legacy-c",
+      "10.1/nested",
+    ]);
+  });
+
+  it("finds no key for an empty DOI", () => {
+    expect(findHayagrivaKeyByDoi(HAND_WRITTEN, "  ")).toBeNull();
+  });
+});
+
+describe("looksLikeHayagriva flow entries", () => {
+  it("accepts a flow entry with only a title and rejects one with neither", () => {
+    expect(looksLikeHayagriva("harry: {title: Harry, junk}\n")).toBe(true);
+    expect(looksLikeHayagriva("harry: {author: Rowling}\n")).toBe(false);
+  });
+});
+
+describe("yamlQuote surrogates", () => {
+  it("replaces a lone surrogate", () => {
+    expect(yamlQuote("a\ud800b\tc")).toBe(`"a\ufffdb\\tc"`);
+  });
+});
+
+describe("bibtexToHayagriva entry types", () => {
+  it.each([
+    ["@proceedings{p, title = {Conf}}", "proceedings"],
+    ["@booklet{p, title = {Leaflet}}", "book"],
+    ["@thesis{p, title = {T}, type = {Habilitation}}", "thesis"],
+    ["@report{p, title = {T}}", "report"],
+    ["@electronic{p, title = {T}}", "web"],
+    ["@www{p, title = {T}}", "web"],
+    ["@patent{p, title = {Gadget}}", "patent"],
+  ])("maps %s to %s", (bibtex, type) => {
+    expect(convert(bibtex)).toContain(`  type: ${type}\n`);
+  });
+
+  it("keeps a thesis genre from its type field", () => {
+    expect(convert("@thesis{p, title = {T}, type = {Habilitation}}")).toContain('  genre: "Habilitation"');
+  });
+
+  it("maps a chapter without a book title to a chapter with no parent", () => {
+    const yaml = convert("@inbook{c, title = {T}, chapter = {3}}");
+    expect(yaml).toContain("  type: chapter\n");
+    expect(yaml).not.toContain("parent:");
+  });
+
+  it("records an arXiv identifier only for arXiv eprints", () => {
+    expect(convert("@misc{m, title = {T}, archiveprefix = {arXiv}, eprint = {2101.00001}}")).toContain(
+      '  serial-number:\n    arxiv: "2101.00001"',
+    );
+    expect(convert("@misc{m, title = {T}, eprinttype = {pubmed}, eprint = {123}}")).not.toContain("arxiv");
+  });
+});
+
+describe("bibtexToHayagriva names and dates", () => {
+  it("does not split a name that merely starts with and", () => {
+    expect(convert("@misc{m, title = {T}, author = {Ada Anderson and Bob Roe}}")).toContain(
+      '    - "Anderson, Ada"\n    - "Roe, Bob"',
+    );
+  });
+
+  it("writes a name with a braced comma as a name map", () => {
+    expect(convert("@misc{m, title = {T}, author = {{Smith, Jr.} John}}")).toContain(
+      '  author:\n    - name: "John"\n      given-name: "Smith, Jr."',
+    );
+    expect(convert("@misc{m, title = {T}, author = {{Smith, Jr.}, John}}")).toContain(
+      '    - name: "Smith, Jr. John"',
+    );
+    expect(convert("@misc{m, title = {T}, author = {a, b, c, d}}")).toContain('    - name: "a b c d"');
+  });
+
+  it("drops a name that is only a tie", () => {
+    expect(convert("@misc{m, title = {T}, author = {~ and Bob Roe}}")).toBe(
+      'm:\n  type: misc\n  title: "T"\n  author:\n    - "Roe, Bob"',
+    );
+  });
+
+  it("drops an edition that has no text", () => {
+    expect(convert("@book{b, title = {T}, edition = {{}}}")).not.toContain("edition");
+  });
+
+  it.each([
+    ["year = {2020}, month = {3}", "2020-03"],
+    ["year = {2020}, month = {0}", "2020"],
+    ["year = {2021}, month = {dec}, day = {32}", "2021-12"],
+    ["date = {2021-13}, year = {2019}", "2019"],
+    ["date = {2021-02-32}, year = {2018}", "2018"],
+  ])("reads %s as %s", (fields, date) => {
+    expect(convert(`@misc{m, title = {T}, ${fields}}`)).toContain(`  date: "${date}"`);
+  });
+
+  it("drops a URL that does not parse", () => {
+    expect(convert("@misc{m, title = {T}, url = {http://exa mple.com}}")).not.toContain("url:");
+  });
+});
+
+describe("appendHayagrivaEntries document marker", () => {
+  it("writes before a lone document end marker", () => {
+    expect(appendHayagrivaEntries("...\n", ['b:\n  type: misc'])).toBe("b:\n  type: misc\n...\n");
+  });
+});

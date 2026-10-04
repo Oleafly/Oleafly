@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   cuaActionRisk,
   observe,
@@ -154,5 +154,146 @@ describe("runCuaAction", () => {
     const result = await runCuaAction(s, { type: "read" });
     expect(result.ok).toBe(true);
     expect(result.observation?.text).toContain("abstract text");
+  });
+});
+
+describe("observe edge cases", () => {
+  it("falls back to a placeholder and then to an empty name", () => {
+    const obs = observe(surface(`<input placeholder="  Search papers " /><button></button>`));
+    expect(obs.elements).toEqual([
+      { ref: 0, tag: "input", role: null, name: "Search papers" },
+      { ref: 1, tag: "button", role: null, name: "" },
+    ]);
+  });
+
+  it("keeps the page when the surface cannot report its URL", () => {
+    const s = surface(`<a role="link" href="#">Docs</a>`);
+    const obs = observe({ ...s, document: s.document, url: () => { throw new Error("detached"); } });
+    expect(obs.url).toBe("");
+    expect(obs.elements).toEqual([{ ref: 0, tag: "a", role: "link", name: "Docs" }]);
+  });
+
+  it("reads a document that has no body as empty text", () => {
+    const svg = new DOMParser().parseFromString(
+      '<svg xmlns="http://www.w3.org/2000/svg"><title>Chart</title></svg>',
+      "image/svg+xml",
+    );
+    const obs = observe({ document: svg, url: () => "https://example.org/chart.svg", navigate() {} });
+    expect(obs).toEqual({ url: "https://example.org/chart.svg", title: "Chart", text: "", elements: [] });
+  });
+
+  it("caps the page text at 4,000 characters", () => {
+    const obs = observe(surface(`<p>${"word ".repeat(2000)}</p>`));
+    expect(obs.text).toHaveLength(4000);
+  });
+});
+
+describe("runCuaAction on a scriptable page", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it("refuses non-http navigation and a missing URL", async () => {
+    const s = surface("<p>x</p>");
+    expect(await runCuaAction(s, { type: "navigate", text: "javascript:alert(1)" })).toEqual({
+      ok: false,
+      message: "navigate needs a valid http(s) URL",
+    });
+    expect(await runCuaAction(s, { type: "navigate" })).toMatchObject({ ok: false });
+    expect(s.navigated).toEqual([]);
+  });
+
+  it("scrolls by the requested amount, 400 pixels by default", async () => {
+    const s = surface("<p>long page</p>");
+    const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+    expect(await runCuaAction(s, { type: "scroll" })).toMatchObject({ ok: true, message: "Scrolled" });
+    await runCuaAction(s, { type: "scroll", amount: -120 });
+    expect(scrollBy.mock.calls).toEqual([[0, 400], [0, -120]]);
+  });
+
+  it("reports a scroll on a document with no window without failing", async () => {
+    const detached = document.implementation.createHTMLDocument("Detached");
+    const scrollBy = vi.spyOn(window, "scrollBy").mockImplementation(() => {});
+    const result = await runCuaAction(
+      { document: detached, url: () => "https://example.org/", navigate() {} },
+      { type: "scroll" },
+    );
+    expect(result).toMatchObject({ ok: true, message: "Scrolled", observation: { title: "Detached" } });
+    expect(scrollBy).not.toHaveBeenCalled();
+  });
+
+  it("captures the page for a screenshot", async () => {
+    const result = await runCuaAction(surface("<p>figure 1</p>"), { type: "screenshot" });
+    expect(result).toMatchObject({ ok: true, message: "Captured the page" });
+    expect(result.observation?.text).toBe("figure 1");
+  });
+
+  it("reports a click or type with no selector as unmatched", async () => {
+    const s = surface(`<button>Go</button><input />`);
+    expect(await runCuaAction(s, { type: "click" })).toMatchObject({ ok: false });
+    expect(await runCuaAction(s, { type: "type", text: "x" })).toMatchObject({ ok: false });
+  });
+
+  it("reports a missing field and clears a field when typing nothing", async () => {
+    const s = surface(`<textarea id="notes">old</textarea>`);
+    expect(await runCuaAction(s, { type: "type", selector: "#nope", text: "x" })).toEqual({
+      ok: false,
+      message: "No field matches #nope",
+    });
+    expect(await runCuaAction(s, { type: "type", selector: "#notes" })).toEqual({
+      ok: true,
+      message: "Typed into #notes",
+    });
+    expect((s.document.getElementById("notes") as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("submits the selected form, else the first form, else reports none", async () => {
+    const s = surface(`<form id="a"><input name="q" /></form><form id="b"></form>`);
+    const submitted: string[] = [];
+    s.document.addEventListener("submit", (event) => {
+      event.preventDefault();
+      submitted.push((event.target as HTMLFormElement).id);
+    });
+    expect(await runCuaAction(s, { type: "submit", selector: "#b" })).toMatchObject({
+      ok: true,
+      message: "Submitted the form",
+    });
+    expect((await runCuaAction(s, { type: "submit" })).ok).toBe(true);
+    expect(submitted).toEqual(["b", "a"]);
+    expect(await runCuaAction(surface("<p>no form</p>"), { type: "submit" })).toEqual({
+      ok: false,
+      message: "No form to submit",
+    });
+  });
+
+  it("waits 500 ms by default and never longer than five seconds", async () => {
+    vi.useFakeTimers();
+    const s = surface("<p>x</p>");
+    let settled = false;
+    const short = runCuaAction(s, { type: "wait" }).then(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(499);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await short;
+    expect(settled).toBe(true);
+
+    let longSettled = false;
+    const long = runCuaAction(s, { type: "wait", amount: 60_000 }).then(() => {
+      longSettled = true;
+    });
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(longSettled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await long;
+    expect(longSettled).toBe(true);
+  });
+
+  it("rejects an action type it does not know", async () => {
+    expect(
+      await runCuaAction(surface("<p>x</p>"), { type: "drag" as unknown as "click" }),
+    ).toEqual({ ok: false, message: "Unknown action drag" });
   });
 });

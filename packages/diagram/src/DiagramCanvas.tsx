@@ -579,6 +579,8 @@ function CanvasInner({
         // Circles stay circular from the bounding box's shorter side.
         if (d.shape === "circle") {
           const s = Math.max(w, h);
+          if (end.x < d.startX) x = d.startX - s;
+          if (end.y < d.startY) y = d.startY - s;
           w = s;
           h = s;
         }

@@ -322,6 +322,58 @@ describe("proofreading gutter card", () => {
     expect(document.body.querySelector(".cm-proofread-card")).toBeNull();
   });
 
+  it("closes the gutter card after the pointer leaves the marker unless it moves into the card", () => {
+    const editor = mountWithGutter([spellingDiagnostic(["unbounded"])]);
+    const marker = hoverMarker(editor);
+    const card = () => document.body.querySelector<HTMLElement>(".cm-proofread-card-floating");
+    marker.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+    card()?.dispatchEvent(new MouseEvent("mouseenter"));
+    vi.advanceTimersByTime(200);
+    expect(card()).not.toBeNull();
+    card()?.dispatchEvent(new MouseEvent("mouseleave"));
+    vi.advanceTimersByTime(200);
+    expect(card()).toBeNull();
+    hoverMarker(editor);
+    marker.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+    vi.advanceTimersByTime(200);
+    expect(card()).toBeNull();
+  });
+
+  it("ignores pointer movement away from markers and closes on Escape or scroll", () => {
+    const editor = mountWithGutter([spellingDiagnostic(["unbounded"])]);
+    editor.contentDOM.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    editor.contentDOM.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+    expect(document.body.querySelector(".cm-proofread-card-floating")).toBeNull();
+    hoverMarker(editor);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    expect(document.body.querySelector(".cm-proofread-card-floating")).not.toBeNull();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(document.body.querySelector(".cm-proofread-card-floating")).toBeNull();
+    hoverMarker(editor);
+    window.dispatchEvent(new Event("scroll"));
+    expect(document.body.querySelector(".cm-proofread-card-floating")).toBeNull();
+  });
+
+  it("keeps the gutter card inside the window", () => {
+    const editor = mountWithGutter([spellingDiagnostic(["unbounded"])]);
+    const rect = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      left: 0,
+      top: 0,
+      right: 5_000,
+      bottom: 5_000,
+      width: 300,
+      height: 200,
+    } as DOMRect);
+    try {
+      hoverMarker(editor);
+      const card = document.body.querySelector<HTMLElement>(".cm-proofread-card-floating");
+      expect(card?.style.left).toBe(`${Math.max(8, window.innerWidth - 308)}px`);
+      expect(card?.style.top).toBe(`${Math.max(8, window.innerHeight - 208)}px`);
+    } finally {
+      rect.mockRestore();
+    }
+  });
+
   it("shows the message card from the gutter for any diagnostic", () => {
     const editor = mountWithGutter([
       { from: FROM, to: TO, severity: "error", message: "compile error" },

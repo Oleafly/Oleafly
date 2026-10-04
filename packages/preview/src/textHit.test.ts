@@ -14,6 +14,20 @@ describe("PDF text hit testing", () => {
     expect(wordAtHorizontalPosition("First Last", 100, 100, 250)).toBe("Last");
   });
 
+  it("finds the last word for an offset past the end of the text", () => {
+    expect(wordInText("final word", 99)).toBe("word");
+  });
+
+  it("returns no word for a leading joiner or punctuation", () => {
+    expect(wordInText("\u200Cword", 0)).toBeNull();
+    expect(wordInText("  ,  ", 2)).toBeNull();
+  });
+
+  it("returns no word for empty text or a span without width", () => {
+    expect(wordAtHorizontalPosition("", 0, 100, 10)).toBeNull();
+    expect(wordAtHorizontalPosition("word", 0, 0, 10)).toBeNull();
+  });
+
   it("accepts a cross-realm-like target without relying on instanceof", () => {
     const span = {} as Element;
     const target = {

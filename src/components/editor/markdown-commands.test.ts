@@ -31,6 +31,7 @@ import {
   insertMarkdownTable,
   insertMarkdownTaskList,
   insertMarkdownUnderline,
+  currentMarkdownLinkHref,
 } from "./markdown-commands";
 
 function fakeWysiwygEditor() {
@@ -44,9 +45,28 @@ function fakeWysiwygEditor() {
     toggleBlockquote: vi.fn().mockReturnThis(),
     toggleBulletList: vi.fn().mockReturnThis(),
     toggleOrderedList: vi.fn().mockReturnThis(),
+    insertTable: vi.fn().mockReturnThis(),
+    extendMarkRange: vi.fn().mockReturnThis(),
+    unsetLink: vi.fn().mockReturnThis(),
+    setLink: vi.fn().mockReturnThis(),
+    insertContent: vi.fn().mockReturnThis(),
+    setImage: vi.fn().mockReturnThis(),
     run: vi.fn(),
   };
-  return { chain: vi.fn(() => self), ...self };
+  return {
+    chain: vi.fn(() => self),
+    getAttributes: vi.fn((_mark: string): Record<string, unknown> => ({})),
+    isActive: vi.fn((_mark: string) => false),
+    state: { selection: { empty: true } },
+    ...self,
+  };
+}
+
+function visualEditor() {
+  const editor = fakeWysiwygEditor();
+  setWysiwygEditor(editor as never);
+  setWysiwygVisible(true);
+  return editor;
 }
 
 beforeEach(() => {
@@ -146,5 +166,91 @@ describe("markdown visual-mode routing", () => {
     insertMarkdownHeading(MARKDOWN_HEADING_LEVELS[1]);
     expect(editor.toggleHeading).toHaveBeenCalledWith({ level: 2 });
     expect(controller.wrapSelectionOrPlaceholder).not.toHaveBeenCalled();
+  });
+});
+
+describe("markdown visual-mode commands", () => {
+  it("toggles italic, code, quotes and numbered lists", () => {
+    const editor = visualEditor();
+    insertMarkdownItalic();
+    insertMarkdownCode();
+    insertMarkdownBlockquote();
+    insertMarkdownOrderedList();
+    expect(editor.toggleItalic).toHaveBeenCalledOnce();
+    expect(editor.toggleCode).toHaveBeenCalledOnce();
+    expect(editor.toggleBlockquote).toHaveBeenCalledOnce();
+    expect(editor.toggleOrderedList).toHaveBeenCalledOnce();
+    expect(controller.wrapSelectionOrPlaceholder).not.toHaveBeenCalled();
+  });
+
+  it("inserts a table with a header row and at least one body row and column", () => {
+    const editor = visualEditor();
+    insertMarkdownTable(2, 3);
+    expect(editor.insertTable).toHaveBeenLastCalledWith({ rows: 3, cols: 3, withHeaderRow: true });
+    insertMarkdownTable(0, 0);
+    expect(editor.insertTable).toHaveBeenLastCalledWith({ rows: 2, cols: 1, withHeaderRow: true });
+    expect(controller.insertTemplate).not.toHaveBeenCalled();
+  });
+
+  it("removes the link for an empty address", () => {
+    const editor = visualEditor();
+    insertMarkdownLink("   ");
+    insertMarkdownLink();
+    expect(editor.unsetLink).toHaveBeenCalledTimes(2);
+    expect(editor.setLink).not.toHaveBeenCalled();
+  });
+
+  it("inserts placeholder link text at an empty cursor outside a link", () => {
+    const editor = visualEditor();
+    insertMarkdownLink(" https://oleafly.com ");
+    expect(editor.insertContent).toHaveBeenCalledWith({
+      type: "text",
+      text: "link text",
+      marks: [{ type: "link", attrs: { href: "https://oleafly.com" } }],
+    });
+  });
+
+  it("links the selection or updates the link under the cursor", () => {
+    const editor = visualEditor();
+    editor.state.selection.empty = false;
+    insertMarkdownLink("https://a.example");
+    expect(editor.setLink).toHaveBeenLastCalledWith({ href: "https://a.example" });
+
+    editor.state.selection.empty = true;
+    editor.isActive.mockReturnValue(true);
+    insertMarkdownLink("https://b.example");
+    expect(editor.setLink).toHaveBeenLastCalledWith({ href: "https://b.example" });
+    expect(editor.insertContent).not.toHaveBeenCalled();
+  });
+
+  it("inserts an image only when it has a path", () => {
+    const editor = visualEditor();
+    insertMarkdownImage("  ");
+    expect(editor.setImage).not.toHaveBeenCalled();
+    insertMarkdownImage(" figures/plot.png ");
+    expect(editor.setImage).toHaveBeenCalledWith({ src: "figures/plot.png", alt: "" });
+    expect(controller.insertTemplate).not.toHaveBeenCalled();
+  });
+
+  it("falls back to source syntax when the visual editor is not mounted", () => {
+    setWysiwygVisible(true);
+    insertMarkdownBold();
+    expect(controller.wrapSelectionOrPlaceholder).toHaveBeenCalledWith("**", "**", "text");
+    insertMarkdownLink("https://a.example");
+    expect(controller.insertTemplate).toHaveBeenCalledWith("[link text](url)", 1, 10);
+  });
+});
+
+describe("currentMarkdownLinkHref", () => {
+  it("reads the link under the cursor in visual mode only", () => {
+    expect(currentMarkdownLinkHref()).toBeNull();
+    setWysiwygVisible(true);
+    expect(currentMarkdownLinkHref()).toBeNull();
+
+    const editor = visualEditor();
+    expect(currentMarkdownLinkHref()).toBeNull();
+    editor.getAttributes.mockReturnValue({ href: "https://oleafly.com" });
+    expect(currentMarkdownLinkHref()).toBe("https://oleafly.com");
+    expect(editor.getAttributes).toHaveBeenCalledWith("link");
   });
 });

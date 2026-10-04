@@ -61,3 +61,20 @@ describe("parseRis", () => {
     expect(parseRis("not ris content at all")).toEqual([]);
   });
 });
+
+describe("parseRis loose records", () => {
+  it("skips empty records and blank values, and keeps a record without an end tag", () => {
+    const entries = parseRis(
+      ["ER  -", "TY  - XYZ", "AB  - ", "TI  - Odd Type", "SP  - 7", "UR  - https://example.com/x", "ER  -", "ER  -", "TY  - GEN", "TI  - Tail"].join(
+        "\n",
+      ),
+    );
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({
+      type: "misc",
+      fields: { title: "Odd Type", pages: "7", url: "https://example.com/x" },
+    });
+    expect(entries[0].fields).not.toHaveProperty("abstract");
+    expect(entries[1]).toMatchObject({ type: "misc", fields: { title: "Tail" } });
+  });
+});

@@ -2,6 +2,25 @@ import { describe, expect, it } from "vitest";
 import { parseBibtexLog } from "./bibtex-log";
 
 describe("parseBibtexLog", () => {
+  it("keeps an entry error and a later command error apart", () => {
+    const log = [
+      "I was expecting a `,' or a `}'---line 5 of file refs.bib",
+      " :   title = {A}",
+      " :           ^",
+      "I'm skipping whatever remains of this entry",
+      "Illegal, another \\bibdata command---line 3 of file main.aux",
+      " : \\bibdata",
+      " :         {refs}",
+      "I'm skipping whatever remains of this command",
+    ].join("\n");
+
+    const errors = parseBibtexLog(log).filter((d) => d.severity === "error");
+    expect(errors.map((d) => [d.message, d.line, d.file])).toEqual([
+      ["I was expecting a `,' or a `}'", 5, "refs.bib"],
+      ["Illegal, another \\bibdata command", 3, "main.aux"],
+    ]);
+  });
+
   it("parses single-line warnings with the entry key folded into the message", () => {
     const log = [
       "This is BibTeX, Version 0.99d (TeX Live 2024)",
@@ -94,5 +113,46 @@ describe("parseBibtexLog", () => {
 
   it("returns [] for empty input without throwing", () => {
     expect(parseBibtexLog("")).toEqual([]);
+  });
+
+  it("parses an entry error with its file and line", () => {
+    const log = [
+      "I was expecting a `,' or a `}'---line 5 of file refs.bib",
+      ' :       title = "Missing',
+      ' :                         comma"',
+      "I'm skipping whatever remains of this entry",
+    ].join("\n");
+
+    expect(parseBibtexLog(log).map((d) => [d.severity, d.category, d.file, d.line, d.message])).toEqual([
+      ["error", "bibtex", "refs.bib", 5, "I was expecting a `,' or a `}'"],
+    ]);
+  });
+
+  it("parses a command error whose location sits on its own line", () => {
+    const log = [
+      'I was expecting an "="',
+      "---line 9 of file refs.bib",
+      " : @string{foo",
+      " :                ",
+      "I'm skipping whatever remains of this command",
+    ].join("\n");
+
+    expect(parseBibtexLog(log).map((d) => [d.severity, d.file, d.line, d.message])).toEqual([
+      ["error", "refs.bib", 9, 'I was expecting an "="'],
+    ]);
+  });
+
+  it("reports a cross reference to an entry that does not exist", () => {
+    const log = ['A bad cross reference---entry "child"', 'refers to entry "parent", which doesn\'t exist'].join("\n");
+
+    expect(parseBibtexLog(log)).toEqual([
+      {
+        severity: "error",
+        category: "bibtex",
+        file: null,
+        line: null,
+        message: 'A bad cross reference---entry "child"\nrefers to entry "parent", which doesn\'t exist',
+      },
+    ]);
   });
 });

@@ -148,3 +148,55 @@ describe("heuristicScore", () => {
     expect(s0).toBeGreaterThan(s1);
   });
 });
+
+describe("debate ranking edge inputs", () => {
+  it("scores position alone when nothing has citations", () => {
+    const bare = { ...paper("Bare", 0), citationCount: null };
+    expect(heuristicScore(bare, 0, 0, 0)).toBe(70);
+    expect(heuristicScore(bare, 1, 2, 0)).toBe(35);
+  });
+
+  it("ignores an entry numbered zero", () => {
+    expect(parseDebateResponse("0.\nFOR: x\nAGAINST: y\nSCORE: 90\n1.\nFOR: a\nAGAINST: b\nSCORE: 40").get(0)).toEqual({
+      score: 40,
+      for: "a",
+      against: "b",
+    });
+  });
+
+  it("falls back to heuristics when the model answers nothing and sends empty fields", async () => {
+    const prompts: string[] = [];
+    const sparse = { ...paper("Sparse", 0), authors: undefined, abstract: null, citationCount: null } as unknown as LiteratureRecord;
+    const ranked = await rankLiteraturePapers({
+      paragraphText: "x",
+      papers: [sparse, paper("Cited", 10)],
+      completeChat: async ({ user }) => {
+        prompts.push(user);
+        return "";
+      },
+    });
+    expect(prompts[0]).toContain("1. Title: Sparse\n   Authors: \n   Abstract: \n");
+    expect(ranked.map((entry) => entry.reasoning)).toEqual([null, null]);
+    expect(ranked[0].score).toBe(70);
+  });
+
+  it("rethrows a DOMException abort and survives other DOMExceptions", async () => {
+    await expect(
+      rankLiteraturePapers({
+        paragraphText: "x",
+        papers: [paper("A", 1)],
+        completeChat: async () => {
+          throw new DOMException("aborted", "AbortError");
+        },
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    const ranked = await rankLiteraturePapers({
+      paragraphText: "x",
+      papers: [paper("A", 1)],
+      completeChat: async () => {
+        throw new DOMException("offline", "NetworkError");
+      },
+    });
+    expect(ranked[0].reasoning).toBeNull();
+  });
+});

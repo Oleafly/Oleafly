@@ -81,3 +81,14 @@ describe("parseEndNoteXml", () => {
     expect(parseEndNoteXml(xml)[0].fields.title).toBe("A \\& B: 50\\% <done>");
   });
 });
+
+describe("parseEndNoteXml sparse records", () => {
+  it("defaults the type and keeps the URL", () => {
+    const entries = parseEndNoteXml(
+      "<xml><records><record><titles><title>Web Thing</title></titles><urls><related-urls><url>https://example.com/w</url></related-urls></urls></record></records></xml>",
+    );
+    expect(entries).toEqual([
+      expect.objectContaining({ type: "misc", fields: expect.objectContaining({ title: "Web Thing", url: "https://example.com/w" }) }),
+    ]);
+  });
+});

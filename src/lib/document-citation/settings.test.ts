@@ -78,3 +78,13 @@ describe("document-citation settings", () => {
     expect(s.maxResultsPerSource).toBe(3);
   });
 });
+
+describe("document-citation settings from hand-edited storage", () => {
+  it("keeps defaults for values of the wrong type", () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ scoreThreshold: "70", maxResultsPerSource: "12", maxResultsPerParagraph: null, maxParagraphs: Number.NaN }),
+    );
+    expect(loadDocumentCitationSettings()).toEqual(DEFAULT_DOCUMENT_CITATION_SETTINGS);
+  });
+});

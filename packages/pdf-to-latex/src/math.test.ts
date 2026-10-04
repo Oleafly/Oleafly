@@ -18,6 +18,10 @@ describe("mathifyText", () => {
     expect(r.inlineCount).toBe(2);
   });
 
+  it("pulls a neighbouring number into the math run", () => {
+    expect(mathifyText("rate α ≈ 0.25 here").text).toBe("rate $\\alpha \\approx 0.25$ here");
+  });
+
   it("leaves plain text untouched", () => {
     const r = mathifyText("no math here");
     expect(r.text).toBe("no math here");

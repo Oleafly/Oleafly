@@ -4,6 +4,12 @@ import type { EditorView } from "@codemirror/view";
 import { JsonRpcRemoteError, type LanguageServiceClient } from "@/lib/language-service";
 import { activateInteractiveLanguageService } from "@/lib/analysis/interactive-language-service";
 import { registerBackgroundDocumentEditor } from "@oleafly/editor";
+import {
+  LanguageServiceTimeoutError,
+  StaleLanguageServiceResultError,
+} from "@/lib/language-service/errors";
+import { useFolderAccessStore } from "@/store/folder-access";
+import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import type { Sym } from "./types";
 
 const mocks = vi.hoisted(() => ({
@@ -25,7 +31,16 @@ const mocks = vi.hoisted(() => ({
   requestReferences: vi.fn(),
   requestPrepareRename: vi.fn(),
   requestRename: vi.fn(),
+  setRailTab: vi.fn(),
+  toggleTree: vi.fn(),
+  updateFile: vi.fn(),
 }));
+
+const settingsState = { showTree: true };
+const clientState = {
+  workspaceRoot: "/project" as string | null,
+  unsupported: new Set<string>(),
+};
 
 const MAIN = "#import \"util.typ\": greet\n= Intro <intro>\n#greet(\"x\") see @intro.\n";
 const UTIL = "#let greet(name) = [Hello #name]\n";
@@ -50,7 +65,7 @@ const indexState = {
     identity: { projectId: "project-typst", projectRevision: 3, requestGeneration: 7 },
   } as Record<string, unknown>,
   rebuildFromDisk: mocks.rebuildFromDisk,
-  updateFile: vi.fn(),
+  updateFile: mocks.updateFile,
 };
 
 vi.mock("@/store/files", () => ({
@@ -67,7 +82,11 @@ vi.mock("@/store/rename", () => ({
 }));
 vi.mock("@/store/settings", () => ({
   useSettingsStore: {
-    getState: () => ({ setRailTab: vi.fn(), showTree: true, toggleTree: vi.fn() }),
+    getState: () => ({
+      setRailTab: mocks.setRailTab,
+      showTree: settingsState.showTree,
+      toggleTree: mocks.toggleTree,
+    }),
   },
 }));
 vi.mock("@/lib/project-intelligence/current", () => ({
@@ -100,8 +119,10 @@ const range = (line: number, from: number, to: number) => ({
 function fakeClient(): LanguageServiceClient {
   return {
     generation: 1,
-    workspaceRoot: "/project",
-    supports: () => true,
+    get workspaceRoot() {
+      return clientState.workspaceRoot;
+    },
+    supports: (feature: string) => !clientState.unsupported.has(feature),
     requestDefinition: mocks.requestDefinition,
     requestReferences: mocks.requestReferences,
     requestPrepareRename: mocks.requestPrepareRename,
@@ -153,8 +174,18 @@ beforeEach(() => {
   mocks.setContent.mockReturnValue(true);
   mocks.currentSource.mockReturnValue(null);
   filesState.activePath = "main.typ";
+  filesState.projectId = "project-typst";
   filesState.files = { "main.typ": { content: MAIN, dirty: false } };
   indexState.texts = { "main.typ": MAIN, "util.typ": UTIL };
+  indexState.index = null;
+  indexState.intelligenceState = {
+    status: "ready",
+    stale: false,
+    identity: { projectId: "project-typst", projectRevision: 3, requestGeneration: 7 },
+  };
+  settingsState.showTree = true;
+  clientState.workspaceRoot = "/project";
+  clientState.unsupported = new Set();
   activateSession();
 });
 
@@ -443,5 +474,451 @@ describe("Typst rename through Tinymist", () => {
     startRename(editorAt(GREET_USE));
     await vi.waitFor(() => expect(mocks.toastInfoUnique).toHaveBeenCalled());
     expect(mocks.openRename).not.toHaveBeenCalled();
+  });
+});
+
+const WHITESPACE = MAIN.indexOf(": ") + 1;
+const STALE = () =>
+  new StaleLanguageServiceResultError(
+    { generation: 1, projectRevision: 3, documentUri: "file:///project/main.typ", documentVersion: 1 } as never,
+    "moved on",
+  );
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => {};
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+function until(assertion: () => void): Promise<void> {
+  return vi.waitFor(assertion, { interval: 1 });
+}
+
+function flush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function editMainBuffer(): void {
+  filesState.files = { "main.typ": { content: `${MAIN}more`, dirty: true } };
+}
+
+describe("Typst definition lookups that need a fallback", () => {
+  it("falls back to the local index when the server request fails", async () => {
+    mocks.requestDefinition.mockRejectedValue(new Error("crashed"));
+    expect(goToDefinition(editorAt(LABEL_USE))).toBe(true);
+    await until(() => expect(mocks.currentSource).toHaveBeenCalled());
+  });
+
+  it("does nothing when the server result is stale or cancelled", async () => {
+    mocks.requestDefinition.mockRejectedValueOnce(STALE());
+    mocks.requestDefinition.mockRejectedValueOnce(new LanguageServiceTimeoutError("textDocument/definition", 5000));
+    goToDefinition(editorAt(LABEL_USE));
+    goToDefinition(editorAt(LABEL_USE));
+    await until(() => expect(mocks.requestDefinition).toHaveBeenCalledTimes(2));
+    await flush();
+    expect(mocks.currentSource).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("drops an answer that arrives after the buffer changed", async () => {
+    const answer = deferred<unknown>();
+    mocks.requestDefinition.mockReturnValue(answer.promise);
+    goToDefinition(editorAt(GREET_USE));
+    editMainBuffer();
+    answer.resolve([{ uri: "file:///project/util.typ", range: range(0, 5, 10) }]);
+    await flush();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(mocks.currentSource).not.toHaveBeenCalled();
+  });
+
+  it("lists references when the only definition is the one under the caret", async () => {
+    mocks.requestDefinition.mockResolvedValue([{ uri: "file:///project/main.typ", range: range(2, 1, 6) }]);
+    mocks.requestReferences.mockResolvedValue([{ uri: "file:///project/util.typ", range: range(0, 5, 10) }]);
+    goToDefinition(editorAt(GREET_USE));
+    await until(() => expect(mocks.showReferences).toHaveBeenCalled());
+    expect(mocks.showReferences.mock.calls[0][0]).toMatchObject({ mode: "references" });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("lists several definitions in the references panel and opens the tree", async () => {
+    settingsState.showTree = false;
+    mocks.requestDefinition.mockResolvedValue([
+      { uri: "file:///project/util.typ", range: range(0, 5, 10) },
+      { uri: "file:///project/main.typ", range: range(0, 20, 25) },
+    ]);
+    goToDefinition(editorAt(GREET_USE));
+    await until(() => expect(mocks.showReferences).toHaveBeenCalled());
+    expect(mocks.showReferences.mock.calls[0][0]).toMatchObject({
+      mode: "definitions",
+      targetId: "",
+      title: "Definitions for greet",
+    });
+    expect(mocks.showReferences.mock.calls[0][0].locations.map((l: { path: string }) => l.path)).toEqual([
+      "util.typ",
+      "main.typ",
+    ]);
+    expect(mocks.setRailTab).toHaveBeenCalledWith("refs");
+    expect(mocks.toggleTree).toHaveBeenCalledTimes(1);
+  });
+
+  it("titles the definitions list with the first preview when the caret is between words", async () => {
+    mocks.requestDefinition.mockResolvedValue([
+      { uri: "file:///project/util.typ", range: range(0, 5, 10) },
+      { uri: "file:///project/main.typ", range: range(0, 20, 25) },
+    ]);
+    goToDefinition(editorAt(WHITESPACE));
+    await until(() => expect(mocks.showReferences).toHaveBeenCalled());
+    expect(mocks.showReferences.mock.calls[0][0].title).toBe(`Definitions for ${UTIL.trim()}`);
+  });
+
+  it("opens the first definition directly when the panel belongs to another project", async () => {
+    indexState.intelligenceState = {
+      status: "ready",
+      stale: false,
+      identity: { projectId: "other", projectRevision: 1, requestGeneration: 1 },
+    };
+    mocks.requestDefinition.mockResolvedValue([
+      { uri: "file:///project/util.typ", range: range(0, 5, 10) },
+      { uri: "file:///project/main.typ", range: range(0, 20, 25) },
+    ]);
+    goToDefinition(editorAt(GREET_USE));
+    await until(() => expect(mocks.navigate).toHaveBeenCalled());
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      path: "util.typ",
+      range: { from: 5, to: 10 },
+      source: "editor",
+    });
+    expect(mocks.showReferences).not.toHaveBeenCalled();
+  });
+
+  it("opens a definition by line and column when its text is not loaded", async () => {
+    mocks.requestDefinition.mockResolvedValue([{ uri: "file:///project/lib/unseen.typ", range: range(4, 2, 7) }]);
+    goToDefinition(editorAt(GREET_USE));
+    await until(() => expect(mocks.openLocation).toHaveBeenCalled());
+    expect(mocks.openLocation).toHaveBeenCalledWith(
+      { path: "lib/unseen.typ", line: 5, column: 3 },
+      { pdfView: "editor" },
+    );
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("reads a closed file's text from the open buffers or the index", async () => {
+    filesState.files = {
+      "main.typ": { content: MAIN, dirty: false },
+      "notes.typ": { content: "first\nsecond line\n", dirty: false },
+    };
+    indexState.texts = { ...indexState.texts, "extra.typ": "alpha\nbeta gamma\n" };
+    mocks.requestDefinition.mockResolvedValue([
+      { uri: "file:///project/notes.typ", range: range(1, 0, 6) },
+      { uri: "file:///project/extra.typ", range: range(1, 5, 10) },
+    ]);
+    goToDefinition(editorAt(GREET_USE));
+    await until(() => expect(mocks.showReferences).toHaveBeenCalled());
+    expect(mocks.showReferences.mock.calls[0][0].locations).toEqual([
+      { path: "notes.typ", from: 6, to: 12, line: 2, column: 1, preview: "second line" },
+      { path: "extra.typ", from: 11, to: 16, line: 2, column: 6, preview: "beta gamma" },
+    ]);
+  });
+
+  it("ignores locations outside the project and falls back to the local index", async () => {
+    mocks.requestDefinition.mockResolvedValue([
+      { uri: "file:///elsewhere/util.typ", range: range(0, 5, 10) },
+      { uri: "https://example.com/util.typ", range: range(0, 5, 10) },
+    ]);
+    goToDefinition(editorAt(GREET_USE));
+    await until(() => expect(mocks.currentSource).toHaveBeenCalled());
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("cannot resolve any location before the server has a workspace root", async () => {
+    clientState.workspaceRoot = null;
+    mocks.requestDefinition.mockResolvedValue([{ uri: "file:///project/util.typ", range: range(0, 5, 10) }]);
+    goToDefinition(editorAt(GREET_USE));
+    await until(() => expect(mocks.currentSource).toHaveBeenCalled());
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("uses the local index for a file that is not Typst", () => {
+    filesState.activePath = "main.tex";
+    goToDefinition(editorAt(GREET_USE));
+    expect(mocks.requestDefinition).not.toHaveBeenCalled();
+    expect(mocks.currentSource).toHaveBeenCalled();
+  });
+
+  it("uses the local index when the server lacks the feature", () => {
+    clientState.unsupported = new Set(["definition", "references"]);
+    goToDefinition(editorAt(GREET_USE));
+    findReferences(editorAt(GREET_USE));
+    expect(mocks.requestDefinition).not.toHaveBeenCalled();
+    expect(mocks.requestReferences).not.toHaveBeenCalled();
+    expect(mocks.currentSource).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Typst reference lookups that need a fallback", () => {
+  it("falls back to the local index when the server request fails", async () => {
+    mocks.requestReferences.mockRejectedValue(new Error("crashed"));
+    expect(findReferences(editorAt(LABEL_USE))).toBe(true);
+    await until(() => expect(mocks.currentSource).toHaveBeenCalled());
+  });
+
+  it("does nothing when the server result is stale", async () => {
+    mocks.requestReferences.mockRejectedValue(STALE());
+    findReferences(editorAt(LABEL_USE));
+    await until(() => expect(mocks.requestReferences).toHaveBeenCalled());
+    await flush();
+    expect(mocks.currentSource).not.toHaveBeenCalled();
+    expect(mocks.showReferences).not.toHaveBeenCalled();
+  });
+
+  it("drops an answer that arrives after the buffer changed", async () => {
+    const answer = deferred<unknown>();
+    mocks.requestReferences.mockReturnValue(answer.promise);
+    findReferences(editorAt(GREET_USE));
+    editMainBuffer();
+    answer.resolve([{ uri: "file:///project/util.typ", range: range(0, 5, 10) }]);
+    await flush();
+    expect(mocks.showReferences).not.toHaveBeenCalled();
+    expect(mocks.currentSource).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the local index when the server finds no references", async () => {
+    mocks.requestReferences.mockResolvedValue([]);
+    findReferences(editorAt(GREET_USE));
+    await until(() => expect(mocks.currentSource).toHaveBeenCalled());
+    expect(mocks.showReferences).not.toHaveBeenCalled();
+  });
+
+  it("titles the list with the first preview when the caret is between words", async () => {
+    mocks.requestReferences.mockResolvedValue([{ uri: "file:///project/util.typ", range: range(0, 5, 10) }]);
+    findReferences(editorAt(WHITESPACE));
+    await until(() => expect(mocks.showReferences).toHaveBeenCalled());
+    expect(mocks.showReferences.mock.calls[0][0].title).toBe(`References to ${UTIL.trim()}`);
+  });
+});
+
+describe("starting a Typst rename", () => {
+  async function opened(head: number): Promise<Sym> {
+    expect(startRename(editorAt(head))).toBe(true);
+    await until(() => expect(mocks.openRename).toHaveBeenCalled());
+    return mocks.openRename.mock.calls[0][0] as Sym;
+  }
+
+  async function explained(head: number): Promise<void> {
+    expect(startRename(editorAt(head))).toBe(true);
+    await until(() =>
+      expect(mocks.toastInfoUnique).toHaveBeenCalledWith("navigation:lookup", "This symbol cannot be renamed."),
+    );
+    expect(mocks.openRename).not.toHaveBeenCalled();
+  }
+
+  it("says the folder is read-only instead of asking the server", () => {
+    useFolderAccessStore.setState({
+      projectId: "project-typst",
+      status: { read_only: true, synced_with: null },
+    });
+    try {
+      expect(startRename(editorAt(GREET_USE))).toBe(true);
+      expect(mocks.requestPrepareRename).not.toHaveBeenCalled();
+      expect(mocks.openRename).not.toHaveBeenCalled();
+      expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
+        "navigation:lookup",
+        enShell.openedFolder.readOnly.banner,
+      );
+    } finally {
+      useFolderAccessStore.getState().reset(null);
+    }
+  });
+
+  it("renames the word under the caret when the server cannot prepare a rename", async () => {
+    clientState.unsupported = new Set(["prepareRename"]);
+    const sym = await opened(GREET_USE);
+    expect(mocks.requestPrepareRename).not.toHaveBeenCalled();
+    const from = MAIN.indexOf("greet(\"x\")");
+    expect(sym).toMatchObject({ kind: "label", name: "greet", file: "main.typ", line: 3, from, to: from + 5 });
+  });
+
+  it("renames the word under the caret when the server asks for the default behaviour", async () => {
+    mocks.requestPrepareRename.mockResolvedValue({ defaultBehavior: true });
+    const sym = await opened(GREET_USE + 1);
+    expect(sym).toMatchObject({ name: "greet", line: 3 });
+  });
+
+  it("accepts a bare range and takes the name from the text", async () => {
+    mocks.requestPrepareRename.mockResolvedValue(range(2, 1, 6));
+    const sym = await opened(GREET_USE);
+    expect(sym.name).toBe("greet");
+  });
+
+  it("ignores a placeholder that is not text", async () => {
+    mocks.requestPrepareRename.mockResolvedValue({ range: range(2, 1, 6), placeholder: 42 });
+    const sym = await opened(GREET_USE);
+    expect(sym.name).toBe("greet");
+  });
+
+  it("explains that nothing can be renamed when the server answers with no range", async () => {
+    mocks.requestPrepareRename.mockResolvedValue(undefined);
+    await explained(GREET_USE);
+  });
+
+  it("explains when the server answers with an array or a range away from the caret", async () => {
+    mocks.requestPrepareRename.mockResolvedValueOnce([range(2, 1, 6)]);
+    await explained(GREET_USE);
+    mocks.toastInfoUnique.mockReset();
+    mocks.requestPrepareRename.mockResolvedValueOnce({ range: range(0, 0, 3) });
+    await explained(GREET_USE);
+    mocks.toastInfoUnique.mockReset();
+    mocks.requestPrepareRename.mockResolvedValueOnce({ range: "nowhere" });
+    await explained(GREET_USE);
+  });
+
+  it("explains when the default rename has no word under the caret", async () => {
+    mocks.requestPrepareRename.mockResolvedValue({ defaultBehavior: true });
+    await explained(WHITESPACE);
+  });
+
+  it("falls back to the local rename when preparing fails", async () => {
+    mocks.requestPrepareRename.mockRejectedValue(new Error("crashed"));
+    await explained(GREET_USE);
+  });
+
+  it("opens the local rename box when the local index knows the symbol", async () => {
+    const label = { kind: "label", name: "intro", file: "main.typ" };
+    indexState.index = {
+      symbolAt: vi.fn(() => label),
+      definitionFor: vi.fn(() => label),
+    };
+    mocks.requestPrepareRename.mockResolvedValue(null);
+    const sym = await opened(LABEL_USE);
+    expect(sym).toBe(label);
+    expect(mocks.toastInfoUnique).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when preparing is stale or the buffer changed meanwhile", async () => {
+    mocks.requestPrepareRename.mockRejectedValueOnce(STALE());
+    startRename(editorAt(GREET_USE));
+    await until(() => expect(mocks.requestPrepareRename).toHaveBeenCalledTimes(1));
+    await flush();
+
+    const answer = deferred<unknown>();
+    mocks.requestPrepareRename.mockReturnValueOnce(answer.promise);
+    startRename(editorAt(GREET_USE));
+    editMainBuffer();
+    answer.resolve({ placeholder: "greet", range: range(2, 1, 6) });
+    await flush();
+
+    expect(mocks.openRename).not.toHaveBeenCalled();
+    expect(mocks.toastInfoUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("applying a Typst rename", () => {
+  async function renameTarget(): Promise<{ view: EditorView & { state: EditorState }; sym: Sym }> {
+    mocks.requestPrepareRename.mockResolvedValue({ placeholder: "greet", range: range(2, 1, 6) });
+    const view = editorAt(GREET_USE);
+    startRename(view);
+    await until(() => expect(mocks.openRename).toHaveBeenCalled());
+    return { view, sym: mocks.openRename.mock.calls[0][0] as Sym };
+  }
+
+  it("says analysis is updating when the request fails for another reason", async () => {
+    const { view, sym } = await renameTarget();
+    mocks.requestRename.mockRejectedValue(new LanguageServiceTimeoutError("textDocument/rename", 10_000));
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("skipped");
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith("navigation:lookup", "Project references are updating.");
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("says analysis is updating when the buffer changed during the request", async () => {
+    const { view, sym } = await renameTarget();
+    mocks.requestRename.mockImplementation(async () => {
+      editMainBuffer();
+      return { changes: { "file:///project/util.typ": [{ range: range(0, 5, 10), newText: "hello" }] } };
+    });
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("skipped");
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith("navigation:lookup", "Project references are updating.");
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+  });
+
+  it("reports a failure for an answer it cannot use", async () => {
+    const { view, sym } = await renameTarget();
+    mocks.requestRename.mockResolvedValueOnce(null);
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("skipped");
+    mocks.requestRename.mockResolvedValueOnce({
+      documentChanges: [{ kind: "create", uri: "file:///project/new.typ" }],
+    });
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("skipped");
+    clientState.workspaceRoot = null;
+    mocks.requestRename.mockResolvedValueOnce({ changes: {} });
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("skipped");
+    expect(mocks.toastError).toHaveBeenCalledTimes(3);
+    expect(mocks.toastError).toHaveBeenLastCalledWith('Could not rename to "hello".');
+    expect(view.dispatch).not.toHaveBeenCalled();
+  });
+
+  it("says there is nothing to rename for an empty edit", async () => {
+    const { view, sym } = await renameTarget();
+    mocks.requestRename.mockResolvedValue({ changes: {} });
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("unchanged");
+    expect(mocks.toastInfo).toHaveBeenCalledWith("Nothing to rename.");
+    expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+  });
+
+  it("names the files it had to skip", async () => {
+    const { view, sym } = await renameTarget();
+    filesState.files = {
+      "main.typ": { content: MAIN, dirty: false },
+      "util.typ": { content: `${UTIL}edited`, dirty: true },
+    };
+    mocks.requestRename.mockResolvedValue({
+      documentChanges: [
+        {
+          textDocument: { uri: "file:///project/main.typ", version: 1 },
+          edits: [{ range: range(2, 1, 6), newText: "hello" }],
+        },
+        {
+          textDocument: { uri: "file:///project/util.typ", version: 1 },
+          edits: [{ range: range(0, 5, 10), newText: "hello" }],
+        },
+        {
+          textDocument: { uri: "file:///outside/lib.typ", version: 1 },
+          edits: [{ range: range(0, 0, 1), newText: "x" }],
+        },
+        {
+          textDocument: { uri: "file:///project/missing.typ", version: 1 },
+          edits: [{ range: range(0, 0, 1), newText: "x" }],
+        },
+        { kind: "rename", oldUri: "file:///project/a.typ", newUri: "file:///outside/a.typ" },
+        { kind: "rename", oldUri: "file:///outside/b.typ", newUri: "file:///project/b.typ" },
+      ],
+    });
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("partial");
+    expect(view.state.doc.toString()).toContain("#hello(");
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+    expect(mocks.renameEntry).not.toHaveBeenCalled();
+    expect(mocks.rebuildFromDisk).toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Renamed to "hello" in 1 of 6 files. Could not write util.typ, file:///outside/lib.typ, missing.typ, a.typ, and file:///outside/b.typ.',
+    );
+  });
+
+  it("skips a file whose edits overlap", async () => {
+    const { view, sym } = await renameTarget();
+    mocks.requestRename.mockResolvedValue({
+      changes: {
+        "file:///project/main.typ": [{ range: range(2, 1, 6), newText: "hello" }],
+        "file:///project/util.typ": [
+          { range: range(0, 5, 10), newText: "hello" },
+          { range: range(0, 6, 9), newText: "x" },
+        ],
+      },
+    });
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("partial");
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Renamed to "hello" in 1 of 2 files. Could not write util.typ.',
+    );
   });
 });

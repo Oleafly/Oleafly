@@ -71,3 +71,19 @@ describe("extractKeywords comment handling", () => {
     expect(q.toLowerCase()).toContain("graph");
   });
 });
+
+describe("splitIntoParagraphs without document markers", () => {
+  it("reads the whole source and drops comment-only and heading-only chunks", () => {
+    const source = [
+      "% a long comment block that is not prose at all",
+      "% and it keeps going for another line",
+      "",
+      "\\section{A Heading That Is Long Enough To Count}",
+      "",
+      "Graph neural networks enable molecule generation with high fidelity.",
+    ].join("\n");
+    expect(splitIntoParagraphs(source)).toEqual([
+      { index: 0, text: "Graph neural networks enable molecule generation with high fidelity." },
+    ]);
+  });
+});

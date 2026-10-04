@@ -152,6 +152,9 @@ function harness(initialTypst: string, installed: string[] = []) {
     pin(version: string) {
       typst = version;
     },
+    markInstalled(version: string) {
+      downloaded.add(version);
+    },
     holdNextDownload(): Deferred {
       const gate = deferred();
       nextDownload = gate;
@@ -273,6 +276,102 @@ describe("Tinymist matched to the project's Typst version", () => {
       );
     });
     expect(install).toHaveBeenCalledTimes(2);
+  });
+
+  it("starts once the matching build is present after a failed download, without a retry", async () => {
+    const { controller, store, install, holdNextDownload, markInstalled } =
+      harness("0.12.0");
+    const failed = holdNextDownload();
+    controller.update(typstSnapshot("0.12.0"));
+    await controller.whenIdle();
+    failed.reject(new Error("offline"));
+    await vi.waitFor(() => {
+      expect(store.getState().snapshot.languageService.readiness).toBe(
+        "unavailable",
+      );
+    });
+
+    markInstalled("0.12.22");
+    controller.update(
+      typstSnapshot("0.12.0", {
+        files: { "main.typ": { content: "= Paper\n\nEdited\n" } },
+      }),
+    );
+    await vi.waitFor(() => {
+      expect(store.getState().snapshot.languageService.readiness).toBe(
+        "ready",
+      );
+    });
+    expect(install).toHaveBeenCalledTimes(1);
+  });
+
+  it("downloads again when setup reports an installation in progress after a failure", async () => {
+    const { controller, store, install, installStatus, holdNextDownload } =
+      harness("0.12.0");
+    const failed = holdNextDownload();
+    controller.update(typstSnapshot("0.12.0"));
+    await controller.whenIdle();
+    failed.reject(new Error("offline"));
+    await vi.waitFor(() => {
+      expect(store.getState().snapshot.languageService.readiness).toBe(
+        "unavailable",
+      );
+    });
+
+    installStatus.mockResolvedValueOnce({
+      kind: "tinymist",
+      version: "0.12.22",
+      state: "installing",
+    });
+    controller.update(
+      typstSnapshot("0.12.0", {
+        files: { "main.typ": { content: "= Paper\n\nEdited\n" } },
+      }),
+    );
+    await vi.waitFor(() => {
+      expect(store.getState().snapshot.languageService.readiness).toBe(
+        "ready",
+      );
+    });
+    expect(install).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores a download that finishes after another project opened", async () => {
+    const { controller, store, installStatus, holdNextDownload, pin } =
+      harness("0.13.1");
+    const first = holdNextDownload();
+    controller.update(typstSnapshot("0.13.1"));
+    await controller.whenIdle();
+    expect(store.getState().snapshot.languageService.readiness).toBe(
+      "installing",
+    );
+
+    const second = holdNextDownload();
+    pin("0.14.1");
+    controller.update(typstSnapshot("0.14.1", { projectId: "project-other" }));
+    await controller.whenIdle();
+    expect(store.getState().snapshot.languageService.reason).toEqual({
+      key: "tinymistDownloading",
+      params: { version: "0.14.20" },
+    });
+    const checks = installStatus.mock.calls.length;
+
+    first.resolve();
+    for (let index = 0; index < 10; index += 1) await Promise.resolve();
+    await controller.whenIdle();
+    expect(installStatus.mock.calls.length).toBe(checks);
+    expect(store.getState().snapshot.languageService.readiness).toBe(
+      "installing",
+    );
+
+    second.resolve();
+    await vi.waitFor(() => {
+      expect(store.getState().snapshot.languageService.readiness).toBe(
+        "ready",
+      );
+    });
+    expect(installStatus).toHaveBeenLastCalledWith("tinymist", "project-other");
+    expect(store.getState().snapshot.identity.projectId).toBe("project-other");
   });
 
   it("keeps only the startup options each older Tinymist reads", async () => {

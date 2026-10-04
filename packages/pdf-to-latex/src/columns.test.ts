@@ -46,3 +46,19 @@ describe("orderByColumns", () => {
     expect(ordered).toEqual(["L1", "L2", "R1", "R2"]);
   });
 });
+
+describe("detectColumns guards", () => {
+  it("reports one column when one side of the gutter holds a single item", () => {
+    expect(
+      detectColumns([it_("a", 40, 700), it_("b", 50, 688), it_("c", 60, 676), it_("d", 400, 700)], 600).count,
+    ).toBe(1);
+  });
+
+  it("reports one column when lines run across the gutter", () => {
+    const wide = (str: string, y: number): TextItem => ({ ...it_(str, 40, y), width: 500 });
+    expect(detectColumns([...twoCol, wide("w1", 676), wide("w2", 664)], 600)).toEqual({
+      count: 1,
+      splitX: null,
+    });
+  });
+});

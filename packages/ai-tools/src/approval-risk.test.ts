@@ -61,6 +61,10 @@ describe("toolRisk", () => {
   it("treats unknown tools as write so they never run silently", () => {
     expect(toolRisk("brand_new_tool")).toBe("write");
   });
+
+  it("classifies run_command as shell", () => {
+    expect(toolRisk("run_command")).toBe("shell");
+  });
 });
 
 describe("riskRequiresConfirm", () => {

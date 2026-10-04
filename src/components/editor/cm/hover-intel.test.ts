@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
-import type { EditorView } from "@codemirror/view";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/intelligence.json" with { type: "json" };
 import type {
   ProjectDefinition,
@@ -44,7 +45,7 @@ vi.mock("./hover-math", async (importOriginal) => ({
   ...enclosing,
 }));
 
-import { hoverIntel, kindNoun, projectHoverCard } from "./hover-intel";
+import { clearProjectHoverIntel, hoverIntel, kindNoun, projectHoverCard } from "./hover-intel";
 
 const hover = en.hover;
 const kinds = en.symbolKind;
@@ -261,5 +262,143 @@ describe("projectHoverCard", () => {
   it("ignores an asset use that resolves to something with no preview", () => {
     expect(card(use({ kind: "asset", target: "data/table.csv", resolution: "resolved" }))).toBeNull();
     expect(card(use({ kind: "asset", resolution: "unresolved" }))).toBeNull();
+  });
+});
+
+describe("projectHoverCard edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    selectors.definitionsForUse.mockReturnValue([]);
+    selectors.referencesFor.mockReturnValue([]);
+    math.renderMathSource.mockReturnValue({ status: "ready", html: "<span>x</span>" });
+    aux.auxNumberFor.mockReturnValue(null);
+    useIndexStore.setState({ texts: { "chapters/intro.tex": "\\label{fig:one}" } });
+    useFilesStore.setState({ projectId: "project" });
+  });
+
+  it("looks one character back when the cursor sits just after a symbol", () => {
+    intelligence.currentSourceProjectIntelligence.mockReturnValue({ path: "main.tex", snapshot: SNAPSHOT });
+    selectors.symbolAt.mockReturnValueOnce(null).mockReturnValueOnce(use());
+    expect(projectHoverCard(view, 12)?.pos).toBe(RANGE.from);
+    expect(selectors.symbolAt).toHaveBeenLastCalledWith(SNAPSHOT, "main.tex", 11);
+
+    selectors.symbolAt.mockReset();
+    selectors.symbolAt.mockReturnValue(null);
+    expect(projectHoverCard(view, 0)).toBeNull();
+    expect(selectors.symbolAt).toHaveBeenCalledOnce();
+  });
+
+  it("shows the compiled number of a referenced label definition", () => {
+    selectors.referencesFor.mockReturnValue([use()]);
+    aux.auxNumberFor.mockReturnValue({ number: "3", page: "2" });
+    const node = dom(definition());
+    expect(node.querySelector(".cm-code-hover-aux")?.textContent).toBe(
+      hover.auxNumber.replace("{{number}}", "3").replace("{{page}}", "2"),
+    );
+  });
+
+  it("skips math that the source text or the renderer cannot provide", () => {
+    selectors.definitionsForUse.mockReturnValue([definition({ location: { file: "missing.tex", range: RANGE } })]);
+    expect(dom(use()).querySelector(".cm-code-hover-math")).toBeNull();
+
+    selectors.definitionsForUse.mockReturnValue([definition()]);
+    enclosing.enclosingMathEnvironment.mockReturnValueOnce({ body: "   ", environment: "equation" });
+    expect(dom(use()).querySelector(".cm-code-hover-math")).toBeNull();
+
+    math.renderMathSource.mockReturnValueOnce({ status: "error", html: "" });
+    expect(dom(use()).querySelector(".cm-code-hover-math")).toBeNull();
+  });
+
+  it("leaves a detached thumbnail alone when its preview arrives late", async () => {
+    let resolve: (url: string) => void = () => {};
+    asset.loadAssetThumbnail.mockReturnValue(new Promise<string>((done) => { resolve = done; }));
+    const node = dom(use({ kind: "asset", target: "figures/plot.png", resolution: "resolved" }));
+    const thumb = node.querySelector(".cm-code-hover-thumb") as HTMLElement;
+    resolve("data:image/png;base64,AA");
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(thumb.textContent).toBe(hover.loadingPreview);
+    expect(thumb.querySelector("img")).toBeNull();
+  });
+});
+
+describe("modifier-hover links", () => {
+  let editor: EditorView;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    intelligence.currentSourceProjectIntelligence.mockReturnValue({ path: "main.tex", snapshot: SNAPSHOT });
+    selectors.symbolAt.mockReturnValue(use({ location: { file: "main.tex", range: { ...RANGE, from: 5, to: 12 } } }));
+    selectors.definitionsForUse.mockReturnValue([definition()]);
+    editor = new EditorView({
+      state: EditorState.create({ doc: "\\ref{fig:one} and more", extensions: hoverIntel() }),
+      parent: document.body,
+    });
+  });
+
+  afterEach(() => {
+    editor.destroy();
+  });
+
+  function links(): string[] {
+    return [...editor.contentDOM.querySelectorAll(".cm-cmd-link")].map((node) => node.textContent ?? "");
+  }
+
+  function move(init: MouseEventInit, pos: number | null = 7) {
+    vi.spyOn(editor, "posAtCoords").mockReturnValue(pos as number);
+    editor.contentDOM.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, ...init }));
+  }
+
+  it("underlines a resolvable symbol while Ctrl or Cmd is held", () => {
+    move({ ctrlKey: true });
+    expect(links()).toEqual(["fig:one"]);
+    const dispatch = vi.spyOn(editor, "dispatch");
+    move({ metaKey: true });
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(links()).toEqual(["fig:one"]);
+    move({});
+    expect(links()).toEqual([]);
+  });
+
+  it("does not underline an unresolved use or empty space", () => {
+    selectors.definitionsForUse.mockReturnValue([]);
+    move({ ctrlKey: true });
+    expect(links()).toEqual([]);
+
+    selectors.definitionsForUse.mockReturnValue([definition()]);
+    move({ ctrlKey: true });
+    expect(links()).toHaveLength(1);
+    move({ ctrlKey: true }, null);
+    expect(links()).toEqual([]);
+
+    selectors.symbolAt.mockReturnValue(null);
+    move({ ctrlKey: true });
+    expect(links()).toEqual([]);
+  });
+
+  it("underlines a definition that has references", () => {
+    selectors.symbolAt.mockReturnValue(definition({ location: { file: "main.tex", range: { ...RANGE, from: 0, to: 4 } } }));
+    move({ ctrlKey: true });
+    expect(links()).toEqual(["\\ref"]);
+  });
+
+  it("clears the underline when the pointer leaves, the modifier is released or the effect is sent", () => {
+    move({ ctrlKey: true });
+    editor.contentDOM.dispatchEvent(new MouseEvent("mouseleave"));
+    expect(links()).toEqual([]);
+
+    move({ ctrlKey: true });
+    editor.contentDOM.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift", bubbles: true }));
+    expect(links()).toHaveLength(1);
+    editor.contentDOM.dispatchEvent(new KeyboardEvent("keyup", { key: "Control", bubbles: true }));
+    expect(links()).toEqual([]);
+
+    move({ metaKey: true });
+    editor.contentDOM.dispatchEvent(new KeyboardEvent("keyup", { key: "Meta", bubbles: true }));
+    expect(links()).toEqual([]);
+
+    move({ ctrlKey: true });
+    editor.dispatch({ effects: clearProjectHoverIntel.of(null) });
+    expect(links()).toEqual([]);
   });
 });

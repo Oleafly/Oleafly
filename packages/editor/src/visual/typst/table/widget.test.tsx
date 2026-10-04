@@ -125,4 +125,60 @@ describe("the Typst table grid", () => {
     fireEvent.click(item!);
     expect(editor.state.doc.toString()).toBe(DOC.replace("  [Alpha], [1],", "  [], [],\n  [Alpha], [1],"));
   });
+
+  function choose(editor: EditorView, menu: string, item: string): void {
+    fireEvent.click(editor.dom.querySelector(`.ofl-visual-table-toolbar [aria-label="${menu}"]`)!);
+    const option = Array.from(editor.dom.querySelectorAll<HTMLElement>(".ofl-visual-table-menu-item")).find(
+      (candidate) => candidate.textContent === item,
+    );
+    if (!option) throw new Error(`No menu item ${item}`);
+    fireEvent.click(option);
+  }
+
+  function selectColumn(editor: EditorView, index: number): void {
+    fireEvent.mouseDown(grid(editor).querySelectorAll(".ofl-visual-table-handle-column")[index], { button: 0 });
+  }
+
+  it("switches the borders off and on from the toolbar", async () => {
+    const editor = await mount();
+    selectColumn(editor, 0);
+    choose(editor, "Borders", "No borders");
+    expect(editor.state.doc.toString()).toContain("stroke: none,");
+    selectColumn(editor, 0);
+    choose(editor, "Borders", "All borders");
+    expect(editor.state.doc.toString()).not.toContain("stroke");
+  });
+
+  it("aligns a selected column from the toolbar", async () => {
+    const editor = await mount();
+    selectColumn(editor, 1);
+    choose(editor, "Alignment", "Align right");
+    expect(editor.state.doc.toString()).toContain("align: (left, right),");
+    selectColumn(editor, 1);
+    choose(editor, "Alignment", "Align centre");
+    expect(editor.state.doc.toString()).toContain("align: (left, center),");
+    selectColumn(editor, 1);
+    choose(editor, "Alignment", "Align left");
+    expect(editor.state.doc.toString()).toContain("align: left,");
+  });
+
+  it("inserts columns to the left and rows below from the toolbar", async () => {
+    const editor = await mount();
+    selectColumn(editor, 0);
+    choose(editor, "Insert", "Insert column left");
+    expect(editor.state.doc.toString()).toContain("table.header([], [Name], [Count]),");
+    fireEvent.mouseDown(grid(editor).querySelectorAll(".ofl-visual-table-handle-row")[2], { button: 0 });
+    choose(editor, "Insert", "Insert row below");
+    expect(editor.state.doc.toString()).toContain("[], [Beta], [2],\n  [], [], [],");
+  });
+
+  it("deletes a row and removes the table from the toolbar", async () => {
+    const editor = await mount();
+    fireEvent.mouseDown(grid(editor).querySelectorAll(".ofl-visual-table-handle-row")[1], { button: 0 });
+    fireEvent.click(editor.dom.querySelector('.ofl-visual-table-toolbar [aria-label="Delete"]')!);
+    expect(editor.state.doc.toString()).not.toContain("[Alpha]");
+    fireEvent.mouseDown(grid(editor).querySelectorAll(".ofl-visual-table-handle-row")[0], { button: 0 });
+    fireEvent.click(editor.dom.querySelector('.ofl-visual-table-toolbar [aria-label="Remove table"]')!);
+    expect(editor.state.doc.toString()).toBe("Intro.\nOutro.");
+  });
 });

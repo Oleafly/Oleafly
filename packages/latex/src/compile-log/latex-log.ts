@@ -390,7 +390,7 @@ function parseNoPageOutput(line: string, filename: string | null, state: ParserS
     category: "error",
     file: filename,
     line: null,
-    text: result[1],
+    text: result[0],
   };
   state.searchEmptyLine = true;
   state.insideError = true;

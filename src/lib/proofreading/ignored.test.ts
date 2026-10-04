@@ -459,3 +459,32 @@ describe("restoring a finding clears the matching session decision", () => {
     expect(diagnosticCardSource(view, at)).not.toBeNull();
   });
 });
+
+describe("session ignores with nothing to key on", () => {
+  it("ignores, finds and forgets nothing for punctuation or empty keys", () => {
+    ignoreWordHere("alpha", "main.tex", "--");
+    suppressFindingHere("alpha", "main.tex", "");
+    expect(isWordIgnoredHere("alpha", "main.tex", "--")).toBe(false);
+    expect(isFindingSuppressedHere("alpha", "main.tex", "")).toBe(false);
+
+    ignoreWordHere("alpha", "main.tex", "Zyzzogeton");
+    suppressFindingHere("alpha", "main.tex", "Rule:1");
+    forgetWordIgnoredHere("--");
+    forgetFindingSuppressedHere("");
+    forgetRuleSuppressedHere("");
+    expect(isWordIgnoredHere("alpha", "main.tex", "Zyzzogeton")).toBe(true);
+    expect(isFindingSuppressedHere("alpha", "main.tex", "Rule:1")).toBe(true);
+  });
+
+  it("clears every file outside a project at once", () => {
+    ignoreWordHere(null, "loose.tex", "Zyzzogeton");
+    suppressFindingHere(null, "other.tex", "Rule:2");
+    ignoreWordHere("alpha", "main.tex", "Zyzzogeton");
+
+    clearWordsIgnoredHere(null);
+
+    expect(isWordIgnoredHere(null, "loose.tex", "Zyzzogeton")).toBe(false);
+    expect(isFindingSuppressedHere(null, "other.tex", "Rule:2")).toBe(false);
+    expect(isWordIgnoredHere("alpha", "main.tex", "Zyzzogeton")).toBe(true);
+  });
+});

@@ -118,7 +118,6 @@ function trivia(lexer: Lexer, i: number, allowRaw: boolean): number | null {
 
 function autolinkEnd(text: string, i: number): number | null {
   if (!text.startsWith("http://", i) && !text.startsWith("https://", i)) return null;
-  if (i > 0 && /[\p{L}\p{N}]/u.test(text[i - 1])) return null;
   let end = i;
   while (end < text.length && AUTOLINK.test(text[end])) end++;
   while (end > i && AUTOLINK_TRAILING.includes(text[end - 1])) end--;

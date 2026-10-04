@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
 import type { ComponentPropsWithRef, ReactNode } from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NewProjectDialog } from "./NewProjectDialog";
+import { modalCoordinator } from "./modal-coordinator";
 import type { TemplateInfo, TemplatesHost, TemplatesKit } from "./types";
 import type { TemplatesMessageKey } from "./messages";
 
@@ -431,5 +432,296 @@ describe("NewProjectDialog", () => {
 
     await waitFor(() => expect(screen.getByText("dialog.nameProject")).toBeInTheDocument());
     expect(screen.getByPlaceholderText("nameHint.atsResume")).toBeInTheDocument();
+  });
+});
+
+describe("NewProjectDialog focus and dismissal", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("wraps Tab focus at both ends of the dialog and leaves the middle alone", () => {
+    open();
+    const closeButton = screen.getByLabelText("dialog.close");
+    const lastCard = screen.getByTestId("template-card-zine");
+    const search = screen.getByPlaceholderText("dialog.searchPlaceholder");
+
+    lastCard.focus();
+    expect(fireEvent.keyDown(window, { key: "Tab" })).toBe(false);
+    expect(document.activeElement).toBe(closeButton);
+
+    expect(fireEvent.keyDown(window, { key: "Tab", shiftKey: true })).toBe(false);
+    expect(document.activeElement).toBe(lastCard);
+
+    search.focus();
+    expect(fireEvent.keyDown(window, { key: "Tab" })).toBe(true);
+    expect(document.activeElement).toBe(search);
+  });
+
+  it("pulls focus back into the dialog when it lands outside", () => {
+    const outside = document.createElement("button");
+    document.body.appendChild(outside);
+    open();
+    const search = screen.getByPlaceholderText("dialog.searchPlaceholder");
+
+    search.focus();
+    expect(document.activeElement).toBe(search);
+
+    outside.focus();
+    expect(document.activeElement).toBe(screen.getByLabelText("dialog.close"));
+  });
+
+  it("leaves keys, focus and the backdrop to a modal stacked above it", () => {
+    const outside = document.createElement("button");
+    document.body.appendChild(outside);
+    const { onClose } = open();
+    const above = modalCoordinator.add(null);
+
+    try {
+      fireEvent.keyDown(window, { key: "Escape" });
+      outside.focus();
+      fireEvent.mouseDown(screen.getByRole("dialog").parentElement as HTMLElement);
+
+      expect(onClose).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      modalCoordinator.remove(above);
+    }
+  });
+
+  it("closes when the backdrop is pressed, not when the dialog itself is", () => {
+    const { onClose } = open();
+    const dialog = screen.getByRole("dialog");
+
+    fireEvent.mouseDown(dialog);
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.mouseDown(dialog.parentElement as HTMLElement);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("ignores the backdrop when closing is not allowed", () => {
+    const { onClose } = open({ allowClose: false });
+
+    fireEvent.mouseDown(screen.getByRole("dialog").parentElement as HTMLElement);
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("gives focus back to the control that opened it", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+    const { view } = open();
+    expect(document.activeElement).toBe(screen.getByPlaceholderText("dialog.searchPlaceholder"));
+
+    view.rerender(
+      <NewProjectDialog
+        open={false}
+        templates={TEMPLATES}
+        onClose={() => {}}
+        onCreate={() => {}}
+        host={makeHost()}
+        kit={kit}
+        colorOptions={COLORS}
+        defaultColor="#334155"
+      />,
+    );
+
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("does not try to refocus an opener that was removed while it was open", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+    const { view } = open();
+    opener.remove();
+
+    view.unmount();
+
+    expect(document.activeElement).not.toBe(opener);
+    expect(modalCoordinator.size()).toBe(0);
+  });
+});
+
+describe("NewProjectDialog create shortcut", () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it("submits from the Ctrl chord and ignores other chords", async () => {
+    const { onCreate } = open();
+
+    fireEvent.keyDown(document, { key: "Enter", ctrlKey: true });
+    expect(onCreate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("template-card-blank"));
+    fireEvent.change(screen.getByLabelText("dialog.projectName"), { target: { value: "Ctrl paper" } });
+    fireEvent.keyDown(document, { key: "a", ctrlKey: true });
+    fireEvent.keyDown(document, { key: "Enter" });
+    expect(onCreate).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document, { key: "Enter", ctrlKey: true });
+    await waitFor(() => expect(onCreate).toHaveBeenCalledWith("Ctrl paper", "blank", "#334155"));
+  });
+
+  it("does not submit from the chord while the name is blank", () => {
+    const { onCreate } = open();
+
+    fireEvent.click(screen.getByTestId("template-card-blank"));
+    fireEvent.change(screen.getByLabelText("dialog.projectName"), { target: { value: "   " } });
+    fireEvent.keyDown(document, { key: "Enter", metaKey: true });
+
+    expect(onCreate).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["MacIntel", "⌘"],
+    ["Win32", "Ctrl"],
+  ])("labels the shortcut for %s", (platform, label) => {
+    vi.spyOn(navigator, "platform", "get").mockReturnValue(platform);
+    open();
+
+    fireEvent.click(screen.getByTestId("template-card-blank"));
+
+    expect(screen.getByTestId("create-project")).toHaveTextContent(label);
+  });
+});
+
+describe("NewProjectDialog template requests and metadata", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("ignores template requests without an id", () => {
+    open();
+
+    fireEvent(window, new CustomEvent("oleafly:use-template", { detail: {} }));
+    fireEvent(window, new CustomEvent("oleafly:use-template"));
+
+    expect(screen.getByText("dialog.chooseTemplate")).toBeInTheDocument();
+  });
+
+  it("opens a requested template once it arrives in the catalog", () => {
+    const { view, onClose, onCreate, host } = open();
+    const late = template({ id: "late", name: "Late arrival", category: "Letters" });
+
+    fireEvent(window, new CustomEvent("oleafly:use-template", { detail: { id: "late" } }));
+    expect(screen.getByText("dialog.chooseTemplate")).toBeInTheDocument();
+
+    view.rerender(
+      <NewProjectDialog
+        open
+        templates={[...TEMPLATES, late]}
+        onClose={onClose}
+        onCreate={onCreate}
+        host={host}
+        kit={kit}
+        colorOptions={COLORS}
+        defaultColor="#334155"
+      />,
+    );
+
+    expect(screen.getByText("dialog.nameProject")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("nameHint.categoryLetters")).toBeInTheDocument();
+  });
+
+  it("files templates without a category under Other", () => {
+    open({
+      templates: [template(), template({ id: "loose", name: "Loose sheet", category: "" })],
+    });
+
+    const other = screen.getByText("category.other").closest("button") as HTMLElement;
+    expect(other).toHaveTextContent("1");
+
+    fireEvent.click(other);
+    expect(screen.getByTestId("template-card-loose")).toBeInTheDocument();
+    expect(screen.queryByTestId("template-card-blank")).not.toBeInTheDocument();
+  });
+
+  it("shows a licence without an author on its own", () => {
+    open({ templates: [template({ id: "cc", name: "CC sheet", license: { spdx: "CC-BY-4.0", author: null } })] });
+
+    fireEvent.click(screen.getByTestId("template-card-cc"));
+
+    expect(screen.getByText("CC-BY-4.0")).toBeInTheDocument();
+  });
+});
+
+describe("NewProjectDialog previews", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("reuses a loaded thumbnail on the details step instead of fetching it again", async () => {
+    const host = makeHost({ loadPreview: vi.fn(async () => "data:image/png;base64,BB") });
+    open({ templates: [template({ id: "reused-cover", name: "Reused", has_preview: true })] }, host);
+    await screen.findByAltText("dialog.previewAlt Reused");
+
+    fireEvent.click(screen.getByTestId("template-card-reused-cover"));
+
+    expect(screen.getByAltText("dialog.previewAlt Reused")).toHaveAttribute("src", "data:image/png;base64,BB");
+    expect(host.loadPreview).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the engine placeholder when a thumbnail fails, without retrying", async () => {
+    const host = makeHost({
+      loadPreview: vi.fn(async () => {
+        throw new Error("missing");
+      }),
+    });
+    open({ templates: [template({ id: "broken-cover", name: "Broken", has_preview: true })] }, host);
+    await waitFor(() => expect(host.loadPreview).toHaveBeenCalledOnce());
+
+    fireEvent.click(screen.getByTestId("template-card-broken-cover"));
+    await act(async () => {});
+
+    expect(screen.queryByAltText("dialog.previewAlt Broken")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Tectonic").length).toBeGreaterThan(0);
+    expect(host.loadPreview).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a thumbnail that arrives after its card was filtered away", async () => {
+    let resolvePreview: (uri: string) => void = () => {};
+    const host = makeHost({
+      loadPreview: vi.fn(
+        () =>
+          new Promise<string | null>((resolve) => {
+            resolvePreview = resolve;
+          }),
+      ),
+    });
+    open({ templates: [template(), template({ id: "slow-cover", name: "Slow", has_preview: true })] }, host);
+    const search = screen.getByPlaceholderText("dialog.searchPlaceholder");
+
+    fireEvent.change(search, { target: { value: "nothing matches" } });
+    expect(screen.queryByTestId("template-card-slow-cover")).not.toBeInTheDocument();
+    await act(async () => {
+      resolvePreview("data:image/png;base64,CC");
+    });
+    fireEvent.change(search, { target: { value: "" } });
+
+    expect(screen.getByAltText("dialog.previewAlt Slow")).toHaveAttribute("src", "data:image/png;base64,CC");
+    expect(host.loadPreview).toHaveBeenCalledOnce();
+  });
+
+  it("shows a figure thumbnail whole rather than cropped like a page", async () => {
+    const host = makeHost({ loadPreview: vi.fn(async () => "data:image/png;base64,DD") });
+    open(
+      {
+        templates: [
+          template({ id: "figure-cover", name: "Figure", category: "Diagrams & Figures", has_preview: true }),
+          template({ id: "page-cover", name: "Page", has_preview: true }),
+        ],
+      },
+      host,
+    );
+
+    expect(await screen.findByAltText("dialog.previewAlt Figure")).toHaveClass("object-contain");
+    expect(await screen.findByAltText("dialog.previewAlt Page")).toHaveClass("object-cover");
   });
 });

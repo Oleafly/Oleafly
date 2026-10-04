@@ -48,3 +48,30 @@ it("resolves relative images and ignores an old project response", async () => {
   await act(async () => resolveFirst("data:image/png;base64,stale"));
   expect(screen.getByRole("img", { name: "Plot" })).toHaveAttribute("src", "data:image/png;base64,current");
 });
+
+it("shows a web image directly without asking the project", () => {
+  openContent('![Logo](https://example.com/logo.png "Brand")');
+  render(<MarkdownPreview />);
+  const image = screen.getByRole("img", { name: "Logo" });
+  expect(image).toHaveAttribute("src", "https://example.com/logo.png");
+  expect(image).toHaveAttribute("title", "Brand");
+  expect(loadAssetThumbnail).not.toHaveBeenCalled();
+});
+
+it("falls back to the alt text for images it cannot load", async () => {
+  openContent("![Broken %E0%A4%A](bad%E0%A4%A.png)\n\n![Outside](../../../escape.png)\n\n![Missing](missing.png)\n\n![]()");
+  render(<MarkdownPreview />);
+  await waitFor(() => expect(loadAssetThumbnail).toHaveBeenCalledWith("first", "chapters/missing.png"));
+  expect(loadAssetThumbnail).toHaveBeenCalledOnce();
+  expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  expect(screen.getByText("Missing")).toBeInTheDocument();
+  expect(screen.getByText("Outside")).toBeInTheDocument();
+});
+
+it("shows alt text for project images while no project is open", () => {
+  openContent("![Plot](plot.png)", "");
+  useFilesStore.setState({ projectId: null });
+  render(<MarkdownPreview />);
+  expect(screen.getByText("Plot")).toBeInTheDocument();
+  expect(loadAssetThumbnail).not.toHaveBeenCalled();
+});

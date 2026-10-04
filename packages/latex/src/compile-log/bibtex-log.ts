@@ -15,11 +15,11 @@ const singleLineWarning = /^Warning--(.+) in ([^\s]+)\s*$/gm;
 const missingEntryWarning =
   /^Warning--I didn't find a database entry for "([^"]+)"(?![^\n])(?!\n--line )/gm;
 const multiLineError =
-  /^(.*)---line (\d+) of file (.*)\n([^]+?)\nI'm skipping whatever remains of this entry$/gm;
+  /^(.*)---line (\d+) of file (.*)\n((?:(?!I'm skipping whatever remains)[^\n]*\n)+?)I'm skipping whatever remains of this entry$/gm;
 const badCrossReference =
   /^(A bad cross reference---entry ".+?"\nrefers to entry.+?, which doesn't exist)$/gm;
 const multiLineMacroError =
-  /^(.*)\n?---line (\d+) of file (.*)\n([^]+?)\nI'm skipping whatever remains of this command$/gm;
+  /^(.*)\n?---line (\d+) of file (.*)\n((?:(?!I'm skipping whatever remains)[^\n]*\n)+?)I'm skipping whatever remains of this command$/gm;
 const errorAuxFile = /^(.*)---while reading file (.*)$/gm;
 
 function category(message: string): LogDiagnostic["category"] {

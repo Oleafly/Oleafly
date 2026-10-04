@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  cachedTypstMath,
   cssColorToHex,
+  mountMathPreview,
   paintTypstMath,
   renderTypstMath,
   setTypstMathHost,
@@ -9,7 +11,9 @@ import {
   type TypstMathOutcome,
   typstMathSnippet,
   typstMathTheme,
+  typstMathVersion,
 } from "./math-render";
+import type { MathExpression } from "./math-source";
 import { installEnglishEditorMessages } from "./test-messages";
 
 installEnglishEditorMessages();
@@ -219,5 +223,145 @@ describe("typstMathTheme", () => {
     ["rgb(1, 2, 3) ", "#010203"],
   ])("reads the rgb() colour %j", (color, hex) => {
     expect(cssColorToHex(color)).toBe(hex);
+  });
+});
+
+describe("Typst math input checks and failures", () => {
+  it("refuses empty and oversized equations before asking Typst", () => {
+    const host = hostWith(async () => rendered());
+    expect(cachedTypstMath("  ", THEME)).toEqual({ status: "failed", message: "Add a math expression to show a preview." });
+    expect(cachedTypstMath("x".repeat(8_193), THEME)).toEqual({
+      status: "failed",
+      message: "Expression is too long to preview (8193 characters).",
+    });
+    expect(host.render).not.toHaveBeenCalled();
+    expect(typstMathVersion()).toBe("0.15.1");
+  });
+
+  it("rejects an SVG larger than the safe limit", async () => {
+    hostWith(async () => rendered("x".repeat(2 * 1024 * 1024 + 1)));
+    await expect(renderTypstMath(unique("huge"), THEME)).resolves.toEqual({
+      status: "failed",
+      message: "Preview output exceeded the safe rendering limit.",
+    });
+  });
+
+  it("falls back to a generic message when the host fails without one", async () => {
+    hostWith(() => Promise.reject(""));
+    await expect(renderTypstMath(unique("silent"), THEME)).resolves.toEqual({
+      status: "failed",
+      message: "This expression could not be rendered.",
+    });
+    hostWith(() => Promise.reject("plain text"));
+    await expect(renderTypstMath(unique("text"), THEME)).resolves.toEqual({ status: "failed", message: "plain text" });
+  });
+
+  it("shows the generic message for a failure without text", async () => {
+    vi.useFakeTimers();
+    hostWith(async () => ({ status: "failed", message: "" }));
+    const output = document.createElement("div");
+    paintTypstMath(output, unique("blank"), THEME);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(output.textContent).toBe("This expression could not be rendered.");
+    expect(output.classList.contains("is-error")).toBe(true);
+  });
+
+  it("uses the fallback theme for an element without a size or a visible colour", () => {
+    const element = document.createElement("div");
+    element.style.color = "transparent";
+    expect(typstMathTheme(element)).toEqual({ color: "#808080", size: 11 });
+    expect(typstMathSnippet("x", { color: "#123456", size: Number.NaN })).toContain("size: 11pt");
+  });
+});
+
+describe("Typst previews mounted in the editor", () => {
+  function equation(overrides: Partial<MathExpression> = {}): MathExpression {
+    return {
+      from: 0,
+      to: 5,
+      bodyFrom: 1,
+      bodyTo: 4,
+      source: "$x^2$",
+      body: unique("x^2"),
+      display: false,
+      delimiter: "$",
+      status: "complete",
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  it("paints the Typst image and reports success", async () => {
+    hostWith(async () => rendered("<svg>eq</svg>"));
+    const host = document.createElement("span");
+    const onPaint = vi.fn();
+    mountMathPreview(host, {
+      expression: equation(),
+      identity: "1",
+      isCurrent: () => true,
+      eager: true,
+      typstTheme: () => THEME,
+      errorDisplay: "hidden",
+      onPaint,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(host.querySelector("img.ofl-typst-math")).not.toBeNull();
+    expect(host.hidden).toBe(false);
+    expect(onPaint).toHaveBeenCalledWith({ status: "ready", html: "" });
+  });
+
+  it("hides a failed Typst preview when asked to and reports the error", async () => {
+    hostWith(async () => ({ status: "failed", message: "bad" }));
+    const host = document.createElement("span");
+    const onPaint = vi.fn();
+    mountMathPreview(host, {
+      expression: equation(),
+      identity: "1",
+      isCurrent: () => true,
+      eager: true,
+      typstTheme: () => THEME,
+      errorDisplay: "hidden",
+      onPaint,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(host.hidden).toBe(true);
+    expect(onPaint).toHaveBeenCalledWith({ status: "error", html: "", message: "bad" });
+  });
+
+  it("ignores a Typst result that arrives after the preview is destroyed", async () => {
+    let resolve: (outcome: TypstMathOutcome) => void = () => undefined;
+    hostWith(() => new Promise((done) => (resolve = done)));
+    const host = document.createElement("span");
+    const onPaint = vi.fn();
+    const mounted = mountMathPreview(host, {
+      expression: equation(),
+      identity: "1",
+      isCurrent: () => true,
+      eager: true,
+      typstTheme: () => THEME,
+      onPaint,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    mounted.destroy();
+    resolve(rendered());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onPaint).not.toHaveBeenCalled();
+  });
+
+  it("explains an unclosed Typst equation instead of compiling it", () => {
+    const host = hostWith(async () => rendered());
+    const element = document.createElement("span");
+    mountMathPreview(element, {
+      expression: equation({ status: "incomplete" }),
+      identity: "1",
+      isCurrent: () => true,
+      eager: true,
+      typstTheme: () => THEME,
+    });
+    expect(element.querySelector(".math-preview-error")?.textContent).toBe("Missing closing $.");
+    expect(host.render).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  isTypstEscaped,
   isVendoredTypstPackagePath,
   trimTypstReference,
+  typstAutolinkEnd,
   typstReferenceEnd,
 } from "./typst-syntax";
 
@@ -33,5 +35,37 @@ describe("vendored Typst package paths", () => {
     expect(isVendoredTypstPackagePath("main.typ")).toBe(false);
     expect(isVendoredTypstPackagePath(null)).toBe(false);
     expect(isVendoredTypstPackagePath("")).toBe(false);
+  });
+});
+
+describe("Typst autolinks", () => {
+  function link(text: string): string | null {
+    const end = typstAutolinkEnd(text, 0);
+    return end === null ? null : text.slice(0, end);
+  }
+
+  it("only starts at an http or https address", () => {
+    expect(link("hello")).toBeNull();
+    expect(link("ftp://x.org")).toBeNull();
+    expect(link("http://x.org")).toBe("http://x.org");
+  });
+
+  it("keeps balanced brackets and stops at an unbalanced closer", () => {
+    expect(link("https://x.org/a_(b)/c[d] rest")).toBe("https://x.org/a_(b)/c[d]");
+    expect(link("https://x.org/a) rest")).toBe("https://x.org/a");
+    expect(link("https://x.org/a(b] rest")).toBe("https://x.org/a(b");
+  });
+
+  it("drops trailing sentence punctuation", () => {
+    expect(link("https://x.org/page.")).toBe("https://x.org/page");
+    expect(link("https://x.org/page?!,")).toBe("https://x.org/page");
+  });
+});
+
+describe("Typst escapes", () => {
+  it("counts the backslashes before a character", () => {
+    expect(isTypstEscaped("a\\#", 2)).toBe(true);
+    expect(isTypstEscaped("a\\\\#", 3)).toBe(false);
+    expect(isTypstEscaped("#", 0)).toBe(false);
   });
 });

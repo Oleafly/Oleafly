@@ -173,3 +173,72 @@ describe("workspaceEditFromValue", () => {
     expect(workspaceEditFromValue({ changes: { "file:///p/a.typ": "x" } })).toBeNull();
   });
 });
+
+describe("language-service result edge cases", () => {
+  it("rejects edit positions that do not land exactly on a character boundary", () => {
+    expect(
+      offsetEdits([{ range: range(0, 0, 9), newText: "x" }], "short", "utf-16"),
+    ).toBeNull();
+    expect(
+      offsetEdits([{ range: range(0, 1, 2), newText: "x" }], "𝒜b", "utf-16"),
+    ).toBeNull();
+  });
+
+  it("rejects malformed edit lists and edit entries", () => {
+    expect(offsetEdits({}, "text", "utf-16")).toBeNull();
+    expect(offsetEdits(["edit"], "text", "utf-16")).toBeNull();
+    expect(offsetEdits([{ range: range(0, 0, 1) }], "text", "utf-16")).toBeNull();
+    expect(
+      offsetEdits([{ range: { start: 0 }, newText: "x" }], "text", "utf-16"),
+    ).toBeNull();
+  });
+
+  it("allows an insertion at the start of a replaced range but not duplicate edits", () => {
+    const text = "abcdef";
+    const edits = offsetEdits(
+      [
+        { range: range(0, 2, 4), newText: "XY" },
+        { range: range(0, 2, 2), newText: ">" },
+      ],
+      text,
+      "utf-16",
+    );
+    expect(edits).toEqual([
+      { from: 2, to: 4, insert: "XY" },
+      { from: 2, to: 2, insert: ">" },
+    ]);
+    expect(
+      offsetEdits(
+        [
+          { range: range(0, 1, 1), newText: "a" },
+          { range: range(0, 1, 1), newText: "b" },
+        ],
+        text,
+        "utf-16",
+      ),
+    ).toBeNull();
+  });
+
+  it("falls back to the target range of a location link and skips unusable links", () => {
+    expect(
+      locationsFromValue([
+        { targetUri: "file:///p/a.typ", targetRange: range(1, 0, 4) },
+        { targetUri: "file:///p/b.typ", targetRange: "nowhere" },
+        { targetUri: 3, targetRange: range(0, 0, 1) },
+        "not a location",
+      ]),
+    ).toEqual([{ uri: "file:///p/a.typ", range: range(1, 0, 4) }]);
+  });
+
+  it("refuses file URIs with broken percent-encoding", () => {
+    expect(projectPathForUri("/p", "file:///p/%E0%A4%A")).toBeNull();
+  });
+
+  it("rejects document changes of an unknown kind", () => {
+    expect(
+      workspaceEditFromValue({
+        documentChanges: [{ kind: "move", uri: "file:///p/a.typ" }],
+      }),
+    ).toBeNull();
+  });
+});

@@ -337,3 +337,133 @@ describe("missingLatexFiles", () => {
   });
 
 });
+
+describe("loadsPackage edge shapes", () => {
+  it("finds biber selected through the biblatex options", () => {
+    expect(loadsPackage(String.raw`\usepackage[style=apa, backend=biber]{biblatex}`, "biber")).toBe(true);
+  });
+
+  it("keeps scanning past malformed usepackage commands", () => {
+    expect(loadsPackage(String.raw`\usepackage[draft \usepackage{minted}`, "minted")).toBe(true);
+    expect(loadsPackage(String.raw`\usepackage\relax \usepackage{minted}`, "minted")).toBe(true);
+    expect(loadsPackage(String.raw`\usepackage [opt] {minted}`, "minted")).toBe(true);
+  });
+
+  it("stops at an unclosed package list", () => {
+    expect(loadsPackage(String.raw`\usepackage{amsmath, minted`, "minted")).toBe(false);
+  });
+});
+
+describe("scanImportCompatibility input bounds", () => {
+  it("returns nothing for a project without TeX files", () => {
+    expect(scanImportCompatibility({})).toEqual([]);
+  });
+
+  it("only scans the first half megabyte of the project", () => {
+    const filler = "x".repeat(512 * 1024);
+    expect(scanImportCompatibility({ texFiles: [{ path: "a.tex", content: `${filler}\\usepackage{minted}` }] })).toEqual([]);
+    expect(
+      scanImportCompatibility({ texFiles: [{ path: "a.tex", content: `\\usepackage{minted}${filler}` }] }).map((f) => f.id),
+    ).toEqual(["minted"]);
+  });
+});
+
+describe("classifyCompileFailure log shapes", () => {
+  it.each([
+    String.raw`! Undefined control sequence. \write18 disabled.`,
+    "runsystem(inkscape --export-pdf=fig.pdf fig.svg)...disabled.",
+    "Package shellesc Warning: shell escape is disabled",
+  ])("reports shell escape on its own for %j", (log) => {
+    expect(classifyCompileFailure(log).map((f) => f.id)).toEqual(["shell-escape"]);
+  });
+
+  it("recognises PythonTeX in either spelling", () => {
+    expect(classifyCompileFailure("Package pythontex Error").map((f) => f.id)).toContain("pythontex");
+    expect(classifyCompileFailure("Run PythonTeX to create the output").map((f) => f.id)).toContain("pythontex");
+  });
+
+  it("recognises a fontspec error and a font that cannot be found", () => {
+    expect(classifyCompileFailure("! Package fontspec Error: The font \"Inter\" cannot be loaded.").map((f) => f.id)).toEqual([
+      "fontspec",
+    ]);
+    expect(classifyCompileFailure('error: the font "Inter" cannot be found.').map((f) => f.id)).toEqual(["fontspec"]);
+    expect(classifyCompileFailure("Reference `fig:a' cannot be found.")).toEqual([]);
+  });
+
+  it("names no file when an EPS failure does not say which image", () => {
+    const [finding] = classifyCompileFailure("Package epstopdf Warning: Shell escape feature is not enabled.\nfigure.eps");
+    expect(finding.id).toBe("eps-image");
+    expect(finding.detail).toBe(importCompatFinding("eps-image").detail);
+  });
+
+  it("skips image failures it cannot read and falls back to the converted-file name", () => {
+    const longName = "a".repeat(300);
+    const log = [
+      `error: pdf: image inclusion failed for "${longName}.eps"`,
+      'error: pdf: image inclusion failed for "never closed',
+      '! LaTeX Error: File "plots/curve-eps-converted-to.pdf" not found.',
+    ].join("\n");
+    const finding = classifyCompileFailure(log).find((f) => f.id === "eps-image");
+    expect(finding?.detail).toContain("plots/curve.eps");
+  });
+
+  it("names the EPS file when the log quotes it with straight quotes", () => {
+    const finding = classifyCompileFailure("! LaTeX Error: File 'plots/curve-eps-converted-to.pdf' not found.").find(
+      (f) => f.id === "eps-image",
+    );
+    expect(finding?.detail).toContain("plots/curve.eps");
+  });
+
+  it("names no file when the converted-file name is unreadable", () => {
+    const blank = classifyCompileFailure("! LaTeX Error: File `-eps-converted-to.pdf' not found.").find(
+      (f) => f.id === "eps-image",
+    );
+    expect(blank?.detail).toBe(importCompatFinding("eps-image").detail);
+
+    const unquoted = classifyCompileFailure('File plots/curve-eps-converted-to.pdf" not found').find(
+      (f) => f.id === "eps-image",
+    );
+    expect(unquoted?.detail).toBe(importCompatFinding("eps-image").detail);
+  });
+
+  it("ignores an HTTP status outside the valid range", () => {
+    const log = [
+      "error: this bundle isn't cached, and we couldn't get it from the internet",
+      "caused by: unexpected HTTP response code 999 for URL https://mirrors.oleafly.com/tex-bundles/x.tar",
+    ].join("\n");
+    const [finding] = classifyCompileFailure(log);
+    expect(finding.id).toBe("bundle-fetch-failed");
+    expect(finding.detail).not.toContain("HTTP");
+  });
+
+  it("reads a missing index file reported without its trailing period", () => {
+    const log = "No file main.toc.\nNo file main.ind";
+    expect(classifyCompileFailure(log).map((f) => f.id)).toEqual(["glossaries-index"]);
+  });
+
+  it("does not mistake other missing files for index artifacts", () => {
+    expect(classifyCompileFailure("No file main.toc.\nNo file main.bbl.")).toEqual([]);
+  });
+
+  it("only reads the first megabyte of a log", () => {
+    const filler = "x".repeat(1024 * 1024);
+    expect(classifyCompileFailure(`${filler}Package minted Error`)).toEqual([]);
+    expect(missingLatexFiles(`${filler}! LaTeX Error: File \`late.sty' not found.`)).toEqual([]);
+  });
+});
+
+describe("missingLatexFiles odd names", () => {
+  it("ignores names without an extension and names whose quote never closes nearby", () => {
+    const log = [
+      "! LaTeX Error: File `README' not found.",
+      `! LaTeX Error: File \`${"a".repeat(200)}.sty' not found.`,
+      "! LaTeX Error: File `never-closed.sty",
+    ].join("\n");
+    expect(missingLatexFiles(log)).toEqual([]);
+  });
+
+  it("stops after eight distinct files", () => {
+    const log = Array.from({ length: 10 }, (_, index) => `! LaTeX Error: File \`pkg${index}.sty' not found.`).join("\n");
+    expect(missingLatexFiles(log)).toHaveLength(8);
+  });
+});

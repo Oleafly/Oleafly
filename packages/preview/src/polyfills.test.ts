@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   installGetOrInsert,
   installIteratorFind,
@@ -171,5 +171,113 @@ describe("PDF runtime polyfills", () => {
     const prototype = { find: native };
     installIteratorFind(prototype);
     expect(prototype.find).toBe(native);
+  });
+});
+
+describe("PDF runtime polyfills on engines without the constructors", () => {
+  it("skips installation when the runtime lacks the target", () => {
+    expect(() => {
+      installGetOrInsert(undefined);
+      installIteratorFind(undefined);
+      installUint8ArrayToHex(undefined);
+      installPromiseTry(undefined);
+      installURLParse(undefined);
+    }).not.toThrow();
+  });
+});
+
+describe("ReadableStream async iteration polyfill", () => {
+  type StreamPrototype = Record<PropertyKey, unknown>;
+  const prototype = ReadableStream.prototype as unknown as StreamPrototype;
+  const nativeIterator = Object.getOwnPropertyDescriptor(prototype, Symbol.asyncIterator);
+  const nativeValues = Object.getOwnPropertyDescriptor(prototype, "values");
+
+  function restore() {
+    if (nativeIterator) Object.defineProperty(prototype, Symbol.asyncIterator, nativeIterator);
+    if (nativeValues) Object.defineProperty(prototype, "values", nativeValues);
+  }
+
+  async function reinstall({ keepValues }: { keepValues: boolean }) {
+    Reflect.deleteProperty(prototype, Symbol.asyncIterator);
+    if (!keepValues) Reflect.deleteProperty(prototype, "values");
+    vi.resetModules();
+    await import("./polyfills");
+  }
+
+  function stream(chunks: string[], cancel = vi.fn()) {
+    let index = 0;
+    const source = new ReadableStream<string>({
+      pull(controller) {
+        if (index < chunks.length) controller.enqueue(chunks[index++]);
+        else controller.close();
+      },
+      cancel,
+    });
+    return { source, cancel };
+  }
+
+  afterEach(() => {
+    restore();
+  });
+
+  it("iterates every chunk with for await", async () => {
+    await reinstall({ keepValues: false });
+    expect(prototype[Symbol.asyncIterator]).not.toBe(nativeIterator?.value);
+    const { source } = stream(["a", "b", "c"]);
+
+    const chunks: string[] = [];
+    for await (const chunk of source as unknown as AsyncIterable<string>) chunks.push(chunk);
+
+    expect(chunks).toEqual(["a", "b", "c"]);
+  });
+
+  it("releases the reader lock once iteration finishes", async () => {
+    await reinstall({ keepValues: false });
+    const { source } = stream(["a", "b"]);
+
+    for await (const chunk of source as unknown as AsyncIterable<string>) expect(chunk).toBeTypeOf("string");
+
+    expect(source.locked).toBe(false);
+  });
+
+  it("cancels the stream when iteration stops early", async () => {
+    await reinstall({ keepValues: false });
+    const { source, cancel } = stream(["a", "b", "c"]);
+
+    for await (const chunk of source as unknown as AsyncIterable<string>) {
+      expect(chunk).toBe("a");
+      break;
+    }
+
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(source.locked).toBe(false);
+  });
+
+  it("releases the lock without cancelling when asked to prevent cancel", async () => {
+    await reinstall({ keepValues: false });
+    const { source, cancel } = stream(["a", "b"]);
+    const values = prototype.values as (
+      this: ReadableStream<string>,
+      options?: { preventCancel?: boolean },
+    ) => AsyncIterableIterator<string> & {
+      return: (value?: unknown) => Promise<IteratorResult<string>>;
+    };
+
+    const iterator = values.call(source, { preventCancel: true });
+    expect(iterator[Symbol.asyncIterator]()).toBe(iterator);
+    await expect(iterator.next()).resolves.toEqual({ value: "a", done: false });
+    await expect(iterator.return("stop")).resolves.toEqual({ value: "stop", done: true });
+
+    expect(cancel).not.toHaveBeenCalled();
+    expect(source.locked).toBe(false);
+    const reader = source.getReader();
+    await expect(reader.read()).resolves.toEqual({ value: "b", done: false });
+  });
+
+  it("keeps a native values method", async () => {
+    await reinstall({ keepValues: true });
+
+    expect(Object.getOwnPropertyDescriptor(prototype, "values")).toEqual(nativeValues);
+    expect(prototype[Symbol.asyncIterator]).not.toBe(nativeIterator?.value);
   });
 });

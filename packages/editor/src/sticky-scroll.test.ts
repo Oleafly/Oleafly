@@ -100,6 +100,28 @@ describe("stickyScroll", () => {
     ]);
   });
 
+  it("jumps to the pinned line when its row is pressed", async () => {
+    const mounted = mount(3);
+    await new Promise(requestAnimationFrame);
+    vi.spyOn(mounted, "lineBlockAt").mockReturnValue({ top: 42 } as ReturnType<EditorView["lineBlockAt"]>);
+    const row = mounted.dom.querySelectorAll<HTMLElement>(".cm-stickyRow")[1];
+    const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    row.dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+    expect(mounted.scrollDOM.scrollTop).toBe(42);
+  });
+
+  it("keeps the pinned rows when an edit leaves the scopes unchanged", async () => {
+    const mounted = mount(3);
+    await new Promise(requestAnimationFrame);
+    const before = mounted.dom.querySelectorAll(".cm-stickyRow")[0];
+    mounted.dispatch({ changes: { from: mounted.state.doc.line(3).from, insert: "x" } });
+    await new Promise(requestAnimationFrame);
+    const rows = mounted.dom.querySelectorAll(".cm-stickyRow");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toBe(before);
+  });
+
   it("stacks the pinned rows over the text but under the search panel and dialogs", () => {
     const mounted = mount(1, [vscodeSearch(englishEditorMessage)]);
     expect(openSearchPanel(mounted)).toBe(true);

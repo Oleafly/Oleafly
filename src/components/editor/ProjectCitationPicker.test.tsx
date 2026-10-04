@@ -52,9 +52,19 @@ vi.mock("@/lib/toast", () => ({
   notifyError: vi.fn(),
 }));
 
+import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import { useCitationStore } from "@/store/citation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { ProjectCitationPicker } from "./ProjectCitationPicker";
+
+const citations = en.citations;
+
+function setAnalysis(state: Record<string, unknown>) {
+  useIndexStore.setState({
+    intelligenceState: { status: "success", identity: null, data: null, stale: false, ...state },
+  } as never);
+}
 
 const KNUTH = {
   id: "refs.bib#knuth",
@@ -163,5 +173,67 @@ describe("ProjectCitationPicker", () => {
     fireEvent.click(renderPicker());
     expect(mocks.insertAtCursor).toHaveBeenCalledWith("[@knuth1984]");
     expect(mocks.insertTypstCitation).not.toHaveBeenCalled();
+  });
+
+  it("marks duplicate keys with their position", () => {
+    mocks.completions.mockReturnValue([{ ...KNUTH, duplicate: true, duplicateIndex: 1, duplicateCount: 3 }]);
+    render(<ProjectCitationPicker variant="bar" />);
+    expect(screen.getByText(citations.duplicate.replace("{{index}}", "2").replace("{{total}}", "3"))).toBeInTheDocument();
+  });
+
+  it("filters by the typed query and says when nothing matches", () => {
+    render(<ProjectCitationPicker variant="menu" />);
+    mocks.completions.mockReturnValue([]);
+    fireEvent.change(screen.getByLabelText(citations.filterLabel), { target: { value: "zzz" } });
+    expect(mocks.completions).toHaveBeenLastCalledWith(expect.anything(), "zzz", 80);
+    expect(screen.getByText(citations.noMatches)).toBeInTheDocument();
+  });
+
+  it("says when the project has no bibliography entries", () => {
+    mocks.completions.mockReturnValue([]);
+    render(<ProjectCitationPicker variant="menu" />);
+    expect(screen.getByText(citations.noEntries)).toBeInTheDocument();
+  });
+
+  it.each([
+    [{ status: "running" }],
+    [{ status: "not_run" }],
+    [{ stale: true }],
+  ])("shows progress while analysis is %o", (state) => {
+    setAnalysis(state);
+    render(<ProjectCitationPicker variant="menu" />);
+    expect(screen.getByText(citations.updatingList)).toBeInTheDocument();
+    expect(screen.queryByText(KNUTH.key)).not.toBeInTheDocument();
+  });
+
+  it("shows progress while the visual editor waits for analysis", () => {
+    mocks.wysiwygActive.mockReturnValue(true);
+    mocks.wysiwygCurrent.mockReturnValue(false);
+    render(<ProjectCitationPicker variant="menu" />);
+    expect(screen.getByText(citations.updatingList)).toBeInTheDocument();
+  });
+
+  it("explains a failed analysis", () => {
+    setAnalysis({ status: "error", failure: { message: "Worker crashed" } });
+    const { unmount } = render(<ProjectCitationPicker variant="menu" />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Worker crashed");
+    unmount();
+    setAnalysis({ status: "unavailable" });
+    render(<ProjectCitationPicker variant="menu" />);
+    expect(screen.getByRole("alert")).toHaveTextContent(citations.unavailable);
+  });
+
+  it("warns that a partial catalog may miss entries", () => {
+    setAnalysis({ status: "partial" });
+    render(<ProjectCitationPicker variant="menu" />);
+    expect(screen.getByText(citations.partialCatalog)).toBeInTheDocument();
+  });
+
+  it("opens the citation search to add a new entry", () => {
+    useCitationStore.setState({ open: false });
+    mocks.completions.mockReturnValue([]);
+    render(<ProjectCitationPicker variant="menu" />);
+    fireEvent.click(screen.getByText(citations.addNew));
+    expect(useCitationStore.getState().open).toBe(true);
   });
 });

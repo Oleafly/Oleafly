@@ -1050,3 +1050,100 @@ describe("mermaidBlocks and mermaidFence", () => {
     expect(mermaidBlocks(mermaidFence("graph LR"))[0].code).toBe("graph LR");
   });
 });
+
+describe("reader and writer edge inputs", () => {
+  it("reads style values Mermaid accepts and notes the ones it cannot map", () => {
+    const { model: m, notes } = read(
+      [
+        "flowchart TD",
+        "  A --> B --> C --> D",
+        "  style A fill:#ABC !important,stroke:none,color:transparent,font-family:Fancy Script",
+        "  style B fill:rgba(1\\, 2\\, 3\\, 1),stroke:rgba(1\\,2\\,3\\,0.5),color:rgb(300\\,0\\,0)",
+        "  style C fill:rgb(1\\,2),stroke:notacolor,stroke-width:thick,font-size:big,stroke-dasharray:none",
+        "  style D stroke-dasharray:dash,color:#123",
+      ].join("\n"),
+    );
+    const [a, b, c, d] = m.nodes;
+    expect(a).toMatchObject({ fill: "#aabbcc", stroke: "" });
+    expect(a.textColor).toBeUndefined();
+    expect(a.fontFamily).toBeUndefined();
+    expect(b).toMatchObject({ fill: "#010203" });
+    expect(b.stroke).toBeUndefined();
+    expect(b.textColor).toBeUndefined();
+    expect(c).toMatchObject({ strokeStyle: "solid" });
+    expect([c.fill, c.stroke, c.strokeWidth, c.fontSize]).toEqual([undefined, undefined, undefined, undefined]);
+    expect(d).toMatchObject({ textColor: "#112233" });
+    expect(d.strokeStyle).toBeUndefined();
+    expect(codes(notes)).toEqual([
+      "kept:mermaidStyleProperty:color",
+      "kept:mermaidStyleProperty:font-family",
+      "kept:mermaidStyleProperty:stroke",
+      "kept:mermaidStyleProperty:fill",
+      "kept:mermaidStyleProperty:stroke-width",
+      "kept:mermaidStyleProperty:font-size",
+      "kept:mermaidStyleProperty:stroke-dasharray",
+    ]);
+  });
+
+  it("decodes known entity codes, keeps unknown ones and never ends a statement inside one", () => {
+    const { model: m } = read('flowchart TD\n  A["a #35; b #99999999; c #bogus; d #quot;q#quot;"] --> B[semi #59; colon]');
+    expect(m.nodes.map((n) => n.label)).toEqual(['a # b #99999999; c #bogus; d "q"', "semi ; colon"]);
+    expect(m.edges.map((e) => [e.source, e.target])).toEqual([["A", "B"]]);
+  });
+
+  it("does not take an unclosed frontmatter block for a flowchart", () => {
+    const result = readMermaid("---\ntitle: open\nflowchart TD\n  A --> B");
+    expect(result.model).toBeNull();
+    expect(codes(result.notes)).toEqual(["kept:mermaidNoFlowchartHeader"]);
+  });
+
+  it("reads hyphenated node ids", () => {
+    const { model: m } = read("flowchart TD\n  my-node --> next-step");
+    expect(m.nodes.map((n) => n.id)).toEqual(["my-node", "next-step"]);
+    expect(m.edges.map((e) => [e.source, e.target])).toEqual([["my-node", "next-step"]]);
+  });
+
+  it("reads labelled links with matching heads and keeps mismatched or unfinished ones verbatim", () => {
+    const { model: m, extras, notes } = read(
+      [
+        "flowchart TD",
+        "  A <-- both --> B",
+        "  C x-- cross --x D",
+        "  E o-- circ --o F",
+        "  G x-- mixed --> H",
+        "  I -- open --- J",
+        "  K -- short -- L",
+      ].join("\n"),
+    );
+    expect(m.edges.map((e) => [e.source, e.target, e.arrow, e.label])).toEqual([
+      ["A", "B", "both", "both"],
+      ["C", "D", "both", "cross"],
+      ["E", "F", "both", "circ"],
+      ["I", "J", "none", "open"],
+    ]);
+    expect(extras.items.map((item) => item.kind)).toEqual(["graph", "graph", "graph", "raw", "graph", "raw"]);
+    expect(extras.links).toEqual({ e2: { heads: ["x", "x"] }, e3: { heads: ["o", "o"] } });
+    expect(codes(notes)).toEqual(["kept:mermaidUnknownStatement", "approximated:mermaidArrowHead"]);
+  });
+
+  it("sizes an empty subgraph and titles one named with spaces", () => {
+    const { model: m } = read("flowchart TD\n  subgraph Empty\n  end\n  subgraph one two\n    X\n  end\n  A");
+    expect(m.nodes.map((n) => [n.id, n.shape, n.label])).toEqual([
+      ["Empty", "roundrect", "Empty"],
+      ["subGraph1", "roundrect", "one two"],
+      ["X", "rectangle", "X"],
+      ["A", "rectangle", "A"],
+    ]);
+    expect(m.nodes[0]).toMatchObject({ w: 120, h: 80 });
+  });
+
+  it("drops a linkStyle whose links were deleted and indents new lines in unindented code", () => {
+    const { model: m, extras } = read("flowchart TD\nA --> B\nB --> C\nlinkStyle 1 stroke:#f00");
+    const edited: DiagramModel = {
+      ...m,
+      nodes: [...m.nodes, node({ id: "Z", label: "Zed" })],
+      edges: m.edges.filter((e) => e.source !== "B"),
+    };
+    expect(modelToMermaid(edited, { extras })).toBe("flowchart TD\nA --> B\nC\n  Z[Zed]");
+  });
+});

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "./agent-events";
-import { classifyTool, TurnFold } from "./thread-items";
+import { classifyTool, newTurnRecord, TurnFold } from "./thread-items";
 
 function fold(events: AgentEvent[], stoppedAtCap = false) {
   let fold = new TurnFold("turn-1", "client-1");
@@ -159,5 +159,166 @@ describe("TurnFold", () => {
     const record = fold([{ kind: "usage", usage: { input: 10, output: 5 } }], true);
     expect(record.usage).toEqual({ input: 10, output: 5 });
     expect(record.stoppedAtCap).toBe(true);
+  });
+});
+
+describe("TurnFold edge cases", () => {
+  it("opens the record with the optimistic user message", () => {
+    const record = new TurnFold("turn-u").pushUserMessage("Fix the table").apply({
+      kind: "textDelta",
+      text: "On it",
+    });
+    expect(record.snapshot().items.map((entry) => [entry.id, entry.item.type])).toEqual([
+      ["turn-u:0", "userMessage"],
+      ["turn-u:1", "agentMessage"],
+    ]);
+    expect(record.snapshot().items[0].item).toEqual({ type: "userMessage", text: "Fix the table" });
+  });
+
+  it("extends the open reasoning item and starts a new one after other output", () => {
+    const record = fold([
+      { kind: "reasoningDelta", text: "think" },
+      { kind: "reasoningDelta", text: "ing" },
+      { kind: "textDelta", text: "answer" },
+      { kind: "reasoningDelta", text: "again" },
+    ]);
+    expect(record.items.map((entry) => entry.item)).toEqual([
+      { type: "reasoning", summary: [], content: ["thinking"] },
+      { type: "agentMessage", text: "answer" },
+      { type: "reasoning", summary: [], content: ["again"] },
+    ]);
+  });
+
+  it("starts a new message when text arrives after the sample was sealed", () => {
+    const record = fold([
+      { kind: "textDelta", text: "one" },
+      { kind: "done", stopReason: "tool_use" },
+      { kind: "textDelta", text: "two" },
+    ]);
+    expect(record.items.map((entry) => entry.item)).toEqual([
+      { type: "agentMessage", text: "one" },
+      { type: "agentMessage", text: "two" },
+    ]);
+  });
+
+  it("ignores outcomes and argument ends for calls it never opened", () => {
+    const record = fold([
+      { kind: "toolCallEnd", id: "ghost", arguments: "{}" },
+      { kind: "toolOutcome", id: "ghost", output: "{}" },
+    ]);
+    expect(record.items).toEqual([]);
+  });
+
+  it("does not open a second item when a request follows the streamed start", () => {
+    const record = fold([
+      { kind: "toolCallStart", id: "c1", name: "write_file" },
+      { kind: "toolCallEnd", id: "c1", arguments: '{"path":"a.tex","content":"x"}' },
+      { kind: "toolRequest", id: "c1", name: "write_file", arguments: '{"path":"b.tex"}' },
+      { kind: "toolOutcome", id: "c1", output: '{"success":true}' },
+    ]);
+    expect(record.items).toHaveLength(1);
+    expect(record.items[0].item).toEqual({
+      type: "fileChange",
+      changes: { path: "a.tex", content: "x" },
+      status: "completed",
+    });
+  });
+
+  it("marks a failed file change from its outcome", () => {
+    const record = fold([
+      { kind: "toolRequest", id: "c1", name: "delete_file", arguments: '{"path":"old.tex"}' },
+      { kind: "toolOutcome", id: "c1", output: '{"error":"locked"}' },
+    ]);
+    expect(record.items[0].item).toMatchObject({ type: "fileChange", status: "failed" });
+  });
+
+  it("keeps unparsable arguments verbatim", () => {
+    const record = fold([
+      { kind: "toolRequest", id: "c1", name: "search_project", arguments: "not json" },
+      { kind: "toolRequest", id: "c2", name: "run_command", arguments: '"ls"' },
+      { kind: "toolRequest", id: "c3", name: "exec_command", arguments: '{"command":["ls"],"cwd":7}' },
+    ]);
+    expect(record.items[0].item).toMatchObject({ type: "dynamicToolCall", arguments: "not json" });
+    expect(record.items[1].item).toMatchObject({ type: "commandExecution", command: [], cwd: "" });
+    expect(record.items[2].item).toMatchObject({ type: "commandExecution", command: [], cwd: "" });
+  });
+
+  it.each([
+    ["[1,2]", "completed"],
+    ["null", "completed"],
+    ['"done"', "completed"],
+    ['{"status":"Timed Out after 30s"}', "failed"],
+    ['{"exit_code":2}', "failed"],
+    ['{"exec":true}', "failed"],
+    ['{"status":"ok"}', "completed"],
+  ] as const)("classifies the dynamic tool outcome %s as %s", (output, status) => {
+    const record = fold([
+      { kind: "toolCallStart", id: "c1", name: "compile" },
+      { kind: "toolOutcome", id: "c1", output },
+    ]);
+    expect(record.items[0].item).toMatchObject({ type: "dynamicToolCall", status, output });
+  });
+
+  it("records a steer as a marker followed by the steering message", () => {
+    const record = fold([{ kind: "steered", text: "use biblatex" }]);
+    expect(record.items.map((entry) => entry.item)).toEqual([
+      { type: "steered" },
+      { type: "userMessage", text: "use biblatex" },
+    ]);
+  });
+
+  it("adds nothing for bookkeeping events", () => {
+    const record = fold([
+      { kind: "stepStart", step: 1 },
+      { kind: "toolCallArgsDelta", id: "c1", json: "{" },
+      { kind: "runEnd" },
+    ]);
+    expect(record.items).toEqual([]);
+    expect(record.status).toBe("completed");
+  });
+
+  it("keeps a failed status when the turn finishes after an error", () => {
+    const record = fold([{ kind: "error", message: "boom", retryable: true }]);
+    expect(record.status).toBe("failed");
+    expect(record.items[0].item).toMatchObject({ type: "error", willRetry: true });
+  });
+
+  it("leaves running subagent activity open until the turn ends", () => {
+    const turn = new TurnFold("turn-s").apply({
+      kind: "subagentUpdate",
+      runtime: "acp",
+      sessionId: "sess",
+      providerId: "openai",
+      modelId: "gpt",
+      agentId: "codex",
+      id: "sub-1",
+      label: "review",
+      state: "thinking",
+      detail: null,
+    });
+    const [entry] = turn.snapshot().items;
+    expect(entry.completed).toBe(false);
+    expect(entry.item).toMatchObject({
+      runtime: "acp",
+      sessionId: "sess",
+      runtimeAgentId: "codex",
+      agentId: "sub-1",
+      kind: "thinking",
+    });
+  });
+});
+
+describe("newTurnRecord", () => {
+  it("starts empty, in progress, with no client id unless given", () => {
+    expect(newTurnRecord("t1")).toEqual({
+      turnId: "t1",
+      clientTurnId: null,
+      status: "inProgress",
+      items: [],
+      usage: { input: 0, output: 0 },
+      error: null,
+      stoppedAtCap: false,
+    });
+    expect(newTurnRecord("t1", "c1").clientTurnId).toBe("c1");
   });
 });

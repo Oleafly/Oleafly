@@ -59,3 +59,15 @@ describe("renderLineText", () => {
     expect(renderLineText(line, fullEscape)).toBe("50\\%");
   });
 });
+
+describe("renderLineText spacing", () => {
+  it("keeps a small item on the baseline as plain text", () => {
+    const line = buildLines([item("x", 0), item("y", 8, { fontSize: 6.5 })])[0];
+    expect(renderLineText(line, esc)).toBe("x y");
+  });
+
+  it("joins touching pieces of the same style without a space", () => {
+    const line = buildLines([item("foo", 0), item("bar", 15)])[0];
+    expect(renderLineText(line, esc)).toBe("foobar");
+  });
+});

@@ -19,6 +19,18 @@ describe("bibtexTextToUnicode", () => {
     [String.raw`Sk{\aa}r`, "Skår"],
     ["The {D3Q27} lattice", "The D3Q27 lattice"],
     [String.raw`Profit \& loss`, "Profit & loss"],
+    [String.raw`\'{\j}ota`, "j\u0301ota"],
+    [String.raw`\^{\i}le`, "île"],
+    [String.raw`na\"\i ve`, "naïve"],
+    [String.raw`caf\'{}`, "caf\u0301"],
+    [String.raw`caf\'{e`, "caf\u0301e"],
+    [String.raw`trail\'`, "trail\u0301".normalize("NFC")],
+    [String.raw`a\\b`, String.raw`a\\b`],
+    ["end\\", "end\\"],
+    [String.raw`\emph{open`, String.raw`\emphopen`],
+    [String.raw`\textbf{\{x\}}`, String.raw`\textbf{\{x\}}`],
+    ["price $5", "price $5"],
+    [String.raw`\v{\o}`, "ø\u030C"],
   ])("decodes %s", (raw, decoded) => {
     expect(bibtexTextToUnicode(raw)).toBe(decoded);
   });
@@ -44,6 +56,7 @@ describe("searchFold", () => {
     expect(searchFold("İzmir")).toBe("izmir");
     expect(searchFold("Łódź")).toBe("lodz");
     expect(searchFold("Straße")).toBe("strasse");
+    expect(searchFold("Đorđe Œuvre ȷ")).toBe("dorde oeuvre j");
   });
 
   it("keeps marks that are letters of their script", () => {

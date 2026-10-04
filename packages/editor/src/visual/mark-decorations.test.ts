@@ -97,4 +97,20 @@ describe("mark decorations", () => {
     expect(editor.contentDOM.querySelector(".ofl-visual-command-textsc")?.textContent).toBe("sc");
     expect(editor.contentDOM.textContent).not.toContain("\\textbf");
   });
+
+  it("marks quote and alignment environment lines", () => {
+    const text = "\\begin{document}\n\\begin{quote}\nQuoted words\n\\end{quote}\n\\begin{center}\nCentred words\n\\end{center}\n\\end{document}\n";
+    const editor = mount(text, text.length);
+    const quoted = editor.contentDOM.querySelectorAll(".cm-line.ofl-visual-environment-quote-block");
+    expect(Array.from(quoted, (line) => line.textContent?.trim())).toContain("Quoted words");
+    const centred = editor.contentDOM.querySelectorAll(".cm-line.ofl-visual-environment-center");
+    expect(Array.from(centred, (line) => line.textContent?.trim())).toContain("Centred words");
+  });
+
+  it("marks unknown commands by name only when they have content", () => {
+    const text = "\\begin{document}\n\\foo{} \\bar{x}\n\\end{document}\n";
+    const editor = mount(text, text.length);
+    expect(editor.contentDOM.querySelector(".ofl-visual-command-foo")).toBeNull();
+    expect(editor.contentDOM.querySelector(".ofl-visual-command-bar")?.textContent).toBe("x");
+  });
 });

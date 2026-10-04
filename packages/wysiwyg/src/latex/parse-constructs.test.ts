@@ -361,6 +361,20 @@ describe("tables", () => {
     expect(rows[0].content?.[1].content).toEqual([{ type: "paragraph" }]);
   });
 
+  it("keeps a rule-only line between rows as an empty bordered row", () => {
+    const node = first("\\begin{tabular}{l}\na \\\\\n\\hline \\\\\nb\n\\end{tabular}\n");
+    const rows = node.content?.[0].content ?? [];
+    expect(rows.map((row) => row.attrs)).toEqual([
+      { borderTop: null, borderBottom: null },
+      { borderTop: "hline", borderBottom: null },
+      { borderTop: null, borderBottom: null },
+    ]);
+    expect(rows[0].content?.[0].type).toBe("tableHeader");
+    expect(rows[1].content).toEqual([
+      { type: "tableCell", attrs: { colspan: 1, rowspan: 1, columnSpec: null }, content: [{ type: "paragraph" }] },
+    ]);
+  });
+
   it("drops comments inside the float body", () => {
     const node = first("\\begin{table}\n% hidden\n\\begin{tabular}{l}\nx % note\n\\end{tabular}\n\\end{table}\n");
     expect(node.type).toBe("tableFloat");
@@ -381,6 +395,18 @@ describe("tables", () => {
     ["float without tabular", "\\begin{table}\n\\caption{x}\n\\end{table}\n"],
     ["rule with spacing", "\\begin{tabular}{l}\n\\toprule[1pt]\na\n\\end{tabular}\n"],
     ["double border", "\\begin{tabular}{||l||}\na\n\\end{tabular}\n"],
+    ["two-argument multicolumn", "\\begin{tabular}{ll}\n\\multicolumn{2}{c} & b\n\\end{tabular}\n"],
+    ["multicolumn followed by text", "\\begin{tabular}{ll}\n\\multicolumn{1}{c}{a} extra & b\n\\end{tabular}\n"],
+    ["non-numeric multicolumn span", "\\begin{tabular}{ll}\n\\multicolumn{x}{c}{a} & b\n\\end{tabular}\n"],
+    ["zero multicolumn span", "\\begin{tabular}{ll}\n\\multicolumn{0}{c}{a} & b\n\\end{tabular}\n"],
+    ["rules without rows", "\\begin{tabular}{l}\n\\hline\n\\end{tabular}\n"],
+    ["empty body", "\\begin{tabular}{l}\n\\end{tabular}\n"],
+    ["float centred twice", "\\begin{table}\n\\centering\\centering\n\\begin{tabular}{l}\na\n\\end{tabular}\n\\end{table}\n"],
+    ["float with two captions", "\\begin{table}\n\\caption{A}\n\\begin{tabular}{l}\na\n\\end{tabular}\n\\caption{B}\n\\end{table}\n"],
+    ["float with two labels", "\\begin{table}\n\\begin{tabular}{l}\na\n\\end{tabular}\n\\label{a}\\label{b}\n\\end{table}\n"],
+    ["float with a font switch", "\\begin{table}\n\\small\n\\begin{tabular}{l}\na\n\\end{tabular}\n\\end{table}\n"],
+    ["float with another environment", "\\begin{table}\n\\begin{center}\n\\begin{tabular}{l}\na\n\\end{tabular}\n\\end{center}\n\\end{table}\n"],
+    ["float around an unsupported tabular", "\\begin{table}\n\\begin{tabular}{ll}\na & b \\\\ \\cline{1-2}\n\\end{tabular}\n\\end{table}\n"],
   ])("keeps a %s table as a raw block", (_name, body) => {
     const node = first(body);
     expect(node.type).toBe("rawBlock");

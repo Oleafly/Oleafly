@@ -1,7 +1,9 @@
 import { ensureSyntaxTree } from "@codemirror/language";
 import { EditorState, Text } from "@codemirror/state";
 import type { ViewUpdate } from "@codemirror/view";
+import { latexTreeSupport } from "@oleafly/editor/latex-tree";
 import { loadTypstParser, typstLanguage } from "@oleafly/editor/typst";
+import { parsedState } from "../../../packages/editor/src/visual/test-document";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   ancestorsAtLine,
@@ -100,6 +102,42 @@ describe("sectionCrumbsForState", () => {
 
   it("reports nothing in the preamble", () => {
     expect(sectionCrumbsForState(stateFor(DOC, 2), false)).toEqual([]);
+  });
+
+  it("reads the enclosing sections from the visual-mode syntax tree", () => {
+    const state = parsedState(
+      EditorState.create({
+        doc: DOC,
+        selection: { anchor: offsetOf(DOC, "Body.") },
+        extensions: latexTreeSupport(),
+      }),
+    );
+    const crumbs = sectionCrumbsForState(state, true);
+    expect(crumbs.map((crumb) => crumb.title)).toEqual([
+      "Widgets",
+      "Rendering",
+      "Inline and display math",
+    ]);
+    expect(crumbs[1].pos).toBe(offsetOf(DOC, "Rendering"));
+  });
+
+  it("falls back to the text scan when the visual tree has no section around the cursor", () => {
+    const state = parsedState(
+      EditorState.create({ doc: DOC, selection: { anchor: 2 }, extensions: latexTreeSupport() }),
+    );
+    expect(sectionCrumbsForState(state, true)).toEqual([]);
+  });
+});
+
+describe("unusual headings", () => {
+  it("keeps the rest of the line as the title of an unclosed heading", () => {
+    const [heading] = scanSectionHeadings(Text.of([String.raw`\section{Open \textbf{title`]));
+    expect(heading.title).toBe("Open title");
+  });
+
+  it("gives up on documents too long to scan", () => {
+    const lines = Array.from({ length: 50_001 }, () => String.raw`\section{A}`);
+    expect(scanSectionHeadings(Text.of(lines))).toEqual([]);
   });
 });
 

@@ -1299,3 +1299,227 @@ describe("CheckpointsPanel capture notices", () => {
     expect(screen.queryByText(".oleafly-manifest.json")).toBeNull();
   });
 });
+
+describe("CheckpointsPanel actions that outlive their project", () => {
+  const emptyStats = { checkpoint_count: 0, stored_pack_bytes: 0, logical_bytes: 0, reclaimable_bytes: 0 };
+
+  async function renderForProjectA() {
+    mocks.checkpointList.mockImplementation(async (id: string) => (id === "project-b" ? [] : checkpoints));
+    mocks.checkpointStats.mockImplementation(async (id: string) => (id === "project-b" ? emptyStats : stats));
+    useFilesStore.setState({ projectId: "project-a", projectName: "Project A" });
+    const user = userEvent.setup();
+    render(<CheckpointsPanel />);
+    await screen.findByTestId("checkpoint-timeline");
+    return user;
+  }
+
+  async function switchToProjectB() {
+    act(() => {
+      useFilesStore.setState({ projectId: "project-b", projectName: "Project B" });
+    });
+    expect(await screen.findByText("No checkpoints yet")).toBeInTheDocument();
+  }
+
+  async function settle() {
+    await act(async () => {
+      for (let index = 0; index < 5; index++) await Promise.resolve();
+    });
+  }
+
+  function expectNothingReported() {
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  }
+
+  it.each(["resolve", "reject"] as const)("drops a label save that settles after the switch (%s)", async (outcome) => {
+    const save = deferred<Omit<(typeof checkpoints)[number], "label"> & { label: string | null }>();
+    mocks.checkpointSetLabel.mockReturnValueOnce(save.promise);
+    const user = await renderForProjectA();
+    await user.click(screen.getByRole("button", { name: "Edit label for V2" }));
+    await user.type(screen.getByRole("textbox", { name: "Checkpoint label" }), "Late{Enter}");
+    await waitFor(() => expect(mocks.checkpointSetLabel).toHaveBeenCalled());
+    await switchToProjectB();
+    if (outcome === "resolve") save.resolve({ ...checkpoints[0], label: "Late" });
+    else save.reject(new Error("gone"));
+    await settle();
+    expectNothingReported();
+    expect(screen.queryByText("Late")).toBeNull();
+  });
+
+  it("stops a restore whose project changed while edits were flushed", async () => {
+    const prepared = deferred<number>();
+    mocks.prepareExternalMutation.mockReturnValueOnce(prepared.promise);
+    const user = await renderForProjectA();
+    await user.click(screen.getByRole("button", { name: "Restore V2" }));
+    await user.click(await screen.findByRole("button", { name: "Restore files" }));
+    await waitFor(() => expect(mocks.prepareExternalMutation).toHaveBeenCalledWith("project-a"));
+    await switchToProjectB();
+    prepared.resolve(17);
+    await settle();
+    expect(mocks.checkpointRestore).not.toHaveBeenCalled();
+    expect(useSettingsStore.getState().versioningOpen).toBe(true);
+    expectNothingReported();
+  });
+
+  it.each(["resolve", "reject"] as const)("ignores a restore that settles after the switch (%s)", async (outcome) => {
+    const restored = deferred<typeof restoredEvent>();
+    mocks.checkpointRestore.mockReturnValueOnce(restored.promise);
+    const user = await renderForProjectA();
+    await user.click(screen.getByRole("button", { name: "Restore V2" }));
+    await user.click(await screen.findByRole("button", { name: "Restore files" }));
+    await waitFor(() => expect(mocks.checkpointRestore).toHaveBeenCalled());
+    await switchToProjectB();
+    if (outcome === "resolve") restored.resolve(restoredEvent);
+    else restored.reject(new Error("pack is corrupt"));
+    await settle();
+    expect(mocks.applyProjectStateChanged).not.toHaveBeenCalled();
+    expect(useSettingsStore.getState().versioningOpen).toBe(true);
+    expectNothingReported();
+  });
+
+  it("ignores a failed deletion reported after the switch", async () => {
+    const deletion = deferred<void>();
+    mocks.checkpointDelete.mockReturnValueOnce(deletion.promise);
+    const user = await renderForProjectA();
+    await user.click(screen.getByRole("button", { name: "Delete V2" }));
+    await user.click(screen.getByRole("button", { name: "Delete checkpoint" }));
+    await waitFor(() => expect(mocks.checkpointDelete).toHaveBeenCalled());
+    await switchToProjectB();
+    deletion.reject(new Error("locked"));
+    await settle();
+    expectNothingReported();
+  });
+
+  it("stays quiet when the project changes while a deletion refreshes the list", async () => {
+    const refreshed = deferred<typeof checkpoints>();
+    const user = await renderForProjectA();
+    mocks.checkpointList.mockImplementationOnce(() => refreshed.promise);
+    await user.click(screen.getByRole("button", { name: "Delete V2" }));
+    await user.click(screen.getByRole("button", { name: "Delete checkpoint" }));
+    await waitFor(() => expect(mocks.checkpointList).toHaveBeenCalledTimes(2));
+    await switchToProjectB();
+    refreshed.resolve([checkpoints[1]]);
+    await settle();
+    expectNothingReported();
+  });
+
+  it("reloads the store details after a deletion while Advanced is open", async () => {
+    const user = await renderForProjectA();
+    await openAdvanced(user);
+    await waitFor(() => expect(mocks.checkpointInspect).toHaveBeenCalledTimes(1));
+    await user.click(screen.getByRole("button", { name: "Delete V2" }));
+    await user.click(screen.getByRole("button", { name: "Delete checkpoint" }));
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith("Checkpoint deleted."));
+    await waitFor(() => expect(mocks.checkpointInspect).toHaveBeenCalledTimes(2));
+  });
+
+  it.each([
+    ["keep latest", "Keep latest", "Delete older checkpoints", "resolve"],
+    ["keep latest", "Keep latest", "Delete older checkpoints", "reject"],
+    ["reset", "Reset", "Delete all checkpoints", "resolve"],
+    ["reset", "Reset", "Delete all checkpoints", "reject"],
+  ] as const)("ignores a %s sweep confirmed from %s and %s that settles after the switch with %s", async (name, open, confirm, outcome) => {
+    const operation = name === "reset" ? mocks.checkpointReset : mocks.checkpointKeepLatest;
+    const sweep = deferred<void>();
+    operation.mockReturnValueOnce(sweep.promise);
+    const user = await renderForProjectA();
+    await openAdvanced(user);
+    await user.click(await screen.findByRole("button", { name: open }));
+    await user.click(screen.getByRole("button", { name: confirm }));
+    await waitFor(() => expect(operation).toHaveBeenCalledWith("project-a"));
+    await switchToProjectB();
+    if (outcome === "resolve") sweep.resolve();
+    else sweep.reject(new Error("busy"));
+    await settle();
+    expectNothingReported();
+  });
+
+  it.each([
+    ["keep latest", "Keep latest", "Delete older checkpoints"],
+    ["reset", "Reset", "Delete all checkpoints"],
+  ] as const)("stays quiet when a %s sweep refreshes after the switch", async (_name, open, confirm) => {
+    const refreshed = deferred<typeof checkpoints>();
+    const user = await renderForProjectA();
+    await openAdvanced(user);
+    mocks.checkpointList.mockImplementationOnce(() => refreshed.promise);
+    await user.click(await screen.findByRole("button", { name: open }));
+    await user.click(screen.getByRole("button", { name: confirm }));
+    await waitFor(() => expect(mocks.checkpointList).toHaveBeenCalledTimes(2));
+    await switchToProjectB();
+    refreshed.resolve([]);
+    await settle();
+    expectNothingReported();
+  });
+
+  async function typePassword(user: ReturnType<typeof userEvent.setup>) {
+    await openAdvanced(user);
+    fireEvent.change(await screen.findByLabelText("Archive password"), { target: { value: "correct horse" } });
+  }
+
+  it("drops an export whose save dialog closes after the switch", async () => {
+    const picked = deferred<string | null>();
+    mocks.pickSavePath.mockReturnValueOnce(picked.promise);
+    const user = await renderForProjectA();
+    await typePassword(user);
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(mocks.pickSavePath).toHaveBeenCalled());
+    await switchToProjectB();
+    picked.resolve("/tmp/a.oleafly-checkpoints");
+    await settle();
+    expect(mocks.checkpointExport).not.toHaveBeenCalled();
+  });
+
+  it.each(["resolve", "reject"] as const)("ignores an export that settles after the switch (%s)", async (outcome) => {
+    const exported = deferred<void>();
+    mocks.pickSavePath.mockResolvedValueOnce("/tmp/a.oleafly-checkpoints");
+    mocks.checkpointExport.mockReturnValueOnce(exported.promise);
+    const user = await renderForProjectA();
+    await typePassword(user);
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(mocks.checkpointExport).toHaveBeenCalled());
+    await switchToProjectB();
+    if (outcome === "resolve") exported.resolve();
+    else exported.reject(new Error("disk full"));
+    await settle();
+    expectNothingReported();
+  });
+
+  it("does not import when the open dialog returns no single file", async () => {
+    mocks.pickOpenPath.mockResolvedValueOnce(["/tmp/a.oleafly-checkpoints", "/tmp/b.oleafly-checkpoints"]);
+    const user = await renderForProjectA();
+    await typePassword(user);
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() => expect(mocks.pickOpenPath).toHaveBeenCalled());
+    await settle();
+    expect(mocks.checkpointImport).not.toHaveBeenCalled();
+  });
+
+  it.each(["resolve", "reject"] as const)("ignores an import that settles after the switch (%s)", async (outcome) => {
+    const imported = deferred<void>();
+    mocks.pickOpenPath.mockResolvedValueOnce("/tmp/a.oleafly-checkpoints");
+    mocks.checkpointImport.mockReturnValueOnce(imported.promise);
+    const user = await renderForProjectA();
+    await typePassword(user);
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() => expect(mocks.checkpointImport).toHaveBeenCalled());
+    await switchToProjectB();
+    if (outcome === "resolve") imported.resolve();
+    else imported.reject(new Error("wrong password"));
+    await settle();
+    expectNothingReported();
+  });
+
+  it("stays quiet when an import refreshes after the switch", async () => {
+    const refreshed = deferred<typeof checkpoints>();
+    mocks.pickOpenPath.mockResolvedValueOnce("/tmp/a.oleafly-checkpoints");
+    const user = await renderForProjectA();
+    await typePassword(user);
+    mocks.checkpointList.mockImplementationOnce(() => refreshed.promise);
+    await user.click(screen.getByRole("button", { name: "Import" }));
+    await waitFor(() => expect(mocks.checkpointList).toHaveBeenCalledTimes(2));
+    await switchToProjectB();
+    refreshed.resolve([]);
+    await settle();
+    expectNothingReported();
+  });
+});

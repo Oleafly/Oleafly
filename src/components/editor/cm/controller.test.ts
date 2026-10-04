@@ -19,8 +19,9 @@ const core = vi.hoisted(() => ({
   focusEditor: vi.fn(),
   editorUndo: vi.fn(),
   editorRedo: vi.fn(),
-  editorVimUndo: vi.fn(),
-  editorVimRedo: vi.fn(),
+  editorVimUndo: vi.fn(() => true),
+  editorVimRedo: vi.fn(() => true),
+  insertListEnvironment: vi.fn(),
   editorFind: vi.fn(),
   waitForEditorDocument: vi.fn(),
 }));
@@ -47,6 +48,10 @@ import {
   insertEnvironment,
   editorUndo,
   editorRedo,
+  editorVimRedo,
+  editorVimUndo,
+  insertListEnvironment,
+  insertText,
 } from "./controller";
 
 let editors: Editor[] = [];
@@ -187,5 +192,33 @@ describe("cm/controller mode-aware routing", () => {
     expect(latexOf(editor)).toBe("Hello\\alpha\n");
     expect(core.editorRedo).not.toHaveBeenCalled();
     expect(bumpDocVersion).not.toHaveBeenCalled();
+  });
+
+  it("inserts plain text and list environments through the source editor", () => {
+    insertText("plain");
+    expect(core.insertAtCursor).toHaveBeenCalledWith("plain");
+    insertListEnvironment("itemize");
+    expect(core.insertListEnvironment).toHaveBeenCalledWith("itemize");
+  });
+
+  it("falls back to CodeMirror when the visual editor has no insertions registered", () => {
+    const editor = activateVisualEditor();
+    setWysiwygInsertions(null);
+    insertAtCursor("\\alpha");
+    expect(core.insertAtCursor).toHaveBeenCalledWith("\\alpha");
+    expect(latexOf(editor)).toBe("Hello\n");
+  });
+
+  it("leaves Vim history commands to CodeMirror and refuses them in visual mode", () => {
+    expect(editorVimUndo()).toBe(true);
+    expect(editorVimRedo()).toBe(true);
+    expect(core.editorVimUndo).toHaveBeenCalledOnce();
+    expect(core.editorVimRedo).toHaveBeenCalledOnce();
+
+    activateVisualEditor();
+    expect(editorVimUndo()).toBe(false);
+    expect(editorVimRedo()).toBe(false);
+    expect(core.editorVimUndo).toHaveBeenCalledOnce();
+    expect(core.editorVimRedo).toHaveBeenCalledOnce();
   });
 });

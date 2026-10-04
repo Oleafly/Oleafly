@@ -36,7 +36,7 @@ vi.mock("@/store/files", () => ({
 }));
 
 import type { Update } from "@tauri-apps/plugin-updater";
-import { findUpdate, installUpdate, openUpdateWindow, runUpdateCheck } from "./updater";
+import { checkForUpdatesOnStartup, findUpdate, installUpdate, openUpdateWindow, runUpdateCheck } from "./updater";
 
 beforeEach(() => {
   flushForQuit.mockReset().mockResolvedValue(undefined);
@@ -267,5 +267,46 @@ describe("openUpdateWindow", () => {
     expect(event).toBe("tauri://error");
     handler({ payload: "no display" });
     expect(logError).toHaveBeenCalledWith("updater", "no display");
+  });
+});
+
+describe("download progress without a known size", () => {
+  it("reports only the start and the finish when the release has no content length", async () => {
+    const percents: number[] = [];
+    invoke.mockImplementation(async (command: string, options: { onEvent: FakeChannel }) => {
+      if (command === "download_update") {
+        options.onEvent.onmessage({ event: "Started", data: {} });
+        options.onEvent.onmessage({ event: "Progress", data: { chunkLength: 50 } });
+        return 3;
+      }
+    });
+    await installUpdate({ rid: 1 } as Update, (percent) => percents.push(percent));
+    expect(percents).toEqual([0, 100]);
+  });
+});
+
+describe("checkForUpdatesOnStartup", () => {
+  it("opens the update window when a release build finds an update", async () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_E2E_HOOKS", "0");
+    try {
+      check.mockResolvedValue({ version: "9.9.9" });
+      getByLabel.mockResolvedValue(null);
+      checkForUpdatesOnStartup();
+      await vi.waitFor(() => expect(WebviewWindow).toHaveBeenCalledOnce());
+      check.mockResolvedValue(null);
+      WebviewWindow.mockClear();
+      checkForUpdatesOnStartup();
+      await vi.waitFor(() => expect(check).toHaveBeenCalledTimes(2));
+      await Promise.resolve();
+      expect(WebviewWindow).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("does not check in development or end-to-end builds", () => {
+    checkForUpdatesOnStartup();
+    expect(check).not.toHaveBeenCalled();
   });
 });

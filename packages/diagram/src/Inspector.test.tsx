@@ -167,6 +167,39 @@ describe("Inspector", () => {
     expect(screen.queryByLabelText("inspector.bringToFront")).not.toBeInTheDocument();
   });
 
+  it("edits border and text colours and shows defaults for unset styles", () => {
+    const onNodeChange = vi.fn();
+    render(
+      <Inspector
+        node={node({ shape: "roundrect", fill: undefined, strokeStyle: undefined, radius: undefined, fontFamily: undefined })}
+        edge={null}
+        onNodeChange={onNodeChange}
+        onEdgeChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByDisplayValue("#ffffff")).toBeInTheDocument();
+    expect(screen.getAllByRole("combobox").map((select) => (select as HTMLSelectElement).value)).toEqual([
+      "solid",
+      "1",
+      "6",
+      "11",
+      "serif",
+    ]);
+    const [border, text] = screen.getAllByDisplayValue("#000000");
+    fireEvent.change(border, { target: { value: "#00ff00" } });
+    expect(onNodeChange).toHaveBeenLastCalledWith({ stroke: "#00ff00" });
+    fireEvent.change(text, { target: { value: "#0000ff" } });
+    expect(onNodeChange).toHaveBeenLastCalledWith({ textColor: "#0000ff" });
+  });
+
+  it("shows square corners for a rectangle without a radius", () => {
+    render(
+      <Inspector node={node({ radius: undefined })} edge={null} onNodeChange={vi.fn()} onEdgeChange={vi.fn()} />,
+    );
+    expect((screen.getAllByRole("combobox")[2] as HTMLSelectElement).value).toBe("0");
+  });
+
   it("edits an arrow", () => {
     const onEdgeChange = vi.fn();
     render(

@@ -5,7 +5,7 @@ import { listItemMarker } from "./list-marker";
 import { LIST_DOCUMENT, parsedState, positionOf } from "./test-document";
 import { selectDecoratedArgument } from "./select-argument";
 import { visualAtomicField } from "./atomic-decorations";
-import { pointerSelectionTracking } from "./selection";
+import { mouseDownEffect, pointerSelectionTracking } from "./selection";
 
 describe("listItemMarker", () => {
   const state = parsedState(
@@ -59,5 +59,28 @@ describe("selectDecoratedArgument", () => {
     const next = state.update({ selection: { anchor: command, head: end }, userEvent: "select.pointer" }).state;
     expect(next.selection.main.from).toBe(command + "\\textbf{".length);
     expect(next.selection.main.to).toBe(end - 1);
+  });
+
+  it("keeps a backward drag across the whole command inside the braces", () => {
+    const end = command + "\\textbf{bold words}".length;
+    const next = state.update({ selection: { anchor: end - 1, head: command }, userEvent: "select.pointer" }).state;
+    expect(next.selection.main.anchor).toBe(end - 1);
+    expect(next.selection.main.head).toBe(command + "\\textbf{".length);
+  });
+
+  it("leaves a click after the command, a partial drag and a click in plain text alone", () => {
+    const end = command + "\\textbf{bold words}".length;
+    expect(state.update({ selection: { anchor: end }, userEvent: "select.pointer" }).state.selection.main.head).toBe(end);
+    const partial = state.update({ selection: { anchor: command, head: command + 12 }, userEvent: "select.pointer" }).state;
+    expect([partial.selection.main.anchor, partial.selection.main.head]).toEqual([command, command + 12]);
+    const plain = positionOf(doc, "Some") + 2;
+    expect(state.update({ selection: { anchor: plain }, userEvent: "select.pointer" }).state.selection.main.head).toBe(plain);
+  });
+
+  it("does not move a selection that started on the command when the mouse went down", () => {
+    const placed = state.update({ selection: { anchor: command + 2 } }).state;
+    const pressed = placed.update({ effects: mouseDownEffect.of(true) }).state;
+    const next = pressed.update({ selection: { anchor: command }, userEvent: "select.pointer" }).state;
+    expect(next.selection.main.head).toBe(command);
   });
 });

@@ -28,7 +28,11 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   showReferences: vi.fn(),
   openRename: vi.fn(),
+  setRailTab: vi.fn(),
+  toggleTree: vi.fn(),
 }));
+
+const settingsState = { showTree: true };
 
 const filesState = {
   projectId: "project-1" as string | null,
@@ -66,7 +70,11 @@ vi.mock("@/store/rename", () => ({
 }));
 vi.mock("@/store/settings", () => ({
   useSettingsStore: {
-    getState: () => ({ setRailTab: vi.fn(), showTree: true, toggleTree: vi.fn() }),
+    getState: () => ({
+      setRailTab: mocks.setRailTab,
+      showTree: settingsState.showTree,
+      toggleTree: mocks.toggleTree,
+    }),
   },
 }));
 vi.mock("@/lib/project-intelligence/current", () => ({
@@ -94,8 +102,10 @@ vi.mock("@/lib/toast", () => ({
 import {
   NAVIGATION_LOOKUP_TOAST_KEY,
   applyRename,
+  explainMissingAnalysis,
   findReferences,
   goToDefinition,
+  renamePreview,
   startRename,
   symbolLikeRanges,
 } from "./nav";
@@ -150,6 +160,7 @@ beforeEach(() => {
   indexState.intelligenceState = { status: "not_run", stale: false };
   mocks.currentSource.mockReturnValue(null);
   mocks.accepted.mockReturnValue(null);
+  settingsState.showTree = true;
 });
 
 describe("applyRename", () => {
@@ -641,5 +652,295 @@ describe("symbol-like text under the caret", () => {
         expect(goToDefinition(editorView(text, column)), `${JSON.stringify(text)} at ${column}`).toBe(touches);
       }
     }
+  });
+});
+
+describe("local lookups through project intelligence", () => {
+  const snapshot = { identity: { projectId: "project-1", projectRevision: 2, requestGeneration: 5 } };
+  const use = { id: "use:fig", name: "fig:x", kind: "reference", definitionIds: ["def:a", "def:b"] };
+  const definitionA = {
+    id: "def:a",
+    name: "fig:x",
+    kind: "label",
+    location: { file: "chapters/a.tex", range: { from: 3, to: 9 } },
+  };
+  const definitionB = { ...definitionA, id: "def:b", location: { file: "chapters/b.tex", range: { from: 1, to: 2 } } };
+
+  beforeEach(() => {
+    mocks.currentSource.mockReturnValue({ snapshot, path: "main.tex" });
+  });
+
+  it("returns false when the caret is on no symbol", () => {
+    mocks.symbolAt.mockReturnValue(null);
+
+    expect(goToDefinition(editorView())).toBe(false);
+    expect(findReferences(editorView())).toBe(false);
+    expect(mocks.symbolAt).toHaveBeenCalledWith(snapshot, "main.tex", 8);
+    expect(mocks.symbolAt).toHaveBeenCalledWith(snapshot, "main.tex", 7);
+    expect(mocks.toastInfoUnique).not.toHaveBeenCalled();
+  });
+
+  it("looks up only the caret position at the start of the document", () => {
+    mocks.symbolAt.mockReturnValue(null);
+
+    expect(goToDefinition(editorView(EDITOR_TEXT, 0))).toBe(false);
+    expect(mocks.symbolAt).toHaveBeenCalledTimes(1);
+    expect(mocks.symbolAt).toHaveBeenCalledWith(snapshot, "main.tex", 0);
+  });
+
+  it("uses the symbol just before the caret when the caret sits after it", () => {
+    mocks.symbolAt.mockImplementation((_snapshot, _path, offset: number) => (offset === 7 ? use : null));
+    mocks.definitionsForUse.mockReturnValue([definitionA]);
+
+    expect(goToDefinition(editorView())).toBe(true);
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      path: "chapters/a.tex",
+      range: { from: 3, to: 9 },
+      source: "editor",
+    });
+  });
+
+  it("lists every definition when a use resolves to several and opens the tree", () => {
+    settingsState.showTree = false;
+    mocks.symbolAt.mockReturnValue(use);
+    mocks.definitionsForUse.mockReturnValue([definitionA, definitionB]);
+
+    expect(goToDefinition(editorView())).toBe(true);
+    expect(mocks.showReferences).toHaveBeenCalledWith({
+      ...snapshot.identity,
+      mode: "definitions",
+      targetId: "use:fig",
+      title: "Definitions for fig:x",
+    });
+    expect(mocks.setRailTab).toHaveBeenCalledWith("refs");
+    expect(mocks.toggleTree).toHaveBeenCalledTimes(1);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("keeps an open tree open when listing definitions", () => {
+    mocks.symbolAt.mockReturnValue(use);
+    mocks.definitionsForUse.mockReturnValue([definitionA, definitionB]);
+
+    expect(findReferences(editorView())).toBe(true);
+    expect(mocks.showReferences).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "definitions", targetId: "use:fig" }),
+    );
+    expect(mocks.toggleTree).not.toHaveBeenCalled();
+  });
+
+  it("treats go to definition on a definition as find references", () => {
+    mocks.symbolAt.mockReturnValue(definitionA);
+    mocks.referencesFor.mockReturnValue([{ id: "use:1" }]);
+
+    expect(goToDefinition(editorView())).toBe(true);
+    expect(mocks.definitionsForUse).not.toHaveBeenCalled();
+    expect(mocks.referencesFor).toHaveBeenCalledWith(snapshot, "def:a");
+    expect(mocks.showReferences).toHaveBeenCalledWith({
+      ...snapshot.identity,
+      mode: "references",
+      targetId: "def:a",
+      title: "References to fig:x",
+    });
+  });
+
+  it("says there is no definition when a use has none", () => {
+    mocks.symbolAt.mockReturnValue({ ...use, definitionIds: [] });
+    mocks.definitionsForUse.mockReturnValue([]);
+
+    expect(findReferences(editorView())).toBe(true);
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith(
+      NAVIGATION_LOOKUP_TOAST_KEY,
+      'No definition found for "fig:x"',
+    );
+    expect(mocks.showReferences).not.toHaveBeenCalled();
+  });
+
+  it("lists references of a use with a single definition", () => {
+    mocks.symbolAt.mockReturnValue(use);
+    mocks.definitionsForUse.mockReturnValue([definitionA]);
+    mocks.referencesFor.mockReturnValue([{ id: "use:1" }, { id: "use:2" }]);
+
+    expect(findReferences(editorView())).toBe(true);
+    expect(mocks.showReferences).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "references", targetId: "def:a" }),
+    );
+  });
+});
+
+describe("explainMissingAnalysis", () => {
+  it("returns false without an active file", () => {
+    indexState.intelligenceState = { status: "success", stale: false };
+    filesState.activePath = null;
+
+    expect(explainMissingAnalysis()).toBe(false);
+    expect(mocks.toastInfoUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns false when the accepted snapshot does not track the file", () => {
+    indexState.intelligenceState = { status: "success", stale: false };
+    mocks.accepted.mockReturnValue({ fileStates: {} });
+
+    expect(explainMissingAnalysis("changed")).toBe(false);
+  });
+
+  it("compares the open buffer with the indexed text when no editor text is given", () => {
+    indexState.intelligenceState = { status: "success", stale: false };
+    mocks.accepted.mockReturnValue({ fileStates: { "main.tex": {} } });
+    filesState.files = { "main.tex": { content: "new text", dirty: true } };
+    indexState.texts = { "main.tex": "old text" };
+
+    expect(explainMissingAnalysis()).toBe(true);
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith(NAVIGATION_LOOKUP_TOAST_KEY, UPDATING);
+
+    mocks.toastInfoUnique.mockReset();
+    indexState.texts = { "main.tex": "new text" };
+    expect(explainMissingAnalysis()).toBe(false);
+    expect(mocks.toastInfoUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns false when neither the editor nor the store has text", () => {
+    indexState.intelligenceState = { status: "success", stale: false };
+    mocks.accepted.mockReturnValue({ fileStates: { "main.tex": {} } });
+
+    expect(explainMissingAnalysis()).toBe(false);
+  });
+
+  it("explains a pending edit even when analysis is current", () => {
+    indexState.intelligenceState = { status: "success", stale: false };
+
+    expect(explainMissingAnalysis(undefined, true)).toBe(true);
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith(NAVIGATION_LOOKUP_TOAST_KEY, UPDATING);
+  });
+
+  it("explains a stale analysis as updating", () => {
+    indexState.intelligenceState = { status: "success", stale: true };
+
+    expect(explainMissingAnalysis()).toBe(true);
+    expect(mocks.toastInfoUnique).toHaveBeenCalledWith(NAVIGATION_LOOKUP_TOAST_KEY, UPDATING);
+  });
+});
+
+describe("local rename entry", () => {
+  it("returns false without an active file", () => {
+    filesState.activePath = null;
+
+    expect(startRename(editorView())).toBe(false);
+    expect(mocks.updateFile).not.toHaveBeenCalled();
+    expect(mocks.openRename).not.toHaveBeenCalled();
+  });
+
+  it("returns false when the caret is on no symbol", () => {
+    mocks.indexSymbolAt.mockReturnValue(null);
+
+    expect(startRename(editorView())).toBe(false);
+    expect(mocks.updateFile).toHaveBeenCalledWith("main.tex", EDITOR_TEXT);
+    expect(mocks.indexSymbolAt).toHaveBeenCalledWith("main.tex", 8);
+  });
+
+  it("opens the rename box on the definition of a renamable use", () => {
+    const use = { kind: "ref", name: "fig:x", file: "main.tex" };
+    const label = { kind: "label", name: "fig:x", file: "chapters/a.tex" };
+    mocks.indexSymbolAt.mockReturnValue(use);
+    mocks.definitionFor.mockReturnValue(label);
+
+    expect(startRename(editorView())).toBe(true);
+    expect(mocks.definitionFor).toHaveBeenCalledWith(use);
+    expect(mocks.openRename).toHaveBeenCalledWith(label);
+  });
+
+  it("renames the symbol itself when it has no separate definition", () => {
+    const macro = { kind: "macro", name: "\\foo", file: "main.tex" };
+    mocks.indexSymbolAt.mockReturnValue(macro);
+    mocks.definitionFor.mockReturnValue(undefined);
+
+    expect(startRename(editorView())).toBe(true);
+    expect(mocks.openRename).toHaveBeenCalledWith(macro);
+  });
+});
+
+describe("renamePreview", () => {
+  const index = { renamePlan: vi.fn() };
+
+  beforeEach(() => {
+    index.renamePlan.mockReset();
+  });
+
+  it("asks the index for a plan when the name changes", () => {
+    const plan = { collision: false, fileCount: 1, edits: [] };
+    index.renamePlan.mockReturnValue(plan);
+
+    expect(renamePreview(index as never, SYMBOL, "fig:new")).toBe(plan);
+    expect(index.renamePlan).toHaveBeenCalledWith(SYMBOL, "fig:new");
+  });
+
+  it("has no plan without an index, a name, or a change", () => {
+    expect(renamePreview(null, SYMBOL, "fig:new")).toBeNull();
+    expect(renamePreview(index as never, SYMBOL, "")).toBeNull();
+    expect(renamePreview(index as never, SYMBOL, "fig:old")).toBeNull();
+    expect(index.renamePlan).not.toHaveBeenCalled();
+  });
+});
+
+describe("applyRename edge cases", () => {
+  it("skips the rename when no index is loaded", async () => {
+    const previous = indexState.index;
+    indexState.index = null;
+    try {
+      await expect(applyRename(view, SYMBOL, "fig:new")).resolves.toBe("skipped");
+      expect(mocks.toastError).not.toHaveBeenCalled();
+      expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+    } finally {
+      indexState.index = previous;
+    }
+  });
+
+  it("edits the active file through the editor", async () => {
+    filesState.activePath = "chapters/intro.tex";
+    const editor = { dispatch: vi.fn() } as unknown as EditorView;
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 1,
+      edits: [
+        { file: "chapters/intro.tex", from: 20, to: 27, newText: "fig:new" },
+        { file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" },
+      ],
+    });
+
+    await expect(applyRename(editor, SYMBOL, "fig:new")).resolves.toBe("renamed");
+    expect(editor.dispatch).toHaveBeenCalledWith({
+      changes: [
+        { from: 9, to: 16, insert: "fig:new" },
+        { from: 20, to: 27, insert: "fig:new" },
+      ],
+    });
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+  });
+
+  it("skips files whose indexed text is missing without counting them", async () => {
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 2,
+      edits: [
+        { file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" },
+        { file: "chapters/gone.tex", from: 0, to: 3, newText: "fig:new" },
+      ],
+    });
+
+    await expect(applyRename(view, SYMBOL, "fig:new")).resolves.toBe("renamed");
+    expect(mocks.writeProjectFile).toHaveBeenCalledTimes(1);
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Renamed to "fig:new" (1 edit in 1 file)');
+  });
+
+  it("does not write closed files when no project is open", async () => {
+    filesState.projectId = null;
+    mocks.renamePlan.mockReturnValue({
+      collision: false,
+      fileCount: 1,
+      edits: [{ file: "chapters/intro.tex", from: 9, to: 16, newText: "fig:new" }],
+    });
+
+    await expect(applyRename(view, SYMBOL, "fig:new")).resolves.toBe("renamed");
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Renamed to "fig:new" (0 edits in 0 files)');
   });
 });

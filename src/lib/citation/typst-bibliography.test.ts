@@ -78,3 +78,52 @@ describe("hasTypstBibliography", () => {
     expect(hasTypstBibliography('A bibliography(draft\n\n#bibliography("refs.bib")')).toBe(true);
   });
 });
+
+describe("typstBibliographySources edge syntax", () => {
+  it("skips an unterminated block comment to the end", () => {
+    expect(typstBibliographySources('/* #bibliography("hidden.bib")')).toEqual([]);
+  });
+
+  it("treats an empty raw span and an unclosed backtick as text", () => {
+    expect(typstBibliographySources('``#bibliography("a.bib")')).toEqual(["a.bib"]);
+    expect(typstBibliographySources('`#bibliography("b.bib")')).toEqual(["b.bib"]);
+  });
+
+  it.each([
+    ['#bibliography("a\\u{e9.bib")', "a\\u{e9.bib"],
+    ['#bibliography("a\\u{zz}.bib")', "a\\u{zz}.bib"],
+    ['#bibliography("a\\u{110000}.bib")', "a\\u{110000}.bib"],
+    ['#bibliography("a\\ub.bib")', "a\\ub.bib"],
+    ['#bibliography("dir\\\\a\\".bib")', 'dir\\a".bib'],
+    ['#bibliography("tab\\there.bib")', "tab\there.bib"],
+  ])("decodes the string escapes in %j", (source, path) => {
+    expect(typstBibliographySources(source)).toEqual([path]);
+  });
+
+  it("takes no path from a string cut off by the end of the source", () => {
+    expect(typstBibliographyCalls('#bibliography("abc\\')).toEqual([
+      { from: 0, to: 19, declares: true, sources: [] },
+    ]);
+  });
+
+  it("skips code, content and comments inside named arguments", () => {
+    const source = [
+      "#bibliography(",
+      "  title: {let x = [Refs]; x} /* note */,",
+      "  supplement: [a \\] `raw ] text` b],",
+      '  "refs.bib",',
+      ")",
+    ].join("\n");
+    expect(typstBibliographySources(source)).toEqual(["refs.bib"]);
+  });
+
+  it("skips array items that are not plain strings", () => {
+    expect(typstBibliographySources('#bibliography(("a" + ".bib", x, "b.bib"))')).toEqual(["b.bib"]);
+  });
+
+  it("steps over a stray closer in the argument list", () => {
+    const [call] = typstBibliographyCalls('#bibliography(], "r.bib")');
+    expect(call).toMatchObject({ declares: true });
+    expect(call.sources.map((item) => item.path)).toEqual(["r.bib"]);
+  });
+});

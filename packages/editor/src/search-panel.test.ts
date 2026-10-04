@@ -207,3 +207,78 @@ describe("VS Code-style search panel", () => {
     expect(editor.state.doc.toString()).toBe("one\ntwo");
   });
 });
+
+describe("search panel keyboard and edge cases", () => {
+  function key(label: string, init: KeyboardEventInit): KeyboardEvent {
+    const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+    control<HTMLInputElement>(label).dispatchEvent(event);
+    return event;
+  }
+
+  it("moves between matches with Enter and Shift+Enter in the find field", () => {
+    const editor = setup("a target b target c");
+    fill("Find", "target");
+    expect(key("Find", { key: "Enter" }).defaultPrevented).toBe(true);
+    const first = editor.state.selection.main.from;
+    key("Find", { key: "Enter" });
+    expect(editor.state.selection.main.from).toBeGreaterThan(first);
+    key("Find", { key: "Enter", shiftKey: true });
+    expect(editor.state.selection.main.from).toBe(first);
+    expect(countText()).toBe("1 of 2");
+  });
+
+  it("replaces with Enter and closes with Escape in the replace field", () => {
+    const editor = setup("one target two");
+    click("Toggle Replace");
+    fill("Find", "target");
+    fill("Replace", "thing");
+    key("Find", { key: "Enter" });
+    key("Replace", { key: "Enter" });
+    expect(editor.state.doc.toString()).toBe("one thing two");
+    key("Replace", { key: "a" });
+    expect(document.querySelector(".cm-vs-search")).not.toBeNull();
+    key("Replace", { key: "Escape" });
+    expect(document.querySelector(".cm-vs-search")).toBeNull();
+  });
+
+  it("collapses the replace row again", () => {
+    setup("text");
+    const toggle = control<HTMLButtonElement>("Toggle Replace");
+    toggle.click();
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    toggle.click();
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("caps the reported match count", () => {
+    setup("x ".repeat(2_100));
+    fill("Find", "x");
+    expect(countText()).toBe("2000+ results");
+  });
+
+  it("does nothing on replace when the selection is not a match and with preserve case on an empty query", () => {
+    const editor = setup("alpha beta");
+    click("Toggle Replace");
+    fill("Find", "beta");
+    fill("Replace", "gamma");
+    click("Preserve case");
+    click("Replace next");
+    expect(editor.state.doc.toString()).toBe("alpha beta");
+    click("Replace next");
+    expect(editor.state.doc.toString()).toBe("alpha gamma");
+    fill("Find", "");
+    click("Replace all");
+    expect(editor.state.doc.toString()).toBe("alpha gamma");
+  });
+
+  it("replaces with regular expressions without preserving case", () => {
+    const editor = setup("Cat cat");
+    click("Toggle Replace");
+    click("Use regular expression");
+    fill("Find", "c.t");
+    fill("Replace", "dog");
+    click("Preserve case");
+    click("Replace all");
+    expect(editor.state.doc.toString()).toBe("dog dog");
+  });
+});

@@ -107,3 +107,44 @@ describe("parseFile: Typst links, escapes and Unicode names", () => {
     expect(parsed.defs).toEqual([]);
   });
 });
+
+describe("parseFile: Typst comments and code masking", () => {
+  it("masks nested and multi-line block comments and keeps line numbers", () => {
+    const text = "/* outer /* inner <a> */ still <b> */\n/* first\n<c>\nlast */ <d>\n// trailing <e>";
+    const parsed = parseFile("main.typ", text);
+    expect(parsed.defs.map((s) => [s.name, s.line])).toEqual([["d", 4]]);
+  });
+
+  it("keeps nested brackets inside content blocks", () => {
+    const text = "#figure[x [y] <inner> @a] <outer>";
+    const parsed = parseFile("main.typ", text);
+    expect(parsed.defs.map((s) => s.name)).toEqual(["inner", "outer"]);
+    expect(parsed.uses.map((s) => s.name)).toEqual(["a"]);
+  });
+
+  it("masks escaped quotes and escaped line breaks inside code strings", () => {
+    const text = '#let s = "say \\"@hidden\\" ok"\n#let t = "a\\\n@also"\nSee @shown.';
+    const parsed = parseFile("main.typ", text);
+    expect(parsed.uses.map((s) => [s.name, s.line])).toEqual([["shown", 4]]);
+  });
+
+  it("masks strings in code blocks and reads content blocks inside them", () => {
+    const text = '#{ let x = "@hidden"; [@inside] } @after';
+    const parsed = parseFile("main.typ", text);
+    expect(parsed.uses.map((s) => s.name)).toEqual(["inside", "after"]);
+  });
+
+  it("normalises dotted import path segments and adds the extension", () => {
+    const text = '#import "./parts/./intro.typ": x\n#include "notes"\n#include "/abs.typ"';
+    const parsed = parseFile("book/main.typ", text);
+    expect(parsed.uses.filter((s) => s.kind === "inputedge").map((s) => s.target)).toEqual([
+      "book/parts/intro.typ",
+      "book/notes.typ",
+    ]);
+  });
+
+  it("skips a heading marker with no title", () => {
+    const parsed = parseFile("main.typ", "=   \n= Real");
+    expect(parsed.defs.map((s) => s.name)).toEqual(["Real"]);
+  });
+});

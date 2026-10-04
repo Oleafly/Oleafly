@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diagramFromSource, importTikz, parseTikz, sameDiagramModel } from "./tikz-parser";
+import { diagramFromSource, extractPictureBody, importTikz, parseTikz, sameDiagramModel } from "./tikz-parser";
 import { modelToTikz, serializeDiagram } from "./tikz-serializer";
 import type { DiagramModel } from "./model";
 
@@ -991,5 +991,194 @@ describe("option and shape details the emitter depends on", () => {
       \draw[->] (a) -- (b);
     `);
     expect(model?.nodes.map((n) => n.label)).toContain("Annotation");
+  });
+});
+
+describe("coordinates, colours and tips in less common forms", () => {
+  const two = String.raw`\node[draw] (a) at (0,0) {A};\node[draw] (b) at (4,0) {B};`;
+
+  it("reads polar coordinates as their cartesian equivalent", () => {
+    const polar = parseTikz(String.raw`\node[draw] (a) at (90:2) {A};\node[draw] (b) at (0:3cm) {B};`);
+    const cartesian = parseTikz(String.raw`\node[draw] (a) at (0,2) {A};\node[draw] (b) at (3,0) {B};`);
+    expect(polar?.nodes.map(({ id, x, y }) => ({ id, x, y }))).toEqual(
+      cartesian?.nodes.map(({ id, x, y }) => ({ id, x, y })),
+    );
+  });
+
+  it("reads gray colours and ignores colour models it cannot convert", () => {
+    const model = parseTikz(String.raw`\definecolor{mid}{gray}{0.5}
+      \definecolor{bad}{gray}{x}
+      \definecolor{ink}{cmyk}{0,0,0,1}
+      \node[draw, fill=mid] (a) at (0,0) {A};
+      \node[draw, fill=bad] (b) at (2,0) {B};
+      \node[draw, fill=ink] (c) at (4,0) {C};`);
+    if (!model) throw new Error("no model");
+    expect(node(model, "a").fill).toBe("#808080");
+    expect(node(model, "b").fill).toBeUndefined();
+    expect(node(model, "c").fill).toBeUndefined();
+  });
+
+  it("reads an arrow tip that carries its own options without braces", () => {
+    expect(parseTikz(`${two}\\draw[-Stealth[length=3mm]] (a) -- (b);`)?.edges[0].arrow).toBe("forward");
+    expect(parseTikz(`${two}\\draw[-Latex[]] (a) -- (b);`)?.edges[0].arrow).toBe("forward");
+  });
+
+  it("draws no arrowhead for tips it does not know", () => {
+    expect(parseTikz(`${two}\\draw[-foo] (a) -- (b);`)?.edges[0].arrow).toBe("none");
+    expect(parseTikz(`${two}\\draw[-x]y[z]] (a) -- (b);`)?.edges[0].arrow).toBe("none");
+  });
+
+  it("falls back to the geometry for anchors it does not know", () => {
+    expect(parseTikz(`${two}\\draw[->] (a.text) -- (b.mid);`)?.edges[0]).toMatchObject({
+      sourceHandle: "r",
+      targetHandle: "l",
+    });
+  });
+
+  it("reads out and in angles that point right, including negative ones", () => {
+    expect(parseTikz(`${two}\\draw[->] (a) to[out=0,in=180] (b);`)?.edges[0]).toMatchObject({
+      routing: "curved",
+      sourceHandle: "r",
+      targetHandle: "l",
+    });
+    expect(parseTikz(`${two}\\draw[->] (a) to[out=-45,in=200] (b);`)?.edges[0].sourceHandle).toBe("r");
+  });
+
+  it("leaves an orthogonal hop toward the side the target lies on", () => {
+    const grid = String.raw`\node[draw] (a) at (4,0) {A};\node[draw] (c) at (0,-4) {C};`;
+    expect(parseTikz(`${grid}\\draw[->] (a) -| (c);`)?.edges[0]).toMatchObject({
+      routing: "orthogonal",
+      sourceHandle: "l",
+    });
+    expect(parseTikz(`${grid}\\draw[->] (c) |- (a);`)?.edges[0]).toMatchObject({
+      routing: "orthogonal",
+      sourceHandle: "t",
+    });
+  });
+
+  it("applies options written after the first point to the whole path", () => {
+    expect(parseTikz(`${two}\\draw (a) [dashed,->] -- (b);`)?.edges[0]).toMatchObject({
+      arrow: "forward",
+      style: "dashed",
+    });
+  });
+});
+
+describe("paths and pictures in less common forms", () => {
+  const two = String.raw`\node[draw] (a) at (0,0) {A};\node[draw] (b) at (4,0) {B};`;
+
+  it("skips a coordinate declared along a path", () => {
+    const model = parseTikz(`${two}\\draw[->] (a) -- coordinate (m) (b);`);
+    expect(model?.nodes.map((entry) => entry.id)).toEqual(["a", "b"]);
+    expect(model?.edges).toEqual([expect.objectContaining({ source: "a", target: "b" })]);
+  });
+
+  it("keeps a named path node as a label when no node follows it", () => {
+    const model = parseTikz(String.raw`\node[draw] (a) at (0,0) {A};\draw (a) -- (2,0) node (n) {lbl};`);
+    expect(model?.nodes.map((entry) => entry.id)).toEqual(["a"]);
+    expect(model?.edges).toEqual([]);
+  });
+
+  it("places a node at a named coordinate", () => {
+    const model = parseTikz(
+      String.raw`\coordinate (c) at (2,-2);\node[draw] (a) at (c) {A};\node[draw] (b) at (2,-2) {B};`,
+    );
+    if (!model) throw new Error("no model");
+    expect({ x: node(model, "a").x, y: node(model, "a").y }).toEqual({ x: node(model, "b").x, y: node(model, "b").y });
+  });
+
+  it("reads scopes without options and tolerates a stray scope end", () => {
+    const { model, unsupported } = importTikz(String.raw`\begin{tikzpicture}
+      \begin{scope}\node[draw] (a) at (0,0) {A};\end{scope}
+      \end{scope}
+      \node[draw] (b) at (2,0) {B};
+    \end{tikzpicture}`);
+    expect(model.nodes.map((entry) => entry.id)).toEqual(["a", "b"]);
+    expect(unsupported).toEqual([]);
+  });
+
+  it("ignores malformed style declarations before the picture", () => {
+    const pictures = [
+      String.raw`\tikzstyle{box}=\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}`,
+      String.raw`\tikzset\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}`,
+      String.raw`\definecolor{x}\begin{tikzpicture}\node[draw] (a) at (0,0) {A};\end{tikzpicture}`,
+    ];
+    for (const picture of pictures) {
+      expect(importTikz(picture).model.nodes.map((entry) => entry.label)).toEqual(["A"]);
+    }
+  });
+
+  it("keeps only whole statements from an oversized source", () => {
+    const head = String.raw`\node[draw] (a) at (0,0) {A};`;
+    const withSemicolon = importTikz(`${head}%${"x".repeat(2_000_001)}`);
+    expect(withSemicolon.model.nodes.map((entry) => entry.id)).toEqual(["a"]);
+    expect(withSemicolon.unsupported).toContain("truncated");
+
+    const withoutSemicolon = importTikz(`\\node[draw] (a) at (0,0) {A} ${"x".repeat(2_000_001)}`);
+    expect(withoutSemicolon.unsupported).toContain("truncated");
+  });
+});
+
+describe("extractPictureBody", () => {
+  it("returns the body and options of the outer picture around a nested one", () => {
+    expect(
+      extractPictureBody(String.raw`x\begin{tikzpicture}[scale=2] A \begin{tikzpicture} B \end{tikzpicture} C \end{tikzpicture} after`),
+    ).toEqual({ body: String.raw` A \begin{tikzpicture} B \end{tikzpicture} C `, options: "scale=2" });
+  });
+
+  it("returns the rest of the source for an unterminated picture", () => {
+    expect(extractPictureBody(String.raw`\begin{tikzpicture} A \begin{tikzpicture} B \end{tikzpicture}`)).toEqual({
+      body: String.raw` A \begin{tikzpicture} B \end{tikzpicture}`,
+      options: "",
+    });
+  });
+
+  it("returns null without a picture", () => {
+    expect(extractPictureBody("plain")).toBeNull();
+  });
+});
+
+describe("sameDiagramModel edge and background comparisons", () => {
+  const edge = { id: "e", source: "a", target: "b", routing: "straight", arrow: "forward", style: "solid" } as const;
+  const base: DiagramModel = {
+    version: 1,
+    nodes: [
+      { id: "a", shape: "rectangle", x: 0, y: 0, w: 10, h: 10, label: "A" },
+      { id: "b", shape: "rectangle", x: 40, y: 0, w: 10, h: 10, label: "B" },
+    ],
+    edges: [edge],
+  };
+
+  it("treats two missing models as equal and one missing model as different", () => {
+    expect(sameDiagramModel(null, null)).toBe(true);
+    expect(sameDiagramModel(base, null)).toBe(false);
+    expect(sameDiagramModel(null, base)).toBe(false);
+  });
+
+  it("matches identical edges and ignores empty optional edge fields", () => {
+    expect(sameDiagramModel(base, { ...base, edges: [{ ...edge, label: "", sourceHandle: "" }] })).toBe(true);
+  });
+
+  it.each([
+    ["source", { source: "b" }],
+    ["target", { target: "a" }],
+    ["routing", { routing: "curved" }],
+    ["arrow", { arrow: "both" }],
+    ["style", { style: "dashed" }],
+    ["label", { label: "yes" }],
+    ["source handle", { sourceHandle: "t" }],
+    ["target handle", { targetHandle: "b" }],
+  ] as const)("sees a changed edge %s", (_field, change) => {
+    expect(sameDiagramModel(base, { ...base, edges: [{ ...edge, ...change }] })).toBe(false);
+  });
+
+  it("sees an edge whose id changed", () => {
+    expect(sameDiagramModel(base, { ...base, edges: [{ ...edge, id: "other" }] })).toBe(false);
+  });
+
+  it("sees reordered nodes and a changed background", () => {
+    expect(sameDiagramModel(base, { ...base, nodes: [...base.nodes].reverse() })).toBe(false);
+    expect(sameDiagramModel(base, { ...base, background: "#ffffff" })).toBe(false);
+    expect(sameDiagramModel({ ...base, background: "" }, base)).toBe(true);
   });
 });

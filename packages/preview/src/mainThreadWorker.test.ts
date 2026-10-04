@@ -20,6 +20,18 @@ describe("main-thread PDF worker fallback", () => {
     expect(typeof worker?.WorkerMessageHandler?.setup).toBe("function");
   });
 
+  it("refuses a module that does not expose the worker message handler", () => {
+    delete (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker;
+
+    expect(() => installPdfWorkerModule({})).toThrow(
+      new TypeError("PDF worker module does not expose WorkerMessageHandler.setup"),
+    );
+    expect(() => installPdfWorkerModule({ WorkerMessageHandler: { setup: "not callable" } })).toThrow(
+      TypeError,
+    );
+    expect((globalThis as { pdfjsWorker?: unknown }).pdfjsWorker).toBeUndefined();
+  });
+
   it("loads and installs the worker module directly on the main thread", async () => {
     delete (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker;
     await installMainThreadPdfWorker();

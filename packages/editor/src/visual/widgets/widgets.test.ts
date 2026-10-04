@@ -146,6 +146,16 @@ describe("typesetting", () => {
     expect(authors.textContent).toBe("Ann Bob");
   });
 
+  it("drops note commands, sizes spaces, breaks lines and keeps unknown commands", () => {
+    const text = "\\title{A\\thanks{x} B\\quad C\\\\D \\foo E $$}\n";
+    const editor = mount(text);
+    const title = argumentOf(editor.state, 3, "Title");
+    const element = typesetNodeInto(title, document.createElement("div"), editor.state);
+    expect(element.querySelector(".ofl-visual-space")?.getAttribute("style")).toBe("width: 1em;");
+    expect(element.querySelectorAll("br")).toHaveLength(1);
+    expect(element.textContent).toBe("A BCD \\foo E $$");
+  });
+
   it("substitutes symbols and renders inline math while typesetting", () => {
     const text = "\\title{Dots\\ldots and $x^2$}\n";
     const editor = mount(text);

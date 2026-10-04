@@ -26,7 +26,15 @@ vi.mock("@/lib/project-state-revision", () => ({
   currentProjectStateRevision: () => 7,
 }));
 
-import { openPreviewWindow, reattachPreviewWindow, restorePreviewWindow } from "./preview-window";
+import {
+  isPreviewWindowState,
+  openPreviewWindow,
+  reattachPreviewWindow,
+  refreshPreviewWindow,
+  restorePreviewWindow,
+  retargetPreviewWindow,
+} from "./preview-window";
+import { createCompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import { setPreviewDetached, usePreviewDetachedStore, wantsDetachedPreview } from "@/store/preview-detached";
 
 beforeEach(async () => {
@@ -220,5 +228,78 @@ describe("restoring detached previews", () => {
     await reattachPreviewWindow();
     await reattachPreviewWindow();
     expect(close).toHaveBeenCalledOnce();
+  });
+});
+
+const identity = { projectId: "p1", mainDocument: "main.tex", projectRevision: 3, requestGeneration: 4 };
+const checkpoint = createCompileSuccessCheckpoint({
+  ...identity,
+  outputKind: "standard",
+  producerId: "main",
+  outputRevision: 1,
+  outputId: "pdf-v1:1:0123456789abcdef",
+  previousCompletedAt: null,
+  now: 1,
+});
+
+describe("preview window state", () => {
+  it("sends a stamped refresh and project switches to the detached window", () => {
+    refreshPreviewWindow({ identity, status: "compiling", checkpoint: null });
+    refreshPreviewWindow();
+    retargetPreviewWindow("p2");
+    expect(emit.mock.calls).toEqual([
+      ["preview:refresh", { identity, status: "compiling", checkpoint: null, projectStateRevision: 7 }],
+      ["preview:refresh", undefined],
+      ["preview:project", { projectId: "p2" }],
+    ]);
+  });
+
+  it("sends nothing outside the desktop shell", () => {
+    state.tauri = false;
+    refreshPreviewWindow({ identity, status: "not_run", checkpoint: null, projectStateRevision: 2 });
+    retargetPreviewWindow("p2");
+    expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("hands an initial state to an open window and to a new window", async () => {
+    getByLabel.mockResolvedValueOnce({ setFocus, once });
+    const initial = { identity, status: "success" as const, checkpoint, projectStateRevision: 9 };
+    await openPreviewWindow("p1", "Paper", initial);
+    expect(emit).toHaveBeenCalledWith("preview:refresh", initial);
+
+    getByLabel.mockResolvedValueOnce(null);
+    await restorePreviewWindow(null, "");
+    getByLabel.mockResolvedValueOnce(null);
+    await openPreviewWindow("p1", "Paper", { identity, status: "error", checkpoint: null, message: "failed" });
+    const [, options] = WebviewWindow.mock.calls.at(-1) as unknown as [string, { url: string }];
+    const url = new URLSearchParams(options.url.split("?")[1]);
+    expect(JSON.parse(url.get("state") ?? "null")).toEqual({
+      identity,
+      status: "error",
+      checkpoint: null,
+      message: "failed",
+      projectStateRevision: 7,
+    });
+  });
+
+  it.each([
+    ["nothing", null],
+    ["a non-object", "state"],
+    ["a negative revision", { projectStateRevision: -1, identity, status: "not_run", checkpoint: null }],
+    ["an identity without a main document", { projectStateRevision: 1, identity: { ...identity, mainDocument: "" }, status: "not_run", checkpoint: null }],
+    ["a missing identity", { projectStateRevision: 1, status: "not_run", checkpoint: null }],
+    ["an unknown status", { projectStateRevision: 1, identity, status: "done", checkpoint: null }],
+    ["a malformed checkpoint", { projectStateRevision: 1, identity, status: "error", checkpoint: { projectId: "p1" } }],
+    ["a non-text message", { projectStateRevision: 1, identity, status: "error", checkpoint: null, message: 5 }],
+    ["an overlong message", { projectStateRevision: 1, identity, status: "error", checkpoint: null, message: "x".repeat(4_097) }],
+    ["a success without its checkpoint", { projectStateRevision: 1, identity, status: "success", checkpoint: null }],
+    ["a checkpoint from another request", { projectStateRevision: 1, identity: { ...identity, requestGeneration: 5 }, status: "error", checkpoint }],
+  ])("rejects %s", (_label, value) => {
+    expect(isPreviewWindowState(value)).toBe(false);
+  });
+
+  it("accepts a success with its exact checkpoint and failures that keep it", () => {
+    expect(isPreviewWindowState({ projectStateRevision: 1, identity, status: "success", checkpoint })).toBe(true);
+    expect(isPreviewWindowState({ projectStateRevision: 1, identity, status: "error", checkpoint, message: "x" })).toBe(true);
   });
 });

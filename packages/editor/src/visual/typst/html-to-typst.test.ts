@@ -91,3 +91,68 @@ describe("htmlToTypst", () => {
     expect(htmlToTypst("<p><b>a</b><script>alert(1)</script><style>p{}</style></p>")).toBe("*a*");
   });
 });
+
+describe("htmlToTypst block and inline coverage", () => {
+  it.each([
+    ["a definition list", "<dl><dt>Term</dt><dd>Meaning</dd></dl>", "/ Term: Meaning"],
+    ["a horizontal rule", "<p>a</p><hr><p>b</p>", "a\n\n#line(length: 100%)\n\nb"],
+    ["a block quote", "<blockquote><p>q</p></blockquote>", "#quote(block: true)[q]"],
+    ["an empty quote and heading", "<blockquote> </blockquote><h2></h2><p>x</p>", "x"],
+    ["code with a backtick", "<p><code>a`b</code></p>", '#raw("a`b")'],
+    ["code across lines", "<p><code>a\nb</code></p>", String.raw`#raw("a\nb")`],
+    ["empty code", "<p>x<code></code>y</p>", "xy"],
+    ["keyboard, sample and teletype text", "<p><kbd>K</kbd> <samp>S</samp> <tt>T</tt></p>", "`K` `S` `T`"],
+    ["an anchor link", '<p><a href="#top">anchor</a></p>', "anchor"],
+    ["a script link", '<p><a href="javascript:alert(1)">js</a></p>', "js"],
+    ["a link without an address", '<p><a href="">empty</a></p>', "empty"],
+    ["a link without text", '<p><a href="https://x.y"></a></p>', '#link("https://x.y")'],
+    [
+      "decorated spans",
+      '<p><span style="text-decoration: underline">u</span> <span style="text-decoration-line: line-through">s</span></p>',
+      "#underline[u] #strike[s]",
+    ],
+    [
+      "numeric and keyword font weights",
+      '<p><span style="font-weight: bolder">b</span> <span style="font-weight:600">c</span> <span style="font-weight:400">d</span> <span style="font-weight:abc">e</span></p>',
+      "*b* *c* d e",
+    ],
+    ["bold tags that Google Docs marks as normal", '<p><b style="font-weight:normal">not</b></p>', "not"],
+    ["scripts and styles", "<p>a<script>x</script>b<style>y</style></p>", "ab"],
+    [
+      "semantic inline tags",
+      "<p><em>e</em> <cite>c</cite> <var>v</var> <ins>i</ins> <del>d</del> <strike>s</strike> <small>m</small> <span>z</span></p>",
+      "_e_ _c_ _v_ #underline[i] #strike[d] #strike[s] m z",
+    ],
+    ["a block inside a paragraph", "<p>a<div>block</div>b</p>", "a\n\nblock\n\nb"],
+    ["mixed blocks and text in a division", "<div><p>a</p><div>b</div>c</div>", "a\n\nb\n\nc"],
+    ["a lone element wrapped in containers", "<div><span><b>lone</b></span></div>", "*lone*"],
+    ["formatting in a heading", "<h1><b>Bold</b> title</h1>", "= *Bold* title"],
+    ["runs of whitespace", "<p>multi   space\n\ttext</p>", "multi space text"],
+    ["a stray element in a list", "<ul><li>a</li><p>stray</p></ul>", "- a"],
+  ])("converts %s", (_name, html, expected) => {
+    expect(htmlToTypst(html)).toBe(expected);
+  });
+
+  it("fills short table rows and spans merged cells", () => {
+    expect(htmlToTypst('<table><tr><td colspan="2">A</td></tr><tr><td>B</td></tr></table>')).toBe(
+      "#table(\n  columns: 2,\n  table.cell(colspan: 2)[A],\n  [B], [],\n)",
+    );
+    expect(htmlToTypst("<table><tr><th>H</th><th>I</th></tr><tr><td>1</td></tr></table>")).toBe(
+      "#table(\n  columns: 2,\n  table.header([H], [I]),\n  [1], [],\n)",
+    );
+  });
+
+  it("fences preformatted text among other blocks with a longer fence than its content", () => {
+    expect(htmlToTypst('<p>a</p><pre><code class="language-py">x ``` y\n</code></pre>')).toBe(
+      "a\n\n````py\nx ``` y\n````",
+    );
+  });
+
+  it("leaves a lone preformatted block, empty input and pasted files to the plain paste", () => {
+    expect(htmlToTypst("<pre>plain\n</pre>")).toBeNull();
+    expect(htmlToTypst("   ")).toBeNull();
+    expect(htmlToTypst("<p></p>")).toBeNull();
+    expect(htmlToTypst("<p><b>x</b></p>", { hasFiles: true })).toBeNull();
+    expect(htmlToTypst("<table><tr><td>1</td></tr></table>", { hasFiles: true })).toBe("#table(\n  columns: 1,\n  [1],\n)");
+  });
+});

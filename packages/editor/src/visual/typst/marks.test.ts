@@ -103,4 +103,20 @@ describe("Typst mark decorations", () => {
     expect(classesFor(doc, "A caption")).toContain("ofl-visual-typst-caption");
     expect(classesFor(doc, "Term")).toContain("ofl-visual-typst-term");
   });
+
+  it("colours text from a hex fill and ignores other fills", () => {
+    const doc = '#text(fill: rgb("#ff0000"))[hex] #text(fill: gradient)[odd] #text(fill: blue.darken(10%))[dark]';
+    expect(marksOf(doc).find((mark) => mark.text === "hex" && mark.className === "ofl-visual-typst-text")?.style).toBe(
+      "color: #ff0000",
+    );
+    expect(classesFor(doc, "odd")).not.toContain("ofl-visual-typst-text");
+    expect(classesFor(doc, "dark")).not.toContain("ofl-visual-typst-text");
+  });
+
+  it("leaves empty headings, terms and captions unstyled", () => {
+    const doc = "= \n/ : meaning\n#figure(image(\"a.png\"), caption: [])";
+    expect(marksOf(doc).some((mark) => mark.className === "ofl-visual-heading")).toBe(false);
+    expect(marksOf(doc).some((mark) => mark.className === "ofl-visual-typst-term")).toBe(false);
+    expect(marksOf(doc).some((mark) => mark.className === "ofl-visual-typst-caption")).toBe(false);
+  });
 });

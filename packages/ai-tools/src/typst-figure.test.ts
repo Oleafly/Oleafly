@@ -129,4 +129,18 @@ describe("typstFigureMarkup", () => {
   it("keeps blank lines inside the body unindented", () => {
     expect(typstFigureMarkup("#let a = 1\n\n#a", {})).toBe("#figure[\n  #let a = 1\n\n  #a\n]");
   });
+
+  it("lifts a one-line import with a parenthesised item list", () => {
+    const code = '#import "@preview/fletcher:0.5.8": (diagram, node)\n#diagram(node((0, 0), [A]))';
+    expect(typstFigureMarkup(code, {})).toBe(
+      '#import "@preview/fletcher:0.5.8": (diagram, node)\n#figure[\n  #diagram(node((0, 0), [A]))\n]',
+    );
+  });
+
+  it("lifts imports separated by blank lines", () => {
+    const code = '#import "@preview/cetz:0.4.2"\n\n#import "@preview/fletcher:0.5.8"\n#box[]';
+    expect(typstFigureMarkup(code, { raw: true })).toBe(
+      '#import "@preview/cetz:0.4.2"\n#import "@preview/fletcher:0.5.8"\n#box[]',
+    );
+  });
 });

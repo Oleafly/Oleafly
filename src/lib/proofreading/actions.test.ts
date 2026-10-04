@@ -9,6 +9,7 @@ vi.mock("@oleafly/editor", () => ({
   },
 }));
 
+import { useDictionary } from "@/lib/dictionary";
 import { useToastStore } from "@/store/toast";
 import { installProofreadingActionHost } from "./actions";
 
@@ -31,5 +32,21 @@ describe("proofreading action host", () => {
       message: WRITE_FAILED,
       count: 2,
     });
+  });
+
+  it("treats a word that is already in a dictionary as added", () => {
+    useDictionary.setState({ ignored: {}, global: [] });
+
+    expect(host.current?.addToProjectDictionary("project-a", "Qwertzuiop")).toBe(true);
+    expect(host.current?.addToProjectDictionary("project-a", "Qwertzuiop")).toBe(true);
+    expect(host.current?.addToPersonalDictionary("Asdfghjkl")).toBe(true);
+    expect(host.current?.addToPersonalDictionary("Asdfghjkl")).toBe(true);
+    expect(useDictionary.getState().ignored["project-a"]).toEqual(["Qwertzuiop"]);
+    expect(useDictionary.getState().global).toEqual(["Asdfghjkl"]);
+  });
+
+  it("reports a word it could not add", () => {
+    expect(host.current?.addToProjectDictionary("project-a", "bad\u0007word")).toBe(false);
+    expect(host.current?.addToPersonalDictionary("")).toBe(false);
   });
 });

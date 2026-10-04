@@ -9,6 +9,7 @@ import {
   type LanguageServiceProjectSnapshot,
 } from "./language-service-controller";
 import { FakeTinymistTransport } from "./fake-tinymist-transport";
+import { currentInteractiveLanguageService } from "./interactive-language-service";
 import {
   absoluteProjectPath,
   DEFAULT_TYPST_LANGUAGE_SERVICE_SETTINGS,
@@ -299,5 +300,42 @@ describe("Tinymist configuration", () => {
     expect(settings.listenerCount()).toBe(1);
     await controller.dispose();
     expect(settings.listenerCount()).toBe(0);
+  });
+});
+
+describe("Tinymist interactive session", () => {
+  it("serves the synchronized documents to editor surfaces by project path", async () => {
+    const { controller } = harness();
+    controller.update(
+      typstSnapshot({
+        tree: [
+          { path: "main.typ", is_dir: false },
+          { path: "parts/intro.typ", is_dir: false },
+        ],
+        files: {
+          "main.typ": { content: "#include \"parts/intro.typ\"\n" },
+          "parts/intro.typ": { content: "= Intro\n" },
+        },
+      }),
+    );
+    await controller.whenIdle();
+
+    const session = currentInteractiveLanguageService();
+    expect(session).toMatchObject({
+      projectId: "project-typst",
+      projectRevision: 1,
+      kind: "tinymist",
+      positionEncoding: "utf-16",
+    });
+    expect(session?.documentForPath("parts\\intro.typ")).toEqual({
+      path: "parts/intro.typ",
+      uri: "file:///project/parts/intro.typ",
+      text: "= Intro\n",
+      version: 1,
+    });
+    expect(session?.documentForPath("missing.typ")).toBeNull();
+
+    await controller.dispose();
+    expect(currentInteractiveLanguageService()).toBeNull();
   });
 });

@@ -84,6 +84,11 @@ describe("bibliographyCandidatePaths", () => {
   it("returns nothing for a target that climbs out of the project", () => {
     expect(bibliographyCandidatePaths("../refs.bib", "main.tex", "latex")).toEqual([]);
   });
+
+  it("returns nothing for a drive path or a target with control characters", () => {
+    expect(bibliographyCandidatePaths("C:\\refs\\main.bib", "main.tex", "latex")).toEqual([]);
+    expect(bibliographyCandidatePaths("refs\u0007.bib", "main.tex", "latex")).toEqual([]);
+  });
 });
 
 describe("resolveBibliographyPath", () => {

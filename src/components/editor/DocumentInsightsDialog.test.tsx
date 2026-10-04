@@ -247,3 +247,60 @@ describe("DocumentInsightsDialog without a document engine", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(enEditor.documentInsights.noProject);
   });
 });
+
+describe("DocumentInsightsDialog details", () => {
+  it("explains a metadata copy that the clipboard refused", async () => {
+    Object.assign(navigator, { clipboard: { writeText: vi.fn().mockRejectedValue(new Error("denied")) } });
+    render(<DocumentInsightsDialog onClose={vi.fn()} />);
+    await screen.findByTestId("document-insights-metadata");
+    fireEvent.click(screen.getByTestId("document-insights-copy-metadata"));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enEditor.typstInsights.copyFailed);
+    expect(mocks.log).toHaveBeenCalledWith("copy submission metadata", expect.any(Error));
+    expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it("opens a tab from its overview count", async () => {
+    render(<DocumentInsightsDialog onClose={vi.fn()} />);
+    const metadata = await screen.findByTestId("document-insights-metadata");
+    const counts = metadata.closest("[role=tabpanel]") as HTMLElement;
+    fireEvent.click(within(counts).getByRole("button", { name: /Headings/ }));
+    expect(await screen.findByTestId("document-insight-entry")).toHaveTextContent("Introduction");
+  });
+
+  it("jumps to the citations from the unresolved warning", async () => {
+    useEngine("latexmk", "main.tex", { "main.tex": LATEX, "refs.bib": "@article{smith, title={A}}\n" });
+    render(<DocumentInsightsDialog onClose={vi.fn()} />);
+    fireEvent.click(await screen.findByTestId("document-insights-unresolved"));
+    expect(await screen.findAllByTestId("document-insight-citation")).toHaveLength(2);
+  });
+
+  it("shows untitled, unnumbered and unlocated elements and a truncation note", async () => {
+    mocks.invoke.mockResolvedValue({
+      ...READY,
+      truncated: true,
+      elements: [{ kind: "figure", text: "", label: null, level: null, figureKind: "image", numbered: false, page: null }],
+    });
+    useEngine("typst", "main.typ", { "main.typ": "Plain text only.\n" });
+    render(<DocumentInsightsDialog onClose={vi.fn()} />);
+    await screen.findByTestId("document-insights-metadata");
+    expect(screen.getByTestId("document-insights-dialog")).toHaveTextContent(enEditor.typstInsights.truncated);
+    await openTab(/Figures/);
+    const entry = await screen.findByTestId("document-insight-entry");
+    expect(entry.tagName).toBe("DIV");
+    expect(entry).toHaveAttribute("title", enEditor.typstInsights.notInSource);
+    expect(entry).toHaveTextContent(enEditor.typstInsights.untitled);
+    expect(entry).toHaveTextContent(enEditor.typstInsights.unnumbered);
+    const labels = screen.getByRole("tab", { name: /Labels/ });
+    fireEvent.mouseDown(labels);
+    fireEvent.click(labels);
+    expect(await screen.findByText(enEditor.typstInsights.empty.labels)).toBeVisible();
+  });
+
+  it("closes from the dialog's own close control", async () => {
+    const onClose = vi.fn();
+    render(<DocumentInsightsDialog onClose={onClose} />);
+    await screen.findByTestId("document-insights-metadata");
+    fireEvent.keyDown(screen.getByTestId("document-insights-dialog"), { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
+  });
+});

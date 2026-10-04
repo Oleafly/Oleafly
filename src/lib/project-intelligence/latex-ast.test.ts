@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { analyzeProjectFile } from "./analyze-file";
 import { assembleProjectIntelligence } from "./assemble";
 import { astAugmentLatexFile, latexAstReady } from "./latex-ast";
@@ -95,6 +95,38 @@ describe("astAugmentLatexFile", () => {
     const source = `\\newglossaryentry{\\{%\n\\begin{${"}".repeat(3)}`;
     expect(() => augment(source)).not.toThrow();
     expect(augment(source)).toBeNull();
+  });
+});
+
+describe("astAugmentLatexFile edge cases", () => {
+  it("keeps the generic detail when the name field or long form is missing", () => {
+    expect(augment(String.raw`\newglossaryentry{plain}{description={d}}`)?.definitions[0]).toMatchObject({
+      name: "plain",
+      detail: "glossary entry",
+    });
+    expect(augment(String.raw`\newabbreviation{abbr}{AB}`)?.definitions[0]).toMatchObject({
+      name: "abbr",
+      detail: "glossary entry",
+    });
+  });
+
+  it("ignores entries whose key is missing or is not a plain name", () => {
+    expect(augment(String.raw`\newglossaryentry{\macro}{name={N}}`)).toBeNull();
+    expect(augment(String.raw`\newglossaryentry`)).toBeNull();
+  });
+
+  it("finds entries nested inside groups and environments", () => {
+    const result = augment(String.raw`\begin{document}{\longnewglossaryentry{deep}{name={Deep}}{Long text}}\end{document}`);
+    expect(result?.definitions.map((definition) => [definition.name, definition.detail])).toEqual([["deep", "Deep"]]);
+  });
+
+  it("returns null until the lazily loaded parser is ready", async () => {
+    vi.resetModules();
+    const fresh = await import("./latex-ast");
+    const source = String.raw`\newacronym{ast}{AST}{Abstract Syntax Tree}`;
+    expect(fresh.astAugmentLatexFile("main.tex", source, lineStarts(source))).toBeNull();
+    await fresh.latexAstReady();
+    expect(fresh.astAugmentLatexFile("main.tex", source, lineStarts(source))?.definitions[0].name).toBe("ast");
   });
 });
 

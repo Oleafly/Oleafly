@@ -532,16 +532,18 @@ function failedImageInclusion(log: string): string | null {
 }
 
 function unconvertedEpsImage(log: string): string | null {
+  let mentioned = false;
   for (const quote of ["`", "'", '"']) {
     const suffix = `-eps-converted-to.pdf${quote === "`" ? "'" : quote} not found`;
     const at = log.indexOf(suffix);
     if (at === -1) continue;
+    mentioned = true;
     const opening = log.lastIndexOf(quote, at);
-    if (opening === -1 || at - opening > MAX_QUOTED_NAME) return "";
+    if (opening === -1 || at - opening > MAX_QUOTED_NAME) continue;
     const name = log.slice(opening + 1, at).trim();
-    return name ? `${name}.eps` : "";
+    if (name && !/[\n`'"]/.test(name)) return `${name}.eps`;
   }
-  return null;
+  return mentioned ? "" : null;
 }
 
 function epsImageFile(log: string): string | null {

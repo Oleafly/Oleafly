@@ -46,3 +46,68 @@ describe("extractPdfText cleanup", () => {
     expect(mocks.destroy).toHaveBeenCalledOnce();
   });
 });
+
+describe("extractPdfText", () => {
+  beforeEach(() => {
+    mocks.destroy.mockReset().mockResolvedValue(undefined);
+    mocks.getDocument.mockReset();
+  });
+
+  function page(items: unknown[], cleanup = vi.fn()) {
+    return { getTextContent: vi.fn(async () => ({ items })), cleanup };
+  }
+
+  it("joins text items into lines per page and cleans up every page", async () => {
+    const first = page([
+      { str: "Hello", transform: [1, 0, 0, 1, 10, 700] },
+      { str: " world  ", transform: [1, 0, 0, 1, 40, 700.5] },
+      { str: "Next line", transform: [1, 0, 0, 1, 10, 680] },
+      { type: "beginMarkedContent" },
+      { str: 42, transform: [1, 0, 0, 1, 10, 660] },
+      { str: "tail" },
+    ]);
+    const second = page([{ str: "  Page two  ", transform: [1, 0, 0, 1, 0, 100] }]);
+    const pages = [first, second];
+    const bytes = new Uint8Array([1, 2, 3]);
+    mocks.getDocument.mockReturnValue({
+      promise: Promise.resolve({ numPages: 2, getPage: vi.fn(async (n: number) => pages[n - 1]) }),
+      destroy: mocks.destroy,
+    });
+
+    const result = await extractPdfText(bytes);
+
+    expect(result).toEqual({ numPages: 2, pages: ["Hello world\nNext line\ntail", "Page two"] });
+    expect(first.cleanup).toHaveBeenCalledOnce();
+    expect(second.cleanup).toHaveBeenCalledOnce();
+    expect(mocks.destroy).toHaveBeenCalledOnce();
+    const passed = mocks.getDocument.mock.calls[0][0].data as Uint8Array;
+    expect(passed).toEqual(bytes);
+    expect(passed).not.toBe(bytes);
+  });
+
+  it("keeps going when page cleanup throws and still destroys the task", async () => {
+    const broken = page([{ str: "Only", transform: [1, 0, 0, 1, 0, 5] }], vi.fn(() => {
+      throw new Error("cleanup failed");
+    }));
+    mocks.destroy.mockRejectedValue(new Error("destroy failed"));
+    mocks.getDocument.mockReturnValue({
+      promise: Promise.resolve({ numPages: 1, getPage: vi.fn(async () => broken) }),
+      destroy: mocks.destroy,
+    });
+
+    await expect(extractPdfText(new Uint8Array([1]))).resolves.toEqual({ numPages: 1, pages: ["Only"] });
+    expect(broken.cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("cleans up the page when reading its text fails", async () => {
+    const failing = { getTextContent: vi.fn(async () => { throw new Error("bad content stream"); }), cleanup: vi.fn() };
+    mocks.getDocument.mockReturnValue({
+      promise: Promise.resolve({ numPages: 1, getPage: vi.fn(async () => failing) }),
+      destroy: mocks.destroy,
+    });
+
+    await expect(extractPdfText(new Uint8Array([1]))).rejects.toThrow("bad content stream");
+    expect(failing.cleanup).toHaveBeenCalledOnce();
+    expect(mocks.destroy).toHaveBeenCalledOnce();
+  });
+});

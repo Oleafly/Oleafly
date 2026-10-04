@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { attachSplitResizer, clampSplitRatio, readSplitRatio } from "./split-resizer";
 
 const globalsCss = readFileSync(
@@ -84,6 +84,114 @@ describe("diff split resizer", () => {
     const detach = attachSplitResizer(host);
     expect(host.querySelector('[role="separator"]')).toBeNull();
     detach();
+  });
+});
+
+describe("diff split resizer interaction", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  function separator(host: HTMLElement): HTMLElement {
+    const handle = host.querySelector<HTMLElement>('[role="separator"]');
+    if (!handle) throw new Error("no separator");
+    return handle;
+  }
+
+  function pointer(type: string, init: { button?: number; clientX?: number }) {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, ...init });
+    return event as unknown as PointerEvent;
+  }
+
+  it("follows a primary-button drag until the pointer is released", () => {
+    const { host, editors, first } = mergeHost();
+    vi.spyOn(editors, "getBoundingClientRect").mockReturnValue({ left: 100, width: 400 } as DOMRect);
+    attachSplitResizer(host);
+    const handle = separator(host);
+
+    const down = pointer("pointerdown", { button: 0 });
+    handle.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    expect(handle.dataset.dragging).toBe("true");
+    window.dispatchEvent(pointer("pointermove", { clientX: 260 }));
+    expect(first.style.flex).toBe("0 0 40%");
+    expect(handle.getAttribute("aria-valuenow")).toBe("40");
+
+    window.dispatchEvent(pointer("pointerup", {}));
+    expect(handle.dataset.dragging).toBe("false");
+    window.dispatchEvent(pointer("pointermove", { clientX: 420 }));
+    expect(first.style.flex).toBe("0 0 40%");
+  });
+
+  it("ignores other buttons and a collapsed pane area", () => {
+    const { host, editors, first } = mergeHost();
+    vi.spyOn(editors, "getBoundingClientRect").mockReturnValue({ left: 0, width: 0 } as DOMRect);
+    attachSplitResizer(host);
+    const handle = separator(host);
+
+    handle.dispatchEvent(pointer("pointerdown", { button: 2 }));
+    expect(handle.dataset.dragging).toBeUndefined();
+
+    handle.dispatchEvent(pointer("pointerdown", { button: 0 }));
+    window.dispatchEvent(pointer("pointermove", { clientX: 30 }));
+    expect(first.style.flex).toBe("0 0 50%");
+  });
+
+  it("steps left, jumps home and leaves other keys alone", () => {
+    const { host, first } = mergeHost();
+    attachSplitResizer(host);
+    const handle = separator(host);
+    const left = new KeyboardEvent("keydown", { key: "ArrowLeft", cancelable: true });
+    handle.dispatchEvent(left);
+    expect(left.defaultPrevented).toBe(true);
+    expect(first.style.flex).toBe("0 0 45%");
+    handle.dispatchEvent(new KeyboardEvent("keydown", { key: "Home" }));
+    expect(first.style.flex).toBe("0 0 20%");
+    const other = new KeyboardEvent("keydown", { key: "Tab", cancelable: true });
+    handle.dispatchEvent(other);
+    expect(other.defaultPrevented).toBe(false);
+    expect(first.style.flex).toBe("0 0 20%");
+  });
+
+  it("keeps working when storage is unavailable", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("blocked");
+    });
+    expect(readSplitRatio()).toBe(50);
+    const { host, first } = mergeHost();
+    attachSplitResizer(host);
+    separator(host).dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" }));
+    expect(first.style.flex).toBe("0 0 55%");
+  });
+
+  it("repositions the handle when the host resizes and stops observing on detach", () => {
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    let resize: () => void = () => {};
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(callback: () => void) {
+          resize = callback;
+        }
+        observe = observe;
+        disconnect = disconnect;
+      },
+    );
+    const { host, first, second } = mergeHost();
+    const detach = attachSplitResizer(host);
+    expect(observe).toHaveBeenCalledWith(host);
+    vi.spyOn(host, "getBoundingClientRect").mockReturnValue({ left: 10 } as DOMRect);
+    vi.spyOn(first, "getBoundingClientRect").mockReturnValue({ right: 210 } as DOMRect);
+    vi.spyOn(second, "getBoundingClientRect").mockReturnValue({ left: 220 } as DOMRect);
+    resize();
+    expect(separator(host).style.left).toBe("205px");
+    detach();
+    expect(disconnect).toHaveBeenCalledOnce();
   });
 });
 

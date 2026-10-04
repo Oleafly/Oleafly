@@ -304,3 +304,94 @@ describe("DocumentSettingsDialog for Markdown", () => {
     expect(screen.getByRole("button", { name: settings.apply })).toBeDisabled();
   });
 });
+
+describe("DocumentSettingsDialog failures and storage", () => {
+  it("explains a project without a Typst main file", async () => {
+    mocks.state.mainDoc = "notes.md";
+    mocks.state.engine = { id: "typst" };
+    mocks.state.engineLoaded = true;
+    render(<DocumentSettingsDialog onClose={vi.fn()} />);
+    expect(await screen.findByText(settings.noMainFile)).toBeVisible();
+    expect(mocks.readFile).not.toHaveBeenCalled();
+  });
+
+  it("reports a main file it could not read", async () => {
+    mocks.state.activePath = "other.typ";
+    mocks.readFile.mockRejectedValue(new Error("gone"));
+    render(<DocumentSettingsDialog onClose={vi.fn()} />);
+    expect(await screen.findByText(settings.readFailed)).toBeVisible();
+    expect(mocks.log).toHaveBeenCalledWith("read document settings", expect.any(Error));
+  });
+
+  it("needs a project to read a main file that is not loaded", async () => {
+    mocks.state.activePath = "other.typ";
+    mocks.state.projectId = "";
+    render(<DocumentSettingsDialog onClose={vi.fn()} />);
+    expect(await screen.findByText(settings.readFailed)).toBeVisible();
+    expect(mocks.readFile).not.toHaveBeenCalled();
+  });
+
+  it("edits the loaded buffer of a main file in another tab and saves it", async () => {
+    mocks.state.activePath = "other.typ";
+    mocks.state.files = { "main.typ": { content: MAIN } };
+    mocks.state.setContent.mockReturnValue(true);
+    mocks.state.saveFile.mockResolvedValue(undefined);
+    const onClose = vi.fn();
+    render(<DocumentSettingsDialog onClose={onClose} />);
+    fireEvent.change(await screen.findByLabelText(settings.fields.fontSize), { target: { value: "12pt" } });
+    fireEvent.click(screen.getByRole("button", { name: settings.apply }));
+    await waitFor(() => expect(mocks.state.saveFile).toHaveBeenCalledWith("main.typ"));
+    expect(mocks.state.setContent).toHaveBeenCalledWith("main.typ", MAIN.replace("11pt", "12pt"));
+    expect(mocks.readFile).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("writes the file to disk when the loaded buffer refuses the edit", async () => {
+    mocks.state.activePath = "other.typ";
+    mocks.state.files = { "main.typ": { content: MAIN } };
+    mocks.state.setContent.mockReturnValue(false);
+    mocks.state.writeProjectFile.mockResolvedValue(undefined);
+    render(<DocumentSettingsDialog onClose={vi.fn()} />);
+    fireEvent.change(await screen.findByLabelText(settings.fields.fontSize), { target: { value: "12pt" } });
+    fireEvent.click(screen.getByRole("button", { name: settings.apply }));
+    await waitFor(() =>
+      expect(mocks.state.writeProjectFile).toHaveBeenCalledWith("paper", "main.typ", MAIN.replace("11pt", "12pt")),
+    );
+    expect(mocks.state.saveFile).not.toHaveBeenCalled();
+  });
+
+  it("keeps the dialog open with a reason when writing fails", async () => {
+    mocks.state.activePath = "other.typ";
+    mocks.readFile.mockResolvedValue(MAIN);
+    mocks.state.writeProjectFile.mockRejectedValue(new Error("disk full"));
+    const onClose = vi.fn();
+    render(<DocumentSettingsDialog onClose={onClose} />);
+    fireEvent.change(await screen.findByLabelText(settings.fields.fontSize), { target: { value: "12pt" } });
+    fireEvent.click(screen.getByRole("button", { name: settings.apply }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(settings.saveFailed);
+    expect(mocks.log).toHaveBeenCalledWith("write document settings", expect.any(Error));
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: settings.apply })).toBeEnabled();
+  });
+
+  it("treats a value that only gains spaces as unchanged", async () => {
+    editorWith(MAIN);
+    const onClose = vi.fn();
+    render(<DocumentSettingsDialog onClose={onClose} />);
+    fireEvent.change(await screen.findByLabelText(settings.fields.fontSize), { target: { value: " 11pt " } });
+    fireEvent.change(screen.getByLabelText(settings.fields.lang), { target: { value: "de" } });
+    expect(screen.getByRole("button", { name: settings.apply })).toBeDisabled();
+  });
+
+  it("reports a font list it could not load and stops offering it", async () => {
+    editorWith(MAIN);
+    mocks.fonts.mockRejectedValue(new Error("typst missing"));
+    render(<DocumentSettingsDialog onClose={vi.fn()} />);
+    const font = await screen.findByLabelText(settings.fields.font);
+    fireEvent.focus(font);
+    await waitFor(() => expect(mocks.log).toHaveBeenCalledWith("list fonts for document settings", expect.any(Error)));
+    fireEvent.click(font);
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(mocks.fonts).toHaveBeenCalledOnce();
+  });
+});

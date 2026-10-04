@@ -169,4 +169,15 @@ describe("BibTeX field completion", () => {
   it("stays quiet for an entry type it does not know", () => {
     expect(completion("@nope{k,\n  au")).toBeNull();
   });
+
+  it("offers fields in a parenthesised entry after a completed quoted or escaped value", () => {
+    expect(labels(completion('@book(k,\n  title = "A \\" B",\n  pu'))).toContain("publisher");
+    expect(labels(completion("@book(k,\n  title = {A {nested} \\} B},\n  pu"))).toContain("publisher");
+  });
+
+  it("stays quiet after a closed parenthesised entry or a malformed field name", () => {
+    expect(completion("@book(k,\n  title = {T}\n)\nau")).toBeNull();
+    expect(completion("@book{k,\n  title = {T}},\n  pu")).toBeNull();
+    expect(completion("@book{k,\n  ti tle")).toBeNull();
+  });
 });

@@ -70,4 +70,26 @@ describe("Enter in Visual mode", () => {
     const editor = mount(LIST_DOCUMENT, positionOf(LIST_DOCUMENT, "Tail"));
     expect(insertListItemOrLeaveHeading(editor)).toBe(false);
   });
+
+  it("continues the outer list when leaving an empty last item of a nested list", () => {
+    const text = "\\begin{itemize}\n  \\item One\n  \\begin{enumerate}\n    \\item Two\n    \\item\n  \\end{enumerate}\n\\end{itemize}\n";
+    const editor = mount(text, positionOf(text, "\\item\n") + "\\item".length);
+    expect(insertListItemOrLeaveHeading(editor)).toBe(true);
+    const doc = editor.state.doc.toString();
+    expect(doc).toContain("\\item Two\n  \\end{enumerate}\n");
+    expect(doc.match(/\\item /gu)).toHaveLength(3);
+    expect(doc.slice(0, editor.state.selection.main.head).endsWith("\\item ")).toBe(true);
+  });
+
+  it("keeps a selection and a heading on the last line unchanged", () => {
+    const selected = new EditorView({
+      state: EditorState.create({ doc: LIST_DOCUMENT, selection: { anchor: 0, head: 5 }, extensions: [latexTreeSupport()] }),
+      parent: document.body,
+    });
+    expect(insertListItemOrLeaveHeading(selected)).toBe(false);
+    selected.destroy();
+    const heading = "\\section{Last}";
+    const editor = mount(heading, 10);
+    expect(insertListItemOrLeaveHeading(editor)).toBe(false);
+  });
 });

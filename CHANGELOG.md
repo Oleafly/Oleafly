@@ -16,6 +16,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Layout menu showed the same icon for five of its seven layouts. Each
   layout now has its own icon that shows which panes it opens: the editor,
   the preview and the AI assistant.
+- Drawing a circle by dragging up and to the left no longer makes it jump
+  sideways when you let go.
+- A LaTeX run that produced no pages now says "No pages of output." in the
+  log instead of "undefined".
+- When an EPS image can't be converted and the log quotes its name with
+  straight quotes, the compile hint now names the file.
+- A BibTeX log with an entry error followed by a command error now reports
+  both, each at its own line. The command error used to borrow the entry
+  error's message, and the real one was lost.
+- Typst preflight no longer skips the rest of a line after a link written
+  right after a word, such as `xhttps://example.com`. Typst treats that as a
+  link too.
 
 ## [0.4.4] - 2026-10-03
 
