@@ -7,7 +7,6 @@ import {
   lineStarts,
   location,
   maskLatexComments,
-  maskTypstComments,
   normalizeProjectPath,
   rangeFromOffsets,
   resolveProjectPath,
@@ -110,18 +109,6 @@ describe("comment masking", () => {
       `50\\% off${" ".repeat(7)}`,
       `\\\\${" ".repeat(20)}`,
       "end",
-    ]);
-  });
-
-  it("blanks Typst line and nested block comments but not URLs", () => {
-    const source = "a // line\nhttps://x.org/p // tail\n/* one /* two */\nstill */ b";
-    const masked = maskTypstComments(source);
-    expect(masked).toHaveLength(source.length);
-    expect(masked.split("\n")).toEqual([
-      `a${" ".repeat(8)}`,
-      `https://x.org/p${" ".repeat(8)}`,
-      " ".repeat(16),
-      `${" ".repeat(9)}b`,
     ]);
   });
 });

@@ -1995,8 +1995,31 @@ describe("LanguageServiceController start failures", () => {
     });
   });
 
-  it("reports setup that installs but cannot synchronize", async () => {
-    const { controller, store, install } = harness({
+  it("reports a cleanup failure when setup cannot stop the runtime it could not synchronize", async () => {
+    const { controller, store, clients } = harness({
+      installState: "missing",
+      defaultCoordinator: true,
+      configureClient: (client) => {
+        client.stopFailures = 2;
+      },
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+
+    await expect(controller.setup()).rejects.toThrow(
+      LANGUAGE_SERVICE_SETUP_FAILURE_REASON,
+    );
+    await controller.whenIdle();
+    expect(clients[0].stopCount).toBe(2);
+    expect(store.getState().snapshot.languageService).toMatchObject({
+      readiness: "unavailable",
+      reason: LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
+      failure: { message: LANGUAGE_SERVICE_DISPOSE_FAILURE_REASON },
+    });
+  });
+
+  it("tears down and reports setup that installs but cannot synchronize", async () => {
+    const { controller, store, install, clients } = harness({
       installState: "missing",
       defaultCoordinator: true,
     });
@@ -2008,6 +2031,8 @@ describe("LanguageServiceController start failures", () => {
     );
     await controller.whenIdle();
     expect(install).toHaveBeenCalledTimes(1);
+    expect(clients).toHaveLength(1);
+    expect(clients[0].stopCount).toBe(1);
     expect(store.getState().snapshot.languageService).toMatchObject({
       readiness: "unavailable",
       reason: { key: "setupCouldNotSynchronize" },

@@ -26,14 +26,14 @@ function leaveEmptyLastItem(state: EditorState, list: SyntaxNode, lineFrom: numb
   const changes: ChangeSpec[] = [deleteLine];
   const atDocumentEnd = list.to >= state.doc.length;
   const pos = atDocumentEnd ? list.to : list.to + 1;
-  let cursor = EditorSelection.cursor(pos);
+  let cursor = state.changes(deleteLine).mapPos(pos);
   if (ancestorOfType(list.parent, "ListEnvironment")) {
     const item = listItemText(state, pos);
     const insert = atDocumentEnd ? `\n${item}` : `${item}\n`;
     changes.push({ from: pos, insert });
-    cursor = EditorSelection.cursor(pos + insert.length - (atDocumentEnd ? 0 : 1));
+    cursor += insert.length - (atDocumentEnd ? 0 : 1);
   }
-  return { changes, range: cursor.map(state.changes(deleteLine)) };
+  return { changes, range: EditorSelection.cursor(cursor) };
 }
 
 function continueList(state: EditorState, range: SelectionRange, list: SyntaxNode): RangeChange {

@@ -464,7 +464,8 @@ function normalizeCompletion(
     text.slice(Math.max(0, position - 300), position),
   );
   for (const raw of completionItems(value)) {
-    if (options.length >= MAX_COMPLETION_ITEMS || !isRecord(raw)) break;
+    if (options.length >= MAX_COMPLETION_ITEMS) break;
+    if (!isRecord(raw)) continue;
     const prepared = prepareCompletion(raw, {
       index,
       session,

@@ -248,6 +248,7 @@ function wordAt(text: string, offset: number): OffsetRange | null {
   let to = offset;
   while (from > 0 && word.test(text[from - 1])) from -= 1;
   while (to < text.length && word.test(text[to])) to += 1;
+  while (to > from && text[to - 1] === ".") to -= 1;
   return to > from ? { from, to } : null;
 }
 
@@ -874,7 +875,7 @@ async function applyLanguageServiceRename(
     toast.error(i18n.t(($) => $.core.navigation.renameFailed, { name: newName }));
     return "skipped";
   }
-  if (plan.edits.length === 0 && plan.moves.length === 0) {
+  if (plan.edits.length === 0 && plan.moves.length === 0 && plan.skipped.length === 0) {
     toast.info(i18n.t(($) => $.core.navigation.nothingToRename));
     return "unchanged";
   }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { lintLatexText } from "./latex-linter";
+import { setEditorTranslator } from "./messages";
 import { installEnglishEditorMessages } from "./test-messages";
 
 installEnglishEditorMessages();
@@ -303,6 +304,20 @@ describe("lintLatexText: bracket math delimiters", () => {
     expect(findings(String.raw`a\]`)).toEqual([[String.raw`\]`, String.raw`\] has no matching \[`]]);
   });
 
+  it("translates the bracket delimiter messages", () => {
+    setEditorTranslator((key, params) => `${key} ${JSON.stringify(params ?? {})}`);
+    try {
+      expect(lintLatexText(String.raw`\(a\]`).map(({ message }) => message)).toContain(
+        String.raw`latex.lint.mismatchedMathDelimiter {"expected":"\\)","found":"\\]"}`,
+      );
+      expect(lintLatexText(String.raw`a\)`).map(({ message }) => message)).toEqual([
+        String.raw`latex.lint.endWithoutBegin {"end":"\\)","begin":"\\("}`,
+      ]);
+    } finally {
+      installEnglishEditorMessages();
+    }
+  });
+
   it("reports a dollar that closes the wrong delimiter", () => {
     expect(findings(String.raw`\(a$`)).toEqual([
       [String.raw`\(`, String.raw`Unclosed math delimiter \(. Expected \)`],
@@ -355,6 +370,14 @@ describe("lintLatexText: definition forms", () => {
 \newenvironment*{g}{a}{b}
 \newenvironment{h}[1]{a}{b}`;
     expect(lintLatexText(source)).toEqual([]);
+  });
+
+  it("accepts a closing bracket inside a braced default argument", () => {
+    expect(lintLatexText(String.raw`\newcommand{\x}[2][{a]b}]{#1#2}`)).toEqual([]);
+    expect(lintLatexText(String.raw`\newenvironment{y}[1][{[}]{#1}{}`)).toEqual([]);
+    expect(findings(String.raw`\newcommand{\x}[2][{a]b}`)).toEqual([
+      ["[", String.raw`Unclosed default argument for \newcommand`],
+    ]);
   });
 
   it("reports argument counts that are not a single digit", () => {

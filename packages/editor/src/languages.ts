@@ -25,10 +25,9 @@ export function languageForPath(path: string): LanguageSupport | null {
     return new LanguageSupport(StreamLanguage.define(properties));
   if (/\.(ya?ml)$/.test(p)) return new LanguageSupport(StreamLanguage.define(yaml));
   if (p.endsWith(".toml")) return new LanguageSupport(StreamLanguage.define(toml));
-  if (/\.(sh|bash)$/.test(p) || base === "dockerfile" || p.endsWith(".dockerfile"))
-    return base.startsWith("dockerfile")
-      ? new LanguageSupport(StreamLanguage.define(dockerFile))
-      : new LanguageSupport(StreamLanguage.define(shell));
+  if (base === "dockerfile" || p.endsWith(".dockerfile"))
+    return new LanguageSupport(StreamLanguage.define(dockerFile));
+  if (/\.(sh|bash)$/.test(p)) return new LanguageSupport(StreamLanguage.define(shell));
 
   return null;
 }

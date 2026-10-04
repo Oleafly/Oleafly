@@ -378,8 +378,12 @@ function parsedControlSequence(
   return { label: match[0], to: from + match[0].length };
 }
 
-function snippetDefault(value: string): string {
-  return value.trim().replace(/[\\$}]/gu, String.raw`\$&`);
+function snippetDefaultField(placeholder: number, value: string): string {
+  const text = value.trim();
+  if (/[{}]/u.test(text)) {
+    return `${"${"}${text.replace(/[{}]/gu, String.raw`\$&`)}}`;
+  }
+  return text ? `${"${"}${placeholder}:${text}}` : `${"${"}${placeholder}}`;
 }
 
 function argumentDetail(
@@ -429,7 +433,7 @@ function classicCommandDefinition(
   let optional = 0;
   for (let index = 1; index <= count; index += 1) {
     if (index === 1 && defaultValue !== null) {
-      template += `[${"${"}${index}:${snippetDefault(defaultValue)}}]`;
+      template += `[${snippetDefaultField(index, defaultValue)}]`;
       required -= 1;
       optional += 1;
     } else {
@@ -480,11 +484,9 @@ function xparseDefaultedOptional(
   placeholder: number,
 ): XparseTemplateStep {
   const defaultGroup = parsedGroup(specification, cursor);
-  const value = snippetDefault(defaultGroup?.content ?? "");
-  const suffix = value ? `:${value}` : "";
   return {
     cursor: defaultGroup?.to ?? cursor,
-    snippet: `[${"${"}${placeholder}${suffix}}]`,
+    snippet: `[${snippetDefaultField(placeholder, defaultGroup?.content ?? "")}]`,
   };
 }
 

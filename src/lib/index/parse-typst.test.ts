@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseFile } from "./parse-file";
+import { maskTypstSource, typstRawEnd } from "./parse-typst";
 
 describe("parseFile: Typst", () => {
   it("parses headings and labels with exact spans and ignores comments", () => {
@@ -141,6 +142,69 @@ describe("parseFile: Typst comments and code masking", () => {
       "book/parts/intro.typ",
       "book/notes.typ",
     ]);
+  });
+
+  it("keeps a double slash inside a code string out of comment masking", () => {
+    const text = '#let s = "x // y"\nSee @first.\n#import "./parts//intro.typ": x\nSee @after <here>.\n#let n = 1 // @gone';
+    const parsed = parseFile("book/main.typ", text);
+    expect(parsed.uses.map((s) => [s.kind, s.name, s.line])).toEqual([
+      ["atuse", "first", 2],
+      ["atuse", "after", 4],
+      ["inputedge", "./parts//intro.typ", 3],
+    ]);
+    expect(parsed.uses.find((s) => s.kind === "inputedge")?.target).toBe("book/parts/intro.typ");
+    expect(parsed.defs.map((s) => s.name)).toEqual(["here"]);
+  });
+
+  it("ignores references, labels, headings and imports inside raw text", () => {
+    const text = [
+      "= Intro <intro>",
+      "Inline `@nokey <nolabel>` raw, `` then @intro.",
+      "```typ",
+      "= Not a heading",
+      '#import "fenced.typ" @fenced <fencedlabel> // "',
+      "```",
+      "#let r = `@code <codelabel>` + \"`\"",
+      "@after",
+    ].join("\n");
+    const parsed = parseFile("main.typ", text);
+    expect(parsed.defs.map((s) => [s.kind, s.name])).toEqual([
+      ["section", "Intro"],
+      ["label", "intro"],
+    ]);
+    expect(parsed.uses.map((s) => [s.kind, s.name, s.line])).toEqual([
+      ["atuse", "intro", 2],
+      ["atuse", "after", 8],
+    ]);
+  });
+
+  it("blanks comments and raw text but keeps URLs, code strings and line breaks", () => {
+    const source = 'a // line\nhttps://x.org/p // tail\n/* one /* two */\nstill */ b\n#f("x // y") `r // s` ```\nz\n``` c';
+    const masked = maskTypstSource(source);
+    expect(masked.text).toHaveLength(source.length);
+    expect(masked.text.split("\n")).toEqual([
+      `a${" ".repeat(8)}`,
+      `https://x.org/p${" ".repeat(8)}`,
+      " ".repeat(16),
+      `${" ".repeat(9)}b`,
+      `#f("x // y")${" ".repeat(13)}`,
+      " ",
+      `${" ".repeat(3)} c`,
+    ]);
+    expect(masked.code.split("\n")[4]).toBe(`#f(${" ".repeat(8)})${" ".repeat(13)}`);
+  });
+
+  it("closes raw text at the first fence of its own width and reads `` as empty raw", () => {
+    expect(typstRawEnd("`a``b`", 0)).toBe(3);
+    expect(typstRawEnd("`` @x", 0)).toBe(2);
+    expect(typstRawEnd("```a````b", 0)).toBe(7);
+    expect(typstRawEnd("```open", 0)).toBe(3);
+  });
+
+  it("keeps indexing after a raw fence that never closes", () => {
+    const parsed = parseFile("main.typ", "Typing `code @first\n<here>");
+    expect(parsed.uses.map((s) => s.name)).toEqual(["first"]);
+    expect(parsed.defs.map((s) => s.name)).toEqual(["here"]);
   });
 
   it("skips a heading marker with no title", () => {

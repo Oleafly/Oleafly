@@ -109,4 +109,16 @@ describe("bibliography identities from varied fields", () => {
     expect(isRecordInBibliography(rec({ doi: "doi:", title: "Graph Neural Networks!" }), ids)).toBe(true);
     expect(isRecordInBibliography(rec({ doi: "doi:", title: "Unrelated" }), ids)).toBe(false);
   });
+
+  it("stops an arXiv id at the braces and commas of a LaTeX link around it", () => {
+    const ids = parseBibliographyIdentities(String.raw`@misc{c,
+  note = {\url{https://arxiv.org/abs/2003.00003}},
+  howpublished = {\href{https://arxiv.org/abs/hep-th/9901001v2}{arXiv}},
+}`);
+    expect([...ids.arxivIds].sort()).toEqual(["2003.00003", "hep-th/9901001"]);
+    expect(isRecordInBibliography(rec({ doi: null, title: "Other", sourceIds: { arxiv: "2003.00003" } }), ids)).toBe(true);
+    expect(
+      isRecordInBibliography(rec({ doi: null, title: "Other", url: String.raw`\url{https://arxiv.org/abs/hep-th/9901001}` }), ids),
+    ).toBe(true);
+  });
 });

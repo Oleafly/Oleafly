@@ -453,6 +453,21 @@ describe("hayagrivaEntries edge shapes", () => {
     expect(hayagrivaEntries(source)[0].authors).toEqual(["Doe, Jane", "Roe", "Poe, Edgar"]);
   });
 
+  it("reads a person written as a bare dash followed by an indented mapping", () => {
+    const source = [
+      "e:",
+      "  type: misc",
+      "  author:",
+      "    -",
+      "      name: Doe",
+      "      given-name: Jane",
+      "    - # comment only",
+      "      name: Roe",
+      "    - Poe, Edgar",
+    ].join("\n");
+    expect(hayagrivaEntries(source)[0].authors).toEqual(["Doe, Jane", "Roe", "Poe, Edgar"]);
+  });
+
   it("finds no people in an author mapping that is not a list", () => {
     const entry = hayagrivaEntries("e:\n  type: misc\n  author:\n    name: Doe\n")[0];
     expect(entry.authors).toEqual([]);

@@ -28,6 +28,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Typst preflight no longer skips the rest of a line after a link written
   right after a word, such as `xhttps://example.com`. Typst treats that as a
   link too.
+- One file Oleafly couldn't read stopped project intelligence (the outline,
+  references and go-to-definition) for the whole project. That file is now
+  reported on its own and the rest keeps working. Analysis also no longer
+  waits forever when the background worker sends back a mismatched answer.
+- Code completion kept only the suggestions before a malformed one from the
+  language server. It now skips just the bad item.
+- In Typst projects, a string ending in an escaped backslash such as
+  `"C:\\"` no longer shows a false unclosed-string error. References, labels
+  and images inside raw text are no longer treated as real ones, and a `//`
+  inside a string no longer hides the rest of the line.
+- Completing a LaTeX command whose optional default holds `\`, `$` or braces
+  now inserts the default exactly as written. The linter no longer reports a
+  missing body for a definition whose default contains a `]` inside braces,
+  and its `\)` and `\]` messages now appear in your interface language.
+- Pressing Enter on an empty last item of a nested list near the end of a
+  document no longer throws an error in the Visual editor.
+- Converting LaTeX math to Typst now handles `\hspace*`, a mismatched
+  `\end{...}` no longer repeats a row, and `\left`/`\right` with word
+  delimiters keeps the words apart.
+- Files ending in `.dockerfile` get Dockerfile highlighting, and Markdown
+  footnote references such as `[^note]` are no longer spell-checked.
+- Rename now reports a write failure when none of the language server's
+  edits could be saved, instead of "Nothing to rename.", and the default new
+  name leaves out a trailing period.
+- arXiv links wrapped in LaTeX braces no longer produce ids with stray `}`
+  or `,`, so papers you already cite are not suggested again. Hayagriva
+  author lists written as a bare `-` followed by an indented entry are read.
 
 ## [0.4.4] - 2026-10-03
 

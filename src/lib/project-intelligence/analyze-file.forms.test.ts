@@ -228,6 +228,34 @@ describe("Typst bibliography, asset and link uses", () => {
     ]);
     expect(usesOf(analysis, "link")).toEqual([["appendix.typ", "doc/appendix.typ"]]);
   });
+
+  it("ignores uses, labels and delimiters inside inline and fenced raw text", () => {
+    const analysis = analyzeProjectFile(
+      "main.typ",
+      [
+        "= Intro <intro>",
+        'Inline `@nokey <nolabel> #image("x.png") #link("y.typ")` raw, `` then @intro.',
+        "```typ",
+        "= Not a heading",
+        '#image("fenced.png") #link("fenced.typ") #ref(<fencedref>) #cite(<fencedcite>)',
+        '#import "fenced.typ" @fenced <fencedlabel> /* ( "',
+        "```",
+        '#let r = `#image("code.png") @code`',
+      ].join("\n"),
+      1,
+    );
+    expect(analysis.uses.map((use) => [use.kind, use.name])).toEqual([["reference", "intro"]]);
+    expect(
+      analysis.definitions.filter((definition) => definition.kind !== "file").map((definition) => [definition.kind, definition.name]),
+    ).toEqual([
+      ["section", "Intro"],
+      ["label", "intro"],
+      ["macro", "r"],
+    ]);
+    expect(analysis.edges).toEqual([]);
+    expect(analysis.diagnostics).toEqual([]);
+    expect(analysis.status).toBe("success");
+  });
 });
 
 describe("unsupported files", () => {
@@ -263,6 +291,12 @@ describe("malformed source diagnostics", () => {
       ['#let s = "(not [code] /* x */"', "/* outer /* inner */ still ( */", '#let t = "say \\"hi\\""', "// trailing ) comment"].join("\n"),
       1,
     );
+    expect(analysis.diagnostics).toEqual([]);
+    expect(analysis.status).toBe("success");
+  });
+
+  it("closes a Typst string that ends in an escaped backslash", () => {
+    const analysis = analyzeProjectFile("e.typ", [String.raw`#let p = "C:\\"`, String.raw`#let q = "a\\\"b"`, "#f(p)"].join("\n"), 1);
     expect(analysis.diagnostics).toEqual([]);
     expect(analysis.status).toBe("success");
   });

@@ -229,6 +229,13 @@ describe("normalising completion items", () => {
     expect(result?.options.map((option) => option.label)).toEqual(["dup", "dup"]);
   });
 
+  it("skips a malformed item and keeps the items after it", async () => {
+    activate("\\x");
+    requestCompletion.mockResolvedValue([{ label: "a" }, 7, null, { label: "b" }]);
+    const result = await complete("\\x");
+    expect(result?.options.map((option) => option.label)).toEqual(["a", "b"]);
+  });
+
   it("caps the list at five hundred items", async () => {
     activate("\\x");
     requestCompletion.mockResolvedValue(
