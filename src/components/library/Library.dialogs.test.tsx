@@ -733,7 +733,7 @@ describe("Library list rows", () => {
     expect(useFavoritesStore.getState().favs).not.toContain("paper");
 
     fireEvent.click(screen.getAllByRole("button", { name: enLibrary.projects.favoriteAdd })[0]);
-    expect(useFavoritesStore.getState().favs.length).toBe(1);
+    expect(useFavoritesStore.getState().favs).toHaveLength(1);
   });
 
   it("still explains a vanished project when the list cannot refresh", async () => {

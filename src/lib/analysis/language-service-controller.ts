@@ -973,7 +973,9 @@ export class LanguageServiceController {
       }
       const failedRuntime = this.runtime;
       if (failedRuntime && !failedRuntime.cleanupFailed) {
-        await this.teardownRuntime(failedRuntime).catch(() => {});
+        try {
+          await this.teardownRuntime(failedRuntime);
+        } catch {}
       }
       if (!this.operationIsCurrent(operation, desired)) return;
       if (this.runtime?.cleanupFailed) {

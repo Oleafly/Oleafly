@@ -38,7 +38,7 @@ describe("chat goal without a project", () => {
     expect(store.load(null)).toBe("");
     expect(store.goal(null)).toBe("");
     store.setGoal(null, "Ignored");
-    expect(localStorage.length).toBe(0);
+    expect(localStorage).toHaveLength(0);
     expect(goalForProject({}, null)).toBe("");
 
     localStorage.setItem("oleafly.chat-goal.project-b", "  Draft the abstract ");

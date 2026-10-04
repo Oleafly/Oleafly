@@ -23,7 +23,7 @@ describe("agent memory", () => {
     store.clear();
 
     expect(useAgentMemoryStore.getState().notes).toEqual([]);
-    expect(localStorage.length).toBe(0);
+    expect(localStorage).toHaveLength(0);
   });
 
   it("stores trimmed notes per project, newest first, and reloads them", () => {

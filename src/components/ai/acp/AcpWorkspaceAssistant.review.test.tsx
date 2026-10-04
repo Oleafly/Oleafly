@@ -348,7 +348,7 @@ describe("CLI history menu details", () => {
 
     await chooseMenuItem(ui.getByRole("button", { name: "Saved conversations" }), "Conversation saved · Research CLI");
 
-    expect(vi.mocked(acpSnapshot).mock.calls.length).toBe(reads);
+    expect(vi.mocked(acpSnapshot).mock.calls).toHaveLength(reads);
     expect(acpDisconnect).not.toHaveBeenCalled();
   });
 

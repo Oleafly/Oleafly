@@ -381,7 +381,8 @@ function parsedControlSequence(
 function snippetDefaultField(placeholder: number, value: string): string {
   const text = value.trim();
   if (/[{}]/u.test(text)) {
-    return `${"${"}${text.replace(/[{}]/gu, String.raw`\$&`)}}`;
+    const escaped = text.replace(/[{}]/gu, String.raw`\$&`);
+    return `${"${"}${escaped}}`;
   }
   return text ? `${"${"}${placeholder}:${text}}` : `${"${"}${placeholder}}`;
 }
