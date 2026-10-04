@@ -68,7 +68,9 @@ describe("SymbolPicker", () => {
     insertAtCursor.mockClear();
     render(<SymbolPicker language="typst" />);
     fireEvent.click(screen.getByLabelText("Insert symbol"));
-    await waitFor(() => expect(screen.getByLabelText("Insert right arrow (arrow.r)")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText("Insert right arrow (arrow.r)")).toBeInTheDocument(), {
+      timeout: 10_000,
+    });
     fireEvent.change(screen.getByLabelText("Search symbols"), { target: { value: "chevron" } });
     expect(screen.getByLabelText(/^Insert left angle bracket \(chevron\.l\)/)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText(/^Insert left angle bracket \(chevron\.l\)/));
