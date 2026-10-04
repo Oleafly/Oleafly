@@ -26,9 +26,7 @@ The target allowlist matches Oleafly's existing sidecar tooling:
 - `x86_64-unknown-linux-gnu`
 - `x86_64-pc-windows-msvc`
 
-Production releases currently build macOS arm64, Linux x64, and Windows x64.
-Linux arm64 remains in the fetch allowlist for CI and supported development
-hosts.
+Production releases build all four targets.
 
 ## Authoritative runtime profiles
 
@@ -206,8 +204,9 @@ package a TexLab binary.
 The fetcher:
 
 1. accepts only a closed server and target allowlist;
-2. starts from exact `https://github.com/.../releases/download/...` URLs;
-3. follows at most five HTTPS redirects to an allowlisted GitHub asset host;
+2. starts from exact `https://mirrors.oleafly.com/language-servers/...` URLs;
+3. follows at most five HTTPS redirects, and only to hosts in the manifest's
+   `allowedDownloadHosts` (the Oleafly mirror and GitHub's download hosts);
 4. enforces the release asset's exact byte length and SHA-256 before parsing;
 5. rejects absolute paths, parent traversal, backslashes, duplicate entries,
    links, unsupported entry types, encrypted ZIPs, and unexpected archive

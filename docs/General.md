@@ -21,7 +21,7 @@ state without changing the source format.
 - Update checks through the signed application updater.
 
 <div align="center">
-  <img src="assets/readme/command-palette.png" alt="Oleafly command palette searching projects, documents, commands, and tools" width="100%" />
+  <img src="assets/readme/command-palette.png" alt="Oleafly search box finding projects, documents, commands, and tools" width="100%" />
 </div>
 <p align="center"><em>Search the workspace and open commands or tools from one place.</em></p>
 

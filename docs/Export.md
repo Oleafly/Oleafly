@@ -8,12 +8,15 @@ the persisted engine descriptor and writes only to a user-approved destination.
 - Compiled PDF for all supported document engines.
 - Full source archive as a ZIP, excluding application metadata and Git internals.
 - Conversions to DOCX, HTML, Markdown, plain text, Typst and LaTeX when the
-  engine descriptor allows them. Typst projects convert through Typst's own
-  HTML output.
+  engine descriptor allows them. Typst projects on Typst 0.13 or newer
+  convert through Typst's own HTML output.
 - PowerPoint export for Beamer presentations and for every Markdown document.
   Level 1 headings become section slides and level 2 headings start new slides.
 - EPUB export for LaTeX books, reports and theses, and for every Typst and
   Markdown document.
+- Typst projects also export PNG or SVG page images and HTML from Export >
+  Images and HTML. The PDF standards box under Preflight > Accessibility
+  exports PDF/A or PDF/UA.
 - Source and PDF export records retained in project metadata.
 
 ## Import and reconstruction

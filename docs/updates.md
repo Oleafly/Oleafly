@@ -29,9 +29,8 @@ an installed build cannot use the signed feed.
 The update window renders the release notes as formatted markdown. Those notes
 come from the version's `CHANGELOG.md` section: `release.yml` runs
 `scripts/changelog-extract.sh <version>` to build the release body (what
-changed, with install help as a link rather than the headline), and
-tauri-action copies that body into `latest.json`'s `notes`, which the window
-displays.
+changed, then a short downloads line), and tauri-action copies that body into
+`latest.json`'s `notes`, which the window displays.
 
 ## One-time maintainer setup (required)
 
@@ -60,7 +59,9 @@ procedure in the team's private operations runbook.
 
 ```sh
 scripts/bump-version.sh 0.2.2   # keeps package.json / Cargo.toml / tauri.conf.json / Cargo.lock in sync
-git commit -am "chore: release v0.2.2"
+git status --short   # expect only the five release files
+git add CHANGELOG.md package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml Cargo.lock
+git commit -m "chore: release v0.2.2"
 git tag v0.2.2 && git push origin main --tags   # triggers the Release workflow
 ```
 
@@ -69,19 +70,16 @@ ARM64 artifacts. It signs available platform and updater artifacts, generates
 `latest.json`, and creates a verified **draft** release. To publish, rerun the
 workflow manually for the same tag with **Publish the release** enabled.
 
-Publishing also runs the real-app provider contract against Anthropic and
-Google. The repository must provide `ANTHROPIC_API_KEY` and `GOOGLE_API_KEY` as
-Actions secrets. Optional `ANTHROPIC_E2E_MODEL` and `GOOGLE_E2E_MODEL`
-repository variables can select models available to those accounts. Missing
-credentials or a failed model-listing, streaming, usage, or tool-call check
-keeps the release in draft form.
+Publishing first checks that the draft has every platform's installers, an
+SBOM per target, and a `latest.json` entry per platform. If anything is
+missing, the release stays a draft.
 
 ## Failure and rollback
 
 A failed update check or download leaves the installed application unchanged
 and can be retried from About or the application menu. Signature verification
 failure blocks installation. The application restarts only after
-`downloadAndInstall` completes successfully.
+`install_update` completes successfully.
 
 Oleafly does not provide automatic rollback after a successful update. To
 return to an earlier version, close Oleafly, download the earlier official
@@ -100,4 +98,6 @@ up important projects before changing application versions.
   and access-control policy. The repository documents the secret names only,
   never their values or local storage paths.
 - macOS/Windows **code signing** (Gatekeeper/SmartScreen) is a separate concern
-  from updater signing and is still TODO.
+  from updater signing. macOS releases are code-signed and notarized. Windows
+  builds are signed only when the Azure signing secrets exist. See
+  [signing.md](signing.md).

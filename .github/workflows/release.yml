@@ -320,7 +320,7 @@ jobs:
             echo ""
             echo "---"
             echo ""
-            echo "**Downloads:** grab your platform's installer below (macOS Apple Silicon \`.dmg\`, Windows x86_64 \`.msi\` / \`-setup.exe\`, Linux x86_64 or ARM64 \`.AppImage\` / \`.deb\`)."
+            echo "**Downloads:** grab your platform's installer below (macOS Apple Silicon \`.dmg\`, Windows x86_64 \`.msi\` / \`-setup.exe\`, Linux x86_64 or ARM64 \`.AppImage\` / \`.deb\` / \`.rpm\`)."
             echo 'CHANGELOG_EOF'
           } >> "$GITHUB_OUTPUT"
 

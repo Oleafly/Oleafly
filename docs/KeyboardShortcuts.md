@@ -13,8 +13,15 @@ Windows and Linux.
 | Search all documents | Command-Shift-F | Ctrl-Shift-F |
 | Go to PDF (SyncTeX) | Command-Shift-J | Ctrl-Shift-J |
 | Shortcut reference | Command-/ | Ctrl-/ |
+| Toggle terminal | Ctrl-` | Ctrl-` |
+| Toggle browser | Ctrl-Shift-B | Ctrl-Shift-B (Windows), Ctrl-Alt-B (Linux) |
+| Toggle sidebar | Command-B | Ctrl-B |
+| Open folder | Command-Shift-O | Ctrl-Shift-O |
 | Close LaTeX environment | Command-Option-. | Ctrl-Alt-. |
 | Surround with environment | Command-Option-E | Ctrl-Alt-E |
+
+Toggle browser does nothing until Web browser is on in Settings >
+Experimentation.
 
 The reference list is generated from `SHORTCUT_DEFINITIONS` in
 `src/store/shortcuts.ts`; it is the source of truth for labels and defaults.
@@ -49,8 +56,9 @@ any chord it claims.
 
 ## Remappable editor keys
 
-Settings > Shortcuts > Editor records a new chord for any of these. Backspace
-leaves an action unbound, Escape cancels, and every row has its own reset.
+Settings > Keyboard Shortcuts > Editor keys records a new chord for any of
+these. Backspace leaves an action unbound, Escape cancels, and every row has
+its own reset.
 The reset control at the foot of the section restores the application
 shortcuts and these together.
 

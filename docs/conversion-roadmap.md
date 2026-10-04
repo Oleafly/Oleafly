@@ -33,8 +33,10 @@ means a quarter or more.
   and writes the choice into `#bibliography`. A LaTeX bibliography still takes
   its style from `\bibliographystyle` or the biblatex options in the source,
   and nothing writes that for you yet.
-- **Zotero live sync (G5, M).** The connector stores a key, and RDF exports
-  import fine, but nothing calls the Zotero API yet.
+- **Zotero live sync (G5, M).** The References panel can import a connected
+  Zotero library once through the Zotero API, up to 5,000 items, and RDF
+  exports import fine. Nothing keeps the bibliography in sync with Zotero
+  after that.
 - **Word-import citation recovery (G8, M).** Importing a .docx flattens
   citations to plain text. Recovering them means parsing the reference list
   and matching it against Crossref on the way in. This needs confidence checks and a review step before recovered references are added.
@@ -64,9 +66,6 @@ means a quarter or more.
 
 - **Collaboration and comments (G27, L).** The standing roadmap item;
   checkpoints and Git cover history in the meantime.
-- **Typst parity beyond conversions (G28, M).** Typst now converts in and
-  out. Source-to-preview navigation and a dedicated preflight profile remain
-  on the roadmap.
 - **Typst to PowerPoint (G28, S).** Pandoc's Typst reader does not evaluate
   Typst code. It stops on `counter(page).get()`, `here()`, `selector`,
   `context` blocks and helper functions, so it fails on every Typst document

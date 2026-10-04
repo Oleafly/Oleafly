@@ -977,11 +977,11 @@
       "status": {
         "checking": "pandoc을 확인하는 중…",
         "installing": "버전이 고정된 pandoc 릴리스를 가져오는 중입니다. 처음 쓸 때는 잠시 걸립니다.",
-        "missing": "이 Mac에서 찾지 못했습니다. Oleafly가 호환되는 pandoc(2.19 이상)을 자체 폴더로 내려받으며, 시스템의 다른 부분은 바뀌지 않습니다.",
+        "missing": "찾지 못했습니다. Oleafly가 호환되는 pandoc(2.19 이상)을 자체 폴더로 내려받을 수 있으며, 시스템의 다른 부분은 바뀌지 않습니다.",
         "ready": "찾았습니다. Markdown 프로젝트는 pandoc으로 LaTeX로 변환한 뒤 내장 Tectonic으로 컴파일합니다."
       },
       "tectonicDetail": "pandoc이 만든 LaTeX를 조판합니다. Oleafly에 기본 포함되며 따로 설정할 것이 없습니다.",
-      "tooltip": "Markdown 프로젝트는 pandoc(Pandoc Markdown: 표, 각주, 인용, 수식)으로 LaTeX로 변환한 뒤 내장 Tectonic이 PDF로 조판합니다. Pandoc은 처음 필요할 때 내려받습니다."
+      "tooltip": "Markdown 프로젝트는 pandoc(Pandoc Markdown: 표, 각주, 인용, 수식)으로 LaTeX로 변환한 뒤 내장 Tectonic이 PDF로 조판합니다. Pandoc은 Oleafly에 기본 포함되어 있습니다."
     },
     "packages": {
       "ariaLabel": "LaTeX 패키지",

@@ -977,11 +977,11 @@
       "status": {
         "checking": "正在檢查 pandoc…",
         "installing": "正在取得鎖定版本的 pandoc。第一次使用時需要一點時間。",
-        "missing": "在這台 Mac 上找不到。Oleafly 會把相容的 pandoc（2.19 以上）下載到自己的資料夾；系統上的其他部分都不會變動。",
+        "missing": "找不到。Oleafly 可以把相容的 pandoc（2.19 以上）下載到自己的資料夾；系統上的其他部分都不會變動。",
         "ready": "已偵測到。Markdown 專案會先用 pandoc 轉換成 LaTeX，再以內建的 Tectonic 編譯。"
       },
       "tectonicDetail": "為 pandoc 產生的 LaTeX 排版。隨 Oleafly 提供，不需要設定。",
-      "tooltip": "Markdown 專案會先用 pandoc（Pandoc Markdown：表格、註腳、引用、數學式）轉換成 LaTeX，再由內建的 Tectonic 排版成 PDF。Pandoc 會在第一次需要時才下載。"
+      "tooltip": "Markdown 專案會先用 pandoc（Pandoc Markdown：表格、註腳、引用、數學式）轉換成 LaTeX，再由內建的 Tectonic 排版成 PDF。Pandoc 隨 Oleafly 提供。"
     },
     "packages": {
       "ariaLabel": "LaTeX 套件",

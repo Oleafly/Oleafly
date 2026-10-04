@@ -17,13 +17,13 @@ Oleafly can open a folder that the operating system hands it: from Finder, File 
 - Every launch compares the keys with the running copy and rewrites them if they differ, for example after an update or a switch between the NSIS and MSI installers. Debug builds, e2e builds and runs with `OLEAFLY_DATA_DIR` set never touch the registry.
 - The switch in **Settings › General › System integration** removes the keys and remembers that in `~/.oleafly/system-integration.json`, so the next launch doesn't put them back.
 - The NSIS uninstaller (`src-tauri/windows/hooks.nsh`) removes both keys when they point at the copy being uninstalled. During an update it leaves them alone.
-- The MSI installer has no uninstall step for these per-user keys. After an MSI uninstall the entry stays in the menu until the user deletes the keys or installs Oleafly again, and the next launch then rewrites them. Turning the switch off before uninstalling avoids this. Clicking a stale entry only shows a Windows error.
+- The MSI installer (`src-tauri/windows/explorer-menu.wxs`) does the same. An uninstall removes both keys when they point at the copy being uninstalled, and an upgrade leaves them alone.
 - On Windows 11 the entry is under **Show more options**. A top-level entry needs a signed MSIX package.
 
 ## Linux
 
-- The .deb and .rpm launchers come from `src-tauri/linux/main.desktop`, with `Exec=/usr/bin/oleafly %F`. They never list `inode/directory`, so Oleafly can't become the default folder handler.
-- The AppImage has its own launcher (`src-tauri/linux/appimage.desktop`) with `Exec=oleafly %F`. AppRun runs the first word of `Exec`, and an absolute path there would start whatever copy sits at that path instead of the one inside the AppImage.
+- The .deb and .rpm launchers come from `src-tauri/linux/main.desktop`, with `Exec=/usr/bin/oleafly-desktop %F`. They never list `inode/directory`, so Oleafly can't become the default folder handler.
+- The AppImage has its own launcher (`src-tauri/linux/appimage.desktop`) with `Exec=oleafly-desktop %F`. AppRun runs the first word of `Exec`, and an absolute path there would start whatever copy sits at that path instead of the one inside the AppImage.
 - The .deb and .rpm also install a Dolphin service menu (`/usr/share/kio/servicemenus/oleafly-open-folder.desktop`) and a Nemo action (`/usr/share/nemo/actions/oleafly-open-folder.nemo_action`). They do nothing on systems without those file managers.
 - **Settings › General › System integration** can write user-level files:
   - Dolphin and Nemo actions for an AppImage or any copy that didn't come from a package. These point at `$APPIMAGE`.

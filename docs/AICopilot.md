@@ -11,9 +11,12 @@ it is not a second document model.
 - Compile the project, inspect logs, and extract PDF text.
 - Query project structure, labels, citations, macros, and file relationships.
 - Explain or repair compiler errors.
-- Add citations and generate or refine editable TikZ figures.
+- Add citations, and generate or refine editable figures: TikZ in LaTeX,
+  CeTZ or fletcher in Typst.
 - Generate a template or figure when a configured provider supports it.
 - Use a hosted provider, an OpenAI-compatible endpoint, or Ollama locally.
+- Use a CLI agent instead of a model. 14 are built in, **Find more agents** in
+  Settings searches the ACP registry, and you can register your own.
 - Chat prompt shortcuts for **Friendly** and **Fire** paper review (mentor-style
   feedback and strict Reviewer #2 critique of the current document).
 
@@ -45,9 +48,17 @@ and [model-specific context settings](https://docs.ollama.com/api/openai-compati
 
 ## Change and approval model
 
-- File-changing actions produce a visible diff before application.
-- Ordinary writes can be approved for the current session according to the
-  selected policy.
+- The approval mode in the chat composer decides what asks first. Ask for
+  approval asks before file edits, internet access, and commands. Approve for
+  me, the default, asks only before risky actions such as edits and commands.
+  Full access never asks. Custom (approvals.toml) follows the project's rules.
+- Except in Full access, a file change shows its diff on an approval card
+  before it is applied. In Custom mode the card also has Always in this
+  project, which saves an allow rule for that tool.
+- When a turn changes files, a line under the reply says how many. Review
+  lists each change with its own Undo and Redo, and Undo all or Redo all
+  covers the whole turn. Oleafly keeps the pre-turn copy in its own data
+  folder, never in your project.
 - Deletes remain separately visible and can require an explicit confirmation.
 - Tool results are scoped to the project and are not an authorization to read
   unrelated local files.
@@ -75,11 +86,13 @@ the project already uses, so Ask for approval, Approve for me, and Full access
 behave exactly as they do outside plan mode. Revise, or anything you type while
 the plan is waiting, goes back as feedback and produces a fresh plan. Turn Plan
 off and the pending approval is dropped, so the next turn is a normal one.
+If a reply in Plan mode leaves no new plan, a note under it says so. Replies
+that end with a question for you do not get the note.
 
 Once every item is done and the run has finished, the pill goes away. A short
-summary appears under the last assistant message instead, along the lines of
-"Plan · 2/2 done · 3 files changed +40 -12", with the file rows under it. A run
-that changed files without a plan gets the same summary minus the Plan label.
+summary such as "Plan · 2/2 done" appears under the last assistant message
+instead. The files the run changed get their own line under the reply, the
+same line a run without a plan gets.
 
 ## Figures
 
@@ -184,7 +197,7 @@ shared by the built-in assistant and figure-generation flows.
 
 - `packages/ai-core/`: provider interfaces and model discovery.
 - `packages/ai-tools/`: tool contracts and host boundary.
-- `src/lib/ai/` and `src/store/chats.ts`: assistant orchestration and history.
+- `src/lib/ai-*.ts`, `src/lib/agent-backend.ts`, and `src/store/chats.ts`: assistant orchestration and history.
 - `src/components/ai/prompt-shortcuts.ts`: chat prompt categories (including Review).
 - `src/lib/document-citation/`: paper-review prompts and document citation scan.
 - `src/contributions/ai-toolsets.ts`: registered tool groups.

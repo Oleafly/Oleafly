@@ -6,11 +6,11 @@
 
 **Deutsch** | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](README.ar.md)
 
-[![Für macOS herunterladen](https://img.shields.io/badge/Download_for_macOS-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Für macOS (Apple Silicon) herunterladen](https://img.shields.io/badge/Download_for_macOS_%28Apple_Silicon%29-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Für Windows herunterladen](https://img.shields.io/badge/Download_for_Windows-0496ff?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Für Linux herunterladen](https://img.shields.io/badge/Download_for_Linux-ffba08?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 
-[![Offene Issues](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml) [![SonarQube Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![Code-Abdeckung](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![Entwicklungsstatus: extrem aktiv](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![Letzter Commit](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![Lizenz: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Sterne](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+[![Offene Issues](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![SonarQube Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![Code-Abdeckung](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![Entwicklungsstatus: extrem aktiv](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![Letzter Commit](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![Lizenz: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Sterne](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
 **Schreibe deine nächste Arbeit mit weniger Routinearbeit in einem modernen Arbeitsbereich für wissenschaftliches Schreiben.**
 
@@ -35,10 +35,10 @@ Für immer kostenlos · Open Source · Keine Konten · Keine Anmeldung · Kein T
 | Wenn du ... | Beginne mit ... |
 | --- | --- |
 | eine Arbeit oder Dissertation schreibst | einem bearbeitbaren LaTeX-, Typst- oder Markdown-Einstieg |
-| vorhandene Arbeit auf deinen Computer holst | einem ZIP, GitHub-Repository, einer Word- oder HTML-Datei, einem Typst-Dokument, arXiv-Quelltext oder PDF-Import |
+| vorhandene Arbeit auf deinen Computer holst | einem ZIP, GitHub-Repository, einer Word-, HTML- oder Markdown-Datei, einem Typst-Dokument, arXiv-Quelltext oder PDF-Import |
 | in LaTeX, Typst oder Markdown arbeitest | dem Quelltexteditor, visuellen Editor, der Live-Vorschau und der Engine-Auswahl |
 | ein strukturiertes Manuskript erstellst | der Projektgliederung, der dateiübergreifenden Suche, der Referenznavigation und der lokalen Korrektur |
-| Quellen oder Zitate suchst | Citation Search, einer Dokumentprüfung auf Belege oder einem lokalen Bibliotheksimport |
+| Quellen oder Zitate suchst | Citation Search, einer Dokumentprüfung auf Belege oder einem Bibliografie-Import aus einer Datei oder deiner Zotero-Bibliothek |
 | mit KI arbeitest | dem eingebauten Assistenten, isolierten Research Tasks, einem CLI-Agenten oder MCP |
 | eine längere Rechercheaufgabe ausführst | einem separaten Worktree oder einer gestaffelten Kopie, geprüften Ergebnissen und selektiver Dateiübernahme |
 | einen Recherche-Workflow wiederverwendest | dem gebündelten Skill-Paket, Slash-Befehlen oder einem gespeicherten Skill-Ordner |
@@ -47,7 +47,7 @@ Für immer kostenlos · Open Source · Keine Konten · Keine Anmeldung · Kein T
 | Arbeit wiederherstellst oder versionierst | Checkpoints für die lokale Wiederherstellung und Git für bewusste Historie und Zusammenarbeit |
 | Papers, Daten oder Analysen verknüpfst | schreibgeschützten verknüpften Forschungsordnern neben dem Manuskript |
 | Dokumente exportierst oder konvertierst | PDF- und Quell-ZIPs sowie unterstützten Word-, HTML-, Markdown-, Text-, PPTX- oder EPUB-Ausgaben |
-| nach einer lokalen Toolchain suchst | gebündeltem Tectonic und Typst sowie optionalem System-TeX und Pandoc |
+| nach einer lokalen Toolchain suchst | gebündeltem Tectonic, Typst und Pandoc sowie einem optionalen System-TeX oder einer TinyTeX-Installation, die die App verwaltet |
 
 <div align="center">
   <img src="../assets/readme/start-work.png" alt="Oleafly-Startmenü mit Optionen für Forschungsprojekte, Importe und Vorlagen" width="100%" />
@@ -74,17 +74,17 @@ Oleafly bietet dir einen geführten Arbeitsbereich, ohne dein Manuskript in ein 
 
 Die Kernarbeit bleibt auf deinem Computer: Projektdateien, Indexierung, Kompilierung mit einer verfügbaren lokalen Engine, PDF-Vorschau, Rechtschreibprüfung, Grammatikprüfung, Preflight, Git-Historie, Checkpoints und das Terminal. Für diese Aufgaben ist kein Konto erforderlich.
 
-Die App greift nur für Aktionen auf das Netzwerk zu, die es benötigen: Literatursuche, DOI-Metadaten, GitHub-Operationen, gehostete KI, optionale Engine- und Template-Downloads sowie Update-Feeds. Lokale Ollama-Modelle halten den Modellverkehr auf deinem Computer. Wenn einer dieser Dienste nicht verfügbar ist, zeigt die App einen Offline- oder Nicht-verfügbar-Status.
+Die App greift nur für Aktionen auf das Netzwerk zu, die es benötigen: Literatursuche, DOI-Metadaten, GitHub-Operationen, gehostete KI, Zotero, MCP-Server, die du verbindest, Paketabfragen bei Typst Universe und CTAN sowie optionale Downloads von Engines, Paketen und Templates. Release-Builds prüfen außerdem bei jedem Start der App, ob ein Update vorliegt. Lokale Ollama-Modelle halten den Modellverkehr auf deinem Computer. Wenn einer dieser Dienste nicht verfügbar ist, zeigt die App einen Offline- oder Nicht-verfügbar-Status.
 
 | Standardmäßig lokal | Passiert nur, wenn du es auswählst |
 | --- | --- |
 | Projektquelltext und Metadaten | Literatur- und Zitatsuche |
 | Editorzustand und Projektindex | GitHub-Anmeldung, Push, Pull und Veröffentlichung |
 | LaTeX-Kompilierung mit der gebündelten Engine, wenn Pakete verfügbar sind | Gehostete KI-Anbieter |
-| Typst-Kompilierung | Optionale Downloads und Update-Prüfungen |
+| Typst-Kompilierung, wenn die Pakete im Cache oder im Projekt liegen | Optionale Downloads von Engines, Paketen und Templates |
 | PDF-Rendering und Textinspektion | Downloads von Domain-Shelf-Skills |
 | Rechtschreibprüfung, Grammatikprüfung und Preflight | Externe MCP-Clients auf localhost |
-| Git-Historie und automatische Checkpoints | |
+| Git-Historie und automatische Checkpoints | Zotero, alphaXiv und andere MCP-Server, die du verbindest |
 
 <p align="center">
   <img src="../assets/readme/provider-boundaries.png" alt="Oleafly-Anbietereinstellungen mit expliziten Verbindungen getrennt von den Projektdateien" width="100%" />
@@ -95,7 +95,7 @@ Die App greift nur für Aktionen auf das Netzwerk zu, die es benötigen: Literat
 
 ### Bearbeitbare Vorlagen
 
-Beginne mit einem Artikel, einer Zeitschriftenarbeit, einer Dissertation, Literaturübersicht, Bericht, Buch, Beamer-Präsentation, Poster, Aufgabe, Brief, Bibliografie, Lebenslauf oder Diagramm. Vorlagen sind normale Quellprojekte mit deklarierter Engine, Hauptdokument, Dokumentart, Assets und Vorschau-Metadaten. Du kannst die Dateien vor dem Erstellen des Projekts prüfen.
+Beginne mit einem Artikel, einer Zeitschriftenarbeit, einer Dissertation, Literaturübersicht, Bericht, Buch, Beamer-Präsentation, Poster, Aufgabe, Brief, Bibliografie, Lebenslauf oder Diagramm. Vorlagen sind normale Quellprojekte mit deklarierter Engine, Hauptdokument, Dokumentart, Assets und Vorschau-Metadaten. Bevor du das Projekt erstellst, siehst du eine gerenderte Vorschau und die Engine, mit der die Vorlage arbeitet.
 
 Die Galerie filtert nach Engine, Kategorie, Offline-Bereitschaft und ATS-Eignung. Gebündelte Vorlagen funktionieren ohne Template-Konto. Optionale Template-Pakete, Schriften und Assets werden erst heruntergeladen, wenn du sie auswählst.
 
@@ -107,7 +107,7 @@ Die Galerie filtert nach Engine, Kategorie, Offline-Bereitschaft und ATS-Eignung
 
 Importiere ein Projekt-ZIP oder GitHub-Repository, konvertiere eine DOCX-Datei mit Pandoc oder verwende ein PDF als Ausgangspunkt für bearbeitbares LaTeX. Importe werden zu lokalen Projektdateien, sodass der ursprüngliche Quelltext unverändert bleibt, während du das Ergebnis prüfst.
 
-Die PDF-Rekonstruktion ist deterministisch. Sie extrahiert Text, Layout, Gleichungen und Abbildungen, soweit sie sie erkennen kann, meldet ihre Grenzen und lässt dich mit bearbeitbarem LaTeX statt einem undurchsichtigen Dokument zurück. Wenn du einen bildverarbeitungsfähigen Anbieter verbindest, kann er anschließend helfen, ein importiertes Projekt zu verfeinern.
+Bei einem PDF mit Textebene ist die Rekonstruktion deterministisch. Sie extrahiert Text, Layout, Gleichungen und Abbildungen, soweit sie sie erkennen kann, meldet ihre Grenzen und lässt dich mit bearbeitbarem LaTeX statt einem undurchsichtigen Dokument zurück. Ein gescanntes PDF lässt sich mit einem lokal laufenden Bildverarbeitungsmodell transkribieren. Wenn du einen bildverarbeitungsfähigen Anbieter verbindest, kann er anschließend helfen, ein importiertes Projekt zu verfeinern.
 
 <p align="center">
   <img src="../assets/readme/import-project.png" alt="Oleafly-Importdialog mit Optionen für Projekt, Word, Markdown, HTML, Typst, arXiv und GitHub" width="100%" />
@@ -133,16 +133,17 @@ Der CodeMirror-Editor wird von einem projektweiten Index unterstützt. Der Index
 In LaTeX, Typst, Markdown und BibTeX erhältst du:
 
 - Enginespezifische Syntaxhervorhebung für Befehle, Umgebungen, Mathematik, Kommentare, Markup und Bibliografieeinträge.
-- Vervollständigung für LaTeX-Befehle, Umgebungen, Labels, Zitierschlüssel und Projektdateipfade.
+- Vervollständigung für Labels, Zitierschlüssel und Projektdateipfade. LaTeX-Dateien vervollständigen außerdem Befehle und Umgebungen, Typst-Dateien Funktionen, Pakete und Bibliografiestile.
 - Live-Diagnosen für Syntax, Kompilierungsfehler, nicht definierte Zitate, doppelte Schlüssel, doppelte Labels und defekte Referenzen.
 - Eine lokale und globale Dokumentgliederung mit Symbolen, Labels, Zitaten, Makros und Dateibeziehungen.
 - Suchen und Ersetzen, Code-Faltung, Tabs mit mehreren Dateien, Vim-Modus, Wortzählung, Einfügen per Slash-Befehl und konfigurierbare Tastenkürzel.
 - LaTeX-Strukturhilfen für `\item`, `\begin` / `\end`, Umgebungen, Mathetrenner, Beschriftungen und häufige Einfügemuster.
+- Typst-Hilfen: `$` wird für Mathematik paarweise eingefügt, Listen werden mit Enter fortgesetzt und `/` öffnet Snippets.
 - Hover-Anzeigen für kompilierte Labelnummern und Seiten, Gleichungsvorschauen und Bildminiaturen für Ziele von `\includegraphics`.
 
 ### LaTeX-Blöcke, Formatierungen und Symbole einfügen
 
-Der LaTeX-Editor hält häufige Strukturen mit einem Klick bereit und lässt den Quelltext trotzdem in deiner Hand. Wechsle zwischen Code- und Visual-Ansicht, mache Änderungen rückgängig oder wiederhole sie, wähle eine Überschriftenebene, formatiere Text, füge Referenzen ein und erstelle eine Tabelle oder Abbildung, ohne jeden Befehl auswendig zu kennen.
+Der LaTeX-Editor hält häufige Strukturen mit einem Klick bereit und lässt den Quelltext trotzdem in deiner Hand. Wechsle zwischen Code- und Visual-Ansicht, mache Änderungen rückgängig oder wiederhole sie, wähle eine Überschriftenebene, formatiere Text, füge Referenzen ein und erstelle eine Tabelle oder Abbildung, ohne jeden Befehl auswendig zu kennen. Typst-Dateien bekommen dieselben Werkzeuge in einer eigenen Werkzeugleiste, die Typst-Markup schreibt.
 
 <div align="center">
   <img src="../assets/readme/latex-editor-toolbar.png" alt="Oleafly-LaTeX-Editorleiste mit Steuerelementen für Formatierung, Referenzen, Abbildungen, Tabellen, Listen, Gleichungen, Brüche und Symbole" width="100%" />
@@ -152,17 +153,18 @@ Der LaTeX-Editor hält häufige Strukturen mit einem Klick bereit und lässt den
 | Bereich | Verfügbare Steuerelemente |
 | --- | --- |
 | Bearbeiten und Modi | Code-Ansicht, Visual-Ansicht, Rückgängig, Wiederholen |
-| Dokumentstruktur | Einfügen von H1–H6: `\part`, `\chapter`, `\section`, `\subsection`, `\subsubsection`, `\paragraph` |
+| Dokumentstruktur | Einfügen von H1–H7: `\part`, `\chapter`, `\section`, `\subsection`, `\subsubsection`, `\paragraph`, `\subparagraph` |
 | Inline-Formatierung | Fett `\textbf{}`, kursiv `\textit{}`, unterstrichen `\underline{}`, Inline-Code `\texttt{}` |
 | Referenzen und Notizen | Links `\href{}{}`, Projektzitate, Querverweise `\ref{}`, Fußnoten `\footnote{}` |
 | Inhaltsblöcke | Blockzitate mit `quote`, Abbildungen mit `\includegraphics`, Beschriftungen und Labels, visuelle Tabellen mit auswählbaren Zeilen und Spalten, Aufzählungen mit `itemize`, nummerierte Listen mit `enumerate` |
 | Matheblöcke | Einfügen von `equation`, `align` und Bruch `\frac{}{}` |
 | KI-gestütztes Einfügen | Image to LaTeX für eine Gleichung, Tabelle oder sichtbaren Text, wenn ein bildverarbeitungsfähiger Anbieter konfiguriert ist |
 | Code-Intelligenz | Zur Definition springen, Referenzen finden und Symbole projektweit umbenennen |
+| Projektwerkzeuge | „Diagramm zeichnen“, „LaTeX-Pakete“, „Einblicke ins Dokument“ und „Dokumenteinstellungen“ |
 
 ### Durchsuchbare LaTeX-Symbolpalette
 
-Der Symbolpicker enthält in seiner Ansicht **All** 236 eindeutige Befehle. Die Kategorielisten enthalten 238 Einträge, weil `\nabla` und `\partial` sowohl unter Operators als auch unter Calculus nützlich sind. Suche nach dem Symbolnamen oder seinem LaTeX-Befehl und füge es am Cursor ein.
+Der Symbolpicker enthält in seiner Ansicht **All** 236 eindeutige Befehle. Die Kategorielisten enthalten 238 Einträge, weil `\nabla` und `\partial` sowohl unter Operators als auch unter Calculus nützlich sind. Suche nach dem Symbolnamen oder seinem LaTeX-Befehl und füge es am Cursor ein. In einer Typst-Datei arbeitet die Palette mit dem Typst-Namen jedes Symbols: Sie zeigt ihn an, durchsucht ihn und fügt ihn ein.
 
 | Kategorie | Anzahl | Verfügbare Symbole und Befehle |
 | --- | ---: | --- |
@@ -191,7 +193,7 @@ Der Symbolpicker enthält in seiner Ansicht **All** 236 eindeutige Befehle. Die 
 
 ### Quellansicht und visuelle Ansicht
 
-Die Quellansicht ist die maßgebliche Darstellung. Wenn die Engine es unterstützt, aktiviere den visuellen Editor für LaTeX oder Markdown und bearbeite Prosa, Gleichungen, Zitate, Tabellen und Abbildungen auf einer seitenorientierten Oberfläche. Der Quelltext bleibt für Git, externe Editoren und manuelle Änderungen verfügbar.
+Die Quellansicht ist die maßgebliche Darstellung. Wenn die Engine es unterstützt, aktiviere den visuellen Editor für LaTeX, Typst oder Markdown und bearbeite Prosa, Gleichungen, Zitate, Tabellen und Abbildungen auf einer seitenorientierten Oberfläche. Mathematik, Fußnoten, Theoreme, Abbildungen, Tabellen und Farben erscheinen als native, bearbeitbare Knoten; eingefügter formatierter Text und Bilder werden zum eigenen Markup des Dokuments, und eine schwebende Werkzeugleiste bearbeitet Tabellen direkt an Ort und Stelle. Der Quelltext bleibt für Git, externe Editoren und manuelle Änderungen verfügbar.
 
 Nutze die visuelle Ansicht für die Bearbeitung auf Seitenebene. Kehre zum Quelltext zurück, wenn du genaue Kontrolle über Befehle, Pakete, Umgebungen oder Layout brauchst.
 
@@ -203,11 +205,11 @@ Nutze die visuelle Ansicht für die Bearbeitung auf Seitenebene. Kehre zum Quell
 
 Hunspell übernimmt die Rechtschreibung mit dem ausgewählten Wörterbuchpaket sowie persönlichen oder projektspezifischen Ergänzungen. Harper prüft Grammatik und Stil über eine dokumentbewusste Prosamaske, sodass Befehle, Kommentare, Mathebereiche und Maschinenargumente nicht als gewöhnliche Prosa behandelt werden.
 
-Das akademische Profil vermeidet Regeln, die wissenschaftliches Schreiben behindern. Jeder Fund hat eine lokale Aktion: Ersetze ihn, ignoriere ihn für das Projekt, ignoriere ihn für die Sitzung oder passe die Regel in den Einstellungen an. Die Korrektur läuft lokal und benötigt keinen KI-Anbieter.
+Das akademische Profil vermeidet Regeln, die wissenschaftliches Schreiben behindern. Jeder Fund hat eine lokale Aktion: Ersetze ihn, ignoriere ihn (vorerst, in diesem Projekt oder überall) oder schalte die Regel ab. Die Einstellungen listen die abgeschalteten Regeln auf, damit du sie wieder einschalten kannst. Die Korrektur läuft lokal und benötigt keinen KI-Anbieter.
 
 ### Im gesamten Projekt suchen
 
-Suche im Projekt über die Seitenleiste oder die Befehlspalette. Der Projektindex verbindet Quelldateien, Überschriften, Labels, Zitate, Makros und eingebundene Dateien, sodass sich eine umfangreiche mehrteilige Dissertation leichter navigieren lässt als eine Reihe von Editor-Tabs.
+Suche im Projekt über das Panel „Suche“. Der Projektindex verbindet Quelldateien, Überschriften, Labels, Zitate, Makros und eingebundene Dateien, sodass sich eine umfangreiche mehrteilige Dissertation leichter navigieren lässt als eine Reihe von Editor-Tabs.
 
 ## Mit LaTeX, Typst oder Markdown kompilieren
 
@@ -215,10 +217,10 @@ Oleafly hält die Kompilierung nah am Manuskript und verwandelt Compiler-Ausgabe
 
 | Engine | Wofür sie geeignet ist | Wichtige Details |
 | --- | --- | --- |
-| LaTeX mit Tectonic | Portable, gebündelte LaTeX-Builds | Wird mit der Desktop-App ausgeliefert; unterstützt Multi-Datei-Projekte, Bilder, Zitate, Biber, SyncTeX, isolierte Abbildungskompilierung und zwischengespeicherte Offline-Builds, wenn Pakete verfügbar sind |
-| LaTeX mit `latexmk` | Projekte, die eine vollständige System-TeX-Distribution benötigen | Verwendet MacTeX, TeX Live, MiKTeX oder TinyTeX; unterstützt `minted`, `glossaries`, `makeidx`, PythonTeX, stark auf Shell-Escape angewiesene Templates und Unicode-Engines, wenn du ihnen ausdrücklich vertraust |
+| LaTeX mit Tectonic | Portable, gebündelte LaTeX-Builds | Wird mit der Desktop-App ausgeliefert; unterstützt Multi-Datei-Projekte, Bilder, Zitate, Biber (außer unter Linux ARM64), SyncTeX, isolierte Abbildungskompilierung und zwischengespeicherte Offline-Builds, wenn Pakete verfügbar sind |
+| LaTeX mit `latexmk` | Projekte, die eine vollständige System-TeX-Distribution benötigen | Verwendet MacTeX, TeX Live, MiKTeX oder TinyTeX; unterstützt `glossaries`, `makeidx` sowie XeLaTeX oder LuaLaTeX (automatisch gewählt); `minted`, PythonTeX und andere Shell-Escape-Templates funktionieren, sobald du externe Befehle auf diesem Computer erlaubst |
 | Typst | Schnelles modernes Erstellen von Dokumenten | Gebündelter Compiler, PDF-Ausgabe, Projektindex und Zitate; Synchronisierung zwischen Quelltext und PDF ab Typst 0.13 und Offline-Builds, wenn die Pakete im Cache oder im Projekt liegen. Isolierte Abbildungskompilierung ist in dieser Version nicht verfügbar |
-| Markdown mit Pandoc | Leichte Prosa- und Konvertierungs-Workflows | Pandoc kann über die Einstellungen installiert werden; die PDF-Ausgabe verwendet den gebündelten Tectonic-Eingang, DOCX-, HTML-, Markdown- und Text-Exporte stehen zur Verfügung, soweit unterstützt |
+| Markdown mit Pandoc | Leichte Prosa- und Konvertierungs-Workflows | Pandoc wird mit der App ausgeliefert. Es konvertiert nach LaTeX, das dann vom gebündelten Tectonic gesetzt wird, und exportiert Word, HTML, EPUB, PowerPoint, LaTeX, Typst und reinen Text |
 
 LaTeX-Projekte erhalten beim Öffnen eine Kompatibilitätsprüfung. Wenn ein Projekt mehr benötigt, als die gebündelte Engine verarbeiten kann, erklärt Oleafly die Lücke und verweist auf die passende Engine oder das passende Paket. System-TeX läuft standardmäßig mit eingeschränkten Shell-Befehlen; vollständiges Shell Escape aktivierst du separat für jedes Projekt und jeden Computer.
 
@@ -244,9 +246,9 @@ Der Befehl „Zum PDF springen“ bringt dich vom Quelltext an die passende Stel
 
 ### Aus dem Satz heraus suchen, den du gerade schreibst
 
-Citation Search fragt arXiv, Semantic Scholar, Crossref, PubMed und OpenAlex an einem Ort ab. Das Werkzeug führt doppelte Treffer zusammen, hält die Metadaten sichtbar und lässt dich eine Referenz in der lokalen Literaturbibliothek speichern.
+Citation Search fragt arXiv, Semantic Scholar, Crossref, PubMed und OpenAlex an einem Ort ab, und wenn du einen Serper-Schlüssel hinzufügst, auch Google Scholar. Das Werkzeug führt doppelte Treffer zusammen, hält die Metadaten sichtbar und lässt dich eine Referenz in der lokalen Literaturbibliothek speichern.
 
-Du kannst ein Zitat auch per DOI, arXiv-ID, URL oder Titel suchen. Importiere eine bestehende Bibliothek aus Zotero RDF, EndNote XML, RIS oder BibTeX. Der Projektindex bietet Vervollständigung von Zitierschlüsseln, Referenznavigation, Hover-Details sowie Diagnosen für nicht definierte Zitate, doppelte Schlüssel, doppelte DOIs und unvollständige Bibliografie-Metadaten.
+Du kannst ein Zitat auch per DOI, arXiv-ID, URL oder Titel suchen. Importiere eine bestehende Bibliothek aus Zotero RDF, EndNote XML, RIS oder BibTeX, oder verbinde Zotero unter „Einstellungen > Integrationen“ und importiere deine ganze Bibliothek über das Panel „Referenzen“. Der Projektindex bietet Vervollständigung von Zitierschlüsseln, Referenznavigation, Hover-Details sowie Diagnosen für nicht definierte Zitate, doppelte Schlüssel und unvollständige Bibliografie-Metadaten.
 
 ### Das Dokument auf fehlende Belege prüfen
 
@@ -269,15 +271,15 @@ Verknüpfe ein Dataset, eine Quellenbibliothek, einen Analyseordner oder ein and
 
 ### Labore und Deadlines suchen
 
-Die Tools-Galerie enthält Lab Search für Forschungseinrichtungen aus dem OpenAlex-Verzeichnis, mit Länderfiltern und Links zu institutionellen, ROR- und OpenAlex-Einträgen. Conference Deadlines bietet durchsuchbare Felder und Countdowns für Informatik-Venues aus den gebündelten Deadline-Daten.
+Die Tools-Galerie enthält Lab Search für Forschungseinrichtungen aus dem OpenAlex-Verzeichnis, mit Länderfiltern und Links zu institutionellen, ROR- und OpenAlex-Einträgen. Mit Conference Deadlines durchsuchst du Venues, filterst sie nach Forschungsgebiet und siehst Countdowns. Die Deadline-Daten werden mit der App ausgeliefert und lassen sich aktualisieren. Die meisten Venues stammen aus der Informatik, einige aus Gebieten wie Neurowissenschaften und Physik.
 
 ## Abbildungen, Gleichungen und Tabellen
 
 ### Diagram Composer
 
-Zeichne eine Abbildung auf einer Arbeitsfläche mit Rechtecken, Kreisen, Ellipsen, Rauten, Text, Verbindern, Einrasten, Füll- und Rahmenfarben, Rückgängig, Wiederholen, Minimap und heller oder dunkler Arbeitsfläche. Wechsle zum TikZ-Code, füge Snippets ein, kompiliere die Abbildung isoliert und sieh dir die Vorschau neben dem Quelltext an.
+Diagram Composer fragt zuerst, wofür das Diagramm gedacht ist: TikZ für LaTeX, ein fletcher-Diagramm für Typst oder ein Mermaid-Flussdiagramm für Markdown. Zeichne auf einer Arbeitsfläche mit Rechtecken, Kreisen, Ellipsen, Rauten, Text, Verbindern, Einrasten, Füll- und Rahmenfarben, Rückgängig, Wiederholen, Minimap und heller oder dunkler Arbeitsfläche. Codepanel und Zeichnung bleiben in beide Richtungen synchron, und Code, den die Arbeitsfläche nicht zeichnen kann, bleibt so erhalten, wie er geschrieben wurde. TikZ-Abbildungen werden isoliert kompiliert, die Vorschau von Typst-Diagrammen nutzt das Typst des Projekts, und Mermaid verwendet den Renderer der App.
 
-Der gespeicherte `.tikz`-Quelltext bewahrt das Diagrammmodell für eine weitere Bearbeitung. Füge das Ergebnis als TikZ oder generiertes Bild mit Beschriftung und Label ein. Die optionale KI-Reparatur kann bei Fehlern bei der Abbildungskompilierung helfen, und ein bildverarbeitungsfähiges Modell kann ein Rendering prüfen und das Layout verbessern.
+Der gespeicherte Quelltext bewahrt das Diagrammmodell für eine weitere Bearbeitung, und der Composer importiert `.tikz`-, `.tex`-, `.typ`-, `.mmd`- und `.md`-Dateien. Füge den Code am Cursor ein oder speichere ein PNG und den Quelltext im Ordner `figures` des Projekts. Die optionale KI-Reparatur kann bei Fehlern bei der Abbildungskompilierung helfen, und ein bildverarbeitungsfähiges Modell kann ein Rendering prüfen und das Layout verbessern.
 
 <div align="center">
   <img src="../assets/readme/diagram-composer.png" alt="Oleafly Diagram Composer mit einem bearbeitbaren Diagramm eines Forschungssystems auf einer Arbeitsfläche" width="100%" />
@@ -285,9 +287,9 @@ Der gespeicherte `.tikz`-Quelltext bewahrt das Diagrammmodell für eine weitere 
 
 ### Gleichungs- und Tabellenausgabe
 
-Das LaTeX to Image-Tool rendert eine Gleichung und exportiert PNG oder SVG. Es kann auch MathML für Word oder KaTeX-HTML kopieren. Das Table to LaTeX-Tool bietet einen visuellen Editor für Zeilen und Spalten und exportiert gewöhnliches LaTeX. Image to LaTeX kann eine Gleichung, Tabelle oder sichtbaren Text aus einem Bild übertragen, wenn ein bildverarbeitungsfähiger Anbieter konfiguriert ist.
+Das LaTeX to Image-Tool rendert eine Gleichung und exportiert PNG oder SVG. Es kann auch MathML für Word oder KaTeX-HTML kopieren, und sein Typst-Modus kopiert Typst-Mathematik. Das Table to LaTeX-Tool bietet einen visuellen Editor für Zeilen und Spalten und exportiert gewöhnliches LaTeX; CSV to Typst und Excel to Typst erstellen Typst-Tabellen. Image to LaTeX und Image to Typst übertragen eine Gleichung, Tabelle oder sichtbaren Text aus einem Bild mit einem lokal laufenden Bildverarbeitungsmodell. Die Image-to-LaTeX-Schaltfläche in der Editorleiste nutzt stattdessen deinen konfigurierten bildverarbeitungsfähigen Anbieter.
 
-Diese Tools stehen in der Galerie, der Befehlspalette und, sofern in der App angezeigt, über Slash-Befehle zur Verfügung.
+Diese Tools liegen in der Tools-Galerie, die sich in der Beta befindet und standardmäßig ausgeschaltet ist (siehe „Werkzeuge in der Galerie“ weiter unten). Sobald sie eingeschaltet ist, stehen sie auch in der Befehlspalette und, sofern in der App angezeigt, über Slash-Befehle zur Verfügung.
 
 <div align="center">
   <img src="../assets/readme/tools-gallery.png" alt="Oleafly-Tools-Galerie mit einem Katalog integrierter Forschungs- und Dokumentwerkzeuge" width="100%" />
@@ -295,7 +297,7 @@ Diese Tools stehen in der Galerie, der Befehlspalette und, sofern in der App ang
 
 ## Das Dokument prüfen, bevor es deinen Computer verlässt
 
-Preflight liest Quelltext, Projektstruktur, Compilerprotokoll und aktuelles PDF. Es gruppiert Befunde nach Problem und zeigt, woher jedes Ergebnis stammt. Prüfungen können zusammen oder einzeln ausgeführt werden; fehlt eine Eingabe, wird sie als nicht verfügbar oder teilweise verfügbar gemeldet und nicht als bestanden gezählt.
+Preflight liest Quelltext, Projektstruktur, Compilerprotokoll und aktuelles PDF. Es gruppiert Befunde nach Problem und zeigt, woher jedes Ergebnis stammt. Prüfungen können zusammen oder einzeln ausgeführt werden; fehlt eine Eingabe, wird sie als nicht verfügbar oder teilweise verfügbar gemeldet und nicht als bestanden gezählt. Typst-Projekte bekommen eigene Quelltextprüfungen für ungelöste Referenzen und Zitate, fehlenden Alt-Text, Dokumentmetadaten, fehlende Bilder, Datenschutz und Blindbegutachtung. Markdown-Projekte bekommen nur die Prüfungen für Compilerprotokoll und PDF.
 
 | Prüfung | Was sie prüft |
 | --- | --- |
@@ -308,7 +310,7 @@ Preflight liest Quelltext, Projektstruktur, Compilerprotokoll und aktuelles PDF.
 
 Veröffentlichungsprofile decken allgemeine Veröffentlichungen, arXiv, IEEE, ACM, andere Zeitschriften und Dissertationen ab. Du brauchst weiterhin den aktuellen Autorenleitfaden des Venues für genaue Ränder, Seitenlimits, Dateigrößenregeln und Einreichungshinweise.
 
-Die Barrierefreiheitsprüfungen beziehen sich auf PDF/UA, Matterhorn und WCAG und melden den maschinell prüfbaren Teil von PDF/UA-1. Die Vorbereitung eines barrierefreien Exports kann LaTeX-Metadaten, Tabellenkopfdeklarationen und Platzhalter für Alt-Text ergänzen, wenn die aktive Klasse und die Pakete dies unterstützen.
+Die Barrierefreiheitsprüfungen beziehen sich auf PDF/UA, Matterhorn und WCAG und melden den maschinell prüfbaren Teil von PDF/UA-1. Die Vorbereitung eines barrierefreien Exports kann LaTeX-Metadaten, Tabellenkopfdeklarationen und Platzhalter für Alt-Text ergänzen, wenn die aktive Klasse und die Pakete dies unterstützen. Für Typst bietet die Exportvorbereitung PDF/A und PDF/UA an.
 
 Preflight ist eine Reihe maschineller Prüfungen, kein Konformitätszertifikat. Es kann nicht beurteilen, ob der Alt-Text sinnvoll ist, ob die Lesereihenfolge stimmt oder ob der Kontrast ausreicht. Für eine formale Aussage zur Barrierefreiheitskonformität prüfst du das fertige PDF mit dem vom Venue geforderten Werkzeug.
 
@@ -321,9 +323,9 @@ Preflight ist eine Reihe maschineller Prüfungen, kein Konformitätszertifikat. 
 
 ### Dein Git-Repository wie gewohnt verwenden
 
-Oleafly arbeitet mit einem normalen Git-Repository. Die Source-Control-Ansicht kann ein Repository initialisieren, einheitliche oder nebeneinander angezeigte Diffs darstellen, Dateien stagen, Änderungen verwerfen, committen, pushen und pullen sowie den Vorsprung oder Rückstand eines Remotes anzeigen. Du kannst ein Projekt auch auf GitHub veröffentlichen oder ein bestehendes Repository verbinden.
+Oleafly arbeitet mit einem normalen Git-Repository. Die Source-Control-Ansicht kann ein Repository initialisieren, einheitliche oder nebeneinander angezeigte Diffs darstellen, Dateien stagen, Änderungen verwerfen, committen, pushen und pullen sowie den Vorsprung oder Rückstand eines Remotes anzeigen. Du kannst ein Projekt auch auf GitHub veröffentlichen oder ein bestehendes Repository verbinden. Der Explorer markiert geänderte Dateien mit denselben Statusbuchstaben, und wenn Git nicht installiert ist, erklärt die Source-Control-Ansicht, wie du es bekommst.
 
-Speichern, Kompilieren oder Schließen erstellt nie einen Commit. Oleafly versteckt den Quelltext nicht vor deinem Terminal und bearbeitet die `.gitignore` nicht nur, damit die eigenen Metadaten verschwinden.
+Neue und geöffnete Projekte bekommen ein Git-Repository, und ein neues Projekt beginnt meist mit einem Commit namens „Create project“. Du kannst das in den Einstellungen mit „Git für jedes Projekt einrichten“ abschalten. Danach erstellt Speichern, Kompilieren oder Schließen eines Projekts nie einen Commit. Oleafly versteckt den Quelltext nicht vor deinem Terminal und bearbeitet die `.gitignore` nicht nur, damit die eigenen Metadaten verschwinden.
 
 <p align="center">
   <img src="../assets/readme/source-control.png" alt="Oleafly-Source-Control-Ansicht mit vorgemerkten Änderungen, Branch-Diagramm und Commit-Steuerelementen" width="100%" />
@@ -353,9 +355,9 @@ Mit einem konfigurierten Anbieter kann der Assistent:
 - Prosa überarbeiten, Dateien erstellen oder umbenennen und gezielte Ersetzungen vornehmen.
 - Das Projekt kompilieren, das Protokoll lesen, PDF-Text extrahieren und gerenderte Seiten prüfen, wenn die PDF-Capture-Einstellung aktiviert ist.
 - Literatur durchsuchen, einen DOI prüfen, ein Zitat hinzufügen und Überschriften, Labels, Zitate, Makros und Dateibeziehungen des Dokuments abbilden.
-- Bearbeitbare TikZ- oder PGFPlots-Abbildungen entwerfen, kompilieren, prüfen, reparieren und einfügen.
+- Bearbeitbare TikZ- oder PGFPlots-Abbildungen in LaTeX und CeTZ- oder fletcher-Abbildungen in Typst entwerfen, kompilieren, prüfen, reparieren und einfügen.
 
-Jede Dateiänderung erzeugt einen sichtbaren Diff. In den Einstellungen kannst du für jede Aktion eine Genehmigung verlangen, gewöhnliche Schreibvorgänge für die Sitzung genehmigen oder einen weniger interaktiven Modus verwenden. Im Plan mode kann der Assistent das Projekt zuerst erfassen, bevor er schreiben, kompilieren oder Befehle ausführen darf.
+Jede Dateiänderung erzeugt einen sichtbaren Diff. Wähle im Chat einen Freigabemodus: „Um Freigabe bitten“, „Für mich freigeben“, „Vollzugriff“ oder „Eigene Regeln“, der den Regeln in `approvals.toml` folgt. Nach einem Durchlauf zeigt eine Zeile, wie viele Dateien sich geändert haben. Prüfe jede Änderung, mache die Änderung an einer Datei rückgängig oder wiederhole sie, oder mache den ganzen Durchlauf rückgängig. Im Plan mode kann der Assistent das Projekt zuerst erfassen, bevor er schreiben, kompilieren oder Befehle ausführen darf.
 
 Verbinde einen gehosteten Anbieter, einen OpenAI-kompatiblen Endpunkt oder ein lokales Ollama-Modell. Zugangsdaten für Anbieter liegen in verschlüsseltem, von der App verwaltetem Speicher und werden nicht in Projektdateien geschrieben. Die von dir gewählte Aktion zeigt an, wann eine gehostete Anfrage gestellt wird.
 
@@ -367,19 +369,19 @@ Verbinde einen gehosteten Anbieter, einen OpenAI-kompatiblen Endpunkt oder ein l
 <details>
 <summary>Prüfe eine Änderung, bevor sie angewendet wird</summary>
 
-Lies im Modus „Ask for approval“ den vorgeschlagenen Dateidiff und wähle aus, welche Änderungen du anwenden möchtest. Gewöhnliche Schreibvorgänge können für die Sitzung genehmigt werden; Löschungen bleiben separat sichtbar und können eine ausdrückliche Bestätigung erfordern.
+Lies im Modus „Um Freigabe bitten“ den vorgeschlagenen Dateidiff und wähle aus, welche Änderungen du anwenden möchtest. Im Modus „Eigene Regeln“ speichert „Immer in diesem Projekt“ eine Erlauben-Regel für dieses Werkzeug. Löschungen bleiben separat sichtbar und können eine ausdrückliche Bestätigung erfordern.
 
 </details>
 
 ### Längere Rechercheaufgaben separat ausführen
 
-Starte eine Aufgabe für eine Literaturübersicht, einen Evidenz-Audit, eine Analyse, eine Manuskriptüberarbeitung oder eine Antwort an Gutachter:innen. Sie läuft in einem separaten Git-Worktree oder einer gestaffelten Kopie, während du im ursprünglichen Projekt weiterschreibst.
+Starte eine Aufgabe für eine Literaturübersicht, einen Evidenz-Audit, eine Analyse, eine Manuskriptüberarbeitung oder eine Antwort an Gutachter:innen. Sie läuft in einem separaten Git-Worktree oder einer gestaffelten Kopie, während du im ursprünglichen Projekt weiterschreibst. Unter Windows können CLI-Agenten diese Aufgaben noch nicht ausführen, und Aufgaben, die der Oleafly Assistent ausführt, können keine Shell-Befehle starten. Unter macOS kann Codex sie nicht ausführen.
 
 Wenn die Aufgabe fertig ist, prüfe Aktivität, Ausgaben und jede geänderte Datei. Sieh dir den Diff an, wähle die Dateien aus, die du behalten möchtest, und übernimm nur diese Dateien. Das ursprüngliche Projekt bleibt unverändert, bis du geprüfte Ergebnisse übernimmst. Wenn sich das Projekt während der Aufgabe geändert hat, erkennt Oleafly die Abweichung, statt einen alten Diff über neuere Arbeit zu legen.
 
 ### Einen CLI-Agenten aus dem Katalog verwenden
 
-Der Katalog enthält 14 CLI-Agenten. Jeder verwendet sein eigenes Konto, seine Berechtigungen und seine Modellkonfiguration; Oleafly stellt den Projektkontext und den umgebenden Arbeitsbereich bereit.
+Der Katalog enthält 14 CLI-Agenten. Jeder verwendet sein eigenes Konto, seine Berechtigungen und seine Modellkonfiguration; Oleafly stellt den Projektkontext und den umgebenden Arbeitsbereich bereit. In den Einstellungen kannst du außerdem weitere Agenten im ACP-Register finden oder einen eigenen hinzufügen.
 
 | Agent | Befehl |
 | --- | --- |
@@ -400,15 +402,15 @@ Der Katalog enthält 14 CLI-Agenten. Jeder verwendet sein eigenes Konto, seine B
 
 <small>Diese Markierungen kennzeichnen kompatible Werkzeuge und bleiben Eigentum der jeweiligen Rechteinhaber. Sie stellen keine Empfehlung dar.</small>
 
-Öffne eine Unterhaltung, melde dich bei Bedarf über die eigene CLI des Agenten an, verbinde ihn erneut, beobachte die Tool-Aktivität, steuere einen laufenden Durchlauf, stoppe ihn und bewahre das Transkript zusammen mit der Projektsitzung auf, sofern unterstützt.
+Öffne eine Unterhaltung, melde dich bei Bedarf über die eigene CLI des Agenten an, verbinde ihn erneut, beobachte die Tool-Aktivität, steuere einen laufenden Durchlauf, stoppe ihn und bewahre das Transkript zusammen mit der Projektsitzung auf, sofern unterstützt. Berechtigungsanfragen zeigen die Änderung, die der Agent vornehmen will. Die Startseite des Agenten bietet Ausgangspunkte für die Recherche wie „Literatursichtung“ und „Zitationsprüfung“, und du kannst eine Unterhaltung als Markdown oder JSON exportieren.
 
-Die Unterstützung für CLI-Agenten ist in beta. Die Einstellungen zeigen Installationsbereitschaft, Plattformgrenzen und Unterstützung zum Fortsetzen für jeden Agenten.
+Die Unterstützung für CLI-Agenten ist in beta. Die Einstellungen zeigen Installationsbereitschaft, Plattformgrenzen und das Programm, das Oleafly für jeden Agenten gefunden hat, mit einer Schaltfläche „Testen“. Die Unterhaltung sagt dir, wenn ein Agent eine gespeicherte Sitzung nicht fortsetzen kann.
 
 ### Einen Recherche-Workflow mit Skills wiederverwenden
 
 Oleafly enthält Skills für Literaturarbeit, Authoring, Abbildungen, Reviews, Einreichungen, Kommunikation und Werkzeuge. Skills sind gewöhnliche `SKILL.md`-Ordner, die dem Agent-Skills-Format folgen.
 
-Verwende einen Skill mit einem Slash-Befehl, füge deinen eigenen Ordner hinzu, zeichne einen wiederholbaren Workflow aus einem abgeschlossenen Chat auf oder installiere einen Domain-Skill vom Shelf, wenn du ihn herunterladen möchtest. Skills können mit kompatiblen CLI-Agenten auf demselben Computer geteilt werden. Ein bereits installierter Skill funktioniert offline weiter.
+Verwende einen Skill mit einem Slash-Befehl, füge deinen eigenen Ordner hinzu, zeichne einen wiederholbaren Workflow aus einem abgeschlossenen Chat auf oder installiere einen Domain-Skill vom Shelf, wenn du ihn herunterladen möchtest. Skills können mit kompatiblen CLI-Agenten auf demselben Computer geteilt werden. Ein bereits installierter Skill funktioniert offline weiter. Durchsuche deine Skills und das Domain-Shelf und schalte jeden Skill für alle Projekte oder nur für das geöffnete ein.
 
 ### Mit Oleafly ausgelieferte Skills
 
@@ -433,18 +435,20 @@ Das gebündelte `research-core`-Paket enthält 36 Skills. Die folgenden Namen si
 
 Oleafly kann einen lokalen MCP-Server für einen externen Client ausführen. Er stellt dieselben Projektwerkzeuge wie der eingebaute Assistent bereit: Dateien auflisten und lesen, das Projekt durchsuchen, seine Struktur prüfen, kompilieren, das Protokoll lesen, PDF-Text extrahieren, Abbildungen in der Vorschau anzeigen und Änderungen gemäß Oleaflys Freigaberichtlinie anwenden.
 
-Der Server bindet nur an `127.0.0.1`, verwendet ein kurzlebiges Bearer-Token und läuft nur, solange der Oleafly-Prozess geöffnet ist. Ein schreibgeschützter Modus entfernt verändernde Werkzeuge aus der Werkzeugliste. Der externe Client bringt sein eigenes Modell mit; für diese Route musst du keinen KI-API-Schlüssel in Oleafly hinterlegen.
+Der Server bindet nur an `127.0.0.1`, verwendet ein Bearer-Token, das du in den Einstellungen neu erzeugen kannst, und läuft nur, solange der Oleafly-Prozess geöffnet ist. Ein schreibgeschützter Modus entfernt verändernde Werkzeuge aus der Werkzeugliste. Der externe Client bringt sein eigenes Modell mit; für diese Route musst du keinen KI-API-Schlüssel in Oleafly hinterlegen.
+
+Der Assistent kann auch externe MCP-Server nutzen. Importiere die Einstellungen eines Servers oder durchsuche das offizielle MCP-Register und prüfe einen Eintrag, bevor du ihn hinzufügst. alphaXiv wird mit einem API-Schlüssel verbunden. Damit kann der Assistent Papers suchen und lesen, und er fragt dich vor jedem Aufruf.
 
 ## Werkzeuge in der Galerie
 
-Öffne Tools über die Omnibar oder die Befehlspalette. Suche nach Name, Beschreibung oder Slash-Befehl. Ein Tool, das eine Netzwerkverbindung oder einen KI-Anbieter benötigt, weist in seinem eigenen Panel darauf hin.
+Tools befindet sich in der Beta und ist standardmäßig ausgeschaltet. Schalte es unter „Einstellungen > Experimente > LaTeX-Werkzeuge“ ein und öffne es dann über die Omnibar oder die Befehlspalette. Suche nach Name, Beschreibung oder Slash-Befehl. Ein Tool, das eine Netzwerkverbindung oder einen KI-Anbieter benötigt, weist in seinem eigenen Panel darauf hin.
 
-### Eine Befehlspalette für den gesamten Arbeitsbereich
+### Den Arbeitsbereich über ein Suchfeld durchsuchen
 
-Durchsuche Projekte und Dokumente, öffne die Einstellungen, erstelle ein Projekt, wechsle das Theme oder starte ein Tool an einem Ort. Gib `/` ein, um die Liste auf Befehle einzugrenzen und beim Arbeiten die Hände auf der Tastatur zu lassen.
+Drücke Cmd+Shift+F (Strg+Shift+F unter Windows und Linux), um Projekte und Dokumente zu durchsuchen, die Einstellungen zu öffnen, ein Projekt zu erstellen, das Theme zu wechseln oder ein Tool an einem Ort zu starten. Gib `/` ein, um die Liste auf Befehle einzugrenzen und beim Arbeiten die Hände auf der Tastatur zu lassen. Die Befehlspalette unter Cmd+K (Strg+K) listet nur Befehle auf.
 
 <p align="center">
-  <img src="../assets/readme/command-palette.png" alt="Oleafly-Befehlspalette bei der Suche nach Projekten, Dokumenten, Befehlen und Werkzeugen" width="100%" />
+  <img src="../assets/readme/command-palette.png" alt="Oleafly-Suchfeld, das Projekte, Dokumente, Befehle und Werkzeuge findet" width="100%" />
 </p>
 
 ### Import und Formatkonvertierung
@@ -472,6 +476,16 @@ Durchsuche Projekte und Dokumente, öffne die Einstellungen, erstelle ein Projek
 | Typst Editor | Ein Typst-Projekt mit Quelltextbearbeitung, Live-Vorschau und PDF-Export starten |
 | Visual Typst Editor | Ein Typst-Dokument im Projekteditor mit Live-Vorschau starten |
 | Typst to LaTeX | Typst-Markup für Zeitschriften und Einreichungen in LaTeX konvertieren |
+| arXiv to Typst | Ein arXiv-Quellpaket in Typst konvertieren, mit einer Kompilierprüfung, die auflistet, was nicht konvertiert wurde |
+| CSV to Typst | CSV- oder TSV-Zeilen einfügen und eine maskierte Typst-Tabelle erhalten |
+| Equation to Typst | Getippte LaTeX-Mathematik oder ein Gleichungsbild in Typst-Mathematik konvertieren |
+| Excel to Typst | Ein Excel-, CSV- oder TSV-Blatt in eine maskierte Typst-Tabelle konvertieren |
+| HTML to Typst | Eingefügtes HTML in ein eigenständiges Typst-Dokument konvertieren |
+| Mermaid to Typst | Ein Mermaid-Flussdiagramm in bearbeitbaren fletcher-Code konvertieren |
+| Typst to HTML | Typst-Markup in eigenständiges HTML mit MathML-Gleichungen konvertieren |
+| Typst to Markdown | Typst-Markup in portables Markdown konvertieren |
+| Typst to Word | Ein Word-Dokument erstellen, dessen Gleichungen als native Word-Mathematik gespeichert werden |
+| Word to Typst | Ein Word-Dokument in Typst konvertieren und extrahierte Medien zusammenhalten |
 | Word to LaTeX | Ein Word-Dokument in LaTeX konvertieren und extrahierte Medien zusammenhalten |
 
 ### Mathematik, Tabellen, Schreiben und Validierung
@@ -481,7 +495,7 @@ Durchsuche Projekte und Dokumente, öffne die Einstellungen, erstelle ein Projek
 | BibTeX Validator | `.bib`-Dateien auf Syntaxfehler, fehlende Pflichtfelder und doppelte Schlüssel prüfen |
 | Statistics Calculators | p-Werte, Stichprobengrößen und Konfidenzintervalle lokal berechnen |
 | Writing Generators | Mit dem Assistenten aus dem geöffneten Dokument ein Abstract, eine Zusammenfassung, eine Paraphrase oder eine Gliederung für eine Dissertation erstellen |
-| Symbol Reference | LaTeX-Symbole durchsuchen und eines an der aktuellen Cursorposition einfügen |
+| Symbol Reference | LaTeX-Symbole durchsuchen und eines am Cursor einfügen oder in einer Typst-Datei seinen Typst-Namen |
 
 ### Literatur, Referenzen und Recherche
 
@@ -497,17 +511,17 @@ Durchsuche Projekte und Dokumente, öffne die Einstellungen, erstelle ein Projek
 | PubMed to BibTeX | Einen PubMed-Datensatz per PMID abrufen, prüfen und exportieren |
 | URL to BibTeX | DOI-, arXiv- und PubMed-Links erkennen oder ein bearbeitbares Webseitenzitat erstellen |
 | Lab Search | Forschungseinrichtungen über das OpenAlex-Verzeichnis finden |
-| Conference Deadlines | Fristen für Informatikkonferenzen filtern und Countdowns anzeigen |
+| Conference Deadlines | Konferenzfristen, überwiegend aus der Informatik, filtern und Countdowns anzeigen |
 
-Der Gleichungsarbeitsbereich kann außerdem PNG, SVG, MathML für Word oder KaTeX-HTML exportieren. Die Tabellenausgabe bleibt gewöhnliches LaTeX. Writing Generators bereiten einen Prompt für den konfigurierten Assistenten vor; sie liefern selbst kein Modell.
+Der Gleichungsarbeitsbereich kann außerdem PNG, SVG, MathML für Word oder KaTeX-HTML exportieren und hat einen Typst-Modus. Table to LaTeX gibt gewöhnliches LaTeX aus, CSV to Typst und Excel to Typst geben Typst-Tabellen aus. Writing Generators bereiten einen Prompt für den konfigurierten Assistenten vor; sie liefern selbst kein Modell.
 
-Die Befehlspalette bietet außerdem Neukompilierung, automatische Kompilierung, SyncTeX, PDF-Export, Build-Cache leeren, Wortzählung, Git-Historie, Checkpoints, Terminal, Zitateinfügen, Formatierungshilfen, Umgebungshilfen, Theme-Steuerung, Vim-Modus, Rechtschreibprüfung und Offline-Modus.
+Die Befehlspalette bietet außerdem Neukompilierung, automatische Kompilierung, SyncTeX, PDF-Export, Build-Cache leeren, Wortzählung, Git-Historie, Checkpoints, Terminal, Zitateinfügen, Formatierungshilfen, Umgebungshilfen, Theme-Steuerung, Vim-Modus, Rechtschreibprüfung und Offline-Modus. Sie kann auch Folien präsentieren, ein LaTeX-Projekt in Typst konvertieren, LaTeX- und Typst-Pakete durchsuchen, „Einblicke ins Dokument“ und „Dokumenteinstellungen“ öffnen und alle Editor-Tabs schließen oder nur die Dateien, die der Assistent geöffnet hat.
 
 ## Ein Terminal neben dem Paper
 
 Öffne Shell-Tabs für das aktive Projekt, ohne den Arbeitsbereich zu verlassen. Pro Projekt können bis zu zehn Terminalsitzungen geöffnet werden. Benenne Tabs, gib ihnen Farben, schließe eine oder mehrere Sitzungen und speichere diese Tab-Bezeichnungen im Projekt.
 
-Nutze einen Tab, um ein Skript auszuführen, einen Datensatz zu prüfen, eine erzeugte Datei zu kontrollieren oder ein anderes CLI-Werkzeug zu verwenden. Es ist deine Shell, und den Befehlen deiner Wahl steht dasselbe Projektverzeichnis zur Verfügung.
+Nutze einen Tab, um ein Skript auszuführen, einen Datensatz zu prüfen, eine erzeugte Datei zu kontrollieren oder ein anderes CLI-Werkzeug zu verwenden. Es ist deine Shell, und den Befehlen deiner Wahl steht dasselbe Projektverzeichnis zur Verfügung. Dateipfade und Webadressen in der Ausgabe sind Links. Ein Cmd-Klick darauf (Strg-Klick unter Windows und Linux) öffnet eine Projektdatei an der Zeile und Spalte, die die Ausgabe nennt, ein PDF oder Bild in seinem Viewer oder eine Webadresse im Browser.
 
 <p align="center">
   <img src="../assets/readme/project-terminal.png" alt="Oleafly-Terminal-Dock neben einem Manuskriptprojekt" width="100%" />
@@ -516,7 +530,7 @@ Nutze einen Tab, um ein Skript auszuführen, einen Datensatz zu prüfen, eine er
 
 ## Browser für Computer-Use-Aufgaben
 
-Der In-App-Browser ist ein separates OS-Fenster mit Tabs, Adressleiste, Navigationssteuerelementen und isolierten Inhalts-Webviews. Er ist vor allem für Computer-Use gedacht: Ein Agent kann eine URL öffnen und warten, bis sie geladen ist, während du das Manuskript im Hauptfenster weiterbearbeitest.
+Der In-App-Browser befindet sich in der Beta und ist standardmäßig ausgeschaltet. Schalte ihn unter „Einstellungen > Experimente > Webbrowser“ ein. Er öffnet sich als separates OS-Fenster mit Tabs, Adressleiste, Navigationssteuerelementen und isolierten Inhalts-Webviews. Er ist vor allem für Computer-Use gedacht: Ein Agent kann eine URL öffnen und warten, bis sie geladen ist, während du das Manuskript im Hauptfenster weiterbearbeitest.
 
 Das Computer-Use-Tool kann Seiteninhalte nicht lesen, erfassen, anklicken oder skripten. Remote-Seiten erhalten keinen Oleafly-IPC-Zugriff, und externe Navigation folgt der aktiven Freigaberichtlinie. Verwende die Literaturwerkzeuge, wenn du durchsuchbare Metadaten oder Zitate brauchst.
 
@@ -529,7 +543,7 @@ Das Computer-Use-Tool kann Seiteninhalte nicht lesen, erfassen, anklicken oder s
 | Literaturübersicht | Quellen suchen, Absätze auf fehlende Belege prüfen, Metadaten speichern und Belege mit Research-Skills organisieren |
 | Reproduzierbare Analyse | Daten- und Analyseordner schreibgeschützt verknüpfen, das Manuskript getrennt halten und das Terminal für Projektbefehle nutzen |
 | Konferenzbeitrag | Venue-orientierte Vorlagen, SyncTeX sowie Abbildungs- und Tabellenwerkzeuge und einen Pre-Submission-Durchlauf verwenden |
-| Beamer-Vortrag oder Poster | Mit einer Präsentations- oder Postervorlage beginnen und unterstützte Formate aus dem Projekt exportieren |
+| Beamer-Vortrag oder Poster | Mit einer Präsentations- oder Postervorlage beginnen, unterstützte Formate exportieren und aus dem kompilierten PDF präsentieren, optional mit Referentenansicht |
 | Buch oder langer Bericht | Einen mehrteiligen Quelltextbaum, Gliederung, projektweite Referenzen, PDF-Navigation und, sofern unterstützt, EPUB-Export verwenden |
 | Lebenslauf oder CV | Lebenslaufvorlagen, lokale Korrektur, PDF-Textextraktion und ATS-Bereitschaftsprüfungen nutzen |
 | Mehrsprachiges Manuskript | Die Unicode-Engine und Systemschriften der Vorlage auswählen, wenn das Projekt XeLaTeX oder LuaLaTeX benötigt |
@@ -543,12 +557,12 @@ Für immer kostenlos · Open Source · Keine Konten · Keine Anmeldung · Kein T
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![Für macOS herunterladen](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI oder EXE | [![Für Windows herunterladen](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage oder DEB | [![Für Linux herunterladen](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage oder DEB | [![Für Linux herunterladen](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage, DEB oder RPM | [![Für Linux herunterladen](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage, DEB oder RPM | [![Für Linux herunterladen](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-Die Desktop-App enthält Tectonic für LaTeX und einen Typst-Compiler. LaTeX kann offline kompilieren, wenn die benötigten Pakete in der gebündelten Engine bereits verfügbar sind. Pandoc kann in den Einstellungen für Markdown-Konvertierungen installiert werden.
+Die Desktop-App enthält Tectonic für LaTeX, einen Typst-Compiler und Pandoc für Markdown-Builds und Dokumentkonvertierungen. LaTeX kompiliert offline, wenn die gebündelte Engine die benötigten Pakete bereits hat, und Typst kompiliert offline, wenn seine Pakete im Cache oder im Projekt liegen.
 
-Linux-Pakete benötigen glibc 2.39 oder neuer. Releases enthalten signierte Update-Artefakte, und der In-App-Updater prüft vor der Installation die Signatur. Die [Release Notes](https://github.com/Oleafly/Oleafly/releases/latest) nennen den Inhalt jedes Installers.
+Unter x86_64 benötigen die Linux-Pakete glibc 2.35 oder neuer (Ubuntu 22.04 oder später). ARM64-Pakete werden unter Ubuntu 24.04 (glibc 2.39) gebaut. Releases enthalten signierte Update-Artefakte, und der In-App-Updater prüft vor der Installation die Signatur. Die [Release Notes](https://github.com/Oleafly/Oleafly/releases/latest) nennen den Inhalt jedes Installers.
 
 ## Mehr erfahren
 

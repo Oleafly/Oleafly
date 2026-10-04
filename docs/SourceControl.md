@@ -67,6 +67,8 @@ instead of offering buttons that would fail:
 - Unified and side-by-side diffs for changes in the working tree.
 - Stage, discard, commit, push, and pull from the source-control panel.
 - Ahead and behind indicators for the configured remote.
+- The Explorer marks changed files with the same letters as Source Control (M,
+  U, D and so on), and a folder that holds changes gets a dot.
 - Publish a project to GitHub or connect an existing repository.
 - Continue editing from another editor or terminal without conversion.
 
@@ -104,4 +106,6 @@ instead of offering buttons that would fail:
 - `src-tauri/src/git.rs`: Git commands, remotes, authentication, and safety.
 - `src-tauri/src/project.rs`: project metadata and export history.
 - `src/store/files.ts`: filesystem-backed file state and autosave.
-- `src/components/git/` and `src/contributions/tabs.tsx`: product surface.
+- `src/components/layout/SourceControl.tsx`,
+  `src/components/files/gitStatus.tsx`, and `src/contributions/tabs.tsx`:
+  product surface.

@@ -16,7 +16,7 @@ recent-work navigation.
 - Search with GitHub's issue search syntax: qualifiers, exclusions, AND, OR
   and parentheses (see below).
 - An Advanced filters panel that reads and writes the same search text.
-- Create, duplicate, rename, archive, and delete project operations through the
+- Create, duplicate, rename, and delete project operations through the
   filesystem sandbox.
 - Main-document and engine metadata persisted with each project.
 - Compile and export history associated with the project.
@@ -47,7 +47,7 @@ path, exports, engine, kind and cover colour. Qualifiers narrow the list:
 | --- | --- | --- |
 | `is:` | `is:bookmarked`, `is:folder`, `is:library`, `is:forked` | Project state |
 | `has:` and `no:` | `has:preview`, `no:exports` | Whether something exists |
-| `engine:` | `engine:typst`, `engine:latex` | Tectonic, Typst or Markdown |
+| `engine:` | `engine:typst`, `engine:latex` | LaTeX, Typst or Markdown |
 | `kind:` | `kind:image` | Document, image or diagram |
 | `color:` | `color:mint` | Cover colour |
 | `created:`, `updated:`, `opened:` | `created:>2026-01-01`, `updated:>@today-1w` | Dates |
@@ -98,6 +98,6 @@ icon for the dropdown, so the new qualifier shows up there without UI work.
 - `packages/search-query/`: query parser, evaluator, suggestions and edits.
 - `src/components/library/project-search.tsx`: the project qualifiers.
 - `src/components/ui/query-search.tsx`: the search box and its dropdown.
-- `src/store/library.ts` and `src/store/project.ts`: client state.
+- `src/store/files.ts` and `src/lib/queries/projects.ts`: client state.
 - `src-tauri/src/project.rs`: lifecycle, metadata, and import/export commands.
 - `src-tauri/src/paths.rs` and `src-tauri/src/sandbox.rs`: path policy.

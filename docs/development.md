@@ -9,16 +9,18 @@ oleafly-desktop/
 ├── crates/
 │   ├── oleafly-core/       shared Rust project, path, and build-directory policy
 │   ├── oleafly-cli/        oleafly commands and native compiler adapter
-│   └── oleafly-agent/      provider-neutral agent runtime
+│   ├── oleafly-agent/      provider-neutral agent runtime
+│   └── oleafly-history/    content-addressed compile checkpoints
 ├── src/                    React app shell (stores, Tauri client, UI kit, port adapters)
 │   ├── components/         ui (shadcn-style), layout, editor glue, preview panes, ai
 │   ├── contributions/      registers rail tabs / commands / AI toolsets into the registry
-│   ├── features/           compile, synctex, export
+│   ├── features/           export, import, synctex, citations, converters
 │   ├── lib/                tauri wrappers, github, spellcheck, utils, package shims
 │   └── store/              zustand stores
 ├── packages/               @oleafly/* engine packages (consumed as TS source)
-│   ├── latex/  ai-core/  registry/  preflight/
-│   └── editor/  preview/  diagram/  ai-tools/  templates/
+│   ├── latex/  latex-intelligence/  ai-core/  ai-tools/  registry/  preflight/
+│   ├── editor/  wysiwyg/  preview/  diagram/  templates/  search-query/
+│   └── backend-port/  conversion-registry/  i18n-contract/  pdf-to-latex/
 ├── src-tauri/
 │   ├── src/                rust: commands, DocumentEngine, config, git, paths, project, synctex
 │   ├── binaries/           target-suffixed compiler sidecars
@@ -26,6 +28,7 @@ oleafly-desktop/
 │   └── tauri.conf.json
 ├── scripts/fetch-tectonic.sh
 ├── scripts/fetch-biber.sh
+├── scripts/fetch-pandoc.sh
 ├── scripts/fetch-typst.sh
 ├── scripts/fetch-language-servers.mjs
 └── docs/
@@ -145,14 +148,17 @@ people who depend on the output are usually scripting against it.
 
 ### Checks before opening a PR
 
-Make sure both pass:
+Make sure these pass:
 
 ```bash
+pnpm lint                                 # Biome lint over src/ and packages/
 pnpm build                                # frontend typecheck (noUnusedLocals/Parameters on)
 pnpm test                                 # vitest across src/ and packages/
 pnpm language-servers:test                # manifest, checksum, target, URL, and license policy
 pnpm audit --prod --audit-level high      # registry-backed npm advisory check
 cargo check --workspace                   # all Rust crates compile
+cargo fmt --all -- --check                # Rust formatting
+cargo clippy --workspace --all-targets -- -D warnings  # Rust lints, as CI runs them
 cargo test -p oleafly-core -p oleafly-cli --all-targets  # shared core and CLI
 cargo deny --workspace --all-features --config src-tauri/deny.toml check  # Rust advisories, licenses, and sources
 ```
@@ -259,17 +265,17 @@ intentionally omitted from public documentation.
 
 ## Key extension points
 
-- Add an AI provider → `crates/oleafly-agent/src/provider.rs` (`CATALOG` + `wire_for`), and mirror the display entry in `packages/ai-core/src/providers.ts` (`PROVIDERS`). OpenAI-compatible providers just need a `base_url`, since routing collapses to three wire formats.
+- Add an AI provider → `crates/oleafly-agent/src/provider.rs` (`CATALOG` + `wire_for`), and mirror the display entry in `packages/ai-core/src/providers.ts` (`PROVIDERS`). OpenAI-compatible providers just need a `base_url`, since routing collapses to four wire formats.
 - Add a Tauri command → declare in `src-tauri/src/*.rs`, register in `src-tauri/src/lib.rs`, wrap in `src/lib/tauri.ts`.
 - Add a document engine → implement `DocumentEngine` in `src-tauri/src/document_engine.rs`, expose truthful capabilities, add a checksum-pinned sidecar fetch/smoke path, then consume the descriptor in UI controls.
-- Add a project template → drop a folder with a `template.json` manifest into `src-tauri/resources/templates/` (engine-general template metadata remains planned work).
+- Add a project template → drop a folder with a `template.json` manifest into `src-tauri/resources/templates/` (its `engine` field selects LaTeX, Typst, or Markdown).
 - Add a Tools gallery entry → register the destination and slash aliases in `src/lib/tool-catalog.ts`, add its localized name, description, and tags in `src/i18n/locales/en/researchTools.json`, then update the catalog and gallery tests.
 - Add a tool for the AI → `packages/ai-tools/src/tools.ts`. App services it needs go through `AiToolsHost` (adapter in `src/lib/ai-tools.ts`).
-- Add a rail tab / palette or omnibar command / AI toolset → register it in `src/contributions/` (see [Architecture](architecture.md#the-contribution-registry)).
+- Add a rail tab / palette or omnibar command / AI toolset → register it in `src/contributions/` (see [Architecture](architecture.md#extension-model)).
 
 ## Sync and GitHub internals
 
-OAuth device flow runs server-side in Rust (`src-tauri/src/github.rs`) because the OAuth endpoints aren't CORS-enabled. The API calls (api.github.com) happen from the frontend.
+OAuth device flow runs server-side in Rust (`src-tauri/src/github.rs`) because the OAuth endpoints aren't CORS-enabled. Authenticated API calls (api.github.com) also run in Rust, so the token never reaches the webview.
 
 ## Coding style
 
@@ -283,8 +289,9 @@ OAuth device flow runs server-side in Rust (`src-tauri/src/github.rs`) because t
 ## Releasing
 
 Packaging targets macOS Apple Silicon, Windows x64, Linux x64, and Linux ARM64.
-Each target gets matching Tectonic, Biber, Typst, and language-server resources
-that are fetched and smoke-tested in CI. A tag produces a complete draft.
-Publishing is a separate manual workflow run and is blocked until the live
-Anthropic and Google real-app contracts pass. See [Auto-updates](updates.md)
-for required secrets, optional model variables, signing, and publication.
+Each target gets matching Tectonic, Biber, Pandoc, Typst, and language-server
+resources that are fetched and smoke-tested in CI. Linux ARM64 gets a stub in
+place of Biber, because upstream publishes no 2.17 build for it. A tag produces
+a complete draft. Publishing is a separate manual workflow run, and it refuses
+to publish unless every platform's artifacts are present. See
+[Auto-updates](updates.md) for required secrets, signing, and publication.

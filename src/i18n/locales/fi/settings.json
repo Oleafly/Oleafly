@@ -982,11 +982,11 @@
       "status": {
         "checking": "Etsitään pandocia…",
         "installing": "Haetaan kiinnitettyä pandoc-julkaisua. Tämä kestää hetken ensimmäisellä kerralla.",
-        "missing": "Ei löytynyt tältä Macilta. Oleafly lataa yhteensopivan pandocin (2.19 tai uudempi) omaan kansioonsa; mikään muu järjestelmässäsi ei muutu.",
+        "missing": "Ei löytynyt. Oleafly voi ladata yhteensopivan pandocin (2.19 tai uudempi) omaan kansioonsa; mikään muu järjestelmässäsi ei muutu.",
         "ready": "Havaittu. Markdown-projektit muunnetaan LaTeXiksi pandocilla ja käännetään sitten mukana tulevalla Tectonicilla."
       },
       "tectonicDetail": "Latoo pandocin tuottaman LaTeXin. Tulee Oleaflyn mukana, eikä sitä tarvitse määrittää.",
-      "tooltip": "Markdown-projektit muunnetaan pandocilla (Pandoc Markdown: taulukot, alaviitteet, viittaukset, matematiikka) LaTeXiksi, jonka mukana tuleva Tectonic latoo PDF:ksi. Pandoc ladataan tarvittaessa ensimmäisellä käyttökerralla."
+      "tooltip": "Markdown-projektit muunnetaan pandocilla (Pandoc Markdown: taulukot, alaviitteet, viittaukset, matematiikka) LaTeXiksi, jonka mukana tuleva Tectonic latoo PDF:ksi. Pandoc tulee Oleaflyn mukana."
     },
     "packages": {
       "ariaLabel": "LaTeX-paketit",

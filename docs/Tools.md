@@ -5,6 +5,10 @@ project. Open it from the omnibar, the command palette, or a slash command.
 Search matches the tool name, description, and slash aliases. A tool that
 needs a network connection or an AI provider says so in its own panel.
 
+The gallery is off by default while it is in beta. Turn on **LaTeX tools** in
+Settings > Experimentation to show the gallery, its tools and their slash
+commands.
+
 <div align="center">
   <img src="assets/readme/tools-gallery.png" alt="Oleafly Tools gallery showing converters, research tools, citation tools, and writing tools" width="100%" />
 </div>
@@ -32,7 +36,7 @@ palette and slash-command menu.
 | `html-to-typst` | HTML to Typst | Convert pasted HTML into a standalone Typst document. | `/html-to-typst` |
 | `image-to-typst` | Image to Typst | Turn notes, equations, or a table in an image into editable Typst. | `/image-to-typst` |
 | `latex-to-html` | LaTeX to HTML | Convert LaTeX into standalone HTML with MathML equations. | `/latex-to-html` |
-| `latex-to-image` | LaTeX to Image | Render a LaTeX equation and export PNG or SVG. | `/latex-to-image`, `/latex-preview` |
+| `latex-to-image` | LaTeX to Image | Render a LaTeX or Typst equation and export PNG or SVG. | `/latex-to-image`, `/latex-preview` |
 | `latex-to-markdown` | LaTeX to Markdown | Convert a LaTeX document into portable Markdown. | `/latex-to-markdown` |
 | `latex-to-typst` | LaTeX to Typst | Convert LaTeX into Typst source that you can copy, save, or open as a project. | `/latex-to-typst` |
 | `latex-to-word` | LaTeX to Word | Create a DOCX with equations stored as native Word math. | `/latex-to-word`, `/latex-to-docx` |
@@ -52,9 +56,10 @@ palette and slash-command menu.
 | `word-to-typst` | Word to Typst | Convert a Word document into Typst and keep extracted media together. | `/word-to-typst`, `/docx-to-typst` |
 
 Most conversions use local files and the installed or bundled toolchain. An
-identifier lookup, an AI-assisted image conversion, or a provider-backed
-refinement can make a network request. The tool panel names that requirement
-before it runs.
+identifier lookup or a provider-backed refinement can make a network request.
+Image to LaTeX, Image to Typst and equation images use a vision model running
+in Ollama on your computer. The tool panel names that requirement before it
+runs.
 
 ## Validate
 
@@ -67,7 +72,7 @@ before it runs.
 | ID | Tool | What it does | Slash aliases |
 | --- | --- | --- | --- |
 | `lab-search` | Lab Search | Find research institutions through the OpenAlex directory, with country and ROR links. | `/lab-search`, `/institution-search` |
-| `deadlines` | Conference Deadlines | Search computer science conference deadlines with field filters and countdowns. | `/conference-deadlines`, `/deadlines` |
+| `deadlines` | Conference Deadlines | Search conference deadlines with field filters and countdowns. Most venues are in computer science, with a few in neuroscience, physics and materials. | `/conference-deadlines`, `/deadlines` |
 
 ## References
 
@@ -104,11 +109,11 @@ you can review, copy, or save. It does not silently change the open project.
 
 ## Command palette and slash commands
 
-The command palette searches projects, documents, commands, and all catalogued
-tools in one place. It also includes recompile, auto-compile, SyncTeX, PDF
-export, cache cleanup, word count, Git history, checkpoints, terminal,
-citations, formatting helpers, environment helpers, themes, Vim mode,
-spellchecking, and offline mode.
+The command palette searches projects, documents, commands, and every
+catalogued tool when LaTeX tools is on. It also includes recompile,
+auto-compile, SyncTeX, PDF export, cache cleanup, word count, Git history,
+checkpoints, terminal, citations, formatting helpers, environment helpers,
+themes, Vim mode, spellchecking, and offline mode.
 
 <div align="center">
   <img src="assets/readme/command-palette.png" alt="Oleafly command palette searching projects, documents, commands, and tools" width="100%" />

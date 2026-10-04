@@ -17,6 +17,8 @@ pending or has failed.
 - Previous page, next page, and direct page-number navigation.
 - Zoom in, zoom out, fit to width, and fit to height.
 - Fullscreen preview mode.
+- Present the PDF as slides, from the start or from the current page. An
+  optional presenter view shows the next slide, a timer, and speaker notes.
 - Rotate clockwise by 90 degrees.
 - Invert preview colors and restore the normal palette.
 - Download the displayed PDF with a chosen filename.

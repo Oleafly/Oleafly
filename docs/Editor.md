@@ -17,7 +17,8 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
 2. **Live reference checking**: resolves labels, references, citations,
    macros, environments, and included files across the project index.
 3. **Integrated PDF viewer**: keeps the compiled artifact beside the source
-   and exposes source-to-PDF navigation when SyncTeX data is available.
+   and exposes source-to-PDF navigation: SyncTeX for LaTeX, and the Typst
+   language server for Typst 0.13 or newer.
 4. **Live inline preview**: renders supported inline math and visual content
    without replacing the editable source representation.
 5. **LaTeX command completion and syntax checking**: completes commands,
@@ -36,9 +37,10 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
 ## Editing surfaces
 
 - Code view is the canonical source surface for all engines.
-- Visual editing is available where the engine descriptor declares it.
-- Markdown and LaTeX formatting actions operate through engine-aware ports;
-  they do not infer behavior from a file extension alone.
+- Visual editing is available for LaTeX and Typst source files. Markdown has
+  its own rich-text visual editor.
+- Markdown, LaTeX and Typst formatting actions operate through engine-aware
+  ports; they do not infer behavior from a file extension alone.
 - Vim mode, find and replace, code folding, multi-file tabs, and slash-command
   insertion are application contributions rather than editor parser logic.
 - File and diff tabs share one strip in open order. Each tab has a context
@@ -56,6 +58,11 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   the selection with an environment (both also in the command palette).
   `@`-prefixed math shortcuts complete Greek letters and symbols inside math
   contexts.
+- Typst editing: `.typ` files get folding, sticky headings and breadcrumbs.
+  Typing `$` writes the closing `$`, Enter continues a list, and `/` opens
+  snippets. Completion covers functions, file paths, labels, packages and
+  bibliography styles. Rename, Go to definition, signature help and Format
+  document (typstyle) come from the Tinymist language server.
 - LaTeX input pairing: typing `$` writes the closing `$` too, and a second `$`
   inside empty math opens a display block. `\(` and `\[` expand with their
   closing delimiter, and Backspace between a fresh pair removes both halves.
@@ -168,6 +175,10 @@ the project or import one from disk, then set its width, caption and label.
 
 Markdown files keep the rich-text visual editor they have always had.
 
+Typst files have a visual mode too. It renders headings, emphasis, lists,
+math, images, editable tables, reference chips and footnotes, and shows the
+source where the cursor is.
+
 ## LaTeX controls at a glance
 
 The LaTeX toolbar keeps common source operations close to the editor. It does
@@ -177,12 +188,13 @@ readable in Git and other editors.
 | Group | Available controls |
 | --- | --- |
 | Modes and history | Code view, Visual view, undo, redo |
-| Structure | Six heading levels, from `\part` through `\paragraph` |
+| Structure | Seven heading levels, from `\part` through `\subparagraph` |
 | Inline text | Bold, italic, underline, and monospace text |
 | References | Links, citations, cross-references, and footnotes |
 | Blocks | Quotes, figures with captions and labels, tables, itemized and numbered lists, `equation`, `align`, and fractions |
 | Intelligence | Go to definition, find references, and project-wide rename |
 | Symbols | A searchable palette with 236 unique commands across 13 categories |
+| Project tools | Draw a diagram, LaTeX packages, Document insights, and Document settings |
 
 <div align="center">
   <img src="assets/readme/latex-editor-toolbar.png" alt="Oleafly LaTeX editor toolbar with formatting, references, figures, tables, lists, equations, and symbol controls" width="100%" />
@@ -192,8 +204,10 @@ readable in Git and other editors.
 The symbol palette groups Greek letters, operators, relations, arrows, set
 theory, logic, calculus, functions, brackets, accents, dots and spacing, and
 miscellaneous symbols. Search by symbol or command, then insert it at the
-current cursor. The full [symbol catalog in the README](../README.md#searchable-latex-symbol-palette)
-lists every category and command.
+current cursor. The full [symbol catalog in the README](../README.md#a-searchable-latex-symbol-palette)
+lists every category and command. In a `.typ` file the palette shows and
+inserts Typst symbol names. The Typst toolbar has the same insertion tools as
+the LaTeX one.
 
 <div align="center">
   <img src="assets/readme/latex-symbols.png" alt="Oleafly searchable LaTeX symbol palette with categorized mathematical commands" width="100%" />
@@ -227,8 +241,8 @@ lists every category and command.
 - A finding is shown only when it sits entirely in prose the mask kept. One
   that reaches across a masked construct or a placeholder is dropped, because
   its suggestion would rewrite the markup underneath.
-- Typst goes through Harper's own Typst parser. Markdown and plain text use
-  the existing masks.
+- Typst gets its own prose mask, like LaTeX, so grammar checks the same text
+  that spelling does. Markdown and plain text use the existing masks.
 - Harper is tuned for chat and email. The academic profile in
   `src/lib/proofreading/lint-profile.ts` turns off the rules that fight
   scholarly prose: sentence length, hedging, contractions, shorthand
@@ -278,7 +292,7 @@ lists every category and command.
 
 Settings > Appearance > Editor holds the editor's own preferences. All of
 them are stored locally, survive a reload, and go back to their defaults with
-Reset appearance.
+Reset to defaults at the foot of Appearance.
 
 - Keybindings: Default, Vim or Emacs. See
   [KeyboardShortcuts.md](KeyboardShortcuts.md) for what each mode binds.
@@ -290,6 +304,8 @@ Reset appearance.
   sideways instead.
 - Auto-complete, auto-close brackets, auto-close math, auto-close
   environments, inline suggestion, non-blinking cursor and sticky scroll.
+- Typst: Format on save, Formatter line width, Formatter indent, Parameter
+  name hints and Typst lint checks.
 
 ## Engineering boundaries
 

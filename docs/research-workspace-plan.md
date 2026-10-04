@@ -1,5 +1,7 @@
 # Research workspace implementation plan
 
+Status: Shipped in 0.4.0 (PR #128, merged 2026-09-06). This page records the original plan. The code and CHANGELOG describe current behaviour.
+
 Oleafly should let a researcher plan a study, work with several assistants, inspect their work and usage, and apply reviewed changes to a manuscript. The editor, references, compiler, history, and research skills remain the foundations of that workflow.
 
 This branch builds on main at `072d8c4144c63e449d087b9203ed06ce75323bee`, which merged the skills work in PR #125.

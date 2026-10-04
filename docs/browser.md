@@ -1,12 +1,12 @@
 # In-app browser
 
-The browser is its own OS window, built from one Tauri window and several child webviews. Rust owns the window and the webview set (`src-tauri/src/browser.rs`); the toolbar is our own React page (`src/components/browser/`), loaded as `index.html?view=browser`.
+The browser is its own OS window, built from one Tauri window and several child webviews. Rust owns the window and the webview set (`src-tauri/src/browser.rs`); the toolbar is our own React page (`src/components/browser/`), loaded as `index.html?view=browser`. It is a beta feature and off by default. Settings > Experimentation > Web browser turns it on.
 
 ## Window layout
 
 The window hosts two kinds of child webviews.
 
-The chrome webview is our app. It is labelled `oleafly-browser-chrome-<n>` and its native bounds cover the whole window. It paints the tab strip and the address row in the top 88 logical pixels and leaves the rest as a plain surface. It is the only webview in the window that is meant to use IPC, and its capability (`src-tauri/capabilities/browser.json`) grants it event listening, event emit, and `shell:allow-open`. Every browser command in Rust also checks that the caller is the chrome webview of the window it is acting on. The open, focus, and close commands accept only the main window, and navigate accepts the chrome or the main window, which acts on the active tab of the newest browser window for computer use.
+The chrome webview is our app. It is labelled `oleafly-browser-chrome-<n>` and its native bounds cover the whole window. It paints the tab strip and the address row in the top 88 logical pixels and leaves the rest as a plain surface. It is the only webview in the window that is meant to use IPC, and its capability (`src-tauri/capabilities/browser.json`) grants it event listening, event emit, window dragging and maximizing, and `shell:allow-open`. Every browser command in Rust also checks that the caller is the chrome webview of the window it is acting on. The open, focus, and close commands accept only the main window, and navigate accepts the chrome or the main window, which acts on the active tab of the newest browser window for computer use.
 
 Each tab is a content webview labelled `oleafly-browser-pane-<n>`, loaded with `WebviewUrl::External` and added after the chrome so it sits above it. Its bounds start 88 logical pixels down and run to the bottom of the window. Only the active tab is shown; the others are hidden with `webview.hide()`. Remote pages get no IPC. The navigation handler allows http, https, and about:blank only, and every URL that arrives from the frontend is parsed and rejected unless it is http or https with a host. Both refuse the app's own origin, tauri.localhost and any .localhost host, and in development builds the dev server origin, because a pane on the app's origin would gain command access. Links that ask for a new window open as a new tab in the same window.
 

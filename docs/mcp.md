@@ -4,9 +4,11 @@ Oleafly can act as an MCP (Model Context Protocol) server. Any MCP client (Claud
 
 This is useful when you already have a Claude (or similar) subscription and want that chat app to drive Oleafly, without pasting an API key into Settings.
 
+Oleafly can also be the client. Settings → AI Assistant → MCP lists the MCP servers the assistant can use. Add one by hand, bring in the ones you already use with **Import from other tools**, or search the official MCP registry with **Browse registry**. alphaXiv connects from Settings → Integrations with an API key, and the assistant asks you before each alphaXiv call.
+
 ## Enable it
 
-1. Open **Settings → MCP**.
+1. Open **Settings → Integrations → Oleafly MCP**.
 2. Toggle **Enable MCP server** on.
 
 The server runs only while the Oleafly application process is open. It listens
@@ -168,8 +170,8 @@ format and the bundled research pack.
 
 Some agents read their skills straight from a local folder instead of calling
 tools. For those, the other route is the "Share skills with other agents on
-this computer" setting in Settings → AI → Skills. It symlinks every valid
-Oleafly skill into that agent's own `skills/` subfolder (`~/.claude/skills`,
+this computer" setting in Settings → AI Assistant → Skills. It symlinks every
+valid Oleafly skill into that agent's own `skills/` subfolder (`~/.claude/skills`,
 `~/.codex/skills`, `~/.agents/skills`, `~/.cursor/skills`, or
 `~/.gemini/skills`, whichever of those already exist on this machine), so a
 skill written once in Oleafly is available from disk with no MCP connection
@@ -180,7 +182,7 @@ involved. Turning the setting off removes the symlinks again.
 Your MCP client (Claude Desktop, Claude Code, and others) already asks you to approve tool use on its side before it ever calls Oleafly. Oleafly's own approval is a second, deeper gate that shows the actual change, and it is the one that still protects you after you click "Always allow" in the client. Choose how much of it you want with the **approval policy** in Settings:
 
 - **Confirm every change** (default): every write, rename, and delete shows an approval card in Oleafly (with a red/green diff when content rewrites, a rendered image for figures). The card floats as "External agent request (MCP)".
-- **Auto-approve edits, confirm deletes**: writes and renames apply immediately while an Oleafly window owns the renderer session. Deletes still show a card. **Always allow writes** on a card sets this for the current session.
+- **Auto-approve edits, confirm deletes**: writes and renames apply immediately while an Oleafly window owns the renderer session. Deletes still show a card. **Always allow** on a card turns this on for the rest of the session.
 - **Trust this connection**: mutating tools do not prompt, but still require an active Oleafly renderer to enforce the policy. Use this only when you trust the client and its own approval controls.
 - **Read-only mode** (separate toggle) removes mutating tools from `tools/list` entirely, so an external app can read and compile but never modify files, whatever the policy.
 - **Bearer token**: 256-bit random value stored in authenticated encrypted
