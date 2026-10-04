@@ -149,3 +149,69 @@ describe("exportConversation", () => {
     expect(writeBytesFile).not.toHaveBeenCalled();
   });
 });
+
+describe("conversationMarkdown edge cases", () => {
+  it("names a model missing from the list by its id, and an agent without a version", () => {
+    const markdown = conversationMarkdown({
+      session: session("saved", { agentVersion: null, controls: { modelId: "house-model", modelConfigId: null, models: [] } }),
+      events: [],
+      projectName: null,
+      agentName: "Pi",
+    });
+
+    expect(markdown).toContain("- Agent: Pi\n");
+    expect(markdown).toContain("- Model: house-model\n");
+  });
+
+  it("keeps tools without diffs and skips a turn that changed nothing", () => {
+    const markdown = conversationMarkdown({
+      session: session(),
+      events: [
+        event(1, "user_message", { text: "Tidy up" }),
+        event(2, "tool_call", { toolCallId: "read", title: "Read notes", status: "completed" }),
+        event(3, "turn_changes", {
+          turnId: "turn", snapshotId: null, files: [], moreFiles: 0, skipped: [], overlapped: false, unavailable: null,
+        }),
+        event(4, "turn_complete", { stopReason: "end_turn" }),
+      ],
+      projectName: "Thesis",
+      agentName: "Research CLI",
+    });
+
+    expect(markdown).toContain("- Tool: Read notes\n");
+    expect(markdown).not.toContain("- Tool: Read notes\n  -");
+    expect(markdown).not.toContain("Changed files");
+  });
+
+  it("writes a deleted file with only its removed lines counted", () => {
+    const markdown = conversationMarkdown({
+      session: session(),
+      events: [
+        event(1, "user_message", { text: "Remove the old draft" }),
+        event(2, "agent_message_chunk", { content: { type: "text", text: "Removed." } }),
+        event(3, "turn_changes", {
+          turnId: "turn", snapshotId: "snap",
+          files: [{ index: 0, path: "old.tex", change: "deleted", beforeSize: 4, afterSize: null, added: null, removed: 12, alsoEditedHere: false, build: false }],
+          moreFiles: 0, skipped: [], overlapped: false, unavailable: null,
+        }),
+        event(4, "turn_complete", { stopReason: "end_turn" }),
+      ],
+      projectName: "Thesis",
+      agentName: "Research CLI",
+    });
+
+    expect(markdown).toContain("**Changed files**\n\n- old.tex (Deleted, +0 -12)\n");
+    expect(markdown).not.toContain("more files");
+  });
+});
+
+describe("exportConversation file names", () => {
+  it("falls back to the untitled name when the title is only punctuation", async () => {
+    vi.mocked(pickSavePath).mockResolvedValue(null);
+
+    await exportConversation({ projectId: "paper", session: session("saved", { title: "///" }), projectName: null, agentName: "Pi" });
+
+    expect(vi.mocked(pickSavePath).mock.calls[0][0]).toMatchObject({ defaultPath: "Conversation.md" });
+  });
+});
+

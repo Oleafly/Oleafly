@@ -92,6 +92,46 @@ describe("AssistantHome", () => {
     expect(onPickSkill).not.toHaveBeenCalled();
   });
 
+  it("locks an overflow skill chip that is turned off and sends it to settings", () => {
+    const onPickSkill = vi.fn();
+    const onOpenSkills = vi.fn();
+    render(
+      <AssistantHome
+        skills={[
+          skill("brainstorming"),
+          skill("systematic-debugging"),
+          skill("writing-skills"),
+          skill("zz-quiet-skill", { enabled: false }),
+        ]}
+        onPickSkill={onPickSkill}
+        onOpenSkills={onOpenSkills}
+      />,
+    );
+
+    const chip = screen.getByTestId("assistant-home-chip-zz-quiet-skill");
+    expect(chip).toHaveAttribute("data-locked", "true");
+    expect(chip).toHaveAttribute("title", "zz quiet skill is turned off for this project");
+    fireEvent.click(chip);
+    expect(onOpenSkills).toHaveBeenCalledOnce();
+    expect(onPickSkill).not.toHaveBeenCalled();
+  });
+
+  it("writes a custom heading plainly when its accent is not part of it", () => {
+    render(<AssistantHome skills={[]} onPickSkill={vi.fn()} heading="Pick an agent" accent="missing" />);
+
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading).toHaveTextContent("Pick an agent");
+    expect(heading.querySelector("span")).toBeNull();
+  });
+
+  it("puts the accent at the end of a custom heading", () => {
+    render(<AssistantHome skills={[]} onPickSkill={vi.fn()} heading="Start a review" accent="review" />);
+
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading).toHaveTextContent("Start a review");
+    expect(heading.querySelector("span")).toHaveTextContent("review");
+  });
+
   it("hides invalid skills and drops the tab strip when one category remains", () => {
     render(
       <AssistantHome
@@ -296,3 +336,24 @@ describe("AgentPickerRow", () => {
     expect(onSelect).toHaveBeenCalledWith("pi");
   });
 });
+
+describe("RecentChats and AgentPickerRow fallbacks", () => {
+  it("calls an untitled chat a new chat in its row and tooltip", () => {
+    render(<RecentChats chats={[chat("x", { title: "" })]} currentHead="head" onOpen={vi.fn()} onShowAll={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("recent-chats-toggle"));
+
+    expect(screen.getByRole("button", { name: /^New chat/u })).toHaveAttribute("title", "New chat");
+  });
+
+  it("renders no picker without agents and says an unavailable agent is not installed", async () => {
+    const { container, rerender } = render(<AgentPickerRow agents={[]} selectedId={null} onSelect={vi.fn()} />);
+    expect(container).toBeEmptyDOMElement();
+
+    rerender(<AgentPickerRow agents={[{ id: "pi", name: "Pi", available: false }]} selectedId={null} onSelect={vi.fn()} />);
+    fireEvent.mouseEnter(screen.getByTestId("agent-picker-pi").parentElement as HTMLElement);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Pi: not installed");
+  });
+});
+

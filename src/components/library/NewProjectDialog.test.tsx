@@ -1,11 +1,24 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type { ReactElement } from "react";
 
 const generateTemplateAvailable = vi.fn(async () => true);
 const templatePreview = vi.fn(async () => null);
 const ensureTemplateAssets = vi.fn(async () => {});
 const listen = vi.fn(async () => () => {});
+const logError = vi.fn();
+const core = vi.hoisted(() => ({
+  props: null as null | {
+    kit: { Select: (props: Record<string, unknown>) => unknown };
+    host: {
+      ensureAssets: (id: string, onProgress: (label: string, index: number, total: number) => void) => Promise<void>;
+      logError: (scope: string, error: unknown) => void;
+    };
+  },
+}));
+
+vi.mock("@/lib/log", () => ({ logError: (...args: unknown[]) => logError(...args) }));
 
 vi.mock("@/features/template-generate", () => ({
   generateTemplateAvailable: () => generateTemplateAvailable(),
@@ -19,6 +32,13 @@ vi.mock("@/lib/tauri", () => ({
   templatePreview: (...args: unknown[]) => templatePreview(...(args as [])),
   ensureTemplateAssets: (...args: unknown[]) =>
     ensureTemplateAssets(...(args as [])),
+  withAssetProgress: async (
+    handlers: { component: (progress: { label: string; index: number; total: number }) => void },
+    run: () => Promise<unknown>,
+  ) => {
+    handlers.component({ label: "fonts", index: 1, total: 2 });
+    return run();
+  },
 }));
 
 vi.mock("@oleafly/templates", () => ({
@@ -26,12 +46,14 @@ vi.mock("@oleafly/templates", () => ({
     open,
     onGenerateWithAi,
     onOpenTemplateDownloads,
+    ...rest
   }: {
     open: boolean;
     onGenerateWithAi?: () => void;
     onOpenTemplateDownloads?: () => void;
-  }) =>
-    open ? (
+  }) => {
+    core.props = rest as never;
+    return open ? (
       <div data-testid="templates-core">
         <button
           type="button"
@@ -49,7 +71,8 @@ vi.mock("@oleafly/templates", () => ({
           <span>{"downloads"}</span>
         </button>
       </div>
-    ) : null,
+    ) : null;
+  },
   modalCoordinator: { add: () => 1, remove: () => null },
 }));
 
@@ -80,8 +103,17 @@ vi.mock("@/components/research/workspace/ResearchProjectSetup", () => ({
 }));
 
 vi.mock("@/components/library/TemplateGenerateModal", () => ({
-  TemplateGenerateModal: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="generate-modal" /> : null,
+  TemplateGenerateModal: ({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) =>
+    open ? (
+      <div data-testid="generate-modal">
+        <button type="button" onClick={onSaved}>
+          {"saved"}
+        </button>
+        <button type="button" onClick={onClose}>
+          {"close generator"}
+        </button>
+      </div>
+    ) : null,
 }));
 
 import { NewProjectDialog } from "@/components/library/NewProjectDialog";
@@ -119,6 +151,8 @@ beforeEach(() => {
   onTemplatesChanged.mockReset();
   useSettingsStore.setState({ settingsOpen: false });
 });
+
+const TEMPLATE_FILTER_LABEL = "Template filter";
 
 describe("NewProjectDialog flow", () => {
   it("renders nothing while closed", () => {
@@ -230,5 +264,74 @@ describe("NewProjectDialog flow", () => {
       key: "Escape",
     });
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe("NewProjectDialog host adapters", () => {
+  it("passes template asset progress through to the gallery and logs its errors", async () => {
+    renderDialog();
+    fireEvent.click(await screen.findByTestId("project-kind-template"));
+    const progress = vi.fn();
+
+    await core.props?.host.ensureAssets("ieee-style", progress);
+    core.props?.host.logError("template preview", "broken");
+
+    expect(progress).toHaveBeenCalledWith("fonts", 1, 2);
+    expect(ensureTemplateAssets).toHaveBeenCalledWith("ieee-style");
+    expect(logError).toHaveBeenCalledWith("template preview", "broken");
+  });
+
+  it("renders the gallery's select through the app's select", async () => {
+    renderDialog();
+    fireEvent.click(await screen.findByTestId("project-kind-template"));
+    const Select = core.props?.kit.Select as unknown as (props: Record<string, unknown>) => ReactElement;
+    const onValueChange = vi.fn();
+
+    render(
+      <Select
+        value="all"
+        onValueChange={onValueChange}
+        options={[
+          { value: "all", label: "All templates" },
+          { value: "typst", label: "Typst" },
+        ]}
+        aria-label={TEMPLATE_FILTER_LABEL}
+        data-testid="template-filter"
+      />,
+    );
+
+    expect(screen.getByTestId("template-filter")).toHaveAccessibleName(TEMPLATE_FILTER_LABEL);
+    expect(screen.getByTestId("template-filter")).toHaveTextContent("All templates");
+  });
+
+  it("closes the AI template generator and reports a saved template", async () => {
+    renderDialog();
+    fireEvent.click(await screen.findByTestId("project-kind-template"));
+    await waitFor(() => expect(screen.getByTestId("templates-core-generate")).not.toBeDisabled());
+    fireEvent.click(screen.getByTestId("templates-core-generate"));
+
+    fireEvent.click(screen.getByRole("button", { name: "saved" }));
+    expect(onTemplatesChanged).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "close generator" }));
+    expect(screen.queryByTestId("generate-modal")).toBeNull();
+  });
+
+  it("leaves focus with a control that took it after the flow closed", async () => {
+    const opener = document.createElement("button");
+    const other = document.createElement("input");
+    document.body.append(opener, other);
+    opener.focus();
+
+    const view = render(dialog(false));
+    view.rerender(dialog(true));
+    await screen.findByTestId("project-kind-chooser");
+    view.rerender(dialog(false));
+    other.focus();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+    expect(document.activeElement).toBe(other);
+    opener.remove();
+    other.remove();
   });
 });

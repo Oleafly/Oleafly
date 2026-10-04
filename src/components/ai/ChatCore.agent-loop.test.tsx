@@ -43,6 +43,7 @@ const mocks = vi.hoisted(() => ({
   runs: [] as PendingRun[],
   runAgentHarness: vi.fn(),
   agentProbeModel: vi.fn(),
+  listOllamaModels: vi.fn(),
   agentSteer: vi.fn(),
   agentThreadRead: vi.fn(),
   agentThreadArchive: vi.fn(),
@@ -112,7 +113,19 @@ const mocks = vi.hoisted(() => ({
     modelId?: string;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
+    onChange?: (providerId: string, modelId: string) => void;
   },
+  historyProps: null as null | {
+    open: boolean;
+    onClose: () => void;
+    onOpen: (chat: unknown) => void;
+    onDelete: (id: string) => void;
+  },
+}));
+
+vi.mock("@/lib/ollama", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/ollama")>()),
+  listOllamaModels: (...args: unknown[]) => mocks.listOllamaModels(...args),
 }));
 
 vi.mock("./agent-turn", async (importOriginal) => ({
@@ -258,17 +271,37 @@ vi.mock("@oleafly/registry", () => ({
 vi.mock("@/components/ai/AttachmentChips", async () => {
   const React = await import("react");
   return {
-    AttachmentChips: ({ items }: { items: Array<{ id: string; name: string }> }) =>
+    AttachmentChips: ({
+      items,
+      onRemove,
+    }: {
+      items: Array<{ id: string; name: string }>;
+      onRemove?: (id: string) => void;
+    }) =>
       React.createElement(
         "div",
         null,
-        items.map((item) => React.createElement("span", { key: item.id }, item.name)),
+        items.map((item) =>
+          React.createElement(
+            React.Fragment,
+            { key: item.id },
+            React.createElement("span", null, item.name),
+            React.createElement("button", {
+              type: "button",
+              "aria-label": `Remove attachment ${item.name}`,
+              onClick: () => onRemove?.(item.id),
+            }),
+          ),
+        ),
       ),
   };
 });
 
 vi.mock("@/components/ai/ChatHistoryModal", () => ({
-  ChatHistoryModal: () => null,
+  ChatHistoryModal: (props: NonNullable<typeof mocks.historyProps>) => {
+    mocks.historyProps = props;
+    return null;
+  },
 }));
 
 vi.mock("@/components/ai/ModelSelector", async () => {
@@ -554,9 +587,11 @@ beforeEach(() => {
   mocks.textareaProps = null;
   mocks.goalInputProps = null;
   mocks.modelSelectorProps = null;
+  mocks.historyProps = null;
   mocks.agentProbeModel
     .mockReset()
     .mockResolvedValue({ verdict: "verified", reason: "", probedAt: 1 });
+  mocks.listOllamaModels.mockReset().mockRejectedValue(new Error("Ollama is not running"));
   mocks.agentSteer.mockReset().mockResolvedValue({ status: "delivered" });
   mocks.agentThreadRead.mockReset().mockResolvedValue([]);
   mocks.acpOpen.mockReset().mockResolvedValue(undefined);
@@ -4840,3 +4875,586 @@ describe("ChatCore failure notices, continued", () => {
   });
 
 });
+
+describe("ChatCore streaming details", () => {
+  type Handlers = Record<string, (...args: unknown[]) => unknown>;
+
+  function handlersOf(index: number): Handlers {
+    return mocks.runs[index].options.handlers as unknown as Handlers;
+  }
+
+  function savedReply() {
+    return useChatsStore.getState().byId("chat-1")?.messages.at(-1);
+  }
+
+  function resolveRun(index: number, overrides: Record<string, unknown> = {}) {
+    mocks.runs[index].resolve({
+      text: "",
+      usage: { input: 0, output: 0 },
+      steps: 1,
+      stopped_at_cap: false,
+      error: null,
+      ...overrides,
+    } as never);
+  }
+
+  it("keeps reasoning and sub-agent progress in the saved reply", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Check the proof");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    const handlers = handlersOf(0);
+
+    act(() => {
+      handlers.onActivity();
+      handlers.onReasoningStart();
+      handlers.onReasoningStart();
+    });
+    await waitFor(() =>
+      expect(useChatsStore.getState().liveOrSaved("chat-1")?.at(-1)?.reasoningBlocks).toHaveLength(1),
+    );
+    act(() => {
+      handlers.onReasoningDelta("Check lemma 2");
+    });
+    await waitFor(() =>
+      expect(useChatsStore.getState().liveOrSaved("chat-1")?.at(-1)?.reasoningBlocks?.[0]?.text).toBe(
+        "Check lemma 2",
+      ),
+    );
+    act(() => {
+      handlers.onReasoningEnd();
+      handlers.onReasoningEnd();
+      handlers.onSubagentUpdate({ id: "s1", label: "Reader", state: "running", detail: "Reading", runtime: null });
+      handlers.onSubagentUpdate({ id: "s1", label: "Reader", state: "done", detail: null, sessionId: "thread-9" });
+      handlers.onSubagentUpdate({ id: "s2", label: "Checker", state: "running" });
+      handlers.onUsage({ input: 1200, output: 340 });
+      handlers.onText("The proof holds.");
+    });
+    await act(async () => resolveRun(0));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    const reply = savedReply();
+    expect(reply?.content).toBe("The proof holds.");
+    expect(reply?.reasoningBlocks).toEqual([
+      expect.objectContaining({ text: "Check lemma 2", beforeTool: 0, ms: expect.any(Number) }),
+    ]);
+    expect(reply?.subagents).toEqual([
+      expect.objectContaining({ id: "s1", state: "done", sessionId: "thread-9", detail: undefined }),
+      expect.objectContaining({ id: "s2", state: "running" }),
+    ]);
+
+    fireEvent.click(rendered.getByRole("button", { name: enAi.header.usageAriaLabel }));
+    const usage = await rendered.findByTestId("ai-run-usage");
+    expect(usage).toHaveTextContent("1,200");
+    expect(usage).toHaveTextContent("340");
+  });
+
+  it("notes when a run reached the step safety limit", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Refactor every chapter");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    act(() => {
+      handlersOf(0).onText("Halfway there.");
+    });
+    await act(async () => resolveRun(0, { stopped_at_cap: true, steps: 50 }));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(savedReply()?.content).toBe(
+      "Halfway there.\n\n_Reached the step safety limit. You can continue by sending another message._",
+    );
+  });
+
+  it("marks a reply stopped when the user cancels the run", async () => {
+    mocks.runAgentHarness.mockImplementationOnce(
+      (options: HarnessOptions & { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          options.onRequestId?.("request-stop");
+          options.handlers.onStep?.(0);
+          options.handlers.onText("Started.");
+          options.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+        }),
+    );
+    const rendered = await renderChat();
+    submit(rendered, "Long task");
+    await waitFor(() => expect(rendered.getByRole("button", { name: "Stop" })).toBeTruthy());
+
+    fireEvent.click(rendered.getByRole("button", { name: "Stop" }));
+
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+    await waitFor(() => expect(savedReply()?.content).toBe("Started.\n\n_Stopped._"));
+  });
+
+  it("explains a run that produced no output and one that failed", async () => {
+    mocks.runAgentHarness.mockImplementationOnce(() =>
+      Promise.reject(new Error("AI_NoOutputGeneratedError: NoOutputGenerated")),
+    );
+    const rendered = await renderChat();
+    submit(rendered, "First");
+    await waitFor(() => expect(savedReply()?.content).toBe(enAi.conversation.noOutput));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    mocks.runAgentHarness.mockImplementationOnce(() => Promise.reject(new Error("socket hang up")));
+    submit(rendered, "Second");
+    await waitFor(() => expect(savedReply()?.content).toContain("socket hang up"));
+  });
+
+  it("opens a file the assistant reads and refuses tools after the project changes", async () => {
+    const rendered = await renderChat();
+    submit(rendered, "Read the intro");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    const options = mocks.runs[0].options;
+
+    await act(async () => {
+      await options.handlers.onToolCall({ id: "r1", name: "read_file", args: { path: "chapters/intro.tex" } });
+    });
+    expect(useAssistantOutputsStore.getState().fileOpen).toMatchObject({ path: "chapters/intro.tex", reason: "read" });
+    expect(options.guardToolCall?.({ id: "w1", name: "write_file", args: {} })).toBeNull();
+
+    act(() => useFilesStore.setState({ projectId: "another-project" }));
+    expect(options.guardToolCall?.({ id: "w2", name: "write_file", args: {} })).toContain(
+      "The open project changed while this run was active.",
+    );
+  });
+
+  it("warns once chat history can no longer be saved", async () => {
+    const rendered = await renderChat();
+
+    act(() => {
+      window.dispatchEvent(new Event("oleafly:chats-quota-exceeded"));
+    });
+
+    expect(rendered.getByText(enAi.provider.quotaWarning)).toBeTruthy();
+  });
+
+  it("offers a jump to the latest message after scrolling up a long conversation", async () => {
+    const rendered = await renderChat();
+    const scroller = rendered.container.querySelector<HTMLElement>(".overflow-auto.pt-3");
+    if (!scroller) throw new Error("message scroller missing");
+    Object.defineProperties(scroller, {
+      scrollHeight: { configurable: true, value: 3000 },
+      clientHeight: { configurable: true, value: 500 },
+      scrollTop: { configurable: true, writable: true, value: 100 },
+    });
+    const scrollTo = vi.mocked(window.HTMLElement.prototype.scrollTo);
+    scrollTo.mockClear();
+
+    fireEvent.scroll(scroller);
+    fireEvent.click(rendered.getByRole("button", { name: enAi.conversation.scrollToBottom }));
+    expect(scrollTo).toHaveBeenCalledWith({ top: 3000, behavior: "smooth" });
+
+    (scroller as { scrollTop: number }).scrollTop = 2500;
+    fireEvent.scroll(scroller);
+    expect(rendered.queryByRole("button", { name: enAi.conversation.scrollToBottom })).toBeNull();
+  });
+});
+
+describe("ChatCore provider setup", () => {
+  it("marks a configuration it could not read", async () => {
+    mocks.getConfig.mockRejectedValue(new Error("config unreadable"));
+    chatQueryClient = createAppQueryClient();
+    const rendered = render(createElement(QueryClientProvider, { client: chatQueryClient }, createElement(ChatCore)));
+
+    await waitFor(() =>
+      expect(rendered.container.querySelector('[data-tour="ai-assistant"]')).toHaveAttribute(
+        "data-tour-config-error",
+        "true",
+      ),
+    );
+  });
+
+  it("opens the assistant settings from the connect prompt and its local-model link", async () => {
+    mocks.getConfig.mockResolvedValue({ ai_provider: "openai", ai_model: "gpt-4o", ai_api_key: "", ai_keys: {} });
+    chatQueryClient = createAppQueryClient();
+    const rendered = render(createElement(QueryClientProvider, { client: chatQueryClient }, createElement(ChatCore)));
+
+    fireEvent.click(await rendered.findByRole("button", { name: new RegExp(enAi.provider.connectButton) }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "ai" });
+
+    act(() => useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" }));
+    fireEvent.click(rendered.getByRole("button", { name: enAi.provider.runLocal }));
+    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "ai" });
+  });
+});
+
+describe("ChatCore conversation navigation", () => {
+  function seedEarlierChat() {
+    useChatsStore.setState((state) => ({
+      chats: [
+        ...state.chats,
+        {
+          id: "chat-2",
+          projectId: state.projectId as string,
+          title: "Earlier review",
+          createdAt: 1,
+          updatedAt: 2,
+          messages: [
+            { id: "u2", role: "user", content: "Review section 2" },
+            { id: "a2", role: "assistant", content: "Section 2 reads well." },
+          ],
+          headOid: null,
+        },
+      ],
+    }));
+  }
+
+  it("opens an earlier chat from the recent list", async () => {
+    seedEarlierChat();
+    const rendered = await renderChat();
+    fireEvent.click(rendered.getByRole("button", { name: new RegExp(enAi.home.recentChats, "i") }));
+
+    fireEvent.click(rendered.getByTitle("Earlier review"));
+
+    expect(useChatsStore.getState().activeId).toBe("chat-2");
+    expect(rendered.queryByTitle("Earlier review")).toBeNull();
+  });
+
+  it("opens, uses and closes the chat history", async () => {
+    seedEarlierChat();
+    const rendered = await renderChat();
+
+    fireEvent.click(rendered.getByRole("button", { name: enAi.header.chatHistory }));
+    expect(mocks.historyProps?.open).toBe(true);
+    act(() => mocks.historyProps?.onClose());
+    expect(mocks.historyProps?.open).toBe(false);
+
+    fireEvent.click(rendered.getByRole("button", { name: new RegExp(enAi.home.recentChats, "i") }));
+    fireEvent.click(rendered.getByText(/history/i, { selector: "button" }));
+    expect(mocks.historyProps?.open).toBe(true);
+    act(() => mocks.historyProps?.onOpen(useChatsStore.getState().byId("chat-2")));
+    expect(useChatsStore.getState().activeId).toBe("chat-2");
+    expect(mocks.historyProps?.open).toBe(false);
+
+    act(() => mocks.historyProps?.onDelete("chat-2"));
+    expect(useChatsStore.getState().byId("chat-2")).toBeUndefined();
+    expect(useChatsStore.getState().activeId).not.toBe("chat-2");
+  });
+
+  it("deletes a chat that is not open without leaving the current one", async () => {
+    seedEarlierChat();
+    await renderChat();
+
+    act(() => mocks.historyProps?.onDelete("chat-2"));
+
+    expect(useChatsStore.getState().activeId).toBe("chat-1");
+  });
+
+  it("keeps the open chat while a run streams", async () => {
+    seedEarlierChat();
+    const rendered = await renderChat();
+    submit(rendered, "Keep going");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    act(() => mocks.historyProps?.onOpen(useChatsStore.getState().byId("chat-2")));
+
+    expect(useChatsStore.getState().activeId).toBe("chat-1");
+    await act(async () => finishRun(0, "Done"));
+  });
+});
+
+describe("ChatCore composer shortcuts", () => {
+  it("inserts the picked file mention where the user is typing", async () => {
+    useFilesStore.setState({
+      tree: [
+        { path: "sections", is_dir: true },
+        { path: "sections/intro.tex", is_dir: false },
+      ],
+    });
+    const rendered = await renderChat();
+    const textarea = rendered.getByPlaceholderText("Ask AI to help with your document…") as HTMLTextAreaElement;
+
+    changeComposer("Summarise @intr");
+    fireEvent.click(await rendered.findByRole("option", { name: /intro\.tex/ }));
+
+    expect(textarea.value).toBe("Summarise @sections/intro.tex ");
+    expect(rendered.queryByRole("listbox")).toBeNull();
+  });
+
+  it("closes the mention menu on Escape without inserting anything", async () => {
+    useFilesStore.setState({ tree: [{ path: "main.tex", is_dir: false }] });
+    const rendered = await renderChat();
+    const textarea = rendered.getByPlaceholderText("Ask AI to help with your document…") as HTMLTextAreaElement;
+
+    changeComposer("See @mai");
+    await rendered.findByRole("listbox");
+    pressComposerKey("Escape");
+
+    await waitFor(() => expect(rendered.queryByRole("listbox")).toBeNull());
+    expect(textarea.value).toBe("See @mai");
+  });
+
+  it("starts a skill command from a home card", async () => {
+    mocks.skillEntries.push(
+      skillEntry({ id: "proofread", name: "Proofread", enabled: true, projectEnabled: true }),
+    );
+    const rendered = await renderChat();
+
+    fireEvent.click(await rendered.findByTestId("assistant-home-card-proofread"));
+
+    expect((rendered.getByPlaceholderText("Ask AI to help with your document…") as HTMLTextAreaElement).value).toBe(
+      "/proofread ",
+    );
+  });
+
+  it("fills the composer from a prompt shortcut and sends with the button", async () => {
+    const rendered = await renderChat();
+
+    fireEvent.click(rendered.getByRole("button", { name: enAi.composer.promptShortcutsAriaLabel }));
+    fireEvent.click(await rendered.findByRole("button", { name: new RegExp(enAi.shortcuts.fixGrammar.label) }));
+    const textarea = rendered.getByPlaceholderText("Ask AI to help with your document…") as HTMLTextAreaElement;
+    expect(textarea.value).toBe("Fix grammar and punctuation issues in the current document.");
+
+    fireEvent.click(rendered.getByRole("button", { name: enAi.composer.send }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(plainTranscript(mocks.runs[0].options.messages).at(-1)).toMatchObject({ role: "user", content: "Fix grammar and punctuation issues in the current document." });
+    await act(async () => finishRun(0, "Done"));
+  });
+
+  it("switches the model for this chat from the model picker", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key", anthropic: "anthropic-key" },
+      ai_provider_models: {},
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [],
+    });
+    const rendered = await renderChat();
+
+    act(() => mocks.modelSelectorProps?.onChange?.("anthropic", "claude-sonnet-4-5"));
+    expect(mocks.modelSelectorProps?.modelId).toBe("claude-sonnet-4-5");
+    submit(rendered, "Use the other model");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    expect(mocks.runs[0].options as unknown as { providerOverride: unknown }).toMatchObject({
+      providerOverride: { provider_id: "anthropic", model_id: "claude-sonnet-4-5" },
+    });
+    await act(async () => finishRun(0, "Done"));
+  });
+
+  it("drops an attachment the user removes before sending", async () => {
+    const rendered = await renderChat();
+    await attachTextFile(rendered, "notes.txt", "draft notes");
+
+    fireEvent.click(rendered.getByRole("button", { name: "Remove attachment notes.txt" }));
+
+    expect(rendered.queryByText("notes.txt")).toBeNull();
+  });
+
+  it("clears the active persona and opens persona settings when there are none", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key" },
+      ai_provider_models: {},
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [{ id: "writer", name: "Writer", color: "ocean", prompt: "Write." }],
+    });
+    const rendered = await renderChat();
+    fireEvent.click(rendered.getByRole("button", { name: "Choose persona" }));
+    fireEvent.click(rendered.getByTestId("ai-persona-Writer"));
+    expect(rendered.getByRole("button", { name: /Writer active/u })).toBeTruthy();
+
+    fireEvent.click(rendered.getByRole("button", { name: /Writer active/u }));
+    fireEvent.click(rendered.getByTestId("ai-persona-none"));
+    expect(rendered.getByRole("button", { name: "Choose persona" })).toBeTruthy();
+  });
+
+  it("sends the user to persona settings when none exist", async () => {
+    const rendered = await renderChat();
+
+    fireEvent.click(rendered.getByRole("button", { name: "Choose persona" }));
+    fireEvent.click(rendered.getByTestId("ai-persona-create"));
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsOpen: true,
+      settingsInitialSection: "ai",
+      settingsScrollTarget: "ai-personas",
+    });
+  });
+});
+
+
+describe("ChatCore turn snapshot failures", () => {
+  it("marks the turn without Undo when the before-turn copy fails", async () => {
+    const failure = new Error("snapshot store unavailable");
+    mocks.agentTurnBegin.mockRejectedValue(failure);
+    const rendered = await renderChat();
+
+    submit(rendered, "Rewrite the abstract");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "Rewritten."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    expect(mocks.logError).toHaveBeenCalledWith("agent turn begin", failure);
+    await waitFor(() =>
+      expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.turnChanges).toMatchObject({
+        snapshotId: null,
+        unavailable: "error",
+      }),
+    );
+    expect(mocks.agentTurnFinish).not.toHaveBeenCalled();
+  });
+
+  it("keeps the reason the project could not be copied", async () => {
+    mocks.agentTurnBegin.mockResolvedValue({ snapshotId: null, unavailable: "too_large" });
+    const rendered = await renderChat();
+
+    submit(rendered, "Rewrite the abstract");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "Rewritten."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    await waitFor(() =>
+      expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.turnChanges).toMatchObject({
+        unavailable: "too_large",
+      }),
+    );
+  });
+
+  it("marks the turn without Undo when the after-turn comparison fails", async () => {
+    const failure = new Error("compare failed");
+    mocks.agentTurnFinish.mockRejectedValue(failure);
+    const rendered = await renderChat();
+
+    submit(rendered, "Rewrite the abstract");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    await act(async () => finishRun(0, "Rewritten."));
+    await waitFor(() => expect(activeChatRun()).toBeNull());
+
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("agent turn finish", failure));
+    await waitFor(() =>
+      expect(useChatsStore.getState().byId("chat-1")?.messages.at(-1)?.turnChanges).toMatchObject({
+        unavailable: "error",
+      }),
+    );
+  });
+});
+
+describe("ChatCore checkpoints and model checks", () => {
+  function seedCheckpoints() {
+    useChatsStore.setState((state) => ({
+      chats: state.chats.map((chat) =>
+        chat.id === "chat-1"
+          ? {
+              ...chat,
+              messages: [
+                { id: "u1", role: "user", content: "Rename the intro" },
+                {
+                  id: "a1",
+                  role: "assistant",
+                  content: "Renamed it.",
+                  checkpointOid: "cp-1",
+                  toolCalls: [{ id: "t1", name: "write_file", status: "done" }],
+                },
+                { id: "u2", role: "user", content: "Rename the outro" },
+                {
+                  id: "a2",
+                  role: "assistant",
+                  content: "Renamed that too.",
+                  checkpointOid: "cp-2",
+                  toolCalls: [{ id: "t2", name: "write_file", status: "done" }],
+                },
+              ],
+            }
+          : chat,
+      ),
+    }));
+  }
+
+  it("asks before rolling back past later responses and restores only on yes", async () => {
+    const projectId = useFilesStore.getState().projectId;
+    const original = useFilesStore.getState().restoreFromGit;
+    const restoreFromGit = vi.fn().mockResolvedValue(undefined);
+    useFilesStore.setState({ restoreFromGit });
+    seedCheckpoints();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    try {
+      const rendered = await renderChat();
+      const [older] = rendered.getAllByTestId("ai-restore-checkpoint");
+
+      fireEvent.click(older);
+      expect(confirm).toHaveBeenCalledWith(enAi.conversation.restoreConfirm);
+      expect(restoreFromGit).not.toHaveBeenCalled();
+
+      fireEvent.click(rendered.getAllByTestId("ai-restore-checkpoint")[0]);
+      await waitFor(() => expect(restoreFromGit).toHaveBeenCalledExactlyOnceWith(projectId, "cp-1"));
+      await waitFor(() =>
+        expect(useChatsStore.getState().byId("chat-1")?.messages.find((message) => message.id === "a1")?.checkpointRestored).toBe(true),
+      );
+    } finally {
+      confirm.mockRestore();
+      useFilesStore.setState({ restoreFromGit: original });
+    }
+  });
+
+  it("reports a restore that fails and keeps the restore button", async () => {
+    const original = useFilesStore.getState().restoreFromGit;
+    useFilesStore.setState({ restoreFromGit: vi.fn().mockRejectedValue(new Error("dirty tree")) });
+    seedCheckpoints();
+    try {
+      const rendered = await renderChat();
+      const buttons = rendered.getAllByTestId("ai-restore-checkpoint");
+
+      fireEvent.click(buttons[1]);
+
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(expect.stringMatching(/^Could not restore: .*dirty tree/u)));
+      await waitFor(() => expect(rendered.getAllByTestId("ai-restore-checkpoint")[1]).toBeEnabled());
+    } finally {
+      useFilesStore.setState({ restoreFromGit: original });
+    }
+  });
+
+  it("says when a model re-check could not run", async () => {
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "openai",
+      ai_model: "gpt-4o",
+      ai_api_key: "test-key",
+      ai_keys: { openai: "test-key" },
+      ai_provider_models: {
+        openai: [{ id: "gpt-4o", name: "GPT-4o", enabled: true, source: "fetched", trust: "untested" }],
+      },
+      ai_model_probes: {
+        "openai/gpt-4o": { verdict: "blocked", reason: "No tool call came back.", probedAt: 5 },
+      },
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [],
+    });
+    const rendered = await renderChat();
+    submit(rendered, "Hello");
+    await waitFor(() => expect(rendered.getByTestId("ai-model-recheck")).toBeTruthy());
+
+    mocks.agentProbeModel.mockRejectedValueOnce(new Error("[network] connection refused"));
+    fireEvent.click(rendered.getByTestId("ai-model-recheck"));
+    await waitFor(() =>
+      expect(rendered.getByTestId("ai-model-notice")).toHaveTextContent("Could not check this model. connection refused"),
+    );
+    expect(rendered.getByTestId("ai-model-notice")).toHaveAttribute("role", "alert");
+  });
+
+  it("lists the models a running Ollama server reports", async () => {
+    mocks.listOllamaModels.mockResolvedValue(["llama3.2", "qwen3"]);
+    mocks.getConfig.mockResolvedValue({
+      ai_provider: "ollama",
+      ai_model: "llama3.2",
+      ai_api_key: "",
+      ai_keys: { ollama: "http://127.0.0.1:11434" },
+      ai_provider_models: {},
+      ai_custom_providers: [],
+      ai_system_prompt: "",
+      ai_personas: [],
+    });
+    await renderChat();
+
+    await waitFor(() => {
+      const groups = (mocks.modelSelectorProps as unknown as { groups: Array<{ id: string; models: Array<{ id: string }> }> }).groups;
+      expect(groups.find((group) => group.id === "ollama")?.models.map((model) => model.id)).toEqual(["llama3.2", "qwen3"]);
+    });
+    expect(mocks.listOllamaModels).toHaveBeenCalledWith("http://127.0.0.1:11434");
+  });
+});
+

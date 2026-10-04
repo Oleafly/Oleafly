@@ -45,6 +45,7 @@ vi.mock("@/lib/native-file-dialog", () => ({
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
+vi.mock("@/lib/toast", () => ({ notifyError: vi.fn(), toast: { error: vi.fn(), success: vi.fn() } }));
 
 import {
   importArxivPaper,
@@ -52,6 +53,11 @@ import {
   importSelectedFile,
 } from "@/features/project-import";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { githubListRepos } from "@/lib/github";
+import { notifyError } from "@/lib/toast";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
+import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
+import { useSettingsStore } from "@/store/settings";
 import { CHOICE_ART } from "./choice-art";
 import { ProjectImportDialog } from "./ProjectImportDialog";
 
@@ -323,5 +329,100 @@ describe("import recovery", () => {
     expect(screen.getByText("paper.html")).toBeInTheDocument();
     expect(screen.getByTestId("project-import-target-typst")).toBeEnabled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+});
+
+describe("ProjectImportDialog GitHub step", () => {
+  const copy = enLibrary.import;
+
+  it("checks the GitHub connection before listing repositories", () => {
+    githubState.status = "unknown";
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-github"));
+
+    expect(githubState.refresh).toHaveBeenCalled();
+    expect(screen.getByText(copy.loadingRepositories)).toBeInTheDocument();
+    expect(githubListRepos).not.toHaveBeenCalled();
+  });
+
+  it("explains a failed repository list and loads it again", async () => {
+    vi.mocked(githubListRepos).mockRejectedValueOnce(new Error("rate limited"));
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("project-import-github"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.repositoriesFailed);
+    fireEvent.click(screen.getByRole("button", { name: copy.tryAgain }));
+
+    expect(await screen.findByText("oleafly/paper")).toBeInTheDocument();
+    expect(githubListRepos).toHaveBeenCalledTimes(2);
+  });
+
+  it("says when the account has no repositories", async () => {
+    vi.mocked(githubListRepos).mockResolvedValueOnce([]);
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-github"));
+
+    expect(await screen.findByText(copy.noRepositories)).toBeInTheDocument();
+  });
+
+  it("opens a repository on GitHub and reports a failure to open it", async () => {
+    vi.mocked(openExternal).mockRejectedValueOnce(new Error("no browser"));
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("project-import-github"));
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: copy.openRepository.replace("{{name}}", "oleafly/paper") }),
+    );
+
+    expect(openExternal).toHaveBeenCalledWith("https://github.com/oleafly/paper");
+    await waitFor(() => expect(notifyError).toHaveBeenCalledWith("open repository", expect.any(Error)));
+  });
+
+  it("opens the GitHub settings and closes the dialog", () => {
+    githubState.status = "disconnected";
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+    fireEvent.click(screen.getByTestId("project-import-github"));
+
+    fireEvent.click(screen.getByRole("button", { name: /Connect GitHub/ }));
+
+    expect(useSettingsStore.getState()).toMatchObject({
+      settingsOpen: true,
+      settingsInitialSection: "integrations",
+      settingsScrollTarget: "github",
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ProjectImportDialog file errors", () => {
+  it("rejects a file type it cannot import", async () => {
+    vi.mocked(pickOpenPath).mockResolvedValue("/tmp/picture.png");
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-project"));
+
+    expect(await screen.findByText(enLibrary.import.supportedTypes)).toBeInTheDocument();
+    expect(importSelectedFile).not.toHaveBeenCalled();
+  });
+
+  it("shows the generic failure for an error without a message", async () => {
+    vi.mocked(importSelectedFile).mockRejectedValueOnce({ code: 3 });
+    render(<ProjectImportDialog open onClose={vi.fn()} />);
+
+    fireEvent.click(screen.getByTestId("project-import-project"));
+
+    expect(await screen.findByText(enLibrary.import.failed)).toBeInTheDocument();
+  });
+
+  it("closes from Escape when nothing is importing", () => {
+    const onClose = vi.fn();
+    render(<ProjectImportDialog open onClose={onClose} />);
+
+    fireEvent.keyDown(screen.getByTestId("project-import-dialog"), { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

@@ -43,6 +43,9 @@ const mocks = vi.hoisted(() => ({
   flushWysiwygPendingEdits: vi.fn(),
   invalidateWysiwygProjectSession: vi.fn(),
   notifyProjectFilesChanged: vi.fn(),
+  createProject: vi.fn(),
+  createTypstProject: vi.fn(),
+  createMarkdownProject: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
@@ -76,6 +79,9 @@ vi.mock("@/lib/tauri", () => ({
   tlmgrInstall: mocks.tlmgrInstall,
   listProjects: vi.fn(async () => []),
   mcpSetActiveProject: mocks.mcpSetActiveProject,
+  createProject: mocks.createProject,
+  createTypstProject: mocks.createTypstProject,
+  createMarkdownProject: mocks.createMarkdownProject,
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({
@@ -112,6 +118,7 @@ import { i18n } from "@/i18n";
 import { engineHintDismissed } from "@/store/engine-picker";
 import {
   collectOpenBuffersForCopy,
+  detectDiskChange,
   engineErrorMessage,
   onSaveBlockedSettled,
   projectCompatibilityFindings,
@@ -122,6 +129,7 @@ import {
 } from "./files";
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { useSettingsStore } from "@/store/settings";
 
 const MAIN_ONLY = [{ path: "main.tex", is_dir: false }];
 const WITH_BIB = [
@@ -2494,5 +2502,432 @@ describe("editor tab bookkeeping", () => {
       assistantTabs: ["notes.tex"],
       activePath: "main.tex",
     });
+  });
+});
+
+describe("creating and renaming projects", () => {
+  afterEach(() => {
+    useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
+  });
+
+  it("pins latexmk on a new LaTeX project when that is the default engine", async () => {
+    primeOpen();
+    useSettingsStore.setState({ defaultLatexEngine: "latexmk" });
+    mocks.createProject.mockResolvedValue("opened");
+    mocks.setProjectEngineCmd.mockResolvedValue(META);
+    mocks.recordProjectTexSpec.mockResolvedValue(null);
+
+    await useFilesStore.getState().createProject("Thesis");
+
+    expect(mocks.createProject).toHaveBeenCalledWith("Thesis");
+    expect(mocks.setProjectEngineCmd).toHaveBeenCalledWith("opened", "latexmk");
+    expect(mocks.recordProjectTexSpec).toHaveBeenCalledWith("opened");
+    expect(useFilesStore.getState().projectId).toBe("opened");
+  });
+
+  it("keeps the project's own engine when the latexmk pin is refused", async () => {
+    primeOpen();
+    useSettingsStore.setState({ defaultLatexEngine: "latexmk" });
+    mocks.createProject.mockResolvedValue("opened");
+    mocks.setProjectEngineCmd.mockRejectedValue(new Error("not a LaTeX project"));
+
+    await useFilesStore.getState().createProject("Thesis");
+
+    expect(mocks.recordProjectTexSpec).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().projectId).toBe("opened");
+  });
+
+  it("leaves the engine alone when the default is the bundled one", async () => {
+    primeOpen();
+    mocks.createProject.mockResolvedValue("opened");
+
+    await useFilesStore.getState().createProject("Notes");
+
+    expect(mocks.setProjectEngineCmd).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().projectId).toBe("opened");
+  });
+
+  it("creates and opens Typst and Markdown projects", async () => {
+    primeOpen();
+    mocks.createTypstProject.mockResolvedValue("opened");
+    await useFilesStore.getState().createTypstProject("Slides");
+    expect(mocks.createTypstProject).toHaveBeenCalledWith("Slides");
+    expect(useFilesStore.getState().projectId).toBe("opened");
+
+    mocks.createMarkdownProject.mockResolvedValue("opened");
+    await useFilesStore.getState().createMarkdownProject("Readme");
+    expect(mocks.createMarkdownProject).toHaveBeenCalledWith("Readme");
+    expect(useFilesStore.getState().projectId).toBe("opened");
+  });
+
+  it("renames the open project", async () => {
+    mocks.renameProjectCmd.mockResolvedValue({ ...META, name: "Renamed" });
+
+    await useFilesStore.getState().renameProject("Renamed");
+
+    expect(mocks.renameProjectCmd).toHaveBeenCalledWith("project", "Renamed");
+    expect(useFilesStore.getState().projectName).toBe("Renamed");
+  });
+
+  it("does not rename without an open project", async () => {
+    useFilesStore.setState({ projectId: null });
+
+    await useFilesStore.getState().renameProject("Renamed");
+    await useFilesStore.getState().refreshManifestHome();
+
+    expect(mocks.renameProjectCmd).not.toHaveBeenCalled();
+    expect(mocks.projectManifestHome).not.toHaveBeenCalled();
+  });
+});
+
+describe("copying entries", () => {
+  beforeEach(() => {
+    mocks.copyFile.mockImplementation(async (_projectId: string, _from: string, to: string) => ({
+      path: to,
+      generation: 11,
+    }));
+  });
+
+  it.each([
+    ["chapters/intro.tex", false, "chapters/intro copy.tex"],
+    ["notes", false, "notes copy"],
+    [".latexmkrc", false, ".latexmkrc copy"],
+    ["release/v1.0", true, "release/v1.0 copy"],
+    ["v2.1", true, "v2.1 copy"],
+  ])("copies %s next to itself", async (path, isDir, destination) => {
+    await useFilesStore.getState().copyEntry(path, isDir);
+
+    expect(mocks.copyFile).toHaveBeenCalledWith("project", path, destination, 3);
+    expect(mocks.listFiles).toHaveBeenCalled();
+  });
+
+  it("does not copy without an open project", async () => {
+    useFilesStore.setState({ projectId: null });
+
+    await useFilesStore.getState().copyEntry("main.tex");
+
+    expect(mocks.copyFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleting entries", () => {
+  it("refuses to delete a folder that holds unsaved files and names them", async () => {
+    useFilesStore.setState({
+      files: {
+        "chapters/a.tex": { content: "a", dirty: true },
+        "chapters/b.tex": { content: "b", dirty: true },
+      },
+    });
+
+    await expect(useFilesStore.getState().deleteEntry("chapters")).rejects.toThrow(
+      "Save or close the unsaved files before deleting: chapters/a.tex, chapters/b.tex",
+    );
+
+    useFilesStore.setState({ files: { "chapters/a.tex": { content: "a", dirty: true } } });
+    await expect(useFilesStore.getState().deleteEntry("chapters/a.tex")).rejects.toThrow(
+      "Save or close the unsaved file before deleting: chapters/a.tex",
+    );
+    expect(mocks.deleteFile).not.toHaveBeenCalled();
+  });
+
+  it("closes the deleted folder's tabs and reopens the main document", async () => {
+    mocks.deleteFile.mockResolvedValue({ generation: 12 });
+    mocks.readFileContent.mockResolvedValue("\\documentclass{article}");
+    useFilesStore.setState({
+      tree: [...MAIN_ONLY, { path: "chapters", is_dir: true }, { path: "chapters/a.tex", is_dir: false }],
+      files: { "chapters/a.tex": { content: "a", dirty: false } },
+      openTabs: ["chapters/a.tex"],
+      activePath: "chapters/a.tex",
+    });
+
+    await useFilesStore.getState().deleteEntry("chapters", { permanent: true });
+
+    expect(mocks.deleteFile).toHaveBeenCalledWith("project", "chapters", 3, true);
+    const state = useFilesStore.getState();
+    expect(state.files).not.toHaveProperty("chapters/a.tex");
+    expect(state.openTabs).toEqual(["main.tex"]);
+    expect(state.activePath).toBe("main.tex");
+  });
+
+  it("keeps the other open tab active when an inactive file is deleted", async () => {
+    mocks.deleteFile.mockResolvedValue({ generation: 12 });
+    useFilesStore.setState({
+      files: {
+        "main.tex": { content: "m", dirty: false },
+        "old.tex": { content: "o", dirty: false },
+      },
+      openTabs: ["main.tex", "old.tex"],
+      activePath: "main.tex",
+    });
+
+    await useFilesStore.getState().deleteEntry("old.tex");
+
+    expect(useFilesStore.getState()).toMatchObject({ openTabs: ["main.tex"], activePath: "main.tex" });
+  });
+
+  it("keeps the file open when the delete is refused", async () => {
+    mocks.deleteFile.mockRejectedValue(new Error("permission denied"));
+    useFilesStore.setState({
+      files: { "old.tex": { content: "o", dirty: false } },
+      openTabs: ["old.tex"],
+      activePath: "old.tex",
+    });
+
+    await expect(useFilesStore.getState().deleteEntry("old.tex")).rejects.toThrow("permission denied");
+
+    expect(useFilesStore.getState().openTabs).toEqual(["old.tex"]);
+  });
+});
+
+describe("switching the compile engine", () => {
+  beforeEach(() => {
+    useFilesStore.setState({ engine: LATEX_ENGINE, engineLoaded: true, engineError: null });
+  });
+
+  it("records the TeX pin for latexmk and loads the new engine", async () => {
+    mocks.setProjectEngineCmd.mockResolvedValue({ ...META, main_doc: "thesis.tex" });
+    mocks.recordProjectTexSpec.mockResolvedValue(null);
+    mocks.getProjectEngine.mockResolvedValue(LATEXMK_ENGINE);
+
+    await useFilesStore.getState().setEngine("latexmk", "pdflatex");
+
+    expect(mocks.setProjectEngineCmd).toHaveBeenCalledWith("project", "latexmk", "pdflatex");
+    expect(mocks.recordProjectTexSpec).toHaveBeenCalledWith("project");
+    expect(mocks.resetCompile).toHaveBeenCalled();
+    expect(useFilesStore.getState()).toMatchObject({
+      mainDoc: "thesis.tex",
+      engine: LATEXMK_ENGINE,
+      engineLoaded: true,
+      engineError: null,
+    });
+  });
+
+  it("switches back to the bundled engine without a TeX pin", async () => {
+    mocks.setProjectEngineCmd.mockResolvedValue(META);
+    mocks.getProjectEngine.mockResolvedValue(LATEX_ENGINE);
+
+    await useFilesStore.getState().setEngine("tectonic");
+
+    expect(mocks.recordProjectTexSpec).not.toHaveBeenCalled();
+    expect(useFilesStore.getState().engine).toEqual(LATEX_ENGINE);
+  });
+
+  it("marks the engine unavailable when the switched engine cannot be loaded", async () => {
+    vi.useFakeTimers();
+    mocks.setProjectEngineCmd.mockResolvedValue(META);
+    mocks.recordProjectTexSpec.mockResolvedValue(null);
+    mocks.getProjectEngine.mockRejectedValue(new Error("engine gone"));
+
+    const switching = useFilesStore.getState().setEngine("latexmk");
+    const outcome = expect(switching).rejects.toThrow("engine gone");
+    await vi.runAllTimersAsync();
+    await outcome;
+    vi.useRealTimers();
+
+    expect(useFilesStore.getState()).toMatchObject({ engineLoaded: false, engineError: "loadFailed" });
+    expect(mocks.logError).toHaveBeenCalledWith("set compile engine", expect.any(Error));
+  });
+
+  it("marks the engine unavailable when a pinned Typst version cannot be loaded", async () => {
+    vi.useFakeTimers();
+    mocks.setProjectTypstVersion.mockResolvedValue({ main_doc: "main.typ" });
+    mocks.getProjectEngine.mockRejectedValue(new Error("engine gone"));
+
+    const pinning = useFilesStore.getState().setTypstVersion("0.14.2");
+    const outcome = expect(pinning).rejects.toThrow("engine gone");
+    await vi.runAllTimersAsync();
+    await outcome;
+    vi.useRealTimers();
+
+    expect(useFilesStore.getState()).toMatchObject({ engineLoaded: false, engineError: "loadFailed" });
+    expect(mocks.logError).toHaveBeenCalledWith("set Typst version", expect.any(Error));
+  });
+
+  it("does nothing without an open project", async () => {
+    useFilesStore.setState({ projectId: null });
+
+    await useFilesStore.getState().setEngine("latexmk");
+    await useFilesStore.getState().setTypstVersion("0.14.2");
+    await useFilesStore.getState().setMainDoc("other.tex");
+    await useFilesStore.getState().setShellEscape(true);
+
+    expect(mocks.setProjectEngineCmd).not.toHaveBeenCalled();
+    expect(mocks.setProjectTypstVersion).not.toHaveBeenCalled();
+    expect(mocks.setMainDocCmd).not.toHaveBeenCalled();
+    expect(mocks.setProjectShellEscapeCmd).not.toHaveBeenCalled();
+  });
+
+  it("applies the external-command setting to the loaded engine", async () => {
+    mocks.setProjectShellEscapeCmd.mockResolvedValue({ ...META, allow_shell_escape: true });
+
+    await useFilesStore.getState().setShellEscape(true);
+
+    expect(mocks.resetCompile).toHaveBeenCalled();
+    expect(useFilesStore.getState().engine).toMatchObject({ allow_shell_escape: true });
+  });
+});
+
+describe("discarding Git changes", () => {
+  it("discards a file at the current generation and applies the new project state", async () => {
+    mocks.gitDiscard.mockResolvedValue({
+      projectId: "project",
+      revision: Number.MAX_SAFE_INTEGER - 1,
+      reason: "git",
+      filesChanged: true,
+      mutationGeneration: 13,
+      project: { ...META, id: "project", name: "Discarded" },
+      engine: LATEX_ENGINE,
+    } as ProjectStateChanged);
+
+    await useFilesStore.getState().discardFromGit("project", "main.tex");
+
+    expect(mocks.gitDiscard).toHaveBeenCalledWith("project", "main.tex", 3);
+    expect(useFilesStore.getState().projectName).toBe("Discarded");
+  });
+
+  it("refuses to discard changes in a project that is no longer open", async () => {
+    await expect(useFilesStore.getState().discardFromGit("other", "main.tex")).rejects.toThrow(
+      "The open project changed before discarding Git changes.",
+    );
+    expect(mocks.gitDiscard).not.toHaveBeenCalled();
+  });
+});
+
+describe("detecting changes made on disk", () => {
+  async function openDirty(diskText: string) {
+    mocks.readFileContent.mockResolvedValue(diskText);
+    await useFilesStore.getState().openFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", `${diskText} edited`);
+  }
+
+  it("flags an unsaved file whose disk copy changed underneath it", async () => {
+    await openDirty("original");
+    mocks.readFileContent.mockResolvedValue("changed elsewhere");
+
+    await expect(detectDiskChange("project", "main.tex")).resolves.toBe(true);
+
+    expect(useFilesStore.getState().changedOnDisk).toEqual(["main.tex"]);
+    await expect(detectDiskChange("project", "main.tex")).resolves.toBe(true);
+    expect(useFilesStore.getState().changedOnDisk).toEqual(["main.tex"]);
+  });
+
+  it("does not flag a file whose disk copy is unchanged or unreadable", async () => {
+    await openDirty("original");
+
+    await expect(detectDiskChange("project", "main.tex")).resolves.toBe(false);
+    mocks.readFileContent.mockRejectedValue(new Error("locked"));
+    await expect(detectDiskChange("project", "main.tex")).resolves.toBe(false);
+    expect(useFilesStore.getState().changedOnDisk).toEqual([]);
+  });
+
+  it("ignores files it never read and files without unsaved edits", async () => {
+    await expect(detectDiskChange("project", "never-opened.tex")).resolves.toBe(false);
+
+    mocks.readFileContent.mockResolvedValue("original");
+    await useFilesStore.getState().openFile("main.tex");
+    mocks.readFileContent.mockResolvedValue("changed elsewhere");
+    await expect(detectDiskChange("project", "main.tex")).resolves.toBe(false);
+  });
+});
+
+describe("renaming entries", () => {
+  it("moves the open files of a renamed folder with it", async () => {
+    mocks.renameFile.mockResolvedValue("parts");
+    useFilesStore.setState({
+      files: {
+        "chapters/a.tex": { content: "a", dirty: false },
+        "chapters/b.tex": { content: "b", dirty: false },
+        "main.tex": { content: "m", dirty: false },
+      },
+      openTabs: ["main.tex", "chapters/a.tex", "chapters/b.tex"],
+      tabOrder: { "main.tex": 1, "chapters/a.tex": 2, "chapters/b.tex": 3 },
+      activePath: "chapters/a.tex",
+    });
+
+    await expect(useFilesStore.getState().renameEntry("chapters", "parts")).resolves.toBe("parts");
+
+    const state = useFilesStore.getState();
+    expect(Object.keys(state.files).sort()).toEqual(["main.tex", "parts/a.tex", "parts/b.tex"]);
+    expect(state.openTabs).toEqual(["main.tex", "parts/a.tex", "parts/b.tex"]);
+    expect(state.tabOrder).toEqual({ "main.tex": 1, "parts/a.tex": 2, "parts/b.tex": 3 });
+    expect(state.activePath).toBe("parts/a.tex");
+    expect(state.mainDoc).toBe("main.tex");
+  });
+
+  it("drops the replaced file's buffer when a rename overwrites it", async () => {
+    mocks.renameFile.mockResolvedValue("final.tex");
+    useFilesStore.setState({
+      files: {
+        "draft.tex": { content: "new text", dirty: false },
+        "final.tex": { content: "old text", dirty: false },
+      },
+      openTabs: ["final.tex", "draft.tex"],
+      tabOrder: { "final.tex": 1, "draft.tex": 2 },
+      activePath: "draft.tex",
+    });
+
+    await useFilesStore.getState().renameEntry("draft.tex", "final.tex", "replace");
+
+    expect(mocks.renameFile).toHaveBeenCalledWith("project", "draft.tex", "final.tex", "replace", 3);
+    const state = useFilesStore.getState();
+    expect(state.files).toEqual({ "final.tex": { content: "new text", dirty: false } });
+    expect(state.openTabs).toEqual(["final.tex"]);
+    expect(state.tabOrder).toEqual({ "final.tex": 2 });
+    expect(state.activePath).toBe("final.tex");
+  });
+
+  it("returns the requested name without an open project", async () => {
+    useFilesStore.setState({ projectId: null });
+
+    await expect(useFilesStore.getState().renameEntry("a.tex", "b.tex")).resolves.toBe("b.tex");
+    expect(mocks.renameFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("external project mutations", () => {
+  it("refuses to prepare or run a mutation for a project that is not open", async () => {
+    await expect(useFilesStore.getState().prepareExternalMutation("other")).rejects.toThrow(
+      "Project changed before the external mutation could run.",
+    );
+    await expect(
+      useFilesStore.getState().runExternalProjectMutation("other", async () => ({
+        projectState: { projectId: "other" } as ProjectStateChanged,
+      })),
+    ).rejects.toThrow("The open project changed.");
+    await expect(useFilesStore.getState().pullFromGit("other")).rejects.toThrow(
+      "The open project changed before the Git pull started.",
+    );
+  });
+
+  it("remembers a generation only for the open project", async () => {
+    useFilesStore.getState().recordMutationGeneration("other", 50);
+    useFilesStore.getState().recordMutationGeneration("project", 20);
+    mocks.projectMutationGeneration.mockResolvedValue(20);
+    useFilesStore.setState({ files: { "main.tex": { content: "x", dirty: true } } });
+
+    await useFilesStore.getState().saveFile("main.tex");
+
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "x", 20);
+  });
+});
+
+describe("setting the main document", () => {
+  it("marks the engine unavailable when it cannot be loaded for the new main document", async () => {
+    vi.useFakeTimers();
+    mocks.setMainDocCmd.mockResolvedValue({ ...META, main_doc: "thesis.tex" });
+    mocks.getProjectEngine.mockRejectedValue(new Error("engine gone"));
+
+    const setting = useFilesStore.getState().setMainDoc("thesis.tex");
+    const outcome = expect(setting).rejects.toThrow("engine gone");
+    await vi.runAllTimersAsync();
+    await outcome;
+    vi.useRealTimers();
+
+    expect(useFilesStore.getState()).toMatchObject({
+      mainDoc: "thesis.tex",
+      engineLoaded: false,
+      engineError: "loadFailed",
+    });
+    expect(mocks.logError).toHaveBeenCalledWith("set main document", expect.any(Error));
   });
 });

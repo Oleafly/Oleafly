@@ -45,6 +45,7 @@ vi.mock("@/lib/tauri", () => ({
   renderTypstSnippet: mocks.renderTypstSnippet,
 }));
 
+import { notifyError } from "@/lib/toast";
 import { EquationToolView } from "./EquationToolView";
 
 const equation = enResearchTools.equation;
@@ -120,4 +121,22 @@ describe("EquationToolView Typst mode", () => {
     expect(screen.getByTestId("panel-input")).toHaveTextContent(String.raw`\frac{a}{b}`);
     expect(screen.getByTestId("panel-input")).toHaveAttribute("data-language", "latex");
   });
+
+  it("reports Typst exports that fail with the catalog text", async () => {
+    mocks.renderTypstSnippet.mockRejectedValue(new Error("typst crashed"));
+    render(<EquationToolView />);
+    await switchToTypst();
+    vi.mocked(notifyError).mockClear();
+
+    fireEvent.click(screen.getByText(equation.downloadSvg));
+    await act(async () => undefined);
+    fireEvent.click(screen.getByText(equation.downloadPng));
+    await act(async () => undefined);
+
+    expect(notifyError).toHaveBeenCalledWith("equation export svg", expect.any(Error), equation.exportSvgFailed);
+    expect(notifyError).toHaveBeenCalledWith("equation export png", expect.any(Error), equation.exportImageFailed);
+    expect(mocks.downloadBlob).not.toHaveBeenCalled();
+    expect(mocks.downloadBytes).not.toHaveBeenCalled();
+  });
 });
+

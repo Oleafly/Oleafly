@@ -18,7 +18,7 @@ import { writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import type { ToolEntry } from "@/store/chats";
 import { useFilesStore } from "@/store/files";
-import { ToolPicture } from "./ToolPicture";
+import { freeFigurePath, ToolPicture } from "./ToolPicture";
 
 const picture: ToolEntry = {
   id: "tool-1",
@@ -91,3 +91,61 @@ describe("saving a tool picture to the project", () => {
     expect(writeProjectBytes).not.toHaveBeenCalled();
   });
 });
+
+describe("the TikZ source view", () => {
+  const tikz: ToolEntry = {
+    id: "tool-2",
+    name: "preview_figure",
+    status: "done",
+    image: "data:image/png;base64,AAAA",
+    code: "\\begin{tikzpicture}\\end{tikzpicture}\n",
+  };
+
+  it("copies the source and switches back to the figure", async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    const rendered = render(<ToolPicture tc={tikz} />);
+
+    fireEvent.click(rendered.getByTestId("tool-picture-copy"));
+    await waitFor(() => expect(writeText).toHaveBeenCalledExactlyOnceWith(tikz.code));
+    await waitFor(() => expect(rendered.getByTestId("tool-picture-copy").querySelector(".lucide-check")).not.toBeNull());
+
+    fireEvent.click(rendered.getByTestId("tool-picture-view-code"));
+    expect(rendered.queryByTestId("tool-image")).toBeNull();
+    fireEvent.click(rendered.getByTestId("tool-picture-view-image"));
+    expect(rendered.getByTestId("tool-image")).toHaveAttribute("alt", "Rendered figure preview");
+    expect(rendered.getByTestId("tool-picture-view-image")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("saves source that already ends with a newline without adding another", async () => {
+    const writeProjectFile = vi.fn(async () => undefined);
+    useFilesStore.setState({ writeProjectFile: writeProjectFile as never });
+    const rendered = render(<ToolPicture tc={tikz} />);
+
+    fireEvent.click(rendered.getByTestId("tool-picture-save"));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalledExactlyOnceWith("Saved figures/figure.tex"));
+    expect(writeProjectFile).toHaveBeenCalledExactlyOnceWith("paper", "figures/figure.tex", tikz.code);
+  });
+});
+
+describe("saving an image without a payload", () => {
+  it("writes an empty file rather than failing", async () => {
+    const rendered = render(<ToolPicture tc={{ ...picture, image: "not-a-data-url" }} />);
+
+    fireEvent.click(rendered.getByTestId("tool-picture-save"));
+
+    await waitFor(() => expect(writeProjectBytes).toHaveBeenCalledExactlyOnceWith("paper", "figures/figure.png", ""));
+  });
+});
+
+describe("freeFigurePath", () => {
+  it("falls back to a timestamped name once every numbered name is taken", () => {
+    const taken = ["figures/figure.png", ...Array.from({ length: 9_998 }, (_, index) => `figures/figure-${index + 2}.png`)];
+    const now = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    expect(freeFigurePath(taken, "png")).toBe("figures/figure-1700000000000.png");
+    now.mockRestore();
+  });
+});
+

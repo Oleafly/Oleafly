@@ -451,3 +451,62 @@ describe("ZIP download", () => {
     ]);
   });
 });
+
+describe("more picked file and download cases", () => {
+  it("opens a picked PDF in the import view", async () => {
+    const openWithPdf = vi.fn(async () => {});
+    useImportStore.setState({ openWithPdf });
+
+    await handlePickedFile(new File([new Uint8Array([37, 80, 68, 70])], "Paper.PDF"));
+
+    expect(openWithPdf).toHaveBeenCalledWith(new Uint8Array([37, 80, 68, 70]), "Paper.PDF");
+  });
+
+  it("asks for a PDF or DOCX file when another type is picked", async () => {
+    await handlePickedFile(new File(["x"], "notes.txt"));
+
+    expect(toastMessages()).toEqual([enCore.import.pickPdfOrDocx]);
+    expect(mocks.createProjectFromDocx).not.toHaveBeenCalled();
+  });
+
+  it("names a conversion without a usable file name Imported PDF", async () => {
+    loadConversion();
+    useImportStore.setState({ fileName: "" });
+
+    await createProjectFromConversion();
+
+    expect(mocks.createProjectFromPdfConversion.mock.calls[0][0]).toBe("Imported PDF");
+  });
+
+  it("reports a converted project that failed to open", async () => {
+    const error = new Error("locked");
+    mocks.openProject.mockRejectedValue(error);
+    loadConversion();
+
+    await expect(createProjectFromConversion()).resolves.toBe(false);
+
+    expect(mocks.logError).toHaveBeenCalledWith("open imported project", error);
+    expect(toastMessages()).toEqual([i18n.t(($) => $.core.project.openFailed)]);
+  });
+
+  it("does nothing without a conversion and stops when the save dialog is cancelled", async () => {
+    await expect(createProjectFromConversion()).resolves.toBe(false);
+    await downloadTex();
+    expect(mocks.pickSavePath).not.toHaveBeenCalled();
+
+    loadConversion();
+    mocks.pickSavePath.mockResolvedValue(null);
+    await downloadTex();
+    await downloadFigure({ name: "f.png", page: 1, pngDataUrl: "data:image/png;base64,AAAA" });
+
+    expect(mocks.writeBytesFile).not.toHaveBeenCalled();
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
+  it("saves a figure where the user chose and confirms it", async () => {
+    await downloadFigure({ name: "figure_p2_1.png", page: 2, pngDataUrl: "data:image/png;base64,QUJD" });
+
+    expect(mocks.writeBytesFile).toHaveBeenCalledWith("/exports/out", "QUJD");
+    expect(toastMessages()).toEqual([enCore.import.figureSaved.replace("{{name}}", "figure_p2_1.png")]);
+  });
+});

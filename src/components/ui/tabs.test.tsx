@@ -2,6 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 
@@ -145,6 +146,43 @@ describe("Tabs", () => {
     fireEvent(list, wheel);
     expect(list.scrollLeft).toBe(0);
     expect(wheel.defaultPrevented).toBe(false);
+  });
+
+  it("leaves sideways wheels and fitting strips to the browser", () => {
+    render(
+      <Tabs defaultValue="one">
+        <TabsList scrollable aria-label={"Scrolling views"}>
+          <TabsTrigger value="one">{"One"}</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    const list = screen.getByRole("tablist", { name: "Scrolling views" });
+    Object.defineProperties(list, {
+      clientWidth: { configurable: true, value: 320 },
+      scrollLeft: { configurable: true, value: 0, writable: true },
+      scrollWidth: { configurable: true, value: 640 },
+    });
+    const sideways = new WheelEvent("wheel", { deltaX: 60, deltaY: 20, bubbles: true, cancelable: true });
+    fireEvent(list, sideways);
+    expect(sideways.defaultPrevented).toBe(false);
+
+    Object.defineProperty(list, "scrollWidth", { configurable: true, value: 320 });
+    const vertical = new WheelEvent("wheel", { deltaY: 80, bubbles: true, cancelable: true });
+    fireEvent(list, vertical);
+    expect(vertical.defaultPrevented).toBe(false);
+    expect(list.scrollLeft).toBe(0);
+  });
+
+  it("hands the list element to an object ref", () => {
+    const ref = createRef<HTMLDivElement>();
+    render(
+      <Tabs defaultValue="one">
+        <TabsList ref={ref} aria-label={"Referenced views"}>
+          <TabsTrigger value="one">{"One"}</TabsTrigger>
+        </TabsList>
+      </Tabs>,
+    );
+    expect(ref.current).toBe(screen.getByRole("tablist", { name: "Referenced views" }));
   });
 
   it("scrolls the selected tab into view", async () => {

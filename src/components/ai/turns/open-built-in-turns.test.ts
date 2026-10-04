@@ -73,4 +73,44 @@ describe("open built-in turns", () => {
     await expect(closeLeftoverBuiltInTurns()).resolves.toBeUndefined();
     expect(agentTurnFinish).not.toHaveBeenCalled();
   });
+
+  it("treats a stored record that is not a list as empty", async () => {
+    window.sessionStorage.setItem(KEY, JSON.stringify({ projectId: "paper", snapshotId: "s", page: "p" }));
+
+    await closeLeftoverBuiltInTurns();
+
+    expect(agentTurnFinish).not.toHaveBeenCalled();
+  });
+
+  it("keeps working when the window refuses access to session storage", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(window, "sessionStorage");
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      get: () => {
+        throw new Error("blocked");
+      },
+    });
+    try {
+      expect(() => rememberOpenBuiltInTurn("paper", "snap-blocked")).not.toThrow();
+      expect(() => forgetOpenBuiltInTurn("snap-blocked")).not.toThrow();
+      await expect(closeLeftoverBuiltInTurns()).resolves.toBeUndefined();
+    } finally {
+      if (descriptor) Object.defineProperty(window, "sessionStorage", descriptor);
+    }
+    expect(agentTurnFinish).not.toHaveBeenCalled();
+  });
+
+  it("tags turns with a random page id when the page has no time origin", async () => {
+    vi.resetModules();
+    vi.stubGlobal("performance", undefined);
+    try {
+      const fresh = await import("./open-built-in-turns");
+      fresh.rememberOpenBuiltInTurn("paper", "snap-random");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+
+    expect(stored()).toEqual([{ projectId: "paper", snapshotId: "snap-random", page: expect.stringMatching(/^r/u) }]);
+  });
 });
+

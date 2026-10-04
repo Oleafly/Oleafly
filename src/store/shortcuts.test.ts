@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const values = new Map<string, string>();
 
@@ -401,5 +401,29 @@ describe("shortcut bindings", () => {
     } finally {
       vi.stubGlobal("navigator", originalNavigator);
     }
+  });
+});
+
+describe("shortcut labels", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function label(platform: string, binding: Parameters<typeof import("@/store/shortcuts").shortcutLabel>[0]) {
+    vi.stubGlobal("navigator", { platform });
+    const { shortcutLabel } = await import("@/store/shortcuts");
+    return shortcutLabel(binding);
+  }
+
+  it("uses the Mac modifier symbols without separators", async () => {
+    expect(await label("MacIntel", { key: "k", mod: true, shift: true, alt: true })).toBe("⌘⇧⌥K");
+    expect(await label("MacIntel", { key: " ", ctrl: true })).toBe("CtrlSpace");
+    expect(await label("MacIntel", { key: "ArrowUp", mod: true, ctrl: true })).toBe("⌘CtrlArrowUp");
+  });
+
+  it("spells out modifiers joined with plus signs elsewhere", async () => {
+    expect(await label("Win32", { key: "k", mod: true, shift: true, alt: true })).toBe("Ctrl+Shift+Alt+K");
+    expect(await label("Linux x86_64", { key: "Enter", mod: true, ctrl: true })).toBe("Ctrl+Enter");
+    expect(await label("Linux x86_64", { key: "p", ctrl: true })).toBe("Ctrl+P");
   });
 });

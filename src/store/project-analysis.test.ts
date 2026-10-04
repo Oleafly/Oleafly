@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { buildIndex } from "@/lib/index/build";
 import type { ProjectAnalysisRequestIdentity } from "@/lib/analysis";
-import { createProjectAnalysisStore } from "./project-analysis";
+import {
+  createProjectAnalysisStore,
+  failProjectAnalysisFeature,
+  useProjectAnalysisStore,
+} from "./project-analysis";
 
 function request(
   requestGeneration: number,
@@ -331,5 +335,223 @@ describe("project analysis store", () => {
         failure: { retryable: true },
       },
     );
+  });
+});
+
+describe("project analysis guards", () => {
+  const uri = "file:///project/main.tex";
+  const other = "file:///project/other.tex";
+
+  it("rejects negative or fractional revisions", () => {
+    const store = activatedStore();
+
+    expect(() =>
+      store.getState().activateProject({ projectId: "p", projectRevision: -1, languageServiceGeneration: 0 }),
+    ).toThrow(RangeError);
+    expect(() => store.getState().setProjectRevision(1.5)).toThrow(RangeError);
+    expect(() => store.getState().setDocumentVersion("", 1)).toThrow(RangeError);
+    expect(() => store.getState().setLocalDocument(uri, -2, { key: "noProject" })).toThrow(RangeError);
+    expect(() => store.getState().invalidateLanguageService(-1)).toThrow(RangeError);
+  });
+
+  it("tracks nothing until a project is active", () => {
+    const store = createProjectAnalysisStore();
+
+    expect(store.getState().setProjectRevision(3)).toBe(false);
+    expect(store.getState().setDocumentVersion(uri, 1)).toBe(false);
+    expect(store.getState().setLocalDocument(uri, 1, { key: "noProject" })).toBe(false);
+    expect(store.getState().snapshot.documents).toEqual({});
+  });
+
+  it("keeps the same revision without clearing results", () => {
+    const store = activatedStore();
+    store.getState().beginFeature("workspaceSymbols", request(1));
+    store.getState().resolveFeature("workspaceSymbols", request(1), ["symbol"]);
+
+    expect(store.getState().setProjectRevision(1)).toBe(true);
+
+    expect(store.getState().snapshot.features.workspaceSymbols.status).toBe("success");
+  });
+
+  it("refuses older document versions and accepts a repeated one", () => {
+    const store = activatedStore();
+    store.getState().setDocumentVersion(uri, 4);
+
+    expect(store.getState().setDocumentVersion(uri, 3)).toBe(false);
+    expect(store.getState().setDocumentVersion(uri, 4)).toBe(true);
+    expect(store.getState().snapshot.documents[uri].version).toBe(4);
+  });
+
+  it("records a document analyzed only locally", () => {
+    const store = activatedStore();
+    const reason = { key: "languageServiceUnavailable" } as const;
+
+    expect(store.getState().setLocalDocument(uri, 2, reason)).toBe(true);
+    const first = store.getState().snapshot;
+    expect(store.getState().setLocalDocument(uri, 2, reason)).toBe(true);
+    expect(store.getState().snapshot).toBe(first);
+    expect(store.getState().setLocalDocument(uri, 1, reason)).toBe(false);
+
+    expect(first.documents[uri]).toEqual({
+      uri,
+      version: 2,
+      analysis: "local_only",
+      status: "not_run",
+      reason,
+    });
+  });
+
+  it("forgets a closed document and the results that depended on it", () => {
+    const store = activatedStore();
+    store.getState().setDocumentVersion(uri, 1);
+    store.getState().setDocumentVersion(other, 1);
+    const hover = request(1, { documentUri: uri, documentVersion: 1 });
+    store.getState().beginFeature("hover", hover);
+    store.getState().beginDocumentDiagnostics(uri, 1, request(2, { documentUri: uri, documentVersion: 1 }));
+    const otherDiagnostics = request(3, { documentUri: other, documentVersion: 1 });
+    store.getState().beginDocumentDiagnostics(other, 1, otherDiagnostics);
+    store.getState().resolveDocumentDiagnostics(other, 1, otherDiagnostics, []);
+
+    store.getState().removeDocument(uri);
+
+    const snapshot = store.getState().snapshot;
+    expect(snapshot.documents).not.toHaveProperty(uri);
+    expect(snapshot.features.hover).toMatchObject({ status: "not_run", reason: { key: "documentClosed" } });
+    expect(snapshot.features.diagnostics).toMatchObject({
+      status: "success",
+      request: { requestGeneration: 3 },
+    });
+
+    store.getState().removeDocument(other);
+    expect(store.getState().snapshot.features.diagnostics).toMatchObject({
+      status: "not_run",
+      reason: { key: "diagnosticsNotRun" },
+    });
+
+    const unchanged = store.getState().snapshot;
+    store.getState().removeDocument("file:///never-open.tex");
+    expect(store.getState().snapshot).toBe(unchanged);
+  });
+
+  it("refuses diagnostics for the wrong document or an older epoch", () => {
+    const store = activatedStore();
+    store.getState().setDocumentVersion(uri, 1);
+    store.getState().setDocumentVersion(other, 1);
+    const diagnostics = request(5, { documentUri: uri, documentVersion: 1 });
+
+    expect(store.getState().beginDocumentDiagnostics(other, 1, diagnostics)).toBe(false);
+    expect(store.getState().beginDocumentDiagnostics(uri, -1, diagnostics)).toBe(false);
+    expect(store.getState().beginDocumentDiagnostics(uri, 2, diagnostics)).toBe(true);
+    expect(
+      store.getState().beginDocumentDiagnostics(uri, 1, request(6, { documentUri: uri, documentVersion: 1 })),
+    ).toBe(false);
+    expect(
+      store.getState().beginDocumentDiagnostics(uri, 2, request(4, { documentUri: uri, documentVersion: 1 })),
+    ).toBe(false);
+    expect(store.getState().resolveDocumentDiagnostics(uri, 1, diagnostics, [])).toBe(false);
+    expect(
+      store.getState().resolveDocumentDiagnostics(uri, 2, request(5, { projectRevision: 9, documentUri: uri }), []),
+    ).toBe(false);
+    expect(store.getState().snapshot.features.diagnostics.status).toBe("partial");
+  });
+
+  it("clears diagnostics of a document that has none as a no-op", () => {
+    const store = activatedStore();
+    const before = store.getState().snapshot;
+
+    store.getState().clearDocumentDiagnostics(uri);
+
+    expect(store.getState().snapshot).toBe(before);
+  });
+
+  it("drops feature work from another project revision", () => {
+    const store = activatedStore();
+    const stale = request(1, { projectRevision: 0 });
+
+    expect(store.getState().beginFeature("references", stale)).toBe(false);
+    expect(store.getState().beginProjectIndex(stale)).toBe(false);
+    expect(store.getState().resolveFeaturePartial("references", stale, [], { key: "noProject" })).toBe(false);
+    expect(store.getState().failFeature("references", stale, { name: "E", message: "m", retryable: true })).toBe(
+      false,
+    );
+    expect(store.getState().failProjectIndex(stale, { name: "E", message: "m", retryable: true })).toBe(false);
+  });
+
+  it("refuses an older project index request and records a failed one", () => {
+    const store = activatedStore();
+    expect(store.getState().beginProjectIndex(request(2))).toBe(true);
+    expect(store.getState().beginProjectIndex(request(1))).toBe(false);
+
+    expect(
+      store.getState().failProjectIndex(request(2), { name: "Error", message: "parse", retryable: true }),
+    ).toBe(true);
+    expect(store.getState().snapshot.projectIndex).toMatchObject({
+      status: "error",
+      data: null,
+      failure: { message: "parse" },
+    });
+    expect(store.getState().failProjectIndex(request(2), { name: "Error", message: "again", retryable: true })).toBe(
+      false,
+    );
+  });
+
+  it("installs a partial project index with its reason", () => {
+    const store = activatedStore();
+    store.getState().beginProjectIndex(request(1));
+
+    expect(
+      store.getState().installProjectIndex({
+        request: request(1),
+        index: buildIndex({ "main.tex": "\\section{A}" }),
+        partialReason: { key: "noProject" },
+      }),
+    ).toBe(true);
+    expect(store.getState().snapshot.projectIndex).toMatchObject({ status: "partial", reason: { key: "noProject" } });
+    expect(store.getState().installProjectIndex({ request: request(1), index: buildIndex({}) })).toBe(false);
+  });
+
+  it("converts thrown errors into feature failures", () => {
+    const store = activatedStore();
+    store.getState().beginFeature("documentSymbols", request(1));
+
+    const failure = Object.assign(new Error("timed out"), { code: -32001, analysisReason: { key: "noProject" } });
+    expect(failProjectAnalysisFeature(store, "documentSymbols", request(1), failure, false)).toBe(true);
+    expect(store.getState().snapshot.features.documentSymbols).toMatchObject({
+      status: "error",
+      failure: { name: "Error", message: "timed out", code: -32001, reason: { key: "noProject" }, retryable: false },
+    });
+
+    store.getState().beginFeature("documentSymbols", request(2));
+    expect(failProjectAnalysisFeature(store, "documentSymbols", request(2), "socket closed")).toBe(true);
+    expect(store.getState().snapshot.features.documentSymbols).toMatchObject({
+      failure: { name: "Error", message: "socket closed", retryable: true },
+    });
+  });
+
+  it("keeps language-service capabilities unless an update replaces them", () => {
+    const store = activatedStore();
+    store.getState().setLanguageService({ capabilities: { hover: true } as never });
+    store.getState().setLanguageService({ readiness: "ready" } as never);
+
+    expect(store.getState().snapshot.languageService.capabilities).toEqual({ hover: true });
+
+    store.getState().setLanguageService({ capabilities: null });
+    expect(store.getState().snapshot.languageService.capabilities).toBeNull();
+  });
+
+  it("marks a feature as not run and resets the shared store", () => {
+    useProjectAnalysisStore.getState().activateProject({
+      projectId: "p",
+      projectRevision: 0,
+      languageServiceGeneration: 0,
+    });
+    useProjectAnalysisStore.getState().markFeatureNotRun("hover", { key: "documentClosed" });
+    expect(useProjectAnalysisStore.getState().snapshot.features.hover).toMatchObject({
+      status: "not_run",
+      reason: { key: "documentClosed" },
+    });
+
+    useProjectAnalysisStore.getState().reset();
+    expect(useProjectAnalysisStore.getState().snapshot.identity.projectId).toBeNull();
   });
 });

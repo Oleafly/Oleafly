@@ -42,7 +42,7 @@ vi.mock("@/store/settings", () => ({
 }));
 
 import { resetUniverseIndexCache, type UniversePackage } from "@/lib/typst-universe";
-import { TypstPackagesDialog } from "./TypstPackagesDialog";
+import { showTypstPackagesDialog, TypstPackagesDialog } from "./TypstPackagesDialog";
 
 const text = en.typstPackages;
 
@@ -248,5 +248,93 @@ describe("TypstPackagesDialog", () => {
     expect(
       await screen.findByText(fill(text.vendor.missing, { names: "@preview/absent:1.0.0" })),
     ).toBeInTheDocument();
+  });
+
+  it("marks templates and says when every package is already vendored", async () => {
+    backendWith({
+      typst_universe_index: () => ({
+        ...INDEX,
+        packages: [...INDEX.packages, universePackage({ name: "charged-ieee", template: true })],
+      }),
+      vendor_typst_packages: () => ({
+        report: { vendored: [], unchanged: ["@preview/cetz:0.5.2"], missing: [] },
+        project: {},
+      }),
+    });
+    await openDialog();
+
+    expect(within(row("charged-ieee")).getByText(text.template)).toBeInTheDocument();
+    expect(within(row("cetz")).queryByText(text.template)).toBeNull();
+    await screen.findByRole("switch", { name: text.vendor.toggle });
+    fireEvent.click(screen.getByRole("button", { name: text.vendor.action }));
+    expect(await screen.findByText(text.vendor.upToDate)).toBeInTheDocument();
+  });
+
+  it("reports vendoring failures", async () => {
+    backendWith({
+      typst_package_settings: () => {
+        throw new Error("settings unreadable");
+      },
+    });
+    await openDialog();
+    expect(await screen.findByRole("alert")).toHaveTextContent("settings unreadable");
+
+    backendWith({
+      typst_package_settings: () => ({ vendorPackages: false, vendored: [] }),
+      vendor_typst_packages: () => {
+        throw new Error("cache missing");
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: text.vendor.action }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("cache missing"));
+  });
+
+  it("reports a failed vendoring switch", async () => {
+    backendWith({
+      set_typst_vendor_packages: () => {
+        throw new Error("folder is read-only");
+      },
+    });
+    await openDialog();
+    const toggle = await screen.findByRole("switch", { name: text.vendor.toggle });
+    await waitFor(() => expect(toggle).toBeEnabled());
+
+    fireEvent.click(toggle);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("folder is read-only");
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+  });
+
+  it("leaves out the vendoring section without a project", async () => {
+    filesState.projectId = null;
+    await openDialog();
+
+    expect(screen.queryByRole("switch", { name: text.vendor.toggle })).toBeNull();
+    filesState.projectId = "paper";
+  });
+
+  it("keeps the dialog open when no editor is available to insert into", async () => {
+    editor.getEditorView.mockImplementation(() => null as never);
+    const onClose = await openDialog();
+
+    fireEvent.click(within(row("tablex")).getByRole("button", { name: fill(text.insertAria, { name: "tablex" }) }));
+
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("says when nothing matches and dates a stale list", async () => {
+    backendWith({ typst_universe_index: () => ({ ...INDEX, stale: true }) });
+    await openDialog();
+
+    expect(screen.getByText(/It couldn't be refreshed\./)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(text.searchLabel), { target: { value: "zzzz-no-such" } });
+    expect(screen.getByText(text.empty)).toBeInTheDocument();
+  });
+
+  it("opens from anywhere as a shared dialog", async () => {
+    showTypstPackagesDialog();
+
+    expect(await screen.findByRole("dialog", { name: text.title })).toBeInTheDocument();
+    expect(await screen.findByText("tablex")).toBeInTheDocument();
   });
 });

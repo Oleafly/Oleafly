@@ -229,3 +229,97 @@ describe("buildTaskTimeline", () => {
     expect(items[4]).toMatchObject({ artifact: { label: "Evidence report" } });
   });
 });
+
+describe("buildTaskTimeline edge cases", () => {
+  const fallback = enResearchTools.tasks.timeline.toolCall;
+
+  function tools(events: TaskRuntimeEvent[], running = true) {
+    return buildTaskTimeline(transcript(events), running).items.flatMap((item) =>
+      item.kind === "tool" ? [item.tool] : [],
+    );
+  }
+
+  it("treats a call id without a phase as a request and a repeated request as a rename", () => {
+    const [tool] = tools([
+      { kind: "tool", callId: "call_7", name: "call_7", phase: null, detail: "", status: null },
+      { kind: "tool", callId: "call_7", name: "search", phase: "request", detail: '{"q":"x"}', status: null },
+      { kind: "tool", callId: "call_7", name: "", phase: "request", detail: '{"q":"y"}', status: null },
+    ] as TaskRuntimeEvent[]);
+
+    expect(tool).toMatchObject({ id: "call_7", name: "search", status: "running", input: '{"q":"y"}' });
+  });
+
+  it("pairs untagged results with the oldest unresolved call", () => {
+    const items = tools([
+      { kind: "tool", callId: null, name: "read_file", detail: "a", status: null },
+      { kind: "tool", callId: null, name: "grep", detail: "b", status: null },
+      { kind: "tool", callId: null, name: "", detail: "read result", status: null },
+      { kind: "tool", callId: null, name: "", detail: "grep result", status: null },
+    ] as TaskRuntimeEvent[]);
+
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ name: "read_file", status: "done", input: "a", output: "read result" });
+    expect(items[1]).toMatchObject({ name: "grep", status: "done", input: "b", output: "grep result" });
+  });
+
+  it("pairs a result that names its call id instead of the tool", () => {
+    const items = tools([
+      { kind: "tool", callId: "call_9", name: "fetch", phase: "request", detail: "url", status: null },
+      { kind: "tool", callId: null, name: "call_9", phase: null, detail: "page", status: null },
+    ] as TaskRuntimeEvent[]);
+
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({ id: "call_9", name: "fetch", status: "done", output: "page" });
+  });
+
+  it("starts a tool from a result or a finished update when no request was seen", () => {
+    const [result, update] = tools([
+      { kind: "tool", callId: "call_a", name: "fetch", phase: "result", detail: "page", status: "error" },
+      { kind: "tool", callId: "call_b", name: "", phase: "update", detail: "partial", status: "done" },
+    ] as TaskRuntimeEvent[]);
+
+    expect(result).toMatchObject({ name: fallback, status: "error", output: "page" });
+    expect(update).toMatchObject({ name: fallback, status: "done", output: "partial" });
+    expect(update.input).toBeUndefined();
+  });
+
+  it("keeps a running update's input and names a fallback tool from its result", () => {
+    const [tool] = tools([
+      { kind: "tool", callId: "call_c", name: "", phase: "update", detail: "", status: "unknown" },
+      { kind: "tool", callId: "call_c", name: "", phase: "update", detail: "", status: null },
+      { kind: "tool", callId: "call_c", name: "write_file", phase: "result", detail: "ok", status: null },
+    ] as TaskRuntimeEvent[]);
+
+    expect(tool).toMatchObject({ name: "write_file", status: "done", output: "ok" });
+    expect(tool.input).toBeUndefined();
+  });
+
+  it("marks calls still running when the task ended as interrupted", () => {
+    const items = tools(
+      [
+        { kind: "tool", callId: "call_d", name: "compile", phase: "request", detail: "", status: "running" },
+        { kind: "tool", callId: "call_e", name: "lint", phase: "request", detail: "", status: "running" },
+        { kind: "tool", callId: "call_e", name: "", phase: "result", detail: "", status: "done" },
+      ] as TaskRuntimeEvent[],
+      false,
+    );
+
+    expect(items[0].interrupted).toBe(true);
+    expect(items[1].interrupted).toBeUndefined();
+  });
+
+  it("skips blank text and keeps the last known token counts", () => {
+    const timeline = buildTaskTimeline(
+      transcript([
+        { kind: "text", text: "  " },
+        { kind: "status", message: "Compiling" },
+        { kind: "reasoning", text: " " },
+        { kind: "usage", inputTokens: 10, outputTokens: 4 },
+        { kind: "usage", inputTokens: null, outputTokens: null },
+      ] as TaskRuntimeEvent[]),
+    );
+
+    expect(timeline.items.map((item) => item.kind)).toEqual(["milestone"]);
+    expect(timeline.usage).toEqual({ inputTokens: 10, outputTokens: 4 });
+  });
+});

@@ -51,10 +51,12 @@ vi.mock("@oleafly/diagram/fletcher", () => ({ fletcherVersionFor: mocks.fletcher
 
 import {
   AD_HOC_CONVERTERS,
+  converterCopy,
   projectReadySource,
   runAdHocConverter,
   transcribePdfPages,
 } from "./ad-hoc-converters";
+import researchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { MERMAID_EXPORT_DIRECTIVE } from "./mermaid-export";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -797,3 +799,21 @@ describe("Typst converters", () => {
   });
 });
 
+
+describe("converter copy", () => {
+  it("gives every converter its own title, hints and labels from the catalog", () => {
+    const catalog = researchTools.converters as Record<string, Record<string, string>>;
+    for (const id of Object.keys(AD_HOC_CONVERTERS) as Array<keyof typeof AD_HOC_CONVERTERS>) {
+      const key = id.replace(/-(\w)/g, (_match, letter: string) => letter.toUpperCase());
+      const entry = catalog[key];
+      expect(entry, id).toBeDefined();
+      expect(converterCopy(id)).toEqual({
+        title: entry.title,
+        subtitle: entry.subtitle,
+        inputLabel: entry.inputLabel,
+        inputHint: entry.inputHint,
+        outputLabel: entry.outputLabel,
+      });
+    }
+  });
+});

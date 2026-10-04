@@ -15,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   createProjectFromConversion: vi.fn(async () => true),
   handoffToAssistant: vi.fn(),
   pdfPageToPng: vi.fn(async (_bytes: Uint8Array, page: number) => `data:image/png;base64,P${page}`),
+  getConfig: vi.fn(async () => ({})),
+  hasConfiguredProvider: vi.fn(() => true),
 }));
 
 vi.mock("@/store/import", () => ({ useImportStore: { getState: () => mocks.importState } }));
@@ -24,13 +26,13 @@ vi.mock("@/features/import", () => ({
 }));
 vi.mock("@/features/assistant-handoff", () => ({ handoffToAssistant: mocks.handoffToAssistant }));
 vi.mock("@/lib/pdf-image", () => ({ pdfPageToPng: mocks.pdfPageToPng }));
-vi.mock("@/lib/tauri", () => ({ getConfig: vi.fn() }));
+vi.mock("@/lib/tauri", () => ({ getConfig: mocks.getConfig }));
 vi.mock("@/lib/ai-providers", () => ({
-  hasConfiguredProvider: vi.fn(() => true),
-  pickActiveProvider: vi.fn(() => ({ providerId: "p", modelId: "m" })),
+  hasConfiguredProvider: mocks.hasConfiguredProvider,
+  pickActiveProvider: vi.fn(() => ({ providerId: "openai", modelId: "gpt-4o" })),
 }));
 
-import { refinePrompt, refineWithAi } from "./import-refine";
+import { refineAvailable, refinePrompt, refineWithAi } from "./import-refine";
 
 const TYPST: DocumentEngineDescriptor = {
   ...LATEX_ENGINE,
@@ -107,5 +109,49 @@ describe("refineWithAi", () => {
     await refineWithAi();
 
     expect(mocks.handoffToAssistant).not.toHaveBeenCalled();
+  });
+});
+
+describe("refine availability", () => {
+  it("needs a configured provider whose model can read images", async () => {
+    mocks.hasConfiguredProvider.mockReturnValueOnce(false);
+    await expect(refineAvailable()).resolves.toBe(false);
+
+    await expect(refineAvailable()).resolves.toBe(true);
+
+    mocks.getConfig.mockRejectedValueOnce(new Error("no config"));
+    await expect(refineAvailable()).resolves.toBe(false);
+  });
+});
+
+describe("refine runs with partial input", () => {
+  it("does nothing without a converted PDF", async () => {
+    mocks.importState.result = null;
+
+    await refineWithAi();
+
+    expect(mocks.createProjectFromConversion).not.toHaveBeenCalled();
+  });
+
+  it("stops attaching pages at the first page that cannot be drawn and falls back to the engine's main file", async () => {
+    mocks.importState.result = { report: { pages: 20 } };
+    mocks.filesState.mainDoc = "";
+    mocks.pdfPageToPng.mockImplementation(async (_bytes: Uint8Array, page: number) => {
+      if (page === 3) throw new Error("render failed");
+      return `data:image/png;base64,P${page}`;
+    });
+
+    await refineWithAi();
+
+    const [prompt, options] = mocks.handoffToAssistant.mock.calls[0];
+    expect(options.images).toEqual(["data:image/png;base64,P1", "data:image/png;base64,P2"]);
+    expect(prompt).toContain(`Improve ${LATEX_ENGINE.main_document} to match the originals`);
+    expect(prompt).toContain("Only the first 8 pages are attached.");
+  });
+
+  it("uses a generic repair list for an unknown formatting profile", () => {
+    expect(refinePrompt({ profile: "asciidoc", mainDoc: "a.adoc", attached: 1, total: 1 })).toContain(
+      "fix display math, rebuild tables, and repair layout",
+    );
   });
 });

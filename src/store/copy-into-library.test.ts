@@ -180,3 +180,26 @@ describe("copy into library", () => {
     expect(copyLinkedIntoLibrary).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("copying while another copy runs", () => {
+  it("refuses a second copy, logs a failed refresh or cancel, and keeps the dialog while busy", async () => {
+    const copy = deferred<CopiedIntoLibrary>();
+    copyLinkedIntoLibrary.mockReturnValue(copy.promise);
+    cancelCopyIntoLibrary.mockRejectedValue(new Error("gone"));
+    refreshProjects.mockRejectedValue(new Error("offline"));
+    const first = useCopyIntoLibraryStore.getState().start("thesis", "Thesis");
+
+    await expect(useCopyIntoLibraryStore.getState().start("notes", "Notes")).resolves.toBeNull();
+    useCopyIntoLibraryStore.getState().close();
+    expect(useCopyIntoLibraryStore.getState().status).toBe("running");
+    useCopyIntoLibraryStore.getState().cancel();
+    await vi.waitFor(() => expect(logError).toHaveBeenCalledWith("cancel copying a folder", expect.any(Error)));
+    useCopyIntoLibraryStore.getState().close();
+    expect(useCopyIntoLibraryStore.getState().status).toBe("cancelling");
+
+    copy.resolve({ projectId: "copy-1", leftOut: 0 } as CopiedIntoLibrary);
+    await expect(first).resolves.toBe("copy-1");
+    expect(logError).toHaveBeenCalledWith("refresh projects after copying a folder", expect.any(Error));
+    expect(copyLinkedIntoLibrary).toHaveBeenCalledTimes(1);
+  });
+});

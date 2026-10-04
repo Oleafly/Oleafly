@@ -304,4 +304,99 @@ describe("useAgentTurnsStore", () => {
     useAgentTurnsStore.getState().applyEvent("chat-1", { kind: "textDelta", text: "late" });
     expect(useAgentTurnsStore.getState().recordsByChat["chat-1"][0].items).toHaveLength(2);
   });
+
+  it("rolls back a turn the request never started and keeps earlier turns", () => {
+    const store = useAgentTurnsStore.getState();
+    store.beginTurn("chat-1", "thread-1", "c1", "first");
+    store.finishTurn("chat-1", false);
+    store.beginTurn("chat-1", "thread-1", "c2", "second");
+
+    useAgentTurnsStore.getState().rollbackTurn("chat-1", "c2");
+
+    const state = useAgentTurnsStore.getState();
+    expect(state.recordsByChat["chat-1"].map((record) => record.clientTurnId)).toEqual(["c1"]);
+    expect(state.addedItemsByChat["chat-1"]).toBeUndefined();
+    useAgentTurnsStore.getState().applyEvent("chat-1", { kind: "textDelta", text: "late" });
+    expect(useAgentTurnsStore.getState().recordsByChat["chat-1"]).toHaveLength(1);
+  });
+
+  it("forgets a chat's records when its only turn is rolled back, and ignores unknown turns", () => {
+    const store = useAgentTurnsStore.getState();
+    store.beginTurn("chat-1", "thread-1", "c1", "only");
+
+    useAgentTurnsStore.getState().rollbackTurn("chat-1", "missing");
+    expect(useAgentTurnsStore.getState().recordsByChat["chat-1"]).toHaveLength(1);
+
+    useAgentTurnsStore.getState().rollbackTurn("chat-1", "c1");
+    expect(useAgentTurnsStore.getState().recordsByChat).not.toHaveProperty("chat-1");
+
+    useAgentTurnsStore.getState().rollbackTurn("chat-2", "c9");
+    expect(useAgentTurnsStore.getState().recordsByChat).toEqual({});
+  });
+
+  it("ignores events and endings for a chat without a running turn", () => {
+    const store = useAgentTurnsStore.getState();
+
+    store.applyEvent("idle", { kind: "textDelta", text: "stray" });
+    store.finishTurn("idle", false);
+    store.interruptTurn("idle");
+
+    expect(useAgentTurnsStore.getState().recordsByChat).toEqual({});
+  });
+
+  it("does not queue an empty follow-up but queues an attachment on its own", () => {
+    const store = useAgentTurnsStore.getState();
+
+    store.queueFollowUp("chat-1", "   ");
+    expect(useAgentTurnsStore.getState().queuedByChat).toEqual({});
+
+    store.queueFollowUp("chat-1", "  ", [{ id: "a1", name: "fig.png", mediaType: "image/png", dataUrl: "data:image/png;base64,AAAA" }]);
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"]).toEqual([
+      expect.objectContaining({ text: "", status: "pending", attachments: [expect.objectContaining({ name: "fig.png" })] }),
+    ]);
+  });
+
+  it("ignores steering, removal and acknowledgement of unknown follow-ups", () => {
+    const store = useAgentTurnsStore.getState();
+    store.queueFollowUp("chat-1", "next");
+    const before = useAgentTurnsStore.getState().queuedByChat;
+
+    store.markSteered("chat-1", "missing");
+    store.removeFollowUp("chat-1", "missing");
+    store.removeFollowUp("chat-2", "missing");
+    store.acknowledgeFollowUp("chat-1", "missing");
+    store.acknowledgeFollowUp("chat-2", "missing");
+
+    expect(useAgentTurnsStore.getState().queuedByChat).toBe(before);
+    expect(store.takeFollowUps("chat-2")).toEqual([]);
+  });
+
+  it("keeps the remaining follow-ups after one is acknowledged", () => {
+    const store = useAgentTurnsStore.getState();
+    store.queueFollowUp("chat-1", "first");
+    store.queueFollowUp("chat-1", "second");
+    const [first] = useAgentTurnsStore.getState().queuedByChat["chat-1"];
+
+    store.acknowledgeFollowUp("chat-1", first.id);
+
+    expect(useAgentTurnsStore.getState().queuedByChat["chat-1"].map((item) => item.text)).toEqual(["second"]);
+  });
+
+  it("mints a thread without asking for a prewarmed one when no project is open", async () => {
+    const claim = vi.fn(async () => "prewarmed");
+
+    const thread = await useAgentTurnsStore.getState().threadFor("chat-9", null, claim);
+
+    expect(claim).not.toHaveBeenCalled();
+    expect(thread).toMatch(/^thread-/);
+  });
+
+  it("mints a thread when claiming a prewarmed one fails", async () => {
+    const thread = await useAgentTurnsStore
+      .getState()
+      .threadFor("chat-8", "project", () => Promise.reject(new Error("pool empty")));
+
+    expect(thread).toMatch(/^thread-/);
+  });
 });
+

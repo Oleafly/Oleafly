@@ -1118,4 +1118,80 @@ describe("McpServersManager", () => {
       resetDisplayHomes();
     }
   });
+
+  it("adds and removes variable rows and starts over when the transport changes", async () => {
+    records = [];
+    renderManager();
+    await screen.findByText(enSettings.mcp.servers.empty.title);
+    fireEvent.click(screen.getByRole("button", { name: enSettings.mcp.servers.addServer }));
+    const pairs = enSettings.mcp.servers.editor.pairs;
+
+    fireEvent.click(screen.getByRole("button", { name: pairs.addVariable }));
+    fireEvent.change(screen.getByLabelText(environmentKeyLabel(2)), { target: { value: "TOKEN" } });
+    fireEvent.click(screen.getByRole("button", { name: pairs.removeVariableLabel.replace("{{index}}", "1") }));
+    expect(screen.getByLabelText(environmentKeyLabel(1))).toHaveValue("TOKEN");
+    fireEvent.click(screen.getByRole("button", { name: pairs.removeVariableLabel.replace("{{index}}", "1") }));
+    expect(screen.getByLabelText(environmentKeyLabel(1))).toHaveValue("");
+
+    fireEvent.change(screen.getByLabelText(enSettings.mcp.servers.editor.commandLabel), { target: { value: "node" } });
+    fireEvent.click(screen.getByRole("radio", { name: enSettings.mcp.servers.editor.transportRemote }));
+    expect(screen.getByRole("textbox", { name: enSettings.mcp.servers.editor.urlLabel })).toHaveValue("");
+    expect(screen.getByLabelText(headerKeyLabel(1))).toHaveValue("");
+    fireEvent.click(screen.getByRole("radio", { name: enSettings.mcp.servers.editor.transportStdio }));
+    expect(screen.getByLabelText(enSettings.mcp.servers.editor.commandLabel)).toHaveValue("");
+  });
+
+  it("shows why an enabled server failed and when a server has no tools", async () => {
+    records = [{ ...CONNECTED }, { ...CONNECTED, config: { ...CONNECTED.config, name: "empty" } }];
+    const base = mockInvoke.getMockImplementation();
+    mockInvoke.mockImplementation(async (command, args) => {
+      const name = (args as { name?: string } | undefined)?.name;
+      if (command === "mcp_server_validate" && name === "files") throw new Error("spawn npx ENOENT");
+      if (command === "mcp_server_validate" && name === "empty") {
+        return { name, status: "connected", tool_count: 0, tools: [], error: null };
+      }
+      return base?.(command, args);
+    });
+    renderManager();
+
+    expect(await screen.findByText("spawn npx ENOENT")).toBeInTheDocument();
+    expect(await screen.findByText(enSettings.mcp.servers.card.noTools)).toBeInTheDocument();
+    expect(screen.getByText(enSettings.mcp.servers.live.failed.replace("{{name}}", "files"))).toBeInTheDocument();
+  });
+
+  it("shows the error when a server cannot be switched or removed and keeps it listed", async () => {
+    records = [DISABLED];
+    const base = mockInvoke.getMockImplementation();
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === "mcp_server_set_enabled") throw new Error("Settings file is read-only");
+      if (command === "mcp_server_remove") throw new Error("Server is still running");
+      return base?.(command, args);
+    });
+    renderManager();
+    await screen.findByText("docs-api");
+
+    fireEvent.click(screen.getByRole("switch", { name: enableLabel("docs-api") }));
+    expect(await screen.findByText("Settings file is read-only")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: removeLabel("docs-api") }));
+    const confirmation = screen.getByRole("alertdialog", { name: enSettings.mcp.servers.remove.title });
+    fireEvent.click(within(confirmation).getByRole("button", { name: enSettings.mcp.servers.remove.confirm }));
+
+    expect(await screen.findByText("Server is still running")).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(screen.getByText("docs-api")).toBeInTheDocument();
+  });
+
+  it("keeps a server when the removal is cancelled", async () => {
+    records = [DISABLED];
+    renderManager();
+    await screen.findByText("docs-api");
+
+    fireEvent.click(screen.getByRole("button", { name: removeLabel("docs-api") }));
+    const confirmation = screen.getByRole("alertdialog", { name: enSettings.mcp.servers.remove.title });
+    fireEvent.click(within(confirmation).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }));
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(mockInvoke).not.toHaveBeenCalledWith("mcp_server_remove", expect.anything());
+  });
 });

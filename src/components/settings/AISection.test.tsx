@@ -19,6 +19,11 @@ const captured = vi.hoisted(() => ({
   providersTab: null as ProvidersTabProps | null,
   dialog: null as AddCustomProviderDialogProps | null,
   agentsTab: [] as AcpAgentsTabProps[],
+  instructions: null as null | {
+    setSysPrompt: (value: string) => void;
+    saveSystemPrompt: () => Promise<void>;
+    sysPromptSaved: boolean;
+  },
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
@@ -41,7 +46,10 @@ vi.mock("./ai/ProjectBudget", () => ({
   ProjectBudget: () => null,
 }));
 vi.mock("./ai/InstructionsTab", () => ({
-  InstructionsTab: () => <div>{"Instruction settings"}</div>,
+  InstructionsTab: (props: NonNullable<typeof captured.instructions>) => {
+    captured.instructions = props;
+    return <div>{"Instruction settings"}</div>;
+  },
 }));
 vi.mock("./ai/PersonasTab", () => ({
   PersonasTab: () => <div>{"Persona settings"}</div>,
@@ -1179,5 +1187,180 @@ describe("AISection provider messages", () => {
         aiSection.messages.keyRemoved.replace("{{provider}}", "OpenAI"),
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe("AISection model and provider management", () => {
+  beforeEach(() => {
+    resetHarness();
+    captured.instructions = null;
+  });
+
+  it("moves the active model to the first enabled one when the active model is disabled", async () => {
+    await readySection();
+
+    await act(async () => {
+      await captured.providersTab?.persistModels("anthropic", [
+        { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", enabled: false, source: "builtin" },
+        { id: "claude-haiku-4-5", name: "Claude Haiku 4.5", enabled: true, source: "builtin" },
+      ]);
+    });
+
+    expect(lastConfigWrite().ai_model).toBe("claude-haiku-4-5");
+    expect(lastConfigWrite().ai_provider_models.anthropic.map((model) => model.id)).toEqual([
+      "claude-sonnet-4-6",
+      "claude-haiku-4-5",
+    ]);
+  });
+
+  it("clears the active model when no model of the active provider stays enabled", async () => {
+    await readySection();
+
+    await act(async () => {
+      await captured.providersTab?.persistModels("anthropic", [
+        { id: "claude-sonnet-4-6", name: "Claude Sonnet 4.6", enabled: false, source: "builtin" },
+      ]);
+    });
+
+    expect(lastConfigWrite().ai_model).toBe("");
+  });
+
+  it("stamps a refreshed model list and leaves the active model of another provider alone", async () => {
+    await readySection();
+
+    await act(async () => {
+      await captured.providersTab?.persistRefreshedModels(
+        "local-lab",
+        [{ id: "fresh-model", name: "Fresh Model", enabled: true, source: "fetched" }],
+        1_700_000_000_000,
+      );
+    });
+
+    const written = lastConfigWrite();
+    expect(written.ai_model).toBe("claude-sonnet-4-6");
+    expect(written.ai_model_lists_refreshed_at?.["local-lab"]).toBe(1_700_000_000_000);
+    expect(written.ai_provider_models["local-lab"]).toEqual([
+      { id: "fresh-model", name: "Fresh Model", enabled: true, source: "fetched" },
+    ]);
+  });
+
+  it("switches the active model", async () => {
+    await readySection();
+
+    await act(async () => {
+      await captured.providersTab?.changeModel("claude-haiku-4-5");
+    });
+
+    expect(lastConfigWrite().ai_model).toBe("claude-haiku-4-5");
+  });
+
+  it("shows why a model change could not be saved", async () => {
+    await readySection();
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "get_config") return configFixture;
+      if (command === "set_config") throw new Error("config locked");
+      return [];
+    });
+
+    await act(async () => {
+      await captured.providersTab?.changeModel("claude-haiku-4-5");
+    });
+    expect(screen.getByText("config locked")).toBeInTheDocument();
+
+    await act(async () => {
+      await captured.providersTab?.persistModels("anthropic", []);
+    });
+    await act(async () => {
+      await captured.providersTab?.deleteCustomProvider("local-lab");
+    });
+    await act(async () => {
+      await captured.providersTab?.deleteKey("anthropic");
+    });
+    expect(screen.getAllByText("config locked").length).toBeGreaterThan(0);
+  });
+
+  it("removes a custom provider with its key and models", async () => {
+    configFixture = { ...configuredAiConfig(), ai_provider: "local-lab", ai_model: "research-model", ai_keys: { "local-lab": "__stored__" } };
+    await readySection();
+
+    await act(async () => {
+      await captured.providersTab?.deleteCustomProvider("local-lab");
+    });
+
+    const written = lastConfigWrite();
+    expect(written.ai_custom_providers).toEqual([]);
+    expect(written.ai_provider_models).not.toHaveProperty("local-lab");
+    expect(written.ai_keys).not.toHaveProperty("local-lab");
+    expect(written).toMatchObject({ ai_provider: "", ai_model: "" });
+  });
+
+  it("keeps the active provider when another custom provider is removed", async () => {
+    await readySection();
+
+    await act(async () => {
+      await captured.providersTab?.deleteCustomProvider("local-lab");
+    });
+
+    expect(lastConfigWrite()).toMatchObject({ ai_provider: "anthropic", ai_model: "claude-sonnet-4-6" });
+  });
+
+  it("opens the add-provider dialog and closes it again", async () => {
+    await readySection();
+
+    act(() => captured.providersTab?.onAddCustomProvider());
+    await waitFor(() => expect(captured.dialog?.open).toBe(true));
+    expect(captured.dialog?.editing).toBeNull();
+
+    act(() => captured.dialog?.onOpenChange(false));
+    await waitFor(() => expect(captured.dialog?.open).toBe(false));
+  });
+
+  it("ignores an edit request for a provider that does not exist", async () => {
+    await readySection();
+
+    act(() => captured.providersTab?.onEditCustomProvider("nobody"));
+
+    expect(captured.dialog?.open).toBe(false);
+  });
+
+  it("saves the system prompt and confirms it briefly", async () => {
+    await readySection();
+    await userEvent.click(screen.getByTestId("ai-settings-tab-instructions"));
+    await waitFor(() => expect(captured.instructions).not.toBeNull());
+
+    act(() => captured.instructions?.setSysPrompt("Answer in French."));
+    await act(async () => {
+      await captured.instructions?.saveSystemPrompt();
+    });
+
+    expect(lastConfigWrite().ai_system_prompt).toBe("Answer in French.");
+    await waitFor(() => expect(captured.instructions?.sysPromptSaved).toBe(true));
+  });
+
+  it("moves a key from the old single-key setting into the provider map", async () => {
+    configFixture = { ...configuredAiConfig(), ai_keys: {}, ai_api_key: "sk-legacy", ai_provider: "" };
+
+    renderSection();
+
+    await waitFor(() => expect(lastConfigWrite().ai_keys).toEqual({ openai: "sk-legacy" }));
+  });
+
+  it("starts Ollama and checks it again", async () => {
+    const { startOllama } = await import("@/lib/ollama");
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await readySection();
+
+      act(() => captured.providersTab?.onStartOllama());
+      await waitFor(() => expect(captured.providersTab?.ollama.starting).toBe(true));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1200);
+      });
+
+      expect(startOllama).toHaveBeenCalled();
+      await waitFor(() => expect(captured.providersTab?.ollama.starting).toBe(false));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

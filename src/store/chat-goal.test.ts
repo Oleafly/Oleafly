@@ -31,3 +31,21 @@ describe("chat goal store", () => {
     expect(useChatGoalStore.getState().load("project-a")).toBe("");
   });
 });
+
+describe("chat goal without a project", () => {
+  it("has no goal, stores nothing and reads a loaded goal from memory", () => {
+    const store = useChatGoalStore.getState();
+    expect(store.load(null)).toBe("");
+    expect(store.goal(null)).toBe("");
+    store.setGoal(null, "Ignored");
+    expect(localStorage.length).toBe(0);
+    expect(goalForProject({}, null)).toBe("");
+
+    localStorage.setItem("oleafly.chat-goal.project-b", "  Draft the abstract ");
+    expect(store.goal("project-b")).toBe("Draft the abstract");
+    localStorage.setItem("oleafly.chat-goal.project-b", "Changed elsewhere");
+
+    expect(useChatGoalStore.getState().load("project-b")).toBe("Draft the abstract");
+    expect(goalForProject({}, "project-b")).toBe("");
+  });
+});

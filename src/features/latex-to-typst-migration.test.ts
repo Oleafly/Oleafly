@@ -126,6 +126,48 @@ describe("prepareLatexProject", () => {
   });
 });
 
+describe("prepareLatexProject edge cases", () => {
+  it("treats the whole main file as the body when it has no document environment", () => {
+    const prepared = prepareLatexProject("main.tex", new Map([["main.tex", "Just text.\nMore text."]]));
+
+    expect(prepared.text).toContain("Just text.\nMore text.");
+    expect(prepared.origins[lineOf(prepared.text, "More text.")]).toEqual({ file: "main.tex", line: 2 });
+  });
+
+  it("keeps an include that names a missing file or the file itself, and reports the missing one", () => {
+    const prepared = prepareLatexProject(
+      "main.tex",
+      new Map([
+        [
+          "main.tex",
+          [String.raw`\begin{document}`, String.raw`\include{absent}`, String.raw`\input{main}`, String.raw`\end{document}`].join("\n"),
+        ],
+      ]),
+    );
+
+    expect(prepared.missing).toEqual([{ name: "absent", origin: { file: "main.tex", line: 2 } }]);
+    expect(prepared.text).toContain(String.raw`\include{absent}`);
+    expect(prepared.text).toContain(String.raw`\input{main}`);
+  });
+
+  it("reports a missing file named inside an inlined file and keeps the line", () => {
+    const prepared = prepareLatexProject(
+      "main.tex",
+      new Map([
+        ["main.tex", [String.raw`\input{macros}`, String.raw`\begin{document}`, String.raw`\end{document}`].join("\n")],
+        [
+          "macros.tex",
+          [String.raw`\input{absent}`, String.raw`\input{macros}`].join("\n"),
+        ],
+      ]),
+    );
+
+    expect(prepared.missing).toEqual([{ name: "absent", origin: { file: "macros.tex", line: 1 } }]);
+    expect(prepared.text).toContain(String.raw`\input{absent}`);
+    expect(prepared.text).toContain(String.raw`\input{macros}`);
+  });
+});
+
 describe("prepareLatexProject structure", () => {
   const prepared = prepareLatexProject(
     "main.tex",
@@ -621,6 +663,57 @@ describe("runLatexToTypstMigration", () => {
     const { deps: fake, converted } = deps();
     await runLatexToTypstMigration({ ...request, buffers: new Map([["inline.tex", "EDITED"]]) }, fake);
     expect(converted[0].text).toContain("Text EDITED more.");
+  });
+
+  it("refuses a project whose main document cannot be read", async () => {
+    const { deps: fake } = deps();
+
+    await expect(runLatexToTypstMigration({ ...request, mainDoc: "absent.tex" }, fake)).rejects.toMatchObject({
+      code: "noMain",
+    });
+    expect(fake.convert).not.toHaveBeenCalled();
+  });
+
+  it("refuses an empty conversion before creating anything", async () => {
+    const { deps: fake } = deps({
+      convert: vi.fn(async () => ({
+        kind: "text" as const,
+        text: "   \n",
+        dataBase64: null,
+        fileName: "converted.typ",
+        mediaType: "text/x-typst",
+        files: [],
+        report: [],
+      })),
+    });
+
+    await expect(runLatexToTypstMigration(request, fake)).rejects.toMatchObject({ code: "emptyOutput" });
+    expect(fake.createProject).not.toHaveBeenCalled();
+  });
+
+  it("notes a bibliography style it cannot map and a compile that failed with a plain message", async () => {
+    const texts = new Map(TEXTS);
+    texts.set("main.tex", MAIN.replace("IEEEtran", "unknownstyle"));
+    const { deps: fake } = deps({ compile: vi.fn(() => Promise.reject("typst crashed")) });
+    fake.readFileBase64 = vi.fn(async (_id: string, path: string) => encode(texts.get(path) ?? ""));
+
+    const report = await runLatexToTypstMigration(request, fake);
+
+    expect(report.attention).toContainEqual({ kind: "bibliographyStyle", detail: "unknownstyle" });
+    expect(report.compileFailure).toBe("typst crashed");
+  });
+
+  it("copies extra files the converter produced next to the Typst sources", async () => {
+    const { deps: fake, created } = deps();
+    const convert = fake.convert;
+    fake.convert = vi.fn(async (input: AdHocConversionRequest) => ({
+      ...(await convert(input)),
+      files: [{ path: "media/extracted.png", dataBase64: "AAAA" }],
+    }));
+
+    await runLatexToTypstMigration(request, fake);
+
+    expect(created[0].files.map((file) => file.path)).toContain("media/extracted.png");
   });
 
   it("skips build files, reads the rest in order and notes files it cannot read", async () => {

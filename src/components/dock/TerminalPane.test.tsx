@@ -1020,4 +1020,74 @@ describe("TerminalPane", () => {
       expect(screen.queryByRole("tooltip")).toBeNull();
     });
   });
+
+  describe("session messages and layout", () => {
+    it("writes an input failure the backend reports on the session channel", async () => {
+      render(<TerminalPane projectId="project-1" visible />);
+      const terminal = mocks.terminals[0];
+      await waitFor(() => expect(mocks.channels).toHaveLength(1));
+
+      act(() =>
+        mocks.channels[0].onmessage?.({ event: "input_error", message: "pty closed" } as never),
+      );
+
+      expect(terminal.writeln).toHaveBeenCalledWith(
+        "\r\nThe shell could not accept input: pty closed",
+        expect.any(Function),
+      );
+    });
+
+    it("mirrors visible output into the pane for end-to-end checks", async () => {
+      render(<TerminalPane projectId="project-1" visible />);
+      const terminal = mocks.terminals[0] as (typeof mocks.terminals)[number] & {
+        buffer: { active: unknown };
+      };
+      await waitFor(() => expect(mocks.channels).toHaveLength(1));
+      const pane = screen.getByTestId("dock-terminal");
+      expect(pane.dataset.terminalOutput).toBe("");
+
+      act(() => mocks.channels[0].onmessage?.({ event: "output", data: "$ ls\r\nmain.tex" }));
+      const [data, written] = terminal.write.mock.calls[0] as [string, () => void];
+      expect(data).toBe("$ ls\r\nmain.tex");
+      const lines = ["$ ls", "main.tex"];
+      terminal.buffer.active = {
+        length: 3,
+        getLine: (index: number) =>
+          index < lines.length ? { translateToString: () => lines[index] } : undefined,
+      };
+      written();
+
+      expect(pane.dataset.terminalOutput).toBe("$ ls\nmain.tex\n");
+    });
+
+    it("refits and resizes the live session when the pane changes size", async () => {
+      render(<TerminalPane projectId="project-1" visible />);
+      await waitFor(() =>
+        expect(mocks.invoke.mock.calls.some(([command]) => command === "term_resize")).toBe(true),
+      );
+      const fit = mocks.fitAddons[0];
+      const terminal = mocks.terminals[0];
+      const resizes = () => mocks.invoke.mock.calls.filter(([command]) => command === "term_resize");
+      const before = resizes().length;
+      fit.fit.mockClear();
+      terminal.cols = 120;
+      terminal.rows = 40;
+
+      act(() => mocks.resizeObservers[0].callback([], {} as ResizeObserver));
+
+      expect(fit.fit).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(resizes().length).toBeGreaterThan(before));
+      expect(resizes().at(-1)?.[1]).toEqual({ id: "term-1", projectId: "project-1", cols: 120, rows: 40 });
+    });
+
+    it("does not refit a hidden pane when its size changes", async () => {
+      render(<TerminalPane projectId="project-1" visible={false} />);
+      await waitFor(() => expect(mocks.invoke).toHaveBeenCalledWith("term_open", expect.anything()));
+      const fit = mocks.fitAddons[0];
+
+      act(() => mocks.resizeObservers[0].callback([], {} as ResizeObserver));
+
+      expect(fit.fit).not.toHaveBeenCalled();
+    });
+  });
 });

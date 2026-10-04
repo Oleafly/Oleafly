@@ -223,6 +223,24 @@ describe("createTerminalLinkHandler (OSC 8)", () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(open).not.toHaveBeenCalled();
   });
+
+  it("shows no hover for a link the app would not open", () => {
+    const handlers = actions();
+    const handler = createTerminalLinkHandler(handlers);
+    const range = { start: { x: 1, y: 1 }, end: { x: 4, y: 1 } };
+
+    handler.hover?.(new MouseEvent("mousemove"), "javascript:alert(1)", range);
+
+    expect(handlers.hover).not.toHaveBeenCalled();
+  });
+});
+
+describe("createTerminalLinkProvider outside the buffer", () => {
+  it("offers no links for a row past the end of the output", async () => {
+    const term = await termWith("main.tex");
+
+    await expect(linksAt(createTerminalLinkProvider(term, actions()), 50)).resolves.toBeUndefined();
+  });
 });
 
 describe("isOpenLinkClick", () => {

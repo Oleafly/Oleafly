@@ -10,6 +10,13 @@ export const presentationHarness = {
   destroy: vi.fn(),
   numPages: 3,
   failLoad: false,
+  failNotes: false,
+  closeRequested: null as null | (() => void),
+  holdNotes: false,
+  releaseNotes: () => {},
+  holdSlides: false,
+  releaseSlides: () => {},
+  opened: 0,
   notes: new Map<number, string>(),
   reset() {
     this.handlers.clear();
@@ -19,6 +26,13 @@ export const presentationHarness = {
     this.destroy.mockClear();
     this.numPages = 3;
     this.failLoad = false;
+    this.failNotes = false;
+    this.closeRequested = null;
+    this.holdNotes = false;
+    this.releaseNotes = () => {};
+    this.holdSlides = false;
+    this.releaseSlides = () => {};
+    this.opened = 0;
     this.notes = new Map();
   },
   deliver(event: string, payload: unknown) {
@@ -43,7 +57,10 @@ export const eventModule = {
 export const windowModule = {
   getCurrentWindow: () => ({
     close: presentationHarness.close,
-    onCloseRequested: () => Promise.resolve(() => {}),
+    onCloseRequested: (handler: () => void) => {
+      presentationHarness.closeRequested = handler;
+      return Promise.resolve(() => {});
+    },
   }),
 };
 
@@ -52,16 +69,29 @@ export const loadModule = {
     if (presentationHarness.failLoad) return Promise.reject(new Error("no compiled PDF"));
     return Promise.resolve(new Uint8Array([37, 80, 68, 70]));
   },
-  loadPresentationNotes: () => Promise.resolve(presentationHarness.notes),
+  loadPresentationNotes: () => {
+    if (presentationHarness.failNotes) return Promise.reject(new Error("notes unreadable"));
+    if (!presentationHarness.holdNotes) return Promise.resolve(presentationHarness.notes);
+    return new Promise<Map<number, string>>((resolve) => {
+      presentationHarness.releaseNotes = () => resolve(presentationHarness.notes);
+    });
+  },
 };
 
 export const slidesModule = {
-  openSlideDocument: () =>
-    Promise.resolve({
+  openSlideDocument: async () => {
+    presentationHarness.opened += 1;
+    if (presentationHarness.holdSlides) {
+      await new Promise<void>((resolve) => {
+        presentationHarness.releaseSlides = resolve;
+      });
+    }
+    return {
       numPages: presentationHarness.numPages,
       render: presentationHarness.render,
       destroy: presentationHarness.destroy,
-    }),
+    };
+  },
 };
 
 export function presentationUrl(view: "present" | "presenter", extra = ""): void {

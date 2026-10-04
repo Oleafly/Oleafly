@@ -221,4 +221,56 @@ describe("PDF import request identity", () => {
     expect(useImportStore.getState().result?.tex).toBe("fresh rerun");
     expect(useImportStore.getState().busy).toBe(false);
   });
+
+  it("shows why a PDF could not be read", async () => {
+    mocks.extractPagesForConvert.mockRejectedValue(new Error("not a PDF"));
+
+    await useImportStore.getState().openWithPdf(new Uint8Array([9]), "broken.pdf");
+
+    expect(useImportStore.getState()).toMatchObject({ busy: false, error: "Error: not a PDF", result: null });
+  });
+
+  it("transcribes only a finished, scanned PDF that is not already busy", async () => {
+    await useImportStore.getState().transcribeScan();
+
+    mocks.extractPagesForConvert.mockResolvedValue({ pages: [page("text")], figures: [] });
+    await useImportStore.getState().openWithPdf(new Uint8Array([1]), "text.pdf");
+    await useImportStore.getState().transcribeScan();
+
+    mocks.convertPages.mockReturnValue({
+      ...result("scan"),
+      report: { ...result("scan").report, likelyScanned: true },
+    });
+    useImportStore.getState().rerun({});
+    useImportStore.setState({ busy: true });
+    await useImportStore.getState().transcribeScan();
+
+    expect(mocks.transcribePdfPages).not.toHaveBeenCalled();
+  });
+
+  it("shows a transcription failure and stays quiet about a cancelled one", async () => {
+    mocks.extractPagesForConvert.mockResolvedValue({ pages: [page("scan")], figures: [] });
+    mocks.convertPages.mockReturnValue({
+      ...result("scan"),
+      report: { ...result("scan").report, likelyScanned: true },
+    });
+    await useImportStore.getState().openWithPdf(new Uint8Array([1]), "scan.pdf");
+
+    mocks.transcribePdfPages.mockRejectedValueOnce(new Error("model unavailable"));
+    await useImportStore.getState().transcribeScan();
+    expect(useImportStore.getState()).toMatchObject({ busy: false, error: "model unavailable" });
+
+    mocks.transcribePdfPages.mockRejectedValueOnce("socket closed");
+    await useImportStore.getState().transcribeScan();
+    expect(useImportStore.getState().error).toBe("socket closed");
+
+    mocks.transcribePdfPages.mockRejectedValueOnce(new DOMException("stopped", "AbortError"));
+    await useImportStore.getState().transcribeScan();
+    expect(useImportStore.getState()).toMatchObject({ busy: false, error: null, scanTranscribed: false });
+  });
+
+  it("switches between preview and source views", () => {
+    useImportStore.getState().setView("source");
+    expect(useImportStore.getState().view).toBe("source");
+  });
 });

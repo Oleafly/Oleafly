@@ -10,12 +10,15 @@ import {
   initialMountIndex,
   messageOffsets,
   MessageList,
+  nextMountIndex,
   visibleRange,
   type RenderedMessage,
 } from "./MessageList";
 
 vi.mock("@/components/ai/chat-parts", () => ({
-  MessageItem: ({ msg }: { msg: ChatMessage }) => <div data-testid="message-item">{msg.id}</div>,
+  MessageItem: ({ msg, expansionScope }: { msg: ChatMessage; expansionScope?: string }) => (
+    <div data-testid="message-item" data-scope={expansionScope}>{msg.id}</div>
+  ),
 }));
 
 function conversation(count: number, chars = 100): RenderedMessage[] {
@@ -50,7 +53,7 @@ function geometry(element: HTMLElement, values: { top: number; height: number; s
 
 function Harness({ messages, chatId, nearBottom }: {
   messages: RenderedMessage[];
-  chatId: string;
+  chatId: string | null;
   nearBottom: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -206,5 +209,108 @@ describe("MessageList windowing", () => {
     expect(values.top).toBe(8_000);
     view.unmount();
     expect(current.disconnected).toBe(true);
+  });
+
+  it("keeps the reader's place when switching chats away from the bottom", () => {
+    const view = render(<Harness messages={conversation(30)} chatId="chat-a" nearBottom={false} />);
+    const scroll = view.getByTestId("scroll");
+    const values = { top: 300, height: 500, scrollHeight: 4_000 };
+    geometry(scroll, values);
+
+    view.rerender(<Harness messages={conversation(12)} chatId="chat-b" nearBottom={false} />);
+
+    expect(values.top).toBe(300);
+    const expected = visibleRange(messageOffsets(conversation(12), new Map()), 300, 500).visible;
+    expect(scroll.dataset.chatVisibleIndex).toBe(String(expected));
+  });
+
+  it("marks the last row visible when a new chat has not laid out yet", () => {
+    const view = render(<Harness messages={conversation(5)} chatId="chat-a" nearBottom />);
+    const scroll = view.getByTestId("scroll");
+    geometry(scroll, { top: 0, height: 0, scrollHeight: 0 });
+
+    view.rerender(<Harness messages={conversation(7)} chatId="chat-b" nearBottom />);
+
+    expect(scroll.dataset.chatVisibleIndex).toBe("6");
+  });
+
+  it("jumps to the first row when the request names no index, and sets scrollTop without scrollTo", () => {
+    const view = render(<Harness messages={conversation(40)} chatId="chat-a" nearBottom={false} />);
+    const scroll = view.getByTestId("scroll");
+    const values = { top: 3_000, height: 500 };
+    Object.defineProperties(scroll, {
+      scrollTop: { configurable: true, get: () => values.top, set: (value: number) => { values.top = value; } },
+      clientHeight: { configurable: true, get: () => values.height },
+      scrollTo: { configurable: true, value: undefined },
+    });
+
+    act(() => {
+      scroll.dispatchEvent(new CustomEvent(CHAT_SCROLL_TO_INDEX_EVENT));
+    });
+
+    expect(values.top).toBe(0);
+    expect(scroll.dataset.chatVisibleIndex).toBe("0");
+    expect(view.container.querySelector('[data-mm-index="0"]')).not.toBeNull();
+  });
+
+  it("keeps rows above the viewport from shifting what the reader sees", () => {
+    const view = render(<Harness messages={conversation(12)} chatId="chat-a" nearBottom={false} />);
+    const scroll = view.getByTestId("scroll");
+    const values = { top: 2_000, height: 500, scrollHeight: 9_000 };
+    geometry(scroll, values);
+    const current = resizeObserver;
+    if (!current) throw new Error("missing resize observer");
+    const rows = [...current.elements] as HTMLElement[];
+    const firstRow = rows.find((row) => row.dataset.mmIndex === "2") as HTMLElement;
+    const estimate = estimateMessageHeight(conversation(12)[2].msg);
+
+    act(() => {
+      current.callback([
+        { target: firstRow, contentRect: { height: 0 }, borderBoxSize: [{ blockSize: estimate + 100 }] },
+      ] as unknown as ResizeObserverEntry[], current as unknown as ResizeObserver);
+    });
+
+    expect(values.top).toBe(2_100);
+  });
+
+  it("ignores resize notices for unknown rows and unchanged heights", () => {
+    const view = render(<Harness messages={conversation(4)} chatId="chat-a" nearBottom />);
+    const scroll = view.getByTestId("scroll");
+    const values = { top: 100, height: 500, scrollHeight: 2_000 };
+    geometry(scroll, values);
+    const current = resizeObserver;
+    if (!current) throw new Error("missing resize observer");
+    const row = [...current.elements][1] as HTMLElement;
+    const stranger = document.createElement("div");
+    const orphan = document.createElement("div");
+    orphan.dataset.messageKey = "gone";
+    orphan.dataset.mmIndex = "99";
+    const same = estimateMessageHeight(conversation(4)[1].msg);
+
+    act(() => {
+      current.callback([
+        { target: stranger, contentRect: { height: 500 }, borderBoxSize: [] },
+        { target: orphan, contentRect: { height: 500 }, borderBoxSize: [] },
+        { target: row, contentRect: { height: same }, borderBoxSize: [] },
+      ] as unknown as ResizeObserverEntry[], current as unknown as ResizeObserver);
+    });
+
+    expect(values.top).toBe(100);
+  });
+
+  it("renders without a ResizeObserver and scopes rows to an unnamed chat", () => {
+    vi.stubGlobal("ResizeObserver", undefined);
+    const { container } = render(<Harness messages={conversation(3)} chatId={null} nearBottom />);
+
+    expect(container.querySelectorAll('[data-testid="message-item"]')).toHaveLength(3);
+    expect(container.querySelector('[data-testid="message-item"]')).toHaveAttribute("data-scope", "chat:m-0");
+  });
+
+  it("mounts the previous page of rows above a mounted index", () => {
+    const messages = conversation(25);
+
+    expect(nextMountIndex(messages, 18)).toBe(8);
+    expect(nextMountIndex(messages, 4)).toBe(0);
+    expect(nextMountIndex(messages, 99)).toBe(15);
   });
 });

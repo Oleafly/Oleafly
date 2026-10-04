@@ -75,3 +75,18 @@ describe("plan approval store", () => {
     expect(usePlanApprovalStore.getState().status("chat-a")).toBe("awaiting");
   });
 });
+
+describe("plan approval without a chat", () => {
+  it("keeps planning, stores nothing and reads a loaded status from memory", () => {
+    const store = usePlanApprovalStore.getState();
+    expect(store.load(null)).toBe("planning");
+    store.setStatus(null, "approved");
+    expect(localStorage.length).toBe(0);
+    expect(planApprovalForChat({}, null)).toBe("planning");
+
+    store.setStatus("chat-c", "awaiting");
+    localStorage.removeItem("oleafly.plan-approval.chat-c");
+
+    expect(usePlanApprovalStore.getState().load("chat-c")).toBe("awaiting");
+  });
+});

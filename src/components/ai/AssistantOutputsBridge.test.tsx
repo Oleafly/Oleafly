@@ -128,4 +128,51 @@ describe("AssistantOutputsBridge", () => {
 
     expect(mocks.revealEditorLine).not.toHaveBeenCalled();
   });
+
+  it("holds back for a moment after the user types in the editor, but not after typing elsewhere", async () => {
+    document.body.innerHTML = '<div class="cm-editor"><span id="line"></span></div><input id="search" />';
+    render(<AssistantOutputsBridge />);
+
+    document.getElementById("search")?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "a" }));
+    useAssistantOutputsStore.getState().openFile("first.tex", "write");
+    await flush();
+    expect(mocks.revealEditorLine).toHaveBeenCalledWith("first.tex", 1);
+
+    document.getElementById("line")?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "a" }));
+    useAssistantOutputsStore.getState().openFile("second.tex", "write");
+    await flush();
+    expect(mocks.revealEditorLine).not.toHaveBeenCalledWith("second.tex", expect.anything());
+  });
+
+  it("does nothing without an open project", async () => {
+    mocks.filesState.projectId = null;
+    render(<AssistantOutputsBridge />);
+
+    useAssistantOutputsStore.getState().openFile("main.tex", "write");
+    await flush();
+
+    expect(mocks.revealEditorLine).not.toHaveBeenCalled();
+  });
+
+  it("opens at the top when the recorded change has no content on either side", async () => {
+    render(<AssistantOutputsBridge />);
+    const changes = useAgentFileChangesStore.getState();
+    changes.beginTurn("chat", "turn", null, "proj");
+    changes.recordFileChange("chat", "turn", "empty.tex", "", "");
+
+    useAssistantOutputsStore.getState().openFile("empty.tex", "write");
+    await flush();
+
+    expect(mocks.revealEditorLine).toHaveBeenCalledWith("empty.tex", 1);
+  });
+
+  it("ignores store updates that do not open a new file", async () => {
+    render(<AssistantOutputsBridge />);
+
+    useAssistantOutputsStore.setState({ pdfEpoch: 3 });
+    await flush();
+
+    expect(mocks.revealEditorLine).not.toHaveBeenCalled();
+  });
 });
+

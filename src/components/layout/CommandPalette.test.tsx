@@ -136,4 +136,25 @@ describe("CommandPalette", () => {
     press();
     expect(useSettingsStore.getState().paletteOpen).toBe(false);
   });
+
+  it("lists the closest match first within a group", async () => {
+    registerCommand({
+      id: "test.weak-match",
+      surfaces: ["palette"],
+      label: () => "Tie up every loose thread",
+      order: 5,
+      run: vi.fn(),
+    });
+    const user = userEvent.setup();
+    renderPalette();
+
+    await user.type(screen.getByPlaceholderText(copy.placeholder), "loose");
+
+    const options = screen.getAllByRole("option").map((option) => option.textContent ?? "");
+    expect(options.findIndex((text) => text.includes("Loose action"))).toBeLessThan(
+      options.findIndex((text) => text.includes("Tie up every loose thread")),
+    );
+    expect(options.some((text) => text.includes("Recompile now"))).toBe(false);
+  });
 });
+

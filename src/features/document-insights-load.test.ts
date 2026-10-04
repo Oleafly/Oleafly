@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   readFile: vi.fn(),
+  invoke: vi.fn(),
   refreshAux: vi.fn(),
   texts: {} as Record<string, string>,
   files: {
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/tauri", () => ({ readFileContent: mocks.readFile }));
+vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
 vi.mock("@/store/project-index", () => ({ useIndexStore: { getState: () => ({ texts: mocks.texts }) } }));
 vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({ offline: false }) } }));
@@ -42,6 +44,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocks.files.projectId = "paper";
   mocks.files.mainDoc = "main.tex";
+  mocks.files.engine = { id: "latexmk", source_format: "latex" };
   mocks.files.files = {};
   mocks.texts = {};
   mocks.checkpoint = null;
@@ -122,5 +125,23 @@ describe("loadDocumentInsights without a project", () => {
   it("rejects", () => {
     mocks.files.projectId = null;
     expect(() => loadDocumentInsights("latex")).toThrow("no project");
+  });
+});
+
+describe("loadDocumentInsights for Typst", () => {
+  it("asks the compiler for elements and reads only Typst sources it already has", async () => {
+    mocks.files.mainDoc = "main.typ";
+    mocks.files.engine = { id: "typst", source_format: "typst" };
+    mocks.texts = { "main.typ": "= Intro\n// TODO: write", "old.tex": "\\section{Old}" };
+    mocks.files.files = { "draft.typ": {}, "part.typ": { content: "= Part" } };
+    mocks.invoke.mockResolvedValue({ status: "failed", typstVersion: "0.13.1", method: "query", diagnostics: [] });
+
+    const loaded = await loadDocumentInsights("typst");
+
+    expect(mocks.invoke).toHaveBeenCalledWith("typst_document_insights", { projectId: "paper", offline: false });
+    expect(mocks.readFile).not.toHaveBeenCalled();
+    expect(loaded.engine).toBe("typst");
+    expect(loaded.insights.headings).toEqual([]);
+    expect(loaded.insights.todos).toEqual([{ text: "TODO: write", location: { path: "main.typ", line: 2, column: 4 } }]);
   });
 });
