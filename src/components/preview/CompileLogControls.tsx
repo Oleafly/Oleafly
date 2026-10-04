@@ -29,6 +29,13 @@ export function CompileLogControls({ active, onToggle, status, errors, compileTi
     if (severity === "warning") return t(($) => $.preview.toolbar.compiledWithWarnings);
     return t(($) => $.preview.toolbar.compiledSuccessfully);
   };
+  const statusLabel = (): string => {
+    if (severity === "error") return t(($) => $.preview.toolbar.failed);
+    if (compileTimeMs == null) return severityTitle();
+    return t(($) => $.preview.toolbar.duration, {
+      seconds: (compileTimeMs / 1000).toFixed(1),
+    });
+  };
   const renderSeverityIcon = () => {
     if (severity === "error") return <XCircle className="size-3.5" />;
     if (severity === "warning") return <AlertTriangle className="size-3.5" />;
@@ -80,11 +87,7 @@ export function CompileLogControls({ active, onToggle, status, errors, compileTi
             data-severity={severity}
           >
             {renderSeverityIcon()}
-            {severity === "error" || compileTimeMs == null
-              ? t(($) => $.preview.toolbar.failed)
-              : t(($) => $.preview.toolbar.duration, {
-                  seconds: (compileTimeMs / 1000).toFixed(1),
-                })}
+            {statusLabel()}
           </span>
         )}
 

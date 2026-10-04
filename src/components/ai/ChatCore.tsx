@@ -148,7 +148,7 @@ import {
   resolveModelTrust,
 } from "@/lib/ai-model-state";
 import { useSettingsStore } from "@/store/settings";
-import { useChatsStore, type ChatMessage, type ChatTurnChanges, type StoredChat } from "@/store/chats";
+import { useChatsStore, type ChatMessage, type ChatTurnChanges, type ReasoningBlockData, type StoredChat } from "@/store/chats";
 import { objectKey } from "@/lib/react-key";
 import { registerAiToolsets } from "@/contributions/ai-toolsets";
 import { OleaflyAssistantMascot } from "@/components/branding/OleaflyAssistantMascot";
@@ -271,6 +271,21 @@ function figureCodeOf(args: unknown): string | undefined {
   if (!args || typeof args !== "object") return undefined;
   const code = (args as { code?: unknown }).code;
   return typeof code === "string" && code.trim() ? code : undefined;
+}
+
+function withReasoningBlock(
+  message: ChatMessage,
+  id: string,
+  update: (block: ReasoningBlockData) => ReasoningBlockData,
+): ChatMessage {
+  const blocks = [...(message.reasoningBlocks ?? [])];
+  const index = blocks.findIndex((block) => block.id === id);
+  if (index < 0) {
+    blocks.push(update({ id, text: "", beforeTool: (message.toolCalls ?? []).length }));
+  } else {
+    blocks[index] = update(blocks[index]);
+  }
+  return { ...message, reasoningBlocks: blocks };
 }
 
 interface ChatSuggestion {
@@ -2486,6 +2501,7 @@ ${sandboxedCustom}`;
         };
       }
       let reasoningStartedAt: number | null = null;
+      let reasoningBlockId: string | null = null;
       let stepContent = "";
       let stepBlocks: ChatMessage["reasoningBlocks"] = [];
       const appendSteeredTurn = (steeredText: string) => {
@@ -2687,37 +2703,32 @@ ${sandboxedCustom}`;
           onReasoningStart: () => {
             if (reasoningStartedAt !== null) return;
             reasoningStartedAt = Date.now();
-            updateRunLast((m) => ({
-              ...m,
-              reasoningBlocks: [
-                ...(m.reasoningBlocks ?? []),
-                { id: crypto.randomUUID(), text: "", beforeTool: (m.toolCalls ?? []).length },
-              ],
-            }));
+            const id = crypto.randomUUID();
+            reasoningBlockId = id;
+            updateRunLast((m) =>
+              withReasoningBlock(m, id, (block) => ({
+                ...block,
+                beforeTool: (m.toolCalls ?? []).length,
+              })),
+            );
           },
-          onReasoningDelta: (chunk) =>
-            updateRunLastText((m) => {
-              const blocks = [...(m.reasoningBlocks ?? [])];
-              const previous = blocks.at(-1);
-              if (!previous) return m;
-              const last = { ...previous };
-              last.text += chunk;
-              blocks[blocks.length - 1] = last;
-              return { ...m, reasoningBlocks: blocks };
-            }),
+          onReasoningDelta: (chunk) => {
+            reasoningBlockId ??= crypto.randomUUID();
+            const id = reasoningBlockId;
+            updateRunLastText((m) =>
+              withReasoningBlock(m, id, (block) => ({ ...block, text: block.text + chunk })),
+            );
+          },
           onReasoningEnd: () => {
             if (reasoningStartedAt === null) return;
             const ms = Date.now() - reasoningStartedAt;
+            const id = reasoningBlockId;
             reasoningStartedAt = null;
-            updateRunLast((m) => {
-              const blocks = [...(m.reasoningBlocks ?? [])];
-              const previous = blocks.at(-1);
-              if (!previous) return m;
-              const last = { ...previous };
-              last.ms ??= ms;
-              blocks[blocks.length - 1] = last;
-              return { ...m, reasoningBlocks: blocks };
-            });
+            updateRunLast((m) =>
+              id !== null && m.reasoningBlocks?.some((block) => block.id === id)
+                ? withReasoningBlock(m, id, (block) => ({ ...block, ms: block.ms ?? ms }))
+                : m,
+            );
           },
           onToolCall: async (call) => {
             const outputCall: OutputToolCall = { name: call.name, args: call.args };

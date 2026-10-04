@@ -362,6 +362,16 @@ describe("ACP projection details", () => {
     expect(rows.at(-1)?.msg.content).toBe("connection lost");
   });
 
+  it("adds no row for a failure message that is only whitespace", () => {
+    const rows = projectAcpEvents([
+      chunk(1, "Working on it"),
+      event(2, "turn_complete", { stopReason: "error", error: "  \n\t " }),
+      event(3, "status", { status: "failed", error: " " }, "turn-2"),
+    ], false);
+
+    expect(rows.map((row) => row.msg.content)).toEqual(["Working on it"]);
+  });
+
   it("hangs file changes on the turn's last assistant row and ignores unknown turns and malformed changes", () => {
     const changes = { snapshotId: "s1", files: [], moreFiles: 0, skipped: [], overlapped: false, unavailable: null };
     const rows = projectAcpEvents([

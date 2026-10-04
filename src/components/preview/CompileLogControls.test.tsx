@@ -51,6 +51,18 @@ describe("CompileLogControls", () => {
     expect(status).toHaveTextContent(copy.failed);
   });
 
+  it.each([
+    ["clean", [], "ok", copy.compiledSuccessfully],
+    ["warning", [issue("warning")], "warning", copy.compiledWithWarnings],
+  ] as const)("reports a %s build with no recorded time as compiled, not failed", (_, errors, severity, label) => {
+    renderControls("success", [...errors], null);
+
+    const status = screen.getByTestId("compile-status");
+    expect(status).toHaveAttribute("data-severity", severity);
+    expect(status).toHaveTextContent(label);
+    expect(status).not.toHaveTextContent(copy.failed);
+  });
+
   it("treats an unavailable engine as an error", () => {
     renderControls("unavailable", [], null);
     expect(screen.getByTestId("compile-status")).toHaveAttribute("data-severity", "error");

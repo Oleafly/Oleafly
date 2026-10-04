@@ -359,6 +359,30 @@ describe("FileTree keyboard", () => {
 });
 
 describe("FileTree context menus", () => {
+  it.each([
+    ["file", "the empty area", files.newFile, files.newEntry.filePlaceholder, "draft.tex"],
+    ["dir", "the empty area", files.newFolder, files.newEntry.folderPlaceholder, "figures"],
+    ["file", "a folder", files.newFile, files.newEntry.filePlaceholder, "chapters/draft.tex"],
+    ["dir", "a folder", files.newFolder, files.newEntry.folderPlaceholder, "chapters/figures"],
+  ] as const)("keeps a new %s field opened from the menu on %s until it is named", async (mode, target, action, placeholder, path) => {
+    render(<FileTree />);
+
+    fireEvent.contextMenu(target === "a folder" ? row("chapters") : tree());
+    fireEvent.click(await screen.findByRole("menuitem", { name: action }));
+    const input = await screen.findByPlaceholderText(placeholder);
+    await waitFor(() => expect(input).toHaveFocus());
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { value: path.split("/").pop() } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(mocks.invoke).toHaveBeenCalledWith(
+        "create_file",
+        expect.objectContaining({ path, isDir: mode === "dir" }),
+      ),
+    );
+  });
+
   it("imports files or a folder into the root from the empty-area menu", async () => {
     render(<FileTree />);
 

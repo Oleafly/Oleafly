@@ -41,7 +41,7 @@ vi.mock("@/lib/theme", () => ({
 
 import { TourGuide } from "./TourGuide";
 import { celebrate } from "@/lib/confetti";
-import { START_TOUR_EVENT } from "@/lib/tour";
+import { START_TOUR_EVENT, startTour } from "@/lib/tour";
 import { tourRegistry, type TourId } from "@/lib/tours/registry";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
@@ -341,6 +341,18 @@ describe("manual start", () => {
     act(() => useTourStore.getState().stop());
     act(() => useFilesStore.setState({ projectId: "p1" }));
     requestTour();
+    expect(current().activeTourId).toBe("workspace");
+  });
+
+  it("starts the contextual tour when the helper names no tour", () => {
+    completeTours("home", "workspace");
+    useTourStore.setState({ activeTourId: null });
+    useFilesStore.setState({ projectId: "p1" });
+    render(<TourGuide />);
+
+    act(() => startTour());
+    frame();
+
     expect(current().activeTourId).toBe("workspace");
   });
 
@@ -732,6 +744,40 @@ describe("settings tour navigation", () => {
     expect(advanced).toHaveAttribute("aria-checked", "false");
     frame();
 
+    expect(sections.get("appearance")).toHaveAttribute("aria-current", "page");
+  });
+
+  it("restores the first tour's starting point when another settings tour starts before the next frame", () => {
+    const { advanced, sections } = settingsChrome("appearance");
+    activate("settings", "settings-navigation");
+    render(<TourGuide />);
+    act(() => activate("settings", "settings-dictionary"));
+    frame();
+    expect(sections.get("dictionary")).toHaveAttribute("aria-current", "page");
+
+    act(() => useTourStore.getState().stop());
+    act(() => activate("settings", "settings-navigation"));
+    frame();
+    act(() => useTourStore.getState().stop());
+    frame();
+
+    expect(advanced).toHaveAttribute("aria-checked", "false");
+    expect(sections.get("appearance")).toHaveAttribute("aria-current", "page");
+  });
+
+  it("still puts the section back when a different tour starts before the next frame", () => {
+    const { advanced, sections } = settingsChrome("appearance");
+    activate("settings", "settings-navigation");
+    render(<TourGuide />);
+    act(() => activate("settings", "settings-dictionary"));
+    frame();
+    expect(sections.get("dictionary")).toHaveAttribute("aria-current", "page");
+
+    act(() => useTourStore.getState().stop());
+    act(() => activate("workspace", "workspace-toolbar"));
+    frame();
+
+    expect(advanced).toHaveAttribute("aria-checked", "false");
     expect(sections.get("appearance")).toHaveAttribute("aria-current", "page");
   });
 
