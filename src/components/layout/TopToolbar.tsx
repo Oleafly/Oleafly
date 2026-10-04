@@ -1,6 +1,6 @@
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { reattachPreviewWindow } from "@/lib/preview-window";
-import { useEffect, useRef, useState } from "react";
+import { type ComponentType, type SVGProps, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
@@ -18,8 +18,6 @@ import {
   LayoutGrid,
   ImageDown,
   ImagePlay,
-  Maximize,
-  Sparkles,
   SquarePen,
   X,
 } from "lucide-react";
@@ -37,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
@@ -105,55 +104,55 @@ function classifyDoc(source: string, profile: FormattingProfile): ExportKind {
 const offersSlides = (kind: ExportKind) => kind === "presentation" || kind === "classless";
 const offersEpub = (kind: ExportKind) => kind === "book" || kind === "classless";
 
-export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: typeof Columns2 }[] = [
+export const LAYOUT_OPTIONS: { preset: LayoutPreset; label: string; icon: ComponentType<SVGProps<SVGSVGElement>> }[] = [
   {
     preset: "editor-preview-ai",
     get label() {
       return i18n.t(($) => $.shell.toolbar.layouts.editorPreviewAi);
     },
-    icon: Columns2,
+    icon: LAYOUT_PRESET_ICONS["editor-preview-ai"],
   },
   {
     preset: "editor-preview",
     get label() {
       return i18n.t(($) => $.shell.toolbar.layouts.editorPreview);
     },
-    icon: Columns2,
+    icon: LAYOUT_PRESET_ICONS["editor-preview"],
   },
   {
     preset: "editor-ai",
     get label() {
       return i18n.t(($) => $.shell.toolbar.layouts.editorAi);
     },
-    icon: Columns2,
+    icon: LAYOUT_PRESET_ICONS["editor-ai"],
   },
   {
     preset: "preview-ai",
     get label() {
       return i18n.t(($) => $.shell.toolbar.layouts.previewAi);
     },
-    icon: Columns2,
+    icon: LAYOUT_PRESET_ICONS["preview-ai"],
   },
   {
     preset: "editor-only",
     get label() {
       return i18n.t(($) => $.shell.toolbar.layouts.editorOnly);
     },
-    icon: Maximize,
+    icon: LAYOUT_PRESET_ICONS["editor-only"],
   },
   {
     preset: "preview-only",
     get label() {
       return i18n.t(($) => $.shell.toolbar.layouts.previewOnly);
     },
-    icon: Columns2,
+    icon: LAYOUT_PRESET_ICONS["preview-only"],
   },
   {
     preset: "ai-only",
     get label() {
       return i18n.t(($) => $.shell.toolbar.layouts.aiOnly);
     },
-    icon: Sparkles,
+    icon: LAYOUT_PRESET_ICONS["ai-only"],
   },
 ];
 
