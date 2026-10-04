@@ -4948,6 +4948,75 @@ describe("ChatCore streaming details", () => {
     expect(usage).toHaveTextContent("340");
   });
 
+  it("keeps reasoning text that reaches the screen before its block opens", async () => {
+    const callbacks: FrameRequestCallback[] = [];
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => callbacks.push(callback));
+    const cancelFrame = vi.fn();
+    const originalRequestFrame = globalThis.requestAnimationFrame;
+    const originalCancelFrame = globalThis.cancelAnimationFrame;
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    Object.defineProperties(globalThis, {
+      requestAnimationFrame: { configurable: true, value: requestFrame },
+      cancelAnimationFrame: { configurable: true, value: cancelFrame },
+    });
+    Object.defineProperties(window, {
+      requestAnimationFrame: { configurable: true, value: requestFrame },
+      cancelAnimationFrame: { configurable: true, value: cancelFrame },
+    });
+    const flushFrame = () => {
+      const scheduled = callbacks.splice(0);
+      act(() => {
+        for (const callback of scheduled) callback(0);
+      });
+    };
+    const liveBlocks = () =>
+      useChatsStore.getState().liveOrSaved("chat-1")?.at(-1)?.reasoningBlocks ?? [];
+
+    try {
+      const rendered = await renderChat();
+      submit(rendered, "Check the proof");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      const handlers = handlersOf(0);
+
+      act(() => {
+        handlers.onReasoningStart();
+        handlers.onReasoningDelta("Check lemma 2");
+      });
+      flushFrame();
+      await waitFor(() => expect(liveBlocks()).toHaveLength(1));
+
+      await act(async () => {
+        handlers.onReasoningEnd();
+        await handlers.onToolCall({ id: "t1", name: "list_files", args: {} });
+        handlers.onToolResult({ id: "t1", name: "list_files", output: { success: true } });
+        handlers.onReasoningStart();
+        handlers.onReasoningDelta("Then lemma 3");
+      });
+      flushFrame();
+      await waitFor(() => expect(liveBlocks()).toHaveLength(2));
+      act(() => {
+        handlers.onReasoningEnd();
+      });
+      await act(async () => resolveRun(0));
+      await waitFor(() => expect(activeChatRun()).toBeNull());
+
+      expect(savedReply()?.reasoningBlocks).toEqual([
+        expect.objectContaining({ text: "Check lemma 2", beforeTool: 0, ms: expect.any(Number) }),
+        expect.objectContaining({ text: "Then lemma 3", beforeTool: 1, ms: expect.any(Number) }),
+      ]);
+    } finally {
+      Reflect.deleteProperty(document, "visibilityState");
+      Object.defineProperties(globalThis, {
+        requestAnimationFrame: { configurable: true, value: originalRequestFrame },
+        cancelAnimationFrame: { configurable: true, value: originalCancelFrame },
+      });
+      Object.defineProperties(window, {
+        requestAnimationFrame: { configurable: true, value: originalRequestFrame },
+        cancelAnimationFrame: { configurable: true, value: originalCancelFrame },
+      });
+    }
+  });
+
   it("notes when a run reached the step safety limit", async () => {
     const rendered = await renderChat();
     submit(rendered, "Refactor every chapter");

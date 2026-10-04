@@ -166,6 +166,30 @@ describe("prepareLatexProject edge cases", () => {
     expect(prepared.text).toContain(String.raw`\input{absent}`);
     expect(prepared.text).toContain(String.raw`\input{macros}`);
   });
+
+  it("reports the first missing file named mid-sentence in an inlined file and in the body", () => {
+    const prepared = prepareLatexProject(
+      "main.tex",
+      new Map([
+        [
+          "main.tex",
+          [
+            String.raw`\input{macros}`,
+            String.raw`\begin{document}`,
+            String.raw`See \input{lost} and \input{gone} here.`,
+            String.raw`\end{document}`,
+          ].join("\n"),
+        ],
+        ["macros.tex", String.raw`Use \input{gone} here.`],
+      ]),
+    );
+
+    expect(prepared.missing).toEqual([
+      { name: "gone", origin: { file: "macros.tex", line: 1 } },
+      { name: "lost", origin: { file: "main.tex", line: 3 } },
+      { name: "gone", origin: { file: "main.tex", line: 3 } },
+    ]);
+  });
 });
 
 describe("prepareLatexProject structure", () => {

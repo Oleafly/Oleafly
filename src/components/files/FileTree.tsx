@@ -267,6 +267,7 @@ export function FileTree({
     value: "",
   });
   const renameOperationsInFlight = useRef(new Map<number, number>());
+  const rootMenu = useAfterMenuClose();
   const [conflict, setConflict] = useState<
     | {
         op: "rename";
@@ -897,11 +898,11 @@ export function FileTree({
             ))}
           </div>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
-          <ContextMenuItem onClick={() => ctx.onStartNew("", "file")}>
+        <ContextMenuContent className="w-52" onCloseAutoFocus={rootMenu.onCloseAutoFocus}>
+          <ContextMenuItem onClick={() => rootMenu.afterClose(() => ctx.onStartNew("", "file"))}>
             <FilePlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFile)}
           </ContextMenuItem>
-          <ContextMenuItem onClick={() => ctx.onStartNew("", "dir")}>
+          <ContextMenuItem onClick={() => rootMenu.afterClose(() => ctx.onStartNew("", "dir"))}>
             <FolderPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFolder)}
           </ContextMenuItem>
           <ContextMenuSeparator />
@@ -988,6 +989,21 @@ export function FileTree({
       )}
     </>
   );
+}
+
+function useAfterMenuClose() {
+  const pendingRef = useRef<(() => void) | null>(null);
+  return {
+    afterClose: (action: () => void) => {
+      pendingRef.current = action;
+    },
+    onCloseAutoFocus: (event: Event) => {
+      event.preventDefault();
+      const action = pendingRef.current;
+      pendingRef.current = null;
+      action?.();
+    },
+  };
 }
 
 function useFinalizeOnce(
@@ -1164,16 +1180,22 @@ function TreeRowKindMenuItems({
   node,
   ctx,
   readOnlyLink,
-}: Readonly<{ node: TreeNode; ctx: TreeCtx; readOnlyLink: boolean }>) {
+  afterClose,
+}: Readonly<{
+  node: TreeNode;
+  ctx: TreeCtx;
+  readOnlyLink: boolean;
+  afterClose: (action: () => void) => void;
+}>) {
   const { t } = useTranslation(["common", "workspace"]);
   if (node.unreadable) return null;
   if (node.isDir) {
     return (
       <>
-        <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "file")}>
+        <ContextMenuItem onClick={() => afterClose(() => ctx.onStartNew(node.path, "file"))}>
           <FilePlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFile)}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => ctx.onStartNew(node.path, "dir")}>
+        <ContextMenuItem onClick={() => afterClose(() => ctx.onStartNew(node.path, "dir"))}>
           <FolderPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFolder)}
         </ContextMenuItem>
         <ContextMenuSeparator />
@@ -1253,6 +1275,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
   const hintKey = treeRowHintKey(unreadable, readOnlyLink, partial);
   const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : undefined;
   const rowRef = useRef<HTMLDivElement>(null);
+  const rowMenu = useAfterMenuClose();
 
   // Dropping onto a folder targets that folder; onto a file targets its folder.
   const dropDir = node.isDir ? node.path : parentOf(node.path);
@@ -1387,8 +1410,13 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       ) : (
         <ContextMenu>
           <ContextMenuTrigger asChild>{content}</ContextMenuTrigger>
-          <ContextMenuContent className="w-52" onCloseAutoFocus={(e) => e.preventDefault()}>
-            <TreeRowKindMenuItems node={node} ctx={ctx} readOnlyLink={readOnlyLink} />
+          <ContextMenuContent className="w-52" onCloseAutoFocus={rowMenu.onCloseAutoFocus}>
+            <TreeRowKindMenuItems
+              node={node}
+              ctx={ctx}
+              readOnlyLink={readOnlyLink}
+              afterClose={rowMenu.afterClose}
+            />
             {!readOnlyLink && <TreeRowEditMenuItems node={node} ctx={ctx} />}
           </ContextMenuContent>
         </ContextMenu>

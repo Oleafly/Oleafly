@@ -55,6 +55,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - arXiv links wrapped in LaTeX braces no longer produce ids with stray `}`
   or `,`, so papers you already cite are not suggested again. Hayagriva
   author lists written as a bare `-` followed by an indented entry are read.
+- The assistant no longer loses the first part of its reasoning. Text that
+  arrived in the first moments of each thinking phase used to be dropped.
+- New file and New folder from the file tree's right-click menu no longer
+  close the name box before you can type.
+- Opening a project whose PDF is restored from the last session no longer
+  labels that successful compile "Failed".
+- When converting a LaTeX project to Typst, the first `\input` or
+  `\include` on a line of text is now checked, so a missing file named there
+  is reported.
 
 ## [0.4.4] - 2026-10-03
 
