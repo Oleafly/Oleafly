@@ -39,9 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and images inside raw text are no longer treated as real ones, and a `//`
   inside a string no longer hides the rest of the line.
 - Completing a LaTeX command whose optional default holds `\`, `$` or braces
-  now inserts the default exactly as written. The linter no longer reports a
-  missing body for a definition whose default contains a `]` inside braces,
-  and its `\)` and `\]` messages now appear in your interface language.
+  now inserts the default exactly as written. When the default has a `]`
+  inside braces, as in `\newcommand{\x}[2][{a]b}]{#1}`, completion used to
+  leave `\x` out and the linter reported a missing body. Both read it
+  correctly now. The linter's `\)` and `\]` messages also appear in your
+  interface language.
 - Pressing Enter on an empty last item of a nested list near the end of a
   document no longer throws an error in the Visual editor.
 - Converting LaTeX math to Typst now handles `\hspace*`, a mismatched

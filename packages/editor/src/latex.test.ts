@@ -17,6 +17,7 @@ import {
   bibKeysFromSources,
   latexCommandCompletions,
   latexCompletions,
+  latexLanguage,
   latexReferenceCitationCompletions,
   setBibKeysProvider,
   setLatexCorpusProvider,
@@ -25,6 +26,7 @@ import {
 import { latexPairChange, latexPairInputHandler } from "./latex-pairs";
 import { setBibStyleProvider } from "./bibliography-styles";
 import { installEnglishEditorMessages } from "./test-messages";
+import { parsedState, parsedView } from "./visual/test-document";
 
 installEnglishEditorMessages();
 
@@ -299,6 +301,44 @@ describe("recovery-oriented LaTeX completion", () => {
     expect(
       accepted(String.raw`\NewDocumentCommand{\price}{O{\$5\}}}{#1}`, "\\price"),
     ).toEqual({ line: String.raw`\price[\$5\}]`, selected: String.raw`\$5\}` });
+  });
+
+  it("reads a classic optional default whose braces hold a bracket", () => {
+    function accepted(definition: string, label: string) {
+      const state = parsedState(
+        EditorState.create({
+          doc: `${definition}\n${label}`,
+          extensions: [latexLanguage()],
+        }),
+      );
+      const result = latexCommandCompletions(
+        new CompletionContext(state, state.doc.length, false),
+      );
+      const candidate = option(result, label);
+      const view = parsedView(new EditorView({ state, parent: document.body }));
+      (
+        candidate.apply as Exclude<Completion["apply"], string | undefined>
+      )(view, candidate, result?.from ?? 0, state.doc.length);
+      const { from, to } = view.state.selection.main;
+      const inserted = {
+        line: view.state.doc.line(2).text,
+        selected: view.state.sliceDoc(from, to),
+      };
+      view.destroy();
+      return inserted;
+    }
+
+    expect(accepted(String.raw`\newcommand{\x}[2][{a]b}]{#1}`, "\\x")).toMatchObject({
+      line: String.raw`\x[{a]b}]{}`,
+    });
+    expect(accepted(String.raw`\renewcommand{\y}[1][{[}]{#1}`, "\\y")).toEqual({
+      line: String.raw`\y[{[}]`,
+      selected: "{[}",
+    });
+    expect(accepted(String.raw`\providecommand{\z}[1][\]]{#1}`, "\\z")).toEqual({
+      line: String.raw`\z[\]]`,
+      selected: String.raw`\]`,
+    });
   });
 
   it("parses control-sequence delimiters in local xparse snippets", () => {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   latexIgnoredRanges,
   latexIgnoredRangesField,
+  latexOptionalArgumentEnd,
   type LatexIgnoredRange,
 } from "./latex-lexical";
 
@@ -244,5 +245,21 @@ describe("latexIgnoredRangesField incremental rescans", () => {
       }
       expectMatchesFullScan(state);
     }
+  });
+});
+
+describe("latexOptionalArgumentEnd", () => {
+  it("closes at the first bracket outside braces and escapes", () => {
+    expect(latexOptionalArgumentEnd(String.raw`[{a]b}]x`, 0)).toBe(7);
+    expect(latexOptionalArgumentEnd(String.raw`[{[}]x`, 0)).toBe(5);
+    expect(latexOptionalArgumentEnd(String.raw`[\]]x`, 0)).toBe(4);
+    expect(latexOptionalArgumentEnd(String.raw`[[a]]`, 0)).toBe(4);
+    expect(latexOptionalArgumentEnd(String.raw`[a}b]`, 0)).toBe(5);
+  });
+
+  it("returns null without an opening bracket or a closing one", () => {
+    expect(latexOptionalArgumentEnd("{a}", 0)).toBeNull();
+    expect(latexOptionalArgumentEnd(String.raw`[{a]b}`, 0)).toBeNull();
+    expect(latexOptionalArgumentEnd("[a\\", 0)).toBeNull();
   });
 });

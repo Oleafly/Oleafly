@@ -13,6 +13,7 @@ import {
   isLatexCompletionPosition,
   latexBalancedGroupEnd,
   latexIgnoredRangesField,
+  latexOptionalArgumentEnd,
   maskLatexIgnoredRegions,
 } from "./latex-lexical";
 import { environmentSnippet } from "./latex-environments";
@@ -352,7 +353,10 @@ function parsedGroup(
   closing = "}",
 ): ParsedGroup | null {
   const from = skipWhitespace(text, start);
-  const to = latexBalancedGroupEnd(text, from, opening, closing);
+  const to =
+    opening === "["
+      ? latexOptionalArgumentEnd(text, from)
+      : latexBalancedGroupEnd(text, from, opening, closing);
   if (to === null) return null;
   return {
     content: text.slice(from + 1, to - 1),
