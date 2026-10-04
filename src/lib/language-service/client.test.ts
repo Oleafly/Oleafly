@@ -1368,7 +1368,7 @@ describe("LanguageServiceClient lifecycle edges", () => {
     expect(client.getDocument(MAIN_URI)).toBeNull();
   });
 
-  it("reports a failed exit notification and keeps the session for cleanup", async () => {
+  it("reports a failed exit notification and still stops the session", async () => {
     const transport = new FakeTransport();
     const client = createClient(transport);
     await startClient(client, transport);
@@ -1380,6 +1380,7 @@ describe("LanguageServiceClient lifecycle edges", () => {
         : null;
 
     await expect(client.exit()).rejects.toThrow("pipe closed");
+    expect(transport.stopped).toEqual([session]);
     expect(client.state).toBe("exited");
     expect(client.session).toBeNull();
     expect(events.at(-1)).toMatchObject({

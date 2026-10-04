@@ -740,6 +740,16 @@ describe("starting a Typst rename", () => {
     expect(sym).toMatchObject({ kind: "label", name: "greet", file: "main.typ", line: 3, from, to: from + 5 });
   });
 
+  it("leaves sentence punctuation out of the default rename but keeps dots inside a name", async () => {
+    clientState.unsupported = new Set(["prepareRename"]);
+    const label = await opened(LABEL_USE);
+    const from = MAIN.indexOf("@intro") + 1;
+    expect(label).toMatchObject({ name: "intro", from, to: from + 5 });
+    mocks.openRename.mockReset();
+    const file = await opened(MAIN.indexOf("util.typ") + 2);
+    expect(file.name).toBe("util.typ");
+  });
+
   it("renames the word under the caret when the server asks for the default behaviour", async () => {
     mocks.requestPrepareRename.mockResolvedValue({ defaultBehavior: true });
     const sym = await opened(GREET_USE + 1);
@@ -864,6 +874,27 @@ describe("applying a Typst rename", () => {
     await expect(applyRename(view, sym, "hello")).resolves.toBe("unchanged");
     expect(mocks.toastInfo).toHaveBeenCalledWith("Nothing to rename.");
     expect(mocks.rebuildFromDisk).not.toHaveBeenCalled();
+  });
+
+  it("reports a write failure, not an empty rename, when every edit is skipped", async () => {
+    const { view, sym } = await renameTarget();
+    filesState.files = {
+      "main.typ": { content: MAIN, dirty: false },
+      "util.typ": { content: `${UTIL}edited`, dirty: true },
+    };
+    mocks.requestRename.mockResolvedValue({
+      changes: {
+        "file:///project/util.typ": [{ range: range(0, 5, 10), newText: "hello" }],
+        "file:///outside/lib.typ": [{ range: range(0, 0, 1), newText: "x" }],
+      },
+    });
+    await expect(applyRename(view, sym, "hello")).resolves.toBe("partial");
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Renamed to "hello" in 0 of 2 files. Could not write util.typ and file:///outside/lib.typ.',
+    );
+    expect(view.dispatch).not.toHaveBeenCalled();
+    expect(mocks.writeProjectFile).not.toHaveBeenCalled();
   });
 
   it("names the files it had to skip", async () => {

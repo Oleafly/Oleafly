@@ -450,6 +450,15 @@ describe("visual project intelligence in richer documents", () => {
     expect(mocks.showLookupResult).toHaveBeenCalledWith("No definition found for “phantom”.");
   });
 
+  it("answers nothing for a key inside inline code, which carries no chip", () => {
+    const editor = mountRich();
+    editor.commands.setTextSelection(positionOfText(editor, "@knuth") + 3);
+    expect(goToVisualDefinition(editor)).toBe(false);
+    expect(findVisualReferences(editor)).toBe(false);
+    expect(press(editor, { key: "F12" }).defaultPrevented).toBe(false);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
   it("answers nothing where the caret is not on a key", () => {
     const editor = mountRich();
     editor.commands.setTextSelection(positionOfText(editor, " end") + 2);

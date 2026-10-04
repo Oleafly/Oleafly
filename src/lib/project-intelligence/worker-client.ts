@@ -289,18 +289,6 @@ export class ProjectIntelligenceWorkerClient {
       );
       return;
     }
-    clearTimeout(pending.timeout);
-    this.pending.delete(event.data.requestId);
-    if (event.data.type === "error") {
-      pending.reject(
-        new ProjectIntelligenceWorkerError(
-          { message: event.data.error.message },
-          event.data.error.code,
-          event.data.error.retryable,
-        ),
-      );
-      return;
-    }
     if (
       event.data.type === "result" &&
       !sameProjectIntelligenceIdentity(
@@ -313,6 +301,18 @@ export class ProjectIntelligenceWorkerClient {
           "malformedSnapshotIdentity",
           "protocol_error",
           true,
+        ),
+      );
+      return;
+    }
+    clearTimeout(pending.timeout);
+    this.pending.delete(event.data.requestId);
+    if (event.data.type === "error") {
+      pending.reject(
+        new ProjectIntelligenceWorkerError(
+          { message: event.data.error.message },
+          event.data.error.code,
+          event.data.error.retryable,
         ),
       );
       return;

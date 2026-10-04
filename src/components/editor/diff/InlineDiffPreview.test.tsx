@@ -93,6 +93,38 @@ describe("InlineDiffPreview", () => {
     expect(container.querySelector(".cm-editor")).toBeNull();
   });
 
+  it("does not scroll a preview that unmounted before its frames ran", () => {
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextId = 1;
+    const request = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+      const id = nextId++;
+      frames.set(id, callback);
+      return id;
+    });
+    const cancel = vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+      frames.delete(id);
+    });
+    const runFrame = () => {
+      const due = [...frames.values()];
+      frames.clear();
+      for (const callback of due) callback(0);
+    };
+    try {
+      const { container, unmount } = render(
+        <InlineDiffPreview path="main.tex" oldText={"a\nb\n"} newText={"a\nB\n"} />,
+      );
+      const view = previewView(container);
+      runFrame();
+      expect(frames.size).toBeGreaterThan(0);
+      unmount();
+      for (let pass = 0; pass < 10; pass++) runFrame();
+      expect(mocks.scroll.mock.calls.some(([target]) => target === view)).toBe(false);
+    } finally {
+      request.mockRestore();
+      cancel.mockRestore();
+    }
+  });
+
   it("removes the editor when it unmounts", () => {
     const { container, unmount } = render(
       <InlineDiffPreview path="main.tex" oldText="a" newText="b" className="h-10" />,

@@ -281,8 +281,8 @@ function listItemPerson(item: string, rest: readonly YamlLine[]): string {
   const map = flowMap(item);
   if (map) return personDisplay(map.get("name"), map.get("given-name"));
   const key = readMappingKey(item, 0);
-  if (!key) return yamlScalar(item);
-  const fields = new Map<string, string>([[key.key, item.slice(key.valueStart).trim()]]);
+  if (!key && item) return yamlScalar(item);
+  const fields = new Map<string, string>(key ? [[key.key, item.slice(key.valueStart).trim()]] : []);
   for (const line of rest) {
     const nested = readMappingKey(line.text, line.indent);
     if (nested) fields.set(nested.key, stripComment(line.text.slice(nested.valueStart)));

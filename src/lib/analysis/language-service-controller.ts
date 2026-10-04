@@ -964,15 +964,28 @@ export class LanguageServiceController {
       if (!this.operationIsCurrent(operation, desired)) return;
       await this.reconcile(operation);
     });
-    this.work = setupOperation.catch((error) => {
+    this.work = setupOperation.catch(async (error) => {
       if (
-        this.operationIsCurrent(operation, desired) &&
-        !(error instanceof LanguageServiceSetupActionError)
+        !this.operationIsCurrent(operation, desired) ||
+        error instanceof LanguageServiceSetupActionError
       ) {
-        this.publishUnavailable(safeSetupFailure(), {
-          key: "setupCouldNotSynchronize",
-        });
+        return;
       }
+      const failedRuntime = this.runtime;
+      if (failedRuntime && !failedRuntime.cleanupFailed) {
+        await this.teardownRuntime(failedRuntime).catch(() => {});
+      }
+      if (!this.operationIsCurrent(operation, desired)) return;
+      if (this.runtime?.cleanupFailed) {
+        this.publishUnavailable(
+          safeCleanupFailure(),
+          LANGUAGE_SERVICE_DISPOSE_ANALYSIS_REASON,
+        );
+        return;
+      }
+      this.publishUnavailable(safeSetupFailure(), {
+        key: "setupCouldNotSynchronize",
+      });
     });
     return setupOperation.catch(() => {
       throw new Error(LANGUAGE_SERVICE_SETUP_FAILURE_REASON);

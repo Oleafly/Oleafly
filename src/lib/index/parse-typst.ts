@@ -14,48 +14,56 @@ type SymSpan = {
   readonly nameTo: number;
 };
 
-function maskTypstBlockStep(
-  text: string,
-  i: number,
-  blockDepth: number,
-): { out: string; next: number; depth: number } {
-  if (text.startsWith("/*", i)) {
-    return { out: "  ", next: i + 2, depth: blockDepth + 1 };
-  }
-  if (text.startsWith("*/", i)) {
-    return { out: "  ", next: i + 2, depth: blockDepth - 1 };
-  }
-  return { out: text[i] === "\n" ? "\n" : " ", next: i + 1, depth: blockDepth };
-}
+type Masks = { readonly text: string[]; readonly code: string[] };
 
-function maskTypstComments(text: string): string {
-  let out = "";
-  let i = 0;
-  let blockDepth = 0;
+function blockCommentEnd(text: string, from: number): number {
+  let depth = 0;
+  let i = from;
   while (i < text.length) {
-    const link = blockDepth > 0 ? null : typstAutolinkEnd(text, i);
-    if (blockDepth > 0) {
-      const step = maskTypstBlockStep(text, i, blockDepth);
-      out += step.out;
-      i = step.next;
-      blockDepth = step.depth;
-    } else if (link !== null) {
-      out += text.slice(i, link);
-      i = link;
-    } else if (text.startsWith("//", i)) {
-      const end = text.indexOf("\n", i);
-      const stop = end < 0 ? text.length : end;
-      out += " ".repeat(stop - i);
-      i = stop;
-    } else if (text.startsWith("/*", i)) {
-      blockDepth = 1;
-      out += "  ";
+    if (text.startsWith("/*", i)) {
+      depth++;
       i += 2;
+    } else if (text.startsWith("*/", i)) {
+      depth--;
+      i += 2;
+      if (depth === 0) return i;
     } else {
-      out += text[i++];
+      i++;
     }
   }
-  return out;
+  return text.length;
+}
+
+export function typstRawEnd(text: string, from: number): number {
+  let width = 1;
+  while (text[from + width] === "`") width++;
+  if (width === 2) return from + 2;
+  const close = text.indexOf("`".repeat(width), from + width);
+  return close < 0 ? from + width : close + width;
+}
+
+function opaqueEnd(text: string, i: number): number | null {
+  if (text.startsWith("//", i)) {
+    const end = text.indexOf("\n", i);
+    return end < 0 ? text.length : end;
+  }
+  if (text.startsWith("/*", i)) return blockCommentEnd(text, i);
+  if (text[i] === "`") return typstRawEnd(text, i);
+  return null;
+}
+
+function blankOpaque(
+  text: string,
+  masks: Masks,
+  from: number,
+  to: number,
+): number {
+  for (let index = from; index < to; index++) {
+    if (text[index] === "\n") continue;
+    masks.text[index] = " ";
+    masks.code[index] = " ";
+  }
+  return to;
 }
 
 type MarkupFrame = { mode: "markup"; close: boolean; brackets: number };
@@ -83,7 +91,7 @@ function opensLineCode(text: string, hash: number): boolean {
 
 function maskMarkupStep(
   text: string,
-  chars: string[],
+  masks: Masks,
   i: number,
   frame: MarkupFrame,
   frames: Frame[],
@@ -92,9 +100,11 @@ function maskMarkupStep(
   if (char === "\\") return i + 2;
   const link = typstAutolinkEnd(text, i);
   if (link !== null) {
-    for (let index = i; index < link; index++) chars[index] = " ";
+    for (let index = i; index < link; index++) masks.code[index] = " ";
     return link;
   }
+  const opaque = opaqueEnd(text, i);
+  if (opaque !== null) return blankOpaque(text, masks, i, opaque);
   if (frame.close && char === "]" && frame.brackets === 0) {
     frames.pop();
     return i + 1;
@@ -140,15 +150,20 @@ function maskQuotedStep(
 
 function maskCodeStep(
   text: string,
-  chars: string[],
+  masks: Masks,
   i: number,
   frame: CodeFrame,
   frames: Frame[],
 ): number {
   const char = text[i];
+  const opaque = opaqueEnd(text, i);
+  if (opaque !== null) {
+    frame.started = true;
+    return blankOpaque(text, masks, i, opaque);
+  }
   if (char === '"') {
     frame.quoted = true;
-    chars[i] = " ";
+    masks.code[i] = " ";
     frame.started = true;
     return i + 1;
   }
@@ -193,17 +208,17 @@ function maskCodeStep(
   return i + 1;
 }
 
-function maskStrings(text: string): string {
-  const chars = text.split("");
+export function maskTypstSource(rawText: string): { text: string; code: string } {
+  const masks: Masks = { text: rawText.split(""), code: rawText.split("") };
   const frames: Frame[] = [{ mode: "markup", close: false, brackets: 0 }];
   let i = 0;
-  while (i < text.length) {
+  while (i < rawText.length) {
     const frame = frames.at(-1) as Frame;
-    if (frame.mode === "markup") i = maskMarkupStep(text, chars, i, frame, frames);
-    else if (frame.quoted) i = maskQuotedStep(text, chars, i, frame);
-    else i = maskCodeStep(text, chars, i, frame, frames);
+    if (frame.mode === "markup") i = maskMarkupStep(rawText, masks, i, frame, frames);
+    else if (frame.quoted) i = maskQuotedStep(rawText, masks.code, i, frame);
+    else i = maskCodeStep(rawText, masks, i, frame, frames);
   }
-  return chars.join("");
+  return { text: masks.text.join(""), code: masks.code.join("") };
 }
 
 function resolveImport(from: string, raw: string): string | null {
@@ -222,8 +237,7 @@ function resolveImport(from: string, raw: string): string | null {
 }
 
 export function parseTypstFile(path: string, rawText: string): FileSymbols {
-  const text = maskTypstComments(rawText);
-  const code = maskStrings(text);
+  const { text, code } = maskTypstSource(rawText);
   const defs: Sym[] = [];
   const uses: Sym[] = [];
   const starts = [0];

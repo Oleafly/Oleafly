@@ -1185,7 +1185,8 @@ class LatexMathParser {
       const content = inner ? ` ${inner}` : "";
       return word(`lr(${escape(open)}${content})`);
     }
-    return word(`lr(${escape(open)}${inner}${escape(close)})`);
+    const parts = [escape(open), inner, escape(close)].filter(Boolean).map((code) => word(code));
+    return word(`lr(${joinAtoms(parts)})`);
   }
 
   private structuralCommand(name: string): Atom | null {
@@ -1263,8 +1264,8 @@ class LatexMathParser {
         return { code: "", kind: "group", space: false, simple: false, children: [word("mod"), ...this.parseArgument()] };
       case "not":
         return this.negation();
-      case "hspace":
-      case "hspace*": {
+      case "hspace": {
+        if (this.source[this.position] === "*") this.position++;
         const length = this.readRawGroup().trim();
         return /^-?(?:\d+|\d*\.\d+)(?:pt|em|mm|cm|in)$/u.test(length) ? { ...word(`#h(${length})`), forceSpace: true } : null;
       }
@@ -1382,6 +1383,7 @@ class LatexMathParser {
         const closing = plainText(this.readRawGroup()).trim();
         rows.push(cells);
         if (closing === name || !closing) break;
+        cells = [];
         continue;
       }
       if (this.source[this.position] === "*") this.position++;

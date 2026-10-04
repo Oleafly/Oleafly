@@ -261,6 +261,46 @@ describe("recovery-oriented LaTeX completion", () => {
     xparseView.destroy();
   });
 
+  it("inserts optional defaults exactly as the definition spells them", () => {
+    function accepted(definition: string, label: string) {
+      const source = `${definition}\n${label.slice(0, 3)}`;
+      const state = EditorState.create({ doc: source });
+      const result = latexCommandCompletions(
+        new CompletionContext(state, state.doc.length, false),
+      );
+      const candidate = option(result, label);
+      const view = new EditorView({ state, parent: document.body });
+      (
+        candidate.apply as Exclude<Completion["apply"], string | undefined>
+      )(view, candidate, result?.from ?? 0, state.doc.length);
+      const { from, to } = view.state.selection.main;
+      const inserted = {
+        line: view.state.doc.line(2).text,
+        selected: view.state.sliceDoc(from, to),
+      };
+      view.destroy();
+      return inserted;
+    }
+
+    expect(accepted(String.raw`\newcommand{\cost}[1][\$5]{#1}`, "\\cost")).toEqual({
+      line: String.raw`\cost[\$5]`,
+      selected: String.raw`\$5`,
+    });
+    expect(accepted(String.raw`\newcommand{\greek}[1][\alpha]{#1}`, "\\greek")).toEqual({
+      line: String.raw`\greek[\alpha]`,
+      selected: String.raw`\alpha`,
+    });
+    expect(
+      accepted(String.raw`\newcommand{\field}[2][\mathbb{R}]{#1^#2}`, "\\field"),
+    ).toMatchObject({ line: String.raw`\field[\mathbb{R}]{}` });
+    expect(
+      accepted(String.raw`\NewDocumentCommand{\odd}{O{a\}b} m}{#1}`, "\\odd"),
+    ).toMatchObject({ line: String.raw`\odd[a\}b]{}` });
+    expect(
+      accepted(String.raw`\NewDocumentCommand{\price}{O{\$5\}}}{#1}`, "\\price"),
+    ).toEqual({ line: String.raw`\price[\$5\}]`, selected: String.raw`\$5\}` });
+  });
+
   it("parses control-sequence delimiters in local xparse snippets", () => {
     const source =
       String.raw`\NewDocumentCommand{\controlled}{r\foo\bar t\trigger m}{#1}` +

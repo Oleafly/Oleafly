@@ -793,7 +793,8 @@ export class LanguageServiceClient {
       this.rejectAll(new LanguageServiceExitedError());
       this.cleanupSessions.set(session.session, session);
       if (this.isCurrentSession(session)) this.activeSession = null;
-      failure ??= await this.stopCleanupSessions();
+      const cleanupError = await this.stopCleanupSessions();
+      failure ??= cleanupError;
       this.documents.clear();
       this.clearDiagnosticEpochs();
       this.negotiated = cloneCapabilities(EMPTY_SERVER_CAPABILITIES);
