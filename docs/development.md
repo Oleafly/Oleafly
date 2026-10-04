@@ -161,6 +161,12 @@ The two audit commands require registry/network access. CI records their
 current results on every code change. An offline local run cannot certify that
 the dependency graph is advisory-free.
 
+CI also runs `pnpm test:coverage`, which fails if frontend coverage drops below
+the thresholds in `vitest.config.ts` (98% of lines, 92% of branches, 96% of
+functions and statements). New code needs tests that keep it there. SonarCloud
+counts the same files: `src/` and `packages/`, without tests, `tests/` folders,
+the `src/main.tsx` bootstrap and the e2e-only probes.
+
 ### The Rust toolchain pin
 
 `rust-toolchain.toml` names one Rust version. rustup applies it to every plain
