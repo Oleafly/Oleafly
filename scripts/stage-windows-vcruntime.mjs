@@ -82,9 +82,17 @@ function systemCandidate(env) {
   return join(env.SystemRoot ?? "C:\\Windows", "System32", RUNTIME_DLL);
 }
 
+export function windowsPowerShellEnvironment(env, candidate) {
+  const cleaned = Object.fromEntries(
+    Object.entries(env).filter(([name]) => name.toLowerCase() !== "psmodulepath"),
+  );
+  return { ...cleaned, OLEAFLY_VCRUNTIME_CANDIDATE: candidate };
+}
+
 function inspect(path) {
   const script = [
     "$ErrorActionPreference = 'Stop'",
+    "Import-Module (Join-Path $PSHOME 'Modules\\Microsoft.PowerShell.Security\\Microsoft.PowerShell.Security.psd1')",
     "$path = $env:OLEAFLY_VCRUNTIME_CANDIDATE",
     "$signature = Get-AuthenticodeSignature -LiteralPath $path",
     "$subject = ''",
@@ -94,9 +102,19 @@ function inspect(path) {
   const output = execFileSync(
     "powershell.exe",
     ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(script, "utf16le").toString("base64")],
-    { encoding: "utf8", env: { ...process.env, OLEAFLY_VCRUNTIME_CANDIDATE: path } },
+    { encoding: "utf8", env: windowsPowerShellEnvironment(process.env, path), stdio: ["ignore", "pipe", "pipe"] },
   );
   return JSON.parse(output.trim());
+}
+
+export function powerShellFailure(error) {
+  const detail = `${error?.stderr ?? ""}`
+    .replace(/^#< CLIXML/, "")
+    .replace(/_x000D__x000A_/g, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return `PowerShell could not check its signature (${detail || error?.message || "no output"})`;
 }
 
 function sha256(bytes) {
@@ -120,7 +138,13 @@ function main() {
       problems.push(`${candidate}: not an x64 DLL (machine ${machine?.toString(16) ?? "unknown"})`);
       continue;
     }
-    const report = inspect(candidate);
+    let report;
+    try {
+      report = inspect(candidate);
+    } catch (error) {
+      problems.push(`${candidate}: ${powerShellFailure(error)}`);
+      continue;
+    }
     const problem = signatureProblem(report);
     if (problem) {
       problems.push(`${candidate}: ${problem}`);

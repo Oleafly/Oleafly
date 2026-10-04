@@ -9,7 +9,9 @@ import {
   newestCrtDirectory,
   newestRedistVersion,
   peMachine,
+  powerShellFailure,
   signatureProblem,
+  windowsPowerShellEnvironment,
 } from "./stage-windows-vcruntime.mjs";
 
 const SCRIPT_PATH = join(dirname(fileURLToPath(import.meta.url)), "stage-windows-vcruntime.mjs");
@@ -60,6 +62,28 @@ test("only a valid Microsoft Corporation signature is accepted", () => {
     /not Microsoft Corporation/,
   );
   assert.match(signatureProblem(undefined), /unknown/);
+});
+
+test("Windows PowerShell starts without a module path inherited from PowerShell 7", () => {
+  const environment = windowsPowerShellEnvironment(
+    { PSModulePath: "C:\\Program Files\\PowerShell\\7\\Modules", psmodulepath: "x", Path: "C:\\bin" },
+    "C:\\Windows\\System32\\vcruntime140.dll",
+  );
+  assert.deepEqual(Object.keys(environment).sort(), ["OLEAFLY_VCRUNTIME_CANDIDATE", "Path"]);
+  assert.equal(environment.OLEAFLY_VCRUNTIME_CANDIDATE, "C:\\Windows\\System32\\vcruntime140.dll");
+});
+
+test("a PowerShell failure is reported as one readable line", () => {
+  const stderr =
+    '#< CLIXML\r\n<Objs Version="1.1.0.1"><S S="Error">Get-AuthenticodeSignature : The module could _x000D__x000A_</S><S S="Error">not be loaded.</S></Objs>';
+  assert.equal(
+    powerShellFailure({ stderr, message: "Command failed" }),
+    "PowerShell could not check its signature (Get-AuthenticodeSignature : The module could not be loaded.)",
+  );
+  assert.equal(
+    powerShellFailure({ message: "spawn powershell.exe ENOENT" }),
+    "PowerShell could not check its signature (spawn powershell.exe ENOENT)",
+  );
 });
 
 test("the script does nothing outside Windows", { skip: process.platform === "win32" }, () => {
