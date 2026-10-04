@@ -57,6 +57,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   author lists written as a bare `-` followed by an indented entry are read.
 - The assistant no longer loses the first part of its reasoning. Text that
   arrived in the first moments of each thinking phase used to be dropped.
+- If the connection to the AI provider dropped and the assistant retried,
+  the reply and reasoning it streamed after the retry could disappear. They
+  now stay in the chat.
 - New file and New folder from the file tree's right-click menu no longer
   close the name box before you can type.
 - Opening a project whose PDF is restored from the last session no longer

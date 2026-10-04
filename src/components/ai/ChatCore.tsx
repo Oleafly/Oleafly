@@ -2684,7 +2684,7 @@ ${sandboxedCustom}`;
           onStep: (step) => {
             usageSteps = step + 1;
             if (runRequestId && runIsCurrent()) markRunSteerable(runRequestId);
-            updateRunLast((m) => {
+            updateRunLastText((m) => {
               stepContent = m.content ?? "";
               stepBlocks = m.reasoningBlocks ? [...m.reasoningBlocks] : [];
               return m;
@@ -2692,7 +2692,7 @@ ${sandboxedCustom}`;
           },
           onRetry: (attempt, max) => {
             setRunThinking(`Connection issue, retrying (${attempt}/${max})…`);
-            updateRunLast((m) => ({
+            updateRunLastText((m) => ({
               ...m,
               content: stepContent,
               reasoningBlocks: stepBlocks,

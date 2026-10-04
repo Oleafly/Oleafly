@@ -1863,17 +1863,18 @@ describe("ChatCore agent turns", () => {
       const rendered = await renderChat();
       submit(rendered, "Stream a burst");
       await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      const flushFrame = (timestamp: number) => {
+        const scheduled = [...callbacks.values()];
+        callbacks.clear();
+        act(() => { for (const callback of scheduled) callback(timestamp); });
+      };
+      flushFrame(-16);
       const publishedLengths: number[] = [];
       unsubscribe = useChatsStore.subscribe((state, previous) => {
         const length = state.live["chat-1"]?.at(-1)?.content.length ?? 0;
         const previousLength = previous.live["chat-1"]?.at(-1)?.content.length ?? 0;
         if (length !== previousLength) publishedLengths.push(length);
       });
-      const flushFrame = (timestamp: number) => {
-        const scheduled = [...callbacks.values()];
-        callbacks.clear();
-        act(() => { for (const callback of scheduled) callback(timestamp); });
-      };
 
       act(() => {
         for (let index = 0; index < 600; index += 1) {
@@ -4898,6 +4899,40 @@ describe("ChatCore streaming details", () => {
     } as never);
   }
 
+  function liveReply() {
+    return useChatsStore.getState().liveOrSaved("chat-1")?.at(-1);
+  }
+
+  function installManualFrames() {
+    const callbacks: FrameRequestCallback[] = [];
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => callbacks.push(callback));
+    const cancelFrame = vi.fn();
+    const originalRequestFrame = globalThis.requestAnimationFrame;
+    const originalCancelFrame = globalThis.cancelAnimationFrame;
+    const setFrameFunctions = (request: unknown, cancel: unknown) => {
+      for (const target of [globalThis, window]) {
+        Object.defineProperties(target, {
+          requestAnimationFrame: { configurable: true, value: request },
+          cancelAnimationFrame: { configurable: true, value: cancel },
+        });
+      }
+    };
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    setFrameFunctions(requestFrame, cancelFrame);
+    return {
+      flushFrame() {
+        const scheduled = callbacks.splice(0);
+        act(() => {
+          for (const callback of scheduled) callback(0);
+        });
+      },
+      restore() {
+        Reflect.deleteProperty(document, "visibilityState");
+        setFrameFunctions(originalRequestFrame, originalCancelFrame);
+      },
+    };
+  }
+
   it("keeps reasoning and sub-agent progress in the saved reply", async () => {
     const rendered = await renderChat();
     submit(rendered, "Check the proof");
@@ -4949,28 +4984,8 @@ describe("ChatCore streaming details", () => {
   });
 
   it("keeps reasoning text that reaches the screen before its block opens", async () => {
-    const callbacks: FrameRequestCallback[] = [];
-    const requestFrame = vi.fn((callback: FrameRequestCallback) => callbacks.push(callback));
-    const cancelFrame = vi.fn();
-    const originalRequestFrame = globalThis.requestAnimationFrame;
-    const originalCancelFrame = globalThis.cancelAnimationFrame;
-    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
-    Object.defineProperties(globalThis, {
-      requestAnimationFrame: { configurable: true, value: requestFrame },
-      cancelAnimationFrame: { configurable: true, value: cancelFrame },
-    });
-    Object.defineProperties(window, {
-      requestAnimationFrame: { configurable: true, value: requestFrame },
-      cancelAnimationFrame: { configurable: true, value: cancelFrame },
-    });
-    const flushFrame = () => {
-      const scheduled = callbacks.splice(0);
-      act(() => {
-        for (const callback of scheduled) callback(0);
-      });
-    };
-    const liveBlocks = () =>
-      useChatsStore.getState().liveOrSaved("chat-1")?.at(-1)?.reasoningBlocks ?? [];
+    const frames = installManualFrames();
+    const liveBlocks = () => liveReply()?.reasoningBlocks ?? [];
 
     try {
       const rendered = await renderChat();
@@ -4982,7 +4997,7 @@ describe("ChatCore streaming details", () => {
         handlers.onReasoningStart();
         handlers.onReasoningDelta("Check lemma 2");
       });
-      flushFrame();
+      frames.flushFrame();
       await waitFor(() => expect(liveBlocks()).toHaveLength(1));
 
       await act(async () => {
@@ -4992,7 +5007,7 @@ describe("ChatCore streaming details", () => {
         handlers.onReasoningStart();
         handlers.onReasoningDelta("Then lemma 3");
       });
-      flushFrame();
+      frames.flushFrame();
       await waitFor(() => expect(liveBlocks()).toHaveLength(2));
       act(() => {
         handlers.onReasoningEnd();
@@ -5005,15 +5020,77 @@ describe("ChatCore streaming details", () => {
         expect.objectContaining({ text: "Then lemma 3", beforeTool: 1, ms: expect.any(Number) }),
       ]);
     } finally {
-      Reflect.deleteProperty(document, "visibilityState");
-      Object.defineProperties(globalThis, {
-        requestAnimationFrame: { configurable: true, value: originalRequestFrame },
-        cancelAnimationFrame: { configurable: true, value: originalCancelFrame },
+      frames.restore();
+    }
+  });
+
+  it("keeps the reply and reasoning that stream in after a retry", async () => {
+    const frames = installManualFrames();
+
+    try {
+      const rendered = await renderChat();
+      submit(rendered, "Summarise the draft");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      const handlers = handlersOf(0);
+
+      await act(async () => {
+        handlers.onStep(0);
+        handlers.onText("Checking the files. ");
+        await handlers.onToolCall({ id: "t1", name: "list_files", args: {} });
+        handlers.onToolResult({ id: "t1", name: "list_files", output: { success: true } });
+        handlers.onStep(1);
       });
-      Object.defineProperties(window, {
-        requestAnimationFrame: { configurable: true, value: originalRequestFrame },
-        cancelAnimationFrame: { configurable: true, value: originalCancelFrame },
+      frames.flushFrame();
+      await waitFor(() => expect(liveReply()?.toolCalls?.[0]?.status).toBe("done"));
+
+      act(() => {
+        handlers.onRetry(1, 3);
+        handlers.onReasoningStart();
+        handlers.onReasoningDelta("Read the abstract");
+        handlers.onReasoningEnd();
+        handlers.onText("The draft argues for local-first tools.");
       });
+      frames.flushFrame();
+      await act(async () => resolveRun(0));
+      await waitFor(() => expect(activeChatRun()).toBeNull());
+
+      expect(savedReply()?.content).toBe(
+        "Checking the files. The draft argues for local-first tools.",
+      );
+      expect(savedReply()?.reasoningBlocks).toEqual([
+        expect.objectContaining({ text: "Read the abstract", beforeTool: 1, ms: expect.any(Number) }),
+      ]);
+    } finally {
+      frames.restore();
+    }
+  });
+
+  it("keeps the earlier steps' text when a retry follows a step start", async () => {
+    const frames = installManualFrames();
+
+    try {
+      const rendered = await renderChat();
+      submit(rendered, "Summarise the draft");
+      await waitFor(() => expect(mocks.runs).toHaveLength(1));
+      const handlers = handlersOf(0);
+
+      act(() => {
+        handlers.onStep(0);
+        handlers.onText("First pass. ");
+      });
+      frames.flushFrame();
+      act(() => {
+        handlers.onStep(1);
+        handlers.onRetry(1, 3);
+        handlers.onText("Second pass.");
+      });
+      frames.flushFrame();
+      await act(async () => resolveRun(0));
+      await waitFor(() => expect(activeChatRun()).toBeNull());
+
+      expect(savedReply()?.content).toBe("First pass. Second pass.");
+    } finally {
+      frames.restore();
     }
   });
 
