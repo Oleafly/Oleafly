@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   didn't compile and the LaTeX language server (TexLab) didn't start. Both
   need a runtime file that Windows doesn't include, so Oleafly now installs it
   next to the app.
+- The Layout menu showed the same icon for five of its seven layouts. Each
+  layout now has its own icon that shows which panes it opens: the editor,
+  the preview and the AI assistant.
 
 ## [0.4.4] - 2026-10-03
 
