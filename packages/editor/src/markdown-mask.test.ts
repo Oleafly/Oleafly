@@ -149,6 +149,10 @@ describe("Markdown masking of block and reference constructs", () => {
     expect(visible("Claim.^[An qqinline note.]\n")).toContain("qqinline");
   });
 
+  it("keeps an unclosed footnote opener before a footnote reference as prose", () => {
+    expect(visible("Text[^qqa[^qqb] words.\n")).toEqual(["Text", "qqa", "words"]);
+  });
+
   it("masks indented code and reference definitions", () => {
     const words = visible("Intro\n\n    qqcode here\n[qqref]: https://example.test\nOutro\n");
     expect(words).toEqual(["Intro", "Outro"]);
