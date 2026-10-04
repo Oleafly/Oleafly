@@ -124,3 +124,59 @@ describe("proofreading presentation (unbounded)", () => {
     ).toBeNull();
   });
 });
+
+describe("proofreading run lifecycle", () => {
+  it("records a failure for the current run with its retry hint", () => {
+    const current = identity(2);
+    useProofreadingStore.getState().begin(current);
+
+    useProofreadingStore.getState().fail(current, "Dictionary missing", "error", false);
+
+    expect(useProofreadingStore.getState().source).toMatchObject({
+      phase: "error",
+      message: "Dictionary missing",
+      diagnosticCount: 0,
+      retryable: false,
+    });
+  });
+
+  it("defaults a failure to unavailable and retryable", () => {
+    const current = identity(3);
+    useProofreadingStore.getState().begin(current);
+
+    useProofreadingStore.getState().fail(current, "Worker stopped");
+
+    expect(useProofreadingStore.getState().source).toMatchObject({ phase: "unavailable", retryable: true });
+  });
+
+  it("ignores results and failures from an older run", () => {
+    useProofreadingStore.getState().begin(identity(5));
+    const before = useProofreadingStore.getState().source;
+
+    useProofreadingStore.getState().complete(result(identity(4), 3));
+    useProofreadingStore.getState().fail(identity(4), "stale");
+
+    expect(useProofreadingStore.getState().source).toBe(before);
+  });
+
+  it("ignores results and failures for a surface that is idle", () => {
+    const visual = { ...identity(1), surface: "visual" as const };
+
+    useProofreadingStore.getState().complete(result(visual, 1));
+    useProofreadingStore.getState().fail(visual, "stale");
+
+    expect(useProofreadingStore.getState().visual.phase).toBe("idle");
+  });
+
+  it("clears a surface only for the matching path", () => {
+    const current = identity(1);
+    useProofreadingStore.getState().begin(current);
+    useProofreadingStore.getState().complete(result(current, 2));
+
+    useProofreadingStore.getState().clear("source", "other.tex");
+    expect(useProofreadingStore.getState().source.diagnosticCount).toBe(2);
+
+    useProofreadingStore.getState().clear("source", "main.tex");
+    expect(useProofreadingStore.getState().source.phase).toBe("idle");
+  });
+});

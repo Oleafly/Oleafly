@@ -89,3 +89,38 @@ describe("PresenterWindow", () => {
     expect(presentationHarness.close).toHaveBeenCalled();
   });
 });
+
+describe("PresenterWindow loading and failures", () => {
+  it("shows progress while the slides and notes load", async () => {
+    presentationHarness.holdNotes = true;
+    render(<PresenterWindow />);
+
+    expect(screen.getByText(copy.loading)).toBeInTheDocument();
+    expect(await screen.findByText(copy.notesLoading)).toBeInTheDocument();
+    act(() => presentationHarness.releaseNotes());
+    expect(await screen.findByTestId("presenter-notes")).toHaveTextContent("Explain the latency budget");
+  });
+
+  it("treats unreadable notes as no notes", async () => {
+    presentationHarness.failNotes = true;
+    render(<PresenterWindow />);
+
+    expect(await screen.findByText(copy.noNotes)).toBeInTheDocument();
+    expect(screen.queryByText(copy.notesLoading)).toBeNull();
+  });
+
+  it("explains slides that could not be opened", async () => {
+    presentationHarness.failLoad = true;
+    render(<PresenterWindow />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.failed);
+  });
+
+  it("refuses an address without a session", async () => {
+    window.history.replaceState({}, "", "/?view=presenter&project=deck");
+    render(<PresenterWindow />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(copy.failed);
+    expect(screen.queryByText(copy.notesLoading)).toBeNull();
+  });
+});

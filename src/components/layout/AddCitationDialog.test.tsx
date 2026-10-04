@@ -200,4 +200,23 @@ describe("AddCitationDialog", () => {
     await user.click(screen.getByRole("button", { name: copy.close }));
     await waitFor(() => expect(useCitationStore.getState().open).toBe(false));
   });
+
+  it("cites with the markup of a Markdown project", async () => {
+    const engine = useFilesStore.getState().engine;
+    useFilesStore.setState({
+      engine: { ...engine, capabilities: { ...engine.capabilities, formatting_profile: "markdown" } },
+    });
+    try {
+      mocks.resolveCitation.mockResolvedValue({ bibtex: "@article{b}" });
+      mocks.addCitation.mockResolvedValue({ key: "b" });
+      render(<AddCitationDialog />);
+      const user = userEvent.setup();
+      await user.type(screen.getByPlaceholderText(copy.placeholder), "10.1/y{Enter}");
+      await user.click(await screen.findByRole("button", { name: copy.confirm }));
+      await waitFor(() => expect(mocks.success).toHaveBeenCalledWith(copy.added.replace("{{cite}}", "[@b]")));
+    } finally {
+      useFilesStore.setState({ engine });
+    }
+  });
 });
+

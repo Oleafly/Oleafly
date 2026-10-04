@@ -404,4 +404,53 @@ describe("GitHubSection device flow", () => {
     await user.click(await screen.findByRole("button", { name: github.connect }));
     expect(await screen.findByText("network down")).toBeInTheDocument();
   });
+
+  it("gives up when GitHub never confirms the code in time", async () => {
+    vi.useFakeTimers();
+    mocks.requestDeviceCode.mockResolvedValue(deviceCode);
+    mocks.checkDeviceToken.mockResolvedValue({ status: "pending" });
+    try {
+      render(<GitHubSection />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      fireEvent.click(screen.getByRole("button", { name: github.connect }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      fireEvent.click(screen.getByRole("button", { name: deviceCode.verification_uri }));
+      expect(mocks.open).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(17 * 60 * 1000);
+      });
+
+      expect(screen.getByText(github.device.timedOut)).toBeInTheDocument();
+      expect(screen.queryByText(github.device.title)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reports a token GitHub handed back that does not work", async () => {
+    vi.useFakeTimers();
+    mocks.requestDeviceCode.mockResolvedValue(deviceCode);
+    mocks.checkDeviceToken.mockResolvedValue({ status: "token", token: "gho_revoked" });
+    mocks.github.connectWithToken.mockRejectedValue(new Error("Bad credentials"));
+    try {
+      render(<GitHubSection />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      fireEvent.click(screen.getByRole("button", { name: github.connect }));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000);
+      });
+
+      expect(screen.getByText("Bad credentials")).toBeInTheDocument();
+      expect(screen.queryByText(github.device.title)).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

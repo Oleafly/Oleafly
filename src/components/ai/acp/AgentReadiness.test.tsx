@@ -18,12 +18,13 @@ vi.mock("@/components/usage/UsageReport", () => ({
 
 import { acpCatalog, acpInstall, acpReadiness, type AcpAgentStatus, type AcpCliStatus } from "@/lib/acp";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { useSettingsStore } from "@/store/settings";
 import { useTerminalsStore } from "@/store/terminals";
 import { bridgeSourceLabel, readinessDetail } from "./agent-copy";
-import { BridgeInstallCard, openAgentSignInTerminal, signInCommandLine } from "./AgentReadiness";
+import { BridgeInstallCard, ReadinessBadge, openAgentSignInTerminal, signInCommandLine } from "./AgentReadiness";
 import { agent } from "./tests/ui-fixtures";
 
 const setup = enAi.acp.setup;
@@ -162,3 +163,29 @@ describe("terminal sign-in", () => {
     expect(useSettingsStore.getState().terminalOpen).toBe(true);
   });
 });
+
+describe("readiness states on the card", () => {
+  it("shows a ready badge", () => {
+    const ui = render(<ReadinessBadge readiness="ready" />);
+
+    expect(ui.container).toHaveTextContent(enCore.acp.readiness.ready);
+  });
+
+  it("reports a failed bridge install and lets the user try again", async () => {
+    const claude = agent("claude", {
+      definition: { ...agent().definition, id: "claude", name: "Claude Code", builtin: true },
+      installed: false, executable: null, canInstall: true,
+    });
+    vi.mocked(acpInstall).mockRejectedValue(new Error("npm could not reach the registry."));
+    const onError = vi.fn();
+    const onInstalled = vi.fn();
+    const ui = render(<BridgeInstallCard agent={claude} onError={onError} onInstalled={onInstalled} />);
+
+    fireEvent.click(ui.getByRole("button", { name: enAi.acp.installBridge }));
+
+    await waitFor(() => expect(onError).toHaveBeenCalledExactlyOnceWith("npm could not reach the registry."));
+    expect(onInstalled).not.toHaveBeenCalled();
+    expect(ui.getByRole("button", { name: enAi.acp.installBridge })).toBeEnabled();
+  });
+});
+

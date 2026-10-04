@@ -207,4 +207,33 @@ describe("GlobalNewProject", () => {
     });
     await waitFor(() => expect(start).toHaveBeenCalledWith("workspace"));
   });
+
+  it("does not start the workspace tour twice when it is already running", async () => {
+    const start = vi.fn(() => true);
+    render(<GlobalNewProject />);
+    createFromTemplate.mockImplementation(async () => {
+      useTourStore.setState({ activeTourId: "workspace", start });
+      return "proj-1";
+    });
+
+    await act(async () => {
+      screen.getByTestId("dialog-create").click();
+    });
+
+    expect(start).not.toHaveBeenCalled();
+    expect(useSettingsStore.getState().newProjectOpen).toBe(false);
+  });
+
+  it("logs templates it cannot reload", async () => {
+    render(<GlobalNewProject />);
+    await waitFor(() => expect(listTemplates).toHaveBeenCalledTimes(1));
+    listTemplates.mockRejectedValueOnce(new Error("catalog unreadable"));
+
+    await act(async () => {
+      screen.getByTestId("dialog-templates-changed").click();
+    });
+
+    await waitFor(() => expect(logError).toHaveBeenCalledWith("load templates", expect.any(Error)));
+  });
 });
+

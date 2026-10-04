@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   texDistributionGapNotice: vi.fn((_projectId: string): string | null => null),
   fileListeners: new Set<(state: unknown) => void>(),
   refreshPackages: vi.fn(),
+  engineInstalling: false,
+  queueCompileAfterInstall: vi.fn(),
   events: new Map<string, (event: { payload: string }) => void>(),
   listen: vi.fn(
     async (name: string, handler: (event: { payload: string }) => void) => {
@@ -127,7 +129,15 @@ vi.mock("@/lib/toast", () => ({
 vi.mock("@/store/typst-toolchain", () => ({
   useTypstToolchainStore: { getState: () => ({ installVersion: mocks.installTypstVersion }) },
 }));
-vi.mock("@/store/engine", () => ({ useEngineStore: { getState: () => ({ refreshPackages: mocks.refreshPackages }) } }));
+vi.mock("@/store/engine", () => ({
+  useEngineStore: {
+    getState: () => ({
+      refreshPackages: mocks.refreshPackages,
+      installing: mocks.engineInstalling,
+      queueCompileAfterInstall: mocks.queueCompileAfterInstall,
+    }),
+  },
+}));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/preview-window", () => ({
   refreshPreviewWindow: mocks.refreshPreviewWindow,
@@ -145,6 +155,7 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useProjectAvailabilityStore } from "@/store/project-availability";
 import {
   acceptCompileOffer,
+  beginCompileRequestIdentity,
   clearFolderPause,
   downloadMissingTypst,
   switchToDefaultTypst,
@@ -2195,5 +2206,205 @@ describe("a project pinned to a Typst version that is not installed", () => {
     });
     expect(mocks.refreshEngine).toHaveBeenCalledOnce();
     expect(mocks.errorUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("compile preferences", () => {
+  function storage(setItem?: () => void) {
+    const values = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: setItem ?? ((key: string, value: string) => void values.set(key, value)),
+      removeItem: (key: string) => void values.delete(key),
+    });
+    return values;
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("saves the compile mode, the syntax check and stop-on-first-error", () => {
+    const values = storage();
+    const store = useCompileStore.getState();
+
+    store.setCompileMode("fast");
+    store.setCheckSyntaxBeforeCompile(false);
+    store.setStopOnFirstError(true);
+
+    expect(useCompileStore.getState()).toMatchObject({
+      compileMode: "fast",
+      checkSyntaxBeforeCompile: false,
+      stopOnFirstError: true,
+    });
+    expect(values.get("oleafly:compile:mode")).toBe("fast");
+    expect(values.get("oleafly:compile:syntax-check")).toBe("0");
+    expect(values.get("oleafly:compile:stop-on-first-error")).toBe("1");
+  });
+
+  it("keeps the choices for the session when storage refuses them", () => {
+    storage(() => {
+      throw new Error("quota");
+    });
+
+    useCompileStore.getState().setCompileMode("fast");
+    useCompileStore.getState().setStopOnFirstError(true);
+
+    expect(useCompileStore.getState()).toMatchObject({ compileMode: "fast", stopOnFirstError: true });
+  });
+
+  it("dismisses an offer", () => {
+    useCompileStore.setState({ offer: { kind: "engine-gap", projectId: "project", findings: [] } as never });
+
+    useCompileStore.getState().dismissOffer();
+
+    expect(useCompileStore.getState().offer).toBeNull();
+  });
+
+  it("records a live preview status only for the project that has it on", () => {
+    useCompileStore.setState({ livePreview: { projectId: "project", enabled: true, status: "off", message: null } });
+
+    useCompileStore.getState().setLivePreviewStatus("other", "failed", "nope");
+    expect(useCompileStore.getState().livePreview.status).toBe("off");
+
+    useCompileStore.getState().setLivePreviewStatus("project", "failed", "server stopped");
+    expect(useCompileStore.getState().livePreview).toMatchObject({ status: "failed", message: "server stopped" });
+  });
+});
+
+describe("compile request identities", () => {
+  it("starts a newer identity for the open project's revision each time", () => {
+    const first = beginCompileRequestIdentity("project", "main.tex");
+    const second = beginCompileRequestIdentity("other", "paper.tex");
+
+    expect(first).toMatchObject({ projectId: "project", mainDocument: "main.tex", projectRevision: 0 });
+    expect(second).toMatchObject({ projectId: "other", mainDocument: "paper.tex", projectRevision: 0 });
+    expect(second.requestGeneration).toBeGreaterThan(first.requestGeneration);
+  });
+});
+
+describe("compile progress phases", () => {
+  it("shows package downloads and then the build from the compiler output", async () => {
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+    const compile = deferred<typeof compileFailure>();
+    mocks.compileProject.mockReturnValue(compile.promise);
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", vi.fn((callback: FrameRequestCallback) => frames.push(callback)));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    try {
+      const compiling = useCompileStore.getState().recompile();
+      await vi.waitFor(() => expect(mocks.events.has("compile:log")).toBe(true));
+      const emit = (chunk: string) => mocks.events.get("compile:log")?.({ payload: chunk });
+
+      emit("note: downloading index\n");
+      frames.shift()?.(0);
+      expect(useCompileStore.getState().phase).toBe("downloading");
+
+      emit("note: still fetching bundle\n");
+      frames.shift()?.(0);
+      expect(useCompileStore.getState().phase).toBe("downloading");
+
+      emit("Running xetex\n");
+      frames.shift()?.(0);
+      expect(useCompileStore.getState().phase).toBe("building");
+
+      emit("plain output\n");
+      frames.shift()?.(0);
+      expect(useCompileStore.getState().phase).toBe("building");
+
+      compile.resolve(compileFailure);
+      await compiling;
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+const compileFailure = {
+  ok: false,
+  has_pdf: false,
+  output_id: null,
+  output_revision: null,
+  log: "",
+  errors: [],
+  synctex_path: null,
+  out_dir: null,
+  compile_time_ms: 1,
+};
+
+describe("compile gates", () => {
+  afterEach(() => {
+    mocks.engineInstalling = false;
+    mocks.queueCompileAfterInstall.mockReset();
+    useProjectAvailabilityStore.getState().reset(null);
+  });
+
+  it("waits for a TinyTeX install instead of compiling without TeX", async () => {
+    mocks.engineInstalling = true;
+    mocks.files.engine = {
+      ...LATEX_ENGINE,
+      capabilities: { ...LATEX_ENGINE.capabilities, compiler_prerequisite: "system_tex" },
+    };
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.queueCompileAfterInstall).toHaveBeenCalledWith("explicit");
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: "TinyTeX is still downloading. This compile starts automatically when it finishes.",
+    });
+  });
+
+  it("compiles with system TeX once no install is running", async () => {
+    mocks.files.engine = {
+      ...LATEX_ENGINE,
+      capabilities: { ...LATEX_ENGINE.capabilities, compiler_prerequisite: "system_tex" },
+    };
+    mocks.compileProject.mockResolvedValue(compileFailure);
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+
+    await useCompileStore.getState().recompile();
+
+    expect(mocks.queueCompileAfterInstall).not.toHaveBeenCalled();
+    expect(mocks.compileProject).toHaveBeenCalled();
+  });
+
+  it("reports a build directory that cannot be cleared and does not compile", async () => {
+    const failure = new Error("directory in use");
+    mocks.clearBuildDir.mockRejectedValue(failure);
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+
+    await useCompileStore.getState().recompile({ fromScratch: true });
+
+    expect(mocks.notifyError).toHaveBeenCalledWith("clear build directory", failure);
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
+  it("pauses when the folder disappears while saving before the compile", async () => {
+    useProjectAvailabilityStore.getState().reset("project");
+    mocks.files.files["main.tex"].dirty = true;
+    mocks.saveActive.mockRejectedValue(
+      `@oleafly/error:${JSON.stringify({ code: "project.linked_missing", params: { folder: "x" }, detail: null })}`,
+    );
+
+    await useCompileStore.getState().recompile();
+
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.folderUnavailable.compile,
+    });
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    mocks.files.files["main.tex"].dirty = false;
+  });
+
+  it("counts every syntax error it found in the log", async () => {
+    mocks.readFileContent.mockResolvedValue("\\begin{document}\n\\begin{itemize}\nunclosed\n");
+
+    await useCompileStore.getState().recompile();
+
+    const state = useCompileStore.getState();
+    expect(state.errors.length).toBeGreaterThan(1);
+    expect(state.log).toContain(`Syntax check found ${state.errors.length} errors in main.tex`);
   });
 });

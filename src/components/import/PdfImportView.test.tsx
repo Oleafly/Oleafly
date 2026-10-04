@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const createProjectFromConversion = vi.fn(async () => {});
 const downloadFigure = vi.fn(async () => {});
@@ -11,6 +11,7 @@ const refineAvailable = vi.fn(async () => false);
 const refineWithAi = vi.fn(async () => {});
 const pdfPageToPng = vi.fn(async () => "data:image/png;base64,page");
 const toastSuccess = vi.fn();
+const toastError = vi.fn();
 const notifyError = vi.fn();
 
 vi.mock("@/features/import", () => ({
@@ -34,7 +35,7 @@ vi.mock("@/lib/toast", () => ({
   notifyError: (...args: unknown[]) => notifyError(...args),
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
-    error: vi.fn(),
+    error: (...args: unknown[]) => toastError(...args),
     info: vi.fn(),
     update: vi.fn(),
     dismiss: vi.fn(),
@@ -395,5 +396,36 @@ describe("PdfImportView converted document", () => {
         enLibrary.pdfImport.pageAlt.replace("{{page}}", "1"),
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("turns away a file that is not a PDF", () => {
+    toastError.mockClear();
+    handlePickedFile.mockClear();
+    render(<PdfImportView />);
+
+    fireEvent.drop(screen.getByTestId("pdf-dropzone"), {
+      dataTransfer: { files: [new File(["x"], "paper.docx")] },
+    });
+    fireEvent.drop(screen.getByTestId("pdf-dropzone"), { dataTransfer: { files: [] } });
+
+    expect(toastError).toHaveBeenCalledWith(enLibrary.pdfImport.choosePdf);
+    expect(handlePickedFile).not.toHaveBeenCalled();
+  });
+
+  it("transcribes a scanned document on request and then stops offering it", () => {
+    const transcribeScan = vi.fn(async () => {});
+    seedConverted({
+      result: { ...RESULT, report: { ...RESULT.report, likelyScanned: true } },
+      scanTranscribed: false,
+      transcribeScan,
+    });
+    render(<PdfImportView />);
+
+    fireEvent.click(screen.getByTestId("import-transcribe-scan"));
+    expect(transcribeScan).toHaveBeenCalledTimes(1);
+
+    act(() => useImportStore.setState({ scanTranscribed: true }));
+    expect(screen.queryByTestId("import-transcribe-scan")).toBeNull();
+    expect(screen.queryByText(enLibrary.pdfImport.disclaimer)).toBeNull();
   });
 });

@@ -198,4 +198,107 @@ describe("ResearchProjectSetup preview admission", () => {
       [{ projectId: "existing-project", title: enResearchTools.setup.starter.article.task, prompt: "Plan Study as article in latex", starter: "article" }],
     ]);
   });
+
+  it("explains a project whose first task and opening both failed", async () => {
+    native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {
+      if (command === "preview_research_project") return Promise.resolve(preview(args.request));
+      if (command === "create_research_project") return Promise.resolve("half-project");
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    const input = props();
+    input.ensureInitialTask.mockRejectedValueOnce(new Error("task store locked"));
+    input.onCreated.mockRejectedValueOnce(new Error("project busy"));
+    render(<ResearchProjectSetup {...input} />);
+    await fill(enResearchTools.setup.nameLabel, "Study");
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeEnabled());
+
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.setup.create }));
+
+    const alert = await page().findByRole("alert");
+    expect(alert).toHaveTextContent("task store locked");
+    expect(alert).toHaveTextContent("project busy");
+    expect(alert).toHaveTextContent(/couldn't save its first task or open the project/);
+    expect(input.onClose).not.toHaveBeenCalled();
+  });
+
+  it("asks to retry opening a project that is otherwise ready", async () => {
+    native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {
+      if (command === "preview_research_project") return Promise.resolve(preview(args.request));
+      if (command === "create_research_project") return Promise.resolve("ready-project");
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    const input = props();
+    input.onCreated.mockRejectedValueOnce(new Error("window closed"));
+    render(<ResearchProjectSetup {...input} />);
+    await fill(enResearchTools.setup.nameLabel, "Study");
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeEnabled());
+
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.setup.create }));
+
+    expect(await page().findByRole("alert")).toHaveTextContent(
+      enResearchTools.setup.errorOpen.replace("{{detail}}", "window closed"),
+    );
+  });
+
+  it("shows why the project itself could not be created", async () => {
+    native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {
+      if (command === "preview_research_project") return Promise.resolve(preview(args.request));
+      if (command === "create_research_project") return Promise.reject(new Error("name taken"));
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    const input = props();
+    render(<ResearchProjectSetup {...input} />);
+    await fill(enResearchTools.setup.nameLabel, "Study");
+    await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeEnabled());
+
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.setup.create }));
+
+    expect(await page().findByRole("alert")).toHaveTextContent(/^name taken$/);
+    expect(page().getByRole("button", { name: enResearchTools.setup.create })).toBeEnabled();
+    expect(input.ensureInitialTask).not.toHaveBeenCalled();
+  });
+
+  it("browses the previewed files and describes each starter", async () => {
+    native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {
+      if (command === "preview_research_project") {
+        const base = preview(args.request);
+        return Promise.resolve({
+          ...base,
+          files: [
+            ...base.files,
+            { path: "chapters", kind: "directory", content: "" },
+            { path: "chapters/intro.tex", kind: "file", content: "Introduction text" },
+            { path: "README", kind: "file", content: "Plain readme" },
+          ],
+        });
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    render(<ResearchProjectSetup {...props()} />);
+    expect(page().getByText(enResearchTools.setup.previewEmpty)).toBeInTheDocument();
+    select(enResearchTools.setup.starterLabel, enResearchTools.setup.starter.thesis.label);
+    expect(page().getByText(enResearchTools.setup.starter.thesis.description)).toBeInTheDocument();
+    select(enResearchTools.setup.starterLabel, enResearchTools.setup.starter.literatureReview.label);
+    expect(page().getByText(enResearchTools.setup.starter.literatureReview.description)).toBeInTheDocument();
+    await fill(enResearchTools.setup.nameLabel, "Review");
+
+    const files = await page().findByRole("list", { name: enResearchTools.setup.previewFiles });
+    expect(within(files).getByText("chapters")).toBeInTheDocument();
+    expect(within(files).queryByRole("button", { name: "chapters" })).not.toBeInTheDocument();
+    fireEvent.click(within(files).getByRole("button", { name: "intro.tex" }));
+    expect(within(files).getByRole("button", { name: "intro.tex" })).toHaveAttribute("aria-pressed", "true");
+    expect(page().getByText("Introduction text")).toBeInTheDocument();
+    fireEvent.click(within(files).getByRole("button", { name: "README" }));
+    expect(page().getByText("Plain readme")).toBeInTheDocument();
+  });
+
+  it("closes on Escape while nothing is being created", async () => {
+    native.invoke.mockImplementation(() => Promise.resolve(undefined));
+    const input = props();
+    render(<ResearchProjectSetup {...input} />);
+
+    fireEvent.keyDown(page().getByRole("dialog"), { key: "Escape" });
+
+    expect(input.onClose).toHaveBeenCalledOnce();
+  });
 });

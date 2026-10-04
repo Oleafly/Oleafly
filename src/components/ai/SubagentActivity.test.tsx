@@ -481,4 +481,142 @@ describe("SubagentActivity", () => {
     fireEvent.click(screen.getByTestId("subagent-stop-all"));
     await waitFor(() => expect(onError).toHaveBeenCalledWith(subagents.stopFailed));
   });
+
+  it("reads the last finished turn's answer and collapses the chip on a second click", async () => {
+    mocks.read.mockResolvedValue([
+      { ...TRANSCRIPT[0], items: [{ id: "a", item: { type: "agentMessage", text: "Early draft." }, completed: true }] },
+      {
+        ...TRANSCRIPT[0],
+        status: "interrupted",
+        items: [{ id: "b", item: { type: "agentMessage", text: "Cut off." }, completed: false }],
+      },
+    ]);
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "done", detail: "finished" },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+    const chip = screen.getByTestId("subagent-chip-agent-1");
+
+    fireEvent.click(chip);
+    expect(await screen.findByText("Early draft.")).toBeTruthy();
+    expect(screen.queryByText("Cut off.")).toBeNull();
+
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Early draft.")).toBeNull();
+  });
+
+  it("falls back to the only turn when every turn was interrupted", async () => {
+    mocks.read.mockResolvedValue([
+      { ...TRANSCRIPT[0], status: "interrupted", items: [{ id: "a", item: { type: "agentMessage" }, completed: false }] },
+    ]);
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "interrupted", detail: null },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+
+    expect(await screen.findByText(subagents.noFinalAnswer)).toBeTruthy();
+  });
+
+  it("ignores a transcript that arrives after the user moved to another chip", async () => {
+    let finishFirst: (value: unknown) => void = () => {};
+    mocks.read.mockImplementation((id: string) =>
+      id === "thread-agent-1"
+        ? new Promise((resolve) => { finishFirst = resolve; })
+        : Promise.resolve([{ ...TRANSCRIPT[0], items: [{ id: "x", item: { type: "agentMessage", text: "Second answer." }, completed: true }] }]),
+    );
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "done", detail: null },
+      { kind: "subagentUpdate", id: "agent-2", label: "verify", state: "done", detail: null },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-2"));
+    expect(await screen.findByText("Second answer.")).toBeTruthy();
+    finishFirst(TRANSCRIPT);
+
+    await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("Found 3 papers.")).toBeNull();
+    expect(screen.getByText("Second answer.")).toBeTruthy();
+  });
+
+  it("ignores a failed transcript read that is no longer current", async () => {
+    let failFirst: (reason: unknown) => void = () => {};
+    mocks.read.mockImplementation((id: string) =>
+      id === "thread-agent-1"
+        ? new Promise((_resolve, reject) => { failFirst = reject; })
+        : Promise.resolve(TRANSCRIPT),
+    );
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "done", detail: null },
+      { kind: "subagentUpdate", id: "agent-2", label: "verify", state: "done", detail: null },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} />);
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-2"));
+    await screen.findByText("Found 3 papers.");
+    failFirst(new Error("late"));
+
+    await Promise.resolve();
+    expect(screen.queryByText(subagents.transcriptFailed)).toBeNull();
+  });
+
+  it("ignores ACP transcripts that finish after the chat changed", async () => {
+    const pending: Array<{ resolve: (value: unknown) => void; reject: (reason: unknown) => void }> = [];
+    mocks.acpEvents.mockImplementation(() => new Promise((resolve, reject) => { pending.push({ resolve, reject }); }));
+    for (const chat of ["chat-1", "chat-2"]) {
+      seedChat(chat, [{
+        kind: "subagentUpdate", id: "agent-1", label: "survey", state: "done", detail: null,
+        runtime: "acp", sessionId: "acp-session", providerId: null, modelId: null, agentId: "codex",
+      }]);
+    }
+    const view = render(
+      <SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} projectId="project-1" />,
+    );
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    view.rerender(<SubagentActivity chatId="chat-2" streaming={false} activeRunId={() => null} projectId="project-1" />);
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-1"));
+    view.rerender(<SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} projectId="project-1" />);
+    pending[0].resolve({ hasMore: false, events: [] });
+    pending[1].reject(new Error("late"));
+
+    await waitFor(() => expect(mocks.acpEvents).toHaveBeenCalledTimes(2));
+    expect(screen.getByTestId("subagent-chip-agent-1")).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(subagents.transcriptFailed)).toBeNull();
+    expect(screen.queryByText(subagents.noTranscriptYet)).toBeNull();
+  });
+
+  it("does nothing on stop-all when no run is active", async () => {
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "survey", state: "started", detail: null },
+    ]);
+    render(<SubagentActivity chatId="chat-1" streaming={true} activeRunId={() => null} />);
+
+    fireEvent.click(screen.getByTestId("subagent-stop-all"));
+
+    await Promise.resolve();
+    expect(mocks.stop).not.toHaveBeenCalled();
+  });
+
+  it("opens a child without a recorded session through its thread id", async () => {
+    const openSession = vi.fn();
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-7", label: "survey", state: "done", detail: "finished" },
+    ]);
+    render(
+      <SubagentActivity chatId="chat-1" streaming={false} activeRunId={() => null} onOpenSession={openSession} />,
+    );
+
+    fireEvent.click(screen.getByTestId("subagent-chip-agent-7"));
+    await waitFor(() => expect(mocks.read).toHaveBeenCalledWith("thread-agent-7"));
+    fireEvent.click(screen.getByRole("button", { name: "Open task" }));
+
+    expect(openSession).toHaveBeenCalledWith("thread-agent-7", null);
+  });
 });
+

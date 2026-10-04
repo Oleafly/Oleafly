@@ -4,6 +4,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
+import { useFilesStore } from "@/store/files";
 
 const themeMocks = vi.hoisted(() => ({
   preference: "system" as "system" | "light" | "dark",
@@ -115,4 +116,33 @@ describe("HomeDock", () => {
     expect(themeMocks.setPreference).toHaveBeenCalledWith("dark");
     expect(screen.getByTestId("home-theme-menu")).toHaveAttribute("aria-expanded", "false");
   });
+
+  it("opens new project, search and settings from the dock", () => {
+    useFilesStore.setState({ projects: [{ id: "p1" }] as never });
+    useSettingsStore.setState({ newProjectOpen: false, searchOpen: false, settingsOpen: false });
+    render(<HomeDock />);
+
+    fireEvent.click(screen.getByTestId("new-project"));
+    fireEvent.click(screen.getByTestId("open-search"));
+    fireEvent.click(screen.getByTestId("open-settings"));
+
+    expect(useSettingsStore.getState()).toMatchObject({ newProjectOpen: true, searchOpen: true, settingsOpen: true });
+  });
+
+  it("offers search only once there are projects", () => {
+    useFilesStore.setState({ projects: [] });
+    render(<HomeDock />);
+
+    expect(screen.queryByTestId("open-search")).toBeNull();
+  });
+
+  it("docks on the right edge", () => {
+    useSettingsStore.setState({ dockPlacement: "right" });
+    render(<HomeDock />);
+
+    const dock = screen.getByTestId("home-dock");
+    expect(dock).toHaveAttribute("data-placement", "right");
+    expect(dock.parentElement?.className).toContain("right-0");
+  });
 });
+

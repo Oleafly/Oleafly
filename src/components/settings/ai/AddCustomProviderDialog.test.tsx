@@ -189,3 +189,69 @@ describe("AddCustomProviderDialog", () => {
     );
   });
 });
+
+describe("AddCustomProviderDialog validation", () => {
+  const errors = enSettings.ai.customProvider.errors;
+
+  it.each([
+    ["Acme Corp", "https://api.acme.test/v1", "custom-provider-id-error", errors.idFormat],
+    ["acme", "ftp://files.acme.test", "custom-provider-baseurl-error", errors.baseUrlProtocol],
+    ["acme", "not a url", "custom-provider-baseurl-error", errors.baseUrlInvalid],
+  ])("rejects id %s with base URL %s", (id, baseURL, errorId, message) => {
+    const onSubmit = vi.fn();
+    render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+
+    fill("custom-provider-id", id);
+    fill("custom-provider-name", "Acme");
+    fill("custom-provider-baseurl", baseURL);
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+
+    expect(screen.getByTestId(errorId)).toHaveTextContent(message);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("submits with Enter in a field and sends a typed key", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ ok: true });
+    render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+
+    fill("custom-provider-id", "acme");
+    fill("custom-provider-name", "Acme");
+    fill("custom-provider-baseurl", "http://localhost:1234/v1");
+    fill("custom-provider-key", "sk-local");
+    fireEvent.keyDown(screen.getByTestId("custom-provider-baseurl"), { key: "Enter" });
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith({
+        id: "acme",
+        name: "Acme",
+        baseURL: "http://localhost:1234/v1",
+        apiKey: "sk-local",
+      }),
+    );
+  });
+
+  it("falls back to a generic message when the save gives no reason", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ ok: false });
+    const { unmount } = render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+    fill("custom-provider-id", "acme");
+    fill("custom-provider-name", "Acme");
+    fill("custom-provider-baseurl", "https://api.acme.test/v1");
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    expect(await screen.findByText(errors.addFailed)).toBeInTheDocument();
+    unmount();
+
+    render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} editing={ACME} />);
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    expect(await screen.findByText(errors.saveFailed)).toBeInTheDocument();
+  });
+
+  it("clears the form when it closes", () => {
+    const onOpenChange = vi.fn();
+    render(<AddCustomProviderDialog open onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
+    fill("custom-provider-id", "draft");
+
+    fireEvent.keyDown(screen.getByTestId("custom-provider-id"), { key: "Escape" });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});

@@ -423,3 +423,106 @@ describe("buildLatexInsights on research seeds", () => {
     expect(metadata.authors).toHaveLength(4);
   });
 });
+
+describe("buildLatexInsights floats, labels and sources", () => {
+  it("lists captions set with captionof inside and outside boxes", () => {
+    const main = String.raw`\captionof{figure}{Preamble caption}
+\begin{document}
+\begin{minipage}{\linewidth}
+\captionof{figure}{A side figure}\label{fig:side}
+\end{minipage}
+\captionof{table}{Loose table}
+\label{tab:loose}
+\captionof{figure}
+\end{document}`;
+    const insights = insightsOf(main);
+
+    expect(insights.figures.map((entry) => [entry.text, entry.label])).toEqual([["A side figure", "fig:side"]]);
+    expect(insights.tables.map((entry) => [entry.text, entry.label])).toEqual([["Loose table", "tab:loose"]]);
+  });
+
+  it("lists sub-floats only on their own and keeps every caption of a float", () => {
+    const main = String.raw`\begin{document}
+\begin{figure}
+\begin{subfigure}{0.5\linewidth}\caption{Left}\label{fig:left}\end{subfigure}
+\caption{Both panels}\label{fig:both}
+\end{figure}
+\begin{figure}
+\caption{First}\label{fig:first}
+\caption*{Second}
+\end{figure}
+\begin{longtable}{ll}
+\caption{Rates}\label{tab:rates}\\
+a & b \\
+\caption[]{Rates continued}\\
+\end{longtable}
+\begin{subfigure}{1in}\caption{Lonely}\end{subfigure}
+\end{document}`;
+    const insights = insightsOf(main);
+
+    expect(insights.figures.map((entry) => [entry.text, entry.label, entry.numbered])).toEqual([
+      ["Both panels", "fig:both", true],
+      ["First", "fig:first", true],
+      ["Second", null, false],
+      ["Lonely", null, true],
+    ]);
+    expect(insights.tables.map((entry) => [entry.text, entry.label])).toEqual([["Rates", "tab:rates"]]);
+  });
+
+  it("names a label before the first heading as other and lists a repeated label once", () => {
+    const main = String.raw`\begin{document}
+\label{top}
+\section{A}\label{sec:a}
+\label{sec:a}
+\end{document}`;
+
+    expect(insightsOf(main).labels.map((label) => [label.name, label.kind])).toEqual([
+      ["top", "other"],
+      ["sec:a", "heading"],
+    ]);
+  });
+
+  it("skips includes that leave the project, point at folders or loop back", () => {
+    const main = String.raw`\begin{document}
+\input{../outside}
+\input{./}
+\input{main}
+\section{unclosed
+\end{document}`;
+
+    expect(missingLatexSources("main.tex", { "main.tex": main })).toEqual([]);
+    expect(insightsOf(main).headings).toEqual([]);
+  });
+
+  it("reports each missing bibliography once and loads biblatex resources", () => {
+    const main = String.raw`\bibliography{refs,refs}
+\addbibresource{refs.bib}
+\bibliography{gone}
+\bibliography{gone}
+\begin{document}\cite{smith2020}\end{document}`;
+    const texts = { "main.tex": main, "refs.bib": REFS };
+
+    const missing = missingLatexSources("main.tex", texts);
+    expect(missing).toHaveLength(1);
+    expect(missing[0]).toContain("gone.bib");
+    expect(buildLatexInsights({ mainDoc: "main.tex", texts: { ...texts, "gone.bib": "@misc{other}" } }).citations).toEqual([
+      expect.objectContaining({ key: "smith2020", count: 1, unresolved: false }),
+    ]);
+  });
+
+  it("leaves out an empty title and abstract and returns nothing without the main file", () => {
+    const main = String.raw`\title{}
+\begin{document}
+\begin{abstract}
+
+\end{abstract}
+\end{document}`;
+
+    expect(insightsOf(main).metadata).toMatchObject({ title: null, abstract: null });
+    expect(buildLatexInsights({ mainDoc: "absent.tex", texts: { "main.tex": main } })).toMatchObject({
+      headings: [],
+      labels: [],
+      metadata: { title: null, authors: [] },
+    });
+  });
+});

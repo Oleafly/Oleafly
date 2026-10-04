@@ -343,4 +343,13 @@ describe("FolderUnavailableDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: enCommon.actions.cancel }));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("closes on Escape", () => {
+    show("offline");
+
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
+

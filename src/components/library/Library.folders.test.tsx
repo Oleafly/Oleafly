@@ -687,3 +687,43 @@ describe("folder search", () => {
     expect(screen.queryByRole("button", { name: "Open Thesis" })).toBeNull();
   });
 });
+
+describe("folder menu outcomes", () => {
+  it("opens a reachable folder from its menu", async () => {
+    await renderLibrary();
+    openActions("Thesis");
+
+    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.projects.openProject }));
+
+    await waitFor(() => expect(openProject).toHaveBeenCalledWith("linked-thesis"));
+  });
+
+  it("keeps the folder when the removal is cancelled", async () => {
+    await renderLibrary();
+    openActions("Thesis");
+    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.folder.menu.remove }));
+
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(removeLinkedProject).not.toHaveBeenCalled();
+  });
+
+  it("confirms a removal even when the library list cannot refresh afterwards", async () => {
+    await renderLibrary();
+    refreshProjects.mockRejectedValue(new Error("list failed"));
+    openActions("Thesis");
+    fireEvent.click(await screen.findByRole("menuitem", { name: enLibrary.folder.menu.remove }));
+
+    fireEvent.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", { name: new RegExp(enLibrary.folder.remove.confirm) }),
+    );
+
+    await waitFor(() =>
+      expect(toastSuccess).toHaveBeenCalledWith(enLibrary.folder.remove.done.replace("{{name}}", "Thesis")),
+    );
+    expect(notifyError).not.toHaveBeenCalled();
+  });
+});

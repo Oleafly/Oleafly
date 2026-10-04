@@ -288,3 +288,41 @@ describe("MentionMenu with agents", () => {
     expect(onSelect).toHaveBeenCalledExactlyOnceWith({ kind: "agent", target: AGENTS[1], text: "@reviewer " });
   });
 });
+
+describe("MentionMenu pointer and stray input", () => {
+  it("skips blank paths in the tree", () => {
+    expect(paths(buildMentionEntries([{ path: "  ", is_dir: false }, { path: "/", is_dir: true }, { path: "a.tex", is_dir: false }]))).toEqual([
+      "a.tex",
+    ]);
+  });
+
+  it("follows the pointer over a file, keeps focus in the composer, and ignores other keys", () => {
+    const ref = createRef<MentionMenuHandle>();
+    const onSelect = vi.fn();
+    const entries = buildMentionEntries([{ path: "a.tex", is_dir: false }, { path: "b.tex", is_dir: false }]);
+    render(<MentionMenu ref={ref} entries={entries} onSelect={onSelect} onClose={() => {}} />);
+    const second = screen.getAllByRole("option")[1];
+
+    fireEvent.mouseEnter(second);
+    expect(second).toHaveAttribute("aria-selected", "true");
+    expect(fireEvent.mouseDown(second)).toBe(false);
+    let handled = true;
+    act(() => {
+      handled = ref.current?.handleKeyDown(keyEvent("x")) ?? true;
+    });
+    expect(handled).toBe(false);
+    act(() => void ref.current?.handleKeyDown(keyEvent("Enter")));
+
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ kind: "file", path: "b.tex" }));
+  });
+
+  it("follows the pointer over an agent", () => {
+    render(<MentionMenu entries={[]} agents={AGENTS} onSelect={() => {}} onClose={() => {}} />);
+    const option = screen.getByRole("option", { name: /CLI reviewer/ });
+
+    fireEvent.mouseEnter(option);
+
+    expect(option).toHaveAttribute("aria-selected", "true");
+  });
+});
+

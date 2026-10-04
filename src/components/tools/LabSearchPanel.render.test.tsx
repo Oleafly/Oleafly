@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
-import { LabSearchPanel } from "@/components/tools/LabSearchPanel";
+import { LabSearchPanel, parseInstitutionSearchResult, safeInstitutionUrl } from "@/components/tools/LabSearchPanel";
 import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
@@ -267,3 +268,63 @@ describe("LabSearchToolView", () => {
     expect(screen.getByTestId("lab-search-panel")).toBeInTheDocument();
   });
 });
+
+describe("institution search payloads", () => {
+  it("drops malformed records and keeps only web links", () => {
+    expect(parseInstitutionSearchResult(null)).toEqual({ results: [], total: 0 });
+    expect(parseInstitutionSearchResult({ results: "nope" })).toEqual({ results: [], total: 0 });
+
+    const parsed = parseInstitutionSearchResult({
+      results: [
+        "not a record",
+        { id: "https://openalex.org/I1" },
+        { id: "https://openalex.org/I2", display_name: "  Lab Two  ", works_count: -5, geo: "nowhere", homepage_url: "ftp://lab.example" },
+      ],
+      meta: { count: "12" },
+    });
+
+    expect(parsed.total).toBe(12);
+    expect(parsed.results).toEqual([
+      expect.objectContaining({ id: "https://openalex.org/I2", displayName: "Lab Two", worksCount: 0, city: null, homepageUrl: null }),
+    ]);
+    expect(safeInstitutionUrl("not a url")).toBeNull();
+    expect(safeInstitutionUrl("http://lab.example/")).toBe("http://lab.example/");
+  });
+});
+
+describe("LabSearchPanel country and failures", () => {
+  it("searches again in the chosen country", async () => {
+    Element.prototype.hasPointerCapture = vi.fn(() => false);
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+    Element.prototype.scrollIntoView = vi.fn();
+    const user = userEvent.setup();
+    await searchFor("genomics", { results: [BROAD], meta: { count: 1 } });
+
+    await user.click(screen.getByRole("combobox", { name: enResearchTools.labSearch.countryAria }));
+    await user.click(await screen.findByRole("option", { name: new RegExp(enResearchTools.labSearch.country.de, "u") }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(String(fetchMock.mock.calls[1][0])).toContain("country_code%3ADE");
+    expect(await screen.findByText(/in Germany/u)).toBeInTheDocument();
+  });
+
+  it("explains offline mode when the form is sent and a failure that is not an error", async () => {
+    useSettingsStore.setState({ offline: true });
+    const { unmount } = render(<LabSearchPanel />);
+    fireEvent.change(searchField(), { target: { value: "genomics" } });
+    fireEvent.submit(searchField().closest("form") as HTMLFormElement);
+    expect(screen.getAllByText(enResearchTools.labSearch.offline).length).toBeGreaterThan(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    unmount();
+
+    useSettingsStore.setState({ offline: false });
+    fetchMock.mockRejectedValue("socket closed");
+    render(<LabSearchPanel />);
+    fireEvent.change(searchField(), { target: { value: "genomics" } });
+    fireEvent.click(submitButton());
+
+    expect(await screen.findByText(enResearchTools.labSearch.errorUnknown)).toBeInTheDocument();
+  });
+});
+

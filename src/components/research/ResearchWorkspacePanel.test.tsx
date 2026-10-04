@@ -228,4 +228,31 @@ describe("ResearchWorkspacePanel integration", () => {
     expect(page().queryByText("second data")).not.toBeInTheDocument();
     expect(within(page().getByRole("article")).getByText("Read only")).toBeInTheDocument();
   });
+
+  it("opens a CLI task's own session in the assistant", async () => {
+    const draft: ResearchTaskDraft = {
+      projectId: "paper", title: "Audit the cohort", prompt: "Audit", runtimeId: "acp",
+      agentId: "ready-cli", modelId: "", skillIds: [], dependencyIds: [],
+    };
+    const cliTask = { ...task(draft), status: "completed" as const, nativeSessionId: "native-1", sessionId: "session-1" };
+    native.invoke.mockImplementation(async (command) => {
+      if (command === "get_config") return {};
+      if (command === "acp_catalog") return [];
+      if (command === "research_task_list") return [cliTask];
+      if (command === "research_task_events") return { events: [], nextSequence: null };
+      return undefined;
+    });
+    const { useAssistantRuntimeStore } = await import("@/store/assistant-runtime");
+    useAssistantRuntimeStore.setState({ runtime: "built-in" });
+    useSettingsStore.setState({ assistantOpen: false });
+    useFilesStore.setState({ projectId: "paper" });
+    mount();
+
+    const list = await waitFor(() => page().getByRole("navigation", { name: enResearchTools.tasks.panel.listLabel }));
+    fireEvent.click(await within(list).findByText("Audit the cohort"));
+    fireEvent.click(await page().findByRole("button", { name: enResearchTools.tasks.detail.openSession }));
+
+    expect(useAssistantRuntimeStore.getState().runtime).toBe("acp");
+    expect(useSettingsStore.getState().assistantOpen).toBe(true);
+  });
 });

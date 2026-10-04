@@ -21,6 +21,7 @@ import { hayagrivaEntries, hayagrivaKeys } from "@/lib/citation/hayagriva";
 import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useFilesStore } from "@/store/files";
 import { useFolderAccessStore } from "@/store/folder-access";
+import { notifyError } from "@/lib/toast";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 const writeProjectFile = vi.fn(async () => {});
@@ -247,5 +248,71 @@ describe("runCiteOleaflyAction", () => {
 
     await runCiteOleaflyAction();
     expect(target).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("runCiteOleaflyAction outcomes", () => {
+  function markdownProject() {
+    useFilesStore.setState({
+      engine: {
+        ...useFilesStore.getState().engine,
+        id: "markdown",
+        capabilities: { ...useFilesStore.getState().engine.capabilities, formatting_profile: "markdown" },
+      },
+    });
+  }
+
+  it("shows the citation in the project's own markup", async () => {
+    typstProject();
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "@software{oleafly,\n title={x}}" });
+    await runCiteOleaflyAction();
+    expect(toasts.info).toHaveBeenCalledWith("refs.bib already has the Oleafly entry. Cite it with @oleafly.");
+
+    markdownProject();
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
+    await runCiteOleaflyAction();
+    expect(toasts.success).toHaveBeenCalledWith(
+      "Added the Oleafly entry to refs.bib. Cite it with [@oleafly].",
+      expect.objectContaining({ label: "Undo" }),
+    );
+  });
+
+  it("undoes from the toast and reports an undo that failed", async () => {
+    latexProject();
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
+    await runCiteOleaflyAction();
+    const action = toasts.success.mock.calls[0][1] as { onClick: () => void };
+    writeProjectFile.mockRejectedValueOnce(new Error("locked"));
+
+    action.onClick();
+
+    await vi.waitFor(() => expect(notifyError).toHaveBeenCalledWith("undo Oleafly citation", expect.any(Error)));
+  });
+
+  it("does not undo into a project that is no longer open", async () => {
+    target.mockResolvedValue({ path: "refs.bib", exists: true, content: "" });
+    const outcome = await citeOleafly();
+    if (outcome.kind !== "added") throw new Error("unreachable");
+    useFilesStore.setState({ projectId: "other" });
+
+    await outcome.undo();
+
+    expect(writeProjectFile).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the dialog without a project and reports a failure", async () => {
+    useFilesStore.setState({ projectId: null });
+    await runCiteOleaflyAction();
+    expect(useCiteOleaflyStore.getState().open).toBe(true);
+
+    useFilesStore.setState({ projectId: "paper" });
+    const failure = new Error("unreadable");
+    target.mockRejectedValue(failure);
+    await runCiteOleaflyAction();
+    expect(notifyError).toHaveBeenCalledWith(
+      "cite Oleafly",
+      failure,
+      "Could not add the Oleafly citation. Copy it from Settings, Help & About instead.",
+    );
   });
 });

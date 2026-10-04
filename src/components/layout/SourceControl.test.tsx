@@ -118,7 +118,16 @@ vi.mock("@/components/integrations/PublishToGitHubDialog", () => ({
 }));
 
 vi.mock("@/components/layout/GithubMenu", () => ({
-  GithubMenu: () => null,
+  GithubMenu: ({ onCopyLink, onOpenInGithub }: { onCopyLink: () => void; onOpenInGithub: () => void }) => (
+    <>
+      <button type="button" onClick={onCopyLink}>
+        {"github-menu-copy"}
+      </button>
+      <button type="button" onClick={onOpenInGithub}>
+        {"github-menu-open"}
+      </button>
+    </>
+  ),
 }));
 
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn() }));
@@ -1411,4 +1420,127 @@ describe("GitMissingGuide", () => {
   function missing() {
     return enShell.sourceControl.gitMissing;
   }
+});
+
+describe("SourceControl commit, sync and publish flows", () => {
+  const sourceControl = enShell.sourceControl;
+
+  it("commits with Enter in the title", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Add results{Enter}");
+
+    await waitFor(() => expect(mocks.gitCommit).toHaveBeenCalledWith("project-1", "Add results"));
+    expect(await screen.findByText(sourceControl.committed.replace("{{subject}}", "Add results"))).toBeInTheDocument();
+  });
+
+  it("pushes after a clean Commit & Sync", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Sync results");
+    await user.click(screen.getByRole("button", { name: sourceControl.commitActions }));
+    await user.click(screen.getByRole("menuitem", { name: sourceControl.commitAndSync }));
+
+    await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
+    expect(fileState.pullFromGit).toHaveBeenCalledWith("project-1");
+  });
+
+  it("names the sync step when the push after a commit fails", async () => {
+    const user = userEvent.setup();
+    mocks.gitPush.mockRejectedValue("offline");
+    render(<SourceControl />);
+
+    await user.type(await screen.findByTestId("commit-title"), "Sync results");
+    await user.click(screen.getByRole("button", { name: sourceControl.commitActions }));
+    await user.click(screen.getByRole("menuitem", { name: sourceControl.commitAndSync }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      sourceControl.committedRemoteFailed
+        .replace("{{step}}", sourceControl.sync.toLocaleLowerCase())
+        .replace("{{reason}}", "offline"),
+    );
+  });
+
+  it("syncs from the actions menu and stops before pushing into conflicts", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+    const openActions = async () => {
+      await user.click(await screen.findByRole("button", { name: "More Source Control actions" }));
+      return screen.getByRole("menu");
+    };
+
+    await user.click(within(await openActions()).getByRole("menuitem", { name: sourceControl.sync }));
+    await waitFor(() => expect(mocks.gitPush).toHaveBeenCalledWith("project-1"));
+
+    mocks.gitPush.mockClear();
+    fileState.pullFromGit.mockResolvedValue({
+      message: "Resolve conflicts",
+      outcome: "conflicts",
+      conflicts: [{ path: "paper/main.tex", status: "UU" }],
+      state: projectState,
+    });
+    await user.click(within(await openActions()).getByRole("menuitem", { name: sourceControl.sync }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Resolve conflicts");
+    expect(mocks.gitPush).not.toHaveBeenCalled();
+  });
+
+  it("discards every working change after confirmation", async () => {
+    const user = userEvent.setup();
+    render(<SourceControl />);
+
+    await screen.findByText("main.tex");
+    await user.click(screen.getByRole("button", { name: sourceControl.discardAll }));
+    await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: sourceControl.discard }));
+
+    await waitFor(() => expect(mocks.gitDiscardPaths).toHaveBeenCalledWith("project-1", ["paper/main.tex"], 1));
+  });
+
+  it("copies the GitHub link and reports a clipboard failure", async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("denied"));
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: "github-menu-copy" }));
+    expect(await screen.findByText(sourceControl.linkCopied)).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith("https://github.com/oleafly/research");
+
+    await user.click(screen.getByRole("button", { name: "github-menu-copy" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("denied");
+
+    await user.click(screen.getByRole("button", { name: "github-menu-open" }));
+    expect(open).toHaveBeenCalledWith("https://github.com/oleafly/research");
+  });
+
+  it("publishes a project without a repository and refreshes after publishing", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ initialized: false }));
+    render(<SourceControl />);
+
+    await user.click(await screen.findByRole("button", { name: sourceControl.publish }));
+    const props = () => mocks.publishDialog.mock.calls.at(-1)?.[0] as { open: boolean; onClose: () => void; onPublished: () => void };
+    await waitFor(() => expect(props().open).toBe(true));
+
+    const loads = mocks.gitWorkspaceSnapshot.mock.calls.length;
+    act(() => props().onPublished());
+    await waitFor(() => expect(mocks.gitWorkspaceSnapshot.mock.calls.length).toBeGreaterThan(loads));
+
+    act(() => props().onClose());
+    await waitFor(() => expect(props().open).toBe(false));
+  });
+
+  it("completes a merge once its conflicts are resolved", async () => {
+    const user = userEvent.setup();
+    mocks.gitWorkspaceSnapshot.mockResolvedValue(snapshot({ operation: "merge", conflicts: [] }));
+    render(<SourceControl />);
+
+    const complete = await screen.findByRole("button", { name: sourceControl.continueMerge });
+    expect(complete).toBeEnabled();
+    await user.click(complete);
+
+    await waitFor(() => expect(mocks.gitContinueMerge).toHaveBeenCalledWith("project-1", 1));
+  });
 });

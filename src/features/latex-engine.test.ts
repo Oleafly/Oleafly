@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   isCompileOutputStillWanted: vi.fn(() => true),
   refreshPreviewWindow: vi.fn(),
   compileState: {} as Record<string, unknown>,
+  engineInfo: { kind: "system", lualatex: "/usr/bin/lualatex" } as { kind: string; lualatex?: string } | null,
   files: {
     projectId: "project" as string | null,
     mainDoc: "main.tex",
@@ -71,9 +72,7 @@ vi.mock("@/store/preflight", () => ({
 }));
 vi.mock("@/store/engine", () => ({
   useEngineStore: {
-    getState: () => ({
-      info: { kind: "system", lualatex: "/usr/bin/lualatex" },
-    }),
+    getState: () => ({ info: mocks.engineInfo }),
   },
 }));
 vi.mock("@/lib/toast", () => ({
@@ -89,6 +88,7 @@ vi.mock("@/lib/preview-window", () => ({
   refreshPreviewWindow: mocks.refreshPreviewWindow,
 }));
 
+import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import {
   createCompileSuccessCheckpoint,
   fingerprintCompileOutput,
@@ -119,6 +119,8 @@ function checkpoint(bytes: Uint8Array, outputRevision: number) {
 beforeEach(() => {
   mocks.compileTagged.mockReset();
   mocks.readCompiledPdf.mockReset();
+  mocks.engineInfo = { kind: "system", lualatex: "/usr/bin/lualatex" };
+  mocks.captureCompileSourceSnapshot.mockReset().mockResolvedValue(null);
   mocks.saveActive.mockReset().mockResolvedValue(undefined);
   mocks.files.saveActive = mocks.saveActive;
   mocks.files.projectId = "project";
@@ -405,5 +407,86 @@ describe("tagged compile checkpoints", () => {
     expect(mocks.toast.info).not.toHaveBeenCalled();
     expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
     expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+});
+
+describe("tagged compile guards", () => {
+  it("asks for a TeX engine before compiling a tagged PDF", async () => {
+    mocks.engineInfo = { kind: "none" };
+    await compileTaggedAndVerify();
+    mocks.engineInfo = null;
+    await compileTaggedAndVerify();
+
+    expect(mocks.toast.info).toHaveBeenCalledTimes(2);
+    expect(mocks.toast.info).toHaveBeenCalledWith(enCore.tagged.engineRequired);
+    expect(mocks.compileTagged).not.toHaveBeenCalled();
+  });
+
+  it("reports a tagged compile that produced no PDF", async () => {
+    mocks.compileTagged.mockResolvedValue({
+      success: false,
+      has_pdf: false,
+      output_id: null,
+      output_revision: null,
+      log: "fatal error",
+    });
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileState).toMatchObject({
+      status: "error",
+      failureReason: "The tagged compile did not produce a valid PDF.",
+      log: "fatal error",
+    });
+    expect(mocks.refreshPreviewWindow).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "error", message: "The tagged compile did not produce a valid PDF." }),
+    );
+    expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
+    expect(mocks.toast.errorUnique).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not report a missing PDF for a compile that another one replaced", async () => {
+    mocks.compileTagged.mockImplementation(async () => {
+      mocks.isCompileOutputStillWanted.mockReturnValue(false);
+      return { success: false, has_pdf: false, output_id: null, output_revision: null, log: "x" };
+    });
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileState.status).not.toBe("error");
+    expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
+  });
+
+  it("does not start when the project changes while the sources are captured", async () => {
+    mocks.captureCompileSourceSnapshot.mockImplementation(async () => {
+      mocks.files.projectId = "other";
+      return null;
+    });
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileTagged).not.toHaveBeenCalled();
+    expect(mocks.compileState.status).toBe("success");
+  });
+
+  it("drops a result that arrives after the project changed", async () => {
+    mocks.compileTagged.mockImplementation(async () => {
+      mocks.files.projectId = "other";
+      return { success: true, has_pdf: true, output_id: "x", output_revision: 3, log: "" };
+    });
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.readCompiledPdf).not.toHaveBeenCalled();
+    expect(mocks.toast.successUnique).not.toHaveBeenCalled();
+  });
+
+  it("compiles in the default lane without an open project", async () => {
+    mocks.files.projectId = null;
+    mocks.compileTagged.mockResolvedValue({ success: false, has_pdf: false, output_id: null, output_revision: null, log: "" });
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.compileTagged).toHaveBeenCalledWith("default", "main.tex");
   });
 });

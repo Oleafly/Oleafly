@@ -4,7 +4,7 @@ import { useState } from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ModelSelector } from "./ModelSelector";
+import { ModelSelector, ModelTrustBadge } from "./ModelSelector";
 
 Element.prototype.scrollIntoView = vi.fn();
 
@@ -234,3 +234,52 @@ describe("ModelSelector", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("ModelSelector labels and reset", () => {
+  it("names a model that is not in the list by its id, and asks for a model when none is set", () => {
+    const { rerender } = render(
+      <ModelSelector providerId="openai" modelId="gpt-legacy" groups={groups} onChange={vi.fn()} />,
+    );
+    expect(screen.getByRole("combobox", { name: "AI model" })).toHaveTextContent("gpt-legacy");
+
+    rerender(<ModelSelector providerId="" modelId="" groups={groups} onChange={vi.fn()} />);
+    expect(screen.getByRole("combobox", { name: "AI model" })).toHaveTextContent("Select a model");
+  });
+
+  it("forgets the search when the picker closes", () => {
+    render(<ModelSelector providerId="openai" modelId="gpt-5.6-luna" groups={groups} onChange={vi.fn()} />);
+    const trigger = screen.getByRole("combobox", { name: "AI model" });
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByRole("combobox", { name: "Search models" }), { target: { value: "sonnet" } });
+
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Search models" }), { key: "Escape" });
+    expect(screen.queryByRole("combobox", { name: "Search models" })).toBeNull();
+    fireEvent.click(trigger);
+
+    expect(screen.getByRole("combobox", { name: "Search models" })).toHaveValue("");
+    expect(screen.getByText("GPT-5.6 Sol")).toBeInTheDocument();
+  });
+});
+
+describe("ModelTrustBadge", () => {
+  it("renders nothing for a model with no trust verdict", () => {
+    const { container } = render(<ModelTrustBadge trust={undefined} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("makes a blocked badge reachable by keyboard and reads out its reason", () => {
+    render(<ModelTrustBadge trust="blocked" reason="Fails tool calls." focusable />);
+
+    const badge = screen.getByTestId("ai-model-trust-blocked");
+    expect(badge.tagName).toBe("BUTTON");
+    expect(badge).toHaveTextContent("Blocked. Fails tool calls.");
+  });
+
+  it("keeps other verdicts as plain labels even when focusable", () => {
+    render(<ModelTrustBadge trust="verified" focusable />);
+
+    expect(screen.getByTestId("ai-model-trust-verified").tagName).toBe("SPAN");
+  });
+});
+

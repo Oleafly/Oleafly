@@ -104,3 +104,126 @@ describe("PresentationWindow", () => {
     expect(await screen.findByText(copy.failed)).toBeInTheDocument();
   });
 });
+
+describe("PresentationWindow details", () => {
+  it("hides the cursor after the pointer rests and shows it again on movement", async () => {
+    render(<PresentationWindow />);
+    await slide("Slide 2 of 3");
+    const audience = screen.getByTestId("presentation-audience");
+    vi.useFakeTimers();
+    try {
+      fireEvent.mouseMove(window);
+      expect(audience).not.toHaveClass("cursor-none");
+      act(() => {
+        vi.advanceTimersByTime(1_000);
+      });
+      fireEvent.mouseMove(window);
+      act(() => {
+        vi.advanceTimersByTime(1_500);
+      });
+      expect(audience).not.toHaveClass("cursor-none");
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+      expect(audience).toHaveClass("cursor-none");
+      fireEvent.mouseMove(window);
+      expect(audience).not.toHaveClass("cursor-none");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ignores middle clicks and keys typed into a control", async () => {
+    render(<PresentationWindow />);
+    await slide("Slide 2 of 3");
+    const field = document.createElement("input");
+    document.body.appendChild(field);
+
+    fireEvent.click(screen.getByTestId("presentation-audience"), { button: 1 });
+    fireEvent.keyDown(field, { key: " " });
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    expect(screen.getByRole("figure", { name: "Slide 2 of 3" })).toBeInTheDocument();
+    field.remove();
+  });
+
+  it("blanks and closes when the presenter window says so", async () => {
+    render(<PresentationWindow />);
+    await slide("Slide 2 of 3");
+
+    act(() => presentationHarness.deliver("presentation:blank", { session: "other", blank: true }));
+    expect(screen.getByRole("figure", { name: "Slide 2 of 3" })).toBeInTheDocument();
+    act(() => presentationHarness.deliver("presentation:blank", { session: "s1", blank: true }));
+    await waitFor(() => expect(screen.queryByRole("figure")).toBeNull());
+    act(() => presentationHarness.deliver("presentation:blank", { session: "s1", blank: false }));
+    expect(await slide("Slide 2 of 3")).toBeInTheDocument();
+
+    act(() => presentationHarness.deliver("presentation:end", { session: "other" }));
+    expect(presentationHarness.close).not.toHaveBeenCalled();
+    act(() => presentationHarness.deliver("presentation:end", { session: "s1" }));
+    expect(presentationHarness.close).toHaveBeenCalled();
+  });
+
+  it("ignores malformed slide requests and clamps out-of-range ones", async () => {
+    render(<PresentationWindow />);
+    await slide("Slide 2 of 3");
+
+    act(() => presentationHarness.deliver("presentation:goto", { session: "s1", page: 1.5 }));
+    act(() => presentationHarness.deliver("presentation:goto", { session: "s1" }));
+    expect(screen.getByRole("figure", { name: "Slide 2 of 3" })).toBeInTheDocument();
+
+    act(() => presentationHarness.deliver("presentation:goto", { session: "s1", page: 99 }));
+    expect(await slide("Slide 3 of 3")).toBeInTheDocument();
+  });
+
+  it("tells the presenter window when the audience window is closed", async () => {
+    render(<PresentationWindow />);
+    await slide("Slide 2 of 3");
+
+    act(() => presentationHarness.closeRequested?.());
+
+    expect(presentationHarness.emitted).toContainEqual({ event: "presentation:end", payload: { session: "s1" } });
+  });
+
+  it("does not move between slides while the deck is unavailable", async () => {
+    presentationHarness.failLoad = true;
+    render(<PresentationWindow />);
+    await screen.findByText(copy.failed);
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(presentationHarness.emitted.filter((entry) => entry.event === "presentation:goto")).toEqual([]);
+  });
+
+  it("stops before opening the slides when the window closed during the download", async () => {
+    const { unmount } = render(<PresentationWindow />);
+    unmount();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(presentationHarness.opened).toBe(0);
+  });
+
+  it("releases a deck that finishes opening after the window closed", async () => {
+    presentationHarness.holdSlides = true;
+    const { unmount } = render(<PresentationWindow />);
+    await waitFor(() => expect(presentationHarness.opened).toBe(1));
+    unmount();
+
+    await act(async () => {
+      presentationHarness.releaseSlides();
+    });
+
+    await waitFor(() => expect(presentationHarness.destroy).toHaveBeenCalledTimes(1));
+  });
+
+  it("releases the open deck when the window closes", async () => {
+    const { unmount } = render(<PresentationWindow />);
+    await slide("Slide 2 of 3");
+
+    unmount();
+
+    expect(presentationHarness.destroy).toHaveBeenCalledTimes(1);
+  });
+});

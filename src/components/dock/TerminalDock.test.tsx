@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   panes: [] as Array<Record<string, unknown>>,
   setOpen: null as ((open: boolean) => void) | null,
   settings: {
+    openSettingsAt: vi.fn(),
     setTerminalOpen: vi.fn(),
     terminalBackground: "#1e1e1e",
     terminalStartWithProject: true,
@@ -21,8 +22,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/store/settings", () => ({
-  useSettingsStore: (selector: (settings: typeof mocks.settings) => unknown) =>
-    selector(mocks.settings),
+  useSettingsStore: Object.assign(
+    (selector: (settings: typeof mocks.settings) => unknown) => selector(mocks.settings),
+    { getState: () => mocks.settings },
+  ),
   useResolvedTerminalTheme: () => ({ background: mocks.settings.terminalBackground }),
 }));
 
@@ -467,5 +470,14 @@ describe("TerminalDock in a folder that is not trusted yet", () => {
     expect(tabs()).toHaveLength(1);
     startActivePane();
     expect(screen.queryByTestId("terminal-restricted")).not.toBeInTheDocument();
+  });
+
+  it("opens the terminal appearance settings from the tab strip", () => {
+    mocks.settings.openSettingsAt.mockClear();
+    render(<DockHarness projectId="project-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Terminal settings" }));
+
+    expect(mocks.settings.openSettingsAt).toHaveBeenCalledWith("appearance", "terminal");
   });
 });

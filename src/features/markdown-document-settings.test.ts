@@ -283,3 +283,36 @@ describe("validateMarkdownSetting", () => {
     expect(validateMarkdownSetting("font", "Inter\nBold")).toBe(false);
   });
 });
+
+describe("front matter edge cases", () => {
+  it("reads a front matter at the very end of the file", () => {
+    expect(readMarkdownDocumentSettings("---\nfontsize: 11pt\n---").fields.fontSize).toEqual({ status: "set", value: "11pt" });
+  });
+
+  it.each([
+    ["lang: [en, de]", "lang", { status: "locked", reason: "expression", source: "en, de" }],
+    ["fontsize:\n  - 11pt", "fontSize", { status: "locked", reason: "expression", source: "11pt" }],
+    ["numbersections: off", "numberSections", { status: "set", value: "false" }],
+    ["numbersections: maybe", "numberSections", { status: "locked", reason: "expression", source: "maybe" }],
+    ["mainfont: a: b", "font", { status: "locked", reason: "expression", source: "a: b" }],
+    ["classoption: [a, b", "columns", { status: "locked", reason: "expression", source: "[a, b" }],
+    ["classoption: [twocolumn] extra", "columns", { status: "locked", reason: "expression", source: "[twocolumn] extra" }],
+    ["classoption: [twocolumn] # wide", "columns", { status: "set", value: "twocolumn" }],
+    ["classoption: [[twocolumn]]", "columns", { status: "locked", reason: "expression", source: "[[twocolumn]]" }],
+    ['classoption: [twocolumn, "x" y]', "columns", { status: "locked", reason: "expression", source: '[twocolumn, "x" y]' }],
+    ["classoption:\n  twocolumn", "columns", { status: "locked", reason: "expression", source: "twocolumn" }],
+    ['classoption:\n  - "twocolumn', "columns", { status: "locked", reason: "expression", source: '- "twocolumn' }],
+    ["classoption: a4paper, twocolumn", "columns", { status: "locked", reason: "expression", source: "a4paper, twocolumn" }],
+    ["geometry: margin=wide", "margin", { status: "locked", reason: "expression", source: "wide" }],
+  ] as const)("reads %j", (line, key, state) => {
+    expect(readMarkdownDocumentSettings(front(line)).fields[key]).toEqual(state);
+  });
+
+  it("removes the first class option of a flow list", () => {
+    expect(edited(front("classoption: [twocolumn, landscape]"), { columns: null })).toBe(front("classoption: [landscape]"));
+  });
+
+  it("does not add a blank line before a body that starts with one", () => {
+    expect(edited("\nBody\n", { lang: "fr" })).toBe("---\nlang: fr\n---\n\nBody\n");
+  });
+});

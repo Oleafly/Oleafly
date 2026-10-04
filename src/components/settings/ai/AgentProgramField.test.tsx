@@ -20,7 +20,7 @@ import {
 } from "@/lib/acp";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { agent, deferred } from "@/components/ai/acp/tests/ui-fixtures";
-import { AgentProgramField, programPlacement } from "./AgentProgramField";
+import { AgentProgramField, checkMessage, programPlacement } from "./AgentProgramField";
 
 const copy = enSettings.ai.agents.program;
 const fill = (template: string, values: Record<string, string>) =>
@@ -305,5 +305,60 @@ describe("program row", () => {
     const ui = render(<AgentProgramField agent={pi({ cli: { ...piCli, path: "/usr/local/bin/pi" } })} placement="main" onStatus={vi.fn()} />);
     fireEvent.click(ui.getByRole("button", { name: copy.test }));
     expect(await ui.findByRole("alert")).toHaveTextContent("The check could not start.");
+  });
+});
+
+describe("check messages", () => {
+  it.each([
+    ["ready", null, "Pi started and answered."],
+    ["not_found", null, "Oleafly couldn't find Pi on this computer."],
+    ["unsupported_script", "/opt/agents/pi.sh", "Oleafly can't start pi.sh directly. Choose pi.exe."],
+    ["not_executable", "/opt/agents/pi", "/opt/agents/pi isn't a program Oleafly can start."],
+    ["interpreter", "/bin/bash", "/bin/bash is a shell or script runtime. Choose the Pi program itself."],
+    ["exited", null, "Pi stopped before it answered."],
+    ["start_failed", null, "Pi couldn't be started."],
+  ] as const)("describes %s", (code, program, message) => {
+    expect(checkMessage(pi(), check(code, { program }), null)).toBe(message);
+  });
+});
+
+describe("program row edge cases", () => {
+  it("names every reason a found file was skipped", () => {
+    const rejected = [
+      { path: "/a/missing", reason: "not_found" },
+      { path: "/a/folder", reason: "is_directory" },
+      { path: "/a/Pi.app", reason: "gui_program" },
+      { path: "/a/bash", reason: "interpreter" },
+      { path: "//server/pi", reason: "network_path" },
+    ] as AcpCliStatus["rejected"];
+    const ui = render(<AgentProgramField agent={pi({ cli: { ...piCli, rejected } })} placement="main" onStatus={vi.fn()} />);
+
+    fireEvent.click(ui.getByRole("button", { name: copy.skippedTitle }));
+
+    const list = ui.getByRole("list", { name: copy.skippedTitle });
+    for (const label of ["notFound", "isDirectory", "guiProgram", "interpreter", "networkPath"] as const) {
+      expect(list).toHaveTextContent(copy.skippedReason[label]);
+    }
+  });
+
+  it("says when Oleafly installed the program itself", () => {
+    const ui = render(
+      <AgentProgramField agent={pi({ cli: null, managed: true, executable: "/data/agents/pi" })} placement="main" onStatus={vi.fn()} />,
+    );
+
+    expect(ui.getByTestId("acp-agent-program-pi")).toHaveTextContent(copy.source.managed);
+  });
+
+  it("explains a file dialog or a reset that failed", async () => {
+    vi.mocked(acpPickAgentProgram).mockRejectedValue(new Error("The file dialog is unavailable."));
+    const chosen = pi({ programOverride: PICKED, cli: { ...piCli, path: PICKED, source: "override" } });
+    vi.mocked(acpSetAgentProgram).mockRejectedValue(new Error("Settings are read-only."));
+    const ui = render(<AgentProgramField agent={chosen} placement="main" onStatus={vi.fn()} />);
+
+    fireEvent.click(ui.getByRole("button", { name: copy.choose }));
+    expect(await ui.findByRole("alert")).toHaveTextContent("The file dialog is unavailable.");
+
+    fireEvent.click(ui.getByRole("button", { name: copy.useAutomatic }));
+    await waitFor(() => expect(ui.getByRole("alert")).toHaveTextContent("Settings are read-only."));
   });
 });

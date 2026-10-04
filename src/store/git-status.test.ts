@@ -51,4 +51,28 @@ describe("git status polling", () => {
     await useGitStatusStore.getState().refresh(null);
     expect(useGitStatusStore.getState()).toMatchObject({ count: 0, projectId: null, changes: [] });
   });
+
+  it("shows no changes when git cannot read the folder", async () => {
+    await useGitStatusStore.getState().refresh("linked-a");
+    mocks.gitStatus.mockRejectedValueOnce(new Error("not a git repository"));
+
+    await useGitStatusStore.getState().refresh("linked-a");
+
+    expect(useGitStatusStore.getState()).toMatchObject({ count: 0, projectId: "linked-a", changes: [] });
+  });
+
+  it("keeps only the newest of two overlapping polls", async () => {
+    let finishFirst: (value: unknown) => void = () => {};
+    mocks.gitStatus
+      .mockReturnValueOnce(new Promise((resolve) => (finishFirst = resolve)))
+      .mockResolvedValueOnce([{ path: "new.tex" }, { path: "other.tex" }]);
+    const first = useGitStatusStore.getState().refresh("linked-a");
+    await useGitStatusStore.getState().refresh("linked-a");
+
+    finishFirst([{ path: "old.tex" }]);
+    await first;
+
+    expect(useGitStatusStore.getState().count).toBe(2);
+  });
 });
+

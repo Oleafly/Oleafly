@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AI_TOOL_SETTINGS_STORAGE_KEY,
   createAiToolSettingsStore,
   isToolEnabled,
   selectToolEnabled,
+  setToolEnabled,
+  useAiToolSettingsStore,
 } from "./ai-tool-settings";
 
 function storageFixture() {
@@ -51,5 +53,40 @@ describe("AI tool settings", () => {
     expect(selectToolEnabled("read_file")(store.getState())).toBe(true);
     expect(selectToolEnabled("compile")(store.getState())).toBe(true);
     expect(selectToolEnabled("temporarily_unavailable")(store.getState())).toBe(false);
+  });
+});
+
+describe("AI tool settings storage", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("ignores stored entries that are not on/off choices", () => {
+    const storage = storageFixture();
+    storage.setItem(
+      AI_TOOL_SETTINGS_STORAGE_KEY,
+      JSON.stringify({ state: { enabledByName: { read_file: false, compile: "no", list: [] } }, version: 1 }),
+    );
+    expect(createAiToolSettingsStore(storage).getState().enabledByName).toEqual({ read_file: false });
+
+    storage.setItem(AI_TOOL_SETTINGS_STORAGE_KEY, JSON.stringify({ state: { enabledByName: ["read_file"] }, version: 1 }));
+    expect(createAiToolSettingsStore(storage).getState().enabledByName).toEqual({});
+  });
+
+  it("keeps choices in memory when local storage is missing", async () => {
+    vi.stubGlobal("localStorage", undefined);
+    const store = createAiToolSettingsStore();
+    store.getState().setToolEnabled("web_search", false);
+
+    expect(selectToolEnabled("web_search")(createAiToolSettingsStore().getState())).toBe(false);
+
+    await store.persist.clearStorage();
+    expect(selectToolEnabled("web_search")(createAiToolSettingsStore().getState())).toBe(true);
+  });
+
+  it("changes the shared store through the exported helper", () => {
+    setToolEnabled("compile", false);
+    expect(selectToolEnabled("compile")(useAiToolSettingsStore.getState())).toBe(false);
+    setToolEnabled("compile", true);
   });
 });

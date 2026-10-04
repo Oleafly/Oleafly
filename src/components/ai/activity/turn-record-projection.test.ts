@@ -118,4 +118,70 @@ describe("projectTurnRecords", () => {
   it("returns no rows for an empty thread", () => {
     expect(projectTurnRecords([])).toEqual([]);
   });
+
+  it("projects file changes, running tools, and items it does not draw", () => {
+    const circular: Record<string, unknown> = { path: "a.tex" };
+    circular.self = circular;
+    const rows = projectTurnRecords([
+      turn([
+        { id: "p", item: { type: "plan", text: "  Step one  " }, completed: true },
+        { id: "blank", item: { type: "agentMessage", text: "   " }, completed: true },
+        { id: "think", item: { type: "reasoning", summary: [], content: ["  "] }, completed: true },
+        { id: "f1", item: { type: "fileChange", changes: [{ path: "main.tex", kind: "update" }], status: "inProgress" }, completed: false },
+        { id: "f2", item: { type: "fileChange", changes: null, status: "completed" }, completed: true },
+        { id: "f3", item: { type: "fileChange", changes: "raw diff", status: "completed" }, completed: true },
+        { id: "f4", item: { type: "fileChange", changes: circular, status: "failed" }, completed: true },
+        { id: "d", item: { type: "dynamicToolCall", namespace: "oleafly", tool: "compile", arguments: {}, output: null, status: "inProgress" }, completed: false },
+        { id: "w", item: { type: "webSearch", query: "diffusion", completed: true }, completed: true },
+        { id: "h", item: { type: "hookPrompt", prompt: "ignored" }, completed: true },
+      ]),
+    ]);
+
+    expect(rows).toHaveLength(1);
+    const assistant = rows[0].msg;
+    expect(assistant.content).toBe("Step one");
+    expect(assistant.reasoningBlocks).toBeUndefined();
+    expect(assistant.toolCalls?.map((tool) => [tool.name, tool.status, tool.output])).toEqual([
+      ["write_file", "running", JSON.stringify([{ path: "main.tex", kind: "update" }], null, 2)],
+      ["write_file", "done", ""],
+      ["write_file", "done", "raw diff"],
+      ["write_file", "error", "[object Object]"],
+      ["compile", "running", ""],
+    ]);
+  });
+
+  it("adds a subagent that appears later in the turn and keeps the turn error once", () => {
+    const rows = projectTurnRecords([
+      turn(
+        [
+          {
+            id: "s1",
+            item: { type: "subAgentActivity", agentId: "a", label: "first", kind: "started", detail: null },
+            completed: false,
+          },
+          {
+            id: "s2",
+            item: {
+              type: "subAgentActivity", agentId: "b", label: "second", kind: "done", detail: "ok",
+              runtime: "acp", sessionId: null, providerId: "openai", modelId: "gpt", runtimeAgentId: "codex",
+            },
+            completed: true,
+          },
+        ],
+        { error: "Ran out of steps." },
+      ),
+      turn([{ id: "u2", item: { type: "steeringUserMessage", text: "Keep going", status: "sent" }, completed: true }], { turnId: "turn-2" }),
+    ]);
+
+    expect(rows.map((row) => [row.key, row.msg.role, row.isLatestAssistant])).toEqual([
+      ["turn-1:assistant", "assistant", false],
+      ["turn-1:error", "assistant", true],
+      ["u2", "user", false],
+    ]);
+    expect(rows[0].msg.subagents).toEqual([
+      { id: "a", label: "first", state: "started", detail: undefined, runtime: undefined, sessionId: undefined, providerId: undefined, modelId: undefined, agentId: undefined },
+      { id: "b", label: "second", state: "done", detail: "ok", runtime: "acp", sessionId: undefined, providerId: "openai", modelId: "gpt", agentId: "codex" },
+    ]);
+    expect(rows[1].msg.content).toBe("Ran out of steps.");
+  });
 });

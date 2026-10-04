@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   success: vi.fn(),
   startTour: vi.fn(),
   logError: vi.fn(),
+  reportCrashToGithub: vi.fn(),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
@@ -33,8 +34,19 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   recycleProject: mocks.recycleProject,
   getConfig: mocks.getConfig,
   setConfig: mocks.setConfig,
+  discordCommunityStats: () => Promise.resolve({ online: 3 }),
+}));
+vi.mock("@/lib/github", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  githubGetPublicRepoStats: () => Promise.resolve({ stars: 1, forks: 1 }),
 }));
 vi.mock("@/components/layout/UpdateChecker", () => ({ UpdateChecker: () => null }));
+vi.mock("@/lib/crash-report", () => ({ reportCrashToGithub: mocks.reportCrashToGithub }));
+vi.mock("@tauri-apps/plugin-os", () => ({
+  platform: () => "macos",
+  arch: () => "aarch64",
+  version: () => "15.1",
+}));
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({
     preference: "dark",
@@ -478,5 +490,104 @@ describe("Settings tour guides", () => {
     expect(toggle).toHaveAttribute("aria-checked", "false");
     fireEvent.click(toggle);
     await waitFor(() => expect(useSettingsStore.getState().settingsOpen).toBe(false));
+  });
+});
+
+describe("Settings confirmations that are cancelled", () => {
+  async function cancelDialog() {
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getAllByRole("button", { name: /Cancel/ })[0]);
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  }
+
+  it("keeps a recycled project when its permanent deletion is cancelled", async () => {
+    openSettings("data");
+    render(<SettingsModal />);
+    await screen.findByText(recycled.name);
+
+    fireEvent.click(screen.getByRole("button", { name: data.recycleBin.deleteOne.replace("{{name}}", recycled.name) }));
+    await cancelDialog();
+
+    expect(mocks.permanentlyDeleteRecycledProject).not.toHaveBeenCalled();
+  });
+
+  it("keeps the Recycle Bin when clearing it is cancelled", async () => {
+    openSettings("data");
+    render(<SettingsModal />);
+    await screen.findByText(recycled.name);
+
+    fireEvent.click(screen.getByRole("button", { name: data.recycleBin.clearAll }));
+    await cancelDialog();
+
+    expect(mocks.permanentlyDeleteRecycledProject).not.toHaveBeenCalled();
+  });
+
+  it("keeps every project when moving them all is cancelled", async () => {
+    openSettings("data");
+    render(<SettingsModal />);
+
+    fireEvent.click(await screen.findByRole("button", { name: data.danger.deleteAllAction }));
+    await cancelDialog();
+
+    expect(mocks.recycleProject).not.toHaveBeenCalled();
+  });
+
+  it("keeps the tours on when turning them all off is cancelled", async () => {
+    openSettings("general");
+    render(<SettingsModal />);
+
+    fireEvent.click(await screen.findByLabelText(tours.enableAll));
+    await cancelDialog();
+
+    expect(screen.getByLabelText(tours.enableAll)).toHaveAttribute("aria-checked", "true");
+  });
+});
+
+describe("Settings storage and help", () => {
+  it("explains storage details that could not be calculated and calculates them again", async () => {
+    mocks.libraryStorageSummary.mockRejectedValueOnce(new Error("permission denied"));
+    openSettings("data");
+    render(<SettingsModal />);
+
+    expect(await screen.findByText(data.storage.error)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: data.storage.refresh }));
+
+    await waitFor(() => expect(mocks.libraryStorageSummary).toHaveBeenCalledTimes(2));
+  });
+
+  it("copies version and system details for a bug report", async () => {
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    openSettings("help");
+    render(<SettingsModal />);
+    await screen.findByText("v0.4.3");
+
+    fireEvent.click(screen.getByRole("button", { name: enShell.settings.help.copyInfo }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("Oleafly v0.4.3 · macos aarch64 · OS 15.1"));
+  });
+
+  it("starts the tour for the open screen and reports a crash", async () => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 0;
+    });
+    const started = vi.fn();
+    window.addEventListener("oleafly:start-tour", started);
+    try {
+      openSettings("help");
+      useFilesStore.setState({ projectId: "active-paper" });
+      render(<SettingsModal />);
+
+      fireEvent.click(await screen.findByRole("button", { name: enShell.settings.help.resources.reportCrash }));
+      expect(mocks.reportCrashToGithub).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole("button", { name: enShell.settings.help.resources.startTour }));
+      expect(useSettingsStore.getState().settingsOpen).toBe(false);
+      expect((started.mock.calls[0][0] as CustomEvent).detail).toBe("workspace");
+    } finally {
+      window.removeEventListener("oleafly:start-tour", started);
+      vi.unstubAllGlobals();
+    }
   });
 });

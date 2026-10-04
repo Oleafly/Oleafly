@@ -5,9 +5,11 @@ import {
   TERMINAL_LIMIT,
   defaultTerminalTitle,
   normalizeTerminalTitle,
+  terminalLimitMessage,
   terminalTitlesKey,
   useTerminalsStore,
 } from "./terminals";
+import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 
 describe("terminals store", () => {
   beforeEach(() => {
@@ -264,4 +266,40 @@ describe("terminals store", () => {
     expect(store.closeTerminalsToTheLeft(second.id)).toHaveLength(2);
     expect(useTerminalsStore.getState().activeId).toBe(third.id);
   });
+
+  it("explains the terminal limit, passes the first command to a new terminal and ignores unknown tabs", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const tab = store.addTerminal({ initialInput: "make\n" });
+    const before = useTerminalsStore.getState();
+
+    expect(terminalLimitMessage()).toBe(enWorkspace.terminal.limitReached);
+    expect(tab?.initialInput).toBe("make\n");
+    expect(store.closeTerminal("missing")).toBe(before.tabs);
+    store.renameTerminal("missing", "Name");
+    store.activateTerminal(tab?.id ?? "");
+    expect(useTerminalsStore.getState()).toBe(before);
+  });
+
+  it("ignores stored titles that are not a map of slots", () => {
+    localStorage.setItem(terminalTitlesKey("project-1"), JSON.stringify(["Build"]));
+
+    useTerminalsStore.getState().setProject("project-1");
+
+    expect(useTerminalsStore.getState().tabs[0].title).toBe(defaultTerminalTitle(1));
+  });
+
+  it("keeps the same title without touching the tabs", () => {
+    const store = useTerminalsStore.getState();
+    store.setProject("project-1");
+    const id = useTerminalsStore.getState().tabs[0].id;
+    store.renameTerminal(id, "Build");
+    const renamed = useTerminalsStore.getState().tabs;
+
+    store.renameTerminal(id, "Build");
+
+    expect(useTerminalsStore.getState().tabs).toBe(renamed);
+    expect(JSON.parse(localStorage.getItem(terminalTitlesKey("project-1")) ?? "{}")).toEqual({ 1: "Build" });
+  });
 });
+

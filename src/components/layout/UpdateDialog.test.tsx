@@ -163,3 +163,19 @@ describe("UpdateDialog", () => {
     expect(screen.queryByTestId("release-timeline")).not.toBeInTheDocument();
   });
 });
+
+describe("UpdateDialog without details", () => {
+  it("says the app is up to date without naming a version", () => {
+    render(<UpdateDialog {...props({ phase: "upToDate", installedVersion: "", nextVersion: undefined })} history={history()} />);
+
+    expect(screen.getByText(enShell.updateWindow.upToDateGeneric)).toBeInTheDocument();
+  });
+
+  it("says the update is ready when it comes without notes or a current version", () => {
+    render(<UpdateDialog {...props({ notes: "", currentVersion: undefined })} history={history()} />);
+
+    expect(screen.getByText(enShell.updateWindow.ready)).toBeInTheDocument();
+    expect(screen.queryByText(/0\.4\.1/u)).toBeNull();
+  });
+});
+

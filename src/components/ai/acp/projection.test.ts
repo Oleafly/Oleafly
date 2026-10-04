@@ -262,3 +262,130 @@ describe("ACP conversation projection", () => {
     expect(rows[0].msg.content).toBe("The first half and the second half.");
   });
 });
+
+describe("ACP projection details", () => {
+  it("shows images in a user turn, a returned image and a terminal command", () => {
+    const rows = projectAcpEvents([
+      event(1, "user_message", { text: "Look", images: [{ mimeType: "image/png" }, {}], skill: { id: "review" } }),
+      event(2, "agent_message_chunk", { content: { type: "image" } }),
+      event(3, "agent_message_chunk", { content: { type: "audio" } }),
+      event(4, "tool_call", { toolCallId: "sh", status: "pending", content: [{ type: "terminal" }, { type: "other" }] }),
+    ], false);
+
+    expect(rows[0].msg).toMatchObject({
+      role: "user",
+      attachments: [
+        { name: "Image 1", mediaType: "image/png" },
+        { name: "Image 2", mediaType: "" },
+      ],
+      skill: { id: "review", name: "review" },
+    });
+    expect(rows[1].msg.content).toBe("[The agent returned an image.]");
+    expect(rows).toHaveLength(3);
+    expect(rows[2].msg.toolCalls?.[0]).toMatchObject({
+      name: "Agent tool",
+      status: "error",
+      output: "The agent is running a terminal command.",
+    });
+  });
+
+  it("merges streamed thoughts into one reasoning block and closes it at the end of the turn", () => {
+    const rows = projectAcpEvents([
+      event(1, "agent_thought_chunk", { content: { type: "text", text: "Compare " } }),
+      event(2, "agent_thought_chunk", { content: { type: "text", text: "both drafts" } }),
+      event(3, "turn_complete", {}),
+    ], false);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.reasoningBlocks).toEqual([{ id: "session-1:1", text: "Compare both drafts", beforeTool: 0, ms: 0 }]);
+  });
+
+  it("keeps a tool's earlier title, status and output across bare updates", () => {
+    const rows = projectAcpEvents([
+      event(1, "tool_call", {
+        toolCallId: "edit",
+        title: "Edit main.tex",
+        status: "in_progress",
+        content: [{ type: "diff", path: "main.tex", truncated: true }, { type: "diff" }],
+      }),
+      event(2, "tool_call_update", { toolCallId: "edit", status: "mystery" }),
+      event(3, "tool_call_update", { toolCallId: "" }),
+    ], true);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.toolCalls?.[0]).toMatchObject({
+      name: "Edit main.tex",
+      status: "running",
+      diffs: [{ path: "main.tex", oldText: null, newText: null, truncated: true }],
+    });
+  });
+
+  it("lists a plan as a checklist", () => {
+    const rows = projectAcpEvents([
+      event(1, "plan", { entries: [{ status: "completed", content: "Read the draft" }, { status: "pending", content: "Fix the proof" }] }),
+      event(2, "plan", { entries: "not a list" }),
+    ], false);
+
+    expect(rows[0].msg.content).toBe("- [x] Read the draft\n- [ ] Fix the proof");
+  });
+
+  it("explains an update that was too large and ignores empty diagnostics", () => {
+    const rows = projectAcpEvents([
+      event(1, "diagnostics", { droppedUpdate: { bytes: 2_097_152 } }),
+      event(2, "diagnostics", { droppedUpdate: { bytes: Number.NaN } }),
+      event(3, "diagnostics", {}),
+    ], false);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.notices?.[0]).toMatch(/^Part of the agent's output was too large to show \(2/);
+  });
+
+  it("says a failed turn's error once and fails its running tools", () => {
+    const rows = projectAcpEvents([
+      event(1, "tool_call", { toolCallId: "t", title: "Run", status: "in_progress" }),
+      chunk(2, "Error: rate limited"),
+      event(3, "status", { status: "failed", error: "rate limited" }),
+      event(4, "status", { status: "running" }),
+    ], true);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0].msg.toolCalls?.[0].status).toBe("error");
+  });
+
+  it("adds a failure message the agent did not already give", () => {
+    const rows = projectAcpEvents([
+      chunk(1, "Working on it"),
+      event(2, "tool_call", { toolCallId: "t", title: "Run", status: "completed" }),
+      event(3, "status", { status: "disconnected", error: "connection lost" }),
+    ], false);
+
+    expect(rows.at(-1)?.msg.content).toBe("connection lost");
+  });
+
+  it("hangs file changes on the turn's last assistant row and ignores unknown turns and malformed changes", () => {
+    const changes = { snapshotId: "s1", files: [], moreFiles: 0, skipped: [], overlapped: false, unavailable: null };
+    const rows = projectAcpEvents([
+      event(1, "user_message", { text: "Fix it" }),
+      chunk(2, "Done."),
+      event(3, "turn_changes", { ...changes, turnId: "turn-1" }),
+      event(4, "turn_changes", { ...changes, turnId: "turn-9" }),
+      event(5, "turn_changes", "nothing" as unknown as Record<string, unknown>),
+      event(6, "user_message", { text: "Again" }, "turn-2"),
+      event(7, "turn_changes", changes, "turn-2"),
+    ], false);
+
+    expect(rows[1].msg.turnChanges?.snapshotId).toBe("s1");
+    expect(rows[2].msg.turnChanges?.snapshotId).toBe("s1");
+    expect(rows[0].msg.turnChanges).toBeUndefined();
+  });
+
+  it("rebuilds the rows when earlier events were replaced", () => {
+    const project = createAcpProjector();
+    project([chunk(1, "first"), chunk(2, " draft")], false);
+
+    const rows = project([chunk(1, "second")], false);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].msg.content).toBe("second");
+  });
+});

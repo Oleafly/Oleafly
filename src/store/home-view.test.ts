@@ -31,4 +31,17 @@ describe("useHomeViewStore", () => {
       activeReferenceTool: "doi-to-bibtex",
     });
   });
+
+  it("queues a page to show after the project closes and hands it out once", () => {
+    const store = useHomeViewStore.getState();
+
+    store.queuePageAfterProjectClose("deadlines");
+    expect(useHomeViewStore.getState().consumeQueuedPageAfterProjectClose()).toBe("deadlines");
+    expect(useHomeViewStore.getState().consumeQueuedPageAfterProjectClose()).toBeNull();
+
+    store.queuePageAfterProjectClose("tools");
+    store.clearQueuedPageAfterProjectClose();
+    expect(useHomeViewStore.getState().queuedPageAfterProjectClose).toBeNull();
+  });
 });
+

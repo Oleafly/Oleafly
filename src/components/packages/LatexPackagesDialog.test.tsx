@@ -68,7 +68,7 @@ const toasts = vi.hoisted(() => ({ toast: { success: vi.fn() } }));
 vi.mock("@/lib/toast", () => toasts);
 
 import { resetLatexPackageIndexCache } from "@/lib/latex-package-index";
-import { LatexPackagesDialog } from "./LatexPackagesDialog";
+import { LatexPackagesDialog, showLatexPackagesDialog } from "./LatexPackagesDialog";
 
 const text = en.latexPackages;
 
@@ -238,5 +238,87 @@ describe("LatexPackagesDialog", () => {
     await openDialog();
     expect(backend.invoke).toHaveBeenCalledWith("latex_package_index", { offline: true, refresh: false });
     expect(screen.getByText(text.partialOffline)).toBeInTheDocument();
+  });
+
+  it("marks a package the document already loads when adding it", async () => {
+    documentApi.insertUsepackage.mockResolvedValue("loaded");
+    const onClose = await openDialog();
+    fireEvent.click(insertButton("geometry"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      fill(text.alreadyLoaded, { name: "geometry", file: "main.tex" }),
+    );
+    expect(within(row("geometry")).getByText(text.loaded)).toBeInTheDocument();
+    expect(insertButton("geometry")).toBeDisabled();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("says when the package could not be added", async () => {
+    documentApi.insertUsepackage.mockRejectedValue(new Error("write failed"));
+    await openDialog();
+    fireEvent.click(insertButton("booktabs"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(text.insertFailed);
+    await waitFor(() => expect(insertButton("booktabs")).toBeEnabled());
+  });
+
+  it("asks for a LaTeX project when there is no main document", async () => {
+    documentApi.latexMainDocument.mockReturnValue(null);
+    await openDialog();
+
+    expect(screen.getByText(text.noProject)).toBeInTheDocument();
+    expect(documentApi.documentPackages).not.toHaveBeenCalled();
+    expect(within(row("booktabs")).getByRole("button", { name: /^Add booktabs to the preamble/ })).toBeDisabled();
+  });
+
+  it("shows an install in progress and tlmgr's notices and errors", async () => {
+    filesState.engine = { id: "latexmk" };
+    engine.state.busyPkg = "geometry";
+    engine.state.packageNotice = "geometry installed.";
+    engine.state.packageError = { kind: "install", name: "siunitx", detail: "network" };
+    await openDialog();
+
+    const install = within(row("geometry")).getByRole("button", { name: fill(text.installAria, { name: "geometry" }) });
+    expect(install).toHaveTextContent(text.installing);
+    expect(install).toBeDisabled();
+    expect(screen.getByText("geometry installed.")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not install siunitx.");
+  });
+
+  it("says nothing about installs while the engine is still loading", async () => {
+    filesState.engine = { id: "latexmk" };
+    engine.state.info = { tlmgr: null };
+    engine.state.loaded = false;
+    await openDialog();
+
+    expect(screen.queryByText(text.unknownInstall)).toBeNull();
+    expect(screen.queryByText(text.onDemand)).toBeNull();
+    engine.state.loaded = true;
+  });
+
+  it("dates a list that could not be refreshed", async () => {
+    backend.invoke.mockResolvedValue({ ...INDEX, stale: true });
+    const { unmount } = render(<LatexPackagesDialog open onClose={vi.fn()} />);
+    expect(await screen.findByText(/It couldn't be refreshed\./)).toBeInTheDocument();
+    unmount();
+
+    resetLatexPackageIndexCache();
+    settingsState.offline = true;
+    render(<LatexPackagesDialog open onClose={vi.fn()} />);
+    expect(await screen.findByText(/^You're offline\. This list is from/)).toBeInTheDocument();
+  });
+
+  it("says when CTAN could not be reached online", async () => {
+    backend.invoke.mockResolvedValue({ ...INDEX, source: "bundled", fetchedAt: null });
+    await openDialog();
+
+    expect(screen.getByText(text.partial)).toBeInTheDocument();
+  });
+
+  it("opens from anywhere as a shared dialog", async () => {
+    showLatexPackagesDialog();
+
+    expect(await screen.findByRole("dialog", { name: text.title })).toBeInTheDocument();
+    expect(await screen.findByText("geometry")).toBeInTheDocument();
   });
 });

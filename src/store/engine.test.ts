@@ -11,9 +11,11 @@ const mocks = vi.hoisted(() => ({
   logError: vi.fn(),
   stopRunningCompileQuietly: vi.fn(() => false),
   recompile: vi.fn(async () => undefined),
+  openUrl: vi.fn(),
 }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true, invoke: mocks.invoke }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn(async () => () => {}) }));
+vi.mock("@tauri-apps/plugin-shell", () => ({ open: mocks.openUrl }));
 vi.mock("@/lib/toast", () => ({
   toast: {
     error: mocks.error,
@@ -36,7 +38,9 @@ vi.mock("@/store/compile", () => ({
 }));
 
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
-import { installPhaseLabel, TINYTEX_INSTALL_TOAST_KEY, useEngineStore } from "./engine";
+import { listen } from "@tauri-apps/api/event";
+import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
+import { installPhaseLabel, packageErrorMessage, TINYTEX_INSTALL_TOAST_KEY, useEngineStore } from "./engine";
 
 const engine = {
   kind: "system" as const,
@@ -378,5 +382,187 @@ describe("package toggles in Settings", () => {
     expect(mocks.logError).toHaveBeenCalledTimes(2);
     expectNoPlainToasts();
     expect(mocks.errorUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("package error messages", () => {
+  const errors = enSettings.engine.packages.error;
+
+  it("names the package and appends the tool's detail", () => {
+    expect(packageErrorMessage({ kind: "install", name: "pgf", detail: "" })).toBe(
+      errors.install.replace("{{name}}", "pgf"),
+    );
+    expect(packageErrorMessage({ kind: "remove", name: "pgf", detail: "in use" })).toBe(
+      errors.withDetail
+        .replace("{{message}}", errors.remove.replace("{{name}}", "pgf"))
+        .replace("{{detail}}", "in use"),
+    );
+    expect(packageErrorMessage({ kind: "read", name: "", detail: "" })).toBe(errors.read);
+  });
+});
+
+describe("engine info loading", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useEngineStore.setState({
+      info: null,
+      loaded: false,
+      installed: ["x"],
+      userInstalled: ["x"],
+      systemInstalled: ["x"],
+      busyPkg: null,
+      packageError: null,
+      removing: false,
+      installing: false,
+    });
+  });
+
+  it("loads engine info once and remembers an interrupted download", async () => {
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "latex_engine_info") return engine;
+      if (command === "tinytex_install_state") return { installing: false, partial_download_bytes: 1024 };
+      return null;
+    });
+
+    await useEngineStore.getState().ensureLoaded();
+    await useEngineStore.getState().ensureLoaded();
+
+    expect(mocks.invoke.mock.calls.filter(([command]) => command === "latex_engine_info")).toHaveLength(1);
+    expect(useEngineStore.getState()).toMatchObject({ info: engine, loaded: true, partialDownloadBytes: 1024 });
+  });
+
+  it("logs a failed engine probe and stays unloaded", async () => {
+    mocks.invoke.mockRejectedValue(new Error("probe failed"));
+
+    await useEngineStore.getState().refresh();
+
+    expect(useEngineStore.getState().loaded).toBe(false);
+    expect(mocks.logError).toHaveBeenCalledWith("engine info", expect.any(Error));
+  });
+
+  it("clears the package lists when there is no package manager", async () => {
+    useEngineStore.setState({ info: { ...engine, tlmgr: null } as never, packageError: { kind: "read", name: "", detail: "" } });
+
+    await useEngineStore.getState().refreshPackages();
+
+    expect(useEngineStore.getState()).toMatchObject({
+      installed: [],
+      userInstalled: [],
+      systemInstalled: [],
+      packageError: null,
+    });
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
+  it("ignores package changes while another package change runs", async () => {
+    useEngineStore.setState({ busyPkg: "pgf" });
+
+    await useEngineStore.getState().addPackage("tools");
+    await useEngineStore.getState().removePackage("tools");
+
+    expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
+  it("keeps an error without detail when the tool fails silently", async () => {
+    useEngineStore.setState({ info: engine });
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "tlmgr_install") throw { code: 1 };
+      return [];
+    });
+
+    await useEngineStore.getState().addPackage("pgf");
+
+    expect(useEngineStore.getState().packageError).toEqual({ kind: "install", name: "pgf", detail: "" });
+  });
+});
+
+describe("TinyTeX install progress and failures", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.stopRunningCompileQuietly.mockReturnValue(false);
+    useEngineStore.setState({
+      info: null,
+      installing: false,
+      removing: false,
+      installPhase: null,
+      progress: null,
+      partialDownloadBytes: 0,
+      compileQueuedDuringInstall: false,
+      compileQueuedExplicitly: false,
+    });
+  });
+
+  it("shows the download percentage and then the later phases", async () => {
+    let progress: (event: { payload: unknown }) => void = () => {};
+    vi.mocked(listen).mockImplementationOnce(async (_event, handler) => {
+      progress = handler as typeof progress;
+      return () => {};
+    });
+    const install = deferred<typeof engine>();
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "install_tinytex") return install.promise;
+      return [];
+    });
+
+    const running = useEngineStore.getState().install();
+    await vi.waitFor(() =>
+      expect(mocks.invoke.mock.calls.some(([command]) => command === "install_tinytex")).toBe(true),
+    );
+
+    progress({ payload: { phase: "download", received: 50, total: 200 } });
+    expect(useEngineStore.getState()).toMatchObject({ installPhase: "download", progress: 25 });
+    progress({ payload: { phase: "download", received: 50, total: null } });
+    expect(useEngineStore.getState().progress).toBeNull();
+    progress({ payload: { phase: "extract", received: 0, total: 10 } });
+    expect(useEngineStore.getState()).toMatchObject({ installPhase: "extract", progress: null });
+
+    install.resolve(engine);
+    await running;
+    expect(useEngineStore.getState()).toMatchObject({ installing: false, installPhase: null, info: engine });
+  });
+
+  it("falls back to the generic failure text and links to the install guide", async () => {
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "install_tinytex") throw "";
+      if (command === "tinytex_install_state") throw new Error("state unavailable");
+      return null;
+    });
+
+    await useEngineStore.getState().install();
+
+    expect(mocks.errorUnique).toHaveBeenCalledWith(
+      TINYTEX_INSTALL_TOAST_KEY,
+      enCore.tinytex.installFailed,
+      expect.objectContaining({ label: enCore.tinytex.installGuide }),
+    );
+    expect(useEngineStore.getState().partialDownloadBytes).toBe(0);
+
+    const action = mocks.errorUnique.mock.calls[0][2] as { onClick: () => void };
+    action.onClick();
+    await vi.waitFor(() => expect(mocks.openUrl).toHaveBeenCalledWith("https://yihui.org/tinytex/"));
+  });
+
+  it("still installs when pausing the running compile fails", async () => {
+    mocks.stopRunningCompileQuietly.mockImplementation(() => {
+      throw new Error("compile store unavailable");
+    });
+    mocks.invoke.mockImplementation(async (command: string) => (command === "install_tinytex" ? engine : []));
+
+    await useEngineStore.getState().install();
+
+    expect(mocks.logError).toHaveBeenCalledWith("pause compile for install", expect.any(Error));
+    expect(mocks.successUnique).toHaveBeenCalledWith(TINYTEX_INSTALL_TOAST_KEY, enCore.tinytex.installed);
+  });
+
+  it("reports a failed removal", async () => {
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "delete_tinytex") throw new Error("busy");
+      return null;
+    });
+
+    await useEngineStore.getState().remove();
+
+    expect(mocks.errorUnique).toHaveBeenCalledWith("tinytex-remove", enCore.tinytex.removeFailed);
+    expect(useEngineStore.getState().removing).toBe(false);
   });
 });

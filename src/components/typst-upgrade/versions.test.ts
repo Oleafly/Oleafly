@@ -24,6 +24,14 @@ describe("Typst upgrade versions", () => {
     expect(compareTypstVersions("0.14.2", "0.14.2")).toBe(0);
   });
 
+  it("compares versions of different lengths and orders two prereleases by name", () => {
+    expect(compareTypstVersions("0.14", "0.14.0")).toBe(0);
+    expect(compareTypstVersions("v0.14.1", "0.14")).toBeGreaterThan(0);
+    expect(compareTypstVersions("0.15.0", "0.15.0-rc.2")).toBeGreaterThan(0);
+    expect(compareTypstVersions("0.15.0-rc.1", "0.15.0-rc.2")).toBeLessThan(0);
+    expect(compareTypstVersions("0.15.0-rc.2", "0.15.0-beta.1")).toBeGreaterThan(0);
+  });
+
   it("offers only installed versions newer than the project's, newest first", () => {
     expect(newerInstalledTypstVersions(status, "0.13.1")).toEqual(["0.15.1", "0.15.0-rc.1", "0.14.2"]);
     expect(newerInstalledTypstVersions(status, "0.15.1")).toEqual([]);

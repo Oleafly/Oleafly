@@ -355,4 +355,99 @@ describe("ResearchRootsPanel", () => {
     expect(page().queryByText("current data")).not.toBeInTheDocument();
     await waitFor(() => expect(page().getByRole("button", { name: enResearchTools.roots.card.browse })).toBeEnabled());
   });
+
+  describe("folder states and failures", () => {
+    const roots = enResearchTools.roots;
+
+    function backend(overrides: Record<string, (args: Record<string, unknown>) => unknown> = {}) {
+      native.invoke.mockImplementation(async (command: string, args: Record<string, unknown>) => {
+        if (command in overrides) return overrides[command](args);
+        if (command === "get_research_workspace") return workspace([root()]);
+        if (command === "research_root_health") return healthy([root()]);
+        throw new Error(`Unexpected command: ${command}`);
+      });
+    }
+
+    it("names an unreadable folder", async () => {
+      backend({
+        research_root_health: () => [{ rootId: "data-root", availability: "unreadable", detail: null }],
+      });
+      render(<ResearchRootsPanel projectId="paper" />);
+
+      expect(await page().findByText(roots.health.unreadable)).toBeInTheDocument();
+    });
+
+    it("says when a linked folder is empty and when browsing fails", async () => {
+      let listings = 0;
+      backend({
+        list_research_root_files: () => {
+          listings += 1;
+          if (listings === 1) return { rootId: "data-root", path: "", truncated: false, entries: [] };
+          throw new Error("drive unmounted");
+        },
+      });
+      render(<ResearchRootsPanel projectId="paper" />);
+      await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
+
+      fireEvent.click(page().getByRole("button", { name: roots.card.browse }));
+      expect(await page().findByText(roots.card.emptyFolder)).toBeInTheDocument();
+      fireEvent.click(page().getByRole("button", { name: roots.card.browse }));
+      await waitFor(() => expect(within(page().getByRole("article")).getByRole("alert")).toHaveTextContent("drive unmounted"));
+    });
+
+    it("shows why a file could not be read", async () => {
+      backend({
+        list_research_root_files: () => ({ rootId: "data-root", path: "", truncated: false, entries: [file("data.csv")] }),
+        read_research_root_file: () => {
+          throw "file locked";
+        },
+      });
+      render(<ResearchRootsPanel projectId="paper" />);
+      await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
+      fireEvent.click(page().getByRole("button", { name: roots.card.browse }));
+      fireEvent.click(await page().findByRole("button", { name: "data.csv" }));
+
+      await waitFor(() => expect(within(page().getByRole("article")).getByRole("alert")).toHaveTextContent("file locked"));
+    });
+
+    it("reloads the folders on request", async () => {
+      backend();
+      render(<ResearchRootsPanel projectId="paper" />);
+      await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
+      const loads = () => native.invoke.mock.calls.filter(([command]) => command === "get_research_workspace").length;
+      const before = loads();
+
+      fireEvent.click(page().getByRole("button", { name: roots.refreshAria }));
+
+      await waitFor(() => expect(loads()).toBe(before + 1));
+    });
+
+    it("keeps the folder and reports a failed unlink", async () => {
+      backend({
+        remove_research_root: () => {
+          throw new Error("workspace locked");
+        },
+      });
+      render(<ResearchRootsPanel projectId="paper" />);
+      await waitFor(() => expect(page().getByRole("article")).toBeInTheDocument());
+      openMenu("Study data");
+      fireEvent.click(page().getByRole("menuitem", { name: "Unlink" }));
+      fireEvent.click(within(page().getByRole("alertdialog")).getByRole("button", { name: /^Unlink/ }));
+
+      await waitFor(() => expect(page().getByText("workspace locked")).toBeInTheDocument());
+      expect(page().getByRole("article")).toBeInTheDocument();
+    });
+
+    it("closes the link dialog without linking anything", async () => {
+      backend({ get_research_workspace: () => workspace([]), research_root_health: () => [] });
+      render(<ResearchRootsPanel projectId="paper" />);
+      fireEvent.click(await page().findByTestId("research-root-link-empty"));
+      const dialog = await page().findByRole("dialog");
+
+      fireEvent.click(within(dialog).getByRole("button", { name: enCommon.actions.cancel }));
+
+      await waitFor(() => expect(page().queryByRole("dialog")).not.toBeInTheDocument());
+      expect(native.invoke).not.toHaveBeenCalledWith("add_research_root", expect.anything());
+    });
+  });
 });

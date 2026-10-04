@@ -11,6 +11,7 @@ vi.mock("@/features/export", () => ({ exportCurrentTypst: mocks.exportCurrentTyp
 import type { TypstOptionsDescriptor } from "@oleafly/backend-port";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
+import { openTypstExport } from "./open";
 import { TypstExportDialog, typstExportFormats, typstExportRequest } from "./TypstExportDialog";
 
 const copy = enShell.typstExport;
@@ -100,5 +101,48 @@ describe("Typst export choices", () => {
     render(<TypstExportDialog open onClose={vi.fn()} />);
     expect(screen.getByText(copy.pagesUnsupported)).toBeInTheDocument();
     expect(screen.queryByTestId("typst-export-html")).not.toBeInTheDocument();
+  });
+});
+
+describe("Typst export settings", () => {
+  it("exports PNG at another resolution", async () => {
+    Element.prototype.hasPointerCapture ??= () => false;
+    Element.prototype.releasePointerCapture ??= () => {};
+    Element.prototype.scrollIntoView ??= () => {};
+    useTypst(options());
+    const user = userEvent.setup();
+    render(<TypstExportDialog open onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("typst-export-png")).toHaveFocus());
+
+    await user.click(screen.getByRole("combobox", { name: copy.ppi }));
+    await user.click(await screen.findByRole("option", { name: "300 PPI" }));
+    await user.click(screen.getByTestId("typst-export-submit"));
+
+    expect(mocks.exportCurrentTypst).toHaveBeenCalledWith({ format: "png", ppi: 300 });
+  });
+
+  it("falls back to the first format the version offers", async () => {
+    useTypst(options({ output_formats: ["pdf", "svg"] }));
+    const user = userEvent.setup();
+    render(<TypstExportDialog open onClose={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByTestId("typst-export-svg")).toBeChecked());
+    expect(screen.queryByRole("combobox", { name: copy.ppi })).toBeNull();
+    await user.click(screen.getByTestId("typst-export-submit"));
+    expect(mocks.exportCurrentTypst).toHaveBeenCalledWith({ format: "svg" });
+  });
+
+  it("opens from the menu as a shared dialog and closes from Cancel", async () => {
+    useTypst(options());
+    const user = userEvent.setup();
+    openTypstExport();
+
+    expect(await screen.findByTestId("typst-export-png")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: copy.cancel }));
+    await waitFor(() => expect(screen.queryByTestId("typst-export-png")).toBeNull());
+
+    openTypstExport();
+    expect(await screen.findByTestId("typst-export-png")).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-typst-export]")).toHaveLength(1);
   });
 });

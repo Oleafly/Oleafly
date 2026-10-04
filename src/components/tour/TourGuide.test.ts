@@ -242,6 +242,23 @@ describe("tour target hydration", () => {
     expect(isAiStepApplicable("ai-connect-provider", root)).toBe(false);
     expect(isAiStepApplicable("ai-history", root)).toBe(true);
   });
+
+  it("shows usage and restore only for a configured assistant that has them", () => {
+    const root = {
+      dataset: { tourConfigured: "true", tourHasUsage: "false", tourHasRestore: "false" },
+    } as unknown as HTMLElement;
+    expect(isAiStepApplicable("ai-usage", root)).toBe(false);
+    expect(isAiStepApplicable("ai-restore", root)).toBe(false);
+    root.dataset.tourHasUsage = "true";
+    root.dataset.tourHasRestore = "true";
+    expect(isAiStepApplicable("ai-usage", root)).toBe(true);
+    expect(isAiStepApplicable("ai-restore", root)).toBe(true);
+    root.dataset.tourConfigured = "false";
+    expect(isAiStepApplicable("ai-usage", root)).toBe(false);
+    expect(isAiStepApplicable("ai-restore", root)).toBe(false);
+    expect(isAiStepApplicable("ai-input", root)).toBe(false);
+    expect(isAiStepApplicable("ai-persona", root)).toBe(true);
+  });
 });
 
 describe("terminal tour lifecycle", () => {

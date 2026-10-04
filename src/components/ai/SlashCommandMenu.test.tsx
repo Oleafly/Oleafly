@@ -8,6 +8,7 @@ import type { ComposerCommand } from "./composer-command-registry";
 import {
   filterSlashCommands,
   isSlashCommandInput,
+  slashCommandQuery,
   SlashCommandMenu,
   type SlashCommandMenuHandle,
 } from "./SlashCommandMenu";
@@ -296,3 +297,38 @@ describe("SlashCommandMenu", () => {
     expect(events).toEqual(["close", "action", "goal"]);
   });
 });
+
+describe("SlashCommandMenu pointer and stray input", () => {
+  it("reads the query only from a slash command", () => {
+    expect(slashCommandQuery("/plan  ")).toBe("plan");
+    expect(slashCommandQuery("plan")).toBe("");
+  });
+
+  it("follows the pointer, keeps focus in the composer, and leaves other keys alone", () => {
+    const ref = createRef<SlashCommandMenuHandle>();
+    const onSelect = vi.fn();
+    render(
+      <SlashCommandMenu
+        ref={ref}
+        commands={[command("goal", "Goal", "Set a goal", () => {}), command("model", "Model", "Choose a model", () => {})]}
+        query=""
+        onSelect={onSelect}
+        onClose={() => {}}
+      />,
+    );
+    const model = screen.getByRole("option", { name: /Model/ });
+
+    fireEvent.mouseEnter(model);
+    expect(model).toHaveAttribute("aria-selected", "true");
+    expect(fireEvent.mouseDown(model)).toBe(false);
+    let handled = true;
+    act(() => {
+      handled = ref.current?.handleKeyDown(keyEvent("x")) ?? true;
+    });
+    expect(handled).toBe(false);
+    act(() => void ref.current?.handleKeyDown(keyEvent("Enter")));
+
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: "model" }));
+  });
+});
+

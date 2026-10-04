@@ -53,3 +53,32 @@ describe("Typst PDF standards in export preparation", () => {
     expect(screen.queryByTestId("typst-pdf-standard-export")).not.toBeInTheDocument();
   });
 });
+
+describe("Typst PDF/UA export", () => {
+  it("notes what PDF/UA-1 needs when it is the only standard offered", async () => {
+    const user = userEvent.setup();
+    render(<TypstPdfStandards options={options(["ua-1"])} version={null} />);
+
+    expect(screen.getByText(fill(copy.untagged, "").replace(/\s+/g, " "))).toBeInTheDocument();
+    expect(screen.getByText(copy.uaNote)).toBeInTheDocument();
+    await user.click(screen.getByTestId("typst-pdf-standard-export"));
+    expect(mocks.exportCurrentTypst).toHaveBeenCalledWith({ format: "pdf", pdfStandard: "ua-1" });
+  });
+
+  it("exports the standard the user picks", async () => {
+    Element.prototype.hasPointerCapture ??= () => false;
+    Element.prototype.releasePointerCapture ??= () => {};
+    Element.prototype.scrollIntoView ??= () => {};
+    const user = userEvent.setup();
+    render(<TypstPdfStandards options={options(["a-2b", "ua-1"])} version="0.15.1" />);
+    expect(screen.queryByText(copy.uaNote)).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("typst-pdf-standard"));
+    await user.click(await screen.findByRole("option", { name: "PDF/UA-1" }));
+
+    expect(screen.getByTestId("typst-pdf-standard")).toHaveTextContent("PDF/UA-1");
+    expect(screen.getByText(copy.uaNote)).toBeInTheDocument();
+    await user.click(screen.getByTestId("typst-pdf-standard-export"));
+    expect(mocks.exportCurrentTypst).toHaveBeenCalledWith({ format: "pdf", pdfStandard: "ua-1" });
+  });
+});
