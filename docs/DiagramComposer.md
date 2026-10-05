@@ -12,7 +12,8 @@ diagram" button in a document toolbar skips the chooser and uses the
 document's language: TikZ in a `.tex` file, Typst in a `.typ` file, and
 Mermaid in a Markdown file. The header shows the language as a small label
 next to the file name. Importing a file written in another language switches
-the composer to it.
+the composer to it. The composer imports `.tikz`, `.tex`, `.typ`, `.mmd` and
+`.md` files.
 
 ## The same in every language
 

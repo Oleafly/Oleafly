@@ -982,11 +982,11 @@
       "status": {
         "checking": "pandoc aranıyor…",
         "installing": "Sabitlenmiş bir pandoc sürümü getiriliyor. İlk kullanımda bu biraz sürer.",
-        "missing": "Bu Mac'te bulunamadı. Oleafly uyumlu bir pandoc (2.19 veya daha yenisi) kendi klasörüne indirir; sisteminizde başka hiçbir şey değişmez.",
+        "missing": "Bulunamadı. Oleafly uyumlu bir pandoc (2.19 veya daha yenisi) kendi klasörüne indirebilir; sisteminizde başka hiçbir şey değişmez.",
         "ready": "Algılandı. Markdown projeleri pandoc ile LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile derlenir."
       },
       "tectonicDetail": "pandoc'un ürettiği LaTeX'i dizer. Oleafly ile birlikte gelir; yapılandırılacak bir şey yoktur.",
-      "tooltip": "Markdown projeleri pandoc ile (Pandoc Markdown: tablolar, dipnotlar, atıflar, matematik) LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile PDF'e dizilir. Pandoc, ilk gerektiğinde istendiğinde indirilir."
+      "tooltip": "Markdown projeleri pandoc ile (Pandoc Markdown: tablolar, dipnotlar, atıflar, matematik) LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile PDF'e dizilir. Pandoc, Oleafly ile birlikte gelir."
     },
     "packages": {
       "ariaLabel": "LaTeX paketleri",

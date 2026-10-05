@@ -293,6 +293,11 @@ pick another version, or "Default" to clear the pin. A pin must name a curated
 version, the built-in version or the system version. It is a version, not a
 path, so it stays valid when the project moves.
 
+To test before changing a pin, "Try a newer version" in Settings > Engines >
+Typst builds the open project with the current version and a newer installed
+one, in temporary folders. It compares the page counts and the errors and
+warnings, and can switch the pin.
+
 ### A pin this computer does not have
 
 The app does not start Typst for a project whose pinned version is missing.

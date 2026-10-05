@@ -8,9 +8,11 @@ the [Agent Skills standard](https://agentskills.io), the same shape Claude
 Code, Codex, and other agents read, so a skill you write here works elsewhere
 and a skill you already have elsewhere can be dropped in here.
 
-Skills live in Settings → AI → Skills, grouped by the phase of work they
-belong to: Research, Authoring, Figures, Review, Submission, Communication,
-Tooling, plus a "Your skills" group and a "Domain shelf" group.
+Skills live in Settings → AI Assistant → Skills, grouped by the phase of work
+they belong to: Research, Authoring, Figures, Review, Submission,
+Communication, Tooling, plus a "Your skills" group and a "Domain shelf" group.
+The search box above the list filters your skills and the Domain shelf
+together, and the shelf can be narrowed to one domain.
 
 <div align="center">
   <img src="assets/readme/skills.png" alt="Oleafly AI Assistant skills panel showing reusable research capabilities" width="100%" />
@@ -21,11 +23,14 @@ Tooling, plus a "Your skills" group and a "Domain shelf" group.
 
 **Bundled research pack.** Oleafly ships with a pack of skills that cover a
 full research-writing workflow. Some are Oleafly-native, written for this app
-and its tools. Others are vendored unmodified from
+and its tools. Others are vendored from
 [Scientific Agent Skills](https://github.com/K-Dense-AI/scientific-agent-skills)
 by K-Dense Inc., MIT licensed, pinned to a specific commit recorded in
-`scripts/skills/kdense-manifest.json`. The tier line under each skill's name
-in Settings says which is which and, for vendored skills, names the author.
+`scripts/skills/kdense-manifest.json`. Several skills also cover Typst
+projects. In the vendored `citation-management` and `venue-templates`, the
+Typst guidance was added by Oleafly on top of the upstream text. The tier
+line under each skill's name in Settings says which is which and, for vendored
+skills, names the author.
 
 **Domain shelf.** Extra skills for research domains the bundled pack does not
 cover, downloaded from `cdn.oleafly.com` only when you choose to install one.
@@ -142,7 +147,7 @@ out as plain text.
 Type `@` and a list of the project's files and folders opens, filtered as you
 keep typing and ordered so the closest match to the file name comes first.
 Pick one with the arrow keys and Enter, or keep typing the path yourself. A
-mention that resolves to a real path turns violet in the composer. When you
+mention that resolves to a real path turns teal in the composer. When you
 send, the file's content travels with the message (the first 200 KB, with a
 note when it was cut) and a folder mention sends a listing of what is inside
 it, so the assistant can answer without a round of read_file calls first.
@@ -158,14 +163,13 @@ Which of the plots in @figures/ are referenced from the text
 
 ## Device-wide and per-project
 
-The switch next to a skill's name in Settings turns it on for every project on
-this device. Open a project and a second, smaller switch appears under it,
-"Use in this project". That one is an override rather than a separate setting.
-Until you touch it the line under it reads "Inherits device setting" and the
-project follows the device-wide switch. Flip it and the project keeps its own
-answer, on or off, whatever the device switch says later; the line then reads
-"On for this project" or "Off for this project", and a **Use device setting**
-button beside it drops the override again.
+Each skill in Settings has one switch. By default it turns the skill on or off
+for every project on this device. With a project open, two buttons above the
+list, All projects and This project, choose what the switches change. In This
+project, a switch you set differently from All projects becomes an override
+for that project, and it stays that way whatever the All projects switch says
+later. A skill set differently for the project shows "Changed for this
+project" and a **Reset** button that drops the override.
 
 So a skill you turn on once is on everywhere, and a project has to say no
 before it stops being available there. The chat assistant, research tasks, and
@@ -256,7 +260,10 @@ command for every bundled script, the list of supporting files, and the full
 instructions. The folders are mounted read-only in the task command sandbox
 too, so a script runs where it lives, by absolute path, and the task cannot
 write back into it. Supporting files come through the bridge's
-`read_skill_file`, the same as anywhere else.
+`read_skill_file`, the same as anywhere else. Task commands run only on macOS
+and Linux. On Windows, a research task run by the Oleafly Assistant can read
+and write files but cannot run commands, so a skill's scripts do not run
+there.
 
 ## Where skills live on disk
 
@@ -284,9 +291,9 @@ telling you to go find it.
 
 ## Verify it yourself
 
-- Open **Settings → AI → Skills** and confirm the phase groups (Research,
-  Authoring, Figures, Review, Submission, Communication, Your skills, Domain
-  shelf) each list skills.
+- Open **Settings → AI Assistant → Skills** and confirm the phase groups
+  (Research, Authoring, Figures, Review, Submission, Communication, Your
+  skills, Domain shelf) each list skills.
 - Type `/` in the chat composer and confirm a **Skills** group appears below
   the built-in commands.
 - Send `/oleafly-research-loop <anything>` and watch the tool call list for a
@@ -296,11 +303,11 @@ telling you to go find it.
   `load_skill` is called before any file is read or written.
 - Install a skill from the Domain shelf card and confirm it appears in its
   phase group above once installed.
-- With a project open, confirm every skill's per-project line reads "Inherits
-  device setting", turn one off for that project, and confirm the assistant
-  stops offering it there while a second project still has it.
-- Press **Use device setting** on that skill and confirm the line goes back to
-  "Inherits device setting" and the switch follows the device-wide one again.
+- With a project open, choose This project, turn one skill off, and confirm it
+  shows "Changed for this project" and the assistant stops offering it there
+  while a second project still has it.
+- Press **Reset** on that skill and confirm the marker goes away and the
+  switch follows All projects again.
 - Create a research task from one of the starters and confirm it reaches
   Running instead of failing with a message about the skill.
 - With Claude Code, Codex, Cursor, or Gemini's folder present on this

@@ -1,9 +1,8 @@
 # Code signing
 
 The release workflow signs installers automatically **when the secrets below
-exist**. Without them it still builds, just unsigned (and the release notes
-keep the "first launch unlock" link). Setting this up is a one-time,
-account-owner task; nothing in the repo needs to change afterwards.
+exist**. Without them it still builds, just unsigned. Setting this up is a
+one-time, account-owner task; nothing in the repo needs to change afterwards.
 
 | Platform | Mechanism | What users get |
 | --- | --- | --- |

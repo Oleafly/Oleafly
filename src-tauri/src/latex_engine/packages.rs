@@ -318,19 +318,30 @@ mod tests {
 
     #[cfg(unix)]
     fn scripted_manager(body: &str) -> (tempfile::TempDir, String) {
-        use std::os::unix::fs::PermissionsExt;
+        use std::io::Write as _;
         let root = tempfile::tempdir().unwrap();
         let script = root.path().join("tlmgr");
         let calls = root.path().join("calls");
-        std::fs::write(
-            &script,
-            format!(
-                "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\n{body}\n",
-                calls.display()
-            ),
-        )
-        .unwrap();
-        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let contents = format!(
+            "#!/bin/sh\nprintf '%s\\n' \"$@\" >> '{}'\n{body}\n",
+            calls.display()
+        );
+        // A child shell writes the script. On Linux, exec fails with ETXTBSY
+        // while any process holds a write fd to the file, and a parallel
+        // test's fork inherits this process's fds until that child execs.
+        let mut writer = std::process::Command::new("sh")
+            .args(["-c", "cat > \"$1\" && chmod 700 \"$1\"", "sh"])
+            .arg(&script)
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .unwrap();
+        writer
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(contents.as_bytes())
+            .unwrap();
+        assert!(writer.wait().unwrap().success());
         (root, script.to_string_lossy().into_owned())
     }
 

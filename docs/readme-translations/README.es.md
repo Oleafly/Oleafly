@@ -6,11 +6,11 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | **Español** | [Français](README.fr.md) | [日本語](README.ja.md) | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](README.ar.md)
 
-[![Descargar para macOS](https://img.shields.io/badge/Download_for_macOS-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Descargar para macOS (Apple Silicon)](https://img.shields.io/badge/Download_for_macOS_%28Apple_Silicon%29-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Descargar para Windows](https://img.shields.io/badge/Download_for_Windows-0496ff?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Descargar para Linux](https://img.shields.io/badge/Download_for_Linux-ffba08?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 
-[![Incidencias abiertas](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Descargas](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml) [![Quality Gate de SonarQube](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![Cobertura de código](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![Estado del desarrollo: extremadamente activo](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![Último commit](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![Licencia: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Estrellas](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+[![Incidencias abiertas](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Descargas](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![Quality Gate de SonarQube](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![Cobertura de código](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![Estado del desarrollo: extremadamente activo](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![Último commit](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![Licencia: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Estrellas](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
 **Escribe tu próximo artículo con menos trabajo administrativo en un espacio de trabajo científico moderno.**
 
@@ -35,10 +35,10 @@ Gratis para siempre · Código abierto · Sin cuentas · Sin registros · Sin se
 | Si estás... | Empieza con... |
 | --- | --- |
 | Escribiendo un artículo o una tesis | Una plantilla editable de LaTeX, Typst o Markdown |
-| Trayendo un trabajo existente a tu ordenador | Una importación de ZIP, repositorio de GitHub, archivo de Word o HTML, documento Typst, código fuente de arXiv o PDF |
+| Trayendo un trabajo existente a tu ordenador | Una importación de ZIP, repositorio de GitHub, archivo de Word, HTML o Markdown, documento Typst, código fuente de arXiv o PDF |
 | Trabajando en LaTeX, Typst o Markdown | El editor de código fuente, el editor visual, la vista previa en directo y el selector de motor |
 | Creando un manuscrito estructurado | El esquema del proyecto, la búsqueda entre archivos, la navegación por referencias y la corrección local |
-| Buscando fuentes o citas | Citation Search, un análisis de compatibilidad del documento o una importación de bibliografía local |
+| Buscando fuentes o citas | Citation Search, un análisis de compatibilidad del documento o una importación de bibliografía desde un archivo o desde tu biblioteca de Zotero |
 | Trabajando con IA | El asistente integrado, Research Tasks aisladas, un agente CLI o MCP |
 | Ejecutando una tarea de investigación larga | Un worktree separado o una copia preparada, resultados revisados y aplicación selectiva de archivos |
 | Reutilizando un flujo de investigación | El paquete de skills incluido, comandos de barra o una carpeta de skills guardada |
@@ -47,7 +47,7 @@ Gratis para siempre · Código abierto · Sin cuentas · Sin registros · Sin se
 | Recuperando o versionando trabajo | Checkpoints para la recuperación local y Git para un historial y una colaboración intencionados |
 | Enlazando artículos, datos o análisis | Carpetas de investigación vinculadas en modo de solo lectura junto al manuscrito |
 | Exportando o convirtiendo documentos | PDF y ZIP del código fuente, además de salidas compatibles en Word, HTML, Markdown, texto, PPTX o EPUB |
-| Buscando una cadena de herramientas local | Tectonic y Typst incluidos, con TeX de sistema y Pandoc opcionales |
+| Buscando una cadena de herramientas local | Tectonic, Typst y Pandoc incluidos, además de un TeX de sistema opcional o una instalación de TinyTeX que gestiona la aplicación |
 
 <div align="center">
   <img src="../assets/readme/start-work.png" alt="Menú de inicio de Oleafly con opciones para proyectos de investigación, importaciones y plantillas" width="100%" />
@@ -74,17 +74,17 @@ Oleafly te ofrece un espacio de trabajo guiado sin poner el manuscrito detrás d
 
 El trabajo principal permanece en tu ordenador: archivos del proyecto, indexación, compilación con un motor local disponible, vista previa del PDF, corrección ortográfica, corrección gramatical, Preflight, historial de Git, Checkpoints y el terminal. No necesitas una cuenta para estas tareas.
 
-La aplicación solo accede a la red para las acciones que lo necesitan: búsqueda de literatura, metadatos DOI, operaciones de GitHub, IA alojada, descargas opcionales de motores y plantillas, y fuentes de actualización. Los modelos locales de Ollama mantienen el tráfico del modelo en tu ordenador. Cuando uno de estos servicios no está disponible, la aplicación muestra un estado sin conexión o no disponible.
+La aplicación solo accede a la red para las acciones que lo necesitan: búsqueda de literatura, metadatos DOI, operaciones de GitHub, IA alojada, Zotero, los servidores MCP que conectes, búsquedas de paquetes en Typst Universe y CTAN, y descargas opcionales de motores, paquetes y plantillas. Las versiones publicadas también comprueban si hay una actualización cada vez que se inicia la aplicación. Los modelos locales de Ollama mantienen el tráfico del modelo en tu ordenador. Cuando uno de estos servicios no está disponible, la aplicación muestra un estado sin conexión o no disponible.
 
 | Permanece local de forma predeterminada | Solo ocurre cuando lo eliges |
 | --- | --- |
 | Código fuente y metadatos del proyecto | Búsqueda de literatura y citas |
 | Estado del editor e índice del proyecto | Inicio de sesión en GitHub, push, pull y publicación |
 | Compilación de LaTeX con el motor incluido cuando los paquetes están disponibles | Proveedores de IA alojados |
-| Compilación de Typst | Descargas opcionales y comprobaciones de actualizaciones |
+| Compilación de Typst cuando los paquetes están en caché o guardados en el proyecto | Descargas opcionales de motores, paquetes y plantillas |
 | Renderizado del PDF e inspección del texto | Descargas de skills de Domain Shelf |
 | Corrección ortográfica, corrección gramatical y Preflight | Clientes MCP externos en localhost |
-| Historial de Git y Checkpoints automáticos | |
+| Historial de Git y Checkpoints automáticos | Zotero, alphaXiv y otros servidores MCP que conectes |
 
 <p align="center">
   <img src="../assets/readme/provider-boundaries.png" alt="Ajustes de proveedores de Oleafly que muestran conexiones explícitas separadas de los archivos del proyecto" width="100%" />
@@ -95,7 +95,7 @@ La aplicación solo accede a la red para las acciones que lo necesitan: búsqued
 
 ### Plantillas que puedes editar
 
-Empieza con un artículo, un artículo de revista, una tesis, una revisión bibliográfica, un informe, un libro, una presentación de Beamer, un póster, una tarea, una carta, una bibliografía, un currículum o un diagrama. Las plantillas son proyectos de código fuente normales con un motor declarado, un documento principal, un tipo de documento, recursos y metadatos de vista previa. Puedes inspeccionar los archivos antes de crear el proyecto.
+Empieza con un artículo, un artículo de revista, una tesis, una revisión bibliográfica, un informe, un libro, una presentación de Beamer, un póster, una tarea, una carta, una bibliografía, un currículum o un diagrama. Las plantillas son proyectos de código fuente normales con un motor declarado, un documento principal, un tipo de documento, recursos y metadatos de vista previa. Antes de crear el proyecto, puedes ver una vista previa renderizada y el motor que usa.
 
 La galería filtra por motor, categoría, disponibilidad sin conexión y compatibilidad con ATS. Las plantillas incluidas funcionan sin una cuenta de plantillas. Los paquetes de plantillas, fuentes y recursos opcionales solo se descargan después de seleccionarlos.
 
@@ -107,7 +107,7 @@ La galería filtra por motor, categoría, disponibilidad sin conexión y compati
 
 Importa un ZIP de proyecto o un repositorio de GitHub, convierte un DOCX con Pandoc o usa un PDF como punto de partida para crear LaTeX editable. Las importaciones se convierten en archivos de proyecto locales, así que el código fuente original permanece intacto mientras inspeccionas el resultado.
 
-La reconstrucción desde PDF es determinista. Extrae el texto, la maquetación, las ecuaciones y las figuras que puede identificar, informa de sus límites y te deja un LaTeX editable en lugar de un documento opaco. Si conectas un proveedor con capacidad de visión, puede ayudarte a perfeccionar después el proyecto importado.
+En un PDF con capa de texto, la reconstrucción es determinista. Extrae el texto, la maquetación, las ecuaciones y las figuras que puede identificar, informa de sus límites y te deja un LaTeX editable en lugar de un documento opaco. Un modelo de visión que se ejecuta en local puede transcribir un PDF escaneado. Si conectas un proveedor con capacidad de visión, puede ayudarte a perfeccionar después el proyecto importado.
 
 <p align="center">
   <img src="../assets/readme/import-project.png" alt="Diálogo de importación de Oleafly con opciones para proyectos, Word, Markdown, HTML, Typst, arXiv y GitHub" width="100%" />
@@ -133,16 +133,17 @@ El editor CodeMirror se apoya en un índice de todo el proyecto. El índice cubr
 En LaTeX, Typst, Markdown y BibTeX tienes:
 
 - Resaltado de sintaxis adaptado al motor para comandos, entornos, matemáticas, comentarios, marcado y entradas bibliográficas.
-- Completado para comandos y entornos de LaTeX, etiquetas, claves de citas y rutas de archivos del proyecto.
+- Completado para etiquetas, claves de citas y rutas de archivos del proyecto. En los archivos LaTeX también se completan comandos y entornos, y en los archivos Typst, funciones, paquetes y estilos bibliográficos.
 - Diagnósticos en directo para la sintaxis, errores de compilación, citas no definidas, claves duplicadas, etiquetas duplicadas y referencias rotas.
 - Un esquema local y global del documento con símbolos, etiquetas, citas, macros y relaciones entre archivos.
 - Buscar y reemplazar, plegado de código, pestañas para varios archivos, modo Vim, recuento de palabras, inserción mediante comandos de barra y atajos de teclado configurables.
 - Ayudas estructurales de LaTeX para `\item`, `\begin` / `\end`, entornos, delimitadores matemáticos, pies de figura y patrones de inserción habituales.
+- Ayudas de Typst: pares de `$` para las matemáticas, las listas continúan al pulsar Intro y `/` abre fragmentos.
 - Información emergente para números y páginas de etiquetas compiladas, vistas previas de ecuaciones y miniaturas de imágenes para los destinos de `\includegraphics`.
 
 ### Inserta bloques LaTeX, formato y símbolos
 
-El editor de LaTeX mantiene las estructuras habituales a un clic, sin quitarte el control del código fuente. Cambia entre las vistas Code y Visual, deshaz o rehace, elige un nivel de encabezado, da formato al texto, inserta referencias y crea una tabla o figura sin tener que memorizar cada comando.
+El editor de LaTeX mantiene las estructuras habituales a un clic, sin quitarte el control del código fuente. Cambia entre las vistas Code y Visual, deshaz o rehaz, elige un nivel de encabezado, da formato al texto, inserta referencias y crea una tabla o figura sin tener que memorizar cada comando. Los archivos Typst tienen las mismas herramientas en una barra propia, que escribe marcado Typst.
 
 <div align="center">
   <img src="../assets/readme/latex-editor-toolbar.png" alt="Barra del editor LaTeX de Oleafly con controles de formato, referencias, figuras, tablas, listas, ecuaciones, fracciones y símbolos" width="100%" />
@@ -152,17 +153,18 @@ El editor de LaTeX mantiene las estructuras habituales a un clic, sin quitarte e
 | Área | Controles disponibles |
 | --- | --- |
 | Edición y modos | Vista Code, vista Visual, deshacer, rehacer |
-| Estructura del documento | Inserción de H1–H6: `\part`, `\chapter`, `\section`, `\subsection`, `\subsubsection`, `\paragraph` |
+| Estructura del documento | Inserción de H1–H7: `\part`, `\chapter`, `\section`, `\subsection`, `\subsubsection`, `\paragraph`, `\subparagraph` |
 | Formato en línea | Negrita `\textbf{}`, cursiva `\textit{}`, subrayado `\underline{}`, código en línea `\texttt{}` |
 | Referencias y notas | Enlaces `\href{}{}`, citas del proyecto, referencias cruzadas `\ref{}`, notas al pie `\footnote{}` |
 | Bloques de contenido | Citas en bloque con `quote`, figuras con `\includegraphics`, pies de figura y etiquetas, tablas visuales con filas y columnas seleccionables, listas con viñetas `itemize`, listas numeradas `enumerate` |
 | Bloques matemáticos | Inserción de `equation`, `align` y fracciones `\frac{}{}` |
 | Inserción asistida por IA | Image to LaTeX para una ecuación, tabla o texto visible cuando se configura un proveedor con capacidad de visión |
 | Inteligencia de código | Ir a la definición, buscar referencias y renombrar símbolos en todo el proyecto |
+| Herramientas del proyecto | Dibujar un diagrama, Paquetes de LaTeX, Análisis del documento y Ajustes del documento |
 
 ### Una paleta de símbolos LaTeX que puedes buscar
 
-El selector de símbolos contiene 236 comandos únicos en la vista **All**. Las listas de categorías contienen 238 entradas porque `\nabla` y `\partial` son útiles tanto en Operators como en Calculus. Busca por el nombre del símbolo o por su comando LaTeX y después insértalo en el cursor.
+El selector de símbolos contiene 236 comandos únicos en la vista **All**. Las listas de categorías contienen 238 entradas porque `\nabla` y `\partial` son útiles tanto en Operators como en Calculus. Busca por el nombre del símbolo o por su comando LaTeX y después insértalo en el cursor. En un archivo Typst, la paleta muestra, busca e inserta el nombre Typst de cada símbolo.
 
 | Categoría | Cantidad | Símbolos y comandos disponibles |
 | --- | ---: | --- |
@@ -191,7 +193,7 @@ El selector de símbolos contiene 236 comandos únicos en la vista **All**. Las 
 
 ### Vista del código fuente y vista visual
 
-La vista del código fuente es la representación canónica. Cuando el motor lo permite, activa el editor visual para LaTeX o Markdown y edita prosa, ecuaciones, citas, tablas y figuras en una superficie orientada a páginas. El código fuente sigue disponible para Git, editores externos y cambios manuales.
+La vista del código fuente es la representación canónica. Cuando el motor lo permite, activa el editor visual para LaTeX, Typst o Markdown y edita prosa, ecuaciones, citas, tablas y figuras en una superficie orientada a páginas. Las matemáticas, las notas al pie, los teoremas, las figuras, las tablas y los colores se muestran como nodos nativos y editables; el texto enriquecido y las imágenes que pegas se convierten en el marcado propio del documento, y una barra flotante edita las tablas en su sitio. El código fuente sigue disponible para Git, editores externos y cambios manuales.
 
 Usa la vista visual para editar a nivel de página. Vuelve al código fuente cuando necesites controlar con precisión los comandos, paquetes, entornos o la maquetación.
 
@@ -203,11 +205,11 @@ Usa la vista visual para editar a nivel de página. Vuelve al código fuente cua
 
 Hunspell se ocupa de la ortografía con el paquete de diccionario seleccionado y las adiciones personales o del proyecto. Harper comprueba la gramática y el estilo mediante una máscara de prosa consciente del documento, de modo que los comandos, comentarios, cuerpos matemáticos y argumentos de máquina no se tratan como frases normales en inglés.
 
-El perfil académico evita reglas que interfieren con la escritura académica y cada hallazgo tiene una acción local: reemplazarlo, ignorarlo para el proyecto, ignorarlo para la sesión o ajustar la regla en Ajustes. La corrección se ejecuta en local y no necesita un proveedor de IA.
+El perfil académico evita reglas que interfieren con la escritura académica y cada hallazgo tiene una acción local: reemplazarlo, ignorarlo (por ahora, en este proyecto o en todas partes) o desactivar la regla. Ajustes muestra las reglas que desactivaste para que puedas volver a activarlas. La corrección se ejecuta en local y no necesita un proveedor de IA.
 
 ### Busca en todo el proyecto
 
-Busca en todo el proyecto desde la barra lateral o la paleta de comandos. El índice del proyecto conecta archivos fuente, encabezados, etiquetas, citas, macros y archivos incluidos, así que una tesis grande con varios archivos es más fácil de recorrer que una pila de pestañas del editor.
+Busca en todo el proyecto desde el panel Buscar. El índice del proyecto conecta archivos fuente, encabezados, etiquetas, citas, macros y archivos incluidos, así que una tesis grande con varios archivos es más fácil de recorrer que una pila de pestañas del editor.
 
 ## Compila con LaTeX, Typst o Markdown
 
@@ -215,10 +217,10 @@ Oleafly mantiene la compilación cerca del manuscrito y convierte la salida del 
 
 | Motor | Para qué sirve | Detalles importantes |
 | --- | --- | --- |
-| LaTeX con Tectonic | Compilaciones LaTeX portátiles e incluidas | Viene con la aplicación de escritorio; admite proyectos de varios archivos, imágenes, citas, Biber, SyncTeX, compilación aislada de figuras y compilaciones sin conexión en caché cuando los paquetes están disponibles |
-| LaTeX con `latexmk` | Proyectos que necesitan una distribución TeX de sistema completa | Usa MacTeX, TeX Live, MiKTeX o TinyTeX; admite `minted`, `glossaries`, `makeidx`, PythonTeX, plantillas que dependen mucho de shell-escape y motores Unicode cuando se confían explícitamente |
-| Typst | Creación rápida de documentos modernos | Compilador incluido, salida PDF, indexación del proyecto y citas; SyncTeX, el modo de compilación sin conexión y la compilación aislada de figuras no están disponibles en esta versión |
-| Markdown con Pandoc | Prosa ligera y flujos de conversión | Pandoc se puede instalar desde Ajustes; la salida PDF usa la entrada de Tectonic incluida, con exportación a DOCX, HTML, Markdown y texto cuando es compatible |
+| LaTeX con Tectonic | Compilaciones LaTeX portátiles e incluidas | Viene con la aplicación de escritorio; admite proyectos de varios archivos, imágenes, citas, Biber (excepto en Linux ARM64), SyncTeX, compilación aislada de figuras y compilaciones sin conexión en caché cuando los paquetes están disponibles |
+| LaTeX con `latexmk` | Proyectos que necesitan una distribución TeX de sistema completa | Usa MacTeX, TeX Live, MiKTeX o TinyTeX; admite `glossaries`, `makeidx` y XeLaTeX o LuaLaTeX (se elige automáticamente); `minted`, PythonTeX y otras plantillas con shell escape funcionan una vez que permites comandos externos en este equipo |
+| Typst | Creación rápida de documentos modernos | Compilador incluido, salida PDF, indexación del proyecto y citas; sincronización entre código fuente y PDF con Typst 0.13 o posterior, y compilaciones sin conexión cuando los paquetes están en caché o guardados en el proyecto. La compilación aislada de figuras no está disponible en esta versión |
+| Markdown con Pandoc | Prosa ligera y flujos de conversión | Pandoc viene con la aplicación. Convierte a LaTeX para que el Tectonic incluido lo componga, y exporta a Word, HTML, EPUB, PowerPoint, LaTeX, Typst y texto sin formato |
 
 Los proyectos LaTeX reciben un análisis de compatibilidad al abrirse. Si un proyecto necesita más de lo que puede manejar el motor incluido, Oleafly explica la diferencia y te dirige al motor o paquete adecuado. TeX de sistema se ejecuta con comandos de shell restringidos de forma predeterminada; activas el shell escape completo por separado para cada proyecto y ordenador.
 
@@ -234,7 +236,7 @@ El visor de PDF está integrado en el espacio de trabajo y también puede abrirs
 
 Usa el desplazamiento continuo o una vista de una página o de dos páginas. Amplía, ajusta al ancho o a la altura, gira, invierte los colores, busca el texto del documento, sigue el esquema, salta a una página, descarga con el nombre de archivo que elijas o inspecciona el registro de compilación en la misma superficie. Los PDF cifrados muestran una solicitud de contraseña en lugar de un visor en blanco.
 
-Cuando existen datos SyncTeX válidos, la navegación directa va del código fuente al PDF y la navegación inversa va de un clic en el PDF a la línea del código fuente. Los motores que no admiten SyncTeX desactivan esos controles.
+El comando Ir al PDF te lleva del código fuente al punto correspondiente del PDF, y un clic en el PDF te devuelve a la línea del código fuente. LaTeX lo hace con SyncTeX, y Typst, con Typst 0.13 o posterior, a través del servidor de lenguaje Tinymist. Markdown y las versiones anteriores de Typst no pueden sincronizar, así que esos controles no aparecen.
 
 <div align="center">
   <img src="../assets/readme/pdf-preview.png" alt="Vista previa del PDF de Oleafly junto al editor de código fuente" width="100%" />
@@ -244,9 +246,9 @@ Cuando existen datos SyncTeX válidos, la navegación directa va del código fue
 
 ### Busca desde la frase que estás escribiendo
 
-Citation Search consulta arXiv, Semantic Scholar, Crossref, PubMed y OpenAlex en un mismo lugar. Combina los resultados duplicados, mantiene visibles los metadatos y permite guardar una referencia en la biblioteca de literatura local.
+Citation Search consulta arXiv, Semantic Scholar, Crossref, PubMed y OpenAlex en un mismo lugar, y también Google Scholar cuando añades una clave de Serper. Combina los resultados duplicados, mantiene visibles los metadatos y permite guardar una referencia en la biblioteca de literatura local.
 
-También puedes buscar una cita por DOI, ID de arXiv, URL o título. Importa una biblioteca existente desde Zotero RDF, EndNote XML, RIS o BibTeX. El índice del proyecto ofrece completado de claves de citas, navegación por referencias, detalles al pasar el cursor y diagnósticos para citas no definidas, claves duplicadas, DOI duplicados y metadatos bibliográficos incompletos.
+También puedes buscar una cita por DOI, ID de arXiv, URL o título. Importa una biblioteca existente desde Zotero RDF, EndNote XML, RIS o BibTeX, o conecta Zotero en Ajustes > Integraciones e importa toda tu biblioteca desde el panel Referencias. El índice del proyecto ofrece completado de claves de citas, navegación por referencias, detalles al pasar el cursor y diagnósticos para citas no definidas, claves duplicadas y metadatos bibliográficos incompletos.
 
 ### Analiza el documento para encontrar soporte que falte
 
@@ -269,15 +271,15 @@ Vincula un conjunto de datos, una biblioteca de fuentes, una carpeta de análisi
 
 ### Busca laboratorios y fechas límite
 
-La galería de herramientas incluye Lab Search para instituciones de investigación registradas en OpenAlex, con filtros por país y enlaces a sus registros institucionales, ROR y OpenAlex. Conference Deadlines ofrece campos de búsqueda y cuentas atrás para venues de informática a partir de los datos de fechas límite incluidos.
+La galería de herramientas incluye Lab Search para instituciones de investigación registradas en OpenAlex, con filtros por país y enlaces a sus registros institucionales, ROR y OpenAlex. Conference Deadlines te permite buscar venues, filtrarlos por área de investigación y ver cuentas atrás. Los datos de fechas límite vienen con la aplicación y se pueden actualizar. La mayoría de los venues son de informática, y unos pocos de áreas como la neurociencia y la física.
 
 ## Figuras, ecuaciones y tablas
 
 ### Diagram Composer
 
-Dibuja una figura en un lienzo con rectángulos, círculos, elipses, rombos, texto, conectores, ajuste a la cuadrícula, colores de relleno y borde, deshacer, rehacer, minimapa y un lienzo claro u oscuro. Cambia al código TikZ, inserta fragmentos, compila la figura de forma aislada y previsualízala junto al código fuente.
+Diagram Composer pregunta primero para qué es el diagrama: TikZ para LaTeX, un diagrama de fletcher para Typst o un diagrama de flujo Mermaid para Markdown. Dibuja en un lienzo con rectángulos, círculos, elipses, rombos, texto, conectores, ajuste a la cuadrícula, colores de relleno y borde, deshacer, rehacer, minimapa y un lienzo claro u oscuro. El panel de código y el dibujo se mantienen sincronizados en ambas direcciones, y el código que el lienzo no puede dibujar se conserva tal como está escrito. Las figuras TikZ se compilan de forma aislada, los diagramas de Typst se previsualizan con el propio Typst del proyecto y Mermaid usa el renderizador de la aplicación.
 
-El código fuente `.tikz` guardado conserva el modelo del diagrama para editarlo de nuevo. Inserta el resultado como TikZ o como una imagen generada, con un pie de figura y una etiqueta. La reparación opcional con IA puede ayudar con errores de compilación de figuras, y un modelo con capacidad de visión puede inspeccionar una representación y perfeccionar su distribución.
+El código fuente guardado conserva el modelo del diagrama para editarlo de nuevo, y Diagram Composer importa archivos `.tikz`, `.tex`, `.typ`, `.mmd` y `.md`. Inserta el código en el cursor o guarda un PNG y el código fuente en la carpeta `figures` del proyecto. La reparación opcional con IA puede ayudar con errores de compilación de figuras, y un modelo con capacidad de visión puede inspeccionar una representación y perfeccionar su distribución.
 
 <div align="center">
   <img src="../assets/readme/diagram-composer.png" alt="Diagram Composer de Oleafly con un diagrama de sistema de investigación editable en un lienzo" width="100%" />
@@ -285,9 +287,9 @@ El código fuente `.tikz` guardado conserva el modelo del diagrama para editarlo
 
 ### Salida de ecuaciones y tablas
 
-La herramienta LaTeX to Image renderiza una ecuación y exporta PNG o SVG. También puede copiar MathML para Word o HTML de KaTeX. La herramienta Table to LaTeX ofrece un editor visual de filas y columnas y exporta LaTeX normal. Image to LaTeX puede transcribir una ecuación, tabla o texto visible de una imagen cuando se configura un proveedor con capacidad de visión.
+La herramienta LaTeX to Image renderiza una ecuación y exporta PNG o SVG. También puede copiar MathML para Word o HTML de KaTeX, y su modo Typst copia matemáticas de Typst. La herramienta Table to LaTeX ofrece un editor visual de filas y columnas y exporta LaTeX normal, y CSV to Typst y Excel to Typst crean tablas de Typst. Image to LaTeX e Image to Typst transcriben una ecuación, tabla o texto visible de una imagen con un modelo de visión que se ejecuta en local. El botón Image to LaTeX de la barra del editor usa en su lugar el proveedor con capacidad de visión que hayas configurado.
 
-Estas herramientas están disponibles en la galería, la paleta de comandos y los comandos de barra cuando se muestran en la aplicación.
+Estas herramientas están en la galería Tools, que está en beta y viene desactivada de forma predeterminada (consulta Herramientas de la galería más abajo). Una vez activada, también están en la paleta de comandos y en los comandos de barra cuando se muestran en la aplicación.
 
 <div align="center">
   <img src="../assets/readme/tools-gallery.png" alt="Galería de herramientas de Oleafly con un catálogo de herramientas integradas para investigación y documentos" width="100%" />
@@ -295,7 +297,7 @@ Estas herramientas están disponibles en la galería, la paleta de comandos y lo
 
 ## Comprueba el documento antes de sacarlo de tu ordenador
 
-Preflight lee el código fuente, la estructura del proyecto, el registro del compilador y el PDF actual. Agrupa los hallazgos por problema y muestra de dónde procede cada resultado. Las comprobaciones pueden ejecutarse juntas o por separado, y una entrada ausente se informa como no disponible o parcial en lugar de contarse como aprobada.
+Preflight lee el código fuente, la estructura del proyecto, el registro del compilador y el PDF actual. Agrupa los hallazgos por problema y muestra de dónde procede cada resultado. Las comprobaciones pueden ejecutarse juntas o por separado, y una entrada ausente se informa como no disponible o parcial en lugar de contarse como aprobada. Los proyectos Typst tienen sus propias comprobaciones del código fuente para referencias y citas sin resolver, texto alternativo ausente, metadatos del documento, imágenes ausentes, privacidad y revisión anónima. Los proyectos Markdown solo reciben las comprobaciones del registro de compilación y del PDF.
 
 | Comprobación | Qué busca |
 | --- | --- |
@@ -308,7 +310,7 @@ Preflight lee el código fuente, la estructura del proyecto, el registro del com
 
 Los perfiles de publicación cubren publicación general, arXiv, IEEE, ACM, otras revistas y tesis. Aun así, necesitas la guía de autoría vigente del venue para conocer sus márgenes, límites de páginas, reglas de tamaño de archivo e instrucciones de envío exactos.
 
-Las comprobaciones de accesibilidad hacen referencia a PDF/UA, Matterhorn y WCAG, e informan de la parte de PDF/UA-1 que se puede comprobar automáticamente. La preparación para exportación accesible puede añadir metadatos de LaTeX, declaraciones de encabezados de tabla y marcadores de texto alternativo cuando la clase y los paquetes activos lo permiten.
+Las comprobaciones de accesibilidad hacen referencia a PDF/UA, Matterhorn y WCAG, e informan de la parte de PDF/UA-1 que se puede comprobar automáticamente. La preparación para exportación accesible puede añadir metadatos de LaTeX, declaraciones de encabezados de tabla y marcadores de texto alternativo cuando la clase y los paquetes activos lo permiten. Para Typst, la preparación de la exportación ofrece PDF/A y PDF/UA.
 
 Preflight es un conjunto de comprobaciones automáticas, no un certificado de conformidad. No puede juzgar si el texto alternativo es útil, si el orden de lectura tiene sentido o si el contraste es suficiente. Para una declaración formal de conformidad de accesibilidad, valida el PDF final con la herramienta que exija el venue.
 
@@ -321,9 +323,9 @@ Preflight es un conjunto de comprobaciones automáticas, no un certificado de co
 
 ### Usa tu repositorio de Git como siempre
 
-Oleafly funciona con un repositorio de Git normal. El panel Source Control puede inicializar un repositorio, mostrar diferencias unificadas o en paralelo, preparar archivos, descartar cambios, hacer commit, push y pull, y mostrar el estado adelantado o retrasado de un remoto. También puedes publicar un proyecto en GitHub o conectar un repositorio existente.
+Oleafly funciona con un repositorio de Git normal. El panel Source Control puede inicializar un repositorio, mostrar diferencias unificadas o en paralelo, preparar archivos, descartar cambios, hacer commit, push y pull, y mostrar el estado adelantado o retrasado de un remoto. También puedes publicar un proyecto en GitHub o conectar un repositorio existente. El Explorador marca los archivos modificados con las mismas letras de estado y, si Git no está instalado, Source Control explica cómo conseguirlo.
 
-Guardar, compilar o cerrar un proyecto nunca crea un commit. Oleafly no oculta el código fuente de tu terminal ni edita el `.gitignore` del proyecto solo para hacer desaparecer sus propios metadatos.
+Los proyectos nuevos y los que abres reciben un repositorio de Git, y un proyecto nuevo suele empezar con un solo commit, titulado Create project. Desactívalo con la opción Inicializar Git en todos los proyectos, en Ajustes. Después de eso, guardar, compilar o cerrar un proyecto nunca crea un commit. Oleafly no oculta el código fuente de tu terminal ni edita el `.gitignore` del proyecto solo para hacer desaparecer sus propios metadatos.
 
 <p align="center">
   <img src="../assets/readme/source-control.png" alt="Panel Source Control de Oleafly con cambios preparados, un grafo de ramas y controles de commit" width="100%" />
@@ -353,9 +355,9 @@ Con un proveedor configurado, el asistente puede:
 - Revisar prosa, crear archivos, cambiarles el nombre y hacer sustituciones concretas.
 - Compilar el proyecto, leer el registro, extraer texto del PDF e inspeccionar páginas renderizadas cuando está activado el ajuste de captura de PDF.
 - Buscar literatura, verificar un DOI, añadir una cita y trazar los encabezados, etiquetas, citas, macros y relaciones entre archivos del documento.
-- Preparar, compilar, inspeccionar, reparar e insertar figuras editables de TikZ o PGFPlots.
+- Preparar, compilar, inspeccionar, reparar e insertar figuras editables de TikZ o PGFPlots en LaTeX, y de CeTZ o fletcher en Typst.
 
-Cada cambio en un archivo produce una diferencia visible. En Ajustes puedes pedir aprobación para cada acción, aprobar las escrituras habituales durante la sesión o usar un modo menos interactivo. El modo de planificación permite que el asistente trace el proyecto antes de poder escribir, compilar o ejecutar comandos.
+Cada cambio en un archivo produce una diferencia visible. Elige un modo de aprobación en el chat: Pedir aprobación, Aprobar por mí, Acceso completo o Personalizado, que sigue las reglas de `approvals.toml`. Después de un turno, una línea muestra cuántos archivos cambiaron. Revisa cada cambio, deshaz o rehaz un archivo, o deshaz todo el turno. El modo de planificación permite que el asistente trace el proyecto antes de poder escribir, compilar o ejecutar comandos.
 
 Conecta un proveedor alojado, un endpoint compatible con OpenAI o un modelo local de Ollama. Las credenciales del proveedor se guardan en el almacenamiento cifrado gestionado por la aplicación y no se escriben en los archivos del proyecto. La acción que eliges te indica cuándo se hará una solicitud alojada.
 
@@ -367,19 +369,19 @@ Conecta un proveedor alojado, un endpoint compatible con OpenAI o un modelo loca
 <details>
 <summary>Revisa una edición antes de aplicarla</summary>
 
-En el modo Ask for approval, lee la diferencia propuesta del archivo y elige qué cambios aplicar. Las escrituras habituales se pueden aprobar durante la sesión; los borrados siguen siendo visibles por separado y pueden requerir una confirmación explícita.
+En el modo Pedir aprobación, lee la diferencia propuesta del archivo y elige qué cambios aplicar. En el modo Personalizado, la opción Siempre en este proyecto guarda una regla de permiso para esa herramienta. Los borrados siguen siendo visibles por separado y pueden requerir una confirmación explícita.
 
 </details>
 
 ### Ejecuta por separado las tareas de investigación más largas
 
-Inicia una tarea para una revisión bibliográfica, una auditoría de evidencias, un análisis, una revisión del manuscrito o una respuesta a revisores. Se ejecuta en un worktree de Git separado o en una copia preparada mientras continúas en el proyecto original.
+Inicia una tarea para una revisión bibliográfica, una auditoría de evidencias, un análisis, una revisión del manuscrito o una respuesta a revisores. Se ejecuta en un worktree de Git separado o en una copia preparada mientras continúas en el proyecto original. En Windows, los agentes CLI todavía no pueden ejecutar estas tareas, y las que ejecuta el Asistente de Oleafly no pueden ejecutar comandos de shell. Codex no puede ejecutarlas en macOS.
 
 Cuando termina la tarea, inspecciona la actividad, los resultados y todos los archivos modificados. Previsualiza la diferencia, selecciona los archivos que quieras conservar y aplica solo esos archivos. El proyecto original no cambia hasta que aplicas los resultados revisados. Si el proyecto cambió mientras la tarea se ejecutaba, Oleafly detecta la divergencia en lugar de aplicar una diferencia antigua sobre trabajo nuevo.
 
 ### Usa un agente CLI del catálogo
 
-El catálogo incluye 14 agentes CLI. Cada uno usa su propia cuenta, permisos y configuración de modelo; Oleafly proporciona el contexto del proyecto y el espacio de trabajo que lo rodea.
+El catálogo incluye 14 agentes CLI. Cada uno usa su propia cuenta, permisos y configuración de modelo; Oleafly proporciona el contexto del proyecto y el espacio de trabajo que lo rodea. En Ajustes también puedes encontrar más agentes en el registro de ACP o añadir uno personalizado.
 
 | Agente | Comando |
 | --- | --- |
@@ -400,15 +402,15 @@ El catálogo incluye 14 agentes CLI. Cada uno usa su propia cuenta, permisos y c
 
 <small>Estas marcas identifican herramientas compatibles y siguen siendo propiedad de sus respectivos titulares. No implican respaldo.</small>
 
-Abre una conversación, inicia sesión mediante la CLI propia del agente cuando sea necesario, vuelve a conectarte, observa la actividad de las herramientas, dirige un turno en curso, detenlo y conserva la transcripción con la sesión del proyecto cuando sea compatible.
+Abre una conversación, inicia sesión mediante la CLI propia del agente cuando sea necesario, vuelve a conectarte, observa la actividad de las herramientas, dirige un turno en curso, detenlo y conserva la transcripción con la sesión del proyecto cuando sea compatible. Las solicitudes de permiso muestran el cambio que quiere hacer el agente. La pantalla de inicio del agente tiene puntos de partida para la investigación, como Rastreo bibliográfico y Auditoría de citas, y puedes exportar una conversación como Markdown o JSON.
 
-La compatibilidad con agentes CLI está en beta. Ajustes muestra la preparación para la instalación, los límites de la plataforma y la compatibilidad con la reanudación de cada agente.
+La compatibilidad con agentes CLI está en beta. Ajustes muestra la preparación para la instalación, los límites de la plataforma y el programa que Oleafly encontró para cada agente, con un botón Probar. La conversación te avisa cuando un agente no puede reanudar una sesión guardada.
 
 ### Reutiliza un flujo de investigación con skills
 
 Oleafly incluye skills para literatura, autoría, figuras, revisión, envíos, comunicación y herramientas. Las skills son carpetas `SKILL.md` normales que siguen la estructura de Agent Skills.
 
-Usa una skill con un comando de barra, añade tu propia carpeta, guarda un flujo repetible a partir de un chat terminado o instala una skill de dominio desde Domain Shelf cuando elijas descargarla. Las skills se pueden compartir con agentes CLI compatibles en el mismo ordenador. Una skill ya instalada sigue funcionando sin conexión.
+Usa una skill con un comando de barra, añade tu propia carpeta, guarda un flujo repetible a partir de un chat terminado o instala una skill de dominio desde Domain Shelf cuando elijas descargarla. Las skills se pueden compartir con agentes CLI compatibles en el mismo ordenador. Una skill ya instalada sigue funcionando sin conexión. Busca entre tus skills y en Domain Shelf, y activa cada skill para todos los proyectos o solo para el que está abierto.
 
 ### Skills incluidas con Oleafly
 
@@ -433,18 +435,20 @@ El paquete `research-core` incluido contiene 36 skills. Los nombres siguientes s
 
 Oleafly puede ejecutar un servidor MCP local para un cliente externo. Expone las mismas herramientas de proyecto que el asistente integrado: listar y leer archivos, buscar en el proyecto, inspeccionar su mapa, compilar, leer el registro, extraer texto del PDF, previsualizar figuras y aplicar cambios sujetos a la política de aprobación de Oleafly.
 
-El servidor se enlaza solo a `127.0.0.1`, usa un token bearer de corta duración y solo se ejecuta mientras el proceso de Oleafly está abierto. El modo de solo lectura elimina las herramientas mutables de la lista. El cliente externo aporta su propio modelo, así que no necesitas introducir una clave de API de IA en Oleafly para esta ruta.
+El servidor se enlaza solo a `127.0.0.1`, usa un token bearer que puedes regenerar en Ajustes y solo se ejecuta mientras el proceso de Oleafly está abierto. El modo de solo lectura elimina las herramientas mutables de la lista. El cliente externo aporta su propio modelo, así que no necesitas introducir una clave de API de IA en Oleafly para esta ruta.
+
+El asistente también puede usar servidores MCP externos. Importa la configuración de un servidor, o busca en el registro oficial de MCP y revisa una entrada antes de añadirla. alphaXiv se conecta con una clave de API, así que el asistente puede buscar y leer artículos, y te pregunta antes de cada llamada.
 
 ## Herramientas de la galería
 
-Abre Tools desde la omnibar o la paleta de comandos. Busca por nombre, descripción o comando de barra. Una herramienta que necesita una conexión de red o un proveedor de IA lo indica en su propio panel.
+Tools está en beta y viene desactivado de forma predeterminada. Actívalo en Ajustes > Experimentación > Herramientas de LaTeX y después ábrelo desde la omnibar o la paleta de comandos. Busca por nombre, descripción o comando de barra. Una herramienta que necesita una conexión de red o un proveedor de IA lo indica en su propio panel.
 
-### Una paleta de comandos para todo el espacio de trabajo
+### Busca en el espacio de trabajo desde un solo cuadro
 
-Busca proyectos y documentos, abre Ajustes, crea un proyecto, cambia de tema o inicia una herramienta desde un mismo lugar. Escribe `/` para reducir la lista a los comandos y seguir trabajando con el teclado.
+Pulsa Cmd+Shift+F (Ctrl+Shift+F en Windows y Linux) para buscar proyectos y documentos, abrir Ajustes, crear un proyecto, cambiar de tema o iniciar una herramienta desde un mismo lugar. Escribe `/` para reducir la lista a los comandos y seguir trabajando con el teclado. La paleta de comandos, con Cmd+K (Ctrl+K), muestra solo comandos.
 
 <p align="center">
-  <img src="../assets/readme/command-palette.png" alt="Paleta de comandos de Oleafly que busca proyectos, documentos, comandos y herramientas" width="100%" />
+  <img src="../assets/readme/command-palette.png" alt="Cuadro de búsqueda de Oleafly que encuentra proyectos, documentos, comandos y herramientas" width="100%" />
 </p>
 
 ### Importación y conversión de formatos
@@ -472,6 +476,16 @@ Busca proyectos y documentos, abre Ajustes, crea un proyecto, cambia de tema o i
 | Typst Editor | Iniciar un proyecto Typst con edición del código fuente, vista previa en directo y exportación PDF |
 | Visual Typst Editor | Iniciar un documento Typst en el editor del proyecto con vista previa en directo |
 | Typst to LaTeX | Convertir el marcado Typst en LaTeX para revistas y envíos |
+| arXiv to Typst | Convertir un paquete de código fuente de arXiv a Typst, con una comprobación de compilación que indica lo que no se convirtió |
+| CSV to Typst | Pegar filas CSV o TSV y obtener una tabla Typst con caracteres escapados |
+| Equation to Typst | Convertir matemáticas LaTeX escritas o una imagen de una ecuación en matemáticas de Typst |
+| Excel to Typst | Convertir una hoja de Excel, CSV o TSV en una tabla Typst con caracteres escapados |
+| HTML to Typst | Convertir HTML pegado en un documento Typst independiente |
+| Mermaid to Typst | Convertir un diagrama de flujo Mermaid en código fletcher editable |
+| Typst to HTML | Convertir el marcado Typst en HTML independiente con ecuaciones MathML |
+| Typst to Markdown | Convertir el marcado Typst en Markdown portable |
+| Typst to Word | Crear un documento Word con ecuaciones guardadas como matemáticas nativas de Word |
+| Word to Typst | Convertir un documento Word en Typst y mantener juntos los recursos multimedia extraídos |
 | Word to LaTeX | Convertir un documento Word en LaTeX y mantener juntos los recursos multimedia extraídos |
 
 ### Matemáticas, tablas, escritura y validación
@@ -481,7 +495,7 @@ Busca proyectos y documentos, abre Ajustes, crea un proyecto, cambia de tema o i
 | BibTeX Validator | Comprobar archivos `.bib` en busca de errores de sintaxis, campos obligatorios ausentes y claves duplicadas |
 | Statistics Calculators | Calcular valores p, tamaños de muestra e intervalos de confianza en local |
 | Writing Generators | Preparar un resumen, una síntesis, una paráfrasis o un esquema de tesis a partir del documento abierto con el asistente |
-| Symbol Reference | Consultar símbolos LaTeX e insertar uno en la posición actual del cursor |
+| Symbol Reference | Consultar símbolos LaTeX e insertar uno en el cursor, o su nombre Typst en un archivo Typst |
 
 ### Literatura, referencias e investigación
 
@@ -497,17 +511,17 @@ Busca proyectos y documentos, abre Ajustes, crea un proyecto, cambia de tema o i
 | PubMed to BibTeX | Recuperar un registro de PubMed desde su PMID, revisarlo y exportar BibTeX |
 | URL to BibTeX | Reconocer enlaces DOI, arXiv y PubMed o crear una cita editable de una página web |
 | Lab Search | Encontrar instituciones de investigación mediante el directorio de OpenAlex |
-| Conference Deadlines | Filtrar fechas límite de conferencias de informática y ver cuentas atrás |
+| Conference Deadlines | Filtrar fechas límite de conferencias, la mayoría de informática, y ver cuentas atrás |
 
-El espacio de trabajo de ecuaciones también puede exportar PNG, SVG, MathML para Word o HTML de KaTeX. La salida de tablas sigue siendo LaTeX normal. Writing Generators prepara un prompt para el asistente configurado; no proporciona un modelo por sí mismo.
+El espacio de trabajo de ecuaciones también puede exportar PNG, SVG, MathML para Word o HTML de KaTeX, y tiene un modo Typst. Table to LaTeX genera LaTeX normal, y CSV to Typst y Excel to Typst generan tablas de Typst. Writing Generators prepara un prompt para el asistente configurado; no proporciona un modelo por sí mismo.
 
-La paleta de comandos también ofrece recompilar, compilación automática, SyncTeX, exportación PDF, borrar la caché de compilación, recuento de palabras, historial de Git, Checkpoints, terminal, inserción de citas, ayudas de formato, ayudas de entornos, controles de tema, modo Vim, corrección ortográfica y modo sin conexión.
+La paleta de comandos también ofrece recompilar, compilación automática, SyncTeX, exportación PDF, borrar la caché de compilación, recuento de palabras, historial de Git, Checkpoints, terminal, inserción de citas, ayudas de formato, ayudas de entornos, controles de tema, modo Vim, corrección ortográfica y modo sin conexión. También puede presentar diapositivas, convertir un proyecto LaTeX a Typst, explorar paquetes de LaTeX y Typst, abrir Análisis del documento y Ajustes del documento, y cerrar todas las pestañas del editor o solo los archivos que abrió el asistente.
 
 ## Un terminal junto al artículo
 
 Abre pestañas de shell para el proyecto activo sin salir del espacio de trabajo. Puedes tener abiertas hasta diez sesiones de terminal por proyecto. Cambia el nombre y el color de las pestañas, cierra una o varias sesiones y conserva sus etiquetas con el proyecto.
 
-Usa una pestaña para ejecutar un script, inspeccionar un conjunto de datos, comprobar un archivo generado o utilizar otra herramienta CLI. Es tu shell, con el mismo directorio del proyecto disponible para los comandos que elijas ejecutar.
+Usa una pestaña para ejecutar un script, inspeccionar un conjunto de datos, comprobar un archivo generado o utilizar otra herramienta CLI. Es tu shell, con el mismo directorio del proyecto disponible para los comandos que elijas ejecutar. Las rutas de archivo y las direcciones web de la salida son enlaces. Haz Cmd-clic en uno (Ctrl-clic en Windows y Linux) para abrir un archivo del proyecto en la línea y la columna que indica la salida, un PDF o una imagen en su visor, o una dirección web en el navegador.
 
 <p align="center">
   <img src="../assets/readme/project-terminal.png" alt="Terminal de Oleafly acoplado junto a un proyecto de manuscrito" width="100%" />
@@ -516,7 +530,7 @@ Usa una pestaña para ejecutar un script, inspeccionar un conjunto de datos, com
 
 ## Navegador para tareas de computer-use
 
-El navegador integrado es una ventana independiente del sistema operativo con pestañas, una barra de direcciones, controles de navegación y webviews de contenido aisladas. Es principalmente la superficie de computer-use: un agente puede abrir una URL y esperar a que cargue mientras mantienes el manuscrito en la ventana principal.
+El navegador integrado está en beta y viene desactivado de forma predeterminada. Actívalo en Ajustes > Experimentación > Navegador web. Se abre como una ventana independiente del sistema operativo con pestañas, una barra de direcciones, controles de navegación y webviews de contenido aisladas. Es principalmente la superficie de computer-use: un agente puede abrir una URL y esperar a que cargue mientras mantienes el manuscrito en la ventana principal.
 
 La herramienta de computer-use no puede leer, capturar, hacer clic ni ejecutar scripts sobre el contenido de la página. Las páginas remotas no reciben acceso al IPC de Oleafly y la navegación externa sigue la política de aprobación activa. Usa las herramientas de literatura cuando necesites metadatos o citas que se puedan buscar.
 
@@ -529,7 +543,7 @@ La herramienta de computer-use no puede leer, capturar, hacer clic ni ejecutar s
 | Revisión bibliográfica | Busca fuentes, analiza párrafos para encontrar soporte ausente, guarda metadatos y organiza las evidencias con skills de investigación |
 | Análisis reproducible | Vincula carpetas de datos y análisis en modo de solo lectura, mantén el manuscrito separado y usa el terminal para los comandos del proyecto |
 | Artículo de conferencia | Usa plantillas orientadas al venue, SyncTeX, herramientas de figuras y tablas y una pasada de preenvío |
-| Charla o póster de Beamer | Empieza con una plantilla de presentación o póster y exporta formatos compatibles desde el proyecto |
+| Charla o póster de Beamer | Empieza con una plantilla de presentación o póster, exporta formatos compatibles y presenta desde el PDF compilado con una vista del presentador opcional |
 | Libro o informe largo | Usa un árbol de código fuente de varios archivos, esquema, referencias de todo el proyecto, navegación del PDF y exportación EPUB cuando sea compatible |
 | Currículum o CV | Usa plantillas de currículum, corrección local, extracción de texto del PDF y comprobaciones de preparación para ATS |
 | Manuscrito multilingüe | Elige el motor Unicode y las fuentes del sistema de la plantilla cuando el proyecto necesite XeLaTeX o LuaLaTeX |
@@ -543,12 +557,12 @@ Gratis para siempre · Código abierto · Sin cuentas · Sin registros · Sin se
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![Descargar para macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI o EXE | [![Descargar para Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage o DEB | [![Descargar para Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage o DEB | [![Descargar para Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage, DEB o RPM | [![Descargar para Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage, DEB o RPM | [![Descargar para Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-La aplicación de escritorio incluye Tectonic para LaTeX y un compilador de Typst. LaTeX puede compilar sin conexión cuando los paquetes necesarios ya están disponibles para el motor incluido. Pandoc se puede instalar desde Ajustes para las conversiones de Markdown.
+La aplicación de escritorio incluye Tectonic para LaTeX, un compilador de Typst y Pandoc para las compilaciones de Markdown y las conversiones de documentos. LaTeX compila sin conexión cuando el motor incluido ya tiene los paquetes que necesita, y Typst compila sin conexión cuando sus paquetes están en caché o guardados en el proyecto.
 
-Los paquetes de Linux requieren glibc 2.39 o una versión posterior. Las versiones incluyen artefactos de actualización firmados y el actualizador integrado comprueba la firma antes de instalarlos. Las [notas de la versión](https://github.com/Oleafly/Oleafly/releases/latest) indican qué incluye cada instalador.
+En x86_64, los paquetes de Linux necesitan glibc 2.35 o una versión posterior (Ubuntu 22.04 o posterior). Los paquetes ARM64 se compilan en Ubuntu 24.04 (glibc 2.39). Las versiones incluyen artefactos de actualización firmados y el actualizador integrado comprueba la firma antes de instalarlos. Las [notas de la versión](https://github.com/Oleafly/Oleafly/releases/latest) indican qué incluye cada instalador.
 
 ## Más información
 
@@ -570,7 +584,7 @@ Los paquetes de Linux requieren glibc 2.39 o una versión posterior. Las version
 
 ## Versión actual
 
-Oleafly está en beta. La coedición en directo, los comentarios y la sincronización en segundo plano entre dispositivos no están disponibles en esta versión. Typst y Markdown aún no ofrecen SyncTeX ni las comprobaciones de Preflight específicas de LaTeX para el código fuente. Comprueba el motor activo en la aplicación y consulta el [registro de cambios](../../CHANGELOG.md) para ver los cambios.
+Oleafly está en beta. La coedición en directo, los comentarios y la sincronización en segundo plano entre dispositivos no están disponibles en esta versión. Markdown aún no tiene sincronización entre código fuente y PDF ni comprobaciones de Preflight del código fuente, y la sincronización de Typst requiere Typst 0.13 o posterior. Comprueba el motor activo en la aplicación y consulta el [registro de cambios](../../CHANGELOG.md) para ver los cambios.
 
 ## Comunidad y asistencia
 

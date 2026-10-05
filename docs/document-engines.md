@@ -10,12 +10,12 @@ Oleafly loads one backend-owned engine descriptor when a project opens. The fron
 | Formatting profile | LaTeX | Typst | Pandoc Markdown |
 | Project index and citations | Yes | Yes | Yes |
 | Source and PDF sync | Yes, through SyncTeX | Yes, on Typst 0.13 and later (Tinymist 0.13.30 or later) | No |
-| Offline compiler mode | Yes | Yes, with cached packages only | No separate mode |
+| Offline compiler mode | Yes | Yes, with cached or vendored packages only | No separate mode |
 | AI figure tools | TikZ, compiled in isolation | CeTZ or fletcher, rendered as a Typst snippet | No |
 | Conversion exports | DOCX, HTML, Markdown, text, Typst, plus PPTX/EPUB where relevant | LaTeX, DOCX, HTML, Markdown, text, EPUB | DOCX, HTML, text, Typst, LaTeX, PPTX, EPUB |
 | Bundled blank template | Yes | Yes | Yes |
 
-Typst projects get their own source rules, checked against the project's Typst version. Markdown source checks are not simulated with LaTeX regular expressions. Compile-log and PDF checks remain shared when the engine provides those inputs. LaTeX projects also receive source-level submission, reference, accessibility, privacy, and ATS checks.
+Typst projects get their own source rules, checked against the project's Typst version: unresolved references and citations, missing alt text, document metadata, missing images, privacy, and blind review. Markdown source checks are not simulated with LaTeX regular expressions. Compile-log and PDF checks remain shared when the engine provides those inputs. LaTeX projects also receive source-level submission, reference, accessibility, privacy, and ATS checks.
 
 Preflight reports coverage separately for compile, submission, ATS,
 accessibility, references, and privacy. A check is `not_run` when its required

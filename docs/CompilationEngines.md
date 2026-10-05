@@ -29,11 +29,12 @@ engine-specific policy.
 - Optional LuaLaTeX support can prepare and verify tagged PDF output for
   accessibility-oriented workflows. It is separate from the default Tectonic
   path.
-- Import scan (`@oleafly/latex` `scanImportCompatibility`) flags Overleaf-style
-  requirements (biblatex, minted, glossaries, shell-escape, fonts) when a
-  project is opened. The same taxonomy (`IMPORT_COMPAT_CATALOG`) drives the
-  compile-failure classifier (`classifyCompileFailure`) and the engine-picker
-  modal, so every surface describes a gap in the same words.
+- Import scan (`@oleafly/latex` `scanImportCompatibility`) flags the
+  requirements of projects written for other LaTeX setups (biblatex, minted,
+  glossaries, shell-escape, fonts) when a project is opened. The same taxonomy
+  (`IMPORT_COMPAT_CATALOG`) drives the compile-failure classifier
+  (`classifyCompileFailure`) and the engine-picker modal, so every surface
+  describes a gap in the same words.
 - Some findings come only from a failed compile, because nothing in the source
   predicts them: a class that pins hyperref's `pdftex` driver, an EPS figure
   the bundled engine cannot place, a `.sty` or `.cls` the bundled TeX bundle
@@ -67,10 +68,11 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   `PATH`. The copy sits in that Biber's unpack folder, so pruning deletes it
   once TeX Live replaces the Biber. The `oleaflyc` CLI and `latexmk` runs from
   the in-app terminal don't get this yet.
-- The underlying TeX engine is chosen from the source: a
-  `% !TeX program = xelatex|lualatex|pdflatex` magic comment wins. fontspec /
-  polyglossia / unicode-math force XeLaTeX. Everything else uses pdfLaTeX
-  (Overleaf's default).
+- The TeX engine is set by "Compiler (this project)" in the compile menu,
+  which saves the choice as `tex_flavor` in `project.json`. With Auto, the
+  source decides: a `% !TeX program = xelatex|lualatex|pdflatex` magic comment
+  wins. fontspec / polyglossia / unicode-math / `\setmainfont` force XeLaTeX.
+  Everything else uses pdfLaTeX.
 - Arbitrary TeX shell commands are blocked by default. A user can explicitly
   allow them for one trusted project on one computer. The setting is never
   inferred from source, imported, exported, committed to Git, or stored in
@@ -81,7 +83,7 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   (`-shell-restricted`), not with shell escape switched off entirely. TeX Live
   then permits only the programs on its own allow list in `texmf.cnf`, such as
   `repstopdf`, `extractbb`, `kpsewhich`, and `makeindex`. That is what lets an
-  ordinary Overleaf project with EPS figures build on pdfLaTeX, because
+  ordinary imported project with EPS figures build on pdfLaTeX, because
   `epstopdf` can convert them during the run. MiKTeX does not accept that flag,
   so it keeps `-no-shell-escape`.
 - System TeX is not a filesystem sandbox and may read files available to the
@@ -101,14 +103,15 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
 - latexmk runs the *real* main document with `-jobname=_oleafly_entry`, so all
   artifact paths (PDF, log, SyncTeX) match the Tectonic layout and the preview,
   log pane, and SyncTeX work unchanged.
-- TinyTeX can be installed on demand (Settings → LaTeX Engine, or the
-  engine-picker modal). The installer checks free disk space first, reports
-  phased progress (download / unpack / packages), resumes interrupted
-  downloads across launches, and intercepts app quit while running. Before
-  extraction it verifies the pinned archive byte length and SHA-256, then
-  validates the exact reviewed member count, expanded size, member type and
-  path manifest, duplicate-path policy, and confined symlink topology for the
-  current platform. No member is written before that preflight succeeds.
+- TinyTeX can be installed on demand (Settings → Engines → Manage TeX
+  distributions, or the engine-picker modal). The installer checks free disk
+  space first, reports phased progress (download / unpack / packages), resumes
+  interrupted downloads across launches, and intercepts app quit while
+  running. Before extraction it verifies the pinned archive byte length and
+  SHA-256, then validates the exact reviewed member count, expanded size,
+  member type and path manifest, duplicate-path policy, and confined symlink
+  topology for the current platform. No member is written before that
+  preflight succeeds.
 - Package lookups ask the local TeX Live database first and only fall back to
   the remote repository when the local answer is empty. A local release older
   than the remote one makes `tlmgr` refuse a remote query outright, and Oleafly
@@ -151,6 +154,9 @@ people opening the same Oleafly project see the same output:
   missing pinned packages, and a distribution mismatch (e.g. pinned
   "TeX Live 2025", local "MacTeX 2024") gets a heads-up that rendering may
   differ.
+- `typst` (Typst projects) pins the Typst version and stores its build
+  settings: vendored packages, font folders, inputs, variants, and
+  reproducible builds. See `docs/typst-toolchain.md`.
 - Permission to execute TeX shell commands is intentionally *not* part of this
   portable contract. Each computer requires a separate, explicit trust decision.
 - `main_doc`, `name`, `color`, and export history ride along too.
@@ -174,13 +180,21 @@ records.
 
 ## Typst
 
-- Uses the pinned Typst CLI.
+- Compiles with the Typst version the project pins, or with the default
+  version from Settings → Engines → Typst. Oleafly ships one Typst and can
+  download 0.11 to 0.15, each checked against a pinned checksum. See
+  `docs/typst-toolchain.md`.
 - Supports `.typ` source and direct PDF output.
-- Advertises current capability limits truthfully: SyncTeX, offline, and
-  isolated-compile support are currently disabled.
+- With Auto compile on, one `typst watch` process stays running and the
+  preview refreshes as you type.
+- Source and PDF sync goes through Tinymist and needs Typst 0.13 or newer.
+  Offline mode works when packages are already cached or vendored into
+  `typst-packages/`. Isolated compilation is not supported, so the figure tools
+  render CeTZ or fletcher as Typst snippets.
 - Typst-specific UI behavior is driven by the descriptor, not extensions.
-- Receives the same supervised `PATH` prepending as LaTeX (see above). Typst
-  does not use Biber or TeX Live bins.
+- One-shot compiles receive the same supervised `PATH` prepending as LaTeX
+  (see above). The `typst watch` process that Auto compile keeps running does
+  not. Typst does not use Biber or TeX Live bins either way.
 
 ## Markdown
 
@@ -193,16 +207,18 @@ records.
 
 ## Sidecar and supply-chain policy
 
-- Tectonic, Typst, TexLab, and Tinymist versions are pinned by manifests or
-  release metadata.
+- Tectonic, Biber, Pandoc, Typst, TexLab, and Tinymist versions are pinned by
+  manifests or release metadata.
 - Fetch scripts and runtime installers verify SHA-256 before extraction and
   reject unexpected archive members. TinyTeX pins a canonical manifest naming
   the upstream assets it accepts: Windows x64, a universal macOS archive,
   Linux x64, and Linux ARM64. Those names describe TinyTeX's own downloads,
   not Oleafly's build targets. Oleafly releases macOS on Apple Silicon only,
   alongside Windows x64, Linux x64, and Linux ARM64.
-- Language servers are not silently packaged as Tauri external binaries.
-  installation is consent-gated and license-aware.
+- Language servers are not Tauri external binaries. Tinymist ships inside the
+  app as a pinned archive, and the app checks it before installing it into
+  app data. TexLab downloads only after the user agrees, and the prompt shows
+  its license.
 
 ## Engineering anchors
 

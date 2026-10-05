@@ -982,11 +982,11 @@
       "status": {
         "checking": "Ser etter pandoc…",
         "installing": "Henter en låst pandoc-utgave. Dette tar et øyeblikk første gang.",
-        "missing": "Ikke funnet på denne Mac-en. Oleafly laster ned en kompatibel pandoc (2.19 eller nyere) til sin egen mappe. Ingenting annet på systemet ditt endres.",
+        "missing": "Ikke funnet. Oleafly kan laste ned en kompatibel pandoc (2.19 eller nyere) til sin egen mappe. Ingenting annet på systemet ditt endres.",
         "ready": "Funnet. Markdown-prosjekter konverteres til LaTeX med pandoc, og kompileres deretter med Tectonic, som følger med."
       },
       "tectonicDetail": "Setter LaTeX-koden som pandoc lager. Følger med Oleafly, og trenger ikke oppsett.",
-      "tooltip": "Markdown-prosjekter konverteres med pandoc (Pandoc Markdown: tabeller, fotnoter, siteringer, matematikk) til LaTeX, og settes så til PDF av Tectonic, som følger med. Pandoc lastes ned ved behov første gang den trengs."
+      "tooltip": "Markdown-prosjekter konverteres med pandoc (Pandoc Markdown: tabeller, fotnoter, siteringer, matematikk) til LaTeX, og settes så til PDF av Tectonic, som følger med. Pandoc følger med Oleafly."
     },
     "packages": {
       "ariaLabel": "LaTeX-pakker",

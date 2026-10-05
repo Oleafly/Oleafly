@@ -6,11 +6,11 @@
 
 [Deutsch](docs/readme-translations/README.de.md) | **English** | [Español](docs/readme-translations/README.es.md) | [Français](docs/readme-translations/README.fr.md) | [日本語](docs/readme-translations/README.ja.md) | [한국어](docs/readme-translations/README.ko.md) | [Português](docs/readme-translations/README.pt.md) | [Русский](docs/readme-translations/README.ru.md) | [中文](docs/readme-translations/README.zh.md) | [العربية](docs/readme-translations/README.ar.md)
 
-[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![Download for macOS (Apple Silicon)](https://img.shields.io/badge/Download_for_macOS_%28Apple_Silicon%29-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0496ff?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Download for Linux](https://img.shields.io/badge/Download_for_Linux-ffba08?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 
-[![Open issues](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml) [![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![Development status: ultra active](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![Last commit](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+[![Open issues](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![Development status: ultra active](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![Last commit](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![Stars](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
 **Write your next paper with less busywork with a modern scientific writing workspace.**
 
@@ -35,10 +35,10 @@ Free forever · Open source · No accounts · No sign-ups · No tracking
 | If you are... | Start with... |
 | --- | --- |
 | Writing a paper or thesis | An editable LaTeX, Typst, or Markdown starter |
-| Bringing existing work onto your computer | A ZIP, GitHub repository, Word or HTML file, Typst document, arXiv source, or PDF import |
+| Bringing existing work onto your computer | A ZIP, GitHub repository, Word, HTML, or Markdown file, Typst document, arXiv source, or PDF import |
 | Working in LaTeX, Typst, or Markdown | The source editor, visual editor, live preview, and engine picker |
 | Building a structured manuscript | The project outline, cross-file search, reference navigation, and local proofing |
-| Finding sources or citations | Citation Search, a document support scan, or a local bibliography import |
+| Finding sources or citations | Citation Search, a document support scan, or a bibliography import from a file or your Zotero library |
 | Working with AI | The built-in assistant, isolated Research Tasks, a CLI agent, or MCP |
 | Running a longer research task | A separate worktree or staged copy, reviewed results, and selective file application |
 | Reusing a research workflow | The bundled skill pack, slash commands, or a saved skill folder |
@@ -47,7 +47,7 @@ Free forever · Open source · No accounts · No sign-ups · No tracking
 | Recovering or versioning work | Checkpoints for local recovery and Git for intentional history and collaboration |
 | Linking papers, data, or analysis | Read-only linked research folders beside the manuscript |
 | Exporting or converting documents | PDF and source ZIPs, plus supported Word, HTML, Markdown, text, PPTX, or EPUB outputs |
-| Looking for a local toolchain | Bundled Tectonic and Typst, with optional system TeX and Pandoc |
+| Looking for a local toolchain | Bundled Tectonic, Typst, and Pandoc, plus an optional system TeX or a TinyTeX install the app manages |
 
 <div align="center">
   <img src="docs/assets/readme/start-work.png" alt="Oleafly start-work menu with options for research projects, imports, and templates" width="100%" />
@@ -74,17 +74,17 @@ Oleafly gives you a guided workspace without putting your manuscript behind a pr
 
 Core work stays on your computer: project files, indexing, compilation with an available local engine, PDF preview, spellchecking, grammar checking, preflight, Git history, checkpoints, and the terminal. An account is not required for these tasks.
 
-The app reaches the network only for actions that need it: literature lookup, DOI metadata, GitHub operations, hosted AI, optional engine and template downloads, and update feeds. Local Ollama models keep model traffic on your computer. When one of these services is unavailable, the app shows an offline or unavailable state.
+The app reaches the network only for actions that need it: literature lookup, DOI metadata, GitHub operations, hosted AI, Zotero, MCP servers you connect, Typst Universe and CTAN package lookups, and optional engine, package, and template downloads. Release builds also check for an update each time the app starts. Local Ollama models keep model traffic on your computer. When one of these services is unavailable, the app shows an offline or unavailable state.
 
 | Stays local by default | Happens only when you choose it |
 | --- | --- |
 | Project source and metadata | Literature and citation lookup |
 | Editor state and project index | GitHub sign-in, push, pull, and publish |
 | LaTeX compilation with the bundled engine when packages are available | Hosted AI providers |
-| Typst compilation | Optional downloads and update checks |
+| Typst compilation when packages are cached or kept in the project | Optional engine, package, and template downloads |
 | PDF rendering and text inspection | Domain-shelf skill downloads |
 | Spellchecking, grammar checking, and preflight | External MCP clients on localhost |
-| Git history and automatic checkpoints | |
+| Git history and automatic checkpoints | Zotero, alphaXiv, and other MCP servers you connect |
 
 <p align="center">
   <img src="docs/assets/readme/provider-boundaries.png" alt="Oleafly provider settings showing explicit connections separate from project files" width="100%" />
@@ -95,7 +95,7 @@ The app reaches the network only for actions that need it: literature lookup, DO
 
 ### Templates you can edit
 
-Start with an article, journal paper, thesis, literature review, report, book, Beamer presentation, poster, assignment, letter, bibliography, resume, or diagram. Templates are ordinary source projects with a declared engine, main document, document kind, assets, and preview metadata. You can inspect the files before creating the project.
+Start with an article, journal paper, thesis, literature review, report, book, Beamer presentation, poster, assignment, letter, bibliography, resume, or diagram. Templates are ordinary source projects with a declared engine, main document, document kind, assets, and preview metadata. Before you create the project, you can see a rendered preview and the engine it uses.
 
 The gallery filters by engine, category, offline readiness, and ATS suitability. Bundled templates work without a template account. Optional template packs, fonts, and assets download only after you select them.
 
@@ -107,7 +107,7 @@ The gallery filters by engine, category, offline readiness, and ATS suitability.
 
 Import a project ZIP or GitHub repository, convert a DOCX with Pandoc, or use a PDF as the starting point for editable LaTeX. Imports become local project files, so the original source remains untouched while you inspect the result.
 
-PDF reconstruction is deterministic. It extracts the text, layout, equations, and figures it can identify, reports its limits, and leaves you with editable LaTeX instead of an opaque document. If you connect a vision-capable provider, it can help refine an imported project afterward.
+For a PDF with a text layer, reconstruction is deterministic. It extracts the text, layout, equations, and figures it can identify, reports its limits, and leaves you with editable LaTeX instead of an opaque document. A scanned PDF can be transcribed by a vision model running locally. If you connect a vision-capable provider, it can help refine an imported project afterward.
 
 <p align="center">
   <img src="docs/assets/readme/import-project.png" alt="Oleafly import dialog with project, Word, Markdown, HTML, Typst, arXiv, and GitHub options" width="100%" />
@@ -133,16 +133,17 @@ The CodeMirror editor is backed by a project-wide index. The index covers headin
 In LaTeX, Typst, Markdown, and BibTeX you get:
 
 - Engine-aware syntax highlighting for commands, environments, math, comments, markup, and bibliography entries.
-- Completion for LaTeX commands, environments, labels, citation keys, and project file paths.
+- Completion for labels, citation keys, and project file paths. LaTeX files also complete commands and environments, and Typst files complete functions, packages, and bibliography styles.
 - Live diagnostics for syntax, compile errors, undefined citations, duplicate keys, duplicate labels, and broken references.
 - A local and global document outline with symbols, labels, citations, macros, and file relationships.
 - Search and replace, code folding, multi-file tabs, Vim mode, word count, slash-command insertion, and configurable keyboard shortcuts.
 - LaTeX structural helpers for `\item`, `\begin` / `\end`, environments, math delimiters, captions, and common insertion patterns.
+- Typst helpers: `$` pairs for math, lists continue on Enter, and `/` opens snippets.
 - Hovers for compiled label numbers and pages, equation previews, and image thumbnails for `\includegraphics` targets.
 
 ### Insert LaTeX blocks, formatting, and symbols
 
-The LaTeX editor keeps common structures one click away while leaving the source in your hands. Switch between Code and Visual view, undo or redo, choose a heading level, format text, insert references, and build a table or figure without memorising every command.
+The LaTeX editor keeps common structures one click away while leaving the source in your hands. Switch between Code and Visual view, undo or redo, choose a heading level, format text, insert references, and build a table or figure without memorising every command. Typst files get the same tools on their own toolbar, which writes Typst markup.
 
 <div align="center">
   <img src="docs/assets/readme/latex-editor-toolbar.png" alt="Oleafly LaTeX editor toolbar with formatting, reference, figure, table, list, equation, fraction, and symbol controls" width="100%" />
@@ -152,17 +153,18 @@ The LaTeX editor keeps common structures one click away while leaving the source
 | Area | Available controls |
 | --- | --- |
 | Editing and modes | Code view, Visual view, undo, redo |
-| Document structure | H1–H6 insertion: `\part`, `\chapter`, `\section`, `\subsection`, `\subsubsection`, `\paragraph` |
+| Document structure | H1–H7 insertion: `\part`, `\chapter`, `\section`, `\subsection`, `\subsubsection`, `\paragraph`, `\subparagraph` |
 | Inline formatting | Bold `\textbf{}`, italic `\textit{}`, underline `\underline{}`, inline code `\texttt{}` |
 | References and notes | Links `\href{}{}`, project citations, cross-references `\ref{}`, footnotes `\footnote{}` |
 | Content blocks | Block quotes with `quote`, figures with `\includegraphics`, captions and labels, visual tables with selectable rows and columns, bulleted `itemize` lists, numbered `enumerate` lists |
 | Math blocks | `equation`, `align`, and fraction `\frac{}{}` insertion |
 | AI-assisted insertion | Image to LaTeX for an equation, table, or visible text when a vision-capable provider is configured |
 | Code intelligence | Go to definition, find references, and project-wide symbol rename |
+| Project tools | Draw a diagram, LaTeX packages, Document insights, and Document settings |
 
 ### A searchable LaTeX symbol palette
 
-The symbol picker contains 236 unique commands in its **All** view. The category lists contain 238 entries because `\nabla` and `\partial` are useful in both Operators and Calculus. Search by the symbol name or its LaTeX command, then insert it at the cursor.
+The symbol picker contains 236 unique commands in its **All** view. The category lists contain 238 entries because `\nabla` and `\partial` are useful in both Operators and Calculus. Search by the symbol name or its LaTeX command, then insert it at the cursor. In a Typst file, the palette shows, searches, and inserts each symbol's Typst name.
 
 | Category | Count | Available symbols and commands |
 | --- | ---: | --- |
@@ -191,7 +193,7 @@ The symbol picker contains 236 unique commands in its **All** view. The category
 
 ### Source view and visual view
 
-Source view is the canonical representation. When the engine supports it, turn on the visual editor for LaTeX or Markdown and edit prose, equations, citations, tables, and figures on a page-oriented surface. Math, footnotes, theorems, figures, tables and colours render as native, editable nodes; pasted rich text and images become LaTeX, and a floating toolbar edits tables in place. The source stays available for Git, external editors, and manual edits.
+Source view is the canonical representation. When the engine supports it, turn on the visual editor for LaTeX, Typst, or Markdown and edit prose, equations, citations, tables, and figures on a page-oriented surface. Math, footnotes, theorems, figures, tables and colours render as native, editable nodes; pasted rich text and images become the document's own markup, and a floating toolbar edits tables in place. The source stays available for Git, external editors, and manual edits.
 
 Use the visual view for page-level editing. Return to source when you need exact control over commands, packages, environments, or layout.
 
@@ -203,11 +205,11 @@ Use the visual view for page-level editing. Return to source when you need exact
 
 Hunspell handles spelling with the selected dictionary pack and personal or project additions. Harper checks grammar and style through a document-aware prose mask, so commands, comments, math bodies, and machine arguments are not treated as ordinary English sentences.
 
-The academic profile avoids rules that fight scholarly writing, and every finding has a local action: replace it, ignore it for the project, ignore it for the session, or adjust the rule in Settings. Proofreading runs locally and does not require an AI provider.
+The academic profile avoids rules that fight scholarly writing, and every finding has a local action: replace it, ignore it (for now, in this project, or everywhere), or turn the rule off. Settings lists the rules you turned off, so you can turn them back on. Proofreading runs locally and does not require an AI provider.
 
 ### Search across the project
 
-Search across the project from the rail or command palette. The project index connects source files, headings, labels, citations, macros, and included files, so a large multi-file thesis is easier to navigate than a stack of editor tabs.
+Search across the project from the Search panel. The project index connects source files, headings, labels, citations, macros, and included files, so a large multi-file thesis is easier to navigate than a stack of editor tabs.
 
 ## Compile with LaTeX, Typst, or Markdown
 
@@ -215,10 +217,10 @@ Oleafly keeps compilation close to the manuscript and turns compiler output into
 
 | Engine | What it is good for | Important details |
 | --- | --- | --- |
-| LaTeX with Tectonic | Portable, bundled LaTeX builds | Ships with the desktop app; supports multi-file projects, images, citations, Biber, SyncTeX, isolated figure compilation, and cached offline builds when packages are available |
-| LaTeX with `latexmk` | Projects that need a full system TeX distribution | Uses MacTeX, TeX Live, MiKTeX, or TinyTeX; supports `minted`, `glossaries`, `makeidx`, PythonTeX, shell-escape-heavy templates, and Unicode engines when explicitly trusted |
-| Typst | Fast modern document authoring | Bundled compiler, PDF output, project indexing, and citations; SyncTeX, offline compiler mode, and isolated figure compilation are not available in this release |
-| Markdown with Pandoc | Lightweight prose and conversion workflows | Pandoc can be installed from Settings; PDF output uses the bundled Tectonic input, with DOCX, HTML, Markdown, and text exports where supported |
+| LaTeX with Tectonic | Portable, bundled LaTeX builds | Ships with the desktop app; supports multi-file projects, images, citations, Biber (except on Linux ARM64), SyncTeX, isolated figure compilation, and cached offline builds when packages are available |
+| LaTeX with `latexmk` | Projects that need a full system TeX distribution | Uses MacTeX, TeX Live, MiKTeX, or TinyTeX; supports `glossaries`, `makeidx`, and XeLaTeX or LuaLaTeX (chosen automatically); `minted`, PythonTeX, and other shell-escape templates work once you allow external commands on this computer |
+| Typst | Fast modern document authoring | Bundled compiler, PDF output, project indexing, and citations; source and PDF sync on Typst 0.13 or newer, and offline builds when packages are cached or kept in the project. Isolated figure compilation is not available in this release |
+| Markdown with Pandoc | Lightweight prose and conversion workflows | Pandoc ships with the app. It converts to LaTeX for the bundled Tectonic to typeset, and exports Word, HTML, EPUB, PowerPoint, LaTeX, Typst, and plain text |
 
 LaTeX projects get a compatibility scan when they open. If a project needs more than the bundled engine can handle, Oleafly explains the gap and points you to the right engine or package. System TeX runs with restricted shell commands by default; you enable full shell escape separately for each project and computer.
 
@@ -234,7 +236,7 @@ The PDF viewer is built into the workspace and can also open in a detached previ
 
 Use continuous scroll or a one-page / two-page spread. Zoom, fit to width, fit to height, rotate, invert colors, search the document text, follow the outline, jump to a page, download with a chosen filename, or inspect the compile log in the same surface. Encrypted PDFs get a password prompt rather than a blank viewer.
 
-When valid SyncTeX data exists, forward navigation moves from source to PDF and inverse navigation moves from a PDF click back to the source line. Engines that do not support SyncTeX disable those controls.
+Go to PDF takes you from the source to the matching spot in the PDF, and a click in the PDF takes you back to the source line. LaTeX does this with SyncTeX, and Typst does it through the Tinymist language server on Typst 0.13 or newer. Markdown and older Typst versions cannot sync, so those controls do not appear.
 
 <div align="center">
   <img src="docs/assets/readme/pdf-preview.png" alt="Oleafly PDF preview beside the source editor" width="100%" />
@@ -244,9 +246,9 @@ When valid SyncTeX data exists, forward navigation moves from source to PDF and 
 
 ### Search from the sentence you are writing
 
-Citation Search queries arXiv, Semantic Scholar, Crossref, PubMed, and OpenAlex in one place. It combines duplicate results, keeps the metadata visible, and lets you save a reference to the local literature library.
+Citation Search queries arXiv, Semantic Scholar, Crossref, PubMed, and OpenAlex in one place, and Google Scholar too when you add a Serper key. It combines duplicate results, keeps the metadata visible, and lets you save a reference to the local literature library.
 
-You can also look up a citation by DOI, arXiv ID, URL, or title. Import an existing library from Zotero RDF, EndNote XML, RIS, or BibTeX. The project index provides citation-key completion, reference navigation, hover details, and diagnostics for undefined citations, duplicate keys, duplicate DOIs, and incomplete bibliography metadata.
+You can also look up a citation by DOI, arXiv ID, URL, or title. Import an existing library from Zotero RDF, EndNote XML, RIS, or BibTeX, or connect Zotero in Settings > Integrations and import your whole library from the References panel. The project index provides citation-key completion, reference navigation, hover details, and diagnostics for undefined citations, duplicate keys, and incomplete bibliography metadata.
 
 ### Scan the document for missing support
 
@@ -269,15 +271,15 @@ Link a dataset, source library, analysis folder, or other research directory wit
 
 ### Search labs and deadlines
 
-The tools gallery includes Lab Search for research institutions listed by OpenAlex, with country filters and links to institutional, ROR, and OpenAlex records. Conference Deadlines provides searchable fields and countdowns for computer science venues from the bundled deadline data.
+The tools gallery includes Lab Search for research institutions listed by OpenAlex, with country filters and links to institutional, ROR, and OpenAlex records. Conference Deadlines lets you search venues, filter them by research area, and see countdowns. The deadline data ships with the app and can be refreshed. Most venues are in computer science, with a few in areas such as neuroscience and physics.
 
 ## Figures, equations, and tables
 
 ### Diagram Composer
 
-Draw a figure on a canvas with rectangles, circles, ellipses, diamonds, text, connectors, snapping, fill and border colors, undo, redo, a minimap, and a light or dark canvas. Switch to TikZ code, insert snippets, compile the figure in isolation, and preview it beside the source.
+Diagram Composer first asks what the diagram is for: TikZ for LaTeX, a fletcher diagram for Typst, or a Mermaid flowchart for Markdown. Draw on a canvas with rectangles, circles, ellipses, diamonds, text, connectors, snapping, fill and border colors, undo, redo, a minimap, and a light or dark canvas. The code panel and the drawing stay in step in both directions, and code the canvas cannot draw is kept as written. TikZ figures compile in isolation, Typst diagrams preview with the project's own Typst, and Mermaid uses the app's renderer.
 
-The saved `.tikz` source keeps the diagram model for another edit. Insert the result as TikZ or as a generated image, with a caption and label. Optional AI repair can help with figure compile errors, and a vision-capable model can inspect a render and refine its layout.
+The saved source keeps the diagram model for another edit, and the composer imports `.tikz`, `.tex`, `.typ`, `.mmd`, and `.md` files. Insert the code at the cursor, or save a PNG and the source to the project's `figures` folder. Optional AI repair can help with figure compile errors, and a vision-capable model can inspect a render and refine its layout.
 
 <div align="center">
   <img src="docs/assets/readme/diagram-composer.png" alt="Oleafly Diagram Composer showing an editable research-system diagram on a canvas" width="100%" />
@@ -285,9 +287,9 @@ The saved `.tikz` source keeps the diagram model for another edit. Insert the re
 
 ### Equation and table output
 
-The LaTeX to Image tool renders an equation and exports PNG or SVG. It can also copy MathML for Word or KaTeX HTML. The Table to LaTeX tool provides a visual row-and-column editor and exports ordinary LaTeX. Image to LaTeX can transcribe an equation, table, or visible text from an image when a vision-capable provider is configured.
+The LaTeX to Image tool renders an equation and exports PNG or SVG. It can also copy MathML for Word or KaTeX HTML, and its Typst mode copies Typst math. The Table to LaTeX tool provides a visual row-and-column editor and exports ordinary LaTeX, and CSV to Typst and Excel to Typst build Typst tables. Image to LaTeX and Image to Typst transcribe an equation, table, or visible text from an image with a vision model running locally. The Image to LaTeX button on the editor toolbar uses your configured vision-capable provider instead.
 
-These tools are available from the gallery, the command palette, and slash commands where shown in the app.
+These tools live in the Tools gallery, which is in beta and off by default (see Tools in the gallery below). Once it is on, they are also in the command palette and slash commands where shown in the app.
 
 <div align="center">
   <img src="docs/assets/readme/tools-gallery.png" alt="Oleafly Tools gallery showing a catalog of built-in research and document tools" width="100%" />
@@ -295,7 +297,7 @@ These tools are available from the gallery, the command palette, and slash comma
 
 ## Check the document before it leaves your machine
 
-Preflight reads the source, project structure, compiler log, and current PDF. It groups findings by problem and shows where each result came from. Checks can run together or separately, and a missing input is reported as unavailable or partial rather than counted as a pass.
+Preflight reads the source, project structure, compiler log, and current PDF. It groups findings by problem and shows where each result came from. Checks can run together or separately, and a missing input is reported as unavailable or partial rather than counted as a pass. Typst projects get their own source checks for unresolved references and citations, missing alt text, document metadata, missing images, privacy, and blind review. Markdown projects get the compile-log and PDF checks only.
 
 | Check | What it looks for |
 | --- | --- |
@@ -308,7 +310,7 @@ Preflight reads the source, project structure, compiler log, and current PDF. It
 
 Publication profiles cover general publication, arXiv, IEEE, ACM, other journals, and theses. You still need the venue's current author guide for its exact margins, page limits, file-size rules, and submission instructions.
 
-The accessibility checks reference PDF/UA, Matterhorn, and WCAG and report the machine-checkable part of PDF/UA-1. Accessible export preparation can add LaTeX metadata, table-header declarations, and alt-text placeholders where the active class and packages support them.
+The accessibility checks reference PDF/UA, Matterhorn, and WCAG and report the machine-checkable part of PDF/UA-1. Accessible export preparation can add LaTeX metadata, table-header declarations, and alt-text placeholders where the active class and packages support them. For Typst, export preparation offers PDF/A and PDF/UA.
 
 Preflight is a set of machine checks, not a conformance certificate. It cannot judge whether alt text is meaningful, whether reading order makes sense, or whether contrast is sufficient. For a formal accessibility conformance statement, validate the final PDF with the venue's required tool.
 
@@ -321,9 +323,9 @@ Preflight is a set of machine checks, not a conformance certificate. It cannot j
 
 ### Use your Git repository as usual
 
-Oleafly works with a normal Git repository. The Source Control panel can initialize a repository, show unified or side-by-side diffs, stage files, discard changes, commit, push, pull, and show ahead or behind state for a remote. You can also publish a project to GitHub or connect an existing repository.
+Oleafly works with a normal Git repository. The Source Control panel can initialize a repository, show unified or side-by-side diffs, stage files, discard changes, commit, push, pull, and show ahead or behind state for a remote. You can also publish a project to GitHub or connect an existing repository. The Explorer marks changed files with the same status letters, and if Git is not installed, Source Control explains how to get it.
 
-Saving, compiling, or closing a project never creates a commit. Oleafly does not hide the source from your terminal or edit the project's `.gitignore` just to make its own metadata disappear.
+New and opened projects get a Git repository, and a new project usually starts with one "Create project" commit. Turn this off with Initialise Git for every project in Settings. After that, saving, compiling, or closing a project never creates a commit. Oleafly does not hide the source from your terminal or edit the project's `.gitignore` just to make its own metadata disappear.
 
 <p align="center">
   <img src="docs/assets/readme/source-control.png" alt="Oleafly Source Control panel showing staged changes, a branch graph, and commit controls" width="100%" />
@@ -353,9 +355,9 @@ With a configured provider, the assistant can:
 - Revise prose, create files, rename files, and make targeted replacements.
 - Compile the project, read the log, extract PDF text, and inspect rendered pages when the PDF capture setting is enabled.
 - Search literature, verify a DOI, add a citation, and map the document's headings, labels, citations, macros, and file relationships.
-- Draft, compile, inspect, repair, and insert editable TikZ or PGFPlots figures.
+- Draft, compile, inspect, repair, and insert editable TikZ or PGFPlots figures in LaTeX, and CeTZ or fletcher figures in Typst.
 
-Every file change produces a visible diff. Settings can ask for approval on each action, approve ordinary writes for the session, or use a less interactive mode. Plan mode lets the assistant map the project before it can write, compile, or run commands.
+Every file change produces a visible diff. Pick an approval mode in the chat: Ask for approval, Approve for me, Full access, or Custom, which follows the rules in `approvals.toml`. After a turn, a line shows how many files changed. Review each change, undo or redo one file, or undo the whole turn. Plan mode lets the assistant map the project before it can write, compile, or run commands.
 
 Connect a hosted provider, an OpenAI-compatible endpoint, or a local Ollama model. Provider credentials live in encrypted app-managed storage and are not written into project files. The action you choose tells you when a hosted request will be made.
 
@@ -367,19 +369,19 @@ Connect a hosted provider, an OpenAI-compatible endpoint, or a local Ollama mode
 <details>
 <summary>Review an edit before it is applied</summary>
 
-In Ask for approval mode, read the proposed file diff and choose which changes to apply. Ordinary writes can be approved for the session; deletes remain separately visible and can require an explicit confirmation.
+In Ask for approval mode, read the proposed file diff and choose which changes to apply. In Custom mode, Always in this project saves an allow rule for that tool. Deletes remain separately visible and can require an explicit confirmation.
 
 </details>
 
 ### Run longer research tasks separately
 
-Start a task for a literature review, evidence audit, analysis, manuscript revision, or response to reviewers. It runs in a separate Git worktree or staged copy while you continue in the original project.
+Start a task for a literature review, evidence audit, analysis, manuscript revision, or response to reviewers. It runs in a separate Git worktree or staged copy while you continue in the original project. On Windows, CLI agents cannot run these tasks yet, and tasks run by the Oleafly Assistant cannot run shell commands. Codex cannot run them on macOS.
 
 When the task finishes, inspect activity, outputs, and every changed file. Preview the diff, select the files worth keeping, and apply only those files. The original project stays unchanged until you apply reviewed results. If the project changed while the task was running, Oleafly detects the drift instead of applying an old diff over newer work.
 
 ### Use a CLI agent from the catalog
 
-The catalog includes 14 CLI agents. Each uses its own account, permissions, and model configuration; Oleafly supplies the project context and the surrounding workspace.
+The catalog includes 14 CLI agents. Each uses its own account, permissions, and model configuration; Oleafly supplies the project context and the surrounding workspace. In Settings you can also find more agents in the ACP registry or add a custom one.
 
 | Agent | Command |
 | --- | --- |
@@ -400,15 +402,15 @@ The catalog includes 14 CLI agents. Each uses its own account, permissions, and 
 
 <small>These marks identify compatible tools and remain the property of their respective owners. They do not imply endorsement.</small>
 
-Open a conversation, sign in through the agent's own CLI when required, reconnect, watch tool activity, steer a running turn, stop it, and keep the transcript with the project session where supported.
+Open a conversation, sign in through the agent's own CLI when required, reconnect, watch tool activity, steer a running turn, stop it, and keep the transcript with the project session where supported. Permission requests show the change the agent wants to make. The agent home has research starting points such as Literature sweep and Citation audit, and you can export a conversation as Markdown or JSON.
 
-CLI agent support is in beta. Settings shows install readiness, platform limits, and resume support for each agent.
+CLI agent support is in beta. Settings shows install readiness, platform limits, and the program Oleafly found for each agent, with a Test button. The conversation tells you when an agent cannot resume a saved session.
 
 ### Reuse a research workflow with skills
 
 Oleafly includes skills for literature work, authoring, figures, review, submission, communication, and tooling. Skills are ordinary `SKILL.md` folders that follow the Agent Skills shape.
 
-Use a skill with a slash command, add your own folder, record a repeatable workflow from a completed chat, or install a domain skill from the shelf when you choose to download one. Skills can be shared with compatible CLI agents on the same computer. A skill already installed keeps working offline.
+Use a skill with a slash command, add your own folder, record a repeatable workflow from a completed chat, or install a domain skill from the shelf when you choose to download one. Skills can be shared with compatible CLI agents on the same computer. A skill already installed keeps working offline. Search your skills and the domain shelf, and turn each skill on for all projects or only the open one.
 
 ### Skills shipped with Oleafly
 
@@ -433,18 +435,20 @@ The bundled `research-core` pack ships 36 skills. The names below are the IDs us
 
 Oleafly can run a local MCP server for an external client. It exposes the same project tools as the built-in assistant: list and read files, search the project, inspect its map, compile, read the log, extract PDF text, preview figures, and apply edits subject to Oleafly's approval policy.
 
-The server binds to `127.0.0.1` only, uses a short-lived bearer token, and runs only while the Oleafly process is open. A read-only mode removes mutating tools from the tool list. The external client brings its own model, so you do not need to put an AI API key into Oleafly for this route.
+The server binds to `127.0.0.1` only, uses a bearer token that you can regenerate in Settings, and runs only while the Oleafly process is open. A read-only mode removes mutating tools from the tool list. The external client brings its own model, so you do not need to put an AI API key into Oleafly for this route.
+
+The assistant can also use outside MCP servers. Import a server's settings, or search the official MCP registry and review an entry before you add it. alphaXiv connects with an API key, so the assistant can search and read papers, and it asks you before each call.
 
 ## Tools in the gallery
 
-Open Tools from the omnibar or command palette. Search by name, description, or slash command. A tool that needs a network connection or an AI provider says so in its own panel.
+Tools is in beta and off by default. Turn it on in Settings > Experimentation > LaTeX tools, then open it from the omnibar or command palette. Search by name, description, or slash command. A tool that needs a network connection or an AI provider says so in its own panel.
 
-### A command palette for the whole workspace
+### Search the workspace from one box
 
-Search projects and documents, open settings, create a project, switch themes, or launch a tool from one place. Type `/` to narrow the list to commands and keep your hands on the keyboard while you work.
+Press Cmd+Shift+F (Ctrl+Shift+F on Windows and Linux) to search projects and documents, open settings, create a project, switch themes, or launch a tool from one place. Type `/` to narrow the list to commands and keep your hands on the keyboard while you work. The command palette, on Cmd+K (Ctrl+K), lists commands only.
 
 <p align="center">
-  <img src="docs/assets/readme/command-palette.png" alt="Oleafly command palette searching projects, documents, commands, and tools" width="100%" />
+  <img src="docs/assets/readme/command-palette.png" alt="Oleafly search box finding projects, documents, commands, and tools" width="100%" />
 </p>
 
 ### Import and format conversion
@@ -472,6 +476,16 @@ Search projects and documents, open settings, create a project, switch themes, o
 | Typst Editor | Start a Typst project with source editing, live preview, and PDF export |
 | Visual Typst Editor | Start a Typst document in the project editor with live preview |
 | Typst to LaTeX | Convert Typst markup into LaTeX for journals and submissions |
+| arXiv to Typst | Convert an arXiv source bundle to Typst, with a compile check that lists what did not convert |
+| CSV to Typst | Paste CSV or TSV rows and get an escaped Typst table |
+| Equation to Typst | Convert typed LaTeX math or an equation image into Typst math |
+| Excel to Typst | Convert an Excel, CSV, or TSV sheet into an escaped Typst table |
+| HTML to Typst | Convert pasted HTML into a standalone Typst document |
+| Mermaid to Typst | Convert a Mermaid flowchart into editable fletcher code |
+| Typst to HTML | Convert Typst markup into standalone HTML with MathML equations |
+| Typst to Markdown | Convert Typst markup into portable Markdown |
+| Typst to Word | Create a Word document with equations stored as native Word math |
+| Word to Typst | Convert a Word document into Typst and keep extracted media together |
 | Word to LaTeX | Convert a Word document into LaTeX and keep extracted media together |
 
 ### Math, tables, writing, and validation
@@ -481,7 +495,7 @@ Search projects and documents, open settings, create a project, switch themes, o
 | BibTeX Validator | Check `.bib` files for syntax errors, missing required fields, and duplicate keys |
 | Statistics Calculators | Calculate p-values, sample sizes, and confidence intervals locally |
 | Writing Generators | Prepare an abstract, summary, paraphrase, or thesis outline from the open document with the assistant |
-| Symbol Reference | Browse LaTeX symbols and insert one at the current cursor |
+| Symbol Reference | Browse LaTeX symbols and insert one at the cursor, or its Typst name in a Typst file |
 
 ### Literature, references, and research
 
@@ -497,17 +511,17 @@ Search projects and documents, open settings, create a project, switch themes, o
 | PubMed to BibTeX | Retrieve a PubMed record from its PMID, review it, and export BibTeX |
 | URL to BibTeX | Recognize DOI, arXiv, and PubMed links, or build an editable webpage citation |
 | Lab Search | Find research institutions through the OpenAlex directory |
-| Conference Deadlines | Filter computer science conference deadlines and view countdowns |
+| Conference Deadlines | Filter conference deadlines, mostly in computer science, and view countdowns |
 
-The equation workspace can also export PNG, SVG, MathML for Word, or KaTeX HTML. Table output remains ordinary LaTeX. Writing Generators prepare a prompt for the configured assistant; they do not provide a model by themselves.
+The equation workspace can also export PNG, SVG, MathML for Word, or KaTeX HTML, and it has a Typst mode. Table to LaTeX outputs ordinary LaTeX, and CSV to Typst and Excel to Typst output Typst tables. Writing Generators prepare a prompt for the configured assistant; they do not provide a model by themselves.
 
-The command palette also gives you recompile, auto-compile, SyncTeX, PDF export, clear build cache, word count, Git history, checkpoints, terminal, citation insertion, formatting helpers, environment helpers, theme controls, Vim mode, spellchecking, and offline mode.
+The command palette also gives you recompile, auto-compile, SyncTeX, PDF export, clear build cache, word count, Git history, checkpoints, terminal, citation insertion, formatting helpers, environment helpers, theme controls, Vim mode, spellchecking, and offline mode. It can also present slides, convert a LaTeX project to Typst, browse LaTeX and Typst packages, open Document insights and Document settings, and close all editor tabs or only the files the assistant opened.
 
 ## A terminal beside the paper
 
 Open shell tabs for the active project without leaving the workspace. Up to ten terminal sessions can be open per project. Rename and color tabs, close one or several sessions, and keep those tab labels with the project.
 
-Use a tab to run a script, inspect a dataset, check a generated file, or use another CLI tool. It is your shell, with the same project directory available to the commands you choose to run.
+Use a tab to run a script, inspect a dataset, check a generated file, or use another CLI tool. It is your shell, with the same project directory available to the commands you choose to run. File paths and web addresses in the output are links. Cmd-click one (Ctrl-click on Windows and Linux) to open a project file at the line and column the output names, a PDF or image in its viewer, or a web address in the browser.
 
 <p align="center">
   <img src="docs/assets/readme/project-terminal.png" alt="Oleafly terminal dock open beside a manuscript project" width="100%" />
@@ -516,7 +530,7 @@ Use a tab to run a script, inspect a dataset, check a generated file, or use ano
 
 ## Browser for computer-use tasks
 
-The in-app browser is a separate OS window with tabs, an address bar, navigation controls, and isolated content webviews. It is mainly the computer-use surface: an agent can open a URL and wait for it to load while you keep the manuscript in the main window.
+The in-app browser is in beta and off by default. Turn it on in Settings > Experimentation > Web browser. It opens as a separate OS window with tabs, an address bar, navigation controls, and isolated content webviews. It is mainly the computer-use surface: an agent can open a URL and wait for it to load while you keep the manuscript in the main window.
 
 The computer-use tool cannot read, capture, click, or script page content. Remote pages do not receive Oleafly IPC access, and external navigation follows the active approval policy. Use the literature tools when you need searchable metadata or citations.
 
@@ -529,7 +543,7 @@ The computer-use tool cannot read, capture, click, or script page content. Remot
 | Literature review | Search sources, scan paragraphs for missing support, save metadata, and organize evidence with research skills |
 | Reproducible analysis | Link data and analysis folders read-only, keep the manuscript separate, and use the terminal for project commands |
 | Conference paper | Use venue-oriented templates, SyncTeX, figure and table tools, and a pre-submission pass |
-| Beamer talk or poster | Start from a presentation or poster template and export supported formats from the project |
+| Beamer talk or poster | Start from a presentation or poster template, export supported formats, and present from the compiled PDF with an optional presenter view |
 | Book or long report | Use a multi-file source tree, outline, project-wide references, PDF navigation, and EPUB export where supported |
 | Resume or CV | Use resume templates, local proofing, PDF text extraction, and ATS readiness checks |
 | Multilingual manuscript | Choose the template's Unicode engine and system fonts when the project needs XeLaTeX or LuaLaTeX |
@@ -543,12 +557,12 @@ Free forever · Open source · No accounts · No sign-ups · No tracking
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![Download for macOS](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSI or EXE | [![Download for Windows](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImage or DEB | [![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImage or DEB | [![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage, DEB, or RPM | [![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage, DEB, or RPM | [![Download for Linux](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-The desktop app includes Tectonic for LaTeX and a Typst compiler. LaTeX can build offline when the required packages are already available to the bundled engine. Pandoc can be installed from Settings for Markdown conversions.
+The desktop app includes Tectonic for LaTeX, a Typst compiler, and Pandoc for Markdown builds and document conversions. LaTeX builds offline when the bundled engine already has the packages it needs, and Typst builds offline when its packages are cached or kept in the project.
 
-Linux packages require glibc 2.39 or newer. Releases include signed update artifacts, and the in-app updater checks the signature before installation. The [release notes](https://github.com/Oleafly/Oleafly/releases/latest) say what is included in each installer.
+On x86_64, the Linux packages need glibc 2.35 or newer (Ubuntu 22.04 or later). ARM64 packages are built on Ubuntu 24.04 (glibc 2.39). Releases include signed update artifacts, and the in-app updater checks the signature before installation. The [release notes](https://github.com/Oleafly/Oleafly/releases/latest) say what is included in each installer.
 
 ## Learn more
 
@@ -570,7 +584,7 @@ Linux packages require glibc 2.39 or newer. Releases include signed update artif
 
 ## Current release
 
-Oleafly is in beta. Live co-editing, comments, and background sync across devices are not available in this release. Typst and Markdown do not yet provide SyncTeX or the LaTeX-specific source preflight checks. Check the active engine in the app and follow the [changelog](CHANGELOG.md) for changes.
+Oleafly is in beta. Live co-editing, comments, and background sync across devices are not available in this release. Markdown has no source and PDF sync or source preflight checks yet, and Typst sync needs Typst 0.13 or newer. Check the active engine in the app and follow the [changelog](CHANGELOG.md) for changes.
 
 ## Community and support
 

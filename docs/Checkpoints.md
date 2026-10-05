@@ -29,6 +29,12 @@ Left out: `.git`, `.oleafly`, `node_modules`, and any directory named
 `_minted-*` or `pythontex-files-*`. Build output lives inside `.oleafly`, so the
 compiled PDF and the log go out with it.
 
+A folder you opened in place follows extra rules. Oleafly also leaves out
+hidden folders, `target`, `build`, `out`, `__MACOSX`, links, cloud-only files
+and files over 25 MB, except the main document and files a latexmk or Typst
+build read. It says how many files it skipped. Checkpoints
+pause for a folder with more than 5,000 files or 512 MB.
+
 There is nothing to configure. Checkpoints have no include list and no ignore
 list. No setting in `project.json` can keep a file out of one or push a file
 into one.

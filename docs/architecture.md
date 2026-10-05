@@ -11,15 +11,23 @@ making document engines, filesystem policy, and external integrations explicit.
 | `crates/oleafly-core/` | Shared project manifest, path safety, and build-directory policy |
 | `crates/oleafly-cli/` | The `oleaflyc` commands, native compiler adapter, and output contracts |
 | `crates/oleafly-agent/` | Provider-neutral agent runtime |
+| `crates/oleafly-history/` | Content-addressed compile checkpoints |
 | `src/` | Application shell, stores, Tauri adapters, contributions, and UI |
 | `packages/editor/` | Engine-neutral editor and language-service primitives |
+| `packages/wysiwyg/` | Tiptap schema and nodes for the visual editor |
+| `packages/preview/` | PDF.js viewer and SyncTeX page controller |
 | `packages/latex/` | LaTeX parsing, masking, and source operations |
+| `packages/latex-intelligence/` | LaTeX command, environment, and package catalogs for completion |
+| `packages/pdf-to-latex/` | PDF to LaTeX conversion |
+| `packages/conversion-registry/` | Import and export routes behind the conversion matrix |
 | `packages/registry/` | Rail tabs, commands, toolsets, and context providers |
 | `packages/search-query/` | GitHub-style search queries: parsing, matching, suggestions, and edits |
 | `packages/preflight/` | Source, PDF, ATS, accessibility, and reference rules |
 | `packages/diagram/` | Host-independent diagram composer |
 | `packages/templates/` | Template gallery contracts and host integration |
 | `packages/ai-core/` and `packages/ai-tools/` | Provider and tool boundaries |
+| `packages/backend-port/` | Typed contract between a frontend shell and its backend |
+| `packages/i18n-contract/` | Supported locales, catalog helpers, and the translator contract |
 | `src-tauri/src/` | IPC commands, project sandbox, Git, engines, downloads, and secrets |
 | `src-tauri/resources/` | Templates, licenses, and pinned runtime resources |
 
@@ -225,4 +233,4 @@ at old app paths when a public import path would otherwise churn.
 - [Development workflow](development.md)
 - [Compilation engines](CompilationEngines.md)
 - [Language-server toolchain](language-server-toolchain.md)
-- [Contribution registry](architecture.md#the-contribution-registry)
+- [Contribution registry](architecture.md#extension-model)

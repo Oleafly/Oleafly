@@ -6,11 +6,11 @@
 
 [Deutsch](README.de.md) | [English](../../README.md) | [Español](README.es.md) | [Français](README.fr.md) | **日本語** | [한국어](README.ko.md) | [Português](README.pt.md) | [Русский](README.ru.md) | [中文](README.zh.md) | [العربية](README.ar.md)
 
-[![macOSをダウンロード](https://img.shields.io/badge/Download_for_macOS-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
+[![macOS（Apple Silicon）をダウンロード](https://img.shields.io/badge/Download_for_macOS_%28Apple_Silicon%29-111827?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Windowsをダウンロード](https://img.shields.io/badge/Download_for_Windows-0496ff?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest)
 [![Linuxをダウンロード](https://img.shields.io/badge/Download_for_Linux-ffba08?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest)
 
-[![未解決のIssue](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![ダウンロード数](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/release.yml) [![SonarQube品質ゲート](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![コードカバレッジ](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![開発状況: 超活発](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![最終コミット日](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![ライセンス: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![スター](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
+[![未解決のIssue](https://img.shields.io/github/issues/Oleafly/Oleafly?label=issues&color=22c55e)](https://github.com/Oleafly/Oleafly/issues) [![ダウンロード数](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOleafly%2FOleafly%2Fbadges%2F.github%2Fbadges%2Fdownloads.json)](https://github.com/Oleafly/Oleafly/releases) [![CI](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml/badge.svg)](https://github.com/Oleafly/Oleafly/actions/workflows/ci.yml) [![SonarQube品質ゲート](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Oleafly_Oleafly) [![コードカバレッジ](https://sonarcloud.io/api/project_badges/measure?project=Oleafly_Oleafly&metric=coverage)](https://sonarcloud.io/component_measures?id=Oleafly_Oleafly&metric=coverage) [![開発状況: 超活発](https://img.shields.io/badge/status-ultra_active-22c55e)](https://github.com/Oleafly/Oleafly/pulse) [![最終コミット日](https://img.shields.io/github/last-commit/Oleafly/Oleafly?label=last%20commit&color=22c55e)](https://github.com/Oleafly/Oleafly/commits/main) [![ライセンス: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-22c55e.svg)](../../LICENSE) [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2Fkt9bcCjgkP%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&suffix=%20members&label=&color=5865F2&logo=discord&logoColor=white&cacheSeconds=600)](https://oleafly.com/discord) [![スター](https://img.shields.io/github/stars/Oleafly/Oleafly?style=social)](https://github.com/Oleafly/Oleafly)
 
 **モダンな科学執筆ワークスペースで、面倒な作業を減らして次の論文を書こう。**
 
@@ -35,10 +35,10 @@ Oleaflyは研究執筆のための無料オープンソースアプリです。�
 | あなたの状況 | まず使うもの |
 | --- | --- |
 | 論文や学位論文を書く | 編集できるLaTeX、Typst、またはMarkdownのスターター |
-| 既存の作業をコンピューターに持ってくる | ZIP、GitHubリポジトリ、WordまたはHTMLファイル、Typst文書、arXivソース、またはPDFのインポート |
+| 既存の作業をコンピューターに持ってくる | ZIP、GitHubリポジトリ、Word・HTML・Markdownファイル、Typst文書、arXivソース、またはPDFのインポート |
 | LaTeX、Typst、またはMarkdownで作業する | ソースエディタ、ビジュアルエディタ、ライブプレビュー、エンジン選択 |
 | 構造化された原稿を作る | プロジェクトのアウトライン、ファイル横断検索、参照ナビゲーション、ローカル校正 |
-| ソースや引用を探す | Citation Search、文書サポートスキャン、またはローカル文献目録のインポート |
+| ソースや引用を探す | Citation Search、文書サポートスキャン、またはファイルやZoteroライブラリからの文献目録のインポート |
 | AIを使う | 組み込みアシスタント、分離されたResearch Tasks、CLIエージェント、またはMCP |
 | 長めのリサーチタスクを実行する | 別のworktreeまたはステージング済みコピー、結果の確認、ファイルを選んで適用 |
 | リサーチワークフローを再利用する | 同梱のskill pack、スラッシュコマンド、または保存したskillフォルダー |
@@ -47,7 +47,7 @@ Oleaflyは研究執筆のための無料オープンソースアプリです。�
 | 作業を復元・バージョン管理する | ローカル復元用のCheckpoints、意図した履歴と共同作業のためのGit |
 | 論文、データ、分析をリンクする | 原稿の隣に置く読み取り専用のリンク済み研究フォルダー |
 | 文書をエクスポート・変換する | PDFとソースZIP、および対応するWord、HTML、Markdown、text、PPTX、EPUB出力 |
-| ローカルのツールチェーンを探す | 同梱のTectonicとTypst、任意で使えるシステムTeXとPandoc |
+| ローカルのツールチェーンを探す | 同梱のTectonic、Typst、Pandocに加え、任意で使えるシステムTeXまたはアプリが管理するTinyTeX |
 
 <div align="center">
   <img src="../assets/readme/start-work.png" alt="リサーチプロジェクト、インポート、テンプレートの選択肢を表示したOleaflyの開始メニュー" width="100%" />
@@ -74,17 +74,17 @@ Oleaflyは、原稿を独自形式や恒常的なサービスの背後に置か�
 
 プロジェクトファイル、インデックス作成、利用可能なローカルエンジンによるコンパイル、PDFプレビュー、スペルチェック、文法チェック、Preflight、Git履歴、Checkpoints、ターミナルなど、中心的な作業はコンピューター上で行われます。これらにアカウントは必要ありません。
 
-ネットワークに接続するのは、文献検索、DOIメタデータ、GitHub操作、ホスト型AI、任意のエンジンやテンプレートのダウンロード、更新フィードなど、接続が必要な操作だけです。ローカルのOllamaモデルなら、モデルとの通信もコンピューター内に留まります。サービスが利用できない場合は、アプリがオフラインまたは利用不能の状態を表示します。
+ネットワークに接続するのは、接続が必要な操作のときだけです。具体的には、文献検索、DOIメタデータ、GitHub操作、ホスト型AI、Zotero、接続したMCPサーバー、Typst UniverseとCTANのパッケージ検索、任意で行うエンジン・パッケージ・テンプレートのダウンロードです。また、リリースビルドはアプリを起動するたびに更新を確認します。ローカルのOllamaモデルなら、モデルとの通信もコンピューター内に留まります。サービスが利用できない場合は、アプリがオフラインまたは利用不能の状態を表示します。
 
 | デフォルトでローカルに残るもの | 選んだときだけ行われること |
 | --- | --- |
 | プロジェクトのソースとメタデータ | 文献・引用の検索 |
 | エディタの状態とプロジェクトインデックス | GitHubへのサインイン、push、pull、公開 |
 | パッケージが利用できる場合の同梱エンジンによるLaTeXコンパイル | ホスト型AIプロバイダー |
-| Typstのコンパイル | 任意のダウンロードと更新チェック |
+| パッケージがキャッシュ済みかプロジェクト内にある場合のTypstのコンパイル | 任意のエンジン、パッケージ、テンプレートのダウンロード |
 | PDFのレンダリングとテキスト検査 | Domain Shelfからのskillダウンロード |
 | スペルチェック、文法チェック、Preflight | localhost上の外部MCPクライアント |
-| Git履歴と自動Checkpoints | |
+| Git履歴と自動Checkpoints | Zotero、alphaXiv、その他の接続したMCPサーバー |
 
 <p align="center">
   <img src="../assets/readme/provider-boundaries.png" alt="プロジェクトファイルとは別に明示的な接続を管理するOleaflyのプロバイダー設定" width="100%" />
@@ -95,7 +95,7 @@ Oleaflyは、原稿を独自形式や恒常的なサービスの背後に置か�
 
 ### 編集できるテンプレート
 
-論文、ジャーナル論文、学位論文、文献レビュー、レポート、書籍、Beamerプレゼンテーション、ポスター、課題、レター、文献目録、履歴書、ダイアグラムから始められます。テンプレートは、使用エンジン、メイン文書、文書種別、アセット、プレビュー用メタデータが指定された通常のソースプロジェクトです。プロジェクトを作成する前にファイルを確認できます。
+論文、ジャーナル論文、学位論文、文献レビュー、レポート、書籍、Beamerプレゼンテーション、ポスター、課題、レター、文献目録、履歴書、ダイアグラムから始められます。テンプレートは、使用エンジン、メイン文書、文書種別、アセット、プレビュー用メタデータが指定された通常のソースプロジェクトです。プロジェクトを作成する前に、レンダリングされたプレビューと使用エンジンを確認できます。
 
 ギャラリーでは、エンジン、カテゴリ、オフライン対応、ATS適性で絞り込めます。同梱テンプレートはテンプレート用アカウントなしで使えます。任意のテンプレートパック、フォント、アセットは、選択した後にだけダウンロードされます。
 
@@ -107,7 +107,7 @@ Oleaflyは、原稿を独自形式や恒常的なサービスの背後に置か�
 
 プロジェクトのZIPやGitHubリポジトリをインポートし、PandocでDOCXを変換し、PDFを編集可能なLaTeXの出発点として使えます。インポートしたものはローカルのプロジェクトファイルになるので、結果を確認している間も元のソースは変更されません。
 
-PDFの再構成は決定的に行われます。識別できるテキスト、レイアウト、数式、図を抽出し、限界を報告したうえで、不透明な文書ではなく編集可能なLaTeXを残します。画像を理解できるプロバイダーを接続すれば、インポート後のプロジェクトを整える作業も手伝えます。
+テキストレイヤーのあるPDFでは、再構成は決定的に行われます。識別できるテキスト、レイアウト、数式、図を抽出し、限界を報告したうえで、不透明な文書ではなく編集可能なLaTeXを残します。スキャンしたPDFは、ローカルで動作するビジョンモデルで文字起こしできます。画像を理解できるプロバイダーを接続すれば、インポート後のプロジェクトを整える作業も手伝えます。
 
 <p align="center">
   <img src="../assets/readme/import-project.png" alt="プロジェクト、Word、Markdown、HTML、Typst、arXiv、GitHubの選択肢を表示したOleaflyのインポートダイアログ" width="100%" />
@@ -133,16 +133,17 @@ CodeMirrorエディタはプロジェクト全体のインデックスに支え�
 LaTeX、Typst、Markdown、BibTeXでは、次の機能を使えます。
 
 - コマンド、環境、数式、コメント、マークアップ、文献目録エントリをエンジンに合わせて構文ハイライト。
-- LaTeXコマンド、環境、ラベル、引用キー、プロジェクトのファイルパスを補完。
+- ラベル、引用キー、プロジェクトのファイルパスを補完。LaTeXファイルではコマンドと環境も、Typstファイルでは関数、パッケージ、参考文献スタイルも補完。
 - 構文エラー、コンパイルエラー、未定義の引用、重複キー、重複ラベル、壊れた参照をリアルタイムで診断。
 - シンボル、ラベル、引用、マクロ、ファイルの関係を含むローカルおよびグローバルな文書アウトライン。
 - 検索と置換、コード折りたたみ、複数ファイルのタブ、Vimモード、単語数、スラッシュコマンドの挿入、設定可能なキーボードショートカット。
 - LaTeX構造ヘルパーで、`\item`、`\begin` / `\end`、環境、数式区切り、キャプション、よく使う挿入パターンに対応。
+- Typstヘルパーで、数式用の`$`の対の入力、Enterでのリストの継続、`/`によるスニペットの表示に対応。
 - コンパイル済みのラベル番号とページのホバー、数式プレビュー、`\includegraphics`の対象画像のサムネイル。
 
 ### LaTeXブロック、書式、記号を挿入する
 
-LaTeXエディタでは、よく使う構造をワンクリックで呼び出しながら、ソースを手元に残せます。CodeとVisualを切り替え、元に戻す・やり直す、見出しレベルを選ぶ、テキストを書式設定する、参照を挿入する、表や図を作るといった操作を、すべてのコマンドを暗記せずに行えます。
+LaTeXエディタでは、よく使う構造をワンクリックで呼び出しながら、ソースを手元に残せます。CodeとVisualを切り替え、元に戻す・やり直す、見出しレベルを選ぶ、テキストを書式設定する、参照を挿入する、表や図を作るといった操作を、すべてのコマンドを暗記せずに行えます。Typstファイルでは、同じ機能が専用のツールバーにあり、Typstマークアップとして書き込まれます。
 
 <div align="center">
   <img src="../assets/readme/latex-editor-toolbar.png" alt="書式、参照、図、表、リスト、数式、分数、記号の操作を備えたOleafly LaTeXエディタツールバー" width="100%" />
@@ -152,17 +153,18 @@ LaTeXエディタでは、よく使う構造をワンクリックで呼び出し
 | 項目 | 使える操作 |
 | --- | --- |
 | 編集とモード | Code view、Visual view、undo、redo |
-| 文書構造 | H1–H6の挿入: `\part`、`\chapter`、`\section`、`\subsection`、`\subsubsection`、`\paragraph` |
+| 文書構造 | H1–H7の挿入: `\part`、`\chapter`、`\section`、`\subsection`、`\subsubsection`、`\paragraph`、`\subparagraph` |
 | インライン書式 | 太字 `\textbf{}`、斜体 `\textit{}`、下線 `\underline{}`、インラインコード `\texttt{}` |
 | 参照と注記 | リンク `\href{}{}`、プロジェクトの引用、相互参照 `\ref{}`、脚注 `\footnote{}` |
 | コンテンツブロック | `quote`による引用、`\includegraphics`による図、キャプションとラベル、行と列を選択できるビジュアルテーブル、箇条書きの`itemize`リスト、番号付きの`enumerate`リスト |
 | 数式ブロック | `equation`、`align`、分数 `\frac{}{}`の挿入 |
 | AIによる挿入 | 画像を理解できるプロバイダーを設定した場合に、数式、表、画像内のテキストをImage to LaTeXで挿入 |
 | コードインテリジェンス | 定義へ移動、参照を検索、プロジェクト全体でシンボル名を変更 |
+| プロジェクトツール | 「図を描く」「LaTeX パッケージ」「文書の分析」「文書の設定」 |
 
 ### 検索できるLaTeX記号パレット
 
-記号ピッカーの**All**ビューには236個の固有コマンドがあります。カテゴリ一覧は、`\nabla`と`\partial`がOperatorsとCalculusの両方で使われるため238項目です。記号名またはLaTeXコマンドで検索し、カーソル位置に挿入できます。
+記号ピッカーの**All**ビューには236個の固有コマンドがあります。カテゴリ一覧は、`\nabla`と`\partial`がOperatorsとCalculusの両方で使われるため238項目です。記号名またはLaTeXコマンドで検索し、カーソル位置に挿入できます。Typstファイルでは、パレットに各記号のTypstでの名前が表示され、その名前で検索して挿入できます。
 
 | カテゴリ | 数 | 利用できる記号とコマンド |
 | --- | ---: | --- |
@@ -191,7 +193,7 @@ LaTeXエディタでは、よく使う構造をワンクリックで呼び出し
 
 ### ソースビューとビジュアルビュー
 
-ソースビューが基準となる表示です。エンジンが対応していれば、LaTeXまたはMarkdownのビジュアルエディタを有効にして、ページ形式の画面で本文、数式、引用、表、図を編集できます。ソースはGit、外部エディタ、手動編集のためにいつでも利用できます。
+ソースビューが基準となる表示です。エンジンが対応していれば、LaTeX、Typst、またはMarkdownのビジュアルエディタを有効にして、ページ形式の画面で本文、数式、引用、表、図を編集できます。数式、脚注、定理、図、表、色は編集可能なネイティブのノードとして表示されます。貼り付けたリッチテキストや画像はその文書自身のマークアップに変換され、表はフローティングツールバーでその場で編集できます。ソースはGit、外部エディタ、手動編集のためにいつでも利用できます。
 
 ページ単位で編集するときはビジュアルビューを使いましょう。コマンド、パッケージ、環境、レイアウトを正確に制御したいときはソースに戻れます。
 
@@ -203,11 +205,11 @@ LaTeXエディタでは、よく使う構造をワンクリックで呼び出し
 
 Hunspellは、選択した辞書パックと個人用またはプロジェクト用の追加語でスペルを確認します。Harperは文書を認識する文章マスクを通じて文法とスタイルを確認するため、コマンド、コメント、数式本体、機械向け引数を通常の英文として扱いません。
 
-Academicプロファイルは学術的な文章と衝突するルールを避けます。各指摘には、置き換える、プロジェクトで無視する、セッションで無視する、Settingsでルールを調整するというローカルな対応があります。校正はローカルで実行され、AIプロバイダーを必要としません。
+Academicプロファイルは学術的な文章と衝突するルールを避けます。各指摘には、置き換える、無視する（「今回は無視」「このプロジェクトでは無視」「どこでも無視」）、ルールをオフにするというローカルな対応があります。オフにしたルールはSettingsに一覧表示されるので、あとからオンに戻せます。校正はローカルで実行され、AIプロバイダーを必要としません。
 
 ### プロジェクト全体を検索する
 
-レールまたはコマンドパレットからプロジェクト全体を検索できます。プロジェクトインデックスはソースファイル、見出し、ラベル、引用、マクロ、インクルードファイルを結び付けるので、複数ファイルの大きな学位論文も、エディタのタブを積み重ねるより簡単に移動できます。
+「検索」パネルからプロジェクト全体を検索できます。プロジェクトインデックスはソースファイル、見出し、ラベル、引用、マクロ、インクルードファイルを結び付けるので、複数ファイルの大きな学位論文も、エディタのタブを積み重ねるより簡単に移動できます。
 
 ## LaTeX、Typst、Markdownでコンパイルする
 
@@ -215,10 +217,10 @@ Oleaflyではコンパイルを原稿の近くで行い、コンパイラの出�
 
 | エンジン | 得意なこと | 重要な詳細 |
 | --- | --- | --- |
-| TectonicによるLaTeX | ポータブルな同梱LaTeXビルド | デスクトップアプリに同梱。複数ファイルのプロジェクト、画像、引用、Biber、SyncTeX、図の分離コンパイル、パッケージが利用できる場合のキャッシュ済みオフラインビルドに対応 |
-| `latexmk`によるLaTeX | 完全なシステムTeXディストリビューションが必要なプロジェクト | MacTeX、TeX Live、MiKTeX、TinyTeXを使用。`minted`、`glossaries`、`makeidx`、PythonTeX、shell-escapeを多用するテンプレート、明示的に信頼した場合のUnicodeエンジンに対応 |
-| Typst | 高速なモダン文書作成 | コンパイラ、PDF出力、プロジェクトインデックス、引用を同梱。このリリースではSyncTeX、オフラインコンパイラモード、図の分離コンパイルは利用できない |
-| PandocによるMarkdown | 軽量な文章作成と変換ワークフロー | PandocはSettingsからインストール可能。PDF出力には同梱のTectonic入力を使い、対応している場合はDOCX、HTML、Markdown、textにエクスポート可能 |
+| TectonicによるLaTeX | ポータブルな同梱LaTeXビルド | デスクトップアプリに同梱。複数ファイルのプロジェクト、画像、引用、Biber（Linux ARM64を除く）、SyncTeX、図の分離コンパイル、パッケージが利用できる場合のキャッシュ済みオフラインビルドに対応 |
+| `latexmk`によるLaTeX | 完全なシステムTeXディストリビューションが必要なプロジェクト | MacTeX、TeX Live、MiKTeX、TinyTeXを使用。`glossaries`、`makeidx`、XeLaTeXまたはLuaLaTeX（自動で選択）に対応。`minted`、PythonTeX、その他のshell-escapeを使うテンプレートは、「このコンピュータで外部コマンドを許可する」をオンにすると動作する |
+| Typst | 高速なモダン文書作成 | コンパイラ、PDF出力、プロジェクトインデックス、引用を同梱。Typst 0.13以降ではソースとPDFの同期に対応し、パッケージがキャッシュ済みかプロジェクト内にあればオフラインでビルドできる。このリリースでは図の分離コンパイルは利用できない |
+| PandocによるMarkdown | 軽量な文章作成と変換ワークフロー | Pandocはアプリに同梱。LaTeXに変換して同梱のTectonicで組版し、Word、HTML、EPUB、PowerPoint、LaTeX、Typst、プレーンテキストにエクスポート可能 |
 
 LaTeXプロジェクトを開くと互換性スキャンが実行されます。同梱エンジンでは扱えない機能が必要な場合、Oleaflyはその差を説明し、適切なエンジンやパッケージを案内します。システムTeXはデフォルトでシェルコマンドを制限して実行されます。完全なshell escapeは、プロジェクトごと、コンピューターごとに個別に有効化します。
 
@@ -234,7 +236,7 @@ PDFビューアはワークスペースに組み込まれており、分離し�
 
 連続スクロール、または1ページ・2ページの見開きを使えます。ズーム、幅に合わせる、高さに合わせる、回転、色の反転、文書テキストの検索、アウトラインの表示、ページ移動、ファイル名を指定したダウンロード、同じ画面でのコンパイルログの確認ができます。暗号化されたPDFでは、空白のビューアではなくパスワード入力が表示されます。
 
-有効なSyncTeXデータがある場合、順方向ナビゲーションでソースからPDFへ移動し、逆方向ナビゲーションでPDFのクリック位置からソース行へ戻れます。SyncTeXに対応していないエンジンでは、これらの操作が無効になります。
+「PDF へ移動」でソースからPDFの対応する位置へ移動し、PDFをクリックするとソース行へ戻れます。LaTeXではSyncTeXを使い、TypstではTypst 0.13以降でTinymist言語サーバーを使います。Markdownと古いバージョンのTypstは同期できないため、これらの操作は表示されません。
 
 <div align="center">
   <img src="../assets/readme/pdf-preview.png" alt="ソースエディタの隣に表示されたOleaflyのPDFプレビュー" width="100%" />
@@ -244,9 +246,9 @@ PDFビューアはワークスペースに組み込まれており、分離し�
 
 ### 書いている文から検索する
 
-Citation Searchでは、arXiv、Semantic Scholar、Crossref、PubMed、OpenAlexを1か所で検索できます。重複した結果をまとめ、メタデータを表示したまま、参考文献をローカルの文献ライブラリに保存できます。
+Citation Searchでは、arXiv、Semantic Scholar、Crossref、PubMed、OpenAlexを1か所で検索でき、Serperのキーを追加すればGoogle Scholarも検索できます。重複した結果をまとめ、メタデータを表示したまま、参考文献をローカルの文献ライブラリに保存できます。
 
-DOI、arXiv ID、URL、タイトルから引用を検索することもできます。Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリをインポートできます。プロジェクトインデックスは、引用キーの補完、参照ナビゲーション、ホバー詳細、未定義の引用、重複キー、重複DOI、不完全な文献目録メタデータの診断を提供します。
+DOI、arXiv ID、URL、タイトルから引用を検索することもできます。Zotero RDF、EndNote XML、RIS、BibTeXから既存のライブラリをインポートするか、Settingsの「連携」でZoteroを接続して、「参考文献」パネルからライブラリ全体をインポートできます。プロジェクトインデックスは、引用キーの補完、参照ナビゲーション、ホバー詳細、未定義の引用、重複キー、不完全な文献目録メタデータの診断を提供します。
 
 ### 文書のサポート不足をスキャンする
 
@@ -269,15 +271,15 @@ DOI、arXiv ID、URL、タイトルから引用を検索することもできま
 
 ### 研究機関と締切を探す
 
-ツールギャラリーのLab Searchでは、OpenAlexに登録された研究機関を国で絞り込み、機関、ROR、OpenAlexのレコードへのリンクを確認できます。Conference Deadlinesでは、同梱の締切データからコンピューターサイエンス分野の投稿先を検索し、締切までのカウントダウンを表示できます。
+ツールギャラリーのLab Searchでは、OpenAlexに登録された研究機関を国で絞り込み、機関、ROR、OpenAlexのレコードへのリンクを確認できます。Conference Deadlinesでは、投稿先を検索して研究分野で絞り込み、締切までのカウントダウンを確認できます。締切データはアプリに同梱されており、更新できます。投稿先の大半はコンピューターサイエンス分野で、神経科学や物理学などの分野も一部含まれます。
 
 ## 図、数式、表
 
 ### Diagram Composer
 
-キャンバス上で、長方形、円、楕円、ひし形、テキスト、コネクター、スナップ、塗りと境界線の色、undo、redo、ミニマップ、明るいキャンバスまたは暗いキャンバスを使って図を描けます。TikZコードに切り替え、スニペットを挿入し、図だけを分離コンパイルして、ソースの隣でプレビューできます。
+Diagram Composerは、最初に図の用途を尋ねます。選択肢は、LaTeX向けのTikZ、Typst向けのfletcher図、Markdown向けのMermaidフローチャートです。キャンバス上で、長方形、円、楕円、ひし形、テキスト、コネクター、スナップ、塗りと境界線の色、undo、redo、ミニマップ、明るいキャンバスまたは暗いキャンバスを使って描けます。コードパネルと図は双方向に同期し、キャンバスで描けないコードは書いたとおりに残ります。TikZの図は分離コンパイルされ、Typstの図はプロジェクト自身のTypstでプレビューされ、Mermaidはアプリのレンダラーを使います。
 
-保存した`.tikz`ソースには図のモデルが残るので、あとで編集できます。結果はキャプションとラベルを付け、TikZまたは生成画像として挿入できます。任意のAI修復で図のコンパイルエラーを直したり、画像を理解できるモデルでレンダリングを確認してレイアウトを整えたりできます。
+保存したソースには図のモデルが残るので、あとで編集できます。Diagram Composerは`.tikz`、`.tex`、`.typ`、`.mmd`、`.md`ファイルを読み込めます。コードをカーソル位置に挿入するか、PNGとソースをプロジェクトの`figures`フォルダーに保存できます。任意のAI修復で図のコンパイルエラーを直したり、画像を理解できるモデルでレンダリングを確認してレイアウトを整えたりできます。
 
 <div align="center">
   <img src="../assets/readme/diagram-composer.png" alt="編集できる研究システム図をキャンバス上に表示するOleaflyのDiagram Composer" width="100%" />
@@ -285,9 +287,9 @@ DOI、arXiv ID、URL、タイトルから引用を検索することもできま
 
 ### 数式と表の出力
 
-LaTeX to Imageツールは数式をレンダリングし、PNGまたはSVGとしてエクスポートします。WordやKaTeX HTML向けにMathMLをコピーすることもできます。Table to LaTeXツールには行と列を編集できるビジュアルエディタがあり、通常のLaTeXを出力します。画像を理解できるプロバイダーを設定すれば、Image to LaTeXで画像内の数式、表、見えるテキストを文字起こしできます。
+LaTeX to Imageツールは数式をレンダリングし、PNGまたはSVGとしてエクスポートします。Word向けのMathMLやKaTeX HTMLをコピーすることもでき、TypstモードではTypstの数式をコピーできます。Table to LaTeXツールには行と列を編集できるビジュアルエディタがあり、通常のLaTeXを出力します。CSV to TypstとExcel to TypstではTypstの表を作れます。Image to LaTeXとImage to Typstは、ローカルで動作するビジョンモデルで、画像内の数式、表、見えるテキストを文字起こしします。エディタのツールバーにあるImage to LaTeXボタンは、ローカルモデルの代わりに、設定した画像を理解できるプロバイダーを使います。
 
-これらのツールはギャラリー、コマンドパレット、アプリに表示される場合はスラッシュコマンドから利用できます。
+これらのツールはToolsギャラリーにあります。Toolsギャラリーはbetaで、デフォルトではオフです（後述の「ギャラリーのツール」を参照）。オンにすると、コマンドパレットや、アプリに表示される場合はスラッシュコマンドからも使えます。
 
 <div align="center">
   <img src="../assets/readme/tools-gallery.png" alt="研究と文書の組み込みツールカタログを表示するOleaflyのToolsギャラリー" width="100%" />
@@ -295,7 +297,7 @@ LaTeX to Imageツールは数式をレンダリングし、PNGまたはSVGとし
 
 ## コンピューターから出す前に文書を確認する
 
-Preflightはソース、プロジェクト構造、コンパイラログ、現在のPDFを読み取ります。問題ごとに指摘をまとめ、各結果の出所を示します。チェックはまとめて実行することも個別に実行することもでき、入力がない場合は合格として扱わず、利用不能または一部のみとして報告します。
+Preflightはソース、プロジェクト構造、コンパイラログ、現在のPDFを読み取ります。問題ごとに指摘をまとめ、各結果の出所を示します。チェックはまとめて実行することも個別に実行することもでき、入力がない場合は合格として扱わず、利用不能または一部のみとして報告します。Typstプロジェクトには、未解決の参照と引用、代替テキストの欠落、文書メタデータ、欠落した画像、プライバシー、匿名査読についての独自のソースチェックがあります。Markdownプロジェクトで使えるのは、コンパイルログとPDFのチェックだけです。
 
 | チェック | 確認する内容 |
 | --- | --- |
@@ -308,7 +310,7 @@ Preflightはソース、プロジェクト構造、コンパイラログ、現�
 
 Publicationプロファイルには、一般的な出版、arXiv、IEEE、ACM、その他のジャーナル、学位論文が含まれます。正確な余白、ページ制限、ファイルサイズ規則、投稿手順については、投稿先の最新の著者向けガイドも確認してください。
 
-アクセシビリティチェックはPDF/UA、Matterhorn、WCAGを参照し、PDF/UA-1のうち機械的にチェックできる部分を報告します。アクティブなクラスとパッケージが対応していれば、アクセシブルなエクスポートの準備として、LaTeXメタデータ、表ヘッダーの宣言、代替テキストのプレースホルダーを追加できます。
+アクセシビリティチェックはPDF/UA、Matterhorn、WCAGを参照し、PDF/UA-1のうち機械的にチェックできる部分を報告します。アクティブなクラスとパッケージが対応していれば、アクセシブルなエクスポートの準備として、LaTeXメタデータ、表ヘッダーの宣言、代替テキストのプレースホルダーを追加できます。Typstの場合、エクスポートの準備はPDF/AとPDF/UAに対応しています。
 
 Preflightは機械的なチェックの集合であり、適合証明書ではありません。代替テキストが意味を持つか、読み上げ順が自然か、コントラストが十分かは判断できません。正式なアクセシビリティ適合声明が必要な場合は、投稿先が指定するツールで最終PDFを検証してください。
 
@@ -321,9 +323,9 @@ Preflightは機械的なチェックの集合であり、適合証明書では�
 
 ### Gitリポジトリを通常どおり使う
 
-Oleaflyは通常のGitリポジトリで動作します。Source Controlパネルでは、リポジトリの初期化、統合または左右分割の差分表示、ファイルのステージ、変更の破棄、コミット、push、pull、リモートに対する先行・遅れ状態の表示ができます。プロジェクトをGitHubに公開したり、既存のリポジトリを接続したりもできます。
+Oleaflyは通常のGitリポジトリで動作します。Source Controlパネルでは、リポジトリの初期化、統合または左右分割の差分表示、ファイルのステージ、変更の破棄、コミット、push、pull、リモートに対する先行・遅れ状態の表示ができます。プロジェクトをGitHubに公開したり、既存のリポジトリを接続したりもできます。「エクスプローラー」でも、変更されたファイルに同じステータス文字が表示されます。Gitがインストールされていない場合は、Source Controlに入手方法が表示されます。
 
-プロジェクトの保存、コンパイル、終了によってコミットが作られることはありません。Oleaflyはターミナルからソースを隠さず、独自のメタデータを見えなくするためだけにプロジェクトの`.gitignore`を編集することもありません。
+新規作成したプロジェクトや開いたプロジェクトにはGitリポジトリが用意され、新しいプロジェクトは通常、「Create project」というコミット1つから始まります。この動作はSettingsの「すべてのプロジェクトで Git を初期化する」でオフにできます。それ以降、プロジェクトの保存、コンパイル、終了によってコミットが作られることはありません。Oleaflyはターミナルからソースを隠さず、独自のメタデータを見えなくするためだけにプロジェクトの`.gitignore`を編集することもありません。
 
 <p align="center">
   <img src="../assets/readme/source-control.png" alt="ステージした変更、ブランチグラフ、コミット操作を表示するOleaflyのSource Controlパネル" width="100%" />
@@ -353,9 +355,9 @@ Oleaflyは通常のGitリポジトリで動作します。Source Controlパネ�
 - 文章を修正し、ファイルを作成し、ファイル名を変更し、対象を絞った置換を行う。
 - プロジェクトをコンパイルし、ログを読み、PDFテキストを抽出し、PDFキャプチャ設定が有効ならレンダリング済みページを確認する。
 - 文献を検索し、DOIを確認し、引用を追加し、文書の見出し、ラベル、引用、マクロ、ファイルの関係を対応付ける。
-- 編集可能なTikZまたはPGFPlotsの図を下書きし、コンパイルし、確認し、修正し、挿入する。
+- LaTeXでは編集可能なTikZまたはPGFPlotsの図を、TypstではCeTZまたはfletcherの図を下書きし、コンパイルし、確認し、修正し、挿入する。
 
-ファイルを変更するたびに、見える差分が生成されます。Settingsでは、各操作の承認を求める、セッション中の通常の書き込みを承認する、対話を減らしたモードを使う、といった設定を選べます。Planモードでは、書き込み、コンパイル、コマンド実行が可能になる前に、アシスタントがプロジェクトを把握できます。
+ファイルを変更するたびに、見える差分が生成されます。承認モードはチャットで、「承認を求める」「自動で承認する」「フルアクセス」、または`approvals.toml`のルールに従う「カスタム」から選べます。ターンが終わると、変更されたファイルの数が1行で表示されます。「レビュー」で各変更を確認し、ファイル単位で元に戻したりやり直したりできるほか、「すべて元に戻す」でターン全体を元に戻せます。Planモードでは、書き込み、コンパイル、コマンド実行が可能になる前に、アシスタントがプロジェクトを把握できます。
 
 ホスト型プロバイダー、OpenAI互換エンドポイント、またはローカルのOllamaモデルを接続できます。プロバイダーの認証情報は暗号化されたアプリ管理ストレージに保存され、プロジェクトファイルには書き込まれません。選んだ操作から、ホスト型リクエストが発生するかどうかを確認できます。
 
@@ -367,19 +369,19 @@ Oleaflyは通常のGitリポジトリで動作します。Source Controlパネ�
 <details>
 <summary>適用前に編集を確認する</summary>
 
-Ask for approvalモードでは、提案されたファイル差分を読み、適用する変更を選べます。通常の書き込みはセッション中に承認できます。削除は別に表示され、明示的な確認を求めることもできます。
+「承認を求める」モードでは、提案されたファイル差分を読み、適用する変更を選べます。「カスタム」モードでは、「このプロジェクトでは常に許可」でそのツールの許可ルールが保存されます。削除は別に表示され、明示的な確認を求めることもできます。
 
 </details>
 
 ### 長めのリサーチタスクを分けて実行する
 
-文献レビュー、根拠の監査、分析、原稿の改訂、査読者への回答のためのタスクを開始できます。元のプロジェクトで作業を続けている間、タスクは別のGit worktreeまたはステージング済みコピーで実行されます。
+文献レビュー、根拠の監査、分析、原稿の改訂、査読者への回答のためのタスクを開始できます。元のプロジェクトで作業を続けている間、タスクは別のGit worktreeまたはステージング済みコピーで実行されます。Windowsでは、CLIエージェントはまだこれらのタスクを実行できず、Oleafly Assistantが実行するタスクではシェルコマンドを使えません。macOSでは、Codexはこれらのタスクを実行できません。
 
 タスクが終わったら、アクティビティ、出力、変更されたすべてのファイルを確認します。差分をプレビューし、残したいファイルを選び、そのファイルだけを適用します。レビューした結果を適用するまで元のプロジェクトは変わりません。タスクの実行中にプロジェクトが変更されていた場合、Oleaflyは古い差分を新しい作業に適用せず、ずれを検出します。
 
 ### カタログからCLIエージェントを使う
 
-カタログには14個のCLIエージェントがあります。それぞれが独自のアカウント、権限、モデル設定を使い、Oleaflyはプロジェクトのコンテキストと周囲のワークスペースを提供します。
+カタログには14個のCLIエージェントがあります。それぞれが独自のアカウント、権限、モデル設定を使い、Oleaflyはプロジェクトのコンテキストと周囲のワークスペースを提供します。Settingsでは、「ほかのエージェントを探す」でACPレジストリからエージェントを探したり、「カスタムエージェントを追加」で独自のエージェントを追加したりもできます。
 
 | エージェント | コマンド |
 | --- | --- |
@@ -400,15 +402,15 @@ Ask for approvalモードでは、提案されたファイル差分を読み、�
 
 <small>これらのマークは対応するツールを示すもので、各所有者に帰属します。推奨や承認を意味するものではありません。</small>
 
-エージェントの会話を開き、必要ならエージェント自身のCLIでサインインし、再接続し、ツールのアクティビティを確認し、実行中のターンを調整または停止できます。対応している場合は、トランスクリプトもプロジェクトセッションとともに保存されます。
+エージェントの会話を開き、必要ならエージェント自身のCLIでサインインし、再接続し、ツールのアクティビティを確認し、実行中のターンを調整または停止できます。対応している場合は、トランスクリプトもプロジェクトセッションとともに保存されます。権限のリクエストには、エージェントが加えようとしている変更が表示されます。エージェントのホームには「文献調査」や「引用チェック」などのリサーチの出発点があり、会話をMarkdownまたはJSONとしてエクスポートすることもできます。
 
-CLIエージェントのサポートはbetaです。Settingsでは、各エージェントのインストール準備状況、プラットフォームの制限、再開サポートを確認できます。
+CLIエージェントのサポートはbetaです。Settingsでは、各エージェントのインストール準備状況、プラットフォームの制限、Oleaflyが見つけた「プログラム」を確認でき、「テスト」ボタンもあります。エージェントが保存済みのセッションを再開できない場合は、会話の中でその旨が表示されます。
 
 ### リサーチワークフローをskillで再利用する
 
 Oleaflyには、文献調査、執筆、図、レビュー、投稿、コミュニケーション、ツール作業向けのskillが含まれています。skillはAgent Skillsの形式に従う通常の`SKILL.md`フォルダーです。
 
-スラッシュコマンドでskillを使ったり、自分のフォルダーを追加したり、完了したチャットから繰り返し使えるワークフローを記録したり、ダウンロードを選んだときにDomain Shelfからドメインskillをインストールしたりできます。同じコンピューター上の対応するCLIエージェントとskillを共有できます。一度インストールしたskillはオフラインでも動作します。
+スラッシュコマンドでskillを使ったり、自分のフォルダーを追加したり、完了したチャットから繰り返し使えるワークフローを記録したり、ダウンロードを選んだときにDomain Shelfからドメインskillをインストールしたりできます。同じコンピューター上の対応するCLIエージェントとskillを共有できます。一度インストールしたskillはオフラインでも動作します。自分のskillとDomain Shelfを検索し、各skillをすべてのプロジェクトで有効にするか、開いているプロジェクトだけで有効にするかを選べます。
 
 ### Oleaflyに同梱されるskill
 
@@ -433,18 +435,20 @@ Oleaflyには、文献調査、執筆、図、レビュー、投稿、コミュ�
 
 Oleaflyは外部クライアント向けにローカルMCPサーバーを実行できます。組み込みアシスタントと同じプロジェクトツール、つまりファイルの一覧表示と読み取り、プロジェクト検索、マップの確認、コンパイル、ログの読み取り、PDFテキストの抽出、図のプレビュー、Oleaflyの承認ポリシーに従った編集の適用を提供します。
 
-サーバーは`127.0.0.1`だけにバインドされ、短時間だけ有効なbearer tokenを使い、Oleaflyプロセスが開いている間だけ動作します。読み取り専用モードでは、変更を行うツールがツール一覧から外れます。外部クライアントは独自のモデルを使うため、この方法ではOleaflyにAI APIキーを登録する必要はありません。
+サーバーは`127.0.0.1`だけにバインドされ、Settingsで「再発行」できるbearer tokenを使い、Oleaflyプロセスが開いている間だけ動作します。読み取り専用モードでは、変更を行うツールがツール一覧から外れます。外部クライアントは独自のモデルを使うため、この方法ではOleaflyにAI APIキーを登録する必要はありません。
+
+アシスタントは外部のMCPサーバーも使えます。「MCP サーバーを読み込む」でサーバーの設定を取り込むか、「公式の MCP レジストリ」を検索し、エントリを確認してから追加できます。alphaXivはAPIキーで接続します。接続するとアシスタントが論文を検索して読めるようになり、呼び出しの前には毎回確認を求めます。
 
 ## ギャラリーのツール
 
-omnibarまたはコマンドパレットからToolsを開きます。名前、説明、スラッシュコマンドで検索できます。ネットワーク接続やAIプロバイダーが必要なツールは、それぞれのパネルにその旨が表示されます。
+Toolsはbetaで、デフォルトではオフです。Settingsの「実験的な機能」>「LaTeX ツール」で有効にしてから、omnibarまたはコマンドパレットから開きます。名前、説明、スラッシュコマンドで検索できます。ネットワーク接続やAIプロバイダーが必要なツールは、それぞれのパネルにその旨が表示されます。
 
-### ワークスペース全体のコマンドパレット
+### ワークスペースを1つのボックスから検索する
 
-1か所からプロジェクトと文書を検索し、Settingsを開き、プロジェクトを作成し、テーマを切り替え、ツールを起動できます。`/`を入力するとコマンドだけに絞り込めるので、作業中もキーボードから手を離さずに済みます。
+Cmd+Shift+F（WindowsとLinuxではCtrl+Shift+F）を押すと、1か所からプロジェクトと文書を検索し、Settingsを開き、プロジェクトを作成し、テーマを切り替え、ツールを起動できます。`/`を入力するとコマンドだけに絞り込めるので、作業中もキーボードから手を離さずに済みます。Cmd+K（Ctrl+K）で開くコマンドパレットには、コマンドだけが表示されます。
 
 <p align="center">
-  <img src="../assets/readme/command-palette.png" alt="プロジェクト、文書、コマンド、ツールを検索するOleaflyのコマンドパレット" width="100%" />
+  <img src="../assets/readme/command-palette.png" alt="プロジェクト、文書、コマンド、ツールを検索するOleaflyの検索ボックス" width="100%" />
 </p>
 
 ### インポートと形式変換
@@ -472,6 +476,16 @@ omnibarまたはコマンドパレットからToolsを開きます。名前、�
 | Typst Editor | ソース編集、ライブプレビュー、PDFエクスポートを備えたTypstプロジェクトを開始 |
 | Visual Typst Editor | プロジェクトエディタでライブプレビュー付きのTypst文書を開始 |
 | Typst to LaTeX | ジャーナルや投稿向けにTypstマークアップをLaTeXへ変換 |
+| arXiv to Typst | arXivのソースバンドルをTypstに変換し、変換できなかった部分を一覧にするコンパイルチェックを実行 |
+| CSV to Typst | CSVまたはTSVの行を貼り付けて、エスケープ済みのTypst表を作成 |
+| Equation to Typst | 入力したLaTeX数式または数式画像をTypstの数式に変換 |
+| Excel to Typst | Excel、CSV、TSVのシートをエスケープ済みのTypst表に変換 |
+| HTML to Typst | 貼り付けたHTMLをスタンドアロンのTypst文書に変換 |
+| Mermaid to Typst | Mermaidフローチャートを編集可能なfletcherコードに変換 |
+| Typst to HTML | TypstマークアップをMathML数式付きのスタンドアロンHTMLに変換 |
+| Typst to Markdown | TypstマークアップをポータブルなMarkdownに変換 |
+| Typst to Word | 数式をネイティブのWord数式として保存したWord文書を作成 |
+| Word to Typst | Word文書をTypstに変換し、抽出したメディアをまとめて保持 |
 | Word to LaTeX | Word文書をLaTeXに変換し、抽出したメディアをまとめて保持 |
 
 ### 数式、表、執筆、検証
@@ -481,7 +495,7 @@ omnibarまたはコマンドパレットからToolsを開きます。名前、�
 | BibTeX Validator | `.bib`ファイルの構文エラー、必須フィールドの欠落、重複キーを確認 |
 | Statistics Calculators | p値、サンプルサイズ、信頼区間をローカルで計算 |
 | Writing Generators | 開いている文書から、アシスタントを使ってアブストラクト、要約、言い換え、学位論文のアウトラインを作成 |
-| Symbol Reference | LaTeX記号を参照し、現在のカーソル位置に挿入 |
+| Symbol Reference | LaTeX記号を参照し、カーソル位置に挿入。Typstファイルでは記号のTypst名を挿入 |
 
 ### 文献、参考文献、リサーチ
 
@@ -497,17 +511,17 @@ omnibarまたはコマンドパレットからToolsを開きます。名前、�
 | PubMed to BibTeX | PMIDからPubMedレコードを取得し、確認してBibTeXをエクスポート |
 | URL to BibTeX | DOI、arXiv、PubMedのリンクを認識するか、編集可能なウェブページ引用を作成 |
 | Lab Search | OpenAlexディレクトリから研究機関を探す |
-| Conference Deadlines | コンピューターサイエンスの学会締切を絞り込み、カウントダウンを表示 |
+| Conference Deadlines | 主にコンピューターサイエンス分野の学会締切を絞り込み、カウントダウンを表示 |
 
-数式ワークスペースでは、PNG、SVG、Word向けのMathML、KaTeX HTMLもエクスポートできます。表の出力は通常のLaTeXのままです。Writing Generatorsは設定したアシスタント向けのプロンプトを用意するだけで、モデル自体は提供しません。
+数式ワークスペースでは、PNG、SVG、Word向けのMathML、KaTeX HTMLもエクスポートでき、Typstモードもあります。Table to LaTeXは通常のLaTeXを出力し、CSV to TypstとExcel to TypstはTypstの表を出力します。Writing Generatorsは設定したアシスタント向けのプロンプトを用意するだけで、モデル自体は提供しません。
 
-コマンドパレットからは、再コンパイル、自動コンパイル、SyncTeX、PDFエクスポート、ビルドキャッシュの消去、単語数、Git履歴、Checkpoints、ターミナル、引用の挿入、書式ヘルパー、環境ヘルパー、テーマ操作、Vimモード、スペルチェック、オフラインモードにもアクセスできます。
+コマンドパレットからは、再コンパイル、自動コンパイル、SyncTeX、PDFエクスポート、ビルドキャッシュの消去、単語数、Git履歴、Checkpoints、ターミナル、引用の挿入、書式ヘルパー、環境ヘルパー、テーマ操作、Vimモード、スペルチェック、オフラインモードにもアクセスできます。さらに、スライドの発表、LaTeXプロジェクトのTypstへの変換、LaTeXとTypstのパッケージの参照、「文書の分析」と「文書の設定」を開く操作、エディタのタブをすべて閉じる操作やアシスタントが開いたファイルだけを閉じる操作もできます。
 
 ## 論文の隣にターミナルを置く
 
 ワークスペースを離れずに、現在のプロジェクトのシェルタブを開けます。1プロジェクトにつき最大10個のターミナルセッションを開けます。タブの名前と色を変更したり、1つまたは複数のセッションを閉じたりでき、タブのラベルはプロジェクトとともに保存されます。
 
-タブでは、スクリプトの実行、データセットの確認、生成ファイルのチェック、別のCLIツールの使用ができます。選んだコマンドから同じプロジェクトディレクトリを利用できる、自分のシェルです。
+タブでは、スクリプトの実行、データセットの確認、生成ファイルのチェック、別のCLIツールの使用ができます。選んだコマンドから同じプロジェクトディレクトリを利用できる、自分のシェルです。出力内のファイルパスとWebアドレスはリンクになります。Cmd+クリック（WindowsとLinuxではCtrl+クリック）すると、プロジェクトのファイルは出力に示された行と列で、PDFや画像はビューアで、Webアドレスはブラウザーで開きます。
 
 <p align="center">
   <img src="../assets/readme/project-terminal.png" alt="原稿プロジェクトの隣で開いたOleaflyのターミナルドック" width="100%" />
@@ -516,7 +530,7 @@ omnibarまたはコマンドパレットからToolsを開きます。名前、�
 
 ## computer-useタスク向けブラウザー
 
-アプリ内ブラウザーは、タブ、アドレスバー、ナビゲーション操作、分離されたコンテンツWebViewを持つ独立したOSウィンドウです。主にcomputer-useの画面として使います。エージェントがURLを開いて読み込みを待つ間も、原稿はメインウィンドウに置いたままにできます。
+アプリ内ブラウザーはbetaで、デフォルトではオフです。Settingsの「実験的な機能」>「ウェブブラウザ」で有効にできます。タブ、アドレスバー、ナビゲーション操作、分離されたコンテンツWebViewを持つ独立したOSウィンドウとして開きます。主にcomputer-useの画面として使います。エージェントがURLを開いて読み込みを待つ間も、原稿はメインウィンドウに置いたままにできます。
 
 computer-useツールは、ページの内容を読み取ったり、キャプチャしたり、クリックしたり、スクリプトで操作したりできません。リモートページはOleaflyのIPCアクセスを受けず、外部ナビゲーションは現在の承認ポリシーに従います。検索可能なメタデータや引用が必要なときは、文献ツールを使ってください。
 
@@ -529,7 +543,7 @@ computer-useツールは、ページの内容を読み取ったり、キャプ�
 | 文献レビュー | ソースを検索し、段落をスキャンして不足している根拠を探し、メタデータを保存し、research skillで根拠を整理 |
 | 再現可能な分析 | データと分析フォルダーを読み取り専用でリンクし、原稿を分け、ターミナルでプロジェクトコマンドを実行 |
 | 会議論文 | 投稿先向けテンプレート、SyncTeX、図と表のツール、投稿前チェックを使う |
-| Beamerの発表・ポスター | 発表またはポスターのテンプレートから始め、対応形式をプロジェクトからエクスポート |
+| Beamerの発表・ポスター | 発表またはポスターのテンプレートから始め、対応形式をエクスポートし、必要なら発表者ビューを使ってコンパイル済みPDFから発表 |
 | 書籍・長いレポート | 複数ファイルのソースツリー、アウトライン、プロジェクト全体の参照、PDFナビゲーション、対応していればEPUBエクスポートを使う |
 | 履歴書・CV | 履歴書テンプレート、ローカル校正、PDFテキスト抽出、ATS対応チェックを使う |
 | 多言語の原稿 | XeLaTeXまたはLuaLaTeXが必要なプロジェクトでは、テンプレートのUnicodeエンジンとシステムフォントを選ぶ |
@@ -543,12 +557,12 @@ computer-useツールは、ページの内容を読み取ったり、キャプ�
 | --- | --- | --- |
 | macOS · Apple Silicon | DMG | [![macOSをダウンロード](https://img.shields.io/badge/Download_for_macOS-7C3AED?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Oleafly/Oleafly/releases/latest) |
 | Windows · x86_64 | MSIまたはEXE | [![Windowsをダウンロード](https://img.shields.io/badge/Download_for_Windows-0078D4?style=for-the-badge&logo=data:image/svg%2bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDggNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJtMCA5My43bDE4My42LTI1LjN2MTc3LjRIMHptMCAzMjQuNmwxODMuNiAyNS4zVjI2OC40SDB6bTIwMy44IDI4TDQ0OCA0ODBWMjY4LjRIMjAzLjh6bTAtMzgwLjZ2MTgwLjFINDQ4VjMyeiIvPjwvc3ZnPg==)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · x86_64 | AppImageまたはDEB | [![Linuxをダウンロード](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
-| Linux · ARM64 | AppImageまたはDEB | [![Linuxをダウンロード](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · x86_64 | AppImage、DEB、またはRPM | [![Linuxをダウンロード](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
+| Linux · ARM64 | AppImage、DEB、またはRPM | [![Linuxをダウンロード](https://img.shields.io/badge/Download_for_Linux-FCC624?style=for-the-badge&logo=linux&logoColor=111827)](https://github.com/Oleafly/Oleafly/releases/latest) |
 
-デスクトップアプリには、LaTeX用のTectonicとTypstコンパイラが含まれています。必要なパッケージが同梱エンジンですでに利用できれば、LaTeXはオフラインでビルドできます。Markdownの変換には、SettingsからPandocをインストールできます。
+デスクトップアプリには、LaTeX用のTectonic、Typstコンパイラ、Markdownのビルドと文書の変換に使うPandocが含まれています。LaTeXは、必要なパッケージが同梱エンジンにすでにあればオフラインでビルドでき、Typstは、パッケージがキャッシュ済みかプロジェクト内にあればオフラインでビルドできます。
 
-Linuxパッケージにはglibc 2.39以降が必要です。リリースには署名付き更新アーティファクトが含まれ、アプリ内アップデーターはインストール前に署名を確認します。各インストーラーに含まれる内容は[リリースノート](https://github.com/Oleafly/Oleafly/releases/latest)で確認できます。
+x86_64のLinuxパッケージにはglibc 2.35以降（Ubuntu 22.04以降）が必要です。ARM64パッケージはUbuntu 24.04（glibc 2.39）でビルドされています。リリースには署名付き更新アーティファクトが含まれ、アプリ内アップデーターはインストール前に署名を確認します。各インストーラーに含まれる内容は[リリースノート](https://github.com/Oleafly/Oleafly/releases/latest)で確認できます。
 
 ## さらに読む
 
@@ -570,7 +584,7 @@ Linuxパッケージにはglibc 2.39以降が必要です。リリースには�
 
 ## 現在のリリース
 
-Oleaflyはbetaです。このリリースでは、ライブ共同編集、コメント、デバイス間のバックグラウンド同期は利用できません。TypstとMarkdownでは、まだSyncTeXやLaTeX固有のソースPreflightチェックを利用できません。アプリでアクティブなエンジンを確認し、変更については[変更履歴](../../CHANGELOG.md)を確認してください。
+Oleaflyはbetaです。このリリースでは、ライブ共同編集、コメント、デバイス間のバックグラウンド同期は利用できません。Markdownでは、まだソースとPDFの同期やソースのPreflightチェックを利用できません。Typstの同期にはTypst 0.13以降が必要です。アプリでアクティブなエンジンを確認し、変更については[変更履歴](../../CHANGELOG.md)を確認してください。
 
 ## コミュニティとサポート
 

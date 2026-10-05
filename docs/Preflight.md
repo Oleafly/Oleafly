@@ -30,9 +30,15 @@ guarantee of acceptance or a formal accessibility certificate.
   draft markup, internal comments, author fields, acknowledgements, and PDF
   identity metadata.
 
+Typst projects get their own source checks: unresolved references and
+citations, missing alt text, document metadata, missing images, privacy, and
+blind review. Markdown sources are not checked.
+
 The reader view shows extracted PDF text one page at a time. Optional accessible
 export preparation adds the LaTeX metadata, table header declaration, and
-alt-text placeholders that tagged output needs.
+alt-text placeholders that tagged output needs. In a Typst project,
+**PDF standards** offers PDF/A and PDF/UA instead, and Typst writes the
+standard into the exported PDF itself.
 
 ## Accessibility standards
 

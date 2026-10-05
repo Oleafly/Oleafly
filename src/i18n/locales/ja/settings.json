@@ -977,11 +977,11 @@
       "status": {
         "checking": "pandoc を確認中…",
         "installing": "バージョンを固定した pandoc を取得しています。初回は少し時間がかかります。",
-        "missing": "この Mac には見つかりませんでした。Oleafly は互換性のある pandoc（2.19 以降）を専用のフォルダにダウンロードします。システムのほかの部分は変わりません。",
+        "missing": "見つかりませんでした。Oleafly は互換性のある pandoc（2.19 以降）を専用のフォルダにダウンロードできます。システムのほかの部分は変わりません。",
         "ready": "検出しました。Markdown のプロジェクトは pandoc で LaTeX に変換してから、同梱の Tectonic でコンパイルします。"
       },
       "tectonicDetail": "pandoc が生成した LaTeX を組版します。Oleafly に同梱されており、設定は不要です。",
-      "tooltip": "Markdown のプロジェクトは pandoc（Pandoc Markdown の表、脚注、引用、数式）で LaTeX に変換され、同梱の Tectonic が PDF に組版します。pandoc は最初に必要になったときにダウンロードされます。"
+      "tooltip": "Markdown のプロジェクトは pandoc（Pandoc Markdown の表、脚注、引用、数式）で LaTeX に変換され、同梱の Tectonic が PDF に組版します。pandoc は Oleafly に同梱されています。"
     },
     "packages": {
       "ariaLabel": "LaTeX のパッケージ",

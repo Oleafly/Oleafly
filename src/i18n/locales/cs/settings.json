@@ -992,11 +992,11 @@
       "status": {
         "checking": "Kontroluje se pandoc…",
         "installing": "Stahuje se připnuté vydání pandocu. Při prvním použití to chvíli trvá.",
-        "missing": "V tomto Macu nenalezeno. Oleafly stáhne kompatibilní pandoc (2.19 nebo novější) do vlastní složky; na vašem systému se nic jiného nemění.",
+        "missing": "Nenalezeno. Oleafly může stáhnout kompatibilní pandoc (2.19 nebo novější) do vlastní složky; na vašem systému se nic jiného nemění.",
         "ready": "Nalezeno. Projekty v Markdownu se pomocí pandocu převedou do LaTeXu a pak se zkompilují vestavěným Tectonicem."
       },
       "tectonicDetail": "Vysází LaTeX, který pandoc vytvoří. Dodává se s Oleafly, není co nastavovat.",
-      "tooltip": "Projekty v Markdownu se pomocí pandocu (Pandoc Markdown: tabulky, poznámky pod čarou, citace, matematika) převedou do LaTeXu a ten pak vestavěný Tectonic vysází do PDF. Pandoc se stáhne na vyžádání, až bude poprvé potřeba."
+      "tooltip": "Projekty v Markdownu se pomocí pandocu (Pandoc Markdown: tabulky, poznámky pod čarou, citace, matematika) převedou do LaTeXu a ten pak vestavěný Tectonic vysází do PDF. Pandoc se dodává s Oleafly."
     },
     "packages": {
       "ariaLabel": "Balíčky LaTeX",

@@ -977,11 +977,11 @@
       "status": {
         "checking": "正在检查 pandoc…",
         "installing": "正在获取固定版本的 pandoc。首次使用需要一点时间。",
-        "missing": "未在此 Mac 上找到。Oleafly 会将兼容的 pandoc（2.19 或更高版本）下载到自己的文件夹中；系统中的其他内容不会有任何变化。",
+        "missing": "未找到。Oleafly 可以将兼容的 pandoc（2.19 或更高版本）下载到自己的文件夹中；系统中的其他内容不会有任何变化。",
         "ready": "已检测到。Markdown 项目先用 pandoc 转换为 LaTeX，再用内置的 Tectonic 编译。"
       },
       "tectonicDetail": "对 pandoc 生成的 LaTeX 进行排版。内置于 Oleafly，无需配置。",
-      "tooltip": "Markdown 项目先由 pandoc（Pandoc Markdown：表格、脚注、引用、数学公式）转换为 LaTeX，再由内置的 Tectonic 排版为 PDF。Pandoc 会在首次需要时按需下载。"
+      "tooltip": "Markdown 项目先由 pandoc（Pandoc Markdown：表格、脚注、引用、数学公式）转换为 LaTeX，再由内置的 Tectonic 排版为 PDF。Pandoc 已内置于 Oleafly。"
     },
     "packages": {
       "ariaLabel": "LaTeX 宏包",

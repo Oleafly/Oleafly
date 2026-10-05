@@ -9,7 +9,9 @@ preflight do not require an account.
 | Integration | Purpose | Boundary |
 | --- | --- | --- |
 | GitHub | OAuth login, repository listing, publish, push, pull | Network calls use GitHub APIs only after the user connects an account |
-| MCP | Expose project tools to external clients | Localhost HTTP with a short-lived bearer token and the same approval model |
+| MCP | Expose project tools to external clients | Localhost HTTP with a bearer token you can regenerate, and the same approval model |
+| alphaXiv | Lets the assistant search papers, read them and use your alphaXiv library, through alphaXiv's MCP server | API key from alphaXiv; the assistant asks before each call, and a key alphaXiv refuses is not saved |
+| Zotero | Import a whole Zotero library into a project's References panel as BibTeX, up to 5,000 items | Connects with a user ID and an API key, which Oleafly checks with Zotero before saving |
 | AI providers | Chat, edits, compilation assistance, and figure generation | User-selected hosted provider or local Ollama model; credentials stay local |
 | Citation services | DOI, arXiv, Crossref, multi-source literature, optional Serper (Google Scholar), OpenAlex email | Sends the requested identifier, title, or search keywords only |
 | OpenAlex contact email | Improves OpenAlex rate limits (polite pool) | Optional; stored locally as connector value `openalex-email`; used only in OpenAlex request User-Agent |

@@ -11,9 +11,18 @@ BibTeX source remains the authority; external services only supply metadata.
   Crossref, PubMed, OpenAlex; optional Google Scholar via Serper).
 - Deduplicated BibTeX insertion keyed by DOI when available.
 - Citation-key completion from the project index.
-- Undefined citation, duplicate key, and duplicate DOI diagnostics.
+- Undefined citation and duplicate key diagnostics. Preflight and the BibTeX
+  Validator also report duplicate DOIs.
 - Reference navigation, hover details, find references, and rename support.
 - Offline operation for existing local `.bib` files.
+- Import a whole Zotero library from a project's References panel with
+  **Import Zotero library**. Connect Zotero first in Settings > Integrations
+  with your user ID and an API key, which Oleafly checks before saving. Up to
+  5,000 items come in as BibTeX, and references already in the bibliography
+  are skipped.
+- Hayagriva `.yml` bibliographies in Typst projects: keys complete and resolve,
+  and a new citation goes into the bibliography the document declares. The
+  References panel has a **Citation style** picker for Typst.
 
 ## Document citation scan
 
@@ -69,7 +78,8 @@ connector value `openalex-email`. When set, OpenAlex requests send a
 the machine; it is not written into project files.
 
 Optional Serper API key (`serper`) enables the Google Scholar source. Without
-it, that source reports a clear configuration error if selected.
+it, Citation Search leaves Google Scholar out of the search instead of listing
+it as a failed source.
 
 ## Network and provenance
 
