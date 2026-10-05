@@ -121,7 +121,7 @@ jobs:
           echo "channel=${channel}" >> "$GITHUB_OUTPUT"
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
         with:
           toolchain: ${{ steps.rust.outputs.channel }}
           targets: ${{ matrix.rust_target }}
@@ -428,7 +428,7 @@ jobs:
           subject-path: release-subjects/*
 
       - name: Generate platform SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           # Scan the shipped files plus the locked Rust and pnpm dependency
           # manifests; scanning installers alone misses statically linked crates.

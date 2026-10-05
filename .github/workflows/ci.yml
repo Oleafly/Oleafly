@@ -308,7 +308,7 @@ jobs:
 
       - name: Install cargo-llvm-cov
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
         with:
           tool: cargo-llvm-cov@0.8.7
 
@@ -338,7 +338,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Install minimum supported Rust toolchain
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
         with:
           toolchain: 1.87.0
 
@@ -388,7 +388,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Install minimum supported Rust toolchain
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067
         with:
           toolchain: 1.87.0
 
@@ -451,7 +451,7 @@ jobs:
           test -n "$SONAR_TOKEN" || { echo "SONAR_TOKEN repository secret is missing" >&2; exit 1; }
 
       - name: Analyze with SonarQube Cloud
-        uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
