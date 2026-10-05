@@ -10,7 +10,7 @@ mkdir -p "$out" || exit 0
 } > "$out/threads.txt" 2>&1
 
 gdb_cmd=(gdb)
-if [ "$(id -u)" != 0 ] && sudo -n true 2>/dev/null; then
+if [[ "$(id -u)" != 0 ]] && sudo -n true 2>/dev/null; then
   gdb_cmd=(sudo -n gdb)
 fi
 command -v gdb >/dev/null 2>&1 || exit 0
