@@ -29,6 +29,16 @@ html.dark body {
   background: transparent;
 }
 
+html[data-window-surface="solid"] #oleafly-splash {
+  background: rgb(251, 251, 250);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html.dark[data-window-surface="solid"] #oleafly-splash {
+  background: rgb(9, 9, 11);
+}
+
 body {
   margin: 0;
   background: transparent;

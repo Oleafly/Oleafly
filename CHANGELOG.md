@@ -40,7 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   menu strip on top of Oleafly's own toolbar. It now looks like it does on
   Windows: the toolbar sits at the top with minimize, maximize and close
   buttons, you drag it to move the window, and you double-click it to
-  maximize. Shortcuts like Ctrl+` for the terminal now go through Oleafly
+  maximize. Any edge or corner resizes the window, and the corners are
+  slightly rounded unless the window is maximized, full screen or snapped to
+  one side. Shortcuts like Ctrl+` for the terminal now go through Oleafly
   directly, and Ctrl+T, Ctrl+L, Ctrl+W and Ctrl+R still work while a web page
   in the browser panel has focus.
 - On Linux, dropping an image from the file manager into the editor, a PDF

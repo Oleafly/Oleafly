@@ -61,6 +61,23 @@ describe("Linux packaging", () => {
     }
   });
 
+  it("creates the main window without decorations instead of removing them at runtime", () => {
+    expect(linux.app.windows).toHaveLength(1);
+    expect(linux.app.windows[0].decorations).toBe(false);
+    expect(base.app.windows[0].decorations).toBe(true);
+  });
+
+  it("keeps the main window see-through so the page can round its corners", () => {
+    const main = linux.app.windows[0];
+    expect(main.transparent).toBe(true);
+    expect(main.backgroundColor).toBeUndefined();
+    expect(read("index.html")).toContain('setAttribute("data-window-surface", "solid")');
+    const css = read("src/styles/globals.css");
+    expect(css).toContain('html[data-window-surface="solid"] #root');
+    expect(css).toContain('html[data-window-corners="round"] body');
+    expect(read("src-tauri/src/window_frame.rs")).toContain("dataset.windowCorners");
+  });
+
   it("fills in the package description shown before installing", () => {
     expect(linux.bundle.shortDescription.length).toBeLessThanOrEqual(80);
     expect(linux.bundle.longDescription.length).toBeGreaterThan(100);

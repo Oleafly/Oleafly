@@ -135,6 +135,7 @@ mod typst_watch;
 mod webview_focus;
 #[cfg(any(target_os = "macos", test))]
 mod webview_frame;
+mod window_frame;
 mod worktree_lock;
 mod zotero;
 
@@ -234,7 +235,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
         use tauri::Manager;
         if let Some(window) = app.get_webview_window("main") {
-            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            #[cfg(target_os = "windows")]
             {
                 let _ = window.set_decorations(false);
             }
@@ -387,7 +388,9 @@ pub fn run() {
     }
     #[cfg(target_os = "linux")]
     {
-        builder = builder.plugin(native_drop::plugin());
+        builder = builder
+            .plugin(native_drop::plugin())
+            .plugin(window_frame::plugin());
     }
 
     #[cfg(target_os = "macos")]
