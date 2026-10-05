@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
   close: vi.fn(),
@@ -99,6 +99,7 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { EnginePickerModal } from "./EnginePickerModal";
 
 const copy = enShell.enginePicker;
+const MINTED = { id: "minted", level: "blocker", title: "minted needs a shell", detail: "why" };
 
 beforeEach(() => {
   for (const value of Object.values(mocks)) {
@@ -173,6 +174,35 @@ describe("EnginePickerModal states", () => {
       ),
     );
     expect(mocks.success).not.toHaveBeenCalled();
+  });
+
+  it("warns on the TinyTeX card that the download also allows external commands", () => {
+    mocks.engine.info = null;
+    mocks.picker.findings = [MINTED];
+    render(<EnginePickerModal />);
+    expect(
+      within(screen.getByTestId("engine-picker-tinytex")).getByText(copy.shellEscape.included),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the TinyTeX card without the warning when nothing needs external commands", () => {
+    mocks.engine.info = null;
+    render(<EnginePickerModal />);
+    expect(
+      within(screen.getByTestId("engine-picker-tinytex")).queryByText(copy.shellEscape.included),
+    ).toBeNull();
+  });
+
+  it("allows external commands after the download when the project needs them", async () => {
+    mocks.engine.info = null;
+    mocks.picker.findings = [MINTED];
+    mocks.install.mockImplementation(async () => {
+      mocks.engine.info = { latexmk: "/opt/tinytex/latexmk" };
+    });
+    render(<EnginePickerModal />);
+    fireEvent.click(screen.getByRole("button", { name: copy.tinytex.download }));
+    await waitFor(() => expect(mocks.setShellEscape).toHaveBeenCalledExactlyOnceWith(true));
+    expect(mocks.setEngine).toHaveBeenCalledWith("latexmk", null);
   });
 
   it("confirms a plain switch with one toast", async () => {
@@ -331,5 +361,31 @@ describe("EnginePickerModal states", () => {
     );
     expect(mocks.logError).toHaveBeenCalledWith("switch compile engine", expect.any(Error));
     expect(mocks.close).toHaveBeenCalled();
+  });
+});
+
+describe("EnginePickerModal initial focus", () => {
+  it("focuses system LaTeX when switching allows nothing extra", async () => {
+    render(<EnginePickerModal />);
+    await waitFor(() => expect(screen.getByTestId("engine-picker-use-system")).toHaveFocus());
+  });
+
+  it("focuses the dialog instead of system LaTeX when switching allows external commands", async () => {
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [MINTED];
+    render(<EnginePickerModal />);
+    await waitFor(() => expect(screen.getByTestId("engine-picker-modal")).toHaveFocus());
+    expect(screen.getByTestId("engine-picker-use-system")).not.toHaveAttribute(
+      "data-modal-initial-focus",
+    );
+  });
+
+  it("focuses the dialog instead of the download when TinyTeX would allow external commands", async () => {
+    mocks.engine.info = null;
+    mocks.picker.source = "compile-failure";
+    mocks.picker.findings = [MINTED];
+    render(<EnginePickerModal />);
+    await waitFor(() => expect(screen.getByTestId("engine-picker-modal")).toHaveFocus());
+    expect(screen.getByRole("button", { name: copy.tinytex.download })).not.toHaveFocus();
   });
 });

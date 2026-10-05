@@ -192,6 +192,13 @@ export function EnginePickerModal() {
     return t(($) => $.shell.enginePicker.systemTex.use);
   };
 
+  const shellEscapeNote = needsShellEscape && (
+    <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+      <ShieldAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
+      {t(($) => $.shell.enginePicker.shellEscape.included)}
+    </p>
+  );
+
   const renderSystemTexOption = () => (
     <div
       className={cn(
@@ -227,19 +234,14 @@ export function EnginePickerModal() {
           {displayPath(info.latexmk)}
         </p>
       )}
-      {needsShellEscape && (
-        <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
-          <ShieldAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
-          {t(($) => $.shell.enginePicker.shellEscape.included)}
-        </p>
-      )}
+      {shellEscapeNote}
       <div className="mt-2">
         <Button
           size="sm"
           data-testid="engine-picker-use-system"
           disabled={!hasSystemTex || switching || systemTexLocked}
           onClick={() => void chooseSystemTex()}
-          data-modal-initial-focus={hasSystemTex || undefined}
+          data-modal-initial-focus={(hasSystemTex && !needsShellEscape) || undefined}
         >
           {switching ? <Spinner size="sm" /> : null}
           {systemTexActionLabel()}
@@ -257,6 +259,7 @@ export function EnginePickerModal() {
       width="lg"
       labelledBy={titleId}
       testId="engine-picker-modal"
+      focusPanel={needsShellEscape}
       className="flex flex-col gap-4 p-5"
     >
       <div>
@@ -299,7 +302,7 @@ export function EnginePickerModal() {
 
         {/* Option 2: on-demand TinyTeX (hidden when a system TeX already covers it) */}
         {!hasSystemTex && (
-          <div className="rounded-lg border p-3">
+          <div className="rounded-lg border p-3" data-testid="engine-picker-tinytex">
             <div className="flex items-center gap-2">
               <Download className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-sm font-medium">
@@ -309,6 +312,7 @@ export function EnginePickerModal() {
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
               {t(($) => $.shell.enginePicker.tinytex.description)}
             </p>
+            {shellEscapeNote}
             <div className="mt-2">
               <Button
                 size="sm"

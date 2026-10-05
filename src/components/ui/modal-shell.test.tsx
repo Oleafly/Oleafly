@@ -110,6 +110,19 @@ describe("ModalShell", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("focuses the panel itself when asked, ahead of a marked control", async () => {
+    render(
+      <ModalShell open onClose={vi.fn()} closeLabel={CLOSE} label={TITLE} focusPanel>
+        <button type="button" data-modal-initial-focus>
+          {ACTION}
+        </button>
+      </ModalShell>,
+    );
+
+    await waitFor(() => expect(screen.getByRole("dialog", { name: TITLE })).toHaveFocus());
+    expect(screen.getByRole("button", { name: ACTION })).not.toHaveFocus();
+  });
+
   it("supports alert dialogs on the nested layer, aligned to the top", () => {
     render(
       <ModalShell
