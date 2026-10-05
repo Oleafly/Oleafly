@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   didn't exist. When a compile is blocked, or the failed compile shows the
   project needs shell commands, a banner above the editor now offers "Allow
   external commands".
+- On Linux, dropping a file from the file manager onto the Files panel
+  replaced the whole window with a preview of that file, and the window
+  wouldn't close for a while after (#247). Files and folders dropped on the
+  Files panel are now copied into the folder under the pointer. A drop
+  anywhere else is ignored instead of opening the file.
 - Picking system LaTeX in the engine dialog also allows external commands
   when the project needs them, instead of asking again with a separate
   checkbox. The dialog says so before you click. Trusting a folder still

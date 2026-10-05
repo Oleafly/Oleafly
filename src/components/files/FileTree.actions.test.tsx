@@ -857,7 +857,7 @@ describe("FileTree moves", () => {
   function dropOnRoot(from: string) {
     const tree = screen.getByRole("tree", { name: files.treeAriaLabel });
     const dataTransfer = {
-      types: ["text/plain"],
+      types: ["text/plain", "application/x-oleafly-tree-path"],
       getData: () => from,
       setData: vi.fn(),
       effectAllowed: "",

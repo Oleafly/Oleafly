@@ -25,6 +25,7 @@ import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import { installSelectAllRouting } from "@/lib/select-all";
 import { installPlainFieldHistory } from "@/lib/field-history";
+import { installExternalDropGuard } from "@/lib/external-drop-guard";
 import "@/styles/globals.css";
 import { isTauri } from "@tauri-apps/api/core";
 import { isMac } from "@/lib/utils";
@@ -231,6 +232,7 @@ async function bootstrap(): Promise<void> {
   installErrorLogging();
   installSelectAllRouting();
   installPlainFieldHistory();
+  installExternalDropGuard();
   prepareWindow(view);
   const root = document.getElementById("root");
   if (!root) throw new Error("Oleafly root element is missing");

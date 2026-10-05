@@ -301,6 +301,70 @@ describe("FileTree drag and drop", () => {
     expect(renameCalls()).toEqual([]);
   });
 
+  function osDrop(...dropped: File[]) {
+    return {
+      types: ["Files", "text/uri-list"],
+      items: dropped.map((file) => ({ kind: "file", getAsFile: () => file, webkitGetAsEntry: () => null })),
+      files: dropped,
+      getData: () => "",
+      dropEffect: "none",
+    };
+  }
+
+  function writes() {
+    return mocks.invoke.mock.calls
+      .filter(([command]) => command === "write_project_bytes")
+      .map(([, args]) => args as { relPath: string; dataBase64: string });
+  }
+
+  it("copies files dropped from the file manager into the folder under the pointer", async () => {
+    render(<FileTree />);
+    const data = osDrop(new File(["png"], "figure.png", { type: "image/png" }));
+
+    expect(fireEvent.dragOver(row("chapters"), { dataTransfer: data })).toBe(false);
+    expect(data.dropEffect).toBe("copy");
+    expect(row("chapters")).toHaveClass("bg-primary/15");
+    fireEvent.drop(row("chapters"), { dataTransfer: data });
+
+    expect(row("chapters")).not.toHaveClass("bg-primary/15");
+    await waitFor(() =>
+      expect(writes()).toEqual([
+        expect.objectContaining({ projectId: "project", relPath: "chapters/figure.png", dataBase64: "cG5n" }),
+      ]),
+    );
+    await waitFor(() => expect(row("chapters")).toHaveAttribute("aria-expanded", "true"));
+    expect(renameCalls()).toEqual([]);
+  });
+
+  it("copies files dropped on empty space into the project root without overwriting", async () => {
+    render(<FileTree />);
+    const data = osDrop(new File(["tex"], "main.tex"));
+
+    expect(fireEvent.dragOver(tree(), { dataTransfer: data })).toBe(false);
+    fireEvent.drop(tree(), { dataTransfer: data });
+
+    await waitFor(() =>
+      expect(writes()).toEqual([expect.objectContaining({ relPath: "main (2).tex" })]),
+    );
+  });
+
+  it("leaves text dragged in from another app alone instead of treating it as a move", async () => {
+    render(<FileTree />);
+    const text = {
+      types: ["text/plain"],
+      getData: (type: string) => (type === "text/plain" ? "main.tex" : ""),
+      dropEffect: "none",
+    };
+
+    expect(fireEvent.dragOver(row("chapters"), { dataTransfer: text })).toBe(true);
+    expect(fireEvent.dragOver(tree(), { dataTransfer: text })).toBe(true);
+    fireEvent.drop(row("chapters"), { dataTransfer: text });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(renameCalls()).toEqual([]);
+    expect(writes()).toEqual([]);
+  });
+
   it("ignores drags that carry no file path and clears the highlight when the drag leaves", () => {
     render(<FileTree />);
     const empty = transfer();
