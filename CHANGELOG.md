@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- In the engine dialog, "Download and use TinyTeX" turns on external commands
+  when the project needs them, the same as "Use system LaTeX", but its card
+  didn't say so. It now shows the same warning.
+- The engine dialog can open by itself when you open a project. It put the
+  keyboard focus on "Use system LaTeX", or on "Download and use TinyTeX" when
+  no TeX was installed, so for a project that needs external commands one
+  press of Enter switched the engine and turned them on. For those projects
+  the dialog now opens with no button focused, and Enter does nothing until
+  you pick one.
+
 ## [0.4.5] - 2026-10-05
 
 ### Changed
