@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one side. Shortcuts like Ctrl+` for the terminal now go through Oleafly
   directly, and Ctrl+T, Ctrl+L, Ctrl+W and Ctrl+R still work while a web page
   in the browser panel has focus.
+- On Linux, the browser window showed each web page halfway down, under an
+  empty band, with the bottom of the page cut off. Pages now start right
+  under the toolbar and fill the window as you resize it.
 - On Linux, dropping an image from the file manager into the editor, a PDF
   onto PDF import, or a document onto a converter did nothing. They now take
   the dropped file, as they do on macOS and Windows.
