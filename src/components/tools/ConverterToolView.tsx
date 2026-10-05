@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { type DragEvent as ReactDragEvent, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { languageForPath } from "@oleafly/editor";
 import {
@@ -41,6 +41,7 @@ import { pickSavePath } from "@/lib/native-file-dialog";
 import { toolById } from "@/lib/tool-catalog";
 import { logError } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
+import { isNativeFileDrop, takeNativeDrop } from "@/lib/native-drop";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
 import { useAsyncTask } from "@/hooks/use-async-task";
@@ -67,6 +68,16 @@ function stem(fileName: string): string {
   return basename(fileName).replace(/\.[^.]+$/, "").trim();
 }
 
+async function readNativeDrop(onChange: (file: File | null) => void): Promise<void> {
+  const [dropped] = await takeNativeDrop();
+  if (!dropped) return;
+  try {
+    onChange(await dropped.read());
+  } catch (error) {
+    notifyError("read dropped file", error, i18n.t(($) => $.core.project.importFailed));
+  }
+}
+
 function FileDrop({
   file,
   accept,
@@ -81,21 +92,25 @@ function FileDrop({
   const { t } = useTranslation(["researchTools"]);
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const acceptDrag = (event: ReactDragEvent) => {
+    event.preventDefault();
+    setDragging(true);
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col p-4">
       <button
         type="button"
         data-testid="converter-file-drop"
         onClick={() => inputRef.current?.click()}
-        onDragOver={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
+        onDragEnter={acceptDrag}
+        onDragOver={acceptDrag}
         onDragLeave={() => setDragging(false)}
         onDrop={(event) => {
           event.preventDefault();
           setDragging(false);
-          onChange(event.dataTransfer.files[0] ?? null);
+          const dropped = event.dataTransfer.files[0];
+          if (dropped || !isNativeFileDrop(event.dataTransfer)) onChange(dropped ?? null);
+          else void readNativeDrop(onChange);
         }}
         className={cn(
           "flex min-h-64 flex-1 flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-8 py-12 text-center transition-colors",

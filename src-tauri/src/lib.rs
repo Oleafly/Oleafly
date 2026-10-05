@@ -698,6 +698,7 @@ pub fn run() {
             project::copy_file,
             project::import_paths_into_project,
             native_drop::take_dropped_paths,
+            native_drop::read_dropped_file,
             project::save_file_base64,
             project::read_file_base64,
             project::read_picked_file_base64,

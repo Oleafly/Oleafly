@@ -13,6 +13,15 @@ const pdfPageToPng = vi.fn(async () => "data:image/png;base64,page");
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 const notifyError = vi.fn();
+const nativeDrop = vi.hoisted(() => ({
+  files: [] as { name: string; read: () => Promise<File> }[],
+}));
+
+vi.mock("@/lib/native-drop", () => ({
+  isNativeFileDrop: (transfer: DataTransfer | undefined) =>
+    Array.from(transfer?.types ?? []).includes("text/uri-list"),
+  takeNativeDrop: async () => nativeDrop.files,
+}));
 
 vi.mock("@/features/import", () => ({
   createProjectFromConversion: () => createProjectFromConversion(),
@@ -396,6 +405,37 @@ describe("PdfImportView converted document", () => {
         enLibrary.pdfImport.pageAlt.replace("{{page}}", "1"),
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens a PDF a Linux file manager dropped as a link, and accepts the drag on entering", async () => {
+    handlePickedFile.mockClear();
+    const pdf = new File(["%PDF"], "paper.pdf", { type: "application/pdf" });
+    const read = vi.fn(async () => pdf);
+    nativeDrop.files = [{ name: "paper.pdf", read }];
+    render(<PdfImportView />);
+    const dropzone = screen.getByTestId("pdf-dropzone");
+    const links = { types: ["text/uri-list", "text/html"], files: [] };
+
+    expect(fireEvent.dragEnter(dropzone, { dataTransfer: links })).toBe(false);
+    fireEvent.drop(dropzone, { dataTransfer: links });
+
+    await waitFor(() => expect(handlePickedFile).toHaveBeenCalledWith(pdf));
+  });
+
+  it("turns away a Linux drop that is not a PDF without reading it", async () => {
+    toastError.mockClear();
+    handlePickedFile.mockClear();
+    const read = vi.fn(async () => new File(["x"], "paper.docx"));
+    nativeDrop.files = [{ name: "paper.docx", read }];
+    render(<PdfImportView />);
+
+    fireEvent.drop(screen.getByTestId("pdf-dropzone"), {
+      dataTransfer: { types: ["text/uri-list", "text/html"], files: [] },
+    });
+
+    await waitFor(() => expect(toastError).toHaveBeenCalledWith(enLibrary.pdfImport.choosePdf));
+    expect(read).not.toHaveBeenCalled();
+    expect(handlePickedFile).not.toHaveBeenCalled();
   });
 
   it("turns away a file that is not a PDF", () => {

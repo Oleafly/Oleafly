@@ -4,10 +4,12 @@ import { figureSnippet } from "@/components/editor/latex-commands";
 import {
   importableImageFiles,
   importImageFiles,
+  nativeDroppedImages,
   PASTED_FIGURE_WIDTH,
   suggestedFigureLabel,
   type ImportedImage,
 } from "@/components/editor/figure-import";
+import { isNativeFileDrop } from "@/lib/native-drop";
 import { useFilesStore } from "@/store/files";
 
 export type ImagePasteLanguage = "latex" | "typst";
@@ -77,8 +79,17 @@ async function insertImportedFigures(
   view.focus();
 }
 
+function acceptNativeFileDrag(event: DragEvent, view: EditorView): boolean {
+  if (view.state.readOnly || !isNativeFileDrop(event.dataTransfer)) return false;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  return false;
+}
+
 export function imagePasteExtension(language: ImagePasteLanguage = "latex"): Extension {
   return EditorView.domEventHandlers({
+    dragenter: acceptNativeFileDrag,
+    dragover: acceptNativeFileDrag,
     paste: (event, view) => {
       const files = imageTransferFiles(event.clipboardData);
       if (files.length === 0 || view.state.readOnly) return false;
@@ -87,10 +98,19 @@ export function imagePasteExtension(language: ImagePasteLanguage = "latex"): Ext
       return true;
     },
     drop: (event, view) => {
+      if (view.state.readOnly) return false;
+      const at = view.posAtCoords({ x: event.clientX, y: event.clientY });
       const files = imageTransferFiles(event.dataTransfer);
-      if (files.length === 0 || view.state.readOnly) return false;
+      if (files.length > 0) {
+        event.preventDefault();
+        void insertImportedFigures(view, files, at, language);
+        return true;
+      }
+      if (!isNativeFileDrop(event.dataTransfer)) return false;
       event.preventDefault();
-      void insertImportedFigures(view, files, view.posAtCoords({ x: event.clientX, y: event.clientY }), language);
+      void nativeDroppedImages().then((images) =>
+        images.length > 0 ? insertImportedFigures(view, images, at, language) : undefined,
+      );
       return true;
     },
   });
