@@ -29,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   wouldn't close for a while after (#247). Files and folders dropped on the
   Files panel are now copied into the folder under the pointer. A drop
   anywhere else is ignored instead of opening the file.
+- On Linux, the Oleafly package had no description, so Ubuntu's App Center
+  showed "(none)" before installing, and the app landed under "Other" in app
+  menus. The package now has a proper description and sits under Office with
+  search keywords. It also ships AppStream metadata, so software centres show
+  the icon, developer, license, screenshots and current version once Oleafly
+  is installed. The window icon is sharp now instead of a scaled-up 32 pixel
+  image.
 - Picking system LaTeX in the engine dialog also allows external commands
   when the project needs them, instead of asking again with a separate
   checkbox. The dialog says so before you click. Trusting a folder still

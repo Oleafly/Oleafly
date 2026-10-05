@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 #
 # Set the Oleafly version in one place so a release tag never drifts from the
-# manifests. Updates all four spots that carry the version:
+# manifests. Updates all five spots that carry the version:
 #
 #   - package.json            ("version")
 #   - src-tauri/tauri.conf.json ("version")
 #   - src-tauri/Cargo.toml     ([package] version)
 #   - Cargo.lock               (the oleafly package entry)
+#   - src-tauri/linux/com.oleafly.app.metainfo.xml (a <release> dated today, UTC)
 #
 # Usage:
 #   ./scripts/bump-version.sh 0.2.0
@@ -34,8 +35,9 @@ pkg="$ROOT/package.json"
 conf="$ROOT/src-tauri/tauri.conf.json"
 cargo="$ROOT/src-tauri/Cargo.toml"
 lock="$ROOT/Cargo.lock"
+metainfo="$ROOT/src-tauri/linux/com.oleafly.app.metainfo.xml"
 
-for f in "$pkg" "$conf" "$cargo" "$lock"; do
+for f in "$pkg" "$conf" "$cargo" "$lock" "$metainfo"; do
   [[ -f "$f" ]] || { echo "error: missing $f" >&2; exit 1; }
 done
 
@@ -52,11 +54,20 @@ perl -pi -e 'if (!$seen && /^version = "/) { s/^version = "[^"]*"/version = "'"$
 # Cargo.lock: the version line immediately under the oleafly package entry.
 perl -0pi -e 's/(name = "oleafly"\nversion = ")[^"]*(")/${1}'"$VERSION"'${2}/' "$lock"
 
+if ! grep -q "<release version=\"$VERSION\"" "$metainfo"; then
+  TODAY="$(date -u +%Y-%m-%d)"
+  RELEASE_URL="https://github.com/Oleafly/Oleafly/releases/tag/v$VERSION"
+  VERSION="$VERSION" TODAY="$TODAY" RELEASE_URL="$RELEASE_URL" perl -0pi -e \
+    's|(  <releases>\n)|$1    <release version="$ENV{VERSION}" date="$ENV{TODAY}">\n      <url type="details">$ENV{RELEASE_URL}</url>\n    </release>\n|' \
+    "$metainfo"
+fi
+
 echo "Set version to $VERSION in:"
 echo "  - package.json"
 echo "  - src-tauri/tauri.conf.json"
 echo "  - src-tauri/Cargo.toml"
 echo "  - Cargo.lock"
+echo "  - src-tauri/linux/com.oleafly.app.metainfo.xml"
 echo
 echo "Next steps:"
 echo "  git commit -am \"chore: release v$VERSION\""
