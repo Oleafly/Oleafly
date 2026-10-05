@@ -80,9 +80,10 @@ async function insertImportedFigures(
 }
 
 function acceptNativeFileDrag(event: DragEvent, view: EditorView): boolean {
-  if (view.state.readOnly || !isNativeFileDrop(event.dataTransfer)) return false;
-  event.preventDefault();
-  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  if (!view.state.readOnly && isNativeFileDrop(event.dataTransfer)) {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  }
   return false;
 }
 

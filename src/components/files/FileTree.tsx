@@ -724,7 +724,7 @@ export function FileTree({
   const importDroppedPaths = async (destDir: string) => {
     const operation = { projectId, session: projectSession.current };
     const sources = await takeDroppedPaths().catch((error: unknown) => {
-      logError("read dropped paths", error);
+      void logError("read dropped paths", error);
       return [];
     });
     if (sources.length === 0 || !currentProjectOperation(operation)) return;
