@@ -11,7 +11,7 @@ use tauri::{
 };
 
 #[cfg(target_os = "linux")]
-mod linux_layout;
+mod linux_gtk;
 #[cfg(target_os = "linux")]
 mod linux_shortcuts;
 #[cfg(windows)]
@@ -537,9 +537,9 @@ fn open_tab<R: Runtime>(
         .add_child(builder, position, pane_size)
         .map_err(|e| format!("could not open the tab: {e}"))?;
     #[cfg(target_os = "linux")]
-    linux_layout::adopt(&webview, linux_layout::Role::Pane);
+    linux_gtk::adopt(&webview, linux_gtk::Role::Pane);
     #[cfg(target_os = "linux")]
-    linux_shortcuts::install(
+    linux_gtk::install_shortcuts(
         &webview,
         with_window_state(&window_label, |state| state.chrome.clone())?,
     );
@@ -614,7 +614,7 @@ fn create_window<R: Runtime>(app: &AppHandle<R>, url: Url) -> Result<String, Str
         )
         .map_err(|e| format!("could not open the browser window: {e}"))?;
     #[cfg(target_os = "linux")]
-    linux_layout::adopt(&chrome, linux_layout::Role::Chrome);
+    linux_gtk::adopt(&chrome, linux_gtk::Role::Chrome);
     open_tab(app, &window, url)?;
     let _ = window.set_focus();
     focus_active_tab(&window);

@@ -1,7 +1,11 @@
+use std::cell::Cell;
+use std::rc::Rc;
+
 use gtk::glib::object::Cast;
+use gtk::glib::Propagation;
 use gtk::prelude::{BoxExt, ContainerExt, OverlayExt, WidgetExt};
 use gtk::OverlaySignals;
-use tauri::{Runtime, Webview};
+use tauri::{Manager, Runtime, Webview};
 
 const LAYOUT_NAME: &str = "oleafly-browser-layout";
 
@@ -51,4 +55,33 @@ fn layout_in(column: &gtk::Box) -> gtk::Overlay {
     column.pack_start(&overlay, true, true, 0);
     overlay.show();
     overlay
+}
+
+pub(super) fn install_shortcuts<R: Runtime>(pane: &Webview<R>, chrome_label: String) {
+    let app = pane.app_handle().clone();
+    let result = pane.with_webview(move |platform| {
+        let view = platform.inner();
+        let held = Rc::new(Cell::new(None));
+        let pressed = held.clone();
+        view.connect_key_press_event(move |_, event| {
+            let key = super::linux_shortcuts::shortcut_key(
+                event.keyval().to_lower().to_unicode(),
+                event.state(),
+            );
+            let Some(key) = key else {
+                return Propagation::Proceed;
+            };
+            if pressed.replace(Some(key)) != Some(key) {
+                super::route_shortcut(&app, chrome_label.clone(), key);
+            }
+            Propagation::Stop
+        });
+        view.connect_key_release_event(move |_, _| {
+            held.set(None);
+            Propagation::Proceed
+        });
+    });
+    if let Err(error) = result {
+        eprintln!("could not access browser shortcut webview: {error}");
+    }
 }
