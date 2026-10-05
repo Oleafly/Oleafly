@@ -3,4 +3,8 @@
 // uses them in the worker too, and older WebViews lack them). Import the
 // polyfill first, then the real pdf.js worker, which registers its handlers.
 import "./polyfills";
+import { dropNativeDecompression } from "./worker-decompression";
+
+dropNativeDecompression(globalThis, navigator.userAgent);
+
 export { WorkerMessageHandler } from "pdfjs-dist/build/pdf.worker.min.mjs";
