@@ -65,6 +65,7 @@ mod literature;
 mod logsafe;
 mod mcp;
 mod menu;
+mod native_drop;
 mod ollama;
 mod open_folder;
 mod open_request;
@@ -384,6 +385,10 @@ pub fn run() {
     {
         builder = builder.plugin(webview_focus::plugin());
     }
+    #[cfg(target_os = "linux")]
+    {
+        builder = builder.plugin(native_drop::plugin());
+    }
 
     #[cfg(not(target_os = "windows"))]
     {
@@ -443,6 +448,7 @@ pub fn run() {
         .manage(agent_server::AgentServerState::default())
         .manage(mcp::server::McpState::default())
         .manage(mcp::client::McpClientState::default())
+        .manage(native_drop::NativeDropState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -691,6 +697,7 @@ pub fn run() {
             project::rename_file,
             project::copy_file,
             project::import_paths_into_project,
+            native_drop::take_dropped_paths,
             project::save_file_base64,
             project::read_file_base64,
             project::read_picked_file_base64,

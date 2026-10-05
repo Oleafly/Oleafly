@@ -19,6 +19,9 @@ export const isMac =
 export const isWindows =
   typeof navigator !== "undefined" && /Win/.test(navigator.platform || navigator.userAgent);
 
+export const isLinux =
+  typeof navigator !== "undefined" && /Linux/.test(navigator.platform || navigator.userAgent);
+
 export const modKey = isMac ? "⌘" : "Ctrl";
 export const altKey = isMac ? "⌥" : "Alt";
 export const shiftKey = isMac ? "⇧" : "Shift";

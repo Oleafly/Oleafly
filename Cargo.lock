@@ -3229,6 +3229,7 @@ dependencies = [
  "flate2",
  "fs4",
  "futures-util",
+ "gtk",
  "icu_properties",
  "libc",
  "liblzma",

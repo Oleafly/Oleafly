@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { carriesFiles, installExternalDropGuard } from "./external-drop-guard";
+import { carriesFilePaths, carriesFiles, installExternalDropGuard } from "./external-drop-guard";
 
-function drag(type: "dragover" | "drop", target: Element, types: string[]) {
+function drag(type: "dragenter" | "dragover" | "drop", target: Element, types: string[]) {
   const transfer = { types, dropEffect: "copy" };
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(event, "dataTransfer", { value: transfer });
@@ -37,6 +37,14 @@ describe("installExternalDropGuard", () => {
 
     const drop = drag("drop", element("row"), ["Files", "text/uri-list"]);
     expect(drop.event.defaultPrevented).toBe(true);
+  });
+
+  it("refuses a file as soon as it enters a surface, since WebKitGTK may drop before the next dragover", () => {
+    const enter = drag("dragenter", element("row"), ["text/uri-list", "text/html"]);
+    expect(enter.event.defaultPrevented).toBe(true);
+    expect(enter.transfer.dropEffect).toBe("none");
+
+    expect(drag("dragenter", element("editor"), ["Files"]).event.defaultPrevented).toBe(false);
   });
 
   it("refuses a dropped link outside text fields", () => {
@@ -78,5 +86,15 @@ describe("carriesFiles", () => {
     expect(carriesFiles({ types: ["Files", "text/uri-list"] } as unknown as DataTransfer)).toBe(true);
     expect(carriesFiles({ types: ["text/plain"] } as unknown as DataTransfer)).toBe(false);
     expect(carriesFiles(null)).toBe(false);
+  });
+});
+
+describe("carriesFilePaths", () => {
+  it("recognises the link list WebKitGTK passes for files dropped from a Linux file manager", () => {
+    const links = { types: ["text/uri-list", "text/html"] } as unknown as DataTransfer;
+    expect(carriesFilePaths(links, true)).toBe(true);
+    expect(carriesFilePaths(links, false)).toBe(false);
+    expect(carriesFilePaths({ types: ["text/plain"] } as unknown as DataTransfer, true)).toBe(false);
+    expect(carriesFilePaths(null, true)).toBe(false);
   });
 });
