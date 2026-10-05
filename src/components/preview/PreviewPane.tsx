@@ -53,6 +53,7 @@ import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
+import { projectFilesystemEpoch, useIndexStore } from "@/store/project-index";
 import { useTourStore } from "@/store/tours";
 import {
   canUseSyncTexForCheckpoint,
@@ -552,35 +553,58 @@ export function checkpointIdentity(
 
 const PREVIEW_DOWNLOAD_TOAST_KEY = "preview-download";
 
-export function PreviewPane() {
-  const { t } = useTranslation(["common", "preview", "shell"]);
-  const status = useCompileStore((s) => s.status);
-  const phase = useCompileStore((s) => s.phase);
-  const pdfBytes = useCompileStore((s) => s.pdfBytes);
-  const recompile = useCompileStore((s) => s.recompile);
-  const errors = useCompileStore((s) => s.errors);
-  const compileTimeMs = useCompileStore((s) => s.compileTimeMs);
-  const compileCheckpoint = useCompileStore(
-    (state) => state.lastCompileCheckpoint,
+function useCheckpointCurrent(
+  checkpoint: CompileSuccessCheckpoint | null,
+): boolean {
+  const cache = useRef<{ inputs: readonly unknown[]; current: boolean } | null>(
+    null,
   );
-  const lastAttemptIdentity = useCompileStore(
-    (state) => state.lastAttemptIdentity,
-  );
-  const compileFailureReason = useCompileStore(
-    (state) => state.failureReason,
-  );
-  const projectId = useFilesStore((s) => s.projectId);
-  const projectName = useFilesStore((s) => s.projectName);
-  const refreshTree = useFilesStore((s) => s.refreshTree);
-  const mainDoc = useFilesStore((s) => s.mainDoc);
-  const projectLoading = useFilesStore((s) => s.loading);
-  const engineLoaded = useFilesStore((s) => s.engineLoaded);
-  const noMainDocument = useFilesStore(mainDocumentMissing);
-  const projectRevision = useProjectAnalysisStore((state) =>
-    state.snapshot.identity.projectId === projectId
-      ? state.snapshot.identity.projectRevision
-      : 0,
-  );
+  return useProjectAnalysisStore((state) => {
+    const files = useFilesStore.getState();
+    const compile = useCompileStore.getState();
+    const inputs = [
+      checkpoint,
+      state.snapshot.identity,
+      files.projectId,
+      files.mainDoc,
+      files.activePath,
+      files.files,
+      files.tree,
+      files.loading,
+      compile.lastCompileCheckpoint,
+      compile.compiledSources,
+      useIndexStore.getState().texts,
+      projectFilesystemEpoch(),
+    ];
+    const known = cache.current;
+    if (known?.inputs.every((input, index) => input === inputs[index])) {
+      return known.current;
+    }
+    const current = isCompileCheckpointCurrent(checkpoint);
+    cache.current = { inputs, current };
+    return current;
+  });
+}
+
+type PreviewStartupInputs = Omit<
+  DocumentStartupState,
+  | "languageReadiness"
+  | "languageReason"
+  | "analysisStatus"
+  | "analysisReason"
+  | "analysisReasonKey"
+  | "compileCurrent"
+>;
+
+function PreviewStartupProgress({
+  projectId,
+  compileCheckpoint,
+  inputs,
+}: Readonly<{
+  projectId: string | null;
+  compileCheckpoint: CompileSuccessCheckpoint | null;
+  inputs: PreviewStartupInputs;
+}>) {
   const languageReadiness = useProjectAnalysisStore(
     (state): LanguageServiceReadiness =>
       state.snapshot.identity.projectId === projectId
@@ -612,6 +636,82 @@ export function PreviewPane() {
     const slot = state.snapshot.projectIndex;
     return "failure" in slot ? slot.failure.message : "";
   });
+  const compileCurrent = useCheckpointCurrent(compileCheckpoint);
+  const stages = documentStartupStages({
+    ...inputs,
+    languageReadiness,
+    languageReason: analysisReasonText(languageReasonSource) ?? "",
+    analysisStatus,
+    analysisReason:
+      analysisReasonText(analysisReasonSource) ?? analysisFailureMessage,
+    analysisReasonKey:
+      analysisReasonSource && "key" in analysisReasonSource
+        ? analysisReasonSource.key
+        : null,
+    compileCurrent,
+  });
+  return <DocumentStartupProgress stages={stages} />;
+}
+
+function StaleTooltipLabel({
+  projectId,
+  checkpoint,
+  pdfIsStale,
+  retainedLoadFailure,
+  syncTexAvailable,
+}: Readonly<{
+  projectId: string | null;
+  checkpoint: CompileSuccessCheckpoint | null;
+  pdfIsStale: boolean;
+  retainedLoadFailure: string | null;
+  syncTexAvailable: boolean;
+}>) {
+  const { t } = useTranslation(["preview"]);
+  const activeRevision = useProjectAnalysisStore((state) =>
+    state.snapshot.identity.projectId === projectId
+      ? state.snapshot.identity.projectRevision
+      : 0,
+  );
+  const revisionExplanation = checkpoint
+    ? t(($) => $.preview.stale.revisionExplanation, {
+        displayed: checkpoint.projectRevision,
+        active: activeRevision,
+      })
+    : t(($) => $.preview.stale.noIdentity);
+  return t(($) => $.preview.stale.tooltip, {
+    explanation:
+      retainedLoadFailure ??
+      (pdfIsStale ? revisionExplanation : t(($) => $.preview.stale.explanation)),
+    syncTex: syncTexAvailable
+      ? t(($) => $.preview.stale.syncTexAvailable)
+      : t(($) => $.preview.stale.syncTexUnavailable),
+  });
+}
+
+export function PreviewPane() {
+  const { t } = useTranslation(["common", "preview", "shell"]);
+  const status = useCompileStore((s) => s.status);
+  const phase = useCompileStore((s) => s.phase);
+  const pdfBytes = useCompileStore((s) => s.pdfBytes);
+  const recompile = useCompileStore((s) => s.recompile);
+  const errors = useCompileStore((s) => s.errors);
+  const compileTimeMs = useCompileStore((s) => s.compileTimeMs);
+  const compileCheckpoint = useCompileStore(
+    (state) => state.lastCompileCheckpoint,
+  );
+  const lastAttemptIdentity = useCompileStore(
+    (state) => state.lastAttemptIdentity,
+  );
+  const compileFailureReason = useCompileStore(
+    (state) => state.failureReason,
+  );
+  const projectId = useFilesStore((s) => s.projectId);
+  const projectName = useFilesStore((s) => s.projectName);
+  const refreshTree = useFilesStore((s) => s.refreshTree);
+  const mainDoc = useFilesStore((s) => s.mainDoc);
+  const projectLoading = useFilesStore((s) => s.loading);
+  const engineLoaded = useFilesStore((s) => s.engineLoaded);
+  const noMainDocument = useFilesStore(mainDocumentMissing);
   // Image and diagram projects render a single figure: no pages/spreads, "PDF" reads as "image".
   const projectKindForPreview = useFilesStore((s) => s.projectKind);
   const isImage = projectKindForPreview === "image" || projectKindForPreview === "diagram";
@@ -752,53 +852,38 @@ export function PreviewPane() {
     setRetainedLoadFailure(null);
   }, [compileCheckpoint, pdfBytes]);
 
-  const derivePreviewDocumentFacts = () => {
-    const displayedCheckpoint = viewerDocument?.checkpoint ?? null;
-    const pdfIsCurrent =
-      viewerDocument !== null &&
-      displayedCheckpoint !== null &&
-      isCompileCheckpointCurrent(displayedCheckpoint);
-    const pdfIsStale = viewerDocument !== null && !pdfIsCurrent;
-    const syncTexAvailable =
-      canUseSyncTexForCheckpoint(displayedCheckpoint);
-    const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
-    const displayedBytes = viewerDocument?.bytes ?? null;
-    const staleRevisionExplanation = displayedCheckpoint
-      ? t(($) => $.preview.stale.revisionExplanation, {
-          displayed: displayedCheckpoint.projectRevision,
-          active: projectRevision,
-        })
-      : t(($) => $.preview.stale.noIdentity);
-    const currentRevisionExplanation = pdfIsStale ? staleRevisionExplanation : null;
-    return { displayedCheckpoint, pdfIsCurrent, pdfIsStale, syncTexAvailable, staleSyncTexAvailable, displayedBytes, currentRevisionExplanation };
-  };
-  const { displayedCheckpoint, pdfIsCurrent, pdfIsStale, syncTexAvailable, staleSyncTexAvailable, displayedBytes, currentRevisionExplanation } = derivePreviewDocumentFacts();
-  const languageReason = analysisReasonText(languageReasonSource) ?? "";
-  const analysisReason =
-    analysisReasonText(analysisReasonSource) ?? analysisFailureMessage;
-  const analysisReasonKey =
-    analysisReasonSource && "key" in analysisReasonSource
-      ? analysisReasonSource.key
-      : null;
-  const startupStages = documentStartupStages({
-    projectActive: projectId !== null,
-    projectLoading,
-    engineLoaded,
-    languageReadiness,
-    languageReason,
-    analysisStatus,
-    analysisReason,
-    analysisReasonKey,
-    compileStatus: status,
-    compilePhase: phase,
-    compileCurrent: isCompileCheckpointCurrent(compileCheckpoint),
-    compileFailureReason,
-    hasPdfCandidate: pdfBytes !== null,
-    viewerIdentity: viewerDocument?.identity ?? null,
-    pdfCurrent: pdfIsCurrent,
-    pdfLoadState,
-    retainedLoadFailure,
-  });
+  const displayedCheckpoint = viewerDocument?.checkpoint ?? null;
+  const displayedCheckpointCurrent = useCheckpointCurrent(displayedCheckpoint);
+  const pdfIsCurrent =
+    viewerDocument !== null &&
+    displayedCheckpoint !== null &&
+    displayedCheckpointCurrent;
+  const pdfIsStale = viewerDocument !== null && !pdfIsCurrent;
+  const syncTexAvailable = canUseSyncTexForCheckpoint(displayedCheckpoint);
+  const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
+  const displayedBytes = viewerDocument?.bytes ?? null;
+  const staleAnnouncement = displayedCheckpoint
+    ? t(($) => $.preview.stale.explanation)
+    : t(($) => $.preview.stale.noIdentity);
+  const startupProgress = (
+    <PreviewStartupProgress
+      projectId={projectId}
+      compileCheckpoint={compileCheckpoint}
+      inputs={{
+        projectActive: projectId !== null,
+        projectLoading,
+        engineLoaded,
+        compileStatus: status,
+        compilePhase: phase,
+        compileFailureReason,
+        hasPdfCandidate: pdfBytes !== null,
+        viewerIdentity: viewerDocument?.identity ?? null,
+        pdfCurrent: pdfIsCurrent,
+        pdfLoadState,
+        retainedLoadFailure,
+      }}
+    />
+  );
   // Only true fullscreen when the pane itself (not a descendant) is the fullscreen element.
   useEffect(() => {
     const onChange = () => {
@@ -1242,15 +1327,15 @@ export function PreviewPane() {
       // positioned by this wrapper rather than by the button itself.
       <div className="absolute bottom-3 right-3 z-30">
       <Tooltip
-        label={t(($) => $.preview.stale.tooltip, {
-          explanation:
-            retainedLoadFailure ??
-            currentRevisionExplanation ??
-            t(($) => $.preview.stale.explanation),
-          syncTex: staleSyncTexAvailable
-            ? t(($) => $.preview.stale.syncTexAvailable)
-            : t(($) => $.preview.stale.syncTexUnavailable),
-        })}
+        label={
+          <StaleTooltipLabel
+            projectId={projectId}
+            checkpoint={displayedCheckpoint}
+            pdfIsStale={pdfIsStale}
+            retainedLoadFailure={retainedLoadFailure}
+            syncTexAvailable={staleSyncTexAvailable}
+          />
+        }
         side="left"
       >
         <button
@@ -1357,7 +1442,7 @@ export function PreviewPane() {
           onSubmitPassword={submitPdfPassword}
         >
           {pdfLoadState.status === "loading" ? (
-            <DocumentStartupProgress stages={startupStages} />
+            startupProgress
           ) : (
             <PdfStateMessage
               kind="error"
@@ -1391,9 +1476,7 @@ export function PreviewPane() {
           </div>
         </div>
       ) : (
-        <DocumentStartupProgress
-          stages={startupStages}
-        />
+        startupProgress
       )}
     </div>
   );
@@ -1477,7 +1560,7 @@ export function PreviewPane() {
         <div className="sr-only" aria-live="polite">
           {pdfIsStale
             ? t(($) => $.preview.a11y.stale, {
-                explanation: currentRevisionExplanation ?? "",
+                explanation: staleAnnouncement,
               })
             : pageAnnouncement()}
           {searchState.status === "success" && searchInput.trim()

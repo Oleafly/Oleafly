@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Since 0.4.3, typing could lag with the PDF preview open, worst on Linux
+  (#248). Letters kept appearing after you stopped, and holding Backspace
+  deleted past where you let go. Each keystroke made the window lay out the
+  whole preview again and redraw the toolbars, file tree and preview. Typing
+  with the preview open is now faster than in 0.4.2.
+- On macOS and Linux, a page full of spelling or grammar underlines was slow
+  to redraw. The underlines now draw about four times faster, so scrolling,
+  hiding the sidebar or switching layouts no longer stalls in a document with
+  many flagged words.
 - A project that compiles with system LaTeX had no way to allow shell
   commands, so documents using minted, PythonTeX or `\write18` couldn't
   compile. The error pointed to an "Allow LaTeX shell commands" setting that

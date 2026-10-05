@@ -913,6 +913,11 @@ select:focus-visible {
   animation: compile-icon-shimmer 1.6s ease-in-out infinite;
 }
 
+[data-panel],
+[data-panel] > div {
+  max-height: none !important;
+}
+
 .resize-handle-col,
 .resize-handle-col * {
   cursor: col-resize !important;

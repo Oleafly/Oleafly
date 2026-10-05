@@ -24,6 +24,8 @@ const mocks = vi.hoisted(() => ({
   startMcpBridge: vi.fn(async () => () => {}),
   initAiPdfCaptureFlag: vi.fn(),
   sidebarThrows: false,
+  previewRenders: 0,
+  editorRenders: 0,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.tauri, invoke: vi.fn(async () => ({})) }));
@@ -176,8 +178,18 @@ vi.mock("@/components/layout/ShellCommandsBanner", () => ({ ShellCommandsBanner:
 vi.mock("@/components/open-folder/OpenFolderKeeper", () => ({ OpenFolderKeeper: () => null }));
 vi.mock("@/components/layout/ProjectAvailabilityKeeper", () => ({ ProjectAvailabilityKeeper: () => null }));
 vi.mock("@/components/layout/FolderWatchKeeper", () => ({ FolderWatchKeeper: () => null }));
-vi.mock("@/components/editor/Editor", () => ({ Editor: () => <div data-testid="editor-surface" /> }));
-vi.mock("@/components/preview/PreviewPane", () => ({ PreviewPane: () => <div data-testid="preview-surface" /> }));
+vi.mock("@/components/editor/Editor", () => ({
+  Editor: () => {
+    mocks.editorRenders++;
+    return <div data-testid="editor-surface" />;
+  },
+}));
+vi.mock("@/components/preview/PreviewPane", () => ({
+  PreviewPane: () => {
+    mocks.previewRenders++;
+    return <div data-testid="preview-surface" />;
+  },
+}));
 vi.mock("@/components/import/PdfImportView", () => ({ PdfImportView: () => <div data-testid="tool-pdf-import" /> }));
 vi.mock("@/components/layout/Sidebar", () => ({
   Sidebar: () => {
@@ -242,6 +254,7 @@ import { useHomeViewStore } from "@/store/home-view";
 import { useTourStore } from "@/store/tours";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
+import { useProjectAnalysisStore } from "@/store/project-analysis";
 
 const initialFiles = useFilesStore.getState();
 const initialCompile = useCompileStore.getState();
@@ -373,6 +386,22 @@ describe("project workspace", () => {
     expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
     expect(screen.queryByTestId("library")).not.toBeInTheDocument();
     expect(screen.queryByTestId("chat-surface")).not.toBeInTheDocument();
+  });
+
+  it("keeps the workspace still while every edit advances the project revision", async () => {
+    await renderApp();
+    const renders = { preview: mocks.previewRenders, editor: mocks.editorRenders };
+
+    for (let revision = 1; revision <= 10; revision++) {
+      act(() =>
+        useProjectAnalysisStore.setState({
+          snapshot: { identity: { projectId: "p1", projectRevision: revision, languageServiceGeneration: 0 } } as never,
+        }),
+      );
+    }
+
+    expect(mocks.previewRenders).toBe(renders.preview);
+    expect(mocks.editorRenders).toBe(renders.editor);
   });
 
   it("drops the preview pane while the preview is detached", async () => {

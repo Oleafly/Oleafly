@@ -340,22 +340,8 @@ function AppContent() {
   const [aboutOpen, setAboutOpen] = useState(false);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
-  const engineLoaded = useFilesStore((s) => s.engineLoaded);
-  const projectLoading = useFilesStore((state) => state.loading);
-  const mainDocument = useFilesStore((state) => state.mainDoc);
-  const mainDecision = useFilesStore((state) => state.mainDecision);
-  const mainDocumentLoaded = useFilesStore(
-    (state) => state.files[state.mainDoc] !== undefined,
-  );
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const recompile = useCompileStore((s) => s.recompile);
-  const compileStatus = useCompileStore((s) => s.status);
-  const compileCheckpoint = useCompileStore(
-    (state) => state.lastCompileCheckpoint,
-  );
-  const analysisIdentity = useProjectAnalysisStore(
-    (state) => state.snapshot.identity,
-  );
   const selectedViewMode = useSettingsStore((s) => s.viewMode);
   const detached = usePreviewDetachedStore((s) => s.projectId === projectId && projectId !== null);
   const viewMode = detached ? "editor" : selectedViewMode;
@@ -724,133 +710,6 @@ function AppContent() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [projectId]);
 
-  // Compile once when a project opens into a layout that shows the PDF pane,
-  // so the user lands on a rendered preview instead of the placeholder. Keyed
-  // on the tree, not projectId: projectId is set before the files (and the
-  // main doc) are loaded, and compiling then would race the open.
-  const tree = useFilesStore((s) => s.tree);
-  const openCompiledRef = useRef<string | null>(null);
-  const openCompileInFlightRef = useRef<string | null>(null);
-  const openCompileRetriesRef = useRef<OpenCompileRetries | null>(null);
-  const [openCompileEpoch, setOpenCompileEpoch] = useState(0);
-  useEffect(() => {
-    void openCompileEpoch;
-    void mainDocumentLoaded;
-    openCompiledRef.current = resetOpenCompileMarker(projectId, openCompiledRef.current);
-    openCompileRetriesRef.current = resetOpenCompileMarker(
-      projectId,
-      openCompileRetriesRef.current,
-    );
-    const hydrated = openCompileHydrated(
-      projectLoading,
-      projectId,
-      analysisIdentity.projectId,
-      analysisIdentity.projectRevision,
-    );
-    const hasValidCurrentArtifact =
-      compileCheckpoint !== null &&
-      isCompileCheckpointCurrent(compileCheckpoint);
-    if (hasValidCurrentArtifact && projectId) {
-      openCompiledRef.current = projectId;
-      return;
-    }
-    if (
-      openCompileInFlightRef.current !== null ||
-      !automaticCompileAllowed(mainDecision) ||
-      !shouldCompileOnOpen(
-        projectId,
-        tree.length > 0,
-        engineLoaded,
-        openCompiledRef.current,
-        useSettingsStore.getState().viewMode,
-        compileStatus,
-        hydrated,
-        hasValidCurrentArtifact,
-      )
-    ) {
-      return;
-    }
-
-    const requestedProjectId = projectId;
-    if (!requestedProjectId) return;
-    const requestedMainDocument = mainDocument;
-    const requestedProjectRevision =
-      analysisIdentity.projectRevision;
-    openCompileInFlightRef.current = requestedProjectId;
-    const compileOrRestore = async () => {
-      // Reopen fast path: seed the preview from the persisted compile
-      // fingerprint and skip the on-open compile. DEACTIVATED for 0.3.7:
-      // e2e caught that skipping the on-open compile breaks subsystems that
-      // depended on it (logs pane, library thumbnails, the engine-gap
-      // picker) and its activation depends on a write-vs-teardown race.
-      // The fingerprint keeps being written and validated server-side; the
-      // restore flips on once those flows are covered end to end.
-      if (RESTORE_PREVIEW_FROM_FINGERPRINT) {
-        const restored = await useCompileStore
-          .getState()
-          .restoreFromDisk(requestedProjectId, requestedMainDocument)
-          .catch(() => false);
-        if (restored) return undefined;
-      }
-      expectEngineChoiceOnOpen(requestedProjectId);
-      return recompile({ origin: "automatic" });
-    };
-    void compileOrRestore().finally(() => {
-      takeEngineChoiceOnOpen(requestedProjectId);
-      const files = useFilesStore.getState();
-      const analysis =
-        useProjectAnalysisStore.getState().snapshot.identity;
-      const compile = useCompileStore.getState();
-      const settlement = settleOpenCompile(
-        {
-          projectId: requestedProjectId,
-          mainDocument: requestedMainDocument,
-          projectRevision: requestedProjectRevision,
-        },
-        {
-          projectId: files.projectId,
-          mainDocument: files.mainDoc,
-          loading: files.loading,
-          analysisProjectId: analysis.projectId,
-          analysisProjectRevision: analysis.projectRevision,
-          attempt: compile.lastAttemptIdentity,
-          hasCurrentArtifact: isCompileCheckpointCurrent(
-            compile.lastCompileCheckpoint,
-          ),
-        },
-        openCompileRetriesRef.current,
-      );
-      openCompileRetriesRef.current = settlement.retries;
-      if (settlement.compiled) {
-        openCompiledRef.current = requestedProjectId;
-      }
-      if (
-        openCompileInFlightRef.current === requestedProjectId
-      ) {
-        openCompileInFlightRef.current = null;
-      }
-      if (
-        files.projectId &&
-        files.projectId !== openCompiledRef.current
-      ) {
-        setOpenCompileEpoch((epoch) => epoch + 1);
-      }
-    });
-  }, [
-    analysisIdentity,
-    compileCheckpoint,
-    compileStatus,
-    engineLoaded,
-    mainDecision,
-    mainDocument,
-    mainDocumentLoaded,
-    openCompileEpoch,
-    projectId,
-    projectLoading,
-    recompile,
-    tree,
-  ]);
-
   if (!projectId) {
     return (
       <ThemeProvider>
@@ -1213,6 +1072,164 @@ function AutoCompileKeeper() {
   return null;
 }
 
+function OpenCompileKeeper() {
+  const projectId = useFilesStore((state) => state.projectId);
+  const engineLoaded = useFilesStore((state) => state.engineLoaded);
+  const projectLoading = useFilesStore((state) => state.loading);
+  const mainDocument = useFilesStore((state) => state.mainDoc);
+  const mainDecision = useFilesStore((state) => state.mainDecision);
+  const mainDocumentLoaded = useFilesStore(
+    (state) => state.files[state.mainDoc] !== undefined,
+  );
+  const recompile = useCompileStore((state) => state.recompile);
+  const compileStatus = useCompileStore((state) => state.status);
+  const compileCheckpoint = useCompileStore(
+    (state) => state.lastCompileCheckpoint,
+  );
+  const analysisProjectId = useProjectAnalysisStore(
+    (state) => state.snapshot.identity.projectId,
+  );
+  const analysisProjectRevision = useProjectAnalysisStore(
+    (state) => state.snapshot.identity.projectRevision,
+  );
+
+  // Compile once when a project opens into a layout that shows the PDF pane,
+  // so the user lands on a rendered preview instead of the placeholder. Keyed
+  // on the tree, not projectId: projectId is set before the files (and the
+  // main doc) are loaded, and compiling then would race the open.
+  const tree = useFilesStore((s) => s.tree);
+  const openCompiledRef = useRef<string | null>(null);
+  const openCompileInFlightRef = useRef<string | null>(null);
+  const openCompileRetriesRef = useRef<OpenCompileRetries | null>(null);
+  const [openCompileEpoch, setOpenCompileEpoch] = useState(0);
+  useEffect(() => {
+    void openCompileEpoch;
+    void mainDocumentLoaded;
+    openCompiledRef.current = resetOpenCompileMarker(projectId, openCompiledRef.current);
+    openCompileRetriesRef.current = resetOpenCompileMarker(
+      projectId,
+      openCompileRetriesRef.current,
+    );
+    if (
+      projectId !== null &&
+      openCompiledRef.current === projectId &&
+      openCompileInFlightRef.current === null
+    ) {
+      return;
+    }
+    const hydrated = openCompileHydrated(
+      projectLoading,
+      projectId,
+      analysisProjectId,
+      analysisProjectRevision,
+    );
+    const hasValidCurrentArtifact =
+      compileCheckpoint !== null &&
+      isCompileCheckpointCurrent(compileCheckpoint);
+    if (hasValidCurrentArtifact && projectId) {
+      openCompiledRef.current = projectId;
+      return;
+    }
+    if (
+      openCompileInFlightRef.current !== null ||
+      !automaticCompileAllowed(mainDecision) ||
+      !shouldCompileOnOpen(
+        projectId,
+        tree.length > 0,
+        engineLoaded,
+        openCompiledRef.current,
+        useSettingsStore.getState().viewMode,
+        compileStatus,
+        hydrated,
+        hasValidCurrentArtifact,
+      )
+    ) {
+      return;
+    }
+
+    const requestedProjectId = projectId;
+    if (!requestedProjectId) return;
+    const requestedMainDocument = mainDocument;
+    const requestedProjectRevision = analysisProjectRevision;
+    openCompileInFlightRef.current = requestedProjectId;
+    const compileOrRestore = async () => {
+      // Reopen fast path: seed the preview from the persisted compile
+      // fingerprint and skip the on-open compile. DEACTIVATED for 0.3.7:
+      // e2e caught that skipping the on-open compile breaks subsystems that
+      // depended on it (logs pane, library thumbnails, the engine-gap
+      // picker) and its activation depends on a write-vs-teardown race.
+      // The fingerprint keeps being written and validated server-side; the
+      // restore flips on once those flows are covered end to end.
+      if (RESTORE_PREVIEW_FROM_FINGERPRINT) {
+        const restored = await useCompileStore
+          .getState()
+          .restoreFromDisk(requestedProjectId, requestedMainDocument)
+          .catch(() => false);
+        if (restored) return undefined;
+      }
+      expectEngineChoiceOnOpen(requestedProjectId);
+      return recompile({ origin: "automatic" });
+    };
+    void compileOrRestore().finally(() => {
+      takeEngineChoiceOnOpen(requestedProjectId);
+      const files = useFilesStore.getState();
+      const analysis =
+        useProjectAnalysisStore.getState().snapshot.identity;
+      const compile = useCompileStore.getState();
+      const settlement = settleOpenCompile(
+        {
+          projectId: requestedProjectId,
+          mainDocument: requestedMainDocument,
+          projectRevision: requestedProjectRevision,
+        },
+        {
+          projectId: files.projectId,
+          mainDocument: files.mainDoc,
+          loading: files.loading,
+          analysisProjectId: analysis.projectId,
+          analysisProjectRevision: analysis.projectRevision,
+          attempt: compile.lastAttemptIdentity,
+          hasCurrentArtifact: isCompileCheckpointCurrent(
+            compile.lastCompileCheckpoint,
+          ),
+        },
+        openCompileRetriesRef.current,
+      );
+      openCompileRetriesRef.current = settlement.retries;
+      if (settlement.compiled) {
+        openCompiledRef.current = requestedProjectId;
+      }
+      if (
+        openCompileInFlightRef.current === requestedProjectId
+      ) {
+        openCompileInFlightRef.current = null;
+      }
+      if (
+        files.projectId &&
+        files.projectId !== openCompiledRef.current
+      ) {
+        setOpenCompileEpoch((epoch) => epoch + 1);
+      }
+    });
+  }, [
+    analysisProjectId,
+    analysisProjectRevision,
+    compileCheckpoint,
+    compileStatus,
+    engineLoaded,
+    mainDecision,
+    mainDocument,
+    mainDocumentLoaded,
+    openCompileEpoch,
+    projectId,
+    projectLoading,
+    recompile,
+    tree,
+  ]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <>
@@ -1226,6 +1243,7 @@ export default function App() {
       <OpenFolderKeeper />
       <FolderWatchKeeper />
       <AppContent />
+      <OpenCompileKeeper />
     </>
   );
 }

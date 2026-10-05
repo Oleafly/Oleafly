@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
+import { projectFilesystemEpoch } from "@/store/project-index";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
@@ -40,6 +41,7 @@ const mocks = vi.hoisted(() => ({
   },
   firstLoad: "ready" as string,
   pages: 3,
+  viewerRenders: 0,
 }));
 
 vi.mock("@/components/pdf/PdfViewer", async () => {
@@ -53,6 +55,7 @@ vi.mock("@/components/pdf/PdfViewer", async () => {
   }
   const PdfViewer = react.forwardRef<unknown, StubProps>((props, ref) => {
     mocks.viewer = props as typeof mocks.viewer;
+    mocks.viewerRenders++;
     react.useImperativeHandle(
       ref,
       () => ({
@@ -292,11 +295,67 @@ describe("PreviewPane viewer states", () => {
 
     act(() => activate(3));
 
-    expect(await screen.findByTestId("preview-stale-badge")).toBeInTheDocument();
-    expect(
-      screen.getByText((text) => text.startsWith("Stale, non-current PDF.") && text.includes("revision 2")),
-    ).toBeInTheDocument();
+    const badge = await screen.findByTestId("preview-stale-badge");
+    const announcement = `Stale, non-current PDF. ${enPreview.stale.explanation}`;
+    expect(screen.getByText(announcement)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: enPreview.actions.downloadStalePdf })).toBeInTheDocument();
+
+    fireEvent.mouseEnter(badge.parentElement as HTMLElement);
+    expect(
+      await screen.findByText((text) =>
+        text.includes("Showing project revision 2. The active project is revision 3."),
+      ),
+    ).toBeInTheDocument();
+
+    act(() => useProjectAnalysisStore.getState().setProjectRevision(4));
+    expect(
+      await screen.findByText((text) =>
+        text.includes("Showing project revision 2. The active project is revision 4."),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(announcement)).toBeInTheDocument();
+  });
+
+  it("keeps the preview still while edits advance a project whose PDF is already stale", async () => {
+    await renderPane();
+    act(() => activate(3));
+    await screen.findByTestId("preview-stale-badge");
+    const renders = mocks.viewerRenders;
+
+    for (let revision = 4; revision < 14; revision++) {
+      act(() => {
+        useProjectAnalysisStore.getState().setProjectRevision(revision);
+      });
+    }
+
+    expect(mocks.viewerRenders).toBe(renders);
+    expect(screen.getByTestId("preview-stale-badge")).toBeInTheDocument();
+  });
+
+  it("clears the stale badge when an edit is reverted to the compiled source", async () => {
+    await renderPane({
+      activePath: "main.tex",
+      loading: false,
+      tree: [{ path: "main.tex", is_dir: false }],
+      files: { "main.tex": { content: "Compiled.", dirty: false, edits: 0 } },
+    });
+    act(() =>
+      useCompileStore.setState({
+        compiledSources: { fsEpoch: projectFilesystemEpoch(), texts: { "main.tex": "Compiled." } },
+      } as never),
+    );
+
+    act(() => {
+      useFilesStore.setState({ files: { "main.tex": { content: "Compiled. Edited.", dirty: true, edits: 1 } } } as never);
+      useProjectAnalysisStore.getState().setProjectRevision(3);
+    });
+    expect(await screen.findByTestId("preview-stale-badge")).toBeInTheDocument();
+
+    act(() => {
+      useFilesStore.setState({ files: { "main.tex": { content: "Compiled.", dirty: true, edits: 2 } } } as never);
+      useProjectAnalysisStore.getState().setProjectRevision(4);
+    });
+    await waitFor(() => expect(screen.queryByTestId("preview-stale-badge")).toBeNull());
   });
 
   it("explains every way a first load can fail and retries", async () => {

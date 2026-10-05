@@ -962,6 +962,30 @@ describe("project dock layout", () => {
     expect(appState.compile.recompile).toHaveBeenCalledExactlyOnceWith({ origin: "automatic" });
   });
 
+  it("clears the previous project's compile state before the on-open compile starts", async () => {
+    const React = await import("react");
+    const { act } = React;
+    const { createRoot } = await import("react-dom/client");
+    const { default: App } = await import("./App");
+    const host = document.getElementById("root");
+    if (!host) throw new Error("test root is unavailable");
+
+    const order: string[] = [];
+    appState.compile.reset.mockImplementation(() => {
+      order.push("reset");
+    });
+    appState.compile.recompile.mockImplementation(async () => {
+      order.push("compile");
+    });
+    openCompileMocks.shouldCompileOnOpen.mockReset().mockReturnValueOnce(true).mockReturnValue(false);
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(<App />);
+    });
+
+    expect(order).toEqual(["reset", "compile"]);
+  });
+
   it("carries the on-open retry count into the next settle and stops after it", async () => {
     const React = await import("react");
     const { act } = React;
