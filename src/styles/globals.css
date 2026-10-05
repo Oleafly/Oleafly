@@ -701,6 +701,12 @@
     text-rendering: optimizeLegibility;
     overflow: hidden;
   }
+  html[data-window-surface="solid"] #root {
+    background-color: var(--background);
+  }
+  html[data-window-corners="round"] body {
+    clip-path: inset(0 round 10px);
+  }
   /* Cursors: every interactive control gets an appropriate pointer. */
   button,
   summary,
@@ -911,6 +917,11 @@ select:focus-visible {
 
 .compile-shimmer-icon {
   animation: compile-icon-shimmer 1.6s ease-in-out infinite;
+}
+
+[data-panel],
+[data-panel] > div {
+  max-height: none !important;
 }
 
 .resize-handle-col,

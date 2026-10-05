@@ -60,13 +60,16 @@ import { ALL_MAIN_EXTENSIONS, isLinkedHome, mainDocumentMissing } from "@/lib/ma
 import { chooseMainDocument } from "@/store/main-document";
 import { LinkedFoldersSection } from "@/components/research/LinkedFoldersSection";
 import { TaskOutputsSection } from "@/components/research/TaskOutputsSection";
-import { isFileConflictError } from "@/lib/tauri";
+import { isFileConflictError, takeDroppedPaths } from "@/lib/tauri";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { notifyError, toast } from "@/lib/toast";
 import { i18n } from "@/i18n";
 import { cn, isWindows } from "@/lib/utils";
 import { formatNumber } from "@/lib/intl";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { carriesFilePaths, carriesFiles } from "@/lib/external-drop-guard";
+import { logError } from "@/lib/log";
+import { importDroppedItems, takeDroppedItems, type DroppedItem } from "@/features/dropped-files";
 
 async function pickImportSources(mode: "file" | "dir"): Promise<string[]> {
   const picked = await pickOpenPath(
@@ -119,6 +122,27 @@ function remapTreePath(path: string, from: string, to: string): string {
 }
 
 const ROOT = "__root__";
+const TREE_DRAG_TYPE = "application/x-oleafly-tree-path";
+
+function treeDrag(transfer: DataTransfer): boolean {
+  return Array.from(transfer.types ?? []).includes(TREE_DRAG_TYPE);
+}
+
+function externalDrag(transfer: DataTransfer): boolean {
+  return !treeDrag(transfer) && (carriesFiles(transfer) || carriesFilePaths(transfer));
+}
+
+function dropExternal(
+  transfer: DataTransfer,
+  destDir: string,
+  ctx: Pick<TreeCtx, "onDropFiles" | "onDropPaths">,
+): boolean {
+  if (!externalDrag(transfer)) return false;
+  const items = carriesFiles(transfer) ? takeDroppedItems(transfer) : [];
+  if (items.length > 0) ctx.onDropFiles(destDir, items);
+  else if (carriesFilePaths(transfer)) ctx.onDropPaths(destDir);
+  return true;
+}
 const EMPTY_EXTENSIONS: string[] = [];
 const GIT_REFRESH_AFTER_SAVE_MS = 300;
 
@@ -195,6 +219,8 @@ interface TreeCtx {
   mainExtensions: readonly string[];
   onCopy: (p: string, isDir: boolean) => void;
   onImport: (destDir: string, mode: "file" | "dir") => void;
+  onDropFiles: (destDir: string, items: DroppedItem[]) => void;
+  onDropPaths: (destDir: string) => void;
   renamePath: string | null;
   renameValue: string;
   onStartRename: (path: string, name: string) => void;
@@ -688,6 +714,33 @@ export function FileTree({
     if (destDir) expand(destDir);
   };
 
+  const importDropped = async (destDir: string, items: DroppedItem[]) => {
+    const operation = { projectId, session: projectSession.current };
+    const written = await importDroppedItems(destDir, items);
+    if (written.length === 0 || !currentProjectOperation(operation)) return;
+    if (destDir) expand(destDir);
+  };
+
+  const importDroppedPaths = async (destDir: string) => {
+    const operation = { projectId, session: projectSession.current };
+    const sources = await takeDroppedPaths().catch((error: unknown) => {
+      void logError("read dropped paths", error);
+      return [];
+    });
+    if (sources.length === 0 || !currentProjectOperation(operation)) return;
+    await importPaths(destDir, sources);
+    if (!currentProjectOperation(operation)) return;
+    if (destDir) expand(destDir);
+  };
+
+  const onRootDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
+    const external = externalDrag(e.dataTransfer);
+    if (!external && !treeDrag(e.dataTransfer)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = external ? "copy" : "move";
+    updateDragOver(ROOT);
+  };
+
   const ctx: TreeCtx = {
     expanded,
     toggle,
@@ -741,6 +794,8 @@ export function FileTree({
     mainExtensions,
     onCopy: copyEntry,
     onImport: (destDir, mode) => void importInto(destDir, mode),
+    onDropFiles: (destDir, items) => void importDropped(destDir, items),
+    onDropPaths: (destDir) => void importDroppedPaths(destDir),
     renamePath,
     renameValue,
     onStartRename: (p, name) => {
@@ -865,15 +920,13 @@ export function FileTree({
               "flex-1 overflow-auto p-1.5",
               dragOver === ROOT && "rounded-md bg-primary/10"
             )}
-            onDragOver={(e) => {
-              if (!e.dataTransfer.types.includes("text/plain")) return;
-              e.preventDefault();
-              updateDragOver(ROOT);
-            }}
+            onDragEnter={onRootDragOver}
+            onDragOver={onRootDragOver}
             onDrop={(e) => {
               e.preventDefault();
-              const from = e.dataTransfer.getData("text/plain");
               updateDragOver(null);
+              if (dropExternal(e.dataTransfer, "", ctx)) return;
+              const from = treeDrag(e.dataTransfer) ? e.dataTransfer.getData(TREE_DRAG_TYPE) : "";
               if (from) void move(from, "");
             }}
             onDragLeave={(e) => {
@@ -1325,21 +1378,24 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
 
   const onDragStart = (e: ReactDragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData("text/plain", node.path);
+    e.dataTransfer.setData(TREE_DRAG_TYPE, node.path);
     e.dataTransfer.effectAllowed = "move";
   };
   const onDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
-    if (!e.dataTransfer.types.includes("text/plain")) return;
+    const external = externalDrag(e.dataTransfer);
+    if (!external && !treeDrag(e.dataTransfer)) return;
     if (unreadable && node.isDir) return;
     e.preventDefault();
     e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect = external ? "copy" : "move";
     ctx.setDragOver(dropDir || ROOT);
   };
   const onDrop = (e: ReactDragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    const from = e.dataTransfer.getData("text/plain");
     ctx.setDragOver(null);
+    if (dropExternal(e.dataTransfer, dropDir, ctx)) return;
+    const from = treeDrag(e.dataTransfer) ? e.dataTransfer.getData(TREE_DRAG_TYPE) : "";
     if (from) ctx.onMove(from, dropDir);
   };
 
@@ -1366,6 +1422,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       onKeyDown={onRowKeyDown}
       onDragStart={onDragStart}
       onDragEnd={() => ctx.setDragOver(null)}
+      onDragEnter={onDragOver}
       onDragOver={onDragOver}
       onDrop={onDrop}
     >

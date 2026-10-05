@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type DragEvent as ReactDragEvent, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
   ArrowLeft,
@@ -37,6 +37,7 @@ import { cn, isMac } from "@/lib/utils";
 import { formatNumber } from "@/lib/intl";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import { notifyError, toast } from "@/lib/toast";
+import { isNativeFileDrop, takeNativeDrop } from "@/lib/native-drop";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useHomeViewStore } from "@/store/home-view";
 import { useImportStore } from "@/store/import";
@@ -75,6 +76,20 @@ function openPdf(file: File): void {
   void handlePickedFile(file);
 }
 
+async function openNativePdf(): Promise<void> {
+  const [dropped] = await takeNativeDrop();
+  if (!dropped) return;
+  if (!dropped.name.toLowerCase().endsWith(".pdf")) {
+    toast.error(i18n.t(($) => $.library.pdfImport.choosePdf));
+    return;
+  }
+  try {
+    openPdf(await dropped.read());
+  } catch (error) {
+    notifyError("read dropped PDF", error, i18n.t(($) => $.core.project.importFailed));
+  }
+}
+
 function PdfDropzoneLanding() {
   const { t } = useTranslation(["library"]);
   const handleLabels: Record<(typeof HANDLES)[number]["id"], string> = {
@@ -88,6 +103,10 @@ function PdfDropzoneLanding() {
   };
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const acceptDrag = (e: ReactDragEvent) => {
+    e.preventDefault();
+    setDragOver(true);
+  };
   return (
     <div className="flex flex-1 items-center justify-center overflow-y-auto p-8">
       <div className="w-full max-w-xl">
@@ -102,16 +121,15 @@ function PdfDropzoneLanding() {
               : "border-border bg-muted/20 hover:border-primary",
           )}
           onClick={() => inputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
+          onDragEnter={acceptDrag}
+          onDragOver={acceptDrag}
           onDragLeave={() => setDragOver(false)}
           onDrop={(e) => {
             e.preventDefault();
             setDragOver(false);
             const f = e.dataTransfer.files?.[0];
             if (f) openPdf(f);
+            else if (isNativeFileDrop(e.dataTransfer)) void openNativePdf();
           }}
         >
           <FileInput className="size-10 text-muted-foreground" />

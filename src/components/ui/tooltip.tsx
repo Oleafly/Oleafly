@@ -230,10 +230,15 @@ export function Tooltip({
     place();
     const frame =
       typeof requestAnimationFrame === "function" ? requestAnimationFrame(place) : null;
+    const tip = tipRef.current;
+    const resized =
+      tip && typeof ResizeObserver === "function" ? new ResizeObserver(place) : null;
+    if (tip) resized?.observe(tip);
     window.addEventListener("scroll", place, true);
     window.addEventListener("resize", place);
     return () => {
       if (frame !== null) cancelAnimationFrame(frame);
+      resized?.disconnect();
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
     };

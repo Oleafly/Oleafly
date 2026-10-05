@@ -1,10 +1,12 @@
 import type { EditorView } from "@tiptap/pm/view";
 import { WYSIWYG_NODE_NAMES } from "@oleafly/wysiwyg";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
+import { isNativeFileDrop } from "@/lib/native-drop";
 import { useFilesStore } from "@/store/files";
 import {
   importableImageFiles,
   importImageFiles,
+  nativeDroppedImages,
   PASTED_FIGURE_WIDTH,
   suggestedFigureLabel,
 } from "@/components/editor/figure-import";
@@ -67,10 +69,17 @@ export function createVisualPasteHandlers(): VisualPasteHandlers {
   const handleDrop = (view: EditorView, event: DragEvent, _slice: unknown, moved: boolean): boolean => {
     const data = event.dataTransfer;
     if (moved || !data || mutationLocked()) return false;
-    const files = importableImageFiles(data.files);
-    if (files.length === 0) return false;
     const target = view.posAtCoords({ left: event.clientX, top: event.clientY });
-    void importFigures(view, files, target?.pos ?? view.state.selection.from);
+    const at = target?.pos ?? view.state.selection.from;
+    const files = importableImageFiles(data.files);
+    if (files.length > 0) {
+      void importFigures(view, files, at);
+      return true;
+    }
+    if (!isNativeFileDrop(data)) return false;
+    void nativeDroppedImages().then((images) =>
+      images.length > 0 ? importFigures(view, images, at) : undefined,
+    );
     return true;
   };
 

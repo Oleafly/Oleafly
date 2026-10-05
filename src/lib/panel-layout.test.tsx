@@ -48,6 +48,23 @@ function panelSize(id: string): number {
   return size ? Number(size) : -1;
 }
 
+describe("panel markup", () => {
+  it("keeps the inline max-height that globals.css overrides on the panel and its content", () => {
+    const { container } = render(
+      <Group orientation="horizontal">
+        <Panel id="only">
+          <span />
+        </Panel>
+      </Group>,
+    );
+    const panel = container.querySelector<HTMLElement>("[data-panel]");
+    const content = panel?.firstElementChild as HTMLElement | null;
+    expect(panel?.style.maxHeight).toBe("100%");
+    expect(content?.tagName).toBe("DIV");
+    expect(content?.style.maxHeight).toBe("100%");
+  });
+});
+
 describe("legacy layout migration", () => {
   it("rewrites every saved panel combination in panel order and keeps expand sizes", () => {
     localStorage.setItem(

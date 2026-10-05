@@ -9,12 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Since 0.4.3, typing could lag with the PDF preview open, worst on Linux
+  (#248). Letters kept appearing after you stopped, and holding Backspace
+  deleted past where you let go. Each keystroke made the window lay out the
+  whole preview again and redraw the toolbars, file tree and preview. Typing
+  with the preview open is now faster than in 0.4.2.
+- On macOS and Linux, a page full of spelling or grammar underlines was slow
+  to redraw. The underlines now draw about four times faster, so scrolling,
+  hiding the sidebar or switching layouts no longer stalls in a document with
+  many flagged words.
 - A project that compiles with system LaTeX had no way to allow shell
   commands, so documents using minted, PythonTeX or `\write18` couldn't
   compile. The error pointed to an "Allow LaTeX shell commands" setting that
   didn't exist. When a compile is blocked, or the failed compile shows the
   project needs shell commands, a banner above the editor now offers "Allow
   external commands".
+- On Linux, dropping a file from the file manager onto the Files panel
+  replaced the whole window with a preview of that file, and the window
+  wouldn't close for a while after (#247). Files and folders dropped on the
+  Files panel are now copied into the folder under the pointer. A drop
+  anywhere else is ignored instead of opening the file.
+- On Linux, the Oleafly package had no description, so Ubuntu's App Center
+  showed "(none)" before installing, and the app landed under "Other" in app
+  menus. The package now has a proper description and sits under Office with
+  search keywords. It also ships AppStream metadata, so software centres show
+  the icon, developer, license, screenshots and current version once Oleafly
+  is installed. The window icon is sharp now instead of a scaled-up 32 pixel
+  image.
+- On Linux, the main window stacked the desktop's title bar and a separate
+  menu strip on top of Oleafly's own toolbar. It now looks like it does on
+  Windows: the toolbar sits at the top with minimize, maximize and close
+  buttons, you drag it to move the window, and you double-click it to
+  maximize. Any edge or corner resizes the window, and the corners are
+  slightly rounded unless the window is maximized, full screen or snapped to
+  one side. Shortcuts like Ctrl+` for the terminal now go through Oleafly
+  directly, and Ctrl+T, Ctrl+L, Ctrl+W and Ctrl+R still work while a web page
+  in the browser panel has focus.
+- On Linux, the window could go blank and stop responding if it reloaded
+  while the PDF preview was still drawing a freshly compiled PDF. WebKitGTK
+  crashed in the code the preview used to unpack compressed PDF data. The
+  preview now unpacks it another way on Linux, and if a window's page ever
+  crashes Oleafly reloads it instead of leaving the window blank.
+- On Linux, the browser window showed each web page halfway down, under an
+  empty band, with the bottom of the page cut off. Pages now start right
+  under the toolbar and fill the window as you resize it.
+- On Linux, dropping an image from the file manager into the editor, a PDF
+  onto PDF import, or a document onto a converter did nothing. They now take
+  the dropped file, as they do on macOS and Windows.
 - Picking system LaTeX in the engine dialog also allows external commands
   when the project needs them, instead of asking again with a separate
   checkbox. The dialog says so before you click. Trusting a folder still

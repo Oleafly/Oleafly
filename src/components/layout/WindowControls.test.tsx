@@ -18,11 +18,11 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => appWindow,
 }));
 
-async function loadControls(isWindows: boolean) {
+async function loadControls(isWindows: boolean, isLinux = false) {
   vi.resetModules();
   vi.doMock("@/lib/utils", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@/lib/utils")>();
-    return { ...actual, isWindows };
+    return { ...actual, isWindows, isLinux };
   });
   const mod = await import("./WindowControls");
   return mod.WindowControls;
@@ -43,6 +43,20 @@ describe("WindowControls", () => {
     const { container } = render(<WindowControls />);
     expect(container).toBeEmptyDOMElement();
     expect(appWindow.onResized).not.toHaveBeenCalled();
+  });
+
+  it("draws the same three buttons on Linux, where the system title bar is gone too", async () => {
+    const WindowControls = await loadControls(false, true);
+    render(<WindowControls />);
+    const labels = screen
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label"));
+    expect(labels).toEqual([
+      enShell.windowControls.minimize,
+      enShell.windowControls.maximize,
+      enCommon.actions.close,
+    ]);
+    expect(appWindow.onResized).toHaveBeenCalled();
   });
 
   it("renders minimize, maximize and close in the Windows order", async () => {

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   notifyError: vi.fn(),
   pickOpenPath: vi.fn(),
+  linux: false,
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -19,6 +20,12 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ setFocus: vi.fn() }),
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickOpenPath: mocks.pickOpenPath }));
+vi.mock("@/lib/utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/utils")>()),
+  get isLinux() {
+    return mocks.linux;
+  },
+}));
 vi.mock("@/lib/log", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/toast", () => ({
   notifyError: mocks.notifyError,
@@ -114,6 +121,7 @@ const conflict = (destination: string, suggestion: string) => ({
 
 beforeEach(() => {
   backend();
+  mocks.linux = false;
   mocks.notifyError.mockReset();
   mocks.pickOpenPath.mockReset().mockResolvedValue(null);
   useSettingsStore.setState({ hiddenFilePatterns: [] });
@@ -299,6 +307,175 @@ describe("FileTree drag and drop", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(renameCalls()).toEqual([]);
+  });
+
+  function osDrop(...dropped: File[]) {
+    return {
+      types: ["Files", "text/uri-list"],
+      items: dropped.map((file) => ({ kind: "file", getAsFile: () => file, webkitGetAsEntry: () => null })),
+      files: dropped,
+      getData: () => "",
+      dropEffect: "none",
+    };
+  }
+
+  function writes() {
+    return mocks.invoke.mock.calls
+      .filter(([command]) => command === "write_project_bytes")
+      .map(([, args]) => args as { relPath: string; dataBase64: string });
+  }
+
+  it("copies files dropped from the file manager into the folder under the pointer", async () => {
+    render(<FileTree />);
+    const data = osDrop(new File(["png"], "figure.png", { type: "image/png" }));
+
+    expect(fireEvent.dragOver(row("chapters"), { dataTransfer: data })).toBe(false);
+    expect(data.dropEffect).toBe("copy");
+    expect(row("chapters")).toHaveClass("bg-primary/15");
+    fireEvent.drop(row("chapters"), { dataTransfer: data });
+
+    expect(row("chapters")).not.toHaveClass("bg-primary/15");
+    await waitFor(() =>
+      expect(writes()).toEqual([
+        expect.objectContaining({ projectId: "project", relPath: "chapters/figure.png", dataBase64: "cG5n" }),
+      ]),
+    );
+    await waitFor(() => expect(row("chapters")).toHaveAttribute("aria-expanded", "true"));
+    expect(renameCalls()).toEqual([]);
+  });
+
+  it("copies files dropped on empty space into the project root without overwriting", async () => {
+    render(<FileTree />);
+    const data = osDrop(new File(["tex"], "main.tex"));
+
+    expect(fireEvent.dragOver(tree(), { dataTransfer: data })).toBe(false);
+    fireEvent.drop(tree(), { dataTransfer: data });
+
+    await waitFor(() =>
+      expect(writes()).toEqual([expect.objectContaining({ relPath: "main (2).tex" })]),
+    );
+  });
+
+  function linkDrop() {
+    return {
+      types: ["text/uri-list", "text/html"],
+      items: [
+        { kind: "string", type: "text/uri-list" },
+        { kind: "string", type: "text/html" },
+      ],
+      files: [],
+      getData: () => "",
+      dropEffect: "none",
+    };
+  }
+
+  function imports() {
+    return mocks.invoke.mock.calls
+      .filter(([command]) => command === "import_paths_into_project")
+      .map(([, args]) => args as { projectId: string; destDir: string; sourcePaths: string[] });
+  }
+
+  it("on Linux, imports the files a file manager dropped as links into the folder under the pointer", async () => {
+    mocks.linux = true;
+    backend({
+      take_dropped_paths: ["/home/a/Pictures/figure.png", "/home/a/data"],
+      import_paths_into_project: { paths: ["chapters/figure.png", "chapters/data"], generation: 1 },
+    });
+    render(<FileTree />);
+    const data = linkDrop();
+
+    expect(fireEvent.dragOver(row("chapters"), { dataTransfer: data })).toBe(false);
+    expect(data.dropEffect).toBe("copy");
+    expect(row("chapters")).toHaveClass("bg-primary/15");
+    fireEvent.drop(row("chapters"), { dataTransfer: data });
+
+    expect(row("chapters")).not.toHaveClass("bg-primary/15");
+    await waitFor(() =>
+      expect(imports()).toEqual([
+        expect.objectContaining({
+          projectId: "project",
+          destDir: "chapters",
+          sourcePaths: ["/home/a/Pictures/figure.png", "/home/a/data"],
+        }),
+      ]),
+    );
+    await waitFor(() => expect(row("chapters")).toHaveAttribute("aria-expanded", "true"));
+    expect(writes()).toEqual([]);
+    expect(renameCalls()).toEqual([]);
+  });
+
+  it("takes a drop that lands right after the pointer enters a row or the tree, before any dragover", async () => {
+    mocks.linux = true;
+    backend({
+      take_dropped_paths: ["/home/a/Pictures/figure.png"],
+      import_paths_into_project: { paths: ["figure.png"], generation: 1 },
+    });
+    render(<FileTree />);
+    const links = linkDrop();
+
+    expect(fireEvent.dragEnter(row("main.tex"), { dataTransfer: links })).toBe(false);
+    expect(links.dropEffect).toBe("copy");
+    fireEvent.drop(row("main.tex"), { dataTransfer: links });
+    await waitFor(() =>
+      expect(imports()).toEqual([expect.objectContaining({ destDir: "", sourcePaths: ["/home/a/Pictures/figure.png"] })]),
+    );
+
+    const data = osDrop(new File(["png"], "figure.png", { type: "image/png" }));
+    expect(fireEvent.dragEnter(tree(), { dataTransfer: data })).toBe(false);
+    expect(tree()).toHaveClass("bg-primary/10");
+    fireEvent.drop(tree(), { dataTransfer: data });
+    await waitFor(() => expect(writes()).toEqual([expect.objectContaining({ relPath: "figure.png" })]));
+  });
+
+  it("on Linux, imports nothing when the dropped links were not local files", async () => {
+    mocks.linux = true;
+    backend({ take_dropped_paths: [] });
+    render(<FileTree />);
+    const data = linkDrop();
+
+    expect(fireEvent.dragOver(tree(), { dataTransfer: data })).toBe(false);
+    fireEvent.drop(tree(), { dataTransfer: data });
+
+    await waitFor(() =>
+      expect(mocks.invoke.mock.calls.some(([command]) => command === "take_dropped_paths")).toBe(
+        true,
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(imports()).toEqual([]);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("elsewhere, leaves a drag that only carries links alone", async () => {
+    render(<FileTree />);
+    const data = linkDrop();
+
+    expect(fireEvent.dragOver(row("chapters"), { dataTransfer: data })).toBe(true);
+    expect(fireEvent.dragOver(tree(), { dataTransfer: data })).toBe(true);
+    fireEvent.drop(tree(), { dataTransfer: data });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(mocks.invoke.mock.calls.some(([command]) => command === "take_dropped_paths")).toBe(
+      false,
+    );
+    expect(imports()).toEqual([]);
+  });
+
+  it("leaves text dragged in from another app alone instead of treating it as a move", async () => {
+    render(<FileTree />);
+    const text = {
+      types: ["text/plain"],
+      getData: (type: string) => (type === "text/plain" ? "main.tex" : ""),
+      dropEffect: "none",
+    };
+
+    expect(fireEvent.dragOver(row("chapters"), { dataTransfer: text })).toBe(true);
+    expect(fireEvent.dragOver(tree(), { dataTransfer: text })).toBe(true);
+    fireEvent.drop(row("chapters"), { dataTransfer: text });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(renameCalls()).toEqual([]);
+    expect(writes()).toEqual([]);
   });
 
   it("ignores drags that carry no file path and clears the highlight when the drag leaves", () => {

@@ -979,6 +979,11 @@ fn desktop_template_rendered(exec: &str) -> String {
         .as_str()
         .unwrap()
         .to_string();
+    let linux = config(include_str!("../../tauri.linux.conf.json"));
+    let comment = linux["bundle"]["shortDescription"]
+        .as_str()
+        .unwrap_or(env!("CARGO_PKG_DESCRIPTION"))
+        .to_string();
     let mut out = String::new();
     let mut skipping = false;
     for line in template.lines() {
@@ -991,7 +996,7 @@ fn desktop_template_rendered(exec: &str) -> String {
                 out.push_str(
                     &line
                         .replace("{{categories}}", "")
-                        .replace("{{comment}}", env!("CARGO_PKG_DESCRIPTION"))
+                        .replace("{{comment}}", &comment)
                         .replace("{{exec}}", exec)
                         .replace("{{icon}}", exec)
                         .replace("{{name}}", &name),
@@ -1068,7 +1073,12 @@ fn packages_ship_the_dolphin_and_nemo_actions_the_builders_describe() {
             "{format}"
         );
         assert_eq!(files["/usr/bin/oleafly"], "./linux/oleafly", "{format}");
-        assert_eq!(files.as_object().unwrap().len(), 3, "{format}");
+        assert_eq!(
+            files["/usr/share/metainfo/com.oleafly.app.metainfo.xml"],
+            "linux/com.oleafly.app.metainfo.xml",
+            "{format}"
+        );
+        assert_eq!(files.as_object().unwrap().len(), 4, "{format}");
     }
 }
 

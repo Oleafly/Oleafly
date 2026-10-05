@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.oleafly.app</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-or-later</project_license>
+  <name>Oleafly</name>
+  <summary>Write, compile and review research papers in LaTeX, Typst and Markdown</summary>
+  <developer id="com.oleafly">
+    <name>Oleafly</name>
+  </developer>
+  <description>
+    <p>Oleafly is a free, open-source desktop workspace for research writing. It compiles LaTeX, Typst and Markdown on your own computer and shows the PDF next to the source, so you can keep writing without an internet connection.</p>
+    <p>Your projects stay in ordinary folders on your disk, and you can open any existing folder in place.</p>
+    <ul>
+      <li>Built-in LaTeX and Typst compilers. Click in the PDF to jump to the source, and back.</li>
+      <li>Citation search and BibTeX management</li>
+      <li>Spelling and grammar checks while you type</li>
+      <li>Git history and automatic checkpoints for every project</li>
+      <li>An AI assistant that works with the providers and local models you pick</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">Oleafly.desktop</launchable>
+  <icon type="stock">oleafly-desktop</icon>
+  <categories>
+    <category>Office</category>
+    <category>Publishing</category>
+  </categories>
+  <keywords>
+    <keyword>LaTeX</keyword>
+    <keyword>TeX</keyword>
+    <keyword>Typst</keyword>
+    <keyword>Markdown</keyword>
+    <keyword>PDF</keyword>
+    <keyword>BibTeX</keyword>
+    <keyword>Citation</keyword>
+    <keyword>Paper</keyword>
+    <keyword>Thesis</keyword>
+    <keyword>Research</keyword>
+  </keywords>
+  <url type="homepage">https://oleafly.com</url>
+  <url type="help">https://oleafly.com/docs/</url>
+  <url type="bugtracker">https://github.com/Oleafly/Oleafly/issues</url>
+  <url type="vcs-browser">https://github.com/Oleafly/Oleafly</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The editor next to the compiled PDF</caption>
+      <image type="source" width="2000" height="1255">https://cdn.oleafly.com/images/screenshots/desktop/hero-editor.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The PDF preview as a two-page spread</caption>
+      <image type="source" width="2000" height="1255">https://cdn.oleafly.com/images/screenshots/desktop/pdf-preview-spread.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Picking a citation while writing</caption>
+      <image type="source" width="2000" height="1255">https://cdn.oleafly.com/images/screenshots/desktop/citation-picker.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The project library</caption>
+      <image type="source" width="2000" height="1250">https://cdn.oleafly.com/images/screenshots/desktop/library-shelf.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The AI assistant applying a change to a document</caption>
+      <image type="source" width="3024" height="1898">https://cdn.oleafly.com/images/screenshots/desktop/ai-chat-applied.png</image>
+    </screenshot>
+  </screenshots>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+  <provides>
+    <binary>oleafly</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.4.4" date="2026-10-04">
+      <url type="details">https://github.com/Oleafly/Oleafly/releases/tag/v0.4.4</url>
+    </release>
+  </releases>
+</component>

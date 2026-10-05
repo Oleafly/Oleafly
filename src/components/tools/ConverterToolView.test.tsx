@@ -18,6 +18,13 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
   writeBytesFile: vi.fn(),
+  nativeFiles: [] as { name: string; read: () => Promise<File> }[],
+}));
+
+vi.mock("@/lib/native-drop", () => ({
+  isNativeFileDrop: (transfer: DataTransfer | undefined) =>
+    Array.from(transfer?.types ?? []).includes("text/uri-list"),
+  takeNativeDrop: async () => mocks.nativeFiles,
 }));
 
 vi.mock("@oleafly/editor", async (importOriginal) => {
@@ -610,6 +617,20 @@ describe("ConverterToolView progress and files", () => {
 
     fireEvent.drop(zone, { dataTransfer: { files: [] } });
     expect(screen.queryByText("dropped.docx")).toBeNull();
+  });
+
+  it("takes a file a Linux file manager dropped as a link", async () => {
+    useHomeViewStore.setState({ page: "converter", activeConverter: "word-to-latex" });
+    mocks.nativeFiles = [{ name: "dropped.docx", read: async () => new File(["docx"], "dropped.docx") }];
+    render(<ConverterToolView />);
+    const zone = screen.getByTestId("converter-file-drop");
+    const links = { types: ["text/uri-list", "text/html"], files: [] };
+
+    expect(fireEvent.dragEnter(zone, { dataTransfer: links })).toBe(false);
+    fireEvent.drop(zone, { dataTransfer: links });
+
+    expect(await screen.findByText("dropped.docx")).toBeInTheDocument();
+    expect(screen.getByTestId("converter-run")).toBeEnabled();
   });
 
   it("opens the file picker from the drop zone", () => {

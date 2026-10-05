@@ -2,7 +2,7 @@
 
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createPortal } from "react-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Tooltip } from "./tooltip";
 
 function renderTooltip(describedBy?: string) {
@@ -36,6 +36,53 @@ describe("Tooltip", () => {
 
     fireEvent.mouseLeave(wrapper);
     await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+  });
+
+  it("moves itself when its own content grows while open", async () => {
+    const observed: { callback: () => void; target: Element | null }[] = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        private readonly entry: { callback: () => void; target: Element | null };
+        constructor(callback: () => void) {
+          this.entry = { callback, target: null };
+          observed.push(this.entry);
+        }
+        observe(target: Element) {
+          this.entry.target = target;
+        }
+        unobserve() {}
+        disconnect() {
+          this.entry.target = null;
+        }
+      },
+    );
+    try {
+      render(
+        <Tooltip label={"Rebuild the PDF"} side="left">
+          <button type="button">{"Compile"}</button>
+        </Tooltip>,
+      );
+      const wrapper = screen.getByRole("button", { name: "Compile" }).parentElement as HTMLElement;
+      vi.spyOn(wrapper, "getBoundingClientRect").mockReturnValue(new DOMRect(500, 100, 40, 20));
+      fireEvent.mouseEnter(wrapper);
+      const tip = await screen.findByRole("tooltip");
+      let width = 100;
+      vi.spyOn(tip, "getBoundingClientRect").mockImplementation(() => new DOMRect(0, 0, width, 20));
+      const resize = () =>
+        act(() => {
+          for (const entry of observed) if (entry.target === tip) entry.callback();
+        });
+
+      resize();
+      await waitFor(() => expect(tip.style.left).toBe("394px"));
+
+      width = 140;
+      resize();
+      await waitFor(() => expect(tip.style.left).toBe("354px"));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("opens when the trigger takes keyboard focus", async () => {

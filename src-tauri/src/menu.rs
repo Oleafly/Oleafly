@@ -1,4 +1,4 @@
-#![cfg_attr(target_os = "windows", allow(dead_code))]
+#![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
@@ -250,11 +250,11 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
 }
 
 pub fn rebuild<R: Runtime>(app: &AppHandle<R>) {
-    #[cfg(target_os = "windows")]
+    #[cfg(not(target_os = "macos"))]
     {
         let _ = app;
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
         let handle = app.clone();
         let _ = app.run_on_main_thread(move || {

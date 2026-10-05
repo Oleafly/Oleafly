@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   setShowTree: vi.fn(),
   setRailTab: vi.fn(),
+  settings: { showTree: false, railTab: "outline" },
   refreshEngine: vi.fn(async () => {}),
   refreshGitStatus: vi.fn(async () => {}),
   writeFailureListeners: new Set<(projectId: string) => void>(),
@@ -50,7 +51,11 @@ vi.mock("@/store/git-status", () => ({
 }));
 vi.mock("@/store/settings", () => ({
   useSettingsStore: {
-    getState: () => ({ setShowTree: mocks.setShowTree, setRailTab: mocks.setRailTab }),
+    getState: () => ({
+      ...mocks.settings,
+      setShowTree: mocks.setShowTree,
+      setRailTab: mocks.setRailTab,
+    }),
   },
 }));
 
@@ -121,6 +126,7 @@ beforeEach(() => {
     fn.mockReset();
   }
   mocks.listeners.clear();
+  mocks.settings = { showTree: false, railTab: "outline" };
   mocks.writeFailureListeners.clear();
   mocks.projectTrustState.mockResolvedValue(restricted);
   mocks.projectFolderStatus.mockResolvedValue({ read_only: false, synced_with: null });
@@ -216,6 +222,26 @@ describe("OpenFolderKeeper", () => {
     );
     expect(useOpenFolderStore.getState().opened).not.toBeNull();
     expect(mocks.setShowTree).toHaveBeenCalledWith(true);
+  });
+
+  it("leaves the settings alone on later edits once the tree is already showing", async () => {
+    render(<OpenFolderKeeper />);
+    await openFolder("linked-a", { mainDoc: "main.tex", tree: [] });
+    mocks.settings = { showTree: true, railTab: "files" };
+    act(() =>
+      useOpenFolderStore.getState().present({
+        project_id: "linked-a",
+        detection: detection("ask", null),
+      }),
+    );
+    for (let edit = 0; edit < 5; edit++) {
+      act(() =>
+        useFilesStore.setState({ files: { "main.tex": { content: `x${edit}`, dirty: true, edits: edit } } } as never),
+      );
+    }
+    expect(useOpenFolderStore.getState().opened).not.toBeNull();
+    expect(mocks.setShowTree).not.toHaveBeenCalled();
+    expect(mocks.setRailTab).not.toHaveBeenCalled();
   });
 
   it("takes a clear main without asking anything", async () => {

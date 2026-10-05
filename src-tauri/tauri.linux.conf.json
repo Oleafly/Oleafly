@@ -1,26 +1,40 @@
 {
   "mainBinaryName": "oleafly-desktop",
   "bundle": {
+    "shortDescription": "Write, compile and review research papers in LaTeX, Typst and Markdown",
+    "longDescription": "Oleafly is a free, open-source desktop workspace for research writing. It compiles LaTeX, Typst and Markdown on your own computer, shows the PDF next to the source and keeps your projects in folders on your disk. It also finds and manages citations, checks spelling and grammar as you type, tracks changes with Git, and works with the AI models you choose.",
+    "icon": [
+      "icons/icon.png",
+      "icons/256x256.png",
+      "icons/128x128@2x.png",
+      "icons/128x128.png",
+      "icons/64x64.png",
+      "icons/32x32.png"
+    ],
     "linux": {
       "deb": {
         "files": {
           "/usr/bin/oleafly": "./linux/oleafly",
           "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
-          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action"
+          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action",
+          "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml"
         },
-        "desktopTemplate": "linux/main.desktop"
+        "desktopTemplate": "linux/main.desktop",
+        "section": "editors"
       },
       "rpm": {
         "files": {
           "/usr/bin/oleafly": "./linux/oleafly",
           "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
-          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action"
+          "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action",
+          "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml"
         },
         "desktopTemplate": "linux/main.desktop"
       },
       "appimage": {
         "files": {
-          "/usr/share/applications/Oleafly.desktop": "linux/appimage.desktop"
+          "/usr/share/applications/Oleafly.desktop": "linux/appimage.desktop",
+          "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml"
         }
       }
     }
@@ -31,11 +45,10 @@
         "title": "Oleafly",
         "width": 1280,
         "height": 800,
-        "transparent": false,
-        "backgroundColor": "#09090b",
+        "transparent": true,
         "minWidth": 900,
         "minHeight": 600,
-        "decorations": true,
+        "decorations": false,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
         "fullscreen": false,

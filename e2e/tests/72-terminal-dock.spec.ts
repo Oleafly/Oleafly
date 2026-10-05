@@ -77,7 +77,7 @@ async function triggerDockShortcut(
   dock: "terminal" | "browser",
 ): Promise<void> {
   const nativeMenu = await page.evaluate<boolean>(
-    `Boolean(window.__TAURI_INTERNALS__) && /Mac|Linux/.test(navigator.platform)`,
+    `Boolean(window.__TAURI_INTERNALS__) && /Mac/.test(navigator.platform)`,
   );
   if (nativeMenu) {
     await page.evaluate(
@@ -91,7 +91,8 @@ async function triggerDockShortcut(
   if (dock === "terminal") {
     await pressGlobal(page, "`", { ctrl: true });
   } else {
-    await pressGlobal(page, "b", { ctrl: true, shift: true });
+    const linux = process.platform === "linux";
+    await pressGlobal(page, "b", { ctrl: true, alt: linux, shift: !linux });
   }
 }
 

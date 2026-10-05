@@ -65,6 +65,7 @@ mod literature;
 mod logsafe;
 mod mcp;
 mod menu;
+mod native_drop;
 mod ollama;
 mod open_folder;
 mod open_request;
@@ -130,10 +131,12 @@ mod typst_toolchain;
 mod typst_upgrade;
 mod typst_watch;
 // Only macOS sizes webviews itself; the frame logic is unit-tested everywhere.
+mod web_process;
 #[cfg(windows)]
 mod webview_focus;
 #[cfg(any(target_os = "macos", test))]
 mod webview_frame;
+mod window_frame;
 mod worktree_lock;
 mod zotero;
 
@@ -384,8 +387,15 @@ pub fn run() {
     {
         builder = builder.plugin(webview_focus::plugin());
     }
+    #[cfg(target_os = "linux")]
+    {
+        builder = builder
+            .plugin(native_drop::plugin())
+            .plugin(window_frame::plugin())
+            .plugin(web_process::plugin());
+    }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
         builder = builder
             .menu(menu::build)
@@ -443,6 +453,7 @@ pub fn run() {
         .manage(agent_server::AgentServerState::default())
         .manage(mcp::server::McpState::default())
         .manage(mcp::client::McpClientState::default())
+        .manage(native_drop::NativeDropState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -691,6 +702,8 @@ pub fn run() {
             project::rename_file,
             project::copy_file,
             project::import_paths_into_project,
+            native_drop::take_dropped_paths,
+            native_drop::read_dropped_file,
             project::save_file_base64,
             project::read_file_base64,
             project::read_picked_file_base64,

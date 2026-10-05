@@ -46,6 +46,10 @@ export function isInsertableImagePath(path: string): boolean {
   return formatOf(path)?.insert ?? false;
 }
 
+export function mimeForPath(path: string): string {
+  return formatOf(path)?.mime ?? "";
+}
+
 export function insertableImageExtension(mime: string): string | undefined {
   return IMAGE_FORMATS.find((format) => format.insert && format.mime === mime)?.extension;
 }

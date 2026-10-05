@@ -15,6 +15,13 @@ const mocks = vi.hoisted(() => ({
   },
   notifyError: vi.fn(),
   locked: vi.fn(() => false),
+  nativeFiles: [] as { name: string; read: () => Promise<File> }[],
+}));
+
+vi.mock("@/lib/native-drop", () => ({
+  isNativeFileDrop: (transfer: DataTransfer | undefined) =>
+    Array.from(transfer?.types ?? []).includes("text/uri-list"),
+  takeNativeDrop: async () => mocks.nativeFiles,
 }));
 
 vi.mock("@/components/editor/figure-import", async (importOriginal) => {
@@ -139,6 +146,25 @@ describe("createVisualPasteHandlers", () => {
     );
     expect(editor.state.selection.$from.parent.type.name).toBe("figureCaption");
     expectNoNotice();
+  });
+
+  it("inserts the images a Linux file manager dropped as links, reading only those", async () => {
+    const readNotes = vi.fn(async () => new File(["x"], "notes.txt"));
+    mocks.nativeFiles = [
+      { name: "plot.png", read: async () => pngFile("plot.png") },
+      { name: "notes.txt", read: readNotes },
+    ];
+    const editor = mount();
+    const view = editor.view;
+    vi.spyOn(view, "posAtCoords").mockReturnValue({ pos: 1, inside: 0 });
+    const links = { types: ["text/uri-list", "text/html"], files: [], getData: () => "" };
+    const event = { dataTransfer: links, clientX: 0, clientY: 0 } as unknown as DragEvent;
+
+    expect(handlers.handleDrop(view, event, null, false)).toBe(true);
+
+    await vi.waitFor(() => expect(mocks.importImageFiles).toHaveBeenCalledOnce());
+    expect((mocks.importImageFiles.mock.calls[0][0] as File[]).map((file) => file.name)).toEqual(["plot.png"]);
+    expect(readNotes).not.toHaveBeenCalled();
   });
 
   it("inserts dropped images at the drop position and skips moves", async () => {

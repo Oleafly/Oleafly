@@ -4,8 +4,9 @@ import { i18n } from "@/i18n";
 import { notifyProjectFilesChanged } from "@/lib/cross-window";
 import { isEditorMutationLocked } from "@/lib/editor-mutation-lease";
 import { dirname } from "@/lib/path-utils";
-import { insertableImageExtension } from "@/lib/image-mime";
+import { insertableImageExtension, isInsertableImagePath } from "@/lib/image-mime";
 import { logError } from "@/lib/log";
+import { takeNativeDrop } from "@/lib/native-drop";
 import { uint8ToBase64, writeProjectBytes } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
@@ -28,6 +29,17 @@ export function importableImageFiles(files: ArrayLike<File> | null | undefined):
 
 function joinPath(directory: string, name: string): string {
   return directory === "" ? name : `${directory}/${name}`;
+}
+
+export async function nativeDroppedImages(): Promise<File[]> {
+  const images = (await takeNativeDrop()).filter(({ name }) => isInsertableImagePath(name));
+  try {
+    return await Promise.all(images.map((image) => image.read()));
+  } catch (error) {
+    void logError("read dropped image", error);
+    toast.errorUnique(IMAGE_IMPORT_TOAST_KEY, i18n.t(($) => $.editor.paste.imageFailed));
+    return [];
+  }
 }
 
 export function figureDirectory(tree: readonly FileEntry[], mainDoc: string): string {

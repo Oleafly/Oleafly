@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { test as base } from "@playwright/test";
@@ -72,6 +73,21 @@ const DISMISSED_TOUR_STATE = JSON.stringify({
   },
   version: 1,
 });
+
+let freezeDiagnosticsCaptured = false;
+
+function captureFreezeDiagnostics(outputDir: string) {
+  if (freezeDiagnosticsCaptured || process.platform !== "linux" || !process.env.CI) return;
+  freezeDiagnosticsCaptured = true;
+  try {
+    execFileSync("bash", [join(process.cwd(), "scripts", "ci", "e2e-freeze-diagnostics.sh"), outputDir], {
+      stdio: "ignore",
+      timeout: 240_000,
+    });
+  } catch {
+    return;
+  }
+}
 
 export async function reloadNativePage(page: TauriPage) {
   const mainWindow = await page.waitForWindow((window) => window.label === "main", {
@@ -274,15 +290,20 @@ function createNativeTest(dismissTours: boolean) {
       if (!ping.ok) throw new Error("plugin ping failed");
       const page = adaptForPackagedRuntime(new TauriPage(client));
       page.setDefaultTimeout(20_000);
-      await ensureNativePageReady(page);
       const firstPage = !nativePageOpened;
-      const inheritedProject = firstPage && await page.evaluate<boolean>(
-        `document.querySelector('button[aria-label="Home"]') !== null`,
-      );
-      if (nativePageOpened || testInfo.retry > 0 || inheritedProject) {
-        await reloadNativePage(page);
+      try {
+        await ensureNativePageReady(page);
+        const inheritedProject = firstPage && await page.evaluate<boolean>(
+          `document.querySelector('button[aria-label="Home"]') !== null`,
+        );
+        if (nativePageOpened || testInfo.retry > 0 || inheritedProject) {
+          await reloadNativePage(page);
+        }
+        await ensureNativePageReady(page);
+      } catch (error) {
+        captureFreezeDiagnostics(testInfo.outputPath("freeze-diagnostics"));
+        throw error;
       }
-      await ensureNativePageReady(page);
       if (firstPage && !productionE2e) {
         // Enable the experimental LaTeX tools and browser (default off)
         // so the gated e2e specs run. Wrapped as an IIFE expression, the form

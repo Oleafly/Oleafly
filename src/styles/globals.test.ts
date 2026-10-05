@@ -99,3 +99,11 @@ describe("assistant composer container queries", () => {
     expect(controls + gaps + approvalInset - 270).toBe(12);
   });
 });
+
+describe("resizable panels", () => {
+  it("drops the percentage max-height react-resizable-panels sets inline", () => {
+    expect(styles).toMatch(
+      /\[data-panel\],\s*\[data-panel\] > div\s*\{\s*max-height: none !important;\s*\}/u,
+    );
+  });
+});

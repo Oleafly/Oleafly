@@ -521,6 +521,10 @@ export const importPathsIntoProject = (
     }),
   );
 
+export const takeDroppedPaths = () => invoke<string[]>("take_dropped_paths");
+
+export const readDroppedFile = (path: string) => invoke<ArrayBuffer>("read_dropped_file", { path });
+
 export const saveFileBase64 = (
   projectId: string,
   path: string,

@@ -1,9 +1,10 @@
 [Desktop Entry]
-Categories=
-Comment=Oleafly - the intelligent research workspace, free, local-first, 100% open source
+Categories=Office;Publishing;WordProcessor;
+Comment=Write, compile and review research papers in LaTeX, Typst and Markdown
 Exec=oleafly-desktop %F
 StartupWMClass=oleafly-desktop
 Icon=oleafly-desktop
+Keywords=LaTeX;TeX;Typst;Markdown;PDF;BibTeX;Citation;Paper;Thesis;Research;
 Name=Oleafly
 Terminal=false
 Type=Application

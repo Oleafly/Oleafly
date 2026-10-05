@@ -60,6 +60,13 @@
         document.documentElement.style.colorScheme = theme;
         document.documentElement.lang = locale;
         window.__oleaflyBootLocale = locale;
+        if (
+          window.__TAURI_INTERNALS__ &&
+          !/[?&]view=/.test(location.search) &&
+          /Linux/.test(navigator.platform || navigator.userAgent)
+        ) {
+          document.documentElement.setAttribute("data-window-surface", "solid");
+        }
       })();
     </script>
   </head>

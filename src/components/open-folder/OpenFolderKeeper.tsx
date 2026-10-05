@@ -32,8 +32,8 @@ function takePresentedFolder(): void {
   if (!opened || files.loading || files.projectId !== opened.project_id) return;
   if (opened.detection.decision !== "auto") {
     const settings = useSettingsStore.getState();
-    settings.setShowTree(true);
-    settings.setRailTab("files");
+    if (!settings.showTree) settings.setShowTree(true);
+    if (settings.railTab !== "files") settings.setRailTab("files");
   }
   if (opened.detection.decision !== "ask") useOpenFolderStore.getState().dismiss();
 }

@@ -1,11 +1,12 @@
 [Desktop Entry]
-Categories={{categories}}
+Categories=Office;Publishing;WordProcessor;
 {{#if comment}}
 Comment={{comment}}
 {{/if}}
 Exec=/usr/bin/{{exec}} %F
 StartupWMClass={{exec}}
 Icon={{icon}}
+Keywords=LaTeX;TeX;Typst;Markdown;PDF;BibTeX;Citation;Paper;Thesis;Research;
 Name={{name}}
 Terminal=false
 Type=Application

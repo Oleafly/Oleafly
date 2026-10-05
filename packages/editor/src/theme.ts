@@ -186,6 +186,17 @@ const chromeTheme = EditorView.theme({
     paddingLeft: "var(--cm-gutter-number-inset, 4px)",
     minWidth: "var(--cm-gutter-min-width, 2.5em)",
   },
+  ".cm-lintRange": {
+    textDecorationLine: "underline",
+    textDecorationStyle: "wavy",
+    textDecorationThickness: "0.7px",
+    textDecorationSkipInk: "none",
+    textUnderlinePosition: "under",
+  },
+  ".cm-lintRange-error": { backgroundImage: "none", textDecorationColor: "#f11" },
+  ".cm-lintRange-warning": { backgroundImage: "none", textDecorationColor: "orange" },
+  ".cm-lintRange-info": { backgroundImage: "none", textDecorationColor: "#999" },
+  ".cm-lintRange-hint": { backgroundImage: "none", textDecorationColor: "#66d" },
   // Inline AI edit diff preview.
   ".cm-inline-del": {
     backgroundColor: "color-mix(in oklch, var(--destructive) 18%, transparent)",

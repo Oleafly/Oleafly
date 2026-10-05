@@ -10,6 +10,10 @@ use tauri::{
     Webview, WebviewUrl, Window, WindowEvent,
 };
 
+#[cfg(target_os = "linux")]
+mod linux_gtk;
+#[cfg(target_os = "linux")]
+mod linux_shortcuts;
 #[cfg(windows)]
 mod windows_shortcuts;
 
@@ -159,6 +163,12 @@ fn content_bounds(
         PhysicalPosition::new(0, chrome as i32),
         PhysicalSize::new(window.width.max(1), height),
     )
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn pane_allocation(width: i32, height: i32) -> (i32, i32, i32, i32) {
+    let chrome = (CHROME_HEIGHT_LOGICAL as i32).min(height.max(0));
+    (0, chrome, width.max(1), (height - chrome).max(1))
 }
 
 fn chrome_bounds(window: PhysicalSize<u32>) -> (PhysicalPosition<i32>, PhysicalSize<u32>) {
@@ -394,7 +404,7 @@ pub(crate) fn route_shortcut<R: Runtime>(app: &AppHandle<R>, chrome_label: Strin
     });
 }
 
-#[cfg_attr(target_os = "windows", allow(dead_code))]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub fn route_shortcut_to_focused_window<R: Runtime>(app: &AppHandle<R>, key: char) {
     let windows = with_windows(|windows| {
         windows
@@ -526,6 +536,13 @@ fn open_tab<R: Runtime>(
     let webview = window
         .add_child(builder, position, pane_size)
         .map_err(|e| format!("could not open the tab: {e}"))?;
+    #[cfg(target_os = "linux")]
+    linux_gtk::adopt(&webview, linux_gtk::Role::Pane);
+    #[cfg(target_os = "linux")]
+    linux_gtk::install_shortcuts(
+        &webview,
+        with_window_state(&window_label, |state| state.chrome.clone())?,
+    );
     #[cfg(windows)]
     windows_shortcuts::install(
         &webview,
@@ -588,13 +605,16 @@ fn create_window<R: Runtime>(app: &AppHandle<R>, url: Url) -> Result<String, Str
     let chrome_url = WebviewUrl::App(PathBuf::from(format!(
         "index.html?view=browser&window={window_label}"
     )));
-    window
+    #[cfg_attr(not(target_os = "linux"), allow(unused_variables))]
+    let chrome = window
         .add_child(
             WebviewBuilder::new(&chrome_label, chrome_url),
             position,
             chrome_size,
         )
         .map_err(|e| format!("could not open the browser window: {e}"))?;
+    #[cfg(target_os = "linux")]
+    linux_gtk::adopt(&chrome, linux_gtk::Role::Chrome);
     open_tab(app, &window, url)?;
     let _ = window.set_focus();
     focus_active_tab(&window);
@@ -1065,9 +1085,9 @@ mod tests {
         chrome_height_physical, chrome_window, create_window, eval_in_pane, find_webview,
         find_window, forget_window, forget_window_in, is_app_origin, latest_window_label,
         latest_window_label_in, next_sequence, on_title_changed, on_window_destroyed,
-        plan_tab_close, request_tab, resolve_pane, window_label_for_pane, window_label_for_pane_in,
-        window_state_in, with_window_state, with_windows, BrowserTabInfo, BrowserWindowState,
-        WebviewBuilder, WebviewUrl,
+        pane_allocation, plan_tab_close, request_tab, resolve_pane, window_label_for_pane,
+        window_label_for_pane_in, window_state_in, with_window_state, with_windows, BrowserTabInfo,
+        BrowserWindowState, WebviewBuilder, WebviewUrl,
     };
 
     static REGISTRY_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -1172,6 +1192,10 @@ mod tests {
         assert_eq!(chrome_height_physical(2.0), 176);
         assert_eq!(chrome_height_physical(0.0), 9);
         assert_eq!(chrome_height_physical(-4.0), 9);
+
+        assert_eq!(pane_allocation(1024, 768), (0, 88, 1024, 680));
+        assert_eq!(pane_allocation(480, 60), (0, 60, 480, 1));
+        assert_eq!(pane_allocation(0, 0), (0, 0, 1, 1));
 
         let (pos, size) = content_bounds(PhysicalSize::new(1000, 700), 1.5);
         assert_eq!(pos.y, 132);

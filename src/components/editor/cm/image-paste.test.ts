@@ -14,6 +14,16 @@ const mocks = vi.hoisted(() => ({
     infoUnique: vi.fn(),
   },
   notifyError: vi.fn(),
+  invoke: vi.fn(),
+  linux: false,
+}));
+
+vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke, isTauri: () => false }));
+vi.mock("@/lib/utils", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/utils")>()),
+  get isLinux() {
+    return mocks.linux;
+  },
 }));
 
 vi.mock("@/components/editor/figure-import", async (importOriginal) => {
@@ -59,7 +69,12 @@ function transfer(types: string[], files: File[]) {
   return { types, files, getData: () => "" };
 }
 
-function dispatch(view: EditorView, type: "paste" | "drop", data: unknown, extra: Record<string, unknown> = {}): Event {
+function dispatch(
+  view: EditorView,
+  type: "paste" | "drop" | "dragenter" | "dragover",
+  data: unknown,
+  extra: Record<string, unknown> = {},
+): Event {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(event, type === "paste" ? "clipboardData" : "dataTransfer", { value: data });
   for (const [key, value] of Object.entries(extra)) Object.defineProperty(event, key, { value });
@@ -78,6 +93,7 @@ function expectNoNotice(): void {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.linux = false;
   mocks.image = { path: "figures/pasted.png", latexPath: "figures/pasted.png" };
   mocks.importImageFiles.mockImplementation(
     async (files: File[], place: (image: { path: string; latexPath: string }) => void) => {
@@ -131,6 +147,54 @@ describe("imagePasteExtension", () => {
     expect(event.defaultPrevented).toBe(true);
     await flush();
     expect(view.state.doc.toString().startsWith("First\n\\begin{figure}[htbp]")).toBe(true);
+  });
+
+  it("on Linux, imports the images a file manager dropped as links at the drop position", async () => {
+    mocks.linux = true;
+    mocks.invoke.mockImplementation(async (command: string) => {
+      if (command === "take_dropped_paths") return ["/home/a/Pictures/plot.png", "/home/a/notes.txt"];
+      if (command === "read_dropped_file") return new Uint8Array([137, 80, 78, 71]).buffer;
+      throw new Error(`unexpected ${command}`);
+    });
+    const view = mount("First\nSecond\n");
+    vi.spyOn(view, "posAtCoords").mockReturnValue(6);
+    const links = { types: ["text/uri-list", "text/html"], files: [], getData: () => "" };
+    const event = dispatch(view, "drop", links, { clientX: 1, clientY: 1 });
+
+    expect(event.defaultPrevented).toBe(true);
+    await vi.waitFor(() => expect(mocks.importImageFiles).toHaveBeenCalledTimes(1));
+    const [files] = mocks.importImageFiles.mock.calls[0] as [File[]];
+    expect(files.map((file) => [file.name, file.type, file.size])).toEqual([["plot.png", "image/png", 4]]);
+    expect(mocks.invoke).toHaveBeenCalledWith("read_dropped_file", { path: "/home/a/Pictures/plot.png" });
+    expect(mocks.invoke).not.toHaveBeenCalledWith("read_dropped_file", { path: "/home/a/notes.txt" });
+    await vi.waitFor(() =>
+      expect(view.state.doc.toString().startsWith("First\n\\begin{figure}[htbp]")).toBe(true),
+    );
+    expectNoNotice();
+  });
+
+  it("on Linux, accepts a file manager drag on entering and while over the text, so WebKitGTK delivers the drop", () => {
+    mocks.linux = true;
+    const view = mount();
+    const links = { types: ["text/uri-list", "text/html"], files: [], getData: () => "", dropEffect: "none" };
+    expect(dispatch(view, "dragenter", links).defaultPrevented).toBe(true);
+    expect(dispatch(view, "dragover", links).defaultPrevented).toBe(true);
+    expect(links.dropEffect).toBe("copy");
+
+    const readOnly = mount("Hello\n", true);
+    expect(dispatch(readOnly, "dragover", { ...links, dropEffect: "none" }).defaultPrevented).toBe(false);
+    mocks.linux = false;
+    expect(dispatch(view, "dragover", { ...links, dropEffect: "none" }).defaultPrevented).toBe(false);
+  });
+
+  it("on Linux, leaves a web link dragged from a browser to CodeMirror", () => {
+    mocks.linux = true;
+    const view = mount();
+    const link = { types: ["text/uri-list", "text/plain"], files: [], getData: () => "" };
+    expect(dispatch(view, "dragover", link).defaultPrevented).toBe(false);
+    const event = dispatch(view, "drop", link, { clientX: 1, clientY: 1 });
+    expect(event.defaultPrevented).toBe(false);
+    expect(mocks.invoke).not.toHaveBeenCalled();
   });
 
   it("inserts every dropped image with no notice per figure", async () => {
