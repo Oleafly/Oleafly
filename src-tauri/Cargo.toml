@@ -112,6 +112,7 @@ windows-sys = { version = "0.61", features = [
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
+webkit2gtk = "2.0"
 
 [target.'cfg(not(windows))'.dependencies]
 # Streaming decoder for TinyTeX's official Linux ARM64 .tar.xz. Static linking

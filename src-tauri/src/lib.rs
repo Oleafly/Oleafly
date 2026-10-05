@@ -131,6 +131,7 @@ mod typst_toolchain;
 mod typst_upgrade;
 mod typst_watch;
 // Only macOS sizes webviews itself; the frame logic is unit-tested everywhere.
+mod web_process;
 #[cfg(windows)]
 mod webview_focus;
 #[cfg(any(target_os = "macos", test))]
@@ -390,7 +391,8 @@ pub fn run() {
     {
         builder = builder
             .plugin(native_drop::plugin())
-            .plugin(window_frame::plugin());
+            .plugin(window_frame::plugin())
+            .plugin(web_process::plugin());
     }
 
     #[cfg(target_os = "macos")]
