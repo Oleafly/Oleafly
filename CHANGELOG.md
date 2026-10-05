@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-10-05
+
+### Changed
+
+- On Linux, the main window stacked the desktop's title bar and a separate
+  menu strip on top of Oleafly's own toolbar. It now looks like it does on
+  Windows: the toolbar sits at the top with minimize, maximize and close
+  buttons, you drag it to move the window, and you double-click it to
+  maximize. Any edge or corner resizes the window, and the corners are
+  slightly rounded unless the window is maximized, full screen or snapped to
+  one side. Shortcuts like Ctrl+` for the terminal now go through Oleafly
+  directly, and Ctrl+T, Ctrl+L, Ctrl+W and Ctrl+R still work while a web page
+  in the browser panel has focus.
+- Picking system LaTeX in the engine dialog also allows external commands
+  when the project needs them, instead of asking again with a separate
+  checkbox. The dialog says so before you click. Trusting a folder still
+  doesn't allow them.
+- The engine dialog opens on its own when the first compile after opening a
+  project hits a gap in the built-in engine, and "Switch to pdfLaTeX and
+  recompile" now shows the preview.
+- "Choose engine" now sits to the left of Compile.
+- The Layout menu showed the same icon for five of its seven layouts. Each
+  layout now has its own icon that shows which panes it opens: the editor,
+  the preview and the AI assistant.
+
 ### Fixed
 
 - Since 0.4.3, typing could lag with the PDF preview open, worst on Linux
@@ -36,15 +61,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the icon, developer, license, screenshots and current version once Oleafly
   is installed. The window icon is sharp now instead of a scaled-up 32 pixel
   image.
-- On Linux, the main window stacked the desktop's title bar and a separate
-  menu strip on top of Oleafly's own toolbar. It now looks like it does on
-  Windows: the toolbar sits at the top with minimize, maximize and close
-  buttons, you drag it to move the window, and you double-click it to
-  maximize. Any edge or corner resizes the window, and the corners are
-  slightly rounded unless the window is maximized, full screen or snapped to
-  one side. Shortcuts like Ctrl+` for the terminal now go through Oleafly
-  directly, and Ctrl+T, Ctrl+L, Ctrl+W and Ctrl+R still work while a web page
-  in the browser panel has focus.
 - On Linux, the window could go blank and stop responding if it reloaded
   while the PDF preview was still drawing a freshly compiled PDF. WebKitGTK
   crashed in the code the preview used to unpack compressed PDF data. The
@@ -56,23 +72,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Linux, dropping an image from the file manager into the editor, a PDF
   onto PDF import, or a document onto a converter did nothing. They now take
   the dropped file, as they do on macOS and Windows.
-- Picking system LaTeX in the engine dialog also allows external commands
-  when the project needs them, instead of asking again with a separate
-  checkbox. The dialog says so before you click. Trusting a folder still
-  doesn't allow them.
-- The engine dialog opens on its own when the first compile after opening a
-  project hits a gap in the built-in engine, and "Switch to pdfLaTeX and
-  recompile" now shows the preview.
 - When system LaTeX was already selected, the engine dialog showed a disabled
   "Already selected" button and nothing else to do. It now offers Recompile.
-- "Choose engine" now sits to the left of Compile.
 - On Windows PCs without Microsoft's Visual C++ runtime, Typst projects
   didn't compile and the LaTeX language server (TexLab) didn't start. Both
   need a runtime file that Windows doesn't include, so Oleafly now installs it
   next to the app.
-- The Layout menu showed the same icon for five of its seven layouts. Each
-  layout now has its own icon that shows which panes it opens: the editor,
-  the preview and the AI assistant.
 - Drawing a circle by dragging up and to the left no longer makes it jump
   sideways when you let go.
 - A LaTeX run that produced no pages now says "No pages of output." in the
@@ -3001,7 +3006,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/Oleafly/Oleafly/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/Oleafly/Oleafly/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/Oleafly/Oleafly/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/Oleafly/Oleafly/compare/v0.4.1...v0.4.2

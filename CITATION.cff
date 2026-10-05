@@ -11,8 +11,8 @@ authors:
 repository-code: "https://github.com/Oleafly/Oleafly"
 url: "https://oleafly.com/"
 license: AGPL-3.0-or-later
-version: 0.4.4
-date-released: 2026-10-03
+version: 0.4.5
+date-released: 2026-10-05
 keywords:
   - latex
   - typst

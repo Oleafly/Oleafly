@@ -604,7 +604,7 @@ Oleafly في مرحلة beta. لا يتوفر التحرير التعاوني ا
   author  = {Venkateshmurthy, Prajwal S. and {The Oleafly contributors}},
   title   = {Oleafly: a local-first desktop workspace for research writing},
   year    = {2026},
-  version = {0.4.4},
+  version = {0.4.5},
   url     = {https://github.com/Oleafly/Oleafly},
   license = {AGPL-3.0-or-later}
 }
