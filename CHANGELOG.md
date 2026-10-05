@@ -36,6 +36,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the icon, developer, license, screenshots and current version once Oleafly
   is installed. The window icon is sharp now instead of a scaled-up 32 pixel
   image.
+- On Linux, the main window stacked the desktop's title bar and a separate
+  menu strip on top of Oleafly's own toolbar. It now looks like it does on
+  Windows: the toolbar sits at the top with minimize, maximize and close
+  buttons, you drag it to move the window, and you double-click it to
+  maximize. Shortcuts like Ctrl+` for the terminal now go through Oleafly
+  directly, and Ctrl+T, Ctrl+L, Ctrl+W and Ctrl+R still work while a web page
+  in the browser panel has focus.
 - Picking system LaTeX in the engine dialog also allows external commands
   when the project needs them, instead of asking again with a separate
   checkbox. The dialog says so before you click. Trusting a folder still

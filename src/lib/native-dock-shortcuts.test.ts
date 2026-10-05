@@ -131,7 +131,7 @@ describe("native dock shortcuts", () => {
 
   it("uses only the native menu path on Tauri platforms that install the menu", () => {
     expect(usesNativeDockMenu(true, "MacIntel")).toBe(true);
-    expect(usesNativeDockMenu(true, "Linux x86_64")).toBe(true);
+    expect(usesNativeDockMenu(true, "Linux x86_64")).toBe(false);
     expect(usesNativeDockMenu(true, "Win32")).toBe(false);
     expect(usesNativeDockMenu(false, "MacIntel")).toBe(false);
   });

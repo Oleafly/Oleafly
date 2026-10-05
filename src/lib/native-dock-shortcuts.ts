@@ -47,7 +47,7 @@ export function usesNativeDockMenu(
   tauri = isTauri(),
   platform = typeof navigator !== "undefined" ? navigator.platform : "",
 ): boolean {
-  return tauri && /Mac|Linux/.test(platform);
+  return tauri && /Mac/.test(platform);
 }
 
 const NATIVE_CHARACTER_KEYS = /^[A-Z0-9`\\[\],=\-.';/]$/;

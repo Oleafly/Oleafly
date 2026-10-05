@@ -10,6 +10,8 @@ use tauri::{
     Webview, WebviewUrl, Window, WindowEvent,
 };
 
+#[cfg(target_os = "linux")]
+mod linux_shortcuts;
 #[cfg(windows)]
 mod windows_shortcuts;
 
@@ -394,7 +396,7 @@ pub(crate) fn route_shortcut<R: Runtime>(app: &AppHandle<R>, chrome_label: Strin
     });
 }
 
-#[cfg_attr(target_os = "windows", allow(dead_code))]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub fn route_shortcut_to_focused_window<R: Runtime>(app: &AppHandle<R>, key: char) {
     let windows = with_windows(|windows| {
         windows
@@ -526,6 +528,11 @@ fn open_tab<R: Runtime>(
     let webview = window
         .add_child(builder, position, pane_size)
         .map_err(|e| format!("could not open the tab: {e}"))?;
+    #[cfg(target_os = "linux")]
+    linux_shortcuts::install(
+        &webview,
+        with_window_state(&window_label, |state| state.chrome.clone())?,
+    );
     #[cfg(windows)]
     windows_shortcuts::install(
         &webview,

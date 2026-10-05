@@ -2,14 +2,16 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Copy, Minus, Square, X } from "lucide-react";
-import { isWindows } from "@/lib/utils";
+import { isLinux, isWindows } from "@/lib/utils";
+
+const drawsWindowControls = isWindows || isLinux;
 
 export function WindowControls() {
   const { t } = useTranslation(["common", "shell"]);
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
-    if (!isWindows) return;
+    if (!drawsWindowControls) return;
     const win = getCurrentWindow();
     let active = true;
     const sync = () =>
@@ -27,7 +29,7 @@ export function WindowControls() {
     };
   }, []);
 
-  if (!isWindows) return null;
+  if (!drawsWindowControls) return null;
 
   const win = getCurrentWindow();
   const base =

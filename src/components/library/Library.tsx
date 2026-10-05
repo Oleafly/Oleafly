@@ -112,7 +112,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
-import { cn, isMac, isWindows } from "@/lib/utils";
+import { cn, isLinux, isMac, isWindows } from "@/lib/utils";
 import {
   recycleProject,
   duplicateProject,
@@ -727,7 +727,7 @@ export function Library() {
           className={cn(
             HOME_CHROME_SURFACE,
             "flex items-center rounded-xl p-1",
-            isWindows && "mr-3",
+            (isWindows || isLinux) && "mr-3",
           )}
         >
           {([

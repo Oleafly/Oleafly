@@ -234,7 +234,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     if std::env::var("OLEAFLY_E2E_WINDOW").is_err() {
         use tauri::Manager;
         if let Some(window) = app.get_webview_window("main") {
-            #[cfg(target_os = "windows")]
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
             {
                 let _ = window.set_decorations(false);
             }
@@ -390,7 +390,7 @@ pub fn run() {
         builder = builder.plugin(native_drop::plugin());
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
         builder = builder
             .menu(menu::build)
