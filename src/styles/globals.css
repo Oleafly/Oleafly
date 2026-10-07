@@ -659,7 +659,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--app-font, "Geist"), "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -677,19 +677,19 @@
     --rail: color-mix(in srgb, var(--muted) 30%, var(--background));
   }
   html:lang(zh-Hans) {
-    --font-sans: "Geist", "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    --font-sans: var(--app-font, "Geist"), "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
       "Noto Sans CJK SC", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(zh-Hant) {
-    --font-sans: "Geist", "Inter", "PingFang TC", "Hiragino Sans TC", "Microsoft JhengHei",
+    --font-sans: var(--app-font, "Geist"), "Inter", "PingFang TC", "Hiragino Sans TC", "Microsoft JhengHei",
       "Noto Sans CJK TC", "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(ja) {
-    --font-sans: "Geist", "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+    --font-sans: var(--app-font, "Geist"), "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
       "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(ko) {
-    --font-sans: "Geist", "Inter", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR",
+    --font-sans: var(--app-font, "Geist"), "Inter", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR",
       "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
   }
   body {

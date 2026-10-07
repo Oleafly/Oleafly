@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, RotateCcw } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { Button } from "@/components/ui/button";
+import { ColorPicker } from "@/components/ui/color-picker";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -18,9 +19,9 @@ import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
   ACCENTS,
-  APP_FONTS,
   BROWSER_SEARCH_ENGINES,
-  EDITOR_FONTS,
+  EDITOR_CURSOR_WIDTHS,
+  EDITOR_CUSTOM_LINE_HEIGHT,
   EDITOR_KEYMAP_MODES,
   EDITOR_LINE_HEIGHT_OPTIONS,
   EDITOR_TAB_SIZES,
@@ -29,6 +30,7 @@ import {
   TERMINAL_FONTS,
   TYPST_FORMATTER_INDENT_SIZES,
   TYPST_FORMATTER_LINE_WIDTHS,
+  clampEditorLineHeight,
   sectionDiffersFromDefaults,
   type BrowserSearchEngineId,
   type TerminalColorThemeId,
@@ -40,6 +42,7 @@ import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
+import { SystemFontPicker } from "@/components/settings/SystemFontPicker";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
@@ -241,30 +244,68 @@ function AppAppearanceTab() {
         label={t(($) => $.settings.appearance.app.font.label)}
         description={t(($) => $.settings.appearance.app.font.description)}
         control={
-          <Select
-            value={appFontFamily || "__default__"}
-            onValueChange={(value) =>
-              setAppFontFamily(value === "__default__" ? "" : value)
-            }
-          >
-            <SelectTrigger className="w-[168px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {APP_FONTS.map((font) => (
-                <SelectItem
-                  key={font.name}
-                  value={font.value || "__default__"}
-                >
-                  {font.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SystemFontPicker
+            id="settings-app-font"
+            use="app"
+            label={t(($) => $.settings.appearance.app.font.label)}
+            value={appFontFamily}
+            onChange={setAppFontFamily}
+          />
         }
       />
       <ThemeCustomization />
     </div>
+  );
+}
+
+function withinCustomLineHeight(value: number): boolean {
+  return (
+    Number.isFinite(value) &&
+    value >= EDITOR_CUSTOM_LINE_HEIGHT.min &&
+    value <= EDITOR_CUSTOM_LINE_HEIGHT.max
+  );
+}
+
+function CustomLineHeightInput() {
+  const { t } = useTranslation(["settings"]);
+  const value = useSettingsStore((state) => state.editorCustomLineHeight);
+  const setValue = useSettingsStore((state) => state.setEditorCustomLineHeight);
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft((current) => (Number(current) === value ? current : String(value)));
+  }, [value]);
+
+  const commit = () => {
+    const typed = Number(draft);
+    const next = draft.trim() === "" || !Number.isFinite(typed) ? value : clampEditorLineHeight(typed);
+    setValue(next);
+    setDraft(String(next));
+  };
+
+  return (
+    <Input
+      type="number"
+      inputMode="decimal"
+      min={EDITOR_CUSTOM_LINE_HEIGHT.min}
+      max={EDITOR_CUSTOM_LINE_HEIGHT.max}
+      step={EDITOR_CUSTOM_LINE_HEIGHT.step}
+      aria-label={t(($) => $.settings.appearance.editor.lineHeight.customLabel)}
+      data-testid="settings-editor-line-height-custom"
+      className="h-9 w-[76px]"
+      value={draft}
+      onChange={(event) => {
+        setDraft(event.target.value);
+        const typed = Number(event.target.value);
+        if (event.target.value.trim() !== "" && withinCustomLineHeight(typed)) setValue(typed);
+      }}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        commit();
+      }}
+    />
   );
 }
 
@@ -322,6 +363,10 @@ function EditorAppearanceTab() {
   const setEditorFontSize = useSettingsStore((state) => state.setEditorFontSize);
   const editorFontFamily = useSettingsStore((state) => state.editorFontFamily);
   const setEditorFontFamily = useSettingsStore((state) => state.setEditorFontFamily);
+  const editorCursorWidth = useSettingsStore((state) => state.editorCursorWidth);
+  const setEditorCursorWidth = useSettingsStore((state) => state.setEditorCursorWidth);
+  const editorCursorColor = useSettingsStore((state) => state.editorCursorColor);
+  const setEditorCursorColor = useSettingsStore((state) => state.setEditorCursorColor);
   const editorTheme = useSettingsStore((state) => state.editorTheme);
   const setEditorTheme = useSettingsStore((state) => state.setEditorTheme);
 
@@ -355,26 +400,13 @@ function EditorAppearanceTab() {
         label={t(($) => $.settings.appearance.editor.font.label)}
         description={t(($) => $.settings.appearance.editor.font.description)}
         control={
-          <Select
-            value={editorFontFamily || "__default__"}
-            onValueChange={(value) =>
-              setEditorFontFamily(value === "__default__" ? "" : value)
-            }
-          >
-            <SelectTrigger className="w-[168px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {EDITOR_FONTS.map((font) => (
-                <SelectItem
-                  key={font.name}
-                  value={font.value || "__default__"}
-                >
-                  {font.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SystemFontPicker
+            id="settings-editor-font"
+            use="editor"
+            label={t(($) => $.settings.appearance.editor.font.label)}
+            value={editorFontFamily}
+            onChange={setEditorFontFamily}
+          />
         }
       />
 
@@ -455,21 +487,68 @@ function EditorAppearanceTab() {
         label={t(($) => $.settings.appearance.editor.lineHeight.label)}
         description={t(($) => $.settings.appearance.editor.lineHeight.description)}
         control={
+          <div className="flex shrink-0 items-center gap-2">
+            <Select
+              value={editorLineHeight}
+              onValueChange={(value) => setEditorLineHeight(value as typeof editorLineHeight)}
+            >
+              <SelectTrigger className="w-[168px]" data-testid="settings-editor-line-height-trigger">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {EDITOR_LINE_HEIGHT_OPTIONS.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {t(($) => $.settings.appearance.editor.lineHeight.options[option])}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {editorLineHeight === "custom" ? <CustomLineHeightInput /> : null}
+          </div>
+        }
+      />
+
+      <SettingsRow
+        testId="settings-row-editor-cursor-width"
+        label={t(($) => $.settings.appearance.editor.cursorWidth.label)}
+        description={t(($) => $.settings.appearance.editor.cursorWidth.description)}
+        control={
           <Select
-            value={editorLineHeight}
-            onValueChange={(value) => setEditorLineHeight(value as typeof editorLineHeight)}
+            value={String(editorCursorWidth)}
+            onValueChange={(value) => setEditorCursorWidth(Number(value))}
           >
-            <SelectTrigger className="w-[168px]" data-testid="settings-editor-line-height-trigger">
+            <SelectTrigger className="w-[88px]" data-testid="settings-editor-cursor-width-trigger">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-[100]">
-              {EDITOR_LINE_HEIGHT_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {t(($) => $.settings.appearance.editor.lineHeight.options[option])}
+              {EDITOR_CURSOR_WIDTHS.map((width) => (
+                <SelectItem key={width} value={String(width)}>
+                  {t(($) => $.settings.appearance.fontSizeOption, { size: width })}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        }
+      />
+
+      <SettingsRow
+        testId="settings-row-editor-cursor-color"
+        label={t(($) => $.settings.appearance.editor.cursorColor.label)}
+        description={t(($) => $.settings.appearance.editor.cursorColor.description)}
+        control={
+          <div className="flex shrink-0 items-center gap-2">
+            {editorCursorColor ? (
+              <Button type="button" size="xs" variant="ghost" onClick={() => setEditorCursorColor("")}>
+                <RotateCcw aria-hidden />
+                {t(($) => $.settings.appearance.editor.cursorColor.useTheme)}
+              </Button>
+            ) : null}
+            <ColorPicker
+              ariaLabel={t(($) => $.settings.appearance.editor.cursorColor.pick)}
+              value={editorCursorColor}
+              onChange={setEditorCursorColor}
+            />
+          </div>
         }
       />
 

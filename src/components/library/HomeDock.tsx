@@ -8,6 +8,7 @@ import { cn, isMac, shortcut } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useSettingsStore } from "@/store/settings";
 import { openDiagramComposerChooser, openToolsGallery } from "@/features/open-tool";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
@@ -24,6 +25,7 @@ const dockButtonClass = (active: boolean) =>
 
 function DockButton({
   label,
+  tooltip = label,
   icon,
   onClick,
   primary = false,
@@ -33,6 +35,7 @@ function DockButton({
   tooltipSide,
 }: Readonly<{
   label: string;
+  tooltip?: string;
   icon: ReactNode;
   onClick: () => void;
   primary?: boolean;
@@ -42,7 +45,7 @@ function DockButton({
   tooltipSide: "top" | "left" | "right";
 }>) {
   return (
-    <Tooltip label={label} side={tooltipSide}>
+    <Tooltip label={tooltip} side={tooltipSide}>
       <Button
         data-testid={testId}
         data-tour={tour}
@@ -63,9 +66,10 @@ export const HOME_DOCK_GLASS_SURFACE =
   "border border-black/10 bg-white/10 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.1),inset_0_1px_0_0_rgba(255,255,255,0.3)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-white/5 dark:shadow-[0_8px_30px_-6px_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.08)]";
 
 export function HomeDock() {
-  const { t } = useTranslation(["library"]);
+  const { t } = useTranslation(["library", "shell"]);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
+  const settingsShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.openSettings));
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
   const latexTools = useSettingsStore((s) => s.latexTools);
@@ -122,6 +126,10 @@ export function HomeDock() {
       />
       <DockButton
         label={t(($) => $.library.dock.settings)}
+        tooltip={t(($) => $.shell.rail.withShortcut, {
+          label: t(($) => $.library.dock.settings),
+          shortcut: settingsShortcut,
+        })}
         icon={<SettingsIcon className="size-4" />}
         onClick={() => setSettingsOpen(true)}
         testId="open-settings"

@@ -530,7 +530,7 @@
         "right": "右側"
       },
       "font": {
-        "description": "字型未安裝時會改用系統備用字型。",
+        "description": "為選單、面板和對話框選擇電腦上已安裝的任何字型。",
         "label": "應用程式字型"
       },
       "fontSize": {
@@ -628,8 +628,9 @@
         "label": "自動完成"
       },
       "font": {
-        "description": "選擇原始檔案使用的等寬字型。",
-        "label": "編輯器字型"
+        "description": "為原始檔案選擇電腦上已安裝的任何字型。",
+        "label": "編輯器字型",
+        "monospace": "等寬"
       },
       "fontSize": {
         "description": "設定原始碼編輯器的文字大小。",
@@ -666,8 +667,20 @@
         "options": {
           "compact": "緊密",
           "normal": "標準",
-          "wide": "寬鬆"
-        }
+          "wide": "寬鬆",
+          "custom": "自訂"
+        },
+        "customLabel": "自訂行高"
+      },
+      "cursorWidth": {
+        "label": "游標寬度",
+        "description": "設定編輯器游標的粗細。"
+      },
+      "cursorColor": {
+        "label": "游標顏色",
+        "description": "未自選顏色時使用編輯器主題的顏色。",
+        "pick": "選擇編輯器游標顏色",
+        "useTheme": "使用主題顏色"
       },
       "lineWrap": {
         "description": "讓長行自動換行，不必左右捲動。",
@@ -1550,6 +1563,10 @@
       "openFolder": {
         "label": "開啟資料夾",
         "description": "將電腦上的資料夾作為專案開啟。"
+      },
+      "openSettings": {
+        "label": "開啟設定",
+        "description": "開啟 Oleafly 設定。"
       }
     },
     "application": {

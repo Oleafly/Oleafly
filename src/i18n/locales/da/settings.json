@@ -533,7 +533,7 @@
         "right": "Til højre"
       },
       "font": {
-        "description": "Bruger systemets reserveskrifttype, hvis en skrifttype ikke er installeret.",
+        "description": "Vælg en hvilken som helst skrifttype, der er installeret på din computer, til menuer, paneler og dialogbokse.",
         "label": "Appens skrifttype"
       },
       "fontSize": {
@@ -633,8 +633,9 @@
         "label": "Automatisk fuldførelse"
       },
       "font": {
-        "description": "Vælg den monospace-skrifttype, der bruges til kildefiler.",
-        "label": "Editorens skrifttype"
+        "description": "Vælg en hvilken som helst skrifttype, der er installeret på din computer, til kildefiler.",
+        "label": "Editorens skrifttype",
+        "monospace": "Monospace"
       },
       "fontSize": {
         "description": "Indstil tekststørrelsen i kildeeditoren.",
@@ -671,8 +672,20 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Normal",
-          "wide": "Bred"
-        }
+          "wide": "Bred",
+          "custom": "Brugerdefineret"
+        },
+        "customLabel": "Brugerdefineret linjehøjde"
+      },
+      "cursorWidth": {
+        "label": "Markørbredde",
+        "description": "Angiv, hvor tyk markøren i editoren er."
+      },
+      "cursorColor": {
+        "label": "Markørfarve",
+        "description": "Bruger editortemaets farve, medmindre du vælger din egen.",
+        "pick": "Vælg farven på markøren i editoren",
+        "useTheme": "Brug temaets farve"
       },
       "lineWrap": {
         "description": "Ombryd lange linjer i stedet for at rulle sidelæns.",
@@ -1568,6 +1581,10 @@
       "openFolder": {
         "label": "Åbn mappe",
         "description": "Åbn en mappe fra din computer som et projekt."
+      },
+      "openSettings": {
+        "label": "Åbn indstillinger",
+        "description": "Åbn indstillingerne for Oleafly."
       }
     },
     "application": {

@@ -536,7 +536,7 @@
         "right": "A destra"
       },
       "font": {
-        "description": "Usa il ripiego di sistema quando un font non è installato.",
+        "description": "Scegli per menu, pannelli e finestre di dialogo qualsiasi font installato sul computer.",
         "label": "Font dell'app"
       },
       "fontSize": {
@@ -638,8 +638,9 @@
         "label": "Completamento automatico"
       },
       "font": {
-        "description": "Scegli il font monospaziato usato per i file sorgente.",
-        "label": "Font dell'editor"
+        "description": "Scegli per i file sorgente qualsiasi font installato sul computer.",
+        "label": "Font dell'editor",
+        "monospace": "Monospaziato"
       },
       "fontSize": {
         "description": "Imposta la dimensione del testo nell'editor di codice.",
@@ -676,8 +677,20 @@
         "options": {
           "compact": "Compatta",
           "normal": "Normale",
-          "wide": "Ampia"
-        }
+          "wide": "Ampia",
+          "custom": "Personalizzata"
+        },
+        "customLabel": "Altezza della riga personalizzata"
+      },
+      "cursorWidth": {
+        "label": "Spessore del cursore",
+        "description": "Imposta lo spessore del cursore dell'editor."
+      },
+      "cursorColor": {
+        "label": "Colore del cursore",
+        "description": "Usa il colore del tema dell'editor, a meno che tu non ne scelga uno.",
+        "pick": "Scegli il colore del cursore dell'editor",
+        "useTheme": "Usa il colore del tema"
       },
       "lineWrap": {
         "description": "Manda a capo le righe lunghe invece di scorrere in orizzontale.",
@@ -1586,6 +1599,10 @@
       "openFolder": {
         "label": "Apri cartella",
         "description": "Apri una cartella del computer come progetto."
+      },
+      "openSettings": {
+        "label": "Apri le impostazioni",
+        "description": "Apri le impostazioni di Oleafly."
       }
     },
     "application": {

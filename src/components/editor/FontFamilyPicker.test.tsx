@@ -103,6 +103,10 @@ describe("FontFamilyPicker", () => {
     expect(onChange).toHaveBeenLastCalledWith("Inter");
     expect(input).toHaveValue("Inter");
     expect(input).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(input);
+    expect(
+      screen.getAllByRole("option").filter((option) => option.dataset.checked).map((option) => option.textContent),
+    ).toEqual([`Inter${en.typstFonts.sources.project}${en.typstFonts.sources.system}`]);
   });
 
   it("filters while typing and picks with the arrow keys and Enter", () => {

@@ -73,7 +73,8 @@ import {
 } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
-import { EDITOR_LINE_HEIGHTS, useSettingsStore } from "@/store/settings";
+import { editorLineHeightValue, useSettingsStore } from "@/store/settings";
+import { fontFamilyName, quotedFontFamily } from "@/lib/font-families";
 import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
@@ -351,6 +352,9 @@ function AppContent() {
   const appFontFamily = useSettingsStore((s) => s.appFontFamily);
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
   const editorLineHeight = useSettingsStore((s) => s.editorLineHeight);
+  const editorCustomLineHeight = useSettingsStore((s) => s.editorCustomLineHeight);
+  const editorCursorWidth = useSettingsStore((s) => s.editorCursorWidth);
+  const editorCursorColor = useSettingsStore((s) => s.editorCursorColor);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
@@ -522,16 +526,33 @@ function AppContent() {
     // Scales the whole rem-based interface.
     root.style.fontSize = `${appFontSize}px`;
     // Empty means keep the app's default stack.
-    if (appFontFamily) root.style.fontFamily = appFontFamily;
-    else root.style.removeProperty("font-family");
-    if (editorFontFamily) root.style.setProperty("--cm-font-family", editorFontFamily);
-    else root.style.removeProperty("--cm-font-family");
+    const appFont = fontFamilyName(appFontFamily);
+    if (appFont) root.style.setProperty("--app-font", quotedFontFamily(appFont));
+    else root.style.removeProperty("--app-font");
+    const editorFont = fontFamilyName(editorFontFamily);
+    if (editorFont) {
+      root.style.setProperty("--cm-font-family", `${quotedFontFamily(editorFont)}, var(--font-mono)`);
+    } else {
+      root.style.removeProperty("--cm-font-family");
+    }
     root.style.setProperty(
       "--cm-line-height",
-      String(EDITOR_LINE_HEIGHTS[editorLineHeight] ?? EDITOR_LINE_HEIGHTS.normal),
+      String(editorLineHeightValue(editorLineHeight, editorCustomLineHeight)),
     );
+    root.style.setProperty("--cm-cursor-width", `${editorCursorWidth}px`);
+    if (editorCursorColor) root.style.setProperty("--cm-cursor-custom", editorCursorColor);
+    else root.style.removeProperty("--cm-cursor-custom");
     getEditorView()?.requestMeasure();
-  }, [editorFontSize, appFontSize, appFontFamily, editorFontFamily, editorLineHeight]);
+  }, [
+    editorFontSize,
+    appFontSize,
+    appFontFamily,
+    editorFontFamily,
+    editorLineHeight,
+    editorCustomLineHeight,
+    editorCursorWidth,
+    editorCursorColor,
+  ]);
 
   useEffect(() => {
     const apply = (theme: Theme) => applyAccentColor(theme, accentColor);
@@ -633,6 +654,10 @@ function AppContent() {
         if (e.defaultPrevented) return;
         e.preventDefault();
         useSettingsStore.getState().setHotkeysOpen(true);
+      } else if (matchesShortcut(e, bindings.openSettings) && !usesNativeDockMenu()) {
+        if (e.defaultPrevented) return;
+        e.preventDefault();
+        useSettingsStore.getState().setSettingsOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);

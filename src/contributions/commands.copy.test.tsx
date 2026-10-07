@@ -16,6 +16,7 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { TOOL_DEFINITIONS, toolName } from "@/lib/tool-catalog";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 
 const mocks = vi.hoisted(() => ({
   files: {
@@ -248,6 +249,15 @@ describe("command contributions copy", () => {
       expect(resolved.hint).toBe(`/${tool.slash[0]}`);
       expect(resolved.group).toBe(enShell.commandGroups.tools);
     }
+  });
+
+  it("lists Settings in the command palette with its shortcut", () => {
+    const command = registry.commands.find((entry) => entry.id === "omnibar.settings");
+    if (!command) throw new Error("missing omnibar.settings");
+    expect(command.surfaces).toEqual(["omnibar", "palette"]);
+    const resolved = resolveAll(command, baseContext);
+    expect(resolved.group).toBe(enShell.commandGroups.settings);
+    expect(resolved.hint).toBe(shortcutLabel(useShortcutStore.getState().bindings.openSettings));
   });
 
   it("flips the label of every stateful toggle", () => {

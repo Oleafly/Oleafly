@@ -533,7 +533,7 @@
         "right": "Rechts"
       },
       "font": {
-        "description": "Nutzt die Systemschrift, wenn eine Schrift nicht installiert ist.",
+        "description": "Wählen Sie für Menüs, Bereiche und Dialoge eine beliebige auf Ihrem Computer installierte Schrift.",
         "label": "Schrift der App"
       },
       "fontSize": {
@@ -633,8 +633,9 @@
         "label": "Autovervollständigung"
       },
       "font": {
-        "description": "Wählen Sie die Monospace-Schrift für Quelldateien.",
-        "label": "Schrift des Editors"
+        "description": "Wählen Sie für Quelldateien eine beliebige auf Ihrem Computer installierte Schrift.",
+        "label": "Schrift des Editors",
+        "monospace": "Monospace"
       },
       "fontSize": {
         "description": "Legen Sie die Textgröße im Quelltexteditor fest.",
@@ -671,8 +672,20 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Normal",
-          "wide": "Weit"
-        }
+          "wide": "Weit",
+          "custom": "Benutzerdefiniert"
+        },
+        "customLabel": "Benutzerdefinierte Zeilenhöhe"
+      },
+      "cursorWidth": {
+        "label": "Cursorbreite",
+        "description": "Legen Sie fest, wie dick der Cursor im Editor ist."
+      },
+      "cursorColor": {
+        "label": "Cursorfarbe",
+        "description": "Verwendet die Farbe des Editor-Designs, bis Sie eine eigene wählen.",
+        "pick": "Cursorfarbe des Editors wählen",
+        "useTheme": "Farbe des Designs verwenden"
       },
       "lineWrap": {
         "description": "Lange Zeilen umbrechen statt seitwärts zu scrollen.",
@@ -1568,6 +1581,10 @@
       "openFolder": {
         "label": "Ordner öffnen",
         "description": "Einen Ordner von Ihrem Computer als Projekt öffnen."
+      },
+      "openSettings": {
+        "label": "Einstellungen öffnen",
+        "description": "Die Einstellungen von Oleafly öffnen."
       }
     },
     "application": {

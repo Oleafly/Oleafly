@@ -536,7 +536,7 @@
         "right": "À droite"
       },
       "font": {
-        "description": "Utilise la police de secours du système quand une police n'est pas installée.",
+        "description": "Choisissez pour les menus, panneaux et boîtes de dialogue n'importe quelle police installée sur votre ordinateur.",
         "label": "Police de l'application"
       },
       "fontSize": {
@@ -638,8 +638,9 @@
         "label": "Autocomplétion"
       },
       "font": {
-        "description": "Choisissez la police à chasse fixe utilisée pour les fichiers source.",
-        "label": "Police de l'éditeur"
+        "description": "Choisissez pour les fichiers source n'importe quelle police installée sur votre ordinateur.",
+        "label": "Police de l'éditeur",
+        "monospace": "Chasse fixe"
       },
       "fontSize": {
         "description": "Définissez la taille du texte de l'éditeur de source.",
@@ -676,8 +677,20 @@
         "options": {
           "compact": "Compacte",
           "normal": "Normale",
-          "wide": "Large"
-        }
+          "wide": "Large",
+          "custom": "Personnalisée"
+        },
+        "customLabel": "Hauteur de ligne personnalisée"
+      },
+      "cursorWidth": {
+        "label": "Épaisseur du curseur",
+        "description": "Définir l'épaisseur du curseur de l'éditeur."
+      },
+      "cursorColor": {
+        "label": "Couleur du curseur",
+        "description": "Utilise la couleur du thème de l'éditeur, sauf si vous en choisissez une.",
+        "pick": "Choisir la couleur du curseur de l'éditeur",
+        "useTheme": "Utiliser la couleur du thème"
       },
       "lineWrap": {
         "description": "Renvoyer les longues lignes à la ligne au lieu de défiler horizontalement.",
@@ -1586,6 +1599,10 @@
       "openFolder": {
         "label": "Ouvrir un dossier",
         "description": "Ouvrir un dossier de votre ordinateur comme projet."
+      },
+      "openSettings": {
+        "label": "Ouvrir les paramètres",
+        "description": "Ouvrir les paramètres d'Oleafly."
       }
     },
     "application": {

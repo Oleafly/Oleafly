@@ -530,7 +530,7 @@
         "right": "오른쪽"
       },
       "font": {
-        "description": "글꼴이 설치되어 있지 않으면 시스템 대체 글꼴을 씁니다.",
+        "description": "메뉴, 패널, 대화 상자에 쓸 글꼴을 컴퓨터에 설치된 글꼴 중에서 고르세요.",
         "label": "앱 글꼴"
       },
       "fontSize": {
@@ -628,8 +628,9 @@
         "label": "자동 완성"
       },
       "font": {
-        "description": "소스 파일에 쓸 고정폭 글꼴을 고르세요.",
-        "label": "편집기 글꼴"
+        "description": "소스 파일에 쓸 글꼴을 컴퓨터에 설치된 글꼴 중에서 고르세요.",
+        "label": "편집기 글꼴",
+        "monospace": "고정폭"
       },
       "fontSize": {
         "description": "소스 편집기의 글자 크기를 정합니다.",
@@ -666,8 +667,20 @@
         "options": {
           "compact": "좁게",
           "normal": "보통",
-          "wide": "넓게"
-        }
+          "wide": "넓게",
+          "custom": "사용자 지정"
+        },
+        "customLabel": "사용자 지정 줄 높이"
+      },
+      "cursorWidth": {
+        "label": "커서 너비",
+        "description": "편집기 커서의 굵기를 정합니다."
+      },
+      "cursorColor": {
+        "label": "커서 색상",
+        "description": "직접 고르지 않으면 편집기 테마의 색상을 씁니다.",
+        "pick": "편집기 커서 색상 고르기",
+        "useTheme": "테마 색상 사용"
       },
       "lineWrap": {
         "description": "가로로 스크롤하는 대신 긴 줄을 접어서 표시합니다.",
@@ -1550,6 +1563,10 @@
       "openFolder": {
         "label": "폴더 열기",
         "description": "컴퓨터의 폴더를 프로젝트로 엽니다."
+      },
+      "openSettings": {
+        "label": "설정 열기",
+        "description": "Oleafly 설정을 엽니다."
       }
     },
     "application": {

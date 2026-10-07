@@ -17,6 +17,7 @@ Windows and Linux.
 | Toggle browser | Ctrl-Shift-B | Ctrl-Shift-B (Windows), Ctrl-Alt-B (Linux) |
 | Toggle sidebar | Command-B | Ctrl-B |
 | Open folder | Command-Shift-O | Ctrl-Shift-O |
+| Open settings | Command-, | Ctrl-, |
 | Close LaTeX environment | Command-Option-. | Ctrl-Alt-. |
 | Surround with environment | Command-Option-E | Ctrl-Alt-E |
 

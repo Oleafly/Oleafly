@@ -25,6 +25,9 @@ const BROWSER_ACCELERATOR: &str = "Ctrl+Shift+B";
 const QUIT_ACCELERATOR: &str = "CmdOrCtrl+Q";
 const APP_MENU: &str = "app_menu";
 const QUIT_ITEM: &str = "quit_app";
+const SETTINGS_ITEM: &str = "open_settings";
+const SETTINGS_ACCELERATOR: &str = "CmdOrCtrl+,";
+const SETTINGS_EVENT: &str = "settings:open";
 const TOGGLE_TERMINAL_ITEM: &str = "toggle_terminal";
 const TOGGLE_BROWSER_ITEM: &str = "toggle_browser";
 
@@ -76,6 +79,7 @@ struct ShortcutAccelerators {
     terminal: String,
     browser: String,
     open_folder: String,
+    settings: String,
 }
 
 fn shortcut_accelerators() -> ShortcutAccelerators {
@@ -87,19 +91,24 @@ fn shortcut_accelerators() -> ShortcutAccelerators {
             terminal: TERMINAL_ACCELERATOR.to_owned(),
             browser: BROWSER_ACCELERATOR.to_owned(),
             open_folder: OPEN_FOLDER_ACCELERATOR.to_owned(),
+            settings: SETTINGS_ACCELERATOR.to_owned(),
         })
 }
 
-fn remember_shortcut_accelerators(terminal: &str, browser: &str, open_folder: Option<&str>) {
-    let open_folder = open_folder
-        .map(str::to_owned)
-        .unwrap_or_else(|| shortcut_accelerators().open_folder);
+fn remember_shortcut_accelerators(
+    terminal: &str,
+    browser: &str,
+    open_folder: Option<&str>,
+    settings: Option<&str>,
+) {
+    let current = shortcut_accelerators();
     *SHORTCUT_ACCELERATORS
         .lock()
         .unwrap_or_else(PoisonError::into_inner) = Some(ShortcutAccelerators {
         terminal: terminal.to_owned(),
         browser: browser.to_owned(),
-        open_folder,
+        open_folder: open_folder.map_or(current.open_folder, str::to_owned),
+        settings: settings.map_or(current.settings, str::to_owned),
     });
 }
 
@@ -158,6 +167,9 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let quit = MenuItemBuilder::with_id(QUIT_ITEM, t("menu.quit"))
         .accelerator(QUIT_ACCELERATOR)
         .build(handle)?;
+    let settings = MenuItemBuilder::with_id(SETTINGS_ITEM, t("menu.settings"))
+        .accelerator(&accelerators.settings)
+        .build(handle)?;
 
     let open_folder = MenuItemBuilder::with_id(OPEN_FOLDER_ITEM, t("menu.openFolder"))
         .accelerator(&accelerators.open_folder)
@@ -187,6 +199,8 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .separator()
         .item(&about)
         .item(&check_updates)
+        .separator()
+        .item(&settings)
         .separator();
     #[cfg(target_os = "macos")]
     let app_menu = app_menu
@@ -373,7 +387,7 @@ fn unregistrable_accelerator<'a>(accelerators: &[&'a str]) -> Option<&'a str> {
 
 fn paused_accelerators(
     accelerators: &ShortcutAccelerators,
-) -> [(&'static str, &'static str, String); 4] {
+) -> [(&'static str, &'static str, String); 5] {
     [
         (
             VIEW_MENU,
@@ -386,6 +400,7 @@ fn paused_accelerators(
             OPEN_FOLDER_ITEM,
             accelerators.open_folder.clone(),
         ),
+        (APP_MENU, SETTINGS_ITEM, accelerators.settings.clone()),
         (APP_MENU, QUIT_ITEM, QUIT_ACCELERATOR.to_owned()),
     ]
 }
@@ -448,11 +463,17 @@ pub fn set_native_shortcuts_paused(app: AppHandle, paused: bool) -> Result<(), S
     }
 }
 
-fn file_accelerator_updates(open_folder: Option<&str>) -> Vec<(&'static str, &str)> {
-    open_folder
-        .map(|accelerator| (OPEN_FOLDER_ITEM, accelerator))
-        .into_iter()
-        .collect()
+fn optional_accelerator_updates<'a>(
+    open_folder: Option<&'a str>,
+    settings: Option<&'a str>,
+) -> Vec<(&'static str, &'static str, &'a str)> {
+    [
+        (FILE_MENU, OPEN_FOLDER_ITEM, open_folder),
+        (APP_MENU, SETTINGS_ITEM, settings),
+    ]
+    .into_iter()
+    .filter_map(|(submenu, id, accelerator)| Some((submenu, id, accelerator?)))
+    .collect()
 }
 
 #[tauri::command]
@@ -461,6 +482,7 @@ pub fn set_dock_shortcut_accelerators(
     terminal_accelerator: String,
     browser_accelerator: String,
     open_folder_accelerator: Option<String>,
+    settings_accelerator: Option<String>,
 ) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
@@ -469,6 +491,7 @@ pub fn set_dock_shortcut_accelerators(
             terminal_accelerator,
             browser_accelerator,
             open_folder_accelerator,
+            settings_accelerator,
         );
         Ok(())
     }
@@ -476,6 +499,7 @@ pub fn set_dock_shortcut_accelerators(
     {
         let mut requested = vec![terminal_accelerator.as_str(), browser_accelerator.as_str()];
         requested.extend(open_folder_accelerator.as_deref());
+        requested.extend(settings_accelerator.as_deref());
         if let Some(accelerator) = unregistrable_accelerator(&requested) {
             return Err(format!("The menu cannot register {accelerator}."));
         }
@@ -483,6 +507,7 @@ pub fn set_dock_shortcut_accelerators(
             &terminal_accelerator,
             &browser_accelerator,
             open_folder_accelerator.as_deref(),
+            settings_accelerator.as_deref(),
         );
         let menu = app.menu().ok_or_else(|| t("errors.menuUnavailable"))?;
         for (id, accelerator) in
@@ -492,8 +517,11 @@ pub fn set_dock_shortcut_accelerators(
                 .set_accelerator(Some(accelerator))
                 .map_err(|error| error.to_string())?;
         }
-        for (id, accelerator) in file_accelerator_updates(open_folder_accelerator.as_deref()) {
-            menu_item(&menu, FILE_MENU, id)?
+        for (submenu, id, accelerator) in optional_accelerator_updates(
+            open_folder_accelerator.as_deref(),
+            settings_accelerator.as_deref(),
+        ) {
+            menu_item(&menu, submenu, id)?
                 .set_accelerator(Some(accelerator))
                 .map_err(|error| error.to_string())?;
         }
@@ -542,6 +570,10 @@ pub fn on_event<R: Runtime>(app: &AppHandle<R>, id: &str) {
         }
         "check_updates" => {
             let _ = app.emit("menu://check-updates", ());
+        }
+        SETTINGS_ITEM => {
+            crate::single_instance::reveal_main_window(app);
+            let _ = app.emit_to("main", SETTINGS_EVENT, ());
         }
         "reload_views" => {
             reload_views(app);
@@ -596,17 +628,22 @@ mod tests {
     #[test]
     fn a_rebuilt_menu_keeps_the_shortcuts_the_user_chose() {
         assert_eq!(shortcut_accelerators().terminal, TERMINAL_ACCELERATOR);
-        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None);
+        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None, None);
         assert_eq!(
             shortcut_accelerators(),
             ShortcutAccelerators {
                 terminal: "Cmd+J".to_owned(),
                 browser: "Cmd+Shift+K".to_owned(),
                 open_folder: OPEN_FOLDER_ACCELERATOR.to_owned(),
+                settings: SETTINGS_ACCELERATOR.to_owned(),
             }
         );
-        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", Some("Cmd+Alt+O"));
+        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", Some("Cmd+Alt+O"), None);
         assert_eq!(shortcut_accelerators().open_folder, "Cmd+Alt+O");
+        assert_eq!(shortcut_accelerators().settings, SETTINGS_ACCELERATOR);
+        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None, Some("Cmd+Alt+,"));
+        assert_eq!(shortcut_accelerators().open_folder, "Cmd+Alt+O");
+        assert_eq!(shortcut_accelerators().settings, "Cmd+Alt+,");
     }
 
     #[test]
@@ -623,11 +660,12 @@ mod tests {
     }
 
     #[test]
-    fn a_paused_recorder_frees_the_dock_open_folder_and_quit_keys() {
+    fn a_paused_recorder_frees_the_dock_open_folder_settings_and_quit_keys() {
         let paused = paused_accelerators(&ShortcutAccelerators {
             terminal: "Cmd+J".to_owned(),
             browser: "Cmd+Shift+K".to_owned(),
             open_folder: "Cmd+Alt+O".to_owned(),
+            settings: "Cmd+,".to_owned(),
         });
         let items: Vec<_> = paused
             .iter()
@@ -639,6 +677,7 @@ mod tests {
                 (VIEW_MENU, TOGGLE_TERMINAL_ITEM, "Cmd+J"),
                 (VIEW_MENU, TOGGLE_BROWSER_ITEM, "Cmd+Shift+K"),
                 (FILE_MENU, OPEN_FOLDER_ITEM, "Cmd+Alt+O"),
+                (APP_MENU, SETTINGS_ITEM, "Cmd+,"),
                 (APP_MENU, QUIT_ITEM, QUIT_ACCELERATOR),
             ]
         );
@@ -665,7 +704,13 @@ mod tests {
     fn only_undo_and_redo_wait_for_the_main_window() {
         assert!(edits_main_document("edit_undo"));
         assert!(edits_main_document("edit_redo"));
-        for id in ["toggle_terminal", "toggle_browser", "open_folder", "about"] {
+        for id in [
+            "toggle_terminal",
+            "toggle_browser",
+            "open_folder",
+            "open_settings",
+            "about",
+        ] {
             assert!(!edits_main_document(id), "{id}");
         }
     }
@@ -683,12 +728,31 @@ mod tests {
     }
 
     #[test]
-    fn the_open_folder_shortcut_follows_the_binding_when_one_is_sent() {
+    fn the_open_folder_and_settings_shortcuts_follow_the_binding_when_one_is_sent() {
         assert_eq!(
-            file_accelerator_updates(Some("Cmd+Shift+O")),
-            [("open_folder", "Cmd+Shift+O")]
+            optional_accelerator_updates(Some("Cmd+Shift+O"), None),
+            [(FILE_MENU, "open_folder", "Cmd+Shift+O")]
         );
-        assert!(file_accelerator_updates(None).is_empty());
+        assert_eq!(
+            optional_accelerator_updates(None, Some("Cmd+,")),
+            [(APP_MENU, "open_settings", "Cmd+,")]
+        );
+        assert_eq!(
+            optional_accelerator_updates(Some("Cmd+Shift+O"), Some("Ctrl+,")),
+            [
+                (FILE_MENU, "open_folder", "Cmd+Shift+O"),
+                (APP_MENU, "open_settings", "Ctrl+,"),
+            ]
+        );
+        assert!(optional_accelerator_updates(None, None).is_empty());
+    }
+
+    #[test]
+    fn the_settings_shortcut_is_one_the_menu_can_register() {
+        assert_eq!(
+            unregistrable_accelerator(&[SETTINGS_ACCELERATOR, "Cmd+,", "Ctrl+Alt+,"]),
+            None
+        );
     }
 
     #[test]

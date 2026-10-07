@@ -5,6 +5,8 @@ import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 
 const themeMocks = vi.hoisted(() => ({
   preference: "system" as "system" | "light" | "dark",
@@ -46,6 +48,15 @@ describe("HomeDock", () => {
     expect(screen.getByTestId("open-latex-tools")).toBeInTheDocument();
     expect(screen.getByTestId("home-theme-menu")).toBeInTheDocument();
     expect(screen.getByTestId("open-settings")).toBeInTheDocument();
+  });
+
+  it("shows the settings shortcut in the tooltip but keeps the button name plain", async () => {
+    render(<HomeDock />);
+    const button = screen.getByRole("button", { name: enLibrary.dock.settings });
+    fireEvent.mouseEnter(button.parentElement ?? button);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      `${enLibrary.dock.settings} (${shortcutLabel(useShortcutStore.getState().bindings.openSettings)})`,
+    );
   });
 
   it("hides the LaTeX tools action when the experimental setting is off", () => {

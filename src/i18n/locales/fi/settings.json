@@ -533,7 +533,7 @@
         "right": "Oikealla"
       },
       "font": {
-        "description": "Käyttää järjestelmän varafonttia, jos fonttia ei ole asennettu.",
+        "description": "Valitse valikoille, paneeleille ja valintaikkunoille mikä tahansa tietokoneelle asennettu fontti.",
         "label": "Sovelluksen fontti"
       },
       "fontSize": {
@@ -633,8 +633,9 @@
         "label": "Automaattitäydennys"
       },
       "font": {
-        "description": "Valitse lähdetiedostoissa käytettävä tasalevyinen fontti.",
-        "label": "Editorin fontti"
+        "description": "Valitse lähdetiedostoille mikä tahansa tietokoneelle asennettu fontti.",
+        "label": "Editorin fontti",
+        "monospace": "Tasalevyinen"
       },
       "fontSize": {
         "description": "Aseta lähdekoodieditorin tekstikoko.",
@@ -671,8 +672,20 @@
         "options": {
           "compact": "Tiivis",
           "normal": "Normaali",
-          "wide": "Väljä"
-        }
+          "wide": "Väljä",
+          "custom": "Mukautettu"
+        },
+        "customLabel": "Mukautettu riviväli"
+      },
+      "cursorWidth": {
+        "label": "Kohdistimen leveys",
+        "description": "Määritä, kuinka paksu editorin kohdistin on."
+      },
+      "cursorColor": {
+        "label": "Kohdistimen väri",
+        "description": "Käyttää editorin teeman väriä, ellet valitse omaa.",
+        "pick": "Valitse editorin kohdistimen väri",
+        "useTheme": "Käytä teeman väriä"
       },
       "lineWrap": {
         "description": "Rivitä pitkät rivit sen sijaan että vieritettäisiin sivusuunnassa.",
@@ -1568,6 +1581,10 @@
       "openFolder": {
         "label": "Avaa kansio",
         "description": "Avaa tietokoneen kansio projektina."
+      },
+      "openSettings": {
+        "label": "Avaa asetukset",
+        "description": "Avaa Oleaflyn asetukset."
       }
     },
     "application": {

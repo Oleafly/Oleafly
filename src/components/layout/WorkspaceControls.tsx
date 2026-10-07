@@ -176,6 +176,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const terminalShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleTerminal));
   const browserShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleBrowser));
+  const settingsShortcut = useShortcutStore((s) => shortcutLabel(s.bindings.openSettings));
   const terminalLabel = terminalOpen
     ? t(($) => $.shell.dock.terminal.hide, { shortcut: terminalShortcut })
     : t(($) => $.shell.dock.terminal.show, { shortcut: terminalShortcut });
@@ -236,7 +237,13 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
         <ThemeMenu key={hideTheme ? "hidden" : "visible"} triggerClassName={dockBtn(false)} />
       </ToolbarAction>
       <ToolbarAction name="settings" order={TOOLBAR_OVERFLOW.settings} hidden={hideSettings}>
-        <Tooltip label={t(($) => $.shell.dock.settings)} side="bottom">
+        <Tooltip
+          label={t(($) => $.shell.rail.withShortcut, {
+            label: t(($) => $.shell.dock.settings),
+            shortcut: settingsShortcut,
+          })}
+          side="bottom"
+        >
           <Button type="button" variant="ghost" size="icon" className={dockBtn(false)}
             data-testid={hideSettings ? undefined : "open-settings"} aria-label={t(($) => $.shell.dock.settings)}
             onClick={() => setSettingsOpen(true)}><SettingsIcon className="size-4" /></Button>

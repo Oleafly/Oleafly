@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Palette, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
-import { cssColorToHex, readCssVariable } from "@/lib/css-color";
+import { cssColorToHex, readClassVariables, readCssVariable } from "@/lib/css-color";
 import { useTheme, type Theme } from "@/lib/theme";
 import {
   MAX_THEME_IMPORT_BYTES,
@@ -155,10 +155,18 @@ export function ThemeCustomization() {
     }
   };
 
+  const otherModeDefaults = useMemo(
+    () =>
+      editMode === theme
+        ? {}
+        : readClassVariables(editMode, THEME_TOKEN_NAMES.map((token) => `--${token}`)),
+    [editMode, theme],
+  );
+
   const effectiveColor = (token: ThemeTokenName): string => {
     const override = (tokenDrafts[editMode][token] ?? tokens[token] ?? "").trim();
     if (override) return override;
-    return editMode === theme ? readCssVariable(`--${token}`) : "";
+    return editMode === theme ? readCssVariable(`--${token}`) : (otherModeDefaults[`--${token}`] ?? "");
   };
 
   return (

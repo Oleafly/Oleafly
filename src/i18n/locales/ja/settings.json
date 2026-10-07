@@ -530,7 +530,7 @@
         "right": "右"
       },
       "font": {
-        "description": "フォントがインストールされていない場合は、システムの代替フォントを使います。",
+        "description": "メニュー、パネル、ダイアログに使うフォントを、コンピュータにインストールされているものから選びます。",
         "label": "アプリのフォント"
       },
       "fontSize": {
@@ -628,8 +628,9 @@
         "label": "自動補完"
       },
       "font": {
-        "description": "ソースファイルに使う等幅フォントを選びます。",
-        "label": "エディタのフォント"
+        "description": "ソースファイルに使うフォントを、コンピュータにインストールされているものから選びます。",
+        "label": "エディタのフォント",
+        "monospace": "等幅"
       },
       "fontSize": {
         "description": "ソースエディタの文字の大きさを設定します。",
@@ -666,8 +667,20 @@
         "options": {
           "compact": "狭い",
           "normal": "標準",
-          "wide": "広い"
-        }
+          "wide": "広い",
+          "custom": "カスタム"
+        },
+        "customLabel": "カスタムの行の高さ"
+      },
+      "cursorWidth": {
+        "label": "カーソルの幅",
+        "description": "エディタのカーソルの太さを設定します。"
+      },
+      "cursorColor": {
+        "label": "カーソルの色",
+        "description": "色を選ばない場合は、エディタのテーマの色を使います。",
+        "pick": "エディタのカーソルの色を選ぶ",
+        "useTheme": "テーマの色を使う"
       },
       "lineWrap": {
         "description": "横スクロールの代わりに、長い行を折り返します。",
@@ -1550,6 +1563,10 @@
       "openFolder": {
         "label": "フォルダを開く",
         "description": "コンピュータ上のフォルダをプロジェクトとして開きます。"
+      },
+      "openSettings": {
+        "label": "設定を開く",
+        "description": "Oleafly の設定を開きます。"
       }
     },
     "application": {

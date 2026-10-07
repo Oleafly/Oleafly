@@ -494,11 +494,13 @@ export function registerOmnibarCommands() {
   });
   registerCommand({
     id: "omnibar.settings",
-    surfaces: ["omnibar"],
+    surfaces: ["omnibar", "palette"],
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
     label: () => i18n.t(($) => $.shell.commands.settings.label),
     keywords: () =>
       `${i18n.t(($) => $.shell.commands.settings.keywords)} ${ENGLISH_KEYWORDS.settings}`,
     icon: () => <Settings className="size-4" />,
+    hint: () => shortcutLabel(useShortcutStore.getState().bindings.openSettings),
     order: 50,
     run: () => useSettingsStore.getState().setSettingsOpen(true),
   });

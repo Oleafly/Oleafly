@@ -533,7 +533,7 @@
         "right": "Høyre"
       },
       "font": {
-        "description": "Bruker systemets reserveskrift når en skrift ikke er installert.",
+        "description": "Velg hvilken som helst skrift som er installert på datamaskinen, for menyer, paneler og dialogbokser.",
         "label": "Appskrift"
       },
       "fontSize": {
@@ -633,8 +633,9 @@
         "label": "Autofullføring"
       },
       "font": {
-        "description": "Velg skriften med fast bredde som brukes i kildefiler.",
-        "label": "Editorskrift"
+        "description": "Velg hvilken som helst skrift som er installert på datamaskinen, for kildefiler.",
+        "label": "Editorskrift",
+        "monospace": "Fast bredde"
       },
       "fontSize": {
         "description": "Sett tekststørrelsen i kildeeditoren.",
@@ -671,8 +672,20 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Vanlig",
-          "wide": "Luftig"
-        }
+          "wide": "Luftig",
+          "custom": "Egendefinert"
+        },
+        "customLabel": "Egendefinert linjeavstand"
+      },
+      "cursorWidth": {
+        "label": "Markørbredde",
+        "description": "Angi hvor tykk markøren i editoren er."
+      },
+      "cursorColor": {
+        "label": "Markørfarge",
+        "description": "Bruker fargen fra editortemaet med mindre du velger din egen.",
+        "pick": "Velg markørfargen i editoren",
+        "useTheme": "Bruk temafargen"
       },
       "lineWrap": {
         "description": "Brett lange linjer i stedet for å rulle sidelengs.",
@@ -1568,6 +1581,10 @@
       "openFolder": {
         "label": "Åpne mappe",
         "description": "Åpne en mappe fra datamaskinen som et prosjekt."
+      },
+      "openSettings": {
+        "label": "Åpne innstillingene",
+        "description": "Åpne innstillingene for Oleafly."
       }
     },
     "application": {

@@ -296,10 +296,17 @@ Reset to defaults at the foot of Appearance.
 
 - Keybindings: Default, Vim or Emacs. See
   [KeyboardShortcuts.md](KeyboardShortcuts.md) for what each mode binds.
-- Editor font size, editor font and editor theme.
+- Editor font size, editor font and editor theme. The font list holds every
+  font installed on the computer, monospaced ones first, and a typed name
+  works even when the list doesn't show it. Rust lists the fonts with
+  `fontdb`, the same way Typst finds system fonts.
 - Tab size: 2, 4 or 8 spaces. It sets the indent unit and the width a
   literal tab renders at.
-- Line height: compact (1.4), normal (1.7) or wide (2.0).
+- Line height: compact (1.4), normal (1.7), wide (2.0) or custom, which takes
+  any value from 1 to 3 in steps of 0.05.
+- Cursor width: 1, 2 or 3 pixels.
+- Cursor color: the editor theme's color until you pick one. Use theme color
+  goes back to it.
 - Wrap long lines: on by default. Turn it off and the editor scrolls
   sideways instead.
 - Auto-complete, auto-close brackets, auto-close math, auto-close

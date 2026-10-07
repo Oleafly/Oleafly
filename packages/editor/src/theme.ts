@@ -35,7 +35,7 @@ const chromeTheme = EditorView.theme({
     overflow: "auto",
   },
   ".cm-content": {
-    caretColor: "var(--cm-cursor, var(--primary))",
+    caretColor: "var(--cm-cursor-custom, var(--cm-cursor, var(--primary)))",
     padding: "10px 0",
   },
   ".cm-gutters": {
@@ -69,8 +69,9 @@ const chromeTheme = EditorView.theme({
       "var(--cm-selection, var(--cm-selection-default, color-mix(in srgb, var(--primary) 30%, var(--background)))) !important",
   },
   ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "var(--cm-cursor, var(--primary))",
-    borderLeftWidth: "1px",
+    borderLeftColor: "var(--cm-cursor-custom, var(--cm-cursor, var(--primary)))",
+    borderLeftWidth: "var(--cm-cursor-width, 1px)",
+    marginLeft: "calc(var(--cm-cursor-width, 1px) / -2)",
   },
   // The search panel is a floating widget that draws its own surface, so the
   // panel container stays transparent. Painting it here put an opaque strip

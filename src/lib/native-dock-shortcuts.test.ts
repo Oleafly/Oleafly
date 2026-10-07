@@ -153,6 +153,7 @@ describe("native dock shortcuts", () => {
         terminalAccelerator: "Ctrl+`",
         browserAccelerator: "Ctrl+Shift+B",
         openFolderAccelerator: "Cmd+Shift+O",
+        settingsAccelerator: "Cmd+,",
       },
     );
 
@@ -169,6 +170,7 @@ describe("native dock shortcuts", () => {
           terminalAccelerator: "Ctrl+`",
           browserAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Shift+O",
+          settingsAccelerator: "Cmd+,",
         },
       );
     });
@@ -182,6 +184,21 @@ describe("native dock shortcuts", () => {
           terminalAccelerator: "Ctrl+`",
           browserAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Alt+K",
+          settingsAccelerator: "Cmd+,",
+        },
+      );
+    });
+
+    useShortcutStore.getState().setBinding("openSettings", { key: ".", mod: true, alt: true });
+
+    await vi.waitFor(() => {
+      expect(native.invoke).toHaveBeenLastCalledWith(
+        "set_dock_shortcut_accelerators",
+        {
+          terminalAccelerator: "Ctrl+`",
+          browserAccelerator: "Ctrl+Shift+E",
+          openFolderAccelerator: "Cmd+Alt+K",
+          settingsAccelerator: "Cmd+Alt+.",
         },
       );
     });

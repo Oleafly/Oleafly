@@ -533,7 +533,7 @@
         "right": "Höger"
       },
       "font": {
-        "description": "Använder systemets reservtypsnitt när ett typsnitt inte är installerat.",
+        "description": "Välj valfritt typsnitt som är installerat på datorn för menyer, paneler och dialogrutor.",
         "label": "Appens typsnitt"
       },
       "fontSize": {
@@ -633,8 +633,9 @@
         "label": "Automatisk komplettering"
       },
       "font": {
-        "description": "Välj typsnittet med fast bredd som används för källfiler.",
-        "label": "Redigerarens typsnitt"
+        "description": "Välj valfritt typsnitt som är installerat på datorn för källfiler.",
+        "label": "Redigerarens typsnitt",
+        "monospace": "Fast bredd"
       },
       "fontSize": {
         "description": "Ange textstorleken i källkodsredigeraren.",
@@ -671,8 +672,20 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Normal",
-          "wide": "Bred"
-        }
+          "wide": "Bred",
+          "custom": "Anpassad"
+        },
+        "customLabel": "Anpassad radhöjd"
+      },
+      "cursorWidth": {
+        "label": "Markörbredd",
+        "description": "Ange hur tjock redigerarens markör är."
+      },
+      "cursorColor": {
+        "label": "Markörfärg",
+        "description": "Använder redigerartemats färg om du inte väljer en egen.",
+        "pick": "Välj färg för redigerarens markör",
+        "useTheme": "Använd temats färg"
       },
       "lineWrap": {
         "description": "Bryt långa rader i stället för att rulla i sidled.",
@@ -1568,6 +1581,10 @@
       "openFolder": {
         "label": "Öppna mapp",
         "description": "Öppna en mapp från datorn som ett projekt."
+      },
+      "openSettings": {
+        "label": "Öppna inställningar",
+        "description": "Öppna inställningarna för Oleafly."
       }
     },
     "application": {

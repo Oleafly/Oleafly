@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Cmd+, opens Settings on macOS, and Ctrl+, does the same on Windows and
+  Linux. On macOS the Oleafly menu also has a Settings item. You can change
+  the shortcut in Settings > Keyboard Shortcuts, and the Settings button's
+  tooltip and the command palette show the current one (#256).
+- The editor font and the app font can be any font installed on your
+  computer. The editor's list puts monospaced fonts first, you can type to
+  search either list, and a name it doesn't show still works if you type it
+  in full. Line height has a Custom choice for an exact value from 1 to 3.
+  New Cursor width and Cursor color settings make the editor cursor 1, 2 or
+  3 pixels wide and give it your own color instead of the theme's (#257).
+
+### Fixed
+
+- The App font setting in Appearance now changes the font of the whole
+  interface. Before, it had no visible effect.
+- Theme customization shows the default colors of the light palette while
+  the app is dark, and of the dark palette while it is light. The swatches
+  of the mode you weren't using were blank.
+
 ## [0.4.5] - 2026-10-05
 
 ### Changed

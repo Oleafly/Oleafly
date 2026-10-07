@@ -530,7 +530,7 @@
         "right": "右侧"
       },
       "font": {
-        "description": "未安装某字体时使用系统回退字体。",
+        "description": "为菜单、面板和对话框选择电脑上已安装的任意字体。",
         "label": "应用字体"
       },
       "fontSize": {
@@ -628,8 +628,9 @@
         "label": "自动补全"
       },
       "font": {
-        "description": "选择源码文件使用的等宽字体。",
-        "label": "编辑器字体"
+        "description": "为源码文件选择电脑上已安装的任意字体。",
+        "label": "编辑器字体",
+        "monospace": "等宽"
       },
       "fontSize": {
         "description": "设置源码编辑器的文字大小。",
@@ -666,8 +667,20 @@
         "options": {
           "compact": "紧凑",
           "normal": "标准",
-          "wide": "宽松"
-        }
+          "wide": "宽松",
+          "custom": "自定义"
+        },
+        "customLabel": "自定义行高"
+      },
+      "cursorWidth": {
+        "label": "光标宽度",
+        "description": "设置编辑器光标的粗细。"
+      },
+      "cursorColor": {
+        "label": "光标颜色",
+        "description": "未自选颜色时使用编辑器主题的颜色。",
+        "pick": "选择编辑器光标颜色",
+        "useTheme": "使用主题颜色"
       },
       "lineWrap": {
         "description": "自动换行显示长行，而不是左右滚动。",
@@ -1550,6 +1563,10 @@
       "openFolder": {
         "label": "打开文件夹",
         "description": "将电脑上的文件夹作为项目打开。"
+      },
+      "openSettings": {
+        "label": "打开设置",
+        "description": "打开 Oleafly 设置。"
       }
     },
     "application": {

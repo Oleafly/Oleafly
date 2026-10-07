@@ -539,7 +539,7 @@
         "right": "Vpravo"
       },
       "font": {
-        "description": "Pokud písmo není nainstalované, použije se systémová náhrada.",
+        "description": "Zvolte pro nabídky, panely a dialogy libovolné písmo nainstalované v počítači.",
         "label": "Písmo aplikace"
       },
       "fontSize": {
@@ -643,8 +643,9 @@
         "label": "Automatické doplňování"
       },
       "font": {
-        "description": "Zvolte neproporcionální písmo používané pro zdrojové soubory.",
-        "label": "Písmo editoru"
+        "description": "Zvolte pro zdrojové soubory libovolné písmo nainstalované v počítači.",
+        "label": "Písmo editoru",
+        "monospace": "Neproporcionální"
       },
       "fontSize": {
         "description": "Nastavte velikost textu ve zdrojovém editoru.",
@@ -681,8 +682,20 @@
         "options": {
           "compact": "Kompaktní",
           "normal": "Normální",
-          "wide": "Široká"
-        }
+          "wide": "Široká",
+          "custom": "Vlastní"
+        },
+        "customLabel": "Vlastní výška řádku"
+      },
+      "cursorWidth": {
+        "label": "Šířka kurzoru",
+        "description": "Nastavte, jak silný má být kurzor editoru."
+      },
+      "cursorColor": {
+        "label": "Barva kurzoru",
+        "description": "Používá barvu motivu editoru, dokud nevyberete vlastní.",
+        "pick": "Vybrat barvu kurzoru editoru",
+        "useTheme": "Použít barvu motivu"
       },
       "lineWrap": {
         "description": "Zalamovat dlouhé řádky místo vodorovného posouvání.",
@@ -1604,6 +1617,10 @@
       "openFolder": {
         "label": "Otevřít složku",
         "description": "Otevřít složku z počítače jako projekt."
+      },
+      "openSettings": {
+        "label": "Otevřít nastavení",
+        "description": "Otevřít nastavení aplikace Oleafly."
       }
     },
     "application": {

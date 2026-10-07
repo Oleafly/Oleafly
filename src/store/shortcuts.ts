@@ -11,7 +11,8 @@ export type ShortcutId =
   | "toggleTerminal"
   | "toggleBrowser"
   | "toggleSidebar"
-  | "openFolder";
+  | "openFolder"
+  | "openSettings";
 
 export interface ShortcutBinding {
   key: string;
@@ -72,6 +73,10 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: "openFolder",
     defaultBinding: { key: "o", mod: true, shift: true },
+  },
+  {
+    id: "openSettings",
+    defaultBinding: { key: ",", mod: true },
   },
 ];
 

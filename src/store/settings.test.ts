@@ -3,7 +3,10 @@ import {
   BROWSER_SEARCH_ENGINES,
   DEFAULT_HIDDEN_FILE_PATTERNS,
   DEFAULT_TERMINAL_FONT_FAMILY,
+  EDITOR_LINE_HEIGHTS,
   TERMINAL_COLOR_THEMES,
+  clampEditorLineHeight,
+  editorLineHeightValue,
   fileTreePathIsHidden,
   resolveTerminalColorTheme,
   sectionDiffersFromDefaults,
@@ -373,6 +376,69 @@ describe("useSettingsStore reset", () => {
     settings.resetToDefaults();
   });
 
+  it("keeps a custom line height inside the allowed range", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorLineHeight("custom");
+    settings.setEditorCustomLineHeight(1.55);
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorLineHeight: "custom",
+      editorCustomLineHeight: 1.55,
+    });
+    expect(localStorage.getItem("oleafly.editor.lineHeight")).toBe("custom");
+    expect(localStorage.getItem("oleafly.editor.lineHeightCustom")).toBe("1.55");
+
+    settings.setEditorCustomLineHeight(9);
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(3);
+    settings.setEditorCustomLineHeight(0.2);
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(1);
+    settings.setEditorCustomLineHeight(Number.NaN);
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(EDITOR_LINE_HEIGHTS.normal);
+
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorLineHeight: "normal",
+      editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
+    });
+  });
+
+  it("offers cursor widths of one to three pixels and resets to one", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorCursorWidth(3);
+    expect(useSettingsStore.getState().editorCursorWidth).toBe(3);
+    expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("3");
+    settings.setEditorCursorWidth(7);
+    expect(useSettingsStore.getState().editorCursorWidth).toBe(1);
+    settings.setEditorCursorWidth(2);
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorCursorWidth).toBe(1);
+    expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("1");
+  });
+
+  it("keeps a valid custom cursor color and follows the theme otherwise", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState().editorCursorColor).toBe("");
+    settings.setEditorCursorColor("#FF8800");
+    expect(useSettingsStore.getState().editorCursorColor).toBe("#ff8800");
+    expect(localStorage.getItem("oleafly.editor.cursorColor")).toBe("#ff8800");
+    settings.setEditorCursorColor("orange");
+    expect(useSettingsStore.getState().editorCursorColor).toBe("");
+    settings.setEditorCursorColor("#123456");
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorCursorColor).toBe("");
+    expect(localStorage.getItem("oleafly.editor.cursorColor")).toBe("");
+  });
+
+  it("stores the editor font as the typed family name", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorFontFamily("iA Writer Mono S ");
+    expect(useSettingsStore.getState().editorFontFamily).toBe("iA Writer Mono S ");
+    settings.setEditorFontFamily("Fira\u0007 Code");
+    expect(localStorage.getItem("oleafly.editorFont")).toBe("Fira Code");
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorFontFamily).toBe("");
+  });
+
   it("rejects a tab size outside the offered set", () => {
     const settings = useSettingsStore.getState();
     settings.setEditorTabSize(3);
@@ -419,6 +485,63 @@ describe("editor keymap migration", () => {
       editorKeymap: "default",
       editorTabSize: 4,
       editorLineHeight: "normal",
+    });
+  });
+});
+
+describe("editor line height values", () => {
+  it("resolves presets and rounds a custom value to two decimals", () => {
+    expect(editorLineHeightValue("compact", 2.5)).toBe(1.4);
+    expect(editorLineHeightValue("wide", 2.5)).toBe(2);
+    expect(editorLineHeightValue("custom", 1.234)).toBe(1.23);
+    expect(clampEditorLineHeight(Number.POSITIVE_INFINITY)).toBe(EDITOR_LINE_HEIGHTS.normal);
+  });
+});
+
+describe("editor appearance migration", () => {
+  it("turns a stored font stack into its first family name", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editorFont", '"JetBrains Mono", ui-monospace, monospace');
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState().editorFontFamily).toBe("JetBrains Mono");
+    expect(localStorage.getItem("oleafly.editorFont")).toBe("JetBrains Mono");
+  });
+
+  it("turns a stored app font stack into its first family name", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.appFont", '"Helvetica Neue", Helvetica, Arial, sans-serif');
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState().appFontFamily).toBe("Helvetica Neue");
+    expect(localStorage.getItem("oleafly.appFont")).toBe("Helvetica Neue");
+  });
+
+  it("keeps a plain family name and reads the custom line height and cursor width", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editorFont", "  iA Writer Quattro S ");
+    lsValues.set("oleafly.editor.lineHeight", "custom");
+    lsValues.set("oleafly.editor.lineHeightCustom", "1.62");
+    lsValues.set("oleafly.editor.cursorWidth", "2");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState()).toMatchObject({
+      editorFontFamily: "iA Writer Quattro S",
+      editorLineHeight: "custom",
+      editorCustomLineHeight: 1.62,
+      editorCursorWidth: 2,
+    });
+  });
+
+  it("falls back for a bad custom line height or cursor width", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editor.lineHeightCustom", "tall");
+    lsValues.set("oleafly.editor.cursorWidth", "9");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState()).toMatchObject({
+      editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
+      editorCursorWidth: 1,
     });
   });
 });

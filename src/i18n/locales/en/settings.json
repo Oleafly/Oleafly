@@ -533,7 +533,7 @@
         "right": "Right"
       },
       "font": {
-        "description": "Uses the system fallback when a font is not installed.",
+        "description": "Choose any font installed on your computer for menus, panels and dialogs.",
         "label": "App font"
       },
       "fontSize": {
@@ -633,8 +633,9 @@
         "label": "Auto-complete"
       },
       "font": {
-        "description": "Choose the monospace font used for source files.",
-        "label": "Editor font"
+        "description": "Choose any font installed on your computer for source files.",
+        "label": "Editor font",
+        "monospace": "Monospaced"
       },
       "fontSize": {
         "description": "Set the source editor's text size.",
@@ -671,8 +672,20 @@
         "options": {
           "compact": "Compact",
           "normal": "Normal",
-          "wide": "Wide"
-        }
+          "wide": "Wide",
+          "custom": "Custom"
+        },
+        "customLabel": "Custom line height"
+      },
+      "cursorWidth": {
+        "label": "Cursor width",
+        "description": "Set how thick the editor cursor is."
+      },
+      "cursorColor": {
+        "label": "Cursor color",
+        "description": "Uses the editor theme's color unless you pick your own.",
+        "pick": "Pick the editor cursor color",
+        "useTheme": "Use theme color"
       },
       "lineWrap": {
         "description": "Wrap long lines instead of scrolling sideways.",
@@ -1568,6 +1581,10 @@
       "openFolder": {
         "label": "Open folder",
         "description": "Open a folder from your computer as a project."
+      },
+      "openSettings": {
+        "label": "Open settings",
+        "description": "Open Oleafly's settings."
       }
     },
     "application": {

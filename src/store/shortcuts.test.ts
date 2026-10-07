@@ -283,6 +283,20 @@ describe("shortcut bindings", () => {
     ).toEqual([]);
   });
 
+  it("opens settings with Cmd or Ctrl+Comma by default, without clashing with another action", async () => {
+    const { SHORTCUT_DEFINITIONS, sameShortcutBinding, useShortcutStore } = await import(
+      "@/store/shortcuts"
+    );
+    const openSettings = useShortcutStore.getState().bindings.openSettings;
+
+    expect(openSettings).toEqual({ key: ",", mod: true });
+    expect(
+      SHORTCUT_DEFINITIONS.filter(({ id, defaultBinding }) =>
+        id !== "openSettings" && sameShortcutBinding(defaultBinding, openSettings),
+      ),
+    ).toEqual([]);
+  });
+
   it("persists edits and restores individual and global defaults", async () => {
     const { useShortcutStore } = await import("@/store/shortcuts");
 

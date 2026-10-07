@@ -539,7 +539,7 @@
         "right": "Po prawej"
       },
       "font": {
-        "description": "Gdy krój nie jest zainstalowany, używany jest krój systemowy.",
+        "description": "Wybierz dla menu, paneli i okien dialogowych dowolny krój pisma zainstalowany na komputerze.",
         "label": "Krój pisma aplikacji"
       },
       "fontSize": {
@@ -643,8 +643,9 @@
         "label": "Autouzupełnianie"
       },
       "font": {
-        "description": "Wybierz krój o stałej szerokości używany w plikach źródłowych.",
-        "label": "Krój pisma edytora"
+        "description": "Wybierz dla plików źródłowych dowolny krój pisma zainstalowany na komputerze.",
+        "label": "Krój pisma edytora",
+        "monospace": "Stała szerokość"
       },
       "fontSize": {
         "description": "Ustal rozmiar tekstu w edytorze kodu źródłowego.",
@@ -681,8 +682,20 @@
         "options": {
           "compact": "Zwarta",
           "normal": "Zwykła",
-          "wide": "Szeroka"
-        }
+          "wide": "Szeroka",
+          "custom": "Niestandardowa"
+        },
+        "customLabel": "Niestandardowa wysokość wiersza"
+      },
+      "cursorWidth": {
+        "label": "Szerokość kursora",
+        "description": "Ustaw grubość kursora edytora."
+      },
+      "cursorColor": {
+        "label": "Kolor kursora",
+        "description": "Używa koloru motywu edytora, chyba że wybierzesz własny.",
+        "pick": "Wybierz kolor kursora edytora",
+        "useTheme": "Użyj koloru motywu"
       },
       "lineWrap": {
         "description": "Zawijaj długie wiersze zamiast przewijać w bok.",
@@ -1604,6 +1617,10 @@
       "openFolder": {
         "label": "Otwórz folder",
         "description": "Otwórz folder z komputera jako projekt."
+      },
+      "openSettings": {
+        "label": "Otwórz ustawienia",
+        "description": "Otwórz ustawienia Oleafly."
       }
     },
     "application": {

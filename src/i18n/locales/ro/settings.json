@@ -536,7 +536,7 @@
         "right": "Dreapta"
       },
       "font": {
-        "description": "Folosește fontul de rezervă al sistemului atunci când un font nu este instalat.",
+        "description": "Alege pentru meniuri, panouri și dialoguri orice font instalat pe computer.",
         "label": "Fontul aplicației"
       },
       "fontSize": {
@@ -638,8 +638,9 @@
         "label": "Completare automată"
       },
       "font": {
-        "description": "Alege fontul monospațiat folosit pentru fișierele sursă.",
-        "label": "Fontul editorului"
+        "description": "Alege pentru fișierele sursă orice font instalat pe computer.",
+        "label": "Fontul editorului",
+        "monospace": "Monospațiat"
       },
       "fontSize": {
         "description": "Stabilește dimensiunea textului din editorul de sursă.",
@@ -676,8 +677,20 @@
         "options": {
           "compact": "Compactă",
           "normal": "Normală",
-          "wide": "Largă"
-        }
+          "wide": "Largă",
+          "custom": "Personalizată"
+        },
+        "customLabel": "Înălțime personalizată a liniei"
+      },
+      "cursorWidth": {
+        "label": "Lățimea cursorului",
+        "description": "Setează cât de gros este cursorul din editor."
+      },
+      "cursorColor": {
+        "label": "Culoarea cursorului",
+        "description": "Folosește culoarea temei editorului, dacă nu alegi alta.",
+        "pick": "Alege culoarea cursorului din editor",
+        "useTheme": "Folosește culoarea temei"
       },
       "lineWrap": {
         "description": "Rupe liniile lungi în loc să derulezi lateral.",
@@ -1586,6 +1599,10 @@
       "openFolder": {
         "label": "Deschide un folder",
         "description": "Deschide un folder de pe computer ca proiect."
+      },
+      "openSettings": {
+        "label": "Deschide setările",
+        "description": "Deschide setările Oleafly."
       }
     },
     "application": {

@@ -107,3 +107,11 @@ describe("resizable panels", () => {
     );
   });
 });
+
+describe("app font", () => {
+  it("leads every interface font stack with the chosen app font", () => {
+    const stacks = [...styles.matchAll(/--font-sans:\s*([^;]+);/gu)].map(([, stack]) => stack);
+    expect(stacks).toHaveLength(5);
+    for (const stack of stacks) expect(stack.startsWith('var(--app-font, "Geist"), ')).toBe(true);
+  });
+});

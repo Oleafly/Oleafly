@@ -205,6 +205,23 @@
         "block": "Terminal cursor drawn as a filled rectangle.",
         "underline": "Terminal cursor drawn as a line under the character."
       }
+    },
+    "editor": {
+      "font": {
+        "monospace": "Badge on a font in the font list whose letters all have the same width."
+      },
+      "lineHeight": {
+        "options": {
+          "custom": "Line height choice that shows a number field for an exact value."
+        },
+        "customLabel": "Accessible name of the number field where the user types an exact line height, such as 1.5."
+      },
+      "cursorWidth": {
+        "label": "Row label for the thickness, in pixels, of the text cursor in the source editor."
+      },
+      "cursorColor": {
+        "useTheme": "Button that clears the custom cursor color so the cursor follows the editor theme again."
+      }
     }
   },
   "citations": {
@@ -434,6 +451,11 @@
     },
     "tabs": {
       "application": "Tab label for shortcuts the user can rebind, as opposed to editor shortcuts."
+    },
+    "actions": {
+      "openSettings": {
+        "label": "Name of the keyboard shortcut that opens the Settings window."
+      }
     }
   },
   "systemIntegration": {

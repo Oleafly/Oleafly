@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
 import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
+import {
+  fontFamilyName,
+  primaryFontFamily,
+  withoutControlCharacters,
+} from "@/lib/font-families";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -511,7 +516,7 @@ function readTerminalCursorStyle(raw: string): TerminalCursorStyle {
 function readTerminalColorTheme(raw: string): TerminalColorThemeId {
   return raw in TERMINAL_COLOR_THEMES ? (raw as TerminalColorThemeId) : "system";
 }
-function readTerminalColor(raw: string, fallback: string): string {
+function readHexColor(raw: string, fallback: string): string {
   return /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : fallback;
 }
 function readBrowserSearchEngine(raw: string): BrowserSearchEngineId {
@@ -729,9 +734,11 @@ export const EDITOR_KEYMAP_MODES: readonly EditorKeymapMode[] = [
   "emacs",
 ];
 
-export type EditorLineHeight = "compact" | "normal" | "wide";
+export type EditorLineHeightPreset = "compact" | "normal" | "wide";
 
-export const EDITOR_LINE_HEIGHTS: Readonly<Record<EditorLineHeight, number>> = {
+export type EditorLineHeight = EditorLineHeightPreset | "custom";
+
+export const EDITOR_LINE_HEIGHTS: Readonly<Record<EditorLineHeightPreset, number>> = {
   compact: 1.4,
   normal: 1.7,
   wide: 2,
@@ -741,7 +748,22 @@ export const EDITOR_LINE_HEIGHT_OPTIONS: readonly EditorLineHeight[] = [
   "compact",
   "normal",
   "wide",
+  "custom",
 ];
+
+export const EDITOR_CUSTOM_LINE_HEIGHT = { min: 1, max: 3, step: 0.05 } as const;
+
+export function clampEditorLineHeight(value: number): number {
+  if (!Number.isFinite(value)) return EDITOR_LINE_HEIGHTS.normal;
+  const { min, max } = EDITOR_CUSTOM_LINE_HEIGHT;
+  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100;
+}
+
+export function editorLineHeightValue(choice: EditorLineHeight, custom: number): number {
+  return choice === "custom" ? clampEditorLineHeight(custom) : EDITOR_LINE_HEIGHTS[choice];
+}
+
+export const EDITOR_CURSOR_WIDTHS: readonly number[] = [1, 2, 3];
 
 export const EDITOR_TAB_SIZES: readonly number[] = [2, 4, 8];
 
@@ -760,6 +782,12 @@ interface SettingsState {
   setEditorLineWrap: (v: boolean) => void;
   editorLineHeight: EditorLineHeight;
   setEditorLineHeight: (v: EditorLineHeight) => void;
+  editorCustomLineHeight: number;
+  setEditorCustomLineHeight: (v: number) => void;
+  editorCursorWidth: number;
+  setEditorCursorWidth: (v: number) => void;
+  editorCursorColor: string;
+  setEditorCursorColor: (v: string) => void;
   /** Completion popups while typing (Ctrl+Space always works). */
   editorAutocomplete: boolean;
   setEditorAutocomplete: (v: boolean) => void;
@@ -975,6 +1003,21 @@ function readEditorLineHeight(): EditorLineHeight {
     : "normal";
 }
 
+function readEditorCustomLineHeight(): number {
+  const stored = ls("oleafly.editor.lineHeightCustom", "");
+  return stored === ""
+    ? EDITOR_LINE_HEIGHTS.normal
+    : clampEditorLineHeight(Number(stored));
+}
+
+function readFontFamilySetting(key: string): string {
+  const stored = ls(key, "");
+  if (!stored.includes(",")) return fontFamilyName(stored);
+  const family = primaryFontFamily(stored);
+  saveLs(key, family);
+  return family;
+}
+
 function readChoice(key: string, choices: readonly number[], fallback: number): number {
   const stored = Number(ls(key, ""));
   return choices.includes(stored) ? stored : fallback;
@@ -988,6 +1031,9 @@ const PREF_DEFAULTS = {
   editorTabSize: 4,
   editorLineWrap: true,
   editorLineHeight: "normal" as EditorLineHeight,
+  editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
+  editorCursorWidth: 1,
+  editorCursorColor: "",
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
   editorAutoCloseMath: true,
@@ -1070,6 +1116,9 @@ const SECTION_SETTINGS = {
     editorTabSize: "oleafly.editor.tabSize",
     editorLineWrap: "oleafly.editor.lineWrap",
     editorLineHeight: "oleafly.editor.lineHeight",
+    editorCustomLineHeight: "oleafly.editor.lineHeightCustom",
+    editorCursorWidth: "oleafly.editor.cursorWidth",
+    editorCursorColor: "oleafly.editor.cursorColor",
     editorAutocomplete: "oleafly.editor.autocomplete",
     editorAutoCloseBrackets: "oleafly.editor.closeBrackets",
     editorAutoCloseMath: "oleafly.editor.closeMath",
@@ -1185,8 +1234,31 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   editorLineHeight: readEditorLineHeight(),
   setEditorLineHeight: (v) => {
-    saveLs("oleafly.editor.lineHeight", v);
-    set({ editorLineHeight: v });
+    const choice = EDITOR_LINE_HEIGHT_OPTIONS.includes(v) ? v : PREF_DEFAULTS.editorLineHeight;
+    saveLs("oleafly.editor.lineHeight", choice);
+    set({ editorLineHeight: choice });
+  },
+  editorCustomLineHeight: readEditorCustomLineHeight(),
+  setEditorCustomLineHeight: (v) => {
+    const value = clampEditorLineHeight(v);
+    saveLs("oleafly.editor.lineHeightCustom", String(value));
+    set({ editorCustomLineHeight: value });
+  },
+  editorCursorWidth: readChoice(
+    "oleafly.editor.cursorWidth",
+    EDITOR_CURSOR_WIDTHS,
+    PREF_DEFAULTS.editorCursorWidth,
+  ),
+  setEditorCursorWidth: (v) => {
+    const width = EDITOR_CURSOR_WIDTHS.includes(v) ? v : PREF_DEFAULTS.editorCursorWidth;
+    saveLs("oleafly.editor.cursorWidth", String(width));
+    set({ editorCursorWidth: width });
+  },
+  editorCursorColor: readHexColor(ls("oleafly.editor.cursorColor", ""), ""),
+  setEditorCursorColor: (v) => {
+    const color = readHexColor(v, "");
+    saveLs("oleafly.editor.cursorColor", color);
+    set({ editorCursorColor: color });
   },
   editorAutocomplete: ls("oleafly.editor.autocomplete", "1") !== "0",
   setEditorAutocomplete: (v) => {
@@ -1517,10 +1589,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.background;
-    return readTerminalColor(ls("oleafly.terminal.background", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.background", fallback), fallback);
   })(),
   setTerminalBackground: (v) => {
-    const value = readTerminalColor(v, get().terminalBackground);
+    const value = readHexColor(v, get().terminalBackground);
     saveLs("oleafly.terminal.background", value);
     set({ terminalBackground: value });
   },
@@ -1529,10 +1601,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.foreground;
-    return readTerminalColor(ls("oleafly.terminal.foreground", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.foreground", fallback), fallback);
   })(),
   setTerminalForeground: (v) => {
-    const value = readTerminalColor(v, get().terminalForeground);
+    const value = readHexColor(v, get().terminalForeground);
     saveLs("oleafly.terminal.foreground", value);
     set({ terminalForeground: value });
   },
@@ -1541,10 +1613,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.cursor;
-    return readTerminalColor(ls("oleafly.terminal.cursorColor", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.cursorColor", fallback), fallback);
   })(),
   setTerminalCursorColor: (v) => {
-    const value = readTerminalColor(v, get().terminalCursorColor);
+    const value = readHexColor(v, get().terminalCursorColor);
     saveLs("oleafly.terminal.cursorColor", value);
     set({ terminalCursorColor: value });
   },
@@ -1579,15 +1651,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.appFontSize", String(v));
     set({ appFontSize: v });
   },
-  appFontFamily: ls("oleafly.appFont", ""),
+  appFontFamily: readFontFamilySetting("oleafly.appFont"),
   setAppFontFamily: (v) => {
-    saveLs("oleafly.appFont", v);
-    set({ appFontFamily: v });
+    const family = withoutControlCharacters(v);
+    saveLs("oleafly.appFont", family);
+    set({ appFontFamily: family });
   },
-  editorFontFamily: ls("oleafly.editorFont", ""),
+  editorFontFamily: readFontFamilySetting("oleafly.editorFont"),
   setEditorFontFamily: (v) => {
-    saveLs("oleafly.editorFont", v);
-    set({ editorFontFamily: v });
+    const family = withoutControlCharacters(v);
+    saveLs("oleafly.editorFont", family);
+    set({ editorFontFamily: family });
   },
   editorTheme: readEditorTheme(ls("oleafly.editorTheme", "system")),
   setEditorTheme: (v) => {

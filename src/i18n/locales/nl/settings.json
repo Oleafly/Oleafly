@@ -533,7 +533,7 @@
         "right": "Rechts"
       },
       "font": {
-        "description": "Gebruikt het systeemlettertype als een lettertype niet is geïnstalleerd.",
+        "description": "Kies voor menu's, panelen en dialoogvensters een lettertype dat op je computer is geïnstalleerd.",
         "label": "Lettertype van de app"
       },
       "fontSize": {
@@ -633,8 +633,9 @@
         "label": "Automatisch aanvullen"
       },
       "font": {
-        "description": "Kies het lettertype met vaste breedte voor bronbestanden.",
-        "label": "Lettertype van de editor"
+        "description": "Kies voor bronbestanden een lettertype dat op je computer is geïnstalleerd.",
+        "label": "Lettertype van de editor",
+        "monospace": "Vaste breedte"
       },
       "fontSize": {
         "description": "Stel de tekstgrootte van de broncode-editor in.",
@@ -671,8 +672,20 @@
         "options": {
           "compact": "Compact",
           "normal": "Normaal",
-          "wide": "Ruim"
-        }
+          "wide": "Ruim",
+          "custom": "Aangepast"
+        },
+        "customLabel": "Aangepaste regelhoogte"
+      },
+      "cursorWidth": {
+        "label": "Cursorbreedte",
+        "description": "Stel in hoe dik de cursor in de editor is."
+      },
+      "cursorColor": {
+        "label": "Cursorkleur",
+        "description": "Gebruikt de kleur van het editorthema, tenzij je zelf een kleur kiest.",
+        "pick": "Kies de cursorkleur van de editor",
+        "useTheme": "Themakleur gebruiken"
       },
       "lineWrap": {
         "description": "Breek lange regels af in plaats van zijwaarts te scrollen.",
@@ -1568,6 +1581,10 @@
       "openFolder": {
         "label": "Map openen",
         "description": "Open een map van je computer als project."
+      },
+      "openSettings": {
+        "label": "Instellingen openen",
+        "description": "Open de instellingen van Oleafly."
       }
     },
     "application": {

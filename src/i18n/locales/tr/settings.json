@@ -533,7 +533,7 @@
         "right": "Sağ"
       },
       "font": {
-        "description": "Bir yazı tipi kurulu değilse sistem yedeğini kullanır.",
+        "description": "Menüler, paneller ve iletişim kutuları için bilgisayarınızda yüklü herhangi bir yazı tipini seçin.",
         "label": "Uygulama yazı tipi"
       },
       "fontSize": {
@@ -633,8 +633,9 @@
         "label": "Otomatik tamamlama"
       },
       "font": {
-        "description": "Kaynak dosyalar için kullanılan eş aralıklı yazı tipini seçin.",
-        "label": "Düzenleyici yazı tipi"
+        "description": "Kaynak dosyalar için bilgisayarınızda yüklü herhangi bir yazı tipini seçin.",
+        "label": "Düzenleyici yazı tipi",
+        "monospace": "Eş aralıklı"
       },
       "fontSize": {
         "description": "Kaynak düzenleyicinin metin boyutunu belirleyin.",
@@ -671,8 +672,20 @@
         "options": {
           "compact": "Sıkışık",
           "normal": "Normal",
-          "wide": "Geniş"
-        }
+          "wide": "Geniş",
+          "custom": "Özel"
+        },
+        "customLabel": "Özel satır yüksekliği"
+      },
+      "cursorWidth": {
+        "label": "İmleç genişliği",
+        "description": "Düzenleyici imlecinin kalınlığını ayarlar."
+      },
+      "cursorColor": {
+        "label": "İmleç rengi",
+        "description": "Kendiniz seçmezseniz düzenleyici temasının rengini kullanır.",
+        "pick": "Düzenleyici imleç rengini seçin",
+        "useTheme": "Tema rengini kullan"
       },
       "lineWrap": {
         "description": "Uzun satırları yana kaydırmak yerine alt satıra taşır.",
@@ -1568,6 +1581,10 @@
       "openFolder": {
         "label": "Klasör aç",
         "description": "Bilgisayarınızdaki bir klasörü proje olarak açın."
+      },
+      "openSettings": {
+        "label": "Ayarları aç",
+        "description": "Oleafly ayarlarını açar."
       }
     },
     "application": {

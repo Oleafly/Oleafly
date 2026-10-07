@@ -536,7 +536,7 @@
         "right": "Derecha"
       },
       "font": {
-        "description": "Usa la tipografía del sistema cuando la elegida no está instalada.",
+        "description": "Elige para menús, paneles y diálogos cualquier tipografía instalada en tu ordenador.",
         "label": "Tipografía de la aplicación"
       },
       "fontSize": {
@@ -638,8 +638,9 @@
         "label": "Autocompletado"
       },
       "font": {
-        "description": "Elige la tipografía monoespaciada de los archivos de código.",
-        "label": "Tipografía del editor"
+        "description": "Elige para los archivos de código cualquier tipografía instalada en tu ordenador.",
+        "label": "Tipografía del editor",
+        "monospace": "Monoespaciada"
       },
       "fontSize": {
         "description": "Define el tamaño del texto del editor de código.",
@@ -676,8 +677,20 @@
         "options": {
           "compact": "Compacto",
           "normal": "Normal",
-          "wide": "Amplio"
-        }
+          "wide": "Amplio",
+          "custom": "Personalizado"
+        },
+        "customLabel": "Interlineado personalizado"
+      },
+      "cursorWidth": {
+        "label": "Grosor del cursor",
+        "description": "Define el grosor del cursor del editor."
+      },
+      "cursorColor": {
+        "label": "Color del cursor",
+        "description": "Usa el color del tema del editor salvo que elijas uno propio.",
+        "pick": "Elegir el color del cursor del editor",
+        "useTheme": "Usar el color del tema"
       },
       "lineWrap": {
         "description": "Ajusta las líneas largas en lugar de desplazarse en horizontal.",
@@ -1586,6 +1599,10 @@
       "openFolder": {
         "label": "Abrir carpeta",
         "description": "Abre una carpeta de tu ordenador como proyecto."
+      },
+      "openSettings": {
+        "label": "Abrir los ajustes",
+        "description": "Abre los ajustes de Oleafly."
       }
     },
     "application": {

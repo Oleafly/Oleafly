@@ -454,13 +454,39 @@ describe("project workspace", () => {
     mocks.getEditorView.mockReturnValue({ contentDOM: document.createElement("div"), requestMeasure });
     await renderApp();
     const root = document.documentElement;
-    expect(root.style.fontFamily).toBe("Inter");
-    expect(root.style.getPropertyValue("--cm-font-family")).toBe("JetBrains Mono");
+    expect(root.style.getPropertyValue("--app-font")).toBe('"Inter"');
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe('"JetBrains Mono", var(--font-mono)');
     expect(root.style.fontSize).toBe("18px");
     expect(requestMeasure).toHaveBeenCalled();
     act(() => useSettingsStore.setState({ appFontFamily: "", editorFontFamily: "" }));
-    expect(root.style.fontFamily).toBe("");
+    expect(root.style.getPropertyValue("--app-font")).toBe("");
     expect(root.style.getPropertyValue("--cm-font-family")).toBe("");
+  });
+
+  it("applies the editor line height and cursor width to the document root", async () => {
+    useSettingsStore.setState({ editorLineHeight: "wide", editorCustomLineHeight: 1.55, editorCursorWidth: 1 });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-line-height")).toBe("2");
+    expect(root.style.getPropertyValue("--cm-cursor-width")).toBe("1px");
+    act(() => useSettingsStore.setState({ editorLineHeight: "custom", editorCursorWidth: 3 }));
+    expect(root.style.getPropertyValue("--cm-line-height")).toBe("1.55");
+    expect(root.style.getPropertyValue("--cm-cursor-width")).toBe("3px");
+  });
+
+  it("overrides the cursor color only while a custom one is set", async () => {
+    useSettingsStore.setState({ editorCursorColor: "#ff8800" });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-cursor-custom")).toBe("#ff8800");
+    act(() => useSettingsStore.setState({ editorCursorColor: "" }));
+    expect(root.style.getPropertyValue("--cm-cursor-custom")).toBe("");
+  });
+
+  it("falls back to the default editor font when the chosen name is only spaces", async () => {
+    useSettingsStore.setState({ editorFontFamily: "   " });
+    await renderApp();
+    expect(document.documentElement.style.getPropertyValue("--cm-font-family")).toBe("");
   });
 
   it("refreshes git status and open files when the window regains focus or becomes visible", async () => {
@@ -563,6 +589,33 @@ describe("keyboard shortcuts", () => {
     expect(event.defaultPrevented).toBe(true);
     expect(useCompileStore.getState().recompile).toHaveBeenCalled();
     expect(useSettingsStore.getState().viewMode).toBe("split");
+  });
+
+  it("opens settings from the settings shortcut, in a project and in the library", async () => {
+    await renderApp();
+    const event = keydown(window, { key: ",", ctrlKey: true });
+    expect(event.defaultPrevented).toBe(true);
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+
+    act(() => useSettingsStore.setState({ settingsOpen: false }));
+    act(() => useFilesStore.setState({ projectId: null }));
+    keydown(window, { key: ",", ctrlKey: true });
+    expect(useSettingsStore.getState().settingsOpen).toBe(true);
+  });
+
+  it("leaves the settings shortcut alone during a tour or once another handler took it", async () => {
+    await renderApp();
+    act(() => useTourStore.setState({ activeTourId: "home" }));
+    keydown(window, { key: ",", ctrlKey: true });
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+
+    act(() => useTourStore.setState({ activeTourId: null }));
+    const field = document.createElement("input");
+    document.body.append(field);
+    field.addEventListener("keydown", (event) => event.preventDefault());
+    keydown(field, { key: ",", ctrlKey: true });
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
+    field.remove();
   });
 
   it("runs forward search and ignores shortcuts during a tour", async () => {

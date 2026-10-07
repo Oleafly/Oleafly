@@ -536,7 +536,7 @@
         "right": "À direita"
       },
       "font": {
-        "description": "Usa a fonte alternativa do sistema quando a escolhida não está instalada.",
+        "description": "Escolha para menus, painéis e caixas de diálogo qualquer fonte instalada no seu computador.",
         "label": "Fonte do aplicativo"
       },
       "fontSize": {
@@ -638,8 +638,9 @@
         "label": "Autocompletar"
       },
       "font": {
-        "description": "Escolha a fonte monoespaçada usada nos arquivos de código.",
-        "label": "Fonte do editor"
+        "description": "Escolha para os arquivos de código qualquer fonte instalada no seu computador.",
+        "label": "Fonte do editor",
+        "monospace": "Monoespaçada"
       },
       "fontSize": {
         "description": "Define o tamanho do texto no editor de código.",
@@ -676,8 +677,20 @@
         "options": {
           "compact": "Compacta",
           "normal": "Normal",
-          "wide": "Ampla"
-        }
+          "wide": "Ampla",
+          "custom": "Personalizada"
+        },
+        "customLabel": "Altura da linha personalizada"
+      },
+      "cursorWidth": {
+        "label": "Largura do cursor",
+        "description": "Define a espessura do cursor do editor."
+      },
+      "cursorColor": {
+        "label": "Cor do cursor",
+        "description": "Usa a cor do tema do editor, a menos que você escolha outra.",
+        "pick": "Escolher a cor do cursor do editor",
+        "useTheme": "Usar a cor do tema"
       },
       "lineWrap": {
         "description": "Quebra as linhas longas em vez de rolar para o lado.",
@@ -1586,6 +1599,10 @@
       "openFolder": {
         "label": "Abrir pasta",
         "description": "Abra uma pasta do seu computador como projeto."
+      },
+      "openSettings": {
+        "label": "Abrir as configurações",
+        "description": "Abre as configurações do Oleafly."
       }
     },
     "application": {

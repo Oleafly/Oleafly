@@ -91,6 +91,21 @@ describe("ThemeCustomization", () => {
     expect(readThemeCustomization().light.background).toBeUndefined();
   });
 
+  it("shows the default colors of the mode that is not on screen", () => {
+    const palette = document.createElement("style");
+    palette.textContent = ".dark { --background: #101820; --primary: #4f7cff; }";
+    document.head.append(palette);
+    open();
+
+    fireEvent.click(screen.getByRole("button", { name: customTheme.modeDark }));
+    const swatch = (token: string) =>
+      screen.getByLabelText(customTheme.pickColorDark.replace("{{token}}", token)).parentElement;
+    expect(swatch(customTheme.tokens.background)).toHaveStyle({ backgroundColor: "#101820" });
+    expect(swatch(customTheme.tokens.primary)).toHaveStyle({ backgroundColor: "#4f7cff" });
+    expect(document.querySelector("body > .dark")).toBeNull();
+    palette.remove();
+  });
+
   it("edits the dark palette separately", async () => {
     open();
 

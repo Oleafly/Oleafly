@@ -38,3 +38,15 @@ export function readCssVariable(name: string): string {
   if (typeof document === "undefined" || typeof getComputedStyle !== "function") return "";
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
+
+export function readClassVariables(className: string, names: readonly string[]): Record<string, string> {
+  if (typeof document === "undefined" || typeof getComputedStyle !== "function") return {};
+  const probe = document.createElement("div");
+  probe.className = className;
+  probe.hidden = true;
+  document.body.append(probe);
+  const style = getComputedStyle(probe);
+  const values = Object.fromEntries(names.map((name) => [name, style.getPropertyValue(name).trim()]));
+  probe.remove();
+  return values;
+}

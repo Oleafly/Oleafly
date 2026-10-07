@@ -272,6 +272,72 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState().editorLineHeight).toBe("wide");
   });
 
+  it("shows an exact line height field only for the custom choice", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorCustomLineHeight: 1.7 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.queryByTestId("settings-editor-line-height-custom")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("settings-editor-line-height-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.lineHeight.options.custom }),
+    );
+    const field = screen.getByRole("spinbutton", { name: appearance.editor.lineHeight.customLabel });
+    expect(field).toHaveValue(1.7);
+
+    fireEvent.change(field, { target: { value: "1.55" } });
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorLineHeight: "custom",
+      editorCustomLineHeight: 1.55,
+    });
+
+    fireEvent.change(field, { target: { value: "8" } });
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(1.55);
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(3);
+    expect(field).toHaveValue(3);
+
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.blur(field);
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(3);
+    expect(field).toHaveValue(3);
+
+    act(() => useSettingsStore.setState({ editorCustomLineHeight: 1.7 }));
+    expect(field).toHaveValue(1.7);
+  });
+
+  it("picks a cursor color and goes back to the theme color", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorCursorColor: "" });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    const row = screen.getByTestId("settings-row-editor-cursor-color");
+    expect(within(row).queryByRole("button", { name: appearance.editor.cursorColor.useTheme })).toBeNull();
+
+    fireEvent.change(within(row).getByLabelText(appearance.editor.cursorColor.pick), {
+      target: { value: "#ff8800" },
+    });
+    expect(useSettingsStore.getState().editorCursorColor).toBe("#ff8800");
+
+    await user.click(within(row).getByRole("button", { name: appearance.editor.cursorColor.useTheme }));
+    expect(useSettingsStore.getState().editorCursorColor).toBe("");
+  });
+
+  it("changes the editor cursor width", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorCursorWidth: 1 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    const row = screen.getByTestId("settings-row-editor-cursor-width");
+    expect(row).toHaveTextContent(appearance.editor.cursorWidth.label);
+    await user.click(screen.getByTestId("settings-editor-cursor-width-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: fill(appearance.fontSizeOption, { size: "3" }) }),
+    );
+    expect(useSettingsStore.getState().editorCursorWidth).toBe(3);
+  });
+
   it("offers system, light, and dark appearance with the active choice pressed", () => {
     themeMocks.preference = "system";
     render(<AppearanceSection />);

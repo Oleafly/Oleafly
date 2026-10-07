@@ -110,6 +110,7 @@ mod state;
 mod stats;
 mod storage;
 mod synctex;
+mod system_fonts;
 mod system_integration;
 mod template_packs;
 mod templates;
@@ -760,6 +761,7 @@ pub fn run() {
             typst_options::typst_project_options,
             typst_options::set_typst_project_options,
             typst_options::typst_project_fonts,
+            system_fonts::list_system_fonts,
             typst_export::export_typst_document,
             typst_packages::typst_universe_index,
             typst_packages::typst_package_settings,
