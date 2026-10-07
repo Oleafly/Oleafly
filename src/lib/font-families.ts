@@ -55,6 +55,9 @@ export function primaryFontFamily(stack: string): string {
   return GENERIC_FAMILIES.has(name.toLowerCase()) ? "" : name;
 }
 
+const ESCAPED_CSS_STRING_CHARACTER = String.raw`\$&`;
+
 export function quotedFontFamily(name: string): string {
-  return `"${fontFamilyName(name).replace(/["\\]/gu, String.raw`\$&`)}"`;
+  const escaped = fontFamilyName(name).replace(/["\\]/gu, ESCAPED_CSS_STRING_CHARACTER);
+  return `"${escaped}"`;
 }
