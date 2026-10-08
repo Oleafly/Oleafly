@@ -106,7 +106,7 @@ export function PresenterWindow() {
     }
     if (!note) return <p className="text-sm text-muted-foreground">{t(($) => $.preview.presentation.noNotes)}</p>;
     return (
-      <p data-testid="presenter-notes" className="whitespace-pre-wrap text-lg leading-relaxed">
+      <p data-testid="presenter-notes" className="select-text whitespace-pre-wrap text-lg leading-relaxed">
         {note}
       </p>
     );

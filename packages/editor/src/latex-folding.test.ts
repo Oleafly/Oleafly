@@ -35,3 +35,66 @@ describe("LaTeX source folding", () => {
     expect(foldAt("plain text\nmore", 1)).toBeNull();
   });
 });
+
+describe("LaTeX folding over a long chapter", () => {
+  const LEVELS: Record<string, number> = { chapter: 1, section: 2, subsection: 3 };
+  const HEADING = /^\s*\\(chapter|section|subsection)\*?\s*\{/;
+
+  function referenceFold(state: EditorState, lineNumber: number): string | null {
+    const line = state.doc.line(lineNumber);
+    const begin = /\\begin\{([^}]*)\}/.exec(line.text);
+    if (begin) {
+      const rest = state.doc.sliceString(line.to, Math.min(state.doc.length, line.to + 200_000));
+      const name = begin[1].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const re = new RegExp(`\\\\(begin|end)\\{${name}\\}`, "g");
+      let depth = 1;
+      for (let match = re.exec(rest); match; match = re.exec(rest)) {
+        depth += match[1] === "begin" ? 1 : -1;
+        if (depth === 0) {
+          const end = state.doc.lineAt(line.to + match.index);
+          return state.sliceDoc(line.to, end.to);
+        }
+      }
+      return null;
+    }
+    const heading = HEADING.exec(line.text);
+    if (!heading) return null;
+    let to = state.doc.length;
+    for (let number = lineNumber + 1; number <= state.doc.lines; number++) {
+      const next = HEADING.exec(state.doc.line(number).text);
+      if (next && LEVELS[next[1]] <= LEVELS[heading[1]]) {
+        to = state.doc.line(number - 1).to;
+        break;
+      }
+    }
+    return state.doc.lineAt(to).number > lineNumber ? state.sliceDoc(line.to, to) : null;
+  }
+
+  it("finds the same ranges as a whole-window scan", () => {
+    const lines: string[] = ["\\chapter{Probability}"];
+    for (let section = 0; section < 6; section++) {
+      lines.push(`\\section{Part ${section}}`, "Some prose here.");
+      lines.push("\\begin{example}", "\\begin{example}", "inner", "\\end{example}", "\\end{example}");
+      lines.push("\\subsection{Detail}", "\\begin{itemize}", "\\item one", "\\end{itemize}");
+      lines.push("\\begin{center}x\\end{center}", "\\begin{figure}", "never closed in this part");
+    }
+    lines.push("\\begin{verbatim}");
+    for (let filler = 0; filler < 4_000; filler++) lines.push("x".repeat(60));
+    lines.push("\\end{verbatim}", "\\section{Last}", "end");
+    const doc = lines.join("\n");
+    const folding = EditorState.create({ doc, extensions: [latexFolding()] });
+    const reference = EditorState.create({ doc });
+    const filler = "x".repeat(60);
+    const firstFiller = lines.indexOf(filler) + 1;
+    const lastFiller = lines.lastIndexOf(filler) + 1;
+
+    for (let number = 1; number <= lines.length; number++) {
+      const isFiller = lines[number - 1] === filler;
+      if (isFiller && number % 250 !== 0 && number !== firstFiller && number !== lastFiller) continue;
+      const line = folding.doc.line(number);
+      const range = foldable(folding, line.from, line.to);
+      const found = range ? folding.sliceDoc(range.from, range.to) : null;
+      expect(found, `line ${number}`).toBe(referenceFold(reference, number));
+    }
+  });
+});

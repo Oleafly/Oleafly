@@ -700,19 +700,35 @@ function filePatternRegex(pattern: string): RegExp {
   return new RegExp(`^${escaped.replaceAll("*", ".*").replaceAll("?", ".")}$`, "u");
 }
 
+interface CompiledFilePattern {
+  wholePath: boolean;
+  expression: RegExp;
+}
+
+const compiledFilePatterns = new WeakMap<readonly string[], CompiledFilePattern[]>();
+
+function compileFilePatterns(patterns: readonly string[]): CompiledFilePattern[] {
+  const known = compiledFilePatterns.get(patterns);
+  if (known) return known;
+  const compiled: CompiledFilePattern[] = [];
+  for (const rawPattern of patterns) {
+    const pattern = rawPattern.trim().replaceAll("\\", "/");
+    if (!pattern) continue;
+    compiled.push({ wholePath: pattern.includes("/"), expression: filePatternRegex(pattern) });
+  }
+  compiledFilePatterns.set(patterns, compiled);
+  return compiled;
+}
+
 export function fileTreePathIsHidden(
   path: string,
   patterns: readonly string[],
 ): boolean {
   const normalized = path.replaceAll("\\", "/").replace(/^\.\//u, "");
   const segments = normalized.split("/").filter(Boolean);
-  return patterns.some((rawPattern) => {
-    const pattern = rawPattern.trim().replaceAll("\\", "/");
-    if (!pattern) return false;
-    const candidates = pattern.includes("/") ? [normalized] : segments;
-    const expression = filePatternRegex(pattern);
-    return candidates.some((candidate) => expression.test(candidate));
-  });
+  return compileFilePatterns(patterns).some(({ wholePath, expression }) =>
+    (wholePath ? [normalized] : segments).some((candidate) => expression.test(candidate)),
+  );
 }
 
 export const GRAMMAR_DIALECTS: {
@@ -767,6 +783,14 @@ export const EDITOR_CURSOR_WIDTHS: readonly number[] = [1, 2, 3];
 
 export const EDITOR_TAB_SIZES: readonly number[] = [2, 4, 8];
 
+export type FileMoveReferences = "ask" | "always" | "never";
+
+export const FILE_MOVE_REFERENCE_OPTIONS: readonly FileMoveReferences[] = [
+  "ask",
+  "always",
+  "never",
+];
+
 export const TYPST_FORMATTER_LINE_WIDTHS: readonly number[] = [60, 80, 100, 120, 160];
 
 export const TYPST_FORMATTER_INDENT_SIZES: readonly number[] = [2, 4, 8];
@@ -810,6 +834,14 @@ interface SettingsState {
   /** Show the rendered result of the equation the cursor is in. */
   editorMathPreview: boolean;
   setEditorMathPreview: (v: boolean) => void;
+  fileMoveReferences: FileMoveReferences;
+  setFileMoveReferences: (v: FileMoveReferences) => void;
+  zenFullScreen: boolean;
+  setZenFullScreen: (v: boolean) => void;
+  zenCenterEditor: boolean;
+  setZenCenterEditor: (v: boolean) => void;
+  zenShowPdfOnCompile: boolean;
+  setZenShowPdfOnCompile: (v: boolean) => void;
   typstFormatOnSave: boolean;
   setTypstFormatOnSave: (v: boolean) => void;
   typstFormatterLineWidth: number;
@@ -1018,6 +1050,13 @@ function readFontFamilySetting(key: string): string {
   return family;
 }
 
+function readFileMoveReferences(): FileMoveReferences {
+  const stored = ls("oleafly.editor.fileMoveReferences", "");
+  return FILE_MOVE_REFERENCE_OPTIONS.includes(stored as FileMoveReferences)
+    ? (stored as FileMoveReferences)
+    : "ask";
+}
+
 function readChoice(key: string, choices: readonly number[], fallback: number): number {
   const stored = Number(ls(key, ""));
   return choices.includes(stored) ? stored : fallback;
@@ -1042,6 +1081,10 @@ const PREF_DEFAULTS = {
   editorNonBlinkingCursor: false,
   editorStickyScroll: true,
   editorMathPreview: true,
+  fileMoveReferences: "ask" as FileMoveReferences,
+  zenFullScreen: true,
+  zenCenterEditor: true,
+  zenShowPdfOnCompile: true,
   typstFormatOnSave: false,
   typstFormatterLineWidth: 120,
   typstFormatterIndent: 2,
@@ -1127,6 +1170,10 @@ const SECTION_SETTINGS = {
     editorNonBlinkingCursor: "oleafly.editor.solidCursor",
     editorStickyScroll: "oleafly.editor.stickyScroll",
     editorMathPreview: "oleafly.editor.mathPreview",
+    fileMoveReferences: "oleafly.editor.fileMoveReferences",
+    zenFullScreen: "oleafly.zen.fullScreen",
+    zenCenterEditor: "oleafly.zen.centerEditor",
+    zenShowPdfOnCompile: "oleafly.zen.showPdfOnCompile",
     typstFormatOnSave: "oleafly.typst.formatOnSave",
     typstFormatterLineWidth: "oleafly.typst.formatterLineWidth",
     typstFormatterIndent: "oleafly.typst.formatterIndent",
@@ -1286,6 +1333,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editor.ghostCompletion", v ? "1" : "0");
     set({ editorGhostCompletion: v });
   },
+  zenFullScreen: ls("oleafly.zen.fullScreen", "1") !== "0",
+  setZenFullScreen: (v) => {
+    saveLs("oleafly.zen.fullScreen", v ? "1" : "0");
+    set({ zenFullScreen: v });
+  },
+  zenCenterEditor: ls("oleafly.zen.centerEditor", "1") !== "0",
+  setZenCenterEditor: (v) => {
+    saveLs("oleafly.zen.centerEditor", v ? "1" : "0");
+    set({ zenCenterEditor: v });
+  },
+  zenShowPdfOnCompile: ls("oleafly.zen.showPdfOnCompile", "1") !== "0",
+  setZenShowPdfOnCompile: (v) => {
+    saveLs("oleafly.zen.showPdfOnCompile", v ? "1" : "0");
+    set({ zenShowPdfOnCompile: v });
+  },
   editorStickyScroll: ls("oleafly.editor.stickyScroll", "1") !== "0",
   setEditorStickyScroll: (v) => {
     saveLs("oleafly.editor.stickyScroll", v ? "1" : "0");
@@ -1300,6 +1362,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorMathPreview: (v) => {
     saveLs("oleafly.editor.mathPreview", v ? "1" : "0");
     set({ editorMathPreview: v });
+  },
+  fileMoveReferences: readFileMoveReferences(),
+  setFileMoveReferences: (v) => {
+    saveLs("oleafly.editor.fileMoveReferences", v);
+    set({ fileMoveReferences: v });
   },
   typstFormatOnSave: ls("oleafly.typst.formatOnSave", "0") === "1",
   setTypstFormatOnSave: (v) => {

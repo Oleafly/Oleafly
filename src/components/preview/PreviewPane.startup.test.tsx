@@ -323,13 +323,26 @@ describe("document startup stages", () => {
     expect(stage.detail).toBe(startup.render.ready);
   });
 
-  it("waits for the renderer once verified bytes exist", () => {
+  it("waits for the renderer once verified bytes of the current revision exist", () => {
     const stage = stageById(
-      stateWith({ compileStatus: "success", hasPdfCandidate: true }),
+      stateWith({
+        compileStatus: "success",
+        hasPdfCandidate: true,
+        compileCurrent: true,
+      }),
       "render",
     );
     expect(stage.status).toBe("running");
     expect(stage.detail).toBe(startup.render.waitingForRenderer);
+  });
+
+  it("does not report rendering in progress for bytes of an older revision", () => {
+    const stage = stageById(
+      stateWith({ compileStatus: "success", hasPdfCandidate: true }),
+      "render",
+    );
+    expect(stage.status).toBe("pending");
+    expect(stage.detail).toBe(startup.render.waitingForCompile);
   });
 });
 

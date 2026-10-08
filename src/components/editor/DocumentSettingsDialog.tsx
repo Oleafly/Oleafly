@@ -330,7 +330,7 @@ export function DocumentSettingsDialog({ onClose }: Readonly<{ onClose: () => vo
         </div>
         <div className="flex shrink-0 items-center gap-2 border-t px-5 py-3">
           <div className="min-w-0 flex-1">
-            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            {error && <p role="alert" className="select-text text-sm text-destructive">{error}</p>}
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onClose}>{t(($) => $.editor.typstSettings.cancel)}</Button>
           <Button type="button" size="sm" disabled={!changed || invalid.size > 0 || busy} onClick={() => void apply()}>

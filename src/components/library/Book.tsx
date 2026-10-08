@@ -88,6 +88,7 @@ export function Book({
   menu,
   preview,
   onPreviewRequest,
+  onPreviewCancel,
   dimmed = false,
 }: Readonly<{
   title: string;
@@ -107,6 +108,7 @@ export function Book({
   menu?: ReactNode;
   preview?: string | null;
   onPreviewRequest?: () => void;
+  onPreviewCancel?: () => void;
   dimmed?: boolean;
 }>) {
   const { t } = useTranslation(["library"]);
@@ -140,8 +142,10 @@ export function Book({
         tabIndex={0}
         aria-label={openLabel ?? t(($) => $.library.projects.open, { name: title })}
         onClick={onClick}
-        onMouseOver={onPreviewRequest}
+        onMouseEnter={onPreviewRequest}
+        onMouseLeave={onPreviewCancel}
         onFocus={onPreviewRequest}
+        onBlur={onPreviewCancel}
         className="block w-full cursor-pointer rounded-md border border-transparent text-left focus-visible:border-ring"
       >
         <div

@@ -31,7 +31,8 @@
     "newTab": "Новая вкладка",
     "openLocation": "Открыть адрес…",
     "closeTab": "Закрыть вкладку",
-    "reloadPage": "Перезагрузить страницу"
+    "reloadPage": "Перезагрузить страницу",
+    "zenMode": "Режим Zen"
   },
   "window": {
     "browser": "Браузер Oleafly",

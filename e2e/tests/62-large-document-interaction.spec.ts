@@ -5,6 +5,7 @@ import {
   openProject,
   replaceEditorSource,
   writeProjectText,
+  revealLibraryProject,
 } from "../helpers";
 import {
   buildLargeLatexBookProject,
@@ -246,9 +247,7 @@ async function openLargeBook(
   // suite then spent its whole settle budget waiting for a compile it never
   // wanted.
   await quietTheCompiler(page);
-  const exists = await page.evaluate<boolean>(
-    `!!document.querySelector('button[aria-label="Open ${PROJECT}"]')`,
-  );
+  const exists = await revealLibraryProject(page, PROJECT);
   if (exists) {
     await openProject(page, PROJECT);
     await expect(page.locator(".cm-content")).toBeVisible({ timeout: 30_000 });

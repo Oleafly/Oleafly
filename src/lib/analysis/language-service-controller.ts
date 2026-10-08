@@ -4,7 +4,9 @@ import {
   isLanguageServiceSetupRequiredError,
   isTauriLanguageServiceAvailable,
   LanguageServiceClient,
+  type DidChangeWatchedFilesParams,
   type ExecuteCommandParams,
+  type FileEvent,
   type JsonValue,
   type LanguageServiceClientStartOptions,
   type LanguageServiceClientEvent,
@@ -130,6 +132,7 @@ export interface LifecycleLanguageServiceClient {
   ): Promise<JsonValue>;
   changeConfiguration?(settings: JsonValue): Promise<void>;
   saveDocument?(uri: string): Promise<void>;
+  didChangeWatchedFiles?(params: DidChangeWatchedFilesParams): Promise<void>;
 }
 
 export interface LanguageServiceProvisioner {
@@ -193,6 +196,11 @@ interface DesiredProject {
   effectiveTexts: ReadonlyMap<string, string>;
 }
 
+interface ResolvedRuntimeStart {
+  profile: ReturnType<typeof getLanguageServiceRuntimeProfile>;
+  installStatus: LanguageServiceInstallStatus;
+}
+
 interface ActiveRuntime {
   token: number;
   key: string;
@@ -205,6 +213,7 @@ interface ActiveRuntime {
   coordinator: LifecycleAnalysisCoordinator | null;
   unsubscribe: () => void;
   documents: Map<string, TrackedDocument>;
+  syncedTexts: ReadonlyMap<string, string> | null;
   expectedStop: boolean;
   ready: boolean;
   protocolReady: boolean;
@@ -237,6 +246,7 @@ const DEFAULT_RESTART_BASE_DELAY_MS = 250;
 const DEFAULT_RESTART_MAX_DELAY_MS = 4_000;
 const DEFAULT_MAX_RESTART_ATTEMPTS = 4;
 const DEFAULT_RESTART_STABLE_WINDOW_MS = 30_000;
+const SETUP_VERDICT_REUSE_MS = 30_000;
 const LANGUAGE_SERVICE_INTELLIGENCE_DELAY_MS = 400;
 const LANGUAGE_SERVICE_INTELLIGENCE_TIMEOUT_MS = 8_000;
 const LANGUAGE_SERVICE_COMMAND_TIMEOUT_MS = 5_000;
@@ -354,6 +364,12 @@ export function languageServiceLanguageIdForPath(
   return null;
 }
 
+const TEXLAB_DISK_DOCUMENT = /\.(?:tex|ltx|latex|sty|cls|bib)$/i;
+
+function diskDocumentPattern(kind: LanguageServiceKind): RegExp | null {
+  return kind === "texlab" ? TEXLAB_DISK_DOCUMENT : null;
+}
+
 function localOnlyReason(
   engineId: LanguageServiceEngineId,
   path: string,
@@ -420,6 +436,12 @@ function effectiveProjectTexts(
     if (!paths || paths.has(path)) texts.set(path, file.content);
   }
   return texts;
+}
+
+function languageServiceOpenPaths(
+  snapshot: LanguageServiceProjectSnapshot,
+): Set<string> {
+  return new Set([snapshot.mainDoc, ...Object.keys(snapshot.files)]);
 }
 
 function sameTexts(
@@ -688,6 +710,12 @@ export class LanguageServiceController {
   private runtimeToken = 0;
   private operationToken = 0;
   private scheduledReconcileOperation: number | null = null;
+  private setupVerdict: {
+    operation: number;
+    key: string;
+    checkedAt: number;
+    resolved: ResolvedRuntimeStart;
+  } | null = null;
   private restartAttempts = 0;
   private forcedRestartToken: number | null = null;
   private tinymistDownload: { version: string } | null = null;
@@ -1142,10 +1170,7 @@ export class LanguageServiceController {
     desired: DesiredProject,
     kind: LanguageServiceKind,
     operation: number,
-  ): Promise<{
-    profile: ReturnType<typeof getLanguageServiceRuntimeProfile>;
-    installStatus: LanguageServiceInstallStatus;
-  } | null> {
+  ): Promise<ResolvedRuntimeStart | null> {
     let profile: ReturnType<typeof getLanguageServiceRuntimeProfile>;
     try {
       profile = getLanguageServiceRuntimeProfile(kind);
@@ -1171,6 +1196,23 @@ export class LanguageServiceController {
     }
     if (!this.operationIsCurrent(operation, desired)) return null;
     return { profile, installStatus };
+  }
+
+  private reusableSetupVerdict(
+    operation: number,
+    key: string,
+  ): ResolvedRuntimeStart | null {
+    const verdict = this.setupVerdict;
+    if (
+      !verdict ||
+      verdict.operation !== operation ||
+      verdict.key !== key ||
+      Date.now() - verdict.checkedAt >= SETUP_VERDICT_REUSE_MS
+    ) {
+      this.setupVerdict = null;
+      return null;
+    }
+    return verdict.resolved;
   }
 
   private installBlocksStart(
@@ -1305,20 +1347,32 @@ export class LanguageServiceController {
     key: string,
     operation: number,
   ): Promise<void> {
-    const resolved = await this.resolveRuntimeStart(desired, kind, operation);
+    const reused = this.reusableSetupVerdict(operation, key);
+    const checkedAt = Date.now();
+    const resolved =
+      reused ?? (await this.resolveRuntimeStart(desired, kind, operation));
     if (!resolved) return;
     const matched = matchedTinymistVersion(
       kind,
       resolved.profile,
       resolved.installStatus,
     );
-    if (matched !== null) {
-      if (this.matchedTinymistBlocksStart(desired, resolved.installStatus)) {
-        return;
+    const blocked =
+      matched !== null
+        ? this.matchedTinymistBlocksStart(desired, resolved.installStatus)
+        : this.installBlocksStart(
+            kind,
+            resolved.profile,
+            resolved.installStatus,
+          );
+    if (blocked) {
+      if (
+        !reused &&
+        matched === null &&
+        resolved.installStatus.state !== "installing"
+      ) {
+        this.setupVerdict = { operation, key, checkedAt, resolved };
       }
-    } else if (
-      this.installBlocksStart(kind, resolved.profile, resolved.installStatus)
-    ) {
       return;
     }
     await this.startRuntime(
@@ -1476,6 +1530,7 @@ export class LanguageServiceController {
       coordinator: null,
       unsubscribe: () => {},
       documents: new Map(),
+      syncedTexts: null,
       expectedStop: false,
       ready: false,
       protocolReady: false,
@@ -1504,11 +1559,9 @@ export class LanguageServiceController {
       reason: { key: "startingAndInitializing" },
       restartAttempt: this.restartAttempts,
     });
-    for (const feature of PROJECT_ANALYSIS_FEATURES) {
-      this.store
-        .getState()
-        .markFeatureNotRun(feature, { key: "starting" });
-    }
+    this.store
+      .getState()
+      .markFeaturesNotRun(PROJECT_ANALYSIS_FEATURES, { key: "starting" });
 
     try {
       await client.start({
@@ -1606,9 +1659,11 @@ export class LanguageServiceController {
     runtime: ActiveRuntime,
     root: string,
     targetTexts: ReadonlyMap<string, string>,
+    openPaths: ReadonlySet<string>,
   ): Map<string, WantedDocument> {
     const wanted = new Map<string, WantedDocument>();
     for (const [path, text] of targetTexts) {
+      if (!openPaths.has(path)) continue;
       const languageId = languageServiceLanguageIdForPath(
         runtime.kind,
         path,
@@ -1723,6 +1778,38 @@ export class LanguageServiceController {
     return true;
   }
 
+  private async reportChangedDiskFiles(
+    runtime: ActiveRuntime,
+    root: string,
+    wanted: ReadonlyMap<string, WantedDocument>,
+    context: SyncContext,
+  ): Promise<boolean> {
+    const previous = runtime.syncedTexts;
+    runtime.syncedTexts = context.targetTexts;
+    const didChangeWatchedFiles = runtime.client.didChangeWatchedFiles;
+    const pattern = diskDocumentPattern(runtime.kind);
+    if (
+      !previous ||
+      previous === context.targetTexts ||
+      !didChangeWatchedFiles ||
+      !pattern
+    ) {
+      return true;
+    }
+    const files = context.desired.snapshot.files;
+    const changes: FileEvent[] = [];
+    for (const [path, text] of context.targetTexts) {
+      const before = previous.get(path);
+      if (before === undefined || before === text) continue;
+      if (files[path]?.dirty === true || !pattern.test(path)) continue;
+      const uri = fileUriForProjectPath(root, path);
+      if (!wanted.has(uri)) changes.push({ uri, type: 2 });
+    }
+    if (changes.length === 0) return true;
+    await didChangeWatchedFiles.call(runtime.client, { changes });
+    return this.syncTargetIsCurrent(runtime, context);
+  }
+
   private async syncDocuments(
     runtime: ActiveRuntime,
     desired: DesiredProject,
@@ -1738,10 +1825,18 @@ export class LanguageServiceController {
     };
     const root = runtime.root;
     if (!root || !this.syncTargetIsCurrent(runtime, context)) return false;
-    const wanted = this.wantedSyncDocuments(runtime, root, targetTexts);
+    const wanted = this.wantedSyncDocuments(
+      runtime,
+      root,
+      targetTexts,
+      languageServiceOpenPaths(desired.snapshot),
+    );
     const synchronizedUris = new Set<string>();
 
     if (!(await this.closeRemovedDocuments(runtime, wanted, context))) {
+      return false;
+    }
+    if (!(await this.reportChangedDiskFiles(runtime, root, wanted, context))) {
       return false;
     }
     if (
@@ -2045,27 +2140,40 @@ export class LanguageServiceController {
   private flushPendingSaves(): void {
     const runtime = this.runtime;
     const saveDocument = runtime?.client.saveDocument;
+    const didChangeWatchedFiles = runtime?.client.didChangeWatchedFiles;
     if (
       !runtime?.ready ||
       !runtime.root ||
-      !saveDocument ||
+      (!saveDocument && !didChangeWatchedFiles) ||
       !this.runtimeAcceptsRequests(runtime)
     ) {
       return;
     }
     const files = this.desired?.snapshot.files ?? {};
+    const changes: FileEvent[] = [];
     for (const path of this.pendingSaves) {
       const file = files[path];
-      const tracked = runtime.documents.get(
-        fileUriForProjectPath(runtime.root, path),
-      );
+      const uri = fileUriForProjectPath(runtime.root, path);
+      const tracked = runtime.documents.get(uri);
       if (!file || file.dirty === true || !tracked) {
         this.pendingSaves.delete(path);
+        if (
+          file &&
+          file.dirty !== true &&
+          diskDocumentPattern(runtime.kind)?.test(path)
+        ) {
+          changes.push({ uri, type: 2 });
+        }
         continue;
       }
       if (tracked.text !== file.content) continue;
       this.pendingSaves.delete(path);
-      void saveDocument.call(runtime.client, tracked.uri).catch(() => {});
+      void saveDocument?.call(runtime.client, tracked.uri).catch(() => {});
+    }
+    if (changes.length > 0) {
+      void didChangeWatchedFiles
+        ?.call(runtime.client, { changes })
+        .catch(() => {});
     }
   }
 
@@ -2337,9 +2445,9 @@ export class LanguageServiceController {
       reason,
       restartAttempt: 0,
     });
-    for (const feature of PROJECT_ANALYSIS_FEATURES) {
-      this.store.getState().markFeatureUnsupported(feature, reason);
-    }
+    this.store
+      .getState()
+      .markFeaturesUnsupported(PROJECT_ANALYSIS_FEATURES, reason);
   }
 
   private publishInstalling(
@@ -2354,11 +2462,9 @@ export class LanguageServiceController {
       reason: reason ?? { key: "beingInstalled" },
       restartAttempt: 0,
     });
-    for (const feature of PROJECT_ANALYSIS_FEATURES) {
-      this.store
-        .getState()
-        .markFeatureNotRun(feature, { key: "setupRunning" });
-    }
+    this.store
+      .getState()
+      .markFeaturesNotRun(PROJECT_ANALYSIS_FEATURES, { key: "setupRunning" });
   }
 
   private publishSetupRequired(
@@ -2377,11 +2483,9 @@ export class LanguageServiceController {
     const featureReason: AnalysisReason = failure.reason ?? {
       text: failure.message,
     };
-    for (const feature of PROJECT_ANALYSIS_FEATURES) {
-      this.store
-        .getState()
-        .markFeatureUnavailable(feature, featureReason, true);
-    }
+    this.store
+      .getState()
+      .markFeaturesUnavailable(PROJECT_ANALYSIS_FEATURES, featureReason, true);
   }
 
   private publishNotRun(reason: AnalysisReason): void {
@@ -2393,9 +2497,9 @@ export class LanguageServiceController {
       reason,
       restartAttempt: 0,
     });
-    for (const feature of PROJECT_ANALYSIS_FEATURES) {
-      this.store.getState().markFeatureNotRun(feature, reason);
-    }
+    this.store
+      .getState()
+      .markFeaturesNotRun(PROJECT_ANALYSIS_FEATURES, reason);
   }
 
   private publishUnavailable(
@@ -2413,10 +2517,12 @@ export class LanguageServiceController {
     const featureReason: AnalysisReason = failure.reason ?? {
       text: failure.message,
     };
-    for (const feature of PROJECT_ANALYSIS_FEATURES) {
-      this.store
-        .getState()
-        .markFeatureUnavailable(feature, featureReason, failure.retryable);
-    }
+    this.store
+      .getState()
+      .markFeaturesUnavailable(
+        PROJECT_ANALYSIS_FEATURES,
+        featureReason,
+        failure.retryable,
+      );
   }
 }

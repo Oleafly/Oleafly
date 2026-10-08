@@ -1,4 +1,5 @@
 import { useSettingsStore, layoutPresetViewMode, layoutPresetWantsAi, layoutPresetHidesWorkspace, type ViewMode } from "@/store/settings";
+import { useZenStore } from "@/store/zen";
 
 type WorkspaceLayout = Pick<ReturnType<typeof useSettingsStore.getState>,
   "viewMode" | "showTree" | "assistantOpen" | "workspaceHidden">;
@@ -41,6 +42,7 @@ export function restoreWorkspaceLayout(projectId: string): () => void {
   });
   let previous = JSON.stringify(selectedLayout(useSettingsStore.getState()));
   return useSettingsStore.subscribe((state) => {
+    if (useZenStore.getState().active) return;
     const layout = selectedLayout(state);
     const serialized = JSON.stringify(layout);
     if (serialized === previous) return;

@@ -188,7 +188,8 @@
     "quote": "Citat",
     "addLabel": "Tilføj etiket",
     "convertLatexMath": "Konverter LaTeX-matematik til Typst",
-    "noLatexMath": "Marker noget LaTeX-matematik først."
+    "noLatexMath": "Marker noget LaTeX-matematik først.",
+    "renameFile": "Omdøb fil…"
   },
   "shell": {
     "noFileOpenTab": "Ingen fil er åben",
@@ -426,7 +427,7 @@
       "indentOrAccept": "Indryk / accepter fuldførelsen",
       "goToDefinition": "Gå til definitionen",
       "findReferences": "Find referencer",
-      "renameSymbol": "Omdøb symbolet (i hele projektet)",
+      "renameSymbol": "Omdøb symbol eller fil (i hele projektet)",
       "formatDocument": "Formater Typst-dokumentet",
       "commandPalette": "Kommandopalet",
       "searchAllDocuments": "Søg i alle dokumenter",
@@ -454,7 +455,8 @@
     "noEntries": "Der er endnu ingen poster i litteraturlisten i dette projekt.",
     "addNew": "Find og tilføj en ny citation…",
     "duplicate": "dublet {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Fra dit Zotero-bibliotek"
   },
   "inlineAi": {
     "promptPlaceholder": "Beskriv ændringen…  (Shift+Enter for ny linje)",

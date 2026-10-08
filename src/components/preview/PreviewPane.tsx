@@ -8,6 +8,7 @@ import { PdfSearchBar } from "./PdfSearchBar";
 import { PdfViewerOverlay } from "./PdfViewerOverlay";
 import { usePdfKeyboardShortcuts } from "./use-pdf-keyboard-shortcuts";
 import { usePdfPosition } from "@/lib/use-pdf-position";
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import {
   useCallback,
   useDeferredValue,
@@ -41,6 +42,7 @@ import {
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogPane } from "@/components/editor/LogPane";
 import {
+  isCompileCheckpointApplicable,
   isCompileCheckpointCurrent,
   useCompileStore,
   type CompilePhase,
@@ -55,6 +57,7 @@ import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { projectFilesystemEpoch, useIndexStore } from "@/store/project-index";
 import { useTourStore } from "@/store/tours";
+import { useZenStore } from "@/store/zen";
 import {
   canUseSyncTexForCheckpoint,
   inverseFromClick,
@@ -100,6 +103,8 @@ interface PreviewDocument {
   checkpoint: CompileSuccessCheckpoint | null;
   identity: string;
 }
+
+const PDF_SCROLL_AXES = ["y", "x"] as const;
 
 const INITIAL_PDF_LOAD_STATE: PdfLoadState = {
   status: "idle",
@@ -463,7 +468,8 @@ function renderStartupStage(
   }
   if (
     state.compileStatus === "success" &&
-    state.hasPdfCandidate
+    state.hasPdfCandidate &&
+    state.compileCurrent
   ) {
     return {
       id: "render",
@@ -688,7 +694,7 @@ function StaleTooltipLabel({
   });
 }
 
-export function PreviewPane() {
+export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const { t } = useTranslation(["common", "preview", "shell"]);
   const status = useCompileStore((s) => s.status);
   const phase = useCompileStore((s) => s.phase);
@@ -725,6 +731,9 @@ export function PreviewPane() {
   const [scale, setScale] = useState(1.0);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
   const activeTourId = useTourStore((state) => state.activeTourId);
+  const zen = useZenStore((state) => state.active);
+  const zenLogsRequested = useZenStore((state) => state.active && state.logsOpen);
+  const zenLogsShown = useRef(false);
   const tourTabRef = useRef<"pdf" | "logs" | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
@@ -774,19 +783,28 @@ export function PreviewPane() {
   const pdfRef = useRef<PdfViewerHandle>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
-  const livePreview = useCompileStore(
-    (s) => s.livePreview.enabled && s.livePreview.projectId === projectId,
+  const readyRotationRef = useRef(rotation);
+  const pdfPosition = usePdfPosition(
+    projectId,
+    pdfRef,
+    scrollBoxRef,
+    rotation === readyRotationRef.current,
   );
-  const pdfPosition = usePdfPosition(projectId, pdfRef, scrollBoxRef, livePreview);
+  useOverlayScrollbar(scrollBoxRef, PDF_SCROLL_AXES);
   const scaleRef = useRef(scale);
   const lastReadyDocumentRef = useRef<PreviewDocument | null>(null);
   const rejectedDocumentIdentitiesRef = useRef(new Set<string>());
+  const adoptedOutputRef = useRef<{
+    checkpoint: typeof compileCheckpoint;
+    bytes: typeof pdfBytes;
+  } | null>(null);
   const closeSave = () => setSaveOpen(false);
   scaleRef.current = scale;
 
   useEffect(() => {
     void projectId;
     lastReadyDocumentRef.current = null;
+    adoptedOutputRef.current = null;
     rejectedDocumentIdentitiesRef.current.clear();
     setViewerDocument(null);
     setRetainedLoadFailure(null);
@@ -806,20 +824,17 @@ export function PreviewPane() {
   }, [projectId]);
 
   useEffect(() => {
+    if (!active) return;
+    const adopted = adoptedOutputRef.current;
+    if (adopted?.checkpoint === compileCheckpoint && adopted.bytes === pdfBytes) {
+      return;
+    }
+    adoptedOutputRef.current = { checkpoint: compileCheckpoint, bytes: pdfBytes };
     if (!pdfBytes) {
       if (!lastReadyDocumentRef.current) setViewerDocument(null);
       return;
     }
-    // Compiled bytes are only a candidate when they carry the exact current
-    // project/main-document/revision checkpoint. Retained last-good output is
-    // managed separately after a successful viewer load; a delayed stale or
-    // unverified candidate must never replace it.
-    if (
-      !compileCheckpoint ||
-      !isCompileCheckpointCurrent(compileCheckpoint)
-    ) {
-      return;
-    }
+    if (!isCompileCheckpointApplicable(compileCheckpoint)) return;
     const identity = checkpointIdentity(compileCheckpoint, pdfBytes);
     if (rejectedDocumentIdentitiesRef.current.has(identity)) return;
     setViewerDocument((current) => {
@@ -845,12 +860,14 @@ export function PreviewPane() {
       status: "loading",
       items: [],
     });
-    setPage(1);
-    setNumPages(0);
+    if (!lastReadyDocumentRef.current) {
+      setPage(1);
+      setNumPages(0);
+    }
     setPdfPassword("");
     setPasswordDraft("");
     setRetainedLoadFailure(null);
-  }, [compileCheckpoint, pdfBytes]);
+  }, [active, compileCheckpoint, pdfBytes]);
 
   const displayedCheckpoint = viewerDocument?.checkpoint ?? null;
   const displayedCheckpointCurrent = useCheckpointCurrent(displayedCheckpoint);
@@ -1006,7 +1023,7 @@ export function PreviewPane() {
 
   useEffect(() => {
     const element = scrollBoxRef.current;
-    if (!element || !fitMode || !displayedBytes) return;
+    if (!element || !fitMode || !displayedBytes || !active) return;
     let frame = 0;
     const observer = new ResizeObserver(() => {
       if (frame) cancelAnimationFrame(frame);
@@ -1023,7 +1040,7 @@ export function PreviewPane() {
       observer.disconnect();
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [displayedBytes, fitMode, setClampedScale]);
+  }, [active, displayedBytes, fitMode, setClampedScale]);
 
   usePdfKeyboardShortcuts({
     rootRef,
@@ -1169,6 +1186,7 @@ export function PreviewPane() {
     // must not leave the button spinning forever.
     if (next.status !== "loading") setRotationPending(false);
     if (next.status === "ready") {
+      readyRotationRef.current = rotation;
       setHasRendered(true);
       lastReadyDocumentRef.current = current;
       rejectedDocumentIdentitiesRef.current.delete(current.identity);
@@ -1220,6 +1238,16 @@ export function PreviewPane() {
     if (status === "error" && !displayedBytes) setTab("logs");
     if (status === "success") setTab("pdf");
   }, [activeTourId, displayedBytes, status]);
+
+  useEffect(() => {
+    if (zenLogsRequested) {
+      zenLogsShown.current = true;
+      setTab("logs");
+    } else if (zenLogsShown.current) {
+      zenLogsShown.current = false;
+      setTab("pdf");
+    }
+  }, [zenLogsRequested]);
 
   useEffect(() => {
     if (activeTourId === "workspace" && tourTabRef.current === null) {
@@ -1360,8 +1388,9 @@ export function PreviewPane() {
     <section
       ref={scrollBoxRef}
       data-pdf-scroll-root
+      data-select-all-scope
       aria-label={t(($) => $.preview.viewer.scrollArea)}
-      className="h-full overflow-auto bg-sidebar focus-visible:bg-sidebar-accent/40"
+      className="isolate h-full overflow-auto bg-sidebar focus-visible:bg-sidebar-accent/40"
       style={
         inverted && !screenReaderMode
           ? { filter: "invert(1) hue-rotate(180deg)" }
@@ -1549,7 +1578,7 @@ export function PreviewPane() {
           </button>
         </Tooltip>
       )}
-      {renderPreviewToolbar()}
+      {!zen && renderPreviewToolbar()}
 
       <div
         data-tour="project-preview-content"

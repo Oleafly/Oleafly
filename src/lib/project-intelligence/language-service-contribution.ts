@@ -6,6 +6,8 @@ import {
   type PositionEncoding,
 } from "@/lib/language-service";
 import { TYPST_IDENTIFIER_PATTERN } from "@oleafly/editor/typst-syntax";
+import { insideLatexDefinition, latexDefinitionStartsAt, scanLatexDefinitions } from "@oleafly/latex";
+import { maskComments } from "@/lib/index/parse-file";
 import {
   lineStarts,
   rangeFromOffsets,
@@ -140,22 +142,41 @@ function lineAtOffset(text: string, offset: number): string {
   return text.slice(from, next < 0 ? text.length : next);
 }
 
+function insideDefinitionBody(
+  cache: Map<string, readonly (readonly [number, number])[]>,
+  path: string,
+  source: string,
+  offset: number,
+): boolean {
+  let spans = cache.get(path);
+  if (!spans) {
+    spans = scanLatexDefinitions(maskComments(source)).spans;
+    cache.set(path, spans);
+  }
+  return insideLatexDefinition(spans, offset) && !latexDefinitionStartsAt(spans, offset);
+}
+
 function latexDefinition(
   symbol: LanguageServiceSymbol,
   source: string,
   from: number,
   to: number,
+  inDefinition: boolean,
 ): {
   kind: ProjectDefinitionKind;
   name: string;
   level?: number;
 } | null {
   const excerpt = source.slice(from, to);
-  const line = lineAtOffset(source, from);
-  const section = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*\{/u.exec(
-    line,
+  const section = inDefinition
+    ? null
+    : /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?:\[[^\]]*\]\s*)?\{/u.exec(
+        excerpt,
+      );
+  const definitionHead = /^\s*\\(?:[gex]?def|newcommand|renewcommand|providecommand|DeclareRobustCommand|(?:new|renew|provide)environment|(?:New|Renew|Provide|Declare)Document(?:Command|Environment))(?![\p{L}@])/u.test(
+    excerpt,
   );
-  if (section || symbol.kind === 2) {
+  if (section || (symbol.kind === 2 && !inDefinition && !definitionHead)) {
     const levels: Readonly<Record<string, number>> = {
       part: 1,
       chapter: 1,
@@ -171,7 +192,7 @@ function latexDefinition(
       level: section ? levels[section[1]] : 1,
     };
   }
-  const label = /\\label\s*\{([^}]+)\}/u.exec(excerpt);
+  const label = inDefinition || definitionHead ? null : /\\label\s*\{([^}]+)\}/u.exec(excerpt);
   if (label) {
     return { kind: "label", name: label[1].trim() };
   }
@@ -261,6 +282,7 @@ export function languageServiceContribution({
   const definitions: ProjectDefinition[] = [];
   const startsByPath = new Map<string, readonly number[]>();
   const positionsByPath = new Map<string, TextPositionIndex>();
+  const definitionSpansByPath = new Map<string, readonly (readonly [number, number])[]>();
   for (const symbol of symbolsFromValue(rawSymbols)) {
     const path = paths.get(symbol.uri);
     if (!path) continue;
@@ -282,7 +304,7 @@ export function languageServiceContribution({
     );
     const recovered =
       engine === "latex"
-        ? latexDefinition(symbol, source, from, to)
+        ? latexDefinition(symbol, source, from, to, insideDefinitionBody(definitionSpansByPath, path, source, from))
         : typstDefinition(symbol, source, from, to);
     if (!recovered || recovered.name.length === 0) continue;
     let starts = startsByPath.get(path);

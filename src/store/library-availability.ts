@@ -31,6 +31,16 @@ function without(
   return next;
 }
 
+function withEntries<T>(
+  current: Readonly<Record<string, T>>,
+  entries: Readonly<Record<string, T>>,
+): Record<string, T> {
+  for (const [key, value] of Object.entries(entries)) {
+    if (current[key] !== value) return { ...current, ...entries };
+  }
+  return current as Record<string, T>;
+}
+
 async function runCheck(projectIds: string[], set: SetState): Promise<void> {
   set((state) => ({
     checking: { ...state.checking, ...Object.fromEntries(projectIds.map((id) => [id, true])) },
@@ -49,8 +59,8 @@ async function runCheck(projectIds: string[], set: SetState): Promise<void> {
       lastChecked.set(report.project_id, checkedAt);
     }
     set((state) => ({
-      checked: { ...state.checked, ...found },
-      modified: { ...state.modified, ...changed },
+      checked: withEntries(state.checked, found),
+      modified: withEntries(state.modified, changed),
     }));
   } catch (error) {
     void logError("check library folders", error);

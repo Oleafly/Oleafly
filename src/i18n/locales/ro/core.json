@@ -366,7 +366,8 @@
     "referencesFor": "Referințe la {{name}}",
     "renameFailed": "Nu s-a putut redenumi în „{{name}}”.",
     "renamePartial": "Redenumit în „{{name}}” în {{edited}} din {{total}} fișiere. Nu s-a putut scrie {{files}}.",
-    "renamed": "Redenumit în „{{name}}” ($t(core:navigation.edits, {\"count\": {{edits}} }) în $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Redenumit în „{{name}}” ($t(core:navigation.edits, {\"count\": {{edits}} }) în $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "„{{path}}” nu corespunde niciunui fișier din acest proiect."
   },
   "pandoc": {
     "downloadFailed": "Pandoc nu a putut fi descărcat. Instalează-l manual, apoi încearcă din nou.",

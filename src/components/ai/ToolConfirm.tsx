@@ -151,10 +151,10 @@ export function ToolConfirm({
       </div>
 
       {commandApproval && (
-        <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
+        <div className="select-text space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
           <div className="space-y-1">
             <p className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.commandLabel)}</p>
-            <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
+            <pre data-select-all-scope className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
               {/* A command often starts with `cd` into the same home path as the working directory. */}
               {displayText(req.command ?? req.summary)}
             </pre>
@@ -173,7 +173,7 @@ export function ToolConfirm({
       )}
 
       {mcpApproval && (
-        <div className="space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
+        <div className="select-text space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1.5 text-xs">
             <span className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.mcpServer)}</span>
             <code className="min-w-0 break-words font-mono text-foreground">
@@ -186,7 +186,7 @@ export function ToolConfirm({
           </div>
           <div className="space-y-1 border-t border-border/60 pt-2">
             <p className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.arguments)}</p>
-            <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
+            <pre data-select-all-scope className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
               {displayText(mcpApproval.argumentsPreview)}
             </pre>
           </div>

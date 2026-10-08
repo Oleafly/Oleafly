@@ -350,7 +350,8 @@
     "referencesFor": "{{name}} 참조",
     "renameFailed": "\"{{name}}\"(으)로 이름을 바꾸지 못했습니다.",
     "renamePartial": "전체 {{total}}개 파일 중 {{edited}}개에서 \"{{name}}\"(으)로 이름을 바꿨습니다. {{files}}에는 쓰지 못했습니다.",
-    "renamed": "\"{{name}}\"(으)로 이름을 바꿨습니다($t(core:navigation.files, {\"count\": {{files}} })에서 $t(core:navigation.edits, {\"count\": {{edits}} }))"
+    "renamed": "\"{{name}}\"(으)로 이름을 바꿨습니다($t(core:navigation.files, {\"count\": {{files}} })에서 $t(core:navigation.edits, {\"count\": {{edits}} }))",
+    "pathNotInProject": "\"{{path}}\"과(와) 일치하는 파일이 이 프로젝트에 없습니다."
   },
   "pandoc": {
     "downloadFailed": "pandoc을 내려받지 못했습니다. 직접 설치한 뒤 다시 시도하세요.",

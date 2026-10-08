@@ -726,6 +726,15 @@
           "description": "Revisa los archivos de Typst en busca de posibles errores cada vez que se guardan. Activarlo o desactivarlo reinicia el servidor de lenguaje de Typst.",
           "label": "Comprobaciones lint de Typst"
         }
+      },
+      "fileMove": {
+        "label": "Cuando se mueve un archivo",
+        "description": "Actualiza las rutas que apuntan a un archivo renombrado o movido en las fuentes LaTeX, Typst y Markdown.",
+        "options": {
+          "ask": "Preguntar",
+          "always": "Actualizar siempre",
+          "never": "No actualizar nunca"
+        }
       }
     },
     "files": {
@@ -827,6 +836,25 @@
       "startWithProject": {
         "description": "Arranca el shell al abrir un proyecto, en lugar de la primera vez que muestras el terminal.",
         "label": "Arrancar el shell con el proyecto"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Mantiene el texto en una columna centrada mientras el PDF está oculto.",
+        "label": "Centrar el editor"
+      },
+      "fullScreen": {
+        "description": "Llena la pantalla en el modo Zen y restaura la ventana al salir.",
+        "label": "Pasar a pantalla completa"
+      },
+      "showPdf": {
+        "description": "Si el PDF está oculto al empezar el modo Zen, lo abre junto al editor la primera vez que compilas.",
+        "label": "Mostrar el PDF al compilar"
+      },
+      "title": "Modo Zen",
+      "toggle": {
+        "description": "Oculta la barra de herramientas, la barra lateral, el asistente y el terminal para dejar solo el texto. También se llama modo sin distracciones. Requiere un proyecto abierto.",
+        "label": "Activar el modo Zen"
       }
     }
   },
@@ -1217,11 +1245,55 @@
       "apiKeyLabel": "Clave de API de Zotero",
       "connected": "Conectado a tu biblioteca de Zotero.",
       "connectedAs": "Conectado como {{username}}.",
-      "description": "Importa citas y referencias de tu biblioteca de Zotero.",
       "disconnectFailed": "Oleafly no pudo quitar la clave de Zotero guardada. Vuelve a intentarlo.",
-      "importHint": "Para importar, abre el panel Referencias de un proyecto y elige Importar biblioteca de referencias.",
       "userIdLabel": "ID de usuario de Zotero",
-      "userIdPlaceholder": "ID de usuario"
+      "userIdPlaceholder": "ID de usuario",
+      "citeDescription": "Busca en toda tu biblioteca de Zotero mientras escribes y añade solo lo que citas. Oleafly lee tu biblioteca y nunca la modifica.",
+      "local": {
+        "heading": "Zotero en este equipo",
+        "ready": "Conectado a Zotero {{version}}.",
+        "readyNoVersion": "Conectado a Zotero.",
+        "bbtFound": "Better BibTeX {{version}} está instalado, así que las claves de cita vienen de Better BibTeX.",
+        "bbtMissing": "Better BibTeX no está instalado, así que las claves de cita vienen de Zotero.",
+        "notRunning": "Zotero no se está ejecutando. Abre Zotero para buscar en tu biblioteca o conecta tu cuenta de zotero.org más abajo.",
+        "apiDisabled": "En Zotero, abre Ajustes > Avanzadas y activa “Permitir que otras aplicaciones de este equipo se comuniquen con Zotero”.",
+        "unsupported": "Esta versión de Zotero no puede compartir su biblioteca. Actualiza a Zotero 7 o posterior.",
+        "unknown": "Oleafly todavía no ha buscado Zotero."
+      },
+      "test": "Probar la conexión",
+      "syncNow": "Sincronizar ahora",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "No se encontró Better BibTeX",
+        "local": "Leído de Zotero en este equipo",
+        "web": "Leído de zotero.org",
+        "library_one": "{{name}}: {{formatted}} elemento",
+        "library_many": "{{name}}: {{formatted}} elementos",
+        "library_other": "{{name}}: {{formatted}} elementos"
+      },
+      "library": {
+        "heading": "Bibliotecas donde buscar",
+        "myLibrary": "Mi biblioteca",
+        "toggle": "Buscar en {{name}}",
+        "items_one": "{{formatted}} elemento",
+        "items_many": "{{formatted}} elementos",
+        "items_other": "{{formatted}} elementos"
+      },
+      "sync": {
+        "never": "Todavía no se ha sincronizado.",
+        "syncing": "Sincronizando tu biblioteca de Zotero…",
+        "progress": "Sincronizando {{done}} de {{total}} elementos…",
+        "status_one": "{{formatted}} elemento listo para citar, sincronizado {{time}}.",
+        "status_many": "{{formatted}} elementos listos para citar, sincronizados {{time}}.",
+        "status_other": "{{formatted}} elementos listos para citar, sincronizados {{time}}.",
+        "fromCache": "Zotero está cerrado, así que la búsqueda con @ usa la copia de la última sincronización.",
+        "rateLimited": "zotero.org pidió a Oleafly que esperara. Volverá a intentarlo después de las {{time}}."
+      },
+      "account": {
+        "heading": "Cuenta de zotero.org",
+        "description": "Usa tu cuenta cuando Zotero no esté abierto en este equipo. También se incluyen las bibliotecas de grupo."
+      }
     }
   },
   "language": {
@@ -1600,6 +1672,10 @@
         "label": "Abrir carpeta",
         "description": "Abre una carpeta de tu ordenador como proyecto."
       },
+      "toggleZenMode": {
+        "description": "Oculta todo menos el texto, o lo vuelve a mostrar.",
+        "label": "Activar o desactivar el modo Zen"
+      },
       "openSettings": {
         "label": "Abrir los ajustes",
         "description": "Abre los ajustes de Oleafly."
@@ -1625,7 +1701,7 @@
         "italic": "Cursiva",
         "jumpToSourceFromPdf": "Saltar del PDF al código",
         "redo": "Rehacer",
-        "renameSymbol": "Renombrar el símbolo en todo el proyecto",
+        "renameSymbol": "Renombrar el símbolo o el archivo en todo el proyecto",
         "slashCommandMenu": "Menú de inserción con barra",
         "triggerAutocomplete": "Abrir el autocompletado",
         "undo": "Deshacer"

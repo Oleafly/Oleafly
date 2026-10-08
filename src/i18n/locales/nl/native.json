@@ -31,7 +31,8 @@
     "newTab": "Nieuw tabblad",
     "openLocation": "Locatie openen…",
     "closeTab": "Tabblad sluiten",
-    "reloadPage": "Pagina opnieuw laden"
+    "reloadPage": "Pagina opnieuw laden",
+    "zenMode": "Zenmodus"
   },
   "window": {
     "browser": "Oleafly Browser",

@@ -188,7 +188,8 @@
     "quote": "인용문",
     "addLabel": "레이블 추가",
     "convertLatexMath": "LaTeX 수식을 Typst로 변환",
-    "noLatexMath": "먼저 LaTeX 수식을 선택하세요."
+    "noLatexMath": "먼저 LaTeX 수식을 선택하세요.",
+    "renameFile": "파일 이름 바꾸기…"
   },
   "shell": {
     "noFileOpenTab": "열린 파일 없음",
@@ -419,7 +420,7 @@
       "indentOrAccept": "들여쓰기 / 자동 완성 적용",
       "goToDefinition": "정의로 이동",
       "findReferences": "참조 찾기",
-      "renameSymbol": "심볼 이름 바꾸기(프로젝트 전체)",
+      "renameSymbol": "심볼 또는 파일 이름 바꾸기(프로젝트 전체)",
       "formatDocument": "Typst 문서 서식 정리",
       "commandPalette": "명령 팔레트",
       "searchAllDocuments": "모든 문서 검색",
@@ -447,7 +448,8 @@
     "noEntries": "이 프로젝트에는 아직 참고문헌 항목이 없습니다.",
     "addNew": "새 인용을 찾아서 추가…",
     "duplicate": "중복 {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "내 Zotero 라이브러리에서"
   },
   "inlineAi": {
     "promptPlaceholder": "바꿀 내용을 설명하세요…  (줄을 바꾸려면 Shift+Enter)",

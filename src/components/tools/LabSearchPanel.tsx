@@ -659,7 +659,7 @@ export function LabSearchPanel() {
             </div>
           )}
           {error && (
-            <div className="mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+            <div className="mt-3 flex select-text items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
               {error}
             </div>

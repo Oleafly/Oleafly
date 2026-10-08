@@ -386,7 +386,7 @@ function TaskComposerDraft({
         </div>
 
         {error ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="select-text text-sm text-destructive">
             {error}
           </p>
         ) : null}

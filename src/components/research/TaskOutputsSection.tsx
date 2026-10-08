@@ -25,6 +25,8 @@ import {
   useResearchTasksStore,
 } from "@/store/research-tasks";
 import { useFilesStore } from "@/store/files";
+import { readSidebarView } from "@/store/sidebar-view-state";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { SIDEBAR_TITLE_CLASS } from "@/components/layout/SidebarSection";
 import { useTauriSubscription } from "@/hooks/use-tauri-event";
 import { cn } from "@/lib/utils";
@@ -71,7 +73,16 @@ export function TaskOutputsSection() {
   const projectId = useFilesStore((state) => state.projectId);
   const tasks = useResearchTasksStore((state) => state.tasks);
   const openTaskDetail = useResearchTasksStore((state) => state.openTaskDetail);
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(
+    () => readSidebarView(projectId, "taskOutputs")?.open ?? true,
+  );
+  useSidebarViewMemory(projectId, "taskOutputs", { open });
+  const previousProjectId = useRef(projectId);
+  useEffect(() => {
+    if (previousProjectId.current === projectId) return;
+    previousProjectId.current = projectId;
+    setOpen(readSidebarView(projectId, "taskOutputs")?.open ?? true);
+  }, [projectId]);
   const [preview, setPreview] = useState<OpenPreview | null>(null);
   const previewRequest = useRef(0);
 
@@ -269,7 +280,7 @@ export function TaskOutputsSection() {
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 overflow-auto rounded-md border bg-muted/20 p-3">
+          <div data-select-all-scope className="min-h-0 select-text overflow-auto rounded-md border bg-muted/20 p-3">
             {preview?.error ? (
               <p role="alert" className="text-sm text-destructive">
                 {preview.error}

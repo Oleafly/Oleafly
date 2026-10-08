@@ -56,7 +56,11 @@
     "unreachable": "Oleafly から Zotero に接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
     "http_error": "Zotero からエラーが返されました (HTTP {{status}})。しばらくしてから、もう一度お試しください。",
     "invalid_response": "Zotero から Oleafly が読み取れない応答が返されました。しばらくしてから、もう一度お試しください。",
-    "too_large": "Zotero ライブラリが大きすぎて一度に読み込めません。代わりに Zotero でコレクションを RDF ファイルとして書き出し、そのファイルを読み込んでください。"
+    "too_large": "Zotero ライブラリが大きすぎて一度に読み込めません。代わりに Zotero でコレクションを RDF ファイルとして書き出し、そのファイルを読み込んでください。",
+    "local_not_running": "このコンピュータで Zotero が起動していません。Zotero を開くか、zotero.org アカウントを接続してください。",
+    "local_api_disabled": "Zotero で「設定 > 詳細」を開き、「Allow other applications on this computer to communicate with Zotero」をオンにしてください。",
+    "local_unsupported": "このバージョンの Zotero は Oleafly とライブラリを共有できません。Zotero 7 以降に更新してください。",
+    "offline": "Oleafly はオフラインモードのため、zotero.org に接続できません。"
   },
   "tex": {
     "no_host_binary": "TinyTeX にこのホストで動作する {{name}} のバイナリがありません。",

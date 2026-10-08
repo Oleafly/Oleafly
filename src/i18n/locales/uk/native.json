@@ -31,7 +31,8 @@
     "newTab": "Нова вкладка",
     "openLocation": "Відкрити адресу…",
     "closeTab": "Закрити вкладку",
-    "reloadPage": "Перезавантажити сторінку"
+    "reloadPage": "Перезавантажити сторінку",
+    "zenMode": "Режим Zen"
   },
   "window": {
     "browser": "Браузер Oleafly",

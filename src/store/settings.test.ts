@@ -439,6 +439,18 @@ describe("useSettingsStore reset", () => {
     expect(useSettingsStore.getState().editorFontFamily).toBe("");
   });
 
+  it("persists what happens to references when a file moves", () => {
+    const settings = useSettingsStore.getState();
+    expect(settings.fileMoveReferences).toBe("ask");
+    settings.setFileMoveReferences("never");
+    expect(useSettingsStore.getState().fileMoveReferences).toBe("never");
+    expect(localStorage.getItem("oleafly.editor.fileMoveReferences")).toBe("never");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().fileMoveReferences).toBe("ask");
+    expect(localStorage.getItem("oleafly.editor.fileMoveReferences")).toBe("ask");
+  });
+
   it("rejects a tab size outside the offered set", () => {
     const settings = useSettingsStore.getState();
     settings.setEditorTabSize(3);
@@ -479,12 +491,14 @@ describe("editor keymap migration", () => {
     lsValues.set("oleafly.editor.keymap", "acme");
     lsValues.set("oleafly.editor.tabSize", "7");
     lsValues.set("oleafly.editor.lineHeight", "huge");
+    lsValues.set("oleafly.editor.fileMoveReferences", "sometimes");
     vi.resetModules();
     const migrated = await import("./settings");
     expect(migrated.useSettingsStore.getState()).toMatchObject({
       editorKeymap: "default",
       editorTabSize: 4,
       editorLineHeight: "normal",
+      fileMoveReferences: "ask",
     });
   });
 });

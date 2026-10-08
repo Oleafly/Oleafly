@@ -93,12 +93,6 @@ function formatAuthors(authors: string[]): string {
 const COPY_BIBTEX_TOAST = "copy-bibtex";
 const ADD_TO_BIB_TOAST = "citation-scan-add-bib";
 
-function citeMarkup(profile: string, key: string): string {
-  if (profile === "typst") return `@${key}`;
-  if (profile === "markdown") return `[@${key}]`;
-  return String.raw`\cite{${key}}`;
-}
-
 export function CopyBibtexButton({
   bibtex,
   label,
@@ -170,12 +164,10 @@ function SuggestionCard({
     try {
       const result = await addCitation(bibtexForLiteratureRecord(record));
       if ("key" in result) {
-        const profile =
-          useFilesStore.getState().engine.capabilities.formatting_profile;
         toast.successUnique(
           ADD_TO_BIB_TOAST,
           i18n.t(($) => $.researchTools.citationScan.citeAdded, {
-            citation: citeMarkup(profile, result.key),
+            citation: result.cite ?? result.key,
           }),
         );
       } else {
@@ -801,7 +793,7 @@ export function DocumentCitationScanPanel() {
           {error && (
             <div className="flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              <span className="min-w-0 flex-1">{error}</span>
+              <span className="min-w-0 flex-1 select-text">{error}</span>
               <button
                 type="button"
                 className="shrink-0 rounded p-0.5 hover:bg-destructive/10"

@@ -188,7 +188,8 @@
     "quote": "Quote",
     "addLabel": "Add label",
     "convertLatexMath": "Convert LaTeX math to Typst",
-    "noLatexMath": "Select some LaTeX math first."
+    "noLatexMath": "Select some LaTeX math first.",
+    "renameFile": "Rename file…"
   },
   "shell": {
     "noFileOpenTab": "No file open",
@@ -426,7 +427,7 @@
       "indentOrAccept": "Indent / accept autocomplete",
       "goToDefinition": "Go to definition",
       "findReferences": "Find references",
-      "renameSymbol": "Rename symbol (project-wide)",
+      "renameSymbol": "Rename symbol or file (project-wide)",
       "formatDocument": "Format Typst document",
       "commandPalette": "Command palette",
       "searchAllDocuments": "Search all documents",
@@ -454,7 +455,8 @@
     "noEntries": "No bibliography entries in this project yet.",
     "addNew": "Find and add a new citation…",
     "duplicate": "duplicate {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "From your Zotero library"
   },
   "inlineAi": {
     "promptPlaceholder": "Describe the change…  (Shift+Enter for a new line)",

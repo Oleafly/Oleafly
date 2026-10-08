@@ -321,6 +321,27 @@ describe("registerPdfTextSelection global selection handling", () => {
     unregister();
   });
 
+  it("leaves an idle text layer untouched while the editor caret moves", () => {
+    const { layer } = textLayer("first", "second");
+    const editor = document.createElement("p");
+    editor.textContent = "typing in the editor";
+    document.body.append(editor);
+    const unregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);
+    const records: MutationRecord[] = [];
+    const observer = new MutationObserver((batch) => records.push(...batch));
+    observer.observe(layer, { attributes: true, childList: true, subtree: true });
+
+    for (let offset = 1; offset <= 3; offset++) {
+      select(editor.firstChild as Text, offset, editor.firstChild as Text, offset);
+      document.dispatchEvent(new KeyboardEvent("keyup", { key: "a" }));
+    }
+    records.push(...observer.takeRecords());
+    observer.disconnect();
+
+    expect(records).toEqual([]);
+    unregister();
+  });
+
   it("ignores a stale unregister after the layer was registered again", () => {
     const { layer, spans } = textLayer("first", "second");
     const staleUnregister = registerPdfTextSelection(layer, 1, normalizePdfText, stubT);

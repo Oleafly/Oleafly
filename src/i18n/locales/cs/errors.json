@@ -56,7 +56,11 @@
     "unreachable": "Oleafly se nemohl spojit se službou Zotero. Zkontrolujte připojení k internetu a zkuste to znovu.",
     "http_error": "Zotero vrátil chybu (HTTP {{status}}). Zkuste to později.",
     "invalid_response": "Zotero poslal odpověď, kterou Oleafly nedokázal přečíst. Zkuste to později.",
-    "too_large": "Vaše knihovna Zotero je příliš velká na jeden import. Vyexportujte z aplikace Zotero kolekci jako soubor RDF a importujte ten."
+    "too_large": "Vaše knihovna Zotero je příliš velká na jeden import. Vyexportujte z aplikace Zotero kolekci jako soubor RDF a importujte ten.",
+    "local_not_running": "Zotero v tomto počítači neběží. Otevřete Zotero, nebo připojte svůj účet zotero.org.",
+    "local_api_disabled": "V aplikaci Zotero otevřete Nastavení > Pokročilé a zapněte „Povolit ostatním aplikacím v tomto počítači komunikovat s Zotero“.",
+    "local_unsupported": "Tato verze aplikace Zotero neumí sdílet svou knihovnu s aplikací Oleafly. Aktualizujte na Zotero 7 nebo novější.",
+    "offline": "Oleafly je v režimu offline, takže se nemůže spojit se zotero.org."
   },
   "tex": {
     "no_host_binary": "TinyTeX nemá binární soubor {{name}} kompatibilní s tímto systémem.",

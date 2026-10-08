@@ -31,7 +31,8 @@
     "newTab": "Filă nouă",
     "openLocation": "Deschide o adresă…",
     "closeTab": "Închide fila",
-    "reloadPage": "Reîncarcă pagina"
+    "reloadPage": "Reîncarcă pagina",
+    "zenMode": "Modul Zen"
   },
   "window": {
     "browser": "Browser Oleafly",

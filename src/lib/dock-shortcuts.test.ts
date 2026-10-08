@@ -4,6 +4,8 @@ import { useShortcutStore } from "@/store/shortcuts";
 
 const toggleBrowser = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/browser-window", () => ({ toggleBrowser }));
+const toggleZenMode = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/zen-mode", () => ({ toggleZenMode }));
 
 import { handleDockShortcut } from "./dock-shortcuts";
 
@@ -52,6 +54,25 @@ describe("dock shortcuts", () => {
     expect(handleDockShortcut(event)).toBe(true);
     expect(toggleBrowser).toHaveBeenCalled();
     expect(useSettingsStore.getState().terminalOpen).toBe(false);
+  });
+
+  it("toggles Zen mode with its binding and consumes the key event", () => {
+    useShortcutStore.getState().setBinding("toggleZenMode", { key: "F11", shift: true });
+    const event = keyboard("F11", { shiftKey: true });
+
+    expect(handleDockShortcut(event)).toBe(true);
+    expect(toggleZenMode).toHaveBeenCalledOnce();
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(event.stopPropagation).toHaveBeenCalledOnce();
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
+  });
+
+  it("does not toggle Zen mode for a different chord", () => {
+    toggleZenMode.mockClear();
+    useShortcutStore.getState().setBinding("toggleZenMode", { key: "F11", shift: true });
+    expect(handleDockShortcut(keyboard("F11"))).toBe(false);
+    expect(handleDockShortcut(keyboard("F10", { shiftKey: true }))).toBe(false);
+    expect(toggleZenMode).not.toHaveBeenCalled();
   });
 
   it("leaves Ctrl+Shift+B to the visual editor's blockquote while it has focus", () => {

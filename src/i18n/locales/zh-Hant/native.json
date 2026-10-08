@@ -31,7 +31,8 @@
     "newTab": "新增分頁",
     "openLocation": "開啟位置…",
     "closeTab": "關閉分頁",
-    "reloadPage": "重新載入頁面"
+    "reloadPage": "重新載入頁面",
+    "zenMode": "禪模式"
   },
   "window": {
     "browser": "Oleafly 瀏覽器",

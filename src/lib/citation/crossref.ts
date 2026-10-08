@@ -1,3 +1,4 @@
+import { plainText } from "@/lib/zotero/rich-text";
 import type { CitationHit } from "./types";
 
 interface CrossrefAuthor {
@@ -19,6 +20,11 @@ interface CrossrefResponse {
   message?: { items?: CrossrefItem[] };
 }
 
+function firstText(value: string | string[] | undefined): string | null {
+  const text = Array.isArray(value) ? value[0] : value;
+  return typeof text === "string" ? plainText(text) : null;
+}
+
 export function parseCrossrefSearch(json: string): CitationHit[] {
   let data: CrossrefResponse;
   try {
@@ -29,7 +35,7 @@ export function parseCrossrefSearch(json: string): CitationHit[] {
   const items = data.message?.items ?? [];
   return items.map((it) => ({
     doi: it.DOI ?? null,
-    title: Array.isArray(it.title) ? it.title[0] ?? "" : it.title ?? "",
+    title: firstText(it.title) ?? "",
     authors: (it.author ?? [])
       .map((a) => {
         const given = a.given ? `, ${a.given}` : "";
@@ -37,7 +43,7 @@ export function parseCrossrefSearch(json: string): CitationHit[] {
       })
       .filter(Boolean),
     year: it.issued?.["date-parts"]?.[0]?.[0]?.toString() ?? null,
-    venue: Array.isArray(it["container-title"]) ? it["container-title"][0] ?? null : it["container-title"] ?? null,
+    venue: firstText(it["container-title"]),
     type: it.type ?? null,
   }));
 }

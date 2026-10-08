@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { create } from "zustand";
 import { refreshOpenFilesFromDisk } from "@/lib/external-file-changes";
 import {
@@ -39,7 +40,17 @@ export function isDelegatedSession(session: AcpSession): boolean {
   return !!session.taskId || !!session.parentSessionId;
 }
 
+function appendsInOrder(current: readonly AcpEvent[], incoming: readonly AcpEvent[]): boolean {
+  let last = current.at(-1)?.sequence ?? Number.NEGATIVE_INFINITY;
+  for (const event of incoming) {
+    if (event.sequence <= last) return false;
+    last = event.sequence;
+  }
+  return true;
+}
+
 export function mergeAcpEvents(current: readonly AcpEvent[], incoming: readonly AcpEvent[]): AcpEvent[] {
+  if (appendsInOrder(current, incoming)) return [...current, ...incoming];
   const bySequence = new Map(current.map((event) => [event.sequence, event]));
   for (const event of incoming) if (!bySequence.has(event.sequence)) bySequence.set(event.sequence, event);
   return [...bySequence.values()].sort((a, b) => a.sequence - b.sequence);
@@ -62,20 +73,36 @@ function clearsPermissions(event: AcpEvent): boolean {
   return event.kind === "status" && event.data.status !== "running" && event.data.status !== "ready";
 }
 
-function applyPermissionEvent(permissions: Record<string, AcpPermission[]>, event: AcpEvent): void {
+function nextPermissions(current: AcpPermission[], event: AcpEvent): AcpPermission[] {
   if (event.kind === "permission") {
     const permission = event.data as unknown as AcpPermission;
-    const current = permissions[event.sessionId] ?? [];
-    if (permission.expiresAt > Date.now() && !current.some((value) => value.id === permission.id)) {
-      permissions[event.sessionId] = [...current, permission];
-    }
-    return;
+    if (permission.expiresAt <= Date.now() || current.some((value) => value.id === permission.id)) return current;
+    return [...current, permission];
   }
-  if (event.kind === "permission_resolved") {
-    permissions[event.sessionId] = (permissions[event.sessionId] ?? []).filter((value) => value.id !== event.data.id);
-    return;
+  if (event.kind === "permission_resolved") return current.filter((value) => value.id !== event.data.id);
+  return clearsPermissions(event) ? [] : current;
+}
+
+function applyPermissionEvent(
+  permissions: Record<string, AcpPermission[]>,
+  event: AcpEvent,
+): Record<string, AcpPermission[]> {
+  const current = permissions[event.sessionId] ?? [];
+  const next = nextPermissions(current, event);
+  return next === current ? permissions : { ...permissions, [event.sessionId]: next };
+}
+
+const VOLATILE_SESSION_FIELDS: ReadonlySet<string> = new Set(["updatedAt", "lastSequence", "turnId"]);
+
+export function sameSessionView(shown: AcpSession | undefined, next: AcpSession | undefined): boolean {
+  if (shown === next) return true;
+  if (!shown || !next) return false;
+  const keys = new Set([...Object.keys(shown), ...Object.keys(next)]);
+  for (const key of keys) {
+    if (VOLATILE_SESSION_FIELDS.has(key)) continue;
+    if (shown[key as keyof AcpSession] !== next[key as keyof AcpSession]) return false;
   }
-  if (clearsPermissions(event)) permissions[event.sessionId] = [];
+  return true;
 }
 
 let catalogRequest = 0;
@@ -148,19 +175,29 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   ingest: (incoming) => set((state) => {
     const events = { ...state.events };
     const sessions = { ...state.sessions };
-    const permissions = { ...state.permissions };
+    let permissions = state.permissions;
     const grouped = new Map<string, AcpEvent[]>();
     for (const event of incoming) {
       const group = grouped.get(event.sessionId) ?? [];
       group.push(event);
       grouped.set(event.sessionId, group);
       applySessionEvent(sessions, event);
-      applyPermissionEvent(permissions, event);
+      permissions = applyPermissionEvent(permissions, event);
     }
     for (const [id, group] of grouped) events[id] = mergeAcpEvents(events[id] ?? [], group);
     return { events, sessions, permissions };
   }),
 }));
+
+export function useAcpSessionView(sessionId: string | null): AcpSession | undefined {
+  const shown = useRef<AcpSession | undefined>(undefined);
+  return useAcpSessionsStore((state) => {
+    const next = sessionId ? state.sessions[sessionId] : undefined;
+    if (sameSessionView(shown.current, next)) return shown.current;
+    shown.current = next;
+    return next;
+  });
+}
 
 function mayHaveChangedFiles(event: AcpEvent): boolean {
   return event.kind === "turn_complete" || (event.kind === "tool_call_update" && event.data.status === "completed");

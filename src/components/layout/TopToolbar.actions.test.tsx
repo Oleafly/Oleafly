@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -55,6 +55,9 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
+import { useShortcutStore, shortcutLabel } from "@/store/shortcuts";
+import { useZenStore } from "@/store/zen";
+import { exitZenMode } from "@/lib/zen-mode";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { ThemeProvider } from "@/lib/theme";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
@@ -88,6 +91,7 @@ beforeEach(() => {
   renameProject.mockReset().mockResolvedValue(undefined);
   refreshProjects.mockReset().mockResolvedValue(undefined);
   openProject.mockClear();
+  useZenStore.getState().end();
   usePreviewDetachedStore.setState({ projectId: null });
   useFilesStore.setState({
     projectId: "p1",
@@ -272,6 +276,70 @@ describe("TopToolbar view and layout", () => {
       return icon.innerHTML;
     });
     expect(new Set(icons).size).toBe(icons.length);
+  });
+});
+
+describe("TopToolbar layout menu and Zen mode", () => {
+  async function openLayoutMenu() {
+    renderToolbar();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: toolbar.layout }));
+    const menu = (await screen.findAllByRole("menu")).at(-1);
+    if (!menu) throw new Error("layout menu did not open");
+    return { user, menu };
+  }
+
+  it("ends with Zen mode, set apart from the presets, with its shortcut on the right", async () => {
+    const { menu } = await openLayoutMenu();
+    const items = within(menu).getAllByRole("menuitem");
+    const zen = items.at(-1) as HTMLElement;
+    expect(zen).toHaveAccessibleName(toolbar.layouts.zenMode);
+    expect(items).toHaveLength(Object.keys(toolbar.layouts).length);
+    const shortcut = shortcutLabel(useShortcutStore.getState().bindings.toggleZenMode);
+    expect(zen).toHaveTextContent(shortcut);
+    expect(zen).toHaveAttribute("aria-keyshortcuts");
+    const separators = within(menu).getAllByRole("separator");
+    expect(separators).toHaveLength(1);
+    expect(
+      separators[0].compareDocumentPosition(zen) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      separators[0].compareDocumentPosition(items[0]) & Node.DOCUMENT_POSITION_PRECEDING,
+    ).toBeTruthy();
+  });
+
+  it("shows the shortcut the user chose", async () => {
+    useShortcutStore.getState().setBinding("toggleZenMode", { key: "z", mod: true, alt: true });
+    try {
+      const { menu } = await openLayoutMenu();
+      const zen = within(menu).getByRole("menuitem", { name: toolbar.layouts.zenMode });
+      expect(zen).toHaveTextContent(
+        shortcutLabel({ key: "z", mod: true, alt: true }),
+      );
+    } finally {
+      useShortcutStore.getState().resetBinding("toggleZenMode");
+    }
+  });
+
+  it("never marks Zen mode as the current layout", async () => {
+    const { menu } = await openLayoutMenu();
+    const zen = within(menu).getByRole("menuitem", { name: toolbar.layouts.zenMode });
+    expect(zen.querySelector("svg.lucide-check")).toBeNull();
+  });
+
+  it("enters Zen mode from the menu and leaving brings the preset back", async () => {
+    useSettingsStore.setState({ viewMode: "split", assistantOpen: true, showTree: true });
+    const { user, menu } = await openLayoutMenu();
+    await user.click(within(menu).getByRole("menuitem", { name: toolbar.layouts.zenMode }));
+    await waitFor(() => expect(useZenStore.getState().active).toBe(true));
+    expect(useSettingsStore.getState()).toMatchObject({ assistantOpen: false, showTree: false });
+
+    exitZenMode();
+    expect(useSettingsStore.getState()).toMatchObject({
+      viewMode: "split",
+      assistantOpen: true,
+      showTree: true,
+    });
   });
 });
 

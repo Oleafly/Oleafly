@@ -201,6 +201,7 @@ async function createEntry(
 
 async function renameEntry(page: Page, from: string, toName: string) {
   await openRowAction(page, from, "Rename");
+  await page.waitForFunction(`!!document.querySelector('[aria-label="Rename file"]')`, 5_000);
   const committed = await page.evaluate<boolean>(
     `(() => {
       const input = document.querySelector('[aria-label="Rename file"]');

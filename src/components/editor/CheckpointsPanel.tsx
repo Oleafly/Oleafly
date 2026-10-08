@@ -1,5 +1,6 @@
 import { currentLocale, i18n } from "@/i18n";
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -229,7 +230,7 @@ function CatalogFacts({ inspection }: Readonly<{ inspection: CheckpointStoreInsp
       {facts.map(([term, value]) => (
         <div key={term} className="contents">
           <dt className="text-muted-foreground">{term}</dt>
-          <dd className="min-w-0 break-all font-mono">{value}</dd>
+          <dd className="min-w-0 select-text break-all font-mono">{value}</dd>
         </div>
       ))}
     </dl>
@@ -300,7 +301,7 @@ function CheckpointFileRows({ state }: Readonly<{ state: FileState | undefined }
     <ul className="list-none space-y-1 p-0">
       {state.files.map((file) => (
         <li key={file.path} className="flex flex-wrap items-center gap-1.5 text-[11px]">
-          <span className="min-w-0 break-all font-mono">{checkpointFileName(file)}</span>
+          <span className="min-w-0 select-text break-all font-mono">{checkpointFileName(file)}</span>
           <span className="text-muted-foreground">{formatBytes(file.bytes)}</span>
           {file.stored ? null : (
             <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
@@ -389,7 +390,7 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
 interface TimelineEntryProps {
   checkpoint: CheckpointSummary;
   version: string;
-  now: number;
+  age: string;
   busy: boolean;
   expanded: boolean;
   confirmation: Confirmation;
@@ -414,7 +415,7 @@ interface TimelineEntryProps {
 function TimelineEntry({
   checkpoint,
   version,
-  now,
+  age,
   busy,
   expanded,
   confirmation,
@@ -627,7 +628,7 @@ function TimelineEntry({
           dateTime={isoTimestamp(checkpoint.completed_at_unix_ms)}
           className="text-xs text-muted-foreground"
         >
-          {formatCheckpointAge(checkpoint.completed_at_unix_ms, now)}
+          {age}
         </time>
       </>
     );
@@ -713,6 +714,64 @@ function TimelineEntry({
   );
 }
 
+interface TimelineActions {
+  toggleFiles: (snapshotRoot: string) => void;
+  confirm: (next: Confirmation) => void;
+  restore: (checkpoint: CheckpointSummary) => void;
+  remove: (checkpoint: CheckpointSummary) => void;
+  copyRoot: (snapshotRoot: string) => void;
+  retryFiles: (snapshotRoot: string) => void;
+  startLabelEdit: (checkpoint: CheckpointSummary) => void;
+  setLabelDraft: (value: string) => void;
+  saveLabel: (snapshotRoot: string) => void;
+  cancelLabel: () => void;
+  removeLabel: (snapshotRoot: string) => void;
+}
+
+type TimelineRowProps = Pick<
+  TimelineEntryProps,
+  | "checkpoint"
+  | "version"
+  | "age"
+  | "busy"
+  | "expanded"
+  | "confirmation"
+  | "fileState"
+  | "copied"
+  | "editingLabel"
+  | "labelDraft"
+  | "savingLabel"
+> & { actions: TimelineActions };
+
+const TimelineRow = memo(function TimelineRow({ actions, ...entry }: Readonly<TimelineRowProps>) {
+  const { checkpoint } = entry;
+  const root = checkpoint.snapshot_root;
+  return (
+    <TimelineEntry
+      {...entry}
+      onToggleFiles={() => actions.toggleFiles(root)}
+      onConfirm={actions.confirm}
+      onRestore={() => actions.restore(checkpoint)}
+      onDelete={() => actions.remove(checkpoint)}
+      onCopyRoot={() => actions.copyRoot(root)}
+      onRetryFiles={() => actions.retryFiles(root)}
+      onStartLabelEdit={() => actions.startLabelEdit(checkpoint)}
+      onLabelDraftChange={actions.setLabelDraft}
+      onSaveLabel={() => actions.saveLabel(root)}
+      onCancelLabel={actions.cancelLabel}
+      onRemoveLabel={() => actions.removeLabel(root)}
+    />
+  );
+});
+
+const TIMELINE_PAGE = 40;
+
+function entryConfirmation(confirmation: Confirmation, snapshotRoot: string): Confirmation {
+  return confirmation && "snapshotRoot" in confirmation && confirmation.snapshotRoot === snapshotRoot
+    ? confirmation
+    : null;
+}
+
 export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (busy: boolean) => void }>) {
   const { t } = useTranslation(["common", "editor"]);
   const displayPath = useDisplayPath();
@@ -748,6 +807,25 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
   const [inspectionFailed, setInspectionFailed] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogExpanded, setCatalogExpanded] = useState<string[]>([]);
+  const [timelineLimit, setTimelineLimit] = useState(TIMELINE_PAGE);
+  const timelineEndRef = useRef<HTMLLIElement>(null);
+  const timelineActionsRef = useRef<TimelineActions | null>(null);
+  const timelineActions = useMemo<TimelineActions>(
+    () => ({
+      toggleFiles: (snapshotRoot) => timelineActionsRef.current?.toggleFiles(snapshotRoot),
+      confirm: (next) => timelineActionsRef.current?.confirm(next),
+      restore: (checkpoint) => timelineActionsRef.current?.restore(checkpoint),
+      remove: (checkpoint) => timelineActionsRef.current?.remove(checkpoint),
+      copyRoot: (snapshotRoot) => timelineActionsRef.current?.copyRoot(snapshotRoot),
+      retryFiles: (snapshotRoot) => timelineActionsRef.current?.retryFiles(snapshotRoot),
+      startLabelEdit: (checkpoint) => timelineActionsRef.current?.startLabelEdit(checkpoint),
+      setLabelDraft: (value) => timelineActionsRef.current?.setLabelDraft(value),
+      saveLabel: (snapshotRoot) => timelineActionsRef.current?.saveLabel(snapshotRoot),
+      cancelLabel: () => timelineActionsRef.current?.cancelLabel(),
+      removeLabel: (snapshotRoot) => timelineActionsRef.current?.removeLabel(snapshotRoot),
+    }),
+    [],
+  );
   const loadRequest = useRef(0);
   const inspectRequest = useRef(0);
   const sessionRequest = useRef(0);
@@ -891,6 +969,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     setAdvancedOpen(false);
     setCatalogOpen(false);
     setCatalogExpanded([]);
+    setTimelineLimit(TIMELINE_PAGE);
     setInspection(null);
     setInspectionFailed(false);
     setInspectionLoading(false);
@@ -929,6 +1008,30 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
   }, [busy, onBusyChange]);
 
   const visibleCheckpoints = renderIdentityChanged ? [] : checkpoints;
+  const progressiveTimeline = typeof IntersectionObserver !== "undefined";
+  const timelineMore =
+    progressiveTimeline && visibleCheckpoints.length > timelineLimit;
+  const shownCheckpoints = useMemo(
+    () => (timelineMore ? visibleCheckpoints.slice(0, timelineLimit) : visibleCheckpoints),
+    [timelineLimit, timelineMore, visibleCheckpoints],
+  );
+
+  useEffect(() => {
+    void timelineLimit;
+    const end = timelineEndRef.current;
+    if (!timelineMore || !end) return;
+    const root = end.closest<HTMLElement>("[data-checkpoint-scroller]");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        setTimelineLimit((limit) => limit + TIMELINE_PAGE);
+      },
+      { root, rootMargin: "0px 0px 1200px 0px" },
+    );
+    observer.observe(end);
+    return () => observer.disconnect();
+  }, [timelineMore, timelineLimit]);
   const versionLabels = useMemo(() => {
     const labels = new Map<string, string>();
     [...visibleCheckpoints].reverse().forEach((entry, index) => {
@@ -1192,6 +1295,20 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     }
   };
 
+  timelineActionsRef.current = {
+    toggleFiles,
+    confirm,
+    restore: (checkpoint) => void restore(checkpoint),
+    remove: (checkpoint) => void deleteCheckpoint(checkpoint),
+    copyRoot: (snapshotRoot) => void copyRoot(snapshotRoot),
+    retryFiles: ensureFiles,
+    startLabelEdit,
+    setLabelDraft,
+    saveLabel: (snapshotRoot) => void saveLabel(snapshotRoot, labelDraft),
+    cancelLabel: cancelLabelEdit,
+    removeLabel: (snapshotRoot) => void saveLabel(snapshotRoot, ""),
+  };
+
   const railVisible = visibleCheckpoints.length + (publishing ? 1 : 0) > 1;
 
   const overviewFallback = (): string => {
@@ -1266,33 +1383,28 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
             <LoadingState size="compact" label={t(($) => $.editor.checkpoints.panel.publishing)} />
           </li>
         ) : null}
-        {visibleCheckpoints.map((checkpoint) => (
-          <TimelineEntry
-            key={checkpoint.snapshot_root}
-            checkpoint={checkpoint}
-            version={labelFor(checkpoint.snapshot_root)}
-            now={now}
-            busy={busy}
-            expanded={expanded.includes(checkpoint.snapshot_root)}
-            confirmation={confirmation}
-            fileState={fileStates[checkpoint.snapshot_root]}
-            copied={copiedRoot === checkpoint.snapshot_root}
-            editingLabel={editingLabelRoot === checkpoint.snapshot_root}
-            labelDraft={labelDraft}
-            savingLabel={busyAction === `label:${checkpoint.snapshot_root}`}
-            onToggleFiles={() => toggleFiles(checkpoint.snapshot_root)}
-            onConfirm={confirm}
-            onRestore={() => void restore(checkpoint)}
-            onDelete={() => void deleteCheckpoint(checkpoint)}
-            onCopyRoot={() => void copyRoot(checkpoint.snapshot_root)}
-            onRetryFiles={() => ensureFiles(checkpoint.snapshot_root)}
-            onStartLabelEdit={() => startLabelEdit(checkpoint)}
-            onLabelDraftChange={setLabelDraft}
-            onSaveLabel={() => void saveLabel(checkpoint.snapshot_root, labelDraft)}
-            onCancelLabel={cancelLabelEdit}
-            onRemoveLabel={() => void saveLabel(checkpoint.snapshot_root, "")}
-          />
-        ))}
+        {shownCheckpoints.map((checkpoint) => {
+          const root = checkpoint.snapshot_root;
+          const editingLabel = editingLabelRoot === root;
+          return (
+            <TimelineRow
+              key={root}
+              checkpoint={checkpoint}
+              version={labelFor(root)}
+              age={formatCheckpointAge(checkpoint.completed_at_unix_ms, now)}
+              busy={busy}
+              expanded={expanded.includes(root)}
+              confirmation={entryConfirmation(confirmation, root)}
+              fileState={fileStates[root]}
+              copied={copiedRoot === root}
+              editingLabel={editingLabel}
+              labelDraft={editingLabel ? labelDraft : ""}
+              savingLabel={busyAction === `label:${root}`}
+              actions={timelineActions}
+            />
+          );
+        })}
+        {timelineMore ? <li ref={timelineEndRef} aria-hidden className="h-px" /> : null}
       </ol>
     );
   };
@@ -1338,7 +1450,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     return (
       <>
         <div className="flex items-start gap-2">
-          <code className="min-w-0 flex-1 break-all rounded-lg border bg-background p-3 text-xs">
+          <code className="min-w-0 flex-1 select-text break-all rounded-lg border bg-background p-3 text-xs">
             {displayPath(storePath)}
           </code>
           <Button
@@ -1658,7 +1770,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
         </p>
       ) : null}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
+      <div data-checkpoint-scroller className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
         {renderTimeline()}
 
         <div className="mt-4 border-t px-2 pt-3">

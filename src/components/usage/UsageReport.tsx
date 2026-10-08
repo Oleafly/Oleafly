@@ -1481,7 +1481,7 @@ export function UsageReportDialog({
             <div role="alert" className="grid min-h-56 place-items-center text-center">
               <div>
                 <p className="font-medium">{t(($) => $.usage.dialog.loadFailed)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 select-text text-sm text-muted-foreground">
                   {reportQuery.error instanceof Error
                     ? reportQuery.error.message
                     : t(($) => $.usage.dialog.loadFailedHint)}

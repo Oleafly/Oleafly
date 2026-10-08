@@ -54,6 +54,7 @@ const {
   cancelProofreading,
   forgetProofreadingDictionary,
   proofreadDocument,
+  releaseIdleProofreadingWorker,
 } = await import("./client");
 
 function input(
@@ -106,6 +107,52 @@ beforeEach(() => {
 });
 
 describe("proofreading worker lifecycle", () => {
+  it("lets an idle worker go at once when asked, and starts a fresh one for the next check", () => {
+    void proofreadDocument(input("c.tex", "source", "en_US")).catch(() => undefined);
+    const worker = latest();
+    cancelProofreading("source", "c.tex");
+
+    releaseIdleProofreadingWorker();
+    expect(worker.terminated).toBe(true);
+
+    void proofreadDocument(input("c.tex", "source", "en_US")).catch(() => undefined);
+    expect(latest()).not.toBe(worker);
+    expect(kinds(latest())).toEqual(["proofread:en_US"]);
+  });
+
+  it("keeps a worker that still has a check in flight", () => {
+    void proofreadDocument(input("d.tex", "source", "en_US")).catch(() => undefined);
+    const worker = latest();
+
+    releaseIdleProofreadingWorker();
+
+    expect(worker.terminated).toBe(false);
+  });
+
+  it("lets an idle worker go after two minutes and starts a fresh one for the next check", async () => {
+    vi.useFakeTimers();
+    try {
+      void proofreadDocument(input("i.tex", "source", "en_US")).catch(
+        () => undefined,
+      );
+      const worker = latest();
+      cancelProofreading("source", "i.tex");
+
+      await vi.advanceTimersByTimeAsync(119_000);
+      expect(worker.terminated).toBe(false);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(worker.terminated).toBe(true);
+
+      void proofreadDocument(input("i.tex", "source", "en_US")).catch(
+        () => undefined,
+      );
+      expect(latest()).not.toBe(worker);
+      expect(kinds(latest())).toEqual(["proofread:en_US"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("does not mark a pack delivered for a worker that never received it", async () => {
     const reads: ((payload: Payload) => void)[] = [];
     mocks.readDictionary.mockImplementation(

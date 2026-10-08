@@ -716,6 +716,15 @@
           "description": "每次保存 Typst 文件时检查可能的错误。开启或关闭此项会重启 Typst 语言服务器。",
           "label": "Typst lint 检查"
         }
+      },
+      "fileMove": {
+        "label": "移动文件时",
+        "description": "在 LaTeX、Typst 和 Markdown 源文件中，更新指向已重命名或已移动文件的路径。",
+        "options": {
+          "ask": "询问",
+          "always": "始终更新",
+          "never": "从不更新"
+        }
       }
     },
     "files": {
@@ -817,6 +826,25 @@
       "startWithProject": {
         "description": "在项目打开时启动 shell，而不是在首次显示终端时才启动。",
         "label": "随项目启动 shell"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "PDF 隐藏时，让文字保持在居中的一栏里。",
+        "label": "居中编辑器"
+      },
+      "fullScreen": {
+        "description": "进入禅模式时填满屏幕，退出时恢复窗口。",
+        "label": "进入全屏"
+      },
+      "showPdf": {
+        "description": "如果禅模式开始时 PDF 是隐藏的，则在第一次编译时把它打开在编辑器旁边。",
+        "label": "编译时显示 PDF"
+      },
+      "title": "禅模式",
+      "toggle": {
+        "description": "隐藏工具栏、侧边栏、助手和终端，只留下你的文字。也称为无干扰模式。需要先打开一个项目。",
+        "label": "开启禅模式"
       }
     }
   },
@@ -1193,11 +1221,49 @@
       "apiKeyLabel": "Zotero API 密钥",
       "connected": "已连接到你的 Zotero 库。",
       "connectedAs": "已以 {{username}} 的身份连接。",
-      "description": "从你的 Zotero 库导入引用和参考文献。",
       "disconnectFailed": "Oleafly 无法移除已保存的 Zotero 密钥。请重试。",
-      "importHint": "要导入，请在项目中打开“参考文献”面板，然后选择“导入参考文献库”。",
       "userIdLabel": "Zotero 用户 ID",
-      "userIdPlaceholder": "用户 ID"
+      "userIdPlaceholder": "用户 ID",
+      "citeDescription": "写作时搜索你的整个 Zotero 库，只添加你引用的内容。Oleafly 只读取你的库，从不更改它。",
+      "local": {
+        "heading": "本机上的 Zotero",
+        "ready": "已连接到 Zotero {{version}}。",
+        "readyNoVersion": "已连接到 Zotero。",
+        "bbtFound": "已安装 Better BibTeX {{version}}，因此引用键来自 Better BibTeX。",
+        "bbtMissing": "未安装 Better BibTeX，因此引用键来自 Zotero。",
+        "notRunning": "Zotero 未在运行。打开 Zotero 即可搜索你的库，也可以在下方连接你的 zotero.org 账户。",
+        "apiDisabled": "在 Zotero 中，打开“设置 > 高级”，然后勾选“允许此计算机上的其他应用程序与 Zotero 通讯”。",
+        "unsupported": "此版本的 Zotero 无法共享其库。请更新到 Zotero 7 或更高版本。",
+        "unknown": "Oleafly 尚未查找 Zotero。"
+      },
+      "test": "测试连接",
+      "syncNow": "立即同步",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "未找到 Better BibTeX",
+        "local": "从本机上的 Zotero 读取",
+        "web": "从 zotero.org 读取",
+        "library_other": "{{name}}：{{formatted}} 个条目"
+      },
+      "library": {
+        "heading": "要搜索的库",
+        "myLibrary": "我的文库",
+        "toggle": "搜索 {{name}}",
+        "items_other": "{{formatted}} 个条目"
+      },
+      "sync": {
+        "never": "尚未同步。",
+        "syncing": "正在同步你的 Zotero 库…",
+        "progress": "正在同步 {{done}}/{{total}} 个条目…",
+        "status_other": "{{formatted}} 个条目可供引用，上次同步：{{time}}。",
+        "fromCache": "Zotero 已关闭，因此 @ 搜索使用上次同步的副本。",
+        "rateLimited": "zotero.org 要求 Oleafly 稍候。将于 {{time}} 后重试。"
+      },
+      "account": {
+        "heading": "zotero.org 账户",
+        "description": "本机上没有打开 Zotero 时，使用你的账户。群组文库也会一并包含。"
+      }
     }
   },
   "language": {
@@ -1564,6 +1630,10 @@
         "label": "打开文件夹",
         "description": "将电脑上的文件夹作为项目打开。"
       },
+      "toggleZenMode": {
+        "description": "隐藏写作内容以外的一切，或将其恢复。",
+        "label": "切换禅模式"
+      },
       "openSettings": {
         "label": "打开设置",
         "description": "打开 Oleafly 设置。"
@@ -1589,7 +1659,7 @@
         "italic": "斜体",
         "jumpToSourceFromPdf": "从 PDF 跳转到源码",
         "redo": "重做",
-        "renameSymbol": "全项目重命名符号",
+        "renameSymbol": "全项目重命名符号或文件",
         "slashCommandMenu": "斜杠命令插入菜单",
         "triggerAutocomplete": "触发自动补全",
         "undo": "撤销"

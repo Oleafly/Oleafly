@@ -31,7 +31,8 @@
     "newTab": "新規タブ",
     "openLocation": "場所を開く…",
     "closeTab": "タブを閉じる",
-    "reloadPage": "ページを再読み込み"
+    "reloadPage": "ページを再読み込み",
+    "zenMode": "Zen モード"
   },
   "window": {
     "browser": "Oleafly ブラウザ",

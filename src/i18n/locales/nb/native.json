@@ -31,7 +31,8 @@
     "newTab": "Ny fane",
     "openLocation": "Åpne adresse…",
     "closeTab": "Lukk fane",
-    "reloadPage": "Last inn siden på nytt"
+    "reloadPage": "Last inn siden på nytt",
+    "zenMode": "Zen-modus"
   },
   "window": {
     "browser": "Oleafly-nettleser",

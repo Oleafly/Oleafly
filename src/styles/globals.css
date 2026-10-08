@@ -509,6 +509,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  -webkit-user-select: text;
   user-select: text;
   background: transparent;
   color: inherit;
@@ -700,12 +701,18 @@
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overflow: hidden;
+    cursor: default;
   }
   html[data-window-surface="solid"] #root {
     background-color: var(--background);
   }
   html[data-window-corners="round"] body {
     clip-path: inset(0 round 10px);
+  }
+  .select-text,
+  .select-all,
+  .cm-editor .cm-content[contenteditable="false"] {
+    cursor: auto;
   }
   /* Cursors: every interactive control gets an appropriate pointer. */
   button,
@@ -775,6 +782,25 @@
 
 :where(body, body *):hover::-webkit-scrollbar-thumb:hover {
   background: color-mix(in srgb, var(--muted-foreground) 62%, transparent);
+}
+
+.ofl-native-scrollbar-hidden {
+  scrollbar-width: none;
+}
+
+.ofl-native-scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.ofl-row-more-icon {
+  display: block;
+  width: 0.875rem;
+  height: 0.875rem;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='1'/%3E%3Ccircle cx='19' cy='12' r='1'/%3E%3Ccircle cx='5' cy='12' r='1'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='1'/%3E%3Ccircle cx='19' cy='12' r='1'/%3E%3Ccircle cx='5' cy='12' r='1'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 /* Thin (0.5px) borders app-wide. Unlayered so they override Tailwind's
@@ -917,6 +943,10 @@ select:focus-visible {
 
 .compile-shimmer-icon {
   animation: compile-icon-shimmer 1.6s ease-in-out infinite;
+}
+
+svg.animate-spin {
+  will-change: transform;
 }
 
 [data-panel],
@@ -1572,6 +1602,10 @@ body[data-tour-active] [data-tour-hide] {
   --cm-gutter-min-width: 2em;
 }
 
+[data-zen-centered="true"] .cm-editor .cm-scroller {
+  padding-inline: max(0px, calc((100% - var(--zen-column-width, 50rem)) / 2));
+}
+
 /* Scrollable, but with no visible bar. The tab strip needs to scroll
    horizontally without a track sitting under the tabs. */
 .no-scrollbar {
@@ -1773,6 +1807,7 @@ body[data-tour-active] [data-tour-hide] {
   gap: 0.4rem;
   margin-bottom: 0.25rem;
   font-family: var(--font-sans);
+  -webkit-user-select: none;
   user-select: none;
 }
 .wysiwyg-content .ProseMirror .theorem-name {
@@ -1955,6 +1990,23 @@ body[data-tour-active] [data-tour-hide] {
   padding: 0 0.15em;
 }
 /* ---- end visual editor native LaTeX nodes ---- */
+
+html,
+body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input,
+textarea,
+[contenteditable]:not([contenteditable="false"]),
+.cm-editor .cm-content {
+  -webkit-user-select: text;
+  user-select: text;
+}
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
 
 *,
 *::before,

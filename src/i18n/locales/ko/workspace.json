@@ -206,5 +206,16 @@
     "clearFilter": "필터 지우기",
     "filterPlaceholder": "필터…",
     "noProject": "프로젝트 없음"
+  },
+  "fileReferences": {
+    "title": "{{name}}에 대한 참조를 업데이트할까요?",
+    "files_other": "파일 {{count}}개",
+    "summary_other": "$t(workspace:fileReferences.files, { \"count\": {{files}} })에 있는 참조 {{count}}개가 아직 이전 경로 {{path}}을(를) 사용합니다.",
+    "fileCount_other": "참조 {{count}}개",
+    "dontAsk": "다시 묻지 않기",
+    "update": "참조 업데이트",
+    "skip": "업데이트하지 않기",
+    "failed_other": "파일 {{count}}개가 이동 후 변경되었거나 저장되지 않았습니다. 아직 이전 경로를 사용합니다.",
+    "close": "참조를 업데이트하지 않고 닫기"
   }
 }

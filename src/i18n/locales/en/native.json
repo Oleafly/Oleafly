@@ -31,7 +31,8 @@
     "newTab": "New Tab",
     "openLocation": "Open Location…",
     "closeTab": "Close Tab",
-    "reloadPage": "Reload Page"
+    "reloadPage": "Reload Page",
+    "zenMode": "Zen Mode"
   },
   "window": {
     "browser": "Oleafly Browser",

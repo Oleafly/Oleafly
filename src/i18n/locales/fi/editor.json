@@ -188,7 +188,8 @@
     "quote": "Lainaus",
     "addLabel": "Lisää nimike",
     "convertLatexMath": "Muunna LaTeX-matematiikka Typst-muotoon",
-    "noLatexMath": "Valitse ensin LaTeX-matematiikkaa."
+    "noLatexMath": "Valitse ensin LaTeX-matematiikkaa.",
+    "renameFile": "Nimeä tiedosto uudelleen…"
   },
   "shell": {
     "noFileOpenTab": "Ei avointa tiedostoa",
@@ -426,7 +427,7 @@
       "indentOrAccept": "Sisennä tai hyväksy täydennys",
       "goToDefinition": "Siirry määritelmään",
       "findReferences": "Etsi viitteet",
-      "renameSymbol": "Nimeä symboli uudelleen (koko projektissa)",
+      "renameSymbol": "Nimeä symboli tai tiedosto uudelleen (koko projektissa)",
       "formatDocument": "Muotoile Typst-dokumentti",
       "commandPalette": "Komentopaletti",
       "searchAllDocuments": "Hae kaikista dokumenteista",
@@ -454,7 +455,8 @@
     "noEntries": "Tässä projektissa ei ole vielä lähdeviitteitä.",
     "addNew": "Etsi ja lisää uusi viittaus…",
     "duplicate": "kahteen kertaan {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Zotero-kirjastostasi"
   },
   "inlineAi": {
     "promptPlaceholder": "Kuvaile muutos…  (Shift+Enter lisää rivinvaihdon)",

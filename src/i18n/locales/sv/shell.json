@@ -43,7 +43,9 @@
     "privacyNote": "Bara identifieraren eller titeln skickas, till doi.org, arXiv eller Crossref.",
     "title": "Lägg till citering",
     "bibliography": "Bibliografi",
-    "bibliographyHint": "Projektet har mer än en bibliografi. Posten hamnar i den fil du väljer här."
+    "bibliographyHint": "Projektet har mer än en bibliografi. Posten hamnar i den fil du väljer här.",
+    "zoteroMatches": "Från ditt Zotero-bibliotek",
+    "zoteroPlaceholder": "Sök i ditt Zotero-bibliotek, eller klistra in en DOI, ett arXiv-id eller en titel"
   },
   "backendProtocol": {
     "mismatch": "Det här fönstret och dess bakänd byggdes för olika Oleafly-versioner, så vissa funktioner kanske inte fungerar. Installera om appen för att lösa det."
@@ -326,6 +328,22 @@
     "presentWithPresenter": {
       "label": "Presentera bilder med presentatörsvy",
       "keywords": "presentera bilder presentatörsvy talaranteckningar timer nästa bild"
+    },
+    "zenMode": {
+      "keywords": "störningsfri fokus helskärm dölj gränssnitt minimal skriva",
+      "label": "Växla Zen-läge"
+    },
+    "zoteroAddMissing": {
+      "label": "Lägg till saknade citeringar från Zotero",
+      "keywords": "zotero saknade citeringar odefinierade nycklar bibliografi reparera"
+    },
+    "zoteroUpdate": {
+      "label": "Uppdatera .bib-poster från Zotero",
+      "keywords": "zotero uppdatera bibliografi poster ändrade"
+    },
+    "zoteroSync": {
+      "label": "Synka Zotero-biblioteket",
+      "keywords": "zotero synka uppdatera bibliotek"
     }
   },
   "community": {
@@ -1121,7 +1139,8 @@
       "editorPreview": "Redigerare + förhandsvisning",
       "editorPreviewAi": "Redigerare + förhandsvisning + AI",
       "previewAi": "Förhandsvisning + AI",
-      "previewOnly": "Endast förhandsvisning"
+      "previewOnly": "Endast förhandsvisning",
+      "zenMode": "Zen-läge"
     },
     "newProjectName": "Namn på det nya projektet",
     "projectName": "Projektnamn",
@@ -1352,5 +1371,19 @@
     "location": "{{file}}, rad {{line}}",
     "error": "Fel",
     "warning": "Varning"
+  },
+  "fileRenameDialog": {
+    "title": "Byt namn på fil",
+    "titleFolder": "Byt namn på mapp",
+    "newPath": "Ny sökväg",
+    "hint": "Mappar som saknas skapas.",
+    "invalid": "Använd en sökväg i det här projektet.",
+    "exists": "{{path}} finns redan."
+  },
+  "zen": {
+    "compileFailed": "Kompileringen misslyckades",
+    "compiling": "Kompilerar",
+    "hideLog": "Dölj kompileringsloggen",
+    "showLog": "Visa kompileringsloggen"
   }
 }

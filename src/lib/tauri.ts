@@ -123,7 +123,16 @@ import type {
   UsageTotals,
   ValidatedCompileFingerprint,
   ZoteroAccount,
+  ZoteroConnectionReport,
+  ZoteroExportedEntry,
+  ZoteroExportStyle,
+  ZoteroHit,
+  ZoteroItemRef,
+  ZoteroKeysReply,
   ZoteroLibraryExport,
+  ZoteroLibraryStatus,
+  ZoteroProjectLink,
+  ZoteroSearchReply,
 } from "@oleafly/backend-port";
 export type * from "@oleafly/backend-port";
 
@@ -1356,6 +1365,42 @@ export const zoteroVerify = (userId: string, apiKey: string) =>
   invoke<ZoteroAccount>("zotero_verify", { userId, apiKey });
 export const zoteroLibraryBibtex = () =>
   invoke<ZoteroLibraryExport>("zotero_library_bibtex");
+export const zoteroLibraryStatus = () =>
+  invoke<ZoteroLibraryStatus>("zotero_library_status");
+export const zoteroLibrarySync = (offline: boolean, force: boolean) =>
+  invoke<ZoteroLibraryStatus>("zotero_library_sync", { offline, force });
+export const zoteroLibraryTest = (offline: boolean) =>
+  invoke<ZoteroConnectionReport>("zotero_library_test", { offline });
+export const zoteroLibrarySearch = (query: string, limit: number) =>
+  invoke<ZoteroSearchReply>("zotero_library_search", { query, limit });
+export const zoteroLibraryLookup = (keys: string[]) =>
+  invoke<(ZoteroHit | null)[]>("zotero_library_lookup", { keys });
+export const zoteroLibraryKeys = () =>
+  invoke<ZoteroKeysReply>("zotero_library_keys");
+export const zoteroLibraryItems = (refs: ZoteroItemRef[]) =>
+  invoke<(ZoteroHit | null)[]>("zotero_library_items", { refs });
+export const zoteroLibraryExport = (
+  refs: ZoteroItemRef[],
+  style: ZoteroExportStyle,
+  offline: boolean,
+) => invoke<ZoteroExportedEntry[]>("zotero_library_export", { refs, style, offline });
+export const zoteroLibrarySetEnabled = (libraryId: string, enabled: boolean) =>
+  invoke<ZoteroLibraryStatus>("zotero_library_set_enabled", { libraryId, enabled });
+export const zoteroWebAccount = () =>
+  invoke<ZoteroAccount | null>("zotero_web_account");
+export const zoteroWebConnect = (userId: string, apiKey: string) =>
+  invoke<ZoteroAccount>("zotero_web_connect", { userId, apiKey });
+export const zoteroWebDisconnect = () => invoke<void>("zotero_web_disconnect");
+export const zoteroProjectLinks = (projectId: string) =>
+  invoke<Record<string, ZoteroProjectLink>>("zotero_project_links", { projectId });
+export const zoteroUpdateProjectLinks = (
+  projectId: string,
+  changes: Record<string, ZoteroProjectLink | null>,
+) =>
+  invoke<Record<string, ZoteroProjectLink>>("zotero_update_project_links", {
+    projectId,
+    changes,
+  });
 
 
 export const searchDocs = (query: string) =>

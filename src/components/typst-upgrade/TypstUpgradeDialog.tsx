@@ -145,7 +145,7 @@ function ReportView({
             <p className="text-xs text-destructive">
               {t(($) => $.shell.typstUpgrade.buildFailed, { version: run.version })}
             </p>
-            <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono text-[11px]">
+            <pre data-select-all-scope className="max-h-32 select-text overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono text-[11px]">
               {run.failure}
             </pre>
           </div>

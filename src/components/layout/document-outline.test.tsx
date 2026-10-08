@@ -147,6 +147,26 @@ describe("DocumentOutline", () => {
     ).toHaveClass("text-[13px]");
   });
 
+  it("expands project macros from the indexed texts instead of every keystroke", () => {
+    const sections = [{ name: "\\proj{} results", line: 2, from: 30, level: 1 }];
+    mount(indexWith(sections), "main.tex", {
+      "main.tex": "\\newcommand{\\proj}{Alpha}\n\\section{\\proj{} results}",
+    });
+    expect(screen.getByText("Alpha results")).toBeInTheDocument();
+
+    act(() => {
+      useIndexStore.setState({
+        texts: { "main.tex": "\\newcommand{\\proj}{Beta}\n\\section{\\proj{} results}" },
+      });
+    });
+    expect(screen.getByText("Alpha results")).toBeInTheDocument();
+
+    act(() => {
+      useIndexStore.setState({ index: indexWith(sections) as never });
+    });
+    expect(screen.getByText("Beta results")).toBeInTheDocument();
+  });
+
   it("renders Typst heading titles without their markup", async () => {
     mount(
       indexWith([

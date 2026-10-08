@@ -358,7 +358,8 @@
     "referencesFor": "Referanser til {{name}}",
     "renameFailed": "Kunne ikke endre navnet til \"{{name}}\".",
     "renamePartial": "Fikk navnet \"{{name}}\" i {{edited}} av {{total}} filer. Kunne ikke skrive {{files}}.",
-    "renamed": "Fikk navnet \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Fikk navnet \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" samsvarer ikke med noen fil i dette prosjektet."
   },
   "pandoc": {
     "downloadFailed": "Kunne ikke laste ned pandoc. Installer den manuelt, og prøv igjen.",

@@ -84,6 +84,7 @@ import { createBibtexLinter } from "./bibtex-linter";
 import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
 import { stickyScroll } from "./sticky-scroll";
+import { backgroundFullParse, editorOverlayScrollbars } from "./scroll-surface";
 import { typstStickySource } from "./sticky-structure";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 import { gateCompletionSource, type CompletionSyntax } from "./completion-trigger";
@@ -265,6 +266,21 @@ function editedPathViewState(
     history: transaction.state.field(historyField, false),
     scroll: saved.scroll.map(transaction.changes) ?? saved.scroll,
   };
+}
+
+const MAX_SAVED_PATH_STATES = 20;
+
+function rememberPathState(
+  states: Map<string, PathViewState>,
+  path: string,
+  state: PathViewState,
+): void {
+  states.delete(path);
+  states.set(path, state);
+  for (const oldest of states.keys()) {
+    if (states.size <= MAX_SAVED_PATH_STATES) break;
+    states.delete(oldest);
+  }
 }
 
 function takeSavedPathState(
@@ -842,6 +858,8 @@ export function CodeMirrorEditor({
         langCompartment.of(languageExtensionFor(initialPath, initialVisual ? visualModule : null)),
         visualCompartment.of(visualExtensionFor(initialVisual ? visualModule : null, host.visualPorts, initialPath)),
         editorTheme(),
+        editorOverlayScrollbars(),
+        backgroundFullParse(),
         historyCompartment.of(history()),
         vscodeSearch(host.t),
         sourceToolsCompartment.of(
@@ -997,7 +1015,11 @@ export function CodeMirrorEditor({
     suppressSyncRef.current = true;
     const current = view.state.doc.toString();
     if (leavingPath) {
-      pathStatesRef.current.set(leavingPath, capturePathViewState(view, current));
+      rememberPathState(
+        pathStatesRef.current,
+        leavingPath,
+        capturePathViewState(view, current),
+      );
     }
     const { restorable, selection } = takeSavedPathState(
       pathStatesRef.current,

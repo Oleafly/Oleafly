@@ -633,6 +633,92 @@ export interface ZoteroLibraryExport {
     count: number;
     total: number;
 }
+export type ZoteroKeySource = "bbt" | "native" | "extra" | "generated";
+export type ZoteroLocalState = "unknown" | "notRunning" | "apiDisabled" | "unsupported" | "ready";
+export type ZoteroWebState = "notConnected" | "ready" | "keyRejected" | "unreachable" | "rateLimited" | "offline";
+export interface ZoteroLocalProbe {
+    state: ZoteroLocalState;
+    zoteroVersion?: string;
+    bbtVersion?: string;
+    installed?: boolean;
+}
+export interface ZoteroLibraryInfo {
+    id: string;
+    name: string;
+    kind: "user" | "group";
+    itemCount: number;
+    enabled: boolean;
+}
+export interface ZoteroLibraryStatus {
+    local: ZoteroLocalProbe;
+    web: ZoteroWebState;
+    libraries: ZoteroLibraryInfo[];
+    itemCount: number;
+    source?: "local" | "web";
+    lastSync?: number;
+    syncing: boolean;
+    progress?: { done: number; total: number };
+    error?: string;
+    generation: number;
+    bbtSeen: boolean;
+    retryAt?: number;
+    loaded: boolean;
+}
+export interface ZoteroHit {
+    library: string;
+    itemKey: string;
+    citationKey: string;
+    keySource: ZoteroKeySource;
+    title: string;
+    authors: string[];
+    authorCount: number;
+    year?: string;
+    doi?: string;
+    itemType: string;
+    dateModified: string;
+    score: number;
+    aliases?: string[];
+}
+export interface ZoteroSearchReply {
+    generation: number;
+    total: number;
+    hits: ZoteroHit[];
+}
+export interface ZoteroKeysReply {
+    generation: number;
+    keys: string[];
+}
+export interface ZoteroItemRef {
+    library: string;
+    itemKey: string;
+}
+export type ZoteroExportStyle = "biblatex" | "bibtex";
+export interface ZoteroExportedEntry {
+    library: string;
+    itemKey: string;
+    citationKey: string;
+    keySource: ZoteroKeySource;
+    entry: string;
+    origin: "betterBibtex" | "zotero" | "cache";
+    dateModified: string;
+    version: number;
+    doi?: string;
+}
+export interface ZoteroConnectionReport {
+    local: ZoteroLocalProbe;
+    web: ZoteroWebState;
+    source?: "local" | "web";
+    libraries: { id: string; name: string; kind: "user" | "group"; itemCount?: number }[];
+    error?: string;
+}
+export interface ZoteroProjectLink {
+    library: string;
+    itemKey: string;
+    dateModified: string;
+    version: number;
+    hash: string;
+    bib: string;
+}
 export type ModelTrust = "verified" | "untested" | "blocked";
 export type ModelStatus = "active" | "deprecated" | "alpha" | "beta";
 export interface ModelCost {
@@ -1031,6 +1117,27 @@ export interface BackendPort {
   setConnectorKey: (connectorId: string, value: string) => Promise<void>;
   zoteroVerify: (userId: string, apiKey: string) => Promise<ZoteroAccount>;
   zoteroLibraryBibtex: () => Promise<ZoteroLibraryExport>;
+  zoteroLibraryStatus: () => Promise<ZoteroLibraryStatus>;
+  zoteroLibrarySync: (offline: boolean, force: boolean) => Promise<ZoteroLibraryStatus>;
+  zoteroLibraryTest: (offline: boolean) => Promise<ZoteroConnectionReport>;
+  zoteroLibrarySearch: (query: string, limit: number) => Promise<ZoteroSearchReply>;
+  zoteroLibraryLookup: (keys: string[]) => Promise<(ZoteroHit | null)[]>;
+  zoteroLibraryKeys: () => Promise<ZoteroKeysReply>;
+  zoteroLibraryItems: (refs: ZoteroItemRef[]) => Promise<(ZoteroHit | null)[]>;
+  zoteroLibraryExport: (
+    refs: ZoteroItemRef[],
+    style: ZoteroExportStyle,
+    offline: boolean,
+  ) => Promise<ZoteroExportedEntry[]>;
+  zoteroLibrarySetEnabled: (libraryId: string, enabled: boolean) => Promise<ZoteroLibraryStatus>;
+  zoteroWebAccount: () => Promise<ZoteroAccount | null>;
+  zoteroWebConnect: (userId: string, apiKey: string) => Promise<ZoteroAccount>;
+  zoteroWebDisconnect: () => Promise<void>;
+  zoteroProjectLinks: (projectId: string) => Promise<Record<string, ZoteroProjectLink>>;
+  zoteroUpdateProjectLinks: (
+    projectId: string,
+    changes: Record<string, ZoteroProjectLink | null>,
+  ) => Promise<Record<string, ZoteroProjectLink>>;
   searchDocs: (query: string) => Promise<SearchHit[]>;
   searchProject: (projectId: string, query: string) => Promise<SearchHit[]>;
   getConfig: () => Promise<AppConfig>;

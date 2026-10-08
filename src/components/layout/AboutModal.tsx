@@ -104,7 +104,7 @@ export function AboutModal({ open: isOpen, onClose }: Readonly<{ open: boolean; 
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <h2 id="about-title" className="text-xl font-semibold">Oleafly</h2>
               {version && (
-                <span className="text-xs text-muted-foreground">{t(($) => $.shell.about.version, { version })}</span>
+                <span className="select-text text-xs text-muted-foreground">{t(($) => $.shell.about.version, { version })}</span>
               )}
             </div>
             <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">

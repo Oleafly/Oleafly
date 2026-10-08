@@ -621,7 +621,7 @@ function ServerEditor({
           )}
 
           {jsonError ?? error ? (
-            <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <p role="alert" className="select-text rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
               {jsonError ?? error}
             </p>
           ) : null}
@@ -955,7 +955,7 @@ export function McpServersManager() {
       ) : null}
 
       {loadError ? (
-        <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <p role="alert" className="select-text rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {loadError}
         </p>
       ) : null}
@@ -1009,7 +1009,7 @@ export function McpServersManager() {
               </div>
 
               {record.validation.error ? (
-                <p role="alert" className="rounded-md bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+                <p role="alert" className="select-text rounded-md bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
                   <SettingsPathText text={displayText(record.validation.error)} />
                 </p>
               ) : null}

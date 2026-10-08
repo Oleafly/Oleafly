@@ -731,6 +731,15 @@
           "description": "Перевіряти файли Typst на ймовірні помилки під час кожного збереження. Увімкнення чи вимкнення перезапускає мовний сервер Typst.",
           "label": "Перевірки коду Typst"
         }
+      },
+      "fileMove": {
+        "label": "Коли файл переміщено",
+        "description": "Оновлювати шляхи до перейменованого чи переміщеного файлу в джерелах LaTeX, Typst і Markdown.",
+        "options": {
+          "ask": "Питати",
+          "always": "Завжди оновлювати",
+          "never": "Ніколи не оновлювати"
+        }
       }
     },
     "files": {
@@ -832,6 +841,25 @@
       "startWithProject": {
         "description": "Запускати shell під час відкриття проєкту, а не тоді, коли ви вперше показуєте термінал.",
         "label": "Запускати shell разом із проєктом"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Тримає текст у центрованій колонці, поки PDF сховано.",
+        "label": "Центрувати редактор"
+      },
+      "fullScreen": {
+        "description": "Заповнює екран у режимі Zen і повертає вікно під час виходу.",
+        "label": "Перейти на повний екран"
+      },
+      "showPdf": {
+        "description": "Якщо PDF сховано на початку режиму Zen, відкриває його поруч із редактором під час першої компіляції.",
+        "label": "Показувати PDF під час компіляції"
+      },
+      "title": "Режим Zen",
+      "toggle": {
+        "description": "Ховає панель інструментів, бічну панель, асистента та термінал, щоб лишився тільки текст. Його також називають режимом без відволікань. Потрібен відкритий проєкт.",
+        "label": "Увімкнути режим Zen"
       }
     }
   },
@@ -1229,11 +1257,58 @@
       "apiKeyLabel": "Ключ API Zotero",
       "connected": "Підключено до вашої бібліотеки Zotero.",
       "connectedAs": "Підключено як {{username}}.",
-      "description": "Імпортуйте цитування та джерела зі своєї бібліотеки Zotero.",
       "disconnectFailed": "Oleafly не вдалося видалити збережений ключ Zotero. Спробуйте ще раз.",
-      "importHint": "Щоб імпортувати, відкрийте в проєкті панель «Посилання» і виберіть «Імпорт бібліотеки джерел».",
       "userIdLabel": "Ідентифікатор користувача Zotero",
-      "userIdPlaceholder": "Ідентифікатор користувача"
+      "userIdPlaceholder": "Ідентифікатор користувача",
+      "citeDescription": "Шукайте в усій бібліотеці Zotero під час роботи й додавайте лише те, що цитуєте. Oleafly читає вашу бібліотеку й ніколи її не змінює.",
+      "local": {
+        "heading": "Zotero на цьому комп’ютері",
+        "ready": "Підключено до Zotero {{version}}.",
+        "readyNoVersion": "Підключено до Zotero.",
+        "bbtFound": "Встановлено Better BibTeX {{version}}, тому ключі цитувань надходять із Better BibTeX.",
+        "bbtMissing": "Better BibTeX не встановлено, тому ключі цитувань надходять із Zotero.",
+        "notRunning": "Zotero не запущено. Відкрийте Zotero, щоб шукати у своїй бібліотеці, або підключіть обліковий запис zotero.org нижче.",
+        "apiDisabled": "У Zotero відкрийте Налаштування > Розширені й увімкніть «Allow other applications on this computer to communicate with Zotero».",
+        "unsupported": "Ця версія Zotero не може надати доступ до своєї бібліотеки. Оновіть Zotero до версії 7 або новішої.",
+        "unknown": "Oleafly ще не шукав Zotero."
+      },
+      "test": "Перевірити з’єднання",
+      "syncNow": "Синхронізувати",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX не знайдено",
+        "local": "Читання із Zotero на цьому комп’ютері",
+        "web": "Читання із zotero.org",
+        "library_one": "{{name}}: {{formatted}} елемент",
+        "library_few": "{{name}}: {{formatted}} елементи",
+        "library_many": "{{name}}: {{formatted}} елементів",
+        "library_other": "{{name}}: {{formatted}} елемента"
+      },
+      "library": {
+        "heading": "Бібліотеки для пошуку",
+        "myLibrary": "Моя бібліотека",
+        "toggle": "Шукати в «{{name}}»",
+        "items_one": "{{formatted}} елемент",
+        "items_few": "{{formatted}} елементи",
+        "items_many": "{{formatted}} елементів",
+        "items_other": "{{formatted}} елемента"
+      },
+      "sync": {
+        "never": "Ще не синхронізовано.",
+        "syncing": "Синхронізація вашої бібліотеки Zotero…",
+        "progress": "Синхронізація: {{done}} із {{total}} елементів…",
+        "status_one": "{{formatted}} елемент готовий до цитування, синхронізовано {{time}}.",
+        "status_few": "{{formatted}} елементи готові до цитування, синхронізовано {{time}}.",
+        "status_many": "{{formatted}} елементів готові до цитування, синхронізовано {{time}}.",
+        "status_other": "{{formatted}} елемента готові до цитування, синхронізовано {{time}}.",
+        "fromCache": "Zotero закрито, тому пошук через @ використовує копію з останньої синхронізації.",
+        "rateLimited": "zotero.org попросив Oleafly зачекати. Наступна спроба після {{time}}."
+      },
+      "account": {
+        "heading": "Обліковий запис zotero.org",
+        "description": "Використовуйте обліковий запис, коли Zotero не відкрито на цьому комп’ютері. Групові бібліотеки теж будуть доступні."
+      }
     }
   },
   "language": {
@@ -1618,6 +1693,10 @@
         "label": "Відкрити теку",
         "description": "Відкрити теку з комп’ютера як проєкт."
       },
+      "toggleZenMode": {
+        "description": "Сховати все, крім тексту, або повернути все назад.",
+        "label": "Перемкнути режим Zen"
+      },
       "openSettings": {
         "label": "Відкрити налаштування",
         "description": "Відкрити налаштування Oleafly."
@@ -1643,7 +1722,7 @@
         "italic": "Курсив",
         "jumpToSourceFromPdf": "Перейти з PDF до коду",
         "redo": "Повторити дію",
-        "renameSymbol": "Перейменувати символ у всьому проєкті",
+        "renameSymbol": "Перейменувати символ або файл у всьому проєкті",
         "slashCommandMenu": "Меню вставлення командою зі скісною рискою",
         "triggerAutocomplete": "Викликати автодоповнення",
         "undo": "Скасувати дію"

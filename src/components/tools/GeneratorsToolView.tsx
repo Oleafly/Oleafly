@@ -246,11 +246,11 @@ export function GeneratorsToolView() {
                   />
                 ) : null}
               </div>
-              <p className="break-all font-mono text-xs text-muted-foreground" data-testid="generator-source-path">
+              <p className={cn("break-all font-mono text-xs text-muted-foreground", projectId && "select-text")} data-testid="generator-source-path">
                 {projectId ? usesSelection ? source.activePath : source.mainDoc : t(($) => $.researchTools.generators.noProject)}
               </p>
               {usesSelection && source.selection ? (
-                <p className="max-h-44 overflow-auto whitespace-pre-wrap text-sm leading-relaxed" data-testid="generator-source-selection-text">{source.selection}</p>
+                <p className="max-h-44 select-text overflow-auto whitespace-pre-wrap text-sm leading-relaxed" data-testid="generator-source-selection-text">{source.selection}</p>
               ) : !usesSelection && projectId ? (
                 <p className="text-xs leading-relaxed text-muted-foreground">{t(($) => $.researchTools.generators.readMain)}</p>
               ) : null}
@@ -269,7 +269,7 @@ export function GeneratorsToolView() {
                 className="w-full resize-y rounded-md border bg-transparent px-3 py-2 text-sm leading-relaxed placeholder:text-muted-foreground focus-visible:border-ring"
               />
             </div>
-            {error ? <p role="alert" className="text-xs leading-relaxed text-destructive">{errorText}</p> : null}
+            {error ? <p role="alert" className="select-text text-xs leading-relaxed text-destructive">{errorText}</p> : null}
           </fieldset>
         </ToolPane>
         <ToolPane title={t(($) => $.researchTools.generators.previewPane)} badge={activeCopy.name} footer={
@@ -278,7 +278,7 @@ export function GeneratorsToolView() {
           <ToolPreviewSurface className="items-start justify-center">
             <div className="mx-auto w-full max-w-2xl space-y-6">
               <p className="text-xs font-medium text-muted-foreground">{activeCopy.name}</p>
-              <p className="whitespace-pre-wrap break-words text-sm leading-7" data-testid="generator-prompt-preview">
+              <p className={cn("whitespace-pre-wrap break-words text-sm leading-7", !missingSource && "select-text")} data-select-all-scope={missingSource ? undefined : true} data-testid="generator-prompt-preview">
                 {missingSource ?? prompt}
               </p>
             </div>

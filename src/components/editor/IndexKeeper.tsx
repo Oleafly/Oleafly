@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { resetProjectSourcesCache } from "@/lib/project-sources";
 import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 import { useActiveContent, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -21,8 +22,15 @@ export function IndexKeeper() {
   const projectLoading = useFilesStore((s) => s.loading);
   const content = useActiveContent();
 
+  const lastProjectId = useRef<string | null>(null);
   useEffect(() => {
-    void projectId;
+    const closed = projectId === null && lastProjectId.current !== null;
+    lastProjectId.current = projectId;
+    if (closed) {
+      useIndexStore.getState().dispose();
+      resetProjectSourcesCache();
+      return;
+    }
     useIndexStore.getState().reset();
   }, [projectId]);
 

@@ -227,7 +227,7 @@ export interface EquationRendered {
 
 function LatexPreviewContent({ rendered, display }: Readonly<{ rendered: EquationRendered; display: boolean }>) {
   const { t } = useTranslation(["researchTools"]);
-  if (rendered.error) return <p className="max-w-sm text-sm text-destructive">{rendered.error}</p>;
+  if (rendered.error) return <p className="max-w-sm select-text text-sm text-destructive">{rendered.error}</p>;
   if (!rendered.html) return <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.empty)}</p>;
   if (display) {
     // biome-ignore lint/security/noDangerouslySetInnerHtml: KaTeX output is trusted local rendering
@@ -514,7 +514,7 @@ function TypstPreviewContent({
   if (blank) return <p className="text-sm opacity-60">{t(($) => $.researchTools.equation.emptyTypst)}</p>;
   if (typst.status === "error") {
     return (
-      <p className="max-w-sm text-sm text-destructive">
+      <p className="max-w-sm select-text text-sm text-destructive">
         {typst.message || t(($) => $.researchTools.equation.typstFailed)}
       </p>
     );

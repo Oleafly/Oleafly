@@ -721,6 +721,15 @@
           "description": "Sjekk Typst-filer for sannsynlige feil hver gang de lagres. Når du slår dette av eller på, starter Typst-språkserveren på nytt.",
           "label": "Typst-lintsjekker"
         }
+      },
+      "fileMove": {
+        "label": "Når en fil flyttes",
+        "description": "Oppdater stier som peker til en omdøpt eller flyttet fil i LaTeX-, Typst- og Markdown-kilder.",
+        "options": {
+          "ask": "Spør",
+          "always": "Oppdater alltid",
+          "never": "Oppdater aldri"
+        }
       }
     },
     "files": {
@@ -822,6 +831,25 @@
       "startWithProject": {
         "description": "Start shell når et prosjekt åpnes, i stedet for første gang du viser terminalen.",
         "label": "Start shell sammen med prosjektet"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Holder teksten i en sentrert kolonne mens PDF-en er skjult.",
+        "label": "Sentrer editoren"
+      },
+      "fullScreen": {
+        "description": "Fyller skjermen i Zen-modus og gjenoppretter vinduet når du går ut.",
+        "label": "Gå til fullskjerm"
+      },
+      "showPdf": {
+        "description": "Hvis PDF-en er skjult når Zen-modus starter, åpnes den ved siden av editoren første gang du kompilerer.",
+        "label": "Vis PDF-en ved kompilering"
+      },
+      "title": "Zen-modus",
+      "toggle": {
+        "description": "Skjuler verktøylinjen, sidepanelet, assistenten og terminalen slik at bare teksten din er igjen. Kalles også distraksjonsfri modus. Krever et åpent prosjekt.",
+        "label": "Slå på Zen-modus"
       }
     }
   },
@@ -1205,11 +1233,52 @@
       "apiKeyLabel": "API-nøkkel for Zotero",
       "connected": "Koblet til Zotero-biblioteket ditt.",
       "connectedAs": "Koblet til som {{username}}.",
-      "description": "Importer siteringer og referanser fra Zotero-biblioteket ditt.",
       "disconnectFailed": "Oleafly kunne ikke fjerne den lagrede Zotero-nøkkelen. Prøv igjen.",
-      "importHint": "For å importere åpner du Referanser-panelet i et prosjekt og velger Importer referansebibliotek.",
       "userIdLabel": "Bruker-ID i Zotero",
-      "userIdPlaceholder": "Bruker-ID"
+      "userIdPlaceholder": "Bruker-ID",
+      "citeDescription": "Søk i hele Zotero-biblioteket ditt mens du skriver, og legg bare til det du siterer. Oleafly leser biblioteket ditt og endrer det aldri.",
+      "local": {
+        "heading": "Zotero på denne maskinen",
+        "ready": "Koblet til Zotero {{version}}.",
+        "readyNoVersion": "Koblet til Zotero.",
+        "bbtFound": "Better BibTeX {{version}} er installert, så siteringsnøklene kommer fra Better BibTeX.",
+        "bbtMissing": "Better BibTeX er ikke installert, så siteringsnøklene kommer fra Zotero.",
+        "notRunning": "Zotero kjører ikke. Åpne Zotero for å søke i biblioteket ditt, eller koble til zotero.org-kontoen din nedenfor.",
+        "apiDisabled": "Åpne Innstillinger > Avansert i Zotero, og slå på «Tillat andre programmer på denne datamaskinen å kommunisere med Zotero».",
+        "unsupported": "Denne versjonen av Zotero kan ikke dele biblioteket sitt. Oppdater til Zotero 7 eller nyere.",
+        "unknown": "Oleafly har ikke sett etter Zotero ennå."
+      },
+      "test": "Test tilkoblingen",
+      "syncNow": "Synkroniser nå",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Fant ikke Better BibTeX",
+        "local": "Lest fra Zotero på denne maskinen",
+        "web": "Lest fra zotero.org",
+        "library_one": "{{name}}: {{formatted}} element",
+        "library_other": "{{name}}: {{formatted}} elementer"
+      },
+      "library": {
+        "heading": "Biblioteker det skal søkes i",
+        "myLibrary": "Mitt bibliotek",
+        "toggle": "Søk i {{name}}",
+        "items_one": "{{formatted}} element",
+        "items_other": "{{formatted}} elementer"
+      },
+      "sync": {
+        "never": "Ikke synkronisert ennå.",
+        "syncing": "Synkroniserer Zotero-biblioteket ditt…",
+        "progress": "Synkroniserer {{done}} av {{total}} elementer…",
+        "status_one": "{{formatted}} element klart til sitering, synkronisert {{time}}.",
+        "status_other": "{{formatted}} elementer klare til sitering, synkronisert {{time}}.",
+        "fromCache": "Zotero er lukket, så @-søket bruker kopien fra forrige synkronisering.",
+        "rateLimited": "zotero.org ba Oleafly om å vente. Oleafly prøver igjen etter {{time}}."
+      },
+      "account": {
+        "heading": "zotero.org-konto",
+        "description": "Bruk kontoen din når Zotero ikke er åpent på denne maskinen. Gruppebiblioteker blir også med."
+      }
     }
   },
   "language": {
@@ -1582,6 +1651,10 @@
         "label": "Åpne mappe",
         "description": "Åpne en mappe fra datamaskinen som et prosjekt."
       },
+      "toggleZenMode": {
+        "description": "Skjul alt unntatt teksten din, eller vis alt igjen.",
+        "label": "Slå Zen-modus av eller på"
+      },
       "openSettings": {
         "label": "Åpne innstillingene",
         "description": "Åpne innstillingene for Oleafly."
@@ -1607,7 +1680,7 @@
         "italic": "Kursiv",
         "jumpToSourceFromPdf": "Hopp til kilden fra PDF-en",
         "redo": "Gjør om",
-        "renameSymbol": "Gi symbolet nytt navn i hele prosjektet",
+        "renameSymbol": "Gi symbolet eller filen nytt navn i hele prosjektet",
         "slashCommandMenu": "Innsettingsmeny med skråstrekkommandoer",
         "triggerAutocomplete": "Start autofullføring",
         "undo": "Angre"

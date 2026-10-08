@@ -153,5 +153,76 @@
     "label": "인용 스타일",
     "ariaLabel": "{{path}} 참고문헌의 인용 스타일",
     "failed": "Oleafly가 인용 스타일을 바꾸지 못했습니다."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} 외",
+      "noYear": "연도 미상",
+      "keySource": {
+        "bbt": "Better BibTeX의 인용 키",
+        "native": "Zotero의 인용 키",
+        "extra": "Zotero 추가사항 필드의 인용 키",
+        "generated": "Oleafly가 만든 인용 키"
+      },
+      "addFailed": "Oleafly가 {{key}}을(를) 참고문헌에 추가하지 못했습니다. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Zotero에서 설정 > 고급을 열고 \"Allow other applications on this computer to communicate with Zotero\"를 켜세요.",
+      "unsupported": "Oleafly에서 라이브러리를 검색하려면 Zotero를 버전 7 이상으로 업데이트하세요.",
+      "keyRejected": "Zotero가 더 이상 API 키를 받아들이지 않습니다. Zotero 설정에서 계정을 다시 연결하세요.",
+      "closed": "여기에서 라이브러리를 검색하려면 Zotero를 열거나 zotero.org 계정을 연결하세요.",
+      "closedCached": "Zotero가 닫혀 있습니다. 결과는 마지막 동기화({{time}}) 기준입니다.",
+      "bbtMissing": "Better BibTeX가 응답하지 않아 새 키를 Zotero에서 가져옵니다. 설치되어 있고 켜져 있는지 확인하세요.",
+      "action": "Zotero 설정"
+    },
+    "actions": {
+      "addFromZotero": "Zotero에서 추가",
+      "addAllMissing_other": "Zotero에서 누락된 인용 {{count}}개 모두 추가",
+      "notInLibrary": "{{key}}은(는) Zotero 라이브러리에 없습니다.",
+      "changed": "이 항목은 추가한 뒤 Zotero에서 변경되었습니다.",
+      "changedEdited": "이 항목은 Zotero에서 변경되었고, 여기에서도 편집되었습니다.",
+      "update": "Zotero에서 업데이트",
+      "updated": "Zotero에서 {{key}}을(를) 업데이트했습니다.",
+      "updateFailed": "Oleafly가 Zotero에서 {{key}}을(를) 업데이트하지 못했습니다. 다시 시도하세요."
+    },
+    "chooseBibliography": {
+      "title": "새 참고문헌을 어디에 추가할까요?",
+      "description": "이 프로젝트에는 참고문헌 파일이 여러 개 있습니다. Oleafly는 선택한 파일에 새 참고문헌을 추가하고, 이 프로젝트에서는 그 파일을 기억합니다.",
+      "confirm": "이 파일 사용"
+    },
+    "handEdits": {
+      "title": "편집한 내용을 바꿀까요?",
+      "description": "{{key}}을(를) 직접 편집했습니다. Zotero 버전으로 바꾸면 그 변경 사항이 사라집니다.",
+      "confirm": "Zotero 버전 사용",
+      "cancel": "내 버전 유지"
+    },
+    "handList": {
+      "title": "참고문헌 목록을 옮길까요?",
+      "description": "이 문서는 참고문헌을 직접 작성해 두었습니다. {{path}}(으)로 옮기면 Zotero에서 인용한 문헌과 하나의 번호 목록으로 합쳐집니다.",
+      "confirm": "목록 옮기기"
+    },
+    "missing": {
+      "title": "Zotero에서 누락된 인용 추가",
+      "loading": "Zotero 라이브러리를 확인하는 중…",
+      "none": "인용한 키가 모두 참고문헌에 있습니다.",
+      "found_other": "인용한 키 {{count}}개가 Zotero에 있습니다",
+      "duplicates_other": "키 {{count}}개가 이미 참고문헌에 있는 논문을 인용합니다",
+      "duplicateRow": "{{key}}은(는) {{existing}}과(와) 같은 논문입니다",
+      "notFound_other": "인용한 키 {{count}}개가 Zotero에 없습니다",
+      "confirm_other": "항목 {{count}}개 추가",
+      "done_other": "{{path}}에 항목 {{count}}개를 추가했습니다.",
+      "failed": "Oleafly가 항목을 추가하지 못했습니다. {{detail}}"
+    },
+    "update": {
+      "title": "Zotero에서 .bib 항목 업데이트",
+      "loading": "Zotero에서 변경 사항을 확인하는 중…",
+      "none": "참고문헌이 Zotero와 일치합니다.",
+      "handEdited": "직접 편집함",
+      "handEditedNote": "직접 편집한 항목은 선택되지 않았습니다. 항목을 선택하면 Zotero 버전으로 바꿉니다.",
+      "confirm_other": "항목 {{count}}개 업데이트",
+      "done_other": "항목 {{count}}개를 업데이트했습니다."
+    }
   }
 }

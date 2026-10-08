@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      if (typeof CSSPropertyRule === "undefined") {
+        document.documentElement.setAttribute("data-tw-property-fallback", "");
+      }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/leaf.svg" />
     <!-- Keep splash styles external. Tauri adds a style-src nonce whenever it
          sees an inline <style>; CSP then rejects CodeMirror's runtime styles. -->
@@ -307,6 +312,7 @@
       })();
     </script>
     <div id="root"></div>
+    <div id="root-end" hidden></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

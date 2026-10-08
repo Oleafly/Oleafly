@@ -274,7 +274,7 @@ export function VariantsAlert({
   const text = problem ? t(($) => $.editor.typstVariants[problem]) : variants.saveError;
   if (!text) return null;
   return (
-    <p role="alert" className={cn("text-xs text-destructive", className)}>
+    <p role="alert" className={cn("select-text text-xs text-destructive", className)}>
       {text}
     </p>
   );

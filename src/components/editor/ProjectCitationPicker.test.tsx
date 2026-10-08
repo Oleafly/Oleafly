@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   current: vi.fn(),
   completions: vi.fn(),
-  insertAtCursor: vi.fn(),
+  insertCitationKey: vi.fn(),
   wysiwygActive: vi.fn(() => false),
   wysiwygCurrent: vi.fn(() => true),
   info: vi.fn(),
@@ -39,8 +39,8 @@ vi.mock("@/lib/project-intelligence/current", () => ({
 vi.mock("@/lib/project-intelligence/selectors", () => ({
   citationCompletions: mocks.completions,
 }));
-vi.mock("@/components/editor/cm/controller", () => ({
-  insertAtCursor: mocks.insertAtCursor,
+vi.mock("@/features/cite-insert", () => ({
+  insertCitationKey: mocks.insertCitationKey,
 }));
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   isWysiwygActive: () => mocks.wysiwygActive(),
@@ -125,7 +125,7 @@ describe("ProjectCitationPicker", () => {
     const row = renderPicker();
     mocks.current.mockReturnValue(snapshotWith("other", KNUTH.key));
     fireEvent.click(row);
-    expect(mocks.insertAtCursor).toHaveBeenCalledWith(String.raw`\cite{knuth1984}`);
+    expect(mocks.insertCitationKey).toHaveBeenCalledWith("knuth1984");
     expect(mocks.info).not.toHaveBeenCalled();
   });
 
@@ -133,7 +133,7 @@ describe("ProjectCitationPicker", () => {
     const row = renderPicker();
     mocks.current.mockReturnValue(snapshotWith("other"));
     fireEvent.click(row);
-    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+    expect(mocks.insertCitationKey).not.toHaveBeenCalled();
     expect(mocks.info).not.toHaveBeenCalled();
   });
 
@@ -141,7 +141,7 @@ describe("ProjectCitationPicker", () => {
     const row = renderPicker();
     mocks.current.mockReturnValue(null);
     fireEvent.click(row);
-    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+    expect(mocks.insertCitationKey).not.toHaveBeenCalled();
     expect(mocks.info).not.toHaveBeenCalled();
   });
 
@@ -150,7 +150,7 @@ describe("ProjectCitationPicker", () => {
     mocks.wysiwygActive.mockReturnValue(true);
     mocks.wysiwygCurrent.mockReturnValue(false);
     fireEvent.click(row);
-    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+    expect(mocks.insertCitationKey).not.toHaveBeenCalled();
     expect(mocks.info).not.toHaveBeenCalled();
   });
 
@@ -162,16 +162,16 @@ describe("ProjectCitationPicker", () => {
     const row = renderPicker();
     fireEvent.click(row);
     expect(mocks.insertTypstCitation).toHaveBeenCalledWith("knuth1984", "refs.bib");
-    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
+    expect(mocks.insertCitationKey).not.toHaveBeenCalled();
   });
 
-  it("keeps Markdown and LaTeX citation output unchanged", () => {
+  it("cites Markdown entries through the shared caret insertion", () => {
     useFilesStore.setState({
       activePath: "README.md",
       files: { "README.md": { content: "", dirty: false } },
     } as never);
     fireEvent.click(renderPicker());
-    expect(mocks.insertAtCursor).toHaveBeenCalledWith("[@knuth1984]");
+    expect(mocks.insertCitationKey).toHaveBeenCalledWith("knuth1984");
     expect(mocks.insertTypstCitation).not.toHaveBeenCalled();
   });
 

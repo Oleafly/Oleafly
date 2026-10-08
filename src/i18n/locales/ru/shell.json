@@ -45,7 +45,9 @@
     "privacyNote": "Отправляется только идентификатор или заголовок, на doi.org, arXiv или Crossref.",
     "title": "Добавить цитату",
     "bibliography": "Библиография",
-    "bibliographyHint": "В этом проекте больше одной библиографии. Запись попадёт в файл, который вы выберете здесь."
+    "bibliographyHint": "В этом проекте больше одной библиографии. Запись попадёт в файл, который вы выберете здесь.",
+    "zoteroMatches": "Из вашей библиотеки Zotero",
+    "zoteroPlaceholder": "Ищите в библиотеке Zotero или вставьте DOI, идентификатор arXiv или заголовок"
   },
   "backendProtocol": {
     "mismatch": "Это окно и его серверная часть собраны для разных версий Oleafly, поэтому часть возможностей может не работать. Переустановка приложения это исправит."
@@ -330,6 +332,22 @@
     "presentWithPresenter": {
       "label": "Показать слайды в режиме докладчика",
       "keywords": "показ слайды режим докладчика заметки докладчика таймер следующий слайд present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "без отвлечений фокус полный экран скрыть интерфейс минимализм письмо",
+      "label": "Переключить режим Zen"
+    },
+    "zoteroAddMissing": {
+      "label": "Добавить недостающие цитаты из Zotero",
+      "keywords": "zotero недостающие цитаты неопределённые ключи библиография исправить missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": "Обновить записи .bib из Zotero",
+      "keywords": "zotero обновить библиография записи изменённые update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Синхронизировать библиотеку Zotero",
+      "keywords": "zotero синхронизация обновить библиотека sync refresh library"
     }
   },
   "community": {
@@ -1163,7 +1181,8 @@
       "editorPreview": "Редактор и просмотр",
       "editorPreviewAi": "Редактор, просмотр и ИИ",
       "previewAi": "Просмотр и ИИ",
-      "previewOnly": "Только просмотр"
+      "previewOnly": "Только просмотр",
+      "zenMode": "Режим Zen"
     },
     "newProjectName": "Имя нового проекта",
     "projectName": "Имя проекта",
@@ -1418,5 +1437,19 @@
     "location": "{{file}}, строка {{line}}",
     "error": "Ошибка",
     "warning": "Предупреждение"
+  },
+  "fileRenameDialog": {
+    "title": "Переименовать файл",
+    "titleFolder": "Переименовать папку",
+    "newPath": "Новый путь",
+    "hint": "Недостающие папки будут созданы.",
+    "invalid": "Укажите путь внутри этого проекта.",
+    "exists": "{{path}} уже существует."
+  },
+  "zen": {
+    "compileFailed": "Ошибка компиляции",
+    "compiling": "Компиляция",
+    "hideLog": "Скрыть журнал компиляции",
+    "showLog": "Показать журнал компиляции"
   }
 }

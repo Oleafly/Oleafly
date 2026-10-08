@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Zen mode hides the toolbar, sidebar, assistant, terminal and the editor's
+  tabs and formatting bar so only your writing is left. Turn it on with
+  Ctrl-Command-Shift-F (Shift-F11 on Windows and Linux), from the View menu,
+  the layout menu, the command palette or Settings > Appearance, and leave it
+  with the same shortcut or by pressing Escape twice. It can go full screen,
+  center the text and open the PDF when you compile with the shortcut. A
+  small pill in the bottom right corner shows when a compile is running or
+  has failed.
+- Cite straight from your Zotero library while you write. With Zotero 7 or
+  newer open on the same computer, and "Allow other applications on this
+  computer to communicate with Zotero" turned on in Zotero's Advanced
+  settings, type `@` and part of an author, a title word, a year or a key.
+  Your whole library shows up next to the project's own references. Picking a
+  paper inserts the citation the way the document already cites, and adds
+  only that entry to the project's `.bib`, along with the bibliography line
+  if the project has none. This works in LaTeX, Typst and Markdown, and Add
+  citation lists your Zotero library first. Keys come from Better BibTeX when
+  it's installed, otherwise from Zotero's Citation Key field. A cited key
+  that's missing from the `.bib` offers Add from Zotero, and an entry that
+  changed in Zotero offers Update from Zotero. An entry you edited by hand is
+  only replaced when you tick it. Search keeps working from the last sync
+  while Zotero is closed, and `.bib` entries never include the paths of the
+  PDFs on your computer. Settings > Integrations > Zotero tests the
+  connection and picks which libraries to search.
+- The first time you cite from Zotero in a paper that lists its references
+  by hand, Oleafly offers to move that list into the `.bib`, so every
+  reference shares one numbered list. The Academic Article, Elsevier and
+  Thesis templates now start with a `references.bib`.
+- Renaming or moving a file now updates the paths that point to it (#254):
+  `\input`, `\include`, `\includegraphics`, `\bibliography` and similar
+  commands in LaTeX, `#include`, `image()` and `bibliography()` in Typst, and
+  links and images in Markdown. Press F2 with the cursor on a path, use
+  Rename file in the file tree, or drag the file to a new folder. Settings >
+  Appearance > Editor sets whether Oleafly asks first, always updates the
+  paths or leaves them alone.
 - Cmd+, opens Settings on macOS, and Ctrl+, does the same on Windows and
   Linux. On macOS the Oleafly menu also has a Settings item. You can change
   the shortcut in Settings > Keyboard Shortcuts, and the Settings button's
@@ -20,6 +55,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   New Cursor width and Cursor color settings make the editor cursor 1, 2 or
   3 pixels wide and give it your own color instead of the theme's (#257).
 
+### Changed
+
+- Every sidebar view now remembers its scroll position, expanded folders and
+  open sections for each project.
+- Dragging a scrollbar quickly through a long document, the file tree, the
+  outline or the Source Control list no longer flashes blank or
+  unhighlighted areas on macOS and Linux. These views draw their own thin
+  scrollbar, so the content and the scroll position always move together,
+  and long lists react faster to hovering and right-clicking.
+- Only content you'd want to copy can be selected now: your documents, the
+  PDF, logs, chat messages and the text in Settings and dialogs. Toolbars,
+  icons, labels, placeholders and the list of settings on the left no longer
+  highlight when you drag across them. Command-A (Ctrl+A on Windows and
+  Linux) selects the content of the view you're in, such as the whole PDF or
+  the whole log, instead of the whole window, and clicking anywhere else
+  clears the selection.
+- Large compile logs open right away and scroll without blank areas. A log
+  of 100,000 lines opens in about a tenth of a second instead of more than
+  two, and Select All followed by Copy copies the whole log.
+- The PDF preview keeps your place when a recompile replaces the PDF, stays
+  filled while you zoom, and redraws far fewer pages while you drag the
+  divider next to it. The detached preview window now behaves the same way. Going
+  from the editor alone back to a layout with the PDF shows it right away,
+  at the same spot, instead of loading it again.
+- The home page, the project list and the command palette open faster. A
+  streaming reply, from the built-in assistant or from an agent such as
+  Claude Code or Codex, now redraws only the message that's coming in.
+  Visual mode, Checkpoints history and the sidebar also do less work while
+  you type.
+- Closing a project now frees the memory its spell checking and document
+  analysis were using, so memory no longer climbs each time you open and
+  close a project. Opening a project reads its files in one batch instead of
+  one at a time.
+
 ### Fixed
 
 - The App font setting in Appearance now changes the font of the whole
@@ -27,6 +96,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme customization shows the default colors of the light palette while
   the app is dark, and of the dark palette while it is light. The swatches
   of the mode you weren't using were blank.
+- On Macs with a Safari version older than 26.2, the PDF preview drew the
+  text of most documents in a stand-in font instead of the fonts embedded in
+  the PDF. Letters came out widely spaced, ligatures such as "ffi" broke
+  apart, and fonts like Libre Caslon or Playfair Display looked like Times.
+  The preview uses newer JavaScript features that those versions lack, and it
+  now brings its own copies of them, so the preview matches the PDF again.
+- The PDF preview looked soft at high zoom and when fitted to the width of
+  a wide window, because pages were drawn at no more than about five
+  megapixels (#258). The part of the page you're looking at is now drawn
+  again at full sharpness, and the preview redraws when the window moves to
+  a screen with a different pixel density.
+- After closing the graph section in Source Control and scrolling, the list
+  could turn blank or leave a long empty gap. It now stays filled at any
+  scroll speed.
+- The math preview in visual mode stayed on top of dialogs that opened over
+  the editor.
+- The outline showed raw LaTeX in some section titles, such as colour
+  commands, font switches and `\nameref`, listed headings found inside macro
+  definitions, and left out headings made with your own macros that wrap
+  `\section`.
+- Citations to an entry added to the `.bib` while that file wasn't open in
+  the editor, for example by the assistant or from Zotero, stayed flagged as
+  undefined until you typed in the document.
+- After you had worked with about 64 different LaTeX packages in one
+  session, across all the projects you opened, completions and hover help
+  for any package you used after that never appeared until you restarted
+  Oleafly. They now load for every project.
 
 ## [0.4.5] - 2026-10-05
 

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildIndex, indexFromSymbols } from "./build";
-import { outlineFromIndex } from "./outline";
+import { headingTitlesByLabel, outlineFromIndex } from "./outline";
 
 describe("outlineFromIndex", () => {
   it("walks includes and emits sections in document order across files", () => {
@@ -20,6 +20,25 @@ describe("outlineFromIndex", () => {
     expect(o).toHaveLength(1);
     expect(o[0].kind).toBe("file");
     expect(o[0].title).toBe("data.tex");
+  });
+
+  it("adds wrapper headings in document order and leaves out empty titles", () => {
+    const text = "\\chapter*{}\n\\section{A}\n\\label{a}\n\\begin{unit}{Wrapped}\n\\label{w}\n\\end{unit}";
+    const idx = buildIndex({ "main.tex": text });
+    const from = text.indexOf("\\begin{unit}");
+    const o = outlineFromIndex(idx, "main.tex", (file) =>
+      file === "main.tex" ? [{ level: 1, title: "Wrapped", line: 4, from, to: from + 21 }] : [],
+    );
+    expect(o.map((item) => [item.level, item.title, item.line])).toEqual([
+      [2, "A", 2],
+      [1, "Wrapped", 4],
+    ]);
+    expect(headingTitlesByLabel(idx, (file) => (file === "main.tex" ? [{ level: 1, title: "Wrapped", line: 4, from, to: from + 21 }] : []))).toEqual(
+      new Map([
+        ["a", "A"],
+        ["w", "Wrapped"],
+      ]),
+    );
   });
 
   it("is cycle-guarded", () => {

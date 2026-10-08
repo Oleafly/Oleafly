@@ -188,7 +188,8 @@
     "quote": "Sitat",
     "addLabel": "Legg til etikett",
     "convertLatexMath": "Gjør om LaTeX-matematikk til Typst",
-    "noLatexMath": "Merk litt LaTeX-matematikk først."
+    "noLatexMath": "Merk litt LaTeX-matematikk først.",
+    "renameFile": "Gi filen nytt navn…"
   },
   "shell": {
     "noFileOpenTab": "Ingen filer er åpne",
@@ -426,7 +427,7 @@
       "indentOrAccept": "Rykk inn / godta autofullføring",
       "goToDefinition": "Gå til definisjonen",
       "findReferences": "Finn referanser",
-      "renameSymbol": "Gi symbolet nytt navn (i hele prosjektet)",
+      "renameSymbol": "Gi symbolet eller filen nytt navn (i hele prosjektet)",
       "formatDocument": "Formater Typst-dokumentet",
       "commandPalette": "Kommandopalett",
       "searchAllDocuments": "Søk i alle dokumenter",
@@ -454,7 +455,8 @@
     "noEntries": "Ingen oppføringer i litteraturlisten i dette prosjektet ennå.",
     "addNew": "Finn og legg til en ny sitering…",
     "duplicate": "duplikat {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Fra Zotero-biblioteket ditt"
   },
   "inlineAi": {
     "promptPlaceholder": "Beskriv endringen…  (Shift+Enter for ny linje)",

@@ -153,5 +153,76 @@
     "label": "引用樣式",
     "ariaLabel": "{{path}} 中參考文獻的引用樣式",
     "failed": "Oleafly 無法變更引用樣式。"
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} 等",
+      "noYear": "無日期",
+      "keySource": {
+        "bbt": "引用鍵來自 Better BibTeX",
+        "native": "引用鍵來自 Zotero",
+        "extra": "引用鍵來自 Zotero 的「額外增列」欄位",
+        "generated": "引用鍵由 Oleafly 產生"
+      },
+      "addFailed": "Oleafly 無法將 {{key}} 加入參考文獻。{{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "在 Zotero 中開啟「設定 > 進階」，然後勾選「允許此電腦上的其他應用程式與 Zotero 通訊」。",
+      "unsupported": "請將 Zotero 更新至 7 或以上版本，才能從 Oleafly 搜尋你的文獻庫。",
+      "keyRejected": "Zotero 已不再接受你的 API 金鑰。請在 Zotero 設定中重新連接你的帳號。",
+      "closed": "開啟 Zotero 即可在這裡搜尋你的文獻庫，或連接你的 zotero.org 帳號。",
+      "closedCached": "Zotero 已關閉。結果來自上次同步（{{time}}）。",
+      "bbtMissing": "Better BibTeX 沒有回應，因此新的引用鍵改由 Zotero 提供。請確認它已安裝並已啟用。",
+      "action": "Zotero 設定"
+    },
+    "actions": {
+      "addFromZotero": "從 Zotero 新增",
+      "addAllMissing_other": "從 Zotero 新增全部 {{count}} 筆缺少的引用",
+      "notInLibrary": "{{key}} 不在你的 Zotero 文獻庫中。",
+      "changed": "這個條目在你新增後已於 Zotero 中變更。",
+      "changedEdited": "這個條目已在 Zotero 中變更，而你也在這裡編輯過它。",
+      "update": "從 Zotero 更新",
+      "updated": "已從 Zotero 更新 {{key}}。",
+      "updateFailed": "Oleafly 無法從 Zotero 更新 {{key}}。請再試一次。"
+    },
+    "chooseBibliography": {
+      "title": "新的參考文獻要加到哪裡？",
+      "description": "這個專案有多個參考文獻檔案。Oleafly 會把新的參考文獻加入你選擇的檔案，並為這個專案記住這項選擇。",
+      "confirm": "使用這個檔案"
+    },
+    "handEdits": {
+      "title": "要取代你的編輯嗎？",
+      "description": "你手動編輯過 {{key}}。以 Zotero 中的版本取代它，會移除這些變更。",
+      "confirm": "使用 Zotero 版本",
+      "cancel": "保留我的版本"
+    },
+    "handList": {
+      "title": "要移動參考文獻清單嗎？",
+      "description": "這份文件的參考文獻是手動列出的。把它們移到 {{path}} 後，就會和你從 Zotero 引用的文獻合併成一份統一編號的清單。",
+      "confirm": "移動清單"
+    },
+    "missing": {
+      "title": "從 Zotero 新增缺少的引用",
+      "loading": "正在檢查你的 Zotero 文獻庫…",
+      "none": "所有引用的鍵都已在你的參考文獻中。",
+      "found_other": "Zotero 中有 {{count}} 個引用的鍵",
+      "duplicates_other": "有 {{count}} 個鍵所引用的論文已在你的參考文獻中",
+      "duplicateRow": "{{key}} 與 {{existing}} 是同一篇論文",
+      "notFound_other": "有 {{count}} 個引用的鍵不在 Zotero 中",
+      "confirm_other": "新增 {{count}} 個條目",
+      "done_other": "已將 {{count}} 個條目加入 {{path}}。",
+      "failed": "Oleafly 無法新增這些條目。{{detail}}"
+    },
+    "update": {
+      "title": "從 Zotero 更新 .bib 條目",
+      "loading": "正在檢查 Zotero 中的變更…",
+      "none": "你的參考文獻與 Zotero 一致。",
+      "handEdited": "已手動編輯",
+      "handEditedNote": "你手動編輯過的條目不會被選取。選取其中一筆，即可以 Zotero 中的版本取代它。",
+      "confirm_other": "更新 {{count}} 個條目",
+      "done_other": "已更新 {{count}} 個條目。"
+    }
   }
 }

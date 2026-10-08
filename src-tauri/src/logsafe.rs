@@ -157,7 +157,7 @@ fn validate_archive_dest(dest: &std::path::Path) -> Result<(), String> {
 
 /// Support-archive export; Sensitive fields are stripped unless explicitly
 /// requested from the settings UI.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn export_log_archive(dest: String, include_sensitive: Option<bool>) -> Result<(), String> {
     let path = std::path::Path::new(&dest);
     validate_archive_dest(path)?;

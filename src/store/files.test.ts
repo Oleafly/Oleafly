@@ -120,6 +120,8 @@ import {
   collectOpenBuffersForCopy,
   detectDiskChange,
   engineErrorMessage,
+  type EntryRenamedEvent,
+  onEntryRenamed,
   onSaveBlockedSettled,
   projectCompatibilityFindings,
   reportFileSaveFailure,
@@ -179,6 +181,12 @@ describe("writeProjectFile", () => {
     );
     expect(mocks.listFiles).toHaveBeenCalledWith("project");
     expect(useFilesStore.getState().tree).toEqual(WITH_BIB);
+  });
+
+  it("keeps CRLF line endings when the caller asks for them", async () => {
+    await useFilesStore.getState().writeProjectFile("project", "main.tex", "a\nb\n", { crlf: true });
+
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("project", "main.tex", "a\r\nb\r\n", 3);
   });
 
   it("leaves a closed file closed", async () => {
@@ -2874,6 +2882,52 @@ describe("renaming entries", () => {
     expect(state.openTabs).toEqual(["final.tex"]);
     expect(state.tabOrder).toEqual({ "final.tex": 2 });
     expect(state.activePath).toBe("final.tex");
+  });
+
+  it("tells rename listeners about the move with the trees on both sides", async () => {
+    const before = [
+      { path: "main.tex", is_dir: false },
+      { path: "figures", is_dir: true },
+      { path: "figures/plot.png", is_dir: false },
+    ];
+    const after = [
+      { path: "main.tex", is_dir: false },
+      { path: "images", is_dir: true },
+      { path: "images/plot.png", is_dir: false },
+    ];
+    mocks.renameFile.mockResolvedValue("images");
+    mocks.listFiles.mockResolvedValue(after);
+    useFilesStore.setState({ tree: before });
+    const events: EntryRenamedEvent[] = [];
+    const stop = onEntryRenamed((event) => events.push(event));
+
+    await useFilesStore.getState().renameEntry("figures", "images");
+    stop();
+    await useFilesStore.getState().renameEntry("figures", "images");
+
+    expect(events).toEqual([
+      {
+        projectId: "project",
+        from: "figures",
+        to: "images",
+        previousTree: before,
+        tree: after,
+        previousMainDoc: "main.tex",
+        mainDoc: "main.tex",
+      },
+    ]);
+  });
+
+  it("stays quiet when the rename fails or changes nothing", async () => {
+    const events: EntryRenamedEvent[] = [];
+    const stop = onEntryRenamed((event) => events.push(event));
+    mocks.renameFile.mockRejectedValueOnce(new Error("denied"));
+    await expect(useFilesStore.getState().renameEntry("main.tex", "paper.tex")).rejects.toThrow("denied");
+    mocks.renameFile.mockResolvedValueOnce("main.tex");
+    await useFilesStore.getState().renameEntry("main.tex", "main.tex");
+    stop();
+
+    expect(events).toEqual([]);
   });
 
   it("returns the requested name without an open project", async () => {

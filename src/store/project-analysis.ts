@@ -87,6 +87,19 @@ export interface ProjectAnalysisStore {
     feature: ProjectAnalysisFeature,
     reason?: AnalysisReason,
   ) => void;
+  markFeaturesUnsupported: (
+    features: readonly ProjectAnalysisFeature[],
+    reason: AnalysisReason,
+  ) => void;
+  markFeaturesUnavailable: (
+    features: readonly ProjectAnalysisFeature[],
+    reason: AnalysisReason,
+    retryable?: boolean,
+  ) => void;
+  markFeaturesNotRun: (
+    features: readonly ProjectAnalysisFeature[],
+    reason?: AnalysisReason,
+  ) => void;
   beginProjectIndex: (
     request: ProjectAnalysisRequestIdentity,
   ) => boolean;
@@ -99,6 +112,16 @@ export interface ProjectAnalysisStore {
 }
 
 export type ProjectAnalysisStoreApi = StoreApi<ProjectAnalysisStore>;
+
+function withFeatureSlots(
+  current: ProjectAnalysisSnapshot,
+  features: readonly ProjectAnalysisFeature[],
+  slot: AnalysisSlot,
+): ProjectAnalysisSnapshot {
+  const next = { ...current.features };
+  for (const feature of features) next[feature] = slot;
+  return { ...current, features: next, updatedAt: Date.now() };
+}
 
 const validRevision = (value: number): boolean =>
   Number.isInteger(value) && value >= 0;
@@ -381,7 +404,7 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
     if (!isProjectAnalysisIdentityCurrent(current, request)) return false;
     const prior = current.diagnosticsByUri[uri];
     if (
-      prior?.status !== "pending" ||
+      !prior ||
       prior.diagnosticEpoch !== diagnosticEpoch ||
       !sameAnalysisRequest(prior.request, request)
     ) {
@@ -628,6 +651,37 @@ const createState: StateCreator<ProjectAnalysisStore> = (set, get) => ({
         },
         updatedAt: Date.now(),
       },
+    });
+  },
+
+  markFeaturesUnsupported: (features, reason) => {
+    set({
+      snapshot: withFeatureSlots(get().snapshot, features, {
+        status: "unsupported",
+        data: null,
+        reason,
+      }),
+    });
+  },
+
+  markFeaturesUnavailable: (features, reason, retryable = true) => {
+    set({
+      snapshot: withFeatureSlots(get().snapshot, features, {
+        status: "unavailable",
+        data: null,
+        reason,
+        retryable,
+      }),
+    });
+  },
+
+  markFeaturesNotRun: (features, reason) => {
+    set({
+      snapshot: withFeatureSlots(
+        get().snapshot,
+        features,
+        notRunAnalysisSlot(reason),
+      ),
     });
   },
 

@@ -115,3 +115,79 @@ describe("app font", () => {
     for (const stack of stacks) expect(stack.startsWith('var(--app-font, "Geist"), ')).toBe(true);
   });
 });
+
+describe("Zen mode centered editor", () => {
+  const rule = /\[data-zen-centered="true"\] \.cm-editor \.cm-scroller\s*\{([^}]*)\}/u.exec(styles)?.[1] ?? "";
+
+  it("centers the text column by padding the editor scroller on both sides", () => {
+    expect(rule).toMatch(/padding-inline:\s*max\(0px,\s*calc\(\(100% - var\(--zen-column-width, 50rem\)\) \/ 2\)\)/u);
+  });
+
+  it("uses no outline, ring or shadow ring", () => {
+    expect(rule).not.toMatch(/outline|ring|box-shadow/u);
+  });
+
+  it("keeps the global focus reset last", () => {
+    const reset = styles.lastIndexOf("outline: none !important");
+    expect(reset).toBeGreaterThan(styles.indexOf('[data-zen-centered="true"]'));
+  });
+});
+
+describe("text selection policy", () => {
+  const unlayered = (() => {
+    let depth = 0;
+    let layerDepth = -1;
+    let out = "";
+    for (let index = 0; index < styles.length; index += 1) {
+      const char = styles[index];
+      if (char === "{") {
+        if (layerDepth < 0 && /@layer[^;{]*$/u.test(styles.slice(Math.max(0, index - 80), index))) {
+          layerDepth = depth;
+        }
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === layerDepth) {
+          layerDepth = -1;
+          continue;
+        }
+      }
+      if (layerDepth < 0) out += char;
+    }
+    return out;
+  })();
+
+  const block = (selector: RegExp) => selector.exec(unlayered)?.[1] ?? "";
+
+  it("makes interface text unselectable by default", () => {
+    const rule = block(/(?:^|\n)html,\s*body\s*\{([^}]*)\}/u);
+    expect(rule).toMatch(/-webkit-user-select:\s*none;/u);
+    expect(rule).toMatch(/(?:^|[^-])user-select:\s*none;/u);
+  });
+
+  it("keeps every editable surface selectable", () => {
+    const rule = block(
+      /input,\s*textarea,\s*\[contenteditable\]:not\(\[contenteditable="false"\]\),\s*\.cm-editor \.cm-content\s*\{([^}]*)\}/u,
+    );
+    expect(rule).toMatch(/-webkit-user-select:\s*text;/u);
+    expect(rule).toMatch(/(?:^|[^-])user-select:\s*text;/u);
+  });
+
+  it("writes the WebKit prefix next to every user-select declaration", () => {
+    const plain = styles.match(/(?:^|[^-])user-select:\s*[a-z]+/gu) ?? [];
+    const prefixed = styles.match(/-webkit-user-select:\s*[a-z]+/gu) ?? [];
+    expect(plain.length).toBeGreaterThan(0);
+    expect(prefixed.length).toBe(plain.length);
+  });
+
+  it("shows the arrow over interface text and the I-beam only where text can be selected", () => {
+    expect(styles).toMatch(/body\s*\{[^}]*cursor:\s*default;/u);
+    expect(styles).toMatch(
+      /\.select-text,\s*\.select-all,\s*\.cm-editor \.cm-content\[contenteditable="false"\]\s*\{\s*cursor:\s*auto;\s*\}/u,
+    );
+  });
+
+  it("uses no outline, ring or shadow ring in the selection rules", () => {
+    expect(block(/(?:^|\n)html,\s*body\s*\{([^}]*)\}/u)).not.toMatch(/outline|ring|box-shadow/u);
+  });
+});

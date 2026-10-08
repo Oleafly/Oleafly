@@ -188,7 +188,8 @@
     "quote": "Citat",
     "addLabel": "Adaugă o etichetă",
     "convertLatexMath": "Convertește formula LaTeX în Typst",
-    "noLatexMath": "Selectează întâi o formulă LaTeX."
+    "noLatexMath": "Selectează întâi o formulă LaTeX.",
+    "renameFile": "Redenumește fișierul…"
   },
   "shell": {
     "noFileOpenTab": "Niciun fișier deschis",
@@ -433,7 +434,7 @@
       "indentOrAccept": "Indentează / acceptă completarea automată",
       "goToDefinition": "Mergi la definiție",
       "findReferences": "Găsește referințele",
-      "renameSymbol": "Redenumește simbolul (în tot proiectul)",
+      "renameSymbol": "Redenumește simbolul sau fișierul (în tot proiectul)",
       "formatDocument": "Formatează documentul Typst",
       "commandPalette": "Paleta de comenzi",
       "searchAllDocuments": "Caută în toate documentele",
@@ -461,7 +462,8 @@
     "noEntries": "Acest proiect nu are încă intrări bibliografice.",
     "addNew": "Găsește și adaugă o citare nouă…",
     "duplicate": "duplicatul {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Din biblioteca ta Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Descrie modificarea…  (Shift+Enter pentru rând nou)",

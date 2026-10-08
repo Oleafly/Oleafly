@@ -5,6 +5,7 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 import { toggleBrowser } from "@/lib/browser-window";
+import { toggleZenMode } from "@/lib/zen-mode";
 import {
   SHORTCUT_DEFINITIONS,
   type ShortcutBinding,
@@ -112,6 +113,7 @@ export function isNativeAcceleratorKey(key: string): boolean {
 export const NATIVE_MENU_SHORTCUTS: ReadonlySet<ShortcutId> = new Set([
   "toggleTerminal",
   "toggleBrowser",
+  "toggleZenMode",
   "openFolder",
   "openSettings",
 ]);
@@ -173,6 +175,7 @@ function syncNativeAccelerators(): Promise<void> {
     terminalAccelerator: nativeAcceleratorFor("toggleTerminal"),
     browserAccelerator: nativeAcceleratorFor("toggleBrowser"),
     openFolderAccelerator: nativeAcceleratorFor("openFolder"),
+    zenModeAccelerator: nativeAcceleratorFor("toggleZenMode"),
     settingsAccelerator: nativeAcceleratorFor("openSettings"),
   });
 }
@@ -198,9 +201,13 @@ export async function startNativeDockShortcutBridge(): Promise<() => void> {
   const unlistenBrowser = await listen("menu://toggle-browser", () => {
     toggleDock("browser");
   });
+  const unlistenZen = await listen("menu://toggle-zen-mode", () => {
+    toggleZenMode();
+  });
   return () => {
     unsubscribeStore();
     unlistenTerminal();
     unlistenBrowser();
+    unlistenZen();
   };
 }

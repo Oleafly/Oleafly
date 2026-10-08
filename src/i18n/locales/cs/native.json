@@ -31,7 +31,8 @@
     "newTab": "Nový panel",
     "openLocation": "Otevřít adresu…",
     "closeTab": "Zavřít panel",
-    "reloadPage": "Znovu načíst stránku"
+    "reloadPage": "Znovu načíst stránku",
+    "zenMode": "Režim Zen"
   },
   "window": {
     "browser": "Prohlížeč Oleafly",

@@ -43,7 +43,9 @@
     "privacyNote": "Vain tunniste tai otsikko lähetetään, ja vain doi.orgille, arXiville tai Crossrefille.",
     "title": "Lisää viittaus",
     "bibliography": "Lähdeluettelo",
-    "bibliographyHint": "Tässä projektissa on useampi kuin yksi lähdeluettelo. Viite lisätään tässä valitsemaasi tiedostoon."
+    "bibliographyHint": "Tässä projektissa on useampi kuin yksi lähdeluettelo. Viite lisätään tässä valitsemaasi tiedostoon.",
+    "zoteroMatches": "Zotero-kirjastostasi",
+    "zoteroPlaceholder": "Hae Zotero-kirjastostasi tai liitä DOI, arXiv-tunnus tai otsikko"
   },
   "backendProtocol": {
     "mismatch": "Tämä ikkuna ja sen taustaosa on koostettu eri Oleafly-versioille, joten kaikki toiminnot eivät ehkä toimi. Sovelluksen uudelleenasennus korjaa tämän."
@@ -326,6 +328,22 @@
     "presentWithPresenter": {
       "label": "Esitä kalvot esittäjän näkymällä",
       "keywords": "esitä kalvot esittäjän näkymä puhujan muistiinpanot ajastin seuraava kalvo present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "häiriötön keskittyminen koko näyttö piilota käyttöliittymä minimaalinen kirjoitus",
+      "label": "Vaihda Zen-tilaa"
+    },
+    "zoteroAddMissing": {
+      "label": "Lisää puuttuvat viittaukset Zoterosta",
+      "keywords": "zotero puuttuvat viittaukset määrittelemättömät avaimet lähdeluettelo korjaa missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": "Päivitä .bib-viitteet Zoterosta",
+      "keywords": "zotero päivitä lähdeluettelo viitteet muuttuneet update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Synkronoi Zotero-kirjasto",
+      "keywords": "zotero synkronoi päivitä kirjasto sync refresh library"
     }
   },
   "community": {
@@ -1121,7 +1139,8 @@
       "editorPreview": "Editori ja esikatselu",
       "editorPreviewAi": "Editori, esikatselu ja tekoäly",
       "previewAi": "Esikatselu ja tekoäly",
-      "previewOnly": "Vain esikatselu"
+      "previewOnly": "Vain esikatselu",
+      "zenMode": "Zen-tila"
     },
     "newProjectName": "Uuden projektin nimi",
     "projectName": "Projektin nimi",
@@ -1352,5 +1371,19 @@
     "location": "{{file}}, rivi {{line}}",
     "error": "Virhe",
     "warning": "Varoitus"
+  },
+  "fileRenameDialog": {
+    "title": "Nimeä tiedosto uudelleen",
+    "titleFolder": "Nimeä kansio uudelleen",
+    "newPath": "Uusi polku",
+    "hint": "Puuttuvat kansiot luodaan.",
+    "invalid": "Käytä polkua tämän projektin sisällä.",
+    "exists": "{{path}} on jo olemassa."
+  },
+  "zen": {
+    "compileFailed": "Kääntäminen epäonnistui",
+    "compiling": "Käännetään",
+    "hideLog": "Piilota käännöslokit",
+    "showLog": "Näytä käännöslokit"
   }
 }

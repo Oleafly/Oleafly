@@ -176,6 +176,7 @@ export function UpdateDialog({
       {errorMessage && (
         <pre
           data-testid="update-error-details"
+          data-select-all-scope
           className="mt-2 max-h-20 select-text overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] text-muted-foreground"
         >
           {errorMessage}

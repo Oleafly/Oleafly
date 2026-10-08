@@ -8,6 +8,9 @@ const originalNavigator = globalThis.navigator;
 const toggleBrowser = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/browser-window", () => ({ toggleBrowser }));
 
+const toggleZenMode = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/zen-mode", () => ({ toggleZenMode }));
+
 const native = vi.hoisted(() => ({
   invoke: vi.fn(async () => {}),
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
@@ -50,6 +53,7 @@ describe("native dock shortcuts", () => {
   beforeEach(() => {
     vi.stubGlobal("navigator", { platform: "MacIntel" });
     native.invoke.mockClear();
+    toggleZenMode.mockClear();
     native.listeners.clear();
     native.projectId = "project-1";
     native.unlisteners = [];
@@ -153,6 +157,7 @@ describe("native dock shortcuts", () => {
         terminalAccelerator: "Ctrl+`",
         browserAccelerator: "Ctrl+Shift+B",
         openFolderAccelerator: "Cmd+Shift+O",
+        zenModeAccelerator: "Cmd+Ctrl+Shift+F",
         settingsAccelerator: "Cmd+,",
       },
     );
@@ -170,6 +175,7 @@ describe("native dock shortcuts", () => {
           terminalAccelerator: "Ctrl+`",
           browserAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Shift+O",
+          zenModeAccelerator: "Cmd+Ctrl+Shift+F",
           settingsAccelerator: "Cmd+,",
         },
       );
@@ -184,6 +190,22 @@ describe("native dock shortcuts", () => {
           terminalAccelerator: "Ctrl+`",
           browserAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Alt+K",
+          zenModeAccelerator: "Cmd+Ctrl+Shift+F",
+          settingsAccelerator: "Cmd+,",
+        },
+      );
+    });
+
+    useShortcutStore.getState().setBinding("toggleZenMode", { key: "z", mod: true, alt: true });
+
+    await vi.waitFor(() => {
+      expect(native.invoke).toHaveBeenLastCalledWith(
+        "set_dock_shortcut_accelerators",
+        {
+          terminalAccelerator: "Ctrl+`",
+          browserAccelerator: "Ctrl+Shift+E",
+          openFolderAccelerator: "Cmd+Alt+K",
+          zenModeAccelerator: "Cmd+Alt+Z",
           settingsAccelerator: "Cmd+,",
         },
       );
@@ -198,11 +220,43 @@ describe("native dock shortcuts", () => {
           terminalAccelerator: "Ctrl+`",
           browserAccelerator: "Ctrl+Shift+E",
           openFolderAccelerator: "Cmd+Alt+K",
+          zenModeAccelerator: "Cmd+Alt+Z",
           settingsAccelerator: "Cmd+Alt+.",
         },
       );
     });
     stop();
+  });
+
+  it("serializes the Zen mode shortcut, including a bare function key", () => {
+    expect(nativeAccelerator({ key: "f", mod: true, ctrl: true, shift: true }, true)).toBe(
+      "Cmd+Ctrl+Shift+F",
+    );
+    expect(nativeAccelerator({ key: "F11", shift: true }, false)).toBe("Shift+F11");
+  });
+
+  it("keeps the default Zen menu shortcut when a saved one cannot be registered", async () => {
+    useShortcutStore.setState({
+      bindings: {
+        ...useShortcutStore.getState().bindings,
+        toggleZenMode: { key: "\u2020", ctrl: true, alt: true },
+      },
+    });
+    const stop = await startNativeDockShortcutBridge();
+    expect(native.invoke).toHaveBeenCalledWith(
+      "set_dock_shortcut_accelerators",
+      expect.objectContaining({ zenModeAccelerator: "Cmd+Ctrl+Shift+F" }),
+    );
+    stop();
+  });
+
+  it("turns Zen mode on and off from the native menu event", async () => {
+    const stop = await startNativeDockShortcutBridge();
+    native.listeners.get("menu://toggle-zen-mode")?.({ payload: null });
+    expect(toggleZenMode).toHaveBeenCalledTimes(1);
+    stop();
+    expect(native.unlisteners).toHaveLength(3);
+    expect(native.unlisteners.every((unlisten) => unlisten.mock.calls.length === 1)).toBe(true);
   });
 
   it("toggles docks from native menu events only while a project is open", async () => {
@@ -221,7 +275,7 @@ describe("native dock shortcuts", () => {
     expect(toggleBrowser).toHaveBeenCalledTimes(1);
 
     stop();
-    expect(native.unlisteners).toHaveLength(2);
+    expect(native.unlisteners).toHaveLength(3);
     expect(native.unlisteners.every((unlisten) => unlisten.mock.calls.length === 1)).toBe(true);
   });
 

@@ -53,39 +53,62 @@ export function SelectionActionMenu() {
   const [text, setText] = useState("");
   const [expanded, setExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const posRef = useRef(pos);
+  posRef.current = pos;
+  const textRef = useRef(text);
+  textRef.current = text;
+  const expandedRef = useRef(expanded);
+  expandedRef.current = expanded;
 
   useEffect(() => {
+    const hide = (collapse: boolean) => {
+      if (posRef.current !== null) {
+        posRef.current = null;
+        setPos(null);
+      }
+      if (collapse && expandedRef.current) {
+        expandedRef.current = false;
+        setExpanded(false);
+      }
+    };
     const update = (e?: Event) => {
       const target = e?.target as Node | null;
       if (target && containerRef.current?.contains(target)) return;
       const v = getEditorView();
       if (!v?.hasFocus) {
-        setPos(null);
+        hide(false);
         return;
       }
       if (v.state.readOnly) {
-        setPos(null);
-        setExpanded(false);
+        hide(true);
         return;
       }
       const sel = v.state.selection.main;
       if (sel.from === sel.to) {
-        setPos(null);
-        setExpanded(false);
+        hide(true);
         return;
       }
       const selected = v.state.sliceDoc(sel.from, sel.to);
       if (!selected.trim()) {
-        setPos(null);
+        hide(false);
         return;
       }
       const coords = v.coordsAtPos(sel.head);
       if (!coords) {
-        setPos(null);
+        hide(false);
         return;
       }
-      setText(selected);
-      setPos({ top: coords.top - 36, left: coords.left });
+      if (textRef.current !== selected) {
+        textRef.current = selected;
+        setText(selected);
+      }
+      const top = coords.top - 36;
+      const left = coords.left;
+      if (posRef.current?.top !== top || posRef.current.left !== left) {
+        const next = { top, left };
+        posRef.current = next;
+        setPos(next);
+      }
     };
     document.addEventListener("selectionchange", update);
     window.addEventListener("mouseup", update);

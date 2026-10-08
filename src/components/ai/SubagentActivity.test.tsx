@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Profiler } from "react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { SubagentActivity } from "./SubagentActivity";
 import { useAgentTurnsStore } from "@/store/agent-turns";
 import type { AgentEvent } from "@oleafly/ai-core";
@@ -50,6 +51,38 @@ describe("SubagentActivity", () => {
     mocks.stop.mockReset().mockResolvedValue(1);
     mocks.read.mockReset().mockResolvedValue(TRANSCRIPT);
     mocks.acpEvents.mockReset();
+  });
+
+  it("renders again only when the subagents change, not on every update to the turn", () => {
+    seedChat("chat-1", [
+      { kind: "subagentUpdate", id: "agent-1", label: "sources", state: "thinking", detail: "Reading" },
+    ]);
+    let commits = 0;
+    render(
+      <Profiler id="activity" onRender={() => { commits += 1; }}>
+        <SubagentActivity chatId="chat-1" streaming={true} activeRunId={() => "run-1"} />
+      </Profiler>,
+    );
+    const mounted = commits;
+
+    act(() => {
+      for (let index = 0; index < 5; index++) {
+        useAgentTurnsStore.getState().applyEvent("chat-1", { kind: "toolCallStart", id: `tool-${index}`, name: "read_file" });
+      }
+    });
+    expect(commits).toBe(mounted);
+
+    act(() => {
+      useAgentTurnsStore.getState().applyEvent("chat-1", {
+        kind: "subagentUpdate",
+        id: "agent-1",
+        label: "sources",
+        state: "interacted",
+        detail: "Searching",
+      });
+    });
+    expect(commits).toBeGreaterThan(mounted);
+    expect(screen.getByTestId("subagent-chip-agent-1")).toHaveAttribute("data-subagent-status", "updated");
   });
 
   it("renders nothing until a turn records subagent activity", () => {

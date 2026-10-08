@@ -297,6 +297,15 @@ describe("command contributions copy", () => {
     expect(commandsFor("palette", baseContext).map((entry) => entry.id)).toContain("palette.synctex");
   });
 
+  it("keeps the Zotero bibliography commands while a .bib file is open", () => {
+    const ids = () => commandsFor("palette", baseContext).map((entry) => entry.id);
+    mocks.files.activePath = "references.bib";
+    expect(ids()).toEqual(expect.arrayContaining(["palette.zotero-add-missing", "palette.zotero-update"]));
+    expect(ids()).not.toContain("palette.add-citation");
+    mocks.files.engineLoaded = false;
+    expect(ids()).not.toContain("palette.zotero-update");
+  });
+
   it("follows the theme of the context for the theme commands", () => {
     const light: AppContext = { ...baseContext, theme: "light" };
     for (const id of ["omnibar.theme", "palette.theme"]) {

@@ -7,12 +7,11 @@ import {
   openSettings,
   pressGlobal,
   chooseProjectKind,
+  revealLibraryProject,
 } from "../helpers";
 
 test.beforeEach(async ({ tauriPage }) => {
-  const projectExists = await tauriPage.evaluate<boolean>(
-    `document.querySelector(${JSON.stringify('button[aria-label="Open E2E Doc"]')}) !== null`,
-  );
+  const projectExists = await revealLibraryProject(tauriPage, "E2E Doc");
   if (projectExists) await openProject(tauriPage, "E2E Doc");
   else await createBlankProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });

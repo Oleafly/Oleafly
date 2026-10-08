@@ -324,6 +324,19 @@ describe("PreviewPane toolbar", () => {
     expect(viewerStub.activateOutlineItem).toHaveBeenCalledWith("sec-1");
   });
 
+  it("keeps the outline after the layout hides the preview and shows it again", async () => {
+    viewerStub.outlineItems = [
+      { id: "sec-1", title: "Method", external: false, children: [] },
+    ];
+    const view = await renderWithPdf();
+    view.rerender(<PreviewPane active={false} />);
+    view.rerender(<PreviewPane active />);
+    const user = userEvent.setup();
+    await user.click(screen.getByLabelText(enPreview.outline.open));
+    expect(await screen.findByRole("button", { name: "Method" })).toBeInTheDocument();
+    expect(screen.queryByText(enPreview.outline.loading)).toBeNull();
+  });
+
   it("opens the save dialog with a name derived from the main document", async () => {
     await renderWithPdf();
     const user = userEvent.setup();

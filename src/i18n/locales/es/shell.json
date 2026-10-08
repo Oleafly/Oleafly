@@ -44,7 +44,9 @@
     "privacyNote": "Solo se envía el identificador o el título, a doi.org, arXiv o Crossref.",
     "title": "Añadir cita",
     "bibliography": "Bibliografía",
-    "bibliographyHint": "Este proyecto tiene más de una bibliografía. La entrada va al archivo que elijas aquí."
+    "bibliographyHint": "Este proyecto tiene más de una bibliografía. La entrada va al archivo que elijas aquí.",
+    "zoteroMatches": "De tu biblioteca de Zotero",
+    "zoteroPlaceholder": "Busca en tu biblioteca de Zotero o pega un DOI, un identificador de arXiv o un título"
   },
   "backendProtocol": {
     "mismatch": "Esta ventana y su backend se compilaron para versiones distintas de Oleafly, así que puede que algunas funciones no vayan bien. Reinstalar la aplicación lo arregla."
@@ -328,6 +330,22 @@
     "presentWithPresenter": {
       "label": "Presentar diapositivas con la vista del presentador",
       "keywords": "presentar diapositivas vista del presentador notas del orador temporizador siguiente diapositiva present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "sin distracciones concentración pantalla completa ocultar interfaz mínimo escritura",
+      "label": "Activar o desactivar el modo Zen"
+    },
+    "zoteroAddMissing": {
+      "label": "Añadir desde Zotero las citas que faltan",
+      "keywords": "zotero citas que faltan claves no definidas bibliografía reparar missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": "Actualizar entradas de .bib desde Zotero",
+      "keywords": "zotero actualizar refrescar bibliografía entradas cambiadas update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Sincronizar la biblioteca de Zotero",
+      "keywords": "zotero sincronizar refrescar biblioteca sync refresh library"
     }
   },
   "community": {
@@ -1142,7 +1160,8 @@
       "editorPreview": "Editor + vista previa",
       "editorPreviewAi": "Editor + vista previa + IA",
       "previewAi": "Vista previa + IA",
-      "previewOnly": "Solo vista previa"
+      "previewOnly": "Solo vista previa",
+      "zenMode": "Modo Zen"
     },
     "newProjectName": "Nombre del proyecto nuevo",
     "projectName": "Nombre del proyecto",
@@ -1385,5 +1404,19 @@
     "location": "{{file}}, línea {{line}}",
     "error": "Error",
     "warning": "Advertencia"
+  },
+  "fileRenameDialog": {
+    "title": "Renombrar archivo",
+    "titleFolder": "Renombrar carpeta",
+    "newPath": "Ruta nueva",
+    "hint": "Las carpetas que falten se crean.",
+    "invalid": "Usa una ruta dentro de este proyecto.",
+    "exists": "{{path}} ya existe."
+  },
+  "zen": {
+    "compileFailed": "Falló la compilación",
+    "compiling": "Compilando",
+    "hideLog": "Ocultar el registro de compilación",
+    "showLog": "Mostrar el registro de compilación"
   }
 }

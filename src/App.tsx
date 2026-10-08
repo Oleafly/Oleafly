@@ -6,6 +6,7 @@ import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
 import {
   Fragment,
   lazy,
+  memo,
   Suspense,
   useEffect,
   useLayoutEffect,
@@ -15,6 +16,7 @@ import {
   type KeyboardEventHandler,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   Group,
   Panel,
@@ -34,6 +36,8 @@ import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBa
 import { MainDocumentPicker } from "@/components/open-folder/MainDocumentPicker";
 import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
 import { ShellCommandsBanner } from "@/components/layout/ShellCommandsBanner";
+import { ZenSession } from "@/components/layout/ZenSession";
+import { ZenCompileCorner, ZenTitleStrip } from "@/components/layout/ZenChrome";
 import { OpenFolderKeeper } from "@/components/open-folder/OpenFolderKeeper";
 import { ProjectAvailabilityKeeper } from "@/components/layout/ProjectAvailabilityKeeper";
 import { FolderWatchKeeper } from "@/components/layout/FolderWatchKeeper";
@@ -46,6 +50,7 @@ import {
   getEditorView,
 } from "@/components/editor/cm/controller";
 import { PreviewPane } from "@/components/preview/PreviewPane";
+import { KeptAliveSlot, useKeptAliveHost } from "@/components/layout/KeptAliveSlot";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
@@ -78,6 +83,8 @@ import { fontFamilyName, quotedFontFamily } from "@/lib/font-families";
 import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
+import { useZenStore } from "@/store/zen";
+import { exitZenMode } from "@/lib/zen-mode";
 import {
   automaticCompileAllowed,
   openCompileHydrated,
@@ -199,8 +206,13 @@ const LiteratureSearchToolView = lazy(() =>
   })),
 );
 const TerminalDock = lazy(() =>
-  import("@/components/dock/TerminalDock").then((m) => ({ default: m.TerminalDock })),
+  import("@/components/dock/TerminalDock").then((m) => ({ default: memo(m.TerminalDock) })),
 );
+
+const WorkspaceSidebar = memo(Sidebar);
+const WorkspaceEditor = memo(Editor);
+const WorkspacePreview = memo(PreviewPane);
+const WorkspaceAssistant = memo(ChatPanel);
 
 // fallback must stay null - a visible one blocks the whole screen (these mount unconditionally, closed by default).
 function LazyModals({ children }: Readonly<{ children: ReactNode }>) {
@@ -278,6 +290,7 @@ function workspaceGroupId(projectId: string | null, group: string): string | und
 }
 
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
+const WINDOW_WAKE_COALESCE_MS = 1_000;
 // Deactivated for 0.3.7 — see the comment at its use in the on-open effect.
 const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
@@ -360,6 +373,21 @@ function AppContent() {
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
+  const zenCenterEditor = useSettingsStore((s) => s.zenCenterEditor);
+  const zen = useZenStore((s) => s.active);
+  const zenProjectId = useZenStore((s) => s.projectId);
+  const zenCentered = zen && zenCenterEditor && viewMode === "editor";
+  const previewHost = useKeptAliveHost("h-full min-h-0 min-w-0");
+  const previewShown = !workspaceHidden && viewMode !== "editor";
+  const [previewKeptFor, setPreviewKeptFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!previewShown || projectId === null) return;
+    const settings = useSettingsStore.getState();
+    if (settings.workspaceHidden || settings.viewMode === "editor") return;
+    setPreviewKeptFor(projectId);
+  }, [previewShown, projectId]);
+  const keepPreview =
+    !detached && projectId !== null && (previewShown || previewKeptFor === projectId);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
   const projectComposerOpen = homePage === "diagram-composer";
@@ -393,6 +421,10 @@ function AppContent() {
   useLayoutEffect(() => {
     if (projectId) return restoreWorkspaceLayout(projectId);
   }, [projectId]);
+
+  useEffect(() => {
+    if (zenProjectId !== null && zenProjectId !== projectId) exitZenMode({ restoreLayout: false });
+  }, [projectId, zenProjectId]);
 
   useLayoutEffect(() => {
     if (!projectId) return;
@@ -568,8 +600,14 @@ function AppContent() {
   }, [projectId, refreshGitStatus]);
   useEffect(() => {
     const tick = () => refreshGitStatus(useFilesStore.getState().projectId);
-    const id = window.setInterval(tick, 60_000);
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") tick();
+    }, 60_000);
+    let lastWake = Number.NEGATIVE_INFINITY;
     const onFocus = () => {
+      const now = Date.now();
+      if (now - lastWake < WINDOW_WAKE_COALESCE_MS) return;
+      lastWake = now;
       tick();
       refreshOpenFilesFromDisk(useFilesStore.getState().projectId);
     };
@@ -785,12 +823,20 @@ function AppContent() {
 
   return (
     <ThemeProvider>
-      <div data-sidebar-open={showTree ? "true" : "false"} className="flex h-full flex-col">
+      <div
+        data-sidebar-open={showTree ? "true" : "false"}
+        data-zen={zen ? "true" : undefined}
+        data-zen-centered={zenCentered ? "true" : undefined}
+        className="flex h-full flex-col"
+      >
         <div className="contents" inert={projectToolOpen || projectComposerOpen || undefined}>
           {/* Drives the gutter's horizontal metrics: the line-number column gives
               back a few pixels only while the sidebar is competing for the width
               (see globals.css). */}
-          <TopToolbar />
+          <div hidden={zen} className={zen ? undefined : "contents"}>
+            <TopToolbar />
+          </div>
+          {zen && <ZenTitleStrip />}
         <BackendProtocolBanner />
         <FolderUnavailableBanner />
         <OpenedFolderBanners />
@@ -869,7 +915,7 @@ function AppContent() {
                     style={PANEL_STYLE}
                     className="bg-sidebar"
                   >
-                    <Sidebar />
+                    <WorkspaceSidebar />
                   </Panel>
                   <VHandle id="h-tree" onKeyDownCapture={onHorizontalSeparatorKeyDown} />
                 </Fragment>
@@ -903,7 +949,7 @@ function AppContent() {
                           >
                             <ErrorBoundary surface="editor" resetKey={projectId}>
                               <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.editor)} />}>
-                                <Editor />
+                                <WorkspaceEditor />
                               </Suspense>
                             </ErrorBoundary>
                           </Panel>
@@ -920,11 +966,7 @@ function AppContent() {
                             style={PANEL_STYLE}
                             className="min-h-0 min-w-0"
                           >
-                            <ErrorBoundary surface="PDF preview" resetKey={projectId}>
-                              <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.preview)} />}>
-                                <PreviewPane />
-                              </Suspense>
-                            </ErrorBoundary>
+                            <KeptAliveSlot host={previewHost} className="h-full min-h-0 min-w-0" />
                           </Panel>
                         )}
                   </Group>
@@ -945,7 +987,7 @@ function AppContent() {
                   >
                     <ErrorBoundary surface="AI assistant" resetKey={projectId}>
                       <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.assistant)} />}>
-                        <ChatPanel />
+                        <WorkspaceAssistant />
                       </Suspense>
                     </ErrorBoundary>
                   </Panel>
@@ -1004,6 +1046,15 @@ function AppContent() {
               </Panel>
             </Group>
           </ErrorBoundary>
+          {keepPreview &&
+            createPortal(
+              <ErrorBoundary surface="PDF preview" resetKey={projectId}>
+                <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.preview)} />}>
+                  <WorkspacePreview active={previewShown} />
+                </Suspense>
+              </ErrorBoundary>,
+              previewHost,
+            )}
         </div>
 
         <CommandPalette />
@@ -1020,11 +1071,13 @@ function AppContent() {
         <OpenFolderStopDialog />
         <QuickActionOffer />
         <AboutModal open={aboutOpen} onClose={() => setAboutOpen(false)} />
-        {chatFloating && (
+        {chatFloating && !zen && (
           <Suspense fallback={null}>
             <CopilotOverlay />
           </Suspense>
         )}
+        {zen && <ZenSession />}
+        {zen && <ZenCompileCorner />}
         <LazyModals>
           <CiteOleaflyDialog />
           <WordCountModal />

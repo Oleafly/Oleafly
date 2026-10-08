@@ -188,7 +188,8 @@
     "quote": "Citazione a blocco",
     "addLabel": "Aggiungi etichetta",
     "convertLatexMath": "Converti la matematica LaTeX in Typst",
-    "noLatexMath": "Seleziona prima della matematica LaTeX."
+    "noLatexMath": "Seleziona prima della matematica LaTeX.",
+    "renameFile": "Rinomina file…"
   },
   "shell": {
     "noFileOpenTab": "Nessun file aperto",
@@ -433,7 +434,7 @@
       "indentOrAccept": "Rientro / accetta il completamento",
       "goToDefinition": "Vai alla definizione",
       "findReferences": "Trova i riferimenti",
-      "renameSymbol": "Rinomina il simbolo (in tutto il progetto)",
+      "renameSymbol": "Rinomina il simbolo o il file (in tutto il progetto)",
       "formatDocument": "Formatta il documento Typst",
       "commandPalette": "Riquadro comandi",
       "searchAllDocuments": "Cerca in tutti i documenti",
@@ -461,7 +462,8 @@
     "noEntries": "Ancora nessuna voce bibliografica in questo progetto.",
     "addNew": "Trova e aggiungi una nuova citazione…",
     "duplicate": "duplicato {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Dalla tua libreria Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Descrivi la modifica…  (Shift+Enter per andare a capo)",

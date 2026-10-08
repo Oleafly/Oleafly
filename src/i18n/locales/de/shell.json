@@ -43,7 +43,9 @@
     "privacyNote": "Gesendet wird nur die Kennung oder der Titel, an doi.org, arXiv oder Crossref.",
     "title": "Zitation hinzufügen",
     "bibliography": "Literaturverzeichnis",
-    "bibliographyHint": "Dieses Projekt hat mehr als ein Literaturverzeichnis. Der Eintrag kommt in die Datei, die Sie hier wählen."
+    "bibliographyHint": "Dieses Projekt hat mehr als ein Literaturverzeichnis. Der Eintrag kommt in die Datei, die Sie hier wählen.",
+    "zoteroMatches": "Aus Ihrer Zotero-Bibliothek",
+    "zoteroPlaceholder": "Zotero-Bibliothek durchsuchen oder DOI, arXiv-ID oder Titel einfügen"
   },
   "backendProtocol": {
     "mismatch": "Dieses Fenster und sein Backend wurden für unterschiedliche Oleafly-Versionen gebaut, deshalb funktionieren manche Funktionen womöglich nicht. Eine Neuinstallation der App behebt das."
@@ -326,6 +328,22 @@
     "presentWithPresenter": {
       "label": "Folien mit Referentenansicht präsentieren",
       "keywords": "präsentieren Folien Referentenansicht Sprechernotizen Timer nächste Folie present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "ablenkungsfrei Fokus Vollbild Oberfläche ausblenden minimal schreiben",
+      "label": "Zen-Modus ein- oder ausschalten"
+    },
+    "zoteroAddMissing": {
+      "label": "Fehlende Zitationen aus Zotero hinzufügen",
+      "keywords": "zotero fehlende Zitationen undefinierte Schlüssel Literaturverzeichnis reparieren missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": ".bib-Einträge aus Zotero aktualisieren",
+      "keywords": "zotero aktualisieren auffrischen Literaturverzeichnis Einträge geändert update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Zotero-Bibliothek synchronisieren",
+      "keywords": "zotero synchronisieren auffrischen Bibliothek sync refresh library"
     }
   },
   "community": {
@@ -1121,7 +1139,8 @@
       "editorPreview": "Editor + Vorschau",
       "editorPreviewAi": "Editor + Vorschau + KI",
       "previewAi": "Vorschau + KI",
-      "previewOnly": "Nur Vorschau"
+      "previewOnly": "Nur Vorschau",
+      "zenMode": "Zen-Modus"
     },
     "newProjectName": "Name des neuen Projekts",
     "projectName": "Projektname",
@@ -1352,5 +1371,19 @@
     "location": "{{file}}, Zeile {{line}}",
     "error": "Fehler",
     "warning": "Warnung"
+  },
+  "fileRenameDialog": {
+    "title": "Datei umbenennen",
+    "titleFolder": "Ordner umbenennen",
+    "newPath": "Neuer Pfad",
+    "hint": "Fehlende Ordner werden angelegt.",
+    "invalid": "Verwenden Sie einen Pfad innerhalb dieses Projekts.",
+    "exists": "{{path}} ist bereits vorhanden."
+  },
+  "zen": {
+    "compileFailed": "Kompilierung fehlgeschlagen",
+    "compiling": "Kompilierung läuft",
+    "hideLog": "Kompilierprotokoll ausblenden",
+    "showLog": "Kompilierprotokoll anzeigen"
   }
 }

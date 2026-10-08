@@ -56,7 +56,11 @@
     "unreachable": "Oleafly가 Zotero에 연결하지 못했습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요.",
     "http_error": "Zotero가 오류를 반환했습니다(HTTP {{status}}). 나중에 다시 시도하세요.",
     "invalid_response": "Zotero가 Oleafly가 읽을 수 없는 응답을 보냈습니다. 나중에 다시 시도하세요.",
-    "too_large": "Zotero 라이브러리가 너무 커서 한 번에 가져올 수 없습니다. 대신 Zotero에서 컬렉션을 RDF 파일로 내보낸 뒤 그 파일을 가져오세요."
+    "too_large": "Zotero 라이브러리가 너무 커서 한 번에 가져올 수 없습니다. 대신 Zotero에서 컬렉션을 RDF 파일로 내보낸 뒤 그 파일을 가져오세요.",
+    "local_not_running": "이 컴퓨터에서 Zotero가 실행 중이 아닙니다. Zotero를 열거나 zotero.org 계정을 연결하세요.",
+    "local_api_disabled": "Zotero에서 설정 > 고급을 열고 \"Allow other applications on this computer to communicate with Zotero\"를 켜세요.",
+    "local_unsupported": "이 버전의 Zotero는 Oleafly와 라이브러리를 공유할 수 없습니다. Zotero 7 이상으로 업데이트하세요.",
+    "offline": "Oleafly가 오프라인 모드라서 zotero.org에 연결할 수 없습니다."
   },
   "tex": {
     "no_host_binary": "TinyTeX에 이 호스트와 호환되는 {{name}} 실행 파일이 없습니다.",

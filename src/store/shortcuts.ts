@@ -11,6 +11,7 @@ export type ShortcutId =
   | "toggleTerminal"
   | "toggleBrowser"
   | "toggleSidebar"
+  | "toggleZenMode"
   | "openFolder"
   | "openSettings";
 
@@ -29,6 +30,14 @@ export interface ShortcutDefinition {
 
 const BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, shift: true };
 const LINUX_BROWSER_BINDING: ShortcutBinding = { key: "b", ctrl: true, alt: true };
+
+const ZEN_MAC_BINDING: ShortcutBinding = { key: "f", mod: true, ctrl: true, shift: true };
+const ZEN_BINDING: ShortcutBinding = { key: "F11", shift: true };
+const FUNCTION_KEY = /^F(?:[1-9]|1\d|2[0-4])$/;
+
+function onApplePlatform(): boolean {
+  return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+}
 
 function onLinuxDesktop(): boolean {
   const tauri = Boolean((globalThis as { isTauri?: unknown }).isTauri);
@@ -71,6 +80,12 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     defaultBinding: { key: "b", mod: true },
   },
   {
+    id: "toggleZenMode",
+    get defaultBinding() {
+      return onApplePlatform() ? ZEN_MAC_BINDING : ZEN_BINDING;
+    },
+  },
+  {
     id: "openFolder",
     defaultBinding: { key: "o", mod: true, shift: true },
   },
@@ -101,7 +116,10 @@ function isValidBinding(value: unknown): value is ShortcutBinding {
   if (!value || typeof value !== "object") return false;
   const { key, mod, ctrl } = value as { key?: unknown; mod?: unknown; ctrl?: unknown };
   return (
-    typeof key === "string" && key !== "" && !isUnbindableKey(key) && Boolean(mod || ctrl)
+    typeof key === "string" &&
+    key !== "" &&
+    !isUnbindableKey(key) &&
+    Boolean(mod || ctrl || FUNCTION_KEY.test(key))
   );
 }
 
@@ -169,7 +187,7 @@ export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding):
 
 export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   if (
-    (!event.metaKey && !event.ctrlKey) ||
+    (!event.metaKey && !event.ctrlKey && !FUNCTION_KEY.test(event.key)) ||
     isUnbindableKey(event.key) ||
     event.key === "Tab" ||
     event.key === "Escape" ||

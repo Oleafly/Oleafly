@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
+import { resetSidebarViewState } from "./src/store/sidebar-view-state";
 import { provideTestCatalogs } from "@oleafly/i18n-contract/testing";
 import diagram from "./src/i18n/locales/en/diagram.json" with { type: "json" };
 import editor from "./src/i18n/locales/en/editor.json" with { type: "json" };
@@ -44,7 +45,10 @@ vi.mock("@lobehub/icons", () => {
   };
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  resetSidebarViewState();
+});
 
 if (typeof localStorage === "undefined") {
   const lsValues = new Map<string, string>();

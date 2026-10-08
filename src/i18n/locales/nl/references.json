@@ -159,5 +159,84 @@
     "label": "Citatiestijl",
     "ariaLabel": "Citatiestijl voor de bibliografie in {{path}}",
     "failed": "Oleafly kon de citatiestijl niet wijzigen."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} et al.",
+      "noYear": "z.d.",
+      "keySource": {
+        "bbt": "Sleutel uit Better BibTeX",
+        "native": "Sleutel uit Zotero",
+        "extra": "Sleutel uit het veld Extra in Zotero",
+        "generated": "Sleutel gemaakt door Oleafly"
+      },
+      "addFailed": "Oleafly kon {{key}} niet aan de bibliografie toevoegen. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Open in Zotero Instellingen > Geavanceerd en zet “Allow other applications on this computer to communicate with Zotero” aan.",
+      "unsupported": "Werk Zotero bij naar versie 7 of nieuwer om je bibliotheek vanuit Oleafly te doorzoeken.",
+      "keyRejected": "Zotero accepteert je API-sleutel niet meer. Verbind je account opnieuw in de Zotero-instellingen.",
+      "closed": "Open Zotero om hier in je bibliotheek te zoeken, of verbind je zotero.org-account.",
+      "closedCached": "Zotero is gesloten. De resultaten komen uit de laatste synchronisatie, {{time}}.",
+      "bbtMissing": "Better BibTeX reageert niet, dus nieuwe sleutels komen uit Zotero. Controleer of het geïnstalleerd en ingeschakeld is.",
+      "action": "Zotero-instellingen"
+    },
+    "actions": {
+      "addFromZotero": "Toevoegen uit Zotero",
+      "addAllMissing_one": "{{count}} ontbrekende citatie uit Zotero toevoegen",
+      "addAllMissing_other": "Alle {{count}} ontbrekende citaties uit Zotero toevoegen",
+      "notInLibrary": "{{key}} staat niet in je Zotero-bibliotheek.",
+      "changed": "Dit item is in Zotero gewijzigd sinds je het hebt toegevoegd.",
+      "changedEdited": "Dit item is in Zotero gewijzigd en je hebt het hier ook bewerkt.",
+      "update": "Bijwerken uit Zotero",
+      "updated": "{{key}} bijgewerkt uit Zotero.",
+      "updateFailed": "Oleafly kon {{key}} niet bijwerken uit Zotero. Probeer het opnieuw."
+    },
+    "chooseBibliography": {
+      "title": "Waar moeten nieuwe referenties komen?",
+      "description": "Dit project heeft meer dan één bibliografiebestand. Oleafly voegt nieuwe referenties toe aan het bestand dat je kiest en onthoudt dat voor dit project.",
+      "confirm": "Dit bestand gebruiken"
+    },
+    "handEdits": {
+      "title": "Je wijzigingen vervangen?",
+      "description": "Je hebt het item {{key}} met de hand bewerkt. Als je het vervangt door de versie uit Zotero, gaan die wijzigingen verloren.",
+      "confirm": "De Zotero-versie gebruiken",
+      "cancel": "Mijn versie houden"
+    },
+    "handList": {
+      "title": "Je literatuurlijst verplaatsen?",
+      "description": "Dit document heeft een met de hand geschreven literatuurlijst. Verplaats die naar {{path}}, zodat die en de artikelen die je uit Zotero citeert één genummerde lijst vormen.",
+      "confirm": "Lijst verplaatsen"
+    },
+    "missing": {
+      "title": "Ontbrekende citaties uit Zotero toevoegen",
+      "loading": "Je Zotero-bibliotheek controleren…",
+      "none": "Alle geciteerde sleutels staan al in je bibliografie.",
+      "found_one": "{{count}} geciteerde sleutel staat in Zotero",
+      "found_other": "{{count}} geciteerde sleutels staan in Zotero",
+      "duplicates_one": "{{count}} sleutel citeert een artikel dat al in je bibliografie staat",
+      "duplicates_other": "{{count}} sleutels citeren artikelen die al in je bibliografie staan",
+      "duplicateRow": "{{key}} is hetzelfde artikel als {{existing}}",
+      "notFound_one": "{{count}} geciteerde sleutel staat niet in Zotero",
+      "notFound_other": "{{count}} geciteerde sleutels staan niet in Zotero",
+      "confirm_one": "{{count}} item toevoegen",
+      "confirm_other": "{{count}} items toevoegen",
+      "done_one": "{{count}} item staat nu in {{path}}.",
+      "done_other": "{{count}} items staan nu in {{path}}.",
+      "failed": "Oleafly kon de items niet toevoegen. {{detail}}"
+    },
+    "update": {
+      "title": ".bib-items bijwerken uit Zotero",
+      "loading": "Zotero controleren op wijzigingen…",
+      "none": "Je bibliografie komt overeen met Zotero.",
+      "handEdited": "Met de hand bewerkt",
+      "handEditedNote": "Items die je met de hand hebt bewerkt, zijn niet geselecteerd. Selecteer er een om het te vervangen door de versie uit Zotero.",
+      "confirm_one": "{{count}} item bijwerken",
+      "confirm_other": "{{count}} items bijwerken",
+      "done_one": "{{count}} item bijgewerkt.",
+      "done_other": "{{count}} items bijgewerkt."
+    }
   }
 }

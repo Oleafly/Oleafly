@@ -716,6 +716,15 @@
           "description": "Typst ファイルを保存するたびに、ありがちな間違いをチェックします。オンとオフを切り替えると、Typst の言語サーバーが再起動します。",
           "label": "Typst の lint チェック"
         }
+      },
+      "fileMove": {
+        "label": "ファイルを移動したとき",
+        "description": "LaTeX、Typst、Markdown のソースで、名前を変更したファイルや移動したファイルを指すパスを更新します。",
+        "options": {
+          "ask": "確認する",
+          "always": "常に更新",
+          "never": "更新しない"
+        }
       }
     },
     "files": {
@@ -817,6 +826,25 @@
       "startWithProject": {
         "description": "ターミナルを初めて表示したときではなく、プロジェクトを開いたときに shell を起動します。",
         "label": "プロジェクトと一緒に shell を起動"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "PDF を隠している間、テキストを中央の 1 列に収めます。",
+        "label": "エディタを中央に配置"
+      },
+      "fullScreen": {
+        "description": "Zen モード中は画面全体を使い、終了時にウィンドウを元に戻します。",
+        "label": "全画面にする"
+      },
+      "showPdf": {
+        "description": "Zen モード開始時に PDF が隠れている場合、最初のコンパイルでエディタの横に開きます。",
+        "label": "コンパイル時に PDF を表示"
+      },
+      "title": "Zen モード",
+      "toggle": {
+        "description": "ツールバー、サイドバー、アシスタント、ターミナルを隠して、文章だけを残します。気が散らないモードとも呼ばれます。プロジェクトを開いている必要があります。",
+        "label": "Zen モードをオンにする"
       }
     }
   },
@@ -1193,11 +1221,49 @@
       "apiKeyLabel": "Zotero の API キー",
       "connected": "Zotero ライブラリに接続しました。",
       "connectedAs": "{{username}} として接続しました。",
-      "description": "Zotero のライブラリから引用と参考文献を読み込みます。",
       "disconnectFailed": "Oleafly は保存した Zotero のキーを削除できませんでした。もう一度お試しください。",
-      "importHint": "読み込むには、プロジェクトの「参考文献」パネルを開いて「参考文献ライブラリの読み込み」を選びます。",
       "userIdLabel": "Zotero のユーザー ID",
-      "userIdPlaceholder": "ユーザー ID"
+      "userIdPlaceholder": "ユーザー ID",
+      "citeDescription": "執筆中に Zotero ライブラリ全体を検索し、引用したものだけを追加します。Oleafly はライブラリを読み取るだけで、変更することはありません。",
+      "local": {
+        "heading": "このコンピュータの Zotero",
+        "ready": "Zotero {{version}} に接続しました。",
+        "readyNoVersion": "Zotero に接続しました。",
+        "bbtFound": "Better BibTeX {{version}} がインストールされているため、引用キーは Better BibTeX から取得します。",
+        "bbtMissing": "Better BibTeX がインストールされていないため、引用キーは Zotero から取得します。",
+        "notRunning": "Zotero が起動していません。ライブラリを検索するには Zotero を開くか、下で zotero.org アカウントを接続してください。",
+        "apiDisabled": "Zotero で「設定 > 詳細」を開き、「Allow other applications on this computer to communicate with Zotero」をオンにしてください。",
+        "unsupported": "このバージョンの Zotero はライブラリを共有できません。Zotero 7 以降に更新してください。",
+        "unknown": "Oleafly はまだ Zotero を確認していません。"
+      },
+      "test": "接続をテスト",
+      "syncNow": "今すぐ同期",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX が見つかりません",
+        "local": "このコンピュータの Zotero から読み取り",
+        "web": "zotero.org から読み取り",
+        "library_other": "{{name}}: {{formatted}} 件"
+      },
+      "library": {
+        "heading": "検索するライブラリ",
+        "myLibrary": "マイライブラリ",
+        "toggle": "{{name}} を検索",
+        "items_other": "{{formatted}} 件"
+      },
+      "sync": {
+        "never": "まだ同期していません。",
+        "syncing": "Zotero ライブラリを同期中…",
+        "progress": "{{total}} 件中 {{done}} 件を同期中…",
+        "status_other": "{{formatted}} 件の項目を引用できます。最終同期: {{time}}。",
+        "fromCache": "Zotero が閉じているため、@ 検索には前回の同期時のコピーを使います。",
+        "rateLimited": "zotero.org から Oleafly に待機が求められました。{{time}} 以降に再試行します。"
+      },
+      "account": {
+        "heading": "zotero.org アカウント",
+        "description": "このコンピュータで Zotero を開いていないときは、アカウントを使います。グループのライブラリも対象になります。"
+      }
     }
   },
   "language": {
@@ -1564,6 +1630,10 @@
         "label": "フォルダを開く",
         "description": "コンピュータ上のフォルダをプロジェクトとして開きます。"
       },
+      "toggleZenMode": {
+        "description": "文章以外をすべて隠す、または元に戻します。",
+        "label": "Zen モードを切り替え"
+      },
       "openSettings": {
         "label": "設定を開く",
         "description": "Oleafly の設定を開きます。"
@@ -1589,7 +1659,7 @@
         "italic": "斜体",
         "jumpToSourceFromPdf": "PDF からソースへ移動",
         "redo": "やり直す",
-        "renameSymbol": "プロジェクト全体でシンボルの名前を変更",
+        "renameSymbol": "プロジェクト全体でシンボルまたはファイルの名前を変更",
         "slashCommandMenu": "スラッシュコマンドの挿入メニュー",
         "triggerAutocomplete": "補完を呼び出す",
         "undo": "元に戻す"

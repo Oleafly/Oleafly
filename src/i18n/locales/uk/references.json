@@ -171,5 +171,100 @@
     "label": "Стиль цитування",
     "ariaLabel": "Стиль цитування для бібліографії в {{path}}",
     "failed": "Oleafly не вдалося змінити стиль цитування."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} і {{second}}",
+      "authorsMany": "{{first}} та ін.",
+      "noYear": "б. д.",
+      "keySource": {
+        "bbt": "Ключ із Better BibTeX",
+        "native": "Ключ із Zotero",
+        "extra": "Ключ із поля «Додатково» в Zotero",
+        "generated": "Ключ створив Oleafly"
+      },
+      "addFailed": "Oleafly не вдалося додати {{key}} до бібліографії. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "У Zotero відкрийте Налаштування > Розширені й увімкніть «Allow other applications on this computer to communicate with Zotero».",
+      "unsupported": "Оновіть Zotero до версії 7 або новішої, щоб шукати у своїй бібліотеці з Oleafly.",
+      "keyRejected": "Zotero більше не приймає ваш ключ API. Повторно підключіть обліковий запис у налаштуваннях Zotero.",
+      "closed": "Відкрийте Zotero, щоб шукати тут у своїй бібліотеці, або підключіть обліковий запис zotero.org.",
+      "closedCached": "Zotero закрито. Результати з останньої синхронізації, {{time}}.",
+      "bbtMissing": "Better BibTeX не відповідає, тому нові ключі надходять із Zotero. Перевірте, чи плагін встановлено й увімкнено.",
+      "action": "Налаштування Zotero"
+    },
+    "actions": {
+      "addFromZotero": "Додати із Zotero",
+      "addAllMissing_one": "Додати {{count}} відсутнє цитування із Zotero",
+      "addAllMissing_few": "Додати всі {{count}} відсутні цитування із Zotero",
+      "addAllMissing_many": "Додати всі {{count}} відсутніх цитувань із Zotero",
+      "addAllMissing_other": "Додати {{count}} відсутнього цитування із Zotero",
+      "notInLibrary": "{{key}} немає у вашій бібліотеці Zotero.",
+      "changed": "Цей запис змінився в Zotero після того, як ви його додали.",
+      "changedEdited": "Цей запис змінився в Zotero, а ви також відредагували його тут.",
+      "update": "Оновити із Zotero",
+      "updated": "Запис {{key}} оновлено із Zotero.",
+      "updateFailed": "Oleafly не вдалося оновити {{key}} із Zotero. Спробуйте ще раз."
+    },
+    "chooseBibliography": {
+      "title": "Куди додавати нові джерела?",
+      "description": "У цьому проєкті більше ніж один файл бібліографії. Oleafly додаватиме нові джерела до вибраного вами файлу й запам’ятає його для цього проєкту.",
+      "confirm": "Використати цей файл"
+    },
+    "handEdits": {
+      "title": "Замінити ваші зміни?",
+      "description": "Ви вручну відредагували {{key}}. Якщо замінити запис версією із Zotero, ці зміни буде втрачено.",
+      "confirm": "Використати версію із Zotero",
+      "cancel": "Залишити мою"
+    },
+    "handList": {
+      "title": "Перенести список літератури?",
+      "description": "У цьому документі список літератури набрано вручну. Перенесіть його до {{path}}, щоб він і статті, які ви цитуєте із Zotero, були в одному нумерованому списку.",
+      "confirm": "Перенести список"
+    },
+    "missing": {
+      "title": "Додати відсутні цитування із Zotero",
+      "loading": "Перевірка вашої бібліотеки Zotero…",
+      "none": "Усі ключі цитувань уже є у вашій бібліографії.",
+      "found_one": "{{count}} ключ цитування є в Zotero",
+      "found_few": "{{count}} ключі цитувань є в Zotero",
+      "found_many": "{{count}} ключів цитувань є в Zotero",
+      "found_other": "{{count}} ключа цитувань є в Zotero",
+      "duplicates_one": "{{count}} ключ посилається на працю, яка вже є у вашій бібліографії",
+      "duplicates_few": "{{count}} ключі посилаються на праці, які вже є у вашій бібліографії",
+      "duplicates_many": "{{count}} ключів посилаються на праці, які вже є у вашій бібліографії",
+      "duplicates_other": "{{count}} ключа посилаються на праці, які вже є у вашій бібліографії",
+      "duplicateRow": "{{key}} посилається на ту саму працю, що й {{existing}}",
+      "notFound_one": "{{count}} ключ цитування не знайдено в Zotero",
+      "notFound_few": "{{count}} ключі цитувань не знайдено в Zotero",
+      "notFound_many": "{{count}} ключів цитувань не знайдено в Zotero",
+      "notFound_other": "{{count}} ключа цитувань не знайдено в Zotero",
+      "confirm_one": "Додати {{count}} запис",
+      "confirm_few": "Додати {{count}} записи",
+      "confirm_many": "Додати {{count}} записів",
+      "confirm_other": "Додати {{count}} запису",
+      "done_one": "{{count}} запис тепер у {{path}}.",
+      "done_few": "{{count}} записи тепер у {{path}}.",
+      "done_many": "{{count}} записів тепер у {{path}}.",
+      "done_other": "{{count}} запису тепер у {{path}}.",
+      "failed": "Oleafly не вдалося додати записи. {{detail}}"
+    },
+    "update": {
+      "title": "Оновити записи .bib із Zotero",
+      "loading": "Пошук змін у Zotero…",
+      "none": "Ваша бібліографія збігається із Zotero.",
+      "handEdited": "Змінено вручну",
+      "handEditedNote": "Записи, які ви змінили вручну, не вибрано. Виберіть такий запис, щоб замінити його версією із Zotero.",
+      "confirm_one": "Оновити {{count}} запис",
+      "confirm_few": "Оновити {{count}} записи",
+      "confirm_many": "Оновити {{count}} записів",
+      "confirm_other": "Оновити {{count}} запису",
+      "done_one": "Оновлено {{count}} запис.",
+      "done_few": "Оновлено {{count}} записи.",
+      "done_many": "Оновлено {{count}} записів.",
+      "done_other": "Оновлено {{count}} запису."
+    }
   }
 }

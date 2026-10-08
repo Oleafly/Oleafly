@@ -31,7 +31,8 @@
     "newTab": "Ny flik",
     "openLocation": "Öppna adress…",
     "closeTab": "Stäng flik",
-    "reloadPage": "Läs in sidan på nytt"
+    "reloadPage": "Läs in sidan på nytt",
+    "zenMode": "Zen-läge"
   },
   "window": {
     "browser": "Oleafly-webbläsaren",

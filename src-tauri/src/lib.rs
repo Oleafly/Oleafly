@@ -455,6 +455,7 @@ pub fn run() {
         .manage(mcp::server::McpState::default())
         .manage(mcp::client::McpClientState::default())
         .manage(native_drop::NativeDropState::default())
+        .manage(zotero::commands::ZoteroState::default())
         // Closing the app mid-TinyTeX-install must be a deliberate choice: block
         // the close, let the frontend show a confirm dialog, and only pass a
         // close through after `confirm_quit_during_install`.
@@ -746,6 +747,20 @@ pub fn run() {
             connectors::set_connector_key,
             zotero::zotero_verify,
             zotero::zotero_library_bibtex,
+            zotero::commands::zotero_library_status,
+            zotero::commands::zotero_library_sync,
+            zotero::commands::zotero_library_test,
+            zotero::commands::zotero_library_search,
+            zotero::commands::zotero_library_lookup,
+            zotero::commands::zotero_library_keys,
+            zotero::commands::zotero_library_items,
+            zotero::commands::zotero_library_export,
+            zotero::commands::zotero_library_set_enabled,
+            zotero::commands::zotero_web_account,
+            zotero::commands::zotero_web_connect,
+            zotero::commands::zotero_web_disconnect,
+            zotero::commands::zotero_project_links,
+            zotero::commands::zotero_update_project_links,
             project::set_main_doc,
             project::set_project_engine,
             typst_toolchain::typst_toolchain_status,

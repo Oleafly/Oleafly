@@ -218,5 +218,28 @@
     "clearFilter": "Wyczyść filtr",
     "filterPlaceholder": "Filtruj…",
     "noProject": "Brak projektu"
+  },
+  "fileReferences": {
+    "title": "Zaktualizować odwołania do {{name}}?",
+    "files_one": "{{count}} pliku",
+    "files_few": "{{count}} plikach",
+    "files_many": "{{count}} plikach",
+    "files_other": "{{count}} pliku",
+    "summary_one": "{{count}} odwołanie w $t(workspace:fileReferences.files, { \"count\": {{files}} }) nadal używa starej ścieżki {{path}}.",
+    "summary_few": "{{count}} odwołania w $t(workspace:fileReferences.files, { \"count\": {{files}} }) nadal używają starej ścieżki {{path}}.",
+    "summary_many": "{{count}} odwołań w $t(workspace:fileReferences.files, { \"count\": {{files}} }) nadal używa starej ścieżki {{path}}.",
+    "summary_other": "{{count}} odwołania w $t(workspace:fileReferences.files, { \"count\": {{files}} }) nadal używa starej ścieżki {{path}}.",
+    "fileCount_one": "{{count}} odwołanie",
+    "fileCount_few": "{{count}} odwołania",
+    "fileCount_many": "{{count}} odwołań",
+    "fileCount_other": "{{count}} odwołania",
+    "dontAsk": "Nie pytaj ponownie",
+    "update": "Aktualizuj odwołania",
+    "skip": "Nie aktualizuj",
+    "failed_one": "{{count}} plik zmienił się po przeniesieniu lub nie udało się go zapisać. Nadal używa starej ścieżki.",
+    "failed_few": "{{count}} pliki zmieniły się po przeniesieniu lub nie udało się ich zapisać. Nadal używają starej ścieżki.",
+    "failed_many": "{{count}} plików zmieniło się po przeniesieniu lub nie udało się ich zapisać. Nadal używają starej ścieżki.",
+    "failed_other": "{{count}} pliku zmieniło się po przeniesieniu lub nie udało się ich zapisać. Nadal używają starej ścieżki.",
+    "close": "Zamknij bez aktualizowania odwołań"
   }
 }

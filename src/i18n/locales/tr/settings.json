@@ -721,6 +721,15 @@
           "description": "Typst dosyalarını her kaydedildiğinde olası hatalara karşı denetler. Bunu açıp kapatmak Typst dil sunucusunu yeniden başlatır.",
           "label": "Typst lint denetimleri"
         }
+      },
+      "fileMove": {
+        "label": "Bir dosya taşındığında",
+        "description": "LaTeX, Typst ve Markdown kaynaklarında yeniden adlandırılan veya taşınan dosyayı gösteren yolları güncelle.",
+        "options": {
+          "ask": "Sor",
+          "always": "Her zaman güncelle",
+          "never": "Hiçbir zaman güncelleme"
+        }
       }
     },
     "files": {
@@ -822,6 +831,25 @@
       "startWithProject": {
         "description": "shell'i, terminali ilk gösterdiğinizde değil, bir proje açıldığında başlatır.",
         "label": "shell'i projeyle birlikte başlat"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "PDF gizliyken metni ortalanmış bir sütunda tutar.",
+        "label": "Düzenleyiciyi ortala"
+      },
+      "fullScreen": {
+        "description": "Zen kipinde ekranı doldurur, çıkınca pencereyi eski haline getirir.",
+        "label": "Tam ekrana geç"
+      },
+      "showPdf": {
+        "description": "Zen kipi başlarken PDF gizliyse, ilk derlemede onu düzenleyicinin yanında açar.",
+        "label": "Derlerken PDF'yi göster"
+      },
+      "title": "Zen kipi",
+      "toggle": {
+        "description": "Araç çubuğunu, kenar çubuğunu, asistanı ve terminali gizleyerek yalnızca yazınızı bırakır. Dikkat dağıtmayan kip olarak da bilinir. Açık bir proje gerekir.",
+        "label": "Zen kipini aç"
       }
     }
   },
@@ -1205,11 +1233,52 @@
       "apiKeyLabel": "Zotero API anahtarı",
       "connected": "Zotero kitaplığınıza bağlandı.",
       "connectedAs": "{{username}} olarak bağlandı.",
-      "description": "Zotero kitaplığınızdan atıfları ve kaynakları içe aktarın.",
       "disconnectFailed": "Oleafly kayıtlı Zotero anahtarını kaldıramadı. Yeniden deneyin.",
-      "importHint": "İçe aktarmak için bir projede Kaynaklar panelini açıp Kaynak kitaplığını içe aktar seçeneğini seçin.",
       "userIdLabel": "Zotero kullanıcı kimliği",
-      "userIdPlaceholder": "Kullanıcı kimliği"
+      "userIdPlaceholder": "Kullanıcı kimliği",
+      "citeDescription": "Yazarken tüm Zotero kitaplığınızda arama yapın ve yalnızca atıf yaptıklarınızı ekleyin. Oleafly kitaplığınızı okur ve asla değiştirmez.",
+      "local": {
+        "heading": "Bu bilgisayardaki Zotero",
+        "ready": "Zotero {{version}} uygulamasına bağlandı.",
+        "readyNoVersion": "Zotero'ya bağlandı.",
+        "bbtFound": "Better BibTeX {{version}} yüklü, bu yüzden atıf anahtarları Better BibTeX'ten geliyor.",
+        "bbtMissing": "Better BibTeX yüklü değil, bu yüzden atıf anahtarları Zotero'dan geliyor.",
+        "notRunning": "Zotero çalışmıyor. Kitaplığınızda arama yapmak için Zotero'yu açın veya aşağıdan zotero.org hesabınızı bağlayın.",
+        "apiDisabled": "Zotero'da Ayarlar > Gelişmiş bölümünü açın ve “Bu bilgisayardaki diğer uygulamaların Zotero ile iletişim kurmasına izin ver” seçeneğini etkinleştirin.",
+        "unsupported": "Zotero'nun bu sürümü kitaplığını paylaşamıyor. Zotero 7 veya daha yeni bir sürüme güncelleyin.",
+        "unknown": "Oleafly henüz Zotero'yu aramadı."
+      },
+      "test": "Bağlantıyı test et",
+      "syncNow": "Şimdi eşitle",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX bulunamadı",
+        "local": "Bu bilgisayardaki Zotero'dan okundu",
+        "web": "zotero.org'dan okundu",
+        "library_one": "{{name}}: {{formatted}} öğe",
+        "library_other": "{{name}}: {{formatted}} öğe"
+      },
+      "library": {
+        "heading": "Aranacak kitaplıklar",
+        "myLibrary": "Kitaplığım",
+        "toggle": "{{name}} içinde ara",
+        "items_one": "{{formatted}} öğe",
+        "items_other": "{{formatted}} öğe"
+      },
+      "sync": {
+        "never": "Henüz eşitlenmedi.",
+        "syncing": "Zotero kitaplığınız eşitleniyor…",
+        "progress": "{{total}} öğeden {{done}} tanesi eşitleniyor…",
+        "status_one": "Atıf için {{formatted}} öğe hazır, {{time}} eşitlendi.",
+        "status_other": "Atıf için {{formatted}} öğe hazır, {{time}} eşitlendi.",
+        "fromCache": "Zotero kapalı, bu yüzden @ araması son eşitlemedeki kopyayı kullanıyor.",
+        "rateLimited": "zotero.org, Oleafly'den beklemesini istedi. {{time}} sonrasında yeniden denenecek."
+      },
+      "account": {
+        "heading": "zotero.org hesabı",
+        "description": "Zotero bu bilgisayarda açık değilken hesabınızı kullanın. Grup kitaplıkları da dahil edilir."
+      }
     }
   },
   "language": {
@@ -1582,6 +1651,10 @@
         "label": "Klasör aç",
         "description": "Bilgisayarınızdaki bir klasörü proje olarak açın."
       },
+      "toggleZenMode": {
+        "description": "Yazınız dışındaki her şeyi gizleyin veya geri getirin.",
+        "label": "Zen kipini aç/kapat"
+      },
       "openSettings": {
         "label": "Ayarları aç",
         "description": "Oleafly ayarlarını açar."
@@ -1607,7 +1680,7 @@
         "italic": "İtalik",
         "jumpToSourceFromPdf": "PDF'ten kaynağa atla",
         "redo": "Yinele",
-        "renameSymbol": "Sembolü proje genelinde yeniden adlandır",
+        "renameSymbol": "Sembolü veya dosyayı proje genelinde yeniden adlandır",
         "slashCommandMenu": "Eğik çizgi komutu ekleme menüsü",
         "triggerAutocomplete": "Otomatik tamamlamayı başlat",
         "undo": "Geri al"

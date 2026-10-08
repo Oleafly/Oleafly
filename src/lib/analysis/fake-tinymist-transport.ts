@@ -128,6 +128,17 @@ export class FakeTinymistTransport implements LanguageServiceTransport {
     return this.messages.filter((message) => message.method === method);
   }
 
+  notify(method: string, params: JsonValue): void {
+    const session = this.current;
+    if (!session) throw new Error("Transport has not started");
+    this.sinks.get(session.session)?.({
+      type: "message",
+      ...session,
+      sequence: 1,
+      message: { jsonrpc: "2.0", method, params },
+    });
+  }
+
   private resultFor(method: string, params: unknown): JsonValue {
     const handler = this.handlers.get(method);
     if (handler) return handler(params);

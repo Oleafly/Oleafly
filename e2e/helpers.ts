@@ -944,6 +944,74 @@ export async function shellStateSnapshot(page: Page): Promise<string> {
   })()`);
 }
 
+export async function revealLibraryProject(page: Page, name: string): Promise<boolean> {
+  const selector = `[data-testid="library"] button[aria-label=${JSON.stringify(`Open ${name}`)}]`;
+  return page.evaluate<boolean>(`(async () => {
+    const selector = ${JSON.stringify(selector)};
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
+    const found = () => document.querySelector(selector);
+    if (found()) return true;
+    const list = document.querySelector('[data-testid="library"] [data-testid="project-grid"], [data-testid="library"] [data-testid="project-list"]');
+    let scroller = list ? list.parentElement : null;
+    while (scroller && scroller !== document.body) {
+      const overflow = getComputedStyle(scroller).overflowY;
+      if ((overflow === "auto" || overflow === "scroll") && scroller.scrollHeight > scroller.clientHeight) break;
+      scroller = scroller.parentElement;
+    }
+    if (!scroller || scroller === document.body) return false;
+    scroller.scrollTop = 0;
+    await settle();
+    for (let step = 0; step < 400; step++) {
+      const button = found();
+      if (button) {
+        button.scrollIntoView({ block: "center" });
+        await settle();
+        return true;
+      }
+      if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1) return false;
+      scroller.scrollTop += Math.max(40, Math.floor(scroller.clientHeight * 0.75));
+      await settle();
+    }
+    return !!found();
+  })()`);
+}
+
+export async function libraryCardNames(page: Page): Promise<string[]> {
+  return page.evaluate<string[]>(`(async () => {
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 50));
+    const names = new Set();
+    const collect = () => {
+      for (const button of document.querySelectorAll('[data-testid="project-grid"] button[aria-label^="Open "], [data-testid="project-list"] button[aria-label^="Open "]')) {
+        names.add(button.getAttribute("aria-label").slice(5));
+      }
+    };
+    const list = document.querySelector('[data-testid="library"] [data-testid="project-grid"], [data-testid="library"] [data-testid="project-list"]');
+    let scroller = list ? list.parentElement : null;
+    while (scroller && scroller !== document.body) {
+      const overflow = getComputedStyle(scroller).overflowY;
+      if ((overflow === "auto" || overflow === "scroll") && scroller.scrollHeight > scroller.clientHeight) break;
+      scroller = scroller.parentElement;
+    }
+    if (!scroller || scroller === document.body) {
+      collect();
+      return [...names];
+    }
+    const start = scroller.scrollTop;
+    scroller.scrollTop = 0;
+    await settle();
+    for (let step = 0; step < 400; step++) {
+      collect();
+      if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1) break;
+      scroller.scrollTop += Math.max(40, Math.floor(scroller.clientHeight * 0.75));
+      await settle();
+    }
+    collect();
+    scroller.scrollTop = start;
+    await settle();
+    return [...names];
+  })()`);
+}
+
 export async function openProject(page: Page & { getByText(t: string): { click(): Promise<void> } }, name: string) {
   const libraryVisible = await page.evaluate<boolean>(
     `!!document.querySelector('[data-testid="library"]')`,
@@ -964,6 +1032,7 @@ export async function openProject(page: Page & { getByText(t: string): { click()
       cause: error,
     });
   }
+  await revealLibraryProject(page, name);
   try {
     await page.click(`button[aria-label=${JSON.stringify(`Open ${name}`)}]`);
   } catch (error) {
@@ -1166,7 +1235,8 @@ export async function ensureGithubConnected(page: Page) {
       20_000,
     );
   }
-  await page.click('[aria-label="Close settings"]');
+  await page.click('[data-testid="settings-close"]');
+  await page.waitForFunction(`!document.querySelector('[data-testid="settings-close"]')`, 10_000);
   await openRailTab(page, "Source Control");
 }
 
@@ -1269,7 +1339,8 @@ export async function ensureAiConnected(page: Page) {
       15_000,
     );
   }
-  await page.click('[aria-label="Close settings"]');
+  await page.click('[data-testid="settings-close"]');
+  await page.waitForFunction(`!document.querySelector('[data-testid="settings-close"]')`, 10_000);
   const model = process.env.E2E_AI_MODEL;
   if (model) {
     await page.evaluate(`(async () => {

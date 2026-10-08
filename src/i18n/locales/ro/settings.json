@@ -726,6 +726,15 @@
           "description": "Verifică fișierele Typst pentru greșeli probabile ori de câte ori sunt salvate. Activarea sau dezactivarea repornește serverul de limbaj Typst.",
           "label": "Verificări lint Typst"
         }
+      },
+      "fileMove": {
+        "label": "Când un fișier este mutat",
+        "description": "Actualizează căile către un fișier redenumit sau mutat în sursele LaTeX, Typst și Markdown.",
+        "options": {
+          "ask": "Întreabă",
+          "always": "Actualizează mereu",
+          "never": "Nu actualiza niciodată"
+        }
       }
     },
     "files": {
@@ -827,6 +836,25 @@
       "startWithProject": {
         "description": "Pornește shell-ul la deschiderea unui proiect, nu prima dată când arăți terminalul.",
         "label": "Pornește shell-ul odată cu proiectul"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Ține textul într-o coloană centrată cât timp PDF-ul este ascuns.",
+        "label": "Centrează editorul"
+      },
+      "fullScreen": {
+        "description": "Umple ecranul în modul Zen și restabilește fereastra la ieșire.",
+        "label": "Treci pe ecran complet"
+      },
+      "showPdf": {
+        "description": "Dacă PDF-ul este ascuns când pornește modul Zen, îl deschide lângă editor la prima compilare.",
+        "label": "Arată PDF-ul la compilare"
+      },
+      "title": "Modul Zen",
+      "toggle": {
+        "description": "Ascunde bara de instrumente, bara laterală, asistentul și terminalul, astfel încât să rămână doar textul. Se numește și mod fără distrageri. Necesită un proiect deschis.",
+        "label": "Activează modul Zen"
       }
     }
   },
@@ -1217,11 +1245,55 @@
       "apiKeyLabel": "Cheie API Zotero",
       "connected": "Conectat la biblioteca ta Zotero.",
       "connectedAs": "Conectat ca {{username}}.",
-      "description": "Importă citări și referințe din biblioteca ta Zotero.",
       "disconnectFailed": "Oleafly nu a putut elimina cheia Zotero salvată. Încearcă din nou.",
-      "importHint": "Pentru import, deschide panoul Referințe dintr-un proiect și alege Importă bibliotecă de referințe.",
       "userIdLabel": "Identificator de utilizator Zotero",
-      "userIdPlaceholder": "Identificator de utilizator"
+      "userIdPlaceholder": "Identificator de utilizator",
+      "citeDescription": "Caută în toată biblioteca ta Zotero în timp ce scrii și adaugă doar ce citezi. Oleafly îți citește biblioteca și nu o modifică niciodată.",
+      "local": {
+        "heading": "Zotero pe acest computer",
+        "ready": "Conectat la Zotero {{version}}.",
+        "readyNoVersion": "Conectat la Zotero.",
+        "bbtFound": "Better BibTeX {{version}} este instalat, așa că cheile de citare vin din Better BibTeX.",
+        "bbtMissing": "Better BibTeX nu este instalat, așa că cheile de citare vin din Zotero.",
+        "notRunning": "Zotero nu rulează. Deschide Zotero ca să cauți în bibliotecă sau conectează-ți mai jos contul zotero.org.",
+        "apiDisabled": "În Zotero, deschide Setări > Avansate și activează „Allow other applications on this computer to communicate with Zotero”.",
+        "unsupported": "Această versiune de Zotero nu își poate partaja biblioteca. Actualizează la Zotero 7 sau la o versiune mai nouă.",
+        "unknown": "Oleafly nu a căutat încă Zotero."
+      },
+      "test": "Testează conexiunea",
+      "syncNow": "Sincronizează acum",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX nu a fost găsit",
+        "local": "Citit din Zotero de pe acest computer",
+        "web": "Citit de pe zotero.org",
+        "library_one": "{{name}}: {{formatted}} element",
+        "library_few": "{{name}}: {{formatted}} elemente",
+        "library_other": "{{name}}: {{formatted}} de elemente"
+      },
+      "library": {
+        "heading": "Biblioteci în care să cauți",
+        "myLibrary": "Biblioteca mea",
+        "toggle": "Caută în {{name}}",
+        "items_one": "{{formatted}} element",
+        "items_few": "{{formatted}} elemente",
+        "items_other": "{{formatted}} de elemente"
+      },
+      "sync": {
+        "never": "Nesincronizat încă.",
+        "syncing": "Se sincronizează biblioteca ta Zotero…",
+        "progress": "Se sincronizează elementele: {{done}} din {{total}}…",
+        "status_one": "{{formatted}} element gata de citat, sincronizat {{time}}.",
+        "status_few": "{{formatted}} elemente gata de citat, sincronizate {{time}}.",
+        "status_other": "{{formatted}} de elemente gata de citat, sincronizate {{time}}.",
+        "fromCache": "Zotero este închis, așa că căutarea cu @ folosește copia din ultima sincronizare.",
+        "rateLimited": "zotero.org i-a cerut lui Oleafly să aștepte. Va încerca din nou după {{time}}."
+      },
+      "account": {
+        "heading": "Contul zotero.org",
+        "description": "Folosește contul când Zotero nu este deschis pe acest computer. Sunt incluse și bibliotecile de grup."
+      }
     }
   },
   "language": {
@@ -1600,6 +1672,10 @@
         "label": "Deschide un folder",
         "description": "Deschide un folder de pe computer ca proiect."
       },
+      "toggleZenMode": {
+        "description": "Ascunde tot în afară de text sau readu totul.",
+        "label": "Comută modul Zen"
+      },
       "openSettings": {
         "label": "Deschide setările",
         "description": "Deschide setările Oleafly."
@@ -1625,7 +1701,7 @@
         "italic": "Cursiv",
         "jumpToSourceFromPdf": "Sari la sursă din PDF",
         "redo": "Refă",
-        "renameSymbol": "Redenumește simbolul în tot proiectul",
+        "renameSymbol": "Redenumește simbolul sau fișierul în tot proiectul",
         "slashCommandMenu": "Meniu de inserare cu bară oblică",
         "triggerAutocomplete": "Pornește completarea automată",
         "undo": "Anulează"
