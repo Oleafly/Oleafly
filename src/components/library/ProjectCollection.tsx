@@ -118,10 +118,11 @@ function starredStyle(starred: boolean) {
   return starred ? { color: "#f59e0b" } : undefined;
 }
 
-function projectFavoriteLabel(t: LibraryTranslate, starred: boolean) {
-  return starred
-    ? t(($) => $.library.projects.favoriteRemove)
-    : t(($) => $.library.projects.favoriteAdd);
+function projectFavoriteLabels(t: LibraryTranslate) {
+  return {
+    add: t(($) => $.library.projects.favoriteAdd),
+    remove: t(($) => $.library.projects.favoriteRemove),
+  };
 }
 
 function ProjectRowCaption({
@@ -448,7 +449,8 @@ const ProjectListRow = memo(function ProjectListRow({
     previewStore.release(p.id);
     actions.releaseThumbnail(p);
   };
-  const favoriteLabel = projectFavoriteLabel(t, starred);
+  const favoriteLabels = projectFavoriteLabels(t);
+  const favoriteLabel = starred ? favoriteLabels.remove : favoriteLabels.add;
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
