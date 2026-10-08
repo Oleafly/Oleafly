@@ -120,7 +120,7 @@ describe("visual atomic decorations while typing", () => {
         .some(([spec]) => spec.from === undefined && spec.to === undefined);
       if (!walked && next.field(visualAtomicField).tree === syntaxTree(next)) incremental += 1;
       expectMatchesFullBuild(next);
-      return next;
+      return parsedState(next);
     };
     for (const position of editablePositions(DOCUMENT)) {
       let state = createState(DOCUMENT, position);
