@@ -1,4 +1,3 @@
-const TAG = /<[^<>]*>/g;
 const MARKUP_TAGS: readonly RegExp[] = [
   /^<\/?(?:i|b|em|strong|u|sub|sup|sc|small)>$/i,
   /^<(?:span|a)(?:\s[^<>]*)?>$/i,
@@ -21,13 +20,27 @@ function decodeEntity(entity: string, decimal?: string, hex?: string, name?: str
   return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
 }
 
-function stripMarkup(tag: string): string {
-  return MARKUP_TAGS.some((pattern) => pattern.test(tag)) ? "" : tag;
+function isMarkupTag(tag: string): boolean {
+  return MARKUP_TAGS.some((pattern) => pattern.test(tag));
+}
+
+function withoutMarkupTags(text: string): string {
+  let result = "";
+  let index = 0;
+  for (let open = text.indexOf("<"); open !== -1; open = text.indexOf("<", index)) {
+    const close = text.indexOf(">", open + 1);
+    if (close === -1) break;
+    const start = text.lastIndexOf("<", close);
+    const tag = text.slice(start, close + 1);
+    result += text.slice(index, start);
+    if (!isMarkupTag(tag)) result += tag;
+    index = close + 1;
+  }
+  return result + text.slice(index);
 }
 
 export function plainText(text: string): string {
-  return text
-    .replace(TAG, stripMarkup)
+  return withoutMarkupTags(text)
     .replace(ENTITY, decodeEntity)
     .replace(/\s+/g, " ")
     .trim();
