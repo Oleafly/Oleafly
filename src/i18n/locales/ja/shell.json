@@ -42,7 +42,9 @@
     "privacyNote": "送信されるのは識別子またはタイトルだけで、送信先は doi.org、arXiv、Crossref です。",
     "title": "引用を追加",
     "bibliography": "参考文献",
-    "bibliographyHint": "このプロジェクトには参考文献が複数あります。項目はここで選んだファイルに追加されます。"
+    "bibliographyHint": "このプロジェクトには参考文献が複数あります。項目はここで選んだファイルに追加されます。",
+    "zoteroMatches": "Zotero ライブラリから",
+    "zoteroPlaceholder": "Zotero ライブラリを検索、または DOI、arXiv の ID、タイトルを貼り付け"
   },
   "backendProtocol": {
     "mismatch": "このウィンドウとバックエンドは異なるバージョンの Oleafly 向けにビルドされているため、一部の機能が動かないことがあります。アプリを再インストールすると解決します。"
@@ -324,6 +326,22 @@
     "presentWithPresenter": {
       "label": "発表者ビューでスライドを発表",
       "keywords": "発表 スライド 発表者ビュー 発表者ノート タイマー 次のスライド"
+    },
+    "zenMode": {
+      "keywords": "集中 気が散らない 全画面 インターフェースを隠す ミニマル 執筆",
+      "label": "Zen モードを切り替え"
+    },
+    "zoteroAddMissing": {
+      "label": "不足している引用を Zotero から追加",
+      "keywords": "zotero 不足 引用 未定義 キー 参考文献 修復"
+    },
+    "zoteroUpdate": {
+      "label": "Zotero から .bib の項目を更新",
+      "keywords": "zotero 更新 再読み込み 参考文献 項目 変更"
+    },
+    "zoteroSync": {
+      "label": "Zotero ライブラリを同期",
+      "keywords": "zotero 同期 更新 ライブラリ"
     }
   },
   "community": {
@@ -1100,7 +1118,8 @@
       "editorPreview": "エディタ + プレビュー",
       "editorPreviewAi": "エディタ + プレビュー + AI",
       "previewAi": "プレビュー + AI",
-      "previewOnly": "プレビューのみ"
+      "previewOnly": "プレビューのみ",
+      "zenMode": "Zen モード"
     },
     "newProjectName": "新しいプロジェクト名",
     "projectName": "プロジェクト名",
@@ -1319,5 +1338,19 @@
     "location": "{{file}}、{{line}} 行目",
     "error": "エラー",
     "warning": "警告"
+  },
+  "fileRenameDialog": {
+    "title": "ファイル名を変更",
+    "titleFolder": "フォルダ名を変更",
+    "newPath": "新しいパス",
+    "hint": "存在しないフォルダは作成されます。",
+    "invalid": "このプロジェクト内のパスを指定してください。",
+    "exists": "{{path}} はすでに存在します。"
+  },
+  "zen": {
+    "compileFailed": "コンパイルに失敗しました",
+    "compiling": "コンパイル中",
+    "hideLog": "コンパイルログを隠す",
+    "showLog": "コンパイルログを表示"
   }
 }

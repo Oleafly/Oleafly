@@ -45,7 +45,9 @@
     "privacyNote": "Odesílá se jen identifikátor nebo název, a to na doi.org, arXiv nebo Crossref.",
     "title": "Přidat citaci",
     "bibliography": "Bibliografie",
-    "bibliographyHint": "Tento projekt má víc než jednu bibliografii. Záznam se uloží do souboru, který zde vyberete."
+    "bibliographyHint": "Tento projekt má víc než jednu bibliografii. Záznam se uloží do souboru, který zde vyberete.",
+    "zoteroMatches": "Z vaší knihovny Zotero",
+    "zoteroPlaceholder": "Prohledejte knihovnu Zotero, nebo vložte DOI, identifikátor arXiv či název"
   },
   "backendProtocol": {
     "mismatch": "Toto okno a jeho backend byly sestaveny pro různé verze Oleafly, takže některé funkce nemusí fungovat. Pomůže přeinstalování aplikace."
@@ -330,6 +332,22 @@
     "presentWithPresenter": {
       "label": "Prezentovat snímky se zobrazením přednášejícího",
       "keywords": "prezentovat snímky zobrazení přednášejícího poznámky přednášejícího časovač další snímek"
+    },
+    "zenMode": {
+      "keywords": "bez rušení soustředění celá obrazovka skrýt rozhraní minimalistický psaní",
+      "label": "Přepnout režim Zen"
+    },
+    "zoteroAddMissing": {
+      "label": "Přidat chybějící citace z knihovny Zotero",
+      "keywords": "zotero chybějící citace nedefinované klíče bibliografie oprava"
+    },
+    "zoteroUpdate": {
+      "label": "Aktualizovat záznamy .bib z knihovny Zotero",
+      "keywords": "zotero aktualizovat obnovit bibliografie záznamy změněné"
+    },
+    "zoteroSync": {
+      "label": "Synchronizovat knihovnu Zotero",
+      "keywords": "zotero synchronizovat obnovit knihovna"
     }
   },
   "community": {
@@ -1163,7 +1181,8 @@
       "editorPreview": "Editor a náhled",
       "editorPreviewAi": "Editor, náhled a AI",
       "previewAi": "Náhled a AI",
-      "previewOnly": "Jen náhled"
+      "previewOnly": "Jen náhled",
+      "zenMode": "Režim Zen"
     },
     "newProjectName": "Název nového projektu",
     "projectName": "Název projektu",
@@ -1418,5 +1437,19 @@
     "location": "{{file}}, řádek {{line}}",
     "error": "Chyba",
     "warning": "Varování"
+  },
+  "fileRenameDialog": {
+    "title": "Přejmenovat soubor",
+    "titleFolder": "Přejmenovat složku",
+    "newPath": "Nová cesta",
+    "hint": "Chybějící složky se vytvoří.",
+    "invalid": "Použijte cestu uvnitř tohoto projektu.",
+    "exists": "{{path}} už existuje."
+  },
+  "zen": {
+    "compileFailed": "Kompilace selhala",
+    "compiling": "Kompilace probíhá",
+    "hideLog": "Skrýt protokol kompilace",
+    "showLog": "Zobrazit protokol kompilace"
   }
 }

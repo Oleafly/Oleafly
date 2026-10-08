@@ -30,7 +30,8 @@
     "newTab": "Nowa karta",
     "openLocation": "Otwórz adres…",
     "closeTab": "Zamknij kartę",
-    "reloadPage": "Przeładuj stronę"
+    "reloadPage": "Przeładuj stronę",
+    "zenMode": "Tryb Zen"
   },
   "window": {
     "browser": "Przeglądarka Oleafly",

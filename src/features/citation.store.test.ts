@@ -1,3 +1,4 @@
+import { EditorState } from "@codemirror/state";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
@@ -38,6 +39,7 @@ const mocks = vi.hoisted(() => ({
   rebuildFromDisk: vi.fn(),
   getEditorView: vi.fn(),
   insertAtCursor: vi.fn(),
+  replaceRange: vi.fn(),
   preferredCitationBibliography: vi.fn(),
 }));
 
@@ -93,18 +95,20 @@ vi.mock("@/store/compile", () => ({
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: mocks.flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
+  isWysiwygActive: () => false,
 }));
 vi.mock("@/store/settings", () => ({
   useSettingsStore: { getState: () => ({ offline: false }) },
 }));
 vi.mock("@/store/project-index", () => ({
   useIndexStore: {
-    getState: () => ({ index: null, rebuildFromDisk: mocks.rebuildFromDisk }),
+    getState: () => ({ index: null, texts: {}, rebuildFromDisk: mocks.rebuildFromDisk }),
   },
 }));
 vi.mock("@/components/editor/cm/controller", () => ({
   getEditorView: mocks.getEditorView,
   insertAtCursor: mocks.insertAtCursor,
+  replaceRange: mocks.replaceRange,
 }));
 
 vi.mock("./citation-bibliographies", async (importOriginal) => {
@@ -309,7 +313,7 @@ describe("a bibliography linked from outside the folder", () => {
     mocks.readFileContent.mockImplementation(async (_id: string, path: string) =>
       path === "refs.bib" ? ZOTERO : "",
     );
-    mocks.getEditorView.mockReturnValue({});
+    mocks.getEditorView.mockReturnValue({ state: EditorState.create() });
     useFilesStore.setState({
       manifestHome: "folder",
       mainDoc: "main.tex",
@@ -353,9 +357,21 @@ describe("a bibliography linked from outside the folder", () => {
 
     const result = await addCitation("@article{fresh,\n  doi = {10.1000/kept}\n}");
 
-    expect(result).toEqual({ key: "kept2020" });
+    expect(result).toEqual({ key: "kept2020", cite: "\\cite{kept2020}" });
     expect(mocks.insertAtCursor).toHaveBeenCalledWith("\\cite{kept2020}");
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("adds a known entry to the cite list the caret is in", async () => {
+    useLinkedProject("\\bibliography{refs}\n");
+    const doc = "See \\cite{a,bo} now.";
+    mocks.getEditorView.mockReturnValue({ state: EditorState.create({ doc, selection: { anchor: doc.indexOf("o}") } }) });
+
+    const result = await addCitation("@article{fresh,\n  doi = {10.1000/kept}\n}");
+
+    expect(result).toEqual({ key: "kept2020", cite: "kept2020" });
+    expect(mocks.replaceRange).toHaveBeenCalledWith(doc.indexOf("}"), doc.indexOf("}"), ",kept2020");
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
   });
 
   it("writes into a bibliography of its own when the document declares that one", async () => {
@@ -442,7 +458,7 @@ describe("citation import failures", () => {
   });
 
   it("does not insert a single citation when another project opens during the write", async () => {
-    mocks.getEditorView.mockReturnValue({});
+    mocks.getEditorView.mockReturnValue({ state: EditorState.create() });
     mocks.writeFileContent.mockImplementation(async (_id: string, path: string) => {
       if (path === "paper.md") useFilesStore.setState({ projectId: "other" });
       return { path, generation: 9 };

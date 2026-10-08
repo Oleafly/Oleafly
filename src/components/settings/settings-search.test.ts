@@ -276,3 +276,29 @@ describe("settings search tabs", () => {
 function samePrefix(entry: CatalogPath, path: CatalogPath): boolean {
   return samePath(entry.slice(0, path.length), path);
 }
+
+describe("Zen mode settings in the search", () => {
+  it("finds the group by its name, its options and its other name", () => {
+    for (const query of ["zen", "zen mode", "full screen", "center the editor", "distraction free"]) {
+      expect(matchSettingsSections(index, SECTIONS, query), query).toContain("appearance");
+    }
+    const [appearance] = searchSettings(index, SECTIONS, "go full screen");
+    expect(appearance.id).toBe("appearance");
+    expect(appearance.rows[0]).toEqual({
+      label: enSettings.appearance.zen.fullScreen.label,
+      path: ["appearance", "zen", "fullScreen"],
+    });
+  });
+
+  it("opens the Zen rows on the App tab", () => {
+    expect(settingsTabFor(["appearance", "zen"])).toBe("app");
+    expect(settingsTabFor(["appearance", "zen", "centerEditor"])).toBe("app");
+  });
+
+  it("finds the Zen shortcut on the Shortcuts tab", () => {
+    const [shortcuts] = searchSettings(index, SECTIONS, "toggle zen mode");
+    expect(shortcuts.id === "shortcuts" || shortcuts.id === "appearance").toBe(true);
+    expect(matchSettingsSections(index, SECTIONS, "toggle zen mode")).toContain("shortcuts");
+    expect(settingsTabFor(["shortcuts", "actions", "toggleZenMode"])).toBe("application");
+  });
+});

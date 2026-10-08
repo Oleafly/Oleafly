@@ -283,12 +283,12 @@ function renderLatexNotice(context: LatexRowContext) {
       {context.blocked && <p className="text-[11px] text-muted-foreground">{context.blocked}</p>}
       {packageNotice && <output className="block text-xs text-muted-foreground">{packageNotice}</output>}
       {packageError && (
-        <p role="alert" className="whitespace-pre-wrap break-words text-xs text-destructive">
+        <p role="alert" className="select-text whitespace-pre-wrap break-words text-xs text-destructive">
           {packageErrorMessage(packageError)}
         </p>
       )}
       {context.message && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="select-text text-xs text-destructive">
           {context.message}
         </p>
       )}

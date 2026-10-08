@@ -198,7 +198,7 @@ function Snippet({
         <p className="text-xs font-medium text-foreground">{title}</p>
         <CopyBtn text={copyText} />
       </div>
-      <pre className="overflow-x-auto rounded-md border bg-muted/40 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all">
+      <pre data-select-all-scope className="overflow-x-auto rounded-md border bg-muted/40 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all">
         <code>{highlighted}</code>
       </pre>
     </div>

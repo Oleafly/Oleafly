@@ -374,7 +374,8 @@
     "referencesFor": "Посилання на {{name}}",
     "renameFailed": "Не вдалося перейменувати на «{{name}}».",
     "renamePartial": "Перейменовано на «{{name}}» у {{edited}} з {{total}} файлів. Не вдалося записати {{files}}.",
-    "renamed": "Перейменовано на «{{name}}» ($t(core:navigation.edits, {\"count\": {{edits}} }) у $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Перейменовано на «{{name}}» ($t(core:navigation.edits, {\"count\": {{edits}} }) у $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "«{{path}}» не відповідає жодному файлу в цьому проєкті."
   },
   "pandoc": {
     "downloadFailed": "Не вдалося завантажити pandoc. Встановіть його вручну і спробуйте ще раз.",

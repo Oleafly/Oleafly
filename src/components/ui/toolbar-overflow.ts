@@ -77,21 +77,45 @@ function rootFontSize(): number {
   return Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
 }
 
+function scaledWidth(width: number): number {
+  return (width * 16) / rootFontSize();
+}
+
 export function useFittedCount(controls: readonly ToolbarControl[]) {
-  const { containerRef, availableWidth } = useAvailableWidth();
-  const elementRef = useRef<HTMLDivElement | null>(null);
-  const ref = useCallback(
-    (element: HTMLDivElement | null) => {
-      elementRef.current = element;
-      containerRef(element);
-    },
-    [containerRef],
+  const [availableWidth, setAvailableWidth] = useState(
+    Number.POSITIVE_INFINITY,
   );
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const elementRef = useRef<HTMLDivElement | null>(null);
+  const fitted = useRef({ controls, availableWidth, trimmed: 0 });
+  const ref = useCallback((element: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    elementRef.current = element;
+    if (!element) return;
+    const recompute = () => {
+      const width = element.clientWidth;
+      const current = fitted.current;
+      const unchanged =
+        current.trimmed === 0 &&
+        Number.isFinite(current.availableWidth) &&
+        fitCount(current.controls, scaledWidth(width)) ===
+          fitCount(current.controls, scaledWidth(current.availableWidth)) &&
+        element.scrollWidth <= width + 1;
+      if (!unchanged) setAvailableWidth(width);
+    };
+    recompute();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(recompute);
+    observer.observe(element);
+    observerRef.current = observer;
+  }, []);
   const signature = `${availableWidth}|${controls.map((control) => control.id).join(" ")}`;
   const [trim, setTrim] = useState({ signature, count: 0 });
   const trimmed = trim.signature === signature ? trim.count : 0;
-  const estimate = fitCount(controls, (availableWidth * 16) / rootFontSize());
+  const estimate = fitCount(controls, scaledWidth(availableWidth));
   const visibleCount = Math.max(0, estimate - trimmed);
+  fitted.current = { controls, availableWidth, trimmed };
 
   useLayoutEffect(() => {
     const element = elementRef.current;

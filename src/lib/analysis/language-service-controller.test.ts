@@ -3,6 +3,7 @@ import {
   PROJECT_ANALYSIS_FEATURES,
 } from "@/lib/analysis/project-snapshot";
 import type {
+  DidChangeWatchedFilesParams,
   ExecuteCommandParams,
   JsonValue,
   LanguageServiceClientStartOptions,
@@ -72,6 +73,7 @@ class FakeClient implements LifecycleLanguageServiceClient {
   replaceGate: Promise<void> | undefined;
   closeGate: Promise<void> | undefined;
   saveDocument?: (uri: string) => Promise<void>;
+  didChangeWatchedFiles?: (params: DidChangeWatchedFilesParams) => Promise<void>;
   changeConfiguration?: (settings: JsonValue) => Promise<void>;
   supportsCommand?: (command: string) => boolean;
   executeCommand?: (
@@ -1619,7 +1621,7 @@ describe("LanguageServiceController inputs", () => {
     ).toThrow(RangeError);
   });
 
-  it("syncs index-only sources while the project tree is still empty", async () => {
+  it("opens the main document and open buffers and leaves other sources to the server", async () => {
     const { controller, clients } = harness();
     controller.update(
       snapshot({ tree: [], indexTexts: { "notes.tex": "Indexed notes" } }),
@@ -1630,10 +1632,27 @@ describe("LanguageServiceController inputs", () => {
         clients[0].opens.map((document) => [document.uri, document.text]),
       ),
     ).toEqual({
-      "file:///projects/project-a/notes.tex": "Indexed notes",
       "file:///projects/project-a/main.tex": "\\input{chapter}",
       [CHAPTER_URI]: "First",
     });
+  });
+
+  it("opens an index-only main document that is not open in the editor", async () => {
+    const { controller, clients } = harness();
+    controller.update(
+      snapshot({
+        mainDoc: "thesis.tex",
+        tree: [],
+        indexTexts: { "thesis.tex": "Indexed thesis", "notes.tex": "Indexed notes" },
+      }),
+    );
+    await controller.whenIdle();
+    expect(clients[0].opens.map((document) => document.uri)).toContain(
+      "file:///projects/project-a/thesis.tex",
+    );
+    expect(clients[0].opens.map((document) => document.uri)).not.toContain(
+      "file:///projects/project-a/notes.tex",
+    );
   });
 
   it("ignores directories and index texts outside the tree and prefers open buffers", async () => {
@@ -3054,5 +3073,284 @@ describe("LanguageServiceController project intelligence", () => {
     await act(controller, clients);
     expect(scheduler.pendingDelays).not.toContain(400);
     expect(request).not.toHaveBeenCalled();
+  });
+});
+
+describe("LanguageServiceController files the server reads from disk", () => {
+  const MAIN = "\\cite{wasserstein2016asa}\n\\bibliography{references}\n";
+  const OLD_BIB = "@book{other2000,\n  title = {Other}\n}\n";
+  const NEW_BIB = `${OLD_BIB}\n@article{wasserstein2016asa,\n  title = {The ASA Statement}\n}\n`;
+  const MAIN_URI = "file:///projects/project-a/main.tex";
+  const BIB_URI = "file:///projects/project-a/references.bib";
+
+  function diskHarness(engineId: "latex" | "typst" = "latex") {
+    const order: string[] = [];
+    const didChangeWatchedFiles = vi.fn(
+      async (params: DidChangeWatchedFilesParams) => {
+        order.push(
+          `files:${params.changes.map((change) => `${change.uri}#${change.type}`).join(",")}`,
+        );
+      },
+    );
+    const saveDocument = vi.fn(async (uri: string) => {
+      order.push(`save:${uri}`);
+    });
+    const setup = harness({
+      configureClient: (client) => {
+        client.didChangeWatchedFiles = didChangeWatchedFiles;
+        client.saveDocument = saveDocument;
+        const acknowledge = client.acknowledgeDocumentRevision.bind(client);
+        client.acknowledgeDocumentRevision = (uri, projectRevision) => {
+          order.push(`acknowledge:${uri}`);
+          acknowledge(uri, projectRevision);
+        };
+      },
+    });
+    const main = engineId === "latex" ? "main.tex" : "main.typ";
+    const project = (
+      bib: string,
+      overrides: {
+        main?: string;
+        bibFile?: { content: string; dirty?: boolean };
+      } = {},
+    ): LanguageServiceProjectSnapshot => {
+      const mainText = overrides.main ?? MAIN;
+      return snapshot({
+        engineId,
+        mainDoc: main,
+        tree: [
+          { path: main, is_dir: false },
+          { path: "references.bib", is_dir: false },
+        ],
+        files: {
+          [main]: { content: mainText },
+          ...(overrides.bibFile ? { "references.bib": overrides.bibFile } : {}),
+        },
+        indexTexts: { [main]: mainText, "references.bib": bib },
+        index: null,
+      });
+    };
+    return { ...setup, didChangeWatchedFiles, saveDocument, order, project };
+  }
+
+  it("tells the server a file it never opened changed on disk before re-acknowledging open documents", async () => {
+    const { controller, didChangeWatchedFiles, order, project } = diskHarness();
+    controller.update(project(OLD_BIB));
+    await controller.whenIdle();
+    expect(didChangeWatchedFiles).not.toHaveBeenCalled();
+    order.length = 0;
+
+    controller.update(project(NEW_BIB));
+    await controller.whenIdle();
+
+    expect(didChangeWatchedFiles).toHaveBeenCalledTimes(1);
+    expect(didChangeWatchedFiles).toHaveBeenCalledWith({
+      changes: [{ uri: BIB_URI, type: 2 }],
+    });
+    expect(order).toEqual([
+      `files:${BIB_URI}#2`,
+      `acknowledge:${MAIN_URI}`,
+    ]);
+  });
+
+  it("does not report edits to open documents or unsaved buffers, and reports the save", async () => {
+    const { controller, didChangeWatchedFiles, project } = diskHarness();
+    controller.update(project(OLD_BIB, { bibFile: { content: OLD_BIB } }));
+    await controller.whenIdle();
+
+    const typed = `${MAIN}More text.\n`;
+    controller.update(
+      project(OLD_BIB, { main: typed, bibFile: { content: OLD_BIB } }),
+    );
+    await controller.whenIdle();
+    controller.update(
+      project(OLD_BIB, {
+        main: typed,
+        bibFile: { content: NEW_BIB, dirty: true },
+      }),
+    );
+    await controller.whenIdle();
+    expect(didChangeWatchedFiles).not.toHaveBeenCalled();
+
+    controller.update(
+      project(OLD_BIB, {
+        main: typed,
+        bibFile: { content: NEW_BIB, dirty: false },
+      }),
+    );
+    await controller.whenIdle();
+    expect(didChangeWatchedFiles).toHaveBeenCalledTimes(1);
+    expect(didChangeWatchedFiles).toHaveBeenCalledWith({
+      changes: [{ uri: BIB_URI, type: 2 }],
+    });
+
+    controller.update(project(NEW_BIB, { main: typed, bibFile: { content: NEW_BIB } }));
+    await controller.whenIdle();
+    expect(didChangeWatchedFiles).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves Typst dependencies to the server's own watcher", async () => {
+    const { controller, didChangeWatchedFiles, project } = diskHarness("typst");
+    controller.update(project(OLD_BIB, { main: "= Paper\n" }));
+    await controller.whenIdle();
+    controller.update(project(NEW_BIB, { main: "= Paper\n" }));
+    await controller.whenIdle();
+    controller.update(
+      project(NEW_BIB, {
+        main: "= Paper\n",
+        bibFile: { content: NEW_BIB, dirty: true },
+      }),
+    );
+    controller.update(
+      project(NEW_BIB, {
+        main: "= Paper\n",
+        bibFile: { content: NEW_BIB, dirty: false },
+      }),
+    );
+    await controller.whenIdle();
+    expect(didChangeWatchedFiles).not.toHaveBeenCalled();
+  });
+});
+
+describe("LanguageServiceController setup verdict", () => {
+  function typed(text: string) {
+    return snapshot({
+      files: {
+        "main.tex": { content: "\\input{chapter}" },
+        "chapter.tex": { content: text },
+        "refs.bib": { content: "@book{one}" },
+      },
+    });
+  }
+
+  async function typeAll(
+    controller: LanguageServiceController,
+    texts: readonly string[],
+  ) {
+    for (const text of texts) {
+      controller.update(typed(text));
+      await controller.whenIdle();
+    }
+  }
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps a missing server's setup verdict while the user types", async () => {
+    const { controller, store, clients, installStatus } = harness({
+      installState: "missing",
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+    expect(installStatus).toHaveBeenCalledTimes(1);
+
+    await typeAll(controller, ["Firs", "Fir", "Fi", "F"]);
+
+    expect(installStatus).toHaveBeenCalledTimes(1);
+    expect(clients).toHaveLength(0);
+    expect(store.getState().snapshot.languageService).toMatchObject({
+      readiness: "setup_required",
+      reason: { key: "setupRequiredBeforeAnalysis" },
+    });
+    expect(store.getState().snapshot.features.hover).toMatchObject({
+      status: "unavailable",
+      retryable: true,
+    });
+  });
+
+  it("keeps a failed installation's verdict while the user types", async () => {
+    const { controller, store, installStatus } = harness({
+      installState: "failed",
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+
+    await typeAll(controller, ["Firs", "Fir"]);
+
+    expect(installStatus).toHaveBeenCalledTimes(1);
+    expect(store.getState().snapshot.languageService.readiness).toBe(
+      "setup_required",
+    );
+  });
+
+  it("checks again when the user retries", async () => {
+    const { controller, clients, installStatus } = harness({
+      installState: "missing",
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+    await typeAll(controller, ["Firs"]);
+
+    controller.retry();
+    await controller.whenIdle();
+
+    expect(installStatus).toHaveBeenCalledTimes(2);
+    expect(clients).toHaveLength(0);
+  });
+
+  it("starts the server once setup installs it", async () => {
+    const { controller, store, clients, installStatus } = harness({
+      installState: "missing",
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+    await typeAll(controller, ["Firs"]);
+
+    await controller.setup();
+    await controller.whenIdle();
+    await typeAll(controller, ["Fir"]);
+
+    expect(installStatus).toHaveBeenCalledTimes(2);
+    expect(clients).toHaveLength(1);
+    expect(store.getState().snapshot.languageService.readiness).toBe("ready");
+  });
+
+  it("checks again when the files change shape", async () => {
+    const { controller, installStatus } = harness({ installState: "missing" });
+    controller.update(snapshot());
+    await controller.whenIdle();
+
+    controller.update(snapshot({ engineLoaded: false }));
+    await controller.whenIdle();
+    controller.update(snapshot());
+    await controller.whenIdle();
+
+    expect(installStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it("notices a server installed elsewhere once the verdict is stale", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-07T12:00:00Z"));
+    const { controller, clients, installStatus } = harness({
+      installState: "missing",
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+    await typeAll(controller, ["Firs"]);
+    expect(installStatus).toHaveBeenCalledTimes(1);
+
+    installStatus.mockImplementation(async (kind) => ({
+      kind,
+      version: getLanguageServiceRuntimeProfile(kind).version,
+      state: "installed",
+    }));
+    vi.setSystemTime(new Date("2026-10-07T12:00:31Z"));
+    await typeAll(controller, ["Fir"]);
+
+    expect(installStatus).toHaveBeenCalledTimes(2);
+    expect(clients).toHaveLength(1);
+  });
+
+  it("keeps checking while an installation is still running", async () => {
+    const { controller, installStatus } = harness({
+      installState: "installing",
+    });
+    controller.update(snapshot());
+    await controller.whenIdle();
+
+    await typeAll(controller, ["Firs", "Fir"]);
+
+    expect(installStatus).toHaveBeenCalledTimes(3);
   });
 });

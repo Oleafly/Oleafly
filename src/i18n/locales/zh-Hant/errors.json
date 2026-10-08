@@ -56,7 +56,11 @@
     "unreachable": "Oleafly 無法連線到 Zotero。請檢查網路連線後再試一次。",
     "http_error": "Zotero 傳回錯誤（HTTP {{status}}）。請稍後再試。",
     "invalid_response": "Zotero 傳來的回應 Oleafly 無法讀取。請稍後再試。",
-    "too_large": "你的 Zotero 文獻庫太大，無法一次匯入。請改為在 Zotero 中把某個收藏匯出成 RDF 檔案，再匯入該檔案。"
+    "too_large": "你的 Zotero 文獻庫太大，無法一次匯入。請改為在 Zotero 中把某個收藏匯出成 RDF 檔案，再匯入該檔案。",
+    "local_not_running": "Zotero 未在這台電腦上執行。請開啟 Zotero，或連接你的 zotero.org 帳號。",
+    "local_api_disabled": "在 Zotero 中開啟「設定 > 進階」，然後勾選「允許此電腦上的其他應用程式與 Zotero 通訊」。",
+    "local_unsupported": "這個版本的 Zotero 無法與 Oleafly 分享文獻庫。請更新至 Zotero 7 或以上版本。",
+    "offline": "Oleafly 處於離線模式，因此無法連線到 zotero.org。"
   },
   "tex": {
     "no_host_binary": "TinyTeX 沒有與此主機相容的 {{name}} 執行檔。",

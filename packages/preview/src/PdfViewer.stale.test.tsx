@@ -212,26 +212,27 @@ vi.mock("pdfjs-dist", () => {
       };
     },
     TextLayer: class {
-      private readonly content: { items: Array<{ str: string }> };
+      private readonly content: ReadableStream<{ items: Array<{ str: string }> }>;
       private readonly container: HTMLElement;
 
       constructor({
         textContentSource,
         container,
       }: {
-        textContentSource: { items: Array<{ str: string }> };
+        textContentSource: ReadableStream<{ items: Array<{ str: string }> }>;
         container: HTMLElement;
       }) {
         this.content = textContentSource;
         this.container = container;
-        pdfMock.constructedText.push(textContentSource.items[0]?.str ?? "");
       }
 
-      render() {
+      async render() {
+        const { readTextContentItems } = await import("./test-text-content");
+        const [first] = await readTextContentItems(this.content);
+        pdfMock.constructedText.push(first?.str ?? "");
         const span = document.createElement("span");
-        span.textContent = this.content.items[0]?.str ?? "";
+        span.textContent = first?.str ?? "";
         this.container.append(span);
-        return Promise.resolve();
       }
 
       cancel() {}

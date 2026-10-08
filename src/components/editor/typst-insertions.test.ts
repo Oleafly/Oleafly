@@ -157,6 +157,33 @@ describe("typst references and citations", () => {
     expect(code.state.doc.toString()).toBe('#let c = cite(<k>)\n#bibliography("a.bib")');
   });
 
+  it("adds a citation next to the reference under the caret instead of nesting it", async () => {
+    const view = mount('As @efron|.\n#bibliography("a.bib")');
+    await insertTypstCitation("cox", "a.bib");
+    expect(view.state.doc.toString()).toBe('As @efron @cox.\n#bibliography("a.bib")');
+    expect(view.state.selection.main.head).toBe("As @efron @cox".length);
+    view.destroy();
+    const inside = mount('As @ef|ron.\n#bibliography("a.bib")');
+    await insertTypstCitation("cox", "a.bib");
+    expect(inside.state.doc.toString()).toBe('As @efron @cox.\n#bibliography("a.bib")');
+    inside.destroy();
+    const filled = mount('See #cite(<a|>).\n#bibliography("a.bib")');
+    await insertTypstCitation("cox", "a.bib");
+    expect(filled.state.doc.toString()).toBe('See #cite(<a>) @cox.\n#bibliography("a.bib")');
+    filled.destroy();
+    const empty = mount('See #cite(<|>).\n#bibliography("a.bib")');
+    await insertTypstCitation("cox", "a.bib");
+    expect(empty.state.doc.toString()).toBe('See #cite(<cox>).\n#bibliography("a.bib")');
+  });
+
+  it("declares the bibliography when it joins an existing reference", async () => {
+    const view = mount("As @ef|ron.\n");
+    project({ "main.typ": "As @efron.\n" });
+    await insertTypstCitation("cox", "refs.bib");
+    expect(view.state.doc.toString()).toBe('As @efron @cox.\n\n#bibliography("refs.bib")\n');
+    expect(view.state.selection.main.head).toBe("As @efron @cox".length);
+  });
+
   it("leaves the bibliography alone when another project file declares it", async () => {
     const view = mount("See |.");
     project({ "chapters/end.typ": '#bibliography("refs.bib")' }, "main.typ");

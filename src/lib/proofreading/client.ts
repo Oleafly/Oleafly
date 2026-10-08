@@ -141,8 +141,11 @@ function laneFor(
   return `${identity.surface}\0${identity.projectId ?? ""}\0${identity.path}`;
 }
 
+const IDLE_WORKER_RELEASE_MS = 120_000;
+
 class ProofreadingWorkerClient {
   private worker: WorkerLike | null = null;
+  private idleRelease: ReturnType<typeof setTimeout> | null = null;
   private requestId = 0;
   private generation = 0;
   private readonly pending = new Map<number, PendingRequest>();
@@ -197,6 +200,7 @@ class ProofreadingWorkerClient {
     word: string,
     locale: string,
   ): Promise<ProofreadingSuggestion[]> {
+    this.holdWorker();
     let worker: WorkerLike;
     try {
       worker = this.ensureWorker();
@@ -243,6 +247,7 @@ class ProofreadingWorkerClient {
     clearTimeout(pending.timeout);
     this.pendingSuggestions.delete(requestId);
     pending.resolve(suggestions);
+    this.releaseWorkerWhenIdle();
   }
 
   private abandonSuggestions(): void {
@@ -287,6 +292,7 @@ class ProofreadingWorkerClient {
       },
     };
 
+    this.holdWorker();
     this.supersedeLane(lane);
     useProofreadingStore.getState().begin(identity);
 
@@ -403,6 +409,7 @@ class ProofreadingWorkerClient {
     const delivery = this.readAndDeliverDictionary(worker, locale).finally(
       () => {
         if (deliveries.get(locale) === delivery) deliveries.delete(locale);
+        this.releaseWorkerWhenIdle();
       },
     );
     deliveries.set(locale, delivery);
@@ -532,6 +539,7 @@ class ProofreadingWorkerClient {
   }
 
   dispose() {
+    this.holdWorker();
     if (this.worker) {
       try {
         this.worker.postMessage({
@@ -716,7 +724,40 @@ class ProofreadingWorkerClient {
     if (this.pendingByLane.get(pending.lane) === requestId) {
       this.pendingByLane.delete(pending.lane);
     }
+    this.releaseWorkerWhenIdle();
     return pending;
+  }
+
+  private busy(): boolean {
+    return (
+      this.pending.size > 0 ||
+      this.pendingSuggestions.size > 0 ||
+      this.deliveries.size > 0
+    );
+  }
+
+  private holdWorker(): void {
+    if (this.idleRelease === null) return;
+    clearTimeout(this.idleRelease);
+    this.idleRelease = null;
+  }
+
+  private releaseWorkerWhenIdle(): void {
+    if (!this.worker || this.busy()) return;
+    this.holdWorker();
+    this.idleRelease = setTimeout(() => {
+      this.idleRelease = null;
+      if (this.busy()) return;
+      this.worker?.terminate();
+      this.worker = null;
+    }, IDLE_WORKER_RELEASE_MS);
+  }
+
+  releaseIdleWorker(): void {
+    if (!this.worker || this.busy()) return;
+    this.holdWorker();
+    this.worker.terminate();
+    this.worker = null;
   }
 
   private rejectRequest(
@@ -784,4 +825,8 @@ export function retryProofreading(surface: ProofreadingSurface) {
 
 export function forgetProofreadingDictionary(locale: string): boolean {
   return client.forgetDictionary(locale);
+}
+
+export function releaseIdleProofreadingWorker(): void {
+  client.releaseIdleWorker();
 }

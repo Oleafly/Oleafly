@@ -104,9 +104,30 @@ function projectSearchFields(project: ProjectInfo, bookmarked: boolean) {
   };
 }
 
-export function projectMatches(project: ProjectInfo, query: string, bookmarked: boolean) {
+type ProjectSearchText = Readonly<{
+  fields: ReturnType<typeof projectSearchFields>;
+  all: string;
+}>;
+
+const projectSearchTexts = new WeakMap<ProjectInfo, [ProjectSearchText | null, ProjectSearchText | null]>();
+
+function projectSearchText(project: ProjectInfo, bookmarked: boolean): ProjectSearchText {
+  let slots = projectSearchTexts.get(project);
+  if (!slots) {
+    slots = [null, null];
+    projectSearchTexts.set(project, slots);
+  }
+  const slot = bookmarked ? 1 : 0;
+  const cached = slots[slot];
+  if (cached) return cached;
   const fields = projectSearchFields(project, bookmarked);
-  const all = Object.values(fields).join(" ").toLowerCase();
+  const text = { fields, all: Object.values(fields).join(" ").toLowerCase() };
+  slots[slot] = text;
+  return text;
+}
+
+export function projectMatches(project: ProjectInfo, query: string, bookmarked: boolean) {
+  const { fields, all } = projectSearchText(project, bookmarked);
   return query
     .toLowerCase()
     .split(/\s+/)

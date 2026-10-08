@@ -22,11 +22,16 @@ const TERMINAL_ACCELERATOR: &str = "Ctrl+`";
 const BROWSER_ACCELERATOR: &str = "Ctrl+Alt+B";
 #[cfg(not(target_os = "linux"))]
 const BROWSER_ACCELERATOR: &str = "Ctrl+Shift+B";
+#[cfg(target_os = "macos")]
+const ZEN_ACCELERATOR: &str = "Cmd+Ctrl+Shift+F";
+#[cfg(not(target_os = "macos"))]
+const ZEN_ACCELERATOR: &str = "Shift+F11";
 const QUIT_ACCELERATOR: &str = "CmdOrCtrl+Q";
 const APP_MENU: &str = "app_menu";
 const QUIT_ITEM: &str = "quit_app";
 const TOGGLE_TERMINAL_ITEM: &str = "toggle_terminal";
 const TOGGLE_BROWSER_ITEM: &str = "toggle_browser";
+const TOGGLE_ZEN_ITEM: &str = "toggle_zen_mode";
 
 static RECENT_PROJECTS: Mutex<Vec<RecentProject>> = Mutex::new(Vec::new());
 static SHORTCUT_ACCELERATORS: Mutex<Option<ShortcutAccelerators>> = Mutex::new(None);
@@ -76,6 +81,7 @@ struct ShortcutAccelerators {
     terminal: String,
     browser: String,
     open_folder: String,
+    zen_mode: String,
 }
 
 fn shortcut_accelerators() -> ShortcutAccelerators {
@@ -87,19 +93,28 @@ fn shortcut_accelerators() -> ShortcutAccelerators {
             terminal: TERMINAL_ACCELERATOR.to_owned(),
             browser: BROWSER_ACCELERATOR.to_owned(),
             open_folder: OPEN_FOLDER_ACCELERATOR.to_owned(),
+            zen_mode: ZEN_ACCELERATOR.to_owned(),
         })
 }
 
-fn remember_shortcut_accelerators(terminal: &str, browser: &str, open_folder: Option<&str>) {
+fn remember_shortcut_accelerators(
+    terminal: &str,
+    browser: &str,
+    open_folder: Option<&str>,
+    zen_mode: Option<&str>,
+) {
+    let previous = shortcut_accelerators();
     let open_folder = open_folder
         .map(str::to_owned)
-        .unwrap_or_else(|| shortcut_accelerators().open_folder);
+        .unwrap_or(previous.open_folder);
+    let zen_mode = zen_mode.map(str::to_owned).unwrap_or(previous.zen_mode);
     *SHORTCUT_ACCELERATORS
         .lock()
         .unwrap_or_else(PoisonError::into_inner) = Some(ShortcutAccelerators {
         terminal: terminal.to_owned(),
         browser: browser.to_owned(),
         open_folder,
+        zen_mode,
     });
 }
 
@@ -223,9 +238,14 @@ pub fn build<R: Runtime>(handle: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let toggle_browser = MenuItemBuilder::with_id(TOGGLE_BROWSER_ITEM, t("menu.toggleBrowser"))
         .accelerator(&accelerators.browser)
         .build(handle)?;
+    let toggle_zen = MenuItemBuilder::with_id(TOGGLE_ZEN_ITEM, t("menu.zenMode"))
+        .accelerator(&accelerators.zen_mode)
+        .build(handle)?;
     let view_menu = SubmenuBuilder::with_id(handle, VIEW_MENU, t("menu.view"))
         .item(&toggle_terminal)
         .item(&toggle_browser)
+        .separator()
+        .item(&toggle_zen)
         .separator()
         .item(&reload_page)
         .build()?;
@@ -336,6 +356,7 @@ fn frontend_event(id: &str) -> Option<&'static str> {
     match id {
         TOGGLE_TERMINAL_ITEM => Some("menu://toggle-terminal"),
         TOGGLE_BROWSER_ITEM => Some("menu://toggle-browser"),
+        TOGGLE_ZEN_ITEM => Some("menu://toggle-zen-mode"),
         "edit_undo" => Some("menu://undo"),
         "edit_redo" => Some("menu://redo"),
         OPEN_FOLDER_ITEM => Some("menu://open-folder"),
@@ -356,11 +377,14 @@ fn main_window_focused<R: Runtime>(app: &AppHandle<R>) -> bool {
 fn dock_accelerator_updates<'a>(
     terminal: &'a str,
     browser: &'a str,
-) -> [(&'static str, &'a str); 2] {
-    [
+    zen_mode: Option<&'a str>,
+) -> Vec<(&'static str, &'a str)> {
+    let mut updates = vec![
         (TOGGLE_TERMINAL_ITEM, terminal),
         (TOGGLE_BROWSER_ITEM, browser),
-    ]
+    ];
+    updates.extend(zen_mode.map(|accelerator| (TOGGLE_ZEN_ITEM, accelerator)));
+    updates
 }
 
 fn unregistrable_accelerator<'a>(accelerators: &[&'a str]) -> Option<&'a str> {
@@ -373,7 +397,7 @@ fn unregistrable_accelerator<'a>(accelerators: &[&'a str]) -> Option<&'a str> {
 
 fn paused_accelerators(
     accelerators: &ShortcutAccelerators,
-) -> [(&'static str, &'static str, String); 4] {
+) -> [(&'static str, &'static str, String); 5] {
     [
         (
             VIEW_MENU,
@@ -381,6 +405,7 @@ fn paused_accelerators(
             accelerators.terminal.clone(),
         ),
         (VIEW_MENU, TOGGLE_BROWSER_ITEM, accelerators.browser.clone()),
+        (VIEW_MENU, TOGGLE_ZEN_ITEM, accelerators.zen_mode.clone()),
         (
             FILE_MENU,
             OPEN_FOLDER_ITEM,
@@ -461,6 +486,7 @@ pub fn set_dock_shortcut_accelerators(
     terminal_accelerator: String,
     browser_accelerator: String,
     open_folder_accelerator: Option<String>,
+    zen_mode_accelerator: Option<String>,
 ) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
@@ -469,6 +495,7 @@ pub fn set_dock_shortcut_accelerators(
             terminal_accelerator,
             browser_accelerator,
             open_folder_accelerator,
+            zen_mode_accelerator,
         );
         Ok(())
     }
@@ -476,6 +503,7 @@ pub fn set_dock_shortcut_accelerators(
     {
         let mut requested = vec![terminal_accelerator.as_str(), browser_accelerator.as_str()];
         requested.extend(open_folder_accelerator.as_deref());
+        requested.extend(zen_mode_accelerator.as_deref());
         if let Some(accelerator) = unregistrable_accelerator(&requested) {
             return Err(format!("The menu cannot register {accelerator}."));
         }
@@ -483,11 +511,14 @@ pub fn set_dock_shortcut_accelerators(
             &terminal_accelerator,
             &browser_accelerator,
             open_folder_accelerator.as_deref(),
+            zen_mode_accelerator.as_deref(),
         );
         let menu = app.menu().ok_or_else(|| t("errors.menuUnavailable"))?;
-        for (id, accelerator) in
-            dock_accelerator_updates(&terminal_accelerator, &browser_accelerator)
-        {
+        for (id, accelerator) in dock_accelerator_updates(
+            &terminal_accelerator,
+            &browser_accelerator,
+            zen_mode_accelerator.as_deref(),
+        ) {
             menu_item(&menu, VIEW_MENU, id)?
                 .set_accelerator(Some(accelerator))
                 .map_err(|error| error.to_string())?;
@@ -588,6 +619,10 @@ mod tests {
             frontend_event("toggle_browser"),
             Some("menu://toggle-browser")
         );
+        assert_eq!(
+            frontend_event("toggle_zen_mode"),
+            Some("menu://toggle-zen-mode")
+        );
         assert_eq!(frontend_event("edit_undo"), Some("menu://undo"));
         assert_eq!(frontend_event("edit_redo"), Some("menu://redo"));
         assert_eq!(frontend_event("unknown"), None);
@@ -596,16 +631,20 @@ mod tests {
     #[test]
     fn a_rebuilt_menu_keeps_the_shortcuts_the_user_chose() {
         assert_eq!(shortcut_accelerators().terminal, TERMINAL_ACCELERATOR);
-        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None);
+        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None, None);
         assert_eq!(
             shortcut_accelerators(),
             ShortcutAccelerators {
                 terminal: "Cmd+J".to_owned(),
                 browser: "Cmd+Shift+K".to_owned(),
                 open_folder: OPEN_FOLDER_ACCELERATOR.to_owned(),
+                zen_mode: ZEN_ACCELERATOR.to_owned(),
             }
         );
-        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", Some("Cmd+Alt+O"));
+        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", Some("Cmd+Alt+O"), None);
+        assert_eq!(shortcut_accelerators().open_folder, "Cmd+Alt+O");
+        remember_shortcut_accelerators("Cmd+J", "Cmd+Shift+K", None, Some("Cmd+Alt+Z"));
+        assert_eq!(shortcut_accelerators().zen_mode, "Cmd+Alt+Z");
         assert_eq!(shortcut_accelerators().open_folder, "Cmd+Alt+O");
     }
 
@@ -628,6 +667,7 @@ mod tests {
             terminal: "Cmd+J".to_owned(),
             browser: "Cmd+Shift+K".to_owned(),
             open_folder: "Cmd+Alt+O".to_owned(),
+            zen_mode: "Cmd+Alt+Z".to_owned(),
         });
         let items: Vec<_> = paused
             .iter()
@@ -638,6 +678,7 @@ mod tests {
             [
                 (VIEW_MENU, TOGGLE_TERMINAL_ITEM, "Cmd+J"),
                 (VIEW_MENU, TOGGLE_BROWSER_ITEM, "Cmd+Shift+K"),
+                (VIEW_MENU, TOGGLE_ZEN_ITEM, "Cmd+Alt+Z"),
                 (FILE_MENU, OPEN_FOLDER_ITEM, "Cmd+Alt+O"),
                 (APP_MENU, QUIT_ITEM, QUIT_ACCELERATOR),
             ]
@@ -665,7 +706,13 @@ mod tests {
     fn only_undo_and_redo_wait_for_the_main_window() {
         assert!(edits_main_document("edit_undo"));
         assert!(edits_main_document("edit_redo"));
-        for id in ["toggle_terminal", "toggle_browser", "open_folder", "about"] {
+        for id in [
+            "toggle_terminal",
+            "toggle_browser",
+            "toggle_zen_mode",
+            "open_folder",
+            "about",
+        ] {
             assert!(!edits_main_document(id), "{id}");
         }
     }
@@ -735,11 +782,32 @@ mod tests {
     #[test]
     fn maps_accelerators_to_the_matching_menu_items() {
         assert_eq!(
-            dock_accelerator_updates("Ctrl+`", "Ctrl+Shift+B"),
+            dock_accelerator_updates("Ctrl+`", "Ctrl+Shift+B", None),
             [
                 ("toggle_terminal", "Ctrl+`"),
                 ("toggle_browser", "Ctrl+Shift+B"),
             ]
         );
+        assert_eq!(
+            dock_accelerator_updates("Ctrl+`", "Ctrl+Shift+B", Some("Cmd+Ctrl+Shift+F")),
+            [
+                ("toggle_terminal", "Ctrl+`"),
+                ("toggle_browser", "Ctrl+Shift+B"),
+                ("toggle_zen_mode", "Cmd+Ctrl+Shift+F"),
+            ]
+        );
+    }
+
+    #[test]
+    fn the_zen_menu_item_defaults_to_a_key_the_menu_can_register() {
+        assert_eq!(unregistrable_accelerator(&[ZEN_ACCELERATOR]), None);
+        assert_eq!(
+            unregistrable_accelerator(&["Cmd+Ctrl+Shift+F", "Shift+F11"]),
+            None
+        );
+        assert_ne!(ZEN_ACCELERATOR, TERMINAL_ACCELERATOR);
+        assert_ne!(ZEN_ACCELERATOR, BROWSER_ACCELERATOR);
+        assert_ne!(ZEN_ACCELERATOR, OPEN_FOLDER_ACCELERATOR);
+        assert_ne!(ZEN_ACCELERATOR, QUIT_ACCELERATOR);
     }
 }

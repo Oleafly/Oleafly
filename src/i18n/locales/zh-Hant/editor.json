@@ -188,7 +188,8 @@
     "quote": "引文",
     "addLabel": "加入標籤",
     "convertLatexMath": "將 LaTeX 數學式轉換為 Typst",
-    "noLatexMath": "請先選取一些 LaTeX 數學式。"
+    "noLatexMath": "請先選取一些 LaTeX 數學式。",
+    "renameFile": "重新命名檔案…"
   },
   "shell": {
     "noFileOpenTab": "未開啟檔案",
@@ -419,7 +420,7 @@
       "indentOrAccept": "縮排 / 接受自動完成",
       "goToDefinition": "前往定義",
       "findReferences": "尋找參考",
-      "renameSymbol": "重新命名符號（整個專案）",
+      "renameSymbol": "重新命名符號或檔案（整個專案）",
       "formatDocument": "格式化 Typst 文件",
       "commandPalette": "指令面板",
       "searchAllDocuments": "搜尋所有文件",
@@ -447,7 +448,8 @@
     "noEntries": "這個專案還沒有參考文獻條目。",
     "addNew": "尋找並新增引用…",
     "duplicate": "重複 {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "來自你的 Zotero 文獻庫"
   },
   "inlineAi": {
     "promptPlaceholder": "描述要做的修改…（Shift+Enter 換行）",

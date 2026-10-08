@@ -30,7 +30,8 @@
     "newTab": "Ny fane",
     "openLocation": "Åbn adresse…",
     "closeTab": "Luk fane",
-    "reloadPage": "Genindlæs side"
+    "reloadPage": "Genindlæs side",
+    "zenMode": "Zen-tilstand"
   },
   "window": {
     "browser": "Oleafly-browser",

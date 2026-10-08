@@ -30,7 +30,8 @@
     "newTab": "새 탭",
     "openLocation": "위치 열기…",
     "closeTab": "탭 닫기",
-    "reloadPage": "페이지 다시 불러오기"
+    "reloadPage": "페이지 다시 불러오기",
+    "zenMode": "Zen 모드"
   },
   "window": {
     "browser": "Oleafly 브라우저",

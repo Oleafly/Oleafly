@@ -97,7 +97,7 @@ function ReasoningRow({ text }: Readonly<{ text: string }>) {
         {t(($) => $.researchTools.tasks.detail.reasoning)}
       </button>
       {open ? (
-        <p className="mb-1 whitespace-pre-wrap break-words leading-relaxed">{text}</p>
+        <p className="mb-1 select-text whitespace-pre-wrap break-words leading-relaxed">{text}</p>
       ) : null}
     </div>
   );
@@ -394,7 +394,7 @@ export function TaskDetailDialog({
     <>
   {task.sourceRevision ? (
     <section className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
-      <p className="break-all">
+      <p className="select-text break-all">
         <Trans
           ns="researchTools"
           i18nKey={($) => $.researchTools.tasks.detail.sourceRevision}
@@ -537,7 +537,7 @@ export function TaskDetailDialog({
         })}
       </div>
       {previewError ? (
-        <p role="alert" className="break-words text-xs text-destructive">
+        <p role="alert" className="select-text break-words text-xs text-destructive">
           {previewError}
         </p>
       ) : null}
@@ -626,7 +626,7 @@ export function TaskDetailDialog({
                 {artifactPreview.artifact.label}
               </p>
               {artifactPreview.content.text !== null ? (
-                <pre className="mt-2 max-h-80 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all text-xs">
+                <pre data-select-all-scope className="mt-2 max-h-80 select-text overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-all text-xs">
                   {artifactPreview.content.text}
                 </pre>
               ) : (
@@ -635,7 +635,7 @@ export function TaskDetailDialog({
             </div>
           ) : null}
           {previewError ? (
-            <p role="alert" className="break-words text-xs text-destructive">
+            <p role="alert" className="select-text break-words text-xs text-destructive">
               {previewError}
             </p>
           ) : null}
@@ -684,7 +684,7 @@ export function TaskDetailDialog({
                 <p className="text-sm font-medium text-destructive">
                   {t(($) => $.researchTools.tasks.detail.needsAttention)}
                 </p>
-                <p className="mt-1 break-words text-sm text-foreground">{describeError(task.error)}</p>
+                <p className="mt-1 select-text break-words text-sm text-foreground">{describeError(task.error)}</p>
               </div>
             ) : null}
             {error ? (
@@ -694,7 +694,7 @@ export function TaskDetailDialog({
               >
                 <div className="flex min-w-0 items-start gap-2 text-sm">
                   <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
-                  <p className="min-w-0 break-words">{error}</p>
+                  <p className="min-w-0 select-text break-words">{error}</p>
                 </div>
                 {onDismissError ? (
                   <Button size="xs" variant="ghost" onClick={onDismissError}>

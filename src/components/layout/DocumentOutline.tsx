@@ -9,21 +9,28 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  collectLatexOutlineMacros,
+  createLatexOutlineMacroCollector,
+  createLatexWrapperSectionCollector,
   renderLatexOutlineTitle,
 } from "@oleafly/latex";
 import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
-import { useEditorViewportAnchor } from "@/components/editor/cm/use-viewport-anchor";
+import { useEditorViewportSelection } from "@/components/editor/cm/use-viewport-anchor";
+import { useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
+import { readSidebarView } from "@/store/sidebar-view-state";
 import { Button } from "@/components/ui/button";
 import { PanelState } from "@/components/layout/IntelligenceTree";
 import { SidebarSection } from "@/components/layout/SidebarSection";
-import { outlineFromIndex, type OutlineItem } from "@/lib/index/outline";
+import { headingTitlesByLabel, outlineFromIndex, type OutlineItem } from "@/lib/index/outline";
 import { activeOutlineIndex } from "@/lib/outline-active";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { cn } from "@/lib/utils";
 import { basename } from "@/lib/path-utils";
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
+
+export const OUTLINE_REVEAL_SETTLE_MS = 120;
 
 function useTypstTitles(items: readonly OutlineItem[]): boolean {
   const wanted = items.some((item) => /\.typ$/iu.test(item.file));
@@ -47,10 +54,11 @@ function useTypstTitles(items: readonly OutlineItem[]): boolean {
 function outlineDisplayTitle(
   item: OutlineItem,
   latexMacros: ReadonlyMap<string, string>,
+  headingsByLabel: ReadonlyMap<string, string>,
   typstTitles: boolean,
 ): string {
   if (/\.(?:latex|ltx|tex)$/iu.test(item.file)) {
-    return renderLatexOutlineTitle(item.title, latexMacros);
+    return renderLatexOutlineTitle(item.title, latexMacros, headingsByLabel);
   }
   if (typstTitles && /\.typ$/iu.test(item.file)) {
     return typstTools()?.typstPlainTitle(item.title) ?? item.title;
@@ -134,16 +142,25 @@ export function DocumentOutline({
 } = {}) {
   const { t } = useTranslation(["workspace"]);
   const index = useIndexStore((state) => state.index);
-  const texts = useIndexStore((state) => state.texts);
   const building = useIndexStore((state) => state.building);
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
-  const evaluatedDocumentKey = useRef<string | null>(null);
-  const autoCollapsedDocumentKey = useRef<string | null>(null);
-  const [collapsedHeadingIds, setCollapsedHeadingIds] = useState<ReadonlySet<string>>(
-    () => new Set(),
+  const [remembered] = useState(() => readSidebarView(projectId, "outline"));
+  const evaluatedDocumentKey = useRef<string | null>(
+    remembered?.evaluatedDocumentKey ?? null,
   );
+  const autoCollapsedDocumentKey = useRef<string | null>(
+    remembered?.autoCollapsedDocumentKey ?? null,
+  );
+  const [collapsedHeadingIds, setCollapsedHeadingIds] = useState<ReadonlySet<string>>(
+    () => new Set(remembered?.collapsedHeadings),
+  );
+  useSidebarViewMemory(projectId, "outline", () => ({
+    collapsedHeadings: collapsedHeadingIds,
+    evaluatedDocumentKey: evaluatedDocumentKey.current,
+    autoCollapsedDocumentKey: autoCollapsedDocumentKey.current,
+  }));
   const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
   const setOpen = (open: boolean) => {
     const next = !open;
@@ -152,17 +169,29 @@ export function DocumentOutline({
     onCollapsedChange?.(next);
   };
 
+  const [collectWrapperSections] = useState(createLatexWrapperSectionCollector);
+  const wrapperSections = useMemo(() => {
+    void index;
+    return collectWrapperSections(useIndexStore.getState().texts);
+  }, [collectWrapperSections, index]);
   const items = useMemo(
     () =>
       index && activePath
-        ? outlineFromIndex(index, activePath).filter(
+        ? outlineFromIndex(index, activePath, (file) => wrapperSections.get(file) ?? []).filter(
             // Sections only. An \input whose target has no headings of its own
             // contributed a bare filename row, which is file-tree information,
             // not an outline.
             (item) => item.kind === "section",
           )
         : [],
-    [index, activePath],
+    [index, activePath, wrapperSections],
+  );
+  const headingsByLabel = useMemo(
+    () =>
+      index
+        ? headingTitlesByLabel(index, (file) => wrapperSections.get(file) ?? [])
+        : new Map<string, string>(),
+    [index, wrapperSections],
   );
   const itemIds = useMemo(() => headingIds(items), [items]);
   const collapsibleHeadingIds = useMemo(() => {
@@ -235,48 +264,54 @@ export function DocumentOutline({
   useEffect(() => {
     if (previousProjectId.current !== projectId) {
       previousProjectId.current = projectId;
-      setCollapsedHeadingIds(new Set());
+      setCollapsedHeadingIds(
+        new Set(readSidebarView(projectId, "outline")?.collapsedHeadings),
+      );
       return;
     }
+    if (!resolvedDocumentKey) return;
     setCollapsedHeadingIds((current) => {
       const next = new Set(
         [...current].filter((id) => collapsibleHeadingIds.has(id)),
       );
       return next.size === current.size ? current : next;
     });
-  }, [collapsibleHeadingIds, projectId]);
+  }, [collapsibleHeadingIds, projectId, resolvedDocumentKey]);
 
-  const anchor = useEditorViewportAnchor();
-  const activeIndex = useMemo(
-    () => activeOutlineIndex(items, anchor),
-    [items, anchor],
-  );
+  const activeIndex = useEditorViewportSelection((anchor) => activeOutlineIndex(items, anchor));
   const activeHeadingVisible = useMemo(() => {
     const activeId = activeIndex >= 0 ? itemIds[activeIndex] : undefined;
     return activeId
       ? headings.some((heading) => heading.id === activeId)
       : false;
   }, [activeIndex, headings, itemIds]);
-  const latexMacros = useMemo(
-    () => collectLatexOutlineMacros(texts),
-    [texts],
-  );
+  const [collectMacros] = useState(createLatexOutlineMacroCollector);
+  const latexMacros = useMemo(() => {
+    void index;
+    return collectMacros(useIndexStore.getState().texts);
+  }, [collectMacros, index]);
   const typstTitles = useTypstTitles(items);
 
+  const listRef = useRef<HTMLDivElement>(null);
+  useOverlayScrollbar(listRef);
+  useScrollMemory({
+    scrollRef: listRef,
+    projectId,
+    slot: "outline",
+    ready: resolvedDocumentKey !== null,
+  });
   const activeRef = useRef<HTMLButtonElement | null>(null);
   // A long outline scrolls itself to follow the editor, but never while the
   // pointer is over the panel: yanking the list out from under a reader who is
   // about to click a different section is worse than losing the highlight.
   const hoveringRef = useRef(false);
   useEffect(() => {
-    if (
-      collapsed ||
-      activeIndex < 0 ||
-      !activeHeadingVisible ||
-      hoveringRef.current
-    )
-      return;
-    activeRef.current?.scrollIntoView({ block: "nearest" });
+    if (collapsed || activeIndex < 0 || !activeHeadingVisible) return;
+    const timer = setTimeout(() => {
+      if (hoveringRef.current) return;
+      activeRef.current?.scrollIntoView?.({ block: "nearest" });
+    }, OUTLINE_REVEAL_SETTLE_MS);
+    return () => clearTimeout(timer);
   }, [activeHeadingVisible, activeIndex, collapsed]);
 
   const jump = useCallback((item: OutlineItem) => {
@@ -364,6 +399,7 @@ export function DocumentOutline({
           </div>
         ) : (
         <div
+          ref={listRef}
           className="min-h-0 flex-1 overflow-auto py-1 [scrollbar-width:thin]"
           onPointerEnter={() => {
             hoveringRef.current = true;
@@ -376,7 +412,7 @@ export function DocumentOutline({
               const crossFile = item.file !== activePath;
               const active = itemIndex === activeIndex;
               const headingCollapsed = collapsedHeadingIds.has(id);
-              const displayTitle = outlineDisplayTitle(item, latexMacros, typstTitles);
+              const displayTitle = outlineDisplayTitle(item, latexMacros, headingsByLabel, typstTitles);
               return (
                 <div
                   key={`${item.file}:${item.line}:${item.kind}:${item.title}`}

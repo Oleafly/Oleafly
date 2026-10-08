@@ -210,5 +210,20 @@
     "clearFilter": "Rensa filtret",
     "filterPlaceholder": "Filtrera…",
     "noProject": "Inget projekt"
+  },
+  "fileReferences": {
+    "title": "Uppdatera referenser till {{name}}?",
+    "files_one": "{{count}} fil",
+    "files_other": "{{count}} filer",
+    "summary_one": "{{count}} referens i $t(workspace:fileReferences.files, { \"count\": {{files}} }) använder fortfarande den gamla sökvägen, {{path}}.",
+    "summary_other": "{{count}} referenser i $t(workspace:fileReferences.files, { \"count\": {{files}} }) använder fortfarande den gamla sökvägen, {{path}}.",
+    "fileCount_one": "{{count}} referens",
+    "fileCount_other": "{{count}} referenser",
+    "dontAsk": "Fråga inte igen",
+    "update": "Uppdatera referenser",
+    "skip": "Uppdatera inte",
+    "failed_one": "{{count}} fil ändrades efter flytten eller kunde inte sparas. Den använder fortfarande den gamla sökvägen.",
+    "failed_other": "{{count}} filer ändrades efter flytten eller kunde inte sparas. De använder fortfarande den gamla sökvägen.",
+    "close": "Stäng utan att uppdatera referenser"
   }
 }

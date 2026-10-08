@@ -3,7 +3,7 @@
 // detail line, the agent's full transcript from its rollout thread, and a
 // Stop-all affordance that interrupts the children without stopping the run.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bot,
   CheckCircle2,
@@ -59,13 +59,24 @@ function isRunning(status: AgentDisplayStatus): boolean {
   return status === "active" || status === "awaiting";
 }
 
+type SubagentItem = Extract<TurnRecord["items"][number]["item"], { type: "subAgentActivity" }>;
+
+const subagentItemsByRecord = new WeakMap<TurnRecord, SubagentItem[]>();
+
+function subagentItems(record: TurnRecord): SubagentItem[] {
+  let items = subagentItemsByRecord.get(record);
+  if (!items) {
+    items = record.items.flatMap(({ item }) => (item.type === "subAgentActivity" ? [item] : []));
+    subagentItemsByRecord.set(record, items);
+  }
+  return items;
+}
+
 /** Latest state per agent across the chat's turn records. */
 function collectAgents(records: TurnRecord[]): AgentState[] {
   const byId = new Map<string, AgentState>();
   for (const record of records) {
-    for (const recorded of record.items) {
-      if (recorded.item.type !== "subAgentActivity") continue;
-      const item = recorded.item;
+    for (const item of subagentItems(record)) {
       const existing = byId.get(item.agentId);
       byId.set(item.agentId, {
         id: item.agentId,
@@ -82,6 +93,18 @@ function collectAgents(records: TurnRecord[]): AgentState[] {
     }
   }
   return [...byId.values()];
+}
+
+const NO_AGENTS: AgentState[] = [];
+const AGENT_FIELDS = [
+  "id", "label", "kind", "detail", "events", "runtime", "sessionId", "providerId", "modelId", "runtimeAgentId",
+] as const satisfies readonly (keyof AgentState)[];
+
+function sameAgents(shown: readonly AgentState[], next: readonly AgentState[]): boolean {
+  return (
+    shown.length === next.length &&
+    shown.every((agent, index) => AGENT_FIELDS.every((field) => agent[field] === next[index][field]))
+  );
 }
 
 /** Deterministic hue from the agent id: the chip color is stable per agent. */
@@ -156,10 +179,13 @@ export function SubagentActivity({
   projectId?: string | null;
 }>) {
   const { t } = useTranslation(["common", "ai"]);
-  // A stable empty array keeps the selector's output referentially equal
-  // for chats without records (a fresh [] would re-render on every touch).
-  const records = useAgentTurnsStore((state) => state.recordsByChat[chatId] ?? EMPTY_RECORDS);
-  const agents = useMemo(() => collectAgents(records), [records]);
+  const shownAgents = useRef<AgentState[]>(NO_AGENTS);
+  const agents = useAgentTurnsStore((state) => {
+    const next = collectAgents(state.recordsByChat[chatId] ?? EMPTY_RECORDS);
+    if (sameAgents(shownAgents.current, next)) return shownAgents.current;
+    shownAgents.current = next;
+    return next;
+  });
   const [expanded, setExpanded] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<Transcript | null>(null);
   const transcriptRequestRef = useRef(0);
@@ -332,7 +358,7 @@ export function SubagentActivity({
               })}
             </span>
           </div>
-          <div>
+          <div className="select-text">
             {transcript?.agent === expanded && transcript.type === "acp" ? (
               <div className="max-h-80 space-y-2 overflow-y-auto">
                 {transcript.truncated && (

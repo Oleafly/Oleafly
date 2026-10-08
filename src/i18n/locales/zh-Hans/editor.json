@@ -188,7 +188,8 @@
     "quote": "引文",
     "addLabel": "添加标签",
     "convertLatexMath": "将 LaTeX 公式转换为 Typst",
-    "noLatexMath": "请先选择一些 LaTeX 公式。"
+    "noLatexMath": "请先选择一些 LaTeX 公式。",
+    "renameFile": "重命名文件…"
   },
   "shell": {
     "noFileOpenTab": "未打开文件",
@@ -419,7 +420,7 @@
       "indentOrAccept": "缩进 / 接受自动补全。",
       "goToDefinition": "转到定义",
       "findReferences": "查找引用",
-      "renameSymbol": "重命名符号（全项目）",
+      "renameSymbol": "重命名符号或文件（全项目）",
       "formatDocument": "格式化 Typst 文档",
       "commandPalette": "命令面板",
       "searchAllDocuments": "搜索所有文档",
@@ -447,7 +448,8 @@
     "noEntries": "此项目中还没有参考文献条目。",
     "addNew": "查找并添加新引用…",
     "duplicate": "重复 {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "来自你的 Zotero 库"
   },
   "inlineAi": {
     "promptPlaceholder": "描述修改内容…（Shift+Enter 换行）",

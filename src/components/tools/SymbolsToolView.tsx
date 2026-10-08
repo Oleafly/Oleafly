@@ -380,11 +380,11 @@ export function SymbolsToolView() {
             {selected ? (
               <div className="flex max-w-lg flex-col items-center gap-4">
                 <span className="font-serif text-7xl leading-none" aria-hidden="true">{selected.glyph}</span>
-                <code data-testid="symbols-command" className="rounded-md border bg-background px-3 py-2 font-mono text-sm">{selected.command}</code>
+                <code data-testid="symbols-command" className="select-text rounded-md border bg-background px-3 py-2 font-mono text-sm">{selected.command}</code>
                 {selectedTypst !== null && (
                   <p className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>{t(($) => $.researchTools.symbols.typstLabel)}</span>
-                    <code data-testid="symbols-typst" className="rounded-md border bg-background px-2 py-1 font-mono text-sm text-foreground">
+                    <code data-testid="symbols-typst" className="select-text rounded-md border bg-background px-2 py-1 font-mono text-sm text-foreground">
                       {selectedTypst}
                     </code>
                   </p>

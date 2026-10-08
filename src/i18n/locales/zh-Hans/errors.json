@@ -56,7 +56,11 @@
     "unreachable": "Oleafly 无法连接到 Zotero。请检查网络连接后重试。",
     "http_error": "Zotero 返回了错误（HTTP {{status}}）。请稍后重试。",
     "invalid_response": "Zotero 发来的回复 Oleafly 无法读取。请稍后重试。",
-    "too_large": "你的 Zotero 库太大，无法一次导入。请改为在 Zotero 中将某个分类导出为 RDF 文件，再导入该文件。"
+    "too_large": "你的 Zotero 库太大，无法一次导入。请改为在 Zotero 中将某个分类导出为 RDF 文件，再导入该文件。",
+    "local_not_running": "Zotero 未在本机上运行。请打开 Zotero，或连接你的 zotero.org 账户。",
+    "local_api_disabled": "在 Zotero 中，打开“设置 > 高级”，然后勾选“允许此计算机上的其他应用程序与 Zotero 通讯”。",
+    "local_unsupported": "此版本的 Zotero 无法与 Oleafly 共享其库。请更新到 Zotero 7 或更高版本。",
+    "offline": "Oleafly 处于离线模式，因此无法访问 zotero.org。"
   },
   "tex": {
     "no_host_binary": "TinyTeX 没有与主机兼容的 {{name}} 二进制文件。",

@@ -47,6 +47,30 @@ describe("library folder checks", () => {
     expect(useLibraryAvailabilityStore.getState().checking).toEqual({});
   });
 
+  it("keeps the same answers object when a forced recheck finds nothing new, so the library does not redraw", async () => {
+    probeProjectAvailability.mockResolvedValue([
+      { project_id: "linked-a", availability: "ok", modified_at_ms: 5_000 },
+      { project_id: "linked-b", availability: "offline" },
+    ]);
+    const store = useLibraryAvailabilityStore.getState();
+    await store.check(["linked-a", "linked-b"]);
+    const { checked, modified } = useLibraryAvailabilityStore.getState();
+
+    await store.check(["linked-a", "linked-b"], { force: true });
+    expect(useLibraryAvailabilityStore.getState().checked).toBe(checked);
+    expect(useLibraryAvailabilityStore.getState().modified).toBe(modified);
+
+    probeProjectAvailability.mockResolvedValue([
+      { project_id: "linked-a", availability: "missing", modified_at_ms: 6_000 },
+    ]);
+    await store.check(["linked-a"], { force: true });
+    expect(useLibraryAvailabilityStore.getState().checked).toEqual({
+      "linked-a": "missing",
+      "linked-b": "offline",
+    });
+    expect(useLibraryAvailabilityStore.getState().modified).toEqual({ "linked-a": 6 });
+  });
+
   it("does not ask again right away unless forced, and keeps an earlier answer over unknown", async () => {
     vi.useFakeTimers();
     probeProjectAvailability.mockResolvedValueOnce(reports({ "linked-a": "missing" }));

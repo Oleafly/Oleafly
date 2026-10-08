@@ -1,5 +1,6 @@
 import {
   lazy,
+  memo,
   Suspense,
   useCallback,
   useEffect,
@@ -23,6 +24,9 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import type { SearchHit } from "@/lib/tauri";
 import { useDocSearch } from "@/hooks/use-doc-search";
+import { useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
+import { readSidebarView } from "@/store/sidebar-view-state";
 import { gotoLine } from "@/components/editor/cm/controller";
 import { registry } from "@oleafly/registry";
 import { FileTree } from "@/components/files/FileTree";
@@ -49,15 +53,25 @@ import { Spinner } from "@/components/ui/spinner";
 
 const DocumentOutline = lazy(() =>
   import("@/components/layout/DocumentOutline").then((module) => ({
-    default: module.DocumentOutline,
+    default: memo(module.DocumentOutline),
   })),
 );
 
 const ProjectStructure = lazy(() =>
   import("@/components/layout/Outline").then((module) => ({
-    default: module.Outline,
+    default: memo(module.Outline),
   })),
 );
+
+const SourceTree = memo(FileTree);
+
+type CollapseChange = (
+  next: boolean,
+  panelId: string,
+  panelRef: RefObject<PanelImperativeHandle | null>,
+  setCollapsed: (collapsed: boolean) => void,
+  followingPanelRefs: readonly RefObject<PanelImperativeHandle | null>[],
+) => void;
 
 const EXPLORER_GROUP_ID = "sidebar-explorer-sections-v3";
 const SOURCE_PANEL = "source-tree-v";
@@ -93,9 +107,31 @@ export function ProjectSearch() {
   const { t } = useTranslation(["shell"]);
   const projectId = useFilesStore((s) => s.projectId);
   const openFile = useFilesStore((s) => s.openFile);
-  const [q, setQ] = useState("");
-  const { hits, loading } = useDocSearch(q, { projectId });
+  const [remembered] = useState(() => readSidebarView(projectId, "search"));
+  const [q, setQ] = useState(remembered?.query ?? "");
+  const { hits, loading, term } = useDocSearch(q, { projectId });
   const searchInputRef = useInitialFocus<HTMLInputElement>();
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const settled = useRef<{ term: string; hits: readonly SearchHit[] } | null>(
+    remembered?.term ? remembered : null,
+  );
+  if (!loading) settled.current = term ? { term, hits } : null;
+  const shownHits =
+    loading && settled.current?.term === term ? settled.current.hits : hits;
+  useSidebarViewMemory(projectId, "search", {
+    query: q,
+    term: settled.current?.term ?? "",
+    hits: settled.current?.hits ?? [],
+  });
+  useScrollMemory({ scrollRef: resultsRef, projectId, slot: "search" });
+  const previousProjectId = useRef(projectId);
+  useEffect(() => {
+    if (previousProjectId.current === projectId) return;
+    previousProjectId.current = projectId;
+    const next = readSidebarView(projectId, "search");
+    settled.current = next?.term ? next : null;
+    setQ(next?.query ?? "");
+  }, [projectId]);
 
   const open = async (hit: SearchHit) => {
     useSettingsStore.getState().revealEditor();
@@ -115,8 +151,8 @@ export function ProjectSearch() {
           className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm focus:border-ring"
         />
       </div>
-      <div className="flex-1 overflow-auto p-1.5">
-        {hits.map((hit) => (
+      <div ref={resultsRef} className="flex-1 overflow-auto p-1.5">
+        {shownHits.map((hit) => (
           <button type="button"
             key={objectKey(hit, "search-hit")}
             onClick={() => void open(hit)}
@@ -134,7 +170,7 @@ export function ProjectSearch() {
             </div>
           </button>
         ))}
-        {q.trim() && !loading && hits.length === 0 && (
+        {q.trim() && !loading && shownHits.length === 0 && (
           <p className="px-2 py-6 text-center text-xs text-muted-foreground">
             {t(($) => $.shell.projectSearch.noResults)}
           </p>
@@ -163,6 +199,27 @@ export function FilesPanel() {
   const stackRef = useRef<HTMLDivElement>(null);
   const [collapsedSize, setCollapsedSize] = useState(6);
   const collapsedSizeRef = useRef(collapsedSize);
+  const changeCollapsedRef = useRef<CollapseChange | null>(null);
+  const onSourceCollapsedChange = useCallback(
+    (next: boolean) =>
+      changeCollapsedRef.current?.(next, SOURCE_PANEL, sourcePanelRef, setSourceCollapsed, [
+        outlinePanelRef,
+        structurePanelRef,
+      ]),
+    [],
+  );
+  const onOutlineCollapsedChange = useCallback(
+    (next: boolean) =>
+      changeCollapsedRef.current?.(next, OUTLINE_PANEL, outlinePanelRef, setOutlineCollapsed, [
+        structurePanelRef,
+      ]),
+    [],
+  );
+  const onStructureCollapsedChange = useCallback(
+    (next: boolean) =>
+      changeCollapsedRef.current?.(next, STRUCTURE_PANEL, structurePanelRef, setStructureCollapsed, []),
+    [],
+  );
   const sourceTitle = t(($) => $.workspace.files.title);
   const outlineTitle = t(($) => $.workspace.outline.title);
   const structureTitle = t(($) => $.workspace.structure.title);
@@ -296,12 +353,12 @@ export function FilesPanel() {
     keepVisibleStackAtBottom(layout);
   };
 
-  const changeCollapsed = (
-    next: boolean,
-    panelId: string,
-    panelRef: RefObject<PanelImperativeHandle | null>,
-    setCollapsed: (collapsed: boolean) => void,
-    followingPanelRefs: readonly RefObject<PanelImperativeHandle | null>[],
+  const changeCollapsed: CollapseChange = (
+    next,
+    panelId,
+    panelRef,
+    setCollapsed,
+    followingPanelRefs,
   ) => {
     setCollapsed(next);
     const panel = panelRef.current;
@@ -318,6 +375,7 @@ export function FilesPanel() {
       expandPanel(EXPLORER_GROUP_ID, panelId, panel, minExpandedSize);
     }
   };
+  changeCollapsedRef.current = changeCollapsed;
 
   return (
     <div
@@ -341,14 +399,9 @@ export function FilesPanel() {
           {...panelLimitProps(explorerLimits[SOURCE_PANEL])}
           style={PANEL_STYLE}
         >
-          <FileTree
+          <SourceTree
             collapsed={sourceCollapsed}
-            onCollapsedChange={(next) =>
-              changeCollapsed(next, SOURCE_PANEL, sourcePanelRef, setSourceCollapsed, [
-                outlinePanelRef,
-                structurePanelRef,
-              ])
-            }
+            onCollapsedChange={onSourceCollapsedChange}
           />
         </Panel>
         <SidebarSectionHandle
@@ -366,11 +419,7 @@ export function FilesPanel() {
           <Suspense fallback={<SidebarPanelFallback />}>
             <DocumentOutline
               collapsed={outlineCollapsed}
-              onCollapsedChange={(next) =>
-                changeCollapsed(next, OUTLINE_PANEL, outlinePanelRef, setOutlineCollapsed, [
-                  structurePanelRef,
-                ])
-              }
+              onCollapsedChange={onOutlineCollapsedChange}
             />
           </Suspense>
         </Panel>
@@ -389,9 +438,7 @@ export function FilesPanel() {
           <Suspense fallback={<SidebarPanelFallback />}>
             <ProjectStructure
               collapsed={structureCollapsed}
-              onCollapsedChange={(next) =>
-                changeCollapsed(next, STRUCTURE_PANEL, structurePanelRef, setStructureCollapsed, [])
-              }
+              onCollapsedChange={onStructureCollapsedChange}
             />
           </Suspense>
         </Panel>

@@ -159,5 +159,84 @@
     "label": "Zitationsstil",
     "ariaLabel": "Zitationsstil für das Literaturverzeichnis in {{path}}",
     "failed": "Oleafly konnte den Zitationsstil nicht ändern."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} et al.",
+      "noYear": "o. J.",
+      "keySource": {
+        "bbt": "Schlüssel von Better BibTeX",
+        "native": "Schlüssel von Zotero",
+        "extra": "Schlüssel aus dem Feld Extra in Zotero",
+        "generated": "Von Oleafly erzeugter Schlüssel"
+      },
+      "addFailed": "Oleafly konnte {{key}} nicht zum Literaturverzeichnis hinzufügen. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Öffnen Sie in Zotero Einstellungen > Erweitert und aktivieren Sie „Anderen Anwendungen auf diesem Computer erlauben, mit Zotero zu kommunizieren“.",
+      "unsupported": "Aktualisieren Sie Zotero auf Version 7 oder neuer, um Ihre Bibliothek aus Oleafly zu durchsuchen.",
+      "keyRejected": "Zotero akzeptiert Ihren API-Schlüssel nicht mehr. Verbinden Sie Ihr Konto in den Zotero-Einstellungen erneut.",
+      "closed": "Öffnen Sie Zotero, um Ihre Bibliothek hier zu durchsuchen, oder verbinden Sie Ihr Konto bei zotero.org.",
+      "closedCached": "Zotero ist geschlossen. Die Ergebnisse stammen aus der letzten Synchronisierung, {{time}}.",
+      "bbtMissing": "Better BibTeX antwortet nicht, daher kommen neue Schlüssel von Zotero. Prüfen Sie, ob es installiert und aktiviert ist.",
+      "action": "Zotero-Einstellungen"
+    },
+    "actions": {
+      "addFromZotero": "Aus Zotero hinzufügen",
+      "addAllMissing_one": "{{count}} fehlende Zitation aus Zotero hinzufügen",
+      "addAllMissing_other": "Alle {{count}} fehlenden Zitationen aus Zotero hinzufügen",
+      "notInLibrary": "{{key}} ist nicht in Ihrer Zotero-Bibliothek.",
+      "changed": "Dieser Eintrag wurde in Zotero geändert, seit Sie ihn hinzugefügt haben.",
+      "changedEdited": "Dieser Eintrag wurde in Zotero geändert, und Sie haben ihn auch hier bearbeitet.",
+      "update": "Aus Zotero aktualisieren",
+      "updated": "{{key}} aus Zotero aktualisiert.",
+      "updateFailed": "Oleafly konnte {{key}} nicht aus Zotero aktualisieren. Versuchen Sie es erneut."
+    },
+    "chooseBibliography": {
+      "title": "Wohin sollen neue Literaturangaben kommen?",
+      "description": "Dieses Projekt hat mehr als eine Bibliografiedatei. Oleafly fügt neue Literaturangaben der Datei hinzu, die Sie wählen, und merkt sich diese Wahl für das Projekt.",
+      "confirm": "Diese Datei verwenden"
+    },
+    "handEdits": {
+      "title": "Ihre Änderungen ersetzen?",
+      "description": "Sie haben den Eintrag {{key}} von Hand bearbeitet. Wenn Sie ihn durch die Version aus Zotero ersetzen, gehen diese Änderungen verloren.",
+      "confirm": "Version aus Zotero verwenden",
+      "cancel": "Meine Version behalten"
+    },
+    "handList": {
+      "title": "Literaturliste verschieben?",
+      "description": "Dieses Dokument führt seine Literaturangaben von Hand auf. Verschieben Sie sie nach {{path}}, damit sie mit den Arbeiten, die Sie aus Zotero zitieren, eine gemeinsame nummerierte Liste bilden.",
+      "confirm": "Liste verschieben"
+    },
+    "missing": {
+      "title": "Fehlende Zitationen aus Zotero hinzufügen",
+      "loading": "Ihre Zotero-Bibliothek wird geprüft…",
+      "none": "Alle zitierten Schlüssel stehen bereits in Ihrem Literaturverzeichnis.",
+      "found_one": "{{count}} zitierter Schlüssel ist in Zotero",
+      "found_other": "{{count}} zitierte Schlüssel sind in Zotero",
+      "duplicates_one": "{{count}} Schlüssel zitiert eine Arbeit, die bereits in Ihrem Literaturverzeichnis steht",
+      "duplicates_other": "{{count}} Schlüssel zitieren Arbeiten, die bereits in Ihrem Literaturverzeichnis stehen",
+      "duplicateRow": "{{key}} ist dieselbe Arbeit wie {{existing}}",
+      "notFound_one": "{{count}} zitierter Schlüssel ist nicht in Zotero",
+      "notFound_other": "{{count}} zitierte Schlüssel sind nicht in Zotero",
+      "confirm_one": "{{count}} Eintrag hinzufügen",
+      "confirm_other": "{{count}} Einträge hinzufügen",
+      "done_one": "{{count}} Eintrag steht jetzt in {{path}}.",
+      "done_other": "{{count}} Einträge stehen jetzt in {{path}}.",
+      "failed": "Oleafly konnte die Einträge nicht hinzufügen. {{detail}}"
+    },
+    "update": {
+      "title": ".bib-Einträge aus Zotero aktualisieren",
+      "loading": "Zotero wird auf Änderungen geprüft…",
+      "none": "Ihr Literaturverzeichnis stimmt mit Zotero überein.",
+      "handEdited": "Von Hand bearbeitet",
+      "handEditedNote": "Von Hand bearbeitete Einträge sind nicht ausgewählt. Wählen Sie einen aus, um ihn durch die Version aus Zotero zu ersetzen.",
+      "confirm_one": "{{count}} Eintrag aktualisieren",
+      "confirm_other": "{{count}} Einträge aktualisieren",
+      "done_one": "{{count}} Eintrag aktualisiert.",
+      "done_other": "{{count}} Einträge aktualisiert."
+    }
   }
 }

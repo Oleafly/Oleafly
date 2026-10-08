@@ -8,6 +8,7 @@ vi.mock("@tauri-apps/api/core", () => ({ isTauri: mocks.isTauri, invoke: mocks.i
 import {
   displayPath,
   displayText,
+  displayTextRanges,
   homeRelativePath,
   homeRelativeText,
   loadDisplayHomes,
@@ -16,6 +17,7 @@ import {
   setDisplayHomes,
   useDisplayPath,
   useDisplayText,
+  useDisplayTextRanges,
 } from "@/lib/display-path";
 
 beforeEach(() => {
@@ -187,5 +189,49 @@ describe("loaded home folders", () => {
     expect(text.result.current("at /Users/ada/y")).toBe("at ~/y");
     act(() => setDisplayHomes(["/home/bo"]));
     expect(path.result.current("/home/bo/x")).toBe("~/x");
+  });
+});
+
+describe("home path ranges", () => {
+  function shown(text: string, ranges: readonly (readonly [number, number])[]): string {
+    let out = "";
+    let cursor = 0;
+    for (const [from, to] of ranges) {
+      out += `${text.slice(cursor, from)}~`;
+      cursor = to;
+    }
+    return out + text.slice(cursor);
+  }
+
+  it("finds exactly the spans displayText replaces", () => {
+    setDisplayHomes(["/Users/ada", "/Volumes/Data/Users/ada", "C:\\Users\\Ada"]);
+    const samples = [
+      "(/Users/ada/.oleafly/tinytex/texmf-dist/tex/latex/base/article.cls",
+      "a /Volumes/Data/Users/ada/x b /Users/ada/y",
+      "at /Users/adam/x and /Users/ada.",
+      "C:/Users/Ada/x and \\\\?\\C:\\Users\\ada\\y",
+      "nothing here",
+      "",
+    ];
+    for (const text of samples) {
+      const ranges = displayTextRanges(text);
+      expect(shown(text, ranges)).toBe(displayText(text));
+      for (let index = 1; index < ranges.length; index++) {
+        expect(ranges[index][0]).toBeGreaterThanOrEqual(ranges[index - 1][1]);
+      }
+    }
+  });
+
+  it("finds nothing before the home folder is known", () => {
+    expect(displayTextRanges("/Users/ada/x")).toEqual([]);
+  });
+
+  it("gives hook users a new finder once the home folder arrives", () => {
+    const finder = renderHook(() => useDisplayTextRanges());
+    const before = finder.result.current;
+    expect(before("/Users/ada/x")).toEqual([]);
+    act(() => setDisplayHomes(["/Users/ada"]));
+    expect(finder.result.current).not.toBe(before);
+    expect(finder.result.current("at /Users/ada/x")).toEqual([[3, 13]]);
   });
 });

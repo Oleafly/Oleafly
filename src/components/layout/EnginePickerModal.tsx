@@ -223,7 +223,7 @@ export function EnginePickerModal() {
         className="mt-2"
       />
       {info?.latexmk && (
-        <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
+        <p className="mt-1 select-text truncate font-mono text-[10px] text-muted-foreground/70">
           {displayPath(info.latexmk)}
         </p>
       )}

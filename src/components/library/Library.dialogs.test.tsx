@@ -629,6 +629,52 @@ describe("Library hover previews", () => {
     await waitFor(() => expect(pdfPageToPng).toHaveBeenCalledTimes(1));
   });
 
+  it("waits for the library to stop scrolling before rasterizing a hover preview", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    try {
+      const scrolled = { ...PAPER, id: "scroll-paper", name: "Paper hovered while scrolling" };
+      seedProjects([scrolled, NOTE]);
+      useSettingsStore.setState({ hoverPreview: true });
+      render(<Library />);
+      const scroller = screen.getByTestId("project-grid").closest(".overflow-auto") as HTMLElement;
+      const book = screen.getByRole("button", {
+        name: enLibrary.projects.open.replace("{{name}}", scrolled.name),
+      });
+      fireEvent.scroll(scroller);
+      fireEvent.mouseEnter(book);
+      await vi.advanceTimersByTimeAsync(50);
+      expect(readCompiledPdf).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(400);
+      expect(readCompiledPdf).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops a hover preview the pointer left while the library was scrolling", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
+    try {
+      const left = { ...PAPER, id: "left-paper", name: "Paper left while scrolling" };
+      seedProjects([left, NOTE]);
+      useSettingsStore.setState({ hoverPreview: true });
+      render(<Library />);
+      const scroller = screen.getByTestId("project-grid").closest(".overflow-auto") as HTMLElement;
+      const book = screen.getByRole("button", {
+        name: enLibrary.projects.open.replace("{{name}}", left.name),
+      });
+      fireEvent.scroll(scroller);
+      fireEvent.mouseEnter(book);
+      fireEvent.mouseLeave(book);
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(readCompiledPdf).not.toHaveBeenCalled();
+      fireEvent.mouseEnter(book);
+      await vi.waitFor(() => expect(readCompiledPdf).toHaveBeenCalledTimes(1));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("survives a thumbnail failure", async () => {
     useSettingsStore.setState({ hoverPreview: true });
     readCompiledPdf.mockRejectedValue(new Error("no pdf"));
@@ -721,6 +767,15 @@ describe("Library dialog details", () => {
 
     fireEvent.blur(row);
     await waitFor(() => expect(row.querySelector("img")).toBeNull());
+  });
+});
+
+describe("Library scrolling", () => {
+  it("draws its own scrollbar over the project scroller, so a fast thumb drag moves rows and position together", () => {
+    render(<Library />);
+    const scroller = screen.getByTestId("project-grid").closest(".overflow-auto") as HTMLElement;
+    expect(scroller).toHaveClass("ofl-native-scrollbar-hidden");
+    expect(scroller.parentElement?.querySelector(":scope > [data-overlay-scrollbar='y']")).not.toBeNull();
   });
 });
 

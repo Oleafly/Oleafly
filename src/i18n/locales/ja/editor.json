@@ -188,7 +188,8 @@
     "quote": "引用文",
     "addLabel": "ラベルを追加",
     "convertLatexMath": "LaTeX の数式を Typst に変換",
-    "noLatexMath": "先に LaTeX の数式を選択してください。"
+    "noLatexMath": "先に LaTeX の数式を選択してください。",
+    "renameFile": "ファイル名を変更…"
   },
   "shell": {
     "noFileOpenTab": "ファイルが開かれていません",
@@ -419,7 +420,7 @@
       "indentOrAccept": "インデント / 補完を確定",
       "goToDefinition": "定義へ移動",
       "findReferences": "参照を検索",
-      "renameSymbol": "シンボルの名前を変更（プロジェクト全体）",
+      "renameSymbol": "シンボルまたはファイルの名前を変更（プロジェクト全体）",
       "formatDocument": "Typst の文書を整形",
       "commandPalette": "コマンドパレット",
       "searchAllDocuments": "すべての文書を検索",
@@ -447,7 +448,8 @@
     "noEntries": "このプロジェクトには参考文献の項目がまだありません。",
     "addNew": "新しい引用を探して追加…",
     "duplicate": "重複 {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Zotero ライブラリから"
   },
   "inlineAi": {
     "promptPlaceholder": "変更したい内容を書いてください…（Shift+Enter で改行）",

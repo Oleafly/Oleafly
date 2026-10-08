@@ -276,14 +276,14 @@ export function TableImportDialog() {
                 <label htmlFor="table-import-label" className="text-xs text-muted-foreground">{t(($) => $.editor.tableImport.labelLabel)}</label>
                 <Input id="table-import-label" value={label} onChange={(event) => { setLabel(event.target.value); setError(null); }} placeholder={t(($) => $.editor.tableImport.labelPlaceholder)} />
               </div>
-              {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+              {error && <p role="alert" className="select-text text-sm text-destructive">{error}</p>}
             </div>
           </ToolPane>
           <ToolPane title={t(($) => $.editor.tableImport.preview)} badge={rows.length ? t(($) => $.editor.tableImport.rowCount, { count: rows.length }) : undefined}>
             <ToolPreviewSurface className="justify-center">
               {rows.length ? <div className="space-y-3">
                 <div className="overflow-auto">
-                  <table className="w-full border-y-2 border-foreground/40 text-left text-xs" data-testid="table-import-preview">
+                  <table className="w-full select-text border-y-2 border-foreground/40 text-left text-xs" data-testid="table-import-preview">
                     <tbody>{rows.slice(0, PREVIEW_ROWS).map((row, rowIndex) => (
                       // biome-ignore lint/suspicious/noArrayIndexKey: positional spreadsheet rows
                       <tr key={rowIndex} className={header && rowIndex === 0 ? "border-b border-foreground/30 font-semibold" : "border-b border-border/60 last:border-b-0"}>

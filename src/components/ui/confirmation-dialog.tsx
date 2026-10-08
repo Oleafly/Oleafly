@@ -67,7 +67,7 @@ export function ConfirmationDialog({
       </h2>
       <p
         id={descriptionId}
-        className="mt-2 text-xs leading-relaxed text-muted-foreground"
+        className="mt-2 select-text text-xs leading-relaxed text-muted-foreground"
       >
         {description}
       </p>

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { EditorState, type Extension } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { openSearchPanel } from "@codemirror/search";
@@ -55,6 +55,23 @@ function mount(topLine: number, extensions: Extension[] = []) {
     from: view.state.doc.line(topLine).from,
   } as ReturnType<EditorView["lineBlockAtHeight"]>);
   return view;
+}
+
+function withRangeGeometry() {
+  const proto = Range.prototype as unknown as Record<string, unknown>;
+  const added = ["getClientRects", "getBoundingClientRect"].filter((name) => !(name in proto));
+  const empty = { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) };
+  for (const name of added) {
+    Object.defineProperty(proto, name, {
+      configurable: true,
+      value: name === "getClientRects" ? () => Object.assign([], { item: () => null }) : () => empty,
+    });
+  }
+  return {
+    restore() {
+      for (const name of added) delete proto[name];
+    },
+  };
 }
 
 describe("stickyScroll", () => {
@@ -213,5 +230,35 @@ describe("stickyScroll", () => {
       expect(rows.map((row) => row.querySelector(".cm-stickyLineNo")?.textContent)).toEqual(["1", "2"]);
     });
     expect(mounted.dom.querySelector(".cm-stickyRow")?.textContent).toContain("= Results");
+  });
+
+  it("measures the gutter columns once while scrolling within one geometry", async () => {
+    const rangeRects = withRangeGeometry();
+    onTestFinished(rangeRects.restore);
+    const box = (width: number) =>
+      ({ top: 0, left: 0, right: width, bottom: 20, width, height: 20, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      return this.classList.contains("cm-gutterElement") ? box(24) : box(0);
+    });
+    const mounted = mount(3, [lineNumbers()]);
+    const gutterReads = () =>
+      reads.mock.calls.filter(([element]) => (element as Element).classList.contains("cm-gutterElement")).length;
+    const reads = vi.spyOn(window, "getComputedStyle");
+    const scroll = async (times: number) => {
+      for (let index = 0; index < times; index++) {
+        mounted.scrollDOM.dispatchEvent(new Event("scroll"));
+        await new Promise(requestAnimationFrame);
+      }
+    };
+    await new Promise(requestAnimationFrame);
+    await scroll(2);
+    const settled = gutterReads();
+    expect(settled).toBeGreaterThan(0);
+    await scroll(6);
+    expect(gutterReads()).toBe(settled);
+
+    mounted.dispatch({ changes: { from: mounted.state.doc.length, insert: "\nmore" } });
+    await new Promise(requestAnimationFrame);
+    expect(gutterReads()).toBe(settled + 1);
   });
 });

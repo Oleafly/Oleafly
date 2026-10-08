@@ -143,7 +143,7 @@ describe("PreviewPane empty state", () => {
     expect(detail.closest("li")).toHaveAttribute("aria-current", "step");
   });
 
-  it("never mounts unverified bytes from an older project revision", () => {
+  it("shows output from an older project revision as stale instead of hiding it", () => {
     useCompileStore.setState({
       status: "success",
       pdfBytes: new Uint8Array([1, 2, 3]),
@@ -162,9 +162,30 @@ describe("PreviewPane empty state", () => {
     });
 
     render(<PreviewPane />);
-    expect(
-      screen.queryByTestId("mock-pdf-viewer"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("mock-pdf-viewer")).toBeInTheDocument();
+    expect(screen.getByTestId("preview-stale-badge")).toBeInTheDocument();
+  });
+
+  it("never mounts output that belongs to another main document", () => {
+    useCompileStore.setState({
+      status: "success",
+      pdfBytes: new Uint8Array([1, 2, 3]),
+      lastCompileCheckpoint: {
+        version: 1,
+        projectId: "preview-empty-fixture",
+        mainDocument: "chapter.tex",
+        projectRevision: 2,
+        requestGeneration: 1,
+        outputKind: "standard",
+        producerId: "test",
+        outputRevision: 1,
+        outputId: "pdf-v1:3:0000000000000000",
+        completedAt: 1,
+      },
+    });
+
+    render(<PreviewPane />);
+    expect(screen.queryByTestId("mock-pdf-viewer")).not.toBeInTheDocument();
   });
 });
 

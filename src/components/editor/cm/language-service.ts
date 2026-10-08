@@ -704,7 +704,7 @@ function hoverTooltipForText(
     above: true,
     create: () => {
       const dom = document.createElement("div");
-      dom.className = "cm-language-service-hover";
+      dom.className = "cm-language-service-hover select-text";
       for (const block of text?.split(/\n{2,}/u) ?? []) {
         const paragraph = document.createElement("p");
         paragraph.className = "cm-language-service-hover-block";

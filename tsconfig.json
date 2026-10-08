@@ -33,6 +33,7 @@
       "@oleafly/editor/CodeMirrorEditor": ["./packages/editor/src/CodeMirrorEditor.tsx"],
       "@oleafly/editor/math-preview": ["./packages/editor/src/math-preview.ts"],
       "@oleafly/editor/prose": ["./packages/editor/src/prose.ts"],
+      "@oleafly/editor/overlay-scrollbar": ["./packages/editor/src/overlay-scrollbar.ts"],
       "@oleafly/ai-tools": ["./packages/ai-tools/src/index.ts"],
       "@oleafly/preflight": ["./packages/preflight/src/index.ts"],
       "@oleafly/registry": ["./packages/registry/src/index.ts"],

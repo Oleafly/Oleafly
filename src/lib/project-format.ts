@@ -1,4 +1,5 @@
-import { currentLocale, i18n } from "@/i18n";
+import { i18n } from "@/i18n";
+import { formatDate, formatDateTime } from "@/lib/intl";
 export function projectModifiedLabel(timestamp: number) {
   if (!timestamp) return undefined;
   const date = new Date(timestamp * 1000);
@@ -14,11 +15,12 @@ export function projectModifiedLabel(timestamp: number) {
     return i18n.t(($) => $.core.project.updatedDaysAgo, { count: days });
   }
   return i18n.t(($) => $.core.project.updatedOn, {
-    date: new Intl.DateTimeFormat(currentLocale(), {
-      month: "short",
-      day: "numeric",
-      year: new Date().getFullYear() === date.getFullYear() ? undefined : "numeric",
-    }).format(date),
+    date: formatDate(
+      date,
+      new Date().getFullYear() === date.getFullYear()
+        ? { month: "short", day: "numeric" }
+        : { month: "short", day: "numeric", year: "numeric" },
+    ),
   });
 }
 
@@ -26,8 +28,5 @@ export function projectDateTime(timestamp: number) {
   if (!timestamp) return i18n.t(($) => $.core.project.dateUnavailable);
   const date = new Date(timestamp * 1000);
   if (Number.isNaN(date.getTime())) return i18n.t(($) => $.core.project.dateUnavailable);
-  return new Intl.DateTimeFormat(currentLocale(), {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return formatDateTime(date, { dateStyle: "medium", timeStyle: "short" });
 }

@@ -59,7 +59,7 @@ export function CopyIntoLibraryDialog() {
         </DialogHeader>
         <div className="flex min-h-14 flex-col justify-center gap-2">
           {failed ? (
-            <p role="alert" className="text-sm leading-relaxed text-destructive">
+            <p role="alert" className="select-text text-sm leading-relaxed text-destructive">
               {error}
             </p>
           ) : (

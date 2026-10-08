@@ -2057,7 +2057,26 @@ fn workspace_snapshot_at(root: &PathBuf) -> Result<GitWorkspaceSnapshot, String>
             git_available,
         });
     }
-    let changes = status_at(root)?;
+    let (changes, branch, remote, ahead_behind, merging, branches, commits) =
+        std::thread::scope(|scope| {
+            let branch = scope.spawn(|| current_branch(root).ok());
+            let remote = scope.spawn(|| origin_url(root));
+            let ahead_behind = scope.spawn(|| ahead_behind_at(root));
+            let merging = scope.spawn(|| merge_in_progress(root));
+            let branches = scope.spawn(|| branches_at(root));
+            let commits = scope.spawn(|| git_log_at(root));
+            let changes = status_at(root);
+            (
+                changes,
+                joined(branch),
+                joined(remote),
+                joined(ahead_behind),
+                joined(merging),
+                joined(branches),
+                joined(commits),
+            )
+        });
+    let changes = changes?;
     let conflicts = changes
         .iter()
         .filter(|change| change.conflict)
@@ -2068,21 +2087,22 @@ fn workspace_snapshot_at(root: &PathBuf) -> Result<GitWorkspaceSnapshot, String>
         .collect();
     Ok(GitWorkspaceSnapshot {
         initialized: true,
-        branch: current_branch(root).ok(),
-        remote: origin_url(root).map(|remote| remote.map(|value| sanitize_url(&value)))?,
-        ahead_behind: ahead_behind_at(root)?,
-        operation: if merge_in_progress(root)? {
-            "merge"
-        } else {
-            "idle"
-        }
-        .into(),
+        branch: branch?,
+        remote: remote?.map(|remote| remote.map(|value| sanitize_url(&value)))?,
+        ahead_behind: ahead_behind??,
+        operation: if merging?? { "merge" } else { "idle" }.into(),
         changes,
         conflicts,
-        branches: branches_at(root)?,
-        commits: git_log_at(root)?,
+        branches: branches??,
+        commits: commits??,
         git_available: true,
     })
+}
+
+fn joined<T>(handle: std::thread::ScopedJoinHandle<'_, T>) -> Result<T, String> {
+    handle
+        .join()
+        .map_err(|_| "a git snapshot worker stopped unexpectedly".to_string())
 }
 
 #[tauri::command]

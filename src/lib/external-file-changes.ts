@@ -80,7 +80,10 @@ export function applyFolderChange(change: FolderChangePayload): void {
 export function refreshOpenFilesFromDisk(projectId: string | null): void {
   const files = useFilesStore.getState();
   if (!projectId || files.projectId !== projectId || !projectFolderAvailable(projectId)) return;
-  applyExternalFileChange({ projectId, paths: Object.keys(files.files) }, "");
+  void files.refreshTree({ keepUnchanged: true });
+  for (const [path, file] of Object.entries(files.files)) {
+    refreshExternalFile(projectId, path, file);
+  }
 }
 
 export async function flushOpenFilesToDisk(projectId: string, scope: string): Promise<void> {

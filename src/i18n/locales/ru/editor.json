@@ -188,7 +188,8 @@
     "quote": "Цитата",
     "addLabel": "Добавить метку",
     "convertLatexMath": "Преобразовать формулу LaTeX в Typst",
-    "noLatexMath": "Сначала выделите формулу LaTeX."
+    "noLatexMath": "Сначала выделите формулу LaTeX.",
+    "renameFile": "Переименовать файл…"
   },
   "shell": {
     "noFileOpenTab": "Нет открытых файлов",
@@ -440,7 +441,7 @@
       "indentOrAccept": "Отступ или принять автодополнение",
       "goToDefinition": "Перейти к определению",
       "findReferences": "Найти ссылки",
-      "renameSymbol": "Переименовать символ (по всему проекту)",
+      "renameSymbol": "Переименовать символ или файл (по всему проекту)",
       "formatDocument": "Форматировать документ Typst",
       "commandPalette": "Палитра команд",
       "searchAllDocuments": "Поиск по всем документам",
@@ -468,7 +469,8 @@
     "noEntries": "В этом проекте пока нет записей библиографии.",
     "addNew": "Найти и добавить новую цитату…",
     "duplicate": "дубликат {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Из вашей библиотеки Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Опишите изменение…  (Shift+Enter для новой строки)",

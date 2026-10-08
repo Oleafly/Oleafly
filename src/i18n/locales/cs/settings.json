@@ -718,6 +718,15 @@
           "description": "Kontroluje soubory Typst na pravděpodobné chyby při každém uložení. Zapnutí nebo vypnutí restartuje jazykový server Typst.",
           "label": "Kontroly lint pro Typst"
         }
+      },
+      "fileMove": {
+        "label": "Když se soubor přesune",
+        "description": "Aktualizovat cesty k přejmenovanému nebo přesunutému souboru ve zdrojích LaTeX, Typst a Markdown.",
+        "options": {
+          "ask": "Zeptat se",
+          "always": "Vždy aktualizovat",
+          "never": "Nikdy neaktualizovat"
+        }
       }
     },
     "files": {
@@ -819,6 +828,25 @@
       "startWithProject": {
         "description": "Spustit prostředí shell už při otevření projektu, ne až když terminál poprvé zobrazíte.",
         "label": "Spouštět shell s projektem"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Drží text ve vycentrovaném sloupci, dokud je PDF skryté.",
+        "label": "Vycentrovat editor"
+      },
+      "fullScreen": {
+        "description": "V režimu Zen vyplní obrazovku a při odchodu obnoví okno.",
+        "label": "Přejít na celou obrazovku"
+      },
+      "showPdf": {
+        "description": "Pokud je PDF při spuštění režimu Zen skryté, otevře ho vedle editoru při první kompilaci.",
+        "label": "Zobrazit PDF při kompilaci"
+      },
+      "title": "Režim Zen",
+      "toggle": {
+        "description": "Skryje panel nástrojů, postranní panel, asistenta a terminál, aby zůstal jen text. Říká se mu také režim bez rušení. Vyžaduje otevřený projekt.",
+        "label": "Zapnout režim Zen"
       }
     }
   },
@@ -1216,11 +1244,58 @@
       "apiKeyLabel": "Klíč API pro Zotero",
       "connected": "Připojeno k vaší knihovně Zotero.",
       "connectedAs": "Připojeno jako {{username}}.",
-      "description": "Importujte citace a reference ze své knihovny Zotero.",
       "disconnectFailed": "Oleafly nemohl odebrat uložený klíč Zotero. Zkuste to znovu.",
-      "importHint": "Pro import otevřete v projektu panel Reference a zvolte Import knihovny referencí.",
       "userIdLabel": "ID uživatele Zotero",
-      "userIdPlaceholder": "ID uživatele"
+      "userIdPlaceholder": "ID uživatele",
+      "citeDescription": "Při psaní prohledávejte celou knihovnu Zotero a přidávejte jen to, co citujete. Oleafly vaši knihovnu jen čte a nikdy ji nemění.",
+      "local": {
+        "heading": "Zotero v tomto počítači",
+        "ready": "Připojeno k aplikaci Zotero {{version}}.",
+        "readyNoVersion": "Připojeno k aplikaci Zotero.",
+        "bbtFound": "Better BibTeX {{version}} je nainstalovaný, takže klíče citací pocházejí z Better BibTeX.",
+        "bbtMissing": "Better BibTeX není nainstalovaný, takže klíče citací pocházejí z aplikace Zotero.",
+        "notRunning": "Zotero neběží. Otevřete Zotero a prohledávejte svou knihovnu, nebo níže připojte svůj účet zotero.org.",
+        "apiDisabled": "V aplikaci Zotero otevřete Nastavení > Pokročilé a zapněte „Povolit ostatním aplikacím v tomto počítači komunikovat s Zotero“.",
+        "unsupported": "Tato verze aplikace Zotero neumí sdílet svou knihovnu. Aktualizujte na Zotero 7 nebo novější.",
+        "unknown": "Oleafly zatím aplikaci Zotero nehledal."
+      },
+      "test": "Otestovat připojení",
+      "syncNow": "Synchronizovat teď",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX nebyl nalezen",
+        "local": "Načteno z aplikace Zotero v tomto počítači",
+        "web": "Načteno ze zotero.org",
+        "library_one": "{{name}}: {{formatted}} položka",
+        "library_few": "{{name}}: {{formatted}} položky",
+        "library_many": "{{name}}: {{formatted}} položky",
+        "library_other": "{{name}}: {{formatted}} položek"
+      },
+      "library": {
+        "heading": "Knihovny k prohledávání",
+        "myLibrary": "Moje knihovna",
+        "toggle": "Prohledávat {{name}}",
+        "items_one": "{{formatted}} položka",
+        "items_few": "{{formatted}} položky",
+        "items_many": "{{formatted}} položky",
+        "items_other": "{{formatted}} položek"
+      },
+      "sync": {
+        "never": "Zatím nesynchronizováno.",
+        "syncing": "Synchronizuje se vaše knihovna Zotero…",
+        "progress": "Synchronizuje se {{done}} z {{total}} položek…",
+        "status_one": "{{formatted}} položka připravená k citování, synchronizováno {{time}}.",
+        "status_few": "{{formatted}} položky připravené k citování, synchronizováno {{time}}.",
+        "status_many": "{{formatted}} položky připravené k citování, synchronizováno {{time}}.",
+        "status_other": "{{formatted}} položek připravených k citování, synchronizováno {{time}}.",
+        "fromCache": "Aplikace Zotero je zavřená, takže vyhledávání přes @ používá kopii z poslední synchronizace.",
+        "rateLimited": "Server zotero.org požádal Oleafly, aby počkal. Další pokus proběhne po {{time}}."
+      },
+      "account": {
+        "heading": "Účet zotero.org",
+        "description": "Účet použijte, když v tomto počítači neběží Zotero. Načtou se i skupinové knihovny."
+      }
     }
   },
   "language": {
@@ -1604,6 +1679,10 @@
       "openFolder": {
         "label": "Otevřít složku",
         "description": "Otevřít složku z počítače jako projekt."
+      },
+      "toggleZenMode": {
+        "description": "Skryje vše kromě textu, nebo vše vrátí zpět.",
+        "label": "Přepnout režim Zen"
       }
     },
     "application": {
@@ -1626,7 +1705,7 @@
         "italic": "Kurzíva",
         "jumpToSourceFromPdf": "Skok z PDF do zdroje",
         "redo": "Znovu",
-        "renameSymbol": "Přejmenovat symbol v celém projektu",
+        "renameSymbol": "Přejmenovat symbol nebo soubor v celém projektu",
         "slashCommandMenu": "Nabídka vkládání přes lomítko",
         "triggerAutocomplete": "Vyvolat automatické doplňování",
         "undo": "Zpět"

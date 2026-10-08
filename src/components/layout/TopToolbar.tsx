@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
-import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
+import { LAYOUT_PRESET_ICONS, ZenModeLayoutIcon } from "@/components/icons/LayoutPresetIcons";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
@@ -53,6 +53,8 @@ import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { enterZenMode } from "@/lib/zen-mode";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
 import { openTypstExport } from "@/components/typst-export/open";
 import { exportRoutesFor } from "@oleafly/conversion-registry";
@@ -193,6 +195,24 @@ function activeLayoutPreset(
   if (viewMode === "editor") return assistantOpen ? "editor-ai" : "editor-only";
   if (viewMode === "pdf") return assistantOpen ? "preview-ai" : "preview-only";
   return null;
+}
+
+function ZenModeMenuItem() {
+  const { t } = useTranslation(["shell"]);
+  const shortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleZenMode));
+  return (
+    <DropdownMenuItem
+      data-testid="layout-zen-mode"
+      aria-keyshortcuts={shortcut}
+      onSelect={() => enterZenMode()}
+    >
+      <ZenModeLayoutIcon className="size-4 text-muted-foreground" />
+      <span className="flex-1">{t(($) => $.shell.toolbar.layouts.zenMode)}</span>
+      <span aria-hidden className="ml-auto pl-3 text-[10px] text-muted-foreground">
+        {shortcut}
+      </span>
+    </DropdownMenuItem>
+  );
 }
 
 export function ProjectHistoryActions() {
@@ -385,14 +405,20 @@ export function TopToolbar() {
 
   useEffect(() => { if (hideExport) setDlOpen(false); }, [hideExport]);
 
-  const layoutMenuItems = LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => (
-    <DropdownMenuItem key={preset} onSelect={() => setLayoutPreset(preset)}>
-      <Icon className="size-4 text-muted-foreground" />
-      <span className="flex-1">{label}</span>
-      {activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset &&
-        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
-    </DropdownMenuItem>
-  ));
+  const layoutMenuItems = (
+    <>
+      {LAYOUT_OPTIONS.map(({ preset, label, icon: Icon }) => (
+        <DropdownMenuItem key={preset} onSelect={() => setLayoutPreset(preset)}>
+          <Icon className="size-4 text-muted-foreground" />
+          <span className="flex-1">{label}</span>
+          {activeLayoutPreset(viewMode, assistantOpen, workspaceHidden) === preset &&
+            <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+        </DropdownMenuItem>
+      ))}
+      <DropdownMenuSeparator />
+      <ZenModeMenuItem />
+    </>
+  );
 
   const layoutControl = (
     <ToolbarAction name="layout" order={TOOLBAR_OVERFLOW.layout} hidden={hideLayout}>

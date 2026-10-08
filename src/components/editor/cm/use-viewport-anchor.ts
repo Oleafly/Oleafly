@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { EditorView } from "@codemirror/view";
 import { subscribeEditorDocument } from "@oleafly/editor";
 import type { ViewportAnchor } from "@/lib/outline-active";
@@ -33,23 +33,54 @@ function readAnchor(view: EditorView, path: string): ViewportAnchor | null {
  * somewhere the reader is not.
  */
 export function useEditorViewportAnchor(): ViewportAnchor | null {
-  const [anchor, setAnchor] = useState<ViewportAnchor | null>(null);
+  return useEditorViewportSelection(identity);
+}
 
-  useEffect(() => {
-    let detachScroll: (() => void) | null = null;
+function identity(anchor: ViewportAnchor | null): ViewportAnchor | null {
+  return anchor;
+}
 
-    const unsubscribe = subscribeEditorDocument((path, view) => {
+export function useEditorViewportSelection<T>(select: (anchor: ViewportAnchor | null) => T): T {
+  const [source] = useState(createViewportAnchorSource);
+  return useSyncExternalStore(
+    source.subscribe,
+    () => select(source.get()),
+    () => select(null),
+  );
+}
+
+interface ViewportAnchorSource {
+  get(): ViewportAnchor | null;
+  subscribe(listener: () => void): () => void;
+}
+
+function createViewportAnchorSource(): ViewportAnchorSource {
+  let anchor: ViewportAnchor | null = null;
+  const listeners = new Set<() => void>();
+  let unsubscribe: (() => void) | null = null;
+  let detachScroll: (() => void) | null = null;
+
+  const publish = (next: ViewportAnchor | null) => {
+    const value =
+      anchor && next && anchor.path === next.path && anchor.pos === next.pos ? anchor : next;
+    if (value === anchor) return;
+    anchor = value;
+    for (const listener of listeners) listener();
+  };
+
+  const start = () => {
+    unsubscribe = subscribeEditorDocument((path, view) => {
       detachScroll?.();
       detachScroll = null;
       if (!view || !path) {
-        setAnchor(null);
+        publish(null);
         return;
       }
 
       let frame = 0;
       const measure = () => {
         frame = 0;
-        setAnchor(readAnchor(view, path));
+        publish(readAnchor(view, path));
       };
       const onScroll = () => {
         if (frame === 0) frame = requestAnimationFrame(measure);
@@ -57,8 +88,6 @@ export function useEditorViewportAnchor(): ViewportAnchor | null {
 
       const scroller = view.scrollDOM;
       scroller.addEventListener("scroll", onScroll, { passive: true });
-      // The document just changed; place the highlight before the first scroll.
-      // A frame of delay lets CodeMirror finish laying the new document out.
       frame = requestAnimationFrame(measure);
 
       detachScroll = () => {
@@ -66,12 +95,24 @@ export function useEditorViewportAnchor(): ViewportAnchor | null {
         if (frame !== 0) cancelAnimationFrame(frame);
       };
     });
+  };
 
-    return () => {
-      unsubscribe();
-      detachScroll?.();
-    };
-  }, []);
+  const stop = () => {
+    unsubscribe?.();
+    unsubscribe = null;
+    detachScroll?.();
+    detachScroll = null;
+  };
 
-  return anchor;
+  return {
+    get: () => anchor,
+    subscribe(listener) {
+      listeners.add(listener);
+      if (listeners.size === 1) start();
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) stop();
+      };
+    },
+  };
 }

@@ -292,7 +292,7 @@ export function HotkeysModal() {
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const [q, setQ] = useState("");
   const editorKeys = useEditorKeymapStore((s) => s.keys);
-  const activePath = useFilesStore((s) => s.activePath);
+  const activePath = useFilesStore((s) => (open ? s.activePath : null));
 
   const rows = useMemo(() => {
     const language = sourceLanguageForPath(activePath);

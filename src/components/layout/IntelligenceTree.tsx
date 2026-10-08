@@ -25,6 +25,7 @@ import {
   useDeferredValue,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -35,7 +36,11 @@ import {
   type ReactNode,
 } from "react";
 import { FileIcon } from "@/components/files/fileIcon";
-import { Tooltip } from "@/components/ui/tooltip";
+import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
+import { useRowWindow } from "@/hooks/use-row-window";
+import { type ScrollMemory, useScrollMemoryLayout } from "@/hooks/use-scroll-memory";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
+import { readSidebarView, type SidebarTreeSlot } from "@/store/sidebar-view-state";
 import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
 
@@ -420,12 +425,14 @@ const TreeRow = memo(function TreeRow({
           : row.node.label
       }
       data-intelligence-row={row.node.id}
+      data-tooltip={description || undefined}
+      data-tooltip-side={description ? "right" : undefined}
+      data-row-window-item
       className={cn(
-        "group flex min-h-7 w-full cursor-pointer items-center gap-1.5 rounded-[5px] py-1 pr-2 text-left text-[13px] leading-5",
+        "group flex h-7 w-full cursor-pointer items-center gap-1.5 rounded-[5px] pr-2 text-left text-[13px] leading-5",
         "hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
         "aria-selected:bg-sidebar-accent aria-selected:text-sidebar-accent-foreground",
-        "[content-visibility:auto] [contain-intrinsic-size:auto_28px]",
-        isGroup && "mt-1 font-medium",
+        isGroup && "font-medium",
         toneClasses(row.node.tone),
       )}
       style={{ paddingLeft: `${Math.max(6, row.level * 11 - 5)}px` }}
@@ -442,18 +449,10 @@ const TreeRow = memo(function TreeRow({
     </div>
   );
 
-  // `role="none"` keeps the wrapper out of the accessibility tree so the row
-  // stays a direct treeitem child of the tree.
-  return description ? (
-    <Tooltip label={description} side="right" className="flex w-full" role="none">
-      {rowElement}
-    </Tooltip>
-  ) : (
-    rowElement
-  );
+  return rowElement;
 });
 
-export function IntelligenceTree({
+function IntelligenceTreeView({
   label,
   nodes,
   query,
@@ -464,6 +463,9 @@ export function IntelligenceTree({
   modelKey,
   expansionCommandKey,
   onExpansionStateChange,
+  memoryProjectId = null,
+  memorySlot,
+  scrollMemory,
 }: Readonly<{
   label: string;
   nodes: readonly IntelligenceTreeNode[];
@@ -477,17 +479,28 @@ export function IntelligenceTree({
   /** Snapshot identity used only to reject stale bulk commands. */
   expansionCommandKey?: string;
   onExpansionStateChange?: (state: IntelligenceTreeExpansionState) => void;
+  memoryProjectId?: string | null;
+  memorySlot?: SidebarTreeSlot;
+  scrollMemory?: ScrollMemory;
 }>) {
   const reactId = useId();
   const treeId = reactId.replaceAll(":", "");
   const normalizedQuery = useDeferredValue(query.trim().toLocaleLowerCase());
+  const memoryKey = `tree.${memorySlot ?? "structure"}` as const;
+  const memoryOwner = memorySlot ? memoryProjectId : null;
+  const [remembered] = useState(() => readSidebarView(memoryOwner, memoryKey));
   const [collapsedByUser, setCollapsedByUser] = useState<ReadonlySet<string>>(
-    () => new Set(),
+    () => new Set(remembered?.collapsed),
   );
   const [expandedByUser, setExpandedByUser] = useState<ReadonlySet<string>>(
-    () => new Set(),
+    () => new Set(remembered?.expanded),
   );
-  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(remembered?.focusedId ?? null);
+  useSidebarViewMemory(memoryOwner, memoryKey, {
+    collapsed: collapsedByUser,
+    expanded: expandedByUser,
+    focusedId,
+  });
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
   const previousModelKey = useRef<string | undefined>(modelKey);
   const lastExpansionCommand = useRef<string | null>(null);
@@ -576,11 +589,38 @@ export function IntelligenceTree({
     [],
   );
 
+  const listRef = useRef<HTMLDivElement>(null);
+  const rows = useRowWindow({ count: visibleRows.length, listRef });
+  const tooltip = useDelegatedTooltips(listRef);
+  useScrollMemoryLayout(scrollMemory);
+  const rowIndexRef = useRef(rowIndex);
+  rowIndexRef.current = rowIndex;
+  const scrollToIndexRef = useRef(rows.scrollToIndex);
+  scrollToIndexRef.current = rows.scrollToIndex;
+  const pendingFocus = useRef<string | null>(null);
+
   const focusRow = useCallback((id: string | undefined) => {
     if (!id) return;
     setFocusedId(id);
-    rowRefs.current.get(id)?.focus();
+    const index = rowIndexRef.current.get(id);
+    if (index !== undefined) scrollToIndexRef.current(index);
+    const element = rowRefs.current.get(id);
+    if (element) {
+      pendingFocus.current = null;
+      element.focus();
+    } else {
+      pendingFocus.current = id;
+    }
   }, []);
+
+  useLayoutEffect(() => {
+    const id = pendingFocus.current;
+    if (!id) return;
+    const element = rowRefs.current.get(id);
+    if (!element) return;
+    pendingFocus.current = null;
+    element.focus();
+  });
 
   const toggle = useCallback((id: string, expanded: boolean) => {
     startTransition(() => {
@@ -689,28 +729,42 @@ export function IntelligenceTree({
     );
   }
 
+  const renderedRows = visibleRows.slice(rows.start, rows.end);
+  const tabStopId = renderedRows.some((row) => row.node.id === effectiveFocusedId)
+    ? effectiveFocusedId
+    : (renderedRows[0]?.node.id ?? null);
+
   return (
     <div
       role="tree"
       aria-label={label}
       className={cn("py-1", className)}
     >
-      {visibleRows.map((row) => (
-        <TreeRow
-          key={row.node.id}
-          row={row}
-          treeId={treeId}
-          focused={effectiveFocusedId === row.node.id}
-          setRowRef={setRowRef}
-          onFocus={setFocusedId}
-          onToggle={toggle}
-          onActivate={onActivate}
-          onKeyDown={onKeyDown}
-        />
-      ))}
+      <div
+        ref={listRef}
+        role="none"
+        style={{ paddingTop: rows.paddingTop, paddingBottom: rows.paddingBottom }}
+      >
+        {renderedRows.map((row) => (
+          <TreeRow
+            key={row.node.id}
+            row={row}
+            treeId={treeId}
+            focused={tabStopId === row.node.id}
+            setRowRef={setRowRef}
+            onFocus={setFocusedId}
+            onToggle={toggle}
+            onActivate={onActivate}
+            onKeyDown={onKeyDown}
+          />
+        ))}
+        {tooltip}
+      </div>
     </div>
   );
 }
+
+export const IntelligenceTree = memo(IntelligenceTreeView);
 
 export function IntelligenceFilter({
   value,

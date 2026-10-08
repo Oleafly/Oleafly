@@ -56,7 +56,11 @@
     "unreachable": "Oleafly Zotero'ya ulaşamadı. İnternet bağlantınızı kontrol edip yeniden deneyin.",
     "http_error": "Zotero bir hata döndürdü (HTTP {{status}}). Daha sonra yeniden deneyin.",
     "invalid_response": "Zotero, Oleafly'ın okuyamadığı bir yanıt gönderdi. Daha sonra yeniden deneyin.",
-    "too_large": "Zotero kitaplığınız tek seferde içe aktarılamayacak kadar büyük. Bunun yerine Zotero'dan bir koleksiyonu RDF dosyası olarak dışa aktarıp onu içe aktarın."
+    "too_large": "Zotero kitaplığınız tek seferde içe aktarılamayacak kadar büyük. Bunun yerine Zotero'dan bir koleksiyonu RDF dosyası olarak dışa aktarıp onu içe aktarın.",
+    "local_not_running": "Zotero bu bilgisayarda çalışmıyor. Zotero'yu açın veya zotero.org hesabınızı bağlayın.",
+    "local_api_disabled": "Zotero'da Ayarlar > Gelişmiş bölümünü açın ve “Bu bilgisayardaki diğer uygulamaların Zotero ile iletişim kurmasına izin ver” seçeneğini etkinleştirin.",
+    "local_unsupported": "Zotero'nun bu sürümü kitaplığını Oleafly ile paylaşamıyor. Zotero 7 veya daha yeni bir sürüme güncelleyin.",
+    "offline": "Oleafly çevrimdışı kipte olduğu için zotero.org'a ulaşamıyor."
   },
   "tex": {
     "no_host_binary": "TinyTeX bu sistemle uyumlu bir {{name}} ikili dosyası içermiyor.",

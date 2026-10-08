@@ -203,7 +203,7 @@ function ConversionNote({ note, details }: Readonly<{ note: string; details: rea
     <div className="space-y-1.5 text-xs text-muted-foreground">
       <p>{note}</p>
       {details.length > 0 && (
-        <ul data-testid="converter-details" className="max-h-32 space-y-0.5 overflow-auto font-mono text-[11px] leading-relaxed">
+        <ul data-testid="converter-details" className="max-h-32 select-text space-y-0.5 overflow-auto font-mono text-[11px] leading-relaxed">
           {[...new Set(details)].map((detail) => (
             <li key={detail} className="break-words">{detail}</li>
           ))}
@@ -562,7 +562,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                   <FileText className="size-5" />
                 </div>
                 <h2 className="mt-4 text-sm font-semibold">{t(($) => $.researchTools.converter.needsAttention)}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{error.message}</p>
+                <p className="mt-2 select-text text-sm leading-relaxed text-muted-foreground">{error.message}</p>
                 {error.localModel && (
                   <Button variant="outline" size="sm" className="mt-4" onClick={openLocalModelSettings}>
                     <Settings /> {t(($) => $.researchTools.converter.openAiSettings)}

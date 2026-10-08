@@ -245,6 +245,21 @@ describe("open files and programs outside the editor", () => {
     expect(mocks.listFiles).toHaveBeenCalled();
   });
 
+  it("keeps the file tree when coming back to the window finds no change on disk", async () => {
+    const tree = [
+      { path: "main.tex", is_dir: false },
+      { path: "references.bib", is_dir: false },
+    ];
+    useFilesStore.setState({ tree, treeTruncated: false });
+    mocks.listFiles.mockResolvedValue(tree.map((entry) => ({ ...entry })));
+
+    refreshOpenFilesFromDisk("project");
+
+    await vi.waitFor(() => expect(mocks.listFiles).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(useFilesStore.getState().tree).toBe(tree);
+  });
+
   it("ignores a project that is not open", () => {
     refreshOpenFilesFromDisk("other");
     expect(mocks.readFileContent).not.toHaveBeenCalled();

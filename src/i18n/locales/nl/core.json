@@ -358,7 +358,8 @@
     "referencesFor": "Referenties naar {{name}}",
     "renameFailed": "Kon niet hernoemen naar \"{{name}}\".",
     "renamePartial": "Hernoemd naar \"{{name}}\" in {{edited}} van {{total}} bestanden. Kon {{files}} niet schrijven.",
-    "renamed": "Hernoemd naar \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Hernoemd naar \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" komt niet overeen met een bestand in dit project."
   },
   "pandoc": {
     "downloadFailed": "Downloaden van pandoc is niet gelukt. Installeer het zelf en probeer het opnieuw.",

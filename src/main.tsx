@@ -6,6 +6,7 @@ import App from "./App";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { DevContextMenu } from "@/components/layout/DevContextMenu";
 import { IndexKeeper } from "@/components/editor/IndexKeeper";
+import { ZoteroKeeper } from "@/components/zotero/ZoteroKeeper";
 import { ThemeProvider } from "@/lib/theme";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
@@ -114,8 +115,17 @@ const BrowserChrome = lazy(() =>
 const RenameDialog = lazy(() =>
   import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
 );
+const FileRenameDialog = lazy(() =>
+  import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })),
+);
+const FileReferencesDialog = lazy(() =>
+  import("@/components/files/FileReferencesDialog").then((module) => ({ default: module.FileReferencesDialog })),
+);
 const AddCitationDialog = lazy(() =>
   import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
+);
+const ZoteroDialogs = lazy(() =>
+  import("@/components/zotero/ZoteroDialogs").then((module) => ({ default: module.ZoteroDialogs })),
 );
 const TableImportDialog = lazy(() =>
   import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
@@ -196,9 +206,13 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
       <Toaster />
       <DevContextMenu />
       <IndexKeeper />
+      <ZoteroKeeper />
       <Suspense fallback={null}>
         <RenameDialog />
+        <FileRenameDialog />
+        <FileReferencesDialog />
         <AddCitationDialog />
+        <ZoteroDialogs />
         <TableImportDialog />
         <FigureDialog />
         <TypstMigrationHost />

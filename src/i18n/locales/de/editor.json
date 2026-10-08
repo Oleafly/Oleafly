@@ -188,7 +188,8 @@
     "quote": "Zitat",
     "addLabel": "Label hinzufügen",
     "convertLatexMath": "LaTeX-Formeln in Typst umwandeln",
-    "noLatexMath": "Wählen Sie zuerst LaTeX-Formeln aus."
+    "noLatexMath": "Wählen Sie zuerst LaTeX-Formeln aus.",
+    "renameFile": "Datei umbenennen…"
   },
   "shell": {
     "noFileOpenTab": "Keine Datei geöffnet",
@@ -426,7 +427,7 @@
       "indentOrAccept": "Einrücken / Autovervollständigung übernehmen",
       "goToDefinition": "Zur Definition springen",
       "findReferences": "Referenzen suchen",
-      "renameSymbol": "Symbol umbenennen (im ganzen Projekt)",
+      "renameSymbol": "Symbol oder Datei umbenennen (im ganzen Projekt)",
       "formatDocument": "Typst-Dokument formatieren",
       "commandPalette": "Befehlspalette",
       "searchAllDocuments": "Alle Dokumente durchsuchen",
@@ -454,7 +455,8 @@
     "noEntries": "In diesem Projekt gibt es noch keine Einträge im Literaturverzeichnis.",
     "addNew": "Eine neue Zitation finden und hinzufügen…",
     "duplicate": "doppelt {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Aus Ihrer Zotero-Bibliothek"
   },
   "inlineAi": {
     "promptPlaceholder": "Beschreiben Sie die Änderung…  (Shift+Enter für eine neue Zeile)",

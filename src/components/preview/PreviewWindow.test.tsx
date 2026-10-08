@@ -554,3 +554,26 @@ it("navigates by a full spread after layout changes", async () => {
   fireEvent.click(screen.getByLabelText(enPreview.pages.next));
   expect(mocks.gotoPage).toHaveBeenCalledWith(3);
 });
+
+describe("detached preview scroll area", () => {
+  it("draws its own scrollbars over the PDF and scopes select-all to it", async () => {
+    mocks.native = true;
+    mocks.readCompiledPdf.mockResolvedValue(buffer(1));
+    render(<PreviewWindow />);
+    const snapshot: PreviewWorkspaceSnapshot = {
+      projectId: "alpha", engine: LATEX_ENGINE, engineLoaded: true, mainDoc: "main.tex",
+      status: "success", log: "Saved compile output", errors: [], diagnostics: null, compileTimeMs: 120,
+      compileRevision: 1, autoCompile: false, compileMode: "normal", checkSyntaxBeforeCompile: true, stopOnFirstError: false,
+      noMainDocument: false, systemTexLocked: false,
+      previewState: successState("alpha", 1, 1),
+    };
+    act(() => mocks.listeners.get("preview:workspace")?.({ payload: snapshot }));
+    await screen.findByTestId("detached-pdf-bytes");
+    const area = screen.getByTestId("detached-preview-scroll");
+    expect(area).toHaveClass("ofl-native-scrollbar-hidden");
+    const host = area.parentElement as HTMLElement;
+    expect(host.querySelector(":scope > [data-overlay-scrollbar='y']")).not.toBeNull();
+    expect(host.querySelector(":scope > [data-overlay-scrollbar='x']")).not.toBeNull();
+    expect(area).toHaveAttribute("data-select-all-scope");
+  });
+});

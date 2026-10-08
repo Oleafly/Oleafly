@@ -188,7 +188,8 @@
     "quote": "Citát",
     "addLabel": "Přidat návěští",
     "convertLatexMath": "Převést matematiku LaTeX do formátu Typst",
-    "noLatexMath": "Nejprve vyberte matematiku LaTeX."
+    "noLatexMath": "Nejprve vyberte matematiku LaTeX.",
+    "renameFile": "Přejmenovat soubor…"
   },
   "shell": {
     "noFileOpenTab": "Není otevřený soubor",
@@ -440,7 +441,7 @@
       "indentOrAccept": "Odsadit / přijmout doplnění",
       "goToDefinition": "Přejít na definici",
       "findReferences": "Najít reference",
-      "renameSymbol": "Přejmenovat symbol (v celém projektu)",
+      "renameSymbol": "Přejmenovat symbol nebo soubor (v celém projektu)",
       "formatDocument": "Formátovat dokument Typst",
       "commandPalette": "Paleta příkazů",
       "searchAllDocuments": "Hledat ve všech dokumentech",
@@ -468,7 +469,8 @@
     "noEntries": "V tomto projektu zatím nejsou žádné záznamy bibliografie.",
     "addNew": "Najít a přidat novou citaci…",
     "duplicate": "duplicita {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Z vaší knihovny Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Popište změnu…  (Shift+Enter vloží nový řádek)",

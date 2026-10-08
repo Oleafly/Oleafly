@@ -169,6 +169,15 @@ export interface DidSaveTextDocumentParams {
   text?: string;
 }
 
+export interface FileEvent {
+  uri: DocumentUri;
+  type: 1 | 2 | 3;
+}
+
+export interface DidChangeWatchedFilesParams {
+  changes: FileEvent[];
+}
+
 export interface Diagnostic {
   range: Range;
   severity?: 1 | 2 | 3 | 4;

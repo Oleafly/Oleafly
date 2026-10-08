@@ -68,10 +68,10 @@ describe("Git status badges", () => {
     render(<GitStatusBadge meta={gitStatusMeta("?")} testId="badge" />);
 
     const badge = screen.getByTestId("badge");
-    expect(badge).toHaveTextContent(`U${status.untracked}`);
+    expect(badge).toHaveTextContent("U");
     expect(badge).toHaveAttribute("title", status.untracked);
+    expect(badge).toHaveAccessibleName(status.untracked);
     expect(screen.getByText("U")).toHaveAttribute("aria-hidden");
-    expect(screen.getByText(status.untracked)).toHaveClass("sr-only");
   });
 
   it("falls back to the status letter for codes without a colour", () => {
@@ -82,7 +82,8 @@ describe("Git status badges", () => {
 
   it("labels a folder dot", () => {
     render(<GitFolderDot meta={gitStatusMeta("M")} />);
-    expect(screen.getByText(status.containsChanges)).toHaveClass("sr-only");
-    expect(screen.getByTitle(status.containsChanges)).toHaveClass("text-amber-600");
+    expect(screen.getByRole("img", { name: status.containsChanges })).toHaveClass(
+      "text-amber-600",
+    );
   });
 });

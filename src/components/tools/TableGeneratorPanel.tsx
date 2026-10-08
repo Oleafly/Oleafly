@@ -223,7 +223,8 @@ export function TableGeneratorPanel() {
         </div>
         <pre
           data-editor-theme={editorTheme}
-          className="overflow-auto p-4 font-mono text-xs"
+          data-select-all-scope
+          className="select-text overflow-auto p-4 font-mono text-xs"
           style={{
             backgroundColor: "var(--cm-editor-bg, var(--background))",
             color: "var(--cm-editor-fg, var(--foreground))",

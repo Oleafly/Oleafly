@@ -42,7 +42,9 @@
     "privacyNote": "只會將識別碼或標題傳送至 doi.org、arXiv 或 Crossref。",
     "title": "新增引用",
     "bibliography": "參考文獻",
-    "bibliographyHint": "這個專案有多個參考文獻檔案。條目會加入你在此選擇的檔案。"
+    "bibliographyHint": "這個專案有多個參考文獻檔案。條目會加入你在此選擇的檔案。",
+    "zoteroMatches": "來自你的 Zotero 文獻庫",
+    "zoteroPlaceholder": "搜尋你的 Zotero 文獻庫，或貼上 DOI、arXiv 編號或標題"
   },
   "backendProtocol": {
     "mismatch": "此視窗與其後端是為不同的 Oleafly 版本建置的，部分功能可能無法運作。重新安裝應用程式即可解決。"
@@ -324,6 +326,22 @@
     "presentWithPresenter": {
       "label": "以簡報者檢視放映投影片",
       "keywords": "放映 投影片 簡報者檢視 講者備忘稿 計時器 下一張投影片 present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "專注 無干擾 全螢幕 隱藏介面 極簡 寫作",
+      "label": "切換禪模式"
+    },
+    "zoteroAddMissing": {
+      "label": "從 Zotero 新增缺少的引用",
+      "keywords": "缺少 引用 未定義 鍵 參考文獻 修復 zotero missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": "從 Zotero 更新 .bib 條目",
+      "keywords": "更新 重新整理 參考文獻 條目 變更 zotero update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "同步 Zotero 文獻庫",
+      "keywords": "同步 重新整理 文獻庫 zotero sync refresh library"
     }
   },
   "community": {
@@ -1100,7 +1118,8 @@
       "editorPreview": "編輯器 + 預覽",
       "editorPreviewAi": "編輯器 + 預覽 + AI",
       "previewAi": "預覽 + AI",
-      "previewOnly": "僅預覽"
+      "previewOnly": "僅預覽",
+      "zenMode": "禪模式"
     },
     "newProjectName": "新專案名稱",
     "projectName": "專案名稱",
@@ -1319,5 +1338,19 @@
     "location": "{{file}}，第 {{line}} 行",
     "error": "錯誤",
     "warning": "警告"
+  },
+  "fileRenameDialog": {
+    "title": "重新命名檔案",
+    "titleFolder": "重新命名資料夾",
+    "newPath": "新路徑",
+    "hint": "不存在的資料夾會自動建立。",
+    "invalid": "請使用此專案內的路徑。",
+    "exists": "{{path}} 已存在。"
+  },
+  "zen": {
+    "compileFailed": "編譯失敗",
+    "compiling": "正在編譯",
+    "hideLog": "隱藏編譯記錄檔",
+    "showLog": "顯示編譯記錄檔"
   }
 }

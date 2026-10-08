@@ -210,5 +210,20 @@
     "clearFilter": "Filter leeren",
     "filterPlaceholder": "Filtern…",
     "noProject": "Kein Projekt"
+  },
+  "fileReferences": {
+    "title": "Verweise auf {{name}} aktualisieren?",
+    "files_one": "{{count}} Datei",
+    "files_other": "{{count}} Dateien",
+    "summary_one": "{{count}} Verweis in $t(workspace:fileReferences.files, { \"count\": {{files}} }) nutzt noch den alten Pfad {{path}}.",
+    "summary_other": "{{count}} Verweise in $t(workspace:fileReferences.files, { \"count\": {{files}} }) nutzen noch den alten Pfad {{path}}.",
+    "fileCount_one": "{{count}} Verweis",
+    "fileCount_other": "{{count}} Verweise",
+    "dontAsk": "Nicht mehr fragen",
+    "update": "Verweise aktualisieren",
+    "skip": "Nicht aktualisieren",
+    "failed_one": "{{count}} Datei wurde nach dem Verschieben geändert oder konnte nicht gespeichert werden. Sie nutzt noch den alten Pfad.",
+    "failed_other": "{{count}} Dateien wurden nach dem Verschieben geändert oder konnten nicht gespeichert werden. Sie nutzen noch den alten Pfad.",
+    "close": "Schließen, ohne Verweise zu aktualisieren"
   }
 }

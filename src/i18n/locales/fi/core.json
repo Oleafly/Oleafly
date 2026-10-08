@@ -358,7 +358,8 @@
     "referencesFor": "Viitteet kohteeseen {{name}}",
     "renameFailed": "Nimeä ei voitu muuttaa muotoon \"{{name}}\".",
     "renamePartial": "Nimettiin muotoon \"{{name}}\" {{edited}}/{{total}} tiedostossa. Kohteita {{files}} ei voitu kirjoittaa.",
-    "renamed": "Nimettiin muotoon \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) kohteessa $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Nimettiin muotoon \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) kohteessa $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" ei vastaa mitään tämän projektin tiedostoa."
   },
   "pandoc": {
     "downloadFailed": "Pandocin lataus ei onnistunut. Asenna se käsin ja yritä sitten uudelleen.",

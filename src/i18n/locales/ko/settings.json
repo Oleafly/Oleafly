@@ -703,6 +703,15 @@
           "description": "Typst 파일을 저장할 때마다 실수일 만한 부분을 검사합니다. 이 설정을 켜거나 끄면 Typst 언어 서버가 다시 시작됩니다.",
           "label": "Typst 린트 검사"
         }
+      },
+      "fileMove": {
+        "label": "파일을 옮길 때",
+        "description": "LaTeX, Typst, Markdown 소스에서 이름이 바뀌거나 옮겨진 파일을 가리키는 경로를 업데이트합니다.",
+        "options": {
+          "ask": "묻기",
+          "always": "항상 업데이트",
+          "never": "업데이트 안 함"
+        }
       }
     },
     "files": {
@@ -804,6 +813,25 @@
       "startWithProject": {
         "description": "터미널을 처음 열 때가 아니라 프로젝트를 열 때 shell을 시작합니다.",
         "label": "프로젝트와 함께 shell 시작"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "PDF가 숨겨져 있는 동안 텍스트를 가운데 한 열에 유지합니다.",
+        "label": "편집기 가운데 맞춤"
+      },
+      "fullScreen": {
+        "description": "Zen 모드에서 화면을 가득 채우고, 나갈 때 창을 원래대로 되돌립니다.",
+        "label": "전체 화면으로 전환"
+      },
+      "showPdf": {
+        "description": "Zen 모드가 시작될 때 PDF가 숨겨져 있으면 첫 컴파일 때 편집기 옆에 엽니다.",
+        "label": "컴파일할 때 PDF 표시"
+      },
+      "title": "Zen 모드",
+      "toggle": {
+        "description": "도구 모음, 사이드바, 어시스턴트, 터미널을 숨겨 글만 남깁니다. 방해 없는 모드라고도 합니다. 열려 있는 프로젝트가 필요합니다.",
+        "label": "Zen 모드 켜기"
       }
     }
   },
@@ -1180,11 +1208,49 @@
       "apiKeyLabel": "Zotero API 키",
       "connected": "Zotero 라이브러리에 연결되었습니다.",
       "connectedAs": "{{username}}(으)로 연결되었습니다.",
-      "description": "Zotero 라이브러리에서 인용과 참고문헌을 가져옵니다.",
       "disconnectFailed": "Oleafly가 저장된 Zotero 키를 삭제하지 못했습니다. 다시 시도하세요.",
-      "importHint": "가져오려면 프로젝트의 참고문헌 패널을 열고 참고문헌 라이브러리 가져오기를 선택하세요.",
       "userIdLabel": "Zotero 사용자 ID",
-      "userIdPlaceholder": "사용자 ID"
+      "userIdPlaceholder": "사용자 ID",
+      "citeDescription": "글을 쓰는 동안 Zotero 라이브러리 전체를 검색하고, 인용한 것만 추가하세요. Oleafly는 라이브러리를 읽기만 하고 절대 바꾸지 않습니다.",
+      "local": {
+        "heading": "이 컴퓨터의 Zotero",
+        "ready": "Zotero {{version}}에 연결되었습니다.",
+        "readyNoVersion": "Zotero에 연결되었습니다.",
+        "bbtFound": "Better BibTeX {{version}}이(가) 설치되어 있어 인용 키를 Better BibTeX에서 가져옵니다.",
+        "bbtMissing": "Better BibTeX가 설치되어 있지 않아 인용 키를 Zotero에서 가져옵니다.",
+        "notRunning": "Zotero가 실행 중이 아닙니다. 라이브러리를 검색하려면 Zotero를 열거나, 아래에서 zotero.org 계정을 연결하세요.",
+        "apiDisabled": "Zotero에서 설정 > 고급을 열고 \"Allow other applications on this computer to communicate with Zotero\"를 켜세요.",
+        "unsupported": "이 버전의 Zotero는 라이브러리를 공유할 수 없습니다. Zotero 7 이상으로 업데이트하세요.",
+        "unknown": "Oleafly가 아직 Zotero를 찾아보지 않았습니다."
+      },
+      "test": "연결 테스트",
+      "syncNow": "지금 동기화",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX를 찾을 수 없음",
+        "local": "이 컴퓨터의 Zotero에서 읽음",
+        "web": "zotero.org에서 읽음",
+        "library_other": "{{name}}: 항목 {{formatted}}개"
+      },
+      "library": {
+        "heading": "검색할 라이브러리",
+        "myLibrary": "내 라이브러리",
+        "toggle": "{{name}} 검색",
+        "items_other": "항목 {{formatted}}개"
+      },
+      "sync": {
+        "never": "아직 동기화하지 않았습니다.",
+        "syncing": "Zotero 라이브러리를 동기화하는 중…",
+        "progress": "항목 {{total}}개 중 {{done}}개를 동기화하는 중…",
+        "status_other": "항목 {{formatted}}개를 인용할 수 있습니다. 마지막 동기화: {{time}}.",
+        "fromCache": "Zotero가 닫혀 있어 @ 검색은 마지막 동기화 때의 사본을 사용합니다.",
+        "rateLimited": "zotero.org가 Oleafly에 잠시 기다려 달라고 요청했습니다. {{time}} 이후에 다시 시도합니다."
+      },
+      "account": {
+        "heading": "zotero.org 계정",
+        "description": "이 컴퓨터에서 Zotero가 열려 있지 않을 때 계정을 사용합니다. 그룹 라이브러리도 함께 포함됩니다."
+      }
     }
   },
   "language": {
@@ -1550,6 +1616,10 @@
       "openFolder": {
         "label": "폴더 열기",
         "description": "컴퓨터의 폴더를 프로젝트로 엽니다."
+      },
+      "toggleZenMode": {
+        "description": "글쓰기 영역 외의 모든 것을 숨기거나 다시 표시합니다.",
+        "label": "Zen 모드 전환"
       }
     },
     "application": {
@@ -1572,7 +1642,7 @@
         "italic": "기울임",
         "jumpToSourceFromPdf": "PDF에서 소스로 이동",
         "redo": "다시 실행",
-        "renameSymbol": "프로젝트 전체에서 심볼 이름 바꾸기",
+        "renameSymbol": "프로젝트 전체에서 심볼 또는 파일 이름 바꾸기",
         "slashCommandMenu": "슬래시 명령 삽입 메뉴",
         "triggerAutocomplete": "자동 완성 실행",
         "undo": "실행 취소"

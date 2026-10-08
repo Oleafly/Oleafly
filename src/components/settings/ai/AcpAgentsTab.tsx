@@ -561,7 +561,7 @@ function AgentCatalogEmptyState({
             {t(($) => $.settings.ai.agents.checkFailedTitle)}
           </EmptyTitle>
           <div role="alert">
-            <EmptyDescription className="text-xs leading-relaxed text-destructive">
+            <EmptyDescription className="select-text text-xs leading-relaxed text-destructive">
               {error}
             </EmptyDescription>
           </div>
@@ -1004,7 +1004,7 @@ export function AcpAgentsTab({
             <div className="space-y-2">
               <p
                 role="alert"
-                className="max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-destructive/40 p-2 text-xs text-destructive"
+                className="max-h-48 select-text overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-destructive/40 p-2 text-xs text-destructive"
               >
                 {error}
               </p>

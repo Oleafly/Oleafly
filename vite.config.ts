@@ -7,6 +7,7 @@ import {
   assertNoProductionDevHookTokens,
   assertNoTauriStyleNonceTriggers,
 } from "./scripts/production-hook-audit.mjs";
+import { tailwindPropertiesFallbackPlugin } from "./src/build/tailwind-properties-fallback";
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
 const host = process.env.TAURI_DEV_HOST;
@@ -78,7 +79,7 @@ export const rejectProductionDevHooks = (): Plugin => ({
 });
 
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss(), rejectProductionDevHooks(), staticE2eClient()],
+  plugins: [react(), tailwindcss(), tailwindPropertiesFallbackPlugin(), rejectProductionDevHooks(), staticE2eClient()],
   optimizeDeps: {
     exclude: ["harper.js"],
     include: [

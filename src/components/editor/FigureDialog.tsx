@@ -522,7 +522,7 @@ export function FigureDialog() {
             </div>
             <ImageGrid images={images} selected={selected} onChoose={choose} />
             {error && (
-              <p role="alert" className="mt-2 text-xs text-destructive">
+              <p role="alert" className="mt-2 select-text text-xs text-destructive">
                 {error}
               </p>
             )}

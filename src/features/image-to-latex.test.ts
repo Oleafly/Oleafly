@@ -27,7 +27,10 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast }));
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.files } }));
 
-import { imageToLatex, imageToTypst } from "./image-to-latex";
+import { getConfig } from "@/lib/tauri";
+import { pickActiveProvider } from "@/lib/ai-providers";
+import { invalidateConfigCache } from "@/lib/config-cache";
+import { imageToLatex, imageToLatexAvailable, imageToTypst } from "./image-to-latex";
 
 const KEY = "image-to-latex";
 const image = () => new File([new Uint8Array([1, 2, 3])], "equation.png", { type: "image/png" });
@@ -174,3 +177,33 @@ describe("imageToLatex", () => {
     );
   });
 });
+
+describe("imageToLatexAvailable", () => {
+  beforeEach(() => {
+    invalidateConfigCache();
+    vi.mocked(getConfig).mockResolvedValue({} as never);
+    vi.mocked(pickActiveProvider).mockReturnValue({ providerId: "openai", modelId: "gpt-4o" } as never);
+  });
+
+  it("reads the AI config once when several toolbars ask on project open", async () => {
+    await expect(imageToLatexAvailable()).resolves.toBe(true);
+    await expect(imageToLatexAvailable()).resolves.toBe(true);
+
+    expect(getConfig).toHaveBeenCalledTimes(1);
+  });
+
+  it("reads the config again after the AI settings change", async () => {
+    await imageToLatexAvailable();
+    window.dispatchEvent(new CustomEvent("oleafly:ai-config-changed"));
+    await imageToLatexAvailable();
+
+    expect(getConfig).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports unavailable when the config cannot be read", async () => {
+    vi.mocked(getConfig).mockRejectedValue(new Error("no backend"));
+
+    await expect(imageToLatexAvailable()).resolves.toBe(false);
+  });
+});
+

@@ -179,20 +179,20 @@ vi.mock("pdfjs-dist", () => {
       readonly textDivs: HTMLElement[] = [];
       constructor(
         private readonly options: {
-          textContentSource: { items: Item[] };
+          textContentSource: ReadableStream<{ items: Item[] }>;
           container: HTMLElement;
         },
       ) {}
-      render() {
-        if (harness.textLayerError) return Promise.reject(harness.textLayerError);
-        for (const item of this.options.textContentSource.items) {
+      async render() {
+        if (harness.textLayerError) throw harness.textLayerError;
+        const { readTextContentItems } = await import("./test-text-content");
+        for (const item of await readTextContentItems(this.options.textContentSource)) {
           if (!("str" in item)) continue;
           const span = document.createElement("span");
           span.textContent = item.str;
           this.textDivs.push(span);
           this.options.container.append(span);
         }
-        return Promise.resolve();
       }
       cancel() {
         harness.textLayerCancelled++;

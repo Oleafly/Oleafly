@@ -51,7 +51,7 @@ import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
 import { SaveFlushError, type SaveFailure } from "@/store/save-flush-error";
 import { scanImportCompatibility } from "@oleafly/latex";
-import { cancelProofreading } from "@/lib/proofreading/client";
+import { cancelProofreading, releaseIdleProofreadingWorker } from "@/lib/proofreading/client";
 import { effectiveDictionaryLocale } from "@/lib/proofreading/dictionary-catalog";
 import { useDiffStore } from "@/store/diff";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
@@ -77,6 +77,7 @@ import {
 import { randomFraction } from "@/lib/random";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
+import { readProjectSourcesBatch } from "@/lib/project-sources";
 
 export { SaveFlushError, type SaveFailure };
 
@@ -504,7 +505,12 @@ interface FilesStore {
     action: (generation: number) => Promise<T>,
   ) => Promise<T>;
   recordMutationGeneration: (projectId: string, generation: number) => void;
-  writeProjectFile: (projectId: string, path: string, content: string) => Promise<void>;
+  writeProjectFile: (
+    projectId: string,
+    path: string,
+    content: string,
+    options?: { crlf?: boolean },
+  ) => Promise<void>;
   applyExternalWrite: (
     projectId: string,
     path: string,
@@ -520,6 +526,28 @@ interface FilesStore {
   setTypstVersion: (version: string | null) => Promise<void>;
   refreshEngine: () => Promise<void>;
   setShellEscape: (allow: boolean) => Promise<void>;
+}
+
+export interface EntryRenamedEvent {
+  readonly projectId: string;
+  readonly from: string;
+  readonly to: string;
+  readonly previousTree: readonly FileEntry[];
+  readonly tree: readonly FileEntry[];
+  readonly previousMainDoc: string;
+  readonly mainDoc: string;
+}
+
+const entryRenamed = createEmitter<[event: EntryRenamedEvent]>();
+
+export const onEntryRenamed = entryRenamed.subscribe;
+
+function notifyEntryRenamed(event: EntryRenamedEvent): void {
+  try {
+    entryRenamed.emit(event);
+  } catch (error) {
+    void logError("follow renamed entry", error);
+  }
 }
 
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1065,18 +1093,40 @@ async function loadCompatibilityInputs(
       return depth(left) - depth(right);
     })
     .slice(0, 40);
-  const texFiles: Array<{ path: string; content: string }> = [];
-  for (const path of texPaths) {
-    const content =
-      get().files[path]?.content ?? (await readCompatibilityInput(id, path)) ?? "";
-    if (seq !== openSeq) break;
-    if (content) texFiles.push({ path, content });
-  }
   const rcName = ["latexmkrc", ".latexmkrc"].find((name) =>
     tree.some((entry) => readable(entry) && entry.path === name),
   );
-  const latexmkrc = rcName ? await readCompatibilityInput(id, rcName) : null;
+  const unopened = texPaths.filter((path) => get().files[path]?.content === undefined);
+  const disk = await readCompatibilityInputs(id, rcName ? [...unopened, rcName] : unopened);
+  const texFiles: Array<{ path: string; content: string }> = [];
+  if (seq === openSeq) {
+    for (const path of texPaths) {
+      const content = get().files[path]?.content ?? disk.get(path) ?? "";
+      if (content) texFiles.push({ path, content });
+    }
+  }
+  const latexmkrc = rcName ? (disk.get(rcName) ?? null) : null;
   return { texFiles, latexmkrc };
+}
+
+async function readCompatibilityInputs(
+  id: string,
+  paths: readonly string[],
+): Promise<Map<string, string>> {
+  const read = new Map<string, string>();
+  if (paths.length === 0) return read;
+  try {
+    const batch = await readProjectSourcesBatch(id, paths);
+    for (const [path, text] of Object.entries(batch.texts)) read.set(path, text);
+  } catch (error) {
+    void logError("scan project compatibility", error);
+  }
+  for (const path of paths) {
+    if (read.has(path)) continue;
+    const content = await readCompatibilityInput(id, path);
+    if (content !== null) read.set(path, content);
+  }
+  return read;
 }
 
 async function readCompatibilityInput(id: string, path: string): Promise<string | null> {
@@ -1681,6 +1731,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     resetDiskState();
     cancelProofreading("source");
     cancelProofreading("visual");
+    releaseIdleProofreadingWorker();
     useMcpApprovalStore.getState().cancelAll();
     await mcpSetActiveProject(null).catch(() => {});
     invalidateWysiwygProjectSession();
@@ -2052,6 +2103,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     await flushDirtyBuffers(projectId, get);
     await drainProjectWrites(projectId);
     const expectedGeneration = await refreshMutationGeneration(projectId);
+    const previousTree = get().tree;
     const destination = await apiRenameFile(
       projectId,
       from,
@@ -2119,6 +2171,17 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       }
     }
     await get().refreshTree();
+    if (destination !== from && get().projectId === projectId) {
+      notifyEntryRenamed({
+        projectId,
+        from,
+        to: destination,
+        previousTree,
+        tree: get().tree,
+        previousMainDoc,
+        mainDoc: get().mainDoc,
+      });
+    }
     return destination;
   }),
 
@@ -2259,14 +2322,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  writeProjectFile: async (projectId, path, content) => {
+  writeProjectFile: async (projectId, path, content, options) => {
     if (projectFolderIsReadOnly(projectId)) throw new Error(readOnlyFolderMessage());
     const baselineRevision = fileReloadRevision;
     const adoptable = (file: FileState | undefined) =>
       file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
     const expectedGeneration = await get().prepareExternalMutation(projectId);
     const canonicalContent = normalizeTextContent(content);
-    const crlf = diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
+    const crlf = options?.crlf ?? diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
     const result = await writeFileContent(
       projectId,
@@ -2305,7 +2368,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         scheduleAutosave(get);
       }
     }
-    await get().refreshTree();
+    await get().refreshTree({ keepUnchanged: true });
     notifyProjectFilesChanged(projectId, [path]);
   },
 

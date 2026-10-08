@@ -101,7 +101,8 @@ export function Toaster() {
           // colour change on the toast and a dimmed action instead.
           toast:
             "group toast group-[.toaster]:bg-popover group-[.toaster]:text-popover-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg group-[.toaster]:focus-visible:!border-ring group-[.toaster]:focus-visible:!shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
+          title: "select-text",
+          description: "select-text group-[.toast]:text-muted-foreground",
           actionButton:
             "group-[.toast]:!bg-transparent group-[.toast]:!text-primary group-[.toast]:!p-0 group-[.toast]:font-medium group-[.toast]:underline group-[.toast]:underline-offset-4 group-[.toast]:hover:opacity-80 group-[.toast]:focus-visible:!shadow-none group-[.toast]:focus-visible:opacity-80",
           cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",

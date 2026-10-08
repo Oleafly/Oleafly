@@ -1,7 +1,39 @@
+import {
+  latexWrapperSections,
+  scanLatexDefinitions,
+  type LatexDefinitions,
+  type LatexWrapperSection,
+} from "./latex-definitions";
 import { decodeLatexAccents } from "./tex-text";
 
 const SIMPLE_TEXT_COMMANDS =
-  /\\(?:emph|footnotesize|[Hh]uge|LARGE|[Ll]arge|mathbf|mathit|mathrm|mathsf|scriptsize|small|textbf|textit|textnormal|textrm|textsf|texttt|tiny)\s*\{([^{}]*)\}/gu;
+  /\\(?:emph|footnotesize|[Hh]uge|LARGE|[Ll]arge|MakeLowercase|MakeTextLowercase|MakeTextUppercase|MakeUppercase|bm|boldsymbol|mathbf|mathit|mathrm|mathsf|mbox|pmb|scriptsize|small|text|textbf|textit|textmd|textnormal|textrm|textsc|textsf|textsl|texttt|textup|tiny|uline|underline)\s*\{([^{}]*)\}/gu;
+const COLOURED_TEXT = /\\(?:colorbox|textcolor)\s*(?:\[[^\]]*\]\s*)?\{[^{}]*\}\s*\{([^{}]*)\}/gu;
+const COLOUR_SWITCH = /\\color\s*(?:\[[^\]]*\]\s*)?\{[^{}]*\}/gu;
+const FONT_SWITCHES =
+  /\\(?:bfseries|em|footnotesize|[Hh]uge|itshape|LARGE|[Ll]arge|mdseries|normalfont|normalsize|rmfamily|scriptsize|scshape|selectfont|sffamily|slshape|small|tiny|ttfamily|upshape)(?![\p{L}@])\s*/gu;
+const NAME_REFERENCE = /\\[nN]ameref\*?\s*\{([^{}]*)\}/gu;
+const MATH_DELIMITERS = /(?<!\\)\$|\\[()]/gu;
+const BRACE_GROUP = /\{([^{}\\]*)\}/gu;
+const COMMAND_LETTER = /[\p{L}@]/u;
+const SPACE = /\s/u;
+
+function bracesAnArgument(text: string, open: number): boolean {
+  if (text[open - 1] === "\\") return true;
+  let at = open - 1;
+  while (at >= 0 && SPACE.test(text[at])) at -= 1;
+  if (text[at] === "]") return true;
+  if (text[at] === "*") at -= 1;
+  const end = at;
+  while (at >= 0 && COMMAND_LETTER.test(text[at])) at -= 1;
+  return at < end && text[at] === "\\";
+}
+
+function unwrapPlainGroups(text: string): string {
+  return text.replace(BRACE_GROUP, (whole, inner: string, offset: number) =>
+    bracesAnArgument(text, offset) ? whole : inner,
+  );
+}
 
 function maskComments(text: string): string {
   return text
@@ -69,17 +101,95 @@ function collectDefinitions(text: string, macros: Map<string, string>): void {
   }
 }
 
+const LATEX_MACRO_SOURCE = /\.(?:cls|latex|ltx|sty|tex)$/iu;
+
+function collectFileMacros(source: string, macros: Map<string, string>): void {
+  const text = maskComments(source);
+  collectNewCommands(text, macros);
+  collectDefinitions(text, macros);
+}
+
 export function collectLatexOutlineMacros(
   files: Readonly<Record<string, string>>,
 ): ReadonlyMap<string, string> {
   const macros = new Map<string, string>();
   for (const [path, source] of Object.entries(files)) {
-    if (!/\.(?:cls|latex|ltx|sty|tex)$/iu.test(path)) continue;
-    const text = maskComments(source);
-    collectNewCommands(text, macros);
-    collectDefinitions(text, macros);
+    if (!LATEX_MACRO_SOURCE.test(path)) continue;
+    collectFileMacros(source, macros);
   }
   return macros;
+}
+
+type FileMacros = Readonly<{
+  source: string;
+  macros: ReadonlyMap<string, string>;
+}>;
+
+export function createLatexOutlineMacroCollector(): (
+  files: Readonly<Record<string, string>>,
+) => ReadonlyMap<string, string> {
+  let cache = new Map<string, FileMacros>();
+  return (files) => {
+    const next = new Map<string, FileMacros>();
+    const macros = new Map<string, string>();
+    for (const [path, source] of Object.entries(files)) {
+      if (!LATEX_MACRO_SOURCE.test(path)) continue;
+      let entry = cache.get(path);
+      if (entry?.source !== source) {
+        const fileMacros = new Map<string, string>();
+        collectFileMacros(source, fileMacros);
+        entry = { source, macros: fileMacros };
+      }
+      next.set(path, entry);
+      for (const [name, body] of entry.macros) macros.set(name, body);
+    }
+    cache = next;
+    return macros;
+  };
+}
+
+const LATEX_DOCUMENT_SOURCE = /\.(?:latex|ltx|tex)$/iu;
+
+type FileDefinitions = Readonly<{ source: string; masked: string; definitions: LatexDefinitions }>;
+type FileWrapperSections = Readonly<{ source: string; key: string; sections: readonly LatexWrapperSection[] }>;
+
+export function createLatexWrapperSectionCollector(): (
+  files: Readonly<Record<string, string>>,
+) => ReadonlyMap<string, readonly LatexWrapperSection[]> {
+  let definitionCache = new Map<string, FileDefinitions>();
+  let sectionCache = new Map<string, FileWrapperSections>();
+  return (files) => {
+    const nextDefinitions = new Map<string, FileDefinitions>();
+    for (const [path, source] of Object.entries(files)) {
+      if (!LATEX_MACRO_SOURCE.test(path)) continue;
+      let entry = definitionCache.get(path);
+      if (entry?.source !== source) {
+        const masked = maskComments(source);
+        entry = { source, masked, definitions: scanLatexDefinitions(masked) };
+      }
+      nextDefinitions.set(path, entry);
+    }
+    definitionCache = nextDefinitions;
+    const wrappers = [...nextDefinitions.values()].flatMap((entry) => entry.definitions.wrappers);
+    const key = JSON.stringify(wrappers);
+    const nextSections = new Map<string, FileWrapperSections>();
+    const result = new Map<string, readonly LatexWrapperSection[]>();
+    for (const [path, entry] of nextDefinitions) {
+      if (!LATEX_DOCUMENT_SOURCE.test(path)) continue;
+      let sections = sectionCache.get(path);
+      if (sections?.source !== entry.source || sections.key !== key) {
+        sections = {
+          source: entry.source,
+          key,
+          sections: latexWrapperSections(entry.masked, wrappers, entry.definitions.spans),
+        };
+      }
+      nextSections.set(path, sections);
+      if (sections.sections.length > 0) result.set(path, sections.sections);
+    }
+    sectionCache = nextSections;
+    return result;
+  };
 }
 
 function expandProjectMacros(
@@ -106,12 +216,23 @@ function expandProjectMacros(
 export function renderLatexOutlineTitle(
   source: string,
   macros: ReadonlyMap<string, string> = new Map(),
+  headingsByLabel: ReadonlyMap<string, string> = new Map(),
 ): string {
-  let result = decodeLatexAccents(expandProjectMacros(source, macros));
+  const named = source.replace(NAME_REFERENCE, (_whole, label: string) => headingsByLabel.get(label.trim()) ?? label.trim());
+  let result = decodeLatexAccents(expandProjectMacros(named, macros)).replace(MATH_DELIMITERS, "");
   let previous = "";
   while (result !== previous) {
     previous = result;
-    result = result.replace(SIMPLE_TEXT_COMMANDS, "$1");
+    result = result.replace(SIMPLE_TEXT_COMMANDS, "$1").replace(COLOURED_TEXT, "$1");
+  }
+  result = result
+    .replace(COLOUR_SWITCH, "")
+    .replace(/\{\\(?:bf|it|rm|sf|tt)\s+([^\s{}][^{}]*|)\}/gu, "$1")
+    .replace(FONT_SWITCHES, "");
+  previous = "";
+  while (result !== previous) {
+    previous = result;
+    result = unwrapPlainGroups(result);
   }
   return result
     .replace(/\\LaTeX(?:\s*\{\s*\})?/gu, "LaTeX")
@@ -120,7 +241,6 @@ export function renderLatexOutlineTitle(
     .replace(/\\textasciicircum\s*\{\s*\}/gu, "^")
     .replace(/\\textbackslash\s*\{\s*\}/gu, "\\")
     .replace(/\\(?:centering|protect|relax|xspace)\b/gu, "")
-    .replace(/\{\\(?:bf|it|rm|sf|tt)\s+([^\s{}][^{}]*|)\}/gu, "$1")
     .replace(/\\(?:,|;|:|!|\s)/gu, " ")
     .replace(/\\pm\b/gu, "±")
     .replace(/\\times\b/gu, "×")

@@ -5,21 +5,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   addCitations: vi.fn(),
-  getConnectorKey: vi.fn(),
+  zoteroWebAccount: vi.fn(),
   logError: vi.fn(),
   parseCitationFile: vi.fn(),
-  setConnectorKey: vi.fn(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
   zoteroLibraryBibtex: vi.fn(),
-  zoteroVerify: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", () => ({
-  getConnectorKey: mocks.getConnectorKey,
-  setConnectorKey: mocks.setConnectorKey,
+  zoteroWebAccount: mocks.zoteroWebAccount,
   zoteroLibraryBibtex: mocks.zoteroLibraryBibtex,
-  zoteroVerify: mocks.zoteroVerify,
 }));
 
 vi.mock("@/features/citation", () => ({
@@ -45,9 +41,7 @@ import { ImportReferenceLibraryDialog } from "./ImportReferenceLibraryDialog";
 const zoteroText = enReferences.import.zotero;
 
 function connectZotero() {
-  mocks.getConnectorKey.mockImplementation(async (id: string) =>
-    id === "zotero-api-key" ? "zk-key" : null,
-  );
+  mocks.zoteroWebAccount.mockResolvedValue({ userId: "12345", username: "" });
 }
 
 async function expectInlineError(message: string) {
@@ -57,7 +51,7 @@ async function expectInlineError(message: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.getConnectorKey.mockResolvedValue(null);
+  mocks.zoteroWebAccount.mockResolvedValue(null);
   mocks.zoteroLibraryBibtex.mockResolvedValue({
     bibtex: "@article{smith_2023,\n\ttitle = {A paper},\n}",
     count: 1,
@@ -395,7 +389,7 @@ describe("ImportReferenceLibraryDialog", () => {
     render(<ImportReferenceLibraryDialog open onOpenChange={onOpenChange} />);
 
     await waitFor(() =>
-      expect(mocks.getConnectorKey).toHaveBeenCalledWith("zotero-api-key"),
+      expect(mocks.zoteroWebAccount).toHaveBeenCalled(),
     );
     expect(
       screen.queryByRole("button", { name: zoteroText.importLibrary }),

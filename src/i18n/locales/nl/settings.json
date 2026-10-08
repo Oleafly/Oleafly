@@ -708,6 +708,15 @@
           "description": "Controleert Typst-bestanden op waarschijnlijke fouten zodra ze worden opgeslagen. Aan- of uitzetten start de Typst-taalserver opnieuw.",
           "label": "Typst-lintcontroles"
         }
+      },
+      "fileMove": {
+        "label": "Als een bestand wordt verplaatst",
+        "description": "Paden naar een hernoemd of verplaatst bestand bijwerken in LaTeX-, Typst- en Markdown-bronnen.",
+        "options": {
+          "ask": "Vragen",
+          "always": "Altijd bijwerken",
+          "never": "Nooit bijwerken"
+        }
       }
     },
     "files": {
@@ -809,6 +818,25 @@
       "startWithProject": {
         "description": "Start de shell zodra een project opent in plaats van bij de eerste keer dat je de terminal toont.",
         "label": "De shell starten met het project"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Houdt de tekst in een gecentreerde kolom zolang de PDF verborgen is.",
+        "label": "Editor centreren"
+      },
+      "fullScreen": {
+        "description": "Vult het scherm in de zenmodus en zet het venster terug als je afsluit.",
+        "label": "Schermvullend gaan"
+      },
+      "showPdf": {
+        "description": "Als de PDF verborgen is wanneer de zenmodus start, wordt die bij de eerste compilatie naast de editor geopend.",
+        "label": "PDF tonen bij het compileren"
+      },
+      "title": "Zenmodus",
+      "toggle": {
+        "description": "Verbergt de werkbalk, zijbalk, assistent en terminal zodat alleen je tekst overblijft. Ook wel afleidingsvrije modus genoemd. Een geopend project is nodig.",
+        "label": "Zenmodus inschakelen"
       }
     }
   },
@@ -1192,11 +1220,52 @@
       "apiKeyLabel": "Zotero API-sleutel",
       "connected": "Verbonden met je Zotero-bibliotheek.",
       "connectedAs": "Verbonden als {{username}}.",
-      "description": "Importeer citaties en referenties uit je Zotero-bibliotheek.",
       "disconnectFailed": "Oleafly kon de opgeslagen Zotero-sleutel niet verwijderen. Probeer het opnieuw.",
-      "importHint": "Om te importeren open je het paneel Referenties in een project en kies je Referentiebibliotheek importeren.",
       "userIdLabel": "Zotero-gebruikers-ID",
-      "userIdPlaceholder": "Gebruikers-ID"
+      "userIdPlaceholder": "Gebruikers-ID",
+      "citeDescription": "Doorzoek je hele Zotero-bibliotheek terwijl je schrijft en voeg alleen toe wat je citeert. Oleafly leest je bibliotheek en wijzigt die nooit.",
+      "local": {
+        "heading": "Zotero op deze computer",
+        "ready": "Verbonden met Zotero {{version}}.",
+        "readyNoVersion": "Verbonden met Zotero.",
+        "bbtFound": "Better BibTeX {{version}} is geïnstalleerd, dus citatiesleutels komen uit Better BibTeX.",
+        "bbtMissing": "Better BibTeX is niet geïnstalleerd, dus citatiesleutels komen uit Zotero.",
+        "notRunning": "Zotero is niet actief. Open Zotero om in je bibliotheek te zoeken, of verbind hieronder je zotero.org-account.",
+        "apiDisabled": "Open in Zotero Instellingen > Geavanceerd en zet “Allow other applications on this computer to communicate with Zotero” aan.",
+        "unsupported": "Deze versie van Zotero kan de bibliotheek niet delen. Werk bij naar Zotero 7 of nieuwer.",
+        "unknown": "Oleafly heeft nog niet naar Zotero gezocht."
+      },
+      "test": "Verbinding testen",
+      "syncNow": "Nu synchroniseren",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX niet gevonden",
+        "local": "Gelezen uit Zotero op deze computer",
+        "web": "Gelezen van zotero.org",
+        "library_one": "{{name}}: {{formatted}} item",
+        "library_other": "{{name}}: {{formatted}} items"
+      },
+      "library": {
+        "heading": "Bibliotheken om te doorzoeken",
+        "myLibrary": "Mijn bibliotheek",
+        "toggle": "{{name}} doorzoeken",
+        "items_one": "{{formatted}} item",
+        "items_other": "{{formatted}} items"
+      },
+      "sync": {
+        "never": "Nog niet gesynchroniseerd.",
+        "syncing": "Je Zotero-bibliotheek synchroniseren…",
+        "progress": "{{done}} van {{total}} items synchroniseren…",
+        "status_one": "{{formatted}} item klaar om te citeren, gesynchroniseerd {{time}}.",
+        "status_other": "{{formatted}} items klaar om te citeren, gesynchroniseerd {{time}}.",
+        "fromCache": "Zotero is gesloten, dus zoeken met @ gebruikt de kopie van de laatste synchronisatie.",
+        "rateLimited": "zotero.org heeft Oleafly gevraagd te wachten. Oleafly probeert het na {{time}} opnieuw."
+      },
+      "account": {
+        "heading": "zotero.org-account",
+        "description": "Gebruik je account als Zotero niet open is op deze computer. Groepsbibliotheken komen ook mee."
+      }
     }
   },
   "language": {
@@ -1568,6 +1637,10 @@
       "openFolder": {
         "label": "Map openen",
         "description": "Open een map van je computer als project."
+      },
+      "toggleZenMode": {
+        "description": "Verberg alles behalve je tekst, of breng alles terug.",
+        "label": "Zenmodus aan- of uitzetten"
       }
     },
     "application": {
@@ -1590,7 +1663,7 @@
         "italic": "Cursief",
         "jumpToSourceFromPdf": "Vanuit de PDF naar de broncode springen",
         "redo": "Opnieuw",
-        "renameSymbol": "Symbool in het hele project hernoemen",
+        "renameSymbol": "Symbool of bestand in het hele project hernoemen",
         "slashCommandMenu": "Invoegmenu met slash-opdrachten",
         "triggerAutocomplete": "Automatisch aanvullen oproepen",
         "undo": "Ongedaan maken"

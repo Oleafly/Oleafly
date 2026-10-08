@@ -357,12 +357,12 @@ export function ProjectImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {errorMessage && <p role="alert" className="shrink-0 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
+        {errorMessage && <p role="alert" className="shrink-0 select-text rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{errorMessage}</p>}
         {busy && <output className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground"><Spinner />{t(($) => $.library.import.importing)}</output>}
         <div className="-mx-6 -mb-6 min-h-0 overflow-y-auto px-6 pb-6">
           {view === "target" ? (
             <div className="grid gap-2">
-              <p className="break-all text-xs text-muted-foreground">{pendingPath && basename(pendingPath)}</p>
+              <p className="select-text break-all text-xs text-muted-foreground">{pendingPath && basename(pendingPath)}</p>
               {importTargetsForKind(importFileKind(pendingPath ?? "") ?? "word").map(
                 (target) => (
                   <button

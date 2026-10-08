@@ -383,8 +383,9 @@ async fn publish_once<R: tauri::Runtime>(
 ) {
     emit_publication_phase(app, request, PublicationPhase::Started);
     trace_lane(&request.project_id, "lane started");
-    let started = std::time::Instant::now();
+    let mut started = std::time::Instant::now();
     let result = if wait_for_lane_start(cancel, PUBLICATION_START_DELAY).await {
+        started = std::time::Instant::now();
         attempt_publication(request, Some(cancel)).await
     } else {
         Err(AdapterFailure::silent(

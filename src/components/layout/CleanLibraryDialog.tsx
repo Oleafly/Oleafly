@@ -94,7 +94,8 @@ function DiffView({ outcome }: { outcome: CleanLibraryOutcome }) {
   return (
     <div
       data-testid="clean-library-diff"
-      className="min-h-0 flex-1 overflow-auto p-4 font-mono text-[11px] leading-5"
+      data-select-all-scope
+      className="min-h-0 flex-1 select-text overflow-auto p-4 font-mono text-[11px] leading-5"
     >
       {truncated ? <p className="mb-2 text-muted-foreground">{i18n.t(($) => $.references.cleanLibrary.truncated)}</p> : null}
       {rows.map((row, index) => (
@@ -125,7 +126,9 @@ export function CleanLibraryDialog({
 }) {
   const { t } = useTranslation(["references"]);
   const projectId = useFilesStore((s) => s.projectId);
-  const files = useFilesStore((s) => s.files);
+  const mainContent = useFilesStore((s) =>
+    open ? s.files[resolveEffectiveMainDoc().mainDoc]?.content ?? "" : "",
+  );
   const tree = useFilesStore((s) => s.tree);
   const engineProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
   const [bibPath, setBibPath] = useState<string | null>(null);
@@ -143,7 +146,7 @@ export function CleanLibraryDialog({
     (bibPath && bibFiles.includes(bibPath) ? bibPath : null)
       ?? selectCitationBibliography(
           engineProfile,
-          files[resolveEffectiveMainDoc().mainDoc]?.content ?? "",
+          mainContent,
           bibFiles,
         );
 
@@ -223,7 +226,7 @@ export function CleanLibraryDialog({
                 {bibFiles.length > 1 && <div className="flex flex-wrap gap-1.5">{bibFiles.map((path) => (
                   <button key={path} type="button" disabled={busy} aria-pressed={path === target} onClick={() => setBibPath(path)} className={cn("max-w-full truncate rounded-full border px-3 py-1.5 font-mono text-xs transition-colors focus-visible:border-ring", path === target ? "bg-muted text-foreground" : "text-muted-foreground hover:bg-accent")}>{path}</button>
                 ))}</div>}
-                <p className="break-all font-mono text-xs text-muted-foreground" data-testid="clean-library-target">{target}</p>
+                <p className="select-text break-all font-mono text-xs text-muted-foreground" data-testid="clean-library-target">{target}</p>
                 {outcome ? <div className="space-y-4">
                   <p className="text-sm">{t(($) => $.references.cleanLibrary.entriesKept, { kept: outcome.entriesAfter, total: outcome.entriesBefore })}</p>
                   <div className="space-y-2">
@@ -242,7 +245,7 @@ export function CleanLibraryDialog({
                   <p>{t(($) => $.references.cleanLibrary.introReview)}</p>
                 </div>}
               </>}
-              {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+              {error && <p role="alert" className="select-text text-sm text-destructive">{error}</p>}
             </div>
           </ToolPane>
           <ToolPane title={t(($) => $.references.cleanLibrary.preview)} badge={outcome ? t(($) => $.references.cleanLibrary.changes) : undefined}>

@@ -188,7 +188,8 @@
     "quote": "Cytat",
     "addLabel": "Dodaj etykietę",
     "convertLatexMath": "Konwertuj wzory LaTeX na Typst",
-    "noLatexMath": "Najpierw zaznacz wzór LaTeX."
+    "noLatexMath": "Najpierw zaznacz wzór LaTeX.",
+    "renameFile": "Zmień nazwę pliku…"
   },
   "shell": {
     "noFileOpenTab": "Nie otwarto pliku",
@@ -440,7 +441,7 @@
       "indentOrAccept": "Wcięcie / przyjęcie autouzupełnienia",
       "goToDefinition": "Przejdź do definicji",
       "findReferences": "Znajdź odwołania",
-      "renameSymbol": "Zmień nazwę symbolu (w całym projekcie)",
+      "renameSymbol": "Zmień nazwę symbolu lub pliku (w całym projekcie)",
       "formatDocument": "Formatuj dokument Typst",
       "commandPalette": "Paleta poleceń",
       "searchAllDocuments": "Szukaj we wszystkich dokumentach",
@@ -468,7 +469,8 @@
     "noEntries": "Ten projekt nie ma jeszcze pozycji bibliografii.",
     "addNew": "Znajdź i dodaj nowe cytowanie…",
     "duplicate": "duplikat {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Z Twojej biblioteki Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Opisz zmianę…  (Shift+Enter dodaje nowy wiersz)",

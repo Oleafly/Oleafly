@@ -366,7 +366,8 @@
     "referencesFor": "Referencias a {{name}}",
     "renameFailed": "No se pudo cambiar el nombre a \"{{name}}\".",
     "renamePartial": "Se renombró a \"{{name}}\" en {{edited}} de {{total}} archivos. No se pudo escribir en {{files}}.",
-    "renamed": "Se renombró a \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) en $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Se renombró a \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) en $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" no corresponde a ningún archivo de este proyecto."
   },
   "pandoc": {
     "downloadFailed": "No se pudo descargar pandoc. Instálalo a mano y vuelve a intentarlo.",

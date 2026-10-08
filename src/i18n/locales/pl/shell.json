@@ -45,7 +45,9 @@
     "privacyNote": "Wysyłany jest tylko identyfikator lub tytuł, do doi.org, arXiv albo Crossref.",
     "title": "Dodaj cytowanie",
     "bibliography": "Bibliografia",
-    "bibliographyHint": "Ten projekt ma więcej niż jedną bibliografię. Pozycja trafi do pliku, który tu wybierzesz."
+    "bibliographyHint": "Ten projekt ma więcej niż jedną bibliografię. Pozycja trafi do pliku, który tu wybierzesz.",
+    "zoteroMatches": "Z Twojej biblioteki Zotero",
+    "zoteroPlaceholder": "Przeszukaj bibliotekę Zotero albo wklej DOI, identyfikator arXiv lub tytuł"
   },
   "backendProtocol": {
     "mismatch": "To okno i jego zaplecze zbudowano dla różnych wersji Oleafly, więc część funkcji może nie działać. Ponowna instalacja aplikacji to naprawia."
@@ -330,6 +332,22 @@
     "presentWithPresenter": {
       "label": "Prezentuj slajdy z widokiem prelegenta",
       "keywords": "prezentuj slajdy widok prelegenta notatki prelegenta stoper następny slajd"
+    },
+    "zenMode": {
+      "keywords": "bez rozpraszaczy skupienie pełny ekran ukryj interfejs minimalny pisanie",
+      "label": "Przełącz tryb Zen"
+    },
+    "zoteroAddMissing": {
+      "label": "Dodaj brakujące cytowania z Zotero",
+      "keywords": "zotero brakujące cytowania niezdefiniowane klucze bibliografia naprawa"
+    },
+    "zoteroUpdate": {
+      "label": "Zaktualizuj pozycje .bib z Zotero",
+      "keywords": "zotero aktualizacja odśwież bibliografia pozycje zmienione"
+    },
+    "zoteroSync": {
+      "label": "Synchronizuj bibliotekę Zotero",
+      "keywords": "zotero synchronizacja odśwież biblioteka"
     }
   },
   "community": {
@@ -1163,7 +1181,8 @@
       "editorPreview": "Edytor + podgląd",
       "editorPreviewAi": "Edytor + podgląd + AI",
       "previewAi": "Podgląd + AI",
-      "previewOnly": "Tylko podgląd"
+      "previewOnly": "Tylko podgląd",
+      "zenMode": "Tryb Zen"
     },
     "newProjectName": "Nazwa nowego projektu",
     "projectName": "Nazwa projektu",
@@ -1418,5 +1437,19 @@
     "location": "{{file}}, wiersz {{line}}",
     "error": "Błąd",
     "warning": "Ostrzeżenie"
+  },
+  "fileRenameDialog": {
+    "title": "Zmień nazwę pliku",
+    "titleFolder": "Zmień nazwę folderu",
+    "newPath": "Nowa ścieżka",
+    "hint": "Brakujące foldery zostaną utworzone.",
+    "invalid": "Użyj ścieżki wewnątrz tego projektu.",
+    "exists": "{{path}} już istnieje."
+  },
+  "zen": {
+    "compileFailed": "Kompilacja nie powiodła się",
+    "compiling": "Kompilowanie",
+    "hideLog": "Ukryj dziennik kompilacji",
+    "showLog": "Pokaż dziennik kompilacji"
   }
 }

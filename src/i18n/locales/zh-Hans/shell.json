@@ -42,7 +42,9 @@
     "privacyNote": "仅会将标识符或标题发送至 doi.org、arXiv 或 Crossref。",
     "title": "添加引用",
     "bibliography": "参考文献",
-    "bibliographyHint": "此项目有多个参考文献文件。条目会添加到你在此处选择的文件中。"
+    "bibliographyHint": "此项目有多个参考文献文件。条目会添加到你在此处选择的文件中。",
+    "zoteroMatches": "来自你的 Zotero 库",
+    "zoteroPlaceholder": "搜索你的 Zotero 库，或粘贴 DOI、arXiv 编号或标题"
   },
   "backendProtocol": {
     "mismatch": "此窗口与后端基于不同的 Oleafly 版本构建，部分功能可能无法正常使用。重新安装应用即可解决。"
@@ -324,6 +326,22 @@
     "presentWithPresenter": {
       "label": "使用演示者视图放映幻灯片",
       "keywords": "放映 幻灯片 演示者视图 演讲者备注 计时器 下一张幻灯片"
+    },
+    "zenMode": {
+      "keywords": "专注 无干扰 全屏 隐藏界面 极简 写作",
+      "label": "切换禅模式"
+    },
+    "zoteroAddMissing": {
+      "label": "从 Zotero 添加缺失的引用",
+      "keywords": "zotero 缺失 引用 未定义 键 参考文献 修复"
+    },
+    "zoteroUpdate": {
+      "label": "从 Zotero 更新 .bib 条目",
+      "keywords": "zotero 更新 刷新 参考文献 条目 已更改"
+    },
+    "zoteroSync": {
+      "label": "同步 Zotero 库",
+      "keywords": "zotero 同步 刷新 库"
     }
   },
   "community": {
@@ -1100,7 +1118,8 @@
       "editorPreview": "编辑器 + 预览",
       "editorPreviewAi": "编辑器 + 预览 + AI",
       "previewAi": "预览 + AI",
-      "previewOnly": "仅预览"
+      "previewOnly": "仅预览",
+      "zenMode": "禅模式"
     },
     "newProjectName": "新项目名称",
     "projectName": "项目名称",
@@ -1319,5 +1338,19 @@
     "location": "{{file}}，第 {{line}} 行",
     "error": "错误",
     "warning": "警告"
+  },
+  "fileRenameDialog": {
+    "title": "重命名文件",
+    "titleFolder": "重命名文件夹",
+    "newPath": "新路径",
+    "hint": "不存在的文件夹会自动创建。",
+    "invalid": "请使用此项目内的路径。",
+    "exists": "{{path}} 已存在。"
+  },
+  "zen": {
+    "compileFailed": "编译失败",
+    "compiling": "正在编译",
+    "hideLog": "隐藏编译日志",
+    "showLog": "显示编译日志"
   }
 }

@@ -407,7 +407,7 @@ function ReferenceOutput({
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-auto">
         {rendered.error ? (
-          <div className="m-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
+          <div className="m-4 select-text rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
             <p className="font-medium">{t(($) => $.researchTools.references.referenceNeedsAttention)}</p>
             <p className="mt-1 text-xs leading-relaxed">{rendered.error}</p>
           </div>
@@ -423,7 +423,7 @@ function ReferenceOutput({
           />
         ) : (
           <div className="m-4 min-h-48 rounded-xl border bg-card p-6 shadow-sm">
-            <p className="whitespace-pre-wrap font-serif text-[15px] leading-7" data-testid="formatted-citation-output">
+            <p className={cn("whitespace-pre-wrap font-serif text-[15px] leading-7", output && "select-text")} data-testid="formatted-citation-output">
               {output || t(($) => $.researchTools.references.outputPlaceholder)}
             </p>
           </div>
@@ -499,7 +499,7 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4">
       {rendered.error ? (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
+        <div className="select-text rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive" role="alert">
           {rendered.error}
         </div>
       ) : (
@@ -511,7 +511,7 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
             />
           )}
           {rendered.styles.map((style) => (
-            <article key={style.id} className="rounded-xl border bg-card p-4 shadow-sm">
+            <article key={style.id} className="select-text rounded-xl border bg-card p-4 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold">{style.label}</h3>
@@ -855,7 +855,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
                   {t(($) => $.researchTools.references.privacyHint)}
                 </p>
                 {message && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300" role="status">{message}</p>}
-                {error && <p className="mt-2 text-xs text-destructive" role="alert">{error}</p>}
+                {error && <p className="mt-2 select-text text-xs text-destructive" role="alert">{error}</p>}
               </div>
               <SearchResults hits={hits} onSelect={(hit) => void selectHit(hit)} />
               <div className="min-h-0 flex-1 overflow-y-auto">
@@ -864,7 +864,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
             </>
           )}
           {(bibliographyMode || compareMode) && error && (
-            <p className="border-t px-4 py-3 text-xs text-destructive" role="alert">{error}</p>
+            <p className="select-text border-t px-4 py-3 text-xs text-destructive" role="alert">{error}</p>
           )}
           {(bibliographyMode || compareMode) && message && (
             <p className="border-t px-4 py-3 text-xs text-emerald-700 dark:text-emerald-300" role="status">{message}</p>

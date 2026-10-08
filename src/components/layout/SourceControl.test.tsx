@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
     gitStashPush: vi.fn(),
     gitStashPop: vi.fn(),
   refreshGit: vi.fn(),
+  applyGit: vi.fn(),
   openDiff: vi.fn(),
   clearActiveDiff: vi.fn(),
   publishDialog: vi.fn(),
@@ -107,7 +108,9 @@ vi.mock("@/store/diff", () => ({
 }));
 
 vi.mock("@/store/git-status", () => ({
-  useGitStatusStore: { getState: () => ({ refresh: mocks.refreshGit }) },
+  useGitStatusStore: {
+    getState: () => ({ refresh: mocks.refreshGit, apply: mocks.applyGit }),
+  },
 }));
 
 vi.mock("@/components/integrations/PublishToGitHubDialog", () => ({
@@ -194,6 +197,16 @@ beforeEach(() => {
     mocks.gitAbortMerge.mockResolvedValue({ projectState });
     mocks.gitStashPush.mockResolvedValue(projectState);
     mocks.gitStashPop.mockResolvedValue(projectState);
+});
+
+describe("SourceControl refresh", () => {
+  it("hands its snapshot to the Explorer badges instead of asking Git a second time", async () => {
+    render(<SourceControl />);
+    await waitFor(() => expect(mocks.applyGit).toHaveBeenCalledTimes(1));
+    expect(mocks.applyGit).toHaveBeenCalledWith("project-1", snapshot().changes);
+    expect(mocks.refreshGit).not.toHaveBeenCalled();
+    expect(mocks.gitWorkspaceSnapshot).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("SourceControl in a folder that is not trusted yet", () => {
@@ -447,11 +460,22 @@ describe("SourceControl", () => {
     const changeRow = changeButton.parentElement;
     if (!changeRow) throw new Error("expected a Git file row");
     expect(changeButton.querySelector("svg")).toBeInTheDocument();
+    const openAction = within(changeRow).getByRole("button", { name: "Open paper/main.tex" });
+    expect(openAction.querySelector("svg")).not.toBeInTheDocument();
+    await user.hover(changeButton);
+    expect(openAction.querySelector("svg.lucide-file-symlink")).toBeInTheDocument();
     expect(
       within(changeRow)
-        .getByRole("button", { name: "Open paper/main.tex" })
-        .querySelector("svg.lucide-file-symlink"),
+        .getByRole("button", { name: "Stage paper/main.tex" })
+        .querySelector("svg.lucide-plus"),
     ).toBeInTheDocument();
+    await user.unhover(changeButton);
+    expect(openAction.querySelector("svg")).not.toBeInTheDocument();
+    act(() => changeButton.focus());
+    expect(openAction.querySelector("svg.lucide-file-symlink")).toBeInTheDocument();
+    act(() => changeButton.blur());
+    expect(openAction.querySelector("svg")).not.toBeInTheDocument();
+    expect(openAction).toHaveAttribute("data-tooltip", "Open file");
     expect(changeRow).toHaveClass("w-full", "pl-4", "hover:bg-accent/60");
     const status = within(changes).getByTestId(
       "git-status-working-paper/main.tex",
@@ -466,10 +490,9 @@ describe("SourceControl", () => {
       "Discard changes to paper/main.tex",
       "Stage paper/main.tex",
     ]) {
-      expect(within(changeRow).getByRole("button", { name: label })).toHaveClass(
-        "opacity-0",
-        "group-hover:opacity-100",
-      );
+      const action = within(changeRow).getByRole("button", { name: label });
+      expect(action).toHaveClass("text-transparent", "group-hover:text-muted-foreground");
+      expect(action).not.toHaveClass("opacity-0");
     }
 
     await user.click(changeButton);

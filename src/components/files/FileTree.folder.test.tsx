@@ -154,9 +154,11 @@ describe("FileTree in an opened folder", () => {
     expect(row).toHaveAttribute("title", files.partialFolder);
     fireEvent.click(row);
 
-    const group = row.parentElement?.querySelector('[role="group"]') as HTMLElement;
-    expect(within(group).getByText(files.partialFolder)).toBeInTheDocument();
-    expect(within(group).getAllByRole("treeitem")).toHaveLength(1);
+    const children = screen
+      .getAllByRole("treeitem")
+      .filter((item) => item.getAttribute("aria-level") === "2");
+    expect(children.map((item) => item.dataset.path)).toEqual(["data/run-001.csv"]);
+    expect(screen.getByText(files.partialFolder)).toHaveAttribute("role", "note");
   });
 
   it("shows no notice when the whole folder was listed", () => {
@@ -291,7 +293,7 @@ describe("FileTree in an opened folder", () => {
     const row = screen.getByRole("treeitem", { name: /draft/ });
     fireEvent.contextMenu(row);
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: /rename/i }));
-    const input = screen.getByRole("textbox", { name: files.renameAriaLabel });
+    const input = await screen.findByRole("textbox", { name: files.renameAriaLabel });
     fireEvent.change(input, { target: { value: "open" } });
     fireEvent.keyDown(input, { key: "Enter" });
 
@@ -327,7 +329,7 @@ describe("FileTree in an opened folder", () => {
 
     fireEvent.contextMenu(screen.getByRole("treeitem", { name: /draft\.tex/ }));
     fireEvent.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: /rename/i }));
-    const input = screen.getByRole("textbox", { name: files.renameAriaLabel });
+    const input = await screen.findByRole("textbox", { name: files.renameAriaLabel });
     fireEvent.change(input, { target: { value: "notes.tex" } });
     fireEvent.keyDown(input, { key: "Enter" });
 

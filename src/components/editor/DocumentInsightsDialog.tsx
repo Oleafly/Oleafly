@@ -125,7 +125,7 @@ function MetadataField({ label, value }: Readonly<{ label: string; value: string
   return (
     <div className="grid grid-cols-[7rem_1fr] gap-3 py-1 text-sm">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className={cn("min-w-0 whitespace-pre-wrap break-words", !value && "text-muted-foreground/70")}>
+      <dd className={cn("min-w-0 whitespace-pre-wrap break-words", value ? "select-text" : "text-muted-foreground/70")}>
         {value || t(($) => $.editor.typstInsights.metadata.missing)}
       </dd>
     </div>

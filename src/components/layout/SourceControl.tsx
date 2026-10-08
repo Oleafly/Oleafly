@@ -1,4 +1,5 @@
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -6,6 +7,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
 import type {
@@ -60,6 +62,7 @@ import { GitStatusBadge, gitStatusMeta } from "@/components/files/gitStatus";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useGitStatusStore } from "@/store/git-status";
+import { sameGitChanges } from "@/lib/git-changes";
 import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
 import { folderIsRestricted, useFolderAccessStore } from "@/store/folder-access";
 import { PublishToGitHubDialog } from "@/components/integrations/PublishToGitHubDialog";
@@ -76,8 +79,20 @@ import { cn, isMac, isWindows } from "@/lib/utils";
 import { open } from "@tauri-apps/plugin-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { useRowWindow } from "@/hooks/use-row-window";
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
+import { useHotRow } from "@/hooks/use-hot-row";
+import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
+import {
+  type ScrollMemory,
+  useScrollMemory,
+  useScrollMemoryLayout,
+} from "@/hooks/use-scroll-memory";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
+import { readSidebarView } from "@/store/sidebar-view-state";
 
 type GitGraphCommit = GitCommit;
+type Translate = ReturnType<typeof useTranslation<["shell"]>>["t"];
 type ProjectStateResult = { projectState: ProjectStateChanged };
 type CommitSubmissionResult = {
   committed: true;
@@ -85,6 +100,7 @@ type CommitSubmissionResult = {
   conflicts?: boolean;
 };
 const COMMIT_TITLE_LIMIT = 72;
+const OPEN_SECTIONS = { staged: true, changes: true, graph: true };
 const commitMessage = (title: string, description: string) =>
   description.trim()
     ? `${title.trim()}\n\n${description.trim()}`
@@ -119,9 +135,12 @@ export function SourceControl() {
   const restoreFromGit = useFilesStore((s) => s.restoreFromGit);
   const openDiff = useDiffStore((s) => s.openDiff);
   const clearActiveDiff = useDiffStore((s) => s.clearActiveDiff);
-  const [snapshot, setSnapshot] = useState<GitWorkspaceSnapshot | null>(null);
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [remembered] = useState(() => readSidebarView(projectId, "sourceControl"));
+  const [snapshot, setSnapshot] = useState<GitWorkspaceSnapshot | null>(
+    remembered?.snapshot ?? null,
+  );
+  const [title, setTitle] = useState(remembered?.title ?? "");
+  const [description, setDescription] = useState(remembered?.description ?? "");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(
     null,
@@ -131,13 +150,21 @@ export function SourceControl() {
     useState(false);
   const [discardConfirmation, setDiscardConfirmation] =
     useState<Confirmation>(null);
-  const [sectionOpen, setSectionOpen] = useState({
-    staged: true,
-    changes: true,
-    graph: true,
+  const [sectionOpen, setSectionOpen] = useState(
+    remembered?.sectionOpen ?? OPEN_SECTIONS,
+  );
+  const [branchFormOpen, setBranchFormOpen] = useState(
+    remembered?.branchFormOpen ?? false,
+  );
+  const [branchDraft, setBranchDraft] = useState(remembered?.branchDraft ?? "");
+  useSidebarViewMemory(projectId, "sourceControl", {
+    snapshot,
+    title,
+    description,
+    sectionOpen,
+    branchFormOpen,
+    branchDraft,
   });
-  const [branchFormOpen, setBranchFormOpen] = useState(false);
-  const [branchDraft, setBranchDraft] = useState("");
   const [abortMergeOpen, setAbortMergeOpen] = useState(false);
   const [restoreCommit, setRestoreCommit] = useState<GitGraphCommit | null>(
     null,
@@ -147,6 +174,14 @@ export function SourceControl() {
     copy: copyCommitOid,
     reset: resetCopiedOid,
   } = useCopyStatus({ onError: (error) => setNotice({ ok: false, text: describeError(error) }) });
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useOverlayScrollbar(scrollRef);
+  const scrollMemory = useScrollMemory({
+    scrollRef,
+    projectId,
+    slot: "sourceControl",
+    ready: snapshot !== null,
+  });
   const previousProjectId = useRef(projectId);
   const session = useRef(0);
   const refreshRequest = useRef(0);
@@ -160,15 +195,17 @@ export function SourceControl() {
     refreshRequest.current += 1;
     pendingRefresh.current = null;
     activeMutation.current = null;
-    setSnapshot(null);
-    setTitle("");
-    setDescription("");
+    const next = readSidebarView(projectId, "sourceControl");
+    setSnapshot(next?.snapshot ?? null);
+    setTitle(next?.title ?? "");
+    setDescription(next?.description ?? "");
+    setSectionOpen(next?.sectionOpen ?? OPEN_SECTIONS);
     setBusy(false);
     setNotice(null);
     setCredentialCleanupRequired(false);
     setDiscardConfirmation(null);
-    setBranchDraft("");
-    setBranchFormOpen(false);
+    setBranchDraft(next?.branchDraft ?? "");
+    setBranchFormOpen(next?.branchFormOpen ?? false);
     setRestoreCommit(null);
     setAbortMergeOpen(false);
     resetCopiedOid();
@@ -206,9 +243,9 @@ export function SourceControl() {
         useFilesStore.getState().projectId !== projectId
       )
         return;
-      setSnapshot(next);
+      setSnapshot((current) => (sameSnapshot(current, next) ? current : next));
       setCredentialCleanupRequired(next.initialized && needsCredentialCleanup);
-      void useGitStatusStore.getState().refresh(projectId);
+      useGitStatusStore.getState().apply(projectId, next.changes);
     } catch (error) {
       if (reportLocationError(projectId, error)) return;
       if (
@@ -559,101 +596,24 @@ export function SourceControl() {
     await mutate(token, () => restoreFromGit(token.projectId, commit.oid));
     if (current(token)) await refreshTree();
   };
-  const row = (change: GitFileChange) => {
-    const name = change.path.split("/").pop() ?? change.path;
-    const openLabel = t(($) => $.shell.sourceControl.openFileFor, {
-      path: change.path,
-    });
-    const discardLabel = t(($) => $.shell.sourceControl.discardFor, {
-      path: change.path,
-    });
-    const stageLabel = t(
-      change.staged
-        ? ($) => $.shell.sourceControl.unstageFor
-        : ($) => $.shell.sourceControl.stageFor,
-      { path: change.path },
-    );
-    const statusId = `git-status-${change.staged ? "staged" : "working"}-${encodeURIComponent(change.path)}`;
-    const directory = dirname(change.path);
-    return (
-      <div
-        key={`${change.staged ? "staged" : "change"}:${change.path}`}
-        className="group flex w-full items-center gap-1 py-1 pl-4 pr-2 hover:bg-accent/60 focus-within:bg-accent/60"
-      >
-        <button
-          type="button"
-          data-testid={`git-change-${change.path}`}
-          aria-describedby={statusId}
-          onClick={() => openChange(change)}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded text-left focus-visible:bg-accent/60"
-        >
-          <FileIcon name={name} className="size-4 shrink-0" />
-          <span className="min-w-0">
-            <span className="block truncate text-xs font-medium">{name}</span>
-            {directory ? (
-              <span className="block truncate text-[10px] text-muted-foreground">
-                {directory}
-              </span>
-            ) : null}
-          </span>
-        </button>
-        <Tooltip label={t(($) => $.shell.sourceControl.openFile)}>
-          <button
-            type="button"
-            aria-label={openLabel}
-            onClick={() => void openSourceFile(change.path)}
-            className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent hover:text-foreground"
-          >
-            <FileSymlink className="size-3.5" />
-          </button>
-        </Tooltip>
-        {!change.staged ? (
-          <Tooltip label={t(($) => $.shell.sourceControl.discard)}>
-            <button
-              type="button"
-              aria-label={discardLabel}
-              disabled={busy}
-              onClick={() => requestDiscard([change.path])}
-              className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Undo2 className="size-3.5" />
-            </button>
-          </Tooltip>
-        ) : null}
-        <Tooltip
-          label={
-            change.staged
-              ? t(($) => $.shell.sourceControl.unstage)
-              : t(($) => $.shell.sourceControl.stage)
-          }
-        >
-          <button
-            type="button"
-            aria-label={stageLabel}
-            disabled={busy}
-            onClick={() =>
-              change.staged
-                ? unstagePaths([change.path])
-                : stagePaths([change.path])
-            }
-            className="flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-accent hover:text-foreground"
-          >
-            {change.staged ? (
-              <RotateCcw className="size-3.5" />
-            ) : (
-              <Plus className="size-3.5" />
-            )}
-          </button>
-        </Tooltip>
-        <GitStatusBadge
-          meta={gitStatusMeta(change.status)}
-          id={statusId}
-          testId={`git-status-${change.staged ? "staged" : "working"}-${change.path}`}
-          className="ml-1"
-        />
-      </div>
-    );
+  const rowHandlers = useRef<ChangeRowActions | null>(null);
+  rowHandlers.current = {
+    open: openChange,
+    openFile: (path) => void openSourceFile(path),
+    discard: requestDiscard,
+    stage: stagePaths,
+    unstage: unstagePaths,
   };
+  const rowActions = useMemo<ChangeRowActions>(
+    () => ({
+      open: (change) => rowHandlers.current?.open(change),
+      openFile: (path) => rowHandlers.current?.openFile(path),
+      discard: (paths) => rowHandlers.current?.discard(paths),
+      stage: (paths) => rowHandlers.current?.stage(paths),
+      unstage: (paths) => rowHandlers.current?.unstage(paths),
+    }),
+    [],
+  );
   const sectionActions = (kind: "staged" | "changes") => {
     const entries = kind === "staged" ? staged : changes;
     const paths = entries.map((entry) => entry.path);
@@ -765,7 +725,7 @@ export function SourceControl() {
             role={notice?.ok === false ? "alert" : undefined}
             className={cn(
               "text-xs text-muted-foreground",
-              notice?.ok === false && "text-destructive",
+              notice?.ok === false && "select-text text-destructive",
             )}
           >
             {notice?.text ??
@@ -821,7 +781,7 @@ export function SourceControl() {
               role={notice.ok ? undefined : "alert"}
               className={cn(
                 "text-[11px]",
-                notice.ok ? "text-muted-foreground" : "text-destructive",
+                notice.ok ? "text-muted-foreground" : "select-text text-destructive",
               )}
             >
               {notice.text}
@@ -1010,7 +970,8 @@ export function SourceControl() {
           ) : null}
         </div>
       ) : null}
-      <div className="min-h-0 flex-1 overflow-auto pt-1">
+      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={scrollRef} className="isolate min-h-0 flex-1 overflow-auto pt-1">
         <SidebarSection
           id="source-control-staged"
           title={t(($) => $.shell.sourceControl.stagedChanges)}
@@ -1026,7 +987,13 @@ export function SourceControl() {
           actions={sectionActions("staged")}
         >
           {staged.length ? (
-            staged.map(row)
+            <ChangeRows
+              changes={staged}
+              busy={busy}
+              actions={rowActions}
+              scrollRef={scrollRef}
+              scrollMemory={scrollMemory}
+            />
           ) : (
             <div className="flex min-h-20 flex-col items-center justify-center gap-2 px-3 py-4 text-center text-muted-foreground/75">
               <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
@@ -1053,7 +1020,13 @@ export function SourceControl() {
           actions={sectionActions("changes")}
         >
           {changes.length ? (
-            changes.map(row)
+            <ChangeRows
+              changes={changes}
+              busy={busy}
+              actions={rowActions}
+              scrollRef={scrollRef}
+              scrollMemory={scrollMemory}
+            />
           ) : (
             <p className="px-3 py-2 text-[11px] text-muted-foreground">
               {t(($) => $.shell.sourceControl.clean)}
@@ -1145,13 +1118,14 @@ export function SourceControl() {
           )}
         </SidebarSection>
       </div>
+      </div>
       {notice ? (
         <output
           data-testid="source-control-status"
           role={notice.ok ? undefined : "alert"}
           aria-live={notice.ok ? "polite" : undefined}
           className={cn(
-            "m-2 rounded-md border p-2 text-[11px]",
+            "m-2 select-text rounded-md border p-2 text-[11px]",
             notice.ok
               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
               : "border-destructive/30 bg-destructive/10 text-destructive",
@@ -1355,6 +1329,172 @@ export function GitMissingGuide({ os = HOST_OS }: Readonly<{ os?: HostOs }>) {
           {t(($) => $.shell.sourceControl.gitMissing.linux)}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+function sameSnapshot(
+  current: GitWorkspaceSnapshot | null,
+  next: GitWorkspaceSnapshot,
+): boolean {
+  if (!current) return false;
+  const { changes: currentChanges, ...currentRest } = current;
+  const { changes: nextChanges, ...nextRest } = next;
+  return (
+    sameGitChanges(currentChanges, nextChanges) &&
+    JSON.stringify(currentRest) === JSON.stringify(nextRest)
+  );
+}
+
+type ChangeRowActions = Readonly<{
+  open: (change: GitFileChange) => void;
+  openFile: (path: string) => void;
+  discard: (paths: string[]) => void;
+  stage: (paths: string[]) => void;
+  unstage: (paths: string[]) => void;
+}>;
+
+function rowKeyOf(change: GitFileChange): string {
+  return `${change.staged ? "staged" : "change"}:${change.path}`;
+}
+
+const ChangeRow = memo(function ChangeRow({
+  change,
+  busy,
+  actions,
+  t,
+  hot,
+}: Readonly<{
+  change: GitFileChange;
+  busy: boolean;
+  actions: ChangeRowActions;
+  t: Translate;
+  hot: boolean;
+}>) {
+  const name = change.path.split("/").pop() ?? change.path;
+  const openLabel = t(($) => $.shell.sourceControl.openFileFor, {
+    path: change.path,
+  });
+  const discardLabel = t(($) => $.shell.sourceControl.discardFor, {
+    path: change.path,
+  });
+  const stageLabel = t(
+    change.staged
+      ? ($) => $.shell.sourceControl.unstageFor
+      : ($) => $.shell.sourceControl.stageFor,
+    { path: change.path },
+  );
+  const statusId = `git-status-${change.staged ? "staged" : "working"}-${encodeURIComponent(change.path)}`;
+  const directory = dirname(change.path);
+  let stageIcon = null;
+  if (hot) stageIcon = change.staged ? <RotateCcw className="size-3.5" /> : <Plus className="size-3.5" />;
+  return (
+    <div
+      data-row-window-item
+      data-hot-row={rowKeyOf(change)}
+      className="group flex h-9 w-full items-center gap-1 pl-4 pr-2 hover:bg-accent/60 focus-within:bg-accent/60"
+    >
+      <button
+        type="button"
+        data-testid={`git-change-${change.path}`}
+        aria-describedby={statusId}
+        onClick={() => actions.open(change)}
+        className="flex min-w-0 flex-1 items-center gap-2 rounded text-left focus-visible:bg-accent/60"
+      >
+        <FileIcon name={name} className="size-4 shrink-0" />
+        <span className="min-w-0">
+          <span className="block truncate text-xs font-medium">{name}</span>
+          {directory ? (
+            <span className="block truncate text-[10px] text-muted-foreground">
+              {directory}
+            </span>
+          ) : null}
+        </span>
+      </button>
+      <button
+        type="button"
+        aria-label={openLabel}
+        data-tooltip={t(($) => $.shell.sourceControl.openFile)}
+        onClick={() => actions.openFile(change.path)}
+        className="flex size-6 items-center justify-center rounded text-transparent group-hover:text-muted-foreground focus-visible:text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        {hot ? <FileSymlink className="size-3.5" /> : null}
+      </button>
+      {change.staged ? null : (
+        <button
+          type="button"
+          aria-label={discardLabel}
+          data-tooltip={t(($) => $.shell.sourceControl.discard)}
+          disabled={busy}
+          onClick={() => actions.discard([change.path])}
+          className="flex size-6 items-center justify-center rounded text-transparent group-hover:text-muted-foreground focus-visible:text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+        >
+          {hot ? <Undo2 className="size-3.5" /> : null}
+        </button>
+      )}
+      <button
+        type="button"
+        aria-label={stageLabel}
+        data-tooltip={
+          change.staged
+            ? t(($) => $.shell.sourceControl.unstage)
+            : t(($) => $.shell.sourceControl.stage)
+        }
+        disabled={busy}
+        onClick={() =>
+          change.staged
+            ? actions.unstage([change.path])
+            : actions.stage([change.path])
+        }
+        className="flex size-6 items-center justify-center rounded text-transparent group-hover:text-muted-foreground focus-visible:text-muted-foreground hover:bg-accent hover:text-foreground"
+      >
+        {stageIcon}
+      </button>
+      <GitStatusBadge
+        meta={gitStatusMeta(change.status)}
+        id={statusId}
+        testId={`git-status-${change.staged ? "staged" : "working"}-${change.path}`}
+        className="ml-1"
+      />
+    </div>
+  );
+});
+
+function ChangeRows({
+  changes,
+  busy,
+  actions,
+  scrollRef,
+  scrollMemory,
+}: Readonly<{
+  changes: readonly GitFileChange[];
+  busy: boolean;
+  actions: ChangeRowActions;
+  scrollRef: RefObject<HTMLDivElement | null>;
+  scrollMemory: ScrollMemory;
+}>) {
+  const { t } = useTranslation(["shell"]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const rows = useRowWindow({ count: changes.length, scrollRef, listRef });
+  const tooltip = useDelegatedTooltips(listRef);
+  const hotRow = useHotRow(listRef);
+  useScrollMemoryLayout(scrollMemory);
+  return (
+    <div
+      ref={listRef}
+      style={{ paddingTop: rows.paddingTop, paddingBottom: rows.paddingBottom }}
+    >
+      {changes.slice(rows.start, rows.end).map((change) => (
+        <ChangeRow
+          key={rowKeyOf(change)}
+          change={change}
+          busy={busy}
+          actions={actions}
+          t={t}
+          hot={hotRow === rowKeyOf(change)}
+        />
+      ))}
+      {tooltip}
     </div>
   );
 }

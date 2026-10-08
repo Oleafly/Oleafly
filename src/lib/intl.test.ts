@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { applyLocale } from "@/i18n";
 import {
   formatCompactNumber,
@@ -8,6 +8,7 @@ import {
   formatNumber,
   formatRelativeTime,
   formatRelativeTimeFrom,
+  formatTime,
   relativeTimeSpan,
 } from "./intl";
 
@@ -31,6 +32,34 @@ describe("intl helpers", () => {
     expect(formatNumber(1234567)).toBe("1,234,567");
     expect(formatList(["甲", "乙"])).toBe("甲和乙");
     expect(formatRelativeTime(-3, "day")).toBe("3天前");
+  });
+
+  it("reuses one formatter per locale and options, and makes a new one after a language switch", async () => {
+    const Original = Intl.DateTimeFormat;
+    const created = vi.fn();
+    class Counting extends Original {
+      constructor(...args: ConstructorParameters<typeof Intl.DateTimeFormat>) {
+        super(...args);
+        created();
+      }
+    }
+    Object.defineProperty(Intl, "DateTimeFormat", { configurable: true, writable: true, value: Counting });
+    try {
+      const at = Date.UTC(2026, 9, 2, 15, 4);
+      const options = { hour: "numeric", minute: "2-digit", timeZone: "UTC" } as const;
+
+      const first = formatTime(at, options);
+      formatTime(at + 60_000, { ...options });
+      formatTime(at + 120_000, { ...options });
+      expect(created).toHaveBeenCalledTimes(1);
+
+      await applyLocale("de");
+      const german = formatTime(at, options);
+      expect(created).toHaveBeenCalledTimes(2);
+      expect(german).not.toBe(first);
+    } finally {
+      Object.defineProperty(Intl, "DateTimeFormat", { configurable: true, writable: true, value: Original });
+    }
   });
 
   it("shortens a long list of names and leaves the rest to the caller", () => {

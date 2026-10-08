@@ -500,7 +500,7 @@ export function TemplateGenerateModal({
                 </div>
                 <div className="min-h-0 flex-1 overflow-hidden">
                   {view === "code" ? (
-                    <pre className="h-full overflow-auto whitespace-pre-wrap rounded-xl border bg-background p-4 font-mono text-xs leading-relaxed text-muted-foreground">
+                    <pre data-select-all-scope className="h-full select-text overflow-auto whitespace-pre-wrap rounded-xl border bg-background p-4 font-mono text-xs leading-relaxed text-muted-foreground">
                       {parsed.source}
                     </pre>
                   ) : null}

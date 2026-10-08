@@ -30,7 +30,8 @@
     "newTab": "Nueva pestaña",
     "openLocation": "Abrir ubicación…",
     "closeTab": "Cerrar pestaña",
-    "reloadPage": "Recargar página"
+    "reloadPage": "Recargar página",
+    "zenMode": "Modo Zen"
   },
   "window": {
     "browser": "Navegador de Oleafly",

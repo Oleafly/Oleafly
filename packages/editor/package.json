@@ -19,8 +19,10 @@
     "./visual": "./src/visual/index.ts",
     "./latex-tree": "./src/latex-tree.ts",
     "./typst-syntax": "./src/typst-syntax.ts",
+    "./file-references": "./src/file-references/index.ts",
     "./typst": "./src/typst.ts",
-    "./prose": "./src/prose.ts"
+    "./prose": "./src/prose.ts",
+    "./overlay-scrollbar": "./src/overlay-scrollbar.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "*",

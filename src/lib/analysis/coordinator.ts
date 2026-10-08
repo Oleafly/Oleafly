@@ -714,19 +714,15 @@ export class ProjectAnalysisCoordinator {
     ) {
       return;
     }
-    if (
-      this.store.getState().resolveDocumentDiagnostics(
+    this.store.getState().resolveDocumentDiagnostics(
+      event.params.uri,
+      event.diagnosticEpoch,
+      pending.request,
+      normalizeDiagnostics(
         event.params.uri,
-        event.diagnosticEpoch,
+        event.diagnostics,
         pending.request,
-        normalizeDiagnostics(
-          event.params.uri,
-          event.diagnostics,
-          pending.request,
-        ),
-      )
-    ) {
-      this.pendingDiagnostics.delete(event.params.uri);
-    }
+      ),
+    );
   }
 }

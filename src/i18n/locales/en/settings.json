@@ -708,6 +708,15 @@
           "description": "Check Typst files for likely mistakes whenever they're saved. Turning this on or off restarts the Typst language server.",
           "label": "Typst lint checks"
         }
+      },
+      "fileMove": {
+        "label": "When a file moves",
+        "description": "Update paths that point to a renamed or moved file in LaTeX, Typst and Markdown sources.",
+        "options": {
+          "ask": "Ask",
+          "always": "Always update",
+          "never": "Never update"
+        }
       }
     },
     "files": {
@@ -809,6 +818,25 @@
       "startWithProject": {
         "description": "Start the shell when a project opens rather than the first time you show the terminal.",
         "label": "Start shell with project"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Keep the text in a centered column while the PDF is hidden.",
+        "label": "Center the editor"
+      },
+      "fullScreen": {
+        "description": "Fill the screen in Zen mode and restore the window when you leave.",
+        "label": "Go full screen"
+      },
+      "showPdf": {
+        "description": "If the PDF is hidden when Zen mode starts, open it beside the editor the first time you compile.",
+        "label": "Show the PDF when you compile"
+      },
+      "title": "Zen mode",
+      "toggle": {
+        "description": "Hides the toolbar, sidebar, assistant and terminal so only your writing is left. Also called distraction free mode. Needs an open project.",
+        "label": "Turn on Zen mode"
       }
     }
   },
@@ -1192,11 +1220,52 @@
       "apiKeyLabel": "Zotero API key",
       "connected": "Connected to your Zotero library.",
       "connectedAs": "Connected as {{username}}.",
-      "description": "Import citations and references from your Zotero library.",
       "disconnectFailed": "Oleafly couldn't remove the saved Zotero key. Try again.",
-      "importHint": "To import, open a project's References panel and choose Import reference library.",
       "userIdLabel": "Zotero user ID",
-      "userIdPlaceholder": "User ID"
+      "userIdPlaceholder": "User ID",
+      "citeDescription": "Search your whole Zotero library while you write and add only what you cite. Oleafly reads your library and never changes it.",
+      "local": {
+        "heading": "Zotero on this computer",
+        "ready": "Connected to Zotero {{version}}.",
+        "readyNoVersion": "Connected to Zotero.",
+        "bbtFound": "Better BibTeX {{version}} is installed, so citation keys come from Better BibTeX.",
+        "bbtMissing": "Better BibTeX isn't installed, so citation keys come from Zotero.",
+        "notRunning": "Zotero isn't running. Open Zotero to search your library, or connect your zotero.org account below.",
+        "apiDisabled": "In Zotero, open Settings > Advanced and turn on \"Allow other applications on this computer to communicate with Zotero\".",
+        "unsupported": "This version of Zotero can't share its library. Update to Zotero 7 or newer.",
+        "unknown": "Oleafly hasn't looked for Zotero yet."
+      },
+      "test": "Test connection",
+      "syncNow": "Sync now",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX not found",
+        "local": "Read from Zotero on this computer",
+        "web": "Read from zotero.org",
+        "library_one": "{{name}}: {{formatted}} item",
+        "library_other": "{{name}}: {{formatted}} items"
+      },
+      "library": {
+        "heading": "Libraries to search",
+        "myLibrary": "My Library",
+        "toggle": "Search {{name}}",
+        "items_one": "{{formatted}} item",
+        "items_other": "{{formatted}} items"
+      },
+      "sync": {
+        "never": "Not synced yet.",
+        "syncing": "Syncing your Zotero library…",
+        "progress": "Syncing {{done}} of {{total}} items…",
+        "status_one": "{{formatted}} item ready to cite, synced {{time}}.",
+        "status_other": "{{formatted}} items ready to cite, synced {{time}}.",
+        "fromCache": "Zotero is closed, so @ search uses the copy from the last sync.",
+        "rateLimited": "zotero.org asked Oleafly to wait. It will try again after {{time}}."
+      },
+      "account": {
+        "heading": "zotero.org account",
+        "description": "Use your account when Zotero isn't open on this computer. Group libraries come along too."
+      }
     }
   },
   "language": {
@@ -1568,6 +1637,10 @@
       "openFolder": {
         "label": "Open folder",
         "description": "Open a folder from your computer as a project."
+      },
+      "toggleZenMode": {
+        "description": "Hide everything except your writing, or bring it back.",
+        "label": "Toggle Zen mode"
       }
     },
     "application": {
@@ -1590,7 +1663,7 @@
         "italic": "Italic",
         "jumpToSourceFromPdf": "Jump to source from PDF",
         "redo": "Redo",
-        "renameSymbol": "Rename symbol project-wide",
+        "renameSymbol": "Rename symbol or file project-wide",
         "slashCommandMenu": "Slash-command insert menu",
         "triggerAutocomplete": "Trigger autocomplete",
         "undo": "Undo"

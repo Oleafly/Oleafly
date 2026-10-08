@@ -13,6 +13,7 @@ import { useVisualModeStore } from "@/store/visual-mode";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { useZenStore } from "@/store/zen";
 import { setWysiwygFlushController } from "./wysiwyg/controller";
 
 const tauri = vi.hoisted(() => ({
@@ -563,5 +564,113 @@ describe("Editor shell", () => {
     });
     fireEvent.keyDown(window, { key: "b", metaKey: true });
     expect(wrapSelection).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("Editor in Zen mode", () => {
+  function beginZen() {
+    act(() => {
+      useZenStore.getState().begin({
+        projectId: "project",
+        snapshot: {
+          showTree: true,
+          railTab: "files",
+          assistantOpen: false,
+          workspaceHidden: false,
+          viewMode: "editor",
+          terminalOpen: false,
+        },
+        pdfVisibleAtStart: false,
+        fullscreen: "none",
+      });
+    });
+  }
+
+  beforeEach(() => {
+    controller.getEditorView.mockReturnValue(null);
+    useZenStore.getState().end();
+    useVisualModeStore.setState({ projectId: null, enabled: false, markdownSplit: false, markdownSplitLayout: "split" });
+    useDiffStore.setState({ diffs: [], activeKey: null });
+  });
+
+  it.each([
+    ["LaTeX", "main.tex", LATEX_ENGINE, "latex-toolbar"],
+    ["Markdown", "main.md", engineWithProfile("markdown", ["md"]), "markdown-toolbar"],
+    ["Typst", "main.typ", engineWithProfile("typst", ["typ"]), "typst-toolbar"],
+  ])("hides the tab strip, breadcrumbs and %s toolbar and keeps the source", (_name, path, engine, toolbar) => {
+    openFile(path, { engine, openTabs: [path, "notes.bib"], tabOrder: { [path]: 1, "notes.bib": 2 } });
+    render(<Editor />);
+    expect(screen.getByTestId(toolbar)).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-toggle")).toBeInTheDocument();
+    expect(screen.getByText("notes.bib")).toBeInTheDocument();
+
+    beginZen();
+
+    expect(screen.queryByTestId(toolbar)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("sidebar-toggle")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("editor-breadcrumbs")).not.toBeInTheDocument();
+    expect(screen.queryByText("notes.bib")).not.toBeInTheDocument();
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+  });
+
+  it("brings the chrome back when Zen ends", () => {
+    openFile("main.tex");
+    render(<Editor />);
+    beginZen();
+    expect(screen.queryByTestId("latex-toolbar")).not.toBeInTheDocument();
+    act(() => useZenStore.getState().end());
+    expect(screen.getByTestId("latex-toolbar")).toBeInTheDocument();
+    expect(screen.getByTestId("sidebar-toggle")).toBeInTheDocument();
+  });
+
+  it("keeps notices that need the writer's attention", () => {
+    openFile("main.tex", { changedOnDisk: ["main.tex"], tree: [], manifestHome: "library" });
+    render(<Editor />);
+    beginZen();
+    expect(screen.getByTestId("changed-on-disk-banner")).toBeInTheDocument();
+  });
+
+  it("keeps the cursor in the source when the empty margin of a centered column is clicked", () => {
+    openFile("main.tex");
+    const { container } = render(<Editor />);
+    beginZen();
+    const scroller = document.createElement("div");
+    scroller.className = "cm-scroller";
+    container.querySelector("[data-testid='codemirror']")?.parentElement?.append(scroller);
+    const view = { focus: vi.fn() };
+    controller.getEditorView.mockReturnValue(view as never);
+    const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    act(() => {
+      scroller.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(view.focus).toHaveBeenCalledOnce();
+  });
+
+  it("leaves clicks inside the text alone", () => {
+    openFile("main.tex");
+    const { container } = render(<Editor />);
+    beginZen();
+    const content = document.createElement("div");
+    content.className = "cm-content";
+    container.querySelector("[data-testid='codemirror']")?.parentElement?.append(content);
+    const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    act(() => {
+      content.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("does not intercept clicks outside Zen mode", () => {
+    openFile("main.tex");
+    const { container } = render(<Editor />);
+    const scroller = document.createElement("div");
+    scroller.className = "cm-scroller";
+    container.querySelector("[data-testid='codemirror']")?.parentElement?.append(scroller);
+    const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    act(() => {
+      scroller.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(false);
   });
 });

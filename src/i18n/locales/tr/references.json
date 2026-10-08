@@ -159,5 +159,84 @@
     "label": "Atıf stili",
     "ariaLabel": "{{path}} içindeki kaynakça için atıf stili",
     "failed": "Oleafly atıf stilini değiştiremedi."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} ve {{second}}",
+      "authorsMany": "{{first}} vd.",
+      "noYear": "t.y.",
+      "keySource": {
+        "bbt": "Better BibTeX'ten gelen anahtar",
+        "native": "Zotero'dan gelen anahtar",
+        "extra": "Zotero'daki İlave alanından gelen anahtar",
+        "generated": "Oleafly'nin oluşturduğu anahtar"
+      },
+      "addFailed": "Oleafly {{key}} kaydını kaynakçaya ekleyemedi. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Zotero'da Ayarlar > Gelişmiş bölümünü açın ve “Bu bilgisayardaki diğer uygulamaların Zotero ile iletişim kurmasına izin ver” seçeneğini etkinleştirin.",
+      "unsupported": "Kitaplığınızda Oleafly'den arama yapmak için Zotero'yu 7 veya daha yeni bir sürüme güncelleyin.",
+      "keyRejected": "Zotero artık API anahtarınızı kabul etmiyor. Hesabınızı Zotero ayarlarından yeniden bağlayın.",
+      "closed": "Kitaplığınızda buradan arama yapmak için Zotero'yu açın veya zotero.org hesabınızı bağlayın.",
+      "closedCached": "Zotero kapalı. Sonuçlar {{time}} yapılan son eşitlemeye ait.",
+      "bbtMissing": "Better BibTeX yanıt vermiyor, bu yüzden yeni anahtarlar Zotero'dan geliyor. Yüklü ve etkin olduğunu kontrol edin.",
+      "action": "Zotero ayarları"
+    },
+    "actions": {
+      "addFromZotero": "Zotero'dan ekle",
+      "addAllMissing_one": "Eksik {{count}} atfı Zotero'dan ekle",
+      "addAllMissing_other": "Eksik {{count}} atfın tümünü Zotero'dan ekle",
+      "notInLibrary": "{{key}}, Zotero kitaplığınızda yok.",
+      "changed": "Bu kayıt, siz ekledikten sonra Zotero'da değişti.",
+      "changedEdited": "Bu kayıt Zotero'da değişti ve siz de burada düzenlediniz.",
+      "update": "Zotero'dan güncelle",
+      "updated": "{{key}}, Zotero'dan güncellendi.",
+      "updateFailed": "Oleafly {{key}} kaydını Zotero'dan güncelleyemedi. Yeniden deneyin."
+    },
+    "chooseBibliography": {
+      "title": "Yeni kaynaklar nereye eklensin?",
+      "description": "Bu projede birden fazla kaynakça dosyası var. Oleafly yeni kaynakları seçtiğiniz dosyaya ekler ve bu proje için bu seçimi hatırlar.",
+      "confirm": "Bu dosyayı kullan"
+    },
+    "handEdits": {
+      "title": "Düzenlemelerinizin üzerine yazılsın mı?",
+      "description": "{{key}} kaydını elle düzenlediniz. Kaydı Zotero'daki sürümle değiştirmek bu değişiklikleri kaldırır.",
+      "confirm": "Zotero sürümünü kullan",
+      "cancel": "Benimkini koru"
+    },
+    "handList": {
+      "title": "Kaynak listeniz taşınsın mı?",
+      "description": "Bu belgedeki kaynaklar elle yazılmış. Onları {{path}} dosyasına taşıyın; böylece Zotero'dan alıntıladığınız yayınlarla tek bir numaralı listede yer alırlar.",
+      "confirm": "Listeyi taşı"
+    },
+    "missing": {
+      "title": "Eksik atıfları Zotero'dan ekle",
+      "loading": "Zotero kitaplığınız denetleniyor…",
+      "none": "Atıf yapılan tüm anahtarlar zaten kaynakçanızda.",
+      "found_one": "Atıf yapılan {{count}} anahtar Zotero'da var",
+      "found_other": "Atıf yapılan {{count}} anahtar Zotero'da var",
+      "duplicates_one": "{{count}} anahtar, kaynakçanızda zaten bulunan bir makaleye atıf yapıyor",
+      "duplicates_other": "{{count}} anahtar, kaynakçanızda zaten bulunan makalelere atıf yapıyor",
+      "duplicateRow": "{{key}}, {{existing}} ile aynı makale",
+      "notFound_one": "Atıf yapılan {{count}} anahtar Zotero'da yok",
+      "notFound_other": "Atıf yapılan {{count}} anahtar Zotero'da yok",
+      "confirm_one": "{{count}} kayıt ekle",
+      "confirm_other": "{{count}} kayıt ekle",
+      "done_one": "{{count}} kayıt artık {{path}} içinde.",
+      "done_other": "{{count}} kayıt artık {{path}} içinde.",
+      "failed": "Oleafly kayıtları ekleyemedi. {{detail}}"
+    },
+    "update": {
+      "title": ".bib kayıtlarını Zotero'dan güncelle",
+      "loading": "Zotero'daki değişiklikler denetleniyor…",
+      "none": "Kaynakçanız Zotero ile eşleşiyor.",
+      "handEdited": "Elle düzenlendi",
+      "handEditedNote": "Elle düzenlediğiniz kayıtlar seçili değil. Bir kaydı Zotero'daki sürümle değiştirmek için onu seçin.",
+      "confirm_one": "{{count}} kaydı güncelle",
+      "confirm_other": "{{count}} kaydı güncelle",
+      "done_one": "{{count}} kayıt güncellendi.",
+      "done_other": "{{count}} kayıt güncellendi."
+    }
   }
 }

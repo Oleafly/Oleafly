@@ -122,6 +122,8 @@ class StickyScrollPlugin {
   private scannedTree: Tree | null = null;
   private rows: RenderedRow[] = [];
   private columns: Columns | null = null;
+  private columnsDirty = true;
+  private horizontalOffset = -1;
   private rescanTimer: ReturnType<typeof setTimeout> | null = null;
   private frame = 0;
   private readonly onScroll: () => void;
@@ -149,6 +151,7 @@ class StickyScrollPlugin {
       if (update.state.doc.lines <= INLINE_RESCAN_LINES) this.rescan();
       else this.scheduleRescan();
     }
+    if (update.docChanged || update.geometryChanged) this.columnsDirty = true;
     if (update.docChanged || treeChanged || update.viewportChanged || update.geometryChanged) {
       this.schedulePaint();
     }
@@ -210,7 +213,7 @@ class StickyScrollPlugin {
       view.state.doc,
       scopesAtLine(this.scopes, this.topLine(), MAX_STICKY_ROWS),
     );
-    const columns = next.length > 0 ? this.measureColumns() : this.columns;
+    const columns = next.length > 0 ? this.currentColumns() : this.columns;
     if (sameRows(next, this.rows) && sameColumns(columns, this.columns)) {
       this.syncHorizontalScroll();
       return;
@@ -222,7 +225,15 @@ class StickyScrollPlugin {
     for (const row of next) {
       this.container.appendChild(this.renderRow(row, columns));
     }
+    this.horizontalOffset = -1;
     this.syncHorizontalScroll();
+  }
+
+  private currentColumns(): Columns | null {
+    if (!this.columnsDirty && this.columns) return this.columns;
+    const measured = this.measureColumns();
+    if (measured) this.columnsDirty = false;
+    return measured;
   }
 
   /**
@@ -255,6 +266,8 @@ class StickyScrollPlugin {
 
   private syncHorizontalScroll() {
     const offset = this.view.scrollDOM.scrollLeft;
+    if (offset === this.horizontalOffset) return;
+    this.horizontalOffset = offset;
     for (const code of this.container.querySelectorAll<HTMLElement>(".cm-stickyCode")) {
       code.style.transform = offset ? `translateX(${-offset}px)` : "";
     }

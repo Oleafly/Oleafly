@@ -272,6 +272,29 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState().editorLineHeight).toBe("wide");
   });
 
+  it("chooses what happens to references when a file moves", async () => {
+    useSettingsStore.getState().setFileMoveReferences("ask");
+    const user = userEvent.setup();
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+
+    const row = screen.getByTestId("settings-row-file-move-references");
+    expect(row).toHaveTextContent(appearance.editor.fileMove.label);
+    expect(row).toHaveTextContent(appearance.editor.fileMove.options.ask);
+
+    await user.click(screen.getByTestId("settings-file-move-references-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.fileMove.options.always }),
+    );
+    expect(useSettingsStore.getState().fileMoveReferences).toBe("always");
+
+    await user.click(screen.getByTestId("settings-file-move-references-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.fileMove.options.never }),
+    );
+    expect(useSettingsStore.getState().fileMoveReferences).toBe("never");
+  });
+
   it("offers system, light, and dark appearance with the active choice pressed", () => {
     themeMocks.preference = "system";
     render(<AppearanceSection />);

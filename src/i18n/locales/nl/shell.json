@@ -43,7 +43,9 @@
     "privacyNote": "Alleen de identificatie of de titel wordt verstuurd, naar doi.org, arXiv of Crossref.",
     "title": "Citatie toevoegen",
     "bibliography": "Bibliografie",
-    "bibliographyHint": "Dit project heeft meer dan één bibliografie. Het item komt in het bestand dat je hier kiest."
+    "bibliographyHint": "Dit project heeft meer dan één bibliografie. Het item komt in het bestand dat je hier kiest.",
+    "zoteroMatches": "Uit je Zotero-bibliotheek",
+    "zoteroPlaceholder": "Doorzoek je Zotero-bibliotheek of plak een DOI, arXiv-id of titel"
   },
   "backendProtocol": {
     "mismatch": "Dit venster en de bijbehorende backend zijn voor verschillende Oleafly-versies gebouwd, dus sommige functies werken mogelijk niet. Opnieuw installeren lost dit op."
@@ -326,6 +328,22 @@
     "presentWithPresenter": {
       "label": "Dia's presenteren met presentatorweergave",
       "keywords": "presenteren dia's presentatorweergave sprekersnotities timer volgende dia"
+    },
+    "zenMode": {
+      "keywords": "afleidingsvrij focus schermvullend verbergen interface minimaal schrijven",
+      "label": "Zenmodus aan- of uitzetten"
+    },
+    "zoteroAddMissing": {
+      "label": "Ontbrekende citaties uit Zotero toevoegen",
+      "keywords": "zotero ontbrekende citaties ongedefinieerde sleutels bibliografie herstellen"
+    },
+    "zoteroUpdate": {
+      "label": ".bib-items bijwerken uit Zotero",
+      "keywords": "zotero bijwerken vernieuwen bibliografie items gewijzigd"
+    },
+    "zoteroSync": {
+      "label": "Zotero-bibliotheek synchroniseren",
+      "keywords": "zotero synchroniseren vernieuwen bibliotheek"
     }
   },
   "community": {
@@ -1121,7 +1139,8 @@
       "editorPreview": "Editor + voorbeeld",
       "editorPreviewAi": "Editor + voorbeeld + AI",
       "previewAi": "Voorbeeld + AI",
-      "previewOnly": "Alleen voorbeeld"
+      "previewOnly": "Alleen voorbeeld",
+      "zenMode": "Zenmodus"
     },
     "newProjectName": "Naam van het nieuwe project",
     "projectName": "Projectnaam",
@@ -1352,5 +1371,19 @@
     "location": "{{file}}, regel {{line}}",
     "error": "Fout",
     "warning": "Waarschuwing"
+  },
+  "fileRenameDialog": {
+    "title": "Bestand hernoemen",
+    "titleFolder": "Map hernoemen",
+    "newPath": "Nieuw pad",
+    "hint": "Ontbrekende mappen worden aangemaakt.",
+    "invalid": "Gebruik een pad binnen dit project.",
+    "exists": "{{path}} bestaat al."
+  },
+  "zen": {
+    "compileFailed": "Compileren mislukt",
+    "compiling": "Bezig met compileren",
+    "hideLog": "Compileerlogboek verbergen",
+    "showLog": "Compileerlogboek tonen"
   }
 }

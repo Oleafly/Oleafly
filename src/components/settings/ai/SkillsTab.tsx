@@ -808,7 +808,7 @@ export function SkillsTab() {
       {!query.isPending && query.isError && skills.length === 0 ? (
         <div
           role="alert"
-          className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive"
+          className="select-text rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive"
         >
           {t(($) => $.settings.ai.skills.loadFailed, { message: describeError(query.error) })}
         </div>

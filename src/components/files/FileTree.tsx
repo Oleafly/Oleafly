@@ -2,9 +2,12 @@ import { Trans, useTranslation } from "react-i18next";
 import {
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
+  type RefObject,
   type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
@@ -22,7 +25,6 @@ import {
   FolderClosed,
   Import,
   Link2,
-  MoreHorizontal,
   Pencil,
   Star,
   Trash2,
@@ -46,6 +48,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FOLDER_LISTING_LIMIT, useFilesStore } from "@/store/files";
 import { SidebarSection } from "@/components/layout/SidebarSection";
+import { useRowWindow } from "@/hooks/use-row-window";
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
+import {
+  type ScrollMemory,
+  useScrollMemory,
+  useScrollMemoryLayout,
+} from "@/hooks/use-scroll-memory";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
+import { readSidebarView } from "@/store/sidebar-view-state";
 import { fileTreePathIsHidden, useSettingsStore } from "@/store/settings";
 import { FileIcon } from "@/components/files/fileIcon";
 import {
@@ -98,6 +109,49 @@ interface NewEntryDraft {
 }
 
 type NewEntryFinalizeReason = "blur" | "enter";
+
+type FlatTreeItem =
+  | Readonly<{
+      kind: "node";
+      key: string;
+      node: TreeNode;
+      depth: number;
+      position: number;
+      setSize: number;
+    }>
+  | Readonly<{ kind: "new"; key: string; parent: string; depth: number }>
+  | Readonly<{ kind: "partial"; key: string; parent: string; depth: number }>;
+
+function flattenTree(
+  nodes: readonly TreeNode[],
+  expanded: ReadonlySet<string>,
+  newEntryParent: string | null,
+): FlatTreeItem[] {
+  const items: FlatTreeItem[] = [];
+  if (newEntryParent === "") items.push({ kind: "new", key: "new:", parent: "", depth: 0 });
+  const visit = (level: readonly TreeNode[], depth: number) => {
+    level.forEach((node, index) => {
+      items.push({
+        kind: "node",
+        key: node.path,
+        node,
+        depth,
+        position: index + 1,
+        setSize: level.length,
+      });
+      if (!node.isDir || !expanded.has(node.path)) return;
+      if (newEntryParent === node.path) {
+        items.push({ kind: "new", key: `new:${node.path}`, parent: node.path, depth: depth + 1 });
+      }
+      visit(node.children, depth + 1);
+      if (!node.unreadable && node.partial) {
+        items.push({ kind: "partial", key: `partial:${node.path}`, parent: node.path, depth: depth + 1 });
+      }
+    });
+  };
+  visit(nodes, 0);
+  return items;
+}
 
 function directoryPaths(nodes: readonly TreeNode[]): Set<string> {
   const paths = new Set<string>();
@@ -241,6 +295,7 @@ interface TreeCtx {
   setDragOver: (p: string | null) => void;
   onMove: (from: string, toDir: string) => void;
   git: GitDecorations;
+  focusSibling: (path: string, step: 1 | -1) => void;
 }
 
 export function FileTree({
@@ -272,9 +327,15 @@ export function FileTree({
   let mainExtensions: readonly string[] = engineLoaded ? sourceExtensions : EMPTY_EXTENSIONS;
   if (linkedFolder) mainExtensions = ALL_MAIN_EXTENSIONS;
 
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const loading = useFilesStore((s) => s.loading);
+  const [expanded, setExpanded] = useState<Set<string>>(
+    () => new Set(readSidebarView(projectId, "files")?.expanded),
+  );
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
-  const [selected, setSelected] = useState<{ path: string; isDir: boolean } | null>(null);
+  const [selected, setSelected] = useState<{ path: string; isDir: boolean } | null>(
+    () => readSidebarView(projectId, "files")?.selected ?? null,
+  );
+  useSidebarViewMemory(projectId, "files", { expanded, selected });
   const [newMode, setNewMode] = useState<NewEntryMode>(null);
   const [newParent, setNewParent] = useState("");
   const [newValue, setNewValue] = useState("");
@@ -366,6 +427,26 @@ export function FileTree({
   }, [projectId]);
   const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
 
+  const treeScrollRef = useRef<HTMLDivElement>(null);
+  useOverlayScrollbar(treeScrollRef);
+  const scrollMemory = useScrollMemory({
+    scrollRef: treeScrollRef,
+    projectId,
+    slot: "files",
+    ready: !loading,
+  });
+  const scrollToFlatIndex = useRef<(index: number) => void>(() => {});
+  const pendingTreeFocus = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const path = pendingTreeFocus.current;
+    if (!path) return;
+    const element = Array.from(
+      treeScrollRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? [],
+    ).find((row) => row.dataset.path === path);
+    if (!element) return;
+    pendingTreeFocus.current = null;
+    element.focus();
+  });
   const previousProjectId = useRef(projectId);
   const projectSession = useRef(0);
   useEffect(() => {
@@ -375,8 +456,9 @@ export function FileTree({
     if (previousProjectId.current !== projectId) {
       previousProjectId.current = projectId;
       projectSession.current += 1;
-      setExpanded(new Set());
-      setSelected(null);
+      const remembered = readSidebarView(projectId, "files");
+      setExpanded(new Set(remembered?.expanded));
+      setSelected(remembered?.selected ?? null);
       setNewMode(null);
       setNewParent("");
       setNewValue("");
@@ -388,6 +470,7 @@ export function FileTree({
       setResolvingConflict(false);
       return;
     }
+    if (loading) return;
 
     const validPaths = new Set<string>();
     const visit = (entries: readonly TreeNode[]) => {
@@ -398,9 +481,10 @@ export function FileTree({
     };
     visit(nodes);
 
-    setExpanded((current) =>
-      new Set([...current].filter((path) => directories.has(path))),
-    );
+    setExpanded((current) => {
+      const kept = [...current].filter((path) => directories.has(path));
+      return kept.length === current.size ? current : new Set(kept);
+    });
     setSelected((current) =>
       current && validPaths.has(current.path) ? current : null,
     );
@@ -425,7 +509,7 @@ export function FileTree({
       const parent = parentOf(current.to);
       return !parent || directories.has(parent) ? current : null;
     });
-  }, [directories, newParent, nodes, projectId]);
+  }, [directories, loading, newParent, nodes, projectId]);
 
   const interactionPaths = () => ({
     expanded,
@@ -741,6 +825,37 @@ export function FileTree({
     updateDragOver(ROOT);
   };
 
+  const flatItems = useMemo(
+    () => flattenTree(nodes, expanded, newMode ? newParent : null),
+    [expanded, newMode, newParent, nodes],
+  );
+  const flatIndex = useMemo(() => {
+    const index = new Map<string, number>();
+    flatItems.forEach((item, position) => {
+      if (item.kind === "node") index.set(item.node.path, position);
+    });
+    return index;
+  }, [flatItems]);
+  const [menuNode, setMenuNode] = useState<TreeNode | null>(null);
+  const menuNodeFor = (target: EventTarget | null): TreeNode | null => {
+    if (!(target instanceof Element)) return null;
+    const path = target.closest<HTMLElement>('[role="treeitem"]')?.dataset.path;
+    if (path === undefined) return null;
+    const item = flatItems[flatIndex.get(path) ?? -1];
+    return item?.kind === "node" ? item.node : null;
+  };
+  const focusTreePath = (path: string) => {
+    const element = Array.from(
+      treeScrollRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? [],
+    ).find((row) => row.dataset.path === path);
+    if (element) {
+      pendingTreeFocus.current = null;
+      element.focus();
+    } else {
+      pendingTreeFocus.current = path;
+    }
+  };
+
   const ctx: TreeCtx = {
     expanded,
     toggle,
@@ -819,6 +934,17 @@ export function FileTree({
     setDragOver: updateDragOver,
     onMove: move,
     git,
+    focusSibling: (path, step) => {
+      const start = flatIndex.get(path);
+      if (start === undefined) return;
+      for (let index = start + step; index >= 0 && index < flatItems.length; index += step) {
+        const item = flatItems[index];
+        if (item.kind !== "node") continue;
+        scrollToFlatIndex.current(index);
+        focusTreePath(item.node.path);
+        return;
+      }
+    },
   };
 
   const sourceActions = (
@@ -911,13 +1037,16 @@ export function FileTree({
       >
         {noMainDocument && <NoMainDocumentHint />}
         {/* The whole list is a drop target for moving entries back to the root. */}
+        <div className="relative flex min-h-0 flex-1 flex-col">
         <ContextMenu>
         <ContextMenuTrigger asChild>
           <div
+            ref={treeScrollRef}
+            onContextMenuCapture={(event) => setMenuNode(menuNodeFor(event.target))}
             role="tree"
             aria-label={t(($) => $.workspace.files.treeAriaLabel)}
             className={cn(
-              "flex-1 overflow-auto p-1.5",
+              "isolate flex-1 overflow-auto p-1.5",
               dragOver === ROOT && "rounded-md bg-primary/10"
             )}
             onDragEnter={onRootDragOver}
@@ -935,38 +1064,48 @@ export function FileTree({
               }
             }}
           >
-            {newMode && newParent === "" && (
-              <NewEntryInput
-                mode={newMode}
-                value={newValue}
-                depth={0}
-                parentPath=""
-                onChange={ctx.onChangeNew}
-                onSubmit={(reason) => ctx.onSubmitNew(reason, "")}
-                onCancel={ctx.onCancelNew}
-              />
-            )}
-            {nodes.map((n) => (
-              <TreeRow key={n.path} node={n} depth={0} ctx={ctx} />
-            ))}
+            <FlatTreeRows
+              items={flatItems}
+              ctx={ctx}
+              scrollRef={treeScrollRef}
+              scrollToIndexRef={scrollToFlatIndex}
+              scrollMemory={scrollMemory}
+            />
           </div>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-52" onCloseAutoFocus={rootMenu.onCloseAutoFocus}>
-          <ContextMenuItem onClick={() => rootMenu.afterClose(() => ctx.onStartNew("", "file"))}>
-            <FilePlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFile)}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => rootMenu.afterClose(() => ctx.onStartNew("", "dir"))}>
-            <FolderPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFolder)}
-          </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem onClick={() => ctx.onImport("", "file")}>
-            <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFiles)}
-          </ContextMenuItem>
-          <ContextMenuItem onClick={() => ctx.onImport("", "dir")}>
-            <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
-          </ContextMenuItem>
+          {menuNode ? (
+            <>
+              <TreeRowKindMenuItems
+                node={menuNode}
+                ctx={ctx}
+                readOnlyLink={menuNode.readOnly && !menuNode.isDir}
+                afterClose={rootMenu.afterClose}
+              />
+              {menuNode.readOnly && !menuNode.isDir ? null : (
+                <TreeRowEditMenuItems node={menuNode} ctx={ctx} afterClose={rootMenu.afterClose} />
+              )}
+            </>
+          ) : (
+            <>
+              <ContextMenuItem onClick={() => rootMenu.afterClose(() => ctx.onStartNew("", "file"))}>
+                <FilePlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFile)}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => rootMenu.afterClose(() => ctx.onStartNew("", "dir"))}>
+                <FolderPlus className="mr-2 size-4" /> {t(($) => $.workspace.files.newFolder)}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={() => ctx.onImport("", "file")}>
+                <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFiles)}
+              </ContextMenuItem>
+              <ContextMenuItem onClick={() => ctx.onImport("", "dir")}>
+                <Import className="mr-2 size-4" /> {t(($) => $.workspace.files.importFolder)}
+              </ContextMenuItem>
+            </>
+          )}
         </ContextMenuContent>
         </ContextMenu>
+        </div>
 
         {treeTruncated && (
           <p role="note" className="shrink-0 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
@@ -1129,7 +1268,7 @@ export function NewEntryInput({
             ? t(($) => $.workspace.files.newEntry.folderPlaceholder)
             : t(($) => $.workspace.files.newEntry.filePlaceholder)
         }
-        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm focus-visible:border-ring"
+        className="h-7 w-full rounded-md border border-input bg-background px-2 py-0 text-sm focus-visible:border-ring"
       />
     </div>
   );
@@ -1168,7 +1307,7 @@ export function RenameEntryInput({
           if (e.key === "Escape") cancelOnce();
         }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full rounded-md border border-input bg-background px-2 py-1 text-sm"
+        className="h-7 w-full rounded-md border border-input bg-background px-2 py-0 text-sm"
       />
     </div>
   );
@@ -1280,12 +1419,16 @@ function TreeRowKindMenuItems({
   );
 }
 
-function TreeRowEditMenuItems({ node, ctx }: Readonly<{ node: TreeNode; ctx: TreeCtx }>) {
+function TreeRowEditMenuItems({
+  node,
+  ctx,
+  afterClose,
+}: Readonly<{ node: TreeNode; ctx: TreeCtx; afterClose: (action: () => void) => void }>) {
   const { t } = useTranslation(["common", "workspace"]);
   return (
     <>
       {!node.unreadable && <ContextMenuSeparator />}
-      <ContextMenuItem onClick={() => ctx.onStartRename(node.path, node.name)}>
+      <ContextMenuItem onClick={() => afterClose(() => ctx.onStartRename(node.path, node.name))}>
         <Pencil className="mr-2 size-4" /> {t(($) => $.common.actions.rename)}
       </ContextMenuItem>
       {!node.unreadable && (
@@ -1313,9 +1456,20 @@ function TreeRowGitMark({ node, git }: Readonly<{ node: TreeNode; git: GitDecora
   return node.isDir ? <GitFolderDot meta={meta} /> : <GitStatusBadge meta={meta} />;
 }
 
-function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number; ctx: TreeCtx }>) {
+function TreeRow({
+  node,
+  depth,
+  position,
+  setSize,
+  ctx,
+}: Readonly<{
+  node: TreeNode;
+  depth: number;
+  position: number;
+  setSize: number;
+  ctx: TreeCtx;
+}>) {
   const { t } = useTranslation(["common", "workspace"]);
-  const isOpen = ctx.expanded.has(node.path) || !node.isDir;
   const isActive = ctx.activePath === node.path;
   const isSelected = ctx.selected === node.path;
   const isMain = ctx.mainDoc === node.path;
@@ -1328,7 +1482,6 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
   const hintKey = treeRowHintKey(unreadable, readOnlyLink, partial);
   const hint = hintKey ? t(($) => $.workspace.files[hintKey]) : undefined;
   const rowRef = useRef<HTMLDivElement>(null);
-  const rowMenu = useAfterMenuClose();
 
   // Dropping onto a folder targets that folder; onto a file targets its folder.
   const dropDir = node.isDir ? node.path : parentOf(node.path);
@@ -1365,14 +1518,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       ctx.toggle(node.path);
     } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
-      const items = Array.from(
-        e.currentTarget
-          .closest('[role="tree"]')
-          ?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? []
-      );
-      const idx = items.indexOf(e.currentTarget);
-      const next = e.key === "ArrowDown" ? items[idx + 1] : items[idx - 1];
-      next?.focus();
+      ctx.focusSibling(node.path, e.key === "ArrowDown" ? 1 : -1);
     }
   };
 
@@ -1408,6 +1554,9 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
       tabIndex={0}
       draggable={!isRenaming && !readOnlyLink}
       aria-expanded={expandable ? ctx.expanded.has(node.path) : undefined}
+      aria-level={depth + 1}
+      aria-posinset={position}
+      aria-setsize={setSize}
       aria-selected={isActive || isSelected}
       aria-disabled={unreadable ? true : undefined}
       title={hint}
@@ -1445,9 +1594,9 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
           type="button"
           aria-label={t(($) => $.workspace.files.moreActions, { name: node.name })}
           onClick={openRowMenu}
-          className="flex size-5 shrink-0 items-center justify-center rounded opacity-0 hover:bg-sidebar-accent-foreground/10 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:bg-sidebar-accent-foreground/10"
+          className="flex size-5 shrink-0 items-center justify-center rounded text-transparent hover:bg-sidebar-accent-foreground/10 group-hover:text-inherit group-focus-within:text-inherit focus-visible:text-inherit focus-visible:bg-sidebar-accent-foreground/10"
         >
-          <MoreHorizontal className="size-3.5" />
+          <span aria-hidden className="ofl-row-more-icon" />
         </button>
         <TreeRowGitMark node={node} git={ctx.git} />
       </span>
@@ -1455,7 +1604,7 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
   );
 
   return (
-    <div>
+    <div data-row-window-item className="h-8">
       {isRenaming ? (
         <RenameEntryInput
           value={ctx.renameValue}
@@ -1465,50 +1614,75 @@ function TreeRow({ node, depth, ctx }: Readonly<{ node: TreeNode; depth: number;
           onCancel={ctx.onCancelRename}
         />
       ) : (
-        <ContextMenu>
-          <ContextMenuTrigger asChild>{content}</ContextMenuTrigger>
-          <ContextMenuContent className="w-52" onCloseAutoFocus={rowMenu.onCloseAutoFocus}>
-            <TreeRowKindMenuItems
-              node={node}
+        content
+      )}
+    </div>
+  );
+}
+
+function FlatTreeRows({
+  items,
+  ctx,
+  scrollRef,
+  scrollToIndexRef,
+  scrollMemory,
+}: Readonly<{
+  items: readonly FlatTreeItem[];
+  ctx: TreeCtx;
+  scrollRef: RefObject<HTMLDivElement | null>;
+  scrollToIndexRef: MutableRefObject<(index: number) => void>;
+  scrollMemory: ScrollMemory;
+}>) {
+  const { t } = useTranslation(["workspace"]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const rows = useRowWindow({ count: items.length, scrollRef, listRef });
+  useScrollMemoryLayout(scrollMemory);
+  scrollToIndexRef.current = rows.scrollToIndex;
+  return (
+    <div
+      ref={listRef}
+      role="none"
+      style={{ paddingTop: rows.paddingTop, paddingBottom: rows.paddingBottom }}
+    >
+      {items.slice(rows.start, rows.end).map((item) => {
+        if (item.kind === "node") {
+          return (
+            <TreeRow
+              key={item.key}
+              node={item.node}
+              depth={item.depth}
+              position={item.position}
+              setSize={item.setSize}
               ctx={ctx}
-              readOnlyLink={readOnlyLink}
-              afterClose={rowMenu.afterClose}
             />
-            {!readOnlyLink && <TreeRowEditMenuItems node={node} ctx={ctx} />}
-          </ContextMenuContent>
-        </ContextMenu>
-      )}
-      {node.isDir && ctx.expanded.has(node.path) && (
-        // A WAI-ARIA tree uses role=group for nested treeitems. A fieldset
-        // would add unrelated form-group semantics and browser chrome.
-        // biome-ignore lint/a11y/useSemanticElements: tree ownership requires this ARIA role
-        <div role="group">
-          {ctx.newMode && ctx.newParent === node.path && (
-            <NewEntryInput
-              mode={ctx.newMode}
-              value={ctx.newValue}
-              depth={depth + 1}
-              parentPath={node.path}
-              onChange={ctx.onChangeNew}
-              onSubmit={(reason) => ctx.onSubmitNew(reason, node.path)}
-              onCancel={ctx.onCancelNew}
-            />
-          )}
-          {isOpen &&
-            node.children.map((c) => (
-              <TreeRow key={c.path} node={c} depth={depth + 1} ctx={ctx} />
-            ))}
-          {partial && (
-            <p
-              role="note"
-              className="py-1 pr-2 text-[11px] leading-snug text-muted-foreground"
-              style={{ paddingLeft: `${(depth + 1) * 12 + 8}px` }}
-            >
-              {t(($) => $.workspace.files.partialFolder)}
-            </p>
-          )}
-        </div>
-      )}
+          );
+        }
+        if (item.kind === "new") {
+          return ctx.newMode ? (
+            <div key={item.key} className="h-8">
+              <NewEntryInput
+                mode={ctx.newMode}
+                value={ctx.newValue}
+                depth={item.depth}
+                parentPath={item.parent}
+                onChange={ctx.onChangeNew}
+                onSubmit={(reason) => ctx.onSubmitNew(reason, item.parent)}
+                onCancel={ctx.onCancelNew}
+              />
+            </div>
+          ) : null;
+        }
+        return (
+          <p
+            key={item.key}
+            role="note"
+            className="flex h-8 items-center truncate pr-2 text-[11px] leading-snug text-muted-foreground"
+            style={{ paddingLeft: `${item.depth * 12 + 8}px` }}
+          >
+            {t(($) => $.workspace.files.partialFolder)}
+          </p>
+        );
+      })}
     </div>
   );
 }

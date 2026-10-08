@@ -214,5 +214,24 @@
     "clearFilter": "Limpar filtro",
     "filterPlaceholder": "Filtrar…",
     "noProject": "Nenhum projeto"
+  },
+  "fileReferences": {
+    "title": "Atualizar as referências a {{name}}?",
+    "files_one": "{{count}} arquivo",
+    "files_many": "{{count}} arquivos",
+    "files_other": "{{count}} arquivos",
+    "summary_one": "{{count}} referência em $t(workspace:fileReferences.files, { \"count\": {{files}} }) ainda usa o caminho antigo, {{path}}.",
+    "summary_many": "{{count}} referências em $t(workspace:fileReferences.files, { \"count\": {{files}} }) ainda usam o caminho antigo, {{path}}.",
+    "summary_other": "{{count}} referências em $t(workspace:fileReferences.files, { \"count\": {{files}} }) ainda usam o caminho antigo, {{path}}.",
+    "fileCount_one": "{{count}} referência",
+    "fileCount_many": "{{count}} referências",
+    "fileCount_other": "{{count}} referências",
+    "dontAsk": "Não perguntar de novo",
+    "update": "Atualizar referências",
+    "skip": "Não atualizar",
+    "failed_one": "{{count}} arquivo mudou depois de ser movido ou não pôde ser salvo. Ele ainda usa o caminho antigo.",
+    "failed_many": "{{count}} arquivos mudaram depois de serem movidos ou não puderam ser salvos. Eles ainda usam o caminho antigo.",
+    "failed_other": "{{count}} arquivos mudaram depois de serem movidos ou não puderam ser salvos. Eles ainda usam o caminho antigo.",
+    "close": "Fechar sem atualizar as referências"
   }
 }

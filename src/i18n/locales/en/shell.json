@@ -43,7 +43,9 @@
     "privacyNote": "Only the identifier or title is sent, to doi.org, arXiv, or Crossref.",
     "title": "Add citation",
     "bibliography": "Bibliography",
-    "bibliographyHint": "This project has more than one bibliography. The entry goes into the file you pick here."
+    "bibliographyHint": "This project has more than one bibliography. The entry goes into the file you pick here.",
+    "zoteroMatches": "From your Zotero library",
+    "zoteroPlaceholder": "Search your Zotero library, or paste a DOI, arXiv ID or title"
   },
   "backendProtocol": {
     "mismatch": "This window and its backend were built for different Oleafly versions, so some features may not work. Reinstalling the app fixes this."
@@ -326,6 +328,22 @@
     "presentWithPresenter": {
       "label": "Present slides with presenter view",
       "keywords": "present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "distraction free focus full screen hide interface minimal writing",
+      "label": "Toggle Zen Mode"
+    },
+    "zoteroAddMissing": {
+      "label": "Add missing citations from Zotero",
+      "keywords": "zotero missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": "Update .bib entries from Zotero",
+      "keywords": "zotero update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Sync Zotero library",
+      "keywords": "zotero sync refresh library"
     }
   },
   "community": {
@@ -1121,7 +1139,8 @@
       "editorPreview": "Editor + Preview",
       "editorPreviewAi": "Editor + Preview + AI",
       "previewAi": "Preview + AI",
-      "previewOnly": "Preview Only"
+      "previewOnly": "Preview Only",
+      "zenMode": "Zen Mode"
     },
     "newProjectName": "New project name",
     "projectName": "Project name",
@@ -1352,5 +1371,19 @@
     "location": "{{file}}, line {{line}}",
     "error": "Error",
     "warning": "Warning"
+  },
+  "fileRenameDialog": {
+    "title": "Rename file",
+    "titleFolder": "Rename folder",
+    "newPath": "New path",
+    "hint": "Folders that don't exist yet are created.",
+    "invalid": "Use a path inside this project.",
+    "exists": "{{path}} already exists."
+  },
+  "zen": {
+    "compileFailed": "Compile failed",
+    "compiling": "Compiling",
+    "hideLog": "Hide the compile log",
+    "showLog": "Show the compile log"
   }
 }

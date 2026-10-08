@@ -47,6 +47,8 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { useZenStore } from "@/store/zen";
+import { enterZenMode } from "@/lib/zen-mode";
 
 function stepIndex(tourId: TourId, stepId: string) {
   return tourRegistry[tourId].steps.findIndex((step) => step.id === stepId);
@@ -105,6 +107,7 @@ beforeEach(() => {
     })),
   );
   useTourStore.getState().resetAll();
+  useZenStore.getState().end();
   useSettingsStore.setState({
     newProjectOpen: false,
     settingsOpen: false,
@@ -289,6 +292,24 @@ describe("auto-start", () => {
     expect(current().activeTourId).toBeNull();
   });
 
+  it("does not auto-start in Zen mode, and starts once Zen mode ends", () => {
+    mount("div", { "data-tour": "project-toolbar" });
+    useTourStore.setState({ activeTourId: null });
+    useFilesStore.setState({ projectId: "p1" });
+    act(() => {
+      enterZenMode();
+    });
+    expect(useZenStore.getState().active).toBe(true);
+
+    render(<TourGuide />);
+    frame();
+    expect(current().activeTourId).toBeNull();
+
+    act(() => useZenStore.getState().end());
+    frame();
+    expect(current().activeTourId).toBe("workspace");
+  });
+
   it("waits for the home library before offering the welcome", async () => {
     const home = mount("div", { "data-tour": "home" });
     useTourStore.setState({ activeTourId: null });
@@ -341,6 +362,21 @@ describe("manual start", () => {
     act(() => useTourStore.getState().stop());
     act(() => useFilesStore.setState({ projectId: "p1" }));
     requestTour();
+    expect(current().activeTourId).toBe("workspace");
+  });
+
+  it("leaves Zen mode first so the tour finds the interface it points at", () => {
+    completeTours("home", "workspace");
+    useTourStore.setState({ activeTourId: null });
+    useFilesStore.setState({ projectId: "p1" });
+    act(() => {
+      enterZenMode();
+    });
+    render(<TourGuide />);
+
+    requestTour("workspace");
+
+    expect(useZenStore.getState().active).toBe(false);
     expect(current().activeTourId).toBe("workspace");
   });
 

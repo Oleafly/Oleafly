@@ -90,7 +90,7 @@ export function ErrorState({
 }>) {
   return (
     <div role="alert" className={cn("flex flex-col items-start gap-3", className)}>
-      <p className={cn("text-destructive", STATE_TEXT[size].body)}>{message}</p>
+      <p className={cn("select-text text-destructive", STATE_TEXT[size].body)}>{message}</p>
       {children}
     </div>
   );

@@ -26,6 +26,7 @@ export interface MathPreviewTooltipState {
   hidden: { from: number; to: number } | null;
   target: MathPreviewTarget | null;
   tooltip: Tooltip | null;
+  focused: boolean;
 }
 
 const MAX_WINDOW = 8_000;
@@ -63,6 +64,8 @@ export const mathPreviewEnabled = Facet.define<boolean, boolean>({
 export const setMathPreviewEnabled = StateEffect.define<boolean>();
 
 export const hideMathPreview = StateEffect.define<null>();
+const setMathPreviewFocus = StateEffect.define<boolean>();
+const MATH_TOOLTIP_SELECTOR = ".ofl-visual-math-tooltip";
 
 export function setMathPreview(enabled: boolean): TransactionSpec {
   return { effects: setMathPreviewEnabled.of(enabled) };
@@ -318,6 +321,12 @@ function createTooltipView(view: EditorView, target: MathPreviewTarget): Tooltip
     closeMenu();
     view.dispatch({ effects: setMathPreviewEnabled.of(false) });
   });
+  dom.addEventListener("focusout", () => {
+    queueMicrotask(() => {
+      if (!view.dom.isConnected || view.hasFocus || dom.contains(document.activeElement)) return;
+      view.dispatch({ effects: setMathPreviewFocus.of(false) });
+    });
+  });
   dom.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     event.preventDefault();
@@ -370,22 +379,37 @@ function buildTooltip(target: MathPreviewTarget): Tooltip {
   };
 }
 
+function sameMathTarget(left: MathPreviewTarget, right: MathPreviewTarget): boolean {
+  return (
+    left.from === right.from &&
+    left.to === right.to &&
+    left.body === right.body &&
+    left.display === right.display
+  );
+}
+
 function resolveState(
   state: EditorState,
   format: MathSourceFormat,
   enabled: boolean,
   hidden: { from: number; to: number } | null,
+  previous: MathPreviewTooltipState | null = null,
+  focused = true,
 ): MathPreviewTooltipState {
-  if (!enabled) return { enabled, hidden: null, target: null, tooltip: null };
+  if (!enabled) return { enabled, hidden: null, target: null, tooltip: null, focused };
   const target = mathPreviewTargetAt(state, format);
-  if (!target) return { enabled, hidden: null, target: null, tooltip: null };
+  if (!target) return { enabled, hidden: null, target: null, tooltip: null, focused };
   if (hidden && overlaps(hidden, target)) {
-    return { enabled, hidden, target, tooltip: null };
+    return { enabled, hidden, target, tooltip: null, focused };
   }
-  if (selectionAtMouseDown(state) !== undefined) {
-    return { enabled, hidden: null, target, tooltip: null };
+  if (!focused || selectionAtMouseDown(state) !== undefined) {
+    return { enabled, hidden: null, target, tooltip: null, focused };
   }
-  return { enabled, hidden: null, target, tooltip: buildTooltip(target) };
+  const tooltip =
+    previous?.tooltip && previous.target && sameMathTarget(previous.target, target)
+      ? previous.tooltip
+      : buildTooltip(target);
+  return { enabled, hidden: null, target, tooltip, focused };
 }
 
 export const mathPreviewTooltipField = StateField.define<MathPreviewTooltipState>({
@@ -396,6 +420,7 @@ export const mathPreviewTooltipField = StateField.define<MathPreviewTooltipState
     const format = tr.state.facet(mathPreviewFormat);
     let enabled = value.enabled;
     let hidden = value.hidden;
+    let focused = value.focused;
     let hideRequested = false;
 
     const before = tr.startState.facet(mathPreviewEnabled);
@@ -405,6 +430,7 @@ export const mathPreviewTooltipField = StateField.define<MathPreviewTooltipState
     for (const effect of tr.effects) {
       if (effect.is(setMathPreviewEnabled)) enabled = effect.value;
       if (effect.is(hideMathPreview)) hideRequested = true;
+      if (effect.is(setMathPreviewFocus)) focused = effect.value;
     }
 
     if (hidden && tr.docChanged) {
@@ -421,6 +447,7 @@ export const mathPreviewTooltipField = StateField.define<MathPreviewTooltipState
         hidden: target ? { from: target.from, to: target.to } : null,
         target,
         tooltip: null,
+        focused,
       };
     }
 
@@ -430,15 +457,22 @@ export const mathPreviewTooltipField = StateField.define<MathPreviewTooltipState
       !hasMouseDownEffect(tr) &&
       enabled === value.enabled &&
       hidden === value.hidden &&
+      focused === value.focused &&
       format === tr.startState.facet(mathPreviewFormat)
     ) {
       return value;
     }
 
-    return resolveState(tr.state, format, enabled, hidden);
+    const sameFormat = format === tr.startState.facet(mathPreviewFormat);
+    return resolveState(tr.state, format, enabled, hidden, sameFormat ? value : null, focused);
   },
 
   provide: (self) => showTooltip.compute([self], (state) => state.field(self).tooltip),
+});
+
+const followEditorFocus = EditorView.focusChangeEffect.of((_state, focusing) => {
+  if (!focusing && document.activeElement?.closest(MATH_TOOLTIP_SELECTOR)) return null;
+  return setMathPreviewFocus.of(focusing);
 });
 
 const escapeHidesPreview = keymap.of([
@@ -458,6 +492,7 @@ export function mathPreviewTooltip(format: MathSourceFormat = "latex"): Extensio
     mathPreviewFormat.of(format),
     pointerSelectionTracking,
     mathPreviewTooltipField,
+    followEditorFocus,
     escapeHidesPreview,
   ];
 }

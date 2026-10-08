@@ -293,15 +293,24 @@ function normalizeSymbol(
  * its closure-based navigation methods, which keeps the future LSP index and
  * the existing ProjectIndex behind one serializable seam.
  */
+const normalizedProjectIndexes = new WeakMap<
+  ProjectIndex,
+  NormalizedProjectIndex
+>();
+
 export function normalizeProjectIndex(
   index: ProjectIndex,
 ): NormalizedProjectIndex {
-  return {
+  const cached = normalizedProjectIndexes.get(index);
+  if (cached) return cached;
+  const normalized: NormalizedProjectIndex = {
     definitions: index.defs.map((symbol) =>
       normalizeSymbol(symbol, "definition"),
     ),
     uses: index.uses.map((symbol) => normalizeSymbol(symbol, "use")),
   };
+  normalizedProjectIndexes.set(index, normalized);
+  return normalized;
 }
 
 const severityNames: Record<

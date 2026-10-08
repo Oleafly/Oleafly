@@ -15,6 +15,7 @@ import { downloadBytes } from "@/lib/download-blob";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
 import { usePdfPosition } from "@/lib/use-pdf-position";
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 import {
@@ -72,6 +73,8 @@ import {
   MIN_PREVIEW_SCALE,
 } from "./preview-zoom";
 import { Spinner } from "@/components/ui/spinner";
+
+const PDF_SCROLL_AXES = ["y", "x"] as const;
 
 const INITIAL_LOAD_STATE: PdfLoadState = {
   status: "idle",
@@ -355,8 +358,15 @@ export function PreviewWindow({
 
   const rootRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PdfViewerHandle>(null);
-  const pdfPosition = usePdfPosition(projectId, pdfRef);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
+  const readyRotationRef = useRef(rotation);
+  const pdfPosition = usePdfPosition(
+    projectId,
+    pdfRef,
+    scrollBoxRef,
+    rotation === readyRotationRef.current,
+  );
+  useOverlayScrollbar(scrollBoxRef, PDF_SCROLL_AXES);
   const searchInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const onChange = () => {
@@ -784,6 +794,7 @@ export function PreviewWindow({
     if (next.status !== "loading") setRotationPending(false);
     if (next.status === "ready") {
       lastReadyDocumentRef.current = current;
+      readyRotationRef.current = rotation;
       setRetainedLoadFailure(null);
       return;
     }
@@ -933,8 +944,9 @@ export function PreviewWindow({
       ref={scrollBoxRef}
       data-testid="detached-preview-scroll"
       data-pdf-scroll-root
+      data-select-all-scope
       aria-label={t(($) => $.preview.viewer.scrollArea)}
-      className="h-full overflow-auto focus-visible:bg-accent/20"
+      className="isolate h-full overflow-auto focus-visible:bg-accent/20"
       style={
         inverted && !screenReaderMode
           ? { filter: "invert(1) hue-rotate(180deg)" }
