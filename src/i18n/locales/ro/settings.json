@@ -684,13 +684,17 @@
       },
       "cursorWidth": {
         "label": "Lățimea cursorului",
-        "description": "Setează cât de gros este cursorul din editor."
+        "description": "Setează cât de gros este cursorul din editor.",
+        "option": "{{width}}px"
       },
       "cursorColor": {
         "label": "Culoarea cursorului",
-        "description": "Folosește culoarea temei editorului, dacă nu alegi alta.",
-        "pick": "Alege culoarea cursorului din editor",
-        "useTheme": "Folosește culoarea temei"
+        "description": "Temele deschise și cele întunecate ale editorului au fiecare propria culoare a cursorului. Până alegi una, se folosește culoarea temei.",
+        "light": "Deschisă",
+        "dark": "Întunecată",
+        "pickLight": "Alege culoarea cursorului pentru temele deschise ale editorului",
+        "pickDark": "Alege culoarea cursorului pentru temele întunecate ale editorului",
+        "useTheme": "Folosește culorile temei"
       },
       "lineWrap": {
         "description": "Rupe liniile lungi în loc să derulezi lateral.",
@@ -762,6 +766,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} nu este instalat, așa că se folosește fontul implicit.",
     "preview": {
       "darkMode": {
         "description": "Inversează implicit culorile PDF-ului. Poți schimba oricând culorile din bara previzualizării.",

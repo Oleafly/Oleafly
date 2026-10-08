@@ -79,7 +79,8 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
-import { fontFamilyName, quotedFontFamily } from "@/lib/font-families";
+import { fontFamilyName, fontFamilyStack } from "@/lib/font-families";
+import { applyAppTypography } from "@/lib/app-typography";
 import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
@@ -396,7 +397,8 @@ function AppContent() {
   const editorLineHeight = useSettingsStore((s) => s.editorLineHeight);
   const editorCustomLineHeight = useSettingsStore((s) => s.editorCustomLineHeight);
   const editorCursorWidth = useSettingsStore((s) => s.editorCursorWidth);
-  const editorCursorColor = useSettingsStore((s) => s.editorCursorColor);
+  const editorCursorColorLight = useSettingsStore((s) => s.editorCursorColorLight);
+  const editorCursorColorDark = useSettingsStore((s) => s.editorCursorColorDark);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
@@ -578,15 +580,10 @@ function AppContent() {
   useEffect(() => {
     const root = document.documentElement;
     root.style.setProperty("--cm-font-size", `${editorFontSize}px`);
-    // Scales the whole rem-based interface.
-    root.style.fontSize = `${appFontSize}px`;
-    // Empty means keep the app's default stack.
-    const appFont = fontFamilyName(appFontFamily);
-    if (appFont) root.style.setProperty("--app-font", quotedFontFamily(appFont));
-    else root.style.removeProperty("--app-font");
+    applyAppTypography(appFontFamily, appFontSize, root);
     const editorFont = fontFamilyName(editorFontFamily);
     if (editorFont) {
-      root.style.setProperty("--cm-font-family", `${quotedFontFamily(editorFont)}, var(--font-mono)`);
+      root.style.setProperty("--cm-font-family", fontFamilyStack(editorFont, "var(--font-mono)"));
     } else {
       root.style.removeProperty("--cm-font-family");
     }
@@ -595,8 +592,13 @@ function AppContent() {
       String(editorLineHeightValue(editorLineHeight, editorCustomLineHeight)),
     );
     root.style.setProperty("--cm-cursor-width", `${editorCursorWidth}px`);
-    if (editorCursorColor) root.style.setProperty("--cm-cursor-custom", editorCursorColor);
-    else root.style.removeProperty("--cm-cursor-custom");
+    for (const [surface, color] of [
+      ["light", editorCursorColorLight],
+      ["dark", editorCursorColorDark],
+    ] as const) {
+      if (color) root.style.setProperty(`--cm-cursor-custom-${surface}`, color);
+      else root.style.removeProperty(`--cm-cursor-custom-${surface}`);
+    }
     getEditorView()?.requestMeasure();
   }, [
     editorFontSize,
@@ -606,7 +608,8 @@ function AppContent() {
     editorLineHeight,
     editorCustomLineHeight,
     editorCursorWidth,
-    editorCursorColor,
+    editorCursorColorLight,
+    editorCursorColorDark,
   ]);
 
   useEffect(() => {
@@ -692,6 +695,7 @@ function AppContent() {
   useTauriEvent<{ section?: string }>(
     "settings:open",
     (payload) => {
+      if (useTourStore.getState().activeTourId) return;
       const s = useSettingsStore.getState();
       if (payload?.section) s.setSettingsInitialSection(payload.section);
       s.setSettingsOpen(true);

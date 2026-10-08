@@ -689,13 +689,17 @@
       },
       "cursorWidth": {
         "label": "Šířka kurzoru",
-        "description": "Nastavte, jak silný má být kurzor editoru."
+        "description": "Nastavte, jak silný má být kurzor editoru.",
+        "option": "{{width}} px"
       },
       "cursorColor": {
         "label": "Barva kurzoru",
-        "description": "Používá barvu motivu editoru, dokud nevyberete vlastní.",
-        "pick": "Vybrat barvu kurzoru editoru",
-        "useTheme": "Použít barvu motivu"
+        "description": "Světlé a tmavé motivy editoru mají každý vlastní barvu kurzoru. Dokud žádnou nevyberete, použije se barva motivu.",
+        "light": "Světlý",
+        "dark": "Tmavý",
+        "pickLight": "Vybrat barvu kurzoru pro světlé motivy editoru",
+        "pickDark": "Vybrat barvu kurzoru pro tmavé motivy editoru",
+        "useTheme": "Použít barvy motivu"
       },
       "lineWrap": {
         "description": "Zalamovat dlouhé řádky místo vodorovného posouvání.",
@@ -767,6 +771,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "Písmo {{font}} není nainstalované, proto se používá výchozí písmo.",
     "preview": {
       "darkMode": {
         "description": "Ve výchozím stavu invertovat barvy PDF. Barvy můžete stále přepnout v panelu nástrojů náhledu.",

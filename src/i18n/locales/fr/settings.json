@@ -684,13 +684,17 @@
       },
       "cursorWidth": {
         "label": "Épaisseur du curseur",
-        "description": "Définir l'épaisseur du curseur de l'éditeur."
+        "description": "Définir l'épaisseur du curseur de l'éditeur.",
+        "option": "{{width}} px"
       },
       "cursorColor": {
         "label": "Couleur du curseur",
-        "description": "Utilise la couleur du thème de l'éditeur, sauf si vous en choisissez une.",
-        "pick": "Choisir la couleur du curseur de l'éditeur",
-        "useTheme": "Utiliser la couleur du thème"
+        "description": "Les thèmes clairs et sombres de l'éditeur ont chacun leur propre couleur de curseur. Tant que vous n'en choisissez pas, la couleur du thème est utilisée.",
+        "light": "Clair",
+        "dark": "Sombre",
+        "pickLight": "Choisir la couleur du curseur pour les thèmes clairs de l'éditeur",
+        "pickDark": "Choisir la couleur du curseur pour les thèmes sombres de l'éditeur",
+        "useTheme": "Utiliser les couleurs du thème"
       },
       "lineWrap": {
         "description": "Renvoyer les longues lignes à la ligne au lieu de défiler horizontalement.",
@@ -762,6 +766,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} n'est pas installée, la police par défaut est donc utilisée.",
     "preview": {
       "darkMode": {
         "description": "Inverser les couleurs du PDF par défaut. Vous pouvez toujours changer les couleurs depuis la barre d'outils de l'aperçu.",

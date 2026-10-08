@@ -674,12 +674,16 @@
       },
       "cursorWidth": {
         "label": "光标宽度",
-        "description": "设置编辑器光标的粗细。"
+        "description": "设置编辑器光标的粗细。",
+        "option": "{{width}}px"
       },
       "cursorColor": {
         "label": "光标颜色",
-        "description": "未自选颜色时使用编辑器主题的颜色。",
-        "pick": "选择编辑器光标颜色",
+        "description": "浅色和深色编辑器主题各有自己的光标颜色。选择之前使用主题的颜色。",
+        "light": "浅色",
+        "dark": "深色",
+        "pickLight": "选择浅色编辑器主题的光标颜色",
+        "pickDark": "选择深色编辑器主题的光标颜色",
         "useTheme": "使用主题颜色"
       },
       "lineWrap": {
@@ -752,6 +756,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "未安装 {{font}}，因此使用默认字体。",
     "preview": {
       "darkMode": {
         "description": "默认反转 PDF 颜色。你仍可在预览工具栏中切换颜色。",

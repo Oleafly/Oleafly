@@ -679,13 +679,17 @@
       },
       "cursorWidth": {
         "label": "İmleç genişliği",
-        "description": "Düzenleyici imlecinin kalınlığını ayarlar."
+        "description": "Düzenleyici imlecinin kalınlığını ayarlar.",
+        "option": "{{width}}px"
       },
       "cursorColor": {
         "label": "İmleç rengi",
-        "description": "Kendiniz seçmezseniz düzenleyici temasının rengini kullanır.",
-        "pick": "Düzenleyici imleç rengini seçin",
-        "useTheme": "Tema rengini kullan"
+        "description": "Açık ve koyu düzenleyici temalarının her birinin kendi imleç rengi vardır. Siz seçene kadar temanın rengi kullanılır.",
+        "light": "Açık",
+        "dark": "Koyu",
+        "pickLight": "Açık düzenleyici temaları için imleç rengini seçin",
+        "pickDark": "Koyu düzenleyici temaları için imleç rengini seçin",
+        "useTheme": "Tema renklerini kullan"
       },
       "lineWrap": {
         "description": "Uzun satırları yana kaydırmak yerine alt satıra taşır.",
@@ -757,6 +761,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} yüklü değil, bu yüzden varsayılan yazı tipi kullanılıyor.",
     "preview": {
       "darkMode": {
         "description": "PDF renklerini varsayılan olarak tersine çevirir. Renkleri yine de önizleme araç çubuğundan değiştirebilirsiniz.",

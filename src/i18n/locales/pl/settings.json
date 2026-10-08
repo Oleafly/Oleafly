@@ -689,13 +689,17 @@
       },
       "cursorWidth": {
         "label": "Szerokość kursora",
-        "description": "Ustaw grubość kursora edytora."
+        "description": "Ustaw grubość kursora edytora.",
+        "option": "{{width}} px"
       },
       "cursorColor": {
         "label": "Kolor kursora",
-        "description": "Używa koloru motywu edytora, chyba że wybierzesz własny.",
-        "pick": "Wybierz kolor kursora edytora",
-        "useTheme": "Użyj koloru motywu"
+        "description": "Jasne i ciemne motywy edytora mają osobne kolory kursora. Dopóki nie wybierzesz koloru, używany jest kolor motywu.",
+        "light": "Jasny",
+        "dark": "Ciemny",
+        "pickLight": "Wybierz kolor kursora dla jasnych motywów edytora",
+        "pickDark": "Wybierz kolor kursora dla ciemnych motywów edytora",
+        "useTheme": "Użyj kolorów motywu"
       },
       "lineWrap": {
         "description": "Zawijaj długie wiersze zamiast przewijać w bok.",
@@ -767,6 +771,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "Czcionka {{font}} nie jest zainstalowana, więc używana jest czcionka domyślna.",
     "preview": {
       "darkMode": {
         "description": "Odwracaj kolory PDF domyślnie. Kolory nadal można przełączyć z paska narzędzi podglądu.",

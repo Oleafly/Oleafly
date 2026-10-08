@@ -679,13 +679,17 @@
       },
       "cursorWidth": {
         "label": "Markørbredde",
-        "description": "Angi hvor tykk markøren i editoren er."
+        "description": "Angi hvor tykk markøren i editoren er.",
+        "option": "{{width}} px"
       },
       "cursorColor": {
         "label": "Markørfarge",
-        "description": "Bruker fargen fra editortemaet med mindre du velger din egen.",
-        "pick": "Velg markørfargen i editoren",
-        "useTheme": "Bruk temafargen"
+        "description": "Lyse og mørke editortemaer har hver sin markørfarge. Til du velger en, brukes fargen fra temaet.",
+        "light": "Lyst",
+        "dark": "Mørkt",
+        "pickLight": "Velg markørfargen for lyse editortemaer",
+        "pickDark": "Velg markørfargen for mørke editortemaer",
+        "useTheme": "Bruk temafargene"
       },
       "lineWrap": {
         "description": "Brett lange linjer i stedet for å rulle sidelengs.",
@@ -757,6 +761,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} er ikke installert, så standardskriften brukes i stedet.",
     "preview": {
       "darkMode": {
         "description": "Inverter fargene i PDF-en som standard. Du kan fortsatt bytte farger fra verktøylinjen i forhåndsvisningen.",

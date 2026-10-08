@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle2, Info } from "lucide-react";
 import { TOAST_DURATION_MS, TOAST_LIMIT, useToastStore, type Toast } from "@/store/toast";
 import { displayText } from "@/lib/display-path";
 
-const TOASTER_STYLE = { "--width": "400px" } as CSSProperties;
+const TOASTER_STYLE = { "--width": "400px", fontFamily: "var(--font-sans)" } as CSSProperties;
 
 function sonnerFor(kind: Toast["kind"]) {
   if (kind === "error") return sonnerToast.error;

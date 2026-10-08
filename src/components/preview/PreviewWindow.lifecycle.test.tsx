@@ -433,6 +433,33 @@ describe("detached preview actions", () => {
     expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "pdf-settings" });
   });
 
+  it("opens Settings in the main window with the Settings shortcut", async () => {
+    mocks.native = true;
+    await showDocument();
+    const event = new KeyboardEvent("keydown", { key: ",", ctrlKey: true, bubbles: true, cancelable: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(emitTo).toHaveBeenCalledWith("main", "preview:command", { projectId: "alpha", action: "settings" });
+  });
+
+  it("leaves Cmd+Comma to the macOS app menu", async () => {
+    mocks.native = true;
+    const platform = Object.getOwnPropertyDescriptor(navigator, "platform");
+    Object.defineProperty(navigator, "platform", { value: "MacIntel", configurable: true });
+    try {
+      await showDocument();
+      const event = new KeyboardEvent("keydown", { key: ",", metaKey: true, bubbles: true, cancelable: true });
+      window.dispatchEvent(event);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(emitTo).not.toHaveBeenCalledWith("main", "preview:command", expect.objectContaining({ action: "settings" }));
+    } finally {
+      if (platform) Object.defineProperty(navigator, "platform", platform);
+      else Reflect.deleteProperty(navigator, "platform");
+    }
+  });
+
   it("shows the compile log and asks the assistant about its errors", async () => {
     mocks.native = true;
     await showDocument();

@@ -415,18 +415,37 @@ describe("useSettingsStore reset", () => {
     expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("1");
   });
 
-  it("keeps a valid custom cursor color and follows the theme otherwise", () => {
+  it("keeps a valid custom cursor color for each editor surface and follows the theme otherwise", () => {
     const settings = useSettingsStore.getState();
-    expect(useSettingsStore.getState().editorCursorColor).toBe("");
-    settings.setEditorCursorColor("#FF8800");
-    expect(useSettingsStore.getState().editorCursorColor).toBe("#ff8800");
-    expect(localStorage.getItem("oleafly.editor.cursorColor")).toBe("#ff8800");
-    settings.setEditorCursorColor("orange");
-    expect(useSettingsStore.getState().editorCursorColor).toBe("");
-    settings.setEditorCursorColor("#123456");
+    expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
+    settings.setEditorCursorColor("light", "#FF8800");
+    settings.setEditorCursorColor("dark", "#88CCFF");
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorCursorColorLight: "#ff8800",
+      editorCursorColorDark: "#88ccff",
+    });
+    expect(localStorage.getItem("oleafly.editor.cursorColor.light")).toBe("#ff8800");
+    expect(localStorage.getItem("oleafly.editor.cursorColor.dark")).toBe("#88ccff");
+    settings.setEditorCursorColor("light", "orange");
+    expect(useSettingsStore.getState().editorCursorColorLight).toBe("");
+    settings.setEditorCursorColor("light", "#123456");
     settings.resetToDefaults();
-    expect(useSettingsStore.getState().editorCursorColor).toBe("");
-    expect(localStorage.getItem("oleafly.editor.cursorColor")).toBe("");
+    expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
+    expect(localStorage.getItem("oleafly.editor.cursorColor.light")).toBe("");
+    expect(localStorage.getItem("oleafly.editor.cursorColor.dark")).toBe("");
+  });
+
+  it("starts a first custom line height at the preset it replaces", () => {
+    localStorage.removeItem("oleafly.editor.lineHeightCustom");
+    useSettingsStore.setState({ editorLineHeight: "wide", editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal });
+    useSettingsStore.getState().setEditorLineHeight("custom");
+    expect(useSettingsStore.getState()).toMatchObject({ editorLineHeight: "custom", editorCustomLineHeight: 2 });
+    expect(localStorage.getItem("oleafly.editor.lineHeightCustom")).toBe("2");
+
+    useSettingsStore.getState().setEditorCustomLineHeight(1.35);
+    useSettingsStore.getState().setEditorLineHeight("compact");
+    useSettingsStore.getState().setEditorLineHeight("custom");
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(1.35);
   });
 
   it("stores the editor font as the typed family name", () => {

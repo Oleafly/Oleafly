@@ -73,6 +73,9 @@ const chromeTheme = EditorView.theme({
     borderLeftWidth: "var(--cm-cursor-width, 1px)",
     marginLeft: "calc(var(--cm-cursor-width, 1px) / -2)",
   },
+  "&.cm-editor .cm-fat-cursor": {
+    background: "var(--cm-cursor-custom, #ff9696)",
+  },
   // The search panel is a floating widget that draws its own surface, so the
   // panel container stays transparent. Painting it here put an opaque strip
   // across the editor and ruled a line under the widget.

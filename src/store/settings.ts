@@ -781,6 +781,10 @@ export function editorLineHeightValue(choice: EditorLineHeight, custom: number):
 
 export const EDITOR_CURSOR_WIDTHS: readonly number[] = [1, 2, 3];
 
+export type EditorSurface = "light" | "dark";
+
+export const EDITOR_SURFACES: readonly EditorSurface[] = ["light", "dark"];
+
 export const EDITOR_TAB_SIZES: readonly number[] = [2, 4, 8];
 
 export type FileMoveReferences = "ask" | "always" | "never";
@@ -810,8 +814,9 @@ interface SettingsState {
   setEditorCustomLineHeight: (v: number) => void;
   editorCursorWidth: number;
   setEditorCursorWidth: (v: number) => void;
-  editorCursorColor: string;
-  setEditorCursorColor: (v: string) => void;
+  editorCursorColorLight: string;
+  editorCursorColorDark: string;
+  setEditorCursorColor: (surface: EditorSurface, v: string) => void;
   /** Completion popups while typing (Ctrl+Space always works). */
   editorAutocomplete: boolean;
   setEditorAutocomplete: (v: boolean) => void;
@@ -1072,7 +1077,8 @@ const PREF_DEFAULTS = {
   editorLineHeight: "normal" as EditorLineHeight,
   editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
   editorCursorWidth: 1,
-  editorCursorColor: "",
+  editorCursorColorLight: "",
+  editorCursorColorDark: "",
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
   editorAutoCloseMath: true,
@@ -1161,7 +1167,8 @@ const SECTION_SETTINGS = {
     editorLineHeight: "oleafly.editor.lineHeight",
     editorCustomLineHeight: "oleafly.editor.lineHeightCustom",
     editorCursorWidth: "oleafly.editor.cursorWidth",
-    editorCursorColor: "oleafly.editor.cursorColor",
+    editorCursorColorLight: "oleafly.editor.cursorColor.light",
+    editorCursorColorDark: "oleafly.editor.cursorColor.dark",
     editorAutocomplete: "oleafly.editor.autocomplete",
     editorAutoCloseBrackets: "oleafly.editor.closeBrackets",
     editorAutoCloseMath: "oleafly.editor.closeMath",
@@ -1282,7 +1289,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   editorLineHeight: readEditorLineHeight(),
   setEditorLineHeight: (v) => {
     const choice = EDITOR_LINE_HEIGHT_OPTIONS.includes(v) ? v : PREF_DEFAULTS.editorLineHeight;
+    const previous = get().editorLineHeight;
     saveLs("oleafly.editor.lineHeight", choice);
+    if (choice === "custom" && previous !== "custom" && ls("oleafly.editor.lineHeightCustom", "") === "") {
+      const seeded = EDITOR_LINE_HEIGHTS[previous];
+      saveLs("oleafly.editor.lineHeightCustom", String(seeded));
+      set({ editorLineHeight: choice, editorCustomLineHeight: seeded });
+      return;
+    }
     set({ editorLineHeight: choice });
   },
   editorCustomLineHeight: readEditorCustomLineHeight(),
@@ -1301,11 +1315,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editor.cursorWidth", String(width));
     set({ editorCursorWidth: width });
   },
-  editorCursorColor: readHexColor(ls("oleafly.editor.cursorColor", ""), ""),
-  setEditorCursorColor: (v) => {
+  editorCursorColorLight: readHexColor(ls("oleafly.editor.cursorColor.light", ""), ""),
+  editorCursorColorDark: readHexColor(ls("oleafly.editor.cursorColor.dark", ""), ""),
+  setEditorCursorColor: (surface, v) => {
     const color = readHexColor(v, "");
-    saveLs("oleafly.editor.cursorColor", color);
-    set({ editorCursorColor: color });
+    saveLs(`oleafly.editor.cursorColor.${surface}`, color);
+    set(surface === "light" ? { editorCursorColorLight: color } : { editorCursorColorDark: color });
   },
   editorAutocomplete: ls("oleafly.editor.autocomplete", "1") !== "0",
   setEditorAutocomplete: (v) => {

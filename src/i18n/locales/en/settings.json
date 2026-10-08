@@ -679,13 +679,17 @@
       },
       "cursorWidth": {
         "label": "Cursor width",
-        "description": "Set how thick the editor cursor is."
+        "description": "Set how thick the editor cursor is.",
+        "option": "{{width}}px"
       },
       "cursorColor": {
         "label": "Cursor color",
-        "description": "Uses the editor theme's color unless you pick your own.",
-        "pick": "Pick the editor cursor color",
-        "useTheme": "Use theme color"
+        "description": "Light and dark editor themes each have their own cursor color. Until you pick one, the theme's color is used.",
+        "light": "Light",
+        "dark": "Dark",
+        "pickLight": "Pick the cursor color for light editor themes",
+        "pickDark": "Pick the cursor color for dark editor themes",
+        "useTheme": "Use theme colors"
       },
       "lineWrap": {
         "description": "Wrap long lines instead of scrolling sideways.",
@@ -757,6 +761,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} isn't installed, so the default font is used instead.",
     "preview": {
       "darkMode": {
         "description": "Invert PDF colors by default. You can still switch colors from the preview toolbar.",

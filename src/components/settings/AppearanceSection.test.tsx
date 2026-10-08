@@ -307,21 +307,32 @@ describe("Appearance settings tabs", () => {
     expect(field).toHaveValue(1.7);
   });
 
-  it("picks a cursor color and goes back to the theme color", async () => {
+  it("picks a cursor color for light and for dark editor themes and goes back to the theme's", async () => {
     const user = userEvent.setup();
-    useSettingsStore.setState({ editorCursorColor: "" });
+    useSettingsStore.setState({ editorCursorColorLight: "", editorCursorColorDark: "", editorTheme: "dracula" });
+    const palette = document.createElement("style");
+    palette.textContent = '[data-editor-theme="dracula"] { --cm-cursor: #f8f8f2; }';
+    document.head.append(palette);
     render(<AppearanceSection />);
     await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
     const row = screen.getByTestId("settings-row-editor-cursor-color");
-    expect(within(row).queryByRole("button", { name: appearance.editor.cursorColor.useTheme })).toBeNull();
+    const cursorColor = appearance.editor.cursorColor;
+    expect(within(row).queryByRole("button", { name: cursorColor.useTheme })).toBeNull();
+    expect(screen.getByTestId("settings-editor-cursor-color-dark")).toHaveAttribute("data-custom", "false");
+    expect(within(row).getByLabelText(cursorColor.pickDark)).toHaveValue("#f8f8f2");
 
-    fireEvent.change(within(row).getByLabelText(appearance.editor.cursorColor.pick), {
-      target: { value: "#ff8800" },
+    fireEvent.change(within(row).getByLabelText(cursorColor.pickLight), { target: { value: "#ff8800" } });
+    fireEvent.change(within(row).getByLabelText(cursorColor.pickDark), { target: { value: "#88ccff" } });
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorCursorColorLight: "#ff8800",
+      editorCursorColorDark: "#88ccff",
     });
-    expect(useSettingsStore.getState().editorCursorColor).toBe("#ff8800");
+    expect(screen.getByTestId("settings-editor-cursor-color-dark")).toHaveAttribute("data-custom", "true");
 
-    await user.click(within(row).getByRole("button", { name: appearance.editor.cursorColor.useTheme }));
-    expect(useSettingsStore.getState().editorCursorColor).toBe("");
+    await user.click(within(row).getByRole("button", { name: cursorColor.useTheme }));
+    expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
+    useSettingsStore.setState({ editorTheme: "system" });
+    palette.remove();
   });
 
   it("changes the editor cursor width", async () => {

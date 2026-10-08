@@ -679,13 +679,17 @@
       },
       "cursorWidth": {
         "label": "Markörbredd",
-        "description": "Ange hur tjock redigerarens markör är."
+        "description": "Ange hur tjock redigerarens markör är.",
+        "option": "{{width}} px"
       },
       "cursorColor": {
         "label": "Markörfärg",
-        "description": "Använder redigerartemats färg om du inte väljer en egen.",
-        "pick": "Välj färg för redigerarens markör",
-        "useTheme": "Använd temats färg"
+        "description": "Ljusa och mörka redigerarteman har var sin markörfärg. Tills du väljer en används temats färg.",
+        "light": "Ljust",
+        "dark": "Mörkt",
+        "pickLight": "Välj markörfärg för ljusa redigerarteman",
+        "pickDark": "Välj markörfärg för mörka redigerarteman",
+        "useTheme": "Använd temats färger"
       },
       "lineWrap": {
         "description": "Bryt långa rader i stället för att rulla i sidled.",
@@ -757,6 +761,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} är inte installerat, så standardteckensnittet används i stället.",
     "preview": {
       "darkMode": {
         "description": "Invertera PDF-färgerna som standard. Du kan fortfarande byta färger i förhandsvisningens verktygsfält.",

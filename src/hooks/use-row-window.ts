@@ -7,6 +7,7 @@ export type RowWindow = RowRange &
   Readonly<{
     paddingTop: number;
     paddingBottom: number;
+    rowHeight: number;
     scrollToIndex: (index: number) => void;
   }>;
 
@@ -196,6 +197,7 @@ export function useRowWindow({
     end,
     paddingTop: rowHeight > 0 ? start * rowHeight : 0,
     paddingBottom: rowHeight > 0 ? Math.max(0, count - end) * rowHeight : 0,
+    rowHeight,
     scrollToIndex,
   };
 }

@@ -258,8 +258,12 @@ export function sameShortcutBinding(left: ShortcutBinding, right: ShortcutBindin
   );
 }
 
-export function shortcutLabel(binding: ShortcutBinding): string {
-  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+function onMacKeyboard(): boolean {
+  return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+}
+
+export function shortcutParts(binding: ShortcutBinding): string[] {
+  const mac = onMacKeyboard();
   const parts: string[] = [];
   if (binding.mod) parts.push(mac ? "⌘" : "Ctrl");
   if (binding.ctrl && (mac || !binding.mod)) parts.push("Ctrl");
@@ -267,5 +271,9 @@ export function shortcutLabel(binding: ShortcutBinding): string {
   if (binding.alt) parts.push(mac ? "⌥" : "Alt");
   const key = binding.key === " " ? "Space" : binding.key;
   parts.push(key.length === 1 ? key.toUpperCase() : key);
-  return mac ? parts.join("") : parts.join("+");
+  return parts;
+}
+
+export function shortcutLabel(binding: ShortcutBinding): string {
+  return shortcutParts(binding).join(onMacKeyboard() ? "" : "+");
 }

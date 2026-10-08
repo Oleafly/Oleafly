@@ -61,3 +61,17 @@ export function quotedFontFamily(name: string): string {
   const escaped = fontFamilyName(name).replace(/["\\]/gu, ESCAPED_CSS_STRING_CHARACTER);
   return `"${escaped}"`;
 }
+
+const SYSTEM_FONT_ALIASES: Readonly<Record<string, string>> = {
+  "sf mono": "ui-monospace",
+};
+
+export function isSystemFontAlias(name: string): boolean {
+  return fontFamilyName(name).toLowerCase() in SYSTEM_FONT_ALIASES;
+}
+
+export function fontFamilyStack(name: string, fallback: string): string {
+  const family = fontFamilyName(name);
+  const alias = SYSTEM_FONT_ALIASES[family.toLowerCase()];
+  return [quotedFontFamily(family), alias, fallback].filter(Boolean).join(", ");
+}

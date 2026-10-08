@@ -674,12 +674,16 @@
       },
       "cursorWidth": {
         "label": "カーソルの幅",
-        "description": "エディタのカーソルの太さを設定します。"
+        "description": "エディタのカーソルの太さを設定します。",
+        "option": "{{width}}px"
       },
       "cursorColor": {
         "label": "カーソルの色",
-        "description": "色を選ばない場合は、エディタのテーマの色を使います。",
-        "pick": "エディタのカーソルの色を選ぶ",
+        "description": "エディタのライトテーマとダークテーマで、それぞれ別のカーソルの色を使えます。色を選ぶまではテーマの色を使います。",
+        "light": "ライト",
+        "dark": "ダーク",
+        "pickLight": "ライトテーマのエディタのカーソルの色を選ぶ",
+        "pickDark": "ダークテーマのエディタのカーソルの色を選ぶ",
         "useTheme": "テーマの色を使う"
       },
       "lineWrap": {
@@ -752,6 +756,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} はインストールされていないため、既定のフォントを使っています。",
     "preview": {
       "darkMode": {
         "description": "既定で PDF の色を反転します。プレビューのツールバーからいつでも切り替えられます。",

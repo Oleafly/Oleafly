@@ -9,9 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
 import { cssColorToHex, readClassVariables, readCssVariable } from "@/lib/css-color";
 import { useTheme, type Theme } from "@/lib/theme";
+import { useSettingsStore } from "@/store/settings";
 import {
   MAX_THEME_IMPORT_BYTES,
   THEME_TOKEN_NAMES,
+  accentTokenDefaults,
   applyThemeCustomization,
   parseThemeCustomizationImport,
   readThemeCustomization,
@@ -73,6 +75,7 @@ function downloadTheme(customization: ThemeCustomizationState) {
 export function ThemeCustomization() {
   const { t } = useTranslation(["common", "settings"]);
   const { theme } = useTheme();
+  const accentColor = useSettingsStore((state) => state.accentColor);
   const [customization, setCustomization] = useState<ThemeCustomizationState>(() => readThemeCustomization());
   const [editMode, setEditMode] = useState<Theme>(theme);
   const [tokenDrafts, setTokenDrafts] = useState<Record<Theme, Partial<Record<ThemeTokenName, string>>>>({ light: {}, dark: {} });
@@ -159,8 +162,11 @@ export function ThemeCustomization() {
     () =>
       editMode === theme
         ? {}
-        : readClassVariables(editMode, THEME_TOKEN_NAMES.map((token) => `--${token}`)),
-    [editMode, theme],
+        : {
+            ...readClassVariables(editMode, THEME_TOKEN_NAMES.map((token) => `--${token}`)),
+            ...accentTokenDefaults(editMode, accentColor),
+          },
+    [editMode, theme, accentColor],
   );
 
   const effectiveColor = (token: ThemeTokenName): string => {

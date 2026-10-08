@@ -5,6 +5,7 @@ import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" }
 
 const mocks = vi.hoisted(() => ({
   tauri: false,
+  nativeDockMenu: false,
   listeners: new Map<string, (event: { payload: unknown }) => void>(),
   openUpdateWindow: vi.fn(),
   checkForUpdatesOnStartup: vi.fn(async () => {}),
@@ -148,7 +149,7 @@ vi.mock("@/lib/preview-workspace", () => ({ startPreviewWorkspaceBridge: vi.fn(a
 vi.mock("@/lib/preview-window", () => ({ restorePreviewWindow: vi.fn(async () => {}) }));
 vi.mock("@/lib/native-dock-shortcuts", () => ({
   startNativeDockShortcutBridge: vi.fn(async () => () => {}),
-  usesNativeDockMenu: () => false,
+  usesNativeDockMenu: () => mocks.nativeDockMenu,
 }));
 vi.mock("@/lib/browser-window", () => ({
   registerBrowserCuaSurface: () => () => {},
@@ -322,6 +323,7 @@ beforeEach(() => {
   useCompileStore.setState({ ...initialCompile, recompile: vi.fn(async () => undefined), status: "idle", autoCompile: false }, true);
   useHomeViewStore.setState({ page: "library", queuedPageAfterProjectClose: null });
   useTourStore.setState({ activeTourId: null });
+  mocks.nativeDockMenu = false;
   usePreviewDetachedStore.setState({ projectId: null });
   useSettingsStore.setState(
     {
@@ -554,13 +556,25 @@ describe("project workspace", () => {
     expect(root.style.getPropertyValue("--cm-cursor-width")).toBe("3px");
   });
 
-  it("overrides the cursor color only while a custom one is set", async () => {
-    useSettingsStore.setState({ editorCursorColor: "#ff8800" });
+  it("sets a cursor color for light and dark editor themes only while each is custom", async () => {
+    useSettingsStore.setState({ editorCursorColorLight: "#ff8800", editorCursorColorDark: "" });
     await renderApp();
     const root = document.documentElement;
-    expect(root.style.getPropertyValue("--cm-cursor-custom")).toBe("#ff8800");
-    act(() => useSettingsStore.setState({ editorCursorColor: "" }));
-    expect(root.style.getPropertyValue("--cm-cursor-custom")).toBe("");
+    expect(root.style.getPropertyValue("--cm-cursor-custom-light")).toBe("#ff8800");
+    expect(root.style.getPropertyValue("--cm-cursor-custom-dark")).toBe("");
+    act(() => useSettingsStore.setState({ editorCursorColorLight: "", editorCursorColorDark: "#88ccff" }));
+    expect(root.style.getPropertyValue("--cm-cursor-custom-light")).toBe("");
+    expect(root.style.getPropertyValue("--cm-cursor-custom-dark")).toBe("#88ccff");
+    act(() => useSettingsStore.setState({ editorCursorColorDark: "" }));
+  });
+
+  it("keeps the macOS system monospace font reachable by its name", async () => {
+    useSettingsStore.setState({ editorFontFamily: "SF Mono" });
+    await renderApp();
+    expect(document.documentElement.style.getPropertyValue("--cm-font-family")).toBe(
+      '"SF Mono", ui-monospace, var(--font-mono)',
+    );
+    act(() => useSettingsStore.setState({ editorFontFamily: "" }));
   });
 
   it("falls back to the default editor font when the chosen name is only spaces", async () => {
@@ -620,6 +634,14 @@ describe("native events", () => {
     act(() => useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" }));
     emit("settings:open", null);
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: true, settingsInitialSection: "general" });
+  });
+
+  it("ignores the app menu's Settings item during a tour", async () => {
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("settings:open")).toBe(true));
+    act(() => useTourStore.setState({ activeTourId: "home" }));
+    emit("settings:open", null);
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
   });
 
   it("applies file changes and compile results reported by other windows", async () => {
@@ -687,6 +709,14 @@ describe("keyboard shortcuts", () => {
     act(() => useFilesStore.setState({ projectId: null }));
     keydown(window, { key: ",", ctrlKey: true });
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
+  });
+
+  it("leaves Cmd+Comma to the macOS menu so the key reaches it", async () => {
+    mocks.nativeDockMenu = true;
+    await renderApp();
+    const event = keydown(window, { key: ",", ctrlKey: true });
+    expect(event.defaultPrevented).toBe(false);
+    expect(useSettingsStore.getState().settingsOpen).toBe(false);
   });
 
   it("leaves the settings shortcut alone during a tour or once another handler took it", async () => {

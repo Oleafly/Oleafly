@@ -679,13 +679,17 @@
       },
       "cursorWidth": {
         "label": "Cursorbreite",
-        "description": "Legen Sie fest, wie dick der Cursor im Editor ist."
+        "description": "Legen Sie fest, wie dick der Cursor im Editor ist.",
+        "option": "{{width}} px"
       },
       "cursorColor": {
         "label": "Cursorfarbe",
-        "description": "Verwendet die Farbe des Editor-Designs, bis Sie eine eigene wählen.",
-        "pick": "Cursorfarbe des Editors wählen",
-        "useTheme": "Farbe des Designs verwenden"
+        "description": "Helle und dunkle Editor-Designs haben jeweils eine eigene Cursorfarbe. Bis Sie eine wählen, wird die Farbe des Designs verwendet.",
+        "light": "Hell",
+        "dark": "Dunkel",
+        "pickLight": "Cursorfarbe für helle Editor-Designs wählen",
+        "pickDark": "Cursorfarbe für dunkle Editor-Designs wählen",
+        "useTheme": "Farben des Designs verwenden"
       },
       "lineWrap": {
         "description": "Lange Zeilen umbrechen statt seitwärts zu scrollen.",
@@ -757,6 +761,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} ist nicht installiert, daher wird stattdessen die Standardschrift verwendet.",
     "preview": {
       "darkMode": {
         "description": "PDF-Farben standardmäßig umkehren. Sie können die Farben weiterhin über die Werkzeugleiste der Vorschau umschalten.",

@@ -59,12 +59,12 @@ describe("fontChoices", () => {
     ]);
   });
 
-  it("stops at eighty choices", () => {
-    const many = Array.from({ length: 90 }, (_, index) => ({
+  it("offers every matching family, however many there are", () => {
+    const many = Array.from({ length: 400 }, (_, index) => ({
       name: `Font ${index}`,
       sources: [{ kind: "system" as const, path: null }],
     }));
-    expect(fontChoices(many, ["system"], "")).toHaveLength(80);
+    expect(fontChoices(many, ["system"], "")).toHaveLength(400);
   });
 });
 

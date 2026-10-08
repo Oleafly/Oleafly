@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Plus, RotateCcw } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -15,12 +15,14 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n } from "@/i18n";
+import { editorThemeCursorColor } from "@/lib/editor-cursor-color";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
   ACCENTS,
   BROWSER_SEARCH_ENGINES,
   EDITOR_CURSOR_WIDTHS,
+  EDITOR_SURFACES,
   EDITOR_CUSTOM_LINE_HEIGHT,
   EDITOR_KEYMAP_MODES,
   EDITOR_LINE_HEIGHT_OPTIONS,
@@ -35,6 +37,7 @@ import {
   clampEditorLineHeight,
   sectionDiffersFromDefaults,
   type BrowserSearchEngineId,
+  type EditorSurface,
   type TerminalColorThemeId,
   type TerminalCursorStyle,
   useSettingsStore,
@@ -44,7 +47,7 @@ import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
-import { SystemFontPicker } from "@/components/settings/SystemFontPicker";
+import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
@@ -304,23 +307,84 @@ function AppAppearanceTab() {
         }
       />
 
-      <SettingsRow
+      <SystemFontSettingsRow
         testId="settings-row-app-font"
+        id="settings-app-font"
+        use="app"
         label={t(($) => $.settings.appearance.app.font.label)}
         description={t(($) => $.settings.appearance.app.font.description)}
-        control={
-          <SystemFontPicker
-            id="settings-app-font"
-            use="app"
-            label={t(($) => $.settings.appearance.app.font.label)}
-            value={appFontFamily}
-            onChange={setAppFontFamily}
-          />
-        }
+        value={appFontFamily}
+        onChange={setAppFontFamily}
       />
       <ZenModeSettings />
       <ThemeCustomization />
     </div>
+  );
+}
+
+function EditorCursorColorRow() {
+  const { t } = useTranslation(["settings"]);
+  const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const accentColor = useSettingsStore((state) => state.accentColor);
+  const light = useSettingsStore((state) => state.editorCursorColorLight);
+  const dark = useSettingsStore((state) => state.editorCursorColorDark);
+  const setEditorCursorColor = useSettingsStore((state) => state.setEditorCursorColor);
+  const { theme } = useTheme();
+  const colors: Readonly<Record<EditorSurface, string>> = { light, dark };
+  const themeColors = useMemo(
+    () => ({
+      light: editorThemeCursorColor("light", editorTheme, { theme, accentColor }),
+      dark: editorThemeCursorColor("dark", editorTheme, { theme, accentColor }),
+    }),
+    [editorTheme, theme, accentColor],
+  );
+  const surfaceLabels: Readonly<Record<EditorSurface, string>> = {
+    light: t(($) => $.settings.appearance.editor.cursorColor.light),
+    dark: t(($) => $.settings.appearance.editor.cursorColor.dark),
+  };
+  const pickLabels: Readonly<Record<EditorSurface, string>> = {
+    light: t(($) => $.settings.appearance.editor.cursorColor.pickLight),
+    dark: t(($) => $.settings.appearance.editor.cursorColor.pickDark),
+  };
+
+  return (
+    <SettingsRow
+      testId="settings-row-editor-cursor-color"
+      label={t(($) => $.settings.appearance.editor.cursorColor.label)}
+      description={t(($) => $.settings.appearance.editor.cursorColor.description)}
+      control={
+        <div className="flex shrink-0 items-center gap-3">
+          {light || dark ? (
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              onClick={() => {
+                for (const surface of EDITOR_SURFACES) setEditorCursorColor(surface, "");
+              }}
+            >
+              <RotateCcw aria-hidden />
+              {t(($) => $.settings.appearance.editor.cursorColor.useTheme)}
+            </Button>
+          ) : null}
+          {EDITOR_SURFACES.map((surface) => (
+            <div
+              key={surface}
+              data-testid={`settings-editor-cursor-color-${surface}`}
+              data-custom={colors[surface] ? "true" : "false"}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground"
+            >
+              <span aria-hidden>{surfaceLabels[surface]}</span>
+              <ColorPicker
+                ariaLabel={pickLabels[surface]}
+                value={colors[surface] || themeColors[surface]}
+                onChange={(color) => setEditorCursorColor(surface, color)}
+              />
+            </div>
+          ))}
+        </div>
+      }
+    />
   );
 }
 
@@ -431,8 +495,6 @@ function EditorAppearanceTab() {
   const setEditorFontFamily = useSettingsStore((state) => state.setEditorFontFamily);
   const editorCursorWidth = useSettingsStore((state) => state.editorCursorWidth);
   const setEditorCursorWidth = useSettingsStore((state) => state.setEditorCursorWidth);
-  const editorCursorColor = useSettingsStore((state) => state.editorCursorColor);
-  const setEditorCursorColor = useSettingsStore((state) => state.setEditorCursorColor);
   const editorTheme = useSettingsStore((state) => state.editorTheme);
   const setEditorTheme = useSettingsStore((state) => state.setEditorTheme);
   const fileMoveReferences = useSettingsStore((state) => state.fileMoveReferences);
@@ -463,19 +525,14 @@ function EditorAppearanceTab() {
         }
       />
 
-      <SettingsRow
+      <SystemFontSettingsRow
         testId="settings-row-editor-font"
+        id="settings-editor-font"
+        use="editor"
         label={t(($) => $.settings.appearance.editor.font.label)}
         description={t(($) => $.settings.appearance.editor.font.description)}
-        control={
-          <SystemFontPicker
-            id="settings-editor-font"
-            use="editor"
-            label={t(($) => $.settings.appearance.editor.font.label)}
-            value={editorFontFamily}
-            onChange={setEditorFontFamily}
-          />
-        }
+        value={editorFontFamily}
+        onChange={setEditorFontFamily}
       />
 
       <SettingsRow
@@ -591,7 +648,7 @@ function EditorAppearanceTab() {
             <SelectContent className="z-[100]">
               {EDITOR_CURSOR_WIDTHS.map((width) => (
                 <SelectItem key={width} value={String(width)}>
-                  {t(($) => $.settings.appearance.fontSizeOption, { size: width })}
+                  {t(($) => $.settings.appearance.editor.cursorWidth.option, { width })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -599,25 +656,12 @@ function EditorAppearanceTab() {
         }
       />
 
-      <SettingsRow
-        testId="settings-row-editor-cursor-color"
-        label={t(($) => $.settings.appearance.editor.cursorColor.label)}
-        description={t(($) => $.settings.appearance.editor.cursorColor.description)}
-        control={
-          <div className="flex shrink-0 items-center gap-2">
-            {editorCursorColor ? (
-              <Button type="button" size="xs" variant="ghost" onClick={() => setEditorCursorColor("")}>
-                <RotateCcw aria-hidden />
-                {t(($) => $.settings.appearance.editor.cursorColor.useTheme)}
-              </Button>
-            ) : null}
-            <ColorPicker
-              ariaLabel={t(($) => $.settings.appearance.editor.cursorColor.pick)}
-              value={editorCursorColor}
-              onChange={setEditorCursorColor}
-            />
-          </div>
-        }
+      <EditorCursorColorRow />
+      <SettingsToggleRow
+        label={t(($) => $.settings.appearance.editor.nonBlinkingCursor.label)}
+        description={t(($) => $.settings.appearance.editor.nonBlinkingCursor.description)}
+        checked={editorNonBlinkingCursor}
+        onChange={setEditorNonBlinkingCursor}
       />
 
       <SettingsToggleRow
@@ -655,12 +699,6 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.ghostCompletion.description)}
         checked={editorGhostCompletion}
         onChange={setEditorGhostCompletion}
-      />
-      <SettingsToggleRow
-        label={t(($) => $.settings.appearance.editor.nonBlinkingCursor.label)}
-        description={t(($) => $.settings.appearance.editor.nonBlinkingCursor.description)}
-        checked={editorNonBlinkingCursor}
-        onChange={setEditorNonBlinkingCursor}
       />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.stickyScroll.label)}

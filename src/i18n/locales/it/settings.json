@@ -684,13 +684,17 @@
       },
       "cursorWidth": {
         "label": "Spessore del cursore",
-        "description": "Imposta lo spessore del cursore dell'editor."
+        "description": "Imposta lo spessore del cursore dell'editor.",
+        "option": "{{width}}px"
       },
       "cursorColor": {
         "label": "Colore del cursore",
-        "description": "Usa il colore del tema dell'editor, a meno che tu non ne scelga uno.",
-        "pick": "Scegli il colore del cursore dell'editor",
-        "useTheme": "Usa il colore del tema"
+        "description": "I temi chiari e scuri dell'editor hanno ciascuno il proprio colore del cursore. Finché non ne scegli uno, viene usato il colore del tema.",
+        "light": "Chiaro",
+        "dark": "Scuro",
+        "pickLight": "Scegli il colore del cursore per i temi chiari dell'editor",
+        "pickDark": "Scegli il colore del cursore per i temi scuri dell'editor",
+        "useTheme": "Usa i colori del tema"
       },
       "lineWrap": {
         "description": "Manda a capo le righe lunghe invece di scorrere in orizzontale.",
@@ -762,6 +766,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} non è installato, quindi viene usato il carattere predefinito.",
     "preview": {
       "darkMode": {
         "description": "Inverte i colori del PDF per impostazione predefinita. Puoi comunque cambiarli dalla barra dell'anteprima.",

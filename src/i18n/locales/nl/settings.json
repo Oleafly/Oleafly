@@ -679,13 +679,17 @@
       },
       "cursorWidth": {
         "label": "Cursorbreedte",
-        "description": "Stel in hoe dik de cursor in de editor is."
+        "description": "Stel in hoe dik de cursor in de editor is.",
+        "option": "{{width}}px"
       },
       "cursorColor": {
         "label": "Cursorkleur",
-        "description": "Gebruikt de kleur van het editorthema, tenzij je zelf een kleur kiest.",
-        "pick": "Kies de cursorkleur van de editor",
-        "useTheme": "Themakleur gebruiken"
+        "description": "Lichte en donkere editorthema's hebben elk een eigen cursorkleur. Zolang je er geen kiest, wordt de kleur van het thema gebruikt.",
+        "light": "Licht",
+        "dark": "Donker",
+        "pickLight": "Kies de cursorkleur voor lichte editorthema's",
+        "pickDark": "Kies de cursorkleur voor donkere editorthema's",
+        "useTheme": "Themakleuren gebruiken"
       },
       "lineWrap": {
         "description": "Breek lange regels af in plaats van zijwaarts te scrollen.",
@@ -757,6 +761,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} is niet geïnstalleerd, dus het standaardlettertype wordt gebruikt.",
     "preview": {
       "darkMode": {
         "description": "Keer de PDF-kleuren standaard om. Je kunt de kleuren nog altijd wisselen via de werkbalk van het voorbeeld.",

@@ -83,6 +83,7 @@ muda = { version = "0.19", default-features = false }
 notify = "8.2"
 trash = "5.2.9"
 fontdb = "0.24"
+ttf-parser = { version = "0.25.1", default-features = false, features = ["std"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "=2.11.1"

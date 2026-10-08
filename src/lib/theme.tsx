@@ -8,7 +8,11 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { applyThemeCustomization, themeTokenOverride, THEME_CUSTOMIZATION_STORAGE_KEY } from "@/lib/theme-customization";
+import {
+  accentTokenDefaults,
+  applyThemeCustomization,
+  THEME_CUSTOMIZATION_STORAGE_KEY,
+} from "@/lib/theme-customization";
 
 export type Theme = "light" | "dark";
 export type ThemePreference = "system" | "light" | "dark";
@@ -73,11 +77,9 @@ export function subscribeTheme(listener: ThemeListener): () => void {
 }
 
 export function applyAccentColor(theme: Theme, accentColor = window.localStorage.getItem(ACCENT_STORAGE_KEY)): void {
-  if (themeTokenOverride(theme, "primary")) return;
   const root = document.documentElement;
-  root.style.setProperty("--primary", accentColor || "#2563eb");
-  if (!themeTokenOverride(theme, "primary-foreground")) {
-    root.style.setProperty("--primary-foreground", "#ffffff");
+  for (const [name, value] of Object.entries(accentTokenDefaults(theme, accentColor))) {
+    root.style.setProperty(name, value);
   }
 }
 

@@ -297,16 +297,24 @@ Reset to defaults at the foot of Appearance.
 - Keybindings: Default, Vim or Emacs. See
   [KeyboardShortcuts.md](KeyboardShortcuts.md) for what each mode binds.
 - Editor font size, editor font and editor theme. The font list holds every
-  font installed on the computer, monospaced ones first, and a typed name
-  works even when the list doesn't show it. Rust lists the fonts with
-  `fontdb`, the same way Typst finds system fonts.
+  font installed on the computer, monospaced ones first, each drawn in its
+  own font. A typed name works even when the list doesn't show it, and a
+  saved name that isn't installed gets a note under the setting. Rust lists
+  the fonts with `fontdb`, the same way Typst finds system fonts. It leaves
+  out symbol and icon fonts such as Webdings and Wingdings, and it counts a
+  font as monospaced when its letters all have the same width, even if the
+  font file doesn't say so (Monaco and Courier don't).
 - Tab size: 2, 4 or 8 spaces. It sets the indent unit and the width a
   literal tab renders at.
 - Line height: compact (1.4), normal (1.7), wide (2.0) or custom, which takes
-  any value from 1 to 3 in steps of 0.05.
+  any value from 1 to 3 with up to two decimals. The arrow keys move it by
+  0.05. The first time you pick custom it starts from the preset you had.
 - Cursor width: 1, 2 or 3 pixels.
-- Cursor color: the editor theme's color until you pick one. Use theme color
-  goes back to it.
+- Cursor color: one color for light editor themes and one for dark ones, so
+  a cursor picked for a white page doesn't vanish on a dark one. Each swatch
+  shows the theme's color until you pick your own, and Use theme colors goes
+  back to both. The color also applies to the Vim block cursor and to the
+  Markdown Visual editor's caret.
 - Wrap long lines: on by default. Turn it off and the editor scrolls
   sideways instead.
 - Auto-complete, auto-close brackets, auto-close math, auto-close

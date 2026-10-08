@@ -34,3 +34,30 @@ test("Cmd+/ opens the keyboard shortcuts reference", async ({ tauriPage }) => {
   await expect(tauriPage.getByText("Keyboard Shortcuts")).toBeVisible();
   await expect(tauriPage.locator('input[placeholder="Search shortcuts…"]')).toBeVisible();
 });
+
+async function pressSettingsShortcut(page: Parameters<typeof pressGlobal>[0]) {
+  const nativeMenu = await page.evaluate<boolean>(
+    `Boolean(window.__TAURI_INTERNALS__) && /Mac/.test(navigator.platform)`,
+  );
+  if (nativeMenu) {
+    await page.evaluate(
+      `window.__TAURI_INTERNALS__.invoke("plugin:event|emit", {
+        event: "settings:open",
+        payload: null,
+      }).then(() => true)`,
+    );
+    return;
+  }
+  await pressGlobal(page, ",", { meta: true });
+}
+
+test("Cmd+, opens Settings", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await pressSettingsShortcut(tauriPage);
+  await expect(tauriPage.locator('[data-testid="settings-section-appearance"]')).toBeVisible({
+    timeout: 10_000,
+  });
+  await tauriPage.click('[data-testid="settings-close"]');
+  await expect(tauriPage.locator('[data-testid="settings-close"]')).toHaveCount(0, { timeout: 10_000 });
+});

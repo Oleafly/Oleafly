@@ -19,7 +19,14 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import { resetSystemFontsCache } from "@/lib/system-fonts";
 import { useSettingsStore } from "@/store/settings";
-import { FONT_TYPING_DELAY_MS, SystemFontPicker, systemFontOptions, type SystemFontUse } from "./SystemFontPicker";
+import { ModalShell } from "@/components/ui/modal-shell";
+import {
+  FONT_TYPING_DELAY_MS,
+  SystemFontSettingsRow,
+  isInstalledFont,
+  systemFontOptions,
+  type SystemFontUse,
+} from "./SystemFontPicker";
 
 const LABELS = { systemDefault: "Default", monospace: "Mono" };
 const FAMILIES = [
@@ -31,6 +38,8 @@ const FAMILIES = [
 const FONT_LABEL = enSettings.appearance.editor.font.label;
 const MONOSPACE = enSettings.appearance.editor.font.monospace;
 const APP_FONT_LABEL = enSettings.appearance.app.font.label;
+const DIALOG_LABEL = "Settings";
+const CLOSE_LABEL = "Close";
 
 function Picker({ use = "editor" }: Readonly<{ use?: SystemFontUse }>) {
   const value = useSettingsStore((state) => (use === "editor" ? state.editorFontFamily : state.appFontFamily));
@@ -38,14 +47,20 @@ function Picker({ use = "editor" }: Readonly<{ use?: SystemFontUse }>) {
     use === "editor" ? state.setEditorFontFamily : state.setAppFontFamily,
   );
   return (
-    <SystemFontPicker
+    <SystemFontSettingsRow
+      testId="font-row"
       id="font"
       use={use}
       label={use === "editor" ? FONT_LABEL : APP_FONT_LABEL}
+      description="Pick a font"
       value={value}
       onChange={setValue}
     />
   );
+}
+
+function preview(name: string) {
+  return `"${name}", var(--font-sans-default)`;
 }
 
 function checkedOption() {
@@ -74,10 +89,10 @@ describe("systemFontOptions", () => {
   it("puts the default first and monospaced families before the rest", () => {
     expect(systemFontOptions(FAMILIES, "", LABELS, true)).toEqual([
       { value: "", label: "Default" },
-      { value: "Fira Code", badges: [{ id: "monospace", label: "Mono" }] },
-      { value: "iA Writer Mono S", badges: [{ id: "monospace", label: "Mono" }] },
-      { value: "Arial", badges: [] },
-      { value: "iA Writer Quattro S", badges: [] },
+      { value: "Fira Code", preview: preview("Fira Code"), badges: [{ id: "monospace", label: "Mono" }] },
+      { value: "iA Writer Mono S", preview: preview("iA Writer Mono S"), badges: [{ id: "monospace", label: "Mono" }] },
+      { value: "Arial", preview: preview("Arial"), badges: [] },
+      { value: "iA Writer Quattro S", preview: preview("iA Writer Quattro S"), badges: [] },
     ]);
   });
 
@@ -88,19 +103,47 @@ describe("systemFontOptions", () => {
     ]);
   });
 
-  it("stops at eighty families", () => {
-    const many = Array.from({ length: 120 }, (_, index) => ({ name: `Font ${index}`, monospace: false }));
-    expect(systemFontOptions(many, "font", LABELS, true)).toHaveLength(80);
+  it("offers every installed family, however many there are", () => {
+    const many = Array.from({ length: 400 }, (_, index) => ({ name: `Font ${index}`, monospace: false }));
+    expect(systemFontOptions(many, "", LABELS, true)).toHaveLength(401);
+    expect(systemFontOptions(many, "font 39", LABELS, true).map((option) => option.value)).toEqual([
+      "Font 39",
+      "Font 390",
+      "Font 391",
+      "Font 392",
+      "Font 393",
+      "Font 394",
+      "Font 395",
+      "Font 396",
+      "Font 397",
+      "Font 398",
+      "Font 399",
+    ]);
+  });
+
+  it("previews the macOS system monospace font through its system name", () => {
+    expect(systemFontOptions([{ name: "SF Mono", monospace: true }], "", LABELS, true)[1]?.preview).toBe(
+      '"SF Mono", ui-monospace, var(--font-sans-default)',
+    );
   });
 
   it("keeps name order without badges when monospaced fonts are not preferred", () => {
-    expect(systemFontOptions(FAMILIES, "", LABELS, false)).toEqual([
-      { value: "", label: "Default" },
-      { value: "Arial", badges: [] },
-      { value: "Fira Code", badges: [] },
-      { value: "iA Writer Mono S", badges: [] },
-      { value: "iA Writer Quattro S", badges: [] },
+    expect(systemFontOptions(FAMILIES, "", LABELS, false).map((option) => [option.value, option.badges])).toEqual([
+      ["", undefined],
+      ["Arial", []],
+      ["Fira Code", []],
+      ["iA Writer Mono S", []],
+      ["iA Writer Quattro S", []],
     ]);
+  });
+});
+
+describe("isInstalledFont", () => {
+  it("knows installed names however they are cased, the default, and the macOS system monospace font", () => {
+    expect(isInstalledFont(" fira  code ", FAMILIES)).toBe(true);
+    expect(isInstalledFont("", FAMILIES)).toBe(true);
+    expect(isInstalledFont("SF Mono", FAMILIES)).toBe(true);
+    expect(isInstalledFont("Berkeley Mono", FAMILIES)).toBe(false);
   });
 });
 
@@ -167,6 +210,75 @@ describe("SystemFontPicker", () => {
     fireEvent.change(input, { target: { value: "" } });
     fireEvent.click(await screen.findByRole("option", { name: enCore.fonts.systemDefault }));
     expect(useSettingsStore.getState().editorFontFamily).toBe("");
+  });
+
+  it("warns once editing ends when the saved font is not installed", async () => {
+    useSettingsStore.setState({ editorFontFamily: "Fira Code" });
+    render(<Picker />);
+    const input = screen.getByRole("combobox", { name: FONT_LABEL });
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalled());
+    expect(screen.queryByTestId("font-row-missing")).toBeNull();
+
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Berkeley Mono" } });
+    expect(screen.queryByTestId("font-row-missing")).toBeNull();
+    fireEvent.blur(input);
+    expect(await screen.findByTestId("font-row-missing")).toHaveTextContent(
+      enSettings.appearance.fontNotInstalled.replace("{{font}}", "Berkeley Mono"),
+    );
+    expect(input).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("does not warn about a missing font outside the desktop app", () => {
+    mocks.tauri = false;
+    useSettingsStore.setState({ editorFontFamily: "Berkeley Mono" });
+    render(<Picker />);
+    expect(screen.queryByTestId("font-row-missing")).toBeNull();
+  });
+
+  it("selects the name on focus so typing replaces it", async () => {
+    useSettingsStore.setState({ editorFontFamily: "Fira Code" });
+    render(<Picker />);
+    const input = screen.getByRole<HTMLInputElement>("combobox", { name: FONT_LABEL });
+    fireEvent.focus(input);
+    expect([input.selectionStart, input.selectionEnd]).toEqual([0, "Fira Code".length]);
+  });
+
+  it("opens on the chosen font and moves the highlight with the arrow keys", async () => {
+    useSettingsStore.setState({ editorFontFamily: "Arial" });
+    render(<Picker />);
+    const input = screen.getByRole("combobox", { name: FONT_LABEL });
+    await waitFor(() => expect(mocks.invoke).toHaveBeenCalled());
+    await act(async () => {});
+    fireEvent.click(input);
+    const active = () => document.getElementById(input.getAttribute("aria-activedescendant") ?? "")?.dataset.value;
+    await waitFor(() => expect(active()).toBe("Arial"));
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(active()).toBe("iA Writer Quattro S");
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    expect(active()).toBe("iA Writer Mono S");
+  });
+
+  it("closes only the font list on Escape when it sits in a dialog", async () => {
+    const onClose = vi.fn();
+    render(
+      <ModalShell open onClose={onClose} closeLabel={CLOSE_LABEL} label={DIALOG_LABEL}>
+        <Picker />
+      </ModalShell>,
+    );
+    const input = screen.getByRole("combobox", { name: FONT_LABEL });
+    await waitFor(() => expect(input).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("listbox")).toBeInTheDocument());
+    expect(input).toHaveAttribute("data-modal-escape-inner", "");
+
+    fireEvent.keyDown(input, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(input).not.toHaveAttribute("data-modal-escape-inner");
+
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("applies a typed name once typing pauses instead of on every key", async () => {

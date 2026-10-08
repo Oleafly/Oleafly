@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
-import {
-  FontFamilyCombobox,
-  MAX_FONT_CHOICES,
-  type FontFamilyOption,
-} from "@/components/editor/FontFamilyPicker";
-import { primaryFontFamily } from "@/lib/font-families";
+import { FontFamilyCombobox, type FontFamilyOption } from "@/components/editor/FontFamilyPicker";
+import { SettingsRow } from "@/components/settings/SettingsRow";
+import { fontFamilyName, fontFamilyStack, isSystemFontAlias, primaryFontFamily } from "@/lib/font-families";
 import { logError } from "@/lib/log";
 import { cachedSystemFonts, listSystemFonts, type SystemFontFamily } from "@/lib/system-fonts";
 import { APP_FONTS, EDITOR_FONTS } from "@/store/settings";
@@ -41,8 +38,9 @@ export function systemFontOptions(
   const ordered = preferMonospace
     ? [...matches.filter((family) => family.monospace), ...matches.filter((family) => !family.monospace)]
     : matches;
-  const options = ordered.slice(0, MAX_FONT_CHOICES).map((family) => ({
+  const options = ordered.map((family) => ({
     value: family.name,
+    preview: fontFamilyStack(family.name, "var(--font-sans-default)"),
     badges:
       preferMonospace && family.monospace ? [{ id: "monospace", label: labels.monospace }] : [],
   }));
@@ -54,7 +52,11 @@ function initialFonts(native: boolean, use: SystemFontUse): SystemFonts {
   return families ? { status: "ready", families } : { status: "loading" };
 }
 
-function useSystemFontFamilies(use: SystemFontUse): { fonts: SystemFonts; load: () => void } {
+function useSystemFontFamilies(use: SystemFontUse): {
+  fonts: SystemFonts;
+  native: boolean;
+  load: () => void;
+} {
   const native = isTauri();
   const [fonts, setFonts] = useState<SystemFonts>(() => initialFonts(native, use));
   const requested = useRef(false);
@@ -87,7 +89,16 @@ function useSystemFontFamilies(use: SystemFontUse): { fonts: SystemFonts; load: 
 
   useEffect(load, [load]);
 
-  return { fonts, load };
+  return { fonts, native, load };
+}
+
+export function isInstalledFont(name: string, families: readonly SystemFontFamily[]): boolean {
+  const wanted = fontFamilyName(name).toLocaleLowerCase();
+  return (
+    !wanted ||
+    isSystemFontAlias(wanted) ||
+    families.some((family) => family.name.toLocaleLowerCase() === wanted)
+  );
 }
 
 function useTypedFontName(value: string, onChange: (value: string) => void) {
@@ -133,21 +144,28 @@ function useTypedFontName(value: string, onChange: (value: string) => void) {
   return { shown: draft ?? value, type, choose, flush };
 }
 
-export function SystemFontPicker({
+function SystemFontPicker({
   id,
   use,
   label,
   value,
+  fonts,
+  load,
+  invalid,
   onChange,
+  onEditingChange,
 }: Readonly<{
   id: string;
   use: SystemFontUse;
   label: string;
   value: string;
+  fonts: SystemFonts;
+  load: () => void;
+  invalid: boolean;
   onChange: (value: string) => void;
+  onEditingChange: (editing: boolean) => void;
 }>) {
   const { t } = useTranslation(["core", "editor", "settings"]);
-  const { fonts, load } = useSystemFontFamilies(use);
   const typed = useTypedFontName(value, onChange);
   const systemDefault = t(($) => $.core.fonts.systemDefault);
   const monospace = t(($) => $.settings.appearance.editor.font.monospace);
@@ -166,6 +184,7 @@ export function SystemFontPicker({
       label={label}
       value={typed.shown}
       placeholder={systemDefault}
+      invalid={invalid}
       loading={fonts.status === "loading"}
       listLabel={t(($) => $.editor.documentSettings.availableFonts)}
       loadingLabel={t(($) => $.editor.documentSettings.fontsLoading)}
@@ -173,8 +192,64 @@ export function SystemFontPicker({
       onLoad={load}
       onChange={typed.choose}
       onInput={typed.type}
-      onBlur={typed.flush}
+      onFocus={() => onEditingChange(true)}
+      onBlur={() => {
+        typed.flush();
+        onEditingChange(false);
+      }}
       className="h-9 w-[200px]"
+    />
+  );
+}
+
+export function SystemFontSettingsRow({
+  testId,
+  id,
+  use,
+  label,
+  description,
+  value,
+  onChange,
+}: Readonly<{
+  testId: string;
+  id: string;
+  use: SystemFontUse;
+  label: string;
+  description: string;
+  value: string;
+  onChange: (value: string) => void;
+}>) {
+  const { t } = useTranslation(["settings"]);
+  const { fonts, native, load } = useSystemFontFamilies(use);
+  const [editing, setEditing] = useState(false);
+  const missing =
+    native && !editing && fonts.status === "ready" && !isInstalledFont(value, fonts.families);
+
+  return (
+    <SettingsRow
+      testId={testId}
+      label={label}
+      description={description}
+      details={
+        missing ? (
+          <p className="text-xs text-amber-700 dark:text-amber-300" data-testid={`${testId}-missing`}>
+            {t(($) => $.settings.appearance.fontNotInstalled, { font: fontFamilyName(value) })}
+          </p>
+        ) : null
+      }
+      control={
+        <SystemFontPicker
+          id={id}
+          use={use}
+          label={label}
+          value={value}
+          fonts={fonts}
+          load={load}
+          invalid={missing}
+          onChange={onChange}
+          onEditingChange={setEditing}
+        />
+      }
     />
   );
 }

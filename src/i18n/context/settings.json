@@ -223,12 +223,18 @@
         "customLabel": "Accessible name of the number field where the user types an exact line height, such as 1.5."
       },
       "cursorWidth": {
-        "label": "Row label for the thickness, in pixels, of the text cursor in the source editor."
+        "label": "Row label for the thickness, in pixels, of the text cursor in the source editor.",
+        "option": "Choice in the cursor width list, in pixels, such as 2px. Use the same unit format as other pixel sizes."
       },
       "cursorColor": {
-        "useTheme": "Button that clears the custom cursor color so the cursor follows the editor theme again."
+        "light": "Short label next to the color swatch that sets the cursor color for light editor themes.",
+        "dark": "Short label next to the color swatch that sets the cursor color for dark editor themes.",
+        "pickLight": "Accessible name of the color swatch that sets the cursor color used with light editor themes.",
+        "pickDark": "Accessible name of the color swatch that sets the cursor color used with dark editor themes.",
+        "useTheme": "Button that clears both custom cursor colors so the cursor follows the editor theme again."
       }
-    }
+    },
+    "fontNotInstalled": "Warning under a font setting when the saved font name is not installed on this computer. {{font}} is the font name."
   },
   "citations": {
     "connected": "Badge showing that a credential is stored for this search source.",

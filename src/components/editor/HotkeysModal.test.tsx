@@ -7,6 +7,7 @@ import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { EDITOR_KEY_DEFAULTS, useEditorKeymapStore } from "@/store/editor-keymap";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { useShortcutStore } from "@/store/shortcuts";
 
 const platform = vi.hoisted(() => ({ mac: false }));
 
@@ -99,6 +100,9 @@ describe("HotkeysModal", () => {
     expect(rowFor(hotkeys.actions.jumpToSource).textContent).toBe(
       `${hotkeys.actions.jumpToSource}CtrlClick`,
     );
+    expect(rowFor(hotkeys.actions.openSettings).textContent).toBe(
+      `${hotkeys.actions.openSettings}Ctrl,`,
+    );
   });
 
   it("renders mac glyph tokens when the platform is a mac", () => {
@@ -113,6 +117,23 @@ describe("HotkeysModal", () => {
     expect(rowFor(hotkeys.actions.jumpToSource).textContent).toBe(
       `${hotkeys.actions.jumpToSource}⌘Click`,
     );
+    expect(rowFor(hotkeys.actions.openSettings).textContent).toBe(
+      `${hotkeys.actions.openSettings}⌘,`,
+    );
+  });
+
+  it("shows the Settings shortcut the user bound", () => {
+    const { bindings } = useShortcutStore.getState();
+    useShortcutStore.setState({
+      bindings: { ...bindings, openSettings: { key: "p", mod: true, shift: true } },
+    });
+    useSettingsStore.setState({ hotkeysOpen: true });
+    render(<HotkeysModal />);
+
+    expect(rowFor(hotkeys.actions.openSettings).textContent).toBe(
+      `${hotkeys.actions.openSettings}CtrlShiftP`,
+    );
+    useShortcutStore.setState({ bindings });
   });
 
   it("filters on description, category and keys, and shows the empty state", () => {
@@ -130,7 +151,8 @@ describe("HotkeysModal", () => {
     expect(screen.queryByText(hotkeys.actions.undo)).not.toBeInTheDocument();
 
     fireEvent.change(search, { target: { value: "Toolbar" } });
-    expect(screen.getByText(hotkeys.actions.openSettings)).toBeInTheDocument();
+    expect(screen.getByText(hotkeys.actions.commitAndPush)).toBeInTheDocument();
+    expect(screen.queryByText(hotkeys.actions.openSettings)).not.toBeInTheDocument();
     expect(screen.queryByText(hotkeys.actions.redo)).not.toBeInTheDocument();
 
     fireEvent.change(search, { target: { value: "no such shortcut" } });

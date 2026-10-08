@@ -45,15 +45,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Appearance > Editor sets whether Oleafly asks first, always updates the
   paths or leaves them alone.
 - Cmd+, opens Settings on macOS, and Ctrl+, does the same on Windows and
-  Linux. On macOS the Oleafly menu also has a Settings item. You can change
-  the shortcut in Settings > Keyboard Shortcuts, and the Settings button's
-  tooltip and the command palette show the current one (#256).
+  Linux, including from the detached PDF window. On macOS the Oleafly menu
+  also has a Settings item. You can change the shortcut in Settings >
+  Keyboard Shortcuts. The Settings button's tooltip, the command palette and
+  the shortcut list (Cmd+/) show the current one (#256).
 - The editor font and the app font can be any font installed on your
-  computer. The editor's list puts monospaced fonts first, you can type to
-  search either list, and a name it doesn't show still works if you type it
-  in full. Line height has a Custom choice for an exact value from 1 to 3.
-  New Cursor width and Cursor color settings make the editor cursor 1, 2 or
-  3 pixels wide and give it your own color instead of the theme's (#257).
+  computer. Each name in the list is drawn in its own font, the editor's list
+  puts monospaced fonts first, and you can type to search either list or to
+  use a name it doesn't show. Symbol fonts such as Wingdings are left out,
+  since they would turn every letter into a picture, and a saved font that
+  isn't installed gets a note under the setting. Line height has a Custom
+  choice for an exact value from 1 to 3. New Cursor width and Cursor color
+  settings make the editor cursor 1, 2 or 3 pixels wide and give it your own
+  color, one for light editor themes and one for dark ones (#257).
 
 ### Changed
 

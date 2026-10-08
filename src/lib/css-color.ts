@@ -40,9 +40,16 @@ export function readCssVariable(name: string): string {
 }
 
 export function readClassVariables(className: string, names: readonly string[]): Record<string, string> {
+  return readElementVariables({ class: className }, names);
+}
+
+export function readElementVariables(
+  attributes: Readonly<Record<string, string>>,
+  names: readonly string[],
+): Record<string, string> {
   if (typeof document === "undefined" || typeof getComputedStyle !== "function") return {};
   const probe = document.createElement("div");
-  probe.className = className;
+  for (const [name, value] of Object.entries(attributes)) probe.setAttribute(name, value);
   probe.hidden = true;
   document.body.append(probe);
   const style = getComputedStyle(probe);
