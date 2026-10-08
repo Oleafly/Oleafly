@@ -72,6 +72,7 @@ import {
   requestZoteroUpdate,
   resetZoteroCiteForTest,
   staleZoteroEntries,
+  latexCiteSources,
 } from "./zotero-cite";
 
 function hit(overrides: Partial<ZoteroHit> = {}): ZoteroHit {
@@ -341,5 +342,28 @@ describe("updating an entry that changed in Zotero", () => {
     mocks.items.mockResolvedValue([hit()]);
     await expect(staleZoteroEntries()).resolves.toEqual([]);
     await expect(requestZoteroUpdate("smithBBT2020", async () => true)).resolves.toBe("current");
+  });
+});
+
+describe("latexCiteSources", () => {
+  beforeEach(() => {
+    index.texts = { "main.tex": "\\citep{a}", "notes.md": "@b" };
+  });
+
+  it("keeps the current text when it already cites, with any cite command", () => {
+    for (const text of ["\\cite{a}", "\\nocite{*}", "\\citeauthor[p.~2]{a}", "\\parencite* {a}"]) {
+      expect(latexCiteSources(text)).toEqual([text]);
+    }
+  });
+
+  it("falls back to the project's LaTeX sources when the current text does not cite", () => {
+    expect(latexCiteSources("\\section{Intro}")).toEqual(["\\section{Intro}", "\\citep{a}"]);
+  });
+
+  it("stays fast on a long run of cite letters with no argument", () => {
+    const text = `\\${"cite".repeat(25_000)}`;
+    const started = performance.now();
+    latexCiteSources(text);
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });

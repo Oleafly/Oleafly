@@ -53,7 +53,7 @@ const COX: ZoteroHit = {
 function editor(path: string, marked: string): EditorView {
   const at = marked.indexOf("|");
   const view = new EditorView({
-    state: EditorState.create({ doc: marked.replace("|", ""), selection: { anchor: at } }),
+    state: EditorState.create({ doc: marked.slice(0, at) + marked.slice(at + 1), selection: { anchor: at } }),
     parent: document.body,
   });
   useFilesStore.setState({ projectId: "zotero-dialog", activePath: path, engine: LATEX_ENGINE, engineLoaded: true });

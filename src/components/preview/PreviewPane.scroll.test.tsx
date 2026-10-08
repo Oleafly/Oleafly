@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 import enPreview from "@/i18n/locales/en/preview.json" with { type: "json" };
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCompileStore } from "@/store/compile";
@@ -269,6 +270,18 @@ describe("PreviewPane while the layout hides it", () => {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     });
   }
+
+  it("shows the compiled PDF when React mounts it twice in development", async () => {
+    openProject();
+    render(
+      <StrictMode>
+        <PreviewPane />
+      </StrictMode>,
+    );
+
+    const viewer = await screen.findByTestId("mock-pdf-viewer");
+    expect(viewer.dataset.identity).toContain(PROJECT);
+  });
 
   it("keeps the PDF it shows until it is visible again, then shows the newest one", async () => {
     openProject();

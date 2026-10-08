@@ -5,6 +5,7 @@ import {
   createBlankProject,
   expectDesktopShellAnchored,
   openProject,
+  revealLibraryProject,
 } from "../helpers";
 
 interface GeometryFixture {
@@ -256,9 +257,7 @@ async function openOrCreateE2eDoc(page: Parameters<typeof openProject>[0]): Prom
   await expect(
     page.locator('[data-testid="library"][data-projects-loaded="true"]'),
   ).toBeVisible({ timeout: 30_000 });
-  const projectExists = await page.evaluate<boolean>(
-    `!!document.querySelector('button[aria-label="Open E2E Doc"]')`,
-  );
+  const projectExists = await revealLibraryProject(page, "E2E Doc");
   if (projectExists) {
     await openProject(page, "E2E Doc");
   } else {
@@ -543,6 +542,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
     markerWidth: number;
     markerHeight: number;
     rasterScale: string;
+    devicePixelRatio: number;
     rotation: string;
     userUnit: string;
     roundX: string;
@@ -586,6 +586,7 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
         markerWidth: spanRect.width,
         markerHeight: spanRect.height,
         rasterScale: page.dataset.pdfRasterScale || '',
+        devicePixelRatio: Number(page.dataset.pdfDevicePixelRatio || 0),
         rotation: page.dataset.pdfRotation || '',
         userUnit: page.dataset.pdfUserUnit || '',
         roundX: getComputedStyle(page).getPropertyValue('--scale-round-x').trim(),
@@ -601,16 +602,28 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
       inspect(2, 'ROTATED USER UNIT PAGE'),
     ];
   })()`;
+  const renderedRatio = () =>
+    tauriPage.evaluate<number>(
+      `Number(document.querySelector('[data-page="1"]')?.dataset.pdfDevicePixelRatio || 0)`,
+    );
+  const rasterWidths = () =>
+    tauriPage.evaluate<number[]>(
+      `[1, 2].map((pageNumber) => document.querySelector('[data-page="' + pageNumber + '"] .pdf-canvas')?.width ?? 0)`,
+    );
+  const ratio = await renderedRatio();
+  expect(ratio).toBeGreaterThan(0);
+  await expect.poll(rasterWidths, { timeout: 15_000 }).toEqual([Math.round(612 * ratio), Math.round(900 * ratio)]);
   const baseline = await tauriPage.evaluate<PageGeometry[]>(inspectPages);
 
   expectCssSubpixel(baseline[0].width, 612);
   expectCssSubpixel(baseline[0].height, 792);
-  expect(baseline[0].canvasWidth).toBe(765);
-  expect(baseline[0].canvasHeight).toBe(990);
+  expect(baseline[0].devicePixelRatio).toBe(ratio);
+  expect(baseline[0].canvasWidth).toBe(Math.round(612 * ratio));
+  expect(baseline[0].canvasHeight).toBe(Math.round(792 * ratio));
   expectCssSubpixel(baseline[1].width, 900);
   expectCssSubpixel(baseline[1].height, 628);
-  expect(baseline[1].canvasWidth).toBe(1_125);
-  expect(baseline[1].canvasHeight).toBe(785);
+  expect(baseline[1].canvasWidth).toBe(Math.round(900 * ratio));
+  expect(baseline[1].canvasHeight).toBe(Math.round(628 * ratio));
   expect(baseline[1].rotation).toBe("90");
   expect(baseline[1].userUnit).toBe("1.5");
   // These expectations come from pdf.js' PDF viewport multiplied by the text
@@ -800,11 +813,12 @@ test("PDF selection geometry is exact for mixed pages, rotation, UserUnit and tr
      document.querySelector('[data-page="2"]')?.dataset.pdfRasterScale === "2"`,
     30_000,
   );
+  await expect.poll(rasterWidths, { timeout: 30_000 }).toEqual([Math.round(1_224 * ratio), Math.round(1_800 * ratio)]);
   const crisp = await tauriPage.evaluate<PageGeometry[]>(inspectPages);
-  expect(crisp[0].canvasWidth).toBe(1_530);
-  expect(crisp[0].canvasHeight).toBe(1_980);
-  expect(crisp[1].canvasWidth).toBe(2_250);
-  expect(crisp[1].canvasHeight).toBe(1_575);
+  expect(crisp[0].canvasWidth).toBe(Math.round(1_224 * ratio));
+  expect(crisp[0].canvasHeight).toBe(Math.round(1_584 * ratio));
+  expect(crisp[1].canvasWidth).toBe(Math.round(1_800 * ratio));
+  expect(crisp[1].canvasHeight).toBe(Math.round(1_260 * ratio));
   for (let index = 0; index < crisp.length; index++) {
     expectCssSubpixel(crisp[index].markerLeft, transient[index].markerLeft);
     expectCssSubpixel(crisp[index].markerTop, transient[index].markerTop);

@@ -76,6 +76,8 @@ $dataDir = Join-Path ([System.IO.Path]::GetTempPath()) "oleafly-e2e-$stamp"
 if (-not $env:OLEAFLY_PACKS_BASE_URL) { $env:OLEAFLY_PACKS_BASE_URL = "http://127.0.0.1:38999" }
 if (-not $env:OLEAFLY_DEADLINES_URL) { $env:OLEAFLY_DEADLINES_URL = "http://127.0.0.1:38999/allconf.yml" }
 if (-not $env:OLEAFLY_SKILLS_BASE_URL) { $env:OLEAFLY_SKILLS_BASE_URL = "http://127.0.0.1:38999" }
+if (-not $env:OLEAFLY_ZOTERO_LOCAL_BASE_URL) { $env:OLEAFLY_ZOTERO_LOCAL_BASE_URL = "http://127.0.0.1:38999" }
+if (-not $env:OLEAFLY_ZOTERO_BASE_URL) { $env:OLEAFLY_ZOTERO_BASE_URL = "http://127.0.0.1:38999" }
 
 function Start-OutputProcess([string]$command) {
   $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))

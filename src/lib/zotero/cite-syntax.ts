@@ -211,7 +211,7 @@ export function prefersBareMarkdown(source: string): boolean {
   const citation = new RegExp(MARKDOWN_CITATION, "gu");
   const total = (source.match(citation) ?? []).length;
   let bracketed = 0;
-  for (const group of source.matchAll(/\[[^\]\n]*\]/g)) {
+  for (const group of source.matchAll(/\[[^[\]\n]*\]/g)) {
     bracketed += (group[0].match(citation) ?? []).length;
   }
   const bare = total - bracketed;

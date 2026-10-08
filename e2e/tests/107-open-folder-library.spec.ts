@@ -1,7 +1,7 @@
 import { renameSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect, reloadNativePage } from "../fixtures";
-import { chooseAppSelectOption, createBlankProject } from "../helpers";
+import { chooseAppSelectOption, createBlankProject, libraryCardNames } from "../helpers";
 import {
   expectFolderUnchanged,
   expectNoOleaflyFootprint,
@@ -72,9 +72,7 @@ async function closeFilters(page: LibraryPage) {
 }
 
 async function gridCards(page: LibraryPage): Promise<string[]> {
-  return page.evaluate<string[]>(
-    `Array.from(document.querySelectorAll('[data-testid="project-grid"] button[aria-label^="Open "]')).map((button) => button.getAttribute('aria-label').slice(5))`,
-  );
+  return libraryCardNames(page);
 }
 
 test("the library shows an opened folder as an external card and filters by location", async ({ tauriPage: page }) => {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, act, render, screen, within } from "@testing-library/react";
+import { cleanup, act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -80,6 +80,9 @@ class FakeIntersectionObserver {
   takeRecords() {
     return [];
   }
+  static observing() {
+    return FakeIntersectionObserver.instances.some((observer) => observer.targets.size > 0);
+  }
   static reveal() {
     for (const observer of [...FakeIntersectionObserver.instances]) {
       const entries = [...observer.targets].map(
@@ -123,8 +126,13 @@ describe("checkpoint timeline with a long history", () => {
     expect(first[0]).toHaveAttribute("data-version", `V${COUNT}`);
 
     for (let step = 0; step < COUNT; step += 1) {
-      if (within(timeline).getAllByTestId("checkpoint-entry").length === COUNT) break;
+      const shown = within(timeline).getAllByTestId("checkpoint-entry").length;
+      if (shown === COUNT) break;
+      await waitFor(() => expect(FakeIntersectionObserver.observing()).toBe(true));
       act(() => FakeIntersectionObserver.reveal());
+      await waitFor(() =>
+        expect(within(timeline).getAllByTestId("checkpoint-entry").length).toBeGreaterThan(shown),
+      );
     }
 
     const all = within(timeline).getAllByTestId("checkpoint-entry");

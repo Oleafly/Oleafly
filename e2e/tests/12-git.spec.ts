@@ -242,7 +242,8 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
   // A previous run may have left a remote linked; unlink to get the Publish CTA.
   await tauriPage.waitForFunction(
     `Array.from(document.querySelectorAll('[role="menuitem"]')).some(entry =>
-      ["Publish to GitHub", "Unlink"].includes((entry.textContent ?? "").trim()))`,
+      ["Publish to GitHub", "Unlink"].includes((entry.textContent ?? "").trim()) &&
+      entry.getAttribute("aria-disabled") !== "true")`,
     15_000,
   );
   const linked = await tauriPage.evaluate<boolean>(
@@ -252,6 +253,12 @@ test("publish to GitHub creates a real repo and pushes the project", async ({ ta
     await tauriPage.getByText("Unlink", { exact: true }).click();
     await openSourceControlMoreActions(tauriPage);
     await expect(tauriPage.getByText("Publish to GitHub")).toBeVisible({ timeout: 10_000 });
+    await tauriPage.waitForFunction(
+      `Array.from(document.querySelectorAll('[role="menuitem"]')).some(entry =>
+        (entry.textContent ?? "").trim() === "Publish to GitHub" &&
+        entry.getAttribute("aria-disabled") !== "true")`,
+      15_000,
+    );
   }
 
   await tauriPage.getByText("Publish to GitHub").click();

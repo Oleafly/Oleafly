@@ -86,7 +86,7 @@ function indexHtmlHead(): string {
 }
 
 function gateScript(): string {
-  const scripts = [...indexHtmlHead().matchAll(/<script>([\s\S]*?)<\/script>/g)].map((match) => match[1]);
+  const scripts = [...indexHtmlHead().matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)].map((match) => match[1]);
   const gates = scripts.filter((script) => script.includes(TAILWIND_PROPERTY_FALLBACK_ATTRIBUTE));
   expect(gates).toHaveLength(1);
   return gates[0];

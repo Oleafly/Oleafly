@@ -1904,6 +1904,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           applyExactPageViewport(pageNo, baseViewport);
         }
         wrap.dataset.pdfRasterScale = String(renderScale);
+        wrap.dataset.pdfDevicePixelRatio = String(dpr);
         wrap.dataset.pdfCanvasScaling = wrapGeometry.restrictedScaling
           ? "restricted"
           : "native";

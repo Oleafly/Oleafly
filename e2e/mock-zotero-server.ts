@@ -1357,7 +1357,7 @@ function filterItems(items: Iterable<Item>, query: ItemQuery): Item[] {
   const include: string[] = [];
   const exclude: string[] = [];
   for (const raw of query.itemTypes) {
-    for (const part of raw.split(/\s*(?:\|\||&&)\s*/)) {
+    for (const part of raw.split(/\|\||&&/)) {
       const type = part.trim();
       if (!type) continue;
       if (type.startsWith("-")) exclude.push(type.slice(1));
@@ -1877,8 +1877,9 @@ export async function startMockZotero(options: MockZoteroOptions = {}): Promise<
       return { status: 429, headers: { "Content-Type": "text/plain", "Retry-After": "1" }, body: "Too Many Requests" };
     }
     if (req.method !== "GET") return text(405, "Method Not Allowed");
-    const bearer = /^bearer\s+(.+)$/i.exec(headerValue(req.headers.authorization) ?? "");
-    const presented = headerValue(req.headers["zotero-api-key"]) ?? bearer?.[1]?.trim() ?? url.searchParams.get("key");
+    const authorization = headerValue(req.headers.authorization) ?? "";
+    const bearer = /^bearer\s/i.test(authorization) ? authorization.slice(7).trim() : undefined;
+    const presented = headerValue(req.headers["zotero-api-key"]) ?? bearer ?? url.searchParams.get("key");
     if (settings.revokeKey || presented !== settings.apiKey) return text(403, "Forbidden");
     const parts = url.pathname.split("/").filter(Boolean);
     const [scope, id] = parts;

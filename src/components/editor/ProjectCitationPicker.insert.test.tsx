@@ -48,7 +48,7 @@ if (typeof Range !== "undefined" && !Range.prototype.getClientRects) {
 
 function pick(path: string, marked: string): EditorView {
   const at = marked.indexOf("|");
-  const doc = marked.replace("|", "");
+  const doc = marked.slice(0, at) + marked.slice(at + 1);
   const view = new EditorView({
     state: EditorState.create({ doc, selection: { anchor: at } }),
     parent: document.body.appendChild(document.createElement("div")),

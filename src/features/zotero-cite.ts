@@ -387,8 +387,17 @@ async function ensureNow(picks: readonly ZoteroPick[], options: EnsureOptions): 
   return { added, reused, bibPath: target.path };
 }
 
+const LATEX_COMMAND_WITH_ARGUMENT = /\\([A-Za-z]+)\*?\s*[[{]/g;
+
+function citesInLatex(text: string): boolean {
+  for (const match of text.matchAll(LATEX_COMMAND_WITH_ARGUMENT)) {
+    if (match[1].includes("cite")) return true;
+  }
+  return false;
+}
+
 export function latexCiteSources(current: string): string[] {
-  if (/\\[A-Za-z]*cite[A-Za-z]*\*?\s*[[{]/.test(current)) return [current];
+  if (citesInLatex(current)) return [current];
   const texts = useIndexStore.getState().texts;
   return [current, ...Object.entries(texts).filter(([path]) => /\.(?:tex|ltx|latex)$/i.test(path)).map(([, text]) => text)];
 }

@@ -804,6 +804,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   useEffect(() => {
     void projectId;
     lastReadyDocumentRef.current = null;
+    adoptedOutputRef.current = null;
     rejectedDocumentIdentitiesRef.current.clear();
     setViewerDocument(null);
     setRetainedLoadFailure(null);

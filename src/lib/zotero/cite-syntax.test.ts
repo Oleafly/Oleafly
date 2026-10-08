@@ -158,5 +158,8 @@ describe("dominant citation style", () => {
     expect(prefersBareMarkdown("As @a says, and @b agrees [@c].")).toBe(true);
     expect(prefersBareMarkdown("Shown before [@a; @b] and [@c].")).toBe(false);
     expect(prefersBareMarkdown("No citations, mail me at x@y.z")).toBe(false);
+    const started = performance.now();
+    expect(prefersBareMarkdown("[".repeat(50_000))).toBe(false);
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });
