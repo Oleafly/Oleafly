@@ -189,11 +189,11 @@ const CARRIAGE_RETURN = 13;
 function lineStartOf(log: string, line: string): number {
   for (let at = log.indexOf(line); at !== -1; at = log.indexOf(line, at + 1)) {
     let before = at - 1;
-    while (before >= 0 && log.charCodeAt(before) === CARRIAGE_RETURN) before--;
-    if (before >= 0 && log.charCodeAt(before) !== NEWLINE) continue;
+    while (before >= 0 && log.codePointAt(before) === CARRIAGE_RETURN) before--;
+    if (before >= 0 && log.codePointAt(before) !== NEWLINE) continue;
     let after = at + line.length;
-    while (after < log.length && log.charCodeAt(after) === CARRIAGE_RETURN) after++;
-    if (after === log.length || log.charCodeAt(after) === NEWLINE) return at;
+    while (after < log.length && log.codePointAt(after) === CARRIAGE_RETURN) after++;
+    if (after === log.length || log.codePointAt(after) === NEWLINE) return at;
   }
   return -1;
 }

@@ -44,7 +44,7 @@ export function logTokenClass(token: string): string {
 function nextDepth(depth: number, line: string): number {
   let next = depth;
   for (let index = 0; index < line.length; index++) {
-    const code = line.charCodeAt(index);
+    const code = line.codePointAt(index);
     if (code === OPEN_PAREN) next++;
     else if (code === CLOSE_PAREN) next--;
   }

@@ -14,7 +14,26 @@ const FONT_SWITCHES =
   /\\(?:bfseries|em|footnotesize|[Hh]uge|itshape|LARGE|[Ll]arge|mdseries|normalfont|normalsize|rmfamily|scriptsize|scshape|selectfont|sffamily|slshape|small|tiny|ttfamily|upshape)(?![\p{L}@])\s*/gu;
 const NAME_REFERENCE = /\\[nN]ameref\*?\s*\{([^{}]*)\}/gu;
 const MATH_DELIMITERS = /(?<!\\)\$|\\[()]/gu;
-const PLAIN_GROUP = /(?<!\\[\p{L}@]+\*?\s*|\]\s*|\\)\{([^{}\\]*)\}/gu;
+const BRACE_GROUP = /\{([^{}\\]*)\}/gu;
+const COMMAND_LETTER = /[\p{L}@]/u;
+const SPACE = /\s/u;
+
+function bracesAnArgument(text: string, open: number): boolean {
+  if (text[open - 1] === "\\") return true;
+  let at = open - 1;
+  while (at >= 0 && SPACE.test(text[at])) at -= 1;
+  if (text[at] === "]") return true;
+  if (text[at] === "*") at -= 1;
+  const end = at;
+  while (at >= 0 && COMMAND_LETTER.test(text[at])) at -= 1;
+  return at < end && text[at] === "\\";
+}
+
+function unwrapPlainGroups(text: string): string {
+  return text.replace(BRACE_GROUP, (whole, inner: string, offset: number) =>
+    bracesAnArgument(text, offset) ? whole : inner,
+  );
+}
 
 function maskComments(text: string): string {
   return text
@@ -213,7 +232,7 @@ export function renderLatexOutlineTitle(
   previous = "";
   while (result !== previous) {
     previous = result;
-    result = result.replace(PLAIN_GROUP, "$1");
+    result = unwrapPlainGroups(result);
   }
   return result
     .replace(/\\LaTeX(?:\s*\{\s*\})?/gu, "LaTeX")

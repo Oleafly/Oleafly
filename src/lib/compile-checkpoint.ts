@@ -108,8 +108,8 @@ export function createCompileSuccessCheckpoint({
  * The backend uses the same algorithm before releasing the compile lock.
  */
 export function fingerprintCompileOutput(bytes: Uint8Array): string {
-  let first = 0x811c9dc5 | 0;
-  let second = 0x9e3779b9 | 0;
+  let first = 0x811c9dc5;
+  let second = 0x9e3779b9;
   const length = bytes.length;
   for (let index = 0; index < length; index++) {
     const byte = bytes[index];

@@ -1,3 +1,5 @@
+import { findLatexPackage } from "./bib-text";
+
 export interface HandBibItem {
   readonly key: string;
   readonly text: string;
@@ -16,7 +18,6 @@ const END = /\\end\s*\{thebibliography\}/g;
 const BIBITEM = /\\bibitem(?![A-Za-z@])/g;
 const KEY = /^[^\s,{}()"#%\\]+$/;
 const STYLE = /\\bibliographystyle\s*\{/;
-const NATBIB = /\\usepackage\s*(?:\[[^\]]*\])?\s*\{[^}]*\bnatbib\b[^}]*\}/;
 
 export function maskComments(source: string): string {
   return source.replace(/\\[\s\S]|%[^\n]*/g, (match) => (match.startsWith("%") ? " ".repeat(match.length) : match));
@@ -138,7 +139,7 @@ export function handListDeclaration(bibliography: string, sources: readonly stri
   const stem = bibliography.replaceAll("\\", "/").replace(/\.bib$/i, "");
   const masked = sources.map(maskComments);
   if (masked.some((text) => STYLE.test(text))) return `\\bibliography{${stem}}`;
-  const style = masked.some((text) => NATBIB.test(text)) ? "unsrtnat" : "unsrt";
+  const style = masked.some((text) => findLatexPackage(text, "natbib")) ? "unsrtnat" : "unsrt";
   return `\\bibliographystyle{${style}}\n\\bibliography{${stem}}`;
 }
 

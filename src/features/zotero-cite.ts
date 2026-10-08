@@ -130,11 +130,11 @@ function projectText(path: string): string | undefined {
   return known;
 }
 
-async function readText(path: string, exists: boolean): Promise<string> {
+function readText(path: string, exists: boolean): Promise<string> {
   const known = projectText(path);
-  if (known !== undefined) return known;
+  if (known !== undefined) return Promise.resolve(known);
   const projectId = useFilesStore.getState().projectId;
-  if (!projectId || !exists) return "";
+  if (!projectId || !exists) return Promise.resolve("");
   return readFileContent(projectId, path, true);
 }
 

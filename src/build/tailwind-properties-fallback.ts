@@ -20,7 +20,7 @@ const SUPPORTS = "@supports";
 const CSS_MODULE = /\.css(?:$|[?#])/;
 const NON_STYLE_QUERY = /[?&](?:raw|url)(?:$|[&=])/;
 const PROPERTY_RULE = /@property\s+(--[\w-]+)/g;
-const CUSTOM_DECLARATION = /(--[\w-]+)\s*:/g;
+const CUSTOM_PROPERTY_NAME = /^--[\w-]+$/;
 const GATE = `[${TAILWIND_PROPERTY_FALLBACK_ATTRIBUTE}]`;
 const SCOPED_SELECTORS: Record<string, string[]> = {
   "*": [GATE, `${GATE} *`],
@@ -140,6 +140,17 @@ function registeredProperties(css: string): Set<string> {
   return new Set([...css.matchAll(PROPERTY_RULE)].map((match) => match[1]));
 }
 
+function declaredCustomProperties(body: string): string[] {
+  const names: string[] = [];
+  for (const declaration of body.split(/[;{}]/)) {
+    const colon = declaration.indexOf(":");
+    if (colon < 0) continue;
+    const name = declaration.slice(0, colon).trim();
+    if (CUSTOM_PROPERTY_NAME.test(name)) names.push(name);
+  }
+  return names;
+}
+
 function rewriteBlock(
   prelude: string,
   body: string,
@@ -147,7 +158,7 @@ function rewriteBlock(
 ): { replacement: string | null; retained: string[] } {
   const rules = parseRules(body);
   if (!rules) {
-    return { replacement: null, retained: [...body.matchAll(CUSTOM_DECLARATION)].map((match) => match[1]) };
+    return { replacement: null, retained: declaredCustomProperties(body) };
   }
   const gatedRules: string[] = [];
   const keptRules: string[] = [];

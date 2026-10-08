@@ -103,6 +103,13 @@ describe("LaTeX bibliography declaration", () => {
     );
   });
 
+  it("finds natbib in a spaced package list and not inside a longer package name", () => {
+    const listed = plain.replace("\\begin{document}", "\\usepackage[round] {amsmath, natbib}\n\\begin{document}");
+    expect(ensureLatexBibliography(listed, "references.bib")).toContain("\\bibliographystyle{plainnat}\n");
+    const longer = plain.replace("\\begin{document}", "\\usepackage{natbibx}\n\\begin{document}");
+    expect(ensureLatexBibliography(longer, "references.bib")).toContain("\\bibliographystyle{plain}\n");
+  });
+
   it("uses plainnat with natbib and keeps an existing style", () => {
     const natbib = plain.replace("\\begin{document}", "\\usepackage[round]{natbib}\n\\begin{document}");
     expect(ensureLatexBibliography(natbib, "references.bib")).toContain("\\bibliographystyle{plainnat}\n\\bibliography{references}\n\\end{document}");

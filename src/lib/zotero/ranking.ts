@@ -124,7 +124,8 @@ export function scoreLabel(label: string, query: string): number | null {
 export function familyNames(author: string | undefined): string[] {
   if (!author) return [];
   return author
-    .split(/\s+and\s+/i)
+    .replace(/\s+/g, " ")
+    .split(/ and /i)
     .map((name) => {
       const trimmed = name.replace(/[{}]/g, "").trim();
       if (trimmed.includes(",")) return trimmed.split(",")[0].trim();

@@ -91,7 +91,7 @@ const HEADS: readonly Head[] = [
     }),
   },
   {
-    pattern: /\\[gex]?def\s*\\([\p{L}\p{M}@]+)([^{}\n]*)(?=\{)/gu,
+    pattern: /\\[gex]?def\s*\\([\p{L}\p{M}@]+)((?:[^{}\n\p{L}\p{M}@][^{}\n]*)?)(?=\{)/gu,
     groups: 1,
     bodyGroup: 0,
     read: (match) => {

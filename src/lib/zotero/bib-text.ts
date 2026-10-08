@@ -102,8 +102,8 @@ export function entryHash(entry: string): string {
   const normalized = entry.replace(/\s+/g, " ").trim();
   let first = 0xdeadbeef;
   let second = 0x41c6ce57;
-  for (let index = 0; index < normalized.length; index++) {
-    const code = normalized.charCodeAt(index);
+  for (const character of normalized) {
+    const code = character.codePointAt(0) ?? 0;
     first = Math.imul(first ^ code, 2654435761);
     second = Math.imul(second ^ code, 1597334677);
   }
@@ -127,12 +127,18 @@ function maskLatexComments(source: string): string {
   return source.replace(/(^|[^\\])%[^\n]*/g, (match, lead: string) => `${lead}${" ".repeat(match.length - lead.length)}`);
 }
 
-const BIBLATEX_PACKAGE = /\\usepackage\s*(?:\[[^\]]*\])?\s*\{[^}]*\bbiblatex\b[^}]*\}/;
-const NATBIB_PACKAGE = /\\usepackage\s*(?:\[[^\]]*\])?\s*\{[^}]*\bnatbib\b[^}]*\}/;
-const DECLARATION = /\\(?:bibliography|addbibresource|addglobalbib|addsectionbib)\s*(?:\[[^\]]*\])?\s*\{/;
+const USEPACKAGE = /\\usepackage\s*(?:\[[^\]]*\]\s*)?\{([^}]*)\}/g;
+const DECLARATION = /\\(?:bibliography|addbibresource|addglobalbib|addsectionbib)\s*(?:\[[^\]]*\]\s*)?\{/;
+
+export function findLatexPackage(masked: string, name: string): RegExpExecArray | null {
+  for (const match of masked.matchAll(USEPACKAGE)) {
+    if (match[1].split(",").some((entry) => entry.trim() === name)) return match as RegExpExecArray;
+  }
+  return null;
+}
 
 export function latexUsesBiblatex(source: string): boolean {
-  return BIBLATEX_PACKAGE.test(maskLatexComments(source));
+  return findLatexPackage(maskLatexComments(source), "biblatex") !== null;
 }
 
 export function latexHasBibliography(source: string): boolean {
@@ -157,7 +163,7 @@ export function ensureLatexBibliography(source: string, bibPath: string): string
   const masked = maskLatexComments(source);
   if (DECLARATION.test(masked)) return source;
   const path = bibPath.replaceAll("\\", "/");
-  const biblatex = BIBLATEX_PACKAGE.exec(masked);
+  const biblatex = findLatexPackage(masked, "biblatex");
   if (biblatex) {
     const lineEnd = source.indexOf("\n", biblatex.index + biblatex[0].length);
     const withResource =
@@ -170,6 +176,6 @@ export function ensureLatexBibliography(source: string, bibPath: string): string
   const stem = path.replace(/\.bib$/i, "");
   const lines = /\\bibliographystyle\s*\{/.test(masked)
     ? `\\bibliography{${stem}}`
-    : `\\bibliographystyle{${NATBIB_PACKAGE.test(masked) ? "plainnat" : "plain"}}\n\\bibliography{${stem}}`;
+    : `\\bibliographystyle{${findLatexPackage(masked, "natbib") ? "plainnat" : "plain"}}\n\\bibliography{${stem}}`;
   return insertBeforeEndDocument(source, masked, lines);
 }

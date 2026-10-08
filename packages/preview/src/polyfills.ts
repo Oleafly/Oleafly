@@ -244,11 +244,15 @@ export function installUint8ArrayBase64(ctor: (Function & { prototype: object; f
   defineMissing(ctor.prototype, "toBase64", function toBase64(this: Uint8Array, options: Base64Options = {}) {
     let binary = "";
     for (let offset = 0; offset < this.length; offset += 0x8000) {
-      binary += String.fromCharCode(...this.subarray(offset, offset + 0x8000));
+      binary += String.fromCodePoint(...this.subarray(offset, offset + 0x8000));
     }
     let encoded = btoa(binary);
-    if (options.alphabet === "base64url") encoded = encoded.replace(/\+/gu, "-").replace(/\//gu, "_");
-    if (options.omitPadding) encoded = encoded.replace(/=+$/u, "");
+    if (options.alphabet === "base64url") encoded = encoded.replaceAll("+", "-").replaceAll("/", "_");
+    if (options.omitPadding) {
+      let end = encoded.length;
+      while (end > 0 && encoded[end - 1] === "=") end -= 1;
+      encoded = encoded.slice(0, end);
+    }
     return encoded;
   });
   defineMissing(ctor, "fromBase64", function fromBase64(input: unknown, options: Base64Options = {}) {
@@ -256,7 +260,7 @@ export function installUint8ArrayBase64(ctor: (Function & { prototype: object; f
     let text = input.replace(/[\t\n\f\r ]/gu, "");
     if (options.alphabet === "base64url") {
       if (/[+/]/u.test(text)) throw new SyntaxError("Invalid base64url string");
-      text = text.replace(/-/gu, "+").replace(/_/gu, "/");
+      text = text.replaceAll("-", "+").replaceAll("_", "/");
     } else if (/[-_]/u.test(text)) {
       throw new SyntaxError("Invalid base64 string");
     }
@@ -268,7 +272,7 @@ export function installUint8ArrayBase64(ctor: (Function & { prototype: object; f
       throw new SyntaxError("Invalid base64 string");
     }
     const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.codePointAt(index) ?? 0;
     return bytes;
   });
 }

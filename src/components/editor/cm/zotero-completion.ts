@@ -51,8 +51,8 @@ import { isMathContext } from "./at-suggestions";
 const WINDOW = 2_048;
 const PROJECT_LIMIT = 100;
 const RESULT_LIMIT = 80;
-const LEADING_MARKS = /^[#@<"]+/;
-const TRAILING_MARKS = /[>"]+$/;
+const LEADING_MARKS = new Set(["#", "@", "<", '"']);
+const TRAILING_MARKS = new Set([">", '"']);
 
 type Candidate =
   | { readonly kind: "project"; readonly entry: CitationCompletion; readonly score: number }
@@ -189,7 +189,12 @@ function guarded(
 }
 
 function identity(option: Completion): string {
-  return String(option.label).replace(LEADING_MARKS, "").replace(TRAILING_MARKS, "");
+  const label = String(option.label);
+  let from = 0;
+  while (from < label.length && LEADING_MARKS.has(label[from])) from += 1;
+  let to = label.length;
+  while (to > from && TRAILING_MARKS.has(label[to - 1])) to -= 1;
+  return label.slice(from, to);
 }
 
 function shifted(option: Completion, offset: number): Completion {

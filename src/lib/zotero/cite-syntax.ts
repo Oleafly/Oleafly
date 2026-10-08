@@ -56,7 +56,7 @@ function latexArgumentSite(before: string, pos: number): CiteSite | null {
   const at = segment.lastIndexOf("@");
   if (at >= 0) {
     const query = segment.slice(at + 1);
-    if (/^\s|[\n,]|\s\s/.test(query) || query.trim().split(" ").length > 6) return null;
+    if (/(?:^\s)|[\n,]|\s\s/.test(query) || query.trim().split(" ").length > 6) return null;
     const prefix = segment.slice(0, at);
     if (prefix.trim() === "") {
       return { kind: "argument", from: pos - query.length - 1, to: pos, query, bracketed: false, separator: "" };

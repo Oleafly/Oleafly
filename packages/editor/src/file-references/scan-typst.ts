@@ -30,18 +30,22 @@ function skipSpace(text: string, at: number): number {
 
 function closingParen(text: string, open: number): number {
   let depth = 0;
-  for (let cursor = open; cursor < text.length; cursor += 1) {
+  let cursor = open;
+  while (cursor < text.length) {
     const character = text[cursor];
     if (character === '"') {
       const span = stringSpan(text, cursor);
       if (!span) return text.length;
-      cursor = span.end - 1;
-    } else if (character === "(") {
+      cursor = span.end;
+      continue;
+    }
+    if (character === "(") {
       depth += 1;
     } else if (character === ")") {
       depth -= 1;
       if (depth === 0) return cursor;
     }
+    cursor += 1;
   }
   return text.length;
 }

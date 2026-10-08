@@ -76,6 +76,8 @@ describe("renderLatexOutlineTitle", () => {
     expect(renderLatexOutlineTitle(String.raw`Sets \{1, 2\}`)).toBe("Sets {1, 2}");
     expect(renderLatexOutlineTitle(String.raw`\unknown{kept}`)).toBe(String.raw`\unknown{kept}`);
     expect(renderLatexOutlineTitle(String.raw`\unknown[opt]{kept}`)).toBe(String.raw`\unknown[opt]{kept}`);
+    expect(renderLatexOutlineTitle(String.raw`\unknown* {kept} {plain}`)).toBe(String.raw`\unknown* {kept} plain`);
+    expect(renderLatexOutlineTitle(String.raw`\unknown[opt] {kept}`)).toBe(String.raw`\unknown[opt] {kept}`);
   });
 
   it("shows inline math as plain text", () => {

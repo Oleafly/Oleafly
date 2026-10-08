@@ -224,6 +224,11 @@ function section(name: keyof typeof SECTION_IDS) {
   return within(screen.getByTestId(SECTION_IDS[name])).getByRole("button", { name });
 }
 
+async function enter(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, text: string) {
+  await user.click(field);
+  await user.paste(text);
+}
+
 describe("SourceControl view memory", () => {
   it("keeps collapsed sections, the commit draft and the branch draft after the panel is closed", async () => {
     const user = userEvent.setup();
@@ -231,11 +236,11 @@ describe("SourceControl view memory", () => {
     await screen.findByText("library.bib");
     await user.click(section("Graph"));
     await user.click(section("Staged Changes"));
-    await user.type(screen.getByTestId("commit-title"), "Tighten the abstract");
-    await user.type(screen.getByTestId("commit-description"), "Cut two paragraphs");
+    await enter(user, screen.getByTestId("commit-title"), "Tighten the abstract");
+    await enter(user, screen.getByTestId("commit-description"), "Cut two paragraphs");
     await user.click(await screen.findByRole("button", { name: "main" }));
     await user.click(screen.getByRole("menuitem", { name: "Create branch…" }));
-    await user.type(screen.getByRole("textbox", { name: "Branch name" }), "analysis/abstract");
+    await enter(user, screen.getByRole("textbox", { name: "Branch name" }), "analysis/abstract");
     first.unmount();
 
     render(<SourceControl />);
@@ -281,7 +286,7 @@ describe("SourceControl view memory", () => {
     const first = render(<SourceControl />);
     await screen.findByText("library.bib");
     await user.click(section("Graph"));
-    await user.type(screen.getByTestId("commit-title"), "First project draft");
+    await enter(user, screen.getByTestId("commit-title"), "First project draft");
     first.unmount();
 
     openProject("project-2");
@@ -289,7 +294,7 @@ describe("SourceControl view memory", () => {
     await screen.findByText("library.bib");
     expect(section("Graph")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByTestId("commit-title")).toHaveValue("");
-    await user.type(screen.getByTestId("commit-title"), "Second project draft");
+    await enter(user, screen.getByTestId("commit-title"), "Second project draft");
     second.unmount();
 
     openProject("project-1");
@@ -308,14 +313,14 @@ describe("SourceControl view memory", () => {
     const view = render(<SourceControl />);
     await screen.findByText("library.bib");
     await user.click(section("Graph"));
-    await user.type(screen.getByTestId("commit-title"), "Draft for one");
+    await enter(user, screen.getByTestId("commit-title"), "Draft for one");
 
     openProject("project-2");
     view.rerender(<SourceControl />);
     await screen.findByText("library.bib");
     expect(screen.getByTestId("commit-title")).toHaveValue("");
     expect(section("Graph")).toHaveAttribute("aria-expanded", "true");
-    await user.type(screen.getByTestId("commit-title"), "Draft for two");
+    await enter(user, screen.getByTestId("commit-title"), "Draft for two");
 
     openProject("project-1");
     view.rerender(<SourceControl />);
