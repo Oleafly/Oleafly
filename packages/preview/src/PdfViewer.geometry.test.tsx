@@ -745,8 +745,11 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
     expect(second?.style.getPropertyValue("--scale-factor")).toBe("2");
     expect(scaleOneTextSpan?.style.getPropertyValue("--scale-x")).toBe("1.5");
     const transientLayer = scaleOneTextSpan?.closest<HTMLElement>(".textLayer");
-    expect(transientLayer?.style.getPropertyValue("--scale-factor")).toBe("1");
-    expect(transientLayer?.style.transform).toBe("scale(2) rotate(90deg) translateY(-100%)");
+    expect(transientLayer?.style.getPropertyValue("--scale-factor")).toBe("2");
+    expect(transientLayer?.style.getPropertyValue("--scale-round-y")).toBe(
+      second?.style.getPropertyValue("--scale-round-y"),
+    );
+    expect(transientLayer?.style.transform).toBe("");
     await waitFor(
       () =>
         expect(

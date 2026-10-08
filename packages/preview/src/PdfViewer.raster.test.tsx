@@ -364,8 +364,8 @@ describe("PdfViewer raster swaps", () => {
       expect(textLayerReads).toEqual([]);
       const layer = wrap(1).querySelector<HTMLElement>(".textLayer")!;
       expect(layer.style.display).toBe("");
-      expect(layer.style.getPropertyValue("--scale-factor")).toBe("1");
-      expect(layer.style.transform).toBe("scale(1.3)");
+      expect(layer.style.getPropertyValue("--scale-factor")).toBe("1.3");
+      expect(layer.style.transform).toBe("");
     } finally {
       computed.mockRestore();
       timers.restore();

@@ -389,6 +389,8 @@ describe("PdfViewer raster resolution", () => {
     const detail = scene.detail()!;
     const widthBefore = Number.parseFloat(detail.style.width);
     const heightBefore = Number.parseFloat(detail.style.height);
+    const pageWidthBefore = Number.parseFloat(scene.wrap.style.width);
+    const pageHeightBefore = Number.parseFloat(scene.wrap.style.height);
 
     const settle: Array<() => void> = [];
     const nativeSetTimeout = window.setTimeout.bind(window);
@@ -412,8 +414,11 @@ describe("PdfViewer raster resolution", () => {
       expect(Number.parseFloat(scene.wrap.style.width)).toBeLessThanOrEqual(1836);
       expect(settle).toHaveLength(1);
       expect(detail.isConnected).toBe(true);
-      expect(Number.parseFloat(detail.style.width)).toBeCloseTo(widthBefore * 1.2, 6);
-      expect(Number.parseFloat(detail.style.height)).toBeCloseTo(heightBefore * 1.2, 6);
+      const stretchX = Number.parseFloat(scene.wrap.style.width) / pageWidthBefore;
+      const stretchY = Number.parseFloat(scene.wrap.style.height) / pageHeightBefore;
+      expect(stretchX).toBeCloseTo(1.2, 2);
+      expect(Number.parseFloat(detail.style.width)).toBeCloseTo(widthBefore * stretchX, 6);
+      expect(Number.parseFloat(detail.style.height)).toBeCloseTo(heightBefore * stretchY, 6);
       expect(scene.base()!.style.width).toBe(scene.wrap.style.width);
       expect(harness.renderCalls.length).toBe(rendersBefore);
 

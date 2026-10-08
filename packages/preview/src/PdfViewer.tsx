@@ -18,7 +18,9 @@ import {
   applyPdfLayerViewport,
   applyPdfPlaceholderViewport,
   releasePdfRenderNodes,
+  pdfLayerGeometry,
   visitPdfPlaceholderBatch,
+  type PdfLayerGeometry,
 } from "./pdfLayerGeometry";
 import { createPdfLoadAttempts } from "./pdfLoadStrategy";
 import {
@@ -357,6 +359,8 @@ interface RenderState {
   previous: RenderState | null;
   renderScale: number;
   devicePixelRatio: number;
+  layoutWidth: number;
+  layoutHeight: number;
   viewport: pdfjsLib.PageViewport | null;
   canvas: HTMLCanvasElement | null;
   restrictedScaling: boolean;
@@ -510,34 +514,41 @@ function scaleSearchHighlights(state: RenderState, scale: number): void {
   }
 }
 
+interface PdfPageBox {
+  width: number;
+  height: number;
+}
+
+function rasterStretch(state: RenderState, scale: number, box: PdfPageBox): [number, number] {
+  const uniform = scale / state.renderScale;
+  return [
+    state.layoutWidth > 0 && box.width > 0 ? box.width / state.layoutWidth : uniform,
+    state.layoutHeight > 0 && box.height > 0 ? box.height / state.layoutHeight : uniform,
+  ];
+}
+
 function stretchRenderedRaster(
   state: RenderState,
   scale: number,
-  cssWidth: string,
-  cssHeight: string,
+  geometry: Pick<PdfLayerGeometry, "cssWidth" | "cssHeight" | "cssWidthPx" | "cssHeightPx">,
 ): void {
+  const box = { width: geometry.cssWidthPx, height: geometry.cssHeightPx };
   for (let current: RenderState | null = state; current; current = current.previous) {
     if (current.canvas) {
-      current.canvas.style.width = cssWidth;
-      current.canvas.style.height = cssHeight;
+      current.canvas.style.width = geometry.cssWidth;
+      current.canvas.style.height = geometry.cssHeight;
     }
     const detailCanvas = current.detail?.canvas;
     const detailArea = current.detail?.area;
     if (detailCanvas && detailArea) {
-      const stretch = scale / current.renderScale;
-      detailCanvas.style.left = `${detailArea.minX * stretch}px`;
-      detailCanvas.style.top = `${detailArea.minY * stretch}px`;
-      detailCanvas.style.width = `${detailArea.width * stretch}px`;
-      detailCanvas.style.height = `${detailArea.height * stretch}px`;
+      const [stretchX, stretchY] = rasterStretch(current, scale, box);
+      detailCanvas.style.left = `${detailArea.minX * stretchX}px`;
+      detailCanvas.style.top = `${detailArea.minY * stretchY}px`;
+      detailCanvas.style.width = `${detailArea.width * stretchX}px`;
+      detailCanvas.style.height = `${detailArea.height * stretchY}px`;
     }
   }
 }
-
-const MAIN_ROTATION_TRANSFORMS: Readonly<Record<string, string>> = {
-  "90": "rotate(90deg) translateY(-100%)",
-  "180": "rotate(180deg) translate(-100%, -100%)",
-  "270": "rotate(270deg) translateX(-100%)",
-};
 
 function freezePdfLayerScale(
   element: HTMLElement,
@@ -554,18 +565,16 @@ function freezePdfLayerScale(
   element.style.setProperty("--scale-round-y", `${geometry.scaleRoundY}px`);
 }
 
-function zoomPdfTextLayers(state: RenderState, scale: number): void {
+function zoomPdfTextLayers(
+  state: RenderState,
+  viewport: { scale: number; userUnit: number },
+  geometry: { scaleRoundX: number; scaleRoundY: number },
+): void {
   for (let current: RenderState | null = state; current; current = current.previous) {
-    const ratio = scale / current.renderScale;
     for (const node of current.nodes) {
       if (!node.classList.contains("textLayer")) continue;
-      if (!Number.isFinite(ratio) || Math.abs(ratio - 1) < 1e-9) {
-        if (node.style.transform) node.style.removeProperty("transform");
-        continue;
-      }
-      const rotation =
-        MAIN_ROTATION_TRANSFORMS[node.getAttribute("data-main-rotation") ?? ""] ?? "";
-      node.style.transform = `scale(${ratio}) ${rotation}`.trim();
+      freezePdfLayerScale(node, viewport, geometry);
+      if (node.style.transform) node.style.removeProperty("transform");
     }
   }
 }
@@ -1833,6 +1842,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       previous,
       renderScale,
       devicePixelRatio: dpr,
+      layoutWidth: 0,
+      layoutHeight: 0,
       viewport: null,
       canvas: null,
       restrictedScaling: false,
@@ -1915,8 +1926,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       const geometry = prepareWrapGeometry();
       state.viewport = viewport;
       state.restrictedScaling = geometry.restrictedScaling;
+      state.layoutWidth = geometry.cssWidthPx;
+      state.layoutHeight = geometry.cssHeightPx;
       if (previous) {
-        stretchRenderedRaster(previous, renderScale, geometry.cssWidth, geometry.cssHeight);
+        stretchRenderedRaster(previous, renderScale, geometry);
       }
 
       const createPageCanvas = () => {
@@ -2062,7 +2075,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             // Keep pdf.js' stock geometry if a browser refuses synchronous DOM
             // measurement; text selection is still more useful than no layer.
           }
-          zoomPdfTextLayers(state, scaleRef.current);
+          const shownScale = scaleRef.current;
+          if (shownScale !== renderScale) {
+            const shown = viewport.clone({ scale: shownScale });
+            zoomPdfTextLayers(state, shown, pdfLayerGeometry(shown, window.devicePixelRatio || 1));
+          }
           accessibilityManager.setTextMapping(textLayer.textDivs);
           accessibilityManager.enable();
           state.removeTextSelection = registerPdfTextSelection(
@@ -3334,9 +3351,9 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         window.devicePixelRatio || 1,
       );
       cancelPendingDetail(state);
-      stretchRenderedRaster(state, scale, geometry.cssWidth, geometry.cssHeight);
+      stretchRenderedRaster(state, scale, geometry);
       scaleSearchHighlights(state, scale);
-      zoomPdfTextLayers(state, scale);
+      zoomPdfTextLayers(state, viewport, geometry);
     }
     keepZoomAnchor();
 
