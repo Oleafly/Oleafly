@@ -134,6 +134,13 @@ describe("SystemFontPicker", () => {
     fireEvent.click(screen.getByRole("combobox", { name: FONT_LABEL }));
     await waitFor(() => expect(checkedOption()).toBe(`Fira Code${MONOSPACE}`));
     expect(screen.getAllByRole("option").filter((option) => option.dataset.checked)).toHaveLength(1);
+    expect(screen.getAllByRole("option").map((option) => option.dataset.value)).toEqual([
+      "",
+      "Fira Code",
+      "iA Writer Mono S",
+      "Arial",
+      "iA Writer Quattro S",
+    ]);
   });
 
   it("says it is looking for fonts until the list arrives", async () => {

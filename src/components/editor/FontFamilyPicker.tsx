@@ -162,6 +162,7 @@ export function FontFamilyCombobox({
                     type="button"
                     role="option"
                     aria-selected={index === active}
+                    data-value={option.value}
                     data-checked={checked || undefined}
                     tabIndex={-1}
                     className={cn(
