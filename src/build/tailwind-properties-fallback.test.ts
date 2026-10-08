@@ -85,8 +85,25 @@ function indexHtmlHead(): string {
   return html.slice(start, html.indexOf("</head>", start));
 }
 
+function inlineScripts(html: string): string[] {
+  const lower = html.toLowerCase();
+  const scripts: string[] = [];
+  let cursor = 0;
+  for (;;) {
+    const open = lower.indexOf("<script", cursor);
+    if (open === -1) return scripts;
+    const bodyStart = lower.indexOf(">", open);
+    if (bodyStart === -1) return scripts;
+    const close = lower.indexOf("</script", bodyStart);
+    if (close === -1) return scripts;
+    scripts.push(html.slice(bodyStart + 1, close));
+    const end = lower.indexOf(">", close);
+    cursor = end === -1 ? html.length : end + 1;
+  }
+}
+
 function gateScript(): string {
-  const scripts = [...indexHtmlHead().matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)].map((match) => match[1]);
+  const scripts = inlineScripts(indexHtmlHead());
   const gates = scripts.filter((script) => script.includes(TAILWIND_PROPERTY_FALLBACK_ATTRIBUTE));
   expect(gates).toHaveLength(1);
   return gates[0];

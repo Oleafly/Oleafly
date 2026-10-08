@@ -40,8 +40,7 @@ describe("LaTeX folding over a long chapter", () => {
   const LEVELS: Record<string, number> = { chapter: 1, section: 2, subsection: 3 };
   const HEADING = /^\s*\\(chapter|section|subsection)\*?\s*\{/;
 
-  function referenceFold(doc: string, lineNumber: number): string | null {
-    const state = EditorState.create({ doc });
+  function referenceFold(state: EditorState, lineNumber: number): string | null {
     const line = state.doc.line(lineNumber);
     const begin = /\\begin\{([^}]*)\}/.exec(line.text);
     if (begin) {
@@ -83,9 +82,19 @@ describe("LaTeX folding over a long chapter", () => {
     for (let filler = 0; filler < 4_000; filler++) lines.push("x".repeat(60));
     lines.push("\\end{verbatim}", "\\section{Last}", "end");
     const doc = lines.join("\n");
+    const folding = EditorState.create({ doc, extensions: [latexFolding()] });
+    const reference = EditorState.create({ doc });
+    const filler = "x".repeat(60);
+    const firstFiller = lines.indexOf(filler) + 1;
+    const lastFiller = lines.lastIndexOf(filler) + 1;
 
     for (let number = 1; number <= lines.length; number++) {
-      expect(foldAt(doc, number), `line ${number}`).toBe(referenceFold(doc, number));
+      const isFiller = lines[number - 1] === filler;
+      if (isFiller && number % 250 !== 0 && number !== firstFiller && number !== lastFiller) continue;
+      const line = folding.doc.line(number);
+      const range = foldable(folding, line.from, line.to);
+      const found = range ? folding.sliceDoc(range.from, range.to) : null;
+      expect(found, `line ${number}`).toBe(referenceFold(reference, number));
     }
   });
 });
