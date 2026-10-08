@@ -110,6 +110,7 @@ afterEach(() => {
 
 describe("visual atomic decorations while typing", () => {
   it("matches a full rebuild after typing anywhere in the document", () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.now());
     const iterate = vi.spyOn(Tree.prototype, "iterate");
     let incremental = 0;
     const step = (state: EditorState, edit: (state: EditorState) => EditorState) => {
@@ -120,7 +121,7 @@ describe("visual atomic decorations while typing", () => {
         .some(([spec]) => spec.from === undefined && spec.to === undefined);
       if (!walked && next.field(visualAtomicField).tree === syntaxTree(next)) incremental += 1;
       expectMatchesFullBuild(next);
-      return parsedState(next);
+      return next;
     };
     for (const position of editablePositions(DOCUMENT)) {
       let state = createState(DOCUMENT, position);
