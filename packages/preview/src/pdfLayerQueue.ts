@@ -44,7 +44,7 @@ export function createPdfLayerQueue(
   const take = (): PdfLayerWaiter | null => {
     let chosen: PdfLayerWaiter | null = null;
     let chosenPriority = Number.POSITIVE_INFINITY;
-    for (const waiter of [...waiters]) {
+    for (const waiter of waiters) {
       if (!waiter.isCurrent()) {
         waiters.delete(waiter);
         waiter.grant(null);

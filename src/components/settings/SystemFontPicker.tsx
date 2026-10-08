@@ -17,6 +17,8 @@ type SystemFonts =
 
 export type SystemFontUse = "editor" | "app";
 
+export const FONT_TYPING_DELAY_MS = 250;
+
 function presetFamilies(presets: readonly { value: string }[], monospace: boolean): SystemFontFamily[] {
   return presets
     .filter(({ value }) => value)
@@ -88,6 +90,49 @@ function useSystemFontFamilies(use: SystemFontUse): { fonts: SystemFonts; load: 
   return { fonts, load };
 }
 
+function useTypedFontName(value: string, onChange: (value: string) => void) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const pending = useRef<string | null>(null);
+  const timer = useRef<number | null>(null);
+  const commit = useRef(onChange);
+
+  useEffect(() => {
+    commit.current = onChange;
+  }, [onChange]);
+
+  const flush = useCallback(() => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+    const next = pending.current;
+    pending.current = null;
+    if (next === null) return;
+    commit.current(next);
+    setDraft(null);
+  }, []);
+
+  useEffect(() => flush, [flush]);
+
+  const type = useCallback(
+    (next: string) => {
+      pending.current = next;
+      setDraft(next);
+      if (timer.current !== null) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(flush, FONT_TYPING_DELAY_MS);
+    },
+    [flush],
+  );
+
+  const choose = useCallback(
+    (next: string) => {
+      pending.current = next;
+      flush();
+    },
+    [flush],
+  );
+
+  return { shown: draft ?? value, type, choose, flush };
+}
+
 export function SystemFontPicker({
   id,
   use,
@@ -103,6 +148,7 @@ export function SystemFontPicker({
 }>) {
   const { t } = useTranslation(["core", "editor", "settings"]);
   const { fonts, load } = useSystemFontFamilies(use);
+  const typed = useTypedFontName(value, onChange);
   const systemDefault = t(($) => $.core.fonts.systemDefault);
   const monospace = t(($) => $.settings.appearance.editor.font.monospace);
   const preferMonospace = use === "editor";
@@ -118,14 +164,16 @@ export function SystemFontPicker({
     <FontFamilyCombobox
       id={id}
       label={label}
-      value={value}
+      value={typed.shown}
       placeholder={systemDefault}
       loading={fonts.status === "loading"}
       listLabel={t(($) => $.editor.documentSettings.availableFonts)}
       loadingLabel={t(($) => $.editor.documentSettings.fontsLoading)}
       optionsFor={optionsFor}
       onLoad={load}
-      onChange={onChange}
+      onChange={typed.choose}
+      onInput={typed.type}
+      onBlur={typed.flush}
       className="h-9 w-[200px]"
     />
   );

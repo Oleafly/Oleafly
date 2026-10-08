@@ -53,15 +53,14 @@ function maskInline(characters: string[]): void {
   }
 }
 
-function destination(text: string, start: number, inline: boolean): PathReference | null {
-  let cursor = start;
-  while (text[cursor] === " " || text[cursor] === "\t") cursor += 1;
-  if (text[cursor] === "<") {
-    const close = text.indexOf(">", cursor + 1);
-    const newline = text.indexOf("\n", cursor + 1);
-    if (close < 0 || (newline >= 0 && newline < close)) return null;
-    return pathPart(text, cursor + 1, close, true);
-  }
+function wrappedDestination(text: string, cursor: number): PathReference | null {
+  const close = text.indexOf(">", cursor + 1);
+  const newline = text.indexOf("\n", cursor + 1);
+  if (close < 0 || (newline >= 0 && newline < close)) return null;
+  return pathPart(text, cursor + 1, close, true);
+}
+
+function bareDestinationEnd(text: string, cursor: number, inline: boolean): number {
   let depth = 0;
   let end = cursor;
   while (end < text.length && !/\s/.test(text[end])) {
@@ -76,7 +75,14 @@ function destination(text: string, start: number, inline: boolean): PathReferenc
     }
     end += 1;
   }
-  return pathPart(text, cursor, Math.min(end, text.length), false);
+  return end;
+}
+
+function destination(text: string, start: number, inline: boolean): PathReference | null {
+  let cursor = start;
+  while (text[cursor] === " " || text[cursor] === "\t") cursor += 1;
+  if (text[cursor] === "<") return wrappedDestination(text, cursor);
+  return pathPart(text, cursor, Math.min(bareDestinationEnd(text, cursor, inline), text.length), false);
 }
 
 function pathPart(text: string, from: number, to: number, wrapped: boolean): PathReference | null {

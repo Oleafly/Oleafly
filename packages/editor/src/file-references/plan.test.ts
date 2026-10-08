@@ -339,6 +339,16 @@ describe("Typst references", () => {
     expect(plan.references).toBe(3);
   });
 
+  it("escapes quotes in a new Typst path", () => {
+    const { texts } = move({
+      main: "main.typ",
+      files: { "main.typ": '#include "chapters/intro.typ"\n', "chapters/intro.typ": "" },
+      from: "chapters/intro.typ",
+      to: 'parts/say "hi".typ',
+    });
+    expect(texts["main.typ"]).toBe('#include "parts/say \\"hi\\".typ"\n');
+  });
+
   it("updates images, data loaders and bibliography arrays", () => {
     const { texts } = move({
       main: "main.typ",

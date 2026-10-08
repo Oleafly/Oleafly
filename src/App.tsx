@@ -78,7 +78,7 @@ import {
 } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
-import { editorLineHeightValue, useSettingsStore } from "@/store/settings";
+import { editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
 import { fontFamilyName, quotedFontFamily } from "@/lib/font-families";
 import { registerBrowserCuaSurface } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
@@ -144,6 +144,7 @@ import {
 } from "@/lib/native-dock-shortcuts";
 import type { ProjectStateChanged } from "@/lib/tauri";
 import {
+  FILE_SIDEBAR_MIN_WIDTH,
   assistantMinimumWidth,
   sidebarMinimumPercent,
   sidebarPanelGroupWidth,
@@ -349,6 +350,34 @@ function loadMcpBridge(): Promise<() => void> {
   return import("@/lib/mcp-bridge").then((m) => m.startMcpBridge());
 }
 
+const SIDEBAR_DEFAULT_PX = 340;
+
+function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
+  return detached ? "editor" : selected;
+}
+
+function horizontalPanelSizes(groupWidth: number, appFontSize: number, workspaceHidden: boolean) {
+  const sidebarDefaultSize =
+    groupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / groupWidth) * 100) : 15;
+  const assistantMinSize =
+    groupWidth > 0
+      ? Math.min(55, (assistantMinimumWidth(appFontSize) / groupWidth) * 100)
+      : 22;
+  const assistantDefaultSize = workspaceHidden ? 100 : Math.max(28, assistantMinSize);
+  return { sidebarDefaultSize, assistantMinSize, assistantDefaultSize };
+}
+
+function splitPanelDefaultSize(viewMode: ViewMode): number {
+  return viewMode === "split" ? 50 : 100;
+}
+
+function defaultVerticalLayout(terminalOpen: boolean): Layout {
+  return {
+    "content-band": terminalOpen ? 72 : 100,
+    terminal: terminalOpen ? 28 : 0,
+  };
+}
+
 function AppContent() {
   const { t } = useTranslation(["workspace"]);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -358,7 +387,7 @@ function AppContent() {
   const recompile = useCompileStore((s) => s.recompile);
   const selectedViewMode = useSettingsStore((s) => s.viewMode);
   const detached = usePreviewDetachedStore((s) => s.projectId === projectId && projectId !== null);
-  const viewMode = detached ? "editor" : selectedViewMode;
+  const viewMode = shownViewMode(detached, selectedViewMode);
   const showTree = useSettingsStore((s) => s.showTree);
   const editorFontSize = useSettingsStore((s) => s.editorFontSize);
   const appFontSize = useSettingsStore((s) => s.appFontSize);
@@ -445,7 +474,6 @@ function AppContent() {
 
   useOpenFolderIntake();
 
-  const SIDEBAR_DEFAULT_PX = 340;
   const panelAreaRef = useRef<HTMLDivElement>(null);
   const [panelAreaWidth, setPanelAreaWidth] = useState(0);
   useEffect(() => {
@@ -465,14 +493,12 @@ function AppContent() {
     false,
     appFontSize,
   );
-  const sidebarDefaultSize =
-    panelGroupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / panelGroupWidth) * 100) : 15;
-  const assistantMinSize =
-    panelGroupWidth > 0
-      ? Math.min(55, (assistantMinimumWidth(appFontSize) / panelGroupWidth) * 100)
-      : 22;
-  const workspacePanelDefaultSize =
-    viewMode === "split" ? 50 : 100;
+  const { sidebarDefaultSize, assistantMinSize, assistantDefaultSize } = horizontalPanelSizes(
+    panelGroupWidth,
+    appFontSize,
+    workspaceHidden,
+  );
+  const workspacePanelDefaultSize = splitPanelDefaultSize(viewMode);
   const horizontalLimits = useMemo(
     () =>
       ({
@@ -487,7 +513,6 @@ function AppContent() {
       }) satisfies Record<string, PanelLimits>,
     [assistantMinSize, sidebarMinSize, workspaceHidden],
   );
-  const assistantDefaultSize = workspaceHidden ? 100 : Math.max(28, assistantMinSize);
   const horizontalLayout = useDismissiblePanelLayout(
     horizontalGroupRef,
     horizontalGroupId,
@@ -526,8 +551,6 @@ function AppContent() {
     panelRef: sidebarPanelRef,
     active: showTree,
     groupWidth: panelGroupWidth,
-    minSize: sidebarMinSize,
-    maxSize: 65,
     defaultSize: sidebarDefaultSize,
     applyDefault: !hasStoredHorizontalLayout,
   });
@@ -862,12 +885,7 @@ function AppContent() {
               key={projectId}
               groupRef={verticalGroupRef}
               orientation="vertical"
-              defaultLayout={
-                verticalLayout.defaultLayout ?? {
-                  "content-band": terminalOpen ? 72 : 100,
-                  terminal: terminalOpen ? 28 : 0,
-                }
-              }
+              defaultLayout={verticalLayout.defaultLayout ?? defaultVerticalLayout(terminalOpen)}
               onLayoutChange={(layout: Layout) =>
                 trackVerticalCollapse(layout, {
                   terminal: {
@@ -912,6 +930,8 @@ function AppContent() {
                     id="sidebar"
                     defaultSize={percent(sidebarDefaultSize)}
                     {...panelLimitProps(horizontalLimits.sidebar)}
+                    minSize={`${FILE_SIDEBAR_MIN_WIDTH}px`}
+                    groupResizeBehavior="preserve-pixel-size"
                     style={PANEL_STYLE}
                     className="bg-sidebar"
                   >

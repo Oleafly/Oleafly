@@ -177,11 +177,12 @@ function MissingBody({ onClose }: Readonly<{ onClose: () => void }>) {
     <>
       <div className="max-h-[50vh] flex-1 overflow-y-auto px-4 py-3" aria-live="polite" aria-busy={phase === "loading" || phase === "working"}>
         {phase === "loading" && <LoadingState className="py-4" label={t(($) => $.references.zotero.missing.loading)} />}
-        {(phase === "done" || phase === "error") && (
-          <p role={phase === "error" ? "alert" : "status"} className={phase === "error" ? "select-text text-xs text-destructive" : "text-xs"}>
+        {phase === "error" && (
+          <p role="alert" className="select-text text-xs text-destructive">
             {message}
           </p>
         )}
+        {phase === "done" && <output className="block text-xs">{message}</output>}
         {(phase === "ready" || phase === "working") && report && (
           <div className="space-y-4">
             {found.length === 0 && report.missing.length === 0 && report.duplicates.length === 0 && (
@@ -301,11 +302,12 @@ function UpdateBody({ onClose }: Readonly<{ onClose: () => void }>) {
     <>
       <div className="max-h-[50vh] flex-1 overflow-y-auto px-4 py-3" aria-live="polite" aria-busy={phase === "loading" || phase === "working"}>
         {phase === "loading" && <LoadingState className="py-4" label={t(($) => $.references.zotero.update.loading)} />}
-        {(phase === "done" || phase === "error") && (
-          <p role={phase === "error" ? "alert" : "status"} className={phase === "error" ? "select-text text-xs text-destructive" : "text-xs"}>
+        {phase === "error" && (
+          <p role="alert" className="select-text text-xs text-destructive">
             {message}
           </p>
         )}
+        {phase === "done" && <output className="block text-xs">{message}</output>}
         {(phase === "ready" || phase === "working") && entries.length === 0 && (
           <p className="text-xs text-muted-foreground">{t(($) => $.references.zotero.update.none)}</p>
         )}

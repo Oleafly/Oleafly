@@ -5,7 +5,7 @@ use oleafly_history::{
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::sync::{Mutex, MutexGuard, OnceLock, PoisonError};
 use std::time::{Duration, SystemTime};
 
 const EXCLUDED_EXACT: [&str; 3] = [".git", ".oleafly", "node_modules"];
@@ -200,9 +200,7 @@ fn hash_cache() -> &'static Mutex<HashMap<PathBuf, CachedHash>> {
 }
 
 fn locked_hash_cache() -> MutexGuard<'static, HashMap<PathBuf, CachedHash>> {
-    hash_cache()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+    hash_cache().lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 fn reusable_hash(path: &Path, stamp: &FileStamp) -> Option<ContentHash> {

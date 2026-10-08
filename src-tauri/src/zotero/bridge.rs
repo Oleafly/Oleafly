@@ -142,9 +142,7 @@ impl Bridge {
                     .unwrap_or_default()
                     .trim()
                     .to_string();
-                let account = verify_at(&library.endpoints().web, &user_id, &api_key)
-                    .await
-                    .map_err(String::from)?;
+                let account = verify_at(&library.endpoints().web, &user_id, &api_key).await?;
                 *self.account.lock().unwrap() = Some((
                     Credentials {
                         user_id: account.user_id.clone(),

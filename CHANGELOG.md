@@ -91,6 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The file tree no longer gets wider every time you resize the window or the
+  PDF preview leaves full screen. It keeps the width you gave it.
 - The App font setting in Appearance now changes the font of the whole
   interface. Before, it had no visible effect.
 - Theme customization shows the default colors of the light palette while

@@ -19,8 +19,16 @@ import { useZoteroConnectorStore } from "@/store/zotero-connector";
 import { useZoteroLibraryStore } from "@/store/zotero-library";
 
 type Translate = ReturnType<typeof useTranslation<"settings">>["t"];
+type Tone = "ok" | "warn" | "off";
 
-function localLine(t: Translate, status: ZoteroLibraryStatus | null): { tone: "ok" | "warn" | "off"; text: string } {
+const TONE_ICON = { ok: Check, warn: AlertTriangle, off: CircleSlash } as const;
+const TONE_CLASS: Readonly<Record<Tone, string>> = {
+  ok: "flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-300",
+  warn: "flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300",
+  off: "flex items-start gap-1.5 text-xs text-muted-foreground",
+};
+
+function localLine(t: Translate, status: ZoteroLibraryStatus | null): { tone: Tone; text: string } {
   const local = status?.local;
   switch (local?.state) {
     case "ready":
@@ -68,21 +76,31 @@ function syncLine(t: Translate, status: ZoteroLibraryStatus | null): string {
   return line;
 }
 
+function reportBbt(t: Translate, report: ZoteroConnectionReport): string | null {
+  if (report.source !== "local") return null;
+  return report.local.bbtVersion !== undefined
+    ? t(($) => $.settings.integrations.zotero.report.bbt, { version: report.local.bbtVersion || "" })
+    : t(($) => $.settings.integrations.zotero.report.noBbt);
+}
+
+function localBbt(t: Translate, status: ZoteroLibraryStatus | null): string | null {
+  if (status?.local.state !== "ready") return null;
+  return status.local.bbtVersion !== undefined
+    ? t(($) => $.settings.integrations.zotero.local.bbtFound, { version: status.local.bbtVersion || "" })
+    : t(($) => $.settings.integrations.zotero.local.bbtMissing);
+}
+
 function Report({ t, report }: Readonly<{ t: Translate; report: ZoteroConnectionReport }>) {
   if (report.error) return <IntegrationError>{describeError(report.error)}</IntegrationError>;
   const facts = [
     report.local.zoteroVersion ? t(($) => $.settings.integrations.zotero.report.zotero, { version: report.local.zoteroVersion }) : null,
-    report.source === "local"
-      ? report.local.bbtVersion !== undefined
-        ? t(($) => $.settings.integrations.zotero.report.bbt, { version: report.local.bbtVersion || "" })
-        : t(($) => $.settings.integrations.zotero.report.noBbt)
-      : null,
+    reportBbt(t, report),
     report.source === "web"
       ? t(($) => $.settings.integrations.zotero.report.web)
       : t(($) => $.settings.integrations.zotero.report.local),
   ].filter((fact): fact is string => Boolean(fact));
   return (
-    <div data-testid="zotero-report" className="rounded-md border bg-muted/30 px-3 py-2 text-xs" role="status">
+    <output data-testid="zotero-report" className="block rounded-md border bg-muted/30 px-3 py-2 text-xs">
       <p className="font-medium">{facts.join(" · ")}</p>
       <ul className="mt-1 space-y-0.5 text-muted-foreground">
         {report.libraries.map((library) => (
@@ -95,7 +113,7 @@ function Report({ t, report }: Readonly<{ t: Translate; report: ZoteroConnection
           </li>
         ))}
       </ul>
-    </div>
+    </output>
   );
 }
 
@@ -108,32 +126,17 @@ function LocalPanel({ t }: Readonly<{ t: Translate }>) {
   const sync = useZoteroLibraryStore((state) => state.sync);
   const setEnabled = useZoteroLibraryStore((state) => state.setEnabled);
   const line = localLine(t, status);
-  const Icon = line.tone === "ok" ? Check : line.tone === "warn" ? AlertTriangle : CircleSlash;
-  const bbt =
-    status?.local.state === "ready"
-      ? status.local.bbtVersion !== undefined
-        ? t(($) => $.settings.integrations.zotero.local.bbtFound, { version: status.local.bbtVersion || "" })
-        : t(($) => $.settings.integrations.zotero.local.bbtMissing)
-      : null;
+  const Icon = TONE_ICON[line.tone];
+  const bbt = localBbt(t, status);
   const error = status?.error && !status.syncing ? describeError(status.error) : null;
   return (
     <div className="space-y-3" data-testid="zotero-local">
       <div className="space-y-1">
         <h4 className="text-xs font-medium">{t(($) => $.settings.integrations.zotero.local.heading)}</h4>
-        <p
-          role="status"
-          data-testid="zotero-local-status"
-          className={
-            line.tone === "ok"
-              ? "flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-300"
-              : line.tone === "warn"
-                ? "flex items-start gap-1.5 text-xs text-amber-700 dark:text-amber-300"
-                : "flex items-start gap-1.5 text-xs text-muted-foreground"
-          }
-        >
+        <output data-testid="zotero-local-status" className={TONE_CLASS[line.tone]}>
           <Icon aria-hidden className="mt-px size-3.5 shrink-0" />
           <span>{line.text}</span>
-        </p>
+        </output>
         {bbt ? <p className="text-xs text-muted-foreground">{bbt}</p> : null}
         <p className="text-xs text-muted-foreground" data-testid="zotero-sync-status">
           {syncLine(t, status)}

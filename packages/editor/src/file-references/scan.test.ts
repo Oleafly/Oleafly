@@ -51,6 +51,48 @@ describe("scanPathReferences", () => {
   it("does not mistake longer command names for path commands", () => {
     expect(scanPathReferences("latex", "\\bibliographystyle{plain}\\inputencoding{utf8}")).toEqual([]);
   });
+
+  it("recognises every path command by its whole name", () => {
+    const single = [
+      "input",
+      "include",
+      "includeonly",
+      "InputIfFileExists",
+      "subfile",
+      "includegraphics",
+      "includesvg",
+      "includepdf",
+      "includestandalone",
+      "lstinputlisting",
+      "verbatiminput",
+      "bibliography",
+      "addbibresource",
+      "addglobalbib",
+      "addsectionbib",
+      "usepackage",
+      "RequirePackage",
+      "documentclass",
+    ];
+    for (const name of single) {
+      expect(scanPathReferences("latex", `\\${name}{a}`).map((reference) => reference.command)).toEqual([name]);
+      expect(scanPathReferences("latex", `\\${name}@{a}\\${name}x{a}\\${name.slice(0, -1)}{a}`)).toEqual([]);
+    }
+    expect(scanPathReferences("latex", "\\inputminted{tex}{a}").map((reference) => reference.raw)).toEqual(["a"]);
+    expect(scanPathReferences("latex", "\\import{d/}{a}\\subimport{e/}{b}").map((reference) => reference.kind)).toEqual([
+      "tex-import",
+      "tex-subimport",
+    ]);
+    expect(scanPathReferences("latex", "\\svgpath{{s/}}").map((reference) => reference.kind)).toEqual(["tex-svgpath"]);
+  });
+
+  it("finds a path command right after another command", () => {
+    const references = scanPathReferences("latex", "\\relax\\input{a}\\foo@bar\\include{b}\\\\input{c}");
+    expect(references.map((reference) => [reference.command, reference.raw])).toEqual([
+      ["input", "a"],
+      ["include", "b"],
+      ["input", "c"],
+    ]);
+  });
 });
 
 describe("pathReferenceAt", () => {

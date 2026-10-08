@@ -42,6 +42,13 @@ describe("scanLatexDefinitions", () => {
 });
 
 describe("latexWrapperSections", () => {
+  it("skips a wrapper environment with a blank name instead of scanning forever", () => {
+    const source = String.raw`\newenvironment{ }[1]{\section{#1}}{}`;
+    const { wrappers } = scanLatexDefinitions(source);
+    expect(latexWrapperSections(String.raw`${source}
+\begin{ }{Title}`, wrappers)).toEqual([]);
+  });
+
   it("turns wrapper uses into headings with the right title and level", () => {
     const { wrappers } = scanLatexDefinitions(STYLE);
     const text = String.raw`\begin{chapterpage}{Introduction to data}
@@ -64,6 +71,39 @@ describe("latexWrapperSections", () => {
     const [first, second] = latexWrapperSections(text, wrappers);
     expect(text.slice(first.titleFrom, first.titleTo)).toBe("Introduction to data");
     expect([first.line, second.line]).toEqual([1, 5]);
+  });
+
+  it("reads absent stars and options and drops uses whose arguments cannot be read", () => {
+    const { wrappers } = scanLatexDefinitions(STYLE);
+    const text = [
+      String.raw`\unit [Short] {Plain unit}`,
+      String.raw`\unit{No options}`,
+      String.raw`\unit*[Fine] missing`,
+      String.raw`\unit{Unclosed`,
+      String.raw`\unit*[Open forever`,
+      String.raw`\begin{lesson}{Lesson two}`,
+    ].join("\n");
+    expect(latexWrapperSections(text, wrappers).map((section) => [section.line, section.title])).toEqual([
+      [1, "Plain unit"],
+      [2, "No options"],
+      [6, "Lesson two"],
+    ]);
+  });
+
+  it("matches environment wrappers on their own and command wrappers by their whole name", () => {
+    const environments = scanLatexDefinitions(String.raw`\newenvironment{step*}[1]{\subsection{#1}}{}`).wrappers;
+    expect(
+      latexWrapperSections(String.raw`\begin{step*}{First}\begin{stepp}{Other}\begin {step*} {Second}`, environments).map(
+        (section) => [section.level, section.title],
+      ),
+    ).toEqual([
+      [3, "First"],
+      [3, "Second"],
+    ]);
+    const commands = scanLatexDefinitions(String.raw`\newcommand{\head}[1]{\section{#1}}`).wrappers;
+    expect(
+      latexWrapperSections(String.raw`\head{A}\heading{B}\head@x{C}\headé{D}`, commands).map((section) => section.title),
+    ).toEqual(["A"]);
   });
 
   it("skips wrapper uses inside other definitions", () => {

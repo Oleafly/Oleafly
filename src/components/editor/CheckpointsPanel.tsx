@@ -1016,10 +1016,10 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     [timelineLimit, timelineMore, visibleCheckpoints],
   );
 
+  const pagedTimelineLimit = timelineMore ? timelineLimit : null;
   useEffect(() => {
-    void timelineLimit;
     const end = timelineEndRef.current;
-    if (!timelineMore || !end) return;
+    if (pagedTimelineLimit === null || !end) return;
     const root = end.closest<HTMLElement>("[data-checkpoint-scroller]");
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1031,7 +1031,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     );
     observer.observe(end);
     return () => observer.disconnect();
-  }, [timelineMore, timelineLimit]);
+  }, [pagedTimelineLimit]);
   const versionLabels = useMemo(() => {
     const labels = new Map<string, string>();
     [...visibleCheckpoints].reverse().forEach((entry, index) => {

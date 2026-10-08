@@ -177,7 +177,7 @@ describe("text selection policy", () => {
     const plain = styles.match(/(?:^|[^-])user-select:\s*[a-z]+/gu) ?? [];
     const prefixed = styles.match(/-webkit-user-select:\s*[a-z]+/gu) ?? [];
     expect(plain.length).toBeGreaterThan(0);
-    expect(prefixed.length).toBe(plain.length);
+    expect(prefixed).toHaveLength(plain.length);
   });
 
   it("shows the arrow over interface text and the I-beam only where text can be selected", () => {

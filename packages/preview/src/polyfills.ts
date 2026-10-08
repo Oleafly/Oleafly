@@ -155,62 +155,81 @@ function defineMissing(owner: object, key: string, value: unknown) {
   Object.defineProperty(owner, key, { value, writable: true, configurable: true });
 }
 
-function exactSum(values: readonly number[]): number {
-  const partials: number[] = [];
-  for (let value of values) {
-    let kept = 0;
-    for (const partial of partials) {
-      let small = partial;
-      if (Math.abs(value) < Math.abs(small)) [value, small] = [small, value];
-      const high = value + small;
-      const low = small - (high - value);
-      if (low !== 0) partials[kept++] = low;
-      value = high;
-    }
-    partials.length = kept;
-    partials.push(value);
+function addToPartials(partials: number[], input: number): void {
+  let value = input;
+  let kept = 0;
+  for (const partial of partials) {
+    let small = partial;
+    if (Math.abs(value) < Math.abs(small)) [value, small] = [small, value];
+    const high = value + small;
+    const low = small - (high - value);
+    if (low !== 0) partials[kept++] = low;
+    value = high;
   }
+  partials.length = kept;
+  partials.push(value);
+}
+
+function sumPartials(partials: readonly number[]): number {
   let index = partials.length;
-  let high = 0;
-  if (index > 0) {
+  if (index === 0) return 0;
+  index -= 1;
+  let high = partials[index];
+  let low = 0;
+  while (index > 0) {
+    const previous = high;
     index -= 1;
-    high = partials[index];
-    let low = 0;
-    while (index > 0) {
-      const previous = high;
-      index -= 1;
-      const next = partials[index];
-      high = previous + next;
-      low = next - (high - previous);
-      if (low !== 0) break;
-    }
-    if (index > 0 && ((low < 0 && partials[index - 1] < 0) || (low > 0 && partials[index - 1] > 0))) {
-      const doubled = low * 2;
-      const rounded = high + doubled;
-      if (doubled === rounded - high) high = rounded;
-    }
+    const next = partials[index];
+    high = previous + next;
+    low = next - (high - previous);
+    if (low !== 0) break;
+  }
+  if (index > 0 && ((low < 0 && partials[index - 1] < 0) || (low > 0 && partials[index - 1] > 0))) {
+    const doubled = low * 2;
+    const rounded = high + doubled;
+    if (doubled === rounded - high) high = rounded;
   }
   return high;
+}
+
+function exactSum(values: readonly number[]): number {
+  const partials: number[] = [];
+  for (const value of values) addToPartials(partials, value);
+  return sumPartials(partials);
+}
+
+interface SumPreciseItems {
+  finite: number[];
+  positiveInfinity: boolean;
+  negativeInfinity: boolean;
+  notANumber: boolean;
+  onlyNegativeZero: boolean;
+}
+
+function classifySumPreciseItems(items: Iterable<unknown>): SumPreciseItems {
+  const finite: number[] = [];
+  let positiveInfinity = false;
+  let negativeInfinity = false;
+  let notANumber = false;
+  let onlyNegativeZero = true;
+  for (const item of items) {
+    if (typeof item !== "number") throw new TypeError("Math.sumPrecise expects numbers");
+    if (Number.isNaN(item)) notANumber = true;
+    else if (item === Number.POSITIVE_INFINITY) positiveInfinity = true;
+    else if (item === Number.NEGATIVE_INFINITY) negativeInfinity = true;
+    else {
+      if (!Object.is(item, -0)) onlyNegativeZero = false;
+      finite.push(item);
+    }
+  }
+  return { finite, positiveInfinity, negativeInfinity, notANumber, onlyNegativeZero };
 }
 
 export function installMathSumPrecise(math: { sumPrecise?: unknown } | undefined) {
   if (!math) return;
   defineMissing(math, "sumPrecise", function sumPrecise(items: Iterable<unknown>) {
-    const finite: number[] = [];
-    let positiveInfinity = false;
-    let negativeInfinity = false;
-    let notANumber = false;
-    let onlyNegativeZero = true;
-    for (const item of items) {
-      if (typeof item !== "number") throw new TypeError("Math.sumPrecise expects numbers");
-      if (Number.isNaN(item)) notANumber = true;
-      else if (item === Number.POSITIVE_INFINITY) positiveInfinity = true;
-      else if (item === Number.NEGATIVE_INFINITY) negativeInfinity = true;
-      else {
-        if (!Object.is(item, -0)) onlyNegativeZero = false;
-        finite.push(item);
-      }
-    }
+    const { finite, positiveInfinity, negativeInfinity, notANumber, onlyNegativeZero } =
+      classifySumPreciseItems(items);
     if (notANumber || (positiveInfinity && negativeInfinity)) return Number.NaN;
     if (positiveInfinity) return Number.POSITIVE_INFINITY;
     if (negativeInfinity) return Number.NEGATIVE_INFINITY;
@@ -287,63 +306,68 @@ function iterate<T>(iterator: Iterator<T>): Iterable<T> {
   return { [Symbol.iterator]: () => iterator };
 }
 
+function* mapIterator<T, U>(source: Iterator<T>, mapper: (value: T, index: number) => U) {
+  let index = 0;
+  for (const value of iterate(source)) yield mapper(value, index++);
+}
+
+function* filterIterator<T>(source: Iterator<T>, predicate: (value: T, index: number) => unknown) {
+  let index = 0;
+  for (const value of iterate(source)) if (predicate(value, index++)) yield value;
+}
+
+function* takeIterator<T>(source: Iterator<T>, count: number) {
+  let remaining = Math.floor(count);
+  if (remaining === 0) {
+    source.return?.();
+    return;
+  }
+  for (const value of iterate(source)) {
+    yield value;
+    remaining -= 1;
+    if (remaining === 0) return;
+  }
+}
+
+function* dropIterator<T>(source: Iterator<T>, count: number) {
+  let remaining = Math.floor(count);
+  for (const value of iterate(source)) {
+    if (remaining > 0) {
+      remaining -= 1;
+      continue;
+    }
+    yield value;
+  }
+}
+
+function* flatMapIterator<T, U>(source: Iterator<T>, mapper: (value: T, index: number) => Iterable<U>) {
+  let index = 0;
+  for (const value of iterate(source)) yield* mapper(value, index++);
+}
+
 export function installIteratorHelpers(prototype: object | undefined) {
   if (!prototype) return;
   defineMissing(prototype, "map", function map<T, U>(this: Iterator<T>, mapper: (value: T, index: number) => U) {
     callable(mapper, "Iterator.prototype.map");
-    const source = this;
-    return (function* () {
-      let index = 0;
-      for (const value of iterate(source)) yield mapper(value, index++);
-    })();
+    return mapIterator(this, mapper);
   });
   defineMissing(prototype, "filter", function filter<T>(this: Iterator<T>, predicate: (value: T, index: number) => unknown) {
     callable(predicate, "Iterator.prototype.filter");
-    const source = this;
-    return (function* () {
-      let index = 0;
-      for (const value of iterate(source)) if (predicate(value, index++)) yield value;
-    })();
+    return filterIterator(this, predicate);
   });
   defineMissing(prototype, "take", function take<T>(this: Iterator<T>, limit: number) {
     const count = Number(limit);
     if (Number.isNaN(count) || count < 0) throw new RangeError("Iterator.prototype.take expects a non-negative number");
-    const source = this;
-    return (function* () {
-      let remaining = Math.floor(count);
-      if (remaining === 0) {
-        source.return?.();
-        return;
-      }
-      for (const value of iterate(source)) {
-        yield value;
-        remaining -= 1;
-        if (remaining === 0) return;
-      }
-    })();
+    return takeIterator(this, count);
   });
   defineMissing(prototype, "drop", function drop<T>(this: Iterator<T>, limit: number) {
     const count = Number(limit);
     if (Number.isNaN(count) || count < 0) throw new RangeError("Iterator.prototype.drop expects a non-negative number");
-    const source = this;
-    return (function* () {
-      let remaining = Math.floor(count);
-      for (const value of iterate(source)) {
-        if (remaining > 0) {
-          remaining -= 1;
-          continue;
-        }
-        yield value;
-      }
-    })();
+    return dropIterator(this, count);
   });
   defineMissing(prototype, "flatMap", function flatMap<T, U>(this: Iterator<T>, mapper: (value: T, index: number) => Iterable<U>) {
     callable(mapper, "Iterator.prototype.flatMap");
-    const source = this;
-    return (function* () {
-      let index = 0;
-      for (const value of iterate(source)) yield* mapper(value, index++);
-    })();
+    return flatMapIterator(this, mapper);
   });
   defineMissing(prototype, "toArray", function toArray<T>(this: Iterator<T>) {
     return [...iterate(this)];
@@ -434,19 +458,20 @@ export function installSetMethods(ctor: { prototype: object } | undefined) {
 
 installSetMethods(typeof Set !== "undefined" ? Set : undefined);
 
+function transfer(this: ArrayBuffer, newLength?: number) {
+  const length = newLength === undefined ? this.byteLength : Math.max(0, Math.trunc(Number(newLength)));
+  const moved =
+    typeof structuredClone === "function"
+      ? (structuredClone(this, { transfer: [this] }) as ArrayBuffer)
+      : this.slice(0);
+  if (moved.byteLength === length) return moved;
+  const resized = new ArrayBuffer(length);
+  new Uint8Array(resized).set(new Uint8Array(moved, 0, Math.min(length, moved.byteLength)));
+  return resized;
+}
+
 export function installArrayBufferTransfer(ctor: { prototype: object } | undefined) {
   if (!ctor) return;
-  const transfer = function transfer(this: ArrayBuffer, newLength?: number) {
-    const length = newLength === undefined ? this.byteLength : Math.max(0, Math.trunc(Number(newLength)));
-    const moved =
-      typeof structuredClone === "function"
-        ? (structuredClone(this, { transfer: [this] }) as ArrayBuffer)
-        : this.slice(0);
-    if (moved.byteLength === length) return moved;
-    const resized = new ArrayBuffer(length);
-    new Uint8Array(resized).set(new Uint8Array(moved, 0, Math.min(length, moved.byteLength)));
-    return resized;
-  };
   defineMissing(ctor.prototype, "transfer", transfer);
   defineMissing(ctor.prototype, "transferToFixedLength", transfer);
 }
@@ -454,17 +479,17 @@ export function installArrayBufferTransfer(ctor: { prototype: object } | undefin
 installArrayBufferTransfer(typeof ArrayBuffer !== "undefined" ? ArrayBuffer : undefined);
 
 const CONTROL_ESCAPES: Readonly<Record<string, string>> = {
-  "\t": "\\t",
-  "\n": "\\n",
-  "\v": "\\v",
-  "\f": "\\f",
-  "\r": "\\r",
+  "\t": String.raw`\t`,
+  "\n": String.raw`\n`,
+  "\v": String.raw`\v`,
+  "\f": String.raw`\f`,
+  "\r": String.raw`\r`,
 };
 
 function hexEscape(code: number) {
   return code <= 0xff
-    ? `\\x${code.toString(16).padStart(2, "0")}`
-    : `\\u${code.toString(16).padStart(4, "0")}`;
+    ? String.raw`\x${code.toString(16).padStart(2, "0")}`
+    : String.raw`\u${code.toString(16).padStart(4, "0")}`;
 }
 
 export function installRegExpEscape(ctor: { escape?: unknown } | undefined) {
@@ -476,7 +501,7 @@ export function installRegExpEscape(ctor: { escape?: unknown } | undefined) {
     for (const character of input) {
       const code = character.codePointAt(0) ?? 0;
       if (first && /[0-9A-Za-z]/u.test(character)) escaped += hexEscape(code);
-      else if ("^$\\.*+?()[]{}|/".includes(character)) escaped += `\\${character}`;
+      else if (String.raw`^$\.*+?()[]{}|/`.includes(character)) escaped += `\\${character}`;
       else if (CONTROL_ESCAPES[character]) escaped += CONTROL_ESCAPES[character];
       else if (",-=<>#&!%:;@~'`\"".includes(character) || /\s/u.test(character) || (code >= 0xd800 && code <= 0xdfff)) {
         escaped += hexEscape(code);

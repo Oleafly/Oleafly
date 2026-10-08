@@ -57,6 +57,8 @@ export function FontFamilyCombobox({
   optionsFor,
   onLoad,
   onChange,
+  onInput,
+  onBlur,
   className,
 }: Readonly<{
   id: string;
@@ -70,6 +72,8 @@ export function FontFamilyCombobox({
   optionsFor: (query: string) => readonly FontFamilyOption[];
   onLoad: () => void;
   onChange: (value: string) => void;
+  onInput?: (value: string) => void;
+  onBlur?: () => void;
   className?: string;
 }>) {
   const listId = useId();
@@ -128,8 +132,9 @@ export function FontFamilyCombobox({
           onFocus={openList}
           onClick={openList}
           onKeyDown={onKeyDown}
+          onBlur={onBlur}
           onChange={(event) => {
-            onChange(event.target.value);
+            (onInput ?? onChange)(event.target.value);
             setQuery(event.target.value);
             setActive(0);
             openList();

@@ -5,6 +5,7 @@ import {
   StateEffect,
   StateField,
   type Text,
+  type Transaction,
   type TransactionSpec,
 } from "@codemirror/state";
 import { EditorView, keymap, showTooltip, type Tooltip, type TooltipView } from "@codemirror/view";
@@ -412,26 +413,31 @@ function resolveState(
   return { enabled, hidden: null, target, tooltip, focused };
 }
 
+function previewFlags(
+  value: MathPreviewTooltipState,
+  tr: Transaction,
+): { enabled: boolean; focused: boolean; hideRequested: boolean } {
+  const before = tr.startState.facet(mathPreviewEnabled);
+  const after = tr.state.facet(mathPreviewEnabled);
+  let enabled = before === after ? value.enabled : after;
+  let focused = value.focused;
+  let hideRequested = false;
+  for (const effect of tr.effects) {
+    if (effect.is(setMathPreviewEnabled)) enabled = effect.value;
+    if (effect.is(hideMathPreview)) hideRequested = true;
+    if (effect.is(setMathPreviewFocus)) focused = effect.value;
+  }
+  return { enabled, focused, hideRequested };
+}
+
 export const mathPreviewTooltipField = StateField.define<MathPreviewTooltipState>({
   create: (state) =>
     resolveState(state, state.facet(mathPreviewFormat), state.facet(mathPreviewEnabled), null),
 
   update(value, tr) {
     const format = tr.state.facet(mathPreviewFormat);
-    let enabled = value.enabled;
+    const { enabled, focused, hideRequested } = previewFlags(value, tr);
     let hidden = value.hidden;
-    let focused = value.focused;
-    let hideRequested = false;
-
-    const before = tr.startState.facet(mathPreviewEnabled);
-    const after = tr.state.facet(mathPreviewEnabled);
-    if (before !== after) enabled = after;
-
-    for (const effect of tr.effects) {
-      if (effect.is(setMathPreviewEnabled)) enabled = effect.value;
-      if (effect.is(hideMathPreview)) hideRequested = true;
-      if (effect.is(setMathPreviewFocus)) focused = effect.value;
-    }
 
     if (hidden && tr.docChanged) {
       hidden = {

@@ -156,6 +156,35 @@ function insideDefinitionBody(
   return insideLatexDefinition(spans, offset) && !latexDefinitionStartsAt(spans, offset);
 }
 
+const DEFINITION_COMMANDS: ReadonlySet<string> = new Set([
+  "def",
+  "gdef",
+  "edef",
+  "xdef",
+  "newcommand",
+  "renewcommand",
+  "providecommand",
+  "DeclareRobustCommand",
+  "newenvironment",
+  "renewenvironment",
+  "provideenvironment",
+  "NewDocumentCommand",
+  "RenewDocumentCommand",
+  "ProvideDocumentCommand",
+  "DeclareDocumentCommand",
+  "NewDocumentEnvironment",
+  "RenewDocumentEnvironment",
+  "ProvideDocumentEnvironment",
+  "DeclareDocumentEnvironment",
+]);
+
+const LEADING_COMMAND = /^\s*\\([A-Za-z]+)(?![\p{L}@])/u;
+
+function startsWithDefinitionHead(excerpt: string): boolean {
+  const name = LEADING_COMMAND.exec(excerpt)?.[1];
+  return name !== undefined && DEFINITION_COMMANDS.has(name);
+}
+
 function latexDefinition(
   symbol: LanguageServiceSymbol,
   source: string,
@@ -173,9 +202,7 @@ function latexDefinition(
     : /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?:\[[^\]]*\]\s*)?\{/u.exec(
         excerpt,
       );
-  const definitionHead = /^\s*\\(?:[gex]?def|newcommand|renewcommand|providecommand|DeclareRobustCommand|(?:new|renew|provide)environment|(?:New|Renew|Provide|Declare)Document(?:Command|Environment))(?![\p{L}@])/u.test(
-    excerpt,
-  );
+  const definitionHead = startsWithDefinitionHead(excerpt);
   if (section || (symbol.kind === 2 && !inDefinition && !definitionHead)) {
     const levels: Readonly<Record<string, number>> = {
       part: 1,

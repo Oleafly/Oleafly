@@ -1121,12 +1121,23 @@ async function readCompatibilityInputs(
   } catch (error) {
     void logError("scan project compatibility", error);
   }
-  for (const path of paths) {
-    if (read.has(path)) continue;
+  await readMissingCompatibilityInputs(id, paths, read);
+  return read;
+}
+
+async function readMissingCompatibilityInputs(
+  id: string,
+  paths: readonly string[],
+  read: Map<string, string>,
+  index = 0,
+): Promise<void> {
+  if (index >= paths.length) return;
+  const path = paths[index];
+  if (!read.has(path)) {
     const content = await readCompatibilityInput(id, path);
     if (content !== null) read.set(path, content);
   }
-  return read;
+  await readMissingCompatibilityInputs(id, paths, read, index + 1);
 }
 
 async function readCompatibilityInput(id: string, path: string): Promise<string | null> {

@@ -1378,12 +1378,9 @@ const ChangeRow = memo(function ChangeRow({
   const discardLabel = t(($) => $.shell.sourceControl.discardFor, {
     path: change.path,
   });
-  const stageLabel = t(
-    change.staged
-      ? ($) => $.shell.sourceControl.unstageFor
-      : ($) => $.shell.sourceControl.stageFor,
-    { path: change.path },
-  );
+  const stageLabel = change.staged
+    ? t(($) => $.shell.sourceControl.unstageFor, { path: change.path })
+    : t(($) => $.shell.sourceControl.stageFor, { path: change.path });
   const statusId = `git-status-${change.staged ? "staged" : "working"}-${encodeURIComponent(change.path)}`;
   const directory = dirname(change.path);
   let stageIcon = null;

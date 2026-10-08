@@ -84,6 +84,15 @@ export function outlineFromIndex(
   return out;
 }
 
+function headingBefore(headings: readonly { from: number; title: string }[], offset: number): string | undefined {
+  let owner: string | undefined;
+  for (const heading of headings) {
+    if (heading.from > offset) break;
+    owner = heading.title;
+  }
+  return owner;
+}
+
 export function headingTitlesByLabel(
   index: ProjectIndex,
   extraSections?: (file: string) => readonly ExtraOutlineSection[],
@@ -105,11 +114,7 @@ export function headingTitlesByLabel(
   for (const list of headings.values()) list.sort((left, right) => left.from - right.from);
   const titles = new Map<string, string>();
   for (const label of labels) {
-    let owner: string | undefined;
-    for (const heading of headings.get(label.file) ?? []) {
-      if (heading.from > label.from) break;
-      owner = heading.title;
-    }
+    const owner = headingBefore(headings.get(label.file) ?? [], label.from);
     if (owner !== undefined && !titles.has(label.name)) titles.set(label.name, owner);
   }
   return titles;

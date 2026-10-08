@@ -127,4 +127,39 @@ describe("compatibility scan on open", () => {
       SOURCES["chapters/two.tex"] = "Chapter two.";
     }
   });
+
+  it("reads the sources the batch missed one at a time in tree order", async () => {
+    delete SOURCES["chapters/two.tex"];
+    delete SOURCES["chapters/three.tex"];
+    const events: string[] = [];
+    mocks.readFileContent.mockImplementation(async (_projectId: string, path: string) => {
+      if (path === "chapters/two.tex" || path === "chapters/three.tex") {
+        events.push(`start ${path}`);
+        await Promise.resolve();
+        events.push(`end ${path}`);
+        if (path === "chapters/two.tex") throw new Error("two failed");
+        return String.raw`\usepackage{minted}`;
+      }
+      const text = SOURCES[path];
+      if (text === undefined) throw new Error(`missing ${path}`);
+      return text;
+    });
+    try {
+      await useFilesStore.getState().openProject("book");
+
+      await vi.waitFor(() => expect(events).toHaveLength(4));
+      expect(events).toEqual([
+        "start chapters/two.tex",
+        "end chapters/two.tex",
+        "start chapters/three.tex",
+        "end chapters/three.tex",
+      ]);
+      await vi.waitFor(() =>
+        expect(mocks.logError).toHaveBeenCalledWith("scan project compatibility", new Error("two failed")),
+      );
+    } finally {
+      SOURCES["chapters/two.tex"] = "Chapter two.";
+      SOURCES["chapters/three.tex"] = "Chapter three.";
+    }
+  });
 });

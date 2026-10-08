@@ -170,14 +170,21 @@ async function applyFileEdits(projectId: string, file: FileReferenceFileEdits): 
   }
 }
 
+async function applyEachFileEdits(
+  projectId: string,
+  files: readonly FileReferenceFileEdits[],
+  outcomes: FileOutcome[] = [],
+): Promise<FileOutcome[]> {
+  const file = files[outcomes.length];
+  if (file === undefined) return outcomes;
+  outcomes.push(await applyFileEdits(projectId, file));
+  return applyEachFileEdits(projectId, files, outcomes);
+}
+
 export async function applyReferencePlan(projectId: string, plan: FileReferencePlan): Promise<string[]> {
-  const failed: string[] = [];
-  let wroteDisk = false;
-  for (const file of plan.files) {
-    const outcome = await applyFileEdits(projectId, file);
-    if (outcome === "failed") failed.push(file.path);
-    if (outcome === "disk") wroteDisk = true;
-  }
+  const outcomes = await applyEachFileEdits(projectId, plan.files);
+  const failed = plan.files.filter((_file, index) => outcomes[index] === "failed").map((file) => file.path);
+  const wroteDisk = outcomes.includes("disk");
   if (wroteDisk && useFilesStore.getState().projectId === projectId) {
     void useIndexStore.getState().rebuildFromDisk();
   }

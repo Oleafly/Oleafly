@@ -776,10 +776,8 @@ describe("panels that mount after their group", () => {
       panelRef,
       active: shown,
       groupWidth: width,
-      minSize: 5,
-      maxSize: 65,
-      defaultSize: 20,
-      applyDefault: false,
+      defaultSize: 30,
+      applyDefault: true,
     });
     return (
       <>
@@ -798,13 +796,14 @@ describe("panels that mount after their group", () => {
     );
   }
 
-  it("keeps a sidebar shown after the width is known at its pixel width", async () => {
+  it("leaves a sidebar shown after the width is known at the size the group gave it", async () => {
     const panelRef = { current: null as PanelImperativeHandle | null };
     render(<SteadySidebar panelRef={panelRef} />);
     act(() => screen.getByRole("button", { name: SHOW_LABEL }).click());
     await waitFor(() => expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(20, 1));
     act(() => screen.getByRole("button", { name: NARROW_LABEL }).click());
-    await waitFor(() => expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(40, 1));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(20, 1);
   });
 
   it("gives up after its attempts and cancels a pending retry on cleanup", () => {

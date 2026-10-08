@@ -146,7 +146,7 @@ export function latexHasBibliography(source: string): boolean {
 }
 
 function insertBeforeEndDocument(source: string, masked: string, lines: string): string {
-  const end = masked.lastIndexOf("\\end{document}");
+  const end = masked.lastIndexOf(String.raw`\end{document}`);
   if (end < 0) {
     const separator = source.length === 0 || source.endsWith("\n") ? "" : "\n";
     return `${source}${separator}${lines}\n`;
@@ -171,11 +171,11 @@ export function ensureLatexBibliography(source: string, bibPath: string): string
         ? `${source}\n\\addbibresource{${path}}`
         : `${source.slice(0, lineEnd + 1)}\\addbibresource{${path}}\n${source.slice(lineEnd + 1)}`;
     if (/\\printbibliography\b/.test(maskLatexComments(withResource))) return withResource;
-    return insertBeforeEndDocument(withResource, maskLatexComments(withResource), "\\printbibliography");
+    return insertBeforeEndDocument(withResource, maskLatexComments(withResource), String.raw`\printbibliography`);
   }
   const stem = path.replace(/\.bib$/i, "");
-  const lines = /\\bibliographystyle\s*\{/.test(masked)
-    ? `\\bibliography{${stem}}`
-    : `\\bibliographystyle{${findLatexPackage(masked, "natbib") ? "plainnat" : "plain"}}\n\\bibliography{${stem}}`;
-  return insertBeforeEndDocument(source, masked, lines);
+  const bibliography = String.raw`\bibliography{${stem}}`;
+  if (/\\bibliographystyle\s*\{/.test(masked)) return insertBeforeEndDocument(source, masked, bibliography);
+  const style = findLatexPackage(masked, "natbib") ? "plainnat" : "plain";
+  return insertBeforeEndDocument(source, masked, `\\bibliographystyle{${style}}\n${bibliography}`);
 }

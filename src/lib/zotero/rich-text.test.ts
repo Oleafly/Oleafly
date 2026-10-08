@@ -23,6 +23,22 @@ describe("plainText", () => {
     expect(plainText("&unknown; &#0; &#x110000;")).toBe("&unknown; &#0; &#x110000;");
   });
 
+  it("removes only whole markup tags in a single pass", () => {
+    expect(plainText("<<i>br>")).toBe("<br>");
+    expect(plainText("<SMALL>z</Small> <u>u</u><sub>2</sub>")).toBe("z u2");
+    expect(plainText('<a href="x">y</a> <a\nhref=x>q</a> <a\t>r</a>')).toBe("y q r");
+    expect(plainText("<span>a</span><span />b")).toBe("ab");
+    expect(plainText("x<br>y<br  />z<BR/>w")).toBe("xyzw");
+    expect(plainText("<span x>y>")).toBe("y>");
+    expect(plainText("<<span>")).toBe("<");
+  });
+
+  it("keeps tags that only look like markup", () => {
+    for (const text of ["<br / >", "</br>", "<b/>", "<span/>", "</ i>", "<i >", "</a >", "<abbr>", "<span x<y>"]) {
+      expect(plainText(text)).toBe(text);
+    }
+  });
+
   it("collapses whitespace and leaves comparison signs alone", () => {
     expect(plainText("  Deep\n\tlearning   for  <i> all </i>  ")).toBe("Deep learning for all");
     expect(plainText("When n < 5 and m > 3")).toBe("When n < 5 and m > 3");

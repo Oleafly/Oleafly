@@ -1,4 +1,5 @@
 import type {
+  ZoteroExportedEntry,
   ZoteroExportStyle,
   ZoteroHit,
   ZoteroProjectLink,
@@ -41,7 +42,13 @@ import {
   withEntryKey,
 } from "@/lib/zotero/bib-text";
 import { collisionSuffix } from "@/lib/zotero/keys";
-import { askHandListMove, handListEntries, handListText, type HandListRequest } from "./zotero-hand-bibliography";
+import {
+  askHandListMove,
+  handListEntries,
+  handListText,
+  type HandListMove,
+  type HandListRequest,
+} from "./zotero-hand-bibliography";
 import { useFilesStore } from "@/store/files";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { useIndexStore } from "@/store/project-index";
@@ -84,7 +91,38 @@ export interface StaleEntry {
   readonly handEdited: boolean;
 }
 
-type Profile = "latex" | "typst" | "markdown" | string;
+type Profile = "latex" | "typst" | "markdown" | (string & {});
+
+interface BibTarget {
+  readonly path: string;
+  readonly exists: boolean;
+}
+
+interface SortedPicks {
+  readonly reused: string[];
+  readonly pending: ZoteroPick[];
+  readonly adopted: Record<string, ZoteroProjectLink>;
+}
+
+interface ExportedPicks {
+  readonly entries: string[];
+  readonly links: Record<string, ZoteroProjectLink>;
+  readonly added: string[];
+}
+
+interface PendingWrite {
+  readonly projectId: string;
+  readonly target: BibTarget;
+  readonly content: string;
+  readonly pending: readonly ZoteroPick[];
+  readonly reused: string[];
+  readonly handList: HandListMove | null;
+}
+
+interface UpdateProgress {
+  readonly updated: string[];
+  readonly links: Record<string, ZoteroProjectLink>;
+}
 
 const FALLBACK_BIBLIOGRAPHY = "references.bib";
 const linksByProject = new Map<string, Record<string, ZoteroProjectLink>>();
@@ -178,7 +216,8 @@ export function projectBibliography(projectId: string | null = useFilesStore.get
 }
 
 function sameItem(link: ZoteroProjectLink | undefined, hit: ZoteroHit): boolean {
-  return link !== undefined && link.library === hit.library && link.itemKey === hit.itemKey;
+  if (link === undefined) return false;
+  return link.library === hit.library && link.itemKey === hit.itemKey;
 }
 
 export function existingKeyForHit(hit: ZoteroHit, project: ProjectBibliography = projectBibliography()): string | null {
@@ -208,9 +247,15 @@ function mainDocument(): string {
   return profile() === "latex" ? resolveEffectiveMainDoc().mainDoc : useFilesStore.getState().mainDoc;
 }
 
+function sourcePattern(kind: Profile): RegExp {
+  if (kind === "typst") return /\.typ$/i;
+  if (kind === "markdown") return /\.(?:md|markdown|qmd|rmd)$/i;
+  return /\.(?:tex|ltx|latex)$/i;
+}
+
 function sourceTexts(): { file: string; content: string }[] {
   const files = useFilesStore.getState();
-  const pattern = profile() === "typst" ? /\.typ$/i : profile() === "markdown" ? /\.(?:md|markdown|qmd|rmd)$/i : /\.(?:tex|ltx|latex)$/i;
+  const pattern = sourcePattern(profile());
   const paths = new Set<string>([mainDocument()]);
   for (const path of Object.keys(useIndexStore.getState().texts)) if (pattern.test(path)) paths.add(path);
   for (const path of Object.keys(files.files)) if (pattern.test(path)) paths.add(path);
@@ -238,7 +283,7 @@ export function zoteroBibliographyChoices(): string[] {
   return declaredBibliographyFiles(kind, sourceTexts(), writable, hayagriva);
 }
 
-async function chooseTarget(options: EnsureOptions): Promise<{ path: string; exists: boolean } | null> {
+async function chooseTarget(options: EnsureOptions): Promise<BibTarget | null> {
   const files = useFilesStore.getState();
   const projectId = files.projectId;
   const choices = zoteroBibliographyChoices();
@@ -322,17 +367,12 @@ export function ensureZoteroEntries(picks: readonly ZoteroPick[], options: Ensur
   return serialized(() => ensureNow(picks, options));
 }
 
-async function ensureNow(picks: readonly ZoteroPick[], options: EnsureOptions): Promise<EnsureResult> {
-  const projectId = useFilesStore.getState().projectId;
-  if (!projectId || picks.length === 0) return { added: [], reused: [], bibPath: null };
-  if (projectFolderIsReadOnly(projectId)) {
-    return { added: [], reused: [], bibPath: null, error: readOnlyFolderMessage() };
-  }
-  await loadProjectLinks(projectId).catch(() => ({}));
-  const target = await chooseTarget(options);
-  if (!target) return { added: [], reused: [], bibPath: null };
-  const content = await readText(target.path, target.exists);
-  const project = projectBibliography(projectId);
+function presentKey(pick: ZoteroPick, project: ProjectBibliography): string | null {
+  const doi = normalizeDoi(pick.hit.doi);
+  return project.keys.has(pick.key) ? pick.key : (doi && project.doiToKey.get(doi)) || null;
+}
+
+function sortPicks(picks: readonly ZoteroPick[], project: ProjectBibliography, bib: string): SortedPicks {
   const reused: string[] = [];
   const pending: ZoteroPick[] = [];
   const adopted: Record<string, ZoteroProjectLink> = {};
@@ -340,29 +380,23 @@ async function ensureNow(picks: readonly ZoteroPick[], options: EnsureOptions): 
   for (const pick of picks) {
     if (seen.has(pick.key)) continue;
     seen.add(pick.key);
-    const doi = normalizeDoi(pick.hit.doi);
-    const present = project.keys.has(pick.key) ? pick.key : (doi && project.doiToKey.get(doi)) || null;
+    const present = presentKey(pick, project);
     if (present) {
       reused.push(present);
-      if (!project.links[present]) adopted[present] = linkFor(pick.hit, target.path, "");
+      if (!project.links[present]) adopted[present] = linkFor(pick.hit, bib, "");
       continue;
     }
     pending.push(pick);
   }
-  await saveLinks(projectId, adopted).catch(() => undefined);
-  if (pending.length === 0) return { added: [], reused, bibPath: target.path };
-  if (useFilesStore.getState().tree.some((entry) => entry.path === target.path && entry.read_only)) {
-    return { added: [], reused, bibPath: target.path, error: i18n.t(($) => $.core.citation.linkedBibliography, { path: target.path }) };
-  }
-  const handList = await askHandListMove({ sources: sourceTexts(), target: target.path, confirm: options.confirmHandList });
-  if (handList === "cancel") return { added: [], reused: [], bibPath: null };
-  const style = exportStyle(content);
-  const exported = await zoteroLibraryExport(
-    pending.map((pick) => ({ library: pick.hit.library, itemKey: pick.hit.itemKey })),
-    style,
-    useSettingsStore.getState().offline,
-  );
-  const yaml = isHayagrivaPath(target.path);
+  return { reused, pending, adopted };
+}
+
+function exportedPicks(
+  pending: readonly ZoteroPick[],
+  exported: readonly ZoteroExportedEntry[],
+  bib: string,
+  yaml: boolean,
+): ExportedPicks {
   const entries: string[] = [];
   const links: Record<string, ZoteroProjectLink> = {};
   const added: string[] = [];
@@ -373,18 +407,57 @@ async function ensureNow(picks: readonly ZoteroPick[], options: EnsureOptions): 
     if (!entry) continue;
     entries.push(entry);
     added.push(pick.key);
-    links[pick.key] = linkFor(pick.hit, target.path, entryHash(entry), match.dateModified, match.version);
+    links[pick.key] = linkFor(pick.hit, bib, entryHash(entry), match.dateModified, match.version);
   }
+  return { entries, links, added };
+}
+
+function appendHayagriva(latest: string, entries: readonly string[]): string {
+  const gap = latest.trim() ? "\n\n" : "";
+  return `${latest.trimEnd()}${gap}${entries.join("\n\n")}\n`;
+}
+
+async function addPending(write: PendingWrite): Promise<EnsureResult> {
+  const { projectId, target, reused, handList } = write;
+  const style = exportStyle(write.content);
+  const exported = await zoteroLibraryExport(
+    write.pending.map((pick) => ({ library: pick.hit.library, itemKey: pick.hit.itemKey })),
+    style,
+    useSettingsStore.getState().offline,
+  );
+  const yaml = isHayagrivaPath(target.path);
+  const { entries, links, added } = exportedPicks(write.pending, exported, target.path, yaml);
   if (entries.length === 0) return { added: [], reused, bibPath: target.path };
   const latest = await readText(target.path, target.exists);
   const handEntries = handList ? handListEntries(handList, { sources: sourceTexts(), bib: latest, adding: added }) : [];
-  const next = yaml ? `${latest.trimEnd()}${latest.trim() ? "\n\n" : ""}${entries.join("\n\n")}\n` : appendEntries(latest, [...handEntries, ...entries]);
+  const next = yaml ? appendHayagriva(latest, entries) : appendEntries(latest, [...handEntries, ...entries]);
   await writeText(projectId, target.path, next, target.exists);
   const handText = handList ? handListText(handList, sourceTexts(), relativePath(mainDocument(), target.path)) : null;
   if (handList && handText !== null) await writeText(projectId, handList.file, handText, true);
   await ensureDeclaration(projectId, target.path);
   await saveLinks(projectId, links).catch(() => undefined);
   return { added, reused, bibPath: target.path };
+}
+
+async function ensureNow(picks: readonly ZoteroPick[], options: EnsureOptions): Promise<EnsureResult> {
+  const projectId = useFilesStore.getState().projectId;
+  if (!projectId || picks.length === 0) return { added: [], reused: [], bibPath: null };
+  if (projectFolderIsReadOnly(projectId)) {
+    return { added: [], reused: [], bibPath: null, error: readOnlyFolderMessage() };
+  }
+  await loadProjectLinks(projectId).catch(() => ({}));
+  const target = await chooseTarget(options);
+  if (!target) return { added: [], reused: [], bibPath: null };
+  const content = await readText(target.path, target.exists);
+  const { reused, pending, adopted } = sortPicks(picks, projectBibliography(projectId), target.path);
+  await saveLinks(projectId, adopted).catch(() => undefined);
+  if (pending.length === 0) return { added: [], reused, bibPath: target.path };
+  if (useFilesStore.getState().tree.some((entry) => entry.path === target.path && entry.read_only)) {
+    return { added: [], reused, bibPath: target.path, error: i18n.t(($) => $.core.citation.linkedBibliography, { path: target.path }) };
+  }
+  const handList = await askHandListMove({ sources: sourceTexts(), target: target.path, confirm: options.confirmHandList });
+  if (handList === "cancel") return { added: [], reused: [], bibPath: null };
+  return addPending({ projectId, target, content, pending, reused, handList });
 }
 
 const LATEX_COMMAND_WITH_ARGUMENT = /\\([A-Za-z]+)\*?\s*[[{]/g;
@@ -464,41 +537,54 @@ export async function staleZoteroEntries(): Promise<StaleEntry[]> {
   return stale;
 }
 
+async function updateBib(projectId: string, bib: string, group: readonly StaleEntry[], progress: UpdateProgress): Promise<void> {
+  const text = await readText(bib, true);
+  const exported = await zoteroLibraryExport(
+    group.map((entry) => ({ library: entry.hit.library, itemKey: entry.hit.itemKey })),
+    exportStyle(text),
+    useSettingsStore.getState().offline,
+  );
+  let next = text;
+  const replacements = group
+    .map((entry) => ({
+      entry,
+      span: findEntry(text, entry.key),
+      exported: exported.find((candidate) => candidate.library === entry.hit.library && candidate.itemKey === entry.hit.itemKey),
+    }))
+    .filter((candidate) => candidate.span && candidate.exported)
+    .sort((left, right) => (right.span?.from ?? 0) - (left.span?.from ?? 0));
+  for (const { entry, span, exported: fresh } of replacements) {
+    if (!span || !fresh) continue;
+    const body = withEntryKey(fresh.entry, entry.key);
+    next = replaceEntry(next, span, body);
+    progress.updated.push(entry.key);
+    progress.links[entry.key] = linkFor(entry.hit, bib, entryHash(body), fresh.dateModified, fresh.version);
+  }
+  if (next !== text) await writeText(projectId, bib, next, true);
+}
+
+async function updateBibs(
+  projectId: string,
+  groups: readonly (readonly [string, StaleEntry[]])[],
+  index: number,
+  progress: UpdateProgress,
+): Promise<void> {
+  if (index >= groups.length) return;
+  const [bib, group] = groups[index];
+  await updateBib(projectId, bib, group, progress);
+  await updateBibs(projectId, groups, index + 1, progress);
+}
+
 export function updateZoteroEntries(entries: readonly StaleEntry[]): Promise<{ updated: string[]; error?: string }> {
   return serialized(async () => {
     const projectId = useFilesStore.getState().projectId;
     if (!projectId || entries.length === 0) return { updated: [] };
-    const updated: string[] = [];
-    const links: Record<string, ZoteroProjectLink> = {};
+    const progress: UpdateProgress = { updated: [], links: {} };
     const byBib = new Map<string, StaleEntry[]>();
     for (const entry of entries) byBib.set(entry.bib, [...(byBib.get(entry.bib) ?? []), entry]);
-    for (const [bib, group] of byBib) {
-      const text = await readText(bib, true);
-      const exported = await zoteroLibraryExport(
-        group.map((entry) => ({ library: entry.hit.library, itemKey: entry.hit.itemKey })),
-        exportStyle(text),
-        useSettingsStore.getState().offline,
-      );
-      let next = text;
-      const replacements = group
-        .map((entry) => ({
-          entry,
-          span: findEntry(text, entry.key),
-          exported: exported.find((candidate) => candidate.library === entry.hit.library && candidate.itemKey === entry.hit.itemKey),
-        }))
-        .filter((candidate) => candidate.span && candidate.exported)
-        .sort((left, right) => (right.span?.from ?? 0) - (left.span?.from ?? 0));
-      for (const { entry, span, exported: fresh } of replacements) {
-        if (!span || !fresh) continue;
-        const body = withEntryKey(fresh.entry, entry.key);
-        next = replaceEntry(next, span, body);
-        updated.push(entry.key);
-        links[entry.key] = linkFor(entry.hit, bib, entryHash(body), fresh.dateModified, fresh.version);
-      }
-      if (next !== text) await writeText(projectId, bib, next, true);
-    }
-    await saveLinks(projectId, links);
-    return { updated };
+    await updateBibs(projectId, [...byBib], 0, progress);
+    await saveLinks(projectId, progress.links);
+    return { updated: progress.updated };
   });
 }
 

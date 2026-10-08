@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useCallback, useLayoutEffect, useReducer, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 export const MEASURED_WINDOW_ITEM = "data-window-index";
@@ -26,7 +26,7 @@ export function measuredSizes(
 }
 
 export function prefixSums(sizes: Float64Array, into?: Float64Array): Float64Array {
-  const offsets = into && into.length === sizes.length + 1 ? into : new Float64Array(sizes.length + 1);
+  const offsets = into?.length === sizes.length + 1 ? into : new Float64Array(sizes.length + 1);
   for (let index = 0; index < sizes.length; index++) offsets[index + 1] = offsets[index] + sizes[index];
   return offsets;
 }
@@ -79,6 +79,32 @@ function nearestScrollParent(element: HTMLElement | null): HTMLElement | null {
   return null;
 }
 
+function measureChildren(
+  list: HTMLElement,
+  keys: readonly string[],
+  current: Model,
+  heights: Map<string, number>,
+  anchor: number,
+): number {
+  let shift = 0;
+  for (const child of list.children) {
+    const attribute = child.getAttribute(MEASURED_WINDOW_ITEM);
+    if (attribute === null) continue;
+    const index = Number(attribute);
+    const key = keys[index];
+    if (key === undefined) continue;
+    const measured = child.getBoundingClientRect().height;
+    if (measured <= 0) continue;
+    const used = current.sizes[index];
+    if (Math.abs(measured - used) < 0.5) continue;
+    current.sizes[index] = measured;
+    current.dirty = true;
+    heights.set(key, measured);
+    if (index < anchor) shift += measured - used;
+  }
+  return shift;
+}
+
 interface Geometry {
   scroller: HTMLElement;
   list: HTMLElement;
@@ -109,7 +135,7 @@ export function useMeasuredWindow({
 }>): MeasuredWindow {
   const heights = useRef(new Map<string, number>());
   const model = useRef<Model | null>(null);
-  if (!model.current || model.current.keys !== keys || model.current.estimate !== estimate) {
+  if (model.current?.keys !== keys || model.current.estimate !== estimate) {
     const sizes = measuredSizes(keys, heights.current, estimate);
     model.current = { keys, estimate, sizes, offsets: prefixSums(sizes), dirty: false };
     if (heights.current.size > keys.length * 2 + 64) {
@@ -117,7 +143,7 @@ export function useMeasuredWindow({
       for (const key of heights.current.keys()) if (!live.has(key)) heights.current.delete(key);
     }
   }
-  const [, setVersion] = useState(0);
+  const [, bumpVersion] = useReducer((value: number) => value + 1, 0);
   const count = keys.length;
   const [range, setRange] = useState<MeasuredRange>(() => ({
     start: 0,
@@ -180,7 +206,7 @@ export function useMeasuredWindow({
     subscribed.current = null;
     if (!scroller) return;
     const onScroll = () => update.current(true);
-    const onResize = () => setVersion((value) => value + 1);
+    const onResize = () => bumpVersion();
     scroller.addEventListener("scroll", onScroll, { passive: true });
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(onResize);
     observer?.observe(scroller);
@@ -208,22 +234,7 @@ export function useMeasuredWindow({
     const current = model.current as Model;
     if (box) {
       const anchor = firstEndingAfter(offsetsNow(), box.viewTop);
-      let shift = 0;
-      for (const child of box.list.children) {
-        const attribute = child.getAttribute(MEASURED_WINDOW_ITEM);
-        if (attribute === null) continue;
-        const index = Number(attribute);
-        const key = keys[index];
-        if (key === undefined) continue;
-        const measured = child.getBoundingClientRect().height;
-        if (measured <= 0) continue;
-        const used = current.sizes[index];
-        if (Math.abs(measured - used) < 0.5) continue;
-        current.sizes[index] = measured;
-        current.dirty = true;
-        heights.current.set(key, measured);
-        if (index < anchor) shift += measured - used;
-      }
+      const shift = measureChildren(box.list, keys, current, heights.current, anchor);
       if (shift !== 0) box.scroller.scrollTop += shift;
     }
     update.current(false);

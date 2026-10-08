@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, PoisonError};
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -57,9 +57,7 @@ pub fn update_links(
     path: &Path,
     changes: BTreeMap<String, Option<ProjectLink>>,
 ) -> Result<BTreeMap<String, ProjectLink>, String> {
-    let _guard = LINKS_LOCK
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let _guard = LINKS_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
     let mut links = read_links(path);
     for (key, link) in changes {
         if key.is_empty() || key.len() > 512 {

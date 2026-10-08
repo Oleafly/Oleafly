@@ -126,6 +126,23 @@ function keepEditorFocus(event: MouseEvent) {
   getEditorView()?.focus();
 }
 
+function openFileKind(activePath: string | null) {
+  return {
+    isPdfFile: activePath?.toLowerCase().endsWith(".pdf"),
+    isImageFile: activePath != null && isImagePath(activePath),
+    // No in-app preview for these; show a notice instead of an empty text
+    // editor a save could clobber them from.
+    isOpaqueFile:
+      activePath != null &&
+      /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath),
+  };
+}
+
+function markdownModeFor(split: boolean, visual: boolean): "both" | "visual" | "code" {
+  if (split) return "both";
+  return visual ? "visual" : "code";
+}
+
 export function Editor() {
   const { t } = useTranslation(["common", "editor"]);
   const zen = useZenStore((s) => s.active);
@@ -176,13 +193,7 @@ export function Editor() {
   }, []);
 
   const hasOpenFile = activePath !== null;
-  const isPdfFile = activePath?.toLowerCase().endsWith(".pdf");
-  const isImageFile = activePath != null && isImagePath(activePath);
-  // No in-app preview for these; show a notice instead of an empty text
-  // editor a save could clobber them from.
-  const isOpaqueFile =
-    activePath != null &&
-    /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath);
+  const { isPdfFile, isImageFile, isOpaqueFile } = openFileKind(activePath);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const mainDoc = useFilesStore((s) => s.mainDoc);
@@ -224,7 +235,7 @@ export function Editor() {
   const markdownSplitHitArea = useSeparatorHitArea(0.25);
   const onMarkdownSeparatorKeyDown = useSeparatorKeyboard(markdownGroupRef, MARKDOWN_SPLIT_LIMITS);
   const markdownVisual = wysiwyg && isMarkdownFile && !markdownSplit;
-  const markdownMode = markdownSplit ? "both" : markdownVisual ? "visual" : "code";
+  const markdownMode = markdownModeFor(markdownSplit, markdownVisual);
   const showBreadcrumbs =
     !zen &&
     !isDiagramMainFile && /\.(?:tex|latex|ltx|typ)$/iu.test(activePath ?? "");

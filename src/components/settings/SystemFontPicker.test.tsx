@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
@@ -19,7 +19,7 @@ vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import { resetSystemFontsCache } from "@/lib/system-fonts";
 import { useSettingsStore } from "@/store/settings";
-import { SystemFontPicker, systemFontOptions, type SystemFontUse } from "./SystemFontPicker";
+import { FONT_TYPING_DELAY_MS, SystemFontPicker, systemFontOptions, type SystemFontUse } from "./SystemFontPicker";
 
 const LABELS = { systemDefault: "Default", monospace: "Mono" };
 const FAMILIES = [
@@ -161,11 +161,43 @@ describe("SystemFontPicker", () => {
     const input = screen.getByRole("combobox", { name: FONT_LABEL });
     await waitFor(() => expect(mocks.invoke).toHaveBeenCalled());
     fireEvent.change(input, { target: { value: "Berkeley Mono" } });
-    expect(useSettingsStore.getState().editorFontFamily).toBe("Berkeley Mono");
+    expect(input).toHaveValue("Berkeley Mono");
+    await waitFor(() => expect(useSettingsStore.getState().editorFontFamily).toBe("Berkeley Mono"));
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
     fireEvent.change(input, { target: { value: "" } });
     fireEvent.click(await screen.findByRole("option", { name: enCore.fonts.systemDefault }));
     expect(useSettingsStore.getState().editorFontFamily).toBe("");
+  });
+
+  it("applies a typed name once typing pauses instead of on every key", async () => {
+    vi.useFakeTimers();
+    try {
+      const setEditorFontFamily = vi.spyOn(useSettingsStore.getState(), "setEditorFontFamily");
+      render(<Picker />);
+      const input = screen.getByRole("combobox", { name: FONT_LABEL });
+      for (const text of ["B", "Be", "Ber", "Berkeley"]) fireEvent.change(input, { target: { value: text } });
+      expect(input).toHaveValue("Berkeley");
+      expect(useSettingsStore.getState().editorFontFamily).toBe("");
+      act(() => vi.advanceTimersByTime(FONT_TYPING_DELAY_MS - 1));
+      expect(useSettingsStore.getState().editorFontFamily).toBe("");
+      act(() => vi.advanceTimersByTime(1));
+      expect(useSettingsStore.getState().editorFontFamily).toBe("Berkeley");
+      expect(setEditorFontFamily).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("applies a typed name right away when the field loses focus or the picker closes", () => {
+    const view = render(<Picker />);
+    const input = screen.getByRole("combobox", { name: FONT_LABEL });
+    fireEvent.change(input, { target: { value: "Berkeley Mono" } });
+    fireEvent.blur(input);
+    expect(useSettingsStore.getState().editorFontFamily).toBe("Berkeley Mono");
+
+    fireEvent.change(input, { target: { value: "Fira Code" } });
+    view.unmount();
+    expect(useSettingsStore.getState().editorFontFamily).toBe("Fira Code");
   });
 
   it("offers the suggested fonts when the system list cannot be read", async () => {

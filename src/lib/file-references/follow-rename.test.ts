@@ -244,4 +244,24 @@ describe("applyReferencePlan", () => {
     expect(failed).toEqual(["main.tex"]);
     expect(mocks.writeProjectFile).not.toHaveBeenCalled();
   });
+
+  it("applies the files one at a time in plan order and lists failures in that order", async () => {
+    mocks.readFileContent.mockImplementation(async (_projectId: string, path: string) =>
+      path === "b.tex" || path === "d.tex" ? "changed" : "",
+    );
+    const file = (path: string) => ({ path, text: "", edits: [{ from: 0, to: 0, insert: "x" }], references: 1 });
+    const failed = await applyReferencePlan("p1", {
+      references: 4,
+      files: [file("a.tex"), file("b.tex"), file("c.tex"), file("d.tex")],
+    });
+    expect(failed).toEqual(["b.tex", "d.tex"]);
+    expect(mocks.readFileContent.mock.calls.map((call) => call[1])).toEqual(["a.tex", "b.tex", "c.tex", "d.tex"]);
+    expect(mocks.writeProjectFile).toHaveBeenNthCalledWith(1, "p1", "a.tex", "x", { crlf: false });
+    expect(mocks.writeProjectFile).toHaveBeenNthCalledWith(2, "p1", "c.tex", "x", { crlf: false });
+    const reads = mocks.readFileContent.mock.invocationCallOrder;
+    const writes = mocks.writeProjectFile.mock.invocationCallOrder;
+    expect(writes[0]).toBeLessThan(reads[1]);
+    expect(writes[1]).toBeLessThan(reads[3]);
+    expect(mocks.rebuildFromDisk).toHaveBeenCalledTimes(1);
+  });
 });

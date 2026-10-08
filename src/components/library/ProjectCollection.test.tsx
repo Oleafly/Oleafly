@@ -108,7 +108,7 @@ describe("project collection windowing", () => {
     const view = render(<Scroller layout="grid" count={40} />);
     const afterMount = query.mock.calls.length;
     for (let count = 41; count < 46; count += 1) view.rerender(<Scroller layout="grid" count={count} />);
-    expect(query.mock.calls.length).toBe(afterMount);
+    expect(query.mock.calls).toHaveLength(afterMount);
   });
 
   it("mounts only the first page of a large list until it can measure it", () => {

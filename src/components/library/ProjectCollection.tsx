@@ -102,6 +102,28 @@ function projectRowColumns(t: LibraryTranslate, project: ProjectInfo, updatedAt:
   };
 }
 
+function projectOpenLabel(t: LibraryTranslate, project: ProjectInfo) {
+  return project.recovery_pending
+    ? t(($) => $.library.projects.openToRecoverNamed, { name: project.name })
+    : t(($) => $.library.projects.open, { name: project.name });
+}
+
+function projectPreviewLabel(t: LibraryTranslate, project: ProjectInfo) {
+  return project.has_preview
+    ? t(($) => $.library.projects.previewPdf)
+    : t(($) => $.library.projects.previewUnavailable);
+}
+
+function starredStyle(starred: boolean) {
+  return starred ? { color: "#f59e0b" } : undefined;
+}
+
+function projectFavoriteLabel(t: LibraryTranslate, starred: boolean) {
+  return starred
+    ? t(($) => $.library.projects.favoriteRemove)
+    : t(($) => $.library.projects.favoriteAdd);
+}
+
 function ProjectRowCaption({
   t,
   project,
@@ -426,9 +448,7 @@ const ProjectListRow = memo(function ProjectListRow({
     previewStore.release(p.id);
     actions.releaseThumbnail(p);
   };
-  const favoriteLabel = starred
-    ? t(($) => $.library.projects.favoriteRemove)
-    : t(($) => $.library.projects.favoriteAdd);
+  const favoriteLabel = projectFavoriteLabel(t, starred);
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -438,11 +458,7 @@ const ProjectListRow = memo(function ProjectListRow({
         >
           <button
             type="button"
-            aria-label={
-              recoveryPending
-                ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
-                : t(($) => $.library.projects.open, { name: p.name })
-            }
+            aria-label={projectOpenLabel(t, p)}
             onClick={() => actions.open(p)}
             onMouseEnter={startPreview}
             onMouseLeave={endPreview}
@@ -501,13 +517,7 @@ const ProjectListRow = memo(function ProjectListRow({
               </Tooltip>
             ) : null}
             {!recoveryPending ? (
-              <Tooltip
-                label={
-                  p.has_preview
-                    ? t(($) => $.library.projects.previewPdf)
-                    : t(($) => $.library.projects.previewUnavailable)
-                }
-              >
+              <Tooltip label={projectPreviewLabel(t, p)}>
                 <button
                   type="button"
                   disabled={!p.has_preview || folderState !== null}
@@ -529,7 +539,7 @@ const ProjectListRow = memo(function ProjectListRow({
                     "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground",
                     starred && "text-amber-500 hover:text-amber-500",
                   )}
-                  style={starred ? { color: "#f59e0b" } : undefined}
+                  style={starredStyle(starred)}
                 >
                   {starred ? (
                     <BookmarkCheck aria-hidden className="size-4 fill-current" />

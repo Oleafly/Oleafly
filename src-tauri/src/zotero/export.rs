@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 
 use super::http::{Http, Side};
 use super::item::{parse_item, Creator, Item, KeySource, Parsed, USER_LIBRARY};
-use super::sync::{library_path, probe_local, LocalState, SyncOptions, ZoteroLibrary};
+use super::sync::{library_path, probe_local, Credentials, LocalState, SyncOptions, ZoteroLibrary};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -70,10 +70,7 @@ pub fn entry_heads(text: &str) -> Vec<(usize, String)> {
     for line in text.split_inclusive('\n') {
         let trimmed = line.trim_start();
         if let Some(rest) = trimmed.strip_prefix('@') {
-            let kind: String = rest
-                .chars()
-                .take_while(|character| character.is_ascii_alphabetic())
-                .collect();
+            let kind: String = rest.chars().take_while(char::is_ascii_alphabetic).collect();
             let after = rest[kind.len()..].trim_start();
             if !kind.is_empty()
                 && !matches!(
@@ -219,12 +216,13 @@ fn iso_date(date: &str) -> Option<&str> {
     shape.then_some(date)
 }
 
-pub fn entry_from_item(item: &Item, key: &str, style: Style) -> String {
-    let mut fields: Vec<(&str, String)> = Vec::new();
-    let field = |name: &str| item.fields.get(name).map(|value| escape(value));
-    if !item.title.is_empty() {
-        fields.push(("title", escape(&item.title)));
-    }
+type EntryFields = Vec<(&'static str, String)>;
+
+fn item_field(item: &Item, name: &str) -> Option<String> {
+    item.fields.get(name).map(|value| escape(value))
+}
+
+fn push_people(fields: &mut EntryFields, item: &Item) {
     let authors: Vec<&Creator> = item
         .creators
         .iter()
@@ -241,6 +239,9 @@ pub fn entry_from_item(item: &Item, key: &str, style: Style) -> String {
     if !editors.is_empty() {
         fields.push(("editor", names(&editors)));
     }
+}
+
+fn push_date(fields: &mut EntryFields, item: &Item, style: Style) {
     match style {
         Style::Biblatex => {
             if let Some(date) = iso_date(item.date.trim())
@@ -256,6 +257,9 @@ pub fn entry_from_item(item: &Item, key: &str, style: Style) -> String {
             }
         }
     }
+}
+
+fn push_mapped_fields(fields: &mut EntryFields, item: &Item, style: Style) {
     let container = match style {
         Style::Biblatex => "journaltitle",
         Style::Bibtex => "journal",
@@ -287,11 +291,15 @@ pub fn entry_from_item(item: &Item, key: &str, style: Style) -> String {
         if used.contains(&target) {
             continue;
         }
-        if let Some(value) = field(source) {
+        if let Some(value) = item_field(item, source) {
             used.push(target);
             fields.push((target, value));
         }
     }
+}
+
+fn push_publication_fields(fields: &mut EntryFields, item: &Item, style: Style) {
+    let field = |name: &str| item_field(item, name);
     if let Some(pages) = field("pages") {
         fields.push(("pages", pages.replace('-', "--").replace("----", "--")));
     }
@@ -318,6 +326,10 @@ pub fn entry_from_item(item: &Item, key: &str, style: Style) -> String {
     if let Some(kind) = field("thesisType").or_else(|| field("reportType")) {
         fields.push(("type", kind));
     }
+}
+
+fn push_preprint_fields(fields: &mut EntryFields, item: &Item, style: Style) {
+    let field = |name: &str| item_field(item, name);
     if let Some(repository) = field("repository").filter(|_| item.item_type == "preprint") {
         let name = if style == Style::Biblatex {
             "eprinttype"
@@ -329,6 +341,18 @@ pub fn entry_from_item(item: &Item, key: &str, style: Style) -> String {
             fields.push(("eprint", id));
         }
     }
+}
+
+pub fn entry_from_item(item: &Item, key: &str, style: Style) -> String {
+    let mut fields: EntryFields = Vec::new();
+    if !item.title.is_empty() {
+        fields.push(("title", escape(&item.title)));
+    }
+    push_people(&mut fields, item);
+    push_date(&mut fields, item, style);
+    push_mapped_fields(&mut fields, item, style);
+    push_publication_fields(&mut fields, item, style);
+    push_preprint_fields(&mut fields, item, style);
     if let Some(doi) = &item.doi {
         fields.push(("doi", doi.clone()));
     }
@@ -522,6 +546,83 @@ async fn zotero_entries(
     found
 }
 
+type EntryMap = HashMap<(String, String), ExportedEntry>;
+
+fn insert_zotero_entries(
+    entries: &mut EntryMap,
+    items: &[&Item],
+    found: HashMap<(String, String), (String, Option<Item>)>,
+) {
+    for ((lib, key), (entry, fresh)) in found {
+        if let Some(item) = items
+            .iter()
+            .find(|item| item.library == lib && item.key == key)
+        {
+            let mut result = exported(item, entry, Origin::Zotero);
+            if let Some(fresh) = fresh {
+                result.date_modified = fresh.date_modified;
+                result.version = fresh.version;
+            }
+            entries.insert((lib, key), result);
+        }
+    }
+}
+
+async fn local_entries(
+    library: &ZoteroLibrary,
+    items: &[&Item],
+    style: Style,
+    bbt_ids: &HashMap<String, u64>,
+    with_bbt: bool,
+    entries: &mut EntryMap,
+) {
+    let Ok(mut http) = Http::new(Side::Local, &library.endpoints().local, None) else {
+        return;
+    };
+    if with_bbt {
+        for ((lib, key), entry) in bbt_entries(&mut http, items, style, bbt_ids).await {
+            if let Some(item) = items
+                .iter()
+                .find(|item| item.library == lib && item.key == key)
+            {
+                entries.insert((lib, key), exported(item, entry, Origin::BetterBibtex));
+            }
+        }
+    }
+    let rest: Vec<&Item> = items
+        .iter()
+        .copied()
+        .filter(|item| !entries.contains_key(&(item.library.clone(), item.key.clone())))
+        .collect();
+    let found = zotero_entries(&mut http, Side::Local, None, &rest, style).await;
+    insert_zotero_entries(entries, &rest, found);
+}
+
+async fn web_entries(
+    library: &ZoteroLibrary,
+    credentials: &Credentials,
+    items: &[&Item],
+    style: Style,
+    entries: &mut EntryMap,
+) {
+    let Ok(mut http) = Http::new(
+        Side::Web,
+        &library.endpoints().web,
+        Some(credentials.api_key.clone()),
+    ) else {
+        return;
+    };
+    let found = zotero_entries(
+        &mut http,
+        Side::Web,
+        Some(&credentials.user_id),
+        items,
+        style,
+    )
+    .await;
+    insert_zotero_entries(entries, items, found);
+}
+
 pub async fn export(
     library: &ZoteroLibrary,
     refs: &[ItemRef],
@@ -538,72 +639,16 @@ pub async fn export(
         return Vec::new();
     }
     let probe = probe_local(library.endpoints()).await;
-    let mut entries: HashMap<(String, String), ExportedEntry> = HashMap::new();
+    let mut entries: EntryMap = HashMap::new();
     if probe.state == LocalState::Ready {
-        if let Ok(mut http) = Http::new(Side::Local, &library.endpoints().local, None) {
-            if probe.bbt_version.is_some() {
-                for ((lib, key), entry) in bbt_entries(&mut http, &items, style, &bbt_ids).await {
-                    if let Some(item) = items
-                        .iter()
-                        .find(|item| item.library == lib && item.key == key)
-                    {
-                        entries.insert((lib, key), exported(item, entry, Origin::BetterBibtex));
-                    }
-                }
-            }
-            let rest: Vec<&Item> = items
-                .iter()
-                .copied()
-                .filter(|item| !entries.contains_key(&(item.library.clone(), item.key.clone())))
-                .collect();
-            for ((lib, key), (entry, fresh)) in
-                zotero_entries(&mut http, Side::Local, None, &rest, style).await
-            {
-                if let Some(item) = rest
-                    .iter()
-                    .find(|item| item.library == lib && item.key == key)
-                {
-                    let mut result = exported(item, entry, Origin::Zotero);
-                    if let Some(fresh) = fresh {
-                        result.date_modified = fresh.date_modified;
-                        result.version = fresh.version;
-                    }
-                    entries.insert((lib, key), result);
-                }
-            }
-        }
+        let with_bbt = probe.bbt_version.is_some();
+        local_entries(library, &items, style, &bbt_ids, with_bbt, &mut entries).await;
     } else if let Some(credentials) = options
         .credentials
         .as_ref()
         .filter(|credentials| !options.offline && library.web_matches_index(&credentials.user_id))
     {
-        if let Ok(mut http) = Http::new(
-            Side::Web,
-            &library.endpoints().web,
-            Some(credentials.api_key.clone()),
-        ) {
-            for ((lib, key), (entry, fresh)) in zotero_entries(
-                &mut http,
-                Side::Web,
-                Some(&credentials.user_id),
-                &items,
-                style,
-            )
-            .await
-            {
-                if let Some(item) = items
-                    .iter()
-                    .find(|item| item.library == lib && item.key == key)
-                {
-                    let mut result = exported(item, entry, Origin::Zotero);
-                    if let Some(fresh) = fresh {
-                        result.date_modified = fresh.date_modified;
-                        result.version = fresh.version;
-                    }
-                    entries.insert((lib, key), result);
-                }
-            }
-        }
+        web_entries(library, credentials, &items, style, &mut entries).await;
     }
     items
         .iter()

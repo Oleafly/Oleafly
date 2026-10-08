@@ -74,6 +74,23 @@ function bodyStart(masked: string, from: number): number {
   return close < 0 ? -1 : close + 1;
 }
 
+function parseItem(source: string, masked: string, start: number, limit: number): HandBibItem | null {
+  let at = skipSpace(masked, start + String.raw`\bibitem`.length);
+  if (masked[at] === "[") {
+    const label = closing(masked, at, "]");
+    if (label < 0 || label >= limit) return null;
+    at = skipSpace(masked, label + 1);
+  }
+  if (masked[at] !== "{") return null;
+  const close = closing(masked, at, "}");
+  if (close < 0 || close >= limit) return null;
+  const key = source.slice(at + 1, close).trim();
+  if (!KEY.test(key)) return null;
+  const text = stripComments(source.slice(close + 1, limit)).replace(/\s+/g, " ").trim();
+  if (!bibtexBalanced(text)) return null;
+  return { key, text };
+}
+
 function parseItems(source: string, masked: string, from: number, to: number): HandBibItem[] | null {
   const starts: number[] = [];
   const pattern = new RegExp(BIBITEM.source, "g");
@@ -83,21 +100,9 @@ function parseItems(source: string, masked: string, from: number, to: number): H
   }
   const items: HandBibItem[] = [];
   for (let position = 0; position < starts.length; position++) {
-    const limit = starts[position + 1] ?? to;
-    let at = skipSpace(masked, starts[position] + "\\bibitem".length);
-    if (masked[at] === "[") {
-      const label = closing(masked, at, "]");
-      if (label < 0 || label >= limit) return null;
-      at = skipSpace(masked, label + 1);
-    }
-    if (masked[at] !== "{") return null;
-    const close = closing(masked, at, "}");
-    if (close < 0 || close >= limit) return null;
-    const key = source.slice(at + 1, close).trim();
-    if (!KEY.test(key)) return null;
-    const text = stripComments(source.slice(close + 1, limit)).replace(/\s+/g, " ").trim();
-    if (!bibtexBalanced(text)) return null;
-    items.push({ key, text });
+    const item = parseItem(source, masked, starts[position], starts[position + 1] ?? to);
+    if (!item) return null;
+    items.push(item);
   }
   return items;
 }
@@ -138,7 +143,7 @@ export function handBibEntries(items: readonly HandBibItem[], skip: ReadonlySet<
 export function handListDeclaration(bibliography: string, sources: readonly string[]): string {
   const stem = bibliography.replaceAll("\\", "/").replace(/\.bib$/i, "");
   const masked = sources.map(maskComments);
-  if (masked.some((text) => STYLE.test(text))) return `\\bibliography{${stem}}`;
+  if (masked.some((text) => STYLE.test(text))) return String.raw`\bibliography{${stem}}`;
   const style = masked.some((text) => findLatexPackage(text, "natbib")) ? "unsrtnat" : "unsrt";
   return `\\bibliographystyle{${style}}\n\\bibliography{${stem}}`;
 }

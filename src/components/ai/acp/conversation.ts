@@ -68,7 +68,8 @@ export function createAcpConversation(
     if (next.length === committed.length && next.every((entry, index) => entry === committed[index])) return;
     committed = next;
     live.set(null);
-    for (const listener of [...listeners]) listener();
+    const snapshot = [...listeners];
+    for (const listener of snapshot) listener();
   };
 
   return {

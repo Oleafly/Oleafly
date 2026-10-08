@@ -12,6 +12,7 @@ import {
   createLatexOutlineMacroCollector,
   createLatexWrapperSectionCollector,
   renderLatexOutlineTitle,
+  type LatexWrapperSection,
 } from "@oleafly/latex";
 import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
 import { useEditorViewportSelection } from "@/components/editor/cm/use-viewport-anchor";
@@ -122,6 +123,9 @@ function visibleHeadings(
   return visible;
 }
 
+const NO_WRAPPER_SECTIONS: ReadonlyMap<string, readonly LatexWrapperSection[]> = new Map();
+const NO_LATEX_MACROS: ReadonlyMap<string, string> = new Map();
+
 // The section list for the document you are actually editing, following
 // \input and \include so a split thesis reads as one outline.
 //
@@ -170,10 +174,10 @@ export function DocumentOutline({
   };
 
   const [collectWrapperSections] = useState(createLatexWrapperSectionCollector);
-  const wrapperSections = useMemo(() => {
-    void index;
-    return collectWrapperSections(useIndexStore.getState().texts);
-  }, [collectWrapperSections, index]);
+  const wrapperSections = useMemo(
+    () => (index ? collectWrapperSections(useIndexStore.getState().texts) : NO_WRAPPER_SECTIONS),
+    [collectWrapperSections, index],
+  );
   const items = useMemo(
     () =>
       index && activePath
@@ -286,10 +290,10 @@ export function DocumentOutline({
       : false;
   }, [activeIndex, headings, itemIds]);
   const [collectMacros] = useState(createLatexOutlineMacroCollector);
-  const latexMacros = useMemo(() => {
-    void index;
-    return collectMacros(useIndexStore.getState().texts);
-  }, [collectMacros, index]);
+  const latexMacros = useMemo(
+    () => (index ? collectMacros(useIndexStore.getState().texts) : NO_LATEX_MACROS),
+    [collectMacros, index],
+  );
   const typstTitles = useTypstTitles(items);
 
   const listRef = useRef<HTMLDivElement>(null);

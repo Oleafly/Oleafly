@@ -92,19 +92,23 @@ fn entry_for(item: &Item) -> Entry {
     }
 }
 
-fn term_score(entry: &Entry, term: &str) -> u32 {
-    let mut best = 0;
+fn year_score(entry: &Entry, term: &str) -> u32 {
     if term.len() == 4 && term.bytes().all(|byte| byte.is_ascii_digit()) {
         if entry.year == term.parse().ok() {
-            best = 300;
+            return 300;
         }
     } else if term.len() >= 2 && term.bytes().all(|byte| byte.is_ascii_digit()) {
         if let Some(year) = entry.year {
             if year.to_string().starts_with(term) {
-                best = 90;
+                return 90;
             }
         }
     }
+    0
+}
+
+fn family_score(entry: &Entry, term: &str) -> u32 {
+    let mut best = 0;
     for (index, family) in entry.families.iter().enumerate() {
         let first = index == 0;
         let score = if &**family == term {
@@ -126,11 +130,21 @@ fn term_score(entry: &Entry, term: &str) -> u32 {
         };
         best = best.max(score);
     }
+    best
+}
+
+fn key_score(entry: &Entry, term: &str) -> u32 {
     if entry.key.starts_with(term) {
-        best = best.max(500);
+        500
     } else if term.chars().count() >= 3 && entry.key.contains(term) {
-        best = best.max(120);
+        120
+    } else {
+        0
     }
+}
+
+fn word_score(entry: &Entry, term: &str) -> u32 {
+    let mut best = 0;
     for word in entry.words.iter() {
         let score = if &**word == term {
             180
@@ -144,6 +158,13 @@ fn term_score(entry: &Entry, term: &str) -> u32 {
         best = best.max(score);
     }
     best
+}
+
+fn term_score(entry: &Entry, term: &str) -> u32 {
+    year_score(entry, term)
+        .max(family_score(entry, term))
+        .max(key_score(entry, term))
+        .max(word_score(entry, term))
 }
 
 fn score(entry: &Entry, compact: &str, terms: &[String]) -> Option<u32> {
@@ -187,11 +208,7 @@ fn hit(item: &Item, score: u32) -> SearchHit {
         key_source: item.key_source,
         title: item.title.clone(),
         author_count: authors.len(),
-        authors: authors
-            .iter()
-            .take(3)
-            .map(|name| name.to_string())
-            .collect(),
+        authors: authors.iter().take(3).map(ToString::to_string).collect(),
         year: item.year.clone(),
         doi: item.doi.clone(),
         item_type: item.item_type.clone(),
