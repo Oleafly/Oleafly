@@ -708,6 +708,15 @@
           "description": "Tarkistaa Typst-tiedostot todennäköisten virheiden varalta aina tallennettaessa. Asetuksen vaihtaminen käynnistää Typst-kielipalvelimen uudelleen.",
           "label": "Typst-lint-tarkistukset"
         }
+      },
+      "fileMove": {
+        "label": "Kun tiedosto siirretään",
+        "description": "Päivitä polut, jotka osoittavat uudelleennimettyyn tai siirrettyyn tiedostoon LaTeX-, Typst- ja Markdown-lähteissä.",
+        "options": {
+          "ask": "Kysy",
+          "always": "Päivitä aina",
+          "never": "Älä koskaan päivitä"
+        }
       }
     },
     "files": {
@@ -809,6 +818,25 @@
       "startWithProject": {
         "description": "Käynnistä shell-prosessi projektin avautuessa eikä vasta, kun pääte näytetään ensimmäisen kerran.",
         "label": "Käynnistä shell projektin mukana"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Pitää tekstin keskitetyssä palstassa, kun PDF on piilotettu.",
+        "label": "Keskitä editori"
+      },
+      "fullScreen": {
+        "description": "Täyttää näytön Zen-tilassa ja palauttaa ikkunan poistuttaessa.",
+        "label": "Siirry koko näyttöön"
+      },
+      "showPdf": {
+        "description": "Jos PDF on piilotettu Zen-tilan alkaessa, se avataan editorin viereen ensimmäisellä käännöksellä.",
+        "label": "Näytä PDF käännettäessä"
+      },
+      "title": "Zen-tila",
+      "toggle": {
+        "description": "Piilottaa työkalupalkin, sivupalkin, avustajan ja päätteen, jotta vain teksti jää näkyviin. Kutsutaan myös häiriöttömäksi tilaksi. Vaatii avoimen projektin.",
+        "label": "Ota Zen-tila käyttöön"
       }
     }
   },
@@ -1192,11 +1220,52 @@
       "apiKeyLabel": "Zoteron API-avain",
       "connected": "Yhdistetty Zotero-kirjastoosi.",
       "connectedAs": "Yhdistetty käyttäjänä {{username}}.",
-      "description": "Tuo viittauksia ja viitteitä Zotero-kirjastostasi.",
       "disconnectFailed": "Oleafly ei voinut poistaa tallennettua Zotero-avainta. Yritä uudelleen.",
-      "importHint": "Tuo kirjasto avaamalla projektin Viitteet-paneeli ja valitsemalla Tuo lähdekirjasto.",
       "userIdLabel": "Zoteron käyttäjätunnus",
-      "userIdPlaceholder": "Käyttäjätunnus"
+      "userIdPlaceholder": "Käyttäjätunnus",
+      "citeDescription": "Hae koko Zotero-kirjastostasi kirjoittaessasi ja lisää vain se, mihin viittaat. Oleafly lukee kirjastoasi eikä koskaan muuta sitä.",
+      "local": {
+        "heading": "Zotero tällä koneella",
+        "ready": "Yhdistetty Zoteroon (versio {{version}}).",
+        "readyNoVersion": "Yhdistetty Zoteroon.",
+        "bbtFound": "Better BibTeX {{version}} on asennettu, joten viiteavaimet tulevat Better BibTeX -lisäosasta.",
+        "bbtMissing": "Better BibTeX ei ole asennettuna, joten viiteavaimet tulevat Zoterosta.",
+        "notRunning": "Zotero ei ole käynnissä. Avaa Zotero, niin voit hakea kirjastostasi, tai yhdistä zotero.org-tilisi alla.",
+        "apiDisabled": "Avaa Zoterossa Asetukset > Lisäasetukset ja ota käyttöön ”Salli muiden tämän koneen ohjelmien viestiä Zoteron kanssa”.",
+        "unsupported": "Tämä Zotero-versio ei voi jakaa kirjastoaan. Päivitä Zotero versioon 7 tai uudempaan.",
+        "unknown": "Oleafly ei ole vielä etsinyt Zoteroa."
+      },
+      "test": "Testaa yhteys",
+      "syncNow": "Synkronoi nyt",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX -lisäosaa ei löytynyt",
+        "local": "Luettu tämän koneen Zoterosta",
+        "web": "Luettu sivustolta zotero.org",
+        "library_one": "{{name}}: {{formatted}} kohde",
+        "library_other": "{{name}}: {{formatted}} kohdetta"
+      },
+      "library": {
+        "heading": "Haettavat kirjastot",
+        "myLibrary": "Oma kirjasto",
+        "toggle": "Hae kirjastosta {{name}}",
+        "items_one": "{{formatted}} kohde",
+        "items_other": "{{formatted}} kohdetta"
+      },
+      "sync": {
+        "never": "Ei vielä synkronoitu.",
+        "syncing": "Synkronoidaan Zotero-kirjastoasi…",
+        "progress": "Synkronoidaan: {{done}}/{{total}} kohdetta…",
+        "status_one": "{{formatted}} kohde valmiina viitattavaksi, synkronoitu {{time}}.",
+        "status_other": "{{formatted}} kohdetta valmiina viitattavaksi, synkronoitu {{time}}.",
+        "fromCache": "Zotero on suljettu, joten @-haku käyttää viimeisimmän synkronoinnin kopiota.",
+        "rateLimited": "zotero.org pyysi Oleaflya odottamaan. Oleafly yrittää uudelleen kello {{time}} jälkeen."
+      },
+      "account": {
+        "heading": "zotero.org-tili",
+        "description": "Käytä tiliäsi, kun Zotero ei ole auki tällä koneella. Myös ryhmäkirjastot tulevat mukaan."
+      }
     }
   },
   "language": {
@@ -1568,6 +1637,10 @@
       "openFolder": {
         "label": "Avaa kansio",
         "description": "Avaa tietokoneen kansio projektina."
+      },
+      "toggleZenMode": {
+        "description": "Piilota kaikki tekstiä lukuun ottamatta tai tuo kaikki takaisin.",
+        "label": "Vaihda Zen-tilaa"
       }
     },
     "application": {
@@ -1590,7 +1663,7 @@
         "italic": "Kursivointi",
         "jumpToSourceFromPdf": "Hyppää PDF:stä lähdekoodiin",
         "redo": "Tee uudelleen",
-        "renameSymbol": "Nimeä symboli uudelleen koko projektissa",
+        "renameSymbol": "Nimeä symboli tai tiedosto uudelleen koko projektissa",
         "slashCommandMenu": "Kauttaviivakomentojen lisäysvalikko",
         "triggerAutocomplete": "Käynnistä automaattitäydennys",
         "undo": "Kumoa"

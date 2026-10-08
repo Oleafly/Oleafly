@@ -340,7 +340,7 @@ function ResultRow({
   return (
     <article className="group border-b border-border/70 px-1 py-5 last:border-b-0 sm:px-2">
       <div className="flex items-start gap-4">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 select-text">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
             {record.sources.map((source) => (
               <SourceBadge key={source} source={source} compact />
@@ -885,7 +885,7 @@ export function LiteratureSearchPanel() {
         </div>
       )}
       {error && (
-        <div className="mt-3 flex items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
+        <div className="mt-3 flex select-text items-start gap-2.5 rounded-md border border-destructive/30 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           {error}
         </div>

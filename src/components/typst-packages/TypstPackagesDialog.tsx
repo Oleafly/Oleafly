@@ -190,7 +190,7 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
       </div>
       {notice && <output className="block text-xs text-muted-foreground">{notice}</output>}
       {error && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="select-text text-xs text-destructive">
           {error}
         </p>
       )}

@@ -713,6 +713,15 @@
           "description": "Vérifier les fichiers Typst à chaque enregistrement pour repérer les erreurs probables. Activer ou désactiver cette option redémarre le serveur de langage Typst.",
           "label": "Vérifications lint Typst"
         }
+      },
+      "fileMove": {
+        "label": "Quand un fichier est déplacé",
+        "description": "Mettre à jour les chemins qui pointent vers un fichier renommé ou déplacé dans les sources LaTeX, Typst et Markdown.",
+        "options": {
+          "ask": "Demander",
+          "always": "Toujours mettre à jour",
+          "never": "Ne jamais mettre à jour"
+        }
       }
     },
     "files": {
@@ -814,6 +823,25 @@
       "startWithProject": {
         "description": "Démarrer le shell à l'ouverture d'un projet plutôt qu'au premier affichage du terminal.",
         "label": "Démarrer le shell avec le projet"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Garde le texte dans une colonne centrée tant que le PDF est masqué.",
+        "label": "Centrer l'éditeur"
+      },
+      "fullScreen": {
+        "description": "Remplit l'écran dans le mode Zen et rétablit la fenêtre à la sortie.",
+        "label": "Passer en plein écran"
+      },
+      "showPdf": {
+        "description": "Si le PDF est masqué au début du mode Zen, l'ouvre à côté de l'éditeur à la première compilation.",
+        "label": "Afficher le PDF à la compilation"
+      },
+      "title": "Mode Zen",
+      "toggle": {
+        "description": "Masque la barre d'outils, la barre latérale, l'assistant et le terminal pour ne garder que le texte. Aussi appelé mode sans distraction. Un projet doit être ouvert.",
+        "label": "Activer le mode Zen"
       }
     }
   },
@@ -1204,11 +1232,55 @@
       "apiKeyLabel": "Clé API Zotero",
       "connected": "Connecté à votre bibliothèque Zotero.",
       "connectedAs": "Connecté en tant que {{username}}.",
-      "description": "Importez des citations et des références depuis votre bibliothèque Zotero.",
       "disconnectFailed": "Oleafly n'a pas pu supprimer la clé Zotero enregistrée. Réessayez.",
-      "importHint": "Pour importer, ouvrez le panneau Références d'un projet et choisissez Importer une bibliothèque de références.",
       "userIdLabel": "Identifiant utilisateur Zotero",
-      "userIdPlaceholder": "Identifiant utilisateur"
+      "userIdPlaceholder": "Identifiant utilisateur",
+      "citeDescription": "Cherchez dans toute votre bibliothèque Zotero pendant que vous écrivez et n'ajoutez que ce que vous citez. Oleafly lit votre bibliothèque sans jamais la modifier.",
+      "local": {
+        "heading": "Zotero sur cet ordinateur",
+        "ready": "Connecté à Zotero {{version}}.",
+        "readyNoVersion": "Connecté à Zotero.",
+        "bbtFound": "Better BibTeX {{version}} est installé, les clés de citation viennent donc de Better BibTeX.",
+        "bbtMissing": "Better BibTeX n'est pas installé, les clés de citation viennent donc de Zotero.",
+        "notRunning": "Zotero n'est pas lancé. Ouvrez Zotero pour chercher dans votre bibliothèque, ou connectez votre compte zotero.org ci-dessous.",
+        "apiDisabled": "Dans Zotero, ouvrez Paramètres > Avancé et cochez « Autoriser d'autres applications sur cet ordinateur à communiquer avec Zotero ».",
+        "unsupported": "Cette version de Zotero ne peut pas partager sa bibliothèque. Passez à Zotero 7 ou à une version ultérieure.",
+        "unknown": "Oleafly n'a pas encore cherché Zotero."
+      },
+      "test": "Tester la connexion",
+      "syncNow": "Synchroniser maintenant",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Better BibTeX introuvable",
+        "local": "Lu depuis Zotero sur cet ordinateur",
+        "web": "Lu depuis zotero.org",
+        "library_one": "{{name}} : {{formatted}} élément",
+        "library_many": "{{name}} : {{formatted}} éléments",
+        "library_other": "{{name}} : {{formatted}} éléments"
+      },
+      "library": {
+        "heading": "Bibliothèques où chercher",
+        "myLibrary": "Ma bibliothèque",
+        "toggle": "Chercher dans {{name}}",
+        "items_one": "{{formatted}} élément",
+        "items_many": "{{formatted}} éléments",
+        "items_other": "{{formatted}} éléments"
+      },
+      "sync": {
+        "never": "Aucune synchronisation pour l'instant.",
+        "syncing": "Synchronisation de votre bibliothèque Zotero…",
+        "progress": "Synchronisation de {{done}} éléments sur {{total}}…",
+        "status_one": "{{formatted}} élément prêt à être cité, synchronisé {{time}}.",
+        "status_many": "{{formatted}} éléments prêts à être cités, synchronisés {{time}}.",
+        "status_other": "{{formatted}} éléments prêts à être cités, synchronisés {{time}}.",
+        "fromCache": "Zotero est fermé, la recherche avec @ utilise donc la copie de la dernière synchronisation.",
+        "rateLimited": "zotero.org a demandé à Oleafly de patienter. Oleafly réessaiera après {{time}}."
+      },
+      "account": {
+        "heading": "Compte zotero.org",
+        "description": "Utilisez votre compte quand Zotero n'est pas ouvert sur cet ordinateur. Les bibliothèques de groupe sont aussi incluses."
+      }
     }
   },
   "language": {
@@ -1586,6 +1658,10 @@
       "openFolder": {
         "label": "Ouvrir un dossier",
         "description": "Ouvrir un dossier de votre ordinateur comme projet."
+      },
+      "toggleZenMode": {
+        "description": "Masquer tout sauf le texte, ou tout rétablir.",
+        "label": "Activer ou désactiver le mode Zen"
       }
     },
     "application": {
@@ -1608,7 +1684,7 @@
         "italic": "Italique",
         "jumpToSourceFromPdf": "Aller au source depuis le PDF",
         "redo": "Rétablir",
-        "renameSymbol": "Renommer le symbole dans tout le projet",
+        "renameSymbol": "Renommer le symbole ou le fichier dans tout le projet",
         "slashCommandMenu": "Menu d'insertion par commande slash",
         "triggerAutocomplete": "Déclencher l'autocomplétion",
         "undo": "Annuler"

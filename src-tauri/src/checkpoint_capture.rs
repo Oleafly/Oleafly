@@ -3,8 +3,10 @@ use oleafly_history::{
     CaptureInput, CheckpointFile, ContentHash, HistoryError, DETACHED_MANIFEST_PATH,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Component, Path, PathBuf};
+use std::sync::{Mutex, MutexGuard, OnceLock};
+use std::time::{Duration, SystemTime};
 
 const EXCLUDED_EXACT: [&str; 3] = [".git", ".oleafly", "node_modules"];
 const EXCLUDED_PREFIX: [&str; 2] = ["_minted-", "pythontex-files-"];
@@ -140,7 +142,7 @@ fn walk_project_once(
             if !metadata.is_file() {
                 return Err(std::io::Error::new(std::io::ErrorKind::Unsupported, format!("{portable} is not a regular file. Checkpoints cannot capture symbolic links or special files.")));
             }
-            let content_hash = capture_hash(&path, &portable)?;
+            let content_hash = cached_capture_hash(&path, &portable, &metadata)?;
             walk.captured.push(CapturedFile {
                 relative_path: portable,
                 content_hash,
@@ -150,6 +152,101 @@ fn walk_project_once(
     walk.captured
         .sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     Ok(walk)
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct FileStamp {
+    len: u64,
+    modified: Option<SystemTime>,
+    changed: Option<(i64, i64)>,
+    identity: Option<(u64, u64)>,
+}
+
+impl FileStamp {
+    #[cfg(unix)]
+    fn of(metadata: &std::fs::Metadata) -> Self {
+        use std::os::unix::fs::MetadataExt;
+        Self {
+            len: metadata.len(),
+            modified: metadata.modified().ok(),
+            changed: Some((metadata.ctime(), metadata.ctime_nsec())),
+            identity: Some((metadata.dev(), metadata.ino())),
+        }
+    }
+
+    #[cfg(not(unix))]
+    fn of(metadata: &std::fs::Metadata) -> Self {
+        Self {
+            len: metadata.len(),
+            modified: metadata.modified().ok(),
+            changed: None,
+            identity: None,
+        }
+    }
+}
+
+struct CachedHash {
+    stamp: FileStamp,
+    hash: ContentHash,
+    hashed_at: SystemTime,
+}
+
+const HASH_CACHE_LIMIT: usize = 200_000;
+const RACY_HASH_WINDOW: Duration = Duration::from_secs(2);
+
+fn hash_cache() -> &'static Mutex<HashMap<PathBuf, CachedHash>> {
+    static CACHE: OnceLock<Mutex<HashMap<PathBuf, CachedHash>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn locked_hash_cache() -> MutexGuard<'static, HashMap<PathBuf, CachedHash>> {
+    hash_cache()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn reusable_hash(path: &Path, stamp: &FileStamp) -> Option<ContentHash> {
+    let modified = stamp.modified?;
+    let cache = locked_hash_cache();
+    let entry = cache.get(path)?;
+    let settled = modified
+        .checked_add(RACY_HASH_WINDOW)
+        .is_some_and(|settled| settled <= entry.hashed_at);
+    (entry.stamp == *stamp && settled).then_some(entry.hash)
+}
+
+fn remember_hash(path: &Path, stamp: FileStamp, hash: ContentHash, hashed_at: SystemTime) {
+    let mut cache = locked_hash_cache();
+    if cache.len() >= HASH_CACHE_LIMIT && !cache.contains_key(path) {
+        let dropped = cache.len();
+        cache.clear();
+        let _ = crate::project::append_app_log(format!(
+            "checkpoint hash cache reached {HASH_CACHE_LIMIT} files; dropped {dropped} entries and will re-hash them on the next walk"
+        ));
+    }
+    cache.insert(
+        path.to_path_buf(),
+        CachedHash {
+            stamp,
+            hash,
+            hashed_at,
+        },
+    );
+}
+
+fn cached_capture_hash(
+    path: &Path,
+    relative: &str,
+    metadata: &std::fs::Metadata,
+) -> std::io::Result<ContentHash> {
+    let stamp = FileStamp::of(metadata);
+    if let Some(hash) = reusable_hash(path, &stamp) {
+        return Ok(hash);
+    }
+    let hashed_at = SystemTime::now();
+    let hash = capture_hash(path, relative)?;
+    remember_hash(path, stamp, hash, hashed_at);
+    Ok(hash)
 }
 
 fn capture_hash(path: &Path, relative: &str) -> std::io::Result<ContentHash> {
@@ -1369,5 +1466,60 @@ mod tests {
         std::fs::remove_file(root.join("CON.tex")).unwrap();
         std::os::unix::fs::symlink("main.tex", root.join("linked.tex")).unwrap();
         assert!(walk_project(root).unwrap_err().contains("linked.tex"));
+    }
+
+    #[test]
+    fn a_settled_file_with_an_unchanged_stamp_reuses_its_cached_hash() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("figure.pdf");
+        std::fs::write(&path, b"figure").unwrap();
+        let metadata = std::fs::metadata(&path).unwrap();
+        let stamp = FileStamp::of(&metadata);
+        let remembered = ContentHash::digest(b"remembered");
+        let hashed_at = stamp.modified.unwrap() + Duration::from_secs(60);
+        remember_hash(&path, stamp, remembered, hashed_at);
+
+        let hash = cached_capture_hash(&path, "figure.pdf", &metadata).unwrap();
+
+        assert_eq!(hash, remembered);
+    }
+
+    #[test]
+    fn a_file_hashed_within_the_racy_window_is_read_again() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("main.tex");
+        std::fs::write(&path, b"current").unwrap();
+        let metadata = std::fs::metadata(&path).unwrap();
+        let stamp = FileStamp::of(&metadata);
+        remember_hash(
+            &path,
+            stamp,
+            ContentHash::digest(b"stale"),
+            stamp.modified.unwrap(),
+        );
+
+        let hash = cached_capture_hash(&path, "main.tex", &metadata).unwrap();
+
+        assert_eq!(hash, ContentHash::digest(b"current"));
+    }
+
+    #[test]
+    fn a_rewritten_file_is_read_again_and_its_new_hash_is_remembered() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        write(root, "main.tex", b"first draft");
+        let first = walk_project(root).unwrap();
+        write(root, "main.tex", b"second draft, longer");
+
+        let second = walk_project(root).unwrap();
+
+        assert_eq!(
+            first.captured[0].content_hash,
+            ContentHash::digest(b"first draft")
+        );
+        assert_eq!(
+            second.captured[0].content_hash,
+            ContentHash::digest(b"second draft, longer")
+        );
     }
 }

@@ -23,7 +23,7 @@ function CodeBlock({ children }: Readonly<{ children: ReactNode }>) {
   const label = copied ? t(($) => $.common.actions.copied) : t(($) => $.common.actions.copy);
   return (
     <div className="group relative mb-2">
-      <pre className="overflow-x-auto rounded-lg border bg-muted/50 p-3 pr-10 text-xs leading-relaxed [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
+      <pre data-select-all-scope className="overflow-x-auto rounded-lg border bg-muted/50 p-3 pr-10 text-xs leading-relaxed [&_code]:border-0 [&_code]:bg-transparent [&_code]:p-0">
         {children}
       </pre>
       <button

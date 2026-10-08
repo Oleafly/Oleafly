@@ -596,7 +596,7 @@ export function PublishToGitHubDialog({
           {visibleMessage && (
             <div
               className={cn(
-                "shrink-0 border-t p-3 text-xs",
+                "shrink-0 select-text border-t p-3 text-xs",
                 visibleMessage.ok
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   : "border-destructive/30 bg-destructive/10 text-destructive"

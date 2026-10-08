@@ -350,7 +350,8 @@
     "referencesFor": "对 {{name}} 的引用",
     "renameFailed": "无法重命名为“{{name}}”。",
     "renamePartial": "已在 {{total}} 个文件中的 {{edited}} 个文件里重命名为“{{name}}”。未能写入 {{files}}。",
-    "renamed": "已重命名为“{{name}}”（$t(core:navigation.edits, {\"count\": {{edits}} })，$t(core:navigation.files, {\"count\": {{files}} })）。"
+    "renamed": "已重命名为“{{name}}”（$t(core:navigation.edits, {\"count\": {{edits}} })，$t(core:navigation.files, {\"count\": {{files}} })）。",
+    "pathNotInProject": "“{{path}}”与此项目中的任何文件都不匹配。"
   },
   "pandoc": {
     "downloadFailed": "无法下载 pandoc。请手动安装后重试。",

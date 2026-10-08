@@ -358,7 +358,8 @@
     "referencesFor": "Referencer til {{name}}",
     "renameFailed": "Kunne ikke omdøbe til \"{{name}}\".",
     "renamePartial": "Omdøbt til \"{{name}}\" i {{edited}} af {{total}} filer. Kunne ikke skrive {{files}}.",
-    "renamed": "Omdøbt til \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Omdøbt til \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" svarer ikke til nogen fil i dette projekt."
   },
   "pandoc": {
     "downloadFailed": "Kunne ikke downloade pandoc. Installer den manuelt, og prøv igen.",

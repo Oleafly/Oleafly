@@ -285,17 +285,20 @@ function sourceSnapshotMatchesCurrent(
   });
 }
 
+export function isCompileCheckpointApplicable(
+  checkpoint: CompileSuccessCheckpoint | null,
+): checkpoint is CompileSuccessCheckpoint {
+  return (
+    checkpoint !== null &&
+    useFilesStore.getState().projectId === checkpoint.projectId &&
+    resolveEffectiveMainDoc().mainDoc === checkpoint.mainDocument
+  );
+}
+
 export function isCompileCheckpointCurrent(
   checkpoint: CompileSuccessCheckpoint | null,
 ): checkpoint is CompileSuccessCheckpoint {
-  if (!checkpoint) return false;
-  const files = useFilesStore.getState();
-  if (
-    files.projectId !== checkpoint.projectId ||
-    resolveEffectiveMainDoc().mainDoc !== checkpoint.mainDocument
-  ) {
-    return false;
-  }
+  if (!isCompileCheckpointApplicable(checkpoint)) return false;
   if (
     projectRevisionFor(checkpoint.projectId) ===
     checkpoint.projectRevision

@@ -30,7 +30,8 @@
     "newTab": "Yeni Sekme",
     "openLocation": "Adres Aç…",
     "closeTab": "Sekmeyi Kapat",
-    "reloadPage": "Sayfayı Yeniden Yükle"
+    "reloadPage": "Sayfayı Yeniden Yükle",
+    "zenMode": "Zen Kipi"
   },
   "window": {
     "browser": "Oleafly Tarayıcı",

@@ -30,7 +30,8 @@
     "newTab": "Uusi välilehti",
     "openLocation": "Avaa osoite…",
     "closeTab": "Sulje välilehti",
-    "reloadPage": "Lataa sivu uudelleen"
+    "reloadPage": "Lataa sivu uudelleen",
+    "zenMode": "Zen-tila"
   },
   "window": {
     "browser": "Oleafly-selain",

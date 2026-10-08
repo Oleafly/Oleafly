@@ -43,7 +43,9 @@
     "privacyNote": "Bare identifikatoren eller tittelen sendes, til doi.org, arXiv eller Crossref.",
     "title": "Legg til sitering",
     "bibliography": "Litteraturliste",
-    "bibliographyHint": "Dette prosjektet har mer enn én litteraturliste. Oppføringen havner i filen du velger her."
+    "bibliographyHint": "Dette prosjektet har mer enn én litteraturliste. Oppføringen havner i filen du velger her.",
+    "zoteroMatches": "Fra Zotero-biblioteket ditt",
+    "zoteroPlaceholder": "Søk i Zotero-biblioteket ditt, eller lim inn en DOI, en arXiv-id eller en tittel"
   },
   "backendProtocol": {
     "mismatch": "Dette vinduet og bakgrunnstjenesten er bygget for ulike versjoner av Oleafly, så noen funksjoner virker kanskje ikke. Installer appen på nytt for å rette det."
@@ -326,6 +328,22 @@
     "presentWithPresenter": {
       "label": "Presenter lysbilder med foredragsholdervisning",
       "keywords": "presenter lysbilder foredragsholdervisning talernotater tidtaker neste lysbilde present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "uten distraksjoner fokus fullskjerm skjul grensesnitt minimal skriving",
+      "label": "Slå Zen-modus av eller på"
+    },
+    "zoteroAddMissing": {
+      "label": "Legg til manglende siteringer fra Zotero",
+      "keywords": "zotero manglende siteringer udefinerte nøkler litteraturliste reparer missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": "Oppdater .bib-oppføringer fra Zotero",
+      "keywords": "zotero oppdater litteraturliste oppføringer endret update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Synkroniser Zotero-biblioteket",
+      "keywords": "zotero synkroniser oppdater bibliotek sync refresh library"
     }
   },
   "community": {
@@ -1121,7 +1139,8 @@
       "editorPreview": "Editor + forhåndsvisning",
       "editorPreviewAi": "Editor + forhåndsvisning + AI",
       "previewAi": "Forhåndsvisning + AI",
-      "previewOnly": "Bare forhåndsvisning"
+      "previewOnly": "Bare forhåndsvisning",
+      "zenMode": "Zen-modus"
     },
     "newProjectName": "Navn på nytt prosjekt",
     "projectName": "Prosjektnavn",
@@ -1352,5 +1371,19 @@
     "location": "{{file}}, linje {{line}}",
     "error": "Feil",
     "warning": "Advarsel"
+  },
+  "fileRenameDialog": {
+    "title": "Gi filen nytt navn",
+    "titleFolder": "Gi mappen nytt navn",
+    "newPath": "Ny sti",
+    "hint": "Mapper som mangler, opprettes.",
+    "invalid": "Bruk en sti inne i dette prosjektet.",
+    "exists": "{{path}} finnes allerede."
+  },
+  "zen": {
+    "compileFailed": "Kompileringen mislyktes",
+    "compiling": "Kompilerer",
+    "hideLog": "Skjul kompileringsloggen",
+    "showLog": "Vis kompileringsloggen"
   }
 }

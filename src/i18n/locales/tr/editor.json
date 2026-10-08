@@ -188,7 +188,8 @@
     "quote": "Alıntı",
     "addLabel": "Etiket ekle",
     "convertLatexMath": "LaTeX matematiğini Typst'e dönüştür",
-    "noLatexMath": "Önce bir LaTeX matematik ifadesi seçin."
+    "noLatexMath": "Önce bir LaTeX matematik ifadesi seçin.",
+    "renameFile": "Dosyayı yeniden adlandır…"
   },
   "shell": {
     "noFileOpenTab": "Açık dosya yok",
@@ -426,7 +427,7 @@
       "indentOrAccept": "Girinti ver / otomatik tamamlamayı kabul et",
       "goToDefinition": "Tanıma git",
       "findReferences": "Kaynakları bul",
-      "renameSymbol": "Sembolü yeniden adlandır (proje genelinde)",
+      "renameSymbol": "Sembolü veya dosyayı yeniden adlandır (proje genelinde)",
       "formatDocument": "Typst belgesini biçimlendir",
       "commandPalette": "Komut paleti",
       "searchAllDocuments": "Tüm belgelerde ara",
@@ -454,7 +455,8 @@
     "noEntries": "Bu projede henüz kaynakça kaydı yok.",
     "addNew": "Yeni bir atıf bul ve ekle…",
     "duplicate": "yinelenen {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Zotero kitaplığınızdan"
   },
   "inlineAi": {
     "promptPlaceholder": "Değişikliği anlatın…  (yeni satır için Shift+Enter)",

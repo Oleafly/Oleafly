@@ -342,7 +342,7 @@ export function DiffView() {
       </div>
 
       <div className="relative min-h-0 flex-1 overflow-auto">
-        <div ref={hostRef} className="h-full" />
+        <div ref={hostRef} className="h-full select-text" />
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">
             {t(($) => $.editor.diff.loading)}

@@ -99,6 +99,25 @@ describe("switching files", () => {
     expect(store.getState().files["b.tex"]).toBe("\\section{B}\n");
   });
 
+  it("lets go of the oldest background file after twenty newer ones", async () => {
+    const others = Array.from({ length: 21 }, (_, index) => `other-${index}.tex`);
+    const store = await mountEditor({
+      activePath: "a.tex",
+      docVersion: 0,
+      files: {
+        "a.tex": CHAPTER,
+        ...Object.fromEntries(others.map((path) => [path, `\\section{${path}}\n`])),
+      },
+    });
+    await act(async () => typeAt(0, "NOVÉ "));
+
+    for (const path of others) await switchTo(store, path);
+    await switchTo(store, "a.tex");
+
+    expect(undoDepth(getEditorView()!.state)).toBe(0);
+    expect(store.getState().files["a.tex"]).toBe(`NOVÉ ${CHAPTER}`);
+  });
+
   it("starts a fresh history when the file changed while it was in the background", async () => {
     const store = await mountEditor({
       activePath: "a.tex",

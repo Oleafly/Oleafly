@@ -350,7 +350,8 @@
     "referencesFor": "對 {{name}} 的參照",
     "renameFailed": "無法重新命名為「{{name}}」。",
     "renamePartial": "已在 {{total}} 個檔案中的 {{edited}} 個重新命名為「{{name}}」。無法寫入 {{files}}。",
-    "renamed": "已重新命名為「{{name}}」（$t(core:navigation.files, {\"count\": {{files}} }) 中的 $t(core:navigation.edits, {\"count\": {{edits}} })）"
+    "renamed": "已重新命名為「{{name}}」（$t(core:navigation.files, {\"count\": {{files}} }) 中的 $t(core:navigation.edits, {\"count\": {{edits}} })）",
+    "pathNotInProject": "「{{path}}」與此專案中的任何檔案都不相符。"
   },
   "pandoc": {
     "downloadFailed": "無法下載 pandoc。請手動安裝後再試一次。",

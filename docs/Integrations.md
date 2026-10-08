@@ -11,7 +11,7 @@ preflight do not require an account.
 | GitHub | OAuth login, repository listing, publish, push, pull | Network calls use GitHub APIs only after the user connects an account |
 | MCP | Expose project tools to external clients | Localhost HTTP with a bearer token you can regenerate, and the same approval model |
 | alphaXiv | Lets the assistant search papers, read them and use your alphaXiv library, through alphaXiv's MCP server | API key from alphaXiv; the assistant asks before each call, and a key alphaXiv refuses is not saved |
-| Zotero | Import a whole Zotero library into a project's References panel as BibTeX, up to 5,000 items | Connects with a user ID and an API key, which Oleafly checks with Zotero before saving |
+| Zotero | Search the whole Zotero library while citing, add only the cited entries to the project's `.bib` and keep them up to date, or import a whole library | Read-only. Talks to Zotero on this computer through its local API with no account, or to zotero.org with an API key kept in encrypted storage that never reaches the webview |
 | AI providers | Chat, edits, compilation assistance, and figure generation | User-selected hosted provider or local Ollama model; credentials stay local |
 | Citation services | DOI, arXiv, Crossref, multi-source literature, optional Serper (Google Scholar), OpenAlex email | Sends the requested identifier, title, or search keywords only |
 | OpenAlex contact email | Improves OpenAlex rate limits (polite pool) | Optional; stored locally as connector value `openalex-email`; used only in OpenAlex request User-Agent |
@@ -44,6 +44,7 @@ or compiler packages.
 - `src-tauri/src/github.rs`: OAuth device flow and GitHub API transport.
 - `src-tauri/src/citation.rs` and `src-tauri/src/literature.rs`: metadata
   lookups.
+- `src-tauri/src/zotero/`: Zotero local API, Better BibTeX and Web API sync.
 - `src-tauri/src/mcp/`: local MCP server.
 - `packages/ai-core/`: provider and model abstractions.
 - `docs/mcp.md`: protocol-level setup and threat model.

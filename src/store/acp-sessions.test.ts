@@ -18,7 +18,7 @@ vi.mock("@/lib/skills", async (original) => ({
   ...await original<typeof import("@/lib/skills")>(),
   useSkills: () => ({ data: [], isPending: false, isFetching: false }),
 }));
-import { isDelegatedSession, mergeAcpEvents, useAcpSessionsStore } from "./acp-sessions";
+import { isDelegatedSession, mergeAcpEvents, sameSessionView, useAcpSessionView, useAcpSessionsStore } from "./acp-sessions";
 import { acpCatalog, acpDisconnect, acpEvents, acpPrompt, acpSessions, acpSetModel, acpSnapshot, onAcpEvent, onAcpResync, type AcpAgentStatus, type AcpEvent, type AcpSession } from "@/lib/acp";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";
 import { AcpWorkspaceAssistant } from "@/components/ai/acp/AcpWorkspaceAssistant";
@@ -48,6 +48,19 @@ describe("ACP session event recovery", () => {
     expect(merged.map((value) => value.sequence)).toEqual([1, 2, 3]);
     expect(merged[0]).toBe(first);
   });
+  it("appends newer events to a long history without sorting it again", () => {
+    const history = Array.from({ length: 2_000 }, (_, index) => event(index + 1));
+    const sort = vi.spyOn(Array.prototype, "sort");
+    try {
+      const merged = mergeAcpEvents(history, [event(2_001), event(2_002)]);
+      expect(sort).not.toHaveBeenCalled();
+      expect(merged.map((value) => value.sequence).slice(-3)).toEqual([2_000, 2_001, 2_002]);
+      expect(merged[0]).toBe(history[0]);
+      expect(merged).toHaveLength(2_002);
+    } finally {
+      sort.mockRestore();
+    }
+  });
   it("rejects a stale snapshot after newer native output", () => {
     useAcpSessionsStore.setState({ sessions: { s: { id: "s", lastSequence: 20, status: "running" } as AcpSession } });
     useAcpSessionsStore.getState().setSnapshot({ session: { id: "s", lastSequence: 10, status: "ready" } as AcpSession, permissions: [] });
@@ -73,6 +86,42 @@ describe("ACP session event recovery", () => {
     useAcpSessionsStore.getState().setComposer("p", { agentId: "codex" });
     expect(useAcpSessionsStore.getState().composers.p).toEqual({ agentId: "codex", draft: "First draft", images: [] });
     expect(useAcpSessionsStore.getState().composers.q).toEqual({ agentId: "claude", draft: "", images: [] });
+  });
+  it("keeps the permissions map when a batch changes no permission", () => {
+    useAcpSessionsStore.setState({ permissions: { other: [] } });
+    const before = useAcpSessionsStore.getState().permissions;
+    useAcpSessionsStore.getState().ingest([
+      event(1),
+      event(2, "tool_call_update", { toolCallId: "t", status: "completed" }),
+      event(3, "agent_thought_chunk", { content: { type: "text", text: "Checking" } }),
+    ]);
+    expect(useAcpSessionsStore.getState().permissions).toBe(before);
+  });
+  it("treats a session whose sequence and timestamps moved as the same view", () => {
+    const shown = savedSession("s", "running");
+    expect(sameSessionView(shown, { ...shown, lastSequence: 9, updatedAt: 9, turnId: "turn-2" })).toBe(true);
+    expect(sameSessionView(shown, { ...shown, status: "ready" })).toBe(false);
+    expect(sameSessionView(shown, { ...shown, error: "Disconnected" })).toBe(false);
+    expect(sameSessionView(shown, { ...shown, controls: { ...shown.controls } })).toBe(false);
+    expect(sameSessionView(shown, undefined)).toBe(false);
+    expect(sameSessionView(undefined, undefined)).toBe(true);
+  });
+  it("renders a session view again only when something it shows changes", () => {
+    useAcpSessionsStore.setState({ sessions: { s: savedSession("s", "running") } });
+    const seen: AcpSession[] = [];
+    function Probe() {
+      const view = useAcpSessionView("s");
+      if (view) seen.push(view);
+      return null;
+    }
+    const view = render(createElement(Probe));
+    act(() => useAcpSessionsStore.getState().ingest([event(1), event(2), event(3, "tool_call", { toolCallId: "t" })]));
+    expect(seen).toHaveLength(1);
+    expect(useAcpSessionsStore.getState().sessions.s.lastSequence).toBe(3);
+    act(() => useAcpSessionsStore.getState().ingest([event(4, "turn_complete", { stopReason: "end_turn" })]));
+    expect(seen.map((view) => view.status)).toEqual(["running", "ready"]);
+    expect(seen[1].lastSequence).toBe(4);
+    view.unmount();
   });
   it("treats task and child conversations as delegated", () => {
     const base = { id: "s", taskId: null, parentSessionId: null } as AcpSession;

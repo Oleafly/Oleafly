@@ -25,6 +25,7 @@ const harness = vi.hoisted(() => ({
     transform?: number[];
   }>,
   textViewports: [] as Array<{ scale: number; width: number; height: number; rotation: number; userUnit: number }>,
+  textSourcesAreStreams: [] as boolean[],
   annotationViewports: [] as Array<{ scale: number; width: number; height: number; rotation: number; userUnit: number }>,
   annotationOptionalConfigs: [] as unknown[],
   optionalContentIntents: [] as string[],
@@ -62,6 +63,7 @@ const harness = vi.hoisted(() => ({
     this.ensurePageRendered = null;
     this.renderCalls = [];
     this.textViewports = [];
+    this.textSourcesAreStreams = [];
     this.annotationViewports = [];
     this.annotationOptionalConfigs = [];
     this.optionalContentIntents = [];
@@ -240,11 +242,15 @@ vi.mock("pdfjs-dist", () => {
       readonly textDivs: HTMLElement[] = [];
       constructor(
         private readonly options: {
-          textContentSource: { items: Array<{ str: string }> };
+          textContentSource: ReadableStream<{ items: Array<{ str: string }> }>;
           container: HTMLElement;
           viewport: MockViewport;
         },
       ) {
+        harness.textSourcesAreStreams.push(
+          options.textContentSource instanceof ReadableStream,
+        );
+        options.container.setAttribute("data-main-rotation", String(options.viewport.rotation));
         harness.textViewports.push({
           scale: options.viewport.scale,
           width: options.viewport.width,
@@ -253,9 +259,11 @@ vi.mock("pdfjs-dist", () => {
           userUnit: options.viewport.userUnit,
         });
       }
-      render() {
+      async render() {
+        const { readTextContentItems } = await import("./test-text-content");
+        const [first] = await readTextContentItems(this.options.textContentSource);
         const span = document.createElement("span");
-        span.textContent = this.options.textContentSource.items[0]?.str ?? "";
+        span.textContent = first?.str ?? "";
         span.setAttribute("role", "presentation");
         span.getBoundingClientRect = () => {
           if (harness.throwTextGeometry) {
@@ -275,7 +283,6 @@ vi.mock("pdfjs-dist", () => {
         };
         this.textDivs.push(span);
         this.options.container.append(span);
-        return Promise.resolve();
       }
       cancel() {}
     },
@@ -379,6 +386,17 @@ function triggerIntersection(pageNumbers: number[], isIntersecting: boolean): vo
 }
 
 describe("PdfViewer production geometry and lifecycle wiring", () => {
+  it("hands pdf.js each page's text as a stream", async () => {
+    render(
+      <PdfViewer data={new Uint8Array([1])} scale={1} expectText={false} />,
+    );
+
+    await waitFor(() =>
+      expect(harness.textSourcesAreStreams.length).toBeGreaterThan(0),
+    );
+    expect(harness.textSourcesAreStreams.every(Boolean)).toBe(true);
+  });
+
   it("switches rendered pages to the text-first screen reader layer", async () => {
     const view = render(
       <PdfViewer
@@ -435,10 +453,11 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
     expect(
       view.container.querySelector("[data-page='1'] .annotationLayer"),
     ).toBeVisible();
-    expect(view.container.querySelector("[data-page='1']")).toHaveClass(
-      "rounded-sm",
-    );
-    expect(view.container.querySelector("[data-page='1']")).not.toHaveStyle({
+    const firstPage = view.container.querySelector("[data-page='1']");
+    expect(firstPage).toHaveClass("bg-white", "shadow-md");
+    expect(firstPage).not.toHaveClass("rounded-xl", "overflow-hidden");
+    expect(firstPage).toHaveAttribute("data-pdf-rendered", "true");
+    expect(firstPage).not.toHaveStyle({
       height: "auto",
     });
   });
@@ -531,10 +550,10 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
     await waitFor(() => expect(view.container.querySelector("[data-page='2']")).not.toBeNull());
 
     const second = view.container.querySelector<HTMLElement>("[data-page='2']");
+    await waitFor(() => expect(second?.dataset.pdfGeometry).toBe("exact"));
     expect(second).toHaveStyle({ width: "900px", height: "628px" });
     expect(second?.dataset.pdfRotation).toBe("90");
     expect(second?.dataset.pdfUserUnit).toBe("1.5");
-    expect(second?.dataset.pdfGeometry).toBe("exact");
     expect(second?.querySelector("canvas")).toBeNull();
   });
 
@@ -724,9 +743,10 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
       expect(second).toHaveStyle({ width: "1800px", height: "1260px" }),
     );
     expect(second?.style.getPropertyValue("--scale-factor")).toBe("2");
-    // The existing selectable layer is recalibrated in the instant zoom frame,
-    // before the 120 ms crisp re-render replaces it.
-    expect(scaleOneTextSpan?.style.getPropertyValue("--scale-x")).toBe("3");
+    expect(scaleOneTextSpan?.style.getPropertyValue("--scale-x")).toBe("1.5");
+    const transientLayer = scaleOneTextSpan?.closest<HTMLElement>(".textLayer");
+    expect(transientLayer?.style.getPropertyValue("--scale-factor")).toBe("1");
+    expect(transientLayer?.style.transform).toBe("scale(2) rotate(90deg) translateY(-100%)");
     await waitFor(
       () =>
         expect(
@@ -745,7 +765,13 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
       expect(second?.querySelector("canvas")).toHaveAttribute("width", "2250"),
     );
     expect(second?.querySelector("canvas")).toHaveAttribute("height", "1575");
-    expect(second?.querySelector(".textLayer span")).toHaveTextContent("PAGE 2 TEXT");
+    await waitFor(() =>
+      expect(second?.querySelector(".textLayer span")).toHaveTextContent("PAGE 2 TEXT"),
+    );
+    expect(second?.querySelector(".textLayer span")).not.toBe(scaleOneTextSpan);
+    expect(
+      second?.querySelector<HTMLElement>(".textLayer span")?.style.getPropertyValue("--scale-x"),
+    ).toBe("3");
     expect(harness.textViewports).toContainEqual({
       scale: 2,
       width: 1800,
@@ -753,13 +779,15 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
       rotation: 90,
       userUnit: 1.5,
     });
-    expect(harness.annotationViewports).toContainEqual({
-      scale: 2,
-      width: 1800,
-      height: 1260,
-      rotation: 90,
-      userUnit: 1.5,
-    });
+    await waitFor(() =>
+      expect(harness.annotationViewports).toContainEqual({
+        scale: 2,
+        width: 1800,
+        height: 1260,
+        rotation: 90,
+        userUnit: 1.5,
+      }),
+    );
   });
 
   it("keeps rendered pages stretched until the zoom settles, even when the pane scrolls", async () => {
@@ -838,7 +866,9 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
     );
     await waitFor(() => expect(view.container.querySelector("[data-page='2']")).not.toBeNull());
     act(() => triggerIntersection([2], true));
-    await waitFor(() => expect(harness.linkApisExercised).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(view.container.querySelector("[data-page='2'] .annotationLayer a")).not.toBeNull(),
+    );
     const retainedCanvas = view.container.querySelector<HTMLCanvasElement>(
       "[data-page='2'] canvas",
     );
@@ -856,7 +886,9 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
       <PdfViewer data={new Uint8Array([2])} scale={1} expectText={false} />,
     );
     await waitFor(() => expect(harness.annotationDestroyed).toBeGreaterThan(beforeSwitch));
-    await waitFor(() => expect(view.container.querySelector("[data-page='1'] canvas")).not.toBeNull());
+    await waitFor(() =>
+      expect(view.container.querySelector("[data-page='1'] .annotationLayer a")).not.toBeNull(),
+    );
 
     const beforeUnmount = harness.annotationDestroyed;
     view.unmount();
@@ -884,6 +916,9 @@ describe("PdfViewer production geometry and lifecycle wiring", () => {
     );
     await waitFor(() =>
       expect(view.container.querySelectorAll(".pdf-canvas")).toHaveLength(14),
+    );
+    await waitFor(() =>
+      expect(view.container.querySelectorAll(".annotationLayer a")).toHaveLength(14),
     );
 
     for (const pageNumber of [30, 29, 28, 27, 26, 25, 24, 23]) {

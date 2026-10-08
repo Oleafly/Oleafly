@@ -159,5 +159,84 @@
     "label": "Viitetyyli",
     "ariaLabel": "Lähdeluettelon viitetyyli tiedostossa {{path}}",
     "failed": "Oleafly ei voinut vaihtaa viitetyyliä."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} ym.",
+      "noYear": "ei pvm.",
+      "keySource": {
+        "bbt": "Avain Better BibTeX -lisäosasta",
+        "native": "Avain Zoterosta",
+        "extra": "Avain Zoteron Ylim. -kentästä",
+        "generated": "Oleaflyn luoma avain"
+      },
+      "addFailed": "Oleafly ei voinut lisätä viitettä {{key}} lähdeluetteloon. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Avaa Zoterossa Asetukset > Lisäasetukset ja ota käyttöön ”Salli muiden tämän koneen ohjelmien viestiä Zoteron kanssa”.",
+      "unsupported": "Päivitä Zotero versioon 7 tai uudempaan, niin voit hakea kirjastostasi Oleaflyssa.",
+      "keyRejected": "Zotero ei enää hyväksy API-avaintasi. Yhdistä tilisi uudelleen Zotero-asetuksissa.",
+      "closed": "Avaa Zotero, niin voit hakea kirjastostasi täällä, tai yhdistä zotero.org-tilisi.",
+      "closedCached": "Zotero on suljettu. Tulokset ovat viimeisimmästä synkronoinnista, {{time}}.",
+      "bbtMissing": "Better BibTeX ei vastaa, joten uudet avaimet tulevat Zoterosta. Tarkista, että se on asennettu ja otettu käyttöön.",
+      "action": "Zotero-asetukset"
+    },
+    "actions": {
+      "addFromZotero": "Lisää Zoterosta",
+      "addAllMissing_one": "Lisää {{count}} puuttuva viittaus Zoterosta",
+      "addAllMissing_other": "Lisää kaikki {{count}} puuttuvaa viittausta Zoterosta",
+      "notInLibrary": "Avainta {{key}} ei löydy Zotero-kirjastostasi.",
+      "changed": "Tämä viite on muuttunut Zoterossa sen jälkeen, kun lisäsit sen.",
+      "changedEdited": "Tämä viite on muuttunut Zoterossa, ja olet myös muokannut sitä täällä.",
+      "update": "Päivitä Zoterosta",
+      "updated": "Viite {{key}} päivitettiin Zoterosta.",
+      "updateFailed": "Oleafly ei voinut päivittää viitettä {{key}} Zoterosta. Yritä uudelleen."
+    },
+    "chooseBibliography": {
+      "title": "Mihin uudet viitteet lisätään?",
+      "description": "Tässä projektissa on useampi kuin yksi lähdeluettelotiedosto. Oleafly lisää uudet viitteet valitsemaasi tiedostoon ja muistaa valinnan tässä projektissa.",
+      "confirm": "Käytä tätä tiedostoa"
+    },
+    "handEdits": {
+      "title": "Korvataanko muokkauksesi?",
+      "description": "Muokkasit viitettä {{key}} käsin. Jos korvaat sen Zoteron versiolla, nämä muutokset poistuvat.",
+      "confirm": "Käytä Zoteron versiota",
+      "cancel": "Säilytä omani"
+    },
+    "handList": {
+      "title": "Siirretäänkö lähdeluettelo?",
+      "description": "Tämän dokumentin lähteet on kirjoitettu käsin. Siirrä ne tiedostoon {{path}}, niin ne ja Zoterosta viittaamasi julkaisut ovat samassa numeroidussa luettelossa.",
+      "confirm": "Siirrä luettelo"
+    },
+    "missing": {
+      "title": "Lisää puuttuvat viittaukset Zoterosta",
+      "loading": "Tarkistetaan Zotero-kirjastoasi…",
+      "none": "Kaikki viiteavaimet ovat jo lähdeluettelossasi.",
+      "found_one": "{{count}} viiteavain löytyy Zoterosta",
+      "found_other": "{{count}} viiteavainta löytyy Zoterosta",
+      "duplicates_one": "{{count}} avain viittaa julkaisuun, joka on jo lähdeluettelossasi",
+      "duplicates_other": "{{count}} avainta viittaa julkaisuihin, jotka ovat jo lähdeluettelossasi",
+      "duplicateRow": "{{key}} on sama julkaisu kuin {{existing}}",
+      "notFound_one": "{{count}} viiteavain puuttuu Zoterosta",
+      "notFound_other": "{{count}} viiteavainta puuttuu Zoterosta",
+      "confirm_one": "Lisää {{count}} viite",
+      "confirm_other": "Lisää {{count}} viitettä",
+      "done_one": "{{count}} viite on nyt tiedostossa {{path}}.",
+      "done_other": "{{count}} viitettä on nyt tiedostossa {{path}}.",
+      "failed": "Oleafly ei voinut lisätä viitteitä. {{detail}}"
+    },
+    "update": {
+      "title": "Päivitä .bib-viitteet Zoterosta",
+      "loading": "Tarkistetaan Zoteron muutoksia…",
+      "none": "Lähdeluettelosi vastaa Zoteroa.",
+      "handEdited": "Muokattu käsin",
+      "handEditedNote": "Käsin muokattuja viitteitä ei ole valittu. Valitse viite, jos haluat korvata sen Zoteron versiolla.",
+      "confirm_one": "Päivitä {{count}} viite",
+      "confirm_other": "Päivitä {{count}} viitettä",
+      "done_one": "{{count}} viite päivitettiin.",
+      "done_other": "{{count}} viitettä päivitettiin."
+    }
   }
 }

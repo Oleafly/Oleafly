@@ -1,4 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy, memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
+  type MutableRefObject, type RefObject,
+} from "react";
 import { ArrowUp, Paperclip, Plus, Sparkles, Square, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
@@ -14,13 +17,15 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useResearchChatActions } from "@/components/ai/use-research-chat-actions";
-import { MessageList } from "@/components/ai/MessageList";
+import { MessageList, type RenderedMessage } from "@/components/ai/MessageList";
 import {
   acpAuthenticate, acpCancel, acpDisconnect, acpError, acpPermission, acpPrompt, acpReadiness,
   acpReconnect, acpSetModel, acpUsable, type AcpAgentStatus, type AcpImage, type AcpSession,
 } from "@/lib/acp";
 import { cn } from "@/lib/utils";
-import { attachAcpListeners, isDelegatedSession, useAcpSessionsStore, type AcpAttachment } from "@/store/acp-sessions";
+import {
+  attachAcpListeners, isDelegatedSession, useAcpSessionView, useAcpSessionsStore, type AcpAttachment,
+} from "@/store/acp-sessions";
 import { AssistantHome } from "@/components/ai/home/AssistantHome";
 import { AgentPickerRow, type AgentPickerEntry } from "@/components/ai/home/AgentPickerRow";
 import { openCliAgentSettings } from "@/components/ai/AssistantShellAcpActions";
@@ -37,14 +42,14 @@ import { BridgeInstallCard, openAgentSignInTerminal } from "./AgentReadiness";
 import { terminalLimitMessage } from "@/store/terminals";
 import { TrustRequiredNotice } from "@/components/open-folder/TrustRequiredNotice";
 import { PermissionCard } from "./PermissionCard";
-import { createAcpProjector } from "./projection";
+import { useAcpConversation, useAcpHasMessages, useAcpMessages, type AcpConversation } from "./conversation";
+import type { ResearchChatActions } from "@/lib/chat-activity";
 import { Spinner } from "@/components/ui/spinner";
 
 const CleanLibraryDialog = lazy(() =>
   import("@/components/layout/CleanLibraryDialog").then((module) => ({ default: module.CleanLibraryDialog })),
 );
 
-const EMPTY_EVENTS: never[] = [];
 const EMPTY_PERMISSIONS: never[] = [];
 const EMPTY_IMAGES: AcpAttachment[] = [];
 
@@ -58,10 +63,9 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const researchChatActions = useResearchChatActions(projectId);
   const catalog = useAcpSessionsStore((state) => state.catalog);
   const activeId = useAcpSessionsStore((state) => state.activeByProject[projectId] ?? null);
-  const allSessions = useAcpSessionsStore((state) => state.sessions);
   const composer = useAcpSessionsStore((state) => state.composers[projectId]);
-  const session = activeId ? allSessions[activeId] : undefined;
-  const events = useAcpSessionsStore((state) => activeId ? state.events[activeId] ?? EMPTY_EVENTS : EMPTY_EVENTS);
+  const session = useAcpSessionView(activeId);
+  const hasEarlier = useAcpSessionsStore((state) => (activeId ? (state.events[activeId]?.[0]?.sequence ?? 0) > 1 : false));
   const permissions = useAcpSessionsStore((state) => activeId ? state.permissions[activeId] ?? EMPTY_PERMISSIONS : EMPTY_PERMISSIONS);
   const agentId = composer?.agentId ?? null;
   const draft = composer?.draft ?? "";
@@ -78,11 +82,10 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
-  const shownSessionRef = useRef<string | null>(activeId);
   const fileRef = useRef<HTMLInputElement>(null);
   const running = session?.status === "running" || session?.status === "cancelling" || sending;
-  const projectEvents = useMemo(() => createAcpProjector(), []);
-  const messages = useMemo(() => projectEvents(events, running), [events, running, projectEvents]);
+  const conversation = useAcpConversation(activeId, sending);
+  const hasMessages = useAcpHasMessages(conversation);
   const selectedAgent = useMemo(
     () => catalog.find((agent) => agent.definition.id === agentId),
     [catalog, agentId],
@@ -185,14 +188,6 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     setComposer(projectId, { agentId: preferred.definition.id });
   }, [catalog, agentId, projectId, setComposer]);
 
-  useLayoutEffect(() => {
-    if (shownSessionRef.current !== activeId) {
-      shownSessionRef.current = activeId;
-      nearBottomRef.current = true;
-    }
-    if (messages.length && activeId && nearBottomRef.current && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, activeId]);
-
   const perform = async (action: () => Promise<void>) => {
     setError(null); setBusy(true);
     try { await action(); } catch (error_) { setError(acpError(error_)); }
@@ -207,7 +202,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
       setError(t(($) => $.ai.acp.messageTooLarge));
       return;
     }
-    const beforeSequence = session.lastSequence;
+    const beforeSequence = useAcpSessionsStore.getState().sessions[activeId]?.lastSequence ?? session.lastSequence;
     const clearComposer = () => setComposer(projectId, { draft: "", images: [], skill: null });
     setError(null); setSending(true); nearBottomRef.current = true;
     try {
@@ -281,26 +276,15 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     icon: preset.icon,
     onSelect: () => pickPreset(preset),
   }));
-  const firstUnavailableKey = messages.find((entry) => entry.msg.turnChanges?.unavailable)?.key ?? null;
-
   const conversationBody = () =>
-    messages.length > 0 ? (
-      <MessageList
+    hasMessages ? (
+      <AcpConversationMessages
+        conversation={conversation}
+        activeId={activeId}
+        projectId={projectId}
         actions={researchChatActions}
-        messages={messages}
-        chatId={activeId}
         scrollRef={scrollRef}
         nearBottomRef={nearBottomRef}
-        renderExtras={({ key, msg }) =>
-          msg.turnChanges ? (
-            <TurnChangesCard
-              projectId={projectId}
-              changes={msg.turnChanges}
-              showUnavailable={key === firstUnavailableKey}
-              className="mt-1.5"
-            />
-          ) : null
-        }
       />
     ) : (
       <AssistantHome
@@ -349,7 +333,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 
   const conversationArea = () => (
     <>
-    {(busy || starting) && messages.length === 0 ? (
+    {(busy || starting) && !hasMessages ? (
       <output
         data-testid="acp-connecting"
         className="mx-auto flex max-w-sm flex-col items-center gap-3 py-16 text-center"
@@ -384,7 +368,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   reason={t(($) => $.errors.trust.agents)}
   className="mx-3 my-2"
 />
-{(error || (session?.error && session.status !== "auth_required")) && <div role="alert" className="mx-3 my-2 rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
+{(error || (session?.error && session.status !== "auth_required")) && <div role="alert" className="mx-3 my-2 select-text rounded-md border border-destructive/40 p-2 text-xs text-destructive">{error ?? session?.error}</div>}
 {session?.status === "auth_required" && <div className="space-y-2 border-t border-border p-3 text-xs">
   <p>{catalog.find((agent) => agent.definition.id === session.agentId)?.signInHint ?? t(($) => $.ai.acp.signInFallback)}</p>
   <div className="flex flex-wrap gap-2">
@@ -494,7 +478,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
 
   return <section className="flex h-full min-h-0 flex-col bg-sidebar text-foreground" aria-label={t(($) => $.ai.acp.assistantAriaLabel)}>
     <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-3" onScroll={() => { const el = scrollRef.current; if (el) nearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }}>
-      {events[0]?.sequence > 1 && <Button variant="outline" size="sm" type="button" className="mb-3 w-full" disabled={busy} onClick={() => { if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId)); }}>{t(($) => $.ai.acp.loadEarlier)}</Button>}
+      {hasEarlier && <Button variant="outline" size="sm" type="button" className="mb-3 w-full" disabled={busy} onClick={() => { if (activeId) void perform(() => useAcpSessionsStore.getState().loadEarlier(projectId, activeId)); }}>{t(($) => $.ai.acp.loadEarlier)}</Button>}
       {conversationArea()}
     </div>
     {statusBanners()}
@@ -573,6 +557,57 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
     )}
   </section>;
 }
+
+const AcpConversationMessages = memo(function AcpConversationMessages({
+  conversation,
+  activeId,
+  projectId,
+  actions,
+  scrollRef,
+  nearBottomRef,
+}: Readonly<{
+  conversation: AcpConversation;
+  activeId: string | null;
+  projectId: string;
+  actions: ResearchChatActions;
+  scrollRef: RefObject<HTMLDivElement | null>;
+  nearBottomRef: MutableRefObject<boolean>;
+}>) {
+  const messages = useAcpMessages(conversation);
+  const shownSessionRef = useRef<string | null | undefined>(undefined);
+  useLayoutEffect(() => {
+    if (shownSessionRef.current !== activeId) {
+      shownSessionRef.current = activeId;
+      nearBottomRef.current = true;
+    }
+    const element = scrollRef.current;
+    if (messages.length && activeId && nearBottomRef.current && element) element.scrollTop = element.scrollHeight;
+  }, [activeId, messages, nearBottomRef, scrollRef]);
+  const firstUnavailableKey = messages.find((entry) => entry.msg.turnChanges?.unavailable)?.key ?? null;
+  const renderTurnChanges = useCallback(
+    ({ key, msg }: RenderedMessage) =>
+      msg.turnChanges ? (
+        <TurnChangesCard
+          projectId={projectId}
+          changes={msg.turnChanges}
+          showUnavailable={key === firstUnavailableKey}
+          className="mt-1.5"
+        />
+      ) : null,
+    [firstUnavailableKey, projectId],
+  );
+  return (
+    <MessageList
+      actions={actions}
+      messages={messages}
+      live={conversation.live}
+      chatId={activeId}
+      scrollRef={scrollRef}
+      nearBottomRef={nearBottomRef}
+      renderExtras={renderTurnChanges}
+    />
+  );
+});
 
 const STATUS_DOT: Record<AcpSession["status"], string> = {
   connecting: "bg-primary animate-pulse",

@@ -9,7 +9,12 @@ const nav = vi.hoisted(() => ({
   startRename: vi.fn((_view: unknown) => true),
 }));
 
+const trigger = vi.hoisted(() => ({
+  renameAtCursor: vi.fn((_view: unknown) => true),
+}));
+
 vi.mock("@/lib/index/nav", () => nav);
+vi.mock("@/lib/file-references/rename-trigger", () => trigger);
 
 import { codeIntel } from "./code-intel";
 
@@ -46,7 +51,12 @@ describe("code navigation keys", () => {
     expect(press("F12", { shiftKey: true })).toBe(true);
     expect(nav.findReferences).toHaveBeenCalledWith(view);
     expect(press("F2")).toBe(true);
-    expect(nav.startRename).toHaveBeenCalledWith(view);
+    expect(trigger.renameAtCursor).toHaveBeenCalledWith(view);
+  });
+
+  it("lets F2 fall through when nothing under the caret can be renamed", () => {
+    trigger.renameAtCursor.mockReturnValueOnce(false);
+    expect(press("F2")).toBe(false);
   });
 });
 

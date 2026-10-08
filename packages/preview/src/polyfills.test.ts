@@ -3,6 +3,7 @@ import {
   installGetOrInsert,
   installIteratorFind,
   installPromiseTry,
+  installSettledFontFaceLoad,
   installUint8ArrayToHex,
   installURLParse,
 } from "./polyfills";
@@ -279,5 +280,54 @@ describe("ReadableStream async iteration polyfill", () => {
 
     expect(Object.getOwnPropertyDescriptor(prototype, "values")).toEqual(nativeValues);
     expect(prototype[Symbol.asyncIterator]).not.toBe(nativeIterator?.value);
+  });
+});
+
+describe("settled font face loading", () => {
+  function fontFaceCtor() {
+    const calls = { loaded: 0, load: 0 };
+    class Face {
+      status = "loaded";
+      get loaded() {
+        calls.loaded += 1;
+        return Promise.resolve(this);
+      }
+      load() {
+        calls.load += 1;
+        return Promise.resolve(this);
+      }
+    }
+    return { Face, calls };
+  }
+
+  it("answers for an already loaded face without asking the engine", async () => {
+    const { Face, calls } = fontFaceCtor();
+    installSettledFontFaceLoad(Face);
+    const face = new Face();
+
+    await expect(face.loaded).resolves.toBe(face);
+    await expect(face.load()).resolves.toBe(face);
+    expect(calls).toEqual({ loaded: 0, load: 0 });
+  });
+
+  it("patches the engine prototype when the constructor is a subclass", async () => {
+    const { Face, calls } = fontFaceCtor();
+    class CountingFace extends Face {}
+    installSettledFontFaceLoad(CountingFace);
+    const face = new CountingFace();
+
+    await expect(face.loaded).resolves.toBe(face);
+    expect(calls).toEqual({ loaded: 0, load: 0 });
+  });
+
+  it("leaves faces that are still loading to the engine", async () => {
+    const { Face, calls } = fontFaceCtor();
+    installSettledFontFaceLoad(Face);
+    const face = new Face();
+    face.status = "loading";
+
+    await expect(face.loaded).resolves.toBe(face);
+    await expect(face.load()).resolves.toBe(face);
+    expect(calls).toEqual({ loaded: 1, load: 1 });
   });
 });

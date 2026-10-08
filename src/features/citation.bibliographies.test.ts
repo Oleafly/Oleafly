@@ -1,3 +1,4 @@
+import { EditorState } from "@codemirror/state";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
@@ -91,6 +92,7 @@ vi.mock("@/store/compile", () => ({
 vi.mock("@/components/editor/wysiwyg/controller", () => ({
   flushWysiwygPendingEdits: mocks.flushWysiwygPendingEdits,
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
+  isWysiwygActive: () => false,
 }));
 vi.mock("@/store/settings", () => ({
   useSettingsStore: { getState: () => ({ offline: false }) },
@@ -155,7 +157,7 @@ beforeEach(async () => {
     nextGeneration += 3;
     return { path, generation };
   });
-  mocks.getEditorView.mockReturnValue({});
+  mocks.getEditorView.mockReturnValue({ state: EditorState.create() });
   remembered.rememberedBibliography.mockReset().mockReturnValue(null);
   useFilesStore.setState({
     projectId: "project",
@@ -196,13 +198,13 @@ describe("citationBibliographyChoices", () => {
 describe("addCitation with several bibliographies", () => {
   it("writes into the first declared bibliography by default", async () => {
     const result = await addCitation(ENTRY);
-    expect(result).toEqual({ key: expect.any(String) });
+    expect(result).toEqual({ key: expect.any(String), cite: expect.stringMatching(/^@/u) });
     expect(mocks.writeFileContent.mock.calls.map((call) => call[1])).toEqual(["primary.bib"]);
   });
 
   it("writes into the bibliography the user picked", async () => {
     const result = await addCitation(ENTRY, { bibliography: "secondary.bib" });
-    expect(result).toEqual({ key: expect.any(String) });
+    expect(result).toEqual({ key: expect.any(String), cite: expect.stringMatching(/^@/u) });
     expect(mocks.writeFileContent.mock.calls.map((call) => call[1])).toEqual(["secondary.bib"]);
     expect(mocks.writeFileContent.mock.calls[0]?.[2]).toContain("Edge Sensing");
     expect(mocks.insertAtCursor).toHaveBeenCalledWith(expect.stringMatching(/^@/u));

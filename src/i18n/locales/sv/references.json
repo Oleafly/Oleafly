@@ -159,5 +159,84 @@
     "label": "Citeringsstil",
     "ariaLabel": "Citeringsstil för bibliografin i {{path}}",
     "failed": "Oleafly kunde inte ändra citeringsstilen."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} m.fl.",
+      "noYear": "u.å.",
+      "keySource": {
+        "bbt": "Nyckel från Better BibTeX",
+        "native": "Nyckel från Zotero",
+        "extra": "Nyckel från fältet Extra i Zotero",
+        "generated": "Nyckel skapad av Oleafly"
+      },
+      "addFailed": "Oleafly kunde inte lägga till {{key}} i bibliografin. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Öppna Inställningar > Avancerat i Zotero och slå på ”Allow other applications on this computer to communicate with Zotero”.",
+      "unsupported": "Uppdatera Zotero till version 7 eller senare för att söka i ditt bibliotek från Oleafly.",
+      "keyRejected": "Zotero godtar inte längre din API-nyckel. Anslut ditt konto igen i Zotero-inställningarna.",
+      "closed": "Öppna Zotero för att söka i ditt bibliotek här, eller anslut ditt zotero.org-konto.",
+      "closedCached": "Zotero är stängt. Resultaten kommer från den senaste synkningen, {{time}}.",
+      "bbtMissing": "Better BibTeX svarar inte, så nya nycklar kommer från Zotero. Kontrollera att det är installerat och påslaget.",
+      "action": "Zotero-inställningar"
+    },
+    "actions": {
+      "addFromZotero": "Lägg till från Zotero",
+      "addAllMissing_one": "Lägg till {{count}} saknad citering från Zotero",
+      "addAllMissing_other": "Lägg till alla {{count}} saknade citeringar från Zotero",
+      "notInLibrary": "{{key}} finns inte i ditt Zotero-bibliotek.",
+      "changed": "Den här posten har ändrats i Zotero sedan du lade till den.",
+      "changedEdited": "Den här posten har ändrats i Zotero, och du har också redigerat den här.",
+      "update": "Uppdatera från Zotero",
+      "updated": "Uppdaterade {{key}} från Zotero.",
+      "updateFailed": "Oleafly kunde inte uppdatera {{key}} från Zotero. Försök igen."
+    },
+    "chooseBibliography": {
+      "title": "Var ska nya referenser hamna?",
+      "description": "Det här projektet har mer än en bibliografifil. Oleafly lägger till nya referenser i den du väljer och kommer ihåg den för det här projektet.",
+      "confirm": "Använd den här filen"
+    },
+    "handEdits": {
+      "title": "Ersätta dina ändringar?",
+      "description": "Du har redigerat {{key}} för hand. Om du ersätter den med versionen från Zotero försvinner de ändringarna.",
+      "confirm": "Använd Zotero-versionen",
+      "cancel": "Behåll min"
+    },
+    "handList": {
+      "title": "Flytta referenslistan?",
+      "description": "Det här dokumentet har referenserna inskrivna för hand. Flytta dem till {{path}} så hamnar de i en enda numrerad lista tillsammans med artiklarna du citerar från Zotero.",
+      "confirm": "Flytta listan"
+    },
+    "missing": {
+      "title": "Lägg till saknade citeringar från Zotero",
+      "loading": "Kontrollerar ditt Zotero-bibliotek…",
+      "none": "Alla citeringsnycklar finns redan i din bibliografi.",
+      "found_one": "{{count}} citeringsnyckel finns i Zotero",
+      "found_other": "{{count}} citeringsnycklar finns i Zotero",
+      "duplicates_one": "{{count}} nyckel citerar en artikel som redan finns i din bibliografi",
+      "duplicates_other": "{{count}} nycklar citerar artiklar som redan finns i din bibliografi",
+      "duplicateRow": "{{key}} är samma artikel som {{existing}}",
+      "notFound_one": "{{count}} citeringsnyckel finns inte i Zotero",
+      "notFound_other": "{{count}} citeringsnycklar finns inte i Zotero",
+      "confirm_one": "Lägg till {{count}} post",
+      "confirm_other": "Lägg till {{count}} poster",
+      "done_one": "{{count}} post finns nu i {{path}}.",
+      "done_other": "{{count}} poster finns nu i {{path}}.",
+      "failed": "Oleafly kunde inte lägga till posterna. {{detail}}"
+    },
+    "update": {
+      "title": "Uppdatera .bib-poster från Zotero",
+      "loading": "Letar efter ändringar i Zotero…",
+      "none": "Din bibliografi stämmer överens med Zotero.",
+      "handEdited": "Redigerad för hand",
+      "handEditedNote": "Poster som du har redigerat för hand är inte markerade. Markera en för att ersätta den med versionen från Zotero.",
+      "confirm_one": "Uppdatera {{count}} post",
+      "confirm_other": "Uppdatera {{count}} poster",
+      "done_one": "Uppdaterade {{count}} post.",
+      "done_other": "Uppdaterade {{count}} poster."
+    }
   }
 }

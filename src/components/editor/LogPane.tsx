@@ -1,16 +1,22 @@
 import {
   createContext,
   lazy,
+  memo,
   Suspense,
+  useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowDown, ArrowUp, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy } from "lucide-react";
+import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { parseLatexLog, type LogDiagnostic } from "@oleafly/latex";
 import { useCompileStore, type CompileState } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -19,54 +25,52 @@ import { openFileAndGotoLine } from "@/features/synctex";
 import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
-import { useDisplayText } from "@/lib/display-path";
+import { useDisplayText, useDisplayTextRanges } from "@/lib/display-path";
+import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
+import {
+  compileLogViewer,
+  LOG_TOKEN_RE,
+  logLineCategory,
+  logTokenClass,
+  setLogHomeRanges,
+  syncLogDocument,
+} from "./compile-log-view";
+import { MEASURED_WINDOW_ITEM, useMeasuredWindow } from "./use-measured-window";
 
 function easeInOutQuad(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
 }
 
-function smoothScrollTo(el: HTMLElement, targetTop: number, duration = 700) {
+const scrollAnimations = new WeakMap<HTMLElement, number>();
+
+function smoothScrollTo(el: HTMLElement, target: () => number, duration = 700) {
   const startTop = el.scrollTop;
-  const maxTop = Math.max(0, el.scrollHeight - el.clientHeight);
-  const delta = Math.min(Math.max(0, targetTop), maxTop) - startTop;
   const startTime = performance.now();
+  const token = (scrollAnimations.get(el) ?? 0) + 1;
+  scrollAnimations.set(el, token);
+  const destination = () => Math.min(Math.max(0, target()), Math.max(0, el.scrollHeight - el.clientHeight));
   function step(now: number) {
+    if (scrollAnimations.get(el) !== token) return;
     const t = Math.min(1, (now - startTime) / duration);
-    el.scrollTop = startTop + delta * easeInOutQuad(t);
+    const end = destination();
+    el.scrollTop = t < 1 ? startTop + (end - startTop) * easeInOutQuad(t) : end;
     if (t < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
 }
 
-type Cat = "error" | "warn" | "lineref" | "register" | "normal";
-
-function category(line: string): Cat {
-  if (line.startsWith("!")) return "error";
-  if (/^Runaway argument|Emergency stop|^<inserted text>/.test(line)) return "warn";
-  if (/^l\.\d+/.test(line)) return "lineref";
-  if (/^\\[a-zA-Z@]+=/.test(line)) return "register";
-  return "normal";
-}
-
-const TOKEN_RE = /(\([^\s()]+\.\w+\)|\\[a-zA-Z@]+|[{}()])/g;
-
 function inline(line: string): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let key = 0;
-  TOKEN_RE.lastIndex = 0;
-  for (const m of line.matchAll(TOKEN_RE)) {
+  for (const m of line.matchAll(LOG_TOKEN_RE)) {
     if (m.index > last) out.push(<span key={key++}>{line.slice(last, m.index)}</span>);
     const tok = m[0];
-    let cls = "";
-    if (/^\([^)]+\.\w+\)$/.test(tok)) cls = "text-primary";
-    else if (tok === "(" || tok === ")") cls = "text-primary/70";
-    else if (tok.startsWith("\\")) cls = "text-purple-500 dark:text-purple-400";
-    else cls = "text-fuchsia-500";
     out.push(
-      <span key={key++} className={cls}>
+      <span key={key++} className={logTokenClass(tok)}>
         {tok}
       </span>
     );
@@ -86,7 +90,7 @@ function LogText({ text }: Readonly<{ text: string }>) {
   return (
     <>
       {lines.map((ln, index) => {
-        const cat = category(ln);
+        const cat = logLineCategory(ln);
         const lineDepth = depth;
         const opens = (ln.match(/\(/g) || []).length;
         const closes = (ln.match(/\)/g) || []).length;
@@ -128,16 +132,86 @@ function LogText({ text }: Readonly<{ text: string }>) {
   );
 }
 
+function RawLogViewer({ log }: Readonly<{ log: string }>) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const shownRef = useRef("");
+  const latestLog = useRef(log);
+  latestLog.current = log;
+  const homeRanges = useDisplayTextRanges();
+  const latestRanges = useRef(homeRanges);
+
+  useLayoutEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const first = latestLog.current;
+    const view = new EditorView({
+      parent: host,
+      state: EditorState.create({
+        doc: first.replaceAll("\r", ""),
+        extensions: compileLogViewer(latestRanges.current),
+      }),
+    });
+    viewRef.current = view;
+    shownRef.current = first;
+    return () => {
+      view.destroy();
+      viewRef.current = null;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    syncLogDocument(view, shownRef.current, log);
+    shownRef.current = log;
+  }, [log]);
+
+  useLayoutEffect(() => {
+    if (latestRanges.current === homeRanges) return;
+    latestRanges.current = homeRanges;
+    viewRef.current?.dispatch({ effects: setLogHomeRanges.of(homeRanges) });
+  }, [homeRanges]);
+
+  return (
+    <div
+      ref={hostRef}
+      data-testid="compile-log-raw"
+      className="select-text border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed"
+    />
+  );
+}
+
+const EXCERPT_LINES = 12;
+const NEWLINE = 10;
+const CARRIAGE_RETURN = 13;
+
+function lineStartOf(log: string, line: string): number {
+  for (let at = log.indexOf(line); at !== -1; at = log.indexOf(line, at + 1)) {
+    let before = at - 1;
+    while (before >= 0 && log.charCodeAt(before) === CARRIAGE_RETURN) before--;
+    if (before >= 0 && log.charCodeAt(before) !== NEWLINE) continue;
+    let after = at + line.length;
+    while (after < log.length && log.charCodeAt(after) === CARRIAGE_RETURN) after++;
+    if (after === log.length || log.charCodeAt(after) === NEWLINE) return at;
+  }
+  return -1;
+}
+
 function extractErrorExcerpt(log: string, message: string): string {
-  const lines = log.replaceAll("\r", "").split("\n");
-  const startIndex = lines.indexOf(`! ${message}`);
-  if (startIndex === -1) return "";
-  const excerpt: string[] = [lines[startIndex]];
-  for (let i = startIndex + 1; i < lines.length && excerpt.length < 12; i++) {
-    const ln = lines[i];
-    if (ln.startsWith("!")) break;
+  const start = lineStartOf(log, `! ${message}`);
+  if (start === -1) return "";
+  const excerpt: string[] = [];
+  let position = start;
+  while (excerpt.length < EXCERPT_LINES) {
+    const newline = log.indexOf("\n", position);
+    const end = newline === -1 ? log.length : newline;
+    const ln = log.slice(position, end).replaceAll("\r", "");
+    if (excerpt.length > 0 && ln.startsWith("!")) break;
     excerpt.push(ln);
     if (ln.trim() === "" && excerpt.length > 2) break;
+    if (newline === -1) break;
+    position = newline + 1;
   }
   return excerpt.join("\n").trimEnd();
 }
@@ -155,10 +229,9 @@ function hasErrorDetails(err: CompileError): boolean {
   return err.source_line != null || (err.hints?.length ?? 0) > 0;
 }
 
-function errorLocation(
-  err: CompileError,
-  t: ReturnType<typeof useTranslation<["common", "editor"]>>["t"],
-): string {
+type LogT = ReturnType<typeof useTranslation<["common", "editor"]>>["t"];
+
+function errorLocation(err: CompileError, t: LogT): string {
   const column = err.column ?? null;
   if (err.file && err.line != null) {
     return column == null
@@ -178,7 +251,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
   const openLocation = useContext(LogNavigation);
   const [expanded, setExpanded] = useState(true);
   const { copied, copy } = useCopyStatus();
-  const excerpt = extractErrorExcerpt(log, err.message);
+  const excerpt = useMemo(() => extractErrorExcerpt(log, err.message), [log, err.message]);
   const details = hasErrorDetails(err);
   const collapsible = Boolean(excerpt) || details;
   const title = err.explanation ?? err.message;
@@ -262,7 +335,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
       </div>
       {expanded && excerpt && (
         <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
-          <pre className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+          <pre className="select-text whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
             <LogText text={excerpt} />
           </pre>
         </div>
@@ -283,10 +356,16 @@ const SEVERITY_DOT: Record<LogDiagnostic["severity"], string> = {
   info: "bg-muted-foreground/50",
 };
 
-function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
-  const openLocation = useContext(LogNavigation);
-  const { t } = useTranslation(["common", "editor"]);
-  const displayText = useDisplayText();
+interface RowContext {
+  t: LogT;
+  displayText: (text: string) => string;
+  openLocation: typeof openFileAndGotoLine;
+}
+
+const LogRows = createContext<RowContext | null>(null);
+
+const DiagnosticCard = memo(function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
+  const { t, displayText, openLocation } = useContext(LogRows) as RowContext;
   const hasLocation = d.file != null && d.line != null;
   let location = "";
   if (d.file) {
@@ -296,7 +375,7 @@ function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-sidebar-border bg-background/40">
+    <div className="rounded-lg border border-sidebar-border bg-background/40">
       <div className="flex w-full items-start gap-2 px-3 py-2.5 text-left">
         <span
           aria-hidden="true"
@@ -307,16 +386,17 @@ function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
             {displayText(d.message)}
           </span>
           {hasLocation ? (
-            <Tooltip label={t(($) => $.editor.log.goToLocation)} side="top">
+            <span className="inline-flex">
               <button
                 type="button"
+                data-tooltip={t(($) => $.editor.log.goToLocation)}
                 onClick={() => void openLocation(d.file, d.line as number)}
                 className="mt-0.5 flex items-center gap-0.5 rounded font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent/60"
               >
                 {displayText(location)}
                 <ArrowUpRight className="size-3" />
               </button>
-            </Tooltip>
+            </span>
           ) : (
             location && (
               <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">
@@ -328,16 +408,70 @@ function DiagnosticCard({ d }: Readonly<{ d: LogDiagnostic }>) {
       </div>
       {d.errorContext && (
         <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
-          <pre className="whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+          <pre className="select-text whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
             <LogText text={d.errorContext} />
           </pre>
         </div>
       )}
     </div>
   );
+});
+
+const MESSAGE_CHARS_PER_LINE = 64;
+const MESSAGE_LINE_PX = 18;
+const CONTEXT_LINE_PX = 17;
+
+function textLines(text: string, perLine: number): number {
+  let lines = 0;
+  for (const part of text.split("\n")) lines += Math.max(1, Math.ceil(part.length / perLine));
+  return lines;
 }
 
-function DiagnosticGroup({ label, items }: Readonly<{ label: string; items: LogDiagnostic[] }>) {
+function estimateCardHeight(d: LogDiagnostic): number {
+  const location = d.file != null || d.line != null ? 16 : 0;
+  const context = d.errorContext ? 34 + CONTEXT_LINE_PX * textLines(d.errorContext, 80) : 0;
+  return 22 + MESSAGE_LINE_PX * textLines(d.message, MESSAGE_CHARS_PER_LINE) + location + context;
+}
+
+const GAP_CLASS = { cards: "pb-3", group: "pb-2" } as const;
+const GAP_PX = { cards: 12, group: 8 } as const;
+
+function DiagnosticList({
+  items,
+  scrollRef,
+  gap,
+}: Readonly<{ items: readonly LogDiagnostic[]; scrollRef: RefObject<HTMLElement | null>; gap: keyof typeof GAP_CLASS }>) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const keys = useMemo(() => items.map((d) => objectKey(d, "log-diagnostic")), [items]);
+  const estimate = useCallback(
+    (index: number) => estimateCardHeight(items[index]) + (index < items.length - 1 ? GAP_PX[gap] : 0),
+    [gap, items],
+  );
+  const rows = useMeasuredWindow({ keys, estimate, scrollRef, listRef });
+  const shown: ReactNode[] = [];
+  for (let index = rows.start; index < rows.end; index++) {
+    shown.push(
+      <div
+        key={keys[index]}
+        {...{ [MEASURED_WINDOW_ITEM]: index }}
+        className={index < items.length - 1 ? GAP_CLASS[gap] : undefined}
+      >
+        <DiagnosticCard d={items[index]} />
+      </div>,
+    );
+  }
+  return (
+    <div ref={listRef} style={{ paddingTop: rows.paddingTop, paddingBottom: rows.paddingBottom }}>
+      {shown}
+    </div>
+  );
+}
+
+function DiagnosticGroup({
+  label,
+  items,
+  scrollRef,
+}: Readonly<{ label: string; items: readonly LogDiagnostic[]; scrollRef: RefObject<HTMLElement | null> }>) {
   const [open, setOpen] = useState(false);
   if (items.length === 0) return null;
   return (
@@ -355,10 +489,8 @@ function DiagnosticGroup({ label, items }: Readonly<{ label: string; items: LogD
         </span>
       </button>
       {open && (
-        <div className="space-y-2 border-t border-sidebar-border px-3 py-3">
-          {items.map((d) => (
-            <DiagnosticCard key={objectKey(d, "log-diagnostic")} d={d} />
-          ))}
+        <div className="border-t border-sidebar-border px-3 py-3">
+          <DiagnosticList items={items} scrollRef={scrollRef} gap="group" />
         </div>
       )}
     </div>
@@ -394,11 +526,7 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
           {copied ? t(($) => $.common.actions.copied) : t(($) => $.editor.log.copyLog)}
         </button>
       </div>
-      {open && (
-        <pre className="whitespace-pre-wrap break-words border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed">
-          <LogText text={log} />
-        </pre>
-      )}
+      {open && <RawLogViewer log={log} />}
     </div>
   );
 }
@@ -413,13 +541,29 @@ function errorText(message: string): string {
     .replace(/\.$/, "");
 }
 
-function reportedAsCard(diagnostic: LogDiagnostic, errors: readonly CompileError[]): boolean {
+interface ReportedError {
+  text: string;
+  warning: boolean;
+  line: number | null;
+}
+
+function reportedAsCard(diagnostic: LogDiagnostic, errors: readonly ReportedError[]): boolean {
+  if (errors.length === 0) return false;
   const text = errorText(diagnostic.message);
   return errors.some(
     (error) =>
-      (diagnostic.severity === "error" || error.kind === "warning") &&
-      errorText(error.message) === text &&
+      (diagnostic.severity === "error" || error.warning) &&
+      error.text === text &&
       (error.line == null || diagnostic.line == null || error.line === diagnostic.line),
+  );
+}
+
+function coversElement(range: Range, element: Element): boolean {
+  const own = element.ownerDocument.createRange();
+  own.selectNode(element);
+  return (
+    range.compareBoundaryPoints(Range.START_TO_START, own) <= 0 &&
+    range.compareBoundaryPoints(Range.END_TO_END, own) >= 0
   );
 }
 
@@ -428,6 +572,7 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
   onOpenLocation?: typeof openFileAndGotoLine;
 }> = {}) {
   const { t } = useTranslation(["common", "editor"]);
+  const displayText = useDisplayText();
   const storedLog = useCompileStore((s) => s.log);
   const storedErrors = useCompileStore((s) => s.errors);
   const storedStatus = useCompileStore((s) => s.status);
@@ -439,6 +584,14 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
   const scrollBoxRef = useRef<HTMLDivElement>(null);
   const followTailRef = useRef(true);
   const tailFrameRef = useRef<number | null>(null);
+  const latestLog = useRef(log);
+  latestLog.current = log;
+  useOverlayScrollbar(scrollBoxRef);
+  const tooltip = useDelegatedTooltips(scrollBoxRef);
+  const rowContext = useMemo<RowContext>(
+    () => ({ t, displayText, openLocation: onOpenLocation }),
+    [displayText, onOpenLocation, t],
+  );
 
   const structured = useMemo<readonly LogDiagnostic[]>(() => {
     if (diagnostics) return diagnostics;
@@ -446,6 +599,11 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
     return parseLatexLog(log, mainDoc);
   }, [diagnostics, log, mainDoc, status]);
   const groups = useMemo(() => {
+    const reported = errors.map((error) => ({
+      text: errorText(error.message),
+      warning: error.kind === "warning",
+      line: error.line,
+    }));
     const errs: LogDiagnostic[] = [];
     const refs: LogDiagnostic[] = [];
     const warns: LogDiagnostic[] = [];
@@ -454,18 +612,18 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
     for (const d of structured) {
       if (d.severity === "error") {
         // Rust-side errors[] cards stay authoritative; skip duplicates.
-        if (!reportedAsCard(d, errors)) errs.push(d);
+        if (!reportedAsCard(d, reported)) errs.push(d);
       } else if (d.category === "undefined-reference" || d.category === "undefined-citation") {
-        if (!reportedAsCard(d, errors)) refs.push(d);
+        if (!reportedAsCard(d, reported)) refs.push(d);
       } else if (d.severity === "typesetting") {
         boxes.push(d);
       } else if (d.severity === "info") {
         infos.push(d);
-      } else if (!reportedAsCard(d, errors)) {
+      } else if (!reportedAsCard(d, reported)) {
         warns.push(d);
       }
     }
-    return { errs, refs, warns, boxes, infos };
+    return { cards: [...errs, ...refs, ...warns], errs, refs, warns, boxes, infos };
   }, [structured, errors]);
   const summary = useMemo(() => {
     const errorCards = errors.filter((error) => error.kind === "error").length;
@@ -507,6 +665,22 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
     [],
   );
 
+  useEffect(() => {
+    const scrollBox = scrollBoxRef.current;
+    if (!scrollBox) return;
+    const onCopy = (event: ClipboardEvent) => {
+      if (event.defaultPrevented || !event.clipboardData) return;
+      const raw = scrollBox.querySelector("[data-testid=compile-log-raw]");
+      const selection = scrollBox.ownerDocument.getSelection();
+      if (!raw || !selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+      if (!coversElement(selection.getRangeAt(0), raw)) return;
+      event.preventDefault();
+      event.clipboardData.setData("text/plain", latestLog.current);
+    };
+    scrollBox.addEventListener("copy", onCopy, true);
+    return () => scrollBox.removeEventListener("copy", onCopy, true);
+  }, []);
+
   const onScroll = () => {
     const scrollBox = scrollBoxRef.current;
     if (!scrollBox) return;
@@ -516,22 +690,24 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
 
   const scrollToTop = () => {
     followTailRef.current = false;
-    if (scrollBoxRef.current) smoothScrollTo(scrollBoxRef.current, 0);
+    if (scrollBoxRef.current) smoothScrollTo(scrollBoxRef.current, () => 0);
   };
   const scrollToBottom = () => {
     const scrollBox = scrollBoxRef.current;
     if (!scrollBox) return;
     followTailRef.current = true;
-    smoothScrollTo(scrollBox, scrollBox.scrollHeight - scrollBox.clientHeight);
+    smoothScrollTo(scrollBox, () => scrollBox.scrollHeight - scrollBox.clientHeight);
   };
 
   return (
     <LogNavigation value={onOpenLocation}>
+    <LogRows value={rowContext}>
     <div className="relative flex h-full min-h-0 flex-col bg-sidebar">
       <div
         ref={scrollBoxRef}
         data-testid="compile-log-scroll"
-        className="min-h-0 flex-1 overflow-auto p-3"
+        data-select-all-scope=""
+        className="isolate min-h-0 flex-1 overflow-auto p-3"
         onScroll={onScroll}
       >
         <div className="space-y-3">
@@ -542,11 +718,11 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
           )}
           {errors.length > 0 &&
             errors.map((err) => <ErrorCard key={objectKey(err, "compile-error")} err={err} log={log} />)}
-          {[...groups.errs, ...groups.refs, ...groups.warns].map((d) => (
-            <DiagnosticCard key={objectKey(d, "log-diagnostic")} d={d} />
-          ))}
-          <DiagnosticGroup label={t(($) => $.editor.log.typesetting)} items={groups.boxes} />
-          <DiagnosticGroup label={t(($) => $.editor.log.info)} items={groups.infos} />
+          {groups.cards.length > 0 && (
+            <DiagnosticList items={groups.cards} scrollRef={scrollBoxRef} gap="cards" />
+          )}
+          <DiagnosticGroup label={t(($) => $.editor.log.typesetting)} items={groups.boxes} scrollRef={scrollBoxRef} />
+          <DiagnosticGroup label={t(($) => $.editor.log.info)} items={groups.infos} scrollRef={scrollBoxRef} />
           {!log && errors.length === 0 && (
             <p className="text-[11px] text-muted-foreground">{t(($) => $.editor.log.empty)}</p>
           )}
@@ -584,7 +760,9 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
           </Tooltip>
         </div>
       )}
+      {tooltip}
     </div>
+    </LogRows>
     </LogNavigation>
   );
 }

@@ -295,7 +295,7 @@ export function TypstMigrationDialog() {
         />
         {!latex && <p className="mt-2 text-xs text-destructive">{t(($) => $.shell.typstMigration.notLatex)}</p>}
         {phase.kind === "failed" && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+          <div className="mt-3 flex select-text items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
             <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
             <span>{failureMessage(phase.code, phase.message)}</span>
           </div>

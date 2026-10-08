@@ -2318,7 +2318,7 @@ impl ProjectFileWrite {
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn create_file(
     project_id: String,
     path: String,
@@ -2341,7 +2341,7 @@ pub fn create_file(
     Ok(result.with_generation(generation))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn delete_file(
     project_id: String,
     path: String,
@@ -3471,7 +3471,7 @@ fn read_picked_file_bytes(path: &Path, max_bytes: usize) -> Result<Vec<u8>, Stri
 /// Append a line to the global app log at `~/.oleafly/app.log` (append-only,
 /// created if missing). Used by the frontend to record caught errors so users
 /// can share the file for debugging.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn append_app_log(message: String) -> Result<(), String> {
     use std::io::Write;
     let log_path = paths::oleafly_root()?.join("app.log");
@@ -3489,7 +3489,7 @@ pub fn append_app_log(message: String) -> Result<(), String> {
 
 /// Read the tail (up to `max_bytes`) of the app log, for crash reports. Returns
 /// an empty string if the log doesn't exist yet.
-#[tauri::command]
+#[tauri::command(async)]
 pub fn read_app_log(max_bytes: usize) -> Result<String, String> {
     let log_path = paths::oleafly_root()?.join("app.log");
     if !log_path.exists() {
@@ -5756,7 +5756,7 @@ pub struct FigureCacheResult {
     pub already_cached: bool,
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn save_figure_to_cache(
     name: String,
     png_base64: String,

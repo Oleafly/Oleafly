@@ -10,13 +10,13 @@ let globalSelectionAbort: AbortController | null = null;
 let previousRange: Range | null = null;
 
 function resetTextLayer(textLayer: HTMLDivElement, endOfContent: HTMLDivElement): void {
-  textLayer.append(endOfContent);
-  endOfContent.style.width = "";
-  endOfContent.style.height = "";
+  if (textLayer.lastChild !== endOfContent) textLayer.append(endOfContent);
+  if (endOfContent.style.width) endOfContent.style.width = "";
+  if (endOfContent.style.height) endOfContent.style.height = "";
   // Match pdf.js 6.1.200: keep the one-time `user-select: text` override.
   // Clearing it makes a later Firefox/non-Firefox transition behave
   // differently from TextLayerBuilder and can interrupt the next drag.
-  textLayer.classList.remove("selecting");
+  if (textLayer.classList.contains("selecting")) textLayer.classList.remove("selecting");
 }
 
 function moveEndOfContentToLayerBoundary(
@@ -55,7 +55,7 @@ function activeTextLayersFor(selection: Selection): Set<HTMLDivElement> {
 function applySelectionClasses(active: ReadonlySet<HTMLDivElement>): void {
   for (const [textLayer, { endOfContent }] of textLayers) {
     if (active.has(textLayer)) {
-      textLayer.classList.add("selecting");
+      if (!textLayer.classList.contains("selecting")) textLayer.classList.add("selecting");
     } else {
       resetTextLayer(textLayer, endOfContent);
     }

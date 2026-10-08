@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Accessibility,
@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { askAiAboutFindings } from "@/features/ask-ai-preflight";
+import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { usePreflightStore } from "@/store/preflight";
 import { useFilesStore } from "@/store/files";
 import { useCompileStore } from "@/store/compile";
@@ -91,6 +92,9 @@ export function PreflightPanel() {
   // refreshes the suggestion after edits, without re-running whole-document
   // resume detection on every keystroke.
   const mainDoc = useFilesStore((s) => s.mainDoc);
+  const projectId = useFilesStore((s) => s.projectId);
+  const checksRef = useRef<HTMLDivElement>(null);
+  useScrollMemory({ scrollRef: checksRef, projectId, slot: "preflight" });
   const lastCompiledAt = useCompileStore((s) => s.lastCompiledAt);
   const engineLabel = useFilesStore((s) => s.engine.label);
   const sourcePreflight = useFilesStore((s) => s.engine.capabilities.source_preflight_profile);
@@ -204,7 +208,7 @@ export function PreflightPanel() {
         </Popover>
       </SidebarPanelHeader>
 
-      <div className="flex flex-1 flex-col gap-2 overflow-auto p-3">
+      <div ref={checksRef} className="flex flex-1 flex-col gap-2 overflow-auto p-3">
         {CHECKS.map((c) => {
           const Icon = c.icon;
           const label = tp(`preflight:checks.${c.id}.label`);

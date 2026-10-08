@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { Ghost, Search } from "lucide-react";
 import {
@@ -12,12 +21,38 @@ import {
   type SettingsSearchPlatform,
   type SettingsSearchRowHit,
 } from "@/components/settings/settings-search";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn, isMac, isWindows } from "@/lib/utils";
 
 const SEARCH_DELAY_MS = 150;
 
-const isBlank = (query: string) => query === "";
+type QueryStore = Readonly<{
+  get: () => string;
+  set: (value: string) => void;
+  subscribe: (listener: () => void) => () => void;
+}>;
+
+function createQueryStore(): QueryStore {
+  let value = "";
+  const listeners = new Set<() => void>();
+  return {
+    get: () => value,
+    set: (next) => {
+      if (next === value) return;
+      value = next;
+      for (const listener of listeners) listener();
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+function settledQuery(query: string): string {
+  return query.trim() === "" ? "" : query;
+}
 /**
  * How long to keep looking for a row after a click. Counted in time, not
  * frames: WebView2 runs frames at the display rate, so 90 frames is 0.6 s on
@@ -195,18 +230,42 @@ export function useSettingsSearch<Id extends string>({
 }: SettingsSearchOptions<Id>) {
   const { i18n } = useTranslation();
   const locale = i18n.language || "en";
-  const [query, setQuery] = useState("");
-  const applied = useDebouncedValue(query.trim() === "" ? "" : query, SEARCH_DELAY_MS, isBlank);
+  const [store] = useState(createQueryStore);
+  const hasQuery = useSyncExternalStore(store.subscribe, () => store.get() !== "");
+  const [applied, setApplied] = useState("");
+  const setQuery = store.set;
   const [pendingRow, setPendingRow] = useState<PendingRow<Id> | null>(null);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const settle = () => {
+      if (timer !== null) clearTimeout(timer);
+      timer = null;
+      const next = settledQuery(store.get());
+      if (next === "") {
+        setApplied("");
+        return;
+      }
+      timer = setTimeout(() => {
+        timer = null;
+        setApplied(next);
+      }, SEARCH_DELAY_MS);
+    };
+    const unsubscribe = store.subscribe(settle);
+    return () => {
+      unsubscribe();
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, [store]);
   const indexRef = useRef<{ locale: string; index: SettingsSearchIndex } | null>(null);
   const selectRef = useRef(onSelectSection);
   selectRef.current = onSelectSection;
 
   const reset = useCallback(() => {
-    setQuery("");
+    store.set("");
     setPendingRow(null);
     clearHits(containerRef.current);
-  }, [containerRef]);
+  }, [containerRef, store]);
 
   // Start over each time Settings opens, and when it is sent to another
   // section (a new resetKey) while open.
@@ -225,20 +284,17 @@ export function useSettingsSearch<Id extends string>({
     if (suspended) reset();
   }, [suspended, reset]);
 
-  const index = () => {
+  const active = !suspended && applied.trim() !== "";
+  const hits: SettingsSearchHit<Id>[] | null = useMemo(() => {
+    if (!active) return null;
     if (indexRef.current?.locale !== locale) {
       indexRef.current = {
         locale,
         index: buildSettingsIndex(catalogLookup(i18n, locale), locale, currentPlatform()),
       };
     }
-    return indexRef.current.index;
-  };
-
-  const active = !suspended && applied.trim() !== "";
-  const hits: SettingsSearchHit<Id>[] | null = active
-    ? searchSettings(index(), sections, applied, locale)
-    : null;
+    return searchSettings(indexRef.current.index, sections, applied, locale);
+  }, [active, applied, i18n, locale, sections]);
   const currentVisible = hits ? hits.some((hit) => hit.id === currentSection) : true;
   const bestHitRef = useRef<Id | null>(null);
   bestHitRef.current = hits ? bestSettingsHit(hits, currentSection) : null;
@@ -288,7 +344,18 @@ export function useSettingsSearch<Id extends string>({
     setPendingRow((previous) => ({ ...row, id, serial: (previous?.serial ?? 0) + 1 }));
   };
 
-  return { query, setQuery, active, hits, revealRow };
+  return { store, hasQuery, setQuery, active, hits, revealRow };
+}
+
+export function SettingsSearchQueryField({
+  search,
+  controls,
+}: Readonly<{
+  search: Readonly<{ store: QueryStore; setQuery: (value: string) => void }>;
+  controls: string;
+}>) {
+  const value = useSyncExternalStore(search.store.subscribe, search.store.get);
+  return <SettingsSearchField value={value} onChange={search.setQuery} controls={controls} />;
 }
 
 export function SettingsSearchField({

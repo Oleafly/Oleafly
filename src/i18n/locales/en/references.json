@@ -159,5 +159,84 @@
     "label": "Citation style",
     "ariaLabel": "Citation style for the bibliography in {{path}}",
     "failed": "Oleafly couldn't change the citation style."
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} et al.",
+      "noYear": "n.d.",
+      "keySource": {
+        "bbt": "Key from Better BibTeX",
+        "native": "Key from Zotero",
+        "extra": "Key from the Extra field in Zotero",
+        "generated": "Key made by Oleafly"
+      },
+      "addFailed": "Oleafly couldn't add {{key}} to the bibliography. {{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "In Zotero, open Settings > Advanced and turn on \"Allow other applications on this computer to communicate with Zotero\".",
+      "unsupported": "Update Zotero to version 7 or newer to search your library from Oleafly.",
+      "keyRejected": "Zotero no longer accepts your API key. Reconnect your account in Zotero settings.",
+      "closed": "Open Zotero to search your library here, or connect your zotero.org account.",
+      "closedCached": "Zotero is closed. Results are from the last sync, {{time}}.",
+      "bbtMissing": "Better BibTeX isn't responding, so new keys come from Zotero. Check that it is installed and turned on.",
+      "action": "Zotero settings"
+    },
+    "actions": {
+      "addFromZotero": "Add from Zotero",
+      "addAllMissing_one": "Add {{count}} missing citation from Zotero",
+      "addAllMissing_other": "Add all {{count}} missing citations from Zotero",
+      "notInLibrary": "{{key}} isn't in your Zotero library.",
+      "changed": "This entry changed in Zotero since you added it.",
+      "changedEdited": "This entry changed in Zotero, and you also edited it here.",
+      "update": "Update from Zotero",
+      "updated": "Updated {{key}} from Zotero.",
+      "updateFailed": "Oleafly couldn't update {{key}} from Zotero. Try again."
+    },
+    "chooseBibliography": {
+      "title": "Where should new references go?",
+      "description": "This project has more than one bibliography file. Oleafly adds new references to the one you pick and remembers it for this project.",
+      "confirm": "Use this file"
+    },
+    "handEdits": {
+      "title": "Replace your edits?",
+      "description": "You edited {{key}} by hand. Replacing it with the version from Zotero removes those changes.",
+      "confirm": "Use the Zotero version",
+      "cancel": "Keep mine"
+    },
+    "handList": {
+      "title": "Move your reference list?",
+      "description": "This paper lists its references by hand. Move them into {{path}} so they share one numbered list with the papers you cite from Zotero.",
+      "confirm": "Move list"
+    },
+    "missing": {
+      "title": "Add missing citations from Zotero",
+      "loading": "Checking your Zotero library…",
+      "none": "Every cited key is already in your bibliography.",
+      "found_one": "{{count}} cited key is in Zotero",
+      "found_other": "{{count}} cited keys are in Zotero",
+      "duplicates_one": "{{count}} key cites a paper that is already in your bibliography",
+      "duplicates_other": "{{count}} keys cite papers that are already in your bibliography",
+      "duplicateRow": "{{key}} is the same paper as {{existing}}",
+      "notFound_one": "{{count}} cited key isn't in Zotero",
+      "notFound_other": "{{count}} cited keys aren't in Zotero",
+      "confirm_one": "Add {{count}} entry",
+      "confirm_other": "Add {{count}} entries",
+      "done_one": "{{count}} entry is now in {{path}}.",
+      "done_other": "{{count}} entries are now in {{path}}.",
+      "failed": "Oleafly couldn't add the entries. {{detail}}"
+    },
+    "update": {
+      "title": "Update .bib entries from Zotero",
+      "loading": "Checking Zotero for changes…",
+      "none": "Your bibliography matches Zotero.",
+      "handEdited": "Edited by hand",
+      "handEditedNote": "Entries you edited by hand are not selected. Select one to replace it with the version from Zotero.",
+      "confirm_one": "Update {{count}} entry",
+      "confirm_other": "Update {{count}} entries",
+      "done_one": "Updated {{count}} entry.",
+      "done_other": "Updated {{count}} entries."
+    }
   }
 }

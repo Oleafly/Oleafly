@@ -214,5 +214,24 @@
     "clearFilter": "Golește filtrul",
     "filterPlaceholder": "Filtrează…",
     "noProject": "Niciun proiect"
+  },
+  "fileReferences": {
+    "title": "Actualizezi referințele către {{name}}?",
+    "files_one": "{{count}} fișier",
+    "files_few": "{{count}} fișiere",
+    "files_other": "{{count}} de fișiere",
+    "summary_one": "{{count}} referință din $t(workspace:fileReferences.files, { \"count\": {{files}} }) folosește încă vechea cale, {{path}}.",
+    "summary_few": "{{count}} referințe din $t(workspace:fileReferences.files, { \"count\": {{files}} }) folosesc încă vechea cale, {{path}}.",
+    "summary_other": "{{count}} de referințe din $t(workspace:fileReferences.files, { \"count\": {{files}} }) folosesc încă vechea cale, {{path}}.",
+    "fileCount_one": "{{count}} referință",
+    "fileCount_few": "{{count}} referințe",
+    "fileCount_other": "{{count}} de referințe",
+    "dontAsk": "Nu mai întreba",
+    "update": "Actualizează referințele",
+    "skip": "Nu actualiza",
+    "failed_one": "{{count}} fișier s-a schimbat după mutare sau nu a putut fi salvat. Folosește încă vechea cale.",
+    "failed_few": "{{count}} fișiere s-au schimbat după mutare sau nu au putut fi salvate. Folosesc încă vechea cale.",
+    "failed_other": "{{count}} de fișiere s-au schimbat după mutare sau nu au putut fi salvate. Folosesc încă vechea cale.",
+    "close": "Închide fără a actualiza referințele"
   }
 }

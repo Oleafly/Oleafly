@@ -62,8 +62,9 @@ const controllers: LanguageServiceController[] = [];
 function harness(initial = DEFAULT_TYPST_LANGUAGE_SERVICE_SETTINGS) {
   const transport = new FakeTinymistTransport();
   const settings = settingsSource(initial);
+  const store = createProjectAnalysisStore();
   const controller = new LanguageServiceController({
-    store: createProjectAnalysisStore(),
+    store,
     isAvailable: () => true,
     provisioner: {
       installStatus: async (serverKind) => ({
@@ -86,7 +87,7 @@ function harness(initial = DEFAULT_TYPST_LANGUAGE_SERVICE_SETTINGS) {
     settings: settings.source,
   });
   controllers.push(controller);
-  return { controller, transport, settings };
+  return { controller, transport, settings, store };
 }
 
 afterEach(async () => {
@@ -337,5 +338,92 @@ describe("Tinymist interactive session", () => {
 
     await controller.dispose();
     expect(currentInteractiveLanguageService()).toBeNull();
+  });
+});
+
+describe("Tinymist diagnostics across project revisions", () => {
+  const MAIN_URI = "file:///project/main.typ";
+  const OLD_BIB = "@book{other2000, title = {Other}}\n";
+  const NEW_BIB = `${OLD_BIB}@article{wasserstein2016asa, title = {ASA}}\n`;
+  const MISSING_LABEL = "label `<wasserstein2016asa>` does not exist in the document";
+
+  function project(bib: string, notes = "Notes\n"): LanguageServiceProjectSnapshot {
+    return typstSnapshot({
+      tree: [
+        { path: "main.typ", is_dir: false },
+        { path: "references.bib", is_dir: false },
+        { path: "notes.md", is_dir: false },
+      ],
+      files: {
+        "main.typ": {
+          content: "= Paper\nHello @wasserstein2016asa.\n#bibliography(\"references.bib\")\n",
+        },
+        "notes.md": { content: notes },
+      },
+      indexTexts: { "references.bib": bib },
+    });
+  }
+
+  function publish(transport: FakeTinymistTransport, messages: string[]): void {
+    transport.notify("textDocument/publishDiagnostics", {
+      uri: MAIN_URI,
+      diagnostics: messages.map((message) => ({
+        range: {
+          start: { line: 1, character: 6 },
+          end: { line: 1, character: 25 },
+        },
+        severity: 1,
+        message,
+      })),
+    });
+  }
+
+  function visibleDiagnostics(
+    store: ReturnType<typeof createProjectAnalysisStore>,
+  ): string[] | null {
+    const snapshot = store.getState().snapshot;
+    const entry = snapshot.diagnosticsByUri[MAIN_URI];
+    const session = currentInteractiveLanguageService();
+    if (
+      entry?.status !== "acknowledged" ||
+      !session ||
+      snapshot.identity.projectRevision !== session.projectRevision ||
+      entry.request.projectRevision !== session.projectRevision
+    ) {
+      return null;
+    }
+    return entry.data.map((diagnostic) => diagnostic.message);
+  }
+
+  it("keeps a document's diagnostics when another tab changes and the server stays quiet", async () => {
+    const { controller, transport, store } = harness();
+    controller.update(project(OLD_BIB));
+    await controller.whenIdle();
+    publish(transport, [MISSING_LABEL]);
+    await vi.waitFor(() =>
+      expect(visibleDiagnostics(store)).toEqual([MISSING_LABEL]),
+    );
+
+    controller.update(project(OLD_BIB, "Notes, edited\n"));
+    await controller.whenIdle();
+
+    expect(visibleDiagnostics(store)).toEqual([MISSING_LABEL]);
+  });
+
+  it("keeps the server's re-publication that lands just before the bibliography revision", async () => {
+    const { controller, transport, store } = harness();
+    controller.update(project(OLD_BIB));
+    await controller.whenIdle();
+    publish(transport, [MISSING_LABEL]);
+    await vi.waitFor(() =>
+      expect(visibleDiagnostics(store)).toEqual([MISSING_LABEL]),
+    );
+
+    publish(transport, []);
+    controller.update(project(NEW_BIB));
+    await controller.whenIdle();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    expect(visibleDiagnostics(store)).toEqual([]);
   });
 });

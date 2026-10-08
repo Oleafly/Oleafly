@@ -651,7 +651,7 @@ export function ExplorationGroup({
 
 export { freeFigurePath, ToolPicture } from "@/components/ai/activity/ToolPicture";
 
-export function ToolBadge({
+export const ToolBadge = memo(function ToolBadge({
   tc,
   actions,
   expansionKey,
@@ -670,7 +670,7 @@ export function ToolBadge({
       <ChangeList testId="tool-diffs" changes={tc.diffs} className="rounded-md border bg-muted/30 px-2 py-1" />
     </div>
   );
-}
+});
 
 export function formatToolOutput(output: unknown): string {
   if (typeof output === "string") return output;
@@ -864,7 +864,8 @@ export function ReasoningBlock({
       {open && (
         <div
           ref={scrollRef}
-          className="ml-[0.4375rem] max-h-56 overflow-x-hidden overflow-y-auto break-words border-l pl-3 py-1 text-[11px] leading-relaxed text-muted-foreground"
+          data-select-all-scope
+          className="ml-[0.4375rem] max-h-56 select-text overflow-x-hidden overflow-y-auto break-words border-l pl-3 py-1 text-[11px] leading-relaxed text-muted-foreground"
         >
           {/* The reasoning trace is rendered as plain text, not Markdown. It is
               a raw thinking dump, often dense with partial LaTeX and long: the
@@ -1255,8 +1256,9 @@ function messageBubble({
       )}
     >
       <div
+        data-select-all-scope
         className={cn(
-          "overflow-hidden rounded-lg px-3 py-2 text-sm",
+          "select-text overflow-hidden rounded-lg px-3 py-2 text-sm",
           msg.role === "user"
             ? "max-w-[85%] bg-primary text-white"
             : "w-full border border-border/60 bg-background text-foreground dark:border-transparent dark:bg-muted",
@@ -1384,7 +1386,7 @@ export const MessageItem = memo(function MessageItem({
         <p
           key={notice}
           data-testid="agent-notice"
-          className="max-w-[85%] rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground"
+          className="max-w-[85%] select-text rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground"
         >
           {notice}
         </p>

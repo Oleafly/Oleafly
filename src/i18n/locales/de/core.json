@@ -358,7 +358,8 @@
     "referencesFor": "Referenzen auf {{name}}",
     "renameFailed": "Umbenennen in „{{name}}“ ist fehlgeschlagen.",
     "renamePartial": "In {{edited}} von {{total}} Dateien zu „{{name}}“ umbenannt. {{files}} konnte nicht geschrieben werden.",
-    "renamed": "Umbenannt zu „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Umbenannt zu „{{name}}“ ($t(core:navigation.edits, {\"count\": {{edits}} }) in $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "„{{path}}“ passt zu keiner Datei in diesem Projekt."
   },
   "pandoc": {
     "downloadFailed": "pandoc konnte nicht geladen werden. Installieren Sie es von Hand und versuchen Sie es erneut.",

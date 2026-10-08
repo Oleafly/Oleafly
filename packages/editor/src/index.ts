@@ -50,6 +50,7 @@ export {
   type LatexPairOptions,
 } from "./latex-pairs";
 export {
+  gateCompletionSource,
   shouldRunCompletionSource,
   type CompletionSyntax,
 } from "./completion-trigger";

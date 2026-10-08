@@ -56,7 +56,11 @@
     "unreachable": "Oleafly kon Zotero niet bereiken. Controleer je internetverbinding en probeer het opnieuw.",
     "http_error": "Zotero gaf een fout terug (HTTP {{status}}). Probeer het later opnieuw.",
     "invalid_response": "Zotero stuurde een antwoord dat Oleafly niet kon lezen. Probeer het later opnieuw.",
-    "too_large": "Je Zotero-bibliotheek is te groot om in één keer te importeren. Exporteer in plaats daarvan een collectie uit Zotero als RDF-bestand en importeer dat."
+    "too_large": "Je Zotero-bibliotheek is te groot om in één keer te importeren. Exporteer in plaats daarvan een collectie uit Zotero als RDF-bestand en importeer dat.",
+    "local_not_running": "Zotero is niet actief op deze computer. Open Zotero of verbind je zotero.org-account.",
+    "local_api_disabled": "Open in Zotero Instellingen > Geavanceerd en zet “Allow other applications on this computer to communicate with Zotero” aan.",
+    "local_unsupported": "Deze versie van Zotero kan de bibliotheek niet met Oleafly delen. Werk bij naar Zotero 7 of nieuwer.",
+    "offline": "Oleafly staat in de offlinemodus en kan zotero.org daarom niet bereiken."
   },
   "tex": {
     "no_host_binary": "TinyTeX heeft geen {{name}}-programma dat op dit systeem werkt.",

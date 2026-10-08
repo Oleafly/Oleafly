@@ -85,6 +85,7 @@ export function Tooltip({
   wide = false,
   role,
   suppressed = false,
+  relative = true,
 }: Readonly<{
   label: ReactNode;
   children: ReactNode;
@@ -102,6 +103,7 @@ export function Tooltip({
    * break a required parent/child relationship, such as tree → treeitem.
    */
   role?: "none";
+  relative?: boolean;
 }>) {
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -249,7 +251,7 @@ export function Tooltip({
     <span
       ref={triggerRef}
       role={role}
-      className={cn("relative inline-flex", className)}
+      className={cn(relative && "relative", "inline-flex", className)}
       onMouseEnter={enter}
       onMouseLeave={leave}
       onMouseDown={press}

@@ -44,7 +44,9 @@
     "privacyNote": "Se trimite doar identificatorul sau titlul, către doi.org, arXiv ori Crossref.",
     "title": "Adaugă citare",
     "bibliography": "Bibliografie",
-    "bibliographyHint": "Acest proiect are mai multe bibliografii. Intrarea ajunge în fișierul pe care îl alegi aici."
+    "bibliographyHint": "Acest proiect are mai multe bibliografii. Intrarea ajunge în fișierul pe care îl alegi aici.",
+    "zoteroMatches": "Din biblioteca ta Zotero",
+    "zoteroPlaceholder": "Caută în biblioteca ta Zotero sau lipește un DOI, un identificator arXiv ori un titlu"
   },
   "backendProtocol": {
     "mismatch": "Această fereastră și partea ei de fundal au fost construite pentru versiuni Oleafly diferite, așa că unele funcții s-ar putea să nu meargă. Reinstalarea aplicației rezolvă problema."
@@ -328,6 +330,22 @@
     "presentWithPresenter": {
       "label": "Prezintă diapozitivele cu vizualizarea prezentatorului",
       "keywords": "prezintă diapozitive vizualizare prezentator note cronometru diapozitiv următor"
+    },
+    "zenMode": {
+      "keywords": "fără distrageri concentrare ecran complet ascunde interfața minimal scris",
+      "label": "Comută modul Zen"
+    },
+    "zoteroAddMissing": {
+      "label": "Adaugă citările lipsă din Zotero",
+      "keywords": "zotero citări lipsă chei nedefinite bibliografie reparare"
+    },
+    "zoteroUpdate": {
+      "label": "Actualizează intrările .bib din Zotero",
+      "keywords": "zotero actualizare reîmprospătare bibliografie intrări modificate"
+    },
+    "zoteroSync": {
+      "label": "Sincronizează biblioteca Zotero",
+      "keywords": "zotero sincronizare reîmprospătare bibliotecă"
     }
   },
   "community": {
@@ -1142,7 +1160,8 @@
       "editorPreview": "Editor și previzualizare",
       "editorPreviewAi": "Editor, previzualizare și AI",
       "previewAi": "Previzualizare și AI",
-      "previewOnly": "Doar previzualizarea"
+      "previewOnly": "Doar previzualizarea",
+      "zenMode": "Modul Zen"
     },
     "newProjectName": "Numele proiectului nou",
     "projectName": "Numele proiectului",
@@ -1385,5 +1404,19 @@
     "location": "{{file}}, linia {{line}}",
     "error": "Eroare",
     "warning": "Avertisment"
+  },
+  "fileRenameDialog": {
+    "title": "Redenumește fișierul",
+    "titleFolder": "Redenumește folderul",
+    "newPath": "Cale nouă",
+    "hint": "Folderele care lipsesc sunt create.",
+    "invalid": "Folosește o cale din acest proiect.",
+    "exists": "{{path}} există deja."
+  },
+  "zen": {
+    "compileFailed": "Compilarea a eșuat",
+    "compiling": "Se compilează",
+    "hideLog": "Ascunde jurnalul de compilare",
+    "showLog": "Arată jurnalul de compilare"
   }
 }

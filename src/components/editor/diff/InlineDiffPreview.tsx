@@ -109,7 +109,7 @@ export function InlineDiffPreview({
   return (
     <div
       ref={hostRef}
-      className={cn("h-64 min-h-[12rem] w-full overflow-hidden", className)}
+      className={cn("h-64 min-h-[12rem] w-full select-text overflow-hidden", className)}
     />
   );
 }

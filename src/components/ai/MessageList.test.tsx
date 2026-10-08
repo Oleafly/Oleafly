@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 
-import { useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChatMessage } from "@/store/chats";
+import { createLiveMessageStore, type LiveMessageStore } from "./live-message";
 import {
   CHAT_SCROLL_TO_INDEX_EVENT,
   estimateMessageHeight,
@@ -15,11 +16,21 @@ import {
   type RenderedMessage,
 } from "./MessageList";
 
-vi.mock("@/components/ai/chat-parts", () => ({
-  MessageItem: ({ msg, expansionScope }: { msg: ChatMessage; expansionScope?: string }) => (
-    <div data-testid="message-item" data-scope={expansionScope}>{msg.id}</div>
-  ),
-}));
+const itemRenders = vi.hoisted(() => new Map<string, number>());
+
+vi.mock("@/components/ai/chat-parts", async () => {
+  const { memo } = await import("react");
+  return {
+    MessageItem: memo(function MessageItem({ msg, expansionScope }: { msg: ChatMessage; expansionScope?: string }) {
+      itemRenders.set(msg.id ?? "", (itemRenders.get(msg.id ?? "") ?? 0) + 1);
+      return (
+        <div data-testid="message-item" data-scope={expansionScope} data-content={msg.content}>
+          {msg.id}
+        </div>
+      );
+    }),
+  };
+});
 
 function conversation(count: number, chars = 100): RenderedMessage[] {
   return Array.from({ length: count }, (_, index) => ({
@@ -51,14 +62,21 @@ function geometry(element: HTMLElement, values: { top: number; height: number; s
   });
 }
 
-function Harness({ messages, chatId, nearBottom }: {
+let extrasRenders = 0;
+
+function Harness({ messages, chatId, nearBottom, live, onCommit }: {
   messages: RenderedMessage[];
   chatId: string | null;
   nearBottom: boolean;
+  live?: LiveMessageStore;
+  onCommit?: (container: HTMLDivElement | null) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const nearBottomRef = useRef(nearBottom);
   nearBottomRef.current = nearBottom;
+  useLayoutEffect(() => {
+    onCommit?.(scrollRef.current);
+  });
   return (
     <div ref={scrollRef} data-testid="scroll">
       <MessageList
@@ -66,7 +84,11 @@ function Harness({ messages, chatId, nearBottom }: {
         chatId={chatId}
         scrollRef={scrollRef}
         nearBottomRef={nearBottomRef}
-        renderExtras={(entry) => <span data-testid="extras">{entry.index}</span>}
+        live={live}
+        renderExtras={(entry) => {
+          extrasRenders += 1;
+          return <span data-testid="extras">{entry.index}</span>;
+        }}
       />
     </div>
   );
@@ -107,6 +129,7 @@ describe("MessageList windowing", () => {
   afterEach(() => {
     cleanup();
     resizeObserver = null;
+    itemRenders.clear();
     vi.unstubAllGlobals();
   });
 
@@ -304,6 +327,212 @@ describe("MessageList windowing", () => {
 
     expect(container.querySelectorAll('[data-testid="message-item"]')).toHaveLength(3);
     expect(container.querySelector('[data-testid="message-item"]')).toHaveAttribute("data-scope", "chat:m-0");
+  });
+
+  it("estimates each message once while its content stays the same", () => {
+    let reads = 0;
+    const messages = conversation(60).map((entry) => {
+      const content = entry.msg.content;
+      const msg = { ...entry.msg } as ChatMessage;
+      Object.defineProperty(msg, "content", {
+        get: () => {
+          if (entry.index < 40) reads += 1;
+          return content;
+        },
+      });
+      return { ...entry, msg };
+    });
+    const view = render(<Harness messages={messages} chatId="chat-a" nearBottom />);
+    const afterMount = reads;
+
+    view.rerender(<Harness messages={[...messages]} chatId="chat-a" nearBottom />);
+    view.rerender(<Harness messages={messages.map((entry) => ({ ...entry }))} chatId="chat-a" nearBottom />);
+
+    expect(afterMount).toBeGreaterThan(0);
+    expect(reads).toBe(afterMount);
+  });
+
+  it("renders streamed text into the newest row without rendering the other rows", () => {
+    const messages = conversation(8);
+    const live = createLiveMessageStore();
+    const view = render(<Harness messages={messages} chatId="chat-a" nearBottom live={live} />);
+    const newest = messages[7].msg;
+    const before = new Map(itemRenders);
+
+    act(() => live.set({ base: newest, message: { ...newest, content: "Streamed so far" } }));
+
+    expect(view.container.querySelector('[data-mm-index="7"] [data-testid="message-item"]'))
+      .toHaveAttribute("data-content", "Streamed so far");
+    expect(itemRenders.get("m-7")).toBe((before.get("m-7") ?? 0) + 1);
+    for (const index of [0, 1, 2, 3, 4, 5, 6]) {
+      expect(itemRenders.get(`m-${index}`)).toBe(before.get(`m-${index}`));
+    }
+  });
+
+  it("renders a streamed change into the one row it belongs to and skips the extras of every other row", () => {
+    const messages = conversation(8);
+    const live = createLiveMessageStore();
+    const view = render(<Harness messages={messages} chatId="chat-a" nearBottom live={live} />);
+    const tool = messages[5].msg;
+    const before = new Map(itemRenders);
+    const extrasBefore = extrasRenders;
+
+    act(() => live.set({ base: tool, message: { ...tool, content: "Tool output so far" } }));
+
+    expect(view.container.querySelector('[data-mm-index="5"] [data-testid="message-item"]'))
+      .toHaveAttribute("data-content", "Tool output so far");
+    expect(itemRenders.get("m-5")).toBe((before.get("m-5") ?? 0) + 1);
+    for (const index of [0, 1, 2, 3, 4, 6, 7]) {
+      expect(itemRenders.get(`m-${index}`)).toBe(before.get(`m-${index}`));
+    }
+    expect(extrasRenders).toBe(extrasBefore + 1);
+
+    act(() => live.set(null));
+
+    expect(view.container.querySelector('[data-mm-index="5"] [data-testid="message-item"]'))
+      .toHaveAttribute("data-content", tool.content);
+    expect(extrasRenders).toBe(extrasBefore + 2);
+  });
+
+  it("drops streamed text once the conversation moves past the message it started from", () => {
+    const messages = conversation(4);
+    const live = createLiveMessageStore();
+    const view = render(<Harness messages={messages} chatId="chat-a" nearBottom live={live} />);
+    act(() => live.set({ base: messages[3].msg, message: { ...messages[3].msg, content: "stale" } }));
+
+    const replaced = messages.map((entry, index) =>
+      index === 3 ? { ...entry, msg: { ...entry.msg, content: "final" } } : entry,
+    );
+    view.rerender(<Harness messages={replaced} chatId="chat-a" nearBottom live={live} />);
+
+    expect(view.container.querySelector('[data-mm-index="3"] [data-testid="message-item"]'))
+      .toHaveAttribute("data-content", "final");
+  });
+
+  it("keeps the list from rendering again when a mounted row grows", () => {
+    const view = render(<Harness messages={conversation(20)} chatId="chat-a" nearBottom />);
+    const scroll = view.getByTestId("scroll");
+    const values = { top: 100, height: 500, scrollHeight: 8_000 };
+    geometry(scroll, values);
+    const current = resizeObserver;
+    if (!current) throw new Error("missing resize observer");
+    const row = [...current.elements].at(-1) as HTMLElement;
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const before = extrasRenders;
+
+    act(() => {
+      current.callback([
+        { target: row, contentRect: { height: 0 }, borderBoxSize: [{ blockSize: 900 }] },
+      ] as unknown as ResizeObserverEntry[], current as unknown as ResizeObserver);
+    });
+
+    expect(values.top).toBe(8_000);
+    expect(extrasRenders).toBe(before);
+  });
+
+  it("mounts the rows for a scroll position before the next frame", () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    const view = render(<Harness messages={conversation(200)} chatId="chat-a" nearBottom={false} />);
+    const scroll = view.getByTestId("scroll");
+    geometry(scroll, { top: 0, height: 500, scrollHeight: 30_000 });
+
+    fireEvent.scroll(scroll);
+
+    expect(view.container.querySelector('[data-mm-index="0"]')).not.toBeNull();
+    expect(scroll.dataset.chatVisibleIndex).toBe("0");
+  });
+
+  it("announces the visible row only when it changes", () => {
+    const view = render(<Harness messages={conversation(200)} chatId="chat-a" nearBottom={false} />);
+    const scroll = view.getByTestId("scroll");
+    const values = { top: 0, height: 500, scrollHeight: 30_000 };
+    geometry(scroll, values);
+    const announced: number[] = [];
+    scroll.addEventListener("oleafly:chat-visible-index", (event) => {
+      announced.push((event as CustomEvent<number>).detail);
+    });
+
+    values.top = 2;
+    fireEvent.scroll(scroll);
+    values.top = 15_000;
+    fireEvent.scroll(scroll);
+    fireEvent.scroll(scroll);
+
+    const expected = visibleRange(messageOffsets(conversation(200), new Map()), 15_000, 500).visible;
+    expect(announced).toEqual([expected]);
+  });
+
+  it("leaves the reader in place while a row they are reading grows below them", () => {
+    const messages = conversation(12);
+    const view = render(<Harness messages={messages} chatId="chat-a" nearBottom={false} />);
+    const scroll = view.getByTestId("scroll");
+    const offsets = messageOffsets(messages, new Map());
+    const values = { top: offsets[11] + 40, height: 500, scrollHeight: 9_000 };
+    geometry(scroll, values);
+    fireEvent.scroll(scroll);
+    const current = resizeObserver;
+    if (!current) throw new Error("missing resize observer");
+    const newest = [...current.elements].find((row) => (row as HTMLElement).dataset.mmIndex === "11");
+
+    act(() => {
+      current.callback([
+        { target: newest, contentRect: { height: 0 }, borderBoxSize: [{ blockSize: 2_000 }] },
+      ] as unknown as ResizeObserverEntry[], current as unknown as ResizeObserver);
+    });
+
+    expect(values.top).toBe(offsets[11] + 40);
+  });
+
+  it("mounts only enough of the newest long replies to fill the first screen", () => {
+    const view = render(<Harness messages={conversation(50, 20_000)} chatId="chat-a" nearBottom />);
+
+    expect(view.container.querySelectorAll('[data-testid="message-item"]')).toHaveLength(2);
+    expect(view.container.querySelector('[data-mm-index="49"]')).not.toBeNull();
+  });
+
+  it("renders the newest rows of another conversation in the same commit as the switch", () => {
+    const view = render(<Harness messages={conversation(80)} chatId="chat-a" nearBottom />);
+    const next = conversation(35).map((entry) => ({
+      ...entry,
+      key: `b-${entry.index}`,
+      msg: { ...entry.msg, id: `b-${entry.index}` },
+    }));
+    let newestAtCommit: boolean | null = null;
+
+    view.rerender(
+      <Harness
+        messages={next}
+        chatId="chat-b"
+        nearBottom
+        onCommit={(container) => {
+          newestAtCommit ??= container?.querySelector('[data-mm-index="34"]') !== null;
+        }}
+      />,
+    );
+
+    expect(newestAtCommit).toBe(true);
+    expect(itemRenders.get("b-34")).toBe(1);
+  });
+
+  it("mounts an appended message in the same commit when the window reaches the end", () => {
+    const view = render(<Harness messages={conversation(20)} chatId="chat-a" nearBottom />);
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+
+    view.rerender(<Harness messages={conversation(21)} chatId="chat-a" nearBottom />);
+
+    expect(view.container.querySelector('[data-mm-index="20"]')).not.toBeNull();
   });
 
   it("mounts the previous page of rows above a mounted index", () => {

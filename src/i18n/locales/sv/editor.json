@@ -188,7 +188,8 @@
     "quote": "Citat",
     "addLabel": "Lägg till etikett",
     "convertLatexMath": "Konvertera LaTeX-matematik till Typst",
-    "noLatexMath": "Markera lite LaTeX-matematik först."
+    "noLatexMath": "Markera lite LaTeX-matematik först.",
+    "renameFile": "Byt namn på fil…"
   },
   "shell": {
     "noFileOpenTab": "Ingen fil är öppen",
@@ -426,7 +427,7 @@
       "indentOrAccept": "Indrag / acceptera komplettering",
       "goToDefinition": "Gå till definitionen",
       "findReferences": "Hitta referenser",
-      "renameSymbol": "Byt namn på symbolen (i hela projektet)",
+      "renameSymbol": "Byt namn på symbolen eller filen (i hela projektet)",
       "formatDocument": "Formatera Typst-dokumentet",
       "commandPalette": "Kommandopalett",
       "searchAllDocuments": "Sök i alla dokument",
@@ -454,7 +455,8 @@
     "noEntries": "Inga bibliografiposter i det här projektet än.",
     "addNew": "Hitta och lägg till en ny citering…",
     "duplicate": "dubblett {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Från ditt Zotero-bibliotek"
   },
   "inlineAi": {
     "promptPlaceholder": "Beskriv ändringen…  (Shift+Enter för ny rad)",

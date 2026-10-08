@@ -13,7 +13,19 @@ export interface OutlineItem {
   to: number;
 }
 
-export function outlineFromIndex(index: ProjectIndex, activeFile: string): OutlineItem[] {
+export interface ExtraOutlineSection {
+  readonly level: number;
+  readonly title: string;
+  readonly line: number;
+  readonly from: number;
+  readonly to: number;
+}
+
+export function outlineFromIndex(
+  index: ProjectIndex,
+  activeFile: string,
+  extraSections?: (file: string) => readonly ExtraOutlineSection[],
+): OutlineItem[] {
   const out: OutlineItem[] = [];
   const visited = new Set<string>();
 
@@ -21,8 +33,20 @@ export function outlineFromIndex(index: ProjectIndex, activeFile: string): Outli
     if (depth > 8 || visited.has(file)) return;
     visited.add(file);
 
+    const extra: Sym[] = (extraSections?.(file) ?? []).map((section) => ({
+      kind: "section",
+      name: section.title,
+      file,
+      line: section.line,
+      from: section.from,
+      to: section.to,
+      nameFrom: section.from,
+      nameTo: section.to,
+      level: section.level,
+    }));
     const syms: Sym[] = [
-      ...index.defs.filter((d) => d.kind === "section" && d.file === file),
+      ...index.defs.filter((d) => d.kind === "section" && d.file === file && d.name.trim() !== ""),
+      ...extra,
       ...index.uses.filter((u) => u.kind === "inputedge" && u.file === file),
     ].sort((a, b) => a.from - b.from);
 
@@ -58,4 +82,35 @@ export function outlineFromIndex(index: ProjectIndex, activeFile: string): Outli
 
   walk(activeFile, 0);
   return out;
+}
+
+export function headingTitlesByLabel(
+  index: ProjectIndex,
+  extraSections?: (file: string) => readonly ExtraOutlineSection[],
+): ReadonlyMap<string, string> {
+  const headings = new Map<string, { from: number; title: string }[]>();
+  const add = (file: string, from: number, title: string) => {
+    if (title.trim() === "") return;
+    const list = headings.get(file) ?? [];
+    list.push({ from, title });
+    headings.set(file, list);
+  };
+  for (const section of index.defs) {
+    if (section.kind === "section") add(section.file, section.from, section.name);
+  }
+  const labels = index.defs.filter((definition) => definition.kind === "label");
+  for (const file of new Set(labels.map((label) => label.file))) {
+    for (const section of extraSections?.(file) ?? []) add(file, section.from, section.title);
+  }
+  for (const list of headings.values()) list.sort((left, right) => left.from - right.from);
+  const titles = new Map<string, string>();
+  for (const label of labels) {
+    let owner: string | undefined;
+    for (const heading of headings.get(label.file) ?? []) {
+      if (heading.from > label.from) break;
+      owner = heading.title;
+    }
+    if (owner !== undefined && !titles.has(label.name)) titles.set(label.name, owner);
+  }
+  return titles;
 }

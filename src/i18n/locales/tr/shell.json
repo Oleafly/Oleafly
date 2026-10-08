@@ -43,7 +43,9 @@
     "privacyNote": "Yalnızca tanımlayıcı veya başlık doi.org, arXiv ya da Crossref'e gönderilir.",
     "title": "Atıf ekle",
     "bibliography": "Kaynakça",
-    "bibliographyHint": "Bu projede birden fazla kaynakça var. Kayıt, burada seçtiğiniz dosyaya eklenir."
+    "bibliographyHint": "Bu projede birden fazla kaynakça var. Kayıt, burada seçtiğiniz dosyaya eklenir.",
+    "zoteroMatches": "Zotero kitaplığınızdan",
+    "zoteroPlaceholder": "Zotero kitaplığınızda arayın veya bir DOI, arXiv kimliği ya da başlık yapıştırın"
   },
   "backendProtocol": {
     "mismatch": "Bu pencere ve arka ucu farklı Oleafly sürümleri için derlendi, bu yüzden bazı özellikler çalışmayabilir. Uygulamayı yeniden kurmak bunu düzeltir."
@@ -326,6 +328,22 @@
     "presentWithPresenter": {
       "label": "Slaytları sunucu görünümüyle sun",
       "keywords": "sun slaytlar sunucu görünümü konuşmacı notları zamanlayıcı sonraki slayt present slides presenter view speaker notes timer next slide"
+    },
+    "zenMode": {
+      "keywords": "dikkat dağıtmayan odak tam ekran arayüzü gizle sade yazı",
+      "label": "Zen Kipini Aç/Kapat"
+    },
+    "zoteroAddMissing": {
+      "label": "Eksik atıfları Zotero'dan ekle",
+      "keywords": "zotero eksik atıflar tanımsız anahtarlar kaynakça onar missing citations undefined keys bibliography repair"
+    },
+    "zoteroUpdate": {
+      "label": ".bib kayıtlarını Zotero'dan güncelle",
+      "keywords": "zotero güncelle yenile kaynakça kayıtlar değişen update refresh bibliography entries changed"
+    },
+    "zoteroSync": {
+      "label": "Zotero kitaplığını eşitle",
+      "keywords": "zotero eşitle yenile kitaplık sync refresh library"
     }
   },
   "community": {
@@ -1121,7 +1139,8 @@
       "editorPreview": "Düzenleyici + Önizleme",
       "editorPreviewAi": "Düzenleyici + Önizleme + Yapay Zeka",
       "previewAi": "Önizleme + Yapay Zeka",
-      "previewOnly": "Yalnızca Önizleme"
+      "previewOnly": "Yalnızca Önizleme",
+      "zenMode": "Zen Kipi"
     },
     "newProjectName": "Yeni proje adı",
     "projectName": "Proje adı",
@@ -1352,5 +1371,19 @@
     "location": "{{file}}, satır {{line}}",
     "error": "Hata",
     "warning": "Uyarı"
+  },
+  "fileRenameDialog": {
+    "title": "Dosyayı yeniden adlandır",
+    "titleFolder": "Klasörü yeniden adlandır",
+    "newPath": "Yeni yol",
+    "hint": "Eksik klasörler oluşturulur.",
+    "invalid": "Bu projenin içinde bir yol kullanın.",
+    "exists": "{{path}} zaten var."
+  },
+  "zen": {
+    "compileFailed": "Derleme başarısız",
+    "compiling": "Derleniyor",
+    "hideLog": "Derleme günlüğünü gizle",
+    "showLog": "Derleme günlüğünü göster"
   }
 }

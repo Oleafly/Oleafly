@@ -718,6 +718,15 @@
           "description": "Sprawdza pliki Typst pod kątem prawdopodobnych błędów przy każdym zapisie. Włączenie lub wyłączenie uruchamia ponownie serwer językowy Typst.",
           "label": "Kontrole lint dla Typst"
         }
+      },
+      "fileMove": {
+        "label": "Gdy plik zostanie przeniesiony",
+        "description": "Aktualizuj ścieżki prowadzące do przeniesionego pliku lub pliku o zmienionej nazwie w źródłach LaTeX, Typst i Markdown.",
+        "options": {
+          "ask": "Pytaj",
+          "always": "Zawsze aktualizuj",
+          "never": "Nigdy nie aktualizuj"
+        }
       }
     },
     "files": {
@@ -819,6 +828,25 @@
       "startWithProject": {
         "description": "Uruchamiaj powłokę shell przy otwarciu projektu, a nie przy pierwszym pokazaniu terminala.",
         "label": "Uruchamiaj powłokę shell wraz z projektem"
+      }
+    },
+    "zen": {
+      "centerEditor": {
+        "description": "Utrzymuje tekst w wyśrodkowanej kolumnie, gdy PDF jest ukryty.",
+        "label": "Wyśrodkuj edytor"
+      },
+      "fullScreen": {
+        "description": "Wypełnia ekran w trybie Zen i przywraca okno po wyjściu.",
+        "label": "Przejdź na pełny ekran"
+      },
+      "showPdf": {
+        "description": "Jeśli PDF jest ukryty na początku trybu Zen, otwiera go obok edytora przy pierwszej kompilacji.",
+        "label": "Pokaż PDF przy kompilacji"
+      },
+      "title": "Tryb Zen",
+      "toggle": {
+        "description": "Ukrywa pasek narzędzi, panel boczny, asystenta i terminal, żeby został tylko tekst. Nazywany też trybem bez rozpraszaczy. Wymaga otwartego projektu.",
+        "label": "Włącz tryb Zen"
       }
     }
   },
@@ -1216,11 +1244,58 @@
       "apiKeyLabel": "Klucz API Zotero",
       "connected": "Połączono z Twoją biblioteką Zotero.",
       "connectedAs": "Połączono jako {{username}}.",
-      "description": "Importuj cytowania i pozycje bibliograficzne z biblioteki Zotero.",
       "disconnectFailed": "Oleafly nie mógł usunąć zapisanego klucza Zotero. Spróbuj ponownie.",
-      "importHint": "Aby zaimportować, otwórz panel Odwołania w projekcie i wybierz Importuj bibliotekę bibliograficzną.",
       "userIdLabel": "Identyfikator użytkownika Zotero",
-      "userIdPlaceholder": "Identyfikator użytkownika"
+      "userIdPlaceholder": "Identyfikator użytkownika",
+      "citeDescription": "Przeszukuj całą bibliotekę Zotero podczas pisania i dodawaj tylko to, co cytujesz. Oleafly odczytuje Twoją bibliotekę i nigdy jej nie zmienia.",
+      "local": {
+        "heading": "Zotero na tym komputerze",
+        "ready": "Połączono z Zotero {{version}}.",
+        "readyNoVersion": "Połączono z Zotero.",
+        "bbtFound": "Better BibTeX {{version}} jest zainstalowany, więc klucze cytowań pochodzą z Better BibTeX.",
+        "bbtMissing": "Better BibTeX nie jest zainstalowany, więc klucze cytowań pochodzą z Zotero.",
+        "notRunning": "Zotero nie jest uruchomiony. Otwórz Zotero, aby przeszukiwać bibliotekę, albo połącz poniżej konto zotero.org.",
+        "apiDisabled": "W programie Zotero otwórz Ustawienia > Zaawansowane i włącz opcję „Zezwól innym aplikacjom na tym komputerze komunikować się z Zotero”.",
+        "unsupported": "Ta wersja Zotero nie może udostępniać swojej biblioteki. Zaktualizuj do Zotero 7 lub nowszego.",
+        "unknown": "Oleafly jeszcze nie szukał Zotero."
+      },
+      "test": "Testuj połączenie",
+      "syncNow": "Synchronizuj teraz",
+      "report": {
+        "zotero": "Zotero {{version}}",
+        "bbt": "Better BibTeX {{version}}",
+        "noBbt": "Nie znaleziono Better BibTeX",
+        "local": "Odczytano z Zotero na tym komputerze",
+        "web": "Odczytano z zotero.org",
+        "library_one": "{{name}}: {{formatted}} pozycja",
+        "library_few": "{{name}}: {{formatted}} pozycje",
+        "library_many": "{{name}}: {{formatted}} pozycji",
+        "library_other": "{{name}}: {{formatted}} pozycji"
+      },
+      "library": {
+        "heading": "Biblioteki do przeszukiwania",
+        "myLibrary": "Moja biblioteka",
+        "toggle": "Przeszukuj: {{name}}",
+        "items_one": "{{formatted}} pozycja",
+        "items_few": "{{formatted}} pozycje",
+        "items_many": "{{formatted}} pozycji",
+        "items_other": "{{formatted}} pozycji"
+      },
+      "sync": {
+        "never": "Jeszcze nie zsynchronizowano.",
+        "syncing": "Synchronizowanie biblioteki Zotero…",
+        "progress": "Synchronizowanie {{done}} z {{total}} pozycji…",
+        "status_one": "{{formatted}} pozycja gotowa do cytowania, zsynchronizowano {{time}}.",
+        "status_few": "{{formatted}} pozycje gotowe do cytowania, zsynchronizowano {{time}}.",
+        "status_many": "{{formatted}} pozycji gotowych do cytowania, zsynchronizowano {{time}}.",
+        "status_other": "{{formatted}} pozycji gotowej do cytowania, zsynchronizowano {{time}}.",
+        "fromCache": "Zotero jest zamknięty, więc wyszukiwanie przez @ korzysta z kopii z ostatniej synchronizacji.",
+        "rateLimited": "Serwis zotero.org poprosił Oleafly o przerwę. Kolejna próba nastąpi po {{time}}."
+      },
+      "account": {
+        "heading": "Konto zotero.org",
+        "description": "Używaj konta, gdy Zotero nie jest otwarty na tym komputerze. Biblioteki grup też zostaną uwzględnione."
+      }
     }
   },
   "language": {
@@ -1604,6 +1679,10 @@
       "openFolder": {
         "label": "Otwórz folder",
         "description": "Otwórz folder z komputera jako projekt."
+      },
+      "toggleZenMode": {
+        "description": "Ukryj wszystko poza tekstem albo przywróć wszystko.",
+        "label": "Przełącz tryb Zen"
       }
     },
     "application": {
@@ -1626,7 +1705,7 @@
         "italic": "Kursywa",
         "jumpToSourceFromPdf": "Przeskocz z PDF do źródła",
         "redo": "Ponów",
-        "renameSymbol": "Zmień nazwę symbolu w całym projekcie",
+        "renameSymbol": "Zmień nazwę symbolu lub pliku w całym projekcie",
         "slashCommandMenu": "Menu wstawiania poleceń z ukośnikiem",
         "triggerAutocomplete": "Wywołaj autouzupełnianie",
         "undo": "Cofnij"

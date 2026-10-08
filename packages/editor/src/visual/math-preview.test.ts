@@ -38,6 +38,25 @@ function preview(state: EditorState) {
   return state.field(mathPreviewTooltipField);
 }
 
+describe("math preview tooltip reuse", () => {
+  it("keeps the open preview while the cursor moves inside the same formula", () => {
+    const doc = "Let $x^2 + y^2$ hold.";
+    const state = stateFor(doc, doc.indexOf("x") + 1);
+    const opened = preview(state).tooltip;
+    expect(opened).not.toBeNull();
+
+    const moved = state.update({ selection: { anchor: doc.indexOf("y") } }).state;
+    expect(preview(moved).tooltip).toBe(opened);
+
+    const edited = moved.update({ changes: { from: doc.indexOf("y"), insert: "z" } }).state;
+    expect(preview(edited).tooltip).not.toBe(opened);
+    expect(preview(edited).target?.body).toContain("zy^2");
+
+    const outside = edited.update({ selection: { anchor: 1 } }).state;
+    expect(preview(outside).tooltip).toBeNull();
+  });
+});
+
 function mount(state: EditorState): EditorView {
   const parent = document.createElement("div");
   document.body.append(parent);
@@ -279,6 +298,43 @@ describe("math preview tooltip view", () => {
 
     items[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(preview(view.state).enabled).toBe(false);
+    expect(preview(view.state).tooltip).toBeNull();
+  });
+
+  function notifyFocus(view: EditorView, focusing: boolean) {
+    const effects = view.state
+      .facet(EditorView.focusChangeEffect)
+      .map((effect) => effect(view.state, focusing))
+      .filter((effect) => effect !== null);
+    view.dispatch({ effects });
+  }
+
+  it("hides while focus is outside the editor and comes back with it", () => {
+    const view = mount(stateFor(INLINE, INLINE_CURSOR));
+    expect(preview(view.state).tooltip).not.toBeNull();
+
+    notifyFocus(view, false);
+    expect(preview(view.state).tooltip).toBeNull();
+    view.dispatch({ selection: { anchor: INLINE_CURSOR + 1 } });
+    expect(preview(view.state).tooltip).toBeNull();
+
+    notifyFocus(view, true);
+    expect(preview(view.state).tooltip).not.toBeNull();
+  });
+
+  it("stays open while focus is in its own menu and hides once focus leaves it", async () => {
+    const view = mount(stateFor(INLINE, INLINE_CURSOR));
+    const dom = tooltipDom(view);
+    document.body.append(dom);
+    dom.querySelector<HTMLButtonElement>(".ofl-visual-math-tooltip-toggle")?.focus();
+
+    notifyFocus(view, false);
+    expect(preview(view.state).tooltip).not.toBeNull();
+
+    const elsewhere = document.createElement("button");
+    document.body.append(elsewhere);
+    elsewhere.focus();
+    await Promise.resolve();
     expect(preview(view.state).tooltip).toBeNull();
   });
 });

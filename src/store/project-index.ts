@@ -149,24 +149,62 @@ function currentSourceRevision(path: string): number {
   return sourceRevisions.get(path) ?? nextSourceRevision(path);
 }
 
-function treePaths(): string[] {
-  return useFilesStore
-    .getState()
-    .tree.filter((entry) => !entry.is_dir)
-    .map((entry) => normalizeProjectPath(entry.path))
-    .filter((path): path is string => path !== null && !isVendoredTypstPackagePath(path))
-    .sort();
+function compareKnownPaths(a: string, b: string): number {
+  return Number(a > b) - Number(a < b);
 }
 
-function currentKnownFiles(extraPath?: string): string[] {
-  const paths = new Set(treePaths());
+type TreePaths = Readonly<{
+  tree: ReturnType<typeof useFilesStore.getState>["tree"];
+  paths: readonly string[];
+}>;
+
+let treePathsCache: TreePaths | null = null;
+
+function treePaths(): readonly string[] {
+  const tree = useFilesStore.getState().tree;
+  if (treePathsCache?.tree !== tree) {
+    const paths = tree
+      .filter((entry) => !entry.is_dir)
+      .map((entry) => normalizeProjectPath(entry.path))
+      .filter((path): path is string => path !== null && !isVendoredTypstPackagePath(path));
+    treePathsCache = { tree, paths: [...new Set(paths)].sort(compareKnownPaths) };
+  }
+  return treePathsCache.paths;
+}
+
+function extraKnownPath(
+  paths: readonly string[],
+  extraPath?: string,
+): string | null {
   const normalizedExtra = extraPath
     ? normalizeProjectPath(extraPath)
     : null;
-  if (normalizedExtra && !isVendoredTypstPackagePath(normalizedExtra)) {
-    paths.add(normalizedExtra);
+  if (
+    !normalizedExtra ||
+    isVendoredTypstPackagePath(normalizedExtra) ||
+    paths.includes(normalizedExtra)
+  ) {
+    return null;
   }
-  return [...paths].sort((a, b) => Number(a > b) - Number(a < b));
+  return normalizedExtra;
+}
+
+function currentKnownFiles(extraPath?: string): string[] {
+  const paths = treePaths();
+  const extra = extraKnownPath(paths, extraPath);
+  return extra ? [...paths, extra].sort(compareKnownPaths) : [...paths];
+}
+
+let treeCandidatesCache: Readonly<{
+  paths: readonly string[];
+  candidates: readonly string[];
+}> | null = null;
+
+function treeCandidatePaths(paths: readonly string[]): readonly string[] {
+  if (treeCandidatesCache?.paths !== paths) {
+    treeCandidatesCache = { paths, candidates: candidatePathsFromKnown(paths) };
+  }
+  return treeCandidatesCache.candidates;
 }
 
 function candidatePathsFromKnown(
@@ -214,9 +252,17 @@ function withBibliographyYaml(
 export function currentProjectSourcePaths(
   extraPath?: string,
 ): string[] {
-  return sourcePathsFromKnown(
-    currentKnownFiles(extraPath),
-    useIndexStore.getState().texts,
+  const texts = useIndexStore.getState().texts;
+  const paths = treePaths();
+  const extra = extraKnownPath(paths, extraPath);
+  if (extra) {
+    return sourcePathsFromKnown(
+      [...paths, extra].sort(compareKnownPaths),
+      texts,
+    );
+  }
+  return treeCandidatePaths(paths).filter(
+    (path) => !isHayagrivaPath(path) || texts[path] !== undefined,
   );
 }
 
@@ -619,7 +665,7 @@ export const useIndexStore = create<IndexStore>((set, get) => {
       ]),
     ]
       .filter((path) => !removedPaths.has(path))
-      .sort((a, b) => Number(a > b) - Number(a < b));
+      .sort(compareKnownPaths);
     const sourcePaths = new Set(sourcePathsFromKnown(knownFiles, analysisTexts));
     const removals = [...workerKnownSourceFiles].filter(
       (path) => !sourcePaths.has(path),

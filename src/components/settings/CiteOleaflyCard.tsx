@@ -45,7 +45,8 @@ export function CiteOleaflyCard({ version }: { readonly version: string }) {
       </div>
       <pre
         data-testid="cite-oleafly-bibtex"
-        className="overflow-x-auto rounded-md border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed"
+        data-select-all-scope
+        className="select-text overflow-x-auto rounded-md border bg-muted/40 p-3 font-mono text-[11px] leading-relaxed"
       >
         {oleaflyBibtexTokens(version).map((line, lineIndex, lines) => (
           <span key={line.map((token) => token.text).join("")}>

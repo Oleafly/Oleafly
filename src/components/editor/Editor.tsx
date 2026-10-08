@@ -15,13 +15,14 @@ import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { wrapSelection } from "./cm/controller";
+import { getEditorView, wrapSelection } from "./cm/controller";
 import { useFilesStore } from "@/store/files";
 import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
 import { ChangedOnDiskBanner } from "./ChangedOnDiskBanner";
 import { CloseAssistantTabsButton, EditorTabStrip } from "./EditorTabStrip";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
+import { useZenStore } from "@/store/zen";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { imageMime, isImagePath } from "@/lib/image-mime";
 import { basename } from "@/lib/path-utils";
@@ -119,9 +120,22 @@ function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: 
 
 const DiagramMainFileView = lazy(() => import("./DiagramMainFileView"));
 
+function keepEditorFocus(event: MouseEvent) {
+  if (!(event.target instanceof Element) || !event.target.classList.contains("cm-scroller")) return;
+  event.preventDefault();
+  getEditorView()?.focus();
+}
+
 export function Editor() {
   const { t } = useTranslation(["common", "editor"]);
+  const zen = useZenStore((s) => s.active);
   const interactionRoot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = interactionRoot.current;
+    if (!zen || !root) return;
+    root.addEventListener("mousedown", keepEditorFocus);
+    return () => root.removeEventListener("mousedown", keepEditorFocus);
+  }, [zen]);
   useLayoutEffect(() => registerEditorMutationOwner({
     projectId: () => useFilesStore.getState().projectId,
     setLocked: (locked) => {
@@ -180,11 +194,11 @@ export function Editor() {
   // compiles with: README.md inside a LaTeX project edits like a Markdown project.
   const isMarkdownFile = /\.(md|markdown)$/iu.test(activePath ?? "");
   const toolbarProfile = formattingProfileForPath(engine, engineLoaded, activePath);
-  const showLatexToolbar = toolbarProfile === "latex";
+  const showLatexToolbar = !zen && toolbarProfile === "latex";
   const markdownIsEngineSource =
     engineLoaded && formattingProfile === "markdown" && pathUsesEngineSource(engine, activePath);
-  const showMarkdownToolbar = toolbarProfile === "markdown";
-  const showTypstToolbar = toolbarProfile === "typst";
+  const showMarkdownToolbar = !zen && toolbarProfile === "markdown";
+  const showTypstToolbar = !zen && toolbarProfile === "typst";
 
   const wysiwyg = useVisualModeStore((s) => s.enabled);
   const markdownSplitEnabled = useVisualModeStore((s) => s.markdownSplit);
@@ -212,6 +226,7 @@ export function Editor() {
   const markdownVisual = wysiwyg && isMarkdownFile && !markdownSplit;
   const markdownMode = markdownSplit ? "both" : markdownVisual ? "visual" : "code";
   const showBreadcrumbs =
+    !zen &&
     !isDiagramMainFile && /\.(?:tex|latex|ltx|typ)$/iu.test(activePath ?? "");
 
   useEffect(() => {
@@ -435,25 +450,27 @@ export function Editor() {
       data-tour="project-editor"
       className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
     >
-      <div className="flex h-9 shrink-0 items-center border-b">
-        <div className="flex shrink-0 items-center border-r border-border pl-2 pr-1">
-          <SidebarCollapseToggle />
+      {!zen && (
+        <div className="flex h-9 shrink-0 items-center border-b">
+          <div className="flex shrink-0 items-center border-r border-border pl-2 pr-1">
+            <SidebarCollapseToggle />
+          </div>
+          <EditorTabStrip diffFocused={diffFocused} />
+          <div className="flex shrink-0 items-center gap-1 border-l border-border pl-1 pr-2">
+            <CloseAssistantTabsButton />
+            <Tooltip label={t(($) => $.editor.shell.editorSettings)} side="bottom">
+              <button
+                type="button"
+                aria-label={t(($) => $.editor.shell.editorSettings)}
+                onClick={() => useSettingsStore.getState().openSettingsAt("appearance", "editor")}
+                className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
+              >
+                <Settings2 className="size-4" aria-hidden />
+              </button>
+            </Tooltip>
+          </div>
         </div>
-        <EditorTabStrip diffFocused={diffFocused} />
-        <div className="flex shrink-0 items-center gap-1 border-l border-border pl-1 pr-2">
-          <CloseAssistantTabsButton />
-          <Tooltip label={t(($) => $.editor.shell.editorSettings)} side="bottom">
-            <button
-              type="button"
-              aria-label={t(($) => $.editor.shell.editorSettings)}
-              onClick={() => useSettingsStore.getState().openSettingsAt("appearance", "editor")}
-              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
-            >
-              <Settings2 className="size-4" aria-hidden />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
+      )}
       {!diffFocused ? (
         <ProofreadingNotifications
           path={activePath}

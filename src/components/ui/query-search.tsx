@@ -87,6 +87,8 @@ function segmentClass(segment: Segment): string | undefined {
   return undefined;
 }
 
+const NO_SUGGESTIONS: QuerySuggestions = { heading: null, items: [], operators: [], hint: null };
+
 function visibleIssues(diagnostics: readonly Diagnostic[], source: string, caret: number, focused: boolean): Diagnostic[] {
   if (!focused) return [...diagnostics];
   const typingAtEnd = caret >= source.trimEnd().length;
@@ -332,7 +334,10 @@ export function QuerySearch<T>({
   const [menuLeft, setMenuLeft] = useState(0);
 
   const context = useMemo(() => suggestAt(query, schema, caret), [query, schema, caret]);
-  const suggestions = useMemo(() => buildSuggestions(context, schema), [context, schema]);
+  const suggestions = useMemo(
+    () => (focused ? buildSuggestions(context, schema) : NO_SUGGESTIONS),
+    [focused, context, schema],
+  );
   const issues = useMemo(
     () => visibleIssues(query.diagnostics, value, caret, focused),
     [query.diagnostics, value, caret, focused],

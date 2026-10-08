@@ -13,6 +13,7 @@ import {
   Divide,
   Download,
   Eraser,
+  Focus,
   FileJson,
   FolderOpen,
   FolderPlus,
@@ -31,6 +32,7 @@ import {
   Play,
   Plus,
   Quote,
+  RefreshCw,
   Rows3,
   ScanSearch,
   SearchCode,
@@ -57,6 +59,8 @@ import { useSettingsStore } from "@/store/settings";
 import { useCompileStore } from "@/store/compile";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { useCitationStore } from "@/store/citation";
+import { openMissingCitations, openZoteroUpdates } from "@/features/zotero-actions";
+import { useZoteroLibraryStore } from "@/store/zotero-library";
 import { clearBuildCache } from "@/lib/tauri";
 import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
 import {
@@ -130,6 +134,7 @@ import { openFolderWithPicker } from "@/features/open-folder";
 import { openTypstPackages } from "@/components/typst-packages/open";
 import { openLatexPackages } from "@/components/packages/open";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { toggleZenMode } from "@/lib/zen-mode";
 import { shortcut } from "@/lib/utils";
 import {
   formatWithLanguageService,
@@ -148,8 +153,8 @@ const activeSourceLanguage = () =>
 const activeIsLatexSource = () => activeSourceLanguage() === "latex";
 const activeIsTypstSource = () => activeSourceLanguage() === "typst";
 const activeIsLatexOrTypstSource = () => activeIsLatexSource() || activeIsTypstSource();
-const supportsCitations = () =>
-  engineLoaded() && activeUsesEngineSource() && engine().capabilities.features.includes("citations");
+const projectSupportsCitations = () => engineLoaded() && engine().capabilities.features.includes("citations");
+const supportsCitations = () => projectSupportsCitations() && activeUsesEngineSource();
 const supportsSyncTeX = () => engineLoaded() && engineSyncsPath(engine(), useFilesStore.getState().activePath);
 const activeFormattingProfile = () =>
   formattingProfileForPath(engine(), engineLoaded(), useFilesStore.getState().activePath);
@@ -175,6 +180,9 @@ const ENGLISH_KEYWORDS = {
   newTerminal: "terminal shell console new",
   documentCitationScan: "citations literature scan document paragraph references find",
   citeOleafly: "citation bibtex bibliography acknowledge oleafly",
+  zoteroAddMissing: "zotero missing citations undefined keys bib bibliography repair add better bibtex",
+  zoteroUpdate: "zotero update refresh bib entries bibliography changed",
+  zoteroSync: "zotero sync refresh library reload",
   closeEnvironment: "close end environment begin latex",
   surroundEnvironment: "surround wrap environment begin end latex",
   appearance: "theme appearance mode",
@@ -186,6 +194,7 @@ const ENGLISH_KEYWORDS = {
   latexPackages: "latex ctan packages usepackage preamble install tlmgr browse",
   closeAllEditorTabs: "close all editor tabs files",
   closeAssistantTabs: "close editor tabs files assistant ai agent opened",
+  zenMode: "zen distraction free focus full screen hide interface minimal writing",
 } as const;
 
 const runLanguageServiceFormat = (scope: FormatScope) => {
@@ -677,6 +686,40 @@ export function registerPaletteCommands() {
     run: () => useCitationStore.getState().setOpen(true),
   });
   palette({
+    id: "palette.zotero-add-missing",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.zoteroAddMissing.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.zoteroAddMissing.keywords)} ${ENGLISH_KEYWORDS.zoteroAddMissing}`,
+    icon: () => <LibraryBig className="size-4" />,
+    order: 320,
+    when: (ctx) => !!ctx.projectId && projectSupportsCitations(),
+    run: openMissingCitations,
+  });
+  palette({
+    id: "palette.zotero-update",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.zoteroUpdate.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.zoteroUpdate.keywords)} ${ENGLISH_KEYWORDS.zoteroUpdate}`,
+    icon: () => <RefreshCw className="size-4" />,
+    order: 320,
+    when: (ctx) => !!ctx.projectId && projectSupportsCitations(),
+    run: openZoteroUpdates,
+  });
+  palette({
+    id: "palette.zotero-sync",
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.zoteroSync.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.zoteroSync.keywords)} ${ENGLISH_KEYWORDS.zoteroSync}`,
+    icon: () => <RefreshCw className="size-4" />,
+    order: 320,
+    run: () => {
+      void useZoteroLibraryStore.getState().sync({ force: true });
+    },
+  });
+  palette({
     id: "palette.typst-packages",
     group: () => i18n.t(($) => $.shell.commandGroups.tools),
     label: () => i18n.t(($) => $.shell.commands.typstPackages.label),
@@ -949,6 +992,20 @@ export function registerPaletteCommands() {
     icon: () => <CommandIcon className="size-4" />,
     order: 510,
     run: () => useSettingsStore.getState().toggleVim(),
+  });
+  palette({
+    id: "palette.zen-mode",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.zenMode.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.zenMode.keywords)} ${ENGLISH_KEYWORDS.zenMode}`,
+    icon: () => <Focus className="size-4" />,
+    hint: () => shortcutLabel(useShortcutStore.getState().bindings.toggleZenMode),
+    order: 515,
+    when: (ctx) => !!ctx.projectId,
+    run: () => {
+      toggleZenMode();
+    },
   });
   palette({
     id: "palette.spellcheck",

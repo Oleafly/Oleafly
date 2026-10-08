@@ -37,7 +37,7 @@ export function OpenFolderNotice({ className }: Readonly<{ className?: string }>
       )}
     >
       <FolderX aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-relaxed">
+      <div className="flex min-w-0 flex-1 select-text flex-col gap-0.5 leading-relaxed">
         {refusal.title ? <p className="font-medium">{refusal.title}</p> : null}
         <p className={cn(refusal.title && "text-muted-foreground")}>{refusal.message}</p>
         {refusal.hint ? <p className="text-muted-foreground">{refusal.hint}</p> : null}

@@ -205,6 +205,12 @@
         "block": "Terminal cursor drawn as a filled rectangle.",
         "underline": "Terminal cursor drawn as a line under the character."
       }
+    },
+    "zen": {
+      "title": "Group of settings for Zen mode, a distraction free writing mode that hides the toolbar, sidebar, assistant and terminal. Keep the word Zen.",
+      "toggle": {
+        "label": "Switch that turns Zen mode on right now."
+      }
     }
   },
   "citations": {
@@ -320,8 +326,7 @@
     },
     "zotero": {
       "connected": "Shown once Zotero accepted the key when Oleafly has no saved account name, for example after an update.",
-      "connectedAs": "Shown once Zotero accepted the key. {{username}} is the user's Zotero account name, not a person's full name.",
-      "importHint": "Shown under the connected status. \"References\" is the project panel title and \"Import reference library\" is its import button. Use the same wording your locale uses for those two labels."
+      "connectedAs": "Shown once Zotero accepted the key. {{username}} is the user's Zotero account name, not a person's full name."
     }
   },
   "mcp": {

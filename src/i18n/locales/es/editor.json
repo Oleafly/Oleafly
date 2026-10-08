@@ -188,7 +188,8 @@
     "quote": "Cita en bloque",
     "addLabel": "Añadir etiqueta",
     "convertLatexMath": "Convertir fórmulas de LaTeX a Typst",
-    "noLatexMath": "Selecciona antes alguna fórmula de LaTeX."
+    "noLatexMath": "Selecciona antes alguna fórmula de LaTeX.",
+    "renameFile": "Renombrar archivo…"
   },
   "shell": {
     "noFileOpenTab": "Ningún archivo abierto",
@@ -433,7 +434,7 @@
       "indentOrAccept": "Sangrar o aceptar el autocompletado",
       "goToDefinition": "Ir a la definición",
       "findReferences": "Buscar referencias",
-      "renameSymbol": "Renombrar el símbolo (en todo el proyecto)",
+      "renameSymbol": "Renombrar el símbolo o el archivo (en todo el proyecto)",
       "formatDocument": "Formatear el documento Typst",
       "commandPalette": "Paleta de comandos",
       "searchAllDocuments": "Buscar en todos los documentos",
@@ -461,7 +462,8 @@
     "noEntries": "Todavía no hay entradas de bibliografía en este proyecto.",
     "addNew": "Buscar y añadir una cita nueva…",
     "duplicate": "duplicado {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "De tu biblioteca de Zotero"
   },
   "inlineAi": {
     "promptPlaceholder": "Describe el cambio…  (Shift+Enter para una línea nueva)",

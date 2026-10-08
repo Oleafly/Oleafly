@@ -44,7 +44,9 @@
     "privacyNote": "Só o identificador ou o título é enviado, para doi.org, arXiv ou Crossref.",
     "title": "Adicionar citação",
     "bibliography": "Bibliografia",
-    "bibliographyHint": "Este projeto tem mais de uma bibliografia. A entrada vai para o arquivo que você escolher aqui."
+    "bibliographyHint": "Este projeto tem mais de uma bibliografia. A entrada vai para o arquivo que você escolher aqui.",
+    "zoteroMatches": "Da sua biblioteca do Zotero",
+    "zoteroPlaceholder": "Pesquise na sua biblioteca do Zotero ou cole um DOI, um id do arXiv ou um título"
   },
   "backendProtocol": {
     "mismatch": "Esta janela e o backend dela foram compilados para versões diferentes do Oleafly, então alguns recursos podem não funcionar. Reinstalar o aplicativo resolve isso."
@@ -328,6 +330,22 @@
     "presentWithPresenter": {
       "label": "Apresentar slides com o modo do apresentador",
       "keywords": "apresentar slides modo apresentador notas cronômetro próximo slide"
+    },
+    "zenMode": {
+      "keywords": "sem distrações foco tela cheia ocultar interface mínimo escrita",
+      "label": "Alternar o modo Zen"
+    },
+    "zoteroAddMissing": {
+      "label": "Adicionar citações ausentes do Zotero",
+      "keywords": "zotero citações ausentes chaves indefinidas bibliografia corrigir"
+    },
+    "zoteroUpdate": {
+      "label": "Atualizar entradas do .bib a partir do Zotero",
+      "keywords": "zotero atualizar sincronizar bibliografia entradas alteradas"
+    },
+    "zoteroSync": {
+      "label": "Sincronizar biblioteca do Zotero",
+      "keywords": "zotero sincronizar atualizar biblioteca"
     }
   },
   "community": {
@@ -1142,7 +1160,8 @@
       "editorPreview": "Editor + visualização",
       "editorPreviewAi": "Editor + visualização + IA",
       "previewAi": "Visualização + IA",
-      "previewOnly": "Só visualização"
+      "previewOnly": "Só visualização",
+      "zenMode": "Modo Zen"
     },
     "newProjectName": "Nome do novo projeto",
     "projectName": "Nome do projeto",
@@ -1385,5 +1404,19 @@
     "location": "{{file}}, linha {{line}}",
     "error": "Erro",
     "warning": "Aviso"
+  },
+  "fileRenameDialog": {
+    "title": "Renomear arquivo",
+    "titleFolder": "Renomear pasta",
+    "newPath": "Novo caminho",
+    "hint": "As pastas que faltam são criadas.",
+    "invalid": "Use um caminho dentro deste projeto.",
+    "exists": "{{path}} já existe."
+  },
+  "zen": {
+    "compileFailed": "A compilação falhou",
+    "compiling": "Compilando",
+    "hideLog": "Ocultar o log de compilação",
+    "showLog": "Mostrar o log de compilação"
   }
 }

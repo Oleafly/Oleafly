@@ -366,7 +366,8 @@
     "referencesFor": "Referências a {{name}}",
     "renameFailed": "Não foi possível renomear para \"{{name}}\".",
     "renamePartial": "Renomeado para \"{{name}}\" em {{edited}} de {{total}} arquivos. Não foi possível gravar {{files}}.",
-    "renamed": "Renomeado para \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) em $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Renomeado para \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) em $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" não corresponde a nenhum arquivo deste projeto."
   },
   "pandoc": {
     "downloadFailed": "Não foi possível baixar o pandoc. Instale manualmente e tente de novo.",

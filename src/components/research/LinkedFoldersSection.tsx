@@ -145,7 +145,7 @@ export function LinkedFoldersSection() {
       return (
         <p
           role="alert"
-          className="py-1 text-[11px] text-destructive"
+          className="select-text py-1 text-[11px] text-destructive"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
           {errors[key]}
@@ -294,7 +294,7 @@ export function LinkedFoldersSection() {
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="min-h-0 overflow-auto rounded-md border bg-muted/20 p-3">
+          <div data-select-all-scope className="min-h-0 select-text overflow-auto rounded-md border bg-muted/20 p-3">
             {preview?.error ? (
               <p role="alert" className="text-sm text-destructive">
                 {preview.error}

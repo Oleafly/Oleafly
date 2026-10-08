@@ -350,7 +350,8 @@
     "referencesFor": "{{name}} への参照",
     "renameFailed": "「{{name}}」に名前を変更できませんでした。",
     "renamePartial": "{{total}} 件中 {{edited}} 件のファイルで「{{name}}」に変更しました。{{files}} には書き込めませんでした。",
-    "renamed": "「{{name}}」に変更しました（$t(core:navigation.files, {\"count\": {{files}} }) で $t(core:navigation.edits, {\"count\": {{edits}} })）"
+    "renamed": "「{{name}}」に変更しました（$t(core:navigation.files, {\"count\": {{files}} }) で $t(core:navigation.edits, {\"count\": {{edits}} })）",
+    "pathNotInProject": "「{{path}}」に一致するファイルはこのプロジェクトにありません。"
   },
   "pandoc": {
     "downloadFailed": "pandoc をダウンロードできませんでした。手動でインストールしてから、もう一度お試しください。",

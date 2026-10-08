@@ -36,6 +36,118 @@ afterEach(() => {
   view = null;
 });
 
+function sharedPassResult(status: "ready" | "partial"): ProofreadingResult {
+  return {
+    protocolVersion: PROOFREADING_PROTOCOL_VERSION,
+    type: "result",
+    requestId: 1,
+    identity: {
+      projectId: "project",
+      path: "main.tex",
+      revision: 1,
+      requestGeneration: 1,
+      surface: "source",
+    },
+    status,
+    diagnostics: [
+      {
+        from: 0,
+        to: "qwertzuiopz".length,
+        message: "Possible misspelling",
+        kind: "Spelling",
+        source: "hunspell",
+        word: "qwertzuiopz",
+        suggestions: [],
+        rule: null,
+      },
+    ],
+  };
+}
+
+function startSharedPassEditor(): {
+  proofread: ReturnType<typeof vi.fn>;
+  finish: (index: number, result: ProofreadingResult) => void;
+} {
+  const pending: Array<(result: ProofreadingResult) => void> = [];
+  const proofread = vi.fn(
+    () =>
+      new Promise<ProofreadingResult>((resolve) => {
+        pending.push(resolve);
+      }),
+  );
+  setSpellHost({
+    t: englishEditorMessage,
+    getProjectId: () => "project",
+    getActivePath: () => "main.tex",
+    getLintPrefs: () => ({
+      showRegionalism: true,
+      showWordChoice: true,
+      dialect: "american",
+    }),
+    proofread,
+    isSessionIgnored: () => false,
+    isWordIgnored: () => false,
+    ignoreWordForProject: () => undefined,
+    ignoreWordGlobally: () => undefined,
+  });
+  view = new EditorView({
+    state: EditorState.create({
+      doc: "qwertzuiopz remains observable",
+      extensions: [createHarperLinter(true)],
+    }),
+    parent: document.body,
+  });
+  return {
+    proofread,
+    finish: (index, result) => pending[index]?.(result),
+  };
+}
+
+async function settleMicrotasks(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+describe("forced re-lints during an unchanged pass", () => {
+  it("share the pass that is already checking the same text", async () => {
+    const { proofread, finish } = startSharedPassEditor();
+    forceLinting(view!);
+    await vi.waitFor(() => expect(proofread).toHaveBeenCalledOnce(), {
+      timeout: 2_000,
+    });
+
+    refreshEditorLints(view);
+    await settleMicrotasks();
+    finish(0, sharedPassResult("ready"));
+
+    await vi.waitFor(
+      () => expect(diagnosticCardSource(view!, 1)).not.toBeNull(),
+      { timeout: 2_000 },
+    );
+    expect(proofread).toHaveBeenCalledOnce();
+  });
+
+  it("ask again when the shared pass could only check part of the text", async () => {
+    const { proofread, finish } = startSharedPassEditor();
+    forceLinting(view!);
+    await vi.waitFor(() => expect(proofread).toHaveBeenCalledOnce(), {
+      timeout: 2_000,
+    });
+
+    refreshEditorLints(view);
+    await settleMicrotasks();
+    finish(0, sharedPassResult("partial"));
+
+    await vi.waitFor(() => expect(proofread).toHaveBeenCalledTimes(2), {
+      timeout: 2_000,
+    });
+    finish(1, sharedPassResult("ready"));
+    await vi.waitFor(
+      () => expect(diagnosticCardSource(view!, 1)).not.toBeNull(),
+      { timeout: 2_000 },
+    );
+  });
+});
+
 describe("proofreading presentation refresh", () => {
   it("repaints a cached presentation page synchronously", async () => {
     const text = "qwertzuiopz remains observable";

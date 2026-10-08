@@ -30,7 +30,8 @@
     "newTab": "Nouvel onglet",
     "openLocation": "Ouvrir une adresse…",
     "closeTab": "Fermer l'onglet",
-    "reloadPage": "Recharger la page"
+    "reloadPage": "Recharger la page",
+    "zenMode": "Mode Zen"
   },
   "window": {
     "browser": "Navigateur Oleafly",

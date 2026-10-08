@@ -226,6 +226,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { cn } from "@/lib/utils";
 import { ChatMinimap } from "@/components/ai/ChatMinimap";
 import { MessageList, type RenderedMessage } from "@/components/ai/MessageList";
+import { createLiveMessageStore, textOnlyChange } from "@/components/ai/live-message";
 import {
   deriveProviderState,
   knownProviderConfig,
@@ -967,14 +968,38 @@ export function ChatCore() {
 
   const [messages, setMessagesState] = useState<ChatMessage[]>([]);
   const messagesRef = useRef<ChatMessage[]>([]);
+  const committedMessagesRef = useRef<ChatMessage[]>([]);
+  const [liveMessage] = useState(createLiveMessageStore);
   const setMessages = useCallback(
     (next: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
       const resolved = typeof next === "function" ? next(messagesRef.current) : next;
       messagesRef.current = resolved;
+      committedMessagesRef.current = resolved;
       setMessagesState(resolved);
     },
     [],
   );
+  useLayoutEffect(() => {
+    const live = liveMessage.get();
+    if (live && messages.at(-1) !== live.base) liveMessage.set(null);
+  }, [liveMessage, messages]);
+  const publishMessages = useCallback(
+    (next: ChatMessage[]) => {
+      const current = messagesRef.current;
+      if (next === current) return;
+      const live = textOnlyChange(committedMessagesRef.current, next);
+      if (!live) {
+        setMessages(next);
+        return;
+      }
+      messagesRef.current = next;
+      liveMessage.set(live);
+    },
+    [liveMessage, setMessages],
+  );
+  const commitLiveMessages = useCallback(() => {
+    if (committedMessagesRef.current !== messagesRef.current) setMessages(messagesRef.current);
+  }, [setMessages]);
   const delegatedSubagents = useMemo(
     () => messages.flatMap((message) => message.subagents ?? []),
     [messages],
@@ -1788,11 +1813,11 @@ export function ChatCore() {
     if (last === undefined) return;
     for (const patch of patches) last = patch.apply(last);
     copy[copy.length - 1] = last;
-    setMessages(copy);
+    publishMessages(copy);
     const chatId = patches.at(-1)?.chatId ?? null;
     if (chatId) useChatsStore.getState().setLive(chatId, copy);
     persistDebounced(chatId, copy);
-  }, [persistDebounced, setMessages]);
+  }, [persistDebounced, publishMessages]);
 
   const queueStreamDrain = useCallback((tier: "text" | "output") => {
     if (streamDrainQueuedRef.current[tier]) return;
@@ -1829,7 +1854,8 @@ export function ChatCore() {
       queues.flushFrameText();
       queues.flushOutput();
     }
-  }, [streamQueues]);
+    commitLiveMessages();
+  }, [commitLiveMessages, streamQueues]);
 
   const updateLast = useCallback(
     (chatId: string | null, fn: (m: ChatMessage) => ChatMessage, tier: "text" | "output" = "output") => {
@@ -3214,13 +3240,13 @@ ${sandboxedCustom}`;
       const cs = useChatsStore.getState();
       if (cs.projectId !== projectId || run.chatId !== cs.activeId) return;
       const current = cs.liveOrSaved(run.chatId);
-      if (current) setMessages(current);
+      if (current) publishMessages(current);
     });
     return () => {
       unsubRun();
       unsubStore();
     };
-  }, [projectId, setMessages]);
+  }, [projectId, publishMessages, setMessages]);
 
   const chatUsage = activeChat?.usage;
   const chatTotal = chatUsage
@@ -3494,6 +3520,7 @@ ${sandboxedCustom}`;
                 <div className="flex flex-col gap-3">
                   <MessageList
                     messages={renderedMessages}
+                    live={liveMessage}
                     actions={chatActions}
                     chatId={activeChatId}
                     scrollRef={scrollRef}

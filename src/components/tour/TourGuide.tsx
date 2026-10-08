@@ -21,6 +21,8 @@ import { Kbd } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
 import { celebrate } from "@/lib/confetti";
 import { START_TOUR_EVENT } from "@/lib/tour";
+import { exitZenMode } from "@/lib/zen-mode";
+import { useZenStore } from "@/store/zen";
 import { evaluateTour, missingTargetFallback } from "@/lib/tours/coordinator";
 import {
   fitTourTooltip,
@@ -892,6 +894,7 @@ export function TourGuide() {
   const diagramOpen = useHomeViewStore((state) => state.page === "diagram-composer");
   const assistantOpen = useSettingsStore((state) => state.assistantOpen);
   const chatFloating = useSettingsStore((state) => state.chatFloating);
+  const zenActive = useZenStore((state) => state.active);
   const enabled = useTourStore((state) => state.enabled);
   const tours = useTourStore((state) => state.tours);
   const activeTourId = useTourStore((state) => state.activeTourId);
@@ -998,21 +1001,25 @@ export function TourGuide() {
     navigationDirection.current = "next";
   }, [activeTourId]);
 
+  const homeTourPending = tours.home.status === "pending";
   useEffect(() => {
-    const ready =
+    if (!enabled || projectId || !homeTourPending) {
+      setLibraryReady(false);
+      return;
+    }
+    const isReady = () =>
       document.querySelector('[data-tour="home"][data-projects-loaded="true"]') !== null;
+    const ready = isReady();
     setLibraryReady(ready);
     if (ready) return;
-    const update = () => {
-      const next =
-        document.querySelector('[data-tour="home"][data-projects-loaded="true"]') !== null;
-      setLibraryReady(next);
-      if (next) observer.disconnect();
-    };
-    const observer = new MutationObserver(update);
+    const observer = new MutationObserver(() => {
+      if (!isReady()) return;
+      setLibraryReady(true);
+      observer.disconnect();
+    });
     observer.observe(document.body, { attributes: true, childList: true, subtree: true });
     return () => observer.disconnect();
-  }, []);
+  }, [enabled, homeTourPending, projectId]);
 
   useEffect(() => {
     void aiReadinessRevision;
@@ -1026,6 +1033,7 @@ export function TourGuide() {
         context,
         {
           blockingOverlay:
+            zenActive ||
             newProjectOpen ||
             (diagramOpen && settingsOpen) ||
             (diagramOpen && context !== "diagram") ||
@@ -1087,6 +1095,7 @@ export function TourGuide() {
     settingsOpen,
     showWelcome,
     tours,
+    zenActive,
   ]);
 
   useEffect(() => {
@@ -1287,6 +1296,7 @@ export function TourGuide() {
       if (!isTourAvailable(id)) return;
       setWelcomeAccepted(true);
       useTourStore.getState().stop();
+      exitZenMode();
       if (pendingFrame !== null) cancelAnimationFrame(pendingFrame);
       pendingFrame = requestAnimationFrame(() => {
         pendingFrame = null;
@@ -1402,7 +1412,10 @@ export function TourGuide() {
     return settle;
   }, [activeStep, activeStepIndex, activeTourId, definition]);
 
+  const aiTourLive =
+    enabled && (tours.ai.status === "pending" || activeTourId === "ai");
   useEffect(() => {
+    if (!aiTourLive) return;
     let lastReadiness =
       document
         .querySelector<HTMLElement>('[data-tour="ai-assistant"]')
@@ -1423,7 +1436,7 @@ export function TourGuide() {
       subtree: true,
     });
     return () => observer.disconnect();
-  }, []);
+  }, [aiTourLive]);
 
   useEffect(() => {
     void aiReadinessRevision;

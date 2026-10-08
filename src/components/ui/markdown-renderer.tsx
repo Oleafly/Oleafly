@@ -79,7 +79,7 @@ function createMarkdownComponents(inverted: boolean): Components {
       : codeText(children).replace(/\n$/, "");
     return (
       <MarkdownBlock kind="code" source={source}>
-        <pre className={codeBlockClassName}>{children}</pre>
+        <pre data-select-all-scope className={codeBlockClassName}>{children}</pre>
       </MarkdownBlock>
     );
   },
@@ -238,7 +238,7 @@ export default function MarkdownRenderer({
     <div
       data-streaming-markdown={streaming ? "true" : undefined}
       className={cn(
-        "min-w-0 [&_.katex-display]:overflow-x-auto",
+        "min-w-0 select-text [&_.katex-display]:overflow-x-auto",
         className,
       )}
     >

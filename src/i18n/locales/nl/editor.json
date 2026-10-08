@@ -188,7 +188,8 @@
     "quote": "Citaat",
     "addLabel": "Label toevoegen",
     "convertLatexMath": "LaTeX-wiskunde omzetten naar Typst",
-    "noLatexMath": "Selecteer eerst wat LaTeX-wiskunde."
+    "noLatexMath": "Selecteer eerst wat LaTeX-wiskunde.",
+    "renameFile": "Bestand hernoemen…"
   },
   "shell": {
     "noFileOpenTab": "Geen bestand geopend",
@@ -426,7 +427,7 @@
       "indentOrAccept": "Inspringen / aanvulling accepteren",
       "goToDefinition": "Naar de definitie",
       "findReferences": "Referenties zoeken",
-      "renameSymbol": "Symbool hernoemen (in het hele project)",
+      "renameSymbol": "Symbool of bestand hernoemen (in het hele project)",
       "formatDocument": "Typst-document opmaken",
       "commandPalette": "Opdrachtenpalet",
       "searchAllDocuments": "Alle documenten doorzoeken",
@@ -454,7 +455,8 @@
     "noEntries": "Nog geen bibliografie-items in dit project.",
     "addNew": "Een nieuwe citatie zoeken en toevoegen…",
     "duplicate": "duplicaat {{index}}/{{total}}",
-    "entryLocation": "{{detail}} · {{file}}:{{line}}"
+    "entryLocation": "{{detail}} · {{file}}:{{line}}",
+    "zoteroHeading": "Uit je Zotero-bibliotheek"
   },
   "inlineAi": {
     "promptPlaceholder": "Beschrijf de wijziging…  (Shift+Enter voor een nieuwe regel)",

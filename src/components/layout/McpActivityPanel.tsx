@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Activity, CheckCircle2, CircleAlert, Info, Radio, Trash2 } from "lucide-react";
 import {
@@ -6,7 +6,9 @@ import {
   useMcpActivityStore,
   type McpLogEntry,
 } from "@/store/mcp-activity";
+import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
+import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -41,7 +43,7 @@ function LogRow({ entry }: Readonly<{ entry: McpLogEntry }>) {
     <li
       data-testid="mcp-log-entry"
       className={cn(
-        "rounded-md border border-transparent px-2 py-1.5",
+        "select-text rounded-md border border-transparent px-2 py-1.5",
         entry.status === "running" && "border-primary/20 bg-primary/5",
         entry.status === "error" && "border-destructive/20 bg-destructive/5",
       )}
@@ -92,6 +94,10 @@ export function McpActivityPanel() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
+
+  const projectId = useFilesStore((s) => s.projectId);
+  const logRef = useRef<HTMLDivElement>(null);
+  useScrollMemory({ scrollRef: logRef, projectId, slot: "mcp" });
 
   useEffect(() => {
     clearUnread();
@@ -144,7 +150,7 @@ export function McpActivityPanel() {
         </Tooltip>
       </SidebarPanelHeader>
 
-      <div className="min-h-0 flex-1 overflow-auto p-1.5">
+      <div ref={logRef} className="min-h-0 flex-1 overflow-auto p-1.5">
         {logs.length === 0 ? (
           <div className="px-2 py-8 text-center text-xs text-muted-foreground">
             {serverRunning ? (

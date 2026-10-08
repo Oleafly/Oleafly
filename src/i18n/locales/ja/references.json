@@ -153,5 +153,76 @@
     "label": "引用スタイル",
     "ariaLabel": "{{path}} の参考文献の引用スタイル",
     "failed": "Oleafly は引用スタイルを変更できませんでした。"
+  },
+  "zotero": {
+    "completion": {
+      "library": "Zotero",
+      "authorsTwo": "{{first}} & {{second}}",
+      "authorsMany": "{{first}} ほか",
+      "noYear": "年不明",
+      "keySource": {
+        "bbt": "Better BibTeX の引用キー",
+        "native": "Zotero の引用キー",
+        "extra": "Zotero の「その他」フィールドの引用キー",
+        "generated": "Oleafly が生成した引用キー"
+      },
+      "addFailed": "Oleafly は {{key}} を参考文献に追加できませんでした。{{detail}}"
+    },
+    "hint": {
+      "apiDisabled": "Zotero で「設定 > 詳細」を開き、「Allow other applications on this computer to communicate with Zotero」をオンにしてください。",
+      "unsupported": "Oleafly からライブラリを検索するには、Zotero をバージョン 7 以降に更新してください。",
+      "keyRejected": "Zotero が API キーを受け付けなくなりました。Zotero の設定でアカウントを接続し直してください。",
+      "closed": "ここでライブラリを検索するには、Zotero を開くか zotero.org アカウントを接続してください。",
+      "closedCached": "Zotero が閉じています。結果は前回の同期 ({{time}}) 時点のものです。",
+      "bbtMissing": "Better BibTeX が応答しないため、新しいキーは Zotero から取得します。インストールされていて有効になっているか確認してください。",
+      "action": "Zotero の設定"
+    },
+    "actions": {
+      "addFromZotero": "Zotero から追加",
+      "addAllMissing_other": "不足している引用 {{count}} 件をすべて Zotero から追加",
+      "notInLibrary": "{{key}} は Zotero ライブラリにありません。",
+      "changed": "この項目は、追加したあとに Zotero で変更されています。",
+      "changedEdited": "この項目は Zotero で変更されており、ここでも編集されています。",
+      "update": "Zotero から更新",
+      "updated": "{{key}} を Zotero から更新しました。",
+      "updateFailed": "Oleafly は {{key}} を Zotero から更新できませんでした。もう一度お試しください。"
+    },
+    "chooseBibliography": {
+      "title": "新しい文献をどこに追加しますか？",
+      "description": "このプロジェクトには参考文献ファイルが複数あります。Oleafly は選んだファイルに新しい文献を追加し、このプロジェクトではそのファイルを記憶します。",
+      "confirm": "このファイルを使用"
+    },
+    "handEdits": {
+      "title": "編集内容を置き換えますか？",
+      "description": "{{key}} は手動で編集されています。Zotero の版に置き換えると、その変更は失われます。",
+      "confirm": "Zotero の版を使用",
+      "cancel": "自分の版を残す"
+    },
+    "handList": {
+      "title": "参考文献リストを移動しますか？",
+      "description": "この文書の参考文献は手動で書かれています。{{path}} に移動すると、Zotero から引用した文献と一つの番号付きリストにまとまります。",
+      "confirm": "リストを移動"
+    },
+    "missing": {
+      "title": "不足している引用を Zotero から追加",
+      "loading": "Zotero ライブラリを確認中…",
+      "none": "引用しているキーはすべて参考文献にあります。",
+      "found_other": "引用しているキー {{count}} 件が Zotero にあります",
+      "duplicates_other": "{{count}} 件のキーが、すでに参考文献にある論文を引用しています",
+      "duplicateRow": "{{key}} は {{existing}} と同じ論文です",
+      "notFound_other": "引用しているキー {{count}} 件が Zotero にありません",
+      "confirm_other": "{{count}} 件の項目を追加",
+      "done_other": "{{count}} 件の項目を {{path}} に追加しました。",
+      "failed": "Oleafly は項目を追加できませんでした。{{detail}}"
+    },
+    "update": {
+      "title": "Zotero から .bib の項目を更新",
+      "loading": "Zotero の変更を確認中…",
+      "none": "参考文献は Zotero と一致しています。",
+      "handEdited": "手動で編集済み",
+      "handEditedNote": "手動で編集した項目は選択されていません。選択すると、その項目を Zotero の版に置き換えます。",
+      "confirm_other": "{{count}} 件の項目を更新",
+      "done_other": "{{count}} 件の項目を更新しました。"
+    }
   }
 }

@@ -305,7 +305,7 @@ export function ResearchProjectSetup({
 
   const previewPane = () =>
     preview && selectedPreviewPath ? (
-      <pre className="whitespace-pre-wrap break-words px-4 py-3 text-xs leading-relaxed">
+      <pre data-select-all-scope className="select-text whitespace-pre-wrap break-words px-4 py-3 text-xs leading-relaxed">
         <HighlightedCode
           language={previewLanguage(selectedPreviewPath)}
           source={
@@ -458,7 +458,7 @@ export function ResearchProjectSetup({
           </div>
           {previewPanel({ preview, previewing, selectedPreviewPath, previewTree, previewPane })}
         </div>
-        {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+        {error && <p className="select-text text-sm text-destructive" role="alert">{error}</p>}
         <DialogFooter>
           <Button variant="outline" disabled={creating} onClick={onClose}>
             {t(($) => $.common.actions.cancel)}

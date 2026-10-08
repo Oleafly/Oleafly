@@ -24,6 +24,8 @@ import {
   EDITOR_KEYMAP_MODES,
   EDITOR_LINE_HEIGHT_OPTIONS,
   EDITOR_TAB_SIZES,
+  FILE_MOVE_REFERENCE_OPTIONS,
+  type FileMoveReferences,
   EDITOR_THEMES,
   TERMINAL_COLOR_THEMES,
   TERMINAL_FONTS,
@@ -44,6 +46,11 @@ import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { Kbd } from "@/components/ui/kbd";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { useFilesStore } from "@/store/files";
+import { useZenStore } from "@/store/zen";
+import { toggleZenMode } from "@/lib/zen-mode";
 
 const APPEARANCE_TABS = [
   { id: "app", label: () => i18n.t(($) => $.settings.appearance.tabs.app) },
@@ -55,6 +62,64 @@ const APPEARANCE_TABS = [
 ] as const;
 
 type AppearanceTabId = (typeof APPEARANCE_TABS)[number]["id"];
+
+function ZenModeSettings() {
+  const { t } = useTranslation(["settings"]);
+  const active = useZenStore((state) => state.active);
+  const hasProject = useFilesStore((state) => state.projectId !== null);
+  const shortcut = useShortcutStore((state) => shortcutLabel(state.bindings.toggleZenMode));
+  const fullScreen = useSettingsStore((state) => state.zenFullScreen);
+  const setFullScreen = useSettingsStore((state) => state.setZenFullScreen);
+  const centerEditor = useSettingsStore((state) => state.zenCenterEditor);
+  const setCenterEditor = useSettingsStore((state) => state.setZenCenterEditor);
+  const showPdf = useSettingsStore((state) => state.zenShowPdfOnCompile);
+  const setShowPdf = useSettingsStore((state) => state.setZenShowPdfOnCompile);
+
+  return (
+    <section
+      className="space-y-3 pt-3"
+      aria-labelledby="settings-appearance-zen-heading"
+      data-testid="settings-appearance-zen"
+    >
+      <SectionHeading id="settings-appearance-zen-heading">
+        {t(($) => $.settings.appearance.zen.title)}
+      </SectionHeading>
+      <SettingsToggleRow
+        testId="settings-row-zen-mode"
+        label={t(($) => $.settings.appearance.zen.toggle.label)}
+        description={t(($) => $.settings.appearance.zen.toggle.description)}
+        adornment={<Kbd className="h-5 rounded-md border px-1.5 text-[11px] text-foreground">{shortcut}</Kbd>}
+        checked={active}
+        disabled={!active && !hasProject}
+        onChange={(next) => {
+          if (next) useSettingsStore.getState().setSettingsOpen(false);
+          toggleZenMode();
+        }}
+      />
+      <SettingsToggleRow
+        testId="settings-row-zen-full-screen"
+        label={t(($) => $.settings.appearance.zen.fullScreen.label)}
+        description={t(($) => $.settings.appearance.zen.fullScreen.description)}
+        checked={fullScreen}
+        onChange={setFullScreen}
+      />
+      <SettingsToggleRow
+        testId="settings-row-zen-center-editor"
+        label={t(($) => $.settings.appearance.zen.centerEditor.label)}
+        description={t(($) => $.settings.appearance.zen.centerEditor.description)}
+        checked={centerEditor}
+        onChange={setCenterEditor}
+      />
+      <SettingsToggleRow
+        testId="settings-row-zen-show-pdf"
+        label={t(($) => $.settings.appearance.zen.showPdf.label)}
+        description={t(($) => $.settings.appearance.zen.showPdf.description)}
+        checked={showPdf}
+        onChange={setShowPdf}
+      />
+    </section>
+  );
+}
 
 function AppAppearanceTab() {
   const { t } = useTranslation(["common", "settings"]);
@@ -263,6 +328,7 @@ function AppAppearanceTab() {
           </Select>
         }
       />
+      <ZenModeSettings />
       <ThemeCustomization />
     </div>
   );
@@ -324,6 +390,8 @@ function EditorAppearanceTab() {
   const setEditorFontFamily = useSettingsStore((state) => state.setEditorFontFamily);
   const editorTheme = useSettingsStore((state) => state.editorTheme);
   const setEditorTheme = useSettingsStore((state) => state.setEditorTheme);
+  const fileMoveReferences = useSettingsStore((state) => state.fileMoveReferences);
+  const setFileMoveReferences = useSettingsStore((state) => state.setFileMoveReferences);
 
   return (
     <div className="space-y-3">
@@ -526,6 +594,28 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.mathPreview.description)}
         checked={editorMathPreview}
         onChange={setEditorMathPreview}
+      />
+      <SettingsRow
+        testId="settings-row-file-move-references"
+        label={t(($) => $.settings.appearance.editor.fileMove.label)}
+        description={t(($) => $.settings.appearance.editor.fileMove.description)}
+        control={
+          <Select
+            value={fileMoveReferences}
+            onValueChange={(value) => setFileMoveReferences(value as FileMoveReferences)}
+          >
+            <SelectTrigger className="w-[168px]" data-testid="settings-file-move-references-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {FILE_MOVE_REFERENCE_OPTIONS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {t(($) => $.settings.appearance.editor.fileMove.options[option])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
       />
       <TypstEditorSettings />
     </div>

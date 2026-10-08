@@ -25,7 +25,6 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { useCitationStore } from "@/store/citation";
-import { useFilesStore } from "@/store/files";
 import { AddCitationDialog } from "./AddCitationDialog";
 
 const copy = enShell.addCitation;
@@ -115,7 +114,7 @@ describe("AddCitationDialog", () => {
 
   it("adds the previewed entry and closes", async () => {
     mocks.resolveCitation.mockResolvedValue({ bibtex: "@article{a}" });
-    mocks.addCitation.mockResolvedValue({ key: "a" });
+    mocks.addCitation.mockResolvedValue({ key: "a", cite: "\\cite{a}" });
     render(<AddCitationDialog />);
     const user = userEvent.setup();
     await user.type(screen.getByPlaceholderText(copy.placeholder), "10.1/x{Enter}");
@@ -126,27 +125,14 @@ describe("AddCitationDialog", () => {
     );
   });
 
-  it("cites with the markup of a Typst project", async () => {
-    const engine = useFilesStore.getState().engine;
-    useFilesStore.setState({
-      engine: {
-        ...engine,
-        capabilities: { ...engine.capabilities, formatting_profile: "typst" },
-      },
-    });
-    try {
-      mocks.resolveCitation.mockResolvedValue({ bibtex: "@article{a}" });
-      mocks.addCitation.mockResolvedValue({ key: "a" });
-      render(<AddCitationDialog />);
-      const user = userEvent.setup();
-      await user.type(screen.getByPlaceholderText(copy.placeholder), "10.1/x{Enter}");
-      await user.click(await screen.findByRole("button", { name: copy.confirm }));
-      await waitFor(() =>
-        expect(mocks.success).toHaveBeenCalledWith(copy.added.replace("{{cite}}", "@a")),
-      );
-    } finally {
-      useFilesStore.setState({ engine });
-    }
+  it("names just the key when it joined a citation already in the text", async () => {
+    mocks.resolveCitation.mockResolvedValue({ bibtex: "@article{a}" });
+    mocks.addCitation.mockResolvedValue({ key: "a", cite: "a" });
+    render(<AddCitationDialog />);
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText(copy.placeholder), "10.1/x{Enter}");
+    await user.click(await screen.findByRole("button", { name: copy.confirm }));
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith(copy.added.replace("{{cite}}", "a")));
   });
 
   it("shows a thrown add failure inline and lets the reader retry", async () => {
@@ -201,22 +187,14 @@ describe("AddCitationDialog", () => {
     await waitFor(() => expect(useCitationStore.getState().open).toBe(false));
   });
 
-  it("cites with the markup of a Markdown project", async () => {
-    const engine = useFilesStore.getState().engine;
-    useFilesStore.setState({
-      engine: { ...engine, capabilities: { ...engine.capabilities, formatting_profile: "markdown" } },
-    });
-    try {
-      mocks.resolveCitation.mockResolvedValue({ bibtex: "@article{b}" });
-      mocks.addCitation.mockResolvedValue({ key: "b" });
-      render(<AddCitationDialog />);
-      const user = userEvent.setup();
-      await user.type(screen.getByPlaceholderText(copy.placeholder), "10.1/y{Enter}");
-      await user.click(await screen.findByRole("button", { name: copy.confirm }));
-      await waitFor(() => expect(mocks.success).toHaveBeenCalledWith(copy.added.replace("{{cite}}", "[@b]")));
-    } finally {
-      useFilesStore.setState({ engine });
-    }
+  it("names the new key when nothing was written into the editor", async () => {
+    mocks.resolveCitation.mockResolvedValue({ bibtex: "@article{b}" });
+    mocks.addCitation.mockResolvedValue({ key: "b", cite: null });
+    render(<AddCitationDialog />);
+    const user = userEvent.setup();
+    await user.type(screen.getByPlaceholderText(copy.placeholder), "10.1/y{Enter}");
+    await user.click(await screen.findByRole("button", { name: copy.confirm }));
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith(copy.added.replace("{{cite}}", "b")));
   });
 });
 

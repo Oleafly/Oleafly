@@ -176,7 +176,7 @@ function artifactPreviewBody(preview: ResearchArtifactPreview) {
       {preview.isBinary ? (
         <p className="text-[10px] text-muted-foreground">{i18n.t(($) => $.ai.toolCard.binaryPreview)}</p>
       ) : (
-        <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-muted-foreground">{preview.content}</pre>
+        <pre data-select-all-scope className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-muted-foreground">{preview.content}</pre>
       )}
       {preview.truncated && <p className="mt-1 text-[10px] text-muted-foreground">{i18n.t(($) => $.ai.toolCard.previewTruncated)}</p>}
     </div>
@@ -287,11 +287,11 @@ export function ResearchToolCard({
         </div>
       )}
       {expanded && (
-        <div id={regionId} className="ml-[0.4375rem] space-y-2 border-l pl-3 pb-1">
+        <div id={regionId} className="ml-[0.4375rem] select-text space-y-2 border-l pl-3 pb-1">
           <LiteratureResults view={view} actions={actions} />
           {diagnosticsList(view)}
           {preview && (
-            <pre className="max-h-80 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 px-2.5 py-2 font-mono text-[10px] text-muted-foreground">{preview}</pre>
+            <pre data-select-all-scope className="max-h-80 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 px-2.5 py-2 font-mono text-[10px] text-muted-foreground">{preview}</pre>
           )}
           {artifactPreview && artifactPreviewBody(artifactPreview)}
           {artifactError && <p className="py-1 text-[10px] text-destructive">{t(($) => $.ai.toolCard.previewFailed)}</p>}

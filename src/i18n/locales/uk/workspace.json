@@ -218,5 +218,28 @@
     "clearFilter": "Очистити фільтр",
     "filterPlaceholder": "Фільтрувати…",
     "noProject": "Немає проєкту"
+  },
+  "fileReferences": {
+    "title": "Оновити посилання на {{name}}?",
+    "files_one": "{{count}} файлі",
+    "files_few": "{{count}} файлах",
+    "files_many": "{{count}} файлах",
+    "files_other": "{{count}} файла",
+    "summary_one": "{{count}} посилання в $t(workspace:fileReferences.files, { \"count\": {{files}} }) досі вказує на старий шлях {{path}}.",
+    "summary_few": "{{count}} посилання в $t(workspace:fileReferences.files, { \"count\": {{files}} }) досі вказують на старий шлях {{path}}.",
+    "summary_many": "{{count}} посилань в $t(workspace:fileReferences.files, { \"count\": {{files}} }) досі вказують на старий шлях {{path}}.",
+    "summary_other": "{{count}} посилання в $t(workspace:fileReferences.files, { \"count\": {{files}} }) досі вказують на старий шлях {{path}}.",
+    "fileCount_one": "{{count}} посилання",
+    "fileCount_few": "{{count}} посилання",
+    "fileCount_many": "{{count}} посилань",
+    "fileCount_other": "{{count}} посилання",
+    "dontAsk": "Більше не питати",
+    "update": "Оновити посилання",
+    "skip": "Не оновлювати",
+    "failed_one": "{{count}} файл змінився після переміщення або не зберігся. У ньому лишився старий шлях.",
+    "failed_few": "{{count}} файли змінилися після переміщення або не збереглися. У них лишився старий шлях.",
+    "failed_many": "{{count}} файлів змінилися після переміщення або не збереглися. У них лишився старий шлях.",
+    "failed_other": "{{count}} файла змінилися після переміщення або не збереглися. У них лишився старий шлях.",
+    "close": "Закрити, не оновлюючи посилання"
   }
 }

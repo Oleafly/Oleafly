@@ -261,7 +261,7 @@ function renderCard(
   // The prose lives in its own element: the header is a flex row for the dot,
   // and loose text nodes would each become a gapped flex item.
   const headerText = document.createElement("span");
-  headerText.className = "cm-proofread-header-text";
+  headerText.className = "cm-proofread-header-text select-text";
   const spelling = isSpellingDiagnosticKind(card.kind);
   fillHeaderText(headerText, card, card.suggestions);
   header.append(dot, headerText);
@@ -269,7 +269,7 @@ function renderCard(
 
   if (!spelling && card.rule) {
     const rule = document.createElement("div");
-    rule.className = "cm-proofread-rule";
+    rule.className = "cm-proofread-rule select-text";
     rule.textContent = card.rule;
     root.append(rule);
   }

@@ -8,8 +8,10 @@ import { foldLatinDiacritics } from "@oleafly/latex";
 import { getEditorView, insertTemplate } from "@/components/editor/cm/controller";
 import { latexGraphicsPath, suggestedFigureLabel } from "@/components/editor/figure-import";
 import { ensureTypstBibliography } from "@/features/citation";
+import { citationText } from "@/features/cite-insert";
 import { i18n } from "@/i18n";
 import { hasTypstBibliography } from "@/lib/citation/typst-bibliography";
+import { citeSiteAtCaret, joinsCitation } from "@/lib/zotero/cite-syntax";
 import { logError } from "@/lib/log";
 import { readFileContent } from "@/lib/tauri";
 import { toast } from "@/lib/toast";
@@ -62,13 +64,17 @@ interface Insertion {
   readonly to: number;
 }
 
-export function dispatchInsertion(view: EditorView, insertion: Insertion, extra: readonly ChangeSpec[] = []): void {
-  const selection = view.state.selection.main;
+export function dispatchInsertion(
+  view: EditorView,
+  insertion: Insertion,
+  extra: readonly ChangeSpec[] = [],
+  range: { readonly from: number; readonly to: number } = view.state.selection.main,
+): void {
   const changes = view.state.changes([
-    { from: selection.from, to: selection.to, insert: insertion.insert },
+    { from: range.from, to: range.to, insert: insertion.insert },
     ...extra,
   ]);
-  const start = changes.mapPos(selection.from, -1);
+  const start = changes.mapPos(range.from, -1);
   view.dispatch({
     changes,
     selection: { anchor: start + insertion.from, head: start + insertion.to },
@@ -121,9 +127,20 @@ export function typstReferenceText(
   return `${lead}@${key}${trail}`;
 }
 
+function joinCitation(view: EditorView, key: string, extra: (view: EditorView) => ChangeSpec[]): boolean {
+  const { from, to } = view.state.selection.main;
+  const text = view.state.doc.toString();
+  const site = citeSiteAtCaret(text, from, to, "typst");
+  if (!joinsCitation(site, from, to)) return false;
+  const insert = citationText(text, "typst", site, key);
+  dispatchInsertion(view, { insert, from: insert.length, to: insert.length }, extra(view), site);
+  return true;
+}
+
 function insertReference(kind: "cite" | "ref", key: string, extra: (view: EditorView) => ChangeSpec[]): EditorView | null {
   const view = getEditorView();
   if (!view) return null;
+  if (kind === "cite" && joinCitation(view, key, extra)) return view;
   const selection = view.state.selection.main;
   const { before, after } = surroundings(view.state, selection.from, selection.to);
   const text = typstReferenceText(kind, key, contextAt(view.state, selection.from), before, after);

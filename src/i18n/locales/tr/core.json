@@ -358,7 +358,8 @@
     "referencesFor": "{{name}} kaynakları",
     "renameFailed": "\"{{name}}\" olarak yeniden adlandırılamadı.",
     "renamePartial": "{{total}} dosyanın {{edited}} tanesinde \"{{name}}\" olarak yeniden adlandırıldı. {{files}} yazılamadı.",
-    "renamed": "\"{{name}}\" olarak yeniden adlandırıldı ($t(core:navigation.files, {\"count\": {{files}} }) içinde $t(core:navigation.edits, {\"count\": {{edits}} }))"
+    "renamed": "\"{{name}}\" olarak yeniden adlandırıldı ($t(core:navigation.files, {\"count\": {{files}} }) içinde $t(core:navigation.edits, {\"count\": {{edits}} }))",
+    "pathNotInProject": "\"{{path}}\" bu projedeki hiçbir dosyayla eşleşmiyor."
   },
   "pandoc": {
     "downloadFailed": "pandoc indirilemedi. Elle kurup yeniden deneyin.",

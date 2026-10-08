@@ -182,7 +182,7 @@ export class ErrorBoundary extends Component<Props, State> {
               </span>
               <CopyStackButton text={`${error.name}: ${error.message}`} />
             </div>
-            <pre className="max-h-40 overflow-auto px-4 py-3 text-left font-mono text-xs text-white/80">
+            <pre data-select-all-scope className="max-h-40 select-text overflow-auto px-4 py-3 text-left font-mono text-xs text-white/80">
               {`${error.name}: ${error.message}`}
             </pre>
           </div>

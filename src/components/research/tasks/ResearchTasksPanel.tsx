@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertCircle, Link2, Plus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip } from "@/components/ui/tooltip";
+import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
+import { useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { useTauriSubscription } from "@/hooks/use-tauri-event";
 import { getProvider } from "@/lib/ai-providers";
 import type { ResearchTask } from "@/lib/research-tasks";
@@ -14,6 +16,7 @@ import {
   mountResearchTaskSubscriptions,
   useResearchTasksStore,
 } from "@/store/research-tasks";
+import { readSidebarView } from "@/store/sidebar-view-state";
 import { i18n } from "@/i18n";
 import { composerDraftKey, TaskComposer } from "./TaskComposer";
 import { relativeTime } from "./task-status";
@@ -48,6 +51,103 @@ const FILTERS: { id: TaskFilter; label: () => string }[] = [
   { id: "done", label: () => i18n.t(($) => $.researchTools.tasks.panel.filterDone) },
 ];
 
+type ListT = ReturnType<typeof useTranslation<["common", "researchTools"]>>["t"];
+
+const TaskRow = memo(function TaskRow({
+  task,
+  selected,
+  blocked,
+  agentName,
+  modelName,
+  onOpen,
+  t,
+}: Readonly<{
+  task: ResearchTask;
+  selected: boolean;
+  blocked: boolean;
+  agentName?: string;
+  modelName?: string;
+  onOpen: (taskId: string) => void;
+  t: ListT;
+}>) {
+  return (
+    <li>
+      <div
+        data-selected={selected ? "true" : undefined}
+        className="min-w-0 rounded-lg border bg-card shadow-sm transition-colors hover:bg-accent has-[button:active]:border-primary/40 has-[button:active]:bg-primary/5"
+      >
+        <button
+          type="button"
+          aria-current={selected ? "page" : undefined}
+          onClick={() => onOpen(task.id)}
+          className="block w-full rounded-t-lg px-3 pb-1.5 pt-2.5 text-left"
+        >
+          <span className="flex max-w-full">
+            <span data-tooltip={task.title} className="min-w-0 truncate text-sm font-medium">
+              {task.title}
+            </span>
+          </span>
+          <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
+            {task.prompt}
+          </span>
+        </button>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5">
+          <TaskStatusBadge status={task.status} />
+          <TaskAgentChip
+            task={task}
+            agentName={agentName}
+            modelName={modelName}
+            className="max-w-[13rem]"
+          />
+          {task.dependencyIds.length > 0 ? (
+            <Badge variant="outline" className="gap-1">
+              <Link2 aria-hidden="true" className="size-3" />
+              {task.dependencyIds.length}
+            </Badge>
+          ) : null}
+          <span className="text-[11px] tabular-nums text-muted-foreground">
+            {relativeTime(task.updatedAt)}
+          </span>
+          {blocked && task.status === "queued" ? (
+            <span className="text-[11px] text-muted-foreground">
+              {t(($) => $.researchTools.tasks.panel.waiting)}
+            </span>
+          ) : null}
+          <Button
+            size="xs"
+            variant="outline"
+            className="ml-auto shrink-0"
+            onClick={() => onOpen(task.id)}
+          >
+            {task.status === "running"
+              ? t(($) => $.researchTools.tasks.panel.viewProgress)
+              : t(($) => $.researchTools.tasks.panel.viewTask)}
+          </Button>
+        </div>
+      </div>
+    </li>
+  );
+});
+
+type SelectedTaskDialogProps = Omit<
+  ComponentProps<typeof TaskDetailDialog>,
+  "events" | "eventsLoading" | "canLoadMoreEvents"
+>;
+
+function SelectedTaskDialog(props: Readonly<SelectedTaskDialogProps>) {
+  const events = useResearchTasksStore((state) => state.events);
+  const eventsLoading = useResearchTasksStore((state) => state.eventsLoading);
+  const eventsNextSequence = useResearchTasksStore((state) => state.eventsNextSequence);
+  return (
+    <TaskDetailDialog
+      {...props}
+      events={events}
+      eventsLoading={eventsLoading}
+      canLoadMoreEvents={eventsNextSequence !== null}
+    />
+  );
+}
+
 function matchesFilter(task: ResearchTask, filter: TaskFilter): boolean {
   switch (filter) {
     case "running":
@@ -70,10 +170,7 @@ export function ResearchTasksPanel({
   const { t } = useTranslation(["common", "researchTools"]);
   const tasks = useResearchTasksStore((state) => state.tasks);
   const selectedTaskId = useResearchTasksStore((state) => state.selectedTaskId);
-  const events = useResearchTasksStore((state) => state.events);
-  const eventsNextSequence = useResearchTasksStore((state) => state.eventsNextSequence);
   const loading = useResearchTasksStore((state) => state.loading);
-  const eventsLoading = useResearchTasksStore((state) => state.eventsLoading);
   const action = useResearchTasksStore((state) => state.action);
   const error = useResearchTasksStore((state) => state.error);
   const detailOpen = useResearchTasksStore((state) => state.detailOpen);
@@ -98,7 +195,23 @@ export function ResearchTasksPanel({
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [composerInstance, setComposerInstance] = useState(0);
   const [savingComposerInstance, setSavingComposerInstance] = useState<number | null>(null);
-  const [filter, setFilter] = useState<TaskFilter>("all");
+  const [filter, setFilter] = useState<TaskFilter>(
+    () => readSidebarView(projectId, "researchTasks")?.filter ?? "all",
+  );
+  useSidebarViewMemory(projectId, "researchTasks", { filter });
+  const previousProjectId = useRef(projectId);
+  useEffect(() => {
+    if (previousProjectId.current === projectId) return;
+    previousProjectId.current = projectId;
+    setFilter(readSidebarView(projectId, "researchTasks")?.filter ?? "all");
+  }, [projectId]);
+  const listRef = useRef<HTMLUListElement>(null);
+  useScrollMemory({
+    scrollRef: listRef,
+    projectId,
+    slot: "research.tasks",
+    ready: tasks.length > 0,
+  });
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [reopenDetail, setReopenDetail] = useState(false);
   const composerGeneration = useRef(0);
@@ -167,6 +280,11 @@ export function ResearchTasksPanel({
     () => tasks.filter((task) => matchesFilter(task, filter)),
     [filter, tasks],
   );
+  const statusById = useMemo(
+    () => new Map(tasks.map((task) => [task.id, task.status])),
+    [tasks],
+  );
+  const tooltips = useDelegatedTooltips(listRef);
   const counts = useMemo(
     () =>
       FILTERS.reduce<Record<TaskFilter, number>>(
@@ -267,77 +385,31 @@ export function ResearchTasksPanel({
             </TabsList>
           </Tabs>
         </div>
-        <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3">
+        <ul
+          ref={listRef}
+          className="min-h-0 flex-1 space-y-2 overflow-y-auto overflow-x-hidden p-3"
+        >
           {visibleTasks.length === 0 ? (
             <li className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
               {t(($) => $.researchTools.tasks.panel.emptyFilter)}
             </li>
           ) : null}
-          {visibleTasks.map((task) => {
-            const selected = task.id === selectedTaskId;
-            const blocked = task.dependencyIds.some(
-              (dependencyId) =>
-                tasks.find((candidate) => candidate.id === dependencyId)?.status !== "completed",
-            );
-            return (
-              <li key={task.id}>
-                <div
-                  data-selected={selected ? "true" : undefined}
-                  className="min-w-0 rounded-lg border bg-card shadow-sm transition-colors hover:bg-accent has-[button:active]:border-primary/40 has-[button:active]:bg-primary/5"
-                >
-                  <button
-                    type="button"
-                    aria-current={selected ? "page" : undefined}
-                    onClick={() => openTaskDetail(task.id)}
-                    className="block w-full rounded-t-lg px-3 pb-1.5 pt-2.5 text-left"
-                  >
-                    <Tooltip label={task.title} className="max-w-full">
-                      <span className="block w-full truncate text-sm font-medium">
-                        {task.title}
-                      </span>
-                    </Tooltip>
-                    <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground">
-                      {task.prompt}
-                    </span>
-                  </button>
-                  <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 px-3 pb-2.5">
-                    <TaskStatusBadge status={task.status} />
-                    <TaskAgentChip
-                      task={task}
-                      agentName={agentNameFor(task)}
-                      modelName={modelNameFor(task)}
-                      className="max-w-[13rem]"
-                    />
-                    {task.dependencyIds.length > 0 ? (
-                      <Badge variant="outline" className="gap-1">
-                        <Link2 aria-hidden="true" className="size-3" />
-                        {task.dependencyIds.length}
-                      </Badge>
-                    ) : null}
-                    <span className="text-[11px] tabular-nums text-muted-foreground">
-                      {relativeTime(task.updatedAt)}
-                    </span>
-                    {blocked && task.status === "queued" ? (
-                      <span className="text-[11px] text-muted-foreground">
-                        {t(($) => $.researchTools.tasks.panel.waiting)}
-                      </span>
-                    ) : null}
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      className="ml-auto shrink-0"
-                      onClick={() => openTaskDetail(task.id)}
-                    >
-                      {task.status === "running"
-                        ? t(($) => $.researchTools.tasks.panel.viewProgress)
-                        : t(($) => $.researchTools.tasks.panel.viewTask)}
-                    </Button>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
+          {visibleTasks.map((task) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              selected={task.id === selectedTaskId}
+              blocked={task.dependencyIds.some(
+                (dependencyId) => statusById.get(dependencyId) !== "completed",
+              )}
+              agentName={agentNameFor(task)}
+              modelName={modelNameFor(task)}
+              onOpen={openTaskDetail}
+              t={t}
+            />
+          ))}
         </ul>
+        {tooltips}
       </nav>
     );
 
@@ -409,7 +481,7 @@ export function ResearchTasksPanel({
         >
           <div className="flex min-w-0 items-start gap-2 text-sm">
             <AlertCircle className="mt-0.5 size-4 shrink-0 text-destructive" />
-            <p className="min-w-0 break-words">{error}</p>
+            <p className="min-w-0 select-text break-words">{error}</p>
           </div>
           <Button size="xs" variant="ghost" onClick={clearError}>
             {t(($) => $.researchTools.tasks.panel.dismiss)}
@@ -425,15 +497,12 @@ export function ResearchTasksPanel({
       ) : taskListBody()}
 
       {selectedTask ? (
-        <TaskDetailDialog
+        <SelectedTaskDialog
           key={`${selectedTask.id}:${selectedTask.executionGeneration}`}
           open={detailOpen}
           onOpenChange={setDetailOpen}
           task={selectedTask}
           tasks={tasks}
-          events={events}
-          eventsLoading={eventsLoading}
-          canLoadMoreEvents={eventsNextSequence !== null}
           busy={action === selectedTask.id}
           agentName={agentNameFor(selectedTask)}
           initialTab={detailTab}

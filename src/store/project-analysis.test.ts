@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildIndex } from "@/lib/index/build";
 import type { ProjectAnalysisRequestIdentity } from "@/lib/analysis";
+import { PROJECT_ANALYSIS_FEATURES } from "@/lib/analysis/project-snapshot";
 import {
   createProjectAnalysisStore,
   failProjectAnalysisFeature,
@@ -31,6 +32,31 @@ function activatedStore() {
 }
 
 describe("project analysis store", () => {
+  it("marks every feature in one update", () => {
+    const store = activatedStore();
+    let updates = 0;
+    const unsubscribe = store.subscribe(() => {
+      updates += 1;
+    });
+
+    store
+      .getState()
+      .markFeaturesUnavailable(PROJECT_ANALYSIS_FEATURES, { text: "server missing" }, false);
+    expect(updates).toBe(1);
+    for (const feature of PROJECT_ANALYSIS_FEATURES) {
+      expect(store.getState().snapshot.features[feature]).toMatchObject({
+        status: "unavailable",
+        retryable: false,
+      });
+    }
+
+    store.getState().markFeaturesNotRun(PROJECT_ANALYSIS_FEATURES, { key: "starting" });
+    store.getState().markFeaturesUnsupported(PROJECT_ANALYSIS_FEATURES, { key: "starting" });
+    expect(updates).toBe(3);
+    expect(store.getState().snapshot.features.hover).toMatchObject({ status: "unsupported" });
+    unsubscribe();
+  });
+
   it("starts with explicit not-run placeholders", () => {
     const store = createProjectAnalysisStore();
     const snapshot = store.getState().snapshot;
@@ -237,6 +263,49 @@ describe("project analysis store", () => {
       status: "success",
       data: [{ uri: secondUri, message: "second" }],
     });
+  });
+
+  it("lets a later publication for the same epoch replace acknowledged diagnostics", () => {
+    const store = activatedStore();
+    const uri = "file:///project/main.tex";
+    store.getState().setDocumentVersion(uri, 1);
+    const current = request(1, { documentUri: uri, documentVersion: 1 });
+    const diagnostic = (message: string) => ({
+      id: `${uri}:${message}`,
+      uri,
+      range: {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 1 },
+      },
+      severity: "error" as const,
+      message,
+      source: "test",
+      projectRevision: 1,
+      documentVersion: 1,
+    });
+
+    expect(store.getState().beginDocumentDiagnostics(uri, 1, current)).toBe(true);
+    expect(
+      store
+        .getState()
+        .resolveDocumentDiagnostics(uri, 1, current, [diagnostic("Undefined reference")]),
+    ).toBe(true);
+    expect(store.getState().resolveDocumentDiagnostics(uri, 1, current, [])).toBe(true);
+    expect(store.getState().snapshot.diagnosticsByUri[uri]).toMatchObject({
+      status: "acknowledged",
+      data: [],
+    });
+    expect(
+      store
+        .getState()
+        .resolveDocumentDiagnostics(
+          uri,
+          1,
+          request(2, { documentUri: uri, documentVersion: 1 }),
+          [diagnostic("other request")],
+        ),
+    ).toBe(false);
+    expect(store.getState().snapshot.diagnosticsByUri[uri]?.data).toEqual([]);
   });
 
   it("invalidates language-service slots on restart but preserves the local index", () => {

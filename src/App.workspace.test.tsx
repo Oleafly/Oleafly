@@ -25,6 +25,9 @@ const mocks = vi.hoisted(() => ({
   initAiPdfCaptureFlag: vi.fn(),
   sidebarThrows: false,
   previewRenders: 0,
+  previewMounts: 0,
+  previewUnmounts: 0,
+  previewActive: null as boolean | null,
   editorRenders: 0,
 }));
 
@@ -184,12 +187,22 @@ vi.mock("@/components/editor/Editor", () => ({
     return <div data-testid="editor-surface" />;
   },
 }));
-vi.mock("@/components/preview/PreviewPane", () => ({
-  PreviewPane: () => {
-    mocks.previewRenders++;
-    return <div data-testid="preview-surface" />;
-  },
-}));
+vi.mock("@/components/preview/PreviewPane", async () => {
+  const { useEffect } = await import("react");
+  return {
+    PreviewPane: ({ active = true }: { active?: boolean }) => {
+      mocks.previewRenders++;
+      mocks.previewActive = active;
+      useEffect(() => {
+        mocks.previewMounts++;
+        return () => {
+          mocks.previewUnmounts++;
+        };
+      }, []);
+      return <div data-testid="preview-surface" />;
+    },
+  };
+});
 vi.mock("@/components/import/PdfImportView", () => ({ PdfImportView: () => <div data-testid="tool-pdf-import" /> }));
 vi.mock("@/components/layout/Sidebar", () => ({
   Sidebar: () => {
@@ -287,6 +300,9 @@ async function renderApp() {
 beforeEach(() => {
   mocks.tauri = false;
   mocks.sidebarThrows = false;
+  mocks.previewMounts = 0;
+  mocks.previewUnmounts = 0;
+  mocks.previewActive = null;
   mocks.listeners.clear();
   vi.clearAllMocks();
   mocks.editorVimUndo.mockReturnValue(true);
@@ -404,10 +420,74 @@ describe("project workspace", () => {
     expect(mocks.editorRenders).toBe(renders.editor);
   });
 
+  it("keeps the editor and preview still when the shell around them changes", async () => {
+    await renderApp();
+    const renders = { preview: mocks.previewRenders, editor: mocks.editorRenders };
+
+    act(() => useSettingsStore.getState().setTerminalOpen(true));
+    act(() => useSettingsStore.getState().setTerminalOpen(false));
+
+    expect(mocks.previewRenders).toBe(renders.preview);
+    expect(mocks.editorRenders).toBe(renders.editor);
+  });
+
   it("drops the preview pane while the preview is detached", async () => {
     usePreviewDetachedStore.setState({ projectId: "p1" });
     await renderApp();
     expect(screen.getByTestId("editor-surface")).toBeInTheDocument();
+    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
+  });
+
+  it("keeps the preview alive while the editor fills the window", async () => {
+    await renderApp();
+    expect(mocks.previewMounts).toBe(1);
+
+    act(() => useSettingsStore.getState().setViewMode("editor"));
+    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
+    expect(mocks.previewActive).toBe(false);
+
+    act(() => useSettingsStore.getState().setViewMode("split"));
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+    expect(mocks.previewActive).toBe(true);
+    expect(mocks.previewMounts).toBe(1);
+    expect(mocks.previewUnmounts).toBe(0);
+  });
+
+  it("keeps the preview alive while the assistant takes over the window", async () => {
+    await renderApp();
+    act(() => useSettingsStore.setState({ assistantOpen: true, workspaceHidden: true }));
+    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
+    expect(mocks.previewActive).toBe(false);
+
+    act(() => useSettingsStore.setState({ workspaceHidden: false }));
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+    expect(mocks.previewUnmounts).toBe(0);
+  });
+
+  it("keeps no preview for a project that opens with the editor filling the window", async () => {
+    savedLayout({ viewMode: "editor" });
+    await renderApp();
+    expect(mocks.previewMounts - mocks.previewUnmounts).toBe(0);
+
+    act(() => useSettingsStore.getState().setViewMode("split"));
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+    expect(mocks.previewMounts - mocks.previewUnmounts).toBe(1);
+  });
+
+  it("lets go of a hidden preview when the preview opens in its own window", async () => {
+    await renderApp();
+    act(() => useSettingsStore.getState().setViewMode("editor"));
+    act(() => usePreviewDetachedStore.setState({ projectId: "p1" }));
+    expect(mocks.previewUnmounts).toBe(1);
+  });
+
+  it("lets go of a hidden preview when another project opens", async () => {
+    await renderApp();
+    act(() => useSettingsStore.getState().setViewMode("editor"));
+    localStorage.setItem("oleafly.workspace.p2", JSON.stringify({ version: 1, viewMode: "editor" }));
+    act(() => useFilesStore.setState({ projectId: "p2", projectName: "Thesis" }));
+    await act(async () => {});
+    expect(mocks.previewUnmounts).toBe(1);
     expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
   });
 
@@ -463,19 +543,25 @@ describe("project workspace", () => {
     expect(root.style.getPropertyValue("--cm-font-family")).toBe("");
   });
 
-  it("refreshes git status and open files when the window regains focus or becomes visible", async () => {
+  it("refreshes git status and open files once each time the window comes back", async () => {
     await renderApp();
+    const now = vi.spyOn(Date, "now").mockReturnValue(10_000);
     mocks.gitRefresh.mockClear();
+    mocks.refreshOpenFilesFromDisk.mockClear();
     act(() => {
       window.dispatchEvent(new Event("focus"));
+      document.dispatchEvent(new Event("visibilitychange"));
     });
+    expect(mocks.gitRefresh).toHaveBeenCalledTimes(1);
     expect(mocks.gitRefresh).toHaveBeenCalledWith("p1");
+    expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledTimes(1);
     expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledWith("p1");
-    mocks.refreshOpenFilesFromDisk.mockClear();
+    now.mockReturnValue(12_000);
     act(() => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
-    expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledWith("p1");
+    expect(mocks.refreshOpenFilesFromDisk).toHaveBeenCalledTimes(2);
+    now.mockRestore();
   });
 });
 

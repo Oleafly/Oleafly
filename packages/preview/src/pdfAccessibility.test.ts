@@ -273,3 +273,42 @@ describe("PdfTextAccessibilityManager.moveElementInDOM", () => {
     ]);
   });
 });
+
+describe("PdfTextAccessibilityManager ordering cost", () => {
+  it("reads each text run's box once while ordering a large layer", () => {
+    const manager = new PdfTextAccessibilityManager();
+    let reads = 0;
+    const runs = Array.from({ length: 400 }, (_, index) => {
+      const span = document.createElement("span");
+      span.textContent = `run ${index}`;
+      const box = rect((index * 37) % 500, Math.floor(((index * 53) % 400) / 10) * 12);
+      span.getBoundingClientRect = () => {
+        reads++;
+        return box;
+      };
+      return span;
+    });
+    manager.setTextMapping(runs);
+    manager.enable();
+    expect(reads).toBe(0);
+
+    const link = annotation("ordered-link", rect(120, 60, 20, 8));
+    manager.addPointerInTextLayer(link, false);
+    expect(reads).toBeLessThanOrEqual(runs.length + 20);
+    const owner = runs.find((run) => run.getAttribute("aria-owns") === "ordered-link");
+    expect(owner).toBeDefined();
+    manager.disable();
+  });
+
+  it("orders runs exactly as reading each box on demand would", () => {
+    const boxes = [rect(300, 10), rect(10, 10), rect(10, 40), rect(200, 40), rect(0, 0, 0, 0), rect(100, 10)];
+    const runs = boxes.map((box, index) => textRun(`r${index}`, box));
+    const manager = new PdfTextAccessibilityManager();
+    manager.setTextMapping(runs);
+    manager.enable();
+    const link = annotation("tail-link", rect(250, 41, 10, 8));
+    manager.addPointerInTextLayer(link, false);
+    expect(runs[3]).toHaveAttribute("aria-owns", "tail-link");
+    manager.disable();
+  });
+});

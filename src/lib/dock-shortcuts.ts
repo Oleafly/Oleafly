@@ -1,6 +1,7 @@
 import { useSettingsStore } from "@/store/settings";
 import { toggleBrowser } from "@/lib/browser-window";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
+import { toggleZenMode } from "@/lib/zen-mode";
 
 export function handleDockShortcut(event: KeyboardEvent): boolean {
   const bindings = useShortcutStore.getState().bindings;
@@ -17,6 +18,12 @@ export function handleDockShortcut(event: KeyboardEvent): boolean {
     event.preventDefault();
     event.stopPropagation();
     toggleBrowser();
+    return true;
+  }
+  if (matchesShortcut(event, bindings.toggleZenMode)) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleZenMode();
     return true;
   }
   return false;

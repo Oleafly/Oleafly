@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { CodeField } from "@/components/tools/CodeField";
@@ -51,6 +51,9 @@ const EXAMPLES: { id: string; label: () => string; hint: () => string; bib: stri
   },
 ];
 
+const LARGE_INPUT_CHARS = 20_000;
+const LARGE_INPUT_PAUSE_MS = 200;
+
 const LEVEL_CLASS: Record<"error" | "warning" | "ok", string> = {
   error: "border-l-destructive",
   warning: "border-l-amber-500",
@@ -61,11 +64,53 @@ export function BibtexValidatorPanel() {
   const { t } = useTranslation(["common", "researchTools"]);
   const editorTheme = useSettingsStore((s) => s.editorTheme);
   const [input, setInput] = useState("");
+  const [paused, setPaused] = useState("");
+  const large = input.length > LARGE_INPUT_CHARS;
+  useEffect(() => {
+    if (!large) return;
+    const timer = window.setTimeout(() => setPaused(input), LARGE_INPUT_PAUSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [input, large]);
+  const validated = large ? paused : input;
   const result = useMemo(() => {
-    if (!input.trim()) return null;
-    const { entries, parseErrors } = parseBib(input);
+    if (!validated.trim()) return null;
+    const { entries, parseErrors } = parseBib(validated);
     return { entries, parseErrors, findings: validateBib(entries) };
-  }, [input]);
+  }, [validated]);
+  const results = useMemo(
+    () => (
+      <>
+        {result?.parseErrors.map((e) => (
+          <div key={e} className="mb-2 select-text rounded-md border-l-2 border-l-destructive bg-muted/30 px-3 py-2 text-sm">
+            <strong className="text-xs font-semibold uppercase tracking-wide">
+              {t(($) => $.researchTools.bibtex.parseProblem)}
+            </strong>
+            <p className="mt-1 text-muted-foreground">{e}</p>
+          </div>
+        ))}
+        {result?.findings.map((f) => (
+          <div
+            key={f.key + f.type}
+            className={`mb-2 select-text rounded-md border-l-2 bg-muted/30 px-3 py-2 text-sm ${LEVEL_CLASS[f.level]}`}
+          >
+            <strong className="font-mono text-xs">{`@${f.type}{${f.key}}`}</strong>
+            {f.messages.length === 0 ? (
+              <p className="mt-1 text-emerald-600 dark:text-emerald-400">
+                {t(($) => $.researchTools.bibtex.looksGood)}
+              </p>
+            ) : (
+              f.messages.map((m) => (
+                <p key={m} className="mt-1 text-muted-foreground">
+                  {m}
+                </p>
+              ))
+            )}
+          </div>
+        ))}
+      </>
+    ),
+    [result, t],
+  );
 
   return (
     <ToolSplitView storageId="bibtex-validator">
@@ -121,33 +166,7 @@ export function BibtexValidatorPanel() {
               {t(($) => $.researchTools.bibtex.empty)}
             </p>
           )}
-          {result?.parseErrors.map((e) => (
-            <div key={e} className="mb-2 rounded-md border-l-2 border-l-destructive bg-muted/30 px-3 py-2 text-sm">
-              <strong className="text-xs font-semibold uppercase tracking-wide">
-                {t(($) => $.researchTools.bibtex.parseProblem)}
-              </strong>
-              <p className="mt-1 text-muted-foreground">{e}</p>
-            </div>
-          ))}
-          {result?.findings.map((f) => (
-            <div
-              key={f.key + f.type}
-              className={`mb-2 rounded-md border-l-2 bg-muted/30 px-3 py-2 text-sm ${LEVEL_CLASS[f.level]}`}
-            >
-              <strong className="font-mono text-xs">{`@${f.type}{${f.key}}`}</strong>
-              {f.messages.length === 0 ? (
-                <p className="mt-1 text-emerald-600 dark:text-emerald-400">
-                  {t(($) => $.researchTools.bibtex.looksGood)}
-                </p>
-              ) : (
-                f.messages.map((m) => (
-                  <p key={m} className="mt-1 text-muted-foreground">
-                    {m}
-                  </p>
-                ))
-              )}
-            </div>
-          ))}
+          {results}
         </div>
       </div>
     </ToolSplitView>

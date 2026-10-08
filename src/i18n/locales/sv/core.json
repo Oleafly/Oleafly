@@ -358,7 +358,8 @@
     "referencesFor": "Referenser till {{name}}",
     "renameFailed": "Det gick inte att byta namn till \"{{name}}\".",
     "renamePartial": "Bytte namn till \"{{name}}\" i {{edited}} av {{total}} filer. Det gick inte att skriva {{files}}.",
-    "renamed": "Bytte namn till \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))"
+    "renamed": "Bytte namn till \"{{name}}\" ($t(core:navigation.edits, {\"count\": {{edits}} }) i $t(core:navigation.files, {\"count\": {{files}} }))",
+    "pathNotInProject": "\"{{path}}\" motsvarar ingen fil i det här projektet."
   },
   "pandoc": {
     "downloadFailed": "Det gick inte att ladda ner pandoc. Installera det manuellt och försök igen.",

@@ -524,6 +524,22 @@ describe("LanguageServiceClient", () => {
     ).toHaveLength(0);
   });
 
+  it("tells the server about files changed on disk only while ready", async () => {
+    const transport = new FakeTransport();
+    const client = createClient(transport);
+    const changes = [{ uri: "file:///project/references.bib", type: 2 as const }];
+    await expect(client.didChangeWatchedFiles({ changes })).rejects.toThrow(
+      "not ready",
+    );
+    await startClient(client, transport);
+
+    await client.didChangeWatchedFiles({ changes });
+
+    const sent = transport.notifications("workspace/didChangeWatchedFiles");
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.message).toMatchObject({ params: { changes } });
+  });
+
   it("makes the newest same-revision request authoritative", async () => {
     const transport = new FakeTransport();
     const client = createClient(transport);
@@ -1778,6 +1794,77 @@ describe("LanguageServiceClient pushed diagnostics", () => {
     publish({ uri: MAIN_URI, diagnostics: [diagnostic("second")] });
     await vi.advanceTimersByTimeAsync(76);
     expect(emitted()).toEqual([["second"]]);
+  });
+
+  const emittedByEpoch = (events: LanguageServiceClientEvent[]) =>
+    events.flatMap((event) =>
+      event.type === "diagnostics"
+        ? [
+            {
+              epoch: event.diagnosticEpoch,
+              revision: event.identity.projectRevision,
+              messages: event.diagnostics.map((item) => item.message),
+            },
+          ]
+        : [],
+    );
+
+  it("carries the last publication into a project revision that leaves the document unchanged", async () => {
+    const { transport, client, events, publish } = await readyWithMain();
+    transport.respond(
+      await requestAt(transport, "textDocument/documentSymbol"),
+      [],
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("Undefined reference")] });
+    await vi.advanceTimersByTimeAsync(76);
+
+    client.acknowledgeDocumentRevision(MAIN_URI, 2);
+    client.acknowledgeDocumentRevision(MAIN_URI, 3);
+
+    expect(emittedByEpoch(events)).toEqual([
+      { epoch: 1, revision: 0, messages: ["Undefined reference"] },
+      { epoch: 2, revision: 2, messages: ["Undefined reference"] },
+      { epoch: 3, revision: 3, messages: ["Undefined reference"] },
+    ]);
+  });
+
+  it("carries a publication that was still waiting out its quiet window", async () => {
+    const { transport, client, events, publish } = await readyWithMain();
+    transport.respond(
+      await requestAt(transport, "textDocument/documentSymbol"),
+      [],
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("fresh")] });
+    await vi.advanceTimersByTimeAsync(40);
+
+    client.acknowledgeDocumentRevision(MAIN_URI, 1);
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(emittedByEpoch(events)).toEqual([
+      { epoch: 2, revision: 1, messages: ["fresh"] },
+    ]);
+  });
+
+  it("carries nothing past a text change or from before the barrier", async () => {
+    const { transport, client, events, publish } = await readyWithMain();
+    transport.respond(
+      await requestAt(transport, "textDocument/documentSymbol"),
+      [],
+    );
+    await vi.advanceTimersByTimeAsync(0);
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("old text")] });
+    await vi.advanceTimersByTimeAsync(76);
+
+    await client.replaceDocument(MAIN_URI, "\\section{Edited}");
+    publish({ uri: MAIN_URI, diagnostics: [diagnostic("maybe old text")] });
+    client.acknowledgeDocumentRevision(MAIN_URI, 1);
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(emittedByEpoch(events)).toEqual([
+      { epoch: 1, revision: 0, messages: ["old text"] },
+    ]);
   });
 
   it("lets a versioned publication replace a waiting unversioned one", async () => {

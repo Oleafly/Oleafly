@@ -4,14 +4,14 @@ import { modelSupportsVision } from "@/lib/ai-figure";
 import { hasConfiguredProvider, pickActiveProvider } from "@/lib/ai-providers";
 import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
-import { getConfig } from "@/lib/tauri";
+import { getConfigCached } from "@/lib/config-cache";
 import { toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { i18n } from "@/i18n";
 
 export async function imageToLatexAvailable(): Promise<boolean> {
   try {
-    const cfg = await getConfig();
+    const cfg = await getConfigCached();
     if (!hasConfiguredProvider(cfg)) return false;
     const { providerId, modelId } = pickActiveProvider(cfg);
     return modelSupportsVision(providerId, modelId);

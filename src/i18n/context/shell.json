@@ -157,12 +157,24 @@
     "fork": "Button that confirms copying the project into a new one",
     "layout": "Toolbar button that rearranges the editor, preview, and assistant panes",
     "untitledProject": "Fallback shown when a project has no name yet",
-    "renameFailed": "Error after renaming the project from its title in the toolbar"
+    "renameFailed": "Error after renaming the project from its title in the toolbar",
+    "layouts": {
+      "zenMode": "Last entry of the layout menu, set apart from the layout presets. A mode that hides the interface, not a layout. Keep the word Zen."
+    }
   },
   "updateWindow": {
     "available": "Heading of the update window when a newer version exists. The version number is shown next to it in a separate tag.",
     "historyFailed": "Shown in the update window when the notes for versions between the installed one and the new one could not be downloaded. A retry button follows.",
     "later": "Button that postpones installing an update",
     "released": "When the new version was published. {{when}} is a relative time already localized by the system, such as 3 days ago or yesterday."
+  },
+  "commands": {
+    "zenMode": {
+      "label": "Command palette entry that turns Zen mode on or off. Keep the word Zen."
+    }
+  },
+  "zen": {
+    "compiling": "Small status pill at the bottom right of the screen while a compile is running.",
+    "compileFailed": "Small button at the bottom right of the screen after a compile failed. Clicking it shows the compile log."
   }
 }

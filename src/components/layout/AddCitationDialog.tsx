@@ -20,14 +20,15 @@ import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/empty";
+import { ZoteroHintBanner } from "@/components/zotero/ZoteroHintBanner";
+import { useZoteroSearch } from "@/components/zotero/use-zotero-search";
+import { insertZoteroCitation } from "@/features/zotero-actions";
+import { hitByline, hitTitle, libraryLabel, truncated } from "@/lib/zotero/format";
+import { zoteroSearchable } from "@/lib/zotero/hint";
+import { useZoteroLibraryStore } from "@/store/zotero-library";
+import type { ZoteroHit } from "@oleafly/backend-port";
 
 type Status = "idle" | "loading" | "hits" | "preview" | "error";
-
-function citeMarkup(profile: string, key: string): string {
-  if (profile === "typst") return `@${key}`;
-  if (profile === "markdown") return `[@${key}]`;
-  return String.raw`\cite{${key}}`;
-}
 
 const EXAMPLES = [
   {
@@ -67,6 +68,9 @@ export function AddCitationDialog() {
   const [bibliographies, setBibliographies] = useState<string[]>([]);
   const [bibliography, setBibliography] = useState<string | null>(null);
   const close = () => setOpen(false);
+  const zoteroStatus = useZoteroLibraryStore((state) => state.status);
+  const zoteroReady = zoteroSearchable(zoteroStatus);
+  const { hits: zoteroHits } = useZoteroSearch(open && status !== "preview" ? input : "", 6);
 
   useEffect(() => {
     if (open) {
@@ -128,6 +132,12 @@ export function AddCitationDialog() {
     setStatus("preview");
   };
 
+  const pickZotero = (hit: ZoteroHit) => {
+    const cite = insertZoteroCitation(hit);
+    close();
+    if (cite) toast.success(i18n.t(($) => $.shell.addCitation.added, { cite }));
+  };
+
   const add = async () => {
     setAdding(true);
     const chosen = bibliographies.length > 1 ? bibliography : null;
@@ -136,9 +146,8 @@ export function AddCitationDialog() {
       if ("key" in r) {
         const projectId = useFilesStore.getState().projectId;
         if (chosen && projectId) rememberBibliography(projectId, chosen);
-        const profile = useFilesStore.getState().engine.capabilities.formatting_profile;
         close();
-        toast.success(i18n.t(($) => $.shell.addCitation.added, { cite: citeMarkup(profile, r.key) }));
+        toast.success(i18n.t(($) => $.shell.addCitation.added, { cite: r.cite ?? r.key }));
       } else {
         setError(r.error);
       }
@@ -172,12 +181,20 @@ export function AddCitationDialog() {
           <Input
             data-modal-initial-focus
             value={input}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") void search();
               if (e.key === "Escape") close();
             }}
-            placeholder={t(($) => $.shell.addCitation.placeholder)}
+            placeholder={
+              zoteroReady
+                ? t(($) => $.shell.addCitation.zoteroPlaceholder)
+                : t(($) => $.shell.addCitation.placeholder)
+            }
             className="h-9 w-full border-0 bg-transparent text-sm shadow-none placeholder:text-muted-foreground"
           />
           <button type="button"
@@ -193,6 +210,33 @@ export function AddCitationDialog() {
           {t(($) => $.shell.addCitation.privacyNote)}
         </p>
       </div>
+
+      <ZoteroHintBanner onOpenSettings={close} />
+
+      {zoteroHits.length > 0 && status !== "preview" && (
+        <section className="border-b p-3" aria-labelledby="citation-dialog-zotero" data-testid="add-citation-zotero">
+          <p id="citation-dialog-zotero" className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t(($) => $.shell.addCitation.zoteroMatches)}
+          </p>
+          <div className="flex flex-col gap-0.5">
+            {zoteroHits.map((hit) => (
+              <button
+                type="button"
+                key={`${hit.library}:${hit.itemKey}`}
+                onClick={() => pickZotero(hit)}
+                className="rounded-md border border-transparent px-2.5 py-1.5 text-left hover:bg-accent focus-visible:bg-accent"
+              >
+                <span className="flex items-baseline gap-2">
+                  <span className="shrink-0 font-mono text-xs">{hit.citationKey}</span>
+                  <span className="min-w-0 truncate text-[11px] text-muted-foreground">
+                    {[hitByline(hit), truncated(hitTitle(hit)), libraryLabel(hit, zoteroStatus)].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       <div className="flex-1 overflow-auto p-3">
         {status === "idle" && (
@@ -225,7 +269,7 @@ export function AddCitationDialog() {
         )}
 
         {status === "error" && (
-          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-sm text-destructive">
+          <div className="flex select-text items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-sm text-destructive">
             <AlertCircle className="mt-0.5 size-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -261,7 +305,7 @@ export function AddCitationDialog() {
             <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
               {t(($) => $.shell.addCitation.entry)}
             </p>
-            <pre className="max-h-52 overflow-auto rounded-md border border-sidebar-border bg-background p-2.5 font-mono text-[11px] leading-relaxed">
+            <pre data-select-all-scope className="max-h-52 select-text overflow-auto rounded-md border border-sidebar-border bg-background p-2.5 font-mono text-[11px] leading-relaxed">
               {bibtex}
             </pre>
             {bibliographies.length > 1 && bibliography && (
@@ -292,7 +336,7 @@ export function AddCitationDialog() {
               </div>
             )}
             {error && (
-              <div className="mt-2 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+              <div className="mt-2 flex select-text items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
                 <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
                 <span>{error}</span>
               </div>

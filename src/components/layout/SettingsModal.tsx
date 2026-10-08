@@ -124,7 +124,7 @@ import {
 } from "@/components/settings/SettingsToggleRow";
 import {
   SETTINGS_SEARCH_HIT_CLASSES,
-  SettingsSearchField,
+  SettingsSearchQueryField,
   SettingsSearchRows,
   SettingsSearchStatus,
   useSettingsSearch,
@@ -729,7 +729,7 @@ export function SettingsModal() {
   const renderSettingsBody = () => (
     <div
       ref={settingsBodyRef}
-      className={cn("flex-1 overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
+      className={cn("flex-1 select-text overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
     >
       {section === "appearance" && <AppearanceSection />}
 
@@ -1240,11 +1240,7 @@ export function SettingsModal() {
           >
             {t(($) => $.shell.settings.title)}
           </div>
-          <SettingsSearchField
-            value={search.query}
-            onChange={search.setQuery}
-            controls={sectionListId}
-          />
+          <SettingsSearchQueryField search={search} controls={sectionListId} />
           <div
             data-testid="settings-section-scroll"
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
@@ -1276,7 +1272,7 @@ export function SettingsModal() {
             </Fragment>
             ))}
             </div>
-            {search.query !== "" && (
+            {search.hasQuery && (
               <SettingsSearchStatus count={search.hits ? search.hits.length : null} />
             )}
           </div>

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   AppContext,
   CommandContribution,
@@ -21,10 +21,26 @@ const project: ProjectInfo = {
   recovery_pending: false,
 };
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("project omnibar metadata matching", () => {
   it("indexes the user-facing Tectonic engine label", () => {
     expect(projectMatches(project, "tectonic", false)).toBe(true);
     expect(projectMatches(project, "engine:tectonic", false)).toBe(true);
+  });
+
+  it("formats a project's dates once while the query changes, and again for its next version", () => {
+    const dated = { ...project, exports: [{ date: 3, filename: "paper.pdf", format: "pdf", path: "/tmp/paper.pdf" }] };
+    expect(projectMatches(dated, "pap", false)).toBe(true);
+    const format = vi.spyOn(Date.prototype, "toLocaleDateString");
+    for (const query of ["pape", "paper", "paper.pdf", "missing"]) projectMatches(dated, query, false);
+    expect(format).not.toHaveBeenCalled();
+    expect(projectMatches(dated, "bookmark:yes", true)).toBe(true);
+    expect(projectMatches(dated, "bookmark:yes", false)).toBe(false);
+    projectMatches({ ...dated, updated_at: 9 }, "paper", false);
+    expect(format).toHaveBeenCalled();
   });
 
   it("treats prototype and unknown field names as non-matches", () => {
