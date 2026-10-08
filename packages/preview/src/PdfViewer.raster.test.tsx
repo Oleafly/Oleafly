@@ -365,7 +365,14 @@ describe("PdfViewer raster swaps", () => {
       const layer = wrap(1).querySelector<HTMLElement>(".textLayer")!;
       expect(layer.style.display).toBe("");
       expect(layer.style.getPropertyValue("--scale-factor")).toBe("1.3");
+      expect(layer.style.getPropertyValue("--min-font-size")).toBe(String(1 / 1.3));
       expect(layer.style.transform).toBe("");
+
+      view.rerender(
+        <PdfViewer data={data} documentIdentity="doc-1" scale={1} expectText={false} />,
+      );
+      await waitFor(() => expect(layer.style.getPropertyValue("--scale-factor")).toBe("1"));
+      expect(layer.style.getPropertyValue("--min-font-size")).toBe("");
     } finally {
       computed.mockRestore();
       timers.restore();

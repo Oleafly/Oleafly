@@ -565,16 +565,35 @@ function freezePdfLayerScale(
   element.style.setProperty("--scale-round-y", `${geometry.scaleRoundY}px`);
 }
 
+const renderedMinFontSizes = new WeakMap<HTMLElement, string>();
+
+function holdPdfTextFontScale(node: HTMLElement, renderToShown: number): void {
+  let rendered = renderedMinFontSizes.get(node);
+  if (rendered === undefined) {
+    rendered = node.style.getPropertyValue("--min-font-size");
+    renderedMinFontSizes.set(node, rendered);
+  }
+  if (!Number.isFinite(renderToShown) || Math.abs(renderToShown - 1) < 1e-9) {
+    if (rendered) node.style.setProperty("--min-font-size", rendered);
+    else node.style.removeProperty("--min-font-size");
+    return;
+  }
+  const base = Number.parseFloat(rendered) || 1;
+  node.style.setProperty("--min-font-size", String(base * renderToShown));
+}
+
 function zoomPdfTextLayers(
   state: RenderState,
   viewport: { scale: number; userUnit: number },
   geometry: { scaleRoundX: number; scaleRoundY: number },
 ): void {
   for (let current: RenderState | null = state; current; current = current.previous) {
+    const renderToShown = current.renderScale / viewport.scale;
     for (const node of current.nodes) {
       if (!node.classList.contains("textLayer")) continue;
       freezePdfLayerScale(node, viewport, geometry);
       if (node.style.transform) node.style.removeProperty("transform");
+      holdPdfTextFontScale(node, renderToShown);
     }
   }
 }
