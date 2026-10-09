@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   Braces,
@@ -899,7 +899,7 @@ export function DiagramComposer({
     return () => document.removeEventListener("mousedown", onDown);
   }, [editingName]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!savePickerOpen && !downloadPickerOpen && !notesOpen) return;
     const onDown = (e: MouseEvent) => {
       if (savePickerOpen && savePickerRef.current && !savePickerRef.current.contains(e.target as Node)) {

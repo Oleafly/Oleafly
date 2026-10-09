@@ -886,6 +886,58 @@ describe("compile output lifecycle", () => {
     await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
   });
 
+  it("still compiles a request that waited behind a compile an edit made out of date", async () => {
+    useCompileStore.setState({ checkSyntaxBeforeCompile: false });
+    const pendingSave = deferred<void>();
+    mocks.saveActive.mockReturnValueOnce(pendingSave.promise);
+    const readSources = mocks.readProjectSources.getMockImplementation();
+    mocks.readProjectSources.mockImplementationOnce(async (...args: unknown[]) => {
+      useProjectAnalysisStore.getState().setProjectRevision(1);
+      return readSources?.(...args);
+    });
+    mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, log: "", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
+
+    const onOpen = useCompileStore.getState().recompile({ origin: "automatic" });
+    await Promise.resolve();
+    await useCompileStore.getState().recompile();
+    pendingSave.resolve();
+    await onOpen;
+
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledOnce());
+  });
+
+  it("still compiles a request that waited behind a compile whose main document changed", async () => {
+    const pendingSave = deferred<void>();
+    mocks.saveActive.mockReturnValueOnce(pendingSave.promise);
+    mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, log: "", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
+
+    const first = useCompileStore.getState().recompile({ origin: "automatic" });
+    await Promise.resolve();
+    await useCompileStore.getState().recompile();
+    mocks.files.mainDoc = "chapter.tex";
+    mocks.files.tree = [...mocks.files.tree, { path: "chapter.tex", is_dir: false }];
+    mocks.index.texts["chapter.tex"] = "\\documentclass{article}\n";
+    pendingSave.resolve();
+    await first;
+
+    await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledOnce());
+    expect(mocks.compileProject.mock.calls[0][1]).toBe("chapter.tex");
+  });
+
+  it("drops a request that waited behind a compile when another project opened", async () => {
+    const pendingSave = deferred<void>();
+    mocks.saveActive.mockReturnValueOnce(pendingSave.promise);
+    const first = useCompileStore.getState().recompile({ origin: "automatic" });
+    await Promise.resolve();
+    await useCompileStore.getState().recompile();
+    mocks.files.projectId = "another-project";
+    pendingSave.resolve();
+    await first;
+    await new Promise((done) => setTimeout(done, 0));
+
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+  });
+
   it("does not invoke IPC when the project changes while save is pending", async () => {
     let finishSave: (() => void) | undefined;
     mocks.saveActive.mockReturnValue(new Promise<void>((resolve) => { finishSave = resolve; }));
