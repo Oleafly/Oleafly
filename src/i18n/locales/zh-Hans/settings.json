@@ -834,10 +834,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "PDF 隐藏时，让文字保持在居中的一栏里。",
-        "label": "居中编辑器"
-      },
       "fullScreen": {
         "description": "进入禅模式时填满屏幕，退出时恢复窗口。",
         "label": "进入全屏"
@@ -846,11 +842,7 @@
         "description": "如果禅模式开始时 PDF 是隐藏的，则在第一次编译时把它打开在编辑器旁边。",
         "label": "编译时显示 PDF"
       },
-      "title": "禅模式",
-      "toggle": {
-        "description": "隐藏工具栏、侧边栏、助手和终端，只留下你的文字。也称为无干扰模式。需要先打开一个项目。",
-        "label": "开启禅模式"
-      }
+      "title": "禅模式"
     }
   },
   "checkpoints": {

@@ -849,10 +849,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Utrzymuje tekst w wyśrodkowanej kolumnie, gdy PDF jest ukryty.",
-        "label": "Wyśrodkuj edytor"
-      },
       "fullScreen": {
         "description": "Wypełnia ekran w trybie Zen i przywraca okno po wyjściu.",
         "label": "Przejdź na pełny ekran"
@@ -861,11 +857,7 @@
         "description": "Jeśli PDF jest ukryty na początku trybu Zen, otwiera go obok edytora przy pierwszej kompilacji.",
         "label": "Pokaż PDF przy kompilacji"
       },
-      "title": "Tryb Zen",
-      "toggle": {
-        "description": "Ukrywa pasek narzędzi, panel boczny, asystenta i terminal, żeby został tylko tekst. Nazywany też trybem bez rozpraszaczy. Wymaga otwartego projektu.",
-        "label": "Włącz tryb Zen"
-      }
+      "title": "Tryb Zen"
     }
   },
   "checkpoints": {

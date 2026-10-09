@@ -404,10 +404,8 @@ function AppContent() {
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
-  const zenCenterEditor = useSettingsStore((s) => s.zenCenterEditor);
   const zen = useZenStore((s) => s.active);
   const zenProjectId = useZenStore((s) => s.projectId);
-  const zenCentered = zen && zenCenterEditor && viewMode === "editor";
   const previewHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const previewShown = !workspaceHidden && viewMode !== "editor";
   const [previewKeptFor, setPreviewKeptFor] = useState<string | null>(null);
@@ -853,7 +851,6 @@ function AppContent() {
       <div
         data-sidebar-open={showTree ? "true" : "false"}
         data-zen={zen ? "true" : undefined}
-        data-zen-centered={zenCentered ? "true" : undefined}
         className="flex h-full flex-col"
       >
         <div className="contents" inert={projectToolOpen || projectComposerOpen || undefined}>

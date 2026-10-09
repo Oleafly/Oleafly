@@ -298,7 +298,7 @@ function EditorKeyRows() {
   );
 }
 
-export function ApplicationShortcutRow({ id, testId }: Readonly<{ id: ShortcutId; testId?: string }>) {
+function ApplicationShortcutRow({ id }: Readonly<{ id: ShortcutId }>) {
   const { t } = useTranslation(["common", "settings"]);
   const bindings = useShortcutStore((state) => state.bindings);
   const setBinding = useShortcutStore((state) => state.setBinding);
@@ -361,7 +361,6 @@ export function ApplicationShortcutRow({ id, testId }: Readonly<{ id: ShortcutId
 
   return (
     <SettingsRow
-      testId={testId}
       label={label}
       description={t(($) => $.settings.shortcuts.actions[id].description)}
       details={

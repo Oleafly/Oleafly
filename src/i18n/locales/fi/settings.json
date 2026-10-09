@@ -839,10 +839,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Pitää tekstin keskitetyssä palstassa, kun PDF on piilotettu.",
-        "label": "Keskitä editori"
-      },
       "fullScreen": {
         "description": "Täyttää näytön Zen-tilassa ja palauttaa ikkunan poistuttaessa.",
         "label": "Siirry koko näyttöön"
@@ -851,11 +847,7 @@
         "description": "Jos PDF on piilotettu Zen-tilan alkaessa, se avataan editorin viereen ensimmäisellä käännöksellä.",
         "label": "Näytä PDF käännettäessä"
       },
-      "title": "Zen-tila",
-      "toggle": {
-        "description": "Piilottaa työkalupalkin, sivupalkin, avustajan ja päätteen, jotta vain teksti jää näkyviin. Kutsutaan myös häiriöttömäksi tilaksi. Vaatii avoimen projektin.",
-        "label": "Ota Zen-tila käyttöön"
-      }
+      "title": "Zen-tila"
     }
   },
   "checkpoints": {

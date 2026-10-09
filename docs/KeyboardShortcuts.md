@@ -31,8 +31,7 @@ for the sidebar, terminal and browser, the command palette and search still
 work. Press Escape twice within half a second, or use the same shortcut, to
 leave. Command-B and Ctrl-B still mean Bold while the editor has focus, so the
 sidebar toggle only works from outside the editor. Settings > Appearance >
-Project has the Zen mode options, and its shortcut can be changed there as well
-as in Settings > Keyboard Shortcuts.
+Project has the Zen mode options.
 
 The reference list is generated from `SHORTCUT_DEFINITIONS` in
 `src/store/shortcuts.ts`; it is the source of truth for labels and defaults.

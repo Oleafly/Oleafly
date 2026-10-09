@@ -839,10 +839,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "PDF gizliyken metni ortalanmış bir sütunda tutar.",
-        "label": "Düzenleyiciyi ortala"
-      },
       "fullScreen": {
         "description": "Zen kipinde ekranı doldurur, çıkınca pencereyi eski haline getirir.",
         "label": "Tam ekrana geç"
@@ -851,11 +847,7 @@
         "description": "Zen kipi başlarken PDF gizliyse, ilk derlemede onu düzenleyicinin yanında açar.",
         "label": "Derlerken PDF'yi göster"
       },
-      "title": "Zen kipi",
-      "toggle": {
-        "description": "Araç çubuğunu, kenar çubuğunu, asistanı ve terminali gizleyerek yalnızca yazınızı bırakır. Dikkat dağıtmayan kip olarak da bilinir. Açık bir proje gerekir.",
-        "label": "Zen kipini aç"
-      }
+      "title": "Zen kipi"
     }
   },
   "checkpoints": {

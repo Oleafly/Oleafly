@@ -834,10 +834,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "PDF 隱藏時，讓文字保持在置中的單一欄位。",
-        "label": "置中編輯器"
-      },
       "fullScreen": {
         "description": "在禪模式中填滿螢幕，離開時還原視窗。",
         "label": "進入全螢幕"
@@ -846,11 +842,7 @@
         "description": "如果禪模式開始時 PDF 是隱藏的，會在第一次編譯時於編輯器旁開啟。",
         "label": "編譯時顯示 PDF"
       },
-      "title": "禪模式",
-      "toggle": {
-        "description": "隱藏工具列、側邊欄、助理和終端機，只留下你的文字。也稱為無干擾模式。需要先開啟一個專案。",
-        "label": "開啟禪模式"
-      }
+      "title": "禪模式"
     }
   },
   "checkpoints": {

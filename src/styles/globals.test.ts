@@ -116,20 +116,9 @@ describe("app font", () => {
   });
 });
 
-describe("Zen mode centered editor", () => {
-  const rule = /\[data-zen-centered="true"\] \.cm-editor \.cm-scroller\s*\{([^}]*)\}/u.exec(styles)?.[1] ?? "";
-
-  it("centers the text column by padding the editor scroller on both sides", () => {
-    expect(rule).toMatch(/padding-inline:\s*max\(0px,\s*calc\(\(100% - var\(--zen-column-width, 50rem\)\) \/ 2\)\)/u);
-  });
-
-  it("uses no outline, ring or shadow ring", () => {
-    expect(rule).not.toMatch(/outline|ring|box-shadow/u);
-  });
-
-  it("keeps the global focus reset last", () => {
-    const reset = styles.lastIndexOf("outline: none !important");
-    expect(reset).toBeGreaterThan(styles.indexOf('[data-zen-centered="true"]'));
+describe("Zen mode editor width", () => {
+  it("never narrows the editor to a centered column", () => {
+    expect(styles).not.toMatch(/\[data-zen[^\]]*\][^{]*\.cm-(scroller|content)[^{]*\{[^}]*(padding-inline|max-width)/u);
   });
 });
 

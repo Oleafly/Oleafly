@@ -844,10 +844,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Ține textul într-o coloană centrată cât timp PDF-ul este ascuns.",
-        "label": "Centrează editorul"
-      },
       "fullScreen": {
         "description": "Umple ecranul în modul Zen și restabilește fereastra la ieșire.",
         "label": "Treci pe ecran complet"
@@ -856,11 +852,7 @@
         "description": "Dacă PDF-ul este ascuns când pornește modul Zen, îl deschide lângă editor la prima compilare.",
         "label": "Arată PDF-ul la compilare"
       },
-      "title": "Modul Zen",
-      "toggle": {
-        "description": "Ascunde bara de instrumente, bara laterală, asistentul și terminalul, astfel încât să rămână doar textul. Se numește și mod fără distrageri. Necesită un proiect deschis.",
-        "label": "Activează modul Zen"
-      }
+      "title": "Modul Zen"
     }
   },
   "checkpoints": {

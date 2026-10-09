@@ -839,10 +839,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Håller texten i en centrerad kolumn medan PDF:en är dold.",
-        "label": "Centrera redigeraren"
-      },
       "fullScreen": {
         "description": "Fyller skärmen i Zen-läge och återställer fönstret när du lämnar det.",
         "label": "Gå till helskärm"
@@ -851,11 +847,7 @@
         "description": "Om PDF:en är dold när Zen-läge startar öppnas den bredvid redigeraren första gången du kompilerar.",
         "label": "Visa PDF:en vid kompilering"
       },
-      "title": "Zen-läge",
-      "toggle": {
-        "description": "Döljer verktygsfältet, sidofältet, assistenten och terminalen så att bara din text blir kvar. Kallas också störningsfritt läge. Kräver ett öppet projekt.",
-        "label": "Aktivera Zen-läge"
-      }
+      "title": "Zen-läge"
     }
   },
   "checkpoints": {

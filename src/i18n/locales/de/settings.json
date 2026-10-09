@@ -839,10 +839,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Hält den Text in einer zentrierten Spalte, solange das PDF ausgeblendet ist.",
-        "label": "Editor zentrieren"
-      },
       "fullScreen": {
         "description": "Füllt im Zen-Modus den Bildschirm und stellt beim Verlassen das Fenster wieder her.",
         "label": "Vollbild verwenden"
@@ -851,11 +847,7 @@
         "description": "Ist das PDF beim Start des Zen-Modus ausgeblendet, wird es beim ersten Kompilieren neben dem Editor geöffnet.",
         "label": "PDF beim Kompilieren anzeigen"
       },
-      "title": "Zen-Modus",
-      "toggle": {
-        "description": "Blendet Symbolleiste, Seitenleiste, Assistent und Terminal aus, damit nur der Text übrig bleibt. Auch ablenkungsfreier Modus genannt. Ein Projekt muss geöffnet sein.",
-        "label": "Zen-Modus einschalten"
-      }
+      "title": "Zen-Modus"
     }
   },
   "checkpoints": {

@@ -834,10 +834,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "PDF가 숨겨져 있는 동안 텍스트를 가운데 한 열에 유지합니다.",
-        "label": "편집기 가운데 맞춤"
-      },
       "fullScreen": {
         "description": "Zen 모드에서 화면을 가득 채우고, 나갈 때 창을 원래대로 되돌립니다.",
         "label": "전체 화면으로 전환"
@@ -846,11 +842,7 @@
         "description": "Zen 모드가 시작될 때 PDF가 숨겨져 있으면 첫 컴파일 때 편집기 옆에 엽니다.",
         "label": "컴파일할 때 PDF 표시"
       },
-      "title": "Zen 모드",
-      "toggle": {
-        "description": "도구 모음, 사이드바, 어시스턴트, 터미널을 숨겨 글만 남깁니다. 방해 없는 모드라고도 합니다. 열려 있는 프로젝트가 필요합니다.",
-        "label": "Zen 모드 켜기"
-      }
+      "title": "Zen 모드"
     }
   },
   "checkpoints": {

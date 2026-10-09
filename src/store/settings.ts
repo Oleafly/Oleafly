@@ -843,8 +843,6 @@ interface SettingsState {
   setFileMoveReferences: (v: FileMoveReferences) => void;
   zenFullScreen: boolean;
   setZenFullScreen: (v: boolean) => void;
-  zenCenterEditor: boolean;
-  setZenCenterEditor: (v: boolean) => void;
   zenShowPdfOnCompile: boolean;
   setZenShowPdfOnCompile: (v: boolean) => void;
   typstFormatOnSave: boolean;
@@ -1089,7 +1087,6 @@ const PREF_DEFAULTS = {
   editorMathPreview: true,
   fileMoveReferences: "ask" as FileMoveReferences,
   zenFullScreen: true,
-  zenCenterEditor: true,
   zenShowPdfOnCompile: true,
   typstFormatOnSave: false,
   typstFormatterLineWidth: 120,
@@ -1179,7 +1176,6 @@ const SECTION_SETTINGS = {
     editorMathPreview: "oleafly.editor.mathPreview",
     fileMoveReferences: "oleafly.editor.fileMoveReferences",
     zenFullScreen: "oleafly.zen.fullScreen",
-    zenCenterEditor: "oleafly.zen.centerEditor",
     zenShowPdfOnCompile: "oleafly.zen.showPdfOnCompile",
     typstFormatOnSave: "oleafly.typst.formatOnSave",
     typstFormatterLineWidth: "oleafly.typst.formatterLineWidth",
@@ -1352,11 +1348,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setZenFullScreen: (v) => {
     saveLs("oleafly.zen.fullScreen", v ? "1" : "0");
     set({ zenFullScreen: v });
-  },
-  zenCenterEditor: ls("oleafly.zen.centerEditor", "1") !== "0",
-  setZenCenterEditor: (v) => {
-    saveLs("oleafly.zen.centerEditor", v ? "1" : "0");
-    set({ zenCenterEditor: v });
   },
   zenShowPdfOnCompile: ls("oleafly.zen.showPdfOnCompile", "1") !== "0",
   setZenShowPdfOnCompile: (v) => {

@@ -849,10 +849,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Drží text ve vycentrovaném sloupci, dokud je PDF skryté.",
-        "label": "Vycentrovat editor"
-      },
       "fullScreen": {
         "description": "V režimu Zen vyplní obrazovku a při odchodu obnoví okno.",
         "label": "Přejít na celou obrazovku"
@@ -861,11 +857,7 @@
         "description": "Pokud je PDF při spuštění režimu Zen skryté, otevře ho vedle editoru při první kompilaci.",
         "label": "Zobrazit PDF při kompilaci"
       },
-      "title": "Režim Zen",
-      "toggle": {
-        "description": "Skryje panel nástrojů, postranní panel, asistenta a terminál, aby zůstal jen text. Říká se mu také režim bez rušení. Vyžaduje otevřený projekt.",
-        "label": "Zapnout režim Zen"
-      }
+      "title": "Režim Zen"
     }
   },
   "checkpoints": {

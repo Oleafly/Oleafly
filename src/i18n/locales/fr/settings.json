@@ -844,10 +844,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Garde le texte dans une colonne centrée tant que le PDF est masqué.",
-        "label": "Centrer l'éditeur"
-      },
       "fullScreen": {
         "description": "Remplit l'écran dans le mode Zen et rétablit la fenêtre à la sortie.",
         "label": "Passer en plein écran"
@@ -856,11 +852,7 @@
         "description": "Si le PDF est masqué au début du mode Zen, l'ouvre à côté de l'éditeur à la première compilation.",
         "label": "Afficher le PDF à la compilation"
       },
-      "title": "Mode Zen",
-      "toggle": {
-        "description": "Masque la barre d'outils, la barre latérale, l'assistant et le terminal pour ne garder que le texte. Aussi appelé mode sans distraction. Un projet doit être ouvert.",
-        "label": "Activer le mode Zen"
-      }
+      "title": "Mode Zen"
     }
   },
   "checkpoints": {

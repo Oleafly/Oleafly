@@ -839,10 +839,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Holder teksten i en sentrert kolonne mens PDF-en er skjult.",
-        "label": "Sentrer editoren"
-      },
       "fullScreen": {
         "description": "Fyller skjermen i Zen-modus og gjenoppretter vinduet når du går ut.",
         "label": "Gå til fullskjerm"
@@ -851,11 +847,7 @@
         "description": "Hvis PDF-en er skjult når Zen-modus starter, åpnes den ved siden av editoren første gang du kompilerer.",
         "label": "Vis PDF-en ved kompilering"
       },
-      "title": "Zen-modus",
-      "toggle": {
-        "description": "Skjuler verktøylinjen, sidepanelet, assistenten og terminalen slik at bare teksten din er igjen. Kalles også distraksjonsfri modus. Krever et åpent prosjekt.",
-        "label": "Slå på Zen-modus"
-      }
+      "title": "Zen-modus"
     }
   },
   "checkpoints": {

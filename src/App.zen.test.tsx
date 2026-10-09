@@ -347,7 +347,6 @@ beforeEach(() => {
       terminalOpen: false,
       vim: false,
       zenFullScreen: false,
-      zenCenterEditor: true,
       zenShowPdfOnCompile: true,
       defaultView: "editor-preview",
       openInTree: true,
@@ -580,35 +579,3 @@ describe("the PDF pane when you compile", () => {
   });
 });
 
-describe("the centered editor", () => {
-  it("centers the text when the PDF is hidden", async () => {
-    await renderApp({ viewMode: "editor" });
-    zenOn();
-    expect(root()).toHaveAttribute("data-zen-centered", "true");
-  });
-
-  it("does not center beside a PDF", async () => {
-    await renderApp();
-    zenOn();
-    expect(root()).not.toHaveAttribute("data-zen-centered");
-  });
-
-  it("stops centering once the PDF opens", async () => {
-    await renderApp({ viewMode: "editor" });
-    zenOn();
-    keydown(document.body, { key: "Enter", ctrlKey: true });
-    expect(root()).not.toHaveAttribute("data-zen-centered");
-  });
-
-  it("does not center when Center the editor is off", async () => {
-    useSettingsStore.setState({ zenCenterEditor: false });
-    await renderApp({ viewMode: "editor" });
-    zenOn();
-    expect(root()).not.toHaveAttribute("data-zen-centered");
-  });
-
-  it("does not center outside Zen mode", async () => {
-    await renderApp({ viewMode: "editor" });
-    expect(root()).not.toHaveAttribute("data-zen-centered");
-  });
-});

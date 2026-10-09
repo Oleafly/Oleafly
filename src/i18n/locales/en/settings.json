@@ -839,10 +839,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Keep the text in a centered column while the PDF is hidden.",
-        "label": "Center the editor"
-      },
       "fullScreen": {
         "description": "Fill the screen in Zen mode and restore the window when you leave.",
         "label": "Go full screen"
@@ -851,11 +847,7 @@
         "description": "If the PDF is hidden when Zen mode starts, open it beside the editor the first time you compile.",
         "label": "Show the PDF when you compile"
       },
-      "title": "Zen mode",
-      "toggle": {
-        "description": "Hides the toolbar, sidebar, assistant and terminal so only your writing is left. Also called distraction free mode. Needs an open project.",
-        "label": "Turn on Zen mode"
-      }
+      "title": "Zen mode"
     }
   },
   "checkpoints": {

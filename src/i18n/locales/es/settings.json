@@ -844,10 +844,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Mantiene el texto en una columna centrada mientras el PDF está oculto.",
-        "label": "Centrar el editor"
-      },
       "fullScreen": {
         "description": "Llena la pantalla en el modo Zen y restaura la ventana al salir.",
         "label": "Pasar a pantalla completa"
@@ -856,11 +852,7 @@
         "description": "Si el PDF está oculto al empezar el modo Zen, lo abre junto al editor la primera vez que compilas.",
         "label": "Mostrar el PDF al compilar"
       },
-      "title": "Modo Zen",
-      "toggle": {
-        "description": "Oculta la barra de herramientas, la barra lateral, el asistente y el terminal para dejar solo el texto. También se llama modo sin distracciones. Requiere un proyecto abierto.",
-        "label": "Activar el modo Zen"
-      }
+      "title": "Modo Zen"
     }
   },
   "checkpoints": {

@@ -207,10 +207,7 @@
       }
     },
     "zen": {
-      "title": "Group of settings for Zen mode, a distraction free writing mode that hides the toolbar, sidebar, assistant and terminal. Keep the word Zen.",
-      "toggle": {
-        "label": "Switch that turns Zen mode on right now."
-      }
+      "title": "Group of settings for Zen mode, a distraction free writing mode that hides the toolbar, sidebar, assistant and terminal. Keep the word Zen."
     },
     "editor": {
       "font": {

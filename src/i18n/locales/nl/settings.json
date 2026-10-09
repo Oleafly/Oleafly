@@ -839,10 +839,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Houdt de tekst in een gecentreerde kolom zolang de PDF verborgen is.",
-        "label": "Editor centreren"
-      },
       "fullScreen": {
         "description": "Vult het scherm in de zenmodus en zet het venster terug als je afsluit.",
         "label": "Schermvullend gaan"
@@ -851,11 +847,7 @@
         "description": "Als de PDF verborgen is wanneer de zenmodus start, wordt die bij de eerste compilatie naast de editor geopend.",
         "label": "PDF tonen bij het compileren"
       },
-      "title": "Zenmodus",
-      "toggle": {
-        "description": "Verbergt de werkbalk, zijbalk, assistent en terminal zodat alleen je tekst overblijft. Ook wel afleidingsvrije modus genoemd. Een geopend project is nodig.",
-        "label": "Zenmodus inschakelen"
-      }
+      "title": "Zenmodus"
     }
   },
   "checkpoints": {

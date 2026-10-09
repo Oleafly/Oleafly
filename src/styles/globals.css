@@ -1609,10 +1609,6 @@ body[data-tour-active] [data-tour-hide] {
   --cm-gutter-min-width: 2em;
 }
 
-[data-zen-centered="true"] .cm-editor .cm-scroller {
-  padding-inline: max(0px, calc((100% - var(--zen-column-width, 50rem)) / 2));
-}
-
 /* Scrollable, but with no visible bar. The tab strip needs to scroll
    horizontally without a track sitting under the tabs. */
 .no-scrollbar {

@@ -48,14 +48,10 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
-import { ApplicationShortcutRow } from "@/components/settings/ShortcutsSection";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { useFilesStore } from "@/store/files";
-import { useZenStore } from "@/store/zen";
-import { toggleZenMode } from "@/lib/zen-mode";
 
 const APPEARANCE_TABS = [
   { id: "app", label: () => i18n.t(($) => $.settings.appearance.tabs.app) },
@@ -70,12 +66,8 @@ type AppearanceTabId = (typeof APPEARANCE_TABS)[number]["id"];
 
 function ZenModeSettings() {
   const { t } = useTranslation(["settings"]);
-  const active = useZenStore((state) => state.active);
-  const hasProject = useFilesStore((state) => state.projectId !== null);
   const fullScreen = useSettingsStore((state) => state.zenFullScreen);
   const setFullScreen = useSettingsStore((state) => state.setZenFullScreen);
-  const centerEditor = useSettingsStore((state) => state.zenCenterEditor);
-  const setCenterEditor = useSettingsStore((state) => state.setZenCenterEditor);
   const showPdf = useSettingsStore((state) => state.zenShowPdfOnCompile);
   const setShowPdf = useSettingsStore((state) => state.setZenShowPdfOnCompile);
 
@@ -89,30 +81,11 @@ function ZenModeSettings() {
         {t(($) => $.settings.appearance.zen.title)}
       </SectionHeading>
       <SettingsToggleRow
-        testId="settings-row-zen-mode"
-        label={t(($) => $.settings.appearance.zen.toggle.label)}
-        description={t(($) => $.settings.appearance.zen.toggle.description)}
-        checked={active}
-        disabled={!active && !hasProject}
-        onChange={(next) => {
-          if (next) useSettingsStore.getState().setSettingsOpen(false);
-          toggleZenMode();
-        }}
-      />
-      <ApplicationShortcutRow id="toggleZenMode" testId="settings-row-zen-shortcut" />
-      <SettingsToggleRow
         testId="settings-row-zen-full-screen"
         label={t(($) => $.settings.appearance.zen.fullScreen.label)}
         description={t(($) => $.settings.appearance.zen.fullScreen.description)}
         checked={fullScreen}
         onChange={setFullScreen}
-      />
-      <SettingsToggleRow
-        testId="settings-row-zen-center-editor"
-        label={t(($) => $.settings.appearance.zen.centerEditor.label)}
-        description={t(($) => $.settings.appearance.zen.centerEditor.description)}
-        checked={centerEditor}
-        onChange={setCenterEditor}
       />
       <SettingsToggleRow
         testId="settings-row-zen-show-pdf"
