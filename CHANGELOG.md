@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Pressing Compile or Cmd+Enter right after opening a project could do
+  nothing if you had already edited the document. The compile that runs
+  when a project opens gave up because of the edit, and it took your
+  request with it. Your compile now always runs.
+
 ## [0.4.6] - 2026-10-09
 
 ### Added

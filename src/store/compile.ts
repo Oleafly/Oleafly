@@ -1842,31 +1842,34 @@ export const useCompileStore = create<CompileState>((set, get) => ({
     }
     const intent = ++compileIntentGeneration;
     activeCompileIntent = intent;
+    const files = useFilesStore.getState();
+    const capturedProjectId = files.projectId;
     const releaseIntent = () => {
       if (activeCompileIntent === intent) activeCompileIntent = null;
     };
     const abortIntent = () => {
       const ownsIntent = activeCompileIntent === intent;
       releaseIntent();
-      if (ownsIntent) {
-        clearQueuedRerun();
-        set((state) => {
-          if (
-            state.status !== "compiling" ||
-            state.lastAttemptIdentity?.requestGeneration !== intent
-          ) {
-            return state;
-          }
-          return {
-            status: "idle",
-            phase: "idle",
-          };
-        });
+      if (!ownsIntent) return;
+      const waitingOrigin = rerunQueued ? rerunOrigin : null;
+      clearQueuedRerun();
+      set((state) => {
+        if (
+          state.status !== "compiling" ||
+          state.lastAttemptIdentity?.requestGeneration !== intent
+        ) {
+          return state;
+        }
+        return {
+          status: "idle",
+          phase: "idle",
+        };
+      });
+      if (waitingOrigin !== null && useFilesStore.getState().projectId === capturedProjectId) {
+        queueMicrotask(() => void get().recompile({ origin: waitingOrigin }));
       }
     };
 
-    const files = useFilesStore.getState();
-    const capturedProjectId = files.projectId;
     // The effective main document honours an active `% !TEX root` override,
     // falling back to the stored main doc. Every identity check below must
     // agree with this resolution or the compile invalidates itself.
