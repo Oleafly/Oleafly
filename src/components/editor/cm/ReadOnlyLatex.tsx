@@ -3,7 +3,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { latexLanguage } from "@/components/editor/cm/latex";
 import { editorTheme } from "@/components/editor/cm/theme";
-import { useSettingsStore } from "@/store/settings";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 export function ReadOnlyLatex({
   source,
@@ -16,7 +16,7 @@ export function ReadOnlyLatex({
   className?: string;
   testId?: string;
 }>) {
-  const editorThemeId = useSettingsStore((s) => s.editorTheme);
+  const editorThemeId = useEditorThemeId();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const initialRef = useRef({ source, gutter });

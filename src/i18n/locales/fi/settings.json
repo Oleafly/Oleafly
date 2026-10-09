@@ -666,8 +666,48 @@
         "label": "Tarttuva vieritys"
       },
       "theme": {
-        "description": "Aseta lähdekoodin syntaksivärit erikseen sovelluksen teemasta.",
-        "label": "Editorin teema"
+        "dark": {
+          "description": "Editorin teema, kun sovellus on tumma.",
+          "label": "Teema tummassa tilassa"
+        },
+        "light": {
+          "description": "Editorin teema, kun sovellus on vaalea.",
+          "label": "Teema vaaleassa tilassa"
+        }
+      },
+      "colors": {
+        "description": "Muuta mitä tahansa editorin teeman väriä. Muutokset säilyvät teemakohtaisesti.",
+        "editing": "Muokataan: {{theme}}",
+        "editorGroup": "Editori",
+        "mode": {
+          "dark": "Tumma tila",
+          "light": "Vaalea tila"
+        },
+        "modeAriaLabel": "Mukautettava teema",
+        "names": {
+          "background": "Tausta",
+          "command": "Komennot",
+          "comment": "Kommentit",
+          "environment": "Ympäristöt",
+          "formatting": "Muotoilu",
+          "heading": "Otsikot",
+          "lineNumbers": "Rivinumerot",
+          "link": "Linkit",
+          "math": "Matematiikka",
+          "name": "Nimet ja avaimet",
+          "reference": "Lähdeviitteet ja viittaukset",
+          "selection": "Valinta",
+          "structure": "Preambuli ja tuonnit",
+          "symbol": "Sulkeet ja symbolit",
+          "text": "Teksti",
+          "value": "Arvot ja merkkijonot"
+        },
+        "pick": "Valitse väri: {{color}}",
+        "previewAriaLabel": "Esikatselun kieli",
+        "reset": "Käytä teeman värejä",
+        "syntaxGroup": "Syntaksi",
+        "title": "Editorin värit",
+        "useThemeColor": "Käytä teeman väriä: {{color}}"
       },
       "keymap": {
         "description": "Valitse näppäinkomentojoukko, jota lähdekoodieditori käyttää.",

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
+import { resolvedEditorColor } from "@oleafly/editor";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { buildLatexTable, resizeTable, type TableAlign } from "@/lib/latex-tools";
 import { notifyError, toast } from "@/lib/toast";
-import { useSettingsStore } from "@/store/settings";
 import { ToolSplitView } from "@/components/tools/ToolWorkspace";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" {
   if (align === "l") return "left";
@@ -16,7 +17,7 @@ function alignToCss(align: TableAlign | undefined): "left" | "center" | "right" 
 
 export function TableGeneratorPanel() {
   const { t } = useTranslation(["common", "researchTools"]);
-  const editorTheme = useSettingsStore((s) => s.editorTheme);
+  const editorTheme = useEditorThemeId();
   const [rows, setRows] = useState(3);
   const [cols, setCols] = useState(3);
   const [cells, setCells] = useState<string[][]>(() =>
@@ -226,8 +227,8 @@ export function TableGeneratorPanel() {
           data-select-all-scope
           className="select-text overflow-auto p-4 font-mono text-xs"
           style={{
-            backgroundColor: "var(--cm-editor-bg, var(--background))",
-            color: "var(--cm-editor-fg, var(--foreground))",
+            backgroundColor: resolvedEditorColor("background"),
+            color: resolvedEditorColor("text"),
           }}
         >
           {code}

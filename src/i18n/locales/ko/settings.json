@@ -661,8 +661,48 @@
         "label": "고정 스크롤"
       },
       "theme": {
-        "description": "앱 테마와 별개로 소스 구문 색상을 정합니다.",
-        "label": "편집기 테마"
+        "dark": {
+          "description": "앱이 어두운 모드일 때의 편집기 테마입니다.",
+          "label": "어두운 모드 테마"
+        },
+        "light": {
+          "description": "앱이 밝은 모드일 때의 편집기 테마입니다.",
+          "label": "밝은 모드 테마"
+        }
+      },
+      "colors": {
+        "description": "편집기 테마의 색상을 원하는 대로 바꾸세요. 변경 사항은 테마마다 따로 저장됩니다.",
+        "editing": "{{theme}} 편집 중",
+        "editorGroup": "편집기",
+        "mode": {
+          "dark": "어두운 모드",
+          "light": "밝은 모드"
+        },
+        "modeAriaLabel": "사용자 지정할 테마",
+        "names": {
+          "background": "배경",
+          "command": "명령",
+          "comment": "주석",
+          "environment": "환경",
+          "formatting": "서식",
+          "heading": "제목",
+          "lineNumbers": "줄 번호",
+          "link": "링크",
+          "math": "수식",
+          "name": "이름과 키",
+          "reference": "인용과 참조",
+          "selection": "선택 영역",
+          "structure": "프리앰블과 가져오기",
+          "symbol": "괄호와 기호",
+          "text": "텍스트",
+          "value": "값과 문자열"
+        },
+        "pick": "{{color}} 색상 고르기",
+        "previewAriaLabel": "미리보기 언어",
+        "reset": "테마 색상 사용",
+        "syntaxGroup": "구문",
+        "title": "편집기 색상",
+        "useThemeColor": "{{color}}에 테마 색상 사용"
       },
       "keymap": {
         "description": "소스 편집기가 쓸 키 바인딩 모음을 고르세요.",

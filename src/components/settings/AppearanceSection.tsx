@@ -16,9 +16,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { i18n } from "@/i18n";
-import { editorThemeCursorColor } from "@/lib/editor-cursor-color";
+import { cursorThemeFor, editorThemeCursorColor } from "@/lib/editor-cursor-color";
 import { formatNumber } from "@/lib/intl";
-import { useTheme } from "@/lib/theme";
+import { isEditorThemeId, type EditorThemeId } from "@/lib/editor-themes";
+import { useTheme, type Theme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
   ACCENTS,
@@ -62,6 +63,7 @@ import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
+import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const APPEARANCE_TABS = [
@@ -325,22 +327,25 @@ function AppAppearanceTab() {
   );
 }
 
+const THEME_MODES: readonly Theme[] = ["light", "dark"];
+
 function EditorCursorColorRow() {
   const { t } = useTranslation(["settings"]);
-  const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const editorThemeLight = useSettingsStore((state) => state.editorThemeLight);
+  const editorThemeDark = useSettingsStore((state) => state.editorThemeDark);
   const accentColor = useSettingsStore((state) => state.accentColor);
   const light = useSettingsStore((state) => state.editorCursorColorLight);
   const dark = useSettingsStore((state) => state.editorCursorColorDark);
   const setEditorCursorColor = useSettingsStore((state) => state.setEditorCursorColor);
   const { theme } = useTheme();
   const colors: Readonly<Record<EditorSurface, string>> = { light, dark };
-  const themeColors = useMemo(
-    () => ({
-      light: editorThemeCursorColor("light", editorTheme, { theme, accentColor }),
-      dark: editorThemeCursorColor("dark", editorTheme, { theme, accentColor }),
-    }),
-    [editorTheme, theme, accentColor],
-  );
+  const themeColors = useMemo(() => {
+    const themes = { light: editorThemeLight, dark: editorThemeDark };
+    return {
+      light: editorThemeCursorColor("light", cursorThemeFor("light", themes), { theme, accentColor }),
+      dark: editorThemeCursorColor("dark", cursorThemeFor("dark", themes), { theme, accentColor }),
+    };
+  }, [editorThemeLight, editorThemeDark, theme, accentColor]);
   const surfaceLabels: Readonly<Record<EditorSurface, string>> = {
     light: t(($) => $.settings.appearance.editor.cursorColor.light),
     dark: t(($) => $.settings.appearance.editor.cursorColor.dark),
@@ -610,8 +615,13 @@ function EditorAppearanceTab() {
   const setEditorFontFamily = useSettingsStore((state) => state.setEditorFontFamily);
   const editorCursorWidth = useSettingsStore((state) => state.editorCursorWidth);
   const setEditorCursorWidth = useSettingsStore((state) => state.setEditorCursorWidth);
-  const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const editorThemeLight = useSettingsStore((state) => state.editorThemeLight);
+  const editorThemeDark = useSettingsStore((state) => state.editorThemeDark);
   const setEditorTheme = useSettingsStore((state) => state.setEditorTheme);
+  const editorThemes: Readonly<Record<Theme, EditorThemeId>> = {
+    light: editorThemeLight,
+    dark: editorThemeDark,
+  };
   const fileMoveReferences = useSettingsStore((state) => state.fileMoveReferences);
   const setFileMoveReferences = useSettingsStore((state) => state.setFileMoveReferences);
 
@@ -648,31 +658,38 @@ function EditorAppearanceTab() {
         disabledHint={followsAppFont}
       />
 
-      <SettingsRow
-        testId="settings-row-editor-theme"
-        label={t(($) => $.settings.appearance.editor.theme.label)}
-        description={t(($) => $.settings.appearance.editor.theme.description)}
-        control={
-          <Select
-            value={editorTheme}
-            onValueChange={(value) => setEditorTheme(value as typeof editorTheme)}
-          >
-            <SelectTrigger className="w-[168px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {EDITOR_THEMES.map((editorThemeOption) => (
-                <SelectItem
-                  key={editorThemeOption.id}
-                  value={editorThemeOption.id}
-                >
-                  {editorThemeOption.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
-      />
+      {THEME_MODES.map((mode) => (
+        <SettingsRow
+          key={mode}
+          testId={`settings-row-editor-theme-${mode}`}
+          label={t(($) => $.settings.appearance.editor.theme[mode].label)}
+          description={t(($) => $.settings.appearance.editor.theme[mode].description)}
+          control={
+            <Select
+              value={editorThemes[mode]}
+              onValueChange={(value) => {
+                if (isEditorThemeId(value)) setEditorTheme(mode, value);
+              }}
+            >
+              <SelectTrigger className="w-[168px]" data-testid={`settings-editor-theme-${mode}-trigger`}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[100]">
+                {EDITOR_THEMES.map((editorThemeOption) => (
+                  <SelectItem
+                    key={editorThemeOption.id}
+                    value={editorThemeOption.id}
+                  >
+                    {editorThemeOption.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          }
+        />
+      ))}
+
+      <EditorColors />
 
       <SettingsRow
         testId="settings-row-editor-keymap"

@@ -671,8 +671,48 @@
         "label": "Défilement ancré"
       },
       "theme": {
-        "description": "Définissez les couleurs de syntaxe du source indépendamment du thème de l'application.",
-        "label": "Thème de l'éditeur"
+        "dark": {
+          "description": "Le thème de l'éditeur quand l'application est sombre.",
+          "label": "Thème en mode sombre"
+        },
+        "light": {
+          "description": "Le thème de l'éditeur quand l'application est claire.",
+          "label": "Thème en mode clair"
+        }
+      },
+      "colors": {
+        "description": "Modifiez n'importe quelle couleur d'un thème de l'éditeur. Les modifications sont conservées pour chaque thème.",
+        "editing": "Modification du thème {{theme}}",
+        "editorGroup": "Éditeur",
+        "mode": {
+          "dark": "Mode sombre",
+          "light": "Mode clair"
+        },
+        "modeAriaLabel": "Thème à personnaliser",
+        "names": {
+          "background": "Fond",
+          "command": "Commandes",
+          "comment": "Commentaires",
+          "environment": "Environnements",
+          "formatting": "Mise en forme",
+          "heading": "Titres",
+          "lineNumbers": "Numéros de ligne",
+          "link": "Liens",
+          "math": "Maths",
+          "name": "Noms et clés",
+          "reference": "Citations et références",
+          "selection": "Sélection",
+          "structure": "Préambule et imports",
+          "symbol": "Parenthèses et symboles",
+          "text": "Texte",
+          "value": "Valeurs et chaînes"
+        },
+        "pick": "Choisir une couleur pour {{color}}",
+        "previewAriaLabel": "Langage de l'aperçu",
+        "reset": "Utiliser les couleurs du thème",
+        "syntaxGroup": "Syntaxe",
+        "title": "Couleurs de l'éditeur",
+        "useThemeColor": "Utiliser la couleur du thème pour {{color}}"
       },
       "keymap": {
         "description": "Choisissez le jeu de raccourcis utilisé par l'éditeur de source.",

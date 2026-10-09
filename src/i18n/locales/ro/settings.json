@@ -671,8 +671,48 @@
         "label": "Derulare cu antet fix"
       },
       "theme": {
-        "description": "Stabilește culorile de sintaxă separat de tema aplicației.",
-        "label": "Tema editorului"
+        "dark": {
+          "description": "Tema editorului cât timp aplicația este întunecată.",
+          "label": "Tema în modul întunecat"
+        },
+        "light": {
+          "description": "Tema editorului cât timp aplicația este deschisă.",
+          "label": "Tema în modul deschis"
+        }
+      },
+      "colors": {
+        "description": "Schimbă orice culoare a unei teme a editorului. Modificările se păstrează pentru fiecare temă.",
+        "editing": "Se editează {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Mod întunecat",
+          "light": "Mod deschis"
+        },
+        "modeAriaLabel": "Tema de personalizat",
+        "names": {
+          "background": "Fundal",
+          "command": "Comenzi",
+          "comment": "Comentarii",
+          "environment": "Medii",
+          "formatting": "Formatare",
+          "heading": "Titluri",
+          "lineNumbers": "Numere de linie",
+          "link": "Linkuri",
+          "math": "Formule",
+          "name": "Nume și chei",
+          "reference": "Citări și referințe",
+          "selection": "Selecție",
+          "structure": "Preambul și importuri",
+          "symbol": "Paranteze și simboluri",
+          "text": "Text",
+          "value": "Valori și șiruri"
+        },
+        "pick": "Alege o culoare pentru {{color}}",
+        "previewAriaLabel": "Limbajul previzualizării",
+        "reset": "Folosește culorile temei",
+        "syntaxGroup": "Sintaxă",
+        "title": "Culorile editorului",
+        "useThemeColor": "Folosește culoarea temei pentru {{color}}"
       },
       "keymap": {
         "description": "Alege setul de scurtături folosit de editorul de sursă.",

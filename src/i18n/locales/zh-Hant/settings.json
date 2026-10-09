@@ -661,8 +661,48 @@
         "label": "固定捲動"
       },
       "theme": {
-        "description": "與應用程式主題分開設定原始碼的語法顏色。",
-        "label": "編輯器主題"
+        "dark": {
+          "description": "應用程式為深色時使用的編輯器主題。",
+          "label": "深色模式主題"
+        },
+        "light": {
+          "description": "應用程式為淺色時使用的編輯器主題。",
+          "label": "淺色模式主題"
+        }
+      },
+      "colors": {
+        "description": "可變更編輯器主題中的任何顏色。變更會依主題分別保存。",
+        "editing": "正在編輯 {{theme}}",
+        "editorGroup": "編輯器",
+        "mode": {
+          "dark": "深色模式",
+          "light": "淺色模式"
+        },
+        "modeAriaLabel": "要自訂的主題",
+        "names": {
+          "background": "背景",
+          "command": "指令",
+          "comment": "註解",
+          "environment": "環境",
+          "formatting": "格式",
+          "heading": "標題",
+          "lineNumbers": "行號",
+          "link": "連結",
+          "math": "公式",
+          "name": "名稱和鍵名",
+          "reference": "引用和交互參照",
+          "selection": "選取範圍",
+          "structure": "導言區和匯入",
+          "symbol": "括號和符號",
+          "text": "文字",
+          "value": "值和字串"
+        },
+        "pick": "為 {{color}} 選擇顏色",
+        "previewAriaLabel": "預覽語言",
+        "reset": "使用主題顏色",
+        "syntaxGroup": "語法",
+        "title": "編輯器顏色",
+        "useThemeColor": "為 {{color}} 使用主題顏色"
       },
       "keymap": {
         "description": "選擇原始碼編輯器使用的按鍵組合。",

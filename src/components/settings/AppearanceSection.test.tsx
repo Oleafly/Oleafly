@@ -376,7 +376,12 @@ describe("Appearance settings tabs", () => {
 
   it("picks a cursor color for light and for dark editor themes and goes back to the theme's", async () => {
     const user = userEvent.setup();
-    useSettingsStore.setState({ editorCursorColorLight: "", editorCursorColorDark: "", editorTheme: "dracula" });
+    useSettingsStore.setState({
+      editorCursorColorLight: "",
+      editorCursorColorDark: "",
+      editorThemeLight: "system",
+      editorThemeDark: "dracula",
+    });
     const palette = document.createElement("style");
     palette.textContent = '[data-editor-theme="dracula"] { --cm-cursor: #f8f8f2; }';
     document.head.append(palette);
@@ -398,8 +403,24 @@ describe("Appearance settings tabs", () => {
 
     await user.click(within(row).getByRole("button", { name: cursorColor.useTheme }));
     expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
-    useSettingsStore.setState({ editorTheme: "system" });
+    useSettingsStore.setState({ editorThemeLight: "system", editorThemeDark: "system" });
     palette.remove();
+  });
+
+  it("shows a theme for light mode and one for dark mode, and the editor colors under them", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorThemeLight: "paper", editorThemeDark: "nord" });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+
+    const light = screen.getByTestId("settings-row-editor-theme-light");
+    const dark = screen.getByTestId("settings-row-editor-theme-dark");
+    expect(light).toHaveTextContent(appearance.editor.theme.light.label);
+    expect(within(light).getByTestId("settings-editor-theme-light-trigger")).toHaveTextContent("Paper");
+    expect(dark).toHaveTextContent(appearance.editor.theme.dark.label);
+    expect(within(dark).getByTestId("settings-editor-theme-dark-trigger")).toHaveTextContent("Nord");
+    expect(screen.getByTestId("editor-colors")).toHaveTextContent(appearance.editor.colors.title);
+    useSettingsStore.setState({ editorThemeLight: "system", editorThemeDark: "system" });
   });
 
   it("changes the editor cursor width", async () => {

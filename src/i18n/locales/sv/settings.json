@@ -666,8 +666,48 @@
         "label": "Klistrig rullning"
       },
       "theme": {
-        "description": "Ange syntaxfärgerna för källkod separat från appens tema.",
-        "label": "Redigerarens tema"
+        "dark": {
+          "description": "Redigerarens tema när appen är mörk.",
+          "label": "Tema i mörkt läge"
+        },
+        "light": {
+          "description": "Redigerarens tema när appen är ljus.",
+          "label": "Tema i ljust läge"
+        }
+      },
+      "colors": {
+        "description": "Ändra valfri färg i ett redigerartema. Ändringarna sparas för varje tema.",
+        "editing": "Redigerar {{theme}}",
+        "editorGroup": "Redigerare",
+        "mode": {
+          "dark": "Mörkt läge",
+          "light": "Ljust läge"
+        },
+        "modeAriaLabel": "Tema att anpassa",
+        "names": {
+          "background": "Bakgrund",
+          "command": "Kommandon",
+          "comment": "Kommentarer",
+          "environment": "Miljöer",
+          "formatting": "Formatering",
+          "heading": "Rubriker",
+          "lineNumbers": "Radnummer",
+          "link": "Länkar",
+          "math": "Matematik",
+          "name": "Namn och nycklar",
+          "reference": "Citeringar och referenser",
+          "selection": "Markering",
+          "structure": "Preambel och importer",
+          "symbol": "Parenteser och symboler",
+          "text": "Text",
+          "value": "Värden och strängar"
+        },
+        "pick": "Välj en färg för {{color}}",
+        "previewAriaLabel": "Förhandsvisningens språk",
+        "reset": "Använd temats färger",
+        "syntaxGroup": "Syntax",
+        "title": "Redigerarens färger",
+        "useThemeColor": "Använd temats färg för {{color}}"
       },
       "keymap": {
         "description": "Välj den uppsättning tangentbindningar som källkodsredigeraren använder.",

@@ -666,8 +666,48 @@
         "label": "Yapışkan kaydırma"
       },
       "theme": {
-        "description": "Kaynak sözdizimi renklerini uygulama temasından ayrı belirleyin.",
-        "label": "Düzenleyici teması"
+        "dark": {
+          "description": "Uygulama koyu kipteyken kullanılan düzenleyici teması.",
+          "label": "Koyu kipte tema"
+        },
+        "light": {
+          "description": "Uygulama açık kipteyken kullanılan düzenleyici teması.",
+          "label": "Açık kipte tema"
+        }
+      },
+      "colors": {
+        "description": "Bir düzenleyici temasının herhangi bir rengini değiştirin. Değişiklikler her tema için ayrı saklanır.",
+        "editing": "Düzenlenen: {{theme}}",
+        "editorGroup": "Düzenleyici",
+        "mode": {
+          "dark": "Koyu kip",
+          "light": "Açık kip"
+        },
+        "modeAriaLabel": "Özelleştirilecek tema",
+        "names": {
+          "background": "Arka plan",
+          "command": "Komutlar",
+          "comment": "Yorumlar",
+          "environment": "Ortamlar",
+          "formatting": "Biçimlendirme",
+          "heading": "Başlıklar",
+          "lineNumbers": "Satır numaraları",
+          "link": "Bağlantılar",
+          "math": "Matematik",
+          "name": "Adlar ve anahtarlar",
+          "reference": "Atıflar ve başvurular",
+          "selection": "Seçim",
+          "structure": "Önbölüm ve içe aktarmalar",
+          "symbol": "Ayraçlar ve semboller",
+          "text": "Metin",
+          "value": "Değerler ve dizeler"
+        },
+        "pick": "{{color}} için renk seç",
+        "previewAriaLabel": "Önizleme dili",
+        "reset": "Tema renklerini kullan",
+        "syntaxGroup": "Sözdizimi",
+        "title": "Düzenleyici renkleri",
+        "useThemeColor": "{{color}} için tema rengini kullan"
       },
       "keymap": {
         "description": "Kaynak düzenleyicinin kullanacağı tuş atama kümesini seçin.",

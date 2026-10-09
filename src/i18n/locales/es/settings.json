@@ -671,8 +671,48 @@
         "label": "Desplazamiento fijo"
       },
       "theme": {
-        "description": "Define los colores de la sintaxis aparte del tema de la aplicación.",
-        "label": "Tema del editor"
+        "dark": {
+          "description": "El tema del editor cuando la aplicación está en modo oscuro.",
+          "label": "Tema en modo oscuro"
+        },
+        "light": {
+          "description": "El tema del editor cuando la aplicación está en modo claro.",
+          "label": "Tema en modo claro"
+        }
+      },
+      "colors": {
+        "description": "Cambia cualquier color de un tema del editor. Los cambios se guardan para cada tema.",
+        "editing": "Editando {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Modo oscuro",
+          "light": "Modo claro"
+        },
+        "modeAriaLabel": "Tema que se personaliza",
+        "names": {
+          "background": "Fondo",
+          "command": "Comandos",
+          "comment": "Comentarios",
+          "environment": "Entornos",
+          "formatting": "Formato",
+          "heading": "Títulos",
+          "lineNumbers": "Números de línea",
+          "link": "Enlaces",
+          "math": "Fórmulas",
+          "name": "Nombres y claves",
+          "reference": "Citas y referencias",
+          "selection": "Selección",
+          "structure": "Preámbulo e importaciones",
+          "symbol": "Paréntesis y símbolos",
+          "text": "Texto",
+          "value": "Valores y cadenas"
+        },
+        "pick": "Elegir un color para {{color}}",
+        "previewAriaLabel": "Lenguaje de la vista previa",
+        "reset": "Usar los colores del tema",
+        "syntaxGroup": "Sintaxis",
+        "title": "Colores del editor",
+        "useThemeColor": "Usar el color del tema para {{color}}"
       },
       "keymap": {
         "description": "Elige el conjunto de atajos que usa el editor de código.",

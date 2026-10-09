@@ -661,8 +661,48 @@
         "label": "粘性滚动"
       },
       "theme": {
-        "description": "独立于应用主题单独设置源码语法颜色。",
-        "label": "编辑器主题"
+        "dark": {
+          "description": "应用为深色时使用的编辑器主题。",
+          "label": "深色模式主题"
+        },
+        "light": {
+          "description": "应用为浅色时使用的编辑器主题。",
+          "label": "浅色模式主题"
+        }
+      },
+      "colors": {
+        "description": "可以更改编辑器主题中的任意颜色。更改会按主题分别保存。",
+        "editing": "正在编辑 {{theme}}",
+        "editorGroup": "编辑器",
+        "mode": {
+          "dark": "深色模式",
+          "light": "浅色模式"
+        },
+        "modeAriaLabel": "要自定义的主题",
+        "names": {
+          "background": "背景色",
+          "command": "命令",
+          "comment": "注释",
+          "environment": "环境",
+          "formatting": "格式",
+          "heading": "标题",
+          "lineNumbers": "行号",
+          "link": "链接",
+          "math": "公式",
+          "name": "名称和键名",
+          "reference": "引用和交叉引用",
+          "selection": "选区",
+          "structure": "导言区和导入",
+          "symbol": "括号和符号",
+          "text": "文本",
+          "value": "值和字符串"
+        },
+        "pick": "为 {{color}} 选择颜色",
+        "previewAriaLabel": "预览语言",
+        "reset": "使用主题颜色",
+        "syntaxGroup": "语法",
+        "title": "编辑器颜色",
+        "useThemeColor": "为 {{color}} 使用主题颜色"
       },
       "keymap": {
         "description": "选择源码编辑器使用的键位方案。",

@@ -47,7 +47,7 @@ import {
   corpusClassNames,
   corpusPackageNames,
 } from "@/lib/latex-corpus";
-import { isStandardLatexEnvironment } from "@oleafly/editor";
+import { editorColor, isStandardLatexEnvironment } from "@oleafly/editor";
 import { i18n } from "@/i18n";
 import { useFilesStore } from "@/store/files";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
@@ -1117,43 +1117,43 @@ function decodeSemanticTokens(
 
 const semanticTheme = EditorView.baseTheme({
   ".cm-semantic-keyword": {
-    color: "var(--cm-keyword) !important",
+    color: `${editorColor("command")} !important`,
   },
   ".cm-semantic-comment": {
-    color: "var(--cm-comment) !important",
+    color: `${editorColor("comment")} !important`,
     fontStyle: "italic",
   },
   ".cm-semantic-string, .cm-semantic-regexp": {
-    color: "var(--cm-string) !important",
+    color: `${editorColor("value")} !important`,
   },
   ".cm-semantic-number": {
-    color: "var(--cm-number) !important",
+    color: `${editorColor("value")} !important`,
   },
   ".cm-semantic-function": {
-    color: "var(--cm-tag) !important",
+    color: `${editorColor("command")} !important`,
   },
   ".cm-semantic-type, .cm-semantic-namespace": {
-    color: "var(--cm-meta) !important",
+    color: `${editorColor("structure")} !important`,
   },
   ".cm-semantic-property, .cm-semantic-variable": {
-    color: "var(--cm-variable) !important",
+    color: `${editorColor("name")} !important`,
   },
   ".cm-semantic-operator, .cm-semantic-decorator, .cm-semantic-escape": {
-    color: "var(--cm-operator) !important",
+    color: `${editorColor("symbol")} !important`,
   },
   ".cm-semantic-heading": {
-    color: "var(--cm-meta) !important",
+    color: `${editorColor("heading")} !important`,
     fontWeight: "600",
   },
   ".cm-semantic-label": {
-    color: "var(--cm-tag) !important",
+    color: `${editorColor("reference")} !important`,
   },
   ".cm-semantic-link": {
-    color: "var(--cm-string) !important",
+    color: `${editorColor("link")} !important`,
     textDecoration: "underline",
   },
   ".cm-semantic-bracket": {
-    color: "var(--cm-bracket) !important",
+    color: `${editorColor("symbol")} !important`,
   },
   ".cm-semantic-term, .cm-semantic-strong": {
     fontWeight: "600",

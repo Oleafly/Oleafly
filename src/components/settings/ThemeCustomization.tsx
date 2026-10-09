@@ -63,7 +63,9 @@ const TOKEN_LABELS: Record<ThemeTokenName, () => string> = {
 };
 
 function downloadTheme(customization: ThemeCustomizationState) {
-  const blob = new Blob([serializeThemeCustomization(customization)], { type: "application/json" });
+  const { editorThemeLight, editorThemeDark, editorColors } = useSettingsStore.getState();
+  const editor = { themes: { light: editorThemeLight, dark: editorThemeDark }, colors: editorColors };
+  const blob = new Blob([serializeThemeCustomization(customization, editor)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -131,7 +133,8 @@ export function ThemeCustomization() {
       return;
     }
     try {
-      const { customization: imported, skippedTokens } = parseThemeCustomizationImport(await file.text());
+      const { customization: imported, skippedTokens, editor } = parseThemeCustomizationImport(await file.text());
+      if (editor) useSettingsStore.getState().importEditorThemes(editor);
       const shownTokens = skippedTokens.slice(0, 6).join(", ");
       const skippedNotice =
         skippedTokens.length > 6

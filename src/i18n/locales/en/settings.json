@@ -666,8 +666,48 @@
         "label": "Sticky scroll"
       },
       "theme": {
-        "description": "Set source syntax colors separately from the app theme.",
-        "label": "Editor theme"
+        "dark": {
+          "description": "The editor theme while the app is dark.",
+          "label": "Theme in dark mode"
+        },
+        "light": {
+          "description": "The editor theme while the app is light.",
+          "label": "Theme in light mode"
+        }
+      },
+      "colors": {
+        "description": "Change any color of an editor theme. Changes are kept for each theme.",
+        "editing": "Editing {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Dark mode",
+          "light": "Light mode"
+        },
+        "modeAriaLabel": "Theme to customize",
+        "names": {
+          "background": "Background",
+          "command": "Commands",
+          "comment": "Comments",
+          "environment": "Environments",
+          "formatting": "Formatting",
+          "heading": "Headings",
+          "lineNumbers": "Line numbers",
+          "link": "Links",
+          "math": "Math",
+          "name": "Names and keys",
+          "reference": "Citations and references",
+          "selection": "Selection",
+          "structure": "Preamble and imports",
+          "symbol": "Brackets and symbols",
+          "text": "Text",
+          "value": "Values and strings"
+        },
+        "pick": "Pick a color for {{color}}",
+        "previewAriaLabel": "Preview language",
+        "reset": "Use theme colors",
+        "syntaxGroup": "Syntax",
+        "title": "Editor colors",
+        "useThemeColor": "Use the theme color for {{color}}"
       },
       "keymap": {
         "description": "Choose the keybinding set the source editor uses.",

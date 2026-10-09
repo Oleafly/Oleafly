@@ -82,15 +82,15 @@ describe("contractual source syntax highlighting", () => {
       const text = `${fixture("main.tex")}\n% syntax comment\n$x^2$`;
       const { spans } = highlightedState(`document.${extension}`, text);
       expect(tokenClasses(text, spans, "\\documentclass")).toContain(
-        "tok-typeName",
+        "tok-keyword",
       );
-      expect(tokenClasses(text, spans, "document")).toContain("tok-atom");
+      expect(tokenClasses(text, spans, "document")).toContain("tok-typeName");
       expect(tokenClasses(text, spans, "% syntax comment")).toContain(
         "tok-comment",
       );
       expect(
         tokenClasses(text, spans, "x").some((classes) =>
-          classes.includes("tok-variableName"),
+          classes.includes("tok-string"),
         ),
       ).toBe(true);
     },
@@ -111,15 +111,14 @@ describe("contractual source syntax highlighting", () => {
     ).toBe(true);
     expect(
       tokenClasses(text, spans, "a^2 + b^2 = c^2").some((classes) =>
-        classes.includes("tok-string2"),
+        classes.includes("tok-string"),
       ),
     ).toBe(true);
     expect(
       tokenClasses(text, spans, "\\sum_{i=1}^{n}").some((classes) =>
-        classes.includes("tok-string2"),
+        classes.includes("tok-string"),
       ),
     ).toBe(true);
-    expect(tokenClasses(text, spans, "~~")).toContain("tok-meta");
     expect(
       tokenClasses(text, spans, " A ").some((classes) =>
         classes.includes("tok-heading"),
@@ -132,12 +131,12 @@ describe("contractual source syntax highlighting", () => {
     const { spans } = highlightedState("notes.md", text);
     expect(
       tokenClasses(text, spans, "x + 1").some((classes) =>
-        classes.includes("tok-string2"),
+        classes.includes("tok-string"),
       ),
     ).toBe(true);
     expect(
       tokenClasses(text, spans, "5").some((classes) =>
-        classes.includes("tok-string2"),
+        classes.includes("tok-string"),
       ),
     ).toBe(false);
   });
@@ -155,7 +154,7 @@ describe("contractual source syntax highlighting", () => {
       "tok-labelName",
     );
     expect(tokenClasses(text, spans, "@typst-analysis")).toContain(
-      "tok-link",
+      "tok-labelName",
     );
     expect(
       tokenClasses(text, spans, "references.bib").some((classes) =>
@@ -241,7 +240,7 @@ describe("malformed highlighting recovery and revision correctness", () => {
   it("keeps later LaTeX commands highlighted around unclosed constructs", () => {
     const text = fixture("malformed.tex");
     const { spans } = highlightedState("malformed.tex", text);
-    expect(tokenClasses(text, spans, "\\section")).toContain("tok-typeName");
+    expect(tokenClasses(text, spans, "\\section")).toContain("tok-heading");
     expect(tokenClasses(text, spans, "\\textbf")).toContain("tok-typeName");
     expect(tokenClasses(text, spans, "\\item")).toContain("tok-typeName");
   });

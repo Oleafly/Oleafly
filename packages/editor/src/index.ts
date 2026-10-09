@@ -10,6 +10,19 @@
 export * from "./controller";
 export * from "./messages";
 export { editorTheme } from "./theme";
+export {
+  EDITOR_COLOR_IDS,
+  SURFACE_COLORS,
+  SYNTAX_ROLES,
+  editorColor,
+  editorColorVariable,
+  resolvedEditorColor,
+  themeColorValue,
+  type EditorColorId,
+  type SurfaceColor,
+  type SyntaxRole,
+} from "./color-roles";
+export { syntaxTags } from "./syntax-colors";
 export { languageForPath } from "./languages";
 export {
   createCompletionRequestGuard,

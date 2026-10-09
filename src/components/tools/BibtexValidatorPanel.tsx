@@ -6,7 +6,7 @@ import { ToolSplitView } from "@/components/tools/ToolWorkspace";
 import { bibtexLanguage } from "@/components/editor/cm/bibtex";
 import { parseBib, validateBib } from "@/lib/latex-tools";
 import { i18n } from "@/i18n";
-import { useSettingsStore } from "@/store/settings";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 const SAMPLE = `@article{einstein1905,
   author  = {Einstein, Albert},
@@ -62,7 +62,7 @@ const LEVEL_CLASS: Record<"error" | "warning" | "ok", string> = {
 
 export function BibtexValidatorPanel() {
   const { t } = useTranslation(["common", "researchTools"]);
-  const editorTheme = useSettingsStore((s) => s.editorTheme);
+  const editorTheme = useEditorThemeId();
   const [input, setInput] = useState("");
   const [paused, setPaused] = useState("");
   const large = input.length > LARGE_INPUT_CHARS;

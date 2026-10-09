@@ -676,8 +676,48 @@
         "label": "Przypięte przewijanie"
       },
       "theme": {
-        "description": "Ustal kolory składni źródła niezależnie od motywu aplikacji.",
-        "label": "Motyw edytora"
+        "dark": {
+          "description": "Motyw edytora, gdy aplikacja jest ciemna.",
+          "label": "Motyw w trybie ciemnym"
+        },
+        "light": {
+          "description": "Motyw edytora, gdy aplikacja jest jasna.",
+          "label": "Motyw w trybie jasnym"
+        }
+      },
+      "colors": {
+        "description": "Zmień dowolny kolor motywu edytora. Zmiany są zapisywane osobno dla każdego motywu.",
+        "editing": "Edytowany motyw: {{theme}}",
+        "editorGroup": "Edytor",
+        "mode": {
+          "dark": "Tryb ciemny",
+          "light": "Tryb jasny"
+        },
+        "modeAriaLabel": "Motyw do dostosowania",
+        "names": {
+          "background": "Tło",
+          "command": "Polecenia",
+          "comment": "Komentarze",
+          "environment": "Środowiska",
+          "formatting": "Formatowanie",
+          "heading": "Nagłówki",
+          "lineNumbers": "Numery wierszy",
+          "link": "Linki",
+          "math": "Wzory",
+          "name": "Nazwy i klucze",
+          "reference": "Cytowania i odwołania",
+          "selection": "Zaznaczenie",
+          "structure": "Preambuła i importy",
+          "symbol": "Nawiasy i symbole",
+          "text": "Tekst",
+          "value": "Wartości i ciągi znaków"
+        },
+        "pick": "Wybierz kolor: {{color}}",
+        "previewAriaLabel": "Język podglądu",
+        "reset": "Użyj kolorów motywu",
+        "syntaxGroup": "Składnia",
+        "title": "Kolory edytora",
+        "useThemeColor": "Użyj koloru motywu: {{color}}"
       },
       "keymap": {
         "description": "Wybierz zestaw skrótów używany przez edytor kodu źródłowego.",

@@ -676,8 +676,48 @@
         "label": "Přilepený posuv"
       },
       "theme": {
-        "description": "Nastavit barvy syntaxe zdroje nezávisle na motivu aplikace.",
-        "label": "Motiv editoru"
+        "dark": {
+          "description": "Motiv editoru, když je aplikace tmavá.",
+          "label": "Motiv v tmavém režimu"
+        },
+        "light": {
+          "description": "Motiv editoru, když je aplikace světlá.",
+          "label": "Motiv ve světlém režimu"
+        }
+      },
+      "colors": {
+        "description": "Změňte libovolnou barvu motivu editoru. Změny se uchovávají pro každý motiv zvlášť.",
+        "editing": "Úprava motivu {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Tmavý režim",
+          "light": "Světlý režim"
+        },
+        "modeAriaLabel": "Motiv k přizpůsobení",
+        "names": {
+          "background": "Pozadí",
+          "command": "Příkazy",
+          "comment": "Komentáře",
+          "environment": "Prostředí",
+          "formatting": "Formátování",
+          "heading": "Nadpisy",
+          "lineNumbers": "Čísla řádků",
+          "link": "Odkazy",
+          "math": "Matematika",
+          "name": "Názvy a klíče",
+          "reference": "Citace a křížové odkazy",
+          "selection": "Výběr",
+          "structure": "Preambule a importy",
+          "symbol": "Závorky a symboly",
+          "text": "Text",
+          "value": "Hodnoty a řetězce"
+        },
+        "pick": "Vybrat barvu: {{color}}",
+        "previewAriaLabel": "Jazyk náhledu",
+        "reset": "Použít barvy motivu",
+        "syntaxGroup": "Syntaxe",
+        "title": "Barvy editoru",
+        "useThemeColor": "Použít barvu motivu: {{color}}"
       },
       "keymap": {
         "description": "Zvolte sadu klávesových zkratek, kterou zdrojový editor používá.",

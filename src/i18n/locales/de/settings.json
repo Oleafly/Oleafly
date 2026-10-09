@@ -666,8 +666,48 @@
         "label": "Haftende Kopfzeile"
       },
       "theme": {
-        "description": "Die Syntaxfarben des Quelltextes getrennt vom App-Design festlegen.",
-        "label": "Design des Editors"
+        "dark": {
+          "description": "Das Editor-Design, solange die App dunkel ist.",
+          "label": "Design im dunklen Modus"
+        },
+        "light": {
+          "description": "Das Editor-Design, solange die App hell ist.",
+          "label": "Design im hellen Modus"
+        }
+      },
+      "colors": {
+        "description": "Ändern Sie jede Farbe eines Editor-Designs. Änderungen bleiben für jedes Design einzeln erhalten.",
+        "editing": "{{theme}} wird bearbeitet",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Dunkler Modus",
+          "light": "Heller Modus"
+        },
+        "modeAriaLabel": "Anzupassendes Design",
+        "names": {
+          "background": "Hintergrund",
+          "command": "Befehle",
+          "comment": "Kommentare",
+          "environment": "Umgebungen",
+          "formatting": "Formatierung",
+          "heading": "Überschriften",
+          "lineNumbers": "Zeilennummern",
+          "link": "Links",
+          "math": "Formeln",
+          "name": "Namen und Schlüssel",
+          "reference": "Zitationen und Verweise",
+          "selection": "Auswahl",
+          "structure": "Präambel und Importe",
+          "symbol": "Klammern und Symbole",
+          "text": "Text",
+          "value": "Werte und Zeichenketten"
+        },
+        "pick": "Farbe für {{color}} wählen",
+        "previewAriaLabel": "Sprache der Vorschau",
+        "reset": "Farben des Designs verwenden",
+        "syntaxGroup": "Syntax",
+        "title": "Farben des Editors",
+        "useThemeColor": "Farbe des Designs für {{color}} verwenden"
       },
       "keymap": {
         "description": "Wählen Sie den Satz an Tastenbelegungen für den Quelltexteditor.",

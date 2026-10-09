@@ -671,8 +671,48 @@
         "label": "Scorrimento con intestazioni fisse"
       },
       "theme": {
-        "description": "Imposta i colori della sintassi separatamente dal tema dell'app.",
-        "label": "Tema dell'editor"
+        "dark": {
+          "description": "Il tema dell'editor quando l'app è scura.",
+          "label": "Tema in modalità scura"
+        },
+        "light": {
+          "description": "Il tema dell'editor quando l'app è chiara.",
+          "label": "Tema in modalità chiara"
+        }
+      },
+      "colors": {
+        "description": "Cambia qualsiasi colore di un tema dell'editor. Le modifiche restano salvate per ciascun tema.",
+        "editing": "Modifica di {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Modalità scura",
+          "light": "Modalità chiara"
+        },
+        "modeAriaLabel": "Tema da personalizzare",
+        "names": {
+          "background": "Sfondo",
+          "command": "Comandi",
+          "comment": "Commenti",
+          "environment": "Ambienti",
+          "formatting": "Formattazione",
+          "heading": "Titoli",
+          "lineNumbers": "Numeri di riga",
+          "link": "Link",
+          "math": "Matematica",
+          "name": "Nomi e chiavi",
+          "reference": "Citazioni e riferimenti",
+          "selection": "Selezione",
+          "structure": "Preambolo e importazioni",
+          "symbol": "Parentesi e simboli",
+          "text": "Testo",
+          "value": "Valori e stringhe"
+        },
+        "pick": "Scegli un colore per {{color}}",
+        "previewAriaLabel": "Linguaggio dell'anteprima",
+        "reset": "Usa i colori del tema",
+        "syntaxGroup": "Sintassi",
+        "title": "Colori dell'editor",
+        "useThemeColor": "Usa il colore del tema per {{color}}"
       },
       "keymap": {
         "description": "Scegli il set di scorciatoie usato dall'editor di codice.",

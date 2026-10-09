@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Pick one editor theme for light mode and another for dark mode, and the
+  editor switches with the app. Two light themes are new: Paper, a warm
+  off-white, and One Light.
+- Settings > Appearance > Editor > Editor colors changes any color of an
+  editor theme, with a live preview in LaTeX, Typst and Markdown. Colors are
+  grouped by role (headings, commands, citations and references, math,
+  comments and more), and a role means the same thing in all three
+  languages. Changes are kept for each theme, and theme export and import
+  carry them.
 - Zen mode hides the toolbar, sidebar, assistant, terminal and the editor's
   tabs and formatting bar so only your writing is left, with the editor at
   full width. Turn it on with Ctrl-Command-Shift-F (Shift-F11 on Windows and
@@ -79,6 +88,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Syntax colors now follow those roles, so a few things look different. In
+  LaTeX, section commands and their titles use the heading color, citation
+  keys and environment names take the color of their command, and math is
+  one color. Markdown citations such as `[@key]` and `@key` are highlighted,
+  and bracketed citations no longer look like links.
 - The home screen's Grid background has wider squares that fade out toward
   the edges.
 - Every sidebar view now remembers its scroll position, expanded folders and

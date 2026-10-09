@@ -671,8 +671,48 @@
         "label": "Rolagem fixa"
       },
       "theme": {
-        "description": "Define as cores de sintaxe do código separadamente do tema do aplicativo.",
-        "label": "Tema do editor"
+        "dark": {
+          "description": "O tema do editor quando o aplicativo está escuro.",
+          "label": "Tema no modo escuro"
+        },
+        "light": {
+          "description": "O tema do editor quando o aplicativo está claro.",
+          "label": "Tema no modo claro"
+        }
+      },
+      "colors": {
+        "description": "Altere qualquer cor de um tema do editor. As alterações ficam salvas em cada tema.",
+        "editing": "Editando {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Modo escuro",
+          "light": "Modo claro"
+        },
+        "modeAriaLabel": "Tema a personalizar",
+        "names": {
+          "background": "Fundo",
+          "command": "Comandos",
+          "comment": "Comentários",
+          "environment": "Ambientes",
+          "formatting": "Formatação",
+          "heading": "Títulos",
+          "lineNumbers": "Números de linha",
+          "link": "Links",
+          "math": "Matemática",
+          "name": "Nomes e chaves",
+          "reference": "Citações e referências",
+          "selection": "Seleção",
+          "structure": "Preâmbulo e importações",
+          "symbol": "Parênteses e símbolos",
+          "text": "Texto",
+          "value": "Valores e strings"
+        },
+        "pick": "Escolher uma cor para {{color}}",
+        "previewAriaLabel": "Linguagem da prévia",
+        "reset": "Usar as cores do tema",
+        "syntaxGroup": "Sintaxe",
+        "title": "Cores do editor",
+        "useThemeColor": "Usar a cor do tema para {{color}}"
       },
       "keymap": {
         "description": "Escolha o conjunto de teclas que o editor de código usa.",

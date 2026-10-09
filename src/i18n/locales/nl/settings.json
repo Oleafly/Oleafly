@@ -666,8 +666,48 @@
         "label": "Vastgezette scrollkoppen"
       },
       "theme": {
-        "description": "Stel de syntaxiskleuren los van het app-thema in.",
-        "label": "Thema van de editor"
+        "dark": {
+          "description": "Het editorthema terwijl de app donker is.",
+          "label": "Thema in donkere modus"
+        },
+        "light": {
+          "description": "Het editorthema terwijl de app licht is.",
+          "label": "Thema in lichte modus"
+        }
+      },
+      "colors": {
+        "description": "Wijzig elke kleur van een editorthema. Wijzigingen blijven per thema bewaard.",
+        "editing": "{{theme}} wordt bewerkt",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Donkere modus",
+          "light": "Lichte modus"
+        },
+        "modeAriaLabel": "Thema om aan te passen",
+        "names": {
+          "background": "Achtergrond",
+          "command": "Commando's",
+          "comment": "Commentaar",
+          "environment": "Omgevingen",
+          "formatting": "Opmaak",
+          "heading": "Koppen",
+          "lineNumbers": "Regelnummers",
+          "link": "Links",
+          "math": "Wiskunde",
+          "name": "Namen en sleutels",
+          "reference": "Citaties en verwijzingen",
+          "selection": "Selectie",
+          "structure": "Preambule en imports",
+          "symbol": "Haakjes en symbolen",
+          "text": "Tekst",
+          "value": "Waarden en tekenreeksen"
+        },
+        "pick": "Kies een kleur voor {{color}}",
+        "previewAriaLabel": "Taal van het voorbeeld",
+        "reset": "Themakleuren gebruiken",
+        "syntaxGroup": "Syntaxis",
+        "title": "Editorkleuren",
+        "useThemeColor": "Themakleur gebruiken voor {{color}}"
       },
       "keymap": {
         "description": "Kies de set toetsenbindingen die de broncode-editor gebruikt.",

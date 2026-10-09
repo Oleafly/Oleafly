@@ -34,6 +34,24 @@ export function cssColorToHex(value: string): string | null {
     .join("")}`;
 }
 
+export function paintedColorToHex(value: string): string | null {
+  const exact = cssColorToHex(value);
+  if (exact || typeof document === "undefined") return exact;
+  const trimmed = value.trim();
+  const canvas = document.createElement("canvas");
+  canvas.width = 1;
+  canvas.height = 1;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!trimmed || !context) return null;
+  context.fillStyle = SENTINEL;
+  context.fillStyle = trimmed;
+  if (String(context.fillStyle) === SENTINEL) return null;
+  context.fillRect(0, 0, 1, 1);
+  return `#${[...context.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+    .map((channel) => channel.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
 export function readCssVariable(name: string): string {
   if (typeof document === "undefined" || typeof getComputedStyle !== "function") return "";
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();

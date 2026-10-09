@@ -661,8 +661,48 @@
         "label": "スティッキースクロール"
       },
       "theme": {
-        "description": "ソースの構文の色を、アプリのテーマとは別に設定します。",
-        "label": "エディタのテーマ"
+        "dark": {
+          "description": "アプリがダークモードのときのエディタのテーマです。",
+          "label": "ダークモードのテーマ"
+        },
+        "light": {
+          "description": "アプリがライトモードのときのエディタのテーマです。",
+          "label": "ライトモードのテーマ"
+        }
+      },
+      "colors": {
+        "description": "エディタのテーマの色を自由に変更できます。変更はテーマごとに保存されます。",
+        "editing": "{{theme}} を編集中",
+        "editorGroup": "エディタ",
+        "mode": {
+          "dark": "ダークモード",
+          "light": "ライトモード"
+        },
+        "modeAriaLabel": "カスタマイズするテーマ",
+        "names": {
+          "background": "背景",
+          "command": "コマンド",
+          "comment": "コメント",
+          "environment": "環境",
+          "formatting": "書式",
+          "heading": "見出し",
+          "lineNumbers": "行番号",
+          "link": "リンク",
+          "math": "数式",
+          "name": "名前とキー",
+          "reference": "引用と参照",
+          "selection": "選択範囲",
+          "structure": "プリアンブルとインポート",
+          "symbol": "括弧と記号",
+          "text": "テキスト",
+          "value": "値と文字列"
+        },
+        "pick": "{{color}} の色を選択",
+        "previewAriaLabel": "プレビューの言語",
+        "reset": "テーマの色を使う",
+        "syntaxGroup": "構文",
+        "title": "エディタの色",
+        "useThemeColor": "{{color}} にテーマの色を使う"
       },
       "keymap": {
         "description": "ソースエディタで使うキーバインドの体系を選びます。",

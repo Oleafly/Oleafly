@@ -666,8 +666,48 @@
         "label": "Klebrig rulling"
       },
       "theme": {
-        "description": "Sett fargene på kildesyntaksen uavhengig av apptemaet.",
-        "label": "Editortema"
+        "dark": {
+          "description": "Editortemaet når appen er mørk.",
+          "label": "Tema i mørk modus"
+        },
+        "light": {
+          "description": "Editortemaet når appen er lys.",
+          "label": "Tema i lys modus"
+        }
+      },
+      "colors": {
+        "description": "Endre hvilken som helst farge i et editortema. Endringene lagres for hvert tema.",
+        "editing": "Redigerer {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Mørk modus",
+          "light": "Lys modus"
+        },
+        "modeAriaLabel": "Tema som skal tilpasses",
+        "names": {
+          "background": "Bakgrunn",
+          "command": "Kommandoer",
+          "comment": "Kommentarer",
+          "environment": "Miljøer",
+          "formatting": "Formatering",
+          "heading": "Overskrifter",
+          "lineNumbers": "Linjenumre",
+          "link": "Lenker",
+          "math": "Matematikk",
+          "name": "Navn og nøkler",
+          "reference": "Siteringer og referanser",
+          "selection": "Merket område",
+          "structure": "Preambel og importer",
+          "symbol": "Parenteser og symboler",
+          "text": "Tekst",
+          "value": "Verdier og strenger"
+        },
+        "pick": "Velg en farge for {{color}}",
+        "previewAriaLabel": "Forhåndsvisningens språk",
+        "reset": "Bruk temafargene",
+        "syntaxGroup": "Syntaks",
+        "title": "Editorfarger",
+        "useThemeColor": "Bruk temafargen for {{color}}"
       },
       "keymap": {
         "description": "Velg settet med tastebindinger som kildeeditoren bruker.",
