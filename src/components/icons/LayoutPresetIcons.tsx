@@ -88,15 +88,6 @@ export function PreviewOnlyLayoutIcon(props: IconProps) {
   );
 }
 
-export function ZenModeLayoutIcon(props: IconProps) {
-  return (
-    <LayoutIcon {...props}>
-      <path d="M9.5 10.5h5M9.5 13.5h5" />
-      <path d="M7 9V7h2M17 9V7h-2M7 15v2h2M17 15v2h-2" strokeWidth={1.5} />
-    </LayoutIcon>
-  );
-}
-
 export const LAYOUT_PRESET_ICONS: Record<LayoutPreset, ComponentType<IconProps>> = {
   "editor-preview-ai": EditorPreviewAiLayoutIcon,
   "editor-preview": EditorPreviewLayoutIcon,

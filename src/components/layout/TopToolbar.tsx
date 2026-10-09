@@ -11,6 +11,7 @@ import {
   Download,
   FileText,
   FileArchive,
+  Focus,
   FileType,
   GitFork,
   History,
@@ -35,7 +36,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
-import { LAYOUT_PRESET_ICONS, ZenModeLayoutIcon } from "@/components/icons/LayoutPresetIcons";
+import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { useDismiss } from "@/components/ui/use-dismiss";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
@@ -53,7 +55,7 @@ import { useCompileStore } from "@/store/compile";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
-import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { shortcutLabel, shortcutParts, useShortcutStore } from "@/store/shortcuts";
 import { enterZenMode } from "@/lib/zen-mode";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
 import { openTypstExport } from "@/components/typst-export/open";
@@ -199,18 +201,20 @@ function activeLayoutPreset(
 
 function ZenModeMenuItem() {
   const { t } = useTranslation(["shell"]);
-  const shortcut = useShortcutStore((s) => shortcutLabel(s.bindings.toggleZenMode));
+  const binding = useShortcutStore((s) => s.bindings.toggleZenMode);
   return (
     <DropdownMenuItem
       data-testid="layout-zen-mode"
-      aria-keyshortcuts={shortcut}
+      aria-keyshortcuts={shortcutLabel(binding)}
       onSelect={() => enterZenMode()}
     >
-      <ZenModeLayoutIcon className="size-4 text-muted-foreground" />
+      <Focus className="size-4 text-muted-foreground" />
       <span className="flex-1">{t(($) => $.shell.toolbar.layouts.zenMode)}</span>
-      <span aria-hidden className="ml-auto pl-3 text-[0.625rem] text-muted-foreground">
-        {shortcut}
-      </span>
+      <KbdGroup aria-hidden data-testid="layout-zen-mode-keys" className="ml-auto pl-3">
+        {shortcutParts(binding).map((part) => (
+          <Kbd key={part}>{part}</Kbd>
+        ))}
+      </KbdGroup>
     </DropdownMenuItem>
   );
 }
