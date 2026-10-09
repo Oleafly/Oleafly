@@ -165,6 +165,10 @@
       },
       "theme": {
         "label": "Heading for the light, dark, and system theme choice."
+      },
+      "zoom": {
+        "label": "Row label for the zoom level of the whole app window, like browser zoom.",
+        "option": "Zoom level in the list, a percentage such as 125%."
       }
     },
     "customTheme": {
@@ -242,6 +246,10 @@
           "custom": "Letter spacing choice that shows a number field for an exact value."
         },
         "customLabel": "Accessible name of the number field where the user types an exact letter spacing in pixels."
+      },
+      "useAppFont": {
+        "label": "Switch that makes the source editor use the App font and App font size instead of its own.",
+        "disabledHint": "Tooltip on a disabled editor font control while the editor follows the app font."
       }
     },
     "fontNotInstalled": "Warning under a font setting when the saved font name is not installed on this computer. {{font}} is the font name."
@@ -479,6 +487,15 @@
       },
       "togglePreview": {
         "label": "Name of the shortcut that shows or hides the PDF preview pane beside the editor."
+      },
+      "zoomIn": {
+        "label": "Name of the shortcut that makes the whole app bigger, like browser zoom."
+      },
+      "zoomOut": {
+        "label": "Name of the shortcut that makes the whole app smaller, like browser zoom."
+      },
+      "resetZoom": {
+        "label": "Name of the shortcut that sets the app zoom back to 100%."
       }
     }
   },

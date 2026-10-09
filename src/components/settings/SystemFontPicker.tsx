@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import { FontFamilyCombobox, type FontFamilyOption } from "@/components/editor/FontFamilyPicker";
 import { SettingsRow } from "@/components/settings/SettingsRow";
+import { Tooltip } from "@/components/ui/tooltip";
 import { fontFamilyName, fontFamilyStack, isSystemFontAlias, primaryFontFamily } from "@/lib/font-families";
 import { logError } from "@/lib/log";
 import { cachedSystemFonts, listSystemFonts, type SystemFontFamily } from "@/lib/system-fonts";
@@ -152,6 +153,7 @@ function SystemFontPicker({
   fonts,
   load,
   invalid,
+  disabled,
   onChange,
   onEditingChange,
 }: Readonly<{
@@ -162,6 +164,7 @@ function SystemFontPicker({
   fonts: SystemFonts;
   load: () => void;
   invalid: boolean;
+  disabled: boolean;
   onChange: (value: string) => void;
   onEditingChange: (editing: boolean) => void;
 }>) {
@@ -185,6 +188,7 @@ function SystemFontPicker({
       value={typed.shown}
       placeholder={systemDefault}
       invalid={invalid}
+      disabled={disabled}
       loading={fonts.status === "loading"}
       listLabel={t(($) => $.editor.documentSettings.availableFonts)}
       loadingLabel={t(($) => $.editor.documentSettings.fontsLoading)}
@@ -210,6 +214,8 @@ export function SystemFontSettingsRow({
   description,
   value,
   onChange,
+  disabled = false,
+  disabledHint,
 }: Readonly<{
   testId: string;
   id: string;
@@ -218,12 +224,28 @@ export function SystemFontSettingsRow({
   description: string;
   value: string;
   onChange: (value: string) => void;
+  disabled?: boolean;
+  disabledHint?: string;
 }>) {
   const { t } = useTranslation(["settings"]);
   const { fonts, native, load } = useSystemFontFamilies(use);
   const [editing, setEditing] = useState(false);
   const missing =
-    native && !editing && fonts.status === "ready" && !isInstalledFont(value, fonts.families);
+    native && !disabled && !editing && fonts.status === "ready" && !isInstalledFont(value, fonts.families);
+  const picker = (
+    <SystemFontPicker
+      id={id}
+      use={use}
+      label={label}
+      value={value}
+      fonts={fonts}
+      load={load}
+      invalid={missing}
+      disabled={disabled}
+      onChange={onChange}
+      onEditingChange={setEditing}
+    />
+  );
 
   return (
     <SettingsRow
@@ -238,17 +260,15 @@ export function SystemFontSettingsRow({
         ) : null
       }
       control={
-        <SystemFontPicker
-          id={id}
-          use={use}
-          label={label}
-          value={value}
-          fonts={fonts}
-          load={load}
-          invalid={missing}
-          onChange={onChange}
-          onEditingChange={setEditing}
-        />
+        disabled && disabledHint ? (
+          <Tooltip label={disabledHint} side="top" wide>
+            <span className="inline-flex cursor-not-allowed">
+              <span className="pointer-events-none inline-flex">{picker}</span>
+            </span>
+          </Tooltip>
+        ) : (
+          picker
+        )
       }
     />
   );

@@ -337,6 +337,18 @@
       "keywords": "pdf önizleme göster gizle böl yalnızca düzenleyici",
       "label": "PDF önizlemesini aç/kapat"
     },
+    "zoomIn": {
+      "keywords": "büyüt büyük",
+      "label": "Yakınlaştır"
+    },
+    "zoomOut": {
+      "keywords": "küçült küçük",
+      "label": "Uzaklaştır"
+    },
+    "resetZoom": {
+      "keywords": "gerçek boyut 100",
+      "label": "Yakınlaştırmayı sıfırla"
+    },
     "zoteroAddMissing": {
       "label": "Eksik atıfları Zotero'dan ekle",
       "keywords": "zotero eksik atıflar tanımsız anahtarlar kaynakça onar missing citations undefined keys bibliography repair"

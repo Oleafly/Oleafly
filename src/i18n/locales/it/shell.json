@@ -339,6 +339,18 @@
       "keywords": "pdf anteprima mostra nascondi dividi solo editor",
       "label": "Mostra o nascondi l'anteprima PDF"
     },
+    "zoomIn": {
+      "keywords": "ingrandisci più grande",
+      "label": "Ingrandisci"
+    },
+    "zoomOut": {
+      "keywords": "riduci più piccolo",
+      "label": "Riduci"
+    },
+    "resetZoom": {
+      "keywords": "dimensione reale 100",
+      "label": "Reimposta zoom"
+    },
     "zoteroAddMissing": {
       "label": "Aggiungi da Zotero le citazioni mancanti",
       "keywords": "zotero citazioni mancanti chiavi non definite bibliografia ripara missing citations undefined keys bibliography repair"

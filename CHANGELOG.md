@@ -45,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Rename file in the file tree, or drag the file to a new folder. Settings >
   Appearance > Editor sets whether Oleafly asks first, always updates the
   paths or leaves them alone.
+- Cmd+= and Cmd+- zoom the whole app, the editor and PDF included, and
+  Cmd+0 sets it back to 100% (Ctrl on Windows and Linux). Every Oleafly
+  window follows the same level, which is remembered and can also be picked
+  in Settings > Appearance > App. The keys can be changed in Settings >
+  Keyboard Shortcuts. Inside the PDF they zoom the app too, so the PDF
+  itself zooms with its toolbar, a pinch or Ctrl+scroll, and the PDF zoom
+  shortcuts setting is gone.
+- Settings > Appearance > Editor has a Use the app font switch. With it on,
+  the editor uses the App font and App font size.
 - Cmd+Option+P (Ctrl+Alt+P on Windows and Linux) shows or hides the PDF
   beside the editor, the way Cmd+B does for the sidebar. It works in Zen mode
   too, so a PDF opened by compiling can be put away without leaving Zen. It's
@@ -105,6 +114,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- After a click on the PDF, its keyboard shortcuts worked once and then
+  stopped: re-rendering a page removed the text that had focus. Clicking
+  the page margins or the gray background didn't give the PDF focus at
+  all. The preview now takes focus from a click anywhere in it and keeps it
+  through re-renders.
 - App font size now scales every piece of interface text. Section titles in
   the sidebar, count badges and other small labels used to stay the same
   size whatever it was set to. The counts beside the sidebar section titles

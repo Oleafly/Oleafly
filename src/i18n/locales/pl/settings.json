@@ -546,6 +546,11 @@
         "description": "Skaluj tekst w menu, panelach i przyciskach.",
         "label": "Rozmiar pisma aplikacji"
       },
+      "zoom": {
+        "description": "Powiększa lub pomniejsza cały Oleafly, razem z edytorem i PDF.",
+        "label": "Powiększenie",
+        "option": "{{value}}%"
+      },
       "theme": {
         "description": "Opcja systemowa podąża za systemem operacyjnym i zmienia się razem z nim.",
         "label": "Wygląd"
@@ -646,6 +651,11 @@
         "description": "Wybierz dla plików źródłowych dowolny krój pisma zainstalowany na komputerze.",
         "label": "Krój pisma edytora",
         "monospace": "Stała szerokość"
+      },
+      "useAppFont": {
+        "description": "Edytor używa czcionki i rozmiaru pisma aplikacji.",
+        "disabledHint": "Wyłącz Użyj czcionki aplikacji, aby to zmienić.",
+        "label": "Użyj czcionki aplikacji"
       },
       "fontSize": {
         "description": "Ustal rozmiar tekstu w edytorze kodu źródłowego.",
@@ -792,10 +802,6 @@
       "hoverPreview": {
         "description": "Pokazuj ostatnio skompilowaną stronę po najechaniu na projekt w bibliotece.",
         "label": "Podgląd PDF po najechaniu"
-      },
-      "zoomShortcuts": {
-        "description": "Używaj Cmd/Ctrl +, - i 0 do powiększania PDF zamiast okna aplikacji.",
-        "label": "Skróty powiększania PDF"
       }
     },
     "sectionName": "Wygląd",
@@ -1713,6 +1719,18 @@
       "openSettings": {
         "label": "Otwórz ustawienia",
         "description": "Otwórz ustawienia Oleafly."
+      },
+      "zoomIn": {
+        "description": "Powiększa całą aplikację.",
+        "label": "Powiększ"
+      },
+      "zoomOut": {
+        "description": "Pomniejsza całą aplikację.",
+        "label": "Pomniejsz"
+      },
+      "resetZoom": {
+        "description": "Przywraca aplikację do 100%.",
+        "label": "Resetuj powiększenie"
       }
     },
     "application": {

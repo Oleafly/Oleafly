@@ -537,6 +537,11 @@
         "description": "縮放選單、面板與按鈕中的文字。",
         "label": "應用程式字型大小"
       },
+      "zoom": {
+        "description": "放大或縮小整個 Oleafly，包括編輯器和 PDF。",
+        "label": "縮放",
+        "option": "{{value}}%"
+      },
       "theme": {
         "description": "「系統」會跟隨作業系統，並隨它一起變更。",
         "label": "外觀"
@@ -631,6 +636,11 @@
         "description": "為原始檔案選擇電腦上已安裝的任何字型。",
         "label": "編輯器字型",
         "monospace": "等寬"
+      },
+      "useAppFont": {
+        "description": "編輯器使用應用程式的字型和字型大小。",
+        "disabledHint": "關閉「使用應用程式字型」後才能變更此項。",
+        "label": "使用應用程式字型"
       },
       "fontSize": {
         "description": "設定原始碼編輯器的文字大小。",
@@ -777,10 +787,6 @@
       "hoverPreview": {
         "description": "在專案庫中把滑鼠停在專案上時，顯示上次編譯的頁面。",
         "label": "滑鼠停留時預覽 PDF"
-      },
-      "zoomShortcuts": {
-        "description": "使用 Cmd/Ctrl +、- 和 0 縮放 PDF，而不是縮放應用程式視窗。",
-        "label": "PDF 縮放快捷鍵"
       }
     },
     "sectionName": "外觀",
@@ -1650,6 +1656,18 @@
       "openSettings": {
         "label": "開啟設定",
         "description": "開啟 Oleafly 設定。"
+      },
+      "zoomIn": {
+        "description": "放大整個應用程式。",
+        "label": "放大"
+      },
+      "zoomOut": {
+        "description": "縮小整個應用程式。",
+        "label": "縮小"
+      },
+      "resetZoom": {
+        "description": "將應用程式恢復為 100%。",
+        "label": "重設縮放"
       }
     },
     "application": {

@@ -82,3 +82,27 @@ test("Cmd+Option+P shows and hides the PDF beside the editor", async ({ tauriPag
   await pressGlobal(tauriPage, "p", { meta: true, alt: true });
   await expect.poll(async () => await viewMode(tauriPage), { timeout: 10_000 }).toBe("editor");
 });
+
+async function storedZoom(page: Parameters<typeof pressGlobal>[0]): Promise<string | null> {
+  return page.evaluate<string | null>(`localStorage.getItem("oleafly.appZoom")`);
+}
+
+test("Cmd+= and Cmd+- zoom the whole app and Cmd+0 sets it back", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  const width = () => tauriPage.evaluate<number>("window.innerWidth");
+  const start = await width();
+  try {
+    await pressGlobal(tauriPage, "=", { meta: true });
+    await expect.poll(async () => await storedZoom(tauriPage), { timeout: 10_000 }).toBe("110");
+    await expect.poll(width, { timeout: 10_000 }).toBeLessThan(start);
+    await pressGlobal(tauriPage, "-", { meta: true });
+    await pressGlobal(tauriPage, "-", { meta: true });
+    await expect.poll(async () => await storedZoom(tauriPage), { timeout: 10_000 }).toBe("90");
+    await expect.poll(width, { timeout: 10_000 }).toBeGreaterThan(start);
+  } finally {
+    await pressGlobal(tauriPage, "0", { meta: true });
+  }
+  await expect.poll(async () => await storedZoom(tauriPage), { timeout: 10_000 }).toBe("100");
+  await expect.poll(width, { timeout: 10_000 }).toBe(start);
+});

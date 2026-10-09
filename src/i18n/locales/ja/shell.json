@@ -335,6 +335,18 @@
       "keywords": "pdf プレビュー 表示 非表示 分割 エディタのみ",
       "label": "PDF プレビューの表示を切り替え"
     },
+    "zoomIn": {
+      "keywords": "拡大 大きく",
+      "label": "拡大"
+    },
+    "zoomOut": {
+      "keywords": "縮小 小さく",
+      "label": "縮小"
+    },
+    "resetZoom": {
+      "keywords": "実際のサイズ 100",
+      "label": "ズームをリセット"
+    },
     "zoteroAddMissing": {
       "label": "不足している引用を Zotero から追加",
       "keywords": "zotero 不足 引用 未定義 キー 参考文献 修復"

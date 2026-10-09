@@ -540,6 +540,11 @@
         "description": "Skaler teksten i menyer, paneler og knapper.",
         "label": "Skriftstørrelse i appen"
       },
+      "zoom": {
+        "description": "Gjør alt i Oleafly større eller mindre, også editoren og PDF-en.",
+        "label": "Zoom",
+        "option": "{{value}} %"
+      },
       "theme": {
         "description": "System følger operativsystemet og endrer seg når det gjør det.",
         "label": "Utseende"
@@ -636,6 +641,11 @@
         "description": "Velg hvilken som helst skrift som er installert på datamaskinen, for kildefiler.",
         "label": "Editorskrift",
         "monospace": "Fast bredde"
+      },
+      "useAppFont": {
+        "description": "Editoren følger appens skrift og skriftstørrelse.",
+        "disabledHint": "Slå av Bruk appens skrift for å endre dette.",
+        "label": "Bruk appens skrift"
       },
       "fontSize": {
         "description": "Sett tekststørrelsen i kildeeditoren.",
@@ -782,10 +792,6 @@
       "hoverPreview": {
         "description": "Vis den sist kompilerte siden når du holder pekeren over et prosjekt i biblioteket.",
         "label": "Forhåndsvis PDF ved peking"
-      },
-      "zoomShortcuts": {
-        "description": "Bruk Cmd/Ctrl +, - og 0 til å zoome PDF-en i stedet for appvinduet.",
-        "label": "Hurtigtaster for PDF-zoom"
       }
     },
     "sectionName": "Utseende",
@@ -1671,6 +1677,18 @@
       "openSettings": {
         "label": "Åpne innstillingene",
         "description": "Åpne innstillingene for Oleafly."
+      },
+      "zoomIn": {
+        "description": "Gjør hele appen større.",
+        "label": "Zoom inn"
+      },
+      "zoomOut": {
+        "description": "Gjør hele appen mindre.",
+        "label": "Zoom ut"
+      },
+      "resetZoom": {
+        "description": "Setter appen tilbake til 100 %.",
+        "label": "Tilbakestill zoom"
       }
     },
     "application": {

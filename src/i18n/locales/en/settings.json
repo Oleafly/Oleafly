@@ -540,6 +540,11 @@
         "description": "Scale text across menus, panels, and buttons.",
         "label": "App font size"
       },
+      "zoom": {
+        "description": "Make everything in Oleafly bigger or smaller, the editor and PDF included.",
+        "label": "Zoom",
+        "option": "{{value}}%"
+      },
       "theme": {
         "description": "System follows the operating system and changes when it does.",
         "label": "Appearance"
@@ -636,6 +641,11 @@
         "description": "Choose any font installed on your computer for source files.",
         "label": "Editor font",
         "monospace": "Monospaced"
+      },
+      "useAppFont": {
+        "description": "The editor follows the App font and App font size.",
+        "disabledHint": "Turn off Use the app font to change this.",
+        "label": "Use the app font"
       },
       "fontSize": {
         "description": "Set the source editor's text size.",
@@ -782,10 +792,6 @@
       "hoverPreview": {
         "description": "Show the last compiled page when you hover over a project in the library.",
         "label": "Preview PDF on hover"
-      },
-      "zoomShortcuts": {
-        "description": "Use Cmd/Ctrl +, -, and 0 to zoom the PDF instead of the app window.",
-        "label": "PDF zoom shortcuts"
       }
     },
     "sectionName": "Appearance",
@@ -1671,6 +1677,18 @@
       "openSettings": {
         "label": "Open settings",
         "description": "Open Oleafly's settings."
+      },
+      "zoomIn": {
+        "description": "Make the whole app bigger.",
+        "label": "Zoom in"
+      },
+      "zoomOut": {
+        "description": "Make the whole app smaller.",
+        "label": "Zoom out"
+      },
+      "resetZoom": {
+        "description": "Set the app back to 100%.",
+        "label": "Reset zoom"
       }
     },
     "application": {

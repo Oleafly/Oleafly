@@ -537,6 +537,11 @@
         "description": "メニュー、パネル、ボタンの文字の大きさを調整します。",
         "label": "アプリの文字サイズ"
       },
+      "zoom": {
+        "description": "エディタや PDF も含め、Oleafly 全体を大きくまたは小さくします。",
+        "label": "ズーム",
+        "option": "{{value}}%"
+      },
       "theme": {
         "description": "「システム」はオペレーティングシステムに従い、その設定が変わると一緒に変わります。",
         "label": "外観"
@@ -631,6 +636,11 @@
         "description": "ソースファイルに使うフォントを、コンピュータにインストールされているものから選びます。",
         "label": "エディタのフォント",
         "monospace": "等幅"
+      },
+      "useAppFont": {
+        "description": "エディタはアプリのフォントと文字サイズに従います。",
+        "disabledHint": "変更するには、アプリのフォントを使うをオフにしてください。",
+        "label": "アプリのフォントを使う"
       },
       "fontSize": {
         "description": "ソースエディタの文字の大きさを設定します。",
@@ -777,10 +787,6 @@
       "hoverPreview": {
         "description": "ライブラリでプロジェクトにカーソルを合わせると、最後にコンパイルしたページを表示します。",
         "label": "カーソルを合わせて PDF をプレビュー"
-      },
-      "zoomShortcuts": {
-        "description": "Cmd/Ctrl と +、-、0 を、アプリのウィンドウではなく PDF の拡大縮小に使います。",
-        "label": "PDF の拡大縮小ショートカット"
       }
     },
     "sectionName": "外観",
@@ -1650,6 +1656,18 @@
       "openSettings": {
         "label": "設定を開く",
         "description": "Oleafly の設定を開きます。"
+      },
+      "zoomIn": {
+        "description": "アプリ全体を大きくします。",
+        "label": "拡大"
+      },
+      "zoomOut": {
+        "description": "アプリ全体を小さくします。",
+        "label": "縮小"
+      },
+      "resetZoom": {
+        "description": "アプリを 100% に戻します。",
+        "label": "ズームをリセット"
       }
     },
     "application": {

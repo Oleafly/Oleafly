@@ -337,6 +337,18 @@
       "keywords": "pdf förhandsvisning visa dölj delad bara redigerare",
       "label": "Visa eller dölj PDF-förhandsvisning"
     },
+    "zoomIn": {
+      "keywords": "större förstora",
+      "label": "Zooma in"
+    },
+    "zoomOut": {
+      "keywords": "mindre förminska",
+      "label": "Zooma ut"
+    },
+    "resetZoom": {
+      "keywords": "verklig storlek 100",
+      "label": "Återställ zoom"
+    },
     "zoteroAddMissing": {
       "label": "Lägg till saknade citeringar från Zotero",
       "keywords": "zotero saknade citeringar odefinierade nycklar bibliografi reparera"

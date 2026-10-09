@@ -296,6 +296,9 @@ Reset to defaults at the foot of Appearance.
 
 - Keybindings: Default, Vim or Emacs. See
   [KeyboardShortcuts.md](KeyboardShortcuts.md) for what each mode binds.
+- Use the app font: off by default. When it's on, the editor uses the App
+  font and App font size, and the Editor font and Editor font size settings
+  are locked until it's turned off again.
 - Editor font size, editor font and editor theme. The size list runs from 11
   to 24 pixels, and Custom takes any size from 6 to 100, the same range as VS
   Code. The font list holds every font installed on the computer, monospaced

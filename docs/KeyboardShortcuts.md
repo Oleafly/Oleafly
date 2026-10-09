@@ -20,6 +20,9 @@ Windows and Linux.
 | Toggle Zen mode | Ctrl-Command-Shift-F | Shift-F11 |
 | Open folder | Command-Shift-O | Ctrl-Shift-O |
 | Open settings | Command-, | Ctrl-, |
+| Zoom in | Command-= | Ctrl-= |
+| Zoom out | Command-- | Ctrl-- |
+| Reset zoom | Command-0 | Ctrl-0 |
 | Close LaTeX environment | Command-Option-. | Ctrl-Alt-. |
 | Surround with environment | Command-Option-E | Ctrl-Alt-E |
 

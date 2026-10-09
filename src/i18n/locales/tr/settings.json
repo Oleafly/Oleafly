@@ -540,6 +540,11 @@
         "description": "Menülerdeki, panellerdeki ve düğmelerdeki metni ölçekler.",
         "label": "Uygulama yazı tipi boyutu"
       },
+      "zoom": {
+        "description": "Düzenleyici ve PDF dahil Oleafly'ın tamamını büyütür veya küçültür.",
+        "label": "Yakınlaştırma",
+        "option": "%{{value}}"
+      },
       "theme": {
         "description": "Sistem, işletim sistemini izler ve o değiştiğinde değişir.",
         "label": "Görünüm"
@@ -636,6 +641,11 @@
         "description": "Kaynak dosyalar için bilgisayarınızda yüklü herhangi bir yazı tipini seçin.",
         "label": "Düzenleyici yazı tipi",
         "monospace": "Eş aralıklı"
+      },
+      "useAppFont": {
+        "description": "Düzenleyici, uygulamanın yazı tipini ve boyutunu kullanır.",
+        "disabledHint": "Bunu değiştirmek için Uygulama yazı tipini kullan'ı kapatın.",
+        "label": "Uygulama yazı tipini kullan"
       },
       "fontSize": {
         "description": "Kaynak düzenleyicinin metin boyutunu belirleyin.",
@@ -782,10 +792,6 @@
       "hoverPreview": {
         "description": "Kitaplıkta bir projenin üzerine geldiğinizde en son derlenen sayfayı gösterir.",
         "label": "Üzerine gelince PDF'i önizle"
-      },
-      "zoomShortcuts": {
-        "description": "Uygulama penceresi yerine PDF'i yakınlaştırmak için Cmd/Ctrl +, - ve 0 tuşlarını kullanır.",
-        "label": "PDF yakınlaştırma kısayolları"
       }
     },
     "sectionName": "Görünüm",
@@ -1671,6 +1677,18 @@
       "openSettings": {
         "label": "Ayarları aç",
         "description": "Oleafly ayarlarını açar."
+      },
+      "zoomIn": {
+        "description": "Uygulamanın tamamını büyütür.",
+        "label": "Yakınlaştır"
+      },
+      "zoomOut": {
+        "description": "Uygulamanın tamamını küçültür.",
+        "label": "Uzaklaştır"
+      },
+      "resetZoom": {
+        "description": "Uygulamayı %100'e döndürür.",
+        "label": "Yakınlaştırmayı sıfırla"
       }
     },
     "application": {

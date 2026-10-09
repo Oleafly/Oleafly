@@ -15,6 +15,10 @@ const pdfStub = vi.hoisted(() => ({
   scales: [] as number[],
 }));
 
+vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  useAvailableWidth: () => ({ containerRef: () => {}, availableWidth: Number.POSITIVE_INFINITY }),
+}));
 vi.mock("@/components/pdf/PdfViewer", async () => {
   const react = await import("react");
   interface StubProps {
@@ -257,10 +261,7 @@ describe("PreviewPane zoom", () => {
     render(<PreviewPane />);
     await waitFor(() => expect(lastScale()).toBe(1.75));
 
-    fireEvent.keyDown(screen.getByTestId("preview-pane"), {
-      key: "=",
-      metaKey: true,
-    });
+    fireEvent.click(await screen.findByRole("button", { name: enPreview.zoom.in }));
     await waitFor(() => expect(lastScale()).toBeCloseTo(1.95));
 
     await act(async () => {
@@ -273,10 +274,7 @@ describe("PreviewPane zoom", () => {
     openProject("zoom-a", 2, 1);
     render(<PreviewPane />);
     await waitFor(() => expect(lastScale()).toBe(1.75));
-    fireEvent.keyDown(screen.getByTestId("preview-pane"), {
-      key: "=",
-      metaKey: true,
-    });
+    fireEvent.click(await screen.findByRole("button", { name: enPreview.zoom.in }));
     await waitFor(() => expect(lastScale()).toBeCloseTo(1.95));
 
     act(() => openProject("zoom-b", 3, 2));
@@ -290,10 +288,7 @@ describe("PreviewPane zoom", () => {
     openProject("zoom-remount", 2, 1);
     const first = render(<PreviewPane />);
     await waitFor(() => expect(lastScale()).toBe(1.75));
-    fireEvent.keyDown(screen.getByTestId("preview-pane"), {
-      key: "=",
-      metaKey: true,
-    });
+    fireEvent.click(await screen.findByRole("button", { name: enPreview.zoom.in }));
     await waitFor(() => expect(lastScale()).toBeCloseTo(1.95));
 
     first.unmount();

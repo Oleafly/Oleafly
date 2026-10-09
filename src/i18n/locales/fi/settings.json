@@ -540,6 +540,11 @@
         "description": "Skaalaa tekstin kokoa valikoissa, paneeleissa ja painikkeissa.",
         "label": "Sovelluksen fonttikoko"
       },
+      "zoom": {
+        "description": "Suurentaa tai pienentää kaiken Oleaflyssa, myös editorin ja PDF:n.",
+        "label": "Zoomaus",
+        "option": "{{value}} %"
+      },
       "theme": {
         "description": "Järjestelmä seuraa käyttöjärjestelmää ja muuttuu sen mukana.",
         "label": "Ulkoasu"
@@ -636,6 +641,11 @@
         "description": "Valitse lähdetiedostoille mikä tahansa tietokoneelle asennettu fontti.",
         "label": "Editorin fontti",
         "monospace": "Tasalevyinen"
+      },
+      "useAppFont": {
+        "description": "Editori käyttää sovelluksen fonttia ja fonttikokoa.",
+        "disabledHint": "Muuta tätä poistamalla Käytä sovelluksen fonttia käytöstä.",
+        "label": "Käytä sovelluksen fonttia"
       },
       "fontSize": {
         "description": "Aseta lähdekoodieditorin tekstikoko.",
@@ -782,10 +792,6 @@
       "hoverPreview": {
         "description": "Näytä viimeisin käännetty sivu, kun viet osoittimen projektin päälle kirjastossa.",
         "label": "Esikatsele PDF osoittimella"
-      },
-      "zoomShortcuts": {
-        "description": "Zoomaa PDF:ää näppäimillä Cmd/Ctrl +, - ja 0 sovellusikkunan sijaan.",
-        "label": "PDF:n zoomauspikanäppäimet"
       }
     },
     "sectionName": "Ulkoasu",
@@ -1671,6 +1677,18 @@
       "openSettings": {
         "label": "Avaa asetukset",
         "description": "Avaa Oleaflyn asetukset."
+      },
+      "zoomIn": {
+        "description": "Suurentaa koko sovelluksen.",
+        "label": "Lähennä"
+      },
+      "zoomOut": {
+        "description": "Pienentää koko sovelluksen.",
+        "label": "Loitonna"
+      },
+      "resetZoom": {
+        "description": "Palauttaa sovelluksen 100 prosenttiin.",
+        "label": "Palauta zoomaus"
       }
     },
     "application": {

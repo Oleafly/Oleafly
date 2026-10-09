@@ -339,6 +339,18 @@
       "keywords": "pdf previzualizare afișează ascunde împarte doar editor",
       "label": "Arată sau ascunde previzualizarea PDF"
     },
+    "zoomIn": {
+      "keywords": "mărește mai mare",
+      "label": "Mărește"
+    },
+    "zoomOut": {
+      "keywords": "micșorează mai mic",
+      "label": "Micșorează"
+    },
+    "resetZoom": {
+      "keywords": "mărime reală 100",
+      "label": "Resetează zoomul"
+    },
     "zoteroAddMissing": {
       "label": "Adaugă citările lipsă din Zotero",
       "keywords": "zotero citări lipsă chei nedefinite bibliografie reparare"

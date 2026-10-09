@@ -724,9 +724,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const inverted = useSettingsStore((state) => state.pdfDarkMode);
   const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
   const viewMode = useSettingsStore((state) => state.viewMode);
-  const pdfZoomShortcuts = useSettingsStore(
-    (state) => state.pdfZoomShortcuts,
-  );
   const [screenReaderMode, setScreenReaderMode] = useState(false);
   const [scale, setScale] = useState(1.0);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
@@ -1047,14 +1044,11 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     enabled: tab === "pdf",
     searchOpen,
     outlineOpen,
-    zoomShortcuts: pdfZoomShortcuts,
     searchInputRef,
     setSearchOpen,
     setSearchInput,
     setOutlineOpen,
-    setScale,
     setRotation,
-    userZoom,
   });
 
   const refreshTreeQuietly = () =>
@@ -1558,6 +1552,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   return (
     <div
       ref={rootRef}
+      tabIndex={-1}
       data-tour="project-preview"
       data-testid="preview-pane"
       data-preview-layout={layout}

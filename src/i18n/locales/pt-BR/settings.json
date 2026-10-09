@@ -543,6 +543,11 @@
         "description": "Ajusta o tamanho do texto em menus, painéis e botões.",
         "label": "Tamanho da fonte do aplicativo"
       },
+      "zoom": {
+        "description": "Deixa tudo no Oleafly maior ou menor, incluindo o editor e o PDF.",
+        "label": "Zoom",
+        "option": "{{value}}%"
+      },
       "theme": {
         "description": "A opção Sistema segue o sistema operacional e muda junto com ele.",
         "label": "Aparência"
@@ -641,6 +646,11 @@
         "description": "Escolha para os arquivos de código qualquer fonte instalada no seu computador.",
         "label": "Fonte do editor",
         "monospace": "Monoespaçada"
+      },
+      "useAppFont": {
+        "description": "O editor segue a fonte e o tamanho da fonte do app.",
+        "disabledHint": "Desative Usar a fonte do app para mudar isto.",
+        "label": "Usar a fonte do app"
       },
       "fontSize": {
         "description": "Define o tamanho do texto no editor de código.",
@@ -787,10 +797,6 @@
       "hoverPreview": {
         "description": "Mostra a última página compilada quando você passa o mouse sobre um projeto na biblioteca.",
         "label": "Prévia do PDF ao passar o mouse"
-      },
-      "zoomShortcuts": {
-        "description": "Usa Cmd/Ctrl +, - e 0 para dar zoom no PDF em vez de na janela do aplicativo.",
-        "label": "Atalhos de zoom do PDF"
       }
     },
     "sectionName": "Aparência",
@@ -1692,6 +1698,18 @@
       "openSettings": {
         "label": "Abrir as configurações",
         "description": "Abre as configurações do Oleafly."
+      },
+      "zoomIn": {
+        "description": "Aumenta o app inteiro.",
+        "label": "Aumentar o zoom"
+      },
+      "zoomOut": {
+        "description": "Diminui o app inteiro.",
+        "label": "Diminuir o zoom"
+      },
+      "resetZoom": {
+        "description": "Volta o app para 100%.",
+        "label": "Redefinir zoom"
       }
     },
     "application": {

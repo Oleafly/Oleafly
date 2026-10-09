@@ -543,6 +543,11 @@
         "description": "Scalează textul din meniuri, panouri și butoane.",
         "label": "Dimensiunea fontului aplicației"
       },
+      "zoom": {
+        "description": "Face tot Oleafly mai mare sau mai mic, inclusiv editorul și PDF-ul.",
+        "label": "Zoom",
+        "option": "{{value}}%"
+      },
       "theme": {
         "description": "Varianta Sistem urmează sistemul de operare și se schimbă odată cu el.",
         "label": "Aspect"
@@ -641,6 +646,11 @@
         "description": "Alege pentru fișierele sursă orice font instalat pe computer.",
         "label": "Fontul editorului",
         "monospace": "Monospațiat"
+      },
+      "useAppFont": {
+        "description": "Editorul urmează fontul și dimensiunea fontului aplicației.",
+        "disabledHint": "Dezactivează Folosește fontul aplicației ca să schimbi asta.",
+        "label": "Folosește fontul aplicației"
       },
       "fontSize": {
         "description": "Stabilește dimensiunea textului din editorul de sursă.",
@@ -787,10 +797,6 @@
       "hoverPreview": {
         "description": "Arată ultima pagină compilată atunci când treci cu mouse-ul peste un proiect din bibliotecă.",
         "label": "Previzualizează PDF-ul la trecerea cu mouse-ul"
-      },
-      "zoomShortcuts": {
-        "description": "Folosește Cmd/Ctrl cu +, - și 0 ca să mărești PDF-ul, nu fereastra aplicației.",
-        "label": "Scurtături de mărire pentru PDF"
       }
     },
     "sectionName": "Aspect",
@@ -1692,6 +1698,18 @@
       "openSettings": {
         "label": "Deschide setările",
         "description": "Deschide setările Oleafly."
+      },
+      "zoomIn": {
+        "description": "Mărește toată aplicația.",
+        "label": "Mărește"
+      },
+      "zoomOut": {
+        "description": "Micșorează toată aplicația.",
+        "label": "Micșorează"
+      },
+      "resetZoom": {
+        "description": "Readuce aplicația la 100%.",
+        "label": "Resetează zoomul"
       }
     },
     "application": {

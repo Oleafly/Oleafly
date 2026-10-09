@@ -333,9 +333,6 @@ export function PreviewWindow({
   const [rotation, setRotation] = useState<PdfRotation>(0);
   const inverted = useSettingsStore((state) => state.pdfDarkMode);
   const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
-  const pdfZoomShortcuts = useSettingsStore(
-    (state) => state.pdfZoomShortcuts,
-  );
   const [screenReaderMode, setScreenReaderMode] = useState(false);
   const [page, setPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
@@ -754,14 +751,11 @@ export function PreviewWindow({
     rootRef,
     searchOpen,
     outlineOpen,
-    zoomShortcuts: pdfZoomShortcuts,
     searchInputRef,
     setSearchOpen,
     setSearchInput,
     setOutlineOpen,
-    setScale,
     setRotation,
-    userZoom,
   });
 
   useEffect(() => {
@@ -1105,6 +1099,7 @@ export function PreviewWindow({
   return (
     <div
       ref={rootRef}
+      tabIndex={-1}
       data-testid="detached-preview-window"
       data-preview-layout={layout}
       data-preview-page={page}

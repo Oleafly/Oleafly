@@ -556,6 +556,23 @@ describe("project workspace", () => {
     expect(root.style.getPropertyValue("--cm-cursor-width")).toBe("3px");
   });
 
+  it("makes the editor follow the app font and size while Use the app font is on", async () => {
+    useSettingsStore.setState({
+      editorUsesAppFont: true,
+      appFontSize: 18,
+      editorFontSize: 13,
+      editorFontFamily: "Fira Code",
+    });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe("var(--font-sans)");
+    expect(root.style.getPropertyValue("--cm-font-size")).toBe("18px");
+    act(() => useSettingsStore.setState({ editorUsesAppFont: false }));
+    expect(root.style.getPropertyValue("--cm-font-family")).toBe('"Fira Code", var(--font-mono)');
+    expect(root.style.getPropertyValue("--cm-font-size")).toBe("13px");
+    act(() => useSettingsStore.setState({ editorFontFamily: "" }));
+  });
+
   it("applies the editor letter spacing to the document root", async () => {
     useSettingsStore.setState({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 2.5 });
     await renderApp();

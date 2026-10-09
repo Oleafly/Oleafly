@@ -341,6 +341,18 @@
       "keywords": "pdf náhled zobrazit skrýt rozdělit jen editor",
       "label": "Přepnout náhled PDF"
     },
+    "zoomIn": {
+      "keywords": "zvětšit větší lupa",
+      "label": "Přiblížit"
+    },
+    "zoomOut": {
+      "keywords": "zmenšit menší",
+      "label": "Oddálit"
+    },
+    "resetZoom": {
+      "keywords": "skutečná velikost 100",
+      "label": "Obnovit přiblížení"
+    },
     "zoteroAddMissing": {
       "label": "Přidat chybějící citace z knihovny Zotero",
       "keywords": "zotero chybějící citace nedefinované klíče bibliografie oprava"

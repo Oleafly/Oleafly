@@ -540,6 +540,11 @@
         "description": "Schaal de tekst in menu's, panelen en knoppen.",
         "label": "Tekstgrootte van de app"
       },
+      "zoom": {
+        "description": "Maakt alles in Oleafly groter of kleiner, ook de editor en de PDF.",
+        "label": "Zoom",
+        "option": "{{value}}%"
+      },
       "theme": {
         "description": "Systeem volgt het besturingssysteem en verandert mee.",
         "label": "Weergave"
@@ -636,6 +641,11 @@
         "description": "Kies voor bronbestanden een lettertype dat op je computer is geïnstalleerd.",
         "label": "Lettertype van de editor",
         "monospace": "Vaste breedte"
+      },
+      "useAppFont": {
+        "description": "De editor volgt het lettertype en de tekstgrootte van de app.",
+        "disabledHint": "Zet Lettertype van de app gebruiken uit om dit te wijzigen.",
+        "label": "Lettertype van de app gebruiken"
       },
       "fontSize": {
         "description": "Stel de tekstgrootte van de broncode-editor in.",
@@ -782,10 +792,6 @@
       "hoverPreview": {
         "description": "Toon de laatst gecompileerde pagina als je in de bibliotheek over een project beweegt.",
         "label": "PDF tonen bij aanwijzen"
-      },
-      "zoomShortcuts": {
-        "description": "Gebruik Cmd/Ctrl +, - en 0 om in de PDF te zoomen in plaats van in het appvenster.",
-        "label": "Zoomsneltoetsen voor de PDF"
       }
     },
     "sectionName": "Weergave",
@@ -1671,6 +1677,18 @@
       "openSettings": {
         "label": "Instellingen openen",
         "description": "Open de instellingen van Oleafly."
+      },
+      "zoomIn": {
+        "description": "Maakt de hele app groter.",
+        "label": "Inzoomen"
+      },
+      "zoomOut": {
+        "description": "Maakt de hele app kleiner.",
+        "label": "Uitzoomen"
+      },
+      "resetZoom": {
+        "description": "Zet de app terug op 100%.",
+        "label": "Zoom herstellen"
       }
     },
     "application": {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Plus, RotateCcw } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip } from "@/components/ui/tooltip";
 import { i18n } from "@/i18n";
 import { editorThemeCursorColor } from "@/lib/editor-cursor-color";
 import { formatNumber } from "@/lib/intl";
@@ -21,6 +22,7 @@ import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
   ACCENTS,
+  APP_ZOOM_LEVELS,
   BROWSER_SEARCH_ENGINES,
   EDITOR_CURSOR_WIDTHS,
   EDITOR_SURFACES,
@@ -118,6 +120,8 @@ function AppAppearanceTab() {
   const setAccentColor = useSettingsStore((state) => state.setAccentColor);
   const appFontSize = useSettingsStore((state) => state.appFontSize);
   const setAppFontSize = useSettingsStore((state) => state.setAppFontSize);
+  const appZoom = useSettingsStore((state) => state.appZoom);
+  const setAppZoom = useSettingsStore((state) => state.setAppZoom);
   const appFontFamily = useSettingsStore((state) => state.appFontFamily);
   const setAppFontFamily = useSettingsStore((state) => state.setAppFontFamily);
 
@@ -287,6 +291,26 @@ function AppAppearanceTab() {
         }
       />
 
+      <SettingsRow
+        testId="settings-row-app-zoom"
+        label={t(($) => $.settings.appearance.app.zoom.label)}
+        description={t(($) => $.settings.appearance.app.zoom.description)}
+        control={
+          <Select value={String(appZoom)} onValueChange={(value) => setAppZoom(Number(value))}>
+            <SelectTrigger className="w-[96px]" data-testid="settings-app-zoom-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {APP_ZOOM_LEVELS.map((level) => (
+                <SelectItem key={level} value={String(level)}>
+                  {t(($) => $.settings.appearance.app.zoom.option, { value: level })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+
       <SystemFontSettingsRow
         testId="settings-row-app-font"
         id="settings-app-font"
@@ -374,6 +398,7 @@ function CustomNumberInput({
   clamp,
   ariaLabel,
   testId,
+  disabled = false,
 }: Readonly<{
   value: number;
   onCommit: (value: number) => void;
@@ -381,6 +406,7 @@ function CustomNumberInput({
   clamp: (value: number) => number;
   ariaLabel: string;
   testId: string;
+  disabled?: boolean;
 }>) {
   const [draft, setDraft] = useState(String(value));
 
@@ -404,6 +430,7 @@ function CustomNumberInput({
       step={range.step}
       aria-label={ariaLabel}
       data-testid={testId}
+      disabled={disabled}
       className="h-9 w-[76px]"
       value={draft}
       onChange={(event) => {
@@ -423,7 +450,22 @@ function CustomNumberInput({
   );
 }
 
-function EditorFontSizeControl() {
+function DisabledHint({
+  disabled,
+  hint,
+  children,
+}: Readonly<{ disabled: boolean; hint: string; children: ReactNode }>) {
+  if (!disabled) return <>{children}</>;
+  return (
+    <Tooltip label={hint} side="top" wide>
+      <span className="inline-flex cursor-not-allowed">
+        <span className="pointer-events-none inline-flex">{children}</span>
+      </span>
+    </Tooltip>
+  );
+}
+
+function EditorFontSizeControl({ disabled }: Readonly<{ disabled: boolean }>) {
   const { t } = useTranslation(["settings"]);
   const size = useSettingsStore((state) => state.editorFontSize);
   const setSize = useSettingsStore((state) => state.setEditorFontSize);
@@ -433,6 +475,7 @@ function EditorFontSizeControl() {
   return (
     <div className="flex shrink-0 items-center gap-2">
       <Select
+        disabled={disabled}
         value={choice}
         onValueChange={(value) => {
           setCustomChosen(value === "custom");
@@ -459,6 +502,7 @@ function EditorFontSizeControl() {
           clamp={clampEditorFontSize}
           ariaLabel={t(($) => $.settings.appearance.editor.fontSize.customLabel)}
           testId="settings-editor-font-size-custom"
+          disabled={disabled}
         />
       ) : null}
     </div>
@@ -557,6 +601,9 @@ function EditorAppearanceTab() {
   const setEditorStickyScroll = useSettingsStore(
     (state) => state.setEditorStickyScroll,
   );
+  const editorUsesAppFont = useSettingsStore((state) => state.editorUsesAppFont);
+  const setEditorUsesAppFont = useSettingsStore((state) => state.setEditorUsesAppFont);
+  const followsAppFont = t(($) => $.settings.appearance.editor.useAppFont.disabledHint);
   const editorCustomLineHeight = useSettingsStore((state) => state.editorCustomLineHeight);
   const setEditorCustomLineHeight = useSettingsStore((state) => state.setEditorCustomLineHeight);
   const editorFontFamily = useSettingsStore((state) => state.editorFontFamily);
@@ -570,11 +617,23 @@ function EditorAppearanceTab() {
 
   return (
     <div className="space-y-3">
+      <SettingsToggleRow
+        testId="settings-row-editor-use-app-font"
+        label={t(($) => $.settings.appearance.editor.useAppFont.label)}
+        description={t(($) => $.settings.appearance.editor.useAppFont.description)}
+        checked={editorUsesAppFont}
+        onChange={setEditorUsesAppFont}
+      />
+
       <SettingsRow
         testId="settings-row-editor-font-size"
         label={t(($) => $.settings.appearance.editor.fontSize.label)}
         description={t(($) => $.settings.appearance.editor.fontSize.description)}
-        control={<EditorFontSizeControl />}
+        control={
+          <DisabledHint disabled={editorUsesAppFont} hint={followsAppFont}>
+            <EditorFontSizeControl disabled={editorUsesAppFont} />
+          </DisabledHint>
+        }
       />
 
       <SystemFontSettingsRow
@@ -585,6 +644,8 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.font.description)}
         value={editorFontFamily}
         onChange={setEditorFontFamily}
+        disabled={editorUsesAppFont}
+        disabledHint={followsAppFont}
       />
 
       <SettingsRow
@@ -1291,10 +1352,6 @@ function PdfPreviewTab() {
   const { t } = useTranslation(["common", "settings"]);
   const pdfDarkMode = useSettingsStore((state) => state.pdfDarkMode);
   const setPdfDarkMode = useSettingsStore((state) => state.setPdfDarkMode);
-  const pdfZoomShortcuts = useSettingsStore((state) => state.pdfZoomShortcuts);
-  const setPdfZoomShortcuts = useSettingsStore(
-    (state) => state.setPdfZoomShortcuts,
-  );
   const hoverPreview = useSettingsStore((state) => state.hoverPreview);
   const setHoverPreview = useSettingsStore((state) => state.setHoverPreview);
 
@@ -1305,12 +1362,6 @@ function PdfPreviewTab() {
         description={t(($) => $.settings.appearance.preview.darkMode.description)}
         checked={pdfDarkMode}
         onChange={setPdfDarkMode}
-      />
-      <SettingsToggleRow
-        label={t(($) => $.settings.appearance.preview.zoomShortcuts.label)}
-        description={t(($) => $.settings.appearance.preview.zoomShortcuts.description)}
-        checked={pdfZoomShortcuts}
-        onChange={setPdfZoomShortcuts}
       />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.preview.hoverPreview.label)}

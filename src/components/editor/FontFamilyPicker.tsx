@@ -118,6 +118,7 @@ export function FontFamilyCombobox({
   value,
   placeholder,
   invalid,
+  disabled,
   loading,
   listLabel,
   loadingLabel,
@@ -134,6 +135,7 @@ export function FontFamilyCombobox({
   value: string;
   placeholder?: string;
   invalid?: boolean;
+  disabled?: boolean;
   loading: boolean;
   listLabel: string;
   loadingLabel: string;
@@ -159,7 +161,7 @@ export function FontFamilyCombobox({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const options = useMemo(() => (loading ? [] : optionsFor(query)), [loading, optionsFor, query]);
-  const showList = open && (loading || options.length > 0);
+  const showList = open && !disabled && (loading || options.length > 0);
   const rows = useRowWindow({ count: showList ? options.length : 0, scrollRef: scroller, listRef: list });
   const measured = rows.rowHeight > 0;
 
@@ -210,6 +212,7 @@ export function FontFamilyCombobox({
           aria-controls={showList ? listId : undefined}
           aria-activedescendant={showList && options[active] ? `${listId}-${active}` : undefined}
           aria-invalid={invalid || undefined}
+          disabled={disabled}
           data-modal-escape-inner={showList ? "" : undefined}
           autoComplete="off"
           spellCheck={false}

@@ -108,7 +108,6 @@ describe("Appearance settings tabs", () => {
       hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS],
       openInTree: false,
       pdfDarkMode: false,
-      pdfZoomShortcuts: false,
       hoverPreview: false,
       homeProjectLayout: "grid",
       terminalFontSize: 14,
@@ -143,22 +142,10 @@ describe("Appearance settings tabs", () => {
     expect(
       screen.getByRole("switch", { name: appearance.preview.darkMode.label }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("switch", { name: appearance.preview.zoomShortcuts.label }),
-    ).toBeInTheDocument();
-
-    for (const label of [
-      appearance.preview.darkMode.label,
-      appearance.preview.zoomShortcuts.label,
-      appearance.preview.hoverPreview.label,
-    ]) {
+    for (const label of [appearance.preview.darkMode.label, appearance.preview.hoverPreview.label]) {
       await user.click(screen.getByRole("switch", { name: label }));
     }
-    expect(useSettingsStore.getState()).toMatchObject({
-      pdfDarkMode: true,
-      pdfZoomShortcuts: true,
-      hoverPreview: true,
-    });
+    expect(useSettingsStore.getState()).toMatchObject({ pdfDarkMode: true, hoverPreview: true });
   });
 
   it("fits the tab strip to its tabs while keeping it scrollable", async () => {
@@ -270,6 +257,37 @@ describe("Appearance settings tabs", () => {
       await screen.findByRole("option", { name: appearance.editor.lineHeight.options.wide }),
     );
     expect(useSettingsStore.getState().editorLineHeight).toBe("wide");
+  });
+
+  it("sets the app zoom from its list", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ appZoom: 100 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByTestId("settings-app-zoom-trigger"));
+    await user.click(await screen.findByRole("option", { name: appearance.app.zoom.option.replace("{{value}}", "125") }));
+    expect(useSettingsStore.getState().appZoom).toBe(125);
+    expect(localStorage.getItem("oleafly.appZoom")).toBe("125");
+    act(() => useSettingsStore.getState().setAppZoom(100));
+  });
+
+  it("locks the editor font and size while the editor uses the app font, and says why", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorUsesAppFont: false });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.getByTestId("settings-editor-font-size-trigger")).toBeEnabled();
+    expect(screen.getByRole("combobox", { name: appearance.editor.font.label })).toBeEnabled();
+
+    await user.click(screen.getByRole("switch", { name: appearance.editor.useAppFont.label }));
+    expect(useSettingsStore.getState().editorUsesAppFont).toBe(true);
+    expect(screen.getByTestId("settings-editor-font-size-trigger")).toBeDisabled();
+    const font = screen.getByRole("combobox", { name: appearance.editor.font.label });
+    expect(font).toBeDisabled();
+    await user.hover(font.parentElement as HTMLElement);
+    expect(await screen.findAllByText(appearance.editor.useAppFont.disabledHint)).not.toHaveLength(0);
+
+    await user.click(screen.getByRole("switch", { name: appearance.editor.useAppFont.label }));
+    expect(screen.getByTestId("settings-editor-font-size-trigger")).toBeEnabled();
   });
 
   it("offers letter spacing presets and an exact custom value", async () => {

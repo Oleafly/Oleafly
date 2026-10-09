@@ -337,6 +337,18 @@
       "keywords": "pdf voorbeeld tonen verbergen splitsen alleen editor",
       "label": "PDF-voorbeeld tonen of verbergen"
     },
+    "zoomIn": {
+      "keywords": "groter vergroten",
+      "label": "Inzoomen"
+    },
+    "zoomOut": {
+      "keywords": "kleiner verkleinen",
+      "label": "Uitzoomen"
+    },
+    "resetZoom": {
+      "keywords": "werkelijke grootte 100",
+      "label": "Zoom herstellen"
+    },
     "zoteroAddMissing": {
       "label": "Ontbrekende citaties uit Zotero toevoegen",
       "keywords": "zotero ontbrekende citaties ongedefinieerde sleutels bibliografie herstellen"

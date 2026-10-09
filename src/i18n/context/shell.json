@@ -175,6 +175,18 @@
     "togglePreview": {
       "label": "Command palette entry that shows or hides the PDF preview pane beside the editor.",
       "keywords": "Extra search words for the command, separated by spaces, in the target language."
+    },
+    "zoomIn": {
+      "label": "Command palette entry that makes the whole app bigger.",
+      "keywords": "Extra search words for the command, separated by spaces, in the target language."
+    },
+    "zoomOut": {
+      "label": "Command palette entry that makes the whole app smaller.",
+      "keywords": "Extra search words for the command, separated by spaces, in the target language."
+    },
+    "resetZoom": {
+      "label": "Command palette entry that sets the app zoom back to 100%.",
+      "keywords": "Extra search words for the command, separated by spaces, in the target language."
     }
   },
   "zen": {

@@ -339,6 +339,18 @@
       "keywords": "pdf prévia mostrar ocultar dividir só editor",
       "label": "Alternar a prévia do PDF"
     },
+    "zoomIn": {
+      "keywords": "aumentar maior",
+      "label": "Aumentar o zoom"
+    },
+    "zoomOut": {
+      "keywords": "diminuir menor",
+      "label": "Diminuir o zoom"
+    },
+    "resetZoom": {
+      "keywords": "tamanho real 100",
+      "label": "Redefinir zoom"
+    },
     "zoteroAddMissing": {
       "label": "Adicionar citações ausentes do Zotero",
       "keywords": "zotero citações ausentes chaves indefinidas bibliografia corrigir"

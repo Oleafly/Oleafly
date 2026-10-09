@@ -546,6 +546,11 @@
         "description": "Zvětšete nebo zmenšete text v nabídkách, panelech a tlačítkách.",
         "label": "Velikost písma aplikace"
       },
+      "zoom": {
+        "description": "Zvětší nebo zmenší celý Oleafly včetně editoru a PDF.",
+        "label": "Přiblížení",
+        "option": "{{value}} %"
+      },
       "theme": {
         "description": "Systémový se řídí operačním systémem a mění se spolu s ním.",
         "label": "Vzhled"
@@ -646,6 +651,11 @@
         "description": "Zvolte pro zdrojové soubory libovolné písmo nainstalované v počítači.",
         "label": "Písmo editoru",
         "monospace": "Neproporcionální"
+      },
+      "useAppFont": {
+        "description": "Editor používá písmo a velikost písma aplikace.",
+        "disabledHint": "Pro změnu vypněte Použít písmo aplikace.",
+        "label": "Použít písmo aplikace"
       },
       "fontSize": {
         "description": "Nastavte velikost textu ve zdrojovém editoru.",
@@ -792,10 +802,6 @@
       "hoverPreview": {
         "description": "Zobrazit poslední zkompilovanou stránku, když v knihovně najedete na projekt.",
         "label": "Náhled PDF při najetí"
-      },
-      "zoomShortcuts": {
-        "description": "Používat Cmd/Ctrl +, - a 0 k přiblížení PDF místo okna aplikace.",
-        "label": "Zkratky přiblížení PDF"
       }
     },
     "sectionName": "Vzhled",
@@ -1713,6 +1719,18 @@
       "openSettings": {
         "label": "Otevřít nastavení",
         "description": "Otevřít nastavení aplikace Oleafly."
+      },
+      "zoomIn": {
+        "description": "Zvětší celou aplikaci.",
+        "label": "Přiblížit"
+      },
+      "zoomOut": {
+        "description": "Zmenší celou aplikaci.",
+        "label": "Oddálit"
+      },
+      "resetZoom": {
+        "description": "Vrátí aplikaci na 100 %.",
+        "label": "Obnovit přiblížení"
       }
     },
     "application": {

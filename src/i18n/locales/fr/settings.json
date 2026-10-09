@@ -543,6 +543,11 @@
         "description": "Ajustez la taille du texte des menus, panneaux et boutons.",
         "label": "Taille de police de l'application"
       },
+      "zoom": {
+        "description": "Agrandit ou réduit tout Oleafly, y compris l'éditeur et le PDF.",
+        "label": "Zoom",
+        "option": "{{value}} %"
+      },
       "theme": {
         "description": "Système suit le système d'exploitation et change en même temps que lui.",
         "label": "Apparence"
@@ -641,6 +646,11 @@
         "description": "Choisissez pour les fichiers source n'importe quelle police installée sur votre ordinateur.",
         "label": "Police de l'éditeur",
         "monospace": "Chasse fixe"
+      },
+      "useAppFont": {
+        "description": "L'éditeur suit la police et la taille de police de l'application.",
+        "disabledHint": "Désactivez Utiliser la police de l'application pour modifier ce réglage.",
+        "label": "Utiliser la police de l'application"
       },
       "fontSize": {
         "description": "Définissez la taille du texte de l'éditeur de source.",
@@ -787,10 +797,6 @@
       "hoverPreview": {
         "description": "Afficher la dernière page compilée au survol d'un projet dans la bibliothèque.",
         "label": "Aperçu du PDF au survol"
-      },
-      "zoomShortcuts": {
-        "description": "Utiliser Cmd/Ctrl +, - et 0 pour zoomer le PDF plutôt que la fenêtre de l'application.",
-        "label": "Raccourcis de zoom du PDF"
       }
     },
     "sectionName": "Apparence",
@@ -1692,6 +1698,18 @@
       "openSettings": {
         "label": "Ouvrir les paramètres",
         "description": "Ouvrir les paramètres d'Oleafly."
+      },
+      "zoomIn": {
+        "description": "Agrandit toute l'application.",
+        "label": "Zoom avant"
+      },
+      "zoomOut": {
+        "description": "Réduit toute l'application.",
+        "label": "Zoom arrière"
+      },
+      "resetZoom": {
+        "description": "Remet l'application à 100 %.",
+        "label": "Réinitialiser le zoom"
       }
     },
     "application": {

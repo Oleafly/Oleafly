@@ -33,6 +33,7 @@ import {
   Plus,
   Quote,
   RefreshCw,
+  RotateCcw,
   Rows3,
   ScanSearch,
   SearchCode,
@@ -51,6 +52,8 @@ import {
   Underline,
   X,
   Zap,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { ClockCheck } from "@/components/icons/ClockCheck";
 import { registerCommand, type AppContext } from "@oleafly/registry";
@@ -136,6 +139,7 @@ import { openLatexPackages } from "@/components/packages/open";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { toggleZenMode } from "@/lib/zen-mode";
 import { togglePreviewPane } from "@/lib/compile-preview";
+import { zoomApp } from "@/lib/app-zoom";
 import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
 import { shortcut } from "@/lib/utils";
 import {
@@ -198,6 +202,9 @@ const ENGLISH_KEYWORDS = {
   closeAssistantTabs: "close editor tabs files assistant ai agent opened",
   zenMode: "zen distraction free focus full screen hide interface minimal writing",
   togglePreview: "pdf preview show hide split editor only layout view",
+  zoomIn: "zoom in bigger larger magnify scale interface window",
+  zoomOut: "zoom out smaller shrink scale interface window",
+  resetZoom: "reset zoom actual size 100 percent scale interface window",
 } as const;
 
 const runLanguageServiceFormat = (scope: FormatScope) => {
@@ -1029,6 +1036,22 @@ export function registerPaletteCommands() {
       togglePreviewPane();
     },
   });
+  for (const [id, direction, Icon, order] of [
+    ["zoomIn", 1, ZoomIn, 517],
+    ["zoomOut", -1, ZoomOut, 518],
+    ["resetZoom", 0, RotateCcw, 519],
+  ] as const) {
+    palette({
+      id: `palette.${id}`,
+      group: () => i18n.t(($) => $.shell.commandGroups.settings),
+      label: () => i18n.t(($) => $.shell.commands[id].label),
+      keywords: () => `${i18n.t(($) => $.shell.commands[id].keywords)} ${ENGLISH_KEYWORDS[id]}`,
+      icon: () => <Icon className="size-4" />,
+      hint: () => shortcutLabel(useShortcutStore.getState().bindings[id]),
+      order,
+      run: () => zoomApp(direction),
+    });
+  }
   palette({
     id: "palette.spellcheck",
     group: () => i18n.t(($) => $.shell.commandGroups.settings),

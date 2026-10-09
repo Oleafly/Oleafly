@@ -341,6 +341,18 @@
       "keywords": "pdf podgląd pokaż ukryj podziel tylko edytor",
       "label": "Przełącz podgląd PDF"
     },
+    "zoomIn": {
+      "keywords": "powiększ większe",
+      "label": "Powiększ"
+    },
+    "zoomOut": {
+      "keywords": "pomniejsz mniejsze",
+      "label": "Pomniejsz"
+    },
+    "resetZoom": {
+      "keywords": "rzeczywisty rozmiar 100",
+      "label": "Resetuj powiększenie"
+    },
     "zoteroAddMissing": {
       "label": "Dodaj brakujące cytowania z Zotero",
       "keywords": "zotero brakujące cytowania niezdefiniowane klucze bibliografia naprawa"

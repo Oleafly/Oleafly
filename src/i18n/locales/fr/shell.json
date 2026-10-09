@@ -339,6 +339,18 @@
       "keywords": "pdf aperçu afficher masquer partager éditeur seul",
       "label": "Afficher ou masquer l'aperçu PDF"
     },
+    "zoomIn": {
+      "keywords": "agrandir plus grand loupe",
+      "label": "Zoom avant"
+    },
+    "zoomOut": {
+      "keywords": "réduire plus petit",
+      "label": "Zoom arrière"
+    },
+    "resetZoom": {
+      "keywords": "taille réelle 100",
+      "label": "Réinitialiser le zoom"
+    },
     "zoteroAddMissing": {
       "label": "Ajouter depuis Zotero les citations manquantes",
       "keywords": "zotero citations manquantes clés non définies bibliographie réparer"

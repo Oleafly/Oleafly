@@ -394,6 +394,7 @@ function AppContent() {
   const appFontSize = useSettingsStore((s) => s.appFontSize);
   const appFontFamily = useSettingsStore((s) => s.appFontFamily);
   const editorFontFamily = useSettingsStore((s) => s.editorFontFamily);
+  const editorUsesAppFont = useSettingsStore((s) => s.editorUsesAppFont);
   const editorLineHeight = useSettingsStore((s) => s.editorLineHeight);
   const editorCustomLineHeight = useSettingsStore((s) => s.editorCustomLineHeight);
   const editorCursorWidth = useSettingsStore((s) => s.editorCursorWidth);
@@ -579,10 +580,12 @@ function AppContent() {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--cm-font-size", `${editorFontSize}px`);
+    root.style.setProperty("--cm-font-size", `${editorUsesAppFont ? appFontSize : editorFontSize}px`);
     applyAppTypography(appFontFamily, appFontSize, root);
     const editorFont = fontFamilyName(editorFontFamily);
-    if (editorFont) {
+    if (editorUsesAppFont) {
+      root.style.setProperty("--cm-font-family", "var(--font-sans)");
+    } else if (editorFont) {
       root.style.setProperty("--cm-font-family", fontFamilyStack(editorFont, "var(--font-mono)"));
     } else {
       root.style.removeProperty("--cm-font-family");
@@ -609,6 +612,7 @@ function AppContent() {
     appFontSize,
     appFontFamily,
     editorFontFamily,
+    editorUsesAppFont,
     editorLineHeight,
     editorCustomLineHeight,
     editorLetterSpacing,

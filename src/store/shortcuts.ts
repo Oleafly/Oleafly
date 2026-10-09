@@ -14,7 +14,10 @@ export type ShortcutId =
   | "togglePreview"
   | "toggleZenMode"
   | "openFolder"
-  | "openSettings";
+  | "openSettings"
+  | "zoomIn"
+  | "zoomOut"
+  | "resetZoom";
 
 export interface ShortcutBinding {
   key: string;
@@ -97,6 +100,18 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: "openSettings",
     defaultBinding: { key: ",", mod: true },
+  },
+  {
+    id: "zoomIn",
+    defaultBinding: { key: "=", mod: true },
+  },
+  {
+    id: "zoomOut",
+    defaultBinding: { key: "-", mod: true },
+  },
+  {
+    id: "resetZoom",
+    defaultBinding: { key: "0", mod: true },
   },
 ];
 

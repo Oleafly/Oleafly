@@ -52,7 +52,7 @@ describe("on/off preferences", () => {
     ["setTerminalStartWithProject", "terminalStartWithProject", "oleafly.terminal.startWithProject"],
     ["setOpenInTree", "openInTree", "oleafly.openInTree"],
     ["setPdfDarkMode", "pdfDarkMode", "oleafly.pdf.darkMode"],
-    ["setPdfZoomShortcuts", "pdfZoomShortcuts", "oleafly.pdf.zoomShortcuts"],
+    ["setEditorUsesAppFont", "editorUsesAppFont", "oleafly.editor.useAppFont"],
   ];
 
   it.each(toggles)("%s saves both states", (setter, field, key) => {

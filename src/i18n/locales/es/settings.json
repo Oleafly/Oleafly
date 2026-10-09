@@ -543,6 +543,11 @@
         "description": "Escala el texto de los menús, los paneles y los botones.",
         "label": "Tamaño de letra de la aplicación"
       },
+      "zoom": {
+        "description": "Hace todo en Oleafly más grande o más pequeño, incluidos el editor y el PDF.",
+        "label": "Zoom",
+        "option": "{{value}} %"
+      },
       "theme": {
         "description": "Sistema sigue al sistema operativo y cambia cuando él cambia.",
         "label": "Apariencia"
@@ -641,6 +646,11 @@
         "description": "Elige para los archivos de código cualquier tipografía instalada en tu ordenador.",
         "label": "Tipografía del editor",
         "monospace": "Monoespaciada"
+      },
+      "useAppFont": {
+        "description": "El editor sigue la fuente y el tamaño de letra de la aplicación.",
+        "disabledHint": "Desactiva Usar la fuente de la aplicación para cambiar esto.",
+        "label": "Usar la fuente de la aplicación"
       },
       "fontSize": {
         "description": "Define el tamaño del texto del editor de código.",
@@ -787,10 +797,6 @@
       "hoverPreview": {
         "description": "Muestra la última página compilada al pasar el cursor por un proyecto de la biblioteca.",
         "label": "Ver el PDF al pasar el cursor"
-      },
-      "zoomShortcuts": {
-        "description": "Usa Cmd/Ctrl +, - y 0 para ampliar el PDF en lugar de la ventana de la aplicación.",
-        "label": "Atajos de zoom del PDF"
       }
     },
     "sectionName": "Apariencia",
@@ -1692,6 +1698,18 @@
       "openSettings": {
         "label": "Abrir los ajustes",
         "description": "Abre los ajustes de Oleafly."
+      },
+      "zoomIn": {
+        "description": "Agranda toda la aplicación.",
+        "label": "Acercar"
+      },
+      "zoomOut": {
+        "description": "Reduce toda la aplicación.",
+        "label": "Alejar"
+      },
+      "resetZoom": {
+        "description": "Devuelve la aplicación al 100 %.",
+        "label": "Restablecer zoom"
       }
     },
     "application": {

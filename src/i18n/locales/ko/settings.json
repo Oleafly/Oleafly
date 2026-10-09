@@ -537,6 +537,11 @@
         "description": "메뉴, 패널, 버튼의 글자 크기를 조절합니다.",
         "label": "앱 글꼴 크기"
       },
+      "zoom": {
+        "description": "편집기와 PDF를 포함해 Oleafly 전체를 크게 또는 작게 합니다.",
+        "label": "확대/축소",
+        "option": "{{value}}%"
+      },
       "theme": {
         "description": "시스템을 고르면 운영체제 설정을 따르고 그에 맞춰 바뀝니다.",
         "label": "모양"
@@ -631,6 +636,11 @@
         "description": "소스 파일에 쓸 글꼴을 컴퓨터에 설치된 글꼴 중에서 고르세요.",
         "label": "편집기 글꼴",
         "monospace": "고정폭"
+      },
+      "useAppFont": {
+        "description": "편집기가 앱 글꼴과 앱 글꼴 크기를 따릅니다.",
+        "disabledHint": "바꾸려면 앱 글꼴 사용을 끄세요.",
+        "label": "앱 글꼴 사용"
       },
       "fontSize": {
         "description": "소스 편집기의 글자 크기를 정합니다.",
@@ -777,10 +787,6 @@
       "hoverPreview": {
         "description": "라이브러리에서 프로젝트 위에 마우스를 올리면 마지막으로 컴파일한 페이지를 보여 줍니다.",
         "label": "마우스를 올리면 PDF 미리보기"
-      },
-      "zoomShortcuts": {
-        "description": "Cmd/Ctrl +, -, 0으로 앱 창 대신 PDF를 확대하거나 축소합니다.",
-        "label": "PDF 확대 단축키"
       }
     },
     "sectionName": "모양",
@@ -1650,6 +1656,18 @@
       "openSettings": {
         "label": "설정 열기",
         "description": "Oleafly 설정을 엽니다."
+      },
+      "zoomIn": {
+        "description": "앱 전체를 크게 합니다.",
+        "label": "확대"
+      },
+      "zoomOut": {
+        "description": "앱 전체를 작게 합니다.",
+        "label": "축소"
+      },
+      "resetZoom": {
+        "description": "앱을 100%로 되돌립니다.",
+        "label": "확대/축소 초기화"
       }
     },
     "application": {

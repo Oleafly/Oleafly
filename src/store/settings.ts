@@ -810,6 +810,13 @@ export function editorLetterSpacingValue(choice: EditorLetterSpacing, custom: nu
   return choice === "custom" ? clampEditorLetterSpacing(custom) : EDITOR_LETTER_SPACINGS[choice];
 }
 
+export const APP_ZOOM_LEVELS: readonly number[] = [80, 90, 100, 110, 125, 150, 175, 200];
+
+export function appZoomLevel(value: unknown): number {
+  const level = Number(value);
+  return APP_ZOOM_LEVELS.includes(level) ? level : 100;
+}
+
 export const EDITOR_FONT_SIZES: readonly number[] = [11, 12, 13, 14, 15, 16, 18, 20, 24];
 
 export const EDITOR_FONT_SIZE_RANGE = { min: 6, max: 100, step: 1 } as const;
@@ -1005,16 +1012,18 @@ interface SettingsState {
   setEditorFontSize: (v: number) => void;
   appFontSize: number;
   setAppFontSize: (v: number) => void;
+  appZoom: number;
+  setAppZoom: (v: number) => void;
   appFontFamily: string;
   setAppFontFamily: (v: string) => void;
   editorFontFamily: string;
   setEditorFontFamily: (v: string) => void;
+  editorUsesAppFont: boolean;
+  setEditorUsesAppFont: (v: boolean) => void;
   editorTheme: EditorThemeId;
   setEditorTheme: (v: EditorThemeId) => void;
   pdfDarkMode: boolean;
   setPdfDarkMode: (v: boolean) => void;
-  pdfZoomShortcuts: boolean;
-  setPdfZoomShortcuts: (v: boolean) => void;
   hiddenFilePatterns: readonly string[];
   addHiddenFilePattern: (pattern: string) => void;
   removeHiddenFilePattern: (pattern: string) => void;
@@ -1164,11 +1173,12 @@ const PREF_DEFAULTS = {
   offline: false,
   editorFontSize: 13,
   appFontSize: 16,
+  appZoom: 100,
   appFontFamily: "",
   editorFontFamily: "",
+  editorUsesAppFont: false,
   editorTheme: "system" as EditorThemeId,
   pdfDarkMode: false,
-  pdfZoomShortcuts: true,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-only" as LayoutPreset,
   openInTree: true,
@@ -1258,11 +1268,12 @@ const SECTION_SETTINGS = {
     browserHomePage: "oleafly.browser.homePage",
     editorFontSize: "oleafly.fontSize",
     appFontSize: "oleafly.appFontSize",
+    appZoom: "oleafly.appZoom",
     appFontFamily: "oleafly.appFont",
     editorFontFamily: "oleafly.editorFont",
+    editorUsesAppFont: "oleafly.editor.useAppFont",
     editorTheme: "oleafly.editorTheme",
     pdfDarkMode: "oleafly.pdf.darkMode",
-    pdfZoomShortcuts: "oleafly.pdf.zoomShortcuts",
     hiddenFilePatterns: "oleafly.fileTree.hiddenPatterns",
     defaultView: "oleafly.defaultView",
     openInTree: "oleafly.openInTree",
@@ -1805,6 +1816,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.appFontSize", String(v));
     set({ appFontSize: v });
   },
+  appZoom: appZoomLevel(ls("oleafly.appZoom", "100")),
+  setAppZoom: (v) => {
+    const level = appZoomLevel(v);
+    saveLs("oleafly.appZoom", String(level));
+    set({ appZoom: level });
+  },
+  editorUsesAppFont: ls("oleafly.editor.useAppFont", "0") === "1",
+  setEditorUsesAppFont: (v) => {
+    saveLs("oleafly.editor.useAppFont", v ? "1" : "0");
+    set({ editorUsesAppFont: v });
+  },
   appFontFamily: readFontFamilySetting("oleafly.appFont"),
   setAppFontFamily: (v) => {
     const family = withoutControlCharacters(v);
@@ -1826,11 +1848,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setPdfDarkMode: (v) => {
     saveLs("oleafly.pdf.darkMode", v ? "1" : "0");
     set({ pdfDarkMode: v });
-  },
-  pdfZoomShortcuts: ls("oleafly.pdf.zoomShortcuts", "1") !== "0",
-  setPdfZoomShortcuts: (v) => {
-    saveLs("oleafly.pdf.zoomShortcuts", v ? "1" : "0");
-    set({ pdfZoomShortcuts: v });
   },
   hiddenFilePatterns: readHiddenFilePatterns(
     ls("oleafly.fileTree.hiddenPatterns", JSON.stringify(DEFAULT_HIDDEN_FILE_PATTERNS)),
