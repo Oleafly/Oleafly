@@ -248,7 +248,7 @@
     "issues": "Problèmes",
     "spelling": "Orthographe",
     "grammarAndStyle": "Grammaire et style",
-    "findingsTruncated": "La liste des observations est tronquée ; le décompte ci-dessus est complet.",
+    "findingsTruncated": "La liste des observations est tronquée. Le décompte ci-dessus est complet.",
     "spellLanguage": "Langue de correction orthographique",
     "spellLanguageAppSetting": "Utiliser le réglage de l'application",
     "spellLanguageAriaLabel": "Langue de correction orthographique pour ce projet",

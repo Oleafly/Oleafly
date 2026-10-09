@@ -136,6 +136,19 @@ describe("LabSearchPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", async () => {
+    await searchFor("Broad Institute", { meta: { count: 1 }, results: [BROAD] });
+    const list = (await screen.findByText(BROAD.display_name)).closest(".overflow-y-auto") as HTMLElement;
+    list.scrollTop = 240;
+    fetchMock.mockResolvedValue(okResponse({ meta: { count: 1 }, results: [BARE] }));
+
+    fireEvent.change(searchField(), { target: { value: "Unlisted" } });
+    fireEvent.click(submitButton());
+
+    expect(await screen.findByText(BARE.display_name)).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("falls back to the default type and location for a bare record", async () => {
     await searchFor("Unlisted", { meta: { count: 1 }, results: [BARE] });
     expect(await screen.findByText(BARE.display_name)).toBeInTheDocument();

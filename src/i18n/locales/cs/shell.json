@@ -874,7 +874,7 @@
       },
       "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet.",
       "webBrowser": {
-        "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi; když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
+        "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi. Když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
         "label": "Webový prohlížeč"
       }
     },

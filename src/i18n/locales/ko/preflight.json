@@ -246,7 +246,7 @@
     "refs-incomplete-metadata": {
       "title_other": "참고문헌 항목 {{count}}건의 메타데이터가 불완전합니다",
       "detail": "정보가 불완전한 항목은 출판사 스타일에서 깨지거나 모호한 참고문헌을 만들 수 있습니다. {{examples}}.",
-      "detailTruncated": "정보가 불완전한 항목은 출판사 스타일에서 깨지거나 모호한 참고문헌을 만들 수 있습니다. {{examples}}, …"
+      "detailTruncated": "정보가 불완전한 항목은 출판사 스타일에서 깨지거나 모호한 참고문헌을 만들 수 있습니다. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_other": "DOI 값 {{count}}건의 형식이 잘못된 것 같습니다",

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Check,
-  ChevronDown,
   ChevronRight,
   Copy,
   Download,
@@ -32,7 +31,9 @@ import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ReadinessBadge } from "@/components/ai/acp/AgentReadiness";
 import { bridgeSourceLabel, readinessDetail } from "@/components/ai/acp/agent-copy";
 import { SettingsPath, SettingsPathText } from "@/components/settings/SettingsPath";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useDisplayText } from "@/lib/display-path";
+import { cn } from "@/lib/utils";
 import {
   acpError,
   acpInstall,
@@ -94,45 +95,6 @@ function CopyValue({ value, label }: Readonly<{ value: string; label: string }>)
         </span>
       </Button>
     </Tooltip>
-  );
-}
-
-function Section({
-  id,
-  title,
-  description,
-  icon: Icon,
-  children,
-}: Readonly<{
-  id: string;
-  title: string;
-  description: string;
-  icon: typeof Search;
-  children: React.ReactNode;
-}>) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="rounded-lg border bg-card">
-      <button
-        type="button"
-        data-testid={`acp-section-${id}`}
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center gap-2 p-3 text-left"
-      >
-        {open ? (
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        )}
-        <Icon className="size-4 shrink-0 text-muted-foreground" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-medium leading-snug">{title}</span>
-          <span className="block text-xs leading-snug text-muted-foreground">{description}</span>
-        </span>
-      </button>
-      {open && <div className="space-y-2 px-3 pb-3">{children}</div>}
-    </div>
   );
 }
 
@@ -302,19 +264,14 @@ function AgentCard({
       data-testid={`acp-agent-card-${id}`}
       className="scroll-mt-2 rounded-lg border bg-card transition-colors"
     >
-      <div className="flex items-start gap-2 p-3">
+      <div className="relative flex items-start gap-2 p-3">
         <button
           ref={toggleRef}
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
-          className="flex min-w-0 flex-1 items-start gap-2 text-left"
+          className="flex min-w-0 flex-1 items-start gap-2 rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60"
         >
-          {open ? (
-            <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-          )}
           <span className="min-w-0 flex-1">
             <span className="inline-flex items-center gap-1.5 font-medium">
               <AgentLogo agentId={id} size={18} />
@@ -328,6 +285,13 @@ function AgentCard({
         <div className="mt-0.5 shrink-0">
           <ReadinessBadge readiness={readiness} />
         </div>
+        <ChevronRight
+          aria-hidden
+          className={cn(
+            "pointer-events-none mt-1 size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+            open && "rotate-90",
+          )}
+        />
       </div>
       {open && (
         <div className="space-y-4 border-t border-border/70 px-4 py-4">
@@ -628,6 +592,7 @@ export function AcpAgentsTab({
   const [notice, setNotice] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AcpRegistryEntry[]>([]);
+  const resultsRef = useScrollTopOnChange(results);
   const [definition, setDefinition] = useState("");
   const [review, setReview] = useState<AcpDefinition | null>(null);
   // Every review mounts a fresh dialog. Reopened while the last one is still
@@ -860,8 +825,9 @@ export function AcpAgentsTab({
         )}
       </div>
 
-      <Section
-        id="registry"
+      <CollapsibleSection
+        id="acp-section-registry"
+        headingLevel="h4"
         title={t(($) => $.settings.ai.agents.registry.title)}
         description={t(($) => $.settings.ai.agents.registry.description)}
         icon={Search}
@@ -896,7 +862,7 @@ export function AcpAgentsTab({
           </p>
         </form>
         {results.length > 0 && (
-          <div className="max-h-80 space-y-2 overflow-y-auto">
+          <div ref={resultsRef} className="max-h-80 space-y-2 overflow-y-auto">
             {results.map((entry) => (
               <RegistryResult
                 key={entry.id}
@@ -915,10 +881,11 @@ export function AcpAgentsTab({
             ))}
           </div>
         )}
-      </Section>
+      </CollapsibleSection>
 
-      <Section
-        id="custom"
+      <CollapsibleSection
+        id="acp-section-custom"
+        headingLevel="h4"
         title={t(($) => $.settings.ai.agents.custom.title)}
         description={t(($) => $.settings.ai.agents.custom.description)}
         icon={Plus}
@@ -958,7 +925,7 @@ export function AcpAgentsTab({
             </Button>
           </div>
         </form>
-      </Section>
+      </CollapsibleSection>
 
       <Dialog open={reviewing} onOpenChange={(open) => { if (!open && !busy) setReview(null); }}>
         <DialogContent

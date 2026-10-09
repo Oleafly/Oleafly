@@ -25,6 +25,7 @@ import { useSettingsStore } from "@/store/settings";
 import type { SearchHit } from "@/lib/tauri";
 import { useDocSearch } from "@/hooks/use-doc-search";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { gotoLine } from "@/components/editor/cm/controller";
@@ -109,9 +110,10 @@ export function ProjectSearch() {
   const openFile = useFilesStore((s) => s.openFile);
   const [remembered] = useState(() => readSidebarView(projectId, "search"));
   const [q, setQ] = useState(remembered?.query ?? "");
+  const [queryEdits, setQueryEdits] = useState(0);
   const { hits, loading, term } = useDocSearch(q, { projectId });
   const searchInputRef = useInitialFocus<HTMLInputElement>();
-  const resultsRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useScrollTopOnChange(queryEdits);
   const settled = useRef<{ term: string; hits: readonly SearchHit[] } | null>(
     remembered?.term ? remembered : null,
   );
@@ -146,7 +148,10 @@ export function ProjectSearch() {
         <Input
           ref={searchInputRef}
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setQueryEdits((count) => count + 1);
+          }}
           placeholder={t(($) => $.shell.projectSearch.placeholder)}
           data-testid="project-search-input"
           className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:border-input focus-visible:bg-accent/40"

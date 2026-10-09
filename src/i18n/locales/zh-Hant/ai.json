@@ -142,7 +142,7 @@
       "overloaded": "供應商的伺服器目前超載（已經重試過）。請稍候片刻再試一次，或{{where}}改用同系列的其他模型。",
       "rateLimited": "供應商正在限制請求頻率。請稍候片刻再重試，或{{where}}切換供應商。",
       "retiredModel": "供應商已淘汰或限制這個模型。請{{where}}選擇較新的模型（設定 → AI 助理會列出你的金鑰可用的模型）。",
-      "unreachable": "無法連線到 AI 供應商。請檢查網路連線；如果你使用 Ollama，請確認它正在執行（設定 → AI 助理 → 檢查 Ollama）。",
+      "unreachable": "無法連線到 AI 供應商。請檢查網路連線。如果你使用 Ollama，請確認它正在執行（設定 → AI 助理 → 檢查 Ollama）。",
       "where": {
         "inSettings": "在設定的 AI 助理中",
         "modelMenu": "在上方的模型選單中"

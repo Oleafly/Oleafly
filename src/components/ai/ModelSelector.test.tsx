@@ -115,6 +115,26 @@ describe("ModelSelector", () => {
     expect(screen.getByText("Try a different search.")).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    render(
+      <ModelSelector
+        providerId="openai"
+        modelId="gpt-5.6-luna"
+        groups={groups}
+        onChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: "AI model" }));
+    const list = screen.getByRole("listbox");
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Search models" }), { target: { value: "sol" } });
+
+    expect(screen.getByText("GPT-5.6 Sol")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("shows trust badges and capability chips beside each model", () => {
     render(
       <ModelSelector

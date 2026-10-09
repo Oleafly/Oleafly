@@ -902,7 +902,7 @@
         "label": "Gå til fuld skærm"
       },
       "showPdf": {
-        "description": "Hvis PDF'en er skjult, når Zen-tilstand starter, åbnes den ved siden af editoren første gang du kompilerer.",
+        "description": "Hvis PDF'en er skjult i Zen-tilstand, åbnes den ved siden af editoren, når du kompilerer.",
         "label": "Vis PDF'en ved kompilering"
       },
       "title": "Zen-tilstand"

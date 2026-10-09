@@ -10,6 +10,7 @@ import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { insertAtCursor } from "@/components/editor/cm/controller";
 import { insertTypstSymbol } from "@/components/editor/typst-commands";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useFilesStore } from "@/store/files";
 
 export type SymbolLanguage = "latex" | "typst";
@@ -418,6 +419,7 @@ export function SymbolPicker({
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const q = query.trim().toLowerCase();
+  const gridRef = useScrollTopOnChange(`${activeTab}\n${q}`);
   const typstSymbols = useTypstSymbols(language);
   const typstVersion = useFilesStore((state) => state.engine.typst_resolved?.version ?? null);
   const codeFor = (symbol: ToolbarSymbol) =>
@@ -495,7 +497,7 @@ export function SymbolPicker({
               className="h-8 text-xs"
             />
           </div>
-          <div className="flex flex-1 flex-wrap content-start gap-1 overflow-y-auto p-2">
+          <div ref={gridRef} className="flex flex-1 flex-wrap content-start gap-1 overflow-y-auto p-2">
             {visibleItems.length === 0 ? (
               <p className="w-full py-4 text-center text-xs text-muted-foreground">
                 {t(($) => $.symbols.picker.empty)}

@@ -111,7 +111,7 @@ function MarkdownEngineTab() {
         <div className="flex items-center gap-2">
           <Cpu className="size-4 text-muted-foreground" />
           <span className="text-sm">{"pandoc"}</span>
-          {pandoc === "ready" && <CheckBadge />}
+          {pandoc === "ready" && <CheckBadge tone="success" />}
           {pandoc === "missing" && (
             <Button type="button" size="sm" variant="outline" className="ml-auto h-7" onClick={() => void install()}>
               {t(($) => $.settings.engine.markdown.repair)}

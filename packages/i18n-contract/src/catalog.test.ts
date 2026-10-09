@@ -73,6 +73,29 @@ describe("validateCatalog", () => {
     );
   });
 
+  it("rejects semicolons in every locale, half-width and full-width", () => {
+    const english = validateSourceCatalog("common", "en", flat({ note: "Runs locally; nothing is sent." }), {});
+    expect(english.map((issue) => issue.message)).toEqual(["value contains a semicolon"]);
+
+    const target = flat({
+      save: "Speichern",
+      deleted: "{{name}} gelöscht; prüfen",
+      files_one: "{{count}} Datei",
+      files_other: "{{count}} Dateien",
+      link: "Öffne den <docsLink>Leitfaden</docsLink>",
+    });
+    expect(validateCatalog("common", "de", source, target, {}).map((issue) => issue.key)).toEqual(["deleted"]);
+    const chinese = flat({
+      save: "保存",
+      deleted: "已删除{{name}}；请检查",
+      files_other: "{{count}}个文件",
+      link: "打开<docsLink>指南</docsLink>",
+    });
+    expect(validateCatalog("common", "zh-Hans", source, chinese, {}).map((issue) => issue.message)).toContain(
+      "value contains a semicolon",
+    );
+  });
+
   it("enforces the Chinese style rules", () => {
     const target = flat({
       save: "保存 ",

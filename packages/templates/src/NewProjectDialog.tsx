@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -382,6 +382,7 @@ export function NewProjectDialog({
   });
   const nameRef = useRef<HTMLInputElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
   const modalIdRef = useRef(Symbol("new-project-dialog"));
@@ -463,6 +464,13 @@ export function NewProjectDialog({
       matchesTemplateFilters(t, { category, atsOnly, offlineOnly, engine, q }),
     );
   }, [templates, search, category, atsOnly, offlineOnly, engine]);
+  const filterKey = JSON.stringify([search, category, atsOnly, offlineOnly, engine]);
+  const shownFilterKey = useRef(filterKey);
+  useLayoutEffect(() => {
+    if (shownFilterKey.current === filterKey) return;
+    shownFilterKey.current = filterKey;
+    if (gridRef.current) gridRef.current.scrollTop = 0;
+  }, [filterKey]);
 
   const selected = useMemo(
     () => templates.find((t) => t.id === selectedId) ?? null,
@@ -610,6 +618,7 @@ export function NewProjectDialog({
         </div>
 
         <div
+          ref={gridRef}
           className="min-h-0 flex-1 overflow-y-auto px-5 py-4"
           data-tour="project-template-list"
         >

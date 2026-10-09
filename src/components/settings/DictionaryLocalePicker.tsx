@@ -124,7 +124,7 @@ export function DictionaryLocalePicker() {
                         {formatDownloadSize(entry.bytes)}
                       </span>
                     ) : (
-                      <CheckBadge className="size-3.5" />
+                      <CheckBadge tone="success" className="size-3.5" />
                     )
                   }
                 >

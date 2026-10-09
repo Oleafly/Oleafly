@@ -245,7 +245,7 @@
     "issues": "Probleme",
     "spelling": "Rechtschreibung",
     "grammarAndStyle": "Grammatik & Stil",
-    "findingsTruncated": "Die Liste der Funde ist gekürzt; die Zahl darüber ist vollständig.",
+    "findingsTruncated": "Die Liste der Funde ist gekürzt. Die Zahl darüber ist vollständig.",
     "spellLanguage": "Sprache der Rechtschreibprüfung",
     "spellLanguageAppSetting": "Einstellung der App verwenden",
     "spellLanguageAriaLabel": "Sprache der Rechtschreibprüfung für dieses Projekt",

@@ -897,7 +897,7 @@
         "label": "全画面にする"
       },
       "showPdf": {
-        "description": "Zen モード開始時に PDF が隠れている場合、最初のコンパイルでエディタの横に開きます。",
+        "description": "Zen モードで PDF が隠れている場合、コンパイル時にエディタの横に開きます。",
         "label": "コンパイル時に PDF を表示"
       },
       "title": "Zen モード"

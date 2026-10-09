@@ -1,7 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
-  ChevronDown,
   ChevronRight,
   ExternalLink,
   Pencil,
@@ -25,6 +24,7 @@ import type { AppConfig, StoredModel } from "@/lib/tauri";
 import { defaultModel, mergeCustomProviders, supportsModelDiscovery } from "@/lib/ai-providers";
 import { enabledModels, seedProviderModels } from "@/lib/ai-model-state";
 import { DEFAULT_OLLAMA_HOST } from "@/lib/ollama";
+import { cn } from "@/lib/utils";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { ModelManager, ModelMetadataStatusLine } from "./ModelManager";
 import { Spinner } from "@/components/ui/spinner";
@@ -48,9 +48,7 @@ function ProviderStatusBadge({
   if (isHost) {
     if (ollamaStatus === "ok") {
       return (
-        <Badge variant="success" size="sm" className="gap-1">
-          <CheckBadge className="size-3.5" /> {t(($) => $.settings.ai.providers.badge.running)}
-        </Badge>
+        <Badge variant="success" size="sm">{t(($) => $.settings.ai.providers.badge.running)}</Badge>
       );
     }
     if (ollamaStatus === "down") {
@@ -62,9 +60,7 @@ function ProviderStatusBadge({
   }
   if (!isConfigured) return null;
   return (
-    <Badge variant="success" size="sm" className="gap-1">
-      <CheckBadge className="size-3.5" /> {t(($) => $.settings.ai.providers.badge.connected)}
-    </Badge>
+    <Badge variant="success" size="sm">{t(($) => $.settings.ai.providers.badge.connected)}</Badge>
   );
 }
 
@@ -606,18 +602,13 @@ export function ProvidersTab({
               data-testid={`ai-provider-card-${p.id}`}
               className="rounded-lg border bg-card transition-colors"
             >
-              <div className="flex items-start gap-2 p-3">
+              <div className="relative flex items-start gap-2 p-3">
                 <button
                   type="button"
                   onClick={() => setOpenProviders((m) => ({ ...m, [p.id]: !isOpen }))}
                   aria-expanded={isOpen}
-                  className="flex min-w-0 flex-1 items-start gap-2 text-left"
+                  className="flex min-w-0 flex-1 items-start gap-2 rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60"
                 >
-                  {isOpen ? (
-                    <ChevronDown className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                  )}
                   <div className="min-w-0 flex-1">
                     <span className="inline-flex items-center gap-1.5 font-medium">
                       <ProviderLogo providerId={p.id} size={18} />
@@ -632,7 +623,7 @@ export function ProvidersTab({
                     )}
                   </div>
                 </button>
-                <div className="mt-0.5 flex shrink-0 items-center gap-2">
+                <div className="relative mt-0.5 flex shrink-0 items-center gap-2">
                   <ProviderStatusBadge
                     isHost={p.isHost}
                     ollamaStatus={ollama.status}
@@ -652,6 +643,13 @@ export function ProvidersTab({
                     </button>
                   )}
                 </div>
+                <ChevronRight
+                  aria-hidden
+                  className={cn(
+                    "pointer-events-none mt-1 size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+                    isOpen && "rotate-90",
+                  )}
+                />
               </div>
 
               {renderProviderBody()}

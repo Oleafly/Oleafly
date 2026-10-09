@@ -129,7 +129,7 @@
           "modes": "Primul tabel, <modesTable>[\"$approval_modes\"]</modesTable>, stabilește modul de aprobare pentru fiecare proiect: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> sau <custom>\"custom\"</custom>. Un proiect care nu apare în listă folosește Aprobă în locul meu.",
           "openProject": "Proiectul deschis, {{name}}, are identificatorul <projectId>{{id}}</projectId>.",
           "projectIds": "Identificatorii proiectelor sunt numele folderelor din ~/.oleafly/projects.",
-          "rules": "Apoi câte un tabel pentru fiecare identificator de proiect, cu o regulă pentru fiecare instrument: <allow>\"allow\"</allow> rulează instrumentul fără să întrebe, iar <deny>\"deny\"</deny> îl refuză. Regulile de refuz sunt respectate în orice mod; regulile de permitere au efect în modul Personalizat, iar pentru run_command sar peste confirmare și în celelalte moduri.",
+          "rules": "Apoi câte un tabel pentru fiecare identificator de proiect, cu o regulă pentru fiecare instrument: <allow>\"allow\"</allow> rulează instrumentul fără să întrebe, iar <deny>\"deny\"</deny> îl refuză. Regulile de refuz sunt respectate în orice mod. Regulile de permitere au efect în modul Personalizat, iar pentru run_command sar peste confirmare și în celelalte moduri.",
           "toolNames": "Nume de instrumente pe care le poți folosi: <names>{{names}}</names> și orice instrument MCP, după numele lui complet din lista Instrumente."
         },
         "helpToggle": "Cum funcționează fișierul",
@@ -907,7 +907,7 @@
         "label": "Treci pe ecran complet"
       },
       "showPdf": {
-        "description": "Dacă PDF-ul este ascuns când pornește modul Zen, îl deschide lângă editor la prima compilare.",
+        "description": "Dacă PDF-ul este ascuns în modul Zen, îl deschide lângă editor la compilare.",
         "label": "Arată PDF-ul la compilare"
       },
       "title": "Modul Zen"
@@ -1083,10 +1083,10 @@
       "status": {
         "checking": "Se caută pandoc…",
         "installing": "Se aduce o versiune fixată de pandoc. Prima dată durează un moment.",
-        "missing": "Nu a fost găsit. Oleafly poate descărca un pandoc compatibil (2.19 sau mai nou) în propriul lui folder; nimic altceva din sistemul tău nu se schimbă.",
+        "missing": "Nu a fost găsit. Oleafly poate descărca un pandoc compatibil (2.19 sau mai nou) în propriul lui folder. Nimic altceva din sistemul tău nu se schimbă.",
         "ready": "Detectat. Proiectele Markdown se convertesc în LaTeX cu pandoc, apoi se compilează cu Tectonic-ul inclus."
       },
-      "tectonicDetail": "Tehnoredactează codul LaTeX produs de pandoc. Vine cu Oleafly; nu ai nimic de configurat.",
+      "tectonicDetail": "Tehnoredactează codul LaTeX produs de pandoc. Vine cu Oleafly și nu necesită configurare.",
       "tooltip": "Proiectele Markdown sunt convertite cu pandoc (Pandoc Markdown: tabele, note de subsol, citări, formule) în LaTeX, apoi tehnoredactate în PDF de Tectonic-ul inclus. Pandoc vine cu Oleafly."
     },
     "packages": {

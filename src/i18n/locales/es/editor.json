@@ -248,7 +248,7 @@
     "issues": "Problemas",
     "spelling": "Ortografía",
     "grammarAndStyle": "Gramática y estilo",
-    "findingsTruncated": "La lista de hallazgos está recortada; el recuento de arriba está completo.",
+    "findingsTruncated": "La lista de hallazgos está recortada. El recuento de arriba está completo.",
     "spellLanguage": "Idioma de la revisión ortográfica",
     "spellLanguageAppSetting": "Usar el ajuste de la aplicación",
     "spellLanguageAriaLabel": "Idioma de la revisión ortográfica de este proyecto",

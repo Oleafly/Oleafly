@@ -125,11 +125,11 @@
         "discard": "丢弃更改",
         "emptyFile": "文件目前为空。",
         "help": {
-          "comments": "在此处保存时，以 # 开头的注释会被保留；但在审批卡片上选择“在此项目中始终允许”会重写文件，注释不会保留。",
+          "comments": "在此处保存时，以 # 开头的注释会被保留，但在审批卡片上选择“在此项目中始终允许”会重写文件，注释不会保留。",
           "modes": "第一个表 <modesTable>\"$approval_modes\"]</modesTable> 为每个项目设置审批模式：<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full> 或 <custom>\"custom\"</custom>。未列出的项目使用“为我审批”。",
           "openProject": "当前打开的项目是 {{name}}，其 id 为 <projectId>{{id}}</projectId>。",
           "projectIds": "项目 id 即 ~/.oleafly/projects 下的文件夹名称。",
-          "rules": "接下来，每个项目 id 各有一个表，为每个工具定义一条规则：<allow>\"allow\"</allow> 表示不经询问直接运行工具，<deny>\"deny\"</deny> 表示拒绝运行。拒绝规则在所有模式下都生效；允许规则仅在自定义模式下生效，不过对 run_command 而言，它在其他模式下也会跳过提示。",
+          "rules": "接下来，每个项目 id 各有一个表，为每个工具定义一条规则：<allow>\"allow\"</allow> 表示不经询问直接运行工具，<deny>\"deny\"</deny> 表示拒绝运行。拒绝规则在所有模式下都生效。允许规则仅在自定义模式下生效，不过对 run_command 而言，它在其他模式下也会跳过提示。",
           "toolNames": "可使用的工具名称：<names>{{names}}</names>，以及“工具”列表中任意 MCP 工具的完整名称。"
         },
         "helpToggle": "文件的工作原理",
@@ -897,7 +897,7 @@
         "label": "进入全屏"
       },
       "showPdf": {
-        "description": "如果禅模式开始时 PDF 是隐藏的，则在第一次编译时把它打开在编辑器旁边。",
+        "description": "如果禅模式中 PDF 是隐藏的，则在编译时把它打开在编辑器旁边。",
         "label": "编译时显示 PDF"
       },
       "title": "禅模式"
@@ -942,7 +942,7 @@
       "emailRemoved": "OpenAlex 联系邮箱已移除。",
       "emailSaveFailed": "无法保存 OpenAlex 联系邮箱。",
       "emailSaved": "OpenAlex 联系邮箱已保存。",
-      "hint": "建议配置 API 密钥。OpenAlex 的常规访问需要密钥；无密钥搜索会共用较小的每日配额。联系邮箱还可启用礼貌池。两者都只保存在此设备上。",
+      "hint": "建议配置 API 密钥。OpenAlex 的常规访问需要密钥，而无密钥搜索会共用较小的每日配额。联系邮箱还可启用礼貌池。两者都只保存在此设备上。",
       "keyLabel": "OpenAlex API 密钥",
       "keyRemoveFailed": "无法移除 OpenAlex API 密钥。",
       "keyRemoved": "OpenAlex API 密钥已移除。",
@@ -1073,7 +1073,7 @@
       "status": {
         "checking": "正在检查 pandoc…",
         "installing": "正在获取固定版本的 pandoc。首次使用需要一点时间。",
-        "missing": "未找到。Oleafly 可以将兼容的 pandoc（2.19 或更高版本）下载到自己的文件夹中；系统中的其他内容不会有任何变化。",
+        "missing": "未找到。Oleafly 可以将兼容的 pandoc（2.19 或更高版本）下载到自己的文件夹中。系统中的其他内容不会有任何变化。",
         "ready": "已检测到。Markdown 项目先用 pandoc 转换为 LaTeX，再用内置的 Tectonic 编译。"
       },
       "tectonicDetail": "对 pandoc 生成的 LaTeX 进行排版。内置于 Oleafly，无需配置。",

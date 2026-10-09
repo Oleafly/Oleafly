@@ -256,7 +256,7 @@
       "title_one": "{{count}} lähdeviitteen metatiedot ovat puutteelliset",
       "title_other": "{{count}} lähdeviitteen metatiedot ovat puutteelliset",
       "detail": "Puutteelliset tietueet voivat tuottaa rikkinäisiä tai monitulkintaisia viitteitä kustantajien tyyleissä. {{examples}}.",
-      "detailTruncated": "Puutteelliset tietueet voivat tuottaa rikkinäisiä tai monitulkintaisia viitteitä kustantajien tyyleissä. {{examples}}; …"
+      "detailTruncated": "Puutteelliset tietueet voivat tuottaa rikkinäisiä tai monitulkintaisia viitteitä kustantajien tyyleissä. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-arvo näyttää virheelliseltä",

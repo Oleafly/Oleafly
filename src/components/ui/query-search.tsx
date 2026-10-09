@@ -33,6 +33,7 @@ import {
   type SuggestContext,
 } from "@oleafly/search-query";
 import { INLINE_KEYWORD, INLINE_TOKEN_AMBER, INLINE_TOKEN_BLUE } from "@/components/ui/inline-token";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import {
   buildSuggestions,
   type QueryMeta,
@@ -252,6 +253,7 @@ function SuggestionMenu<T>({
   onChoose,
 }: Readonly<MenuProps<T>>) {
   const { t } = useTranslation(["common"]);
+  const listRef = useScrollTopOnChange(value);
   const firstOperator = suggestions.items.length > 0 ? suggestions.items.length : -1;
   return (
     <div
@@ -264,6 +266,7 @@ function SuggestionMenu<T>({
       ) : null}
       {options.length > 0 ? (
         <div
+          ref={listRef}
           id={listId}
           role="listbox"
           aria-label={t(($) => $.common.querySearch.suggestions)}

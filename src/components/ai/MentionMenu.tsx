@@ -8,6 +8,7 @@ import {
 } from "react";
 import { Bot, File, Folder } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import type { DelegationTarget } from "@/lib/agent-mentions";
 import { mentionInsertText, normalizeMentionPath } from "@/lib/composer-tokens";
 import { basename } from "@/lib/path-utils";
@@ -140,6 +141,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
       ],
       [agents, entries],
     );
+    const listRef = useScrollTopOnChange(items.map((item) => item.key).join("\n"));
     const [activeKey, setActiveKey] = useState<string | null>(null);
     const selectedIndex = activeKey ? items.findIndex((item) => item.key === activeKey) : 0;
     const activeIndex = Math.max(selectedIndex, 0);
@@ -211,6 +213,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
 
     return (
       <div
+        ref={listRef}
         id="ai-mention-menu"
         role="listbox"
         aria-label={

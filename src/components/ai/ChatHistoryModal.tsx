@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MessageSquareQuote, Search, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { StoredChat } from "@/store/chats";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { i18n } from "@/i18n";
 import { formatUsd } from "@/lib/ai-pricing";
 import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
@@ -54,6 +55,7 @@ export function ChatHistoryModal({
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const trimmed = query.trim();
+  const listRef = useScrollTopOnChange(trimmed);
   // Titles filter locally; message content matches come from the library.db
   // session index ("find the chat where…").
   const contentHits = useQuery({
@@ -207,7 +209,7 @@ export function ChatHistoryModal({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-2">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-auto p-2">
         {chats.length === 0 ? (
           <p className="px-3 py-10 text-center text-sm text-muted-foreground">
             {t(($) => $.ai.history.emptyProject)}

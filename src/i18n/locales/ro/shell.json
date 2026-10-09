@@ -859,7 +859,7 @@
       },
       "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru.",
       "webBrowser": {
-        "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta; când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
+        "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta. Când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
         "label": "Browser web"
       }
     },
@@ -893,7 +893,7 @@
         "description": "Compilează cu --only-cached și nu descărca niciodată pachete prin rețea.",
         "label": "Mod offline"
       },
-      "proofreadingNote": "Corectura rulează local, într-un proces de fundal. Harper urmează varianta de engleză aleasă; verificarea ortografică folosește întotdeauna exact pachetul Hunspell ales. Formulele, codul, comentariile, sintaxa citărilor, metadatele și adresele URL sunt excluse.",
+      "proofreadingNote": "Corectura rulează local, într-un proces de fundal. Harper urmează varianta de engleză aleasă, iar verificarea ortografică folosește întotdeauna exact pachetul Hunspell ales. Formulele, codul, comentariile, sintaxa citărilor, metadatele și adresele URL sunt excluse.",
       "regionalism": {
         "description": "Semnalează termenii care nu se potrivesc cu varianta de engleză aleasă. Dezactivează dacă folosești astfel de termeni ca nume de produs sau de cod.",
         "label": "Sugestii pentru regionalisme"

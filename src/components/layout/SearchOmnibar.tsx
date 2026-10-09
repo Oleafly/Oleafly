@@ -29,6 +29,7 @@ import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useTheme } from "@/lib/theme";
 import type { ProjectInfo, SearchHit } from "@/lib/tauri";
 import { useDocSearch } from "@/hooks/use-doc-search";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { i18n } from "@/i18n";
 import { gotoLine } from "@/components/editor/cm/controller";
@@ -280,6 +281,7 @@ export function SearchOmnibar() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useTranslation(["common", "shell"]);
   const [query, setQuery] = useState("");
+  const listRef = useScrollTopOnChange(query);
 
   const ctx = useMemo<AppContext>(
     () => ({ projectId, projectKind, theme, latexToolsEnabled: latexTools }),
@@ -423,7 +425,7 @@ export function SearchOmnibar() {
           </span>
         </div>
 
-        <Command.List className="max-h-[min(60vh,440px)] overflow-auto p-1.5">
+        <Command.List ref={listRef} className="max-h-[min(60vh,440px)] overflow-auto p-1.5">
           {mode === "create" && (
             <Group heading={t(($) => $.shell.omnibar.groups.action)}>
               <Row

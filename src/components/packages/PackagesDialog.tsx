@@ -8,6 +8,7 @@ import { ModalShell } from "@/components/ui/modal-shell";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { describeError } from "@/lib/app-error";
 import { formatDate } from "@/lib/intl";
 import { cn } from "@/lib/utils";
@@ -82,6 +83,7 @@ export function PackagesDialog<P, C>({
   const [listState, setListState] = useState<ListState<P>>({ status: "loading" });
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
+  const listRef = useScrollTopOnChange(JSON.stringify([query, category]));
   const request = useRef(0);
   const context = provider.useRowContext(open, onClose);
   const { labels } = provider;
@@ -175,7 +177,7 @@ export function PackagesDialog<P, C>({
         )}
       </div>
       {providerNotice && <div className="flex flex-col gap-1.5 border-b px-3 py-2">{providerNotice}</div>}
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-auto">
         {listState.status === "loading" && <LoadingState className="p-3" label={labels.loading()} />}
         {listState.status === "error" && (
           <ErrorState className="p-3" message={listState.message}>

@@ -213,6 +213,19 @@ describe("NewProjectDialog", () => {
     expect(screen.getByTestId("template-card-blank")).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    open();
+    const list = screen.getByTestId("template-card-blank").closest(".overflow-y-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByPlaceholderText("dialog.searchPlaceholder"), {
+      target: { value: "poster" },
+    });
+
+    expect(screen.getByTestId("template-card-poster")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("offers to generate a template when the filters match nothing", () => {
     const onGenerateWithAi = vi.fn();
     open({ onGenerateWithAi });

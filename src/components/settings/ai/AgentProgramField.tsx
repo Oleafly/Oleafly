@@ -479,7 +479,7 @@ function ProgramResult({
     return (
       <div data-testid={testId} className="space-y-1">
         <output aria-live="polite" className="flex items-start gap-1.5 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400">
-          <CheckBadge className="mt-0.5" />
+          <CheckBadge tone="success" className="mt-0.5" />
           <span>
             <SettingsPathText text={displayText(message)} />
           </span>

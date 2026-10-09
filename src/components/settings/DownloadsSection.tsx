@@ -362,7 +362,7 @@ export function DownloadsSection() {
                     <span className="text-sm font-medium">
                       {isFontPackId(c.id) ? t(($) => $.settings.downloads.fontPacks[c.id as FontPackId].label) : c.label}
                     </span>
-                    {c.installed && <CheckBadge />}
+                    {c.installed && <CheckBadge tone="success" />}
                     {c.approx_bytes > 0 && (
                       <span className="text-[0.6875rem] text-muted-foreground">{formatDownloadSize(c.approx_bytes)}</span>
                     )}
@@ -445,7 +445,7 @@ export function DownloadsSection() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{p.label}</span>
-                    {p.installed && <CheckBadge />}
+                    {p.installed && <CheckBadge tone="success" />}
                     {p.approx_bytes > 0 && (
                       <span className="text-[0.6875rem] text-muted-foreground">{formatDownloadSize(p.approx_bytes)}</span>
                     )}

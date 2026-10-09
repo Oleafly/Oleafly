@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Le contenu du tableau risque de ne pas être reconnu comme des champs de CV",
-      "detailTable": "Les outils ATS aplatissent souvent le contenu tabulaire de façon imprévisible. Évitez d'utiliser un tableau pour disposer le texte d'un CV côte à côte ; les vrais tableaux de données de recherche sont évalués à part dans Accessibilité.",
+      "detailTable": "Les outils ATS aplatissent souvent le contenu tabulaire de façon imprévisible. Évitez d'utiliser un tableau pour disposer le texte d'un CV côte à côte. Les vrais tableaux de données de recherche sont vérifiés à part dans Accessibilité.",
       "titleTikz": "Le contenu TikZ a besoin d'une alternative sémantique",
       "detailTikz": "TikZ dessine un contenu visuel sans en exposer le sens comme du texte ordinaire. Fournissez une description accessible pour une sortie de publication et évitez-le pour un CV destiné à un ATS."
     },
@@ -266,7 +266,7 @@
       "title_many": "{{count}} entrées bibliographiques ont des métadonnées incomplètes",
       "title_other": "{{count}} entrées bibliographiques ont des métadonnées incomplètes",
       "detail": "Des fiches incomplètes peuvent produire des références cassées ou ambiguës dans les styles d'éditeur. {{examples}}.",
-      "detailTruncated": "Des fiches incomplètes peuvent produire des références cassées ou ambiguës dans les styles d'éditeur. {{examples}} ; …"
+      "detailTruncated": "Des fiches incomplètes peuvent produire des références cassées ou ambiguës dans les styles d'éditeur. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} valeur de DOI semble mal formée",

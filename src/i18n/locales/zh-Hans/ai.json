@@ -142,7 +142,7 @@
       "overloaded": "提供商的服务器当前过载（已自动重试过）。请稍等片刻再重试，或{{where}}切换到同系列的其他模型。",
       "rateLimited": "提供商正在限制请求频率。请稍等片刻再重试，或{{where}}切换提供商。",
       "retiredModel": "提供商已停用或限制此模型。请{{where}}选择更新的模型（设置 → AI 助手中列出了你的密钥可用的模型）。",
-      "unreachable": "无法连接到 AI 提供商。请检查网络连接；如果你在使用 Ollama，请确保它正在运行（设置 → AI 助手 → 检查 Ollama）。",
+      "unreachable": "无法连接到 AI 提供商。请检查网络连接。如果你在使用 Ollama，请确保它正在运行（设置 → AI 助手 → 检查 Ollama）。",
       "where": {
         "inSettings": "在设置 → AI 助手中",
         "modelMenu": "在上方的模型菜单中"

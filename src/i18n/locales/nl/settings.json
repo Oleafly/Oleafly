@@ -902,7 +902,7 @@
         "label": "Schermvullend gaan"
       },
       "showPdf": {
-        "description": "Als de PDF verborgen is wanneer de zenmodus start, wordt die bij de eerste compilatie naast de editor geopend.",
+        "description": "Als de PDF verborgen is in de zenmodus, wordt die bij het compileren naast de editor geopend.",
         "label": "PDF tonen bij het compileren"
       },
       "title": "Zenmodus"
@@ -1078,7 +1078,7 @@
       "status": {
         "checking": "Controleren op pandoc…",
         "installing": "Een vastgezette pandoc-release ophalen. De eerste keer duurt dat even.",
-        "missing": "Niet gevonden. Oleafly kan een geschikte pandoc (2.19 of nieuwer) naar zijn eigen map downloaden; verder verandert er niets aan je systeem.",
+        "missing": "Niet gevonden. Oleafly kan een geschikte pandoc (2.19 of nieuwer) naar zijn eigen map downloaden. Verder verandert er niets aan je systeem.",
         "ready": "Gevonden. Markdown-projecten worden met pandoc naar LaTeX omgezet en daarna met de meegeleverde Tectonic gecompileerd."
       },
       "tectonicDetail": "Zet de LaTeX die pandoc maakt om in drukwerk. Komt met Oleafly mee, er valt niets in te stellen.",

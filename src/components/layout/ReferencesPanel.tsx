@@ -28,6 +28,7 @@ import {
 import { ImportReferenceLibraryDialog } from "@/components/layout/ImportReferenceLibraryDialog";
 import { Button } from "@/components/ui/button";
 import { type ScrollMemory, useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { Input } from "@/components/ui/input";
@@ -303,8 +304,13 @@ export function ReferencesPanel() {
     remembered?.handledFocusRequest ?? 0,
   );
   useSidebarViewMemory(projectId, "references", { view, filter, handledFocusRequest });
+  const [filterEdits, setFilterEdits] = useState(0);
+  const editFilter = (value: string) => {
+    setFilter(value);
+    setFilterEdits((count) => count + 1);
+  };
   const filterRef = useRef<HTMLInputElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useScrollTopOnChange(filterEdits);
 
   const snapshot = useIndexStore((state) =>
     acceptedProjectSnapshot(state.intelligenceState, projectId),
@@ -599,7 +605,7 @@ export function ReferencesPanel() {
             ref={filterRef}
             type="search"
             value={filter}
-            onChange={(event) => setFilter(event.target.value)}
+            onChange={(event) => editFilter(event.target.value)}
             aria-label={filterAriaLabel()}
             placeholder={filterPlaceholder()}
             className="h-8 pl-7 pr-8 text-xs"
@@ -608,7 +614,7 @@ export function ReferencesPanel() {
             <button
               type="button"
               aria-label={t(($) => $.references.filter.clear)}
-              onClick={() => setFilter("")}
+              onClick={() => editFilter("")}
               className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
             >
               <X aria-hidden className="size-3" />

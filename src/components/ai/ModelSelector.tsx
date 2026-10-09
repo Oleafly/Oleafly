@@ -5,6 +5,7 @@ import { CheckCircle2, ChevronDown, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { Tooltip } from "@/components/ui/tooltip";
 import { modelCapabilityChips } from "@/lib/ai-model-state";
 import type { ModelMetadata, ModelTrust } from "@/lib/tauri";
@@ -147,6 +148,7 @@ export function ModelSelector({
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
   const [query, setQuery] = useState("");
+  const listRef = useScrollTopOnChange(query);
 
   const setOpen = (nextOpen: boolean) => {
     if (controlledOpen === undefined) setInternalOpen(nextOpen);
@@ -254,7 +256,7 @@ export function ModelSelector({
               />
             </div>
 
-            <Command.List className="max-h-[min(50vh,20rem)] overflow-y-auto p-1.5">
+            <Command.List ref={listRef} className="max-h-[min(50vh,20rem)] overflow-y-auto p-1.5">
               {visibleGroups.length === 0 && (
                 <div className="px-4 py-8 text-center">
                   <p className="text-xs font-medium">{t(($) => $.ai.models.emptyTitle)}</p>

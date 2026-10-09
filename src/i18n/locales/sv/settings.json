@@ -902,7 +902,7 @@
         "label": "Gå till helskärm"
       },
       "showPdf": {
-        "description": "Om PDF:en är dold när Zen-läge startar öppnas den bredvid redigeraren första gången du kompilerar.",
+        "description": "Om PDF:en är dold i Zen-läge öppnas den bredvid redigeraren när du kompilerar.",
         "label": "Visa PDF:en vid kompilering"
       },
       "title": "Zen-läge"

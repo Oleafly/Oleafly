@@ -859,7 +859,7 @@
       },
       "warning": "Ces fonctions sont expérimentales et encore en bêta. Elles ne sont pas entièrement testées et peuvent changer, casser ou disparaître dans une prochaine version. Ne les activez que si vous voulez essayer un travail en cours.",
       "webBrowser": {
-        "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta ; une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
+        "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta. Une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
         "label": "Navigateur web"
       }
     },
@@ -893,7 +893,7 @@
         "description": "Compiler avec --only-cached et ne jamais récupérer de paquets sur le réseau.",
         "label": "Mode hors ligne"
       },
-      "proofreadingNote": "La relecture s'exécute localement, dans un processus d'arrière-plan. Harper suit la variante de l'anglais sélectionnée ; l'orthographe utilise toujours exactement le paquet Hunspell choisi. Les maths, le code, les commentaires, la syntaxe des citations, les métadonnées et les URL sont exclus.",
+      "proofreadingNote": "La relecture s'exécute localement, dans un processus d'arrière-plan. Harper suit la variante de l'anglais sélectionnée, et l'orthographe utilise toujours exactement le paquet Hunspell choisi. Les maths, le code, les commentaires, la syntaxe des citations, les métadonnées et les URL sont exclus.",
       "regionalism": {
         "description": "Signaler les termes qui ne correspondent pas à la variante de l'anglais sélectionnée. Désactivez cette option si vous utilisez de tels termes comme noms de produits ou de code.",
         "label": "Suggestions de régionalismes"

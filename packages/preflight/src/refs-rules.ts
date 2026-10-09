@@ -81,7 +81,7 @@ function incompleteMetadataFinding(entries: BibEntries): Finding | null {
     .map((entry) => ({ key: entry.key, missing: requiredFields(entry) }))
     .filter((entry) => entry.missing.length > 0);
   if (incomplete.length === 0) return null;
-  const examples = incomplete.slice(0, 5).map((entry) => `${entry.key}: ${entry.missing.join(", ")}`).join("; ");
+  const examples = incomplete.slice(0, 5).map((entry) => `${entry.key}: ${entry.missing.join(", ")}`).join(" · ");
   return {
     id: "refs-incomplete-metadata",
     lens: "refs",
@@ -132,7 +132,7 @@ function duplicateTitleFinding(entries: BibEntries): Finding | null {
     severity: "warning",
     title: message("rules.refs-duplicate-title.title", { count: duplicateTitles.length }),
     detail: message("rules.refs-duplicate-title.detail", {
-      groups: duplicateTitles.slice(0, 5).map((keys) => keys.join(" / ")).join("; "),
+      groups: duplicateTitles.slice(0, 5).map((keys) => keys.join(" / ")).join(" · "),
     }),
     certainty: "verified",
   };
@@ -182,7 +182,7 @@ export function projectLabelQuality(ctx: RefsContext): Finding[] {
         labels: duplicates
           .slice(0, 6)
           .map((item) => `${item.label} (${item.files.join(", ")})`)
-          .join("; "),
+          .join(" · "),
       }),
       certainty: "verified",
     });

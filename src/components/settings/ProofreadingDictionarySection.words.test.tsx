@@ -48,6 +48,20 @@ describe("global ignored words", () => {
     expect(screen.getByText(copy.words.noMatches)).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    for (const word of ["Alpha", "Beta", "Gamma", "Lemma"]) useDictionary.getState().ignoreGlobal(word);
+    render(<ProofreadingDictionarySection />);
+    const list = screen.getByRole("list", { name: copy.words.listAriaLabel });
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByRole("searchbox", { name: copy.search.ariaLabel }), {
+      target: { value: "mma" },
+    });
+
+    expect(within(list).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["Gamma", "Lemma"]);
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("removes one word and clears them all after confirmation", async () => {
     const user = userEvent.setup();
     useDictionary.getState().ignoreGlobal("Oleafly");

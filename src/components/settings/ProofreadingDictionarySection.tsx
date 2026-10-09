@@ -17,6 +17,7 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { Switch } from "@/components/ui/switch";
 import {
   Tabs,
@@ -94,6 +95,7 @@ function WordChips({
   compactEmpty?: boolean;
 }>) {
   const { t } = useTranslation(["common", "settings"]);
+  const listRef = useScrollTopOnChange<HTMLUListElement>(query);
   const visible = useMemo(() => {
     const normalizedQuery = query.toLocaleLowerCase("en-US").trim();
     return [...words]
@@ -136,6 +138,7 @@ function WordChips({
   }
   return (
     <ul
+      ref={listRef}
       className="m-0 flex max-h-52 list-none flex-wrap content-start gap-1.5 overflow-y-auto p-0"
       aria-label={t(($) => $.settings.proofreading.words.listAriaLabel)}
     >

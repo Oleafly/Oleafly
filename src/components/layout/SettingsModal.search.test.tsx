@@ -85,6 +85,17 @@ describe("Settings search", () => {
     expect(screen.getByText("1 section matches")).toBeInTheDocument();
   });
 
+  it("shows the matching sections from the top of the list", async () => {
+    renderSettings();
+    const list = screen.getByTestId("settings-section-scroll");
+    list.scrollTop = 240;
+
+    typeQuery("zotero");
+
+    await waitFor(() => expect(visibleSections()).toEqual(["settings-section-integrations"]));
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("finds a setting that lives in a section with a different name", async () => {
     renderSettings();
     typeQuery("spellcheck");

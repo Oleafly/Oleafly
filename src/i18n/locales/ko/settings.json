@@ -897,7 +897,7 @@
         "label": "전체 화면으로 전환"
       },
       "showPdf": {
-        "description": "Zen 모드가 시작될 때 PDF가 숨겨져 있으면 첫 컴파일 때 편집기 옆에 엽니다.",
+        "description": "Zen 모드에서 PDF가 숨겨져 있으면 컴파일할 때 편집기 옆에 엽니다.",
         "label": "컴파일할 때 PDF 표시"
       },
       "title": "Zen 모드"

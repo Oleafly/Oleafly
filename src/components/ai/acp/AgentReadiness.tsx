@@ -13,15 +13,12 @@ import { useDisplayText } from "@/lib/display-path";
 import { AgentLogo } from "./AgentLogo";
 import { readinessDetail } from "./agent-copy";
 import { Spinner } from "@/components/ui/spinner";
-import { CheckBadge } from "@/components/ui/check-badge";
 
 export function ReadinessBadge({ readiness }: Readonly<{ readiness: AcpReadiness }>) {
   const label = acpReadinessLabel(readiness);
   if (readiness === "ready") {
     return (
-      <Badge variant="success" className="gap-1">
-        <CheckBadge className="size-3.5" /> {label}
-      </Badge>
+      <Badge variant="success">{label}</Badge>
     );
   }
   if (readiness === "unavailable") {

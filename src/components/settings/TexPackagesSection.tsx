@@ -7,6 +7,7 @@ import { packageErrorMessage, useEngineStore } from "@/store/engine";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
 import { Spinner } from "@/components/ui/spinner";
@@ -35,6 +36,7 @@ export function TexPackagesSection() {
   } = useEngineStore();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TexPackage[] | null>(null);
+  const listRef = useScrollTopOnChange(results ?? query);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const requestId = useRef(0);
@@ -157,7 +159,7 @@ export function TexPackagesSection() {
       <p className="mb-2 text-xs text-muted-foreground">
         {resultsSummary()}
       </p>
-      <div className="max-h-72 overflow-auto rounded-md border">
+      <div ref={listRef} className="max-h-72 overflow-auto rounded-md border">
         {rows.length === 0 && (
           <p className="p-3 text-xs text-muted-foreground">
             {results
@@ -184,7 +186,7 @@ export function TexPackagesSection() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs">{p.name}</span>
-                  {on && <CheckBadge className="size-3.5" />}
+                  {on && <CheckBadge tone="success" className="size-3.5" />}
                   {tree && (
                     <Badge variant="muted" size="sm">
                       {tree}

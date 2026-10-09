@@ -129,7 +129,7 @@
           "modes": "The first table, <modesTable>[\"$approval_modes\"]</modesTable>, sets the approval mode per project: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> or <custom>\"custom\"</custom>. A project that is not listed uses Approve for me.",
           "openProject": "The open project, {{name}}, has the id <projectId>{{id}}</projectId>.",
           "projectIds": "Project ids are the folder names under ~/.oleafly/projects.",
-          "rules": "Then one table per project id, holding a rule per tool: <allow>\"allow\"</allow> runs the tool without asking, and <deny>\"deny\"</deny> refuses it. Deny rules are honoured in every mode; allow rules take effect in Custom mode, and for run_command they also skip the prompt in the other modes.",
+          "rules": "Then one table per project id, holding a rule per tool: <allow>\"allow\"</allow> runs the tool without asking, and <deny>\"deny\"</deny> refuses it. Deny rules are honoured in every mode. Allow rules take effect in Custom mode, and for run_command they also skip the prompt in the other modes.",
           "toolNames": "Tool names you can use: <names>{{names}}</names> and any MCP tool by its full name from the Tools list."
         },
         "helpToggle": "How the file works",
@@ -902,7 +902,7 @@
         "label": "Go full screen"
       },
       "showPdf": {
-        "description": "If the PDF is hidden when Zen mode starts, open it beside the editor the first time you compile.",
+        "description": "If the PDF is hidden in Zen mode, open it beside the editor when you compile.",
         "label": "Show the PDF when you compile"
       },
       "title": "Zen mode"
@@ -1078,10 +1078,10 @@
       "status": {
         "checking": "Checking for pandoc…",
         "installing": "Fetching a pinned pandoc release. This takes a moment on first use.",
-        "missing": "Not found. Oleafly can download a compatible pandoc (2.19 or newer) into its own folder; nothing else on your system changes.",
+        "missing": "Not found. Oleafly can download a compatible pandoc (2.19 or newer) into its own folder. Nothing else on your system changes.",
         "ready": "Detected. Markdown projects convert to LaTeX with pandoc, then compile with the bundled Tectonic."
       },
-      "tectonicDetail": "Typesets the LaTeX that pandoc produces. Ships with Oleafly; nothing to configure.",
+      "tectonicDetail": "Typesets the LaTeX that pandoc produces. It ships with Oleafly and needs no setup.",
       "tooltip": "Markdown projects are converted with pandoc (Pandoc Markdown: tables, footnotes, citations, math) into LaTeX, then typeset to PDF by the bundled Tectonic. Pandoc ships with Oleafly."
     },
     "packages": {

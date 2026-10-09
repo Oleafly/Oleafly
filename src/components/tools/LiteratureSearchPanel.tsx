@@ -40,6 +40,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { cn } from "@/lib/utils";
 import {
   DEFAULT_LITERATURE_SOURCES,
@@ -647,6 +648,7 @@ export function LiteratureSearchPanel() {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] =
     useState<LiteratureSearchResponse | null>(null);
+  const resultsRef = useScrollTopOnChange(response);
   const [error, setError] = useState<string | null>(null);
 
   // Honor command-palette / selection entry points that request document mode.
@@ -992,6 +994,7 @@ export function LiteratureSearchPanel() {
       </div>
 
       <TabsContent
+        ref={resultsRef}
         value="search"
         className="m-0 min-h-0 flex-1 overflow-y-auto"
       >

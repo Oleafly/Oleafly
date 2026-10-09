@@ -242,7 +242,7 @@
     "issues": "問題",
     "spelling": "拼字",
     "grammarAndStyle": "文法與風格",
-    "findingsTruncated": "檢查結果清單已截斷；上方的數量才是完整的。",
+    "findingsTruncated": "檢查結果清單已截斷，但上方的數量是完整的。",
     "spellLanguage": "拼字檢查語言",
     "spellLanguageAppSetting": "使用應用程式設定",
     "spellLanguageAriaLabel": "此專案的拼字檢查語言",

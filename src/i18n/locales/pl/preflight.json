@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Treść tabeli może nie zostać rozpoznana jako pola CV",
-      "detailTable": "Narzędzia ATS często spłaszczają treść tabelaryczną w nieprzewidywalny sposób. Nie używaj tabeli do ustawiania tekstu CV obok siebie; prawdziwe tabele z danymi badawczymi są oceniane osobno w kontroli dostępności.",
+      "detailTable": "Narzędzia ATS często spłaszczają treść tabelaryczną w nieprzewidywalny sposób. Nie używaj tabeli do ustawiania tekstu CV obok siebie. Prawdziwe tabele z danymi badawczymi są sprawdzane osobno w kontroli dostępności.",
       "titleTikz": "Treść TikZ wymaga alternatywy semantycznej",
       "detailTikz": "TikZ rysuje treść wizualną, nie udostępniając jej znaczenia jako zwykłego tekstu. Dodaj dostępny opis do wyniku publikacyjnego i unikaj tego w treści CV kierowanej do ATS."
     },
@@ -276,7 +276,7 @@
       "title_many": "{{count}} pozycji bibliografii ma niepełne metadane",
       "title_other": "{{count}} pozycji bibliografii ma niepełne metadane",
       "detail": "Niepełne rekordy mogą dawać zepsute albo niejednoznaczne odwołania w stylach wydawniczych. {{examples}}.",
-      "detailTruncated": "Niepełne rekordy mogą dawać zepsute albo niejednoznaczne odwołania w stylach wydawniczych. {{examples}}; …"
+      "detailTruncated": "Niepełne rekordy mogą dawać zepsute albo niejednoznaczne odwołania w stylach wydawniczych. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} wartość DOI wygląda na nieprawidłową",

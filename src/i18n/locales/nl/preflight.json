@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Tabelinhoud wordt mogelijk niet als cv-velden gelezen",
-      "detailTable": "ATS-tools maken tabelinhoud vaak onvoorspelbaar plat. Gebruik geen tabel om cv-tekst naast elkaar te zetten; echte onderzoeksdatatabellen worden apart beoordeeld bij Toegankelijkheid.",
+      "detailTable": "ATS-tools maken tabelinhoud vaak onvoorspelbaar plat. Gebruik geen tabel om cv-tekst naast elkaar te zetten. Echte onderzoeksdatatabellen worden apart gecontroleerd bij Toegankelijkheid.",
       "titleTikz": "TikZ-inhoud heeft een semantisch alternatief nodig",
       "detailTikz": "TikZ tekent visuele inhoud zonder de betekenis ervan als gewone tekst beschikbaar te maken. Geef een toegankelijke beschrijving voor publicatie-uitvoer en gebruik het niet voor cv-inhoud die naar een ATS gaat."
     },
@@ -256,7 +256,7 @@
       "title_one": "{{count}} bibliografie-item heeft onvolledige metagegevens",
       "title_other": "{{count}} bibliografie-items hebben onvolledige metagegevens",
       "detail": "Onvolledige records kunnen in uitgeversstijlen kapotte of dubbelzinnige verwijzingen opleveren. {{examples}}.",
-      "detailTruncated": "Onvolledige records kunnen in uitgeversstijlen kapotte of dubbelzinnige verwijzingen opleveren. {{examples}}; …"
+      "detailTruncated": "Onvolledige records kunnen in uitgeversstijlen kapotte of dubbelzinnige verwijzingen opleveren. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-waarde ziet er onjuist uit",

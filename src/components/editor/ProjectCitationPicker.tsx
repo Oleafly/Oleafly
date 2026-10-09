@@ -14,6 +14,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
 import type { CitationCompletion } from "@/lib/project-intelligence/types";
@@ -117,6 +118,7 @@ function CitationPickerContent({
 }>) {
   const { t } = useTranslation(["common", "editor"]);
   const deferredQuery = useDeferredValue(query);
+  const listRef = useScrollTopOnChange(deferredQuery);
   const activePath = useFilesStore((state) => state.activePath);
   const activeContent = useFilesStore((state) =>
     state.activePath
@@ -226,7 +228,7 @@ function CitationPickerContent({
 
       <ZoteroHintBanner />
 
-      <div className="max-h-72 overflow-y-auto p-1">
+      <div ref={listRef} className="max-h-72 overflow-y-auto p-1">
         {status === "pending" && (
           <LoadingState
             size="compact"

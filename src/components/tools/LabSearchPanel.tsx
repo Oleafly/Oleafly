@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import { useSettingsStore } from "@/store/settings";
@@ -496,6 +497,7 @@ export function LabSearchPanel() {
   const [submittedQuery, setSubmittedQuery] = useState("");
   const [country, setCountry] = useState("all");
   const [results, setResults] = useState<Institution[] | null>(null);
+  const resultsRef = useScrollTopOnChange(results);
   const [total, setTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -667,7 +669,7 @@ export function LabSearchPanel() {
         </div>
       </section>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={resultsRef} className="min-h-0 flex-1 overflow-y-auto">
         {busy ? <LabSearchSkeleton /> : null}
         {!busy && results === null ? (
           <EmptyLabSearch noResults={false} onTry={trySuggestion} />

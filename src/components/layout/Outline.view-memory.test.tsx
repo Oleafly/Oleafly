@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -207,6 +207,33 @@ describe("Outline (Structure) scroll memory", () => {
     expect(screen.getByText("Part 148")).toBeInTheDocument();
     expect(screen.queryByText("Part 000")).not.toBeInTheDocument();
     expect(geometry.pendingFrames()).toBe(0);
+  });
+
+  it("shows a new filter's results from the top of the tree", () => {
+    render(<Outline />);
+    geometry.scrollTo(scroller(), 4_200);
+
+    fireEvent.change(screen.getByLabelText(copy.filterLabel), { target: { value: "Part 1" } });
+
+    expect(screen.getByText("Part 100")).toBeInTheDocument();
+    expect(scroller().scrollTop).toBe(0);
+  });
+
+  it("keeps each project's filtered position when the project changes while open", () => {
+    render(<Outline />);
+    fireEvent.change(screen.getByLabelText(copy.filterLabel), { target: { value: "Part" } });
+    geometry.scrollTo(scroller(), 1_400);
+    show("structure-b", LONG);
+    fireEvent.change(screen.getByLabelText(copy.filterLabel), { target: { value: "Part 1" } });
+    geometry.scrollTo(scroller(), 700);
+
+    show("structure-a", LONG);
+    expect(screen.getByLabelText(copy.filterLabel)).toHaveValue("Part");
+    expect(scroller().scrollTop).toBe(1_400);
+
+    show("structure-b", LONG);
+    expect(screen.getByLabelText(copy.filterLabel)).toHaveValue("Part 1");
+    expect(scroller().scrollTop).toBe(700);
   });
 
   it("keeps a separate position for each project", () => {

@@ -210,6 +210,19 @@ describe("DeadlinesView", () => {
     expect(screen.getByTestId("deadline-card-neurips-2026")).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    render(<DeadlinesView />);
+    const list = screen.getByTestId("deadline-card-neurips-2026").closest(".overflow-y-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByTestId("deadlines-search"), {
+      target: { value: "icse" },
+    });
+
+    expect(screen.getByTestId("deadline-card-icse-2027")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("clears the query from the inline clear button", () => {
     render(<DeadlinesView />);
     const search = screen.getByTestId("deadlines-search");

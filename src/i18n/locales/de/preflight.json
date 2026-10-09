@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Tabelleninhalt wird womöglich nicht als Lebenslauffeld erkannt",
-      "detailTable": "ATS-Werkzeuge verflachen tabellarische Inhalte oft unvorhersehbar. Nutzen Sie keine Tabelle, um Lebenslauftext nebeneinander zu setzen; echte Datentabellen aus der Forschung werden unter Barrierefreiheit gesondert bewertet.",
+      "detailTable": "ATS-Werkzeuge verflachen tabellarische Inhalte oft unvorhersehbar. Nutzen Sie keine Tabelle, um Lebenslauftext nebeneinander zu setzen. Echte Datentabellen aus der Forschung werden unter Barrierefreiheit gesondert geprüft.",
       "titleTikz": "TikZ-Inhalt braucht eine inhaltliche Alternative",
       "detailTikz": "TikZ zeichnet sichtbare Inhalte, ohne ihre Bedeutung als normalen Text bereitzustellen. Geben Sie für Publikationsausgaben eine barrierefreie Beschreibung an und vermeiden Sie es bei Lebenslaufinhalten, die an ein ATS gehen."
     },
@@ -256,7 +256,7 @@
       "title_one": "{{count}} Literatureintrag hat unvollständige Metadaten",
       "title_other": "{{count}} Literatureinträge haben unvollständige Metadaten",
       "detail": "Unvollständige Datensätze können in Verlagsstilen fehlerhafte oder mehrdeutige Literaturangaben erzeugen. {{examples}}.",
-      "detailTruncated": "Unvollständige Datensätze können in Verlagsstilen fehlerhafte oder mehrdeutige Literaturangaben erzeugen. {{examples}}; …"
+      "detailTruncated": "Unvollständige Datensätze können in Verlagsstilen fehlerhafte oder mehrdeutige Literaturangaben erzeugen. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-Wert wirkt fehlerhaft",

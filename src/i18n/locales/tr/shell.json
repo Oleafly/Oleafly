@@ -382,7 +382,7 @@
     "compile": "Derle",
     "compiler": {
       "auto": "Otomatik <note>[sistem TeX]</note>",
-      "help": "Tectonic yerleşiktir ve kurulum gerektirmez. Diğer seçenekler, hesabınızın erişebildiği yerel dosyaları okuyabilen sistem TeX'ini çalıştırır; bu yüzden yalnızca güvendiğiniz projelerde kullanın. Otomatik, derleyiciyi kaynaktan seçer. pdfLaTeX çoğu dergi şablonuyla uyumludur. XeLaTeX ve LuaLaTeX sistem yazı tipleri ve Unicode desteği ekler.",
+      "help": "Tectonic yerleşiktir ve kurulum gerektirmez. Diğer seçenekler, hesabınızın erişebildiği yerel dosyaları okuyabilen sistem TeX'ini çalıştırır. Bu yüzden onları yalnızca güvendiğiniz projelerde kullanın. Otomatik, derleyiciyi kaynaktan seçer. pdfLaTeX çoğu dergi şablonuyla uyumludur. XeLaTeX ve LuaLaTeX sistem yazı tipleri ve Unicode desteği ekler.",
       "lualatex": "LuaLaTeX <note>[sistem TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[sistem TeX]</note>",
       "tectonic": "Tectonic <note>[yerleşik]</note>",
@@ -487,7 +487,7 @@
     "switched": "Bu proje artık {{engine}} ile derleniyor.",
     "switchedAfterInstall": "TinyTeX kuruldu. Bu proje artık {{engine}} ile derleniyor.",
     "systemTex": {
-      "found": "Bu makinede bir TeX dağıtımı bulundu. Sistem TeX'i, hesabınızın erişebildiği yerel dosyaları okuyabilir; bu yüzden yalnızca güvendiğiniz projelerde kullanın. TeX Live, EPS dönüştürme gibi kendi izin listesindeki yardımcıları yine de çalıştırır.",
+      "found": "Bu makinede bir TeX dağıtımı bulundu. Sistem TeX'i, hesabınızın erişebildiği yerel dosyaları okuyabilir, bu yüzden onu yalnızca güvendiğiniz projelerde kullanın. TeX Live, EPS dönüştürme gibi kendi izin listesindeki yardımcıları yine de çalıştırır.",
       "missing": "Bu makinede bir TeX dağıtımı (MacTeX, TeX Live, MiKTeX, TinyTeX) bulunamadı.",
       "switchPdflatex": "pdfLaTeX'e geç ve yeniden derle",
       "title": "Sistemimdeki LaTeX'i kullan (latexmk)",
@@ -842,9 +842,9 @@
         "description": "Oleafly Tools galerisini ve tek tek araçları (PDF içe aktarma, denklemler, tablolar, BibTeX, laboratuvar ve literatür arama, son tarihler) ve bunların eğik çizgi komutlarını gösterir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "LaTeX araçları"
       },
-      "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır; değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
+      "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır ve değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
       "webBrowser": {
-        "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır; kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
+        "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Beta aşamasında olduğu için varsayılan olarak kapalıdır. Kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
         "label": "Web tarayıcısı"
       }
     },
@@ -878,7 +878,7 @@
         "description": "--only-cached ile derler ve paketleri ağ üzerinden hiç indirmez.",
         "label": "Çevrimdışı kip"
       },
-      "proofreadingNote": "Redaksiyon yerel olarak bir arka plan çalışanında yürür. Harper seçili İngilizce lehçesini izler; yazım denetimi her zaman tam olarak seçili Hunspell paketini kullanır. Matematik, kod, açıklamalar, atıf sözdizimi, üst veriler ve URL'ler dışarıda bırakılır.",
+      "proofreadingNote": "Redaksiyon yerel olarak bir arka plan çalışanında yürür. Harper seçili İngilizce lehçesini izler ve yazım denetimi her zaman tam olarak seçili Hunspell paketini kullanır. Matematik, kod, açıklamalar, atıf sözdizimi, üst veriler ve URL'ler dışarıda bırakılır.",
       "regionalism": {
         "description": "Seçili İngilizce lehçesine uymayan terimleri işaretler. Bu tür terimleri ürün veya kod adı olarak kullanıyorsanız kapatın.",
         "label": "Bölgesel kullanım önerileri"

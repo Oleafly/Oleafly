@@ -14,6 +14,7 @@ import { CheckCircle2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { fontFamilyName, matchingFamilies, sourceKinds } from "@/lib/font-families";
 import type { TypstFontEntry, TypstFontSourceKind } from "@/lib/typst-options";
 import { cn } from "@/lib/utils";
@@ -149,16 +150,16 @@ export function FontFamilyCombobox({
 }>) {
   const listId = useId();
   const anchor = useRef<HTMLInputElement>(null);
-  const scroller = useRef<HTMLDivElement>(null);
+  const [query, setQuery] = useState("");
+  const scroller = useScrollTopOnChange(query);
   const list = useRef<HTMLDivElement>(null);
   const selectOnMouseUp = useRef(false);
   const [listMounted, setListMounted] = useState(false);
   const attachScroller = useCallback((node: HTMLDivElement | null) => {
     scroller.current = node;
     setListMounted(node !== null);
-  }, []);
+  }, [scroller]);
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const options = useMemo(() => (loading ? [] : optionsFor(query)), [loading, optionsFor, query]);
   const showList = open && !disabled && (loading || options.length > 0);

@@ -17,8 +17,7 @@ export function integrationLink(href: string) {
 
 export function ConnectedBadge({ label }: Readonly<{ label: string }>) {
   return (
-    <Badge variant="success" size="sm" className="gap-1">
-      <CheckBadge className="size-3.5" />
+    <Badge variant="success" size="sm">
       {label}
     </Badge>
   );
@@ -49,7 +48,7 @@ export function IntegrationConnected({
       data-testid={testId}
       className="flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-300"
     >
-      <CheckBadge className="mt-px" />
+      <CheckBadge tone="success" className="mt-px" />
       {children}
     </p>
   );

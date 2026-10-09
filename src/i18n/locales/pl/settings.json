@@ -912,7 +912,7 @@
         "label": "Przejdź na pełny ekran"
       },
       "showPdf": {
-        "description": "Jeśli PDF jest ukryty na początku trybu Zen, otwiera go obok edytora przy pierwszej kompilacji.",
+        "description": "Jeśli PDF jest ukryty w trybie Zen, otwiera go obok edytora podczas kompilacji.",
         "label": "Pokaż PDF przy kompilacji"
       },
       "title": "Tryb Zen"
@@ -1088,7 +1088,7 @@
       "status": {
         "checking": "Sprawdzanie pandoc…",
         "installing": "Pobieranie przypiętego wydania pandoc. Za pierwszym razem chwilę to trwa.",
-        "missing": "Nie znaleziono. Oleafly może pobrać zgodny pandoc (2.19 lub nowszy) do własnego folderu; nic innego w systemie się nie zmienia.",
+        "missing": "Nie znaleziono. Oleafly może pobrać zgodny pandoc (2.19 lub nowszy) do własnego folderu. Nic innego w systemie się nie zmienia.",
         "ready": "Wykryto. Projekty Markdown są konwertowane na LaTeX przez pandoc, a potem kompilowane wbudowanym Tectonic."
       },
       "tectonicDetail": "Składa kod LaTeX wytworzony przez pandoc. Dołączony do Oleafly, nie wymaga konfiguracji.",

@@ -245,7 +245,7 @@
     "issues": "Sorunlar",
     "spelling": "Yazım",
     "grammarAndStyle": "Dil bilgisi ve üslup",
-    "findingsTruncated": "Bulgu listesi kısaltıldı; yukarıdaki sayı eksiksizdir.",
+    "findingsTruncated": "Bulgu listesi kısaltıldı. Yukarıdaki sayı eksiksizdir.",
     "spellLanguage": "Yazım denetimi dili",
     "spellLanguageAppSetting": "Uygulama ayarını kullan",
     "spellLanguageAriaLabel": "Bu proje için yazım denetimi dili",

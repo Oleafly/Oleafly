@@ -189,6 +189,16 @@ describe("ProjectCitationPicker", () => {
     expect(screen.getByText(citations.noMatches)).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    const list = renderPicker().closest(".overflow-y-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByLabelText(citations.filterLabel), { target: { value: "knuth" } });
+
+    expect(mocks.completions).toHaveBeenLastCalledWith(expect.anything(), "knuth", 80);
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("says when the project has no bibliography entries", () => {
     mocks.completions.mockReturnValue([]);
     render(<ProjectCitationPicker variant="menu" />);

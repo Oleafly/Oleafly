@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Table content may not parse as resume fields",
-      "detailTable": "ATS tools often flatten tabular content unpredictably. Avoid using a table to position resume text side by side; real research data tables are evaluated separately in Accessibility.",
+      "detailTable": "ATS tools often flatten tabular content unpredictably. Avoid using a table to place resume text side by side. Real research data tables are checked separately in Accessibility.",
       "titleTikz": "TikZ content needs a semantic alternative",
       "detailTikz": "TikZ draws visual content without exposing its meaning as normal text. Provide an accessible description for publication output and avoid it for ATS-facing resume content."
     },
@@ -256,7 +256,7 @@
       "title_one": "{{count}} bibliography entry has incomplete metadata",
       "title_other": "{{count}} bibliography entries have incomplete metadata",
       "detail": "Incomplete records can produce broken or ambiguous references in publisher styles. {{examples}}.",
-      "detailTruncated": "Incomplete records can produce broken or ambiguous references in publisher styles. {{examples}}; …"
+      "detailTruncated": "Incomplete records can produce broken or ambiguous references in publisher styles. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI value looks malformed",

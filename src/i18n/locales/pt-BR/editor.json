@@ -248,7 +248,7 @@
     "issues": "Problemas",
     "spelling": "Ortografia",
     "grammarAndStyle": "Gramática e estilo",
-    "findingsTruncated": "A lista de ocorrências está truncada; a contagem acima está completa.",
+    "findingsTruncated": "A lista de ocorrências está truncada. A contagem acima está completa.",
     "spellLanguage": "Idioma da verificação ortográfica",
     "spellLanguageAppSetting": "Usar a configuração do aplicativo",
     "spellLanguageAriaLabel": "Idioma da verificação ortográfica deste projeto",

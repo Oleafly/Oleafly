@@ -281,7 +281,7 @@
     "gallerySubtitle": "无需设置，即可使用研究、写作与 LaTeX 工具",
     "toolCount_other": "{{count}} 个免费工具",
     "heroTitle": "面向研究、写作与 LaTeX 的免费工具",
-    "heroBody": "无需创建项目即可转换文件、检查 BibTeX、查找论文或进行计算。结果可以直接复制或保存；需要继续编辑时，再在 Oleafly 中打开。",
+    "heroBody": "无需创建项目即可转换文件、检查 BibTeX、查找论文或进行计算。结果可以直接复制或保存。需要继续编辑时，再在 Oleafly 中打开。",
     "typstDefaultName": "无标题 Typst 文档",
     "typstStartFailed": "Oleafly 无法启动 Typst 文档。",
     "resizePanels": "调整工具面板大小",

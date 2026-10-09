@@ -129,7 +129,7 @@
           "modes": "A primeira tabela, <modesTable>[\"$approval_modes\"]</modesTable>, define o modo de aprovação por projeto: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> ou <custom>\"custom\"</custom>. Um projeto que não estiver listado usa Aprovar por mim.",
           "openProject": "O projeto aberto, {{name}}, tem o id <projectId>{{id}}</projectId>.",
           "projectIds": "Os ids de projeto são os nomes das pastas em ~/.oleafly/projects.",
-          "rules": "Depois vem uma tabela por id de projeto, com uma regra por ferramenta: <allow>\"allow\"</allow> executa a ferramenta sem perguntar e <deny>\"deny\"</deny> recusa. As regras deny valem em todos os modos; as regras allow valem no modo Personalizado e, no caso de run_command, também pulam a pergunta nos outros modos.",
+          "rules": "Depois vem uma tabela por id de projeto, com uma regra por ferramenta: <allow>\"allow\"</allow> executa a ferramenta sem perguntar e <deny>\"deny\"</deny> recusa. As regras deny valem em todos os modos. As regras allow valem no modo Personalizado e, no caso de run_command, também pulam a pergunta nos outros modos.",
           "toolNames": "Nomes de ferramenta que você pode usar: <names>{{names}}</names> e qualquer ferramenta MCP pelo nome completo dela na lista de Ferramentas."
         },
         "helpToggle": "Como o arquivo funciona",
@@ -907,7 +907,7 @@
         "label": "Entrar em tela cheia"
       },
       "showPdf": {
-        "description": "Se o PDF estiver oculto quando o modo Zen começar, abre-o ao lado do editor na primeira compilação.",
+        "description": "Se o PDF estiver oculto no modo Zen, abre-o ao lado do editor quando você compila.",
         "label": "Mostrar o PDF ao compilar"
       },
       "title": "Modo Zen"
@@ -1083,10 +1083,10 @@
       "status": {
         "checking": "Procurando o pandoc…",
         "installing": "Buscando uma versão fixada do pandoc. Isso leva um instante no primeiro uso.",
-        "missing": "Não encontrado. O Oleafly pode baixar um pandoc compatível (2.19 ou mais novo) para a pasta dele; nada mais no seu sistema muda.",
+        "missing": "Não encontrado. O Oleafly pode baixar um pandoc compatível (2.19 ou mais novo) para a pasta dele. Nada mais no seu sistema muda.",
         "ready": "Detectado. Os projetos Markdown são convertidos para LaTeX com o pandoc e depois compilados com o Tectonic embutido."
       },
-      "tectonicDetail": "Compõe o LaTeX que o pandoc produz. Vem com o Oleafly; não há nada a configurar.",
+      "tectonicDetail": "Compõe o LaTeX que o pandoc produz. Vem com o Oleafly e não precisa de configuração.",
       "tooltip": "Os projetos Markdown são convertidos com o pandoc (Pandoc Markdown: tabelas, notas de rodapé, citações, matemática) para LaTeX e depois compostos em PDF pelo Tectonic embutido. O Pandoc vem com o Oleafly."
     },
     "packages": {

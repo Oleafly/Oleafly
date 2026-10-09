@@ -242,7 +242,7 @@
     "issues": "问题",
     "spelling": "拼写",
     "grammarAndStyle": "语法与风格",
-    "findingsTruncated": "问题列表已截断；上方的计数是完整的。",
+    "findingsTruncated": "问题列表已截断，但上方的计数是完整的。",
     "spellLanguage": "拼写检查语言",
     "spellLanguageAppSetting": "使用应用设置",
     "spellLanguageAriaLabel": "本项目的拼写检查语言",

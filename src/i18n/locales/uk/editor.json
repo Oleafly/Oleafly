@@ -251,7 +251,7 @@
     "issues": "Проблеми",
     "spelling": "Орфографія",
     "grammarAndStyle": "Граматика і стиль",
-    "findingsTruncated": "Список зауважень скорочено; лічильник вище повний.",
+    "findingsTruncated": "Список зауважень скорочено. Лічильник вище повний.",
     "spellLanguage": "Мова перевірки орфографії",
     "spellLanguageAppSetting": "Як у налаштуваннях застосунку",
     "spellLanguageAriaLabel": "Мова перевірки орфографії для цього проєкту",
