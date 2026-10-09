@@ -18,10 +18,14 @@ const CORNER_REACH_PX = 160;
 const PILL =
   "flex h-8 items-center gap-1.5 rounded-full border bg-background/95 px-3 text-xs font-medium text-foreground shadow-sm";
 
-export function ZenTitleStrip() {
+function useTitleStripShown(): boolean {
   const fullscreen = useFullscreen();
   const entering = useZenStore((state) => state.fullscreen === "entering");
-  if (fullscreen || entering) return null;
+  return !fullscreen && !entering;
+}
+
+export function ZenTitleStrip() {
+  if (!useTitleStripShown()) return null;
   return (
     <div
       data-testid="zen-title-strip"
@@ -37,10 +41,7 @@ function usePointerNearCorner(): boolean {
   const [near, setNear] = useState(false);
   useEffect(() => {
     const onMove = (event: PointerEvent | MouseEvent) => {
-      setNear(
-        event.clientX >= window.innerWidth - CORNER_REACH_PX &&
-          event.clientY >= window.innerHeight - CORNER_REACH_PX,
-      );
+      setNear(event.clientX >= window.innerWidth - CORNER_REACH_PX && event.clientY <= CORNER_REACH_PX);
     };
     const onLeave = () => setNear(false);
     window.addEventListener("pointermove", onMove);
@@ -72,7 +73,7 @@ function FailedPill() {
   const logsOpen = useZenStore((state) => state.logsOpen);
   const logLabel = logsOpen ? t(($) => $.shell.zen.hideLog) : t(($) => $.shell.zen.showLog);
   return (
-    <Tooltip label={logLabel} side="top">
+    <Tooltip label={logLabel} side="bottom">
       <button
         type="button"
         data-testid="zen-compile-pill"
@@ -112,7 +113,7 @@ function CompileCornerButton({ revealed }: Readonly<{ revealed: boolean }>) {
               shortcut: shortcut("⌘↵"),
             })
       }
-      side="top"
+      side="bottom"
     >
       <Button
         data-testid="zen-compile-button"
@@ -145,10 +146,14 @@ export function ZenCompileCorner() {
   const near = usePointerNearCorner();
   const compiling = useCompileStore((state) => state.status === "compiling");
   const failed = useCompileFailed();
+  const belowTitleStrip = useTitleStripShown();
   return (
     <div
       data-testid="zen-compile-corner"
-      className="pointer-events-none fixed bottom-4 right-4 z-30 flex items-center gap-2"
+      className={cn(
+        "pointer-events-none fixed right-4 z-30 flex items-center gap-2",
+        belowTitleStrip ? "top-10" : "top-4",
+      )}
     >
       {compiling ? <CompilingPill /> : null}
       {!compiling && failed ? <FailedPill /> : null}

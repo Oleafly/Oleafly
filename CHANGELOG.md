@@ -16,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   leave it with the same shortcut or by pressing Escape twice. It can go full
   screen and open the PDF when you compile with the shortcut. Those two
   options are under Settings > Appearance > Project, and the shortcut can be
-  changed in Settings > Keyboard Shortcuts. A small pill in the bottom right
-  corner shows when a compile is running or has failed.
+  changed in Settings > Keyboard Shortcuts. The Compile button and a small
+  status pill sit in the top right corner, over the PDF when it's open, and
+  the button shows when the pointer comes near.
 - Cite straight from your Zotero library while you write. With Zotero 7 or
   newer open on the same computer, and "Allow other applications on this
   computer to communicate with Zotero" turned on in Zotero's Advanced
