@@ -7,13 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
-- Pressing Compile or Cmd+Enter right after opening a project could do
-  nothing if you had already edited the document. The compile that runs
-  when a project opens gave up because of the edit, and it took your
-  request with it. Your compile now always runs.
-
 ## [0.4.6] - 2026-10-09
 
 ### Added
@@ -171,6 +164,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Pressing Compile or Cmd+Enter right after opening a project could do
+  nothing if you had already edited the document. The compile that runs
+  when a project opens gave up because of the edit, and it took your
+  request with it. Your compile now always runs.
 - Searching a long list, such as the model picker, now shows the results
   from the top. Before, the list kept its old scroll position, so the best
   match could be out of view. Each Settings section also opens at the top
