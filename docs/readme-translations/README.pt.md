@@ -37,7 +37,7 @@ Gratuito para sempre · Código aberto · Sem contas · Sem cadastro · Sem rast
 | Trazendo um trabalho existente para o computador | Um ZIP, repositório do GitHub, arquivo Word, HTML ou Markdown, documento Typst, fonte do arXiv ou importação de PDF |
 | Trabalhando em LaTeX, Typst ou Markdown | O editor de código-fonte, o editor visual, a prévia ao vivo e o seletor de mecanismo |
 | Criando um manuscrito estruturado | O esquema do projeto, a busca entre arquivos, a navegação por referências e a revisão local |
-| Procurando fontes ou citações | Citation Search, uma verificação de suporte do documento ou uma importação de bibliografia de um arquivo ou da sua biblioteca do Zotero |
+| Procurando fontes ou citações | Citation Search, uma verificação de suporte do documento, citações da sua biblioteca do Zotero enquanto você escreve ou uma importação de bibliografia de um arquivo |
 | Trabalhando com IA | O assistente integrado, Research Tasks isoladas, um agente CLI ou MCP |
 | Executando uma pesquisa mais longa | Um worktree separado ou uma cópia preparada, resultados revisados e aplicação seletiva de arquivos |
 | Reutilizando um fluxo de pesquisa | O pacote de skills incluído, comandos de barra ou uma pasta de skills salva |
@@ -45,8 +45,8 @@ Gratuito para sempre · Código aberto · Sem contas · Sem cadastro · Sem rast
 | Preparando uma submissão | Preflight para compilação, referências, privacidade, acessibilidade e verificações do venue |
 | Recuperando ou versionando o trabalho | Checkpoints para recuperação local e Git para histórico intencional e colaboração |
 | Vinculando artigos, dados ou análises | Pastas de pesquisa vinculadas, somente leitura, ao lado do manuscrito |
-| Exportando ou convertendo documentos | PDF e ZIP do código-fonte, além de saídas Word, HTML, Markdown, texto, PPTX ou EPUB compatíveis |
-| Procurando uma cadeia de ferramentas local | Tectonic, Typst e Pandoc incluídos, além de um TeX de sistema opcional ou de uma instalação do TinyTeX gerenciada pelo aplicativo |
+| Exportando ou convertendo documentos | PDF, PNG e ZIP do código-fonte, além de saídas Word, HTML, Markdown, LaTeX, Typst, texto, PPTX ou EPUB compatíveis |
+| Procurando uma cadeia de ferramentas local | Tectonic, Typst e Pandoc incluídos, além de um TeX de sistema opcional ou de uma instalação do TinyTeX gerenciada pelo aplicativo, que você pode tornar o padrão para projetos novos |
 
 <div align="center">
   <img src="../assets/readme/start-work.png" alt="Menu inicial do Oleafly com opções para projetos de pesquisa, importações e modelos" width="100%" />
@@ -73,7 +73,7 @@ Oleafly oferece um espaço de trabalho guiado sem colocar o manuscrito atrás de
 
 O trabalho principal permanece no seu computador: arquivos do projeto, indexação, compilação com um mecanismo local disponível, prévia do PDF, correção ortográfica, correção gramatical, Preflight, histórico do Git, checkpoints e terminal. Essas tarefas não exigem uma conta.
 
-O aplicativo acessa a rede apenas para ações que precisam dela: busca de literatura, metadados DOI, operações do GitHub, IA hospedada, Zotero, servidores MCP que você conecta, consultas de pacotes no Typst Universe e no CTAN e downloads opcionais de mecanismos, pacotes e modelos. Os builds de release também verificam se há uma atualização sempre que o aplicativo é aberto. Modelos locais do Ollama mantêm o tráfego do modelo no seu computador. Quando um desses serviços não está disponível, o aplicativo mostra um estado offline ou indisponível.
+O aplicativo acessa a rede apenas para ações que precisam dela: busca de literatura, metadados DOI, operações do GitHub, IA hospedada, uma conta do zotero.org, servidores MCP que você conecta, consultas de pacotes no Typst Universe e no CTAN e downloads opcionais de mecanismos, pacotes e modelos. Os builds de release também verificam se há uma atualização sempre que o aplicativo é aberto. Modelos locais do Ollama mantêm o tráfego do modelo no seu computador, e citar a partir do aplicativo Zotero no mesmo computador também fica local. Quando um desses serviços não está disponível, o aplicativo mostra um estado offline ou indisponível.
 
 | Fica local por padrão | Só acontece quando você escolhe |
 | --- | --- |
@@ -83,7 +83,8 @@ O aplicativo acessa a rede apenas para ações que precisam dela: busca de liter
 | Compilação Typst quando os pacotes estão em cache ou guardados no projeto | Downloads opcionais de mecanismos, pacotes e modelos |
 | Renderização do PDF e inspeção de texto | Downloads de skills do Domain Shelf |
 | Correção ortográfica, correção gramatical e Preflight | Clientes MCP externos em localhost |
-| Histórico do Git e checkpoints automáticos | Zotero, alphaXiv e outros servidores MCP que você conecta |
+| Histórico do Git e checkpoints automáticos | alphaXiv e outros servidores MCP que você conecta |
+| Citar a partir do aplicativo Zotero neste computador | Citar e importar do Zotero com uma conta do zotero.org |
 
 <p align="center">
   <img src="../assets/readme/provider-boundaries.png" alt="Configurações de provedores do Oleafly com conexões explícitas separadas dos arquivos do projeto" width="100%" />
@@ -104,7 +105,7 @@ A galeria filtra por mecanismo, categoria, disponibilidade offline e compatibili
 
 ### Traga o trabalho que você já tem
 
-Importe um ZIP de projeto ou um repositório do GitHub, converta um DOCX com Pandoc ou use um PDF como ponto de partida para LaTeX editável. As importações viram arquivos de projeto locais, então a fonte original permanece intacta enquanto você inspeciona o resultado.
+Importe um ZIP de projeto ou um repositório do GitHub, converta um DOCX com Pandoc ou use um PDF como ponto de partida para LaTeX editável. As importações viram arquivos de projeto locais, então a fonte original permanece intacta enquanto você inspeciona o resultado. Você também pode abrir uma pasta onde ela já está. O Oleafly guarda as compilações, as configurações e os checkpoints dessa pasta na própria pasta de dados e limita o Git, os agentes externos e o LaTeX de sistema nela até você escolher Confiar nesta pasta.
 
 Para um PDF com camada de texto, a reconstrução é determinística. Ela extrai o texto, o layout, as equações e as figuras que consegue identificar, informa suas limitações e deixa um LaTeX editável em vez de um documento opaco. Um PDF digitalizado pode ser transcrito por um modelo de visão executado localmente. Um provedor com visão pode ajudar a refinar o projeto importado depois.
 
@@ -135,10 +136,11 @@ Em LaTeX, Typst, Markdown e BibTeX, você tem:
 - Completação para labels, chaves de citação e caminhos de arquivos do projeto. Arquivos LaTeX também completam comandos e ambientes, e arquivos Typst completam funções, pacotes e estilos de bibliografia.
 - Diagnósticos ao vivo para sintaxe, erros de compilação, citações indefinidas, labels duplicados e referências quebradas.
 - Um esquema local e global do documento com símbolos, labels, citações, macros e relações entre arquivos.
-- Buscar e substituir, dobramento de código, abas para vários arquivos, modo Vim, contagem de palavras, inserção por comandos de barra e atalhos configuráveis.
+- Buscar e substituir, dobramento de código, abas para vários arquivos, atalhos do Vim ou do Emacs, contagem de palavras, inserção por comandos de barra e atalhos configuráveis.
 - Ajudas estruturais para item, begin, end, ambientes, delimitadores matemáticos, legendas e padrões de inserção.
 - Ajudas para Typst: `$` em pares para matemática, listas que continuam ao pressionar Enter e `/` para abrir trechos.
 - Hovers para números e páginas de labels compilados, prévias de equações e miniaturas para destinos de includegraphics.
+- Quando você renomeia ou move um arquivo, o Oleafly pode atualizar os caminhos que apontam para ele em `\input`, `\includegraphics`, `#include`, `image()` e links do Markdown. Pressione F2 sobre um caminho para renomear o arquivo dele.
 
 ### Insira blocos LaTeX, formatação e símbolos
 
@@ -158,7 +160,7 @@ O editor LaTeX mantém as estruturas comuns a um clique, sem tirar o código-fon
 | Blocos de conteúdo | Citações, figuras, legendas, labels, tabelas visuais e listas com marcadores ou numeradas |
 | Blocos matemáticos | Inserção de equation, align e frações |
 | Inserção assistida por IA | Image to LaTeX para equação, tabela ou texto visível quando há um provedor com visão |
-| Inteligência de código | Ir para a definição, encontrar referências e renomear símbolos no projeto inteiro |
+| Inteligência de código | Ir para a definição, encontrar referências, renomear símbolos no projeto inteiro e atualizar caminhos quando um arquivo é movido |
 | Ferramentas do projeto | Desenhar um diagrama, Pacotes LaTeX, Análise do documento e Configurações do documento |
 
 ### Uma paleta de símbolos LaTeX pesquisável
@@ -210,18 +212,26 @@ O perfil acadêmico evita regras que atrapalham a escrita científica. Cada resu
 
 Pesquise no projeto pelo painel de busca. O índice conecta arquivos, títulos, labels, citações, macros e arquivos incluídos, tornando uma tese grande mais fácil de navegar.
 
+### Temas, tipografia e modo Zen
+
+O editor tem um tema para o modo claro e outro para o modo escuro, e troca junto com o aplicativo. Paper, um tom de branco quente, e One Light são os dois temas claros. Cores do editor, em Configurações > Aparência > Editor, muda qualquer cor de um tema. As cores são agrupadas por função, como títulos, comandos, citações ou matemática, e um exemplo em LaTeX, Typst ou Markdown mostra cada mudança enquanto você a faz. O Oleafly guarda suas mudanças para cada tema, e a exportação e a importação de temas as levam junto.
+
+O aplicativo e o editor podem usar qualquer fonte instalada no seu computador, e o editor também permite ajustar o espaçamento entre letras e a largura e a cor do cursor. Cmd+= e Cmd+- aplicam zoom ao aplicativo inteiro, incluindo o editor e o PDF, e Cmd+0 volta para 100% (Ctrl no Windows e no Linux).
+
+O modo Zen oculta a barra de ferramentas, a barra lateral, o assistente e o terminal para deixar só o editor. Pressione Ctrl+Cmd+Shift+F (Shift+F11 no Windows e no Linux) para ativá-lo e as mesmas teclas ou Escape duas vezes para sair.
+
 ## Compile com LaTeX, Typst ou Markdown
 
-Oleafly mantém a compilação perto do manuscrito e transforma a saída do compilador em diagnósticos ligados à fonte. O mecanismo é escolhido por projeto, e o editor, a prévia, SyncTeX, Preflight e os controles de exportação seguem suas capacidades reais.
+Oleafly mantém a compilação perto do manuscrito e transforma a saída do compilador em diagnósticos ligados à fonte. Cada projeto mantém o próprio mecanismo, e o editor, a prévia, SyncTeX, Preflight e os controles de exportação seguem o que esse mecanismo consegue fazer. Projetos LaTeX novos, importados e convertidos começam no Motor de compilação padrão definido em Configurações > Motores.
 
 | Mecanismo | Para que serve | Detalhes importantes |
 | --- | --- | --- |
 | LaTeX com Tectonic | Compilações LaTeX portáteis e incluídas | Vem com o aplicativo desktop; aceita projetos com vários arquivos, imagens, citações, Biber (exceto no Linux ARM64), SyncTeX, figuras isoladas e builds offline em cache quando os pacotes estão disponíveis |
-| LaTeX com `latexmk` | Projetos que precisam de uma distribuição TeX de sistema completa | Usa MacTeX, TeX Live, MiKTeX ou TinyTeX; aceita `glossaries`, `makeidx` e XeLaTeX ou LuaLaTeX (escolhidos automaticamente); `minted`, PythonTeX e outros modelos com shell escape funcionam depois que você ativa Permitir comandos externos neste computador |
-| Typst | Criação rápida de documentos modernos | Compilador incluído, saída PDF, indexação e citações; sincronização entre fonte e PDF no Typst 0.13 ou mais recente, e compilação offline quando os pacotes estão em cache ou guardados no projeto. Figuras isoladas não estão disponíveis nesta versão |
+| LaTeX com `latexmk` | Projetos que precisam de uma distribuição TeX de sistema completa | Usa MacTeX, TeX Live, MiKTeX ou TinyTeX e aceita `glossaries`, `makeidx` e XeLaTeX ou LuaLaTeX (escolhidos automaticamente). `minted`, PythonTeX e outros pacotes que executam comandos externos funcionam depois que você os permite neste computador |
+| Typst | Criação rápida de documentos modernos | Compilador incluído com saída PDF, EPUB, PNG, SVG e HTML, indexação e citações. A sincronização entre fonte e PDF precisa do Typst 0.13 ou mais recente, e a compilação funciona offline quando os pacotes estão em cache ou guardados no projeto. Figuras isoladas não estão disponíveis nesta versão |
 | Markdown com Pandoc | Fluxos leves de prosa e conversão | Pandoc vem com o aplicativo. Ele converte para LaTeX, que o Tectonic incluído compõe, e exporta Word, HTML, EPUB, PowerPoint, LaTeX, Typst e texto simples |
 
-Projetos LaTeX recebem uma verificação de compatibilidade ao abrir. Se o projeto precisar de algo além do mecanismo incluído, o Oleafly explica a lacuna e indica o mecanismo ou pacote correto. O TeX de sistema executa comandos shell restritos por padrão; shell escape completo é habilitado por projeto e computador.
+Projetos LaTeX recebem uma verificação de compatibilidade ao abrir. Se o projeto precisar de algo além do mecanismo incluído, o Oleafly explica a lacuna e indica o mecanismo ou pacote correto. O TeX de sistema bloqueia comandos externos por padrão. Escolher o LaTeX de sistema para um projeto que precisa deles também os permite. Se uma compilação for bloqueada, um aviso acima do editor oferece Permitir comandos externos. A permissão fica neste computador e nunca é gravada no projeto.
 
 O Biber incluído acompanha a versão biblatex do Tectonic. Os logs distinguem executável Biber ausente, incompatibilidade de versão e erro comum de LaTeX.
 
@@ -231,7 +241,7 @@ O Biber incluído acompanha a versão biblatex do Tectonic. Os logs distinguem e
 
 ## Leia o PDF ao lado da fonte
 
-O visualizador de PDF faz parte do espaço de trabalho e também pode abrir em uma janela separada. Ele mantém o último PDF aceito visível enquanto uma nova compilação roda ou falha, para que uma edição quebrada não apague o último resultado legível.
+O visualizador de PDF faz parte do espaço de trabalho e também pode abrir em uma janela separada. Ele mantém o último PDF aceito visível enquanto uma nova compilação roda ou falha, para que uma edição quebrada não apague o último resultado legível. Uma recompilação mantém sua posição, e as páginas continuam nítidas com zoom alto. Cmd+Option+P (Ctrl+Alt+P) mostra ou oculta o PDF ao lado do editor.
 
 Use rolagem contínua ou um modo de uma ou duas páginas. Ajuste zoom, largura ou altura, gire, inverta as cores, pesquise o texto, siga o esquema, salte para uma página, baixe com um nome escolhido ou veja o log. PDFs criptografados mostram um pedido de senha.
 
@@ -247,7 +257,9 @@ O comando Ir para o PDF leva você da fonte ao ponto correspondente no PDF, e um
 
 Citation Search consulta arXiv, Semantic Scholar, Crossref, PubMed e OpenAlex em um só lugar, e também o Google Scholar quando você adiciona uma chave do Serper. Combina duplicatas, mantém os metadados visíveis e salva referências na biblioteca local de literatura.
 
-Procure também por DOI, ID do arXiv, URL ou título. Importe bibliotecas Zotero RDF, EndNote XML, RIS ou BibTeX, ou conecte o Zotero em Configurações > Integrações e importe a biblioteca inteira pelo painel Referências. O índice oferece completação de chaves, navegação, detalhes ao passar o mouse e diagnósticos para citações indefinidas, chaves duplicadas e metadados incompletos.
+Procure também por DOI, ID do arXiv, URL ou título. Importe bibliotecas Zotero RDF, EndNote XML, RIS ou BibTeX, ou conecte uma conta do zotero.org em Configurações > Integrações e importe a biblioteca inteira pelo painel Referências. O índice oferece completação de chaves, navegação, detalhes ao passar o mouse e diagnósticos para citações indefinidas, chaves duplicadas e metadados incompletos.
+
+Com o Zotero 7 ou mais recente aberto no mesmo computador, digite `@` e parte de um autor, título, ano ou chave para citar de toda a sua biblioteca do Zotero em LaTeX, Typst ou Markdown. O Oleafly escreve a citação do jeito que o documento já cita e adiciona só essa entrada ao `.bib` do projeto. As chaves vêm do Better BibTeX quando ele está instalado. Uma chave citada que falta no `.bib` oferece Adicionar do Zotero, e uma entrada que mudou no Zotero oferece Atualizar do Zotero. Com o Zotero fechado, a busca continua funcionando a partir da última sincronização, ou você pode conectar uma conta do zotero.org.
 
 ### Verifique se faltam fontes no documento
 
@@ -324,7 +336,7 @@ Preflight é um conjunto de verificações de máquina, não um certificado de c
 
 Oleafly trabalha com um repositório Git normal. O painel Controle de versão pode inicializar um repositório, mostrar diffs unificados ou lado a lado, preparar arquivos, descartar alterações, fazer commit, push e pull e mostrar se você está à frente ou atrás de um remoto. Também é possível publicar um projeto no GitHub ou conectar um repositório existente. O Explorador marca os arquivos alterados com as mesmas letras de status e, se o Git não estiver instalado, o Controle de versão explica como obtê-lo.
 
-Projetos novos e abertos recebem um repositório Git, e um projeto novo costuma começar com um único commit chamado Create project. Para desativar isso, desligue Inicializar o Git em todos os projetos nas Configurações. Depois disso, salvar, compilar ou fechar um projeto nunca cria um commit. O Oleafly não esconde a fonte do terminal nem edita o `.gitignore` do projeto só para ocultar os próprios metadados.
+Projetos da sua biblioteca recebem um repositório Git quando você os cria, importa ou abre, e um projeto novo ou importado costuma começar com um único commit chamado Create project. Para desativar isso, desligue Inicializar o Git em todos os projetos nas Configurações. Depois disso, salvar, compilar ou fechar um projeto nunca cria um commit. Uma pasta que você abre no lugar onde ela está nunca recebe um repositório do Oleafly. O Oleafly não esconde a fonte do terminal nem edita o `.gitignore` do projeto só para ocultar os próprios metadados.
 
 <p align="center">
   <img src="../assets/readme/source-control.png" alt="Painel Source Control do Oleafly mostrando alterações preparadas, gráfico de branches e controles de commit" width="100%" />
@@ -444,7 +456,7 @@ A galeria Ferramentas do Oleafly está em beta e vem desligada por padrão. Ativ
 
 ### Pesquise em todo o espaço de trabalho em uma só caixa
 
-Pressione Cmd+Shift+F (Ctrl+Shift+F no Windows e no Linux) para pesquisar projetos e documentos, abrir as Configurações, criar um projeto, trocar o tema ou iniciar uma ferramenta em um só lugar. Digite `/` para restringir a lista a comandos e manter as mãos no teclado enquanto trabalha. A paleta de comandos, em Cmd+K (Ctrl+K), lista apenas comandos.
+Pressione Cmd+Shift+F (Ctrl+Shift+F no Windows e no Linux) para pesquisar projetos e documentos, abrir as Configurações, criar um projeto, trocar o tema ou iniciar uma ferramenta em um só lugar. Digite `/` para restringir a lista a comandos e manter as mãos no teclado enquanto trabalha. A paleta de comandos, em Cmd+K (Ctrl+K), lista apenas comandos, e Cmd+, (Ctrl+,) abre as Configurações.
 
 <p align="center">
   <img src="../assets/readme/command-palette.png" alt="Caixa de busca do Oleafly encontrando projetos, documentos, comandos e ferramentas" width="100%" />
@@ -514,7 +526,7 @@ Pressione Cmd+Shift+F (Ctrl+Shift+F no Windows e no Linux) para pesquisar projet
 
 A área de equações também exporta PNG, SVG, MathML para Word ou HTML KaTeX, e tem um modo Typst. Table to LaTeX gera LaTeX comum, e CSV to Typst e Excel to Typst geram tabelas Typst. Writing Generators preparam um prompt para o assistente; não fornecem um modelo.
 
-A paleta de comandos também oferece recompilar, compilação automática, SyncTeX, exportação PDF, limpar o cache de compilação, contagem de palavras, histórico do Git, checkpoints, terminal, inserção de citações, ajudantes de formatação e de ambientes, controles de tema, modo Vim, correção ortográfica e modo offline. Ela também pode apresentar slides, converter um projeto LaTeX para Typst, explorar pacotes LaTeX e Typst, abrir Análise do documento e Configurações do documento, e fechar todas as abas do editor ou só os arquivos que o assistente abriu.
+A paleta de comandos também oferece recompilar, compilação automática, SyncTeX, exportação PDF, limpar o cache de compilação, contagem de palavras, histórico do Git, checkpoints, terminal, inserção de citações, ajudantes de formatação e de ambientes, controles de tema, modo Vim, modo Zen, zoom do aplicativo, mostrar ou ocultar a prévia do PDF, correção ortográfica e modo offline. Ela também pode apresentar slides, converter um projeto LaTeX para Typst, explorar pacotes LaTeX e Typst, abrir Análise do documento e Configurações do documento, fechar todas as abas do editor ou só os arquivos que o assistente abriu, e adicionar citações ausentes do Zotero, atualizar entradas do `.bib` a partir do Zotero ou sincronizar sua biblioteca do Zotero.
 
 ## Um terminal ao lado do artigo
 
