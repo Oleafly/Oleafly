@@ -47,9 +47,8 @@ export function paintedColorToHex(value: string): string | null {
   context.fillStyle = trimmed;
   if (String(context.fillStyle) === SENTINEL) return null;
   context.fillRect(0, 0, 1, 1);
-  return `#${[...context.getImageData(0, 0, 1, 1).data.slice(0, 3)]
-    .map((channel) => channel.toString(16).padStart(2, "0"))
-    .join("")}`;
+  const pixel = context.getImageData(0, 0, 1, 1).data.subarray(0, 3);
+  return `#${Array.from(pixel, (channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 }
 
 export function readCssVariable(name: string): string {

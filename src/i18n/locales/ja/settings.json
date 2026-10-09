@@ -584,7 +584,7 @@
         "label": "角の丸み"
       },
       "resetAll": "すべてリセット",
-      "resetMode": "このモードをリセット",
+      "resetMode": "リセット",
       "title": "テーマのカスタマイズ",
       "tokenInputDark": "ダークモードの {{token}} トークン",
       "tokenInputLight": "ライトモードの {{token}} トークン",
@@ -699,7 +699,7 @@
         },
         "pick": "{{color}} の色を選択",
         "previewAriaLabel": "プレビューの言語",
-        "reset": "テーマの色を使う",
+        "reset": "リセット",
         "syntaxGroup": "構文",
         "title": "エディタの色",
         "useThemeColor": "{{color}} にテーマの色を使う"

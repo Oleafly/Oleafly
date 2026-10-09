@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useTranslation } from "react-i18next";
 import { EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
-import { Palette, RotateCcw } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import {
   SURFACE_COLORS,
   SYNTAX_ROLES,
@@ -153,7 +153,7 @@ export function EditorColors() {
         key={id}
         data-testid={`settings-editor-color-${id}`}
         data-custom={custom ? "true" : "false"}
-        className="flex min-w-0 items-center gap-2 text-xs"
+        className="flex min-w-0 select-none items-center gap-2 text-xs"
       >
         <ColorPicker
           ariaLabel={t(($) => $.settings.appearance.editor.colors.pick, { color: label })}
@@ -180,12 +180,11 @@ export function EditorColors() {
   return (
     <CollapsibleSection
       id="editor-colors"
-      icon={Palette}
       title={t(($) => $.settings.appearance.editor.colors.title)}
       description={t(($) => $.settings.appearance.editor.colors.description)}
     >
       <fieldset
-        className="flex flex-wrap items-center gap-2"
+        className="flex select-none flex-wrap items-center gap-2"
         aria-label={t(($) => $.settings.appearance.editor.colors.modeAriaLabel)}
       >
         {MODES.map((option) => (
@@ -201,15 +200,11 @@ export function EditorColors() {
             {t(($) => $.settings.appearance.editor.colors.mode[option])}
           </Button>
         ))}
-        <span className="text-xs text-muted-foreground" data-testid="settings-editor-colors-theme">
-          {t(($) => $.settings.appearance.editor.colors.editing, { theme: themeName })}
-        </span>
         {customized ? (
           <Button
             type="button"
             size="xs"
             variant="ghost"
-            className="ml-auto"
             data-testid="settings-editor-colors-reset"
             onClick={() => resetEditorColors(key)}
           >
@@ -217,10 +212,13 @@ export function EditorColors() {
             {t(($) => $.settings.appearance.editor.colors.reset)}
           </Button>
         ) : null}
+        <span className="text-xs text-muted-foreground" data-testid="settings-editor-colors-theme">
+          {t(($) => $.settings.appearance.editor.colors.editing, { theme: themeName })}
+        </span>
       </fieldset>
 
       <fieldset
-        className="flex flex-wrap gap-1"
+        className="flex select-none flex-wrap gap-1"
         aria-label={t(($) => $.settings.appearance.editor.colors.previewAriaLabel)}
       >
         {PREVIEW_ORDER.map((option) => (
@@ -241,11 +239,11 @@ export function EditorColors() {
       <EditorColorPreview sample={sample} theme={theme} style={previewStyle} mode={mode} />
 
       <div className="space-y-2">
-        <h4 className="text-xs font-medium">{t(($) => $.settings.appearance.editor.colors.editorGroup)}</h4>
+        <h4 className="select-none text-xs font-medium">{t(($) => $.settings.appearance.editor.colors.editorGroup)}</h4>
         <div className="grid gap-2 sm:grid-cols-2">{SURFACE_COLORS.map(colorRow)}</div>
       </div>
       <div className="space-y-2">
-        <h4 className="text-xs font-medium">{t(($) => $.settings.appearance.editor.colors.syntaxGroup)}</h4>
+        <h4 className="select-none text-xs font-medium">{t(($) => $.settings.appearance.editor.colors.syntaxGroup)}</h4>
         <div className="grid gap-2 sm:grid-cols-2">{SYNTAX_ROLES.map(colorRow)}</div>
       </div>
     </CollapsibleSection>

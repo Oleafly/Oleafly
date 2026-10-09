@@ -599,7 +599,7 @@
         "label": "Promień narożnika"
       },
       "resetAll": "Zresetuj wszystko",
-      "resetMode": "Zresetuj ten tryb",
+      "resetMode": "Zresetuj",
       "title": "Dostosowanie motywu",
       "tokenInputDark": "Token {{token}} dla trybu ciemnego",
       "tokenInputLight": "Token {{token}} dla trybu jasnego",
@@ -714,7 +714,7 @@
         },
         "pick": "Wybierz kolor: {{color}}",
         "previewAriaLabel": "Język podglądu",
-        "reset": "Użyj kolorów motywu",
+        "reset": "Zresetuj",
         "syntaxGroup": "Składnia",
         "title": "Kolory edytora",
         "useThemeColor": "Użyj koloru motywu: {{color}}"

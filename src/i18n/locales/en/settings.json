@@ -589,7 +589,7 @@
         "label": "Corner radius"
       },
       "resetAll": "Reset all",
-      "resetMode": "Reset this mode",
+      "resetMode": "Reset",
       "title": "Theme customization",
       "tokenInputDark": "{{token}} token for dark mode",
       "tokenInputLight": "{{token}} token for light mode",
@@ -704,7 +704,7 @@
         },
         "pick": "Pick a color for {{color}}",
         "previewAriaLabel": "Preview language",
-        "reset": "Use theme colors",
+        "reset": "Reset",
         "syntaxGroup": "Syntax",
         "title": "Editor colors",
         "useThemeColor": "Use the theme color for {{color}}"

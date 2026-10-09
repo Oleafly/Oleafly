@@ -589,7 +589,7 @@
         "label": "Hoekradius"
       },
       "resetAll": "Alles resetten",
-      "resetMode": "Deze modus resetten",
+      "resetMode": "Resetten",
       "title": "Thema aanpassen",
       "tokenInputDark": "Token {{token}} voor de donkere modus",
       "tokenInputLight": "Token {{token}} voor de lichte modus",
@@ -704,7 +704,7 @@
         },
         "pick": "Kies een kleur voor {{color}}",
         "previewAriaLabel": "Taal van het voorbeeld",
-        "reset": "Themakleuren gebruiken",
+        "reset": "Resetten",
         "syntaxGroup": "Syntaxis",
         "title": "Editorkleuren",
         "useThemeColor": "Themakleur gebruiken voor {{color}}"

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, Cpu, Download, HardDrive, Info, Trash2 } from "lucide-react";
+import { AlertTriangle, Cpu, Download, HardDrive, Info, Trash2 } from "lucide-react";
 import { installPhaseLabel, useEngineStore } from "@/store/engine";
 import {
   sectionDiffersFromDefaults,
@@ -46,6 +46,7 @@ import {
 import { useFilesStore } from "@/store/files";
 import { openTypstUpgrade } from "@/components/typst-upgrade/open";
 import { newerInstalledTypstVersions, projectTypstVersion } from "@/components/typst-upgrade/versions";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 const ENGINE_CHOICES: DefaultLatexEngine[] = ["tectonic", "latexmk"];
 
@@ -110,7 +111,7 @@ function MarkdownEngineTab() {
         <div className="flex items-center gap-2">
           <Cpu className="size-4 text-muted-foreground" />
           <span className="text-sm">{"pandoc"}</span>
-          {pandoc === "ready" && <Check className="size-3.5 text-primary" />}
+          {pandoc === "ready" && <CheckBadge />}
           {pandoc === "missing" && (
             <Button type="button" size="sm" variant="outline" className="ml-auto h-7" onClick={() => void install()}>
               {t(($) => $.settings.engine.markdown.repair)}
@@ -133,7 +134,7 @@ function MarkdownEngineTab() {
         <div className="flex items-center gap-2">
           <Cpu className="size-4 text-muted-foreground" />
           <span className="text-sm">{t(($) => $.settings.engine.choices.tectonic.name)}</span>
-          <Check className="size-3.5 text-primary" />
+          <CheckBadge />
         </div>
         <p className="mt-1 text-[0.6875rem] text-muted-foreground">
           {t(($) => $.settings.engine.markdown.tectonicDetail)}
@@ -407,7 +408,7 @@ function TypstEngineTab() {
         <div className="flex items-center gap-2">
           <Cpu className="size-4 shrink-0 text-muted-foreground" />
           <span className="text-sm">{t(($) => $.settings.engine.typst.name)}</span>
-          {bundledIsDefault && <Check className="size-3.5 text-primary" />}
+          {bundledIsDefault && <CheckBadge />}
         </div>
         <p className="mt-1 text-[0.6875rem] text-muted-foreground">
           {t(($) => $.settings.engine.typst.detail)}
@@ -549,7 +550,7 @@ export function EngineSection() {
               <div className="flex items-center gap-2">
                 <Cpu className="size-4 text-muted-foreground" />
                 <span className="text-sm">{t(($) => $.settings.engine.choices[choiceId].name)}</span>
-                {selected && <Check className="size-3.5 text-primary" />}
+                {selected && <CheckBadge />}
                 {missing && (
                   <Badge variant="warning" size="sm" className="ml-auto gap-1">
                     <AlertTriangle className="size-2.5" /> {t(($) => $.settings.engine.latexmkMissing)}

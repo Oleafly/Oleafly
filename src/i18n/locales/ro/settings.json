@@ -594,7 +594,7 @@
         "label": "Raza colțurilor"
       },
       "resetAll": "Resetează tot",
-      "resetMode": "Resetează acest mod",
+      "resetMode": "Resetează",
       "title": "Personalizarea temei",
       "tokenInputDark": "Elementul {{token}} pentru modul întunecat",
       "tokenInputLight": "Elementul {{token}} pentru modul deschis",
@@ -709,7 +709,7 @@
         },
         "pick": "Alege o culoare pentru {{color}}",
         "previewAriaLabel": "Limbajul previzualizării",
-        "reset": "Folosește culorile temei",
+        "reset": "Resetează",
         "syntaxGroup": "Sintaxă",
         "title": "Culorile editorului",
         "useThemeColor": "Folosește culoarea temei pentru {{color}}"

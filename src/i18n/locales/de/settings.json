@@ -589,7 +589,7 @@
         "label": "Eckenradius"
       },
       "resetAll": "Alles zurücksetzen",
-      "resetMode": "Diesen Modus zurücksetzen",
+      "resetMode": "Zurücksetzen",
       "title": "Designanpassung",
       "tokenInputDark": "Token {{token}} für den dunklen Modus",
       "tokenInputLight": "Token {{token}} für den hellen Modus",
@@ -704,7 +704,7 @@
         },
         "pick": "Farbe für {{color}} wählen",
         "previewAriaLabel": "Sprache der Vorschau",
-        "reset": "Farben des Designs verwenden",
+        "reset": "Zurücksetzen",
         "syntaxGroup": "Syntax",
         "title": "Farben des Editors",
         "useThemeColor": "Farbe des Designs für {{color}} verwenden"

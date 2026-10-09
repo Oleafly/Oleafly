@@ -584,7 +584,7 @@
         "label": "모서리 반경"
       },
       "resetAll": "모두 초기화",
-      "resetMode": "이 모드 초기화",
+      "resetMode": "초기화",
       "title": "테마 사용자 지정",
       "tokenInputDark": "어두운 모드의 {{token}} 토큰",
       "tokenInputLight": "밝은 모드의 {{token}} 토큰",
@@ -699,7 +699,7 @@
         },
         "pick": "{{color}} 색상 고르기",
         "previewAriaLabel": "미리보기 언어",
-        "reset": "테마 색상 사용",
+        "reset": "초기화",
         "syntaxGroup": "구문",
         "title": "편집기 색상",
         "useThemeColor": "{{color}}에 테마 색상 사용"

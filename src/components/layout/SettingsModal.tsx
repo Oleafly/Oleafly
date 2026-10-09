@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
@@ -333,6 +333,9 @@ export function SettingsModal() {
     useSettingsStore.getState().setSettingsInitialSection("general");
   };
   const settingsBodyRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (settingsBodyRef.current) settingsBodyRef.current.scrollTop = 0;
+  }, [section]);
   const sectionListId = useId();
   const settingsTourActive = useTourStore((s) => s.activeTourId === "settings");
   const search = useSettingsSearch({
@@ -729,6 +732,7 @@ export function SettingsModal() {
   const renderSettingsBody = () => (
     <div
       ref={settingsBodyRef}
+      data-testid="settings-body"
       className={cn("flex-1 select-text overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
     >
       {section === "appearance" && <AppearanceSection />}
@@ -1227,7 +1231,7 @@ export function SettingsModal() {
         onClose={closeSettings}
         closeLabel={t(($) => $.shell.settings.close)}
         label={t(($) => $.shell.settings.title)}
-        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden"
+        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(1040px,94vw)] min-w-[min(640px,94vw)] overflow-hidden"
       >
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}

@@ -594,7 +594,7 @@
         "label": "Raggio degli angoli"
       },
       "resetAll": "Reimposta tutto",
-      "resetMode": "Reimposta questa modalità",
+      "resetMode": "Reimposta",
       "title": "Personalizzazione del tema",
       "tokenInputDark": "Token {{token}} per la modalità scura",
       "tokenInputLight": "Token {{token}} per la modalità chiara",
@@ -709,7 +709,7 @@
         },
         "pick": "Scegli un colore per {{color}}",
         "previewAriaLabel": "Linguaggio dell'anteprima",
-        "reset": "Usa i colori del tema",
+        "reset": "Reimposta",
         "syntaxGroup": "Sintassi",
         "title": "Colori dell'editor",
         "useThemeColor": "Usa il colore del tema per {{color}}"

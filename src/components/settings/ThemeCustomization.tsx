@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Palette, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useTheme, type Theme } from "@/lib/theme";
 import { useSettingsStore } from "@/store/settings";
 import {
   MAX_THEME_IMPORT_BYTES,
+  THEME_CUSTOMIZATION_CHANGED_EVENT,
   THEME_TOKEN_NAMES,
   accentTokenDefaults,
   applyThemeCustomization,
@@ -86,6 +87,18 @@ export function ThemeCustomization() {
   const [message, setMessage] = useState<string | null>(null);
   const importInput = useRef<HTMLInputElement>(null);
   const tokens = customization[editMode];
+
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      if (!(event instanceof CustomEvent) || event.detail?.reset !== true) return;
+      setCustomization(readThemeCustomization());
+      setTokenDrafts({ light: {}, dark: {} });
+      setRadiusDraft(null);
+      setCustomCssDraft(null);
+    };
+    window.addEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, onChange);
+  }, []);
 
   const save = (next: ThemeCustomizationState, notice?: string) => {
     const saved = writeThemeCustomization(next);

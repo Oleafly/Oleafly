@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Check,
   CircleMinus,
   CirclePlus,
   CircleSlash2,
@@ -41,6 +40,7 @@ import {
   type QuerySuggestions,
 } from "@/lib/query-suggestions";
 import { cn } from "@/lib/utils";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 const MENU_WIDTH = 288;
 const UNFINISHED = new Set<Diagnostic["code"]>(["unclosed-group", "dangling-operator", "unterminated-quote"]);
@@ -218,7 +218,7 @@ function SuggestionOption({ suggestion, id, active, divided, onHover, onChoose }
       </span>
       <span className="min-w-0 flex-1 truncate">{optionLabel(t, suggestion)}</span>
       {suggestion.kind === "negate" && suggestion.negated ? (
-        <Check aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+        <CheckBadge />
       ) : null}
     </button>
   );

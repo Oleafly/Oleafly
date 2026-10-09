@@ -594,7 +594,7 @@
         "label": "Rayon des coins"
       },
       "resetAll": "Tout réinitialiser",
-      "resetMode": "Réinitialiser ce mode",
+      "resetMode": "Réinitialiser",
       "title": "Personnalisation du thème",
       "tokenInputDark": "Jeton {{token}} du mode sombre",
       "tokenInputLight": "Jeton {{token}} du mode clair",
@@ -709,7 +709,7 @@
         },
         "pick": "Choisir une couleur pour {{color}}",
         "previewAriaLabel": "Langage de l'aperçu",
-        "reset": "Utiliser les couleurs du thème",
+        "reset": "Réinitialiser",
         "syntaxGroup": "Syntaxe",
         "title": "Couleurs de l'éditeur",
         "useThemeColor": "Utiliser la couleur du thème pour {{color}}"

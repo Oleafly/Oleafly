@@ -589,7 +589,7 @@
         "label": "Kulman pyöristys"
       },
       "resetAll": "Palauta kaikki",
-      "resetMode": "Palauta tämä tila",
+      "resetMode": "Palauta",
       "title": "Teeman mukautus",
       "tokenInputDark": "Tunnus {{token}} tummaan tilaan",
       "tokenInputLight": "Tunnus {{token}} vaaleaan tilaan",
@@ -704,7 +704,7 @@
         },
         "pick": "Valitse väri: {{color}}",
         "previewAriaLabel": "Esikatselun kieli",
-        "reset": "Käytä teeman värejä",
+        "reset": "Palauta",
         "syntaxGroup": "Syntaksi",
         "title": "Editorin värit",
         "useThemeColor": "Käytä teeman väriä: {{color}}"

@@ -594,7 +594,7 @@
         "label": "Raio dos cantos"
       },
       "resetAll": "Redefinir tudo",
-      "resetMode": "Redefinir este modo",
+      "resetMode": "Redefinir",
       "title": "Personalização do tema",
       "tokenInputDark": "Token {{token}} do modo escuro",
       "tokenInputLight": "Token {{token}} do modo claro",
@@ -709,7 +709,7 @@
         },
         "pick": "Escolher uma cor para {{color}}",
         "previewAriaLabel": "Linguagem da prévia",
-        "reset": "Usar as cores do tema",
+        "reset": "Redefinir",
         "syntaxGroup": "Sintaxe",
         "title": "Cores do editor",
         "useThemeColor": "Usar a cor do tema para {{color}}"

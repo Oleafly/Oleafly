@@ -589,7 +589,7 @@
         "label": "Köşe yarıçapı"
       },
       "resetAll": "Tümünü sıfırla",
-      "resetMode": "Bu kipi sıfırla",
+      "resetMode": "Sıfırla",
       "title": "Tema özelleştirme",
       "tokenInputDark": "Koyu kip için {{token}} belirteci",
       "tokenInputLight": "Açık kip için {{token}} belirteci",
@@ -704,7 +704,7 @@
         },
         "pick": "{{color}} için renk seç",
         "previewAriaLabel": "Önizleme dili",
-        "reset": "Tema renklerini kullan",
+        "reset": "Sıfırla",
         "syntaxGroup": "Sözdizimi",
         "title": "Düzenleyici renkleri",
         "useThemeColor": "{{color}} için tema rengini kullan"

@@ -584,7 +584,7 @@
         "label": "圓角半徑"
       },
       "resetAll": "全部重設",
-      "resetMode": "重設此模式",
+      "resetMode": "重設",
       "title": "主題自訂",
       "tokenInputDark": "深色模式的 {{token}} 色彩變數",
       "tokenInputLight": "淺色模式的 {{token}} 色彩變數",
@@ -699,7 +699,7 @@
         },
         "pick": "為 {{color}} 選擇顏色",
         "previewAriaLabel": "預覽語言",
-        "reset": "使用主題顏色",
+        "reset": "重設",
         "syntaxGroup": "語法",
         "title": "編輯器顏色",
         "useThemeColor": "為 {{color}} 使用主題顏色"

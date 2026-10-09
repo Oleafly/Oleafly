@@ -88,6 +88,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Settings window is wider, and it narrows with the app window down to a
+  minimum. The accent colors sit beside their label when there's room.
+  Color pickers are smaller, the size of a switch's knob, and the terminal
+  colors use the same picker. Selected items in menus, lists and settings
+  show a filled check in the accent color. Radio choices keep their dot.
+- The Export menu shows a different icon for each file type: ZIP, PDF, PNG,
+  Word, HTML, Markdown, Typst, LaTeX and plain text.
 - Syntax colors now follow those roles, so a few things look different. In
   LaTeX, section commands and their titles use the heading color, citation
   keys and environment names take the color of their command, and math is
@@ -129,6 +136,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reset to defaults in Settings > Appearance now also clears Theme
+  customization, so a primary color set there no longer survives the reset.
+- With a zotero.org account connected, Settings no longer shows the steps for
+  finding an API key.
 - The default compile engine in Settings > Engines never applied. Projects
   from the New project dialog, imports (ZIP, folder, arXiv and GitHub) and
   converted documents all started on the built-in Tectonic engine, which

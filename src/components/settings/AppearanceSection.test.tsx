@@ -21,6 +21,7 @@ const fill = (template: string, values: Record<string, string>) =>
 const themeMocks = vi.hoisted(() => ({
   preference: "dark" as "system" | "light" | "dark",
   setPreference: vi.fn(),
+  applyTheme: vi.fn(),
 }));
 const browserCookieMocks = vi.hoisted(() => ({
   detectBrowserCookieSources: vi.fn(),
@@ -36,6 +37,8 @@ function deferred<T>() {
 }
 
 vi.mock("@/lib/theme", () => ({
+  applyTheme: themeMocks.applyTheme,
+  currentTheme: () => "dark",
   useTheme: () => ({
     preference: themeMocks.preference,
     theme: themeMocks.preference === "light" ? "light" : "dark",
@@ -49,6 +52,12 @@ vi.mock("@/lib/tauri", () => ({
   importBrowserCookies: browserCookieMocks.importBrowserCookies,
 }));
 
+import {
+  emptyThemeCustomization,
+  readThemeCustomization,
+  resetThemeCustomization,
+  writeThemeCustomization,
+} from "@/lib/theme-customization";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutsSection } from "./ShortcutsSection";
 
@@ -491,6 +500,7 @@ describe("Appearance settings tabs", () => {
     settings.setDockPlacement("right");
     settings.setLatexTools(true);
     themeMocks.preference = "light";
+    writeThemeCustomization({ ...emptyThemeCustomization(), dark: { primary: "#00c7fc" } });
 
     render(<AppearanceSection />);
 
@@ -512,7 +522,28 @@ describe("Appearance settings tabs", () => {
     expect(localStorage.getItem("oleafly.dockPlacement")).toBe("left");
     expect(localStorage.getItem("oleafly.latexTools")).toBe("1");
     expect(themeMocks.setPreference).toHaveBeenCalledWith("system");
+    expect(readThemeCustomization()).toEqual(emptyThemeCustomization());
+    expect(themeMocks.applyTheme).toHaveBeenCalledWith("dark");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("marks Reset while the app theme is customized", () => {
+    themeMocks.preference = "system";
+    useSettingsStore.getState().resetAppearancePreferences();
+    resetThemeCustomization();
+    render(<AppearanceSection />);
+    const reset = screen.getByRole("button", { name: "Reset to defaults" });
+    expect(reset.querySelector('[data-testid="reset-changed-dot"]')).toBeNull();
+
+    act(() => {
+      writeThemeCustomization({ ...emptyThemeCustomization(), radius: "8px" });
+    });
+    expect(reset.querySelector('[data-testid="reset-changed-dot"]')).not.toBeNull();
+
+    act(() => {
+      resetThemeCustomization();
+    });
+    expect(reset.querySelector('[data-testid="reset-changed-dot"]')).toBeNull();
   });
 
   it("marks Reset while the theme is not the system default", () => {

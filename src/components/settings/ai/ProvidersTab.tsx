@@ -1,7 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
-  Check,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -30,6 +29,7 @@ import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { ModelManager, ModelMetadataStatusLine } from "./ModelManager";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 export type ProviderStatus = "idle" | "validating" | "valid" | "error";
 
@@ -49,7 +49,7 @@ function ProviderStatusBadge({
     if (ollamaStatus === "ok") {
       return (
         <Badge variant="success" size="sm" className="gap-1">
-          <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.badge.running)}
+          <CheckBadge className="size-3.5" /> {t(($) => $.settings.ai.providers.badge.running)}
         </Badge>
       );
     }
@@ -63,7 +63,7 @@ function ProviderStatusBadge({
   if (!isConfigured) return null;
   return (
     <Badge variant="success" size="sm" className="gap-1">
-      <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.badge.connected)}
+      <CheckBadge className="size-3.5" /> {t(($) => $.settings.ai.providers.badge.connected)}
     </Badge>
   );
 }
@@ -135,7 +135,7 @@ function OllamaModelChoice({
       </Select>
       {active && (
         <span className="inline-flex items-center gap-1 text-[0.625rem] font-medium leading-none text-primary">
-          <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.ollama.active)}
+          <CheckBadge className="size-3.5" /> {t(($) => $.settings.ai.providers.ollama.active)}
         </span>
       )}
     </div>

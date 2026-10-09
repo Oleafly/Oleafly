@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AlertTriangle, Check, X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { LATEX_PACKAGES, type TaggingStatus } from "@/lib/latex-packages";
 import { tlmgrSearch, type TexPackage } from "@/lib/tauri";
 import { packageErrorMessage, useEngineStore } from "@/store/engine";
@@ -11,6 +11,7 @@ import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 const TAG_BADGE: Record<TaggingStatus, { tone: "caution" | "breaks"; variant: BadgeVariant } | null> = {
   ok: null,
@@ -183,7 +184,7 @@ export function TexPackagesSection() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs">{p.name}</span>
-                  {on && <Check className="size-3 text-emerald-500" />}
+                  {on && <CheckBadge className="size-3.5" />}
                   {tree && (
                     <Badge variant="muted" size="sm">
                       {tree}

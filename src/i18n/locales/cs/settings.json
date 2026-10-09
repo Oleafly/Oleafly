@@ -599,7 +599,7 @@
         "label": "Zaoblení rohů"
       },
       "resetAll": "Obnovit vše",
-      "resetMode": "Obnovit tento režim",
+      "resetMode": "Obnovit",
       "title": "Přizpůsobení motivu",
       "tokenInputDark": "Token {{token}} pro tmavý režim",
       "tokenInputLight": "Token {{token}} pro světlý režim",
@@ -714,7 +714,7 @@
         },
         "pick": "Vybrat barvu: {{color}}",
         "previewAriaLabel": "Jazyk náhledu",
-        "reset": "Použít barvy motivu",
+        "reset": "Obnovit",
         "syntaxGroup": "Syntaxe",
         "title": "Barvy editoru",
         "useThemeColor": "Použít barvu motivu: {{color}}"

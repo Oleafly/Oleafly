@@ -584,7 +584,7 @@
         "label": "圆角半径"
       },
       "resetAll": "全部重置",
-      "resetMode": "重置此模式",
+      "resetMode": "重置",
       "title": "主题自定义",
       "tokenInputDark": "深色模式的 {{token}} 令牌。",
       "tokenInputLight": "浅色模式的 {{token}} 令牌。",
@@ -699,7 +699,7 @@
         },
         "pick": "为 {{color}} 选择颜色",
         "previewAriaLabel": "预览语言",
-        "reset": "使用主题颜色",
+        "reset": "重置",
         "syntaxGroup": "语法",
         "title": "编辑器颜色",
         "useThemeColor": "为 {{color}} 使用主题颜色"

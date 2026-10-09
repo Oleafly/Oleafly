@@ -594,7 +594,7 @@
         "label": "Radio de las esquinas"
       },
       "resetAll": "Restablecer todo",
-      "resetMode": "Restablecer este modo",
+      "resetMode": "Restablecer",
       "title": "Personalización del tema",
       "tokenInputDark": "Token {{token}} del modo oscuro",
       "tokenInputLight": "Token {{token}} del modo claro",
@@ -709,7 +709,7 @@
         },
         "pick": "Elegir un color para {{color}}",
         "previewAriaLabel": "Lenguaje de la vista previa",
-        "reset": "Usar los colores del tema",
+        "reset": "Restablecer",
         "syntaxGroup": "Sintaxis",
         "title": "Colores del editor",
         "useThemeColor": "Usar el color del tema para {{color}}"

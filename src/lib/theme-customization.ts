@@ -284,17 +284,35 @@ export function readThemeCustomization(storage: Storage = window.localStorage): 
   }
 }
 
+export const THEME_CUSTOMIZATION_CHANGED_EVENT = "oleafly:theme-customization-changed";
+
+function announceThemeCustomization(reset: boolean): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new window.CustomEvent(THEME_CUSTOMIZATION_CHANGED_EVENT, { detail: { reset } }));
+}
+
+export function hasThemeCustomization(customization: ThemeCustomization = readThemeCustomization()): boolean {
+  return (
+    Object.keys(customization.light).length > 0 ||
+    Object.keys(customization.dark).length > 0 ||
+    customization.radius !== null ||
+    customization.customCss !== null
+  );
+}
+
 export function writeThemeCustomization(
   customization: ThemeCustomization,
   storage: Storage = window.localStorage,
 ): ThemeCustomization {
   const valid = validateThemeCustomization(customization);
   storage.setItem(THEME_CUSTOMIZATION_STORAGE_KEY, JSON.stringify(valid));
+  announceThemeCustomization(false);
   return valid;
 }
 
 export function resetThemeCustomization(storage: Storage = window.localStorage): ThemeCustomization {
   storage.removeItem(THEME_CUSTOMIZATION_STORAGE_KEY);
+  announceThemeCustomization(true);
   return emptyThemeCustomization();
 }
 

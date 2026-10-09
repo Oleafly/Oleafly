@@ -10,15 +10,12 @@ import {
   ChevronRight,
   Download,
   FileText,
-  FileArchive,
   Focus,
-  FileType,
   GitFork,
   History,
   Presentation,
   LayoutGrid,
   ImageDown,
-  ImagePlay,
   SquarePen,
   X,
 } from "lucide-react";
@@ -74,6 +71,7 @@ import { TOOLBAR_OVERFLOW, useToolbarLayout } from "@/lib/use-toolbar-layout";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
+import { FileTypeIcon, fileTypeIconKind } from "@/components/icons/FileTypeIcon";
 
 type DocFormat = DocumentExportFormat;
 
@@ -445,24 +443,24 @@ export function TopToolbar() {
 
   const exportMenuItems = <>
     <DropdownMenuItem onSelect={() => void doDownloadZip()}>
-      <FileArchive className="size-4 text-muted-foreground" />
+      <FileTypeIcon kind="zip" className="size-4 text-muted-foreground" />
       {t(($) => $.shell.toolbar.exportSourceZip)}
     </DropdownMenuItem>
     {engine.capabilities.produces_pdf && <DropdownMenuItem onSelect={() => void doDownloadPdf()} disabled={!pdfBytes}>
-      <FileText className="size-4 text-muted-foreground" />
+      <FileTypeIcon kind="pdf" className="size-4 text-muted-foreground" />
       {isSingleFigureProject
         ? t(($) => $.shell.toolbar.exportPdfVector)
         : t(($) => $.shell.toolbar.exportPdf)}
     </DropdownMenuItem>}
     {isSingleFigureProject && (
       <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
-        <ImagePlay className="size-4 text-muted-foreground" />
+        <FileTypeIcon kind="png" className="size-4 text-muted-foreground" />
         {t(($) => $.shell.toolbar.exportPngRaster)}
       </DropdownMenuItem>
     )}
     {!isSingleFigureProject && engine.capabilities.produces_pdf && (
       <DropdownMenuItem onSelect={() => void doExportPng()} disabled={!pdfBytes}>
-        <ImagePlay className="size-4 text-muted-foreground" />
+        <FileTypeIcon kind="png" className="size-4 text-muted-foreground" />
         {t(($) => $.shell.toolbar.exportPagePng)}
       </DropdownMenuItem>
     )}
@@ -496,12 +494,12 @@ export function TopToolbar() {
               data-testid={`export-route-${route.id}`}
               onSelect={() => void doExportFormat(formatForTarget(route.target))}
             >
-              <FileType className="size-4 text-muted-foreground" />
+              <FileTypeIcon kind={fileTypeIconKind(route.target)} className="size-4 text-muted-foreground" />
               {t(($) => $.shell.toolbar.exportAs, { format: route.label })}
             </DropdownMenuItem>
           ))}
         {engine.capabilities.conversion_exports.includes("txt") && <DropdownMenuItem onSelect={() => void doExportFormat("txt")}>
-          <FileType className="size-4 text-muted-foreground" />
+          <FileTypeIcon kind="txt" className="size-4 text-muted-foreground" />
           {t(($) => $.shell.toolbar.exportTxt)}
         </DropdownMenuItem>}
       </>

@@ -589,7 +589,7 @@
         "label": "Hörnradie"
       },
       "resetAll": "Återställ allt",
-      "resetMode": "Återställ det här läget",
+      "resetMode": "Återställ",
       "title": "Temaanpassning",
       "tokenInputDark": "Värdet {{token}} för mörkt läge",
       "tokenInputLight": "Värdet {{token}} för ljust läge",
@@ -704,7 +704,7 @@
         },
         "pick": "Välj en färg för {{color}}",
         "previewAriaLabel": "Förhandsvisningens språk",
-        "reset": "Använd temats färger",
+        "reset": "Återställ",
         "syntaxGroup": "Syntax",
         "title": "Redigerarens färger",
         "useThemeColor": "Använd temats färg för {{color}}"

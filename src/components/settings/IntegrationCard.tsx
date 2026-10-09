@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import { AlertCircle, Check, ExternalLink } from "lucide-react";
+import { AlertCircle, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 export function integrationLink(href: string) {
   return (
@@ -17,7 +18,7 @@ export function integrationLink(href: string) {
 export function ConnectedBadge({ label }: Readonly<{ label: string }>) {
   return (
     <Badge variant="success" size="sm" className="gap-1">
-      <Check aria-hidden className="size-3" />
+      <CheckBadge className="size-3.5" />
       {label}
     </Badge>
   );
@@ -48,7 +49,7 @@ export function IntegrationConnected({
       data-testid={testId}
       className="flex items-start gap-1.5 text-xs text-emerald-700 dark:text-emerald-300"
     >
-      <Check aria-hidden className="mt-px size-3.5 shrink-0" />
+      <CheckBadge className="mt-px" />
       {children}
     </p>
   );

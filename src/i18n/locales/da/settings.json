@@ -589,7 +589,7 @@
         "label": "Hjørneradius"
       },
       "resetAll": "Nulstil alle",
-      "resetMode": "Nulstil denne tilstand",
+      "resetMode": "Nulstil",
       "title": "Tematilpasning",
       "tokenInputDark": "Token {{token}} til mørk tilstand",
       "tokenInputLight": "Token {{token}} til lys tilstand",
@@ -704,7 +704,7 @@
         },
         "pick": "Vælg en farve til {{color}}",
         "previewAriaLabel": "Forhåndsvisningens sprog",
-        "reset": "Brug temaets farver",
+        "reset": "Nulstil",
         "syntaxGroup": "Syntaks",
         "title": "Editorens farver",
         "useThemeColor": "Brug temaets farve til {{color}}"

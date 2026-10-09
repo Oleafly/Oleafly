@@ -214,17 +214,19 @@ function AccountPanel({ t }: Readonly<{ t: Translate }>) {
         <div className="space-y-1">
           <h4 className="text-xs font-medium">{t(($) => $.settings.integrations.zotero.account.heading)}</h4>
           <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.zotero.account.description)}</p>
-          <p className="text-xs text-muted-foreground">
-            <Trans
-              t={t}
-              ns="settings"
-              i18nKey={($) => $.settings.integrations.zotero.apiKeyHint}
-              components={{
-                siteLink: integrationLink("https://www.zotero.org"),
-                keyLink: integrationLink("https://www.zotero.org/settings/security#applications"),
-              }}
-            />
-          </p>
+          {connected ? null : (
+            <p className="text-xs text-muted-foreground" data-testid="zotero-api-key-hint">
+              <Trans
+                t={t}
+                ns="settings"
+                i18nKey={($) => $.settings.integrations.zotero.apiKeyHint}
+                components={{
+                  siteLink: integrationLink("https://www.zotero.org"),
+                  keyLink: integrationLink("https://www.zotero.org/settings/security#applications"),
+                }}
+              />
+            </p>
+          )}
         </div>
         {connected && (
           <Button variant="outline" size="sm" onClick={() => void disconnect()} disabled={loading}>

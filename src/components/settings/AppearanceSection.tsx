@@ -19,7 +19,12 @@ import { i18n } from "@/i18n";
 import { cursorThemeFor, editorThemeCursorColor } from "@/lib/editor-cursor-color";
 import { formatNumber } from "@/lib/intl";
 import { isEditorThemeId, type EditorThemeId } from "@/lib/editor-themes";
-import { useTheme, type Theme } from "@/lib/theme";
+import { applyTheme, currentTheme, useTheme, type Theme } from "@/lib/theme";
+import {
+  THEME_CUSTOMIZATION_CHANGED_EVENT,
+  hasThemeCustomization,
+  resetThemeCustomization,
+} from "@/lib/theme-customization";
 import { cn } from "@/lib/utils";
 import {
   ACCENTS,
@@ -218,40 +223,40 @@ function AppAppearanceTab() {
         </div>
       </div>
 
-      <div className="rounded-lg border bg-card p-3">
-        <div className="text-sm font-medium">
-          {t(($) => $.settings.appearance.app.accent.label)}
-        </div>
-        <div className="mb-2 text-xs text-muted-foreground">
-          {t(($) => $.settings.appearance.app.accent.description)}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {ACCENTS.map((accent) => {
-            const active = accentColor === accent.color;
-            return (
-              <button
-                type="button"
-                key={accent.id}
-                title={accent.name}
-                aria-label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, {
-                  name: accent.name,
-                })}
-                aria-pressed={active}
-                onClick={() => setAccentColor(accent.color)}
-                className={cn(
-                  "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
-                  active
-                    ? "border-foreground"
-                    : "border-border",
-                )}
-                style={{ backgroundColor: accent.color }}
-              >
-                {active ? <Check className="size-3.5 text-white drop-shadow" /> : null}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <SettingsRow
+        testId="settings-row-accent"
+        className="flex-wrap gap-y-2"
+        label={t(($) => $.settings.appearance.app.accent.label)}
+        description={t(($) => $.settings.appearance.app.accent.description)}
+        control={
+          <div className="flex flex-wrap items-center gap-2">
+            {ACCENTS.map((accent) => {
+              const active = accentColor === accent.color;
+              return (
+                <button
+                  type="button"
+                  key={accent.id}
+                  title={accent.name}
+                  aria-label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, {
+                    name: accent.name,
+                  })}
+                  aria-pressed={active}
+                  onClick={() => setAccentColor(accent.color)}
+                  className={cn(
+                    "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
+                    active
+                      ? "border-foreground"
+                      : "border-border",
+                  )}
+                  style={{ backgroundColor: accent.color }}
+                >
+                  {active ? <Check className="size-3.5 text-white drop-shadow" /> : null}
+                </button>
+              );
+            })}
+          </div>
+        }
+      />
 
       <div
         data-testid="settings-row-appearance"
@@ -328,6 +333,16 @@ function AppAppearanceTab() {
 }
 
 const THEME_MODES: readonly Theme[] = ["light", "dark"];
+
+function useThemeCustomized(): boolean {
+  const [customized, setCustomized] = useState(() => hasThemeCustomization());
+  useEffect(() => {
+    const update = () => setCustomized(hasThemeCustomization());
+    window.addEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, update);
+    return () => window.removeEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, update);
+  }, []);
+  return customized;
+}
 
 function EditorCursorColorRow() {
   const { t } = useTranslation(["settings"]);
@@ -1231,44 +1246,45 @@ function TerminalAppearanceTab() {
             ? t(($) => $.settings.appearance.terminal.colors.followingAppTheme)
             : t(($) => $.settings.appearance.terminal.colors.description)}
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.background)}</span>
-            <input
-              type="color"
-              aria-label={t(
-                ($) => $.settings.appearance.terminal.colors.backgroundAriaLabel,
-              )}
-              disabled={followsAppTheme}
-              value={terminalBackground}
-              onChange={(event) => setTerminalBackground(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-            />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.foreground)}</span>
-            <input
-              type="color"
-              aria-label={t(
-                ($) => $.settings.appearance.terminal.colors.foregroundAriaLabel,
-              )}
-              disabled={followsAppTheme}
-              value={terminalForeground}
-              onChange={(event) => setTerminalForeground(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-            />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs">
-            <span>{t(($) => $.settings.appearance.terminal.colors.cursor)}</span>
-            <input
-              type="color"
-              aria-label={t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel)}
-              disabled={followsAppTheme}
-              value={terminalCursorColor}
-              onChange={(event) => setTerminalCursorColor(event.target.value)}
-              className="size-8 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-            />
-          </label>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              id: "background",
+              label: t(($) => $.settings.appearance.terminal.colors.background),
+              ariaLabel: t(($) => $.settings.appearance.terminal.colors.backgroundAriaLabel),
+              value: terminalBackground,
+              onChange: setTerminalBackground,
+            },
+            {
+              id: "foreground",
+              label: t(($) => $.settings.appearance.terminal.colors.foreground),
+              ariaLabel: t(($) => $.settings.appearance.terminal.colors.foregroundAriaLabel),
+              value: terminalForeground,
+              onChange: setTerminalForeground,
+            },
+            {
+              id: "cursor",
+              label: t(($) => $.settings.appearance.terminal.colors.cursor),
+              ariaLabel: t(($) => $.settings.appearance.terminal.colors.cursorAriaLabel),
+              value: terminalCursorColor,
+              onChange: setTerminalCursorColor,
+            },
+          ].map((field) => (
+            <div key={field.id} className="flex items-center gap-2 text-xs">
+              <DisabledHint
+                disabled={followsAppTheme}
+                hint={t(($) => $.settings.appearance.terminal.colors.followingAppTheme)}
+              >
+                <ColorPicker
+                  ariaLabel={field.ariaLabel}
+                  disabled={followsAppTheme}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </DisabledHint>
+              <span>{field.label}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -1559,6 +1575,7 @@ export function AppearanceSection() {
     sectionDiffersFromDefaults("appearance", state),
   );
   const { preference, setPreference } = useTheme();
+  const themeCustomized = useThemeCustomized();
   return (
     <div className="space-y-4">
       <Tabs
@@ -1600,9 +1617,11 @@ export function AppearanceSection() {
         sectionName={t(($) => $.settings.appearance.sectionName)}
         onReset={() => {
           resetAppearancePreferences();
+          resetThemeCustomization();
+          applyTheme(currentTheme());
           setPreference("system");
         }}
-        changed={appearanceChanged || preference !== "system"}
+        changed={appearanceChanged || preference !== "system" || themeCustomized}
       />
     </div>
   );

@@ -589,7 +589,7 @@
         "label": "Hjørneradius"
       },
       "resetAll": "Tilbakestill alt",
-      "resetMode": "Tilbakestill denne modusen",
+      "resetMode": "Tilbakestill",
       "title": "Tematilpasning",
       "tokenInputDark": "Nøkkelen {{token}} for mørk modus",
       "tokenInputLight": "Nøkkelen {{token}} for lys modus",
@@ -704,7 +704,7 @@
         },
         "pick": "Velg en farge for {{color}}",
         "previewAriaLabel": "Forhåndsvisningens språk",
-        "reset": "Bruk temafargene",
+        "reset": "Tilbakestill",
         "syntaxGroup": "Syntaks",
         "title": "Editorfarger",
         "useThemeColor": "Bruk temafargen for {{color}}"

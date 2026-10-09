@@ -112,7 +112,7 @@ export function readEditorThemeColors(
   scope.className = mode;
   for (const [name, value] of Object.entries(modeStyle)) scope.style.setProperty(name, value);
   const probe = document.createElement("div");
-  probe.setAttribute("data-editor-theme", theme);
+  probe.dataset.editorTheme = theme;
   for (const id of EDITOR_COLOR_IDS) probe.style.setProperty(editorColorVariable(id), "initial");
   scope.append(probe);
   scope.hidden = true;
