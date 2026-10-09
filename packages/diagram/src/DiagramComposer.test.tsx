@@ -1607,6 +1607,25 @@ describe("DiagramComposer details", () => {
     expect(screen.queryByText("composer.formatPng")).not.toBeInTheDocument();
   });
 
+  it("closes the save menu on an outside click that lands as soon as it opens", async () => {
+    const host = makeHost();
+    open(host);
+    await compileOnce(host);
+    let clickedOutside = false;
+    const observer = new MutationObserver(() => {
+      if (!screen.queryByText("composer.saveFigure")) return;
+      observer.disconnect();
+      document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+      clickedOutside = true;
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    fireEvent.click(screen.getByLabelText("composer.save"));
+
+    await waitFor(() => expect(clickedOutside).toBe(true));
+    await waitFor(() => expect(screen.queryByText("composer.saveFigure")).not.toBeInTheDocument());
+  });
+
   it("closes the reading notes on an outside click and lists notes without detail", () => {
     open(makeHost());
     typeCode(`\\begin{tikzpicture}\n\\node[draw] (a) at (0,0) {A};\n${";".repeat(20_001)}\n\\end{tikzpicture}`);
