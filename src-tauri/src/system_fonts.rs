@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
+use skrifa::raw::TableProvider;
+use skrifa::{FontRef, MetadataProvider};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -73,17 +75,19 @@ fn monospace(flagged: bool, advances: impl IntoIterator<Item = Option<u16>>) -> 
     flagged || uniform_advances(advances)
 }
 
-fn face_traits(face: &ttf_parser::Face<'_>, flagged_monospace: bool) -> FaceTraits {
-    let subtables = face
-        .tables()
-        .cmap
-        .into_iter()
-        .flat_map(|cmap| cmap.subtables)
-        .map(|subtable| (subtable.platform_id as u16, subtable.encoding_id));
+fn face_traits(face: &FontRef<'_>, flagged_monospace: bool) -> FaceTraits {
+    let subtables = face.cmap().into_iter().flat_map(|cmap| {
+        cmap.encoding_records()
+            .iter()
+            .map(|record| (record.platform_id() as u16, record.encoding_id()))
+    });
+    let charmap = face.charmap();
+    let metrics = face.hmtx().ok();
     let advances = MONOSPACE_PROBE.iter().map(|&character| {
-        face.glyph_index(character)
-            .filter(|glyph| glyph.0 != 0)
-            .and_then(|glyph| face.glyph_hor_advance(glyph))
+        charmap
+            .map(character)
+            .filter(|glyph| glyph.to_u32() != 0)
+            .and_then(|glyph| metrics.as_ref()?.advance(glyph))
     });
     FaceTraits {
         monospace: monospace(flagged_monospace, advances),
@@ -116,7 +120,7 @@ fn database_families(database: &fontdb::Database) -> Vec<SystemFontFamily> {
         let (name, _) = face.families.first()?;
         let traits = database
             .with_face_data(face.id, |data, index| {
-                ttf_parser::Face::parse(data, index)
+                FontRef::from_index(data, index)
                     .ok()
                     .map(|parsed| face_traits(&parsed, face.monospaced))
             })
