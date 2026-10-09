@@ -1640,6 +1640,10 @@
         "description": "Vis eller skjul projektets sidepanel.",
         "label": "Vis eller skjul sidepanelet"
       },
+      "togglePreview": {
+        "label": "Vis eller skjul PDF-visningen",
+        "description": "Viser eller skjuler PDF'en ved siden af editoren, også i Zen-tilstand."
+      },
       "toggleTerminal": {
         "description": "Vis eller skjul projektets terminal.",
         "label": "Vis eller skjul terminalen"

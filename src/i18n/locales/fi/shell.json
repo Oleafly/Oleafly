@@ -333,6 +333,10 @@
       "keywords": "häiriötön keskittyminen koko näyttö piilota käyttöliittymä minimaalinen kirjoitus",
       "label": "Vaihda Zen-tilaa"
     },
+    "togglePreview": {
+      "keywords": "pdf esikatselu näytä piilota jaa vain editori",
+      "label": "Näytä tai piilota PDF-esikatselu"
+    },
     "zoteroAddMissing": {
       "label": "Lisää puuttuvat viittaukset Zoterosta",
       "keywords": "zotero puuttuvat viittaukset määrittelemättömät avaimet lähdeluettelo korjaa missing citations undefined keys bibliography repair"

@@ -124,7 +124,7 @@ import { ChatPanel } from "@/components/ai/ChatPanel";
 import { AboutModal } from "@/components/layout/AboutModal";
 import { EnginePickerModal } from "@/components/layout/EnginePickerModal";
 import { expectEngineChoiceOnOpen, takeEngineChoiceOnOpen } from "@/store/engine-picker";
-import { revealPreviewForCompile } from "@/lib/compile-preview";
+import { revealPreviewForCompile, togglePreviewPane } from "@/lib/compile-preview";
 import { TinytexGuards } from "@/components/layout/TinytexGuards";
 import { QuitGuard } from "@/components/layout/QuitGuard";
 import { SaveBlockedDialog } from "@/components/layout/SaveBlockedDialog";
@@ -739,6 +739,10 @@ function AppContent() {
         e.preventDefault();
         e.stopPropagation();
         useSettingsStore.getState().toggleTree();
+      } else if (matchesShortcut(e, useShortcutStore.getState().bindings.togglePreview)) {
+        if (!togglePreviewPane()) return;
+        e.preventDefault();
+        e.stopPropagation();
       }
     };
     window.addEventListener("keydown", onKey, true);

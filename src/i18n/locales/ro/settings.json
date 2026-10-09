@@ -1661,6 +1661,10 @@
         "description": "Arată sau ascunde bara laterală a proiectului.",
         "label": "Arată sau ascunde bara laterală"
       },
+      "togglePreview": {
+        "label": "Arată sau ascunde previzualizarea PDF",
+        "description": "Afișează sau ascunde PDF-ul de lângă editor, și în modul Zen."
+      },
       "toggleTerminal": {
         "description": "Arată sau ascunde terminalul proiectului.",
         "label": "Arată sau ascunde terminalul"

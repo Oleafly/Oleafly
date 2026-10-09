@@ -1640,6 +1640,10 @@
         "description": "Näytä tai piilota projektin sivupalkki.",
         "label": "Näytä tai piilota sivupalkki"
       },
+      "togglePreview": {
+        "label": "Näytä tai piilota PDF-esikatselu",
+        "description": "Näyttää tai piilottaa PDF:n editorin vieressä, myös Zen-tilassa."
+      },
       "toggleTerminal": {
         "description": "Näytä tai piilota projektin pääte.",
         "label": "Näytä tai piilota pääte"

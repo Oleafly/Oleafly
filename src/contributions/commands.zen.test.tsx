@@ -11,9 +11,10 @@ import {
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 
-const mocks = vi.hoisted(() => ({ toggleZenMode: vi.fn() }));
+const mocks = vi.hoisted(() => ({ toggleZenMode: vi.fn(), togglePreviewPane: vi.fn() }));
 
 vi.mock("@/lib/zen-mode", () => ({ toggleZenMode: mocks.toggleZenMode }));
+vi.mock("@/lib/compile-preview", () => ({ togglePreviewPane: mocks.togglePreviewPane }));
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ engine: null, engineLoaded: false, activePath: null }) },
 }));
@@ -46,6 +47,22 @@ beforeEach(() => {
 
 afterEach(() => {
   registry.commands.length = 0;
+});
+
+describe("Toggle PDF Preview command", () => {
+  const previewCommand = (ctx: AppContext) =>
+    commandsFor("palette", ctx).find((command) => command.id === "palette.toggle-preview");
+
+  it("is in the command palette while a project is open, with the current shortcut", () => {
+    const command = previewCommand(project);
+    expect(command && commandLabel(command, project)).toBe(enShell.commands.togglePreview.label);
+    expect(command && commandHint(command, project)).toBe(
+      shortcutLabel(useShortcutStore.getState().bindings.togglePreview),
+    );
+    expect(previewCommand(library)).toBeUndefined();
+    command?.run(project);
+    expect(mocks.togglePreviewPane).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Toggle Zen Mode command", () => {

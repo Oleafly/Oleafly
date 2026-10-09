@@ -333,6 +333,10 @@
       "keywords": "uten distraksjoner fokus fullskjerm skjul grensesnitt minimal skriving",
       "label": "Slå Zen-modus av eller på"
     },
+    "togglePreview": {
+      "keywords": "pdf forhåndsvisning vis skjul delt bare editor",
+      "label": "Vis eller skjul PDF-forhåndsvisning"
+    },
     "zoteroAddMissing": {
       "label": "Legg til manglende siteringer fra Zotero",
       "keywords": "zotero manglende siteringer udefinerte nøkler litteraturliste reparer missing citations undefined keys bibliography repair"

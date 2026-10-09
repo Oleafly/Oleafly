@@ -1619,6 +1619,10 @@
         "description": "显示或隐藏项目侧边栏。",
         "label": "切换侧边栏"
       },
+      "togglePreview": {
+        "label": "切换 PDF 预览",
+        "description": "在编辑器旁显示或隐藏 PDF，禅模式下也可用。"
+      },
       "toggleTerminal": {
         "description": "显示或隐藏项目终端。",
         "label": "切换终端"

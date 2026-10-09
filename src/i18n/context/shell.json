@@ -171,6 +171,10 @@
   "commands": {
     "zenMode": {
       "label": "Command palette entry that turns Zen mode on or off. Keep the word Zen."
+    },
+    "togglePreview": {
+      "label": "Command palette entry that shows or hides the PDF preview pane beside the editor.",
+      "keywords": "Extra search words for the command, separated by spaces, in the target language."
     }
   },
   "zen": {

@@ -1640,6 +1640,10 @@
         "description": "Proje kenar çubuğunu gösterin veya gizleyin.",
         "label": "Kenar çubuğunu aç/kapat"
       },
+      "togglePreview": {
+        "label": "PDF önizlemesini aç/kapat",
+        "description": "Düzenleyicinin yanındaki PDF'i gösterir veya gizler; Zen kipinde de çalışır."
+      },
       "toggleTerminal": {
         "description": "Proje terminalini gösterin veya gizleyin.",
         "label": "Terminali aç/kapat"

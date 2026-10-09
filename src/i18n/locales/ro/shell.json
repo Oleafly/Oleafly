@@ -335,6 +335,10 @@
       "keywords": "fără distrageri concentrare ecran complet ascunde interfața minimal scris",
       "label": "Comută modul Zen"
     },
+    "togglePreview": {
+      "keywords": "pdf previzualizare afișează ascunde împarte doar editor",
+      "label": "Arată sau ascunde previzualizarea PDF"
+    },
     "zoteroAddMissing": {
       "label": "Adaugă citările lipsă din Zotero",
       "keywords": "zotero citări lipsă chei nedefinite bibliografie reparare"

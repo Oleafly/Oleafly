@@ -1682,6 +1682,10 @@
         "description": "Pokaż albo ukryj panel boczny projektu.",
         "label": "Przełącz panel boczny"
       },
+      "togglePreview": {
+        "label": "Przełącz podgląd PDF",
+        "description": "Pokazuje lub ukrywa PDF obok edytora, także w trybie Zen."
+      },
       "toggleTerminal": {
         "description": "Pokaż albo ukryj terminal projektu.",
         "label": "Przełącz terminal"

@@ -1640,6 +1640,10 @@
         "description": "Show or hide the project sidebar.",
         "label": "Toggle sidebar"
       },
+      "togglePreview": {
+        "label": "Toggle PDF preview",
+        "description": "Show or hide the PDF beside the editor, in Zen mode too."
+      },
       "toggleTerminal": {
         "description": "Show or hide the project terminal.",
         "label": "Toggle terminal"

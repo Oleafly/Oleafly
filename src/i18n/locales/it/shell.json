@@ -335,6 +335,10 @@
       "keywords": "senza distrazioni concentrazione schermo intero nascondi interfaccia minimale scrittura",
       "label": "Attiva o disattiva la modalità Zen"
     },
+    "togglePreview": {
+      "keywords": "pdf anteprima mostra nascondi dividi solo editor",
+      "label": "Mostra o nascondi l'anteprima PDF"
+    },
     "zoteroAddMissing": {
       "label": "Aggiungi da Zotero le citazioni mancanti",
       "keywords": "zotero citazioni mancanti chiavi non definite bibliografia ripara missing citations undefined keys bibliography repair"

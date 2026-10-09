@@ -331,6 +331,10 @@
       "keywords": "집중 방해 없음 전체 화면 인터페이스 숨기기 미니멀 글쓰기",
       "label": "Zen 모드 전환"
     },
+    "togglePreview": {
+      "keywords": "pdf 미리보기 보이기 숨기기 분할 편집기만",
+      "label": "PDF 미리보기 전환"
+    },
     "zoteroAddMissing": {
       "label": "Zotero에서 누락된 인용 추가",
       "keywords": "zotero 누락 인용 정의되지 않은 키 참고문헌 복구"

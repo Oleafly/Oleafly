@@ -1682,6 +1682,10 @@
         "description": "Zobrazit nebo skrýt postranní panel projektu.",
         "label": "Přepnout postranní panel"
       },
+      "togglePreview": {
+        "label": "Přepnout náhled PDF",
+        "description": "Zobrazí nebo skryje PDF vedle editoru, i v režimu Zen."
+      },
       "toggleTerminal": {
         "description": "Zobrazit nebo skrýt terminál projektu.",
         "label": "Přepnout terminál"

@@ -61,3 +61,24 @@ test("Cmd+, opens Settings", async ({ tauriPage }) => {
   await tauriPage.click('[data-testid="settings-close"]');
   await expect(tauriPage.locator('[data-testid="settings-close"]')).toHaveCount(0, { timeout: 10_000 });
 });
+
+async function viewMode(page: Parameters<typeof pressGlobal>[0]): Promise<string> {
+  return page.evaluate<string>(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) => useSettingsStore.getState().viewMode)`,
+  );
+}
+
+test("Cmd+Option+P shows and hides the PDF beside the editor", async ({ tauriPage }) => {
+  await openProject(tauriPage, "E2E Doc");
+  await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.evaluate(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) => {
+      useSettingsStore.getState().setViewMode("editor");
+      return 1;
+    })`,
+  );
+  await pressGlobal(tauriPage, "p", { meta: true, alt: true });
+  await expect.poll(async () => await viewMode(tauriPage), { timeout: 10_000 }).toBe("split");
+  await pressGlobal(tauriPage, "p", { meta: true, alt: true });
+  await expect.poll(async () => await viewMode(tauriPage), { timeout: 10_000 }).toBe("editor");
+});

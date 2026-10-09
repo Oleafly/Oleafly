@@ -1619,6 +1619,10 @@
         "description": "프로젝트 사이드바를 표시하거나 숨깁니다.",
         "label": "사이드바 전환"
       },
+      "togglePreview": {
+        "label": "PDF 미리보기 전환",
+        "description": "편집기 옆의 PDF를 보이거나 숨깁니다. Zen 모드에서도 됩니다."
+      },
       "toggleTerminal": {
         "description": "프로젝트 터미널을 표시하거나 숨깁니다.",
         "label": "터미널 전환"

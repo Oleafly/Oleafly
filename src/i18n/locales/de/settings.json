@@ -1640,6 +1640,10 @@
         "description": "Die Seitenleiste des Projekts ein- oder ausblenden.",
         "label": "Seitenleiste ein- oder ausblenden"
       },
+      "togglePreview": {
+        "label": "PDF-Vorschau ein- oder ausblenden",
+        "description": "Blendet das PDF neben dem Editor ein oder aus, auch im Zen-Modus."
+      },
       "toggleTerminal": {
         "description": "Das Terminal des Projekts ein- oder ausblenden.",
         "label": "Terminal ein- oder ausblenden"

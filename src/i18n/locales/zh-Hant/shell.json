@@ -331,6 +331,10 @@
       "keywords": "專注 無干擾 全螢幕 隱藏介面 極簡 寫作",
       "label": "切換禪模式"
     },
+    "togglePreview": {
+      "keywords": "pdf 預覽 顯示 隱藏 分割 僅編輯器",
+      "label": "切換 PDF 預覽"
+    },
     "zoteroAddMissing": {
       "label": "從 Zotero 新增缺少的引用",
       "keywords": "缺少 引用 未定義 鍵 參考文獻 修復 zotero missing citations undefined keys bibliography repair"

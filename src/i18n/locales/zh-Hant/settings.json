@@ -1619,6 +1619,10 @@
         "description": "顯示或隱藏專案側邊欄。",
         "label": "切換側邊欄"
       },
+      "togglePreview": {
+        "label": "切換 PDF 預覽",
+        "description": "在編輯器旁顯示或隱藏 PDF，禪模式下也可用。"
+      },
       "toggleTerminal": {
         "description": "顯示或隱藏專案終端機。",
         "label": "切換終端機"

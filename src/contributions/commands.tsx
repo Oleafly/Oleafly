@@ -135,6 +135,8 @@ import { openTypstPackages } from "@/components/typst-packages/open";
 import { openLatexPackages } from "@/components/packages/open";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { toggleZenMode } from "@/lib/zen-mode";
+import { togglePreviewPane } from "@/lib/compile-preview";
+import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
 import { shortcut } from "@/lib/utils";
 import {
   formatWithLanguageService,
@@ -195,6 +197,7 @@ const ENGLISH_KEYWORDS = {
   closeAllEditorTabs: "close all editor tabs files",
   closeAssistantTabs: "close editor tabs files assistant ai agent opened",
   zenMode: "zen distraction free focus full screen hide interface minimal writing",
+  togglePreview: "pdf preview show hide split editor only layout view",
 } as const;
 
 const runLanguageServiceFormat = (scope: FormatScope) => {
@@ -1007,6 +1010,23 @@ export function registerPaletteCommands() {
     when: (ctx) => !!ctx.projectId,
     run: () => {
       toggleZenMode();
+    },
+  });
+  palette({
+    id: "palette.toggle-preview",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.togglePreview.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.togglePreview.keywords)} ${ENGLISH_KEYWORDS.togglePreview}`,
+    icon: () => {
+      const Icon = LAYOUT_PRESET_ICONS["editor-preview"];
+      return <Icon className="size-4" />;
+    },
+    hint: () => shortcutLabel(useShortcutStore.getState().bindings.togglePreview),
+    order: 516,
+    when: (ctx) => !!ctx.projectId,
+    run: () => {
+      togglePreviewPane();
     },
   });
   palette({

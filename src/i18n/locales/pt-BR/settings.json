@@ -1661,6 +1661,10 @@
         "description": "Mostre ou oculte a barra lateral do projeto.",
         "label": "Alternar a barra lateral"
       },
+      "togglePreview": {
+        "label": "Alternar a prévia do PDF",
+        "description": "Mostra ou oculta o PDF ao lado do editor, também no modo Zen."
+      },
       "toggleTerminal": {
         "description": "Mostre ou oculte o terminal do projeto.",
         "label": "Alternar o terminal"

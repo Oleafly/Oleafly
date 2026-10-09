@@ -335,6 +335,10 @@
       "keywords": "sem distrações foco tela cheia ocultar interface mínimo escrita",
       "label": "Alternar o modo Zen"
     },
+    "togglePreview": {
+      "keywords": "pdf prévia mostrar ocultar dividir só editor",
+      "label": "Alternar a prévia do PDF"
+    },
     "zoteroAddMissing": {
       "label": "Adicionar citações ausentes do Zotero",
       "keywords": "zotero citações ausentes chaves indefinidas bibliografia corrigir"

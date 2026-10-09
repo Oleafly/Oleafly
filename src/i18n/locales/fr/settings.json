@@ -1661,6 +1661,10 @@
         "description": "Afficher ou masquer la barre latérale du projet.",
         "label": "Afficher ou masquer la barre latérale"
       },
+      "togglePreview": {
+        "label": "Afficher ou masquer l'aperçu PDF",
+        "description": "Affiche ou masque le PDF à côté de l'éditeur, y compris en mode Zen."
+      },
       "toggleTerminal": {
         "description": "Afficher ou masquer le terminal du projet.",
         "label": "Afficher ou masquer le terminal"

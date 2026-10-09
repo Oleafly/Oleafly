@@ -333,6 +333,10 @@
       "keywords": "störningsfri fokus helskärm dölj gränssnitt minimal skriva",
       "label": "Växla Zen-läge"
     },
+    "togglePreview": {
+      "keywords": "pdf förhandsvisning visa dölj delad bara redigerare",
+      "label": "Visa eller dölj PDF-förhandsvisning"
+    },
     "zoteroAddMissing": {
       "label": "Lägg till saknade citeringar från Zotero",
       "keywords": "zotero saknade citeringar odefinierade nycklar bibliografi reparera"

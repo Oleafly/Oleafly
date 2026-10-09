@@ -11,6 +11,7 @@ export type ShortcutId =
   | "toggleTerminal"
   | "toggleBrowser"
   | "toggleSidebar"
+  | "togglePreview"
   | "toggleZenMode"
   | "openFolder"
   | "openSettings";
@@ -78,6 +79,10 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: "toggleSidebar",
     defaultBinding: { key: "b", mod: true },
+  },
+  {
+    id: "togglePreview",
+    defaultBinding: { key: "p", mod: true, alt: true },
   },
   {
     id: "toggleZenMode",
@@ -170,14 +175,28 @@ export const useShortcutStore = create<ShortcutState>((set) => ({
   },
 }));
 
+const PHYSICAL_KEY = /^(?:Key([A-Z])|Digit(\d))$/;
+const PRINTABLE_ASCII = /^[\x20-\x7e]$/;
+
+function physicalKey(event: KeyboardEvent): string | null {
+  const match = PHYSICAL_KEY.exec(event.code ?? "");
+  return match ? (match[1] ?? match[2]).toLowerCase() : null;
+}
+
+function optionLevelKey(event: KeyboardEvent, apple: boolean): string | null {
+  if (!apple || !event.altKey || event.key.length !== 1 || PRINTABLE_ASCII.test(event.key)) return null;
+  return physicalKey(event);
+}
+
 export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding): boolean {
   if (isAltGraphCharacter(event)) return false;
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const ctrl = Boolean(binding.ctrl) || (!apple && Boolean(binding.mod));
   const meta = apple && Boolean(binding.mod);
+  const key = binding.key.toLowerCase();
   return (
-    event.key.toLowerCase() === binding.key.toLowerCase() &&
+    (event.key.toLowerCase() === key || optionLevelKey(event, apple) === key) &&
     event.ctrlKey === ctrl &&
     event.metaKey === meta &&
     event.shiftKey === Boolean(binding.shift) &&
@@ -198,7 +217,7 @@ export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return {
-    key: event.key.length === 1 ? event.key.toLowerCase() : event.key,
+    key: optionLevelKey(event, apple) ?? (event.key.length === 1 ? event.key.toLowerCase() : event.key),
     ...(event.metaKey || (event.ctrlKey && !apple) ? { mod: true } : {}),
     ...(event.ctrlKey && apple ? { ctrl: true } : {}),
     shift: event.shiftKey,

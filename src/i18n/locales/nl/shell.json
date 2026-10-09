@@ -333,6 +333,10 @@
       "keywords": "afleidingsvrij focus schermvullend verbergen interface minimaal schrijven",
       "label": "Zenmodus aan- of uitzetten"
     },
+    "togglePreview": {
+      "keywords": "pdf voorbeeld tonen verbergen splitsen alleen editor",
+      "label": "PDF-voorbeeld tonen of verbergen"
+    },
     "zoteroAddMissing": {
       "label": "Ontbrekende citaties uit Zotero toevoegen",
       "keywords": "zotero ontbrekende citaties ongedefinieerde sleutels bibliografie herstellen"

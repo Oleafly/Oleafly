@@ -45,6 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Rename file in the file tree, or drag the file to a new folder. Settings >
   Appearance > Editor sets whether Oleafly asks first, always updates the
   paths or leaves them alone.
+- Cmd+Option+P (Ctrl+Alt+P on Windows and Linux) shows or hides the PDF
+  beside the editor, the way Cmd+B does for the sidebar. It works in Zen mode
+  too, so a PDF opened by compiling can be put away without leaving Zen. It's
+  in the command palette, and the key can be changed in Settings > Keyboard
+  Shortcuts.
 - Cmd+, opens Settings on macOS, and Ctrl+, does the same on Windows and
   Linux, including from the detached PDF window. On macOS the Oleafly menu
   also has a Settings item. You can change the shortcut in Settings >

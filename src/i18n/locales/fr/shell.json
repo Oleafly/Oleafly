@@ -335,6 +335,10 @@
       "keywords": "sans distraction concentration plein écran masquer interface minimal écriture",
       "label": "Activer ou désactiver le mode Zen"
     },
+    "togglePreview": {
+      "keywords": "pdf aperçu afficher masquer partager éditeur seul",
+      "label": "Afficher ou masquer l'aperçu PDF"
+    },
     "zoteroAddMissing": {
       "label": "Ajouter depuis Zotero les citations manquantes",
       "keywords": "zotero citations manquantes clés non définies bibliographie réparer"

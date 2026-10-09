@@ -570,6 +570,17 @@ describe("the PDF pane when you compile", () => {
     expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
   });
 
+  it("closes the PDF it opened with the Toggle PDF preview shortcut and opens it again", () => {
+    keydown(document.body, { key: "Enter", ctrlKey: true });
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+    const hide = keydown(document.body, { key: "p", ctrlKey: true, altKey: true });
+    expect(hide.defaultPrevented).toBe(true);
+    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
+    expect(useSettingsStore.getState().viewMode).toBe("editor");
+    keydown(document.body, { key: "p", ctrlKey: true, altKey: true });
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+  });
+
   it("is editor-alone again after Zen ends", () => {
     keydown(document.body, { key: "Enter", ctrlKey: true });
     expect(screen.getByTestId("preview-surface")).toBeInTheDocument();

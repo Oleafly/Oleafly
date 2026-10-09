@@ -1640,6 +1640,10 @@
         "description": "Toon of verberg de projectzijbalk.",
         "label": "Zijbalk tonen of verbergen"
       },
+      "togglePreview": {
+        "label": "PDF-voorbeeld tonen of verbergen",
+        "description": "Toont of verbergt de PDF naast de editor, ook in zenmodus."
+      },
       "toggleTerminal": {
         "description": "Toon of verberg de projectterminal.",
         "label": "Terminal tonen of verbergen"

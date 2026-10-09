@@ -463,6 +463,9 @@
     "actions": {
       "openSettings": {
         "label": "Name of the keyboard shortcut that opens the Settings window."
+      },
+      "togglePreview": {
+        "label": "Name of the shortcut that shows or hides the PDF preview pane beside the editor."
       }
     }
   },

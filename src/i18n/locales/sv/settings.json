@@ -1640,6 +1640,10 @@
         "description": "Visa eller dölj projektets sidofält.",
         "label": "Visa eller dölj sidofältet"
       },
+      "togglePreview": {
+        "label": "Visa eller dölj PDF-förhandsvisning",
+        "description": "Visar eller döljer PDF:en bredvid redigeraren, även i Zen-läge."
+      },
       "toggleTerminal": {
         "description": "Visa eller dölj projektets terminal.",
         "label": "Visa eller dölj terminalen"

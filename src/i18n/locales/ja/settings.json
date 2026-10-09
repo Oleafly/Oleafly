@@ -1619,6 +1619,10 @@
         "description": "プロジェクトのサイドバーを表示または非表示にします。",
         "label": "サイドバーの表示を切り替え"
       },
+      "togglePreview": {
+        "label": "PDF プレビューの表示を切り替え",
+        "description": "エディタの横の PDF を表示または非表示にします。Zen モードでも使えます。"
+      },
       "toggleTerminal": {
         "description": "プロジェクトのターミナルを表示または非表示にします。",
         "label": "ターミナルの表示を切り替え"

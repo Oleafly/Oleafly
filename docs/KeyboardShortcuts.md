@@ -16,6 +16,7 @@ Windows and Linux.
 | Toggle terminal | Ctrl-` | Ctrl-` |
 | Toggle browser | Ctrl-Shift-B | Ctrl-Shift-B (Windows), Ctrl-Alt-B (Linux) |
 | Toggle sidebar | Command-B | Ctrl-B |
+| Toggle PDF preview | Command-Option-P | Ctrl-Alt-P |
 | Toggle Zen mode | Ctrl-Command-Shift-F | Shift-F11 |
 | Open folder | Command-Shift-O | Ctrl-Shift-O |
 | Open settings | Command-, | Ctrl-, |
@@ -28,7 +29,8 @@ Experimentation.
 Zen mode hides the toolbar, sidebar, assistant and terminal so only the editor
 (and the PDF, if it was showing) is left. While it is on, the toggle shortcuts
 for the sidebar, terminal and browser, the command palette and search still
-work. Press Escape twice within half a second, or use the same shortcut, to
+work, and Toggle PDF preview shows or hides the PDF, including one a compile
+opened. Press Escape twice within half a second, or use the same shortcut, to
 leave. Command-B and Ctrl-B still mean Bold while the editor has focus, so the
 sidebar toggle only works from outside the editor. Settings > Appearance >
 Project has the Zen mode options.
