@@ -207,7 +207,7 @@
     },
     "handList": {
       "title": "Kaynak listeniz taşınsın mı?",
-      "description": "Bu belgedeki kaynaklar elle yazılmış. Onları {{path}} dosyasına taşıyın; böylece Zotero'dan alıntıladığınız yayınlarla tek bir numaralı listede yer alırlar.",
+      "description": "Bu belgedeki kaynaklar elle yazılmış. Onları {{path}} dosyasına taşıyın, böylece Zotero'dan alıntıladığınız yayınlarla tek bir numaralı listede yer alırlar.",
       "confirm": "Listeyi taşı"
     },
     "missing": {

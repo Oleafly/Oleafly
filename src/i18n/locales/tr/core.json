@@ -91,7 +91,7 @@
       },
       "seedCorpus": {
         "action": "Derlemi doldur",
-        "description": "~/Codespace/Oleafly/oleafly-seed konumundan {{count}} araştırma projesi kopyalar. LaTeX ve Typst genelinde makaleler, tezler, kitaplar, sunumlar, posterler ve şekiller; her birinin paketlenmiş motorlarla derlendiği doğrulanmıştır. Var olan örnekler korunur.",
+        "description": "~/Codespace/Oleafly/oleafly-seed konumundan {{count}} araştırma projesi kopyalar. LaTeX ve Typst genelinde makaleler, tezler, kitaplar, sunumlar, posterler ve şekiller. Her birinin paketlenmiş motorlarla derlendiği doğrulanmıştır. Var olan örnekler korunur.",
         "title": "Araştırma derlemini doldur"
       }
     },
@@ -486,7 +486,7 @@
     "distributionGap": "Bu proje {{pinned}} ile sabitlendi. Etkin {{local}} dağıtımında paketlerinin {{count}} tanesi eksik, bu yüzden o dağıtım yeniden kullanılana kadar derlemeler başarısız olabilir."
   },
   "theme": {
-    "cssForbiddenSyntax": "Özel CSS; at kuralları, URL'ler veya seçiciler kullanamaz.",
+    "cssForbiddenSyntax": "Özel CSS içinde at kuralları, URL'ler veya seçiciler kullanılamaz.",
     "cssNotSimple": "Özel CSS yalnızca basit özellik bildirimleri içermelidir.",
     "cssNotText": "Özel CSS metin olmalıdır.",
     "cssPropertyNotAllowed": "Özel CSS özelliğine izin verilmiyor: {{property}}.",

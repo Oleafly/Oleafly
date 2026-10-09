@@ -1,4 +1,15 @@
 import { create } from "zustand";
+import type { EditorColorId } from "@oleafly/editor/color-roles";
+import {
+  isEditorThemeId,
+  validateEditorColors,
+  normalizeEditorColor,
+  type EditorColorKey,
+  type EditorColorSettings,
+  type EditorThemeExport,
+  type EditorThemeId,
+} from "@/lib/editor-themes";
+import type { Theme } from "@/lib/theme";
 import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
 import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
 import {
@@ -83,16 +94,7 @@ export function readDictionaryLocale(raw: string): string {
     ? normalized
     : DEFAULT_DICTIONARY_LOCALE;
 }
-export type EditorThemeId =
-  | "system"
-  | "linear"
-  | "github-dark"
-  | "dracula"
-  | "nord"
-  | "tokyo-night"
-  | "rose-pine"
-  | "catppuccin"
-  | "one-dark";
+export type { EditorThemeId } from "@/lib/editor-themes";
 export type TerminalCursorStyle = "block" | "underline" | "bar";
 export type TerminalColorThemeId =
   | "system"
@@ -497,7 +499,19 @@ function readDefaultView(raw: string): LayoutPreset {
   return LEGACY_VIEW_MODE_TO_PRESET[raw] ?? "editor-only";
 }
 function readEditorTheme(raw: string): EditorThemeId {
-  return EDITOR_THEMES.some((t) => t.id === raw) ? (raw as EditorThemeId) : "system";
+  return isEditorThemeId(raw) ? raw : "system";
+}
+
+function readEditorColors(raw: string): EditorColorSettings {
+  try {
+    return validateEditorColors(JSON.parse(raw));
+  } catch {
+    return {};
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function readNumberInRange(
   raw: string | number,
@@ -615,6 +629,8 @@ export const EDITOR_THEMES: { id: EditorThemeId; name: string }[] = [
   { id: "rose-pine", name: "Rosé Pine" },
   { id: "catppuccin", name: "Catppuccin" },
   { id: "one-dark", name: "One Dark" },
+  { id: "paper", name: "Paper" },
+  { id: "one-light", name: "One Light" },
 ];
 
 export const ACCENTS: { id: string; name: string; color: string }[] = [
@@ -1020,8 +1036,13 @@ interface SettingsState {
   setEditorFontFamily: (v: string) => void;
   editorUsesAppFont: boolean;
   setEditorUsesAppFont: (v: boolean) => void;
-  editorTheme: EditorThemeId;
-  setEditorTheme: (v: EditorThemeId) => void;
+  editorThemeLight: EditorThemeId;
+  editorThemeDark: EditorThemeId;
+  setEditorTheme: (mode: Theme, v: EditorThemeId) => void;
+  editorColors: EditorColorSettings;
+  setEditorColor: (key: EditorColorKey, id: EditorColorId, color: string) => void;
+  resetEditorColors: (key: EditorColorKey) => void;
+  importEditorThemes: (exported: EditorThemeExport) => void;
   pdfDarkMode: boolean;
   setPdfDarkMode: (v: boolean) => void;
   hiddenFilePatterns: readonly string[];
@@ -1177,7 +1198,9 @@ const PREF_DEFAULTS = {
   appFontFamily: "",
   editorFontFamily: "",
   editorUsesAppFont: false,
-  editorTheme: "system" as EditorThemeId,
+  editorThemeLight: "system" as EditorThemeId,
+  editorThemeDark: "system" as EditorThemeId,
+  editorColors: {} as EditorColorSettings,
   pdfDarkMode: false,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-only" as LayoutPreset,
@@ -1272,7 +1295,9 @@ const SECTION_SETTINGS = {
     appFontFamily: "oleafly.appFont",
     editorFontFamily: "oleafly.editorFont",
     editorUsesAppFont: "oleafly.editor.useAppFont",
-    editorTheme: "oleafly.editorTheme",
+    editorThemeLight: "oleafly.editorTheme.light",
+    editorThemeDark: "oleafly.editorTheme.dark",
+    editorColors: "oleafly.editor.colors",
     pdfDarkMode: "oleafly.pdf.darkMode",
     hiddenFilePatterns: "oleafly.fileTree.hiddenPatterns",
     defaultView: "oleafly.defaultView",
@@ -1311,7 +1336,8 @@ function restoreSection(section: SettingsSection): Partial<SettingsState> {
   for (const [key, storageKey] of sectionEntries(section)) {
     const value = PREF_DEFAULTS[key];
     if (storageKey) saveLs(storageKey, storedDefault(value));
-    restored[key] = Array.isArray(value) ? [...value] : value;
+    if (Array.isArray(value)) restored[key] = [...value];
+    else restored[key] = isPlainObject(value) ? { ...value } : value;
   }
   return restored as Partial<SettingsState>;
 }
@@ -1329,6 +1355,9 @@ export function sectionDiffersFromDefaults(
         value.length !== current.length ||
         value.some((item) => !current.includes(item))
       );
+    }
+    if (isPlainObject(value) && isPlainObject(current)) {
+      return JSON.stringify(current) !== JSON.stringify(value);
     }
     return !Object.is(current, value);
   });
@@ -1839,10 +1868,40 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editorFont", family);
     set({ editorFontFamily: family });
   },
-  editorTheme: readEditorTheme(ls("oleafly.editorTheme", "system")),
-  setEditorTheme: (v) => {
-    saveLs("oleafly.editorTheme", v);
-    set({ editorTheme: v });
+  editorThemeLight: readEditorTheme(ls("oleafly.editorTheme.light", ls("oleafly.editorTheme", "system"))),
+  editorThemeDark: readEditorTheme(ls("oleafly.editorTheme.dark", ls("oleafly.editorTheme", "system"))),
+  setEditorTheme: (mode, v) => {
+    const theme = readEditorTheme(v);
+    if (mode === "light") {
+      saveLs("oleafly.editorTheme.light", theme);
+      set({ editorThemeLight: theme });
+    } else {
+      saveLs("oleafly.editorTheme.dark", theme);
+      set({ editorThemeDark: theme });
+    }
+  },
+  editorColors: readEditorColors(ls("oleafly.editor.colors", "{}")),
+  setEditorColor: (key, id, color) => {
+    const overrides = { ...get().editorColors[key] };
+    const normalized = normalizeEditorColor(color);
+    if (normalized) overrides[id] = normalized;
+    else delete overrides[id];
+    const editorColors = validateEditorColors({ ...get().editorColors, [key]: overrides });
+    saveLs("oleafly.editor.colors", JSON.stringify(editorColors));
+    set({ editorColors });
+  },
+  resetEditorColors: (key) => {
+    const editorColors = { ...get().editorColors };
+    delete editorColors[key];
+    saveLs("oleafly.editor.colors", JSON.stringify(editorColors));
+    set({ editorColors });
+  },
+  importEditorThemes: (exported) => {
+    get().setEditorTheme("light", exported.themes.light);
+    get().setEditorTheme("dark", exported.themes.dark);
+    const editorColors = validateEditorColors({ ...get().editorColors, ...exported.colors });
+    saveLs("oleafly.editor.colors", JSON.stringify(editorColors));
+    set({ editorColors });
   },
   pdfDarkMode: ls("oleafly.pdf.darkMode", "0") === "1",
   setPdfDarkMode: (v) => {

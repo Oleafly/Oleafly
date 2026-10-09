@@ -18,6 +18,7 @@ import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useModalLayer } from "@/components/ui/use-modal-accessibility";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
@@ -25,6 +26,7 @@ export function CommandPalette() {
   const setPaletteOpen = useSettingsStore((s) => s.setPaletteOpen);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const [query, setQuery] = useState("");
+  const listRef = useScrollTopOnChange(query);
   const [selectedValue, setSelectedValue] = useState("");
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
@@ -148,7 +150,7 @@ export function CommandPalette() {
           placeholder={t(($) => $.shell.commandPalette.placeholder)}
           className="flex h-12 w-full border-b border-border bg-transparent px-4 text-sm placeholder:text-muted-foreground"
         />
-        <Command.List className="max-h-[min(60vh,360px)] overflow-auto p-1.5">
+        <Command.List ref={listRef} className="max-h-[min(60vh,360px)] overflow-auto p-1.5">
           <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
             {t(($) => $.shell.commandPalette.empty)}
           </Command.Empty>

@@ -123,20 +123,23 @@ describe("value preferences", () => {
     const settings = useSettingsStore.getState();
 
     settings.setDictionaryLocale("en-GB");
-    settings.setEditorTheme("dracula");
+    settings.setEditorTheme("dark", "dracula");
+    settings.setEditorTheme("light", "paper");
     settings.setAccentColor("#db2777");
     settings.setBgPattern("grid");
     settings.setHomeProjectLayout("list");
 
     expect(useSettingsStore.getState()).toMatchObject({
       dictionaryLocale: "en_GB",
-      editorTheme: "dracula",
+      editorThemeDark: "dracula",
+      editorThemeLight: "paper",
       accentColor: "#db2777",
       bgPattern: "grid",
       homeProjectLayout: "list",
     });
     expect(localStorage.getItem("oleafly.dictionary.locale")).toBe("en_GB");
-    expect(localStorage.getItem("oleafly.editorTheme")).toBe("dracula");
+    expect(localStorage.getItem("oleafly.editorTheme.dark")).toBe("dracula");
+    expect(localStorage.getItem("oleafly.editorTheme.light")).toBe("paper");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(localStorage.getItem("oleafly.bgPattern")).toBe("grid");
     expect(localStorage.getItem("oleafly.library.projectLayout")).toBe("list");
@@ -224,6 +227,7 @@ describe("loading saved preferences", () => {
       "oleafly.fontSize": "big",
       "oleafly.appFontSize": "0",
       "oleafly.editorTheme": "neon",
+      "oleafly.editor.colors": "{\"nord\":{\"heading\":\"#FF0000\",\"math\":\"#12345\",\"title\":\"#123456\"},\"neon\":{\"math\":\"#123456\"}}",
       "oleafly.dockPlacement": "",
       "oleafly.bgPattern": "",
       "oleafly.defaultLatexEngine": "pdflatex",
@@ -233,7 +237,9 @@ describe("loading saved preferences", () => {
     expect(state).toMatchObject({
       editorFontSize: 13,
       appFontSize: 16,
-      editorTheme: "system",
+      editorThemeLight: "system",
+      editorThemeDark: "system",
+      editorColors: { nord: { heading: "#ff0000" } },
       dockPlacement: "left",
       bgPattern: "dots",
       defaultLatexEngine: "tectonic",
@@ -244,6 +250,8 @@ describe("loading saved preferences", () => {
   it("restores valid stored choices", async () => {
     const state = await reload({
       "oleafly.editorTheme": "nord",
+      "oleafly.editorTheme.light": "one-light",
+      "oleafly.editor.colors": "{\"system-dark\":{\"comment\":\"#AABBCC\"}}",
       "oleafly.library.projectLayout": "list",
       "oleafly.defaultLatexEngine": "latexmk",
       "oleafly.typst.formatterIndent": "8",
@@ -251,7 +259,9 @@ describe("loading saved preferences", () => {
     });
 
     expect(state).toMatchObject({
-      editorTheme: "nord",
+      editorThemeLight: "one-light",
+      editorThemeDark: "nord",
+      editorColors: { "system-dark": { comment: "#aabbcc" } },
       homeProjectLayout: "list",
       defaultLatexEngine: "latexmk",
       typstFormatterIndent: 8,

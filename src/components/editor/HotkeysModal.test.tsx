@@ -159,6 +159,20 @@ describe("HotkeysModal", () => {
     expect(screen.getByText(hotkeys.empty)).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    useSettingsStore.setState({ hotkeysOpen: true });
+    render(<HotkeysModal />);
+    const list = rowFor(hotkeys.actions.undo).closest(".overflow-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByLabelText(hotkeys.searchLabel), {
+      target: { value: hotkeys.categories.git },
+    });
+
+    expect(screen.getByText(hotkeys.actions.commitAndPush)).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("derives its editor-key rows from the remappable bindings", () => {
     useEditorKeymapStore.setState({ keys: { ...EDITOR_KEY_DEFAULTS } });
     useSettingsStore.setState({ hotkeysOpen: true });

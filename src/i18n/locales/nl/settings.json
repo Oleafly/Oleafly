@@ -589,7 +589,7 @@
         "label": "Hoekradius"
       },
       "resetAll": "Alles resetten",
-      "resetMode": "Deze modus resetten",
+      "resetMode": "Resetten",
       "title": "Thema aanpassen",
       "tokenInputDark": "Token {{token}} voor de donkere modus",
       "tokenInputLight": "Token {{token}} voor de lichte modus",
@@ -666,8 +666,48 @@
         "label": "Vastgezette scrollkoppen"
       },
       "theme": {
-        "description": "Stel de syntaxiskleuren los van het app-thema in.",
-        "label": "Thema van de editor"
+        "dark": {
+          "description": "Het editorthema terwijl de app donker is.",
+          "label": "Thema in donkere modus"
+        },
+        "light": {
+          "description": "Het editorthema terwijl de app licht is.",
+          "label": "Thema in lichte modus"
+        }
+      },
+      "colors": {
+        "description": "Wijzig elke kleur van een editorthema. Wijzigingen blijven per thema bewaard.",
+        "editing": "{{theme}} wordt bewerkt",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Donkere modus",
+          "light": "Lichte modus"
+        },
+        "modeAriaLabel": "Thema om aan te passen",
+        "names": {
+          "background": "Achtergrond",
+          "command": "Commando's",
+          "comment": "Commentaar",
+          "environment": "Omgevingen",
+          "formatting": "Opmaak",
+          "heading": "Koppen",
+          "lineNumbers": "Regelnummers",
+          "link": "Links",
+          "math": "Wiskunde",
+          "name": "Namen en sleutels",
+          "reference": "Citaties en verwijzingen",
+          "selection": "Selectie",
+          "structure": "Preambule en imports",
+          "symbol": "Haakjes en symbolen",
+          "text": "Tekst",
+          "value": "Waarden en tekenreeksen"
+        },
+        "pick": "Kies een kleur voor {{color}}",
+        "previewAriaLabel": "Taal van het voorbeeld",
+        "reset": "Resetten",
+        "syntaxGroup": "Syntaxis",
+        "title": "Editorkleuren",
+        "useThemeColor": "Themakleur gebruiken voor {{color}}"
       },
       "keymap": {
         "description": "Kies de set toetsenbindingen die de broncode-editor gebruikt.",
@@ -862,7 +902,7 @@
         "label": "Schermvullend gaan"
       },
       "showPdf": {
-        "description": "Als de PDF verborgen is wanneer de zenmodus start, wordt die bij de eerste compilatie naast de editor geopend.",
+        "description": "Als de PDF verborgen is in de zenmodus, wordt die bij het compileren naast de editor geopend.",
         "label": "PDF tonen bij het compileren"
       },
       "title": "Zenmodus"
@@ -1038,7 +1078,7 @@
       "status": {
         "checking": "Controleren op pandoc…",
         "installing": "Een vastgezette pandoc-release ophalen. De eerste keer duurt dat even.",
-        "missing": "Niet gevonden. Oleafly kan een geschikte pandoc (2.19 of nieuwer) naar zijn eigen map downloaden; verder verandert er niets aan je systeem.",
+        "missing": "Niet gevonden. Oleafly kan een geschikte pandoc (2.19 of nieuwer) naar zijn eigen map downloaden. Verder verandert er niets aan je systeem.",
         "ready": "Gevonden. Markdown-projecten worden met pandoc naar LaTeX omgezet en daarna met de meegeleverde Tectonic gecompileerd."
       },
       "tectonicDetail": "Zet de LaTeX die pandoc maakt om in drukwerk. Komt met Oleafly mee, er valt niets in te stellen.",

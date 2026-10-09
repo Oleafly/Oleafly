@@ -19,11 +19,11 @@
     },
     "icon-near-contact": {
       "title": "İletişim bilgisinin yanında simge",
-      "detail": "Yazı tipi simgeleri (\\faPhone veya \\faEnvelope gibi), bir ayrıştırıcının bilinmeyen karakter olarak okuduğu ve ekran okuyucunun adlandıramadığı glifler olarak işlenir; bu yüzden yanlarındaki iletişim bilgisi kaybolabilir. E-postanın veya telefonun düz, seçilebilir metin olarak da bulunduğundan emin olun."
+      "detail": "Yazı tipi simgeleri (\\faPhone veya \\faEnvelope gibi), bir ayrıştırıcının bilinmeyen karakter olarak okuduğu ve ekran okuyucunun adlandıramadığı glifler olarak işlenir. Bu yüzden yanlarındaki iletişim bilgisi kaybolabilir. E-postanın veya telefonun düz, seçilebilir metin olarak da bulunduğundan emin olun."
     },
     "layout-table": {
       "titleTable": "Tablo içeriği özgeçmiş alanı olarak ayrıştırılmayabilir",
-      "detailTable": "ATS araçları tablo içeriğini çoğu zaman öngörülemez biçimde düzleştirir. Özgeçmiş metnini yan yana yerleştirmek için tablo kullanmayın; gerçek araştırma veri tabloları Erişilebilirlik bölümünde ayrıca değerlendirilir.",
+      "detailTable": "ATS araçları tablo içeriğini çoğu zaman öngörülemez biçimde düzleştirir. Özgeçmiş metnini yan yana yerleştirmek için tablo kullanmayın. Gerçek araştırma veri tabloları Erişilebilirlik bölümünde ayrıca denetlenir.",
       "titleTikz": "TikZ içeriği anlamsal bir alternatif gerektirir",
       "detailTikz": "TikZ, görsel içerik çizer ama anlamını normal metin olarak sunmaz. Yayın çıktısı için erişilebilir bir açıklama ekleyin ve ATS'ye gidecek özgeçmiş içeriğinde kullanmayın."
     },
@@ -56,7 +56,7 @@
     },
     "heading-skip": {
       "title": "Başlık düzeyi atlandı",
-      "detail": "Bu başlık, bir öncekinden bir düzeyden fazla derine iniyor; bu da ekran okuyucuların ve ayrıştırıcıların dayandığı belge anahattını bozar. Düzey atlamayın, örneğin önce section, sonra subsection, sonra subsubsection gidin."
+      "detail": "Bu başlık, bir öncekinden bir düzeyden fazla derine iniyor, bu da ekran okuyucuların ve ayrıştırıcıların dayandığı belge anahattını bozar. Düzey atlamayın, örneğin önce section, sonra subsection, sonra subsubsection gidin."
     },
     "nonstandard-headings": {
       "title": "Standart olmayan bölüm başlığı: \"{{heading}}\"",
@@ -68,17 +68,17 @@
     },
     "reading-order-risk": {
       "title": "Okuma sırasını bozabilecek düzen",
-      "detail": "Kenar notları ve metin saran şekiller, içeriği ana akışın dışına koyar; bu yüzden ayrıştırıcılar ve ekran okuyucular onu sırasız okuyabilir. Derledikten sonra aşağıdaki önizlemede okuma sırasını denetleyin."
+      "detail": "Kenar notları ve metin saran şekiller, içeriği ana akışın dışına koyar. Bu yüzden ayrıştırıcılar ve ekran okuyucular onu sırasız okuyabilir. Derledikten sonra aşağıdaki önizlemede okuma sırasını denetleyin."
     },
     "ua-standard-without-title": {
       "title": "Belge başlığı olmadan PDF/UA bildirilmiş",
-      "detailBoth": "Bu belge pdfstandard=ua bildiriyor ama ne pdftitle ne de pdfdisplaydoctitle=true ayarlıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir; bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın.",
-      "detailTitle": "Bu belge pdfstandard=ua bildiriyor ama pdftitle ayarlamıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir; bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın.",
-      "detailDisplay": "Bu belge pdfstandard=ua bildiriyor ama pdfdisplaydoctitle=true ayarlamıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir; bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın."
+      "detailBoth": "Bu belge pdfstandard=ua bildiriyor ama ne pdftitle ne de pdfdisplaydoctitle=true ayarlıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir. Bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın.",
+      "detailTitle": "Bu belge pdfstandard=ua bildiriyor ama pdftitle ayarlamıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir. Bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın.",
+      "detailDisplay": "Bu belge pdfstandard=ua bildiriyor ama pdfdisplaydoctitle=true ayarlamıyor. PDF/UA, XMP üst verisinde bir başlık ve onu gösteren bir görüntüleyici tercihi gerektirir. Bu yüzden çıktı, karşılamadığı bir standardı iddia etmiş olur. hyperref yükleyip \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın."
     },
     "ua-standard-on-tectonic": {
       "title": "Paketlenmiş motor, bildirilen PDF/UA çıktısını üretemez",
-      "detail": "Bu belge pdfstandard=ua bildiriyor, ancak paketlenmiş motor etiket ağacı yazamaz; bu yüzden PDF, karşılamadığı bir PDF/UA iddiası taşır. TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile derleyin veya pdfstandard anahtarını kaldırın."
+      "detail": "Bu belge pdfstandard=ua bildiriyor, ancak paketlenmiş motor etiket ağacı yazamaz. Bu yüzden PDF, karşılamadığı bir PDF/UA iddiası taşır. TeX Live 2025 veya daha yenisinden pdfLaTeX ya da LuaLaTeX ile derleyin veya pdfstandard anahtarını kaldırın."
     },
     "table-header-rows": {
       "title": "Tablo başlık satırı başlık olarak işaretlenmemiş",
@@ -86,15 +86,15 @@
     },
     "pdf-reading-order": {
       "title": "Çıktıda sütunlar soldan sağa okunuyor",
-      "detail": "Bu sayfada iki sütunun metni aynı satırlara denk geliyor; bu yüzden bir ayrıştırıcı onları doğrudan yan yana okuyup karışık metin üretir ve ekran okuyucu sırasız duyurur. Ayrıştırılması gereken içerikte tek sütunlu düzen kullanın. Aşağıdaki okuyucu görünümüne bakın."
+      "detail": "Bu sayfada iki sütunun metni aynı satırlara denk geliyor. Bu yüzden bir ayrıştırıcı onları doğrudan yan yana okuyup karışık metin üretir ve ekran okuyucu sırasız duyurur. Ayrıştırılması gereken içerikte tek sütunlu düzen kullanın. Aşağıdaki okuyucu görünümüne bakın."
     },
     "pdf-garbled": {
       "title": "Çıktıda bozuk veya eşlenmemiş metin",
-      "detail": "Çıkarılan metin, Unicode'a eşlenmeyen karakterler içeriyor; bu yüzden kopyala yapıştır ve ayrıştırıcılar bozuk çıktı görür ve ekran okuyucu okuyamaz. Bu genellikle eksik bir glif ile Unicode eşlemesi ya da metin olarak gömülmemiş bir yazı tipi anlamına gelir."
+      "detail": "Çıkarılan metin, Unicode'a eşlenmeyen karakterler içeriyor. Bu yüzden kopyala yapıştır ve ayrıştırıcılar bozuk çıktı görür ve ekran okuyucu okuyamaz. Bu genellikle eksik bir glif ile Unicode eşlemesi ya da metin olarak gömülmemiş bir yazı tipi anlamına gelir."
     },
     "pdf-selectable": {
       "title": "Sayfada seçilebilir metin yok",
-      "detail": "Bu sayfa çok az çıkarılabilir metin içeriyor ya da hiç içermiyor; bu yüzden bir ayrıştırıcı ve ekran okuyucu hiçbir şey görmez. Büyük olasılıkla görsel olarak işlenmiş ya da metin olarak gömülmemiş yazı tipleri kullanıyor. İçeriğin gerçek, seçilebilir metin olduğundan emin olun."
+      "detail": "Bu sayfa çok az çıkarılabilir metin içeriyor ya da hiç içermiyor. Bu yüzden bir ayrıştırıcı ve ekran okuyucu hiçbir şey görmez. Büyük olasılıkla görsel olarak işlenmiş ya da metin olarak gömülmemiş yazı tipleri kullanıyor. İçeriğin gerçek, seçilebilir metin olduğundan emin olun."
     },
     "output-clipped-content": {
       "title": "Metin sayfanın dışına taşıyor",
@@ -121,7 +121,7 @@
     },
     "pdf-mark-info-extraction-failed": {
       "title": "PDF etiketleme durumu incelenemedi",
-      "detail": "Ön denetim PDF'in MarkInfo sözlüğünü okuyamadı. Bu, iki yönde de kanıt değil, bilinmeyen bir sonuçtur; bu yüzden yalnızca bu denetime dayanarak çıktıyı etiketli ya da etiketsiz saymaz."
+      "detail": "Ön denetim PDF'in MarkInfo sözlüğünü okuyamadı. Bu, iki yönde de kanıt değil, bilinmeyen bir sonuçtur. Bu yüzden Ön denetim, yalnızca bu denetime dayanarak çıktıyı etiketli ya da etiketsiz saymaz."
     },
     "compile-failed": {
       "title": "En son derleme başarısız oldu",
@@ -135,7 +135,7 @@
     "compile-missing-glyph": {
       "title_one": "{{count}} eksik glif",
       "title_other": "{{count}} eksik glif",
-      "detail": "Seçili yazı tipleri her karakteri işleyemiyor. Eksik glifler PDF'ten sessizce kaybolabilir; buna adlardaki, denklemlerdeki ve atıflardaki semboller de dahildir."
+      "detail": "Seçili yazı tipleri her karakteri işleyemiyor. Eksik glifler PDF'ten sessizce kaybolabilir. Buna adlardaki, denklemlerdeki ve atıflardaki semboller de dahildir."
     },
     "compile-unresolved-references": {
       "title": "Derlenen çıktıda çözümlenmemiş başvurular var",
@@ -167,11 +167,11 @@
       "partBlocking": "Etiketlemeyle uyumlu değil: {{files}}.",
       "partUnproven": "Şunlar için kayıtlı bir sonuç yok: {{files}}.",
       "partPartial": "Yalnızca kısmen etiketleniyor: {{files}}.",
-      "partAdvice": "Etiketlenemeyen her şey, bölümlerin tamamını yapı ağacının dışında bırakabilir; bu yüzden değiştirebildiklerinizi değiştirin."
+      "partAdvice": "Etiketlenemeyen her şey, bölümlerin tamamını yapı ağacının dışında bırakabilir, bu yüzden değiştirebildiklerinizi değiştirin."
     },
     "pdf-structure-single-pass": {
       "title": "Etiket ağacı ilk derleme geçişi gibi görünüyor",
-      "detail": "PDF etiketli olarak işaretlenmiş ama yapı ağacında neredeyse hiçbir şey yok; bu da tek geçişin ürettiği sonuçtur. Etiketli çıktı iki geçiş gerektirir. Yeniden derleyip tekrar denetleyin."
+      "detail": "PDF etiketli olarak işaretlenmiş ama yapı ağacında neredeyse hiçbir şey yok, bu da tek geçişin ürettiği sonuçtur. Etiketli çıktı iki geçiş gerektirir. Yeniden derleyip tekrar denetleyin."
     },
     "pdf-ua-claim-mismatch": {
       "title": "Bu PDF, PDF/UA-{{part}} iddia ediyor ama karşılamıyor",
@@ -179,19 +179,19 @@
       "partNoXmpTitle": "XMP üst verisinde belge başlığı yok.",
       "partNoDisplayDocTitle": "DisplayDocTitle true olarak ayarlanmamış.",
       "partNotTagged": "Dosya etiketlenmemiş.",
-      "partAdvice": "Bu iddiaya güvenen her şey, uygun olmadığı hâlde bu PDF'i uygun olarak bildirir; bu yüzden ya eksikleri kapatın ya da iddiayı bırakın. hyperref ile \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın ve etiketleme açıkken derleyin."
+      "partAdvice": "Bu iddiaya güvenen her şey, uygun olmadığı hâlde bu PDF'i uygun olarak bildirir. Bu yüzden ya eksikleri kapatın ya da iddiayı bırakın. hyperref ile \\hypersetup{pdftitle={Başlığınız}, pdfdisplaydoctitle=true} ayarlayın ve etiketleme açıkken derleyin."
     },
     "pdf-xmp-title": {
       "title": "Başlık yalnızca Info sözlüğünde",
-      "detail": "Belge başlığı Info sözlüğünde ayarlanmış ama XMP üst verisinde dc:title olarak yok; PDF/UA onu orada arar. hyperref'i pdftitle ile yüklemek ikisini de yazar."
+      "detail": "Belge başlığı Info sözlüğünde ayarlanmış ama XMP üst verisinde dc:title olarak yok, oysa PDF/UA onu orada arar. hyperref'i pdftitle ile yüklemek ikisini de yazar."
     },
     "pdf-display-doc-title": {
       "title": "Okuyucu başlığı değil dosya adını gösterecek",
-      "detail": "ViewerPreferences içinde true olarak ayarlanmış bir DisplayDocTitle girdisi yok; bu yüzden bir PDF okuyucu, penceresinde ve yardımcı teknolojilere dosya adını duyurur. Bunu hyperref ile ayarlayın, örneğin \\hypersetup{pdfdisplaydoctitle=true}."
+      "detail": "ViewerPreferences içinde true olarak ayarlanmış bir DisplayDocTitle girdisi yok. Bu yüzden bir PDF okuyucu, penceresinde ve yardımcı teknolojilere dosya adını duyurur. Bunu hyperref ile ayarlayın, örneğin \\hypersetup{pdfdisplaydoctitle=true}."
     },
     "pdf-suspects": {
       "title": "PDF, kendi etiketlemesini güvenilmez olarak işaretliyor",
-      "detail": "MarkInfo, Suspects değerini true yapıyor; bu, üreticinin etiket ağacının görünen içerikle örtüşmeyebileceğini söylemesidir. Güncel bir motorla yeniden derleyin ve günlükteki etiketleme uyarılarını denetleyin."
+      "detail": "MarkInfo, Suspects değerini true yapıyor. Bu, üreticinin etiket ağacının görünen içerikle örtüşmeyebileceğini söylemesidir. Güncel bir motorla yeniden derleyin ve günlükteki etiketleme uyarılarını denetleyin."
     },
     "pdf-link-alt": {
       "title_one": "{{count}} bağlantı ek açıklamasının açıklaması yok",
@@ -213,7 +213,7 @@
     },
     "pdf-structure-missing": {
       "title": "Etiketli PDF'in okunabilir yapı ağacı yok",
-      "detail": "PDF kendini etiketli olarak bildiriyor, ancak Ön denetim gezilecek bir belge yapısı bulamadı. Ekran okuyucular başlıkları, listeleri, tabloları veya okuma sırasını almayabilir. Etiketleme iki derleme geçişi gerektirir; bu yüzden bunu kesin saymadan önce yeniden derleyip tekrar denetleyin."
+      "detail": "PDF kendini etiketli olarak bildiriyor, ancak Ön denetim gezilecek bir belge yapısı bulamadı. Ekran okuyucular başlıkları, listeleri, tabloları veya okuma sırasını almayabilir. Etiketleme iki derleme geçişi gerektirir, bu yüzden bunu kesin saymadan önce yeniden derleyip tekrar denetleyin."
     },
     "output-figure-alt": {
       "title": "Etiketli şeklin alternatif metni yok",
@@ -229,7 +229,7 @@
     },
     "output-heading-skip": {
       "title": "Etiket ağacında başlık düzeyi atlandı",
-      "detail": "Etiketlenmiş başlıklar bir düzeyden fazla atlıyor (örneğin H1'den doğrudan H3'e); bu da ekran okuyucunun gezindiği anahattı bozar. Başlık düzeylerini atlamayın."
+      "detail": "Etiketlenmiş başlıklar bir düzeyden fazla atlıyor (örneğin H1'den doğrudan H3'e), bu da ekran okuyucunun gezindiği anahattı bozar. Başlık düzeylerini atlamayın."
     },
     "ats-no-name": {
       "title": "Bir ayrıştırıcı adınızı belirleyemedi",
@@ -237,7 +237,7 @@
     },
     "ats-no-email": {
       "title": "Bir ayrıştırıcı e-postanızı bulamadı",
-      "detail": "Çıkarılan metinde e-posta adresi bulunamadı; oysa bir ayrıştırıcının en çok dayandığı alan budur. E-postanız bir simgenin yanında ya da üst bilgide duruyorsa seçilebilir metin olmayabilir. Onu gövdeye düz metin olarak koyun."
+      "detail": "Çıkarılan metinde e-posta adresi bulunamadı, oysa bir ayrıştırıcının en çok dayandığı alan budur. E-postanız bir simgenin yanında ya da üst bilgide duruyorsa seçilebilir metin olmayabilir. Onu gövdeye düz metin olarak koyun."
     },
     "ats-no-phone": {
       "title": "Bir ayrıştırıcı telefon numarası bulamadı",
@@ -256,7 +256,7 @@
       "title_one": "{{count}} kaynakça kaydının üst verisi eksik",
       "title_other": "{{count}} kaynakça kaydının üst verisi eksik",
       "detail": "Eksik kayıtlar, yayıncı stillerinde bozuk veya belirsiz başvurular üretebilir. {{examples}}.",
-      "detailTruncated": "Eksik kayıtlar, yayıncı stillerinde bozuk veya belirsiz başvurular üretebilir. {{examples}}; …"
+      "detailTruncated": "Eksik kayıtlar, yayıncı stillerinde bozuk veya belirsiz başvurular üretebilir. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI değeri bozuk görünüyor",
@@ -304,7 +304,7 @@
     },
     "refs-missing-asset": {
       "titleImage": "Görsel bulunamadı: {{file}}",
-      "detailImage": "Bu \\includegraphics, projede olmayan bir dosyayı gösteriyor; bu yüzden şekil eksik kalacak. Dosya adını ve yolu denetleyin.",
+      "detailImage": "Bu \\includegraphics, projede olmayan bir dosyayı gösteriyor, bu yüzden şekil eksik kalacak. Dosya adını ve yolu denetleyin.",
       "titleInclude": "Dahil edilen dosya bulunamadı: {{file}}",
       "detailInclude": "Bu \\input veya \\include, projede olmayan bir dosyayı gösteriyor. Dosya adını ve yolu denetleyin.",
       "detailImageTypst": "Bu görsel yoluyla eşleşen bir proje dosyası yok, bu yüzden derleme başarısız olur. Typst yolu dosyaya göre okur, / ile başlıyorsa proje kökünden okur.",
@@ -312,7 +312,7 @@
     },
     "refs-bib-missing": {
       "title": "Kaynakça dosyası bulunamadı: {{file}}",
-      "detail": "Bu \\bibliography veya \\addbibresource, projede olmayan bir dosyayı gösteriyor; bu yüzden her atıf [?] olarak görünecek. Dosya adını denetleyin veya dosyayı oluşturmak için bir kaynak kitaplığı içe aktarın.",
+      "detail": "Bu \\bibliography veya \\addbibresource, projede olmayan bir dosyayı gösteriyor, bu yüzden her atıf [?] olarak görünecek. Dosya adını denetleyin veya dosyayı oluşturmak için bir kaynak kitaplığı içe aktarın.",
       "detailTypst": "Bu #bibliography çağrısı projede olmayan bir dosyayı gösteriyor, bu yüzden derleme başarısız olur. Dosya adını denetleyin veya dosyayı oluşturmak için bir kaynak kitaplığı içe aktarın."
     },
     "refs-duplicate-bib": {
@@ -321,8 +321,8 @@
     },
     "submission-path-case": {
       "title": "Dosya adının büyük küçük harf durumu eşleşmiyor: {{target}}",
-      "detailFigure": "Bu şekil yalnızca büyük küçük harf ayrımı yapmayan bir dosya sisteminde çözümleniyor. Projede \"{{match}}\" var; Linux tabanlı derleme sistemlerine göndermeden önce bu yazımı birebir eşleştirin.",
-      "detailInclude": "Bu dahil edilen dosya yalnızca büyük küçük harf ayrımı yapmayan bir dosya sisteminde çözümleniyor. Projede \"{{match}}\" var; Linux tabanlı derleme sistemlerine göndermeden önce bu yazımı birebir eşleştirin."
+      "detailFigure": "Bu şekil yalnızca büyük küçük harf ayrımı yapmayan bir dosya sisteminde çözümleniyor. Projede \"{{match}}\" var, bu yüzden Linux tabanlı derleme sistemlerine göndermeden önce bu yazımı birebir eşleştirin.",
+      "detailInclude": "Bu dahil edilen dosya yalnızca büyük küçük harf ayrımı yapmayan bir dosya sisteminde çözümleniyor. Projede \"{{match}}\" var, bu yüzden Linux tabanlı derleme sistemlerine göndermeden önce bu yazımı birebir eşleştirin."
     },
     "submission-missing-project-file": {
       "titleFigure": "Eksik şekil: {{target}}",
@@ -352,11 +352,11 @@
     },
     "privacy-draft-artifact": {
       "title": "Taslak işaretlemesi hâlâ açık",
-      "detail": "Kaynak; taslak, TODO, değişiklik izleme, filigran veya etiket ayıklama çıktısını etkinleştiriyor. Bunu kapatın ve gönderimden önce son PDF'i gözle inceleyin."
+      "detail": "Kaynakta taslak, TODO, değişiklik izleme, filigran veya etiket ayıklama çıktısı etkinleştirilmiş. Bunu kapatın ve gönderimden önce son PDF'i gözle inceleyin."
     },
     "privacy-blind-author": {
       "title": "Kör hakemlik kaynağında yazar kimliği kalmış",
-      "detail": "Kaynak; anonim olmayan bir yazar, kurum, e-posta, adres veya teşekkür alanı içeriyor. Kimlik belirten içeriği etkinliğin anonim hakemlik kipini kullanarak değiştirin.",
+      "detail": "Kaynakta anonim olmayan bir yazar, kurum, e-posta, adres veya teşekkür alanı var. Kimlik belirten içeriği etkinliğin anonim hakemlik kipini kullanarak değiştirin.",
       "detailTypst": "Kaynak, belgeye veya şablonuna bir yazar adı, e-posta ya da kurum veriyor. Bunu kaldırın veya şablonu anonim kipine geçirin."
     },
     "privacy-blind-acknowledgements": {
@@ -407,7 +407,7 @@
     },
     "submission-placeholder": {
       "title": "Metinde taslak yer tutucusu kalmış",
-      "detail": "Kaynak; TODO, TBD, FIXME, yer tutucu metin veya soru işareti imleri içeriyor. Son gönderimi üretmeden önce her geçişi gözden geçirin.",
+      "detail": "Kaynakta TODO, TBD, FIXME, yer tutucu metin veya soru işareti imleri var. Son gönderimi üretmeden önce her geçişi gözden geçirin.",
       "detailTypst": "Belge hâlâ #lorem çağırıyor veya yer tutucu metin içeriyor. Son gönderimden önce bunu değiştirin."
     },
     "submission-pdf-version": {
@@ -495,7 +495,7 @@
       "label": "Derleme ve düzen",
       "who": "Her son belge için",
       "info": "Derleme hataları, çözümlenmemiş başvurular, eksik glifler ve sayfa düzeni sorunları.",
-      "detail": "En son derleyici günlüğünü ve PDF'i; başarısız derlemeler, çözümlenmemiş başvurular, eksik glifler, taşan veya kırpılmış içerik, eski yeniden derleme uyarıları ve karışık sayfa boyutları açısından inceler."
+      "detail": "Başarısız derlemeler, çözümlenmemiş başvurular, eksik glifler, taşan veya kırpılmış içerik, eski yeniden derleme uyarıları ve karışık sayfa boyutları açısından en son derleyici günlüğünü ve PDF'i inceler."
     },
     "submission": {
       "label": "Gönderime hazırlık",
@@ -607,7 +607,7 @@
     "readerButton": "Ekran okuyucu",
     "aboutLabel": "Ön denetim hakkında",
     "aboutTitle": "Ön denetim neleri denetler",
-    "aboutIntro": "Ön denetim; proje kaynağını, derleyici günlüğünü ve geçerli PDF'i okur. Yalnızca bu belgeye uyan denetimleri açın.",
+    "aboutIntro": "Ön denetim proje kaynağını, derleyici günlüğünü ve geçerli PDF'i okur. Yalnızca bu belgeye uyan denetimleri açın.",
     "aboutFooter": "Doğrulanmış bulgular doğrudan gözlemlerden gelir. Tavsiye niteliğindeki bulgular yine de sizin değerlendirmenizi gerektirir. Temiz bir rapor incelemede yardımcı olur, ancak kabul veya erişilebilirlik belgesi değildir. Tüm denetimler yerel olarak çalışır.",
     "enableCheck": "{{check}} denetimini aç",
     "runCheck": "{{check}} denetimini çalıştır",

@@ -599,7 +599,7 @@
         "label": "Promień narożnika"
       },
       "resetAll": "Zresetuj wszystko",
-      "resetMode": "Zresetuj ten tryb",
+      "resetMode": "Zresetuj",
       "title": "Dostosowanie motywu",
       "tokenInputDark": "Token {{token}} dla trybu ciemnego",
       "tokenInputLight": "Token {{token}} dla trybu jasnego",
@@ -676,8 +676,48 @@
         "label": "Przypięte przewijanie"
       },
       "theme": {
-        "description": "Ustal kolory składni źródła niezależnie od motywu aplikacji.",
-        "label": "Motyw edytora"
+        "dark": {
+          "description": "Motyw edytora, gdy aplikacja jest ciemna.",
+          "label": "Motyw w trybie ciemnym"
+        },
+        "light": {
+          "description": "Motyw edytora, gdy aplikacja jest jasna.",
+          "label": "Motyw w trybie jasnym"
+        }
+      },
+      "colors": {
+        "description": "Zmień dowolny kolor motywu edytora. Zmiany są zapisywane osobno dla każdego motywu.",
+        "editing": "Edytowany motyw: {{theme}}",
+        "editorGroup": "Edytor",
+        "mode": {
+          "dark": "Tryb ciemny",
+          "light": "Tryb jasny"
+        },
+        "modeAriaLabel": "Motyw do dostosowania",
+        "names": {
+          "background": "Tło",
+          "command": "Polecenia",
+          "comment": "Komentarze",
+          "environment": "Środowiska",
+          "formatting": "Formatowanie",
+          "heading": "Nagłówki",
+          "lineNumbers": "Numery wierszy",
+          "link": "Linki",
+          "math": "Wzory",
+          "name": "Nazwy i klucze",
+          "reference": "Cytowania i odwołania",
+          "selection": "Zaznaczenie",
+          "structure": "Preambuła i importy",
+          "symbol": "Nawiasy i symbole",
+          "text": "Tekst",
+          "value": "Wartości i ciągi znaków"
+        },
+        "pick": "Wybierz kolor: {{color}}",
+        "previewAriaLabel": "Język podglądu",
+        "reset": "Zresetuj",
+        "syntaxGroup": "Składnia",
+        "title": "Kolory edytora",
+        "useThemeColor": "Użyj koloru motywu: {{color}}"
       },
       "keymap": {
         "description": "Wybierz zestaw skrótów używany przez edytor kodu źródłowego.",
@@ -872,7 +912,7 @@
         "label": "Przejdź na pełny ekran"
       },
       "showPdf": {
-        "description": "Jeśli PDF jest ukryty na początku trybu Zen, otwiera go obok edytora przy pierwszej kompilacji.",
+        "description": "Jeśli PDF jest ukryty w trybie Zen, otwiera go obok edytora podczas kompilacji.",
         "label": "Pokaż PDF przy kompilacji"
       },
       "title": "Tryb Zen"
@@ -1048,7 +1088,7 @@
       "status": {
         "checking": "Sprawdzanie pandoc…",
         "installing": "Pobieranie przypiętego wydania pandoc. Za pierwszym razem chwilę to trwa.",
-        "missing": "Nie znaleziono. Oleafly może pobrać zgodny pandoc (2.19 lub nowszy) do własnego folderu; nic innego w systemie się nie zmienia.",
+        "missing": "Nie znaleziono. Oleafly może pobrać zgodny pandoc (2.19 lub nowszy) do własnego folderu. Nic innego w systemie się nie zmienia.",
         "ready": "Wykryto. Projekty Markdown są konwertowane na LaTeX przez pandoc, a potem kompilowane wbudowanym Tectonic."
       },
       "tectonicDetail": "Składa kod LaTeX wytworzony przez pandoc. Dołączony do Oleafly, nie wymaga konfiguracji.",

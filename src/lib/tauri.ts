@@ -677,6 +677,9 @@ export const setProjectEngineCmd = (
   flavor: TexFlavor | null = null,
 ) => invoke<ProjectMeta>("set_project_engine", { projectId, engine, flavor });
 
+export const setDefaultLatexEngineCmd = (engine: "tectonic" | "latexmk") =>
+  invoke<void>("set_default_latex_engine", { engine });
+
 export interface TypstSystemInstall {
   version: string;
   path: string;

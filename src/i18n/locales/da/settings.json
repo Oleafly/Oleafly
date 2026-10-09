@@ -589,7 +589,7 @@
         "label": "Hjørneradius"
       },
       "resetAll": "Nulstil alle",
-      "resetMode": "Nulstil denne tilstand",
+      "resetMode": "Nulstil",
       "title": "Tematilpasning",
       "tokenInputDark": "Token {{token}} til mørk tilstand",
       "tokenInputLight": "Token {{token}} til lys tilstand",
@@ -666,8 +666,48 @@
         "label": "Fastlåst rulning"
       },
       "theme": {
-        "description": "Vælg farver til syntaksen i kildekoden uafhængigt af appens tema.",
-        "label": "Editorens tema"
+        "dark": {
+          "description": "Editorens tema, når appen er mørk.",
+          "label": "Tema i mørk tilstand"
+        },
+        "light": {
+          "description": "Editorens tema, når appen er lys.",
+          "label": "Tema i lys tilstand"
+        }
+      },
+      "colors": {
+        "description": "Skift en hvilken som helst farve i et editortema. Ændringer gemmes for hvert tema.",
+        "editing": "Redigerer {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Mørk tilstand",
+          "light": "Lys tilstand"
+        },
+        "modeAriaLabel": "Tema, der tilpasses",
+        "names": {
+          "background": "Baggrund",
+          "command": "Kommandoer",
+          "comment": "Kommentarer",
+          "environment": "Miljøer",
+          "formatting": "Formatering",
+          "heading": "Overskrifter",
+          "lineNumbers": "Linjenumre",
+          "link": "Links",
+          "math": "Matematik",
+          "name": "Navne og nøgler",
+          "reference": "Citationer og referencer",
+          "selection": "Markering",
+          "structure": "Præambel og importer",
+          "symbol": "Parenteser og symboler",
+          "text": "Tekst",
+          "value": "Værdier og strenge"
+        },
+        "pick": "Vælg en farve til {{color}}",
+        "previewAriaLabel": "Forhåndsvisningens sprog",
+        "reset": "Nulstil",
+        "syntaxGroup": "Syntaks",
+        "title": "Editorens farver",
+        "useThemeColor": "Brug temaets farve til {{color}}"
       },
       "keymap": {
         "description": "Vælg det sæt tastaturgenveje, som kildeeditoren bruger.",
@@ -862,7 +902,7 @@
         "label": "Gå til fuld skærm"
       },
       "showPdf": {
-        "description": "Hvis PDF'en er skjult, når Zen-tilstand starter, åbnes den ved siden af editoren første gang du kompilerer.",
+        "description": "Hvis PDF'en er skjult i Zen-tilstand, åbnes den ved siden af editoren, når du kompilerer.",
         "label": "Vis PDF'en ved kompilering"
       },
       "title": "Zen-tilstand"

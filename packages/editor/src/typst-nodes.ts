@@ -7,6 +7,7 @@ import {
 import type { EditorState } from "@codemirror/state";
 import { NodeProp, NodeSet, NodeType, type SyntaxNode } from "@lezer/common";
 import { styleTags, tags as t } from "@lezer/highlight";
+import { syntaxTags } from "./syntax-colors";
 import { typstLanguageData } from "./typst";
 
 export const K = {
@@ -250,17 +251,17 @@ const typstHighlighting = styleTags({
   "Heading/...": t.heading,
   "Strong/...": t.strong,
   "Emph/...": t.emphasis,
-  "Strong/Star Emph/Underscore": t.processingInstruction,
+  "Strong/Star Emph/Underscore": syntaxTags.formatting,
   "ListMarker EnumMarker TermMarker": t.list,
   "TermItem/Colon": t.list,
   "TermText/...": t.strong,
   "Raw/...": [t.monospace, t.string],
   RawLang: t.labelName,
   Link: t.url,
-  Label: t.labelName,
-  RefMarker: t.link,
+  Label: syntaxTags.reference,
+  "Ref/...": syntaxTags.reference,
   "Linebreak Escape Shorthand MathShorthand": t.escape,
-  "Equation/...": t.special(t.string),
+  "Equation/...": syntaxTags.math,
   "MathArgs/LeftParen MathArgs/RightParen Math/LeftParen Math/RightParen MathArgs/Comma MathArgs/Semicolon MathFrac/Slash MathArgs/Colon":
     [],
   HashKeyword: t.keyword,

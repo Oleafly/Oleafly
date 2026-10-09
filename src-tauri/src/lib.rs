@@ -784,6 +784,7 @@ pub fn run() {
             typst_packages::vendor_typst_packages,
             project::set_project_shell_escape,
             project::record_project_tex_spec,
+            project::set_default_latex_engine,
             project::project_tex_status,
             project::import_overleaf_project,
             project::set_project_color,

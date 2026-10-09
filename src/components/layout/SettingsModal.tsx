@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { Fragment, lazy, Suspense, useEffect, useId, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
@@ -136,6 +136,7 @@ import {
   type GitHubRepoStats,
 } from "@/lib/github";
 import { Badge } from "@/components/ui/badge";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 
 const ChangelogDialog = lazy(() =>
   import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
@@ -332,7 +333,7 @@ export function SettingsModal() {
     setOpen(false);
     useSettingsStore.getState().setSettingsInitialSection("general");
   };
-  const settingsBodyRef = useRef<HTMLDivElement>(null);
+  const settingsBodyRef = useScrollTopOnChange(section);
   const sectionListId = useId();
   const settingsTourActive = useTourStore((s) => s.activeTourId === "settings");
   const search = useSettingsSearch({
@@ -344,6 +345,7 @@ export function SettingsModal() {
     suspended: settingsTourActive,
     containerRef: settingsBodyRef,
   });
+  const sectionListRef = useScrollTopOnChange(search.hits?.map((hit) => hit.id).join("\n") ?? "");
   const searchRows = new Map(search.hits?.map((hit) => [hit.id, hit.rows]));
   const visibleNavigation = search.hits
     ? navigation.filter((item) => searchRows.has(item.id))
@@ -729,6 +731,7 @@ export function SettingsModal() {
   const renderSettingsBody = () => (
     <div
       ref={settingsBodyRef}
+      data-testid="settings-body"
       className={cn("flex-1 select-text overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
     >
       {section === "appearance" && <AppearanceSection />}
@@ -1100,21 +1103,14 @@ export function SettingsModal() {
           onChange={setOffline}
         />
         <div className="overflow-hidden rounded-lg border bg-card">
-          <div className="flex items-center gap-2 p-3">
+          <div className="relative flex items-center gap-2 p-3">
             <button
               type="button"
               aria-expanded={tourGuidesOpen}
               aria-controls="tour-guides-panel"
               onClick={() => setTourGuidesOpen((value) => !value)}
-              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left after:absolute after:inset-0 after:content-[''] focus-visible:bg-accent/60"
             >
-              <ChevronRight
-                className={cn(
-                  "size-4 shrink-0 text-muted-foreground transition-transform",
-                  tourGuidesOpen && "rotate-90",
-                )}
-                aria-hidden
-              />
               <span className="min-w-0">
                 <span className="block text-sm font-medium">
                   {t(($) => $.shell.settings.tours.enable)}
@@ -1144,10 +1140,17 @@ export function SettingsModal() {
                   startTour(projectId ? "workspace" : "home"),
                 );
               }}
-              className="-m-1 rounded-full p-1 transition-colors hover:bg-accent focus-visible:bg-accent"
+              className="relative -m-1 rounded-full p-1 transition-colors hover:bg-accent focus-visible:bg-accent"
             >
               <SettingsSwitchIndicator checked={toursEnabled} />
             </button>
+            <ChevronRight
+              aria-hidden
+              className={cn(
+                "pointer-events-none size-4 shrink-0 text-muted-foreground motion-safe:transition-transform",
+                tourGuidesOpen && "rotate-90",
+              )}
+            />
           </div>
           {tourGuidesOpen && (
             <div id="tour-guides-panel" className="space-y-2 border-t p-3">
@@ -1227,7 +1230,7 @@ export function SettingsModal() {
         onClose={closeSettings}
         closeLabel={t(($) => $.shell.settings.close)}
         label={t(($) => $.shell.settings.title)}
-        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(880px,94vw)] overflow-hidden"
+        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(1040px,94vw)] min-w-[min(640px,94vw)] overflow-hidden"
       >
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
@@ -1242,6 +1245,7 @@ export function SettingsModal() {
           </div>
           <SettingsSearchQueryField search={search} controls={sectionListId} />
           <div
+            ref={sectionListRef}
             data-testid="settings-section-scroll"
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
           >

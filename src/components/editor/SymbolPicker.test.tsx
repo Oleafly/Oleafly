@@ -42,6 +42,18 @@ describe("SymbolPicker", () => {
     expect(screen.queryByLabelText(/^Insert alpha \(/)).not.toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    render(<SymbolPicker />);
+    fireEvent.click(screen.getByLabelText("Insert symbol"));
+    const grid = screen.getByLabelText(/^Insert alpha \(/).closest(".overflow-y-auto") as HTMLElement;
+    grid.scrollTop = 240;
+
+    fireEvent.change(screen.getByLabelText("Search symbols"), { target: { value: "infty" } });
+
+    expect(screen.getByLabelText(/^Insert infinity \(/)).toBeInTheDocument();
+    expect(grid.scrollTop).toBe(0);
+  });
+
   it("inserts the LaTeX macro for the clicked symbol", () => {
     render(<SymbolPicker />);
     fireEvent.click(screen.getByLabelText("Insert symbol"));

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
-import { Check, ChevronDown, ChevronRight, Download, FileText, Info, Sparkles, Trash2, Type } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, FileText, Info, Sparkles, Trash2, Type } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -31,6 +31,7 @@ import {
 } from "@/lib/tauri";
 import { Spinner } from "@/components/ui/spinner";
 import { SECTION_HEADING_CLASS, SectionHeading } from "@/components/ui/section-heading";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 const ALL = "__all__";
 
@@ -361,7 +362,7 @@ export function DownloadsSection() {
                     <span className="text-sm font-medium">
                       {isFontPackId(c.id) ? t(($) => $.settings.downloads.fontPacks[c.id as FontPackId].label) : c.label}
                     </span>
-                    {c.installed && <Check className="size-3.5 text-emerald-500" />}
+                    {c.installed && <CheckBadge tone="success" />}
                     {c.approx_bytes > 0 && (
                       <span className="text-[0.6875rem] text-muted-foreground">{formatDownloadSize(c.approx_bytes)}</span>
                     )}
@@ -444,7 +445,7 @@ export function DownloadsSection() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{p.label}</span>
-                    {p.installed && <Check className="size-3.5 text-emerald-500" />}
+                    {p.installed && <CheckBadge tone="success" />}
                     {p.approx_bytes > 0 && (
                       <span className="text-[0.6875rem] text-muted-foreground">{formatDownloadSize(p.approx_bytes)}</span>
                     )}

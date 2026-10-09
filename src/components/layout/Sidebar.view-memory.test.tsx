@@ -247,6 +247,39 @@ describe("ProjectSearch scroll memory", () => {
     expect(geometry.pendingFrames()).toBe(0);
   });
 
+  it("shows a new search's results from the top of the list", async () => {
+    await searchAndScroll(900);
+    const scroller = screen.getByText("part-00.tex").closest(".overflow-auto") as HTMLElement;
+
+    fireEvent.change(screen.getByPlaceholderText(copy.placeholder), {
+      target: { value: "matching line" },
+    });
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(screen.getByText("part-00.tex")).toBeInTheDocument();
+    expect(scroller.scrollTop).toBe(0);
+  });
+
+  it("keeps each project's position when the project changes while open", async () => {
+    await searchAndScroll(900);
+    mocks.searchDocs.mockResolvedValue([...MANY, ...MANY.map((hit) => ({ ...hit, project_id: "beta" }))]);
+    const input = screen.getByPlaceholderText(copy.placeholder);
+    openProject("beta");
+    await waitFor(() => expect(input).toHaveValue(""));
+    fireEvent.change(input, { target: { value: "other" } });
+    await vi.advanceTimersByTimeAsync(250);
+    const scroller = (await screen.findByText("part-00.tex")).closest(".overflow-auto") as HTMLElement;
+    geometry.scrollTo(scroller, 400);
+
+    openProject("alpha");
+    await waitFor(() => expect(input).toHaveValue("matching"));
+    expect(scroller.scrollTop).toBe(900);
+
+    openProject("beta");
+    await waitFor(() => expect(input).toHaveValue("other"));
+    expect(scroller.scrollTop).toBe(400);
+  });
+
   it("starts another project at the top and restores the first project's position", async () => {
     const first = await searchAndScroll(900);
     first.unmount();

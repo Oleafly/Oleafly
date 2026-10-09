@@ -859,7 +859,7 @@
       },
       "warning": "Queste funzioni sono sperimentali e ancora in beta. Non sono del tutto testate e possono cambiare, smettere di funzionare o essere rimosse in una versione futura. Attivale solo se vuoi provare un lavoro in corso.",
       "webBrowser": {
-        "description": "Mostra il browser web integrato (il suo pulsante e la scorciatoia) e permette all'AI di guidarlo. Disattivato per impostazione predefinita finché è in beta; quando è disattivato non c'è nessun pulsante del browser e l'AI non ha lo strumento del browser.",
+        "description": "Mostra il browser web integrato (il suo pulsante e la scorciatoia) e permette all'AI di guidarlo. Disattivato per impostazione predefinita finché è in beta. Quando è disattivato, non c'è nessun pulsante del browser e l'AI non ha lo strumento del browser.",
         "label": "Browser web"
       }
     },
@@ -893,7 +893,7 @@
         "description": "Compila con --only-cached e non scarica mai pacchetti dalla rete.",
         "label": "Modalità offline"
       },
-      "proofreadingNote": "La revisione viene eseguita in locale, in un worker in background. Harper segue la variante dell'inglese selezionata; l'ortografia usa sempre esattamente il pacchetto Hunspell selezionato. Matematica, codice, commenti, sintassi delle citazioni, metadati e URL sono esclusi.",
+      "proofreadingNote": "La revisione viene eseguita in locale, in un worker in background. Harper segue la variante dell'inglese selezionata e l'ortografia usa sempre esattamente il pacchetto Hunspell selezionato. Matematica, codice, commenti, sintassi delle citazioni, metadati e URL sono esclusi.",
       "regionalism": {
         "description": "Segnala i termini che non corrispondono alla variante dell'inglese selezionata. Disattivala se usi quei termini come nomi di prodotto o di codice.",
         "label": "Suggerimenti sui regionalismi"

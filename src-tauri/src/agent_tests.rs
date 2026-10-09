@@ -475,7 +475,7 @@ async fn native_read_file_answers_with_project_content() {
     let _ = std::fs::remove_dir_all(&root);
     std::fs::create_dir_all(&root).unwrap();
     std::env::set_var("OLEAFLY_DATA_DIR", &root);
-    let project_id = crate::project::create_project("Native Read".into()).unwrap();
+    let project_id = crate::project::create_blank_project("Native Read".into()).unwrap();
 
     let output = native_agent_tool(&project_id, "read_file", "{\"path\":\"main.tex\"}")
         .await

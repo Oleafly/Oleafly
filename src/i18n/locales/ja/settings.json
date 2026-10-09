@@ -584,7 +584,7 @@
         "label": "角の丸み"
       },
       "resetAll": "すべてリセット",
-      "resetMode": "このモードをリセット",
+      "resetMode": "リセット",
       "title": "テーマのカスタマイズ",
       "tokenInputDark": "ダークモードの {{token}} トークン",
       "tokenInputLight": "ライトモードの {{token}} トークン",
@@ -661,8 +661,48 @@
         "label": "スティッキースクロール"
       },
       "theme": {
-        "description": "ソースの構文の色を、アプリのテーマとは別に設定します。",
-        "label": "エディタのテーマ"
+        "dark": {
+          "description": "アプリがダークモードのときのエディタのテーマです。",
+          "label": "ダークモードのテーマ"
+        },
+        "light": {
+          "description": "アプリがライトモードのときのエディタのテーマです。",
+          "label": "ライトモードのテーマ"
+        }
+      },
+      "colors": {
+        "description": "エディタのテーマの色を自由に変更できます。変更はテーマごとに保存されます。",
+        "editing": "{{theme}} を編集中",
+        "editorGroup": "エディタ",
+        "mode": {
+          "dark": "ダークモード",
+          "light": "ライトモード"
+        },
+        "modeAriaLabel": "カスタマイズするテーマ",
+        "names": {
+          "background": "背景",
+          "command": "コマンド",
+          "comment": "コメント",
+          "environment": "環境",
+          "formatting": "書式",
+          "heading": "見出し",
+          "lineNumbers": "行番号",
+          "link": "リンク",
+          "math": "数式",
+          "name": "名前とキー",
+          "reference": "引用と参照",
+          "selection": "選択範囲",
+          "structure": "プリアンブルとインポート",
+          "symbol": "括弧と記号",
+          "text": "テキスト",
+          "value": "値と文字列"
+        },
+        "pick": "{{color}} の色を選択",
+        "previewAriaLabel": "プレビューの言語",
+        "reset": "リセット",
+        "syntaxGroup": "構文",
+        "title": "エディタの色",
+        "useThemeColor": "{{color}} にテーマの色を使う"
       },
       "keymap": {
         "description": "ソースエディタで使うキーバインドの体系を選びます。",
@@ -857,7 +897,7 @@
         "label": "全画面にする"
       },
       "showPdf": {
-        "description": "Zen モード開始時に PDF が隠れている場合、最初のコンパイルでエディタの横に開きます。",
+        "description": "Zen モードで PDF が隠れている場合、コンパイル時にエディタの横に開きます。",
         "label": "コンパイル時に PDF を表示"
       },
       "title": "Zen モード"

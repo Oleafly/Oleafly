@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerCommand, registry } from "@oleafly/registry";
@@ -135,6 +135,17 @@ describe("CommandPalette", () => {
     useTourStore.setState({ activeTourId: "home" });
     press();
     expect(useSettingsStore.getState().paletteOpen).toBe(false);
+  });
+
+  it("shows a new search's results from the top of the list", () => {
+    renderPalette();
+    const list = screen.getByRole("listbox");
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByPlaceholderText(copy.placeholder), { target: { value: "loose" } });
+
+    expect(screen.getByText("Loose action")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
   });
 
   it("lists the closest match first within a group", async () => {

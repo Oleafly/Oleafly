@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "Obsah tabulky se nemusí rozpoznat jako pole životopisu",
-      "detailTable": "Nástroje ATS často zplošťují obsah tabulek nepředvídatelně. Nepoužívejte tabulku k umístění textu životopisu vedle sebe; skutečné tabulky s výzkumnými daty se posuzují zvlášť v Přístupnosti.",
+      "detailTable": "Nástroje ATS často zplošťují obsah tabulek nepředvídatelně. Nepoužívejte tabulku k umístění textu životopisu vedle sebe. Skutečné tabulky s výzkumnými daty se kontrolují zvlášť v Přístupnosti.",
       "titleTikz": "Obsah TikZ potřebuje sémantickou alternativu",
       "detailTikz": "TikZ kreslí vizuální obsah, aniž by jeho význam vystavil jako běžný text. Pro publikační výstup doplňte přístupný popis a u obsahu životopisu určeného pro ATS se mu vyhněte."
     },
@@ -276,7 +276,7 @@
       "title_many": "{{count}} záznamu bibliografie má neúplná metadata",
       "title_other": "{{count}} záznamů bibliografie má neúplná metadata",
       "detail": "Neúplné záznamy mohou ve stylech vydavatelů vytvořit rozbité nebo nejednoznačné reference. {{examples}}.",
-      "detailTruncated": "Neúplné záznamy mohou ve stylech vydavatelů vytvořit rozbité nebo nejednoznačné reference. {{examples}}; …"
+      "detailTruncated": "Neúplné záznamy mohou ve stylech vydavatelů vytvořit rozbité nebo nejednoznačné reference. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} hodnota DOI vypadá poškozeně",

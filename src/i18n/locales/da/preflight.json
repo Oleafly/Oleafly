@@ -256,7 +256,7 @@
       "title_one": "{{count}} post i litteraturlisten har ufuldstændige metadata",
       "title_other": "{{count}} poster i litteraturlisten har ufuldstændige metadata",
       "detail": "Ufuldstændige poster kan give ødelagte eller flertydige referencer i forlagenes stile. {{examples}}.",
-      "detailTruncated": "Ufuldstændige poster kan give ødelagte eller flertydige referencer i forlagenes stile. {{examples}}; …"
+      "detailTruncated": "Ufuldstændige poster kan give ødelagte eller flertydige referencer i forlagenes stile. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-værdi ser forkert ud",

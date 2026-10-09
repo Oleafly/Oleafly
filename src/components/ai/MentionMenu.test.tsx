@@ -111,6 +111,23 @@ describe("MentionMenu", () => {
     expect(screen.queryByRole("listbox")).toBeNull();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    const view = render(<MentionMenu entries={entries} onSelect={() => {}} onClose={() => {}} />);
+    const list = screen.getByRole("listbox");
+    list.scrollTop = 240;
+
+    view.rerender(
+      <MentionMenu
+        entries={filterMentionEntries(buildMentionEntries(TREE), "notes")}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole("option", { name: "my notes/" })).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("moves with the arrow keys and inserts the selected path on Enter", () => {
     const selected: MentionSelection[] = [];
     const ref = createRef<MentionMenuHandle>();

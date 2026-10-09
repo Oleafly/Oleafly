@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "O conteúdo da tabela pode não ser lido como campos do currículo",
-      "detailTable": "As ferramentas de ATS costumam achatar o conteúdo tabular de forma imprevisível. Evite usar uma tabela para posicionar o texto do currículo lado a lado; tabelas de dados de pesquisa de verdade são avaliadas à parte, em Acessibilidade.",
+      "detailTable": "As ferramentas de ATS costumam achatar o conteúdo tabular de forma imprevisível. Evite usar uma tabela para colocar o texto do currículo lado a lado. Tabelas de dados de pesquisa de verdade são verificadas à parte, em Acessibilidade.",
       "titleTikz": "O conteúdo TikZ precisa de uma alternativa semântica",
       "detailTikz": "O TikZ desenha conteúdo visual sem expor o significado dele como texto normal. Forneça uma descrição acessível para a saída de publicação e evite usá-lo em conteúdo de currículo voltado a ATS."
     },
@@ -266,7 +266,7 @@
       "title_many": "{{count}} entradas de bibliografia têm metadados incompletos",
       "title_other": "{{count}} entradas de bibliografia têm metadados incompletos",
       "detail": "Registros incompletos podem gerar referências quebradas ou ambíguas nos estilos das editoras. {{examples}}.",
-      "detailTruncated": "Registros incompletos podem gerar referências quebradas ou ambíguas nos estilos das editoras. {{examples}}; …"
+      "detailTruncated": "Registros incompletos podem gerar referências quebradas ou ambíguas nos estilos das editoras. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} valor de DOI parece malformado",

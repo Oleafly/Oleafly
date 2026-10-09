@@ -54,6 +54,7 @@ import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 import { LeafLogo } from "@/components/layout/LeafLogo";
 import { markBootStage } from "@/lib/boot-telemetry";
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ModalShell } from "@/components/ui/modal-shell";
@@ -221,7 +222,7 @@ export function Library() {
   const [forkBusy, setForkBusy] = useState(false);
   const forkBusyRef = useRef(false);
   const [query, setQuery] = useState("");
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useScrollTopOnChange(query);
   useOverlayScrollbar(scrollRef);
   const [detailsProject, setDetailsProject] = useState<ProjectInfo | null>(null);
   const [historyProject, setHistoryProject] = useState<ProjectInfo | null>(null);
@@ -545,7 +546,7 @@ export function Library() {
     };
     scroller.addEventListener("scroll", onScroll, { passive: true });
     return () => scroller.removeEventListener("scroll", onScroll);
-  }, [page]);
+  }, [page, scrollRef]);
 
   useEffect(
     () => () => {

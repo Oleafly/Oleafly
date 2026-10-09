@@ -42,6 +42,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import {
   countdown,
   deadlineInstant,
@@ -559,6 +560,7 @@ export function DeadlinesView() {
   const [query, setQuery] = useState("");
   const [showPassed, setShowPassed] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("deadline");
+  const listRef = useScrollTopOnChange(JSON.stringify([query, sub, showPassed, sortKey]));
   const [helpOpen, setHelpOpen] = useState(false);
   const active = activePage === "deadlines";
 
@@ -870,7 +872,7 @@ export function DeadlinesView() {
             </div>
           </section>
 
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto w-full max-w-[1500px] px-4 py-5 sm:px-6">
               <div className="mb-4 flex items-center justify-between border-b pb-4">
                 <p className="text-sm font-medium">

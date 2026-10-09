@@ -151,7 +151,7 @@
     },
     "providers": {
       "title": "Sağlayıcıları bağlayın",
-      "content": "Bir anahtar yapıştırın; kaydedilmeden önce sağlayıcı üzerinde doğrulanır. Bağlı sağlayıcılar yeşil bir rozet gösterir ve açıp kapatabileceğiniz, genişletebileceğiniz veya geri yükleyebileceğiniz bir model listesine açılır. Anahtarlar bu bilgisayarda şifreli kalır."
+      "content": "Yapıştırdığınız anahtar, kaydedilmeden önce sağlayıcı üzerinde doğrulanır. Bağlı sağlayıcılar yeşil bir rozet gösterir ve açıp kapatabileceğiniz, genişletebileceğiniz veya geri yükleyebileceğiniz bir model listesine açılır. Anahtarlar bu bilgisayarda şifreli kalır."
     },
     "customProvider": {
       "title": "Kendi uç noktanızı getirin",
@@ -175,7 +175,7 @@
     },
     "personas": {
       "title": "Persona oluşturun",
-      "content": "Renkli, adlandırılmış yönerge kümeleri; sohbetin Persona menüsünden değiştirilebilir. Bir redaktör, bir hakem veya katı bir LaTeX savunucusu deneyin."
+      "content": "Sohbetin Persona menüsünden değiştirilebilen, renkli ve adlandırılmış yönerge kümeleri. Bir redaktör, bir hakem veya katı bir LaTeX savunucusu deneyin."
     }
   },
   "ai": {

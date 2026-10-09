@@ -121,19 +121,6 @@ async function readDiskText(
   return { content: normalizeTextContent(raw), snapshot: diskSnapshotOf(raw) };
 }
 
-// Pin the user's global default engine onto a freshly created project. Only
-// LaTeX projects can take the latexmk pin; anything else (Typst templates,
-// Markdown) rejects it in validation and simply keeps its own engine.
-async function applyDefaultLatexEngine(projectId: string): Promise<void> {
-  if (useSettingsStore.getState().defaultLatexEngine !== "latexmk") return;
-  try {
-    await setProjectEngineCmd(projectId, "latexmk");
-    void recordProjectTexSpec(projectId).catch(() => {});
-  } catch {
-    /* non-LaTeX project or validation refusal — keep the project's engine */
-  }
-}
-
 // Identifies a set of missing packages independently of the order the backend
 // reported them in, so reopening a project with the same gap stays quiet.
 export function texGapSignature(missing: readonly string[]): string {
@@ -1790,7 +1777,6 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
-    await applyDefaultLatexEngine(id);
     await get().refreshProjects();
     await get().openProject(id);
   },

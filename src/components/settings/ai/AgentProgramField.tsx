@@ -23,6 +23,7 @@ import { decodeAppError, describeError } from "@/lib/app-error";
 import { useDisplayText } from "@/lib/display-path";
 import { isWindows } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 export const NODE_DOWNLOAD_URL = "https://nodejs.org/en/download";
 
@@ -478,7 +479,7 @@ function ProgramResult({
     return (
       <div data-testid={testId} className="space-y-1">
         <output aria-live="polite" className="flex items-start gap-1.5 text-xs leading-relaxed text-emerald-700 dark:text-emerald-400">
-          <Check aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+          <CheckBadge tone="success" className="mt-0.5" />
           <span>
             <SettingsPathText text={displayText(message)} />
           </span>

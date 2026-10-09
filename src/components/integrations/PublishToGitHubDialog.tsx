@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useGithubStore } from "@/store/github";
 import {
   gitPreparePublish,
@@ -98,6 +99,7 @@ export function PublishToGitHubDialog({
 
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
   const [query, setQuery] = useState("");
+  const repoListRef = useScrollTopOnChange(query);
   const [loadingRepos, setLoadingRepos] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [replaceTarget, setReplaceTarget] = useState<PublishTarget | null>(null);
@@ -523,7 +525,7 @@ export function PublishToGitHubDialog({
                     className="h-10 flex-1 rounded-none border-0 bg-transparent px-0 text-xs shadow-none"
                   />
                 </div>
-                <div className="min-h-0 flex-1 overflow-auto rounded-md border">
+                <div ref={repoListRef} className="min-h-0 flex-1 overflow-auto rounded-md border">
                   {loadingRepos ? (
                     <div className="flex items-center justify-center gap-2 p-6 text-xs text-muted-foreground">
                       <Spinner /> {t(($) => $.common.state.loading)}

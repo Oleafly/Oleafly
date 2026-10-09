@@ -52,13 +52,13 @@ import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useHomeViewStore } from "@/store/home-view";
-import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 import { basename } from "@/lib/path-utils";
 import { textToBase64 } from "@/lib/base64";
 import { Spinner } from "@/components/ui/spinner";
 import { LoadingState } from "@/components/ui/empty";
 import { SectionHeading } from "@/components/ui/section-heading";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 const REFERENCE_COPY_TOAST = "reference-copy";
 
@@ -363,7 +363,7 @@ function ReferenceOutput({
   formattingError: string | null;
 }) {
   const { t } = useTranslation(["researchTools"]);
-  const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const editorTheme = useEditorThemeId();
   const deferredBibtex = useDeferredValue(bibtex);
   const rendered = useMemo(() => {
     if (formattingError) {
@@ -613,7 +613,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
   const [error, setError] = useState<string | null>(null);
   const [hits, setHits] = useState<CitationHit[]>([]);
   const requestId = useRef(0);
-  const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const editorTheme = useEditorThemeId();
   const kindLabel = {
     doi: "DOI",
     arxiv: t(($) => $.researchTools.references.tools.arxiv.queryLabel),

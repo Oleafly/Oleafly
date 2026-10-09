@@ -4,6 +4,7 @@ import type { Tree } from "@lezer/common";
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { highlightTree } from "@lezer/highlight";
 import { EDITOR_LINE_HEIGHT_CSS, editorHighlightStyle } from "./theme";
+import { editorColor } from "./color-roles";
 import {
   latexStickySource,
   scopesAtLine,
@@ -41,7 +42,7 @@ const stickyTheme = EditorView.theme({
     fontSize: "var(--cm-font-size, 13px)",
     letterSpacing: "var(--cm-letter-spacing, normal)",
     lineHeight: EDITOR_LINE_HEIGHT_CSS,
-    backgroundColor: "var(--cm-editor-bg, var(--background))",
+    backgroundColor: editorColor("background"),
     boxShadow: "0 4px 8px -6px rgb(0 0 0 / 0.45)",
     borderBottom: "1px solid var(--border)",
   },
@@ -60,7 +61,7 @@ const stickyTheme = EditorView.theme({
     padding: "0.25em 0",
     textAlign: "left",
     font: "inherit",
-    color: "var(--cm-editor-fg, var(--foreground))",
+    color: editorColor("text"),
   },
   ".cm-stickyRow:hover": {
     backgroundColor: "var(--cm-active-line, color-mix(in oklch, var(--muted) 45%, transparent))",
@@ -69,7 +70,7 @@ const stickyTheme = EditorView.theme({
     flex: "none",
     boxSizing: "border-box",
     textAlign: "right",
-    color: "var(--cm-gutter-fg, var(--muted-foreground))",
+    color: editorColor("lineNumbers"),
     paddingLeft: "var(--cm-gutter-inset, 6px)",
     // Only until the gutter has been measured; see `measureColumns`.
     paddingRight: "8px",

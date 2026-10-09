@@ -599,7 +599,7 @@
         "label": "Zaoblení rohů"
       },
       "resetAll": "Obnovit vše",
-      "resetMode": "Obnovit tento režim",
+      "resetMode": "Obnovit",
       "title": "Přizpůsobení motivu",
       "tokenInputDark": "Token {{token}} pro tmavý režim",
       "tokenInputLight": "Token {{token}} pro světlý režim",
@@ -676,8 +676,48 @@
         "label": "Přilepený posuv"
       },
       "theme": {
-        "description": "Nastavit barvy syntaxe zdroje nezávisle na motivu aplikace.",
-        "label": "Motiv editoru"
+        "dark": {
+          "description": "Motiv editoru, když je aplikace tmavá.",
+          "label": "Motiv v tmavém režimu"
+        },
+        "light": {
+          "description": "Motiv editoru, když je aplikace světlá.",
+          "label": "Motiv ve světlém režimu"
+        }
+      },
+      "colors": {
+        "description": "Změňte libovolnou barvu motivu editoru. Změny se uchovávají pro každý motiv zvlášť.",
+        "editing": "Úprava motivu {{theme}}",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Tmavý režim",
+          "light": "Světlý režim"
+        },
+        "modeAriaLabel": "Motiv k přizpůsobení",
+        "names": {
+          "background": "Pozadí",
+          "command": "Příkazy",
+          "comment": "Komentáře",
+          "environment": "Prostředí",
+          "formatting": "Formátování",
+          "heading": "Nadpisy",
+          "lineNumbers": "Čísla řádků",
+          "link": "Odkazy",
+          "math": "Matematika",
+          "name": "Názvy a klíče",
+          "reference": "Citace a křížové odkazy",
+          "selection": "Výběr",
+          "structure": "Preambule a importy",
+          "symbol": "Závorky a symboly",
+          "text": "Text",
+          "value": "Hodnoty a řetězce"
+        },
+        "pick": "Vybrat barvu: {{color}}",
+        "previewAriaLabel": "Jazyk náhledu",
+        "reset": "Obnovit",
+        "syntaxGroup": "Syntaxe",
+        "title": "Barvy editoru",
+        "useThemeColor": "Použít barvu motivu: {{color}}"
       },
       "keymap": {
         "description": "Zvolte sadu klávesových zkratek, kterou zdrojový editor používá.",
@@ -872,7 +912,7 @@
         "label": "Přejít na celou obrazovku"
       },
       "showPdf": {
-        "description": "Pokud je PDF při spuštění režimu Zen skryté, otevře ho vedle editoru při první kompilaci.",
+        "description": "Pokud je PDF v režimu Zen skryté, otevře ho při kompilaci vedle editoru.",
         "label": "Zobrazit PDF při kompilaci"
       },
       "title": "Režim Zen"
@@ -1048,7 +1088,7 @@
       "status": {
         "checking": "Kontroluje se pandoc…",
         "installing": "Stahuje se připnuté vydání pandocu. Při prvním použití to chvíli trvá.",
-        "missing": "Nenalezeno. Oleafly může stáhnout kompatibilní pandoc (2.19 nebo novější) do vlastní složky; na vašem systému se nic jiného nemění.",
+        "missing": "Nenalezeno. Oleafly může stáhnout kompatibilní pandoc (2.19 nebo novější) do vlastní složky. Na vašem systému se nic jiného nemění.",
         "ready": "Nalezeno. Projekty v Markdownu se pomocí pandocu převedou do LaTeXu a pak se zkompilují vestavěným Tectonicem."
       },
       "tectonicDetail": "Vysází LaTeX, který pandoc vytvoří. Dodává se s Oleafly, není co nastavovat.",

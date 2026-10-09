@@ -137,6 +137,9 @@ import {
 } from "@/lib/checkpoint-publication";
 
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
+import { startDefaultLatexEngineSync } from "@/lib/default-latex-engine";
+import { applyEditorColors } from "@/lib/editor-themes";
+import { useEditorColorKey } from "@/hooks/use-editor-theme";
 import { handleDockShortcut } from "@/lib/dock-shortcuts";
 import { historyCommand, inPlainField, runFieldHistory } from "@/lib/field-history";
 import {
@@ -402,6 +405,8 @@ function AppContent() {
   const editorCustomLetterSpacing = useSettingsStore((s) => s.editorCustomLetterSpacing);
   const editorCursorColorLight = useSettingsStore((s) => s.editorCursorColorLight);
   const editorCursorColorDark = useSettingsStore((s) => s.editorCursorColorDark);
+  const editorColors = useSettingsStore((s) => s.editorColors);
+  const activeEditorColorKey = useEditorColorKey();
   const accentColor = useSettingsStore((s) => s.accentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
@@ -577,6 +582,10 @@ function AppContent() {
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
+  useTauriSubscription(
+    native ? startDefaultLatexEngineSync : null,
+    "sync the default compile engine",
+  );
 
   useEffect(() => {
     const root = document.documentElement;
@@ -621,6 +630,10 @@ function AppContent() {
     editorCursorColorLight,
     editorCursorColorDark,
   ]);
+
+  useEffect(() => {
+    applyEditorColors(editorColors[activeEditorColorKey] ?? {});
+  }, [editorColors, activeEditorColorKey]);
 
   useEffect(() => {
     const apply = (theme: Theme) => applyAccentColor(theme, accentColor);

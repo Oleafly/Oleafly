@@ -148,7 +148,7 @@
       "overloaded": "Sağlayıcının sunucuları şu anda aşırı yüklü (bu istek zaten yeniden denendi). Bir dakika bekleyip tekrar deneyin ya da {{where}} benzer bir modele geçin.",
       "rateLimited": "Sağlayıcı istekleri hız sınırına takıyor. Biraz bekleyip yeniden deneyin ya da {{where}} sağlayıcı değiştirin.",
       "retiredModel": "Sağlayıcı bu modeli kaldırdı veya kısıtladı. {{where}} daha yeni bir model seçin (Ayarlar → Yapay zeka asistanı, anahtarınızın kullanabileceklerini listeler).",
-      "unreachable": "Yapay zeka sağlayıcısına ulaşılamadı. Bağlantınızı denetleyin; Ollama kullanıyorsanız çalıştığından emin olun (Ayarlar → Yapay zeka asistanı → Ollama'yı denetle).",
+      "unreachable": "Yapay zeka sağlayıcısına ulaşılamadı. Bağlantınızı denetleyin. Ollama kullanıyorsanız çalıştığından emin olun (Ayarlar → Yapay zeka asistanı → Ollama'yı denetle).",
       "where": {
         "inSettings": "Ayarlar'daki Yapay zeka asistanı bölümünden",
         "modelMenu": "yukarıdaki model menüsünden"

@@ -129,7 +129,7 @@
           "modes": "Ensimmäinen taulu, <modesTable>[\"$approval_modes\"]</modesTable>, asettaa hyväksyntätilan projektikohtaisesti: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> tai <custom>\"custom\"</custom>. Projekti, jota ei ole listattu, käyttää tilaa Hyväksy puolestani.",
           "openProject": "Avoimen projektin {{name}} tunnus on <projectId>{{id}}</projectId>.",
           "projectIds": "Projektien tunnukset ovat kansionimiä polussa ~/.oleafly/projects.",
-          "rules": "Sen jälkeen yksi taulu projektitunnusta kohden, ja siinä yksi sääntö työkalua kohden: <allow>\"allow\"</allow> ajaa työkalun kysymättä ja <deny>\"deny\"</deny> estää sen. Deny-sääntöjä noudatetaan joka tilassa; allow-säännöt vaikuttavat mukautetussa tilassa, ja run_command-työkalun osalta ne ohittavat kysymisen myös muissa tiloissa.",
+          "rules": "Sen jälkeen yksi taulu projektitunnusta kohden, ja siinä yksi sääntö työkalua kohden: <allow>\"allow\"</allow> ajaa työkalun kysymättä ja <deny>\"deny\"</deny> estää sen. Deny-sääntöjä noudatetaan joka tilassa. Allow-säännöt vaikuttavat mukautetussa tilassa, ja run_command-työkalun osalta ne ohittavat kysymisen myös muissa tiloissa.",
           "toolNames": "Käytettävissä olevat työkalunimet: <names>{{names}}</names> sekä mikä tahansa MCP-työkalu koko nimellään Työkalut-luettelosta."
         },
         "helpToggle": "Miten tiedosto toimii",
@@ -589,7 +589,7 @@
         "label": "Kulman pyöristys"
       },
       "resetAll": "Palauta kaikki",
-      "resetMode": "Palauta tämä tila",
+      "resetMode": "Palauta",
       "title": "Teeman mukautus",
       "tokenInputDark": "Tunnus {{token}} tummaan tilaan",
       "tokenInputLight": "Tunnus {{token}} vaaleaan tilaan",
@@ -666,8 +666,48 @@
         "label": "Tarttuva vieritys"
       },
       "theme": {
-        "description": "Aseta lähdekoodin syntaksivärit erikseen sovelluksen teemasta.",
-        "label": "Editorin teema"
+        "dark": {
+          "description": "Editorin teema, kun sovellus on tumma.",
+          "label": "Teema tummassa tilassa"
+        },
+        "light": {
+          "description": "Editorin teema, kun sovellus on vaalea.",
+          "label": "Teema vaaleassa tilassa"
+        }
+      },
+      "colors": {
+        "description": "Muuta mitä tahansa editorin teeman väriä. Muutokset säilyvät teemakohtaisesti.",
+        "editing": "Muokataan: {{theme}}",
+        "editorGroup": "Editori",
+        "mode": {
+          "dark": "Tumma tila",
+          "light": "Vaalea tila"
+        },
+        "modeAriaLabel": "Mukautettava teema",
+        "names": {
+          "background": "Tausta",
+          "command": "Komennot",
+          "comment": "Kommentit",
+          "environment": "Ympäristöt",
+          "formatting": "Muotoilu",
+          "heading": "Otsikot",
+          "lineNumbers": "Rivinumerot",
+          "link": "Linkit",
+          "math": "Matematiikka",
+          "name": "Nimet ja avaimet",
+          "reference": "Lähdeviitteet ja viittaukset",
+          "selection": "Valinta",
+          "structure": "Preambuli ja tuonnit",
+          "symbol": "Sulkeet ja symbolit",
+          "text": "Teksti",
+          "value": "Arvot ja merkkijonot"
+        },
+        "pick": "Valitse väri: {{color}}",
+        "previewAriaLabel": "Esikatselun kieli",
+        "reset": "Palauta",
+        "syntaxGroup": "Syntaksi",
+        "title": "Editorin värit",
+        "useThemeColor": "Käytä teeman väriä: {{color}}"
       },
       "keymap": {
         "description": "Valitse näppäinkomentojoukko, jota lähdekoodieditori käyttää.",
@@ -862,7 +902,7 @@
         "label": "Siirry koko näyttöön"
       },
       "showPdf": {
-        "description": "Jos PDF on piilotettu Zen-tilan alkaessa, se avataan editorin viereen ensimmäisellä käännöksellä.",
+        "description": "Jos PDF on piilotettu Zen-tilassa, se avataan editorin viereen, kun käännät.",
         "label": "Näytä PDF käännettäessä"
       },
       "title": "Zen-tila"
@@ -1038,7 +1078,7 @@
       "status": {
         "checking": "Etsitään pandocia…",
         "installing": "Haetaan kiinnitettyä pandoc-julkaisua. Tämä kestää hetken ensimmäisellä kerralla.",
-        "missing": "Ei löytynyt. Oleafly voi ladata yhteensopivan pandocin (2.19 tai uudempi) omaan kansioonsa; mikään muu järjestelmässäsi ei muutu.",
+        "missing": "Ei löytynyt. Oleafly voi ladata yhteensopivan pandocin (2.19 tai uudempi) omaan kansioonsa. Mikään muu järjestelmässäsi ei muutu.",
         "ready": "Havaittu. Markdown-projektit muunnetaan LaTeXiksi pandocilla ja käännetään sitten mukana tulevalla Tectonicilla."
       },
       "tectonicDetail": "Latoo pandocin tuottaman LaTeXin. Tulee Oleaflyn mukana, eikä sitä tarvitse määrittää.",

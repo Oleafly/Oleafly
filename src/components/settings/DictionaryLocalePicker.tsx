@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Download } from "lucide-react";
+import { Download } from "lucide-react";
 import type { DictionaryInfo } from "@oleafly/backend-port";
 import {
   Select,
@@ -23,6 +23,7 @@ import { installDictionaryPack } from "@/lib/proofreading/dictionary-install";
 import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 import { Spinner } from "@/components/ui/spinner";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 export function DictionaryLocalePicker() {
   const { t } = useTranslation(["common", "settings", "shell"]);
@@ -123,7 +124,7 @@ export function DictionaryLocalePicker() {
                         {formatDownloadSize(entry.bytes)}
                       </span>
                     ) : (
-                      <Check className="size-3 text-emerald-500" />
+                      <CheckBadge tone="success" className="size-3.5" />
                     )
                   }
                 >

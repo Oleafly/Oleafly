@@ -256,7 +256,7 @@
       "title_one": "{{count}} bibliografipost har ofullständiga metadata",
       "title_other": "{{count}} bibliografiposter har ofullständiga metadata",
       "detail": "Ofullständiga poster kan ge trasiga eller tvetydiga referenser i förlagens stilar. {{examples}}.",
-      "detailTruncated": "Ofullständiga poster kan ge trasiga eller tvetydiga referenser i förlagens stilar. {{examples}}; …"
+      "detailTruncated": "Ofullständiga poster kan ge trasiga eller tvetydiga referenser i förlagens stilar. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-värde ser felformat ut",

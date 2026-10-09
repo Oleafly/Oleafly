@@ -129,7 +129,7 @@
           "modes": "Die erste Tabelle, <modesTable>[\"$approval_modes\"]</modesTable>, legt den Freigabemodus je Projekt fest: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> oder <custom>\"custom\"</custom>. Ein nicht aufgeführtes Projekt nutzt Für mich freigeben.",
           "openProject": "Das geöffnete Projekt, {{name}}, hat die ID <projectId>{{id}}</projectId>.",
           "projectIds": "Projekt-IDs sind die Ordnernamen unter ~/.oleafly/projects.",
-          "rules": "Danach folgt eine Tabelle je Projekt-ID mit einer Regel pro Werkzeug: <allow>\"allow\"</allow> führt das Werkzeug ohne Nachfrage aus, <deny>\"deny\"</deny> verweigert es. Deny-Regeln gelten in jedem Modus; Allow-Regeln greifen im Modus Eigene Regeln, und bei run_command überspringen sie die Nachfrage auch in den anderen Modi.",
+          "rules": "Danach folgt eine Tabelle je Projekt-ID mit einer Regel pro Werkzeug: <allow>\"allow\"</allow> führt das Werkzeug ohne Nachfrage aus, <deny>\"deny\"</deny> verweigert es. Deny-Regeln gelten in jedem Modus. Allow-Regeln greifen im Modus Eigene Regeln, und bei run_command überspringen sie die Nachfrage auch in den anderen Modi.",
           "toolNames": "Werkzeugnamen, die Sie verwenden können: <names>{{names}}</names> sowie jedes MCP-Werkzeug unter seinem vollen Namen aus der Liste Werkzeuge."
         },
         "helpToggle": "Wie die Datei funktioniert",
@@ -589,7 +589,7 @@
         "label": "Eckenradius"
       },
       "resetAll": "Alles zurücksetzen",
-      "resetMode": "Diesen Modus zurücksetzen",
+      "resetMode": "Zurücksetzen",
       "title": "Designanpassung",
       "tokenInputDark": "Token {{token}} für den dunklen Modus",
       "tokenInputLight": "Token {{token}} für den hellen Modus",
@@ -666,8 +666,48 @@
         "label": "Haftende Kopfzeile"
       },
       "theme": {
-        "description": "Die Syntaxfarben des Quelltextes getrennt vom App-Design festlegen.",
-        "label": "Design des Editors"
+        "dark": {
+          "description": "Das Editor-Design, solange die App dunkel ist.",
+          "label": "Design im dunklen Modus"
+        },
+        "light": {
+          "description": "Das Editor-Design, solange die App hell ist.",
+          "label": "Design im hellen Modus"
+        }
+      },
+      "colors": {
+        "description": "Ändern Sie jede Farbe eines Editor-Designs. Änderungen bleiben für jedes Design einzeln erhalten.",
+        "editing": "{{theme}} wird bearbeitet",
+        "editorGroup": "Editor",
+        "mode": {
+          "dark": "Dunkler Modus",
+          "light": "Heller Modus"
+        },
+        "modeAriaLabel": "Anzupassendes Design",
+        "names": {
+          "background": "Hintergrund",
+          "command": "Befehle",
+          "comment": "Kommentare",
+          "environment": "Umgebungen",
+          "formatting": "Formatierung",
+          "heading": "Überschriften",
+          "lineNumbers": "Zeilennummern",
+          "link": "Links",
+          "math": "Formeln",
+          "name": "Namen und Schlüssel",
+          "reference": "Zitationen und Verweise",
+          "selection": "Auswahl",
+          "structure": "Präambel und Importe",
+          "symbol": "Klammern und Symbole",
+          "text": "Text",
+          "value": "Werte und Zeichenketten"
+        },
+        "pick": "Farbe für {{color}} wählen",
+        "previewAriaLabel": "Sprache der Vorschau",
+        "reset": "Zurücksetzen",
+        "syntaxGroup": "Syntax",
+        "title": "Farben des Editors",
+        "useThemeColor": "Farbe des Designs für {{color}} verwenden"
       },
       "keymap": {
         "description": "Wählen Sie den Satz an Tastenbelegungen für den Quelltexteditor.",
@@ -862,7 +902,7 @@
         "label": "Vollbild verwenden"
       },
       "showPdf": {
-        "description": "Ist das PDF beim Start des Zen-Modus ausgeblendet, wird es beim ersten Kompilieren neben dem Editor geöffnet.",
+        "description": "Ist das PDF im Zen-Modus ausgeblendet, wird es beim Kompilieren neben dem Editor geöffnet.",
         "label": "PDF beim Kompilieren anzeigen"
       },
       "title": "Zen-Modus"
@@ -1038,7 +1078,7 @@
       "status": {
         "checking": "Es wird nach pandoc gesucht…",
         "installing": "Eine fixierte pandoc-Version wird geholt. Beim ersten Mal dauert das einen Moment.",
-        "missing": "Nicht gefunden. Oleafly kann ein passendes pandoc (2.19 oder neuer) in seinen eigenen Ordner laden; sonst ändert sich nichts an Ihrem System.",
+        "missing": "Nicht gefunden. Oleafly kann ein passendes pandoc (2.19 oder neuer) in seinen eigenen Ordner laden. Sonst ändert sich nichts an Ihrem System.",
         "ready": "Gefunden. Markdown-Projekte werden mit pandoc nach LaTeX umgewandelt und dann mit dem mitgelieferten Tectonic kompiliert."
       },
       "tectonicDetail": "Setzt das LaTeX, das pandoc erzeugt. Liegt Oleafly bei, es gibt nichts einzurichten.",

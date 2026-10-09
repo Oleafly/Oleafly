@@ -30,13 +30,19 @@ function pressWithPointer(selectorExpr: string): string {
 // The default-engine preference decides what a NEW project starts on, and it
 // persists in localStorage across runs. Pin it so these specs assert the
 // per-project choice rather than whatever the machine was left on.
-async function useTectonicDefault(page: Page) {
+async function setDefaultEngine(page: Page, engine: "tectonic" | "latexmk") {
   await page.evaluate(
-    `import("/src/store/settings.ts").then((m) => {
-      m.useSettingsStore.getState().setDefaultLatexEngine("tectonic");
-      return 1;
-    })`,
+    `Promise.all([import("/src/store/settings.ts"), import("/src/lib/tauri.ts")]).then(
+      ([settings, tauri]) => {
+        settings.useSettingsStore.getState().setDefaultLatexEngine(${JSON.stringify(engine)});
+        return tauri.setDefaultLatexEngineCmd(${JSON.stringify(engine)}).then(() => 1);
+      },
+    )`,
   );
+}
+
+async function useTectonicDefault(page: Page) {
+  await setDefaultEngine(page, "tectonic");
 }
 
 // Every test starts on a freshly reloaded SPA sitting in the library, so each
@@ -178,6 +184,28 @@ test("a new LaTeX project starts on Tectonic with no compiler pinned", async ({
   await openCompileMenu(tauriPage);
   await expectCheckedCompiler(tauriPage, "compiler-tectonic");
   await tauriPage.press("body", "Escape");
+});
+
+test("a new LaTeX project starts on latexmk when that is the default in Settings", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(180_000);
+  await waitLong(
+    tauriPage,
+    `!!document.querySelector('[data-testid="library"][data-projects-loaded="true"]')`,
+    30_000,
+  );
+  try {
+    await setDefaultEngine(tauriPage, "latexmk");
+    await createBlankProject(tauriPage, "Compiler Latexmk Default");
+    await waitForEngine(tauriPage, "latexmk", null);
+
+    await openCompileMenu(tauriPage);
+    await expectCheckedCompiler(tauriPage, "compiler-auto");
+    await tauriPage.press("body", "Escape");
+  } finally {
+    await useTectonicDefault(tauriPage);
+  }
 });
 
 test("picking pdfLaTeX moves the project to latexmk and pins the compiler", async ({

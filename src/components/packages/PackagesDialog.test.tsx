@@ -90,6 +90,18 @@ describe("PackagesDialog", () => {
     expect(screen.getByText("0 results")).toBeInTheDocument();
   });
 
+  it("shows a new search's results from the top of the list", async () => {
+    render(<PackagesDialog provider={provider(async () => list(items(150)))} open onClose={vi.fn()} />);
+    expect(await screen.findByText("100 of 150")).toBeInTheDocument();
+    const rows = screen.getAllByTestId("row")[0].closest(".overflow-auto") as HTMLElement;
+    rows.scrollTop = 240;
+
+    fireEvent.change(screen.getByLabelText("Search samples"), { target: { value: "pkg-14" } });
+
+    expect(screen.getByText("11 results")).toBeInTheDocument();
+    expect(rows.scrollTop).toBe(0);
+  });
+
   it("shows a failed load and retries with a refresh", async () => {
     const load = vi
       .fn()

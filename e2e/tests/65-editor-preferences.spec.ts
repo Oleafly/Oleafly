@@ -584,7 +584,8 @@ test("a custom line height, a wider cursor and per-theme cursor colors reach the
   await openPrefsProject(tauriPage);
   await setEditorLook(
     tauriPage,
-    `s.setEditorTheme("system");
+    `s.setEditorTheme("light", "system");
+    s.setEditorTheme("dark", "system");
     s.setEditorLineHeight("custom");
     s.setEditorCustomLineHeight(2.5);
     s.setEditorCursorWidth(3);
@@ -599,7 +600,11 @@ test("a custom line height, a wider cursor and per-theme cursor colors reach the
       .toMatchObject({ width: "3px", color: dark ? "rgb(0, 170, 255)" : "rgb(255, 136, 0)" });
     expect((await caretLook(tauriPage))?.lineRatio).toBeCloseTo(2.5, 1);
 
-    await setEditorLook(tauriPage, `s.setEditorTheme("dracula");`);
+    await setEditorLook(
+      tauriPage,
+      `s.setEditorTheme("light", "dracula");
+      s.setEditorTheme("dark", "dracula");`,
+    );
     await caretToEnd(tauriPage);
     await expect
       .poll(async () => (await caretLook(tauriPage))?.color, { timeout: 10_000 })
@@ -607,7 +612,8 @@ test("a custom line height, a wider cursor and per-theme cursor colors reach the
   } finally {
     await setEditorLook(
       tauriPage,
-      `s.setEditorTheme("system");
+      `s.setEditorTheme("light", "system");
+      s.setEditorTheme("dark", "system");
       s.setEditorLineHeight("normal");
       s.setEditorCursorWidth(1);
       s.setEditorCursorColor("light", "");

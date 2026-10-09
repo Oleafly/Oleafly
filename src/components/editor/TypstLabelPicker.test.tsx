@@ -65,6 +65,18 @@ describe("TypstLabelPicker", () => {
     expect(commands.addTypstLabel).toHaveBeenCalledOnce();
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    render(<TypstLabelPicker variant="bar" />);
+    fireEvent.click(screen.getByLabelText(en.toolbar.insertCrossReference));
+    const list = screen.getByText("eq:energy").closest(".overflow-y-auto") as HTMLElement;
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByLabelText(en.labels.filterLabel), { target: { value: "tab" } });
+
+    expect(screen.getByText("tab:data")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("explains an empty list and a search without matches", () => {
     useIndexStore.setState({ index: null } as never);
     useFilesStore.setState({ files: { "main.typ": { content: "" } } } as never);

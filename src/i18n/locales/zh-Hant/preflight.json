@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "表格內容可能無法解析成履歷欄位",
-      "detailTable": "ATS 工具常會用難以預期的方式把表格內容攤平。請避免用表格把履歷文字並排；真正的研究資料表格會在「無障礙」中另行評估。",
+      "detailTable": "ATS 工具常會用難以預期的方式把表格內容攤平。請避免用表格把履歷文字並排。真正的研究資料表格會在「無障礙」中另行檢查。",
       "titleTikz": "TikZ 內容需要語意上的替代方案",
       "detailTikz": "TikZ 只畫出視覺內容，不會把它的意義以一般文字呈現。出版用的輸出請提供無障礙說明，面向 ATS 的履歷內容則請避免使用。"
     },
@@ -246,7 +246,7 @@
     "refs-incomplete-metadata": {
       "title_other": "有 {{count}} 筆參考文獻條目的中繼資料不完整",
       "detail": "不完整的記錄在出版社樣式下可能產生破損或語意不明的參考文獻。{{examples}}。",
-      "detailTruncated": "不完整的記錄在出版社樣式下可能產生破損或語意不明的參考文獻。{{examples}}；…"
+      "detailTruncated": "不完整的記錄在出版社樣式下可能產生破損或語意不明的參考文獻。{{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_other": "有 {{count}} 個 DOI 值格式可能有誤",

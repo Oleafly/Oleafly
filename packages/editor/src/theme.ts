@@ -1,6 +1,7 @@
 import { EditorView } from "@codemirror/view";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { tags as t } from "@lezer/highlight";
+import { syntaxHighlighting } from "@codemirror/language";
+import { editorColor, editorColorDeclarations } from "./color-roles";
+import { editorHighlightStyle } from "./syntax-colors";
 
 export const EDITOR_LINE_HEIGHT = "1.7";
 
@@ -14,8 +15,9 @@ const chromeTheme = EditorView.theme({
   // theme classes onto the tooltip host it mounts under `tooltips({ parent })`
   // so tooltips inherit the editor's colors and type scale.
   "&": {
-    backgroundColor: "var(--cm-editor-bg, var(--background))",
-    color: "var(--cm-editor-fg, var(--foreground))",
+    ...editorColorDeclarations(),
+    backgroundColor: editorColor("background"),
+    color: editorColor("text"),
     fontSize: "var(--cm-font-size, 13px)",
   },
   // Layout must NOT: `&` compiles to the bare generated class, so `height:100%`
@@ -41,7 +43,7 @@ const chromeTheme = EditorView.theme({
   },
   ".cm-gutters": {
     backgroundColor: "transparent",
-    color: "var(--cm-gutter-fg, var(--muted-foreground))",
+    color: editorColor("lineNumbers"),
     border: "none",
     // Line numbers are chrome, not content: a drag-select over the editor
     // must not pick them up, and a click on the gutter must not select them.
@@ -55,7 +57,7 @@ const chromeTheme = EditorView.theme({
   },
   ".cm-activeLineGutter": {
     backgroundColor: "transparent",
-    color: "var(--cm-editor-fg, var(--foreground))",
+    color: editorColor("text"),
   },
   ".cm-activeLine": {
     backgroundColor: "var(--cm-active-line, color-mix(in oklch, var(--muted) 45%, transparent))",
@@ -66,8 +68,7 @@ const chromeTheme = EditorView.theme({
   // isolated stories) - it mirrors the light-mode default. See globals.css for
   // why these mix in srgb rather than oklch.
   "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
-    backgroundColor:
-      "var(--cm-selection, var(--cm-selection-default, color-mix(in srgb, var(--primary) 30%, var(--background)))) !important",
+    backgroundColor: `${editorColor("selection")} !important`,
   },
   ".cm-cursor, .cm-dropCursor": {
     borderLeftColor: "var(--cm-cursor-custom, var(--cm-cursor, var(--primary)))",
@@ -220,21 +221,7 @@ const chromeTheme = EditorView.theme({
   },
 });
 
-// Exported so sticky scroll can colorize its own rows with exactly the styles
-// the document uses. Those rows are rendered outside the document flow, so
-// `syntaxHighlighting` cannot reach them.
-export const editorHighlightStyle = HighlightStyle.define([
-  { tag: t.comment, color: "var(--cm-comment)", fontStyle: "italic" },
-  { tag: t.keyword, color: "var(--cm-keyword)" },
-  { tag: [t.atom, t.bool, t.number, t.literal], color: "var(--cm-number)" },
-  { tag: t.string, color: "var(--cm-string)" },
-  { tag: [t.bracket, t.brace, t.paren], color: "var(--cm-bracket)" },
-  { tag: t.variableName, color: "var(--cm-variable)" },
-  { tag: [t.heading, t.meta], color: "var(--cm-meta)" },
-  { tag: t.tagName, color: "var(--cm-tag)" },
-  { tag: t.operator, color: "var(--cm-operator)" },
-  { tag: t.link, color: "var(--cm-string)", textDecoration: "underline" },
-]);
+export { editorHighlightStyle };
 
 export const editorTheme = () => [
   chromeTheme,

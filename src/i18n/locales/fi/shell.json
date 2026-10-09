@@ -878,7 +878,7 @@
         "description": "Käännä valitsimella --only-cached äläkä koskaan hae paketteja verkosta.",
         "label": "Offline-tila"
       },
-      "proofreadingNote": "Kielentarkistus ajetaan paikallisesti taustaprosessissa. Harper noudattaa valittua englannin muunnosta; oikoluku käyttää aina täsmälleen valittua Hunspell-pakettia. Matematiikka, koodi, kommentit, viittausten syntaksi, metatiedot ja URL-osoitteet jätetään pois.",
+      "proofreadingNote": "Kielentarkistus ajetaan paikallisesti taustaprosessissa. Harper noudattaa valittua englannin muunnosta, ja oikoluku käyttää aina täsmälleen valittua Hunspell-pakettia. Matematiikka, koodi, kommentit, viittausten syntaksi, metatiedot ja URL-osoitteet jätetään pois.",
       "regionalism": {
         "description": "Nosta esiin termit, jotka eivät vastaa valittua englannin muunnosta. Poista käytöstä, jos käytät tällaisia termejä tuote- tai koodiniminä.",
         "label": "Aluemuotoehdotukset"

@@ -10,7 +10,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Check,
   CircleMinus,
   CirclePlus,
   CircleSlash2,
@@ -34,6 +33,7 @@ import {
   type SuggestContext,
 } from "@oleafly/search-query";
 import { INLINE_KEYWORD, INLINE_TOKEN_AMBER, INLINE_TOKEN_BLUE } from "@/components/ui/inline-token";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import {
   buildSuggestions,
   type QueryMeta,
@@ -41,6 +41,7 @@ import {
   type QuerySuggestions,
 } from "@/lib/query-suggestions";
 import { cn } from "@/lib/utils";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 const MENU_WIDTH = 288;
 const UNFINISHED = new Set<Diagnostic["code"]>(["unclosed-group", "dangling-operator", "unterminated-quote"]);
@@ -218,7 +219,7 @@ function SuggestionOption({ suggestion, id, active, divided, onHover, onChoose }
       </span>
       <span className="min-w-0 flex-1 truncate">{optionLabel(t, suggestion)}</span>
       {suggestion.kind === "negate" && suggestion.negated ? (
-        <Check aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+        <CheckBadge />
       ) : null}
     </button>
   );
@@ -252,6 +253,7 @@ function SuggestionMenu<T>({
   onChoose,
 }: Readonly<MenuProps<T>>) {
   const { t } = useTranslation(["common"]);
+  const listRef = useScrollTopOnChange(value);
   const firstOperator = suggestions.items.length > 0 ? suggestions.items.length : -1;
   return (
     <div
@@ -264,6 +266,7 @@ function SuggestionMenu<T>({
       ) : null}
       {options.length > 0 ? (
         <div
+          ref={listRef}
           id={listId}
           role="listbox"
           aria-label={t(($) => $.common.querySearch.suggestions)}

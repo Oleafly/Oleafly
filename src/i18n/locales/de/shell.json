@@ -844,7 +844,7 @@
       },
       "warning": "Diese Funktionen sind experimentell und noch in der Beta. Sie sind noch nicht vollständig getestet und können sich ändern, kaputtgehen oder in einer künftigen Version verschwinden. Schalten Sie sie nur ein, wenn Sie Werk in Arbeit ausprobieren möchten.",
       "webBrowser": {
-        "description": "Zeigt den integrierten Webbrowser (seinen Umschalter im Dock und sein Kürzel) und lässt die KI ihn per Computernutzung steuern. Standardmäßig aus, solange es noch Beta ist; ausgeschaltet gibt es keine Browser-Schaltfläche und die KI hat kein Browser-Werkzeug.",
+        "description": "Zeigt den integrierten Webbrowser (seinen Umschalter im Dock und sein Kürzel) und lässt die KI ihn per Computernutzung steuern. Standardmäßig aus, solange es in der Beta ist. Ausgeschaltet gibt es keine Browser-Schaltfläche und die KI hat kein Browser-Werkzeug.",
         "label": "Webbrowser"
       }
     },
@@ -878,7 +878,7 @@
         "description": "Mit --only-cached kompilieren und niemals Pakete über das Netzwerk holen.",
         "label": "Offline-Modus"
       },
-      "proofreadingNote": "Die Korrekturprüfung läuft lokal in einem Hintergrundprozess. Harper folgt der gewählten englischen Sprachvariante; die Rechtschreibung nutzt immer genau das gewählte Hunspell-Paket. Formeln, Code, Kommentare, Zitationssyntax, Metadaten und URLs bleiben ausgenommen.",
+      "proofreadingNote": "Die Korrekturprüfung läuft lokal in einem Hintergrundprozess. Harper folgt der gewählten englischen Sprachvariante, und die Rechtschreibung nutzt immer genau das gewählte Hunspell-Paket. Formeln, Code, Kommentare, Zitationssyntax, Metadaten und URLs bleiben ausgenommen.",
       "regionalism": {
         "description": "Markiert Begriffe, die nicht zur gewählten englischen Sprachvariante passen. Schalten Sie das aus, wenn Sie solche Begriffe als Produkt- oder Codenamen verwenden.",
         "label": "Hinweise zu regionalen Varianten"

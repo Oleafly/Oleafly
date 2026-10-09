@@ -246,7 +246,7 @@
     "refs-incomplete-metadata": {
       "title_other": "{{count}} 件の参考文献の項目でメタデータが不足しています",
       "detail": "情報が欠けていると、出版社のスタイルで参照が壊れたりあいまいになったりします。{{examples}}。",
-      "detailTruncated": "情報が欠けていると、出版社のスタイルで参照が壊れたりあいまいになったりします。{{examples}}、…"
+      "detailTruncated": "情報が欠けていると、出版社のスタイルで参照が壊れたりあいまいになったりします。{{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_other": "{{count}} 件の DOI の値が不正に見えます",

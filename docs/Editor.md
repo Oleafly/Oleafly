@@ -299,7 +299,35 @@ Reset to defaults at the foot of Appearance.
 - Use the app font: off by default. When it's on, the editor uses the App
   font and App font size, and the Editor font and Editor font size settings
   are locked until it's turned off again.
-- Editor font size, editor font and editor theme. The size list runs from 11
+- Theme in light mode and Theme in dark mode: the editor uses one theme while
+  the app is light and another while it's dark, the way VS Code and Zed pair
+  them. Match app follows the app's own colors. Paper, a warm off-white, and
+  One Light are light themes. Linear, GitHub Dark, Dracula, Nord, Tokyo Night,
+  Rosé Pine, Catppuccin and One Dark are dark. A theme saved by an older
+  version is used for both modes.
+- Editor colors: change any color of the theme picked for light or dark mode,
+  with a live preview in LaTeX, Typst and Markdown. Editor covers the
+  background, text, line numbers and selection. Syntax covers commands,
+  preamble and imports, headings, formatting, environments, citations and
+  references, math, values and strings, names and keys, links, brackets and
+  symbols, and comments. A role means the same thing in every language, so
+  the heading color applies to `\section`, a Typst `=` heading and a Markdown
+  `#` heading alike. Colors are kept per theme, and Match app keeps one set
+  for light mode and one for dark. Each swatch shows the theme's own color
+  until you pick yours, and Use theme colors puts them all back. Exporting a
+  theme from Appearance > App also saves the editor themes and colors, and
+  importing one applies them.
+
+  The roles live in `packages/editor/src/color-roles.ts`, and
+  `syntax-colors.ts` maps each language's highlight tags onto them. Every
+  color resolves as `var(--cm-user-*, var(--cm-theme-*, palette))`: your
+  color, then the theme's own value for that role, then the theme's palette.
+  Changing a color only sets a variable on the root element, so open editors
+  never reconfigure. Source-mode LaTeX uses the legacy `stex` tokenizer,
+  which tags every command the same way; `latex-stream.ts` wraps it and
+  splits commands and their arguments into roles, which adds about 1 ms to a
+  full parse of a 9,000-line document.
+- Editor font size and editor font. The size list runs from 11
   to 24 pixels, and Custom takes any size from 6 to 100, the same range as VS
   Code. The font list holds every font installed on the computer, monospaced
   ones first, each drawn in its own font. A typed name works even when the list doesn't show it, and a

@@ -3,6 +3,7 @@ import { CopyMinus, CopyPlus, Info, ListTree } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -178,6 +179,11 @@ export function Outline({
     () => readSidebarView(projectId, "structure")?.filter ?? "",
   );
   useSidebarViewMemory(projectId, "structure", { filter });
+  const [filterEdits, setFilterEdits] = useState(0);
+  const editFilter = (value: string) => {
+    setFilter(value);
+    setFilterEdits((count) => count + 1);
+  };
   const [expansionCommand, setExpansionCommand] =
     useState<IntelligenceTreeExpansionCommand | null>(null);
   const [treeExpansionState, setTreeExpansionState] =
@@ -199,7 +205,7 @@ export function Outline({
     [snapshot],
   );
   const nodeCount = useMemo(() => countNodes(nodes), [nodes]);
-  const treeScrollRef = useRef<HTMLDivElement>(null);
+  const treeScrollRef = useScrollTopOnChange(filterEdits);
   useOverlayScrollbar(treeScrollRef);
   const scrollMemory = useScrollMemory({
     scrollRef: treeScrollRef,
@@ -305,7 +311,7 @@ export function Outline({
       <div className="shrink-0 border-b border-sidebar-border/65 px-2 py-1.5">
             <IntelligenceFilter
               value={filter}
-              onChange={setFilter}
+              onChange={editFilter}
               label={t(($) => $.workspace.structure.filterLabel)}
               placeholder={t(($) => $.workspace.structure.filterPlaceholder)}
             />

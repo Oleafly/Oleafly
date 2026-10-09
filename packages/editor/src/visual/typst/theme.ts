@@ -1,5 +1,6 @@
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { editorColor } from "../../color-roles";
 
 const MONO = "var(--ofl-visual-mono)";
 const SANS = "var(--ofl-visual-sans)";
@@ -81,7 +82,7 @@ export const typstVisualTheme: Extension = EditorView.theme({
   },
   ".ofl-visual-typst-ref-supplement": {
     fontFamily: SANS,
-    color: "var(--cm-editor-fg, var(--foreground))",
+    color: editorColor("text"),
   },
   ".ofl-visual-typst-ref-supplement-separator": {
     display: "inline-block",

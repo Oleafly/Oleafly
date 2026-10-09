@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { editorThemeCursorColor } from "./editor-cursor-color";
+import { cursorThemeFor, editorThemeCursorColor } from "./editor-cursor-color";
 import {
   THEME_CUSTOMIZATION_VERSION,
   resetThemeCustomization,
@@ -34,7 +34,15 @@ describe("editorThemeCursorColor", () => {
 
   it("uses the accent shown on screen when the editor follows the app theme", () => {
     expect(editorThemeCursorColor("light", "system", { theme: "light", accentColor: "#db2777" })).toBe("#db2777");
-    expect(editorThemeCursorColor("light", "dracula", { theme: "light", accentColor: "#db2777" })).toBe("#db2777");
+  });
+
+  it("takes each surface's cursor from the paired theme that draws that surface", () => {
+    expect(cursorThemeFor("light", { light: "paper", dark: "nord" })).toBe("paper");
+    expect(cursorThemeFor("dark", { light: "paper", dark: "nord" })).toBe("nord");
+    expect(cursorThemeFor("light", { light: "dracula", dark: "one-light" })).toBe("one-light");
+    expect(cursorThemeFor("dark", { light: "dracula", dark: "one-light" })).toBe("dracula");
+    expect(cursorThemeFor("light", { light: "dracula", dark: "nord" })).toBe("system");
+    expect(cursorThemeFor("dark", { light: "system", dark: "system" })).toBe("system");
   });
 
   it("uses the accent, not the stylesheet's primary, for the mode that is not on screen", () => {

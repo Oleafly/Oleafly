@@ -41,7 +41,7 @@ function tokenText(text: string, name: string): string[] {
 
 describe("Typst highlighting", () => {
   it("closes inline raw content on the same line", () => {
-    expect(classesOf("`code` @reference", "@reference")).toContain("tok-link");
+    expect(classesOf("`code` @reference", "@reference")).toContain("tok-labelName");
   });
 
   it("does not highlight equals operators away from a line start as headings", () => {
@@ -73,7 +73,7 @@ describe("Typst highlighting", () => {
 
   it("highlights display math across lines", () => {
     const text = "$\n  a + b\n  = c\n$";
-    expect(classesOf(text, "a + b\n  = c")).toEqual(["tok-string2"]);
+    expect(classesOf(text, "a + b\n  = c")).toEqual(["tok-string"]);
   });
 
   it("marks term list markers and terms", () => {

@@ -125,11 +125,11 @@
         "discard": "捨棄變更",
         "emptyFile": "這個檔案目前是空的。",
         "help": {
-          "comments": "在這裡儲存時，以 # 開頭的註解會保留；但在核准卡片上選擇「在此專案中一律套用」時，重寫檔案會把註解移除。",
+          "comments": "在這裡儲存時，以 # 開頭的註解會保留，但在核准卡片上選擇「在此專案中一律套用」時，重寫檔案會把註解移除。",
           "modes": "第一個表格 <modesTable>[\"$approval_modes\"]</modesTable> 會為每個專案設定核准模式：<ask>\"ask-for-approval\"</ask>、<approve>\"approve-for-me\"</approve>、<full>\"full-access\"</full> 或 <custom>\"custom\"</custom>。未列出的專案會使用「代我核准」。",
           "openProject": "目前開啟的專案 {{name}} 的 id 是 <projectId>{{id}}</projectId>。",
           "projectIds": "專案 id 就是 ~/.oleafly/projects 底下的資料夾名稱。",
-          "rules": "接著每個專案 id 各有一個表格，為每個工具存放一條規則：<allow>\"allow\"</allow> 會直接執行工具而不詢問，<deny>\"deny\"</deny> 則會拒絕執行。拒絕規則在所有模式下都有效；允許規則只在自訂模式下生效，而 run_command 在其他模式下也會略過提示。",
+          "rules": "接著每個專案 id 各有一個表格，為每個工具存放一條規則：<allow>\"allow\"</allow> 會直接執行工具而不詢問，<deny>\"deny\"</deny> 則會拒絕執行。拒絕規則在所有模式下都有效。允許規則只在自訂模式下生效，而 run_command 在其他模式下也會略過提示。",
           "toolNames": "可使用的工具名稱：<names>{{names}}</names>，以及「工具」清單中任一 MCP 工具的完整名稱。"
         },
         "helpToggle": "這個檔案如何運作",
@@ -584,7 +584,7 @@
         "label": "圓角半徑"
       },
       "resetAll": "全部重設",
-      "resetMode": "重設此模式",
+      "resetMode": "重設",
       "title": "主題自訂",
       "tokenInputDark": "深色模式的 {{token}} 色彩變數",
       "tokenInputLight": "淺色模式的 {{token}} 色彩變數",
@@ -661,8 +661,48 @@
         "label": "固定捲動"
       },
       "theme": {
-        "description": "與應用程式主題分開設定原始碼的語法顏色。",
-        "label": "編輯器主題"
+        "dark": {
+          "description": "應用程式為深色時使用的編輯器主題。",
+          "label": "深色模式主題"
+        },
+        "light": {
+          "description": "應用程式為淺色時使用的編輯器主題。",
+          "label": "淺色模式主題"
+        }
+      },
+      "colors": {
+        "description": "可變更編輯器主題中的任何顏色。變更會依主題分別保存。",
+        "editing": "正在編輯 {{theme}}",
+        "editorGroup": "編輯器",
+        "mode": {
+          "dark": "深色模式",
+          "light": "淺色模式"
+        },
+        "modeAriaLabel": "要自訂的主題",
+        "names": {
+          "background": "背景",
+          "command": "指令",
+          "comment": "註解",
+          "environment": "環境",
+          "formatting": "格式",
+          "heading": "標題",
+          "lineNumbers": "行號",
+          "link": "連結",
+          "math": "公式",
+          "name": "名稱和鍵名",
+          "reference": "引用和交互參照",
+          "selection": "選取範圍",
+          "structure": "導言區和匯入",
+          "symbol": "括號和符號",
+          "text": "文字",
+          "value": "值和字串"
+        },
+        "pick": "為 {{color}} 選擇顏色",
+        "previewAriaLabel": "預覽語言",
+        "reset": "重設",
+        "syntaxGroup": "語法",
+        "title": "編輯器顏色",
+        "useThemeColor": "為 {{color}} 使用主題顏色"
       },
       "keymap": {
         "description": "選擇原始碼編輯器使用的按鍵組合。",
@@ -857,7 +897,7 @@
         "label": "進入全螢幕"
       },
       "showPdf": {
-        "description": "如果禪模式開始時 PDF 是隱藏的，會在第一次編譯時於編輯器旁開啟。",
+        "description": "如果禪模式中 PDF 是隱藏的，會在編譯時於編輯器旁開啟。",
         "label": "編譯時顯示 PDF"
       },
       "title": "禪模式"
@@ -1033,7 +1073,7 @@
       "status": {
         "checking": "正在檢查 pandoc…",
         "installing": "正在取得鎖定版本的 pandoc。第一次使用時需要一點時間。",
-        "missing": "找不到。Oleafly 可以把相容的 pandoc（2.19 以上）下載到自己的資料夾；系統上的其他部分都不會變動。",
+        "missing": "找不到。Oleafly 可以把相容的 pandoc（2.19 以上）下載到自己的資料夾。系統上的其他部分都不會變動。",
         "ready": "已偵測到。Markdown 專案會先用 pandoc 轉換成 LaTeX，再以內建的 Tectonic 編譯。"
       },
       "tectonicDetail": "為 pandoc 產生的 LaTeX 排版。隨 Oleafly 提供，不需要設定。",

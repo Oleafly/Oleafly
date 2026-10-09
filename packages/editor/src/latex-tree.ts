@@ -15,6 +15,7 @@ import { styleTags, type Tag, tags as t } from "@lezer/highlight";
 import { latexColorToCss } from "@oleafly/latex";
 import { latexLanguage as packagedLatexLanguage } from "codemirror-lang-latex";
 import { latexIgnoredRangesField } from "./latex-lexical";
+import { syntaxTags } from "./syntax-colors";
 
 export type { SyntaxNode, SyntaxNodeRef, Tree } from "@lezer/common";
 
@@ -47,14 +48,28 @@ const OTHER_FORMATTING_COMMANDS = new Set([
   "UnderlineCommand",
 ]);
 
-const KEYWORD_CTRL_SEQS = new Set([
-  "DocumentClassCtrlSeq",
-  "UsePackageCtrlSeq",
+const STRUCTURE_CTRL_SEQS = new Set(["DocumentClassCtrlSeq", "UsePackageCtrlSeq"]);
+
+const REFERENCE_CTRL_SEQS = new Set([
   "CiteCtrlSeq",
   "CiteStarrableCtrlSeq",
   "RefCtrlSeq",
   "RefStarrableCtrlSeq",
   "LabelCtrlSeq",
+]);
+
+const FORMATTING_CTRL_SEQS = new Set([
+  "TextBoldCtrlSeq",
+  "TextItalicCtrlSeq",
+  "TextSmallCapsCtrlSeq",
+  "TextTeletypeCtrlSeq",
+  "TextMediumCtrlSeq",
+  "TextSansSerifCtrlSeq",
+  "TextSuperscriptCtrlSeq",
+  "TextSubscriptCtrlSeq",
+  "TextStrikeOutCtrlSeq",
+  "EmphasisCtrlSeq",
+  "UnderlineCtrlSeq",
 ]);
 
 function derivedGroups(name: string): string[] {
@@ -86,15 +101,24 @@ const groupProp = NodeProp.group.add((type: NodeType) => {
   return [...(type.prop(NodeProp.group) ?? []), ...added];
 });
 
+function controlSequenceTag(name: string): Tag {
+  if (name === "Begin" || name === "End") return syntaxTags.environment;
+  if (STRUCTURE_CTRL_SEQS.has(name)) return t.moduleKeyword;
+  if (REFERENCE_CTRL_SEQS.has(name)) return syntaxTags.reference;
+  if (SECTIONING_CTRL_SEQS.has(name)) return t.heading;
+  if (FORMATTING_CTRL_SEQS.has(name)) return syntaxTags.formatting;
+  return t.tagName;
+}
+
 function tokenStyles(): Record<string, Tag> {
   const styles: Record<string, Tag> = {};
   for (const name of nodeNames) {
     if (name === "Begin" || name === "End" || name.endsWith("CtrlSeq")) {
-      styles[name] = KEYWORD_CTRL_SEQS.has(name) ? t.keyword : t.tagName;
+      styles[name] = controlSequenceTag(name);
     } else if (name.endsWith("CtrlSym")) {
-      styles[name] = t.literal;
+      styles[name] = t.operator;
     } else if (name.endsWith("EnvName")) {
-      styles[name] = t.attributeValue;
+      styles[name] = syntaxTags.environment;
     }
   }
   return styles;
@@ -113,28 +137,30 @@ const highlightProp = styleTags({
   CloseBrace: t.brace,
   OpenBracket: t.squareBracket,
   CloseBracket: t.squareBracket,
-  Dollar: t.string,
-  Math: t.string,
-  "Math/MathChar": t.string,
-  "Math/MathSpecialChar": t.string,
-  "Math/Number": t.string,
-  "MathArgument/OpenBrace MathArgument/CloseBrace": t.string,
-  "MathTextCommand/TextArgument/OpenBrace MathTextCommand/TextArgument/CloseBrace": t.string,
-  "MathOpening/LeftCtrlSeq MathClosing/RightCtrlSeq MathUnknownCommand/CtrlSeq MathTextCommand/CtrlSeq": t.literal,
-  MathDelimiter: t.literal,
-  Tilde: t.keyword,
-  Ampersand: t.keyword,
-  LineBreakCtrlSym: t.keyword,
+  Dollar: syntaxTags.math,
+  Math: syntaxTags.math,
+  "Math/MathChar": syntaxTags.math,
+  "Math/MathSpecialChar": syntaxTags.math,
+  "Math/Number": syntaxTags.math,
+  "MathArgument/OpenBrace MathArgument/CloseBrace": syntaxTags.math,
+  "MathTextCommand/TextArgument/OpenBrace MathTextCommand/TextArgument/CloseBrace": syntaxTags.math,
+  "MathOpening/LeftCtrlSeq MathClosing/RightCtrlSeq MathUnknownCommand/CtrlSeq MathTextCommand/CtrlSeq":
+    syntaxTags.math,
+  MathDelimiter: syntaxTags.math,
+  Tilde: t.operator,
+  Ampersand: t.operator,
+  LineBreakCtrlSym: t.operator,
   Comment: t.comment,
   "UsePackage/OptionalArgument/ShortOptionalArg/Normal": t.attributeValue,
-  "UsePackage/ShortTextArgument/ShortArg/Normal": t.tagName,
+  "UsePackage/ShortTextArgument/ShortArg/Normal": t.typeName,
   "Affiliation/OptionalArgument/ShortOptionalArg/Normal": t.attributeValue,
   "Affil/OptionalArgument/ShortOptionalArg/Normal": t.attributeValue,
   "LiteralArgContent VerbContent VerbatimContent LstInlineContent": t.string,
   "NewCommand/LiteralArgContent": t.typeName,
-  "LabelArgument/ShortTextArgument/ShortArg/...": t.attributeValue,
-  "RefArgument/ShortTextArgument/ShortArg/...": t.attributeValue,
-  "BibKeyArgument/ShortTextArgument/ShortArg/...": t.attributeValue,
+  "LabelArgument/ShortTextArgument/ShortArg/...": syntaxTags.reference,
+  "RefArgument/ShortTextArgument/ShortArg/...": syntaxTags.reference,
+  "BibKeyArgument/ShortTextArgument/ShortArg/...": syntaxTags.reference,
+  "SectioningArgument/...": t.heading,
   "ShortTextArgument/ShortArg/Normal": t.monospace,
   "UrlArgument/LiteralArgContent": [t.attributeValue, t.url],
   "FilePathArgument/LiteralArgContent": t.attributeValue,

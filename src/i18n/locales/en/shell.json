@@ -844,7 +844,7 @@
       },
       "warning": "These features are experimental and still in beta. They are not fully tested yet and may change, break, or be removed in a future release. Turn them on only if you want to try work in progress.",
       "webBrowser": {
-        "description": "Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while still in beta; when off, there is no browser button and the AI has no browser tool.",
+        "description": "Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while in beta. When off, there is no browser button and the AI has no browser tool.",
         "label": "Web browser"
       }
     },
@@ -878,7 +878,7 @@
         "description": "Compile with --only-cached and never fetch packages over the network.",
         "label": "Offline mode"
       },
-      "proofreadingNote": "Proofreading runs locally in a background worker. Harper follows the selected English dialect; spelling always uses the exact selected Hunspell pack. Math, code, comments, citation syntax, metadata, and URLs are excluded.",
+      "proofreadingNote": "Proofreading runs locally in a background worker. Harper follows the selected English dialect, and spelling always uses the exact selected Hunspell pack. Math, code, comments, citation syntax, metadata, and URLs are excluded.",
       "regionalism": {
         "description": "Flag terms that do not match the selected English dialect. Turn off if you use such terms as product or code names.",
         "label": "Regionalism suggestions"

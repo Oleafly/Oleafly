@@ -69,6 +69,7 @@ import {
 import { currentDictionaryLocale } from "@/lib/proofreading/effective-locale";
 import { proofreadingPresentationDiagnostics } from "@/store/proofreading";
 import { logError } from "@/lib/log";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 function sourceProofreadingContextKey(
   projectId: string | null,
@@ -268,7 +269,7 @@ const HOST: EditorHost = {
     keymap: useSettingsStore((s) => s.editorKeymap),
     spellcheck: useSettingsStore((s) => s.spellcheck),
     harper: useSettingsStore((s) => s.harper),
-    editorTheme: useSettingsStore((s) => s.editorTheme),
+    editorTheme: useEditorThemeId(),
     tabSize: useSettingsStore((s) => s.editorTabSize),
     lineWrap: useSettingsStore((s) => s.editorLineWrap),
     autocomplete: useSettingsStore((s) => s.editorAutocomplete),

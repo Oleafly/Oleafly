@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { ComposerCommand } from "./composer-command-registry";
+import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { cn } from "@/lib/utils";
 
 interface SlashCommandKeyEvent {
@@ -58,6 +59,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
       () => filterSlashCommands(commands, query),
       [commands, query],
     );
+    const listRef = useScrollTopOnChange(query);
     const [activeCommandId, setActiveCommandId] = useState<string | null>(null);
     const selectedIndex = activeCommandId
       ? filteredCommands.findIndex((command) => command.id === activeCommandId)
@@ -119,6 +121,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
 
     return (
       <div
+        ref={listRef}
         id="ai-slash-command-menu"
         role="listbox"
         aria-label={t(($) => $.ai.composer.slashMenuAriaLabel)}

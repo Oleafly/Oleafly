@@ -9,16 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Settings > Appearance > Editor now has Theme in light mode and Theme in
+  dark mode, and the editor switches with the app. A theme you picked before
+  is used for both. Two light themes are new: Paper, a warm off-white, and
+  One Light.
+- Settings > Appearance > Editor > Editor colors changes any color of an
+  editor theme, with a live preview in LaTeX, Typst and Markdown. Colors are
+  grouped by role (headings, commands, citations and references, math,
+  comments and more), and a role means the same thing in all three
+  languages. Changes are kept for each theme, and theme export and import
+  carry them.
 - Zen mode hides the toolbar, sidebar, assistant, terminal and the editor's
   tabs and formatting bar so only your writing is left, with the editor at
-  full width. Turn it on with Ctrl-Command-Shift-F (Shift-F11 on Windows and
-  Linux), from the View menu, the layout menu or the command palette, and
-  leave it with the same shortcut or by pressing Escape twice. It can go full
-  screen and open the PDF when you compile with the shortcut. Those two
-  options are under Settings > Appearance > Project, and the shortcut can be
-  changed in Settings > Keyboard Shortcuts. The Compile button and a small
-  status pill sit in the top right corner, over the PDF when it's open, and
-  the button shows when the pointer comes near.
+  full width. Turn it on with Ctrl+Cmd+Shift+F (Shift+F11 on Windows and
+  Linux), from the layout menu or the command palette, or on macOS from the
+  View menu. Leave it with the same shortcut or by pressing Escape twice. It
+  can go full screen, and it can open the PDF beside the editor when you
+  compile. Those two options are under Settings > Appearance > Project, and
+  the shortcut can be changed in Settings > Keyboard Shortcuts. The Compile
+  button and a small status pill sit in the top right corner, over the PDF
+  when it's open, and the button shows when the pointer comes near. When a
+  compile fails, the pill reads Compile failed, and clicking it shows or
+  hides the log.
 - Cite straight from your Zotero library while you write. With Zotero 7 or
   newer open on the same computer, and "Allow other applications on this
   computer to communicate with Zotero" turned on in Zotero's Advanced
@@ -28,31 +40,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   only that entry to the project's `.bib`, along with the bibliography line
   if the project has none. This works in LaTeX, Typst and Markdown, and Add
   citation lists your Zotero library first. Keys come from Better BibTeX when
-  it's installed, otherwise from Zotero's Citation Key field. A cited key
+  it's installed, otherwise from Zotero's Citation Key field or the Extra
+  field, and Oleafly makes one when an item has none. A cited key
   that's missing from the `.bib` offers Add from Zotero, and an entry that
   changed in Zotero offers Update from Zotero. An entry you edited by hand is
   only replaced when you tick it. Search keeps working from the last sync
   while Zotero is closed, and `.bib` entries never include the paths of the
   PDFs on your computer. Settings > Integrations > Zotero tests the
   connection and picks which libraries to search.
+- Zotero doesn't have to be open if you connect your zotero.org account in
+  Settings > Integrations > Zotero. Group libraries come along too. The
+  command palette has Add missing citations from Zotero, Update .bib entries
+  from Zotero and Sync Zotero library. Add missing citations checks every
+  cited key that isn't in the `.bib`, adds the ones Zotero has, and points
+  out keys that cite a paper already in your bibliography. In a project with
+  more than one `.bib` file, Oleafly asks once which file gets new
+  references and remembers it.
 - The first time you cite from Zotero in a paper that lists its references
   by hand, Oleafly offers to move that list into the `.bib`, so every
-  reference shares one numbered list. The Academic Article, Elsevier and
-  Thesis templates now start with a `references.bib`.
+  reference shares one numbered list. The Academic Article, Elsevier Article
+  and Thesis / Report templates now start with a `references.bib`.
 - Renaming or moving a file now updates the paths that point to it (#254):
   `\input`, `\include`, `\includegraphics`, `\bibliography` and similar
   commands in LaTeX, `#include`, `image()` and `bibliography()` in Typst, and
-  links and images in Markdown. Press F2 with the cursor on a path, use
-  Rename file in the file tree, or drag the file to a new folder. Settings >
-  Appearance > Editor sets whether Oleafly asks first, always updates the
-  paths or leaves them alone.
+  links and images in Markdown. With the cursor on a path, press F2 or
+  choose Rename file from the editor's right-click menu. You can also use
+  Rename in the file tree, or drag the file to a new folder. The Rename file
+  dialog takes a full path, so it can move the file too, and it creates
+  folders that don't exist yet. Settings > Appearance > Editor sets whether
+  Oleafly asks first, always updates the paths or leaves them alone.
 - Cmd+= and Cmd+- zoom the whole app, the editor and PDF included, and
-  Cmd+0 sets it back to 100% (Ctrl on Windows and Linux). Every Oleafly
-  window follows the same level, which is remembered and can also be picked
-  in Settings > Appearance > App. The keys can be changed in Settings >
-  Keyboard Shortcuts. Inside the PDF they zoom the app too, so the PDF
-  itself zooms with its toolbar, a pinch or Ctrl+scroll, and the PDF zoom
-  shortcuts setting is gone.
+  Cmd+0 sets it back to 100% (Ctrl on Windows and Linux). The level goes
+  from 80 to 200%, and the command palette has Zoom In, Zoom Out and Reset
+  Zoom. Every Oleafly window follows the same level, which is remembered and
+  can also be picked in Settings > Appearance > App. The keys can be
+  changed in Settings > Keyboard Shortcuts. Inside the PDF they zoom the app
+  too, so the PDF itself zooms with its toolbar, a pinch or Ctrl+scroll, and
+  the PDF zoom shortcuts setting is gone.
 - Settings > Appearance > Editor has a Use the app font switch. With it on,
   the editor uses the App font and App font size.
 - Cmd+Option+P (Ctrl+Alt+P on Windows and Linux) shows or hides the PDF
@@ -79,6 +103,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Settings window is wider, and it narrows with the app window down to a
+  minimum. The accent colors sit beside their label when there's room.
+  Color pickers are smaller, the size of a switch's knob, and the terminal
+  colors use the same picker. Selected items in menus, lists and settings
+  show a filled check in the accent color. Radio choices keep their dot.
+  Things that are installed, downloaded or connected get a green check
+  instead, and status labels such as Ready and Connected drop their check
+  icon.
+- Expandable cards, such as the agents and AI providers in Settings, the
+  tour guides, and Recent chats in the assistant, keep their icon on the
+  left and put the arrow on the right.
+- In Preflight, the Show what the reader sees button is now called Screen
+  Reader.
+- The counts beside the sidebar section titles and Recent chats now use the
+  accent color.
+- The Export menu shows a different icon for each file type: ZIP, PDF, PNG,
+  Word, HTML, Markdown, Typst, LaTeX and plain text.
+- Syntax colors now follow the roles in Editor colors, so a few things look
+  different. In
+  LaTeX, section commands and their titles use the heading color, citation
+  keys and environment names take the color of their command, and math is
+  one color. Markdown citations such as `[@key]` and `@key` are highlighted,
+  and bracketed citations no longer look like links.
 - The home screen's Grid background has wider squares that fade out toward
   the edges.
 - Every sidebar view now remembers its scroll position, expanded folders and
@@ -91,8 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Only content you'd want to copy can be selected now: your documents, the
   PDF, logs, chat messages and the text in Settings and dialogs. Toolbars,
   icons, labels, placeholders and the list of settings on the left no longer
-  highlight when you drag across them. Command-A (Ctrl+A on Windows and
-  Linux) selects the content of the view you're in, such as the whole PDF or
+  highlight when you drag across them. Cmd+A (Ctrl+A on Windows and Linux)
+  selects the content of the view you're in, such as the whole PDF or
   the whole log, instead of the whole window, and clicking anywhere else
   clears the selection.
 - Large compile logs open right away and scroll without blank areas. A log
@@ -100,9 +147,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   two, and Select All followed by Copy copies the whole log.
 - The PDF preview keeps your place when a recompile replaces the PDF, stays
   filled while you zoom, and redraws far fewer pages while you drag the
-  divider next to it. The detached preview window now behaves the same way. Going
-  from the editor alone back to a layout with the PDF shows it right away,
-  at the same spot, instead of loading it again.
+  divider next to it. The detached preview window now behaves the same way.
+  Going from the editor alone back to a layout with the PDF shows it right
+  away, at the same spot, instead of loading it again.
 - The home page, the project list and the command palette open faster. A
   streaming reply, from the built-in assistant or from an agent such as
   Claude Code or Codex, now redraws only the message that's coming in.
@@ -115,6 +162,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Searching a long list, such as the model picker, now shows the results
+  from the top. Before, the list kept its old scroll position, so the best
+  match could be out of view. Each Settings section also opens at the top
+  instead of where you left the previous one.
+- Reset to defaults in Settings > Appearance now also clears Theme
+  customization, so a primary color set there no longer survives the reset.
+- With a zotero.org account connected, Settings no longer shows the steps for
+  finding an API key.
+- The default compile engine in Settings > Engines never applied (#259).
+  Projects from the New project dialog, imports (ZIP, folder, arXiv and
+  GitHub) and converted documents all started on the built-in Tectonic
+  engine, which downloads packages the first time it needs them. New,
+  imported and converted projects now start on the engine you picked, and
+  an opened folder without an engine of its own
+  follows it once you trust the folder. An imported project that pins
+  pdfLaTeX, XeLaTeX or LuaLaTeX keeps that compiler on latexmk.
 - After a click on the PDF, its keyboard shortcuts worked once and then
   stopped: re-rendering a page removed the text that had focus. Clicking
   the page margins or the gray background didn't give the PDF focus at
@@ -122,8 +185,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through re-renders.
 - App font size now scales every piece of interface text. Section titles in
   the sidebar, count badges and other small labels used to stay the same
-  size whatever it was set to. The counts beside the sidebar section titles
-  and Recent chats now use the accent color.
+  size whatever it was set to.
 - The search field in the sidebar no longer draws a bright border when it has
   focus. A light background tint shows it instead.
 - Project cards keep the engine and the Updated date on one line each, cut
@@ -132,7 +194,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The file tree no longer gets wider every time you resize the window or the
   PDF preview leaves full screen. It keeps the width you gave it.
 - The App font setting in Appearance now changes the font of the whole
-  interface. Before, it had no visible effect.
+  interface, including toasts and the PDF, presentation, browser and update
+  windows. Before, it had no visible effect.
 - Theme customization shows the default colors of the light palette while
   the app is dark, and of the dark palette while it is light. The swatches
   of the mode you weren't using were blank.
@@ -147,11 +210,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   megapixels (#258). The part of the page you're looking at is now drawn
   again at full sharpness, and the preview redraws when the window moves to
   a screen with a different pixel density.
-- After closing the graph section in Source Control and scrolling, the list
-  could turn blank or leave a long empty gap. It now stays filled at any
-  scroll speed.
 - The math preview in visual mode stayed on top of dialogs that opened over
   the editor.
+- On macOS, a shortcut recorded with Option, such as Ctrl+Option+T, was
+  saved as the character Option types and couldn't be used for a menu item.
+  Shortcuts with Option now record and match the key you press.
 - The outline showed raw LaTeX in some section titles, such as colour
   commands, font switches and `\nameref`, listed headings found inside macro
   definitions, and left out headings made with your own macros that wrap

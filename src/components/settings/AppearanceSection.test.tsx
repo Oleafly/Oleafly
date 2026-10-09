@@ -21,6 +21,7 @@ const fill = (template: string, values: Record<string, string>) =>
 const themeMocks = vi.hoisted(() => ({
   preference: "dark" as "system" | "light" | "dark",
   setPreference: vi.fn(),
+  applyTheme: vi.fn(),
 }));
 const browserCookieMocks = vi.hoisted(() => ({
   detectBrowserCookieSources: vi.fn(),
@@ -36,6 +37,8 @@ function deferred<T>() {
 }
 
 vi.mock("@/lib/theme", () => ({
+  applyTheme: themeMocks.applyTheme,
+  currentTheme: () => "dark",
   useTheme: () => ({
     preference: themeMocks.preference,
     theme: themeMocks.preference === "light" ? "light" : "dark",
@@ -49,6 +52,12 @@ vi.mock("@/lib/tauri", () => ({
   importBrowserCookies: browserCookieMocks.importBrowserCookies,
 }));
 
+import {
+  emptyThemeCustomization,
+  readThemeCustomization,
+  resetThemeCustomization,
+  writeThemeCustomization,
+} from "@/lib/theme-customization";
 import { AppearanceSection } from "./AppearanceSection";
 import { ShortcutsSection } from "./ShortcutsSection";
 
@@ -376,7 +385,12 @@ describe("Appearance settings tabs", () => {
 
   it("picks a cursor color for light and for dark editor themes and goes back to the theme's", async () => {
     const user = userEvent.setup();
-    useSettingsStore.setState({ editorCursorColorLight: "", editorCursorColorDark: "", editorTheme: "dracula" });
+    useSettingsStore.setState({
+      editorCursorColorLight: "",
+      editorCursorColorDark: "",
+      editorThemeLight: "system",
+      editorThemeDark: "dracula",
+    });
     const palette = document.createElement("style");
     palette.textContent = '[data-editor-theme="dracula"] { --cm-cursor: #f8f8f2; }';
     document.head.append(palette);
@@ -398,8 +412,24 @@ describe("Appearance settings tabs", () => {
 
     await user.click(within(row).getByRole("button", { name: cursorColor.useTheme }));
     expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
-    useSettingsStore.setState({ editorTheme: "system" });
+    useSettingsStore.setState({ editorThemeLight: "system", editorThemeDark: "system" });
     palette.remove();
+  });
+
+  it("shows a theme for light mode and one for dark mode, and the editor colors under them", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorThemeLight: "paper", editorThemeDark: "nord" });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+
+    const light = screen.getByTestId("settings-row-editor-theme-light");
+    const dark = screen.getByTestId("settings-row-editor-theme-dark");
+    expect(light).toHaveTextContent(appearance.editor.theme.light.label);
+    expect(within(light).getByTestId("settings-editor-theme-light-trigger")).toHaveTextContent("Paper");
+    expect(dark).toHaveTextContent(appearance.editor.theme.dark.label);
+    expect(within(dark).getByTestId("settings-editor-theme-dark-trigger")).toHaveTextContent("Nord");
+    expect(screen.getByTestId("editor-colors")).toHaveTextContent(appearance.editor.colors.title);
+    useSettingsStore.setState({ editorThemeLight: "system", editorThemeDark: "system" });
   });
 
   it("changes the editor cursor width", async () => {
@@ -470,6 +500,7 @@ describe("Appearance settings tabs", () => {
     settings.setDockPlacement("right");
     settings.setLatexTools(true);
     themeMocks.preference = "light";
+    writeThemeCustomization({ ...emptyThemeCustomization(), dark: { primary: "#00c7fc" } });
 
     render(<AppearanceSection />);
 
@@ -491,7 +522,28 @@ describe("Appearance settings tabs", () => {
     expect(localStorage.getItem("oleafly.dockPlacement")).toBe("left");
     expect(localStorage.getItem("oleafly.latexTools")).toBe("1");
     expect(themeMocks.setPreference).toHaveBeenCalledWith("system");
+    expect(readThemeCustomization()).toEqual(emptyThemeCustomization());
+    expect(themeMocks.applyTheme).toHaveBeenCalledWith("dark");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("marks Reset while the app theme is customized", () => {
+    themeMocks.preference = "system";
+    useSettingsStore.getState().resetAppearancePreferences();
+    resetThemeCustomization();
+    render(<AppearanceSection />);
+    const reset = screen.getByRole("button", { name: "Reset to defaults" });
+    expect(reset.querySelector('[data-testid="reset-changed-dot"]')).toBeNull();
+
+    act(() => {
+      writeThemeCustomization({ ...emptyThemeCustomization(), radius: "8px" });
+    });
+    expect(reset.querySelector('[data-testid="reset-changed-dot"]')).not.toBeNull();
+
+    act(() => {
+      resetThemeCustomization();
+    });
+    expect(reset.querySelector('[data-testid="reset-changed-dot"]')).toBeNull();
   });
 
   it("marks Reset while the theme is not the system default", () => {

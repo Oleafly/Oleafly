@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 import {
   Bookmark,
   BookmarkCheck,
-  Check,
   CopyPlus,
   Eye,
   FileText,
@@ -49,6 +48,7 @@ import { isFolderProject } from "@/lib/library-projects";
 import { projectModifiedLabel } from "@/lib/project-format";
 import type { ProjectInfo } from "@/lib/tauri";
 import { cn, isMac, isWindows } from "@/lib/utils";
+import { CheckBadge } from "@/components/ui/check-badge";
 
 type LibraryTranslate = ReturnType<typeof useTranslation<["common", "library"]>>["t"];
 
@@ -233,7 +233,7 @@ function ProjectMenuItems({
               style={{ background: c.hex }}
             />
             {colorLabels[c.name] ?? c.name}
-            {color === c.hex && <Check className="ml-auto size-3.5" />}
+            {color === c.hex && <CheckBadge className="ml-auto" />}
           </Item>
         ))}
       </SubContent>

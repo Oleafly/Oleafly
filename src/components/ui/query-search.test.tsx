@@ -78,6 +78,18 @@ describe("QuerySearch", () => {
     expect(input()).toHaveAttribute("aria-expanded", "true");
   });
 
+  it("shows a new search's suggestions from the top of the list", () => {
+    render(<Harness />);
+    fireEvent.focus(input());
+    const list = screen.getByRole("listbox");
+    list.scrollTop = 240;
+
+    type("en");
+
+    expect(options()).toContain("Engine");
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("accepts a qualifier and then a value from the keyboard", () => {
     render(<Harness />);
     fireEvent.focus(input());

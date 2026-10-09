@@ -245,7 +245,7 @@
     "issues": "Issues",
     "spelling": "Spelling",
     "grammarAndStyle": "Grammar & style",
-    "findingsTruncated": "The findings list is truncated; the count above is complete.",
+    "findingsTruncated": "The findings list is truncated. The count above is complete.",
     "spellLanguage": "Spell-check language",
     "spellLanguageAppSetting": "Use the app setting",
     "spellLanguageAriaLabel": "Spell-check language for this project",

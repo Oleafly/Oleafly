@@ -36,7 +36,7 @@
       },
       "installBridge": "Köprüyü kur",
       "installBridgeNextStep": "ACP köprüsünü kurun, sonra komut satırı aracından oturum açın.",
-      "intro": "Yerel bir ajanı ACP üzerinden bağlayın. Her ajan kendi modellerini, araçlarını ve oturum açma işlemini yönetir; API sağlayıcı ayarları ayrı kalır. Oturum açmak için resmi CLI hesabını kullanın: Oleafly hesap belirteçlerini içe aktarmaz ve abonelik kotalarını kestirmez.",
+      "intro": "Yerel bir ajanı ACP üzerinden bağlayın. Her ajan kendi modellerini, araçlarını ve oturum açma işlemini yönetir, API sağlayıcı ayarları ise ayrı kalır. Oturum açmak için resmi CLI hesabını kullanın: Oleafly hesap belirteçlerini içe aktarmaz ve abonelik kotalarını kestirmez.",
       "nextStepTitle": "Sonraki adım",
       "notReported": "Bildirilmedi",
       "notice": {
@@ -129,7 +129,7 @@
           "modes": "İlk tablo, <modesTable>[\"$approval_modes\"]</modesTable>, proje başına onay kipini belirler: <ask>\"ask-for-approval\"</ask>, <approve>\"approve-for-me\"</approve>, <full>\"full-access\"</full> veya <custom>\"custom\"</custom>. Listelenmeyen bir proje Benim için onayla kipini kullanır.",
           "openProject": "Açık proje, {{name}}, şu kimliğe sahip: <projectId>{{id}}</projectId>.",
           "projectIds": "Proje kimlikleri, ~/.oleafly/projects altındaki klasör adlarıdır.",
-          "rules": "Sonra proje kimliği başına bir tablo gelir ve her araç için bir kural tutar: <allow>\"allow\"</allow> aracı sormadan çalıştırır, <deny>\"deny\"</deny> ise reddeder. Deny kuralları her kipte geçerlidir; allow kuralları Özel kipte etkilidir ve run_command için diğer kiplerde de sormayı atlar.",
+          "rules": "Sonra proje kimliği başına bir tablo gelir ve her araç için bir kural tutar: <allow>\"allow\"</allow> aracı sormadan çalıştırır, <deny>\"deny\"</deny> ise reddeder. Deny kuralları her kipte geçerlidir. Allow kuralları Özel kipte etkilidir ve run_command için diğer kiplerde de sormayı atlar.",
           "toolNames": "Kullanabileceğiniz araç adları: <names>{{names}}</names> ve Araçlar listesindeki tam adıyla her MCP aracı."
         },
         "helpToggle": "Dosya nasıl çalışır",
@@ -170,7 +170,7 @@
         "addFailed": "Bu sağlayıcı eklenemedi.",
         "baseUrlHost": "URL'de ana makine adı eksik.",
         "baseUrlInvalid": "Tam bir URL girin, örneğin https://api.example.com/v1 veya http://localhost:1234/v1.",
-        "baseUrlProtocol": "https:// kullanın; yerel bir sunucu içinse http://.",
+        "baseUrlProtocol": "https:// kullanın, yerel bir sunucu içinse http://.",
         "baseUrlRequired": "Temel URL zorunludur.",
         "idFormat": "Yalnızca küçük harf, rakam ve kısa çizgi kullanın, örneğin acme.",
         "idRequired": "Kimlik zorunludur.",
@@ -359,7 +359,7 @@
         "providerUpdatedWithoutModels": "{{provider}} güncellendi. Model listesi yenilenemedi."
       },
       "reset": {
-        "confirmWithProject": "Yapay zeka asistanı tercihlerini; model kullanılabilirliği, etkin beceriler ve bu projenin bütçesi dahil olmak üzere varsayılanlarına döndürür. Etkin sağlayıcı ve model, sağlayıcı anahtarları, personalar, onay kuralları, kullanım geçmişi ve MCP sunucuları değişmeden kalır.",
+        "confirmWithProject": "Model kullanılabilirliği, etkin beceriler ve bu projenin bütçesi dahil olmak üzere yapay zeka asistanı tercihlerini varsayılanlarına döndürür. Etkin sağlayıcı ve model, sağlayıcı anahtarları, personalar, onay kuralları, kullanım geçmişi ve MCP sunucuları değişmeden kalır.",
         "confirmWithoutProject": "Yapay zeka asistanı tercihlerini, model kullanılabilirliği ve etkin beceriler dahil olmak üzere varsayılanlarına döndürür. Etkin sağlayıcı ve model, sağlayıcı anahtarları, personalar, onay kuralları, kullanım geçmişi ve MCP sunucuları değişmeden kalır.",
         "sectionName": "Yapay Zeka Asistanı"
       },
@@ -411,7 +411,7 @@
       },
       "changedForProject": "Bu proje için değiştirildi",
       "createSkill": "Beceri oluştur",
-      "description": "Asistan, bir becerinin tüm yönergelerini yalnızca ihtiyaç duyduğunda yükler; sohbete /beceri-kimliği yazarsanız hemen yükler. Burada açtığınız bir beceri her projede açık olur. Yalnızca açık olan projede değiştirmek için Bu proje seçeneğine geçin.",
+      "description": "Asistan, bir becerinin tüm yönergelerini yalnızca ihtiyaç duyduğunda yükler. Sohbete /beceri-kimliği yazarsanız hemen yükler. Burada açtığınız bir beceri her projede açık olur. Yalnızca açık olan projede değiştirmek için Bu proje seçeneğine geçin.",
       "editAria": "{{name}} becerisini düzenle",
       "editor": {
         "createDescription": "Oleafly beceriler klasörünüzde bir SKILL.md taslağı oluşturun.",
@@ -473,7 +473,7 @@
         "placeholder": "Becerilerde ara"
       },
       "share": {
-        "description": "Becerilerinizi, bu bilgisayardaki diğer kodlama ajanlarının zaten okuduğu klasörlere bağlayın; böylece bir beceriyi bir kez yazın ve her ajan kullanabilsin.",
+        "description": "Becerilerinizi, bu bilgisayardaki diğer kodlama ajanlarının zaten okuduğu klasörlere bağlayın, böylece bir beceriyi bir kez yazarsınız ve her ajan onu kullanabilir.",
         "emptyBody": "Bu bilgisayarda başka ajan klasörü bulunamadı.",
         "status": {
           "linked": "{{total}} tanesinden {{linked}} tanesi bağlı",
@@ -589,7 +589,7 @@
         "label": "Köşe yarıçapı"
       },
       "resetAll": "Tümünü sıfırla",
-      "resetMode": "Bu kipi sıfırla",
+      "resetMode": "Sıfırla",
       "title": "Tema özelleştirme",
       "tokenInputDark": "Koyu kip için {{token}} belirteci",
       "tokenInputLight": "Açık kip için {{token}} belirteci",
@@ -666,8 +666,48 @@
         "label": "Yapışkan kaydırma"
       },
       "theme": {
-        "description": "Kaynak sözdizimi renklerini uygulama temasından ayrı belirleyin.",
-        "label": "Düzenleyici teması"
+        "dark": {
+          "description": "Uygulama koyu kipteyken kullanılan düzenleyici teması.",
+          "label": "Koyu kipte tema"
+        },
+        "light": {
+          "description": "Uygulama açık kipteyken kullanılan düzenleyici teması.",
+          "label": "Açık kipte tema"
+        }
+      },
+      "colors": {
+        "description": "Bir düzenleyici temasının herhangi bir rengini değiştirin. Değişiklikler her tema için ayrı saklanır.",
+        "editing": "Düzenlenen: {{theme}}",
+        "editorGroup": "Düzenleyici",
+        "mode": {
+          "dark": "Koyu kip",
+          "light": "Açık kip"
+        },
+        "modeAriaLabel": "Özelleştirilecek tema",
+        "names": {
+          "background": "Arka plan",
+          "command": "Komutlar",
+          "comment": "Yorumlar",
+          "environment": "Ortamlar",
+          "formatting": "Biçimlendirme",
+          "heading": "Başlıklar",
+          "lineNumbers": "Satır numaraları",
+          "link": "Bağlantılar",
+          "math": "Matematik",
+          "name": "Adlar ve anahtarlar",
+          "reference": "Atıflar ve başvurular",
+          "selection": "Seçim",
+          "structure": "Önbölüm ve içe aktarmalar",
+          "symbol": "Ayraçlar ve semboller",
+          "text": "Metin",
+          "value": "Değerler ve dizeler"
+        },
+        "pick": "{{color}} için renk seç",
+        "previewAriaLabel": "Önizleme dili",
+        "reset": "Sıfırla",
+        "syntaxGroup": "Sözdizimi",
+        "title": "Düzenleyici renkleri",
+        "useThemeColor": "{{color}} için tema rengini kullan"
       },
       "keymap": {
         "description": "Kaynak düzenleyicinin kullanacağı tuş atama kümesini seçin.",
@@ -862,7 +902,7 @@
         "label": "Tam ekrana geç"
       },
       "showPdf": {
-        "description": "Zen kipi başlarken PDF gizliyse, ilk derlemede onu düzenleyicinin yanında açar.",
+        "description": "Zen kipinde PDF gizliyse, derlediğinizde onu düzenleyicinin yanında açar.",
         "label": "Derlerken PDF'yi göster"
       },
       "title": "Zen kipi"
@@ -879,7 +919,7 @@
     },
     "description": "Bir kontrol noktası, başarılı bir derlemenin kullandığı kaynak dosyaları kaydeder.",
     "notifyOnFailure": {
-      "description": "Bir kontrol noktası kaydedilemediğinde Oleafly size bunu bildirir; depolama sorunları ve yakalayamadığı dosyalar dahil.",
+      "description": "Bir kontrol noktası kaydedilemediğinde Oleafly size bunu bildirir. Buna depolama sorunları ve yakalayamadığı dosyalar da dahildir.",
       "label": "Bir kontrol noktası kaydedilemediğinde bildirim göster"
     },
     "title": "Kontrol noktaları"
@@ -973,7 +1013,7 @@
       "empty": "İndirilebilir yazı tipi yok.",
       "engineNote": "LuaLaTeX motoru (etiketli, erişilebilir PDF'ler için) LaTeX Motoru bölümünden yönetilir.",
       "heading": "Yazı tipleri",
-      "tooltip": "Bazı şablonlar premium açık kaynaklı yazı tipleri kullanır. Oleafly küçük kalsın diye bu yazı tipleri istendiğinde indirilir: böyle bir şablon oluşturduğunuzda yazı tipleri getirilir ve projeye kopyalanır; böylece proje kendi kendine yeter ve çevrimdışı derlenir. Onları buradan önceden de indirebilir ya da yer açmak için kaldırabilirsiniz."
+      "tooltip": "Bazı şablonlar premium açık kaynaklı yazı tipleri kullanır. Oleafly küçük kalsın diye bu yazı tipleri istendiğinde indirilir: böyle bir şablon oluşturduğunuzda yazı tipleri getirilir ve projeye kopyalanır, böylece proje kendi kendine yeter ve çevrimdışı derlenir. Onları buradan önceden de indirebilir ya da yer açmak için kaldırabilirsiniz."
     },
     "packProgress": "{{total}} içinden {{index}}",
     "progress": "{{label}} ({{total}} içinden {{index}})",
@@ -1019,7 +1059,7 @@
     },
     "defaultEngine": {
       "heading": "Varsayılan derleme motoru",
-      "tooltip": "Yeni projeler için geçerlidir. Her proje kendi motorunu project.json içinde sabitler; böylece aynı projeyi açan iş arkadaşlarınız bu ayardan bağımsız olarak onu aynı şekilde derler."
+      "tooltip": "Yeni projeler için geçerlidir. Her proje kendi motorunu project.json içinde sabitler, böylece aynı projeyi açan iş arkadaşlarınız bu ayardan bağımsız olarak onu aynı şekilde derler."
     },
     "distributions": {
       "empty": "Bu makinede TeX dağıtımı algılanmadı.",
@@ -1038,10 +1078,10 @@
       "status": {
         "checking": "pandoc aranıyor…",
         "installing": "Sabitlenmiş bir pandoc sürümü getiriliyor. İlk kullanımda bu biraz sürer.",
-        "missing": "Bulunamadı. Oleafly uyumlu bir pandoc (2.19 veya daha yenisi) kendi klasörüne indirebilir; sisteminizde başka hiçbir şey değişmez.",
+        "missing": "Bulunamadı. Oleafly uyumlu bir pandoc (2.19 veya daha yenisi) kendi klasörüne indirebilir. Sisteminizde başka hiçbir şey değişmez.",
         "ready": "Algılandı. Markdown projeleri pandoc ile LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile derlenir."
       },
-      "tectonicDetail": "pandoc'un ürettiği LaTeX'i dizer. Oleafly ile birlikte gelir; yapılandırılacak bir şey yoktur.",
+      "tectonicDetail": "pandoc'un ürettiği LaTeX'i dizer. Oleafly ile birlikte gelir ve kurulum gerektirmez.",
       "tooltip": "Markdown projeleri pandoc ile (Pandoc Markdown: tablolar, dipnotlar, atıflar, matematik) LaTeX'e dönüştürülür, sonra paketlenmiş Tectonic ile PDF'e dizilir. Pandoc, Oleafly ile birlikte gelir."
     },
     "packages": {
@@ -1356,7 +1396,7 @@
       "clients": {
         "title": "Uygulamalarınızı bağlayın"
       },
-      "description": "Claude Desktop, Claude Code, Cursor ve diğer MCP istemcileri açık projeyi okuyabilir, düzenleyebilir ve derleyebilir; her değişiklik için sizin onayınızla.",
+      "description": "Claude Desktop, Claude Code, Cursor ve diğer MCP istemcileri, her değişiklik için sizin onayınızla açık projeyi okuyabilir, düzenleyebilir ve derleyebilir.",
       "enable": {
         "ariaLabel": "MCP sunucusunu aç",
         "description": "Yalnızca Oleafly açıkken bu bilgisayarda dinler.",
@@ -1523,7 +1563,7 @@
     "profileRules": {
       "description": "Makalelerin önüne geçtikleri için varsayılan olarak kapalıdırlar. İstediklerinizi açın.",
       "example": "Örnek: {{example}}",
-      "help": "Harper, sohbet ve e-posta için ayarlanmıştır. Bu kurallar ya makalelerin izlemediği bir üslubu dayatır, örneğin kB ve min birimlerini açık yazmak, ya da LaTeX işaretlemesinin yerine geçen yer tutuculara takılır; bu yüzden Oleafly onları kapalı tutar. Her biri neyi işaretleyeceğini gösterir. O bulguları istiyorsanız açın.",
+      "help": "Harper, sohbet ve e-posta için ayarlanmıştır. Bu kurallar ya makalelerin izlemediği bir üslubu dayatır, örneğin kB ve min birimlerini açık yazmak, ya da LaTeX işaretlemesinin yerine geçen yer tutuculara takılır. Bu yüzden Oleafly onları kapalı tutar. Her biri neyi işaretleyeceğini gösterir. O bulguları istiyorsanız açın.",
       "reasons": {
         "AvoidContractions": "Her kısaltılmış biçimi açık yazmanızı ister.",
         "CompoundNouns": "İki sözcük olarak yazılmış bir birleşik adı birleştirir.",
@@ -1548,9 +1588,9 @@
         "NumericRangeEnDash": "Bir sayı aralığının uçları arasına kısa çizgi yerine uzun çizgi ister.",
         "OxfordComma": "Dizi virgülünü zorunlu kılar.",
         "SentenceCapitalization": "Cümlenin ilk sözcüğünü büyük harfle başlatır, maskelenmiş işaretlemeden sonra başlayanlar dahil.",
-        "Spaces": "Yinelenen boşlukları birleştirir; metin maskesi, işaretlemenin silindiği her yerde bunları bırakır.",
+        "Spaces": "Yinelenen boşlukları birleştirir. Metin maskesi, işaretlemenin silindiği her yerde bunları bırakır.",
         "SplitWords": "İki sözcük olması gereken bir sözcüğü ayırır, örneğin alot.",
-        "TransposedSpace": "Noktalamanın yanlış tarafında kalan boşluğu taşır; maskeleme bunu sık üretir."
+        "TransposedSpace": "Noktalamanın yanlış tarafında kalan boşluğu taşır. Maskeleme bunu sık üretir."
       },
       "title": "Akademik profilin kapalı tuttuğu kurallar",
       "toggleAriaLabel": "{{rule}} kuralını aç"
@@ -1575,7 +1615,7 @@
     },
     "turnedOff": {
       "description": "Bu projede kapattığınız kurallar ve yok saydığınız bulgular.",
-      "help": "Düzenleyicide altı çizili bir sözcüğün veya cümlenin üzerine gelin; küçük bir kart Harper'ın ne bulduğunu, düzeltme ve yok sayma eylemleriyle birlikte gösterir. O karttan kapattığınız kurallar ve bu projede yok saydığınız bulgular burada listelenir, böylece istediğinizi geri getirebilirsiniz.",
+      "help": "Düzenleyicide altı çizili bir sözcüğün veya cümlenin üzerine gelin. Küçük bir kart Harper'ın ne bulduğunu, düzeltme ve yok sayma eylemleriyle birlikte gösterir. O karttan kapattığınız kurallar ve bu projede yok saydığınız bulgular burada listelenir, böylece istediğinizi geri getirebilirsiniz.",
       "listAriaLabel": "Kapatılan dil bilgisi kuralları",
       "none": "Hiçbir kuralı kapatmadınız.",
       "restoreAriaLabel": "{{rule}} kuralını yeniden aç",
@@ -1660,7 +1700,7 @@
       },
       "togglePreview": {
         "label": "PDF önizlemesini aç/kapat",
-        "description": "Düzenleyicinin yanındaki PDF'i gösterir veya gizler; Zen kipinde de çalışır."
+        "description": "Düzenleyicinin yanındaki PDF'i gösterir veya gizler. Zen kipinde de çalışır."
       },
       "toggleTerminal": {
         "description": "Proje terminalini gösterin veya gizleyin.",

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Palette, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { useTheme, type Theme } from "@/lib/theme";
 import { useSettingsStore } from "@/store/settings";
 import {
   MAX_THEME_IMPORT_BYTES,
+  THEME_CUSTOMIZATION_CHANGED_EVENT,
   THEME_TOKEN_NAMES,
   accentTokenDefaults,
   applyThemeCustomization,
@@ -63,7 +64,9 @@ const TOKEN_LABELS: Record<ThemeTokenName, () => string> = {
 };
 
 function downloadTheme(customization: ThemeCustomizationState) {
-  const blob = new Blob([serializeThemeCustomization(customization)], { type: "application/json" });
+  const { editorThemeLight, editorThemeDark, editorColors } = useSettingsStore.getState();
+  const editor = { themes: { light: editorThemeLight, dark: editorThemeDark }, colors: editorColors };
+  const blob = new Blob([serializeThemeCustomization(customization, editor)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -84,6 +87,18 @@ export function ThemeCustomization() {
   const [message, setMessage] = useState<string | null>(null);
   const importInput = useRef<HTMLInputElement>(null);
   const tokens = customization[editMode];
+
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      if (!(event instanceof CustomEvent) || event.detail?.reset !== true) return;
+      setCustomization(readThemeCustomization());
+      setTokenDrafts({ light: {}, dark: {} });
+      setRadiusDraft(null);
+      setCustomCssDraft(null);
+    };
+    window.addEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, onChange);
+  }, []);
 
   const save = (next: ThemeCustomizationState, notice?: string) => {
     const saved = writeThemeCustomization(next);
@@ -131,7 +146,8 @@ export function ThemeCustomization() {
       return;
     }
     try {
-      const { customization: imported, skippedTokens } = parseThemeCustomizationImport(await file.text());
+      const { customization: imported, skippedTokens, editor } = parseThemeCustomizationImport(await file.text());
+      if (editor) useSettingsStore.getState().importEditorThemes(editor);
       const shownTokens = skippedTokens.slice(0, 6).join(", ");
       const skippedNotice =
         skippedTokens.length > 6

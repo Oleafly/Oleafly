@@ -125,6 +125,19 @@ describe("FontFamilyPicker", () => {
     expect(input).toHaveAttribute("aria-expanded", "false");
   });
 
+  it("shows a new search's results from the top of the list", () => {
+    render(<Harness fonts={READY} />);
+    const input = screen.getByRole("combobox", { name: FONT_LABEL });
+    fireEvent.click(input);
+    const list = screen.getByRole("listbox", { name: en.documentSettings.availableFonts });
+    list.scrollTop = 240;
+
+    fireEvent.change(input, { target: { value: "io" } });
+
+    expect(options()).toEqual([`Iosevka${en.typstFonts.sources.system}`]);
+    expect(list.scrollTop).toBe(0);
+  });
+
   it("moves the highlight up and down within the list", () => {
     render(<Harness fonts={READY} />);
     const input = screen.getByRole("combobox", { name: FONT_LABEL });

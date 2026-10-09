@@ -256,7 +256,7 @@
       "title_one": "{{count}} oppføring i litteraturlisten har ufullstendige metadata",
       "title_other": "{{count}} oppføringer i litteraturlisten har ufullstendige metadata",
       "detail": "Ufullstendige oppføringer kan gi ødelagte eller tvetydige referanser i forlagsstiler. {{examples}}.",
-      "detailTruncated": "Ufullstendige oppføringer kan gi ødelagte eller tvetydige referanser i forlagsstiler. {{examples}}; …"
+      "detailTruncated": "Ufullstendige oppføringer kan gi ødelagte eller tvetydige referanser i forlagsstiler. {{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_one": "{{count}} DOI-verdi ser feilformet ut",

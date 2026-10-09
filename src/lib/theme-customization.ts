@@ -1,4 +1,5 @@
 import { i18n } from "@/i18n";
+import { parseEditorThemeExport, type EditorThemeExport } from "@/lib/editor-themes";
 import type { Theme } from "@/lib/theme";
 
 export const THEME_CUSTOMIZATION_STORAGE_KEY = "oleafly.theme-customization.v1";
@@ -192,6 +193,7 @@ export function validateThemeCustomization(value: unknown): ThemeCustomization {
 export interface ThemeImportResult {
   customization: ThemeCustomization;
   skippedTokens: string[];
+  editor: EditorThemeExport | null;
 }
 
 function importThemeTokens(cssVars: JsonRecord, mode: Theme, skipped: string[]) {
@@ -217,7 +219,7 @@ export function parseThemeCustomizationImport(text: unknown): ThemeImportResult 
   }
   if (!isRecord(parsed)) throw new Error(i18n.t(($) => $.core.theme.fileNotObject));
   if ("light" in parsed || "dark" in parsed || "version" in parsed) {
-    return { customization: validateThemeCustomization(parsed), skippedTokens: [] };
+    return { customization: validateThemeCustomization(parsed), skippedTokens: [], editor: null };
   }
   const cssVars = isRecord(parsed.cssVars) ? parsed.cssVars : null;
   if (!cssVars) throw new Error(i18n.t(($) => $.core.theme.fileMissingCssVars));
@@ -238,6 +240,7 @@ export function parseThemeCustomizationImport(text: unknown): ThemeImportResult 
       customCss: validateCustomCss(oleafly.customCss),
     },
     skippedTokens: [...new Set(skippedTokens)],
+    editor: parseEditorThemeExport(oleafly.editor),
   };
 }
 
@@ -245,8 +248,12 @@ export function parseThemeCustomizationJson(text: string): ThemeCustomization {
   return parseThemeCustomizationImport(text).customization;
 }
 
-export function serializeThemeCustomization(customization: ThemeCustomization): string {
+export function serializeThemeCustomization(
+  customization: ThemeCustomization,
+  editor?: EditorThemeExport,
+): string {
   const valid = validateThemeCustomization(customization);
+  const editorSection = editor ? parseEditorThemeExport(editor) : null;
   return JSON.stringify(
     {
       $schema: "https://ui.shadcn.com/schema/registry-theme.json",
@@ -259,6 +266,7 @@ export function serializeThemeCustomization(customization: ThemeCustomization): 
       oleafly: {
         version: valid.version,
         customCss: valid.customCss,
+        ...(editorSection ? { editor: editorSection } : {}),
       },
     },
     null,
@@ -276,17 +284,35 @@ export function readThemeCustomization(storage: Storage = window.localStorage): 
   }
 }
 
+export const THEME_CUSTOMIZATION_CHANGED_EVENT = "oleafly:theme-customization-changed";
+
+function announceThemeCustomization(reset: boolean): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new window.CustomEvent(THEME_CUSTOMIZATION_CHANGED_EVENT, { detail: { reset } }));
+}
+
+export function hasThemeCustomization(customization: ThemeCustomization = readThemeCustomization()): boolean {
+  return (
+    Object.keys(customization.light).length > 0 ||
+    Object.keys(customization.dark).length > 0 ||
+    customization.radius !== null ||
+    customization.customCss !== null
+  );
+}
+
 export function writeThemeCustomization(
   customization: ThemeCustomization,
   storage: Storage = window.localStorage,
 ): ThemeCustomization {
   const valid = validateThemeCustomization(customization);
   storage.setItem(THEME_CUSTOMIZATION_STORAGE_KEY, JSON.stringify(valid));
+  announceThemeCustomization(false);
   return valid;
 }
 
 export function resetThemeCustomization(storage: Storage = window.localStorage): ThemeCustomization {
   storage.removeItem(THEME_CUSTOMIZATION_STORAGE_KEY);
+  announceThemeCustomization(true);
   return emptyThemeCustomization();
 }
 

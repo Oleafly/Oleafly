@@ -14,7 +14,7 @@ import { describeError } from "@/lib/app-error";
 import { approvalsReadRaw, approvalsWriteRaw } from "@/lib/tauri";
 import { useApprovalModeStore } from "@/store/approval-mode";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 const TOOL_NAMES = [
   "write_file",
@@ -43,7 +43,7 @@ export function ApprovalsFileEditor() {
   const { t } = useTranslation(["common", "settings"]);
   const projectId = useFilesStore((s) => s.projectId);
   const projectName = useFilesStore((s) => s.projectName);
-  const editorThemeId = useSettingsStore((s) => s.editorTheme);
+  const editorThemeId = useEditorThemeId();
   const client = useQueryClient();
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { analyzeProjectFile } from "@/lib/project-intelligence/analyze-file";
@@ -229,6 +229,33 @@ describe("ReferencesPanel scroll memory", () => {
     await user.click(tab(/^Citations/u));
     expect(scroller().scrollTop).toBe(2_800);
     expect(screen.getByText("key098")).toBeInTheDocument();
+  });
+
+  it("shows a new filter's results from the top of the list", () => {
+    render(<ReferencesPanel />);
+    geometry.scrollTo(scroller(), 2_800);
+
+    fireEvent.change(filterBox("Filter citations"), { target: { value: "key1" } });
+
+    expect(screen.getAllByText("key100").length).toBeGreaterThan(0);
+    expect(scroller().scrollTop).toBe(0);
+  });
+
+  it("keeps each project's filtered position when the project changes while open", () => {
+    render(<ReferencesPanel />);
+    fireEvent.change(filterBox("Filter citations"), { target: { value: "key" } });
+    geometry.scrollTo(scroller(), 1_400);
+    show("refs-b", 200);
+    fireEvent.change(filterBox("Filter citations"), { target: { value: "key1" } });
+    geometry.scrollTo(scroller(), 700);
+
+    show("refs-a", 200);
+    expect(filterBox("Filter citations")).toHaveValue("key");
+    expect(scroller().scrollTop).toBe(1_400);
+
+    show("refs-b", 200);
+    expect(filterBox("Filter citations")).toHaveValue("key1");
+    expect(scroller().scrollTop).toBe(700);
   });
 
   it("keeps a separate position for each project", () => {

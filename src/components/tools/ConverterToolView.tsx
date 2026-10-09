@@ -52,6 +52,7 @@ import { i18n } from "@/i18n";
 import { base64ToBytes, bytesToBase64, textToBase64 } from "@/lib/base64";
 import { basename } from "@/lib/path-utils";
 import { Spinner } from "@/components/ui/spinner";
+import { useEditorThemeId } from "@/hooks/use-editor-theme";
 
 type InputMode = "text" | "file";
 
@@ -228,7 +229,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
   const definition = AD_HOC_CONVERTERS[id];
   const labels = converterCopy(id);
   const catalogTool = toolById(id);
-  const editorTheme = useSettingsStore((state) => state.editorTheme);
+  const editorTheme = useEditorThemeId();
   const initialMode: InputMode = definition.inputKind === "file" ? "file" : "text";
   const [mode, setMode] = useState<InputMode>(initialMode);
   const [text, setText] = useState(definition.example ?? "");

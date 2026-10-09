@@ -597,6 +597,26 @@ describe("project workspace", () => {
     act(() => useSettingsStore.setState({ editorCursorColorDark: "" }));
   });
 
+  it("applies the custom colors of the editor theme shown in the current mode", async () => {
+    useSettingsStore.setState({
+      editorThemeLight: "paper",
+      editorThemeDark: "nord",
+      editorColors: { paper: { heading: "#aa0000" }, nord: { comment: "#00aa00", background: "#101010" } },
+    });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-user-comment")).toBe("#00aa00");
+    expect(root.style.getPropertyValue("--cm-user-background")).toBe("#101010");
+    expect(root.style.getPropertyValue("--cm-user-heading")).toBe("");
+
+    act(() => useSettingsStore.setState({ editorThemeDark: "paper" }));
+    expect(root.style.getPropertyValue("--cm-user-heading")).toBe("#aa0000");
+    expect(root.style.getPropertyValue("--cm-user-comment")).toBe("");
+
+    act(() => useSettingsStore.setState({ editorThemeLight: "system", editorThemeDark: "system", editorColors: {} }));
+    expect(root.style.getPropertyValue("--cm-user-heading")).toBe("");
+  });
+
   it("keeps the macOS system monospace font reachable by its name", async () => {
     useSettingsStore.setState({ editorFontFamily: "SF Mono" });
     await renderApp();

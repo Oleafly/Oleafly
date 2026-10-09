@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registry } from "@oleafly/registry";
@@ -228,6 +228,17 @@ describe("SearchOmnibar modes", () => {
     const row = await screen.findByText("Beta survey");
     await user.click(row);
     await waitFor(() => expect(mocks.openProject).toHaveBeenCalledWith("beta"));
+  });
+
+  it("shows a new search's results from the top of the list", () => {
+    render(<SearchOmnibar />);
+    const list = screen.getByRole("listbox");
+    list.scrollTop = 240;
+
+    fireEvent.change(screen.getByPlaceholderText(/./), { target: { value: "/projects Beta" } });
+
+    expect(screen.getByText("Beta survey")).toBeInTheDocument();
+    expect(list.scrollTop).toBe(0);
   });
 
   it("toggles on the search shortcut and stays shut during a tour", async () => {

@@ -23,7 +23,7 @@
     },
     "layout-table": {
       "titleTable": "表格内容可能无法解析为简历字段。",
-      "detailTable": "ATS 工具常常以不可预测的方式展平表格内容。请避免用表格来并排摆放简历文本；真正的研究数据表格会在无障碍检查中单独评估。",
+      "detailTable": "ATS 工具常常以不可预测的方式展平表格内容。请避免用表格来并排摆放简历文本。真正的研究数据表格会在无障碍检查中单独评估。",
       "titleTikz": "TikZ 内容需要语义替代方案。",
       "detailTikz": "TikZ 绘制的是视觉内容，不会以普通文本的形式表达其含义。请为出版输出提供无障碍描述，并避免在面向 ATS 的简历内容中使用 TikZ。"
     },
@@ -246,7 +246,7 @@
     "refs-incomplete-metadata": {
       "title_other": "{{count}} 条参考文献条目的元数据不完整。",
       "detail": "不完整的记录可能在出版商样式下生成残缺或指代不明的参考文献。{{examples}}。",
-      "detailTruncated": "不完整的记录可能在出版商样式下生成残缺或指代不明的参考文献。{{examples}}；…"
+      "detailTruncated": "不完整的记录可能在出版商样式下生成残缺或指代不明的参考文献。{{examples}} · …"
     },
     "refs-malformed-doi": {
       "title_other": "{{count}} 个 DOI 值疑似格式有误。",
