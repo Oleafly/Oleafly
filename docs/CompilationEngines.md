@@ -87,8 +87,10 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   `epstopdf` can convert them during the run. MiKTeX does not accept that flag,
   so it keeps `-no-shell-escape`.
 - System TeX is not a filesystem sandbox and may read files available to the
-  user's account even while shell commands are blocked. Imported projects stay
-  on bundled Tectonic until the user explicitly chooses system TeX.
+  user's account even while shell commands are blocked. A project runs system
+  TeX only when someone chose it: the default compile engine in Settings >
+  Engines, or the project's own engine choice. An opened folder stays on
+  bundled Tectonic until it is trusted.
 - Project, user, and system `.latexmkrc` files are disabled because they are
   executable Perl. When local consent is enabled, Oleafly passes
   `-shell-escape` directly and supervises the resulting process tree. This can
@@ -147,8 +149,13 @@ people opening the same Oleafly project see the same output:
 - `engine` pins how the project compiles (`xetex` = bundled Tectonic,
   `latexmk` = system TeX). A coauthor who clones the project compiles with the
   same engine automatically. The choice never lives only in one person's
-  app settings (the Settings default applies to *new* projects only).
-- `tex` (written when a project switches to latexmk) records the TeX
+  app settings. The Settings default is written into each project when it is
+  created: a blank project, a template, an import (ZIP, folder, arXiv or
+  GitHub), a converted document or a research project. An opened folder with
+  no engine of its own follows the default once it is trusted. An imported
+  project that pins pdfLaTeX, XeLaTeX or LuaLaTeX keeps that compiler when it
+  lands on latexmk.
+- `tex` (written when a project switches to latexmk or is created on it) records the TeX
   distribution and the `tlmgr` package versions present when the pin was made
   and fills the `package-lock.json` role. On open, coauthors are prompted to install
   missing pinned packages, and a distribution mismatch (e.g. pinned

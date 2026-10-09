@@ -689,7 +689,7 @@ fn missing_project_meta(project_id: &str, location: &ProjectLocation) -> Project
         dictionary_locale: None,
         name,
         main_doc: default_main_doc(),
-        engine: default_engine(),
+        engine: engine_for_new_project(&default_main_doc()).unwrap_or_else(|_| default_engine()),
         color: String::new(),
         kind: String::new(),
         exports: Vec::new(),
@@ -748,7 +748,7 @@ fn merge_folder_fields(
         .engine
         .clone()
         .filter(|engine| crate::document_engine::engine_for(engine, &meta.main_doc).is_ok())
-        .or_else(|| engine_for_untrusted_project(&meta.main_doc).ok())
+        .or_else(|| engine_for_new_project(&meta.main_doc).ok())
         .unwrap_or_else(default_engine);
     meta.tex_flavor = validate_tex_flavor(&meta.engine, folder.tex_flavor.as_deref())
         .ok()
@@ -3935,6 +3935,29 @@ pub async fn record_project_tex_spec(
     state: tauri::State<'_, crate::state::AppState>,
     project_id: String,
 ) -> Result<Option<TexSpec>, String> {
+    record_tex_spec(&state, project_id).await
+}
+
+pub(crate) fn record_tex_spec_for_new_project<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    project_id: &str,
+) {
+    use tauri::Manager as _;
+    if !read_meta(project_id).is_ok_and(|meta| meta.engine == crate::config::LATEXMK_ENGINE) {
+        return;
+    }
+    let app = app.clone();
+    let project_id = project_id.to_owned();
+    tauri::async_runtime::spawn(async move {
+        let state = app.state::<crate::state::AppState>();
+        let _ = record_tex_spec(&state, project_id).await;
+    });
+}
+
+async fn record_tex_spec(
+    state: &crate::state::AppState,
+    project_id: String,
+) -> Result<Option<TexSpec>, String> {
     let spec = collect_tex_spec().await?;
     let Some(spec) = spec else { return Ok(None) };
     let _guard = state.compile_lock.lock().await;
@@ -4093,6 +4116,21 @@ fn engine_for_main_document(current_engine: &str, main_doc: &str) -> Result<Stri
 
 pub(crate) fn engine_for_untrusted_project(main_doc: &str) -> Result<String, String> {
     engine_for_main_document(&default_engine(), main_doc)
+}
+
+pub(crate) fn engine_for_new_project(main_doc: &str) -> Result<String, String> {
+    let engine = engine_for_untrusted_project(main_doc)?;
+    if engine != default_engine() || crate::config::latex_default_engine_choice().is_none() {
+        return Ok(engine);
+    }
+    let latexmk = crate::config::LATEXMK_ENGINE.to_owned();
+    crate::document_engine::engine_for(&latexmk, main_doc)?;
+    Ok(latexmk)
+}
+
+#[tauri::command(async)]
+pub fn set_default_latex_engine(engine: String) -> Result<(), String> {
+    crate::config::set_latex_default_engine_choice(&engine)
 }
 
 fn project_main_file_is_usable(project_id: &str, main_doc: &str) -> bool {
@@ -4783,7 +4821,14 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
 }
 
 #[tauri::command(async)]
-pub fn create_project(name: String) -> Result<String, String> {
+pub fn create_project(app: tauri::AppHandle, name: String) -> Result<String, String> {
+    let project_id = create_blank_project(name)?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
+}
+
+pub(crate) fn create_blank_project(name: String) -> Result<String, String> {
+    let engine = engine_for_new_project(&default_main_doc())?;
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let dir = reservation.path().to_path_buf();
@@ -4795,7 +4840,7 @@ pub fn create_project(name: String) -> Result<String, String> {
                 dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
-                engine: default_engine(),
+                engine,
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
@@ -4897,11 +4942,15 @@ fn safe_ad_hoc_project_path(path: &str) -> Result<PathBuf, String> {
 /// `mainFile` plus every file, as produced by the bounded arXiv extractor.
 #[tauri::command]
 pub async fn create_project_from_ad_hoc(
+    app: tauri::AppHandle,
     request: CreateAdHocProjectRequest,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || create_project_from_ad_hoc_blocking(request))
-        .await
-        .map_err(|error| error.to_string())?
+    let project_id =
+        tauri::async_runtime::spawn_blocking(move || create_project_from_ad_hoc_blocking(request))
+            .await
+            .map_err(|error| error.to_string())??;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn create_project_from_ad_hoc_blocking(
@@ -4918,7 +4967,7 @@ fn create_project_from_ad_hoc_blocking(
         project_name
     };
     let (default_main, engine, expected_extension) = match request.target.as_str() {
-        "latex" => ("main.tex", default_engine(), "tex"),
+        "latex" => ("main.tex", engine_for_new_project("main.tex")?, "tex"),
         "markdown" => ("main.md", "markdown".into(), "md"),
         "typst" => ("main.typ", "typst".into(), "typ"),
         _ => return Err("Choose a LaTeX, Markdown, or Typst project.".into()),
@@ -5040,15 +5089,18 @@ fn create_project_from_ad_hoc_blocking(
 /// is validated and staged in a sibling directory before the final rename.
 #[tauri::command]
 pub async fn create_project_from_pdf_conversion(
+    app: tauri::AppHandle,
     name: String,
     tex: String,
     figures: Vec<PdfConversionFigure>,
 ) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || {
+    let project_id = tauri::async_runtime::spawn_blocking(move || {
         create_project_from_pdf_conversion_blocking(name, tex, figures)
     })
     .await
-    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())??;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn create_project_from_pdf_conversion_blocking(
@@ -5063,6 +5115,7 @@ fn create_project_from_pdf_conversion_blocking(
         .get_or_init(|| Mutex::new(()))
         .lock()
         .map_err(|_| "PDF import project lock is unavailable".to_string())?;
+    let engine = engine_for_new_project(&default_main_doc())?;
     let root = paths::projects_root()?;
     let reservation = reserve_unique_project_directory(&root, true)?;
     let staging = create_unique_temporary_directory(&root, ".oleafly-pdf-import")?;
@@ -5107,7 +5160,7 @@ fn create_project_from_pdf_conversion_blocking(
                 dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
-                engine: default_engine(),
+                engine,
                 color: String::new(),
                 kind: String::new(),
                 exports: Vec::new(),
@@ -5194,10 +5247,17 @@ fn import_skip(rel: &str) -> bool {
 
 /// Import an Overleaf export (ZIP) or a plain folder as a new project.
 #[tauri::command]
-pub async fn import_overleaf_project(name: Option<String>, path: String) -> Result<String, String> {
-    tauri::async_runtime::spawn_blocking(move || import_overleaf_project_blocking(name, &path))
-        .await
-        .map_err(|e| e.to_string())?
+pub async fn import_overleaf_project(
+    app: tauri::AppHandle,
+    name: Option<String>,
+    path: String,
+) -> Result<String, String> {
+    let project_id =
+        tauri::async_runtime::spawn_blocking(move || import_overleaf_project_blocking(name, &path))
+            .await
+            .map_err(|e| e.to_string())??;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn import_overleaf_project_blocking(name: Option<String>, path: &str) -> Result<String, String> {
@@ -5265,9 +5325,15 @@ fn import_overleaf_project_blocking_with(
                 }
             }
         };
-        meta.engine =
-            engine_for_untrusted_project(&meta.main_doc).unwrap_or_else(|_| default_engine());
-        meta.tex_flavor = None;
+        let imported_flavor = if meta.engine == crate::config::LATEXMK_ENGINE {
+            meta.tex_flavor.take()
+        } else {
+            None
+        };
+        meta.engine = engine_for_new_project(&meta.main_doc).unwrap_or_else(|_| default_engine());
+        meta.tex_flavor = validate_tex_flavor(&meta.engine, imported_flavor.as_deref())
+            .ok()
+            .flatten();
         meta.allow_shell_escape = false;
         pin_typst_if_unpinned(&mut meta);
         write_meta_at(&dir.join("project.json"), &meta)?;
@@ -5569,12 +5635,15 @@ fn schedule_git_initialization(project_id: String) -> tauri::async_runtime::Join
 /// its TikZ, and its embedded editor model all persist as a reusable project.
 #[tauri::command(async)]
 pub fn create_image_project(
+    app: tauri::AppHandle,
     name: String,
     source: String,
     color: Option<String>,
 ) -> Result<String, String> {
     let root = paths::projects_root()?;
-    create_image_project_in(&root, name, source, color, true)
+    let project_id = create_image_project_in(&root, name, source, color, true)?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 fn create_image_project_in(
@@ -5584,6 +5653,7 @@ fn create_image_project_in(
     color: Option<String>,
     coordinate_worktree: bool,
 ) -> Result<String, String> {
+    let engine = engine_for_new_project(&default_main_doc())?;
     let reservation = reserve_unique_project_directory(root, coordinate_worktree)?;
     let dir = reservation.path().to_path_buf();
     let project_id = create_project_transaction(reservation, || {
@@ -5594,7 +5664,7 @@ fn create_image_project_in(
                 dictionary_locale: None,
                 name,
                 main_doc: default_main_doc(),
-                engine: default_engine(),
+                engine,
                 color: color.unwrap_or_default(),
                 kind: "image".into(),
                 exports: Vec::new(),
@@ -5648,7 +5718,7 @@ fn diagram_document(language: Option<&str>, source: String) -> Result<DiagramDoc
     match language.unwrap_or("tikz") {
         "tikz" => Ok(DiagramDocument {
             main_doc: "main.tex",
-            engine: default_engine(),
+            engine: engine_for_new_project("main.tex")?,
             typst: None,
             source: ensure_diagram_document(source),
         }),
@@ -5674,6 +5744,17 @@ fn diagram_document(language: Option<&str>, source: String) -> Result<DiagramDoc
 
 #[tauri::command(async)]
 pub fn create_diagram_project(
+    app: tauri::AppHandle,
+    name: String,
+    source: String,
+    language: Option<String>,
+) -> Result<String, String> {
+    let project_id = create_diagram_project_from(name, source, language)?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
+}
+
+pub(crate) fn create_diagram_project_from(
     name: String,
     source: String,
     language: Option<String>,
@@ -6535,7 +6616,11 @@ async fn create_project_from_pandoc_source(
 ) -> Result<String, String> {
     let source_name = plan.source_name.to_string();
     let main_doc = plan.main_doc.to_string();
-    let engine = plan.engine.to_string();
+    let engine = if plan.engine == default_engine() {
+        engine_for_new_project(&main_doc)?
+    } else {
+        plan.engine.to_string()
+    };
     let args = plan.args;
     let dropped_bibliography = args
         .iter()
@@ -6651,11 +6736,18 @@ fn apply_typst_fixup(path: &Path) -> Result<(), String> {
 /// Create a LaTeX project from an uploaded .docx. The bytes are written inside
 /// the new project dir and pandoc runs there, so no external path is read.
 #[tauri::command]
-pub async fn create_project_from_docx(name: String, data_base64: String) -> Result<String, String> {
+pub async fn create_project_from_docx(
+    app: tauri::AppHandle,
+    name: String,
+    data_base64: String,
+) -> Result<String, String> {
     let bytes = decode_docx_base64(&data_base64)?;
     let plan =
         crate::conversion::import_plan("docx", "latex").expect("docx -> latex route is registered");
-    create_project_from_pandoc_source(name, plan, bytes, Default::default()).await
+    let project_id =
+        create_project_from_pandoc_source(name, plan, bytes, Default::default()).await?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 /// Import a user-selected Word, Markdown, HTML, or Typst file as a new
@@ -6663,7 +6755,20 @@ pub async fn create_project_from_docx(name: String, data_base64: String) -> Resu
 /// kind written ("latex", "markdown", or "typst"); both paths publish
 /// atomically.
 #[tauri::command]
-pub async fn import_document(path: String, target: Option<String>) -> Result<String, String> {
+pub async fn import_document(
+    app: tauri::AppHandle,
+    path: String,
+    target: Option<String>,
+) -> Result<String, String> {
+    let project_id = import_document_file(path, target).await?;
+    record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
+}
+
+pub(crate) async fn import_document_file(
+    path: String,
+    target: Option<String>,
+) -> Result<String, String> {
     let source = PathBuf::from(&path);
     if !source.is_file() {
         return Err(format!("import source not found: {path}"));
@@ -6982,7 +7087,7 @@ pub fn create_project_from_template(
     let dir = reservation.path().to_path_buf();
     let project_id = create_project_transaction(reservation, || {
         let manifest = crate::templates::instantiate(&app, &template_id, &dir)?;
-        let engine = engine_for_untrusted_project(&manifest.main_doc)?;
+        let engine = engine_for_new_project(&manifest.main_doc)?;
         crate::document_engine::engine_for(&engine, &manifest.main_doc)?;
         crate::assets::stage_template_fonts(&app, &manifest, &dir)?;
         let color = color
@@ -7011,6 +7116,7 @@ pub fn create_project_from_template(
         )
     })?;
     initialize_git_for_new_project(&project_id);
+    record_tex_spec_for_new_project(&app, &project_id);
     Ok(project_id)
 }
 
@@ -8022,21 +8128,21 @@ async fn recycle_project_synchronized(
 mod tests {
     use super::{
         allow_table_import_path, assert_table_import_allowed, canonical_table_import_path,
-        copy_path_in_project, create_diagram_project, create_image_project_in,
-        create_markdown_project_in, create_path_in_project, create_project_from_ad_hoc_blocking,
-        create_project_from_pdf_conversion_blocking, create_project_transaction,
-        create_typst_project_in, download_project_zip, duplicate_project, engine_for_main_document,
-        export_would_write_inside_project, extract_pandoc, flatten_single_root_folder,
-        get_or_create_scratch_project_blocking, import_paths_transactional,
-        import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
-        import_skip, infer_main_document, is_table_import_extension, normalize_loaded_tex_flavor,
-        normalize_relative, pandoc_asset_for, pandoc_version_supported, read_meta,
-        read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
-        safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
-        try_reserve_project_directory, validate_conversion_export, validate_tex_flavor,
-        write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest, CreateFileResult,
-        FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta, RenameFileResult,
-        SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
+        copy_path_in_project, create_blank_project, create_diagram_project_from,
+        create_image_project_in, create_markdown_project_in, create_path_in_project,
+        create_project_from_ad_hoc_blocking, create_project_from_pdf_conversion_blocking,
+        create_project_transaction, create_typst_project_in, download_project_zip,
+        duplicate_project, engine_for_main_document, export_would_write_inside_project,
+        extract_pandoc, flatten_single_root_folder, get_or_create_scratch_project_blocking,
+        import_paths_transactional, import_paths_transactional_with, import_project_zip_bytes,
+        import_project_zip_bytes_with, import_skip, infer_main_document, is_table_import_extension,
+        normalize_loaded_tex_flavor, normalize_relative, pandoc_asset_for,
+        pandoc_version_supported, read_meta, read_picked_file_bytes, rel_slash, rename_exclusive,
+        rename_path_in_project, safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized,
+        set_main_doc_unlocked, try_reserve_project_directory, validate_conversion_export,
+        validate_tex_flavor, write_meta_at, AdHocProjectFile, CreateAdHocProjectRequest,
+        CreateFileResult, FileConflictStrategy, MutationScope, PdfConversionFigure, ProjectMeta,
+        RenameFileResult, SearchHit, TexSpec, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -10762,7 +10868,7 @@ mod tests {
         let bytes = std::fs::read(&archive).unwrap();
         let tex = "\\documentclass{article}\\begin{document}Ready\\end{document}".to_string();
 
-        let latex = super::create_project("Paper".into()).unwrap();
+        let latex = super::create_blank_project("Paper".into()).unwrap();
         let converted =
             create_project_from_pdf_conversion_blocking("Converted".into(), tex.clone(), vec![])
                 .unwrap();
@@ -10770,7 +10876,7 @@ mod tests {
         let markdown = super::create_markdown_project("Notes".into()).unwrap();
         let typst = super::create_typst_project("Typst".into()).unwrap();
         let diagram =
-            create_diagram_project("Figure".into(), "\\draw (0,0);".into(), None).unwrap();
+            create_diagram_project_from("Figure".into(), "\\draw (0,0);".into(), None).unwrap();
 
         for project_id in [&latex, &converted, &imported, &markdown, &typst, &diagram] {
             let root = crate::paths::project_dir(project_id).unwrap();
@@ -10795,7 +10901,7 @@ mod tests {
         }
 
         write_git_auto_init(false);
-        let plain = super::create_project("Plain".into()).unwrap();
+        let plain = super::create_blank_project("Plain".into()).unwrap();
         let plain_converted =
             create_project_from_pdf_conversion_blocking("Plain converted".into(), tex, vec![])
                 .unwrap();
@@ -10921,7 +11027,7 @@ mod tests {
             .join(if cfg!(windows) { "git.exe" } else { "git" });
         let git = crate::git::testing::use_git_program(missing);
 
-        let project_id = super::create_project("No Git".into()).unwrap();
+        let project_id = super::create_blank_project("No Git".into()).unwrap();
 
         drop(git);
         let root = crate::paths::project_dir(&project_id).unwrap();
@@ -10944,7 +11050,7 @@ mod tests {
         let linked = crate::linked_registry::register_folder_for_test(&folder);
         assert!(!super::initialize_git_for_project(&linked.id).unwrap());
         assert!(!folder.join(".git").exists());
-        let library = super::create_project("Restricted copy".into()).unwrap();
+        let library = super::create_blank_project("Restricted copy".into()).unwrap();
         std::fs::remove_dir_all(git_dir_of(&library)).unwrap();
         let restricted = crate::trust::testing::restrict(&library);
         assert!(!super::initialize_git_for_project(&library).unwrap());
@@ -10981,7 +11087,7 @@ mod tests {
         };
 
         write_git_auto_init(false);
-        let project_id = super::create_project("Existing".into()).unwrap();
+        let project_id = super::create_blank_project("Existing".into()).unwrap();
         assert!(!git_dir_of(&project_id).exists());
         assert_eq!(open(&project_id).unwrap().name, "Existing");
         assert!(!git_dir_of(&project_id).exists());
@@ -11030,11 +11136,11 @@ mod tests {
             .unwrap();
         let handle = app.handle().clone();
         let state = app.state::<crate::state::AppState>();
-        let library = super::create_project("Paper".into()).unwrap();
+        let library = super::create_blank_project("Paper".into()).unwrap();
         let folder = test_dir("last-opened-folder");
         std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
         let linked = crate::linked_registry::register_folder_for_test(&folder);
-        let never = super::create_project("Never opened".into()).unwrap();
+        let never = super::create_blank_project("Never opened".into()).unwrap();
         let library_dir = crate::paths::project_dir(&library).unwrap();
         let library_before = crate::linked_registry::folder_snapshot_for_test(&library_dir);
         let folder_before = crate::linked_registry::folder_snapshot_for_test(&folder);
@@ -12596,7 +12702,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("create-command-roundtrip");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Create Command".into()).unwrap();
+        let project_id = super::create_blank_project("Create Command".into()).unwrap();
 
         let created =
             super::create_file(project_id.clone(), "notes.tex".into(), false, None, None).unwrap();
@@ -13466,7 +13572,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("checkpoint-policy-malformed-read");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Malformed policy".into()).unwrap();
+        let project_id = super::create_blank_project("Malformed policy".into()).unwrap();
         let metadata_path = crate::paths::project_dir(&project_id)
             .unwrap()
             .join("project.json");
@@ -14475,7 +14581,7 @@ mod tests {
     ) -> (tempfile::TempDir, std::path::PathBuf) {
         let data = tempfile::tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", data.path());
-        let id = tauri::async_runtime::block_on(super::import_document(
+        let id = tauri::async_runtime::block_on(super::import_document_file(
             source.to_string_lossy().into_owned(),
             Some(target.into()),
         ))
@@ -15184,7 +15290,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("diagram-project");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let id = create_diagram_project(
+        let id = create_diagram_project_from(
             "My Diagram".to_string(),
             "\\documentclass{standalone}".to_string(),
             None,
@@ -15203,7 +15309,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("diagram-project-bare-body");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let id = create_diagram_project(
+        let id = create_diagram_project_from(
             "Bare Body".to_string(),
             "\\definecolor{c000000}{HTML}{000000}\n\\begin{tikzpicture}\n\\end{tikzpicture}"
                 .to_string(),
@@ -15226,8 +15332,9 @@ mod tests {
         let root = test_dir("diagram-project-already-wrapped");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let source = "\\documentclass[tikz,border=4pt]{standalone}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}\n\\end{tikzpicture}\n\\end{document}\n";
-        let id = create_diagram_project("Already Wrapped".to_string(), source.to_string(), None)
-            .unwrap();
+        let id =
+            create_diagram_project_from("Already Wrapped".to_string(), source.to_string(), None)
+                .unwrap();
         let dir = crate::paths::project_dir(&id).unwrap();
         let main_tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
         assert_eq!(main_tex, source);
@@ -15241,9 +15348,12 @@ mod tests {
         let root = test_dir("diagram-project-tikz");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         for language in [None, Some("tikz".to_string())] {
-            let id =
-                create_diagram_project("TikZ".to_string(), "\\draw (0,0);".to_string(), language)
-                    .unwrap();
+            let id = create_diagram_project_from(
+                "TikZ".to_string(),
+                "\\draw (0,0);".to_string(),
+                language,
+            )
+            .unwrap();
             let dir = crate::paths::project_dir(&id).unwrap();
             let main_tex = std::fs::read_to_string(dir.join("main.tex")).unwrap();
             assert!(main_tex.contains("\\begin{document}"));
@@ -15265,8 +15375,9 @@ mod tests {
         let root = test_dir("diagram-project-typst");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let body = "#import \"@preview/fletcher:0.5.8\" as fletcher: diagram, node, edge\n#diagram(node((0, 0), [A]), edge(\"->\"), node((1, 0), [B]))\n";
-        let id = create_diagram_project("Flow".to_string(), body.to_string(), Some("typst".into()))
-            .unwrap();
+        let id =
+            create_diagram_project_from("Flow".to_string(), body.to_string(), Some("typst".into()))
+                .unwrap();
         let dir = crate::paths::project_dir(&id).unwrap();
         assert_eq!(
             std::fs::read_to_string(dir.join("main.typ")).unwrap(),
@@ -15285,9 +15396,12 @@ mod tests {
         assert!(crate::document_engine::engine_for(&meta.engine, &meta.main_doc).is_ok());
 
         let paged = "#set page(width: 120pt, height: 80pt)\n#rect()\n";
-        let id =
-            create_diagram_project("Paged".to_string(), paged.to_string(), Some("typst".into()))
-                .unwrap();
+        let id = create_diagram_project_from(
+            "Paged".to_string(),
+            paged.to_string(),
+            Some("typst".into()),
+        )
+        .unwrap();
         let dir = crate::paths::project_dir(&id).unwrap();
         assert_eq!(
             std::fs::read_to_string(dir.join("main.typ")).unwrap(),
@@ -15303,7 +15417,7 @@ mod tests {
         let root = test_dir("diagram-project-mermaid");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let source = "```mermaid\nflowchart TD\n    A --> B\n```\n";
-        let id = create_diagram_project(
+        let id = create_diagram_project_from(
             "Chart".to_string(),
             source.to_string(),
             Some("mermaid".into()),
@@ -15337,7 +15451,7 @@ mod tests {
                 .unwrap_or(0)
         };
         let before = count();
-        let error = create_diagram_project(
+        let error = create_diagram_project_from(
             "Graph".to_string(),
             "digraph { a -> b }".to_string(),
             Some("graphviz".into()),
@@ -15402,7 +15516,7 @@ mod tests {
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         std::fs::create_dir_all(&root).unwrap();
 
-        let project_id = super::create_project("Configured".to_string()).unwrap();
+        let project_id = super::create_blank_project("Configured".to_string()).unwrap();
         let policy = read_meta(&project_id).unwrap().checkpoints;
         assert_eq!(policy, oleafly_core::CheckpointPolicy::default());
         assert_eq!(policy.mode.as_str(), "engine_dependencies");
@@ -15423,7 +15537,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("duplicate-project-fork");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let source_id = super::create_project("Original Paper".to_string()).unwrap();
+        let source_id = super::create_blank_project("Original Paper".to_string()).unwrap();
         super::set_project_engine_unlocked(&source_id, "latexmk", None).unwrap();
         super::set_project_shell_escape_unlocked(&source_id, true).unwrap();
         let source_policy: oleafly_core::CheckpointPolicy =
@@ -15471,7 +15585,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("shell-trust-local");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Untrusted Paper".into()).unwrap();
+        let project_id = super::create_blank_project("Untrusted Paper".into()).unwrap();
         let project = crate::paths::project_dir(&project_id).unwrap();
 
         std::fs::write(
@@ -15520,7 +15634,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("reserved-project-metadata");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Reserved Metadata".into()).unwrap();
+        let project_id = super::create_blank_project("Reserved Metadata".into()).unwrap();
 
         let write_error = super::write_project_file(
             project_id.clone(),
@@ -15600,7 +15714,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("external-worktree-trust");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Git Trust".into()).unwrap();
+        let project_id = super::create_blank_project("Git Trust".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
         super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
         let state = Arc::new(crate::state::AppState::default());
@@ -15712,7 +15826,7 @@ mod tests {
         let state = crate::state::AppState::default();
 
         for corrupt_journal in [false, true] {
-            let project_id = super::create_project(format!(
+            let project_id = super::create_blank_project(format!(
                 "Unreconciled {} journal",
                 if corrupt_journal {
                     "corrupt"
@@ -15796,7 +15910,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("recover-marker-remains");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Pending restore".into()).unwrap();
+        let project_id = super::create_blank_project("Pending restore".into()).unwrap();
         let project = crate::paths::project_dir(&project_id).unwrap();
         let manifest = br#"{"name":"Pending restore","main_doc":"main.tex","engine":"xetex"}"#;
         std::fs::write(project.join("project.json"), manifest).unwrap();
@@ -15845,7 +15959,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("shell-trust-main-rename");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Rename Trust".into()).unwrap();
+        let project_id = super::create_blank_project("Rename Trust".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
         super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
@@ -15925,7 +16039,7 @@ mod tests {
         let _env_guard = crate::paths::data_dir_env_lock();
         let root = test_dir("shell-trust-identity");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let project_id = super::create_project("Original".into()).unwrap();
+        let project_id = super::create_blank_project("Original".into()).unwrap();
         super::set_project_engine_unlocked(&project_id, "latexmk", None).unwrap();
         super::set_project_shell_escape_unlocked(&project_id, true).unwrap();
         assert!(read_meta(&project_id).unwrap().allow_shell_escape);
@@ -16585,6 +16699,129 @@ mod tests {
 
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn new_latex_projects_follow_the_latexmk_default() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("latex-default-engine");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let projects = crate::paths::projects_root().unwrap();
+        let engine = |id: &str| read_meta(id).unwrap().engine;
+
+        assert_eq!(
+            engine(&create_blank_project("Before".into()).unwrap()),
+            "xetex"
+        );
+        crate::config::set_latex_default_engine_choice("latexmk").unwrap();
+
+        assert_eq!(
+            engine(&create_blank_project("Blank".into()).unwrap()),
+            "latexmk"
+        );
+        let typst = create_typst_project_in(&projects, "Slides".into(), false).unwrap();
+        assert_eq!(engine(&typst), "typst");
+        let notes = create_markdown_project_in(&projects, "Notes".into(), false).unwrap();
+        assert_eq!(engine(&notes), "markdown");
+        let image = create_image_project_in(
+            &projects,
+            "Image".into(),
+            "\\documentclass{standalone}".into(),
+            None,
+            false,
+        )
+        .unwrap();
+        assert_eq!(engine(&image), "latexmk");
+        let figure =
+            create_diagram_project_from("Figure".into(), "\\draw (0,0);".into(), None).unwrap();
+        assert_eq!(engine(&figure), "latexmk");
+        for (target, source, expected) in [
+            ("latex", "\\documentclass{article}", "latexmk"),
+            ("typst", "= Converted", "typst"),
+            ("markdown", "# Converted", "markdown"),
+        ] {
+            let id = create_project_from_ad_hoc_blocking(CreateAdHocProjectRequest {
+                name: "Converted".into(),
+                target: target.into(),
+                text: Some(source.into()),
+                main_file: None,
+                files: Vec::new(),
+            })
+            .unwrap();
+            assert_eq!(engine(&id), expected, "{target}");
+        }
+
+        let plain = root.join("plain-tex-folder");
+        std::fs::create_dir_all(&plain).unwrap();
+        std::fs::write(plain.join("main.tex"), "\\documentclass{article}").unwrap();
+        let imported =
+            super::import_overleaf_project_blocking(None, &plain.to_string_lossy()).unwrap();
+        assert_eq!(engine(&imported), "latexmk");
+
+        let pinned = root.join("pinned-lualatex-folder");
+        std::fs::create_dir_all(&pinned).unwrap();
+        std::fs::write(pinned.join("main.tex"), "\\documentclass{article}").unwrap();
+        write_meta_at(
+            &pinned.join("project.json"),
+            &ProjectMeta {
+                name: "Pinned".into(),
+                main_doc: "main.tex".into(),
+                engine: "latexmk".into(),
+                tex_flavor: Some("lualatex".into()),
+                ..ProjectMeta::default()
+            },
+        )
+        .unwrap();
+        let import_pinned = || {
+            read_meta(
+                &super::import_overleaf_project_blocking(None, &pinned.to_string_lossy()).unwrap(),
+            )
+            .unwrap()
+        };
+        let kept = import_pinned();
+        assert_eq!(
+            (
+                kept.engine.as_str(),
+                kept.tex_flavor.as_deref(),
+                kept.allow_shell_escape
+            ),
+            ("latexmk", Some("lualatex"), false)
+        );
+
+        crate::config::set_latex_default_engine_choice("tectonic").unwrap();
+        let reset = import_pinned();
+        assert_eq!(
+            (reset.engine.as_str(), reset.tex_flavor.as_deref()),
+            ("xetex", None)
+        );
+        assert_eq!(
+            engine(&create_blank_project("After".into()).unwrap()),
+            "xetex"
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn an_opened_latex_folder_without_its_own_engine_follows_the_default_once_trusted() {
+        let fixture = crate::trust::testing::LinkedFixture::new();
+        let (project_id, folder) = fixture.link("latex-paper");
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+        crate::config::set_latex_default_engine_choice("latexmk").unwrap();
+
+        let meta = read_meta(&project_id).unwrap();
+        assert_eq!(meta.engine, "latexmk");
+        let restricted = super::project_state_engine(&project_id, &meta).unwrap();
+        assert_eq!(restricted.id.as_str(), "latex");
+        let compile = super::read_compile_meta(&project_id, "main.tex").unwrap();
+        assert_eq!(compile.engine, "xetex");
+
+        fixture.trust(&project_id, crate::trust::TrustScope::Folder);
+        let trusted = read_meta(&project_id).unwrap();
+        let descriptor = super::project_state_engine(&project_id, &trusted).unwrap();
+        assert_eq!(descriptor.id.as_str(), "latexmk");
+        assert!(!folder.join("project.json").exists());
     }
 
     #[test]

@@ -115,6 +115,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The default compile engine in Settings > Engines never applied. Projects
+  from the New project dialog, imports (ZIP, folder, arXiv and GitHub) and
+  converted documents all started on the built-in Tectonic engine, which
+  downloads packages the first time it needs them. New projects now start on
+  the engine you picked, and an opened folder without an engine of its own
+  follows it once you trust the folder. An imported project that pins
+  pdfLaTeX, XeLaTeX or LuaLaTeX keeps that compiler on latexmk.
 - After a click on the PDF, its keyboard shortcuts worked once and then
   stopped: re-rendering a page removed the text that had focus. Clicking
   the page margins or the gray background didn't give the PDF focus at

@@ -2518,40 +2518,16 @@ describe("creating and renaming projects", () => {
     useSettingsStore.setState({ defaultLatexEngine: "tectonic" });
   });
 
-  it("pins latexmk on a new LaTeX project when that is the default engine", async () => {
+  it("leaves the new project's engine to the backend, which applies the default", async () => {
     primeOpen();
     useSettingsStore.setState({ defaultLatexEngine: "latexmk" });
     mocks.createProject.mockResolvedValue("opened");
-    mocks.setProjectEngineCmd.mockResolvedValue(META);
-    mocks.recordProjectTexSpec.mockResolvedValue(null);
 
     await useFilesStore.getState().createProject("Thesis");
 
     expect(mocks.createProject).toHaveBeenCalledWith("Thesis");
-    expect(mocks.setProjectEngineCmd).toHaveBeenCalledWith("opened", "latexmk");
-    expect(mocks.recordProjectTexSpec).toHaveBeenCalledWith("opened");
-    expect(useFilesStore.getState().projectId).toBe("opened");
-  });
-
-  it("keeps the project's own engine when the latexmk pin is refused", async () => {
-    primeOpen();
-    useSettingsStore.setState({ defaultLatexEngine: "latexmk" });
-    mocks.createProject.mockResolvedValue("opened");
-    mocks.setProjectEngineCmd.mockRejectedValue(new Error("not a LaTeX project"));
-
-    await useFilesStore.getState().createProject("Thesis");
-
-    expect(mocks.recordProjectTexSpec).not.toHaveBeenCalled();
-    expect(useFilesStore.getState().projectId).toBe("opened");
-  });
-
-  it("leaves the engine alone when the default is the bundled one", async () => {
-    primeOpen();
-    mocks.createProject.mockResolvedValue("opened");
-
-    await useFilesStore.getState().createProject("Notes");
-
     expect(mocks.setProjectEngineCmd).not.toHaveBeenCalled();
+    expect(mocks.recordProjectTexSpec).not.toHaveBeenCalled();
     expect(useFilesStore.getState().projectId).toBe("opened");
   });
 

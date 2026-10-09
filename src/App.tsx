@@ -137,6 +137,7 @@ import {
 } from "@/lib/checkpoint-publication";
 
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
+import { startDefaultLatexEngineSync } from "@/lib/default-latex-engine";
 import { handleDockShortcut } from "@/lib/dock-shortcuts";
 import { historyCommand, inPlainField, runFieldHistory } from "@/lib/field-history";
 import {
@@ -577,6 +578,10 @@ function AppContent() {
     void import("@/lib/ai-tools").then((m) => m.initAiPdfCaptureFlag());
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
+  useTauriSubscription(
+    native ? startDefaultLatexEngineSync : null,
+    "sync the default compile engine",
+  );
 
   useEffect(() => {
     const root = document.documentElement;

@@ -460,7 +460,7 @@ async fn download_repository_archive(
 /// Download an authenticated repository archive and publish it through the
 /// same guarded ZIP import path used for local projects.
 #[tauri::command]
-pub async fn gh_import_repo(full_name: String) -> Result<String, String> {
+pub async fn gh_import_repo(app: tauri::AppHandle, full_name: String) -> Result<String, String> {
     let (owner, repository) = validated_repository_name(&full_name)?;
     let owner = owner.to_string();
     let repository = repository.to_string();
@@ -476,7 +476,7 @@ pub async fn gh_import_repo(full_name: String) -> Result<String, String> {
         download_repository_archive(&client, &token, &full_name, &metadata_url, &url).await?;
 
     let remote_url = format!("https://github.com/{owner}/{repository}.git");
-    tauri::async_runtime::spawn_blocking(move || {
+    let project_id = tauri::async_runtime::spawn_blocking(move || {
         crate::project::import_project_zip_bytes_with(repository, &archive, |project_id| {
             crate::git::attach_imported_repository_history_lock_held(
                 project_id,
@@ -487,7 +487,9 @@ pub async fn gh_import_repo(full_name: String) -> Result<String, String> {
         })
     })
     .await
-    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())??;
+    crate::project::record_tex_spec_for_new_project(&app, &project_id);
+    Ok(project_id)
 }
 
 #[cfg(test)]

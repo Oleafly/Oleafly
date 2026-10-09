@@ -177,6 +177,8 @@ pub struct AppConfig {
     pub ui_locale: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub typst_default_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latex_default_engine: Option<String>,
 }
 
 fn default_ui_locale() -> String {
@@ -227,6 +229,7 @@ impl Default for AppConfig {
             skills_share_with_agents: true,
             ui_locale: default_ui_locale(),
             typst_default_version: None,
+            latex_default_engine: None,
         }
     }
 }
@@ -448,6 +451,33 @@ pub(crate) fn set_typst_default_choice(version: Option<String>) -> Result<(), St
         config.typst_default_version = version
             .map(|version| version.trim().to_owned())
             .filter(|version| !version.is_empty());
+        Ok(())
+    })
+}
+
+pub(crate) const LATEXMK_ENGINE: &str = "latexmk";
+
+pub(crate) fn latex_default_engine_choice() -> Option<String> {
+    let text = std::fs::read_to_string(config_path().ok()?).ok()?;
+    serde_json::from_str::<serde_json::Value>(&text)
+        .ok()?
+        .get("latex_default_engine")?
+        .as_str()
+        .filter(|engine| *engine == LATEXMK_ENGINE)
+        .map(str::to_owned)
+}
+
+pub(crate) fn set_latex_default_engine_choice(engine: &str) -> Result<(), String> {
+    let choice = match engine.trim() {
+        LATEXMK_ENGINE => Some(LATEXMK_ENGINE.to_owned()),
+        "tectonic" | "xetex" => None,
+        other => return Err(format!("unknown default LaTeX engine \"{other}\"")),
+    };
+    if latex_default_engine_choice() == choice {
+        return Ok(());
+    }
+    update_config(|config| {
+        config.latex_default_engine = choice;
         Ok(())
     })
 }
@@ -957,6 +987,7 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     drop_probes_for_moved_endpoints(&mut config, &stored);
     config.mcp_servers = stored.mcp_servers;
     config.typst_default_version = stored.typst_default_version;
+    config.latex_default_engine = stored.latex_default_engine;
     config.github_connected = false;
     write_config_unlocked(&config)
 }
@@ -2143,6 +2174,37 @@ mod tests {
         set_typst_default_choice(Some("  ".into())).unwrap();
         assert_eq!(typst_default_choice(), None);
         assert_eq!(read_config().unwrap().typst_default_version, None);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn the_latex_default_engine_persists_and_settings_writes_from_the_webview_keep_it() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        assert_eq!(latex_default_engine_choice(), None);
+        write_config(&AppConfig::default()).unwrap();
+        assert!(!std::fs::read_to_string(config_path().unwrap())
+            .unwrap()
+            .contains("latex_default_engine"));
+
+        set_latex_default_engine_choice(" latexmk ").unwrap();
+        assert_eq!(latex_default_engine_choice().as_deref(), Some("latexmk"));
+        set_latex_default_engine_choice("latexmk").unwrap();
+        assert_eq!(latex_default_engine_choice().as_deref(), Some("latexmk"));
+
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.latex_default_engine = None;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert_eq!(latex_default_engine_choice().as_deref(), Some("latexmk"));
+
+        assert!(set_latex_default_engine_choice("pdflatex").is_err());
+        assert_eq!(latex_default_engine_choice().as_deref(), Some("latexmk"));
+
+        set_latex_default_engine_choice("tectonic").unwrap();
+        assert_eq!(latex_default_engine_choice(), None);
+        assert_eq!(read_config().unwrap().latex_default_engine, None);
         std::fs::remove_dir_all(dir).ok();
     }
 

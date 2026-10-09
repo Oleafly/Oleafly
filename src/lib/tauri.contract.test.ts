@@ -45,6 +45,7 @@ describe("IPC command contract", () => {
     ["ragRetrieve", () => tauri.ragRetrieve("p", { query: "q" } as never), "rag_retrieve", { projectId: "p", request: { query: "q" } }],
     ["pickTableImportFile", () => tauri.pickTableImportFile(), "pick_table_import_file", undefined],
     ["setProjectEngineCmd keeps auto-detection", () => tauri.setProjectEngineCmd("p", "latexmk"), "set_project_engine", { projectId: "p", engine: "latexmk", flavor: null }],
+    ["setDefaultLatexEngineCmd", () => tauri.setDefaultLatexEngineCmd("latexmk"), "set_default_latex_engine", { engine: "latexmk" }],
     ["setProjectDictionaryLocaleCmd", () => tauri.setProjectDictionaryLocaleCmd("p", null), "set_project_dictionary_locale", { projectId: "p", locale: null }],
     ["openDevtools", () => tauri.openDevtools(), "open_devtools", undefined],
     ["listProjects", () => tauri.listProjects(), "list_projects", undefined],
