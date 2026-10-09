@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, PoisonError, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -791,9 +791,7 @@ impl ZoteroLibrary {
     }
 
     fn meta(&self) -> std::sync::MutexGuard<'_, Meta> {
-        self.meta
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.meta.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     pub fn disabled(&self) -> HashSet<String> {
@@ -1042,49 +1040,65 @@ impl ZoteroLibrary {
         };
         self.meta().local = probe.clone();
         if probe.state == LocalState::Ready {
-            let mut changed = false;
-            if probe.server_id.is_some() && cache.server_id != probe.server_id {
-                for library in cache.libraries.iter_mut() {
-                    library.local_version = None;
-                }
-                cache.server_id = probe.server_id.clone();
-                changed = true;
-            }
-            return match self
-                .sync_side(cache, Side::Local, None, &mut changed, progress)
-                .await
-            {
-                Ok(()) => {
-                    if probe.bbt_version.is_some() {
-                        if let Ok(mut http) = Http::new(Side::Local, &self.endpoints.local, None) {
-                            changed |= refresh_bbt_keys(&mut http, cache).await.unwrap_or(false);
-                        }
-                    }
-                    Outcome {
-                        changed,
-                        source: Some("local"),
-                        error: None,
-                    }
-                }
-                Err(error) => {
-                    let state = match error {
-                        SyncError::NotRunning | SyncError::Http(503) => {
-                            Some(LocalState::NotRunning)
-                        }
-                        SyncError::ApiDisabled => Some(LocalState::ApiDisabled),
-                        _ => None,
-                    };
-                    if let Some(state) = state {
-                        self.meta().local.state = state;
-                    }
-                    Outcome {
-                        changed,
-                        source: None,
-                        error: Some(error),
-                    }
-                }
-            };
+            return self.run_local(cache, probe, progress).await;
         }
+        self.run_web(cache, options, progress).await
+    }
+
+    async fn run_local(
+        &self,
+        cache: &mut CacheFile,
+        probe: LocalProbe,
+        progress: &mut (dyn FnMut(Status) + Send),
+    ) -> Outcome {
+        let mut changed = false;
+        if probe.server_id.is_some() && cache.server_id != probe.server_id {
+            for library in cache.libraries.iter_mut() {
+                library.local_version = None;
+            }
+            cache.server_id = probe.server_id.clone();
+            changed = true;
+        }
+        match self
+            .sync_side(cache, Side::Local, None, &mut changed, progress)
+            .await
+        {
+            Ok(()) => {
+                if probe.bbt_version.is_some() {
+                    if let Ok(mut http) = Http::new(Side::Local, &self.endpoints.local, None) {
+                        changed |= refresh_bbt_keys(&mut http, cache).await.unwrap_or(false);
+                    }
+                }
+                Outcome {
+                    changed,
+                    source: Some("local"),
+                    error: None,
+                }
+            }
+            Err(error) => {
+                let state = match error {
+                    SyncError::NotRunning | SyncError::Http(503) => Some(LocalState::NotRunning),
+                    SyncError::ApiDisabled => Some(LocalState::ApiDisabled),
+                    _ => None,
+                };
+                if let Some(state) = state {
+                    self.meta().local.state = state;
+                }
+                Outcome {
+                    changed,
+                    source: None,
+                    error: Some(error),
+                }
+            }
+        }
+    }
+
+    async fn run_web(
+        &self,
+        cache: &mut CacheFile,
+        options: &SyncOptions,
+        progress: &mut (dyn FnMut(Status) + Send),
+    ) -> Outcome {
         let Some(credentials) = options.credentials.clone() else {
             self.meta().web = WebState::NotConnected;
             return Outcome {

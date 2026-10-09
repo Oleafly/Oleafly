@@ -1204,8 +1204,7 @@ export class LanguageServiceController {
   ): ResolvedRuntimeStart | null {
     const verdict = this.setupVerdict;
     if (
-      !verdict ||
-      verdict.operation !== operation ||
+      verdict?.operation !== operation ||
       verdict.key !== key ||
       Date.now() - verdict.checkedAt >= SETUP_VERDICT_REUSE_MS
     ) {

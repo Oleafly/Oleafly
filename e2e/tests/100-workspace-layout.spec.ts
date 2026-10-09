@@ -167,6 +167,28 @@ test("sidebar width and document split survive a new session", async ({ tauriPag
   await expect.poll(async () => page.evaluate(`['sidebar','editor'].map(id=>${PANEL_SIZE_SCRIPT}(id))`)).toEqual(sizes);
 });
 
+test("the file tree keeps its width while the window is resized", async ({ tauriPage: page }) => {
+  await page.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(1024, 700))`);
+  await createBlankProject(page, "Steady file tree");
+  await page.evaluate(`import("/src/store/settings.ts").then(({useSettingsStore})=>{ const s=useSettingsStore.getState(); s.setViewMode('split'); s.setShowTree(true); })`);
+  await waitLong(page, `!!document.getElementById('h-tree') && !!document.getElementById('sidebar')`, 15_000);
+  const sidebarWidth = () =>
+    page.evaluate<number>(`Math.round(document.getElementById('sidebar').getBoundingClientRect().width)`);
+  await expect.poll(sidebarWidth).toBeGreaterThan(0);
+  const start = await sidebarWidth();
+  for (const width of [1600, 1024, 1600, 1024]) {
+    const before = await page.evaluate<number>("innerWidth");
+    await page.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(${width}, 700))`);
+    await expect.poll(() => page.evaluate<number>("innerWidth")).not.toBe(before);
+    await expect.poll(async () => Math.abs((await sidebarWidth()) - start)).toBeLessThanOrEqual(1);
+  }
+  await page.evaluate(`import("/src/store/settings.ts").then(({useSettingsStore})=>useSettingsStore.getState().setShowTree(false))`);
+  await waitLong(page, `!document.getElementById('sidebar')`, 15_000);
+  await page.evaluate(`import("/src/store/settings.ts").then(({useSettingsStore})=>useSettingsStore.getState().setShowTree(true))`);
+  await waitLong(page, `!!document.getElementById('sidebar')`, 15_000);
+  await expect.poll(async () => Math.abs((await sidebarWidth()) - start)).toBeLessThanOrEqual(1);
+});
+
 test("grouped layouts open the assistant and its sidebar button hides it", async ({ tauriPage: page }) => {
   await page.evaluate(`import("/src/lib/e2e-probe.ts").then(w => w.resizeCurrentWindow(900, 700))`);
   await page.evaluate(`import("/src/store/settings.ts").then(s => {

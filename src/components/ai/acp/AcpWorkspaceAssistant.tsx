@@ -325,7 +325,7 @@ export function AcpWorkspaceAssistant({ projectId }: Readonly<{ projectId: strin
   const modelControl = () => {
     if (!session) return null;
     return (
-      <span className="hidden max-w-40 truncate px-1 text-[11px] text-muted-foreground sm:inline">
+      <span className="hidden max-w-40 truncate px-1 text-[0.6875rem] text-muted-foreground sm:inline">
         {session.controls.modelId ?? t(($) => $.ai.acp.modelManaged)}
       </span>
     );
@@ -647,7 +647,7 @@ function SessionStatusPill({ session, agentName, busy }: Readonly<{ session: Acp
     <span
       data-testid="acp-session-status"
       data-status={session.status}
-      className="inline-flex h-6 max-w-44 shrink-0 items-center gap-1.5 rounded-full border bg-background px-2 text-[10px] text-muted-foreground"
+      className="inline-flex h-6 max-w-44 shrink-0 items-center gap-1.5 rounded-full border bg-background px-2 text-[0.625rem] text-muted-foreground"
     >
       {busy ? (
         <Spinner className="size-2.5" />

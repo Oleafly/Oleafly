@@ -132,7 +132,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
             return (
               <Fragment key={command.id}>
                 {heading && (
-                  <span className="mt-1 block border-t px-2.5 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                  <span className="mt-1 block border-t px-2.5 pb-1 pt-2 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
                     {heading}
                   </span>
                 )}
@@ -153,7 +153,7 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
                   <command.icon className="mt-0.5 size-4 shrink-0 text-primary" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs font-medium leading-snug">{command.label}</span>
-                    <span className="line-clamp-2 block text-[11px] leading-snug text-muted-foreground">
+                    <span className="line-clamp-2 block text-[0.6875rem] leading-snug text-muted-foreground">
                       {command.description}
                     </span>
                   </span>

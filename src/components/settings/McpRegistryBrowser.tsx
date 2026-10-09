@@ -24,7 +24,7 @@ function ReviewCard({ review, onReview }: Readonly<{ review: McpRegistryReview; 
     <div className="space-y-2 rounded-md border bg-background p-2.5 text-xs">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">{review.transport}</Badge>
-        <span className="min-w-0 break-all font-mono text-[11px]">{review.commandOrUrl}</span>
+        <span className="min-w-0 break-all font-mono text-[0.6875rem]">{review.commandOrUrl}</span>
       </div>
       {review.arguments.length > 0 ? <p className="break-all text-muted-foreground">{t(($) => $.settings.mcp.registry.argumentsLine, { args: review.arguments.join(" ") })}</p> : null}
       {review.environmentVariableNames.length > 0 ? <p className="break-words text-muted-foreground">{t(($) => $.settings.mcp.registry.environmentLine, { names: review.environmentVariableNames.join(", ") })}</p> : null}

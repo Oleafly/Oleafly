@@ -63,7 +63,8 @@ export function pdfVisibleArea(
   const minY = Math.max(0, viewportRect.top - pageRect.top);
   const maxX = Math.min(pageRect.right, viewportRect.right) - pageRect.left;
   const maxY = Math.min(pageRect.bottom, viewportRect.bottom) - pageRect.top;
-  if (!(maxX > minX) || !(maxY > minY)) return null;
+  const isVisible = maxX > minX && maxY > minY;
+  if (!isVisible) return null;
   return { minX, minY, maxX, maxY };
 }
 
@@ -78,7 +79,8 @@ export function pdfDetailArea(
 ): PdfDetailArea | null {
   const visibleWidth = visible.maxX - visible.minX;
   const visibleHeight = visible.maxY - visible.minY;
-  if (!(visibleWidth > 0) || !(visibleHeight > 0)) return null;
+  const hasVisibleArea = visibleWidth > 0 && visibleHeight > 0;
+  if (!hasVisibleArea) return null;
 
   const requestedScale =
     Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1;
@@ -111,7 +113,8 @@ export function pdfDetailArea(
       : Number.POSITIVE_INFINITY;
   const width = Math.min(maxX - minX, dimensionLimit);
   const height = Math.min(maxY - minY, dimensionLimit);
-  if (!(width > 0) || !(height > 0)) return null;
+  const hasArea = width > 0 && height > 0;
+  if (!hasArea) return null;
 
   return {
     minX,

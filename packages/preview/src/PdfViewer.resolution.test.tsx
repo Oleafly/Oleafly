@@ -420,7 +420,7 @@ describe("PdfViewer raster resolution", () => {
       expect(Number.parseFloat(detail.style.width)).toBeCloseTo(widthBefore * stretchX, 6);
       expect(Number.parseFloat(detail.style.height)).toBeCloseTo(heightBefore * stretchY, 6);
       expect(scene.base()!.style.width).toBe(scene.wrap.style.width);
-      expect(harness.renderCalls.length).toBe(rendersBefore);
+      expect(harness.renderCalls).toHaveLength(rendersBefore);
 
       act(() => settle[0]());
       await waitFor(() => expect(scene.wrap.dataset.pdfRasterScale).toBe("3"));

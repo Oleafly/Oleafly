@@ -73,6 +73,7 @@ import {
   resetZoteroCiteForTest,
   staleZoteroEntries,
   latexCiteSources,
+  updateZoteroEntries,
 } from "./zotero-cite";
 
 function hit(overrides: Partial<ZoteroHit> = {}): ZoteroHit {
@@ -238,6 +239,23 @@ describe("adding a Zotero item to the project", () => {
     expect(disk["references.bib"]).toContain("@article{smithBBT2020,");
   });
 
+  it("appends a Hayagriva entry after one blank line in a declared .yml file", async () => {
+    const yml = "doe2019:\n  type: book\n  title: Kept\n\n\n";
+    project({ "main.typ": '#bibliography("refs.yml")\n= Intro\n', "refs.yml": yml }, ["main.typ", "refs.yml"], "typst", "main.typ");
+    const result = await ensureZoteroEntries([{ hit: hit(), key: "smithBBT2020" }]);
+    expect(result).toMatchObject({ added: ["smithBBT2020"], bibPath: "refs.yml" });
+    const written = files.files["refs.yml"].content;
+    expect(written.startsWith("doe2019:\n  type: book\n  title: Kept\n\nsmithBBT2020:")).toBe(true);
+    expect(written.endsWith("\n")).toBe(true);
+    expect(written.endsWith("\n\n")).toBe(false);
+  });
+
+  it("starts an empty .yml file with the Hayagriva entry itself", async () => {
+    project({ "main.typ": '#bibliography("refs.yml")\n= Intro\n', "refs.yml": "  \n" }, ["main.typ", "refs.yml"], "typst", "main.typ");
+    await ensureZoteroEntries([{ hit: hit(), key: "smithBBT2020" }]);
+    expect(files.files["refs.yml"].content.startsWith("smithBBT2020:")).toBe(true);
+  });
+
   it("asks once which bibliography receives entries when there are several", async () => {
     const main = PLAIN.replace("\\end{document}", "\\bibliography{a,b}\n\\end{document}");
     project({ "main.tex": main, "a.bib": "", "b.bib": "" }, ["main.tex"]);
@@ -335,6 +353,58 @@ describe("updating an entry that changed in Zotero", () => {
     const accept = vi.fn(async () => true);
     await expect(requestZoteroUpdate("smithBBT2020", accept)).resolves.toBe("updated");
     expect(files.files["refs.bib"].content).toContain("Deep learning, revised");
+  });
+
+  it("updates several bibliographies one after another and stops at the first failure", async () => {
+    const jones = "@article{jones2021,\n  title = {Graphs}\n}";
+    project({ "main.tex": PLAIN, "refs.bib": `${original}\n`, "more.bib": `${jones}\n` }, ["refs.bib", "more.bib"]);
+    const link = (itemKey: string, bib: string): ZoteroProjectLink => ({
+      library: "user",
+      itemKey,
+      dateModified: "2024-01-01T00:00:00Z",
+      version: 3,
+      hash: "",
+      bib,
+    });
+    const stale = [
+      { key: "smithBBT2020", bib: "refs.bib", hit: hit(), link: link("SMITH234", "refs.bib"), handEdited: false },
+      {
+        key: "jones2021",
+        bib: "more.bib",
+        hit: hit({ itemKey: "JONES567", citationKey: "jones2021" }),
+        link: link("JONES567", "more.bib"),
+        handEdited: false,
+      },
+    ];
+    const calls: string[] = [];
+    mocks.exportEntries.mockImplementation(async (refs: { itemKey: string }[]) => {
+      calls.push(`export ${refs.map((ref) => ref.itemKey).join(",")}`);
+      return refs.map((ref) =>
+        exported(ref.itemKey === "JONES567" ? "jones2021" : "smithBBT2020", {
+          itemKey: ref.itemKey,
+          entry: `@article{x,\n  title = {${ref.itemKey} revised}\n}`,
+        }),
+      );
+    });
+    mocks.saveFile.mockImplementation(async (path: string) => {
+      calls.push(`save ${path}`);
+      disk[path] = files.files[path].content;
+    });
+    await expect(updateZoteroEntries(stale)).resolves.toEqual({ updated: ["smithBBT2020", "jones2021"] });
+    expect(calls).toEqual(["export SMITH234", "save refs.bib", "export JONES567", "save more.bib"]);
+    expect(disk["refs.bib"]).toContain("@article{smithBBT2020,\n  title = {SMITH234 revised}");
+    expect(disk["more.bib"]).toContain("@article{jones2021,\n  title = {JONES567 revised}");
+    expect(Object.keys(storedLinks).sort()).toEqual(["jones2021", "smithBBT2020"]);
+
+    calls.length = 0;
+    mocks.updateLinks.mockClear();
+    mocks.exportEntries.mockImplementationOnce(async () => {
+      calls.push("export failed");
+      throw new Error("Zotero closed");
+    });
+    await expect(updateZoteroEntries(stale)).rejects.toThrow("Zotero closed");
+    expect(calls).toEqual(["export failed"]);
+    expect(mocks.updateLinks).not.toHaveBeenCalled();
   });
 
   it("reports nothing to update when Zotero has not changed", async () => {

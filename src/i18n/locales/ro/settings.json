@@ -536,12 +536,17 @@
         "right": "Dreapta"
       },
       "font": {
-        "description": "Folosește fontul de rezervă al sistemului atunci când un font nu este instalat.",
+        "description": "Alege pentru meniuri, panouri și dialoguri orice font instalat pe computer.",
         "label": "Fontul aplicației"
       },
       "fontSize": {
         "description": "Scalează textul din meniuri, panouri și butoane.",
         "label": "Dimensiunea fontului aplicației"
+      },
+      "zoom": {
+        "description": "Face tot Oleafly mai mare sau mai mic, inclusiv editorul și PDF-ul.",
+        "label": "Zoom",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "Varianta Sistem urmează sistemul de operare și se schimbă odată cu el.",
@@ -638,12 +643,20 @@
         "label": "Completare automată"
       },
       "font": {
-        "description": "Alege fontul monospațiat folosit pentru fișierele sursă.",
-        "label": "Fontul editorului"
+        "description": "Alege pentru fișierele sursă orice font instalat pe computer.",
+        "label": "Fontul editorului",
+        "monospace": "Monospațiat"
+      },
+      "useAppFont": {
+        "description": "Editorul urmează fontul și dimensiunea fontului aplicației.",
+        "disabledHint": "Dezactivează Folosește fontul aplicației ca să schimbi asta.",
+        "label": "Folosește fontul aplicației"
       },
       "fontSize": {
         "description": "Stabilește dimensiunea textului din editorul de sursă.",
-        "label": "Dimensiunea fontului din editor"
+        "label": "Dimensiunea fontului din editor",
+        "custom": "Personalizată",
+        "customLabel": "Dimensiune personalizată a fontului din editor, în pixeli"
       },
       "ghostCompletion": {
         "description": "Arată completarea probabilă după cursor. Apasă Tab ca să o accepți.",
@@ -676,8 +689,34 @@
         "options": {
           "compact": "Compactă",
           "normal": "Normală",
-          "wide": "Largă"
+          "wide": "Largă",
+          "custom": "Personalizată"
+        },
+        "customLabel": "Înălțime personalizată a liniei"
+      },
+      "letterSpacing": {
+        "customLabel": "Spațiere personalizată a literelor, în pixeli",
+        "description": "Adaugă spațiu între caracterele din editorul de sursă. Lasă și mai mult loc în jurul cursorului.",
+        "label": "Spațierea literelor",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normală",
+          "custom": "Personalizată"
         }
+      },
+      "cursorWidth": {
+        "label": "Lățimea cursorului",
+        "description": "Setează cât de gros este cursorul din editor.",
+        "option": "{{width}}px"
+      },
+      "cursorColor": {
+        "label": "Culoarea cursorului",
+        "description": "Temele deschise și cele întunecate ale editorului au fiecare propria culoare a cursorului. Până alegi una, se folosește culoarea temei.",
+        "light": "Deschisă",
+        "dark": "Întunecată",
+        "pickLight": "Alege culoarea cursorului pentru temele deschise ale editorului",
+        "pickDark": "Alege culoarea cursorului pentru temele întunecate ale editorului",
+        "useTheme": "Folosește culorile temei"
       },
       "lineWrap": {
         "description": "Rupe liniile lungi în loc să derulezi lateral.",
@@ -749,6 +788,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} nu este instalat, așa că se folosește fontul implicit.",
     "preview": {
       "darkMode": {
         "description": "Inversează implicit culorile PDF-ului. Poți schimba oricând culorile din bara previzualizării.",
@@ -757,10 +797,6 @@
       "hoverPreview": {
         "description": "Arată ultima pagină compilată atunci când treci cu mouse-ul peste un proiect din bibliotecă.",
         "label": "Previzualizează PDF-ul la trecerea cu mouse-ul"
-      },
-      "zoomShortcuts": {
-        "description": "Folosește Cmd/Ctrl cu +, - și 0 ca să mărești PDF-ul, nu fereastra aplicației.",
-        "label": "Scurtături de mărire pentru PDF"
       }
     },
     "sectionName": "Aspect",
@@ -826,10 +862,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Ține textul într-o coloană centrată cât timp PDF-ul este ascuns.",
-        "label": "Centrează editorul"
-      },
       "fullScreen": {
         "description": "Umple ecranul în modul Zen și restabilește fereastra la ieșire.",
         "label": "Treci pe ecran complet"
@@ -838,11 +870,7 @@
         "description": "Dacă PDF-ul este ascuns când pornește modul Zen, îl deschide lângă editor la prima compilare.",
         "label": "Arată PDF-ul la compilare"
       },
-      "title": "Modul Zen",
-      "toggle": {
-        "description": "Ascunde bara de instrumente, bara laterală, asistentul și terminalul, astfel încât să rămână doar textul. Se numește și mod fără distrageri. Necesită un proiect deschis.",
-        "label": "Activează modul Zen"
-      }
+      "title": "Modul Zen"
     }
   },
   "checkpoints": {
@@ -1651,6 +1679,10 @@
         "description": "Arată sau ascunde bara laterală a proiectului.",
         "label": "Arată sau ascunde bara laterală"
       },
+      "togglePreview": {
+        "label": "Arată sau ascunde previzualizarea PDF",
+        "description": "Afișează sau ascunde PDF-ul de lângă editor, și în modul Zen."
+      },
       "toggleTerminal": {
         "description": "Arată sau ascunde terminalul proiectului.",
         "label": "Arată sau ascunde terminalul"
@@ -1662,6 +1694,22 @@
       "toggleZenMode": {
         "description": "Ascunde tot în afară de text sau readu totul.",
         "label": "Comută modul Zen"
+      },
+      "openSettings": {
+        "label": "Deschide setările",
+        "description": "Deschide setările Oleafly."
+      },
+      "zoomIn": {
+        "description": "Mărește toată aplicația.",
+        "label": "Mărește"
+      },
+      "zoomOut": {
+        "description": "Micșorează toată aplicația.",
+        "label": "Micșorează"
+      },
+      "resetZoom": {
+        "description": "Readuce aplicația la 100%.",
+        "label": "Resetează zoomul"
       }
     },
     "application": {

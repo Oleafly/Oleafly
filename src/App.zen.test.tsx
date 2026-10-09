@@ -347,7 +347,6 @@ beforeEach(() => {
       terminalOpen: false,
       vim: false,
       zenFullScreen: false,
-      zenCenterEditor: true,
       zenShowPdfOnCompile: true,
       defaultView: "editor-preview",
       openInTree: true,
@@ -571,6 +570,17 @@ describe("the PDF pane when you compile", () => {
     expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
   });
 
+  it("closes the PDF it opened with the Toggle PDF preview shortcut and opens it again", () => {
+    keydown(document.body, { key: "Enter", ctrlKey: true });
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+    const hide = keydown(document.body, { key: "p", ctrlKey: true, altKey: true });
+    expect(hide.defaultPrevented).toBe(true);
+    expect(screen.queryByTestId("preview-surface")).not.toBeInTheDocument();
+    expect(useSettingsStore.getState().viewMode).toBe("editor");
+    keydown(document.body, { key: "p", ctrlKey: true, altKey: true });
+    expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
+  });
+
   it("is editor-alone again after Zen ends", () => {
     keydown(document.body, { key: "Enter", ctrlKey: true });
     expect(screen.getByTestId("preview-surface")).toBeInTheDocument();
@@ -580,35 +590,3 @@ describe("the PDF pane when you compile", () => {
   });
 });
 
-describe("the centered editor", () => {
-  it("centers the text when the PDF is hidden", async () => {
-    await renderApp({ viewMode: "editor" });
-    zenOn();
-    expect(root()).toHaveAttribute("data-zen-centered", "true");
-  });
-
-  it("does not center beside a PDF", async () => {
-    await renderApp();
-    zenOn();
-    expect(root()).not.toHaveAttribute("data-zen-centered");
-  });
-
-  it("stops centering once the PDF opens", async () => {
-    await renderApp({ viewMode: "editor" });
-    zenOn();
-    keydown(document.body, { key: "Enter", ctrlKey: true });
-    expect(root()).not.toHaveAttribute("data-zen-centered");
-  });
-
-  it("does not center when Center the editor is off", async () => {
-    useSettingsStore.setState({ zenCenterEditor: false });
-    await renderApp({ viewMode: "editor" });
-    zenOn();
-    expect(root()).not.toHaveAttribute("data-zen-centered");
-  });
-
-  it("does not center outside Zen mode", async () => {
-    await renderApp({ viewMode: "editor" });
-    expect(root()).not.toHaveAttribute("data-zen-centered");
-  });
-});

@@ -119,17 +119,17 @@ export function ToolConfirm({
             {approvalHeadline}
           </p>
           {mcpApproval && (
-            <p className="text-[11px] leading-snug text-muted-foreground">
+            <p className="text-[0.6875rem] leading-snug text-muted-foreground">
               {t(($) => $.ai.approval.mcpNote)}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-1.5">
-            <code className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-medium leading-none text-primary">
+            <code className="inline-flex items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 font-mono text-[0.6875rem] font-medium leading-none text-primary">
               <Wrench className="size-3 shrink-0 opacity-70" aria-hidden />
               {mcpApproval?.tool ?? req.tool}
             </code>
             {filePath && (
-              <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border/80 bg-muted/50 px-1.5 py-0.5 text-[11px] leading-none text-muted-foreground">
+              <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border/80 bg-muted/50 px-1.5 py-0.5 text-[0.6875rem] leading-none text-muted-foreground">
                 <FileText className="size-3 shrink-0 opacity-70" aria-hidden />
                 <span className="truncate font-medium text-foreground/80" title={filePath}>
                   {basename(filePath)}
@@ -137,13 +137,13 @@ export function ToolConfirm({
               </span>
             )}
             {changeLine != null && (
-              <span className="rounded-md px-1 py-0.5 font-mono text-[10px] text-muted-foreground">
+              <span className="rounded-md px-1 py-0.5 font-mono text-[0.625rem] text-muted-foreground">
                 {t(($) => $.ai.approval.line, { line: changeLine })}
               </span>
             )}
           </div>
           {sessionAutoApprove && (
-            <p className="text-[11px] leading-snug text-[#9B72CB] dark:text-[#c4a5e8]">
+            <p className="text-[0.6875rem] leading-snug text-[#9B72CB] dark:text-[#c4a5e8]">
               {t(($) => $.ai.approval.sessionAutoApprove)}
             </p>
           )}
@@ -153,7 +153,7 @@ export function ToolConfirm({
       {commandApproval && (
         <div className="select-text space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
           <div className="space-y-1">
-            <p className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.commandLabel)}</p>
+            <p className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.commandLabel)}</p>
             <pre data-select-all-scope className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
               {/* A command often starts with `cd` into the same home path as the working directory. */}
               {displayText(req.command ?? req.summary)}
@@ -161,7 +161,7 @@ export function ToolConfirm({
           </div>
           {req.cwd && (
             <div className="space-y-1">
-              <p className="text-[11px] font-medium text-muted-foreground">
+              <p className="text-[0.6875rem] font-medium text-muted-foreground">
                 {t(($) => $.ai.approval.workingDirectory)}
               </p>
               <code className="block overflow-x-auto whitespace-pre rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
@@ -175,17 +175,17 @@ export function ToolConfirm({
       {mcpApproval && (
         <div className="select-text space-y-2 rounded-lg border border-border/80 bg-background p-2.5 shadow-inner">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1.5 text-xs">
-            <span className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.mcpServer)}</span>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.mcpServer)}</span>
             <code className="min-w-0 break-words font-mono text-foreground">
               {mcpApproval.server}
             </code>
-            <span className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.toolLabel)}</span>
+            <span className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.toolLabel)}</span>
             <code className="min-w-0 break-words font-mono text-foreground">
               {mcpApproval.tool}
             </code>
           </div>
           <div className="space-y-1 border-t border-border/60 pt-2">
-            <p className="text-[11px] font-medium text-muted-foreground">{t(($) => $.ai.approval.arguments)}</p>
+            <p className="text-[0.6875rem] font-medium text-muted-foreground">{t(($) => $.ai.approval.arguments)}</p>
             <pre data-select-all-scope className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/50 px-2.5 py-2 font-mono text-xs text-foreground">
               {displayText(mcpApproval.argumentsPreview)}
             </pre>
@@ -207,16 +207,16 @@ export function ToolConfirm({
         <div className="overflow-hidden rounded-lg border border-border/80 bg-background shadow-inner">
           <div className="flex items-center gap-1.5 border-b border-border/70 bg-muted/40 px-2.5 py-1.5">
             <FileText className="size-3 text-muted-foreground" aria-hidden />
-            <span className="truncate font-mono text-[11px] text-muted-foreground" title={req.diff.path}>
+            <span className="truncate font-mono text-[0.6875rem] text-muted-foreground" title={req.diff.path}>
               {req.diff.path}
             </span>
             {changeLine != null && (
-              <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">
+              <span className="ml-auto shrink-0 text-[0.625rem] text-muted-foreground">
                 {t(($) => $.ai.approval.firstChange, { line: changeLine })}
               </span>
             )}
           </div>
-          <div className="text-[12px] leading-relaxed [&_.cm-editor]:bg-transparent [&_.cm-gutters]:bg-muted/30 [&_.cm-gutters]:border-border/50 [&_.cm-lineNumbers]:min-w-[2.25rem] [&_.cm-lineNumbers_.cm-gutterElement]:px-1.5 [&_.cm-lineNumbers_.cm-gutterElement]:text-[10px] [&_.cm-lineNumbers_.cm-gutterElement]:text-muted-foreground/70">
+          <div className="text-[0.75rem] leading-relaxed [&_.cm-editor]:bg-transparent [&_.cm-gutters]:bg-muted/30 [&_.cm-gutters]:border-border/50 [&_.cm-lineNumbers]:min-w-[2.25rem] [&_.cm-lineNumbers_.cm-gutterElement]:px-1.5 [&_.cm-lineNumbers_.cm-gutterElement]:text-[0.625rem] [&_.cm-lineNumbers_.cm-gutterElement]:text-muted-foreground/70">
             <InlineDiffPreview
               path={req.diff.path}
               oldText={req.diff.oldText}

@@ -604,7 +604,7 @@
     "title": "Forhåndssjekk",
     "readerDisabled": "Kompiler og kjør en resultatsjekk først",
     "readerEnabled": "Åpne teksten som er hentet ut av PDF-en",
-    "readerButton": "Vis hva leseren ser",
+    "readerButton": "Skjermleser",
     "aboutLabel": "Om forhåndssjekken",
     "aboutTitle": "Dette sjekker forhåndssjekken",
     "aboutIntro": "Forhåndssjekken leser prosjektkilden, kompileringsloggen og den gjeldende PDF-en. Slå bare på sjekkene som passer dette dokumentet.",

@@ -335,6 +335,22 @@
       "keywords": "sin distracciones concentración pantalla completa ocultar interfaz mínimo escritura",
       "label": "Activar o desactivar el modo Zen"
     },
+    "togglePreview": {
+      "keywords": "pdf vista previa mostrar ocultar dividir solo editor",
+      "label": "Alternar la vista previa del PDF"
+    },
+    "zoomIn": {
+      "keywords": "agrandar más grande",
+      "label": "Acercar"
+    },
+    "zoomOut": {
+      "keywords": "reducir más pequeño",
+      "label": "Alejar"
+    },
+    "resetZoom": {
+      "keywords": "tamaño real 100",
+      "label": "Restablecer zoom"
+    },
     "zoteroAddMissing": {
       "label": "Añadir desde Zotero las citas que faltan",
       "keywords": "zotero citas que faltan claves no definidas bibliografía reparar missing citations undefined keys bibliography repair"

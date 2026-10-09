@@ -530,12 +530,17 @@
         "right": "右"
       },
       "font": {
-        "description": "フォントがインストールされていない場合は、システムの代替フォントを使います。",
+        "description": "メニュー、パネル、ダイアログに使うフォントを、コンピュータにインストールされているものから選びます。",
         "label": "アプリのフォント"
       },
       "fontSize": {
         "description": "メニュー、パネル、ボタンの文字の大きさを調整します。",
         "label": "アプリの文字サイズ"
+      },
+      "zoom": {
+        "description": "エディタや PDF も含め、Oleafly 全体を大きくまたは小さくします。",
+        "label": "ズーム",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "「システム」はオペレーティングシステムに従い、その設定が変わると一緒に変わります。",
@@ -628,12 +633,20 @@
         "label": "自動補完"
       },
       "font": {
-        "description": "ソースファイルに使う等幅フォントを選びます。",
-        "label": "エディタのフォント"
+        "description": "ソースファイルに使うフォントを、コンピュータにインストールされているものから選びます。",
+        "label": "エディタのフォント",
+        "monospace": "等幅"
+      },
+      "useAppFont": {
+        "description": "エディタはアプリのフォントと文字サイズに従います。",
+        "disabledHint": "変更するには、アプリのフォントを使うをオフにしてください。",
+        "label": "アプリのフォントを使う"
       },
       "fontSize": {
         "description": "ソースエディタの文字の大きさを設定します。",
-        "label": "エディタの文字サイズ"
+        "label": "エディタの文字サイズ",
+        "custom": "カスタム",
+        "customLabel": "エディタの文字サイズ (カスタム、ピクセル)"
       },
       "ghostCompletion": {
         "description": "カーソルの後ろに、候補となる補完を表示します。Tab で確定します。",
@@ -666,8 +679,34 @@
         "options": {
           "compact": "狭い",
           "normal": "標準",
-          "wide": "広い"
+          "wide": "広い",
+          "custom": "カスタム"
+        },
+        "customLabel": "カスタムの行の高さ"
+      },
+      "letterSpacing": {
+        "customLabel": "文字間隔 (カスタム、ピクセル)",
+        "description": "ソースエディタの文字と文字の間を広げます。カーソルの周りにも余裕ができます。",
+        "label": "文字間隔",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "標準",
+          "custom": "カスタム"
         }
+      },
+      "cursorWidth": {
+        "label": "カーソルの幅",
+        "description": "エディタのカーソルの太さを設定します。",
+        "option": "{{width}}px"
+      },
+      "cursorColor": {
+        "label": "カーソルの色",
+        "description": "エディタのライトテーマとダークテーマで、それぞれ別のカーソルの色を使えます。色を選ぶまではテーマの色を使います。",
+        "light": "ライト",
+        "dark": "ダーク",
+        "pickLight": "ライトテーマのエディタのカーソルの色を選ぶ",
+        "pickDark": "ダークテーマのエディタのカーソルの色を選ぶ",
+        "useTheme": "テーマの色を使う"
       },
       "lineWrap": {
         "description": "横スクロールの代わりに、長い行を折り返します。",
@@ -739,6 +778,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} はインストールされていないため、既定のフォントを使っています。",
     "preview": {
       "darkMode": {
         "description": "既定で PDF の色を反転します。プレビューのツールバーからいつでも切り替えられます。",
@@ -747,10 +787,6 @@
       "hoverPreview": {
         "description": "ライブラリでプロジェクトにカーソルを合わせると、最後にコンパイルしたページを表示します。",
         "label": "カーソルを合わせて PDF をプレビュー"
-      },
-      "zoomShortcuts": {
-        "description": "Cmd/Ctrl と +、-、0 を、アプリのウィンドウではなく PDF の拡大縮小に使います。",
-        "label": "PDF の拡大縮小ショートカット"
       }
     },
     "sectionName": "外観",
@@ -816,10 +852,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "PDF を隠している間、テキストを中央の 1 列に収めます。",
-        "label": "エディタを中央に配置"
-      },
       "fullScreen": {
         "description": "Zen モード中は画面全体を使い、終了時にウィンドウを元に戻します。",
         "label": "全画面にする"
@@ -828,11 +860,7 @@
         "description": "Zen モード開始時に PDF が隠れている場合、最初のコンパイルでエディタの横に開きます。",
         "label": "コンパイル時に PDF を表示"
       },
-      "title": "Zen モード",
-      "toggle": {
-        "description": "ツールバー、サイドバー、アシスタント、ターミナルを隠して、文章だけを残します。気が散らないモードとも呼ばれます。プロジェクトを開いている必要があります。",
-        "label": "Zen モードをオンにする"
-      }
+      "title": "Zen モード"
     }
   },
   "checkpoints": {
@@ -1609,6 +1637,10 @@
         "description": "プロジェクトのサイドバーを表示または非表示にします。",
         "label": "サイドバーの表示を切り替え"
       },
+      "togglePreview": {
+        "label": "PDF プレビューの表示を切り替え",
+        "description": "エディタの横の PDF を表示または非表示にします。Zen モードでも使えます。"
+      },
       "toggleTerminal": {
         "description": "プロジェクトのターミナルを表示または非表示にします。",
         "label": "ターミナルの表示を切り替え"
@@ -1620,6 +1652,22 @@
       "toggleZenMode": {
         "description": "文章以外をすべて隠す、または元に戻します。",
         "label": "Zen モードを切り替え"
+      },
+      "openSettings": {
+        "label": "設定を開く",
+        "description": "Oleafly の設定を開きます。"
+      },
+      "zoomIn": {
+        "description": "アプリ全体を大きくします。",
+        "label": "拡大"
+      },
+      "zoomOut": {
+        "description": "アプリ全体を小さくします。",
+        "label": "縮小"
+      },
+      "resetZoom": {
+        "description": "アプリを 100% に戻します。",
+        "label": "ズームをリセット"
       }
     },
     "application": {

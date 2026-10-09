@@ -188,14 +188,14 @@ export function Book({
               {kind && (
                 <span
                   data-testid="project-card-kind"
-                  className="mb-1 text-[9px] font-semibold uppercase leading-none tracking-wide opacity-55"
+                  className="mb-1 text-[0.5625rem] font-semibold uppercase leading-none tracking-wide opacity-55"
                   style={{ color: ink }}
                 >
                   {kind}
                 </span>
               )}
               <span
-                className="line-clamp-3 text-[13px] font-semibold leading-snug [overflow-wrap:anywhere]"
+                className="line-clamp-3 text-[0.8125rem] font-semibold leading-snug [overflow-wrap:anywhere]"
                 style={{ color: ink }}
               >
                 {title}
@@ -247,11 +247,17 @@ export function Book({
           )}
         </div>
       )}
-      <div className="mt-2.5 flex items-end justify-between gap-2 px-0.5">
+      <div
+        data-testid="project-card-caption"
+        className={cn(
+          "relative mt-2.5 px-0.5",
+          menu && "group-hover:pr-7 has-[:focus-visible]:pr-7 has-[[data-state=open]]:pr-7",
+        )}
+      >
         <div className="min-w-0">
         {engine && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span data-testid="project-card-engine">{engine}</span>
+          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            <span data-testid="project-card-engine" className="truncate">{engine}</span>
             {forkedFrom ? (
               <>
                 <span aria-hidden>•</span>
@@ -272,12 +278,16 @@ export function Book({
           </div>
         )}
         {date && (
-          <div data-testid="project-card-date" className="mt-0.5 text-xs text-muted-foreground">
+          <div
+            data-testid="project-card-date"
+            title={typeof date === "string" ? date : undefined}
+            className="mt-0.5 truncate text-xs text-muted-foreground"
+          >
             {date}
           </div>
         )}
         </div>
-        {menu}
+        {menu ? <div className="absolute bottom-0 right-0.5">{menu}</div> : null}
       </div>
     </div>
   );

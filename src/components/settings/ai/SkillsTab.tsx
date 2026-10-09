@@ -439,7 +439,7 @@ function SkillCard({
           type="button"
           data-testid={`skill-files-toggle-${skill.id}`}
           onClick={() => onToggleFiles(skill.id)}
-          className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-[0.6875rem] text-muted-foreground hover:text-foreground"
         >
           {filesExpanded ? (
             <ChevronDown className="size-3" />
@@ -455,7 +455,7 @@ function SkillCard({
             {skill.files.map((file) => (
               <li
                 key={file.path}
-                className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground"
+                className="flex items-center justify-between gap-2 text-[0.6875rem] text-muted-foreground"
               >
                 <code className="min-w-0 truncate">{file.path}</code>
                 <span className="shrink-0">{formatBytes(file.bytes)}</span>
@@ -486,7 +486,7 @@ function SkillCard({
             ) : null}
           </div>
           {metaBits.length > 0 ? (
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
+            <p className="mt-0.5 text-[0.6875rem] text-muted-foreground">
               {metaBits.join(" · ")}
             </p>
           ) : null}
@@ -516,7 +516,7 @@ function SkillCard({
               data-testid={`skill-project-changed-${skill.id}`}
               className="flex items-center gap-1"
             >
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[0.625rem] text-muted-foreground">
                 {t(($) => $.settings.ai.skills.changedForProject)}
               </span>
               <button
@@ -527,7 +527,7 @@ function SkillCard({
                   name: skill.name,
                 })}
                 onClick={() => onResetProject(skill.id)}
-                className="rounded px-1 text-[10px] font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 disabled:opacity-50"
+                className="rounded px-1 text-[0.625rem] font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:bg-primary/10 disabled:opacity-50"
               >
                 {t(($) => $.settings.ai.skills.resetProject)}
               </button>

@@ -49,11 +49,11 @@ function DiscordLink({ onOpen }: Readonly<{ onOpen: () => void }>) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-medium">{t(($) => $.shell.about.links.discord.label)}</span>
-        <span className="block truncate text-[11px] text-muted-foreground">
+        <span className="block truncate text-[0.6875rem] text-muted-foreground">
           {t(($) => $.shell.about.links.discord.description)}
         </span>
       </span>
-      <DiscordOnlineCount online={online} className="shrink-0 text-[11px] text-muted-foreground" />
+      <DiscordOnlineCount online={online} className="shrink-0 text-[0.6875rem] text-muted-foreground" />
       <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
     </button>
   );
@@ -124,7 +124,7 @@ export function AboutModal({ open: isOpen, onClose }: Readonly<{ open: boolean; 
       </section>
 
       <section className="border-t px-4 py-4">
-        <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <p className="px-2 pb-2 text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           {t(($) => $.shell.about.connect)}
         </p>
         <div className="grid gap-1 sm:grid-cols-2">
@@ -141,7 +141,7 @@ export function AboutModal({ open: isOpen, onClose }: Readonly<{ open: boolean; 
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium">{label()}</span>
-                <span className="block truncate text-[11px] text-muted-foreground">
+                <span className="block truncate text-[0.6875rem] text-muted-foreground">
                   {description()}
                 </span>
               </span>

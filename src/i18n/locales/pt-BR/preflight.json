@@ -623,7 +623,7 @@
     "title": "Pré-verificação",
     "readerDisabled": "Compile e rode antes uma verificação de saída",
     "readerEnabled": "Abrir o texto extraído do PDF",
-    "readerButton": "Mostrar o que o leitor vê",
+    "readerButton": "Leitor de tela",
     "aboutLabel": "Sobre a pré-verificação",
     "aboutTitle": "O que a pré-verificação confere",
     "aboutIntro": "A pré-verificação lê o código do projeto, o log do compilador e o PDF atual. Ligue só as verificações que fazem sentido para este documento.",

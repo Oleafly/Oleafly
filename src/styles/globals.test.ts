@@ -108,20 +108,17 @@ describe("resizable panels", () => {
   });
 });
 
-describe("Zen mode centered editor", () => {
-  const rule = /\[data-zen-centered="true"\] \.cm-editor \.cm-scroller\s*\{([^}]*)\}/u.exec(styles)?.[1] ?? "";
-
-  it("centers the text column by padding the editor scroller on both sides", () => {
-    expect(rule).toMatch(/padding-inline:\s*max\(0px,\s*calc\(\(100% - var\(--zen-column-width, 50rem\)\) \/ 2\)\)/u);
+describe("app font", () => {
+  it("leads every interface font stack with the chosen app font", () => {
+    const stacks = [...styles.matchAll(/--font-sans:\s*([^;]+);/gu)].map(([, stack]) => stack);
+    expect(stacks).toHaveLength(5);
+    for (const stack of stacks) expect(stack.startsWith('var(--app-font, "Geist"), ')).toBe(true);
   });
+});
 
-  it("uses no outline, ring or shadow ring", () => {
-    expect(rule).not.toMatch(/outline|ring|box-shadow/u);
-  });
-
-  it("keeps the global focus reset last", () => {
-    const reset = styles.lastIndexOf("outline: none !important");
-    expect(reset).toBeGreaterThan(styles.indexOf('[data-zen-centered="true"]'));
+describe("Zen mode editor width", () => {
+  it("never narrows the editor to a centered column", () => {
+    expect(styles).not.toMatch(/\[data-zen[^\]]*\][^{]*\.cm-(scroller|content)[^{]*\{[^}]*(padding-inline|max-width)/u);
   });
 });
 
@@ -169,7 +166,7 @@ describe("text selection policy", () => {
     const plain = styles.match(/(?:^|[^-])user-select:\s*[a-z]+/gu) ?? [];
     const prefixed = styles.match(/-webkit-user-select:\s*[a-z]+/gu) ?? [];
     expect(plain.length).toBeGreaterThan(0);
-    expect(prefixed.length).toBe(plain.length);
+    expect(prefixed).toHaveLength(plain.length);
   });
 
   it("shows the arrow over interface text and the I-beam only where text can be selected", () => {

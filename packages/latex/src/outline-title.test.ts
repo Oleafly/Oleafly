@@ -51,6 +51,67 @@ describe("renderLatexOutlineTitle", () => {
     expect(renderLatexOutlineTitle("\\unknown{kept}")).toBe("\\unknown{kept}");
   });
 
+  it("strips a text command only by its whole name", () => {
+    const names = [
+      "MakeLowercase",
+      "MakeTextLowercase",
+      "MakeTextUppercase",
+      "MakeUppercase",
+      "bm",
+      "boldsymbol",
+      "mbox",
+      "pmb",
+      "text",
+      "textmd",
+      "textsc",
+      "textsl",
+      "textup",
+      "uline",
+      "underline",
+    ];
+    for (const name of names) {
+      expect(renderLatexOutlineTitle(`A \\${name} {kept} B`)).toBe("A kept B");
+    }
+    expect(renderLatexOutlineTitle(String.raw`\textbfx{kept}`)).toBe(String.raw`\textbfx{kept}`);
+    expect(renderLatexOutlineTitle(String.raw`\textbf@{kept}`)).toBe(String.raw`\textbf@{kept}`);
+    expect(renderLatexOutlineTitle(String.raw`\emphé{kept}`)).toBe(String.raw`\emphé{kept}`);
+    expect(renderLatexOutlineTitle(String.raw`\unknown{a \emph{b}} \emph{c}`)).toBe(String.raw`\unknown{a b} c`);
+  });
+
+  it("drops a font switch only by its whole name", () => {
+    const names = [
+      "bfseries",
+      "em",
+      "footnotesize",
+      "Huge",
+      "huge",
+      "itshape",
+      "LARGE",
+      "Large",
+      "large",
+      "mdseries",
+      "normalfont",
+      "normalsize",
+      "rmfamily",
+      "scriptsize",
+      "scshape",
+      "selectfont",
+      "sffamily",
+      "slshape",
+      "small",
+      "tiny",
+      "ttfamily",
+      "upshape",
+    ];
+    for (const name of names) {
+      expect(renderLatexOutlineTitle(`A \\${name}   B`)).toBe("A B");
+    }
+    expect(renderLatexOutlineTitle(String.raw`A \emx B`)).toBe(String.raw`A \emx B`);
+    expect(renderLatexOutlineTitle(String.raw`A \em@ B`)).toBe(String.raw`A \em@ B`);
+    expect(renderLatexOutlineTitle(String.raw`A \emé B`)).toBe(String.raw`A \emé B`);
+    expect(renderLatexOutlineTitle(String.raw`A \unknown \em B`)).toBe(String.raw`A \unknown B`);
+  });
+
   it("unwraps an old style font switch group", () => {
     expect(renderLatexOutlineTitle("{\\bf bold} tail")).toBe("bold tail");
     expect(renderLatexOutlineTitle("{\\it   spaced}")).toBe("spaced");

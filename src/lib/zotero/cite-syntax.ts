@@ -15,7 +15,7 @@ export interface CiteInsertOptions {
 }
 
 const WINDOW = 600;
-const LATEX_ARGUMENT = /\\([A-Za-z]*cite[A-Za-z]*)\*?\s*(?:\[[^\]\n]*\]\s*){0,2}\{([^{}]*)$/i;
+const LATEX_ARGUMENT = /\\([a-z]*cite[a-z]*)\*?\s*(?:\[[^\]\n]*\]\s*){0,2}\{([^{}]*)$/i;
 const LATEX_PROSE = /(?:^|[\s([{~,;])@((?:[\p{L}\p{M}\p{N}_:.\-+/']+(?: [\p{L}\p{M}\p{N}_:.\-+/']+){0,5} ?)?)$/u;
 const TYPST_ANGLE = /#cite\s*\(\s*<([\p{L}\p{M}\p{N}_:.\-+/]*)$/u;
 const TYPST_STRING = /#cite\s*\(\s*label\s*\(\s*"([^"\n]*)$/u;

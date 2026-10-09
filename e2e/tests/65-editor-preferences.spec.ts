@@ -544,6 +544,111 @@ test("tab size, line wrapping and line height follow their settings", async ({
   await chooseEditorSetting(tauriPage, "settings-editor-tab-size-trigger", "4");
 });
 
+interface CaretLook {
+  lineRatio: number;
+  width: string;
+  color: string;
+}
+
+async function caretLook(page: Page): Promise<CaretLook | null> {
+  return page.evaluate<CaretLook | null>(
+    `(() => {
+      const line = document.querySelector('.cm-line');
+      const cursor = document.querySelector('.cm-cursor-primary, .cm-cursor');
+      if (!line || !cursor) return null;
+      const style = getComputedStyle(line);
+      const caret = getComputedStyle(cursor);
+      return {
+        lineRatio: Number.parseFloat(style.lineHeight) / Number.parseFloat(style.fontSize),
+        width: caret.borderLeftWidth,
+        color: caret.borderLeftColor,
+      };
+    })()`,
+  );
+}
+
+async function setEditorLook(page: Page, script: string) {
+  await page.evaluate(
+    `import("/src/store/settings.ts").then(({ useSettingsStore }) => {
+      const s = useSettingsStore.getState();
+      ${script}
+      return 1;
+    })`,
+  );
+}
+
+test("a custom line height, a wider cursor and per-theme cursor colors reach the editor", async ({
+  tauriPage,
+}) => {
+  test.setTimeout(120_000);
+  await openPrefsProject(tauriPage);
+  await setEditorLook(
+    tauriPage,
+    `s.setEditorTheme("system");
+    s.setEditorLineHeight("custom");
+    s.setEditorCustomLineHeight(2.5);
+    s.setEditorCursorWidth(3);
+    s.setEditorCursorColor("light", "#ff8800");
+    s.setEditorCursorColor("dark", "#00aaff");`,
+  );
+  await caretToEnd(tauriPage);
+  const dark = await tauriPage.evaluate<boolean>(`document.documentElement.classList.contains("dark")`);
+  try {
+    await expect
+      .poll(async () => await caretLook(tauriPage), { timeout: 15_000 })
+      .toMatchObject({ width: "3px", color: dark ? "rgb(0, 170, 255)" : "rgb(255, 136, 0)" });
+    expect((await caretLook(tauriPage))?.lineRatio).toBeCloseTo(2.5, 1);
+
+    await setEditorLook(tauriPage, `s.setEditorTheme("dracula");`);
+    await caretToEnd(tauriPage);
+    await expect
+      .poll(async () => (await caretLook(tauriPage))?.color, { timeout: 10_000 })
+      .toBe("rgb(0, 170, 255)");
+  } finally {
+    await setEditorLook(
+      tauriPage,
+      `s.setEditorTheme("system");
+      s.setEditorLineHeight("normal");
+      s.setEditorCursorWidth(1);
+      s.setEditorCursorColor("light", "");
+      s.setEditorCursorColor("dark", "");`,
+    );
+  }
+});
+
+test("letter spacing and a custom font size reach the editor text", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await openPrefsProject(tauriPage);
+  await setEditorLook(
+    tauriPage,
+    `s.setEditorLetterSpacing("custom");
+    s.setEditorCustomLetterSpacing(1.5);
+    s.setEditorFontSize(26);`,
+  );
+  try {
+    await expect
+      .poll(
+        async () =>
+          await tauriPage.evaluate<{ spacing: string; size: string } | null>(
+            `(() => {
+              const content = document.querySelector('.cm-content');
+              if (!content) return null;
+              const style = getComputedStyle(content);
+              return { spacing: style.letterSpacing, size: style.fontSize };
+            })()`,
+          ),
+        { timeout: 15_000 },
+      )
+      .toEqual({ spacing: "1.5px", size: "26px" });
+  } finally {
+    await setEditorLook(
+      tauriPage,
+      `s.setEditorLetterSpacing("normal");
+      s.setEditorFontSize(13);`,
+    );
+  }
+});
+
 test("the default editor keys run their commands", async ({ tauriPage }) => {
   test.setTimeout(240_000);
   await openPrefsProject(tauriPage);

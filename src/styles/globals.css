@@ -328,6 +328,7 @@
   font-size: 0.9375rem;
   line-height: 1.7;
   color: var(--foreground);
+  caret-color: var(--cm-cursor-custom, auto);
 }
 /* Tables and images inserted from the Markdown toolbar in Visual mode. */
 .wysiwyg-content .ProseMirror table {
@@ -660,7 +661,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--app-font, "Geist"), "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
 }
 
@@ -676,21 +677,27 @@
   :root {
     --app-surface: color-mix(in srgb, var(--background) 32%, transparent);
     --rail: color-mix(in srgb, var(--muted) 30%, var(--background));
+    --font-sans-default: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+    --cm-cursor-custom: var(--cm-cursor-custom-light);
+  }
+  .dark,
+  [data-editor-theme]:not([data-editor-theme="system"]) {
+    --cm-cursor-custom: var(--cm-cursor-custom-dark);
   }
   html:lang(zh-Hans) {
-    --font-sans: "Geist", "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    --font-sans: var(--app-font, "Geist"), "Inter", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
       "Noto Sans CJK SC", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(zh-Hant) {
-    --font-sans: "Geist", "Inter", "PingFang TC", "Hiragino Sans TC", "Microsoft JhengHei",
+    --font-sans: var(--app-font, "Geist"), "Inter", "PingFang TC", "Hiragino Sans TC", "Microsoft JhengHei",
       "Noto Sans CJK TC", "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(ja) {
-    --font-sans: "Geist", "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+    --font-sans: var(--app-font, "Geist"), "Inter", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
       "Meiryo", "Noto Sans CJK JP", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
   }
   html:lang(ko) {
-    --font-sans: "Geist", "Inter", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR",
+    --font-sans: var(--app-font, "Geist"), "Inter", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans CJK KR",
       "Noto Sans KR", ui-sans-serif, system-ui, sans-serif;
   }
   body {
@@ -1602,8 +1609,9 @@ body[data-tour-active] [data-tour-hide] {
   --cm-gutter-min-width: 2em;
 }
 
-[data-zen-centered="true"] .cm-editor .cm-scroller {
-  padding-inline: max(0px, calc((100% - var(--zen-column-width, 50rem)) / 2));
+.home-grid-fade {
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 0%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 0%, #000 30%, transparent 100%);
 }
 
 /* Scrollable, but with no visible bar. The tab strip needs to scroll

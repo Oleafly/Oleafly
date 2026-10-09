@@ -533,12 +533,17 @@
         "right": "Right"
       },
       "font": {
-        "description": "Uses the system fallback when a font is not installed.",
+        "description": "Choose any font installed on your computer for menus, panels and dialogs.",
         "label": "App font"
       },
       "fontSize": {
         "description": "Scale text across menus, panels, and buttons.",
         "label": "App font size"
+      },
+      "zoom": {
+        "description": "Make everything in Oleafly bigger or smaller, the editor and PDF included.",
+        "label": "Zoom",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "System follows the operating system and changes when it does.",
@@ -633,12 +638,20 @@
         "label": "Auto-complete"
       },
       "font": {
-        "description": "Choose the monospace font used for source files.",
-        "label": "Editor font"
+        "description": "Choose any font installed on your computer for source files.",
+        "label": "Editor font",
+        "monospace": "Monospaced"
+      },
+      "useAppFont": {
+        "description": "The editor follows the App font and App font size.",
+        "disabledHint": "Turn off Use the app font to change this.",
+        "label": "Use the app font"
       },
       "fontSize": {
         "description": "Set the source editor's text size.",
-        "label": "Editor font size"
+        "label": "Editor font size",
+        "custom": "Custom",
+        "customLabel": "Custom editor font size in pixels"
       },
       "ghostCompletion": {
         "description": "Show the likely completion after the cursor. Press Tab to accept it.",
@@ -671,8 +684,34 @@
         "options": {
           "compact": "Compact",
           "normal": "Normal",
-          "wide": "Wide"
+          "wide": "Wide",
+          "custom": "Custom"
+        },
+        "customLabel": "Custom line height"
+      },
+      "letterSpacing": {
+        "customLabel": "Custom letter spacing in pixels",
+        "description": "Add space between the characters in the source editor. It also leaves more room around the cursor.",
+        "label": "Letter spacing",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Custom"
         }
+      },
+      "cursorWidth": {
+        "label": "Cursor width",
+        "description": "Set how thick the editor cursor is.",
+        "option": "{{width}}px"
+      },
+      "cursorColor": {
+        "label": "Cursor color",
+        "description": "Light and dark editor themes each have their own cursor color. Until you pick one, the theme's color is used.",
+        "light": "Light",
+        "dark": "Dark",
+        "pickLight": "Pick the cursor color for light editor themes",
+        "pickDark": "Pick the cursor color for dark editor themes",
+        "useTheme": "Use theme colors"
       },
       "lineWrap": {
         "description": "Wrap long lines instead of scrolling sideways.",
@@ -744,6 +783,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} isn't installed, so the default font is used instead.",
     "preview": {
       "darkMode": {
         "description": "Invert PDF colors by default. You can still switch colors from the preview toolbar.",
@@ -752,10 +792,6 @@
       "hoverPreview": {
         "description": "Show the last compiled page when you hover over a project in the library.",
         "label": "Preview PDF on hover"
-      },
-      "zoomShortcuts": {
-        "description": "Use Cmd/Ctrl +, -, and 0 to zoom the PDF instead of the app window.",
-        "label": "PDF zoom shortcuts"
       }
     },
     "sectionName": "Appearance",
@@ -821,10 +857,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Keep the text in a centered column while the PDF is hidden.",
-        "label": "Center the editor"
-      },
       "fullScreen": {
         "description": "Fill the screen in Zen mode and restore the window when you leave.",
         "label": "Go full screen"
@@ -833,11 +865,7 @@
         "description": "If the PDF is hidden when Zen mode starts, open it beside the editor the first time you compile.",
         "label": "Show the PDF when you compile"
       },
-      "title": "Zen mode",
-      "toggle": {
-        "description": "Hides the toolbar, sidebar, assistant and terminal so only your writing is left. Also called distraction free mode. Needs an open project.",
-        "label": "Turn on Zen mode"
-      }
+      "title": "Zen mode"
     }
   },
   "checkpoints": {
@@ -1630,6 +1658,10 @@
         "description": "Show or hide the project sidebar.",
         "label": "Toggle sidebar"
       },
+      "togglePreview": {
+        "label": "Toggle PDF preview",
+        "description": "Show or hide the PDF beside the editor, in Zen mode too."
+      },
       "toggleTerminal": {
         "description": "Show or hide the project terminal.",
         "label": "Toggle terminal"
@@ -1641,6 +1673,22 @@
       "toggleZenMode": {
         "description": "Hide everything except your writing, or bring it back.",
         "label": "Toggle Zen mode"
+      },
+      "openSettings": {
+        "label": "Open settings",
+        "description": "Open Oleafly's settings."
+      },
+      "zoomIn": {
+        "description": "Make the whole app bigger.",
+        "label": "Zoom in"
+      },
+      "zoomOut": {
+        "description": "Make the whole app smaller.",
+        "label": "Zoom out"
+      },
+      "resetZoom": {
+        "description": "Set the app back to 100%.",
+        "label": "Reset zoom"
       }
     },
     "application": {

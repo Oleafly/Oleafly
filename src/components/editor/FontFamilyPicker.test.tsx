@@ -59,12 +59,12 @@ describe("fontChoices", () => {
     ]);
   });
 
-  it("stops at eighty choices", () => {
-    const many = Array.from({ length: 90 }, (_, index) => ({
+  it("offers every matching family, however many there are", () => {
+    const many = Array.from({ length: 400 }, (_, index) => ({
       name: `Font ${index}`,
       sources: [{ kind: "system" as const, path: null }],
     }));
-    expect(fontChoices(many, ["system"], "")).toHaveLength(80);
+    expect(fontChoices(many, ["system"], "")).toHaveLength(400);
   });
 });
 
@@ -103,6 +103,10 @@ describe("FontFamilyPicker", () => {
     expect(onChange).toHaveBeenLastCalledWith("Inter");
     expect(input).toHaveValue("Inter");
     expect(input).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(input);
+    expect(
+      screen.getAllByRole("option").filter((option) => option.dataset.checked).map((option) => option.textContent),
+    ).toEqual([`Inter${en.typstFonts.sources.project}${en.typstFonts.sources.system}`]);
   });
 
   it("filters while typing and picks with the arrow keys and Enter", () => {

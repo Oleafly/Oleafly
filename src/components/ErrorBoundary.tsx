@@ -177,7 +177,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
           <div className="overflow-hidden rounded-lg border border-white/15">
             <div className="flex items-center justify-between border-b border-white/15 px-4 py-2.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+              <span className="font-mono text-[0.625rem] uppercase tracking-[0.2em] text-white/40">
                 {i18n.t(($) => $.shell.errorBoundary.stackTrace)}
               </span>
               <CopyStackButton text={`${error.name}: ${error.message}`} />
@@ -217,7 +217,7 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
 
         <div className="hidden overflow-hidden rounded-xl border border-white/15 bg-white/[0.02] lg:block">
-          <div className="flex items-center justify-between border-b border-white/15 px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.2em] text-white/40">
+          <div className="flex items-center justify-between border-b border-white/15 px-4 py-2.5 font-mono text-[0.625rem] uppercase tracking-[0.2em] text-white/40">
             <span>{i18n.t(($) => $.shell.errorBoundary.specimenViewer)}</span>
             <span className="flex items-center gap-1.5 text-red-400">
               <span className="size-1.5 rounded-full bg-red-400" />

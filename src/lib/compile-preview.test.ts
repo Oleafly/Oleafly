@@ -15,7 +15,8 @@ vi.mock("@/store/compile", async () => {
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useZenStore } from "@/store/zen";
-import { recompileWithPreview, revealPreviewForCompile } from "./compile-preview";
+import { useFilesStore } from "@/store/files";
+import { recompileWithPreview, revealPreviewForCompile, togglePreviewPane } from "./compile-preview";
 
 function startZen() {
   useZenStore.getState().begin({
@@ -38,6 +39,34 @@ beforeEach(() => {
   useZenStore.getState().end();
   usePreviewDetachedStore.setState({ projectId: null });
   useSettingsStore.setState({ viewMode: "editor", zenShowPdfOnCompile: true });
+});
+
+describe("toggling the PDF preview", () => {
+  it("shows the PDF beside the editor and hides it again", () => {
+    expect(togglePreviewPane()).toBe(true);
+    expect(useSettingsStore.getState().viewMode).toBe("split");
+    expect(togglePreviewPane()).toBe(true);
+    expect(useSettingsStore.getState().viewMode).toBe("editor");
+  });
+
+  it("goes to the editor alone from the PDF alone, and shows a hidden workspace", () => {
+    useSettingsStore.setState({ viewMode: "pdf" });
+    togglePreviewPane();
+    expect(useSettingsStore.getState().viewMode).toBe("editor");
+    useSettingsStore.setState({ viewMode: "split", workspaceHidden: true });
+    togglePreviewPane();
+    expect(useSettingsStore.getState()).toMatchObject({ viewMode: "split", workspaceHidden: false });
+  });
+
+  it("does nothing without a project or while the PDF is in its own window", () => {
+    usePreviewDetachedStore.setState({ projectId: "p1" });
+    expect(togglePreviewPane()).toBe(false);
+    expect(useSettingsStore.getState().viewMode).toBe("editor");
+    usePreviewDetachedStore.setState({ projectId: null });
+    useFilesStore.setState({ projectId: null });
+    expect(togglePreviewPane()).toBe(false);
+    useFilesStore.setState({ projectId: "p1" });
+  });
 });
 
 describe("revealing the preview for a compile", () => {

@@ -539,12 +539,17 @@
         "right": "Po prawej"
       },
       "font": {
-        "description": "Gdy krój nie jest zainstalowany, używany jest krój systemowy.",
+        "description": "Wybierz dla menu, paneli i okien dialogowych dowolny krój pisma zainstalowany na komputerze.",
         "label": "Krój pisma aplikacji"
       },
       "fontSize": {
         "description": "Skaluj tekst w menu, panelach i przyciskach.",
         "label": "Rozmiar pisma aplikacji"
+      },
+      "zoom": {
+        "description": "Powiększa lub pomniejsza cały Oleafly, razem z edytorem i PDF.",
+        "label": "Powiększenie",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "Opcja systemowa podąża za systemem operacyjnym i zmienia się razem z nim.",
@@ -643,12 +648,20 @@
         "label": "Autouzupełnianie"
       },
       "font": {
-        "description": "Wybierz krój o stałej szerokości używany w plikach źródłowych.",
-        "label": "Krój pisma edytora"
+        "description": "Wybierz dla plików źródłowych dowolny krój pisma zainstalowany na komputerze.",
+        "label": "Krój pisma edytora",
+        "monospace": "Stała szerokość"
+      },
+      "useAppFont": {
+        "description": "Edytor używa czcionki i rozmiaru pisma aplikacji.",
+        "disabledHint": "Wyłącz Użyj czcionki aplikacji, aby to zmienić.",
+        "label": "Użyj czcionki aplikacji"
       },
       "fontSize": {
         "description": "Ustal rozmiar tekstu w edytorze kodu źródłowego.",
-        "label": "Rozmiar pisma edytora"
+        "label": "Rozmiar pisma edytora",
+        "custom": "Niestandardowy",
+        "customLabel": "Niestandardowy rozmiar pisma edytora w pikselach"
       },
       "ghostCompletion": {
         "description": "Pokazuj prawdopodobne uzupełnienie za kursorem. Naciśnij Tab, aby je przyjąć.",
@@ -681,8 +694,34 @@
         "options": {
           "compact": "Zwarta",
           "normal": "Zwykła",
-          "wide": "Szeroka"
+          "wide": "Szeroka",
+          "custom": "Niestandardowa"
+        },
+        "customLabel": "Niestandardowa wysokość wiersza"
+      },
+      "letterSpacing": {
+        "customLabel": "Niestandardowy odstęp między literami w pikselach",
+        "description": "Dodaje odstęp między znakami w edytorze źródła. Zostawia też więcej miejsca wokół kursora.",
+        "label": "Odstęp między literami",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Zwykły",
+          "custom": "Niestandardowy"
         }
+      },
+      "cursorWidth": {
+        "label": "Szerokość kursora",
+        "description": "Ustaw grubość kursora edytora.",
+        "option": "{{width}} px"
+      },
+      "cursorColor": {
+        "label": "Kolor kursora",
+        "description": "Jasne i ciemne motywy edytora mają osobne kolory kursora. Dopóki nie wybierzesz koloru, używany jest kolor motywu.",
+        "light": "Jasny",
+        "dark": "Ciemny",
+        "pickLight": "Wybierz kolor kursora dla jasnych motywów edytora",
+        "pickDark": "Wybierz kolor kursora dla ciemnych motywów edytora",
+        "useTheme": "Użyj kolorów motywu"
       },
       "lineWrap": {
         "description": "Zawijaj długie wiersze zamiast przewijać w bok.",
@@ -754,6 +793,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "Czcionka {{font}} nie jest zainstalowana, więc używana jest czcionka domyślna.",
     "preview": {
       "darkMode": {
         "description": "Odwracaj kolory PDF domyślnie. Kolory nadal można przełączyć z paska narzędzi podglądu.",
@@ -762,10 +802,6 @@
       "hoverPreview": {
         "description": "Pokazuj ostatnio skompilowaną stronę po najechaniu na projekt w bibliotece.",
         "label": "Podgląd PDF po najechaniu"
-      },
-      "zoomShortcuts": {
-        "description": "Używaj Cmd/Ctrl +, - i 0 do powiększania PDF zamiast okna aplikacji.",
-        "label": "Skróty powiększania PDF"
       }
     },
     "sectionName": "Wygląd",
@@ -831,10 +867,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Utrzymuje tekst w wyśrodkowanej kolumnie, gdy PDF jest ukryty.",
-        "label": "Wyśrodkuj edytor"
-      },
       "fullScreen": {
         "description": "Wypełnia ekran w trybie Zen i przywraca okno po wyjściu.",
         "label": "Przejdź na pełny ekran"
@@ -843,11 +875,7 @@
         "description": "Jeśli PDF jest ukryty na początku trybu Zen, otwiera go obok edytora przy pierwszej kompilacji.",
         "label": "Pokaż PDF przy kompilacji"
       },
-      "title": "Tryb Zen",
-      "toggle": {
-        "description": "Ukrywa pasek narzędzi, panel boczny, asystenta i terminal, żeby został tylko tekst. Nazywany też trybem bez rozpraszaczy. Wymaga otwartego projektu.",
-        "label": "Włącz tryb Zen"
-      }
+      "title": "Tryb Zen"
     }
   },
   "checkpoints": {
@@ -1672,6 +1700,10 @@
         "description": "Pokaż albo ukryj panel boczny projektu.",
         "label": "Przełącz panel boczny"
       },
+      "togglePreview": {
+        "label": "Przełącz podgląd PDF",
+        "description": "Pokazuje lub ukrywa PDF obok edytora, także w trybie Zen."
+      },
       "toggleTerminal": {
         "description": "Pokaż albo ukryj terminal projektu.",
         "label": "Przełącz terminal"
@@ -1683,6 +1715,22 @@
       "toggleZenMode": {
         "description": "Ukryj wszystko poza tekstem albo przywróć wszystko.",
         "label": "Przełącz tryb Zen"
+      },
+      "openSettings": {
+        "label": "Otwórz ustawienia",
+        "description": "Otwórz ustawienia Oleafly."
+      },
+      "zoomIn": {
+        "description": "Powiększa całą aplikację.",
+        "label": "Powiększ"
+      },
+      "zoomOut": {
+        "description": "Pomniejsza całą aplikację.",
+        "label": "Pomniejsz"
+      },
+      "resetZoom": {
+        "description": "Przywraca aplikację do 100%.",
+        "label": "Resetuj powiększenie"
       }
     },
     "application": {

@@ -53,7 +53,7 @@ function omitTitle<T extends { title: string }>({ title: _title, ...rest }: T) {
 
 const REQUEST_TOUR_QUIT_EVENT = "oleafly:request-tour-quit";
 
-const KBD_CHIP = "h-4 min-w-4 px-1 text-[10px]";
+const KBD_CHIP = "h-4 min-w-4 px-1 text-[0.625rem]";
 
 const TOUR_OVERLAY_COLOR = "rgba(0, 0, 0, 0.72)";
 
@@ -293,7 +293,7 @@ function TourTooltip(props: Readonly<TourTooltipProps>) {
         </svg>
       ) : null}
       <div className="min-w-0 shrink-0">
-        <span className="block text-[10px] font-semibold uppercase tracking-widest text-primary">
+        <span className="block text-[0.625rem] font-semibold uppercase tracking-widest text-primary">
           {tourLabel
             ? t(($) => $.shell.tour.stepOfTour, { step: index + 1, tour: tourLabel })
             : t(($) => $.shell.tour.step, { step: index + 1 })}

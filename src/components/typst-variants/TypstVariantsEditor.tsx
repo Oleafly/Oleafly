@@ -165,7 +165,7 @@ function VariantCard({
         </Button>
       </div>
       {variant.inputs.length === 0 ? (
-        <p className="text-[11px] text-muted-foreground">{t(($) => $.editor.typstVariants.noInputs)}</p>
+        <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.editor.typstVariants.noInputs)}</p>
       ) : (
         <div className="flex flex-col gap-1.5">
           {variant.inputs.map((input) => (

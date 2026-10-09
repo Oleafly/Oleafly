@@ -177,7 +177,7 @@ function RawLogViewer({ log }: Readonly<{ log: string }>) {
     <div
       ref={hostRef}
       data-testid="compile-log-raw"
-      className="select-text border-t border-sidebar-border px-3 py-3 font-mono text-[11px] leading-relaxed"
+      className="select-text border-t border-sidebar-border px-3 py-3 font-mono text-[0.6875rem] leading-relaxed"
     />
   );
 }
@@ -296,11 +296,11 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
             )}
           />
           <span className="min-w-0 flex-1">
-            <span className="block text-[13px] font-medium leading-snug text-foreground">
+            <span className="block text-[0.8125rem] font-medium leading-snug text-foreground">
               {displayText(title)}
             </span>
             {location && (
-              <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">
+              <span className="mt-0.5 block font-mono text-[0.65625rem] text-muted-foreground">
                 {displayText(location)}
               </span>
             )}
@@ -325,7 +325,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
               type="button"
               aria-label={t(($) => $.editor.log.goToLocation)}
               onClick={() => void openErrorLocation()}
-              className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
+              className="flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-[0.6875rem] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
             >
               {t(($) => $.editor.log.open)}
               <ArrowUpRight className="size-3" />
@@ -335,7 +335,7 @@ function ErrorCard({ err, log }: Readonly<{ err: CompileError; log: string }>) {
       </div>
       {expanded && excerpt && (
         <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
-          <pre className="select-text whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+          <pre className="select-text whitespace-pre-wrap break-words p-2.5 font-mono text-[0.65625rem] leading-relaxed">
             <LogText text={excerpt} />
           </pre>
         </div>
@@ -382,7 +382,7 @@ const DiagnosticCard = memo(function DiagnosticCard({ d }: Readonly<{ d: LogDiag
           className={cn("mt-1.5 size-1.5 shrink-0 rounded-full", SEVERITY_DOT[d.severity])}
         />
         <span className="min-w-0 flex-1">
-          <span className="block whitespace-pre-wrap break-words text-[13px] font-medium leading-snug text-foreground">
+          <span className="block whitespace-pre-wrap break-words text-[0.8125rem] font-medium leading-snug text-foreground">
             {displayText(d.message)}
           </span>
           {hasLocation ? (
@@ -391,7 +391,7 @@ const DiagnosticCard = memo(function DiagnosticCard({ d }: Readonly<{ d: LogDiag
                 type="button"
                 data-tooltip={t(($) => $.editor.log.goToLocation)}
                 onClick={() => void openLocation(d.file, d.line as number)}
-                className="mt-0.5 flex items-center gap-0.5 rounded font-mono text-[10.5px] text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent/60"
+                className="mt-0.5 flex items-center gap-0.5 rounded font-mono text-[0.65625rem] text-muted-foreground transition-colors hover:text-foreground focus-visible:bg-accent/60"
               >
                 {displayText(location)}
                 <ArrowUpRight className="size-3" />
@@ -399,7 +399,7 @@ const DiagnosticCard = memo(function DiagnosticCard({ d }: Readonly<{ d: LogDiag
             </span>
           ) : (
             location && (
-              <span className="mt-0.5 block font-mono text-[10.5px] text-muted-foreground">
+              <span className="mt-0.5 block font-mono text-[0.65625rem] text-muted-foreground">
                 {displayText(location)}
               </span>
             )
@@ -408,7 +408,7 @@ const DiagnosticCard = memo(function DiagnosticCard({ d }: Readonly<{ d: LogDiag
       </div>
       {d.errorContext && (
         <div className="mx-3 mb-3 overflow-hidden rounded-md border border-sidebar-border/70 bg-background/80">
-          <pre className="select-text whitespace-pre-wrap break-words p-2.5 font-mono text-[10.5px] leading-relaxed">
+          <pre className="select-text whitespace-pre-wrap break-words p-2.5 font-mono text-[0.65625rem] leading-relaxed">
             <LogText text={d.errorContext} />
           </pre>
         </div>
@@ -480,11 +480,11 @@ function DiagnosticGroup({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[13px] font-medium text-sidebar-foreground"
+        className="flex w-full items-center gap-1.5 px-3 py-2.5 text-left text-[0.8125rem] font-medium text-sidebar-foreground"
       >
         {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
         {label}
-        <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground">
+        <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[0.65625rem] font-medium text-muted-foreground">
           {items.length}
         </span>
       </button>
@@ -508,7 +508,7 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-medium text-sidebar-foreground"
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-[0.8125rem] font-medium text-sidebar-foreground"
         >
           {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
           {t(($) => $.editor.log.rawLogs)}
@@ -516,7 +516,7 @@ function RawLogSection({ log, defaultOpen }: Readonly<{ log: string; defaultOpen
         <button
           type="button"
           onClick={() => void copy(log)}
-          className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[0.6875rem] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           {copied ? (
             <Check className="size-3 text-emerald-500" />
@@ -724,7 +724,7 @@ export function LogPane({ snapshot, onOpenLocation = openFileAndGotoLine }: Read
           <DiagnosticGroup label={t(($) => $.editor.log.typesetting)} items={groups.boxes} scrollRef={scrollBoxRef} />
           <DiagnosticGroup label={t(($) => $.editor.log.info)} items={groups.infos} scrollRef={scrollBoxRef} />
           {!log && errors.length === 0 && (
-            <p className="text-[11px] text-muted-foreground">{t(($) => $.editor.log.empty)}</p>
+            <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.editor.log.empty)}</p>
           )}
           {log && (
             <RawLogSection

@@ -530,12 +530,17 @@
         "right": "右側"
       },
       "font": {
-        "description": "字型未安裝時會改用系統備用字型。",
+        "description": "為選單、面板和對話框選擇電腦上已安裝的任何字型。",
         "label": "應用程式字型"
       },
       "fontSize": {
         "description": "縮放選單、面板與按鈕中的文字。",
         "label": "應用程式字型大小"
+      },
+      "zoom": {
+        "description": "放大或縮小整個 Oleafly，包括編輯器和 PDF。",
+        "label": "縮放",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "「系統」會跟隨作業系統，並隨它一起變更。",
@@ -628,12 +633,20 @@
         "label": "自動完成"
       },
       "font": {
-        "description": "選擇原始檔案使用的等寬字型。",
-        "label": "編輯器字型"
+        "description": "為原始檔案選擇電腦上已安裝的任何字型。",
+        "label": "編輯器字型",
+        "monospace": "等寬"
+      },
+      "useAppFont": {
+        "description": "編輯器使用應用程式的字型和字型大小。",
+        "disabledHint": "關閉「使用應用程式字型」後才能變更此項。",
+        "label": "使用應用程式字型"
       },
       "fontSize": {
         "description": "設定原始碼編輯器的文字大小。",
-        "label": "編輯器字型大小"
+        "label": "編輯器字型大小",
+        "custom": "自訂",
+        "customLabel": "自訂編輯器字型大小（像素）"
       },
       "ghostCompletion": {
         "description": "在游標後顯示可能的補完內容。按 Tab 即可接受。",
@@ -666,8 +679,34 @@
         "options": {
           "compact": "緊密",
           "normal": "標準",
-          "wide": "寬鬆"
+          "wide": "寬鬆",
+          "custom": "自訂"
+        },
+        "customLabel": "自訂行高"
+      },
+      "letterSpacing": {
+        "customLabel": "自訂字元間距（像素）",
+        "description": "在原始碼編輯器的字元之間增加間距，游標周圍也會更寬鬆。",
+        "label": "字元間距",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "標準",
+          "custom": "自訂"
         }
+      },
+      "cursorWidth": {
+        "label": "游標寬度",
+        "description": "設定編輯器游標的粗細。",
+        "option": "{{width}}px"
+      },
+      "cursorColor": {
+        "label": "游標顏色",
+        "description": "淺色和深色編輯器主題各有自己的游標顏色。選擇之前使用主題的顏色。",
+        "light": "淺色",
+        "dark": "深色",
+        "pickLight": "選擇淺色編輯器主題的游標顏色",
+        "pickDark": "選擇深色編輯器主題的游標顏色",
+        "useTheme": "使用主題顏色"
       },
       "lineWrap": {
         "description": "讓長行自動換行，不必左右捲動。",
@@ -739,6 +778,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "未安裝 {{font}}，因此使用預設字型。",
     "preview": {
       "darkMode": {
         "description": "預設反轉 PDF 的顏色。你仍可從預覽工具列切換顏色。",
@@ -747,10 +787,6 @@
       "hoverPreview": {
         "description": "在專案庫中把滑鼠停在專案上時，顯示上次編譯的頁面。",
         "label": "滑鼠停留時預覽 PDF"
-      },
-      "zoomShortcuts": {
-        "description": "使用 Cmd/Ctrl +、- 和 0 縮放 PDF，而不是縮放應用程式視窗。",
-        "label": "PDF 縮放快捷鍵"
       }
     },
     "sectionName": "外觀",
@@ -816,10 +852,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "PDF 隱藏時，讓文字保持在置中的單一欄位。",
-        "label": "置中編輯器"
-      },
       "fullScreen": {
         "description": "在禪模式中填滿螢幕，離開時還原視窗。",
         "label": "進入全螢幕"
@@ -828,11 +860,7 @@
         "description": "如果禪模式開始時 PDF 是隱藏的，會在第一次編譯時於編輯器旁開啟。",
         "label": "編譯時顯示 PDF"
       },
-      "title": "禪模式",
-      "toggle": {
-        "description": "隱藏工具列、側邊欄、助理和終端機，只留下你的文字。也稱為無干擾模式。需要先開啟一個專案。",
-        "label": "開啟禪模式"
-      }
+      "title": "禪模式"
     }
   },
   "checkpoints": {
@@ -1609,6 +1637,10 @@
         "description": "顯示或隱藏專案側邊欄。",
         "label": "切換側邊欄"
       },
+      "togglePreview": {
+        "label": "切換 PDF 預覽",
+        "description": "在編輯器旁顯示或隱藏 PDF，禪模式下也可用。"
+      },
       "toggleTerminal": {
         "description": "顯示或隱藏專案終端機。",
         "label": "切換終端機"
@@ -1620,6 +1652,22 @@
       "toggleZenMode": {
         "description": "隱藏寫作內容以外的一切，或將其還原。",
         "label": "切換禪模式"
+      },
+      "openSettings": {
+        "label": "開啟設定",
+        "description": "開啟 Oleafly 設定。"
+      },
+      "zoomIn": {
+        "description": "放大整個應用程式。",
+        "label": "放大"
+      },
+      "zoomOut": {
+        "description": "縮小整個應用程式。",
+        "label": "縮小"
+      },
+      "resetZoom": {
+        "description": "將應用程式恢復為 100%。",
+        "label": "重設縮放"
       }
     },
     "application": {

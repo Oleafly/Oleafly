@@ -536,12 +536,17 @@
         "right": "À direita"
       },
       "font": {
-        "description": "Usa a fonte alternativa do sistema quando a escolhida não está instalada.",
+        "description": "Escolha para menus, painéis e caixas de diálogo qualquer fonte instalada no seu computador.",
         "label": "Fonte do aplicativo"
       },
       "fontSize": {
         "description": "Ajusta o tamanho do texto em menus, painéis e botões.",
         "label": "Tamanho da fonte do aplicativo"
+      },
+      "zoom": {
+        "description": "Deixa tudo no Oleafly maior ou menor, incluindo o editor e o PDF.",
+        "label": "Zoom",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "A opção Sistema segue o sistema operacional e muda junto com ele.",
@@ -638,12 +643,20 @@
         "label": "Autocompletar"
       },
       "font": {
-        "description": "Escolha a fonte monoespaçada usada nos arquivos de código.",
-        "label": "Fonte do editor"
+        "description": "Escolha para os arquivos de código qualquer fonte instalada no seu computador.",
+        "label": "Fonte do editor",
+        "monospace": "Monoespaçada"
+      },
+      "useAppFont": {
+        "description": "O editor segue a fonte e o tamanho da fonte do app.",
+        "disabledHint": "Desative Usar a fonte do app para mudar isto.",
+        "label": "Usar a fonte do app"
       },
       "fontSize": {
         "description": "Define o tamanho do texto no editor de código.",
-        "label": "Tamanho da fonte do editor"
+        "label": "Tamanho da fonte do editor",
+        "custom": "Personalizado",
+        "customLabel": "Tamanho da fonte do editor personalizado, em pixels"
       },
       "ghostCompletion": {
         "description": "Mostra a continuação provável depois do cursor. Pressione Tab para aceitar.",
@@ -676,8 +689,34 @@
         "options": {
           "compact": "Compacta",
           "normal": "Normal",
-          "wide": "Ampla"
+          "wide": "Ampla",
+          "custom": "Personalizada"
+        },
+        "customLabel": "Altura da linha personalizada"
+      },
+      "letterSpacing": {
+        "customLabel": "Espaçamento entre letras personalizado, em pixels",
+        "description": "Adiciona espaço entre os caracteres no editor de código. Também deixa mais espaço em volta do cursor.",
+        "label": "Espaçamento entre letras",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Personalizado"
         }
+      },
+      "cursorWidth": {
+        "label": "Largura do cursor",
+        "description": "Define a espessura do cursor do editor.",
+        "option": "{{width}}px"
+      },
+      "cursorColor": {
+        "label": "Cor do cursor",
+        "description": "Os temas claros e escuros do editor têm cada um sua própria cor de cursor. Até você escolher uma, a cor do tema é usada.",
+        "light": "Claro",
+        "dark": "Escuro",
+        "pickLight": "Escolher a cor do cursor para os temas claros do editor",
+        "pickDark": "Escolher a cor do cursor para os temas escuros do editor",
+        "useTheme": "Usar as cores do tema"
       },
       "lineWrap": {
         "description": "Quebra as linhas longas em vez de rolar para o lado.",
@@ -749,6 +788,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} não está instalada, então a fonte padrão é usada.",
     "preview": {
       "darkMode": {
         "description": "Inverte as cores do PDF por padrão. Você ainda pode trocar as cores pela barra de ferramentas da visualização.",
@@ -757,10 +797,6 @@
       "hoverPreview": {
         "description": "Mostra a última página compilada quando você passa o mouse sobre um projeto na biblioteca.",
         "label": "Prévia do PDF ao passar o mouse"
-      },
-      "zoomShortcuts": {
-        "description": "Usa Cmd/Ctrl +, - e 0 para dar zoom no PDF em vez de na janela do aplicativo.",
-        "label": "Atalhos de zoom do PDF"
       }
     },
     "sectionName": "Aparência",
@@ -826,10 +862,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Mantém o texto numa coluna centralizada enquanto o PDF está oculto.",
-        "label": "Centralizar o editor"
-      },
       "fullScreen": {
         "description": "Preenche a tela no modo Zen e restaura a janela ao sair.",
         "label": "Entrar em tela cheia"
@@ -838,11 +870,7 @@
         "description": "Se o PDF estiver oculto quando o modo Zen começar, abre-o ao lado do editor na primeira compilação.",
         "label": "Mostrar o PDF ao compilar"
       },
-      "title": "Modo Zen",
-      "toggle": {
-        "description": "Oculta a barra de ferramentas, a barra lateral, o assistente e o terminal para deixar só o seu texto. Também chamado de modo sem distrações. Exige um projeto aberto.",
-        "label": "Ativar o modo Zen"
-      }
+      "title": "Modo Zen"
     }
   },
   "checkpoints": {
@@ -1651,6 +1679,10 @@
         "description": "Mostre ou oculte a barra lateral do projeto.",
         "label": "Alternar a barra lateral"
       },
+      "togglePreview": {
+        "label": "Alternar a prévia do PDF",
+        "description": "Mostra ou oculta o PDF ao lado do editor, também no modo Zen."
+      },
       "toggleTerminal": {
         "description": "Mostre ou oculte o terminal do projeto.",
         "label": "Alternar o terminal"
@@ -1662,6 +1694,22 @@
       "toggleZenMode": {
         "description": "Oculte tudo, menos o seu texto, ou traga tudo de volta.",
         "label": "Alternar o modo Zen"
+      },
+      "openSettings": {
+        "label": "Abrir as configurações",
+        "description": "Abre as configurações do Oleafly."
+      },
+      "zoomIn": {
+        "description": "Aumenta o app inteiro.",
+        "label": "Aumentar o zoom"
+      },
+      "zoomOut": {
+        "description": "Diminui o app inteiro.",
+        "label": "Diminuir o zoom"
+      },
+      "resetZoom": {
+        "description": "Volta o app para 100%.",
+        "label": "Redefinir zoom"
       }
     },
     "application": {

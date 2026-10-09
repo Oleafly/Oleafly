@@ -51,7 +51,7 @@ const APP_SETTING = "__app__";
 
 function SectionLabel({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <p className="px-0.5 pb-1 pt-3 text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground/70 first:pt-0">
+    <p className="px-0.5 pb-1 pt-3 text-[0.625rem] font-medium uppercase tracking-[0.08em] text-muted-foreground/70 first:pt-0">
       {children}
     </p>
   );
@@ -111,7 +111,7 @@ function useEffectiveDictionaryLocale(): string {
 
 function ProofreadingNote({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
+    <p className="pt-1 text-[0.625rem] leading-relaxed text-muted-foreground/70">
       {children}
     </p>
   );
@@ -287,7 +287,7 @@ function LanguageRuntimeNotice() {
   if (!unavailable) return null;
   return (
     <div data-testid="language-runtime-unavailable" className="space-y-1.5 pt-3">
-      <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+      <p className="text-[0.625rem] leading-relaxed text-muted-foreground/70">
         {t(($) => $.intelligence.languageService.runtimeUnavailable)}
       </p>
       <Button
@@ -309,7 +309,7 @@ function LanguageSetupNotice() {
   if (!openSetup) return null;
   return (
     <div data-testid="language-service-setup" className="space-y-1.5 pt-3">
-      <p className="text-[10px] leading-relaxed text-muted-foreground/70">
+      <p className="text-[0.625rem] leading-relaxed text-muted-foreground/70">
         {t(($) => $.intelligence.languageService.setupRequired)}
       </p>
       <Button
@@ -415,7 +415,7 @@ function ProjectSpellLanguage() {
           })}
         </SelectContent>
       </Select>
-      <p className="pt-1 text-[10px] leading-relaxed text-muted-foreground/70">
+      <p className="pt-1 text-[0.625rem] leading-relaxed text-muted-foreground/70">
         {hint}
       </p>
     </>
@@ -499,7 +499,7 @@ export function ProjectInfoContent({
             ) : null}
           </div>
           {snapshot.unreadable.length > 0 ? (
-            <p className="pt-2 text-[10px] leading-relaxed text-amber-600 dark:text-amber-400">
+            <p className="pt-2 text-[0.625rem] leading-relaxed text-amber-600 dark:text-amber-400">
               {t(($) => $.editor.projectInfo.unreadable, {
                 count: snapshot.unreadable.length,
               })}

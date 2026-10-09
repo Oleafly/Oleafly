@@ -244,7 +244,7 @@ function ProfileRules() {
               <p className="text-xs text-muted-foreground">
                 {t(($) => $.settings.proofreading.profileRules.reasons[rule])}
               </p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+              <p className="mt-0.5 text-[0.6875rem] text-muted-foreground/80">
                 {t(($) => $.settings.proofreading.profileRules.example, { example })}
               </p>
             </div>
@@ -339,7 +339,7 @@ function TurnedOffFindings({
             </span>
             <Badge
               variant="primaryGhost"
-              className="text-[10px] tabular-nums"
+              className="text-[0.625rem] tabular-nums"
               data-testid="dictionary-suppressed-count"
               title={t(($) => $.settings.proofreading.dismissed.countTitle, {
                 dismissed: formatNumber(suppressedCount),
@@ -500,7 +500,7 @@ export function ProofreadingDictionarySection() {
             {t(($) => $.settings.proofreading.tabs.global)}
             <Badge
               variant="default"
-              className="min-w-5 px-1.5 text-[10px] tabular-nums"
+              className="min-w-5 px-1.5 text-[0.625rem] tabular-nums"
             >
               {formatNumber(global.length)}
             </Badge>
@@ -513,7 +513,7 @@ export function ProofreadingDictionarySection() {
             {t(($) => $.settings.proofreading.tabs.projects)}
             <Badge
               variant="default"
-              className="min-w-5 px-1.5 text-[10px] tabular-nums"
+              className="min-w-5 px-1.5 text-[0.625rem] tabular-nums"
             >
               {formatNumber(projectEntries.length)}
             </Badge>
@@ -531,7 +531,7 @@ export function ProofreadingDictionarySection() {
               </span>
               <Badge
                 variant="primaryGhost"
-                className="text-[10px] tabular-nums"
+                className="text-[0.625rem] tabular-nums"
               >
                 {formatNumber(global.length)}
                 {" / "}
@@ -578,7 +578,7 @@ export function ProofreadingDictionarySection() {
                     </h4>
                     <Badge
                       variant="primaryGhost"
-                      className="mt-1 text-[10px] tabular-nums"
+                      className="mt-1 text-[0.625rem] tabular-nums"
                     >
                       {t(($) => $.settings.proofreading.projects.terms, {
                         count: words.length,

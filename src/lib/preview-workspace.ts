@@ -4,6 +4,7 @@ import { useCompileStore, type CompileState, type LivePreviewState } from "@/sto
 import { engineSwitchToastKey, useFilesStore } from "@/store/files";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useSettingsStore } from "@/store/settings";
+import { useTourStore } from "@/store/tours";
 import { i18n } from "@/i18n";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
@@ -34,7 +35,7 @@ export interface PreviewWorkspaceSnapshot extends
 
 export type PreviewWorkspaceCommand =
   | { action: "compile"; fromScratch?: boolean }
-  | { action: "stop" | "ready" | "pdf-settings" | "refresh-files" | "ask-ai" | "trust-folder" }
+  | { action: "stop" | "ready" | "pdf-settings" | "settings" | "refresh-files" | "ask-ai" | "trust-folder" }
   | { action: "auto-compile" | "syntax-check" | "stop-on-error"; value: boolean }
   | { action: "compile-mode"; value: "normal" | "fast" }
   | { action: "engine"; engine: string; flavor?: TexFlavor | null }
@@ -127,6 +128,13 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
         case "trust-folder": await useFolderAccessStore.getState().grant("folder"); break;
         case "pdf-settings": {
           useSettingsStore.getState().openSettingsAt("appearance", "pdf");
+          const { getCurrentWindow } = await import("@tauri-apps/api/window");
+          await getCurrentWindow().setFocus();
+          break;
+        }
+        case "settings": {
+          if (useTourStore.getState().activeTourId) break;
+          useSettingsStore.getState().setSettingsOpen(true);
           const { getCurrentWindow } = await import("@tauri-apps/api/window");
           await getCurrentWindow().setFocus();
           break;

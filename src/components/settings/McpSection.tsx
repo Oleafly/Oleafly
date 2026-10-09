@@ -161,7 +161,7 @@ function highlightSnippet(source: string, lang: SnippetLang): ReactNode[] {
 
 function FileName({ children }: Readonly<{ children: string }>) {
   return (
-    <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px] font-normal text-foreground">
+    <code className="rounded bg-muted px-1 py-0.5 font-mono text-[0.6875rem] font-normal text-foreground">
       {children}
     </code>
   );
@@ -198,7 +198,7 @@ function Snippet({
         <p className="text-xs font-medium text-foreground">{title}</p>
         <CopyBtn text={copyText} />
       </div>
-      <pre data-select-all-scope className="overflow-x-auto rounded-md border bg-muted/40 p-2.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap break-all">
+      <pre data-select-all-scope className="overflow-x-auto rounded-md border bg-muted/40 p-2.5 font-mono text-[0.6875rem] leading-relaxed whitespace-pre-wrap break-all">
         <code>{highlighted}</code>
       </pre>
     </div>
@@ -447,7 +447,7 @@ export function McpSection() {
   const renderMcpTokenCard = () => (
     <div className="space-y-2 rounded-lg border bg-card p-3">
       <div className="text-xs font-medium">{t(($) => $.settings.mcp.section.token.label)}</div>
-      <code className="block w-full truncate rounded bg-muted px-2 py-1.5 text-[11px] font-mono">
+      <code className="block w-full truncate rounded bg-muted px-2 py-1.5 text-[0.6875rem] font-mono">
         {status?.running
           ? shownToken
           : t(($) => $.settings.mcp.section.token.enableToView)}
@@ -512,7 +512,7 @@ export function McpSection() {
           </div>
         )}
       </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.settings.mcp.section.token.help)}
       </p>
     </div>
@@ -717,7 +717,7 @@ export function McpSection() {
         </Tabs>
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.settings.mcp.section.footer)}
       </p>
 

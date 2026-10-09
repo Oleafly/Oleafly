@@ -530,12 +530,17 @@
         "right": "右侧"
       },
       "font": {
-        "description": "未安装某字体时使用系统回退字体。",
+        "description": "为菜单、面板和对话框选择电脑上已安装的任意字体。",
         "label": "应用字体"
       },
       "fontSize": {
         "description": "调整菜单、面板和按钮中的文字大小。",
         "label": "应用字体大小"
+      },
+      "zoom": {
+        "description": "放大或缩小整个 Oleafly，包括编辑器和 PDF。",
+        "label": "缩放",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "“跟随系统”会随操作系统外观的变化自动切换。",
@@ -628,12 +633,20 @@
         "label": "自动补全"
       },
       "font": {
-        "description": "选择源码文件使用的等宽字体。",
-        "label": "编辑器字体"
+        "description": "为源码文件选择电脑上已安装的任意字体。",
+        "label": "编辑器字体",
+        "monospace": "等宽"
+      },
+      "useAppFont": {
+        "description": "编辑器使用应用的字体和字号。",
+        "disabledHint": "关闭“使用应用字体”后才能更改此项。",
+        "label": "使用应用字体"
       },
       "fontSize": {
         "description": "设置源码编辑器的文字大小。",
-        "label": "编辑器字号"
+        "label": "编辑器字号",
+        "custom": "自定义",
+        "customLabel": "自定义编辑器字号（像素）"
       },
       "ghostCompletion": {
         "description": "在光标后显示可能的补全建议，按 Tab 即可接受。",
@@ -666,8 +679,34 @@
         "options": {
           "compact": "紧凑",
           "normal": "标准",
-          "wide": "宽松"
+          "wide": "宽松",
+          "custom": "自定义"
+        },
+        "customLabel": "自定义行高"
+      },
+      "letterSpacing": {
+        "customLabel": "自定义字间距（像素）",
+        "description": "在源代码编辑器的字符之间增加间距，光标周围也会更宽松。",
+        "label": "字间距",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "标准",
+          "custom": "自定义"
         }
+      },
+      "cursorWidth": {
+        "label": "光标宽度",
+        "description": "设置编辑器光标的粗细。",
+        "option": "{{width}}px"
+      },
+      "cursorColor": {
+        "label": "光标颜色",
+        "description": "浅色和深色编辑器主题各有自己的光标颜色。选择之前使用主题的颜色。",
+        "light": "浅色",
+        "dark": "深色",
+        "pickLight": "选择浅色编辑器主题的光标颜色",
+        "pickDark": "选择深色编辑器主题的光标颜色",
+        "useTheme": "使用主题颜色"
       },
       "lineWrap": {
         "description": "自动换行显示长行，而不是左右滚动。",
@@ -739,6 +778,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "未安装 {{font}}，因此使用默认字体。",
     "preview": {
       "darkMode": {
         "description": "默认反转 PDF 颜色。你仍可在预览工具栏中切换颜色。",
@@ -747,10 +787,6 @@
       "hoverPreview": {
         "description": "在库中将鼠标悬停在项目上时，显示最后编译的页面。",
         "label": "悬停时预览 PDF"
-      },
-      "zoomShortcuts": {
-        "description": "使用 Cmd/Ctrl +、- 和 0 来缩放 PDF，而非应用窗口。",
-        "label": "PDF 缩放快捷键"
       }
     },
     "sectionName": "外观",
@@ -816,10 +852,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "PDF 隐藏时，让文字保持在居中的一栏里。",
-        "label": "居中编辑器"
-      },
       "fullScreen": {
         "description": "进入禅模式时填满屏幕，退出时恢复窗口。",
         "label": "进入全屏"
@@ -828,11 +860,7 @@
         "description": "如果禅模式开始时 PDF 是隐藏的，则在第一次编译时把它打开在编辑器旁边。",
         "label": "编译时显示 PDF"
       },
-      "title": "禅模式",
-      "toggle": {
-        "description": "隐藏工具栏、侧边栏、助手和终端，只留下你的文字。也称为无干扰模式。需要先打开一个项目。",
-        "label": "开启禅模式"
-      }
+      "title": "禅模式"
     }
   },
   "checkpoints": {
@@ -1609,6 +1637,10 @@
         "description": "显示或隐藏项目侧边栏。",
         "label": "切换侧边栏"
       },
+      "togglePreview": {
+        "label": "切换 PDF 预览",
+        "description": "在编辑器旁显示或隐藏 PDF，禅模式下也可用。"
+      },
       "toggleTerminal": {
         "description": "显示或隐藏项目终端。",
         "label": "切换终端"
@@ -1620,6 +1652,22 @@
       "toggleZenMode": {
         "description": "隐藏写作内容以外的一切，或将其恢复。",
         "label": "切换禅模式"
+      },
+      "openSettings": {
+        "label": "打开设置",
+        "description": "打开 Oleafly 设置。"
+      },
+      "zoomIn": {
+        "description": "放大整个应用。",
+        "label": "放大"
+      },
+      "zoomOut": {
+        "description": "缩小整个应用。",
+        "label": "缩小"
+      },
+      "resetZoom": {
+        "description": "将应用恢复为 100%。",
+        "label": "重置缩放"
       }
     },
     "application": {

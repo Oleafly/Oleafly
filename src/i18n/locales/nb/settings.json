@@ -533,12 +533,17 @@
         "right": "Høyre"
       },
       "font": {
-        "description": "Bruker systemets reserveskrift når en skrift ikke er installert.",
+        "description": "Velg hvilken som helst skrift som er installert på datamaskinen, for menyer, paneler og dialogbokser.",
         "label": "Appskrift"
       },
       "fontSize": {
         "description": "Skaler teksten i menyer, paneler og knapper.",
         "label": "Skriftstørrelse i appen"
+      },
+      "zoom": {
+        "description": "Gjør alt i Oleafly større eller mindre, også editoren og PDF-en.",
+        "label": "Zoom",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "System følger operativsystemet og endrer seg når det gjør det.",
@@ -633,12 +638,20 @@
         "label": "Autofullføring"
       },
       "font": {
-        "description": "Velg skriften med fast bredde som brukes i kildefiler.",
-        "label": "Editorskrift"
+        "description": "Velg hvilken som helst skrift som er installert på datamaskinen, for kildefiler.",
+        "label": "Editorskrift",
+        "monospace": "Fast bredde"
+      },
+      "useAppFont": {
+        "description": "Editoren følger appens skrift og skriftstørrelse.",
+        "disabledHint": "Slå av Bruk appens skrift for å endre dette.",
+        "label": "Bruk appens skrift"
       },
       "fontSize": {
         "description": "Sett tekststørrelsen i kildeeditoren.",
-        "label": "Skriftstørrelse i editoren"
+        "label": "Skriftstørrelse i editoren",
+        "custom": "Egendefinert",
+        "customLabel": "Egendefinert skriftstørrelse i editoren i piksler"
       },
       "ghostCompletion": {
         "description": "Vis den sannsynlige fullføringen etter markøren. Trykk Tab for å godta den.",
@@ -671,8 +684,34 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Vanlig",
-          "wide": "Luftig"
+          "wide": "Luftig",
+          "custom": "Egendefinert"
+        },
+        "customLabel": "Egendefinert linjeavstand"
+      },
+      "letterSpacing": {
+        "customLabel": "Egendefinert tegnavstand i piksler",
+        "description": "Legger til avstand mellom tegnene i kildeeditoren. Det gir også mer plass rundt markøren.",
+        "label": "Tegnavstand",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Vanlig",
+          "custom": "Egendefinert"
         }
+      },
+      "cursorWidth": {
+        "label": "Markørbredde",
+        "description": "Angi hvor tykk markøren i editoren er.",
+        "option": "{{width}} px"
+      },
+      "cursorColor": {
+        "label": "Markørfarge",
+        "description": "Lyse og mørke editortemaer har hver sin markørfarge. Til du velger en, brukes fargen fra temaet.",
+        "light": "Lyst",
+        "dark": "Mørkt",
+        "pickLight": "Velg markørfargen for lyse editortemaer",
+        "pickDark": "Velg markørfargen for mørke editortemaer",
+        "useTheme": "Bruk temafargene"
       },
       "lineWrap": {
         "description": "Brett lange linjer i stedet for å rulle sidelengs.",
@@ -744,6 +783,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} er ikke installert, så standardskriften brukes i stedet.",
     "preview": {
       "darkMode": {
         "description": "Inverter fargene i PDF-en som standard. Du kan fortsatt bytte farger fra verktøylinjen i forhåndsvisningen.",
@@ -752,10 +792,6 @@
       "hoverPreview": {
         "description": "Vis den sist kompilerte siden når du holder pekeren over et prosjekt i biblioteket.",
         "label": "Forhåndsvis PDF ved peking"
-      },
-      "zoomShortcuts": {
-        "description": "Bruk Cmd/Ctrl +, - og 0 til å zoome PDF-en i stedet for appvinduet.",
-        "label": "Hurtigtaster for PDF-zoom"
       }
     },
     "sectionName": "Utseende",
@@ -821,10 +857,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Holder teksten i en sentrert kolonne mens PDF-en er skjult.",
-        "label": "Sentrer editoren"
-      },
       "fullScreen": {
         "description": "Fyller skjermen i Zen-modus og gjenoppretter vinduet når du går ut.",
         "label": "Gå til fullskjerm"
@@ -833,11 +865,7 @@
         "description": "Hvis PDF-en er skjult når Zen-modus starter, åpnes den ved siden av editoren første gang du kompilerer.",
         "label": "Vis PDF-en ved kompilering"
       },
-      "title": "Zen-modus",
-      "toggle": {
-        "description": "Skjuler verktøylinjen, sidepanelet, assistenten og terminalen slik at bare teksten din er igjen. Kalles også distraksjonsfri modus. Krever et åpent prosjekt.",
-        "label": "Slå på Zen-modus"
-      }
+      "title": "Zen-modus"
     }
   },
   "checkpoints": {
@@ -1630,6 +1658,10 @@
         "description": "Vis eller skjul sidepanelet i prosjektet.",
         "label": "Vis eller skjul sidepanelet"
       },
+      "togglePreview": {
+        "label": "Vis eller skjul PDF-forhåndsvisning",
+        "description": "Viser eller skjuler PDF-en ved siden av editoren, også i Zen-modus."
+      },
       "toggleTerminal": {
         "description": "Vis eller skjul terminalen i prosjektet.",
         "label": "Vis eller skjul terminalen"
@@ -1641,6 +1673,22 @@
       "toggleZenMode": {
         "description": "Skjul alt unntatt teksten din, eller vis alt igjen.",
         "label": "Slå Zen-modus av eller på"
+      },
+      "openSettings": {
+        "label": "Åpne innstillingene",
+        "description": "Åpne innstillingene for Oleafly."
+      },
+      "zoomIn": {
+        "description": "Gjør hele appen større.",
+        "label": "Zoom inn"
+      },
+      "zoomOut": {
+        "description": "Gjør hele appen mindre.",
+        "label": "Zoom ut"
+      },
+      "resetZoom": {
+        "description": "Setter appen tilbake til 100 %.",
+        "label": "Tilbakestill zoom"
       }
     },
     "application": {

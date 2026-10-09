@@ -333,6 +333,22 @@
       "keywords": "uten distraksjoner fokus fullskjerm skjul grensesnitt minimal skriving",
       "label": "Slå Zen-modus av eller på"
     },
+    "togglePreview": {
+      "keywords": "pdf forhåndsvisning vis skjul delt bare editor",
+      "label": "Vis eller skjul PDF-forhåndsvisning"
+    },
+    "zoomIn": {
+      "keywords": "større forstørr",
+      "label": "Zoom inn"
+    },
+    "zoomOut": {
+      "keywords": "mindre forminsk",
+      "label": "Zoom ut"
+    },
+    "resetZoom": {
+      "keywords": "faktisk størrelse 100",
+      "label": "Tilbakestill zoom"
+    },
     "zoteroAddMissing": {
       "label": "Legg til manglende siteringer fra Zotero",
       "keywords": "zotero manglende siteringer udefinerte nøkler litteraturliste reparer missing citations undefined keys bibliography repair"

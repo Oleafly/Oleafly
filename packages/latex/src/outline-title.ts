@@ -6,17 +6,86 @@ import {
 } from "./latex-definitions";
 import { decodeLatexAccents } from "./tex-text";
 
-const SIMPLE_TEXT_COMMANDS =
-  /\\(?:emph|footnotesize|[Hh]uge|LARGE|[Ll]arge|MakeLowercase|MakeTextLowercase|MakeTextUppercase|MakeUppercase|bm|boldsymbol|mathbf|mathit|mathrm|mathsf|mbox|pmb|scriptsize|small|text|textbf|textit|textmd|textnormal|textrm|textsc|textsf|textsl|texttt|textup|tiny|uline|underline)\s*\{([^{}]*)\}/gu;
+const SIMPLE_TEXT_COMMAND_NAMES: ReadonlySet<string> = new Set([
+  "emph",
+  "footnotesize",
+  "Huge",
+  "huge",
+  "LARGE",
+  "Large",
+  "large",
+  "MakeLowercase",
+  "MakeTextLowercase",
+  "MakeTextUppercase",
+  "MakeUppercase",
+  "bm",
+  "boldsymbol",
+  "mathbf",
+  "mathit",
+  "mathrm",
+  "mathsf",
+  "mbox",
+  "pmb",
+  "scriptsize",
+  "small",
+  "text",
+  "textbf",
+  "textit",
+  "textmd",
+  "textnormal",
+  "textrm",
+  "textsc",
+  "textsf",
+  "textsl",
+  "texttt",
+  "textup",
+  "tiny",
+  "uline",
+  "underline",
+]);
+const TEXT_COMMAND_GROUP = /\\([A-Za-z]+)\s*\{([^{}]*)\}/gu;
 const COLOURED_TEXT = /\\(?:colorbox|textcolor)\s*(?:\[[^\]]*\]\s*)?\{[^{}]*\}\s*\{([^{}]*)\}/gu;
 const COLOUR_SWITCH = /\\color\s*(?:\[[^\]]*\]\s*)?\{[^{}]*\}/gu;
-const FONT_SWITCHES =
-  /\\(?:bfseries|em|footnotesize|[Hh]uge|itshape|LARGE|[Ll]arge|mdseries|normalfont|normalsize|rmfamily|scriptsize|scshape|selectfont|sffamily|slshape|small|tiny|ttfamily|upshape)(?![\p{L}@])\s*/gu;
+const FONT_SWITCH_NAMES: ReadonlySet<string> = new Set([
+  "bfseries",
+  "em",
+  "footnotesize",
+  "Huge",
+  "huge",
+  "itshape",
+  "LARGE",
+  "Large",
+  "large",
+  "mdseries",
+  "normalfont",
+  "normalsize",
+  "rmfamily",
+  "scriptsize",
+  "scshape",
+  "selectfont",
+  "sffamily",
+  "slshape",
+  "small",
+  "tiny",
+  "ttfamily",
+  "upshape",
+]);
+const SWITCH_COMMAND = /\\([A-Za-z]+)(?![\p{L}@])\s*/gu;
 const NAME_REFERENCE = /\\[nN]ameref\*?\s*\{([^{}]*)\}/gu;
 const MATH_DELIMITERS = /(?<!\\)\$|\\[()]/gu;
 const BRACE_GROUP = /\{([^{}\\]*)\}/gu;
 const COMMAND_LETTER = /[\p{L}@]/u;
 const SPACE = /\s/u;
+
+function stripSimpleTextCommands(text: string): string {
+  return text.replace(TEXT_COMMAND_GROUP, (whole, name: string, inner: string) =>
+    SIMPLE_TEXT_COMMAND_NAMES.has(name) ? inner : whole,
+  );
+}
+
+function stripFontSwitches(text: string): string {
+  return text.replace(SWITCH_COMMAND, (whole, name: string) => (FONT_SWITCH_NAMES.has(name) ? "" : whole));
+}
 
 function bracesAnArgument(text: string, open: number): boolean {
   if (text[open - 1] === "\\") return true;
@@ -223,12 +292,11 @@ export function renderLatexOutlineTitle(
   let previous = "";
   while (result !== previous) {
     previous = result;
-    result = result.replace(SIMPLE_TEXT_COMMANDS, "$1").replace(COLOURED_TEXT, "$1");
+    result = stripSimpleTextCommands(result).replace(COLOURED_TEXT, "$1");
   }
-  result = result
-    .replace(COLOUR_SWITCH, "")
-    .replace(/\{\\(?:bf|it|rm|sf|tt)\s+([^\s{}][^{}]*|)\}/gu, "$1")
-    .replace(FONT_SWITCHES, "");
+  result = stripFontSwitches(
+    result.replace(COLOUR_SWITCH, "").replace(/\{\\(?:bf|it|rm|sf|tt)\s+([^\s{}][^{}]*|)\}/gu, "$1"),
+  );
   previous = "";
   while (result !== previous) {
     previous = result;

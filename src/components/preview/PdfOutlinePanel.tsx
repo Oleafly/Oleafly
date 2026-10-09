@@ -66,7 +66,7 @@ export function PdfOutlineTree({ items, onActivate, depth = 0 }: Readonly<Outlin
           >
             <span className="min-w-0 flex-1 truncate">{item.title}</span>
             {item.external && (
-              <span className="text-[9px] uppercase text-muted-foreground">
+              <span className="text-[0.5625rem] uppercase text-muted-foreground">
                 {t(($) => $.preview.outline.externalBadge)}
               </span>
             )}

@@ -88,7 +88,7 @@ export function installScrollGeometry({
   vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
     this: Element,
   ) {
-    if (this.hasAttribute("data-row-window-item")) return rect(0, rowHeight);
+    if (this instanceof HTMLElement && this.dataset.rowWindowItem !== undefined) return rect(0, rowHeight);
     if (isScroller(this)) return rect(0, viewportHeight);
     const scroller = closestScroller(this);
     return rect(-(scroller ? (tops.get(scroller) ?? 0) : 0), 0);

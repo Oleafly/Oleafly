@@ -227,7 +227,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
             return (
               <div key={item.key}>
                 {showHeadings && index === 0 && (
-                  <p className="px-2.5 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="px-2.5 pb-1 pt-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                     {t(($) => $.ai.composer.mentionHeadingAgents)}
                   </p>
                 )}
@@ -258,7 +258,7 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
           return (
             <div key={item.key}>
               {showHeadings && index === agents.length && (
-                <p className="px-2.5 pb-1 pt-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="px-2.5 pb-1 pt-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.ai.composer.mentionHeadingFiles)}
                 </p>
               )}

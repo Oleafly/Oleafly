@@ -58,7 +58,7 @@ describe("Settings search while typing", () => {
       fireEvent.change(searchField(), { target: { value } });
     }
     expect(searchField()).toHaveValue("agent");
-    expect(aiRenders.mock.calls.length).toBe(afterFirstKey);
+    expect(aiRenders.mock.calls).toHaveLength(afterFirstKey);
 
     await waitFor(() =>
       expect(screen.getByTestId("settings-section-ai")).toHaveAttribute("aria-current", "page"),

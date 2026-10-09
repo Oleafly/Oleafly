@@ -101,7 +101,7 @@ export function ApprovalModeSelector({
                   <span className="block text-xs font-medium text-foreground">{labels[option.key]}</span>
                   <span
                     id={`approval-mode-description-${option.mode}`}
-                    className="block text-[11px] leading-snug text-muted-foreground"
+                    className="block text-[0.6875rem] leading-snug text-muted-foreground"
                   >
                     {descriptions[option.key]}
                   </span>

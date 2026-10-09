@@ -115,6 +115,7 @@ export const NATIVE_MENU_SHORTCUTS: ReadonlySet<ShortcutId> = new Set([
   "toggleBrowser",
   "toggleZenMode",
   "openFolder",
+  "openSettings",
 ]);
 
 export function nativeAccelerator(
@@ -175,6 +176,7 @@ function syncNativeAccelerators(): Promise<void> {
     browserAccelerator: nativeAcceleratorFor("toggleBrowser"),
     openFolderAccelerator: nativeAcceleratorFor("openFolder"),
     zenModeAccelerator: nativeAcceleratorFor("toggleZenMode"),
+    settingsAccelerator: nativeAcceleratorFor("openSettings"),
   });
 }
 
@@ -188,12 +190,7 @@ export async function startNativeDockShortcutBridge(): Promise<() => void> {
     return syncQueue;
   };
   const unsubscribeStore = useShortcutStore.subscribe((state, previous) => {
-    if (
-      state.bindings.toggleTerminal !== previous.bindings.toggleTerminal ||
-      state.bindings.toggleBrowser !== previous.bindings.toggleBrowser ||
-      state.bindings.toggleZenMode !== previous.bindings.toggleZenMode ||
-      state.bindings.openFolder !== previous.bindings.openFolder
-    ) {
+    if ([...NATIVE_MENU_SHORTCUTS].some((id) => state.bindings[id] !== previous.bindings[id])) {
       void sync();
     }
   });

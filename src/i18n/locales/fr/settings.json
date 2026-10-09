@@ -536,12 +536,17 @@
         "right": "À droite"
       },
       "font": {
-        "description": "Utilise la police de secours du système quand une police n'est pas installée.",
+        "description": "Choisissez pour les menus, panneaux et boîtes de dialogue n'importe quelle police installée sur votre ordinateur.",
         "label": "Police de l'application"
       },
       "fontSize": {
         "description": "Ajustez la taille du texte des menus, panneaux et boutons.",
         "label": "Taille de police de l'application"
+      },
+      "zoom": {
+        "description": "Agrandit ou réduit tout Oleafly, y compris l'éditeur et le PDF.",
+        "label": "Zoom",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "Système suit le système d'exploitation et change en même temps que lui.",
@@ -638,12 +643,20 @@
         "label": "Autocomplétion"
       },
       "font": {
-        "description": "Choisissez la police à chasse fixe utilisée pour les fichiers source.",
-        "label": "Police de l'éditeur"
+        "description": "Choisissez pour les fichiers source n'importe quelle police installée sur votre ordinateur.",
+        "label": "Police de l'éditeur",
+        "monospace": "Chasse fixe"
+      },
+      "useAppFont": {
+        "description": "L'éditeur suit la police et la taille de police de l'application.",
+        "disabledHint": "Désactivez Utiliser la police de l'application pour modifier ce réglage.",
+        "label": "Utiliser la police de l'application"
       },
       "fontSize": {
         "description": "Définissez la taille du texte de l'éditeur de source.",
-        "label": "Taille de police de l'éditeur"
+        "label": "Taille de police de l'éditeur",
+        "custom": "Personnalisée",
+        "customLabel": "Taille de police personnalisée de l'éditeur, en pixels"
       },
       "ghostCompletion": {
         "description": "Afficher la complétion probable après le curseur. Appuyez sur Tab pour l'accepter.",
@@ -676,8 +689,34 @@
         "options": {
           "compact": "Compacte",
           "normal": "Normale",
-          "wide": "Large"
+          "wide": "Large",
+          "custom": "Personnalisée"
+        },
+        "customLabel": "Hauteur de ligne personnalisée"
+      },
+      "letterSpacing": {
+        "customLabel": "Espacement des lettres personnalisé, en pixels",
+        "description": "Ajoute de l'espace entre les caractères dans l'éditeur de source. Cela laisse aussi plus de place autour du curseur.",
+        "label": "Espacement des lettres",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Personnalisé"
         }
+      },
+      "cursorWidth": {
+        "label": "Épaisseur du curseur",
+        "description": "Définir l'épaisseur du curseur de l'éditeur.",
+        "option": "{{width}} px"
+      },
+      "cursorColor": {
+        "label": "Couleur du curseur",
+        "description": "Les thèmes clairs et sombres de l'éditeur ont chacun leur propre couleur de curseur. Tant que vous n'en choisissez pas, la couleur du thème est utilisée.",
+        "light": "Clair",
+        "dark": "Sombre",
+        "pickLight": "Choisir la couleur du curseur pour les thèmes clairs de l'éditeur",
+        "pickDark": "Choisir la couleur du curseur pour les thèmes sombres de l'éditeur",
+        "useTheme": "Utiliser les couleurs du thème"
       },
       "lineWrap": {
         "description": "Renvoyer les longues lignes à la ligne au lieu de défiler horizontalement.",
@@ -749,6 +788,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} n'est pas installée, la police par défaut est donc utilisée.",
     "preview": {
       "darkMode": {
         "description": "Inverser les couleurs du PDF par défaut. Vous pouvez toujours changer les couleurs depuis la barre d'outils de l'aperçu.",
@@ -757,10 +797,6 @@
       "hoverPreview": {
         "description": "Afficher la dernière page compilée au survol d'un projet dans la bibliothèque.",
         "label": "Aperçu du PDF au survol"
-      },
-      "zoomShortcuts": {
-        "description": "Utiliser Cmd/Ctrl +, - et 0 pour zoomer le PDF plutôt que la fenêtre de l'application.",
-        "label": "Raccourcis de zoom du PDF"
       }
     },
     "sectionName": "Apparence",
@@ -826,10 +862,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Garde le texte dans une colonne centrée tant que le PDF est masqué.",
-        "label": "Centrer l'éditeur"
-      },
       "fullScreen": {
         "description": "Remplit l'écran dans le mode Zen et rétablit la fenêtre à la sortie.",
         "label": "Passer en plein écran"
@@ -838,11 +870,7 @@
         "description": "Si le PDF est masqué au début du mode Zen, l'ouvre à côté de l'éditeur à la première compilation.",
         "label": "Afficher le PDF à la compilation"
       },
-      "title": "Mode Zen",
-      "toggle": {
-        "description": "Masque la barre d'outils, la barre latérale, l'assistant et le terminal pour ne garder que le texte. Aussi appelé mode sans distraction. Un projet doit être ouvert.",
-        "label": "Activer le mode Zen"
-      }
+      "title": "Mode Zen"
     }
   },
   "checkpoints": {
@@ -1651,6 +1679,10 @@
         "description": "Afficher ou masquer la barre latérale du projet.",
         "label": "Afficher ou masquer la barre latérale"
       },
+      "togglePreview": {
+        "label": "Afficher ou masquer l'aperçu PDF",
+        "description": "Affiche ou masque le PDF à côté de l'éditeur, y compris en mode Zen."
+      },
       "toggleTerminal": {
         "description": "Afficher ou masquer le terminal du projet.",
         "label": "Afficher ou masquer le terminal"
@@ -1662,6 +1694,22 @@
       "toggleZenMode": {
         "description": "Masquer tout sauf le texte, ou tout rétablir.",
         "label": "Activer ou désactiver le mode Zen"
+      },
+      "openSettings": {
+        "label": "Ouvrir les paramètres",
+        "description": "Ouvrir les paramètres d'Oleafly."
+      },
+      "zoomIn": {
+        "description": "Agrandit toute l'application.",
+        "label": "Zoom avant"
+      },
+      "zoomOut": {
+        "description": "Réduit toute l'application.",
+        "label": "Zoom arrière"
+      },
+      "resetZoom": {
+        "description": "Remet l'application à 100 %.",
+        "label": "Réinitialiser le zoom"
       }
     },
     "application": {

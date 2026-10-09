@@ -533,12 +533,17 @@
         "right": "Rechts"
       },
       "font": {
-        "description": "Gebruikt het systeemlettertype als een lettertype niet is geïnstalleerd.",
+        "description": "Kies voor menu's, panelen en dialoogvensters een lettertype dat op je computer is geïnstalleerd.",
         "label": "Lettertype van de app"
       },
       "fontSize": {
         "description": "Schaal de tekst in menu's, panelen en knoppen.",
         "label": "Tekstgrootte van de app"
+      },
+      "zoom": {
+        "description": "Maakt alles in Oleafly groter of kleiner, ook de editor en de PDF.",
+        "label": "Zoom",
+        "option": "{{value}}%"
       },
       "theme": {
         "description": "Systeem volgt het besturingssysteem en verandert mee.",
@@ -633,12 +638,20 @@
         "label": "Automatisch aanvullen"
       },
       "font": {
-        "description": "Kies het lettertype met vaste breedte voor bronbestanden.",
-        "label": "Lettertype van de editor"
+        "description": "Kies voor bronbestanden een lettertype dat op je computer is geïnstalleerd.",
+        "label": "Lettertype van de editor",
+        "monospace": "Vaste breedte"
+      },
+      "useAppFont": {
+        "description": "De editor volgt het lettertype en de tekstgrootte van de app.",
+        "disabledHint": "Zet Lettertype van de app gebruiken uit om dit te wijzigen.",
+        "label": "Lettertype van de app gebruiken"
       },
       "fontSize": {
         "description": "Stel de tekstgrootte van de broncode-editor in.",
-        "label": "Tekstgrootte van de editor"
+        "label": "Tekstgrootte van de editor",
+        "custom": "Aangepast",
+        "customLabel": "Aangepaste tekstgrootte van de editor in pixels"
       },
       "ghostCompletion": {
         "description": "Toon de waarschijnlijke aanvulling achter de cursor. Druk op Tab om die over te nemen.",
@@ -671,8 +684,34 @@
         "options": {
           "compact": "Compact",
           "normal": "Normaal",
-          "wide": "Ruim"
+          "wide": "Ruim",
+          "custom": "Aangepast"
+        },
+        "customLabel": "Aangepaste regelhoogte"
+      },
+      "letterSpacing": {
+        "customLabel": "Aangepaste letterafstand in pixels",
+        "description": "Voegt ruimte toe tussen de tekens in de broneditor. Zo blijft er ook meer ruimte rond de cursor.",
+        "label": "Letterafstand",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normaal",
+          "custom": "Aangepast"
         }
+      },
+      "cursorWidth": {
+        "label": "Cursorbreedte",
+        "description": "Stel in hoe dik de cursor in de editor is.",
+        "option": "{{width}}px"
+      },
+      "cursorColor": {
+        "label": "Cursorkleur",
+        "description": "Lichte en donkere editorthema's hebben elk een eigen cursorkleur. Zolang je er geen kiest, wordt de kleur van het thema gebruikt.",
+        "light": "Licht",
+        "dark": "Donker",
+        "pickLight": "Kies de cursorkleur voor lichte editorthema's",
+        "pickDark": "Kies de cursorkleur voor donkere editorthema's",
+        "useTheme": "Themakleuren gebruiken"
       },
       "lineWrap": {
         "description": "Breek lange regels af in plaats van zijwaarts te scrollen.",
@@ -744,6 +783,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} is niet geïnstalleerd, dus het standaardlettertype wordt gebruikt.",
     "preview": {
       "darkMode": {
         "description": "Keer de PDF-kleuren standaard om. Je kunt de kleuren nog altijd wisselen via de werkbalk van het voorbeeld.",
@@ -752,10 +792,6 @@
       "hoverPreview": {
         "description": "Toon de laatst gecompileerde pagina als je in de bibliotheek over een project beweegt.",
         "label": "PDF tonen bij aanwijzen"
-      },
-      "zoomShortcuts": {
-        "description": "Gebruik Cmd/Ctrl +, - en 0 om in de PDF te zoomen in plaats van in het appvenster.",
-        "label": "Zoomsneltoetsen voor de PDF"
       }
     },
     "sectionName": "Weergave",
@@ -821,10 +857,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Houdt de tekst in een gecentreerde kolom zolang de PDF verborgen is.",
-        "label": "Editor centreren"
-      },
       "fullScreen": {
         "description": "Vult het scherm in de zenmodus en zet het venster terug als je afsluit.",
         "label": "Schermvullend gaan"
@@ -833,11 +865,7 @@
         "description": "Als de PDF verborgen is wanneer de zenmodus start, wordt die bij de eerste compilatie naast de editor geopend.",
         "label": "PDF tonen bij het compileren"
       },
-      "title": "Zenmodus",
-      "toggle": {
-        "description": "Verbergt de werkbalk, zijbalk, assistent en terminal zodat alleen je tekst overblijft. Ook wel afleidingsvrije modus genoemd. Een geopend project is nodig.",
-        "label": "Zenmodus inschakelen"
-      }
+      "title": "Zenmodus"
     }
   },
   "checkpoints": {
@@ -1630,6 +1658,10 @@
         "description": "Toon of verberg de projectzijbalk.",
         "label": "Zijbalk tonen of verbergen"
       },
+      "togglePreview": {
+        "label": "PDF-voorbeeld tonen of verbergen",
+        "description": "Toont of verbergt de PDF naast de editor, ook in zenmodus."
+      },
       "toggleTerminal": {
         "description": "Toon of verberg de projectterminal.",
         "label": "Terminal tonen of verbergen"
@@ -1641,6 +1673,22 @@
       "toggleZenMode": {
         "description": "Verberg alles behalve je tekst, of breng alles terug.",
         "label": "Zenmodus aan- of uitzetten"
+      },
+      "openSettings": {
+        "label": "Instellingen openen",
+        "description": "Open de instellingen van Oleafly."
+      },
+      "zoomIn": {
+        "description": "Maakt de hele app groter.",
+        "label": "Inzoomen"
+      },
+      "zoomOut": {
+        "description": "Maakt de hele app kleiner.",
+        "label": "Uitzoomen"
+      },
+      "resetZoom": {
+        "description": "Zet de app terug op 100%.",
+        "label": "Zoom herstellen"
       }
     },
     "application": {

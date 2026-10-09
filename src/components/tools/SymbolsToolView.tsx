@@ -350,7 +350,7 @@ export function SymbolsToolView() {
                   )}
                 >
                   <span className="font-serif text-xl leading-none">{entry.glyph}</span>
-                  <span className="w-full truncate font-mono text-[11px] text-muted-foreground">{entry.command}</span>
+                  <span className="w-full truncate font-mono text-[0.6875rem] text-muted-foreground">{entry.command}</span>
                 </button>
               ))}
             </div>

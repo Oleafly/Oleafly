@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from "vitest";
-import { cssColorToHex } from "./css-color";
+import { cssColorToHex, readClassVariables } from "./css-color";
 
 describe("cssColorToHex", () => {
   it("normalizes hex forms without touching the canvas", () => {
@@ -15,5 +15,20 @@ describe("cssColorToHex", () => {
     expect(cssColorToHex("")).toBeNull();
     expect(cssColorToHex("   ")).toBeNull();
     expect(cssColorToHex("not a color")).toBeNull();
+  });
+});
+
+describe("readClassVariables", () => {
+  it("reads the custom properties a class sets and leaves no probe behind", () => {
+    const style = document.createElement("style");
+    style.textContent = ".sample { --tone: #123456; --edge: 2px; }";
+    document.head.append(style);
+    expect(readClassVariables("sample", ["--tone", "--edge", "--missing"])).toEqual({
+      "--tone": "#123456",
+      "--edge": "2px",
+      "--missing": "",
+    });
+    expect(document.querySelector(".sample")).toBeNull();
+    style.remove();
   });
 });

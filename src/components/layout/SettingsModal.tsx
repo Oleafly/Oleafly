@@ -598,7 +598,7 @@ export function SettingsModal() {
               <dd className="mt-1 truncate text-sm font-semibold text-foreground">
                 {item.value}
               </dd>
-              <dd className="mt-0.5 truncate text-[10px] text-muted-foreground">
+              <dd className="mt-0.5 truncate text-[0.625rem] text-muted-foreground">
                 {item.detail}
               </dd>
             </div>
@@ -647,7 +647,7 @@ export function SettingsModal() {
                 <p className="truncate text-sm font-medium text-foreground">
                   {project.name}
                 </p>
-                <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                <p className="mt-0.5 truncate text-[0.625rem] text-muted-foreground">
                   {t(($) => $.shell.settings.data.recycleBin.deletedAt, {
                     date: formatDateTime(project.deleted_at * 1000),
                     size: formatBytes(project.size_bytes),
@@ -812,7 +812,7 @@ export function SettingsModal() {
         </p>
       ) : null}
       {storageSummary && storageSummary.unreadable_entries > 0 ? (
-        <p className="border-t px-4 py-2 text-[10px] text-muted-foreground">
+        <p className="border-t px-4 py-2 text-[0.625rem] text-muted-foreground">
           {t(($) => $.shell.settings.data.storage.unreadable, {
             count: storageSummary.unreadable_entries,
           })}
@@ -1558,7 +1558,7 @@ function HelpSection() {
         <div
           role="note"
           aria-label={t(($) => $.shell.settings.help.supportAriaLabel)}
-          className="relative mt-1 min-w-0 flex-1 rounded-xl border border-border bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))] px-3 py-2.5 text-left text-[11px] leading-relaxed text-muted-foreground"
+          className="relative mt-1 min-w-0 flex-1 rounded-xl border border-border bg-[color-mix(in_srgb,var(--accent)_35%,var(--background))] px-3 py-2.5 text-left text-[0.6875rem] leading-relaxed text-muted-foreground"
         >
           <span
             aria-hidden="true"
@@ -1594,7 +1594,7 @@ function HelpSection() {
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <h3 className="text-sm font-semibold">{"Oleafly"}</h3>
             {version && (
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.shell.settings.help.versionShort, { version })}
               </span>
             )}
@@ -1634,7 +1634,7 @@ function HelpSection() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
           {t(($) => $.shell.settings.help.community)}
         </p>
         {community.map((item) => (
@@ -1647,14 +1647,14 @@ function HelpSection() {
             <item.icon className="size-4 shrink-0 text-muted-foreground group-hover:text-foreground" />
             <span className="min-w-0 flex-1">
               <span className="block text-sm">{item.label}</span>
-              <span className="block truncate text-[11px] text-muted-foreground">
+              <span className="block truncate text-[0.6875rem] text-muted-foreground">
                 {item.description}
               </span>
             </span>
             {item.id === "discord" && (
               <DiscordOnlineCount
                 online={discordOnline}
-                className="shrink-0 text-[11px] text-muted-foreground"
+                className="shrink-0 text-[0.6875rem] text-muted-foreground"
               />
             )}
             <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
@@ -1665,7 +1665,7 @@ function HelpSection() {
       {/* Author row removed for now; will re-add later.
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
+          <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Author</p>
           <button type="button"
             onClick={ext(AUTHOR_URL)}
             className="flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm hover:bg-accent"
@@ -1678,7 +1678,7 @@ function HelpSection() {
       </div>
       */}
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
           {t(($) => $.shell.settings.help.project)}
         </p>
         <button type="button"
@@ -1688,7 +1688,7 @@ function HelpSection() {
           <Github className="size-4 shrink-0 text-muted-foreground" />
           <span className="flex-1 truncate">{t(($) => $.shell.settings.help.starRepo)}</span>
           {repoStats && (
-            <span className="flex shrink-0 items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
+            <span className="flex shrink-0 items-center gap-3 text-[0.6875rem] tabular-nums text-muted-foreground">
               <span
                 role="img"
                 className="inline-flex items-center gap-1"
@@ -1718,7 +1718,7 @@ function HelpSection() {
       </div>
 
       <div className="space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <p className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
           {t(($) => $.shell.settings.help.resourcesTitle)}
         </p>
         {resources.map((r) => (

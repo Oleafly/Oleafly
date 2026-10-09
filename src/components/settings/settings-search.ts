@@ -87,7 +87,7 @@ export const SETTINGS_SEARCH_EXCLUDED: readonly CatalogPath[] = [
 export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "appearance.customTheme": "app",
   "appearance.preview": "pdf",
-  "appearance.zen": "app",
+  "appearance.zen": "files",
   "integrations.cookies": "browser",
   "shortcuts.actions": "application",
   "shortcuts.editorKeys": "editor",

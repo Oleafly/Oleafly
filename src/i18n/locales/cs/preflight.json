@@ -642,7 +642,7 @@
     "title": "Předletová kontrola",
     "readerDisabled": "Nejprve zkompilujte a spusťte kontrolu výstupu",
     "readerEnabled": "Otevřít text extrahovaný z PDF",
-    "readerButton": "Zobrazit, co vidí čtečka",
+    "readerButton": "Čtečka obrazovky",
     "aboutLabel": "O předletové kontrole",
     "aboutTitle": "Co předletová kontrola ověřuje",
     "aboutIntro": "Předletová kontrola čte zdroj projektu, protokol překladače a aktuální PDF. Zapněte jen ty kontroly, které tomuto dokumentu odpovídají.",

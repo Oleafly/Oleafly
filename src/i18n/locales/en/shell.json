@@ -333,6 +333,22 @@
       "keywords": "distraction free focus full screen hide interface minimal writing",
       "label": "Toggle Zen Mode"
     },
+    "togglePreview": {
+      "keywords": "pdf preview show hide split editor only",
+      "label": "Toggle PDF Preview"
+    },
+    "zoomIn": {
+      "keywords": "bigger larger magnify",
+      "label": "Zoom In"
+    },
+    "zoomOut": {
+      "keywords": "smaller shrink",
+      "label": "Zoom Out"
+    },
+    "resetZoom": {
+      "keywords": "actual size 100",
+      "label": "Reset Zoom"
+    },
     "zoteroAddMissing": {
       "label": "Add missing citations from Zotero",
       "keywords": "zotero missing citations undefined keys bibliography repair"

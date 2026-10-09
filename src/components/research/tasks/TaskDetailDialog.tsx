@@ -666,7 +666,7 @@ export function TaskDetailDialog({
                 <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
                   <TaskStatusBadge status={task.status} />
                   <TaskAgentChip task={task} agentName={agentName} showAgent className="max-w-[22rem]" />
-                  <span className="text-[11px] tabular-nums text-muted-foreground">
+                  <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
                     {relativeTime(task.updatedAt)}
                   </span>
                 </div>
@@ -853,7 +853,7 @@ export function TaskDetailDialog({
           </Tabs>
 
           <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-5 py-2.5">
-            <p className="text-[11px] tabular-nums text-muted-foreground">
+            <p className="text-[0.6875rem] tabular-nums text-muted-foreground">
               {usage.inputTokens === null && usage.outputTokens === null
                 ? t(($) => $.researchTools.tasks.detail.noTokenUsage)
                 : t(($) => $.researchTools.tasks.detail.tokenUsage, {

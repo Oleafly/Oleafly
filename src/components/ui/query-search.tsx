@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 const MENU_WIDTH = 288;
 const UNFINISHED = new Set<Diagnostic["code"]>(["unclosed-group", "dangling-operator", "unterminated-quote"]);
 const OPTION_CLASS = "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors";
-const HEADING_CLASS = "px-2.5 pb-1 pt-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground";
+const HEADING_CLASS = "px-2.5 pb-1 pt-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground";
 
 const ISSUE_KEYS = {
   "unclosed-group": "unclosedGroup",

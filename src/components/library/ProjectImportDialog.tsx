@@ -423,7 +423,7 @@ export function ProjectImportDialog({
           ) : view === "sources" ? (
             <div className="space-y-5">
               <section className="space-y-2">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.library.import.localHeading)}
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -444,7 +444,7 @@ export function ProjectImportDialog({
               </section>
 
               <section className="space-y-2">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <h3 className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.library.import.cloudHeading)}
                 </h3>
                 <div className="grid gap-3 sm:grid-cols-3">

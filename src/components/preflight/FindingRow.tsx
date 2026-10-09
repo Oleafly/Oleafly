@@ -44,7 +44,7 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
         <Icon className={cn("mt-0.5 size-4 shrink-0", sev.color)} />
         <span className="min-w-0 flex-1">
           <span className="block text-sm leading-snug">{renderMessage(tp, finding.title)}</span>
-          <span className="mt-0.5 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+          <span className="mt-0.5 flex items-center gap-1.5 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
             <span>{tp(`preflight:lens.${finding.lens}`)}</span>
             {finding.page != null && <span>·{" "}{t(($) => $.preflight.finding.page, { page: finding.page })}</span>}
             {finding.file && <span className="truncate">·{" "}{finding.file}</span>}
@@ -58,7 +58,7 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
         <div className="border-t border-sidebar-border px-2.5 py-2">
           <p className="text-xs leading-relaxed text-muted-foreground">{renderDetail(tp, finding)}</p>
           {citations.length > 0 && (
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-1 text-[10px] text-muted-foreground">
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-1 text-[0.625rem] text-muted-foreground">
               {citations.map((citation, index) => (
                 <span key={citation.label} className="inline-flex items-center gap-1">
                   {index > 0 && <span aria-hidden="true">·</span>}
@@ -76,7 +76,7 @@ export const FindingRow = memo(function FindingRow({ finding }: { finding: Findi
             </p>
           )}
           {finding.machineCheckable === false && (
-            <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-[0.625rem] leading-relaxed text-muted-foreground">
               {t(($) => $.preflight.finding.needsJudgment)}
             </p>
           )}

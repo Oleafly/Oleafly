@@ -11,9 +11,11 @@ import {
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 
-const mocks = vi.hoisted(() => ({ toggleZenMode: vi.fn() }));
+const mocks = vi.hoisted(() => ({ toggleZenMode: vi.fn(), togglePreviewPane: vi.fn(), zoomApp: vi.fn() }));
 
 vi.mock("@/lib/zen-mode", () => ({ toggleZenMode: mocks.toggleZenMode }));
+vi.mock("@/lib/compile-preview", () => ({ togglePreviewPane: mocks.togglePreviewPane }));
+vi.mock("@/lib/app-zoom", () => ({ zoomApp: mocks.zoomApp }));
 vi.mock("@/store/files", () => ({
   useFilesStore: { getState: () => ({ engine: null, engineLoaded: false, activePath: null }) },
 }));
@@ -46,6 +48,38 @@ beforeEach(() => {
 
 afterEach(() => {
   registry.commands.length = 0;
+});
+
+describe("Zoom commands", () => {
+  it("offers zoom in, out and reset with their shortcuts, with or without a project", () => {
+    for (const ctx of [project, library]) {
+      const ids = commandsFor("palette", ctx).map((command) => command.id);
+      expect(ids).toEqual(expect.arrayContaining(["palette.zoomIn", "palette.zoomOut", "palette.resetZoom"]));
+    }
+    const zoomIn = commandsFor("palette", project).find((command) => command.id === "palette.zoomIn");
+    expect(zoomIn && commandLabel(zoomIn, project)).toBe(enShell.commands.zoomIn.label);
+    expect(zoomIn && commandHint(zoomIn, project)).toBe(
+      shortcutLabel(useShortcutStore.getState().bindings.zoomIn),
+    );
+    zoomIn?.run(project);
+    expect(mocks.zoomApp).toHaveBeenCalledWith(1);
+  });
+});
+
+describe("Toggle PDF Preview command", () => {
+  const previewCommand = (ctx: AppContext) =>
+    commandsFor("palette", ctx).find((command) => command.id === "palette.toggle-preview");
+
+  it("is in the command palette while a project is open, with the current shortcut", () => {
+    const command = previewCommand(project);
+    expect(command && commandLabel(command, project)).toBe(enShell.commands.togglePreview.label);
+    expect(command && commandHint(command, project)).toBe(
+      shortcutLabel(useShortcutStore.getState().bindings.togglePreview),
+    );
+    expect(previewCommand(library)).toBeUndefined();
+    command?.run(project);
+    expect(mocks.togglePreviewPane).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("Toggle Zen Mode command", () => {

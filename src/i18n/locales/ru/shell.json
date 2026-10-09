@@ -337,6 +337,22 @@
       "keywords": "без отвлечений фокус полный экран скрыть интерфейс минимализм письмо",
       "label": "Переключить режим Zen"
     },
+    "togglePreview": {
+      "keywords": "pdf предпросмотр показать скрыть разделить только редактор",
+      "label": "Показать или скрыть предпросмотр PDF"
+    },
+    "zoomIn": {
+      "keywords": "увеличить крупнее",
+      "label": "Увеличить"
+    },
+    "zoomOut": {
+      "keywords": "уменьшить мельче",
+      "label": "Уменьшить"
+    },
+    "resetZoom": {
+      "keywords": "реальный размер 100",
+      "label": "Сбросить масштаб"
+    },
     "zoteroAddMissing": {
       "label": "Добавить недостающие цитаты из Zotero",
       "keywords": "zotero недостающие цитаты неопределённые ключи библиография исправить missing citations undefined keys bibliography repair"

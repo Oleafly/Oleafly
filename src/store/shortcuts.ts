@@ -11,8 +11,13 @@ export type ShortcutId =
   | "toggleTerminal"
   | "toggleBrowser"
   | "toggleSidebar"
+  | "togglePreview"
   | "toggleZenMode"
-  | "openFolder";
+  | "openFolder"
+  | "openSettings"
+  | "zoomIn"
+  | "zoomOut"
+  | "resetZoom";
 
 export interface ShortcutBinding {
   key: string;
@@ -79,6 +84,10 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     defaultBinding: { key: "b", mod: true },
   },
   {
+    id: "togglePreview",
+    defaultBinding: { key: "p", mod: true, alt: true },
+  },
+  {
     id: "toggleZenMode",
     get defaultBinding() {
       return onApplePlatform() ? ZEN_MAC_BINDING : ZEN_BINDING;
@@ -87,6 +96,22 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
   {
     id: "openFolder",
     defaultBinding: { key: "o", mod: true, shift: true },
+  },
+  {
+    id: "openSettings",
+    defaultBinding: { key: ",", mod: true },
+  },
+  {
+    id: "zoomIn",
+    defaultBinding: { key: "=", mod: true },
+  },
+  {
+    id: "zoomOut",
+    defaultBinding: { key: "-", mod: true },
+  },
+  {
+    id: "resetZoom",
+    defaultBinding: { key: "0", mod: true },
   },
 ];
 
@@ -165,14 +190,28 @@ export const useShortcutStore = create<ShortcutState>((set) => ({
   },
 }));
 
+const PHYSICAL_KEY = /^(?:Key([A-Z])|Digit(\d))$/;
+const PRINTABLE_ASCII = /^[\x20-\x7e]$/;
+
+function physicalKey(event: KeyboardEvent): string | null {
+  const match = PHYSICAL_KEY.exec(event.code ?? "");
+  return match ? (match[1] ?? match[2]).toLowerCase() : null;
+}
+
+function optionLevelKey(event: KeyboardEvent, apple: boolean): string | null {
+  if (!apple || !event.altKey || event.key.length !== 1 || PRINTABLE_ASCII.test(event.key)) return null;
+  return physicalKey(event);
+}
+
 export function matchesShortcut(event: KeyboardEvent, binding: ShortcutBinding): boolean {
   if (isAltGraphCharacter(event)) return false;
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   const ctrl = Boolean(binding.ctrl) || (!apple && Boolean(binding.mod));
   const meta = apple && Boolean(binding.mod);
+  const key = binding.key.toLowerCase();
   return (
-    event.key.toLowerCase() === binding.key.toLowerCase() &&
+    (event.key.toLowerCase() === key || optionLevelKey(event, apple) === key) &&
     event.ctrlKey === ctrl &&
     event.metaKey === meta &&
     event.shiftKey === Boolean(binding.shift) &&
@@ -193,7 +232,7 @@ export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
   const apple =
     typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return {
-    key: event.key.length === 1 ? event.key.toLowerCase() : event.key,
+    key: optionLevelKey(event, apple) ?? (event.key.length === 1 ? event.key.toLowerCase() : event.key),
     ...(event.metaKey || (event.ctrlKey && !apple) ? { mod: true } : {}),
     ...(event.ctrlKey && apple ? { ctrl: true } : {}),
     shift: event.shiftKey,
@@ -253,8 +292,12 @@ export function sameShortcutBinding(left: ShortcutBinding, right: ShortcutBindin
   );
 }
 
-export function shortcutLabel(binding: ShortcutBinding): string {
-  const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+function onMacKeyboard(): boolean {
+  return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+}
+
+export function shortcutParts(binding: ShortcutBinding): string[] {
+  const mac = onMacKeyboard();
   const parts: string[] = [];
   if (binding.mod) parts.push(mac ? "⌘" : "Ctrl");
   if (binding.ctrl && (mac || !binding.mod)) parts.push("Ctrl");
@@ -262,5 +305,9 @@ export function shortcutLabel(binding: ShortcutBinding): string {
   if (binding.alt) parts.push(mac ? "⌥" : "Alt");
   const key = binding.key === " " ? "Space" : binding.key;
   parts.push(key.length === 1 ? key.toUpperCase() : key);
-  return mac ? parts.join("") : parts.join("+");
+  return parts;
+}
+
+export function shortcutLabel(binding: ShortcutBinding): string {
+  return shortcutParts(binding).join(onMacKeyboard() ? "" : "+");
 }

@@ -81,55 +81,84 @@ test("every app font size option rescales the interface", async ({ tauriPage }) 
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("every app font option changes the interface font", async ({ tauriPage }) => {
+async function pickInstalledFont(page: Page, input: string): Promise<string> {
+  const option = '[role="option"][data-value]:not([data-value=""])';
+  await page.click(input);
+  await page.waitForFunction(`!!document.querySelector(${JSON.stringify(option)})`, 20_000);
+  const family = await page.evaluate<string>(
+    `document.querySelector(${JSON.stringify(option)}).dataset.value`,
+  );
+  await page.click(`[role="option"][data-value=${JSON.stringify(family)}]`);
+  return family;
+}
+
+async function expectCheckedFont(page: Page, input: string, family: string) {
+  await page.click(input);
+  await page.waitForFunction(
+    `!!document.querySelector(${JSON.stringify(`[role="option"][data-value=${JSON.stringify(family)}][data-checked]`)})`,
+    5_000,
+  );
+}
+
+test("the app font picker applies an installed font, a typed name and the default", async ({
+  tauriPage,
+}) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openAppearanceTab(tauriPage, "app");
-  const fonts = [
-    ["Inter", "Inter"],
-    ["Helvetica Neue", "Helvetica Neue"],
-    ["Segoe UI", "Segoe UI"],
-    ["Georgia (serif)", "Georgia"],
-  ] as const;
-  for (const [option, family] of fonts) {
-    await pickOption(tauriPage, "App font", option);
-    await tauriPage.waitForFunction(
-      `document.documentElement.style.fontFamily.includes(${JSON.stringify(family)})`,
-      5_000,
-    );
-  }
-  await pickOption(tauriPage, "App font", "System default");
+  const input = "#settings-app-font";
+
+  const family = await pickInstalledFont(tauriPage, input);
   await tauriPage.waitForFunction(
-    `document.documentElement.style.fontFamily === ''`,
+    `document.documentElement.style.getPropertyValue('--app-font') === ${JSON.stringify(JSON.stringify(family))}
+      && getComputedStyle(document.body).fontFamily.includes(${JSON.stringify(family)})`,
     5_000,
   );
+  await expectCheckedFont(tauriPage, input, family);
+
+  await tauriPage.fill(input, "Oleafly Typed Sans");
+  await tauriPage.waitForFunction(
+    `document.documentElement.style.getPropertyValue('--app-font') === '"Oleafly Typed Sans"'`,
+    5_000,
+  );
+
+  await tauriPage.fill(input, "");
+  await tauriPage.waitForFunction(
+    `document.documentElement.style.getPropertyValue('--app-font') === ''`,
+    5_000,
+  );
+  await expectCheckedFont(tauriPage, input, "");
   await tauriPage.click('[aria-label="Close settings"]');
 });
 
-test("every editor font option changes the code font", async ({ tauriPage }) => {
+test("the editor font picker applies an installed font, a typed name and the default", async ({
+  tauriPage,
+}) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
   await openAppearanceTab(tauriPage, "editor");
-  const fonts = [
-    ["JetBrains Mono", "JetBrains Mono"],
-    ["Fira Code", "Fira Code"],
-    ["Cascadia Code", "Cascadia Code"],
-    ["SF Mono", "SF Mono"],
-    ["Menlo", "Menlo"],
-    ["Consolas", "Consolas"],
-  ] as const;
-  for (const [option, family] of fonts) {
-    await pickOption(tauriPage, "Editor font", option);
-    await tauriPage.waitForFunction(
-      `document.documentElement.style.getPropertyValue('--cm-font-family').includes(${JSON.stringify(family)})`,
-      5_000,
-    );
-  }
-  await pickOption(tauriPage, "Editor font", "System default");
+  const input = "#settings-editor-font";
+
+  const family = await pickInstalledFont(tauriPage, input);
+  await tauriPage.waitForFunction(
+    `document.documentElement.style.getPropertyValue('--cm-font-family').startsWith(${JSON.stringify(JSON.stringify(family))})
+      && getComputedStyle(document.querySelector('.cm-scroller')).fontFamily.includes(${JSON.stringify(family)})`,
+    5_000,
+  );
+  await expectCheckedFont(tauriPage, input, family);
+
+  await tauriPage.fill(input, "Oleafly Typed Mono");
+  await tauriPage.waitForFunction(
+    `document.documentElement.style.getPropertyValue('--cm-font-family').startsWith('"Oleafly Typed Mono"')`,
+    5_000,
+  );
+
+  await tauriPage.fill(input, "");
   await tauriPage.waitForFunction(
     `document.documentElement.style.getPropertyValue('--cm-font-family') === ''`,
     5_000,
   );
+  await expectCheckedFont(tauriPage, input, "");
   await tauriPage.click('[aria-label="Close settings"]');
 });
 

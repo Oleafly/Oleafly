@@ -108,7 +108,6 @@ describe("Appearance settings tabs", () => {
       hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS],
       openInTree: false,
       pdfDarkMode: false,
-      pdfZoomShortcuts: false,
       hoverPreview: false,
       homeProjectLayout: "grid",
       terminalFontSize: 14,
@@ -143,22 +142,10 @@ describe("Appearance settings tabs", () => {
     expect(
       screen.getByRole("switch", { name: appearance.preview.darkMode.label }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("switch", { name: appearance.preview.zoomShortcuts.label }),
-    ).toBeInTheDocument();
-
-    for (const label of [
-      appearance.preview.darkMode.label,
-      appearance.preview.zoomShortcuts.label,
-      appearance.preview.hoverPreview.label,
-    ]) {
+    for (const label of [appearance.preview.darkMode.label, appearance.preview.hoverPreview.label]) {
       await user.click(screen.getByRole("switch", { name: label }));
     }
-    expect(useSettingsStore.getState()).toMatchObject({
-      pdfDarkMode: true,
-      pdfZoomShortcuts: true,
-      hoverPreview: true,
-    });
+    expect(useSettingsStore.getState()).toMatchObject({ pdfDarkMode: true, hoverPreview: true });
   });
 
   it("fits the tab strip to its tabs while keeping it scrollable", async () => {
@@ -270,6 +257,163 @@ describe("Appearance settings tabs", () => {
       await screen.findByRole("option", { name: appearance.editor.lineHeight.options.wide }),
     );
     expect(useSettingsStore.getState().editorLineHeight).toBe("wide");
+  });
+
+  it("sets the app zoom from its list", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ appZoom: 100 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByTestId("settings-app-zoom-trigger"));
+    await user.click(await screen.findByRole("option", { name: appearance.app.zoom.option.replace("{{value}}", "125") }));
+    expect(useSettingsStore.getState().appZoom).toBe(125);
+    expect(localStorage.getItem("oleafly.appZoom")).toBe("125");
+    act(() => useSettingsStore.getState().setAppZoom(100));
+  });
+
+  it("locks the editor font and size while the editor uses the app font, and says why", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorUsesAppFont: false });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.getByTestId("settings-editor-font-size-trigger")).toBeEnabled();
+    expect(screen.getByRole("combobox", { name: appearance.editor.font.label })).toBeEnabled();
+
+    await user.click(screen.getByRole("switch", { name: appearance.editor.useAppFont.label }));
+    expect(useSettingsStore.getState().editorUsesAppFont).toBe(true);
+    expect(screen.getByTestId("settings-editor-font-size-trigger")).toBeDisabled();
+    const font = screen.getByRole("combobox", { name: appearance.editor.font.label });
+    expect(font).toBeDisabled();
+    await user.hover(font.parentElement as HTMLElement);
+    expect(await screen.findAllByText(appearance.editor.useAppFont.disabledHint)).not.toHaveLength(0);
+
+    await user.click(screen.getByRole("switch", { name: appearance.editor.useAppFont.label }));
+    expect(screen.getByTestId("settings-editor-font-size-trigger")).toBeEnabled();
+  });
+
+  it("offers letter spacing presets and an exact custom value", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 0 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.queryByTestId("settings-editor-letter-spacing-custom")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("settings-editor-letter-spacing-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.letterSpacing.option.replace("{{value}}", "1") }),
+    );
+    expect(useSettingsStore.getState().editorLetterSpacing).toBe("wide");
+
+    await user.click(screen.getByTestId("settings-editor-letter-spacing-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.letterSpacing.options.custom }),
+    );
+    const field = screen.getByRole("spinbutton", { name: appearance.editor.letterSpacing.customLabel });
+    fireEvent.change(field, { target: { value: "2.5" } });
+    expect(useSettingsStore.getState().editorCustomLetterSpacing).toBe(2.5);
+    fireEvent.change(field, { target: { value: "12" } });
+    fireEvent.blur(field);
+    expect(useSettingsStore.getState().editorCustomLetterSpacing).toBe(4);
+    act(() => useSettingsStore.setState({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 0 }));
+  });
+
+  it("takes an exact editor font size beyond the list", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorFontSize: 13 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.queryByTestId("settings-editor-font-size-custom")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("settings-editor-font-size-trigger"));
+    await user.click(await screen.findByRole("option", { name: appearance.editor.fontSize.custom }));
+    const field = screen.getByRole("spinbutton", { name: appearance.editor.fontSize.customLabel });
+    expect(field).toHaveValue(13);
+    fireEvent.change(field, { target: { value: "32" } });
+    expect(useSettingsStore.getState().editorFontSize).toBe(32);
+    fireEvent.change(field, { target: { value: "400" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(useSettingsStore.getState().editorFontSize).toBe(100);
+
+    await user.click(screen.getByTestId("settings-editor-font-size-trigger"));
+    await user.click(await screen.findByRole("option", { name: "14px" }));
+    expect(useSettingsStore.getState().editorFontSize).toBe(14);
+    expect(screen.queryByTestId("settings-editor-font-size-custom")).not.toBeInTheDocument();
+  });
+
+  it("shows an exact line height field only for the custom choice", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorCustomLineHeight: 1.7 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.queryByTestId("settings-editor-line-height-custom")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("settings-editor-line-height-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.lineHeight.options.custom }),
+    );
+    const field = screen.getByRole("spinbutton", { name: appearance.editor.lineHeight.customLabel });
+    expect(field).toHaveValue(1.7);
+
+    fireEvent.change(field, { target: { value: "1.55" } });
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorLineHeight: "custom",
+      editorCustomLineHeight: 1.55,
+    });
+
+    fireEvent.change(field, { target: { value: "8" } });
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(1.55);
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(3);
+    expect(field).toHaveValue(3);
+
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.blur(field);
+    expect(useSettingsStore.getState().editorCustomLineHeight).toBe(3);
+    expect(field).toHaveValue(3);
+
+    act(() => useSettingsStore.setState({ editorCustomLineHeight: 1.7 }));
+    expect(field).toHaveValue(1.7);
+  });
+
+  it("picks a cursor color for light and for dark editor themes and goes back to the theme's", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorCursorColorLight: "", editorCursorColorDark: "", editorTheme: "dracula" });
+    const palette = document.createElement("style");
+    palette.textContent = '[data-editor-theme="dracula"] { --cm-cursor: #f8f8f2; }';
+    document.head.append(palette);
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    const row = screen.getByTestId("settings-row-editor-cursor-color");
+    const cursorColor = appearance.editor.cursorColor;
+    expect(within(row).queryByRole("button", { name: cursorColor.useTheme })).toBeNull();
+    expect(screen.getByTestId("settings-editor-cursor-color-dark")).toHaveAttribute("data-custom", "false");
+    expect(within(row).getByLabelText(cursorColor.pickDark)).toHaveValue("#f8f8f2");
+
+    fireEvent.change(within(row).getByLabelText(cursorColor.pickLight), { target: { value: "#ff8800" } });
+    fireEvent.change(within(row).getByLabelText(cursorColor.pickDark), { target: { value: "#88ccff" } });
+    expect(useSettingsStore.getState()).toMatchObject({
+      editorCursorColorLight: "#ff8800",
+      editorCursorColorDark: "#88ccff",
+    });
+    expect(screen.getByTestId("settings-editor-cursor-color-dark")).toHaveAttribute("data-custom", "true");
+
+    await user.click(within(row).getByRole("button", { name: cursorColor.useTheme }));
+    expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
+    useSettingsStore.setState({ editorTheme: "system" });
+    palette.remove();
+  });
+
+  it("changes the editor cursor width", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorCursorWidth: 1 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    const row = screen.getByTestId("settings-row-editor-cursor-width");
+    expect(row).toHaveTextContent(appearance.editor.cursorWidth.label);
+    await user.click(screen.getByTestId("settings-editor-cursor-width-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: fill(appearance.fontSizeOption, { size: "3" }) }),
+    );
+    expect(useSettingsStore.getState().editorCursorWidth).toBe(3);
   });
 
   it("chooses what happens to references when a file moves", async () => {

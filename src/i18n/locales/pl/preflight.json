@@ -642,7 +642,7 @@
     "title": "Kontrola wstępna",
     "readerDisabled": "Najpierw skompiluj i uruchom kontrolę wyniku",
     "readerEnabled": "Otwórz tekst wyodrębniony z pliku PDF",
-    "readerButton": "Pokaż, co widzi czytnik",
+    "readerButton": "Czytnik ekranu",
     "aboutLabel": "O kontroli wstępnej",
     "aboutTitle": "Co sprawdza kontrola wstępna",
     "aboutIntro": "Kontrola wstępna czyta źródła projektu, dziennik kompilatora i bieżący plik PDF. Włącz tylko te kontrole, które pasują do tego dokumentu.",

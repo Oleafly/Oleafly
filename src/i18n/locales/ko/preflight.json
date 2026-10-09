@@ -585,7 +585,7 @@
     "title": "프리플라이트",
     "readerDisabled": "먼저 컴파일하고 출력 검사를 실행하세요",
     "readerEnabled": "PDF에서 추출한 텍스트를 엽니다",
-    "readerButton": "독자가 보는 내용 보기",
+    "readerButton": "스크린 리더",
     "aboutLabel": "프리플라이트 안내",
     "aboutTitle": "프리플라이트가 검사하는 항목",
     "aboutIntro": "프리플라이트는 프로젝트 소스, 컴파일러 로그, 현재 PDF를 읽습니다. 이 문서에 맞는 검사만 켜세요.",

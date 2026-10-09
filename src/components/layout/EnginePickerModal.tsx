@@ -212,7 +212,7 @@ export function EnginePickerModal() {
           </Badge>
         )}
       </div>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
         {hasSystemTex
           ? t(($) => $.shell.enginePicker.systemTex.found)
           : t(($) => $.shell.enginePicker.systemTex.missing)}
@@ -223,12 +223,12 @@ export function EnginePickerModal() {
         className="mt-2"
       />
       {info?.latexmk && (
-        <p className="mt-1 select-text truncate font-mono text-[10px] text-muted-foreground/70">
+        <p className="mt-1 select-text truncate font-mono text-[0.625rem] text-muted-foreground/70">
           {displayPath(info.latexmk)}
         </p>
       )}
       {needsShellEscape && (
-        <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-2 flex items-start gap-1.5 text-[0.6875rem] leading-relaxed text-muted-foreground">
           <ShieldAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-500" />
           {t(($) => $.shell.enginePicker.shellEscape.included)}
         </p>
@@ -284,7 +284,7 @@ export function EnginePickerModal() {
               />
               <div className="min-w-0">
                 <span className="font-medium">{finding.title}</span>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
                   {finding.detail}
                 </p>
               </div>
@@ -306,7 +306,7 @@ export function EnginePickerModal() {
                 {t(($) => $.shell.enginePicker.tinytex.title)}
               </span>
             </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
               {t(($) => $.shell.enginePicker.tinytex.description)}
             </p>
             <div className="mt-2">
@@ -331,7 +331,7 @@ export function EnginePickerModal() {
               {t(($) => $.shell.enginePicker.tectonic.title)}
             </span>
           </div>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
             {fixable.length > 0
               ? t(($) => $.shell.enginePicker.tectonic.withFailures, {
                   count: fixable.length,

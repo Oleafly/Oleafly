@@ -105,7 +105,7 @@ export function UpdateDialog({
                 ? t(($) => $.shell.updateChecker.installing)
                 : t(($) => $.shell.updateChecker.downloading, { percent })}
             </span>
-            <span className="text-[11px] text-muted-foreground">{t(($) => $.shell.updateChecker.restartNotice)}</span>
+            <span className="text-[0.6875rem] text-muted-foreground">{t(($) => $.shell.updateChecker.restartNotice)}</span>
           </div>
           <Progress value={percent} indicatorClassName="bg-primary" />
         </div>
@@ -114,7 +114,7 @@ export function UpdateDialog({
     if (phase === "available") {
       return (
         <div className="flex items-center justify-between gap-3">
-          <p className="min-w-0 text-[11px] leading-snug text-muted-foreground">
+          <p className="min-w-0 text-[0.6875rem] leading-snug text-muted-foreground">
             {selfInstallable
               ? t(($) => $.shell.updateChecker.restartNotice)
               : t(($) => $.shell.updateWindow.packageInstall)}
@@ -177,7 +177,7 @@ export function UpdateDialog({
         <pre
           data-testid="update-error-details"
           data-select-all-scope
-          className="mt-2 max-h-20 select-text overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] text-muted-foreground"
+          className="mt-2 max-h-20 select-text overflow-auto whitespace-pre-wrap break-words font-mono text-[0.6875rem] text-muted-foreground"
         >
           {errorMessage}
         </pre>
@@ -243,7 +243,7 @@ export function UpdateDialog({
                 content: notesBody ? (
                   <ReleaseNotesBody source={notesBody} onOpenLink={onOpenLink} />
                 ) : (
-                  <p className="text-[13px] text-muted-foreground">{t(($) => $.shell.updateWindow.ready)}</p>
+                  <p className="text-[0.8125rem] text-muted-foreground">{t(($) => $.shell.updateWindow.ready)}</p>
                 ),
               }}
               endLabel={currentVersion ? t(($) => $.shell.updateWindow.currentVersion, { version: currentVersion }) : null}

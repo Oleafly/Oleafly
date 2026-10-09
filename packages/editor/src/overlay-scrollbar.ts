@@ -83,6 +83,39 @@ function writePosition(scroller: HTMLElement, axis: ScrollAxis, value: number) {
   else scroller.scrollLeft = value;
 }
 
+interface Box {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+function offsetContainer(host: HTMLElement): HTMLElement {
+  return getComputedStyle(host).position === "static"
+    ? ((host.offsetParent as HTMLElement | null) ?? document.body)
+    : host;
+}
+
+function measureBox(host: HTMLElement, scroller: HTMLElement): Box {
+  const container = offsetContainer(host);
+  if (scroller.offsetParent === container) {
+    return {
+      top: scroller.offsetTop,
+      left: scroller.offsetLeft,
+      width: scroller.offsetWidth,
+      height: scroller.offsetHeight,
+    };
+  }
+  const containerRect = container.getBoundingClientRect();
+  const rect = scroller.getBoundingClientRect();
+  return {
+    top: rect.top - containerRect.top - container.clientTop + container.scrollTop,
+    left: rect.left - containerRect.left - container.clientLeft + container.scrollLeft,
+    width: scroller.offsetWidth,
+    height: scroller.offsetHeight,
+  };
+}
+
 interface Bar {
   axis: ScrollAxis;
   track: HTMLDivElement;
@@ -103,7 +136,7 @@ function createBar(axis: ScrollAxis, zIndex: number): Bar {
   ts.transition = "opacity 160ms ease-out";
   ts.touchAction = "none";
   ts.userSelect = "none";
-  ts.webkitUserSelect = "none";
+  ts.setProperty("-webkit-user-select", "none");
   ts.display = "none";
   ts.contain = "strict";
   const thumb = document.createElement("div");
@@ -126,6 +159,21 @@ function createBar(axis: ScrollAxis, zIndex: number): Bar {
   return { axis, track, thumb, metrics: null, drag: null, hovered: false };
 }
 
+function measureBars(bars: readonly Bar[], scroller: HTMLElement, box: Box): void {
+  const both = bars.length > 1;
+  for (const bar of bars) {
+    const length = bar.axis === "y" ? box.height : box.width;
+    const reserve = both ? BAR_SIZE : 0;
+    bar.metrics = readAxis(scroller, bar.axis, Math.max(0, length - reserve));
+  }
+  if (both && !bars.every((bar) => bar.metrics && bar.metrics.thumb > 0)) {
+    for (const bar of bars) {
+      const length = bar.axis === "y" ? box.height : box.width;
+      bar.metrics = readAxis(scroller, bar.axis, length);
+    }
+  }
+}
+
 export function attachOverlayScrollbar(options: OverlayScrollbarOptions): OverlayScrollbarHandle {
   const { scroller, host } = options;
   const axes = options.axes ?? ["y"];
@@ -138,7 +186,7 @@ export function attachOverlayScrollbar(options: OverlayScrollbarOptions): Overla
   let fadeTimer: ReturnType<typeof setTimeout> | null = null;
   let frame = 0;
   let destroyed = false;
-  let box = { top: 0, left: 0, width: 0, height: 0 };
+  let box: Box = { top: 0, left: 0, width: 0, height: 0 };
 
   const active = (bar: Bar) => bar.drag !== null || bar.hovered;
 
@@ -193,39 +241,8 @@ export function attachOverlayScrollbar(options: OverlayScrollbarOptions): Overla
 
   const measure = () => {
     if (destroyed) return;
-    const container =
-      getComputedStyle(host).position === "static"
-        ? ((host.offsetParent as HTMLElement | null) ?? document.body)
-        : host;
-    if (scroller.offsetParent === container) {
-      box = {
-        top: scroller.offsetTop,
-        left: scroller.offsetLeft,
-        width: scroller.offsetWidth,
-        height: scroller.offsetHeight,
-      };
-    } else {
-      const containerRect = container.getBoundingClientRect();
-      const rect = scroller.getBoundingClientRect();
-      box = {
-        top: rect.top - containerRect.top - container.clientTop + container.scrollTop,
-        left: rect.left - containerRect.left - container.clientLeft + container.scrollLeft,
-        width: scroller.offsetWidth,
-        height: scroller.offsetHeight,
-      };
-    }
-    const both = bars.length > 1;
-    for (const bar of bars) {
-      const length = bar.axis === "y" ? box.height : box.width;
-      const reserve = both ? BAR_SIZE : 0;
-      bar.metrics = readAxis(scroller, bar.axis, Math.max(0, length - reserve));
-    }
-    if (both && !bars.every((bar) => bar.metrics && bar.metrics.thumb > 0)) {
-      for (const bar of bars) {
-        const length = bar.axis === "y" ? box.height : box.width;
-        bar.metrics = readAxis(scroller, bar.axis, length);
-      }
-    }
+    box = measureBox(host, scroller);
+    measureBars(bars, scroller, box);
     layoutBars();
     for (const bar of bars) paintThumb(bar, bar.drag?.current ?? bar.metrics?.offset);
     paintVisibility();
@@ -284,7 +301,7 @@ export function attachOverlayScrollbar(options: OverlayScrollbarOptions): Overla
       return bar.axis === "y" ? rect.top : rect.left;
     };
     const finish = (event: PointerEvent) => {
-      if (!bar.drag || bar.drag.pointerId !== event.pointerId) return;
+      if (bar.drag?.pointerId !== event.pointerId) return;
       bar.drag = null;
       if (bar.track.hasPointerCapture(event.pointerId)) bar.track.releasePointerCapture(event.pointerId);
       showWhileScrolling();
@@ -310,7 +327,7 @@ export function attachOverlayScrollbar(options: OverlayScrollbarOptions): Overla
     listen(bar.track, "pointermove", (event) => {
       const drag = bar.drag;
       const metrics = bar.metrics;
-      if (!drag || drag.pointerId !== event.pointerId || !metrics) return;
+      if (drag?.pointerId !== event.pointerId || !metrics) return;
       event.preventDefault();
       const offset = dragOffset(metrics, drag, pointerCoordinate(event));
       drag.current = offset;

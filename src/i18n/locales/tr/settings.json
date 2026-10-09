@@ -533,12 +533,17 @@
         "right": "Sağ"
       },
       "font": {
-        "description": "Bir yazı tipi kurulu değilse sistem yedeğini kullanır.",
+        "description": "Menüler, paneller ve iletişim kutuları için bilgisayarınızda yüklü herhangi bir yazı tipini seçin.",
         "label": "Uygulama yazı tipi"
       },
       "fontSize": {
         "description": "Menülerdeki, panellerdeki ve düğmelerdeki metni ölçekler.",
         "label": "Uygulama yazı tipi boyutu"
+      },
+      "zoom": {
+        "description": "Düzenleyici ve PDF dahil Oleafly'ın tamamını büyütür veya küçültür.",
+        "label": "Yakınlaştırma",
+        "option": "%{{value}}"
       },
       "theme": {
         "description": "Sistem, işletim sistemini izler ve o değiştiğinde değişir.",
@@ -633,12 +638,20 @@
         "label": "Otomatik tamamlama"
       },
       "font": {
-        "description": "Kaynak dosyalar için kullanılan eş aralıklı yazı tipini seçin.",
-        "label": "Düzenleyici yazı tipi"
+        "description": "Kaynak dosyalar için bilgisayarınızda yüklü herhangi bir yazı tipini seçin.",
+        "label": "Düzenleyici yazı tipi",
+        "monospace": "Eş aralıklı"
+      },
+      "useAppFont": {
+        "description": "Düzenleyici, uygulamanın yazı tipini ve boyutunu kullanır.",
+        "disabledHint": "Bunu değiştirmek için Uygulama yazı tipini kullan'ı kapatın.",
+        "label": "Uygulama yazı tipini kullan"
       },
       "fontSize": {
         "description": "Kaynak düzenleyicinin metin boyutunu belirleyin.",
-        "label": "Düzenleyici yazı tipi boyutu"
+        "label": "Düzenleyici yazı tipi boyutu",
+        "custom": "Özel",
+        "customLabel": "Piksel cinsinden özel düzenleyici yazı tipi boyutu"
       },
       "ghostCompletion": {
         "description": "Olası tamamlamayı imlecin ardında gösterir. Kabul etmek için Tab tuşuna basın.",
@@ -671,8 +684,34 @@
         "options": {
           "compact": "Sıkışık",
           "normal": "Normal",
-          "wide": "Geniş"
+          "wide": "Geniş",
+          "custom": "Özel"
+        },
+        "customLabel": "Özel satır yüksekliği"
+      },
+      "letterSpacing": {
+        "customLabel": "Piksel cinsinden özel harf aralığı",
+        "description": "Kaynak düzenleyicide karakterlerin arasına boşluk ekler. İmlecin çevresinde de daha çok yer kalır.",
+        "label": "Harf aralığı",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Özel"
         }
+      },
+      "cursorWidth": {
+        "label": "İmleç genişliği",
+        "description": "Düzenleyici imlecinin kalınlığını ayarlar.",
+        "option": "{{width}}px"
+      },
+      "cursorColor": {
+        "label": "İmleç rengi",
+        "description": "Açık ve koyu düzenleyici temalarının her birinin kendi imleç rengi vardır. Siz seçene kadar temanın rengi kullanılır.",
+        "light": "Açık",
+        "dark": "Koyu",
+        "pickLight": "Açık düzenleyici temaları için imleç rengini seçin",
+        "pickDark": "Koyu düzenleyici temaları için imleç rengini seçin",
+        "useTheme": "Tema renklerini kullan"
       },
       "lineWrap": {
         "description": "Uzun satırları yana kaydırmak yerine alt satıra taşır.",
@@ -744,6 +783,7 @@
       }
     },
     "fontSizeOption": "{{size}}px",
+    "fontNotInstalled": "{{font}} yüklü değil, bu yüzden varsayılan yazı tipi kullanılıyor.",
     "preview": {
       "darkMode": {
         "description": "PDF renklerini varsayılan olarak tersine çevirir. Renkleri yine de önizleme araç çubuğundan değiştirebilirsiniz.",
@@ -752,10 +792,6 @@
       "hoverPreview": {
         "description": "Kitaplıkta bir projenin üzerine geldiğinizde en son derlenen sayfayı gösterir.",
         "label": "Üzerine gelince PDF'i önizle"
-      },
-      "zoomShortcuts": {
-        "description": "Uygulama penceresi yerine PDF'i yakınlaştırmak için Cmd/Ctrl +, - ve 0 tuşlarını kullanır.",
-        "label": "PDF yakınlaştırma kısayolları"
       }
     },
     "sectionName": "Görünüm",
@@ -821,10 +857,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "PDF gizliyken metni ortalanmış bir sütunda tutar.",
-        "label": "Düzenleyiciyi ortala"
-      },
       "fullScreen": {
         "description": "Zen kipinde ekranı doldurur, çıkınca pencereyi eski haline getirir.",
         "label": "Tam ekrana geç"
@@ -833,11 +865,7 @@
         "description": "Zen kipi başlarken PDF gizliyse, ilk derlemede onu düzenleyicinin yanında açar.",
         "label": "Derlerken PDF'yi göster"
       },
-      "title": "Zen kipi",
-      "toggle": {
-        "description": "Araç çubuğunu, kenar çubuğunu, asistanı ve terminali gizleyerek yalnızca yazınızı bırakır. Dikkat dağıtmayan kip olarak da bilinir. Açık bir proje gerekir.",
-        "label": "Zen kipini aç"
-      }
+      "title": "Zen kipi"
     }
   },
   "checkpoints": {
@@ -1630,6 +1658,10 @@
         "description": "Proje kenar çubuğunu gösterin veya gizleyin.",
         "label": "Kenar çubuğunu aç/kapat"
       },
+      "togglePreview": {
+        "label": "PDF önizlemesini aç/kapat",
+        "description": "Düzenleyicinin yanındaki PDF'i gösterir veya gizler; Zen kipinde de çalışır."
+      },
       "toggleTerminal": {
         "description": "Proje terminalini gösterin veya gizleyin.",
         "label": "Terminali aç/kapat"
@@ -1641,6 +1673,22 @@
       "toggleZenMode": {
         "description": "Yazınız dışındaki her şeyi gizleyin veya geri getirin.",
         "label": "Zen kipini aç/kapat"
+      },
+      "openSettings": {
+        "label": "Ayarları aç",
+        "description": "Oleafly ayarlarını açar."
+      },
+      "zoomIn": {
+        "description": "Uygulamanın tamamını büyütür.",
+        "label": "Yakınlaştır"
+      },
+      "zoomOut": {
+        "description": "Uygulamanın tamamını küçültür.",
+        "label": "Uzaklaştır"
+      },
+      "resetZoom": {
+        "description": "Uygulamayı %100'e döndürür.",
+        "label": "Yakınlaştırmayı sıfırla"
       }
     },
     "application": {

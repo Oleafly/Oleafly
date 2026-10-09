@@ -129,6 +129,14 @@ describe("attachOverlayScrollbar", () => {
     expect(scroller.classList.contains(NATIVE_SCROLLBAR_HIDDEN_CLASS)).toBe(false);
   });
 
+  it("keeps the bar out of text selection with and without the WebKit prefix", () => {
+    const handle = attachOverlayScrollbar({ scroller, host });
+    const bar = host.querySelector<HTMLElement>(`[${OVERLAY_SCROLLBAR_ATTRIBUTE}="y"]`)!;
+    expect(bar.style.getPropertyValue("user-select")).toBe("none");
+    expect(bar.style.getPropertyValue("-webkit-user-select")).toBe("none");
+    handle.destroy();
+  });
+
   it("scrolls the content synchronously while the thumb is dragged", () => {
     const handle = attachOverlayScrollbar({ scroller, host });
     const bar = host.querySelector<HTMLElement>(`[${OVERLAY_SCROLLBAR_ATTRIBUTE}="y"]`)!;

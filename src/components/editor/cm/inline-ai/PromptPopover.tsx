@@ -95,7 +95,7 @@ export function PromptPopover({
       <div className="mt-2 flex items-center gap-2">
         <div className="min-w-0 flex-1">
           {streaming && (
-            <span className="ai-shimmer text-[10px] font-medium">
+            <span className="ai-shimmer text-[0.625rem] font-medium">
               {t(($) => $.editor.inlineAi.thinking)}
             </span>
           )}

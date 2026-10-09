@@ -155,8 +155,8 @@ export function AiToolsTable({ className }: Readonly<{ className?: string }>) {
   const { t } = useTranslation(["common", "ai"]);
   return (
     <div className={cn("overflow-x-auto rounded-md border", className)} data-testid="ai-tools-table">
-      <table className="w-full border-collapse text-left text-[11px]">
-        <thead className="bg-muted/60 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <table className="w-full border-collapse text-left text-[0.6875rem]">
+        <thead className="bg-muted/60 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
           <tr>
             <th scope="col" className="px-3 py-2 font-medium">
               {t(($) => $.ai.tools.table.tool)}
@@ -178,7 +178,7 @@ export function AiToolsTable({ className }: Readonly<{ className?: string }>) {
                 <th
                   scope="rowgroup"
                   colSpan={3}
-                  className="border-t bg-muted/30 px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                  className="border-t bg-muted/30 px-3 py-1.5 text-left text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground"
                 >
                   {aiToolGroupLabel(group)}
                 </th>
@@ -188,14 +188,14 @@ export function AiToolsTable({ className }: Readonly<{ className?: string }>) {
                 return (
                   <tr key={tool.name} className="border-t align-top hover:bg-accent/40">
                     <td className="whitespace-nowrap px-3 py-2">
-                      <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                      <code className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[0.625rem] text-primary">
                         {tool.name}
                       </code>
                     </td>
                     <td className="px-3 py-2 text-foreground">
                       {tool.desc()}
                       {tool.note && (
-                        <span className="mt-0.5 block text-[10px] text-muted-foreground">{tool.note()}</span>
+                        <span className="mt-0.5 block text-[0.625rem] text-muted-foreground">{tool.note()}</span>
                       )}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2">
@@ -231,8 +231,8 @@ export function AiToolsGrid({
       )}
     >
       {AI_TOOLS.map((t) => (
-        <div key={t.name} className="flex items-baseline gap-2 text-[11px]">
-          <code className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+        <div key={t.name} className="flex items-baseline gap-2 text-[0.6875rem]">
+          <code className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[0.625rem] text-primary">
             {t.name}
           </code>
           <span className="text-muted-foreground">{t.desc()}</span>

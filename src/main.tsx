@@ -30,6 +30,8 @@ import { installExternalDropGuard } from "@/lib/external-drop-guard";
 import "@/styles/globals.css";
 import { isTauri } from "@tauri-apps/api/core";
 import { isMac } from "@/lib/utils";
+import { StoredAppTypography } from "@/lib/app-typography";
+import { AppZoom } from "@/lib/app-zoom";
 import { registerE2EImports } from "@/lib/e2e-import-registry";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 
@@ -164,6 +166,8 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "update") {
     return (
       <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
         <Suspense fallback={null}>
           <UpdateWindow />
         </Suspense>
@@ -174,6 +178,8 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
+          <StoredAppTypography />
+          <AppZoom />
           <Suspense fallback={null}>
             <PreviewWindow />
           </Suspense>
@@ -185,6 +191,8 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "present" || view === "presenter") {
     return (
       <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
         <Suspense fallback={null}>
           {view === "present" ? <PresentationWindow /> : <PresenterWindow />}
         </Suspense>
@@ -194,6 +202,8 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   if (view === "browser") {
     return (
       <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
         <Suspense fallback={null}>
           <BrowserChrome />
         </Suspense>
@@ -202,6 +212,7 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
   }
   return (
     <QueryClientProvider client={queryClient}>
+      <AppZoom />
       <App />
       <Toaster />
       <DevContextMenu />

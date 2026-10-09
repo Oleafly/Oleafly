@@ -533,12 +533,17 @@
         "right": "Höger"
       },
       "font": {
-        "description": "Använder systemets reservtypsnitt när ett typsnitt inte är installerat.",
+        "description": "Välj valfritt typsnitt som är installerat på datorn för menyer, paneler och dialogrutor.",
         "label": "Appens typsnitt"
       },
       "fontSize": {
         "description": "Skala texten i menyer, paneler och knappar.",
         "label": "Appens teckenstorlek"
+      },
+      "zoom": {
+        "description": "Gör allt i Oleafly större eller mindre, även redigeraren och PDF:en.",
+        "label": "Zoom",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "System följer operativsystemet och ändras när det gör det.",
@@ -633,12 +638,20 @@
         "label": "Automatisk komplettering"
       },
       "font": {
-        "description": "Välj typsnittet med fast bredd som används för källfiler.",
-        "label": "Redigerarens typsnitt"
+        "description": "Välj valfritt typsnitt som är installerat på datorn för källfiler.",
+        "label": "Redigerarens typsnitt",
+        "monospace": "Fast bredd"
+      },
+      "useAppFont": {
+        "description": "Redigeraren följer appens teckensnitt och teckenstorlek.",
+        "disabledHint": "Stäng av Använd appens teckensnitt för att ändra detta.",
+        "label": "Använd appens teckensnitt"
       },
       "fontSize": {
         "description": "Ange textstorleken i källkodsredigeraren.",
-        "label": "Redigerarens teckenstorlek"
+        "label": "Redigerarens teckenstorlek",
+        "custom": "Anpassad",
+        "customLabel": "Anpassad teckenstorlek i redigeraren i pixlar"
       },
       "ghostCompletion": {
         "description": "Visa den troliga kompletteringen efter markören. Tryck på Tab för att acceptera den.",
@@ -671,8 +684,34 @@
         "options": {
           "compact": "Kompakt",
           "normal": "Normal",
-          "wide": "Bred"
+          "wide": "Bred",
+          "custom": "Anpassad"
+        },
+        "customLabel": "Anpassad radhöjd"
+      },
+      "letterSpacing": {
+        "customLabel": "Anpassat teckenavstånd i pixlar",
+        "description": "Lägger till avstånd mellan tecknen i källredigeraren. Det ger också mer plats runt markören.",
+        "label": "Teckenavstånd",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Anpassad"
         }
+      },
+      "cursorWidth": {
+        "label": "Markörbredd",
+        "description": "Ange hur tjock redigerarens markör är.",
+        "option": "{{width}} px"
+      },
+      "cursorColor": {
+        "label": "Markörfärg",
+        "description": "Ljusa och mörka redigerarteman har var sin markörfärg. Tills du väljer en används temats färg.",
+        "light": "Ljust",
+        "dark": "Mörkt",
+        "pickLight": "Välj markörfärg för ljusa redigerarteman",
+        "pickDark": "Välj markörfärg för mörka redigerarteman",
+        "useTheme": "Använd temats färger"
       },
       "lineWrap": {
         "description": "Bryt långa rader i stället för att rulla i sidled.",
@@ -744,6 +783,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} är inte installerat, så standardteckensnittet används i stället.",
     "preview": {
       "darkMode": {
         "description": "Invertera PDF-färgerna som standard. Du kan fortfarande byta färger i förhandsvisningens verktygsfält.",
@@ -752,10 +792,6 @@
       "hoverPreview": {
         "description": "Visa den senast kompilerade sidan när du håller muspekaren över ett projekt i biblioteket.",
         "label": "Förhandsvisa PDF vid hovring"
-      },
-      "zoomShortcuts": {
-        "description": "Använd Cmd/Ctrl +, - och 0 för att zooma PDF:en i stället för appfönstret.",
-        "label": "Kortkommandon för PDF-zoom"
       }
     },
     "sectionName": "Utseende",
@@ -821,10 +857,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Håller texten i en centrerad kolumn medan PDF:en är dold.",
-        "label": "Centrera redigeraren"
-      },
       "fullScreen": {
         "description": "Fyller skärmen i Zen-läge och återställer fönstret när du lämnar det.",
         "label": "Gå till helskärm"
@@ -833,11 +865,7 @@
         "description": "Om PDF:en är dold när Zen-läge startar öppnas den bredvid redigeraren första gången du kompilerar.",
         "label": "Visa PDF:en vid kompilering"
       },
-      "title": "Zen-läge",
-      "toggle": {
-        "description": "Döljer verktygsfältet, sidofältet, assistenten och terminalen så att bara din text blir kvar. Kallas också störningsfritt läge. Kräver ett öppet projekt.",
-        "label": "Aktivera Zen-läge"
-      }
+      "title": "Zen-läge"
     }
   },
   "checkpoints": {
@@ -1630,6 +1658,10 @@
         "description": "Visa eller dölj projektets sidofält.",
         "label": "Visa eller dölj sidofältet"
       },
+      "togglePreview": {
+        "label": "Visa eller dölj PDF-förhandsvisning",
+        "description": "Visar eller döljer PDF:en bredvid redigeraren, även i Zen-läge."
+      },
       "toggleTerminal": {
         "description": "Visa eller dölj projektets terminal.",
         "label": "Visa eller dölj terminalen"
@@ -1641,6 +1673,22 @@
       "toggleZenMode": {
         "description": "Dölj allt utom din text, eller visa allt igen.",
         "label": "Växla Zen-läge"
+      },
+      "openSettings": {
+        "label": "Öppna inställningar",
+        "description": "Öppna inställningarna för Oleafly."
+      },
+      "zoomIn": {
+        "description": "Gör hela appen större.",
+        "label": "Zooma in"
+      },
+      "zoomOut": {
+        "description": "Gör hela appen mindre.",
+        "label": "Zooma ut"
+      },
+      "resetZoom": {
+        "description": "Återställer appen till 100 %.",
+        "label": "Återställ zoom"
       }
     },
     "application": {

@@ -505,7 +505,7 @@ function ServerEditor({
               value={argsText}
               onChange={(event) => setArgsText(event.target.value)}
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.settings.mcp.servers.editor.argsHint)}
             </p>
           </div>
@@ -612,7 +612,7 @@ function ServerEditor({
                   setJsonError(null);
                 }}
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.settings.mcp.servers.editor.jsonHint)}
               </p>
             </div>
@@ -996,7 +996,7 @@ export function McpServersManager() {
                     <h4 className="text-sm font-medium">{name}</h4>
                     <StatusBadge record={record} />
                   </div>
-                  <p className="truncate font-mono text-[11px] text-muted-foreground" title={endpoint}>
+                  <p className="truncate font-mono text-[0.6875rem] text-muted-foreground" title={endpoint}>
                     <SettingsPathText text={endpoint} />
                   </p>
                 </div>
@@ -1020,7 +1020,7 @@ export function McpServersManager() {
 
               {record.validation.tools.length > 0 ? (
                 <div className="space-y-1.5">
-                  <p className="text-[11px] font-medium text-muted-foreground">
+                  <p className="text-[0.6875rem] font-medium text-muted-foreground">
                     {t(($) => $.settings.mcp.servers.card.toolCount, {
                       count: record.validation.tool_count,
                     })}
@@ -1041,7 +1041,7 @@ export function McpServersManager() {
               ) : null}
               {record.validation.tools.length === 0 &&
               record.validation.status === "connected" ? (
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[0.6875rem] text-muted-foreground">
                   {t(($) => $.settings.mcp.servers.card.noTools)}
                 </p>
               ) : null}

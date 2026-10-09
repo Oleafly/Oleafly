@@ -102,6 +102,29 @@ function projectRowColumns(t: LibraryTranslate, project: ProjectInfo, updatedAt:
   };
 }
 
+function projectOpenLabel(t: LibraryTranslate, project: ProjectInfo) {
+  return project.recovery_pending
+    ? t(($) => $.library.projects.openToRecoverNamed, { name: project.name })
+    : t(($) => $.library.projects.open, { name: project.name });
+}
+
+function projectPreviewLabel(t: LibraryTranslate, project: ProjectInfo) {
+  return project.has_preview
+    ? t(($) => $.library.projects.previewPdf)
+    : t(($) => $.library.projects.previewUnavailable);
+}
+
+function starredStyle(starred: boolean) {
+  return starred ? { color: "#f59e0b" } : undefined;
+}
+
+function projectFavoriteLabels(t: LibraryTranslate) {
+  return {
+    add: t(($) => $.library.projects.favoriteAdd),
+    remove: t(($) => $.library.projects.favoriteRemove),
+  };
+}
+
 function ProjectRowCaption({
   t,
   project,
@@ -113,7 +136,7 @@ function ProjectRowCaption({
 }>) {
   if (project.recovery_pending) {
     return (
-      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
+      <span className="mt-1 block truncate text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
         {t(($) => $.library.projects.openToRecover)}
       </span>
     );
@@ -123,14 +146,14 @@ function ProjectRowCaption({
     return (
       <span className="mt-1 block min-w-0 text-xs lg:hidden">
         <FolderStateLine state={folderState} className="sm:hidden" />
-        <span className="hidden truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:block lg:hidden">
+        <span className="hidden truncate text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:block lg:hidden">
           {caption}
         </span>
       </span>
     );
   }
   return (
-    <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
+    <span className="mt-1 block truncate text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
       {caption}
     </span>
   );
@@ -426,9 +449,8 @@ const ProjectListRow = memo(function ProjectListRow({
     previewStore.release(p.id);
     actions.releaseThumbnail(p);
   };
-  const favoriteLabel = starred
-    ? t(($) => $.library.projects.favoriteRemove)
-    : t(($) => $.library.projects.favoriteAdd);
+  const favoriteLabels = projectFavoriteLabels(t);
+  const favoriteLabel = starred ? favoriteLabels.remove : favoriteLabels.add;
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -438,11 +460,7 @@ const ProjectListRow = memo(function ProjectListRow({
         >
           <button
             type="button"
-            aria-label={
-              recoveryPending
-                ? t(($) => $.library.projects.openToRecoverNamed, { name: p.name })
-                : t(($) => $.library.projects.open, { name: p.name })
-            }
+            aria-label={projectOpenLabel(t, p)}
             onClick={() => actions.open(p)}
             onMouseEnter={startPreview}
             onMouseLeave={endPreview}
@@ -501,13 +519,7 @@ const ProjectListRow = memo(function ProjectListRow({
               </Tooltip>
             ) : null}
             {!recoveryPending ? (
-              <Tooltip
-                label={
-                  p.has_preview
-                    ? t(($) => $.library.projects.previewPdf)
-                    : t(($) => $.library.projects.previewUnavailable)
-                }
-              >
+              <Tooltip label={projectPreviewLabel(t, p)}>
                 <button
                   type="button"
                   disabled={!p.has_preview || folderState !== null}
@@ -529,7 +541,7 @@ const ProjectListRow = memo(function ProjectListRow({
                     "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground",
                     starred && "text-amber-500 hover:text-amber-500",
                   )}
-                  style={starred ? { color: "#f59e0b" } : undefined}
+                  style={starredStyle(starred)}
                 >
                   {starred ? (
                     <BookmarkCheck aria-hidden className="size-4 fill-current" />
@@ -694,7 +706,7 @@ export function ProjectList({
     <div data-testid="project-list" className="border-b border-border/70">
       <div
         aria-hidden="true"
-        className="hidden min-h-10 grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] items-center gap-4 border-b border-border/70 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:grid"
+        className="hidden min-h-10 grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] items-center gap-4 border-b border-border/70 px-4 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:grid"
       >
         <span>{t(($) => $.library.home.columns.name)}</span>
         <span>{t(($) => $.library.home.columns.type)}</span>

@@ -10,13 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Zen mode hides the toolbar, sidebar, assistant, terminal and the editor's
-  tabs and formatting bar so only your writing is left. Turn it on with
-  Ctrl-Command-Shift-F (Shift-F11 on Windows and Linux), from the View menu,
-  the layout menu, the command palette or Settings > Appearance, and leave it
-  with the same shortcut or by pressing Escape twice. It can go full screen,
-  center the text and open the PDF when you compile with the shortcut. A
-  small pill in the bottom right corner shows when a compile is running or
-  has failed.
+  tabs and formatting bar so only your writing is left, with the editor at
+  full width. Turn it on with Ctrl-Command-Shift-F (Shift-F11 on Windows and
+  Linux), from the View menu, the layout menu or the command palette, and
+  leave it with the same shortcut or by pressing Escape twice. It can go full
+  screen and open the PDF when you compile with the shortcut. Those two
+  options are under Settings > Appearance > Project, and the shortcut can be
+  changed in Settings > Keyboard Shortcuts. The Compile button and a small
+  status pill sit in the top right corner, over the PDF when it's open, and
+  the button shows when the pointer comes near.
 - Cite straight from your Zotero library while you write. With Zotero 7 or
   newer open on the same computer, and "Allow other applications on this
   computer to communicate with Zotero" turned on in Zotero's Advanced
@@ -44,9 +46,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Rename file in the file tree, or drag the file to a new folder. Settings >
   Appearance > Editor sets whether Oleafly asks first, always updates the
   paths or leaves them alone.
+- Cmd+= and Cmd+- zoom the whole app, the editor and PDF included, and
+  Cmd+0 sets it back to 100% (Ctrl on Windows and Linux). Every Oleafly
+  window follows the same level, which is remembered and can also be picked
+  in Settings > Appearance > App. The keys can be changed in Settings >
+  Keyboard Shortcuts. Inside the PDF they zoom the app too, so the PDF
+  itself zooms with its toolbar, a pinch or Ctrl+scroll, and the PDF zoom
+  shortcuts setting is gone.
+- Settings > Appearance > Editor has a Use the app font switch. With it on,
+  the editor uses the App font and App font size.
+- Cmd+Option+P (Ctrl+Alt+P on Windows and Linux) shows or hides the PDF
+  beside the editor, the way Cmd+B does for the sidebar. It works in Zen mode
+  too, so a PDF opened by compiling can be put away without leaving Zen. It's
+  in the command palette, and the key can be changed in Settings > Keyboard
+  Shortcuts.
+- Cmd+, opens Settings on macOS, and Ctrl+, does the same on Windows and
+  Linux, including from the detached PDF window. On macOS the Oleafly menu
+  also has a Settings item. You can change the shortcut in Settings >
+  Keyboard Shortcuts. The Settings button's tooltip, the command palette and
+  the shortcut list (Cmd+/) show the current one (#256).
+- The editor font and the app font can be any font installed on your
+  computer. Each name in the list is drawn in its own font, the editor's list
+  puts monospaced fonts first, and you can type to search either list or to
+  use a name it doesn't show. Symbol fonts such as Wingdings are left out,
+  since they would turn every letter into a picture, and a saved font that
+  isn't installed gets a note under the setting. Line height has a Custom
+  choice for an exact value from 1 to 3. New Cursor width and Cursor color
+  settings make the editor cursor 1, 2 or 3 pixels wide and give it your own
+  color, one for light editor themes and one for dark ones. Letter spacing
+  adds room between characters, and the editor font size takes any value
+  from 6 to 100 pixels instead of stopping at 20 (#257).
 
 ### Changed
 
+- The home screen's Grid background has wider squares that fade out toward
+  the edges.
 - Every sidebar view now remembers its scroll position, expanded folders and
   open sections for each project.
 - Dragging a scrollbar quickly through a long document, the file tree, the
@@ -81,6 +115,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- After a click on the PDF, its keyboard shortcuts worked once and then
+  stopped: re-rendering a page removed the text that had focus. Clicking
+  the page margins or the gray background didn't give the PDF focus at
+  all. The preview now takes focus from a click anywhere in it and keeps it
+  through re-renders.
+- App font size now scales every piece of interface text. Section titles in
+  the sidebar, count badges and other small labels used to stay the same
+  size whatever it was set to. The counts beside the sidebar section titles
+  and Recent chats now use the accent color.
+- The search field in the sidebar no longer draws a bright border when it has
+  focus. A light background tint shows it instead.
+- Project cards keep the engine and the Updated date on one line each, cut
+  short with an ellipsis instead of wrapping. They use the full width and
+  only make room for the info button while it shows.
+- The file tree no longer gets wider every time you resize the window or the
+  PDF preview leaves full screen. It keeps the width you gave it.
+- The App font setting in Appearance now changes the font of the whole
+  interface. Before, it had no visible effect.
+- Theme customization shows the default colors of the light palette while
+  the app is dark, and of the dark palette while it is light. The swatches
+  of the mode you weren't using were blank.
 - On Macs with a Safari version older than 26.2, the PDF preview drew the
   text of most documents in a stand-in font instead of the fonts embedded in
   the PDF. Letters came out widely spaced, ligatures such as "ffi" broke

@@ -604,7 +604,7 @@
     "title": "Preflight",
     "readerDisabled": "Kompilieren Sie zuerst und führen Sie eine Prüfung der Ausgabe aus",
     "readerEnabled": "Den aus dem PDF extrahierten Text öffnen",
-    "readerButton": "Zeigen, was der Betrachter sieht",
+    "readerButton": "Screenreader",
     "aboutLabel": "Über Preflight",
     "aboutTitle": "Was Preflight prüft",
     "aboutIntro": "Preflight liest den Projektquelltext, das Compilerprotokoll und das aktuelle PDF. Schalten Sie nur die Prüfungen ein, die zu diesem Dokument passen.",

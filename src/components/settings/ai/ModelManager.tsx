@@ -229,13 +229,13 @@ export function ModelManager({
     <div className="mt-3 space-y-1.5 border-t pt-3">
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
-          <span className="text-[11px] font-medium text-muted-foreground">
+          <span className="text-[0.6875rem] font-medium text-muted-foreground">
             {t(($) => $.settings.ai.models.title)}
           </span>
           {updatedLabel && (
             <span
               data-testid={`ai-models-updated-${providerId}`}
-              className="truncate text-[10px] text-muted-foreground/80"
+              className="truncate text-[0.625rem] text-muted-foreground/80"
             >
               {updatedLabel}
             </span>
@@ -247,7 +247,7 @@ export function ModelManager({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 px-1.5 text-[11px]"
+                className="h-6 px-1.5 text-[0.6875rem]"
                 data-testid={`ai-restore-models-${providerId}`}
                 onClick={() => onChange(restoreSeedModels(models, providerId))}
               >
@@ -266,7 +266,7 @@ export function ModelManager({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 px-1.5 text-[11px]"
+                className="h-6 px-1.5 text-[0.6875rem]"
                 data-testid={`ai-refresh-models-${providerId}`}
                 disabled={refreshing || throttled}
                 onClick={() => void runRefresh("manual")}
@@ -284,7 +284,7 @@ export function ModelManager({
       </div>
 
       {refreshError && (
-        <p className="text-[11px] text-destructive">
+        <p className="text-[0.6875rem] text-destructive">
           {refreshError === "invalidKey"
             ? t(($) => $.settings.ai.models.invalidKey)
             : t(($) => $.settings.ai.models.unreachable)}
@@ -295,8 +295,8 @@ export function ModelManager({
           data-testid={`ai-refresh-notice-${providerId}`}
           className={
             notice.kind === "unreadable"
-              ? "text-[11px] text-destructive"
-              : "text-[11px] text-muted-foreground"
+              ? "text-[0.6875rem] text-destructive"
+              : "text-[0.6875rem] text-muted-foreground"
           }
         >
           {noticeLabel(notice)}
@@ -346,7 +346,7 @@ export function ModelManager({
           );
         })}
         {models.length === 0 && (
-          <p className="px-1.5 py-1 text-[11px] text-muted-foreground">
+          <p className="px-1.5 py-1 text-[0.6875rem] text-muted-foreground">
             {t(($) => $.settings.ai.models.empty)}
           </p>
         )}
@@ -380,7 +380,7 @@ export function ModelManager({
           </Button>
         </div>
         {addError && (
-          <p data-testid={`ai-add-model-error-${providerId}`} className="mt-1 text-[11px] text-destructive">
+          <p data-testid={`ai-add-model-error-${providerId}`} className="mt-1 text-[0.6875rem] text-destructive">
             {addErrorLabel()}
           </p>
         )}
@@ -438,7 +438,7 @@ export function ModelMetadataStatusLine() {
   return (
     <div
       data-testid="ai-model-metadata-status"
-      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.6875rem] text-muted-foreground"
     >
       <span>
         {metadataLabel()}
@@ -446,7 +446,7 @@ export function ModelMetadataStatusLine() {
       <Button
         size="sm"
         variant="ghost"
-        className="h-6 px-1.5 text-[11px]"
+        className="h-6 px-1.5 text-[0.6875rem]"
         data-testid="ai-model-metadata-refresh"
         disabled={refresh.isPending}
         onClick={() => refresh.mutate()}

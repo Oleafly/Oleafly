@@ -27,11 +27,14 @@ const mocks = vi.hoisted(() => ({
   openFileAndGotoLine: vi.fn(async (_file: string | null, _line: number, _column?: number) => {}),
   askAiAboutCompileErrors: vi.fn(async () => {}),
   openSettingsAt: vi.fn(),
+  setSettingsOpen: vi.fn(),
+  activeTourId: null as string | null,
   tauri: true,
 }));
 vi.mock("@/features/synctex", () => ({ openFileAndGotoLine: mocks.openFileAndGotoLine }));
 vi.mock("@/features/ask-ai-compile-errors", () => ({ askAiAboutCompileErrors: mocks.askAiAboutCompileErrors }));
-vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({ openSettingsAt: mocks.openSettingsAt }) } }));
+vi.mock("@/store/settings", () => ({ useSettingsStore: { getState: () => ({ openSettingsAt: mocks.openSettingsAt, setSettingsOpen: mocks.setSettingsOpen }) } }));
+vi.mock("@/store/tours", () => ({ useTourStore: { getState: () => ({ activeTourId: mocks.activeTourId }) } }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: { errorUnique: mocks.errorUnique }, notifyError: mocks.notifyError }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.tauri }));
@@ -67,7 +70,7 @@ const trusted = { trusted: true, source: "folder", parent: null, repository: nul
 
 beforeEach(() => {
   vi.clearAllMocks(); mocks.handlers.clear(); mocks.detachedProject = "current"; mocks.checkpoint = null; mocks.detachedChanged = () => {};
-  mocks.files = {}; mocks.filesChanged = () => {}; mocks.tauri = true;
+  mocks.files = {}; mocks.filesChanged = () => {}; mocks.tauri = true; mocks.activeTourId = null;
   useFolderAccessStore.getState().reset(null);
 });
 
@@ -306,6 +309,21 @@ describe("detached compile commands", () => {
     mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "pdf-settings" } });
     await vi.waitFor(() => expect(mocks.setFocus).toHaveBeenCalledOnce());
     expect(mocks.openSettingsAt).toHaveBeenCalledWith("appearance", "pdf");
+    cleanup();
+  });
+
+  it("opens Settings in the main window when the detached preview asks, but not during a tour", async () => {
+    const cleanup = await startPreviewWorkspaceBridge();
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "settings" } });
+    await vi.waitFor(() => expect(mocks.setFocus).toHaveBeenCalledOnce());
+    expect(mocks.setSettingsOpen).toHaveBeenCalledWith(true);
+
+    mocks.activeTourId = "welcome";
+    mocks.handlers.get("preview:command")?.({ payload: { projectId: "current", action: "settings" } });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mocks.setSettingsOpen).toHaveBeenCalledOnce();
+    expect(mocks.setFocus).toHaveBeenCalledOnce();
     cleanup();
   });
 

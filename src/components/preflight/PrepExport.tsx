@@ -88,20 +88,20 @@ export function PrepExport() {
   return (
     <div className="mx-3 mb-4 rounded-md border border-sidebar-border bg-black/[0.03] dark:bg-background">
       <div className="px-2.5 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
           {t(($) => $.preflight.prepExport.title)}
         </p>
-        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+        <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
           {t(($) => $.preflight.prepExport.intro)}
         </p>
         {gate && gated.origin === "active" && (
-          <p className="mt-2 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-2 flex items-start gap-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
             <Info className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
             <span>{t(($) => $.preflight.prepExport.activeFileFallback)}</span>
           </p>
         )}
         {gate?.classNotice && (
-          <p className="mt-2 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-2 flex items-start gap-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
             <AlertTriangle
               className={`mt-0.5 size-3 shrink-0 ${gate.classSeverity === "block" ? "text-red-500" : "text-amber-600 dark:text-amber-500"}`}
             />
@@ -109,13 +109,13 @@ export function PrepExport() {
           </p>
         )}
         {gate?.packageNotice && (
-          <p className="mt-1.5 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-1.5 flex items-start gap-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
             <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-600 dark:text-amber-500" />
             <span>{renderMessage(tp, gate.packageNotice)}</span>
           </p>
         )}
         {gate && gate.cautionNotices.length > 0 && (
-          <p className="mt-1.5 flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-1.5 flex items-start gap-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
             <Info className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
             <span>{gate.cautionNotices.map((notice) => renderMessage(tp, notice)).join(" ")}</span>
           </p>
@@ -129,7 +129,7 @@ export function PrepExport() {
             <Wand2 className="size-3.5" /> {t(($) => $.preflight.prepExport.prepare)}
           </button>
         ) : (
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-2 text-[0.6875rem] leading-relaxed text-muted-foreground">
             {gate?.retrieved
               ? t(($) => $.preflight.prepExport.unavailable, { retrieved: gate.retrieved })
               : t(($) => $.preflight.prepExport.unavailableUndated)}
@@ -143,7 +143,7 @@ export function PrepExport() {
             {result.changes.map((c) => {
               const { icon: Icon, color } = KIND[c.kind];
               return (
-                <li key={objectKey(c, "prep-change")} className="flex items-start gap-2 text-[11px] leading-relaxed">
+                <li key={objectKey(c, "prep-change")} className="flex items-start gap-2 text-[0.6875rem] leading-relaxed">
                   <Icon className={`mt-0.5 size-3.5 shrink-0 ${color}`} />
                   <span className="text-muted-foreground">{renderMessage(tp, c.summary)}</span>
                 </li>
@@ -174,13 +174,13 @@ export function PrepExport() {
                 >
                   <FileCheck2 className="size-3.5" /> {t(($) => $.preflight.prepExport.compileTagged)}
                 </button>
-                <p className="flex items-start gap-1 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="flex items-start gap-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
                   <AlertTriangle className="mt-0.5 size-3 shrink-0 text-amber-600 dark:text-amber-500" />
                   {t(($) => $.preflight.prepExport.compileTaggedWarning)}
                 </p>
               </div>
             ) : (
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
                 {t(($) => $.preflight.prepExport.noEngine)}
               </p>
             )}

@@ -67,7 +67,7 @@ function narrowed(query: string, generation: number): ZoteroSearchEntry | null {
 export function cachedZoteroSearch(query: string, generation: number): ZoteroSearchEntry | null {
   const normalized = normalizeZoteroQuery(query);
   const exact = cache.get(normalized);
-  if (exact && exact.generation === generation) {
+  if (exact?.generation === generation) {
     remember(normalized, exact);
     return exact;
   }

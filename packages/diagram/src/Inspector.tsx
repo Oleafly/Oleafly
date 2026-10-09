@@ -118,7 +118,7 @@ export function Inspector({
     return (
       <div className="flex flex-col gap-2.5 p-3">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
             {t("inspector.shape")}
           </span>
           {onReorder && (
@@ -203,7 +203,7 @@ export function Inspector({
 
   return (
     <div className="flex flex-col gap-2.5 p-3">
-      <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
         {t("inspector.arrow")}
       </div>
       <label className="flex flex-col gap-1 text-xs">

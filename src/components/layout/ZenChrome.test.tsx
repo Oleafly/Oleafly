@@ -116,10 +116,25 @@ describe("compile feedback in the corner", () => {
     expect(screen.getByTestId("zen-compile-button")).toHaveAttribute("data-visible", "false");
   });
 
-  it("reveals the compile button when the pointer is near the corner", () => {
+  it("sits in the top right corner, below the window's title strip", () => {
+    beginZen();
+    render(<ZenCompileCorner />);
+    const corner = screen.getByTestId("zen-compile-corner");
+    expect(corner).toHaveClass("top-10", "right-4");
+    expect(corner.className).not.toMatch(/bottom-/u);
+  });
+
+  it("stays hidden while the pointer is near the bottom right corner instead", () => {
     beginZen();
     render(<ZenCompileCorner />);
     movePointer(window.innerWidth - 20, window.innerHeight - 20);
+    expect(screen.getByTestId("zen-compile-button")).toHaveAttribute("data-visible", "false");
+  });
+
+  it("reveals the compile button when the pointer is near the corner", () => {
+    beginZen();
+    render(<ZenCompileCorner />);
+    movePointer(window.innerWidth - 20, 20);
     expect(screen.getByTestId("zen-compile-button")).toHaveAttribute("data-visible", "true");
     movePointer(window.innerWidth / 2, window.innerHeight / 2);
     expect(screen.getByTestId("zen-compile-button")).toHaveAttribute("data-visible", "false");
@@ -128,7 +143,7 @@ describe("compile feedback in the corner", () => {
   it("hides the compile button when the pointer leaves the window", () => {
     beginZen();
     render(<ZenCompileCorner />);
-    movePointer(window.innerWidth - 5, window.innerHeight - 5);
+    movePointer(window.innerWidth - 5, 5);
     act(() => {
       document.documentElement.dispatchEvent(new MouseEvent("mouseleave"));
     });
@@ -148,7 +163,7 @@ describe("compile feedback in the corner", () => {
     const recompile = vi.fn(async () => undefined);
     useCompileStore.setState({ recompile } as unknown as ReturnType<typeof useCompileStore.getState>);
     render(<ZenCompileCorner />);
-    movePointer(window.innerWidth - 10, window.innerHeight - 10);
+    movePointer(window.innerWidth - 10, 10);
     await userEvent.setup().click(screen.getByRole("button", { name: compile.compile }));
     expect(recompile).toHaveBeenCalledOnce();
     expect(useSettingsStore.getState().viewMode).toBe("split");
@@ -175,7 +190,7 @@ describe("compile feedback in the corner", () => {
     useCompileStore.setState({ status: "compiling" });
     render(<ZenCompileCorner />);
     act(() => {
-      window.dispatchEvent(new MouseEvent("pointermove", { clientX: window.innerWidth - 4, clientY: window.innerHeight - 4 }));
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: window.innerWidth - 4, clientY: 4 }));
     });
     expect(screen.getAllByTestId("zen-compile-pill")).toHaveLength(1);
     expect(screen.queryByTestId("zen-compile-button")).toBeNull();

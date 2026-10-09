@@ -78,7 +78,7 @@ function SourceRow({
 }
 
 function Meta({ children, className }: Readonly<{ children: ReactNode; className?: string }>) {
-  return <span className={cn("ml-auto shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground", className)}>{children}</span>;
+  return <span className={cn("ml-auto shrink-0 font-mono text-[0.6875rem] tabular-nums text-muted-foreground", className)}>{children}</span>;
 }
 
 function EntryList({
@@ -102,7 +102,7 @@ function EntryList({
               style={entry.kind === "heading" ? { paddingLeft: `${Math.max(0, (entry.level ?? 1) - 1) * 14}px` } : undefined}
             >
               {entry.number && (
-                <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground">
+                <span className="shrink-0 font-mono text-[0.6875rem] tabular-nums text-muted-foreground">
                   {entry.kind === "equation" ? `(${entry.number})` : entry.number}
                 </span>
               )}
@@ -110,7 +110,7 @@ function EntryList({
                 {entry.text || t(($) => $.editor.typstInsights.untitled)}
               </span>
             </span>
-            {entry.label && <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{labelText(engine, entry.label)}</span>}
+            {entry.label && <span className="shrink-0 font-mono text-[0.6875rem] text-muted-foreground">{labelText(engine, entry.label)}</span>}
             {!entry.numbered && entry.kind !== "heading" && <Meta>{t(($) => $.editor.typstInsights.unnumbered)}</Meta>}
             {entry.page !== null && <Meta>{t(($) => $.editor.typstInsights.page, { page: entry.page })}</Meta>}
           </SourceRow>

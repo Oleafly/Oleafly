@@ -20,7 +20,8 @@ export function createLiveMessageStore(): LiveMessageStore {
       if (next === current) return;
       if (next === null && current === null) return;
       current = next;
-      for (const listener of [...listeners]) listener();
+      const snapshot = [...listeners];
+      for (const listener of snapshot) listener();
     },
     subscribe: (listener) => {
       listeners.add(listener);

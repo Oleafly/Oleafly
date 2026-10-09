@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
 import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
+import {
+  fontFamilyName,
+  primaryFontFamily,
+  withoutControlCharacters,
+} from "@/lib/font-families";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -511,7 +516,7 @@ function readTerminalCursorStyle(raw: string): TerminalCursorStyle {
 function readTerminalColorTheme(raw: string): TerminalColorThemeId {
   return raw in TERMINAL_COLOR_THEMES ? (raw as TerminalColorThemeId) : "system";
 }
-function readTerminalColor(raw: string, fallback: string): string {
+function readHexColor(raw: string, fallback: string): string {
   return /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : fallback;
 }
 function readBrowserSearchEngine(raw: string): BrowserSearchEngineId {
@@ -745,9 +750,11 @@ export const EDITOR_KEYMAP_MODES: readonly EditorKeymapMode[] = [
   "emacs",
 ];
 
-export type EditorLineHeight = "compact" | "normal" | "wide";
+export type EditorLineHeightPreset = "compact" | "normal" | "wide";
 
-export const EDITOR_LINE_HEIGHTS: Readonly<Record<EditorLineHeight, number>> = {
+export type EditorLineHeight = EditorLineHeightPreset | "custom";
+
+export const EDITOR_LINE_HEIGHTS: Readonly<Record<EditorLineHeightPreset, number>> = {
   compact: 1.4,
   normal: 1.7,
   wide: 2,
@@ -757,7 +764,74 @@ export const EDITOR_LINE_HEIGHT_OPTIONS: readonly EditorLineHeight[] = [
   "compact",
   "normal",
   "wide",
+  "custom",
 ];
+
+export const EDITOR_CUSTOM_LINE_HEIGHT = { min: 1, max: 3, step: 0.05 } as const;
+
+export function clampEditorLineHeight(value: number): number {
+  if (!Number.isFinite(value)) return EDITOR_LINE_HEIGHTS.normal;
+  const { min, max } = EDITOR_CUSTOM_LINE_HEIGHT;
+  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100;
+}
+
+export function editorLineHeightValue(choice: EditorLineHeight, custom: number): number {
+  return choice === "custom" ? clampEditorLineHeight(custom) : EDITOR_LINE_HEIGHTS[choice];
+}
+
+export type EditorLetterSpacingPreset = "normal" | "slight" | "wide" | "wider";
+
+export type EditorLetterSpacing = EditorLetterSpacingPreset | "custom";
+
+export const EDITOR_LETTER_SPACINGS: Readonly<Record<EditorLetterSpacingPreset, number>> = {
+  normal: 0,
+  slight: 0.5,
+  wide: 1,
+  wider: 1.5,
+};
+
+export const EDITOR_LETTER_SPACING_OPTIONS: readonly EditorLetterSpacing[] = [
+  "normal",
+  "slight",
+  "wide",
+  "wider",
+  "custom",
+];
+
+export const EDITOR_CUSTOM_LETTER_SPACING = { min: 0, max: 4, step: 0.1 } as const;
+
+export function clampEditorLetterSpacing(value: number): number {
+  if (!Number.isFinite(value)) return EDITOR_LETTER_SPACINGS.normal;
+  const { min, max } = EDITOR_CUSTOM_LETTER_SPACING;
+  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100;
+}
+
+export function editorLetterSpacingValue(choice: EditorLetterSpacing, custom: number): number {
+  return choice === "custom" ? clampEditorLetterSpacing(custom) : EDITOR_LETTER_SPACINGS[choice];
+}
+
+export const APP_ZOOM_LEVELS: readonly number[] = [80, 90, 100, 110, 125, 150, 175, 200];
+
+export function appZoomLevel(value: unknown): number {
+  const level = Number(value);
+  return APP_ZOOM_LEVELS.includes(level) ? level : 100;
+}
+
+export const EDITOR_FONT_SIZES: readonly number[] = [11, 12, 13, 14, 15, 16, 18, 20, 24];
+
+export const EDITOR_FONT_SIZE_RANGE = { min: 6, max: 100, step: 1 } as const;
+
+export function clampEditorFontSize(value: number): number {
+  if (!Number.isFinite(value)) return 13;
+  const { min, max } = EDITOR_FONT_SIZE_RANGE;
+  return Math.round(Math.min(max, Math.max(min, value)) * 10) / 10;
+}
+
+export const EDITOR_CURSOR_WIDTHS: readonly number[] = [1, 2, 3];
+
+export type EditorSurface = "light" | "dark";
+
+export const EDITOR_SURFACES: readonly EditorSurface[] = ["light", "dark"];
 
 export const EDITOR_TAB_SIZES: readonly number[] = [2, 4, 8];
 
@@ -784,6 +858,17 @@ interface SettingsState {
   setEditorLineWrap: (v: boolean) => void;
   editorLineHeight: EditorLineHeight;
   setEditorLineHeight: (v: EditorLineHeight) => void;
+  editorCustomLineHeight: number;
+  setEditorCustomLineHeight: (v: number) => void;
+  editorLetterSpacing: EditorLetterSpacing;
+  setEditorLetterSpacing: (v: EditorLetterSpacing) => void;
+  editorCustomLetterSpacing: number;
+  setEditorCustomLetterSpacing: (v: number) => void;
+  editorCursorWidth: number;
+  setEditorCursorWidth: (v: number) => void;
+  editorCursorColorLight: string;
+  editorCursorColorDark: string;
+  setEditorCursorColor: (surface: EditorSurface, v: string) => void;
   /** Completion popups while typing (Ctrl+Space always works). */
   editorAutocomplete: boolean;
   setEditorAutocomplete: (v: boolean) => void;
@@ -810,8 +895,6 @@ interface SettingsState {
   setFileMoveReferences: (v: FileMoveReferences) => void;
   zenFullScreen: boolean;
   setZenFullScreen: (v: boolean) => void;
-  zenCenterEditor: boolean;
-  setZenCenterEditor: (v: boolean) => void;
   zenShowPdfOnCompile: boolean;
   setZenShowPdfOnCompile: (v: boolean) => void;
   typstFormatOnSave: boolean;
@@ -929,16 +1012,18 @@ interface SettingsState {
   setEditorFontSize: (v: number) => void;
   appFontSize: number;
   setAppFontSize: (v: number) => void;
+  appZoom: number;
+  setAppZoom: (v: number) => void;
   appFontFamily: string;
   setAppFontFamily: (v: string) => void;
   editorFontFamily: string;
   setEditorFontFamily: (v: string) => void;
+  editorUsesAppFont: boolean;
+  setEditorUsesAppFont: (v: boolean) => void;
   editorTheme: EditorThemeId;
   setEditorTheme: (v: EditorThemeId) => void;
   pdfDarkMode: boolean;
   setPdfDarkMode: (v: boolean) => void;
-  pdfZoomShortcuts: boolean;
-  setPdfZoomShortcuts: (v: boolean) => void;
   hiddenFilePatterns: readonly string[];
   addHiddenFilePattern: (pattern: string) => void;
   removeHiddenFilePattern: (pattern: string) => void;
@@ -1007,6 +1092,33 @@ function readEditorLineHeight(): EditorLineHeight {
     : "normal";
 }
 
+function readEditorLetterSpacing(): EditorLetterSpacing {
+  const stored = ls("oleafly.editor.letterSpacing", "");
+  return EDITOR_LETTER_SPACING_OPTIONS.includes(stored as EditorLetterSpacing)
+    ? (stored as EditorLetterSpacing)
+    : "normal";
+}
+
+function readEditorCustomLetterSpacing(): number {
+  const stored = ls("oleafly.editor.letterSpacingCustom", "");
+  return stored === "" ? EDITOR_LETTER_SPACINGS.normal : clampEditorLetterSpacing(Number(stored));
+}
+
+function readEditorCustomLineHeight(): number {
+  const stored = ls("oleafly.editor.lineHeightCustom", "");
+  return stored === ""
+    ? EDITOR_LINE_HEIGHTS.normal
+    : clampEditorLineHeight(Number(stored));
+}
+
+function readFontFamilySetting(key: string): string {
+  const stored = ls(key, "");
+  if (!stored.includes(",")) return fontFamilyName(stored);
+  const family = primaryFontFamily(stored);
+  saveLs(key, family);
+  return family;
+}
+
 function readFileMoveReferences(): FileMoveReferences {
   const stored = ls("oleafly.editor.fileMoveReferences", "");
   return FILE_MOVE_REFERENCE_OPTIONS.includes(stored as FileMoveReferences)
@@ -1027,6 +1139,12 @@ const PREF_DEFAULTS = {
   editorTabSize: 4,
   editorLineWrap: true,
   editorLineHeight: "normal" as EditorLineHeight,
+  editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
+  editorLetterSpacing: "normal" as EditorLetterSpacing,
+  editorCustomLetterSpacing: EDITOR_LETTER_SPACINGS.normal,
+  editorCursorWidth: 1,
+  editorCursorColorLight: "",
+  editorCursorColorDark: "",
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
   editorAutoCloseMath: true,
@@ -1037,7 +1155,6 @@ const PREF_DEFAULTS = {
   editorMathPreview: true,
   fileMoveReferences: "ask" as FileMoveReferences,
   zenFullScreen: true,
-  zenCenterEditor: true,
   zenShowPdfOnCompile: true,
   typstFormatOnSave: false,
   typstFormatterLineWidth: 120,
@@ -1056,11 +1173,12 @@ const PREF_DEFAULTS = {
   offline: false,
   editorFontSize: 13,
   appFontSize: 16,
+  appZoom: 100,
   appFontFamily: "",
   editorFontFamily: "",
+  editorUsesAppFont: false,
   editorTheme: "system" as EditorThemeId,
   pdfDarkMode: false,
-  pdfZoomShortcuts: true,
   hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS] as readonly string[],
   defaultView: "editor-only" as LayoutPreset,
   openInTree: true,
@@ -1113,6 +1231,12 @@ const SECTION_SETTINGS = {
     editorTabSize: "oleafly.editor.tabSize",
     editorLineWrap: "oleafly.editor.lineWrap",
     editorLineHeight: "oleafly.editor.lineHeight",
+    editorCustomLineHeight: "oleafly.editor.lineHeightCustom",
+    editorLetterSpacing: "oleafly.editor.letterSpacing",
+    editorCustomLetterSpacing: "oleafly.editor.letterSpacingCustom",
+    editorCursorWidth: "oleafly.editor.cursorWidth",
+    editorCursorColorLight: "oleafly.editor.cursorColor.light",
+    editorCursorColorDark: "oleafly.editor.cursorColor.dark",
     editorAutocomplete: "oleafly.editor.autocomplete",
     editorAutoCloseBrackets: "oleafly.editor.closeBrackets",
     editorAutoCloseMath: "oleafly.editor.closeMath",
@@ -1123,7 +1247,6 @@ const SECTION_SETTINGS = {
     editorMathPreview: "oleafly.editor.mathPreview",
     fileMoveReferences: "oleafly.editor.fileMoveReferences",
     zenFullScreen: "oleafly.zen.fullScreen",
-    zenCenterEditor: "oleafly.zen.centerEditor",
     zenShowPdfOnCompile: "oleafly.zen.showPdfOnCompile",
     typstFormatOnSave: "oleafly.typst.formatOnSave",
     typstFormatterLineWidth: "oleafly.typst.formatterLineWidth",
@@ -1145,11 +1268,12 @@ const SECTION_SETTINGS = {
     browserHomePage: "oleafly.browser.homePage",
     editorFontSize: "oleafly.fontSize",
     appFontSize: "oleafly.appFontSize",
+    appZoom: "oleafly.appZoom",
     appFontFamily: "oleafly.appFont",
     editorFontFamily: "oleafly.editorFont",
+    editorUsesAppFont: "oleafly.editor.useAppFont",
     editorTheme: "oleafly.editorTheme",
     pdfDarkMode: "oleafly.pdf.darkMode",
-    pdfZoomShortcuts: "oleafly.pdf.zoomShortcuts",
     hiddenFilePatterns: "oleafly.fileTree.hiddenPatterns",
     defaultView: "oleafly.defaultView",
     openInTree: "oleafly.openInTree",
@@ -1232,8 +1356,58 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   editorLineHeight: readEditorLineHeight(),
   setEditorLineHeight: (v) => {
-    saveLs("oleafly.editor.lineHeight", v);
-    set({ editorLineHeight: v });
+    const choice = EDITOR_LINE_HEIGHT_OPTIONS.includes(v) ? v : PREF_DEFAULTS.editorLineHeight;
+    const previous = get().editorLineHeight;
+    saveLs("oleafly.editor.lineHeight", choice);
+    if (choice === "custom" && previous !== "custom" && ls("oleafly.editor.lineHeightCustom", "") === "") {
+      const seeded = EDITOR_LINE_HEIGHTS[previous];
+      saveLs("oleafly.editor.lineHeightCustom", String(seeded));
+      set({ editorLineHeight: choice, editorCustomLineHeight: seeded });
+      return;
+    }
+    set({ editorLineHeight: choice });
+  },
+  editorCustomLineHeight: readEditorCustomLineHeight(),
+  setEditorCustomLineHeight: (v) => {
+    const value = clampEditorLineHeight(v);
+    saveLs("oleafly.editor.lineHeightCustom", String(value));
+    set({ editorCustomLineHeight: value });
+  },
+  editorLetterSpacing: readEditorLetterSpacing(),
+  setEditorLetterSpacing: (v) => {
+    const choice = EDITOR_LETTER_SPACING_OPTIONS.includes(v) ? v : PREF_DEFAULTS.editorLetterSpacing;
+    const previous = get().editorLetterSpacing;
+    saveLs("oleafly.editor.letterSpacing", choice);
+    if (choice === "custom" && previous !== "custom" && ls("oleafly.editor.letterSpacingCustom", "") === "") {
+      const seeded = EDITOR_LETTER_SPACINGS[previous];
+      saveLs("oleafly.editor.letterSpacingCustom", String(seeded));
+      set({ editorLetterSpacing: choice, editorCustomLetterSpacing: seeded });
+      return;
+    }
+    set({ editorLetterSpacing: choice });
+  },
+  editorCustomLetterSpacing: readEditorCustomLetterSpacing(),
+  setEditorCustomLetterSpacing: (v) => {
+    const value = clampEditorLetterSpacing(v);
+    saveLs("oleafly.editor.letterSpacingCustom", String(value));
+    set({ editorCustomLetterSpacing: value });
+  },
+  editorCursorWidth: readChoice(
+    "oleafly.editor.cursorWidth",
+    EDITOR_CURSOR_WIDTHS,
+    PREF_DEFAULTS.editorCursorWidth,
+  ),
+  setEditorCursorWidth: (v) => {
+    const width = EDITOR_CURSOR_WIDTHS.includes(v) ? v : PREF_DEFAULTS.editorCursorWidth;
+    saveLs("oleafly.editor.cursorWidth", String(width));
+    set({ editorCursorWidth: width });
+  },
+  editorCursorColorLight: readHexColor(ls("oleafly.editor.cursorColor.light", ""), ""),
+  editorCursorColorDark: readHexColor(ls("oleafly.editor.cursorColor.dark", ""), ""),
+  setEditorCursorColor: (surface, v) => {
+    const color = readHexColor(v, "");
+    saveLs(`oleafly.editor.cursorColor.${surface}`, color);
+    set(surface === "light" ? { editorCursorColorLight: color } : { editorCursorColorDark: color });
   },
   editorAutocomplete: ls("oleafly.editor.autocomplete", "1") !== "0",
   setEditorAutocomplete: (v) => {
@@ -1265,11 +1439,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setZenFullScreen: (v) => {
     saveLs("oleafly.zen.fullScreen", v ? "1" : "0");
     set({ zenFullScreen: v });
-  },
-  zenCenterEditor: ls("oleafly.zen.centerEditor", "1") !== "0",
-  setZenCenterEditor: (v) => {
-    saveLs("oleafly.zen.centerEditor", v ? "1" : "0");
-    set({ zenCenterEditor: v });
   },
   zenShowPdfOnCompile: ls("oleafly.zen.showPdfOnCompile", "1") !== "0",
   setZenShowPdfOnCompile: (v) => {
@@ -1584,10 +1753,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.background;
-    return readTerminalColor(ls("oleafly.terminal.background", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.background", fallback), fallback);
   })(),
   setTerminalBackground: (v) => {
-    const value = readTerminalColor(v, get().terminalBackground);
+    const value = readHexColor(v, get().terminalBackground);
     saveLs("oleafly.terminal.background", value);
     set({ terminalBackground: value });
   },
@@ -1596,10 +1765,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.foreground;
-    return readTerminalColor(ls("oleafly.terminal.foreground", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.foreground", fallback), fallback);
   })(),
   setTerminalForeground: (v) => {
-    const value = readTerminalColor(v, get().terminalForeground);
+    const value = readHexColor(v, get().terminalForeground);
     saveLs("oleafly.terminal.foreground", value);
     set({ terminalForeground: value });
   },
@@ -1608,10 +1777,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       ls("oleafly.terminal.colorTheme", "system"),
     );
     const fallback = TERMINAL_COLOR_THEMES[theme].colors.cursor;
-    return readTerminalColor(ls("oleafly.terminal.cursorColor", fallback), fallback);
+    return readHexColor(ls("oleafly.terminal.cursorColor", fallback), fallback);
   })(),
   setTerminalCursorColor: (v) => {
-    const value = readTerminalColor(v, get().terminalCursorColor);
+    const value = readHexColor(v, get().terminalCursorColor);
     saveLs("oleafly.terminal.cursorColor", value);
     set({ terminalCursorColor: value });
   },
@@ -1636,25 +1805,39 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.openInTree", v ? "1" : "0");
     set({ openInTree: v });
   },
-  editorFontSize: Number(ls("oleafly.fontSize", "13")) || 13,
+  editorFontSize: clampEditorFontSize(Number(ls("oleafly.fontSize", "13")) || 13),
   setEditorFontSize: (v) => {
-    saveLs("oleafly.fontSize", String(v));
-    set({ editorFontSize: v });
+    const size = clampEditorFontSize(v);
+    saveLs("oleafly.fontSize", String(size));
+    set({ editorFontSize: size });
   },
   appFontSize: Number(ls("oleafly.appFontSize", "16")) || 16,
   setAppFontSize: (v) => {
     saveLs("oleafly.appFontSize", String(v));
     set({ appFontSize: v });
   },
-  appFontFamily: ls("oleafly.appFont", ""),
-  setAppFontFamily: (v) => {
-    saveLs("oleafly.appFont", v);
-    set({ appFontFamily: v });
+  appZoom: appZoomLevel(ls("oleafly.appZoom", "100")),
+  setAppZoom: (v) => {
+    const level = appZoomLevel(v);
+    saveLs("oleafly.appZoom", String(level));
+    set({ appZoom: level });
   },
-  editorFontFamily: ls("oleafly.editorFont", ""),
+  editorUsesAppFont: ls("oleafly.editor.useAppFont", "0") === "1",
+  setEditorUsesAppFont: (v) => {
+    saveLs("oleafly.editor.useAppFont", v ? "1" : "0");
+    set({ editorUsesAppFont: v });
+  },
+  appFontFamily: readFontFamilySetting("oleafly.appFont"),
+  setAppFontFamily: (v) => {
+    const family = withoutControlCharacters(v);
+    saveLs("oleafly.appFont", family);
+    set({ appFontFamily: family });
+  },
+  editorFontFamily: readFontFamilySetting("oleafly.editorFont"),
   setEditorFontFamily: (v) => {
-    saveLs("oleafly.editorFont", v);
-    set({ editorFontFamily: v });
+    const family = withoutControlCharacters(v);
+    saveLs("oleafly.editorFont", family);
+    set({ editorFontFamily: family });
   },
   editorTheme: readEditorTheme(ls("oleafly.editorTheme", "system")),
   setEditorTheme: (v) => {
@@ -1665,11 +1848,6 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setPdfDarkMode: (v) => {
     saveLs("oleafly.pdf.darkMode", v ? "1" : "0");
     set({ pdfDarkMode: v });
-  },
-  pdfZoomShortcuts: ls("oleafly.pdf.zoomShortcuts", "1") !== "0",
-  setPdfZoomShortcuts: (v) => {
-    saveLs("oleafly.pdf.zoomShortcuts", v ? "1" : "0");
-    set({ pdfZoomShortcuts: v });
   },
   hiddenFilePatterns: readHiddenFilePatterns(
     ls("oleafly.fileTree.hiddenPatterns", JSON.stringify(DEFAULT_HIDDEN_FILE_PATTERNS)),

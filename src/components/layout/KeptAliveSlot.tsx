@@ -39,10 +39,10 @@ export function useKeptAliveHost(className: string): HTMLDivElement {
 export function KeptAliveSlot({
   host,
   className,
-}: {
+}: Readonly<{
   host: HTMLElement;
   className?: string;
-}) {
+}>) {
   const slotRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const slot = slotRef.current;

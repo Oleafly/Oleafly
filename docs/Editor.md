@@ -296,10 +296,33 @@ Reset to defaults at the foot of Appearance.
 
 - Keybindings: Default, Vim or Emacs. See
   [KeyboardShortcuts.md](KeyboardShortcuts.md) for what each mode binds.
-- Editor font size, editor font and editor theme.
+- Use the app font: off by default. When it's on, the editor uses the App
+  font and App font size, and the Editor font and Editor font size settings
+  are locked until it's turned off again.
+- Editor font size, editor font and editor theme. The size list runs from 11
+  to 24 pixels, and Custom takes any size from 6 to 100, the same range as VS
+  Code. The font list holds every font installed on the computer, monospaced
+  ones first, each drawn in its own font. A typed name works even when the list doesn't show it, and a
+  saved name that isn't installed gets a note under the setting. Rust lists
+  the fonts with `fontdb`, the same way Typst finds system fonts. It leaves
+  out symbol and icon fonts such as Webdings and Wingdings, and it counts a
+  font as monospaced when its letters all have the same width, even if the
+  font file doesn't say so (Monaco and Courier don't).
 - Tab size: 2, 4 or 8 spaces. It sets the indent unit and the width a
   literal tab renders at.
-- Line height: compact (1.4), normal (1.7) or wide (2.0).
+- Letter spacing: normal, +0.5, +1 or +1.5 pixels, or custom from 0 to 4
+  pixels. It adds the same space between every pair of characters, so the
+  cursor also gets more room. How close the cursor sits to a letter otherwise
+  depends on the font.
+- Line height: compact (1.4), normal (1.7), wide (2.0) or custom, which takes
+  any value from 1 to 3 with up to two decimals. The arrow keys move it by
+  0.05. The first time you pick custom it starts from the preset you had.
+- Cursor width: 1, 2 or 3 pixels.
+- Cursor color: one color for light editor themes and one for dark ones, so
+  a cursor picked for a white page doesn't vanish on a dark one. Each swatch
+  shows the theme's color until you pick your own, and Use theme colors goes
+  back to both. The color also applies to the Vim block cursor and to the
+  Markdown Visual editor's caret.
 - Wrap long lines: on by default. Turn it off and the editor scrolls
   sideways instead.
 - Auto-complete, auto-close brackets, auto-close math, auto-close

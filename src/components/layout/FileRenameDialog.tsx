@@ -83,7 +83,7 @@ function FileRenameForm({ target, onClose }: Readonly<{ target: FileRenameTarget
       />
       <p
         id={hintId}
-        className={cn("mt-2 min-h-4 text-[11px]", message ? "text-destructive" : "text-muted-foreground")}
+        className={cn("mt-2 min-h-4 text-[0.6875rem]", message ? "text-destructive" : "text-muted-foreground")}
       >
         {message ?? t(($) => $.shell.fileRenameDialog.hint)}
       </p>

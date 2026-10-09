@@ -168,7 +168,7 @@ export function CreatePersonaDialog({ open, onOpenChange, onSubmit, editing }: R
             {editing
               ? t(($) => $.common.actions.save)
               : t(($) => $.settings.ai.personas.form.create)}
-            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">{"↵"}</Kbd>
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[0.625rem] text-current">{"↵"}</Kbd>
           </Button>
         </DialogFooter>
       </DialogContent>

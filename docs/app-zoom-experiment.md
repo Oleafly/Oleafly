@@ -1,8 +1,14 @@
 # App zoom experiment
 
-Status: Deferred. This page records the proposed experiment. Released builds
-do not provide this behavior, and any first implementation must remain off by
-default until the acceptance checks below pass.
+Status: Shipped as App zoom. Cmd/Ctrl+= (or +), Cmd/Ctrl+- and Cmd/Ctrl+0
+zoom every Oleafly window through `src/lib/app-zoom.ts`, which calls the
+Tauri webview zoom with the levels listed below and keeps windows in step
+through local storage. The shortcuts can be changed in Settings > Keyboard
+Shortcuts, Settings > Appearance > App has a Zoom list, and the command
+palette has Zoom In, Zoom Out and Reset Zoom. The keys always zoom the app,
+including inside the PDF preview, which zooms with its own toolbar, a pinch
+or Ctrl+scroll. There are no View menu items yet. The rest of this page is
+the original proposal, kept for its acceptance checks.
 
 ## What exists today
 

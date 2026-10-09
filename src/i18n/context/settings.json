@@ -165,6 +165,10 @@
       },
       "theme": {
         "label": "Heading for the light, dark, and system theme choice."
+      },
+      "zoom": {
+        "label": "Row label for the zoom level of the whole app window, like browser zoom.",
+        "option": "Zoom level in the list, a percentage such as 125%."
       }
     },
     "customTheme": {
@@ -207,11 +211,48 @@
       }
     },
     "zen": {
-      "title": "Group of settings for Zen mode, a distraction free writing mode that hides the toolbar, sidebar, assistant and terminal. Keep the word Zen.",
-      "toggle": {
-        "label": "Switch that turns Zen mode on right now."
+      "title": "Group of settings for Zen mode, a distraction free writing mode that hides the toolbar, sidebar, assistant and terminal. Keep the word Zen."
+    },
+    "editor": {
+      "font": {
+        "monospace": "Badge on a font in the font list whose letters all have the same width."
+      },
+      "lineHeight": {
+        "options": {
+          "custom": "Line height choice that shows a number field for an exact value."
+        },
+        "customLabel": "Accessible name of the number field where the user types an exact line height, such as 1.5."
+      },
+      "cursorWidth": {
+        "label": "Row label for the thickness, in pixels, of the text cursor in the source editor.",
+        "option": "Choice in the cursor width list, in pixels, such as 2px. Use the same unit format as other pixel sizes."
+      },
+      "cursorColor": {
+        "light": "Short label next to the color swatch that sets the cursor color for light editor themes.",
+        "dark": "Short label next to the color swatch that sets the cursor color for dark editor themes.",
+        "pickLight": "Accessible name of the color swatch that sets the cursor color used with light editor themes.",
+        "pickDark": "Accessible name of the color swatch that sets the cursor color used with dark editor themes.",
+        "useTheme": "Button that clears both custom cursor colors so the cursor follows the editor theme again."
+      },
+      "fontSize": {
+        "custom": "Choice at the end of the editor font size list that shows a number field for any size.",
+        "customLabel": "Accessible name of the number field where the user types an exact editor font size in pixels."
+      },
+      "letterSpacing": {
+        "label": "Row label for extra space added between characters in the source editor, like CSS letter-spacing.",
+        "option": "Choice in the letter spacing list: extra space in pixels, such as +0.5px. Use the same unit format as other pixel sizes.",
+        "options": {
+          "normal": "Letter spacing choice that adds no extra space.",
+          "custom": "Letter spacing choice that shows a number field for an exact value."
+        },
+        "customLabel": "Accessible name of the number field where the user types an exact letter spacing in pixels."
+      },
+      "useAppFont": {
+        "label": "Switch that makes the source editor use the App font and App font size instead of its own.",
+        "disabledHint": "Tooltip on a disabled editor font control while the editor follows the app font."
       }
-    }
+    },
+    "fontNotInstalled": "Warning under a font setting when the saved font name is not installed on this computer. {{font}} is the font name."
   },
   "citations": {
     "connected": "Badge showing that a credential is stored for this search source.",
@@ -439,6 +480,23 @@
     },
     "tabs": {
       "application": "Tab label for shortcuts the user can rebind, as opposed to editor shortcuts."
+    },
+    "actions": {
+      "openSettings": {
+        "label": "Name of the keyboard shortcut that opens the Settings window."
+      },
+      "togglePreview": {
+        "label": "Name of the shortcut that shows or hides the PDF preview pane beside the editor."
+      },
+      "zoomIn": {
+        "label": "Name of the shortcut that makes the whole app bigger, like browser zoom."
+      },
+      "zoomOut": {
+        "label": "Name of the shortcut that makes the whole app smaller, like browser zoom."
+      },
+      "resetZoom": {
+        "label": "Name of the shortcut that sets the app zoom back to 100%."
+      }
     }
   },
   "systemIntegration": {

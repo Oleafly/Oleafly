@@ -196,9 +196,9 @@ export function TexPackagesSection() {
                     </Badge>
                   )}
                 </div>
-                <p className="truncate text-[11px] text-muted-foreground">{p.description}</p>
+                <p className="truncate text-[0.6875rem] text-muted-foreground">{p.description}</p>
                 {packageName !== p.name && (
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[0.6875rem] text-muted-foreground">
                     {t(($) => $.settings.engine.packages.includedIn, { package: packageName })}
                   </p>
                 )}

@@ -260,7 +260,7 @@ export function DeveloperSettings() {
 
       <div className="rounded-lg border bg-card p-3">
         <p className="text-xs font-medium">{t(($) => $.core.developer.library.label)}</p>
-        <code className="mt-1 block break-all text-[11px] text-muted-foreground">
+        <code className="mt-1 block break-all text-[0.6875rem] text-muted-foreground">
           {root || t(($) => $.core.developer.library.checking)}
         </code>
         {!safeSandbox && root ? (

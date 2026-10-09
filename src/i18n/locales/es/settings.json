@@ -536,12 +536,17 @@
         "right": "Derecha"
       },
       "font": {
-        "description": "Usa la tipografía del sistema cuando la elegida no está instalada.",
+        "description": "Elige para menús, paneles y diálogos cualquier tipografía instalada en tu ordenador.",
         "label": "Tipografía de la aplicación"
       },
       "fontSize": {
         "description": "Escala el texto de los menús, los paneles y los botones.",
         "label": "Tamaño de letra de la aplicación"
+      },
+      "zoom": {
+        "description": "Hace todo en Oleafly más grande o más pequeño, incluidos el editor y el PDF.",
+        "label": "Zoom",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "Sistema sigue al sistema operativo y cambia cuando él cambia.",
@@ -638,12 +643,20 @@
         "label": "Autocompletado"
       },
       "font": {
-        "description": "Elige la tipografía monoespaciada de los archivos de código.",
-        "label": "Tipografía del editor"
+        "description": "Elige para los archivos de código cualquier tipografía instalada en tu ordenador.",
+        "label": "Tipografía del editor",
+        "monospace": "Monoespaciada"
+      },
+      "useAppFont": {
+        "description": "El editor sigue la fuente y el tamaño de letra de la aplicación.",
+        "disabledHint": "Desactiva Usar la fuente de la aplicación para cambiar esto.",
+        "label": "Usar la fuente de la aplicación"
       },
       "fontSize": {
         "description": "Define el tamaño del texto del editor de código.",
-        "label": "Tamaño de letra del editor"
+        "label": "Tamaño de letra del editor",
+        "custom": "Personalizado",
+        "customLabel": "Tamaño de letra del editor personalizado, en píxeles"
       },
       "ghostCompletion": {
         "description": "Muestra el final probable después del cursor. Pulsa Tab para aceptarlo.",
@@ -676,8 +689,34 @@
         "options": {
           "compact": "Compacto",
           "normal": "Normal",
-          "wide": "Amplio"
+          "wide": "Amplio",
+          "custom": "Personalizado"
+        },
+        "customLabel": "Interlineado personalizado"
+      },
+      "letterSpacing": {
+        "customLabel": "Espaciado entre letras personalizado, en píxeles",
+        "description": "Añade espacio entre los caracteres del editor de código. También deja más sitio alrededor del cursor.",
+        "label": "Espaciado entre letras",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Personalizado"
         }
+      },
+      "cursorWidth": {
+        "label": "Grosor del cursor",
+        "description": "Define el grosor del cursor del editor.",
+        "option": "{{width}} px"
+      },
+      "cursorColor": {
+        "label": "Color del cursor",
+        "description": "Los temas claros y oscuros del editor tienen cada uno su propio color de cursor. Hasta que elijas uno, se usa el color del tema.",
+        "light": "Claro",
+        "dark": "Oscuro",
+        "pickLight": "Elegir el color del cursor para los temas claros del editor",
+        "pickDark": "Elegir el color del cursor para los temas oscuros del editor",
+        "useTheme": "Usar los colores del tema"
       },
       "lineWrap": {
         "description": "Ajusta las líneas largas en lugar de desplazarse en horizontal.",
@@ -749,6 +788,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} no está instalada, así que se usa la fuente predeterminada.",
     "preview": {
       "darkMode": {
         "description": "Invierte los colores del PDF por omisión. Aun así puedes cambiarlos desde la barra de la vista previa.",
@@ -757,10 +797,6 @@
       "hoverPreview": {
         "description": "Muestra la última página compilada al pasar el cursor por un proyecto de la biblioteca.",
         "label": "Ver el PDF al pasar el cursor"
-      },
-      "zoomShortcuts": {
-        "description": "Usa Cmd/Ctrl +, - y 0 para ampliar el PDF en lugar de la ventana de la aplicación.",
-        "label": "Atajos de zoom del PDF"
       }
     },
     "sectionName": "Apariencia",
@@ -826,10 +862,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Mantiene el texto en una columna centrada mientras el PDF está oculto.",
-        "label": "Centrar el editor"
-      },
       "fullScreen": {
         "description": "Llena la pantalla en el modo Zen y restaura la ventana al salir.",
         "label": "Pasar a pantalla completa"
@@ -838,11 +870,7 @@
         "description": "Si el PDF está oculto al empezar el modo Zen, lo abre junto al editor la primera vez que compilas.",
         "label": "Mostrar el PDF al compilar"
       },
-      "title": "Modo Zen",
-      "toggle": {
-        "description": "Oculta la barra de herramientas, la barra lateral, el asistente y el terminal para dejar solo el texto. También se llama modo sin distracciones. Requiere un proyecto abierto.",
-        "label": "Activar el modo Zen"
-      }
+      "title": "Modo Zen"
     }
   },
   "checkpoints": {
@@ -1651,6 +1679,10 @@
         "description": "Muestra u oculta la barra lateral del proyecto.",
         "label": "Alternar la barra lateral"
       },
+      "togglePreview": {
+        "label": "Alternar la vista previa del PDF",
+        "description": "Muestra u oculta el PDF junto al editor, también en el modo Zen."
+      },
       "toggleTerminal": {
         "description": "Muestra u oculta el terminal del proyecto.",
         "label": "Alternar el terminal"
@@ -1662,6 +1694,22 @@
       "toggleZenMode": {
         "description": "Oculta todo menos el texto, o lo vuelve a mostrar.",
         "label": "Activar o desactivar el modo Zen"
+      },
+      "openSettings": {
+        "label": "Abrir los ajustes",
+        "description": "Abre los ajustes de Oleafly."
+      },
+      "zoomIn": {
+        "description": "Agranda toda la aplicación.",
+        "label": "Acercar"
+      },
+      "zoomOut": {
+        "description": "Reduce toda la aplicación.",
+        "label": "Alejar"
+      },
+      "resetZoom": {
+        "description": "Devuelve la aplicación al 100 %.",
+        "label": "Restablecer zoom"
       }
     },
     "application": {

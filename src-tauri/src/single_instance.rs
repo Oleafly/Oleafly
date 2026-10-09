@@ -50,7 +50,7 @@ pub(crate) fn on_second_launch<R: tauri::Runtime>(
     );
 }
 
-fn reveal_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+pub(crate) fn reveal_main_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
     if let Some(window) = app.get_window("main") {
         let _ = window.unminimize();
         let _ = window.show();

@@ -60,13 +60,13 @@ export function handListEntries(
   input: { readonly sources: readonly SourceText[]; readonly bib: string; readonly adding: readonly string[] },
 ): string[] {
   const found = singleHandList(input.sources);
-  if (!found || found.file !== move.file) return [];
+  if (found?.file !== move.file) return [];
   return handBibEntries(found.list.items, new Set([...bibKeyIndex(input.bib).keys, ...input.adding]));
 }
 
 export function handListText(move: HandListMove, sources: readonly SourceText[], bibliography: string): string | null {
   const found = singleHandList(sources);
-  if (!found || found.file !== move.file) return null;
+  if (found?.file !== move.file) return null;
   const declaration = handListDeclaration(
     bibliography,
     sources.map((source) => source.content),

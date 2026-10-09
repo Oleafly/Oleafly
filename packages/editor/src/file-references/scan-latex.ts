@@ -1,8 +1,32 @@
 import { latexBalancedGroupEnd, maskLatexIgnoredRegions } from "../latex-lexical";
 import type { PathReference, PathReferenceKind, TextSpan } from "./types";
 
-const COMMAND =
-  /\\(input|include|includeonly|InputIfFileExists|subfile|import|subimport|includegraphics|includesvg|includepdf|includestandalone|lstinputlisting|verbatiminput|inputminted|bibliography|addbibresource|addglobalbib|addsectionbib|usepackage|RequirePackage|documentclass|graphicspath|svgpath)(?![A-Za-z@])/g;
+const COMMAND = /\\([A-Za-z]+)(?![A-Za-z@])/g;
+const COMMAND_NAMES: ReadonlySet<string> = new Set([
+  "input",
+  "include",
+  "includeonly",
+  "InputIfFileExists",
+  "subfile",
+  "import",
+  "subimport",
+  "includegraphics",
+  "includesvg",
+  "includepdf",
+  "includestandalone",
+  "lstinputlisting",
+  "verbatiminput",
+  "inputminted",
+  "bibliography",
+  "addbibresource",
+  "addglobalbib",
+  "addsectionbib",
+  "usepackage",
+  "RequirePackage",
+  "documentclass",
+  "graphicspath",
+  "svgpath",
+]);
 
 interface Group {
   readonly contentFrom: number;
@@ -184,6 +208,7 @@ export function scanLatexReferences(source: string): PathReference[] {
   const references: PathReference[] = [];
   for (const match of masked.matchAll(COMMAND)) {
     const command = match[1];
+    if (!COMMAND_NAMES.has(command)) continue;
     let at = match.index + match[0].length;
     if (masked[at] === "*") at += 1;
     if (command === "graphicspath" || command === "svgpath") {

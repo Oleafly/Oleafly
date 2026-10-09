@@ -250,9 +250,7 @@ pub async fn zotero_web_connect(
     api_key: String,
 ) -> Result<ZoteroAccount, String> {
     let library = library(&state);
-    let account = verify_at(&library.endpoints().web, user_id.trim(), api_key.trim())
-        .await
-        .map_err(String::from)?;
+    let account = verify_at(&library.endpoints().web, user_id.trim(), api_key.trim()).await?;
     let mut secrets = crate::secrets::read_connector_secrets()?;
     secrets.insert(USER_ID_SECRET.to_string(), account.user_id.clone());
     secrets.insert(USERNAME_SECRET.to_string(), account.username.clone());

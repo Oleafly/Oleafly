@@ -585,7 +585,7 @@
     "title": "预检",
     "readerDisabled": "请先编译并运行输出检查。",
     "readerEnabled": "打开从 PDF 中提取的文本。",
-    "readerButton": "显示读者看到的内容",
+    "readerButton": "屏幕阅读器",
     "aboutLabel": "关于预检",
     "aboutTitle": "预检检查的内容",
     "aboutIntro": "预检会读取项目源码、编译器日志和当前 PDF。请只开启适合本文档的检查。",

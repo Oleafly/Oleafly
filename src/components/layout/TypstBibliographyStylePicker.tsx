@@ -85,13 +85,13 @@ export function TypstBibliographyStylePicker({
   return (
     <div className="flex items-center gap-2 px-2 py-1" data-testid="typst-style-picker">
       <BookMarked aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="shrink-0 text-[11px] text-muted-foreground">
+      <span className="shrink-0 text-[0.6875rem] text-muted-foreground">
         {t(($) => $.references.bibliographyStyle.label)}
       </span>
       <Select value={current} onValueChange={(style) => void apply(style)} disabled={busy || readOnly}>
         <SelectTrigger
           aria-label={t(($) => $.references.bibliographyStyle.ariaLabel, { path })}
-          className="h-7 min-w-0 flex-1 px-2 text-[11px]"
+          className="h-7 min-w-0 flex-1 px-2 text-[0.6875rem]"
         >
           <SelectValue />
         </SelectTrigger>

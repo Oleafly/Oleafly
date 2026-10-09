@@ -53,7 +53,7 @@ function LogRow({ entry }: Readonly<{ entry: McpLogEntry }>) {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-1.5">
             <span className="truncate font-mono text-xs font-medium text-foreground">{entry.name}</span>
-            <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
+            <span className="ml-auto shrink-0 font-mono text-[0.625rem] text-muted-foreground">
               {entry.durationMs != null
                 ? t(($) => $.shell.mcpActivity.timeWithDuration, {
                     time: timeLabel(entry.ts),
@@ -63,14 +63,14 @@ function LogRow({ entry }: Readonly<{ entry: McpLogEntry }>) {
             </span>
           </div>
           {args && (
-            <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground" title={args}>
+            <p className="mt-0.5 truncate font-mono text-[0.625rem] text-muted-foreground" title={args}>
               {args}
             </p>
           )}
           {entry.summary && (
             <p
               className={cn(
-                "mt-0.5 line-clamp-2 font-mono text-[10px]",
+                "mt-0.5 line-clamp-2 font-mono text-[0.625rem]",
                 entry.status === "error" ? "text-destructive" : "text-muted-foreground",
               )}
               title={entry.summary}
@@ -156,7 +156,7 @@ export function McpActivityPanel() {
             {serverRunning ? (
               <>
                 <p>{t(($) => $.shell.mcpActivity.waiting)}</p>
-                <p className="mt-1.5 text-[11px]">
+                <p className="mt-1.5 text-[0.6875rem]">
                   {t(($) => $.shell.mcpActivity.waitingHint)}
                 </p>
               </>

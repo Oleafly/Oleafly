@@ -333,6 +333,22 @@
       "keywords": "ablenkungsfrei Fokus Vollbild Oberfläche ausblenden minimal schreiben",
       "label": "Zen-Modus ein- oder ausschalten"
     },
+    "togglePreview": {
+      "keywords": "pdf vorschau anzeigen ausblenden geteilt nur editor",
+      "label": "PDF-Vorschau ein- oder ausblenden"
+    },
+    "zoomIn": {
+      "keywords": "größer vergrößern lupe",
+      "label": "Vergrößern"
+    },
+    "zoomOut": {
+      "keywords": "kleiner verkleinern",
+      "label": "Verkleinern"
+    },
+    "resetZoom": {
+      "keywords": "originalgröße 100",
+      "label": "Zoom zurücksetzen"
+    },
     "zoteroAddMissing": {
       "label": "Fehlende Zitationen aus Zotero hinzufügen",
       "keywords": "zotero fehlende Zitationen undefinierte Schlüssel Literaturverzeichnis reparieren missing citations undefined keys bibliography repair"

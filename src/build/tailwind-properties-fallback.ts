@@ -178,6 +178,18 @@ function rewriteBlock(
   return { replacement: gatedRules.join("") + kept, retained };
 }
 
+function startsSupportsRule(css: string, index: number): boolean {
+  return css[index] === "@" && css.slice(index, index + SUPPORTS.length).toLowerCase() === SUPPORTS;
+}
+
+function fallbackBlockAt(css: string, preludeStart: number): { prelude: string; open: number; end: number } | null {
+  const open = findCodeChar(css, preludeStart, "{;");
+  const prelude = open === -1 ? "" : css.slice(preludeStart, open);
+  const end = open !== -1 && css[open] === "{" ? blockEnd(css, open) : -1;
+  if (end === -1 || !isTailwindPropertiesFallbackCondition(prelude)) return null;
+  return { prelude, open, end };
+}
+
 export function gateTailwindPropertiesFallback(css: string): FallbackGateResult {
   if (!css.includes(SUPPORTS)) return { code: css, gated: 0, retained: [] };
   const registered = registeredProperties(css);
@@ -192,26 +204,24 @@ export function gateTailwindPropertiesFallback(css: string): FallbackGateResult 
       index = skipped;
       continue;
     }
-    if (css[index] !== "@" || css.slice(index, index + SUPPORTS.length).toLowerCase() !== SUPPORTS) {
+    if (!startsSupportsRule(css, index)) {
       index += 1;
       continue;
     }
     const preludeStart = index + SUPPORTS.length;
-    const open = findCodeChar(css, preludeStart, "{;");
-    const prelude = open === -1 ? "" : css.slice(preludeStart, open);
-    const end = open !== -1 && css[open] === "{" ? blockEnd(css, open) : -1;
-    if (end === -1 || !isTailwindPropertiesFallbackCondition(prelude)) {
+    const block = fallbackBlockAt(css, preludeStart);
+    if (!block) {
       index = preludeStart;
       continue;
     }
-    const rewrite = rewriteBlock(prelude, css.slice(open + 1, end - 1), registered);
+    const rewrite = rewriteBlock(block.prelude, css.slice(block.open + 1, block.end - 1), registered);
     retained.push(...rewrite.retained);
     if (rewrite.replacement !== null) {
       gated += 1;
       output += css.slice(copied, index) + rewrite.replacement;
-      copied = end;
+      copied = block.end;
     }
-    index = end;
+    index = block.end;
   }
   return { code: copied === 0 ? css : output + css.slice(copied), gated, retained };
 }

@@ -12,6 +12,7 @@ import {
   createLatexOutlineMacroCollector,
   createLatexWrapperSectionCollector,
   renderLatexOutlineTitle,
+  type LatexWrapperSection,
 } from "@oleafly/latex";
 import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
 import { useEditorViewportSelection } from "@/components/editor/cm/use-viewport-anchor";
@@ -122,6 +123,9 @@ function visibleHeadings(
   return visible;
 }
 
+const NO_WRAPPER_SECTIONS: ReadonlyMap<string, readonly LatexWrapperSection[]> = new Map();
+const NO_LATEX_MACROS: ReadonlyMap<string, string> = new Map();
+
 // The section list for the document you are actually editing, following
 // \input and \include so a split thesis reads as one outline.
 //
@@ -170,10 +174,10 @@ export function DocumentOutline({
   };
 
   const [collectWrapperSections] = useState(createLatexWrapperSectionCollector);
-  const wrapperSections = useMemo(() => {
-    void index;
-    return collectWrapperSections(useIndexStore.getState().texts);
-  }, [collectWrapperSections, index]);
+  const wrapperSections = useMemo(
+    () => (index ? collectWrapperSections(useIndexStore.getState().texts) : NO_WRAPPER_SECTIONS),
+    [collectWrapperSections, index],
+  );
   const items = useMemo(
     () =>
       index && activePath
@@ -286,10 +290,10 @@ export function DocumentOutline({
       : false;
   }, [activeIndex, headings, itemIds]);
   const [collectMacros] = useState(createLatexOutlineMacroCollector);
-  const latexMacros = useMemo(() => {
-    void index;
-    return collectMacros(useIndexStore.getState().texts);
-  }, [collectMacros, index]);
+  const latexMacros = useMemo(
+    () => (index ? collectMacros(useIndexStore.getState().texts) : NO_LATEX_MACROS),
+    [collectMacros, index],
+  );
   const typstTitles = useTypstTitles(items);
 
   const listRef = useRef<HTMLDivElement>(null);
@@ -422,7 +426,7 @@ export function DocumentOutline({
                   // does not shift the title it marks.
                   style={{ paddingLeft: `${item.level * 12 + 12 - (active ? 2 : 0)}px` }}
                   className={cn(
-                    "group flex min-h-7 w-full items-center gap-1 py-1 pr-2 text-[13px] leading-5 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                    "group flex min-h-7 w-full items-center gap-1 py-1 pr-2 text-[0.8125rem] leading-5 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                     active
                       ? "border-l-2 border-primary bg-sidebar-accent/60 font-medium text-sidebar-foreground"
                       : "text-sidebar-foreground/80",
@@ -453,7 +457,7 @@ export function DocumentOutline({
                     ref={active ? activeRef : undefined}
                     onClick={() => jump(item)}
                     aria-current={active ? "location" : undefined}
-                    className="min-w-0 flex-1 truncate text-left text-[13px] leading-5 focus-visible:bg-accent/60"
+                    className="min-w-0 flex-1 truncate text-left text-[0.8125rem] leading-5 focus-visible:bg-accent/60"
                     title={`${displayTitle} — ${item.file}:${item.line}`}
                   >
                     <span
@@ -472,7 +476,7 @@ export function DocumentOutline({
                     </span>
                   </button>
                   {crossFile ? (
-                    <span className="ml-auto shrink-0 rounded bg-muted px-1 font-mono text-[9px] text-muted-foreground/70">
+                    <span className="ml-auto shrink-0 rounded bg-muted px-1 font-mono text-[0.5625rem] text-muted-foreground/70">
                       {basename(item.file).replace(/\.[^.]+$/, "")}
                     </span>
                   ) : null}

@@ -21,11 +21,12 @@ vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false }));
 
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore, sectionDiffersFromDefaults } from "@/store/settings";
-import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { useShortcutStore } from "@/store/shortcuts";
 import { useZenStore } from "@/store/zen";
 import { AppearanceSection } from "./AppearanceSection";
 
 const zen = enSettings.appearance.zen;
+const actions = enSettings.shortcuts.actions;
 
 function group() {
   return screen.getByRole("region", { name: zen.title });
@@ -37,9 +38,9 @@ beforeEach(() => {
   useShortcutStore.getState().resetAll();
   useSettingsStore.setState({
     zenFullScreen: true,
-    zenCenterEditor: true,
     zenShowPdfOnCompile: true,
     settingsOpen: true,
+    settingsInitialAppearanceTab: "files",
     showTree: true,
     assistantOpen: true,
     viewMode: "split",
@@ -47,57 +48,17 @@ beforeEach(() => {
 });
 
 describe("the Zen mode settings group", () => {
-  it("has a switch to turn Zen mode on, with the shortcut beside it, and the three options", () => {
+  it("sits on the Project tab with its two options and no way to turn Zen mode on", () => {
     render(<AppearanceSection />);
+    expect(screen.getByTestId("appearance-tab-files")).toHaveAttribute("data-state", "active");
     const section = within(group());
-    const toggle = section.getByRole("switch", { name: zen.toggle.label });
-    expect(toggle).toHaveAttribute("aria-checked", "false");
-    expect(toggle).toHaveTextContent(zen.toggle.description);
-    const shortcut = shortcutLabel(useShortcutStore.getState().bindings.toggleZenMode);
-    for (const token of shortcut.split(/(?=[⌘⇧])|\+/).filter(Boolean)) {
-      expect(toggle).toHaveTextContent(token);
-    }
+    expect(section.getAllByRole("switch").map((row) => row.getAttribute("aria-label"))).toEqual([
+      zen.fullScreen.label,
+      zen.showPdf.label,
+    ]);
+    expect(section.queryByRole("button", { name: new RegExp(actions.toggleZenMode.label) })).toBeNull();
     expect(section.getByRole("switch", { name: zen.fullScreen.label })).toHaveAttribute("aria-checked", "true");
-    expect(section.getByRole("switch", { name: zen.centerEditor.label })).toHaveAttribute("aria-checked", "true");
     expect(section.getByRole("switch", { name: zen.showPdf.label })).toHaveAttribute("aria-checked", "true");
-  });
-
-  it("shows the shortcut the user chose", () => {
-    useShortcutStore.getState().setBinding("toggleZenMode", { key: "z", ctrl: true, alt: true });
-    render(<AppearanceSection />);
-    const toggle = within(group()).getByRole("switch", { name: zen.toggle.label });
-    expect(toggle).toHaveTextContent("Ctrl");
-    expect(toggle).toHaveTextContent("Alt");
-    expect(toggle).toHaveTextContent("Z");
-  });
-
-  it("turns Zen mode on from the switch and closes Settings so it can be seen", async () => {
-    render(<AppearanceSection />);
-    await userEvent.setup().click(within(group()).getByRole("switch", { name: zen.toggle.label }));
-    expect(useZenStore.getState().active).toBe(true);
-    expect(useSettingsStore.getState().settingsOpen).toBe(false);
-    expect(useSettingsStore.getState().showTree).toBe(false);
-  });
-
-  it("shows Zen mode as on and turns it off from the same switch", async () => {
-    render(<AppearanceSection />);
-    const toggle = within(group()).getByRole("switch", { name: zen.toggle.label });
-    await userEvent.setup().click(toggle);
-    expect(toggle).toHaveAttribute("aria-checked", "true");
-    await userEvent.setup().click(toggle);
-    expect(useZenStore.getState().active).toBe(false);
-    expect(useSettingsStore.getState().showTree).toBe(true);
-    expect(toggle).toHaveAttribute("aria-checked", "false");
-  });
-
-  it("leaves the switch idle when no project is open", async () => {
-    useFilesStore.setState({ projectId: null } as unknown as ReturnType<typeof useFilesStore.getState>);
-    render(<AppearanceSection />);
-    const toggle = within(group()).getByRole("switch", { name: zen.toggle.label });
-    expect(toggle).toHaveAttribute("aria-disabled", "true");
-    await userEvent.setup().click(toggle);
-    expect(useZenStore.getState().active).toBe(false);
-    expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
 
   it("changes each option on its own", async () => {
@@ -105,32 +66,19 @@ describe("the Zen mode settings group", () => {
     const user = userEvent.setup();
     const section = within(group());
     await user.click(section.getByRole("switch", { name: zen.fullScreen.label }));
-    expect(useSettingsStore.getState()).toMatchObject({
-      zenFullScreen: false,
-      zenCenterEditor: true,
-      zenShowPdfOnCompile: true,
-    });
-    await user.click(section.getByRole("switch", { name: zen.centerEditor.label }));
+    expect(useSettingsStore.getState()).toMatchObject({ zenFullScreen: false, zenShowPdfOnCompile: true });
     await user.click(section.getByRole("switch", { name: zen.showPdf.label }));
-    expect(useSettingsStore.getState()).toMatchObject({
-      zenFullScreen: false,
-      zenCenterEditor: false,
-      zenShowPdfOnCompile: false,
-    });
+    expect(useSettingsStore.getState()).toMatchObject({ zenFullScreen: false, zenShowPdfOnCompile: false });
     expect(localStorage.getItem("oleafly.zen.fullScreen")).toBe("0");
-    expect(localStorage.getItem("oleafly.zen.centerEditor")).toBe("0");
     expect(localStorage.getItem("oleafly.zen.showPdfOnCompile")).toBe("0");
+    expect(useZenStore.getState().active).toBe(false);
   });
 
   it("counts the options as appearance settings that reset with the rest", () => {
-    act(() => useSettingsStore.getState().setZenCenterEditor(false));
+    act(() => useSettingsStore.getState().setZenShowPdfOnCompile(false));
     expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
     act(() => useSettingsStore.getState().resetAppearancePreferences());
-    expect(useSettingsStore.getState()).toMatchObject({
-      zenFullScreen: true,
-      zenCenterEditor: true,
-      zenShowPdfOnCompile: true,
-    });
+    expect(useSettingsStore.getState()).toMatchObject({ zenFullScreen: true, zenShowPdfOnCompile: true });
     expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(false);
   });
 });

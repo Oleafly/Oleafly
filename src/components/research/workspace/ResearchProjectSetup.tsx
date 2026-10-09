@@ -113,7 +113,7 @@ function previewPanel({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[0.6875rem] text-muted-foreground">
             {preview
               ? i18n.t(($) => $.researchTools.setup.mainDocument, { path: preview.mainDocument })
               : "\u00a0"}

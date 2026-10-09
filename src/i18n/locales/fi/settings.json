@@ -533,12 +533,17 @@
         "right": "Oikealla"
       },
       "font": {
-        "description": "Käyttää järjestelmän varafonttia, jos fonttia ei ole asennettu.",
+        "description": "Valitse valikoille, paneeleille ja valintaikkunoille mikä tahansa tietokoneelle asennettu fontti.",
         "label": "Sovelluksen fontti"
       },
       "fontSize": {
         "description": "Skaalaa tekstin kokoa valikoissa, paneeleissa ja painikkeissa.",
         "label": "Sovelluksen fonttikoko"
+      },
+      "zoom": {
+        "description": "Suurentaa tai pienentää kaiken Oleaflyssa, myös editorin ja PDF:n.",
+        "label": "Zoomaus",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "Järjestelmä seuraa käyttöjärjestelmää ja muuttuu sen mukana.",
@@ -633,12 +638,20 @@
         "label": "Automaattitäydennys"
       },
       "font": {
-        "description": "Valitse lähdetiedostoissa käytettävä tasalevyinen fontti.",
-        "label": "Editorin fontti"
+        "description": "Valitse lähdetiedostoille mikä tahansa tietokoneelle asennettu fontti.",
+        "label": "Editorin fontti",
+        "monospace": "Tasalevyinen"
+      },
+      "useAppFont": {
+        "description": "Editori käyttää sovelluksen fonttia ja fonttikokoa.",
+        "disabledHint": "Muuta tätä poistamalla Käytä sovelluksen fonttia käytöstä.",
+        "label": "Käytä sovelluksen fonttia"
       },
       "fontSize": {
         "description": "Aseta lähdekoodieditorin tekstikoko.",
-        "label": "Editorin fonttikoko"
+        "label": "Editorin fonttikoko",
+        "custom": "Mukautettu",
+        "customLabel": "Mukautettu editorin fonttikoko pikseleinä"
       },
       "ghostCompletion": {
         "description": "Näytä todennäköinen täydennys kohdistimen jälkeen. Hyväksy se painamalla Tab.",
@@ -671,8 +684,34 @@
         "options": {
           "compact": "Tiivis",
           "normal": "Normaali",
-          "wide": "Väljä"
+          "wide": "Väljä",
+          "custom": "Mukautettu"
+        },
+        "customLabel": "Mukautettu riviväli"
+      },
+      "letterSpacing": {
+        "customLabel": "Mukautettu merkkiväli pikseleinä",
+        "description": "Lisää tilaa lähdekoodieditorin merkkien väliin. Se jättää myös enemmän tilaa kohdistimen ympärille.",
+        "label": "Merkkiväli",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normaali",
+          "custom": "Mukautettu"
         }
+      },
+      "cursorWidth": {
+        "label": "Kohdistimen leveys",
+        "description": "Määritä, kuinka paksu editorin kohdistin on.",
+        "option": "{{width}} px"
+      },
+      "cursorColor": {
+        "label": "Kohdistimen väri",
+        "description": "Editorin vaaleilla ja tummilla teemoilla on kummallakin oma kohdistimen värinsä. Kunnes valitset värin, käytetään teeman väriä.",
+        "light": "Vaalea",
+        "dark": "Tumma",
+        "pickLight": "Valitse kohdistimen väri editorin vaaleille teemoille",
+        "pickDark": "Valitse kohdistimen väri editorin tummille teemoille",
+        "useTheme": "Käytä teeman värejä"
       },
       "lineWrap": {
         "description": "Rivitä pitkät rivit sen sijaan että vieritettäisiin sivusuunnassa.",
@@ -744,6 +783,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "{{font}} ei ole asennettu, joten käytössä on oletusfontti.",
     "preview": {
       "darkMode": {
         "description": "Käännä PDF:n värit oletuksena. Värit voi silti vaihtaa esikatselun työkalupalkista.",
@@ -752,10 +792,6 @@
       "hoverPreview": {
         "description": "Näytä viimeisin käännetty sivu, kun viet osoittimen projektin päälle kirjastossa.",
         "label": "Esikatsele PDF osoittimella"
-      },
-      "zoomShortcuts": {
-        "description": "Zoomaa PDF:ää näppäimillä Cmd/Ctrl +, - ja 0 sovellusikkunan sijaan.",
-        "label": "PDF:n zoomauspikanäppäimet"
       }
     },
     "sectionName": "Ulkoasu",
@@ -821,10 +857,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Pitää tekstin keskitetyssä palstassa, kun PDF on piilotettu.",
-        "label": "Keskitä editori"
-      },
       "fullScreen": {
         "description": "Täyttää näytön Zen-tilassa ja palauttaa ikkunan poistuttaessa.",
         "label": "Siirry koko näyttöön"
@@ -833,11 +865,7 @@
         "description": "Jos PDF on piilotettu Zen-tilan alkaessa, se avataan editorin viereen ensimmäisellä käännöksellä.",
         "label": "Näytä PDF käännettäessä"
       },
-      "title": "Zen-tila",
-      "toggle": {
-        "description": "Piilottaa työkalupalkin, sivupalkin, avustajan ja päätteen, jotta vain teksti jää näkyviin. Kutsutaan myös häiriöttömäksi tilaksi. Vaatii avoimen projektin.",
-        "label": "Ota Zen-tila käyttöön"
-      }
+      "title": "Zen-tila"
     }
   },
   "checkpoints": {
@@ -1630,6 +1658,10 @@
         "description": "Näytä tai piilota projektin sivupalkki.",
         "label": "Näytä tai piilota sivupalkki"
       },
+      "togglePreview": {
+        "label": "Näytä tai piilota PDF-esikatselu",
+        "description": "Näyttää tai piilottaa PDF:n editorin vieressä, myös Zen-tilassa."
+      },
       "toggleTerminal": {
         "description": "Näytä tai piilota projektin pääte.",
         "label": "Näytä tai piilota pääte"
@@ -1641,6 +1673,22 @@
       "toggleZenMode": {
         "description": "Piilota kaikki tekstiä lukuun ottamatta tai tuo kaikki takaisin.",
         "label": "Vaihda Zen-tilaa"
+      },
+      "openSettings": {
+        "label": "Avaa asetukset",
+        "description": "Avaa Oleaflyn asetukset."
+      },
+      "zoomIn": {
+        "description": "Suurentaa koko sovelluksen.",
+        "label": "Lähennä"
+      },
+      "zoomOut": {
+        "description": "Pienentää koko sovelluksen.",
+        "label": "Loitonna"
+      },
+      "resetZoom": {
+        "description": "Palauttaa sovelluksen 100 prosenttiin.",
+        "label": "Palauta zoomaus"
       }
     },
     "application": {

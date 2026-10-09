@@ -63,6 +63,15 @@ interface ProjectCandidate {
   readonly prepared: PreparedCitation;
 }
 
+interface CiteRequest {
+  readonly context: CompletionContext;
+  readonly guard: ReturnType<typeof createCompletionRequestGuard>;
+  readonly format: CiteFormat;
+  readonly site: CiteSite;
+  readonly status: ZoteroLibraryStatus | null;
+  readonly hint: ZoteroHintKind | null;
+}
+
 const preparedEntries = new WeakMap<BibliographyEntry, ProjectCandidate>();
 
 function projectCandidate(entry: BibliographyEntry): ProjectCandidate {
@@ -213,15 +222,11 @@ function shifted(option: Completion, offset: number): Completion {
 }
 
 function build(
-  context: CompletionContext,
-  guard: ReturnType<typeof createCompletionRequestGuard>,
-  format: CiteFormat,
-  site: CiteSite,
+  request: CiteRequest,
   entry: ZoteroSearchEntry | null,
   base: CompletionResult | null,
-  status: ZoteroLibraryStatus | null,
-  hint: ZoteroHintKind | null,
 ): CompletionResult | null {
+  const { context, guard, format, site, status, hint } = request;
   const snapshot = retainedSnapshot();
   const project = snapshot ? projectEntries(snapshot, site.query) : [];
   const bibliography = projectBibliography();
@@ -306,8 +311,9 @@ export function zoteroCitationSource(format: CiteFormat, base: CompletionSource)
     const baseValue = format === "latex" ? null : base(context);
     const searchable = zoteroSearchable(status) && status !== null;
     const cached = searchable && status ? cachedZoteroSearch(site.query, status.generation) : null;
+    const request: CiteRequest = { context, guard, format, site, status, hint };
     if ((!searchable || cached) && isSettled(baseValue)) {
-      return build(context, guard, format, site, cached, baseValue, status, hint);
+      return build(request, cached, baseValue);
     }
     return (async () => {
       let entry: ZoteroSearchEntry | null = cached;
@@ -324,7 +330,7 @@ export function zoteroCitationSource(format: CiteFormat, base: CompletionSource)
       }
       const resolvedBase = await baseValue;
       if (context.aborted) return null;
-      return build(context, guard, format, site, entry, resolvedBase, status, hint);
+      return build(request, entry, resolvedBase);
     })();
   };
 }

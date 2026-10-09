@@ -3,6 +3,7 @@
     "app": "Oleafly",
     "about": "Oleafly について",
     "checkUpdates": "アップデートを確認…",
+    "settings": "設定…",
     "reloadViews": "ビューを再読み込み",
     "restartApp": "アプリケーションを再起動",
     "quit": "Oleafly を終了",

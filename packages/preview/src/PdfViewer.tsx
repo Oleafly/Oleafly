@@ -409,7 +409,7 @@ function clearPdfSearchHighlights(state: RenderState): void {
   state.searchNodes.length = 0;
 }
 
-function releaseDetailCanvas(canvas: HTMLCanvasElement): void {
+function releaseCanvas(canvas: HTMLCanvasElement): void {
   canvas.width = 0;
   canvas.height = 0;
   canvas.remove();
@@ -421,7 +421,7 @@ function cancelPendingDetail(state: RenderState): void {
   const pending = detail.pending;
   detail.pending = null;
   pending.task.cancel();
-  releaseDetailCanvas(pending.canvas);
+  releaseCanvas(pending.canvas);
   if (detail.canvas) detail.wrap.dataset.pdfDetail = "ready";
   else delete detail.wrap.dataset.pdfDetail;
 }
@@ -434,7 +434,7 @@ function releasePdfDetail(state: RenderState): void {
   if (detail.canvas) {
     const index = state.nodes.indexOf(detail.canvas);
     if (index >= 0) state.nodes.splice(index, 1);
-    releaseDetailCanvas(detail.canvas);
+    releaseCanvas(detail.canvas);
   }
   delete detail.wrap.dataset.pdfDetail;
 }
@@ -505,7 +505,8 @@ const searchMarkerGeometry = new WeakMap<HTMLElement, PdfMarkerGeometry>();
 function scaleSearchHighlights(state: RenderState, scale: number): void {
   for (const marker of state.searchNodes) {
     const geometry = searchMarkerGeometry.get(marker);
-    if (!geometry || !(geometry.scale > 0)) continue;
+    const hasScale = geometry !== undefined && geometry.scale > 0;
+    if (!hasScale) continue;
     const ratio = scale / geometry.scale;
     marker.style.left = `${geometry.left * ratio}px`;
     marker.style.top = `${geometry.top * ratio}px`;
@@ -607,10 +608,15 @@ function paintedCanvasOf(state: RenderState): { owner: RenderState; canvas: HTML
   return null;
 }
 
-function releaseCanvas(canvas: HTMLCanvasElement): void {
-  canvas.width = 0;
-  canvas.height = 0;
-  canvas.remove();
+function rendersAtScale(
+  state: RenderState | undefined,
+  renderScale: number,
+  devicePixelRatio: number,
+): boolean {
+  return (
+    state?.renderScale === renderScale &&
+    state.devicePixelRatio === devicePixelRatio
+  );
 }
 
 function sameExactViewport(
@@ -631,7 +637,8 @@ export function pagesInViewport(
   viewportTop: number,
   viewportBottom: number,
 ): number[] {
-  if (!wraps.length || !(viewportBottom > viewportTop)) return [];
+  const hasViewport = viewportBottom > viewportTop;
+  if (!wraps.length || !hasViewport) return [];
   let low = 0;
   let high = wraps.length;
   while (low < high) {
@@ -668,7 +675,8 @@ export function capturePdfZoomAnchor(
   const wrap = first ? wraps[first - 1] : undefined;
   if (!wrap) return null;
   const rect = wrap.getBoundingClientRect();
-  if (!(rect.height > 0)) return null;
+  const hasHeight = rect.height > 0;
+  if (!hasHeight) return null;
   const scrollWidth = scrollParent.scrollWidth;
   return {
     wrap,
@@ -1275,7 +1283,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     previewPixelsRef.current = 0;
   }, []);
   const storePreview = useCallback((pageNumber: number, source: HTMLCanvasElement) => {
-    if (!(source.width > 0) || !(source.height > 0)) return;
+    const hasPixels = source.width > 0 && source.height > 0;
+    if (!hasPixels) return;
     const width = Math.min(PREVIEW_WIDTH_PX, source.width);
     const height = Math.max(1, Math.round((source.height * width) / source.width));
     const previews = previewsRef.current;
@@ -1704,14 +1713,14 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             state.detail !== detail ||
             detail.pending?.task !== task
           ) {
-            releaseDetailCanvas(canvas);
+            releaseCanvas(canvas);
             return;
           }
           detail.pending = null;
           if (detail.canvas) {
             const index = state.nodes.indexOf(detail.canvas);
             if (index >= 0) state.nodes.splice(index, 1);
-            releaseDetailCanvas(detail.canvas);
+            releaseCanvas(detail.canvas);
           }
           base.after(canvas);
           state.nodes.push(canvas);
@@ -1720,7 +1729,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           wrap.dataset.pdfDetail = "ready";
         },
         () => {
-          releaseDetailCanvas(canvas);
+          releaseCanvas(canvas);
           if (detail.pending?.task !== task) return;
           detail.pending = null;
           if (detail.canvas) wrap.dataset.pdfDetail = "ready";
@@ -1832,12 +1841,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       return;
     }
     const existing = renderedRef.current.get(pageNo);
-    if (
-      existing?.renderScale === renderScale &&
-      existing.devicePixelRatio === dpr
-    ) {
-      return;
-    }
+    if (rendersAtScale(existing, renderScale, dpr)) return;
     const retainPreviousRaster = (): RenderState | null => {
       if (!existing) {
         reserveRenderSlot(pageNo);
@@ -2010,29 +2014,33 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         }
         wrap.prepend(canvas);
         state.baseRendered = painted;
+        if (painted) {
+          storePreview(pageNo, canvas);
+          scheduleDetailUpdate();
+        }
       };
       attachPaintedCanvas();
-      if (painted) {
-        storePreview(pageNo, canvas);
-        scheduleDetailUpdate();
-      }
 
-      const textDiv = document.createElement("div");
-      textDiv.className = "textLayer select-text";
-      textDiv.tabIndex = -1;
-      freezePdfLayerScale(textDiv, viewport, geometry);
-      const annotDiv = document.createElement("div");
-      annotDiv.className = "annotationLayer";
-      annotDiv.style.position = "absolute";
-      annotDiv.style.inset = "0";
-      canvas.after(textDiv, annotDiv);
-      state.nodes.push(textDiv, annotDiv);
-      if (screenReaderModeRef.current) {
-        for (const node of [canvas, textDiv, annotDiv]) {
-          node.setAttribute("aria-hidden", "true");
-          node.hidden = true;
+      const createLayerNodes = () => {
+        const textLayerDiv = document.createElement("div");
+        textLayerDiv.className = "textLayer select-text";
+        textLayerDiv.tabIndex = -1;
+        freezePdfLayerScale(textLayerDiv, viewport, geometry);
+        const annotationDiv = document.createElement("div");
+        annotationDiv.className = "annotationLayer";
+        annotationDiv.style.position = "absolute";
+        annotationDiv.style.inset = "0";
+        canvas.after(textLayerDiv, annotationDiv);
+        state.nodes.push(textLayerDiv, annotationDiv);
+        if (screenReaderModeRef.current) {
+          for (const node of [canvas, textLayerDiv, annotationDiv]) {
+            node.setAttribute("aria-hidden", "true");
+            node.hidden = true;
+          }
         }
-      }
+        return { textDiv: textLayerDiv, annotDiv: annotationDiv };
+      };
+      const { textDiv, annotDiv } = createLayerNodes();
 
       const accessibilityManager = new PdfTextAccessibilityManager();
       state.accessibilityManager = accessibilityManager;
@@ -2779,7 +2787,12 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       );
       observerRef.current = observer;
 
-      for (let p = 1; p <= doc.numPages; p++) {
+      const placeholderViewport = (p: number) => {
+        if (p === 1) return firstViewport;
+        const retained = reuseLayout ? retainedLayout.viewports.get(p) : undefined;
+        return retained ?? pendingPageViewport(rotationRef.current);
+      };
+      const createPageWrap = (p: number) => {
         const wrap = document.createElement("div");
         // Horizontal spacing between pages comes from the container's `gap`, not
         // a per-page margin, so single-column and two-up grids stay evenly
@@ -2799,11 +2812,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           "aria-label",
           tRef.current("a11y.page", { page: p, total: doc.numPages }),
         );
-        const viewport =
-          p === 1
-            ? firstViewport
-            : ((reuseLayout ? retainedLayout.viewports.get(p) : undefined) ??
-              pendingPageViewport(rotationRef.current));
+        const viewport = placeholderViewport(p);
         wrap.dataset.pdfGeometry = p === 1 ? "exact" : "pending";
         wrap.dataset.pdfRotation = String(viewport.rotation);
         wrap.dataset.pdfUserUnit = String(viewport.userUnit);
@@ -2834,17 +2843,21 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             onInverseRef.current?.(hit.page, hit.x, hit.y, word ?? undefined);
           }
         });
+        return wrap;
+      };
+      for (let p = 1; p <= doc.numPages; p++) {
+        const wrap = createPageWrap(p);
         container.appendChild(wrap);
         wrapsRef.current.set(p, wrap);
         wrapListRef.current.push(wrap);
         observer.observe(wrap);
       }
 
-      for (const [pageNumber, canvas] of carried) {
+      const adoptCarriedRaster = (pageNumber: number, canvas: HTMLCanvasElement) => {
         const wrap = reuseLayout ? wrapsRef.current.get(pageNumber) : undefined;
         if (!wrap) {
           releaseCanvas(canvas);
-          continue;
+          return;
         }
         canvas.replaceChildren();
         canvas.className = "pdf-canvas-stale";
@@ -2857,7 +2870,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         canvas.style.height = "100%";
         wrap.prepend(canvas);
         staleRastersRef.current.set(pageNumber, canvas);
-      }
+      };
+      for (const [pageNumber, canvas] of carried) adoptCarriedRaster(pageNumber, canvas);
 
       const scrollParent = container.parentElement;
       if (reuseLayout && scrollParent) {
@@ -2908,17 +2922,19 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       const initialPages = rootRect
         ? pagesInViewport(wrapListRef.current, rootRect.top, rootRect.bottom)
         : [];
-      const initialPage = reuseLayout && initialPages.length
-        ? selectCurrentPdfPage(
-            initialPages.flatMap((pageNumber) => {
-              const rect = wrapsRef.current.get(pageNumber)?.getBoundingClientRect();
-              return rect ? [{ pageNumber, top: rect.top, bottom: rect.bottom }] : [];
-            }),
-            rootRect?.top ?? 0,
-            rootRect?.bottom ?? 0,
-            initialPages[0],
-          )
-        : 1;
+      const pickInitialPage = () => {
+        if (!reuseLayout || !initialPages.length) return 1;
+        return selectCurrentPdfPage(
+          initialPages.flatMap((pageNumber) => {
+            const rect = wrapsRef.current.get(pageNumber)?.getBoundingClientRect();
+            return rect ? [{ pageNumber, top: rect.top, bottom: rect.bottom }] : [];
+          }),
+          rootRect?.top ?? 0,
+          rootRect?.bottom ?? 0,
+          initialPages[0],
+        );
+      };
+      const initialPage = pickInitialPage();
       viewportPagesRef.current = new Set(initialPages);
       currentPageRef.current = initialPage;
       if (initialPages.length) {
@@ -3497,7 +3513,11 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       const jump = Math.abs(top - lastTop);
       const viewportHeight = scrollParent.clientHeight;
       const big = viewportHeight > 0 && jump > viewportHeight;
-      bigJumps = big ? (now - lastScrollAt < FAST_SCROLL_STREAK_GAP_MS ? bigJumps + 1 : 1) : 0;
+      if (big) {
+        bigJumps = now - lastScrollAt < FAST_SCROLL_STREAK_GAP_MS ? bigJumps + 1 : 1;
+      } else {
+        bigJumps = 0;
+      }
       lastTop = top;
       lastScrollAt = now;
       if (bigJumps < 2) return;

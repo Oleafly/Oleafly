@@ -7,7 +7,7 @@ export function PlanNote({ note }: Readonly<{ note: ChatPlanNote }>) {
   return (
     <div
       data-testid="plan-note"
-      className="mt-1.5 px-1 text-[11px] leading-snug text-muted-foreground"
+      className="mt-1.5 px-1 text-[0.6875rem] leading-snug text-muted-foreground"
     >
       {note === "unchanged"
         ? t(($) => $.ai.conversation.planUnchanged)

@@ -724,9 +724,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const inverted = useSettingsStore((state) => state.pdfDarkMode);
   const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
   const viewMode = useSettingsStore((state) => state.viewMode);
-  const pdfZoomShortcuts = useSettingsStore(
-    (state) => state.pdfZoomShortcuts,
-  );
   const [screenReaderMode, setScreenReaderMode] = useState(false);
   const [scale, setScale] = useState(1.0);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
@@ -1047,14 +1044,11 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     enabled: tab === "pdf",
     searchOpen,
     outlineOpen,
-    zoomShortcuts: pdfZoomShortcuts,
     searchInputRef,
     setSearchOpen,
     setSearchInput,
     setOutlineOpen,
-    setScale,
     setRotation,
-    userZoom,
   });
 
   const refreshTreeQuietly = () =>
@@ -1371,7 +1365,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           onClick={() => void recompile()}
           data-testid="preview-stale-badge"
           aria-label={t(($) => $.preview.stale.badgeLabel)}
-          className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-100 px-2.5 text-[11px] font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-[#181818] dark:text-neutral-300 dark:hover:bg-[#222222]"
+          className="flex h-7 items-center justify-center gap-1.5 rounded-full border border-neutral-300 bg-neutral-100 px-2.5 text-[0.6875rem] font-semibold text-neutral-700 shadow-sm transition-colors hover:bg-neutral-200 dark:border-neutral-700 dark:bg-[#181818] dark:text-neutral-300 dark:hover:bg-[#222222]"
         >
           <span
             aria-hidden="true"
@@ -1558,6 +1552,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   return (
     <div
       ref={rootRef}
+      tabIndex={-1}
       data-tour="project-preview"
       data-testid="preview-pane"
       data-preview-layout={layout}
@@ -1739,7 +1734,7 @@ function StartupStageRow({
         <span
           className={cn(
             "block truncate font-medium",
-            compact ? "text-[11px]" : "text-xs",
+            compact ? "text-[0.6875rem]" : "text-xs",
             (stage.status === "pending" || stage.status === "skipped") &&
               "text-muted-foreground",
             stage.status === "error" && "text-destructive",
@@ -1748,7 +1743,7 @@ function StartupStageRow({
           {stage.label}
         </span>
         {!compact && (
-          <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+          <span className="mt-0.5 block truncate text-[0.625rem] text-muted-foreground">
             {stage.detail}
           </span>
         )}
@@ -1756,7 +1751,7 @@ function StartupStageRow({
       <span
         className={cn(
           "shrink-0 font-mono uppercase tracking-wide",
-          compact ? "text-[9px]" : "text-[10px]",
+          compact ? "text-[0.5625rem]" : "text-[0.625rem]",
           STARTUP_STATUS_TEXT[stage.status],
         )}
       >
@@ -1858,7 +1853,7 @@ export function DocumentStartupProgress({
         <span
           className={cn(
             "ml-auto shrink-0 font-mono tabular-nums text-muted-foreground",
-            compact ? "text-[9px]" : "text-[10px]",
+            compact ? "text-[0.5625rem]" : "text-[0.625rem]",
           )}
         >
           {t(($) => $.preview.startup.doneCount, {
@@ -1888,7 +1883,7 @@ export function DocumentStartupProgress({
         <p
           className={cn(
             "mt-1.5 font-mono text-muted-foreground",
-            compact ? "text-[9px]" : "text-[10px]",
+            compact ? "text-[0.5625rem]" : "text-[0.625rem]",
           )}
         >
           {meta}
@@ -1902,7 +1897,7 @@ export function DocumentStartupProgress({
       </ol>
 
       {currentStage && compact && (
-        <p className="mt-1 truncate text-[10px] text-muted-foreground" title={currentStage.detail}>
+        <p className="mt-1 truncate text-[0.625rem] text-muted-foreground" title={currentStage.detail}>
           {currentStage.detail}
         </p>
       )}
@@ -1913,7 +1908,7 @@ export function DocumentStartupProgress({
             <Play className="size-3.5" />
             {t(($) => $.preview.startup.compileNow)}
           </Button>
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[0.625rem] text-muted-foreground">
             <Trans
               ns="preview"
               i18nKey={($) => $.preview.startup.orPress}

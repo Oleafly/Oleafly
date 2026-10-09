@@ -45,7 +45,7 @@ export function RuntimeSwitch() {
           )}
         >
           <span>{labels[labelKey]}</span>
-          {beta ? <BetaBadge className="leading-[13px]" /> : null}
+          {beta ? <BetaBadge className="leading-[0.8125rem]" /> : null}
         </button>
       ))}
     </fieldset>

@@ -539,12 +539,17 @@
         "right": "Vpravo"
       },
       "font": {
-        "description": "Pokud písmo není nainstalované, použije se systémová náhrada.",
+        "description": "Zvolte pro nabídky, panely a dialogy libovolné písmo nainstalované v počítači.",
         "label": "Písmo aplikace"
       },
       "fontSize": {
         "description": "Zvětšete nebo zmenšete text v nabídkách, panelech a tlačítkách.",
         "label": "Velikost písma aplikace"
+      },
+      "zoom": {
+        "description": "Zvětší nebo zmenší celý Oleafly včetně editoru a PDF.",
+        "label": "Přiblížení",
+        "option": "{{value}} %"
       },
       "theme": {
         "description": "Systémový se řídí operačním systémem a mění se spolu s ním.",
@@ -643,12 +648,20 @@
         "label": "Automatické doplňování"
       },
       "font": {
-        "description": "Zvolte neproporcionální písmo používané pro zdrojové soubory.",
-        "label": "Písmo editoru"
+        "description": "Zvolte pro zdrojové soubory libovolné písmo nainstalované v počítači.",
+        "label": "Písmo editoru",
+        "monospace": "Neproporcionální"
+      },
+      "useAppFont": {
+        "description": "Editor používá písmo a velikost písma aplikace.",
+        "disabledHint": "Pro změnu vypněte Použít písmo aplikace.",
+        "label": "Použít písmo aplikace"
       },
       "fontSize": {
         "description": "Nastavte velikost textu ve zdrojovém editoru.",
-        "label": "Velikost písma editoru"
+        "label": "Velikost písma editoru",
+        "custom": "Vlastní",
+        "customLabel": "Vlastní velikost písma editoru v pixelech"
       },
       "ghostCompletion": {
         "description": "Zobrazovat pravděpodobné doplnění za kurzorem. Přijmete jej klávesou Tab.",
@@ -681,8 +694,34 @@
         "options": {
           "compact": "Kompaktní",
           "normal": "Normální",
-          "wide": "Široká"
+          "wide": "Široká",
+          "custom": "Vlastní"
+        },
+        "customLabel": "Vlastní výška řádku"
+      },
+      "letterSpacing": {
+        "customLabel": "Vlastní proklad písma v pixelech",
+        "description": "Přidá mezeru mezi znaky ve zdrojovém editoru. Kolem kurzoru tak zůstane víc místa.",
+        "label": "Proklad písma",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normální",
+          "custom": "Vlastní"
         }
+      },
+      "cursorWidth": {
+        "label": "Šířka kurzoru",
+        "description": "Nastavte, jak silný má být kurzor editoru.",
+        "option": "{{width}} px"
+      },
+      "cursorColor": {
+        "label": "Barva kurzoru",
+        "description": "Světlé a tmavé motivy editoru mají každý vlastní barvu kurzoru. Dokud žádnou nevyberete, použije se barva motivu.",
+        "light": "Světlý",
+        "dark": "Tmavý",
+        "pickLight": "Vybrat barvu kurzoru pro světlé motivy editoru",
+        "pickDark": "Vybrat barvu kurzoru pro tmavé motivy editoru",
+        "useTheme": "Použít barvy motivu"
       },
       "lineWrap": {
         "description": "Zalamovat dlouhé řádky místo vodorovného posouvání.",
@@ -754,6 +793,7 @@
       }
     },
     "fontSizeOption": "{{size}} px",
+    "fontNotInstalled": "Písmo {{font}} není nainstalované, proto se používá výchozí písmo.",
     "preview": {
       "darkMode": {
         "description": "Ve výchozím stavu invertovat barvy PDF. Barvy můžete stále přepnout v panelu nástrojů náhledu.",
@@ -762,10 +802,6 @@
       "hoverPreview": {
         "description": "Zobrazit poslední zkompilovanou stránku, když v knihovně najedete na projekt.",
         "label": "Náhled PDF při najetí"
-      },
-      "zoomShortcuts": {
-        "description": "Používat Cmd/Ctrl +, - a 0 k přiblížení PDF místo okna aplikace.",
-        "label": "Zkratky přiblížení PDF"
       }
     },
     "sectionName": "Vzhled",
@@ -831,10 +867,6 @@
       }
     },
     "zen": {
-      "centerEditor": {
-        "description": "Drží text ve vycentrovaném sloupci, dokud je PDF skryté.",
-        "label": "Vycentrovat editor"
-      },
       "fullScreen": {
         "description": "V režimu Zen vyplní obrazovku a při odchodu obnoví okno.",
         "label": "Přejít na celou obrazovku"
@@ -843,11 +875,7 @@
         "description": "Pokud je PDF při spuštění režimu Zen skryté, otevře ho vedle editoru při první kompilaci.",
         "label": "Zobrazit PDF při kompilaci"
       },
-      "title": "Režim Zen",
-      "toggle": {
-        "description": "Skryje panel nástrojů, postranní panel, asistenta a terminál, aby zůstal jen text. Říká se mu také režim bez rušení. Vyžaduje otevřený projekt.",
-        "label": "Zapnout režim Zen"
-      }
+      "title": "Režim Zen"
     }
   },
   "checkpoints": {
@@ -1672,6 +1700,10 @@
         "description": "Zobrazit nebo skrýt postranní panel projektu.",
         "label": "Přepnout postranní panel"
       },
+      "togglePreview": {
+        "label": "Přepnout náhled PDF",
+        "description": "Zobrazí nebo skryje PDF vedle editoru, i v režimu Zen."
+      },
       "toggleTerminal": {
         "description": "Zobrazit nebo skrýt terminál projektu.",
         "label": "Přepnout terminál"
@@ -1683,6 +1715,22 @@
       "toggleZenMode": {
         "description": "Skryje vše kromě textu, nebo vše vrátí zpět.",
         "label": "Přepnout režim Zen"
+      },
+      "openSettings": {
+        "label": "Otevřít nastavení",
+        "description": "Otevřít nastavení aplikace Oleafly."
+      },
+      "zoomIn": {
+        "description": "Zvětší celou aplikaci.",
+        "label": "Přiblížit"
+      },
+      "zoomOut": {
+        "description": "Zmenší celou aplikaci.",
+        "label": "Oddálit"
+      },
+      "resetZoom": {
+        "description": "Vrátí aplikaci na 100 %.",
+        "label": "Obnovit přiblížení"
       }
     },
     "application": {

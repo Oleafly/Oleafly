@@ -54,7 +54,7 @@ export function PermissionCard({
                 ? t(($) => $.ai.acp.permission.namedHeadline, { agent: agentName })
                 : t(($) => $.ai.acp.permission.headline)}
             </p>
-            <p className="select-text text-[13px] leading-snug text-muted-foreground">
+            <p className="select-text text-[0.8125rem] leading-snug text-muted-foreground">
               {displayText(request.title)}
             </p>
           </div>

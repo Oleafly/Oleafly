@@ -127,6 +127,43 @@ describe("LaTeX symbol recovery", () => {
     ]);
   });
 
+  it("reads only a whole definition command name as a definition head", () => {
+    const heads = [
+      "def",
+      "gdef",
+      "edef",
+      "xdef",
+      "newcommand",
+      "renewcommand",
+      "providecommand",
+      "DeclareRobustCommand",
+      "newenvironment",
+      "renewenvironment",
+      "provideenvironment",
+      "NewDocumentCommand",
+      "RenewDocumentCommand",
+      "ProvideDocumentCommand",
+      "DeclareDocumentCommand",
+      "NewDocumentEnvironment",
+      "RenewDocumentEnvironment",
+      "ProvideDocumentEnvironment",
+      "DeclareDocumentEnvironment",
+    ];
+    const kinds = (text: string) =>
+      contribute({ "main.tex": text }, [{ name: "Entry", kind: 2, line: 0, from: 0, to: text.length }]).definitions.map(
+        (definition) => definition.kind,
+      );
+    for (const head of heads) {
+      expect(kinds(` \\${head}{x}`)).not.toContain("section");
+      expect(kinds(`\\${head}* {x}`)).not.toContain("section");
+      expect(kinds(`\\${head}x{y}`)).toEqual(["section"]);
+      expect(kinds(`\\${head}@{y}`)).toEqual(["section"]);
+      expect(kinds(`\\${head}é{y}`)).toEqual(["section"]);
+      expect(kinds(`x\\${head}{y}`)).toEqual(["section"]);
+    }
+    expect(kinds(String.raw`\label{a}`)).toEqual(["section"]);
+  });
+
   it("clamps a range whose end precedes its start", () => {
     const result = contribute({ "main.tex": source }, [{ name: "fig:x", kind: 7, line: 2, from: 13, to: 0 }]);
     expect(result.definitions).toEqual([]);

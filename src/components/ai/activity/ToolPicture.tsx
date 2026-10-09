@@ -98,7 +98,7 @@ export function ToolPicture({ tc }: Readonly<{ tc: ToolEntry }>) {
       <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b px-2 py-1">
         <span />
         {hasCode ? (
-          <div className="flex h-7 items-center rounded-full bg-muted p-0.5 text-[11px] font-medium">
+          <div className="flex h-7 items-center rounded-full bg-muted p-0.5 text-[0.6875rem] font-medium">
             <button
               type="button"
               data-testid="tool-picture-view-image"

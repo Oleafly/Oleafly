@@ -365,10 +365,10 @@ export function TemplateGenerateModal({
                   <Wand2 className="size-4" />
                   {t(($) => $.library.generate.run)}
                   <span className="inline-flex items-center gap-1">
-                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[10px] text-primary-foreground">
+                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[0.625rem] text-primary-foreground">
                       {modKey}
                     </Kbd>
-                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[10px] text-primary-foreground">
+                    <Kbd className="h-4 min-w-4 bg-primary-foreground/20 px-1 text-[0.625rem] text-primary-foreground">
                       {"\u21B5"}
                     </Kbd>
                   </span>

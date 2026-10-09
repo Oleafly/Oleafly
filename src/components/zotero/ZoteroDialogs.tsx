@@ -177,11 +177,12 @@ function MissingBody({ onClose }: Readonly<{ onClose: () => void }>) {
     <>
       <div className="max-h-[50vh] flex-1 overflow-y-auto px-4 py-3" aria-live="polite" aria-busy={phase === "loading" || phase === "working"}>
         {phase === "loading" && <LoadingState className="py-4" label={t(($) => $.references.zotero.missing.loading)} />}
-        {(phase === "done" || phase === "error") && (
-          <p role={phase === "error" ? "alert" : "status"} className={phase === "error" ? "select-text text-xs text-destructive" : "text-xs"}>
+        {phase === "error" && (
+          <p role="alert" className="select-text text-xs text-destructive">
             {message}
           </p>
         )}
+        {phase === "done" && <output className="block text-xs">{message}</output>}
         {(phase === "ready" || phase === "working") && report && (
           <div className="space-y-4">
             {found.length === 0 && report.missing.length === 0 && report.duplicates.length === 0 && (
@@ -189,7 +190,7 @@ function MissingBody({ onClose }: Readonly<{ onClose: () => void }>) {
             )}
             {found.length > 0 && (
               <section>
-                <h3 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <h3 className="mb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.references.zotero.missing.found, { count: found.length })}
                 </h3>
                 <ul className="space-y-0.5">
@@ -206,7 +207,7 @@ function MissingBody({ onClose }: Readonly<{ onClose: () => void }>) {
             )}
             {report.duplicates.length > 0 && (
               <section>
-                <h3 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <h3 className="mb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.references.zotero.missing.duplicates, { count: report.duplicates.length })}
                 </h3>
                 <ul className="space-y-0.5">
@@ -220,7 +221,7 @@ function MissingBody({ onClose }: Readonly<{ onClose: () => void }>) {
             )}
             {report.missing.length > 0 && (
               <section>
-                <h3 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <h3 className="mb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.references.zotero.missing.notFound, { count: report.missing.length })}
                 </h3>
                 <p className="select-text break-words font-mono text-xs text-muted-foreground">{report.missing.join(", ")}</p>
@@ -301,11 +302,12 @@ function UpdateBody({ onClose }: Readonly<{ onClose: () => void }>) {
     <>
       <div className="max-h-[50vh] flex-1 overflow-y-auto px-4 py-3" aria-live="polite" aria-busy={phase === "loading" || phase === "working"}>
         {phase === "loading" && <LoadingState className="py-4" label={t(($) => $.references.zotero.update.loading)} />}
-        {(phase === "done" || phase === "error") && (
-          <p role={phase === "error" ? "alert" : "status"} className={phase === "error" ? "select-text text-xs text-destructive" : "text-xs"}>
+        {phase === "error" && (
+          <p role="alert" className="select-text text-xs text-destructive">
             {message}
           </p>
         )}
+        {phase === "done" && <output className="block text-xs">{message}</output>}
         {(phase === "ready" || phase === "working") && entries.length === 0 && (
           <p className="text-xs text-muted-foreground">{t(($) => $.references.zotero.update.none)}</p>
         )}
@@ -328,7 +330,7 @@ function UpdateBody({ onClose }: Readonly<{ onClose: () => void }>) {
                       {[hitByline(entry.hit), truncated(hitTitle(entry.hit))].filter(Boolean).join(" · ")}
                     </span>
                     {entry.handEdited && (
-                      <span className="shrink-0 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                      <span className="shrink-0 text-[0.625rem] font-medium text-amber-700 dark:text-amber-300">
                         {t(($) => $.references.zotero.update.handEdited)}
                       </span>
                     )}

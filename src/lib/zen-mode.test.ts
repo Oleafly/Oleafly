@@ -54,7 +54,6 @@ const FULL_LAYOUT = {
   viewMode: "split" as const,
   terminalOpen: true,
   zenFullScreen: true,
-  zenCenterEditor: true,
   zenShowPdfOnCompile: true,
 };
 

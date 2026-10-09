@@ -62,7 +62,7 @@ function createViewportAnchorSource(): ViewportAnchorSource {
 
   const publish = (next: ViewportAnchor | null) => {
     const value =
-      anchor && next && anchor.path === next.path && anchor.pos === next.pos ? anchor : next;
+      next && anchor?.path === next.path && anchor.pos === next.pos ? anchor : next;
     if (value === anchor) return;
     anchor = value;
     for (const listener of listeners) listener();

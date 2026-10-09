@@ -314,6 +314,16 @@ export function themeTokenOverride(theme: Theme, token: ThemeTokenName): string 
   }
 }
 
+export function accentTokenDefaults(
+  theme: Theme,
+  accentColor = window.localStorage.getItem("oleafly.accent"),
+): Readonly<Record<string, string>> {
+  if (themeTokenOverride(theme, "primary")) return {};
+  return themeTokenOverride(theme, "primary-foreground")
+    ? { "--primary": accentColor || "#2563eb" }
+    : { "--primary": accentColor || "#2563eb", "--primary-foreground": "#ffffff" };
+}
+
 export function applyThemeCustomization(
   theme: Theme,
   customization: ThemeCustomization = readThemeCustomization(),

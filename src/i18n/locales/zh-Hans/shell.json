@@ -331,6 +331,22 @@
       "keywords": "专注 无干扰 全屏 隐藏界面 极简 写作",
       "label": "切换禅模式"
     },
+    "togglePreview": {
+      "keywords": "pdf 预览 显示 隐藏 分屏 仅编辑器",
+      "label": "切换 PDF 预览"
+    },
+    "zoomIn": {
+      "keywords": "放大 变大",
+      "label": "放大"
+    },
+    "zoomOut": {
+      "keywords": "缩小 变小",
+      "label": "缩小"
+    },
+    "resetZoom": {
+      "keywords": "实际大小 100",
+      "label": "重置缩放"
+    },
     "zoteroAddMissing": {
       "label": "从 Zotero 添加缺失的引用",
       "keywords": "zotero 缺失 引用 未定义 键 参考文献 修复"

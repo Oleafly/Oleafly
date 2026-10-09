@@ -278,8 +278,8 @@ function samePrefix(entry: CatalogPath, path: CatalogPath): boolean {
 }
 
 describe("Zen mode settings in the search", () => {
-  it("finds the group by its name, its options and its other name", () => {
-    for (const query of ["zen", "zen mode", "full screen", "center the editor", "distraction free"]) {
+  it("finds the group by its name and its options", () => {
+    for (const query of ["zen", "zen mode", "full screen", "show the pdf"]) {
       expect(matchSettingsSections(index, SECTIONS, query), query).toContain("appearance");
     }
     const [appearance] = searchSettings(index, SECTIONS, "go full screen");
@@ -290,9 +290,9 @@ describe("Zen mode settings in the search", () => {
     });
   });
 
-  it("opens the Zen rows on the App tab", () => {
-    expect(settingsTabFor(["appearance", "zen"])).toBe("app");
-    expect(settingsTabFor(["appearance", "zen", "centerEditor"])).toBe("app");
+  it("opens the Zen rows on the Project tab", () => {
+    expect(settingsTabFor(["appearance", "zen"])).toBe("files");
+    expect(settingsTabFor(["appearance", "zen", "showPdf"])).toBe("files");
   });
 
   it("finds the Zen shortcut on the Shortcuts tab", () => {

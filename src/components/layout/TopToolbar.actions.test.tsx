@@ -55,7 +55,8 @@ import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
-import { useShortcutStore, shortcutLabel } from "@/store/shortcuts";
+import { useShortcutStore, shortcutLabel, shortcutParts } from "@/store/shortcuts";
+
 import { useZenStore } from "@/store/zen";
 import { exitZenMode } from "@/lib/zen-mode";
 import { LATEX_ENGINE } from "@/lib/document-engine";
@@ -63,6 +64,10 @@ import { ThemeProvider } from "@/lib/theme";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { i18n } from "@/i18n";
+
+function keyChips(item: HTMLElement): string[] {
+  return [...item.querySelectorAll("kbd")].map((chip) => chip.textContent ?? "");
+}
 
 const toolbar = enShell.toolbar;
 
@@ -295,9 +300,10 @@ describe("TopToolbar layout menu and Zen mode", () => {
     const zen = items.at(-1) as HTMLElement;
     expect(zen).toHaveAccessibleName(toolbar.layouts.zenMode);
     expect(items).toHaveLength(Object.keys(toolbar.layouts).length);
-    const shortcut = shortcutLabel(useShortcutStore.getState().bindings.toggleZenMode);
-    expect(zen).toHaveTextContent(shortcut);
-    expect(zen).toHaveAttribute("aria-keyshortcuts");
+    const binding = useShortcutStore.getState().bindings.toggleZenMode;
+    expect(keyChips(zen)).toEqual(shortcutParts(binding));
+    expect(zen).toHaveAttribute("aria-keyshortcuts", shortcutLabel(binding));
+    expect(zen.querySelector("svg.lucide-focus")).not.toBeNull();
     const separators = within(menu).getAllByRole("separator");
     expect(separators).toHaveLength(1);
     expect(
@@ -313,9 +319,7 @@ describe("TopToolbar layout menu and Zen mode", () => {
     try {
       const { menu } = await openLayoutMenu();
       const zen = within(menu).getByRole("menuitem", { name: toolbar.layouts.zenMode });
-      expect(zen).toHaveTextContent(
-        shortcutLabel({ key: "z", mod: true, alt: true }),
-      );
+      expect(keyChips(zen)).toEqual(shortcutParts({ key: "z", mod: true, alt: true }));
     } finally {
       useShortcutStore.getState().resetBinding("toggleZenMode");
     }

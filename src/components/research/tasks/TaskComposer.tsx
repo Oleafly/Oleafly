@@ -435,7 +435,7 @@ function AgentSummary({
         {icon}
         <span className="truncate text-sm">{agent.label}</span>
         {detail ? (
-          <span className="truncate text-[11px] text-muted-foreground">{detail}</span>
+          <span className="truncate text-[0.6875rem] text-muted-foreground">{detail}</span>
         ) : null}
       </span>
     );
@@ -446,10 +446,10 @@ function AgentSummary({
       <span className="min-w-0">
         <span className="block truncate text-sm">{agent.label}</span>
         {detail ? (
-          <span className="block truncate text-[11px] text-muted-foreground">{detail}</span>
+          <span className="block truncate text-[0.6875rem] text-muted-foreground">{detail}</span>
         ) : null}
         {showReason && agent.available === false && agent.unavailableReason ? (
-          <span className="block truncate text-[11px] text-destructive">
+          <span className="block truncate text-[0.6875rem] text-destructive">
             {agent.unavailableReason}
           </span>
         ) : null}

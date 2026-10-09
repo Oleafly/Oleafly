@@ -109,7 +109,7 @@ export function GitStatusBadge({
       role="img"
       aria-label={name}
       className={cn(
-        "flex size-4 shrink-0 items-center justify-center rounded text-[10px] font-semibold",
+        "flex size-4 shrink-0 items-center justify-center rounded text-[0.625rem] font-semibold",
         meta.fill,
         meta.text,
         className,

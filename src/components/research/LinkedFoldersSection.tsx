@@ -134,7 +134,7 @@ export function LinkedFoldersSection() {
     if (loading[key]) {
       return (
         <output
-          className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground"
+          className="flex items-center gap-2 py-1 text-[0.6875rem] text-muted-foreground"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
           <Spinner size="xs" /> {t(($) => $.common.state.loading)}
@@ -145,7 +145,7 @@ export function LinkedFoldersSection() {
       return (
         <p
           role="alert"
-          className="select-text py-1 text-[11px] text-destructive"
+          className="select-text py-1 text-[0.6875rem] text-destructive"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
           {errors[key]}
@@ -156,7 +156,7 @@ export function LinkedFoldersSection() {
     if (entries.length === 0) {
       return (
         <p
-          className="py-1 text-[11px] text-muted-foreground"
+          className="py-1 text-[0.6875rem] text-muted-foreground"
           style={{ paddingLeft: `${depth * 12 + 26}px` }}
         >
           {t(($) => $.researchTools.linked.emptyFolder)}
@@ -175,7 +175,7 @@ export function LinkedFoldersSection() {
           >
             <Lock aria-hidden="true" className="size-3.5 shrink-0" />
             <span className="truncate">{entry.name}</span>
-            <span className="ml-auto shrink-0 text-[11px]">
+            <span className="ml-auto shrink-0 text-[0.6875rem]">
               {t(($) => $.researchTools.linked.blockedLink)}
             </span>
           </div>
@@ -231,7 +231,7 @@ export function LinkedFoldersSection() {
           {t(($) => $.researchTools.linked.title)}
         </span>
         <Tooltip label={t(($) => $.researchTools.linked.readOnlyTooltip)}>
-          <Badge variant="quiet" className="gap-1 text-[10px]">
+          <Badge variant="quiet" className="gap-1 text-[0.625rem]">
             <Lock aria-hidden="true" className="size-2.5" />
             {t(($) => $.researchTools.linked.readOnly)}
           </Badge>
@@ -271,7 +271,7 @@ export function LinkedFoldersSection() {
                 )}
                 <span className="truncate">{root.label}</span>
                 {availability !== "available" ? (
-                  <span className="ml-auto shrink-0 text-[10px] text-destructive">
+                  <span className="ml-auto shrink-0 text-[0.625rem] text-destructive">
                     {availability === "missing"
                       ? t(($) => $.researchTools.linked.missing)
                       : t(($) => $.researchTools.linked.unreadable)}

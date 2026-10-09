@@ -38,7 +38,6 @@ const PROJECT_LAYOUT = {
   terminalOpen: false,
   vim: false,
   zenFullScreen: false,
-  zenCenterEditor: true,
   zenShowPdfOnCompile: true,
 };
 

@@ -126,6 +126,13 @@ describe("ProjectSearch", () => {
     expect(screen.getByText(copy.hint)).toBeInTheDocument();
   });
 
+  it("shows focus in the search field with a tint, never a ring-colored border", () => {
+    render(<ProjectSearch />);
+    const field = screen.getByPlaceholderText(copy.placeholder);
+    expect(field).toHaveClass("focus-visible:border-input", "focus-visible:bg-accent/40");
+    expect(field.className).not.toMatch(/(?:^|\s)(?:focus|focus-visible):border-ring(?:\s|$)/u);
+  });
+
   it("lists the hits of the active project and opens the one chosen", async () => {
     mocks.searchDocs.mockResolvedValue([
       HIT,

@@ -7,11 +7,13 @@ export type RowWindow = RowRange &
   Readonly<{
     paddingTop: number;
     paddingBottom: number;
+    rowHeight: number;
     scrollToIndex: (index: number) => void;
   }>;
 
 export const UNMEASURED_ROW_COUNT = 80;
 const DEFAULT_OVERSCAN = 12;
+const NO_SCROLLER_TARGET: { readonly element: HTMLElement | null } = { element: null };
 export const ROW_WINDOW_ITEM = "data-row-window-item";
 
 export function rowRange(
@@ -75,7 +77,7 @@ export function useRowWindow({
   const foundScroller = useRef<HTMLElement | null>(null);
 
   const subscribed = useRef<HTMLElement | null>(null);
-  const [scrollerGeneration, setScrollerGeneration] = useState(0);
+  const [scrollerTarget, setScrollerTarget] = useState<{ readonly element: HTMLElement | null }>(NO_SCROLLER_TARGET);
 
   const resolveScroller = useCallback((): HTMLElement | null => {
     const explicit = scrollRef?.current;
@@ -137,8 +139,7 @@ export function useRowWindow({
   }, [nextMeasure]);
 
   useLayoutEffect(() => {
-    void scrollerGeneration;
-    const scroller = resolveScroller();
+    const scroller = scrollerTarget.element ?? resolveScroller();
     subscribed.current = scroller;
     const list = listRef.current;
     if (!scroller) return;
@@ -161,13 +162,12 @@ export function useRowWindow({
       if (frame.current) cancelAnimationFrame(frame.current);
       frame.current = 0;
     };
-  }, [listRef, measure, measureNow, resolveScroller, scrollerGeneration]);
+  }, [listRef, measure, measureNow, resolveScroller, scrollerTarget]);
 
   useLayoutEffect(() => {
     latest.current = measured;
-    if (resolveScroller() !== subscribed.current) {
-      setScrollerGeneration((generation) => generation + 1);
-    }
+    const scroller = resolveScroller();
+    if (scroller !== subscribed.current) setScrollerTarget({ element: scroller });
     measure();
   });
 
@@ -197,6 +197,7 @@ export function useRowWindow({
     end,
     paddingTop: rowHeight > 0 ? start * rowHeight : 0,
     paddingBottom: rowHeight > 0 ? Math.max(0, count - end) * rowHeight : 0,
+    rowHeight,
     scrollToIndex,
   };
 }

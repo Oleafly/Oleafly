@@ -333,6 +333,22 @@
       "keywords": "häiriötön keskittyminen koko näyttö piilota käyttöliittymä minimaalinen kirjoitus",
       "label": "Vaihda Zen-tilaa"
     },
+    "togglePreview": {
+      "keywords": "pdf esikatselu näytä piilota jaa vain editori",
+      "label": "Näytä tai piilota PDF-esikatselu"
+    },
+    "zoomIn": {
+      "keywords": "suurenna isompi",
+      "label": "Lähennä"
+    },
+    "zoomOut": {
+      "keywords": "pienennä pienempi",
+      "label": "Loitonna"
+    },
+    "resetZoom": {
+      "keywords": "todellinen koko 100",
+      "label": "Palauta zoomaus"
+    },
     "zoteroAddMissing": {
       "label": "Lisää puuttuvat viittaukset Zoterosta",
       "keywords": "zotero puuttuvat viittaukset määrittelemättömät avaimet lähdeluettelo korjaa missing citations undefined keys bibliography repair"

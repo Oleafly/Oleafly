@@ -147,7 +147,10 @@ describe("WorkspaceControls", () => {
     openThemeMenu(screen.getByTestId("workspace-menu"));
     expect(screen.getByRole("menuitem", { name: /Open browser/ })).toBeVisible();
     expect(screen.getByRole("menuitem", { name: "Appearance: Dark" })).toBeVisible();
-    fireEvent.click(screen.getByRole("menuitem", { name: enShell.dock.settings }));
+    const settingsItem = enShell.rail.withShortcut
+      .replace("{{label}}", enShell.dock.settings)
+      .replace("{{shortcut}}", "Ctrl+,");
+    fireEvent.click(screen.getByRole("menuitem", { name: settingsItem }));
     expect(useSettingsStore.getState().settingsOpen).toBe(true);
   });
 

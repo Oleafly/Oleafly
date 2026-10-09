@@ -20,7 +20,8 @@
     "collapse": "Collapses one check card in the panel",
     "expand": "Expands one check card in the panel",
     "groupSource": "Heading over findings that come from the project source files",
-    "groupOutput": "Heading over findings that come from the compiled PDF"
+    "groupOutput": "Heading over findings that come from the compiled PDF",
+    "readerButton": "Short button label in the Preflight panel that opens the text a screen reader would read from the compiled PDF. Keep it to one or two words."
   },
   "finding": {
     "review": "Badge on an advisory finding that a person still has to judge",

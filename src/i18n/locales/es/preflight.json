@@ -623,7 +623,7 @@
     "title": "Preflight",
     "readerDisabled": "Compila y ejecuta antes una comprobación de la salida",
     "readerEnabled": "Abrir el texto extraído del PDF",
-    "readerButton": "Ver lo que ve el lector",
+    "readerButton": "Lector de pantalla",
     "aboutLabel": "Sobre Preflight",
     "aboutTitle": "Qué comprueba Preflight",
     "aboutIntro": "Preflight lee el código del proyecto, el registro del compilador y el PDF actual. Activa solo las comprobaciones que encajen con este documento.",

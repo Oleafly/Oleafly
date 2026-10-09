@@ -81,7 +81,7 @@ export function RenameDialog() {
         }}
         className="mt-2 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:border-ring"
       />
-      <p className="mt-2 h-4 text-[11px] text-muted-foreground">
+      <p className="mt-2 h-4 text-[0.6875rem] text-muted-foreground">
         {renameSummary()}
       </p>
       <div className="mt-3 flex justify-end gap-2">

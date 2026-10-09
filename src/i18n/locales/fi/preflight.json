@@ -604,7 +604,7 @@
     "title": "Esitarkistus",
     "readerDisabled": "Käännä ja aja ensin tulostetarkistus",
     "readerEnabled": "Avaa PDF:stä poimittu teksti",
-    "readerButton": "Näytä mitä lukija näkee",
+    "readerButton": "Ruudunlukija",
     "aboutLabel": "Tietoja esitarkistuksesta",
     "aboutTitle": "Mitä esitarkistus tarkistaa",
     "aboutIntro": "Esitarkistus lukee projektin lähdekoodin, käännöslokin ja nykyisen PDF:n. Ota käyttöön vain ne tarkistukset, jotka sopivat tähän dokumenttiin.",

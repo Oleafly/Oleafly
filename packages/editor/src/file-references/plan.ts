@@ -30,6 +30,7 @@ import type {
   ReferenceSource,
   ResolveContext,
   ResolvedPathReference,
+  TextSpan,
 } from "./types";
 
 interface ScannedSource {
@@ -142,7 +143,7 @@ function encodeMarkdown(reference: PathReference, name: string): string {
 
 function encodeName(reference: PathReference, name: string): string {
   if (reference.language === "latex") return encodeLatex(reference.raw, name);
-  if (reference.language === "typst") return name.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+  if (reference.language === "typst") return name.replaceAll("\\", String.raw`\\`).replaceAll('"', String.raw`\"`);
   return encodeMarkdown(reference, name);
 }
 
@@ -197,6 +198,20 @@ function respellDirectory(
   return null;
 }
 
+function importEditList(
+  reference: PathReference,
+  directoryReference: TextSpan,
+  directoryRaw: string,
+  name: string,
+): FileReferenceEdit[] {
+  const edits: FileReferenceEdit[] = [];
+  if (directoryRaw !== directoryReference.raw) {
+    edits.push({ from: directoryReference.from, to: directoryReference.to, insert: directoryRaw });
+  }
+  if (name !== reference.raw) edits.push({ from: reference.from, to: reference.to, insert: name });
+  return edits;
+}
+
 function importEdits(
   reference: PathReference,
   resolved: Resolution,
@@ -216,15 +231,10 @@ function importEdits(
       const relative = relativePath(base.directory, directory);
       if (!pass(relative)) continue;
       const directoryRaw = directorySpelling(directoryReference.raw, relative);
-      for (const name of fileNames) {
-        if (resolveRaw(reference, name, world, source, directoryRaw)?.target !== target) continue;
-        const edits: FileReferenceEdit[] = [];
-        if (directoryRaw !== directoryReference.raw) {
-          edits.push({ from: directoryReference.from, to: directoryReference.to, insert: directoryRaw });
-        }
-        if (name !== reference.raw) edits.push({ from: reference.from, to: reference.to, insert: name });
-        return edits;
-      }
+      const name = fileNames.find(
+        (candidate) => resolveRaw(reference, candidate, world, source, directoryRaw)?.target === target,
+      );
+      if (name !== undefined) return importEditList(reference, directoryReference, directoryRaw, name);
     }
   }
   return null;
@@ -263,59 +273,85 @@ function withoutOverlaps(edits: readonly FileReferenceEdit[]): FileReferenceEdit
   return kept;
 }
 
-export function planReferenceUpdates(input: PlanInput): FileReferencePlan {
-  const { from, to } = input.move;
-  const remap = (path: string) => remapPath(path, from, to);
-  const unmap = (path: string) => remapPath(path, to, from);
-  const scanned = scanSources(input.sources, unmap);
-  const beforeSearch = searchPathsOf(scanned);
-  const before: World = { index: new ProjectFileIndex(input.before), searchPaths: beforeSearch };
-  const afterIndex = new ProjectFileIndex(input.after);
-  const renamedSearch = new Map<string, string>();
-  const edits = new Map<ScannedSource, SourceEdits>();
+function directoryRespelling(
+  reference: PathReference,
+  source: ScannedSource,
+  before: World,
+  after: World,
+  remap: (path: string) => string,
+): string | null {
+  const resolved = resolveRaw(reference, reference.raw, before, source.beforePath);
+  if (!resolved) return null;
+  const target = remap(resolved.target);
+  if (!after.index.directory(target)) return null;
+  if (resolveRaw(reference, reference.raw, after, source.afterPath)?.target === target) return null;
+  return respellDirectory(reference, resolved, after, source.afterPath, target);
+}
 
-  const directoryWorld: World = { index: afterIndex, searchPaths: beforeSearch };
+function respellSearchPaths(
+  scanned: readonly ScannedSource[],
+  before: World,
+  after: World,
+  remap: (path: string) => string,
+  edits: Map<ScannedSource, SourceEdits>,
+): Map<string, string> {
+  const renamed = new Map<string, string>();
   for (const source of scanned) {
     for (const reference of source.references) {
       if (!isDirectoryKind(reference.kind)) continue;
-      const resolved = resolveRaw(reference, reference.raw, before, source.beforePath);
-      if (!resolved) continue;
-      const target = remap(resolved.target);
-      if (!afterIndex.directory(target)) continue;
-      if (resolveRaw(reference, reference.raw, directoryWorld, source.afterPath)?.target === target) continue;
-      const spelled = respellDirectory(reference, resolved, directoryWorld, source.afterPath, target);
+      const spelled = directoryRespelling(reference, source, before, after, remap);
       if (spelled === null) continue;
-      renamedSearch.set(`${reference.kind}\0${searchPathValue(reference.raw)}`, spelled);
+      renamed.set(`${reference.kind}\0${searchPathValue(reference.raw)}`, spelled);
       record(edits, source, [{ from: reference.from, to: reference.to, insert: spelled }]);
     }
   }
+  return renamed;
+}
 
-  const after: World = {
-    index: afterIndex,
-    searchPaths: {
-      graphics: beforeSearch.graphics.map((value) => renamedSearch.get(`tex-graphicspath\0${value}`) ?? value),
-      svg: beforeSearch.svg.map((value) => renamedSearch.get(`tex-svgpath\0${value}`) ?? value),
-    },
+function renamedSearchPaths(search: LatexSearchPaths, renamed: ReadonlyMap<string, string>): LatexSearchPaths {
+  return {
+    graphics: search.graphics.map((value) => renamed.get(`tex-graphicspath\0${value}`) ?? value),
+    svg: search.svg.map((value) => renamed.get(`tex-svgpath\0${value}`) ?? value),
   };
+}
 
+function fileReferenceEdits(
+  reference: PathReference,
+  source: ScannedSource,
+  before: World,
+  after: World,
+  remap: (path: string) => string,
+): FileReferenceEdit[] | null {
+  const resolved = resolveRaw(reference, reference.raw, before, source.beforePath);
+  if (!resolved) return null;
+  const target = after.index.file(remap(resolved.target));
+  if (!target) return null;
+  if (resolveRaw(reference, reference.raw, after, source.afterPath)?.target === target) return null;
+  if (reference.directory) return importEdits(reference, resolved, after, source.afterPath, target, remap);
+  const spelled = respellFile(reference, resolved, after, source.afterPath, target);
+  return spelled === null ? null : [{ from: reference.from, to: reference.to, insert: spelled }];
+}
+
+function recordFileEdits(
+  scanned: readonly ScannedSource[],
+  before: World,
+  after: World,
+  remap: (path: string) => string,
+  edits: Map<ScannedSource, SourceEdits>,
+): void {
   for (const source of scanned) {
     for (const reference of source.references) {
       if (isDirectoryKind(reference.kind)) continue;
-      const resolved = resolveRaw(reference, reference.raw, before, source.beforePath);
-      if (!resolved) continue;
-      const target = afterIndex.file(remap(resolved.target));
-      if (!target) continue;
-      if (resolveRaw(reference, reference.raw, after, source.afterPath)?.target === target) continue;
-      if (reference.directory) {
-        const found = importEdits(reference, resolved, after, source.afterPath, target, remap);
-        if (found) record(edits, source, found);
-        continue;
-      }
-      const spelled = respellFile(reference, resolved, after, source.afterPath, target);
-      if (spelled !== null) record(edits, source, [{ from: reference.from, to: reference.to, insert: spelled }]);
+      const found = fileReferenceEdits(reference, source, before, after, remap);
+      if (found) record(edits, source, found);
     }
   }
+}
 
+function collectPlan(
+  scanned: readonly ScannedSource[],
+  edits: ReadonlyMap<ScannedSource, SourceEdits>,
+): FileReferencePlan {
   const files: FileReferenceFileEdits[] = [];
   let references = 0;
   for (const source of scanned) {
@@ -330,4 +366,20 @@ export function planReferenceUpdates(input: PlanInput): FileReferencePlan {
     references += entry.references;
   }
   return { files, references };
+}
+
+export function planReferenceUpdates(input: PlanInput): FileReferencePlan {
+  const { from: oldPath, to: newPath } = input.move;
+  const remap = (path: string) => remapPath(path, oldPath, newPath);
+  const unmap = (path: string) => remapPath(path, newPath, oldPath);
+  const scanned = scanSources(input.sources, unmap);
+  const beforeSearch = searchPathsOf(scanned);
+  const before: World = { index: new ProjectFileIndex(input.before), searchPaths: beforeSearch };
+  const afterIndex = new ProjectFileIndex(input.after);
+  const edits = new Map<ScannedSource, SourceEdits>();
+  const directoryWorld: World = { index: afterIndex, searchPaths: beforeSearch };
+  const renamedSearch = respellSearchPaths(scanned, before, directoryWorld, remap, edits);
+  const after: World = { index: afterIndex, searchPaths: renamedSearchPaths(beforeSearch, renamedSearch) };
+  recordFileEdits(scanned, before, after, remap, edits);
+  return collectPlan(scanned, edits);
 }

@@ -3383,7 +3383,7 @@ ${sandboxedCustom}`;
                           </dl>
                         </section>
                       )}
-                      <p className="border-t pt-2 text-[10px] leading-relaxed text-muted-foreground">
+                      <p className="border-t pt-2 text-[0.625rem] leading-relaxed text-muted-foreground">
                         {t(($) => $.ai.usage.cacheNote)}
                       </p>
                     </div>
@@ -3442,7 +3442,7 @@ ${sandboxedCustom}`;
       </AssistantShellHeader>
 
       {quotaWarning && (
-        <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+        <div className="shrink-0 border-b border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-[0.6875rem] text-amber-600 dark:text-amber-400">
           {t(($) => $.ai.provider.quotaWarning)}
         </div>
       )}
@@ -3466,7 +3466,7 @@ ${sandboxedCustom}`;
           </Button>
           <button type="button"
             onClick={() => openAISettings()}
-            className="text-[11px] text-muted-foreground hover:text-foreground"
+            className="text-[0.6875rem] text-muted-foreground hover:text-foreground"
           >
             {t(($) => $.ai.provider.runLocal)}
           </button>
@@ -3561,7 +3561,7 @@ ${sandboxedCustom}`;
                           !live && (
                             <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
                               {msg.checkpointRestored ? (
-                                <span className="text-[10px] text-muted-foreground">
+                                <span className="text-[0.625rem] text-muted-foreground">
                                   {t(($) => $.ai.conversation.checkpointRestored)}
                                 </span>
                               ) : (
@@ -3570,7 +3570,7 @@ ${sandboxedCustom}`;
                                   data-testid="ai-restore-checkpoint"
                                   disabled={restoringCheckpoint !== null}
                                   onClick={() => void restoreCheckpoint(msg, isLatestAssistant)}
-                                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.6875rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
                                 >
                                   <RotateCcw className="size-3" />
                                   {restoringCheckpoint === msg.id
@@ -3960,7 +3960,7 @@ ${sandboxedCustom}`;
                   data-kind={visibleModelNotice?.kind ?? "chat-only"}
                   role={modelNoticeRole(visibleModelNotice)}
                   className={cn(
-                    "mt-1.5 flex items-center gap-1.5 px-0.5 text-[11px]",
+                    "mt-1.5 flex items-center gap-1.5 px-0.5 text-[0.6875rem]",
                     visibleModelNotice?.kind === "blocked" || visibleModelNotice?.kind === "error"
                       ? "text-destructive"
                       : "text-muted-foreground",
@@ -4020,7 +4020,7 @@ ${sandboxedCustom}`;
                             key={category.id}
                             className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
                           >
-                            <span className="block px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                            <span className="block px-2.5 pb-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
                               {category.label}
                             </span>
                             <div className="space-y-0.5">
@@ -4042,7 +4042,7 @@ ${sandboxedCustom}`;
                                   <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
                                   <span className="min-w-0 flex-1">
                                     <span className="block truncate text-xs font-medium leading-snug">{item.label}</span>
-                                    <span className="block truncate text-[11px] leading-snug text-muted-foreground">
+                                    <span className="block truncate text-[0.6875rem] leading-snug text-muted-foreground">
                                       {item.description}
                                     </span>
                                   </span>

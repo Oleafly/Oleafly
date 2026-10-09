@@ -434,7 +434,7 @@ export function ReferencesPanel() {
             <Button
               size="sm"
               onClick={() => setImportOpen(true)}
-              className="h-8 gap-1.5 rounded-full px-3.5 text-[11px] shadow-sm"
+              className="h-8 gap-1.5 rounded-full px-3.5 text-[0.6875rem] shadow-sm"
             >
               <BookPlus aria-hidden className="size-3.5" />
               {t(($) => $.references.import.title)}
@@ -477,7 +477,7 @@ export function ReferencesPanel() {
       </div>
       {view === "results" && query ? (
         <Tooltip label={query.title} side="bottom">
-          <span className="min-w-0 max-w-[48%] shrink truncate text-[9px] font-medium text-sidebar-foreground/75">
+          <span className="min-w-0 max-w-[48%] shrink truncate text-[0.5625rem] font-medium text-sidebar-foreground/75">
             {query.title}
           </span>
         </Tooltip>
@@ -533,7 +533,7 @@ export function ReferencesPanel() {
         {issues > 0 ? (
           <output
             aria-label={t(($) => $.references.panel.issues, { count: issues })}
-            className="rounded-sm bg-amber-500/12 px-1 font-mono text-[9px] text-amber-700 dark:text-amber-300"
+            className="rounded-sm bg-amber-500/12 px-1 font-mono text-[0.5625rem] text-amber-700 dark:text-amber-300"
           >
             {issues}
           </output>
@@ -581,7 +581,7 @@ export function ReferencesPanel() {
                   <Badge
                     aria-hidden
                     variant="secondary"
-                    className="h-4 min-w-4 px-1 text-[10px] tabular-nums"
+                    className="h-4 min-w-4 px-1 text-[0.625rem] tabular-nums"
                   >
                     {count}
                   </Badge>
@@ -635,7 +635,7 @@ export function ReferencesPanel() {
               type="button"
               data-testid="cite-oleafly-row"
               onClick={() => void runCiteOleaflyAction()}
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11px] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[0.6875rem] text-muted-foreground hover:bg-sidebar-accent hover:text-foreground focus-visible:bg-sidebar-accent focus-visible:text-foreground"
             >
               <Quote aria-hidden className="size-3.5 shrink-0" />
               <span className="min-w-0 flex-1 truncate">

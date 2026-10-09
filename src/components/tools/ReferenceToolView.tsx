@@ -423,7 +423,7 @@ function ReferenceOutput({
           />
         ) : (
           <div className="m-4 min-h-48 rounded-xl border bg-card p-6 shadow-sm">
-            <p className={cn("whitespace-pre-wrap font-serif text-[15px] leading-7", output && "select-text")} data-testid="formatted-citation-output">
+            <p className={cn("whitespace-pre-wrap font-serif text-[0.9375rem] leading-7", output && "select-text")} data-testid="formatted-citation-output">
               {output || t(($) => $.researchTools.references.outputPlaceholder)}
             </p>
           </div>
@@ -515,7 +515,7 @@ function StyleComparison({ bibtex, formattingError }: { bibtex: string; formatti
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold">{style.label}</h3>
-                  <p className="text-[11px] text-muted-foreground">{style.fullName}</p>
+                  <p className="text-[0.6875rem] text-muted-foreground">{style.fullName}</p>
                 </div>
                 <CopyButton
                   variant="ghost"
@@ -851,7 +851,7 @@ function ReferenceWorkspace({ id }: { id: ReferenceToolId }) {
                       : t(($) => $.researchTools.references.lookUp)}
                   </Button>
                 </div>
-                <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                <p className="mt-2 text-[0.6875rem] leading-relaxed text-muted-foreground">
                   {t(($) => $.researchTools.references.privacyHint)}
                 </p>
                 {message && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300" role="status">{message}</p>}
