@@ -109,6 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the sidebar, count badges and other small labels used to stay the same
   size whatever it was set to. The counts beside the sidebar section titles
   and Recent chats now use the accent color.
+- The search field in the sidebar no longer draws a bright border when it has
+  focus. A light background tint shows it instead.
 - Project cards keep the engine and the Updated date on one line each, cut
   short with an ellipsis instead of wrapping. They use the full width and
   only make room for the info button while it shows.

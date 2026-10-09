@@ -148,7 +148,8 @@ export function ProjectSearch() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={t(($) => $.shell.projectSearch.placeholder)}
-          className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm focus:border-ring"
+          data-testid="project-search-input"
+          className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:border-input focus-visible:bg-accent/40"
         />
       </div>
       <div ref={resultsRef} className="flex-1 overflow-auto p-1.5">
