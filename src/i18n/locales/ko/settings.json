@@ -634,7 +634,9 @@
       },
       "fontSize": {
         "description": "소스 편집기의 글자 크기를 정합니다.",
-        "label": "편집기 글꼴 크기"
+        "label": "편집기 글꼴 크기",
+        "custom": "사용자 지정",
+        "customLabel": "사용자 지정 편집기 글꼴 크기(픽셀)"
       },
       "ghostCompletion": {
         "description": "커서 뒤에 예상되는 완성을 표시합니다. Tab을 누르면 적용됩니다.",
@@ -671,6 +673,16 @@
           "custom": "사용자 지정"
         },
         "customLabel": "사용자 지정 줄 높이"
+      },
+      "letterSpacing": {
+        "customLabel": "사용자 지정 자간(픽셀)",
+        "description": "소스 편집기의 글자 사이에 간격을 더합니다. 커서 주변에도 여유가 생깁니다.",
+        "label": "자간",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "보통",
+          "custom": "사용자 지정"
+        }
       },
       "cursorWidth": {
         "label": "커서 너비",

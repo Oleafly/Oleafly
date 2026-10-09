@@ -159,7 +159,7 @@ function RegistryResult({
       <h4 className="text-sm font-medium">
         {entry.name} <span className="font-normal text-muted-foreground">{entry.version}</span>
         {builtIn && (
-          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 align-middle text-[10px] font-medium text-muted-foreground">
+          <span className="ml-2 rounded bg-muted px-1.5 py-0.5 align-middle text-[0.625rem] font-medium text-muted-foreground">
             {t(($) => $.ai.acp.setup.builtIn)}
           </span>
         )}
@@ -201,7 +201,7 @@ function RegistryResult({
         )}
       </div>
       {shown && entry.definition && (
-        <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/50 p-2 text-[11px]">
+        <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/50 p-2 text-[0.6875rem]">
           {JSON.stringify(entry.definition.distribution, null, 2)}
         </pre>
       )}
@@ -341,7 +341,7 @@ function AgentCard({
                 <div className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   {programField("main")}
                   <dl className="min-w-24">
-                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                       {t(($) => $.settings.ai.agents.versionLabel)}
                     </dt>
                     <dd className="mt-1 text-xs tabular-nums text-foreground">
@@ -352,17 +352,17 @@ function AgentCard({
               ) : (
                 <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <div className="min-w-0">
-                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                       {t(($) => $.settings.ai.agents.cliPathLabel)}
                     </dt>
-                    <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
+                    <dd className="mt-1 break-all font-mono text-[0.6875rem] leading-relaxed text-foreground">
                       {cli.path
                         ? <SettingsPath path={cli.path} />
                         : t(($) => $.settings.ai.agents.program.notFound)}
                     </dd>
                   </div>
                   <div className="min-w-24">
-                    <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                       {t(($) => $.settings.ai.agents.versionLabel)}
                     </dt>
                     <dd className="mt-1 text-xs tabular-nums text-foreground">
@@ -372,7 +372,7 @@ function AgentCard({
                 </dl>
               )}
               <div className="space-y-1.5">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.signInCommandLabel)}
                 </p>
                 <div
@@ -398,17 +398,17 @@ function AgentCard({
           >
             <dl className="grid grid-cols-3 gap-x-4 gap-y-3">
               <div className="col-span-3 min-w-0">
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.bridgePathLabel)}
                 </dt>
-                <dd className="mt-1 break-all font-mono text-[11px] leading-relaxed text-foreground">
+                <dd className="mt-1 break-all font-mono text-[0.6875rem] leading-relaxed text-foreground">
                   {agent.executable
                     ? <SettingsPath path={agent.executable} />
                     : t(($) => $.settings.ai.agents.bridgeUnresolved)}
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.versionLabel)}
                 </dt>
                 <dd className="mt-1 text-xs tabular-nums text-foreground">
@@ -416,7 +416,7 @@ function AgentCard({
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.platformLabel)}
                 </dt>
                 <dd className="mt-1 break-all text-xs text-foreground">
@@ -424,7 +424,7 @@ function AgentCard({
                 </dd>
               </div>
               <div className="min-w-0">
-                <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <dt className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.settings.ai.agents.bridgeSourceLabel)}
                 </dt>
                 <dd className="mt-1 text-xs text-foreground">
@@ -443,7 +443,7 @@ function AgentCard({
             >
               <h5
                 id={nextStepTitleId}
-                className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground"
               >
                 {t(($) => $.settings.ai.agents.nextStepTitle)}
               </h5>
@@ -490,12 +490,12 @@ function AgentCard({
                 )}
               </div>
               {installBlocked && installBlocked !== nextStep && (
-                <p id={installReasonId} className="text-[11px] leading-relaxed text-muted-foreground">
+                <p id={installReasonId} className="text-[0.6875rem] leading-relaxed text-muted-foreground">
                   <SettingsPathText text={displayText(installBlocked)} />
                 </p>
               )}
               {agent.taskUnavailableReason && (
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
                   {t(($) => $.ai.acp.setup.backgroundTasks, { reason: agent.taskUnavailableReason })}
                 </p>
               )}
@@ -986,13 +986,13 @@ export function AcpAgentsTab({
               <dt className="w-24 shrink-0 text-muted-foreground">
                 {t(($) => $.settings.ai.agents.install.packageLabel)}
               </dt>
-              <dd className="min-w-0 break-all font-mono text-[11px]">{packageName}</dd>
+              <dd className="min-w-0 break-all font-mono text-[0.6875rem]">{packageName}</dd>
             </div>
             <div className="flex gap-2">
               <dt className="w-24 shrink-0 text-muted-foreground">
                 {t(($) => $.settings.ai.agents.install.locationLabel)}
               </dt>
-              <dd className="min-w-0 break-all font-mono text-[11px]">
+              <dd className="min-w-0 break-all font-mono text-[0.6875rem]">
                 {t(($) => $.settings.ai.agents.install.location, {
                   id: review?.id ?? "",
                   version: review?.version ?? "",

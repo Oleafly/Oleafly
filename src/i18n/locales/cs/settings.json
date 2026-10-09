@@ -649,7 +649,9 @@
       },
       "fontSize": {
         "description": "Nastavte velikost textu ve zdrojovém editoru.",
-        "label": "Velikost písma editoru"
+        "label": "Velikost písma editoru",
+        "custom": "Vlastní",
+        "customLabel": "Vlastní velikost písma editoru v pixelech"
       },
       "ghostCompletion": {
         "description": "Zobrazovat pravděpodobné doplnění za kurzorem. Přijmete jej klávesou Tab.",
@@ -686,6 +688,16 @@
           "custom": "Vlastní"
         },
         "customLabel": "Vlastní výška řádku"
+      },
+      "letterSpacing": {
+        "customLabel": "Vlastní proklad písma v pixelech",
+        "description": "Přidá mezeru mezi znaky ve zdrojovém editoru. Kolem kurzoru tak zůstane víc místa.",
+        "label": "Proklad písma",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normální",
+          "custom": "Vlastní"
+        }
       },
       "cursorWidth": {
         "label": "Šířka kurzoru",

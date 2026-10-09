@@ -634,7 +634,9 @@
       },
       "fontSize": {
         "description": "設定原始碼編輯器的文字大小。",
-        "label": "編輯器字型大小"
+        "label": "編輯器字型大小",
+        "custom": "自訂",
+        "customLabel": "自訂編輯器字型大小（像素）"
       },
       "ghostCompletion": {
         "description": "在游標後顯示可能的補完內容。按 Tab 即可接受。",
@@ -671,6 +673,16 @@
           "custom": "自訂"
         },
         "customLabel": "自訂行高"
+      },
+      "letterSpacing": {
+        "customLabel": "自訂字元間距（像素）",
+        "description": "在原始碼編輯器的字元之間增加間距，游標周圍也會更寬鬆。",
+        "label": "字元間距",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "標準",
+          "custom": "自訂"
+        }
       },
       "cursorWidth": {
         "label": "游標寬度",

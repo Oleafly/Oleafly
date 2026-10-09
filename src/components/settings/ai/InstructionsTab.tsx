@@ -148,7 +148,7 @@ export function InstructionsTab({
         </button>
         {toolsOpen && (
           <div className="border-t px-3 pb-3 pt-2">
-            <p className="mb-2 text-[11px] text-muted-foreground">
+            <p className="mb-2 text-[0.6875rem] text-muted-foreground">
               {t(($) => $.settings.ai.instructions.toolsHint)}
             </p>
             <AiToolsTable />

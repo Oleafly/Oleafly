@@ -639,7 +639,9 @@
       },
       "fontSize": {
         "description": "Kaynak düzenleyicinin metin boyutunu belirleyin.",
-        "label": "Düzenleyici yazı tipi boyutu"
+        "label": "Düzenleyici yazı tipi boyutu",
+        "custom": "Özel",
+        "customLabel": "Piksel cinsinden özel düzenleyici yazı tipi boyutu"
       },
       "ghostCompletion": {
         "description": "Olası tamamlamayı imlecin ardında gösterir. Kabul etmek için Tab tuşuna basın.",
@@ -676,6 +678,16 @@
           "custom": "Özel"
         },
         "customLabel": "Özel satır yüksekliği"
+      },
+      "letterSpacing": {
+        "customLabel": "Piksel cinsinden özel harf aralığı",
+        "description": "Kaynak düzenleyicide karakterlerin arasına boşluk ekler. İmlecin çevresinde de daha çok yer kalır.",
+        "label": "Harf aralığı",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Özel"
+        }
       },
       "cursorWidth": {
         "label": "İmleç genişliği",

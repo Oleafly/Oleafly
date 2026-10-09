@@ -128,7 +128,7 @@ export function PersonasTab({ cfg, persist, setMsg }: Readonly<PersonasTabProps>
               <div className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium">{persona.name}</span>
                 {persona.prompt.trim() && (
-                  <span className="mt-0.5 line-clamp-2 block whitespace-pre-wrap text-[11px] leading-snug text-muted-foreground">
+                  <span className="mt-0.5 line-clamp-2 block whitespace-pre-wrap text-[0.6875rem] leading-snug text-muted-foreground">
                     {persona.prompt}
                   </span>
                 )}

@@ -18,7 +18,7 @@ export function CompileErrorDetails({ err }: Readonly<{ err: CompileError }>) {
         >
           <pre
             data-testid="compile-error-excerpt"
-            className="overflow-x-auto p-2.5 font-mono text-[10.5px] leading-relaxed"
+            className="overflow-x-auto p-2.5 font-mono text-[0.65625rem] leading-relaxed"
           >
             <span className="block whitespace-pre">
               <span className="select-none text-muted-foreground/70">{`${excerpt.line} │ `}</span>
@@ -40,7 +40,7 @@ export function CompileErrorDetails({ err }: Readonly<{ err: CompileError }>) {
       {hints.length > 0 && (
         <ul className="space-y-1 px-0.5">
           {hints.map((hint) => (
-            <li key={hint} className="flex gap-1.5 text-[11.5px] leading-snug text-muted-foreground">
+            <li key={hint} className="flex gap-1.5 text-[0.71875rem] leading-snug text-muted-foreground">
               <span className="shrink-0 font-medium text-foreground">{t(($) => $.editor.log.hint)}</span>
               <span className="min-w-0 whitespace-pre-wrap break-words">{hint}</span>
             </li>
@@ -78,7 +78,7 @@ export function CompileLogSummary({
   return (
     <p
       data-testid="compile-log-summary"
-      className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-1 text-[11.5px] font-medium"
+      className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-1 text-[0.71875rem] font-medium"
     >
       {parts.map((part, index) => (
         <span key={part.key} className="flex items-center gap-2">

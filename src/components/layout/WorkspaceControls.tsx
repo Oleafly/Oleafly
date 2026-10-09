@@ -77,12 +77,12 @@ function ViewButton({
       >
         <Icon className="size-4" aria-hidden />
         {tab.beta ? (
-          <BetaBadge className="pointer-events-none absolute -right-5 -top-1 border-background bg-primary px-1 text-[8px] leading-[13px] text-primary-foreground" />
+          <BetaBadge className="pointer-events-none absolute -right-5 -top-1 border-background bg-primary px-1 text-[0.5rem] leading-[0.8125rem] text-primary-foreground" />
         ) : null}
         {badge > 0 && (
           <output
             aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}
-            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white border border-background"
+            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[0.5625rem] font-bold text-white border border-background"
           >
             {badge > 99 ? "99+" : badge}
           </output>

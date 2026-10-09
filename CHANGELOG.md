@@ -63,10 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   isn't installed gets a note under the setting. Line height has a Custom
   choice for an exact value from 1 to 3. New Cursor width and Cursor color
   settings make the editor cursor 1, 2 or 3 pixels wide and give it your own
-  color, one for light editor themes and one for dark ones (#257).
+  color, one for light editor themes and one for dark ones. Letter spacing
+  adds room between characters, and the editor font size takes any value
+  from 6 to 100 pixels instead of stopping at 20 (#257).
 
 ### Changed
 
+- The home screen's Grid background has wider squares that fade out toward
+  the edges.
 - Every sidebar view now remembers its scroll position, expanded folders and
   open sections for each project.
 - Dragging a scrollbar quickly through a long document, the file tree, the
@@ -101,6 +105,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- App font size now scales every piece of interface text. Section titles in
+  the sidebar, count badges and other small labels used to stay the same
+  size whatever it was set to. The counts beside the sidebar section titles
+  and Recent chats now use the accent color.
+- Project cards keep the engine and the Updated date on one line each, cut
+  short with an ellipsis instead of wrapping. They use the full width and
+  only make room for the info button while it shows.
 - The file tree no longer gets wider every time you resize the window or the
   PDF preview leaves full screen. It keeps the width you gave it.
 - The App font setting in Appearance now changes the font of the whole

@@ -153,7 +153,7 @@ export function UpdateChecker({ className }: Readonly<{ className?: string }>) {
               : t(($) => $.shell.updateChecker.downloading, { percent: state.percent })}
           </p>
           <Progress value={state.percent} />
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[0.625rem] text-muted-foreground">
             {t(($) => $.shell.updateChecker.restartNotice)}
           </p>
         </div>

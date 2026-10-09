@@ -639,7 +639,9 @@
       },
       "fontSize": {
         "description": "Sett tekststørrelsen i kildeeditoren.",
-        "label": "Skriftstørrelse i editoren"
+        "label": "Skriftstørrelse i editoren",
+        "custom": "Egendefinert",
+        "customLabel": "Egendefinert skriftstørrelse i editoren i piksler"
       },
       "ghostCompletion": {
         "description": "Vis den sannsynlige fullføringen etter markøren. Trykk Tab for å godta den.",
@@ -676,6 +678,16 @@
           "custom": "Egendefinert"
         },
         "customLabel": "Egendefinert linjeavstand"
+      },
+      "letterSpacing": {
+        "customLabel": "Egendefinert tegnavstand i piksler",
+        "description": "Legger til avstand mellom tegnene i kildeeditoren. Det gir også mer plass rundt markøren.",
+        "label": "Tegnavstand",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Vanlig",
+          "custom": "Egendefinert"
+        }
       },
       "cursorWidth": {
         "label": "Markørbredde",

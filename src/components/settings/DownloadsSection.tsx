@@ -363,10 +363,10 @@ export function DownloadsSection() {
                     </span>
                     {c.installed && <Check className="size-3.5 text-emerald-500" />}
                     {c.approx_bytes > 0 && (
-                      <span className="text-[11px] text-muted-foreground">{formatDownloadSize(c.approx_bytes)}</span>
+                      <span className="text-[0.6875rem] text-muted-foreground">{formatDownloadSize(c.approx_bytes)}</span>
                     )}
                   </div>
-                  <p className="truncate text-[11px] text-muted-foreground">
+                  <p className="truncate text-[0.6875rem] text-muted-foreground">
                     {rowDetail()}
                     {!busy && c.license?.spdx ? ` · ${c.license.spdx}` : ""}
                   </p>
@@ -395,7 +395,7 @@ export function DownloadsSection() {
         )}
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.settings.downloads.fonts.engineNote)}
       </p>
       </TabsContent>
@@ -446,10 +446,10 @@ export function DownloadsSection() {
                     <span className="text-sm font-medium">{p.label}</span>
                     {p.installed && <Check className="size-3.5 text-emerald-500" />}
                     {p.approx_bytes > 0 && (
-                      <span className="text-[11px] text-muted-foreground">{formatDownloadSize(p.approx_bytes)}</span>
+                      <span className="text-[0.6875rem] text-muted-foreground">{formatDownloadSize(p.approx_bytes)}</span>
                     )}
                   </div>
-                  <p className="truncate text-[11px] text-muted-foreground">
+                  <p className="truncate text-[0.6875rem] text-muted-foreground">
                     {busy && packProgress ? packProgress : p.description}
                     {!busy && p.license_summary ? ` · ${p.license_summary}` : ""}
                   </p>
@@ -522,7 +522,7 @@ export function DownloadsSection() {
                   )}
                   <div className="min-w-0 flex-1">
                     <span className="text-sm font-medium">{template.name}</span>
-                    <p className="truncate text-[11px] text-muted-foreground">
+                    <p className="truncate text-[0.6875rem] text-muted-foreground">
                       {template.description ||
                         t(($) => $.settings.downloads.aiTemplates.fallbackDescription)}
                     </p>

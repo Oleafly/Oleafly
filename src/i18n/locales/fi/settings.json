@@ -639,7 +639,9 @@
       },
       "fontSize": {
         "description": "Aseta lähdekoodieditorin tekstikoko.",
-        "label": "Editorin fonttikoko"
+        "label": "Editorin fonttikoko",
+        "custom": "Mukautettu",
+        "customLabel": "Mukautettu editorin fonttikoko pikseleinä"
       },
       "ghostCompletion": {
         "description": "Näytä todennäköinen täydennys kohdistimen jälkeen. Hyväksy se painamalla Tab.",
@@ -676,6 +678,16 @@
           "custom": "Mukautettu"
         },
         "customLabel": "Mukautettu riviväli"
+      },
+      "letterSpacing": {
+        "customLabel": "Mukautettu merkkiväli pikseleinä",
+        "description": "Lisää tilaa lähdekoodieditorin merkkien väliin. Se jättää myös enemmän tilaa kohdistimen ympärille.",
+        "label": "Merkkiväli",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normaali",
+          "custom": "Mukautettu"
+        }
       },
       "cursorWidth": {
         "label": "Kohdistimen leveys",

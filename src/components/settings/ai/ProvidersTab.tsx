@@ -75,27 +75,27 @@ function OllamaStatusLine({
   const { t } = useTranslation(["common", "settings"]);
   if (status === "loading") {
     return (
-      <span className="text-[11px] text-muted-foreground">
+      <span className="text-[0.6875rem] text-muted-foreground">
         {t(($) => $.settings.ai.providers.ollama.checking)}
       </span>
     );
   }
   if (status === "ok") {
     return (
-      <span className="text-[11px] text-emerald-600 dark:text-emerald-500">
+      <span className="text-[0.6875rem] text-emerald-600 dark:text-emerald-500">
         {t(($) => $.settings.ai.providers.ollama.runningModels, { count: models.length })}
       </span>
     );
   }
   if (status === "down") {
     return (
-      <span className="text-[11px] text-amber-600 dark:text-amber-500">
+      <span className="text-[0.6875rem] text-amber-600 dark:text-amber-500">
         {t(($) => $.settings.ai.providers.ollama.notDetected)}
       </span>
     );
   }
   return (
-    <span className="text-[11px] text-muted-foreground">
+    <span className="text-[0.6875rem] text-muted-foreground">
       {t(($) => $.settings.ai.providers.ollama.notChecked)}
     </span>
   );
@@ -115,7 +115,7 @@ function OllamaModelChoice({
   const { t } = useTranslation(["common", "settings"]);
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] text-muted-foreground">
+      <span className="text-[0.6875rem] text-muted-foreground">
         {t(($) => $.settings.ai.providers.modelLabel)}
       </span>
       <Select
@@ -134,7 +134,7 @@ function OllamaModelChoice({
         </SelectContent>
       </Select>
       {active && (
-        <span className="inline-flex items-center gap-1 text-[10px] font-medium leading-none text-primary">
+        <span className="inline-flex items-center gap-1 text-[0.625rem] font-medium leading-none text-primary">
           <Check className="size-3 shrink-0" /> {t(($) => $.settings.ai.providers.ollama.active)}
         </span>
       )}
@@ -158,7 +158,7 @@ function OllamaHostControls({
       <div className="flex items-center gap-3">
         <button type="button"
           onClick={() => setShowHost((s) => !s)}
-          className="text-[11px] text-muted-foreground hover:text-foreground"
+          className="text-[0.6875rem] text-muted-foreground hover:text-foreground"
         >
           {showHost
             ? t(($) => $.settings.ai.providers.ollama.hideHost)
@@ -167,7 +167,7 @@ function OllamaHostControls({
         {onDisconnect && (
           <button type="button"
             onClick={onDisconnect}
-            className="text-[11px] text-muted-foreground hover:text-destructive"
+            className="text-[0.6875rem] text-muted-foreground hover:text-destructive"
           >
             {t(($) => $.settings.ai.providers.ollama.disconnect)}
           </button>
@@ -237,7 +237,7 @@ function OllamaSetup({
       </div>
 
       {status === "down" && (
-        <div className="space-y-2 rounded-md border border-dashed bg-background p-3 text-[11px] text-muted-foreground">
+        <div className="space-y-2 rounded-md border border-dashed bg-background p-3 text-[0.6875rem] text-muted-foreground">
           <p>
             <Trans
               ns="settings"
@@ -283,7 +283,7 @@ function OllamaSetup({
       )}
 
       {status === "ok" && models.length === 0 && (
-        <p className="text-[11px] text-amber-600 dark:text-amber-500">
+        <p className="text-[0.6875rem] text-amber-600 dark:text-amber-500">
           <Trans
             ns="settings"
             i18nKey={($) => $.settings.ai.providers.ollama.noModels}
@@ -531,7 +531,7 @@ export function ProvidersTab({
                     isSelected &&
                     enabled.length > 0 && (
                       <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground">
+                        <span className="text-[0.6875rem] text-muted-foreground">
                           {t(($) => $.settings.ai.providers.modelLabel)}
                         </span>
                         <Select
@@ -559,8 +559,8 @@ export function ProvidersTab({
                   if (providerStatus === "idle") return null;
                   const nonValidClass =
                     providerStatus === "error"
-                      ? "mt-1.5 text-[11px] text-destructive"
-                      : "mt-1.5 text-[11px] text-muted-foreground";
+                      ? "mt-1.5 text-[0.6875rem] text-destructive"
+                      : "mt-1.5 text-[0.6875rem] text-muted-foreground";
                   const nonValidatingText =
                     providerStatus === "valid"
                       ? t(($) => $.settings.ai.providers.status.valid)
@@ -574,7 +574,7 @@ export function ProvidersTab({
                       data-testid={`ai-provider-status-${p.id}`}
                       className={
                         providerStatus === "valid"
-                          ? "mt-1.5 text-[11px] text-emerald-600 dark:text-emerald-500"
+                          ? "mt-1.5 text-[0.6875rem] text-emerald-600 dark:text-emerald-500"
                           : nonValidClass
                       }
                     >
@@ -643,7 +643,7 @@ export function ProvidersTab({
                       onClick={() => {
                         if (p.signupUrl) void open(p.signupUrl);
                       }}
-                      className="flex shrink-0 items-center gap-1 text-[11px] leading-none text-primary hover:underline dark:text-primary"
+                      className="flex shrink-0 items-center gap-1 text-[0.6875rem] leading-none text-primary hover:underline dark:text-primary"
                     >
                       {p.isHost
                         ? t(($) => $.settings.ai.providers.docs)

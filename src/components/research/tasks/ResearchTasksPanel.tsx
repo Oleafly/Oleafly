@@ -105,11 +105,11 @@ const TaskRow = memo(function TaskRow({
               {task.dependencyIds.length}
             </Badge>
           ) : null}
-          <span className="text-[11px] tabular-nums text-muted-foreground">
+          <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
             {relativeTime(task.updatedAt)}
           </span>
           {blocked && task.status === "queued" ? (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.researchTools.tasks.panel.waiting)}
             </span>
           ) : null}
@@ -372,7 +372,7 @@ export function ResearchTasksPanel({
                     variant="quiet"
                     data-testid={`research-task-filter-count-${entry.id}`}
                     className={cn(
-                      "min-w-[1.125rem] border-transparent px-1 py-0 text-[10px] tabular-nums",
+                      "min-w-[1.125rem] border-transparent px-1 py-0 text-[0.625rem] tabular-nums",
                       filter === entry.id
                         ? "bg-primary/15 text-primary"
                         : "bg-muted-foreground/10 text-muted-foreground",

@@ -256,12 +256,12 @@ function Preview({
         <Icon className="size-6" />
       </div>
       <span
-        className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+        className="rounded-full px-2 py-0.5 text-[0.5625rem] font-semibold uppercase tracking-wide"
         style={{ color: tint ?? "#737373", backgroundColor: tint ? `${tint}14` : "#f5f5f5" }}
       >
         {compilerLabel(template, t)}
       </span>
-      <span className="line-clamp-2 px-3 text-center text-[10px] font-medium text-neutral-500">
+      <span className="line-clamp-2 px-3 text-center text-[0.625rem] font-medium text-neutral-500">
         {template.name}
       </span>
     </div>
@@ -277,13 +277,13 @@ function AtsBadge({
 }>) {
   if (profile === "friendly")
     return (
-      <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+      <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[0.625rem] font-medium text-emerald-600 dark:text-emerald-400">
         {t("dialog.atsFriendly")}
       </span>
     );
   if (profile === "design-forward")
     return (
-      <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-500">
+      <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[0.625rem] font-medium text-amber-600 dark:text-amber-500">
         {t("dialog.designForward")}
       </span>
     );
@@ -529,7 +529,7 @@ export function NewProjectDialog({
             </span>
             <span
               className={cn(
-                "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums",
+                "shrink-0 rounded-full px-1.5 py-0.5 text-[0.625rem] font-medium tabular-nums",
                 category === c
                   ? "bg-accent-foreground/15 text-accent-foreground"
                   : "bg-muted text-muted-foreground",
@@ -650,12 +650,12 @@ export function NewProjectDialog({
                   <div className="relative aspect-[17/22] overflow-hidden rounded-md border border-black/10 bg-white shadow-sm transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-primary/50 group-hover:shadow-md group-focus-visible:border-primary">
                     <Preview template={entry} host={host} t={t} />
                     {(entry.category || "") === "AI Generated" && (
-                      <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-semibold text-white shadow-md">
+                      <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[0.5625rem] font-semibold text-white shadow-md">
                         <Sparkles className="size-2.5" /> {t("dialog.aiBadge")}
                       </span>
                     )}
                     {!entry.assets_ready && (
-                      <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-sm">
+                      <span className="absolute left-1.5 top-1.5 flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[0.5625rem] font-medium text-white backdrop-blur-sm">
                         <Download className="size-2.5" /> {t("dialog.setupBadge")}
                       </span>
                     )}
@@ -672,11 +672,11 @@ export function NewProjectDialog({
                     )}
                   </div>
                   <div className="mt-0.5 flex items-center gap-1.5 px-0.5">
-                    <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground/70">
+                    <span className="text-[0.5625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
                       {compilerLabel(entry, t)}
                     </span>
                     {!entry.assets_ready && (
-                      <span className="text-[9px] font-medium text-amber-600 dark:text-amber-400">
+                      <span className="text-[0.5625rem] font-medium text-amber-600 dark:text-amber-400">
                         {t("dialog.needsSetup")}
                       </span>
                     )}
@@ -703,12 +703,12 @@ export function NewProjectDialog({
           </div>
           <div className="flex flex-wrap items-center gap-1">
             <AtsBadge profile={selected.ats_profile} t={t} />
-            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="rounded-full bg-muted px-1.5 py-0.5 text-[0.625rem] font-medium text-muted-foreground">
               {compilerLabel(selected, t)}
             </span>
           </div>
           {selected.license && (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
               {selected.license.spdx}
               {selected.license.author ? ` · ${selected.license.author}` : ""}
             </p>
@@ -797,10 +797,10 @@ export function NewProjectDialog({
               {!working && <ArrowRight className="size-4" />}
               {!working && (
                 <span className="inline-flex items-center gap-1">
-                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[0.625rem] font-medium text-white">
                     {/Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl"}
                   </kbd>
-                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[10px] font-medium text-white">
+                  <kbd className="inline-flex h-4 min-w-4 items-center justify-center rounded-sm bg-white/20 px-1 font-sans text-[0.625rem] font-medium text-white">
                     {"\u21B5"}
                   </kbd>
                 </span>

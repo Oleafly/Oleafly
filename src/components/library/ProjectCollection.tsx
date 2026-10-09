@@ -136,7 +136,7 @@ function ProjectRowCaption({
 }>) {
   if (project.recovery_pending) {
     return (
-      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
+      <span className="mt-1 block truncate text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-amber-600 dark:text-amber-400">
         {t(($) => $.library.projects.openToRecover)}
       </span>
     );
@@ -146,14 +146,14 @@ function ProjectRowCaption({
     return (
       <span className="mt-1 block min-w-0 text-xs lg:hidden">
         <FolderStateLine state={folderState} className="sm:hidden" />
-        <span className="hidden truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:block lg:hidden">
+        <span className="hidden truncate text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground sm:block lg:hidden">
           {caption}
         </span>
       </span>
     );
   }
   return (
-    <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
+    <span className="mt-1 block truncate text-[0.625rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground lg:hidden">
       {caption}
     </span>
   );
@@ -706,7 +706,7 @@ export function ProjectList({
     <div data-testid="project-list" className="border-b border-border/70">
       <div
         aria-hidden="true"
-        className="hidden min-h-10 grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] items-center gap-4 border-b border-border/70 px-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:grid"
+        className="hidden min-h-10 grid-cols-[minmax(0,1fr)_7rem_7rem_9rem_6.5rem] items-center gap-4 border-b border-border/70 px-4 text-[0.625rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground lg:grid"
       >
         <span>{t(($) => $.library.home.columns.name)}</span>
         <span>{t(($) => $.library.home.columns.type)}</span>

@@ -112,7 +112,7 @@ export function ChatHistoryModal({
                   </Badge>
                 )}
               </div>
-              <div className="mt-0.5 pl-5 text-[11px] text-muted-foreground">
+              <div className="mt-0.5 pl-5 text-[0.6875rem] text-muted-foreground">
                 {relativeTime(chat.updatedAt)} ·{" "}
                 {t(($) => $.ai.history.messages, { count: chat.messages.length })}
                 {chat.usage &&
@@ -134,14 +134,14 @@ export function ChatHistoryModal({
                     onDelete(chat.id);
                     setConfirmId(null);
                   }}
-                  className="rounded bg-destructive px-1.5 py-0.5 text-[11px] font-medium text-destructive-foreground hover:opacity-90"
+                  className="rounded bg-destructive px-1.5 py-0.5 text-[0.6875rem] font-medium text-destructive-foreground hover:opacity-90"
                 >
                   {t(($) => $.common.actions.delete)}
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmId(null)}
-                  className="rounded px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-accent"
+                  className="rounded px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground hover:bg-accent"
                 >
                   {t(($) => $.common.actions.cancel)}
                 </button>

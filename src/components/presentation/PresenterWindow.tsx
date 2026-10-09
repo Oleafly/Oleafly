@@ -69,7 +69,7 @@ function useNotes(params: PresentationParams | null): ReadonlyMap<number, string
 function Panel({ title, children, className }: Readonly<{ title: string; children: ReactNode; className?: string }>) {
   return (
     <section aria-label={title} className={`flex min-h-0 flex-col ${className ?? ""}`}>
-      <h2 className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{title}</h2>
+      <h2 className="mb-1.5 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{title}</h2>
       {children}
     </section>
   );

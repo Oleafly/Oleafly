@@ -229,6 +229,19 @@
         "pickLight": "Accessible name of the color swatch that sets the cursor color used with light editor themes.",
         "pickDark": "Accessible name of the color swatch that sets the cursor color used with dark editor themes.",
         "useTheme": "Button that clears both custom cursor colors so the cursor follows the editor theme again."
+      },
+      "fontSize": {
+        "custom": "Choice at the end of the editor font size list that shows a number field for any size.",
+        "customLabel": "Accessible name of the number field where the user types an exact editor font size in pixels."
+      },
+      "letterSpacing": {
+        "label": "Row label for extra space added between characters in the source editor, like CSS letter-spacing.",
+        "option": "Choice in the letter spacing list: extra space in pixels, such as +0.5px. Use the same unit format as other pixel sizes.",
+        "options": {
+          "normal": "Letter spacing choice that adds no extra space.",
+          "custom": "Letter spacing choice that shows a number field for an exact value."
+        },
+        "customLabel": "Accessible name of the number field where the user types an exact letter spacing in pixels."
       }
     },
     "fontNotInstalled": "Warning under a font setting when the saved font name is not installed on this computer. {{font}} is the font name."

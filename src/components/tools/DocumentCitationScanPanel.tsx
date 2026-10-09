@@ -131,7 +131,7 @@ function isScannablePath(path: string | null | undefined): boolean {
 function SourceBadge({ source }: Readonly<{ source: LiteratureSource }>) {
   const definition = SOURCE_LABEL.get(source);
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/35 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-muted/35 px-2 py-0.5 text-[0.625rem] font-medium text-muted-foreground">
       <span className={cn("size-1.5 rounded-full", SOURCE_DOT[source])} />
       {definition?.shortLabel ?? source}
     </span>
@@ -192,12 +192,12 @@ function SuggestionCard({
             <SourceBadge key={source} source={source} />
           ))}
           {record.year != null && (
-            <span className="text-[11px] tabular-nums text-muted-foreground">
+            <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
               {record.year}
             </span>
           )}
           {record.citationCount != null && (
-            <span className="text-[11px] text-muted-foreground">
+            <span className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.researchTools.citationScan.citationCount, {
                 citations: formatCount(record.citationCount),
               })}
@@ -336,7 +336,7 @@ function ParagraphGroup({ result }: Readonly<{ result: ParagraphCitationResult }
               })}
             </Badge>
             {result.query && (
-              <span className="truncate text-[11px] text-muted-foreground/80">
+              <span className="truncate text-[0.6875rem] text-muted-foreground/80">
                 {t(($) => $.researchTools.citationScan.query, { query: result.query })}
               </span>
             )}

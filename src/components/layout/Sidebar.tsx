@@ -161,11 +161,11 @@ export function ProjectSearch() {
             <div className="flex items-center gap-1.5 text-sm">
               <FileText className="size-3.5 shrink-0 text-muted-foreground" />
               <span className="truncate font-medium">{basename(hit.path)}</span>
-              <span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground">
+              <span className="ml-auto shrink-0 font-mono text-[0.625rem] text-muted-foreground">
                 {`:${hit.line}`}
               </span>
             </div>
-            <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
+            <div className="mt-0.5 truncate font-mono text-[0.6875rem] text-muted-foreground">
               {hit.preview}
             </div>
           </button>

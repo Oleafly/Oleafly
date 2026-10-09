@@ -168,7 +168,7 @@ function ImageGrid({
           )}
         >
           <Thumbnail path={path} />
-          <span className="truncate text-[11px] text-foreground">{path}</span>
+          <span className="truncate text-[0.6875rem] text-foreground">{path}</span>
         </button>
       ))}
     </div>

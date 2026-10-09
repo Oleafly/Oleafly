@@ -95,7 +95,7 @@ function DiffView({ outcome }: { outcome: CleanLibraryOutcome }) {
     <div
       data-testid="clean-library-diff"
       data-select-all-scope
-      className="min-h-0 flex-1 select-text overflow-auto p-4 font-mono text-[11px] leading-5"
+      className="min-h-0 flex-1 select-text overflow-auto p-4 font-mono text-[0.6875rem] leading-5"
     >
       {truncated ? <p className="mb-2 text-muted-foreground">{i18n.t(($) => $.references.cleanLibrary.truncated)}</p> : null}
       {rows.map((row, index) => (

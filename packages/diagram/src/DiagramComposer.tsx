@@ -109,7 +109,7 @@ function DiagnosticList({
         return (
           <li key={`${index}:${diagnostic.message}`}>
             {diagnostic.line === null ? (
-              <span className="block rounded-md border bg-muted/30 px-2 py-1 font-mono text-[11px] text-muted-foreground">
+              <span className="block rounded-md border bg-muted/30 px-2 py-1 font-mono text-[0.6875rem] text-muted-foreground">
                 {text}
               </span>
             ) : (
@@ -117,7 +117,7 @@ function DiagnosticList({
                 type="button"
                 onClick={() => onReveal(diagnostic.line as number, diagnostic.column)}
                 className={cn(
-                  "w-full rounded-md border bg-muted/30 px-2 py-1 text-left font-mono text-[11px] hover:bg-accent",
+                  "w-full rounded-md border bg-muted/30 px-2 py-1 text-left font-mono text-[0.6875rem] hover:bg-accent",
                   diagnostic.severity === "error" ? "text-destructive" : "text-muted-foreground",
                 )}
               >
@@ -191,7 +191,7 @@ function PreviewBody({
         {notice}
         {details}
         {log && !details ? (
-          <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[10px] text-muted-foreground">{log}</pre>
+          <pre className="overflow-auto rounded-md border bg-muted/30 p-2 font-mono text-[0.625rem] text-muted-foreground">{log}</pre>
         ) : null}
       </>
     );
@@ -999,7 +999,7 @@ export function DiagramComposer({
 
   const renderPreviewOpts = () => (
     <>
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground">
         {t("preview.pngScale")}
         <Select value={String(scale)} onValueChange={(v) => setScale(Number(v))}>
           <SelectTrigger className="h-7 w-16 text-xs">
@@ -1014,7 +1014,7 @@ export function DiagramComposer({
           </SelectContent>
         </Select>
       </div>
-      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground">
         {t("preview.background")}
         <ColorPicker
           value={background}
@@ -1177,11 +1177,11 @@ export function DiagramComposer({
     showPreview && (
       <div data-tour="diagram-preview-panel" className="flex min-h-0 min-w-0 flex-col">
         <div className="flex min-h-[34px] shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-sidebar px-3 py-1">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("preview.label")}</span>
+          <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{t("preview.label")}</span>
           {renderPreviewOpts()}
           <div className="ml-auto flex items-center gap-1">
             {busy && (
-              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground">
                 <Loader2 className="size-3.5 animate-spin" />
                 {t("composer.compiling")}
               </span>
@@ -1231,7 +1231,7 @@ export function DiagramComposer({
       ) : (
         <>
           <div className="flex h-[34px] shrink-0 items-center gap-0.5 border-b bg-sidebar px-2">
-            <span className="mr-1 text-[11px] text-muted-foreground">{t("composer.snippets")}</span>
+            <span className="mr-1 text-[0.6875rem] text-muted-foreground">{t("composer.snippets")}</span>
             {SNIPPETS.map((s) => {
               const key = s.id === "scope" && language !== "tikz" ? "snippets.group" : s.key;
               return (
@@ -1280,7 +1280,7 @@ export function DiagramComposer({
             data-testid="diagram-notes"
             aria-expanded={notesOpen}
             onClick={() => setNotesOpen((value) => !value)}
-            className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[11px] text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
+            className="flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[0.6875rem] text-amber-700 hover:bg-amber-500/20 dark:text-amber-300"
           >
             <TriangleAlert className="size-3" />
             {t("notes.count", { count: notes.length })}
@@ -1372,7 +1372,7 @@ export function DiagramComposer({
       <span
         data-testid="diagram-language"
         title={t("composer.languageLabel", { language: lang.name })}
-        className="shrink-0 rounded border px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground"
+        className="shrink-0 rounded border px-1.5 py-0.5 text-[0.6875rem] font-medium text-muted-foreground"
       >
         {lang.name}
       </span>

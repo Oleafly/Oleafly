@@ -616,6 +616,39 @@ test("a custom line height, a wider cursor and per-theme cursor colors reach the
   }
 });
 
+test("letter spacing and a custom font size reach the editor text", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await openPrefsProject(tauriPage);
+  await setEditorLook(
+    tauriPage,
+    `s.setEditorLetterSpacing("custom");
+    s.setEditorCustomLetterSpacing(1.5);
+    s.setEditorFontSize(26);`,
+  );
+  try {
+    await expect
+      .poll(
+        async () =>
+          await tauriPage.evaluate<{ spacing: string; size: string } | null>(
+            `(() => {
+              const content = document.querySelector('.cm-content');
+              if (!content) return null;
+              const style = getComputedStyle(content);
+              return { spacing: style.letterSpacing, size: style.fontSize };
+            })()`,
+          ),
+        { timeout: 15_000 },
+      )
+      .toEqual({ spacing: "1.5px", size: "26px" });
+  } finally {
+    await setEditorLook(
+      tauriPage,
+      `s.setEditorLetterSpacing("normal");
+      s.setEditorFontSize(13);`,
+    );
+  }
+});
+
 test("the default editor keys run their commands", async ({ tauriPage }) => {
   test.setTimeout(240_000);
   await openPrefsProject(tauriPage);

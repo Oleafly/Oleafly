@@ -354,7 +354,7 @@ function TreeRowTrailing({ node }: Readonly<{ node: IntelligenceTreeNode }>) {
       <span
         aria-hidden
         className={cn(
-          "max-w-[42%] shrink-0 truncate rounded-sm bg-muted px-1 py-px font-mono text-[9px] font-normal leading-4 text-muted-foreground",
+          "max-w-[42%] shrink-0 truncate rounded-sm bg-muted px-1 py-px font-mono text-[0.5625rem] font-normal leading-4 text-muted-foreground",
           node.tone === "warning" && "bg-amber-500/12 text-amber-700 dark:text-amber-300",
           node.tone === "danger" && "bg-destructive/10 text-destructive",
         )}
@@ -367,7 +367,7 @@ function TreeRowTrailing({ node }: Readonly<{ node: IntelligenceTreeNode }>) {
     return (
       <span
         aria-hidden
-        className="max-w-[42%] shrink-0 truncate font-mono text-[9px] text-muted-foreground/80"
+        className="max-w-[42%] shrink-0 truncate font-mono text-[0.5625rem] text-muted-foreground/80"
       >
         {node.provenance}
       </span>
@@ -429,7 +429,7 @@ const TreeRow = memo(function TreeRow({
       data-tooltip-side={description ? "right" : undefined}
       data-row-window-item
       className={cn(
-        "group flex h-7 w-full cursor-pointer items-center gap-1.5 rounded-[5px] pr-2 text-left text-[13px] leading-5",
+        "group flex h-7 w-full cursor-pointer items-center gap-1.5 rounded-[5px] pr-2 text-left text-[0.8125rem] leading-5",
         "hover:bg-sidebar-accent focus-visible:bg-sidebar-accent",
         "aria-selected:bg-sidebar-accent aria-selected:text-sidebar-accent-foreground",
         isGroup && "font-medium",
@@ -442,7 +442,7 @@ const TreeRow = memo(function TreeRow({
     >
       <TreeRowMarker row={row} onToggle={onToggle} />
       <TreeRowIcon node={row.node} isGroup={isGroup} />
-      <span className="min-w-0 flex-1 truncate text-[13px] leading-5">
+      <span className="min-w-0 flex-1 truncate text-[0.8125rem] leading-5">
         {row.node.label}
       </span>
       <TreeRowTrailing node={row.node} />
@@ -720,7 +720,7 @@ function IntelligenceTreeView({
     return (
       <output
         className={cn(
-          "flex min-h-24 items-center justify-center px-5 py-7 text-center text-[11px] leading-relaxed text-muted-foreground",
+          "flex min-h-24 items-center justify-center px-5 py-7 text-center text-[0.6875rem] leading-relaxed text-muted-foreground",
           className,
         )}
       >
@@ -857,7 +857,7 @@ export function PanelBreadcrumb({
   return (
     <nav
       aria-label={breadcrumbLabel()}
-      className="flex min-w-0 items-center gap-1 overflow-hidden text-[10px] text-muted-foreground"
+      className="flex min-w-0 items-center gap-1 overflow-hidden text-[0.625rem] text-muted-foreground"
     >
       {project ? (
         <span className="max-w-[40%] shrink truncate font-medium text-sidebar-foreground/75">
@@ -928,7 +928,7 @@ export function PanelState({
         {icon ?? <StateIcon aria-hidden className="size-4" />}
       </span>
       <p className="text-xs font-medium text-sidebar-foreground">{title}</p>
-      <p className="mt-1 max-w-60 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="mt-1 max-w-60 text-[0.6875rem] leading-relaxed text-muted-foreground">
         {detail}
       </p>
       {action ? <div className="mt-3">{action}</div> : null}

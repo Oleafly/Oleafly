@@ -644,7 +644,9 @@
       },
       "fontSize": {
         "description": "Stabilește dimensiunea textului din editorul de sursă.",
-        "label": "Dimensiunea fontului din editor"
+        "label": "Dimensiunea fontului din editor",
+        "custom": "Personalizată",
+        "customLabel": "Dimensiune personalizată a fontului din editor, în pixeli"
       },
       "ghostCompletion": {
         "description": "Arată completarea probabilă după cursor. Apasă Tab ca să o accepți.",
@@ -681,6 +683,16 @@
           "custom": "Personalizată"
         },
         "customLabel": "Înălțime personalizată a liniei"
+      },
+      "letterSpacing": {
+        "customLabel": "Spațiere personalizată a literelor, în pixeli",
+        "description": "Adaugă spațiu între caracterele din editorul de sursă. Lasă și mai mult loc în jurul cursorului.",
+        "label": "Spațierea literelor",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normală",
+          "custom": "Personalizată"
+        }
       },
       "cursorWidth": {
         "label": "Lățimea cursorului",

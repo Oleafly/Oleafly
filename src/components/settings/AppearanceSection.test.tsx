@@ -272,6 +272,55 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState().editorLineHeight).toBe("wide");
   });
 
+  it("offers letter spacing presets and an exact custom value", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 0 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.queryByTestId("settings-editor-letter-spacing-custom")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("settings-editor-letter-spacing-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.letterSpacing.option.replace("{{value}}", "1") }),
+    );
+    expect(useSettingsStore.getState().editorLetterSpacing).toBe("wide");
+
+    await user.click(screen.getByTestId("settings-editor-letter-spacing-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.letterSpacing.options.custom }),
+    );
+    const field = screen.getByRole("spinbutton", { name: appearance.editor.letterSpacing.customLabel });
+    fireEvent.change(field, { target: { value: "2.5" } });
+    expect(useSettingsStore.getState().editorCustomLetterSpacing).toBe(2.5);
+    fireEvent.change(field, { target: { value: "12" } });
+    fireEvent.blur(field);
+    expect(useSettingsStore.getState().editorCustomLetterSpacing).toBe(4);
+    act(() => useSettingsStore.setState({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 0 }));
+  });
+
+  it("takes an exact editor font size beyond the list", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorFontSize: 13 });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    expect(screen.queryByTestId("settings-editor-font-size-custom")).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId("settings-editor-font-size-trigger"));
+    await user.click(await screen.findByRole("option", { name: appearance.editor.fontSize.custom }));
+    const field = screen.getByRole("spinbutton", { name: appearance.editor.fontSize.customLabel });
+    expect(field).toHaveValue(13);
+    fireEvent.change(field, { target: { value: "32" } });
+    expect(useSettingsStore.getState().editorFontSize).toBe(32);
+    fireEvent.change(field, { target: { value: "400" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(useSettingsStore.getState().editorFontSize).toBe(100);
+
+    await user.click(screen.getByTestId("settings-editor-font-size-trigger"));
+    await user.click(await screen.findByRole("option", { name: "14px" }));
+    expect(useSettingsStore.getState().editorFontSize).toBe(14);
+    expect(screen.queryByTestId("settings-editor-font-size-custom")).not.toBeInTheDocument();
+  });
+
   it("shows an exact line height field only for the custom choice", async () => {
     const user = userEvent.setup();
     useSettingsStore.setState({ editorCustomLineHeight: 1.7 });

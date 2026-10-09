@@ -17,7 +17,7 @@ const MAX_ROWS = 100;
 const NO_PACKAGES: readonly never[] = [];
 
 const CHIP =
-  "rounded-full border px-2.5 py-0.5 text-[11px] transition-colors hover:bg-accent focus-visible:bg-accent";
+  "rounded-full border px-2.5 py-0.5 text-[0.6875rem] transition-colors hover:bg-accent focus-visible:bg-accent";
 const CHIP_ACTIVE = "border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 focus-visible:bg-primary/20";
 
 export interface PackageList<P> {
@@ -188,7 +188,7 @@ export function PackagesDialog<P, C>({
           <>
             <div className="flex flex-col gap-0.5 px-3 pt-2.5 pb-1.5">
               <p className="text-xs text-muted-foreground">{summary}</p>
-              {notice && <p className="text-[11px] text-muted-foreground">{notice}</p>}
+              {notice && <p className="text-[0.6875rem] text-muted-foreground">{notice}</p>}
             </div>
             {results.length === 0 ? (
               <p className="px-3 pb-3 text-xs text-muted-foreground">{labels.empty()}</p>

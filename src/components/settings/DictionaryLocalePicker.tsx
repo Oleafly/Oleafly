@@ -118,7 +118,7 @@ export function DictionaryLocalePicker() {
                   data-label={dictionaryLabel(entry, uiLocale)}
                   trailing={
                     entry.state === "available" ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] tabular-nums text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 text-[0.6875rem] tabular-nums text-muted-foreground">
                         <Download className="size-3" />
                         {formatDownloadSize(entry.bytes)}
                       </span>
@@ -137,7 +137,7 @@ export function DictionaryLocalePicker() {
       {busy ? (
         <span
           data-testid="dictionary-download-progress"
-          className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground"
+          className="inline-flex items-center gap-1.5 text-[0.6875rem] text-muted-foreground"
         >
           <Spinner size="xs" />
           {t(($) => $.shell.settings.general.dictionary.downloading, {

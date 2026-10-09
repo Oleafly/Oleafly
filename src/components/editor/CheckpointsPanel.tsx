@@ -195,7 +195,7 @@ function StoreSummary({ stats }: Readonly<{ stats: CheckpointStoreStats }>) {
     <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
       {items.map((item) => (
         <div key={item.label} className="min-w-0">
-          <dt className="text-[11px] text-muted-foreground">{item.label}</dt>
+          <dt className="text-[0.6875rem] text-muted-foreground">{item.label}</dt>
           <dd className="truncate text-sm font-medium tabular-nums">{item.value}</dd>
         </div>
       ))}
@@ -277,7 +277,7 @@ function CheckpointFileRows({ state }: Readonly<{ state: FileState | undefined }
   const { t } = useTranslation(["common", "editor"]);
   if (!state || state.status === "loading") {
     return (
-      <output className="flex items-center gap-2 py-1 text-[11px] text-muted-foreground">
+      <output className="flex items-center gap-2 py-1 text-[0.6875rem] text-muted-foreground">
         <Spinner size="xs" />
         {t(($) => $.editor.checkpoints.files.loading)}
       </output>
@@ -285,14 +285,14 @@ function CheckpointFileRows({ state }: Readonly<{ state: FileState | undefined }
   }
   if (state.status === "error") {
     return (
-      <p className="py-1 text-[11px] text-destructive" role="alert">
+      <p className="py-1 text-[0.6875rem] text-destructive" role="alert">
         {t(($) => $.editor.checkpoints.files.loadFailed)}
       </p>
     );
   }
   if (state.files.length === 0) {
     return (
-      <p className="py-1 text-[11px] text-muted-foreground">
+      <p className="py-1 text-[0.6875rem] text-muted-foreground">
         {t(($) => $.editor.checkpoints.files.noneRecorded)}
       </p>
     );
@@ -300,11 +300,11 @@ function CheckpointFileRows({ state }: Readonly<{ state: FileState | undefined }
   return (
     <ul className="list-none space-y-1 p-0">
       {state.files.map((file) => (
-        <li key={file.path} className="flex flex-wrap items-center gap-1.5 text-[11px]">
+        <li key={file.path} className="flex flex-wrap items-center gap-1.5 text-[0.6875rem]">
           <span className="min-w-0 select-text break-all font-mono">{checkpointFileName(file)}</span>
           <span className="text-muted-foreground">{formatBytes(file.bytes)}</span>
           {file.stored ? null : (
-            <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+            <Badge variant="outline" className="px-1.5 py-0 text-[0.625rem]">
               {t(($) => $.editor.checkpoints.files.notStored)}
             </Badge>
           )}
@@ -374,12 +374,12 @@ function FileList({ id, label, state, onRetry }: Readonly<FileListProps>) {
                 {checkpointFileName(file)}
               </span>
               {file.stored ? null : (
-                <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                <Badge variant="outline" className="px-1.5 py-0 text-[0.625rem]">
                   {t(($) => $.editor.checkpoints.files.notStored)}
                 </Badge>
               )}
             </div>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{formatBytes(file.bytes)}</p>
+            <p className="mt-0.5 text-[0.6875rem] text-muted-foreground">{formatBytes(file.bytes)}</p>
           </div>
         </li>
       ))}
@@ -528,7 +528,7 @@ function TimelineEntry({
               id: shortRoot(root),
             })}
             onClick={onCopyRoot}
-            className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-[11px] text-foreground/80 hover:border-primary/40 hover:bg-accent hover:text-foreground"
+            className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 font-mono text-[0.6875rem] text-foreground/80 hover:border-primary/40 hover:bg-accent hover:text-foreground"
           >
             {shortRoot(root)}
             {copied ? (
@@ -596,7 +596,7 @@ function TimelineEntry({
           {title}
         </span>
         {label ? (
-          <Badge variant="outline" className="px-1.5 py-0 text-[10px] tabular-nums">
+          <Badge variant="outline" className="px-1.5 py-0 text-[0.625rem] tabular-nums">
             {version}
           </Badge>
         ) : null}
@@ -1465,7 +1465,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
         </div>
         <dl className="grid grid-cols-3 gap-x-4 gap-y-1">
           <div className="min-w-0">
-            <dt className="text-[11px] text-muted-foreground">
+            <dt className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.editor.checkpoints.storage.catalogSize)}
             </dt>
             <dd className="truncate text-sm font-medium tabular-nums">
@@ -1473,7 +1473,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[11px] text-muted-foreground">
+            <dt className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.editor.checkpoints.storage.packs)}
             </dt>
             <dd className="truncate text-sm font-medium tabular-nums">
@@ -1481,7 +1481,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[11px] text-muted-foreground">
+            <dt className="text-[0.6875rem] text-muted-foreground">
               {t(($) => $.editor.checkpoints.storage.packSize)}
             </dt>
             <dd className="truncate text-sm font-medium tabular-nums">
@@ -1504,7 +1504,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
             {t(($) => $.editor.checkpoints.catalog.checkpoints)}
           </h4>
           {visibleCheckpoints.length === 0 ? (
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-[0.6875rem] text-muted-foreground">
               {t(($) => $.editor.checkpoints.catalog.noCheckpoints)}
             </p>
           ) : (
@@ -1523,7 +1523,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
                           : t(($) => $.editor.checkpoints.catalog.showFilesFor, { version })
                       }
                       onClick={() => toggleCatalogFiles(checkpoint.snapshot_root)}
-                      className="flex w-full items-center gap-1.5 rounded-md py-0.5 text-left text-[11px] hover:text-foreground"
+                      className="flex w-full items-center gap-1.5 rounded-md py-0.5 text-left text-[0.6875rem] hover:text-foreground"
                     >
                       <ChevronRight
                         aria-hidden
@@ -1564,7 +1564,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
         <div>
           <label
             htmlFor="checkpoint-archive-password"
-            className="text-[11px] font-medium text-muted-foreground"
+            className="text-[0.6875rem] font-medium text-muted-foreground"
           >
             {t(($) => $.editor.checkpoints.archive.password)}
           </label>
@@ -1615,7 +1615,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
       <p
         id="checkpoint-password-help"
         className={cn(
-          "text-[11px]",
+          "text-[0.6875rem]",
           passwordTooShort ? "text-destructive" : "text-muted-foreground",
         )}
         role={passwordTooShort ? "alert" : undefined}

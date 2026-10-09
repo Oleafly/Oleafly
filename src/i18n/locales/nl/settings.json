@@ -639,7 +639,9 @@
       },
       "fontSize": {
         "description": "Stel de tekstgrootte van de broncode-editor in.",
-        "label": "Tekstgrootte van de editor"
+        "label": "Tekstgrootte van de editor",
+        "custom": "Aangepast",
+        "customLabel": "Aangepaste tekstgrootte van de editor in pixels"
       },
       "ghostCompletion": {
         "description": "Toon de waarschijnlijke aanvulling achter de cursor. Druk op Tab om die over te nemen.",
@@ -676,6 +678,16 @@
           "custom": "Aangepast"
         },
         "customLabel": "Aangepaste regelhoogte"
+      },
+      "letterSpacing": {
+        "customLabel": "Aangepaste letterafstand in pixels",
+        "description": "Voegt ruimte toe tussen de tekens in de broneditor. Zo blijft er ook meer ruimte rond de cursor.",
+        "label": "Letterafstand",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normaal",
+          "custom": "Aangepast"
+        }
       },
       "cursorWidth": {
         "label": "Cursorbreedte",

@@ -607,7 +607,7 @@ export function SearchOmnibar() {
             )}
         </Command.List>
 
-        <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[0.6875rem] text-muted-foreground">
           <span className="flex items-center gap-1">
             <Kbd className="border bg-background text-foreground">{t(($) => $.shell.keys.enter)}</Kbd>
             <span>{t(($) => $.common.actions.open)}</span>

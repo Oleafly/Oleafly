@@ -1108,7 +1108,7 @@ export function FileTree({
         </div>
 
         {treeTruncated && (
-          <p role="note" className="shrink-0 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+          <p role="note" className="shrink-0 px-3 py-2 text-[0.6875rem] leading-snug text-muted-foreground">
             {t(($) => $.workspace.files.listingStopped, {
               limit: formatNumber(FOLDER_LISTING_LIMIT),
             })}
@@ -1586,7 +1586,7 @@ function TreeRow({
       )}
       <span className="ml-auto flex shrink-0 items-center gap-1">
         {unreadable && (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[0.6875rem] text-muted-foreground">
             {t(($) => $.workspace.files.unreadable)}
           </span>
         )}
@@ -1676,7 +1676,7 @@ function FlatTreeRows({
           <p
             key={item.key}
             role="note"
-            className="flex h-8 items-center truncate pr-2 text-[11px] leading-snug text-muted-foreground"
+            className="flex h-8 items-center truncate pr-2 text-[0.6875rem] leading-snug text-muted-foreground"
             style={{ paddingLeft: `${item.depth * 12 + 8}px` }}
           >
             {t(($) => $.workspace.files.partialFolder)}

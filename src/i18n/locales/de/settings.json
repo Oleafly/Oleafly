@@ -639,7 +639,9 @@
       },
       "fontSize": {
         "description": "Legen Sie die Textgröße im Quelltexteditor fest.",
-        "label": "Schriftgröße des Editors"
+        "label": "Schriftgröße des Editors",
+        "custom": "Benutzerdefiniert",
+        "customLabel": "Benutzerdefinierte Schriftgröße des Editors in Pixeln"
       },
       "ghostCompletion": {
         "description": "Die wahrscheinliche Vervollständigung hinter dem Cursor anzeigen. Mit Tab übernehmen Sie sie.",
@@ -676,6 +678,16 @@
           "custom": "Benutzerdefiniert"
         },
         "customLabel": "Benutzerdefinierte Zeilenhöhe"
+      },
+      "letterSpacing": {
+        "customLabel": "Benutzerdefinierter Zeichenabstand in Pixeln",
+        "description": "Fügt im Quelltext-Editor Abstand zwischen den Zeichen ein. Dadurch bleibt auch mehr Platz um den Cursor.",
+        "label": "Zeichenabstand",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Benutzerdefiniert"
+        }
       },
       "cursorWidth": {
         "label": "Cursorbreite",

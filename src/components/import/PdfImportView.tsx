@@ -350,7 +350,7 @@ function FiguresStrip() {
               onClick={() => void downloadFigure(f)}
             >
               <img src={f.pngDataUrl} alt={f.name} className="h-20 w-auto" />
-              <div className="mt-1 font-mono text-[10px] text-muted-foreground">{f.name}</div>
+              <div className="mt-1 font-mono text-[0.625rem] text-muted-foreground">{f.name}</div>
             </button>
           </Tooltip>
         ))}

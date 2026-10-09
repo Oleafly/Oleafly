@@ -122,7 +122,7 @@ function MarkdownEngineTab() {
             </span>
           )}
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-[0.6875rem] text-muted-foreground">
           {pandoc === "checking" && t(($) => $.settings.engine.markdown.status.checking)}
           {pandoc === "ready" && t(($) => $.settings.engine.markdown.status.ready)}
           {pandoc === "missing" && t(($) => $.settings.engine.markdown.status.missing)}
@@ -135,7 +135,7 @@ function MarkdownEngineTab() {
           <span className="text-sm">{t(($) => $.settings.engine.choices.tectonic.name)}</span>
           <Check className="size-3.5 text-primary" />
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-[0.6875rem] text-muted-foreground">
           {t(($) => $.settings.engine.markdown.tectonicDetail)}
         </p>
       </div>
@@ -253,7 +253,7 @@ function TypstVersionRow({
           ))}
         </div>
         {details.length > 0 && (
-          <p className="truncate text-[11px] text-muted-foreground">{details.join(" · ")}</p>
+          <p className="truncate text-[0.6875rem] text-muted-foreground">{details.join(" · ")}</p>
         )}
         {installing && (
           <div className="mt-1.5 flex items-center gap-2">
@@ -262,7 +262,7 @@ function TypstVersionRow({
               className="max-w-48"
               indicatorClassName="bg-primary"
             />
-            <span className="shrink-0 text-[11px] text-muted-foreground">{typstInstallLabel(installing)}</span>
+            <span className="shrink-0 text-[0.6875rem] text-muted-foreground">{typstInstallLabel(installing)}</span>
           </div>
         )}
       </div>
@@ -350,7 +350,7 @@ function TinymistCleanup() {
       data-testid="typst-tinymist-cleanup"
       className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border px-3 py-2.5"
     >
-      <p className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+      <p className="min-w-0 flex-1 text-[0.6875rem] text-muted-foreground">
         {t(($) => $.settings.engine.typst.languageServer.unused, { count: unused.length })}
       </p>
       <button type="button" disabled={removing} onClick={() => void remove()} className={ROW_BUTTON}>
@@ -372,7 +372,7 @@ function TypstUpgradeEntry() {
     <div className="flex items-center gap-3 rounded-lg border p-3" data-testid="typst-upgrade-entry">
       <div className="min-w-0 flex-1">
         <p className="text-sm">{t(($) => $.settings.engine.typst.upgrade.heading)}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">{t(($) => $.settings.engine.typst.upgrade.detail)}</p>
+        <p className="mt-1 text-[0.6875rem] text-muted-foreground">{t(($) => $.settings.engine.typst.upgrade.detail)}</p>
       </div>
       <Button type="button" size="sm" variant="outline" className="shrink-0" onClick={() => openTypstUpgrade(newer)}>
         {t(($) => $.settings.engine.typst.upgrade.check, { version: newer })}
@@ -409,11 +409,11 @@ function TypstEngineTab() {
           <span className="text-sm">{t(($) => $.settings.engine.typst.name)}</span>
           {bundledIsDefault && <Check className="size-3.5 text-primary" />}
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-[0.6875rem] text-muted-foreground">
           {t(($) => $.settings.engine.typst.detail)}
         </p>
         {status && (
-          <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">{`Typst ${status.bundledVersion}`}</p>
+          <p className="mt-1 font-mono text-[0.625rem] text-muted-foreground/70">{`Typst ${status.bundledVersion}`}</p>
         )}
       </div>
       {status?.system && (
@@ -422,11 +422,11 @@ function TypstEngineTab() {
             <HardDrive className="size-4 shrink-0 text-muted-foreground" />
             <span className="text-sm">{t(($) => $.settings.engine.typst.system.name)}</span>
           </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-[0.6875rem] text-muted-foreground">
             {t(($) => $.settings.engine.typst.system.detail, { version: status.system.version })}
           </p>
-          <p className="mt-1 font-mono text-[10px] text-muted-foreground/70">{`Typst ${status.system.version}`}</p>
-          <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70">
+          <p className="mt-1 font-mono text-[0.625rem] text-muted-foreground/70">{`Typst ${status.system.version}`}</p>
+          <p className="mt-1 truncate font-mono text-[0.625rem] text-muted-foreground/70">
             <SettingsPath path={status.system.path} />
           </p>
         </div>
@@ -556,11 +556,11 @@ export function EngineSection() {
                   </Badge>
                 )}
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">
+              <p className="mt-1 text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.settings.engine.choices[choiceId].detail)}
               </p>
               {choiceId === "latexmk" && info?.latexmk && (
-                <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70"><SettingsPath focusable={false} path={info.latexmk} /></p>
+                <p className="mt-1 truncate font-mono text-[0.625rem] text-muted-foreground/70"><SettingsPath focusable={false} path={info.latexmk} /></p>
               )}
             </button>
           );
@@ -608,13 +608,13 @@ export function EngineSection() {
                 <button
                   type="button"
                   onClick={() => void remove()}
-                  className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[11px] hover:bg-accent"
+                  className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-[0.6875rem] hover:bg-accent"
                 >
                   <Trash2 className="size-3" /> {t(($) => $.common.actions.remove)}
                 </button>
               )}
             </div>
-            <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/70"><SettingsPath path={distro.bin_dir} /></p>
+            <p className="mt-1 truncate font-mono text-[0.625rem] text-muted-foreground/70"><SettingsPath path={distro.bin_dir} /></p>
           </div>
         ))}
         {!distros.some((d) => d.kind === "oleafly-tinytex") && (
@@ -623,7 +623,7 @@ export function EngineSection() {
               <Download className="size-4 shrink-0 text-muted-foreground" />
               <span className="text-sm">{"TinyTeX"}</span>
             </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
               {t(($) => $.settings.engine.tinytex.detail)}
             </p>
             <div className="mt-2">
@@ -660,7 +660,7 @@ export function EngineSection() {
           <span className="text-sm">{t(($) => $.settings.engine.tagging.status[kind])}</span>
         </div>
         {info?.version && (
-          <p className="mt-1 truncate pl-6 font-mono text-[11px] text-muted-foreground">
+          <p className="mt-1 truncate pl-6 font-mono text-[0.6875rem] text-muted-foreground">
             {info.version}
           </p>
         )}

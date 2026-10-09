@@ -5,7 +5,7 @@ export function TikzSourceView({ source }: Readonly<{ source: string }>) {
     <ReadOnlyLatex
       source={source}
       testId="tool-picture-code"
-      className="max-h-80 overflow-auto text-[11px] [&_.cm-editor]:bg-transparent [&_.cm-scroller]:font-mono"
+      className="max-h-80 overflow-auto text-[0.6875rem] [&_.cm-editor]:bg-transparent [&_.cm-scroller]:font-mono"
     />
   );
 }

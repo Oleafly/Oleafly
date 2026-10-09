@@ -779,6 +779,47 @@ export function editorLineHeightValue(choice: EditorLineHeight, custom: number):
   return choice === "custom" ? clampEditorLineHeight(custom) : EDITOR_LINE_HEIGHTS[choice];
 }
 
+export type EditorLetterSpacingPreset = "normal" | "slight" | "wide" | "wider";
+
+export type EditorLetterSpacing = EditorLetterSpacingPreset | "custom";
+
+export const EDITOR_LETTER_SPACINGS: Readonly<Record<EditorLetterSpacingPreset, number>> = {
+  normal: 0,
+  slight: 0.5,
+  wide: 1,
+  wider: 1.5,
+};
+
+export const EDITOR_LETTER_SPACING_OPTIONS: readonly EditorLetterSpacing[] = [
+  "normal",
+  "slight",
+  "wide",
+  "wider",
+  "custom",
+];
+
+export const EDITOR_CUSTOM_LETTER_SPACING = { min: 0, max: 4, step: 0.1 } as const;
+
+export function clampEditorLetterSpacing(value: number): number {
+  if (!Number.isFinite(value)) return EDITOR_LETTER_SPACINGS.normal;
+  const { min, max } = EDITOR_CUSTOM_LETTER_SPACING;
+  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100;
+}
+
+export function editorLetterSpacingValue(choice: EditorLetterSpacing, custom: number): number {
+  return choice === "custom" ? clampEditorLetterSpacing(custom) : EDITOR_LETTER_SPACINGS[choice];
+}
+
+export const EDITOR_FONT_SIZES: readonly number[] = [11, 12, 13, 14, 15, 16, 18, 20, 24];
+
+export const EDITOR_FONT_SIZE_RANGE = { min: 6, max: 100, step: 1 } as const;
+
+export function clampEditorFontSize(value: number): number {
+  if (!Number.isFinite(value)) return 13;
+  const { min, max } = EDITOR_FONT_SIZE_RANGE;
+  return Math.round(Math.min(max, Math.max(min, value)) * 10) / 10;
+}
+
 export const EDITOR_CURSOR_WIDTHS: readonly number[] = [1, 2, 3];
 
 export type EditorSurface = "light" | "dark";
@@ -812,6 +853,10 @@ interface SettingsState {
   setEditorLineHeight: (v: EditorLineHeight) => void;
   editorCustomLineHeight: number;
   setEditorCustomLineHeight: (v: number) => void;
+  editorLetterSpacing: EditorLetterSpacing;
+  setEditorLetterSpacing: (v: EditorLetterSpacing) => void;
+  editorCustomLetterSpacing: number;
+  setEditorCustomLetterSpacing: (v: number) => void;
   editorCursorWidth: number;
   setEditorCursorWidth: (v: number) => void;
   editorCursorColorLight: string;
@@ -1038,6 +1083,18 @@ function readEditorLineHeight(): EditorLineHeight {
     : "normal";
 }
 
+function readEditorLetterSpacing(): EditorLetterSpacing {
+  const stored = ls("oleafly.editor.letterSpacing", "");
+  return EDITOR_LETTER_SPACING_OPTIONS.includes(stored as EditorLetterSpacing)
+    ? (stored as EditorLetterSpacing)
+    : "normal";
+}
+
+function readEditorCustomLetterSpacing(): number {
+  const stored = ls("oleafly.editor.letterSpacingCustom", "");
+  return stored === "" ? EDITOR_LETTER_SPACINGS.normal : clampEditorLetterSpacing(Number(stored));
+}
+
 function readEditorCustomLineHeight(): number {
   const stored = ls("oleafly.editor.lineHeightCustom", "");
   return stored === ""
@@ -1074,6 +1131,8 @@ const PREF_DEFAULTS = {
   editorLineWrap: true,
   editorLineHeight: "normal" as EditorLineHeight,
   editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
+  editorLetterSpacing: "normal" as EditorLetterSpacing,
+  editorCustomLetterSpacing: EDITOR_LETTER_SPACINGS.normal,
   editorCursorWidth: 1,
   editorCursorColorLight: "",
   editorCursorColorDark: "",
@@ -1163,6 +1222,8 @@ const SECTION_SETTINGS = {
     editorLineWrap: "oleafly.editor.lineWrap",
     editorLineHeight: "oleafly.editor.lineHeight",
     editorCustomLineHeight: "oleafly.editor.lineHeightCustom",
+    editorLetterSpacing: "oleafly.editor.letterSpacing",
+    editorCustomLetterSpacing: "oleafly.editor.letterSpacingCustom",
     editorCursorWidth: "oleafly.editor.cursorWidth",
     editorCursorColorLight: "oleafly.editor.cursorColor.light",
     editorCursorColorDark: "oleafly.editor.cursorColor.dark",
@@ -1300,6 +1361,25 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const value = clampEditorLineHeight(v);
     saveLs("oleafly.editor.lineHeightCustom", String(value));
     set({ editorCustomLineHeight: value });
+  },
+  editorLetterSpacing: readEditorLetterSpacing(),
+  setEditorLetterSpacing: (v) => {
+    const choice = EDITOR_LETTER_SPACING_OPTIONS.includes(v) ? v : PREF_DEFAULTS.editorLetterSpacing;
+    const previous = get().editorLetterSpacing;
+    saveLs("oleafly.editor.letterSpacing", choice);
+    if (choice === "custom" && previous !== "custom" && ls("oleafly.editor.letterSpacingCustom", "") === "") {
+      const seeded = EDITOR_LETTER_SPACINGS[previous];
+      saveLs("oleafly.editor.letterSpacingCustom", String(seeded));
+      set({ editorLetterSpacing: choice, editorCustomLetterSpacing: seeded });
+      return;
+    }
+    set({ editorLetterSpacing: choice });
+  },
+  editorCustomLetterSpacing: readEditorCustomLetterSpacing(),
+  setEditorCustomLetterSpacing: (v) => {
+    const value = clampEditorLetterSpacing(v);
+    saveLs("oleafly.editor.letterSpacingCustom", String(value));
+    set({ editorCustomLetterSpacing: value });
   },
   editorCursorWidth: readChoice(
     "oleafly.editor.cursorWidth",
@@ -1714,10 +1794,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.openInTree", v ? "1" : "0");
     set({ openInTree: v });
   },
-  editorFontSize: Number(ls("oleafly.fontSize", "13")) || 13,
+  editorFontSize: clampEditorFontSize(Number(ls("oleafly.fontSize", "13")) || 13),
   setEditorFontSize: (v) => {
-    saveLs("oleafly.fontSize", String(v));
-    set({ editorFontSize: v });
+    const size = clampEditorFontSize(v);
+    saveLs("oleafly.fontSize", String(size));
+    set({ editorFontSize: size });
   },
   appFontSize: Number(ls("oleafly.appFontSize", "16")) || 16,
   setAppFontSize: (v) => {

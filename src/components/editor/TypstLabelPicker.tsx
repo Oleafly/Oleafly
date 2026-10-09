@@ -66,7 +66,7 @@ function LabelList({ query }: Readonly<{ query: string }>) {
     <PopoverItem key={`${label.file}:${label.name}`} onClick={() => void insertTypstReferenceTo(label.name)}>
       <span className="grid min-w-0 flex-1 gap-y-0.5 py-0.5">
         <span className="truncate font-mono text-xs">{label.name}</span>
-        <span className="truncate text-[10px] text-muted-foreground">
+        <span className="truncate text-[0.625rem] text-muted-foreground">
           {t(($) => $.editor.labels.location, { file: label.file, line: label.line })}
         </span>
       </span>

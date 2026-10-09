@@ -29,7 +29,7 @@ export function DiffPreview({
 }>) {
   return (
     <div className={cn("overflow-hidden rounded-md border transition-colors focus-within:border-ring", className)}>
-      <Suspense fallback={<p className="px-3 py-2 text-[11px] text-muted-foreground">{loadingLabel}</p>}>
+      <Suspense fallback={<p className="px-3 py-2 text-[0.6875rem] text-muted-foreground">{loadingLabel}</p>}>
         <InlineDiffPreview path={path} oldText={oldText} newText={newText} ariaLabel={label} className="h-56" />
       </Suspense>
     </div>

@@ -203,7 +203,7 @@ function ConversionNote({ note, details }: Readonly<{ note: string; details: rea
     <div className="space-y-1.5 text-xs text-muted-foreground">
       <p>{note}</p>
       {details.length > 0 && (
-        <ul data-testid="converter-details" className="max-h-32 select-text space-y-0.5 overflow-auto font-mono text-[11px] leading-relaxed">
+        <ul data-testid="converter-details" className="max-h-32 select-text space-y-0.5 overflow-auto font-mono text-[0.6875rem] leading-relaxed">
           {[...new Set(details)].map((detail) => (
             <li key={detail} className="break-words">{detail}</li>
           ))}

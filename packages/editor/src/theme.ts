@@ -36,6 +36,7 @@ const chromeTheme = EditorView.theme({
   },
   ".cm-content": {
     caretColor: "var(--cm-cursor-custom, var(--cm-cursor, var(--primary)))",
+    letterSpacing: "var(--cm-letter-spacing, normal)",
     padding: "10px 0",
   },
   ".cm-gutters": {

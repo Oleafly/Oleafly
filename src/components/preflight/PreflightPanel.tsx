@@ -179,7 +179,7 @@ export function PreflightPanel() {
               ? t(($) => $.preflight.panel.readerDisabled)
               : t(($) => $.preflight.panel.readerEnabled)
           }
-          className="flex min-w-0 shrink-[100] items-center gap-1.5 rounded px-1.5 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="flex min-w-0 shrink-[100] items-center gap-1.5 rounded px-1.5 py-1 text-[0.6875rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Eye className="size-3.5 shrink-0" />
           <span className="truncate">{t(($) => $.preflight.panel.readerButton)}</span>
@@ -191,10 +191,10 @@ export function PreflightPanel() {
           className="w-80 p-3"
         >
           <p className="text-xs font-semibold">{t(($) => $.preflight.panel.aboutTitle)}</p>
-          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
             {t(($) => $.preflight.panel.aboutIntro)}
           </p>
-          <dl className="mt-2 space-y-1.5 text-[11px] leading-relaxed">
+          <dl className="mt-2 space-y-1.5 text-[0.6875rem] leading-relaxed">
             {CHECKS.map((check) => (
               <div key={check.id}>
                 <dt className="inline font-medium text-foreground">{tp(`preflight:checks.${check.id}.label`)}:{" "}</dt>
@@ -202,7 +202,7 @@ export function PreflightPanel() {
               </div>
             ))}
           </dl>
-          <p className="mt-2 border-t border-border pt-2 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-2 border-t border-border pt-2 text-[0.6875rem] leading-relaxed text-muted-foreground">
             {t(($) => $.preflight.panel.aboutFooter)}
           </p>
         </Popover>
@@ -266,15 +266,15 @@ export function PreflightPanel() {
 
               {isOpen && (
                 <div className="border-t border-sidebar-border px-3 py-2.5">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                     {tp(`preflight:checks.${c.id}.who`)}
                   </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
                     {tp(`preflight:checks.${c.id}.detail`)}
                   </p>
                   {c.id === "submission" && (
                     <div className="mt-3 rounded-md border border-sidebar-border bg-muted/25 p-2.5">
-                      <label htmlFor="preflight-submission-profile" className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <label htmlFor="preflight-submission-profile" className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
                         {t(($) => $.preflight.panel.publicationProfile)}
                       </label>
                       <Select
@@ -292,7 +292,7 @@ export function PreflightPanel() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
+                      <p className="mt-1.5 text-[0.625rem] leading-relaxed text-muted-foreground">
                         {tp(`preflight:profiles.${submissionProfile}.description`)}
                       </p>
                     </div>
@@ -306,7 +306,7 @@ export function PreflightPanel() {
                         <span className="block text-xs font-medium">
                           {t(($) => $.preflight.panel.anonymousReview)}
                         </span>
-                        <span className="mt-0.5 block text-[10px] leading-relaxed text-muted-foreground">
+                        <span className="mt-0.5 block text-[0.625rem] leading-relaxed text-muted-foreground">
                           {t(($) => $.preflight.panel.anonymousReviewHint)}
                         </span>
                       </span>
@@ -319,7 +319,7 @@ export function PreflightPanel() {
                     </label>
                   )}
                   {sourcePreflight === "none" && c.id !== "refs" && (
-                    <p className="mt-2 rounded bg-muted/60 px-2 py-1.5 text-[10px] text-muted-foreground">
+                    <p className="mt-2 rounded bg-muted/60 px-2 py-1.5 text-[0.625rem] text-muted-foreground">
                       {t(($) => $.preflight.panel.engineUnsupported, { engine: engineLabel })}
                     </p>
                   )}
@@ -327,7 +327,7 @@ export function PreflightPanel() {
                     <CheckResults id={c.id} report={report} />
                   ) : (
                     on && (
-                      <p className="mt-2 text-[11px] italic text-muted-foreground">
+                      <p className="mt-2 text-[0.6875rem] italic text-muted-foreground">
                         {t(($) => $.preflight.panel.runToSeeResults)}
                       </p>
                     )
@@ -366,8 +366,8 @@ const AccessibilityStandardsCard = memo(function AccessibilityStandardsCard({ re
   if (!summary) return null;
   return (
     <div className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 dark:bg-background">
-      <p className="text-[11px] font-medium">{renderMessage(tp, summary)}</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+      <p className="text-[0.6875rem] font-medium">{renderMessage(tp, summary)}</p>
+      <p className="mt-1 text-[0.6875rem] leading-relaxed text-muted-foreground">
         {t(($) => $.preflight.panel.standardsCaveat)}
       </p>
     </div>
@@ -392,7 +392,7 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
   const group = (label: string, items: Finding[]) =>
     items.length > 0 && (
       <div className="mt-2 flex flex-col gap-1.5">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
         {items.map((f, i) => (
           <FindingRow key={`${f.id}:${f.file ?? ""}:${f.from ?? f.page ?? i}`} finding={f} />
         ))}
@@ -413,22 +413,22 @@ const CheckResults = memo(function CheckResults({ id, report }: { id: CheckId; r
       {id === "ats" && report.atsParse?.isResume && <AtsCard parse={report.atsParse} />}
 
       {(id === "ats" || id === "a11y") && !report.hasPdf && (
-        <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 text-[11px] text-muted-foreground dark:bg-background">
+        <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 text-[0.6875rem] text-muted-foreground dark:bg-background">
           {t(($) => $.preflight.panel.pdfRequired)}
         </p>
       )}
       {id === "compile" && coverage === "not_run" && (
-        <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 text-[11px] text-muted-foreground dark:bg-background">
+        <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 text-[0.6875rem] text-muted-foreground dark:bg-background">
           {t(($) => $.preflight.panel.compileFirst)}
         </p>
       )}
       {coverage === "partial" && (
-        <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 text-[11px] text-muted-foreground dark:bg-background">
+        <p className="mt-2 rounded-md border border-sidebar-border bg-black/[0.03] px-2.5 py-2 text-[0.6875rem] text-muted-foreground dark:bg-background">
           {t(($) => $.preflight.panel.partialCoverage)}
         </p>
       )}
       {coverage === "unsupported" && (
-        <p className="mt-2 rounded-md border border-sidebar-border px-2.5 py-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 rounded-md border border-sidebar-border px-2.5 py-2 text-[0.6875rem] text-muted-foreground">
           {t(($) => $.preflight.panel.unsupportedCoverage)}
         </p>
       )}

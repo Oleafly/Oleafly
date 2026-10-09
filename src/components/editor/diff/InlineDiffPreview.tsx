@@ -35,7 +35,7 @@ export function InlineDiffPreview({
     host.innerHTML = "";
     if (oldText.length > MAX || newText.length > MAX) {
       const note = document.createElement("div");
-      note.className = "px-3 py-2 text-[11px] text-muted-foreground";
+      note.className = "px-3 py-2 text-[0.6875rem] text-muted-foreground";
       note.textContent = i18n.t(($) => $.editor.diff.previewTooLarge);
       host.appendChild(note);
       return;

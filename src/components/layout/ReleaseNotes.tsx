@@ -65,7 +65,7 @@ export const ReleaseNotes = memo(function ReleaseNotes({
   return (
     <div
       data-testid="release-notes"
-      className={cn("min-w-0 select-text break-words text-[13px] text-muted-foreground", className)}
+      className={cn("min-w-0 select-text break-words text-[0.8125rem] text-muted-foreground", className)}
     >
       {renderer ? (
         <renderer.ReleaseNotesMarkdown source={source} onOpenLink={onOpenLink} />

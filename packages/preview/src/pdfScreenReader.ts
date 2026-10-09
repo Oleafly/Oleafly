@@ -146,7 +146,7 @@ export function createPdfScreenReaderLayer({
   title.textContent = t("screenReader.title");
   const pageLabel = document.createElement("span");
   pageLabel.className =
-    "rounded-full border border-white/20 bg-background/35 px-2.5 py-1 text-[11px] font-medium tabular-nums text-muted-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.16)] dark:border-white/10";
+    "rounded-full border border-white/20 bg-background/35 px-2.5 py-1 text-[0.6875rem] font-medium tabular-nums text-muted-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.16)] dark:border-white/10";
   pageLabel.textContent = t("screenReader.pageLabel", { page: pageNumber, total: totalPages });
   if (pageNumber === 1) header.append(title);
   header.append(pageLabel);

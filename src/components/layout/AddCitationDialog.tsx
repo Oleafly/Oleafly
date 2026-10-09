@@ -206,7 +206,7 @@ export function AddCitationDialog() {
             {t(($) => $.shell.addCitation.lookUp)}
           </button>
         </div>
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 text-[0.6875rem] text-muted-foreground">
           {t(($) => $.shell.addCitation.privacyNote)}
         </p>
       </div>
@@ -215,7 +215,7 @@ export function AddCitationDialog() {
 
       {zoteroHits.length > 0 && status !== "preview" && (
         <section className="border-b p-3" aria-labelledby="citation-dialog-zotero" data-testid="add-citation-zotero">
-          <p id="citation-dialog-zotero" className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p id="citation-dialog-zotero" className="mb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
             {t(($) => $.shell.addCitation.zoteroMatches)}
           </p>
           <div className="flex flex-col gap-0.5">
@@ -228,7 +228,7 @@ export function AddCitationDialog() {
               >
                 <span className="flex items-baseline gap-2">
                   <span className="shrink-0 font-mono text-xs">{hit.citationKey}</span>
-                  <span className="min-w-0 truncate text-[11px] text-muted-foreground">
+                  <span className="min-w-0 truncate text-[0.6875rem] text-muted-foreground">
                     {[hitByline(hit), truncated(hitTitle(hit)), libraryLabel(hit, zoteroStatus)].filter(Boolean).join(" · ")}
                   </span>
                 </span>
@@ -252,7 +252,7 @@ export function AddCitationDialog() {
                     setInput(ex.value);
                     void search(ex.value);
                   }}
-                  className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] text-primary hover:bg-primary/20"
+                  className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[0.6875rem] text-primary hover:bg-primary/20"
                 >
                   <span className="font-medium">{`${ex.label}:`}</span> {ex.value}
                 </button>
@@ -277,7 +277,7 @@ export function AddCitationDialog() {
 
         {status === "hits" && (
           <div className="flex flex-col gap-1">
-            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
               {t(($) => $.shell.addCitation.matches, { count: hits.length })}
             </p>
             {hits.map((h) => (
@@ -290,7 +290,7 @@ export function AddCitationDialog() {
                   <BookOpen className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
                     <div className="text-sm leading-snug">{h.title}</div>
-                    <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                    <div className="mt-0.5 truncate text-[0.6875rem] text-muted-foreground">
                       {[h.authors.slice(0, 3).join(", "), h.year, h.venue].filter(Boolean).join(" · ")}
                     </div>
                   </div>
@@ -302,10 +302,10 @@ export function AddCitationDialog() {
 
         {status === "preview" && (
           <div>
-            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="mb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
               {t(($) => $.shell.addCitation.entry)}
             </p>
-            <pre data-select-all-scope className="max-h-52 select-text overflow-auto rounded-md border border-sidebar-border bg-background p-2.5 font-mono text-[11px] leading-relaxed">
+            <pre data-select-all-scope className="max-h-52 select-text overflow-auto rounded-md border border-sidebar-border bg-background p-2.5 font-mono text-[0.6875rem] leading-relaxed">
               {bibtex}
             </pre>
             {bibliographies.length > 1 && bibliography && (
@@ -330,7 +330,7 @@ export function AddCitationDialog() {
                     </SelectContent>
                   </Select>
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-[0.6875rem] text-muted-foreground">
                   {t(($) => $.shell.addCitation.bibliographyHint)}
                 </p>
               </div>

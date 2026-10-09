@@ -39,6 +39,7 @@ const stickyTheme = EditorView.theme({
     overflow: "hidden",
     fontFamily: "var(--cm-font-family, var(--font-mono))",
     fontSize: "var(--cm-font-size, 13px)",
+    letterSpacing: "var(--cm-letter-spacing, normal)",
     lineHeight: EDITOR_LINE_HEIGHT_CSS,
     backgroundColor: "var(--cm-editor-bg, var(--background))",
     boxShadow: "0 4px 8px -6px rgb(0 0 0 / 0.45)",

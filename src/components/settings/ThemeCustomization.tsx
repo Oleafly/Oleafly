@@ -243,7 +243,7 @@ export function ThemeCustomization() {
                 onChange={(event) => updateToken(token, event.target.value)}
                 onBlur={(event) => updateToken(token, event.target.value, true)}
                 placeholder={t(($) => $.common.state.default)}
-                className="h-8 font-mono text-[11px]"
+                className="h-8 font-mono text-[0.6875rem]"
               />
             </div>
           );
@@ -277,7 +277,7 @@ export function ThemeCustomization() {
             }
           }}
           placeholder={"0.625rem"}
-          className="h-8 max-w-44 font-mono text-[11px]"
+          className="h-8 max-w-44 font-mono text-[0.6875rem]"
         />
       </div>
 
@@ -308,7 +308,7 @@ export function ThemeCustomization() {
             }
           }}
           placeholder={"color: #202020; --oleafly-note: #f6d365"}
-          className="min-h-20 font-mono text-[11px]"
+          className="min-h-20 font-mono text-[0.6875rem]"
         />
       </div>
 

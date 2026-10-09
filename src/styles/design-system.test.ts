@@ -51,7 +51,7 @@ function isSettingsRowCluster(classString: string): boolean {
   return SETTINGS_ROW_TOKENS.every((token) => set.has(token));
 }
 
-const PILL_TEXT = /^text-\[(9|10|11)px\]$/;
+const PILL_TEXT = /^text-\[(?:(?:9|10|11)px|0\.5625rem|0\.625rem|0\.6875rem)\]$/;
 const PILL_PADDING = /^px-(1|1\.5|2|2\.5)$/;
 const PILL_VERTICAL = /^py-(0\.5|px)$/;
 const PILL_TINT =

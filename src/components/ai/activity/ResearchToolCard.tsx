@@ -77,18 +77,18 @@ function LiteratureResults({ view, actions }: Readonly<{ view: ResearchToolView;
               <div className="min-w-0 flex-1">
                 <p className="font-medium leading-snug text-foreground">{result.title}</p>
                 {(result.authors.length > 0 || result.year) && (
-                  <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 truncate text-[0.625rem] text-muted-foreground">
                     {[result.authors.slice(0, 3).join(", "), result.year].filter(Boolean).join(" · ")}
                   </p>
                 )}
                 {(result.source || result.doi) && (
-                  <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+                  <p className="mt-0.5 truncate text-[0.625rem] text-muted-foreground">
                     {[result.source, result.doi ? t(($) => $.ai.toolCard.doi, { doi: result.doi }) : null]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>
                 )}
-                {result.abstract && <p className="mt-1 line-clamp-3 text-[11px] leading-relaxed text-muted-foreground">{result.abstract}</p>}
+                {result.abstract && <p className="mt-1 line-clamp-3 text-[0.6875rem] leading-relaxed text-muted-foreground">{result.abstract}</p>}
               </div>
               {canOpen && (
                 <button
@@ -145,7 +145,7 @@ function toolCardHeader({
       className={cn("group flex w-full items-center gap-2 py-1 text-left", expandable && "cursor-pointer")}
     >
       <LeadingIcon view={view} expandable={expandable} expanded={expanded} />
-      <span className={cn("min-w-0 truncate text-sm text-foreground/90", view.kind === "command" && "font-mono text-[12px]")}>{view.kind === "command" ? `$ ${view.command || tc.name}` : view.label}</span>
+      <span className={cn("min-w-0 truncate text-sm text-foreground/90", view.kind === "command" && "font-mono text-[0.75rem]")}>{view.kind === "command" ? `$ ${view.command || tc.name}` : view.label}</span>
       <StatusIcon status={view.status} />
       <span className="sr-only">{view.statusLabel}</span>
       {tc.approval && (
@@ -154,7 +154,7 @@ function toolCardHeader({
             : i18n.t(($) => $.ai.toolCard.rejected)}</Badge>
       )}
       {view.summary && (
-        <span className={cn("min-w-0 truncate text-[11px] text-muted-foreground", view.verified === false && "text-destructive")}>{view.summary}</span>
+        <span className={cn("min-w-0 truncate text-[0.6875rem] text-muted-foreground", view.verified === false && "text-destructive")}>{view.summary}</span>
       )}
     </button>
   );
@@ -163,7 +163,7 @@ function toolCardHeader({
 function diagnosticsList(view: ResearchToolView) {
   if (!view.diagnostics?.length) return null;
   return (
-    <ul className="space-y-1 py-1 text-[11px] text-destructive">
+    <ul className="space-y-1 py-1 text-[0.6875rem] text-destructive">
       {[...new Set(view.diagnostics)].slice(0, 20).map((diagnostic) => <li key={diagnostic}>{diagnostic}</li>)}
     </ul>
   );
@@ -172,13 +172,13 @@ function diagnosticsList(view: ResearchToolView) {
 function artifactPreviewBody(preview: ResearchArtifactPreview) {
   return (
     <div className="py-1">
-      <p className="mb-1 truncate text-[10px] font-medium">{preview.relativePath}</p>
+      <p className="mb-1 truncate text-[0.625rem] font-medium">{preview.relativePath}</p>
       {preview.isBinary ? (
-        <p className="text-[10px] text-muted-foreground">{i18n.t(($) => $.ai.toolCard.binaryPreview)}</p>
+        <p className="text-[0.625rem] text-muted-foreground">{i18n.t(($) => $.ai.toolCard.binaryPreview)}</p>
       ) : (
-        <pre data-select-all-scope className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[10px] text-muted-foreground">{preview.content}</pre>
+        <pre data-select-all-scope className="max-h-80 overflow-auto whitespace-pre-wrap break-words font-mono text-[0.625rem] text-muted-foreground">{preview.content}</pre>
       )}
-      {preview.truncated && <p className="mt-1 text-[10px] text-muted-foreground">{i18n.t(($) => $.ai.toolCard.previewTruncated)}</p>}
+      {preview.truncated && <p className="mt-1 text-[0.625rem] text-muted-foreground">{i18n.t(($) => $.ai.toolCard.previewTruncated)}</p>}
     </div>
   );
 }
@@ -211,16 +211,16 @@ function toolCardActions({
   return (
     <div className="flex flex-wrap items-center gap-1">
       {truncated && (
-        <button type="button" className="rounded px-1.5 py-1 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setFull((value) => !value)}>{full ? i18n.t(($) => $.common.actions.showLess) : i18n.t(($) => $.ai.toolCard.showAll, { characters: formatNumber(view.output.length) })}</button>
+        <button type="button" className="rounded px-1.5 py-1 text-[0.625rem] text-muted-foreground hover:bg-accent hover:text-foreground" onClick={() => setFull((value) => !value)}>{full ? i18n.t(($) => $.common.actions.showLess) : i18n.t(($) => $.ai.toolCard.showAll, { characters: formatNumber(view.output.length) })}</button>
       )}
       {canOpenArtifact && (
-        <button type="button" disabled={artifactLoading} className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent disabled:opacity-50" onClick={onOpenArtifact}>{artifactButtonLabel()}</button>
+        <button type="button" disabled={artifactLoading} className="rounded px-1.5 py-1 text-[0.625rem] font-medium hover:bg-accent disabled:opacity-50" onClick={onOpenArtifact}>{artifactButtonLabel()}</button>
       )}
       {canOpenSource && (
-        <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => actions?.openSource?.({ url: view.url, doi: view.doi, page: view.page })}>{i18n.t(($) => $.ai.toolCard.openSource)}</button>
+        <button type="button" className="rounded px-1.5 py-1 text-[0.625rem] font-medium hover:bg-accent" onClick={() => actions?.openSource?.({ url: view.url, doi: view.doi, page: view.page })}>{i18n.t(($) => $.ai.toolCard.openSource)}</button>
       )}
       {canOpenSession && (
-        <button type="button" className="rounded px-1.5 py-1 text-[10px] font-medium hover:bg-accent" onClick={() => {
+        <button type="button" className="rounded px-1.5 py-1 text-[0.625rem] font-medium hover:bg-accent" onClick={() => {
           if (view.threadId) actions?.openSession?.({ threadId: view.threadId });
         }}>{i18n.t(($) => $.ai.toolCard.openTask)}</button>
       )}
@@ -291,10 +291,10 @@ export function ResearchToolCard({
           <LiteratureResults view={view} actions={actions} />
           {diagnosticsList(view)}
           {preview && (
-            <pre data-select-all-scope className="max-h-80 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 px-2.5 py-2 font-mono text-[10px] text-muted-foreground">{preview}</pre>
+            <pre data-select-all-scope className="max-h-80 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 px-2.5 py-2 font-mono text-[0.625rem] text-muted-foreground">{preview}</pre>
           )}
           {artifactPreview && artifactPreviewBody(artifactPreview)}
-          {artifactError && <p className="py-1 text-[10px] text-destructive">{t(($) => $.ai.toolCard.previewFailed)}</p>}
+          {artifactError && <p className="py-1 text-[0.625rem] text-destructive">{t(($) => $.ai.toolCard.previewFailed)}</p>}
           {toolCardActions({
             view,
             actions,

@@ -1609,6 +1609,11 @@ body[data-tour-active] [data-tour-hide] {
   --cm-gutter-min-width: 2em;
 }
 
+.home-grid-fade {
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 0%, #000 30%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 0%, #000 30%, transparent 100%);
+}
+
 /* Scrollable, but with no visible bar. The tab strip needs to scroll
    horizontally without a track sitting under the tabs. */
 .no-scrollbar {

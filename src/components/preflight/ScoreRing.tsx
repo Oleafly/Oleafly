@@ -43,7 +43,7 @@ export const ScoreRing = memo(function ScoreRing({ label, score }: { label: stri
           {score ?? t(($) => $.preflight.score.notScored)}
         </div>
       </div>
-      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
     </div>
   );
 });

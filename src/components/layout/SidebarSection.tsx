@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight, MoreHorizontal, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,7 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const SIDEBAR_TITLE_CLASS =
-  "text-[11px] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75";
+  "text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75";
 
 export function SidebarPanelHeader({
   icon: Icon,
@@ -124,7 +125,10 @@ export function SidebarSection({
           {typeof count === "number" ? (
             <output
               aria-label={countLabel}
-              className="shrink-0 rounded-sm bg-muted px-1 font-mono text-[9px] font-normal tracking-normal text-muted-foreground"
+              className={cn(
+                badgeVariants({ variant: "primaryGhost", size: "sm" }),
+                "font-mono font-normal tabular-nums tracking-normal",
+              )}
             >
               {count}
             </output>

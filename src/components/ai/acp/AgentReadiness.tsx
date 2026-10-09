@@ -135,7 +135,7 @@ export function BridgeInstallCard({
         </Button>
       )}
       {readiness === "bridge-missing" && hint && (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
           {displayText(hint)}
         </p>
       )}

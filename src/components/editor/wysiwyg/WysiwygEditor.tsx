@@ -372,7 +372,7 @@ function VisualProofreadingPopover({
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
             {issue.source === "hunspell"
               ? t(($) => $.editor.visual.spelling)
               : t(($) => $.editor.visual.grammarAndStyle)}

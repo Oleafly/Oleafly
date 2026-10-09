@@ -155,7 +155,7 @@ function SourceBadge({
       className={cn(
         "inline-flex items-center rounded-full border border-border/80 bg-muted/35 font-medium text-muted-foreground",
         compact
-          ? "gap-1.5 px-2 py-0.5 text-[10px]"
+          ? "gap-1.5 px-2 py-0.5 text-[0.625rem]"
           : "gap-1.5 px-2.5 py-1 text-xs",
       )}
     >
@@ -241,7 +241,7 @@ function SourceSelector({
               >
                 <Pause className="size-3.5 opacity-65" aria-hidden="true" />
                 {source.label}
-                <span className="text-[9px] uppercase tracking-wide">
+                <span className="text-[0.5625rem] uppercase tracking-wide">
                   {t(($) => $.researchTools.literature.pausedTag)}
                 </span>
               </span>
@@ -302,7 +302,7 @@ function SourceRunSummary({ runs }: Readonly<{ runs: LiteratureSourceRun[] }>) {
           >
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 text-[11px]",
+                "inline-flex items-center gap-1.5 text-[0.6875rem]",
                 run.status === "error"
                   ? "text-amber-700 dark:text-amber-400"
                   : "text-muted-foreground",
@@ -346,7 +346,7 @@ function ResultRow({
               <SourceBadge key={source} source={source} compact />
             ))}
             {record.year && (
-              <span className="text-[11px] tabular-nums text-muted-foreground">
+              <span className="text-[0.6875rem] tabular-nums text-muted-foreground">
                 {record.year}
               </span>
             )}
@@ -514,11 +514,11 @@ function EmptySearch({
                   onClick={() => onTry(suggestion.query)}
                   className="group flex w-full items-center gap-3 border-b border-border/60 py-2.5 text-left text-sm text-muted-foreground transition-colors last:border-b-0 hover:text-foreground"
                 >
-                  <span className="font-mono text-[11px] text-muted-foreground/60">
+                  <span className="font-mono text-[0.6875rem] text-muted-foreground/60">
                     {`0${index + 1}`}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+                    <span className="block text-[0.625rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
                       {suggestion.domain()}
                     </span>
                     <span className="mt-0.5 block text-foreground/85">
@@ -1088,7 +1088,7 @@ export function LiteratureSearchPanel() {
                 {t(($) => $.researchTools.literature.eyebrow)}
               </p>
               <span className="h-4 w-px bg-border" />
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[0.6875rem] text-muted-foreground">
                 {t(($) => $.researchTools.literature.openSource)}
               </span>
             </div>

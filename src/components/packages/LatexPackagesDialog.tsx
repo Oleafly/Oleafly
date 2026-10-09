@@ -205,7 +205,7 @@ function LatexPackageRow({ pkg, context }: Readonly<{ pkg: LatexPackageEntry; co
           target="_blank"
           rel="noopener noreferrer"
           aria-label={t(($) => $.editor.latexPackages.ctanAria, { name: pkg.name })}
-          className="ml-auto inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+          className="ml-auto inline-flex items-center gap-1 text-[0.6875rem] font-medium text-primary hover:underline"
         >
           {t(($) => $.editor.latexPackages.ctan)}
           <ExternalLink aria-hidden="true" className="size-3" />
@@ -221,7 +221,7 @@ function LatexPackageRow({ pkg, context }: Readonly<{ pkg: LatexPackageEntry; co
             aria-label={t(($) => $.editor.latexPackages.optionsAria, { name: pkg.name })}
             aria-invalid={normalized === null}
             maxLength={200}
-            className={cn("h-6 w-36 px-2 py-0 font-mono text-[11px]", normalized === null && "border-destructive")}
+            className={cn("h-6 w-36 px-2 py-0 font-mono text-[0.6875rem]", normalized === null && "border-destructive")}
           />
         )}
         <Button
@@ -260,7 +260,7 @@ function LatexPackageRow({ pkg, context }: Readonly<{ pkg: LatexPackageEntry; co
           </Button>
         )}
       </div>
-      {rowNote && <p className="text-[11px] text-muted-foreground">{rowNote}</p>}
+      {rowNote && <p className="text-[0.6875rem] text-muted-foreground">{rowNote}</p>}
     </div>
   );
 }
@@ -279,8 +279,8 @@ function renderLatexNotice(context: LatexRowContext) {
   if (!note && !packageError && !packageNotice && !context.blocked && !context.message) return null;
   return (
     <>
-      {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
-      {context.blocked && <p className="text-[11px] text-muted-foreground">{context.blocked}</p>}
+      {note && <p className="text-[0.6875rem] text-muted-foreground">{note}</p>}
+      {context.blocked && <p className="text-[0.6875rem] text-muted-foreground">{context.blocked}</p>}
       {packageNotice && <output className="block text-xs text-muted-foreground">{packageNotice}</output>}
       {packageError && (
         <p role="alert" className="select-text whitespace-pre-wrap break-words text-xs text-destructive">

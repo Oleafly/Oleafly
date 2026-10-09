@@ -203,7 +203,7 @@ export function TaskOutputsSection() {
         <span className={cn("flex-1", SIDEBAR_TITLE_CLASS)}>
           {t(($) => $.researchTools.outputs.title)}
         </span>
-        <Badge variant="quiet" className="px-1.5 text-[10px] tabular-nums">
+        <Badge variant="quiet" className="px-1.5 text-[0.625rem] tabular-nums">
           {groups.length}
         </Badge>
       </button>
@@ -237,7 +237,7 @@ export function TaskOutputsSection() {
                   className="flex w-full items-center gap-1.5 rounded-md py-1 pl-6 pr-2 text-left text-xs text-sidebar-foreground hover:bg-sidebar-accent"
                   onClick={() => void openFile(task, change)}
                 >
-                  <span className="w-3 shrink-0 font-mono text-[10px] text-muted-foreground">
+                  <span className="w-3 shrink-0 font-mono text-[0.625rem] text-muted-foreground">
                     {CHANGE_MARKS[change.kind]}
                   </span>
                   <span className="min-w-0 truncate">{change.path}</span>
@@ -252,7 +252,7 @@ export function TaskOutputsSection() {
                 >
                   <Paperclip aria-hidden="true" className="size-3 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 truncate">{artifact.label}</span>
-                  <span className="min-w-0 shrink truncate font-mono text-[10px] text-muted-foreground">
+                  <span className="min-w-0 shrink truncate font-mono text-[0.625rem] text-muted-foreground">
                     {artifact.path}
                   </span>
                 </button>

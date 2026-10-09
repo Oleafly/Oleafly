@@ -644,7 +644,9 @@
       },
       "fontSize": {
         "description": "Define el tamaño del texto del editor de código.",
-        "label": "Tamaño de letra del editor"
+        "label": "Tamaño de letra del editor",
+        "custom": "Personalizado",
+        "customLabel": "Tamaño de letra del editor personalizado, en píxeles"
       },
       "ghostCompletion": {
         "description": "Muestra el final probable después del cursor. Pulsa Tab para aceptarlo.",
@@ -681,6 +683,16 @@
           "custom": "Personalizado"
         },
         "customLabel": "Interlineado personalizado"
+      },
+      "letterSpacing": {
+        "customLabel": "Espaciado entre letras personalizado, en píxeles",
+        "description": "Añade espacio entre los caracteres del editor de código. También deja más sitio alrededor del cursor.",
+        "label": "Espaciado entre letras",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Personalizado"
+        }
       },
       "cursorWidth": {
         "label": "Grosor del cursor",

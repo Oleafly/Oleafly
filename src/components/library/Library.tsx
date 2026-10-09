@@ -1141,7 +1141,7 @@ export function Library() {
       data-projects-loaded={projectsLoaded ? "true" : "false"}
       className="relative flex h-full flex-row bg-[var(--home-background)]"
     >
-      {bgPattern === "grid" ? <GridPattern width={22} height={22} /> : null}
+      {bgPattern === "grid" ? <GridPattern width={44} height={44} className="home-grid-fade" /> : null}
       {bgPattern === "dots" ? (
         <>
           <DotPattern width={22} height={22} radius={1} className="dark:hidden" />

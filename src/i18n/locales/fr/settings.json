@@ -644,7 +644,9 @@
       },
       "fontSize": {
         "description": "Définissez la taille du texte de l'éditeur de source.",
-        "label": "Taille de police de l'éditeur"
+        "label": "Taille de police de l'éditeur",
+        "custom": "Personnalisée",
+        "customLabel": "Taille de police personnalisée de l'éditeur, en pixels"
       },
       "ghostCompletion": {
         "description": "Afficher la complétion probable après le curseur. Appuyez sur Tab pour l'accepter.",
@@ -681,6 +683,16 @@
           "custom": "Personnalisée"
         },
         "customLabel": "Hauteur de ligne personnalisée"
+      },
+      "letterSpacing": {
+        "customLabel": "Espacement des lettres personnalisé, en pixels",
+        "description": "Ajoute de l'espace entre les caractères dans l'éditeur de source. Cela laisse aussi plus de place autour du curseur.",
+        "label": "Espacement des lettres",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Personnalisé"
+        }
       },
       "cursorWidth": {
         "label": "Épaisseur du curseur",

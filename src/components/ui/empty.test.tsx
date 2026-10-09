@@ -40,7 +40,7 @@ describe("EmptyState", () => {
       <EmptyState testId="empty" size="compact" title={TITLE} description={DESCRIPTION} />,
     );
     expect(screen.getByText(TITLE)).toHaveClass("text-xs");
-    expect(screen.getByText(DESCRIPTION)).toHaveClass("text-[11px]");
+    expect(screen.getByText(DESCRIPTION)).toHaveClass("text-[0.6875rem]");
 
     rerender(<EmptyState testId="empty" icon={<span data-testid="empty-icon" />} />);
     expect(screen.getByTestId("empty").children).toHaveLength(1);

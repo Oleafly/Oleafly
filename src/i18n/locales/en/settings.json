@@ -639,7 +639,9 @@
       },
       "fontSize": {
         "description": "Set the source editor's text size.",
-        "label": "Editor font size"
+        "label": "Editor font size",
+        "custom": "Custom",
+        "customLabel": "Custom editor font size in pixels"
       },
       "ghostCompletion": {
         "description": "Show the likely completion after the cursor. Press Tab to accept it.",
@@ -676,6 +678,16 @@
           "custom": "Custom"
         },
         "customLabel": "Custom line height"
+      },
+      "letterSpacing": {
+        "customLabel": "Custom letter spacing in pixels",
+        "description": "Add space between the characters in the source editor. It also leaves more room around the cursor.",
+        "label": "Letter spacing",
+        "option": "+{{value}}px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Custom"
+        }
       },
       "cursorWidth": {
         "label": "Cursor width",

@@ -639,7 +639,9 @@
       },
       "fontSize": {
         "description": "Ange textstorleken i källkodsredigeraren.",
-        "label": "Redigerarens teckenstorlek"
+        "label": "Redigerarens teckenstorlek",
+        "custom": "Anpassad",
+        "customLabel": "Anpassad teckenstorlek i redigeraren i pixlar"
       },
       "ghostCompletion": {
         "description": "Visa den troliga kompletteringen efter markören. Tryck på Tab för att acceptera den.",
@@ -676,6 +678,16 @@
           "custom": "Anpassad"
         },
         "customLabel": "Anpassad radhöjd"
+      },
+      "letterSpacing": {
+        "customLabel": "Anpassat teckenavstånd i pixlar",
+        "description": "Lägger till avstånd mellan tecknen i källredigeraren. Det ger också mer plats runt markören.",
+        "label": "Teckenavstånd",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Normal",
+          "custom": "Anpassad"
+        }
       },
       "cursorWidth": {
         "label": "Markörbredd",

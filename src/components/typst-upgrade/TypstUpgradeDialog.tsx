@@ -83,7 +83,7 @@ function FindingRow({
         </Badge>
         <span className="flex min-w-0 flex-col gap-0.5">
           <span className="break-words text-xs">{finding.message}</span>
-          {location && <span className="truncate font-mono text-[11px] text-muted-foreground">{location}</span>}
+          {location && <span className="truncate font-mono text-[0.6875rem] text-muted-foreground">{location}</span>}
         </span>
       </button>
     </li>
@@ -145,7 +145,7 @@ function ReportView({
             <p className="text-xs text-destructive">
               {t(($) => $.shell.typstUpgrade.buildFailed, { version: run.version })}
             </p>
-            <pre data-select-all-scope className="max-h-32 select-text overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono text-[11px]">
+            <pre data-select-all-scope className="max-h-32 select-text overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono text-[0.6875rem]">
               {run.failure}
             </pre>
           </div>

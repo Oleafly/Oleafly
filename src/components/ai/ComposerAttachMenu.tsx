@@ -51,7 +51,7 @@ export function ComposerAttachMenu({ commands }: Readonly<{ commands: ComposerCo
             <command.icon className="mt-0.5 size-4 shrink-0 text-primary" />
             <span className="min-w-0 flex-1">
               <span className="block text-xs font-medium leading-snug">{command.label}</span>
-              <span className="block text-[11px] leading-snug text-muted-foreground">
+              <span className="block text-[0.6875rem] leading-snug text-muted-foreground">
                 {command.description}
               </span>
             </span>

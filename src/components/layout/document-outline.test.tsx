@@ -144,7 +144,7 @@ describe("DocumentOutline", () => {
       .toBeInTheDocument();
     expect(
       screen.getByText("LaTeX systems vs. alternatives").closest("button"),
-    ).toHaveClass("text-[13px]");
+    ).toHaveClass("text-[0.8125rem]");
   });
 
   it("expands project macros from the indexed texts instead of every keystroke", () => {

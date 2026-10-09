@@ -78,7 +78,7 @@ import {
 } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
-import { editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
+import { editorLetterSpacingValue, editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
 import { fontFamilyName, fontFamilyStack } from "@/lib/font-families";
 import { applyAppTypography } from "@/lib/app-typography";
 import { registerBrowserCuaSurface } from "@/lib/browser-window";
@@ -397,6 +397,8 @@ function AppContent() {
   const editorLineHeight = useSettingsStore((s) => s.editorLineHeight);
   const editorCustomLineHeight = useSettingsStore((s) => s.editorCustomLineHeight);
   const editorCursorWidth = useSettingsStore((s) => s.editorCursorWidth);
+  const editorLetterSpacing = useSettingsStore((s) => s.editorLetterSpacing);
+  const editorCustomLetterSpacing = useSettingsStore((s) => s.editorCustomLetterSpacing);
   const editorCursorColorLight = useSettingsStore((s) => s.editorCursorColorLight);
   const editorCursorColorDark = useSettingsStore((s) => s.editorCursorColorDark);
   const accentColor = useSettingsStore((s) => s.accentColor);
@@ -589,6 +591,10 @@ function AppContent() {
       "--cm-line-height",
       String(editorLineHeightValue(editorLineHeight, editorCustomLineHeight)),
     );
+    root.style.setProperty(
+      "--cm-letter-spacing",
+      `${editorLetterSpacingValue(editorLetterSpacing, editorCustomLetterSpacing)}px`,
+    );
     root.style.setProperty("--cm-cursor-width", `${editorCursorWidth}px`);
     for (const [surface, color] of [
       ["light", editorCursorColorLight],
@@ -605,6 +611,8 @@ function AppContent() {
     editorFontFamily,
     editorLineHeight,
     editorCustomLineHeight,
+    editorLetterSpacing,
+    editorCustomLetterSpacing,
     editorCursorWidth,
     editorCursorColorLight,
     editorCursorColorDark,

@@ -292,7 +292,7 @@ export function DiffView() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex h-8 shrink-0 items-center gap-2 border-b px-2">
         <GitCompare className="size-3.5 shrink-0 text-muted-foreground" />
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-[0.6875rem] text-muted-foreground">
           {t(($) => $.editor.diff[DIFF_SIDE_HEADING[diff.side]])}
         </span>
         <div className="ml-auto flex items-center gap-1">

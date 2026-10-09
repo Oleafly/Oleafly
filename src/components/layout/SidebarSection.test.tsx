@@ -82,7 +82,7 @@ describe("SidebarPanelHeader", () => {
 
     expect(container.querySelector("svg")).toHaveClass("size-3.5", "shrink-0");
     const title = screen.getByRole("heading", { name: RESEARCH });
-    expect(title).toHaveClass("min-w-0", "truncate", "text-[11px]", "uppercase");
+    expect(title).toHaveClass("min-w-0", "truncate", "text-[0.6875rem]", "uppercase");
     expect(title).toHaveAttribute("title", RESEARCH);
     const configure = screen.getByRole("button", { name: CONFIGURE });
     expect(configure.parentElement).toBe(title.parentElement);
@@ -101,7 +101,7 @@ describe("SidebarPanelHeader", () => {
 
     const panelTitle = screen.getByRole("heading", { name: SEARCH }).className;
     const sectionButton = screen.getByRole("button", { name: TITLE });
-    for (const token of ["text-[11px]", "font-semibold", "uppercase", "tracking-[0.08em]"]) {
+    for (const token of ["text-[0.6875rem]", "font-semibold", "uppercase", "tracking-[0.08em]"]) {
       expect(panelTitle).toContain(token);
       expect(sectionButton).toHaveClass(token);
     }

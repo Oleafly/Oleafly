@@ -55,14 +55,14 @@ function CitationRow({
           {completion.key}
         </span>
         {completion.duplicate && (
-          <span className="text-[9px] font-medium text-amber-700 dark:text-amber-300">
+          <span className="text-[0.5625rem] font-medium text-amber-700 dark:text-amber-300">
             {t(($) => $.editor.citations.duplicate, {
               index: completion.duplicateIndex + 1,
               total: completion.duplicateCount,
             })}
           </span>
         )}
-        <span className="col-span-2 truncate text-[10px] text-muted-foreground">
+        <span className="col-span-2 truncate text-[0.625rem] text-muted-foreground">
           {t(($) => $.editor.citations.entryLocation, {
             detail: completion.detail,
             file: completion.location.file,
@@ -219,7 +219,7 @@ function CitationPickerContent({
 
       {intelligenceState.status === "partial" ||
       current?.snapshot.status === "partial" ? (
-        <output className="block border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[10px] text-amber-800 dark:text-amber-200">
+        <output className="block border-b border-amber-500/20 bg-amber-500/8 px-2.5 py-1.5 text-[0.625rem] text-amber-800 dark:text-amber-200">
           {t(($) => $.editor.citations.partialCatalog)}
         </output>
       ) : null}
@@ -263,7 +263,7 @@ function CitationPickerContent({
           ))}
         {zoteroHits.length > 0 && (
           <div data-testid="citation-picker-zotero">
-            <p className="px-2 pb-0.5 pt-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="px-2 pb-0.5 pt-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
               {t(($) => $.editor.citations.zoteroHeading)}
             </p>
             {zoteroHits.map((hit) => (
@@ -273,7 +273,7 @@ function CitationPickerContent({
                   style={{ contentVisibility: "auto", containIntrinsicSize: "36px" }}
                 >
                   <span className="truncate font-mono text-xs">{hit.citationKey}</span>
-                  <span className="truncate text-[10px] text-muted-foreground">
+                  <span className="truncate text-[0.625rem] text-muted-foreground">
                     {[hitByline(hit), truncated(hitTitle(hit)), libraryLabel(hit, zoteroStatus)].filter(Boolean).join(" · ")}
                   </span>
                 </span>

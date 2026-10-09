@@ -556,6 +556,18 @@ describe("project workspace", () => {
     expect(root.style.getPropertyValue("--cm-cursor-width")).toBe("3px");
   });
 
+  it("applies the editor letter spacing to the document root", async () => {
+    useSettingsStore.setState({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 2.5 });
+    await renderApp();
+    const root = document.documentElement;
+    expect(root.style.getPropertyValue("--cm-letter-spacing")).toBe("0px");
+    act(() => useSettingsStore.setState({ editorLetterSpacing: "slight" }));
+    expect(root.style.getPropertyValue("--cm-letter-spacing")).toBe("0.5px");
+    act(() => useSettingsStore.setState({ editorLetterSpacing: "custom" }));
+    expect(root.style.getPropertyValue("--cm-letter-spacing")).toBe("2.5px");
+    act(() => useSettingsStore.setState({ editorLetterSpacing: "normal" }));
+  });
+
   it("sets a cursor color for light and dark editor themes only while each is custom", async () => {
     useSettingsStore.setState({ editorCursorColorLight: "#ff8800", editorCursorColorDark: "" });
     await renderApp();

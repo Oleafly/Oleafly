@@ -316,7 +316,7 @@ export function SubagentActivity({
               data-subagent-status={status}
               aria-expanded={open}
               className={cn(
-                "flex items-center gap-1.5 rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] transition-colors hover:bg-accent",
+                "flex items-center gap-1.5 rounded-full border border-border/70 bg-background px-2 py-0.5 text-[0.6875rem] transition-colors hover:bg-accent",
                 open && "bg-accent",
               )}
               onClick={() => {
@@ -327,7 +327,7 @@ export function SubagentActivity({
             >
               <span
                 aria-hidden
-                className="flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                className="flex size-4 shrink-0 items-center justify-center rounded-full text-[0.5625rem] font-bold text-white"
                 style={{ backgroundColor: `hsl(${avatarHue(agent.id)} 55% 45%)` }}
               >
                 {agent.label.slice(0, 1).toUpperCase()}
@@ -347,7 +347,7 @@ export function SubagentActivity({
         })}
       </div>
       {expanded && (
-        <div className="rounded-md border border-border/60 bg-background px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
+        <div className="rounded-md border border-border/60 bg-background px-2.5 py-2 text-[0.6875rem] leading-snug text-muted-foreground">
           <div className="mb-1 flex items-center gap-2">
             <span className="font-medium text-foreground">
               {agents.find((agent) => agent.id === expanded)?.label}
@@ -362,7 +362,7 @@ export function SubagentActivity({
             {transcript?.agent === expanded && transcript.type === "acp" ? (
               <div className="max-h-80 space-y-2 overflow-y-auto">
                 {transcript.truncated && (
-                  <p className="text-[10px]">{t(($) => $.ai.subagents.transcriptTruncated)}</p>
+                  <p className="text-[0.625rem]">{t(($) => $.ai.subagents.transcriptTruncated)}</p>
                 )}
                 {transcript.rows.length > 0 ? transcript.rows.slice(-80).map((row) => (
                   <MessageItem
@@ -394,7 +394,7 @@ export function SubagentActivity({
                       <p
                         key={notice}
                         data-testid="agent-notice"
-                        className="mt-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[10px] leading-snug"
+                        className="mt-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-[0.625rem] leading-snug"
                       >
                         {notice}
                       </p>
@@ -408,7 +408,7 @@ export function SubagentActivity({
             const agent = agents.find((value) => value.id === expanded);
             const details = [agent?.runtimeAgentId, agent?.providerId, agent?.modelId].filter(Boolean);
             return details.length > 0 ? (
-              <p className="mt-2 text-[10px] text-muted-foreground">{details.join(" · ")}</p>
+              <p className="mt-2 text-[0.625rem] text-muted-foreground">{details.join(" · ")}</p>
             ) : null;
           })()}
           {onOpenSession && (
@@ -426,13 +426,13 @@ export function SubagentActivity({
         </div>
       )}
       {anyAwaiting && (
-        <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-1.5 text-[0.6875rem] text-amber-600 dark:text-amber-400">
           <ShieldAlert className="size-3" />
           {t(($) => $.ai.subagents.awaitingPermission)}
         </div>
       )}
       {agents.some((agent) => agentStatus(agent.kind) === "failed") && (
-        <div className="flex items-center gap-1.5 text-[11px] text-destructive">
+        <div className="flex items-center gap-1.5 text-[0.6875rem] text-destructive">
           <XCircle className="size-3" />
           {t(($) => $.ai.subagents.taskFailed)}
         </div>

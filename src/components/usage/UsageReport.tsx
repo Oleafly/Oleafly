@@ -388,7 +388,7 @@ function Metric({
       <dd className="mt-1 text-xl font-semibold tabular-nums" title={exact}>
         {value}
       </dd>
-      <dd className="mt-1 text-[11px] text-muted-foreground">{detail}</dd>
+      <dd className="mt-1 text-[0.6875rem] text-muted-foreground">{detail}</dd>
     </div>
   );
 }
@@ -546,7 +546,7 @@ function UsageTrend({ report }: Readonly<{ report: UsageReportData }>) {
         {hovered && (
           <div
             role="status"
-            className="pointer-events-none absolute top-0 z-10 rounded-md border bg-popover px-2 py-1 text-[11px] text-popover-foreground shadow-md motion-safe:transition-opacity"
+            className="pointer-events-none absolute top-0 z-10 rounded-md border bg-popover px-2 py-1 text-[0.6875rem] text-popover-foreground shadow-md motion-safe:transition-opacity"
             style={{
               left: `${chart.x(hover ?? 0)}%`,
               transform: `translateX(${(hover ?? 0) > series.length / 2 ? "calc(-100% - 8px)" : "8px"})`,
@@ -567,7 +567,7 @@ function UsageTrend({ report }: Readonly<{ report: UsageReportData }>) {
           </div>
         )}
       </div>
-      <div className="relative mt-1 h-4 text-[10px] text-muted-foreground">
+      <div className="relative mt-1 h-4 text-[0.625rem] text-muted-foreground">
         {chart.ticks.map((tick, position) => (
           <span
             key={tick.index}
@@ -632,14 +632,14 @@ function UsageHeatmap({ report }: Readonly<{ report: UsageReportData }>) {
       >
         <span />
         {HOURS.map((hour) => (
-          <span key={`hour-${hour}`} className="text-center text-[9px] text-muted-foreground">
+          <span key={`hour-${hour}`} className="text-center text-[0.5625rem] text-muted-foreground">
             {hour % 6 === 0 ? hour : ""}
           </span>
         ))}
         {WEEKDAY_KEYS.flatMap((weekdayKey, weekdayIndex) => {
           const weekday = weekdays[weekdayKey];
           const row: ReactNode[] = [
-            <span key={weekdayKey} className="text-[10px] leading-4 text-muted-foreground">
+            <span key={weekdayKey} className="text-[0.625rem] leading-4 text-muted-foreground">
               {weekday}
             </span>,
           ];
@@ -679,7 +679,7 @@ function UsageHeatmap({ report }: Readonly<{ report: UsageReportData }>) {
           return row;
         })}
       </div>
-      <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+      <div className="mt-2 flex items-center justify-between text-[0.625rem] text-muted-foreground">
         <span>{t(($) => $.usage.heatmap.hoursInUtc)}</span>
         <span className="flex items-center gap-1">
           {t(($) => $.usage.heatmap.less)}
@@ -831,7 +831,7 @@ function SessionsTable({
               <Truncated value={session.sessionId} label={shortIdentifier(session.sessionId)} className="max-w-[10rem] font-medium" />
             )}
             {scope && (
-              <Badge variant="quiet" className="text-[10px]">
+              <Badge variant="quiet" className="text-[0.625rem]">
                 {scope}
               </Badge>
             )}
@@ -881,12 +881,12 @@ function SessionsTable({
           </Tooltip>
         </TableCell>
         <TableCell>
-          <Badge variant="quiet" className="text-[10px]">
+          <Badge variant="quiet" className="text-[0.625rem]">
             {billingLabel(session.billingMode)}
           </Badge>
         </TableCell>
         <TableCell>
-          <Badge variant="outline" className={cn("text-[10px]", statusClass(session.status))}>
+          <Badge variant="outline" className={cn("text-[0.625rem]", statusClass(session.status))}>
             {statusLabel(session.status)}
           </Badge>
         </TableCell>
@@ -899,7 +899,7 @@ function SessionsTable({
       <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
         <div>
           <h3 className="text-sm font-medium">{t(($) => $.usage.sessions.title)}</h3>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[0.6875rem] text-muted-foreground">
             {t(($) => $.usage.sessions.subtitle)}
           </p>
         </div>
@@ -1220,7 +1220,7 @@ function FilterSelect({
 }>) {
   return (
     <div className="min-w-0 space-y-1">
-      <span className="block text-[11px] leading-4 text-muted-foreground">{label}</span>
+      <span className="block text-[0.6875rem] leading-4 text-muted-foreground">{label}</span>
       <Select value={value || ALL} onValueChange={(next) => onChange(next === ALL ? "" : next)}>
         <SelectTrigger className="h-8 text-xs" aria-label={label}>
           <SelectValue />
@@ -1368,7 +1368,7 @@ export function UsageReportDialog({
         >
           <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
             <div className="space-y-1">
-              <span className="block text-[11px] leading-4 text-muted-foreground">
+              <span className="block text-[0.6875rem] leading-4 text-muted-foreground">
                 {t(($) => $.usage.dialog.from)}
               </span>
               <DatePicker
@@ -1380,7 +1380,7 @@ export function UsageReportDialog({
               />
             </div>
             <div className="space-y-1">
-              <span className="block text-[11px] leading-4 text-muted-foreground">
+              <span className="block text-[0.6875rem] leading-4 text-muted-foreground">
                 {t(($) => $.usage.dialog.through)}
               </span>
               <DatePicker
@@ -1402,7 +1402,7 @@ export function UsageReportDialog({
                   variant="ghost"
                   aria-pressed={quickRange === range.id}
                   className={cn(
-                    "h-6.5 rounded-[5px] px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground",
+                    "h-6.5 rounded-[5px] px-2.5 text-[0.6875rem] font-medium text-muted-foreground hover:text-foreground",
                     quickRange === range.id && "bg-secondary text-foreground shadow-sm hover:bg-secondary",
                   )}
                   onClick={() => applyQuickRange(range.id)}
@@ -1411,7 +1411,7 @@ export function UsageReportDialog({
                 </Button>
               ))}
             </fieldset>
-            <span className="flex h-8 items-center text-[11px] text-muted-foreground">
+            <span className="flex h-8 items-center text-[0.6875rem] text-muted-foreground">
               {t(($) => $.usage.dialog.utcNote)}
             </span>
             <div className="ml-auto flex h-8 items-center gap-2">

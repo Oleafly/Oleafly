@@ -58,7 +58,7 @@ function PackageRow({
       </div>
       {pkg.description && <p className="line-clamp-2 text-xs text-muted-foreground">{pkg.description}</p>}
       {tooNew && pkg.compiler && typstVersion && (
-        <p className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-300">
+        <p className="flex items-center gap-1.5 text-[0.6875rem] text-amber-700 dark:text-amber-300">
           <AlertTriangle aria-hidden="true" className="size-3 shrink-0" />
           {t(($) => $.editor.typstPackages.needsTypst, { version: pkg.compiler, current: typstVersion })}
         </p>
@@ -86,7 +86,7 @@ function PackageRow({
           {copied ? t(($) => $.common.actions.copied) : t(($) => $.editor.typstPackages.copy)}
         </Button>
         {!canInsert && (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-[0.6875rem] text-muted-foreground">
             {t(($) => $.editor.typstPackages.insertNeedsFile)}
           </span>
         )}
@@ -168,7 +168,7 @@ function VendorSection({ projectId, offline }: Readonly<{ projectId: string; off
           <label htmlFor="typst-packages-vendor-toggle" className="text-sm">
             {t(($) => $.editor.typstPackages.vendor.toggle)}
           </label>
-          <p className="text-[11px] text-muted-foreground">{t(($) => $.editor.typstPackages.vendor.detail)}</p>
+          <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.editor.typstPackages.vendor.detail)}</p>
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">

@@ -94,7 +94,7 @@ export function Shimmer({ text }: Readonly<{ text?: string }>) {
 export function InfoHint({ message }: Readonly<{ message: string }>) {
   return (
     <Popover ariaLabel={message} trigger={<Info className="size-4" />} className="w-60 p-2.5">
-      <p className="text-[11px] leading-relaxed text-muted-foreground">{message}</p>
+      <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">{message}</p>
     </Popover>
   );
 }
@@ -135,7 +135,7 @@ function AgentTodoList({ todos }: Readonly<{ todos: readonly AgentTodo[] }>) {
             status: todoStatusLabel(todo.status),
             content: displayText(todo.content),
           })}
-          className="flex items-start gap-1.5 text-[11px] leading-snug"
+          className="flex items-start gap-1.5 text-[0.6875rem] leading-snug"
         >
           {todo.status === "completed" && (
             <Check
@@ -186,7 +186,7 @@ function AgentPlanStatusBadge({ status }: Readonly<{ status: AgentPlanApproval["
     <span
       data-testid="agent-plan-status"
       className={cn(
-        "rounded-full px-1.5 py-px text-[10px] font-medium",
+        "rounded-full px-1.5 py-px text-[0.625rem] font-medium",
         status === "awaiting"
           ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
           : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
@@ -332,7 +332,7 @@ export function AgentStatusPill({
           show();
           setPinned(true);
         }}
-        className="pointer-events-auto inline-flex max-w-full items-center gap-1.5 rounded-full border bg-background/95 px-2.5 py-1 text-[10px] font-semibold tracking-wide text-muted-foreground shadow-md backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+        className="pointer-events-auto inline-flex max-w-full items-center gap-1.5 rounded-full border bg-background/95 px-2.5 py-1 text-[0.625rem] font-semibold tracking-wide text-muted-foreground shadow-md backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
       >
         {approval && (
           <span
@@ -380,7 +380,7 @@ export function AgentStatusPill({
             className="max-h-72 overflow-y-auto rounded-lg border bg-popover p-2.5 text-left text-popover-foreground shadow-lg"
           >
             <div className="mb-1.5 flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
                 {approval || hasSteps
                   ? t(($) => $.ai.chat.plan.headingPlan)
                   : t(($) => $.ai.chat.plan.headingChanges)}
@@ -441,7 +441,7 @@ function FileChangeRow({
     <span
       data-file-change-state={state}
       data-file-change-path={file.path}
-      className="flex min-w-0 items-center gap-2 text-[11px]"
+      className="flex min-w-0 items-center gap-2 text-[0.6875rem]"
     >
       <span className="min-w-0 flex-1 truncate text-foreground">{file.path}</span>
       <span className="shrink-0 tabular-nums text-emerald-600 dark:text-emerald-400">+{file.additions}</span>
@@ -465,7 +465,7 @@ function FileChangeDetails({ turn }: Readonly<{ turn: AgentFileChangeTurn }>) {
     <span className="block min-w-56 space-y-2 text-left font-normal">
       {changed.length > 0 && (
         <span className="block space-y-1.5">
-          <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="block text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
             {t(($) => $.ai.chat.fileChanges.changed)}
           </span>
           {changed.map((file) => (
@@ -475,7 +475,7 @@ function FileChangeDetails({ turn }: Readonly<{ turn: AgentFileChangeTurn }>) {
       )}
       {[...committed.entries()].map(([commitId, files]) => (
         <span key={commitId} data-commit-id={commitId} className="block space-y-1.5">
-          <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="block text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">
             {t(($) => $.ai.chat.fileChanges.committed, { commit: commitId.slice(0, 7) })}
           </span>
           {files.map((file) => (
@@ -512,7 +512,7 @@ export function AgentRunSummary({
     <div
       data-testid="agent-run-summary"
       data-plan={plan ? "true" : "false"}
-      className="rounded-md border bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground"
+      className="rounded-md border bg-muted/40 px-2.5 py-1.5 text-[0.6875rem] text-muted-foreground"
     >
       <div className="font-medium">
         {plan && <span>{t(($) => $.ai.chat.runSummary.plan)}</span>}
@@ -865,7 +865,7 @@ export function ReasoningBlock({
         <div
           ref={scrollRef}
           data-select-all-scope
-          className="ml-[0.4375rem] max-h-56 select-text overflow-x-hidden overflow-y-auto break-words border-l pl-3 py-1 text-[11px] leading-relaxed text-muted-foreground"
+          className="ml-[0.4375rem] max-h-56 select-text overflow-x-hidden overflow-y-auto break-words border-l pl-3 py-1 text-[0.6875rem] leading-relaxed text-muted-foreground"
         >
           {/* The reasoning trace is rendered as plain text, not Markdown. It is
               a raw thinking dump, often dense with partial LaTeX and long: the
@@ -939,7 +939,7 @@ function subagentOutput({
         data-testid="subagent-output"
         data-expanded={expanded ? "true" : "false"}
         className={cn(
-          "px-2.5 py-2 text-[11px] leading-relaxed text-foreground/90",
+          "px-2.5 py-2 text-[0.6875rem] leading-relaxed text-foreground/90",
           !expanded && "max-h-44 overflow-hidden",
         )}
       >
@@ -1014,7 +1014,7 @@ export function SubagentCard({
         {entry.modelId && (
           <span
             data-testid="subagent-model"
-            className="hidden max-w-[10rem] shrink-0 truncate rounded-full border bg-background px-1.5 py-px font-mono text-[10px] text-muted-foreground sm:inline"
+            className="hidden max-w-[10rem] shrink-0 truncate rounded-full border bg-background px-1.5 py-px font-mono text-[0.625rem] text-muted-foreground sm:inline"
           >
             {entry.modelId}
           </span>
@@ -1023,7 +1023,7 @@ export function SubagentCard({
         {settled && <span className="sr-only">{statusLabel}</span>}
       </div>
       {running && (
-        <div className="border-t px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground">
+        <div className="border-t px-2.5 py-1.5 text-[0.6875rem] leading-snug text-muted-foreground">
           <Shimmer text={statusLabel} />
         </div>
       )}
@@ -1034,7 +1034,7 @@ export function SubagentCard({
         <p
           key={notice}
           data-testid="agent-notice"
-          className="flex items-start gap-1.5 border-t bg-amber-500/5 px-2.5 py-1.5 text-[10px] leading-snug text-muted-foreground"
+          className="flex items-start gap-1.5 border-t bg-amber-500/5 px-2.5 py-1.5 text-[0.625rem] leading-snug text-muted-foreground"
         >
           <Info aria-hidden="true" className="mt-px size-3 shrink-0 text-amber-500" />
           <span className="min-w-0">{notice}</span>
@@ -1048,7 +1048,7 @@ export function SubagentCard({
                 type="button"
                 aria-expanded={expanded}
                 aria-controls={bodyId}
-                className="rounded px-1.5 py-1 text-[10px] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+                className="rounded px-1.5 py-1 text-[0.625rem] font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
                 onClick={() => setExpanded((value) => !value)}
               >
                 {expanded ? t(($) => $.common.actions.showLess) : t(($) => $.common.actions.showMore)}
@@ -1058,7 +1058,7 @@ export function SubagentCard({
           {openSession && (
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium text-foreground hover:bg-accent"
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[0.625rem] font-medium text-foreground hover:bg-accent"
               onClick={openSession}
             >
               {t(($) => $.ai.chat.subagent.openTask)}
@@ -1270,7 +1270,7 @@ function messageBubble({
           </Markdown>
         )}
       </div>
-      <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-0.5 text-[0.625rem] text-muted-foreground">
         {messageTime && (
           <time dateTime={messageIso} className="tabular-nums">
             {messageTime}
@@ -1350,7 +1350,7 @@ export const MessageItem = memo(function MessageItem({
       {msg.role === "user" && msg.steered && (
         <span
           data-testid="steered-message-label"
-          className="text-[10px] font-medium text-muted-foreground"
+          className="text-[0.625rem] font-medium text-muted-foreground"
         >
           {t(($) => $.ai.chat.steered)}
         </span>
@@ -1364,7 +1364,7 @@ export const MessageItem = memo(function MessageItem({
             return (
             <span
               key={`${identity}:${occurrence}`}
-              className="flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+              className="flex items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
             >
               <Paperclip className="size-3" />
               <span className="max-w-[140px] truncate">{a.name}</span>
@@ -1376,7 +1376,7 @@ export const MessageItem = memo(function MessageItem({
       {msg.role === "user" && msg.skill ? (
         <span
           data-testid="user-skill-chip"
-          className="flex max-w-[85%] items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+          className="flex max-w-[85%] items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
         >
           <Sparkles aria-hidden className="size-3 shrink-0" />
           <span className="truncate">{msg.skill.name}</span>
@@ -1386,7 +1386,7 @@ export const MessageItem = memo(function MessageItem({
         <p
           key={notice}
           data-testid="agent-notice"
-          className="max-w-[85%] select-text rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[11px] leading-snug text-muted-foreground"
+          className="max-w-[85%] select-text rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-[0.6875rem] leading-snug text-muted-foreground"
         >
           {notice}
         </p>

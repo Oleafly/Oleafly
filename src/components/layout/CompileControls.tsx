@@ -296,7 +296,7 @@ function AutoCompileMenuGroup({
           data-testid="typst-live-preview-note"
           title={livePreview.status === "failed" ? (livePreview.message ?? undefined) : undefined}
           className={cn(
-            "px-2 pb-1 text-[11px] whitespace-normal",
+            "px-2 pb-1 text-[0.6875rem] whitespace-normal",
             livePreview.status === "failed" ? "text-destructive" : "text-muted-foreground",
           )}
         >

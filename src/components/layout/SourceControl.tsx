@@ -780,7 +780,7 @@ export function SourceControl() {
             <p
               role={notice.ok ? undefined : "alert"}
               className={cn(
-                "text-[11px]",
+                "text-[0.6875rem]",
                 notice.ok ? "text-muted-foreground" : "select-text text-destructive",
               )}
             >
@@ -848,7 +848,7 @@ export function SourceControl() {
         onUnlink={unlinkRemote}
       />
       {credentialCleanupRequired ? (
-        <div className="mx-2 mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 p-2 text-[11px] text-amber-800 dark:text-amber-200">
+        <div className="mx-2 mt-2 rounded-md border border-amber-500/35 bg-amber-500/10 p-2 text-[0.6875rem] text-amber-800 dark:text-amber-200">
           <div className="flex items-start gap-2">
             <ShieldAlert className="mt-0.5 size-3.5 shrink-0" />
             <div>
@@ -880,7 +880,7 @@ export function SourceControl() {
             {conflicts.map((conflict) => (
               <li
                 key={conflict.path}
-                className="rounded border border-amber-500/20 bg-background/40 p-1.5 text-[11px]"
+                className="rounded border border-amber-500/20 bg-background/40 p-1.5 text-[0.6875rem]"
               >
                 <button
                   type="button"
@@ -999,7 +999,7 @@ export function SourceControl() {
               <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
                 <BookPlus aria-hidden className="size-3.5" />
               </span>
-              <p className="text-[11px] leading-4">
+              <p className="text-[0.6875rem] leading-4">
                 {t(($) => $.shell.sourceControl.noStagedChanges)}
               </p>
             </div>
@@ -1028,7 +1028,7 @@ export function SourceControl() {
               scrollMemory={scrollMemory}
             />
           ) : (
-            <p className="px-3 py-2 text-[11px] text-muted-foreground">
+            <p className="px-3 py-2 text-[0.6875rem] text-muted-foreground">
               {t(($) => $.shell.sourceControl.clean)}
             </p>
           )}
@@ -1078,7 +1078,7 @@ export function SourceControl() {
                         </Badge>
                       ))}
                     </div>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[0.625rem] text-muted-foreground">
                       {commit.author ?? commit.short}
                     </span>
                   </div>
@@ -1111,7 +1111,7 @@ export function SourceControl() {
               <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/60">
                 <GitCommitHorizontal aria-hidden className="size-3.5" />
               </span>
-              <p className="text-[11px] leading-4">
+              <p className="text-[0.6875rem] leading-4">
                 {t(($) => $.shell.sourceControl.noHistory)}
               </p>
             </div>
@@ -1125,7 +1125,7 @@ export function SourceControl() {
           role={notice.ok ? undefined : "alert"}
           aria-live={notice.ok ? "polite" : undefined}
           className={cn(
-            "m-2 select-text rounded-md border p-2 text-[11px]",
+            "m-2 select-text rounded-md border p-2 text-[0.6875rem]",
             notice.ok
               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
               : "border-destructive/30 bg-destructive/10 text-destructive",
@@ -1296,7 +1296,7 @@ export function GitMissingGuide({ os = HOST_OS }: Readonly<{ os?: HostOs }>) {
       </p>
       {os === "windows" ? (
         <>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
             {t(($) => $.shell.sourceControl.gitMissing.windows)}
           </p>
           <Button size="sm" onClick={() => void open(GIT_FOR_WINDOWS_URL)}>
@@ -1306,10 +1306,10 @@ export function GitMissingGuide({ os = HOST_OS }: Readonly<{ os?: HostOs }>) {
       ) : null}
       {os === "mac" ? (
         <>
-          <p className="text-[11px] leading-relaxed text-muted-foreground">
+          <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
             {t(($) => $.shell.sourceControl.gitMissing.mac)}
           </p>
-          <code className="select-all rounded bg-muted px-2 py-1 font-mono text-[11px]">
+          <code className="select-all rounded bg-muted px-2 py-1 font-mono text-[0.6875rem]">
             {MAC_TOOLS_COMMAND}
           </code>
           <Button size="sm" variant="outline" onClick={() => void copyCommand()}>
@@ -1325,7 +1325,7 @@ export function GitMissingGuide({ os = HOST_OS }: Readonly<{ os?: HostOs }>) {
         </>
       ) : null}
       {os === "linux" ? (
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
+        <p className="text-[0.6875rem] leading-relaxed text-muted-foreground">
           {t(($) => $.shell.sourceControl.gitMissing.linux)}
         </p>
       ) : null}
@@ -1402,7 +1402,7 @@ const ChangeRow = memo(function ChangeRow({
         <span className="min-w-0">
           <span className="block truncate text-xs font-medium">{name}</span>
           {directory ? (
-            <span className="block truncate text-[10px] text-muted-foreground">
+            <span className="block truncate text-[0.625rem] text-muted-foreground">
               {directory}
             </span>
           ) : null}
@@ -1560,7 +1560,7 @@ function Header({
               <Button
                 variant="ghost"
                 size="xs"
-                className="h-6 max-w-32 gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 text-[11px] text-emerald-700 hover:bg-emerald-500/15 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200 [&_svg]:size-3"
+                className="h-6 max-w-32 gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 text-[0.6875rem] text-emerald-700 hover:bg-emerald-500/15 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200 [&_svg]:size-3"
                 disabled={busy}
               >
                 <GitBranch aria-hidden />
@@ -1592,7 +1592,7 @@ function Header({
         ) : null}
         {aheadBehind && (aheadBehind.ahead > 0 || aheadBehind.behind > 0) ? (
           <span
-            className="shrink-0 text-[10px] tabular-nums text-muted-foreground"
+            className="shrink-0 text-[0.625rem] tabular-nums text-muted-foreground"
             title={aheadBehindLabel}
           >
             {compactAheadBehind}

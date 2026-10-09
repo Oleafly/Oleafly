@@ -3,9 +3,13 @@ import {
   BROWSER_SEARCH_ENGINES,
   DEFAULT_HIDDEN_FILE_PATTERNS,
   DEFAULT_TERMINAL_FONT_FAMILY,
+  EDITOR_LETTER_SPACINGS,
   EDITOR_LINE_HEIGHTS,
   TERMINAL_COLOR_THEMES,
+  clampEditorFontSize,
+  clampEditorLetterSpacing,
   clampEditorLineHeight,
+  editorLetterSpacingValue,
   editorLineHeightValue,
   fileTreePathIsHidden,
   resolveTerminalColorTheme,
@@ -433,6 +437,42 @@ describe("useSettingsStore reset", () => {
     expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
     expect(localStorage.getItem("oleafly.editor.cursorColor.light")).toBe("");
     expect(localStorage.getItem("oleafly.editor.cursorColor.dark")).toBe("");
+  });
+
+  it("keeps letter spacing to a preset or a custom value from 0 to 4 pixels", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState()).toMatchObject({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 0 });
+    settings.setEditorLetterSpacing("wide");
+    expect(localStorage.getItem("oleafly.editor.letterSpacing")).toBe("wide");
+    expect(editorLetterSpacingValue("wide", 3)).toBe(EDITOR_LETTER_SPACINGS.wide);
+    localStorage.removeItem("oleafly.editor.letterSpacingCustom");
+    settings.setEditorLetterSpacing("custom");
+    expect(useSettingsStore.getState().editorCustomLetterSpacing).toBe(1);
+    settings.setEditorCustomLetterSpacing(9);
+    expect(useSettingsStore.getState().editorCustomLetterSpacing).toBe(4);
+    expect(editorLetterSpacingValue("custom", 2.345)).toBe(2.35);
+    expect(clampEditorLetterSpacing(-1)).toBe(0);
+    expect(clampEditorLetterSpacing(Number.NaN)).toBe(0);
+    settings.setEditorLetterSpacing("tight" as never);
+    expect(useSettingsStore.getState().editorLetterSpacing).toBe("normal");
+    settings.setEditorLetterSpacing("wider");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState()).toMatchObject({ editorLetterSpacing: "normal", editorCustomLetterSpacing: 0 });
+  });
+
+  it("takes any editor font size from 6 to 100 pixels, like VS Code", () => {
+    const settings = useSettingsStore.getState();
+    settings.setEditorFontSize(28);
+    expect(useSettingsStore.getState().editorFontSize).toBe(28);
+    expect(localStorage.getItem("oleafly.fontSize")).toBe("28");
+    settings.setEditorFontSize(240);
+    expect(useSettingsStore.getState().editorFontSize).toBe(100);
+    settings.setEditorFontSize(2);
+    expect(useSettingsStore.getState().editorFontSize).toBe(6);
+    expect(clampEditorFontSize(13.37)).toBe(13.4);
+    expect(clampEditorFontSize(Number.NaN)).toBe(13);
+    settings.setEditorFontSize(13);
   });
 
   it("starts a first custom line height at the preset it replaces", () => {

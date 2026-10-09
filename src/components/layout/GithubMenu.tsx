@@ -83,7 +83,7 @@ export function GithubMenu({
           <span className="truncate">{t(($) => $.shell.githubMenu.copyRepositoryLink)}</span>
         </DropdownMenuItem>
         {!githubUrl && (
-          <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
+          <p className="px-2 py-1 pl-8 text-[0.625rem] text-muted-foreground">
             {t(($) => $.shell.githubMenu.pushHint)}
           </p>
         )}

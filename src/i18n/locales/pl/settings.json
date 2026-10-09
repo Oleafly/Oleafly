@@ -649,7 +649,9 @@
       },
       "fontSize": {
         "description": "Ustal rozmiar tekstu w edytorze kodu źródłowego.",
-        "label": "Rozmiar pisma edytora"
+        "label": "Rozmiar pisma edytora",
+        "custom": "Niestandardowy",
+        "customLabel": "Niestandardowy rozmiar pisma edytora w pikselach"
       },
       "ghostCompletion": {
         "description": "Pokazuj prawdopodobne uzupełnienie za kursorem. Naciśnij Tab, aby je przyjąć.",
@@ -686,6 +688,16 @@
           "custom": "Niestandardowa"
         },
         "customLabel": "Niestandardowa wysokość wiersza"
+      },
+      "letterSpacing": {
+        "customLabel": "Niestandardowy odstęp między literami w pikselach",
+        "description": "Dodaje odstęp między znakami w edytorze źródła. Zostawia też więcej miejsca wokół kursora.",
+        "label": "Odstęp między literami",
+        "option": "+{{value}} px",
+        "options": {
+          "normal": "Zwykły",
+          "custom": "Niestandardowy"
+        }
       },
       "cursorWidth": {
         "label": "Szerokość kursora",

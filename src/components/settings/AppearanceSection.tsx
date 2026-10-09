@@ -16,6 +16,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n } from "@/i18n";
 import { editorThemeCursorColor } from "@/lib/editor-cursor-color";
+import { formatNumber } from "@/lib/intl";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import {
@@ -23,7 +24,12 @@ import {
   BROWSER_SEARCH_ENGINES,
   EDITOR_CURSOR_WIDTHS,
   EDITOR_SURFACES,
+  EDITOR_CUSTOM_LETTER_SPACING,
   EDITOR_CUSTOM_LINE_HEIGHT,
+  EDITOR_FONT_SIZE_RANGE,
+  EDITOR_FONT_SIZES,
+  EDITOR_LETTER_SPACING_OPTIONS,
+  EDITOR_LETTER_SPACINGS,
   EDITOR_KEYMAP_MODES,
   EDITOR_LINE_HEIGHT_OPTIONS,
   EDITOR_TAB_SIZES,
@@ -34,9 +40,12 @@ import {
   TERMINAL_FONTS,
   TYPST_FORMATTER_INDENT_SIZES,
   TYPST_FORMATTER_LINE_WIDTHS,
+  clampEditorFontSize,
+  clampEditorLetterSpacing,
   clampEditorLineHeight,
   sectionDiffersFromDefaults,
   type BrowserSearchEngineId,
+  type EditorLetterSpacing,
   type EditorSurface,
   type TerminalColorThemeId,
   type TerminalCursorStyle,
@@ -194,7 +203,7 @@ function AppAppearanceTab() {
                   {option.id === "dots" ? (
                     <DotPattern width={10} height={10} radius={0.75} />
                   ) : null}
-                  {option.id === "grid" ? <GridPattern width={10} height={10} /> : null}
+                  {option.id === "grid" ? <GridPattern width={16} height={16} className="home-grid-fade" /> : null}
                 </div>
                 {option.label}
               </button>
@@ -358,18 +367,21 @@ function EditorCursorColorRow() {
   );
 }
 
-function withinCustomLineHeight(value: number): boolean {
-  return (
-    Number.isFinite(value) &&
-    value >= EDITOR_CUSTOM_LINE_HEIGHT.min &&
-    value <= EDITOR_CUSTOM_LINE_HEIGHT.max
-  );
-}
-
-function CustomLineHeightInput() {
-  const { t } = useTranslation(["settings"]);
-  const value = useSettingsStore((state) => state.editorCustomLineHeight);
-  const setValue = useSettingsStore((state) => state.setEditorCustomLineHeight);
+function CustomNumberInput({
+  value,
+  onCommit,
+  range,
+  clamp,
+  ariaLabel,
+  testId,
+}: Readonly<{
+  value: number;
+  onCommit: (value: number) => void;
+  range: Readonly<{ min: number; max: number; step: number }>;
+  clamp: (value: number) => number;
+  ariaLabel: string;
+  testId: string;
+}>) {
   const [draft, setDraft] = useState(String(value));
 
   useEffect(() => {
@@ -378,8 +390,8 @@ function CustomLineHeightInput() {
 
   const commit = () => {
     const typed = Number(draft);
-    const next = draft.trim() === "" || !Number.isFinite(typed) ? value : clampEditorLineHeight(typed);
-    setValue(next);
+    const next = draft.trim() === "" || !Number.isFinite(typed) ? value : clamp(typed);
+    onCommit(next);
     setDraft(String(next));
   };
 
@@ -387,17 +399,19 @@ function CustomLineHeightInput() {
     <Input
       type="number"
       inputMode="decimal"
-      min={EDITOR_CUSTOM_LINE_HEIGHT.min}
-      max={EDITOR_CUSTOM_LINE_HEIGHT.max}
-      step={EDITOR_CUSTOM_LINE_HEIGHT.step}
-      aria-label={t(($) => $.settings.appearance.editor.lineHeight.customLabel)}
-      data-testid="settings-editor-line-height-custom"
+      min={range.min}
+      max={range.max}
+      step={range.step}
+      aria-label={ariaLabel}
+      data-testid={testId}
       className="h-9 w-[76px]"
       value={draft}
       onChange={(event) => {
         setDraft(event.target.value);
         const typed = Number(event.target.value);
-        if (event.target.value.trim() !== "" && withinCustomLineHeight(typed)) setValue(typed);
+        if (event.target.value.trim() !== "" && Number.isFinite(typed) && typed >= range.min && typed <= range.max) {
+          onCommit(typed);
+        }
       }}
       onBlur={commit}
       onKeyDown={(event) => {
@@ -406,6 +420,90 @@ function CustomLineHeightInput() {
         commit();
       }}
     />
+  );
+}
+
+function EditorFontSizeControl() {
+  const { t } = useTranslation(["settings"]);
+  const size = useSettingsStore((state) => state.editorFontSize);
+  const setSize = useSettingsStore((state) => state.setEditorFontSize);
+  const [customChosen, setCustomChosen] = useState(false);
+  const choice = customChosen || !EDITOR_FONT_SIZES.includes(size) ? "custom" : String(size);
+
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <Select
+        value={choice}
+        onValueChange={(value) => {
+          setCustomChosen(value === "custom");
+          if (value !== "custom") setSize(Number(value));
+        }}
+      >
+        <SelectTrigger className="w-[112px]" data-testid="settings-editor-font-size-trigger">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="z-[100]">
+          {EDITOR_FONT_SIZES.map((option) => (
+            <SelectItem key={option} value={String(option)}>
+              {t(($) => $.settings.appearance.fontSizeOption, { size: option })}
+            </SelectItem>
+          ))}
+          <SelectItem value="custom">{t(($) => $.settings.appearance.editor.fontSize.custom)}</SelectItem>
+        </SelectContent>
+      </Select>
+      {choice === "custom" ? (
+        <CustomNumberInput
+          value={size}
+          onCommit={setSize}
+          range={EDITOR_FONT_SIZE_RANGE}
+          clamp={clampEditorFontSize}
+          ariaLabel={t(($) => $.settings.appearance.editor.fontSize.customLabel)}
+          testId="settings-editor-font-size-custom"
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function EditorLetterSpacingControl() {
+  const { t } = useTranslation(["settings"]);
+  const letterSpacing = useSettingsStore((state) => state.editorLetterSpacing);
+  const setLetterSpacing = useSettingsStore((state) => state.setEditorLetterSpacing);
+  const custom = useSettingsStore((state) => state.editorCustomLetterSpacing);
+  const setCustom = useSettingsStore((state) => state.setEditorCustomLetterSpacing);
+  const optionLabel = (option: EditorLetterSpacing) => {
+    if (option === "normal") return t(($) => $.settings.appearance.editor.letterSpacing.options.normal);
+    if (option === "custom") return t(($) => $.settings.appearance.editor.letterSpacing.options.custom);
+    return t(($) => $.settings.appearance.editor.letterSpacing.option, {
+      value: formatNumber(EDITOR_LETTER_SPACINGS[option]),
+    });
+  };
+
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <Select value={letterSpacing} onValueChange={(value) => setLetterSpacing(value as EditorLetterSpacing)}>
+        <SelectTrigger className="w-[168px]" data-testid="settings-editor-letter-spacing-trigger">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="z-[100]">
+          {EDITOR_LETTER_SPACING_OPTIONS.map((option) => (
+            <SelectItem key={option} value={option}>
+              {optionLabel(option)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {letterSpacing === "custom" ? (
+        <CustomNumberInput
+          value={custom}
+          onCommit={setCustom}
+          range={EDITOR_CUSTOM_LETTER_SPACING}
+          clamp={clampEditorLetterSpacing}
+          ariaLabel={t(($) => $.settings.appearance.editor.letterSpacing.customLabel)}
+          testId="settings-editor-letter-spacing-custom"
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -459,8 +557,8 @@ function EditorAppearanceTab() {
   const setEditorStickyScroll = useSettingsStore(
     (state) => state.setEditorStickyScroll,
   );
-  const editorFontSize = useSettingsStore((state) => state.editorFontSize);
-  const setEditorFontSize = useSettingsStore((state) => state.setEditorFontSize);
+  const editorCustomLineHeight = useSettingsStore((state) => state.editorCustomLineHeight);
+  const setEditorCustomLineHeight = useSettingsStore((state) => state.setEditorCustomLineHeight);
   const editorFontFamily = useSettingsStore((state) => state.editorFontFamily);
   const setEditorFontFamily = useSettingsStore((state) => state.setEditorFontFamily);
   const editorCursorWidth = useSettingsStore((state) => state.editorCursorWidth);
@@ -476,23 +574,7 @@ function EditorAppearanceTab() {
         testId="settings-row-editor-font-size"
         label={t(($) => $.settings.appearance.editor.fontSize.label)}
         description={t(($) => $.settings.appearance.editor.fontSize.description)}
-        control={
-          <Select
-            value={String(editorFontSize)}
-            onValueChange={(value) => setEditorFontSize(Number(value))}
-          >
-            <SelectTrigger className="w-[88px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="z-[100]">
-              {[11, 12, 13, 14, 15, 16, 18, 20].map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {t(($) => $.settings.appearance.fontSizeOption, { size })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        }
+        control={<EditorFontSizeControl />}
       />
 
       <SystemFontSettingsRow
@@ -598,9 +680,25 @@ function EditorAppearanceTab() {
                 ))}
               </SelectContent>
             </Select>
-            {editorLineHeight === "custom" ? <CustomLineHeightInput /> : null}
+            {editorLineHeight === "custom" ? (
+              <CustomNumberInput
+                value={editorCustomLineHeight}
+                onCommit={setEditorCustomLineHeight}
+                range={EDITOR_CUSTOM_LINE_HEIGHT}
+                clamp={clampEditorLineHeight}
+                ariaLabel={t(($) => $.settings.appearance.editor.lineHeight.customLabel)}
+                testId="settings-editor-line-height-custom"
+              />
+            ) : null}
           </div>
         }
+      />
+
+      <SettingsRow
+        testId="settings-row-editor-letter-spacing"
+        label={t(($) => $.settings.appearance.editor.letterSpacing.label)}
+        description={t(($) => $.settings.appearance.editor.letterSpacing.description)}
+        control={<EditorLetterSpacingControl />}
       />
 
       <SettingsRow

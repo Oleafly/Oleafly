@@ -74,7 +74,7 @@ export function ConfirmationDialog({
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel} data-modal-initial-focus>
           {cancelLabel ?? t(($) => $.common.actions.cancel)}
-          <Kbd className="h-4 min-w-4 px-1 text-[10px]">{t(($) => $.shell.keys.esc)}</Kbd>
+          <Kbd className="h-4 min-w-4 px-1 text-[0.625rem]">{t(($) => $.shell.keys.esc)}</Kbd>
         </Button>
         <Button
           variant={destructive ? "destructive" : "default"}
@@ -84,7 +84,7 @@ export function ConfirmationDialog({
           {confirmLabel}
           {/* Only advertise the shortcut where it actually exists. */}
           {destructive ? null : (
-            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[10px] text-current">↵</Kbd>
+            <Kbd className="h-4 min-w-4 bg-background/25 px-1 text-[0.625rem] text-current">↵</Kbd>
           )}
         </Button>
       </div>

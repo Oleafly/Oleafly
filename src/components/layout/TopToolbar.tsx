@@ -208,7 +208,7 @@ function ZenModeMenuItem() {
     >
       <ZenModeLayoutIcon className="size-4 text-muted-foreground" />
       <span className="flex-1">{t(($) => $.shell.toolbar.layouts.zenMode)}</span>
-      <span aria-hidden className="ml-auto pl-3 text-[10px] text-muted-foreground">
+      <span aria-hidden className="ml-auto pl-3 text-[0.625rem] text-muted-foreground">
         {shortcut}
       </span>
     </DropdownMenuItem>
@@ -475,7 +475,7 @@ export function TopToolbar() {
       </DropdownMenuItem>
     )}
     {!pdfBytes && (
-      <p className="px-2 py-1 pl-8 text-[10px] text-muted-foreground">
+      <p className="px-2 py-1 pl-8 text-[0.625rem] text-muted-foreground">
         {isSingleFigureProject
           ? t(($) => $.shell.toolbar.compileFigureFirst)
           : t(($) => $.shell.toolbar.compilePdfFirst)}
@@ -521,7 +521,7 @@ export function TopToolbar() {
       </>
     )}
     {exporting && (
-      <p className="px-2 py-1 text-[10px] text-muted-foreground">
+      <p className="px-2 py-1 text-[0.625rem] text-muted-foreground">
         {t(($) => $.shell.toolbar.exporting, { format: exporting })}
       </p>
     )}

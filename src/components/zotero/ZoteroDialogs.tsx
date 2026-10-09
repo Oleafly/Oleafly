@@ -190,7 +190,7 @@ function MissingBody({ onClose }: Readonly<{ onClose: () => void }>) {
             )}
             {found.length > 0 && (
               <section>
-                <h3 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <h3 className="mb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.references.zotero.missing.found, { count: found.length })}
                 </h3>
                 <ul className="space-y-0.5">
@@ -207,7 +207,7 @@ function MissingBody({ onClose }: Readonly<{ onClose: () => void }>) {
             )}
             {report.duplicates.length > 0 && (
               <section>
-                <h3 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <h3 className="mb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.references.zotero.missing.duplicates, { count: report.duplicates.length })}
                 </h3>
                 <ul className="space-y-0.5">
@@ -221,7 +221,7 @@ function MissingBody({ onClose }: Readonly<{ onClose: () => void }>) {
             )}
             {report.missing.length > 0 && (
               <section>
-                <h3 className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <h3 className="mb-1 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">
                   {t(($) => $.references.zotero.missing.notFound, { count: report.missing.length })}
                 </h3>
                 <p className="select-text break-words font-mono text-xs text-muted-foreground">{report.missing.join(", ")}</p>
@@ -330,7 +330,7 @@ function UpdateBody({ onClose }: Readonly<{ onClose: () => void }>) {
                       {[hitByline(entry.hit), truncated(hitTitle(entry.hit))].filter(Boolean).join(" · ")}
                     </span>
                     {entry.handEdited && (
-                      <span className="shrink-0 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                      <span className="shrink-0 text-[0.625rem] font-medium text-amber-700 dark:text-amber-300">
                         {t(($) => $.references.zotero.update.handEdited)}
                       </span>
                     )}
