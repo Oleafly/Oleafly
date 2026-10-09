@@ -48,12 +48,11 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { BrowserCookieImport } from "@/components/settings/BrowserCookieImport";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
+import { ApplicationShortcutRow } from "@/components/settings/ShortcutsSection";
 import { SearchEngineIcon } from "@/components/settings/SearchEngineIcon";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { Kbd } from "@/components/ui/kbd";
-import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useFilesStore } from "@/store/files";
 import { useZenStore } from "@/store/zen";
 import { toggleZenMode } from "@/lib/zen-mode";
@@ -73,7 +72,6 @@ function ZenModeSettings() {
   const { t } = useTranslation(["settings"]);
   const active = useZenStore((state) => state.active);
   const hasProject = useFilesStore((state) => state.projectId !== null);
-  const shortcut = useShortcutStore((state) => shortcutLabel(state.bindings.toggleZenMode));
   const fullScreen = useSettingsStore((state) => state.zenFullScreen);
   const setFullScreen = useSettingsStore((state) => state.setZenFullScreen);
   const centerEditor = useSettingsStore((state) => state.zenCenterEditor);
@@ -94,7 +92,6 @@ function ZenModeSettings() {
         testId="settings-row-zen-mode"
         label={t(($) => $.settings.appearance.zen.toggle.label)}
         description={t(($) => $.settings.appearance.zen.toggle.description)}
-        adornment={<Kbd className="h-5 rounded-md border px-1.5 text-[11px] text-foreground">{shortcut}</Kbd>}
         checked={active}
         disabled={!active && !hasProject}
         onChange={(next) => {
@@ -102,6 +99,7 @@ function ZenModeSettings() {
           toggleZenMode();
         }}
       />
+      <ApplicationShortcutRow id="toggleZenMode" testId="settings-row-zen-shortcut" />
       <SettingsToggleRow
         testId="settings-row-zen-full-screen"
         label={t(($) => $.settings.appearance.zen.fullScreen.label)}
@@ -316,7 +314,6 @@ function AppAppearanceTab() {
         value={appFontFamily}
         onChange={setAppFontFamily}
       />
-      <ZenModeSettings />
       <ThemeCustomization />
     </div>
   );
@@ -1395,6 +1392,7 @@ function FileManagementTab() {
           ))}
         </div>
       </section>
+      <ZenModeSettings />
     </div>
   );
 }

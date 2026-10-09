@@ -290,9 +290,9 @@ describe("Zen mode settings in the search", () => {
     });
   });
 
-  it("opens the Zen rows on the App tab", () => {
-    expect(settingsTabFor(["appearance", "zen"])).toBe("app");
-    expect(settingsTabFor(["appearance", "zen", "centerEditor"])).toBe("app");
+  it("opens the Zen rows on the Project tab", () => {
+    expect(settingsTabFor(["appearance", "zen"])).toBe("files");
+    expect(settingsTabFor(["appearance", "zen", "centerEditor"])).toBe("files");
   });
 
   it("finds the Zen shortcut on the Shortcuts tab", () => {

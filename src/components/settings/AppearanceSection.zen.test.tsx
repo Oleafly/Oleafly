@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
@@ -26,6 +26,8 @@ import { useZenStore } from "@/store/zen";
 import { AppearanceSection } from "./AppearanceSection";
 
 const zen = enSettings.appearance.zen;
+const shortcuts = enSettings.shortcuts.application;
+const actions = enSettings.shortcuts.actions;
 
 function group() {
   return screen.getByRole("region", { name: zen.title });
@@ -40,6 +42,7 @@ beforeEach(() => {
     zenCenterEditor: true,
     zenShowPdfOnCompile: true,
     settingsOpen: true,
+    settingsInitialAppearanceTab: "files",
     showTree: true,
     assistantOpen: true,
     viewMode: "split",
@@ -47,28 +50,40 @@ beforeEach(() => {
 });
 
 describe("the Zen mode settings group", () => {
-  it("has a switch to turn Zen mode on, with the shortcut beside it, and the three options", () => {
+  it("sits on the Project tab with a switch, the shortcut and the three options", () => {
     render(<AppearanceSection />);
+    expect(screen.getByTestId("appearance-tab-files")).toHaveAttribute("data-state", "active");
     const section = within(group());
     const toggle = section.getByRole("switch", { name: zen.toggle.label });
     expect(toggle).toHaveAttribute("aria-checked", "false");
     expect(toggle).toHaveTextContent(zen.toggle.description);
     const shortcut = shortcutLabel(useShortcutStore.getState().bindings.toggleZenMode);
-    for (const token of shortcut.split(/(?=[⌘⇧])|\+/).filter(Boolean)) {
-      expect(toggle).toHaveTextContent(token);
-    }
+    expect(
+      section.getByRole("button", {
+        name: shortcuts.editAriaLabel.replace("{{action}}", actions.toggleZenMode.label).replace("{{shortcut}}", shortcut),
+      }),
+    ).toBeVisible();
     expect(section.getByRole("switch", { name: zen.fullScreen.label })).toHaveAttribute("aria-checked", "true");
     expect(section.getByRole("switch", { name: zen.centerEditor.label })).toHaveAttribute("aria-checked", "true");
     expect(section.getByRole("switch", { name: zen.showPdf.label })).toHaveAttribute("aria-checked", "true");
   });
 
-  it("shows the shortcut the user chose", () => {
-    useShortcutStore.getState().setBinding("toggleZenMode", { key: "z", ctrl: true, alt: true });
+  it("rebinds the Zen mode shortcut right there", async () => {
     render(<AppearanceSection />);
-    const toggle = within(group()).getByRole("switch", { name: zen.toggle.label });
-    expect(toggle).toHaveTextContent("Ctrl");
-    expect(toggle).toHaveTextContent("Alt");
-    expect(toggle).toHaveTextContent("Z");
+    const user = userEvent.setup();
+    const row = within(screen.getByTestId("settings-row-zen-shortcut"));
+    const shortcut = shortcutLabel(useShortcutStore.getState().bindings.toggleZenMode);
+    await user.click(
+      row.getByRole("button", {
+        name: shortcuts.editAriaLabel.replace("{{action}}", actions.toggleZenMode.label).replace("{{shortcut}}", shortcut),
+      }),
+    );
+    const recorder = row.getByRole("button", {
+      name: shortcuts.recordAriaLabel.replace("{{action}}", actions.toggleZenMode.label),
+    });
+    fireEvent.keyDown(recorder, { key: "z", ctrlKey: true, altKey: true });
+    expect(useShortcutStore.getState().bindings.toggleZenMode).toMatchObject({ key: "z", mod: true, alt: true });
+    expect(screen.getByTestId("settings-row-zen-shortcut")).toHaveTextContent(/Ctrl.*Alt.*Z/);
   });
 
   it("turns Zen mode on from the switch and closes Settings so it can be seen", async () => {

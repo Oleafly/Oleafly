@@ -12,11 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Zen mode hides the toolbar, sidebar, assistant, terminal and the editor's
   tabs and formatting bar so only your writing is left. Turn it on with
   Ctrl-Command-Shift-F (Shift-F11 on Windows and Linux), from the View menu,
-  the layout menu, the command palette or Settings > Appearance, and leave it
-  with the same shortcut or by pressing Escape twice. It can go full screen,
-  center the text and open the PDF when you compile with the shortcut. A
-  small pill in the bottom right corner shows when a compile is running or
-  has failed.
+  the layout menu, the command palette or Settings > Appearance > Project,
+  and leave it with the same shortcut or by pressing Escape twice. It can go
+  full screen, center the text and open the PDF when you compile with the
+  shortcut. Its options and its shortcut sit together under Settings >
+  Appearance > Project. A small pill in the bottom right corner shows when a
+  compile is running or has failed.
 - Cite straight from your Zotero library while you write. With Zotero 7 or
   newer open on the same computer, and "Allow other applications on this
   computer to communicate with Zotero" turned on in Zotero's Advanced
