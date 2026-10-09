@@ -3941,17 +3941,17 @@ pub async fn record_project_tex_spec(
 pub(crate) fn record_tex_spec_for_new_project<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     project_id: &str,
-) {
+) -> Option<tauri::async_runtime::JoinHandle<()>> {
     use tauri::Manager as _;
     if !read_meta(project_id).is_ok_and(|meta| meta.engine == crate::config::LATEXMK_ENGINE) {
-        return;
+        return None;
     }
     let app = app.clone();
     let project_id = project_id.to_owned();
-    tauri::async_runtime::spawn(async move {
+    Some(tauri::async_runtime::spawn(async move {
         let state = app.state::<crate::state::AppState>();
         let _ = record_tex_spec(&state, project_id).await;
-    });
+    }))
 }
 
 async fn record_tex_spec(
@@ -4821,7 +4821,10 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
 }
 
 #[tauri::command(async)]
-pub fn create_project(app: tauri::AppHandle, name: String) -> Result<String, String> {
+pub fn create_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    name: String,
+) -> Result<String, String> {
     let project_id = create_blank_project(name)?;
     record_tex_spec_for_new_project(&app, &project_id);
     Ok(project_id)
@@ -4941,8 +4944,8 @@ fn safe_ad_hoc_project_path(path: &str) -> Result<PathBuf, String> {
 /// supplies `text` and media under assets/. A source bundle supplies
 /// `mainFile` plus every file, as produced by the bounded arXiv extractor.
 #[tauri::command]
-pub async fn create_project_from_ad_hoc(
-    app: tauri::AppHandle,
+pub async fn create_project_from_ad_hoc<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     request: CreateAdHocProjectRequest,
 ) -> Result<String, String> {
     let project_id =
@@ -5088,8 +5091,8 @@ fn create_project_from_ad_hoc_blocking(
 /// a project containing only `main.tex` (or only some figures): every payload
 /// is validated and staged in a sibling directory before the final rename.
 #[tauri::command]
-pub async fn create_project_from_pdf_conversion(
-    app: tauri::AppHandle,
+pub async fn create_project_from_pdf_conversion<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     name: String,
     tex: String,
     figures: Vec<PdfConversionFigure>,
@@ -5247,8 +5250,8 @@ fn import_skip(rel: &str) -> bool {
 
 /// Import an Overleaf export (ZIP) or a plain folder as a new project.
 #[tauri::command]
-pub async fn import_overleaf_project(
-    app: tauri::AppHandle,
+pub async fn import_overleaf_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     name: Option<String>,
     path: String,
 ) -> Result<String, String> {
@@ -5634,8 +5637,8 @@ fn schedule_git_initialization(project_id: String) -> tauri::async_runtime::Join
 /// (`source`). Used by "Save as project" in the diagram composer so a figure,
 /// its TikZ, and its embedded editor model all persist as a reusable project.
 #[tauri::command(async)]
-pub fn create_image_project(
-    app: tauri::AppHandle,
+pub fn create_image_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     name: String,
     source: String,
     color: Option<String>,
@@ -5743,8 +5746,8 @@ fn diagram_document(language: Option<&str>, source: String) -> Result<DiagramDoc
 }
 
 #[tauri::command(async)]
-pub fn create_diagram_project(
-    app: tauri::AppHandle,
+pub fn create_diagram_project<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     name: String,
     source: String,
     language: Option<String>,
@@ -6736,8 +6739,8 @@ fn apply_typst_fixup(path: &Path) -> Result<(), String> {
 /// Create a LaTeX project from an uploaded .docx. The bytes are written inside
 /// the new project dir and pandoc runs there, so no external path is read.
 #[tauri::command]
-pub async fn create_project_from_docx(
-    app: tauri::AppHandle,
+pub async fn create_project_from_docx<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     name: String,
     data_base64: String,
 ) -> Result<String, String> {
@@ -6755,8 +6758,8 @@ pub async fn create_project_from_docx(
 /// kind written ("latex", "markdown", or "typst"); both paths publish
 /// atomically.
 #[tauri::command]
-pub async fn import_document(
-    app: tauri::AppHandle,
+pub async fn import_document<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
     path: String,
     target: Option<String>,
 ) -> Result<String, String> {
@@ -16799,6 +16802,86 @@ mod tests {
             "xetex"
         );
 
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn creation_commands_record_the_tex_spec_only_for_latexmk_projects() {
+        use tauri::Manager as _;
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = test_dir("creation-commands");
+        std::env::set_var("OLEAFLY_DATA_DIR", &root);
+        let app = tauri::test::mock_app();
+        app.manage(crate::state::AppState::default());
+        let handle = app.handle().clone();
+        let folder = root.join("plain-tex-folder");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("main.tex"), "\\documentclass{article}").unwrap();
+
+        let created = [
+            super::create_project(handle.clone(), "Blank".into()).unwrap(),
+            super::create_image_project(
+                handle.clone(),
+                "Image".into(),
+                "\\documentclass{standalone}".into(),
+                None,
+            )
+            .unwrap(),
+            super::create_diagram_project(
+                handle.clone(),
+                "Figure".into(),
+                "\\draw (0,0);".into(),
+                None,
+            )
+            .unwrap(),
+            tauri::async_runtime::block_on(super::create_project_from_ad_hoc(
+                handle.clone(),
+                CreateAdHocProjectRequest {
+                    name: "Converted".into(),
+                    target: "latex".into(),
+                    text: Some("\\documentclass{article}".into()),
+                    main_file: None,
+                    files: Vec::new(),
+                },
+            ))
+            .unwrap(),
+            tauri::async_runtime::block_on(super::create_project_from_pdf_conversion(
+                handle.clone(),
+                "Scanned".into(),
+                "\\documentclass{article}".into(),
+                Vec::new(),
+            ))
+            .unwrap(),
+            tauri::async_runtime::block_on(super::import_overleaf_project(
+                handle.clone(),
+                None,
+                folder.to_string_lossy().into_owned(),
+            ))
+            .unwrap(),
+        ];
+        for id in &created {
+            assert_eq!(read_meta(id).unwrap().engine, "xetex", "{id}");
+            assert!(super::record_tex_spec_for_new_project(&handle, id).is_none());
+        }
+
+        super::set_default_latex_engine("latexmk".into()).unwrap();
+        assert!(super::set_default_latex_engine("pdflatex".into()).is_err());
+        let latexmk = create_blank_project("On latexmk".into()).unwrap();
+        let task = super::record_tex_spec_for_new_project(&handle, &latexmk)
+            .expect("a latexmk project records its TeX spec");
+        tauri::async_runtime::block_on(task).unwrap();
+        let recorded = read_meta(&latexmk).unwrap().tex;
+        let has_system_tex = crate::tex_distro::active_latexmk_distribution().is_some();
+        assert_eq!(recorded.is_some(), has_system_tex);
+        let again = tauri::async_runtime::block_on(super::record_project_tex_spec(
+            app.state::<crate::state::AppState>(),
+            latexmk.clone(),
+        ))
+        .unwrap();
+        assert_eq!(again.is_some(), has_system_tex);
+
+        super::set_default_latex_engine("tectonic".into()).unwrap();
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
