@@ -604,7 +604,7 @@
     "title": "Förkontroll",
     "readerDisabled": "Kompilera och kör en kontroll av utdatan först",
     "readerEnabled": "Öppna texten som extraherats ur PDF:en",
-    "readerButton": "Visa vad läsaren ser",
+    "readerButton": "Skärmläsare",
     "aboutLabel": "Om förkontrollen",
     "aboutTitle": "Vad förkontrollen granskar",
     "aboutIntro": "Förkontrollen läser projektets källkod, kompilatorloggen och den aktuella PDF:en. Slå bara på de kontroller som passar det här dokumentet.",

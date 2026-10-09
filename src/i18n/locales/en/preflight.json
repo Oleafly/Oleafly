@@ -604,7 +604,7 @@
     "title": "Preflight",
     "readerDisabled": "Compile and run an output check first",
     "readerEnabled": "Open the text extracted from the PDF",
-    "readerButton": "Show what the reader sees",
+    "readerButton": "Screen Reader",
     "aboutLabel": "About Preflight",
     "aboutTitle": "What Preflight checks",
     "aboutIntro": "Preflight reads the project source, compiler log, and current PDF. Turn on only the checks that fit this document.",

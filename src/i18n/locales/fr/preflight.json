@@ -623,7 +623,7 @@
     "title": "Prévérification",
     "readerDisabled": "Compilez et lancez d'abord une vérification de la sortie",
     "readerEnabled": "Ouvrir le texte extrait du PDF",
-    "readerButton": "Afficher ce que voit le lecteur",
+    "readerButton": "Lecteur d'écran",
     "aboutLabel": "À propos de la prévérification",
     "aboutTitle": "Ce que vérifie la prévérification",
     "aboutIntro": "La prévérification lit le source du projet, le journal du compilateur et le PDF actuel. N'activez que les vérifications adaptées à ce document.",

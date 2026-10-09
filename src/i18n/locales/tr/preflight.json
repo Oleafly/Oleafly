@@ -604,7 +604,7 @@
     "title": "Ön denetim",
     "readerDisabled": "Önce derleyip bir çıktı denetimi çalıştırın",
     "readerEnabled": "PDF'ten çıkarılan metni aç",
-    "readerButton": "Okuyucunun gördüğünü göster",
+    "readerButton": "Ekran okuyucu",
     "aboutLabel": "Ön denetim hakkında",
     "aboutTitle": "Ön denetim neleri denetler",
     "aboutIntro": "Ön denetim; proje kaynağını, derleyici günlüğünü ve geçerli PDF'i okur. Yalnızca bu belgeye uyan denetimleri açın.",

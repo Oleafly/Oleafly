@@ -604,7 +604,7 @@
     "title": "Preflight",
     "readerDisabled": "Kompiler, og kør først et tjek af resultatet",
     "readerEnabled": "Åbn den tekst, der er udtrukket fra PDF'en",
-    "readerButton": "Vis, hvad læseren ser",
+    "readerButton": "Skærmlæser",
     "aboutLabel": "Om Preflight",
     "aboutTitle": "Det tjekker Preflight",
     "aboutIntro": "Preflight læser projektets kilde, kompilatorloggen og den aktuelle PDF. Slå kun de tjek til, der passer til dette dokument.",

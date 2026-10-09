@@ -604,7 +604,7 @@
     "title": "Preflight",
     "readerDisabled": "Compileer en voer eerst een uitvoercontrole uit",
     "readerEnabled": "Open de tekst die uit de PDF is gehaald",
-    "readerButton": "Tonen wat de lezer ziet",
+    "readerButton": "Schermlezer",
     "aboutLabel": "Over Preflight",
     "aboutTitle": "Wat Preflight controleert",
     "aboutIntro": "Preflight leest de projectbroncode, het compilerlogboek en de huidige PDF. Zet alleen de controles aan die bij dit document passen.",

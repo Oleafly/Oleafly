@@ -623,7 +623,7 @@
     "title": "Preflight",
     "readerDisabled": "Compila ed esegui prima un controllo sull'output",
     "readerEnabled": "Apri il testo estratto dal PDF",
-    "readerButton": "Mostra cosa vede il lettore",
+    "readerButton": "Lettore di schermo",
     "aboutLabel": "Informazioni su Preflight",
     "aboutTitle": "Cosa controlla Preflight",
     "aboutIntro": "Preflight legge i sorgenti del progetto, il log del compilatore e il PDF attuale. Attiva solo i controlli adatti a questo documento.",

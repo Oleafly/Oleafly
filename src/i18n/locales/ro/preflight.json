@@ -623,7 +623,7 @@
     "title": "Preverificare",
     "readerDisabled": "Compilează și rulează întâi o verificare a rezultatului",
     "readerEnabled": "Deschide textul extras din PDF",
-    "readerButton": "Arată ce vede cititorul",
+    "readerButton": "Cititor de ecran",
     "aboutLabel": "Despre Preverificare",
     "aboutTitle": "Ce verifică Preverificarea",
     "aboutIntro": "Preverificarea citește sursa proiectului, jurnalul de compilare și PDF-ul curent. Activează doar verificările potrivite pentru acest document.",

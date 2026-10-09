@@ -585,7 +585,7 @@
     "title": "預檢",
     "readerDisabled": "請先編譯並執行一次輸出檢查",
     "readerEnabled": "開啟從 PDF 擷取出的文字",
-    "readerButton": "顯示閱讀器看到的內容",
+    "readerButton": "螢幕閱讀器",
     "aboutLabel": "關於預檢",
     "aboutTitle": "預檢會檢查什麼",
     "aboutIntro": "預檢會讀取專案原始碼、編譯器記錄檔與目前的 PDF。只要開啟適合這份文件的檢查即可。",
