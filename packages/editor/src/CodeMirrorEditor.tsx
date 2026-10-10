@@ -48,6 +48,7 @@ import { CodeMirror, getCM, vim } from "@replit/codemirror-vim";
 import { highlightActiveLineWhenCollapsed } from "./active-line";
 import { cursorBlinking as cursorBlinkingExtension, type EditorCursorBlinking } from "./cursor-blink";
 import { cursorFillsLine, type EditorCursorHeight } from "./cursor-height";
+import { focusOnPointerWithoutScroll } from "./focus-without-scroll";
 import type { EditorTranslator } from "./messages";
 import { vscodeSearch } from "./search-panel";
 import { editorTheme } from "./theme";
@@ -846,6 +847,7 @@ export function CodeMirrorEditor({
         vimCompartment.of(keymapModeExtension(keymapMode)),
         lineNumbers(),
         centerWithinEditor,
+        focusOnPointerWithoutScroll,
         highlightActiveLineGutter(),
         highlightSpecialChars(),
         foldGutter({ markerDOM: foldMarkerDOM }),

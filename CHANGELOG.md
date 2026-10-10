@@ -35,6 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tagging=on`, a test phase or a PDF/UA standard. Without tagging, LaTeX
   does nothing with alt text. The Accessibility check in Preflight still
   lists images without it.
+- Clicking in the editor while it was not focused could select everything
+  between the old cursor and the click. It happened when the cursor had
+  scrolled out of view and you came back from a toolbar menu, the AI panel,
+  the PDF or the file tree: the editor jumped to the old cursor as it took
+  focus, after it had already noted where you clicked. It now takes focus
+  without moving, and the click just places the cursor.
 
 ## [0.4.6] - 2026-10-09
 
