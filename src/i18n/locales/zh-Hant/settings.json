@@ -652,10 +652,6 @@
         "description": "在游標後顯示可能的補完內容。按 Tab 即可接受。",
         "label": "行內建議"
       },
-      "nonBlinkingCursor": {
-        "description": "讓編輯器游標保持恆亮。",
-        "label": "游標不閃爍"
-      },
       "stickyScroll": {
         "description": "捲動時把目前的章節、標題與環境固定在頂端。",
         "label": "固定捲動"
@@ -745,6 +741,17 @@
         "options": {
           "text": "文字",
           "line": "整行"
+        }
+      },
+      "cursorBlinking": {
+        "label": "游標閃爍",
+        "description": "選擇編輯器游標的閃爍方式。選擇「關閉」時游標不閃爍。",
+        "options": {
+          "blink": "閃爍",
+          "smooth": "平滑",
+          "phase": "相位",
+          "expand": "伸縮",
+          "off": "關閉"
         }
       },
       "cursorColor": {

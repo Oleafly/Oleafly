@@ -657,10 +657,6 @@
         "description": "Die wahrscheinliche Vervollständigung hinter dem Cursor anzeigen. Mit Tab übernehmen Sie sie.",
         "label": "Vorschlag im Text"
       },
-      "nonBlinkingCursor": {
-        "description": "Den Cursor im Editor durchgehend anzeigen.",
-        "label": "Cursor ohne Blinken"
-      },
       "stickyScroll": {
         "description": "Die aktuellen Abschnitte, Überschriften und Umgebungen beim Scrollen oben halten.",
         "label": "Haftende Kopfzeile"
@@ -750,6 +746,17 @@
         "options": {
           "text": "Text",
           "line": "Zeile"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Cursor-Blinken",
+        "description": "Festlegen, wie der Cursor im Editor blinkt. Mit Aus bleibt er durchgehend sichtbar.",
+        "options": {
+          "blink": "Blinken",
+          "smooth": "Weich",
+          "phase": "Phase",
+          "expand": "Strecken",
+          "off": "Aus"
         }
       },
       "cursorColor": {

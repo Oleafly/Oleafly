@@ -652,10 +652,6 @@
         "description": "カーソルの後ろに、候補となる補完を表示します。Tab で確定します。",
         "label": "インラインの候補表示"
       },
-      "nonBlinkingCursor": {
-        "description": "エディタのカーソルを点滅させずに表示します。",
-        "label": "点滅しないカーソル"
-      },
       "stickyScroll": {
         "description": "スクロール中も、現在のセクション、見出し、環境を上部に表示し続けます。",
         "label": "スティッキースクロール"
@@ -745,6 +741,17 @@
         "options": {
           "text": "文字",
           "line": "行"
+        }
+      },
+      "cursorBlinking": {
+        "label": "カーソルの点滅",
+        "description": "エディタのカーソルの点滅方法を選びます。「オフ」にすると点滅しません。",
+        "options": {
+          "blink": "点滅",
+          "smooth": "なめらか",
+          "phase": "フェーズ",
+          "expand": "伸縮",
+          "off": "オフ"
         }
       },
       "cursorColor": {

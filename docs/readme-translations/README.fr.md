@@ -217,7 +217,7 @@ Recherchez dans tout le projet depuis le panneau Recherche. L'index du projet re
 
 L'éditeur a un thème pour le mode clair et un autre pour le mode sombre, et il change en même temps que l'application. Paper, un blanc cassé chaud, et One Light sont les deux thèmes clairs. Couleurs de l'éditeur, dans Paramètres > Apparence > Éditeur, change n'importe quelle couleur d'un thème. Les couleurs sont regroupées par rôle, comme les titres, les commandes, les citations ou les maths, et un exemple en LaTeX, Typst ou Markdown montre chaque modification au fur et à mesure. Oleafly garde vos modifications pour chaque thème, et l'export et l'import de thème les emportent.
 
-L'application et l'éditeur peuvent utiliser n'importe quelle police installée sur votre ordinateur, et l'éditeur permet aussi de régler l'espacement des lettres ainsi que la largeur, la hauteur et la couleur du curseur, et de désactiver le surlignage de la ligne où se trouve le curseur. Cmd+= et Cmd+- zooment toute l'application, éditeur et PDF compris, et Cmd+0 revient à 100 % (Ctrl sous Windows et Linux).
+L'application et l'éditeur peuvent utiliser n'importe quelle police installée sur votre ordinateur, et l'éditeur permet aussi de régler l'espacement des lettres ainsi que la largeur, la hauteur, la couleur et le clignotement du curseur, et de désactiver le surlignage de la ligne où se trouve le curseur. Cmd+= et Cmd+- zooment toute l'application, éditeur et PDF compris, et Cmd+0 revient à 100 % (Ctrl sous Windows et Linux).
 
 Le mode Zen masque la barre d'outils, la barre latérale, l'assistant et le terminal pour ne laisser que l'éditeur. Appuyez sur Ctrl+Cmd+Shift+F (Shift+F11 sous Windows et Linux) pour l'activer, puis sur les mêmes touches ou deux fois sur Échap pour en sortir.
 

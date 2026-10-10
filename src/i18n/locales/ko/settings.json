@@ -652,10 +652,6 @@
         "description": "커서 뒤에 예상되는 완성을 표시합니다. Tab을 누르면 적용됩니다.",
         "label": "인라인 제안"
       },
-      "nonBlinkingCursor": {
-        "description": "편집기 커서를 깜박이지 않게 합니다.",
-        "label": "깜박이지 않는 커서"
-      },
       "stickyScroll": {
         "description": "스크롤하는 동안 현재 절, 제목, 환경을 위쪽에 고정합니다.",
         "label": "고정 스크롤"
@@ -745,6 +741,17 @@
         "options": {
           "text": "텍스트",
           "line": "줄"
+        }
+      },
+      "cursorBlinking": {
+        "label": "커서 깜박임",
+        "description": "편집기 커서가 깜박이는 방식을 고릅니다. '끔'을 선택하면 깜박이지 않습니다.",
+        "options": {
+          "blink": "깜박임",
+          "smooth": "부드럽게",
+          "phase": "페이즈",
+          "expand": "늘이기",
+          "off": "끔"
         }
       },
       "cursorColor": {

@@ -43,7 +43,6 @@ describe("on/off preferences", () => {
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
     ["setEditorStickyScroll", "editorStickyScroll", "oleafly.editor.stickyScroll"],
-    ["setEditorNonBlinkingCursor", "editorNonBlinkingCursor", "oleafly.editor.solidCursor"],
     ["setEditorMathPreview", "editorMathPreview", "oleafly.editor.mathPreview"],
     ["setTypstInlayHints", "typstInlayHints", "oleafly.typst.inlayHints"],
     ["setTypstLint", "typstLint", "oleafly.typst.lint"],

@@ -657,10 +657,6 @@
         "description": "Toon de waarschijnlijke aanvulling achter de cursor. Druk op Tab om die over te nemen.",
         "label": "Suggestie in de tekst"
       },
-      "nonBlinkingCursor": {
-        "description": "Houd de cursor in de editor onafgebroken zichtbaar.",
-        "label": "Niet-knipperende cursor"
-      },
       "stickyScroll": {
         "description": "Houd de huidige secties, koppen en omgevingen bovenaan terwijl je scrolt.",
         "label": "Vastgezette scrollkoppen"
@@ -750,6 +746,17 @@
         "options": {
           "text": "Tekst",
           "line": "Regel"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Knipperen van de cursor",
+        "description": "Kies hoe de cursor in de editor knippert. Uit houdt hem vast.",
+        "options": {
+          "blink": "Knipperen",
+          "smooth": "Vloeiend",
+          "phase": "Fase",
+          "expand": "Uitrekken",
+          "off": "Uit"
         }
       },
       "cursorColor": {

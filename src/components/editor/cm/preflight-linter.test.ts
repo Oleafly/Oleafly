@@ -19,7 +19,7 @@ const TYPST_ENGINE = {
 };
 
 beforeEach(() => {
-  useFilesStore.setState({ engine: LATEX_ENGINE, mainDoc: "main.tex" });
+  useFilesStore.setState({ engine: LATEX_ENGINE, mainDoc: "main.tex", files: {} });
   useIndexStore.setState({ texts: {} });
 });
 
@@ -85,5 +85,14 @@ describe("preflightDiagnostics", () => {
     expect(await preflightDiagnostics("\\includegraphics{plot.png}", "latex")).toHaveLength(1);
     useIndexStore.setState({ texts: { "main.tex": "\\documentclass{article}" } });
     expect(await preflightDiagnostics("\\includegraphics{plot.png}", "latex")).toEqual([]);
+  });
+
+  it("reads the open main document before the saved copy", async () => {
+    useFilesStore.setState({
+      mainDoc: "main.tex",
+      files: { "main.tex": { content: "\\DocumentMetadata{tagging=on}\n\\documentclass{article}" } } as never,
+    });
+    useIndexStore.setState({ texts: { "main.tex": "\\documentclass{article}" } });
+    expect(await preflightDiagnostics("\\includegraphics{plot.png}", "latex")).toHaveLength(1);
   });
 });

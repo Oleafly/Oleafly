@@ -667,10 +667,6 @@
         "description": "Pokazuj prawdopodobne uzupełnienie za kursorem. Naciśnij Tab, aby je przyjąć.",
         "label": "Podpowiedź w wierszu"
       },
-      "nonBlinkingCursor": {
-        "description": "Utrzymuj kursor edytora bez migania.",
-        "label": "Kursor bez migania"
-      },
       "stickyScroll": {
         "description": "Utrzymuj bieżące sekcje, nagłówki i środowiska na górze podczas przewijania.",
         "label": "Przypięte przewijanie"
@@ -760,6 +756,17 @@
         "options": {
           "text": "Tekst",
           "line": "Wiersz"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Miganie kursora",
+        "description": "Wybierz, jak miga kursor w edytorze. Wyłączone zostawia go na stałe widocznym.",
+        "options": {
+          "blink": "Miganie",
+          "smooth": "Płynne",
+          "phase": "Faza",
+          "expand": "Rozciąganie",
+          "off": "Wyłączone"
         }
       },
       "cursorColor": {

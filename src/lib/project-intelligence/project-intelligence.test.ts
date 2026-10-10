@@ -1552,4 +1552,40 @@ describe("LaTeX graphics search paths", () => {
     );
     expect(assetEdge(value, "filename.pdf")).toMatchObject({ resolution: "unresolved" });
   });
+
+  it("accepts quoted, parent and unslashed \\graphicspath entries", () => {
+    const value = snapshot(
+      {
+        "paper/main.tex": String.raw`\graphicspath{{"../shared figures/"}{plots}{./local/}}
+\includegraphics{logo}
+\includegraphics{curve.pdf}
+\includegraphics{photo.jpg}`,
+      },
+      ["paper/main.tex", "shared figures/logo.png", "paper/plots/curve.pdf", "paper/local/photo.jpg"],
+    );
+    expect(assetEdge(value, "logo")).toMatchObject({ resolution: "resolved", targetFile: "shared figures/logo.png" });
+    expect(assetEdge(value, "curve.pdf")).toMatchObject({ resolution: "resolved", targetFile: "paper/plots/curve.pdf" });
+    expect(assetEdge(value, "photo.jpg")).toMatchObject({ resolution: "resolved", targetFile: "paper/local/photo.jpg" });
+  });
+
+  it("keeps a second document beside the main one to its own folder and search paths", () => {
+    const value = snapshot(
+      {
+        "paper/main.tex": String.raw`\graphicspath{{figs/}}
+\includegraphics{logo.png}`,
+        "poster/poster.tex": String.raw`\includegraphics{logo.png}
+\includegraphics{chart.pdf}`,
+      },
+      ["paper/main.tex", "poster/poster.tex", "paper/figs/logo.png", "paper/logo.png", "poster/logo.png", "paper/figs/chart.pdf"],
+    );
+    const posterLogo = value.hierarchy.edges.find(
+      (edge) => edge.fromFile === "poster/poster.tex" && edge.rawTarget === "logo.png",
+    );
+    expect(posterLogo).toMatchObject({ resolution: "resolved", targetFile: "poster/logo.png" });
+    expect(assetEdge(value, "chart.pdf")).toMatchObject({ resolution: "unresolved" });
+    const paperLogo = value.hierarchy.edges.find(
+      (edge) => edge.fromFile === "paper/main.tex" && edge.rawTarget === "logo.png",
+    );
+    expect(paperLogo).toMatchObject({ resolution: "resolved", targetFile: "paper/logo.png" });
+  });
 });

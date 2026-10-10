@@ -18,44 +18,48 @@ function measureExtend(view: EditorView): number | null {
   return cursorLineExtend(view.defaultLineHeight, rect.bottom - rect.top);
 }
 
-function cursorLayer(view: EditorView): HTMLElement | null {
-  return view.scrollDOM.querySelector<HTMLElement>(":scope > .cm-cursorLayer");
+export function nativeCursorLayer(view: EditorView): HTMLElement | null {
+  return view.scrollDOM.querySelector<HTMLElement>(":scope > .cm-cursorLayer:not(.cm-vimCursorLayer)");
 }
 
-export function cursorFillsLine() {
-  return ViewPlugin.fromClass(
-    class {
-      extend = -1;
-      layer: HTMLElement | null = null;
+const cursorFillsLinePlugin = ViewPlugin.fromClass(
+  class {
+    extend = -1;
+    layer: HTMLElement | null = null;
+    destroyed = false;
 
-      constructor(readonly view: EditorView) {
+    constructor(readonly view: EditorView) {
+      this.measure();
+    }
+
+    update(update: ViewUpdate) {
+      if (update.selectionSet || update.geometryChanged || update.focusChanged || update.viewportChanged) {
         this.measure();
       }
+    }
 
-      update(update: ViewUpdate) {
-        if (update.selectionSet || update.geometryChanged || update.focusChanged) {
-          this.measure();
-        }
-      }
+    measure() {
+      this.view.requestMeasure({
+        key: this,
+        read: measureExtend,
+        write: (extend, view) => {
+          const layer = nativeCursorLayer(view);
+          if (this.destroyed || extend === null || !layer) return;
+          if (extend === this.extend && layer === this.layer) return;
+          this.extend = extend;
+          this.layer = layer;
+          layer.style.setProperty(CURSOR_EXTEND_PROPERTY, `${extend}px`);
+        },
+      });
+    }
 
-      measure() {
-        this.view.requestMeasure({
-          key: this,
-          read: measureExtend,
-          write: (extend, view) => {
-            const layer = cursorLayer(view);
-            if (extend === null || !layer) return;
-            if (extend === this.extend && layer === this.layer) return;
-            this.extend = extend;
-            this.layer = layer;
-            layer.style.setProperty(CURSOR_EXTEND_PROPERTY, `${extend}px`);
-          },
-        });
-      }
+    destroy() {
+      this.destroyed = true;
+      this.layer?.style.removeProperty(CURSOR_EXTEND_PROPERTY);
+    }
+  },
+);
 
-      destroy() {
-        this.layer?.style.removeProperty(CURSOR_EXTEND_PROPERTY);
-      }
-    },
-  );
+export function cursorFillsLine() {
+  return cursorFillsLinePlugin;
 }

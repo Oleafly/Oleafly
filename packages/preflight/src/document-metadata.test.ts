@@ -15,6 +15,9 @@ describe("requestsTaggedPdf", () => {
     expect(requestsTaggedPdf("\\DocumentMetadata{testphase=phase-III}")).toBe(true);
     expect(requestsTaggedPdf("\\DocumentMetadata{pdfstandard=ua-2}")).toBe(true);
     expect(requestsTaggedPdf("\\DocumentMetadata{pdfstandard={a-4f,ua-2}}")).toBe(true);
+    expect(requestsTaggedPdf("\\DocumentMetadata{ tagging = on , lang = en }")).toBe(true);
+    expect(requestsTaggedPdf("\\DocumentMetadata{pdfstandard=UA-2}")).toBe(true);
+    expect(requestsTaggedPdf("\\DocumentMetadata{tagging=OFF}")).toBe(false);
   });
 
   it("ignores a commented-out \\DocumentMetadata", () => {

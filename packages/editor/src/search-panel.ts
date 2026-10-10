@@ -498,7 +498,11 @@ function matchIsInView(view: EditorView, range: SelectionRange): boolean {
   const box = view.scrollDOM.getBoundingClientRect();
   const top = view.documentTop + view.lineBlockAt(range.from).top;
   const bottom = view.documentTop + view.lineBlockAt(range.to).bottom;
-  return top >= box.top && bottom <= box.bottom;
+  if (top >= box.top && bottom <= box.bottom) return true;
+  if (bottom <= box.top || top >= box.bottom) return false;
+  const start = view.coordsAtPos(range.from, 1);
+  const end = view.coordsAtPos(range.to, -1);
+  return start !== null && end !== null && start.top >= box.top && end.bottom <= box.bottom;
 }
 
 export function scrollToMatch(range: SelectionRange, view: EditorView) {

@@ -657,10 +657,6 @@
         "description": "Vis den sandsynlige fuldførelse efter markøren. Tryk Tab for at acceptere den.",
         "label": "Forslag i linjen"
       },
-      "nonBlinkingCursor": {
-        "description": "Hold markøren i editoren fast, så den ikke blinker.",
-        "label": "Markør, der ikke blinker"
-      },
       "stickyScroll": {
         "description": "Hold de aktuelle afsnit, overskrifter og miljøer øverst, mens du ruller.",
         "label": "Fastlåst rulning"
@@ -750,6 +746,17 @@
         "options": {
           "text": "Tekst",
           "line": "Linje"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Markørblink",
+        "description": "Vælg, hvordan markøren i editoren blinker. Fra holder den fast.",
+        "options": {
+          "blink": "Blink",
+          "smooth": "Blød",
+          "phase": "Fase",
+          "expand": "Udvid",
+          "off": "Fra"
         }
       },
       "cursorColor": {

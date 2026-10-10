@@ -662,10 +662,6 @@
         "description": "Mostra il completamento probabile dopo il cursore. Premi Tab per accettarlo.",
         "label": "Suggerimento in linea"
       },
-      "nonBlinkingCursor": {
-        "description": "Mantieni fisso il cursore dell'editor.",
-        "label": "Cursore senza lampeggio"
-      },
       "stickyScroll": {
         "description": "Tieni in alto le sezioni, i titoli e gli ambienti correnti mentre scorri.",
         "label": "Scorrimento con intestazioni fisse"
@@ -755,6 +751,17 @@
         "options": {
           "text": "Testo",
           "line": "Riga"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Lampeggio del cursore",
+        "description": "Scegli come lampeggia il cursore dell'editor. Disattivato lo lascia fisso.",
+        "options": {
+          "blink": "Lampeggio",
+          "smooth": "Morbido",
+          "phase": "Fase",
+          "expand": "Espansione",
+          "off": "Disattivato"
         }
       },
       "cursorColor": {

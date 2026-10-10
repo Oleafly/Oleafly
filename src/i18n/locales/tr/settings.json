@@ -657,10 +657,6 @@
         "description": "Olası tamamlamayı imlecin ardında gösterir. Kabul etmek için Tab tuşuna basın.",
         "label": "Satır içi öneri"
       },
-      "nonBlinkingCursor": {
-        "description": "Düzenleyici imlecini sabit tutar.",
-        "label": "Yanıp sönmeyen imleç"
-      },
       "stickyScroll": {
         "description": "Siz kaydırırken geçerli bölümleri, başlıkları ve ortamları üstte tutar.",
         "label": "Yapışkan kaydırma"
@@ -746,10 +742,21 @@
       },
       "cursorHeight": {
         "label": "İmleç yüksekliği",
-        "description": "Düzenleyicideki imlecin yüksekliğini ayarlayın. Satır, imleci tüm satır kadar uzun yapar.",
+        "description": "Düzenleyici imlecinin yüksekliğini ayarlar. Satır, imleci satır yüksekliğinde yapar.",
         "options": {
           "text": "Metin",
           "line": "Satır"
+        }
+      },
+      "cursorBlinking": {
+        "label": "İmleç yanıp sönmesi",
+        "description": "Düzenleyici imlecinin nasıl yanıp söneceğini ayarlar. Kapalı, imleci sabit tutar.",
+        "options": {
+          "blink": "Yanıp sön",
+          "smooth": "Yumuşak",
+          "phase": "Faz",
+          "expand": "Genişlet",
+          "off": "Kapalı"
         }
       },
       "cursorColor": {

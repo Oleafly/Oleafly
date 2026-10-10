@@ -47,7 +47,7 @@ function host(path: string, content: string, autoCloseBrackets = true): EditorHo
       editorTheme: "system",
       autocomplete: true,
       autoCloseBrackets,
-      nonBlinkingCursor: false,
+      cursorBlinking: "blink",
       highlightCurrentLine: true,
       cursorHeight: "text",
       ghostCompletion: false,

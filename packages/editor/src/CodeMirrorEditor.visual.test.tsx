@@ -35,7 +35,7 @@ function host(path: string, content: string): EditorHost {
       editorTheme: "system",
       autocomplete: false,
       autoCloseBrackets: true,
-      nonBlinkingCursor: false,
+      cursorBlinking: "blink",
       highlightCurrentLine: true,
       cursorHeight: "text",
       ghostCompletion: false,

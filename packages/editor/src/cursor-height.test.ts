@@ -2,6 +2,7 @@
 
 import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
 import { drawSelection, EditorView } from "@codemirror/view";
+import { vim } from "@replit/codemirror-vim";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CURSOR_EXTEND_PROPERTY, cursorFillsLine, cursorLineExtend } from "./cursor-height";
 
@@ -12,10 +13,13 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function mount(textHeights: Record<number, number>, lineHeight = 24) {
+function mount(textHeights: Record<number, number>, lineHeight = 24, withVim = false) {
   const prefs = new Compartment();
   const view = new EditorView({
-    state: EditorState.create({ doc: "short\nlonger line", extensions: [drawSelection(), prefs.of([])] }),
+    state: EditorState.create({
+      doc: "short\nlonger line",
+      extensions: [withVim ? vim() : [], drawSelection(), prefs.of([])],
+    }),
     parent: document.body.appendChild(document.createElement("div")),
   });
   views.push(view);
@@ -28,7 +32,7 @@ function mount(textHeights: Record<number, number>, lineHeight = 24) {
 }
 
 function extendOf(view: EditorView): string {
-  const layer = view.scrollDOM.querySelector<HTMLElement>(".cm-cursorLayer");
+  const layer = view.scrollDOM.querySelector<HTMLElement>(".cm-cursorLayer:not(.cm-vimCursorLayer)");
   return layer?.style.getPropertyValue(CURSOR_EXTEND_PROPERTY) ?? "missing layer";
 }
 
@@ -89,5 +93,25 @@ describe("cursorFillsLine", () => {
     view.dispatch({ selection: EditorSelection.cursor(2) });
     await nextFrame();
     expect(coords).toHaveBeenCalled();
+  });
+
+  it("pads the native cursor, not vim's block cursor layer", async () => {
+    const { view, prefs } = mount({ 1: 16 }, 24, true);
+    expect(view.scrollDOM.querySelector(".cm-vimCursorLayer")).not.toBeNull();
+    view.dispatch({ effects: prefs.reconfigure(cursorFillsLine()) });
+    await nextFrame();
+    expect(extendOf(view)).toBe("4px");
+    const vimLayer = view.scrollDOM.querySelector<HTMLElement>(".cm-vimCursorLayer");
+    expect(vimLayer?.style.getPropertyValue(CURSOR_EXTEND_PROPERTY)).toBe("");
+  });
+
+  it("keeps its padding when the preferences reconfigure, as on a file switch", async () => {
+    const { view, prefs } = mount({ 1: 16 });
+    view.dispatch({ effects: prefs.reconfigure(cursorFillsLine()) });
+    await nextFrame();
+    vi.mocked(view.coordsAtPos).mockReturnValue(null);
+    view.dispatch({ effects: prefs.reconfigure([cursorFillsLine()]) });
+    await nextFrame();
+    expect(extendOf(view)).toBe("4px");
   });
 });

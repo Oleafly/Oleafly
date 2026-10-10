@@ -667,10 +667,6 @@
         "description": "Zobrazovat pravděpodobné doplnění za kurzorem. Přijmete jej klávesou Tab.",
         "label": "Návrh přímo v textu"
       },
-      "nonBlinkingCursor": {
-        "description": "Nechat kurzor editoru svítit stále.",
-        "label": "Neblikající kurzor"
-      },
       "stickyScroll": {
         "description": "Při posouvání držet aktuální sekce, nadpisy a prostředí nahoře.",
         "label": "Přilepený posuv"
@@ -756,10 +752,21 @@
       },
       "cursorHeight": {
         "label": "Výška kurzoru",
-        "description": "Nastavit výšku kurzoru v editoru. Řádek ho natáhne na výšku celého řádku.",
+        "description": "Nastavte, jak vysoký má být kurzor editoru. Řádek ho natáhne na výšku celého řádku.",
         "options": {
           "text": "Text",
           "line": "Řádek"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Blikání kurzoru",
+        "description": "Vyberte, jak má kurzor editoru blikat. Vypnuto ho nechá stále viditelný.",
+        "options": {
+          "blink": "Blikat",
+          "smooth": "Plynule",
+          "phase": "Fáze",
+          "expand": "Roztáhnout",
+          "off": "Vypnuto"
         }
       },
       "cursorColor": {

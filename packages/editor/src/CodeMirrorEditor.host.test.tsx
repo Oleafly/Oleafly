@@ -32,7 +32,7 @@ const SETTINGS: Settings = {
   editorTheme: "system",
   autocomplete: false,
   autoCloseBrackets: false,
-  nonBlinkingCursor: false,
+  cursorBlinking: "blink",
   highlightCurrentLine: true,
   cursorHeight: "text",
   ghostCompletion: false,
@@ -170,7 +170,7 @@ describe("CodeMirrorEditor settings", () => {
   it("applies tab size, keymap and cursor preferences without remounting", async () => {
     const store = await mountEditor();
     const mounted = view();
-    await settings(store, { tabSize: 4, keymap: "emacs", nonBlinkingCursor: true, autoCloseBrackets: true });
+    await settings(store, { tabSize: 4, keymap: "emacs", cursorBlinking: "off", autoCloseBrackets: true });
     expect(view()).toBe(mounted);
     expect(view().state.tabSize).toBe(4);
     await settings(store, { keymap: "default" });

@@ -30,6 +30,7 @@ import {
   ACCENTS,
   APP_ZOOM_LEVELS,
   BROWSER_SEARCH_ENGINES,
+  EDITOR_CURSOR_BLINKING,
   EDITOR_CURSOR_HEIGHTS,
   EDITOR_CURSOR_WIDTHS,
   EDITOR_SURFACES,
@@ -43,6 +44,7 @@ import {
   EDITOR_LINE_HEIGHT_OPTIONS,
   EDITOR_TAB_SIZES,
   FILE_MOVE_REFERENCE_OPTIONS,
+  type EditorCursorBlinking,
   type EditorCursorHeight,
   type FileMoveReferences,
   EDITOR_THEMES,
@@ -609,12 +611,8 @@ function EditorAppearanceTab() {
   const setEditorGhostCompletion = useSettingsStore(
     (state) => state.setEditorGhostCompletion,
   );
-  const editorNonBlinkingCursor = useSettingsStore(
-    (state) => state.editorNonBlinkingCursor,
-  );
-  const setEditorNonBlinkingCursor = useSettingsStore(
-    (state) => state.setEditorNonBlinkingCursor,
-  );
+  const editorCursorBlinking = useSettingsStore((state) => state.editorCursorBlinking);
+  const setEditorCursorBlinking = useSettingsStore((state) => state.setEditorCursorBlinking);
   const editorMathPreview = useSettingsStore((state) => state.editorMathPreview);
   const setEditorMathPreview = useSettingsStore(
     (state) => state.setEditorMathPreview,
@@ -834,7 +832,7 @@ function EditorAppearanceTab() {
             value={editorCursorHeight}
             onValueChange={(value) => setEditorCursorHeight(value as EditorCursorHeight)}
           >
-            <SelectTrigger className="w-[88px]" data-testid="settings-editor-cursor-height-trigger">
+            <SelectTrigger className="w-[112px]" data-testid="settings-editor-cursor-height-trigger">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="z-[100]">
@@ -848,13 +846,30 @@ function EditorAppearanceTab() {
         }
       />
 
-      <EditorCursorColorRow />
-      <SettingsToggleRow
-        label={t(($) => $.settings.appearance.editor.nonBlinkingCursor.label)}
-        description={t(($) => $.settings.appearance.editor.nonBlinkingCursor.description)}
-        checked={editorNonBlinkingCursor}
-        onChange={setEditorNonBlinkingCursor}
+      <SettingsRow
+        testId="settings-row-editor-cursor-blinking"
+        label={t(($) => $.settings.appearance.editor.cursorBlinking.label)}
+        description={t(($) => $.settings.appearance.editor.cursorBlinking.description)}
+        control={
+          <Select
+            value={editorCursorBlinking}
+            onValueChange={(value) => setEditorCursorBlinking(value as EditorCursorBlinking)}
+          >
+            <SelectTrigger className="w-[168px]" data-testid="settings-editor-cursor-blinking-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_CURSOR_BLINKING.map((style) => (
+                <SelectItem key={style} value={style}>
+                  {t(($) => $.settings.appearance.editor.cursorBlinking.options[style])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
       />
+
+      <EditorCursorColorRow />
 
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.lineWrap.label)}

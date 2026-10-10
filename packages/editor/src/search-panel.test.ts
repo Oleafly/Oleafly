@@ -337,4 +337,25 @@ describe("scrolling to a match", () => {
 
     expect(scrolls).toEqual(["nearest", "nearest", "center", "center"]);
   });
+
+  it("leaves a visible match in a long wrapped paragraph where it is", () => {
+    const paragraph = Array.from({ length: 60 }, (_, index) => (index === 30 ? "target" : "word")).join(" ");
+    const editor = setup(`intro\n${paragraph}\noutro`);
+    const scrolls = recordScrolls(editor);
+    vi.spyOn(editor.scrollDOM, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 100, 400, 200));
+    vi.spyOn(editor, "documentTop", "get").mockReturnValue(0);
+    vi.spyOn(editor, "lineBlockAt").mockImplementation((pos) => {
+      const line = editor.state.doc.lineAt(pos);
+      const top = line.number === 1 ? 0 : line.number === 2 ? LINE_HEIGHT : 30 * LINE_HEIGHT;
+      const height = line.number === 2 ? 29 * LINE_HEIGHT : LINE_HEIGHT;
+      return { from: line.from, to: line.to, top, bottom: top + height, height } as never;
+    });
+    const coords = vi.spyOn(editor, "coordsAtPos").mockImplementation(() => ({ left: 0, right: 0, top: 180, bottom: 200 }));
+    fill("Find", "target");
+    click("Next match (Enter)");
+    expect(coords).toHaveBeenCalled();
+    coords.mockImplementation(() => ({ left: 0, right: 0, top: 500, bottom: 520 }));
+    click("Previous match (⇧Enter)");
+    expect(scrolls).toEqual(["nearest", "center"]);
+  });
 });

@@ -657,10 +657,6 @@
         "description": "Show the likely completion after the cursor. Press Tab to accept it.",
         "label": "Inline suggestion"
       },
-      "nonBlinkingCursor": {
-        "description": "Keep the editor cursor solid.",
-        "label": "Non-blinking cursor"
-      },
       "stickyScroll": {
         "description": "Keep the current sections, headings and environments at the top while you scroll.",
         "label": "Sticky scroll"
@@ -750,6 +746,17 @@
         "options": {
           "text": "Text",
           "line": "Line"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Cursor blinking",
+        "description": "Choose how the editor cursor blinks. Off keeps it solid.",
+        "options": {
+          "blink": "Blink",
+          "smooth": "Smooth",
+          "phase": "Phase",
+          "expand": "Expand",
+          "off": "Off"
         }
       },
       "cursorColor": {

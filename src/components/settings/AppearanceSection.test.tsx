@@ -112,7 +112,7 @@ describe("Appearance settings tabs", () => {
       editorAutocomplete: false,
       editorAutoCloseBrackets: false,
       editorGhostCompletion: false,
-      editorNonBlinkingCursor: false,
+      editorCursorBlinking: "blink",
       editorStickyScroll: false,
       hiddenFilePatterns: [...DEFAULT_HIDDEN_FILE_PATTERNS],
       openInTree: false,
@@ -225,7 +225,6 @@ describe("Appearance settings tabs", () => {
       appearance.editor.autocomplete.label,
       appearance.editor.autoCloseBrackets.label,
       appearance.editor.ghostCompletion.label,
-      appearance.editor.nonBlinkingCursor.label,
       appearance.editor.stickyScroll.label,
     ]) {
       await user.click(screen.getByRole("switch", { name: label }));
@@ -235,7 +234,6 @@ describe("Appearance settings tabs", () => {
       editorAutocomplete: true,
       editorAutoCloseBrackets: true,
       editorGhostCompletion: true,
-      editorNonBlinkingCursor: true,
       editorStickyScroll: true,
     });
   });
@@ -459,6 +457,24 @@ describe("Appearance settings tabs", () => {
       await screen.findByRole("option", { name: appearance.editor.cursorHeight.options.line }),
     );
     expect(useSettingsStore.getState().editorCursorHeight).toBe("line");
+  });
+
+  it("chooses how the editor cursor blinks", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorCursorBlinking: "blink" });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    const row = screen.getByTestId("settings-row-editor-cursor-blinking");
+    expect(row).toHaveTextContent(appearance.editor.cursorBlinking.label);
+    expect(row).toHaveTextContent(appearance.editor.cursorBlinking.options.blink);
+    expect(screen.queryByRole("switch", { name: "Non-blinking cursor" })).toBeNull();
+    for (const style of ["smooth", "phase", "expand", "off"] as const) {
+      await user.click(screen.getByTestId("settings-editor-cursor-blinking-trigger"));
+      await user.click(
+        await screen.findByRole("option", { name: appearance.editor.cursorBlinking.options[style] }),
+      );
+      expect(useSettingsStore.getState().editorCursorBlinking).toBe(style);
+    }
   });
 
   it("turns the current-line highlight off and on", async () => {

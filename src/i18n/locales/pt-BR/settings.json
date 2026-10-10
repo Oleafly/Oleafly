@@ -662,10 +662,6 @@
         "description": "Mostra a continuação provável depois do cursor. Pressione Tab para aceitar.",
         "label": "Sugestão em linha"
       },
-      "nonBlinkingCursor": {
-        "description": "Mantém o cursor do editor sempre aceso.",
-        "label": "Cursor sem piscar"
-      },
       "stickyScroll": {
         "description": "Mantém no topo as seções, os títulos e os ambientes atuais enquanto você rola.",
         "label": "Rolagem fixa"
@@ -751,10 +747,21 @@
       },
       "cursorHeight": {
         "label": "Altura do cursor",
-        "description": "Defina a altura do cursor do editor. Linha deixa o cursor da altura da linha inteira.",
+        "description": "Define a altura do cursor do editor. Linha deixa o cursor da altura da linha inteira.",
         "options": {
           "text": "Texto",
           "line": "Linha"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Piscar do cursor",
+        "description": "Define como o cursor do editor pisca. Desligado o deixa fixo.",
+        "options": {
+          "blink": "Piscar",
+          "smooth": "Suave",
+          "phase": "Fase",
+          "expand": "Expandir",
+          "off": "Desligado"
         }
       },
       "cursorColor": {

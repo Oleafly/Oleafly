@@ -322,7 +322,7 @@ describe("useSettingsStore reset", () => {
     settings.setEditorAutoCloseMath(false);
     settings.setEditorAutoCloseEnvironments(false);
     settings.setEditorGhostCompletion(false);
-    settings.setEditorNonBlinkingCursor(true);
+    settings.setEditorCursorBlinking("off");
     settings.setEditorKeymap("emacs");
     settings.setEditorTabSize(2);
     settings.setEditorLineWrap(false);
@@ -343,7 +343,7 @@ describe("useSettingsStore reset", () => {
       editorAutoCloseMath: true,
       editorAutoCloseEnvironments: true,
       editorGhostCompletion: true,
-      editorNonBlinkingCursor: false,
+      editorCursorBlinking: "blink",
       editorKeymap: "default",
       vim: false,
       editorTabSize: 4,
@@ -355,7 +355,7 @@ describe("useSettingsStore reset", () => {
     expect(localStorage.getItem("oleafly.editor.closeMath")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.closeEnvironments")).toBe("1");
     expect(localStorage.getItem("oleafly.editor.ghostCompletion")).toBe("1");
-    expect(localStorage.getItem("oleafly.editor.solidCursor")).toBe("0");
+    expect(localStorage.getItem("oleafly.editor.cursorBlinking")).toBe("blink");
     expect(localStorage.getItem("oleafly.editor.keymap")).toBe("default");
     expect(localStorage.getItem("oleafly.vim")).toBe("0");
     expect(localStorage.getItem("oleafly.editor.tabSize")).toBe("4");
@@ -417,6 +417,18 @@ describe("useSettingsStore reset", () => {
     settings.resetToDefaults();
     expect(useSettingsStore.getState().editorCursorWidth).toBe(1);
     expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("1");
+  });
+
+  it("offers VS Code's cursor blinking styles and falls back to Blink", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState().editorCursorBlinking).toBe("blink");
+    for (const style of ["smooth", "phase", "expand", "off", "blink"] as const) {
+      settings.setEditorCursorBlinking(style);
+      expect(useSettingsStore.getState().editorCursorBlinking).toBe(style);
+      expect(localStorage.getItem("oleafly.editor.cursorBlinking")).toBe(style);
+    }
+    settings.setEditorCursorBlinking("wobble" as never);
+    expect(useSettingsStore.getState().editorCursorBlinking).toBe("blink");
   });
 
   it("draws the cursor as tall as the text or the line and resets to text", () => {
@@ -621,6 +633,7 @@ describe("editor appearance migration", () => {
     lsValues.set("oleafly.editor.cursorWidth", "2");
     lsValues.set("oleafly.editor.cursorHeight", "line");
     lsValues.set("oleafly.editor.highlightCurrentLine", "0");
+    lsValues.set("oleafly.editor.cursorBlinking", "phase");
     vi.resetModules();
     const migrated = await import("./settings");
     expect(migrated.useSettingsStore.getState()).toMatchObject({
@@ -630,7 +643,20 @@ describe("editor appearance migration", () => {
       editorCursorWidth: 2,
       editorCursorHeight: "line",
       editorHighlightCurrentLine: false,
+      editorCursorBlinking: "phase",
     });
+  });
+
+  it("turns a solid cursor saved before blinking styles existed into Off", async () => {
+    lsValues.clear();
+    lsValues.set("oleafly.editor.solidCursor", "1");
+    vi.resetModules();
+    const migrated = await import("./settings");
+    expect(migrated.useSettingsStore.getState().editorCursorBlinking).toBe("off");
+    lsValues.set("oleafly.editor.cursorBlinking", "expand");
+    vi.resetModules();
+    const chosen = await import("./settings");
+    expect(chosen.useSettingsStore.getState().editorCursorBlinking).toBe("expand");
   });
 
   it("falls back for a bad custom line height, cursor width or cursor height", async () => {

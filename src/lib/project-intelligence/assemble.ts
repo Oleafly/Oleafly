@@ -308,7 +308,35 @@ function addExtensionCandidates(
 
 interface AssetSearch {
   readonly mainDirectory: string;
-  readonly searchPaths: LatexSearchPaths;
+  readonly mainDocumentFiles: ReadonlySet<string>;
+  readonly mainDocumentPaths: LatexSearchPaths;
+  readonly files: Readonly<Record<string, FileAnalysis>>;
+}
+
+const NO_SEARCH_PATHS: LatexSearchPaths = { graphics: [], svg: [] };
+
+function filesReachableFrom(
+  mainDocument: string | undefined,
+  edges: readonly ProjectEdge[],
+): ReadonlySet<string> {
+  const reachable = new Set<string>();
+  if (!mainDocument) return reachable;
+  const children = new Map<string, string[]>();
+  for (const edge of edges) {
+    if ((edge.kind !== "include" && edge.kind !== "import") || edge.resolution !== "resolved" || !edge.targetFile) {
+      continue;
+    }
+    const targets = children.get(edge.fromFile) ?? [];
+    targets.push(edge.targetFile);
+    children.set(edge.fromFile, targets);
+  }
+  const pending = [mainDocument];
+  for (let file = pending.pop(); file !== undefined; file = pending.pop()) {
+    if (reachable.has(file)) continue;
+    reachable.add(file);
+    pending.push(...(children.get(file) ?? []));
+  }
+  return reachable;
 }
 
 function projectSearchPaths(files: readonly FileAnalysis[]): LatexSearchPaths {
@@ -326,12 +354,16 @@ function projectSearchPaths(files: readonly FileAnalysis[]): LatexSearchPaths {
 }
 
 function assetSearchDirectories(edge: ProjectEdge, search: AssetSearch): string[] {
-  const paths =
-    edge.searchPath === "svg"
-      ? [...search.searchPaths.svg, ...search.searchPaths.graphics]
-      : search.searchPaths.graphics;
+  const inMainDocument = search.mainDocumentFiles.has(edge.fromFile);
+  const declared = inMainDocument
+    ? search.mainDocumentPaths
+    : search.files[edge.fromFile]?.latexSearchPaths ?? NO_SEARCH_PATHS;
+  const paths = edge.searchPath === "svg" ? [...declared.svg, ...declared.graphics] : declared.graphics;
+  const bases = inMainDocument
+    ? [search.mainDirectory, "", dirname(edge.fromFile)]
+    : [dirname(edge.fromFile)];
   const directories: string[] = [];
-  for (const base of [search.mainDirectory, "", dirname(edge.fromFile)]) {
+  for (const base of bases) {
     for (const directory of [base, ...paths.map((path) => (base ? `${base}/${path}` : path))]) {
       if (!directories.includes(directory)) directories.push(directory);
     }
@@ -357,13 +389,13 @@ function candidateTargetFiles(
   edge: ProjectEdge,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
-  search: AssetSearch,
+  search?: AssetSearch,
 ): readonly string[] {
   if (!edge.targetFile) return [];
   if (edge.kind === "bibliography") {
     return bibliographyTargetFiles(edge, known, knownByLower);
   }
-  if (edge.searchPath) {
+  if (edge.searchPath && search) {
     return searchedAssetFiles(edge, known, knownByLower, search);
   }
   const normalized = normalizeProjectPath(edge.targetFile);
@@ -394,7 +426,7 @@ function resolveEdge(
   edge: ProjectEdge,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
-  search: AssetSearch,
+  search?: AssetSearch,
 ): ProjectEdge {
   if (edge.resolution === "external" || !edge.targetFile) return edge;
   const candidates = candidateTargetFiles(edge, known, knownByLower, search);
@@ -728,13 +760,18 @@ export function assembleProjectIntelligenceResult(
   const byKey = definitionsByKey(definitions);
 
   const { known, knownByLower } = knownFileIndex(input.knownFiles);
+  const linked = Object.values(orderedFiles)
+    .flatMap((file) => file.edges)
+    .map((edge) => (edge.searchPath ? edge : resolveEdge(edge, known, knownByLower)));
+  const mainDocumentFiles = filesReachableFrom(input.mainDocument, linked);
   const search: AssetSearch = {
     mainDirectory: input.mainDocument ? dirname(input.mainDocument) : "",
-    searchPaths: projectSearchPaths(fileList),
+    mainDocumentFiles,
+    mainDocumentPaths: projectSearchPaths(fileList.filter((file) => mainDocumentFiles.has(file.file))),
+    files: orderedFiles,
   };
-  const edges = Object.values(orderedFiles)
-    .flatMap((file) => file.edges)
-    .map((edge) => resolveEdge(edge, known, knownByLower, search))
+  const edges = linked
+    .map((edge) => (edge.searchPath ? resolveEdge(edge, known, knownByLower, search) : edge))
     .sort(
       (left, right) =>
         left.fromFile.localeCompare(right.fromFile) ||

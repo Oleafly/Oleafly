@@ -657,10 +657,6 @@
         "description": "Visa den troliga kompletteringen efter markören. Tryck på Tab för att acceptera den.",
         "label": "Förslag i löptext"
       },
-      "nonBlinkingCursor": {
-        "description": "Håll redigerarens markör stadig.",
-        "label": "Markör utan blinkning"
-      },
       "stickyScroll": {
         "description": "Håll kvar aktuella avsnitt, rubriker och miljöer högst upp medan du rullar.",
         "label": "Klistrig rullning"
@@ -750,6 +746,17 @@
         "options": {
           "text": "Text",
           "line": "Rad"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Markörblinkning",
+        "description": "Välj hur markören i redigeraren blinkar. Av håller den stilla.",
+        "options": {
+          "blink": "Blinka",
+          "smooth": "Mjuk",
+          "phase": "Fas",
+          "expand": "Expandera",
+          "off": "Av"
         }
       },
       "cursorColor": {

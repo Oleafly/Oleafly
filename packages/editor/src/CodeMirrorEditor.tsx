@@ -14,7 +14,6 @@ import {
   lineNumbers,
   highlightActiveLineGutter,
   highlightSpecialChars,
-  drawSelection,
   dropCursor,
   rectangularSelection,
   crosshairCursor,
@@ -47,6 +46,7 @@ import { setDiagnostics } from "@codemirror/lint";
 import { CodeMirror, getCM, vim } from "@replit/codemirror-vim";
 
 import { highlightActiveLineWhenCollapsed } from "./active-line";
+import { cursorBlinking as cursorBlinkingExtension, type EditorCursorBlinking } from "./cursor-blink";
 import { cursorFillsLine, type EditorCursorHeight } from "./cursor-height";
 import type { EditorTranslator } from "./messages";
 import { vscodeSearch } from "./search-panel";
@@ -127,11 +127,8 @@ export interface EditorHost {
     /** Auto-insert closing brackets, parentheses, and quotes. */
     autoCloseBrackets: boolean;
     autoCloseMath?: boolean;
-    /** Keep the cursor solid instead of blinking. */
-    nonBlinkingCursor: boolean;
-    /** Tint the line the cursor is on. */
+    cursorBlinking: EditorCursorBlinking;
     highlightCurrentLine: boolean;
-    /** Draw the cursor as tall as the text or as the whole line. */
     cursorHeight: EditorCursorHeight;
     /** Dim inline preview of the top completion, accepted with Tab. */
     ghostCompletion: boolean;
@@ -624,12 +621,12 @@ function stickyScrollFor(path: string | null): Extension[] {
   return isLatexSourcePath(path) ? [stickyScroll()] : [];
 }
 
-// Bracket auto-closing, cursor rendering and the current-line highlight, all
-// user preferences that must reconfigure without recreating the editor.
+// Bracket auto-closing and cursor rendering, both user preferences that must
+// reconfigure without recreating the editor.
 interface EditorPrefs {
   autoCloseBrackets: boolean;
   autoCloseMath: boolean;
-  nonBlinkingCursor: boolean;
+  cursorBlinking: EditorCursorBlinking;
   highlightCurrentLine: boolean;
   cursorHeight: EditorCursorHeight;
 }
@@ -639,7 +636,7 @@ function editorPrefExtensions(
   {
     autoCloseBrackets,
     autoCloseMath,
-    nonBlinkingCursor,
+    cursorBlinking,
     highlightCurrentLine,
     cursorHeight,
   }: EditorPrefs,
@@ -658,8 +655,7 @@ function editorPrefExtensions(
     autoCloseBrackets ? closeBrackets() : [],
     ...latexPairs,
     ...typstPairs,
-    // A zero blink cycle keeps the cursor permanently visible.
-    drawSelection(nonBlinkingCursor ? { cursorBlinkRate: 0 } : {}),
+    cursorBlinkingExtension(cursorBlinking),
     highlightCurrentLine ? highlightActiveLineWhenCollapsed() : [],
     cursorHeight === "line" ? cursorFillsLine() : [],
   ];
@@ -732,7 +728,7 @@ export function CodeMirrorEditor({
     autocomplete,
     autoCloseBrackets,
     autoCloseMath = true,
-    nonBlinkingCursor,
+    cursorBlinking,
     highlightCurrentLine,
     cursorHeight,
     ghostCompletion: ghostCompletionEnabled,
@@ -858,7 +854,7 @@ export function CodeMirrorEditor({
           editorPrefExtensions(initialPath, {
             autoCloseBrackets,
             autoCloseMath,
-            nonBlinkingCursor,
+            cursorBlinking,
             highlightCurrentLine,
             cursorHeight,
           }),
@@ -1228,13 +1224,13 @@ export function CodeMirrorEditor({
         editorPrefExtensions(activePath, {
           autoCloseBrackets,
           autoCloseMath,
-          nonBlinkingCursor,
+          cursorBlinking,
           highlightCurrentLine,
           cursorHeight,
         }),
       ),
     });
-  }, [activePath, autoCloseBrackets, autoCloseMath, nonBlinkingCursor, highlightCurrentLine, cursorHeight]);
+  }, [activePath, autoCloseBrackets, autoCloseMath, cursorBlinking, highlightCurrentLine, cursorHeight]);
 
   // Toggle completion-while-typing without recreating the editor. Completions
   // live inside the source-tools compartment, so rebuild it for the current

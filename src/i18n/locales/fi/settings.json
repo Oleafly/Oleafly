@@ -657,10 +657,6 @@
         "description": "Näytä todennäköinen täydennys kohdistimen jälkeen. Hyväksy se painamalla Tab.",
         "label": "Tekstin sisäinen ehdotus"
       },
-      "nonBlinkingCursor": {
-        "description": "Pidä editorin kohdistin yhtenäisenä.",
-        "label": "Vilkkumaton kohdistin"
-      },
       "stickyScroll": {
         "description": "Pidä nykyiset luvut, otsikot ja ympäristöt ylhäällä vierittäessä.",
         "label": "Tarttuva vieritys"
@@ -750,6 +746,17 @@
         "options": {
           "text": "Teksti",
           "line": "Rivi"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Kohdistimen vilkkuminen",
+        "description": "Valitse, miten editorin kohdistin vilkkuu. Pois pitää sen jatkuvasti näkyvissä.",
+        "options": {
+          "blink": "Vilkkuu",
+          "smooth": "Pehmeä",
+          "phase": "Vaihe",
+          "expand": "Venyvä",
+          "off": "Pois"
         }
       },
       "cursorColor": {

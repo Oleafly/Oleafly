@@ -652,10 +652,6 @@
         "description": "在光标后显示可能的补全建议，按 Tab 即可接受。",
         "label": "行内建议"
       },
-      "nonBlinkingCursor": {
-        "description": "保持编辑器光标不闪烁。",
-        "label": "光标不闪烁"
-      },
       "stickyScroll": {
         "description": "滚动时将当前章节、标题和环境固定在顶部。",
         "label": "粘性滚动"
@@ -745,6 +741,17 @@
         "options": {
           "text": "文字",
           "line": "整行"
+        }
+      },
+      "cursorBlinking": {
+        "label": "光标闪烁",
+        "description": "选择编辑器光标的闪烁方式。选择“关闭”时光标不闪烁。",
+        "options": {
+          "blink": "闪烁",
+          "smooth": "平滑",
+          "phase": "相位",
+          "expand": "伸缩",
+          "off": "关闭"
         }
       },
       "cursorColor": {

@@ -10,6 +10,7 @@
 export * from "./controller";
 export * from "./messages";
 export { editorTheme } from "./theme";
+export { EDITOR_CURSOR_BLINKING, type EditorCursorBlinking } from "./cursor-blink";
 export { EDITOR_CURSOR_HEIGHTS, type EditorCursorHeight } from "./cursor-height";
 export {
   EDITOR_COLOR_IDS,

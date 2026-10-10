@@ -29,8 +29,8 @@ function toDiagnostics(findings: readonly Finding[]): Diagnostic[] {
 
 function latexDocumentIsTagged(text: string): boolean {
   if (requestsTaggedPdf(text)) return true;
-  const { mainDoc } = useFilesStore.getState();
-  const mainText = mainDoc ? useIndexStore.getState().texts[mainDoc] : undefined;
+  const { mainDoc, files } = useFilesStore.getState();
+  const mainText = mainDoc ? (files[mainDoc]?.content ?? useIndexStore.getState().texts[mainDoc]) : undefined;
   return mainText !== undefined && requestsTaggedPdf(mainText);
 }
 

@@ -9,6 +9,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./color-roles": "./src/color-roles.ts",
+    "./cursor-blink": "./src/cursor-blink.ts",
     "./cursor-height": "./src/cursor-height.ts",
     "./diagnostic-card": "./src/diagnostic-card.ts",
     "./latex-analysis": "./src/latex-analysis.ts",

@@ -662,10 +662,6 @@
         "description": "Muestra el final probable después del cursor. Pulsa Tab para aceptarlo.",
         "label": "Sugerencia en línea"
       },
-      "nonBlinkingCursor": {
-        "description": "Mantiene fijo el cursor del editor.",
-        "label": "Cursor sin parpadeo"
-      },
       "stickyScroll": {
         "description": "Mantiene arriba las secciones, los títulos y los entornos actuales mientras te desplazas.",
         "label": "Desplazamiento fijo"
@@ -755,6 +751,17 @@
         "options": {
           "text": "Texto",
           "line": "Línea"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Parpadeo del cursor",
+        "description": "Elige cómo parpadea el cursor del editor. Desactivado lo deja fijo.",
+        "options": {
+          "blink": "Parpadeo",
+          "smooth": "Suave",
+          "phase": "Fase",
+          "expand": "Expandir",
+          "off": "Desactivado"
         }
       },
       "cursorColor": {

@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings > Appearance > Editor has a Cursor height option. Text keeps the
   cursor as tall as the letters, and Line stretches it to the full height of
   the line.
+- Cursor blinking replaces the Non-blinking cursor switch. Blink turns the
+  cursor on and off, Smooth and Phase fade it in and out, Expand shrinks and
+  grows it, and Off keeps it solid. Smooth, Phase and Expand come to rest,
+  visible, after about ten seconds without typing. A solid cursor you chose
+  before becomes Off.
 - Highlight current line, in the same place, turns off the tint on the line
   the cursor is in. A long paragraph is one line in the source, so with
   wrapping on, the tint could cover most of the editor.

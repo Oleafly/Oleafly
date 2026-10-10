@@ -662,10 +662,6 @@
         "description": "Afficher la complétion probable après le curseur. Appuyez sur Tab pour l'accepter.",
         "label": "Suggestion en ligne"
       },
-      "nonBlinkingCursor": {
-        "description": "Garder le curseur de l'éditeur fixe.",
-        "label": "Curseur sans clignotement"
-      },
       "stickyScroll": {
         "description": "Garder les sections, titres et environnements en cours affichés en haut pendant le défilement.",
         "label": "Défilement ancré"
@@ -755,6 +751,17 @@
         "options": {
           "text": "Texte",
           "line": "Ligne"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Clignotement du curseur",
+        "description": "Choisir comment le curseur de l'éditeur clignote. Désactivé le garde fixe.",
+        "options": {
+          "blink": "Clignotant",
+          "smooth": "Doux",
+          "phase": "Phase",
+          "expand": "Étirement",
+          "off": "Désactivé"
         }
       },
       "cursorColor": {
