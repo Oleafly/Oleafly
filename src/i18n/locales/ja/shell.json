@@ -380,11 +380,13 @@
     "compile": "コンパイル",
     "compiler": {
       "auto": "自動 <note>[システム TeX]</note>",
-      "help": "Tectonic は組み込みで、設定は不要です。ほかの選択肢はシステム TeX を使います。システム TeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。「自動」はソースからコンパイラを判断します。pdfLaTeX はほとんどの論文誌テンプレートに合います。XeLaTeX と LuaLaTeX はシステムフォントと Unicode を扱えます。",
+      "help": "Tectonic は組み込みで、設定は不要です。ほかの選択肢はシステム TeX を使います。システム TeX はあなたのアカウントで読めるローカルファイルにアクセスできるため、信頼できるプロジェクトでのみ使ってください。「自動」はソースからコンパイラを判断します。pdfLaTeX はほとんどの論文誌テンプレートに合います。XeLaTeX と LuaLaTeX はシステムフォントと Unicode を扱えます。upLaTeX と pLaTeX は日本語の文書をコンパイルします。",
       "lualatex": "LuaLaTeX <note>[システム TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[システム TeX]</note>",
+      "platex": "pLaTeX <note>[システム TeX]</note>",
       "tectonic": "Tectonic <note>[組み込み]</note>",
       "title": "コンパイラ（このプロジェクト）",
+      "uplatex": "upLaTeX <note>[システム TeX]</note>",
       "xelatex": "XeLaTeX <note>[システム TeX]</note>"
     },
     "errors": {

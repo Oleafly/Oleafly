@@ -117,7 +117,7 @@ pub struct EngineDescriptor {
     pub source_extensions: Vec<String>,
     pub capabilities: EngineCapabilities,
     /// The project's pinned latexmk compiler ("pdflatex" | "xelatex" |
-    /// "lualatex"); None means auto-detect. Filled in by `project_engine`
+    /// "lualatex" | "uplatex" | "platex"); None means auto-detect. Filled in by `project_engine`
     /// from project.json, absent in engine-only contexts.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
@@ -363,36 +363,7 @@ impl DocumentEngine for LatexEngine {
     }
 }
 
-/// Which TeX engine latexmk should drive. Chosen from the source itself so an
-/// Overleaf import compiles out of the box: a `% !TeX program = ...` magic
-/// comment wins, fontspec-style packages force a Unicode engine, and everything
-/// else gets pdfLaTeX (Overleaf's own default).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LatexmkFlavor {
-    Pdflatex,
-    Xelatex,
-    Lualatex,
-}
-
-impl LatexmkFlavor {
-    const fn as_arg(self) -> &'static str {
-        match self {
-            Self::Pdflatex => "-pdf",
-            Self::Xelatex => "-xelatex",
-            Self::Lualatex => "-lualatex",
-        }
-    }
-
-    /// Parse the `project.json` `tex_flavor` value.
-    pub fn parse(value: &str) -> Option<Self> {
-        match value.trim() {
-            "pdflatex" => Some(Self::Pdflatex),
-            "xelatex" => Some(Self::Xelatex),
-            "lualatex" => Some(Self::Lualatex),
-            _ => None,
-        }
-    }
-}
+pub type LatexmkFlavor = oleafly_core::TexFlavor;
 
 /// The user's pinned compiler wins over every source heuristic (magic comment
 /// included); detection only runs for the default "auto" choice.
@@ -415,30 +386,15 @@ fn detect_tex_program_magic(source: &str) -> Option<LatexmkFlavor> {
         else {
             continue;
         };
-        return match value.trim() {
-            "xelatex" => Some(LatexmkFlavor::Xelatex),
-            "lualatex" => Some(LatexmkFlavor::Lualatex),
-            "pdflatex" | "latex" => Some(LatexmkFlavor::Pdflatex),
-            _ => None,
-        };
+        return LatexmkFlavor::from_magic_program(value);
     }
     None
 }
 
 fn detect_latexmk_flavor(source: &str) -> LatexmkFlavor {
-    if let Some(flavor) = detect_tex_program_magic(source) {
-        return flavor;
-    }
-    // These packages hard-fail under pdfLaTeX; XeLaTeX also matches how the
-    // bundled Tectonic (XeTeX-class) rendered the project before a switch.
-    if source.contains("fontspec")
-        || source.contains("polyglossia")
-        || source.contains("unicode-math")
-        || source.contains("\\setmainfont")
-    {
-        return LatexmkFlavor::Xelatex;
-    }
-    LatexmkFlavor::Pdflatex
+    detect_tex_program_magic(source)
+        .or_else(|| oleafly_core::source_tex_flavor(source))
+        .unwrap_or(LatexmkFlavor::Pdflatex)
 }
 
 /// a giant generated file cannot balloon compile preparation.
@@ -771,12 +727,14 @@ fn latexmk_args_from(
     let mut args: Vec<String> = vec![
         "-norc".into(),
         shell_escape_arg(options.allow_shell_escape, distribution_kind).into(),
-        flavor.as_arg().into(),
+    ];
+    args.extend(flavor.latexmk_args());
+    args.extend([
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
         format!("-outdir={out_dir}"),
         format!("-jobname={stem}"),
-    ];
+    ]);
     if options.halt_on_error {
         args.push("-halt-on-error".into());
     } else {
@@ -899,6 +857,7 @@ impl DocumentEngine for LatexmkEngine {
         };
         let source_head = read_source_head(&input_path);
         let flavor = resolve_latexmk_flavor(options.latex_flavor, &source_head);
+        require_dvi_toolchain(flavor, &latexmk)?;
         let (mut args, environment) = latexmk_invocation(
             project_dir,
             out_dir,
@@ -929,6 +888,34 @@ impl DocumentEngine for LatexmkEngine {
 
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
         parse_tex_log_errors(log)
+    }
+}
+
+fn require_dvi_toolchain(flavor: LatexmkFlavor, latexmk: &Path) -> Result<(), String> {
+    if !flavor.goes_through_dvi() {
+        return Ok(());
+    }
+    let resolved = latexmk
+        .canonicalize()
+        .unwrap_or_else(|_| latexmk.to_path_buf());
+    let available = |tool: &str| {
+        [latexmk.parent(), resolved.parent()]
+            .into_iter()
+            .flatten()
+            .any(|dir| crate::tex_distro::find_tool_in_dir(dir, tool).is_some())
+    };
+    let compiler = match flavor {
+        LatexmkFlavor::Platex => "pLaTeX",
+        _ => "upLaTeX",
+    };
+    if available(flavor.as_str()) && available("dvipdfmx") {
+        Ok(())
+    } else {
+        Err(
+            crate::app_error::AppError::new("tex.japanese_compiler_missing")
+                .param("compiler", compiler)
+                .into(),
+        )
     }
 }
 
@@ -6646,8 +6633,78 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             LatexmkFlavor::parse("lualatex"),
             Some(LatexmkFlavor::Lualatex)
         );
+        assert_eq!(
+            LatexmkFlavor::parse("uplatex"),
+            Some(LatexmkFlavor::Uplatex)
+        );
+        assert_eq!(LatexmkFlavor::parse("platex"), Some(LatexmkFlavor::Platex));
         assert_eq!(LatexmkFlavor::parse("tectonic"), None);
         assert_eq!(LatexmkFlavor::parse(""), None);
+    }
+
+    #[test]
+    fn latexmk_flavor_detects_japanese_and_chinese_documents() {
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass[uplatex,dvipdfmx]{jsarticle}"),
+            LatexmkFlavor::Uplatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass{jsbook}"),
+            LatexmkFlavor::Platex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass{ltjsarticle}"),
+            LatexmkFlavor::Lualatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass[UTF8]{ctexart}"),
+            LatexmkFlavor::Xelatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("% !TeX program = platex\n\\documentclass[uplatex]{jsarticle}"),
+            LatexmkFlavor::Platex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("% !TeX program = uplatex\n\\documentclass{article}"),
+            LatexmkFlavor::Uplatex
+        );
+    }
+
+    #[test]
+    fn japanese_compilers_run_latexmk_through_dvipdfmx() {
+        let args = latexmk_args(
+            Path::new(".oleafly/build"),
+            Path::new("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Uplatex,
+            CompileOptions::default(),
+            "texlive",
+        )
+        .unwrap();
+        assert_eq!(&args[..3], ["-norc", "-shell-restricted", "-pdfdvi"]);
+        assert!(args.contains(&"-latex=uplatex %O %S".to_string()));
+        assert!(args.contains(&"$dvipdf = q/dvipdfmx %O -o %D %S/".to_string()));
+        assert!(args.contains(&"-synctex=1".to_string()));
+        assert!(!args.contains(&"-pdf".to_string()));
+        assert_eq!(args.last().unwrap(), "./main.tex");
+    }
+
+    #[test]
+    fn a_missing_japanese_compiler_is_reported_before_latexmk_runs() {
+        let dir = tempfile::tempdir().unwrap();
+        let latexmk = dir.path().join(crate::tex_distro::exe("latexmk"));
+        std::fs::write(&latexmk, b"tool").unwrap();
+        assert!(require_dvi_toolchain(LatexmkFlavor::Xelatex, &latexmk).is_ok());
+        let missing = require_dvi_toolchain(LatexmkFlavor::Uplatex, &latexmk).unwrap_err();
+        assert!(missing.contains("\"code\":\"tex.japanese_compiler_missing\""));
+        assert!(missing.contains("upLaTeX"));
+        for tool in ["uplatex", "dvipdfmx"] {
+            std::fs::write(dir.path().join(crate::tex_distro::exe(tool)), b"tool").unwrap();
+        }
+        assert!(require_dvi_toolchain(LatexmkFlavor::Uplatex, &latexmk).is_ok());
+        assert!(require_dvi_toolchain(LatexmkFlavor::Platex, &latexmk)
+            .unwrap_err()
+            .contains("pLaTeX"));
     }
 
     #[test]
@@ -7544,7 +7601,11 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
     fn latexmk_refusals_have_english_messages() {
         let catalog: serde_json::Value =
             serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
-        for key in ["latexmk_build_path", "latexmk_network_folder"] {
+        for key in [
+            "latexmk_build_path",
+            "latexmk_network_folder",
+            "japanese_compiler_missing",
+        ] {
             assert!(
                 catalog["tex"][key]
                     .as_str()

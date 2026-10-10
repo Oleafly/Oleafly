@@ -531,7 +531,9 @@ impl ProjectManifest {
         }
         match self.tex_flavor.as_deref().map(str::trim) {
             None | Some("") | Some("auto") => Ok(None),
-            Some(flavor @ ("pdflatex" | "xelatex" | "lualatex")) => Ok(Some(flavor.to_string())),
+            Some(flavor) if crate::TexFlavor::parse(flavor).is_some() => {
+                Ok(Some(flavor.to_string()))
+            }
             Some(flavor) => Err(Error::new(
                 ErrorKind::InvalidManifest,
                 format!("unsupported tex_flavor `{flavor}`"),

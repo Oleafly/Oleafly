@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings > Appearance > Editor has a Cursor height option. Text keeps the
   cursor as tall as the letters, and Line stretches it to the full height of
   the line.
+- upLaTeX and pLaTeX for Japanese documents. Pick them under Compiler in the
+  compile menu, or leave it on Auto: `jsarticle`, `jsbook` and `jsreport`
+  compile with pLaTeX, or with upLaTeX when they pass the `uplatex` option,
+  and `jlreq` and the `uj` classes compile with upLaTeX. Both run on a system
+  TeX with the Japanese packages, and if those are missing the compile says
+  how to add them. The `oleaflyc` command line tool picks the same compiler.
 - Cursor blinking replaces the Non-blinking cursor switch. Blink turns the
   cursor on and off, Smooth and Phase fade it in and out, Expand shrinks and
   grows it, and Off keeps it solid. Smooth, Phase and Expand come to rest,
@@ -20,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Highlight current line, in the same place, turns off the tint on the line
   the cursor is in. A long paragraph is one line in the source, so with
   wrapping on, the tint could cover most of the editor.
+
+### Changed
+
+- On Auto, Chinese documents that use the `ctex` classes, the `ctex` package
+  or `xeCJK` compile with XeLaTeX instead of pdfLaTeX, and documents that use
+  LuaTeX-ja (the `ltjs` classes or `luatexja`) compile with LuaLaTeX.
 
 ### Fixed
 

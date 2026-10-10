@@ -382,11 +382,13 @@
     "compile": "Compile",
     "compiler": {
       "auto": "Auto <note>[system TeX]</note>",
-      "help": "Tectonic is built in and needs no setup. The other choices run system TeX, which can read local files available to your account and should be used only with trusted projects. Auto picks the compiler from the source. pdfLaTeX matches most journal templates. XeLaTeX and LuaLaTeX add system fonts and Unicode.",
+      "help": "Tectonic is built in and needs no setup. The other choices run system TeX, which can read local files available to your account and should be used only with trusted projects. Auto picks the compiler from the source. pdfLaTeX matches most journal templates. XeLaTeX and LuaLaTeX add system fonts and Unicode. upLaTeX and pLaTeX compile Japanese documents.",
       "lualatex": "LuaLaTeX <note>[system TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[system TeX]</note>",
+      "platex": "pLaTeX <note>[system TeX]</note>",
       "tectonic": "Tectonic <note>[built in]</note>",
       "title": "Compiler (this project)",
+      "uplatex": "upLaTeX <note>[system TeX]</note>",
       "xelatex": "XeLaTeX <note>[system TeX]</note>"
     },
     "errors": {

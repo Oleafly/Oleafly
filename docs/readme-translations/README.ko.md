@@ -228,7 +228,7 @@ Oleafly는 컴파일을 원고 가까이에 두고 컴파일러 출력을 소스
 | 엔진 | 적합한 용도 | 주요 세부 사항 |
 | --- | --- | --- |
 | Tectonic을 사용하는 LaTeX | 휴대 가능한 번들 LaTeX 빌드 | 데스크톱 앱에 포함되며, 다중 파일 프로젝트, 그림, 인용, Biber(Linux ARM64 제외), SyncTeX, 격리된 그림 컴파일 및 패키지를 사용할 수 있을 때의 캐시된 오프라인 빌드를 지원 |
-| `latexmk`를 사용하는 LaTeX | 전체 시스템 TeX 배포판이 필요한 프로젝트 | MacTeX, TeX Live, MiKTeX 또는 TinyTeX를 사용하며, `glossaries`, `makeidx`와 XeLaTeX 또는 LuaLaTeX(자동 선택)를 지원. `minted`, PythonTeX 및 외부 명령을 실행하는 기타 패키지는 이 컴퓨터에서 외부 명령을 허용하면 작동 |
+| `latexmk`를 사용하는 LaTeX | 전체 시스템 TeX 배포판이 필요한 프로젝트 | MacTeX, TeX Live, MiKTeX 또는 TinyTeX를 사용하며, `glossaries`, `makeidx`, XeLaTeX, LuaLaTeX, 일본어용 upLaTeX 또는 pLaTeX(자동 선택)를 지원. `minted`, PythonTeX 및 외부 명령을 실행하는 기타 패키지는 이 컴퓨터에서 외부 명령을 허용하면 작동 |
 | Typst | 빠른 최신 문서 작성 | PDF, EPUB, PNG, SVG 및 HTML로 출력하는 번들 컴파일러, 프로젝트 색인 및 인용을 제공. 소스와 PDF 동기화에는 Typst 0.13 이상이 필요하며, 패키지가 캐시되어 있거나 프로젝트 안에 있으면 오프라인으로 빌드할 수 있음. 이 릴리스에서는 격리된 그림 컴파일을 사용할 수 없음 |
 | Pandoc을 사용하는 Markdown | 가벼운 본문 작성 및 변환 작업 | Pandoc이 앱에 포함됨. 번들 Tectonic이 조판할 수 있도록 LaTeX로 변환하고, Word, HTML, EPUB, PowerPoint, LaTeX, Typst 및 일반 텍스트로 내보냄 |
 

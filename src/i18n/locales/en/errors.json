@@ -69,7 +69,8 @@
     "latexmk_network_folder": "latexmk can't compile a folder on a network share. Switch this project to Tectonic, or copy the folder to this computer.",
     "shell_escape_denied_minted": "minted needs to run another program to highlight code, and this project blocks that. To allow it, click \"{{setting}}\" in the banner above the editor. Only do this if you trust every file in the project. LaTeX can then run any program with your permissions, and a program it starts may keep running after you stop the compile.",
     "shell_escape_denied_pythontex": "PythonTeX needs to run Python, and this project blocks that. To allow it, click \"{{setting}}\" in the banner above the editor. Only do this if you trust every file in the project. LaTeX can then run any program with your permissions, and a program it starts may keep running after you stop the compile.",
-    "shell_escape_denied_command": "This document runs a shell command, and this project blocks that. To allow it, click \"{{setting}}\" in the banner above the editor. Only do this if you trust every file in the project. LaTeX can then run any program with your permissions, and a program it starts may keep running after you stop the compile."
+    "shell_escape_denied_command": "This document runs a shell command, and this project blocks that. To allow it, click \"{{setting}}\" in the banner above the editor. Only do this if you trust every file in the project. LaTeX can then run any program with your permissions, and a program it starts may keep running after you stop the compile.",
+    "japanese_compiler_missing": "{{compiler}} isn't installed in your TeX distribution. Run tlmgr install collection-langjapanese to add it to TeX Live or TinyTeX, or choose another compiler."
   },
   "export": {
     "bibliography_unreadable": "Oleafly couldn't read the bibliography {{name}}. Check it for a broken entry, then export again."

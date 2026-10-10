@@ -382,11 +382,13 @@
     "compile": "Käännä",
     "compiler": {
       "auto": "Automaattinen <note>[järjestelmän TeX]</note>",
-      "help": "Tectonic on sisäänrakennettu eikä vaadi asennusta. Muut vaihtoehdot käyttävät järjestelmän TeX-asennusta, joka voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä niitä vain luotettujen projektien kanssa. Automaattinen valitsee kääntäjän lähdekoodin perusteella. pdfLaTeX sopii useimpiin lehtien mallipohjiin. XeLaTeX ja LuaLaTeX tuovat mukaan järjestelmän fontit ja Unicoden.",
+      "help": "Tectonic on sisäänrakennettu eikä vaadi asennusta. Muut vaihtoehdot käyttävät järjestelmän TeX-asennusta, joka voi lukea käyttäjätunnuksesi ulottuvilla olevia paikallisia tiedostoja, joten käytä niitä vain luotettujen projektien kanssa. Automaattinen valitsee kääntäjän lähdekoodin perusteella. pdfLaTeX sopii useimpiin lehtien mallipohjiin. XeLaTeX ja LuaLaTeX tuovat mukaan järjestelmän fontit ja Unicoden. upLaTeX ja pLaTeX kääntävät japaninkielisiä asiakirjoja.",
       "lualatex": "LuaLaTeX <note>[järjestelmän TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[järjestelmän TeX]</note>",
+      "platex": "pLaTeX <note>[järjestelmän TeX]</note>",
       "tectonic": "Tectonic <note>[sisäänrakennettu]</note>",
       "title": "Kääntäjä (tämä projekti)",
+      "uplatex": "upLaTeX <note>[järjestelmän TeX]</note>",
       "xelatex": "XeLaTeX <note>[järjestelmän TeX]</note>"
     },
     "errors": {

@@ -227,7 +227,7 @@ Oleafly mantém a compilação perto do manuscrito e transforma a saída do comp
 | Mecanismo | Para que serve | Detalhes importantes |
 | --- | --- | --- |
 | LaTeX com Tectonic | Compilações LaTeX portáteis e incluídas | Vem com o aplicativo desktop; aceita projetos com vários arquivos, imagens, citações, Biber (exceto no Linux ARM64), SyncTeX, figuras isoladas e builds offline em cache quando os pacotes estão disponíveis |
-| LaTeX com `latexmk` | Projetos que precisam de uma distribuição TeX de sistema completa | Usa MacTeX, TeX Live, MiKTeX ou TinyTeX e aceita `glossaries`, `makeidx` e XeLaTeX ou LuaLaTeX (escolhidos automaticamente). `minted`, PythonTeX e outros pacotes que executam comandos externos funcionam depois que você os permite neste computador |
+| LaTeX com `latexmk` | Projetos que precisam de uma distribuição TeX de sistema completa | Usa MacTeX, TeX Live, MiKTeX ou TinyTeX e aceita `glossaries`, `makeidx`, XeLaTeX, LuaLaTeX e upLaTeX ou pLaTeX para japonês (escolhidos automaticamente). `minted`, PythonTeX e outros pacotes que executam comandos externos funcionam depois que você os permite neste computador |
 | Typst | Criação rápida de documentos modernos | Compilador incluído com saída PDF, EPUB, PNG, SVG e HTML, indexação e citações. A sincronização entre fonte e PDF precisa do Typst 0.13 ou mais recente, e a compilação funciona offline quando os pacotes estão em cache ou guardados no projeto. Figuras isoladas não estão disponíveis nesta versão |
 | Markdown com Pandoc | Fluxos leves de prosa e conversão | Pandoc vem com o aplicativo. Ele converte para LaTeX, que o Tectonic incluído compõe, e exporta Word, HTML, EPUB, PowerPoint, LaTeX, Typst e texto simples |
 

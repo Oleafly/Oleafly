@@ -382,11 +382,13 @@
     "compile": "Compileren",
     "compiler": {
       "auto": "Automatisch <note>[systeem-TeX]</note>",
-      "help": "Tectonic is ingebouwd en heeft geen installatie nodig. De andere keuzes gebruiken de TeX van je systeem, die lokale bestanden kan lezen waar jouw account bij kan, dus gebruik die alleen voor projecten die je vertrouwt. Automatisch kiest de compiler op basis van de broncode. pdfLaTeX past bij de meeste tijdschriftsjablonen. XeLaTeX en LuaLaTeX voegen systeemlettertypen en Unicode toe.",
+      "help": "Tectonic is ingebouwd en heeft geen installatie nodig. De andere keuzes gebruiken de TeX van je systeem, die lokale bestanden kan lezen waar jouw account bij kan, dus gebruik die alleen voor projecten die je vertrouwt. Automatisch kiest de compiler op basis van de broncode. pdfLaTeX past bij de meeste tijdschriftsjablonen. XeLaTeX en LuaLaTeX voegen systeemlettertypen en Unicode toe. upLaTeX en pLaTeX compileren Japanse documenten.",
       "lualatex": "LuaLaTeX <note>[systeem-TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[systeem-TeX]</note>",
+      "platex": "pLaTeX <note>[systeem-TeX]</note>",
       "tectonic": "Tectonic <note>[ingebouwd]</note>",
       "title": "Compiler (dit project)",
+      "uplatex": "upLaTeX <note>[systeem-TeX]</note>",
       "xelatex": "XeLaTeX <note>[systeem-TeX]</note>"
     },
     "errors": {

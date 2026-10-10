@@ -8,8 +8,9 @@ use oleafly_core::typst_toolchain::{
 };
 use oleafly_core::{
     image_failure_evidence, image_failure_notes, place_image_findings, plain_path, slash_path,
-    walk_source_tree, Engine, EngineScratch, EngineScratchBases, Error, ErrorKind, ImageFinding,
-    PreparedBuild, Result, Utf8StreamDecoder, Workspace, ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
+    source_tex_flavor, walk_source_tree, Engine, EngineScratch, EngineScratchBases, Error,
+    ErrorKind, ImageFinding, PreparedBuild, Result, TexFlavor, Utf8StreamDecoder, Workspace,
+    ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
 };
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -761,14 +762,13 @@ fn tectonic_arguments(build: &PreparedBuild, options: BuildOptions) -> Vec<OsStr
 fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec<OsString>> {
     let flavor = build.tex_flavor().map_or_else(
         || detect_latexmk_flavor(build.source_path()),
-        |value| match value {
-            "pdflatex" => Ok("-pdf"),
-            "xelatex" => Ok("-xelatex"),
-            "lualatex" => Ok("-lualatex"),
-            _ => Err(Error::new(
-                ErrorKind::InvalidManifest,
-                format!("unsupported tex_flavor `{value}`"),
-            )),
+        |value| {
+            TexFlavor::parse(value).ok_or_else(|| {
+                Error::new(
+                    ErrorKind::InvalidManifest,
+                    format!("unsupported tex_flavor `{value}`"),
+                )
+            })
         },
     )?;
     let output = relative_to(build.compile_directory(), build.build_directory())
@@ -777,21 +777,20 @@ fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec
         .source_path()
         .strip_prefix(build.compile_directory())
         .map_err(|_| Error::new(ErrorKind::UnsafePath, "main document escaped the project"))?;
-    let mut arguments: Vec<OsString> = vec![
-        "-norc".into(),
-        "-no-shell-escape".into(),
-        flavor.into(),
+    let mut arguments: Vec<OsString> = vec!["-norc".into(), "-no-shell-escape".into()];
+    arguments.extend(flavor.latexmk_args().into_iter().map(OsString::from));
+    arguments.extend([
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
         format!("-outdir={}", dotted(&output)).into(),
         format!("-jobname={OUTPUT_STEM}").into(),
-    ];
+    ]);
     if options.halt_on_error {
         arguments.push("-halt-on-error".into());
     } else {
         arguments.push("-f".into());
     }
-    if flavor == "-lualatex" {
+    if flavor == TexFlavor::Lualatex {
         arguments.push("-latexoption=--nosocket".into());
     }
     arguments.push(format!("./{}", slash_path(input)).into());
@@ -828,7 +827,7 @@ fn dotted(path: &Path) -> String {
     }
 }
 
-fn detect_latexmk_flavor(source: &Path) -> Result<&'static str> {
+fn detect_latexmk_flavor(source: &Path) -> Result<TexFlavor> {
     use std::io::Read;
     let mut file = std::fs::File::open(source)?;
     let mut bytes = Vec::new();
@@ -837,25 +836,21 @@ fn detect_latexmk_flavor(source: &Path) -> Result<&'static str> {
     for line in source.lines().take(100) {
         let lower = line.trim().to_ascii_lowercase();
         if lower.contains("!tex program") || lower.contains("!tex engine") {
-            if lower.contains("xelatex") {
-                return Ok("-xelatex");
-            }
-            if lower.contains("lualatex") {
-                return Ok("-lualatex");
-            }
-            if lower.contains("pdflatex") {
-                return Ok("-pdf");
+            let named = [
+                TexFlavor::Xelatex,
+                TexFlavor::Lualatex,
+                TexFlavor::Uplatex,
+                TexFlavor::Platex,
+                TexFlavor::Pdflatex,
+            ]
+            .into_iter()
+            .find(|flavor| lower.contains(flavor.as_str()));
+            if let Some(flavor) = named {
+                return Ok(flavor);
             }
         }
     }
-    if ["fontspec", "polyglossia", "unicode-math", "\\setmainfont"]
-        .iter()
-        .any(|needle| source.contains(needle))
-    {
-        Ok("-xelatex")
-    } else {
-        Ok("-pdf")
-    }
+    Ok(source_tex_flavor(&source).unwrap_or(TexFlavor::Pdflatex))
 }
 
 fn typst_arguments(
@@ -1354,7 +1349,7 @@ mod tests {
         let directory = TempDir::new().unwrap();
         let source = directory.path().join("main.tex");
         std::fs::write(&source, "\\usepackage{fontspec}").unwrap();
-        assert_eq!(detect_latexmk_flavor(&source).unwrap(), "-xelatex");
+        assert_eq!(detect_latexmk_flavor(&source).unwrap(), TexFlavor::Xelatex);
     }
 
     #[test]
@@ -1362,10 +1357,13 @@ mod tests {
         let directory = TempDir::new().unwrap();
         let source = directory.path().join("main.tex");
         for (content, expected) in [
-            ("% !TeX program = xelatex", "-xelatex"),
-            ("% !TeX engine = lualatex", "-lualatex"),
-            ("% !TeX program = pdflatex", "-pdf"),
-            ("\\documentclass{article}", "-pdf"),
+            ("% !TeX program = xelatex", TexFlavor::Xelatex),
+            ("% !TeX engine = lualatex", TexFlavor::Lualatex),
+            ("% !TeX program = pdflatex", TexFlavor::Pdflatex),
+            ("% !TeX program = uplatex", TexFlavor::Uplatex),
+            ("% !TeX program = platex", TexFlavor::Platex),
+            ("\\documentclass[uplatex]{jsarticle}", TexFlavor::Uplatex),
+            ("\\documentclass{article}", TexFlavor::Pdflatex),
         ] {
             std::fs::write(&source, content).unwrap();
             assert_eq!(detect_latexmk_flavor(&source).unwrap(), expected);
