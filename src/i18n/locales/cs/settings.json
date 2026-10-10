@@ -667,10 +667,6 @@
         "description": "Zobrazovat pravděpodobné doplnění za kurzorem. Přijmete jej klávesou Tab.",
         "label": "Návrh přímo v textu"
       },
-      "nonBlinkingCursor": {
-        "description": "Nechat kurzor editoru svítit stále.",
-        "label": "Neblikající kurzor"
-      },
       "stickyScroll": {
         "description": "Při posouvání držet aktuální sekce, nadpisy a prostředí nahoře.",
         "label": "Přilepený posuv"
@@ -754,6 +750,25 @@
         "description": "Nastavte, jak silný má být kurzor editoru.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Výška kurzoru",
+        "description": "Nastavte, jak vysoký má být kurzor editoru. Řádek ho natáhne na výšku celého řádku.",
+        "options": {
+          "text": "Text",
+          "line": "Řádek"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Blikání kurzoru",
+        "description": "Vyberte, jak má kurzor editoru blikat. Vypnuto ho nechá stále viditelný.",
+        "options": {
+          "blink": "Blikat",
+          "smooth": "Plynule",
+          "phase": "Fáze",
+          "expand": "Roztáhnout",
+          "off": "Vypnuto"
+        }
+      },
       "cursorColor": {
         "label": "Barva kurzoru",
         "description": "Světlé a tmavé motivy editoru mají každý vlastní barvu kurzoru. Dokud žádnou nevyberete, použije se barva motivu.",
@@ -766,6 +781,10 @@
       "lineWrap": {
         "description": "Zalamovat dlouhé řádky místo vodorovného posouvání.",
         "label": "Zalamovat dlouhé řádky"
+      },
+      "highlightCurrentLine": {
+        "label": "Zvýraznit aktuální řádek",
+        "description": "Podbarvit řádek, na kterém je kurzor."
       },
       "tabSize": {
         "description": "Počet mezer vložených na jednu úroveň odsazení a šířka, na kterou se vykreslí tabulátor.",

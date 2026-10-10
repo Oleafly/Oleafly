@@ -652,10 +652,6 @@
         "description": "カーソルの後ろに、候補となる補完を表示します。Tab で確定します。",
         "label": "インラインの候補表示"
       },
-      "nonBlinkingCursor": {
-        "description": "エディタのカーソルを点滅させずに表示します。",
-        "label": "点滅しないカーソル"
-      },
       "stickyScroll": {
         "description": "スクロール中も、現在のセクション、見出し、環境を上部に表示し続けます。",
         "label": "スティッキースクロール"
@@ -739,6 +735,25 @@
         "description": "エディタのカーソルの太さを設定します。",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "カーソルの高さ",
+        "description": "エディタのカーソルの高さを設定します。「行」にすると行の高さいっぱいになります。",
+        "options": {
+          "text": "文字",
+          "line": "行"
+        }
+      },
+      "cursorBlinking": {
+        "label": "カーソルの点滅",
+        "description": "エディタのカーソルの点滅方法を選びます。「オフ」にすると点滅しません。",
+        "options": {
+          "blink": "点滅",
+          "smooth": "なめらか",
+          "phase": "フェーズ",
+          "expand": "伸縮",
+          "off": "オフ"
+        }
+      },
       "cursorColor": {
         "label": "カーソルの色",
         "description": "エディタのライトテーマとダークテーマで、それぞれ別のカーソルの色を使えます。色を選ぶまではテーマの色を使います。",
@@ -751,6 +766,10 @@
       "lineWrap": {
         "description": "横スクロールの代わりに、長い行を折り返します。",
         "label": "長い行を折り返す"
+      },
+      "highlightCurrentLine": {
+        "label": "現在の行を強調表示",
+        "description": "カーソルがある行の背景に色を付けます。"
       },
       "tabSize": {
         "description": "インデント 1 段階あたりの空白の数と、タブを表示する幅です。",

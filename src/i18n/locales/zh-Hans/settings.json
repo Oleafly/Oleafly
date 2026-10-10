@@ -652,10 +652,6 @@
         "description": "在光标后显示可能的补全建议，按 Tab 即可接受。",
         "label": "行内建议"
       },
-      "nonBlinkingCursor": {
-        "description": "保持编辑器光标不闪烁。",
-        "label": "光标不闪烁"
-      },
       "stickyScroll": {
         "description": "滚动时将当前章节、标题和环境固定在顶部。",
         "label": "粘性滚动"
@@ -739,6 +735,25 @@
         "description": "设置编辑器光标的粗细。",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "光标高度",
+        "description": "设置编辑器光标的高度。选择“整行”时，光标与整行同高。",
+        "options": {
+          "text": "文字",
+          "line": "整行"
+        }
+      },
+      "cursorBlinking": {
+        "label": "光标闪烁",
+        "description": "选择编辑器光标的闪烁方式。选择“关闭”时光标不闪烁。",
+        "options": {
+          "blink": "闪烁",
+          "smooth": "平滑",
+          "phase": "相位",
+          "expand": "伸缩",
+          "off": "关闭"
+        }
+      },
       "cursorColor": {
         "label": "光标颜色",
         "description": "浅色和深色编辑器主题各有自己的光标颜色。选择之前使用主题的颜色。",
@@ -751,6 +766,10 @@
       "lineWrap": {
         "description": "自动换行显示长行，而不是左右滚动。",
         "label": "长行自动换行"
+      },
+      "highlightCurrentLine": {
+        "label": "高亮当前行",
+        "description": "为光标所在行添加背景色。"
       },
       "tabSize": {
         "description": "每级缩进插入的空格数，也是制表符的显示宽度。",

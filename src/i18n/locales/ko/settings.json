@@ -652,10 +652,6 @@
         "description": "커서 뒤에 예상되는 완성을 표시합니다. Tab을 누르면 적용됩니다.",
         "label": "인라인 제안"
       },
-      "nonBlinkingCursor": {
-        "description": "편집기 커서를 깜박이지 않게 합니다.",
-        "label": "깜박이지 않는 커서"
-      },
       "stickyScroll": {
         "description": "스크롤하는 동안 현재 절, 제목, 환경을 위쪽에 고정합니다.",
         "label": "고정 스크롤"
@@ -739,6 +735,25 @@
         "description": "편집기 커서의 굵기를 정합니다.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "커서 높이",
+        "description": "편집기 커서의 높이를 설정합니다. '줄'을 선택하면 줄 전체 높이가 됩니다.",
+        "options": {
+          "text": "텍스트",
+          "line": "줄"
+        }
+      },
+      "cursorBlinking": {
+        "label": "커서 깜박임",
+        "description": "편집기 커서가 깜박이는 방식을 고릅니다. '끔'을 선택하면 깜박이지 않습니다.",
+        "options": {
+          "blink": "깜박임",
+          "smooth": "부드럽게",
+          "phase": "페이즈",
+          "expand": "늘이기",
+          "off": "끔"
+        }
+      },
       "cursorColor": {
         "label": "커서 색상",
         "description": "밝은 편집기 테마와 어두운 편집기 테마는 각각 커서 색상을 따로 가집니다. 직접 고르기 전까지는 테마의 색상을 씁니다.",
@@ -751,6 +766,10 @@
       "lineWrap": {
         "description": "가로로 스크롤하는 대신 긴 줄을 접어서 표시합니다.",
         "label": "긴 줄 접기"
+      },
+      "highlightCurrentLine": {
+        "label": "현재 줄 강조",
+        "description": "커서가 있는 줄의 배경에 색을 입힙니다."
       },
       "tabSize": {
         "description": "들여쓰기 한 단계에 넣는 공백 수이자 탭이 표시되는 너비입니다.",

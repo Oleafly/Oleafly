@@ -657,10 +657,6 @@
         "description": "Visa den troliga kompletteringen efter markören. Tryck på Tab för att acceptera den.",
         "label": "Förslag i löptext"
       },
-      "nonBlinkingCursor": {
-        "description": "Håll redigerarens markör stadig.",
-        "label": "Markör utan blinkning"
-      },
       "stickyScroll": {
         "description": "Håll kvar aktuella avsnitt, rubriker och miljöer högst upp medan du rullar.",
         "label": "Klistrig rullning"
@@ -744,6 +740,25 @@
         "description": "Ange hur tjock redigerarens markör är.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Markörhöjd",
+        "description": "Ange hur hög markören i redigeraren är. Rad gör den lika hög som hela raden.",
+        "options": {
+          "text": "Text",
+          "line": "Rad"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Markörblinkning",
+        "description": "Välj hur markören i redigeraren blinkar. Av håller den stilla.",
+        "options": {
+          "blink": "Blinka",
+          "smooth": "Mjuk",
+          "phase": "Fas",
+          "expand": "Expandera",
+          "off": "Av"
+        }
+      },
       "cursorColor": {
         "label": "Markörfärg",
         "description": "Ljusa och mörka redigerarteman har var sin markörfärg. Tills du väljer en används temats färg.",
@@ -756,6 +771,10 @@
       "lineWrap": {
         "description": "Bryt långa rader i stället för att rulla i sidled.",
         "label": "Bryt långa rader"
+      },
+      "highlightCurrentLine": {
+        "label": "Markera aktuell rad",
+        "description": "Färga bakgrunden på raden där markören står."
       },
       "tabSize": {
         "description": "Antal mellanslag per indragsnivå, och bredden en tabb ritas med.",

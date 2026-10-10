@@ -662,10 +662,6 @@
         "description": "Arată completarea probabilă după cursor. Apasă Tab ca să o accepți.",
         "label": "Sugestie în text"
       },
-      "nonBlinkingCursor": {
-        "description": "Păstrează cursorul din editor continuu.",
-        "label": "Cursor care nu clipește"
-      },
       "stickyScroll": {
         "description": "Păstrează în partea de sus secțiunile, titlurile și mediile curente în timp ce derulezi.",
         "label": "Derulare cu antet fix"
@@ -749,6 +745,25 @@
         "description": "Setează cât de gros este cursorul din editor.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "Înălțimea cursorului",
+        "description": "Setează cât de înalt este cursorul din editor. Linie îl face la fel de înalt ca întreaga linie.",
+        "options": {
+          "text": "Text",
+          "line": "Linie"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Clipirea cursorului",
+        "description": "Setează cum clipește cursorul din editor. Oprit îl lasă fix.",
+        "options": {
+          "blink": "Clipire",
+          "smooth": "Lin",
+          "phase": "Fază",
+          "expand": "Extindere",
+          "off": "Oprit"
+        }
+      },
       "cursorColor": {
         "label": "Culoarea cursorului",
         "description": "Temele deschise și cele întunecate ale editorului au fiecare propria culoare a cursorului. Până alegi una, se folosește culoarea temei.",
@@ -761,6 +776,10 @@
       "lineWrap": {
         "description": "Rupe liniile lungi în loc să derulezi lateral.",
         "label": "Rupe liniile lungi"
+      },
+      "highlightCurrentLine": {
+        "label": "Evidențiază linia curentă",
+        "description": "Colorează fundalul liniei pe care se află cursorul."
       },
       "tabSize": {
         "description": "Spațiile inserate pentru fiecare nivel de indentare și lățimea cu care se afișează un tab.",

@@ -205,6 +205,12 @@ async function cursorBlinkDuration(page: Page): Promise<string> {
   );
 }
 
+async function cursorRestartClass(page: Page): Promise<string> {
+  return page.evaluate<string>(
+    `[...(document.querySelector('.cm-cursorLayer')?.classList ?? [])].find((name) => name.startsWith("cm-cursorBlink-")) ?? ""`,
+  );
+}
+
 test("auto-close brackets inserts the closing brace, and stops when turned off", async ({
   tauriPage,
 }) => {
@@ -275,21 +281,33 @@ test("auto-complete opens the popup while typing, and stays closed when off", as
   ).toBe(false);
 });
 
-test("the non-blinking cursor stops the cursor animation", async ({
+test("cursor blinking styles change the cursor animation and Off stops it", async ({
   tauriPage,
 }) => {
   test.setTimeout(240_000);
   await openPrefsProject(tauriPage);
-  await toggleSetting(tauriPage, "Non-blinking cursor", false);
+  await chooseEditorSetting(tauriPage, "settings-editor-cursor-blinking-trigger", "Blink");
   await expect
     .poll(async () => await cursorBlinkDuration(tauriPage), { timeout: 10_000 })
     .not.toBe("0ms");
+  expect(await cursorRestartClass(tauriPage)).toBe("");
 
-  await toggleSetting(tauriPage, "Non-blinking cursor", true);
+  await chooseEditorSetting(tauriPage, "settings-editor-cursor-blinking-trigger", "Expand");
+  await expect
+    .poll(async () => await cursorBlinkDuration(tauriPage), { timeout: 10_000 })
+    .toBe("0ms");
+  await expect
+    .poll(async () => await cursorRestartClass(tauriPage), { timeout: 10_000 })
+    .toMatch(/^cm-cursorBlink-[ab]$/);
+
+  await chooseEditorSetting(tauriPage, "settings-editor-cursor-blinking-trigger", "Off");
   // A zero blink rate is how CodeMirror renders a solid cursor.
   await expect
     .poll(async () => await cursorBlinkDuration(tauriPage), { timeout: 10_000 })
     .toBe("0ms");
+  await expect
+    .poll(async () => await cursorRestartClass(tauriPage), { timeout: 10_000 })
+    .toBe("");
 
   // The editor keeps working after the compartment reconfigures.
   await replaceEditorSource(tauriPage, "\\documentclass{article}\n");
@@ -298,6 +316,7 @@ test("the non-blinking cursor stops the cursor animation", async ({
   await expect
     .poll(async () => await editorSource(tauriPage), { timeout: 10_000 })
     .toContain("solid");
+  await chooseEditorSetting(tauriPage, "settings-editor-cursor-blinking-trigger", "Blink");
 });
 
 test("LaTeX math and environment closing follow their own toggles", async ({
@@ -438,19 +457,19 @@ test("editor preferences persist across a reload", async ({ tauriPage }) => {
   test.setTimeout(240_000);
   await openPrefsProject(tauriPage);
   await toggleSetting(tauriPage, "Auto-complete", false);
-  await toggleSetting(tauriPage, "Non-blinking cursor", true);
+  await chooseEditorSetting(tauriPage, "settings-editor-cursor-blinking-trigger", "Off");
   const stored = await tauriPage.evaluate<string>(
     `[
       localStorage.getItem("oleafly.editor.autocomplete"),
-      localStorage.getItem("oleafly.editor.solidCursor"),
+      localStorage.getItem("oleafly.editor.cursorBlinking"),
     ].join(",")`,
   );
-  expect(stored).toBe("0,1");
+  expect(stored).toBe("0,off");
 
   // Restore the defaults so later specs in the shared app instance are not
   // left with completions disabled.
   await toggleSetting(tauriPage, "Auto-complete", true);
-  await toggleSetting(tauriPage, "Non-blinking cursor", false);
+  await chooseEditorSetting(tauriPage, "settings-editor-cursor-blinking-trigger", "Blink");
 });
 
 test("the keybinding mode switches between Default, Emacs and Vim", async ({

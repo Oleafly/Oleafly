@@ -657,10 +657,6 @@
         "description": "Die wahrscheinliche Vervollständigung hinter dem Cursor anzeigen. Mit Tab übernehmen Sie sie.",
         "label": "Vorschlag im Text"
       },
-      "nonBlinkingCursor": {
-        "description": "Den Cursor im Editor durchgehend anzeigen.",
-        "label": "Cursor ohne Blinken"
-      },
       "stickyScroll": {
         "description": "Die aktuellen Abschnitte, Überschriften und Umgebungen beim Scrollen oben halten.",
         "label": "Haftende Kopfzeile"
@@ -744,6 +740,25 @@
         "description": "Legen Sie fest, wie dick der Cursor im Editor ist.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Cursorhöhe",
+        "description": "Die Höhe des Cursors im Editor festlegen. Mit Zeile ist er so hoch wie die ganze Zeile.",
+        "options": {
+          "text": "Text",
+          "line": "Zeile"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Cursor-Blinken",
+        "description": "Festlegen, wie der Cursor im Editor blinkt. Mit Aus bleibt er durchgehend sichtbar.",
+        "options": {
+          "blink": "Blinken",
+          "smooth": "Weich",
+          "phase": "Phase",
+          "expand": "Strecken",
+          "off": "Aus"
+        }
+      },
       "cursorColor": {
         "label": "Cursorfarbe",
         "description": "Helle und dunkle Editor-Designs haben jeweils eine eigene Cursorfarbe. Bis Sie eine wählen, wird die Farbe des Designs verwendet.",
@@ -756,6 +771,10 @@
       "lineWrap": {
         "description": "Lange Zeilen umbrechen statt seitwärts zu scrollen.",
         "label": "Lange Zeilen umbrechen"
+      },
+      "highlightCurrentLine": {
+        "label": "Aktuelle Zeile hervorheben",
+        "description": "Die Zeile, in der der Cursor steht, farbig hinterlegen."
       },
       "tabSize": {
         "description": "Leerzeichen je Einrückungsebene und die Breite, mit der ein Tabulator dargestellt wird.",

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest";
-import { EditorState } from "@codemirror/state";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { EditorState, StateEffect } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { openSearchPanel } from "@codemirror/search";
 import { vscodeSearch } from "./search-panel";
@@ -280,5 +280,82 @@ describe("search panel keyboard and edge cases", () => {
     click("Preserve case");
     click("Replace all");
     expect(editor.state.doc.toString()).toBe("dog dog");
+  });
+});
+
+describe("scrolling to a match", () => {
+  const LINE_HEIGHT = 20;
+  const doc = Array.from({ length: 120 }, (_, index) =>
+    index % 40 === 0 ? "\\begin{equation}" : `line ${index + 1}`,
+  ).join("\n");
+
+  function recordScrolls(editor: EditorView): Array<string | undefined> {
+    const scrolls: Array<string | undefined> = [];
+    const listener = EditorView.updateListener.of((update) => {
+      for (const transaction of update.transactions) {
+        for (const effect of transaction.effects) {
+          const value = effect.value as { range?: unknown; y?: string } | null;
+          if (value?.range !== undefined && "y" in value) scrolls.push(value.y);
+        }
+      }
+    });
+    editor.dispatch({ effects: StateEffect.appendConfig.of(listener) });
+    return scrolls;
+  }
+
+  function showLines(editor: EditorView, firstLine: number, lastLine: number): void {
+    vi.spyOn(editor.scrollDOM, "getBoundingClientRect").mockReturnValue(
+      new DOMRect(0, (firstLine - 1) * LINE_HEIGHT, 400, (lastLine - firstLine + 1) * LINE_HEIGHT),
+    );
+    vi.spyOn(editor, "documentTop", "get").mockReturnValue(0);
+    vi.spyOn(editor, "lineBlockAt").mockImplementation((pos) => {
+      const line = editor.state.doc.lineAt(pos);
+      const top = (line.number - 1) * LINE_HEIGHT;
+      return { from: line.from, to: line.to, top, bottom: top + LINE_HEIGHT, height: LINE_HEIGHT } as never;
+    });
+  }
+
+  function currentLine(editor: EditorView): number {
+    return editor.state.doc.lineAt(editor.state.selection.main.head).number;
+  }
+
+  it("centers a match that is off screen and leaves a visible one where it is", () => {
+    const editor = setup(doc);
+    const scrolls = recordScrolls(editor);
+    showLines(editor, 1, 60);
+    fill("Find", "\\begin{equation}");
+
+    click("Next match (Enter)");
+    expect(currentLine(editor)).toBe(1);
+    click("Next match (Enter)");
+    expect(currentLine(editor)).toBe(41);
+    click("Next match (Enter)");
+    expect(currentLine(editor)).toBe(81);
+    showLines(editor, 70, 100);
+    click("Previous match (⇧Enter)");
+    expect(currentLine(editor)).toBe(41);
+
+    expect(scrolls).toEqual(["nearest", "nearest", "center", "center"]);
+  });
+
+  it("leaves a visible match in a long wrapped paragraph where it is", () => {
+    const paragraph = Array.from({ length: 60 }, (_, index) => (index === 30 ? "target" : "word")).join(" ");
+    const editor = setup(`intro\n${paragraph}\noutro`);
+    const scrolls = recordScrolls(editor);
+    vi.spyOn(editor.scrollDOM, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 100, 400, 200));
+    vi.spyOn(editor, "documentTop", "get").mockReturnValue(0);
+    vi.spyOn(editor, "lineBlockAt").mockImplementation((pos) => {
+      const line = editor.state.doc.lineAt(pos);
+      const top = line.number === 1 ? 0 : line.number === 2 ? LINE_HEIGHT : 30 * LINE_HEIGHT;
+      const height = line.number === 2 ? 29 * LINE_HEIGHT : LINE_HEIGHT;
+      return { from: line.from, to: line.to, top, bottom: top + height, height } as never;
+    });
+    const coords = vi.spyOn(editor, "coordsAtPos").mockImplementation(() => ({ left: 0, right: 0, top: 180, bottom: 200 }));
+    fill("Find", "target");
+    click("Next match (Enter)");
+    expect(coords).toHaveBeenCalled();
+    coords.mockImplementation(() => ({ left: 0, right: 0, top: 500, bottom: 520 }));
+    click("Previous match (⇧Enter)");
+    expect(scrolls).toEqual(["nearest", "center"]);
   });
 });

@@ -28,21 +28,23 @@ function activeLineDecorations(view: EditorView): DecorationSet {
  * `highlightActiveLine()` from @codemirror/view, minus the highlight while text
  * is selected. Same decoration and class, so themes need no change.
  */
+const activeLinePlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = activeLineDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet) {
+        this.decorations = activeLineDecorations(update.view);
+      }
+    }
+  },
+  { decorations: (plugin) => plugin.decorations },
+);
+
 export function highlightActiveLineWhenCollapsed() {
-  return ViewPlugin.fromClass(
-    class {
-      decorations: DecorationSet;
-
-      constructor(view: EditorView) {
-        this.decorations = activeLineDecorations(view);
-      }
-
-      update(update: ViewUpdate) {
-        if (update.docChanged || update.selectionSet) {
-          this.decorations = activeLineDecorations(update.view);
-        }
-      }
-    },
-    { decorations: (plugin) => plugin.decorations },
-  );
+  return activeLinePlugin;
 }

@@ -662,10 +662,6 @@
         "description": "Mostra a continuação provável depois do cursor. Pressione Tab para aceitar.",
         "label": "Sugestão em linha"
       },
-      "nonBlinkingCursor": {
-        "description": "Mantém o cursor do editor sempre aceso.",
-        "label": "Cursor sem piscar"
-      },
       "stickyScroll": {
         "description": "Mantém no topo as seções, os títulos e os ambientes atuais enquanto você rola.",
         "label": "Rolagem fixa"
@@ -749,6 +745,25 @@
         "description": "Define a espessura do cursor do editor.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "Altura do cursor",
+        "description": "Define a altura do cursor do editor. Linha deixa o cursor da altura da linha inteira.",
+        "options": {
+          "text": "Texto",
+          "line": "Linha"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Piscar do cursor",
+        "description": "Define como o cursor do editor pisca. Desligado o deixa fixo.",
+        "options": {
+          "blink": "Piscar",
+          "smooth": "Suave",
+          "phase": "Fase",
+          "expand": "Expandir",
+          "off": "Desligado"
+        }
+      },
       "cursorColor": {
         "label": "Cor do cursor",
         "description": "Os temas claros e escuros do editor têm cada um sua própria cor de cursor. Até você escolher uma, a cor do tema é usada.",
@@ -761,6 +776,10 @@
       "lineWrap": {
         "description": "Quebra as linhas longas em vez de rolar para o lado.",
         "label": "Quebrar linhas longas"
+      },
+      "highlightCurrentLine": {
+        "label": "Destacar a linha atual",
+        "description": "Colore o fundo da linha onde está o cursor."
       },
       "tabSize": {
         "description": "Espaços inseridos por nível de recuo e largura com que uma tabulação é desenhada.",

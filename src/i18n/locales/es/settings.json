@@ -662,10 +662,6 @@
         "description": "Muestra el final probable después del cursor. Pulsa Tab para aceptarlo.",
         "label": "Sugerencia en línea"
       },
-      "nonBlinkingCursor": {
-        "description": "Mantiene fijo el cursor del editor.",
-        "label": "Cursor sin parpadeo"
-      },
       "stickyScroll": {
         "description": "Mantiene arriba las secciones, los títulos y los entornos actuales mientras te desplazas.",
         "label": "Desplazamiento fijo"
@@ -749,6 +745,25 @@
         "description": "Define el grosor del cursor del editor.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Altura del cursor",
+        "description": "Define la altura del cursor del editor. Línea lo hace tan alto como toda la línea.",
+        "options": {
+          "text": "Texto",
+          "line": "Línea"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Parpadeo del cursor",
+        "description": "Elige cómo parpadea el cursor del editor. Desactivado lo deja fijo.",
+        "options": {
+          "blink": "Parpadeo",
+          "smooth": "Suave",
+          "phase": "Fase",
+          "expand": "Expandir",
+          "off": "Desactivado"
+        }
+      },
       "cursorColor": {
         "label": "Color del cursor",
         "description": "Los temas claros y oscuros del editor tienen cada uno su propio color de cursor. Hasta que elijas uno, se usa el color del tema.",
@@ -761,6 +776,10 @@
       "lineWrap": {
         "description": "Ajusta las líneas largas en lugar de desplazarse en horizontal.",
         "label": "Ajustar las líneas largas"
+      },
+      "highlightCurrentLine": {
+        "label": "Resaltar la línea actual",
+        "description": "Colorea el fondo de la línea donde está el cursor."
       },
       "tabSize": {
         "description": "Espacios que se insertan por nivel de sangría y ancho con el que se dibuja un tabulador.",

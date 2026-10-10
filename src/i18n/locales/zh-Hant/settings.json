@@ -652,10 +652,6 @@
         "description": "在游標後顯示可能的補完內容。按 Tab 即可接受。",
         "label": "行內建議"
       },
-      "nonBlinkingCursor": {
-        "description": "讓編輯器游標保持恆亮。",
-        "label": "游標不閃爍"
-      },
       "stickyScroll": {
         "description": "捲動時把目前的章節、標題與環境固定在頂端。",
         "label": "固定捲動"
@@ -739,6 +735,25 @@
         "description": "設定編輯器游標的粗細。",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "游標高度",
+        "description": "設定編輯器游標的高度。選擇「整行」時，游標與整行同高。",
+        "options": {
+          "text": "文字",
+          "line": "整行"
+        }
+      },
+      "cursorBlinking": {
+        "label": "游標閃爍",
+        "description": "選擇編輯器游標的閃爍方式。選擇「關閉」時游標不閃爍。",
+        "options": {
+          "blink": "閃爍",
+          "smooth": "平滑",
+          "phase": "相位",
+          "expand": "伸縮",
+          "off": "關閉"
+        }
+      },
       "cursorColor": {
         "label": "游標顏色",
         "description": "淺色和深色編輯器主題各有自己的游標顏色。選擇之前使用主題的顏色。",
@@ -751,6 +766,10 @@
       "lineWrap": {
         "description": "讓長行自動換行，不必左右捲動。",
         "label": "長行自動換行"
+      },
+      "highlightCurrentLine": {
+        "label": "標示目前所在行",
+        "description": "為游標所在行加上背景色。"
       },
       "tabSize": {
         "description": "每一層縮排插入的空格數，也是 Tab 的顯示寬度。",

@@ -662,10 +662,6 @@
         "description": "Afficher la complétion probable après le curseur. Appuyez sur Tab pour l'accepter.",
         "label": "Suggestion en ligne"
       },
-      "nonBlinkingCursor": {
-        "description": "Garder le curseur de l'éditeur fixe.",
-        "label": "Curseur sans clignotement"
-      },
       "stickyScroll": {
         "description": "Garder les sections, titres et environnements en cours affichés en haut pendant le défilement.",
         "label": "Défilement ancré"
@@ -749,6 +745,25 @@
         "description": "Définir l'épaisseur du curseur de l'éditeur.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Hauteur du curseur",
+        "description": "Définir la hauteur du curseur de l'éditeur. Ligne le rend aussi haut que la ligne entière.",
+        "options": {
+          "text": "Texte",
+          "line": "Ligne"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Clignotement du curseur",
+        "description": "Choisir comment le curseur de l'éditeur clignote. Désactivé le garde fixe.",
+        "options": {
+          "blink": "Clignotant",
+          "smooth": "Doux",
+          "phase": "Phase",
+          "expand": "Étirement",
+          "off": "Désactivé"
+        }
+      },
       "cursorColor": {
         "label": "Couleur du curseur",
         "description": "Les thèmes clairs et sombres de l'éditeur ont chacun leur propre couleur de curseur. Tant que vous n'en choisissez pas, la couleur du thème est utilisée.",
@@ -761,6 +776,10 @@
       "lineWrap": {
         "description": "Renvoyer les longues lignes à la ligne au lieu de défiler horizontalement.",
         "label": "Renvoyer les longues lignes"
+      },
+      "highlightCurrentLine": {
+        "label": "Surligner la ligne actuelle",
+        "description": "Colorer le fond de la ligne où se trouve le curseur."
       },
       "tabSize": {
         "description": "Espaces insérés par niveau d'indentation, et largeur d'affichage d'une tabulation.",

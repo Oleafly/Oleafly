@@ -1,3 +1,5 @@
+import { maskComments } from "./mask";
+
 export interface DocumentMetadataMatch {
   body: string;
   start: number;
@@ -64,4 +66,15 @@ export function serializeMetadataKeys({ order, map }: MetadataKeys): string {
 export function unwrapBraces(value: string): string {
   const trimmed = value.trim();
   return trimmed.startsWith("{") && trimmed.endsWith("}") ? trimmed.slice(1, -1) : trimmed;
+}
+
+export function requestsTaggedPdf(source: string): boolean {
+  if (!source.includes(String.raw`\DocumentMetadata`)) return false;
+  const metadata = findDocumentMetadata(maskComments(source));
+  if (!metadata) return false;
+  const keys = parseMetadataKeys(metadata.body).map;
+  const tagging = unwrapBraces(keys.get("tagging") ?? "").toLowerCase();
+  if (tagging) return tagging !== "off";
+  if (keys.has("testphase")) return true;
+  return /\bua-\d/i.test(unwrapBraces(keys.get("pdfstandard") ?? ""));
 }

@@ -667,10 +667,6 @@
         "description": "Pokazuj prawdopodobne uzupełnienie za kursorem. Naciśnij Tab, aby je przyjąć.",
         "label": "Podpowiedź w wierszu"
       },
-      "nonBlinkingCursor": {
-        "description": "Utrzymuj kursor edytora bez migania.",
-        "label": "Kursor bez migania"
-      },
       "stickyScroll": {
         "description": "Utrzymuj bieżące sekcje, nagłówki i środowiska na górze podczas przewijania.",
         "label": "Przypięte przewijanie"
@@ -754,6 +750,25 @@
         "description": "Ustaw grubość kursora edytora.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Wysokość kursora",
+        "description": "Ustaw wysokość kursora w edytorze. Wiersz wydłuża go na całą wysokość wiersza.",
+        "options": {
+          "text": "Tekst",
+          "line": "Wiersz"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Miganie kursora",
+        "description": "Wybierz, jak miga kursor w edytorze. Wyłączone zostawia go na stałe widocznym.",
+        "options": {
+          "blink": "Miganie",
+          "smooth": "Płynne",
+          "phase": "Faza",
+          "expand": "Rozciąganie",
+          "off": "Wyłączone"
+        }
+      },
       "cursorColor": {
         "label": "Kolor kursora",
         "description": "Jasne i ciemne motywy edytora mają osobne kolory kursora. Dopóki nie wybierzesz koloru, używany jest kolor motywu.",
@@ -766,6 +781,10 @@
       "lineWrap": {
         "description": "Zawijaj długie wiersze zamiast przewijać w bok.",
         "label": "Zawijaj długie wiersze"
+      },
+      "highlightCurrentLine": {
+        "label": "Wyróżniaj bieżący wiersz",
+        "description": "Koloruj tło wiersza, w którym jest kursor."
       },
       "tabSize": {
         "description": "Liczba spacji wstawianych na poziom wcięcia i szerokość, z jaką renderowany jest znak tabulacji.",

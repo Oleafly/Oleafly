@@ -1462,3 +1462,130 @@ describe("project paths in different Unicode normal forms", () => {
     ).toEqual([]);
   });
 });
+
+describe("LaTeX graphics search paths", () => {
+  function assetEdge(value: ProjectIntelligenceSnapshot, raw: string) {
+    return value.hierarchy.edges.find((edge) => edge.kind === "asset" && edge.rawTarget === raw);
+  }
+
+  function unresolved(value: ProjectIntelligenceSnapshot) {
+    return value.diagnostics.filter((diagnostic) => diagnostic.code === "unresolved-target");
+  }
+
+  it("finds a figure through \\graphicspath", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\graphicspath{{files/}}
+\includegraphics[width=0.6\linewidth]{filename.pdf}`,
+      },
+      ["main.tex", "files/filename.pdf"],
+    );
+    expect(assetEdge(value, "filename.pdf")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "files/filename.pdf",
+    });
+    expect(unresolved(value)).toEqual([]);
+  });
+
+  it("applies a search path set in another file and guesses the extension", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{preamble}
+\input{chapters/intro}`,
+        "preamble.tex": String.raw`\graphicspath{{figures/}{shared/}}`,
+        "chapters/intro.tex": String.raw`\includegraphics{plot}`,
+      },
+      ["main.tex", "preamble.tex", "chapters/intro.tex", "shared/plot.png"],
+    );
+    expect(assetEdge(value, "plot")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "shared/plot.png",
+    });
+    expect(unresolved(value)).toEqual([]);
+  });
+
+  it("resolves a figure from the main document's folder, where LaTeX runs", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\input{chapters/intro}`,
+        "chapters/intro.tex": String.raw`\includegraphics{figures/a.png}`,
+      },
+      ["main.tex", "chapters/intro.tex", "figures/a.png"],
+    );
+    expect(assetEdge(value, "figures/a.png")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "figures/a.png",
+    });
+  });
+
+  it("uses \\svgpath for \\includesvg", () => {
+    const value = snapshot(
+      { "main.tex": String.raw`\svgpath{{svg/}}
+\includesvg{diagram}` },
+      ["main.tex", "svg/diagram.svg"],
+    );
+    expect(assetEdge(value, "diagram")).toMatchObject({
+      resolution: "resolved",
+      targetFile: "svg/diagram.svg",
+    });
+  });
+
+  it("still reports a figure that is in none of the searched folders", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`\graphicspath{{files/}}
+\includegraphics{missing.pdf}`,
+      },
+      ["main.tex", "files/filename.pdf"],
+    );
+    expect(assetEdge(value, "missing.pdf")).toMatchObject({ resolution: "unresolved" });
+    expect(unresolved(value)).toHaveLength(1);
+  });
+
+  it("ignores a commented-out \\graphicspath", () => {
+    const value = snapshot(
+      {
+        "main.tex": String.raw`% \graphicspath{{files/}}
+\includegraphics{filename.pdf}`,
+      },
+      ["main.tex", "files/filename.pdf"],
+    );
+    expect(assetEdge(value, "filename.pdf")).toMatchObject({ resolution: "unresolved" });
+  });
+
+  it("accepts quoted, parent and unslashed \\graphicspath entries", () => {
+    const value = snapshot(
+      {
+        "paper/main.tex": String.raw`\graphicspath{{"../shared figures/"}{plots}{./local/}}
+\includegraphics{logo}
+\includegraphics{curve.pdf}
+\includegraphics{photo.jpg}`,
+      },
+      ["paper/main.tex", "shared figures/logo.png", "paper/plots/curve.pdf", "paper/local/photo.jpg"],
+    );
+    expect(assetEdge(value, "logo")).toMatchObject({ resolution: "resolved", targetFile: "shared figures/logo.png" });
+    expect(assetEdge(value, "curve.pdf")).toMatchObject({ resolution: "resolved", targetFile: "paper/plots/curve.pdf" });
+    expect(assetEdge(value, "photo.jpg")).toMatchObject({ resolution: "resolved", targetFile: "paper/local/photo.jpg" });
+  });
+
+  it("keeps a second document beside the main one to its own folder and search paths", () => {
+    const value = snapshot(
+      {
+        "paper/main.tex": String.raw`\graphicspath{{figs/}}
+\includegraphics{logo.png}`,
+        "poster/poster.tex": String.raw`\includegraphics{logo.png}
+\includegraphics{chart.pdf}`,
+      },
+      ["paper/main.tex", "poster/poster.tex", "paper/figs/logo.png", "paper/logo.png", "poster/logo.png", "paper/figs/chart.pdf"],
+    );
+    const posterLogo = value.hierarchy.edges.find(
+      (edge) => edge.fromFile === "poster/poster.tex" && edge.rawTarget === "logo.png",
+    );
+    expect(posterLogo).toMatchObject({ resolution: "resolved", targetFile: "poster/logo.png" });
+    expect(assetEdge(value, "chart.pdf")).toMatchObject({ resolution: "unresolved" });
+    const paperLogo = value.hierarchy.edges.find(
+      (edge) => edge.fromFile === "paper/main.tex" && edge.rawTarget === "logo.png",
+    );
+    expect(paperLogo).toMatchObject({ resolution: "resolved", targetFile: "paper/logo.png" });
+  });
+});

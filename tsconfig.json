@@ -29,6 +29,8 @@
       "@oleafly/diagram": ["./packages/diagram/src/index.ts"],
       "@oleafly/editor": ["./packages/editor/src/index.ts"],
       "@oleafly/editor/color-roles": ["./packages/editor/src/color-roles.ts"],
+      "@oleafly/editor/cursor-blink": ["./packages/editor/src/cursor-blink.ts"],
+      "@oleafly/editor/cursor-height": ["./packages/editor/src/cursor-height.ts"],
       "@oleafly/editor/diagnostic-card": ["./packages/editor/src/diagnostic-card.ts"],
       "@oleafly/editor/math-render": ["./packages/editor/src/math-render.ts"],
       "@oleafly/editor/CodeMirrorEditor": ["./packages/editor/src/CodeMirrorEditor.tsx"],

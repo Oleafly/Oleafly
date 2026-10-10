@@ -657,10 +657,6 @@
         "description": "Vis den sandsynlige fuldførelse efter markøren. Tryk Tab for at acceptere den.",
         "label": "Forslag i linjen"
       },
-      "nonBlinkingCursor": {
-        "description": "Hold markøren i editoren fast, så den ikke blinker.",
-        "label": "Markør, der ikke blinker"
-      },
       "stickyScroll": {
         "description": "Hold de aktuelle afsnit, overskrifter og miljøer øverst, mens du ruller.",
         "label": "Fastlåst rulning"
@@ -744,6 +740,25 @@
         "description": "Angiv, hvor tyk markøren i editoren er.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Markørhøjde",
+        "description": "Angiv, hvor høj markøren i editoren er. Linje gør den lige så høj som hele linjen.",
+        "options": {
+          "text": "Tekst",
+          "line": "Linje"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Markørblink",
+        "description": "Vælg, hvordan markøren i editoren blinker. Fra holder den fast.",
+        "options": {
+          "blink": "Blink",
+          "smooth": "Blød",
+          "phase": "Fase",
+          "expand": "Udvid",
+          "off": "Fra"
+        }
+      },
       "cursorColor": {
         "label": "Markørfarve",
         "description": "Lyse og mørke editortemaer har hver deres markørfarve. Indtil du vælger en, bruges temaets farve.",
@@ -756,6 +771,10 @@
       "lineWrap": {
         "description": "Ombryd lange linjer i stedet for at rulle sidelæns.",
         "label": "Ombryd lange linjer"
+      },
+      "highlightCurrentLine": {
+        "label": "Fremhæv den aktuelle linje",
+        "description": "Farv baggrunden på den linje, markøren står på."
       },
       "tabSize": {
         "description": "Antal mellemrum pr. indrykningsniveau og den bredde, en tabulator vises med.",

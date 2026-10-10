@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useFilesStore } from "@/store/files";
+import { useIndexStore } from "@/store/project-index";
 import { preflightDiagnostics } from "./preflight-linter";
 
 const TYPST_ENGINE = {
@@ -18,7 +19,8 @@ const TYPST_ENGINE = {
 };
 
 beforeEach(() => {
-  useFilesStore.setState({ engine: LATEX_ENGINE });
+  useFilesStore.setState({ engine: LATEX_ENGINE, mainDoc: "main.tex", files: {} });
+  useIndexStore.setState({ texts: {} });
 });
 
 describe("preflightDiagnostics", () => {
@@ -49,7 +51,48 @@ describe("preflightDiagnostics", () => {
   });
 
   it("keeps the LaTeX markers", async () => {
-    const diagnostics = await preflightDiagnostics("\\includegraphics{plot.png}", "latex");
-    expect(diagnostics.map((diagnostic) => diagnostic.from)).toEqual([0]);
+    const text = "See \\href{https://example.com}{click here}.";
+    const diagnostics = await preflightDiagnostics(text, "latex");
+    expect(diagnostics.map((diagnostic) => diagnostic.from)).toEqual([text.indexOf("\\href")]);
+  });
+
+  it("leaves LaTeX alt text out of the editor until the document asks for a tagged PDF", async () => {
+    expect(await preflightDiagnostics("\\includegraphics{plot.png}", "latex")).toEqual([]);
+    expect(
+      await preflightDiagnostics("\\DocumentMetadata{pdfversion=2.0}\n\\includegraphics{plot.png}", "latex"),
+    ).toEqual([]);
+    const tagged = "\\DocumentMetadata{lang=en,tagging=on}\n\\includegraphics{plot.png}";
+    const diagnostics = await preflightDiagnostics(tagged, "latex");
+    expect(diagnostics.map((diagnostic) => tagged.slice(diagnostic.from, diagnostic.to))).toEqual([
+      "\\includegraphics{plot.png}",
+    ]);
+    expect(diagnostics[0].message).toContain("alt text");
+    const universal = await preflightDiagnostics(
+      "\\DocumentMetadata{pdfstandard=ua-2}\n\\includegraphics{plot.png}",
+      "latex",
+    );
+    expect(universal.some((diagnostic) => diagnostic.message.includes("alt text"))).toBe(true);
+    expect(
+      await preflightDiagnostics("% \\DocumentMetadata{tagging=on}\n\\includegraphics{plot.png}", "latex"),
+    ).toEqual([]);
+  });
+
+  it("asks for alt text in a chapter when the main document is tagged", async () => {
+    useFilesStore.setState({ mainDoc: "main.tex" });
+    useIndexStore.setState({
+      texts: { "main.tex": "\\DocumentMetadata{tagging=on}\n\\documentclass{article}" },
+    });
+    expect(await preflightDiagnostics("\\includegraphics{plot.png}", "latex")).toHaveLength(1);
+    useIndexStore.setState({ texts: { "main.tex": "\\documentclass{article}" } });
+    expect(await preflightDiagnostics("\\includegraphics{plot.png}", "latex")).toEqual([]);
+  });
+
+  it("reads the open main document before the saved copy", async () => {
+    useFilesStore.setState({
+      mainDoc: "main.tex",
+      files: { "main.tex": { content: "\\DocumentMetadata{tagging=on}\n\\documentclass{article}" } } as never,
+    });
+    useIndexStore.setState({ texts: { "main.tex": "\\documentclass{article}" } });
+    expect(await preflightDiagnostics("\\includegraphics{plot.png}", "latex")).toHaveLength(1);
   });
 });

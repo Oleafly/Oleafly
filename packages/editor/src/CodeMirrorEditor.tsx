@@ -14,7 +14,6 @@ import {
   lineNumbers,
   highlightActiveLineGutter,
   highlightSpecialChars,
-  drawSelection,
   dropCursor,
   rectangularSelection,
   crosshairCursor,
@@ -47,6 +46,9 @@ import { setDiagnostics } from "@codemirror/lint";
 import { CodeMirror, getCM, vim } from "@replit/codemirror-vim";
 
 import { highlightActiveLineWhenCollapsed } from "./active-line";
+import { cursorBlinking as cursorBlinkingExtension, type EditorCursorBlinking } from "./cursor-blink";
+import { cursorFillsLine, type EditorCursorHeight } from "./cursor-height";
+import { focusOnPointerWithoutScroll } from "./focus-without-scroll";
 import type { EditorTranslator } from "./messages";
 import { vscodeSearch } from "./search-panel";
 import { editorTheme } from "./theme";
@@ -126,8 +128,9 @@ export interface EditorHost {
     /** Auto-insert closing brackets, parentheses, and quotes. */
     autoCloseBrackets: boolean;
     autoCloseMath?: boolean;
-    /** Keep the cursor solid instead of blinking. */
-    nonBlinkingCursor: boolean;
+    cursorBlinking: EditorCursorBlinking;
+    highlightCurrentLine: boolean;
+    cursorHeight: EditorCursorHeight;
     /** Dim inline preview of the top completion, accepted with Tab. */
     ghostCompletion: boolean;
     /** Pin the enclosing sections and environments to the top while scrolling. */
@@ -621,11 +624,23 @@ function stickyScrollFor(path: string | null): Extension[] {
 
 // Bracket auto-closing and cursor rendering, both user preferences that must
 // reconfigure without recreating the editor.
+interface EditorPrefs {
+  autoCloseBrackets: boolean;
+  autoCloseMath: boolean;
+  cursorBlinking: EditorCursorBlinking;
+  highlightCurrentLine: boolean;
+  cursorHeight: EditorCursorHeight;
+}
+
 function editorPrefExtensions(
   path: string | null,
-  autoCloseBrackets: boolean,
-  autoCloseMath: boolean,
-  nonBlinkingCursor: boolean,
+  {
+    autoCloseBrackets,
+    autoCloseMath,
+    cursorBlinking,
+    highlightCurrentLine,
+    cursorHeight,
+  }: EditorPrefs,
 ): Extension[] {
   const math = autoCloseBrackets && autoCloseMath;
   const latexPairs = isLatexSourcePath(path)
@@ -641,8 +656,9 @@ function editorPrefExtensions(
     autoCloseBrackets ? closeBrackets() : [],
     ...latexPairs,
     ...typstPairs,
-    // A zero blink cycle keeps the cursor permanently visible.
-    drawSelection(nonBlinkingCursor ? { cursorBlinkRate: 0 } : {}),
+    cursorBlinkingExtension(cursorBlinking),
+    highlightCurrentLine ? highlightActiveLineWhenCollapsed() : [],
+    cursorHeight === "line" ? cursorFillsLine() : [],
   ];
 }
 
@@ -713,7 +729,9 @@ export function CodeMirrorEditor({
     autocomplete,
     autoCloseBrackets,
     autoCloseMath = true,
-    nonBlinkingCursor,
+    cursorBlinking,
+    highlightCurrentLine,
+    cursorHeight,
     ghostCompletion: ghostCompletionEnabled,
     stickyScroll: stickyScrollEnabled,
     mathPreview,
@@ -829,17 +847,19 @@ export function CodeMirrorEditor({
         vimCompartment.of(keymapModeExtension(keymapMode)),
         lineNumbers(),
         centerWithinEditor,
+        focusOnPointerWithoutScroll,
         highlightActiveLineGutter(),
         highlightSpecialChars(),
         foldGutter({ markerDOM: foldMarkerDOM }),
         foldMarkerTheme,
         editorPrefsCompartment.of(
-          editorPrefExtensions(
-            initialPath,
+          editorPrefExtensions(initialPath, {
             autoCloseBrackets,
             autoCloseMath,
-            nonBlinkingCursor,
-          ),
+            cursorBlinking,
+            highlightCurrentLine,
+            cursorHeight,
+          }),
         ),
         stickyCompartment.of(
           stickyScrollEnabled ? stickyScrollFor(initialPath) : [],
@@ -851,7 +871,6 @@ export function CodeMirrorEditor({
         bracketMatching(),
         rectangularSelection(),
         crosshairCursor(),
-        highlightActiveLineWhenCollapsed(),
         highlightSelectionMatches(),
         ...diagnosticPresentationExtensions(),
         lineWrapCompartment.of(lineWrapExtensionFor(lineWrap, initialVisual)),
@@ -1204,15 +1223,16 @@ export function CodeMirrorEditor({
     if (!view || !compartment) return;
     view.dispatch({
       effects: compartment.reconfigure(
-        editorPrefExtensions(
-          activePath,
+        editorPrefExtensions(activePath, {
           autoCloseBrackets,
           autoCloseMath,
-          nonBlinkingCursor,
-        ),
+          cursorBlinking,
+          highlightCurrentLine,
+          cursorHeight,
+        }),
       ),
     });
-  }, [activePath, autoCloseBrackets, autoCloseMath, nonBlinkingCursor]);
+  }, [activePath, autoCloseBrackets, autoCloseMath, cursorBlinking, highlightCurrentLine, cursorHeight]);
 
   // Toggle completion-while-typing without recreating the editor. Completions
   // live inside the source-tools compartment, so rebuild it for the current

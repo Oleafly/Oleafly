@@ -657,10 +657,6 @@
         "description": "Vis den sannsynlige fullføringen etter markøren. Trykk Tab for å godta den.",
         "label": "Forslag i linjen"
       },
-      "nonBlinkingCursor": {
-        "description": "Hold markøren i editoren stødig.",
-        "label": "Markør uten blinking"
-      },
       "stickyScroll": {
         "description": "Hold gjeldende seksjoner, overskrifter og miljøer øverst mens du ruller.",
         "label": "Klebrig rulling"
@@ -744,6 +740,25 @@
         "description": "Angi hvor tykk markøren i editoren er.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Markørhøyde",
+        "description": "Angi hvor høy markøren i editoren er. Linje gjør den like høy som hele linjen.",
+        "options": {
+          "text": "Tekst",
+          "line": "Linje"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Markørblinking",
+        "description": "Velg hvordan markøren i editoren blinker. Av holder den fast.",
+        "options": {
+          "blink": "Blink",
+          "smooth": "Myk",
+          "phase": "Fase",
+          "expand": "Utvid",
+          "off": "Av"
+        }
+      },
       "cursorColor": {
         "label": "Markørfarge",
         "description": "Lyse og mørke editortemaer har hver sin markørfarge. Til du velger en, brukes fargen fra temaet.",
@@ -756,6 +771,10 @@
       "lineWrap": {
         "description": "Brett lange linjer i stedet for å rulle sidelengs.",
         "label": "Brett lange linjer"
+      },
+      "highlightCurrentLine": {
+        "label": "Uthev gjeldende linje",
+        "description": "Farg bakgrunnen på linjen markøren står på."
       },
       "tabSize": {
         "description": "Mellomrom per innrykksnivå, og bredden en tabulator tegnes med.",

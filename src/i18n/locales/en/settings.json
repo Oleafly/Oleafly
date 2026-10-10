@@ -657,10 +657,6 @@
         "description": "Show the likely completion after the cursor. Press Tab to accept it.",
         "label": "Inline suggestion"
       },
-      "nonBlinkingCursor": {
-        "description": "Keep the editor cursor solid.",
-        "label": "Non-blinking cursor"
-      },
       "stickyScroll": {
         "description": "Keep the current sections, headings and environments at the top while you scroll.",
         "label": "Sticky scroll"
@@ -744,6 +740,25 @@
         "description": "Set how thick the editor cursor is.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "Cursor height",
+        "description": "Set how tall the editor cursor is. Line makes it as tall as the whole line.",
+        "options": {
+          "text": "Text",
+          "line": "Line"
+        }
+      },
+      "cursorBlinking": {
+        "label": "Cursor blinking",
+        "description": "Choose how the editor cursor blinks. Off keeps it solid.",
+        "options": {
+          "blink": "Blink",
+          "smooth": "Smooth",
+          "phase": "Phase",
+          "expand": "Expand",
+          "off": "Off"
+        }
+      },
       "cursorColor": {
         "label": "Cursor color",
         "description": "Light and dark editor themes each have their own cursor color. Until you pick one, the theme's color is used.",
@@ -756,6 +771,10 @@
       "lineWrap": {
         "description": "Wrap long lines instead of scrolling sideways.",
         "label": "Wrap long lines"
+      },
+      "highlightCurrentLine": {
+        "label": "Highlight current line",
+        "description": "Tint the line the cursor is on."
       },
       "tabSize": {
         "description": "Spaces inserted per indentation level, and the width a tab renders at.",
