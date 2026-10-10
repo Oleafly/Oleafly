@@ -749,6 +749,14 @@
         "description": "Imposta lo spessore del cursore dell'editor.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "Altezza del cursore",
+        "description": "Imposta l'altezza del cursore dell'editor. Riga lo rende alto quanto l'intera riga.",
+        "options": {
+          "text": "Testo",
+          "line": "Riga"
+        }
+      },
       "cursorColor": {
         "label": "Colore del cursore",
         "description": "I temi chiari e scuri dell'editor hanno ciascuno il proprio colore del cursore. Finché non ne scegli uno, viene usato il colore del tema.",
@@ -761,6 +769,10 @@
       "lineWrap": {
         "description": "Manda a capo le righe lunghe invece di scorrere in orizzontale.",
         "label": "A capo automatico"
+      },
+      "highlightCurrentLine": {
+        "label": "Evidenzia la riga corrente",
+        "description": "Colora lo sfondo della riga in cui si trova il cursore."
       },
       "tabSize": {
         "description": "Spazi inseriti per ogni livello di rientro, e larghezza con cui viene rappresentato un tab.",

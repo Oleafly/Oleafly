@@ -75,6 +75,11 @@ const chromeTheme = EditorView.theme({
     borderLeftWidth: "var(--cm-cursor-width, 1px)",
     marginLeft: "calc(var(--cm-cursor-width, 1px) / -2)",
   },
+  ".cm-cursor": {
+    boxSizing: "content-box",
+    paddingBlock: "var(--cm-cursor-extend, 0px)",
+    marginTop: "calc(-1 * var(--cm-cursor-extend, 0px))",
+  },
   "&.cm-editor .cm-fat-cursor": {
     background: "var(--cm-cursor-custom, #ff9696)",
   },

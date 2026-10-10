@@ -1,3 +1,4 @@
+import type { SelectionRange } from "@codemirror/state";
 import { EditorView, type Panel } from "@codemirror/view";
 import {
   search,
@@ -492,9 +493,21 @@ const panelBorderOverride = EditorView.baseTheme({
   "&dark .cm-panels-top": { borderBottom: "none" },
 });
 
+function matchIsInView(view: EditorView, range: SelectionRange): boolean {
+  if (range.to > view.state.doc.length) return false;
+  const box = view.scrollDOM.getBoundingClientRect();
+  const top = view.documentTop + view.lineBlockAt(range.from).top;
+  const bottom = view.documentTop + view.lineBlockAt(range.to).bottom;
+  return top >= box.top && bottom <= box.bottom;
+}
+
+export function scrollToMatch(range: SelectionRange, view: EditorView) {
+  return EditorView.scrollIntoView(range, { y: matchIsInView(view, range) ? "nearest" : "center" });
+}
+
 export function vscodeSearch(t: EditorTranslator) {
   return [
-    search({ top: true, createPanel: (view) => createSearchPanel(view, t) }),
+    search({ top: true, scrollToMatch, createPanel: (view) => createSearchPanel(view, t) }),
     searchTheme,
     panelBorderOverride,
   ];

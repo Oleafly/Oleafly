@@ -744,6 +744,14 @@
         "description": "Set how thick the editor cursor is.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "Cursor height",
+        "description": "Set how tall the editor cursor is. Line makes it as tall as the whole line.",
+        "options": {
+          "text": "Text",
+          "line": "Line"
+        }
+      },
       "cursorColor": {
         "label": "Cursor color",
         "description": "Light and dark editor themes each have their own cursor color. Until you pick one, the theme's color is used.",
@@ -756,6 +764,10 @@
       "lineWrap": {
         "description": "Wrap long lines instead of scrolling sideways.",
         "label": "Wrap long lines"
+      },
+      "highlightCurrentLine": {
+        "label": "Highlight current line",
+        "description": "Tint the line the cursor is on."
       },
       "tabSize": {
         "description": "Spaces inserted per indentation level, and the width a tab renders at.",

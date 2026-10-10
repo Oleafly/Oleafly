@@ -744,6 +744,14 @@
         "description": "Stel in hoe dik de cursor in de editor is.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "Cursorhoogte",
+        "description": "Stel in hoe hoog de cursor in de editor is. Regel maakt hem zo hoog als de hele regel.",
+        "options": {
+          "text": "Tekst",
+          "line": "Regel"
+        }
+      },
       "cursorColor": {
         "label": "Cursorkleur",
         "description": "Lichte en donkere editorthema's hebben elk een eigen cursorkleur. Zolang je er geen kiest, wordt de kleur van het thema gebruikt.",
@@ -756,6 +764,10 @@
       "lineWrap": {
         "description": "Breek lange regels af in plaats van zijwaarts te scrollen.",
         "label": "Lange regels afbreken"
+      },
+      "highlightCurrentLine": {
+        "label": "Huidige regel markeren",
+        "description": "Kleur de achtergrond van de regel waarop de cursor staat."
       },
       "tabSize": {
         "description": "Het aantal spaties per inspringniveau, en de breedte waarop een tab wordt getoond.",

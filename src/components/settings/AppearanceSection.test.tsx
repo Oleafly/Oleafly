@@ -446,6 +446,34 @@ describe("Appearance settings tabs", () => {
     expect(useSettingsStore.getState().editorCursorWidth).toBe(3);
   });
 
+  it("changes the editor cursor height", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorCursorHeight: "text" });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    const row = screen.getByTestId("settings-row-editor-cursor-height");
+    expect(row).toHaveTextContent(appearance.editor.cursorHeight.label);
+    expect(row).toHaveTextContent(appearance.editor.cursorHeight.options.text);
+    await user.click(screen.getByTestId("settings-editor-cursor-height-trigger"));
+    await user.click(
+      await screen.findByRole("option", { name: appearance.editor.cursorHeight.options.line }),
+    );
+    expect(useSettingsStore.getState().editorCursorHeight).toBe("line");
+  });
+
+  it("turns the current-line highlight off and on", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ editorHighlightCurrentLine: true });
+    render(<AppearanceSection />);
+    await user.click(screen.getByRole("tab", { name: appearance.tabs.editor }));
+    const toggle = screen.getByRole("switch", { name: appearance.editor.highlightCurrentLine.label });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    expect(useSettingsStore.getState().editorHighlightCurrentLine).toBe(false);
+    await user.click(toggle);
+    expect(useSettingsStore.getState().editorHighlightCurrentLine).toBe(true);
+  });
+
   it("chooses what happens to references when a file moves", async () => {
     useSettingsStore.getState().setFileMoveReferences("ask");
     const user = userEvent.setup();

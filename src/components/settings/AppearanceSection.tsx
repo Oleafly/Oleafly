@@ -30,6 +30,7 @@ import {
   ACCENTS,
   APP_ZOOM_LEVELS,
   BROWSER_SEARCH_ENGINES,
+  EDITOR_CURSOR_HEIGHTS,
   EDITOR_CURSOR_WIDTHS,
   EDITOR_SURFACES,
   EDITOR_CUSTOM_LETTER_SPACING,
@@ -42,6 +43,7 @@ import {
   EDITOR_LINE_HEIGHT_OPTIONS,
   EDITOR_TAB_SIZES,
   FILE_MOVE_REFERENCE_OPTIONS,
+  type EditorCursorHeight,
   type FileMoveReferences,
   EDITOR_THEMES,
   TERMINAL_COLOR_THEMES,
@@ -630,6 +632,12 @@ function EditorAppearanceTab() {
   const setEditorFontFamily = useSettingsStore((state) => state.setEditorFontFamily);
   const editorCursorWidth = useSettingsStore((state) => state.editorCursorWidth);
   const setEditorCursorWidth = useSettingsStore((state) => state.setEditorCursorWidth);
+  const editorCursorHeight = useSettingsStore((state) => state.editorCursorHeight);
+  const setEditorCursorHeight = useSettingsStore((state) => state.setEditorCursorHeight);
+  const editorHighlightCurrentLine = useSettingsStore((state) => state.editorHighlightCurrentLine);
+  const setEditorHighlightCurrentLine = useSettingsStore(
+    (state) => state.setEditorHighlightCurrentLine,
+  );
   const editorThemeLight = useSettingsStore((state) => state.editorThemeLight);
   const editorThemeDark = useSettingsStore((state) => state.editorThemeDark);
   const setEditorTheme = useSettingsStore((state) => state.setEditorTheme);
@@ -817,6 +825,29 @@ function EditorAppearanceTab() {
         }
       />
 
+      <SettingsRow
+        testId="settings-row-editor-cursor-height"
+        label={t(($) => $.settings.appearance.editor.cursorHeight.label)}
+        description={t(($) => $.settings.appearance.editor.cursorHeight.description)}
+        control={
+          <Select
+            value={editorCursorHeight}
+            onValueChange={(value) => setEditorCursorHeight(value as EditorCursorHeight)}
+          >
+            <SelectTrigger className="w-[88px]" data-testid="settings-editor-cursor-height-trigger">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              {EDITOR_CURSOR_HEIGHTS.map((height) => (
+                <SelectItem key={height} value={height}>
+                  {t(($) => $.settings.appearance.editor.cursorHeight.options[height])}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
+
       <EditorCursorColorRow />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.nonBlinkingCursor.label)}
@@ -830,6 +861,12 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.lineWrap.description)}
         checked={editorLineWrap}
         onChange={setEditorLineWrap}
+      />
+      <SettingsToggleRow
+        label={t(($) => $.settings.appearance.editor.highlightCurrentLine.label)}
+        description={t(($) => $.settings.appearance.editor.highlightCurrentLine.description)}
+        checked={editorHighlightCurrentLine}
+        onChange={setEditorHighlightCurrentLine}
       />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.autocomplete.label)}

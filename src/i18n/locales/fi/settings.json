@@ -744,6 +744,14 @@
         "description": "Määritä, kuinka paksu editorin kohdistin on.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Kohdistimen korkeus",
+        "description": "Määritä editorin kohdistimen korkeus. Rivi tekee siitä koko rivin korkuisen.",
+        "options": {
+          "text": "Teksti",
+          "line": "Rivi"
+        }
+      },
       "cursorColor": {
         "label": "Kohdistimen väri",
         "description": "Editorin vaaleilla ja tummilla teemoilla on kummallakin oma kohdistimen värinsä. Kunnes valitset värin, käytetään teeman väriä.",
@@ -756,6 +764,10 @@
       "lineWrap": {
         "description": "Rivitä pitkät rivit sen sijaan että vieritettäisiin sivusuunnassa.",
         "label": "Rivitä pitkät rivit"
+      },
+      "highlightCurrentLine": {
+        "label": "Korosta nykyinen rivi",
+        "description": "Väritä sen rivin tausta, jolla kohdistin on."
       },
       "tabSize": {
         "description": "Sisennystasoa kohden lisättävät välilyönnit ja leveys, jolla sarkain piirretään.",

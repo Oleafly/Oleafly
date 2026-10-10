@@ -1,3 +1,4 @@
+import type { LatexSearchPaths } from "@oleafly/editor/file-references";
 import type { BibliographyEngine } from "@oleafly/latex";
 
 export const PROJECT_INTELLIGENCE_PROTOCOL_VERSION = 2 as const;
@@ -190,6 +191,7 @@ export interface ProjectEdge {
   readonly resolution: ResolutionStatus;
   readonly candidateFiles: readonly string[];
   readonly bibliographyEngine?: BibliographyEngine;
+  readonly searchPath?: "graphics" | "svg";
 }
 
 export interface ProjectHierarchy {
@@ -284,6 +286,7 @@ export interface ProjectFileState {
   readonly status: "success" | "partial" | "error";
   readonly statusReason?: string;
   readonly packageRefs?: readonly PackageReference[];
+  readonly latexSearchPaths?: LatexSearchPaths;
 }
 
 export interface FileIntelligence extends ProjectFileState {

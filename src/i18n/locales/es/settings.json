@@ -749,6 +749,14 @@
         "description": "Define el grosor del cursor del editor.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Altura del cursor",
+        "description": "Define la altura del cursor del editor. Línea lo hace tan alto como toda la línea.",
+        "options": {
+          "text": "Texto",
+          "line": "Línea"
+        }
+      },
       "cursorColor": {
         "label": "Color del cursor",
         "description": "Los temas claros y oscuros del editor tienen cada uno su propio color de cursor. Hasta que elijas uno, se usa el color del tema.",
@@ -761,6 +769,10 @@
       "lineWrap": {
         "description": "Ajusta las líneas largas en lugar de desplazarse en horizontal.",
         "label": "Ajustar las líneas largas"
+      },
+      "highlightCurrentLine": {
+        "label": "Resaltar la línea actual",
+        "description": "Colorea el fondo de la línea donde está el cursor."
       },
       "tabSize": {
         "description": "Espacios que se insertan por nivel de sangría y ancho con el que se dibuja un tabulador.",

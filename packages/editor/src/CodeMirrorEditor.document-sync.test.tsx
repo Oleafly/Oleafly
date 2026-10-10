@@ -41,7 +41,7 @@ async function mountEditor(initial: HostState) {
     useSettings: () => ({
       keymap: "default", tabSize: 2, lineWrap: true, spellcheck: false, harper: false,
       editorTheme: "system", autocomplete: false, autoCloseBrackets: false,
-      nonBlinkingCursor: false, ghostCompletion: false, stickyScroll: false, mathPreview: false,
+      nonBlinkingCursor: false, highlightCurrentLine: true, cursorHeight: "text", ghostCompletion: false, stickyScroll: false, mathPreview: false,
     }),
     useVisualMode: () => false,
     useEditorKeymap: () => ({}),

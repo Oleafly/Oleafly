@@ -21,3 +21,4 @@ export * from "./resume-sections";
 export * from "./contact";
 export * from "./accessible-prep";
 export * from "./tagging-status";
+export { requestsTaggedPdf } from "./document-metadata";

@@ -419,6 +419,29 @@ describe("useSettingsStore reset", () => {
     expect(localStorage.getItem("oleafly.editor.cursorWidth")).toBe("1");
   });
 
+  it("draws the cursor as tall as the text or the line and resets to text", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState().editorCursorHeight).toBe("text");
+    settings.setEditorCursorHeight("line");
+    expect(useSettingsStore.getState().editorCursorHeight).toBe("line");
+    expect(localStorage.getItem("oleafly.editor.cursorHeight")).toBe("line");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorCursorHeight).toBe("text");
+    expect(localStorage.getItem("oleafly.editor.cursorHeight")).toBe("text");
+  });
+
+  it("highlights the current line until it is turned off and restores it on reset", () => {
+    const settings = useSettingsStore.getState();
+    expect(useSettingsStore.getState().editorHighlightCurrentLine).toBe(true);
+    settings.setEditorHighlightCurrentLine(false);
+    expect(useSettingsStore.getState().editorHighlightCurrentLine).toBe(false);
+    expect(localStorage.getItem("oleafly.editor.highlightCurrentLine")).toBe("0");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
+    settings.resetToDefaults();
+    expect(useSettingsStore.getState().editorHighlightCurrentLine).toBe(true);
+  });
+
   it("keeps a valid custom cursor color for each editor surface and follows the theme otherwise", () => {
     const settings = useSettingsStore.getState();
     expect(useSettingsStore.getState()).toMatchObject({ editorCursorColorLight: "", editorCursorColorDark: "" });
@@ -590,12 +613,14 @@ describe("editor appearance migration", () => {
     expect(localStorage.getItem("oleafly.appFont")).toBe("Helvetica Neue");
   });
 
-  it("keeps a plain family name and reads the custom line height and cursor width", async () => {
+  it("keeps a plain family name and reads the custom line height and cursor settings", async () => {
     lsValues.clear();
     lsValues.set("oleafly.editorFont", "  iA Writer Quattro S ");
     lsValues.set("oleafly.editor.lineHeight", "custom");
     lsValues.set("oleafly.editor.lineHeightCustom", "1.62");
     lsValues.set("oleafly.editor.cursorWidth", "2");
+    lsValues.set("oleafly.editor.cursorHeight", "line");
+    lsValues.set("oleafly.editor.highlightCurrentLine", "0");
     vi.resetModules();
     const migrated = await import("./settings");
     expect(migrated.useSettingsStore.getState()).toMatchObject({
@@ -603,18 +628,22 @@ describe("editor appearance migration", () => {
       editorLineHeight: "custom",
       editorCustomLineHeight: 1.62,
       editorCursorWidth: 2,
+      editorCursorHeight: "line",
+      editorHighlightCurrentLine: false,
     });
   });
 
-  it("falls back for a bad custom line height or cursor width", async () => {
+  it("falls back for a bad custom line height, cursor width or cursor height", async () => {
     lsValues.clear();
     lsValues.set("oleafly.editor.lineHeightCustom", "tall");
     lsValues.set("oleafly.editor.cursorWidth", "9");
+    lsValues.set("oleafly.editor.cursorHeight", "huge");
     vi.resetModules();
     const migrated = await import("./settings");
     expect(migrated.useSettingsStore.getState()).toMatchObject({
       editorCustomLineHeight: EDITOR_LINE_HEIGHTS.normal,
       editorCursorWidth: 1,
+      editorCursorHeight: "text",
     });
   });
 });

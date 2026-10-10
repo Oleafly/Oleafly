@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Settings > Appearance > Editor has a Cursor height option. Text keeps the
+  cursor as tall as the letters, and Line stretches it to the full height of
+  the line.
+- Highlight current line, in the same place, turns off the tint on the line
+  the cursor is in. A long paragraph is one line in the source, so with
+  wrapping on, the tint could cover most of the editor.
+
+### Fixed
+
+- Searching jumps to a match that is off screen and puts it in the middle of
+  the editor, so the next match no longer lands at the bottom edge (#270). A
+  match that is already in view stays where it is.
+- A figure found through `\graphicspath` no longer shows "asset target ...
+  could not be resolved" (#269), and neither does an `\includesvg` file found
+  through `\svgpath`. A figure in a chapter is also looked up from the main
+  document's folder, where LaTeX runs.
+- The editor asks for alt text on `\includegraphics` only when the document
+  turns on PDF tagging (#269), through `\DocumentMetadata` with
+  `tagging=on`, a test phase or a PDF/UA standard. Without tagging, LaTeX
+  does nothing with alt text. The Accessibility check in Preflight still
+  lists images without it.
+
 ## [0.4.6] - 2026-10-09
 
 ### Added

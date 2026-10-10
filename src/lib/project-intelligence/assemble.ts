@@ -8,9 +8,12 @@ import {
   definitionCandidatesForUse,
   definitionsByKey,
 } from "./resolution";
+import type { LatexSearchPaths } from "@oleafly/editor/file-references";
+import { dirname } from "@/lib/path-utils";
 import {
   engineForPath,
   normalizeProjectPath,
+  resolveProjectPathFrom,
   stableId,
 } from "./source";
 import {
@@ -303,17 +306,77 @@ function addExtensionCandidates(
   }
 }
 
+interface AssetSearch {
+  readonly mainDirectory: string;
+  readonly searchPaths: LatexSearchPaths;
+}
+
+function projectSearchPaths(files: readonly FileAnalysis[]): LatexSearchPaths {
+  const graphics: string[] = [];
+  const svg: string[] = [];
+  for (const file of files) {
+    for (const path of file.latexSearchPaths?.graphics ?? []) {
+      if (!graphics.includes(path)) graphics.push(path);
+    }
+    for (const path of file.latexSearchPaths?.svg ?? []) {
+      if (!svg.includes(path)) svg.push(path);
+    }
+  }
+  return { graphics, svg };
+}
+
+function assetSearchDirectories(edge: ProjectEdge, search: AssetSearch): string[] {
+  const paths =
+    edge.searchPath === "svg"
+      ? [...search.searchPaths.svg, ...search.searchPaths.graphics]
+      : search.searchPaths.graphics;
+  const directories: string[] = [];
+  for (const base of [search.mainDirectory, "", dirname(edge.fromFile)]) {
+    for (const directory of [base, ...paths.map((path) => (base ? `${base}/${path}` : path))]) {
+      if (!directories.includes(directory)) directories.push(directory);
+    }
+  }
+  return directories;
+}
+
+function searchedAssetFiles(
+  edge: ProjectEdge,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+  search: AssetSearch,
+): readonly string[] {
+  for (const directory of assetSearchDirectories(edge, search)) {
+    const target = resolveProjectPathFrom(directory, edge.rawTarget);
+    const candidates = target ? candidatesForPath(target, edge, known, knownByLower) : [];
+    if (candidates.length > 0) return candidates;
+  }
+  return [];
+}
+
 function candidateTargetFiles(
   edge: ProjectEdge,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
+  search: AssetSearch,
 ): readonly string[] {
   if (!edge.targetFile) return [];
   if (edge.kind === "bibliography") {
     return bibliographyTargetFiles(edge, known, knownByLower);
   }
+  if (edge.searchPath) {
+    return searchedAssetFiles(edge, known, knownByLower, search);
+  }
   const normalized = normalizeProjectPath(edge.targetFile);
   if (!normalized) return [];
+  return candidatesForPath(normalized, edge, known, knownByLower);
+}
+
+function candidatesForPath(
+  normalized: string,
+  edge: ProjectEdge,
+  known: ReadonlySet<string>,
+  knownByLower: ReadonlyMap<string, readonly string[]>,
+): readonly string[] {
   const candidates = new Set<string>();
   if (known.has(normalized)) candidates.add(normalized);
   for (const candidate of knownByLower.get(pathFoldKey(normalized)) ?? []) {
@@ -331,9 +394,10 @@ function resolveEdge(
   edge: ProjectEdge,
   known: ReadonlySet<string>,
   knownByLower: ReadonlyMap<string, readonly string[]>,
+  search: AssetSearch,
 ): ProjectEdge {
   if (edge.resolution === "external" || !edge.targetFile) return edge;
-  const candidates = candidateTargetFiles(edge, known, knownByLower);
+  const candidates = candidateTargetFiles(edge, known, knownByLower, search);
   const resolution: ResolutionStatus = resolutionForCandidateCount(
     candidates.length,
   );
@@ -664,9 +728,13 @@ export function assembleProjectIntelligenceResult(
   const byKey = definitionsByKey(definitions);
 
   const { known, knownByLower } = knownFileIndex(input.knownFiles);
+  const search: AssetSearch = {
+    mainDirectory: input.mainDocument ? dirname(input.mainDocument) : "",
+    searchPaths: projectSearchPaths(fileList),
+  };
   const edges = Object.values(orderedFiles)
     .flatMap((file) => file.edges)
-    .map((edge) => resolveEdge(edge, known, knownByLower))
+    .map((edge) => resolveEdge(edge, known, knownByLower, search))
     .sort(
       (left, right) =>
         left.fromFile.localeCompare(right.fromFile) ||

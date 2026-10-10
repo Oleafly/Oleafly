@@ -217,7 +217,7 @@ Search across the project from the Search panel. The project index connects sour
 
 The editor has one theme for light mode and one for dark mode, and it switches when the app does. Paper, a warm off-white, and One Light are the two light themes. Editor colors, in Settings > Appearance > Editor, changes any color of a theme. Colors are grouped by role, such as headings, commands, citations, or math, and a LaTeX, Typst, or Markdown sample shows each change as you make it. Oleafly keeps your changes for each theme, and theme export and import carry them.
 
-The app and the editor can use any font installed on your computer, and the editor also lets you set letter spacing and the cursor's width and color. Cmd+= and Cmd+- zoom the whole app, the editor and PDF included, and Cmd+0 goes back to 100% (Ctrl on Windows and Linux).
+The app and the editor can use any font installed on your computer, and the editor also lets you set letter spacing and the cursor's width, height and color, and turn off the highlight on the line the cursor is in. Cmd+= and Cmd+- zoom the whole app, the editor and PDF included, and Cmd+0 goes back to 100% (Ctrl on Windows and Linux).
 
 Zen mode hides the toolbar, sidebar, assistant, and terminal so only the editor is left. Press Ctrl+Cmd+Shift+F (Shift+F11 on Windows and Linux) to turn it on, and press the same keys or Escape twice to leave it.
 

@@ -217,7 +217,7 @@ Suche im Projekt über das Panel „Suche“. Der Projektindex verbindet Quellda
 
 Der Editor hat ein Theme für den hellen und eines für den dunklen Modus und wechselt mit der App. Paper, ein warmes Cremeweiß, und One Light sind die beiden hellen Themes. „Farben des Editors“ unter „Einstellungen > Darstellung > Editor“ ändert jede Farbe eines Themes. Die Farben sind nach Rollen gruppiert, etwa Überschriften, Befehle, Zitate oder Mathematik, und ein Beispiel in LaTeX, Typst oder Markdown zeigt jede Änderung sofort. Oleafly speichert deine Änderungen für jedes Theme, und Export und Import eines Themes nehmen sie mit.
 
-Die App und der Editor können jede auf deinem Computer installierte Schrift verwenden, und im Editor stellst du außerdem den Zeichenabstand sowie Breite und Farbe des Cursors ein. Cmd+= und Cmd+- zoomen die ganze App samt Editor und PDF, und Cmd+0 setzt auf 100 % zurück (Strg unter Windows und Linux).
+Die App und der Editor können jede auf deinem Computer installierte Schrift verwenden, und im Editor stellst du außerdem den Zeichenabstand sowie Breite, Höhe und Farbe des Cursors ein und kannst die Hervorhebung der Zeile mit dem Cursor ausschalten. Cmd+= und Cmd+- zoomen die ganze App samt Editor und PDF, und Cmd+0 setzt auf 100 % zurück (Strg unter Windows und Linux).
 
 Der Zen-Modus blendet Werkzeugleiste, Seitenleiste, Assistent und Terminal aus, sodass nur der Editor bleibt. Mit Ctrl+Cmd+Shift+F (Shift+F11 unter Windows und Linux) schaltest du ihn ein, und mit denselben Tasten oder zweimal Escape verlässt du ihn wieder.
 

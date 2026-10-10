@@ -749,6 +749,14 @@
         "description": "Setează cât de gros este cursorul din editor.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "Înălțimea cursorului",
+        "description": "Setează înălțimea cursorului din editor. Rând îl face cât tot rândul.",
+        "options": {
+          "text": "Text",
+          "line": "Rând"
+        }
+      },
       "cursorColor": {
         "label": "Culoarea cursorului",
         "description": "Temele deschise și cele întunecate ale editorului au fiecare propria culoare a cursorului. Până alegi una, se folosește culoarea temei.",
@@ -761,6 +769,10 @@
       "lineWrap": {
         "description": "Rupe liniile lungi în loc să derulezi lateral.",
         "label": "Rupe liniile lungi"
+      },
+      "highlightCurrentLine": {
+        "label": "Evidențiază rândul curent",
+        "description": "Colorează fundalul rândului pe care se află cursorul."
       },
       "tabSize": {
         "description": "Spațiile inserate pentru fiecare nivel de indentare și lățimea cu care se afișează un tab.",

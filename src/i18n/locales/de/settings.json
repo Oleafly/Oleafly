@@ -744,6 +744,14 @@
         "description": "Legen Sie fest, wie dick der Cursor im Editor ist.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Cursorhöhe",
+        "description": "Die Höhe des Cursors im Editor festlegen. Mit Zeile ist er so hoch wie die ganze Zeile.",
+        "options": {
+          "text": "Text",
+          "line": "Zeile"
+        }
+      },
       "cursorColor": {
         "label": "Cursorfarbe",
         "description": "Helle und dunkle Editor-Designs haben jeweils eine eigene Cursorfarbe. Bis Sie eine wählen, wird die Farbe des Designs verwendet.",
@@ -756,6 +764,10 @@
       "lineWrap": {
         "description": "Lange Zeilen umbrechen statt seitwärts zu scrollen.",
         "label": "Lange Zeilen umbrechen"
+      },
+      "highlightCurrentLine": {
+        "label": "Aktuelle Zeile hervorheben",
+        "description": "Die Zeile, in der der Cursor steht, farbig hinterlegen."
       },
       "tabSize": {
         "description": "Leerzeichen je Einrückungsebene und die Breite, mit der ein Tabulator dargestellt wird.",

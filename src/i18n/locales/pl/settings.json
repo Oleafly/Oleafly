@@ -754,6 +754,14 @@
         "description": "Ustaw grubość kursora edytora.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Wysokość kursora",
+        "description": "Ustaw wysokość kursora w edytorze. Wiersz wydłuża go na całą wysokość wiersza.",
+        "options": {
+          "text": "Tekst",
+          "line": "Wiersz"
+        }
+      },
       "cursorColor": {
         "label": "Kolor kursora",
         "description": "Jasne i ciemne motywy edytora mają osobne kolory kursora. Dopóki nie wybierzesz koloru, używany jest kolor motywu.",
@@ -766,6 +774,10 @@
       "lineWrap": {
         "description": "Zawijaj długie wiersze zamiast przewijać w bok.",
         "label": "Zawijaj długie wiersze"
+      },
+      "highlightCurrentLine": {
+        "label": "Wyróżniaj bieżący wiersz",
+        "description": "Koloruj tło wiersza, w którym jest kursor."
       },
       "tabSize": {
         "description": "Liczba spacji wstawianych na poziom wcięcia i szerokość, z jaką renderowany jest znak tabulacji.",

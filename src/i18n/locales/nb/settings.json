@@ -744,6 +744,14 @@
         "description": "Angi hvor tykk markøren i editoren er.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Markørhøyde",
+        "description": "Angi hvor høy markøren i redigeringsprogrammet er. Linje gjør den like høy som hele linjen.",
+        "options": {
+          "text": "Tekst",
+          "line": "Linje"
+        }
+      },
       "cursorColor": {
         "label": "Markørfarge",
         "description": "Lyse og mørke editortemaer har hver sin markørfarge. Til du velger en, brukes fargen fra temaet.",
@@ -756,6 +764,10 @@
       "lineWrap": {
         "description": "Brett lange linjer i stedet for å rulle sidelengs.",
         "label": "Brett lange linjer"
+      },
+      "highlightCurrentLine": {
+        "label": "Uthev gjeldende linje",
+        "description": "Farg bakgrunnen på linjen markøren står på."
       },
       "tabSize": {
         "description": "Mellomrom per innrykksnivå, og bredden en tabulator tegnes med.",

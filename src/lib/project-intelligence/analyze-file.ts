@@ -16,6 +16,7 @@ import {
   typstAutolinkEnd,
 } from "@oleafly/editor/typst-syntax";
 import { type BibliographyEngine, bibliographyCandidatePaths } from "@oleafly/latex";
+import { type LatexSearchPaths, latexSearchPaths } from "@oleafly/editor/file-references";
 import { astAugmentLatexFile } from "./latex-ast";
 import { bibliographyEntrySummary } from "./bibliography-summary";
 import { parseBibtexIntelligence } from "./parse-bibtex";
@@ -1810,6 +1811,12 @@ function addLatexImportEdges(
 
 }
 
+const ASSET_SEARCH_PATHS: Readonly<Record<string, "graphics" | "svg">> = {
+  includegraphics: "graphics",
+  includepdf: "graphics",
+  includesvg: "svg",
+};
+
 function addLatexAssetEdges(
   file: string,
   masked: string,
@@ -1818,9 +1825,9 @@ function addLatexAssetEdges(
   edges: ProjectEdge[],
 ): void {
   const assets =
-    /\\(?:includegraphics|includesvg|includepdf|lstinputlisting|verbatiminput)\*?(?:\s*\[[^\]]*\])?\s*\{([^}]*)\}/g;
+    /\\(includegraphics|includesvg|includepdf|lstinputlisting|verbatiminput)\*?(?:\s*\[[^\]]*\])?\s*\{([^}]*)\}/g;
   for (const match of masked.matchAll(assets)) {
-    const raw = match[1].trim();
+    const raw = match[2].trim();
     const nameOffset =
       match.index + match[0].lastIndexOf("{") + 1;
     const target = resolveProjectPath(file, raw);
@@ -1832,10 +1839,11 @@ function addLatexAssetEdges(
       "asset",
       raw,
       nameOffset,
-      nameOffset + match[1].length,
+      nameOffset + match[2].length,
       target ?? undefined,
     );
-    edges.push(edgeForUse(use, target));
+    const searchPath = ASSET_SEARCH_PATHS[match[1]];
+    edges.push({ ...edgeForUse(use, target), ...(searchPath ? { searchPath } : {}) });
   }
 
   const mintedAssets =
@@ -3034,7 +3042,7 @@ function addLegacyUses(
 function analyzeLatexBody(
   context: LegacyContext,
   diagnostics: ProjectDiagnostic[],
-): { partial: boolean; packageRefs: PackageReference[] } {
+): { partial: boolean; packageRefs: PackageReference[]; searchPaths: LatexSearchPaths } {
   const { engine, file, source, starts, definitions, uses, edges } = context;
   const ignored = latexIgnoredRanges(source);
   const masked = maskLatexIgnoredRegions(source, ignored);
@@ -3056,8 +3064,9 @@ function analyzeLatexBody(
   );
   const ast = astAugmentLatexFile(file, source, starts);
   if (ast) definitions.push(...ast.definitions);
+  const searchPaths = latexSearchPaths([{ path: file, text: source }]);
   const novalidate = scanLatexNovalidate(source, ignored);
-  if (novalidate.fileDisabled) return { partial: false, packageRefs };
+  if (novalidate.fileDisabled) return { partial: false, packageRefs, searchPaths };
   const checked = maskNovalidateRegions(masked, novalidate.regions);
   const delimiterPartial = addDelimiterDiagnostics(
     file,
@@ -3076,6 +3085,7 @@ function analyzeLatexBody(
   return {
     partial: delimiterPartial || environmentPartial,
     packageRefs,
+    searchPaths,
   };
 }
 
@@ -3177,10 +3187,12 @@ export function analyzeProjectFile(
 
   let partial = false;
   let packageRefs: PackageReference[] = [];
+  let searchPaths: LatexSearchPaths = { graphics: [], svg: [] };
   if (engine === "latex") {
     const latex = analyzeLatexBody(context, diagnostics);
     partial = latex.partial;
     packageRefs = latex.packageRefs;
+    searchPaths = latex.searchPaths;
   } else if (engine === "markdown") {
     partial = markdownAdditionalSyntax(
       file,
@@ -3225,5 +3237,8 @@ export function analyzeProjectFile(
     diagnostics,
     bibliographyEntries,
     ...(packageRefs.length ? { packageRefs } : {}),
+    ...(searchPaths.graphics.length || searchPaths.svg.length
+      ? { latexSearchPaths: searchPaths }
+      : {}),
   };
 }

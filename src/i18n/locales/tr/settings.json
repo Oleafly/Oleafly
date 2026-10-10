@@ -744,6 +744,14 @@
         "description": "Düzenleyici imlecinin kalınlığını ayarlar.",
         "option": "{{width}}px"
       },
+      "cursorHeight": {
+        "label": "İmleç yüksekliği",
+        "description": "Düzenleyicideki imlecin yüksekliğini ayarlayın. Satır, imleci tüm satır kadar uzun yapar.",
+        "options": {
+          "text": "Metin",
+          "line": "Satır"
+        }
+      },
       "cursorColor": {
         "label": "İmleç rengi",
         "description": "Açık ve koyu düzenleyici temalarının her birinin kendi imleç rengi vardır. Siz seçene kadar temanın rengi kullanılır.",
@@ -756,6 +764,10 @@
       "lineWrap": {
         "description": "Uzun satırları yana kaydırmak yerine alt satıra taşır.",
         "label": "Uzun satırları kaydır"
+      },
+      "highlightCurrentLine": {
+        "label": "Geçerli satırı vurgula",
+        "description": "İmlecin bulunduğu satırın arka planını renklendirir."
       },
       "tabSize": {
         "description": "Her girinti düzeyi için eklenen boşluk sayısı ve bir sekmenin gösterildiği genişlik.",

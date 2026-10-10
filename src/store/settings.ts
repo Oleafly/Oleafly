@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { EditorColorId } from "@oleafly/editor/color-roles";
+import { EDITOR_CURSOR_HEIGHTS, type EditorCursorHeight } from "@oleafly/editor/cursor-height";
 import {
   isEditorThemeId,
   validateEditorColors,
@@ -845,6 +846,8 @@ export function clampEditorFontSize(value: number): number {
 
 export const EDITOR_CURSOR_WIDTHS: readonly number[] = [1, 2, 3];
 
+export { EDITOR_CURSOR_HEIGHTS, type EditorCursorHeight };
+
 export type EditorSurface = "light" | "dark";
 
 export const EDITOR_SURFACES: readonly EditorSurface[] = ["light", "dark"];
@@ -882,6 +885,8 @@ interface SettingsState {
   setEditorCustomLetterSpacing: (v: number) => void;
   editorCursorWidth: number;
   setEditorCursorWidth: (v: number) => void;
+  editorCursorHeight: EditorCursorHeight;
+  setEditorCursorHeight: (v: EditorCursorHeight) => void;
   editorCursorColorLight: string;
   editorCursorColorDark: string;
   setEditorCursorColor: (surface: EditorSurface, v: string) => void;
@@ -901,6 +906,8 @@ interface SettingsState {
   /** Keep the cursor solid instead of blinking. */
   editorNonBlinkingCursor: boolean;
   setEditorNonBlinkingCursor: (v: boolean) => void;
+  editorHighlightCurrentLine: boolean;
+  setEditorHighlightCurrentLine: (v: boolean) => void;
   /** Pin the enclosing sections and environments to the top while scrolling. */
   editorStickyScroll: boolean;
   setEditorStickyScroll: (v: boolean) => void;
@@ -1147,6 +1154,11 @@ function readFileMoveReferences(): FileMoveReferences {
     : "ask";
 }
 
+function readEditorCursorHeight(): EditorCursorHeight {
+  const stored = ls("oleafly.editor.cursorHeight", "");
+  return EDITOR_CURSOR_HEIGHTS.find((height) => height === stored) ?? PREF_DEFAULTS.editorCursorHeight;
+}
+
 function readChoice(key: string, choices: readonly number[], fallback: number): number {
   const stored = Number(ls(key, ""));
   return choices.includes(stored) ? stored : fallback;
@@ -1164,6 +1176,7 @@ const PREF_DEFAULTS = {
   editorLetterSpacing: "normal" as EditorLetterSpacing,
   editorCustomLetterSpacing: EDITOR_LETTER_SPACINGS.normal,
   editorCursorWidth: 1,
+  editorCursorHeight: "text" as EditorCursorHeight,
   editorCursorColorLight: "",
   editorCursorColorDark: "",
   editorAutocomplete: true,
@@ -1172,6 +1185,7 @@ const PREF_DEFAULTS = {
   editorAutoCloseEnvironments: true,
   editorGhostCompletion: true,
   editorNonBlinkingCursor: false,
+  editorHighlightCurrentLine: true,
   editorStickyScroll: true,
   editorMathPreview: true,
   fileMoveReferences: "ask" as FileMoveReferences,
@@ -1258,6 +1272,7 @@ const SECTION_SETTINGS = {
     editorLetterSpacing: "oleafly.editor.letterSpacing",
     editorCustomLetterSpacing: "oleafly.editor.letterSpacingCustom",
     editorCursorWidth: "oleafly.editor.cursorWidth",
+    editorCursorHeight: "oleafly.editor.cursorHeight",
     editorCursorColorLight: "oleafly.editor.cursorColor.light",
     editorCursorColorDark: "oleafly.editor.cursorColor.dark",
     editorAutocomplete: "oleafly.editor.autocomplete",
@@ -1266,6 +1281,7 @@ const SECTION_SETTINGS = {
     editorAutoCloseEnvironments: "oleafly.editor.closeEnvironments",
     editorGhostCompletion: "oleafly.editor.ghostCompletion",
     editorNonBlinkingCursor: "oleafly.editor.solidCursor",
+    editorHighlightCurrentLine: "oleafly.editor.highlightCurrentLine",
     editorStickyScroll: "oleafly.editor.stickyScroll",
     editorMathPreview: "oleafly.editor.mathPreview",
     fileMoveReferences: "oleafly.editor.fileMoveReferences",
@@ -1431,6 +1447,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.editor.cursorWidth", String(width));
     set({ editorCursorWidth: width });
   },
+  editorCursorHeight: readEditorCursorHeight(),
+  setEditorCursorHeight: (v) => {
+    const height = EDITOR_CURSOR_HEIGHTS.includes(v) ? v : PREF_DEFAULTS.editorCursorHeight;
+    saveLs("oleafly.editor.cursorHeight", height);
+    set({ editorCursorHeight: height });
+  },
   editorCursorColorLight: readHexColor(ls("oleafly.editor.cursorColor.light", ""), ""),
   editorCursorColorDark: readHexColor(ls("oleafly.editor.cursorColor.dark", ""), ""),
   setEditorCursorColor: (surface, v) => {
@@ -1483,6 +1505,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorNonBlinkingCursor: (v) => {
     saveLs("oleafly.editor.solidCursor", v ? "1" : "0");
     set({ editorNonBlinkingCursor: v });
+  },
+  editorHighlightCurrentLine: ls("oleafly.editor.highlightCurrentLine", "1") !== "0",
+  setEditorHighlightCurrentLine: (v) => {
+    saveLs("oleafly.editor.highlightCurrentLine", v ? "1" : "0");
+    set({ editorHighlightCurrentLine: v });
   },
   editorMathPreview: ls("oleafly.editor.mathPreview", "1") !== "0",
   setEditorMathPreview: (v) => {

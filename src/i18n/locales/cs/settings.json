@@ -754,6 +754,14 @@
         "description": "Nastavte, jak silný má být kurzor editoru.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Výška kurzoru",
+        "description": "Nastavit výšku kurzoru v editoru. Řádek ho natáhne na výšku celého řádku.",
+        "options": {
+          "text": "Text",
+          "line": "Řádek"
+        }
+      },
       "cursorColor": {
         "label": "Barva kurzoru",
         "description": "Světlé a tmavé motivy editoru mají každý vlastní barvu kurzoru. Dokud žádnou nevyberete, použije se barva motivu.",
@@ -766,6 +774,10 @@
       "lineWrap": {
         "description": "Zalamovat dlouhé řádky místo vodorovného posouvání.",
         "label": "Zalamovat dlouhé řádky"
+      },
+      "highlightCurrentLine": {
+        "label": "Zvýraznit aktuální řádek",
+        "description": "Podbarvit řádek, na kterém je kurzor."
       },
       "tabSize": {
         "description": "Počet mezer vložených na jednu úroveň odsazení a šířka, na kterou se vykreslí tabulátor.",

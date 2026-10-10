@@ -217,7 +217,7 @@ Busca en todo el proyecto desde el panel Buscar. El índice del proyecto conecta
 
 El editor tiene un tema para el modo claro y otro para el modo oscuro, y cambia cuando cambia la aplicación. Paper, un blanco roto cálido, y One Light son los dos temas claros. Colores del editor, en Ajustes > Apariencia > Editor, cambia cualquier color de un tema. Los colores se agrupan por función, como encabezados, comandos, citas o matemáticas, y una muestra en LaTeX, Typst o Markdown enseña cada cambio mientras lo haces. Oleafly guarda tus cambios para cada tema, y la exportación e importación de temas los incluyen.
 
-La aplicación y el editor pueden usar cualquier fuente instalada en tu ordenador, y el editor también te deja ajustar el espaciado entre letras y el ancho y el color del cursor. Cmd+= y Cmd+- amplían o reducen toda la aplicación, editor y PDF incluidos, y Cmd+0 vuelve al 100 % (Ctrl en Windows y Linux).
+La aplicación y el editor pueden usar cualquier fuente instalada en tu ordenador, y el editor también te deja ajustar el espaciado entre letras y el ancho, la altura y el color del cursor, y quitar el resaltado de la línea donde está el cursor. Cmd+= y Cmd+- amplían o reducen toda la aplicación, editor y PDF incluidos, y Cmd+0 vuelve al 100 % (Ctrl en Windows y Linux).
 
 El modo Zen oculta la barra de herramientas, la barra lateral, el asistente y el terminal para que solo quede el editor. Pulsa Ctrl+Cmd+Shift+F (Shift+F11 en Windows y Linux) para activarlo, y las mismas teclas o Escape dos veces para salir.
 

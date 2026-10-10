@@ -33,6 +33,8 @@ const SETTINGS: Settings = {
   autocomplete: false,
   autoCloseBrackets: false,
   nonBlinkingCursor: false,
+  highlightCurrentLine: true,
+  cursorHeight: "text",
   ghostCompletion: false,
   stickyScroll: false,
   mathPreview: false,
@@ -152,6 +154,17 @@ describe("CodeMirrorEditor settings", () => {
     cancelProofreading.mockReset();
     await settings(store, { spellcheck: false });
     expect(cancelProofreading).toHaveBeenCalledWith("source", "main.tex");
+  });
+
+  it("turns the current-line highlight off and back on without remounting", async () => {
+    const store = await mountEditor();
+    const mounted = view();
+    expect(view().dom.querySelector(".cm-activeLine")).not.toBeNull();
+    await settings(store, { highlightCurrentLine: false });
+    expect(view()).toBe(mounted);
+    expect(view().dom.querySelector(".cm-activeLine")).toBeNull();
+    await settings(store, { highlightCurrentLine: true });
+    expect(view().dom.querySelector(".cm-activeLine")).not.toBeNull();
   });
 
   it("applies tab size, keymap and cursor preferences without remounting", async () => {

@@ -744,6 +744,14 @@
         "description": "Ange hur tjock redigerarens markör är.",
         "option": "{{width}} px"
       },
+      "cursorHeight": {
+        "label": "Markörhöjd",
+        "description": "Ange hur hög markören i redigeraren är. Rad gör den lika hög som hela raden.",
+        "options": {
+          "text": "Text",
+          "line": "Rad"
+        }
+      },
       "cursorColor": {
         "label": "Markörfärg",
         "description": "Ljusa och mörka redigerarteman har var sin markörfärg. Tills du väljer en används temats färg.",
@@ -756,6 +764,10 @@
       "lineWrap": {
         "description": "Bryt långa rader i stället för att rulla i sidled.",
         "label": "Bryt långa rader"
+      },
+      "highlightCurrentLine": {
+        "label": "Markera aktuell rad",
+        "description": "Färga bakgrunden på raden där markören står."
       },
       "tabSize": {
         "description": "Antal mellanslag per indragsnivå, och bredden en tabb ritas med.",

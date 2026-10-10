@@ -48,6 +48,8 @@ function host(path: string, content: string, autoCloseBrackets = true): EditorHo
       autocomplete: true,
       autoCloseBrackets,
       nonBlinkingCursor: false,
+      highlightCurrentLine: true,
+      cursorHeight: "text",
       ghostCompletion: false,
       stickyScroll: false,
       mathPreview: false,
