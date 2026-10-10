@@ -18,17 +18,22 @@ function measureExtend(view: EditorView): number | null {
   return cursorLineExtend(view.defaultLineHeight, rect.bottom - rect.top);
 }
 
+function cursorLayer(view: EditorView): HTMLElement | null {
+  return view.scrollDOM.querySelector<HTMLElement>(":scope > .cm-cursorLayer");
+}
+
 export function cursorFillsLine() {
   return ViewPlugin.fromClass(
     class {
       extend = -1;
+      layer: HTMLElement | null = null;
 
       constructor(readonly view: EditorView) {
         this.measure();
       }
 
       update(update: ViewUpdate) {
-        if (update.selectionSet || update.geometryChanged || update.docChanged || update.focusChanged) {
+        if (update.selectionSet || update.geometryChanged || update.focusChanged) {
           this.measure();
         }
       }
@@ -38,15 +43,18 @@ export function cursorFillsLine() {
           key: this,
           read: measureExtend,
           write: (extend, view) => {
-            if (extend === null || extend === this.extend) return;
+            const layer = cursorLayer(view);
+            if (extend === null || !layer) return;
+            if (extend === this.extend && layer === this.layer) return;
             this.extend = extend;
-            view.dom.style.setProperty(CURSOR_EXTEND_PROPERTY, `${extend}px`);
+            this.layer = layer;
+            layer.style.setProperty(CURSOR_EXTEND_PROPERTY, `${extend}px`);
           },
         });
       }
 
       destroy() {
-        this.view.dom.style.removeProperty(CURSOR_EXTEND_PROPERTY);
+        this.layer?.style.removeProperty(CURSOR_EXTEND_PROPERTY);
       }
     },
   );

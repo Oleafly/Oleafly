@@ -36,9 +36,10 @@ function latexDocumentIsTagged(text: string): boolean {
 
 function latexEditorFindings(text: string): Finding[] {
   const findings = runSourceRules(text);
-  return latexDocumentIsTagged(text)
-    ? findings
-    : findings.filter((finding) => finding.id !== "figure-alt");
+  if (!findings.some((finding) => finding.id === "figure-alt") || latexDocumentIsTagged(text)) {
+    return findings;
+  }
+  return findings.filter((finding) => finding.id !== "figure-alt");
 }
 
 export function preflightDiagnostics(

@@ -1811,6 +1811,30 @@ function addLatexImportEdges(
 
 }
 
+const NO_SEARCH_PATHS: LatexSearchPaths = { graphics: [], svg: [] };
+const SEARCH_PATH_COMMAND = /\\(?:graphicspath|svgpath)\s*\{/g;
+
+function closingBrace(text: string, open: number): number {
+  let depth = 0;
+  for (let index = open; index < text.length; index++) {
+    const character = text[index];
+    if (character === "{") depth++;
+    else if (character === "}" && --depth === 0) return index;
+  }
+  return -1;
+}
+
+function latexSearchPathsIn(file: string, masked: string): LatexSearchPaths {
+  const commands: string[] = [];
+  for (const match of masked.matchAll(SEARCH_PATH_COMMAND)) {
+    const close = closingBrace(masked, match.index + match[0].length - 1);
+    if (close !== -1) commands.push(masked.slice(match.index, close + 1));
+  }
+  return commands.length > 0
+    ? latexSearchPaths([{ path: file, text: commands.join("\n") }])
+    : NO_SEARCH_PATHS;
+}
+
 const ASSET_SEARCH_PATHS: Readonly<Record<string, "graphics" | "svg">> = {
   includegraphics: "graphics",
   includepdf: "graphics",
@@ -3064,7 +3088,7 @@ function analyzeLatexBody(
   );
   const ast = astAugmentLatexFile(file, source, starts);
   if (ast) definitions.push(...ast.definitions);
-  const searchPaths = latexSearchPaths([{ path: file, text: source }]);
+  const searchPaths = latexSearchPathsIn(file, masked);
   const novalidate = scanLatexNovalidate(source, ignored);
   if (novalidate.fileDisabled) return { partial: false, packageRefs, searchPaths };
   const checked = maskNovalidateRegions(masked, novalidate.regions);
@@ -3187,7 +3211,7 @@ export function analyzeProjectFile(
 
   let partial = false;
   let packageRefs: PackageReference[] = [];
-  let searchPaths: LatexSearchPaths = { graphics: [], svg: [] };
+  let searchPaths = NO_SEARCH_PATHS;
   if (engine === "latex") {
     const latex = analyzeLatexBody(context, diagnostics);
     partial = latex.partial;

@@ -69,6 +69,7 @@ export function unwrapBraces(value: string): string {
 }
 
 export function requestsTaggedPdf(source: string): boolean {
+  if (!source.includes("\\DocumentMetadata")) return false;
   const metadata = findDocumentMetadata(maskComments(source));
   if (!metadata) return false;
   const keys = parseMetadataKeys(metadata.body).map;
