@@ -86,7 +86,7 @@ describe("cursorBlinking", () => {
     for (let index = 0; index < 5; index++) {
       view.dispatch({ effects: prefs.reconfigure(cursorBlinking("smooth")) });
     }
-    expect(document.querySelectorAll("style").length).toBe(before);
+    expect(document.querySelectorAll("style")).toHaveLength(before);
     expect(styleText().split("@keyframes oleafly-cursor-smooth-0").length - 1).toBe(1);
   });
 });
