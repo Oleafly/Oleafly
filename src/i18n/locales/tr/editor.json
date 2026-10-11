@@ -365,7 +365,11 @@
     "summaryWarnings_one": "{{count}} uyarı",
     "summaryWarnings_other": "{{count}} uyarı",
     "summaryReferences_one": "{{count}} çözümlenmemiş başvuru",
-    "summaryReferences_other": "{{count}} çözümlenmemiş başvuru"
+    "summaryReferences_other": "{{count}} çözümlenmemiş başvuru",
+    "fontPack": "{{family}}, ücretsiz {{pack}} yazı tipi paketinde var.",
+    "fontPackAction": "İndir ve derle",
+    "fontPackDownloading": "İndiriliyor…",
+    "fontPackFailed": "Yazı tipi paketi indirilemedi. Bağlantını kontrol edip yeniden dene."
   },
   "history": {
     "untitledCommit": "Adsız işleme",
@@ -1462,7 +1466,8 @@
     "sources": {
       "project": "Proje",
       "system": "Sistem",
-      "embedded": "Yerleşik"
+      "embedded": "Yerleşik",
+      "pack": "Yazı tipi paketi"
     },
     "fontsFolder": "Bu projede bir yazı tipi kullanmak için dosyasını projenin fonts klasörüne ekleyin."
   },

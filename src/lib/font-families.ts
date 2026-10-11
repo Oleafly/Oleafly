@@ -1,6 +1,6 @@
 import type { TypstFontEntry, TypstFontSourceKind } from "@/lib/typst-options";
 
-const SOURCE_ORDER: readonly TypstFontSourceKind[] = ["project", "system", "embedded"];
+const SOURCE_ORDER: readonly TypstFontSourceKind[] = ["project", "pack", "system", "embedded"];
 
 export function matchingFamilies(families: readonly TypstFontEntry[], query: string): TypstFontEntry[] {
   const needle = query.trim().toLocaleLowerCase();

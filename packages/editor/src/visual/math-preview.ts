@@ -477,7 +477,7 @@ export const mathPreviewTooltipField = StateField.define<MathPreviewTooltipState
 });
 
 const followEditorFocus = EditorView.focusChangeEffect.of((_state, focusing) => {
-  if (!focusing && document.activeElement?.closest(MATH_TOOLTIP_SELECTOR)) return null;
+  if (!focusing && globalThis.document?.activeElement?.closest(MATH_TOOLTIP_SELECTOR)) return null;
   return setMathPreviewFocus.of(focusing);
 });
 

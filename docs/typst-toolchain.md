@@ -393,7 +393,17 @@ The Fonts and Build groups of the compile menu set `system_fonts` and
 menu and is not saved in `project.json`. Variants themselves are edited in
 Document settings. Tinymist gets the same font folders through its
 `fontPaths` setting and `systemFonts: false` when system fonts are off, so the
-editor and the compiler find the same fonts. The font picker in Document
+editor and the compiler find the same fonts.
+
+Typst font packs from Settings > Downloads (`typst: true` in
+`resources/font-packs.json`) are stored under
+`<data root>/assets/typst-fonts/<pack>/`. Every installed pack folder is added
+to `--font-path` for compiles, exports, queries, the font picker and Tinymist,
+but only while system fonts are allowed: a project with `system_fonts: false`
+or `reproducible: true` never sees them. Each file in the catalog carries its
+SHA-256, and a download that does not match is deleted. When a compile warns
+`unknown font family: X` and an uninstalled pack lists X in `families`, the
+compile log offers to download that pack and compile again. The font picker in Document
 settings runs `typst fonts` with the same folders. On Typst 0.15 and later it
 adds `--variants`, which also reports where each font comes from.
 
@@ -454,8 +464,9 @@ The shared package folders under the data root go to `--package-path` and
 `--package-cache-path`. With `typst.vendor_packages` on, `typst-packages/` in
 the project is the package path instead. `TYPST_PACKAGE_PATH` and
 `TYPST_PACKAGE_CACHE_PATH` are always set to the same folders. The project's
-`fonts/` folder and each `typst.font_paths` folder go to `--font-path`, and
-`system_fonts: false` adds `--ignore-system-fonts`. Each entry in
+`fonts/` folder and each `typst.font_paths` folder go to `--font-path`, followed
+by the installed Typst font packs under the data root while system fonts are
+allowed, and `system_fonts: false` adds `--ignore-system-fonts`. Each entry in
 `typst.inputs` becomes `--input key=value`.
 
 `--variant <name>` picks a set from `typst.variants`. Its inputs replace the

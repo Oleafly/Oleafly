@@ -104,7 +104,7 @@ export async function startPreviewWorkspaceBridge(): Promise<() => void> {
           break;
         case "engine":
           if (payload.engine === "xetex" || (payload.engine === "latexmk" &&
-            [null, undefined, "pdflatex", "xelatex", "lualatex"].includes(payload.flavor))) {
+            [null, undefined, "pdflatex", "xelatex", "lualatex", "uplatex", "platex"].includes(payload.flavor))) {
             await files.setEngine(payload.engine, payload.flavor);
           }
           break;

@@ -9,9 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Typst font packs. Settings > Downloads has five free packs for Typst:
+  Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
+  icons and emoji. Once a pack is downloaded, every Typst project can use its
+  fonts, unless the project turns system fonts off. When a compile warns about
+  a missing font that a pack has, the warning offers to download it and compile
+  again. Every file is checked against its published checksum. Tested against
+  all 838 templates on Typst Universe: 238 of the 505 that were missing fonts
+  now have none missing. Chinese text in templates that ask for fonts that
+  can't be shared, such as SimSun, now falls back to the pack's CJK fonts.
 - Settings > Appearance > Editor has a Cursor height option. Text keeps the
   cursor as tall as the letters, and Line stretches it to the full height of
   the line.
+- upLaTeX and pLaTeX for Japanese documents. Pick them under Compiler in the
+  compile menu, or leave it on Auto: `jsarticle`, `jsbook` and `jsreport`
+  compile with pLaTeX, or with upLaTeX when they pass the `uplatex` option,
+  and `jlreq` and the `uj` classes compile with upLaTeX. Both run on a system
+  TeX with the Japanese packages, and if those are missing the compile says
+  how to add them. The `oleaflyc` command line tool picks the same compiler.
 - Cursor blinking replaces the Non-blinking cursor switch. Blink turns the
   cursor on and off, Smooth and Phase fade it in and out, Expand shrinks and
   grows it, and Off keeps it solid. Smooth, Phase and Expand come to rest,
@@ -20,6 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Highlight current line, in the same place, turns off the tint on the line
   the cursor is in. A long paragraph is one line in the source, so with
   wrapping on, the tint could cover most of the editor.
+
+### Changed
+
+- On Auto, Chinese documents that use the `ctex` classes, the `ctex` package
+  or `xeCJK` compile with XeLaTeX instead of pdfLaTeX, and documents that use
+  LuaTeX-ja (the `ltjs` classes or `luatexja`) compile with LuaLaTeX.
 
 ### Fixed
 
@@ -41,6 +62,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the PDF or the file tree: the editor jumped to the old cursor as it took
   focus, after it had already noted where you clicked. It now takes focus
   without moving, and the click just places the cursor.
+- A latexmk project in a folder with a colon in its name compiled without its
+  bibliography. macOS stores a slash typed in Finder as a colon, so a folder
+  named "Thesis 2024/25" was enough. BibTeX stopped with "I couldn't open
+  database file" and every citation stayed undefined. It now finds the `.bib`
+  and `.bst` files, and so does the `oleaflyc` command line tool.
+- The built-in engine no longer crashes on documents that use
+  `fontawesome5`, a common package in CVs and slides, or anything else that
+  asks XeTeX for a glyph name. Tectonic 0.16.9 freed memory it did not own
+  there, and the process was killed partway through the compile. The
+  built-in engine is now Tectonic 0.17.0, which fixes it and still compiles
+  offline from the files earlier versions downloaded. If any compiler
+  crashes again, the compile log now ends with a line that says so,
+  instead of stopping mid-line with no reason.
 
 ## [0.4.6] - 2026-10-09
 

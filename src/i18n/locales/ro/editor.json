@@ -372,7 +372,11 @@
     "summaryWarnings_other": "{{count}} de avertismente",
     "summaryReferences_one": "{{count}} referință nerezolvată",
     "summaryReferences_few": "{{count}} referințe nerezolvate",
-    "summaryReferences_other": "{{count}} de referințe nerezolvate"
+    "summaryReferences_other": "{{count}} de referințe nerezolvate",
+    "fontPack": "{{family}} se află în pachetul gratuit de fonturi {{pack}}.",
+    "fontPackAction": "Descarcă și compilează",
+    "fontPackDownloading": "Se descarcă…",
+    "fontPackFailed": "Pachetul de fonturi nu a putut fi descărcat. Verifică conexiunea și încearcă din nou."
   },
   "history": {
     "untitledCommit": "Comitere fără titlu",
@@ -1483,7 +1487,8 @@
     "sources": {
       "project": "Proiect",
       "system": "Sistem",
-      "embedded": "Inclus"
+      "embedded": "Inclus",
+      "pack": "Pachet de fonturi"
     },
     "fontsFolder": "Ca să folosești un font în acest proiect, adaugă fișierul lui în folderul fonts al proiectului."
   },

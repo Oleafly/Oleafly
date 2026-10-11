@@ -199,6 +199,11 @@ describe("preflightEngineFor", () => {
     expect(preflightEngineFor("latexmk", "pdflatex")).toBe("pdflatex");
   });
 
+  it("treats the Japanese compilers as an engine preflight has no rules for", () => {
+    expect(preflightEngineFor("latexmk", "uplatex")).toBe("unknown");
+    expect(preflightEngineFor("latexmk", "platex")).toBe("unknown");
+  });
+
   it("falls back to \"unknown\" for latexmk with no pinned flavor", () => {
     expect(preflightEngineFor("latexmk", undefined)).toBe("unknown");
     expect(preflightEngineFor("latexmk", null)).toBe("unknown");

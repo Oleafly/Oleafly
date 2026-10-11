@@ -30,7 +30,7 @@ export function preflightEngineFor(
   flavor: TexFlavor | null | undefined,
 ): PreflightEngine {
   if (engine === "latex") return "bundled";
-  if (engine === "latexmk") return flavor ?? "unknown";
+  if (engine === "latexmk") return flavor === "uplatex" || flavor === "platex" ? "unknown" : (flavor ?? "unknown");
   if (engine === "typst") return "typst";
   return "unknown";
 }

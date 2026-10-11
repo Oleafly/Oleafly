@@ -69,7 +69,8 @@
     "latexmk_network_folder": "latexmk 无法编译网络共享上的文件夹。请将此项目切换到 Tectonic，或将文件夹复制到这台电脑。",
     "shell_escape_denied_minted": "minted 需要运行另一个程序来高亮代码，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
     "shell_escape_denied_pythontex": "PythonTeX 需要运行 Python，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
-    "shell_escape_denied_command": "此文档会运行 shell 命令，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。"
+    "shell_escape_denied_command": "此文档会运行 shell 命令，但此项目阻止了这一操作。如需允许，请点击编辑器上方横幅中的“{{setting}}”。仅在你信任项目中的每个文件时才这样做。开启后，LaTeX 可以用你的权限运行任何程序，而且它启动的程序可能在你停止编译后继续运行。",
+    "japanese_compiler_missing": "你的 TeX 发行版没有安装 {{compiler}}。在 TeX Live 或 TinyTeX 中运行 tlmgr install collection-langjapanese 即可添加，也可以改用其他编译器。"
   },
   "export": {
     "bibliography_unreadable": "Oleafly 无法读取参考文献 {{name}}。请检查其中是否有损坏的条目，然后重新导出。"

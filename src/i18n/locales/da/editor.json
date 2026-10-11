@@ -365,7 +365,11 @@
     "summaryWarnings_one": "{{count}} advarsel",
     "summaryWarnings_other": "{{count}} advarsler",
     "summaryReferences_one": "{{count}} uløst reference",
-    "summaryReferences_other": "{{count}} uløste referencer"
+    "summaryReferences_other": "{{count}} uløste referencer",
+    "fontPack": "{{family}} findes i den gratis skrifttypepakke {{pack}}.",
+    "fontPackAction": "Hent og kompilér",
+    "fontPackDownloading": "Henter…",
+    "fontPackFailed": "Skrifttypepakken kunne ikke hentes. Tjek din forbindelse, og prøv igen."
   },
   "history": {
     "untitledCommit": "Commit uden titel",
@@ -1462,7 +1466,8 @@
     "sources": {
       "project": "Projekt",
       "system": "System",
-      "embedded": "Indbygget"
+      "embedded": "Indbygget",
+      "pack": "Skrifttypepakke"
     },
     "fontsFolder": "Læg skrifttypens fil i projektets fonts-mappe for at bruge den i projektet."
   },

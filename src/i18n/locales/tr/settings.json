@@ -1026,6 +1026,26 @@
       "ptserif": {
         "description": "Akademik ve kurumsal belgelere yakışan, zarif bir geçiş dönemi serif yazı tipi.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans ve Serif CJK, Fandol ve LXGW WenKai. SimSun, SimHei ve KaiTi yerine de kullanılırlar.",
+        "label": "Çince, Japonca ve Korece"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 ve 7 Free ile Noto Color Emoji.",
+        "label": "Simgeler ve emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code ve Source Code Pro.",
+        "label": "Kod"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans ve IBM Plex.",
+        "label": "Modern sans ve serif"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus ile New Computer Modern Sans ve Mono.",
+        "label": "Klasik metin"
       }
     },
     "fonts": {
@@ -1063,6 +1083,10 @@
       "packDownloadFailed": "Şablon paketi indirilemedi.",
       "packsDownloadFailed": "Şablon paketleri indirilemedi.",
       "packRemoveFailed": "Şablon paketi kaldırılamadı."
+    },
+    "typstFonts": {
+      "heading": "Typst için yazı tipleri",
+      "tooltip": "Birçok Typst şablonunun istediği ücretsiz yazı tipleri. İndirildikten sonra sistem yazı tiplerini kapatan bir proje dışında her Typst projesi bunları kullanabilir."
     }
   },
   "engine": {

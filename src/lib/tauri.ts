@@ -670,7 +670,8 @@ export const setMainDocCmd = (projectId: string, mainDoc: string) =>
 
 // Pin a project's compile engine ("xetex" for bundled Tectonic, "latexmk" for
 // a system TeX toolchain) in its project.json. On latexmk, `flavor` pins the
-// compiler (pdflatex / xelatex / lualatex); null keeps auto-detection.
+// compiler (pdflatex / xelatex / lualatex / uplatex / platex); null keeps
+// auto-detection.
 export const setProjectEngineCmd = (
   projectId: string,
   engine: string,

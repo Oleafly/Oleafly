@@ -386,11 +386,13 @@
     "compile": "Kompiluj",
     "compiler": {
       "auto": "Automatycznie <note>[systemowy TeX]</note>",
-      "help": "Tectonic jest wbudowany i nie wymaga konfiguracji. Pozostałe opcje korzystają z systemowego TeX, który może czytać pliki lokalne dostępne dla Twojego konta, więc używaj ich tylko przy zaufanych projektach. Opcja automatyczna dobiera kompilator na podstawie źródła. pdfLaTeX pasuje do większości szablonów czasopism. XeLaTeX i LuaLaTeX dodają kroje systemowe i Unicode.",
+      "help": "Tectonic jest wbudowany i nie wymaga konfiguracji. Pozostałe opcje korzystają z systemowego TeX, który może czytać pliki lokalne dostępne dla Twojego konta, więc używaj ich tylko przy zaufanych projektach. Opcja automatyczna dobiera kompilator na podstawie źródła. pdfLaTeX pasuje do większości szablonów czasopism. XeLaTeX i LuaLaTeX dodają kroje systemowe i Unicode. upLaTeX i pLaTeX kompilują dokumenty w języku japońskim.",
       "lualatex": "LuaLaTeX <note>[systemowy TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[systemowy TeX]</note>",
+      "platex": "pLaTeX <note>[systemowy TeX]</note>",
       "tectonic": "Tectonic <note>[wbudowany]</note>",
       "title": "Kompilator (ten projekt)",
+      "uplatex": "upLaTeX <note>[systemowy TeX]</note>",
       "xelatex": "XeLaTeX <note>[systemowy TeX]</note>"
     },
     "errors": {

@@ -225,7 +225,7 @@ Tectonic beside the application executable, matching Tauri's desktop bundle
 layout. Unit tests cover macOS app-bundle and Cargo debug/release candidates,
 while the release workflow checks every staged sidecar on every target.
 
-Tectonic 0.16.9 release archives are checksum-pinned from the official GitHub
+Tectonic 0.17.0 release archives are checksum-pinned from the official GitHub
 Releases API `digest` fields. `scripts/fetch-tectonic.sh` verifies SHA256 before
 extracting exactly the root `tectonic`/`tectonic.exe` regular-file member. The
 same script is used by CI and every release target, including Windows.

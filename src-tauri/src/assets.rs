@@ -11,6 +11,7 @@
 //! single source of truth, read here and by the preview-render script.
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
@@ -31,6 +32,8 @@ pub struct AssetLicense {
 pub struct AssetFile {
     pub name: String,
     pub url: String,
+    #[serde(default)]
+    pub sha256: Option<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -44,6 +47,10 @@ pub struct FontPack {
     #[serde(default)]
     pub license: Option<AssetLicense>,
     pub files: Vec<AssetFile>,
+    #[serde(default)]
+    pub typst: bool,
+    #[serde(default)]
+    pub families: Vec<String>,
 }
 
 /// Gallery-facing view of a downloadable component.
@@ -56,6 +63,7 @@ pub struct ComponentInfo {
     pub license: Option<AssetLicense>,
     pub installed: bool,
     pub kind: String,
+    pub families: Vec<String>,
 }
 
 /// What a template needs before it can be created without a download.
@@ -132,15 +140,24 @@ fn fonts_cache() -> Result<PathBuf, String> {
     Ok(paths::assets_root()?.join("fonts"))
 }
 
-fn pack_dir(id: &str) -> Result<PathBuf, String> {
-    if !is_valid_id(id) {
-        return Err(format!("illegal font pack id: {id}"));
+fn typst_fonts_cache() -> Result<PathBuf, String> {
+    Ok(paths::assets_root()?.join(oleafly_core::typst_toolchain::TYPST_FONT_PACKS_DIR))
+}
+
+fn pack_dir(pack: &FontPack) -> Result<PathBuf, String> {
+    if !is_valid_id(&pack.id) {
+        return Err(format!("illegal font pack id: {}", pack.id));
     }
-    Ok(fonts_cache()?.join(id))
+    let cache = if pack.typst {
+        typst_fonts_cache()?
+    } else {
+        fonts_cache()?
+    };
+    Ok(cache.join(&pack.id))
 }
 
 fn pack_installed(pack: &FontPack) -> bool {
-    let dir = match pack_dir(&pack.id) {
+    let dir = match pack_dir(pack) {
         Ok(d) => d,
         Err(_) => return false,
     };
@@ -169,7 +186,7 @@ async fn download_pack(app: &AppHandle, pack: &FontPack) -> Result<(), String> {
     use tauri::Emitter;
     use tokio::io::AsyncWriteExt as _;
 
-    let dir = pack_dir(&pack.id)?;
+    let dir = pack_dir(pack)?;
     tokio::fs::create_dir_all(&dir)
         .await
         .map_err(|e| e.to_string())?;
@@ -194,9 +211,11 @@ async fn download_pack(app: &AppHandle, pack: &FontPack) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
         let mut stream = resp.bytes_stream();
         let mut received: u64 = 0;
+        let mut digest = Sha256::new();
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| format!("download interrupted: {e}"))?;
             received += chunk.len() as u64;
+            digest.update(&chunk);
             out.write_all(&chunk).await.map_err(|e| e.to_string())?;
             let _ = app.emit(
                 "asset-progress",
@@ -213,11 +232,23 @@ async fn download_pack(app: &AppHandle, pack: &FontPack) -> Result<(), String> {
         }
         out.flush().await.map_err(|e| e.to_string())?;
         drop(out);
+        if !checksum_matches(f.sha256.as_deref(), &digest.finalize()) {
+            let _ = tokio::fs::remove_file(&tmp).await;
+            return Err(format!("download of {} did not match its checksum", f.name));
+        }
         tokio::fs::rename(&tmp, &dest)
             .await
             .map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+fn checksum_matches(expected: Option<&str>, actual: &[u8]) -> bool {
+    let Some(expected) = expected else {
+        return true;
+    };
+    let actual: String = actual.iter().map(|byte| format!("{byte:02x}")).collect();
+    expected.trim().eq_ignore_ascii_case(&actual)
 }
 
 #[tauri::command]
@@ -227,13 +258,14 @@ pub fn list_font_components(app: AppHandle) -> Result<Vec<ComponentInfo>, String
         .map(|p| {
             let installed = pack_installed(&p);
             ComponentInfo {
+                kind: if p.typst { "typst-font" } else { "font" }.to_string(),
                 id: p.id,
                 label: p.label,
                 description: p.description,
                 approx_bytes: p.approx_bytes,
                 license: p.license,
                 installed,
-                kind: "font".to_string(),
+                families: p.families,
             }
         })
         .collect())
@@ -246,8 +278,8 @@ pub async fn install_font_component(app: AppHandle, id: String) -> Result<(), St
 }
 
 #[tauri::command]
-pub fn remove_font_component(id: String) -> Result<(), String> {
-    let dir = pack_dir(&id)?;
+pub fn remove_font_component(app: AppHandle, id: String) -> Result<(), String> {
+    let dir = pack_dir(&find_pack(&app, &id)?)?;
     if dir.exists() {
         std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
     }
@@ -256,7 +288,7 @@ pub fn remove_font_component(id: String) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn download_all_fonts(app: AppHandle) -> Result<(), String> {
-    for pack in catalog(&app)? {
+    for pack in catalog(&app)?.into_iter().filter(|pack| !pack.typst) {
         if !pack_installed(&pack) {
             download_pack(&app, &pack).await?;
         }
@@ -319,7 +351,7 @@ pub fn stage_template_fonts(
                 "Font pack '{id}' is not installed. Download it first."
             ));
         }
-        let src = pack_dir(&pack.id)?;
+        let src = pack_dir(&pack)?;
         std::fs::create_dir_all(&fonts_dir).map_err(|e| e.to_string())?;
         for f in &pack.files {
             std::fs::copy(src.join(&f.name), fonts_dir.join(&f.name))
@@ -352,6 +384,69 @@ mod tests {
                 assert!(f.url.starts_with("https://"), "https url: {}", f.url);
             }
         }
+    }
+
+    #[test]
+    fn typst_packs_name_the_families_they_provide() {
+        let packs = repo_catalog();
+        assert!(packs.iter().any(|p| p.typst));
+        for p in packs.iter().filter(|p| p.typst) {
+            assert!(!p.families.is_empty(), "families listed: {}", p.id);
+            assert!(p.id.starts_with("typst-"), "typst pack id: {}", p.id);
+        }
+    }
+
+    #[test]
+    fn typst_packs_live_where_typst_compiles_look() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let pack = |typst| FontPack {
+            id: "typst-text".into(),
+            label: "Text".into(),
+            description: String::new(),
+            approx_bytes: 0,
+            license: None,
+            files: vec![],
+            typst,
+            families: vec![],
+        };
+        let typst_dir = pack_dir(&pack(true)).unwrap();
+        assert_eq!(
+            typst_dir,
+            crate::paths::assets_root()
+                .unwrap()
+                .join(oleafly_core::typst_toolchain::TYPST_FONT_PACKS_DIR)
+                .join("typst-text")
+        );
+        assert!(pack_dir(&pack(false))
+            .unwrap()
+            .ends_with("fonts/typst-text"));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn typst_pack_files_carry_checksums() {
+        for p in repo_catalog().iter().filter(|p| p.typst) {
+            for f in &p.files {
+                let sum = f.sha256.as_deref().unwrap_or_default();
+                assert!(
+                    sum.len() == 64 && sum.chars().all(|c| c.is_ascii_hexdigit()),
+                    "sha256 for {}",
+                    f.name
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn checksum_check_accepts_a_match_and_rejects_anything_else() {
+        let digest = Sha256::digest(b"font bytes");
+        let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).collect();
+        assert!(checksum_matches(Some(&hex), &digest));
+        assert!(checksum_matches(Some(&hex.to_uppercase()), &digest));
+        assert!(checksum_matches(None, &digest));
+        assert!(!checksum_matches(Some(&"0".repeat(64)), &digest));
     }
 
     #[test]

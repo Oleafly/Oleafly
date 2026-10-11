@@ -228,7 +228,7 @@ Oleaflyではコンパイルを原稿の近くで行い、コンパイラの出�
 | エンジン | 得意なこと | 重要な詳細 |
 | --- | --- | --- |
 | TectonicによるLaTeX | ポータブルな同梱LaTeXビルド | デスクトップアプリに同梱。複数ファイルのプロジェクト、画像、引用、Biber（Linux ARM64を除く）、SyncTeX、図の分離コンパイル、パッケージが利用できる場合のキャッシュ済みオフラインビルドに対応 |
-| `latexmk`によるLaTeX | 完全なシステムTeXディストリビューションが必要なプロジェクト | MacTeX、TeX Live、MiKTeX、TinyTeXを使用。`glossaries`、`makeidx`、XeLaTeXまたはLuaLaTeX（自動で選択）に対応。`minted`、PythonTeX、その他の外部コマンドを実行するパッケージは、このコンピューターで外部コマンドを許可すると動作する |
+| `latexmk`によるLaTeX | 完全なシステムTeXディストリビューションが必要なプロジェクト | MacTeX、TeX Live、MiKTeX、TinyTeXを使用。`glossaries`、`makeidx`、XeLaTeX、LuaLaTeX、日本語向けのupLaTeXまたはpLaTeX（自動で選択）に対応。`minted`、PythonTeX、その他の外部コマンドを実行するパッケージは、このコンピューターで外部コマンドを許可すると動作する |
 | Typst | 高速なモダン文書作成 | コンパイラを同梱し、PDF、EPUB、PNG、SVG、HTMLを出力。プロジェクトインデックスと引用に対応。ソースとPDFの同期にはTypst 0.13以降が必要で、パッケージがキャッシュ済みかプロジェクト内にあればオフラインでビルドできる。このリリースでは図の分離コンパイルは利用できない |
 | PandocによるMarkdown | 軽量な文章作成と変換ワークフロー | Pandocはアプリに同梱。LaTeXに変換して同梱のTectonicで組版し、Word、HTML、EPUB、PowerPoint、LaTeX、Typst、プレーンテキストにエクスポート可能 |
 

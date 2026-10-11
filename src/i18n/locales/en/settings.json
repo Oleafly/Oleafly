@@ -1026,6 +1026,26 @@
       "ptserif": {
         "description": "A refined transitional serif, a good match for academic and executive documents.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans and Serif CJK, Fandol and LXGW WenKai. They also stand in for SimSun, SimHei and KaiTi.",
+        "label": "Chinese, Japanese and Korean"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 and 7 Free, and Noto Color Emoji.",
+        "label": "Icons and emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code and Source Code Pro.",
+        "label": "Code"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans and IBM Plex.",
+        "label": "Modern sans and serif"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus and New Computer Modern Sans and Mono.",
+        "label": "Classic text"
       }
     },
     "fonts": {
@@ -1063,6 +1083,10 @@
       "packDownloadFailed": "Couldn't download the template pack.",
       "packsDownloadFailed": "Couldn't download the template packs.",
       "packRemoveFailed": "Couldn't remove the template pack."
+    },
+    "typstFonts": {
+      "heading": "Fonts for Typst",
+      "tooltip": "Free fonts that many Typst templates ask for. Once downloaded, every Typst project can use them, except a project that turns system fonts off."
     }
   },
   "engine": {

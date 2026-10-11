@@ -386,11 +386,13 @@
     "compile": "Kompilovat",
     "compiler": {
       "auto": "Automaticky <note>[systémový TeX]</note>",
-      "help": "Tectonic je vestavěný a nepotřebuje žádné nastavení. Ostatní volby spouštějí systémový TeX, který umí číst místní soubory dostupné vašemu účtu, proto je používejte jen u důvěryhodných projektů. Automatická volba vybere překladač podle zdroje. pdfLaTeX odpovídá většině šablon časopisů. XeLaTeX a LuaLaTeX přidávají systémová písma a Unicode.",
+      "help": "Tectonic je vestavěný a nepotřebuje žádné nastavení. Ostatní volby spouštějí systémový TeX, který umí číst místní soubory dostupné vašemu účtu, proto je používejte jen u důvěryhodných projektů. Automatická volba vybere překladač podle zdroje. pdfLaTeX odpovídá většině šablon časopisů. XeLaTeX a LuaLaTeX přidávají systémová písma a Unicode. upLaTeX a pLaTeX překládají japonské dokumenty.",
       "lualatex": "LuaLaTeX <note>[systémový TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[systémový TeX]</note>",
+      "platex": "pLaTeX <note>[systémový TeX]</note>",
       "tectonic": "Tectonic <note>[vestavěný]</note>",
       "title": "Překladač (tento projekt)",
+      "uplatex": "upLaTeX <note>[systémový TeX]</note>",
       "xelatex": "XeLaTeX <note>[systémový TeX]</note>"
     },
     "errors": {

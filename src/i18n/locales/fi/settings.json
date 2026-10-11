@@ -1026,6 +1026,26 @@
       "ptserif": {
         "description": "Hillitty siirtymäkauden antiikva, joka sopii hyvin tieteellisiin ja virallisiin asiakirjoihin.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans ja Serif CJK, Fandol ja LXGW WenKai. Ne korvaavat myös SimSunin, SimHein ja KaiTin.",
+        "label": "Kiina, japani ja korea"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 ja 7 Free sekä Noto Color Emoji.",
+        "label": "Kuvakkeet ja emojit"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code ja Source Code Pro.",
+        "label": "Koodi"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans ja IBM Plex.",
+        "label": "Modernit päätteettömät ja päätteelliset"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus sekä New Computer Modern Sans ja Mono.",
+        "label": "Klassiset tekstifontit"
       }
     },
     "fonts": {
@@ -1063,6 +1083,10 @@
       "packDownloadFailed": "Mallipohjapakettia ei voitu ladata.",
       "packsDownloadFailed": "Mallipohjapaketteja ei voitu ladata.",
       "packRemoveFailed": "Mallipohjapakettia ei voitu poistaa."
+    },
+    "typstFonts": {
+      "heading": "Fontit Typstille",
+      "tooltip": "Ilmaisia fontteja, joita moni Typst-malli pyytää. Kun ne on ladattu, jokainen Typst-projekti voi käyttää niitä, paitsi projekti, joka ottaa järjestelmän fontit pois käytöstä."
     }
   },
   "engine": {

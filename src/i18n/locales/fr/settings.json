@@ -1031,6 +1031,26 @@
       "ptserif": {
         "description": "Une serif de transition raffinée, bien adaptée aux documents universitaires et professionnels.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans et Serif CJK, Fandol et LXGW WenKai. Elles remplacent aussi SimSun, SimHei et KaiTi.",
+        "label": "Chinois, japonais et coréen"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 et 7 Free, et Noto Color Emoji.",
+        "label": "Icônes et emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code et Source Code Pro.",
+        "label": "Code"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans et IBM Plex.",
+        "label": "Sans et serif modernes"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus et New Computer Modern Sans et Mono.",
+        "label": "Texte classique"
       }
     },
     "fonts": {
@@ -1068,6 +1088,10 @@
       "packDownloadFailed": "Impossible de télécharger le pack de modèles.",
       "packsDownloadFailed": "Impossible de télécharger les packs de modèles.",
       "packRemoveFailed": "Impossible de supprimer le pack de modèles."
+    },
+    "typstFonts": {
+      "heading": "Polices pour Typst",
+      "tooltip": "Des polices gratuites demandées par de nombreux modèles Typst. Une fois téléchargées, tous les projets Typst peuvent les utiliser, sauf un projet qui désactive les polices système."
     }
   },
   "engine": {

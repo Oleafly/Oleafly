@@ -228,7 +228,7 @@ Oleafly keeps compilation close to the manuscript and turns compiler output into
 | Engine | What it is good for | Important details |
 | --- | --- | --- |
 | LaTeX with Tectonic | Portable, bundled LaTeX builds | Ships with the desktop app; supports multi-file projects, images, citations, Biber (except on Linux ARM64), SyncTeX, isolated figure compilation, and cached offline builds when packages are available |
-| LaTeX with `latexmk` | Projects that need a full system TeX distribution | Uses MacTeX, TeX Live, MiKTeX, or TinyTeX, and supports `glossaries`, `makeidx`, and XeLaTeX or LuaLaTeX (chosen automatically). `minted`, PythonTeX, and other packages that run external commands work once you allow them on this computer |
+| LaTeX with `latexmk` | Projects that need a full system TeX distribution | Uses MacTeX, TeX Live, MiKTeX, or TinyTeX, and supports `glossaries`, `makeidx`, XeLaTeX, LuaLaTeX, and upLaTeX or pLaTeX for Japanese (chosen automatically). `minted`, PythonTeX, and other packages that run external commands work once you allow them on this computer |
 | Typst | Fast modern document authoring | Bundled compiler with PDF, EPUB, PNG, SVG, and HTML output, project indexing, and citations. Source and PDF sync needs Typst 0.13 or newer, and builds work offline when packages are cached or kept in the project. Isolated figure compilation is not available in this release |
 | Markdown with Pandoc | Lightweight prose and conversion workflows | Pandoc ships with the app. It converts to LaTeX for the bundled Tectonic to typeset, and exports Word, HTML, EPUB, PowerPoint, LaTeX, Typst, and plain text |
 

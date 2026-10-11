@@ -379,7 +379,11 @@
     "summaryReferences_one": "{{count}} nierozwiązane odwołanie",
     "summaryReferences_few": "{{count}} nierozwiązane odwołania",
     "summaryReferences_many": "{{count}} nierozwiązanych odwołań",
-    "summaryReferences_other": "{{count}} nierozwiązanego odwołania"
+    "summaryReferences_other": "{{count}} nierozwiązanego odwołania",
+    "fontPack": "{{family}} jest w bezpłatnym pakiecie czcionek {{pack}}.",
+    "fontPackAction": "Pobierz i skompiluj",
+    "fontPackDownloading": "Pobieranie…",
+    "fontPackFailed": "Nie udało się pobrać pakietu czcionek. Sprawdź połączenie i spróbuj ponownie."
   },
   "history": {
     "untitledCommit": "Commit bez tytułu",
@@ -1504,7 +1508,8 @@
     "sources": {
       "project": "Projekt",
       "system": "Systemowe",
-      "embedded": "Wbudowane"
+      "embedded": "Wbudowane",
+      "pack": "Pakiet czcionek"
     },
     "fontsFolder": "Aby użyć kroju w tym projekcie, dodaj jego plik do folderu fonts projektu."
   },

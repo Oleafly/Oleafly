@@ -81,9 +81,9 @@ pub struct ProjectMeta {
     /// Present on latexmk projects once an engine spec has been recorded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex: Option<TexSpec>,
-    /// Explicit latexmk compiler ("pdflatex" | "xelatex" | "lualatex"), the
-    /// Overleaf-style per-project choice. Absent means auto-detect from the
-    /// source, which stays the default.
+    /// Explicit latexmk compiler ("pdflatex" | "xelatex" | "lualatex" |
+    /// "uplatex" | "platex"), the Overleaf-style per-project choice. Absent
+    /// means auto-detect from the source, which stays the default.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -3891,7 +3891,7 @@ fn set_project_shell_escape_unlocked(
 fn validate_tex_flavor(engine: &str, flavor: Option<&str>) -> Result<Option<String>, String> {
     match flavor.map(str::trim) {
         None | Some("") | Some("auto") => Ok(None),
-        Some(value @ ("pdflatex" | "xelatex" | "lualatex")) => {
+        Some(value) if crate::document_engine::LatexmkFlavor::parse(value).is_some() => {
             if engine == "latexmk" {
                 Ok(Some(value.to_string()))
             } else {

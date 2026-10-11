@@ -365,7 +365,11 @@
     "summaryWarnings_one": "{{count}} warning",
     "summaryWarnings_other": "{{count}} warnings",
     "summaryReferences_one": "{{count}} unresolved reference",
-    "summaryReferences_other": "{{count}} unresolved references"
+    "summaryReferences_other": "{{count}} unresolved references",
+    "fontPack": "{{family}} is in the free {{pack}} font pack.",
+    "fontPackAction": "Download and compile",
+    "fontPackDownloading": "Downloading…",
+    "fontPackFailed": "The font pack couldn't be downloaded. Check your connection and try again."
   },
   "history": {
     "untitledCommit": "Untitled commit",
@@ -1462,7 +1466,8 @@
     "sources": {
       "project": "Project",
       "system": "System",
-      "embedded": "Built in"
+      "embedded": "Built in",
+      "pack": "Font pack"
     },
     "fontsFolder": "To use a font in this project, add its file to the project's fonts folder."
   },

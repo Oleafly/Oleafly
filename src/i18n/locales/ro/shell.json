@@ -384,11 +384,13 @@
     "compile": "Compilează",
     "compiler": {
       "auto": "Automat <note>[TeX din sistem]</note>",
-      "help": "Tectonic este inclus și nu are nevoie de configurare. Celelalte variante rulează TeX-ul din sistem, care poate citi fișierele locale accesibile contului tău și ar trebui folosit doar cu proiecte în care ai încredere. Varianta automată alege compilatorul după sursă. pdfLaTeX se potrivește cu majoritatea șabloanelor de reviste. XeLaTeX și LuaLaTeX adaugă fonturile sistemului și Unicode.",
+      "help": "Tectonic este inclus și nu are nevoie de configurare. Celelalte variante rulează TeX-ul din sistem, care poate citi fișierele locale accesibile contului tău și ar trebui folosit doar cu proiecte în care ai încredere. Varianta automată alege compilatorul după sursă. pdfLaTeX se potrivește cu majoritatea șabloanelor de reviste. XeLaTeX și LuaLaTeX adaugă fonturile sistemului și Unicode. upLaTeX și pLaTeX compilează documente în japoneză.",
       "lualatex": "LuaLaTeX <note>[TeX din sistem]</note>",
       "pdflatex": "pdfLaTeX <note>[TeX din sistem]</note>",
+      "platex": "pLaTeX <note>[TeX din sistem]</note>",
       "tectonic": "Tectonic <note>[inclus]</note>",
       "title": "Compilator (acest proiect)",
+      "uplatex": "upLaTeX <note>[TeX din sistem]</note>",
       "xelatex": "XeLaTeX <note>[TeX din sistem]</note>"
     },
     "errors": {

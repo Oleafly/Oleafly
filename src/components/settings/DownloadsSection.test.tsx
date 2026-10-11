@@ -191,6 +191,30 @@ describe("DownloadsSection fonts tab", () => {
     ).toBeInTheDocument();
   });
 
+  it("lists Typst font packs in their own group and leaves them out of download all", async () => {
+    mocks.listFontComponents.mockResolvedValue([
+      component({ installed: true }),
+      component({
+        id: "typst-cjk",
+        label: "CJK",
+        kind: "typst-font",
+        approx_bytes: 120_000_000,
+        families: ["Noto Serif CJK SC"],
+      }),
+    ]);
+    render(<DownloadsSection />);
+
+    expect(await screen.findByText(downloads.typstFonts.heading)).toBeInTheDocument();
+    expect(screen.getByText(downloads.fontPacks["typst-cjk"].label)).toBeInTheDocument();
+    expect(
+      screen.getByText(downloads.fontPacks["typst-cjk"].description, { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: downloads.actions.allDownloaded }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: downloads.actions.download })).toBeEnabled();
+  });
+
   it("disables the bulk button once everything is installed", async () => {
     mocks.listFontComponents.mockResolvedValue([component({ installed: true })]);
     render(<DownloadsSection />);

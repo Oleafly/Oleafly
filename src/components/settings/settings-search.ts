@@ -92,6 +92,7 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "shortcuts.actions": "application",
   "shortcuts.editorKeys": "editor",
   "downloads.fontPacks": "fonts",
+  "downloads.typstFonts": "fonts",
   "mcp.servers": "mcp",
   "mcp.section": "oleafly-mcp",
   "engine.defaultEngine": "latex",

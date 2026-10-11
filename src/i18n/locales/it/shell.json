@@ -384,11 +384,13 @@
     "compile": "Compila",
     "compiler": {
       "auto": "Auto <note>[TeX di sistema]</note>",
-      "help": "Tectonic è integrato e non richiede configurazione. Le altre scelte usano il TeX di sistema, che può leggere i file locali accessibili al tuo account e andrebbe usato solo con progetti di cui ti fidi. Auto sceglie il compilatore in base al sorgente. pdfLaTeX è compatibile con la maggior parte dei modelli delle riviste. XeLaTeX e LuaLaTeX aggiungono i font di sistema e Unicode.",
+      "help": "Tectonic è integrato e non richiede configurazione. Le altre scelte usano il TeX di sistema, che può leggere i file locali accessibili al tuo account e andrebbe usato solo con progetti di cui ti fidi. Auto sceglie il compilatore in base al sorgente. pdfLaTeX è compatibile con la maggior parte dei modelli delle riviste. XeLaTeX e LuaLaTeX aggiungono i font di sistema e Unicode. upLaTeX e pLaTeX compilano documenti in giapponese.",
       "lualatex": "LuaLaTeX <note>[TeX di sistema]</note>",
       "pdflatex": "pdfLaTeX <note>[TeX di sistema]</note>",
+      "platex": "pLaTeX <note>[TeX di sistema]</note>",
       "tectonic": "Tectonic <note>[integrato]</note>",
       "title": "Compilatore (questo progetto)",
+      "uplatex": "upLaTeX <note>[TeX di sistema]</note>",
       "xelatex": "XeLaTeX <note>[TeX di sistema]</note>"
     },
     "errors": {

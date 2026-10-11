@@ -372,7 +372,11 @@
     "summaryWarnings_other": "{{count}} avertissements",
     "summaryReferences_one": "{{count}} référence non résolue",
     "summaryReferences_many": "{{count}} références non résolues",
-    "summaryReferences_other": "{{count}} références non résolues"
+    "summaryReferences_other": "{{count}} références non résolues",
+    "fontPack": "{{family}} fait partie du pack de polices gratuit {{pack}}.",
+    "fontPackAction": "Télécharger et compiler",
+    "fontPackDownloading": "Téléchargement…",
+    "fontPackFailed": "Le pack de polices n'a pas pu être téléchargé. Vérifiez votre connexion et réessayez."
   },
   "history": {
     "untitledCommit": "Commit sans titre",
@@ -1483,7 +1487,8 @@
     "sources": {
       "project": "Projet",
       "system": "Système",
-      "embedded": "Intégrée"
+      "embedded": "Intégrée",
+      "pack": "Pack de polices"
     },
     "fontsFolder": "Pour utiliser une police dans ce projet, ajoutez son fichier au dossier fonts du projet."
   },

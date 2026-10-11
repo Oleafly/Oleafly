@@ -380,11 +380,13 @@
     "compile": "編譯",
     "compiler": {
       "auto": "自動 <note>[系統 TeX]</note>",
-      "help": "Tectonic 為內建，無需設定。其他選項會執行系統 TeX，能讀取你的帳戶可存取的本機檔案，只應用於你信任的專案。「自動」會依原始碼挑選編譯器。pdfLaTeX 相容大多數期刊範本。XeLaTeX 與 LuaLaTeX 另外支援系統字型與 Unicode。",
+      "help": "Tectonic 為內建，無需設定。其他選項會執行系統 TeX，能讀取你的帳戶可存取的本機檔案，只應用於你信任的專案。「自動」會依原始碼挑選編譯器。pdfLaTeX 相容大多數期刊範本。XeLaTeX 與 LuaLaTeX 另外支援系統字型與 Unicode。upLaTeX 與 pLaTeX 用於編譯日文文件。",
       "lualatex": "LuaLaTeX <note>[系統 TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[系統 TeX]</note>",
+      "platex": "pLaTeX <note>[系統 TeX]</note>",
       "tectonic": "Tectonic <note>[內建]</note>",
       "title": "編譯器（本專案）",
+      "uplatex": "upLaTeX <note>[系統 TeX]</note>",
       "xelatex": "XeLaTeX <note>[系統 TeX]</note>"
     },
     "errors": {

@@ -227,7 +227,7 @@ Oleafly 将编译放在手稿旁边，并把编译器输出转换为与源文件
 | 引擎 | 适合什么 | 重要细节 |
 | --- | --- | --- |
 | 使用 Tectonic 的 LaTeX | 便携、内置的 LaTeX 构建 | 随桌面应用提供；支持多文件项目、图像、引文、Biber（Linux ARM64 除外）、SyncTeX、独立图形编译，以及宏包可用时的缓存离线构建 |
-| 使用 `latexmk` 的 LaTeX | 需要完整系统 TeX 发行版的项目 | 使用 MacTeX、TeX Live、MiKTeX 或 TinyTeX，支持 `glossaries`、`makeidx`，以及自动选择的 XeLaTeX 或 LuaLaTeX。在此电脑上允许外部命令后，`minted`、PythonTeX 和其他运行外部命令的宏包即可使用 |
+| 使用 `latexmk` 的 LaTeX | 需要完整系统 TeX 发行版的项目 | 使用 MacTeX、TeX Live、MiKTeX 或 TinyTeX，支持 `glossaries`、`makeidx`，以及自动选择的 XeLaTeX、LuaLaTeX 和用于日文的 upLaTeX 或 pLaTeX。在此电脑上允许外部命令后，`minted`、PythonTeX 和其他运行外部命令的宏包即可使用 |
 | Typst | 快速的现代文档写作 | 内置编译器，可输出 PDF、EPUB、PNG、SVG 和 HTML，并提供项目索引和引文。源文件与 PDF 同步需要 Typst 0.13 或以上版本，宏包已缓存或保存在项目中时可以离线构建。当前版本不提供独立图形编译 |
 | 使用 Pandoc 的 Markdown | 轻量写作和转换工作流 | Pandoc 随应用提供。它会将文档转换为 LaTeX，交由内置 Tectonic 排版，并可导出 Word、HTML、EPUB、PowerPoint、LaTeX、Typst 和纯文本 |
 

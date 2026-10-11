@@ -382,11 +382,13 @@
     "compile": "Derle",
     "compiler": {
       "auto": "Otomatik <note>[sistem TeX]</note>",
-      "help": "Tectonic yerleşiktir ve kurulum gerektirmez. Diğer seçenekler, hesabınızın erişebildiği yerel dosyaları okuyabilen sistem TeX'ini çalıştırır. Bu yüzden onları yalnızca güvendiğiniz projelerde kullanın. Otomatik, derleyiciyi kaynaktan seçer. pdfLaTeX çoğu dergi şablonuyla uyumludur. XeLaTeX ve LuaLaTeX sistem yazı tipleri ve Unicode desteği ekler.",
+      "help": "Tectonic yerleşiktir ve kurulum gerektirmez. Diğer seçenekler, hesabınızın erişebildiği yerel dosyaları okuyabilen sistem TeX'ini çalıştırır. Bu yüzden onları yalnızca güvendiğiniz projelerde kullanın. Otomatik, derleyiciyi kaynaktan seçer. pdfLaTeX çoğu dergi şablonuyla uyumludur. XeLaTeX ve LuaLaTeX sistem yazı tipleri ve Unicode desteği ekler. upLaTeX ve pLaTeX Japonca belgeleri derler.",
       "lualatex": "LuaLaTeX <note>[sistem TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[sistem TeX]</note>",
+      "platex": "pLaTeX <note>[sistem TeX]</note>",
       "tectonic": "Tectonic <note>[yerleşik]</note>",
       "title": "Derleyici (bu proje)",
+      "uplatex": "upLaTeX <note>[sistem TeX]</note>",
       "xelatex": "XeLaTeX <note>[sistem TeX]</note>"
     },
     "errors": {

@@ -1369,3 +1369,32 @@ fn project_font_folders_must_stay_inside_the_project() {
         assert!(typst_project_font_dirs(Some(&linked), &root).is_empty());
     }
 }
+
+#[test]
+fn shared_font_dirs_list_installed_packs_in_a_stable_order() {
+    let assets = TempDir::new().unwrap();
+    assert!(typst_shared_font_dirs(assets.path()).is_empty());
+    let base = assets.path().join(TYPST_FONT_PACKS_DIR);
+    for pack in ["typst-text", "typst-cjk"] {
+        std::fs::create_dir_all(base.join(pack)).unwrap();
+    }
+    std::fs::write(base.join("stray.ttf"), b"not a folder").unwrap();
+    let names: Vec<String> = typst_shared_font_dirs(assets.path())
+        .iter()
+        .map(|dir| dir.file_name().unwrap().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(names, ["typst-cjk", "typst-text"]);
+}
+
+#[cfg(unix)]
+#[test]
+fn shared_font_dirs_skip_links_that_leave_the_cache() {
+    let assets = TempDir::new().unwrap();
+    let outside = TempDir::new().unwrap();
+    let base = assets.path().join(TYPST_FONT_PACKS_DIR);
+    std::fs::create_dir_all(base.join("typst-mono")).unwrap();
+    std::os::unix::fs::symlink(outside.path(), base.join("escape")).unwrap();
+    let dirs = typst_shared_font_dirs(assets.path());
+    assert_eq!(dirs.len(), 1);
+    assert!(dirs[0].ends_with("typst-mono"));
+}

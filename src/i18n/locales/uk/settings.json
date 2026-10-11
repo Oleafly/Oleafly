@@ -1036,6 +1036,26 @@
       "ptserif": {
         "description": "Витончена перехідна антиква, вдалий вибір для академічних і ділових документів.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans і Serif CJK, Fandol і LXGW WenKai. Вони також заміняють SimSun, SimHei і KaiTi.",
+        "label": "Китайська, японська й корейська"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 і 7 Free та Noto Color Emoji.",
+        "label": "Значки та емодзі"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code і Source Code Pro.",
+        "label": "Код"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans і IBM Plex.",
+        "label": "Сучасні без зарубок і з зарубками"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus і New Computer Modern Sans та Mono.",
+        "label": "Класичні текстові"
       }
     },
     "fonts": {
@@ -1073,6 +1093,10 @@
       "packDownloadFailed": "Не вдалося завантажити набір шаблонів.",
       "packsDownloadFailed": "Не вдалося завантажити набори шаблонів.",
       "packRemoveFailed": "Не вдалося видалити набір шаблонів."
+    },
+    "typstFonts": {
+      "heading": "Шрифти для Typst",
+      "tooltip": "Безкоштовні шрифти, яких потребує багато шаблонів Typst. Після завантаження їх може використовувати будь-який проєкт Typst, окрім проєкту, у якому вимкнено системні шрифти."
     }
   },
   "engine": {

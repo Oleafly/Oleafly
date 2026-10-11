@@ -1031,6 +1031,26 @@
       "ptserif": {
         "description": "Un serif de tranziție rafinat, potrivit pentru documente academice și executive.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans și Serif CJK, Fandol și LXGW WenKai. Ele țin locul și pentru SimSun, SimHei și KaiTi.",
+        "label": "Chineză, japoneză și coreeană"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 și 7 Free și Noto Color Emoji.",
+        "label": "Pictograme și emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code și Source Code Pro.",
+        "label": "Cod"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans și IBM Plex.",
+        "label": "Sans și serif moderne"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus și New Computer Modern Sans și Mono.",
+        "label": "Text clasic"
       }
     },
     "fonts": {
@@ -1068,6 +1088,10 @@
       "packDownloadFailed": "Pachetul de șabloane nu a putut fi descărcat.",
       "packsDownloadFailed": "Pachetele de șabloane nu au putut fi descărcate.",
       "packRemoveFailed": "Pachetul de șabloane nu a putut fi eliminat."
+    },
+    "typstFonts": {
+      "heading": "Fonturi pentru Typst",
+      "tooltip": "Fonturi gratuite pe care le cer multe șabloane Typst. După descărcare, orice proiect Typst le poate folosi, mai puțin un proiect care dezactivează fonturile sistemului."
     }
   },
   "engine": {

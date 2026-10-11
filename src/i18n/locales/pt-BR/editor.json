@@ -372,7 +372,11 @@
     "summaryWarnings_other": "{{count}} avisos",
     "summaryReferences_one": "{{count}} referência não resolvida",
     "summaryReferences_many": "{{count}} referências não resolvidas",
-    "summaryReferences_other": "{{count}} referências não resolvidas"
+    "summaryReferences_other": "{{count}} referências não resolvidas",
+    "fontPack": "{{family}} está no pacote de fontes gratuito {{pack}}.",
+    "fontPackAction": "Baixar e compilar",
+    "fontPackDownloading": "Baixando…",
+    "fontPackFailed": "Não foi possível baixar o pacote de fontes. Verifique sua conexão e tente de novo."
   },
   "history": {
     "untitledCommit": "Commit sem título",
@@ -1483,7 +1487,8 @@
     "sources": {
       "project": "Projeto",
       "system": "Sistema",
-      "embedded": "Embutida"
+      "embedded": "Embutida",
+      "pack": "Pacote de fontes"
     },
     "fontsFolder": "Para usar uma fonte neste projeto, adicione o arquivo dela à pasta fonts do projeto."
   },

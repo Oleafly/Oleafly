@@ -730,6 +730,20 @@ export function CompileControlsView({
                   components={{ note: <span className="ml-1 text-muted-foreground" /> }}
                 />
               </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="uplatex" data-testid="compiler-uplatex" disabled={systemTexLocked}>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.uplatex}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="platex" data-testid="compiler-platex" disabled={systemTexLocked}>
+                <Trans
+                  ns="shell"
+                  i18nKey={($) => $.shell.compile.compiler.platex}
+                  components={{ note: <span className="ml-1 text-muted-foreground" /> }}
+                />
+              </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
             {systemTexLocked && (
               <DropdownMenuItem

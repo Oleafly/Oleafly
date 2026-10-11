@@ -4,8 +4,10 @@ mod detect;
 mod engine_temp;
 mod error;
 mod image_check;
+mod latexmk_env;
 pub mod locking;
 mod manifest;
+mod tex_flavor;
 mod tree;
 pub mod typst_log;
 pub mod typst_toolchain;
@@ -34,11 +36,15 @@ pub use image_check::{
     place_image_findings, BrokenImage, ImageContent, ImageEvidence, ImageFinding, ImageFormat,
     ImageProblem, ASK_AI_ERROR_BUDGET,
 };
+pub use latexmk_env::{
+    bibtex_search_entry, bibtex_search_environment, breaks_tex_search_path, BIBTEX_SEARCH_VARIABLES,
+};
 pub use manifest::valid_typst_input_key;
 pub use manifest::{
     is_oleafly_manifest, sniff_oleafly_manifest, CheckpointCaptureMode, CheckpointPolicy, Engine,
     ExportRecord, ProjectManifest, TexSpec, TypstSpec, TypstVariant, MAX_MANIFEST_BYTES,
 };
+pub use tex_flavor::{source_tex_flavor, TexFlavor};
 pub use tree::{
     is_cloud_placeholder, is_dataless_flags, is_generated_directory, is_placeholder_attributes,
     is_skipped_scan_directory, slash_path, walk_source_tree, GENERATED_DIRECTORIES,

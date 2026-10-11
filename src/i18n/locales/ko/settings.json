@@ -1021,6 +1021,26 @@
       "ptserif": {
         "description": "학술 문서와 공식 문서에 잘 어울리는 정제된 트랜지셔널 세리프입니다.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans·Serif CJK, Fandol, LXGW WenKai. SimSun, SimHei, KaiTi 대신 쓰이기도 합니다.",
+        "label": "중국어, 일본어, 한국어"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6·7 Free, Noto Color Emoji.",
+        "label": "아이콘과 이모지"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code, Source Code Pro.",
+        "label": "코드"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans, IBM Plex.",
+        "label": "모던 산세리프와 세리프"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus, New Computer Modern Sans·Mono.",
+        "label": "클래식 본문"
       }
     },
     "fonts": {
@@ -1058,6 +1078,10 @@
       "packDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
       "packsDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
       "packRemoveFailed": "템플릿 팩을 제거하지 못했습니다."
+    },
+    "typstFonts": {
+      "heading": "Typst용 글꼴",
+      "tooltip": "여러 Typst 템플릿이 요구하는 무료 글꼴입니다. 내려받으면 시스템 글꼴을 끈 프로젝트를 빼고 모든 Typst 프로젝트에서 쓸 수 있습니다."
     }
   },
   "engine": {
