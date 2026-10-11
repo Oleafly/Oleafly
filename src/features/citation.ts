@@ -330,7 +330,8 @@ async function writeCitationTarget(
   newContent: string,
 ): Promise<string | null> {
   if (files.files[targetPath] !== undefined) {
-    if (!files.setContent(targetPath, newContent)) return linkedBibliographyMessage(targetPath);
+    const bumpVersion = useFilesStore.getState().activePath === targetPath;
+    if (!files.setContent(targetPath, newContent, { bumpVersion })) return linkedBibliographyMessage(targetPath);
     // Persist now instead of waiting for the autosave debounce, so a compile
     // (which reads from disk) resolves the new \cite immediately.
     try {
@@ -365,7 +366,8 @@ async function writeBibliographyDeclaration(
   next: string,
   currentMainLoaded: boolean,
 ): Promise<void> {
-  if (currentMainLoaded && files.setContent(mainPath, next)) {
+  const bumpVersion = useFilesStore.getState().activePath === mainPath;
+  if (currentMainLoaded && files.setContent(mainPath, next, { bumpVersion })) {
     await useFilesStore.getState().saveFile(mainPath);
     return;
   }

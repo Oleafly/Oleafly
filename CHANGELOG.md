@@ -75,6 +75,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   offline from the files earlier versions downloaded. If any compiler
   crashes again, the compile log now ends with a line that says so,
   instead of stopping mid-line with no reason.
+- Citation changes to the file open in the editor are no longer lost.
+  Adding a citation, importing references or citing Oleafly while the `.bib`
+  file was open saved the new entries, but the editor kept the old text, and
+  the next keystroke wrote it back over them. In a Typst or Markdown project,
+  adding a citation while the main document was open also dropped the
+  bibliography line it added there. The editor now shows these changes as
+  they happen.
+- Apply to document under Accessible export in Preflight, and Citation style
+  in References for a Typst project, changed the file open in the editor
+  without updating the editor, so the next keystroke undid the change. The
+  editor now shows the new text right away.
 
 ## [0.4.6] - 2026-10-09
 
