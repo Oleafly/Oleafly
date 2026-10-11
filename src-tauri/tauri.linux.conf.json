@@ -17,6 +17,7 @@
           "/usr/bin/oleafly": "./linux/oleafly",
           "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
           "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action",
+          "/usr/share/applications/oleafly-url-handler.desktop": "linux/oleafly-url-handler.desktop",
           "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml"
         },
         "desktopTemplate": "linux/main.desktop",
@@ -27,6 +28,7 @@
           "/usr/bin/oleafly": "./linux/oleafly",
           "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
           "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action",
+          "/usr/share/applications/oleafly-url-handler.desktop": "linux/oleafly-url-handler.desktop",
           "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml"
         },
         "desktopTemplate": "linux/main.desktop"

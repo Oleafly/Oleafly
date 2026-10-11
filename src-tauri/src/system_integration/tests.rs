@@ -1078,7 +1078,12 @@ fn packages_ship_the_dolphin_and_nemo_actions_the_builders_describe() {
             "linux/com.oleafly.app.metainfo.xml",
             "{format}"
         );
-        assert_eq!(files.as_object().unwrap().len(), 4, "{format}");
+        assert_eq!(
+            files["/usr/share/applications/oleafly-url-handler.desktop"],
+            "linux/oleafly-url-handler.desktop",
+            "{format}"
+        );
+        assert_eq!(files.as_object().unwrap().len(), 5, "{format}");
     }
 }
 

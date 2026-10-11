@@ -1,3 +1,4 @@
+import type { TauriPage } from "@srsholmes/tauri-playwright";
 import { test, expect } from "../fixtures";
 import { finishProjectCreation, openGallery, openSettings, waitLong } from "../helpers";
 import { startPackFixtureServer } from "../pack-fixture-server";
@@ -17,13 +18,9 @@ test.afterAll(async () => {
   await server?.close();
 });
 
-test("installing a pack adds its templates to the gallery", async ({ tauriPage }) => {
-  test.setTimeout(120_000);
+async function openTemplatePacks(tauriPage: TauriPage) {
   await openSettings(tauriPage);
   const downloadsNav = tauriPage.locator('[data-testid="settings-section-downloads"]');
-  // The toggle persists via localStorage across the shared e2e data dir, so
-  // only click it when advanced sections are actually hidden right now (see
-  // the same guard in 07-settings.spec.ts).
   if (!(await downloadsNav.isVisible())) {
     await tauriPage.click('[data-testid="settings-toggle-advanced"]');
   }
@@ -32,10 +29,41 @@ test("installing a pack adds its templates to the gallery", async ({ tauriPage }
   const templatesTab = tauriPage.locator('[data-testid="downloads-tab-templates"]');
   await templatesTab.focus();
   await templatesTab.press("Enter");
-
+  await tauriPage.click('[data-testid="packs-refresh"]');
   await expect(tauriPage.locator('[data-testid="pack-row-fixture-pack"]')).toBeVisible({
     timeout: 30_000,
   });
+}
+
+test("a pack opens to a preview of each template and installs one on its own", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await openTemplatePacks(tauriPage as TauriPage);
+
+  await tauriPage.click('[data-testid="pack-open-fixture-pack"]');
+  await expect(tauriPage.locator('[data-testid="pack-template-fixture-letter"]')).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(tauriPage.locator('[data-testid="pack-template-fixture-article"]')).toBeVisible();
+  await tauriPage.click('[data-testid="pack-template-fixture-letter"] button');
+  await expect(tauriPage.locator('[data-testid="template-preview"]')).toBeVisible({ timeout: 10_000 });
+  await expect(tauriPage.locator('[data-testid="template-preview-get"]')).toBeEnabled();
+
+  await tauriPage.click('[data-testid="template-preview-get"]');
+  await expect(tauriPage.locator('[data-testid="template-preview-use"]')).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(tauriPage.locator('[data-testid="pack-view-install-fixture-pack"]')).toBeVisible();
+
+  await tauriPage.click('[data-testid="template-preview-use"]');
+  await expect(tauriPage.locator("#new-project-name")).toBeVisible({ timeout: 20_000 });
+  await tauriPage.fill("#new-project-name", "Pack Letter");
+  await finishProjectCreation(tauriPage);
+});
+
+test("installing a pack adds its templates to the gallery", async ({ tauriPage }) => {
+  test.setTimeout(120_000);
+  await openTemplatePacks(tauriPage as TauriPage);
+
   await tauriPage.click('[data-testid="pack-install-fixture-pack"]');
   await expect(tauriPage.locator('[data-testid="pack-remove-fixture-pack"]')).toBeVisible({
     timeout: 30_000,

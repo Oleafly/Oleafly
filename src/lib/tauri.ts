@@ -93,6 +93,7 @@ import type {
   McpStatus,
   ModelMetadataStatus,
   ModelProbe,
+  PackIndexInfo,
   PackInfo,
   Persona,
   Prerequisite,
@@ -911,13 +912,29 @@ export const ensureTemplateAssets = (templateId: string) =>
 
 export const listTemplatePacks = () => invoke<PackInfo[]>("list_template_packs");
 
-export const refreshPackCatalog = () => invoke<void>("refresh_pack_catalog");
+export const refreshPackCatalog = (force = false) =>
+  invoke<boolean>("refresh_pack_catalog", { force });
+
+export const packIndex = (packId: string, force = false) =>
+  invoke<PackIndexInfo>("pack_index", { packId, force });
 
 export const installTemplatePack = (id: string) =>
   invoke<void>("install_template_pack", { id });
 
+export const installPackTemplate = (packId: string, templateId: string) =>
+  invoke<void>("install_pack_template", { packId, templateId });
+
 export const removeTemplatePack = (id: string) =>
   invoke<void>("remove_template_pack", { id });
+
+export const TEMPLATE_LINK_EVENT = "template-link";
+
+export interface TemplateLink {
+  packId: string;
+  templateId: string;
+}
+
+export const templateLinkReady = () => invoke<TemplateLink | null>("template_link_ready");
 
 export interface SkillCatalogOrigin {
   repo: string;

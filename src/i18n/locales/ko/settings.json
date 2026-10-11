@@ -1077,11 +1077,56 @@
       "fontRemoveFailed": "글꼴을 제거하지 못했습니다.",
       "packDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
       "packsDownloadFailed": "템플릿 팩을 내려받지 못했습니다.",
-      "packRemoveFailed": "템플릿 팩을 제거하지 못했습니다."
+      "packRemoveFailed": "템플릿 팩을 제거하지 못했습니다.",
+      "templateDownloadFailed": "템플릿을 내려받지 못했습니다.",
+      "packsRefreshFailed": "새 팩을 확인하지 못했습니다."
     },
     "typstFonts": {
       "heading": "Typst용 글꼴",
       "tooltip": "여러 Typst 템플릿이 요구하는 무료 글꼴입니다. 내려받으면 시스템 글꼴을 끈 프로젝트를 빼고 모든 Typst 프로젝트에서 쓸 수 있습니다."
+    },
+    "packs": {
+      "browse": "둘러보기",
+      "back": "팩 목록으로",
+      "count_other": "템플릿 {{count}}개",
+      "installedCount": "{{total}}개 중 {{installed}}개 설치됨",
+      "downloadPack": "팩 다운로드",
+      "refresh": "새 팩 확인",
+      "searchPacks": "팩 검색",
+      "searchTemplates": "템플릿 검색",
+      "noPacks": "일치하는 팩이 없습니다",
+      "noTemplates": "일치하는 템플릿이 없습니다",
+      "loading": "템플릿을 불러오는 중",
+      "loadFailed": "이 팩을 불러오지 못했습니다.",
+      "retry": "다시 시도",
+      "installed": "설치됨",
+      "engineFilter": "엔진",
+      "kindFilter": "종류",
+      "languageFilter": "언어",
+      "allEngines": "모든 엔진",
+      "allKinds": "모든 종류",
+      "allLanguages": "모든 언어",
+      "groups": {
+        "curated": "엄선",
+        "community": "커뮤니티",
+        "typst": "Typst",
+        "university": "대학"
+      },
+      "preview": {
+        "image": "{{name}} 첫 페이지",
+        "previous": "이전 템플릿",
+        "next": "다음 템플릿",
+        "engine": "엔진",
+        "license": "라이선스",
+        "kind": "종류",
+        "languages": "언어",
+        "country": "국가",
+        "institution": "기관",
+        "originalSource": "원본 출처",
+        "getTemplate": "이 템플릿 받기",
+        "useTemplate": "이 템플릿 사용",
+        "getAndCreate": "받고 프로젝트 만들기"
+      }
     }
   },
   "engine": {

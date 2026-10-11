@@ -7,6 +7,7 @@ import { gzipSync } from "node:zlib";
 // OLEAFLY_DEADLINES_URL at. The Rust process fetches these, so the port must
 // be known before the app starts.
 export const PACK_FIXTURE_PORT = 38999;
+const FIXTURE_BASE = `http://127.0.0.1:${PACK_FIXTURE_PORT}`;
 
 const TEMPLATE_JSON = JSON.stringify({
   id: "fixture-article",
@@ -27,6 +28,93 @@ const MAIN_TEX = [
   "\\end{document}",
   "",
 ].join("\n");
+
+const LETTER_JSON = JSON.stringify({
+  id: "fixture-letter",
+  name: "Fixture Letter",
+  category: "Letters",
+  description: "A one page letter used by the e2e pack fixture.",
+  main_doc: "main.tex",
+  engine: "xetex",
+  license: { spdx: "MIT", author: "Oleafly", url: "" },
+});
+
+const LETTER_TEX = [
+  "\\documentclass[11pt]{article}",
+  "\\begin{document}",
+  "Fixture letter body text.",
+  "\\end{document}",
+  "",
+].join("\n");
+
+const LETTER_NOTE = "Kept next to the letter to prove nested pack files install.\n";
+
+const PACK_FILES: Record<string, { body: string; type: string }> = {
+  "/packs/fixture-pack/fixture-article/template.json": { body: TEMPLATE_JSON, type: "application/json" },
+  "/packs/fixture-pack/fixture-article/main.tex": { body: MAIN_TEX, type: "text/plain" },
+  "/packs/fixture-pack/fixture-letter/template.json": { body: LETTER_JSON, type: "application/json" },
+  "/packs/fixture-pack/fixture-letter/main.tex": { body: LETTER_TEX, type: "text/plain" },
+  "/packs/fixture-pack/fixture-letter/assets/note%201.txt": { body: LETTER_NOTE, type: "text/plain" },
+};
+
+function packFile(name: string, path: string) {
+  return { name, url: `${FIXTURE_BASE}${path}` };
+}
+
+const INDEX = JSON.stringify({
+  version: 2,
+  id: "fixture-pack",
+  templates: [
+    {
+      id: "fixture-article",
+      name: "Fixture Article",
+      description: "A tiny article used by the e2e pack fixture.",
+      category: "Journals & Conferences",
+      engine: "xetex",
+      main_doc: "main.tex",
+      license: { spdx: "CC0-1.0", label: "CC0-1.0" },
+      bytes: MAIN_TEX.length + TEMPLATE_JSON.length,
+      files: [
+        packFile("fixture-article/main.tex", "/packs/fixture-pack/fixture-article/main.tex"),
+        packFile("fixture-article/template.json", "/packs/fixture-pack/fixture-article/template.json"),
+      ],
+      credit: { url: "https://github.com/Oleafly/template-packs", author: "Oleafly" },
+    },
+    {
+      id: "fixture-letter",
+      name: "Fixture Letter",
+      description: "A one page letter used by the e2e pack fixture.",
+      category: "Letters",
+      engine: "xetex",
+      main_doc: "main.tex",
+      license: { spdx: null, label: "Unlicensed (no license stated)" },
+      bytes: LETTER_TEX.length + LETTER_JSON.length + LETTER_NOTE.length,
+      files: [
+        packFile("fixture-letter/main.tex", "/packs/fixture-pack/fixture-letter/main.tex"),
+        packFile("fixture-letter/assets/note 1.txt", "/packs/fixture-pack/fixture-letter/assets/note%201.txt"),
+        packFile("fixture-letter/template.json", "/packs/fixture-pack/fixture-letter/template.json"),
+      ],
+    },
+  ],
+});
+
+const CATALOG_V2 = JSON.stringify({
+  version: 2,
+  packs: [
+    {
+      id: "fixture-pack",
+      label: "Fixture pack",
+      description: "Two tiny templates for e2e.",
+      category: "Journals & Conferences",
+      group: "curated",
+      count: 2,
+      bytes: Object.values(PACK_FILES).reduce((sum, file) => sum + file.body.length, 0),
+      license_summary: "CC0-1.0, Unlicensed",
+      index_url: `${FIXTURE_BASE}/indexes/fixture-pack.json`,
+      covers: [],
+    },
+  ],
+});
 
 const CATALOG = JSON.stringify([
   {
@@ -186,6 +274,10 @@ export async function startPackFixtureServer() {
       res.end(body);
     };
     if (url === "/catalog.json") return send(CATALOG);
+    if (url === "/catalog-v2.json") return send(CATALOG_V2);
+    if (url === "/indexes/fixture-pack.json") return send(INDEX);
+    const packFileBody = PACK_FILES[url];
+    if (packFileBody) return send(packFileBody.body, packFileBody.type);
     if (url === "/catalogs/skills.json") return send(SKILLS_CATALOG);
     if (url === SKILL_ARCHIVE_PATH) {
       res.writeHead(200, {
@@ -196,10 +288,6 @@ export async function startPackFixtureServer() {
       return;
     }
     if (url === "/allconf.yml") return send(ALLCONF_YML, "text/yaml");
-    if (url === "/packs/fixture-pack/fixture-article/template.json") return send(TEMPLATE_JSON);
-    if (url === "/packs/fixture-pack/fixture-article/main.tex") {
-      return send(MAIN_TEX, "text/plain");
-    }
     res.writeHead(404);
     res.end();
   });

@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   removeFontComponent: vi.fn(),
   downloadAllFonts: vi.fn(),
   installTemplatePack: vi.fn(),
+  installPackTemplate: vi.fn(),
+  packIndex: vi.fn(),
   removeTemplatePack: vi.fn(),
   deleteCustomTemplate: vi.fn(),
   success: vi.fn(),
@@ -35,6 +37,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   removeFontComponent: mocks.removeFontComponent,
   downloadAllFonts: mocks.downloadAllFonts,
   installTemplatePack: mocks.installTemplatePack,
+  installPackTemplate: mocks.installPackTemplate,
+  packIndex: mocks.packIndex,
   removeTemplatePack: mocks.removeTemplatePack,
   deleteCustomTemplate: mocks.deleteCustomTemplate,
 }));
@@ -48,6 +52,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
+import { resetTemplatePacks } from "@/store/template-packs";
 import { DownloadsSection } from "./DownloadsSection";
 
 const downloads = enSettings.downloads;
@@ -89,10 +94,14 @@ const pack = (over: Partial<PackInfo> = {}): PackInfo => ({
   label: "Resumes",
   description: "Resume templates",
   category: "resume",
+  group: "curated",
   approx_bytes: 640_000,
   count: 4,
   license_summary: "MIT",
+  covers: [],
   installed: false,
+  installed_count: 0,
+  version: 2,
   ...over,
 });
 
@@ -121,6 +130,7 @@ let emit: ((event: { payload: AssetProgress }) => void) | null = null;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetTemplatePacks();
   emit = null;
   mocks.listen.mockImplementation(
     async (_name: string, handler: (event: { payload: AssetProgress }) => void) => {
@@ -132,7 +142,7 @@ beforeEach(() => {
   mocks.listTemplatePacks.mockResolvedValue([]);
   mocks.listTemplates.mockResolvedValue([]);
   mocks.templatePreview.mockResolvedValue(null);
-  mocks.refreshPackCatalog.mockResolvedValue(undefined);
+  mocks.refreshPackCatalog.mockResolvedValue(false);
   mocks.installFontComponent.mockResolvedValue(undefined);
   mocks.removeFontComponent.mockResolvedValue(undefined);
   mocks.downloadAllFonts.mockResolvedValue(undefined);

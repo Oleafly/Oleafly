@@ -1082,11 +1082,57 @@
       "fontRemoveFailed": "Couldn't remove the font.",
       "packDownloadFailed": "Couldn't download the template pack.",
       "packsDownloadFailed": "Couldn't download the template packs.",
-      "packRemoveFailed": "Couldn't remove the template pack."
+      "packRemoveFailed": "Couldn't remove the template pack.",
+      "templateDownloadFailed": "Couldn't download the template.",
+      "packsRefreshFailed": "Couldn't check for new packs."
     },
     "typstFonts": {
       "heading": "Fonts for Typst",
       "tooltip": "Free fonts that many Typst templates ask for. Once downloaded, every Typst project can use them, except a project that turns system fonts off."
+    },
+    "packs": {
+      "browse": "Browse",
+      "back": "Back to packs",
+      "count_one": "{{count}} template",
+      "count_other": "{{count}} templates",
+      "installedCount": "{{installed}} of {{total}} installed",
+      "downloadPack": "Download pack",
+      "refresh": "Check for new packs",
+      "searchPacks": "Search packs",
+      "searchTemplates": "Search templates",
+      "noPacks": "No packs match",
+      "noTemplates": "No templates match",
+      "loading": "Loading templates",
+      "loadFailed": "Couldn't load this pack.",
+      "retry": "Try again",
+      "installed": "Installed",
+      "engineFilter": "Engine",
+      "kindFilter": "Kind",
+      "languageFilter": "Language",
+      "allEngines": "All engines",
+      "allKinds": "All kinds",
+      "allLanguages": "All languages",
+      "groups": {
+        "curated": "Curated",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "University"
+      },
+      "preview": {
+        "image": "First page of {{name}}",
+        "previous": "Previous template",
+        "next": "Next template",
+        "engine": "Engine",
+        "license": "License",
+        "kind": "Kind",
+        "languages": "Languages",
+        "country": "Country",
+        "institution": "Institution",
+        "originalSource": "Original source",
+        "getTemplate": "Get this template",
+        "useTemplate": "Use this template",
+        "getAndCreate": "Get and create project"
+      }
     }
   },
   "engine": {

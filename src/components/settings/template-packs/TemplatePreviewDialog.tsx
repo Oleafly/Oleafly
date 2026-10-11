@@ -1,0 +1,319 @@
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { ArrowRight, ChevronLeft, ChevronRight, Download, ExternalLink, X } from "lucide-react";
+import { CheckBadge } from "@/components/ui/check-badge";
+import { ModalShell } from "@/components/ui/modal-shell";
+import { Spinner } from "@/components/ui/spinner";
+import { currentLocale } from "@/i18n";
+import { formatDownloadSize } from "@/lib/download-size";
+import { formatNumber, formatList } from "@/lib/intl";
+import { logError } from "@/lib/log";
+import type { PackInfo, PackTemplateInfo } from "@/lib/tauri";
+import { capitalized, displayName, engineLabel } from "@/lib/template-pack-browser";
+import { cn } from "@/lib/utils";
+import {
+  installPack,
+  installTemplate,
+  packBusyKey,
+  templateBusyKey,
+  useTemplatePacksStore,
+} from "@/store/template-packs";
+import { openTemplateInNewProject } from "@/store/template-request";
+import { OUTLINE_BUTTON, PRIMARY_BUTTON } from "./PackList";
+import { LazyImage, PAGE_ASPECT, PagePlaceholder } from "./pack-images";
+
+const TYPING_TARGETS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+
+function PreviewImage({ template, alt }: Readonly<{ template: PackTemplateInfo; alt: string }>) {
+  const [loaded, setLoaded] = useState(false);
+  const thumb = template.thumb_url;
+  const large = template.preview_url;
+  const thumbImage = thumb ? <LazyImage src={thumb} alt={alt} fallback={<PagePlaceholder />} /> : <PagePlaceholder />;
+  return (
+    <span
+      data-testid="template-preview-page"
+      className={cn(
+        "relative block w-full max-w-[min(26rem,calc((88vh_-_3rem)/1.294))] overflow-hidden rounded-md border bg-background shadow-sm",
+        PAGE_ASPECT,
+      )}
+    >
+      {thumb && large && !loaded ? (
+        <img
+          src={thumb}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className="absolute inset-0 size-full scale-105 object-contain blur-md"
+        />
+      ) : null}
+      {large ? (
+        <LazyImage src={large} alt={alt} onLoad={() => setLoaded(true)} fallback={thumbImage} />
+      ) : (
+        thumbImage
+      )}
+    </span>
+  );
+}
+
+function Detail({ label, children }: Readonly<{ label: string; children: ReactNode }>) {
+  return (
+    <>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 break-words text-foreground">{children}</dd>
+    </>
+  );
+}
+
+function TemplateDetails({ template }: Readonly<{ template: PackTemplateInfo }>) {
+  const { t } = useTranslation(["settings"]);
+  const locale = currentLocale();
+  const languages = template.languages.map((code) => displayName(code, "language", locale));
+  const engine = engineLabel(template.engine);
+  return (
+    <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
+      {engine ? <Detail label={t(($) => $.settings.downloads.packs.preview.engine)}>{engine}</Detail> : null}
+      <Detail label={t(($) => $.settings.downloads.packs.preview.license)}>{template.license.label}</Detail>
+      {template.kind ? (
+        <Detail label={t(($) => $.settings.downloads.packs.preview.kind)}>{capitalized(template.kind)}</Detail>
+      ) : null}
+      {languages.length > 0 ? (
+        <Detail label={t(($) => $.settings.downloads.packs.preview.languages)}>{formatList(languages)}</Detail>
+      ) : null}
+      {template.country ? (
+        <Detail label={t(($) => $.settings.downloads.packs.preview.country)}>
+          {displayName(template.country, "region", locale)}
+        </Detail>
+      ) : null}
+      {template.institution ? (
+        <Detail label={t(($) => $.settings.downloads.packs.preview.institution)}>{template.institution}</Detail>
+      ) : null}
+    </dl>
+  );
+}
+
+function stepDirection(event: KeyboardEvent, anchor: HTMLElement | null): "previous" | "next" | null {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return null;
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return null;
+  const target = event.target;
+  if (target instanceof HTMLElement && (target.isContentEditable || TYPING_TARGETS.has(target.tagName))) {
+    return null;
+  }
+  const dialog = anchor?.closest('[aria-modal="true"]');
+  if (target instanceof Node && target !== document.body && dialog && !dialog.contains(target)) return null;
+  return event.key === "ArrowLeft" ? "previous" : "next";
+}
+
+function PrimaryAction({
+  packId,
+  template,
+  linked,
+}: Readonly<{ packId: string; template: PackTemplateInfo; linked: boolean }>) {
+  const { t } = useTranslation(["settings"]);
+  const busy = useTemplatePacksStore((s) => s.busy);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  if (template.installed) {
+    return (
+      <button
+        type="button"
+        data-testid="template-preview-use"
+        data-modal-initial-focus
+        onClick={() => openTemplateInNewProject(template.id)}
+        className={PRIMARY_BUTTON}
+      >
+        {t(($) => $.settings.downloads.packs.preview.useTemplate)}
+        <ArrowRight className="size-3.5" />
+      </button>
+    );
+  }
+
+  const get = () => {
+    void installTemplate(packId, template.id).then((installed) => {
+      if (linked && installed && mounted.current) openTemplateInNewProject(template.id);
+    });
+  };
+  return (
+    <button
+      type="button"
+      data-testid={linked ? "template-preview-get-and-create" : "template-preview-get"}
+      data-modal-initial-focus
+      onClick={get}
+      disabled={busy !== null}
+      className={PRIMARY_BUTTON}
+    >
+      {busy === templateBusyKey(packId, template.id) ? <Spinner size="sm" /> : <Download className="size-3.5" />}
+      {linked
+        ? t(($) => $.settings.downloads.packs.preview.getAndCreate)
+        : t(($) => $.settings.downloads.packs.preview.getTemplate)}
+    </button>
+  );
+}
+
+export function TemplatePreviewDialog({
+  pack,
+  templates,
+  allTemplates,
+  templateId,
+  linked = false,
+  onNavigate,
+  onClose,
+}: Readonly<{
+  pack: PackInfo;
+  templates: readonly PackTemplateInfo[];
+  allTemplates: readonly PackTemplateInfo[];
+  templateId: string;
+  linked?: boolean;
+  onNavigate: (templateId: string) => void;
+  onClose: () => void;
+}>) {
+  const { t } = useTranslation(["common", "settings"]);
+  const titleId = useId();
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const busy = useTemplatePacksStore((s) => s.busy);
+  const progress = useTemplatePacksStore((s) => s.progress);
+  const position = templates.findIndex((candidate) => candidate.id === templateId);
+  const template =
+    position >= 0 ? templates[position] : allTemplates.find((candidate) => candidate.id === templateId);
+  const previous = position > 0 ? templates[position - 1] : null;
+  const next = position >= 0 && position < templates.length - 1 ? templates[position + 1] : null;
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const direction = stepDirection(event, anchorRef.current);
+      if (!direction) return;
+      const destination = direction === "previous" ? previous : next;
+      if (!destination) return;
+      event.preventDefault();
+      onNavigate(destination.id);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [previous, next, onNavigate]);
+
+  if (!template) return null;
+
+  const templateBusy = busy === templateBusyKey(pack.id, template.id);
+  const packBusy = busy === packBusyKey(pack.id);
+
+  return (
+    <ModalShell
+      open
+      onClose={onClose}
+      closeLabel={t(($) => $.common.actions.close)}
+      layer="nested"
+      labelledBy={titleId}
+      testId="template-preview"
+      className="flex max-h-[88vh] w-[min(56rem,94vw)] flex-col overflow-hidden md:flex-row"
+    >
+      <span ref={anchorRef} hidden />
+      <div className="relative flex min-h-0 shrink-0 items-center justify-center bg-muted/60 px-12 py-6 md:w-[55%]">
+        <PreviewImage
+          key={template.id}
+          template={template}
+          alt={t(($) => $.settings.downloads.packs.preview.image, { name: template.name })}
+        />
+        <button
+          type="button"
+          data-testid="template-preview-previous"
+          aria-label={t(($) => $.settings.downloads.packs.preview.previous)}
+          onClick={() => previous && onNavigate(previous.id)}
+          disabled={!previous}
+          className="absolute left-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border bg-background/90 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:border-ring focus-visible:bg-accent disabled:opacity-0"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <button
+          type="button"
+          data-testid="template-preview-next"
+          aria-label={t(($) => $.settings.downloads.packs.preview.next)}
+          onClick={() => next && onNavigate(next.id)}
+          disabled={!next}
+          className="absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-full border bg-background/90 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:border-ring focus-visible:bg-accent disabled:opacity-0"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[0.6875rem] text-muted-foreground tabular-nums">
+              {pack.label}
+              {template.bytes > 0 ? ` · ${formatDownloadSize(template.bytes)}` : ""}
+              {position >= 0
+                ? ` · ${t(($) => $.settings.downloads.packProgress, {
+                    index: formatNumber(position + 1),
+                    total: formatNumber(templates.length),
+                  })}`
+                : ""}
+            </p>
+            <h2 id={titleId} className="mt-1 flex items-center gap-2 text-base font-semibold leading-snug">
+              <span className="min-w-0 break-words">{template.name}</span>
+              {template.installed && <CheckBadge tone="success" />}
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-label={t(($) => $.common.actions.close)}
+            onClick={onClose}
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {template.description ? (
+          <p className="select-text text-xs leading-relaxed text-muted-foreground">{template.description}</p>
+        ) : null}
+
+        <TemplateDetails template={template} />
+
+        {template.credit ? (
+          <button
+            type="button"
+            data-testid="template-preview-source"
+            title={template.credit.url}
+            onClick={() => {
+              const url = template.credit?.url;
+              if (url) void openExternal(url).catch((error) => logError("open template source", error));
+            }}
+            className="inline-flex w-fit items-center gap-1 rounded px-1 py-0.5 text-[0.6875rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent"
+          >
+            <ExternalLink className="size-3" />
+            {t(($) => $.settings.downloads.packs.preview.originalSource)}
+          </button>
+        ) : null}
+
+        <div className="mt-auto flex flex-col gap-2 pt-3">
+          {(templateBusy || packBusy) && progress ? (
+            <p className="text-[0.6875rem] text-muted-foreground tabular-nums">{progress}</p>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {!pack.installed && (
+              <button
+                type="button"
+                data-testid="template-preview-download-pack"
+                onClick={() => void installPack(pack.id)}
+                disabled={busy !== null}
+                className={OUTLINE_BUTTON}
+              >
+                {packBusy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
+                {t(($) => $.settings.downloads.packs.downloadPack)}
+              </button>
+            )}
+            <PrimaryAction key={template.id} packId={pack.id} template={template} linked={linked} />
+          </div>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}

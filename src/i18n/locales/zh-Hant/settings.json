@@ -1077,11 +1077,56 @@
       "fontRemoveFailed": "無法移除字型。",
       "packDownloadFailed": "無法下載範本包。",
       "packsDownloadFailed": "無法下載這些範本包。",
-      "packRemoveFailed": "無法移除範本包。"
+      "packRemoveFailed": "無法移除範本包。",
+      "templateDownloadFailed": "無法下載範本。",
+      "packsRefreshFailed": "無法檢查新的範本包。"
     },
     "typstFonts": {
       "heading": "Typst 字型",
       "tooltip": "許多 Typst 範本需要的免費字型。下載後，除了關閉系統字型的專案以外，所有 Typst 專案都能使用。"
+    },
+    "packs": {
+      "browse": "瀏覽",
+      "back": "返回範本包",
+      "count_other": "{{count}} 個範本",
+      "installedCount": "已安裝 {{installed}}/{{total}}",
+      "downloadPack": "下載範本包",
+      "refresh": "檢查新的範本包",
+      "searchPacks": "搜尋範本包",
+      "searchTemplates": "搜尋範本",
+      "noPacks": "沒有相符的範本包",
+      "noTemplates": "沒有相符的範本",
+      "loading": "正在載入範本",
+      "loadFailed": "無法載入此範本包。",
+      "retry": "重試",
+      "installed": "已安裝",
+      "engineFilter": "引擎",
+      "kindFilter": "類型",
+      "languageFilter": "語言",
+      "allEngines": "所有引擎",
+      "allKinds": "所有類型",
+      "allLanguages": "所有語言",
+      "groups": {
+        "curated": "精選",
+        "community": "社群",
+        "typst": "Typst",
+        "university": "大學"
+      },
+      "preview": {
+        "image": "{{name}} 的第一頁",
+        "previous": "上一個範本",
+        "next": "下一個範本",
+        "engine": "引擎",
+        "license": "授權",
+        "kind": "類型",
+        "languages": "語言",
+        "country": "國家或地區",
+        "institution": "機構",
+        "originalSource": "原始來源",
+        "getTemplate": "取得此範本",
+        "useTemplate": "使用此範本",
+        "getAndCreate": "取得並建立專案"
+      }
     }
   },
   "engine": {

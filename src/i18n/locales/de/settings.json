@@ -1082,11 +1082,57 @@
       "fontRemoveFailed": "Die Schrift konnte nicht entfernt werden.",
       "packDownloadFailed": "Das Vorlagenpaket konnte nicht heruntergeladen werden.",
       "packsDownloadFailed": "Die Vorlagenpakete konnten nicht heruntergeladen werden.",
-      "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden."
+      "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden.",
+      "templateDownloadFailed": "Die Vorlage konnte nicht heruntergeladen werden.",
+      "packsRefreshFailed": "Es konnte nicht nach neuen Paketen gesucht werden."
     },
     "typstFonts": {
       "heading": "Schriften für Typst",
       "tooltip": "Kostenlose Schriften, die viele Typst-Vorlagen verlangen. Nach dem Herunterladen kann jedes Typst-Projekt sie nutzen, außer einem Projekt, das Systemschriften abschaltet."
+    },
+    "packs": {
+      "browse": "Durchsuchen",
+      "back": "Zurück zu den Paketen",
+      "count_one": "{{count}} Vorlage",
+      "count_other": "{{count}} Vorlagen",
+      "installedCount": "{{installed}} von {{total}} installiert",
+      "downloadPack": "Paket herunterladen",
+      "refresh": "Nach neuen Paketen suchen",
+      "searchPacks": "Pakete durchsuchen",
+      "searchTemplates": "Vorlagen durchsuchen",
+      "noPacks": "Keine passenden Pakete",
+      "noTemplates": "Keine passenden Vorlagen",
+      "loading": "Vorlagen werden geladen",
+      "loadFailed": "Dieses Paket konnte nicht geladen werden.",
+      "retry": "Erneut versuchen",
+      "installed": "Installiert",
+      "engineFilter": "Engine",
+      "kindFilter": "Art",
+      "languageFilter": "Sprache",
+      "allEngines": "Alle Engines",
+      "allKinds": "Alle Arten",
+      "allLanguages": "Alle Sprachen",
+      "groups": {
+        "curated": "Kuratiert",
+        "community": "Community",
+        "typst": "Typst",
+        "university": "Universitäten"
+      },
+      "preview": {
+        "image": "Erste Seite von {{name}}",
+        "previous": "Vorherige Vorlage",
+        "next": "Nächste Vorlage",
+        "engine": "Engine",
+        "license": "Lizenz",
+        "kind": "Art",
+        "languages": "Sprachen",
+        "country": "Land",
+        "institution": "Einrichtung",
+        "originalSource": "Originalquelle",
+        "getTemplate": "Diese Vorlage holen",
+        "useTemplate": "Diese Vorlage verwenden",
+        "getAndCreate": "Holen und Projekt erstellen"
+      }
     }
   },
   "engine": {

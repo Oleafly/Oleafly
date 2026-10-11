@@ -1077,11 +1077,56 @@
       "fontRemoveFailed": "无法移除字体。",
       "packDownloadFailed": "无法下载模板包。",
       "packsDownloadFailed": "无法下载这些模板包。",
-      "packRemoveFailed": "无法移除模板包。"
+      "packRemoveFailed": "无法移除模板包。",
+      "templateDownloadFailed": "无法下载模板。",
+      "packsRefreshFailed": "无法检查新的模板包。"
     },
     "typstFonts": {
       "heading": "Typst 字体",
       "tooltip": "许多 Typst 模板需要的免费字体。下载后，除关闭了系统字体的项目外，所有 Typst 项目都能使用。"
+    },
+    "packs": {
+      "browse": "浏览",
+      "back": "返回模板包",
+      "count_other": "{{count}} 个模板",
+      "installedCount": "已安装 {{installed}}/{{total}}",
+      "downloadPack": "下载模板包",
+      "refresh": "检查新的模板包",
+      "searchPacks": "搜索模板包",
+      "searchTemplates": "搜索模板",
+      "noPacks": "没有匹配的模板包",
+      "noTemplates": "没有匹配的模板",
+      "loading": "正在加载模板",
+      "loadFailed": "无法加载此模板包。",
+      "retry": "重试",
+      "installed": "已安装",
+      "engineFilter": "引擎",
+      "kindFilter": "类型",
+      "languageFilter": "语言",
+      "allEngines": "所有引擎",
+      "allKinds": "所有类型",
+      "allLanguages": "所有语言",
+      "groups": {
+        "curated": "精选",
+        "community": "社区",
+        "typst": "Typst",
+        "university": "高校"
+      },
+      "preview": {
+        "image": "{{name}} 的第一页",
+        "previous": "上一个模板",
+        "next": "下一个模板",
+        "engine": "引擎",
+        "license": "许可证",
+        "kind": "类型",
+        "languages": "语言",
+        "country": "国家或地区",
+        "institution": "机构",
+        "originalSource": "原始来源",
+        "getTemplate": "获取此模板",
+        "useTemplate": "使用此模板",
+        "getAndCreate": "获取并创建项目"
+      }
     }
   },
   "engine": {

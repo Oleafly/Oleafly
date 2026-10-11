@@ -1092,11 +1092,59 @@
       "fontRemoveFailed": "Не вдалося видалити шрифт.",
       "packDownloadFailed": "Не вдалося завантажити набір шаблонів.",
       "packsDownloadFailed": "Не вдалося завантажити набори шаблонів.",
-      "packRemoveFailed": "Не вдалося видалити набір шаблонів."
+      "packRemoveFailed": "Не вдалося видалити набір шаблонів.",
+      "templateDownloadFailed": "Не вдалося завантажити шаблон.",
+      "packsRefreshFailed": "Не вдалося перевірити нові набори."
     },
     "typstFonts": {
       "heading": "Шрифти для Typst",
       "tooltip": "Безкоштовні шрифти, яких потребує багато шаблонів Typst. Після завантаження їх може використовувати будь-який проєкт Typst, окрім проєкту, у якому вимкнено системні шрифти."
+    },
+    "packs": {
+      "browse": "Переглянути",
+      "back": "До наборів",
+      "count_one": "{{count}} шаблон",
+      "count_few": "{{count}} шаблони",
+      "count_many": "{{count}} шаблонів",
+      "count_other": "{{count}} шаблону",
+      "installedCount": "Встановлено {{installed}} з {{total}}",
+      "downloadPack": "Завантажити набір",
+      "refresh": "Перевірити нові набори",
+      "searchPacks": "Пошук наборів",
+      "searchTemplates": "Пошук шаблонів",
+      "noPacks": "Немає відповідних наборів",
+      "noTemplates": "Немає відповідних шаблонів",
+      "loading": "Завантаження шаблонів",
+      "loadFailed": "Не вдалося завантажити цей набір.",
+      "retry": "Спробувати ще раз",
+      "installed": "Встановлено",
+      "engineFilter": "Рушій",
+      "kindFilter": "Тип",
+      "languageFilter": "Мова",
+      "allEngines": "Усі рушії",
+      "allKinds": "Усі типи",
+      "allLanguages": "Усі мови",
+      "groups": {
+        "curated": "Добірка",
+        "community": "Спільнота",
+        "typst": "Typst",
+        "university": "Університети"
+      },
+      "preview": {
+        "image": "Перша сторінка шаблону {{name}}",
+        "previous": "Попередній шаблон",
+        "next": "Наступний шаблон",
+        "engine": "Рушій",
+        "license": "Ліцензія",
+        "kind": "Тип",
+        "languages": "Мови",
+        "country": "Країна",
+        "institution": "Заклад",
+        "originalSource": "Першоджерело",
+        "getTemplate": "Отримати шаблон",
+        "useTemplate": "Використати шаблон",
+        "getAndCreate": "Отримати й створити проєкт"
+      }
     }
   },
   "engine": {

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { ChevronDown, ChevronRight, Download, FileText, Info, Sparkles, Trash2, Type } from "lucide-react";
+import { PackList } from "@/components/settings/template-packs/PackList";
+import { PackView } from "@/components/settings/template-packs/PackView";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
@@ -16,25 +18,22 @@ import {
   deleteCustomTemplate,
   downloadAllFonts,
   installFontComponent,
-  installTemplatePack,
   listFontComponents,
-  listTemplatePacks,
   listTemplates,
-  refreshPackCatalog,
   removeFontComponent,
-  removeTemplatePack,
   templatePreview,
   withAssetProgress,
   type ComponentInfo,
-  type PackInfo,
   type TemplateInfo,
 } from "@/lib/tauri";
 import { Spinner } from "@/components/ui/spinner";
-import { SECTION_HEADING_CLASS, SectionHeading } from "@/components/ui/section-heading";
+import { SectionHeading } from "@/components/ui/section-heading";
 import { CheckBadge } from "@/components/ui/check-badge";
 import { isTypstFontPackId, type TypstFontPackId } from "@/lib/typst-font-packs";
 import { useFilesStore } from "@/store/files";
 import { useFontPacksStore } from "@/store/font-packs";
+import { loadPacks, refreshPackCatalogInBackground } from "@/store/template-packs";
+import { takeTemplateLink, useTemplateLinkStore, type PendingTemplateLink } from "@/store/template-link";
 
 function afterTypstPackChange(id: string) {
   if (!isTypstFontPackId(id)) return;
@@ -54,25 +53,17 @@ function isFontPackId(id: string): id is FontPackId {
 interface DownloadActivity {
   fontBusyId: string | null;
   fontProgress: string;
-  packBusyId: string | null;
-  packProgress: string;
 }
 
 const useDownloadActivity = create<DownloadActivity>(() => ({
   fontBusyId: null,
   fontProgress: "",
-  packBusyId: null,
-  packProgress: "",
 }));
 
 const setBusyId = (fontBusyId: string | null) =>
   useDownloadActivity.setState({ fontBusyId });
 const setProgress = (fontProgress: string) =>
   useDownloadActivity.setState({ fontProgress });
-const setPackBusyId = (packBusyId: string | null) =>
-  useDownloadActivity.setState({ packBusyId });
-const setPackProgress = (packProgress: string) =>
-  useDownloadActivity.setState({ packProgress });
 
 export function DownloadsSection() {
   const { t } = useTranslation(["common", "settings"]);
@@ -84,6 +75,32 @@ export function DownloadsSection() {
   const [tab, setTab] = useState<"fonts" | "templates" | "dictionaries">(
     "fonts",
   );
+  const [openPackId, setOpenPackId] = useState<string | null>(null);
+  const [link, setLink] = useState<PendingTemplateLink | null>(null);
+  const [packSearch, setPackSearch] = useState<{ text: string; serial: number } | null>(null);
+  const openPack = useCallback((packId: string) => {
+    setLink(null);
+    setPackSearch(null);
+    setOpenPackId(packId);
+  }, []);
+  const closePack = useCallback(() => {
+    setLink(null);
+    setOpenPackId(null);
+  }, []);
+  const missingPack = useCallback((packId: string) => {
+    setLink(null);
+    setOpenPackId(null);
+    setPackSearch((current) => ({ text: packId, serial: (current?.serial ?? 0) + 1 }));
+  }, []);
+  const pendingLink = useTemplateLinkStore((s) => s.pending);
+  useEffect(() => {
+    if (!pendingLink) return;
+    const taken = takeTemplateLink();
+    if (!taken) return;
+    setTab("templates");
+    setLink(taken);
+    setOpenPackId(taken.packId);
+  }, [pendingLink]);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiTemplates, setAiTemplates] = useState<TemplateInfo[]>([]);
   const [aiPreviews, setAiPreviews] = useState<Record<string, string>>({});
@@ -240,106 +257,9 @@ export function DownloadsSection() {
   const typstFonts = components.filter((c) => c.kind === "typst-font");
   const allInstalled = templateFonts.length > 0 && templateFonts.every((c) => c.installed);
 
-  const [packs, setPacks] = useState<PackInfo[]>([]);
-  const packBusyId = useDownloadActivity((s) => s.packBusyId);
-  const packProgress = useDownloadActivity((s) => s.packProgress);
-
-  const refreshPacks = useCallback(async () => {
-    try {
-      await refreshPackCatalog().catch(() => {});
-      setPacks(await listTemplatePacks());
-    } catch (e) {
-      void logError("list template packs", e);
-    }
+  useEffect(() => {
+    void loadPacks().then(() => refreshPackCatalogInBackground());
   }, []);
-
-  useEffect(() => {
-    void refreshPacks();
-  }, [refreshPacks]);
-
-  const inheritedPackWork = useRef(packBusyId !== null);
-  useEffect(() => {
-    if (packBusyId !== null || !inheritedPackWork.current) return;
-    inheritedPackWork.current = false;
-    void refreshPacks();
-  }, [packBusyId, refreshPacks]);
-
-  const runPackInstall = async (id: string) => {
-    try {
-      await withAssetProgress(
-        {
-          component: (p) => {
-            if (p.component !== id) return;
-            setPackProgress(
-              t(($) => $.settings.downloads.packProgress, {
-                index: formatNumber(p.index),
-                total: formatNumber(p.total),
-              }),
-            );
-          },
-        },
-        () => installTemplatePack(id),
-      );
-      await refreshPacks();
-    } finally {
-      setPackProgress("");
-    }
-  };
-
-  const installPack = async (id: string) => {
-    if (useDownloadActivity.getState().packBusyId !== null) return;
-    setPackBusyId(id);
-    try {
-      await runPackInstall(id);
-    } catch (e) {
-      notifyError(
-        "download the template pack",
-        e,
-        t(($) => $.settings.downloads.errors.packDownloadFailed),
-      );
-    } finally {
-      setPackBusyId(null);
-    }
-  };
-
-  const downloadAllPacks = async () => {
-    if (useDownloadActivity.getState().packBusyId !== null) return;
-    setPackBusyId(ALL);
-    try {
-      for (const p of packs) {
-        if (p.installed) continue;
-        await runPackInstall(p.id);
-      }
-    } catch (e) {
-      notifyError(
-        "download the template packs",
-        e,
-        t(($) => $.settings.downloads.errors.packsDownloadFailed),
-      );
-    } finally {
-      setPackBusyId(null);
-    }
-  };
-
-  const removePack = async (id: string) => {
-    if (useDownloadActivity.getState().packBusyId !== null) return;
-    setPackBusyId(id);
-    try {
-      await removeTemplatePack(id);
-      await refreshPacks();
-    } catch (e) {
-      notifyError(
-        "remove the template pack",
-        e,
-        t(($) => $.settings.downloads.errors.packRemoveFailed),
-      );
-    } finally {
-      setPackBusyId(null);
-    }
-  };
-
-  const anyPackBusy = packBusyId !== null;
-  const allPacksInstalled = packs.length > 0 && packs.every((p) => p.installed);
 
   return (
     <Tabs
@@ -420,84 +340,22 @@ export function DownloadsSection() {
       </TabsContent>
 
       <TabsContent value="templates" className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <h3 ref={templatesHeadingRef} className={SECTION_HEADING_CLASS}>
-            {t(($) => $.settings.downloads.templates.heading)}
-          </h3>
-          <Tooltip
-            wide
-            side="right"
-            label={t(($) => $.settings.downloads.templates.tooltip)}
-          >
-            <Info className="size-3.5 cursor-help text-muted-foreground/60 hover:text-muted-foreground" />
-          </Tooltip>
-        </div>
-        <button type="button"
-          onClick={() => void downloadAllPacks()}
-          disabled={anyPackBusy || allPacksInstalled}
-          className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-        >
-          {packBusyId === ALL ? <Spinner size="sm" /> : <Download className="size-3.5" />}
-          {allPacksInstalled
-            ? t(($) => $.settings.downloads.actions.allDownloaded)
-            : t(($) => $.settings.downloads.actions.downloadAll)}
-        </button>
-      </div>
-
-      <div className="overflow-hidden rounded-lg border">
-        {packs.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-muted-foreground">
-            {t(($) => $.settings.downloads.templates.empty)}
-          </p>
-        ) : (
-          packs.map((p) => {
-            const busy = packBusyId === p.id || (packBusyId === ALL && !p.installed);
-            return (
-              <div
-                key={p.id}
-                data-testid={`pack-row-${p.id}`}
-                className="flex items-center gap-3 border-b px-3 py-2.5 last:border-b-0"
-              >
-                <FileText className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{p.label}</span>
-                    {p.installed && <CheckBadge tone="success" />}
-                    {p.approx_bytes > 0 && (
-                      <span className="text-[0.6875rem] text-muted-foreground">{formatDownloadSize(p.approx_bytes)}</span>
-                    )}
-                  </div>
-                  <p className="truncate text-[0.6875rem] text-muted-foreground">
-                    {busy && packProgress ? packProgress : p.description}
-                    {!busy && p.license_summary ? ` · ${p.license_summary}` : ""}
-                  </p>
-                </div>
-                {p.installed ? (
-                  <button type="button"
-                    data-testid={`pack-remove-${p.id}`}
-                    onClick={() => void removePack(p.id)}
-                    disabled={anyPackBusy}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-                  >
-                    <Trash2 className="size-3.5" /> {t(($) => $.common.actions.remove)}
-                  </button>
-                ) : (
-                  <button type="button"
-                    data-testid={`pack-install-${p.id}`}
-                    onClick={() => void installPack(p.id)}
-                    disabled={anyPackBusy}
-                    className="inline-flex w-24 items-center justify-center gap-1.5 rounded-md bg-primary px-2.5 py-1.5 text-xs text-white hover:opacity-90 disabled:opacity-60"
-                  >
-                    {busy ? <Spinner size="sm" /> : <Download className="size-3.5" />}
-                    {busy ? "" : t(($) => $.settings.downloads.actions.download)}
-                  </button>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+      {openPackId !== null ? (
+        <PackView
+          key={link ? `${openPackId}:${link.serial}` : openPackId}
+          packId={openPackId}
+          link={link?.packId === openPackId ? link : null}
+          onBack={closePack}
+          onMissing={missingPack}
+        />
+      ) : (
+      <>
+      <PackList
+        key={packSearch?.serial ?? 0}
+        initialQuery={packSearch?.text}
+        onOpenPack={openPack}
+        headingRef={templatesHeadingRef}
+      />
 
       <div className="overflow-hidden rounded-lg border bg-card">
         <button
@@ -561,6 +419,8 @@ export function DownloadsSection() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       <ConfirmationDialog
         open={aiConfirm !== null}

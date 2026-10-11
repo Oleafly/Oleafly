@@ -1082,11 +1082,57 @@
       "fontRemoveFailed": "Kunne ikke fjerne skrifttypen.",
       "packDownloadFailed": "Kunne ikke hente skabelonpakken.",
       "packsDownloadFailed": "Kunne ikke hente skabelonpakkerne.",
-      "packRemoveFailed": "Kunne ikke fjerne skabelonpakken."
+      "packRemoveFailed": "Kunne ikke fjerne skabelonpakken.",
+      "templateDownloadFailed": "Kunne ikke hente skabelonen.",
+      "packsRefreshFailed": "Kunne ikke se efter nye pakker."
     },
     "typstFonts": {
       "heading": "Skrifttyper til Typst",
       "tooltip": "Gratis skrifttyper, som mange Typst-skabeloner beder om. Når de er hentet, kan alle Typst-projekter bruge dem, undtagen et projekt, der slår systemets skrifttyper fra."
+    },
+    "packs": {
+      "browse": "Gennemse",
+      "back": "Tilbage til pakker",
+      "count_one": "{{count}} skabelon",
+      "count_other": "{{count}} skabeloner",
+      "installedCount": "{{installed}} af {{total}} installeret",
+      "downloadPack": "Hent pakke",
+      "refresh": "Se efter nye pakker",
+      "searchPacks": "Søg i pakker",
+      "searchTemplates": "Søg i skabeloner",
+      "noPacks": "Ingen pakker passer",
+      "noTemplates": "Ingen skabeloner passer",
+      "loading": "Indlæser skabeloner",
+      "loadFailed": "Kunne ikke indlæse pakken.",
+      "retry": "Prøv igen",
+      "installed": "Installeret",
+      "engineFilter": "Motor",
+      "kindFilter": "Type",
+      "languageFilter": "Sprog",
+      "allEngines": "Alle motorer",
+      "allKinds": "Alle typer",
+      "allLanguages": "Alle sprog",
+      "groups": {
+        "curated": "Udvalgte",
+        "community": "Fællesskab",
+        "typst": "Typst",
+        "university": "Universiteter"
+      },
+      "preview": {
+        "image": "Første side af {{name}}",
+        "previous": "Forrige skabelon",
+        "next": "Næste skabelon",
+        "engine": "Motor",
+        "license": "Licens",
+        "kind": "Type",
+        "languages": "Sprog",
+        "country": "Land",
+        "institution": "Institution",
+        "originalSource": "Oprindelig kilde",
+        "getTemplate": "Hent skabelonen",
+        "useTemplate": "Brug skabelonen",
+        "getAndCreate": "Hent og opret projekt"
+      }
     }
   },
   "engine": {

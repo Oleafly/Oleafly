@@ -1082,11 +1082,57 @@
       "fontRemoveFailed": "Det gick inte att ta bort typsnittet.",
       "packDownloadFailed": "Det gick inte att ladda ner mallpaketet.",
       "packsDownloadFailed": "Det gick inte att ladda ner mallpaketen.",
-      "packRemoveFailed": "Det gick inte att ta bort mallpaketet."
+      "packRemoveFailed": "Det gick inte att ta bort mallpaketet.",
+      "templateDownloadFailed": "Det gick inte att ladda ner mallen.",
+      "packsRefreshFailed": "Det gick inte att söka efter nya paket."
     },
     "typstFonts": {
       "heading": "Typsnitt för Typst",
       "tooltip": "Kostnadsfria typsnitt som många Typst-mallar ber om. När de är nedladdade kan alla Typst-projekt använda dem, utom ett projekt som stänger av systemtypsnitt."
+    },
+    "packs": {
+      "browse": "Bläddra",
+      "back": "Tillbaka till paketen",
+      "count_one": "{{count}} mall",
+      "count_other": "{{count}} mallar",
+      "installedCount": "{{installed}} av {{total}} installerade",
+      "downloadPack": "Ladda ner paket",
+      "refresh": "Sök efter nya paket",
+      "searchPacks": "Sök paket",
+      "searchTemplates": "Sök mallar",
+      "noPacks": "Inga paket matchar",
+      "noTemplates": "Inga mallar matchar",
+      "loading": "Läser in mallar",
+      "loadFailed": "Det gick inte att läsa in paketet.",
+      "retry": "Försök igen",
+      "installed": "Installerad",
+      "engineFilter": "Motor",
+      "kindFilter": "Typ",
+      "languageFilter": "Språk",
+      "allEngines": "Alla motorer",
+      "allKinds": "Alla typer",
+      "allLanguages": "Alla språk",
+      "groups": {
+        "curated": "Utvalda",
+        "community": "Gemenskap",
+        "typst": "Typst",
+        "university": "Universitet"
+      },
+      "preview": {
+        "image": "Första sidan av {{name}}",
+        "previous": "Föregående mall",
+        "next": "Nästa mall",
+        "engine": "Motor",
+        "license": "Licens",
+        "kind": "Typ",
+        "languages": "Språk",
+        "country": "Land",
+        "institution": "Lärosäte",
+        "originalSource": "Ursprunglig källa",
+        "getTemplate": "Hämta mallen",
+        "useTemplate": "Använd mallen",
+        "getAndCreate": "Hämta och skapa projekt"
+      }
     }
   },
   "engine": {

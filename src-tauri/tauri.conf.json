@@ -87,6 +87,11 @@
     }
   },
   "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["oleafly"]
+      }
+    },
     "updater": {
       "endpoints": [
         "https://github.com/Oleafly/Oleafly/releases/latest/download/latest.json"
