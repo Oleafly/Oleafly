@@ -7,10 +7,10 @@ use oleafly_core::typst_toolchain::{
     TypstCapabilities, TypstDiagnosticFormat,
 };
 use oleafly_core::{
-    image_failure_evidence, image_failure_notes, place_image_findings, plain_path, slash_path,
-    source_tex_flavor, walk_source_tree, Engine, EngineScratch, EngineScratchBases, Error,
-    ErrorKind, ImageFinding, PreparedBuild, Result, TexFlavor, Utf8StreamDecoder, Workspace,
-    ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
+    bibtex_search_entry, bibtex_search_environment, image_failure_evidence, image_failure_notes,
+    place_image_findings, plain_path, slash_path, source_tex_flavor, walk_source_tree, Engine,
+    EngineScratch, EngineScratchBases, Error, ErrorKind, ImageFinding, PreparedBuild, Result,
+    TexFlavor, Utf8StreamDecoder, Workspace, ENGINE_TEMP_DIR, TEMP_DIRECTORY_VARIABLES,
 };
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -447,6 +447,7 @@ impl NativeCompiler {
                 .chain(resource_variable)
                 .collect(),
             (None, Engine::Typst) => self.typst.environment(),
+            (None, Engine::Latexmk) => latexmk_environment(build),
             (None, _) => Vec::new(),
         };
         Ok(BuildCommand {
@@ -757,6 +758,17 @@ fn tectonic_arguments(build: &PreparedBuild, options: BuildOptions) -> Vec<OsStr
         build.source_path().as_os_str().to_owned(),
     ]);
     arguments
+}
+
+fn latexmk_environment(build: &PreparedBuild) -> Vec<(&'static str, OsString)> {
+    bibtex_search_entry(build.compile_directory(), build.build_directory())
+        .map(|entry| {
+            bibtex_search_environment(&entry)
+                .into_iter()
+                .map(|(name, value)| (name, value.into()))
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn latexmk_arguments(build: &PreparedBuild, options: BuildOptions) -> Result<Vec<OsString>> {
@@ -1368,6 +1380,47 @@ mod tests {
             std::fs::write(&source, content).unwrap();
             assert_eq!(detect_latexmk_flavor(&source).unwrap(), expected);
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn latexmk_finds_bibliographies_in_a_folder_named_with_a_colon() {
+        let tools_directory = TempDir::new().unwrap();
+        let latexmk = tools_directory.path().join(executable_name("latexmk"));
+        std::fs::write(&latexmk, "tool").unwrap();
+        let compiler = NativeCompiler::new(BuildTools {
+            latexmk: Some(latexmk),
+            ..BuildTools::default()
+        });
+        let parent = TempDir::new().unwrap();
+        let search_paths = |folder: &str| -> BTreeMap<&'static str, String> {
+            let project = parent.path().join(folder);
+            std::fs::create_dir_all(&project).unwrap();
+            std::fs::write(project.join("main.tex"), "document").unwrap();
+            let workspace = Workspace::from_manifest(
+                &project,
+                ProjectManifest {
+                    name: folder.into(),
+                    main_doc: "main.tex".into(),
+                    engine: Engine::Latexmk.manifest_name().into(),
+                    ..ProjectManifest::default()
+                },
+            )
+            .unwrap();
+            let build = workspace.prepare_build().unwrap();
+            compiler
+                .command(&build, BuildOptions::default())
+                .unwrap()
+                .environment
+                .into_iter()
+                .map(|(name, value)| (name, value.to_string_lossy().into_owned()))
+                .collect()
+        };
+        let colon = search_paths("Thesis 2024:25");
+        for name in oleafly_core::BIBTEX_SEARCH_VARIABLES {
+            assert!(colon[name].starts_with("../..:"), "{name} {colon:?}");
+        }
+        assert!(search_paths("Thesis 2024-25").is_empty());
     }
 
     #[test]

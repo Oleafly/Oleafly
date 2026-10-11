@@ -19,7 +19,7 @@ export interface TypstOptionsUpdate {
   variants?: Record<string, TypstInputs>;
 }
 
-export type TypstFontSourceKind = "project" | "system" | "embedded";
+export type TypstFontSourceKind = "project" | "pack" | "system" | "embedded";
 
 export interface TypstFontSource {
   kind: TypstFontSourceKind;

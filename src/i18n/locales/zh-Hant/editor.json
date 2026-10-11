@@ -358,7 +358,11 @@
     "sourceExcerpt": "原始碼第 {{line}} 行",
     "summaryErrors_other": "{{count}} 個錯誤",
     "summaryWarnings_other": "{{count}} 個警告",
-    "summaryReferences_other": "{{count}} 個未解析的參照"
+    "summaryReferences_other": "{{count}} 個未解析的參照",
+    "fontPack": "{{family}} 在免費字型套件「{{pack}}」中。",
+    "fontPackAction": "下載並編譯",
+    "fontPackDownloading": "正在下載…",
+    "fontPackFailed": "無法下載字型套件。請檢查網路連線後再試一次。"
   },
   "history": {
     "untitledCommit": "未命名的提交",
@@ -1441,7 +1445,8 @@
     "sources": {
       "project": "專案",
       "system": "系統",
-      "embedded": "內建"
+      "embedded": "內建",
+      "pack": "字型套件"
     },
     "fontsFolder": "若要在此專案中使用某個字型，請將它的檔案加入專案的 fonts 資料夾。"
   },

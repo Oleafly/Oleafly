@@ -1021,6 +1021,26 @@
       "ptserif": {
         "description": "精緻的過渡式襯線字型，很適合學術與商務文件。",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans 與 Serif CJK、Fandol 及霞鶩文楷。它們也能代替宋體、黑體和楷體。",
+        "label": "中文、日文和韓文"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 與 7 Free，以及 Noto Color Emoji。",
+        "label": "圖示與表情符號"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono、IBM Plex Mono、Inconsolata、Fira Mono、Cascadia Code 和 Source Code Pro。",
+        "label": "程式碼"
+      },
+      "typst-sans": {
+        "description": "Source Sans、Source Serif、Noto、Fira、Roboto、Inter、Open Sans 和 IBM Plex。",
+        "label": "現代無襯線與襯線"
+      },
+      "typst-text": {
+        "description": "TeX Gyre、Latin Modern、CMU、Liberation、DejaVu、Libertine、Libertinus 以及 New Computer Modern Sans 與 Mono。",
+        "label": "經典內文"
       }
     },
     "fonts": {
@@ -1058,6 +1078,10 @@
       "packDownloadFailed": "無法下載範本包。",
       "packsDownloadFailed": "無法下載這些範本包。",
       "packRemoveFailed": "無法移除範本包。"
+    },
+    "typstFonts": {
+      "heading": "Typst 字型",
+      "tooltip": "許多 Typst 範本需要的免費字型。下載後，除了關閉系統字型的專案以外，所有 Typst 專案都能使用。"
     }
   },
   "engine": {

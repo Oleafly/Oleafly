@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Typst font packs. Settings > Downloads has five free packs for Typst:
+  Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
+  icons and emoji. Once a pack is downloaded, every Typst project can use its
+  fonts, unless the project turns system fonts off. When a compile warns about
+  a missing font that a pack has, the warning offers to download it and compile
+  again. Every file is checked against its published checksum. Tested against
+  all 838 templates on Typst Universe: 238 of the 505 that were missing fonts
+  now have none missing. Chinese text in templates that ask for fonts that
+  can't be shared, such as SimSun, now falls back to the pack's CJK fonts.
 - Settings > Appearance > Editor has a Cursor height option. Text keeps the
   cursor as tall as the letters, and Line stretches it to the full height of
   the line.
@@ -53,6 +62,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the PDF or the file tree: the editor jumped to the old cursor as it took
   focus, after it had already noted where you clicked. It now takes focus
   without moving, and the click just places the cursor.
+- A latexmk project in a folder with a colon in its name compiled without its
+  bibliography. macOS stores a slash typed in Finder as a colon, so a folder
+  named "Thesis 2024/25" was enough. BibTeX stopped with "I couldn't open
+  database file" and every citation stayed undefined. It now finds the `.bib`
+  and `.bst` files, and so does the `oleaflyc` command line tool.
 
 ## [0.4.6] - 2026-10-09
 

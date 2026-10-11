@@ -4,6 +4,7 @@ mod detect;
 mod engine_temp;
 mod error;
 mod image_check;
+mod latexmk_env;
 pub mod locking;
 mod manifest;
 mod tex_flavor;
@@ -34,6 +35,9 @@ pub use image_check::{
     diagnose_image_failures, image_failure_evidence, image_failure_notes, image_findings_lead,
     place_image_findings, BrokenImage, ImageContent, ImageEvidence, ImageFinding, ImageFormat,
     ImageProblem, ASK_AI_ERROR_BUDGET,
+};
+pub use latexmk_env::{
+    bibtex_search_entry, bibtex_search_environment, breaks_tex_search_path, BIBTEX_SEARCH_VARIABLES,
 };
 pub use manifest::valid_typst_input_key;
 pub use manifest::{

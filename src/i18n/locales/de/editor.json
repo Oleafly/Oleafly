@@ -365,7 +365,11 @@
     "summaryWarnings_one": "{{count}} Warnung",
     "summaryWarnings_other": "{{count}} Warnungen",
     "summaryReferences_one": "{{count}} nicht aufgelöster Verweis",
-    "summaryReferences_other": "{{count}} nicht aufgelöste Verweise"
+    "summaryReferences_other": "{{count}} nicht aufgelöste Verweise",
+    "fontPack": "{{family}} ist im kostenlosen Schriftpaket {{pack}} enthalten.",
+    "fontPackAction": "Herunterladen und kompilieren",
+    "fontPackDownloading": "Wird heruntergeladen…",
+    "fontPackFailed": "Das Schriftpaket konnte nicht heruntergeladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
   },
   "history": {
     "untitledCommit": "Commit ohne Titel",
@@ -1462,7 +1466,8 @@
     "sources": {
       "project": "Projekt",
       "system": "System",
-      "embedded": "Eingebaut"
+      "embedded": "Eingebaut",
+      "pack": "Schriftpaket"
     },
     "fontsFolder": "Um eine Schrift in diesem Projekt zu nutzen, legen Sie ihre Datei in den Ordner fonts des Projekts."
   },

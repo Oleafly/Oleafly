@@ -99,7 +99,7 @@ const typstProvider: DocumentSettingsProvider = {
     equationNumbering: ["none", "(1)", "(1.1)", "1"],
   },
   fontField: "font",
-  fontSources: ["project", "system", "embedded"],
+  fontSources: ["project", "pack", "system", "embedded"],
   description: (file) => i18n.t(($) => $.editor.typstSettings.description, { file }),
   noMainFile: () => i18n.t(($) => $.editor.typstSettings.noMainFile),
   async read(text) {

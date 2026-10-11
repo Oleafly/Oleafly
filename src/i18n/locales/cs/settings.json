@@ -1036,6 +1036,26 @@
       "ptserif": {
         "description": "Vytříbené přechodové patkové písmo, dobrá volba pro akademické a manažerské dokumenty.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans a Serif CJK, Fandol a LXGW WenKai. Zastoupí také SimSun, SimHei a KaiTi.",
+        "label": "Čínština, japonština a korejština"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 a 7 Free a Noto Color Emoji.",
+        "label": "Ikony a emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code a Source Code Pro.",
+        "label": "Kód"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans a IBM Plex.",
+        "label": "Moderní bezpatková a patková písma"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus a New Computer Modern Sans a Mono.",
+        "label": "Klasická textová písma"
       }
     },
     "fonts": {
@@ -1073,6 +1093,10 @@
       "packDownloadFailed": "Balíček šablon se nepodařilo stáhnout.",
       "packsDownloadFailed": "Balíčky šablon se nepodařilo stáhnout.",
       "packRemoveFailed": "Balíček šablon se nepodařilo odebrat."
+    },
+    "typstFonts": {
+      "heading": "Písma pro Typst",
+      "tooltip": "Bezplatná písma, která vyžaduje mnoho šablon Typst. Po stažení je může použít každý projekt Typst, kromě projektu, který vypíná systémová písma."
     }
   },
   "engine": {

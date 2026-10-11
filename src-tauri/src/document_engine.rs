@@ -190,6 +190,14 @@ impl EngineEnvironment {
     pub(crate) fn variables(&self) -> &[(String, String)] {
         &self.variables
     }
+
+    fn set_bibtex_search_entry(&mut self, entry: &str) {
+        self.variables
+            .retain(|(name, _)| !oleafly_core::BIBTEX_SEARCH_VARIABLES.contains(&name.as_str()));
+        for (name, value) in oleafly_core::bibtex_search_environment(entry) {
+            self.variables.push((name.to_owned(), value));
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -776,6 +784,44 @@ fn latexmk_invocation(
     Ok((args, environment))
 }
 
+#[cfg(unix)]
+const BIBTEX_PROJECT_LINK: &str = "oleafly-project";
+
+fn with_bibtex_search_path(mut spec: EngineCompileSpec) -> EngineCompileSpec {
+    let working_dir = &spec.working_dir;
+    let out_dir = &spec.artifacts.output_dir;
+    if !oleafly_core::breaks_tex_search_path(working_dir) {
+        return spec;
+    }
+    let entry = oleafly_core::bibtex_search_entry(working_dir, out_dir).or_else(|| {
+        (!out_dir.starts_with(working_dir))
+            .then(|| link_for_bibtex(out_dir, working_dir))
+            .flatten()
+    });
+    if let Some(entry) = entry {
+        spec.environment.set_bibtex_search_entry(&entry);
+    }
+    spec
+}
+
+#[cfg(unix)]
+fn link_for_bibtex(out_dir: &Path, target: &Path) -> Option<String> {
+    let link = out_dir.join(BIBTEX_PROJECT_LINK);
+    if std::fs::read_link(&link).ok().as_deref() != Some(target) {
+        if std::fs::symlink_metadata(&link).is_ok() {
+            std::fs::remove_file(&link).ok()?;
+        }
+        std::fs::create_dir_all(out_dir).ok()?;
+        std::os::unix::fs::symlink(target, &link).ok()?;
+    }
+    Some(BIBTEX_PROJECT_LINK.to_owned())
+}
+
+#[cfg(not(unix))]
+fn link_for_bibtex(_out_dir: &Path, _target: &Path) -> Option<String> {
+    None
+}
+
 impl DocumentEngine for LatexmkEngine {
     fn id(&self) -> DocumentEngineId {
         DocumentEngineId::Latexmk
@@ -876,14 +922,14 @@ impl DocumentEngine for LatexmkEngine {
         if latexmk_binary_changed(out_dir, &latexmk) {
             args.insert(0, "-gg".into());
         }
-        Ok(EngineCompileSpec {
+        Ok(with_bibtex_search_path(EngineCompileSpec {
             executable: EngineExecutable::ExternalPath(latexmk),
             args,
             input: EngineInput::Direct(input_path),
             artifacts,
             working_dir: project_dir.to_owned(),
             environment,
-        })
+        }))
     }
 
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
@@ -3357,7 +3403,7 @@ fn run_latexmk_from_compile_directory(
     };
     *last = from_compile_dir;
     spec.working_dir = compile_dir.to_owned();
-    Ok(spec)
+    Ok(with_bibtex_search_path(spec))
 }
 
 pub(crate) fn search_compile_directory_first(
@@ -7154,6 +7200,73 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
                 "{refusal}"
             );
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn bibtex_finds_the_project_when_its_folder_name_has_a_colon() {
+        let home = tempfile::tempdir().unwrap();
+        let project = home.path().join("Thesis 2024:25");
+        let paper = project.join("paper");
+        std::fs::create_dir_all(&paper).unwrap();
+        let first_entries = |spec: &EngineCompileSpec| -> Vec<(String, String)> {
+            spec.environment
+                .variables()
+                .iter()
+                .filter(|(name, _)| oleafly_core::BIBTEX_SEARCH_VARIABLES.contains(&name.as_str()))
+                .map(|(name, value)| (name.clone(), value.split(':').next().unwrap().into()))
+                .collect()
+        };
+        let expected = |entry: &str| {
+            vec![
+                ("BIBINPUTS".to_string(), entry.to_string()),
+                ("BSTINPUTS".to_string(), entry.to_string()),
+            ]
+        };
+
+        let in_tree = project.join(".oleafly").join("build");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &in_tree,
+            &project.join("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions::default(),
+            "texlive",
+        )
+        .unwrap();
+        let library = with_bibtex_search_path(EngineCompileSpec {
+            executable: EngineExecutable::ExternalPath(PathBuf::from("latexmk")),
+            args,
+            input: EngineInput::Direct(project.join("main.tex")),
+            artifacts: LATEX_ENGINE.artifacts(
+                &in_tree,
+                CompileTarget::Main {
+                    main_document: "main.tex",
+                },
+            ),
+            working_dir: project.clone(),
+            environment,
+        });
+        assert_eq!(first_entries(&library), expected("../.."));
+        assert!(std::fs::symlink_metadata(in_tree.join(BIBTEX_PROJECT_LINK)).is_err());
+
+        let build = home.path().join("linked").join("build");
+        let linked =
+            with_bibtex_search_path(latexmk_spec_for_test(&project, &build, "paper/main.tex"));
+        let link = build.join(BIBTEX_PROJECT_LINK);
+        assert_eq!(first_entries(&linked), expected(BIBTEX_PROJECT_LINK));
+        assert_eq!(std::fs::read_link(&link).unwrap(), project);
+
+        let nested =
+            place_in_compile_directory(DocumentEngineId::Latexmk, linked, &project, &paper)
+                .unwrap();
+        assert_eq!(nested.working_dir, paper);
+        assert_eq!(first_entries(&nested), expected(BIBTEX_PROJECT_LINK));
+        assert_eq!(std::fs::read_link(&link).unwrap(), paper);
+
+        let plain = latexmk_spec_for_test(&home.path().join("Thesis 2024-25"), &build, "main.tex");
+        assert_eq!(with_bibtex_search_path(plain.clone()), plain);
     }
 
     fn latexmk_spec_for_test(

@@ -69,6 +69,18 @@ impl TypstCompileSettings {
             .collect()
     }
 
+    pub(crate) fn with_shared_font_dirs(mut self, shared: Vec<PathBuf>) -> Self {
+        if self.ignore_system_fonts {
+            return self;
+        }
+        for directory in shared {
+            if !self.font_dirs.contains(&directory) {
+                self.font_dirs.push(directory);
+            }
+        }
+        self
+    }
+
     pub(crate) fn source_date_epoch(&self, fallback: Option<u64>) -> Option<u64> {
         self.creation_timestamp.or(fallback)
     }
@@ -86,7 +98,21 @@ pub(crate) fn for_compile(
             variant.map(str::trim).filter(|name| !name.is_empty()),
             crate::git::head_commit_time,
         )
+        .with_shared_font_dirs(shared_font_dirs())
     })
+}
+
+fn shared_font_pack_root() -> Option<PathBuf> {
+    crate::paths::assets_root().ok().map(|root| {
+        let base = root.join(oleafly_core::typst_toolchain::TYPST_FONT_PACKS_DIR);
+        base.canonicalize().unwrap_or(base)
+    })
+}
+
+pub(crate) fn shared_font_dirs() -> Vec<PathBuf> {
+    crate::paths::assets_root()
+        .map(|root| oleafly_core::typst_toolchain::typst_shared_font_dirs(&root))
+        .unwrap_or_default()
 }
 
 pub(crate) fn dependency_file(out_dir: &Path) -> PathBuf {
@@ -127,10 +153,18 @@ fn options_descriptor(
     spec: Option<&TypstSpec>,
     root: Option<&Path>,
     capabilities: &TypstCapabilities,
+    shared_font_dirs: &[PathBuf],
 ) -> TypstOptionsDescriptor {
-    let font_dirs = root
+    let mut font_dirs = root
         .map(|root| oleafly_core::typst_toolchain::typst_project_font_dirs(spec, root))
         .unwrap_or_default();
+    if root.is_some() && !spec.is_some_and(TypstSpec::ignores_system_fonts) {
+        for directory in shared_font_dirs {
+            if !font_dirs.contains(directory) {
+                font_dirs.push(directory.clone());
+            }
+        }
+    }
     TypstOptionsDescriptor {
         system_fonts: spec.is_none_or(|spec| spec.system_fonts),
         reproducible: spec.is_some_and(|spec| spec.reproducible),
@@ -173,6 +207,7 @@ pub(crate) fn describe(descriptor: &mut EngineDescriptor, project_id: &str, meta
         meta.typst.as_ref(),
         root.as_deref(),
         capabilities,
+        &shared_font_dirs(),
     ));
 }
 
@@ -386,7 +421,12 @@ fn comparable(path: &Path) -> PathBuf {
     crate::project_availability::without_verbatim_prefix(path)
 }
 
-fn classify_source(source: &str, root: &Path, font_dirs: &[PathBuf]) -> TypstFontSource {
+fn classify_source(
+    source: &str,
+    root: &Path,
+    font_dirs: &[PathBuf],
+    pack_root: Option<&Path>,
+) -> TypstFontSource {
     if source == EMBEDDED_FONT {
         return TypstFontSource {
             kind: "embedded",
@@ -397,6 +437,15 @@ fn classify_source(source: &str, root: &Path, font_dirs: &[PathBuf]) -> TypstFon
     let canonical = path
         .canonicalize()
         .map_or_else(|_| comparable(path), |path| comparable(&path));
+    if let Some(pack) = pack_root
+        .and_then(|pack_root| canonical.strip_prefix(comparable(pack_root)).ok())
+        .and_then(|relative| relative.components().next())
+    {
+        return TypstFontSource {
+            kind: "pack",
+            path: Some(pack.as_os_str().to_string_lossy().into_owned()),
+        };
+    }
     let root = comparable(root);
     if font_dirs
         .iter()
@@ -421,6 +470,7 @@ pub(crate) fn font_entries(
     families: Vec<TypstFontFamily>,
     root: &Path,
     font_dirs: &[PathBuf],
+    pack_root: Option<&Path>,
 ) -> Vec<TypstFontEntry> {
     families
         .into_iter()
@@ -428,7 +478,7 @@ pub(crate) fn font_entries(
             sources: family
                 .sources
                 .iter()
-                .map(|source| classify_source(source, root, font_dirs))
+                .map(|source| classify_source(source, root, font_dirs, pack_root))
                 .collect(),
             name: family.name,
         })
@@ -449,6 +499,7 @@ fn font_list_settings(meta: &ProjectMeta, root: &Path) -> TypstCompileSettings {
         .then_some(meta.typst.as_ref())
         .flatten();
     TypstCompileSettings::resolve(spec, root, None, |_| None)
+        .with_shared_font_dirs(shared_font_dirs())
 }
 
 fn list_fonts_blocking(project_id: &str) -> Result<TypstFontList, String> {
@@ -493,7 +544,12 @@ fn list_fonts_blocking(project_id: &str) -> Result<TypstFontList, String> {
         version: version.to_string(),
         system_fonts: !settings.ignore_system_fonts
             || !typst.capabilities.supports_flag("--ignore-system-fonts"),
-        families: font_entries(families, &root, &settings.font_dirs),
+        families: font_entries(
+            families,
+            &root,
+            &settings.font_dirs,
+            shared_font_pack_root().as_deref(),
+        ),
     })
 }
 

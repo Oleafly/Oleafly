@@ -379,7 +379,11 @@
     "summaryReferences_one": "{{count}} нерозпізнане посилання",
     "summaryReferences_few": "{{count}} нерозпізнані посилання",
     "summaryReferences_many": "{{count}} нерозпізнаних посилань",
-    "summaryReferences_other": "{{count}} нерозпізнаного посилання"
+    "summaryReferences_other": "{{count}} нерозпізнаного посилання",
+    "fontPack": "{{family}} є в безкоштовному наборі шрифтів «{{pack}}».",
+    "fontPackAction": "Завантажити й скомпілювати",
+    "fontPackDownloading": "Завантаження…",
+    "fontPackFailed": "Не вдалося завантажити набір шрифтів. Перевірте з'єднання й спробуйте ще раз."
   },
   "history": {
     "untitledCommit": "Коміт без назви",
@@ -1504,7 +1508,8 @@
     "sources": {
       "project": "Проєкт",
       "system": "Система",
-      "embedded": "Вбудований"
+      "embedded": "Вбудований",
+      "pack": "Набір шрифтів"
     },
     "fontsFolder": "Щоб використати шрифт у цьому проєкті, додайте його файл у папку fonts проєкту."
   },

@@ -1021,6 +1021,26 @@
       "ptserif": {
         "description": "洗練されたトランジショナルセリフ体で、学術文書やビジネス文書によく合います。",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans/Serif CJK、Fandol、LXGW WenKai。SimSun、SimHei、KaiTi の代わりにもなります。",
+        "label": "中国語・日本語・韓国語"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6/7 Free、Noto Color Emoji。",
+        "label": "アイコンと絵文字"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono、IBM Plex Mono、Inconsolata、Fira Mono、Cascadia Code、Source Code Pro。",
+        "label": "コード"
+      },
+      "typst-sans": {
+        "description": "Source Sans、Source Serif、Noto、Fira、Roboto、Inter、Open Sans、IBM Plex。",
+        "label": "モダンなサンセリフとセリフ"
+      },
+      "typst-text": {
+        "description": "TeX Gyre、Latin Modern、CMU、Liberation、DejaVu、Libertine、Libertinus、New Computer Modern Sans/Mono。",
+        "label": "クラシックな本文用"
       }
     },
     "fonts": {
@@ -1058,6 +1078,10 @@
       "packDownloadFailed": "テンプレートパックをダウンロードできませんでした。",
       "packsDownloadFailed": "テンプレートパックをダウンロードできませんでした。",
       "packRemoveFailed": "テンプレートパックを削除できませんでした。"
+    },
+    "typstFonts": {
+      "heading": "Typst 用フォント",
+      "tooltip": "多くの Typst テンプレートが使う無料フォントです。ダウンロードすると、システムフォントを無効にしたプロジェクトを除き、すべての Typst プロジェクトで使えます。"
     }
   },
   "engine": {

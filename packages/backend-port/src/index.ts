@@ -536,6 +536,7 @@ export interface ComponentInfo {
     license: TemplateLicense | null;
     installed: boolean;
     kind: string;
+    families?: string[];
 }
 export interface Prerequisite {
     id: string;
