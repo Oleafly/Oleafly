@@ -1,3 +1,4 @@
+use crate::collab::guard::{MassChangeGuard, SyncPauseHost};
 use notify::event::ModifyKind;
 use notify::{Config, Event, EventKind, PollWatcher, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
@@ -108,7 +109,7 @@ pub(crate) fn note_own_write(path: &Path) {
     });
 }
 
-fn is_own_write(path: &Path) -> bool {
+pub(crate) fn is_own_write(path: &Path) -> bool {
     let now = Instant::now();
     let mut writes = own_writes();
     writes.retain(|write| now.duration_since(write.at) < OWN_WRITE_WINDOW);
@@ -455,22 +456,39 @@ pub(crate) fn active_token(project_id: &str) -> Option<u64> {
 }
 
 #[cfg(test)]
-pub(crate) fn watch_linked_project(
+pub(crate) fn watch_project(
     project_id: &str,
     sink: ChangeSink,
     mode_override: Option<WatchMode>,
 ) -> Result<Option<u64>, String> {
-    watch_linked_project_as(begin_request(), project_id, sink, mode_override)
+    watch_project_reporting(
+        project_id,
+        sink,
+        Arc::new(crate::collab::testing::RecordedPauses::default()),
+        mode_override,
+    )
 }
 
-fn watch_linked_project_as(
+#[cfg(test)]
+pub(crate) fn watch_project_reporting(
+    project_id: &str,
+    sink: ChangeSink,
+    host: Arc<dyn SyncPauseHost>,
+    mode_override: Option<WatchMode>,
+) -> Result<Option<u64>, String> {
+    watch_project_as(begin_request(), project_id, sink, host, mode_override)
+}
+
+fn watch_project_as(
     request: u64,
     project_id: &str,
     sink: ChangeSink,
+    host: Arc<dyn SyncPauseHost>,
     mode_override: Option<WatchMode>,
 ) -> Result<Option<u64>, String> {
     let location = crate::project_location::locate(project_id)?;
-    if location.kind != crate::project_location::ProjectKind::Linked {
+    let shared = crate::collab::registry::is_shared(project_id);
+    if location.kind != crate::project_location::ProjectKind::Linked && !shared {
         return Ok(None);
     }
     let network = crate::linked_registry::cached_membership(project_id)
@@ -485,12 +503,20 @@ fn watch_linked_project_as(
     } else {
         WatchMode::Native
     });
+    let guard = shared.then(|| Arc::new(MassChangeGuard::new(project_id, &location.root, host)));
+    let change_guard = guard.clone();
     let sink: ChangeSink = Arc::new(move |change: FolderChange| {
         crate::linked_registry::note_changed(&change.project_id);
+        if let Some(guard) = &change_guard {
+            let _ = guard.inspect(&change);
+        }
         sink(change);
     });
     let probe_id = project_id.to_owned();
     let on_root_changed = Box::new(move || {
+        if let Some(guard) = &guard {
+            let _ = guard.root_changed();
+        }
         if crate::project_location::locate(&probe_id).is_err() {
             stop(&probe_id, Some(request));
         }
@@ -513,10 +539,11 @@ pub async fn watch_project_folder<R: tauri::Runtime>(
     let request = begin_request();
     tauri::async_runtime::spawn_blocking(move || {
         use tauri::Emitter as _;
+        let host: Arc<dyn SyncPauseHost> = Arc::new(app.clone());
         let sink: ChangeSink = Arc::new(move |change| {
             let _ = app.emit(FOLDER_CHANGED_EVENT, change);
         });
-        watch_linked_project_as(request, &project_id, sink, None)
+        watch_project_as(request, &project_id, sink, host, None)
     })
     .await
     .map_err(|error| error.to_string())?
@@ -922,14 +949,14 @@ mod tests {
     }
 
     #[test]
-    fn a_library_project_is_never_watched() {
+    fn a_library_project_that_is_not_shared_is_never_watched() {
         let _guard = crate::paths::data_dir_env_lock();
         let data = tempfile::tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", data.path());
         crate::paths::create_project_dir("watch-library").unwrap();
         let (sink, _receiver) = recorder();
 
-        let watched = watch_linked_project("watch-library", sink, None);
+        let watched = watch_project("watch-library", sink, None);
         std::env::remove_var("OLEAFLY_DATA_DIR");
 
         assert_eq!(watched.unwrap(), None);
@@ -954,7 +981,7 @@ mod tests {
         let record = crate::linked_registry::register_folder_for_test(&folder);
         let (sink, receiver) = recorder();
 
-        let token = watch_linked_project(
+        let token = watch_project(
             &record.id,
             sink,
             Some(WatchMode::Poll(Duration::from_millis(50))),
@@ -994,7 +1021,7 @@ mod tests {
         let record = crate::linked_registry::register_folder_for_test(&folder);
         let (sink, _receiver) = recorder();
 
-        let token = watch_linked_project(
+        let token = watch_project(
             &record.id,
             sink,
             Some(WatchMode::Poll(Duration::from_millis(50))),
@@ -1011,5 +1038,188 @@ mod tests {
 
         assert!(token.is_some());
         assert_eq!(remaining, None);
+    }
+
+    fn age(path: &Path) {
+        std::fs::File::options()
+            .write(true)
+            .open(path)
+            .unwrap()
+            .set_modified(SystemTime::now() - Duration::from_secs(60))
+            .unwrap();
+    }
+
+    #[test]
+    fn a_shared_library_project_is_watched_like_an_opened_folder() {
+        let library = crate::collab::testing::TempLibrary::new();
+        let root = library.project("watch-shared", &[("main.tex", "one")]);
+        age(&root.join("main.tex"));
+        let _shared = crate::collab::testing::share("watch-shared");
+        let (sink, receiver) = recorder();
+
+        let token = watch_project(
+            "watch-shared",
+            sink,
+            Some(WatchMode::Poll(Duration::from_millis(50))),
+        )
+        .unwrap()
+        .expect("a shared library project is watched");
+        std::thread::sleep(Duration::from_millis(200));
+        std::fs::write(root.join("main.tex"), "two, longer").unwrap();
+        let change = next_change(&receiver);
+        stop("watch-shared", Some(token));
+
+        let change = change.expect("an edit in a shared library project is reported");
+        assert_eq!(change.project_id, "watch-shared");
+        assert_eq!(change.paths, ["main.tex"]);
+        assert!(!change.rescan);
+    }
+
+    #[test]
+    fn a_shared_library_projects_own_save_is_silent_and_an_outside_edit_is_reported() {
+        let library = crate::collab::testing::TempLibrary::new();
+        let root = library.project("watch-own", &[("main.tex", "one")]);
+        age(&root.join("main.tex"));
+        let _shared = crate::collab::testing::share("watch-own");
+        let (sink, receiver) = recorder();
+
+        let token = watch_project(
+            "watch-own",
+            sink,
+            Some(WatchMode::Poll(Duration::from_millis(50))),
+        )
+        .unwrap()
+        .expect("a shared library project is watched");
+        std::thread::sleep(Duration::from_millis(200));
+        crate::project::write_project_bytes(
+            "watch-own",
+            &root.join("main.tex"),
+            "main.tex",
+            b"saved by Oleafly",
+        )
+        .unwrap();
+        let own = receiver.recv_timeout(Duration::from_millis(800));
+        std::fs::write(root.join("refs.bib"), "@book{a}").unwrap();
+        let outside = next_change(&receiver);
+        stop("watch-own", Some(token));
+
+        assert!(own.is_err(), "{own:?}");
+        assert_eq!(
+            outside.expect("an outside edit is reported").paths,
+            ["refs.bib"]
+        );
+    }
+
+    #[test]
+    fn a_shared_three_file_project_keeps_syncing_after_one_save_and_pauses_when_every_file_changes()
+    {
+        use crate::collab::guard::{PauseReason, SyncPaused};
+        use crate::collab::testing::{share, track, RecordedPauses, TempLibrary};
+        let library = TempLibrary::new();
+        let files = ["main.tex", "refs.bib", "intro.tex"];
+        let root = library.project(
+            "watch-three",
+            &[
+                ("main.tex", "one"),
+                ("refs.bib", "one"),
+                ("intro.tex", "one"),
+            ],
+        );
+        for file in files {
+            age(&root.join(file));
+        }
+        let _shared = share("watch-three");
+        track("watch-three", &files);
+        let pauses = Arc::new(RecordedPauses::default());
+        let (sink, receiver) = recorder();
+
+        let token = watch_project_reporting(
+            "watch-three",
+            sink,
+            pauses.clone(),
+            Some(WatchMode::Poll(Duration::from_millis(50))),
+        )
+        .unwrap()
+        .expect("a shared library project is watched");
+        std::thread::sleep(Duration::from_millis(200));
+        std::fs::write(root.join("main.tex"), "two, longer").unwrap();
+        let one_save = next_change(&receiver);
+        let after_one_save = pauses.taken();
+        std::thread::sleep(Duration::from_millis(1100));
+        for file in files {
+            std::fs::write(root.join(file), "three, even longer").unwrap();
+        }
+        let every_file = next_change(&receiver);
+        let after_every_file = pauses.taken();
+        stop("watch-three", Some(token));
+
+        assert_eq!(
+            one_save.expect("one save reaches the editor").paths,
+            ["main.tex"]
+        );
+        assert!(after_one_save.is_empty(), "{after_one_save:?}");
+        assert_eq!(
+            every_file
+                .expect("a mass change still reaches the editor")
+                .paths,
+            ["intro.tex", "main.tex", "refs.bib"]
+        );
+        assert_eq!(
+            after_every_file,
+            [SyncPaused {
+                project_id: "watch-three".into(),
+                changed: 3,
+                total: 3,
+                reason: PauseReason::MassChange,
+            }]
+        );
+    }
+
+    #[test]
+    fn a_shared_project_whose_folder_vanishes_is_unavailable_once_and_never_a_mass_delete() {
+        use crate::collab::guard::{PauseReason, SyncPaused};
+        use crate::collab::testing::{share, track, RecordedPauses, TempLibrary};
+        let library = TempLibrary::new();
+        let files = ["main.tex", "refs.bib", "intro.tex"];
+        let root = library.project(
+            "watch-vanish",
+            &[
+                ("main.tex", "one"),
+                ("refs.bib", "one"),
+                ("intro.tex", "one"),
+            ],
+        );
+        let _shared = share("watch-vanish");
+        track("watch-vanish", &files);
+        let pauses = Arc::new(RecordedPauses::default());
+        let (sink, _receiver) = recorder();
+
+        let token = watch_project_reporting(
+            "watch-vanish",
+            sink,
+            pauses.clone(),
+            Some(WatchMode::Poll(Duration::from_millis(50))),
+        )
+        .unwrap();
+        std::thread::sleep(Duration::from_millis(200));
+        std::fs::rename(&root, root.with_file_name("watch-vanish-parked")).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(10);
+        while active_token("watch-vanish").is_some() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let remaining = active_token("watch-vanish");
+        let heard = pauses.taken();
+
+        assert!(token.is_some());
+        assert_eq!(remaining, None);
+        assert_eq!(
+            heard,
+            [SyncPaused {
+                project_id: "watch-vanish".into(),
+                changed: 0,
+                total: 3,
+                reason: PauseReason::RootUnavailable,
+            }]
+        );
     }
 }

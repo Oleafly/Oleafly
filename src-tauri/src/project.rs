@@ -2238,6 +2238,9 @@ pub(crate) fn write_project_bytes(
     }
     if location.kind == ProjectKind::Library {
         atomic_write(target, bytes).map_err(failed)?;
+        if crate::collab::registry::is_shared(project_id) {
+            crate::folder_watch::note_own_write(target);
+        }
         crate::agent_turns::note_app_write(project_id, path);
         return Ok(true);
     }
@@ -8223,6 +8226,48 @@ mod tests {
     }
 
     #[test]
+    fn a_shared_library_projects_own_write_never_reaches_the_watcher() {
+        use notify::event::{DataChange, ModifyKind};
+        use notify::{Event, EventKind};
+        let library = crate::collab::testing::TempLibrary::new();
+        let shared = library.project("own-write-shared", &[]);
+        let solo = library.project("own-write-solo", &[]);
+        let _shared = crate::collab::testing::share("own-write-shared");
+        let observe = |project_id: &str, root: &Path| {
+            let target = root.join("main.tex");
+            let written = super::write_project_bytes(
+                project_id,
+                &target,
+                "main.tex",
+                b"\\documentclass{article}",
+            )
+            .unwrap();
+            let mut batch = crate::folder_watch::Batch::default();
+            batch.absorb(
+                root,
+                &Event::new(EventKind::Modify(ModifyKind::Data(DataChange::Content)))
+                    .add_path(target),
+                std::time::Instant::now(),
+            );
+            let change = batch.take(project_id, &|relative| {
+                crate::folder_watch::is_own_write(&root.join(relative))
+            });
+            (written, change)
+        };
+
+        let (shared_written, shared_change) = observe("own-write-shared", &shared);
+        let (solo_written, solo_change) = observe("own-write-solo", &solo);
+
+        assert!(shared_written);
+        assert!(solo_written);
+        assert_eq!(shared_change, None);
+        assert_eq!(
+            solo_change.map(|change| change.paths),
+            Some(vec!["main.tex".to_string()])
+        );
+    }
+
+    #[test]
     fn linked_metadata_lives_in_the_sidecar_and_a_folder_project_json_is_never_rewritten() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let data = tempfile::tempdir().unwrap();
@@ -9470,7 +9515,7 @@ mod tests {
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .send(change);
         });
-        let watched = crate::folder_watch::watch_linked_project(
+        let watched = crate::folder_watch::watch_project(
             &id,
             sink,
             Some(crate::folder_watch::WatchMode::Poll(

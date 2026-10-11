@@ -30,7 +30,6 @@ function FolderWatch({ projectId }: Readonly<{ projectId: string }>) {
 
 export function FolderWatchKeeper() {
   const projectId = useFilesStore((state) => state.projectId);
-  const openedInPlace = useFilesStore((state) => state.manifestHome !== "library");
   const reachable = useProjectAvailabilityStore(
     (state) => state.projectId !== projectId || folderReachable(state.availability),
   );
@@ -44,6 +43,6 @@ export function FolderWatchKeeper() {
     isTauri(),
   );
 
-  if (!isTauri() || !projectId || !openedInPlace || !reachable) return null;
+  if (!isTauri() || !projectId || !reachable) return null;
   return <FolderWatch key={`${projectId}:${relocations}`} projectId={projectId} />;
 }

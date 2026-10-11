@@ -51,11 +51,25 @@ describe("FolderWatchKeeper", () => {
     view.unmount();
   });
 
-  it("never watches a library project", async () => {
+  it("asks Rust about a library project and leaves it alone when Rust declines", async () => {
+    mocks.watchProjectFolder.mockResolvedValueOnce(null);
+    useFilesStore.setState({ projectId: "paper", manifestHome: "library" });
+    const view = render(<FolderWatchKeeper />);
+    await waitFor(() => expect(mocks.watchProjectFolder).toHaveBeenCalledWith("paper"));
+
+    view.unmount();
+    await act(() => Promise.resolve());
+    expect(mocks.unwatchProjectFolder).not.toHaveBeenCalled();
+  });
+
+  it("watches a shared library project and stops when the project closes", async () => {
+    mocks.watchProjectFolder.mockResolvedValueOnce(9);
     useFilesStore.setState({ projectId: "paper", manifestHome: "library" });
     render(<FolderWatchKeeper />);
-    await act(() => Promise.resolve());
-    expect(mocks.watchProjectFolder).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.watchProjectFolder).toHaveBeenCalledWith("paper"));
+
+    act(() => useFilesStore.setState({ projectId: null }));
+    await waitFor(() => expect(mocks.unwatchProjectFolder).toHaveBeenCalledWith("paper", 9));
   });
 
   it("stops while the folder is unavailable and starts again when it returns", async () => {
