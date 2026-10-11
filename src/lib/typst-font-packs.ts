@@ -7,11 +7,13 @@ export function isTypstFontPackId(id: string): id is TypstFontPackId {
   return (TYPST_FONT_PACK_IDS as readonly string[]).includes(id);
 }
 
-const UNKNOWN_FONT = /^unknown font family:\s*"?(.+?)"?\s*$/i;
+const UNKNOWN_FONT_PREFIX = "unknown font family:";
 
 export function missingTypstFont(message: string): string | null {
-  const family = UNKNOWN_FONT.exec(message.trim())?.[1]?.trim();
-  return family ? family : null;
+  const text = message.trim();
+  if (!text.toLowerCase().startsWith(UNKNOWN_FONT_PREFIX)) return null;
+  const family = text.slice(UNKNOWN_FONT_PREFIX.length).trim().replace(/^"|"$/g, "").trim();
+  return family || null;
 }
 
 export function packForFamily(packs: readonly ComponentInfo[], family: string): ComponentInfo | undefined {

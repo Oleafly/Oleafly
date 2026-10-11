@@ -19,6 +19,9 @@ describe("typst font packs", () => {
     expect(missingTypstFont("unknown font family: liberation sans")).toBe("liberation sans");
     expect(missingTypstFont('unknown font family: "Noto Serif CJK SC"')).toBe("Noto Serif CJK SC");
     expect(missingTypstFont("unknown variable: x")).toBeNull();
+    expect(missingTypstFont("  Unknown Font Family:   SimSun  ")).toBe("SimSun");
+    expect(missingTypstFont('unknown font family: ""')).toBeNull();
+    expect(missingTypstFont("unknown font family:")).toBeNull();
   });
 
   it("finds the Typst pack that carries a family, ignoring case", () => {
