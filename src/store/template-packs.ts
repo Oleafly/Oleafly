@@ -245,9 +245,10 @@ export function installCuratedPacks(): Promise<boolean> {
     curated,
     async () => {
       const pending = state().packs.filter((pack) => pack.group === "curated" && !pack.installed);
-      for (const pack of pending) {
-        await withPackProgress(pack.id, () => installTemplatePack(pack.id));
-      }
+      await pending.reduce<Promise<void>>(
+        (chain, pack) => chain.then(() => withPackProgress(pack.id, () => installTemplatePack(pack.id))),
+        Promise.resolve(),
+      );
     },
     (error) =>
       notifyError(

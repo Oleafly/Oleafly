@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 use std::time::{Duration, Instant, SystemTime};
 use tauri::{AppHandle, Manager};
 use tokio::sync::{OnceCell, Semaphore};
@@ -830,12 +830,12 @@ pub(crate) fn retry_due(last_failure: Option<Instant>, now: Instant) -> bool {
 }
 
 fn failed_recently() -> bool {
-    let last = *LAST_FAILURE.lock().unwrap_or_else(|p| p.into_inner());
+    let last = *LAST_FAILURE.lock().unwrap_or_else(PoisonError::into_inner);
     !retry_due(last, Instant::now())
 }
 
 fn note_refresh(failed: bool) {
-    *LAST_FAILURE.lock().unwrap_or_else(|p| p.into_inner()) = failed.then(Instant::now);
+    *LAST_FAILURE.lock().unwrap_or_else(PoisonError::into_inner) = failed.then(Instant::now);
 }
 
 pub(crate) async fn refresh_catalog_at(
@@ -904,11 +904,11 @@ pub(crate) async fn load_pack_templates(
             return blocking(move || Ok(v1_templates(&pack, Some(&dir)))).await;
         }
     };
-    let read_cache = |cache: PathBuf, id: String, base: String| {
-        blocking(move || {
-            let text = std::fs::read_to_string(&cache).map_err(|e| e.to_string())?;
-            parse_index(&text, &id, &base)
-        })
+    let read_cache = |cache: PathBuf, id: String, base: String| async move {
+        let text = tokio::fs::read_to_string(&cache)
+            .await
+            .map_err(|e| e.to_string())?;
+        blocking(move || parse_index(&text, &id, &base)).await
     };
     if !force && file_fresh(cache, SystemTime::now()) {
         if let Ok(templates) =
@@ -1056,7 +1056,7 @@ impl<F: Fn(DownloadProgress) + Sync> Tracker<'_, F> {
     fn complete(&self, file: &str, received: u64, file_total: Option<u64>) {
         let done = self.done.fetch_add(1, Ordering::SeqCst) + 1;
         let now = Instant::now();
-        let mut last = self.last.lock().unwrap_or_else(|p| p.into_inner());
+        let mut last = self.last.lock().unwrap_or_else(PoisonError::into_inner);
         let due =
             done >= self.total || last.is_none_or(|at| now.duration_since(at) >= PROGRESS_INTERVAL);
         if !due {
@@ -1144,7 +1144,7 @@ impl SharedFiles {
     fn slot(&self, sha256: &str) -> SharedDownload {
         self.0
             .lock()
-            .unwrap_or_else(|p| p.into_inner())
+            .unwrap_or_else(PoisonError::into_inner)
             .entry(sha256.to_ascii_lowercase())
             .or_default()
             .clone()

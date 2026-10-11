@@ -67,6 +67,18 @@ function Detail({ label, children }: Readonly<{ label: string; children: ReactNo
   );
 }
 
+function stepDirection(event: KeyboardEvent, anchor: HTMLElement | null): "previous" | "next" | null {
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return null;
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return null;
+  const target = event.target;
+  if (target instanceof HTMLElement && (target.isContentEditable || TYPING_TARGETS.has(target.tagName))) {
+    return null;
+  }
+  const dialog = anchor?.closest('[aria-modal="true"]');
+  if (target instanceof Node && target !== document.body && dialog && !dialog.contains(target)) return null;
+  return event.key === "ArrowLeft" ? "previous" : "next";
+}
+
 export function TemplatePreviewDialog({
   pack,
   templates,
@@ -95,15 +107,9 @@ export function TemplatePreviewDialog({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      const target = event.target;
-      if (target instanceof HTMLElement && (target.isContentEditable || TYPING_TARGETS.has(target.tagName))) {
-        return;
-      }
-      const dialog = anchorRef.current?.closest('[aria-modal="true"]');
-      if (target instanceof Node && target !== document.body && dialog && !dialog.contains(target)) return;
-      const destination = event.key === "ArrowLeft" ? previous : next;
+      const direction = stepDirection(event, anchorRef.current);
+      if (!direction) return;
+      const destination = direction === "previous" ? previous : next;
       if (!destination) return;
       event.preventDefault();
       onNavigate(destination.id);
