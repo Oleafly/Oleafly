@@ -284,6 +284,11 @@ impl TestHost {
     }
 
     #[cfg_attr(target_os = "windows", allow(dead_code))]
+    fn log(&self) -> String {
+        format!("{:?}", self.seen.lock().unwrap())
+    }
+
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     fn results(&self) -> Vec<(u64, bool, Option<u64>)> {
         self.seen
             .lock()
@@ -361,6 +366,7 @@ mod processes {
 input="$3"
 output="$4"
 cycle() {
+  printf 'cycle saw [%s]\n' "$(cat "$input")" >> "$0.cycles"
   printf 'watching %s\nwriting to %s\n\n[00:00:00] compiling ...\n' "$input" "$output" >&2
   if grep -q BROKEN "$input"; then
     printf '\nwatching %s\n\n[00:00:00] compiled with errors\n\nerror: unknown variable: broken\n  \342\224\214\342\224\200 main.typ:1:2\n  \342\224\202\n1 \342\224\202 #BROKEN\n  \342\224\202  ^^^^^^\n\n' "$input" >&2
@@ -432,20 +438,28 @@ done
         }
 
         fn write(&self, source: &str) {
-            std::fs::write(self.target.project_dir.join("main.typ"), source).unwrap();
+            let staged = self.target.project_dir.join("main.typ.next");
+            std::fs::write(&staged, source).unwrap();
+            std::fs::rename(staged, self.target.project_dir.join("main.typ")).unwrap();
         }
 
         fn build_pdf(&self) -> Vec<u8> {
             std::fs::read(self.directory.path().join("build/out.pdf")).unwrap_or_default()
         }
+
+        fn cycles(&self) -> String {
+            std::fs::read_to_string(self.directory.path().join("fake-typst.cycles"))
+                .unwrap_or_default()
+        }
     }
 
-    async fn eventually<F: Fn() -> bool>(check: F) {
+    async fn eventually(what: &str, check: impl Fn() -> bool, observed: impl Fn() -> String) {
         let deadline = Instant::now() + Duration::from_secs(10);
         while !check() {
             assert!(
                 Instant::now() < deadline,
-                "condition was not reached in time"
+                "{what} was not reached in time; observed {}",
+                observed()
             );
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
@@ -464,7 +478,12 @@ done
         assert!(String::from_utf8_lossy(&fixture.build_pdf()).contains("= Hello"));
 
         fixture.write("#BROKEN\n");
-        eventually(|| host.results().len() == 2).await;
+        eventually(
+            "the #BROKEN result",
+            || host.results().len() == 2,
+            || format!("{} {}", host.log(), fixture.cycles()),
+        )
+        .await;
         let record = session.latest().unwrap();
         assert!(!record.result.ok);
         assert!(!record.result.has_pdf);
@@ -475,7 +494,12 @@ done
         assert!(String::from_utf8_lossy(&fixture.build_pdf()).contains("= Hello"));
 
         fixture.write("= Fixed\n");
-        eventually(|| host.results().len() == 3).await;
+        eventually(
+            "the = Fixed result",
+            || host.results().len() == 3,
+            || format!("{} {}", host.log(), fixture.cycles()),
+        )
+        .await;
         let record = session.latest().unwrap();
         assert!(record.result.ok);
         assert_eq!(record.result.output_revision, Some(2));
@@ -483,7 +507,12 @@ done
         assert!(host.statuses().contains(&WatchState::Compiling));
 
         registry.stop("watch-a").await;
-        eventually(|| host.statuses().last() == Some(&WatchState::Stopped)).await;
+        eventually(
+            "a final Stopped status",
+            || host.statuses().last() == Some(&WatchState::Stopped),
+            || host.log(),
+        )
+        .await;
     }
 
     #[tokio::test]
@@ -541,7 +570,12 @@ done
         registry.ensure(host.clone(), third.target.clone()).await;
         assert_eq!(registry.len(), 2);
         assert!(registry.session("watch-c").is_none());
-        eventually(|| replacement.state() == WatchState::Stopped).await;
+        eventually(
+            "the replaced session stopping",
+            || replacement.state() == WatchState::Stopped,
+            || format!("{:?} {}", replacement.state(), host.log()),
+        )
+        .await;
         registry.kill_all_now();
         assert_eq!(registry.len(), 0);
     }
@@ -554,7 +588,12 @@ done
         let (session, started) = registry.ensure(host.clone(), fixture.target.clone()).await;
         let outcome = session.compile(false, started).await;
         assert!(outcome.is_err());
-        eventually(|| session.state() == WatchState::Failed).await;
+        eventually(
+            "the crashing session failing",
+            || session.state() == WatchState::Failed,
+            || format!("{:?} {}", session.state(), host.log()),
+        )
+        .await;
         let statuses = host.statuses();
         assert_eq!(
             statuses
@@ -606,7 +645,12 @@ done
         });
         let (session, started) = registry.ensure(host.clone(), fixture.target.clone()).await;
         session.compile(false, started).await.unwrap();
-        eventually(|| session.state() == WatchState::Idle).await;
+        eventually(
+            "the idle session stopping",
+            || session.state() == WatchState::Idle,
+            || format!("{:?} {}", session.state(), host.log()),
+        )
+        .await;
         assert!(host.statuses().contains(&WatchState::Idle));
     }
 }
