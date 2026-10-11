@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Editează proiecte împreună cu alte persoane, în timp real. Proiectele se sincronizează printr-un server de colaborare administrat de tine sau de grupul tău, iar acel server decide cine se poate alătura.",
+    "servers": {
+      "title": "Servere",
+      "add": "Adaugă server",
+      "loading": "Se încarcă serverele tale…",
+      "loadFailed": "Oleafly nu a putut încărca serverele tale.",
+      "empty": {
+        "title": "Niciun server încă",
+        "description": "Cere-i adresa persoanei care administrează serverul grupului tău, apoi adaug-o aici."
+      }
+    },
+    "server": {
+      "signedIn": "Autentificat",
+      "signedOut": "Deconectat",
+      "signedInAs": "Autentificat ca {{name}}",
+      "signedOutHint": "Acest computer nu este autentificat pe acest server.",
+      "role": "Rolul tău: {{role}}",
+      "signIn": "Autentifică-te",
+      "signOut": "Deconectează-te",
+      "remove": "Elimină",
+      "manage": "Gestionează serverul",
+      "test": "Testează conexiunea",
+      "removeConfirm": {
+        "title": "Elimini {{name}}?",
+        "description": "Oleafly se deconectează de la acest server și îl uită. Proiectele aflate deja pe acest computer rămân unde sunt.",
+        "confirm": "Elimină serverul"
+      }
+    },
+    "devices": {
+      "title": "Dispozitivele tale",
+      "description": "Computerele autentificate pe acest server cu contul tău. Deconectează-le pe cele pe care nu le mai folosești.",
+      "loading": "Se încarcă dispozitivele tale…",
+      "loadFailed": "Oleafly nu a putut încărca dispozitivele tale.",
+      "current": "Acest computer",
+      "added": "Adăugat: {{date}}",
+      "lastSeen": "Văzut ultima dată: {{date}}",
+      "neverSeen": "Nevăzut încă",
+      "empty": "Niciun dispozitiv nu este autentificat.",
+      "signOut": "Deconectează",
+      "signOutNamed": "Deconectează {{name}}",
+      "signOutConfirm": {
+        "title": "Deconectezi {{name}}?",
+        "description": "Acel computer nu se mai sincronizează cu acest server până când cineva se autentifică din nou pe el.",
+        "confirm": "Deconectează dispozitivul"
+      }
+    },
+    "checks": {
+      "title": "Test de conexiune",
+      "running": "Se testează conexiunea…",
+      "clockSkew": "Diferența de timp în secunde: {{seconds}}",
+      "status": {
+        "pass": "Reușit",
+        "fail": "Eșuat",
+        "info": "Notă",
+        "skipped": "Omis"
+      },
+      "items": {
+        "reachable": {
+          "label": "Adresă",
+          "pass": "Serverul a răspuns.",
+          "fail": "Oleafly nu a putut accesa această adresă. Verifică adresa și rețeaua.",
+          "info": "Serverul a răspuns, dar încet.",
+          "skipped": "Neverificat."
+        },
+        "https": {
+          "label": "Conexiune securizată",
+          "pass": "Conexiunea este criptată, iar certificatul este valid.",
+          "fail": "Certificatul serverului nu este valid sau adresa nu folosește https.",
+          "info": "Acesta este un server de test de pe acest computer, așa că rulează fără https.",
+          "skipped": "Neverificat, pentru că adresa nu a răspuns."
+        },
+        "protocol": {
+          "label": "Versiune",
+          "pass": "Această versiune de Oleafly funcționează cu serverul.",
+          "fail": "Oleafly și serverul au nevoie de versiuni diferite. Unul dintre ele trebuie actualizat.",
+          "info": "Serverul este mai nou decât această versiune de Oleafly, dar funcționează în continuare cu ea.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        },
+        "webSocket": {
+          "label": "Conexiune în timp real",
+          "pass": "Editările în timp real pot trece.",
+          "fail": "Ceva dintre tine și server blochează editările în timp real. Un firewall sau un proxy ar putea avea nevoie de o modificare.",
+          "info": "Editările în timp real trec, dar conexiunea s-a stabilit greu.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        },
+        "signInProviders": {
+          "label": "Opțiuni de autentificare",
+          "pass": "Serverul are cel puțin o metodă de autentificare.",
+          "fail": "Serverul nu are încă nicio metodă de autentificare. Întreabă-l pe administratorul lui.",
+          "info": "Serverul are o metodă de autentificare, dar unele opțiuni sunt dezactivate.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        },
+        "email": {
+          "label": "E-mail",
+          "pass": "Serverul poate trimite e-mailuri.",
+          "fail": "Setările de e-mail ale serverului nu funcționează.",
+          "info": "E-mailul nu este configurat pe acest server. Persoanele sunt adăugate fără e-mail.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        },
+        "clock": {
+          "label": "Ceas",
+          "pass": "Ceasul tău și ceasul serverului sunt sincronizate.",
+          "fail": "Ceasul tău și ceasul serverului diferă mult. Verifică data și ora pe acest computer.",
+          "info": "Ceasul tău este puțin decalat față de cel al serverului.",
+          "skipped": "Neverificat, pentru că o verificare anterioară a eșuat."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Adaugă un server de colaborare",
+    "description": "Introdu adresa primită de la grupul tău. Oleafly verifică serverul înainte să te autentifici.",
+    "addressLabel": "Adresa serverului",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Continuă",
+    "checking": "Se verifică serverul…",
+    "version": "Versiunea {{version}}",
+    "setupTitle": "Configurează acest server",
+    "setupDescription": "Nimeni nu s-a autentificat încă aici. Introdu codul de configurare din jurnalul serverului. Prima persoană care se autentifică cu acest cod devine administratorul serverului.",
+    "setupCodeLabel": "Cod de configurare",
+    "signInTitle": "Autentifică-te",
+    "signInDescription": "Browserul tău se deschide ca să te autentifici acolo. Oleafly nu îți vede niciodată parola.",
+    "continueWith": "Continuă cu {{provider}}",
+    "noProviders": "Acest server nu are încă nicio metodă de autentificare. Cere-i administratorului să configureze una.",
+    "waitingTitle": "Se așteaptă browserul",
+    "waitingDescription": "Termină autentificarea în fereastra de browser care s-a deschis, apoi revino aici.",
+    "cancel": "Anulează",
+    "back": "Înapoi",
+    "doneTitle": "Te-ai autentificat",
+    "doneDescription": "Te-ai autentificat pe {{server}} ca {{name}}.",
+    "done": "Gata"
+  },
+  "errors": {
+    "unreachable": "Oleafly nu a putut accesa serverul. Verifică adresa și conexiunea, apoi încearcă din nou.",
+    "not_https": "Această adresă nu folosește o conexiune securizată. Serverele de colaborare au nevoie de o adresă care începe cu https.",
+    "client_too_old": "Acest server are nevoie de o versiune mai nouă de Oleafly. Actualizează Oleafly, apoi încearcă din nou.",
+    "server_too_old": "Acest server trebuie actualizat înainte să funcționeze cu această versiune de Oleafly. Întreabă-l pe administratorul lui.",
+    "not_admitted": "Nu ești încă pe lista acestui server. Cere-i administratorului să te adauge.",
+    "sign_in_cancelled": "Autentificarea a fost anulată.",
+    "sign_in_timed_out": "Autentificarea a durat prea mult. Încearcă din nou.",
+    "unauthorized": "Ești deconectat de la acest server. Autentifică-te din nou.",
+    "forbidden": "Rolul tău pe acest server nu permite acest lucru.",
+    "not_found": "Serverul nu a găsit ce ai cerut. Poate nu mai există.",
+    "conflict": "Asta intră în conflict cu o modificare făcută de altcineva. Reîncarcă și încearcă din nou.",
+    "rate_limited": "Serverul este ocupat. Așteaptă un minut, apoi încearcă din nou.",
+    "setup_code_invalid": "Codul de configurare nu se potrivește. Caută codul corect în jurnalul serverului.",
+    "server": "Serverul a întâmpinat o problemă. Încearcă din nou mai târziu sau întreabă-l pe administratorul lui.",
+    "internal": "Ceva nu a mers bine în Oleafly. Încearcă din nou.",
+    "server_changed": "Această adresă aparține acum altui server, așa că Oleafly nu i-a trimis nimic. Dacă ai încredere în noul server, elimină-l pe acesta și adaugă-l din nou."
+  },
+  "roles": {
+    "admin": "Administrator",
+    "maintainer": "Coordonator",
+    "member": "Membru",
+    "guest": "Invitat"
+  },
+  "admin": {
+    "title": "Gestionează {{name}}",
+    "back": "Înapoi la servere",
+    "loadFailed": "Oleafly nu a putut încărca aceste date de pe server.",
+    "added": "Adăugat: {{date}}",
+    "tabs": {
+      "members": "Membri",
+      "allowlist": "Persoane permise",
+      "domains": "Domenii",
+      "settings": "Setările serverului",
+      "log": "Jurnal de securitate"
+    },
+    "members": {
+      "description": "Toți cei care s-au autentificat pe acest server.",
+      "loading": "Se încarcă membrii…",
+      "empty": "Nimeni nu s-a autentificat încă.",
+      "you": "Tu",
+      "active": "Activ",
+      "suspended": "Suspendat",
+      "removed": "Eliminat",
+      "roleLabel": "Rol pentru {{name}}",
+      "suspend": "Suspendă",
+      "reactivate": "Reactivează",
+      "remove": "Elimină",
+      "devices": "Dispozitive",
+      "devicesTitle": "Dispozitive pentru {{name}}",
+      "devicesDescription": "Deconectează un dispozitiv pierdut sau care nu mai este folosit.",
+      "devicesLoading": "Se încarcă dispozitivele…",
+      "devicesLoadFailed": "Oleafly nu a putut încărca aceste dispozitive.",
+      "lastAdmin": "Acest server are nevoie de cel puțin un administrator. Fă mai întâi pe altcineva administrator.",
+      "removeConfirm": {
+        "title": "Elimini {{name}} de pe acest server?",
+        "description": "Dispozitivele acestei persoane sunt deconectate imediat. Proiectele pe care le deține rămân pe server și poți adăuga persoana din nou mai târziu.",
+        "confirm": "Elimină membrul"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Deconectezi {{name}}?",
+        "description": "Acel dispozitiv nu se mai sincronizează cu acest server până când proprietarul lui se autentifică din nou pe el.",
+        "confirm": "Deconectează dispozitivul"
+      }
+    },
+    "allowlist": {
+      "description": "Persoanele de pe această listă se pot autentifica pe server cu rolul pe care îl alegi.",
+      "matchLabel": "Potrivire după",
+      "match": {
+        "email": "Adresă de e-mail",
+        "login": "Nume de utilizator"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Opțiune de autentificare",
+      "roleLabel": "Rol",
+      "add": "Adaugă",
+      "loading": "Se încarcă lista…",
+      "empty": "Nimeni nu este încă pe listă.",
+      "loginEntry": "{{login}} pe {{provider}}",
+      "bound": "S-a autentificat",
+      "unbound": "Nu s-a autentificat încă",
+      "remove": "Elimină",
+      "removeNamed": "Elimină {{entry}}",
+      "duplicate": "Această persoană este deja pe listă."
+    },
+    "domains": {
+      "description": "Oricine are o adresă de e-mail verificată pe aceste domenii se poate autentifica cu rolul pe care îl alegi.",
+      "domainLabel": "Domeniu",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Rol",
+      "add": "Adaugă",
+      "loading": "Se încarcă regulile de domeniu…",
+      "empty": "Nicio regulă de domeniu încă.",
+      "remove": "Elimină",
+      "removeNamed": "Elimină {{domain}}",
+      "duplicate": "Acest domeniu are deja o regulă."
+    },
+    "settings": {
+      "description": "Aceste setări se aplică tuturor celor de pe acest server.",
+      "adminOnly": "Doar administratorii pot schimba aceste setări.",
+      "loading": "Se încarcă setările…",
+      "guestsEnabled": {
+        "label": "Permite invitați",
+        "description": "Membrii pot invita persoane din afara serverului la proiectele pe care le dețin."
+      },
+      "guestApprovalRequired": {
+        "label": "Aprobare prealabilă pentru invitați",
+        "description": "Un coordonator sau un administrator aprobă fiecare invitație înainte ca ea să funcționeze."
+      },
+      "directoryVisible": {
+        "label": "Lista membrilor",
+        "description": "Membrii se pot căuta unii pe alții după nume când partajează un proiect."
+      },
+      "directoryShowsEmail": {
+        "label": "Arată adresele de e-mail în lista membrilor",
+        "description": "Membrii văd adresele de e-mail ale celorlalți când caută pe cineva."
+      },
+      "linkSharingAllowed": {
+        "label": "Permite partajarea prin link",
+        "description": "Proprietarii de proiecte pot permite oricărui membru să deschidă un proiect din linkul lui."
+      },
+      "accessLogsAllowed": {
+        "label": "Permite jurnale de acces la proiecte",
+        "description": "Proprietarii de proiecte pot păstra un jurnal cu cei care le-au deschis proiectul."
+      },
+      "emailNotifications": {
+        "label": "Notificări prin e-mail",
+        "description": "Serverul trimite e-mailuri persoanelor când sunt adăugate sau când cineva partajează un proiect cu ele."
+      }
+    },
+    "log": {
+      "description": "Autentificări, modificări de dispozitive și acțiuni ale administratorilor pe acest server.",
+      "loading": "Se încarcă jurnalul…",
+      "empty": "Nu s-a întâmplat încă nimic.",
+      "loadMore": "Arată intrările mai vechi",
+      "server": "Server",
+      "unknownAccount": "Cont necunoscut",
+      "target": "Pentru {{target}}",
+      "ip": "De la {{ip}}",
+      "kinds": {
+        "setupCompleted": "A terminat configurarea serverului",
+        "signIn": "S-a autentificat",
+        "signInRefused": "Autentificare refuzată",
+        "deviceAdded": "A adăugat un dispozitiv",
+        "deviceSignedOut": "A deconectat un dispozitiv",
+        "refreshReuseDetected": "A refolosit o autentificare veche, așa că dispozitivul a fost deconectat",
+        "memberAdded": "A adăugat un membru",
+        "memberRemoved": "A eliminat un membru",
+        "memberSuspended": "A suspendat un membru",
+        "memberReactivated": "A reactivat un membru",
+        "roleChanged": "A schimbat un rol",
+        "allowlistAdded": "A adăugat pe cineva pe lista persoanelor permise",
+        "allowlistRemoved": "A eliminat pe cineva de pe lista persoanelor permise",
+        "domainRuleAdded": "A adăugat o regulă de domeniu",
+        "domainRuleRemoved": "A eliminat o regulă de domeniu",
+        "settingsChanged": "A schimbat setările serverului",
+        "unknown": "Alt eveniment pe server"
+      }
+    }
+  }
+}

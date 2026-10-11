@@ -859,6 +859,10 @@
         "description": "Mostra a galeria de Ferramentas do Oleafly e as ferramentas individuais (importação de PDF, equações, tabelas, BibTeX, busca de laboratórios e de literatura, prazos), além dos comandos de barra delas. Desligado por padrão enquanto está em beta.",
         "label": "Ferramentas LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Edite projetos com outras pessoas por um servidor de colaboração que você ou o seu grupo mantém. Adiciona uma seção Colaboração às Configurações. Desligado por padrão enquanto está em beta.",
+        "label": "Colaboração em tempo real"
+      },
       "warning": "Estes recursos são experimentais e ainda estão em beta. Eles não foram totalmente testados e podem mudar, quebrar ou sumir em uma versão futura. Ligue-os só se você quiser experimentar o que está em andamento.",
       "webBrowser": {
         "description": "Mostra o navegador web interno (o botão no painel e o atalho dele) e deixa a IA conduzi-lo por uso do computador. Desligado por padrão enquanto está em beta. Quando desligado, não há botão de navegador e a IA não tem ferramenta de navegador.",
@@ -940,6 +944,7 @@
     "nav": {
       "ai": "Assistente de IA",
       "appearance": "Aparência",
+      "collaboration": "Colaboração",
       "data": "Armazenamento de dados",
       "dictionary": "Dicionário",
       "downloads": "Downloads",
@@ -955,6 +960,7 @@
       "keywords": {
         "ai": "assistente, chat, conversa, modelos, provedores, chaves de API, agentes, prompts, orçamento, servidores MCP",
         "appearance": "tema, modo escuro, modo claro, cor, fontes, tamanho do texto, zoom, layout",
+        "collaboration": "servidores, login, entrar, dispositivos, membros, mantenedores, compartilhamento, equipes, laboratórios, edição ao vivo, tempo real, registro de segurança",
         "data": "backup, pasta da biblioteca, pasta de projetos, armazenamento, espaço em disco, lixeira, excluir projetos, pontos de verificação",
         "dictionary": "ortografia, palavras personalizadas, palavras ignoradas, revisão, regras gramaticais",
         "downloads": "pacotes, fontes, dicionários, arquivos offline",

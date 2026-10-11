@@ -844,6 +844,10 @@
         "description": "Toon de galerij Oleafly Tools en de losse tools (PDF-import, vergelijkingen, tabellen, BibTeX, lab- en literatuurzoeken, deadlines) plus hun slash-opdrachten. Staat standaard uit zolang dit in bèta is.",
         "label": "LaTeX-tools"
       },
+      "liveCollaboration": {
+        "description": "Bewerk projecten samen met anderen via een samenwerkingsserver die jij of je groep beheert. Voegt de sectie Samenwerking toe aan Instellingen. Staat standaard uit zolang dit in bèta is.",
+        "label": "Live samenwerken"
+      },
       "warning": "Deze functies zijn experimenteel en nog in bèta. Ze zijn nog niet volledig getest en kunnen veranderen, stukgaan of in een volgende versie verdwijnen. Zet ze alleen aan als je werk in uitvoering wilt proberen.",
       "webBrowser": {
         "description": "Toon de ingebouwde webbrowser (de dockknop en de sneltoets) en laat de AI hem besturen met computergebruik. Staat standaard uit zolang dit in bèta is. Als het uitstaat, is er geen browserknop en heeft de AI geen browsertool.",
@@ -923,6 +927,7 @@
     "nav": {
       "ai": "AI-assistent",
       "appearance": "Weergave",
+      "collaboration": "Samenwerking",
       "data": "Gegevensopslag",
       "dictionary": "Woordenboek",
       "downloads": "Downloads",
@@ -938,6 +943,7 @@
       "keywords": {
         "ai": "assistent, chat, modellen, providers, aanbieders, API-sleutels, agents, prompts, budget, MCP-servers",
         "appearance": "thema, donkere modus, lichte modus, kleur, lettertypen, lettertype, tekstgrootte, zoomen, indeling, lay-out",
+        "collaboration": "servers, aanmelden, apparaten, leden, onderhouders, delen, teams, labs, groepen, live bewerken, realtime, samenwerken, beveiligingslogboek",
         "data": "back-up, backup, bibliotheekmap, projectenmap, opslag, schijfruimte, prullenbak, projecten verwijderen, checkpoints",
         "dictionary": "spelling, eigen woorden, genegeerde woorden, proeflezen, grammaticaregels",
         "downloads": "pakketten, lettertypen, woordenboeken, offline bestanden",

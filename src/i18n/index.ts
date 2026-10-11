@@ -9,7 +9,7 @@ import {
   type LocalePreference,
   type SupportedLocale,
 } from "@oleafly/i18n-contract";
-import { englishResources, loadLocaleResources, NAMESPACES, type Catalog } from "./resources";
+import { englishResources, loadEnglishCatalog, loadLocaleResources, NAMESPACES, type Catalog } from "./resources";
 import { createEmitter } from "@/lib/emitter";
 
 export const LOCALE_STORAGE_KEY = "oleafly.locale";
@@ -120,4 +120,10 @@ export async function applyLocale(locale: SupportedLocale): Promise<void> {
   current = locale;
   setDocumentLocale(locale);
   localeApplied.emit(locale);
+}
+
+export async function loadNamespace(namespace: string): Promise<void> {
+  if (i18n.hasResourceBundle("en", namespace)) return;
+  const catalog = await loadEnglishCatalog(namespace);
+  if (catalog) i18n.addResourceBundle("en", namespace, catalog, true, true);
 }

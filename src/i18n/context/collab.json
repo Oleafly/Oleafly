@@ -1,0 +1,63 @@
+{
+  "section": {
+    "server": {
+      "signOut": "Button that ends this computer's session on the collaboration server. It does not quit the app.",
+      "remove": "Button that removes the server from this computer's list. Nothing is deleted on the server."
+    },
+    "devices": {
+      "current": "Badge on the row for the computer the person is using right now"
+    },
+    "checks": {
+      "status": {
+        "info": "Status word for a check that neither passed nor failed but has something worth knowing"
+      },
+      "items": {
+        "webSocket": {
+          "label": "Name of the check for the always-open connection that carries live edits. Avoid technical words such as WebSocket."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "addressPlaceholder": "Example server address shown in an empty field. Keep it exactly as written.",
+    "setupDescription": "The setup code is a one-time code the server prints in its log the first time it starts",
+    "continueWith": "{{provider}} is the name of a sign-in service, such as GitHub or University login"
+  },
+  "errors": {
+    "not_admitted": "Shown when the server's admin has not allowed this person to sign in. Keep it short and calm.",
+    "server_changed": "Shown when the saved server address now belongs to a different server. Oleafly refused to talk to it. Keep the advice to remove and re-add only if trusted."
+  },
+  "roles": {
+    "admin": "Server role with full control of the server",
+    "maintainer": "Server role that can manage members but cannot change server settings",
+    "member": "Server role for a regular person on the server",
+    "guest": "Server role for someone from outside who can only open projects shared with them"
+  },
+  "admin": {
+    "tabs": {
+      "allowlist": "Tab with the list of people allowed to sign in, by email address or sign-in name"
+    },
+    "allowlist": {
+      "match": {
+        "login": "A user name on a sign-in service, such as a GitHub username"
+      },
+      "emailPlaceholder": "Example email address shown in an empty field. Keep example.edu.",
+      "loginPlaceholder": "Example GitHub username shown in an empty field. Keep it exactly as written."
+    },
+    "domains": {
+      "domainPlaceholder": "Example domain shown in an empty field. Keep it exactly as written."
+    },
+    "log": {
+      "server": "Shown in place of a person's name when the server itself did something",
+      "kinds": {
+        "signIn": "Security log entry. The person named just before it signed in.",
+        "signInRefused": "Security log entry. The person named just before it tried to sign in and the server said no.",
+        "refreshReuseDetected": "Security log entry. A session token was used twice, which can mean it was stolen, so the server signed that device out.",
+        "unknown": "Security log entry of a kind this version of the app does not know yet. Keep it neutral."
+      }
+    },
+    "members": {
+      "devices": "Button on a member's row that shows the computers signed in with that person's account"
+    }
+  }
+}

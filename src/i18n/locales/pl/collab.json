@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Edytuj projekty z innymi osobami w czasie rzeczywistym. Projekty synchronizują się za pośrednictwem serwera współpracy prowadzonego przez Ciebie lub Twoją grupę. To ten serwer decyduje, kto może dołączyć.",
+    "servers": {
+      "title": "Serwery",
+      "add": "Dodaj serwer",
+      "loading": "Wczytywanie Twoich serwerów…",
+      "loadFailed": "Oleafly nie mógł wczytać Twoich serwerów.",
+      "empty": {
+        "title": "Nie masz jeszcze serwerów",
+        "description": "Poproś osobę, która prowadzi serwer Twojej grupy, o jego adres, a potem dodaj go tutaj."
+      }
+    },
+    "server": {
+      "signedIn": "Zalogowano",
+      "signedOut": "Wylogowano",
+      "signedInAs": "Zalogowano jako {{name}}",
+      "signedOutHint": "Ten komputer nie jest zalogowany do tego serwera.",
+      "role": "Twoja rola: {{role}}",
+      "signIn": "Zaloguj się",
+      "signOut": "Wyloguj się",
+      "remove": "Usuń",
+      "manage": "Zarządzaj serwerem",
+      "test": "Testuj połączenie",
+      "removeConfirm": {
+        "title": "Usunąć serwer {{name}}?",
+        "description": "Oleafly wyloguje się z tego serwera i zapomni o nim. Projekty, które są już na tym komputerze, zostaną na swoim miejscu.",
+        "confirm": "Usuń serwer"
+      }
+    },
+    "devices": {
+      "title": "Twoje urządzenia",
+      "description": "Komputery zalogowane do tego serwera na Twoje konto. Wyloguj te, których już nie używasz.",
+      "loading": "Wczytywanie Twoich urządzeń…",
+      "loadFailed": "Oleafly nie mógł wczytać Twoich urządzeń.",
+      "current": "Ten komputer",
+      "added": "Dodano {{date}}",
+      "lastSeen": "Ostatnia aktywność: {{date}}",
+      "neverSeen": "Brak aktywności",
+      "empty": "Żadne urządzenie nie jest zalogowane.",
+      "signOut": "Wyloguj",
+      "signOutNamed": "Wyloguj urządzenie {{name}}",
+      "signOutConfirm": {
+        "title": "Wylogować urządzenie {{name}}?",
+        "description": "To urządzenie przestanie synchronizować się z tym serwerem, dopóki ktoś ponownie się na nim nie zaloguje.",
+        "confirm": "Wyloguj urządzenie"
+      }
+    },
+    "checks": {
+      "title": "Test połączenia",
+      "running": "Testowanie połączenia…",
+      "clockSkew": "Różnica czasu w sekundach: {{seconds}}",
+      "status": {
+        "pass": "Zaliczono",
+        "fail": "Nie zaliczono",
+        "info": "Informacja",
+        "skipped": "Pominięto"
+      },
+      "items": {
+        "reachable": {
+          "label": "Adres",
+          "pass": "Serwer odpowiedział.",
+          "fail": "Oleafly nie mógł połączyć się z tym adresem. Sprawdź adres i swoją sieć.",
+          "info": "Serwer odpowiedział, ale powoli.",
+          "skipped": "Nie sprawdzono."
+        },
+        "https": {
+          "label": "Bezpieczne połączenie",
+          "pass": "Połączenie jest szyfrowane, a certyfikat jest ważny.",
+          "fail": "Certyfikat serwera jest nieważny albo adres nie używa https.",
+          "info": "To serwer testowy na tym komputerze, więc działa bez https.",
+          "skipped": "Nie sprawdzono, bo adres nie odpowiedział."
+        },
+        "protocol": {
+          "label": "Wersja",
+          "pass": "Ta wersja Oleafly działa z tym serwerem.",
+          "fail": "Oleafly i serwer potrzebują różnych wersji. Jedno z nich wymaga aktualizacji.",
+          "info": "Serwer jest nowszy niż ta wersja Oleafly, ale nadal z nią działa.",
+          "skipped": "Nie sprawdzono, bo wcześniejszy test się nie powiódł."
+        },
+        "webSocket": {
+          "label": "Połączenie na żywo",
+          "pass": "Zmiany na żywo mogą docierać do serwera.",
+          "fail": "Coś między Tobą a serwerem blokuje zmiany na żywo. Być może trzeba zmienić ustawienia zapory sieciowej albo serwera proxy.",
+          "info": "Zmiany na żywo docierają, ale nawiązanie połączenia trochę trwało.",
+          "skipped": "Nie sprawdzono, bo wcześniejszy test się nie powiódł."
+        },
+        "signInProviders": {
+          "label": "Opcje logowania",
+          "pass": "Serwer ma co najmniej jeden sposób logowania.",
+          "fail": "Serwer nie ma jeszcze żadnego sposobu logowania. Zapytaj jego administratora.",
+          "info": "Serwer ma sposób logowania, ale część opcji jest wyłączona.",
+          "skipped": "Nie sprawdzono, bo wcześniejszy test się nie powiódł."
+        },
+        "email": {
+          "label": "E-mail",
+          "pass": "Serwer może wysyłać e-maile.",
+          "fail": "Ustawienia poczty e-mail na serwerze nie działają.",
+          "info": "Poczta e-mail nie jest skonfigurowana na tym serwerze. Osoby są dodawane bez adresu e-mail.",
+          "skipped": "Nie sprawdzono, bo wcześniejszy test się nie powiódł."
+        },
+        "clock": {
+          "label": "Zegar",
+          "pass": "Twój zegar i zegar serwera są zgodne.",
+          "fail": "Twój zegar i zegar serwera bardzo się różnią. Sprawdź datę i godzinę na tym komputerze.",
+          "info": "Twój zegar trochę różni się od zegara serwera.",
+          "skipped": "Nie sprawdzono, bo wcześniejszy test się nie powiódł."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Dodaj serwer współpracy",
+    "description": "Wpisz adres podany przez Twoją grupę. Oleafly sprawdzi serwer, zanim się zalogujesz.",
+    "addressLabel": "Adres serwera",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Dalej",
+    "checking": "Sprawdzanie serwera…",
+    "version": "Wersja {{version}}",
+    "setupTitle": "Skonfiguruj ten serwer",
+    "setupDescription": "Nikt jeszcze się tu nie zalogował. Wpisz kod konfiguracyjny z dziennika serwera. Kto pierwszy zaloguje się z tym kodem, zostanie administratorem serwera.",
+    "setupCodeLabel": "Kod konfiguracyjny",
+    "signInTitle": "Zaloguj się",
+    "signInDescription": "Otworzy się Twoja przeglądarka, w której się zalogujesz. Oleafly nigdy nie widzi Twojego hasła.",
+    "continueWith": "Kontynuuj przez {{provider}}",
+    "noProviders": "Ten serwer nie ma jeszcze żadnego sposobu logowania. Poproś jego administratora o skonfigurowanie logowania.",
+    "waitingTitle": "Oczekiwanie na przeglądarkę",
+    "waitingDescription": "Dokończ logowanie w otwartym oknie przeglądarki, a potem wróć tutaj.",
+    "cancel": "Anuluj",
+    "back": "Wstecz",
+    "doneTitle": "Zalogowano",
+    "doneDescription": "Zalogowano do serwera {{server}} jako {{name}}.",
+    "done": "Gotowe"
+  },
+  "errors": {
+    "unreachable": "Oleafly nie mógł połączyć się z serwerem. Sprawdź adres i połączenie, a potem spróbuj ponownie.",
+    "not_https": "Ten adres nie używa bezpiecznego połączenia. Serwery współpracy wymagają adresu, który zaczyna się od https.",
+    "client_too_old": "Ten serwer wymaga nowszej wersji Oleafly. Zaktualizuj Oleafly, a potem spróbuj ponownie.",
+    "server_too_old": "Ten serwer wymaga aktualizacji, zanim zadziała z tą wersją Oleafly. Poproś o nią jego administratora.",
+    "not_admitted": "Nie ma Cię jeszcze na liście tego serwera. Poproś jego administratora o dodanie.",
+    "sign_in_cancelled": "Logowanie zostało anulowane.",
+    "sign_in_timed_out": "Logowanie trwało zbyt długo. Spróbuj ponownie.",
+    "unauthorized": "Wylogowano Cię z tego serwera. Zaloguj się ponownie.",
+    "forbidden": "Twoja rola na tym serwerze na to nie pozwala.",
+    "not_found": "Serwer nie znalazł tego elementu. Być może już nie istnieje.",
+    "conflict": "To koliduje ze zmianą, którą wprowadził ktoś inny. Wczytaj ponownie i spróbuj jeszcze raz.",
+    "rate_limited": "Serwer jest zajęty. Odczekaj minutę, a potem spróbuj ponownie.",
+    "setup_code_invalid": "Ten kod konfiguracyjny się nie zgadza. Sprawdź właściwy kod w dzienniku serwera.",
+    "server": "Na serwerze wystąpił problem. Spróbuj ponownie później albo zwróć się do jego administratora.",
+    "internal": "W Oleafly coś poszło nie tak. Spróbuj ponownie.",
+    "server_changed": "Ten adres należy teraz do innego serwera, więc Oleafly nic mu nie wysłał. Jeśli ufasz nowemu serwerowi, usuń ten serwer i dodaj go ponownie."
+  },
+  "roles": {
+    "admin": "Administrator",
+    "maintainer": "Opiekun",
+    "member": "Członek",
+    "guest": "Gość"
+  },
+  "admin": {
+    "title": "Zarządzaj serwerem {{name}}",
+    "back": "Wróć do listy serwerów",
+    "loadFailed": "Oleafly nie mógł wczytać tych danych z serwera.",
+    "added": "Dodano {{date}}",
+    "tabs": {
+      "members": "Członkowie",
+      "allowlist": "Dozwolone osoby",
+      "domains": "Domeny",
+      "settings": "Ustawienia serwera",
+      "log": "Dziennik bezpieczeństwa"
+    },
+    "members": {
+      "description": "Wszyscy, którzy zalogowali się do tego serwera.",
+      "loading": "Wczytywanie członków…",
+      "empty": "Nikt jeszcze się nie zalogował.",
+      "you": "Ty",
+      "active": "Aktywny",
+      "suspended": "Zawieszony",
+      "removed": "Usunięty",
+      "roleLabel": "Rola użytkownika {{name}}",
+      "suspend": "Zawieś",
+      "reactivate": "Aktywuj ponownie",
+      "remove": "Usuń",
+      "devices": "Urządzenia",
+      "devicesTitle": "Urządzenia użytkownika {{name}}",
+      "devicesDescription": "Wyloguj urządzenie, które zginęło albo nie jest już używane.",
+      "devicesLoading": "Wczytywanie urządzeń…",
+      "devicesLoadFailed": "Oleafly nie mógł wczytać tych urządzeń.",
+      "lastAdmin": "Ten serwer potrzebuje co najmniej jednego administratora. Najpierw nadaj komuś innemu rolę administratora.",
+      "removeConfirm": {
+        "title": "Usunąć użytkownika {{name}} z tego serwera?",
+        "description": "Urządzenia tej osoby zostaną od razu wylogowane. Projekty należące do tej osoby zostaną na serwerze, a później możesz ją dodać ponownie.",
+        "confirm": "Usuń członka"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Wylogować urządzenie {{name}}?",
+        "description": "To urządzenie przestanie synchronizować się z tym serwerem, dopóki jego właściciel ponownie się na nim nie zaloguje.",
+        "confirm": "Wyloguj urządzenie"
+      }
+    },
+    "allowlist": {
+      "description": "Osoby z tej listy mogą logować się do serwera z rolą, którą wybierzesz.",
+      "matchLabel": "Dopasuj według",
+      "match": {
+        "email": "Adres e-mail",
+        "login": "Nazwa użytkownika"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Opcja logowania",
+      "roleLabel": "Rola",
+      "add": "Dodaj",
+      "loading": "Wczytywanie listy…",
+      "empty": "Na liście nie ma jeszcze nikogo.",
+      "loginEntry": "{{login}} w usłudze {{provider}}",
+      "bound": "Zalogowano",
+      "unbound": "Jeszcze nie zalogowano",
+      "remove": "Usuń",
+      "removeNamed": "Usuń wpis {{entry}}",
+      "duplicate": "Ta osoba jest już na liście."
+    },
+    "domains": {
+      "description": "Każdy, kto ma zweryfikowany adres e-mail w tych domenach, może się zalogować z rolą, którą wybierzesz.",
+      "domainLabel": "Domena",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Rola",
+      "add": "Dodaj",
+      "loading": "Wczytywanie reguł domen…",
+      "empty": "Nie ma jeszcze reguł domen.",
+      "remove": "Usuń",
+      "removeNamed": "Usuń domenę {{domain}}",
+      "duplicate": "Ta domena ma już regułę."
+    },
+    "settings": {
+      "description": "Te ustawienia dotyczą wszystkich na tym serwerze.",
+      "adminOnly": "Tylko administratorzy mogą zmieniać te ustawienia.",
+      "loading": "Wczytywanie ustawień…",
+      "guestsEnabled": {
+        "label": "Zezwalaj na gości",
+        "description": "Członkowie mogą zapraszać osoby spoza serwera do swoich projektów."
+      },
+      "guestApprovalRequired": {
+        "label": "Najpierw zatwierdzaj gości",
+        "description": "Opiekun lub administrator zatwierdza każde zaproszenie gościa, zanim zacznie ono działać."
+      },
+      "directoryVisible": {
+        "label": "Katalog członków",
+        "description": "Członkowie mogą wyszukiwać się nawzajem po nazwie, gdy udostępniają projekt."
+      },
+      "directoryShowsEmail": {
+        "label": "Pokazuj adresy e-mail w katalogu",
+        "description": "Członkowie widzą nawzajem swoje adresy e-mail, gdy kogoś wyszukują."
+      },
+      "linkSharingAllowed": {
+        "label": "Zezwalaj na udostępnianie przez link",
+        "description": "Właściciele projektów mogą pozwolić każdemu członkowi otworzyć projekt przez jego link."
+      },
+      "accessLogsAllowed": {
+        "label": "Zezwalaj na dzienniki dostępu do projektów",
+        "description": "Właściciele projektów mogą prowadzić dziennik osób, które otworzyły ich projekt."
+      },
+      "emailNotifications": {
+        "label": "Powiadomienia e-mail",
+        "description": "Serwer wysyła ludziom e-mail, gdy zostaną dodani albo gdy ktoś udostępni im projekt."
+      }
+    },
+    "log": {
+      "description": "Logowania, zmiany urządzeń i działania administratorów na tym serwerze.",
+      "loading": "Wczytywanie dziennika…",
+      "empty": "Jeszcze nic się nie wydarzyło.",
+      "loadMore": "Pokaż starsze wpisy",
+      "server": "Serwer",
+      "unknownAccount": "Nieznane konto",
+      "target": "Dotyczy: {{target}}",
+      "ip": "Z adresu {{ip}}",
+      "kinds": {
+        "setupCompleted": "Zakończenie konfiguracji serwera",
+        "signIn": "Logowanie",
+        "signInRefused": "Odmowa logowania",
+        "deviceAdded": "Dodanie urządzenia",
+        "deviceSignedOut": "Wylogowanie urządzenia",
+        "refreshReuseDetected": "Ponowne użycie starej sesji, więc urządzenie zostało wylogowane",
+        "memberAdded": "Dodanie członka",
+        "memberRemoved": "Usunięcie członka",
+        "memberSuspended": "Zawieszenie członka",
+        "memberReactivated": "Ponowna aktywacja członka",
+        "roleChanged": "Zmiana roli",
+        "allowlistAdded": "Dodanie osoby do listy dozwolonych",
+        "allowlistRemoved": "Usunięcie osoby z listy dozwolonych",
+        "domainRuleAdded": "Dodanie reguły domeny",
+        "domainRuleRemoved": "Usunięcie reguły domeny",
+        "settingsChanged": "Zmiana ustawień serwera",
+        "unknown": "Inne zdarzenie serwera"
+      }
+    }
+  }
+}

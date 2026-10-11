@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Bearbeiten Sie Projekte in Echtzeit gemeinsam mit anderen. Projekte werden über einen Kollaborationsserver abgeglichen, den Sie oder Ihre Gruppe betreiben, und dieser Server entscheidet, wer teilnehmen darf.",
+    "servers": {
+      "title": "Server",
+      "add": "Server hinzufügen",
+      "loading": "Ihre Server werden geladen…",
+      "loadFailed": "Oleafly konnte Ihre Server nicht laden.",
+      "empty": {
+        "title": "Noch keine Server",
+        "description": "Fragen Sie die Person, die den Server Ihrer Gruppe betreibt, nach seiner Adresse und fügen Sie ihn dann hier hinzu."
+      }
+    },
+    "server": {
+      "signedIn": "Angemeldet",
+      "signedOut": "Abgemeldet",
+      "signedInAs": "Angemeldet als {{name}}",
+      "signedOutHint": "Dieser Computer ist bei diesem Server nicht angemeldet.",
+      "role": "Ihre Rolle: {{role}}",
+      "signIn": "Anmelden",
+      "signOut": "Abmelden",
+      "remove": "Entfernen",
+      "manage": "Server verwalten",
+      "test": "Verbindung testen",
+      "removeConfirm": {
+        "title": "{{name}} entfernen?",
+        "description": "Oleafly meldet sich von diesem Server ab und vergisst ihn. Projekte, die schon auf diesem Computer liegen, bleiben, wo sie sind.",
+        "confirm": "Server entfernen"
+      }
+    },
+    "devices": {
+      "title": "Ihre Geräte",
+      "description": "Computer, die mit Ihrem Konto bei diesem Server angemeldet sind. Melden Sie alle ab, die Sie nicht mehr nutzen.",
+      "loading": "Ihre Geräte werden geladen…",
+      "loadFailed": "Oleafly konnte Ihre Geräte nicht laden.",
+      "current": "Dieser Computer",
+      "added": "Hinzugefügt am {{date}}",
+      "lastSeen": "Zuletzt gesehen am {{date}}",
+      "neverSeen": "Noch nicht gesehen",
+      "empty": "Es ist kein Gerät angemeldet.",
+      "signOut": "Abmelden",
+      "signOutNamed": "{{name}} abmelden",
+      "signOutConfirm": {
+        "title": "{{name}} abmelden?",
+        "description": "Der Computer gleicht sich nicht mehr mit diesem Server ab, bis sich dort wieder jemand anmeldet.",
+        "confirm": "Gerät abmelden"
+      }
+    },
+    "checks": {
+      "title": "Verbindungstest",
+      "running": "Die Verbindung wird getestet…",
+      "clockSkew": "Zeitunterschied in Sekunden: {{seconds}}",
+      "status": {
+        "pass": "Bestanden",
+        "fail": "Fehlgeschlagen",
+        "info": "Hinweis",
+        "skipped": "Übersprungen"
+      },
+      "items": {
+        "reachable": {
+          "label": "Adresse",
+          "pass": "Der Server hat geantwortet.",
+          "fail": "Oleafly konnte diese Adresse nicht erreichen. Prüfen Sie die Adresse und Ihr Netzwerk.",
+          "info": "Der Server hat geantwortet, aber langsam.",
+          "skipped": "Nicht geprüft."
+        },
+        "https": {
+          "label": "Sichere Verbindung",
+          "pass": "Die Verbindung ist verschlüsselt und das Zertifikat ist gültig.",
+          "fail": "Das Zertifikat des Servers ist ungültig, oder die Adresse verwendet kein https.",
+          "info": "Dies ist ein Testserver auf diesem Computer, daher läuft er ohne https.",
+          "skipped": "Nicht geprüft, weil die Adresse nicht geantwortet hat."
+        },
+        "protocol": {
+          "label": "Version",
+          "pass": "Diese Version von Oleafly funktioniert mit dem Server.",
+          "fail": "Oleafly und der Server brauchen unterschiedliche Versionen. Einer von beiden braucht ein Update.",
+          "info": "Der Server ist neuer als diese Version von Oleafly, funktioniert aber trotzdem damit.",
+          "skipped": "Nicht geprüft, weil eine vorherige Prüfung fehlgeschlagen ist."
+        },
+        "webSocket": {
+          "label": "Live-Verbindung",
+          "pass": "Live-Bearbeitungen kommen durch.",
+          "fail": "Etwas zwischen Ihnen und dem Server blockiert Live-Bearbeitungen. Eine Firewall oder ein Proxy muss eventuell angepasst werden.",
+          "info": "Live-Bearbeitungen kommen durch, aber der Verbindungsaufbau hat eine Weile gedauert.",
+          "skipped": "Nicht geprüft, weil eine vorherige Prüfung fehlgeschlagen ist."
+        },
+        "signInProviders": {
+          "label": "Anmeldeoptionen",
+          "pass": "Der Server bietet mindestens eine Möglichkeit zur Anmeldung.",
+          "fail": "Der Server bietet noch keine Möglichkeit zur Anmeldung. Wenden Sie sich an den Admin des Servers.",
+          "info": "Der Server bietet eine Möglichkeit zur Anmeldung, aber einige Optionen sind ausgeschaltet.",
+          "skipped": "Nicht geprüft, weil eine vorherige Prüfung fehlgeschlagen ist."
+        },
+        "email": {
+          "label": "E-Mail",
+          "pass": "Der Server kann E-Mails senden.",
+          "fail": "Die E-Mail-Einstellungen des Servers funktionieren nicht.",
+          "info": "E-Mail ist auf diesem Server nicht eingerichtet. Personen werden ohne E-Mail hinzugefügt.",
+          "skipped": "Nicht geprüft, weil eine vorherige Prüfung fehlgeschlagen ist."
+        },
+        "clock": {
+          "label": "Uhr",
+          "pass": "Ihre Uhr und die Uhr des Servers stimmen überein.",
+          "fail": "Ihre Uhr und die Uhr des Servers weichen stark voneinander ab. Prüfen Sie Datum und Uhrzeit auf diesem Computer.",
+          "info": "Ihre Uhr weicht ein wenig von der Uhr des Servers ab.",
+          "skipped": "Nicht geprüft, weil eine vorherige Prüfung fehlgeschlagen ist."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Kollaborationsserver hinzufügen",
+    "description": "Geben Sie die Adresse ein, die Sie von Ihrer Gruppe bekommen haben. Oleafly prüft den Server, bevor Sie sich anmelden.",
+    "addressLabel": "Serveradresse",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Weiter",
+    "checking": "Der Server wird geprüft…",
+    "version": "Version {{version}}",
+    "setupTitle": "Diesen Server einrichten",
+    "setupDescription": "Hier hat sich noch niemand angemeldet. Geben Sie den Einrichtungscode aus dem Protokoll des Servers ein. Wer sich als Erstes mit dem Code anmeldet, wird Admin des Servers.",
+    "setupCodeLabel": "Einrichtungscode",
+    "signInTitle": "Anmelden",
+    "signInDescription": "Ihr Browser öffnet sich, damit Sie sich dort anmelden können. Oleafly sieht Ihr Passwort nie.",
+    "continueWith": "Weiter mit {{provider}}",
+    "noProviders": "Dieser Server bietet noch keine Möglichkeit zur Anmeldung. Bitten Sie den Admin des Servers, eine einzurichten.",
+    "waitingTitle": "Warten auf Ihren Browser",
+    "waitingDescription": "Schließen Sie die Anmeldung im geöffneten Browserfenster ab und kehren Sie dann hierher zurück.",
+    "cancel": "Abbrechen",
+    "back": "Zurück",
+    "doneTitle": "Sie sind angemeldet",
+    "doneDescription": "Sie sind bei {{server}} als {{name}} angemeldet.",
+    "done": "Fertig"
+  },
+  "errors": {
+    "unreachable": "Oleafly konnte den Server nicht erreichen. Prüfen Sie die Adresse und Ihre Verbindung und versuchen Sie es dann erneut.",
+    "not_https": "Diese Adresse verwendet keine sichere Verbindung. Kollaborationsserver brauchen eine Adresse, die mit https beginnt.",
+    "client_too_old": "Dieser Server braucht eine neuere Version von Oleafly. Aktualisieren Sie Oleafly und versuchen Sie es dann erneut.",
+    "server_too_old": "Dieser Server braucht ein Update, bevor er mit dieser Version von Oleafly funktioniert. Wenden Sie sich an den Admin des Servers.",
+    "not_admitted": "Sie stehen noch nicht auf der Liste dieses Servers. Bitten Sie den Admin des Servers, Sie hinzuzufügen.",
+    "sign_in_cancelled": "Die Anmeldung wurde abgebrochen.",
+    "sign_in_timed_out": "Die Anmeldung hat zu lange gedauert. Versuchen Sie es erneut.",
+    "unauthorized": "Sie sind von diesem Server abgemeldet. Melden Sie sich erneut an.",
+    "forbidden": "Ihre Rolle auf diesem Server erlaubt das nicht.",
+    "not_found": "Der Server konnte das nicht finden. Möglicherweise gibt es das schon nicht mehr.",
+    "conflict": "Das kollidiert mit einer Änderung, die jemand anderes vorgenommen hat. Laden Sie neu und versuchen Sie es erneut.",
+    "rate_limited": "Der Server ist ausgelastet. Warten Sie eine Minute und versuchen Sie es dann erneut.",
+    "setup_code_invalid": "Dieser Einrichtungscode passt nicht. Den richtigen Code finden Sie im Protokoll des Servers.",
+    "server": "Auf dem Server ist ein Problem aufgetreten. Versuchen Sie es später erneut oder wenden Sie sich an den Admin des Servers.",
+    "internal": "In Oleafly ist etwas schiefgelaufen. Versuchen Sie es erneut.",
+    "server_changed": "Diese Adresse gehört jetzt zu einem anderen Server, daher hat Oleafly ihm nichts gesendet. Wenn Sie dem neuen Server vertrauen, entfernen Sie diesen Eintrag und fügen Sie ihn erneut hinzu."
+  },
+  "roles": {
+    "admin": "Admin",
+    "maintainer": "Maintainer",
+    "member": "Mitglied",
+    "guest": "Gast"
+  },
+  "admin": {
+    "title": "{{name}} verwalten",
+    "back": "Zurück zu den Servern",
+    "loadFailed": "Oleafly konnte dies nicht vom Server laden.",
+    "added": "Hinzugefügt am {{date}}",
+    "tabs": {
+      "members": "Mitglieder",
+      "allowlist": "Zugelassene Personen",
+      "domains": "Domains",
+      "settings": "Servereinstellungen",
+      "log": "Sicherheitsprotokoll"
+    },
+    "members": {
+      "description": "Alle, die sich bei diesem Server angemeldet haben.",
+      "loading": "Mitglieder werden geladen…",
+      "empty": "Bisher hat sich niemand angemeldet.",
+      "you": "Sie",
+      "active": "Aktiv",
+      "suspended": "Gesperrt",
+      "removed": "Entfernt",
+      "roleLabel": "Rolle von {{name}}",
+      "suspend": "Sperren",
+      "reactivate": "Reaktivieren",
+      "remove": "Entfernen",
+      "devices": "Geräte",
+      "devicesTitle": "Geräte von {{name}}",
+      "devicesDescription": "Melden Sie ein Gerät ab, das verloren gegangen ist oder nicht mehr genutzt wird.",
+      "devicesLoading": "Geräte werden geladen…",
+      "devicesLoadFailed": "Oleafly konnte diese Geräte nicht laden.",
+      "lastAdmin": "Dieser Server braucht mindestens einen Admin. Machen Sie zuerst eine andere Person zum Admin.",
+      "removeConfirm": {
+        "title": "{{name}} von diesem Server entfernen?",
+        "description": "Die Geräte dieser Person werden sofort abgemeldet. Projekte, die ihr gehören, bleiben auf dem Server, und Sie können die Person später wieder hinzufügen.",
+        "confirm": "Mitglied entfernen"
+      },
+      "deviceSignOutConfirm": {
+        "title": "{{name}} abmelden?",
+        "description": "Das Gerät gleicht sich nicht mehr mit diesem Server ab, bis sich die Person, der es gehört, dort wieder anmeldet.",
+        "confirm": "Gerät abmelden"
+      }
+    },
+    "allowlist": {
+      "description": "Personen auf dieser Liste können sich mit der Rolle, die Sie wählen, beim Server anmelden.",
+      "matchLabel": "Abgleich über",
+      "match": {
+        "email": "E-Mail-Adresse",
+        "login": "Anmeldename"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Anmeldeoption",
+      "roleLabel": "Rolle",
+      "add": "Hinzufügen",
+      "loading": "Die Liste wird geladen…",
+      "empty": "Noch steht niemand auf der Liste.",
+      "loginEntry": "{{login}} bei {{provider}}",
+      "bound": "Hat sich angemeldet",
+      "unbound": "Hat sich noch nicht angemeldet",
+      "remove": "Entfernen",
+      "removeNamed": "{{entry}} entfernen",
+      "duplicate": "Diese Person steht bereits auf der Liste."
+    },
+    "domains": {
+      "description": "Alle mit einer bestätigten E-Mail-Adresse unter diesen Domains können sich mit der Rolle, die Sie wählen, anmelden.",
+      "domainLabel": "Domain",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Rolle",
+      "add": "Hinzufügen",
+      "loading": "Domainregeln werden geladen…",
+      "empty": "Noch keine Domainregeln.",
+      "remove": "Entfernen",
+      "removeNamed": "{{domain}} entfernen",
+      "duplicate": "Für diese Domain gibt es bereits eine Regel."
+    },
+    "settings": {
+      "description": "Diese Einstellungen gelten für alle auf diesem Server.",
+      "adminOnly": "Nur Admins können diese Einstellungen ändern.",
+      "loading": "Einstellungen werden geladen…",
+      "guestsEnabled": {
+        "label": "Gäste erlauben",
+        "description": "Mitglieder können Personen von außerhalb des Servers zu ihren eigenen Projekten einladen."
+      },
+      "guestApprovalRequired": {
+        "label": "Gäste zuerst genehmigen",
+        "description": "Ein Maintainer oder Admin genehmigt jede Gasteinladung, bevor sie gilt."
+      },
+      "directoryVisible": {
+        "label": "Mitgliederverzeichnis",
+        "description": "Mitglieder können einander beim Teilen eines Projekts nach Namen suchen."
+      },
+      "directoryShowsEmail": {
+        "label": "E-Mail-Adressen im Verzeichnis zeigen",
+        "description": "Mitglieder sehen die E-Mail-Adressen der anderen, wenn sie jemanden suchen."
+      },
+      "linkSharingAllowed": {
+        "label": "Teilen per Link erlauben",
+        "description": "Projektinhaber können jedem Mitglied erlauben, ein Projekt über seinen Link zu öffnen."
+      },
+      "accessLogsAllowed": {
+        "label": "Zugriffsprotokolle für Projekte erlauben",
+        "description": "Projektinhaber können protokollieren lassen, wer ihr Projekt geöffnet hat."
+      },
+      "emailNotifications": {
+        "label": "E-Mail-Benachrichtigungen",
+        "description": "Der Server schickt E-Mails, wenn Personen hinzugefügt werden oder jemand ein Projekt mit ihnen teilt."
+      }
+    },
+    "log": {
+      "description": "Anmeldungen, Änderungen an Geräten und Aktionen von Admins auf diesem Server.",
+      "loading": "Das Protokoll wird geladen…",
+      "empty": "Bisher ist nichts passiert.",
+      "loadMore": "Ältere Einträge zeigen",
+      "server": "Server",
+      "unknownAccount": "Unbekanntes Konto",
+      "target": "Betrifft {{target}}",
+      "ip": "Von {{ip}}",
+      "kinds": {
+        "setupCompleted": "Hat die Einrichtung des Servers abgeschlossen",
+        "signIn": "Hat sich angemeldet",
+        "signInRefused": "Wurde bei der Anmeldung abgewiesen",
+        "deviceAdded": "Hat ein Gerät hinzugefügt",
+        "deviceSignedOut": "Hat ein Gerät abgemeldet",
+        "refreshReuseDetected": "Hat eine alte Anmeldung erneut verwendet, daher wurde das Gerät abgemeldet",
+        "memberAdded": "Hat ein Mitglied hinzugefügt",
+        "memberRemoved": "Hat ein Mitglied entfernt",
+        "memberSuspended": "Hat ein Mitglied gesperrt",
+        "memberReactivated": "Hat ein Mitglied reaktiviert",
+        "roleChanged": "Hat eine Rolle geändert",
+        "allowlistAdded": "Hat jemanden zur Liste der zugelassenen Personen hinzugefügt",
+        "allowlistRemoved": "Hat jemanden von der Liste der zugelassenen Personen entfernt",
+        "domainRuleAdded": "Hat eine Domainregel hinzugefügt",
+        "domainRuleRemoved": "Hat eine Domainregel entfernt",
+        "settingsChanged": "Hat Servereinstellungen geändert",
+        "unknown": "Anderes Serverereignis"
+      }
+    }
+  }
+}

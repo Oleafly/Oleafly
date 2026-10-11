@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import enCollab from "./locales/en/collab.json" with { type: "json" };
+import zhCollab from "./locales/zh-Hans/collab.json" with { type: "json" };
 
 describe("i18n runtime", () => {
   beforeEach(() => {
@@ -60,5 +62,23 @@ describe("i18n runtime", () => {
     expect(readCachedPreference()).toBe("zh-Hans");
     localStorage.setItem("oleafly.locale", "nope");
     expect(readCachedPreference()).toBe("system");
+  });
+
+  it("loads a lazy English namespace on demand, once, and ignores unknown names", async () => {
+    const { initializeI18n, i18n, loadNamespace } = await import("./index");
+    await initializeI18n({ preference: "en", systemLocale: async () => null, missingKeyMode: "throw" });
+    expect(i18n.hasResourceBundle("en", "collab")).toBe(false);
+    await Promise.all([loadNamespace("collab"), loadNamespace("collab")]);
+    expect(i18n.hasResourceBundle("en", "collab")).toBe(true);
+    expect(i18n.t(($) => $.collab.section.servers.title)).toBe(enCollab.section.servers.title);
+    await expect(loadNamespace("not-a-namespace")).resolves.toBeUndefined();
+    expect(i18n.hasResourceBundle("en", "not-a-namespace")).toBe(false);
+  });
+
+  it("loads the collaboration catalog with a translated locale", async () => {
+    const { initializeI18n, i18n } = await import("./index");
+    await initializeI18n({ preference: "zh-Hans", systemLocale: async () => null, missingKeyMode: "throw" });
+    expect(i18n.hasResourceBundle("zh-Hans", "collab")).toBe(true);
+    expect(i18n.t(($) => $.collab.section.servers.title)).toBe(zhCollab.section.servers.title);
   });
 });

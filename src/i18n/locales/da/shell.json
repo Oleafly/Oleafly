@@ -844,6 +844,10 @@
         "description": "Vis galleriet Oleafly-værktøjer og de enkelte værktøjer (PDF-import, ligninger, tabeller, BibTeX, søgning efter forskergrupper og litteratur, frister) samt deres skråstregskommandoer. Slået fra som udgangspunkt, mens det stadig er i beta.",
         "label": "LaTeX-værktøjer"
       },
+      "liveCollaboration": {
+        "description": "Rediger projekter sammen med andre via en samarbejdsserver, som du eller din gruppe driver. Tilføjer afsnittet Samarbejde under Indstillinger. Slået fra som udgangspunkt, mens det stadig er i beta.",
+        "label": "Samarbejde i realtid"
+      },
       "warning": "Disse funktioner er eksperimentelle og stadig i beta. De er ikke testet færdigt og kan ændre sig, gå i stykker eller forsvinde i en fremtidig udgivelse. Slå dem kun til, hvis du vil prøve noget, der er under udvikling.",
       "webBrowser": {
         "description": "Vis den indbyggede webbrowser (dens knap i dokken og dens genvej), og lad AI styre den via computerbrug. Slået fra som udgangspunkt, mens det stadig er i beta. Når det er slået fra, er der ingen browserknap, og AI har intet browserværktøj.",
@@ -923,6 +927,7 @@
     "nav": {
       "ai": "AI-assistent",
       "appearance": "Udseende",
+      "collaboration": "Samarbejde",
       "data": "Datalagring",
       "dictionary": "Ordbog",
       "downloads": "Downloads",
@@ -938,6 +943,7 @@
       "keywords": {
         "ai": "assistent, chat, modeller, udbydere, API-nøgler, agenter, prompter, budget, MCP-servere",
         "appearance": "tema, udseende, mørk tilstand, lys tilstand, farve, farver, skrifttyper, tekststørrelse, zoom, layout",
+        "collaboration": "servere, log ind, login, enheder, medlemmer, vedligeholdere, deling, teams, forskergrupper, laboratorier, redigering i realtid, realtid, sikkerhedslog",
         "data": "backup, sikkerhedskopi, biblioteksmappe, projektmappe, lagerplads, diskplads, papirkurv, slet projekter, kontrolpunkter",
         "dictionary": "stavning, egne ord, ignorerede ord, korrektur, grammatikregler",
         "downloads": "pakker, skrifttyper, ordbøger, offlinefiler",

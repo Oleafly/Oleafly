@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "다른 사람과 실시간으로 프로젝트를 함께 편집합니다. 프로젝트는 직접 또는 소속 그룹이 운영하는 공동 작업 서버를 통해 동기화되며, 누가 참여할 수 있는지는 그 서버가 정합니다.",
+    "servers": {
+      "title": "서버",
+      "add": "서버 추가",
+      "loading": "서버 목록을 불러오는 중…",
+      "loadFailed": "Oleafly가 서버 목록을 불러오지 못했습니다.",
+      "empty": {
+        "title": "아직 서버가 없습니다",
+        "description": "그룹 서버를 운영하는 사람에게 서버 주소를 물어본 다음 여기에 추가하세요."
+      }
+    },
+    "server": {
+      "signedIn": "로그인됨",
+      "signedOut": "로그아웃됨",
+      "signedInAs": "{{name}}(으)로 로그인됨",
+      "signedOutHint": "이 컴퓨터는 이 서버에 로그인되어 있지 않습니다.",
+      "role": "내 역할: {{role}}",
+      "signIn": "로그인",
+      "signOut": "로그아웃",
+      "remove": "제거",
+      "manage": "서버 관리",
+      "test": "연결 테스트",
+      "removeConfirm": {
+        "title": "{{name}}을(를) 제거할까요?",
+        "description": "Oleafly가 이 서버에서 로그아웃하고 목록에서 지웁니다. 이 컴퓨터에 이미 있는 프로젝트는 그대로 남습니다.",
+        "confirm": "서버 제거"
+      }
+    },
+    "devices": {
+      "title": "내 기기",
+      "description": "내 계정으로 이 서버에 로그인된 컴퓨터입니다. 더 이상 쓰지 않는 컴퓨터는 로그아웃하세요.",
+      "loading": "기기 목록을 불러오는 중…",
+      "loadFailed": "Oleafly가 기기 목록을 불러오지 못했습니다.",
+      "current": "이 컴퓨터",
+      "added": "{{date}}에 추가됨",
+      "lastSeen": "마지막 접속: {{date}}",
+      "neverSeen": "아직 접속 기록 없음",
+      "empty": "로그인된 기기가 없습니다.",
+      "signOut": "로그아웃",
+      "signOutNamed": "{{name}}에서 로그아웃",
+      "signOutConfirm": {
+        "title": "{{name}}에서 로그아웃할까요?",
+        "description": "그 컴퓨터는 누군가 다시 로그인할 때까지 이 서버와 동기화하지 않습니다.",
+        "confirm": "기기 로그아웃"
+      }
+    },
+    "checks": {
+      "title": "연결 테스트",
+      "running": "연결을 테스트하는 중…",
+      "clockSkew": "시간 차이(초): {{seconds}}",
+      "status": {
+        "pass": "통과",
+        "fail": "실패",
+        "info": "참고",
+        "skipped": "건너뜀"
+      },
+      "items": {
+        "reachable": {
+          "label": "주소",
+          "pass": "서버가 응답했습니다.",
+          "fail": "Oleafly가 이 주소에 연결하지 못했습니다. 주소와 네트워크를 확인하세요.",
+          "info": "서버가 응답했지만 느렸습니다.",
+          "skipped": "확인하지 않았습니다."
+        },
+        "https": {
+          "label": "보안 연결",
+          "pass": "연결이 암호화되어 있고 인증서가 유효합니다.",
+          "fail": "서버 인증서가 유효하지 않거나 주소가 https를 사용하지 않습니다.",
+          "info": "이 컴퓨터에서 실행 중인 테스트 서버라서 https 없이 동작합니다.",
+          "skipped": "주소가 응답하지 않아 확인하지 않았습니다."
+        },
+        "protocol": {
+          "label": "버전",
+          "pass": "이 버전의 Oleafly는 서버와 함께 쓸 수 있습니다.",
+          "fail": "Oleafly와 서버의 버전이 맞지 않습니다. 둘 중 하나를 업데이트해야 합니다.",
+          "info": "서버가 이 버전의 Oleafly보다 새롭지만 함께 쓸 수 있습니다.",
+          "skipped": "앞선 확인이 실패해서 확인하지 않았습니다."
+        },
+        "webSocket": {
+          "label": "실시간 연결",
+          "pass": "실시간 편집이 정상적으로 전달됩니다.",
+          "fail": "사용자와 서버 사이의 무언가가 실시간 편집을 막고 있습니다. 방화벽이나 프록시 설정을 바꿔야 할 수 있습니다.",
+          "info": "실시간 편집은 전달되지만 연결하는 데 시간이 좀 걸렸습니다.",
+          "skipped": "앞선 확인이 실패해서 확인하지 않았습니다."
+        },
+        "signInProviders": {
+          "label": "로그인 방법",
+          "pass": "서버에 로그인 방법이 하나 이상 있습니다.",
+          "fail": "서버에 아직 로그인 방법이 없습니다. 서버 관리자에게 문의하세요.",
+          "info": "서버에 로그인 방법은 있지만 일부 방법이 꺼져 있습니다.",
+          "skipped": "앞선 확인이 실패해서 확인하지 않았습니다."
+        },
+        "email": {
+          "label": "이메일",
+          "pass": "서버가 이메일을 보낼 수 있습니다.",
+          "fail": "서버의 이메일 설정이 작동하지 않습니다.",
+          "info": "이 서버에는 이메일이 설정되어 있지 않습니다. 사람을 추가해도 이메일이 발송되지 않습니다.",
+          "skipped": "앞선 확인이 실패해서 확인하지 않았습니다."
+        },
+        "clock": {
+          "label": "시계",
+          "pass": "이 컴퓨터의 시계와 서버 시계가 일치합니다.",
+          "fail": "이 컴퓨터의 시계와 서버 시계가 많이 다릅니다. 이 컴퓨터의 날짜와 시간을 확인하세요.",
+          "info": "이 컴퓨터의 시계가 서버 시계와 조금 다릅니다.",
+          "skipped": "앞선 확인이 실패해서 확인하지 않았습니다."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "공동 작업 서버 추가",
+    "description": "그룹에서 받은 주소를 입력하세요. 로그인하기 전에 Oleafly가 서버를 확인합니다.",
+    "addressLabel": "서버 주소",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "계속",
+    "checking": "서버를 확인하는 중…",
+    "version": "버전 {{version}}",
+    "setupTitle": "이 서버 설정",
+    "setupDescription": "아직 이 서버에 로그인한 사람이 없습니다. 서버 로그에 있는 설정 코드를 입력하세요. 이 코드로 가장 먼저 로그인하는 사람이 서버 관리자가 됩니다.",
+    "setupCodeLabel": "설정 코드",
+    "signInTitle": "로그인",
+    "signInDescription": "브라우저가 열리면 거기서 로그인하세요. Oleafly는 비밀번호를 볼 수 없습니다.",
+    "continueWith": "{{provider}}(으)로 계속",
+    "noProviders": "이 서버에는 아직 로그인 방법이 없습니다. 서버 관리자에게 설정을 요청하세요.",
+    "waitingTitle": "브라우저를 기다리는 중",
+    "waitingDescription": "열린 브라우저 창에서 로그인을 마친 다음 여기로 돌아오세요.",
+    "cancel": "취소",
+    "back": "뒤로",
+    "doneTitle": "로그인되었습니다",
+    "doneDescription": "{{server}}에 {{name}}(으)로 로그인되었습니다.",
+    "done": "완료"
+  },
+  "errors": {
+    "unreachable": "Oleafly가 서버에 연결하지 못했습니다. 주소와 연결 상태를 확인한 다음 다시 시도하세요.",
+    "not_https": "이 주소는 보안 연결을 사용하지 않습니다. 공동 작업 서버 주소는 https로 시작해야 합니다.",
+    "client_too_old": "이 서버를 쓰려면 더 새로운 버전의 Oleafly가 필요합니다. Oleafly를 업데이트한 다음 다시 시도하세요.",
+    "server_too_old": "이 버전의 Oleafly와 함께 쓰려면 서버를 업데이트해야 합니다. 서버 관리자에게 문의하세요.",
+    "not_admitted": "아직 이 서버의 허용 목록에 없습니다. 서버 관리자에게 추가를 요청하세요.",
+    "sign_in_cancelled": "로그인이 취소되었습니다.",
+    "sign_in_timed_out": "로그인하는 데 시간이 너무 오래 걸렸습니다. 다시 시도하세요.",
+    "unauthorized": "이 서버에서 로그아웃되었습니다. 다시 로그인하세요.",
+    "forbidden": "이 서버에서 내 역할로는 그 작업을 할 수 없습니다.",
+    "not_found": "서버에서 해당 항목을 찾지 못했습니다. 이미 없어졌을 수 있습니다.",
+    "conflict": "다른 사람이 한 변경과 충돌합니다. 새로 고친 다음 다시 시도하세요.",
+    "rate_limited": "서버가 바쁩니다. 1분 정도 기다린 다음 다시 시도하세요.",
+    "setup_code_invalid": "설정 코드가 일치하지 않습니다. 서버 로그에서 올바른 코드를 확인하세요.",
+    "server": "서버에 문제가 생겼습니다. 나중에 다시 시도하거나 서버 관리자에게 문의하세요.",
+    "internal": "Oleafly에서 문제가 발생했습니다. 다시 시도하세요.",
+    "server_changed": "이 주소가 이제 다른 서버를 가리키고 있어 Oleafly가 아무것도 보내지 않았습니다. 새 서버를 신뢰한다면 이 서버를 제거한 다음 다시 추가하세요."
+  },
+  "roles": {
+    "admin": "관리자",
+    "maintainer": "유지 관리자",
+    "member": "멤버",
+    "guest": "게스트"
+  },
+  "admin": {
+    "title": "{{name}} 관리",
+    "back": "서버 목록으로 돌아가기",
+    "loadFailed": "Oleafly가 서버에서 이 정보를 불러오지 못했습니다.",
+    "added": "{{date}}에 추가됨",
+    "tabs": {
+      "members": "멤버",
+      "allowlist": "허용된 사람",
+      "domains": "도메인",
+      "settings": "서버 설정",
+      "log": "보안 로그"
+    },
+    "members": {
+      "description": "이 서버에 로그인한 적이 있는 모든 사람입니다.",
+      "loading": "멤버 목록을 불러오는 중…",
+      "empty": "아직 로그인한 사람이 없습니다.",
+      "you": "나",
+      "active": "활성",
+      "suspended": "정지됨",
+      "removed": "제거됨",
+      "roleLabel": "{{name}}의 역할",
+      "suspend": "정지",
+      "reactivate": "다시 활성화",
+      "remove": "제거",
+      "devices": "기기",
+      "devicesTitle": "{{name}}의 기기",
+      "devicesDescription": "분실했거나 더 이상 쓰지 않는 기기는 로그아웃하세요.",
+      "devicesLoading": "기기 목록을 불러오는 중…",
+      "devicesLoadFailed": "Oleafly가 이 기기 목록을 불러오지 못했습니다.",
+      "lastAdmin": "이 서버에는 관리자가 한 명 이상 있어야 합니다. 먼저 다른 사람을 관리자로 지정하세요.",
+      "removeConfirm": {
+        "title": "{{name}}을(를) 이 서버에서 제거할까요?",
+        "description": "이 사람의 기기는 바로 로그아웃됩니다. 이 사람이 소유한 프로젝트는 서버에 그대로 남고, 나중에 이 사람을 다시 추가할 수 있습니다.",
+        "confirm": "멤버 제거"
+      },
+      "deviceSignOutConfirm": {
+        "title": "{{name}}에서 로그아웃할까요?",
+        "description": "그 기기는 소유자가 다시 로그인할 때까지 이 서버와 동기화하지 않습니다.",
+        "confirm": "기기 로그아웃"
+      }
+    },
+    "allowlist": {
+      "description": "이 목록에 있는 사람은 지정한 역할로 서버에 로그인할 수 있습니다.",
+      "matchLabel": "일치 기준",
+      "match": {
+        "email": "이메일 주소",
+        "login": "사용자 이름"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "로그인 방법",
+      "roleLabel": "역할",
+      "add": "추가",
+      "loading": "목록을 불러오는 중…",
+      "empty": "아직 목록에 아무도 없습니다.",
+      "loginEntry": "{{provider}}의 {{login}}",
+      "bound": "로그인한 적 있음",
+      "unbound": "아직 로그인하지 않음",
+      "remove": "제거",
+      "removeNamed": "{{entry}} 제거",
+      "duplicate": "이미 목록에 있는 사람입니다."
+    },
+    "domains": {
+      "description": "이 도메인의 인증된 이메일 주소가 있는 사람은 누구나 지정한 역할로 로그인할 수 있습니다.",
+      "domainLabel": "도메인",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "역할",
+      "add": "추가",
+      "loading": "도메인 규칙을 불러오는 중…",
+      "empty": "아직 도메인 규칙이 없습니다.",
+      "remove": "제거",
+      "removeNamed": "{{domain}} 제거",
+      "duplicate": "이 도메인에는 이미 규칙이 있습니다."
+    },
+    "settings": {
+      "description": "이 설정은 이 서버의 모든 사람에게 적용됩니다.",
+      "adminOnly": "관리자만 이 설정을 바꿀 수 있습니다.",
+      "loading": "설정을 불러오는 중…",
+      "guestsEnabled": {
+        "label": "게스트 허용",
+        "description": "멤버가 자신이 소유한 프로젝트에 서버 외부의 사람을 초대할 수 있습니다."
+      },
+      "guestApprovalRequired": {
+        "label": "게스트 사전 승인",
+        "description": "게스트 초대가 유효해지기 전에 유지 관리자나 관리자가 초대를 하나씩 승인합니다."
+      },
+      "directoryVisible": {
+        "label": "멤버 디렉터리",
+        "description": "프로젝트를 공유할 때 멤버끼리 이름으로 서로를 찾을 수 있습니다."
+      },
+      "directoryShowsEmail": {
+        "label": "디렉터리에 이메일 주소 표시",
+        "description": "다른 사람을 찾을 때 멤버끼리 서로의 이메일 주소를 볼 수 있습니다."
+      },
+      "linkSharingAllowed": {
+        "label": "링크 공유 허용",
+        "description": "프로젝트 소유자는 멤버라면 누구나 링크로 프로젝트를 열 수 있게 할 수 있습니다."
+      },
+      "accessLogsAllowed": {
+        "label": "프로젝트 접근 로그 허용",
+        "description": "프로젝트 소유자가 누가 프로젝트를 열었는지 기록을 남길 수 있습니다."
+      },
+      "emailNotifications": {
+        "label": "이메일 알림",
+        "description": "누군가 추가되거나 다른 사람이 프로젝트를 공유하면 서버가 그 사람에게 이메일을 보냅니다."
+      }
+    },
+    "log": {
+      "description": "이 서버의 로그인, 기기 변경, 관리자 작업 기록입니다.",
+      "loading": "로그를 불러오는 중…",
+      "empty": "아직 기록된 일이 없습니다.",
+      "loadMore": "이전 항목 더 보기",
+      "server": "서버",
+      "unknownAccount": "알 수 없는 계정",
+      "target": "대상: {{target}}",
+      "ip": "접속 IP: {{ip}}",
+      "kinds": {
+        "setupCompleted": "서버 설정을 마침",
+        "signIn": "로그인함",
+        "signInRefused": "로그인이 거부됨",
+        "deviceAdded": "기기를 추가함",
+        "deviceSignedOut": "기기를 로그아웃함",
+        "refreshReuseDetected": "이전 로그인 정보가 다시 사용되어 기기가 로그아웃됨",
+        "memberAdded": "멤버를 추가함",
+        "memberRemoved": "멤버를 제거함",
+        "memberSuspended": "멤버를 정지함",
+        "memberReactivated": "멤버를 다시 활성화함",
+        "roleChanged": "역할을 변경함",
+        "allowlistAdded": "허용 목록에 사람을 추가함",
+        "allowlistRemoved": "허용 목록에서 사람을 제거함",
+        "domainRuleAdded": "도메인 규칙을 추가함",
+        "domainRuleRemoved": "도메인 규칙을 제거함",
+        "settingsChanged": "서버 설정을 변경함",
+        "unknown": "기타 서버 이벤트"
+      }
+    }
+  }
+}

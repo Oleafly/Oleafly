@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "与他人实时编辑项目。项目通过你或你的团队运行的协作服务器同步，由该服务器决定谁可以加入。",
+    "servers": {
+      "title": "服务器",
+      "add": "添加服务器",
+      "loading": "正在加载你的服务器…",
+      "loadFailed": "Oleafly 无法加载你的服务器。",
+      "empty": {
+        "title": "还没有服务器",
+        "description": "向运行你团队服务器的人索取服务器地址，然后在这里添加。"
+      }
+    },
+    "server": {
+      "signedIn": "已登录",
+      "signedOut": "未登录",
+      "signedInAs": "已以 {{name}} 的身份登录",
+      "signedOutHint": "这台电脑尚未登录此服务器。",
+      "role": "你的角色：{{role}}",
+      "signIn": "登录",
+      "signOut": "退出登录",
+      "remove": "移除",
+      "manage": "管理服务器",
+      "test": "测试连接",
+      "removeConfirm": {
+        "title": "要移除 {{name}} 吗？",
+        "description": "Oleafly 会退出此服务器的登录，并不再记住它。这台电脑上已有的项目会原样保留。",
+        "confirm": "移除服务器"
+      }
+    },
+    "devices": {
+      "title": "你的设备",
+      "description": "使用你的账户登录此服务器的电脑。不再使用的电脑可以退出登录。",
+      "loading": "正在加载你的设备…",
+      "loadFailed": "Oleafly 无法加载你的设备。",
+      "current": "这台电脑",
+      "added": "添加于 {{date}}",
+      "lastSeen": "上次在线于 {{date}}",
+      "neverSeen": "尚未在线",
+      "empty": "没有已登录的设备。",
+      "signOut": "退出登录",
+      "signOutNamed": "退出 {{name}} 的登录",
+      "signOutConfirm": {
+        "title": "要退出 {{name}} 的登录吗？",
+        "description": "在有人重新在那台电脑上登录之前，它不会再与此服务器同步。",
+        "confirm": "退出设备登录"
+      }
+    },
+    "checks": {
+      "title": "连接测试",
+      "running": "正在测试连接…",
+      "clockSkew": "时间差（秒）：{{seconds}}",
+      "status": {
+        "pass": "通过",
+        "fail": "失败",
+        "info": "提示",
+        "skipped": "已跳过"
+      },
+      "items": {
+        "reachable": {
+          "label": "地址",
+          "pass": "服务器已响应。",
+          "fail": "Oleafly 无法连接到此地址。请检查地址和你的网络。",
+          "info": "服务器已响应，但速度较慢。",
+          "skipped": "未检查。"
+        },
+        "https": {
+          "label": "安全连接",
+          "pass": "连接已加密，证书有效。",
+          "fail": "服务器的证书无效，或该地址未使用 https。",
+          "info": "这是在这台电脑上运行的测试服务器，因此不使用 https。",
+          "skipped": "该地址没有响应，因此未检查。"
+        },
+        "protocol": {
+          "label": "版本",
+          "pass": "此版本的 Oleafly 可以与该服务器配合使用。",
+          "fail": "Oleafly 与服务器需要不同的版本。其中一方需要更新。",
+          "info": "服务器比此版本的 Oleafly 更新，但仍可与其配合使用。",
+          "skipped": "前面的检查失败，因此未检查。"
+        },
+        "webSocket": {
+          "label": "实时连接",
+          "pass": "实时编辑可以正常传输。",
+          "fail": "你与服务器之间有东西阻止了实时编辑。可能需要调整防火墙或代理。",
+          "info": "实时编辑可以传输，但连接耗时较长。",
+          "skipped": "前面的检查失败，因此未检查。"
+        },
+        "signInProviders": {
+          "label": "登录方式",
+          "pass": "服务器至少有一种登录方式。",
+          "fail": "服务器还没有任何登录方式。请联系其管理员。",
+          "info": "服务器有可用的登录方式，但部分选项已关闭。",
+          "skipped": "前面的检查失败，因此未检查。"
+        },
+        "email": {
+          "label": "电子邮件",
+          "pass": "服务器可以发送电子邮件。",
+          "fail": "服务器的电子邮件设置无效。",
+          "info": "此服务器未设置电子邮件。添加人员时不会发送电子邮件。",
+          "skipped": "前面的检查失败，因此未检查。"
+        },
+        "clock": {
+          "label": "时钟",
+          "pass": "你的时钟与服务器的时钟一致。",
+          "fail": "你的时钟与服务器的时钟相差太大。请检查这台电脑上的日期和时间。",
+          "info": "你的时钟与服务器的时钟略有偏差。",
+          "skipped": "前面的检查失败，因此未检查。"
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "添加协作服务器",
+    "description": "输入你的团队提供的地址。Oleafly 会在你登录前检查该服务器。",
+    "addressLabel": "服务器地址",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "继续",
+    "checking": "正在检查服务器…",
+    "version": "版本 {{version}}",
+    "setupTitle": "设置此服务器",
+    "setupDescription": "还没有人在这里登录过。请输入服务器日志中的设置码。第一个使用该设置码登录的人将成为服务器的管理员。",
+    "setupCodeLabel": "设置码",
+    "signInTitle": "登录",
+    "signInDescription": "你的浏览器会打开，请在浏览器中登录。Oleafly 永远不会看到你的密码。",
+    "continueWith": "使用 {{provider}} 继续",
+    "noProviders": "此服务器还没有任何登录方式。请让其管理员设置一种。",
+    "waitingTitle": "正在等待浏览器",
+    "waitingDescription": "请在已打开的浏览器窗口中完成登录，然后回到这里。",
+    "cancel": "取消",
+    "back": "返回",
+    "doneTitle": "你已登录",
+    "doneDescription": "你已以 {{name}} 的身份登录 {{server}}。",
+    "done": "完成"
+  },
+  "errors": {
+    "unreachable": "Oleafly 无法连接到服务器。请检查地址和网络连接，然后重试。",
+    "not_https": "此地址未使用安全连接。协作服务器的地址必须以 https 开头。",
+    "client_too_old": "此服务器需要更新版本的 Oleafly。请更新 Oleafly，然后重试。",
+    "server_too_old": "此服务器需要更新后才能与此版本的 Oleafly 配合使用。请联系其管理员。",
+    "not_admitted": "你还不在此服务器的名单上。请让其管理员添加你。",
+    "sign_in_cancelled": "已取消登录。",
+    "sign_in_timed_out": "登录耗时过长。请重试。",
+    "unauthorized": "你已退出此服务器的登录。请重新登录。",
+    "forbidden": "你在此服务器上的角色不允许此操作。",
+    "not_found": "服务器找不到该内容。它可能已不存在。",
+    "conflict": "此操作与他人所做的更改冲突。请重新加载后重试。",
+    "rate_limited": "服务器繁忙。请等待一分钟，然后重试。",
+    "setup_code_invalid": "该设置码不匹配。请在服务器日志中查看正确的设置码。",
+    "server": "服务器遇到问题。请稍后重试，或联系其管理员。",
+    "internal": "Oleafly 出现问题。请重试。",
+    "server_changed": "此地址现在属于另一台服务器，因此 Oleafly 没有向它发送任何内容。如果你信任新的服务器，请移除此服务器后重新添加。"
+  },
+  "roles": {
+    "admin": "管理员",
+    "maintainer": "维护者",
+    "member": "成员",
+    "guest": "访客"
+  },
+  "admin": {
+    "title": "管理 {{name}}",
+    "back": "返回服务器列表",
+    "loadFailed": "Oleafly 无法从服务器加载此内容。",
+    "added": "添加于 {{date}}",
+    "tabs": {
+      "members": "成员",
+      "allowlist": "允许的人员",
+      "domains": "域名",
+      "settings": "服务器设置",
+      "log": "安全日志"
+    },
+    "members": {
+      "description": "所有登录过此服务器的人。",
+      "loading": "正在加载成员…",
+      "empty": "还没有人登录过。",
+      "you": "你",
+      "active": "已启用",
+      "suspended": "已停用",
+      "removed": "已移除",
+      "roleLabel": "{{name}} 的角色",
+      "suspend": "停用",
+      "reactivate": "重新启用",
+      "remove": "移除",
+      "devices": "设备",
+      "devicesTitle": "{{name}} 的设备",
+      "devicesDescription": "让丢失或不再使用的设备退出登录。",
+      "devicesLoading": "正在加载设备…",
+      "devicesLoadFailed": "Oleafly 无法加载这些设备。",
+      "lastAdmin": "此服务器至少需要一名管理员。请先将其他人设为管理员。",
+      "removeConfirm": {
+        "title": "要将 {{name}} 从此服务器中移除吗？",
+        "description": "其设备会立即退出登录。其拥有的项目会保留在服务器上，你之后可以重新添加此人。",
+        "confirm": "移除成员"
+      },
+      "deviceSignOutConfirm": {
+        "title": "要退出 {{name}} 的登录吗？",
+        "description": "在其所有者重新在该设备上登录之前，该设备不会再与此服务器同步。",
+        "confirm": "退出设备登录"
+      }
+    },
+    "allowlist": {
+      "description": "此名单上的人员可以使用你选择的角色登录服务器。",
+      "matchLabel": "匹配方式",
+      "match": {
+        "email": "电子邮箱地址",
+        "login": "登录名"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "登录方式",
+      "roleLabel": "角色",
+      "add": "添加",
+      "loading": "正在加载名单…",
+      "empty": "名单上还没有人。",
+      "loginEntry": "{{provider}} 上的 {{login}}",
+      "bound": "已登录过",
+      "unbound": "尚未登录",
+      "remove": "移除",
+      "removeNamed": "移除 {{entry}}",
+      "duplicate": "此人已在名单上。"
+    },
+    "domains": {
+      "description": "在这些域名下拥有已验证电子邮箱地址的任何人，都可以使用你选择的角色登录。",
+      "domainLabel": "域名",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "角色",
+      "add": "添加",
+      "loading": "正在加载域名规则…",
+      "empty": "还没有域名规则。",
+      "remove": "移除",
+      "removeNamed": "移除 {{domain}}",
+      "duplicate": "该域名已有规则。"
+    },
+    "settings": {
+      "description": "这些设置适用于此服务器上的所有人。",
+      "adminOnly": "只有管理员可以更改这些设置。",
+      "loading": "正在加载设置…",
+      "guestsEnabled": {
+        "label": "允许访客",
+        "description": "成员可以邀请服务器外部的人员加入自己拥有的项目。"
+      },
+      "guestApprovalRequired": {
+        "label": "访客需先审批",
+        "description": "每个访客邀请都需要维护者或管理员批准后才会生效。"
+      },
+      "directoryVisible": {
+        "label": "成员目录",
+        "description": "共享项目时，成员可以按姓名查找彼此。"
+      },
+      "directoryShowsEmail": {
+        "label": "在目录中显示电子邮箱地址",
+        "description": "成员查找他人时可以看到对方的电子邮箱地址。"
+      },
+      "linkSharingAllowed": {
+        "label": "允许链接共享",
+        "description": "项目所有者可以让任何成员通过链接打开项目。"
+      },
+      "accessLogsAllowed": {
+        "label": "允许项目访问日志",
+        "description": "项目所有者可以记录谁打开过他们的项目。"
+      },
+      "emailNotifications": {
+        "label": "电子邮件通知",
+        "description": "当有人被添加，或有人与其共享项目时，服务器会向其发送电子邮件。"
+      }
+    },
+    "log": {
+      "description": "此服务器上的登录、设备变更和管理员操作。",
+      "loading": "正在加载日志…",
+      "empty": "还没有任何记录。",
+      "loadMore": "显示更早的记录",
+      "server": "服务器",
+      "unknownAccount": "未知账户",
+      "target": "针对 {{target}}",
+      "ip": "来自 {{ip}}",
+      "kinds": {
+        "setupCompleted": "完成了服务器设置",
+        "signIn": "登录了",
+        "signInRefused": "登录被拒绝",
+        "deviceAdded": "添加了一台设备",
+        "deviceSignedOut": "退出了一台设备的登录",
+        "refreshReuseDetected": "重复使用了旧的登录凭据，该设备因此被退出登录",
+        "memberAdded": "添加了一名成员",
+        "memberRemoved": "移除了一名成员",
+        "memberSuspended": "停用了一名成员",
+        "memberReactivated": "重新启用了一名成员",
+        "roleChanged": "更改了角色",
+        "allowlistAdded": "将某人添加到了允许名单",
+        "allowlistRemoved": "将某人从允许名单中移除",
+        "domainRuleAdded": "添加了一条域名规则",
+        "domainRuleRemoved": "移除了一条域名规则",
+        "settingsChanged": "更改了服务器设置",
+        "unknown": "其他服务器事件"
+      }
+    }
+  }
+}

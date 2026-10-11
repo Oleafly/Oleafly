@@ -844,6 +844,10 @@
         "description": "Oleafly Tools galerisini ve tek tek araçları (PDF içe aktarma, denklemler, tablolar, BibTeX, laboratuvar ve literatür arama, son tarihler) ve bunların eğik çizgi komutlarını gösterir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "LaTeX araçları"
       },
+      "liveCollaboration": {
+        "description": "Projeleri, sizin veya grubunuzun çalıştırdığı bir iş birliği sunucusu üzerinden başkalarıyla birlikte düzenleyin. Ayarlar'a bir İş Birliği bölümü ekler. Beta aşamasında olduğu için varsayılan olarak kapalıdır.",
+        "label": "Canlı iş birliği"
+      },
       "warning": "Bu özellikler deneyseldir ve hâlâ beta aşamasındadır. Henüz tam olarak sınanmamışlardır ve değişebilir, bozulabilir veya ileriki bir sürümde kaldırılabilirler. Yalnızca geliştirilmekte olan işleri denemek istiyorsanız açın.",
       "webBrowser": {
         "description": "Uygulama içi web tarayıcısını (yuva düğmesi ve kısayoluyla) gösterir ve yapay zekanın bilgisayar kullanımıyla onu sürmesine izin verir. Beta aşamasında olduğu için varsayılan olarak kapalıdır. Kapalıyken tarayıcı düğmesi olmaz ve yapay zekanın tarayıcı aracı bulunmaz.",
@@ -923,6 +927,7 @@
     "nav": {
       "ai": "Yapay Zeka Asistanı",
       "appearance": "Görünüm",
+      "collaboration": "İş Birliği",
       "data": "Veri Depolama",
       "dictionary": "Sözlük",
       "downloads": "İndirilenler",
@@ -938,6 +943,7 @@
       "keywords": {
         "ai": "asistan, sohbet, modeller, sağlayıcılar, API anahtarları, ajanlar, istemler, bütçe, MCP sunucuları",
         "appearance": "tema, koyu kip, karanlık mod, açık kip, aydınlık mod, renk, yazı tipleri, metin boyutu, yakınlaştırma, düzen",
+        "collaboration": "sunucular, oturum açma, cihazlar, üyeler, sorumlular, paylaşım, ekipler, laboratuvarlar, canlı düzenleme, gerçek zamanlı, güvenlik günlüğü",
         "data": "yedekleme, kitaplık klasörü, projeler klasörü, depolama, disk alanı, çöp kutusu, geri dönüşüm kutusu, projeleri sil, kontrol noktaları",
         "dictionary": "yazım, özel sözcükler, yok sayılan sözcükler, redaksiyon, dil bilgisi kuralları",
         "downloads": "paketler, yazı tipleri, sözlükler, çevrimdışı dosyalar",

@@ -844,6 +844,10 @@
         "description": "Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta.",
         "label": "LaTeX tools"
       },
+      "liveCollaboration": {
+        "description": "Edit projects with other people through a collaboration server that you or your group runs. Adds a Collaboration section to Settings. Off by default while in beta.",
+        "label": "Live collaboration"
+      },
       "warning": "These features are experimental and still in beta. They are not fully tested yet and may change, break, or be removed in a future release. Turn them on only if you want to try work in progress.",
       "webBrowser": {
         "description": "Show the in-app web browser (its dock toggle and shortcut) and let the AI drive it with computer use. Off by default while in beta. When off, there is no browser button and the AI has no browser tool.",
@@ -923,6 +927,7 @@
     "nav": {
       "ai": "AI Assistant",
       "appearance": "Appearance",
+      "collaboration": "Collaboration",
       "data": "Data Storage",
       "dictionary": "Dictionary",
       "downloads": "Downloads",
@@ -938,6 +943,7 @@
       "keywords": {
         "ai": "assistant, chat, models, providers, API keys, agents, prompts, budget, MCP servers",
         "appearance": "theme, dark mode, light mode, colour, color, fonts, text size, zoom, layout",
+        "collaboration": "servers, sign in, devices, members, maintainers, sharing, teams, labs, live editing, real time, security log",
         "data": "backup, library folder, projects folder, storage, disk space, trash, recycle bin, delete projects, checkpoints",
         "dictionary": "spelling, custom words, ignored words, proofreading, grammar rules",
         "downloads": "packages, fonts, dictionaries, offline files",

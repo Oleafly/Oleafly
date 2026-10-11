@@ -859,6 +859,10 @@
         "description": "Muestra la galería de Herramientas de Oleafly y las herramientas sueltas (importación de PDF, ecuaciones, tablas, BibTeX, búsqueda de laboratorios y de literatura, fechas límite) junto con sus comandos de barra. Desactivado por omisión mientras siga en beta.",
         "label": "Herramientas de LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Edita proyectos con otras personas a través de un servidor de colaboración que gestionas tú o tu grupo. Añade una sección Colaboración a los Ajustes. Desactivado por omisión mientras esté en beta.",
+        "label": "Colaboración en tiempo real"
+      },
       "warning": "Estas funciones son experimentales y siguen en beta. Todavía no están probadas del todo y pueden cambiar, romperse o desaparecer en una versión futura. Actívalas solo si quieres probar trabajo en curso.",
       "webBrowser": {
         "description": "Muestra el navegador web integrado (su botón del panel y su atajo) y deja que la IA lo maneje con uso del ordenador. Desactivado por omisión mientras esté en beta. Cuando está desactivado, no hay botón de navegador y la IA no tiene herramienta de navegador.",
@@ -940,6 +944,7 @@
     "nav": {
       "ai": "Asistente de IA",
       "appearance": "Apariencia",
+      "collaboration": "Colaboración",
       "data": "Almacenamiento de datos",
       "dictionary": "Diccionario",
       "downloads": "Descargas",
@@ -955,6 +960,7 @@
       "keywords": {
         "ai": "asistente, chat, modelos, proveedores, claves de API, agentes, prompts, instrucciones, presupuesto, servidores MCP",
         "appearance": "tema, apariencia, modo oscuro, modo claro, color, colores, fuentes, tamaño de texto, zoom, diseño",
+        "collaboration": "servidores, iniciar sesión, dispositivos, miembros, mantenedores, compartir, equipos, laboratorios, edición en tiempo real, tiempo real, registro de seguridad",
         "data": "copia de seguridad, carpeta de la biblioteca, carpeta de proyectos, almacenamiento, espacio en disco, papelera, eliminar proyectos, puntos de control",
         "dictionary": "ortografía, palabras personalizadas, palabras ignoradas, corrección, reglas gramaticales",
         "downloads": "paquetes, fuentes, diccionarios, archivos sin conexión",

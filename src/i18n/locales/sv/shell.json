@@ -844,6 +844,10 @@
         "description": "Visa galleriet Oleafly Tools och de enskilda verktygen (PDF-import, ekvationer, tabeller, BibTeX, labb- och litteratursökning, deadlines) plus deras snedstreckskommandon. Av som standard medan det fortfarande är i beta.",
         "label": "LaTeX-verktyg"
       },
+      "liveCollaboration": {
+        "description": "Redigera projekt tillsammans med andra via en samarbetsserver som du eller din grupp driver. Lägger till avsnittet Samarbete i Inställningar. Av som standard medan det är i beta.",
+        "label": "Samarbete i realtid"
+      },
       "warning": "De här funktionerna är experimentella och fortfarande i beta. De är inte fullt testade än och kan ändras, sluta fungera eller tas bort i en framtida version. Slå bara på dem om du vill prova pågående arbete.",
       "webBrowser": {
         "description": "Visa den inbyggda webbläsaren (dess knapp i dockan och dess kortkommando) och låt AI:n styra den med datoranvändning. Av som standard medan det fortfarande är i beta. När det är av finns ingen webbläsarknapp och AI:n har inget webbläsarverktyg.",
@@ -923,6 +927,7 @@
     "nav": {
       "ai": "AI-assistent",
       "appearance": "Utseende",
+      "collaboration": "Samarbete",
       "data": "Datalagring",
       "dictionary": "Ordlista",
       "downloads": "Nedladdningar",
@@ -938,6 +943,7 @@
       "keywords": {
         "ai": "assistent, chatt, modeller, leverantörer, API-nycklar, agenter, prompter, budget, MCP-servrar",
         "appearance": "tema, mörkt läge, ljust läge, färg, typsnitt, textstorlek, zoom, layout",
+        "collaboration": "servrar, logga in, enheter, medlemmar, underhållare, delning, team, labb, liveredigering, realtid, säkerhetslogg",
         "data": "säkerhetskopia, biblioteksmapp, projektmapp, lagring, diskutrymme, papperskorg, radera projekt, kontrollpunkter",
         "dictionary": "stavning, egna ord, ignorerade ord, korrekturläsning, grammatikregler",
         "downloads": "paket, typsnitt, ordlistor, offlinefiler",

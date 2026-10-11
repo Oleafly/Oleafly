@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Modifiez des projets avec d'autres personnes en temps réel. Les projets se synchronisent via un serveur de collaboration que vous ou votre groupe hébergez, et c'est ce serveur qui décide qui peut participer.",
+    "servers": {
+      "title": "Serveurs",
+      "add": "Ajouter un serveur",
+      "loading": "Chargement de vos serveurs…",
+      "loadFailed": "Oleafly n'a pas pu charger vos serveurs.",
+      "empty": {
+        "title": "Aucun serveur pour l'instant",
+        "description": "Demandez son adresse à la personne qui gère le serveur de votre groupe, puis ajoutez-le ici."
+      }
+    },
+    "server": {
+      "signedIn": "Connecté",
+      "signedOut": "Déconnecté",
+      "signedInAs": "Connecté avec le compte {{name}}",
+      "signedOutHint": "Cet ordinateur n'est pas connecté à ce serveur.",
+      "role": "Votre rôle : {{role}}",
+      "signIn": "Se connecter",
+      "signOut": "Se déconnecter",
+      "remove": "Retirer",
+      "manage": "Gérer le serveur",
+      "test": "Tester la connexion",
+      "removeConfirm": {
+        "title": "Retirer {{name}} ?",
+        "description": "Oleafly se déconnecte de ce serveur et l'oublie. Les projets déjà présents sur cet ordinateur restent où ils sont.",
+        "confirm": "Retirer le serveur"
+      }
+    },
+    "devices": {
+      "title": "Vos appareils",
+      "description": "Les ordinateurs connectés à ce serveur avec votre compte. Déconnectez ceux que vous n'utilisez plus.",
+      "loading": "Chargement de vos appareils…",
+      "loadFailed": "Oleafly n'a pas pu charger vos appareils.",
+      "current": "Cet ordinateur",
+      "added": "Ajouté le {{date}}",
+      "lastSeen": "Vu pour la dernière fois le {{date}}",
+      "neverSeen": "Pas encore vu",
+      "empty": "Aucun appareil n'est connecté.",
+      "signOut": "Déconnecter",
+      "signOutNamed": "Déconnecter l'appareil {{name}}",
+      "signOutConfirm": {
+        "title": "Déconnecter l'appareil {{name}} ?",
+        "description": "L'ordinateur en question cesse de se synchroniser avec ce serveur jusqu'à ce que quelqu'un s'y connecte à nouveau.",
+        "confirm": "Déconnecter l'appareil"
+      }
+    },
+    "checks": {
+      "title": "Test de connexion",
+      "running": "Test de la connexion…",
+      "clockSkew": "Écart d'horloge en secondes : {{seconds}}",
+      "status": {
+        "pass": "Réussi",
+        "fail": "Échoué",
+        "info": "À noter",
+        "skipped": "Ignoré"
+      },
+      "items": {
+        "reachable": {
+          "label": "Adresse",
+          "pass": "Le serveur a répondu.",
+          "fail": "Oleafly n'a pas pu joindre cette adresse. Vérifiez l'adresse et votre réseau.",
+          "info": "Le serveur a répondu, mais lentement.",
+          "skipped": "Non vérifié."
+        },
+        "https": {
+          "label": "Connexion sécurisée",
+          "pass": "La connexion est chiffrée et le certificat est valide.",
+          "fail": "Le certificat du serveur n'est pas valide, ou l'adresse n'utilise pas https.",
+          "info": "Il s'agit d'un serveur de test sur cet ordinateur, il fonctionne donc sans https.",
+          "skipped": "Non vérifié, car l'adresse n'a pas répondu."
+        },
+        "protocol": {
+          "label": "Version",
+          "pass": "Cette version d'Oleafly fonctionne avec le serveur.",
+          "fail": "Les versions d'Oleafly et du serveur ne sont pas compatibles. L'un des deux doit être mis à jour.",
+          "info": "Le serveur est plus récent que cette version d'Oleafly, mais il fonctionne quand même avec elle.",
+          "skipped": "Non vérifié, car une vérification précédente a échoué."
+        },
+        "webSocket": {
+          "label": "Connexion en direct",
+          "pass": "Les modifications en direct passent bien.",
+          "fail": "Quelque chose entre vous et le serveur bloque les modifications en direct. Un pare-feu ou un proxy doit peut-être être ajusté.",
+          "info": "Les modifications en direct passent, mais la connexion a mis du temps à s'établir.",
+          "skipped": "Non vérifié, car une vérification précédente a échoué."
+        },
+        "signInProviders": {
+          "label": "Options de connexion",
+          "pass": "Le serveur propose au moins un moyen de se connecter.",
+          "fail": "Le serveur ne propose encore aucun moyen de se connecter. Demandez à son administrateur.",
+          "info": "Le serveur propose un moyen de se connecter, mais certaines options sont désactivées.",
+          "skipped": "Non vérifié, car une vérification précédente a échoué."
+        },
+        "email": {
+          "label": "Courriel",
+          "pass": "Le serveur peut envoyer des courriels.",
+          "fail": "Les paramètres de courriel du serveur ne fonctionnent pas.",
+          "info": "Le courriel n'est pas configuré sur ce serveur. Les personnes sont ajoutées sans recevoir de courriel.",
+          "skipped": "Non vérifié, car une vérification précédente a échoué."
+        },
+        "clock": {
+          "label": "Horloge",
+          "pass": "Votre horloge et celle du serveur concordent.",
+          "fail": "Votre horloge et celle du serveur sont très décalées. Vérifiez la date et l'heure de cet ordinateur.",
+          "info": "Votre horloge est légèrement décalée par rapport à celle du serveur.",
+          "skipped": "Non vérifié, car une vérification précédente a échoué."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Ajouter un serveur de collaboration",
+    "description": "Saisissez l'adresse que votre groupe vous a donnée. Oleafly vérifie le serveur avant que vous vous connectiez.",
+    "addressLabel": "Adresse du serveur",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Continuer",
+    "checking": "Vérification du serveur…",
+    "version": "Version {{version}}",
+    "setupTitle": "Configurer ce serveur",
+    "setupDescription": "Personne ne s'est encore connecté ici. Saisissez le code de configuration indiqué dans le journal du serveur. La première personne qui se connecte avec ce code devient l'administrateur du serveur.",
+    "setupCodeLabel": "Code de configuration",
+    "signInTitle": "Se connecter",
+    "signInDescription": "Votre navigateur s'ouvre pour que vous vous y connectiez. Oleafly ne voit jamais votre mot de passe.",
+    "continueWith": "Continuer avec {{provider}}",
+    "noProviders": "Ce serveur ne propose encore aucun moyen de se connecter. Demandez à son administrateur d'en configurer un.",
+    "waitingTitle": "En attente de votre navigateur",
+    "waitingDescription": "Terminez la connexion dans la fenêtre du navigateur qui s'est ouverte, puis revenez ici.",
+    "cancel": "Annuler",
+    "back": "Retour",
+    "doneTitle": "Vous êtes connecté",
+    "doneDescription": "Vous êtes connecté au serveur {{server}} avec le compte {{name}}.",
+    "done": "Terminé"
+  },
+  "errors": {
+    "unreachable": "Oleafly n'a pas pu joindre le serveur. Vérifiez l'adresse et votre connexion, puis réessayez.",
+    "not_https": "Cette adresse n'utilise pas de connexion sécurisée. Les serveurs de collaboration ont besoin d'une adresse qui commence par https.",
+    "client_too_old": "Ce serveur nécessite une version plus récente d'Oleafly. Mettez Oleafly à jour, puis réessayez.",
+    "server_too_old": "Ce serveur doit être mis à jour avant de fonctionner avec cette version d'Oleafly. Demandez à son administrateur.",
+    "not_admitted": "Vous ne figurez pas encore sur la liste de ce serveur. Demandez à son administrateur de vous ajouter.",
+    "sign_in_cancelled": "La connexion a été annulée.",
+    "sign_in_timed_out": "La connexion a pris trop de temps. Réessayez.",
+    "unauthorized": "Vous êtes déconnecté de ce serveur. Reconnectez-vous.",
+    "forbidden": "Votre rôle sur ce serveur ne permet pas cette action.",
+    "not_found": "Le serveur n'a pas trouvé cet élément. Il a peut-être déjà été supprimé.",
+    "conflict": "Cela entre en conflit avec une modification faite par quelqu'un d'autre. Rechargez, puis réessayez.",
+    "rate_limited": "Le serveur est occupé. Attendez une minute, puis réessayez.",
+    "setup_code_invalid": "Ce code de configuration ne correspond pas. Cherchez le bon code dans le journal du serveur.",
+    "server": "Le serveur a rencontré un problème. Réessayez plus tard, ou demandez à son administrateur.",
+    "internal": "Une erreur est survenue dans Oleafly. Réessayez.",
+    "server_changed": "Cette adresse appartient maintenant à un autre serveur, Oleafly ne lui a donc rien envoyé. Si vous faites confiance au nouveau serveur, retirez celui-ci et ajoutez-le de nouveau."
+  },
+  "roles": {
+    "admin": "Administrateur",
+    "maintainer": "Mainteneur",
+    "member": "Membre",
+    "guest": "Invité"
+  },
+  "admin": {
+    "title": "Gérer {{name}}",
+    "back": "Retour aux serveurs",
+    "loadFailed": "Oleafly n'a pas pu charger ces données depuis le serveur.",
+    "added": "Ajouté le {{date}}",
+    "tabs": {
+      "members": "Membres",
+      "allowlist": "Personnes autorisées",
+      "domains": "Domaines",
+      "settings": "Paramètres du serveur",
+      "log": "Journal de sécurité"
+    },
+    "members": {
+      "description": "Toutes les personnes qui se sont connectées à ce serveur.",
+      "loading": "Chargement des membres…",
+      "empty": "Personne ne s'est encore connecté.",
+      "you": "Vous",
+      "active": "Actif",
+      "suspended": "Suspendu",
+      "removed": "Retiré",
+      "roleLabel": "Rôle du membre {{name}}",
+      "suspend": "Suspendre",
+      "reactivate": "Réactiver",
+      "remove": "Retirer",
+      "devices": "Appareils",
+      "devicesTitle": "Appareils du membre {{name}}",
+      "devicesDescription": "Déconnectez un appareil perdu ou qui n'est plus utilisé.",
+      "devicesLoading": "Chargement des appareils…",
+      "devicesLoadFailed": "Oleafly n'a pas pu charger ces appareils.",
+      "lastAdmin": "Ce serveur doit garder au moins un administrateur. Nommez d'abord quelqu'un d'autre administrateur.",
+      "removeConfirm": {
+        "title": "Retirer {{name}} de ce serveur ?",
+        "description": "Ses appareils sont déconnectés immédiatement. Les projets dont cette personne est propriétaire restent sur le serveur, et vous pourrez l'ajouter de nouveau plus tard.",
+        "confirm": "Retirer le membre"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Déconnecter l'appareil {{name}} ?",
+        "description": "Cet appareil cesse de se synchroniser avec ce serveur jusqu'à ce que son propriétaire s'y connecte à nouveau.",
+        "confirm": "Déconnecter l'appareil"
+      }
+    },
+    "allowlist": {
+      "description": "Les personnes de cette liste peuvent se connecter au serveur avec le rôle que vous choisissez.",
+      "matchLabel": "Identifier par",
+      "match": {
+        "email": "Adresse électronique",
+        "login": "Nom d'utilisateur"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Option de connexion",
+      "roleLabel": "Rôle",
+      "add": "Ajouter",
+      "loading": "Chargement de la liste…",
+      "empty": "Personne ne figure encore sur la liste.",
+      "loginEntry": "{{login}} sur {{provider}}",
+      "bound": "S'est déjà connecté",
+      "unbound": "Ne s'est pas encore connecté",
+      "remove": "Retirer",
+      "removeNamed": "Retirer {{entry}}",
+      "duplicate": "Cette personne figure déjà sur la liste."
+    },
+    "domains": {
+      "description": "Toute personne ayant une adresse électronique vérifiée dans ces domaines peut se connecter avec le rôle que vous choisissez.",
+      "domainLabel": "Domaine",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Rôle",
+      "add": "Ajouter",
+      "loading": "Chargement des règles de domaine…",
+      "empty": "Aucune règle de domaine pour l'instant.",
+      "remove": "Retirer",
+      "removeNamed": "Retirer {{domain}}",
+      "duplicate": "Ce domaine a déjà une règle."
+    },
+    "settings": {
+      "description": "Ces paramètres s'appliquent à tout le monde sur ce serveur.",
+      "adminOnly": "Seuls les administrateurs peuvent modifier ces paramètres.",
+      "loading": "Chargement des paramètres…",
+      "guestsEnabled": {
+        "label": "Autoriser les invités",
+        "description": "Les membres peuvent inviter des personnes extérieures au serveur sur les projets dont ils sont propriétaires."
+      },
+      "guestApprovalRequired": {
+        "label": "Approuver d'abord les invités",
+        "description": "Un mainteneur ou un administrateur approuve chaque invitation d'invité avant qu'elle prenne effet."
+      },
+      "directoryVisible": {
+        "label": "Annuaire des membres",
+        "description": "Les membres peuvent se rechercher par nom quand ils partagent un projet."
+      },
+      "directoryShowsEmail": {
+        "label": "Afficher les adresses électroniques dans l'annuaire",
+        "description": "Les membres voient les adresses électroniques des autres quand ils recherchent quelqu'un."
+      },
+      "linkSharingAllowed": {
+        "label": "Autoriser le partage par lien",
+        "description": "Les propriétaires de projet peuvent permettre à n'importe quel membre d'ouvrir un projet depuis son lien."
+      },
+      "accessLogsAllowed": {
+        "label": "Autoriser les journaux d'accès aux projets",
+        "description": "Les propriétaires de projet peuvent conserver un journal des personnes qui ont ouvert leur projet."
+      },
+      "emailNotifications": {
+        "label": "Notifications par courriel",
+        "description": "Le serveur envoie un courriel aux personnes quand elles sont ajoutées ou quand quelqu'un partage un projet avec elles."
+      }
+    },
+    "log": {
+      "description": "Connexions, modifications d'appareils et actions d'administration sur ce serveur.",
+      "loading": "Chargement du journal…",
+      "empty": "Rien ne s'est encore produit.",
+      "loadMore": "Afficher les entrées plus anciennes",
+      "server": "Serveur",
+      "unknownAccount": "Compte inconnu",
+      "target": "Cible : {{target}}",
+      "ip": "Depuis {{ip}}",
+      "kinds": {
+        "setupCompleted": "Configuration du serveur terminée",
+        "signIn": "Connexion",
+        "signInRefused": "Connexion refusée",
+        "deviceAdded": "Appareil ajouté",
+        "deviceSignedOut": "Appareil déconnecté",
+        "refreshReuseDetected": "Ancienne connexion réutilisée, l'appareil a donc été déconnecté",
+        "memberAdded": "Membre ajouté",
+        "memberRemoved": "Membre retiré",
+        "memberSuspended": "Membre suspendu",
+        "memberReactivated": "Membre réactivé",
+        "roleChanged": "Rôle modifié",
+        "allowlistAdded": "Personne ajoutée à la liste des personnes autorisées",
+        "allowlistRemoved": "Personne retirée de la liste des personnes autorisées",
+        "domainRuleAdded": "Règle de domaine ajoutée",
+        "domainRuleRemoved": "Règle de domaine retirée",
+        "settingsChanged": "Paramètres du serveur modifiés",
+        "unknown": "Autre événement du serveur"
+      }
+    }
+  }
+}

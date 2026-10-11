@@ -64,7 +64,19 @@ export const englishResources: Record<string, Catalog> = {
   workspace,
 };
 
-export const NAMESPACES: readonly string[] = Object.keys(englishResources).sort(compareCodePoints);
+const lazyEnglishCatalogs: Readonly<Record<string, () => Promise<Catalog>>> = {
+  collab: () => import("./locales/en/collab.json").then((module) => module.default),
+};
+
+export const LAZY_NAMESPACES: readonly string[] = Object.keys(lazyEnglishCatalogs).sort(compareCodePoints);
+
+export const NAMESPACES: readonly string[] = [...Object.keys(englishResources), ...LAZY_NAMESPACES].sort(
+  compareCodePoints,
+);
+
+export function loadEnglishCatalog(namespace: string): Promise<Catalog> | null {
+  return Object.hasOwn(lazyEnglishCatalogs, namespace) ? lazyEnglishCatalogs[namespace]() : null;
+}
 
 export async function loadLocaleResources(locale: SupportedLocale): Promise<Record<string, Catalog>> {
   if (locale === "en") return englishResources;

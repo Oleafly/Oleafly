@@ -859,6 +859,10 @@
         "description": "Arată galeria Instrumente Oleafly și instrumentele individuale (import PDF, ecuații, tabele, BibTeX, căutare de laboratoare și de literatură, termene limită), împreună cu comenzile lor cu bară oblică. Dezactivată implicit, cât timp este în beta.",
         "label": "Instrumente LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Editează proiecte împreună cu alte persoane printr-un server de colaborare administrat de tine sau de grupul tău. Adaugă secțiunea Colaborare în Setări. Dezactivată implicit, cât timp este în beta.",
+        "label": "Colaborare în timp real"
+      },
       "warning": "Aceste funcții sunt experimentale și încă în beta. Nu sunt testate complet și se pot schimba, strica sau dispărea într-o versiune viitoare. Activează-le doar dacă vrei să încerci lucruri în lucru.",
       "webBrowser": {
         "description": "Arată browserul web integrat (butonul și scurtătura lui) și îi permite AI-ului să îl folosească. Dezactivat implicit, cât timp este în beta. Când este oprit, nu există buton de browser, iar AI-ul nu are instrument de browser.",
@@ -940,6 +944,7 @@
     "nav": {
       "ai": "Asistentul AI",
       "appearance": "Aspect",
+      "collaboration": "Colaborare",
       "data": "Stocarea datelor",
       "dictionary": "Dicționar",
       "downloads": "Descărcări",
@@ -955,6 +960,7 @@
       "keywords": {
         "ai": "asistent, chat, conversație, modele, furnizori, chei API, agenți, prompturi, buget, servere MCP",
         "appearance": "temă, mod întunecat, mod luminos, culoare, fonturi, mărimea textului, zoom, aspect, dispunere",
+        "collaboration": "servere, autentificare, dispozitive, membri, coordonatori, partajare, echipe, laboratoare, editare în timp real, timp real, jurnal de securitate",
         "data": "backup, copie de rezervă, folderul bibliotecii, folderul proiectelor, stocare, spațiu pe disc, coș de gunoi, ștergere proiecte, puncte de control",
         "dictionary": "ortografie, cuvinte proprii, cuvinte ignorate, corectură, reguli gramaticale",
         "downloads": "pachete, fonturi, dicționare, fișiere offline",

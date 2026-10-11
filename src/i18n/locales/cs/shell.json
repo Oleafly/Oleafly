@@ -874,6 +874,10 @@
         "description": "Zobrazí galerii Oleafly Tools a jednotlivé nástroje (import PDF, rovnice, tabulky, BibTeX, hledání laboratoří a literatury, termíny) i jejich příkazy s lomítkem. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
         "label": "Nástroje LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Upravujte projekty s dalšími lidmi přes server pro spolupráci, který provozujete vy nebo vaše skupina. Přidá do Nastavení sekci „Spolupráce“. Ve výchozím stavu vypnuto, dokud je to v beta verzi.",
+        "label": "Živá spolupráce"
+      },
       "warning": "Tyto funkce jsou experimentální a stále v beta verzi. Nejsou plně otestované a mohou se změnit, přestat fungovat nebo být v některém dalším vydání odebrány. Zapínejte je jen tehdy, pokud si chcete rozpracovanou práci vyzkoušet.",
       "webBrowser": {
         "description": "Zobrazí vestavěný webový prohlížeč (jeho přepínač v doku i zkratku) a umožní AI ovládat jej pomocí computer use. Ve výchozím stavu vypnuto, dokud je to v beta verzi. Když je vypnuto, tlačítko prohlížeče chybí a AI nemá nástroj prohlížeče.",
@@ -957,6 +961,7 @@
     "nav": {
       "ai": "Asistent AI",
       "appearance": "Vzhled",
+      "collaboration": "Spolupráce",
       "data": "Úložiště dat",
       "dictionary": "Slovník",
       "downloads": "Stahování",
@@ -972,6 +977,7 @@
       "keywords": {
         "ai": "asistent, chat, modely, poskytovatelé, klíče API, agenti, prompty, rozpočet, servery MCP",
         "appearance": "motiv, vzhled, tmavý režim, světlý režim, barva, barvy, písma, velikost textu, přiblížení, zoom, rozvržení",
+        "collaboration": "servery, přihlášení, zařízení, členové, správci, sdílení, týmy, laboratoře, živé úpravy, reálný čas, protokol zabezpečení",
         "data": "záloha, zálohování, složka knihovny, složka projektů, úložiště, místo na disku, koš, smazat projekty, záchytné body",
         "dictionary": "pravopis, vlastní slova, ignorovaná slova, korektura, gramatická pravidla",
         "downloads": "balíčky, písma, slovníky, soubory offline",

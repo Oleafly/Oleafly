@@ -29,6 +29,7 @@ const SETTINGS_SECTIONS = new Set([
   "engine",
   "downloads",
   "integrations",
+  "collaboration",
   "shortcuts",
   "experimentation",
   "help",
@@ -1078,6 +1079,8 @@ interface SettingsState {
   // entry point is gated on this.
   webBrowser: boolean;
   setWebBrowser: (v: boolean) => void;
+  liveCollaboration: boolean;
+  setLiveCollaboration: (v: boolean) => void;
   // Engine for NEW LaTeX projects: "tectonic" (bundled, zero-setup) or
   // "latexmk" (system TeX; full Overleaf tool parity). Existing projects keep
   // their own pin in project.json.
@@ -1248,6 +1251,7 @@ const PREF_DEFAULTS = {
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   webBrowser: false,
+  liveCollaboration: false,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -1334,6 +1338,7 @@ const SECTION_SETTINGS = {
   experimentation: {
     latexTools: "oleafly.latexTools",
     webBrowser: "oleafly.webBrowser",
+    liveCollaboration: "oleafly.liveCollaboration",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -1996,6 +2001,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     saveLs("oleafly.webBrowser", v ? "1" : "0");
     // Turning the browser off must also close any open browser dock.
     set(v ? { webBrowser: true } : { webBrowser: false, browserOpen: false });
+  },
+  liveCollaboration: ls("oleafly.liveCollaboration", "0") === "1",
+  setLiveCollaboration: (v) => {
+    saveLs("oleafly.liveCollaboration", v ? "1" : "0");
+    set({ liveCollaboration: v });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

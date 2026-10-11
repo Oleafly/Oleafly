@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Rediger prosjekter sammen med andre i sanntid. Prosjektene synkroniseres via en samarbeidsserver som du eller gruppen din drifter, og den serveren bestemmer hvem som kan bli med.",
+    "servers": {
+      "title": "Servere",
+      "add": "Legg til server",
+      "loading": "Laster serverne dine…",
+      "loadFailed": "Oleafly kunne ikke laste serverne dine.",
+      "empty": {
+        "title": "Ingen servere ennå",
+        "description": "Be den som drifter serveren til gruppen din om adressen, og legg den til her."
+      }
+    },
+    "server": {
+      "signedIn": "Logget inn",
+      "signedOut": "Logget ut",
+      "signedInAs": "Logget inn som {{name}}",
+      "signedOutHint": "Denne maskinen er ikke logget inn på denne serveren.",
+      "role": "Rollen din: {{role}}",
+      "signIn": "Logg inn",
+      "signOut": "Logg ut",
+      "remove": "Fjern",
+      "manage": "Administrer serveren",
+      "test": "Test tilkoblingen",
+      "removeConfirm": {
+        "title": "Fjerne {{name}}?",
+        "description": "Oleafly logger ut av denne serveren og glemmer den. Prosjekter som allerede ligger på denne maskinen, blir der de er.",
+        "confirm": "Fjern serveren"
+      }
+    },
+    "devices": {
+      "title": "Enhetene dine",
+      "description": "Maskiner som er logget inn på denne serveren med kontoen din. Logg ut de maskinene du ikke lenger bruker.",
+      "loading": "Laster enhetene dine…",
+      "loadFailed": "Oleafly kunne ikke laste enhetene dine.",
+      "current": "Denne maskinen",
+      "added": "Lagt til {{date}}",
+      "lastSeen": "Sist sett {{date}}",
+      "neverSeen": "Ikke sett ennå",
+      "empty": "Ingen enheter er logget inn.",
+      "signOut": "Logg ut",
+      "signOutNamed": "Logg ut {{name}}",
+      "signOutConfirm": {
+        "title": "Logge ut {{name}}?",
+        "description": "Den maskinen slutter å synkronisere med denne serveren til noen logger inn på den igjen.",
+        "confirm": "Logg ut enheten"
+      }
+    },
+    "checks": {
+      "title": "Tilkoblingstest",
+      "running": "Tester tilkoblingen…",
+      "clockSkew": "Tidsforskjell i sekunder: {{seconds}}",
+      "status": {
+        "pass": "Bestått",
+        "fail": "Mislyktes",
+        "info": "Merknad",
+        "skipped": "Hoppet over"
+      },
+      "items": {
+        "reachable": {
+          "label": "Adresse",
+          "pass": "Serveren svarte.",
+          "fail": "Oleafly fikk ikke kontakt med denne adressen. Sjekk adressen og nettverket ditt.",
+          "info": "Serveren svarte, men tregt.",
+          "skipped": "Ikke sjekket."
+        },
+        "https": {
+          "label": "Sikker tilkobling",
+          "pass": "Tilkoblingen er kryptert, og sertifikatet er gyldig.",
+          "fail": "Sertifikatet til serveren er ikke gyldig, eller adressen bruker ikke https.",
+          "info": "Dette er en testserver på denne maskinen, så den kjører uten https.",
+          "skipped": "Ikke sjekket fordi adressen ikke svarte."
+        },
+        "protocol": {
+          "label": "Versjon",
+          "pass": "Denne versjonen av Oleafly fungerer med serveren.",
+          "fail": "Oleafly og serveren krever ulike versjoner. En av dem må oppdateres.",
+          "info": "Serveren er nyere enn denne versjonen av Oleafly, men fungerer fortsatt med den.",
+          "skipped": "Ikke sjekket fordi en tidligere sjekk mislyktes."
+        },
+        "webSocket": {
+          "label": "Sanntidstilkobling",
+          "pass": "Endringer i sanntid kommer gjennom.",
+          "fail": "Noe mellom deg og serveren blokkerer endringer i sanntid. En brannmur eller proxy må kanskje endres.",
+          "info": "Endringer i sanntid kommer gjennom, men tilkoblingen tok litt tid.",
+          "skipped": "Ikke sjekket fordi en tidligere sjekk mislyktes."
+        },
+        "signInProviders": {
+          "label": "Innloggingsmåter",
+          "pass": "Serveren har minst én måte å logge inn på.",
+          "fail": "Serveren har ingen måte å logge inn på ennå. Spør administratoren.",
+          "info": "Serveren har en måte å logge inn på, men noen av valgene er slått av.",
+          "skipped": "Ikke sjekket fordi en tidligere sjekk mislyktes."
+        },
+        "email": {
+          "label": "E-post",
+          "pass": "Serveren kan sende e-post.",
+          "fail": "E-postinnstillingene på serveren virker ikke.",
+          "info": "E-post er ikke satt opp på denne serveren. Folk legges til uten e-post.",
+          "skipped": "Ikke sjekket fordi en tidligere sjekk mislyktes."
+        },
+        "clock": {
+          "label": "Klokke",
+          "pass": "Klokken din og klokken på serveren stemmer overens.",
+          "fail": "Klokken din og klokken på serveren går langt fra hverandre. Sjekk dato og klokkeslett på denne maskinen.",
+          "info": "Klokken din avviker litt fra klokken på serveren.",
+          "skipped": "Ikke sjekket fordi en tidligere sjekk mislyktes."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Legg til en samarbeidsserver",
+    "description": "Skriv inn adressen gruppen din ga deg. Oleafly sjekker serveren før du logger inn.",
+    "addressLabel": "Serveradresse",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Fortsett",
+    "checking": "Sjekker serveren…",
+    "version": "Versjon {{version}}",
+    "setupTitle": "Sett opp denne serveren",
+    "setupDescription": "Ingen har logget inn her ennå. Skriv inn oppsettskoden fra loggen til serveren. Den som logger inn først med koden, blir administrator for serveren.",
+    "setupCodeLabel": "Oppsettskode",
+    "signInTitle": "Logg inn",
+    "signInDescription": "Nettleseren din åpnes, slik at du kan logge inn der. Oleafly ser aldri passordet ditt.",
+    "continueWith": "Fortsett med {{provider}}",
+    "noProviders": "Denne serveren har ingen måte å logge inn på ennå. Be administratoren om å sette opp en.",
+    "waitingTitle": "Venter på nettleseren din",
+    "waitingDescription": "Fullfør innloggingen i nettleservinduet som åpnet seg, og kom så tilbake hit.",
+    "cancel": "Avbryt",
+    "back": "Tilbake",
+    "doneTitle": "Du er logget inn",
+    "doneDescription": "Du er logget inn på {{server}} som {{name}}.",
+    "done": "Ferdig"
+  },
+  "errors": {
+    "unreachable": "Oleafly fikk ikke kontakt med serveren. Sjekk adressen og tilkoblingen din, og prøv igjen.",
+    "not_https": "Denne adressen bruker ikke en sikker tilkobling. Samarbeidsservere trenger en adresse som starter med https.",
+    "client_too_old": "Denne serveren krever en nyere versjon av Oleafly. Oppdater Oleafly, og prøv igjen.",
+    "server_too_old": "Denne serveren må oppdateres før den fungerer med denne versjonen av Oleafly. Spør administratoren.",
+    "not_admitted": "Du står ikke på listen til denne serveren ennå. Be administratoren om å legge deg til.",
+    "sign_in_cancelled": "Innloggingen ble avbrutt.",
+    "sign_in_timed_out": "Innloggingen tok for lang tid. Prøv igjen.",
+    "unauthorized": "Du er logget ut av denne serveren. Logg inn igjen.",
+    "forbidden": "Rollen din på denne serveren gir ikke lov til det.",
+    "not_found": "Serveren fant det ikke. Det kan allerede være borte.",
+    "conflict": "Det kolliderer med en endring noen andre har gjort. Last inn på nytt, og prøv igjen.",
+    "rate_limited": "Serveren er opptatt. Vent et minutt, og prøv igjen.",
+    "setup_code_invalid": "Den oppsettskoden stemmer ikke. Se etter riktig kode i loggen til serveren.",
+    "server": "Serveren fikk et problem. Prøv igjen senere, eller spør administratoren.",
+    "internal": "Noe gikk galt i Oleafly. Prøv igjen.",
+    "server_changed": "Denne adressen tilhører nå en annen server, så Oleafly sendte ikke noe til den. Stoler du på den nye serveren, kan du fjerne denne og legge den til igjen."
+  },
+  "roles": {
+    "admin": "Administrator",
+    "maintainer": "Vedlikeholder",
+    "member": "Medlem",
+    "guest": "Gjest"
+  },
+  "admin": {
+    "title": "Administrer {{name}}",
+    "back": "Tilbake til serverne",
+    "loadFailed": "Oleafly kunne ikke laste dette fra serveren.",
+    "added": "Lagt til {{date}}",
+    "tabs": {
+      "members": "Medlemmer",
+      "allowlist": "Tillatte personer",
+      "domains": "Domener",
+      "settings": "Serverinnstillinger",
+      "log": "Sikkerhetslogg"
+    },
+    "members": {
+      "description": "Alle som har logget inn på denne serveren.",
+      "loading": "Laster medlemmer…",
+      "empty": "Ingen har logget inn ennå.",
+      "you": "Du",
+      "active": "Aktiv",
+      "suspended": "Suspendert",
+      "removed": "Fjernet",
+      "roleLabel": "Rolle for {{name}}",
+      "suspend": "Suspender",
+      "reactivate": "Aktiver igjen",
+      "remove": "Fjern",
+      "devices": "Enheter",
+      "devicesTitle": "Enhetene til {{name}}",
+      "devicesDescription": "Logg ut en enhet som er kommet bort eller ikke lenger er i bruk.",
+      "devicesLoading": "Laster enheter…",
+      "devicesLoadFailed": "Oleafly kunne ikke laste disse enhetene.",
+      "lastAdmin": "Denne serveren må ha minst én administrator. Gjør noen andre til administrator først.",
+      "removeConfirm": {
+        "title": "Fjerne {{name}} fra denne serveren?",
+        "description": "Enhetene deres logges ut med en gang. Prosjektene de eier, blir liggende på serveren. Du kan legge personen til igjen senere.",
+        "confirm": "Fjern medlemmet"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Logge ut {{name}}?",
+        "description": "Den enheten slutter å synkronisere med denne serveren til eieren logger inn på den igjen.",
+        "confirm": "Logg ut enheten"
+      }
+    },
+    "allowlist": {
+      "description": "Personer på denne listen kan logge inn på serveren med rollen du velger.",
+      "matchLabel": "Identifiser med",
+      "match": {
+        "email": "E-postadresse",
+        "login": "Brukernavn"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Innloggingsmåte",
+      "roleLabel": "Rolle",
+      "add": "Legg til",
+      "loading": "Laster listen…",
+      "empty": "Ingen står på listen ennå.",
+      "loginEntry": "{{login}} på {{provider}}",
+      "bound": "Har logget inn",
+      "unbound": "Har ikke logget inn ennå",
+      "remove": "Fjern",
+      "removeNamed": "Fjern {{entry}}",
+      "duplicate": "Den personen står allerede på listen."
+    },
+    "domains": {
+      "description": "Alle med en bekreftet e-postadresse på disse domenene kan logge inn med rollen du velger.",
+      "domainLabel": "Domene",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Rolle",
+      "add": "Legg til",
+      "loading": "Laster domeneregler…",
+      "empty": "Ingen domeneregler ennå.",
+      "remove": "Fjern",
+      "removeNamed": "Fjern {{domain}}",
+      "duplicate": "Det domenet har allerede en regel."
+    },
+    "settings": {
+      "description": "Disse innstillingene gjelder alle på denne serveren.",
+      "adminOnly": "Bare administratorer kan endre disse innstillingene.",
+      "loading": "Laster innstillinger…",
+      "guestsEnabled": {
+        "label": "Tillat gjester",
+        "description": "Medlemmer kan invitere folk utenfor serveren til prosjekter de eier."
+      },
+      "guestApprovalRequired": {
+        "label": "Godkjenn gjester først",
+        "description": "En vedlikeholder eller administrator godkjenner hver gjesteinvitasjon før den kan brukes."
+      },
+      "directoryVisible": {
+        "label": "Medlemskatalog",
+        "description": "Medlemmer kan slå hverandre opp etter navn når de deler et prosjekt."
+      },
+      "directoryShowsEmail": {
+        "label": "Vis e-postadresser i katalogen",
+        "description": "Medlemmer ser hverandres e-postadresser når de slår opp noen."
+      },
+      "linkSharingAllowed": {
+        "label": "Tillat deling med lenke",
+        "description": "Prosjekteiere kan la ethvert medlem åpne et prosjekt via lenken til prosjektet."
+      },
+      "accessLogsAllowed": {
+        "label": "Tillat tilgangslogger for prosjekter",
+        "description": "Prosjekteiere kan føre en logg over hvem som har åpnet prosjektet deres."
+      },
+      "emailNotifications": {
+        "label": "Varsler på e-post",
+        "description": "Serveren sender e-post til folk når de blir lagt til, eller når noen deler et prosjekt med dem."
+      }
+    },
+    "log": {
+      "description": "Innlogginger, endringer i enheter og administratorhandlinger på denne serveren.",
+      "loading": "Laster loggen…",
+      "empty": "Ingenting har skjedd ennå.",
+      "loadMore": "Vis eldre oppføringer",
+      "server": "Serveren",
+      "unknownAccount": "Ukjent konto",
+      "target": "Gjelder {{target}}",
+      "ip": "Fra {{ip}}",
+      "kinds": {
+        "setupCompleted": "Fullførte oppsettet av serveren",
+        "signIn": "Logget inn",
+        "signInRefused": "Ble avvist ved innlogging",
+        "deviceAdded": "La til en enhet",
+        "deviceSignedOut": "Logget ut en enhet",
+        "refreshReuseDetected": "Brukte en gammel innlogging på nytt, så enheten ble logget ut",
+        "memberAdded": "La til et medlem",
+        "memberRemoved": "Fjernet et medlem",
+        "memberSuspended": "Suspenderte et medlem",
+        "memberReactivated": "Aktiverte et medlem igjen",
+        "roleChanged": "Endret en rolle",
+        "allowlistAdded": "La til noen på listen over tillatte personer",
+        "allowlistRemoved": "Fjernet noen fra listen over tillatte personer",
+        "domainRuleAdded": "La til en domeneregel",
+        "domainRuleRemoved": "Fjernet en domeneregel",
+        "settingsChanged": "Endret serverinnstillingene",
+        "unknown": "Annen serverhendelse"
+      }
+    }
+  }
+}

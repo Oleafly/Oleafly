@@ -844,6 +844,10 @@
         "description": "Zeigt die Galerie Oleafly Tools und die einzelnen Werkzeuge (PDF-Import, Formeln, Tabellen, BibTeX, Labor- und Literatursuche, Fristen) samt ihren Schrägstrich-Befehlen. Standardmäßig aus, solange es noch Beta ist.",
         "label": "LaTeX-Werkzeuge"
       },
+      "liveCollaboration": {
+        "description": "Lässt Sie Projekte über einen Kollaborationsserver, den Sie oder Ihre Gruppe betreiben, gemeinsam mit anderen bearbeiten. Fügt den Einstellungen den Bereich Zusammenarbeit hinzu. Standardmäßig aus, solange es noch Beta ist.",
+        "label": "Live-Zusammenarbeit"
+      },
       "warning": "Diese Funktionen sind experimentell und noch in der Beta. Sie sind noch nicht vollständig getestet und können sich ändern, kaputtgehen oder in einer künftigen Version verschwinden. Schalten Sie sie nur ein, wenn Sie Werk in Arbeit ausprobieren möchten.",
       "webBrowser": {
         "description": "Zeigt den integrierten Webbrowser (seinen Umschalter im Dock und sein Kürzel) und lässt die KI ihn per Computernutzung steuern. Standardmäßig aus, solange es in der Beta ist. Ausgeschaltet gibt es keine Browser-Schaltfläche und die KI hat kein Browser-Werkzeug.",
@@ -923,6 +927,7 @@
     "nav": {
       "ai": "KI-Assistent",
       "appearance": "Darstellung",
+      "collaboration": "Zusammenarbeit",
       "data": "Datenspeicher",
       "dictionary": "Wörterbuch",
       "downloads": "Downloads",
@@ -938,6 +943,7 @@
       "keywords": {
         "ai": "Assistent, Chat, Modelle, Anbieter, API-Schlüssel, Agenten, Prompts, Budget, MCP-Server",
         "appearance": "Design, Darstellung, Dunkelmodus, dunkler Modus, heller Modus, Farbe, Farben, Schriftarten, Schriftgröße, Zoom, Layout",
+        "collaboration": "Server, Anmelden, Anmeldung, Geräte, Mitglieder, Maintainer, Teilen, Teams, Labore, Arbeitsgruppen, Live-Bearbeitung, Echtzeit, Sicherheitsprotokoll, Zusammenarbeit, Kollaboration",
         "data": "Backup, Sicherung, Bibliotheksordner, Projektordner, Speicher, Speicherplatz, Papierkorb, Projekte löschen, Checkpoints",
         "dictionary": "Rechtschreibung, eigene Wörter, ignorierte Wörter, Korrektur, Korrekturlesen, Grammatikregeln",
         "downloads": "Pakete, Schriftarten, Wörterbücher, Offline-Dateien",

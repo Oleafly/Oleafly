@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Muokkaa projekteja muiden kanssa reaaliajassa. Projektit synkronoidaan yhteistyöpalvelimen kautta, jota sinä tai ryhmäsi ylläpitää, ja palvelin päättää, kuka voi liittyä.",
+    "servers": {
+      "title": "Palvelimet",
+      "add": "Lisää palvelin",
+      "loading": "Ladataan palvelimiasi…",
+      "loadFailed": "Oleafly ei voinut ladata palvelimiasi.",
+      "empty": {
+        "title": "Ei vielä palvelimia",
+        "description": "Pyydä palvelimen osoite henkilöltä, joka ylläpitää ryhmäsi palvelinta, ja lisää se sitten tähän."
+      }
+    },
+    "server": {
+      "signedIn": "Kirjautunut",
+      "signedOut": "Ei kirjautunut",
+      "signedInAs": "Kirjautunut käyttäjänä {{name}}",
+      "signedOutHint": "Tämä kone ei ole kirjautunut tälle palvelimelle.",
+      "role": "Roolisi: {{role}}",
+      "signIn": "Kirjaudu sisään",
+      "signOut": "Kirjaudu ulos",
+      "remove": "Poista",
+      "manage": "Hallitse palvelinta",
+      "test": "Testaa yhteys",
+      "removeConfirm": {
+        "title": "Poistetaanko {{name}}?",
+        "description": "Oleafly kirjautuu ulos tältä palvelimelta ja unohtaa sen. Tällä koneella jo olevat projektit pysyvät paikoillaan.",
+        "confirm": "Poista palvelin"
+      }
+    },
+    "devices": {
+      "title": "Laitteesi",
+      "description": "Koneet, jotka ovat kirjautuneet tälle palvelimelle tililläsi. Kirjaa ulos ne, joita et enää käytä.",
+      "loading": "Ladataan laitteitasi…",
+      "loadFailed": "Oleafly ei voinut ladata laitteitasi.",
+      "current": "Tämä kone",
+      "added": "Lisätty {{date}}",
+      "lastSeen": "Nähty viimeksi {{date}}",
+      "neverSeen": "Ei vielä nähty",
+      "empty": "Mikään laite ei ole kirjautunut sisään.",
+      "signOut": "Kirjaa ulos",
+      "signOutNamed": "Kirjaa ulos {{name}}",
+      "signOutConfirm": {
+        "title": "Kirjataanko {{name}} ulos?",
+        "description": "Kone lakkaa synkronoimasta tämän palvelimen kanssa, kunnes joku kirjautuu sillä uudelleen sisään.",
+        "confirm": "Kirjaa laite ulos"
+      }
+    },
+    "checks": {
+      "title": "Yhteystesti",
+      "running": "Testataan yhteyttä…",
+      "clockSkew": "Aikaero sekunteina: {{seconds}}",
+      "status": {
+        "pass": "Onnistui",
+        "fail": "Epäonnistui",
+        "info": "Huomio",
+        "skipped": "Ohitettu"
+      },
+      "items": {
+        "reachable": {
+          "label": "Osoite",
+          "pass": "Palvelin vastasi.",
+          "fail": "Oleafly ei saanut yhteyttä tähän osoitteeseen. Tarkista osoite ja verkkoyhteytesi.",
+          "info": "Palvelin vastasi, mutta hitaasti.",
+          "skipped": "Ei tarkistettu."
+        },
+        "https": {
+          "label": "Suojattu yhteys",
+          "pass": "Yhteys on salattu ja varmenne on kelvollinen.",
+          "fail": "Palvelimen varmenne ei ole kelvollinen, tai osoite ei käytä https-protokollaa.",
+          "info": "Tämä on testipalvelin tällä koneella, joten se toimii ilman https-protokollaa.",
+          "skipped": "Ei tarkistettu, koska osoite ei vastannut."
+        },
+        "protocol": {
+          "label": "Versio",
+          "pass": "Tämä Oleafly-versio toimii palvelimen kanssa.",
+          "fail": "Oleafly ja palvelin vaativat eri versiot. Jompikumpi niistä tarvitsee päivityksen.",
+          "info": "Palvelin on tätä Oleafly-versiota uudempi, mutta toimii silti sen kanssa.",
+          "skipped": "Ei tarkistettu, koska aiempi tarkistus epäonnistui."
+        },
+        "webSocket": {
+          "label": "Reaaliaikainen yhteys",
+          "pass": "Reaaliaikaiset muokkaukset pääsevät perille.",
+          "fail": "Jokin sinun ja palvelimen välillä estää reaaliaikaiset muokkaukset. Palomuuria tai välityspalvelinta voi joutua muuttamaan.",
+          "info": "Reaaliaikaiset muokkaukset pääsevät perille, mutta yhteyden muodostaminen kesti hetken.",
+          "skipped": "Ei tarkistettu, koska aiempi tarkistus epäonnistui."
+        },
+        "signInProviders": {
+          "label": "Kirjautumistavat",
+          "pass": "Palvelimella on ainakin yksi kirjautumistapa.",
+          "fail": "Palvelimella ei ole vielä yhtään kirjautumistapaa. Kysy sen ylläpitäjältä.",
+          "info": "Palvelimella on kirjautumistapa, mutta osa vaihtoehdoista on poistettu käytöstä.",
+          "skipped": "Ei tarkistettu, koska aiempi tarkistus epäonnistui."
+        },
+        "email": {
+          "label": "Sähköposti",
+          "pass": "Palvelin voi lähettää sähköpostia.",
+          "fail": "Palvelimen sähköpostiasetukset eivät toimi.",
+          "info": "Sähköpostia ei ole määritetty tälle palvelimelle. Ihmiset lisätään ilman sähköpostia.",
+          "skipped": "Ei tarkistettu, koska aiempi tarkistus epäonnistui."
+        },
+        "clock": {
+          "label": "Kello",
+          "pass": "Kellosi ja palvelimen kello ovat samassa ajassa.",
+          "fail": "Kellosi ja palvelimen kello eroavat paljon toisistaan. Tarkista tämän koneen päivämäärä ja kellonaika.",
+          "info": "Kellosi poikkeaa hieman palvelimen kellosta.",
+          "skipped": "Ei tarkistettu, koska aiempi tarkistus epäonnistui."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Lisää yhteistyöpalvelin",
+    "description": "Anna osoite, jonka ryhmäsi antoi sinulle. Oleafly tarkistaa palvelimen ennen kuin kirjaudut sisään.",
+    "addressLabel": "Palvelimen osoite",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Jatka",
+    "checking": "Tarkistetaan palvelinta…",
+    "version": "Versio {{version}}",
+    "setupTitle": "Ota tämä palvelin käyttöön",
+    "setupDescription": "Kukaan ei ole vielä kirjautunut tänne. Anna käyttöönottokoodi palvelimen lokista. Ensimmäisenä koodilla kirjautuvasta tulee palvelimen ylläpitäjä.",
+    "setupCodeLabel": "Käyttöönottokoodi",
+    "signInTitle": "Kirjaudu sisään",
+    "signInDescription": "Selain avautuu, jotta voit kirjautua siellä. Oleafly ei koskaan näe salasanaasi.",
+    "continueWith": "Jatka palvelulla {{provider}}",
+    "noProviders": "Tällä palvelimella ei ole vielä kirjautumistapaa. Pyydä sen ylläpitäjää määrittämään sellainen.",
+    "waitingTitle": "Odotetaan selainta",
+    "waitingDescription": "Viimeistele kirjautuminen avautuneessa selainikkunassa ja palaa sitten tänne.",
+    "cancel": "Peruuta",
+    "back": "Takaisin",
+    "doneTitle": "Olet kirjautunut sisään",
+    "doneDescription": "Olet kirjautunut palvelimelle {{server}} käyttäjänä {{name}}.",
+    "done": "Valmis"
+  },
+  "errors": {
+    "unreachable": "Oleafly ei saanut yhteyttä palvelimeen. Tarkista osoite ja yhteytesi ja yritä sitten uudelleen.",
+    "not_https": "Tämä osoite ei käytä suojattua yhteyttä. Yhteistyöpalvelimet tarvitsevat osoitteen, jonka alussa on https.",
+    "client_too_old": "Tämä palvelin vaatii uudemman Oleafly-version. Päivitä Oleafly ja yritä sitten uudelleen.",
+    "server_too_old": "Palvelin tarvitsee päivityksen, ennen kuin se toimii tämän Oleafly-version kanssa. Kysy sen ylläpitäjältä.",
+    "not_admitted": "Et ole vielä tämän palvelimen listalla. Pyydä sen ylläpitäjää lisäämään sinut.",
+    "sign_in_cancelled": "Kirjautuminen peruttiin.",
+    "sign_in_timed_out": "Kirjautuminen kesti liian kauan. Yritä uudelleen.",
+    "unauthorized": "Olet kirjautunut ulos tältä palvelimelta. Kirjaudu uudelleen sisään.",
+    "forbidden": "Roolisi tällä palvelimella ei salli tätä.",
+    "not_found": "Palvelin ei löytänyt kohdetta. Se on ehkä jo poistettu.",
+    "conflict": "Tämä on ristiriidassa jonkun toisen tekemän muutoksen kanssa. Päivitä näkymä ja yritä uudelleen.",
+    "rate_limited": "Palvelin on kiireinen. Odota minuutti ja yritä sitten uudelleen.",
+    "setup_code_invalid": "Käyttöönottokoodi ei täsmää. Tarkista oikea koodi palvelimen lokista.",
+    "server": "Palvelimella ilmeni ongelma. Yritä myöhemmin uudelleen tai kysy sen ylläpitäjältä.",
+    "internal": "Oleaflyssä tapahtui virhe. Yritä uudelleen.",
+    "server_changed": "Tämä osoite kuuluu nyt toiselle palvelimelle, joten Oleafly ei lähettänyt sille mitään. Jos luotat uuteen palvelimeen, poista tämä palvelin ja lisää se uudelleen."
+  },
+  "roles": {
+    "admin": "Ylläpitäjä",
+    "maintainer": "Valvoja",
+    "member": "Jäsen",
+    "guest": "Vieras"
+  },
+  "admin": {
+    "title": "Hallitse palvelinta {{name}}",
+    "back": "Takaisin palvelimiin",
+    "loadFailed": "Oleafly ei voinut ladata tätä palvelimelta.",
+    "added": "Lisätty {{date}}",
+    "tabs": {
+      "members": "Jäsenet",
+      "allowlist": "Sallitut henkilöt",
+      "domains": "Verkkotunnukset",
+      "settings": "Palvelimen asetukset",
+      "log": "Tietoturvaloki"
+    },
+    "members": {
+      "description": "Kaikki, jotka ovat kirjautuneet tälle palvelimelle.",
+      "loading": "Ladataan jäseniä…",
+      "empty": "Kukaan ei ole vielä kirjautunut.",
+      "you": "Sinä",
+      "active": "Aktiivinen",
+      "suspended": "Jäädytetty",
+      "removed": "Poistettu",
+      "roleLabel": "Käyttäjän {{name}} rooli",
+      "suspend": "Jäädytä",
+      "reactivate": "Aktivoi uudelleen",
+      "remove": "Poista",
+      "devices": "Laitteet",
+      "devicesTitle": "Käyttäjän {{name}} laitteet",
+      "devicesDescription": "Kirjaa ulos laite, joka on kadonnut tai jota ei enää käytetä.",
+      "devicesLoading": "Ladataan laitteita…",
+      "devicesLoadFailed": "Oleafly ei voinut ladata näitä laitteita.",
+      "lastAdmin": "Palvelimella on oltava vähintään yksi ylläpitäjä. Tee ensin joku toinen ylläpitäjäksi.",
+      "removeConfirm": {
+        "title": "Poistetaanko {{name}} tältä palvelimelta?",
+        "description": "Hänen laitteensa kirjataan ulos heti. Hänen omistamansa projektit jäävät palvelimelle, ja voit lisätä hänet myöhemmin takaisin.",
+        "confirm": "Poista jäsen"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Kirjataanko {{name}} ulos?",
+        "description": "Laite lakkaa synkronoimasta tämän palvelimen kanssa, kunnes sen omistaja kirjautuu sillä uudelleen sisään.",
+        "confirm": "Kirjaa laite ulos"
+      }
+    },
+    "allowlist": {
+      "description": "Tämän listan henkilöt voivat kirjautua palvelimelle valitsemallasi roolilla.",
+      "matchLabel": "Tunnistustapa",
+      "match": {
+        "email": "Sähköpostiosoite",
+        "login": "Käyttäjänimi"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Kirjautumistapa",
+      "roleLabel": "Rooli",
+      "add": "Lisää",
+      "loading": "Ladataan listaa…",
+      "empty": "Listalla ei ole vielä ketään.",
+      "loginEntry": "{{login}} palvelussa {{provider}}",
+      "bound": "On kirjautunut",
+      "unbound": "Ei ole vielä kirjautunut",
+      "remove": "Poista",
+      "removeNamed": "Poista {{entry}}",
+      "duplicate": "Tämä henkilö on jo listalla."
+    },
+    "domains": {
+      "description": "Kuka tahansa, jolla on vahvistettu sähköpostiosoite näissä verkkotunnuksissa, voi kirjautua sisään valitsemallasi roolilla.",
+      "domainLabel": "Verkkotunnus",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Rooli",
+      "add": "Lisää",
+      "loading": "Ladataan verkkotunnussääntöjä…",
+      "empty": "Verkkotunnussääntöjä ei ole vielä.",
+      "remove": "Poista",
+      "removeNamed": "Poista {{domain}}",
+      "duplicate": "Tälle verkkotunnukselle on jo sääntö."
+    },
+    "settings": {
+      "description": "Nämä asetukset koskevat kaikkia tämän palvelimen käyttäjiä.",
+      "adminOnly": "Vain ylläpitäjät voivat muuttaa näitä asetuksia.",
+      "loading": "Ladataan asetuksia…",
+      "guestsEnabled": {
+        "label": "Salli vieraat",
+        "description": "Jäsenet voivat kutsua palvelimen ulkopuolisia henkilöitä omistamiinsa projekteihin."
+      },
+      "guestApprovalRequired": {
+        "label": "Hyväksy vieraat ensin",
+        "description": "Valvoja tai ylläpitäjä hyväksyy jokaisen vieraskutsun, ennen kuin se tulee voimaan."
+      },
+      "directoryVisible": {
+        "label": "Jäsenhakemisto",
+        "description": "Jäsenet voivat hakea toisiaan nimellä, kun he jakavat projektin."
+      },
+      "directoryShowsEmail": {
+        "label": "Näytä sähköpostiosoitteet hakemistossa",
+        "description": "Jäsenet näkevät toistensa sähköpostiosoitteet, kun he hakevat jotakuta."
+      },
+      "linkSharingAllowed": {
+        "label": "Salli linkkijako",
+        "description": "Projektien omistajat voivat antaa kenen tahansa jäsenen avata projektin sen linkistä."
+      },
+      "accessLogsAllowed": {
+        "label": "Salli projektien käyttölokit",
+        "description": "Projektien omistajat voivat pitää lokia siitä, kuka on avannut heidän projektinsa."
+      },
+      "emailNotifications": {
+        "label": "Sähköposti-ilmoitukset",
+        "description": "Palvelin lähettää ihmisille sähköpostia, kun heidät lisätään tai kun joku jakaa projektin heidän kanssaan."
+      }
+    },
+    "log": {
+      "description": "Kirjautumiset, laitemuutokset ja ylläpitäjien toimet tällä palvelimella.",
+      "loading": "Ladataan lokia…",
+      "empty": "Mitään ei ole vielä tapahtunut.",
+      "loadMore": "Näytä vanhemmat merkinnät",
+      "server": "Palvelin",
+      "unknownAccount": "Tuntematon tili",
+      "target": "Kohde: {{target}}",
+      "ip": "Osoitteesta {{ip}}",
+      "kinds": {
+        "setupCompleted": "Viimeisteli palvelimen käyttöönoton",
+        "signIn": "Kirjautui sisään",
+        "signInRefused": "Ei päässyt kirjautumaan sisään",
+        "deviceAdded": "Lisäsi laitteen",
+        "deviceSignedOut": "Kirjasi laitteen ulos",
+        "refreshReuseDetected": "Käytti vanhaa kirjautumista uudelleen, joten laite kirjattiin ulos",
+        "memberAdded": "Lisäsi jäsenen",
+        "memberRemoved": "Poisti jäsenen",
+        "memberSuspended": "Jäädytti jäsenen",
+        "memberReactivated": "Aktivoi jäsenen uudelleen",
+        "roleChanged": "Vaihtoi roolin",
+        "allowlistAdded": "Lisäsi henkilön sallittujen listalle",
+        "allowlistRemoved": "Poisti henkilön sallittujen listalta",
+        "domainRuleAdded": "Lisäsi verkkotunnussäännön",
+        "domainRuleRemoved": "Poisti verkkotunnussäännön",
+        "settingsChanged": "Muutti palvelimen asetuksia",
+        "unknown": "Muu palvelintapahtuma"
+      }
+    }
+  }
+}

@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Upravujte projekty s dalšími lidmi v reálném čase. Projekty se synchronizují přes server pro spolupráci, který provozujete vy nebo vaše skupina. Tento server rozhoduje, kdo se může připojit.",
+    "servers": {
+      "title": "Servery",
+      "add": "Přidat server",
+      "loading": "Načítají se vaše servery…",
+      "loadFailed": "Oleafly nemohl načíst vaše servery.",
+      "empty": {
+        "title": "Zatím žádné servery",
+        "description": "Požádejte člověka, který provozuje server vaší skupiny, o jeho adresu a pak ji přidejte sem."
+      }
+    },
+    "server": {
+      "signedIn": "Přihlášeno",
+      "signedOut": "Odhlášeno",
+      "signedInAs": "Přihlášeno jako {{name}}",
+      "signedOutHint": "Tento počítač není k tomuto serveru přihlášený.",
+      "role": "Vaše role: {{role}}",
+      "signIn": "Přihlásit se",
+      "signOut": "Odhlásit se",
+      "remove": "Odebrat",
+      "manage": "Spravovat server",
+      "test": "Otestovat připojení",
+      "removeConfirm": {
+        "title": "Odebrat {{name}}?",
+        "description": "Oleafly se z tohoto serveru odhlásí a zapomene ho. Projekty, které už jsou v tomto počítači, zůstanou tam, kde jsou.",
+        "confirm": "Odebrat server"
+      }
+    },
+    "devices": {
+      "title": "Vaše zařízení",
+      "description": "Počítače přihlášené k tomuto serveru vaším účtem. Odhlaste ty, které už nepoužíváte.",
+      "loading": "Načítají se vaše zařízení…",
+      "loadFailed": "Oleafly nemohl načíst vaše zařízení.",
+      "current": "Tento počítač",
+      "added": "Přidáno {{date}}",
+      "lastSeen": "Naposledy aktivní {{date}}",
+      "neverSeen": "Zatím nebylo aktivní",
+      "empty": "Není přihlášené žádné zařízení.",
+      "signOut": "Odhlásit",
+      "signOutNamed": "Odhlásit {{name}}",
+      "signOutConfirm": {
+        "title": "Odhlásit {{name}}?",
+        "description": "Tento počítač se přestane synchronizovat s tímto serverem, dokud se na něm někdo znovu nepřihlásí.",
+        "confirm": "Odhlásit zařízení"
+      }
+    },
+    "checks": {
+      "title": "Test připojení",
+      "running": "Testuje se připojení…",
+      "clockSkew": "Časový rozdíl v sekundách: {{seconds}}",
+      "status": {
+        "pass": "V pořádku",
+        "fail": "Selhalo",
+        "info": "Poznámka",
+        "skipped": "Přeskočeno"
+      },
+      "items": {
+        "reachable": {
+          "label": "Adresa",
+          "pass": "Server odpověděl.",
+          "fail": "Oleafly se k této adrese nemohl připojit. Zkontrolujte adresu a síť.",
+          "info": "Server odpověděl, ale pomalu.",
+          "skipped": "Nezkontrolováno."
+        },
+        "https": {
+          "label": "Zabezpečené připojení",
+          "pass": "Připojení je šifrované a certifikát je platný.",
+          "fail": "Certifikát serveru není platný, nebo adresa nepoužívá https.",
+          "info": "Toto je testovací server v tomto počítači, a proto běží bez https.",
+          "skipped": "Nezkontrolováno, protože adresa neodpověděla."
+        },
+        "protocol": {
+          "label": "Verze",
+          "pass": "Tato verze Oleafly se serverem funguje.",
+          "fail": "Oleafly a server vyžadují odlišné verze. Jeden z nich je potřeba aktualizovat.",
+          "info": "Server je novější než tato verze Oleafly, ale stále s ní funguje.",
+          "skipped": "Nezkontrolováno, protože předchozí kontrola selhala."
+        },
+        "webSocket": {
+          "label": "Živé připojení",
+          "pass": "Živé úpravy procházejí.",
+          "fail": "Něco mezi vámi a serverem blokuje živé úpravy. Možná je potřeba upravit firewall nebo proxy.",
+          "info": "Živé úpravy procházejí, ale připojení chvíli trvalo.",
+          "skipped": "Nezkontrolováno, protože předchozí kontrola selhala."
+        },
+        "signInProviders": {
+          "label": "Možnosti přihlášení",
+          "pass": "Server nabízí alespoň jeden způsob přihlášení.",
+          "fail": "Server zatím nemá žádný způsob přihlášení. Požádejte jeho administrátora.",
+          "info": "Server nabízí způsob přihlášení, ale některé možnosti jsou vypnuté.",
+          "skipped": "Nezkontrolováno, protože předchozí kontrola selhala."
+        },
+        "email": {
+          "label": "E-mail",
+          "pass": "Server umí odesílat e-maily.",
+          "fail": "Nastavení e-mailu na serveru nefunguje.",
+          "info": "Na tomto serveru není nastavený e-mail. Lidé se přidávají bez e-mailu.",
+          "skipped": "Nezkontrolováno, protože předchozí kontrola selhala."
+        },
+        "clock": {
+          "label": "Hodiny",
+          "pass": "Vaše hodiny a hodiny serveru se shodují.",
+          "fail": "Vaše hodiny a hodiny serveru se výrazně liší. Zkontrolujte datum a čas v tomto počítači.",
+          "info": "Vaše hodiny se mírně liší od hodin serveru.",
+          "skipped": "Nezkontrolováno, protože předchozí kontrola selhala."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Přidat server pro spolupráci",
+    "description": "Zadejte adresu, kterou vám dala vaše skupina. Oleafly server zkontroluje, než se přihlásíte.",
+    "addressLabel": "Adresa serveru",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Pokračovat",
+    "checking": "Kontroluje se server…",
+    "version": "Verze {{version}}",
+    "setupTitle": "Nastavit tento server",
+    "setupDescription": "Zatím se tu nikdo nepřihlásil. Zadejte kód pro nastavení z logu serveru. Kdo se s tímto kódem přihlásí jako první, stane se administrátorem serveru.",
+    "setupCodeLabel": "Kód pro nastavení",
+    "signInTitle": "Přihlášení",
+    "signInDescription": "Otevře se váš prohlížeč, abyste se mohli přihlásit tam. Oleafly vaše heslo nikdy nevidí.",
+    "continueWith": "Pokračovat přes {{provider}}",
+    "noProviders": "Tento server zatím nemá žádný způsob přihlášení. Požádejte jeho administrátora, aby ho nastavil.",
+    "waitingTitle": "Čeká se na prohlížeč",
+    "waitingDescription": "Dokončete přihlášení v okně prohlížeče, které se otevřelo, a pak se sem vraťte.",
+    "cancel": "Zrušit",
+    "back": "Zpět",
+    "doneTitle": "Jste přihlášeni",
+    "doneDescription": "Jste přihlášeni k serveru {{server}} jako {{name}}.",
+    "done": "Hotovo"
+  },
+  "errors": {
+    "unreachable": "Oleafly se k serveru nemohl připojit. Zkontrolujte adresu a připojení a zkuste to znovu.",
+    "not_https": "Tato adresa nepoužívá zabezpečené připojení. Servery pro spolupráci potřebují adresu, která začíná na https.",
+    "client_too_old": "Tento server vyžaduje novější verzi Oleafly. Aktualizujte Oleafly a zkuste to znovu.",
+    "server_too_old": "Tento server potřebuje aktualizaci, aby fungoval s touto verzí Oleafly. Požádejte jeho administrátora.",
+    "not_admitted": "Zatím nejste na seznamu tohoto serveru. Požádejte jeho administrátora, aby vás přidal.",
+    "sign_in_cancelled": "Přihlášení bylo zrušeno.",
+    "sign_in_timed_out": "Přihlášení trvalo příliš dlouho. Zkuste to znovu.",
+    "unauthorized": "Jste z tohoto serveru odhlášeni. Přihlaste se znovu.",
+    "forbidden": "Vaše role na tomto serveru to nedovoluje.",
+    "not_found": "Server to nenašel. Možná už neexistuje.",
+    "conflict": "To koliduje se změnou, kterou provedl někdo jiný. Obnovte zobrazení a zkuste to znovu.",
+    "rate_limited": "Server je zaneprázdněný. Počkejte minutu a zkuste to znovu.",
+    "setup_code_invalid": "Tento kód pro nastavení nesouhlasí. Správný kód najdete v logu serveru.",
+    "server": "Server narazil na problém. Zkuste to později, nebo požádejte jeho administrátora.",
+    "internal": "V Oleafly se něco pokazilo. Zkuste to znovu.",
+    "server_changed": "Tato adresa teď patří jinému serveru, takže mu Oleafly nic neposlal. Pokud novému serveru důvěřujete, odeberte tento server a přidejte ho znovu."
+  },
+  "roles": {
+    "admin": "Administrátor",
+    "maintainer": "Správce",
+    "member": "Člen",
+    "guest": "Host"
+  },
+  "admin": {
+    "title": "Spravovat {{name}}",
+    "back": "Zpět na servery",
+    "loadFailed": "Oleafly to nemohl ze serveru načíst.",
+    "added": "Přidáno {{date}}",
+    "tabs": {
+      "members": "Členové",
+      "allowlist": "Povolení lidé",
+      "domains": "Domény",
+      "settings": "Nastavení serveru",
+      "log": "Protokol zabezpečení"
+    },
+    "members": {
+      "description": "Všichni, kdo se k tomuto serveru přihlásili.",
+      "loading": "Načítají se členové…",
+      "empty": "Zatím se nikdo nepřihlásil.",
+      "you": "Vy",
+      "active": "Aktivní",
+      "suspended": "Pozastaveno",
+      "removed": "Odebráno",
+      "roleLabel": "Role pro {{name}}",
+      "suspend": "Pozastavit",
+      "reactivate": "Znovu aktivovat",
+      "remove": "Odebrat",
+      "devices": "Zařízení",
+      "devicesTitle": "Zařízení uživatele {{name}}",
+      "devicesDescription": "Odhlaste zařízení, které se ztratilo nebo se už nepoužívá.",
+      "devicesLoading": "Načítají se zařízení…",
+      "devicesLoadFailed": "Oleafly nemohl načíst tato zařízení.",
+      "lastAdmin": "Tento server potřebuje alespoň jednoho administrátora. Nejdřív udělejte administrátorem někoho jiného.",
+      "removeConfirm": {
+        "title": "Odebrat {{name}} z tohoto serveru?",
+        "description": "Zařízení tohoto člena se okamžitě odhlásí. Projekty, které vlastní, zůstanou na serveru a člena můžete později přidat zpět.",
+        "confirm": "Odebrat člena"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Odhlásit {{name}}?",
+        "description": "Toto zařízení se přestane synchronizovat s tímto serverem, dokud se na něm jeho vlastník znovu nepřihlásí.",
+        "confirm": "Odhlásit zařízení"
+      }
+    },
+    "allowlist": {
+      "description": "Lidé na tomto seznamu se mohou přihlásit k serveru s rolí, kterou vyberete.",
+      "matchLabel": "Porovnávat podle",
+      "match": {
+        "email": "E-mailová adresa",
+        "login": "Přihlašovací jméno"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Možnost přihlášení",
+      "roleLabel": "Role",
+      "add": "Přidat",
+      "loading": "Načítá se seznam…",
+      "empty": "Na seznamu zatím nikdo není.",
+      "loginEntry": "{{login}} ({{provider}})",
+      "bound": "Již přihlášen",
+      "unbound": "Zatím nepřihlášen",
+      "remove": "Odebrat",
+      "removeNamed": "Odebrat {{entry}}",
+      "duplicate": "Tento člověk už na seznamu je."
+    },
+    "domains": {
+      "description": "Kdokoli s ověřenou e-mailovou adresou v těchto doménách se může přihlásit s rolí, kterou vyberete.",
+      "domainLabel": "Doména",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Role",
+      "add": "Přidat",
+      "loading": "Načítají se pravidla domén…",
+      "empty": "Zatím žádná pravidla domén.",
+      "remove": "Odebrat",
+      "removeNamed": "Odebrat {{domain}}",
+      "duplicate": "Tato doména už pravidlo má."
+    },
+    "settings": {
+      "description": "Tato nastavení platí pro všechny na tomto serveru.",
+      "adminOnly": "Tato nastavení mohou měnit jen administrátoři.",
+      "loading": "Načítá se nastavení…",
+      "guestsEnabled": {
+        "label": "Povolit hosty",
+        "description": "Členové mohou do projektů, které vlastní, zvát lidi mimo server."
+      },
+      "guestApprovalRequired": {
+        "label": "Nejdřív schvalovat hosty",
+        "description": "Správce nebo administrátor schválí každou pozvánku hosta, než začne platit."
+      },
+      "directoryVisible": {
+        "label": "Adresář členů",
+        "description": "Členové se mohou při sdílení projektu navzájem vyhledat podle jména."
+      },
+      "directoryShowsEmail": {
+        "label": "Zobrazovat v adresáři e-mailové adresy",
+        "description": "Členové při vyhledávání vidí e-mailové adresy ostatních."
+      },
+      "linkSharingAllowed": {
+        "label": "Povolit sdílení odkazem",
+        "description": "Vlastníci projektů mohou umožnit libovolnému členovi otevřít projekt přes jeho odkaz."
+      },
+      "accessLogsAllowed": {
+        "label": "Povolit protokoly přístupu k projektům",
+        "description": "Vlastníci projektů si mohou vést záznam o tom, kdo jejich projekt otevřel."
+      },
+      "emailNotifications": {
+        "label": "E-mailová oznámení",
+        "description": "Server pošle lidem e-mail, když jsou přidáni nebo když s nimi někdo sdílí projekt."
+      }
+    },
+    "log": {
+      "description": "Přihlášení, změny zařízení a akce administrátorů na tomto serveru.",
+      "loading": "Načítá se protokol…",
+      "empty": "Zatím se nic nestalo.",
+      "loadMore": "Zobrazit starší záznamy",
+      "server": "Server",
+      "unknownAccount": "Neznámý účet",
+      "target": "Cíl: {{target}}",
+      "ip": "Z adresy {{ip}}",
+      "kinds": {
+        "setupCompleted": "Dokončení nastavení serveru",
+        "signIn": "Přihlášení",
+        "signInRefused": "Odmítnuté přihlášení",
+        "deviceAdded": "Přidání zařízení",
+        "deviceSignedOut": "Odhlášení zařízení",
+        "refreshReuseDetected": "Opakované použití starého přihlášení, proto bylo zařízení odhlášeno",
+        "memberAdded": "Přidání člena",
+        "memberRemoved": "Odebrání člena",
+        "memberSuspended": "Pozastavení člena",
+        "memberReactivated": "Opětovná aktivace člena",
+        "roleChanged": "Změna role",
+        "allowlistAdded": "Přidání na seznam povolených",
+        "allowlistRemoved": "Odebrání ze seznamu povolených",
+        "domainRuleAdded": "Přidání pravidla domény",
+        "domainRuleRemoved": "Odebrání pravidla domény",
+        "settingsChanged": "Změna nastavení serveru",
+        "unknown": "Jiná událost serveru"
+      }
+    }
+  }
+}

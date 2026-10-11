@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "ほかの人とリアルタイムでプロジェクトを編集します。プロジェクトは、あなたやグループが運用する共同編集サーバーを通じて同期され、誰が参加できるかはそのサーバーが決めます。",
+    "servers": {
+      "title": "サーバー",
+      "add": "サーバーを追加",
+      "loading": "サーバーを読み込み中…",
+      "loadFailed": "Oleafly はサーバーを読み込めませんでした。",
+      "empty": {
+        "title": "サーバーはまだありません",
+        "description": "グループのサーバーを運用している人にアドレスを聞いてから、ここに追加してください。"
+      }
+    },
+    "server": {
+      "signedIn": "サインイン済み",
+      "signedOut": "サインアウト済み",
+      "signedInAs": "{{name}} としてサインイン中",
+      "signedOutHint": "このコンピュータはこのサーバーにサインインしていません。",
+      "role": "あなたの役割: {{role}}",
+      "signIn": "サインイン",
+      "signOut": "サインアウト",
+      "remove": "削除",
+      "manage": "サーバーを管理",
+      "test": "接続をテスト",
+      "removeConfirm": {
+        "title": "{{name}} を削除しますか？",
+        "description": "Oleafly はこのサーバーからサインアウトし、一覧から削除します。このコンピュータにあるプロジェクトはそのまま残ります。",
+        "confirm": "サーバーを削除"
+      }
+    },
+    "devices": {
+      "title": "お使いの端末",
+      "description": "あなたのアカウントでこのサーバーにサインインしているコンピュータです。使わなくなったものはサインアウトしてください。",
+      "loading": "端末を読み込み中…",
+      "loadFailed": "Oleafly は端末を読み込めませんでした。",
+      "current": "このコンピュータ",
+      "added": "{{date}} に追加",
+      "lastSeen": "最終接続: {{date}}",
+      "neverSeen": "まだ接続していません",
+      "empty": "サインインしている端末はありません。",
+      "signOut": "サインアウト",
+      "signOutNamed": "{{name}} をサインアウト",
+      "signOutConfirm": {
+        "title": "{{name}} をサインアウトしますか？",
+        "description": "そのコンピュータは、誰かがもう一度サインインするまで、このサーバーと同期しなくなります。",
+        "confirm": "端末をサインアウト"
+      }
+    },
+    "checks": {
+      "title": "接続テスト",
+      "running": "接続をテストしています…",
+      "clockSkew": "時刻の差（秒）: {{seconds}}",
+      "status": {
+        "pass": "成功",
+        "fail": "失敗",
+        "info": "お知らせ",
+        "skipped": "スキップ"
+      },
+      "items": {
+        "reachable": {
+          "label": "アドレス",
+          "pass": "サーバーから応答がありました。",
+          "fail": "Oleafly はこのアドレスに接続できませんでした。アドレスとネットワークを確認してください。",
+          "info": "サーバーから応答がありましたが、時間がかかりました。",
+          "skipped": "確認していません。"
+        },
+        "https": {
+          "label": "安全な接続",
+          "pass": "接続は暗号化されていて、証明書も有効です。",
+          "fail": "サーバーの証明書が有効でないか、アドレスが https を使っていません。",
+          "info": "このコンピュータ上のテスト用サーバーのため、https を使わずに動作しています。",
+          "skipped": "アドレスから応答がなかったため、確認していません。"
+        },
+        "protocol": {
+          "label": "バージョン",
+          "pass": "このバージョンの Oleafly はこのサーバーで使えます。",
+          "fail": "Oleafly とサーバーで必要なバージョンが異なります。どちらかを更新する必要があります。",
+          "info": "サーバーはこのバージョンの Oleafly より新しいですが、引き続き使えます。",
+          "skipped": "前のチェックが失敗したため、確認していません。"
+        },
+        "webSocket": {
+          "label": "リアルタイム接続",
+          "pass": "リアルタイムの編集が届きます。",
+          "fail": "あなたとサーバーの間にある何かが、リアルタイムの編集を妨げています。ファイアウォールやプロキシの設定変更が必要かもしれません。",
+          "info": "リアルタイムの編集は届きますが、接続に時間がかかりました。",
+          "skipped": "前のチェックが失敗したため、確認していません。"
+        },
+        "signInProviders": {
+          "label": "サインイン方法",
+          "pass": "サーバーには少なくとも 1 つのサインイン方法があります。",
+          "fail": "サーバーにはまだサインイン方法がありません。管理者に問い合わせてください。",
+          "info": "サーバーにはサインイン方法がありますが、一部はオフになっています。",
+          "skipped": "前のチェックが失敗したため、確認していません。"
+        },
+        "email": {
+          "label": "メール",
+          "pass": "サーバーはメールを送信できます。",
+          "fail": "サーバーのメール設定が機能していません。",
+          "info": "このサーバーではメールが設定されていません。メンバーを追加しても、メールは送信されません。",
+          "skipped": "前のチェックが失敗したため、確認していません。"
+        },
+        "clock": {
+          "label": "時計",
+          "pass": "お使いの時計とサーバーの時計は一致しています。",
+          "fail": "お使いの時計とサーバーの時計が大きくずれています。このコンピュータの日付と時刻を確認してください。",
+          "info": "お使いの時計がサーバーの時計と少しずれています。",
+          "skipped": "前のチェックが失敗したため、確認していません。"
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "共同編集サーバーを追加",
+    "description": "グループから伝えられたアドレスを入力してください。サインインの前に、Oleafly がサーバーを確認します。",
+    "addressLabel": "サーバーのアドレス",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "続行",
+    "checking": "サーバーを確認しています…",
+    "version": "バージョン {{version}}",
+    "setupTitle": "このサーバーをセットアップ",
+    "setupDescription": "このサーバーにはまだ誰もサインインしていません。サーバーのログに表示されたセットアップコードを入力してください。このコードで最初にサインインした人が、サーバーの管理者になります。",
+    "setupCodeLabel": "セットアップコード",
+    "signInTitle": "サインイン",
+    "signInDescription": "ブラウザが開くので、そこでサインインしてください。Oleafly がパスワードを見ることはありません。",
+    "continueWith": "{{provider}} で続行",
+    "noProviders": "このサーバーにはまだサインイン方法がありません。管理者に設定を依頼してください。",
+    "waitingTitle": "ブラウザでの操作を待っています",
+    "waitingDescription": "開いたブラウザのウィンドウでサインインを済ませてから、ここに戻ってください。",
+    "cancel": "キャンセル",
+    "back": "戻る",
+    "doneTitle": "サインインしました",
+    "doneDescription": "{{server}} に {{name}} としてサインインしました。",
+    "done": "完了"
+  },
+  "errors": {
+    "unreachable": "Oleafly はサーバーに接続できませんでした。アドレスと接続を確認して、もう一度お試しください。",
+    "not_https": "このアドレスは安全な接続を使っていません。共同編集サーバーには https で始まるアドレスが必要です。",
+    "client_too_old": "このサーバーには新しいバージョンの Oleafly が必要です。Oleafly を更新してから、もう一度お試しください。",
+    "server_too_old": "このバージョンの Oleafly で使うには、サーバーの更新が必要です。管理者に問い合わせてください。",
+    "not_admitted": "このサーバーの一覧にまだ登録されていません。管理者に追加を依頼してください。",
+    "sign_in_cancelled": "サインインはキャンセルされました。",
+    "sign_in_timed_out": "サインインに時間がかかりすぎました。もう一度お試しください。",
+    "unauthorized": "このサーバーからサインアウトしています。もう一度サインインしてください。",
+    "forbidden": "このサーバーでのあなたの役割では、その操作はできません。",
+    "not_found": "サーバーで見つかりませんでした。すでに削除されている可能性があります。",
+    "conflict": "ほかの人が行った変更と競合しています。再読み込みして、もう一度お試しください。",
+    "rate_limited": "サーバーが混み合っています。1 分ほど待ってから、もう一度お試しください。",
+    "setup_code_invalid": "セットアップコードが一致しません。サーバーのログで正しいコードを確認してください。",
+    "server": "サーバーで問題が発生しました。しばらくしてからもう一度お試しいただくか、管理者に問い合わせてください。",
+    "internal": "Oleafly で問題が発生しました。もう一度お試しください。",
+    "server_changed": "このアドレスは別のサーバーのものになったため、Oleafly は何も送信しませんでした。新しいサーバーを信頼できる場合は、このサーバーを削除してから追加し直してください。"
+  },
+  "roles": {
+    "admin": "管理者",
+    "maintainer": "メンテナー",
+    "member": "メンバー",
+    "guest": "ゲスト"
+  },
+  "admin": {
+    "title": "{{name}} を管理",
+    "back": "サーバーの一覧に戻る",
+    "loadFailed": "Oleafly はサーバーからこの情報を読み込めませんでした。",
+    "added": "{{date}} に追加",
+    "tabs": {
+      "members": "メンバー",
+      "allowlist": "許可するユーザー",
+      "domains": "ドメイン",
+      "settings": "サーバーの設定",
+      "log": "セキュリティログ"
+    },
+    "members": {
+      "description": "このサーバーにサインインしたことのあるすべての人です。",
+      "loading": "メンバーを読み込み中…",
+      "empty": "まだ誰もサインインしていません。",
+      "you": "あなた",
+      "active": "有効",
+      "suspended": "利用停止中",
+      "removed": "削除済み",
+      "roleLabel": "{{name}} の役割",
+      "suspend": "利用を停止",
+      "reactivate": "利用を再開",
+      "remove": "削除",
+      "devices": "端末",
+      "devicesTitle": "{{name}} の端末",
+      "devicesDescription": "紛失した端末や使わなくなった端末はサインアウトしてください。",
+      "devicesLoading": "端末を読み込み中…",
+      "devicesLoadFailed": "Oleafly はこれらの端末を読み込めませんでした。",
+      "lastAdmin": "このサーバーには少なくとも 1 人の管理者が必要です。先にほかの人を管理者にしてください。",
+      "removeConfirm": {
+        "title": "{{name}} をこのサーバーから削除しますか？",
+        "description": "この人の端末はすぐにサインアウトされます。この人が所有するプロジェクトはサーバーに残り、あとで再び追加することもできます。",
+        "confirm": "メンバーを削除"
+      },
+      "deviceSignOutConfirm": {
+        "title": "{{name}} をサインアウトしますか？",
+        "description": "その端末は、持ち主がもう一度サインインするまで、このサーバーと同期しなくなります。",
+        "confirm": "端末をサインアウト"
+      }
+    },
+    "allowlist": {
+      "description": "この一覧にいる人は、選んだ役割でサーバーにサインインできます。",
+      "matchLabel": "照合する項目",
+      "match": {
+        "email": "メールアドレス",
+        "login": "ユーザー名"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "サインイン方法",
+      "roleLabel": "役割",
+      "add": "追加",
+      "loading": "一覧を読み込み中…",
+      "empty": "一覧にはまだ誰もいません。",
+      "loginEntry": "{{provider}} の {{login}}",
+      "bound": "サインイン済み",
+      "unbound": "まだサインインしていません",
+      "remove": "削除",
+      "removeNamed": "{{entry}} を削除",
+      "duplicate": "その人はすでに一覧にいます。"
+    },
+    "domains": {
+      "description": "これらのドメインの確認済みメールアドレスを持つ人は誰でも、選んだ役割でサインインできます。",
+      "domainLabel": "ドメイン",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "役割",
+      "add": "追加",
+      "loading": "ドメインのルールを読み込み中…",
+      "empty": "ドメインのルールはまだありません。",
+      "remove": "削除",
+      "removeNamed": "{{domain}} を削除",
+      "duplicate": "そのドメインにはすでにルールがあります。"
+    },
+    "settings": {
+      "description": "これらの設定は、このサーバーの全員に適用されます。",
+      "adminOnly": "これらの設定を変更できるのは管理者だけです。",
+      "loading": "設定を読み込み中…",
+      "guestsEnabled": {
+        "label": "ゲストを許可",
+        "description": "メンバーは、自分が所有するプロジェクトにサーバー外の人を招待できます。"
+      },
+      "guestApprovalRequired": {
+        "label": "ゲストを事前に承認",
+        "description": "ゲストへの招待は、メンテナーまたは管理者が承認してから有効になります。"
+      },
+      "directoryVisible": {
+        "label": "メンバー名簿",
+        "description": "プロジェクトを共有するとき、メンバーは名前でお互いを検索できます。"
+      },
+      "directoryShowsEmail": {
+        "label": "名簿にメールアドレスを表示",
+        "description": "メンバーが誰かを検索したとき、相手のメールアドレスが表示されます。"
+      },
+      "linkSharingAllowed": {
+        "label": "リンクでの共有を許可",
+        "description": "プロジェクトの所有者は、どのメンバーでもリンクからプロジェクトを開けるようにできます。"
+      },
+      "accessLogsAllowed": {
+        "label": "プロジェクトのアクセスログを許可",
+        "description": "プロジェクトの所有者は、誰がプロジェクトを開いたかを記録できます。"
+      },
+      "emailNotifications": {
+        "label": "メール通知",
+        "description": "メンバーとして追加されたときや、誰かがプロジェクトを共有したときに、サーバーからメールが届きます。"
+      }
+    },
+    "log": {
+      "description": "このサーバーでのサインイン、端末の変更、管理者の操作の記録です。",
+      "loading": "ログを読み込み中…",
+      "empty": "まだ何も記録されていません。",
+      "loadMore": "古い記録を表示",
+      "server": "サーバー",
+      "unknownAccount": "不明なアカウント",
+      "target": "対象: {{target}}",
+      "ip": "接続元: {{ip}}",
+      "kinds": {
+        "setupCompleted": "サーバーのセットアップを完了しました",
+        "signIn": "サインインしました",
+        "signInRefused": "サインインを拒否されました",
+        "deviceAdded": "端末を追加しました",
+        "deviceSignedOut": "端末をサインアウトしました",
+        "refreshReuseDetected": "古いサインイン情報を再利用したため、端末がサインアウトされました",
+        "memberAdded": "メンバーを追加しました",
+        "memberRemoved": "メンバーを削除しました",
+        "memberSuspended": "メンバーの利用を停止しました",
+        "memberReactivated": "メンバーの利用を再開しました",
+        "roleChanged": "役割を変更しました",
+        "allowlistAdded": "許可するユーザーを追加しました",
+        "allowlistRemoved": "許可するユーザーを削除しました",
+        "domainRuleAdded": "ドメインのルールを追加しました",
+        "domainRuleRemoved": "ドメインのルールを削除しました",
+        "settingsChanged": "サーバーの設定を変更しました",
+        "unknown": "その他のサーバーイベント"
+      }
+    }
+  }
+}

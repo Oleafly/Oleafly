@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Bewerk projecten in realtime samen met anderen. Projecten synchroniseren via een samenwerkingsserver die jij of je groep beheert, en die server bepaalt wie mag meedoen.",
+    "servers": {
+      "title": "Servers",
+      "add": "Server toevoegen",
+      "loading": "Je servers laden…",
+      "loadFailed": "Oleafly kon je servers niet laden.",
+      "empty": {
+        "title": "Nog geen servers",
+        "description": "Vraag het adres aan de persoon die de server van je groep beheert en voeg het daarna hier toe."
+      }
+    },
+    "server": {
+      "signedIn": "Aangemeld",
+      "signedOut": "Afgemeld",
+      "signedInAs": "Aangemeld als {{name}}",
+      "signedOutHint": "Deze computer is niet aangemeld bij deze server.",
+      "role": "Je rol: {{role}}",
+      "signIn": "Aanmelden",
+      "signOut": "Afmelden",
+      "remove": "Weghalen",
+      "manage": "Server beheren",
+      "test": "Verbinding testen",
+      "removeConfirm": {
+        "title": "{{name}} weghalen?",
+        "description": "Oleafly meldt zich af bij deze server en vergeet hem. Projecten die al op deze computer staan, blijven waar ze zijn.",
+        "confirm": "Server weghalen"
+      }
+    },
+    "devices": {
+      "title": "Je apparaten",
+      "description": "Computers die met je account bij deze server zijn aangemeld. Meld de computers af die je niet meer gebruikt.",
+      "loading": "Je apparaten laden…",
+      "loadFailed": "Oleafly kon je apparaten niet laden.",
+      "current": "Deze computer",
+      "added": "Toegevoegd op {{date}}",
+      "lastSeen": "Laatst gezien op {{date}}",
+      "neverSeen": "Nog niet gezien",
+      "empty": "Er zijn geen apparaten aangemeld.",
+      "signOut": "Afmelden",
+      "signOutNamed": "{{name}} afmelden",
+      "signOutConfirm": {
+        "title": "{{name}} afmelden?",
+        "description": "Die computer synchroniseert niet meer met deze server totdat iemand zich er opnieuw op aanmeldt.",
+        "confirm": "Apparaat afmelden"
+      }
+    },
+    "checks": {
+      "title": "Verbindingstest",
+      "running": "De verbinding testen…",
+      "clockSkew": "Tijdsverschil in seconden: {{seconds}}",
+      "status": {
+        "pass": "Geslaagd",
+        "fail": "Mislukt",
+        "info": "Opmerking",
+        "skipped": "Overgeslagen"
+      },
+      "items": {
+        "reachable": {
+          "label": "Adres",
+          "pass": "De server reageerde.",
+          "fail": "Oleafly kon dit adres niet bereiken. Controleer het adres en je netwerk.",
+          "info": "De server reageerde, maar langzaam.",
+          "skipped": "Niet gecontroleerd."
+        },
+        "https": {
+          "label": "Beveiligde verbinding",
+          "pass": "De verbinding is versleuteld en het certificaat is geldig.",
+          "fail": "Het certificaat van de server is niet geldig, of het adres gebruikt geen https.",
+          "info": "Dit is een testserver op deze computer, dus hij draait zonder https.",
+          "skipped": "Niet gecontroleerd omdat het adres niet reageerde."
+        },
+        "protocol": {
+          "label": "Versie",
+          "pass": "Deze versie van Oleafly werkt met de server.",
+          "fail": "Oleafly en de server hebben verschillende versies nodig. Een van beide moet worden bijgewerkt.",
+          "info": "De server is nieuwer dan deze versie van Oleafly, maar werkt er nog wel mee.",
+          "skipped": "Niet gecontroleerd omdat een eerdere controle is mislukt."
+        },
+        "webSocket": {
+          "label": "Liveverbinding",
+          "pass": "Live bewerkingen komen door.",
+          "fail": "Iets tussen jou en de server blokkeert live bewerkingen. Misschien moet een firewall of proxy worden aangepast.",
+          "info": "Live bewerkingen komen door, maar het verbinden duurde even.",
+          "skipped": "Niet gecontroleerd omdat een eerdere controle is mislukt."
+        },
+        "signInProviders": {
+          "label": "Aanmeldopties",
+          "pass": "De server heeft minstens één manier om je aan te melden.",
+          "fail": "De server heeft nog geen manier om je aan te melden. Vraag het aan de beheerder.",
+          "info": "De server heeft een manier om je aan te melden, maar sommige opties staan uit.",
+          "skipped": "Niet gecontroleerd omdat een eerdere controle is mislukt."
+        },
+        "email": {
+          "label": "E-mail",
+          "pass": "De server kan e-mail versturen.",
+          "fail": "De e-mailinstellingen van de server werken niet.",
+          "info": "E-mail is niet ingesteld op deze server. Mensen worden zonder e-mail toegevoegd.",
+          "skipped": "Niet gecontroleerd omdat een eerdere controle is mislukt."
+        },
+        "clock": {
+          "label": "Klok",
+          "pass": "Je klok en die van de server lopen gelijk.",
+          "fail": "Je klok en die van de server lopen ver uit elkaar. Controleer de datum en tijd op deze computer.",
+          "info": "Je klok wijkt een beetje af van die van de server.",
+          "skipped": "Niet gecontroleerd omdat een eerdere controle is mislukt."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Een samenwerkingsserver toevoegen",
+    "description": "Vul het adres in dat je van je groep hebt gekregen. Oleafly controleert de server voordat je je aanmeldt.",
+    "addressLabel": "Serveradres",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Doorgaan",
+    "checking": "De server controleren…",
+    "version": "Versie {{version}}",
+    "setupTitle": "Deze server instellen",
+    "setupDescription": "Hier heeft zich nog niemand aangemeld. Vul de installatiecode uit het logboek van de server in. Wie zich als eerste met de code aanmeldt, wordt beheerder van de server.",
+    "setupCodeLabel": "Installatiecode",
+    "signInTitle": "Aanmelden",
+    "signInDescription": "Je browser opent zodat je je daar kunt aanmelden. Oleafly ziet je wachtwoord nooit.",
+    "continueWith": "Doorgaan met {{provider}}",
+    "noProviders": "Deze server heeft nog geen manier om je aan te melden. Vraag de beheerder er een in te stellen.",
+    "waitingTitle": "Wachten op je browser",
+    "waitingDescription": "Rond het aanmelden af in het browservenster dat is geopend en kom daarna hier terug.",
+    "cancel": "Annuleren",
+    "back": "Terug",
+    "doneTitle": "Je bent aangemeld",
+    "doneDescription": "Je bent bij {{server}} aangemeld als {{name}}.",
+    "done": "Klaar"
+  },
+  "errors": {
+    "unreachable": "Oleafly kon de server niet bereiken. Controleer het adres en je verbinding en probeer het opnieuw.",
+    "not_https": "Dit adres gebruikt geen beveiligde verbinding. Samenwerkingsservers hebben een adres nodig dat met https begint.",
+    "client_too_old": "Deze server heeft een nieuwere versie van Oleafly nodig. Werk Oleafly bij en probeer het opnieuw.",
+    "server_too_old": "Deze server moet worden bijgewerkt voordat hij met deze versie van Oleafly werkt. Vraag het aan de beheerder.",
+    "not_admitted": "Je staat nog niet op de lijst van deze server. Vraag de beheerder om je toe te voegen.",
+    "sign_in_cancelled": "Het aanmelden is geannuleerd.",
+    "sign_in_timed_out": "Het aanmelden duurde te lang. Probeer het opnieuw.",
+    "unauthorized": "Je bent afgemeld bij deze server. Meld je opnieuw aan.",
+    "forbidden": "Je rol op deze server staat dat niet toe.",
+    "not_found": "De server kon dat niet vinden. Misschien is het al weg.",
+    "conflict": "Dat botst met een wijziging van iemand anders. Laad opnieuw en probeer het nog eens.",
+    "rate_limited": "De server heeft het druk. Wacht een minuut en probeer het dan opnieuw.",
+    "setup_code_invalid": "Die installatiecode klopt niet. Zoek de juiste code in het logboek van de server.",
+    "server": "De server liep tegen een probleem aan. Probeer het later opnieuw, of vraag het aan de beheerder.",
+    "internal": "Er ging iets mis in Oleafly. Probeer het opnieuw.",
+    "server_changed": "Dit adres hoort nu bij een andere server, dus Oleafly heeft er niets naartoe gestuurd. Vertrouw je de nieuwe server, haal deze dan weg en voeg hem opnieuw toe."
+  },
+  "roles": {
+    "admin": "Beheerder",
+    "maintainer": "Onderhouder",
+    "member": "Lid",
+    "guest": "Gast"
+  },
+  "admin": {
+    "title": "{{name}} beheren",
+    "back": "Terug naar servers",
+    "loadFailed": "Oleafly kon dit niet van de server laden.",
+    "added": "Toegevoegd op {{date}}",
+    "tabs": {
+      "members": "Leden",
+      "allowlist": "Toegestane personen",
+      "domains": "Domeinen",
+      "settings": "Serverinstellingen",
+      "log": "Beveiligingslogboek"
+    },
+    "members": {
+      "description": "Iedereen die zich bij deze server heeft aangemeld.",
+      "loading": "Leden laden…",
+      "empty": "Er heeft zich nog niemand aangemeld.",
+      "you": "Jij",
+      "active": "Actief",
+      "suspended": "Geschorst",
+      "removed": "Verwijderd",
+      "roleLabel": "Rol van {{name}}",
+      "suspend": "Schorsen",
+      "reactivate": "Weer activeren",
+      "remove": "Weghalen",
+      "devices": "Apparaten",
+      "devicesTitle": "Apparaten van {{name}}",
+      "devicesDescription": "Meld een apparaat af dat kwijt is of niet meer wordt gebruikt.",
+      "devicesLoading": "Apparaten laden…",
+      "devicesLoadFailed": "Oleafly kon deze apparaten niet laden.",
+      "lastAdmin": "Deze server heeft minstens één beheerder nodig. Maak eerst iemand anders beheerder.",
+      "removeConfirm": {
+        "title": "{{name}} van deze server weghalen?",
+        "description": "De apparaten van deze persoon worden meteen afgemeld. Projecten die deze persoon bezit, blijven op de server en je kunt de persoon later weer toevoegen.",
+        "confirm": "Lid weghalen"
+      },
+      "deviceSignOutConfirm": {
+        "title": "{{name}} afmelden?",
+        "description": "Dat apparaat synchroniseert niet meer met deze server totdat de eigenaar zich er opnieuw op aanmeldt.",
+        "confirm": "Apparaat afmelden"
+      }
+    },
+    "allowlist": {
+      "description": "Mensen op deze lijst kunnen zich bij de server aanmelden met de rol die je kiest.",
+      "matchLabel": "Herkennen aan",
+      "match": {
+        "email": "E-mailadres",
+        "login": "Aanmeldnaam"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Aanmeldoptie",
+      "roleLabel": "Rol",
+      "add": "Toevoegen",
+      "loading": "De lijst laden…",
+      "empty": "Er staat nog niemand op de lijst.",
+      "loginEntry": "{{login}} op {{provider}}",
+      "bound": "Heeft zich aangemeld",
+      "unbound": "Heeft zich nog niet aangemeld",
+      "remove": "Weghalen",
+      "removeNamed": "{{entry}} weghalen",
+      "duplicate": "Die persoon staat al op de lijst."
+    },
+    "domains": {
+      "description": "Iedereen met een geverifieerd e-mailadres op deze domeinen kan zich aanmelden met de rol die je kiest.",
+      "domainLabel": "Domein",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Rol",
+      "add": "Toevoegen",
+      "loading": "Domeinregels laden…",
+      "empty": "Nog geen domeinregels.",
+      "remove": "Weghalen",
+      "removeNamed": "{{domain}} weghalen",
+      "duplicate": "Voor dat domein bestaat al een regel."
+    },
+    "settings": {
+      "description": "Deze instellingen gelden voor iedereen op deze server.",
+      "adminOnly": "Alleen beheerders kunnen deze instellingen wijzigen.",
+      "loading": "Instellingen laden…",
+      "guestsEnabled": {
+        "label": "Gasten toestaan",
+        "description": "Leden kunnen mensen van buiten de server uitnodigen voor projecten die ze bezitten."
+      },
+      "guestApprovalRequired": {
+        "label": "Gasten eerst goedkeuren",
+        "description": "Een onderhouder of beheerder keurt elke uitnodiging voor een gast goed voordat die werkt."
+      },
+      "directoryVisible": {
+        "label": "Ledenlijst",
+        "description": "Leden kunnen elkaar op naam opzoeken als ze een project delen."
+      },
+      "directoryShowsEmail": {
+        "label": "E-mailadressen tonen in de ledenlijst",
+        "description": "Leden zien elkaars e-mailadressen als ze iemand opzoeken."
+      },
+      "linkSharingAllowed": {
+        "label": "Delen via link toestaan",
+        "description": "Projecteigenaren kunnen elk lid een project laten openen via de link."
+      },
+      "accessLogsAllowed": {
+        "label": "Toegangslogboeken voor projecten toestaan",
+        "description": "Projecteigenaren kunnen een logboek bijhouden van wie hun project heeft geopend."
+      },
+      "emailNotifications": {
+        "label": "Meldingen per e-mail",
+        "description": "De server stuurt mensen een e-mail als ze worden toegevoegd of als iemand een project met ze deelt."
+      }
+    },
+    "log": {
+      "description": "Aanmeldingen, wijzigingen aan apparaten en acties van beheerders op deze server.",
+      "loading": "Het logboek laden…",
+      "empty": "Er is nog niets gebeurd.",
+      "loadMore": "Oudere items tonen",
+      "server": "Server",
+      "unknownAccount": "Onbekend account",
+      "target": "Voor {{target}}",
+      "ip": "Vanaf {{ip}}",
+      "kinds": {
+        "setupCompleted": "Instellen van de server afgerond",
+        "signIn": "Aangemeld",
+        "signInRefused": "Geweigerd bij het aanmelden",
+        "deviceAdded": "Apparaat toegevoegd",
+        "deviceSignedOut": "Apparaat afgemeld",
+        "refreshReuseDetected": "Oude aanmelding opnieuw gebruikt, daarom is het apparaat afgemeld",
+        "memberAdded": "Lid toegevoegd",
+        "memberRemoved": "Lid verwijderd",
+        "memberSuspended": "Lid geschorst",
+        "memberReactivated": "Lid weer geactiveerd",
+        "roleChanged": "Rol gewijzigd",
+        "allowlistAdded": "Iemand aan de lijst met toegestane personen toegevoegd",
+        "allowlistRemoved": "Iemand van de lijst met toegestane personen gehaald",
+        "domainRuleAdded": "Domeinregel toegevoegd",
+        "domainRuleRemoved": "Domeinregel verwijderd",
+        "settingsChanged": "Serverinstellingen gewijzigd",
+        "unknown": "Andere servergebeurtenis"
+      }
+    }
+  }
+}

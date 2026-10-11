@@ -1,0 +1,296 @@
+{
+  "section": {
+    "intro": "Edit projects with other people in real time. Projects sync through a collaboration server that you or your group runs, and that server decides who can join.",
+    "servers": {
+      "title": "Servers",
+      "add": "Add server",
+      "loading": "Loading your servers…",
+      "loadFailed": "Oleafly couldn't load your servers.",
+      "empty": {
+        "title": "No servers yet",
+        "description": "Ask the person who runs your group's server for its address, then add it here."
+      }
+    },
+    "server": {
+      "signedIn": "Signed in",
+      "signedOut": "Signed out",
+      "signedInAs": "Signed in as {{name}}",
+      "signedOutHint": "This computer isn't signed in to this server.",
+      "role": "Your role: {{role}}",
+      "signIn": "Sign in",
+      "signOut": "Sign out",
+      "remove": "Remove",
+      "manage": "Manage server",
+      "test": "Test connection",
+      "removeConfirm": {
+        "title": "Remove {{name}}?",
+        "description": "Oleafly signs out of this server and forgets it. Projects already on this computer stay where they are.",
+        "confirm": "Remove server"
+      }
+    },
+    "devices": {
+      "title": "Your devices",
+      "description": "Computers signed in to this server with your account. Sign out any you no longer use.",
+      "loading": "Loading your devices…",
+      "loadFailed": "Oleafly couldn't load your devices.",
+      "current": "This computer",
+      "added": "Added {{date}}",
+      "lastSeen": "Last seen {{date}}",
+      "neverSeen": "Not seen yet",
+      "empty": "No devices are signed in.",
+      "signOut": "Sign out",
+      "signOutNamed": "Sign out {{name}}",
+      "signOutConfirm": {
+        "title": "Sign out {{name}}?",
+        "description": "That computer stops syncing with this server until someone signs in on it again.",
+        "confirm": "Sign out device"
+      }
+    },
+    "checks": {
+      "title": "Connection test",
+      "running": "Testing the connection…",
+      "clockSkew": "Time difference in seconds: {{seconds}}",
+      "status": {
+        "pass": "Passed",
+        "fail": "Failed",
+        "info": "Note",
+        "skipped": "Skipped"
+      },
+      "items": {
+        "reachable": {
+          "label": "Address",
+          "pass": "The server answered.",
+          "fail": "Oleafly couldn't reach this address. Check the address and your network.",
+          "info": "The server answered, but slowly.",
+          "skipped": "Not checked."
+        },
+        "https": {
+          "label": "Secure connection",
+          "pass": "The connection is encrypted and the certificate is valid.",
+          "fail": "The server's certificate isn't valid, or the address doesn't use https.",
+          "info": "This is a test server on this computer, so it runs without https.",
+          "skipped": "Not checked because the address didn't answer."
+        },
+        "protocol": {
+          "label": "Version",
+          "pass": "This version of Oleafly works with the server.",
+          "fail": "Oleafly and the server need different versions. One of them needs an update.",
+          "info": "The server is newer than this version of Oleafly but still works with it.",
+          "skipped": "Not checked because an earlier check failed."
+        },
+        "webSocket": {
+          "label": "Live connection",
+          "pass": "Live edits can get through.",
+          "fail": "Something between you and the server blocks live edits. A firewall or proxy may need a change.",
+          "info": "Live edits get through, but the connection took a while.",
+          "skipped": "Not checked because an earlier check failed."
+        },
+        "signInProviders": {
+          "label": "Sign-in options",
+          "pass": "The server has at least one way to sign in.",
+          "fail": "The server has no way to sign in yet. Ask its admin.",
+          "info": "The server has a way to sign in, but some options are turned off.",
+          "skipped": "Not checked because an earlier check failed."
+        },
+        "email": {
+          "label": "Email",
+          "pass": "The server can send email.",
+          "fail": "The server's email settings don't work.",
+          "info": "Email isn't set up on this server. People are added without an email.",
+          "skipped": "Not checked because an earlier check failed."
+        },
+        "clock": {
+          "label": "Clock",
+          "pass": "Your clock and the server's clock agree.",
+          "fail": "Your clock and the server's clock are far apart. Check the date and time on this computer.",
+          "info": "Your clock is a little off from the server's.",
+          "skipped": "Not checked because an earlier check failed."
+        }
+      }
+    }
+  },
+  "addServer": {
+    "title": "Add a collaboration server",
+    "description": "Enter the address your group gave you. Oleafly checks the server before you sign in.",
+    "addressLabel": "Server address",
+    "addressPlaceholder": "collab.example.edu",
+    "continue": "Continue",
+    "checking": "Checking the server…",
+    "version": "Version {{version}}",
+    "setupTitle": "Set up this server",
+    "setupDescription": "Nobody has signed in here yet. Enter the setup code from the server's log. Whoever signs in first with the code becomes the server's admin.",
+    "setupCodeLabel": "Setup code",
+    "signInTitle": "Sign in",
+    "signInDescription": "Your browser opens so you can sign in there. Oleafly never sees your password.",
+    "continueWith": "Continue with {{provider}}",
+    "noProviders": "This server has no way to sign in yet. Ask its admin to set one up.",
+    "waitingTitle": "Waiting for your browser",
+    "waitingDescription": "Finish signing in in the browser window that opened, then come back here.",
+    "cancel": "Cancel",
+    "back": "Back",
+    "doneTitle": "You're signed in",
+    "doneDescription": "You're signed in to {{server}} as {{name}}.",
+    "done": "Done"
+  },
+  "errors": {
+    "unreachable": "Oleafly couldn't reach the server. Check the address and your connection, then try again.",
+    "not_https": "This address doesn't use a secure connection. Collaboration servers need an address that starts with https.",
+    "client_too_old": "This server needs a newer version of Oleafly. Update Oleafly, then try again.",
+    "server_too_old": "This server needs an update before it works with this version of Oleafly. Ask its admin.",
+    "not_admitted": "You're not on this server's list yet. Ask its admin to add you.",
+    "sign_in_cancelled": "Sign-in was cancelled.",
+    "sign_in_timed_out": "Sign-in took too long. Try again.",
+    "unauthorized": "You're signed out of this server. Sign in again.",
+    "forbidden": "Your role on this server doesn't allow that.",
+    "not_found": "The server couldn't find that. It may already be gone.",
+    "conflict": "That clashes with a change someone else made. Reload and try again.",
+    "rate_limited": "The server is busy. Wait a minute, then try again.",
+    "setup_code_invalid": "That setup code doesn't match. Check the server's log for the right code.",
+    "server": "The server ran into a problem. Try again later, or ask its admin.",
+    "internal": "Something went wrong in Oleafly. Try again.",
+    "server_changed": "This address now belongs to a different server, so Oleafly didn't send it anything. If you trust the new server, remove this one and add it again."
+  },
+  "roles": {
+    "admin": "Admin",
+    "maintainer": "Maintainer",
+    "member": "Member",
+    "guest": "Guest"
+  },
+  "admin": {
+    "title": "Manage {{name}}",
+    "back": "Back to servers",
+    "loadFailed": "Oleafly couldn't load this from the server.",
+    "added": "Added {{date}}",
+    "tabs": {
+      "members": "Members",
+      "allowlist": "Allowed people",
+      "domains": "Domains",
+      "settings": "Server settings",
+      "log": "Security log"
+    },
+    "members": {
+      "description": "Everyone who has signed in to this server.",
+      "loading": "Loading members…",
+      "empty": "Nobody has signed in yet.",
+      "you": "You",
+      "active": "Active",
+      "suspended": "Suspended",
+      "removed": "Removed",
+      "roleLabel": "Role for {{name}}",
+      "suspend": "Suspend",
+      "reactivate": "Reactivate",
+      "remove": "Remove",
+      "devices": "Devices",
+      "devicesTitle": "Devices for {{name}}",
+      "devicesDescription": "Sign out a device that is lost or no longer used.",
+      "devicesLoading": "Loading devices…",
+      "devicesLoadFailed": "Oleafly couldn't load these devices.",
+      "lastAdmin": "This server needs at least one admin. Make someone else an admin first.",
+      "removeConfirm": {
+        "title": "Remove {{name}} from this server?",
+        "description": "Their devices are signed out right away. Projects they own stay on the server, and you can add them back later.",
+        "confirm": "Remove member"
+      },
+      "deviceSignOutConfirm": {
+        "title": "Sign out {{name}}?",
+        "description": "That device stops syncing with this server until its owner signs in on it again.",
+        "confirm": "Sign out device"
+      }
+    },
+    "allowlist": {
+      "description": "People on this list can sign in to the server with the role you pick.",
+      "matchLabel": "Match by",
+      "match": {
+        "email": "Email address",
+        "login": "Sign-in name"
+      },
+      "emailPlaceholder": "name@example.edu",
+      "loginPlaceholder": "octocat",
+      "providerLabel": "Sign-in option",
+      "roleLabel": "Role",
+      "add": "Add",
+      "loading": "Loading the list…",
+      "empty": "Nobody is on the list yet.",
+      "loginEntry": "{{login}} on {{provider}}",
+      "bound": "Has signed in",
+      "unbound": "Hasn't signed in yet",
+      "remove": "Remove",
+      "removeNamed": "Remove {{entry}}",
+      "duplicate": "That person is already on the list."
+    },
+    "domains": {
+      "description": "Anyone with a verified email address at these domains can sign in with the role you pick.",
+      "domainLabel": "Domain",
+      "domainPlaceholder": "cs.example.edu",
+      "roleLabel": "Role",
+      "add": "Add",
+      "loading": "Loading domain rules…",
+      "empty": "No domain rules yet.",
+      "remove": "Remove",
+      "removeNamed": "Remove {{domain}}",
+      "duplicate": "That domain already has a rule."
+    },
+    "settings": {
+      "description": "These settings apply to everyone on this server.",
+      "adminOnly": "Only admins can change these settings.",
+      "loading": "Loading settings…",
+      "guestsEnabled": {
+        "label": "Allow guests",
+        "description": "Members can invite people from outside the server to projects they own."
+      },
+      "guestApprovalRequired": {
+        "label": "Approve guests first",
+        "description": "A maintainer or admin approves each guest invitation before it works."
+      },
+      "directoryVisible": {
+        "label": "Member directory",
+        "description": "Members can look each other up by name when they share a project."
+      },
+      "directoryShowsEmail": {
+        "label": "Show email addresses in the directory",
+        "description": "Members see each other's email addresses when they look someone up."
+      },
+      "linkSharingAllowed": {
+        "label": "Allow link sharing",
+        "description": "Project owners can let any member open a project from its link."
+      },
+      "accessLogsAllowed": {
+        "label": "Allow project access logs",
+        "description": "Project owners can keep a log of who opened their project."
+      },
+      "emailNotifications": {
+        "label": "Email notifications",
+        "description": "The server emails people when they're added or when someone shares a project with them."
+      }
+    },
+    "log": {
+      "description": "Sign-ins, device changes and admin actions on this server.",
+      "loading": "Loading the log…",
+      "empty": "Nothing has happened yet.",
+      "loadMore": "Show older entries",
+      "server": "Server",
+      "unknownAccount": "Unknown account",
+      "target": "On {{target}}",
+      "ip": "From {{ip}}",
+      "kinds": {
+        "setupCompleted": "Finished setting up the server",
+        "signIn": "Signed in",
+        "signInRefused": "Was refused at sign-in",
+        "deviceAdded": "Added a device",
+        "deviceSignedOut": "Signed out a device",
+        "refreshReuseDetected": "Reused an old sign-in, so the device was signed out",
+        "memberAdded": "Added a member",
+        "memberRemoved": "Removed a member",
+        "memberSuspended": "Suspended a member",
+        "memberReactivated": "Reactivated a member",
+        "roleChanged": "Changed a role",
+        "allowlistAdded": "Added someone to the allowed list",
+        "allowlistRemoved": "Removed someone from the allowed list",
+        "domainRuleAdded": "Added a domain rule",
+        "domainRuleRemoved": "Removed a domain rule",
+        "settingsChanged": "Changed server settings",
+        "unknown": "Other server event"
+      }
+    }
+  }
+}

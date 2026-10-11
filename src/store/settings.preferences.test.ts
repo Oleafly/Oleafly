@@ -40,6 +40,7 @@ describe("on/off preferences", () => {
     ["setShowWordChoice", "showWordChoice", "oleafly.harper.wordchoice"],
     ["setChatFloating", "chatFloating", "oleafly.ai.floating"],
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
+    ["setLiveCollaboration", "liveCollaboration", "oleafly.liveCollaboration"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
     ["setEditorStickyScroll", "editorStickyScroll", "oleafly.editor.stickyScroll"],
@@ -75,6 +76,13 @@ describe("on/off preferences", () => {
     useSettingsStore.getState().toggleSpellcheck();
     expect(localStorage.getItem("oleafly.spellcheck")).toBe(initial ? "1" : "0");
     expect(useSettingsStore.getState().spellcheck).toBe(initial);
+  });
+
+  it("keeps live collaboration off on a new install", async () => {
+    const fresh = await reload({});
+    expect(fresh.liveCollaboration).toBe(false);
+    const on = await reload({ "oleafly.liveCollaboration": "1" });
+    expect(on.liveCollaboration).toBe(true);
   });
 });
 

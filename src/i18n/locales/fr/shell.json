@@ -859,6 +859,10 @@
         "description": "Afficher la galerie Oleafly Tools et les outils individuels (import PDF, équations, tableaux, BibTeX, laboratoire et recherche bibliographique, échéances) ainsi que leurs commandes slash. Désactivé par défaut tant que c'est en bêta.",
         "label": "Outils LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Modifier des projets avec d'autres personnes via un serveur de collaboration que vous ou votre groupe hébergez. Ajoute une section Collaboration aux Paramètres. Désactivé par défaut tant que c'est en bêta.",
+        "label": "Collaboration en direct"
+      },
       "warning": "Ces fonctions sont expérimentales et encore en bêta. Elles ne sont pas entièrement testées et peuvent changer, casser ou disparaître dans une prochaine version. Ne les activez que si vous voulez essayer un travail en cours.",
       "webBrowser": {
         "description": "Afficher le navigateur web intégré (son bouton de dock et son raccourci) et laisser l'IA le piloter par utilisation de l'ordinateur. Désactivé par défaut tant que c'est en bêta. Une fois désactivé, il n'y a pas de bouton navigateur et l'IA n'a pas d'outil navigateur.",
@@ -940,6 +944,7 @@
     "nav": {
       "ai": "Assistant IA",
       "appearance": "Apparence",
+      "collaboration": "Collaboration",
       "data": "Stockage des données",
       "dictionary": "Dictionnaire",
       "downloads": "Téléchargements",
@@ -955,6 +960,7 @@
       "keywords": {
         "ai": "assistant, chat, discussion, modèles, fournisseurs, clés API, agents, prompts, invites, budget, serveurs MCP",
         "appearance": "thème, mode sombre, mode clair, couleur, polices, taille du texte, zoom, disposition, mise en page",
+        "collaboration": "serveurs, connexion, se connecter, appareils, membres, mainteneurs, partage, équipes, labos, laboratoires, édition en direct, temps réel, journal de sécurité",
         "data": "sauvegarde, dossier de la bibliothèque, dossier des projets, stockage, espace disque, corbeille, supprimer des projets, points de contrôle",
         "dictionary": "orthographe, mots personnalisés, mots ignorés, relecture, correction, règles de grammaire",
         "downloads": "paquets, polices, dictionnaires, fichiers hors ligne",

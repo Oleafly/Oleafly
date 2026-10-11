@@ -874,6 +874,10 @@
         "description": "Pokazuje galerię Narzędzi Oleafly i poszczególne narzędzia (import PDF, wzory, tabele, BibTeX, wyszukiwanie zespołów i literatury, terminy) wraz z ich poleceniami z ukośnikiem. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
         "label": "Narzędzia LaTeX"
       },
+      "liveCollaboration": {
+        "description": "Edytuj projekty z innymi osobami za pośrednictwem serwera współpracy prowadzonego przez Ciebie lub Twoją grupę. Dodaje do Ustawień sekcję Współpraca. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
+        "label": "Współpraca na żywo"
+      },
       "warning": "Te funkcje są eksperymentalne i wciąż w wersji beta. Nie są jeszcze w pełni przetestowane i mogą się zmienić, przestać działać albo zniknąć w przyszłym wydaniu. Włącz je tylko wtedy, gdy chcesz wypróbować pracę w toku.",
       "webBrowser": {
         "description": "Pokazuje wbudowaną przeglądarkę internetową (jej przycisk w doku i skrót) oraz pozwala AI sterować nią przez obsługę komputera. Domyślnie wyłączone, bo funkcja jest w wersji beta. Po wyłączeniu nie ma przycisku przeglądarki, a AI nie ma narzędzia przeglądarki.",
@@ -957,6 +961,7 @@
     "nav": {
       "ai": "Asystent AI",
       "appearance": "Wygląd",
+      "collaboration": "Współpraca",
       "data": "Przechowywanie danych",
       "dictionary": "Słownik",
       "downloads": "Pobrane",
@@ -972,6 +977,7 @@
       "keywords": {
         "ai": "asystent, czat, modele, dostawcy, klucze API, agenci, prompty, budżet, serwery MCP",
         "appearance": "motyw, tryb ciemny, tryb jasny, kolor, czcionki, rozmiar tekstu, powiększenie, zoom, układ",
+        "collaboration": "serwery, logowanie, urządzenia, członkowie, opiekunowie, udostępnianie, zespoły, laboratoria, edycja na żywo, czas rzeczywisty, dziennik bezpieczeństwa",
         "data": "kopia zapasowa, folder biblioteki, folder projektów, przechowywanie, miejsce na dysku, kosz, usuwanie projektów, punkty kontrolne",
         "dictionary": "pisownia, ortografia, własne słowa, ignorowane słowa, korekta, reguły gramatyczne",
         "downloads": "pakiety, czcionki, słowniki, pliki offline",
