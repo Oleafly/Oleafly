@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and its details, then download the whole pack or just that template, and
   start a new project from it straight away. Long packs load only the
   previews on screen, and the New Project gallery does the same, so a pack
-  with hundreds of templates opens and scrolls quickly.
+  with hundreds of templates opens and scrolls quickly. When templates in a
+  pack ship the same font or other large file, it downloads once and they
+  share it.
 - Typst font packs. Settings > Downloads has five free packs for Typst:
   Chinese, Japanese and Korean, classic text, modern sans and serif, code, and
   icons and emoji. Once a pack is downloaded, every Typst project can use its

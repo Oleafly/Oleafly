@@ -806,6 +806,105 @@ async fn a_checksum_mismatch_deletes_the_file_and_keeps_the_template_uninstalled
     assert_eq!(installed_template_count(dir.path()), 0);
 }
 
+fn shared_font_templates(base: &str, sha256: String) -> Vec<PackTemplate> {
+    ["a", "b"]
+        .into_iter()
+        .map(|id| {
+            let mut font = served(base, &format!("{id}/fonts/simsun.ttc"));
+            font.url = format!("{base}/mirror/simsun.ttc");
+            font.sha256 = Some(sha256.clone());
+            job_template(
+                id,
+                vec![
+                    served(base, &format!("{id}/main.tex")),
+                    font,
+                    served(base, &format!("{id}/template.json")),
+                ],
+                None,
+            )
+        })
+        .collect()
+}
+
+fn shared_font_routes(font: Vec<u8>) -> HashMap<String, (u16, Vec<u8>)> {
+    let mut routes: HashMap<String, (u16, Vec<u8>)> = HashMap::new();
+    for id in ["a", "b"] {
+        routes.insert(format!("/files/{id}/main.tex"), (200, b"main".to_vec()));
+        routes.insert(format!("/files/{id}/template.json"), (200, b"{}".to_vec()));
+    }
+    routes.insert("/mirror/simsun.ttc".into(), (200, font));
+    routes
+}
+
+#[tokio::test]
+async fn templates_that_share_a_mirror_file_download_it_once() {
+    let font = b"shared font bytes".to_vec();
+    let server = serve(shared_font_routes(font.clone())).await;
+    let templates = shared_font_templates(&server.base, sha_hex(&font).to_ascii_uppercase());
+    let dir = tempfile::tempdir().unwrap();
+    let events = Mutex::new(Vec::new());
+    let emit = |progress: DownloadProgress| {
+        events.lock().unwrap().push((progress.done, progress.total));
+    };
+    let plan = plan_downloads(dir.path(), templates, false);
+    download_templates(&test_client(), dir.path(), plan, &emit)
+        .await
+        .unwrap();
+    assert_eq!(server.hits.lock().unwrap()["/mirror/simsun.ttc"], 1);
+    let a = dir.path().join("a/fonts/simsun.ttc");
+    let b = dir.path().join("b/fonts/simsun.ttc");
+    assert_eq!(std::fs::read(&a).unwrap(), font);
+    assert_eq!(std::fs::read(&b).unwrap(), font);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt as _;
+        assert_eq!(
+            std::fs::metadata(&a).unwrap().ino(),
+            std::fs::metadata(&b).unwrap().ino()
+        );
+    }
+    assert_eq!(installed_template_count(dir.path()), 2);
+    assert_eq!(events.into_inner().unwrap().last(), Some(&(6, 6)));
+}
+
+#[tokio::test]
+async fn a_bad_shared_file_fails_every_template_that_needs_it_after_one_fetch() {
+    let server = serve(shared_font_routes(b"tampered".to_vec())).await;
+    let templates = shared_font_templates(&server.base, sha_hex(b"original"));
+    let dir = tempfile::tempdir().unwrap();
+    let plan = plan_downloads(dir.path(), templates, false);
+    let error = download_templates(&test_client(), dir.path(), plan, &|_| {})
+        .await
+        .unwrap_err();
+    assert!(error.contains("checksum"), "{error}");
+    assert_eq!(server.hits.lock().unwrap()["/mirror/simsun.ttc"], 1);
+    assert!(!dir.path().join("a/fonts/simsun.ttc").exists());
+    assert!(!dir.path().join("b/fonts/simsun.ttc").exists());
+    assert_eq!(installed_template_count(dir.path()), 0);
+}
+
+#[tokio::test]
+async fn a_shared_file_is_copied_when_it_cannot_be_linked() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = dir.path().join("a/fonts/simsun.ttc");
+    let dest = dir.path().join("b/fonts/simsun.ttc");
+    std::fs::create_dir_all(source.parent().unwrap()).unwrap();
+    std::fs::create_dir_all(dest.parent().unwrap()).unwrap();
+    std::fs::write(&source, b"font").unwrap();
+    std::fs::write(&dest, b"stale").unwrap();
+    link_or_copy(&source, &dest).await.unwrap();
+    assert_eq!(std::fs::read(&dest).unwrap(), b"font");
+    assert!(!part_path(&dest).exists());
+
+    let missing = dir.path().join("c/fonts/simsun.ttc");
+    let error = link_or_copy(&dir.path().join("gone.ttc"), &missing)
+        .await
+        .unwrap_err();
+    assert!(!error.is_empty());
+    assert!(!missing.exists());
+    assert!(!part_path(&missing).exists());
+}
+
 #[tokio::test]
 async fn a_missing_preview_does_not_fail_the_install() {
     let mut routes: HashMap<String, (u16, Vec<u8>)> = HashMap::new();

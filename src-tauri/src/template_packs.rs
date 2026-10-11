@@ -1,13 +1,13 @@
 use futures_util::{StreamExt, TryStreamExt};
 use serde::{Deserialize, Deserializer, Serialize};
 use sha2::{Digest, Sha256};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant, SystemTime};
 use tauri::{AppHandle, Manager};
-use tokio::sync::Semaphore;
+use tokio::sync::{OnceCell, Semaphore};
 
 use crate::paths;
 
@@ -1135,9 +1135,76 @@ async fn download_file(
     result
 }
 
+type SharedDownload = Arc<OnceCell<Result<(PathBuf, u64), String>>>;
+
+#[derive(Default)]
+struct SharedFiles(Mutex<HashMap<String, SharedDownload>>);
+
+impl SharedFiles {
+    fn slot(&self, sha256: &str) -> SharedDownload {
+        self.0
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .entry(sha256.to_ascii_lowercase())
+            .or_default()
+            .clone()
+    }
+}
+
+async fn link_or_copy(source: &Path, dest: &Path) -> Result<(), String> {
+    if let Some(parent) = dest.parent() {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    if tokio::fs::hard_link(source, dest).await.is_ok() {
+        return Ok(());
+    }
+    let tmp = part_path(dest);
+    let copied = async {
+        tokio::fs::copy(source, &tmp)
+            .await
+            .map_err(|e| e.to_string())?;
+        tokio::fs::rename(&tmp, dest)
+            .await
+            .map_err(|e| e.to_string())
+    }
+    .await;
+    if copied.is_err() {
+        let _ = tokio::fs::remove_file(&tmp).await;
+    }
+    copied
+}
+
+async fn fetch_file(
+    client: &reqwest::Client,
+    permits: &Semaphore,
+    shared: &SharedFiles,
+    file: &PackFile,
+    dest: &Path,
+) -> Result<(u64, Option<u64>), String> {
+    let Some(sha256) = file.sha256.as_deref() else {
+        return download_file(client, permits, &file.url, None, dest).await;
+    };
+    let slot = shared.slot(sha256);
+    let (source, bytes) = slot
+        .get_or_init(|| async {
+            download_file(client, permits, &file.url, Some(sha256), dest)
+                .await
+                .map(|(received, _)| (dest.to_path_buf(), received))
+        })
+        .await
+        .clone()?;
+    if source != dest {
+        link_or_copy(&source, dest).await?;
+    }
+    Ok((bytes, Some(bytes)))
+}
+
 async fn download_job<F: Fn(DownloadProgress) + Sync>(
     client: &reqwest::Client,
     permits: &Semaphore,
+    shared: &SharedFiles,
     dir: &Path,
     job: TemplateJob,
     tracker: &Tracker<'_, F>,
@@ -1146,14 +1213,8 @@ async fn download_job<F: Fn(DownloadProgress) + Sync>(
     let (manifests, rest): (Vec<PackFile>, Vec<PackFile>) =
         job.missing.into_iter().partition(|f| f.name == manifest);
     let fetch = |file: PackFile| async move {
-        let (received, total) = download_file(
-            client,
-            permits,
-            &file.url,
-            file.sha256.as_deref(),
-            &dir.join(&file.name),
-        )
-        .await?;
+        let (received, total) =
+            fetch_file(client, permits, shared, &file, &dir.join(&file.name)).await?;
         tracker.complete(&file.name, received, total);
         Ok::<(), String>(())
     };
@@ -1177,16 +1238,17 @@ pub(crate) async fn download_templates<F: Fn(DownloadProgress) + Sync>(
     emit: &F,
 ) -> Result<(), String> {
     let permits = Semaphore::new(DOWNLOAD_CONCURRENCY);
+    let shared = SharedFiles::default();
     let tracker = Tracker {
         done: AtomicUsize::new(plan.present),
         total: plan.total,
         last: Mutex::new(None),
         emit,
     };
-    let (permits, tracker) = (&permits, &tracker);
+    let (permits, shared, tracker) = (&permits, &shared, &tracker);
     futures_util::stream::iter(plan.jobs.into_iter().map(Ok))
         .try_for_each_concurrent(DOWNLOAD_CONCURRENCY, |job| {
-            download_job(client, permits, dir, job, tracker)
+            download_job(client, permits, shared, dir, job, tracker)
         })
         .await
 }

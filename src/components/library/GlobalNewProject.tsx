@@ -8,7 +8,7 @@ import { listTemplates, type TemplateInfo } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { logError } from "@/lib/log";
 import { useTourStore } from "@/store/tours";
-import { clearTemplateRequest, useTemplatePacksStore } from "@/store/template-packs";
+import { clearTemplateRequest, useTemplateRequestStore } from "@/store/template-request";
 import { finishHomeTourAfterProjectCreation } from "@/lib/tours/coordinator";
 
 // Mounted at the app root so it can be opened from anywhere (Library, the
@@ -19,7 +19,7 @@ export function GlobalNewProject() {
   const setOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const createFromTemplate = useFilesStore((s) => s.createFromTemplate);
   const homeTourActive = useTourStore((state) => state.activeTourId === "home");
-  const requestedTemplateId = useTemplatePacksStore((s) => s.requestedTemplateId);
+  const requestedTemplateId = useTemplateRequestStore((s) => s.requestedTemplateId);
   const [templates, setTemplates] = useState<TemplateInfo[]>([]);
   const [creating, setCreating] = useState(false);
 

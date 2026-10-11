@@ -27,17 +27,14 @@ vi.mock("@/lib/toast", () => ({ notifyError: mocks.notifyError, toast: {} }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 
 import { i18n } from "@/i18n";
-import { useSettingsStore } from "@/store/settings";
 import {
   ALL_CURATED,
   busyInPack,
-  clearTemplateRequest,
   ensurePackIndex,
   installCuratedPacks,
   installPack,
   installTemplate,
   loadPacks,
-  openTemplateInNewProject,
   packBusyKey,
   refreshPackCatalogInBackground,
   removePack,
@@ -303,16 +300,5 @@ describe("template packs store", () => {
     expect(busyInPack(templateBusyKey("letters-2", "a"), letters)).toBe(false);
     expect(busyInPack(ALL_CURATED, letters)).toBe(true);
     expect(busyInPack(ALL_CURATED, { id: "open-cv", group: "community" })).toBe(false);
-  });
-
-  it("hands an installed template to the new project dialog", () => {
-    useSettingsStore.setState({ settingsOpen: true, newProjectOpen: false });
-    openTemplateInNewProject("alpha");
-    expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: false, newProjectOpen: true });
-    expect(useTemplatePacksStore.getState().requestedTemplateId).toBe("alpha");
-    clearTemplateRequest();
-    expect(useTemplatePacksStore.getState().requestedTemplateId).toBeNull();
-    clearTemplateRequest();
-    expect(useTemplatePacksStore.getState().requestedTemplateId).toBeNull();
   });
 });

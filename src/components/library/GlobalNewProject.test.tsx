@@ -92,7 +92,7 @@ import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
-import { openTemplateInNewProject, resetTemplatePacks, useTemplatePacksStore } from "@/store/template-packs";
+import { clearTemplateRequest, openTemplateInNewProject, useTemplateRequestStore } from "@/store/template-request";
 
 const createFromTemplate = vi.fn(async () => "proj-1");
 
@@ -107,7 +107,7 @@ beforeEach(() => {
   useFilesStore.setState({ createFromTemplate, projectId: null });
   useSettingsStore.setState({ newProjectOpen: true });
   useTourStore.setState({ activeTourId: null });
-  resetTemplatePacks();
+  clearTemplateRequest();
 });
 
 describe("GlobalNewProject", () => {
@@ -201,7 +201,7 @@ describe("GlobalNewProject", () => {
     act(() => {
       screen.getByTestId("dialog-close").click();
     });
-    expect(useTemplatePacksStore.getState().requestedTemplateId).toBeNull();
+    expect(useTemplateRequestStore.getState().requestedTemplateId).toBeNull();
   });
 
   it("logs a failed template reload for a requested template", async () => {

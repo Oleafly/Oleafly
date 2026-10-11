@@ -15,11 +15,11 @@ import { cn } from "@/lib/utils";
 import {
   installPack,
   installTemplate,
-  openTemplateInNewProject,
   packBusyKey,
   templateBusyKey,
   useTemplatePacksStore,
 } from "@/store/template-packs";
+import { openTemplateInNewProject } from "@/store/template-request";
 import { OUTLINE_BUTTON, PRIMARY_BUTTON } from "./PackList";
 import { LazyImage, PAGE_ASPECT, PagePlaceholder } from "./pack-images";
 

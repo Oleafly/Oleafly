@@ -45,7 +45,8 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { useSettingsStore } from "@/store/settings";
-import { resetTemplatePacks, useTemplatePacksStore } from "@/store/template-packs";
+import { resetTemplatePacks } from "@/store/template-packs";
+import { clearTemplateRequest, useTemplateRequestStore } from "@/store/template-request";
 
 const copy = enSettings.downloads;
 const BASE = "https://raw.githubusercontent.com/Oleafly/template-packs/main";
@@ -108,6 +109,7 @@ async function openPack(id = "open-letter") {
 beforeEach(() => {
   vi.clearAllMocks();
   resetTemplatePacks();
+  clearTemplateRequest();
   mocks.listFontComponents.mockResolvedValue([]);
   mocks.listTemplates.mockResolvedValue([]);
   mocks.templatePreview.mockResolvedValue(null);
@@ -460,7 +462,7 @@ describe("template preview", () => {
     expect(within(screen.getByTestId("pack-template-tpl-1")).getByText(copy.packs.installed)).toBeInTheDocument();
     await user.click(use);
     expect(useSettingsStore.getState()).toMatchObject({ settingsOpen: false, newProjectOpen: true });
-    expect(useTemplatePacksStore.getState().requestedTemplateId).toBe("tpl-1");
+    expect(useTemplateRequestStore.getState().requestedTemplateId).toBe("tpl-1");
   });
 
   it("reports a failed single template download once and keeps the template uninstalled", async () => {

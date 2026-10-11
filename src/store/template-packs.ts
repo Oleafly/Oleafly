@@ -16,7 +16,6 @@ import {
   type PackTemplateInfo,
 } from "@/lib/tauri";
 import { sameTemplate, templateSearchText } from "@/lib/template-pack-browser";
-import { useSettingsStore } from "@/store/settings";
 
 export const ALL_CURATED = "all-curated";
 
@@ -50,7 +49,6 @@ interface TemplatePacksState {
   indexes: Readonly<Record<string, PackIndexEntry>>;
   busy: string | null;
   progress: string;
-  requestedTemplateId: string | null;
 }
 
 function initialState(): TemplatePacksState {
@@ -61,7 +59,6 @@ function initialState(): TemplatePacksState {
     indexes: {},
     busy: null,
     progress: "",
-    requestedTemplateId: null,
   };
 }
 
@@ -287,17 +284,4 @@ export function removePack(packId: string): Promise<boolean> {
         i18n.t(($) => $.settings.downloads.errors.packRemoveFailed),
       ),
   );
-}
-
-export function openTemplateInNewProject(templateId: string): void {
-  const settings = useSettingsStore.getState();
-  settings.setSettingsOpen(false);
-  settings.setNewProjectOpen(true);
-  useTemplatePacksStore.setState({ requestedTemplateId: templateId });
-}
-
-export function clearTemplateRequest(): void {
-  if (state().requestedTemplateId !== null) {
-    useTemplatePacksStore.setState({ requestedTemplateId: null });
-  }
 }
