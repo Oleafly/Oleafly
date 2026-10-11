@@ -45,6 +45,8 @@ exceptions = [
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-agent" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-cli" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-collab" },
+  { allow = ["AGPL-3.0-or-later"], crate = "oleafly-collab-protocol" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-core" },
   { allow = ["AGPL-3.0-or-later"], crate = "oleafly-history" },
 ]

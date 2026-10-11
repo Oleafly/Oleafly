@@ -3295,6 +3295,8 @@ dependencies = [
  "objc2-foundation",
  "oleafly-agent",
  "oleafly-cli",
+ "oleafly-collab",
+ "oleafly-collab-protocol",
  "oleafly-core",
  "oleafly-history",
  "plist",
@@ -3369,6 +3371,30 @@ dependencies = [
  "tempfile",
  "tokio",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "oleafly-collab"
+version = "0.1.0"
+dependencies = [
+ "oleafly-collab-protocol",
+ "ring",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+]
+
+[[package]]
+name = "oleafly-collab-protocol"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "ring",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+ "uuid",
 ]
 
 [[package]]

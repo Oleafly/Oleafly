@@ -1,0 +1,18 @@
+[package]
+name = "oleafly-collab"
+version = "0.1.0"
+description = "Device-local collaboration state, device key and share bindings for Oleafly"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.89"
+
+[dependencies]
+oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
+ring = "0.17"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+tempfile = { workspace = true }

@@ -30,6 +30,8 @@ mod checkpoints;
 mod chunked;
 mod citation;
 mod cloud_files;
+#[allow(dead_code)]
+mod collab;
 mod commands;
 mod community;
 mod compile_fingerprint;

@@ -19,6 +19,8 @@ tauri-build = { version = "2", features = [] }
 aho-corasick = "1"
 oleafly-agent = { path = "../crates/oleafly-agent" }
 oleafly-cli = { path = "../crates/oleafly-cli" }
+oleafly-collab = { path = "../crates/oleafly-collab" }
+oleafly-collab-protocol = { path = "../crates/oleafly-collab-protocol" }
 oleafly-core = { path = "../crates/oleafly-core" }
 oleafly-history = { path = "../crates/oleafly-history" }
 # `unstable` unlocks the multi-webview APIs (Window::add_child) that the

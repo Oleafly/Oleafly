@@ -261,6 +261,10 @@ pub fn shell_escape_trust_root() -> Result<PathBuf, String> {
     Ok(shell)
 }
 
+pub fn collab_root() -> Result<PathBuf, String> {
+    Ok(oleafly_root()?.join("collab"))
+}
+
 /// Validate a project id. Ids are a single path segment of safe characters, so
 /// a crafted id (`..`, `/etc/x`, `a/b`, an absolute path, or a Windows drive
 /// prefix) can never escape the projects root when joined. Every path-taking
@@ -1085,5 +1089,16 @@ mod tests {
         assert!(status.success());
         assert_eq!(reparse_class(&link).unwrap(), ReparseClass::NameSurrogate);
         assert!(is_reparse_point(&std::fs::symlink_metadata(&link).unwrap()));
+    }
+
+    #[test]
+    fn collab_root_sits_under_the_data_root_and_is_not_created() {
+        let _env_guard = data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let root = collab_root();
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+        assert_eq!(root, Ok(directory.path().join("collab")));
+        assert!(!directory.path().join("collab").exists());
     }
 }
