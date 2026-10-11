@@ -36,6 +36,10 @@ src-tauri/resources/licenses/pandoc-3.9.0.2-COPYING.md
 
 .private/
 
+deploy/server/.env
+deploy/server/docker-compose.override.yml
+deploy/server/secrets/
+
 # Playwright e2e artifacts
 test-results/
 e2e-artifacts/

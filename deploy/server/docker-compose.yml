@@ -1,0 +1,37 @@
+name: oleafly-server
+
+services:
+  oleafly-server:
+    build:
+      context: ../..
+      dockerfile: crates/oleafly-server/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      OLEAFLY_PUBLIC_URL: https://${OLEAFLY_DOMAIN:?Set OLEAFLY_DOMAIN in .env}
+      OLEAFLY_BIND: 0.0.0.0:8080
+      OLEAFLY_DATA_DIR: /data
+      OLEAFLY_BEHIND_PROXY: "true"
+    volumes:
+      - oleafly-data:/data
+
+  caddy:
+    image: caddy:2.11.7
+    restart: unless-stopped
+    depends_on:
+      - oleafly-server
+    environment:
+      OLEAFLY_DOMAIN: ${OLEAFLY_DOMAIN:?Set OLEAFLY_DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  oleafly-data:
+  caddy-data:
+  caddy-config:
