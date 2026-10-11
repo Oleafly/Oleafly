@@ -5,7 +5,7 @@ import {
   captureCompileSourceSnapshot,
   isCompileOutputStillWanted,
   reportCompileSaveFailure,
-  saveActiveForCompile,
+  saveAllForCompile,
   useCompileStore,
 } from "@/store/compile";
 import { usePreflightStore } from "@/store/preflight";
@@ -242,7 +242,7 @@ export async function compileTaggedAndVerify(): Promise<void> {
   };
 
   try {
-    await saveActiveForCompile(files);
+    await saveAllForCompile();
   } catch (e) {
     markTaggedCompileFailed(requestIdentity, e);
     reportCompileSaveFailure("save before tagged compile", files, e, true);

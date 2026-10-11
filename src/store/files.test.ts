@@ -2914,6 +2914,116 @@ describe("renaming entries", () => {
   });
 });
 
+describe("saving every open file", () => {
+  it("saves pending visual edits and every dirty buffer, and leaves clean buffers alone", async () => {
+    useFilesStore.setState({
+      files: {
+        "main.tex": { content: "main changes", dirty: true },
+        "chapter.tex": { content: "chapter changes", dirty: true },
+        "notes.md": { content: "notes", dirty: false },
+        "clean.tex": { content: "clean", dirty: false },
+      },
+    });
+    mocks.flushWysiwygPendingEdits.mockImplementation(() => {
+      useFilesStore.getState().setContent("notes.md", "notes from the visual editor");
+    });
+
+    await useFilesStore.getState().saveAllDirty();
+
+    const written = mocks.writeFileContent.mock.calls.map(([, path, content]) => [path, content]);
+    expect(written).toHaveLength(3);
+    expect(written).toEqual(
+      expect.arrayContaining([
+        ["main.tex", "main changes"],
+        ["chapter.tex", "chapter changes"],
+        ["notes.md", "notes from the visual editor"],
+      ]),
+    );
+    expect(mocks.flushWysiwygPendingEdits.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.writeFileContent.mock.invocationCallOrder[0],
+    );
+    expect(Object.values(useFilesStore.getState().files).some((file) => file.dirty)).toBe(false);
+  });
+
+  it("does not finish before a write that was already on its way lands", async () => {
+    let land: (value: { path: string; generation: number }) => void = () => {};
+    mocks.writeFileContent.mockImplementationOnce(
+      () =>
+        new Promise<{ path: string; generation: number }>((resolve) => {
+          land = resolve;
+        }),
+    );
+    useFilesStore.setState({ files: { "main.tex": { content: "first", dirty: true } } });
+    const autosave = useFilesStore.getState().saveFile("main.tex");
+    useFilesStore.getState().setContent("main.tex", "second");
+    let finished = false;
+    const saving = useFilesStore
+      .getState()
+      .saveAllDirty()
+      .then(() => {
+        finished = true;
+      });
+    await vi.waitFor(() => expect(mocks.writeFileContent).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(finished).toBe(false);
+
+    land({ path: "main.tex", generation: 9 });
+    await saving;
+    await autosave;
+
+    expect(mocks.writeFileContent.mock.calls[1].slice(0, 4)).toEqual(["project", "main.tex", "second", 9]);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+  });
+
+  it("does nothing without an open project", async () => {
+    useFilesStore.setState({ projectId: null, files: { "main.tex": { content: "x", dirty: true } } });
+
+    await useFilesStore.getState().saveAllDirty();
+
+    expect(mocks.flushWysiwygPendingEdits).not.toHaveBeenCalled();
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
+  });
+
+  it("names every file it could not save and keeps those files dirty", async () => {
+    useFilesStore.setState({
+      files: {
+        "main.tex": { content: "main changes", dirty: true },
+        "chapter.tex": { content: "chapter changes", dirty: true },
+      },
+    });
+    mocks.writeFileContent.mockImplementation(async (_projectId: string, path: string) => {
+      if (path === "chapter.tex") throw new Error("disk full");
+      return { path, generation: 9 };
+    });
+
+    await expect(useFilesStore.getState().saveAllDirty()).rejects.toMatchObject({
+      name: "SaveFlushError",
+      failures: [{ path: "chapter.tex", reason: "disk full" }],
+    });
+    expect(useFilesStore.getState().files["chapter.tex"].dirty).toBe(true);
+    expect(useFilesStore.getState().files["main.tex"].dirty).toBe(false);
+  });
+
+  it("saves pending visual edits before an external change runs", async () => {
+    useFilesStore.setState({ files: { "notes.md": { content: "notes", dirty: false } } });
+    mocks.flushWysiwygPendingEdits.mockImplementation(() => {
+      useFilesStore.getState().setContent("notes.md", "notes from the visual editor");
+    });
+
+    await expect(useFilesStore.getState().prepareExternalMutation("project")).resolves.toEqual(
+      expect.any(Number),
+    );
+
+    expect(mocks.writeFileContent).toHaveBeenCalledExactlyOnceWith(
+      "project",
+      "notes.md",
+      "notes from the visual editor",
+      expect.any(Number),
+    );
+    expect(useFilesStore.getState().files["notes.md"].dirty).toBe(false);
+  });
+});
+
 describe("external project mutations", () => {
   it("refuses to prepare or run a mutation for a project that is not open", async () => {
     await expect(useFilesStore.getState().prepareExternalMutation("other")).rejects.toThrow(

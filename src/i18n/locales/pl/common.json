@@ -78,5 +78,11 @@
       "invalidNumber": "{{value}} nie jest liczbą",
       "sortNegated": "Nie można wykluczyć {{key}}"
     }
+  },
+  "avatar": {
+    "more_one": "jeszcze {{count}} osoba",
+    "more_few": "jeszcze {{count}} osoby",
+    "more_many": "jeszcze {{count}} osób",
+    "more_other": "jeszcze {{count}} osoby"
   }
 }

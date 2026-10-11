@@ -475,6 +475,7 @@ interface FilesStore {
   bumpDocVersion: () => void;
   saveActive: (options?: SaveOptions) => Promise<void>;
   saveFile: (path: string, options?: SaveOptions) => Promise<void>;
+  saveAllDirty: () => Promise<void>;
   reloadFromDisk: (path: string) => Promise<void>;
   keepLocalVersion: (path: string) => Promise<void>;
   createFile: (
@@ -1767,13 +1768,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  flushForQuit: () => enqueueProjectTransition(async () => {
-    const projectId = get().projectId;
-    if (!projectId) return;
-    flushWysiwygPendingEdits();
-    await flushDirtyBuffers(projectId, get);
-    await drainProjectWrites(projectId);
-  }),
+  flushForQuit: () => enqueueProjectTransition(() => get().saveAllDirty()),
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
@@ -2247,12 +2242,19 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   }),
 
+  saveAllDirty: async () => {
+    const projectId = get().projectId;
+    if (!projectId) return;
+    flushWysiwygPendingEdits();
+    await flushDirtyBuffers(projectId, get);
+    await drainProjectWrites(projectId);
+  },
+
   prepareExternalMutation: async (projectId) => {
     if (get().projectId !== projectId) {
       throw new Error("Project changed before the external mutation could run.");
     }
-    await flushDirtyBuffers(projectId, get);
-    await drainProjectWrites(projectId);
+    await get().saveAllDirty();
     if (get().projectId !== projectId) {
       throw new Error("Project changed before the external mutation could run.");
     }

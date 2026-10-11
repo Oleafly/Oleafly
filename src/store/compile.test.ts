@@ -39,7 +39,7 @@ const mocks = vi.hoisted(() => ({
   installTypstVersion: vi.fn(),
   setTypstVersion: vi.fn(),
   refreshEngine: vi.fn(),
-  saveActive: vi.fn(),
+  saveAllDirty: vi.fn(),
   readProjectSources: vi.fn(),
   settings: {
     offline: false,
@@ -67,7 +67,7 @@ const mocks = vi.hoisted(() => ({
         dirty: false,
       },
     } as Record<string, { content: string; dirty: boolean }>,
-    saveActive: vi.fn(),
+    saveAllDirty: vi.fn(),
     setTypstVersion: vi.fn(),
     refreshEngine: vi.fn(),
   },
@@ -154,6 +154,7 @@ import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enErrors from "@/i18n/locales/en/errors.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useProjectAvailabilityStore } from "@/store/project-availability";
+import { SaveFlushError } from "@/store/save-flush-error";
 import {
   acceptCompileOffer,
   beginCompileRequestIdentity,
@@ -162,7 +163,8 @@ import {
   switchToDefaultTypst,
   installerNotices,
   isCompileCheckpointCurrent,
-  saveActiveForCompile,
+  reportCompileSaveFailure,
+  saveAllForCompile,
   stopOutdatedAutomaticCompile,
   stopRunningCompileQuietly,
   useCompileStore,
@@ -225,7 +227,7 @@ beforeEach(() => {
   mocks.refreshPreviewWindow.mockReset();
   mocks.gitPreparePublish.mockReset().mockResolvedValue(undefined);
   mocks.ensurePandoc.mockReset().mockResolvedValue(true);
-  mocks.saveActive.mockReset().mockResolvedValue(undefined);
+  mocks.saveAllDirty.mockReset().mockResolvedValue(undefined);
   mocks.installTypstVersion.mockReset().mockResolvedValue(true);
   mocks.setTypstVersion.mockReset().mockResolvedValue(undefined);
   mocks.refreshEngine.mockReset().mockResolvedValue(undefined);
@@ -244,7 +246,7 @@ beforeEach(() => {
       unreadable: new Set<string>(),
     }),
   );
-  mocks.files.saveActive = mocks.saveActive;
+  mocks.files.saveAllDirty = mocks.saveAllDirty;
   mocks.files.projectId = "project";
   mocks.files.activePath = "main.tex";
   mocks.files.mainDoc = "main.tex";
@@ -653,7 +655,7 @@ describe("compile output lifecycle", () => {
     mocks.files.projectId = "another-project";
     finish?.(true);
     await compiling;
-    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(mocks.saveAllDirty).not.toHaveBeenCalled();
     expect(mocks.compileProject).not.toHaveBeenCalled();
   });
 
@@ -875,12 +877,12 @@ describe("compile output lifecycle", () => {
 
   it("coalesces a second intent while save is pending", async () => {
     let finishSave: (() => void) | undefined;
-    mocks.saveActive.mockReturnValue(new Promise<void>((resolve) => { finishSave = resolve; }));
+    mocks.saveAllDirty.mockReturnValue(new Promise<void>((resolve) => { finishSave = resolve; }));
     mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, log: "", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
     const first = useCompileStore.getState().recompile();
     await Promise.resolve();
     await useCompileStore.getState().recompile();
-    expect(mocks.saveActive).toHaveBeenCalledOnce();
+    expect(mocks.saveAllDirty).toHaveBeenCalledOnce();
     finishSave?.();
     await first;
     await vi.waitFor(() => expect(mocks.compileProject).toHaveBeenCalledTimes(2));
@@ -889,7 +891,7 @@ describe("compile output lifecycle", () => {
   it("still compiles a request that waited behind a compile an edit made out of date", async () => {
     useCompileStore.setState({ checkSyntaxBeforeCompile: false });
     const pendingSave = deferred<void>();
-    mocks.saveActive.mockReturnValueOnce(pendingSave.promise);
+    mocks.saveAllDirty.mockReturnValueOnce(pendingSave.promise);
     const readSources = mocks.readProjectSources.getMockImplementation();
     mocks.readProjectSources.mockImplementationOnce(async (...args: unknown[]) => {
       useProjectAnalysisStore.getState().setProjectRevision(1);
@@ -908,7 +910,7 @@ describe("compile output lifecycle", () => {
 
   it("still compiles a request that waited behind a compile whose main document changed", async () => {
     const pendingSave = deferred<void>();
-    mocks.saveActive.mockReturnValueOnce(pendingSave.promise);
+    mocks.saveAllDirty.mockReturnValueOnce(pendingSave.promise);
     mocks.compileProject.mockResolvedValue({ ok: false, has_pdf: false, log: "", errors: [], synctex_path: null, out_dir: null, compile_time_ms: 1 });
 
     const first = useCompileStore.getState().recompile({ origin: "automatic" });
@@ -926,7 +928,7 @@ describe("compile output lifecycle", () => {
 
   it("drops a request that waited behind a compile when another project opened", async () => {
     const pendingSave = deferred<void>();
-    mocks.saveActive.mockReturnValueOnce(pendingSave.promise);
+    mocks.saveAllDirty.mockReturnValueOnce(pendingSave.promise);
     const first = useCompileStore.getState().recompile({ origin: "automatic" });
     await Promise.resolve();
     await useCompileStore.getState().recompile();
@@ -940,7 +942,7 @@ describe("compile output lifecycle", () => {
 
   it("does not invoke IPC when the project changes while save is pending", async () => {
     let finishSave: (() => void) | undefined;
-    mocks.saveActive.mockReturnValue(new Promise<void>((resolve) => { finishSave = resolve; }));
+    mocks.saveAllDirty.mockReturnValue(new Promise<void>((resolve) => { finishSave = resolve; }));
     const compiling = useCompileStore.getState().recompile();
     mocks.files.projectId = "replacement";
     finishSave?.();
@@ -950,7 +952,7 @@ describe("compile output lifecycle", () => {
 
   it("does not invoke IPC when the main document changes while save is pending", async () => {
     const pendingSave = deferred<void>();
-    mocks.saveActive.mockReturnValue(pendingSave.promise);
+    mocks.saveAllDirty.mockReturnValue(pendingSave.promise);
     const compiling = useCompileStore.getState().recompile();
     mocks.files.mainDoc = "replacement.tex";
     pendingSave.resolve();
@@ -971,12 +973,12 @@ describe("saving before a compile", () => {
   };
 
   it("retries a write that lost a race with an outside edit once, silently", async () => {
-    mocks.saveActive
+    mocks.saveAllDirty
       .mockRejectedValueOnce("mutation conflict at generation 42: the target changed after expectedGeneration")
       .mockResolvedValueOnce(undefined);
     mocks.compileProject.mockResolvedValue(failedResult);
     await useCompileStore.getState().recompile();
-    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+    expect(mocks.saveAllDirty).toHaveBeenCalledTimes(2);
     expect(mocks.compileProject).toHaveBeenCalledOnce();
     expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
     expect(mocks.notifyError).not.toHaveBeenCalled();
@@ -984,10 +986,10 @@ describe("saving before a compile", () => {
 
   it("reports a save that keeps failing through the shared autosave notice", async () => {
     const error = new Error("disk full");
-    mocks.saveActive.mockRejectedValue(error);
+    mocks.saveAllDirty.mockRejectedValue(error);
     await useCompileStore.getState().recompile();
     await useCompileStore.getState().recompile({ origin: "automatic" });
-    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+    expect(mocks.saveAllDirty).toHaveBeenCalledTimes(2);
     expect(mocks.compileProject).not.toHaveBeenCalled();
     expect(useCompileStore.getState().status).toBe("error");
     expect(useCompileStore.getState().failureReason).toContain("disk full");
@@ -1013,24 +1015,47 @@ describe("saving before a compile", () => {
   });
 
   it("retries only a mutation conflict and passes other failures on", async () => {
-    const files = mocks.files as unknown as Parameters<typeof saveActiveForCompile>[0];
-    mocks.saveActive.mockRejectedValueOnce(new Error("read-only folder"));
-    await expect(saveActiveForCompile(files)).rejects.toThrow("read-only folder");
-    expect(mocks.saveActive).toHaveBeenCalledOnce();
-    mocks.saveActive
+    mocks.saveAllDirty.mockRejectedValueOnce(new Error("read-only folder"));
+    await expect(saveAllForCompile()).rejects.toThrow("read-only folder");
+    expect(mocks.saveAllDirty).toHaveBeenCalledOnce();
+    mocks.saveAllDirty
       .mockRejectedValueOnce("mutation conflict at generation 3")
       .mockRejectedValueOnce("mutation conflict at generation 4");
-    await expect(saveActiveForCompile(files)).rejects.toBe("mutation conflict at generation 4");
-    expect(mocks.saveActive).toHaveBeenCalledTimes(3);
+    await expect(saveAllForCompile()).rejects.toBe("mutation conflict at generation 4");
+    expect(mocks.saveAllDirty).toHaveBeenCalledTimes(3);
   });
 
   it("logs a save failure when no file is active", async () => {
     const error = new Error("closed");
     mocks.files.activePath = null;
-    mocks.saveActive.mockRejectedValue(error);
+    mocks.saveAllDirty.mockRejectedValue(error);
     await useCompileStore.getState().recompile();
     expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
     expect(mocks.logError).toHaveBeenCalledWith("save before compile", error);
+  });
+
+  it("saves every open file before compiling", async () => {
+    mocks.compileProject.mockResolvedValue(failedResult);
+    await useCompileStore.getState().recompile();
+    expect(mocks.saveAllDirty).toHaveBeenCalledOnce();
+    expect(mocks.saveAllDirty.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.compileProject.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("points a failed save at the file that failed, not the open tab", async () => {
+    const error = new SaveFlushError([{ path: "chapter.tex", reason: "disk full" }]);
+    mocks.saveAllDirty.mockRejectedValue(error);
+    await useCompileStore.getState().recompile();
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(useCompileStore.getState().failureReason).toContain("chapter.tex: disk full");
+    expect(mocks.reportFileSaveFailure).toHaveBeenCalledExactlyOnceWith(
+      "save before compile",
+      "project",
+      "chapter.tex",
+      error,
+      true,
+    );
   });
 });
 
@@ -1064,9 +1089,9 @@ describe("formatting a Typst file before a compile saves it", () => {
   it("formats the active Typst file before an explicit compile saves it", async () => {
     await useCompileStore.getState().recompile();
     expect(formatting.formatActiveBeforeSave).toHaveBeenCalledOnce();
-    expect(mocks.saveActive).toHaveBeenCalledOnce();
+    expect(mocks.saveAllDirty).toHaveBeenCalledOnce();
     expect(formatting.formatActiveBeforeSave.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.saveActive.mock.invocationCallOrder[0],
+      mocks.saveAllDirty.mock.invocationCallOrder[0],
     );
     expect(mocks.compileProject).toHaveBeenCalledOnce();
   });
@@ -1075,7 +1100,7 @@ describe("formatting a Typst file before a compile saves it", () => {
     await useCompileStore.getState().recompile({ origin: "automatic" });
     await useCompileStore.getState().recompile({ origin: "agent" });
     expect(formatting.formatActiveBeforeSave).not.toHaveBeenCalled();
-    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+    expect(mocks.saveAllDirty).toHaveBeenCalledTimes(2);
   });
 
   it("does nothing when the setting is off or the file is not Typst", async () => {
@@ -1085,13 +1110,13 @@ describe("formatting a Typst file before a compile saves it", () => {
     mocks.files.activePath = "main.tex";
     await useCompileStore.getState().recompile();
     expect(formatting.formatActiveBeforeSave).not.toHaveBeenCalled();
-    expect(mocks.saveActive).toHaveBeenCalledTimes(2);
+    expect(mocks.saveAllDirty).toHaveBeenCalledTimes(2);
   });
 
   it("still saves and compiles when formatting fails", async () => {
     formatting.formatActiveBeforeSave.mockRejectedValue(new Error("formatter crashed"));
     await useCompileStore.getState().recompile();
-    expect(mocks.saveActive).toHaveBeenCalledOnce();
+    expect(mocks.saveAllDirty).toHaveBeenCalledOnce();
     expect(mocks.compileProject).toHaveBeenCalledOnce();
     expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
     expect(mocks.logError).toHaveBeenCalledWith("format before save", expect.any(Error));
@@ -1882,7 +1907,7 @@ describe("an opened folder without a main document", () => {
   it("does not compile and says how to pick a main document", async () => {
     await useCompileStore.getState().recompile();
     expect(mocks.compileProject).not.toHaveBeenCalled();
-    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(mocks.saveAllDirty).not.toHaveBeenCalled();
     expect(useCompileStore.getState()).toMatchObject({
       status: "unavailable",
       failureReason: enShell.openedFolder.noMain,
@@ -1926,7 +1951,7 @@ describe("a project folder that is not available", () => {
     useProjectAvailabilityStore.getState().report("project", "missing");
     await useCompileStore.getState().recompile();
     expect(mocks.compileProject).not.toHaveBeenCalled();
-    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(mocks.saveAllDirty).not.toHaveBeenCalled();
     expect(useCompileStore.getState()).toMatchObject({
       status: "unavailable",
       failureReason: enCore.folderUnavailable.compile,
@@ -1977,6 +2002,43 @@ describe("a project folder that is not available", () => {
     expect(state.status).toBe("error");
     expect(state.failureReason ?? "").not.toContain("@oleafly/error");
   });
+
+  it("pauses when saving another open file finds the folder gone", async () => {
+    mocks.saveAllDirty.mockRejectedValue(new SaveFlushError([{ path: "chapter.tex", reason: missing }]));
+    await useCompileStore.getState().recompile();
+    expect(useProjectAvailabilityStore.getState().availability).toBe("missing");
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.folderUnavailable.compile,
+    });
+    expect(mocks.compileProject).not.toHaveBeenCalled();
+    expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
+  });
+
+  it("pauses when the folder went away while the files were being saved", async () => {
+    mocks.saveAllDirty.mockImplementation(async () => {
+      useProjectAvailabilityStore.getState().report("project", "missing");
+      throw new SaveFlushError([{ path: "chapter.tex", reason: enCore.folderUnavailable.saveReason }]);
+    });
+    await useCompileStore.getState().recompile();
+    expect(useCompileStore.getState()).toMatchObject({
+      status: "unavailable",
+      failureReason: enCore.folderUnavailable.compile,
+    });
+    expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
+  });
+
+  it("only logs a background save failure while the folder is unavailable", () => {
+    useProjectAvailabilityStore.getState().report("project", "missing");
+    const error = new Error("folder gone");
+    reportCompileSaveFailure(
+      "live preview save",
+      mocks.files as unknown as Parameters<typeof reportCompileSaveFailure>[1],
+      error,
+    );
+    expect(mocks.reportFileSaveFailure).not.toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("live preview save", error);
+  });
 });
 
 describe("automatic compiles and main document detection", () => {
@@ -2000,7 +2062,7 @@ describe("automatic compiles and main document detection", () => {
       mocks.files.mainDecision = decision;
       await useCompileStore.getState().recompile({ origin: "automatic" });
       expect(mocks.compileProject).not.toHaveBeenCalled();
-      expect(mocks.saveActive).not.toHaveBeenCalled();
+      expect(mocks.saveAllDirty).not.toHaveBeenCalled();
       expect(useCompileStore.getState()).toMatchObject({
         status: "idle",
         failureReason: null,
@@ -2039,7 +2101,7 @@ describe("automatic compiles and main document detection", () => {
     mocks.files.mainDecision = "no_main";
     await useCompileStore.getState().recompile({ origin: "agent" });
     expect(mocks.compileProject).not.toHaveBeenCalled();
-    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(mocks.saveAllDirty).not.toHaveBeenCalled();
     expect(useCompileStore.getState().status).toBe("idle");
   });
 
@@ -2224,7 +2286,7 @@ describe("a project pinned to a Typst version that is not installed", () => {
   it("blocks the compile and offers the download instead", async () => {
     await useCompileStore.getState().recompile();
     expect(mocks.compileProject).not.toHaveBeenCalled();
-    expect(mocks.saveActive).not.toHaveBeenCalled();
+    expect(mocks.saveAllDirty).not.toHaveBeenCalled();
     expect(useCompileStore.getState()).toMatchObject({
       status: "unavailable",
       failureReason: enCore.compile.typstMissing.replace("{{version}}", "0.13.1"),
@@ -2499,7 +2561,7 @@ describe("compile gates", () => {
   it("pauses when the folder disappears while saving before the compile", async () => {
     useProjectAvailabilityStore.getState().reset("project");
     mocks.files.files["main.tex"].dirty = true;
-    mocks.saveActive.mockRejectedValue(
+    mocks.saveAllDirty.mockRejectedValue(
       `@oleafly/error:${JSON.stringify({ code: "project.linked_missing", params: { folder: "x" }, detail: null })}`,
     );
 

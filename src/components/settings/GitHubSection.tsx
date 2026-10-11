@@ -4,6 +4,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { Check, ChevronDown, ChevronRight, Copy, Github } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
@@ -317,17 +318,15 @@ export function GitHubSection() {
       </div>
       {connected && (
         <div className="flex items-center gap-3 rounded-lg border bg-background p-3">
-          {ghUser?.avatar_url ? (
-            <img
-              src={ghUser.avatar_url}
-              alt=""
-              className="size-8 rounded-full object-cover"
-            />
-          ) : (
-            <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
-              <Github className="size-4" />
-            </span>
-          )}
+          <Avatar
+            person={{
+              id: ghUser?.login ?? "github",
+              name: ghUser?.name ?? ghUser?.login ?? "GitHub",
+              imageUrl: ghUser?.avatar_url,
+            }}
+            size="md"
+            fallbackIcon={<Github />}
+          />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium">
               {t(($) => $.settings.github.account.handle, {

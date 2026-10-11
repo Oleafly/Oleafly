@@ -40,6 +40,7 @@ import { logError } from "@/lib/log";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { explainCodedCompileErrors } from "@/lib/compile-error-codes";
 import { projectFolderAvailable, reportLocationError } from "@/store/project-availability";
+import { SaveFlushError, codedSaveFailure } from "@/store/save-flush-error";
 import { i18n } from "@/i18n";
 import { formatList } from "@/lib/intl";
 
@@ -868,14 +869,12 @@ function settleCompileNotices(projectId: string): void {
   if (!packageInstallsRunning.has(projectId)) dismissOwnedToast(missingPackageToasts, projectId);
 }
 
-export async function saveActiveForCompile(
-  files: ReturnType<typeof useFilesStore.getState>,
-): Promise<void> {
+export async function saveAllForCompile(): Promise<void> {
   try {
-    await files.saveActive();
+    await useFilesStore.getState().saveAllDirty();
   } catch (error) {
     if (!String(error).includes(MUTATION_CONFLICT)) throw error;
-    await useFilesStore.getState().saveActive();
+    await useFilesStore.getState().saveAllDirty();
   }
 }
 
@@ -894,8 +893,9 @@ export function reportCompileSaveFailure(
   error: unknown,
   explicit = false,
 ): void {
-  if (files.projectId && files.activePath) {
-    reportFileSaveFailure(scope, files.projectId, files.activePath, error, explicit);
+  const path = error instanceof SaveFlushError ? error.failures[0].path : files.activePath;
+  if (files.projectId && path && projectFolderAvailable(files.projectId)) {
+    reportFileSaveFailure(scope, files.projectId, path, codedSaveFailure(error) ?? error, explicit);
   } else {
     void logError(scope, error);
   }
@@ -1094,12 +1094,16 @@ async function formatActiveFileBeforeCompileSave(): Promise<void> {
   }
 }
 
+function folderLostDuringSave(projectId: string, error: unknown): boolean {
+  return reportLocationError(projectId, codedSaveFailure(error) ?? error) || !projectFolderAvailable(projectId);
+}
+
 async function saveBeforeCompileGate(ctx: CompileGateContext): Promise<boolean> {
   if (formatsBeforeCompileSave(ctx)) await formatActiveFileBeforeCompileSave();
   try {
-    await saveActiveForCompile(ctx.files);
+    await saveAllForCompile();
   } catch (e) {
-    if (ctx.capturedProjectId && reportLocationError(ctx.capturedProjectId, e)) {
+    if (ctx.capturedProjectId && folderLostDuringSave(ctx.capturedProjectId, e)) {
       setCompileUnavailable(ctx, i18n.t(($) => $.core.folderUnavailable.compile));
       ctx.abortIntent();
       return false;

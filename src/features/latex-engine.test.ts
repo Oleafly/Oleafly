@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   compileTagged: vi.fn(),
   readCompiledPdf: vi.fn(),
-  saveActive: vi.fn(),
+  saveAllDirty: vi.fn(),
   runPreflight: vi.fn(),
   notifyCompileSucceeded: vi.fn(),
   notifyError: vi.fn(),
@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   files: {
     projectId: "project" as string | null,
     mainDoc: "main.tex",
-    saveActive: vi.fn(),
+    saveAllDirty: vi.fn(),
   },
   toast: {
     info: vi.fn(() => 1),
@@ -50,7 +50,7 @@ vi.mock("@/store/compile", () => ({
   isCompileRequestIdentityCurrent: mocks.isCompileRequestIdentityCurrent,
   isCompileOutputStillWanted: mocks.isCompileOutputStillWanted,
   reportCompileSaveFailure: mocks.reportCompileSaveFailure,
-  saveActiveForCompile: (files: { saveActive: () => Promise<void> }) => files.saveActive(),
+  saveAllForCompile: () => mocks.files.saveAllDirty(),
   useCompileStore: {
     getState: () => mocks.compileState,
     setState: (
@@ -121,8 +121,8 @@ beforeEach(() => {
   mocks.readCompiledPdf.mockReset();
   mocks.engineInfo = { kind: "system", lualatex: "/usr/bin/lualatex" };
   mocks.captureCompileSourceSnapshot.mockReset().mockResolvedValue(null);
-  mocks.saveActive.mockReset().mockResolvedValue(undefined);
-  mocks.files.saveActive = mocks.saveActive;
+  mocks.saveAllDirty.mockReset().mockResolvedValue(undefined);
+  mocks.files.saveAllDirty = mocks.saveAllDirty;
   mocks.files.projectId = "project";
   mocks.files.mainDoc = "main.tex";
   mocks.runPreflight.mockReset().mockResolvedValue(undefined);
@@ -388,7 +388,7 @@ describe("tagged compile checkpoints", () => {
 
   it("sends save failures to the shared save notice instead of blaming the engine", async () => {
     const error = new Error("disk full");
-    mocks.saveActive.mockRejectedValue(error);
+    mocks.saveAllDirty.mockRejectedValue(error);
 
     await expect(compileTaggedAndVerify()).resolves.toBeUndefined();
 
@@ -407,6 +407,23 @@ describe("tagged compile checkpoints", () => {
     expect(mocks.toast.info).not.toHaveBeenCalled();
     expect(mocks.toast.errorUnique).not.toHaveBeenCalled();
     expect(mocks.notifyError).not.toHaveBeenCalled();
+  });
+
+  it("saves every open file before the tagged compile starts", async () => {
+    mocks.compileTagged.mockResolvedValue({
+      success: false,
+      has_pdf: false,
+      output_id: null,
+      output_revision: null,
+      log: "fatal error",
+    });
+
+    await compileTaggedAndVerify();
+
+    expect(mocks.saveAllDirty).toHaveBeenCalledOnce();
+    expect(mocks.saveAllDirty.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.compileTagged.mock.invocationCallOrder[0],
+    );
   });
 });
 

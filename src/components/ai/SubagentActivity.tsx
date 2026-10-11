@@ -25,6 +25,7 @@ import { MessageItem } from "@/components/ai/chat-parts";
 import type { RenderedMessage } from "@/components/ai/MessageList";
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
+import { Avatar } from "@/components/ui/avatar";
 
 const EMPTY_RECORDS: TurnRecord[] = [];
 
@@ -105,15 +106,6 @@ function sameAgents(shown: readonly AgentState[], next: readonly AgentState[]): 
     shown.length === next.length &&
     shown.every((agent, index) => AGENT_FIELDS.every((field) => agent[field] === next[index][field]))
   );
-}
-
-/** Deterministic hue from the agent id: the chip color is stable per agent. */
-function avatarHue(id: string): number {
-  let hash = 0;
-  for (const char of id) {
-    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) % 360;
-  }
-  return hash;
 }
 
 function StatusIcon({ status }: Readonly<{ status: AgentDisplayStatus }>) {
@@ -325,13 +317,7 @@ export function SubagentActivity({
                 if (!open) void openTranscript(agent);
               }}
             >
-              <span
-                aria-hidden
-                className="flex size-4 shrink-0 items-center justify-center rounded-full text-[0.5625rem] font-bold text-white"
-                style={{ backgroundColor: `hsl(${avatarHue(agent.id)} 55% 45%)` }}
-              >
-                {agent.label.slice(0, 1).toUpperCase()}
-              </span>
+              <Avatar person={{ id: agent.id, name: agent.label }} size="xs" />
               <span className="max-w-40 truncate">{agent.label}</span>
               <StatusIcon status={status} />
               <span
