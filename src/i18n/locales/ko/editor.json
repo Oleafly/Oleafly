@@ -358,7 +358,11 @@
     "sourceExcerpt": "소스 {{line}}번째 줄",
     "summaryErrors_other": "오류 {{count}}개",
     "summaryWarnings_other": "경고 {{count}}개",
-    "summaryReferences_other": "해결되지 않은 참조 {{count}}개"
+    "summaryReferences_other": "해결되지 않은 참조 {{count}}개",
+    "fontPack": "{{family}} 글꼴은 무료 글꼴 팩 '{{pack}}'에 들어 있습니다.",
+    "fontPackAction": "내려받고 컴파일",
+    "fontPackDownloading": "내려받는 중…",
+    "fontPackFailed": "글꼴 팩을 내려받지 못했습니다. 연결을 확인하고 다시 시도하세요."
   },
   "history": {
     "untitledCommit": "제목 없는 커밋",
@@ -1441,7 +1445,8 @@
     "sources": {
       "project": "프로젝트",
       "system": "시스템",
-      "embedded": "내장"
+      "embedded": "내장",
+      "pack": "글꼴 팩"
     },
     "fontsFolder": "이 프로젝트에서 글꼴을 쓰려면 글꼴 파일을 프로젝트의 fonts 폴더에 추가하세요."
   },

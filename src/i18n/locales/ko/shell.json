@@ -380,11 +380,13 @@
     "compile": "컴파일",
     "compiler": {
       "auto": "자동 <note>[시스템 TeX]</note>",
-      "help": "Tectonic은 기본 내장되어 있어 설정이 필요 없습니다. 나머지 선택지는 시스템 TeX를 실행하는데, 계정이 접근할 수 있는 로컬 파일을 읽을 수 있으므로 신뢰하는 프로젝트에만 쓰세요. 자동은 소스를 보고 컴파일러를 고릅니다. pdfLaTeX는 대부분의 저널 템플릿에 맞습니다. XeLaTeX와 LuaLaTeX는 시스템 글꼴과 유니코드를 더해 줍니다.",
+      "help": "Tectonic은 기본 내장되어 있어 설정이 필요 없습니다. 나머지 선택지는 시스템 TeX를 실행하는데, 계정이 접근할 수 있는 로컬 파일을 읽을 수 있으므로 신뢰하는 프로젝트에만 쓰세요. 자동은 소스를 보고 컴파일러를 고릅니다. pdfLaTeX는 대부분의 저널 템플릿에 맞습니다. XeLaTeX와 LuaLaTeX는 시스템 글꼴과 유니코드를 더해 줍니다. upLaTeX와 pLaTeX는 일본어 문서를 컴파일합니다.",
       "lualatex": "LuaLaTeX <note>[시스템 TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[시스템 TeX]</note>",
+      "platex": "pLaTeX <note>[시스템 TeX]</note>",
       "tectonic": "Tectonic <note>[내장]</note>",
       "title": "컴파일러(이 프로젝트)",
+      "uplatex": "upLaTeX <note>[시스템 TeX]</note>",
       "xelatex": "XeLaTeX <note>[시스템 TeX]</note>"
     },
     "errors": {

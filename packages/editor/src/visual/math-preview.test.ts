@@ -337,6 +337,18 @@ describe("math preview tooltip view", () => {
     await Promise.resolve();
     expect(preview(view.state).tooltip).toBeNull();
   });
+
+  it("handles a focus change that arrives after the document is gone", () => {
+    const view = mount(stateFor(INLINE, INLINE_CURSOR));
+    const handlers = view.state.facet(EditorView.focusChangeEffect);
+    vi.stubGlobal("document", undefined);
+    try {
+      const effects = handlers.map((handler) => handler(view.state, false));
+      expect(effects.some((effect) => effect !== null)).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe("Typst math preview tooltip", () => {

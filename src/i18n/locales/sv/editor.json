@@ -365,7 +365,11 @@
     "summaryWarnings_one": "{{count}} varning",
     "summaryWarnings_other": "{{count}} varningar",
     "summaryReferences_one": "{{count}} olöst referens",
-    "summaryReferences_other": "{{count}} olösta referenser"
+    "summaryReferences_other": "{{count}} olösta referenser",
+    "fontPack": "{{family}} finns i det kostnadsfria typsnittspaketet {{pack}}.",
+    "fontPackAction": "Ladda ned och kompilera",
+    "fontPackDownloading": "Laddar ned…",
+    "fontPackFailed": "Typsnittspaketet kunde inte laddas ned. Kontrollera anslutningen och försök igen."
   },
   "history": {
     "untitledCommit": "Namnlös commit",
@@ -1462,7 +1466,8 @@
     "sources": {
       "project": "Projekt",
       "system": "System",
-      "embedded": "Inbyggt"
+      "embedded": "Inbyggt",
+      "pack": "Typsnittspaket"
     },
     "fontsFolder": "Lägg typsnittets fil i projektets mapp fonts för att använda det i projektet."
   },

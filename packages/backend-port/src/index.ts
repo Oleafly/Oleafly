@@ -197,7 +197,7 @@ export interface TypstSpec {
     inputs?: Record<string, string>;
     variants?: Record<string, { inputs?: Record<string, string> }>;
 }
-export type TexFlavor = "pdflatex" | "xelatex" | "lualatex";
+export type TexFlavor = "pdflatex" | "xelatex" | "lualatex" | "uplatex" | "platex";
 export type DocumentEngineId = "latex" | "latexmk" | "typst" | "markdown" | "unknown";
 export interface ValidatedCompileFingerprint {
     main_document: string;
@@ -536,6 +536,7 @@ export interface ComponentInfo {
     license: TemplateLicense | null;
     installed: boolean;
     kind: string;
+    families?: string[];
 }
 export interface Prerequisite {
     id: string;

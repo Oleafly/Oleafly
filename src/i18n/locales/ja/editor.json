@@ -358,7 +358,11 @@
     "sourceExcerpt": "ソースの {{line}} 行目",
     "summaryErrors_other": "{{count}} 件のエラー",
     "summaryWarnings_other": "{{count}} 件の警告",
-    "summaryReferences_other": "{{count}} 件の未解決の参照"
+    "summaryReferences_other": "{{count}} 件の未解決の参照",
+    "fontPack": "{{family}} は無料のフォントパック「{{pack}}」に入っています。",
+    "fontPackAction": "ダウンロードしてコンパイル",
+    "fontPackDownloading": "ダウンロード中…",
+    "fontPackFailed": "フォントパックをダウンロードできませんでした。接続を確認して、もう一度お試しください。"
   },
   "history": {
     "untitledCommit": "無題のコミット",
@@ -1441,7 +1445,8 @@
     "sources": {
       "project": "プロジェクト",
       "system": "システム",
-      "embedded": "組み込み"
+      "embedded": "組み込み",
+      "pack": "フォントパック"
     },
     "fontsFolder": "このプロジェクトでフォントを使うには、そのファイルをプロジェクトの fonts フォルダに追加してください。"
   },

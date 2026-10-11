@@ -365,7 +365,11 @@
     "summaryWarnings_one": "{{count}} varoitus",
     "summaryWarnings_other": "{{count}} varoitusta",
     "summaryReferences_one": "{{count}} ratkaisematon viittaus",
-    "summaryReferences_other": "{{count}} ratkaisematonta viittausta"
+    "summaryReferences_other": "{{count}} ratkaisematonta viittausta",
+    "fontPack": "{{family}} kuuluu ilmaiseen fonttipakettiin {{pack}}.",
+    "fontPackAction": "Lataa ja käännä",
+    "fontPackDownloading": "Ladataan…",
+    "fontPackFailed": "Fonttipakettia ei voitu ladata. Tarkista yhteys ja yritä uudelleen."
   },
   "history": {
     "untitledCommit": "Nimetön commit",
@@ -1462,7 +1466,8 @@
     "sources": {
       "project": "Projekti",
       "system": "Järjestelmä",
-      "embedded": "Sisäänrakennettu"
+      "embedded": "Sisäänrakennettu",
+      "pack": "Fonttipaketti"
     },
     "fontsFolder": "Jos haluat käyttää fonttia tässä projektissa, lisää sen tiedosto projektin fonts-kansioon."
   },

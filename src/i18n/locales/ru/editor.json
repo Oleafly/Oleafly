@@ -379,7 +379,11 @@
     "summaryReferences_one": "{{count}} неразрешённая ссылка",
     "summaryReferences_few": "{{count}} неразрешённые ссылки",
     "summaryReferences_many": "{{count}} неразрешённых ссылок",
-    "summaryReferences_other": "{{count}} неразрешённой ссылки"
+    "summaryReferences_other": "{{count}} неразрешённой ссылки",
+    "fontPack": "{{family}} есть в бесплатном наборе шрифтов «{{pack}}».",
+    "fontPackAction": "Скачать и скомпилировать",
+    "fontPackDownloading": "Скачивание…",
+    "fontPackFailed": "Не удалось скачать набор шрифтов. Проверьте подключение и попробуйте снова."
   },
   "history": {
     "untitledCommit": "Коммит без заголовка",
@@ -1504,7 +1508,8 @@
     "sources": {
       "project": "Проект",
       "system": "Система",
-      "embedded": "Встроенный"
+      "embedded": "Встроенный",
+      "pack": "Набор шрифтов"
     },
     "fontsFolder": "Чтобы использовать шрифт в этом проекте, добавьте его файл в папку fonts проекта."
   },

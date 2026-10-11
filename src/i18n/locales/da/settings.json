@@ -1026,6 +1026,26 @@
       "ptserif": {
         "description": "En forfinet overgangsantikva, der passer godt til akademiske og formelle dokumenter.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans og Serif CJK, Fandol og LXGW WenKai. De træder også i stedet for SimSun, SimHei og KaiTi.",
+        "label": "Kinesisk, japansk og koreansk"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 og 7 Free samt Noto Color Emoji.",
+        "label": "Ikoner og emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code og Source Code Pro.",
+        "label": "Kode"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans og IBM Plex.",
+        "label": "Moderne sans og serif"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus og New Computer Modern Sans og Mono.",
+        "label": "Klassisk tekst"
       }
     },
     "fonts": {
@@ -1063,6 +1083,10 @@
       "packDownloadFailed": "Kunne ikke hente skabelonpakken.",
       "packsDownloadFailed": "Kunne ikke hente skabelonpakkerne.",
       "packRemoveFailed": "Kunne ikke fjerne skabelonpakken."
+    },
+    "typstFonts": {
+      "heading": "Skrifttyper til Typst",
+      "tooltip": "Gratis skrifttyper, som mange Typst-skabeloner beder om. Når de er hentet, kan alle Typst-projekter bruge dem, undtagen et projekt, der slår systemets skrifttyper fra."
     }
   },
   "engine": {

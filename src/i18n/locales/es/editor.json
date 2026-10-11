@@ -372,7 +372,11 @@
     "summaryWarnings_other": "{{count}} advertencias",
     "summaryReferences_one": "{{count}} referencia sin resolver",
     "summaryReferences_many": "{{count}} referencias sin resolver",
-    "summaryReferences_other": "{{count}} referencias sin resolver"
+    "summaryReferences_other": "{{count}} referencias sin resolver",
+    "fontPack": "{{family}} está en el paquete de fuentes gratuito {{pack}}.",
+    "fontPackAction": "Descargar y compilar",
+    "fontPackDownloading": "Descargando…",
+    "fontPackFailed": "No se pudo descargar el paquete de fuentes. Revisa tu conexión y vuelve a intentarlo."
   },
   "history": {
     "untitledCommit": "Commit sin título",
@@ -1483,7 +1487,8 @@
     "sources": {
       "project": "Proyecto",
       "system": "Sistema",
-      "embedded": "Incluida"
+      "embedded": "Incluida",
+      "pack": "Paquete de fuentes"
     },
     "fontsFolder": "Para usar una tipografía en este proyecto, añade su archivo a la carpeta fonts del proyecto."
   },

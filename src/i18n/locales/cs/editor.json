@@ -379,7 +379,11 @@
     "summaryReferences_one": "{{count}} nevyřešený odkaz",
     "summaryReferences_few": "{{count}} nevyřešené odkazy",
     "summaryReferences_many": "{{count}} nevyřešeného odkazu",
-    "summaryReferences_other": "{{count}} nevyřešených odkazů"
+    "summaryReferences_other": "{{count}} nevyřešených odkazů",
+    "fontPack": "{{family}} je v bezplatném balíčku písem {{pack}}.",
+    "fontPackAction": "Stáhnout a přeložit",
+    "fontPackDownloading": "Stahování…",
+    "fontPackFailed": "Balíček písem se nepodařilo stáhnout. Zkontrolujte připojení a zkuste to znovu."
   },
   "history": {
     "untitledCommit": "Commit bez názvu",
@@ -1504,7 +1508,8 @@
     "sources": {
       "project": "Projekt",
       "system": "Systém",
-      "embedded": "Vestavěné"
+      "embedded": "Vestavěné",
+      "pack": "Balíček písem"
     },
     "fontsFolder": "Chcete-li v tomto projektu použít písmo, přidejte jeho soubor do složky fonts v projektu."
   },

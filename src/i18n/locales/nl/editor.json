@@ -365,7 +365,11 @@
     "summaryWarnings_one": "{{count}} waarschuwing",
     "summaryWarnings_other": "{{count}} waarschuwingen",
     "summaryReferences_one": "{{count}} onopgeloste verwijzing",
-    "summaryReferences_other": "{{count}} onopgeloste verwijzingen"
+    "summaryReferences_other": "{{count}} onopgeloste verwijzingen",
+    "fontPack": "{{family}} zit in het gratis lettertypepakket {{pack}}.",
+    "fontPackAction": "Downloaden en compileren",
+    "fontPackDownloading": "Downloaden…",
+    "fontPackFailed": "Het lettertypepakket kon niet worden gedownload. Controleer je verbinding en probeer het opnieuw."
   },
   "history": {
     "untitledCommit": "Naamloze commit",
@@ -1462,7 +1466,8 @@
     "sources": {
       "project": "Project",
       "system": "Systeem",
-      "embedded": "Ingebouwd"
+      "embedded": "Ingebouwd",
+      "pack": "Lettertypepakket"
     },
     "fontsFolder": "Wil je een lettertype in dit project gebruiken, zet het bestand dan in de map fonts van het project."
   },

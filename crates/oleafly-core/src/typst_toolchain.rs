@@ -1098,5 +1098,24 @@ pub fn typst_project_font_dirs(spec: Option<&crate::TypstSpec>, root: &Path) -> 
     directories
 }
 
+pub const TYPST_FONT_PACKS_DIR: &str = "typst-fonts";
+
+pub fn typst_shared_font_dirs(assets_root: &Path) -> Vec<PathBuf> {
+    let Ok(base) = assets_root.join(TYPST_FONT_PACKS_DIR).canonicalize() else {
+        return Vec::new();
+    };
+    let Ok(entries) = std::fs::read_dir(&base) else {
+        return Vec::new();
+    };
+    let mut directories: Vec<PathBuf> = entries
+        .flatten()
+        .filter(|entry| entry.file_type().is_ok_and(|kind| kind.is_dir()))
+        .filter_map(|entry| entry.path().canonicalize().ok())
+        .filter(|directory| directory.starts_with(&base))
+        .collect();
+    directories.sort();
+    directories
+}
+
 #[cfg(test)]
 mod tests;

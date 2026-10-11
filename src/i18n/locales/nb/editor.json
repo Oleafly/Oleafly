@@ -365,7 +365,11 @@
     "summaryWarnings_one": "{{count}} advarsel",
     "summaryWarnings_other": "{{count}} advarsler",
     "summaryReferences_one": "{{count}} uløst referanse",
-    "summaryReferences_other": "{{count}} uløste referanser"
+    "summaryReferences_other": "{{count}} uløste referanser",
+    "fontPack": "{{family}} finnes i den gratis skriftpakken {{pack}}.",
+    "fontPackAction": "Last ned og kompiler",
+    "fontPackDownloading": "Laster ned…",
+    "fontPackFailed": "Skriftpakken kunne ikke lastes ned. Sjekk tilkoblingen og prøv igjen."
   },
   "history": {
     "untitledCommit": "Commit uten tittel",
@@ -1462,7 +1466,8 @@
     "sources": {
       "project": "Prosjekt",
       "system": "System",
-      "embedded": "Innebygd"
+      "embedded": "Innebygd",
+      "pack": "Skriftpakke"
     },
     "fontsFolder": "For å bruke en skrift i dette prosjektet legger du skriftfilen i fonts-mappen i prosjektet."
   },

@@ -382,11 +382,13 @@
     "compile": "Kompiler",
     "compiler": {
       "auto": "Auto <note>[system-TeX]</note>",
-      "help": "Tectonic er indbygget og kræver ingen opsætning. De andre valg kører system-TeX, som kan læse de lokale filer, din konto har adgang til, og bør kun bruges til projekter, du har tillid til. Auto vælger kompilator ud fra kilden. pdfLaTeX passer til de fleste skabeloner fra tidsskrifter. XeLaTeX og LuaLaTeX tilføjer systemets skrifttyper og Unicode.",
+      "help": "Tectonic er indbygget og kræver ingen opsætning. De andre valg kører system-TeX, som kan læse de lokale filer, din konto har adgang til, og bør kun bruges til projekter, du har tillid til. Auto vælger kompilator ud fra kilden. pdfLaTeX passer til de fleste skabeloner fra tidsskrifter. XeLaTeX og LuaLaTeX tilføjer systemets skrifttyper og Unicode. upLaTeX og pLaTeX kompilerer japanske dokumenter.",
       "lualatex": "LuaLaTeX <note>[system-TeX]</note>",
       "pdflatex": "pdfLaTeX <note>[system-TeX]</note>",
+      "platex": "pLaTeX <note>[system-TeX]</note>",
       "tectonic": "Tectonic <note>[indbygget]</note>",
       "title": "Kompilator (dette projekt)",
+      "uplatex": "upLaTeX <note>[system-TeX]</note>",
       "xelatex": "XeLaTeX <note>[system-TeX]</note>"
     },
     "errors": {

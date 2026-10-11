@@ -1,5 +1,7 @@
 use crate::native::{path_tool_candidates, resolve_executable, run_command, CandidateResolution};
-use oleafly_core::typst_toolchain::{typst_project_font_dirs, TypstCapabilities, TypstCompileFlag};
+use oleafly_core::typst_toolchain::{
+    typst_project_font_dirs, typst_shared_font_dirs, TypstCapabilities, TypstCompileFlag,
+};
 use oleafly_core::{Error, ErrorKind, TypstSpec};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -73,6 +75,17 @@ impl TypstSettings {
     pub(crate) fn resolve(request: &SettingsRequest<'_>) -> Self {
         let spec = request.spec;
         let reproducible = spec.is_some_and(|spec| spec.reproducible);
+        let ignore_system_fonts = spec.is_some_and(TypstSpec::ignores_system_fonts);
+        let mut font_dirs = typst_project_font_dirs(spec, request.project_root);
+        if !ignore_system_fonts {
+            if let Some(data_root) = request.data_root {
+                for directory in typst_shared_font_dirs(&data_root.join("assets")) {
+                    if !font_dirs.contains(&directory) {
+                        font_dirs.push(directory);
+                    }
+                }
+            }
+        }
         Self {
             packages: request.data_root.map(|data_root| {
                 PackageDirs::resolve(
@@ -81,8 +94,8 @@ impl TypstSettings {
                     spec.is_some_and(|spec| spec.vendor_packages),
                 )
             }),
-            font_dirs: typst_project_font_dirs(spec, request.project_root),
-            ignore_system_fonts: spec.is_some_and(TypstSpec::ignores_system_fonts),
+            font_dirs,
+            ignore_system_fonts,
             inputs: spec
                 .map(|spec| spec.inputs_for(request.variant))
                 .unwrap_or_default(),
@@ -601,5 +614,27 @@ mod tests {
             "First",
         ]);
         assert_eq!(head_commit_time(&root).await, Some(1_700_000_000));
+    }
+
+    #[test]
+    fn installed_typst_font_packs_join_the_compile_like_the_app() {
+        let project = TempDir::new().unwrap();
+        let data = TempDir::new().unwrap();
+        let pack = data.path().join("assets/typst-fonts/typst-text");
+        std::fs::create_dir_all(&pack).unwrap();
+        let request = |spec: Option<&TypstSpec>| {
+            TypstSettings::resolve(&SettingsRequest {
+                spec,
+                project_root: project.path(),
+                data_root: Some(data.path()),
+                variant: None,
+                offline: true,
+                commit_time: None,
+            })
+        };
+        let pack = pack.canonicalize().unwrap();
+        assert!(request(None).font_dirs.contains(&pack));
+        let sealed = spec(json!({"system_fonts": false}));
+        assert!(!request(Some(&sealed)).font_dirs.contains(&pack));
     }
 }

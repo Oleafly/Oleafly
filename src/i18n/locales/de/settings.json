@@ -1026,6 +1026,26 @@
       "ptserif": {
         "description": "Eine feine Übergangsantiqua, die gut zu wissenschaftlichen und geschäftlichen Dokumenten passt.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans und Serif CJK, Fandol und LXGW WenKai. Sie ersetzen auch SimSun, SimHei und KaiTi.",
+        "label": "Chinesisch, Japanisch und Koreanisch"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 und 7 Free sowie Noto Color Emoji.",
+        "label": "Symbole und Emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code und Source Code Pro.",
+        "label": "Code"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans und IBM Plex.",
+        "label": "Moderne Sans- und Serifenschriften"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus sowie New Computer Modern Sans und Mono.",
+        "label": "Klassische Textschriften"
       }
     },
     "fonts": {
@@ -1063,6 +1083,10 @@
       "packDownloadFailed": "Das Vorlagenpaket konnte nicht heruntergeladen werden.",
       "packsDownloadFailed": "Die Vorlagenpakete konnten nicht heruntergeladen werden.",
       "packRemoveFailed": "Das Vorlagenpaket konnte nicht entfernt werden."
+    },
+    "typstFonts": {
+      "heading": "Schriften für Typst",
+      "tooltip": "Kostenlose Schriften, die viele Typst-Vorlagen verlangen. Nach dem Herunterladen kann jedes Typst-Projekt sie nutzen, außer einem Projekt, das Systemschriften abschaltet."
     }
   },
   "engine": {

@@ -358,7 +358,11 @@
     "sourceExcerpt": "源码第 {{line}} 行",
     "summaryErrors_other": "{{count}} 个错误",
     "summaryWarnings_other": "{{count}} 个警告",
-    "summaryReferences_other": "{{count}} 个未解析的引用"
+    "summaryReferences_other": "{{count}} 个未解析的引用",
+    "fontPack": "{{family}} 在免费字体包“{{pack}}”中。",
+    "fontPackAction": "下载并编译",
+    "fontPackDownloading": "正在下载…",
+    "fontPackFailed": "无法下载字体包。请检查网络连接后重试。"
   },
   "history": {
     "untitledCommit": "未命名提交",
@@ -1441,7 +1445,8 @@
     "sources": {
       "project": "项目",
       "system": "系统",
-      "embedded": "内置"
+      "embedded": "内置",
+      "pack": "字体包"
     },
     "fontsFolder": "要在此项目中使用某种字体，请将其文件添加到项目的 fonts 文件夹。"
   },

@@ -117,7 +117,7 @@ pub struct EngineDescriptor {
     pub source_extensions: Vec<String>,
     pub capabilities: EngineCapabilities,
     /// The project's pinned latexmk compiler ("pdflatex" | "xelatex" |
-    /// "lualatex"); None means auto-detect. Filled in by `project_engine`
+    /// "lualatex" | "uplatex" | "platex"); None means auto-detect. Filled in by `project_engine`
     /// from project.json, absent in engine-only contexts.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tex_flavor: Option<String>,
@@ -189,6 +189,14 @@ impl EngineEnvironment {
 
     pub(crate) fn variables(&self) -> &[(String, String)] {
         &self.variables
+    }
+
+    fn set_bibtex_search_entry(&mut self, entry: &str) {
+        self.variables
+            .retain(|(name, _)| !oleafly_core::BIBTEX_SEARCH_VARIABLES.contains(&name.as_str()));
+        for (name, value) in oleafly_core::bibtex_search_environment(entry) {
+            self.variables.push((name.to_owned(), value));
+        }
     }
 }
 
@@ -363,36 +371,7 @@ impl DocumentEngine for LatexEngine {
     }
 }
 
-/// Which TeX engine latexmk should drive. Chosen from the source itself so an
-/// Overleaf import compiles out of the box: a `% !TeX program = ...` magic
-/// comment wins, fontspec-style packages force a Unicode engine, and everything
-/// else gets pdfLaTeX (Overleaf's own default).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LatexmkFlavor {
-    Pdflatex,
-    Xelatex,
-    Lualatex,
-}
-
-impl LatexmkFlavor {
-    const fn as_arg(self) -> &'static str {
-        match self {
-            Self::Pdflatex => "-pdf",
-            Self::Xelatex => "-xelatex",
-            Self::Lualatex => "-lualatex",
-        }
-    }
-
-    /// Parse the `project.json` `tex_flavor` value.
-    pub fn parse(value: &str) -> Option<Self> {
-        match value.trim() {
-            "pdflatex" => Some(Self::Pdflatex),
-            "xelatex" => Some(Self::Xelatex),
-            "lualatex" => Some(Self::Lualatex),
-            _ => None,
-        }
-    }
-}
+pub type LatexmkFlavor = oleafly_core::TexFlavor;
 
 /// The user's pinned compiler wins over every source heuristic (magic comment
 /// included); detection only runs for the default "auto" choice.
@@ -415,30 +394,15 @@ fn detect_tex_program_magic(source: &str) -> Option<LatexmkFlavor> {
         else {
             continue;
         };
-        return match value.trim() {
-            "xelatex" => Some(LatexmkFlavor::Xelatex),
-            "lualatex" => Some(LatexmkFlavor::Lualatex),
-            "pdflatex" | "latex" => Some(LatexmkFlavor::Pdflatex),
-            _ => None,
-        };
+        return LatexmkFlavor::from_magic_program(value);
     }
     None
 }
 
 fn detect_latexmk_flavor(source: &str) -> LatexmkFlavor {
-    if let Some(flavor) = detect_tex_program_magic(source) {
-        return flavor;
-    }
-    // These packages hard-fail under pdfLaTeX; XeLaTeX also matches how the
-    // bundled Tectonic (XeTeX-class) rendered the project before a switch.
-    if source.contains("fontspec")
-        || source.contains("polyglossia")
-        || source.contains("unicode-math")
-        || source.contains("\\setmainfont")
-    {
-        return LatexmkFlavor::Xelatex;
-    }
-    LatexmkFlavor::Pdflatex
+    detect_tex_program_magic(source)
+        .or_else(|| oleafly_core::source_tex_flavor(source))
+        .unwrap_or(LatexmkFlavor::Pdflatex)
 }
 
 /// a giant generated file cannot balloon compile preparation.
@@ -771,12 +735,14 @@ fn latexmk_args_from(
     let mut args: Vec<String> = vec![
         "-norc".into(),
         shell_escape_arg(options.allow_shell_escape, distribution_kind).into(),
-        flavor.as_arg().into(),
+    ];
+    args.extend(flavor.latexmk_args());
+    args.extend([
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
         format!("-outdir={out_dir}"),
         format!("-jobname={stem}"),
-    ];
+    ]);
     if options.halt_on_error {
         args.push("-halt-on-error".into());
     } else {
@@ -816,6 +782,44 @@ fn latexmk_invocation(
     };
     let args = latexmk_args_from(out_arg, entry_arg, stem, flavor, options, distribution_kind);
     Ok((args, environment))
+}
+
+#[cfg(unix)]
+const BIBTEX_PROJECT_LINK: &str = "oleafly-project";
+
+fn with_bibtex_search_path(mut spec: EngineCompileSpec) -> EngineCompileSpec {
+    let working_dir = &spec.working_dir;
+    let out_dir = &spec.artifacts.output_dir;
+    if !oleafly_core::breaks_tex_search_path(working_dir) {
+        return spec;
+    }
+    let entry = oleafly_core::bibtex_search_entry(working_dir, out_dir).or_else(|| {
+        (!out_dir.starts_with(working_dir))
+            .then(|| link_for_bibtex(out_dir, working_dir))
+            .flatten()
+    });
+    if let Some(entry) = entry {
+        spec.environment.set_bibtex_search_entry(&entry);
+    }
+    spec
+}
+
+#[cfg(unix)]
+fn link_for_bibtex(out_dir: &Path, target: &Path) -> Option<String> {
+    let link = out_dir.join(BIBTEX_PROJECT_LINK);
+    if std::fs::read_link(&link).ok().as_deref() != Some(target) {
+        if std::fs::symlink_metadata(&link).is_ok() {
+            std::fs::remove_file(&link).ok()?;
+        }
+        std::fs::create_dir_all(out_dir).ok()?;
+        std::os::unix::fs::symlink(target, &link).ok()?;
+    }
+    Some(BIBTEX_PROJECT_LINK.to_owned())
+}
+
+#[cfg(not(unix))]
+fn link_for_bibtex(_out_dir: &Path, _target: &Path) -> Option<String> {
+    None
 }
 
 impl DocumentEngine for LatexmkEngine {
@@ -899,6 +903,7 @@ impl DocumentEngine for LatexmkEngine {
         };
         let source_head = read_source_head(&input_path);
         let flavor = resolve_latexmk_flavor(options.latex_flavor, &source_head);
+        require_dvi_toolchain(flavor, &latexmk)?;
         let (mut args, environment) = latexmk_invocation(
             project_dir,
             out_dir,
@@ -917,18 +922,46 @@ impl DocumentEngine for LatexmkEngine {
         if latexmk_binary_changed(out_dir, &latexmk) {
             args.insert(0, "-gg".into());
         }
-        Ok(EngineCompileSpec {
+        Ok(with_bibtex_search_path(EngineCompileSpec {
             executable: EngineExecutable::ExternalPath(latexmk),
             args,
             input: EngineInput::Direct(input_path),
             artifacts,
             working_dir: project_dir.to_owned(),
             environment,
-        })
+        }))
     }
 
     fn parse_errors(&self, log: &str) -> Vec<CompileError> {
         parse_tex_log_errors(log)
+    }
+}
+
+fn require_dvi_toolchain(flavor: LatexmkFlavor, latexmk: &Path) -> Result<(), String> {
+    if !flavor.goes_through_dvi() {
+        return Ok(());
+    }
+    let resolved = latexmk
+        .canonicalize()
+        .unwrap_or_else(|_| latexmk.to_path_buf());
+    let available = |tool: &str| {
+        [latexmk.parent(), resolved.parent()]
+            .into_iter()
+            .flatten()
+            .any(|dir| crate::tex_distro::find_tool_in_dir(dir, tool).is_some())
+    };
+    let compiler = match flavor {
+        LatexmkFlavor::Platex => "pLaTeX",
+        _ => "upLaTeX",
+    };
+    if available(flavor.as_str()) && available("dvipdfmx") {
+        Ok(())
+    } else {
+        Err(
+            crate::app_error::AppError::new("tex.japanese_compiler_missing")
+                .param("compiler", compiler)
+                .into(),
+        )
     }
 }
 
@@ -3094,8 +3127,8 @@ async fn run_supervised_process_with_environment(
         event.clone(),
         emitted.clone(),
     ));
-    let code = match tokio::time::timeout(timeout, child.wait()).await {
-        Ok(Ok(status)) => status.code(),
+    let status = match tokio::time::timeout(timeout, child.wait()).await {
+        Ok(Ok(status)) => status,
         Ok(Err(error)) => {
             terminate_process_tree(child_pid).await;
             let _ = child.start_kill();
@@ -3137,7 +3170,44 @@ async fn run_supervised_process_with_environment(
         );
         return Ok((log, Some(-1)));
     }
-    Ok((log, code))
+    if let Some(note) = compiler_crash_note(&status) {
+        if let Some(app) = app {
+            let emit_len = claim_emit_budget(&emitted, note.len());
+            if emit_len > 0 {
+                let text = String::from_utf8_lossy(&note.as_bytes()[..emit_len]);
+                let _ = app.emit(&event, text.as_ref());
+            }
+        }
+        append_bounded(&mut log, note.as_bytes());
+    }
+    Ok((log, status.code()))
+}
+
+#[cfg(unix)]
+fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
+    use std::os::unix::process::ExitStatusExt;
+    let name = match status.signal()? {
+        libc::SIGABRT => "SIGABRT",
+        libc::SIGSEGV => "SIGSEGV",
+        libc::SIGBUS => "SIGBUS",
+        libc::SIGILL => "SIGILL",
+        libc::SIGFPE => "SIGFPE",
+        libc::SIGTRAP => "SIGTRAP",
+        _ => return None,
+    };
+    Some(format!(
+        "\nerror: the compiler crashed ({name}) before it finished, so this log ends early"
+    ))
+}
+
+#[cfg(windows)]
+fn compiler_crash_note(status: &std::process::ExitStatus) -> Option<String> {
+    let code = status.code()? as u32;
+    (code & 0xF000_0000 == 0xC000_0000).then(|| {
+        format!(
+            "\nerror: the compiler crashed (exception 0x{code:08X}) before it finished, so this log ends early"
+        )
+    })
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -3370,7 +3440,7 @@ fn run_latexmk_from_compile_directory(
     };
     *last = from_compile_dir;
     spec.working_dir = compile_dir.to_owned();
-    Ok(spec)
+    Ok(with_bibtex_search_path(spec))
 }
 
 pub(crate) fn search_compile_directory_first(
@@ -4257,6 +4327,42 @@ mod tests {
             counter.load(std::sync::atomic::Ordering::Relaxed),
             MAX_EMITTED_LOG_BYTES
         );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn a_crashed_compiler_says_so_and_a_killed_one_does_not() {
+        async fn run(root: &Path, script: &str) -> (String, Option<i32>) {
+            let args = vec!["-c".to_string(), script.to_string()];
+            run_supervised_process(
+                Path::new("/bin/sh"),
+                &args,
+                root,
+                None,
+                std::time::Duration::from_secs(10),
+                None,
+            )
+            .await
+            .unwrap()
+        }
+        let root = tempfile::tempdir().unwrap();
+        let run = |script: &'static str| run(root.path(), script);
+        let (log, code) = run("printf 'Running TeX ...'; kill -ABRT $$").await;
+        assert_eq!(code, None);
+        assert!(log.starts_with("Running TeX ..."), "{log}");
+        assert!(
+            log.contains("error: the compiler crashed (SIGABRT) before it finished"),
+            "{log}"
+        );
+        let (log, code) = run("kill -SEGV $$").await;
+        assert_eq!(code, None);
+        assert!(log.contains("crashed (SIGSEGV)"), "{log}");
+        let (log, code) = run("kill -KILL $$").await;
+        assert_eq!(code, None);
+        assert!(!log.contains("crashed"), "{log}");
+        let (log, code) = run("printf 'error'; exit 1").await;
+        assert_eq!(code, Some(1));
+        assert!(!log.contains("crashed"), "{log}");
     }
 
     #[cfg(unix)]
@@ -6646,8 +6752,78 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             LatexmkFlavor::parse("lualatex"),
             Some(LatexmkFlavor::Lualatex)
         );
+        assert_eq!(
+            LatexmkFlavor::parse("uplatex"),
+            Some(LatexmkFlavor::Uplatex)
+        );
+        assert_eq!(LatexmkFlavor::parse("platex"), Some(LatexmkFlavor::Platex));
         assert_eq!(LatexmkFlavor::parse("tectonic"), None);
         assert_eq!(LatexmkFlavor::parse(""), None);
+    }
+
+    #[test]
+    fn latexmk_flavor_detects_japanese_and_chinese_documents() {
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass[uplatex,dvipdfmx]{jsarticle}"),
+            LatexmkFlavor::Uplatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass{jsbook}"),
+            LatexmkFlavor::Platex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass{ltjsarticle}"),
+            LatexmkFlavor::Lualatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("\\documentclass[UTF8]{ctexart}"),
+            LatexmkFlavor::Xelatex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("% !TeX program = platex\n\\documentclass[uplatex]{jsarticle}"),
+            LatexmkFlavor::Platex
+        );
+        assert_eq!(
+            detect_latexmk_flavor("% !TeX program = uplatex\n\\documentclass{article}"),
+            LatexmkFlavor::Uplatex
+        );
+    }
+
+    #[test]
+    fn japanese_compilers_run_latexmk_through_dvipdfmx() {
+        let args = latexmk_args(
+            Path::new(".oleafly/build"),
+            Path::new("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Uplatex,
+            CompileOptions::default(),
+            "texlive",
+        )
+        .unwrap();
+        assert_eq!(&args[..3], ["-norc", "-shell-restricted", "-pdfdvi"]);
+        assert!(args.contains(&"-latex=uplatex %O %S".to_string()));
+        assert!(args.contains(&"$dvipdf = q/dvipdfmx %O -o %D %S/".to_string()));
+        assert!(args.contains(&"-synctex=1".to_string()));
+        assert!(!args.contains(&"-pdf".to_string()));
+        assert_eq!(args.last().unwrap(), "./main.tex");
+    }
+
+    #[test]
+    fn a_missing_japanese_compiler_is_reported_before_latexmk_runs() {
+        let dir = tempfile::tempdir().unwrap();
+        let latexmk = dir.path().join(crate::tex_distro::exe("latexmk"));
+        std::fs::write(&latexmk, b"tool").unwrap();
+        assert!(require_dvi_toolchain(LatexmkFlavor::Xelatex, &latexmk).is_ok());
+        let missing = require_dvi_toolchain(LatexmkFlavor::Uplatex, &latexmk).unwrap_err();
+        assert!(missing.contains("\"code\":\"tex.japanese_compiler_missing\""));
+        assert!(missing.contains("upLaTeX"));
+        for tool in ["uplatex", "dvipdfmx"] {
+            std::fs::write(dir.path().join(crate::tex_distro::exe(tool)), b"tool").unwrap();
+        }
+        assert!(require_dvi_toolchain(LatexmkFlavor::Uplatex, &latexmk).is_ok());
+        assert!(require_dvi_toolchain(LatexmkFlavor::Platex, &latexmk)
+            .unwrap_err()
+            .contains("pLaTeX"));
     }
 
     #[test]
@@ -7099,6 +7275,73 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         }
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn bibtex_finds_the_project_when_its_folder_name_has_a_colon() {
+        let home = tempfile::tempdir().unwrap();
+        let project = home.path().join("Thesis 2024:25");
+        let paper = project.join("paper");
+        std::fs::create_dir_all(&paper).unwrap();
+        let first_entries = |spec: &EngineCompileSpec| -> Vec<(String, String)> {
+            spec.environment
+                .variables()
+                .iter()
+                .filter(|(name, _)| oleafly_core::BIBTEX_SEARCH_VARIABLES.contains(&name.as_str()))
+                .map(|(name, value)| (name.clone(), value.split(':').next().unwrap().into()))
+                .collect()
+        };
+        let expected = |entry: &str| {
+            vec![
+                ("BIBINPUTS".to_string(), entry.to_string()),
+                ("BSTINPUTS".to_string(), entry.to_string()),
+            ]
+        };
+
+        let in_tree = project.join(".oleafly").join("build");
+        let (args, environment) = latexmk_invocation(
+            &project,
+            &in_tree,
+            &project.join("main.tex"),
+            crate::paths::ENTRY_STEM,
+            LatexmkFlavor::Pdflatex,
+            CompileOptions::default(),
+            "texlive",
+        )
+        .unwrap();
+        let library = with_bibtex_search_path(EngineCompileSpec {
+            executable: EngineExecutable::ExternalPath(PathBuf::from("latexmk")),
+            args,
+            input: EngineInput::Direct(project.join("main.tex")),
+            artifacts: LATEX_ENGINE.artifacts(
+                &in_tree,
+                CompileTarget::Main {
+                    main_document: "main.tex",
+                },
+            ),
+            working_dir: project.clone(),
+            environment,
+        });
+        assert_eq!(first_entries(&library), expected("../.."));
+        assert!(std::fs::symlink_metadata(in_tree.join(BIBTEX_PROJECT_LINK)).is_err());
+
+        let build = home.path().join("linked").join("build");
+        let linked =
+            with_bibtex_search_path(latexmk_spec_for_test(&project, &build, "paper/main.tex"));
+        let link = build.join(BIBTEX_PROJECT_LINK);
+        assert_eq!(first_entries(&linked), expected(BIBTEX_PROJECT_LINK));
+        assert_eq!(std::fs::read_link(&link).unwrap(), project);
+
+        let nested =
+            place_in_compile_directory(DocumentEngineId::Latexmk, linked, &project, &paper)
+                .unwrap();
+        assert_eq!(nested.working_dir, paper);
+        assert_eq!(first_entries(&nested), expected(BIBTEX_PROJECT_LINK));
+        assert_eq!(std::fs::read_link(&link).unwrap(), paper);
+
+        let plain = latexmk_spec_for_test(&home.path().join("Thesis 2024-25"), &build, "main.tex");
+        assert_eq!(with_bibtex_search_path(plain.clone()), plain);
+    }
+
     fn latexmk_spec_for_test(
         project: &Path,
         build: &Path,
@@ -7544,7 +7787,11 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
     fn latexmk_refusals_have_english_messages() {
         let catalog: serde_json::Value =
             serde_json::from_str(include_str!("../../src/i18n/locales/en/errors.json")).unwrap();
-        for key in ["latexmk_build_path", "latexmk_network_folder"] {
+        for key in [
+            "latexmk_build_path",
+            "latexmk_network_folder",
+            "japanese_compiler_missing",
+        ] {
             assert!(
                 catalog["tex"][key]
                     .as_str()

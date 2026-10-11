@@ -25,7 +25,7 @@ TYPST_VERSION="$("$TYPST" --version)"
 TECTONIC_VERSION="$("$TECTONIC" --version)"
 PANDOC_VERSION="$("$PANDOC" --version)"
 grep -Fi "typst $TYPST_PIN" <<<"$TYPST_VERSION" >/dev/null
-grep -Fi "tectonic 0.16.9" <<<"$TECTONIC_VERSION" >/dev/null
+grep -Fi "tectonic 0.17.0" <<<"$TECTONIC_VERSION" >/dev/null
 grep -Fi "pandoc 3.9.0.2" <<<"$PANDOC_VERSION" >/dev/null
 # Biber is optional on aarch64 Linux (no upstream 2.17 binary).
 if [[ -f "$BIBER" ]]; then

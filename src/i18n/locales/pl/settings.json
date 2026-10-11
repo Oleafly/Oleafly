@@ -1036,6 +1036,26 @@
       "ptserif": {
         "description": "Dopracowany szeryfowy krój przejściowy, dobrze pasujący do dokumentów naukowych i biznesowych.",
         "label": "PT Serif"
+      },
+      "typst-cjk": {
+        "description": "Noto Sans i Serif CJK, Fandol oraz LXGW WenKai. Zastępują też SimSun, SimHei i KaiTi.",
+        "label": "Chiński, japoński i koreański"
+      },
+      "typst-icons": {
+        "description": "Font Awesome 6 i 7 Free oraz Noto Color Emoji.",
+        "label": "Ikony i emoji"
+      },
+      "typst-mono": {
+        "description": "JetBrains Mono, IBM Plex Mono, Inconsolata, Fira Mono, Cascadia Code i Source Code Pro.",
+        "label": "Kod"
+      },
+      "typst-sans": {
+        "description": "Source Sans, Source Serif, Noto, Fira, Roboto, Inter, Open Sans i IBM Plex.",
+        "label": "Nowoczesne bezszeryfowe i szeryfowe"
+      },
+      "typst-text": {
+        "description": "TeX Gyre, Latin Modern, CMU, Liberation, DejaVu, Libertine, Libertinus oraz New Computer Modern Sans i Mono.",
+        "label": "Klasyczny tekst"
       }
     },
     "fonts": {
@@ -1073,6 +1093,10 @@
       "packDownloadFailed": "Nie udało się pobrać pakietu szablonów.",
       "packsDownloadFailed": "Nie udało się pobrać pakietów szablonów.",
       "packRemoveFailed": "Nie udało się usunąć pakietu szablonów."
+    },
+    "typstFonts": {
+      "heading": "Czcionki dla Typst",
+      "tooltip": "Bezpłatne czcionki, których wymaga wiele szablonów Typst. Po pobraniu może z nich korzystać każdy projekt Typst, poza projektem, który wyłącza czcionki systemowe."
     }
   },
   "engine": {
