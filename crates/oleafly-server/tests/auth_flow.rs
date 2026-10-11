@@ -1,0 +1,262 @@
+use oleafly_collab_protocol::admin::{AllowlistMatcher, SecurityEventKind};
+use oleafly_collab_protocol::capabilities::CapabilityManifest;
+use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_server::db;
+use oleafly_server::members;
+use oleafly_server::test_support::{
+    allowlist, api_error_code, app_callback, follow_to_app, github_provider, no_redirect_client,
+    oidc_provider, security_event_kinds, seed_member, test_config, MockGithub, MockGithubUser,
+    MockOidc, MockOidcUser, SignInAttempt, TestDevice, TestServer, TEST_REDIRECT_URI,
+    TEST_SETUP_CODE,
+};
+use reqwest::StatusCode;
+use serde_json::json;
+use url::Url;
+
+fn carol() -> MockGithubUser {
+    MockGithubUser {
+        id: 7,
+        login: "Carol-K".to_owned(),
+        name: "Carol Diaz".to_owned(),
+        emails: vec![("carol@uni.edu".to_owned(), true)],
+    }
+}
+
+async fn server_for(user: MockGithubUser) -> (TestServer, MockGithub) {
+    let github = MockGithub::start(vec![user]).await;
+    let mut config = test_config();
+    config.providers.push(github_provider("github", &github));
+    (TestServer::start(config).await, github)
+}
+
+async fn attempt(
+    server: &TestServer,
+    provider: &str,
+    setup_code: Option<&str>,
+) -> Result<String, String> {
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(server, provider, &device, setup_code);
+    let landing = follow_to_app(&no_redirect_client(), attempt.start_url.clone()).await?;
+    app_callback(&landing, &attempt.state)
+}
+
+async fn admins(server: &TestServer) -> u32 {
+    server
+        .state()
+        .db
+        .call(|conn| members::count_admins(conn))
+        .await
+        .expect("count admins")
+}
+
+async fn location(client: &reqwest::Client, url: Url) -> Url {
+    let response = client.get(url.clone()).send().await.expect("request");
+    assert!(
+        response.status().is_redirection(),
+        "{url} answered {}",
+        response.status()
+    );
+    let location = response.headers()[reqwest::header::LOCATION]
+        .to_str()
+        .expect("location")
+        .to_owned();
+    url.join(&location).expect("redirect target")
+}
+
+fn with_redirect(url: &Url, redirect: &str) -> Url {
+    let pairs: Vec<(String, String)> = url.query_pairs().into_owned().collect();
+    let mut changed = url.clone();
+    changed
+        .query_pairs_mut()
+        .clear()
+        .extend_pairs(pairs.iter().map(|(key, value)| {
+            (
+                key.as_str(),
+                if key == "redirect_uri" {
+                    redirect
+                } else {
+                    value.as_str()
+                },
+            )
+        }));
+    changed
+}
+
+#[tokio::test]
+async fn the_setup_code_makes_the_first_admin() {
+    let (server, _github) = server_for(carol()).await;
+    assert_eq!(admins(&server).await, 0);
+    assert_eq!(server.setup_code(), TEST_SETUP_CODE);
+    let code = attempt(&server, "github", Some(&server.setup_code()))
+        .await
+        .expect("sign-in code");
+    assert!(!code.is_empty());
+    assert_eq!(admins(&server).await, 1);
+    let stored = server
+        .state()
+        .db
+        .call(|conn| db::meta_get(conn, db::SETUP_CODE_HASH_KEY))
+        .await
+        .expect("setup hash");
+    assert_eq!(stored, None);
+    let kinds = security_event_kinds(&server).await;
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, SecurityEventKind::SetupCompleted)));
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, SecurityEventKind::SignIn)));
+    let manifest: CapabilityManifest =
+        reqwest::get(format!("{}/.well-known/oleafly-server", server.url()))
+            .await
+            .expect("manifest")
+            .json()
+            .await
+            .expect("manifest json");
+    assert!(!manifest.needs_setup);
+}
+
+#[tokio::test]
+async fn the_setup_code_works_once() {
+    let (server, _github) = server_for(carol()).await;
+    let code = server.setup_code();
+    attempt(&server, "github", Some(&code))
+        .await
+        .expect("first sign-in");
+    assert_eq!(
+        attempt(&server, "github", Some(&code)).await,
+        Err("setup_code_invalid".to_owned())
+    );
+}
+
+#[tokio::test]
+async fn a_wrong_setup_code_never_reaches_the_provider() {
+    let (server, _github) = server_for(carol()).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&server, "github", &device, Some("WRONG-CODE"));
+    let landing = location(&no_redirect_client(), attempt.start_url.clone()).await;
+    assert!(landing.as_str().starts_with(TEST_REDIRECT_URI));
+    assert_eq!(
+        app_callback(&landing, &attempt.state),
+        Err("setup_code_invalid".to_owned())
+    );
+    assert_eq!(admins(&server).await, 0);
+}
+
+#[tokio::test]
+async fn someone_nobody_added_is_not_admitted() {
+    let (server, _github) = server_for(carol()).await;
+    assert_eq!(
+        attempt(&server, "github", None).await,
+        Err("not_admitted".to_owned())
+    );
+    let kinds = security_event_kinds(&server).await;
+    assert!(kinds
+        .iter()
+        .any(|kind| matches!(kind, SecurityEventKind::SignInRefused)));
+}
+
+#[tokio::test]
+async fn an_allowlisted_handle_is_admitted() {
+    let (server, _github) = server_for(carol()).await;
+    let admin = seed_member(server.app(), ServerRole::Admin).await;
+    let matcher = AllowlistMatcher::ProviderLogin {
+        provider: "github".to_owned(),
+        login: "carol-k".to_owned(),
+    };
+    allowlist(&server, &admin.access_token, matcher, ServerRole::Member).await;
+    assert!(attempt(&server, "github", None).await.is_ok());
+}
+
+#[tokio::test]
+async fn an_oidc_provider_signs_in_through_the_same_flow() {
+    let issuer = MockOidc::start(vec![MockOidcUser {
+        subject: "uni-1".to_owned(),
+        name: "Carol Diaz".to_owned(),
+        email: Some("carol@uni.edu".to_owned()),
+        email_verified: Some(json!(true)),
+    }])
+    .await;
+    let mut config = test_config();
+    config.providers.push(oidc_provider("uni", &issuer, false));
+    let server = TestServer::start(config).await;
+    assert!(attempt(&server, "uni", Some(&server.setup_code()))
+        .await
+        .is_ok());
+    assert_eq!(admins(&server).await, 1);
+}
+
+#[tokio::test]
+async fn redirects_must_go_to_the_loopback_callback() {
+    let (server, _github) = server_for(carol()).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&server, "github", &device, None);
+    for redirect in [
+        "http://example.com:5000/callback",
+        "http://localhost:5000/callback",
+        "https://127.0.0.1:5000/callback",
+    ] {
+        let response = no_redirect_client()
+            .get(with_redirect(&attempt.start_url, redirect))
+            .send()
+            .await
+            .expect("start");
+        assert!(
+            response.status().is_client_error(),
+            "{redirect} answered {}",
+            response.status()
+        );
+        assert!(response.headers().get(reqwest::header::LOCATION).is_none());
+        assert_eq!(api_error_code(response).await, "invalid_redirect");
+    }
+}
+
+#[tokio::test]
+async fn an_unknown_provider_returns_to_the_app() {
+    let (server, _github) = server_for(carol()).await;
+    assert_eq!(
+        attempt(&server, "gitlab", None).await,
+        Err("unknown_provider".to_owned())
+    );
+}
+
+#[tokio::test]
+async fn declining_at_the_provider_returns_sign_in_cancelled() {
+    let github = MockGithub::start(Vec::new()).await;
+    let mut config = test_config();
+    config.providers.push(github_provider("github", &github));
+    let server = TestServer::start(config).await;
+    assert_eq!(
+        attempt(&server, "github", Some(&server.setup_code())).await,
+        Err("sign_in_cancelled".to_owned())
+    );
+    assert_eq!(admins(&server).await, 0);
+}
+
+#[tokio::test]
+async fn a_pending_sign_in_expires_after_ten_minutes() {
+    let (server, _github) = server_for(carol()).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&server, "github", &device, Some(&server.setup_code()));
+    let client = no_redirect_client();
+    let provider_page = location(&client, attempt.start_url.clone()).await;
+    let callback = location(&client, provider_page).await;
+    server.clock().advance(10 * 60 * 1000 + 1);
+    let response = client.get(callback).send().await.expect("callback");
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(admins(&server).await, 0);
+}
+
+#[tokio::test]
+async fn a_callback_cannot_be_replayed() {
+    let (server, _github) = server_for(carol()).await;
+    let device = TestDevice::generate();
+    let attempt = SignInAttempt::new(&server, "github", &device, Some(&server.setup_code()));
+    let client = no_redirect_client();
+    let provider_page = location(&client, attempt.start_url.clone()).await;
+    let callback = location(&client, provider_page).await;
+    let landing = location(&client, callback.clone()).await;
+    assert!(app_callback(&landing, &attempt.state).is_ok());
+    let replay = client.get(callback).send().await.expect("replay");
+    assert_eq!(replay.status(), StatusCode::BAD_REQUEST);
+}

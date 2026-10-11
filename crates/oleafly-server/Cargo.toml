@@ -1,0 +1,35 @@
+[package]
+name = "oleafly-server"
+version = "0.1.0"
+description = "Self-hosted collaboration server for Oleafly"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.89"
+
+[features]
+default = []
+test-support = []
+
+[dependencies]
+async-trait = "0.1"
+axum = { version = "0.8", default-features = false, features = ["form", "http1", "json", "query", "tokio", "ws"] }
+oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json"] }
+ring = "0.17"
+rusqlite = { version = "0.32", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt"] }
+url = "2"
+uuid = { version = "1", features = ["v7"] }
+
+[dev-dependencies]
+futures-util = { version = "0.3", features = ["sink"] }
+oleafly-server = { path = ".", features = ["test-support"] }
+tempfile = { workspace = true }
+tokio = { version = "1", features = ["test-util"] }
+tokio-tungstenite = { version = "0.29", default-features = false, features = ["connect"] }
+tower = { version = "0.5", features = ["util"] }
